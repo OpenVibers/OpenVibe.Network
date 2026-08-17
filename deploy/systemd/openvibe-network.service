@@ -1,0 +1,23 @@
+[Unit]
+Description=OpenVibe.Network — Identity, SSO & OpenCoins (port 4000)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/openvibe.network
+# All secrets and env config live outside the repo (mode 0600):
+EnvironmentFile=/etc/openvibe/network.env
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/env node /opt/openvibe.network/server/index.js
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/openvibe.network/data
+
+[Install]
+WantedBy=multi-user.target

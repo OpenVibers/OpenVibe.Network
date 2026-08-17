@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>My Account - OpenVibe Dashboard</title>
+<meta name="description" content="Manage your OpenVibe account, view profile, settings, and access all 13 integrated services from one dashboard.">
+<meta name="keywords" content="account dashboard, openvibe network, user profile, settings">
+<meta name="theme-color" content="#8b5cf6">
+<meta name="robots" content="noindex, follow">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://openvibe.network/">
+<meta property="og:title" content="My Account - OpenVibe">
+<meta property="og:description" content="Personal dashboard for managing your OpenVibe account and preferences.">
+<meta property="og:site_name" content="OpenVibe">
+<link rel="canonical" href="https://openvibe.network/my">
+<link rel="icon" type="image/x-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%238b5cf6' width='32' height='32' rx='8'/%3E%3Ctext x='50%25' y='50%25' font-size='20' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='central'%3EO%3C/text%3E%3C/svg%3E">
+<link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+    --bg:#0d0d14;--bg-secondary:#151520;--bg-card:#1a1a26;--bg-input:#1c1c28;
+    --border:#2a2a3a;--border-focus:#8b5cf6;
+    --accent:#8b5cf6;--accent-glow:rgba(139,92,246,0.4);--accent-dark:#6d28d9;--accent-light:#a78bfa;
+    --text:#e0e0e0;--text-secondary:#b0b0b8;--text-muted:#707080;
+    --live-red:#e74c3c;--success:#2ecc71;
+    --shadow:0 4px 20px rgba(0,0,0,0.3);
+}
+html{height:100%;background:var(--bg)}
+body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding-bottom:40px}
+
+/* Layout */
+.page{max-width:900px;margin:0 auto;padding:20px}
+.page-header{display:flex;align-items:center;gap:16px;margin-bottom:32px}
+.page-header .avatar{width:72px;height:72px;border-radius:50%;border:3px solid var(--accent);object-fit:cover}
+.page-header .info{flex:1}
+.page-header .info h1{font-size:22px;font-weight:800;margin-bottom:2px}
+.page-header .info .subtitle{font-size:13px;color:var(--text-muted)}
+.page-header .info .badges{display:flex;gap:6px;margin-top:6px}
+.page-header .info .badges .badge{
+    font-size:10px;padding:3px 10px;border-radius:4px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;
+}
+.badge-admin{background:rgba(231,76,60,0.15);color:#e74c3c}
+.badge-anon{background:rgba(139,92,246,0.15);color:var(--accent-light)}
+.badge-streamer{background:rgba(155,89,182,0.15);color:#9b59b6}
+.badge-user{background:rgba(52,152,219,0.15);color:#3498db}
+
+/* Section tabs */
+.section-tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--bg-secondary);border-radius:10px;padding:4px;overflow-x:auto}
+.section-tabs button{
+    flex-shrink:0;padding:8px 16px;border:none;border-radius:8px;font-size:12px;font-weight:600;
+    background:transparent;color:var(--text-muted);cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.section-tabs button.active{background:var(--bg-card);color:var(--accent-light)}
+.section-tabs button:hover:not(.active){color:var(--text)}
+
+/* Section */
+.section{display:none;animation:sec-in .2s ease}
+.section.active{display:block}
+@keyframes sec-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Cards */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.card h3{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h3 .icon{font-size:16px}
+.card p{font-size:13px;color:var(--text-secondary);line-height:1.6}
+
+/* Form fields */
+.form-field{margin-bottom:14px}
+.form-field label{display:block;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.form-field input,.form-field select,.form-field textarea{
+    width:100%;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border);
+    border-radius:8px;color:var(--text);font-size:13px;outline:none;transition:border-color .2s;
+}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--accent)}
+.form-field textarea{resize:vertical;min-height:60px}
+.form-field .hint{font-size:10px;color:var(--text-muted);margin-top:3px}
+
+.btn{
+    padding:8px 20px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dark)}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--accent-dark);color:var(--accent-light)}
+.btn-danger{background:rgba(231,76,60,0.1);color:var(--live-red);border:1px solid rgba(231,76,60,0.2)}
+.btn-danger:hover{background:rgba(231,76,60,0.2)}
+.btn-row{display:flex;gap:8px;margin-top:12px}
+
+/* Account list */
+.account-list{display:flex;flex-direction:column;gap:8px}
+.account-item{
+    display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;
+    background:var(--bg-input);border:1px solid var(--border);
+}
+.account-item.active{border-color:var(--accent)}
+.account-item img{width:36px;height:36px;border-radius:50%}
+.account-item .name{font-size:13px;font-weight:600}
+.account-item .meta{font-size:11px;color:var(--text-muted)}
+.account-item .actions{margin-left:auto;display:flex;gap:6px}
+
+/* Notification pref grid */
+.notif-grid{display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;align-items:center;font-size:12px}
+.notif-grid .cat{font-weight:600;text-transform:capitalize}
+.notif-grid .toggle{width:36px;height:20px;border-radius:10px;border:none;cursor:pointer;position:relative;transition:background .2s}
+.notif-grid .toggle::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;transition:transform .2s}
+.notif-grid .toggle.on{background:var(--accent)}
+.notif-grid .toggle.on::after{transform:translateX(16px)}
+.notif-grid .toggle.off{background:var(--border)}
+
+/* Linked services */
+.linked-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:8px;background:var(--bg-input);margin-bottom:8px}
+.linked-item .svc-icon{font-size:20px;width:32px;text-align:center}
+.linked-item .svc-name{font-size:13px;font-weight:600}
+.linked-item .svc-user{font-size:11px;color:var(--text-muted)}
+.linked-item .svc-status{margin-left:auto;font-size:11px;font-weight:600;color:var(--success)}
+
+/* Themes */
+.theme-hero{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px}
+.theme-hero-copy{max-width:560px}
+.theme-hero-copy p{margin-top:8px}
+.theme-current{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;background:var(--bg-input);border:1px solid var(--border);min-width:220px}
+.theme-current-swatch{display:flex;gap:4px}
+.theme-current-swatch span,.theme-preview-swatch span{width:18px;height:18px;border-radius:50%;border:1px solid rgba(255,255,255,.08);display:inline-block}
+.theme-current .label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em}
+.theme-current .name{font-size:13px;font-weight:700;margin-top:2px}
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.theme-custom-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.theme-custom-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:8px 10px;cursor:pointer}
+.theme-custom-row input[type=color]{width:34px;height:34px;border:none;border-radius:8px;background:none;cursor:pointer;padding:0}
+.theme-custom-row input[type=color]::-webkit-color-swatch{border:1px solid var(--border);border-radius:6px}
+.theme-custom-row input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.theme-card{background:var(--bg-input);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;transition:border-color .15s,transform .15s,box-shadow .15s}
+.theme-card:hover{transform:translateY(-2px);border-color:var(--accent)}
+.theme-card.active{border-color:var(--accent);box-shadow:0 0 0 1px rgba(139,92,246,.25) inset}
+.theme-preview{border-radius:12px;padding:14px;background:linear-gradient(135deg,var(--theme-bg-1,#202331),var(--theme-bg-2,#181a24));border:1px solid rgba(255,255,255,.06)}
+.theme-preview-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.theme-preview-chip{padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.08);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.theme-preview-bars{display:grid;gap:7px}
+.theme-preview-bars span{display:block;height:8px;border-radius:999px;background:rgba(255,255,255,.16)}
+.theme-preview-bars span:first-child{width:72%}
+.theme-preview-bars span:last-child{width:46%}
+.theme-card h4{font-size:14px;font-weight:700}
+.theme-card p{font-size:12px;color:var(--text-secondary);line-height:1.55}
+.theme-card-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto}
+.theme-badges{display:flex;gap:6px;flex-wrap:wrap}
+.theme-badge{font-size:10px;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.theme-empty{padding:16px;border-radius:12px;background:var(--bg-input);border:1px dashed var(--border);text-align:center;color:var(--text-muted);font-size:13px}
+
+/* Anon info card */
+.anon-card{text-align:center;padding:32px 20px}
+.anon-card .number{font-size:48px;font-weight:800;color:var(--accent);margin-bottom:8px}
+.anon-card .label{font-size:12px;color:var(--text-muted);margin-bottom:16px}
+.anon-card .stats{display:flex;justify-content:center;gap:24px}
+.anon-card .stat{text-align:center}
+.anon-card .stat .val{font-size:20px;font-weight:700}
+.anon-card .stat .key{font-size:10px;color:var(--text-muted);text-transform:uppercase}
+
+/* Loading */
+.loading-spinner{text-align:center;padding:40px;color:var(--text-muted);font-size:13px}
+.acct-retry-btn{display:inline-block;background:var(--accent,#8b5cf6);color:#0b0d10;border:none;border-radius:6px;padding:3px 12px;font-weight:600;font-size:0.85em;cursor:pointer;vertical-align:baseline}
+.acct-retry-btn:hover{filter:brightness(1.08)}
+
+@media(max-width:600px){
+    .page{padding:12px}
+    .page-header{flex-direction:column;text-align:center}
+    .page-header .info .badges{justify-content:center}
+    .notif-grid{grid-template-columns:1fr auto auto}
+    .notif-grid .col-email,.notif-grid .col-toast{display:none}
+}
+
+/* Dashboard Showcase */
+@keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+@keyframes fadeInScale { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.dashboard-showcase { margin: 32px 0; padding: 28px; border-radius: 12px; background: var(--bg-card); border: 1px solid var(--border); }
+.showcase-header { text-align: center; margin-bottom: 24px; }
+.showcase-header h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 6px; }
+.showcase-header p { font-size: 12px; color: var(--text-muted); }
+.showcase-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.showcase-card { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; border-radius: 10px; background: var(--bg-input); border: 1px solid var(--border); cursor: pointer; text-decoration: none; color: inherit; gap: 8px; animation: float ease-in-out infinite; transition: all 0.3s ease; }
+.showcase-card:nth-child(1) { animation-delay: 0s; animation-duration: 3s; }
+.showcase-card:nth-child(2) { animation-delay: 0.15s; animation-duration: 3.3s; }
+.showcase-card:nth-child(3) { animation-delay: 0.3s; animation-duration: 3.6s; }
+.showcase-card:nth-child(4) { animation-delay: 0.45s; animation-duration: 3.2s; }
+.showcase-card:hover { transform: translateY(-4px); border-color: var(--accent); background: rgba(139,92,246,0.08); }
+.showcase-card-icon { font-size: 1.4rem; color: var(--accent-light); }
+.showcase-card-label { font-size: 11px; font-weight: 700; text-align: center; }
+.quick-access { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.quick-link { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); text-decoration: none; color: var(--text-secondary); font-size: 10px; font-weight: 600; text-align: center; transition: all 0.25s ease; animation: fadeInScale 0.5s ease both; }
+.quick-link i { font-size: 1rem; margin-bottom: 4px; }
+.quick-link:nth-child(1) { animation-delay: 0.1s; }
+.quick-link:nth-child(2) { animation-delay: 0.15s; }
+.quick-link:nth-child(3) { animation-delay: 0.2s; }
+.quick-link:nth-child(4) { animation-delay: 0.25s; }
+.quick-link:nth-child(5) { animation-delay: 0.3s; }
+.quick-link:nth-child(6) { animation-delay: 0.35s; }
+.quick-link:hover { border-color: var(--accent); color: var(--accent-light); background: rgba(139,92,246,0.08); }
+@media(max-width:600px){ .showcase-grid { grid-template-columns: repeat(2, 1fr); } .quick-access { grid-template-columns: repeat(3, 1fr); } }
+</style>
+</head>
+<body>
+
+<!-- Navbar mount point -->
+<div id="navbar-mount"></div>
+
+<div class="page">
+    <div class="page-header" id="page-header">
+        <img class="avatar" id="user-avatar" src="" alt="Profile avatar">
+        <div class="info">
+            <h1 id="user-name">Loading...</h1>
+            <div class="subtitle" id="user-subtitle"></div>
+            <div class="badges" id="user-badges"></div>
+        </div>
+    </div>
+
+    <div class="dashboard-showcase">
+        <div class="showcase-header">
+            <h2>Quick Access</h2>
+            <p>Your favorite services at a glance</p>
+        </div>
+        <div class="showcase-grid" id="my-showcase-grid"></div>
+        <div class="quick-access" id="my-quick-access"></div>
+    </div>
+
+    <div class="section-tabs">
+        <button class="active" onclick="showSection('profile',this)"><i class="fa-solid fa-user"></i> Profile</button>
+        <button onclick="showSection('themes',this)"><i class="fa-solid fa-palette"></i> Themes</button>
+        <button onclick="showSection('accounts',this)"><i class="fa-solid fa-arrows-rotate"></i> Accounts</button>
+        <button onclick="showSection('notifications',this)"><i class="fa-solid fa-bell"></i> Notifications</button>
+        <button onclick="showSection('linked',this)"><i class="fa-solid fa-link"></i> Linked Services</button>
+        <button onclick="showSection('security',this)"><i class="fa-solid fa-lock"></i> Security</button>
+        <button onclick="showSection('anon',this)"><i class="fa-solid fa-user-secret"></i> Anon Info</button>
+    </div>
+
+    <!-- Profile Section -->
+    <div class="section active" id="sec-profile">
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-user"></i></span> Edit Profile</h3>
+            <form id="profile-form">
+                <div class="form-field">
+                    <label>Display Name</label>
+                    <input type="text" id="pf-display-name" maxlength="50">
+                    <small class="field-hint" id="pf-display-name-hint" style="opacity:.7;font-size:12px">You can only change the capitalization of your username.</small>
+                </div>
+                <div class="form-field">
+                    <label>Bio</label>
+                    <textarea id="pf-bio" maxlength="500" placeholder="Tell us about yourself..."></textarea>
+                </div>
+                <div class="form-field">
+                    <label>Email</label>
+                    <input type="email" id="pf-email" placeholder="your@email.com">
+                    <div class="hint">Used for password resets and any notification emails you enable below.</div>
+                </div>
+                <div class="form-field">
+                    <label>Profile Color</label>
+                    <input type="color" id="pf-color" value="#8b5cf6" style="width:60px;height:36px;padding:2px;cursor:pointer">
+                </div>
+                <div class="btn-row">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Themes Section -->
+    <div class="section" id="sec-themes">
+        <div class="card">
+            <div class="theme-hero">
+                <div class="theme-hero-copy">
+                    <h3><span class="icon"><i class="fa-solid fa-palette"></i></span> Themes</h3>
+                    <p>Pick the look that follows you across the OpenVibe. Your theme choice syncs to compatible services and updates this account hub instantly.</p>
+                </div>
+                <div class="theme-current" id="theme-current">
+                    <div class="theme-current-swatch" id="theme-current-swatch">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <div>
+                        <div class="label">Active theme</div>
+                        <div class="name" id="theme-current-name">Loading…</div>
+                    </div>
+                </div>
+            </div>
+            <div id="theme-grid" class="theme-grid">
+                <div class="theme-empty">Loading themes…</div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                <div>
+                    <h3 style="margin:0"><span class="icon"><i class="fa-solid fa-sliders"></i></span> Customize colors</h3>
+                    <p style="margin:6px 0 0;color:var(--text-secondary);font-size:0.9rem">Tweak your active theme. Changes preview live and sync everywhere when you save.</p>
+                </div>
+                <button class="btn btn-outline" id="theme-custom-toggle" onclick="toggleThemeCustomizer()"><i class="fa-solid fa-pen"></i> Customize</button>
+            </div>
+            <div id="theme-customizer" style="display:none;margin-top:16px">
+                <div id="theme-custom-grid" class="theme-custom-grid"></div>
+                <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+                    <button class="btn btn-primary" onclick="saveCustomColors(this)"><i class="fa-solid fa-floppy-disk"></i> Save custom theme</button>
+                    <button class="btn btn-outline" onclick="resetCustomColors(this)"><i class="fa-solid fa-rotate-left"></i> Reset to preset</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accounts Section -->
+    <div class="section" id="sec-accounts">
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-arrows-rotate"></i></span> Your Accounts</h3>
+            <p>Switch between multiple accounts, Google-style. You can have up to 5 accounts logged in at once.</p>
+            <div class="account-list" id="account-list" style="margin-top:12px">
+                <!-- Populated by JS -->
+            </div>
+            <div class="btn-row" style="margin-top:16px">
+                <button class="btn btn-outline" onclick="addAccount()">+ Add Another Account</button>
+                <button class="btn btn-danger" onclick="signOutAll()">Sign Out All</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Section -->
+    <div class="section" id="sec-notifications">
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-bell"></i></span> Notification Preferences</h3>
+            <p style="margin-bottom:16px">Control which notifications you receive and how they are delivered, including optional email alerts by category.</p>
+            <div class="notif-grid" id="notif-prefs">
+                <div style="font-weight:700;font-size:11px;color:var(--text-muted)">Category</div>
+                <div style="font-weight:700;font-size:11px;color:var(--text-muted);text-align:center">Enabled</div>
+                <div style="font-weight:700;font-size:11px;color:var(--text-muted);text-align:center">Sound</div>
+                <div style="font-weight:700;font-size:11px;color:var(--text-muted);text-align:center" class="col-toast">Toast</div>
+                <div style="font-weight:700;font-size:11px;color:var(--text-muted);text-align:center" class="col-email">Email</div>
+                <!-- Rows populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Linked Services Section -->
+    <div class="section" id="sec-linked">
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-link"></i></span> Linked Services</h3>
+            <p style="margin-bottom:12px">Your OpenVibe account is connected to these services.</p>
+            <div id="linked-list">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Section -->
+    <div class="section" id="sec-security">
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-lock"></i></span> Change Password</h3>
+            <form id="password-form">
+                <div class="form-field">
+                    <label>Current Password</label>
+                    <input type="password" id="sec-current-pw" required>
+                </div>
+                <div class="form-field">
+                    <label>New Password</label>
+                    <input type="password" id="sec-new-pw" required minlength="6">
+                </div>
+                <div class="form-field">
+                    <label>Confirm New Password</label>
+                    <input type="password" id="sec-confirm-pw" required>
+                </div>
+                <div class="btn-row">
+                    <button type="submit" class="btn btn-primary">Change Password</button>
+                </div>
+            </form>
+        </div>
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-mobile-screen"></i></span> Active Sessions</h3>
+            <div id="sessions-list"><div class="loading-spinner">Loading sessions...</div></div>
+            <div class="btn-row" style="margin-top:12px">
+                <button class="btn btn-danger" onclick="revokeAllSessions()">Revoke All Sessions</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anon Info Section -->
+    <div class="section" id="sec-anon">
+        <div class="card">
+            <div class="anon-card" id="anon-info">
+                <p style="color:var(--text-muted)">Anonymous user info will appear here once loaded.</p>
+            </div>
+        </div>
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-link"></i></span> Link Anon to Account</h3>
+            <p>If you had an anonymous session before signing up, you can link it to preserve your anon number.</p>
+            <div class="btn-row">
+                <button class="btn btn-outline" onclick="linkAnon()">Link Anonymous Identity</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Shared scripts -->
+<script src="/shared/theme-loader.js"></script>
+<script src="/shared/navbar.js"></script>
+<script src="/shared/notification-ui.js"></script>
+<script src="/shared/account-switcher.js"></script>
+
+<script>
+const API = window.location.origin;
+let currentUser = null;
+let availableThemes = [];
+let activeThemeId = 'vibe';
+const DEFAULT_EMAIL_HINT = 'Used for password resets and any notification emails you enable below.';
+
+const LOCAL_THEME_MAP = {
+    '--bg': '--bg-primary',
+    '--bg-secondary': '--bg-secondary',
+    '--bg-card': '--bg-card',
+    '--bg-input': '--bg-input',
+    '--border': '--border',
+    '--accent': '--accent',
+    '--accent-light': '--accent-light',
+    '--accent-dark': '--accent-dark',
+    '--text': '--text-primary',
+    '--text-secondary': '--text-secondary',
+    '--text-muted': '--text-muted',
+};
+
+function getStoredAccounts() {
+    try { return JSON.parse(localStorage.getItem('openvibe_accounts') || '[]'); }
+    catch { return []; }
+}
+
+function getActiveAccount() {
+    const activeId = localStorage.getItem('openvibe_active_account');
+    const accounts = getStoredAccounts();
+    if (activeId === 'anon') return accounts.find(a => a?.is_anon) || null;
+    return accounts.find(a => String(a?.id) === String(activeId)) || null;
+}
+
+function isAnonSession() {
+    return !!getActiveAccount()?.is_anon || localStorage.getItem('openvibe_active_account') === 'anon';
+}
+
+/** Read ov_token from the host-only cookie (no Domain attribute — CONTRACTS.md) */
+function _getCookieToken() {
+    const m = document.cookie.match(/(?:^|; )ov_token=([^;]*)/);
+    return m ? decodeURIComponent(m[1]) : null;
+}
+
+function getAuthToken() {
+    if (isAnonSession()) return null;
+    return localStorage.getItem('ov_token') || getActiveAccount()?.token || _getCookieToken() || null;
+}
+
+function getAnonToken() {
+    return localStorage.getItem('openvibe_anon_token') || (getActiveAccount()?.is_anon ? getActiveAccount()?.token : null) || null;
+}
+
+/**
+ * If localStorage has no token but the cross-domain cookie does,
+ * hydrate localStorage so future getAuthToken() calls are instant.
+ * Also bootstraps the account list from /api/auth/me.
+ * If the token is expired, attempts a silent refresh.
+ */
+async function _bootstrapFromCookie() {
+    if (localStorage.getItem('ov_token')) return; // already have it
+    const cookieToken = _getCookieToken();
+    if (!cookieToken) return;
+    // Store the token in localStorage for this origin
+    localStorage.setItem('ov_token', cookieToken);
+    // Try to populate the account list
+    try {
+        const res = await fetchWithTimeout(API + '/api/auth/me', {
+            headers: { Authorization: 'Bearer ' + cookieToken, 'Content-Type': 'application/json' },
+            credentials: 'include',
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const user = data.user || data;
+            // Bootstrap openvibe_accounts + openvibe_active_account
+            const accounts = [{ id: user.id, username: user.username, display_name: user.display_name || user.username, avatar_url: user.avatar_url || null, email: user.email || null, is_anon: false, token: cookieToken, added_at: Date.now() }];
+            localStorage.setItem('openvibe_accounts', JSON.stringify(accounts));
+            localStorage.setItem('openvibe_active_account', String(user.id));
+        } else if (res.status === 401) {
+            // Token expired — try refresh
+            const refreshRes = await fetchWithTimeout(API + '/api/auth/refresh', {
+                method: 'POST',
+                headers: { Authorization: 'Bearer ' + cookieToken, 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+            if (refreshRes.ok) {
+                const refreshData = await refreshRes.json();
+                if (refreshData.token) {
+                    localStorage.setItem('ov_token', refreshData.token);
+                    document.cookie = `ov_token=${refreshData.token};path=/;max-age=${60*60*24*30};SameSite=Lax${location.protocol === 'https:' ? ';Secure' : ''}`;
+                    const user = refreshData.user;
+                    if (user) {
+                        const accounts = [{ id: user.id, username: user.username, display_name: user.display_name || user.username, avatar_url: user.avatar_url || null, email: user.email || null, is_anon: false, token: refreshData.token, added_at: Date.now() }];
+                        localStorage.setItem('openvibe_accounts', JSON.stringify(accounts));
+                        localStorage.setItem('openvibe_active_account', String(user.id));
+                    }
+                }
+            } else {
+                // Refresh failed — clear stale cookie
+                localStorage.removeItem('ov_token');
+                document.cookie = 'ov_token=;path=/;max-age=0';
+            }
+        }
+    } catch { /* cookie may be expired — loadUser will handle redirect */ }
+}
+
+// fetch with an abort timeout so a weak connection can't hang the page forever.
+async function fetchWithTimeout(url, opts = {}, ms = 15000) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    try {
+        return await fetch(url, { ...opts, signal: ctrl.signal });
+    } catch (e) {
+        const err = new Error(e && e.name === 'AbortError'
+            ? 'Request timed out — check your connection'
+            : 'Network error — check your connection');
+        err.network = true;
+        throw err;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function apiFetch(path, opts = {}) {
+    const headers = { 'Content-Type':'application/json', ...opts.headers };
+    const authToken = getAuthToken();
+    if (authToken) headers.Authorization = 'Bearer ' + authToken;
+    const res = await fetchWithTimeout(API + path, { ...opts, headers, credentials: 'include' });
+    let data = {};
+    try { data = await res.json(); } catch { /* non-JSON (e.g. proxy error page) */ }
+    if (!res.ok) { const err = new Error(data.error || res.statusText || 'Request failed'); err.status = res.status; throw err; }
+    return data;
+}
+
+async function anonFetch(path, opts = {}) {
+    const headers = { 'Content-Type':'application/json', ...opts.headers };
+    const res = await fetchWithTimeout(API + path, { ...opts, headers, credentials: 'include' });
+    let data = {};
+    try { data = await res.json(); } catch { /* non-JSON */ }
+    if (!res.ok) { const err = new Error(data.error || res.statusText || 'Request failed'); err.status = res.status; throw err; }
+    return data;
+}
+
+// Build dashboard showcase
+function buildDashboardShowcase() {
+    const grid = document.getElementById('my-showcase-grid');
+    const quickAccess = document.getElementById('my-quick-access');
+    if (!grid || !quickAccess) return;
+    const popular = [
+        { name: 'Live', icon: 'fa-tower-broadcast', url: 'https://openvibe.live' },
+        { name: 'Tools', icon: 'fa-screwdriver-wrench', url: 'https://openvibe.tools' },
+        { name: 'Games', icon: 'fa-gamepad', url: 'https://openvibe.games' },
+        { name: 'Media', icon: 'fa-photo-film', url: 'https://openvibe.media' },
+    ];
+    grid.innerHTML = popular.map(t => `<a href="${t.url}" class="showcase-card" title="${t.name}" target="_blank" rel="noopener"><i class="fa-solid ${t.icon} showcase-card-icon"></i><span class="showcase-card-label">${t.name}</span></a>`).join('');
+    const quickLinks = [
+        { label: 'Themes', icon: 'fa-palette', onclick: "showSection('themes')" },
+        { label: 'Profile', icon: 'fa-user', onclick: "showSection('profile')" },
+        { label: 'Accounts', icon: 'fa-arrows-rotate', onclick: "showSection('accounts')" },
+        { label: 'Linked', icon: 'fa-link', onclick: "showSection('linked')" },
+        { label: 'Security', icon: 'fa-lock', onclick: "showSection('security')" },
+        { label: 'Notifications', icon: 'fa-bell', onclick: "showSection('notifications')" },
+    ];
+    quickAccess.innerHTML = quickLinks.map(l => `<a class="quick-link" onclick="${l.onclick}"><i class="fa-solid ${l.icon}"></i>${l.label}</a>`).join('');
+}
+
+// Section switching
+function showSection(id, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.section-tabs button').forEach(b => b.classList.remove('active'));
+    document.getElementById('sec-' + id).classList.add('active');
+    const targetBtn = btn || [...document.querySelectorAll('.section-tabs button')].find((button) => button.getAttribute('onclick')?.includes(`'${id}'`));
+    targetBtn?.classList.add('active');
+    history.replaceState(null, '', id === 'profile' ? window.location.pathname : `${window.location.pathname}#${id}`);
+}
+
+function avatarPlaceholder(user, size = 96) {
+    const label = (user?.display_name || user?.username || 'H').trim();
+    const initial = label.charAt(0).toUpperCase() || 'H';
+    const bg = user?.profile_color || '#8b5cf6';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="100%" height="100%" rx="${Math.round(size / 2)}" fill="${bg}"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="${Math.round(size * 0.42)}" font-weight="700" fill="#fff">${initial}</text></svg>`;
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function avatarSrc(user, size = 96) {
+    return user?.avatar_url || avatarPlaceholder(user, size);
+}
+
+function themePreviewColors(theme) {
+    const vars = theme?.variables || {};
+    const preview = Array.isArray(theme?.preview_colors) && theme.preview_colors.length
+        ? theme.preview_colors
+        : [vars['--bg-primary'], vars['--accent'], vars['--bg-card']].filter(Boolean);
+    return [preview[0] || '#202331', preview[1] || '#8b5cf6', preview[2] || '#181a24'];
+}
+
+function applyThemeToPage(theme) {
+    const vars = theme?.variables || {};
+    Object.entries(LOCAL_THEME_MAP).forEach(([localVar, themeVar]) => {
+        const value = vars[themeVar];
+        if (value) document.documentElement.style.setProperty(localVar, value);
+    });
+}
+
+function updateThemeSummary(theme) {
+    const currentName = document.getElementById('theme-current-name');
+    const swatches = document.querySelectorAll('#theme-current-swatch span');
+    if (!currentName || swatches.length < 3) return;
+    currentName.textContent = theme?.name || 'Vibe';
+    themePreviewColors(theme).forEach((color, index) => {
+        if (swatches[index]) swatches[index].style.background = color;
+    });
+}
+
+function renderThemes() {
+    const grid = document.getElementById('theme-grid');
+    if (!grid) return;
+    if (!availableThemes.length) {
+        grid.innerHTML = '<div class="theme-empty">No themes available right now.</div>';
+        return;
+    }
+    grid.innerHTML = availableThemes.map((theme) => {
+        const [bg1, accent, bg2] = themePreviewColors(theme);
+        const isActive = String(theme.id) === String(activeThemeId) || String(theme.slug) === String(activeThemeId);
+        return `
+            <article class="theme-card ${isActive ? 'active' : ''}">
+                <div class="theme-preview" style="--theme-bg-1:${bg1};--theme-bg-2:${bg2}">
+                    <div class="theme-preview-top">
+                        <div class="theme-preview-swatch"><span style="background:${bg1}"></span><span style="background:${accent}"></span><span style="background:${bg2}"></span></div>
+                        <span class="theme-preview-chip">${theme.mode || 'dark'}</span>
+                    </div>
+                    <div class="theme-preview-bars"><span style="background:${accent}"></span><span></span></div>
+                </div>
+                <div>
+                    <h4>${theme.name}</h4>
+                    <p>${theme.description || 'A synced network theme.'}</p>
+                </div>
+                <div class="theme-card-footer">
+                    <div class="theme-badges">
+                        ${theme.is_builtin ? '<span class="theme-badge">Built-in</span>' : '<span class="theme-badge">Community</span>'}
+                    </div>
+                    <button class="btn ${isActive ? 'btn-outline' : 'btn-primary'}" onclick="setTheme('${theme.id}')">${isActive ? 'Active' : 'Use theme'}</button>
+                </div>
+            </article>
+        `;
+    }).join('');
+    updateThemeSummary(availableThemes.find((theme) => String(theme.id) === String(activeThemeId) || String(theme.slug) === String(activeThemeId)) || availableThemes[0]);
+}
+
+async function loadThemes() {
+    const grid = document.getElementById('theme-grid');
+    if (!grid) return;
+    try {
+        const [themesData, activeData] = await Promise.all([
+            apiFetch('/api/themes?limit=100'),
+            apiFetch('/api/themes/me/active'),
+        ]);
+        availableThemes = themesData.themes || [];
+        activeThemeId = activeData.theme_id || 'vibe';
+        activeCustomVars = (activeData.custom_variables && typeof activeData.custom_variables === 'object') ? activeData.custom_variables : {};
+        const activeTheme = availableThemes.find((theme) => String(theme.id) === String(activeThemeId) || String(theme.slug) === String(activeThemeId));
+        activeThemeVars = (activeTheme && activeTheme.variables) || {};
+        if (activeTheme) applyThemeToPage(activeTheme);
+        if (Object.keys(activeCustomVars).length) applyThemeToPage({ variables: Object.assign({}, activeThemeVars, activeCustomVars) });
+        renderThemes();
+        renderThemeCustomizer();
+    } catch (err) {
+        console.error('Failed to load themes:', err);
+        grid.innerHTML = '<div class="theme-empty">Unable to load themes right now.</div>';
+    }
+}
+
+async function setTheme(themeId) {
+    try {
+        await apiFetch('/api/themes/me', { method: 'PUT', body: JSON.stringify({ theme_id: themeId }) });
+        activeThemeId = themeId;
+        activeCustomVars = {}; // picking a preset clears custom overrides
+        const activeTheme = availableThemes.find((theme) => String(theme.id) === String(themeId) || String(theme.slug) === String(themeId));
+        if (activeTheme) {
+            activeThemeVars = activeTheme.variables || {};
+            renderThemeCustomizer();
+            applyThemeToPage(activeTheme);
+            localStorage.setItem('ov_theme', JSON.stringify({ id: activeTheme.id, slug: activeTheme.slug, name: activeTheme.name, variables: activeTheme.variables || {} }));
+            // Sync theme choice via cookie + OpenVibeThemeLoader (host-only cookie here)
+            if (typeof OpenVibeThemeLoader !== 'undefined') OpenVibeThemeLoader.save(activeTheme.slug || activeTheme.id, activeTheme.variables);
+            else document.cookie = `ov_theme_id=${encodeURIComponent(activeTheme.slug || activeTheme.id)};path=/;max-age=${365*24*60*60};SameSite=Lax${location.protocol === 'https:' ? ';Secure' : ''}`;
+        }
+        renderThemes();
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+// ── Custom color editor ──────────────────────────────────────
+let activeCustomVars = {};
+let activeThemeVars = {};
+const THEME_EDITABLE = [
+    ['--bg-primary', 'Background'], ['--bg-secondary', 'Surface'], ['--bg-card', 'Card'],
+    ['--bg-hover', 'Hover'], ['--accent', 'Accent'], ['--accent-light', 'Accent light'],
+    ['--text-primary', 'Text'], ['--text-secondary', 'Muted text'], ['--border', 'Border'],
+];
+function _hexOrDefault(v) {
+    if (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v.trim())) return v.trim();
+    if (typeof v === 'string' && /^#[0-9a-fA-F]{3}$/.test(v.trim())) {
+        const h = v.trim().slice(1); return '#' + h.split('').map(c => c + c).join('');
+    }
+    return '#888888';
+}
+function renderThemeCustomizer() {
+    const grid = document.getElementById('theme-custom-grid');
+    if (!grid) return;
+    grid.innerHTML = THEME_EDITABLE.map(([varName, label]) => {
+        const val = _hexOrDefault(activeCustomVars[varName] || activeThemeVars[varName]);
+        return `<label class="theme-custom-row">
+            <input type="color" value="${val}" data-var="${varName}" oninput="_onCustomColorInput(this)">
+            <span>${label}</span>
+        </label>`;
+    }).join('');
+}
+function toggleThemeCustomizer() {
+    const box = document.getElementById('theme-customizer');
+    const btn = document.getElementById('theme-custom-toggle');
+    if (!box) return;
+    const show = box.style.display === 'none';
+    box.style.display = show ? '' : 'none';
+    if (btn) btn.innerHTML = show ? '<i class="fa-solid fa-chevron-up"></i> Hide' : '<i class="fa-solid fa-pen"></i> Customize';
+    if (show) renderThemeCustomizer();
+}
+function _onCustomColorInput(input) {
+    const v = input.getAttribute('data-var');
+    activeCustomVars[v] = input.value;
+    // Live preview on this page.
+    applyThemeToPage({ variables: Object.assign({}, activeThemeVars, activeCustomVars) });
+}
+async function saveCustomColors(btn) {
+    if (btn) btn.disabled = true;
+    try {
+        await apiFetch('/api/themes/me', { method: 'PUT', body: JSON.stringify({ theme_id: activeThemeId, custom_variables: activeCustomVars }) });
+        const merged = Object.assign({}, activeThemeVars, activeCustomVars);
+        try { localStorage.setItem('ov_theme', JSON.stringify({ id: activeThemeId, variables: merged })); } catch {}
+        if (typeof OpenVibeThemeLoader !== 'undefined') OpenVibeThemeLoader.save(activeThemeId, merged);
+        alert('Custom theme saved — it will sync across the network.');
+    } catch (err) { alert('Error: ' + err.message); }
+    finally { if (btn) btn.disabled = false; }
+}
+async function resetCustomColors(btn) {
+    if (btn) btn.disabled = true;
+    try {
+        await apiFetch('/api/themes/me', { method: 'PUT', body: JSON.stringify({ theme_id: activeThemeId, custom_variables: null }) });
+        activeCustomVars = {};
+        applyThemeToPage({ variables: activeThemeVars });
+        renderThemeCustomizer();
+    } catch (err) { alert('Error: ' + err.message); }
+    finally { if (btn) btn.disabled = false; }
+}
+
+function openInitialSection() {
+    const routeSection = window.location.pathname === '/themes' ? 'themes' : window.location.hash.replace(/^#/, '') || 'profile';
+    if (isAnonSession() && ['notifications','linked','security'].includes(routeSection)) {
+        return showSection('anon');
+    }
+    if (document.getElementById('sec-' + routeSection)) {
+        showSection(routeSection);
+    }
+}
+
+function setSectionDisabled(sectionId, message) {
+    const section = document.getElementById('sec-' + sectionId);
+    if (!section) return;
+    section.innerHTML = `
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-user-secret"></i></span> Anonymous Mode</h3>
+            <p>${message}</p>
+        </div>
+    `;
+}
+
+function applyAnonModeUI(user) {
+    document.getElementById('pf-bio').disabled = true;
+    document.getElementById('pf-email').disabled = true;
+    document.getElementById('pf-color').disabled = true;
+    document.getElementById('pf-bio').value = '';
+    document.getElementById('pf-email').value = '';
+    document.getElementById('pf-bio').placeholder = 'Anonymous mode does not store bios.';
+    document.getElementById('pf-email').placeholder = 'Anonymous mode does not use email addresses';
+    const emailHint = document.querySelector('#sec-profile .hint');
+    if (emailHint) emailHint.textContent = 'Anonymous mode only stores lightweight preferences like your display name.';
+    const saveButton = document.querySelector('#profile-form .btn-primary');
+    if (saveButton) saveButton.textContent = 'Save Anon Preferences';
+
+    const notifTab = [...document.querySelectorAll('.section-tabs button')].find((button) => button.getAttribute('onclick')?.includes("'notifications'"));
+    const linkedTab = [...document.querySelectorAll('.section-tabs button')].find((button) => button.getAttribute('onclick')?.includes("'linked'"));
+    const securityTab = [...document.querySelectorAll('.section-tabs button')].find((button) => button.getAttribute('onclick')?.includes("'security'"));
+    [notifTab, linkedTab, securityTab].forEach((button) => {
+        if (!button) return;
+        button.style.opacity = '.45';
+        button.title = 'Unavailable in anonymous mode';
+    });
+
+    setSectionDisabled('notifications', 'Notification inbox, email preferences, and alert delivery are only available for full accounts.');
+    setSectionDisabled('linked', 'Linked services are only available once you sign in with a full OpenVibe account.');
+    setSectionDisabled('security', 'Anonymous identities do not have passwords or device sessions to manage.');
+
+    const themeGrid = document.getElementById('theme-grid');
+    if (themeGrid) {
+        themeGrid.innerHTML = '<div class="theme-empty">Theme syncing is unavailable for anonymous sessions right now.</div>';
+    }
+    const currentName = document.getElementById('theme-current-name');
+    if (currentName) currentName.textContent = 'Anon sessions do not sync themes';
+}
+
+// Load user data
+async function loadUser() {
+    // Hydrate localStorage from the host-only cookie if needed (e.g. cookie set by the login page)
+    await _bootstrapFromCookie();
+    const authToken = getAuthToken();
+    const anonToken = getAnonToken();
+    if (!authToken && !anonToken) { window.location.href = '/login'; return; }
+    try {
+        if (isAnonSession()) {
+            const data = await anonFetch('/api/auth/anon/' + encodeURIComponent(anonToken));
+            currentUser = {
+                ...data.user,
+                id: 'anon',
+                role: 'anon',
+                email: null,
+                avatar_url: null,
+                profile_color: '#8b5cf6',
+                bio: '',
+                is_anon: true,
+            };
+            renderHeader(currentUser);
+            renderProfile(currentUser);
+            applyAnonModeUI(currentUser);
+            loadAccounts();
+            loadAnonInfo();
+            OpenVibeNavbar.init({ service: 'network', token: null, user: currentUser });
+        } else {
+            const data = await apiFetch('/api/auth/me');
+            currentUser = data.user;
+            renderHeader(data.user);
+            renderProfile(data.user);
+            loadThemes();
+            loadAccounts();
+            loadNotifPrefs();
+            loadLinked();
+            loadSessions();
+            loadAnonInfo();
+
+            // Init navbar
+            OpenVibeNavbar.init({ service: 'network', token: authToken, user: currentUser });
+            const bellMount = OpenVibeNavbar.getBellMount();
+            if (bellMount && window.OpenVibeNotifications && authToken) {
+                OpenVibeNotifications.init({ token: authToken, apiBase: API });
+                const bell = OpenVibeNotifications.createBell();
+                bellMount.replaceChildren(bell);
+            }
+        }
+    } catch (err) {
+        console.error(err);
+        // A genuine auth failure → send them to log in. Everything else (offline, weak signal,
+        // timeout, server hiccup) → show a clear reason + retry instead of a stuck "Loading…".
+        if (err.status === 401 || /401|Authentication|not found|revoked|Unauthorized/i.test(err.message || '')) {
+            window.location.href = '/login?return=' + encodeURIComponent(window.location.pathname);
+            return;
+        }
+        showAccountLoadError(err);
+    }
+}
+
+// Replace the stuck "Loading…" with a readable reason + a Retry button.
+function showAccountLoadError(err) {
+    const nameEl = document.getElementById('user-name');
+    const subEl = document.getElementById('user-subtitle');
+    if (nameEl) nameEl.textContent = "Couldn't load your account";
+    if (subEl) {
+        const offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
+        subEl.textContent = (offline ? "You appear to be offline" : (err && err.message) ? err.message : 'Something went wrong') + ' · ';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'acct-retry-btn';
+        btn.textContent = 'Retry';
+        btn.onclick = () => { if (nameEl) nameEl.textContent = 'Loading…'; if (subEl) subEl.textContent = ''; loadUser(); };
+        subEl.appendChild(btn);
+    }
+}
+
+function renderHeader(user) {
+    const avatar = document.getElementById('user-avatar');
+    const fallback = avatarPlaceholder(user, 96);
+    avatar.src = avatarSrc(user, 96);
+    avatar.onerror = () => { avatar.src = fallback; };
+    document.getElementById('user-name').textContent = user.display_name || user.username;
+    document.getElementById('user-subtitle').textContent = user.is_anon
+        ? `Anonymous identity${user.anon_number ? ' · #' + user.anon_number : ''}`
+        : '@' + user.username + (user.email ? ' · ' + user.email : '');
+    const badges = document.getElementById('user-badges');
+    badges.innerHTML = user.is_anon
+        ? `<span class="badge badge-anon">anonymous</span>`
+        : `<span class="badge badge-${user.role}">${user.role}</span>`;
+    if (user.anon_number) badges.innerHTML += `<span class="badge badge-anon">Anon #${user.anon_number}</span>`;
+}
+
+function renderProfile(user) {
+    document.getElementById('pf-display-name').value = user.display_name || '';
+    document.getElementById('pf-bio').value = user.bio || '';
+    document.getElementById('pf-email').value = user.email || '';
+    document.getElementById('pf-color').value = user.profile_color || '#8b5cf6';
+    if (!user.is_anon) {
+        document.getElementById('pf-bio').disabled = false;
+        document.getElementById('pf-email').disabled = false;
+        document.getElementById('pf-color').disabled = false;
+        const emailHint = document.querySelector('#sec-profile .hint');
+        if (emailHint) emailHint.textContent = DEFAULT_EMAIL_HINT;
+        const saveButton = document.querySelector('#profile-form .btn-primary');
+        if (saveButton) saveButton.textContent = 'Save Changes';
+    }
+}
+
+// Profile form
+document.getElementById('profile-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+        if (isAnonSession()) {
+            const anonToken = getAnonToken();
+            const data = await anonFetch('/api/auth/anon/' + encodeURIComponent(anonToken) + '/preferences', {
+                method: 'PUT',
+                body: JSON.stringify({
+                    display_name: document.getElementById('pf-display-name').value,
+                }),
+            });
+            currentUser = {
+                ...currentUser,
+                display_name: data.preferences?.display_name || document.getElementById('pf-display-name').value || currentUser.display_name,
+            };
+            const accounts = getStoredAccounts().filter(a => !a.is_anon);
+            accounts.push({
+                id: 'anon',
+                username: currentUser.username,
+                display_name: currentUser.display_name,
+                avatar_url: null,
+                email: null,
+                is_anon: true,
+                anon_number: currentUser.anon_number,
+                token: getAnonToken(),
+            });
+            localStorage.setItem('openvibe_accounts', JSON.stringify(accounts));
+            renderHeader(currentUser);
+            alert('Anonymous preferences updated!');
+            return;
+        }
+
+        // Display name may only re-case the username, not rename it.
+        const _dn = (document.getElementById('pf-display-name').value || '').trim();
+        if (currentUser?.username && _dn.toLowerCase() !== String(currentUser.username).toLowerCase()) {
+            alert('Your display name can only change the capitalization of your username (e.g. "' + currentUser.username + '" → "' + currentUser.username.charAt(0).toUpperCase() + currentUser.username.slice(1) + '").');
+            return;
+        }
+        const data = await apiFetch('/api/auth/profile', { method: 'PUT', body: JSON.stringify({
+            display_name: _dn,
+            bio: document.getElementById('pf-bio').value,
+            email: document.getElementById('pf-email').value || undefined,
+            profile_color: document.getElementById('pf-color').value,
+        })});
+        currentUser = data.user;
+        renderHeader(data.user);
+        alert('Profile updated!');
+    } catch (err) { alert('Error: ' + err.message); }
+});
+
+// Accounts
+function loadAccounts() {
+    const accounts = JSON.parse(localStorage.getItem('openvibe_accounts') || '[]');
+    const activeId = localStorage.getItem('openvibe_active_account');
+    const list = document.getElementById('account-list');
+    list.innerHTML = accounts.map(a => `
+        <div class="account-item ${String(a.id) === String(activeId) ? 'active' : ''}">
+            <img src="${avatarSrc(a, 64)}" alt="${a.display_name || a.username}" onerror="this.onerror=null;this.src='${avatarPlaceholder({ display_name: a.display_name, username: a.username, profile_color: a.profile_color }, 64)}'">
+            <div>
+                <div class="name">${a.display_name || a.username}${a.is_anon ? ' <i class="fa-solid fa-user-secret" style="font-size:12px"></i>' : ''}</div>
+                <div class="meta">${a.is_anon ? 'Anonymous #' + (a.anon_number || '?') : '@' + a.username}</div>
+            </div>
+            <div class="actions">
+                ${String(a.id) !== String(activeId) ? `<button class="btn btn-outline" onclick="switchAccount('${a.id}')">Switch</button>` : '<span style="font-size:11px;color:var(--success);font-weight:600">Active</span>'}
+                ${String(a.id) !== String(activeId) ? `<button class="btn btn-danger" onclick="removeAccount('${a.id}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+function switchAccount(id) { OpenVibeAccountSwitcher.switchTo(id); }
+function removeAccount(id) { OpenVibeAccountSwitcher.removeAccount(id); loadAccounts(); }
+function addAccount() { window.location.href = '/login?add_account=1&return=' + encodeURIComponent(window.location.pathname); }
+function signOutAll() { OpenVibeAccountSwitcher.logoutAll(); }
+
+// Notification preferences
+const CATEGORIES = ['social','chat','game','stream','economy','achievement','moderation','system','service','admin'];
+
+async function loadNotifPrefs() {
+    if (isAnonSession()) return;
+    try {
+        const data = await apiFetch('/api/notifications/preferences');
+        const prefsMap = {};
+        for (const p of data.preferences) prefsMap[p.category] = p;
+        const grid = document.getElementById('notif-prefs');
+        // Clear existing rows
+        grid.querySelectorAll('.pref-row').forEach(r => r.remove());
+        for (const cat of CATEGORIES) {
+            const p = prefsMap[cat] || { enabled: 1, sound: 1, toasts: 1, email: 0 };
+            const html = `
+                <div class="cat pref-row">${cat}</div>
+                <button class="toggle pref-row ${p.enabled ? 'on' : 'off'}" data-cat="${cat}" data-field="enabled" onclick="togglePref(this)"></button>
+                <button class="toggle pref-row ${p.sound ? 'on' : 'off'}" data-cat="${cat}" data-field="sound" onclick="togglePref(this)"></button>
+                <button class="toggle pref-row col-toast ${p.toasts ? 'on' : 'off'}" data-cat="${cat}" data-field="toasts" onclick="togglePref(this)"></button>
+                <button class="toggle pref-row col-email ${p.email ? 'on' : 'off'}" data-cat="${cat}" data-field="email" onclick="togglePref(this)"></button>
+            `;
+            grid.insertAdjacentHTML('beforeend', html);
+        }
+    } catch (err) { console.error('Failed to load notif prefs:', err); }
+}
+
+async function togglePref(btn) {
+    const cat = btn.dataset.cat;
+    const field = btn.dataset.field;
+    const isOn = btn.classList.contains('on');
+    btn.classList.toggle('on');
+    btn.classList.toggle('off');
+    try {
+        await apiFetch('/api/notifications/preferences', { method: 'PUT', body: JSON.stringify({ category: cat, [field]: !isOn }) });
+    } catch (err) { btn.classList.toggle('on'); btn.classList.toggle('off'); }
+}
+
+// Linked services
+async function loadLinked() {
+    if (isAnonSession()) return;
+    try {
+        const data = await apiFetch('/api/auth/me');
+        // We don't have a direct linked endpoint from auth/me, let's check from card
+        const card = await apiFetch('/api/auth/users/' + currentUser.id + '/card');
+        const list = document.getElementById('linked-list');
+        const icons = { openvibelive: '<i class="fa-solid fa-tv"></i>', openvibegames: '<i class="fa-solid fa-shield-halved"></i>', ovn: '<i class="fa-solid fa-screwdriver-wrench"></i>', openvibemaps: '<i class="fa-solid fa-map"></i>' };
+        const linked = card.user?.linked_services || [];
+        if (linked.length === 0) {
+            list.innerHTML = '<p style="color:var(--text-muted);font-size:13px">No services linked yet. Use OpenVibe.Live or Scraplandia with your account to link them automatically.</p>';
+        } else {
+            list.innerHTML = linked.map(l => `
+                <div class="linked-item">
+                    <span class="svc-icon">${icons[l.service] || '<i class="fa-solid fa-link"></i>'}</span>
+                    <div>
+                        <div class="svc-name">${l.service}</div>
+                        <div class="svc-user">${l.service_username || l.service_user_id}</div>
+                    </div>
+                    <span class="svc-status"><i class="fa-solid fa-check"></i> Linked</span>
+                </div>
+            `).join('');
+        }
+    } catch (err) { console.error('Failed to load linked:', err); }
+}
+
+// Sessions
+async function loadSessions() {
+    if (isAnonSession()) {
+        document.getElementById('sessions-list').innerHTML = '<p style="color:var(--text-muted);font-size:13px">Anonymous mode does not create device sessions.</p>';
+        return;
+    }
+    try {
+        const data = await apiFetch('/api/auth/sessions');
+        const list = document.getElementById('sessions-list');
+        if (data.sessions.length === 0) {
+            list.innerHTML = '<p style="color:var(--text-muted);font-size:13px">No active sessions.</p>';
+        } else {
+            list.innerHTML = data.sessions.map(s => `
+                <div class="linked-item">
+                    <span class="svc-icon"><i class="fa-solid fa-mobile-screen"></i></span>
+                    <div>
+                        <div class="svc-name">${s.device_name || 'Unknown Device'}</div>
+                        <div class="svc-user">IP: ${s.ip || '?'} · Last used: ${new Date(s.last_used).toLocaleDateString()}</div>
+                    </div>
+                    <button class="btn btn-danger" onclick="revokeSession(${s.id})">Revoke</button>
+                </div>
+            `).join('');
+        }
+    } catch (err) { document.getElementById('sessions-list').innerHTML = '<p style="color:var(--text-muted)">Unable to load sessions.</p>'; }
+}
+
+async function revokeSession(id) {
+    try { await apiFetch('/api/auth/sessions/' + id, { method: 'DELETE' }); loadSessions(); }
+    catch (err) { alert('Error: ' + err.message); }
+}
+
+async function revokeAllSessions() {
+    if (!confirm('Revoke all sessions? You will need to log in again on other devices.')) return;
+    try { await apiFetch('/api/auth/sessions', { method: 'DELETE' }); loadSessions(); }
+    catch (err) { alert('Error: ' + err.message); }
+}
+
+// Anon info
+async function loadAnonInfo() {
+    const anonToken = localStorage.getItem('openvibe_anon_token');
+    const container = document.getElementById('anon-info');
+    if (!anonToken && !currentUser?.anon_number) {
+        container.innerHTML = `
+            <p style="color:var(--text-muted);font-size:14px"><i class="fa-solid fa-user-secret"></i></p>
+            <p style="color:var(--text-muted);font-size:13px;margin-top:8px">You don't have an anonymous identity yet.</p>
+            <button class="btn btn-outline" onclick="createAnon()" style="margin-top:12px">Create Anonymous Identity</button>
+        `;
+        return;
+    }
+
+    if (currentUser?.is_anon) {
+        container.innerHTML = `
+            <p style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Current Anonymous Session</p>
+            <div class="number">#${currentUser.anon_number}</div>
+            <p style="font-size:12px;color:var(--text-muted)">You're currently browsing as an anonymous identity.</p>
+        `;
+        return;
+    }
+
+    if (currentUser?.anon_number) {
+        container.innerHTML = `
+            <p style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Your Anonymous Number</p>
+            <div class="number">#${currentUser.anon_number}</div>
+            <p style="font-size:12px;color:var(--text-muted)">This number is permanently linked to your account.</p>
+        `;
+        return;
+    }
+
+    try {
+        const data = await fetch(API + '/api/auth/anon/' + anonToken).then(r => r.json());
+        if (data.user) {
+            container.innerHTML = `
+                <p style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Your Anonymous Number</p>
+                <div class="number">#${data.user.anon_number}</div>
+                <div class="label">First seen ${new Date(data.user.first_seen).toLocaleDateString()}</div>
+                <div class="stats">
+                    <div class="stat"><div class="val">${data.user.total_messages}</div><div class="key">Messages</div></div>
+                    <div class="stat"><div class="val">${data.user.total_commands}</div><div class="key">Commands</div></div>
+                </div>
+            `;
+        }
+    } catch (err) {
+        container.innerHTML = '<p style="color:var(--text-muted)">Unable to load anonymous info.</p>';
+    }
+}
+
+async function createAnon() {
+    try {
+        const res = await fetch(API + '/api/auth/anon-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const data = await res.json();
+        localStorage.setItem('openvibe_anon_token', data.token);
+        const accounts = getStoredAccounts().filter(a => !a.is_anon);
+        accounts.push({ id: 'anon', username: data.user.username, display_name: data.user.display_name, is_anon: true, anon_number: data.user.anon_number, token: data.token, avatar_url: null, email: null });
+        localStorage.setItem('openvibe_accounts', JSON.stringify(accounts));
+        loadAnonInfo();
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
+async function linkAnon() {
+    if (currentUser?.is_anon) { alert('Switch to a real account before linking this anonymous identity.'); return; }
+    const anonToken = localStorage.getItem('openvibe_anon_token');
+    if (!anonToken) { alert('No anonymous session to link.'); return; }
+    try {
+        await apiFetch('/api/auth/anon/' + anonToken + '/link', { method: 'POST' });
+        alert('Anonymous identity linked!');
+        location.reload();
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
+// Password form
+document.getElementById('password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (isAnonSession()) { alert('Anonymous identities do not have passwords.'); return; }
+    const newPw = document.getElementById('sec-new-pw').value;
+    if (newPw !== document.getElementById('sec-confirm-pw').value) { alert('Passwords do not match'); return; }
+    try {
+        const data = await apiFetch('/api/auth/change-password', { method: 'POST', body: JSON.stringify({
+            current_password: document.getElementById('sec-current-pw').value,
+            new_password: newPw,
+        })});
+        localStorage.setItem('ov_token', data.token);
+        document.cookie = `ov_token=${data.token};path=/;max-age=${60*60*24*30};SameSite=Lax${location.protocol === 'https:' ? ';Secure' : ''}`;
+        alert(data.message || 'Password changed!');
+        document.getElementById('password-form').reset();
+    } catch (err) { alert('Error: ' + err.message); }
+});
+
+// Init
+OpenVibeAccountSwitcher.init({ apiBase: API });
+loadUser();
+buildDashboardShowcase();
+openInitialSection();
+</script>
+  <script src="https://openvibe.live/live-notify.js" async></script>
+</body>
+</html>

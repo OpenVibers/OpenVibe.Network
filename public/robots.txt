@@ -1,0 +1,72 @@
+# General Index Rules
+User-agent: *
+Allow: /
+Allow: /api/public/
+Allow: /api/brand/
+Allow: /api/health/
+
+# Disallow admin and internal paths
+Disallow: /admin/
+Disallow: /api/admin/
+Disallow: /api/internal/
+Disallow: /.well-known/
+Disallow: /node_modules/
+Disallow: /.git/
+Disallow: /build/
+Disallow: /dist/
+
+# Disallow transient/temp paths
+Disallow: /auth/
+Disallow: /oauth/
+Disallow: /logout/
+Disallow: /session/
+Disallow: /tmp/
+Disallow: /temp/
+
+# Aggressive Bot Rate Limiting
+User-agent: AhrefsBot
+Disallow: /
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Disallow: /
+Crawl-delay: 10
+
+User-agent: DotBot
+Disallow: /
+Crawl-delay: 10
+
+User-agent: MJ12bot
+Disallow: /
+Crawl-delay: 30
+
+User-agent: AhrefsBot-Ahrefs
+Disallow: /
+Crawl-delay: 10
+
+User-agent: DotBot
+Disallow: /
+Crawl-delay: 10
+
+User-agent: MJ12bot
+Disallow: /
+Crawl-delay: 30
+
+# Friendly Bots - Normal Rate
+User-agent: Googlebot
+Crawl-delay: 0
+
+User-agent: Bingbot
+Crawl-delay: 1
+
+User-agent: Slurp
+Crawl-delay: 1
+
+User-agent: DuckDuckBot
+Crawl-delay: 1
+
+# Sitemaps
+Sitemap: https://openvibe.network/sitemap.xml
+
+# IndexNow Support (for rapid indexing)
+Host: https://openvibe.network
