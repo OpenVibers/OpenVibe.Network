@@ -366,9 +366,19 @@ function requireAuth(req, res, next) {
 }
 
 // ── Routes ───────────────────────────────────────────────────
-// Public key endpoint (services fetch this to verify JWTs)
+// Public key endpoint (services fetch this to verify JWTs).
+// Serves BOTH the standard JWKS `keys` array (RFC 7517 — Media and other
+// spec-compliant consumers) and the legacy `public_key` PEM shape that the
+// inherited service clients read.
 app.get('/api/.well-known/jwks', (_req, res) => {
-    res.json({ public_key: publicKey, algorithm: privateKey === publicKey ? 'HS256' : 'RS256' });
+    const out = { public_key: publicKey, algorithm: privateKey === publicKey ? 'HS256' : 'RS256' };
+    if (publicKey.includes('BEGIN')) {
+        try {
+            const jwk = require('crypto').createPublicKey(publicKey).export({ format: 'jwk' });
+            out.keys = [{ ...jwk, use: 'sig', alg: 'RS256', kid: 'ov-network-1' }];
+        } catch { /* legacy shape still served */ }
+    }
+    res.json(out);
 });
 
 // Health check
