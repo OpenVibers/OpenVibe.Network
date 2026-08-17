@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign In — OpenVibe</title>
+<meta name="description" content="Sign in to OpenVibe — one account across OpenVibe.Live, OpenVibe.Tools, OpenVibe.Games, and OpenVibe.Media.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+    --bg:#0d0d14;--bg-card:#16161f;--bg-input:#1c1c28;
+    --border:#2a2a3a;--border-focus:#8b5cf6;
+    --accent:#8b5cf6;--accent-glow:rgba(139,92,246,0.4);--accent-dark:#6d28d9;
+    --text:#e0e0e0;--text-muted:#707080;--text-dim:#505060;
+    --live-red:#e74c3c;--success:#2ecc71;
+}
+html{min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow-x:hidden;overflow-y:auto}
+body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow-x:hidden;overflow-y:auto}
+
+/* Animated background */
+.bg-canvas{position:fixed;inset:0;z-index:0}
+.bg-canvas .orb{
+    position:absolute;border-radius:50%;filter:blur(100px);opacity:0.15;
+    animation:orb-drift 20s ease-in-out infinite alternate;
+}
+.bg-canvas .orb:nth-child(1){width:400px;height:400px;background:#8b5cf6;top:-100px;left:-100px;animation-delay:0s}
+.bg-canvas .orb:nth-child(2){width:500px;height:500px;background:#e74c3c;bottom:-150px;right:-150px;animation-delay:-5s}
+.bg-canvas .orb:nth-child(3){width:300px;height:300px;background:#9b59b6;top:40%;left:60%;animation-delay:-10s}
+.bg-canvas .orb:nth-child(4){width:250px;height:250px;background:#3498db;bottom:20%;left:10%;animation-delay:-15s}
+@keyframes orb-drift{
+    0%{transform:translate(0,0) scale(1)}25%{transform:translate(40px,-30px) scale(1.1)}
+    50%{transform:translate(-20px,50px) scale(0.95)}75%{transform:translate(30px,20px) scale(1.05)}
+    100%{transform:translate(-40px,-40px) scale(1)}
+}
+
+/* Particle field */
+.particles{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.particles .p{
+    position:absolute;width:2px;height:2px;background:rgba(139,92,246,0.3);border-radius:50%;
+    animation:particle-float linear infinite;
+}
+@keyframes particle-float{
+    from{transform:translateY(100vh) scale(0);opacity:0}
+    10%{opacity:1;transform:translateY(90vh) scale(1)}
+    90%{opacity:.6}
+    to{transform:translateY(-5vh) scale(0.5);opacity:0}
+}
+
+/* Grid lines */
+.grid-overlay{
+    position:fixed;inset:0;z-index:0;
+    background-image:
+        linear-gradient(rgba(139,92,246,0.02) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(139,92,246,0.02) 1px,transparent 1px);
+    background-size:60px 60px;
+    animation:grid-scroll 30s linear infinite;
+}
+@keyframes grid-scroll{from{background-position:0 0}to{background-position:60px 60px}}
+
+/* Container */
+.login-container{
+    position:relative;z-index:10;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px;
+}
+
+/* Card */
+.login-card{
+    width:100%;max-width:420px;background:var(--bg-card);border:1px solid var(--border);
+    border-radius:20px;padding:40px 36px;position:relative;overflow:hidden;
+    box-shadow:0 20px 80px rgba(0,0,0,0.5), 0 0 60px rgba(139,92,246,0.03);
+    animation:card-entrance .6s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes card-entrance{from{transform:scale(.92) translateY(20px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+
+.login-card::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:3px;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    animation:shimmer 3s ease-in-out infinite;
+}
+@keyframes shimmer{0%,100%{opacity:0.3}50%{opacity:1}}
+
+/* Logo */
+.logo{text-align:center;margin-bottom:28px}
+.logo .flame{font-size:48px;display:block;margin-bottom:8px;animation:flame-pulse 2s ease-in-out infinite}
+@keyframes flame-pulse{0%,100%{transform:scale(1);filter:brightness(1)}50%{transform:scale(1.08);filter:brightness(1.2)}}
+.logo h1{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
+.logo p{font-size:12px;color:var(--text-muted);font-weight:500}
+
+/* Tabs */
+.tab-bar{display:flex;gap:4px;background:var(--bg-input);border-radius:10px;padding:4px;margin-bottom:24px}
+.tab-bar button{
+    flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:600;
+    background:transparent;color:var(--text-muted);cursor:pointer;transition:all .2s;
+}
+.tab-bar button.active{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(139,92,246,0.3)}
+.tab-bar button:hover:not(.active){color:var(--text)}
+
+/* Forms */
+.form-panel{display:none;animation:panel-in .3s ease}
+.form-panel.active{display:block}
+@keyframes panel-in{from{transform:translateX(10px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+.field{margin-bottom:16px;position:relative}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.field input{
+    width:100%;padding:12px 14px;background:var(--bg-input);border:1px solid var(--border);
+    border-radius:10px;color:var(--text);font-size:14px;outline:none;
+    transition:border-color .2s, box-shadow .2s;
+}
+.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.field input::placeholder{color:var(--text-dim)}
+
+.field .toggle-password{
+    position:absolute;right:12px;top:30px;background:none;border:none;
+    color:var(--text-muted);cursor:pointer;font-size:14px;padding:4px;
+}
+
+.submit-btn{
+    width:100%;padding:14px;border:none;border-radius:10px;font-size:14px;font-weight:700;
+    background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;cursor:pointer;
+    transition:all .2s;position:relative;overflow:hidden;
+}
+.submit-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(139,92,246,0.35)}
+.submit-btn:active{transform:translateY(0)}
+.submit-btn.loading{pointer-events:none;opacity:.7}
+.submit-btn .ripple{
+    position:absolute;border-radius:50%;background:rgba(255,255,255,0.3);
+    transform:scale(0);animation:btn-ripple .6s ease-out;
+}
+@keyframes btn-ripple{to{transform:scale(4);opacity:0}}
+
+/* Messages */
+.message{padding:10px 14px;border-radius:8px;font-size:12px;font-weight:500;margin-bottom:16px;display:none;animation:msg-in .3s ease}
+.message.visible{display:block}
+.message.error{background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);color:#e74c3c}
+.message.success{background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);color:#2ecc71}
+@keyframes msg-in{from{transform:translateY(-4px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* Extras */
+.divider{text-align:center;position:relative;margin:24px 0}
+.divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border)}
+.divider span{position:relative;background:var(--bg-card);padding:0 12px;font-size:11px;color:var(--text-dim);font-weight:500}
+
+.anon-btn{
+    width:100%;padding:12px;border:1px dashed var(--border);border-radius:10px;
+    background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;
+    cursor:pointer;transition:all .2s;
+}
+.anon-btn:hover{border-color:var(--accent-dark);color:var(--text);background:rgba(139,92,246,0.04)}
+
+.services{text-align:center;margin-top:24px;padding-top:16px;border-top:1px solid var(--border)}
+.services p{font-size:11px;color:var(--text-dim);margin-bottom:10px}
+.services .icons{display:flex;justify-content:center;gap:10px}
+.services .icons span{font-size:16px;opacity:0.4;transition:opacity .2s}
+.services .icons span:hover{opacity:0.8}
+.inline-link{display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-size:12px;color:var(--accent);cursor:pointer;text-decoration:none;font-weight:600}
+.inline-link:hover{color:#a78bfa}
+.panel-note{font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:16px}
+
+/* Toast */
+.login-toast{
+    position:fixed;top:20px;right:20px;z-index:100;padding:14px 20px;
+    border-radius:10px;font-size:13px;font-weight:500;
+    transform:translateX(120%);transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+.login-toast.show{transform:translateX(0)}
+.login-toast.error{background:rgba(231,76,60,0.9);color:#fff}
+.login-toast.success{background:rgba(46,204,113,0.9);color:#fff}
+
+/* ── Account Chooser ───────────────────────────────────── */
+.chooser-subtitle{font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:20px;line-height:1.5}
+.chooser-subtitle .app-name{color:var(--accent);font-weight:700}
+
+.account-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.account-item{
+    display:flex;align-items:center;gap:12px;padding:12px 14px;
+    background:var(--bg-input);border:1px solid var(--border);border-radius:12px;
+    cursor:pointer;transition:all .2s;position:relative;
+}
+.account-item:hover{border-color:var(--accent);background:rgba(139,92,246,0.06);transform:translateX(2px)}
+.account-item.active-account{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}
+.account-item .avatar{
+    width:40px;height:40px;border-radius:50%;background:var(--border);
+    display:flex;align-items:center;justify-content:center;font-size:18px;
+    flex-shrink:0;overflow:hidden;
+}
+.account-item .avatar img{width:100%;height:100%;object-fit:cover}
+.account-item .info{flex:1;min-width:0}
+.account-item .info .name{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-item .info .detail{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-item .arrow{color:var(--text-dim);font-size:14px;flex-shrink:0;transition:color .2s}
+.account-item:hover .arrow{color:var(--accent)}
+.account-item .remove-btn{
+    position:absolute;top:6px;right:6px;width:20px;height:20px;border:none;
+    background:rgba(231,76,60,0.15);border-radius:50%;color:#e74c3c;font-size:10px;
+    cursor:pointer;display:none;align-items:center;justify-content:center;
+    transition:background .2s;line-height:1;
+}
+.account-item:hover .remove-btn{display:flex}
+.account-item .remove-btn:hover{background:rgba(231,76,60,0.3)}
+
+.chooser-actions{display:flex;flex-direction:column;gap:8px}
+.chooser-actions .action-btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;
+    border:1px dashed var(--border);border-radius:10px;background:transparent;
+    color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;
+}
+.chooser-actions .action-btn:hover{border-color:var(--accent-dark);color:var(--text);background:rgba(139,92,246,0.04)}
+
+.back-link{
+    display:block;text-align:center;margin-top:16px;font-size:12px;
+    color:var(--text-muted);cursor:pointer;text-decoration:none;transition:color .2s;
+}
+.back-link:hover{color:var(--accent)}
+
+@media(max-width:480px){
+    .login-card{padding:28px 24px;border-radius:16px}
+    .logo .flame{font-size:36px}
+    .logo h1{font-size:18px}
+    .login-container{padding:16px}
+}
+
+@media(max-height:820px){
+    .login-container{align-items:flex-start;padding-top:24px;padding-bottom:24px}
+}
+
+@media(max-width:380px){
+    .login-card{padding:24px 18px;border-radius:14px}
+    .tab-bar button{font-size:12px;padding:8px 6px}
+}
+</style>
+</head>
+<body>
+
+<!-- Animated Background -->
+<div class="bg-canvas">
+    <div class="orb"></div><div class="orb"></div><div class="orb"></div><div class="orb"></div>
+</div>
+<div class="grid-overlay"></div>
+<div class="particles" id="particles"></div>
+
+<div class="login-container">
+    <div class="login-card">
+        <div class="logo">
+            <span class="flame"><i class="fa-solid fa-circle-nodes"></i></span>
+            <h1>OpenVibe</h1>
+            <p>One account. All of OpenVibe.</p>
+        </div>
+
+        <!-- Tab bar (hidden when chooser is shown) -->
+        <div class="tab-bar" id="auth-tabs">
+            <button class="active" onclick="switchTab('login')">Sign In</button>
+            <button onclick="switchTab('register')">Create Account</button>
+        </div>
+
+        <!-- Account Chooser (shown when saved accounts exist) -->
+        <div class="form-panel" id="panel-chooser">
+            <p class="chooser-subtitle" id="chooser-subtitle">Choose an account to continue</p>
+            <div class="account-list" id="account-list"></div>
+            <div class="divider"><span>or</span></div>
+            <div class="chooser-actions">
+                <button class="action-btn" onclick="showAuthForm('login')">
+                    <i class="fa-solid fa-key"></i> Use another account
+                </button>
+                <button class="action-btn" onclick="showAuthForm('register')">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Create a new account
+                </button>
+                <button class="action-btn" onclick="showForgotForm()">
+                    <i class="fa-solid fa-lock-open"></i> Forgot password
+                </button>
+            </div>
+        </div>
+
+        <!-- Login Form -->
+        <div class="form-panel" id="panel-login">
+            <div class="message" id="login-msg"></div>
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="field">
+                    <label>Username</label>
+                    <input type="text" name="username" placeholder="Your username" required autocomplete="username" autofocus>
+                </div>
+                <div class="field">
+                    <label>Password</label>
+                    <input type="password" name="password" placeholder="Your password" required autocomplete="current-password">
+                    <button type="button" class="toggle-password" onclick="togglePw(this)"><i class="fa-solid fa-eye"></i></button>
+                </div>
+                <button type="submit" class="submit-btn" id="login-submit">
+                    Sign In →
+                </button>
+            </form>
+            <a class="inline-link" onclick="showForgotForm()">Forgot your password?</a>
+            <a class="back-link" id="login-back" onclick="showChooser()" style="display:none">← Back to saved accounts</a>
+        </div>
+
+        <!-- Register Form -->
+        <div class="form-panel" id="panel-register">
+            <div class="message" id="register-msg"></div>
+            <form id="register-form" onsubmit="handleRegister(event)" novalidate>
+                <div class="field">
+                    <label>Username</label>
+                    <input type="text" name="username" placeholder="Choose a username" required minlength="3" maxlength="24" pattern="^[a-zA-Z0-9_]+$" title="Use letters, numbers, and underscores only" autocomplete="username">
+                    <small class="panel-note">Allowed: letters, numbers, and underscores only; 3–24 characters; cannot start with "anon".</small>
+                </div>
+                <div class="field">
+                    <label>Email <span style="color:var(--text-dim)">(optional)</span></label>
+                    <input type="email" name="email" placeholder="your@email.com" autocomplete="email">
+                </div>
+                <div class="field">
+                    <label>Verification Key <span style="color:var(--text-dim)">(optional)</span></label>
+                    <input type="text" name="verification_key" placeholder="OPENVIBE-XXXX-XXXX-XXXX" style="font-family:monospace">
+                </div>
+                <div class="field">
+                    <label>Password</label>
+                    <input type="password" name="password" placeholder="Min 6 characters" required minlength="6" autocomplete="new-password">
+                    <button type="button" class="toggle-password" onclick="togglePw(this)"><i class="fa-solid fa-eye"></i></button>
+                </div>
+                <div class="field">
+                    <label>Confirm Password</label>
+                    <input type="password" name="password_confirm" placeholder="Repeat password" required autocomplete="new-password">
+                </div>
+                <button type="submit" class="submit-btn" id="register-submit">
+                    Create Account <i class="fa-solid fa-circle-nodes"></i>
+                </button>
+            </form>
+            <a class="back-link" id="register-back" onclick="showChooser()" style="display:none">← Back to saved accounts</a>
+        </div>
+
+        <!-- Forgot Password Form -->
+        <div class="form-panel" id="panel-forgot">
+            <div class="message" id="forgot-msg"></div>
+            <p class="panel-note">Enter your email address. If that email exists, a reset link will be sent.</p>
+            <form id="forgot-form" onsubmit="handleForgotPassword(event)">
+                <div class="field">
+                    <label>Email</label>
+                    <input type="email" name="email" placeholder="you@email.com" required autocomplete="email">
+                </div>
+                <button type="submit" class="submit-btn" id="forgot-submit">
+                    Send Reset Link <i class="fa-solid fa-envelope"></i>
+                </button>
+            </form>
+            <a class="back-link" id="forgot-back" onclick="returnFromRecovery()">← Back</a>
+        </div>
+
+        <!-- Reset Password Form -->
+        <div class="form-panel" id="panel-reset">
+            <div class="message" id="reset-msg"></div>
+            <p class="panel-note" id="reset-note">Choose a new password for your account.</p>
+            <form id="reset-form" onsubmit="handleResetPassword(event)">
+                <input type="hidden" name="token" id="reset-token">
+                <div class="field">
+                    <label>New Password</label>
+                    <input type="password" name="new_password" placeholder="Min 6 characters" required minlength="6" autocomplete="new-password">
+                    <button type="button" class="toggle-password" onclick="togglePw(this)"><i class="fa-solid fa-eye"></i></button>
+                </div>
+                <div class="field">
+                    <label>Confirm New Password</label>
+                    <input type="password" name="confirm_password" placeholder="Repeat password" required autocomplete="new-password">
+                </div>
+                <button type="submit" class="submit-btn" id="reset-submit">
+                    Reset Password <i class="fa-solid fa-lock"></i>
+                </button>
+            </form>
+            <a class="back-link" id="reset-back" onclick="showAuthForm('login')">← Back to sign in</a>
+        </div>
+
+        <div class="divider"><span>or</span></div>
+        <button class="anon-btn" onclick="continueAnonymous()">
+            <i class="fa-solid fa-user-secret"></i> Continue Anonymously
+        </button>
+
+        <div class="services">
+            <p>Works across the entire network</p>
+            <div class="icons">
+                <span title="OpenVibe.Live"><i class="fa-solid fa-tower-broadcast"></i></span>
+                <span title="OpenVibe.Tools"><i class="fa-solid fa-screwdriver-wrench"></i></span>
+                <span title="OpenVibe.Games"><i class="fa-solid fa-gamepad"></i></span>
+                <span title="OpenVibe.Media"><i class="fa-solid fa-photo-film"></i></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="login-toast" id="toast"></div>
+
+<script>
+const API_BASE = window.location.origin;
+const params = new URLSearchParams(window.location.search);
+const isOAuth = params.has('client_id') && params.has('redirect_uri');
+const clientName = params.get('client_name') || params.get('client_id') || '';
+let oauthConfirmInFlight = false;
+
+// Generate particles
+(function() {
+    const container = document.getElementById('particles');
+    for (let i = 0; i < 30; i++) {
+        const p = document.createElement('div');
+        p.className = 'p';
+        p.style.left = Math.random() * 100 + '%';
+        p.style.animationDuration = (8 + Math.random() * 12) + 's';
+        p.style.animationDelay = -(Math.random() * 20) + 's';
+        p.style.width = p.style.height = (1 + Math.random() * 2) + 'px';
+        container.appendChild(p);
+    }
+})();
+
+// ── Saved Accounts ──────────────────────────────────────────
+// ov_token is host-only on openvibe.network — NO Domain attribute (CONTRACTS.md).
+function clearAuthCookie() {
+    document.cookie = 'ov_token=;path=/;max-age=0;SameSite=Lax';
+}
+
+function setAuthCookie(token) {
+    const secure = location.protocol === 'https:' ? ';Secure' : '';
+    document.cookie = `ov_token=${token};path=/;max-age=${60*60*24*30};SameSite=Lax${secure}`;
+}
+
+function clearLocalAuthState() {
+    clearAuthCookie();
+    localStorage.removeItem('ov_token');
+    localStorage.removeItem('openvibe_active_account');
+}
+
+function isLoginLikeRedirect(target) {
+    try {
+        const parsed = new URL(target, window.location.origin);
+        const pathname = (parsed.pathname || '/').toLowerCase();
+        return pathname === '/login' || pathname === '/login.html' || pathname === '/auth/login';
+    } catch {
+        return true;
+    }
+}
+
+function getSavedAccounts() {
+    try { return JSON.parse(localStorage.getItem('openvibe_accounts') || '[]').filter(a => a && a.token && !a.is_anon); }
+    catch { return []; }
+}
+
+function getAllAccounts() {
+    try { return JSON.parse(localStorage.getItem('openvibe_accounts') || '[]').filter(a => a && a.token); }
+    catch { return []; }
+}
+
+function saveAccount(user, token) {
+    const accounts = getAllAccounts().filter(a => !a.is_anon);
+    const idx = accounts.findIndex(a => a.id === user.id);
+    const entry = {
+        id: user.id,
+        username: user.username,
+        display_name: user.display_name || user.username,
+        avatar_url: user.avatar_url || null,
+        email: user.email || null,
+        token,
+        is_anon: false,
+    };
+    if (idx !== -1) accounts[idx] = entry;
+    else accounts.push(entry);
+    localStorage.setItem('openvibe_accounts', JSON.stringify(accounts));
+    localStorage.setItem('openvibe_active_account', user.id);
+    return entry;
+}
+
+function saveAnonAccount(user, token) {
+    const accounts = getAllAccounts().filter(a => !a.is_anon);
+    const entry = {
+        id: 'anon',
+        username: user.username,
+        display_name: user.display_name || user.username,
+        avatar_url: null,
+        email: null,
+        token,
+        is_anon: true,
+        anon_number: user.anon_number || null,
+    };
+    accounts.push(entry);
+    localStorage.setItem('openvibe_accounts', JSON.stringify(accounts));
+    localStorage.setItem('openvibe_anon_token', token);
+    localStorage.setItem('openvibe_active_account', 'anon');
+    return entry;
+}
+
+function removeAccount(id) {
+    const accounts = getSavedAccounts().filter(a => a.id !== id);
+    localStorage.setItem('openvibe_accounts', JSON.stringify(accounts));
+    renderChooser();
+    if (accounts.length === 0) showAuthForm('login');
+}
+
+// ── View Management ─────────────────────────────────────────
+let hasAccounts = false;
+
+function setPrimaryExtrasVisible(visible) {
+    const display = visible ? '' : 'none';
+    document.querySelectorAll('.login-card > .divider').forEach(d => d.style.display = display);
+    const anonBtn = document.querySelector('.anon-btn');
+    if (anonBtn) anonBtn.style.display = display;
+}
+
+function setActivePanel(panelId, { showTabs = true, activeTab = null, showExtras = true } = {}) {
+    document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+    document.getElementById('auth-tabs').style.display = showTabs ? '' : 'none';
+    document.getElementById(panelId).classList.add('active');
+    setPrimaryExtrasVisible(showExtras);
+    if (activeTab) {
+        const buttons = document.querySelectorAll('.tab-bar button');
+        const idx = activeTab === 'register' ? 1 : 0;
+        buttons[idx]?.classList.add('active');
+    }
+}
+
+function showChooser() {
+    setActivePanel('panel-chooser', { showTabs: false, showExtras: true });
+}
+
+function showAuthForm(tab) {
+    setActivePanel('panel-' + tab, { showTabs: true, activeTab: tab, showExtras: true });
+    // Show "back" links if we have saved accounts
+    if (hasAccounts) {
+        document.getElementById('login-back').style.display = '';
+        document.getElementById('register-back').style.display = '';
+    }
+}
+
+function switchTab(tab, evt) {
+    if (evt?.preventDefault) evt.preventDefault();
+    showAuthForm(tab);
+}
+
+function showForgotForm() {
+    const forgotBack = document.getElementById('forgot-back');
+    forgotBack.textContent = hasAccounts ? '← Back to saved accounts' : '← Back to sign in';
+    setActivePanel('panel-forgot', { showTabs: false, showExtras: false });
+}
+
+function returnFromRecovery() {
+    if (hasAccounts) return showChooser();
+    showAuthForm('login');
+}
+
+function showResetForm(token) {
+    document.getElementById('reset-token').value = token || '';
+    setActivePanel('panel-reset', { showTabs: false, showExtras: false });
+}
+
+// ── Render Account Chooser ──────────────────────────────────
+function renderChooser() {
+    const accounts = getSavedAccounts();
+    const list = document.getElementById('account-list');
+    const activeId = localStorage.getItem('openvibe_active_account');
+    list.innerHTML = '';
+
+    // Set subtitle
+    const subtitle = document.getElementById('chooser-subtitle');
+    if (isOAuth && clientName) {
+        subtitle.innerHTML = `Choose an account to continue to <span class="app-name">${escapeHtml(clientName)}</span>`;
+    } else {
+        subtitle.textContent = 'Choose an account to continue';
+    }
+
+    accounts.forEach(account => {
+        const item = document.createElement('div');
+        item.className = 'account-item' + (String(account.id) === String(activeId) ? ' active-account' : '');
+        const avatarContent = account.avatar_url
+            ? `<img src="${escapeHtml(account.avatar_url)}" alt="" onerror="this.parentElement.innerHTML='<i class=\'fa-solid fa-circle-nodes\'></i>'">`
+            : '<i class="fa-solid fa-circle-nodes"></i>';
+        item.innerHTML = `
+            <div class="avatar">${avatarContent}</div>
+            <div class="info">
+                <div class="name">${escapeHtml(account.display_name || account.username)}</div>
+                <div class="detail">${escapeHtml(account.username)}${account.email ? ' · ' + escapeHtml(account.email) : ''}</div>
+            </div>
+            <span class="arrow">→</span>
+            <button class="remove-btn" title="Remove this saved account" onclick="event.stopPropagation(); removeAccount(${account.id})"><i class="fa-solid fa-xmark"></i></button>
+        `;
+        item.addEventListener('click', () => selectAccount(account));
+        list.appendChild(item);
+    });
+}
+
+function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+}
+
+// ── Account Selection ───────────────────────────────────────
+async function selectAccount(account) {
+    if (oauthConfirmInFlight) return;
+    // Validate the saved token first — refresh if expired (7-day grace)
+    let validToken = account.token;
+    try {
+        const checkRes = await fetch(API_BASE + '/api/auth/me', {
+            headers: { Authorization: 'Bearer ' + account.token },
+        });
+        if (!checkRes.ok) {
+            // Token expired or invalid — try refresh
+            const refreshRes = await fetch(API_BASE + '/api/auth/refresh', {
+                method: 'POST',
+                headers: { Authorization: 'Bearer ' + account.token, 'Content-Type': 'application/json' },
+            });
+            if (refreshRes.ok) {
+                const refreshData = await refreshRes.json();
+                validToken = refreshData.token;
+                // Update the saved account with the new token
+                account.token = validToken;
+                saveAccount(refreshData.user || account, validToken);
+            } else {
+                // Refresh also failed — session is truly expired
+                toast('Session expired for ' + (account.display_name || account.username) + '. Please sign in again.', 'error');
+                removeAccount(account.id);
+                return;
+            }
+        }
+    } catch {
+        // Network error — proceed with existing token and let the redirect handle it
+    }
+
+    // Set this as the active account
+    localStorage.setItem('ov_token', validToken);
+    localStorage.setItem('openvibe_active_account', account.id);
+    setAuthCookie(validToken);
+
+    if (isOAuth) {
+        // Call /oauth/confirm to get the redirect URL
+        try {
+            oauthConfirmInFlight = true;
+            const res = await fetch(API_BASE + '/oauth/confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    token: validToken,
+                    client_id: params.get('client_id'),
+                    redirect_uri: params.get('redirect_uri'),
+                    scope: params.get('scope') || 'profile theme',
+                    state: params.get('state') || '',
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                if (res.status === 401) {
+                    toast('Session expired for ' + (account.display_name || account.username) + '. Please sign in again.', 'error');
+                    removeAccount(account.id);
+                    return;
+                }
+                if (res.status === 403) {
+                    clearLocalAuthState();
+                    toast('Authorization denied for this account. Please sign in again.', 'error');
+                    removeAccount(account.id);
+                    return;
+                }
+                throw new Error(data.error || 'Authorization failed');
+            }
+            if (!data.redirect || isLoginLikeRedirect(data.redirect)) {
+                throw new Error('Invalid redirect target returned by OAuth server');
+            }
+            toast('Redirecting as ' + (account.display_name || account.username) + '...', 'success');
+            setTimeout(() => window.location.href = data.redirect, 400);
+        } catch (err) {
+            toast(err.message, 'error');
+        } finally {
+            oauthConfirmInFlight = false;
+        }
+    } else {
+        // Not OAuth — just switch the active account and go home
+        toast('Welcome back, ' + (account.display_name || account.username) + '! <i class="fa-solid fa-circle-nodes"></i>', 'success');
+        setTimeout(() => window.location.href = getReturnUrl(), 600);
+    }
+}
+
+// Password toggle
+function togglePw(btn) {
+    const input = btn.previousElementSibling;
+    input.type = input.type === 'password' ? 'text' : 'password';
+    btn.innerHTML = input.type === 'password' ? '<i class="fa-solid fa-eye"></i>' : '<i class="fa-solid fa-eye-slash"></i>';
+}
+
+function getRegisterUsernameError(username) {
+    if (!username) return 'Username is required';
+    if (typeof username !== 'string') return 'Username must be a valid string';
+    if (username.length < 3 || username.length > 24) return 'Username must be 3-24 characters long';
+    if (/^anon/i.test(username)) return 'Username cannot start with "anon" — this prefix is reserved for anonymous identities';
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) return 'Username can only contain letters, numbers, and underscores';
+    return '';
+}
+
+// Show message
+function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'message visible ' + type;
+    setTimeout(() => el.classList.remove('visible'), 5000);
+}
+
+// Toast
+function toast(text, type = 'success') {
+    const el = document.getElementById('toast');
+    el.innerHTML = text;
+    el.className = 'login-toast ' + type + ' show';
+    setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// Button ripple
+function ripple(btn, e) {
+    const r = document.createElement('span');
+    r.className = 'ripple';
+    const rect = btn.getBoundingClientRect();
+    r.style.left = (e.clientX - rect.left - 10) + 'px';
+    r.style.top = (e.clientY - rect.top - 10) + 'px';
+    r.style.width = r.style.height = '20px';
+    btn.appendChild(r);
+    setTimeout(() => r.remove(), 600);
+}
+
+// Get return URL (non-OAuth)
+function getReturnUrl() {
+    return params.get('return') || '/';
+}
+
+// ── Login Handler ───────────────────────────────────────────
+async function handleLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('login-submit');
+    btn.classList.add('loading');
+    btn.textContent = 'Signing in...';
+    ripple(btn, e);
+
+    const form = new FormData(e.target);
+    try {
+        const res = await fetch(API_BASE + '/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: form.get('username'), password: form.get('password') }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login failed');
+
+        // Store token & save account
+        localStorage.setItem('ov_token', data.token);
+        setAuthCookie(data.token);
+        saveAccount(data.user, data.token);
+
+        if (isOAuth) {
+            oauthConfirmInFlight = true;
+            // Confirm OAuth with the new token
+            const confirmRes = await fetch(API_BASE + '/oauth/confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    token: data.token,
+                    client_id: params.get('client_id'),
+                    redirect_uri: params.get('redirect_uri'),
+                    scope: params.get('scope') || 'profile theme',
+                    state: params.get('state') || '',
+                }),
+            });
+            const confirmData = await confirmRes.json();
+            if (!confirmRes.ok) {
+                if (confirmRes.status === 401 || confirmRes.status === 403) {
+                    clearLocalAuthState();
+                    throw new Error('Session invalid during redirect. Please sign in again.');
+                }
+                throw new Error(confirmData.error || 'Authorization failed');
+            }
+            if (!confirmData.redirect || isLoginLikeRedirect(confirmData.redirect)) {
+                throw new Error('Invalid redirect target returned by OAuth server');
+            }
+            toast('Welcome back, ' + (data.user.display_name || data.user.username) + '! <i class="fa-solid fa-circle-nodes"></i>');
+            setTimeout(() => window.location.href = confirmData.redirect, 800);
+        } else {
+            toast('Welcome back, ' + (data.user.display_name || data.user.username) + '! <i class="fa-solid fa-circle-nodes"></i>');
+            setTimeout(() => window.location.href = getReturnUrl(), 800);
+        }
+    } catch (err) {
+        showMsg('login-msg', err.message, 'error');
+        btn.textContent = 'Sign In →';
+        btn.classList.remove('loading');
+    } finally {
+        oauthConfirmInFlight = false;
+    }
+}
+
+// ── Register Handler ────────────────────────────────────────
+async function handleRegister(e) {
+    e.preventDefault();
+    const btn = document.getElementById('register-submit');
+    const form = new FormData(e.target);
+    const username = form.get('username')?.trim();
+
+    const usernameError = getRegisterUsernameError(username);
+    if (usernameError) {
+        showMsg('register-msg', usernameError, 'error');
+        return;
+    }
+
+    if (form.get('password') !== form.get('password_confirm')) {
+        showMsg('register-msg', 'Passwords do not match', 'error');
+        return;
+    }
+
+    btn.classList.add('loading');
+    btn.textContent = 'Creating...';
+    ripple(btn, e);
+
+    try {
+        const res = await fetch(API_BASE + '/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: form.get('username'),
+                email: form.get('email') || undefined,
+                password: form.get('password'),
+                verification_key: form.get('verification_key') || undefined,
+            }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Registration failed');
+
+        localStorage.setItem('ov_token', data.token);
+        setAuthCookie(data.token);
+        saveAccount(data.user, data.token);
+
+        if (isOAuth) {
+            oauthConfirmInFlight = true;
+            const confirmRes = await fetch(API_BASE + '/oauth/confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    token: data.token,
+                    client_id: params.get('client_id'),
+                    redirect_uri: params.get('redirect_uri'),
+                    scope: params.get('scope') || 'profile theme',
+                    state: params.get('state') || '',
+                }),
+            });
+            const confirmData = await confirmRes.json();
+            if (!confirmRes.ok) {
+                if (confirmRes.status === 401 || confirmRes.status === 403) {
+                    clearLocalAuthState();
+                    throw new Error('Session invalid during redirect. Please sign in again.');
+                }
+                throw new Error(confirmData.error || 'Authorization failed');
+            }
+            if (!confirmData.redirect || isLoginLikeRedirect(confirmData.redirect)) {
+                throw new Error('Invalid redirect target returned by OAuth server');
+            }
+            toast('Account created! Welcome to the network <i class="fa-solid fa-circle-nodes"></i>');
+            setTimeout(() => window.location.href = confirmData.redirect, 800);
+        } else {
+            toast('Account created! Welcome to the network <i class="fa-solid fa-circle-nodes"></i>');
+            setTimeout(() => window.location.href = getReturnUrl(), 800);
+        }
+    } catch (err) {
+        showMsg('register-msg', err.message, 'error');
+        btn.innerHTML = 'Create Account <i class="fa-solid fa-circle-nodes"></i>';
+        btn.classList.remove('loading');
+    } finally {
+        oauthConfirmInFlight = false;
+    }
+}
+
+async function handleForgotPassword(e) {
+    e.preventDefault();
+    const btn = document.getElementById('forgot-submit');
+    const form = new FormData(e.target);
+    btn.classList.add('loading');
+    btn.textContent = 'Sending...';
+    ripple(btn, e);
+
+    try {
+        const res = await fetch(API_BASE + '/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: form.get('email') }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Unable to send reset link');
+        showMsg('forgot-msg', data.message || 'If that email exists, a reset link has been sent.', 'success');
+        e.target.reset();
+    } catch (err) {
+        showMsg('forgot-msg', err.message, 'error');
+    } finally {
+        btn.innerHTML = 'Send Reset Link <i class="fa-solid fa-envelope"></i>';
+        btn.classList.remove('loading');
+    }
+}
+
+async function validateResetToken(token) {
+    const res = await fetch(API_BASE + '/api/auth/reset-password/validate?token=' + encodeURIComponent(token));
+    const data = await res.json();
+    if (!res.ok || !data.valid) throw new Error(data.error || 'Invalid or expired reset link');
+    return data;
+}
+
+async function handleResetPassword(e) {
+    e.preventDefault();
+    const btn = document.getElementById('reset-submit');
+    const form = new FormData(e.target);
+
+    if (form.get('new_password') !== form.get('confirm_password')) {
+        showMsg('reset-msg', 'Passwords do not match', 'error');
+        return;
+    }
+
+    btn.classList.add('loading');
+    btn.textContent = 'Resetting...';
+    ripple(btn, e);
+
+    try {
+        const res = await fetch(API_BASE + '/api/auth/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: form.get('token'), new_password: form.get('new_password') }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Password reset failed');
+        showMsg('reset-msg', data.message || 'Password reset complete. You can sign in now.', 'success');
+        setTimeout(() => {
+            params.delete('token');
+            const cleanUrl = window.location.pathname === '/reset-password' ? '/login' : window.location.pathname;
+            window.history.replaceState({}, '', cleanUrl);
+            showAuthForm('login');
+        }, 1200);
+    } catch (err) {
+        showMsg('reset-msg', err.message, 'error');
+    } finally {
+        btn.innerHTML = 'Reset Password <i class="fa-solid fa-lock"></i>';
+        btn.classList.remove('loading');
+    }
+}
+
+// Anonymous mode
+async function continueAnonymous() {
+    try {
+        const res = await fetch(API_BASE + '/api/auth/anon-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+        clearAuthCookie();
+        localStorage.removeItem('ov_token');
+        saveAnonAccount(data.user, data.token);
+
+        toast('Browsing as Anonymous #' + data.user.anon_number);
+        setTimeout(() => window.location.href = getReturnUrl(), 600);
+    } catch (err) {
+        toast(err.message, 'error');
+    }
+}
+
+// ── Page Init ───────────────────────────────────────────────
+(function init() {
+    const accounts = getSavedAccounts();
+    hasAccounts = accounts.length > 0;
+    const resetToken = params.get('token');
+
+    if (window.location.pathname === '/forgot-password') {
+        showForgotForm();
+        return;
+    }
+
+    if (window.location.pathname === '/reset-password' || resetToken) {
+        showResetForm(resetToken || '');
+        if (resetToken) {
+            validateResetToken(resetToken)
+                .then((data) => {
+                    document.getElementById('reset-note').textContent = `Choose a new password for @${data.username}.`;
+                })
+                .catch((err) => {
+                    showMsg('reset-msg', err.message, 'error');
+                    document.getElementById('reset-submit').disabled = true;
+                    document.getElementById('reset-submit').classList.add('loading');
+                    document.getElementById('reset-submit').textContent = 'Reset Link Invalid';
+                });
+        } else {
+            showMsg('reset-msg', 'Missing reset token. Request a new reset link to continue.', 'error');
+            document.getElementById('reset-submit').disabled = true;
+            document.getElementById('reset-submit').classList.add('loading');
+            document.getElementById('reset-submit').textContent = 'Reset Link Required';
+        }
+        return;
+    }
+
+    // Direct link to the create-account tab (e.g. landing page CTA)
+    if (params.get('tab') === 'register') {
+        showAuthForm('register');
+        return;
+    }
+
+    if (hasAccounts) {
+        // Show account chooser
+        renderChooser();
+        showChooser();
+    } else {
+        // No saved accounts — show login form directly
+        document.getElementById('panel-chooser').classList.remove('active');
+        document.getElementById('auth-tabs').style.display = '';
+        document.getElementById('panel-login').classList.add('active');
+    }
+})();
+</script>
+  <script src="https://openvibe.live/live-notify.js" async></script>
+</body>
+</html>
