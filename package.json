@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "NODE_ENV=development node server/index.js",
-    "test": "node test/registry-bootstrap.test.js && node test/admin-refresh.test.js && node packages/openvibe-shared/test/url-resolver.test.js && node packages/openvibe-shared/test/url-resolver-deploy.test.js",
+    "test": "node test/registry-bootstrap.test.js && node test/admin-refresh.test.js && node packages/openvibe-shared/test/url-resolver.test.js && node packages/openvibe-shared/test/url-resolver-deploy.test.js && node packages/openvibe-shared/test/navbar-auth.test.js",
     "reset-db": "node server/reset-db.js",
     "grant-admin": "node server/grant-admin.js"
   },
