@@ -630,7 +630,25 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             if (!sent) {
                 // The token was already written; leave it — it simply goes unused and
                 // expires. Better than reporting success on an email that never left.
-                return res.status(502).json({ ok: false, error: 'Email service failed to send the reset link' });
+                //
+                // sendPasswordResetEmail only returns a boolean, but _sendEmail records the
+                // provider's reason in email_delivery_log. Read it back so the admin sees
+                // what actually went wrong instead of a generic failure — the first real use
+                // of this button hit "the openvibe.network domain is not verified" and the
+                // generic message gave no way to know that without reading server logs.
+                let reason = null;
+                try {
+                    const row = db.prepare(`
+                        SELECT error_message FROM email_delivery_log
+                        WHERE recipient = ? AND status = 'failed'
+                        ORDER BY id DESC LIMIT 1
+                    `).get(target.email);
+                    reason = row && row.error_message ? String(row.error_message) : null;
+                } catch { /* best effort */ }
+                return res.status(502).json({
+                    ok: false,
+                    error: reason ? `Email service failed: ${reason}` : 'Email service failed to send the reset link',
+                });
             }
 
             db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
