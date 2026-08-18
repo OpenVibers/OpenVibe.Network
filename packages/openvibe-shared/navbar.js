@@ -367,6 +367,9 @@
         ],
         media: [
             { label: 'Home', href: '/' },
+            { label: 'Network', href: 'https://openvibe.network' },
+            { label: 'Live', href: 'https://openvibe.live' },
+            { label: 'Tools', href: 'https://openvibe.tools' },
         ],
         network: [
             { label: 'Home', href: '/' },
