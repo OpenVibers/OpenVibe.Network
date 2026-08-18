@@ -15,6 +15,13 @@
 <link rel="canonical" href="https://openvibe.network/">
 <link rel="icon" type="image/x-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%238b5cf6' width='32' height='32' rx='8'/%3E%3Ctext x='50%25' y='50%25' font-size='20' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='central'%3EO%3C/text%3E%3C/svg%3E">
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+<!-- Critical theme bootstrap (ov-theme-boot) — MUST stay inline and above the stylesheets.
+     Paints the cached theme synchronously so the default palette never flashes. Reads
+     localStorage only: no network, nothing to block on. theme-loader.js still runs after
+     and reconciles with the account. -->
+<script>
+(function(){try{var raw=localStorage.getItem('ov_theme');if(!raw)return;var t=JSON.parse(raw),v=t&&t.variables;if(!v)return;var el=document.documentElement;for(var k in v)if(k.charAt(0)==='-')el.style.setProperty(k,v[k]);if(t.id)el.setAttribute('data-theme',t.id);}catch(_){}})();
+</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
