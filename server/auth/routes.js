@@ -12,20 +12,13 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 
-const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
 // ── Helpers ──────────────────────────────────────────────────
 
 function getDb(req) { return req.app.locals.db; }
 function getConfig(req) { return req.app.locals.config; }
 
-function hashResetToken(token) {
-    return crypto.createHash('sha256').update(String(token)).digest('hex');
-}
-
-function buildToolsBaseUrl(req) {
-    return (process.env.OV_NETWORK_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
-}
+const { hashResetToken, issueResetToken } = require('./reset-tokens');
 
 function findValidResetToken(db, token) {
     return db.prepare(`
@@ -249,20 +242,13 @@ router.post('/forgot-password', async (req, res) => {
         return res.json(genericResponse);
     }
 
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS).toISOString();
-    db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(user.id);
-    db.prepare(`
-        INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, requested_ip, requested_user_agent)
-        VALUES (?, ?, ?, ?, ?)
-    `).run(user.id, hashResetToken(rawToken), expiresAt, req.ip || null, req.headers['user-agent'] || null);
-
-    const resetUrl = `${buildToolsBaseUrl(req)}/reset-password?token=${encodeURIComponent(rawToken)}`;
+    // Shared with the owner-initiated admin flow so both mint tokens identically.
+    const { resetUrl, expiresMinutes } = issueResetToken(db, req, user.id);
     await emailService.sendPasswordResetEmail({
         to: user.email,
         username: user.display_name || user.username,
         resetUrl,
-        expiresMinutes: Math.round(RESET_TOKEN_TTL_MS / 60000),
+        expiresMinutes,
     });
 
     res.json(genericResponse);

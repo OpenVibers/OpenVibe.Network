@@ -15,6 +15,7 @@ const childProcess = require('child_process');
 const urlRegistry = require('../url-registry');
 const { URL_DEFINITIONS } = require('openvibe-shared/url-resolver');
 const { isOwner, requireOwner, isSensitiveSettingKey, maskSecret } = require('../auth/owner-guard');
+const { issueResetToken } = require('../auth/reset-tokens');
 const { checkAdminLimit, recordAdminAction } = require('../auth/admin-limits');
 
 const LOCAL_REFRESH_SERVICES = new Set(['network']);
@@ -554,6 +555,91 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
 
             const total = db.prepare('SELECT COUNT(*) as cnt FROM users').get().cnt;
             res.json({ ok: true, users, total });
+        } catch (err) {
+            res.status(500).json({ ok: false, error: err.message });
+        }
+    });
+
+    // ── Owner-only account recovery ──────────────────────────────────────────
+    // Editing an email and issuing a password reset are account-TAKEOVER primitives:
+    // whoever controls the address controls the account. So both are requireOwner, not
+    // requireAdmin, matching how the admin role itself is gated below.
+
+    router.put('/users/:id/email', requireOwner, (req, res) => {
+        try {
+            const userId = parseInt(req.params.id, 10);
+            if (!Number.isFinite(userId)) return res.status(400).json({ ok: false, error: 'Invalid user id' });
+
+            const raw = String(req.body?.email ?? '').trim();
+            // Allow clearing an address, but anything non-empty must look like an email.
+            const email = raw === '' ? null : raw;
+            if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+                return res.status(400).json({ ok: false, error: 'That does not look like a valid email address' });
+            }
+            if (email && email.length > 254) {
+                return res.status(400).json({ ok: false, error: 'Email address is too long' });
+            }
+
+            const target = db.prepare('SELECT id, username, email FROM users WHERE id = ?').get(userId);
+            if (!target) return res.status(404).json({ ok: false, error: 'User not found' });
+
+            // users.email is UNIQUE, so a collision would throw a raw SQLite error —
+            // check first and return something the admin can actually act on.
+            if (email) {
+                const clash = db.prepare('SELECT id, username FROM users WHERE LOWER(email) = LOWER(?) AND id != ?').get(email, userId);
+                if (clash) {
+                    return res.status(409).json({ ok: false, error: `That email is already used by @${clash.username}` });
+                }
+            }
+
+            db.prepare('UPDATE users SET email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(email, userId);
+            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+                req.user.id, 'user_email_change',
+                // Record both sides: this is the audit trail for a takeover-capable action.
+                JSON.stringify({ targetId: userId, targetUsername: target.username, from: target.email || null, to: email })
+            );
+            res.json({ ok: true, email });
+        } catch (err) {
+            res.status(500).json({ ok: false, error: err.message });
+        }
+    });
+
+    router.post('/users/:id/send-reset', requireOwner, async (req, res) => {
+        try {
+            const userId = parseInt(req.params.id, 10);
+            if (!Number.isFinite(userId)) return res.status(400).json({ ok: false, error: 'Invalid user id' });
+
+            const target = db.prepare('SELECT id, username, display_name, email FROM users WHERE id = ?').get(userId);
+            if (!target) return res.status(404).json({ ok: false, error: 'User not found' });
+            if (!target.email) return res.status(400).json({ ok: false, error: 'That account has no email address set' });
+
+            const emailService = req.app.locals.emailService;
+            if (!emailService?.isEnabled) {
+                return res.status(503).json({ ok: false, error: 'Email delivery is not configured' });
+            }
+
+            // Same minting path as the self-service flow, so a link issued here behaves
+            // identically — hashed at rest, one live token per user, same TTL.
+            const { resetUrl, expiresMinutes } = issueResetToken(db, req, userId);
+            const sent = await emailService.sendPasswordResetEmail({
+                to: target.email,
+                username: target.display_name || target.username,
+                resetUrl,
+                expiresMinutes,
+            });
+            if (!sent) {
+                // The token was already written; leave it — it simply goes unused and
+                // expires. Better than reporting success on an email that never left.
+                return res.status(502).json({ ok: false, error: 'Email service failed to send the reset link' });
+            }
+
+            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+                req.user.id, 'user_password_reset_sent',
+                JSON.stringify({ targetId: userId, targetUsername: target.username, to: target.email })
+            );
+            // Deliberately NOT returning the link: it goes to the account holder's inbox,
+            // which is what makes this a recovery tool rather than a takeover tool.
+            res.json({ ok: true, sentTo: target.email, expiresMinutes });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
         }

@@ -1018,6 +1018,13 @@ async function loadUsers() {
                                 `<button class="btn btn-sm btn-success" onclick="toggleBan('${u.id}','${esc(u.username)}',false)"><i class="fa-solid fa-user-check"></i></button>` :
                                 `<button class="btn btn-sm btn-danger" onclick="toggleBan('${u.id}','${esc(u.username)}',true)"><i class="fa-solid fa-ban"></i></button>`
                             }
+                            ${currentUser?.is_owner ? `
+                                <button class="btn btn-sm btn-outline" title="Edit email address"
+                                        onclick="editUserEmail('${u.id}','${esc(u.username)}','${esc(u.email || '')}')"><i class="fa-solid fa-envelope"></i></button>
+                                <button class="btn btn-sm btn-outline" title="${u.email ? 'Send a password reset link' : 'No email address on file'}"
+                                        ${u.email ? '' : 'disabled'}
+                                        onclick="sendUserReset('${u.id}','${esc(u.username)}')"><i class="fa-solid fa-key"></i></button>
+                            ` : ''}
                         </td>
                     </tr>
                 `).join('')}</tbody>
@@ -1038,6 +1045,31 @@ async function changeUserRole(userId, role) {
         await api(`/api/admin/users/${userId}/role`, { method: 'PUT', body: { role } });
         toast(`Role updated to ${role}`, 'success');
     } catch (e) { toast(e.message, 'error'); loadUsers(); }
+}
+
+// ── Owner-only account recovery ──────────────────────────────────────────────
+// The server enforces owner-only on both of these (requireOwner); hiding the buttons
+// for non-owners is purely so admins are not shown controls they cannot use.
+async function editUserEmail(userId, username, current) {
+    const next = prompt(`Email address for @${username}\n\nLeave blank to remove it.`, current || '');
+    if (next === null) return;                       // cancelled
+    const email = next.trim();
+    if (email === (current || '').trim()) return;    // unchanged
+    try {
+        const r = await api(`/api/admin/users/${userId}/email`, { method: 'PUT', body: { email } });
+        toast(r.email ? `Email for @${username} set to ${r.email}` : `Email removed from @${username}`, 'success');
+        loadUsers();
+    } catch (e) { toast(e.message, 'error'); }
+}
+
+async function sendUserReset(userId, username) {
+    // The link is emailed to the account holder and never shown here — that is what keeps
+    // this a recovery tool rather than a way to take over an account.
+    if (!confirm(`Send a password reset link to @${username}?\n\nIt goes to their email address on file and expires in 1 hour. Any previous reset link for this account stops working.`)) return;
+    try {
+        const r = await api(`/api/admin/users/${userId}/send-reset`, { method: 'POST' });
+        toast(`Reset link sent to ${r.sentTo} (expires in ${r.expiresMinutes} min)`, 'success');
+    } catch (e) { toast(e.message, 'error'); }
 }
 
 async function toggleBan(userId, username, ban) {
