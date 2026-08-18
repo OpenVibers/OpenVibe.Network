@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Admin Panel — OpenVibe</title>
+<!-- Critical theme bootstrap (ov-theme-boot) — MUST stay inline and above the stylesheets.
+     Paints the cached theme synchronously so the default palette never flashes. Reads
+     localStorage only: no network, nothing to block on. theme-loader.js still runs after
+     and reconciles with the account. -->
+<script>
+(function(){try{var raw=localStorage.getItem('ov_theme');if(!raw)return;var t=JSON.parse(raw),v=t&&t.variables;if(!v)return;var el=document.documentElement;for(var k in v)if(k.charAt(0)==='-')el.style.setProperty(k,v[k]);if(t.id)el.setAttribute('data-theme',t.id);}catch(_){}})();
+</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
