@@ -744,7 +744,14 @@ async function api(path, opts = {}) {
     if (opts.body && typeof opts.body === 'object') fetchOpts.body = JSON.stringify(opts.body);
     const res = await fetch(API + path, fetchOpts);
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
+    if (!res.ok) {
+        // Keep the payload: endpoints that reject with structured detail (e.g. the cookie
+        // validator explaining WHICH check failed) are useless if only the message survives.
+        const err = new Error(data.error || 'Request failed');
+        err.body = data;
+        err.status = res.status;
+        throw err;
+    }
     return data;
 }
 
@@ -1771,9 +1778,46 @@ async function loadStreamerMediaTools() {
                 <textarea id="streamer-media-cookies-input" rows="10" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com&#9;TRUE&#9;/&#9;TRUE&#9;0&#9;SID&#9;value..."
                     style="width:100%;background:var(--bg-input);color:var(--text);border:1px solid var(--border);padding:10px;border-radius:6px;font-family:monospace;font-size:12px;resize:vertical"></textarea>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-                    <button type="button" class="btn btn-primary" onclick="saveStreamerMediaCookies()"><i class="fa-solid fa-floppy-disk"></i> Save Cookies</button>
+                    <button type="button" class="btn btn-primary" onclick="saveStreamerMediaCookies()"><i class="fa-solid fa-floppy-disk"></i> Save &amp; Test</button>
+                    <button type="button" class="btn" onclick="checkStreamerMediaCookies()" ${status.cookies_configured ? '' : 'disabled'}><i class="fa-solid fa-stethoscope"></i> Test Current Cookies</button>
                     <button type="button" class="btn" onclick="deleteStreamerMediaCookies()" ${status.cookies_configured ? '' : 'disabled'}><i class="fa-solid fa-trash"></i> Remove Cookies</button>
                 </div>
+                <div id="streamer-media-cookie-verdict"></div>
+
+                <details style="margin-top:16px">
+                    <summary style="cursor:pointer;font-weight:600"><i class="fa-solid fa-circle-question"></i> How to get cookies that actually work</summary>
+                    <div style="margin-top:12px;font-size:0.9rem;line-height:1.65">
+                        <p style="margin-top:0"><strong>Why this is needed.</strong> YouTube treats requests from datacenter IPs as suspicious and answers with
+                        <em>&ldquo;Sign in to confirm you&rsquo;re not a bot&rdquo;</em>. A signed-in cookie jar is what gets past that. Some videos work without it;
+                        age-restricted and heavily-flagged ones will not.</p>
+
+                        <p><strong>The one thing that matters.</strong> The export must contain YouTube&rsquo;s <em>first-party</em> session cookies —
+                        <code>SID</code>, <code>HSID</code>, <code>SSID</code>, <code>APISID</code>, <code>SAPISID</code>, <code>__Secure-1PSID</code>.
+                        An export holding only <code>__Secure-3P*</code> cookies parses fine and is <em>not signed in</em>; it will fail exactly the same way.
+                        Save &amp; Test now tells you which of these are present.</p>
+
+                        <p><strong>Recommended method — a throwaway account in a separate browser profile:</strong></p>
+                        <ol style="margin:6px 0 0 18px;padding:0">
+                            <li>Create a <em>burner</em> Google account. Do not use your main one: this jar grants access to that account, and it lives on the server.</li>
+                            <li>Open a brand-new browser profile (not incognito &mdash; incognito is what produces the third-party-only exports that fail).</li>
+                            <li>Sign in to YouTube in that profile and watch a few seconds of any video so the session is fully established.</li>
+                            <li>Install a cookies.txt exporter extension (&ldquo;Get cookies.txt LOCALLY&rdquo; or similar) and export for <code>youtube.com</code>.</li>
+                            <li>Paste the file contents above and press <strong>Save &amp; Test</strong>. It validates the jar and runs a real extraction before accepting it.</li>
+                            <li>Then <strong>close that browser profile without logging out</strong>. Logging out invalidates the cookies you just exported.</li>
+                        </ol>
+
+                        <p style="margin-top:12px"><strong>Keeping it working:</strong></p>
+                        <ul style="margin:6px 0 0 18px;padding:0">
+                            <li>Cookies expire. Press <strong>Test Current Cookies</strong> if requests start failing &mdash; it reports the earliest expiry.</li>
+                            <li>Do not use that burner account in another browser afterwards; YouTube rotates the session and the saved jar goes stale.</li>
+                            <li>The file must be tab-separated Netscape format. Copying from a viewer that converts tabs to spaces produces a file that parses to nothing &mdash; the validator flags this.</li>
+                            <li>A residential proxy avoids the problem at its source, since the block is driven by the server&rsquo;s datacenter IP.</li>
+                        </ul>
+
+                        <p style="margin-top:12px;color:var(--warn,#f59e0b)"><i class="fa-solid fa-triangle-exclamation"></i>
+                        Anyone with admin access to this panel can read these cookies, and they are stored unencrypted on the server. Treat the account as compromised-by-design &mdash; burner only.</p>
+                    </div>
+                </details>
             </div>
 
             <div class="card">
@@ -1788,15 +1832,73 @@ async function loadStreamerMediaTools() {
         </div>`;
 }
 
+
+/**
+ * Render the cookie validation + live-test verdict returned by the server.
+ * The old flow just said "saved", so a jar that could never work looked identical to a
+ * good one — this shows exactly which check failed and what to do about it.
+ */
+function renderCookieVerdict(data) {
+    const el = document.getElementById('streamer-media-cookie-verdict');
+    if (!el) return;
+    if (!data) { el.innerHTML = ''; return; }
+    const c = data.check || {};
+    const t = data.test || {};
+    const ok = (v) => v
+        ? '<span style="color:var(--success,#22c55e)"><i class="fa-solid fa-circle-check"></i> '
+        : '<span style="color:var(--danger,#ef4444)"><i class="fa-solid fa-circle-xmark"></i> ';
+
+    const rows = [];
+    rows.push(`<div>${ok(c.ok)}Signed-in cookies${c.ok ? '' : ' — missing'}</span></div>`);
+    if (c.firstParty && c.firstParty.length) {
+        rows.push(`<div class="muted" style="font-size:.85rem">First-party session: ${esc(c.firstParty.join(', '))}</div>`);
+    }
+    if (c.missingFirstParty && c.missingFirstParty.length && !c.ok) {
+        rows.push(`<div class="muted" style="font-size:.85rem">Missing: ${esc(c.missingFirstParty.join(', '))}</div>`);
+    }
+    if (c.thirdParty && c.thirdParty.length && !c.firstParty?.length) {
+        rows.push(`<div class="muted" style="font-size:.85rem">Only third-party found: ${esc(c.thirdParty.join(', '))}</div>`);
+    }
+    if (c.cookieCount != null) {
+        rows.push(`<div class="muted" style="font-size:.85rem">${c.cookieCount} cookie(s)${c.expiresAt ? `, earliest expiry ${esc(new Date(c.expiresAt).toLocaleString())}` : ''}</div>`);
+    }
+    if (t.ran) {
+        rows.push(`<div style="margin-top:6px">${ok(t.ok)}Live extraction${t.ok ? `: ${esc(t.title || 'ok')}` : ' failed'}</span></div>`);
+        if (!t.ok && t.error) rows.push(`<div class="muted" style="font-size:.82rem;word-break:break-word">${esc(String(t.error).slice(0, 300))}</div>`);
+    }
+    (c.errors || []).forEach(e => rows.push(`<div style="color:var(--danger,#ef4444);font-size:.86rem;margin-top:6px">${esc(e)}</div>`));
+    (c.warnings || []).forEach(w => rows.push(`<div style="color:var(--warn,#f59e0b);font-size:.86rem">${esc(w)}</div>`));
+
+    el.innerHTML = `<div style="margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input)">${rows.join('')}</div>`;
+}
+
+async function checkStreamerMediaCookies() {
+    const el = document.getElementById('streamer-media-cookie-verdict');
+    if (el) el.innerHTML = '<div class="muted" style="margin-top:10px"><i class="fa-solid fa-spinner fa-spin"></i> Validating and running a live extraction…</div>';
+    try {
+        const data = await api('/api/admin/streamer/media-tools/cookies/check', { method: 'POST', body: {} });
+        renderCookieVerdict(data);
+    } catch (e) {
+        if (el) el.innerHTML = `<div style="color:var(--danger,#ef4444);margin-top:10px">${esc(e.message)}</div>`;
+    }
+}
+
 async function saveStreamerMediaCookies() {
     const ta = document.getElementById('streamer-media-cookies-input');
     const cookies = ta?.value?.trim() || '';
     if (!cookies) return toast('Paste cookies.txt content first', 'error');
+    const el = document.getElementById('streamer-media-cookie-verdict');
+    if (el) el.innerHTML = '<div class="muted" style="margin-top:10px"><i class="fa-solid fa-spinner fa-spin"></i> Validating and running a live extraction…</div>';
     try {
-        await api('/api/admin/streamer/media-tools/cookies', { method: 'PUT', body: { cookies } });
-        toast('OpenVibe.Live cookies saved', 'success');
-        loadStreamerMediaTools();
-    } catch (e) { toast(e.message, 'error'); }
+        const data = await api('/api/admin/streamer/media-tools/cookies', { method: 'PUT', body: { cookies } });
+        toast(data?.test?.ok ? 'Cookies saved — live extraction passed' : 'Cookies saved', 'success');
+        renderCookieVerdict(data);
+    } catch (e) {
+        // The server refuses a jar it can already tell is unusable and returns the reason.
+        toast(e.message, 'error');
+        if (e.body) renderCookieVerdict(e.body);
+        else if (el) el.innerHTML = `<div style="color:var(--danger,#ef4444);margin-top:10px">${esc(e.message)}</div>`;
+    }
 }
 
 async function deleteStreamerMediaCookies() {
