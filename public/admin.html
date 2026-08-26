@@ -702,7 +702,9 @@ let token = localStorage.getItem('ov_token');
 let currentUser = null;
 
 // ── Helpers ──────────────────────────────────────────────────
-function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+// Attribute-safe: also escapes quotes, otherwise any value containing '"' (e.g. JSON) is cut
+// short inside value="..." — which is how JSON settings got rendered as '{' and saved back as '{'.
+function esc(s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
 function timeAgo(dateStr) {
     const d = new Date(dateStr);
@@ -1305,6 +1307,8 @@ async function loadToolsSettings() {
         const settings = data.settings || {};
         const keys = Object.keys(settings);
         if (!keys.length) { c.innerHTML = '<p class="muted">No settings configured</p>'; return; }
+        _toolsSettingsOriginal = {};
+        for (const key of keys) _toolsSettingsOriginal[key] = settings[key].type === 'boolean' ? (settings[key].value === 'true' ? 'true' : 'false') : String(settings[key].value ?? '');
         c.innerHTML = `
             <form id="tools-settings-form" style="max-width:700px">
                 ${keys.map(key => {
@@ -1327,17 +1331,25 @@ async function loadToolsSettings() {
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
 }
 
+let _toolsSettingsOriginal = {};
 async function saveToolsSettings() {
     const inputs = document.querySelectorAll('#tools-settings-form [data-key]');
+    const changed = [];
+    for (const input of inputs) {
+        const key = input.dataset.key;
+        const value = input.dataset.type === 'boolean' ? (input.checked ? 'true' : 'false') : input.value;
+        if (value.startsWith('••••')) continue;                       // masked secret, untouched
+        if (_toolsSettingsOriginal[key] !== undefined && _toolsSettingsOriginal[key] === value) continue;
+        if (input.dataset.type === 'number' && !Number.isFinite(Number(value))) { toast(`${key}: must be a number`, 'error'); return; }
+        changed.push({ key, value, type: input.dataset.type });
+    }
+    if (!changed.length) { toast('No changes to save', 'info'); return; }
     try {
-        for (const input of inputs) {
-            const key = input.dataset.key;
-            const value = input.dataset.type === 'boolean' ? (input.checked ? 'true' : 'false') : input.value;
-            // Skip masked secrets
-            if (value.startsWith('••••')) continue;
-            await api('/api/admin/settings', { method: 'PUT', body: { key, value, type: input.dataset.type } });
+        for (const { key, value, type } of changed) {
+            await api('/api/admin/settings', { method: 'PUT', body: { key, value, type } });
+            _toolsSettingsOriginal[key] = value;
         }
-        toast('OpenVibe.Tools settings saved', 'success');
+        toast(`Saved ${changed.length} setting${changed.length === 1 ? '' : 's'}: ${changed.map(c => c.key).join(', ')}`, 'success');
     } catch (e) { toast(e.message, 'error'); }
 }
 
@@ -1458,16 +1470,56 @@ const STREAMER_SETTINGS_GROUPS = [
     { title: 'Other', icon: 'fa-ellipsis', test: () => true },
 ];
 
+const REDACTED_MASK = '••••';
+function _looksJson(v) { return typeof v === 'string' && /^\s*[\[{]/.test(v); }
+function _isMultiline(s) {
+    return s.type === 'json' || _looksJson(s.value) || /\n/.test(String(s.value ?? '')) || String(s.value ?? '').length > 140;
+}
 function _streamerSettingField(s) {
     const isSensitive = /(password|secret|token|private|credential|api[_-]?key|bearer|salt)/i.test(s.key);
-    const label = `<label for="ss-${esc(s.key)}"><strong>${esc(s.key)}</strong><br><small>${esc(s.description||'')}</small></label>`;
+    const label = `<label for="ss-${esc(s.key)}"><strong>${esc(s.key)}</strong>${s.redacted ? ' <span class="badge badge-warning" style="font-size:10px">owner-only</span>' : ''}<br><small>${esc(s.description||'')}</small></label>`;
+    const base = 'margin-top:4px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px';
     if (s.type === 'boolean') return `<div class="setting-row">${label}
         <input type="checkbox" id="ss-${esc(s.key)}" data-key="${esc(s.key)}" data-type="boolean" ${s.value==='true'?'checked':''} style="width:18px;height:18px;cursor:pointer"></div>`;
+    if (!isSensitive && _isMultiline(s)) {
+        const kind = (s.type === 'json' || _looksJson(s.value)) ? 'json' : 'text';
+        let shown = String(s.value ?? '');
+        if (kind === 'json') { try { shown = JSON.stringify(JSON.parse(shown), null, 2); } catch { /* show as-is; save validation will flag it */ } }
+        const rows = Math.min(18, Math.max(3, shown.split('\n').length + 1));
+        return `<div class="setting-row" style="flex-direction:column;align-items:stretch">${label}
+        <textarea id="ss-${esc(s.key)}" data-key="${esc(s.key)}" data-type="${kind}" rows="${rows}" spellcheck="false"
+            style="${base};font-family:ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;white-space:pre;overflow:auto">${esc(shown)}</textarea>
+        <div class="setting-err muted" data-err-for="${esc(s.key)}" style="display:none;color:var(--danger,#f87171);font-size:12px;margin-top:4px"></div></div>`;
+    }
     const type = s.type === 'number' ? 'number' : (isSensitive ? 'password' : 'text');
     const width = s.type === 'number' ? 'width:200px;' : '';
     return `<div class="setting-row" style="flex-direction:column;align-items:stretch">${label}
-        <input type="${type}" id="ss-${esc(s.key)}" data-key="${esc(s.key)}" data-type="${esc(s.type||'string')}" value="${esc(s.value)}"
-            style="margin-top:4px;${width}padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px"></div>`;
+        <input type="${type}" id="ss-${esc(s.key)}" data-key="${esc(s.key)}" data-type="${esc(s.type||'string')}" value="${esc(s.value)}" ${type === 'number' ? 'step="any"' : ''}
+            style="${base};${width}">
+        <div class="setting-err muted" data-err-for="${esc(s.key)}" style="display:none;color:var(--danger,#f87171);font-size:12px;margin-top:4px"></div></div>`;
+}
+
+// Snapshot of what the server sent (keyed by setting key) so Save only submits real changes.
+let _streamerSettingsOriginal = {};
+function _streamerFieldValue(input) {
+    return input.dataset.type === 'boolean' ? (input.checked ? 'true' : 'false') : input.value;
+}
+// Normalize so cosmetic differences (pretty-printed JSON, trailing whitespace) don't count as edits.
+function _streamerNormalize(input, raw) {
+    if (input.dataset.type === 'json') { try { return JSON.stringify(JSON.parse(raw)); } catch { return raw; } }
+    if (input.dataset.type === 'number') return String(raw).trim();
+    return raw;
+}
+function _markDirty(input) {
+    const orig = _streamerSettingsOriginal[input.dataset.key];
+    const dirty = orig !== undefined && _streamerNormalize(input, _streamerFieldValue(input)) !== _streamerNormalize(input, orig);
+    input.style.borderColor = dirty ? 'var(--accent, #8b5cf6)' : '';
+    const btn = document.getElementById('streamer-settings-save');
+    if (btn) {
+        const n = document.querySelectorAll('#streamer-settings-form [data-key][data-dirty="1"]').length + (dirty && input.dataset.dirty !== '1' ? 1 : (!dirty && input.dataset.dirty === '1' ? -1 : 0));
+        input.dataset.dirty = dirty ? '1' : '0';
+        btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save ${n ? n + ' change' + (n === 1 ? '' : 's') : 'Settings'}`;
+    }
 }
 
 async function loadStreamerSettings() {
@@ -1477,6 +1529,8 @@ async function loadStreamerSettings() {
         const data = await api('/api/admin/streamer/settings');
         const settings = data.settings || [];
         if (!settings.length) { c.innerHTML = '<p class="muted">No OpenVibe.Live settings found</p>'; return; }
+        _streamerSettingsOriginal = {};
+        for (const s of settings) _streamerSettingsOriginal[s.key] = s.value == null ? '' : String(s.value);
         // Bucket each setting into the first matching group.
         const buckets = STREAMER_SETTINGS_GROUPS.map(() => []);
         for (const s of settings) {
@@ -1494,22 +1548,75 @@ async function loadStreamerSettings() {
         c.innerHTML = `
             <form id="streamer-settings-form" style="max-width:760px">
                 ${sections}
-                <div style="margin-top:8px"><button type="button" class="btn btn-primary" onclick="saveStreamerSettings()"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button></div>
+                <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                    <button type="button" id="streamer-settings-save" class="btn btn-primary" onclick="saveStreamerSettings()"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
+                    <button type="button" class="btn btn-outline" onclick="loadStreamerSettings()"><i class="fa-solid fa-rotate-left"></i> Discard changes</button>
+                    <span class="muted" style="font-size:12px">Only fields you changed are sent. JSON and numeric fields are validated first.</span>
+                </div>
             </form>`;
+        c.querySelectorAll('#streamer-settings-form [data-key]').forEach(el => el.addEventListener('input', () => _markDirty(el)));
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
+}
+
+function _setFieldError(key, msg) {
+    const el = document.querySelector(`#streamer-settings-form [data-err-for="${CSS.escape(key)}"]`);
+    if (el) { el.textContent = msg || ''; el.style.display = msg ? '' : 'none'; }
+    const input = document.getElementById(`ss-${key}`);
+    if (input) input.style.borderColor = msg ? 'var(--danger, #f87171)' : (input.dataset.dirty === '1' ? 'var(--accent, #8b5cf6)' : '');
 }
 
 async function saveStreamerSettings() {
     const inputs = document.querySelectorAll('#streamer-settings-form [data-key]');
     const settings = {};
+    const errors = [];
     inputs.forEach(input => {
         const key = input.dataset.key;
-        settings[key] = input.dataset.type === 'boolean' ? (input.checked ? 'true' : 'false') : input.value;
+        const raw = _streamerFieldValue(input);
+        _setFieldError(key, '');
+        // Not in the snapshot (shouldn't happen) or redacted mask untouched → never send.
+        const orig = _streamerSettingsOriginal[key];
+        if (orig === undefined) return;
+        if (raw.startsWith(REDACTED_MASK)) return;
+        if (_streamerNormalize(input, raw) === _streamerNormalize(input, orig)) return;
+        let value = raw;
+        if (input.dataset.type === 'json') {
+            try { value = JSON.stringify(JSON.parse(raw)); }
+            catch (e) { errors.push(key); _setFieldError(key, `Invalid JSON: ${e.message}`); return; }
+        } else if (input.dataset.type === 'number') {
+            if (raw.trim() === '' || !Number.isFinite(Number(raw))) { errors.push(key); _setFieldError(key, 'Must be a number'); return; }
+            value = String(Number(raw));
+        } else if (_looksJson(orig) && !_looksJson(raw)) {
+            // Previously JSON, now something that clearly isn't → almost certainly a truncation/mistake.
+            errors.push(key); _setFieldError(key, 'This setting was JSON; the new value is not. Clear the field completely if you really mean to blank it.'); return;
+        }
+        settings[key] = value;
     });
+    if (errors.length) {
+        toast(`Not saved — fix ${errors.length} invalid field${errors.length === 1 ? '' : 's'}: ${errors.join(', ')}`, 'error');
+        const first = document.getElementById(`ss-${errors[0]}`);
+        if (first) { first.closest('details')?.setAttribute('open', ''); first.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        return;
+    }
+    const keys = Object.keys(settings);
+    if (!keys.length) { toast('No changes to save', 'info'); return; }
     try {
-        await api('/api/admin/streamer/settings', { method: 'PUT', body: { settings } });
-        toast('OpenVibe.Live settings saved', 'success');
-    } catch (e) { toast(e.message, 'error'); }
+        const out = await api('/api/admin/streamer/settings', { method: 'PUT', body: { settings } });
+        if (out && out.rejected && Object.keys(out.rejected).length) {
+            for (const [k, msg] of Object.entries(out.rejected)) _setFieldError(k, msg);
+            toast(`Server rejected: ${Object.keys(out.rejected).join(', ')}`, 'error');
+            return;
+        }
+        for (const k of keys) _streamerSettingsOriginal[k] = settings[k];
+        inputs.forEach(el => { el.dataset.dirty = '0'; el.style.borderColor = ''; });
+        const btn = document.getElementById('streamer-settings-save');
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Settings';
+        toast(`Saved ${keys.length} setting${keys.length === 1 ? '' : 's'}: ${keys.join(', ')}` + (out?.message && /skipped/.test(out.message) ? ` (${out.message})` : ''), 'success');
+    } catch (e) {
+        // Server-side validation failed: nothing was written; surface the per-field reasons.
+        const rejected = e.body && e.body.rejected;
+        if (rejected && Object.keys(rejected).length) for (const [k, msg] of Object.entries(rejected)) _setFieldError(k, msg);
+        toast(e.message, 'error');
+    }
 }
 
 // ── Payments: configure PayPal / Stripe / CCBill / crypto + subscriptions ──
