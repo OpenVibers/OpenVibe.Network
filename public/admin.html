@@ -1686,8 +1686,10 @@ async function savePayments() {
 
 // ── AI: provider config + usage cost breakdown ──
 const AI_KEYS = ['ai_enabled', 'ai_provider', 'ai_api_key', 'ai_base_url', 'ai_model',
-    'ai_paste_analysis_enabled', 'ai_stream_memory_enabled', 'ai_stream_capture_interval_sec', 'ai_transcription_enabled',
-    'ai_max_cost_usd_per_day', 'ai_input_cost_per_mtok', 'ai_output_cost_per_mtok'];
+    'ai_model_chat', 'ai_model_vision', 'ai_model_director', 'ai_model_summary',
+    'ai_paste_analysis_enabled', 'ai_stream_memory_enabled', 'ai_stream_capture_interval_sec', 'ai_transcription_enabled', 'ai_timeline_enabled',
+    'ai_max_cost_usd_per_day', 'ai_input_cost_per_mtok', 'ai_output_cost_per_mtok', 'ai_pricing_json',
+    'ai_viewers_enabled', 'ai_viewers_engine', 'ai_viewers_max_roster', 'ai_viewers_max_lines_per_min', 'ai_viewers_global_cap_usd_per_day', 'ai_viewers_default_settings_json'];
 
 async function loadAi() {
     const c = document.getElementById('ai-content');
@@ -1710,6 +1712,9 @@ async function loadAi() {
             if (s.type === 'boolean') return `
                 <div class="setting-row"><label><strong>${esc(key)}</strong><br><small>${esc(s.description||'')}</small></label>
                 <input type="checkbox" data-key="${esc(key)}" data-type="boolean" ${s.value==='true'?'checked':''} style="width:18px;height:18px;cursor:pointer"></div>`;
+            if (s.type === 'json' || /_json$/.test(key)) return `<div class="setting-row" style="flex-direction:column;align-items:stretch">
+                <label><strong>${esc(key)}</strong><br><small>${esc(s.description||'')}</small></label>
+                <textarea data-key="${esc(key)}" data-type="json" rows="4" spellcheck="false" style="margin-top:4px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:ui-monospace,monospace">${esc((() => { try { return JSON.stringify(JSON.parse(s.value), null, 2); } catch { return s.value; } })())}</textarea></div>`;
             const type = s.type === 'number' ? 'number' : (sensitive ? 'password' : 'text');
             return `<div class="setting-row" style="flex-direction:column;align-items:stretch">
                 <label><strong>${esc(key)}</strong><br><small>${esc(s.description||'')}</small></label>
@@ -1727,8 +1732,13 @@ async function loadAi() {
                     <div><div style="font-size:22px;font-weight:700">${u.totals.calls||0}</div><small class="muted">Calls (30d)</small></div>
                     <div><div style="font-size:22px;font-weight:700">${((u.totals.input_tokens||0)+(u.totals.output_tokens||0)).toLocaleString()}</div><small class="muted">Tokens (30d)</small></div>
                 </div>
-                ${(u.byKind||[]).length ? `<table style="width:100%;font-size:13px;border-collapse:collapse"><tr><th style="text-align:left">Feature</th><th style="text-align:right">Calls</th><th style="text-align:right">Cost</th></tr>
-                    ${u.byKind.map(k=>`<tr><td>${esc(k.kind||'—')}</td><td style="text-align:right">${k.calls}</td><td style="text-align:right">${money(k.cost_usd)}</td></tr>`).join('')}</table>` : ''}`;
+                <div class="muted" style="font-size:12px;margin-bottom:8px">Prompt cache hit rate: <b>${Math.round((u.cachedShare||0)*100)}%</b> of input tokens (30d) · ${(u.totals.cached_tokens||0).toLocaleString()} cached tokens</div>
+                ${(u.byRole||[]).length ? `<table style="width:100%;font-size:13px;border-collapse:collapse;margin-bottom:10px"><tr><th style="text-align:left">Role</th><th style="text-align:right">Calls</th><th style="text-align:right">Cached</th><th style="text-align:right">Avg ms</th><th style="text-align:right">Cost</th></tr>
+                    ${u.byRole.map(k=>`<tr><td>${esc(k.role||'—')}</td><td style="text-align:right">${k.calls}</td><td style="text-align:right">${k.input_tokens ? Math.round((k.cached_tokens||0)/k.input_tokens*100) : 0}%</td><td style="text-align:right">${Math.round(k.avg_latency_ms||0)}</td><td style="text-align:right">${money(k.cost_usd)}</td></tr>`).join('')}</table>` : ''}
+                ${(u.byKind||[]).length ? `<details><summary class="muted" style="cursor:pointer;font-size:12px">By feature</summary><table style="width:100%;font-size:13px;border-collapse:collapse"><tr><th style="text-align:left">Feature</th><th style="text-align:right">Calls</th><th style="text-align:right">Cost</th></tr>
+                    ${u.byKind.map(k=>`<tr><td>${esc(k.kind||'—')}</td><td style="text-align:right">${k.calls}</td><td style="text-align:right">${money(k.cost_usd)}</td></tr>`).join('')}</table></details>` : ''}
+                ${(u.byOwner||[]).length ? `<details style="margin-top:8px"><summary class="muted" style="cursor:pointer;font-size:12px">By streamer (attributed spend)</summary><table style="width:100%;font-size:13px;border-collapse:collapse"><tr><th style="text-align:left">Streamer</th><th style="text-align:right">Calls</th><th style="text-align:right">Today</th><th style="text-align:right">30d</th><th style="text-align:right">of which BYO</th></tr>
+                    ${u.byOwner.map(k=>`<tr><td>${esc(k.username||('#'+k.user_id))}</td><td style="text-align:right">${k.calls}</td><td style="text-align:right">${money(k.cost_today)}</td><td style="text-align:right">${money(k.cost_usd)}</td><td style="text-align:right">${money(k.cost_byo)}</td></tr>`).join('')}</table></details>` : ''}`;
         }
         c.innerHTML = `
             <div style="max-width:760px">
@@ -1736,6 +1746,10 @@ async function loadAi() {
                 <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px">
                     <legend style="padding:0 8px;font-weight:700">Estimated Cost</legend>
                     ${costHtml}
+                </fieldset>
+                <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px">
+                    <legend style="padding:0 8px;font-weight:700">AI Chat Viewers</legend>
+                    <div id="ai-viewers-fleet"><span class="muted">Loading…</span></div>
                 </fieldset>
                 <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px">
                     <legend style="padding:0 8px;font-weight:700">AI Status</legend>
@@ -1766,13 +1780,44 @@ async function loadAi() {
                     <p class="muted" style="margin:0"><i class="fa-solid fa-lock"></i> AI provider configuration and API keys are owner-only. You have full access to usage, costs, status, and the AI Explorer above.</p>
                 </fieldset>`}
             </div>`;
+        loadAiViewersFleet();
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
+}
+
+async function loadAiViewersFleet() {
+    const el = document.getElementById('ai-viewers-fleet'); if (!el) return;
+    try {
+        const d = await api('/api/admin/streamer/ai/viewers/status');
+        const money = (n) => '$' + (Number(n||0)).toFixed(4);
+        el.innerHTML = `
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+                <span>Default engine: <b>${esc(d.engine_default)}</b></span>
+                <span>Kill switch: <b style="color:${d.kill_switch ? '#f87171' : '#4ade80'}">${d.kill_switch ? 'ENGAGED (all channels silent)' : 'off'}</b></span>
+                <span>Shared-key viewer spend today: <b>${money(d.global_spend_today_usd)}</b></span>
+                <span class="muted" style="font-size:12px">Change ai_viewers_enabled / ai_viewers_engine in Configuration below.</span>
+            </div>
+            ${d.running.length ? `<table style="width:100%;font-size:13px;border-collapse:collapse;margin-bottom:10px"><tr><th style="text-align:left">Running now</th><th>Engine</th><th>Stream</th><th>Bots</th><th>Mode</th><th>Lines</th><th>Passes</th><th style="text-align:right">Cost</th><th></th></tr>
+                ${d.running.map(r=>`<tr><td>${esc(r.username||('#'+r.user_id))}</td><td>${esc(r.engine)}</td><td>${r.stream_id}</td><td>${r.bots}</td><td>${esc(r.paused ? 'paused' : (r.mode||''))}</td><td>${r.stats ? r.stats.lines : '—'}</td><td>${r.stats ? r.stats.ticks : '—'}</td><td style="text-align:right">${r.stats ? money(r.stats.cost) : '—'}</td>
+                    <td style="white-space:nowrap"><button class="btn btn-sm btn-outline" onclick="aiViewersAdmin(${r.user_id},'${r.paused ? 'resume' : 'pause'}')">${r.paused ? 'Resume' : 'Pause'}</button> <button class="btn btn-sm btn-danger" onclick="aiViewersAdmin(${r.user_id},'stop')">Stop + disable</button></td></tr>`).join('')}</table>` : '<p class="muted" style="margin:0 0 8px">No AI viewer workers running right now.</p>'}
+            <details><summary class="muted" style="cursor:pointer;font-size:12px">Channels with AI viewers configured (${d.channels.length})</summary>
+            <table style="width:100%;font-size:13px;border-collapse:collapse"><tr><th style="text-align:left">Channel</th><th>Enabled</th><th>Engine</th><th>Activity</th><th>Bots</th><th>Key</th><th style="text-align:right">Today / cap</th></tr>
+                ${d.channels.map(c=>`<tr><td>${esc(c.username)}</td><td>${c.enabled ? '✔' : '—'}</td><td>${esc(c.engine||'default')}</td><td>${esc(c.activity||'—')}</td><td>${c.bots}</td><td>${c.shared_key ? 'shared' : 'BYO'}</td><td style="text-align:right">${money(c.spent_today_usd)} / ${c.shared_key ? '$'+c.cap_usd.toFixed(2) : '∞'}</td></tr>`).join('')}</table></details>`;
+    } catch (e) { el.innerHTML = `<span class="muted">Unavailable: ${esc(e.message)}</span>`; }
+}
+async function aiViewersAdmin(userId, action) {
+    if (action === 'stop' && !confirm('Stop this channel\'s AI viewers now and disable them?')) return;
+    try { const d = await api(`/api/admin/streamer/ai/viewers/${userId}/${action}`, { method: 'POST', body: {} }); toast(d.message || 'ok', 'success'); loadAiViewersFleet(); }
+    catch (e) { toast(e.message, 'error'); }
 }
 
 async function saveAi() {
     const inputs = document.querySelectorAll('#ai-form [data-key]');
     const settings = {};
-    inputs.forEach(input => { settings[input.dataset.key] = input.dataset.type === 'boolean' ? (input.checked ? 'true' : 'false') : input.value; });
+    for (const input of inputs) {
+        let v = input.dataset.type === 'boolean' ? (input.checked ? 'true' : 'false') : input.value;
+        if (input.dataset.type === 'json') { try { v = JSON.stringify(JSON.parse(input.value)); } catch (e) { return toast(`${input.dataset.key}: invalid JSON — ${e.message}`, 'error'); } }
+        settings[input.dataset.key] = v;
+    }
     try {
         await api('/api/admin/streamer/settings', { method: 'PUT', body: { settings } });
         toast('AI settings saved', 'success');
