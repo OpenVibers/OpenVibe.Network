@@ -227,6 +227,38 @@ router.post('/events/stream-live', async (req, res) => {
 
     const results = { discord: null, notifications: null };
 
+    // ── Per-streamer rate limit (persisted — survives deploys) ───────────────────
+    // A streamer flapping off/on (reconnects, restarts, OBS hiccups) must not re-announce
+    // every time. One fan-out per streamer per `stream_live_cooldown_min` (default 60) and
+    // at most `stream_live_daily_cap` (default 8) per rolling 24h — gating inbox, push,
+    // email AND Discord. `force:true` (admin/manual) bypasses the cooldown, not the cap.
+    {
+        const db = getDb(req);
+        try {
+            db.exec(`CREATE TABLE IF NOT EXISTS stream_live_announcements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, streamer_key TEXT NOT NULL, stream_id TEXT, sent_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+                CREATE INDEX IF NOT EXISTS idx_sla_key ON stream_live_announcements(streamer_key, sent_at DESC)`);
+        } catch { /* */ }
+        const key = String(streamer.network_id || streamer.id || streamer.username).toLowerCase();
+        const cooldownMin = Math.max(1, parseInt(db.getSetting('stream_live_cooldown_min'), 10) || 60);
+        const dailyCap = Math.max(1, parseInt(db.getSetting('stream_live_daily_cap'), 10) || 8);
+        const last = db.prepare('SELECT sent_at FROM stream_live_announcements WHERE streamer_key = ? ORDER BY sent_at DESC LIMIT 1').get(key);
+        const today = db.prepare("SELECT COUNT(*) AS c FROM stream_live_announcements WHERE streamer_key = ? AND sent_at > datetime('now','-1 day')").get(key)?.c || 0;
+        const lastMs = last ? new Date(String(last.sent_at).replace(' ', 'T') + 'Z').getTime() : 0;
+        const sinceMin = last ? (Date.now() - lastMs) / 60000 : Infinity;
+        if (today >= dailyCap) {
+            console.log(`[StreamLive] ${streamer.username}: daily cap (${dailyCap}) reached — not announcing`);
+            return res.json({ ok: true, skipped: true, reason: 'daily-cap', announced_today: today, cap: dailyCap });
+        }
+        if (!req.body.force && sinceMin < cooldownMin) {
+            const nextAt = new Date(lastMs + cooldownMin * 60000).toISOString();
+            console.log(`[StreamLive] ${streamer.username}: announced ${Math.round(sinceMin)}m ago — cooling down until ${nextAt}`);
+            return res.json({ ok: true, skipped: true, reason: 'cooldown', next_allowed_at: nextAt });
+        }
+        db.prepare('INSERT INTO stream_live_announcements (streamer_key, stream_id) VALUES (?, ?)').run(key, stream.id != null ? String(stream.id) : null);
+        db.prepare("DELETE FROM stream_live_announcements WHERE sent_at < datetime('now','-7 days')").run();
+    }
+
     // ── Discord Alert ────────────────────────────────────────
     const discordService = req.app.locals.discordService;
     if (discordService) {

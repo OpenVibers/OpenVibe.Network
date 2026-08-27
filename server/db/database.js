@@ -523,6 +523,8 @@ function initDb(dbPath) {
         seed.run('email_daily_cap', '2000', 'number');
         seed.run('email_verify_user_daily_cap', '6', 'number');
         seed.run('resend_webhook_secret', '', 'string');
+        seed.run('stream_live_cooldown_min', '60', 'number');
+        seed.run('stream_live_daily_cap', '8', 'number');
     } catch (e) { console.warn('[DB] email verification migration:', e.message); }
 
     // ── Migration: one linked account per (user, service) ────────
