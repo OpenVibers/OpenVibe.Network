@@ -7,7 +7,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 const { v4: uuidv4 } = require('uuid');
-const { TYPES, PRIORITY, EMAIL_ELIGIBLE_CATEGORIES } = require('openvibe-shared/notifications');
+const { TYPES, PRIORITY, EMAIL_ELIGIBLE_CATEGORIES, EMAIL_DEFAULT_TYPES } = require('openvibe-shared/notifications');
 
 class NotificationService {
     constructor(db) {
@@ -80,12 +80,32 @@ class NotificationService {
         this._deletePrefs = db.prepare('DELETE FROM notification_preferences WHERE user_id = ? AND category = ?');
 
         this._getPendingEmails = db.prepare(`
-            SELECT n.*, u.email, u.username, u.display_name FROM notifications n
+            SELECT n.*, u.email, u.username, u.display_name, u.email_verified, u.email_bounced_at FROM notifications n
             JOIN users u ON u.id = n.user_id
             WHERE n.is_emailed = 0 AND n.is_dismissed = 0
             AND u.email IS NOT NULL AND u.email != ''
             ORDER BY n.created_at ASC
-            LIMIT 100
+            LIMIT 200
+        `);
+        // Dedupe: an unread go-live from the same streamer within the hour means the viewer
+        // already has the alert — reconnects/restarts must not stack ten of them.
+        this._recentFromSender = db.prepare(`
+            SELECT id FROM notifications
+            WHERE user_id = ? AND type = ? AND sender_id = ? AND is_dismissed = 0
+              AND created_at > datetime('now', '-60 minutes')
+            LIMIT 1
+        `);
+        this._recentEmailFromSender = db.prepare(`
+            SELECT 1 FROM email_delivery_log l JOIN notifications n ON n.id = l.notification_id
+            WHERE n.user_id = ? AND n.type = ? AND n.sender_id = ? AND l.status = 'sent'
+              AND l.created_at > datetime('now', '-60 minutes')
+            LIMIT 1
+        `);
+        this._emailsSentToUserToday = db.prepare(`
+            SELECT COUNT(*) AS c FROM email_delivery_log WHERE user_id = ? AND status = 'sent' AND created_at > datetime('now', '-1 day')
+        `);
+        this._emailsSentToday = db.prepare(`
+            SELECT COUNT(*) AS c FROM email_delivery_log WHERE status = 'sent' AND created_at > datetime('now', '-1 day')
         `);
 
         this._newestForUser = db.prepare(`
@@ -113,6 +133,10 @@ class NotificationService {
         // Check user's preferences — skip if disabled
         const pref = this._getPrefByCategory.get(data.user_id, category);
         if (pref && !pref.enabled) return null;
+        // Go-live dedupe (see _recentFromSender).
+        if (data.type === 'STREAM_LIVE' && data.sender_id != null) {
+            try { if (this._recentFromSender.get(data.user_id, 'STREAM_LIVE', data.sender_id)) return null; } catch { /* */ }
+        }
 
         const richContent = data.rich_content ? JSON.stringify(data.rich_content) : null;
 
@@ -162,16 +186,31 @@ class NotificationService {
         return n;
     }
 
-    getForUser(userId, { limit = 50, offset = 0, category = null, unreadOnly = false } = {}) {
-        let rows;
-        if (category) {
-            rows = this._getByCategory.all(userId, category, limit, offset);
-        } else if (unreadOnly) {
-            rows = this._getUnreadForUser.all(userId, limit, offset);
-        } else {
-            rows = this._getForUser.all(userId, limit, offset);
+    /**
+     * List notifications with composable filters. Returns { notifications, has_more, total }.
+     *  - category + unreadOnly combine (they used to be either/or)
+     *  - q: case-insensitive substring over title/message/sender_name
+     *  - since: ISO timestamp, only rows created after it (toasts)
+     * Fetches limit+1 so the client knows whether another page exists.
+     */
+    getForUser(userId, { limit = 50, offset = 0, category = null, unreadOnly = false, q = null, since = null, type = null } = {}) {
+        const where = ['user_id = ?', 'is_dismissed = 0'];
+        const params = [userId];
+        if (category) { where.push('category = ?'); params.push(category); }
+        if (type) { where.push('type = ?'); params.push(type); }
+        if (unreadOnly) where.push('is_read = 0');
+        if (since) { where.push('created_at > ?'); params.push(String(since).replace('T', ' ').replace(/Z$/, '').slice(0, 19)); }
+        if (q) {
+            const like = `%${String(q).replace(/[%_\\]/g, c => '\\' + c).slice(0, 80)}%`;
+            where.push("(title LIKE ? ESCAPE '\\' OR message LIKE ? ESCAPE '\\' OR sender_name LIKE ? ESCAPE '\\')");
+            params.push(like, like, like);
         }
-        return rows.map(n => {
+        const sql = `SELECT * FROM notifications WHERE ${where.join(' AND ')} ORDER BY created_at DESC, rowid DESC LIMIT ? OFFSET ?`;
+        const rows = this.db.prepare(sql).all(...params, limit + 1, offset);
+        const has_more = rows.length > limit;
+        if (has_more) rows.length = limit;
+        const total = this.db.prepare(`SELECT COUNT(*) AS c FROM notifications WHERE ${where.join(' AND ')}`).get(...params)?.c || 0;
+        const notifications = rows.map(n => {
             // Defensive: a single corrupt row must never 500 the whole dropdown.
             if (n.rich_content) {
                 try { n.rich_content = JSON.parse(n.rich_content); }
@@ -179,6 +218,16 @@ class NotificationService {
             }
             return n;
         });
+        return { notifications, has_more, total };
+    }
+
+    markReadMany(ids, userId) {
+        if (!Array.isArray(ids) || !ids.length) return 0;
+        const stmt = this.db.prepare('UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ? AND is_read = 0');
+        let n = 0;
+        const tx = this.db.transaction(() => { for (const id of ids.slice(0, 500)) n += stmt.run(String(id), userId).changes; });
+        tx();
+        return n;
     }
 
     getUnreadCount(userId) {
@@ -234,13 +283,13 @@ class NotificationService {
             enabled: 1,
             sound: 1,
             toasts: 1,
-            email: 0,
+            email: null,   // NULL = no explicit choice → shouldEmail() applies the defaults
         };
         const next = {
             enabled: updates.enabled !== undefined ? (updates.enabled ? 1 : 0) : current.enabled,
             sound: updates.sound !== undefined ? (updates.sound ? 1 : 0) : current.sound,
             toasts: updates.toasts !== undefined ? (updates.toasts ? 1 : 0) : current.toasts,
-            email: updates.email !== undefined ? (updates.email ? 1 : 0) : current.email,
+            email: updates.email !== undefined ? (updates.email === null ? null : (updates.email ? 1 : 0)) : current.email,
         };
         this._upsertPref.run(
             userId,
@@ -279,10 +328,39 @@ class NotificationService {
         if (pref && !pref.enabled) return false;
         // LOW priority never emails
         if (notification.priority === PRIORITY.LOW) return false;
-        // User explicitly opted into email for this category
-        if (pref && pref.email) return true;
-        // Built-in: CRITICAL + eligible categories always email
-        return notification.priority === PRIORITY.CRITICAL && EMAIL_ELIGIBLE_CATEGORIES.has(notification.category);
+        const critical = notification.priority === PRIORITY.CRITICAL && EMAIL_ELIGIBLE_CATEGORIES.has(notification.category);
+        // Deliverability gate: a bouncing address never gets mail; an UNVERIFIED address
+        // only gets critical security/moderation mail (password changed, ban) — never
+        // opt-in style alerts, so nobody can point our sender at a stranger's inbox.
+        if (notification.email_bounced_at) return false;
+        if (!notification.email_verified && !critical) return false;
+        // Explicit per-category choice wins (email column: NULL = no choice made).
+        if (pref && pref.email != null) return !!pref.email;
+        // Defaults: go-live alerts email unless turned off; critical eligible categories email.
+        if (EMAIL_DEFAULT_TYPES.has(notification.type)) return true;
+        return critical;
+    }
+
+    /**
+     * Abuse/cost guards evaluated right before a send. Returns a reason string to skip, or null.
+     *  - stale: a go-live alert older than 2h is useless in an inbox
+     *  - dup: same streamer already emailed this user within the hour
+     *  - user cap / global cap: site_settings email_user_daily_cap (default 30),
+     *    email_daily_cap (default 2000)
+     */
+    emailGuard(notification) {
+        try {
+            if (notification.type === 'STREAM_LIVE') {
+                const ageMs = Date.now() - new Date(String(notification.created_at).replace(' ', 'T') + 'Z').getTime();
+                if (ageMs > 2 * 3600 * 1000) return 'stale';
+                if (notification.sender_id != null && this._recentEmailFromSender.get(notification.user_id, 'STREAM_LIVE', notification.sender_id)) return 'dup';
+            }
+            const userCap = parseInt(this.db.getSetting?.('email_user_daily_cap'), 10) || 30;
+            if ((this._emailsSentToUserToday.get(notification.user_id)?.c || 0) >= userCap) return 'user-cap';
+            const globalCap = parseInt(this.db.getSetting?.('email_daily_cap'), 10) || 2000;
+            if ((this._emailsSentToday.get()?.c || 0) >= globalCap) return 'global-cap';
+        } catch { /* guards are best-effort */ }
+        return null;
     }
 
     // ─── Cleanup ──────────────────────────────────────────────

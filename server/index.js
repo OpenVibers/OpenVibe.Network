@@ -135,6 +135,9 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false,
 }));
 app.use(cookieParser());
+// Provider webhooks (Resend bounces/complaints) — mounted BEFORE the JSON body parser so
+// the route sees the raw bytes it must verify the Svix signature over.
+app.use('/api/webhooks', require('./notifications/resend-webhook')());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -392,6 +395,9 @@ app.get('/api/brand', (_req, res) => res.json(BRAND));
 // Auth routes (SSO provider)
 app.use('/api/auth', authRoutes);
 
+// Email verification (status / resend / consume)
+app.use('/api/auth', require('./auth/email-verify').routes(requireAuth));
+
 // Discord account linking (OAuth2 flow)
 app.use('/api/auth/discord', requireAuth, require('./auth/discord-link'));
 
@@ -528,7 +534,7 @@ app.get(['/', '/index.html'], (req, res) => {
 
 // Account hub (my.html) — the apex hosts the account hub under /my
 // plus its client-routed sections.
-app.get(['/my', '/my.html', '/themes', '/notifications', '/linked', '/security', '/profile', '/billing', '/preferences'], (req, res) => {
+app.get(['/my', '/my.html', '/themes', '/notifications', '/linked', '/security', '/profile', '/billing', '/preferences', '/verify-email'], (req, res) => {
     if (req.path === '/my.html') return redirectWithoutHtml(req, res, '/my');
     return sendMyAccountApp(res);
 });
@@ -540,6 +546,15 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
         }
     },
 }));
+
+// Web-push service worker: must be served from THIS origin (scope /), so each site
+// exposes the shared worker at /openvibe-sw.js rather than loading it from Network.
+app.get('/openvibe-sw.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Service-Worker-Allowed', '/');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.resolve(__dirname, '..', 'packages', 'openvibe-shared', 'openvibe-sw.js'));
+});
 
 // Serve openvibe-shared client-side libs (notification-ui.js, navbar.js, etc.)
 // Accessible at https://openvibe.network/shared/notification-ui.js etc.
