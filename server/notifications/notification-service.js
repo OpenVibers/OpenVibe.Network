@@ -91,7 +91,7 @@ class NotificationService {
         // already has the alert — reconnects/restarts must not stack ten of them.
         this._recentFromSender = db.prepare(`
             SELECT id FROM notifications
-            WHERE user_id = ? AND type = ? AND sender_id = ? AND is_dismissed = 0
+            WHERE user_id = ? AND type = ? AND sender_id = ?
               AND created_at > datetime('now', '-60 minutes')
             LIMIT 1
         `);
