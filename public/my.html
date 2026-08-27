@@ -329,9 +329,18 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 
     <!-- Notifications Section -->
     <div class="section" id="sec-notifications">
+        <div class="card" id="notif-verify-card" style="display:none">
+            <h3><span class="icon"><i class="fa-solid fa-envelope-circle-check"></i></span> Email alerts</h3>
+            <div id="notif-verify-body" style="font-size:13px;line-height:1.5"></div>
+        </div>
         <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-inbox"></i></span> Inbox</h3>
+            <p style="margin-bottom:12px;font-size:13px">Everything from every OpenVibe site, in one place. Search, filter, and scroll — it's the same inbox behind the bell on Live, Tools and Games. Turn on <strong>push</strong> to get alerts on this device even when no OpenVibe tab is open.</p>
+            <div id="notif-inbox"></div>
+        </div>
+        <div class="card" id="prefs">
             <h3><span class="icon"><i class="fa-solid fa-bell"></i></span> Notification Preferences</h3>
-            <p style="margin-bottom:16px">Control which notifications you receive and how they are delivered, including optional email alerts by category.</p>
+            <p style="margin-bottom:16px">Control which notifications you receive and how they are delivered. <strong>Streams</strong> emails you when a streamer you follow goes live (on by default, once your email is verified); every other category is email-off unless you turn it on.</p>
             <div class="notif-grid" id="notif-prefs">
                 <div style="font-weight:700;font-size:11px;color:var(--text-muted)">Category</div>
                 <div style="font-weight:700;font-size:11px;color:var(--text-muted);text-align:center">Enabled</div>
@@ -764,7 +773,9 @@ async function resetCustomColors(btn) {
 }
 
 function openInitialSection() {
-    const routeSection = window.location.pathname === '/themes' ? 'themes' : window.location.hash.replace(/^#/, '') || 'profile';
+    const pathSection = { '/themes': 'themes', '/notifications': 'notifications', '/verify-email': 'notifications', '/linked': 'linked', '/security': 'security', '/profile': 'profile' }[window.location.pathname];
+    const routeSection = pathSection || window.location.hash.replace(/^#/, '') || 'profile';
+    if (window.location.pathname === '/verify-email') setTimeout(handleVerifyEmailToken, 50);
     if (isAnonSession() && ['notifications','linked','security'].includes(routeSection)) {
         return showSection('anon');
     }
@@ -855,15 +866,17 @@ async function loadUser() {
             loadLinked();
             loadSessions();
             loadAnonInfo();
+            loadEmailStatus();
 
             // Init navbar
             OpenVibeNavbar.init({ service: 'network', token: authToken, user: currentUser });
             const bellMount = OpenVibeNavbar.getBellMount();
             if (bellMount && window.OpenVibeNotifications && authToken) {
-                OpenVibeNotifications.init({ token: authToken, apiBase: API });
+                OpenVibeNotifications.init({ token: authToken, apiBase: API, swPath: '/openvibe-sw.js' });
                 const bell = OpenVibeNotifications.createBell();
                 bellMount.replaceChildren(bell);
             }
+            renderNotifInbox();
         }
     } catch (err) {
         console.error(err);
@@ -1002,6 +1015,64 @@ function removeAccount(id) { OpenVibeAccountSwitcher.removeAccount(id); loadAcco
 function addAccount() { window.location.href = '/login?add_account=1&return=' + encodeURIComponent(window.location.pathname); }
 function signOutAll() { OpenVibeAccountSwitcher.logoutAll(); }
 
+// Small helpers (my.html has no global toast/esc of its own).
+if (typeof window.esc !== 'function') window.esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+if (typeof window.toast !== 'function') window.toast = (msg, type = 'info') => {
+    let c = document.getElementById('my-toasts');
+    if (!c) { c = document.createElement('div'); c.id = 'my-toasts'; c.style.cssText = 'position:fixed;top:78px;right:16px;z-index:100001;display:flex;flex-direction:column;gap:8px;max-width:360px'; document.body.appendChild(c); }
+    const t = document.createElement('div');
+    t.style.cssText = `padding:10px 14px;border-radius:10px;font-size:13px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.35);background:${type === 'error' ? '#dc2626' : type === 'success' ? '#16a34a' : '#4c4c5e'}`;
+    t.textContent = msg; c.appendChild(t);
+    setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 4500);
+};
+
+// ── Email verification status (gates opt-in email like go-live alerts) ──
+async function loadEmailStatus() {
+    if (isAnonSession()) return;
+    const card = document.getElementById('notif-verify-card'), body = document.getElementById('notif-verify-body');
+    if (!card || !body) return;
+    try {
+        const st = await apiFetch('/api/auth/email/status');
+        card.style.display = '';
+        if (!st.email) {
+            body.innerHTML = `<p>No email address on your account, so you can't receive go-live emails. Add one in <a href="#" onclick="showSection('profile');return false">Profile</a> — we'll send a confirmation link.</p>`;
+        } else if (st.bounced) {
+            body.innerHTML = `<p><span style="color:var(--danger,#ef4444)"><i class="fa-solid fa-triangle-exclamation"></i> Mail to <strong>${esc(st.email)}</strong> is bouncing</span>${st.bounce_reason ? ` (${esc(st.bounce_reason)})` : ''}. Emails are paused until you update the address in <a href="#" onclick="showSection('profile');return false">Profile</a> and confirm it.</p>`;
+        } else if (st.verified) {
+            body.innerHTML = `<p><span style="color:var(--success,#22c55e)"><i class="fa-solid fa-circle-check"></i> <strong>${esc(st.email)}</strong> is verified.</span> You'll get an email when a streamer you follow goes live (turn this off under Streams → Email below).</p>`;
+        } else {
+            body.innerHTML = `<p><i class="fa-solid fa-envelope"></i> <strong>${esc(st.email)}</strong> isn't confirmed yet — go-live and other opt-in emails stay off until it is.</p>
+                <button class="btn btn-primary" id="notif-verify-btn" onclick="resendVerification(this)" ${st.can_resend && st.email_enabled ? '' : 'disabled'}><i class="fa-solid fa-paper-plane"></i> ${st.email_enabled ? 'Send verification email' : 'Email delivery not configured'}</button>
+                ${!st.can_resend && st.email_enabled ? '<div class="muted" style="font-size:12px;margin-top:6px">A link was sent moments ago — check your inbox and spam folder.</div>' : ''}`;
+        }
+    } catch (e) { card.style.display = 'none'; }
+}
+async function resendVerification(btn) {
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending…'; }
+    try { const r = await apiFetch('/api/auth/email/send-verification', { method: 'POST' }); toast(r.message || 'Sent', 'success'); }
+    catch (e) { toast(e.message, 'error'); }
+    loadEmailStatus();
+}
+async function handleVerifyEmailToken() {
+    const token = new URLSearchParams(window.location.search).get('token');
+    if (!token) return;
+    history.replaceState(null, '', '/notifications');
+    try {
+        const r = await fetchWithTimeout(API + '/api/auth/email/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+        const data = await r.json().catch(() => ({}));
+        if (r.ok) toast(`${data.email || 'Your email'} is verified — go-live alerts will reach your inbox.`, 'success');
+        else toast(data.error || 'Verification failed', 'error');
+    } catch { toast('Verification failed — try again from your account page.', 'error'); }
+    loadEmailStatus();
+}
+let _inboxRendered = false;
+function renderNotifInbox() {
+    if (_inboxRendered || isAnonSession() || !window.OpenVibeNotifications) return;
+    const el = document.getElementById('notif-inbox'); if (!el) return;
+    _inboxRendered = true;
+    OpenVibeNotifications.renderInbox(el, { tab: 'all' });
+}
+
 // Notification preferences
 const CATEGORIES = ['social','chat','game','stream','economy','achievement','moderation','system','service','admin'];
 
@@ -1015,9 +1086,13 @@ async function loadNotifPrefs() {
         // Clear existing rows
         grid.querySelectorAll('.pref-row').forEach(r => r.remove());
         for (const cat of CATEGORIES) {
-            const p = prefsMap[cat] || { enabled: 1, sound: 1, toasts: 1, email: 0 };
+            const p = prefsMap[cat] || { enabled: 1, sound: 1, toasts: 1, email: null };
+            // email NULL = no explicit choice: go-live (stream) alerts email by default.
+            const emailOn = (p.email === null || p.email === undefined) ? cat === 'stream' : !!p.email;
+            p.email = emailOn ? 1 : 0;
+            const label = { social: 'Social', chat: 'Chat', game: 'Game', stream: 'Streams (go-live)', economy: 'Economy', achievement: 'Achievements', moderation: 'Moderation', system: 'System', service: 'Services', admin: 'Announcements' }[cat] || cat;
             const html = `
-                <div class="cat pref-row">${cat}</div>
+                <div class="cat pref-row" title="${cat}">${label}</div>
                 <button class="toggle pref-row ${p.enabled ? 'on' : 'off'}" data-cat="${cat}" data-field="enabled" onclick="togglePref(this)"></button>
                 <button class="toggle pref-row ${p.sound ? 'on' : 'off'}" data-cat="${cat}" data-field="sound" onclick="togglePref(this)"></button>
                 <button class="toggle pref-row col-toast ${p.toasts ? 'on' : 'off'}" data-cat="${cat}" data-field="toasts" onclick="togglePref(this)"></button>

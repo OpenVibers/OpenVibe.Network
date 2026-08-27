@@ -220,6 +220,25 @@ class EmailService {
         return sent;
     }
 
+    /** Email-address verification link. */
+    async sendVerificationEmail({ to, username, verifyUrl, expiresMinutes = 60 }) {
+        const u = this._escapeHtml(username || 'there');
+        const url = this._escapeHtml(verifyUrl);
+        const htmlBody = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#1a1a24;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:24px"><div style="background:#22222c;border-radius:12px;border:1px solid #333340;overflow:hidden">
+<div style="background:linear-gradient(135deg,#2a2a38,#1a1a24);padding:24px;text-align:center;border-bottom:2px solid #8b5cf6"><div style="font-size:32px">✉️</div><h1 style="margin:0;color:#e0e0e0;font-size:18px">Confirm your email</h1></div>
+<div style="padding:24px;color:#b0b0b8;font-size:14px;line-height:1.6">
+<div style="color:#e0e0e0;font-weight:600;margin-bottom:12px">Hey ${u},</div>
+<p>Confirm this address to receive OpenVibe email alerts — like when a streamer you follow goes live.</p>
+<a href="${url}" style="display:inline-block;background:#8b5cf6;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;margin:16px 0">Verify email →</a>
+<p style="color:#707080;font-size:12px">This link expires in ${expiresMinutes} minutes. If you didn't add this address to an OpenVibe account, ignore this email — nothing will be sent to you again.</p>
+<p style="color:#707080;font-size:12px;word-break:break-all">${url}</p>
+</div><div style="padding:16px 24px;text-align:center;color:#505060;font-size:11px;border-top:1px solid #333340"><a href="https://openvibe.network" style="color:#8b5cf6;text-decoration:none">openvibe.network</a></div></div></div></body></html>`;
+        const textBody = [`Hey ${username || 'there'},`, '', 'Confirm this address to receive OpenVibe email alerts.', `Verify: ${verifyUrl}`, '', `This link expires in ${expiresMinutes} minutes. If you didn't add this address to an OpenVibe account, ignore this email.`].join('\n');
+        return this._sendEmail({ to, subject: 'OpenVibe — confirm your email address', htmlBody, textBody, emailType: 'email_verification', metadata: { expiresMinutes } });
+    }
+
     async sendPasswordResetEmail({ to, username, resetUrl, expiresMinutes = 60 }) {
         const htmlBody = this._buildPasswordResetHtml({ username, resetUrl, expiresMinutes });
         const textBody = this._buildPasswordResetText({ username, resetUrl, expiresMinutes });
@@ -250,19 +269,31 @@ class EmailService {
 
         console.log(`[Email] Processing ${pending.length} pending email(s)...`);
 
+        let skipped = 0;
         for (const notif of pending) {
             if (!notifService.shouldEmail(notif)) {
                 notifService.markEmailed(notif.id);
                 continue;
             }
+            const why = notifService.emailGuard ? notifService.emailGuard(notif) : null;
+            if (why) {
+                // Caps: leave the row un-emailed only if the cap may lift (it won't for stale/dup).
+                if (why === 'stale' || why === 'dup') notifService.markEmailed(notif.id);
+                skipped++;
+                continue;
+            }
+            const subject = notif.type === 'STREAM_LIVE'
+                ? `🔴 ${notif.sender_name || 'A streamer you follow'} is live${notif.message ? ': ' + String(notif.message).slice(0, 80) : ''}`
+                : `🔥 OpenVibe — ${notif.title}`;
             const sent = await this.sendNotificationEmail({
                 to: notif.email,
                 username: notif.display_name || notif.username,
-                subject: `🔥 OpenVibe — ${notif.title}`,
+                subject,
                 notification: notif,
             });
             if (sent) notifService.markEmailed(notif.id);
         }
+        if (skipped) console.log(`[Email] ${skipped} notification email(s) held back by guards (stale/dup/caps)`);
     }
 
     // ─── Email Templates ───────────────────────────────────────
@@ -294,15 +325,15 @@ body { margin: 0; padding: 0; background: #1a1a24; font-family: -apple-system, B
 <body><div class="container"><div class="card">
 <div class="header"><div class="flame">🔥</div><h1>OpenVibe</h1></div>
 <div class="body">
-<div class="greeting">Hey ${username || 'there'},</div>
+<div class="greeting">Hey ${this._escapeHtml(username || 'there')},</div>
 <p>You have an important notification:</p>
 <div class="notif-box">
-<div class="icon">${notification.icon || '🔔'}</div>
-<div class="title">${notification.title}</div>
-${notification.message ? `<div class="message">${notification.message}</div>` : ''}
-<div class="meta">${notification.service ? `From ${notification.service} · ` : ''}${notification.priority?.toUpperCase()} priority</div>
+<div class="icon">${this._escapeHtml(notification.icon || '🔔')}</div>
+<div class="title">${this._escapeHtml(notification.title)}</div>
+${notification.message ? `<div class="message">${this._escapeHtml(notification.message)}</div>` : ''}
+<div class="meta">${notification.service ? `From ${this._escapeHtml(notification.service)} · ` : ''}${notification.priority?.toUpperCase()} priority</div>
 </div>
-${notification.url ? `<a class="cta" href="${notification.url}">View Details →</a>` : ''}
+${notification.url ? `<a class="cta" href="${this._escapeHtml(notification.url)}">View Details →</a>` : ''}
 </div>
 <div class="footer">
 <p>You're receiving this because it's a critical notification.</p>

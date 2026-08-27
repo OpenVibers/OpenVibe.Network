@@ -19,10 +19,14 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
             const limit = Math.min(parseInt(req.query.limit) || 50, 200);
             const offset = parseInt(req.query.offset) || 0;
             const category = req.query.category || null;
-            const unreadOnly = req.query.unread_only === '1' || req.query.unread_only === 'true';
+            const type = req.query.type || null;
+            // Accept both spellings — the shared UI shipped `unread=1` for a while.
+            const unreadOnly = ['1', 'true'].includes(String(req.query.unread_only ?? req.query.unread ?? ''));
+            const q = req.query.q ? String(req.query.q).trim() : null;
+            const since = req.query.since ? String(req.query.since) : null;
 
-            const notifications = notificationService.getForUser(userId, { limit, offset, category, unreadOnly });
-            res.json({ ok: true, notifications });
+            const out = notificationService.getForUser(userId, { limit, offset, category, unreadOnly, q, since, type });
+            res.json({ ok: true, ...out, limit, offset });
         } catch (err) {
             console.error('[Notifications] GET / error:', err);
             res.status(500).json({ ok: false, error: 'Failed to fetch notifications' });
@@ -63,7 +67,19 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     router.post('/:id/read', requireAuth, (req, res) => {
         try {
             const ok = notificationService.markRead(req.params.id, req.user.id);
-            res.json({ ok });
+            res.json({ ok, unread: notificationService.getUnreadCount(req.user.id) });
+        } catch (err) {
+            res.status(500).json({ ok: false, error: 'Failed to mark read' });
+        }
+    });
+
+    // ─── POST /api/notifications/read-batch ────────────────
+    // Body: { ids: [] } — the inbox marks everything it rendered as seen in one call.
+    router.post('/read-batch', requireAuth, (req, res) => {
+        try {
+            const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+            const changed = notificationService.markReadMany(ids, req.user.id);
+            res.json({ ok: true, changed, unread: notificationService.getUnreadCount(req.user.id) });
         } catch (err) {
             res.status(500).json({ ok: false, error: 'Failed to mark read' });
         }

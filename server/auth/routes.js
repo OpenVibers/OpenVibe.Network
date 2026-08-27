@@ -182,6 +182,9 @@ router.post('/register', (req, res) => {
 
     console.log(`[Auth] New user registered: ${username} (id: ${user.id})${reserved ? ' [verification key redeemed]' : ''}`);
 
+    // Confirm the address before it can receive opt-in mail (best-effort, rate-limited).
+    if (user.email) { try { require('./email-verify').sendVerification(req, user).catch(() => {}); } catch { /* */ } }
+
     // Send welcome notification
     try {
         const notifService = req.app.locals.notificationService;
@@ -412,14 +415,28 @@ router.put('/profile', requireAuth, (req, res) => {
     }
     if (bio !== undefined) { updates.push('bio = ?'); params.push(bio.slice(0, 500)); }
     if (avatar_url !== undefined) { updates.push('avatar_url = ?'); params.push(avatar_url); }
-    if (email !== undefined) { updates.push('email = ?'); params.push(email || null); }
+    let emailChanged = false;
+    if (email !== undefined) {
+        const next = (email || '').trim() || null;
+        if (next && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(next)) return res.status(400).json({ error: 'That email address does not look valid' });
+        if (next && next.length > 254) return res.status(400).json({ error: 'Email address too long' });
+        emailChanged = (next || '').toLowerCase() !== String(req.user.email || '').toLowerCase();
+        updates.push('email = ?'); params.push(next);
+    }
     if (profile_color !== undefined) { updates.push('profile_color = ?'); params.push(profile_color); }
 
     if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
 
     updates.push('updated_at = CURRENT_TIMESTAMP');
     params.push(req.user.id);
-    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+    try {
+        db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+    } catch (e) {
+        if (/UNIQUE/.test(e.message)) return res.status(409).json({ error: 'That email address is already used by another account' });
+        throw e;
+    }
+    // A new address is unverified until confirmed; kick off the confirmation email.
+    if (emailChanged) { try { require('./email-verify').onEmailChanged(req, req.user.id); } catch { /* */ } }
 
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
     res.json({ user: sanitizeUser(user) });

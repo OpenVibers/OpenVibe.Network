@@ -47,7 +47,7 @@ router.post('/verify-token', (req, res) => {
             issuer: config.jwt.issuer
         });
         const db = getDb(req);
-        const user = db.prepare('SELECT id, username, display_name, role, avatar_url, color FROM users WHERE id = ?').get(decoded.sub || decoded.id);
+        const user = db.prepare('SELECT id, username, display_name, role, avatar_url, profile_color AS color FROM users WHERE id = ?').get(decoded.sub || decoded.id);
         res.json({ valid: true, decoded, user: user || null });
     } catch (err) {
         res.json({ valid: false, error: err.message });
@@ -58,7 +58,7 @@ router.post('/verify-token', (req, res) => {
 router.get('/users/:id', (req, res) => {
     const db = getDb(req);
     const user = db.prepare(`
-        SELECT id, username, display_name, role, avatar_url, color, bio, created_at
+        SELECT id, username, display_name, role, avatar_url, profile_color AS color, bio, created_at
         FROM users WHERE id = ?
     `).get(req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -69,7 +69,7 @@ router.get('/users/:id', (req, res) => {
 router.get('/users/by-username/:username', (req, res) => {
     const db = getDb(req);
     const user = db.prepare(`
-        SELECT id, username, display_name, role, avatar_url, color, bio, created_at
+        SELECT id, username, display_name, role, avatar_url, profile_color AS color, bio, created_at
         FROM users WHERE username = ?
     `).get(req.params.username.toLowerCase());
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -85,7 +85,7 @@ router.post('/users/bulk', (req, res) => {
     const db = getDb(req);
     const placeholders = ids.map(() => '?').join(',');
     const users = db.prepare(`
-        SELECT id, username, display_name, role, avatar_url, color
+        SELECT id, username, display_name, role, avatar_url, profile_color AS color
         FROM users WHERE id IN (${placeholders})
     `).all(...ids);
     res.json({ users });
@@ -220,7 +220,7 @@ router.post('/coins/transfer', (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 
 router.post('/events/stream-live', async (req, res) => {
-    const { streamer, stream } = req.body;
+    const { streamer, stream, follower_network_ids } = req.body;
     if (!streamer?.username || !stream?.id) {
         return res.status(400).json({ error: 'streamer and stream objects required' });
     }
@@ -263,11 +263,23 @@ router.post('/events/stream-live', async (req, res) => {
             },
         };
 
-        // Find followers of this streamer in openvibe.network
-        const followerRows = db.prepare(
-            'SELECT follower_id FROM follows WHERE followed_id = ?'
-        ).all(streamer.id);
-        const followerIds = followerRows.map(r => r.follower_id);
+        // The streaming follow graph lives in OpenVibe.Live, keyed by LIVE user ids; Live
+        // translates its followers to NETWORK ids via linked_accounts and sends them here.
+        // (Network's own `follows` table is a separate, tiny social graph and `streamer.id`
+        // is a Live id — the old lookup below silently addressed the wrong accounts.)
+        let followerIds = Array.isArray(follower_network_ids)
+            ? follower_network_ids.map(Number).filter(n => Number.isInteger(n) && n > 0).slice(0, 20000)
+            : [];
+        if (!Array.isArray(follower_network_ids)) {
+            // Legacy caller: fall back to Network's graph, resolving the streamer's NETWORK id first.
+            const link = streamer.id ? db.prepare("SELECT user_id FROM linked_accounts WHERE service = 'live' AND service_user_id = ?").get(String(streamer.id)) : null;
+            if (link) followerIds = db.prepare('SELECT follower_id FROM follows WHERE followed_id = ?').all(link.user_id).map(r => r.follower_id);
+        }
+        // sender_id must be the streamer's NETWORK id for dedupe + "who is this" lookups.
+        try {
+            const link = streamer.id ? db.prepare("SELECT user_id FROM linked_accounts WHERE service = 'live' AND service_user_id = ?").get(String(streamer.id)) : null;
+            if (link) notifData.sender_id = link.user_id;
+        } catch { /* keep Live id */ }
 
         // Find users who opted into "all live" notifications
         const allLiveRows = db.prepare(

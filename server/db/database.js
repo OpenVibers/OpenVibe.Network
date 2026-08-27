@@ -481,6 +481,11 @@ function initDb(dbPath) {
         { table: 'users', column: 'name_effect', sql: "ALTER TABLE users ADD COLUMN name_effect TEXT" },
         { table: 'users', column: 'particle_effect', sql: "ALTER TABLE users ADD COLUMN particle_effect TEXT" },
         { table: 'anon_users', column: 'ip', sql: "ALTER TABLE anon_users ADD COLUMN ip TEXT" },
+        // Email deliverability state — verification gates opt-in mail, bounces suppress it.
+        { table: 'users', column: 'email_verified', sql: "ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0" },
+        { table: 'users', column: 'email_verified_at', sql: "ALTER TABLE users ADD COLUMN email_verified_at DATETIME" },
+        { table: 'users', column: 'email_bounced_at', sql: "ALTER TABLE users ADD COLUMN email_bounced_at DATETIME" },
+        { table: 'users', column: 'email_bounce_reason', sql: "ALTER TABLE users ADD COLUMN email_bounce_reason TEXT" },
     ];
     for (const m of migrations) {
         const cols = db.prepare(`PRAGMA table_info(${m.table})`).all();
@@ -489,6 +494,36 @@ function initDb(dbPath) {
             catch (e) { /* already exists — silently skip */ }
         }
     }
+
+    // ── Email verification tokens + preference default semantics ──
+    try {
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS email_verification_tokens (
+                token_hash TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                email TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                expires_at DATETIME NOT NULL,
+                used_at DATETIME,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_email_verify_user ON email_verification_tokens(user_id, created_at DESC);
+        `);
+        // notification_preferences.email: 0 used to be the implicit default written whenever a
+        // user toggled anything else in the row. It now means an EXPLICIT "no email"; NULL is
+        // "no choice → defaults apply" (go-live alerts email by default). One-time reset.
+        const flagged = db.prepare("SELECT value FROM site_settings WHERE key = 'migr_pref_email_null'").get();
+        if (!flagged) {
+            const n = db.prepare('UPDATE notification_preferences SET email = NULL WHERE email = 0').run().changes;
+            db.prepare("INSERT OR REPLACE INTO site_settings (key, value, type) VALUES ('migr_pref_email_null', '1', 'boolean')").run();
+            if (n) console.log(`[DB] notification_preferences: ${n} email=0 rows reset to default (NULL)`);
+        }
+        const seed = db.prepare('INSERT OR IGNORE INTO site_settings (key, value, type) VALUES (?, ?, ?)');
+        seed.run('email_user_daily_cap', '30', 'number');
+        seed.run('email_daily_cap', '2000', 'number');
+        seed.run('email_verify_user_daily_cap', '6', 'number');
+        seed.run('resend_webhook_secret', '', 'string');
+    } catch (e) { console.warn('[DB] email verification migration:', e.message); }
 
     // ── Migration: one linked account per (user, service) ────────
     // The link-account upsert uses ON CONFLICT(user_id, service), which needs a
