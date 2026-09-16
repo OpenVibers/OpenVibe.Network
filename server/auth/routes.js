@@ -80,33 +80,9 @@ function sanitizeUser(user) {
     return safe;
 }
 
-function requireAuth(req, res, next) {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : req.cookies?.ov_token;
-    if (!token) return res.status(401).json({ error: 'Authentication required' });
-
-    const config = getConfig(req);
-    const publicKey = req.app.locals.publicKey;
-    const algorithm = publicKey.includes('BEGIN') ? 'RS256' : 'HS256';
-
-    try {
-        const decoded = jwt.verify(token, publicKey, { algorithms: [algorithm], issuer: config.jwt.issuer });
-        const db = getDb(req);
-        const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.sub || decoded.id);
-        if (!user) return res.status(401).json({ error: 'User not found' });
-        if (user.is_banned) return res.status(403).json({ error: 'Account banned', ban_reason: user.ban_reason });
-        if (user.token_valid_after) {
-            const tokenIat = decoded.iat * 1000;
-            const validAfter = new Date(user.token_valid_after + (user.token_valid_after.includes('Z') ? '' : 'Z')).getTime();
-            if (tokenIat < validAfter) return res.status(401).json({ error: 'Token revoked' });
-        }
-        req.user = user;
-        req.token = token;
-        next();
-    } catch {
-        return res.status(401).json({ error: 'Invalid or expired token' });
-    }
-}
+const { makeRequireAuth, GRACE_MS: SESSION_GRACE_MS } = require('./session');
+// Sliding session guard: expired-but-renewable tokens are accepted and renewed (cookie + X-OV-Token).
+const requireAuth = makeRequireAuth((req) => ({ db: getDb(req), publicKey: req.app.locals.publicKey, config: getConfig(req) }), signToken);
 
 // ── Register ─────────────────────────────────────────────────
 router.post('/register', (req, res) => {
@@ -343,7 +319,7 @@ router.post('/refresh', (req, res) => {
                     ignoreExpiration: true,
                 });
                 const expiredAt = decoded.exp * 1000;
-                const gracePeriod = 7 * 24 * 60 * 60 * 1000; // 7 days
+                const gracePeriod = SESSION_GRACE_MS; // same 60-day window the sliding guard uses
                 if (Date.now() - expiredAt > gracePeriod) {
                     return res.status(401).json({ error: 'Token expired beyond grace period' });
                 }
@@ -374,7 +350,7 @@ router.post('/refresh', (req, res) => {
     // Update session cookie — host-only on openvibe.network (NO Domain attribute)
     res.cookie('ov_token', newToken, {
         httpOnly: false,
-        maxAge: 30 * 24 * 60 * 60 * 1000,
+        maxAge: 90 * 24 * 60 * 60 * 1000,
         sameSite: 'Lax',
         secure: true,
         path: '/',

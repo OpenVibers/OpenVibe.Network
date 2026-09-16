@@ -12,19 +12,21 @@ const router = express.Router();
 function getDb(req) { return req.app.locals.db; }
 function getConfig(req) { return req.app.locals.config; }
 
-function optionalAuth(req, _res, next) {
-    const token = req.headers.authorization?.startsWith('Bearer ')
-        ? req.headers.authorization.slice(7)
-        : req.cookies?.ov_token;
-    if (token) {
-        const config = getConfig(req);
-        const publicKey = req.app.locals.publicKey;
-        const algorithm = publicKey.includes('BEGIN') ? 'RS256' : 'HS256';
-        try {
-            const decoded = jwt.verify(token, publicKey, { algorithms: [algorithm], issuer: config.jwt.issuer });
-            req.user = decoded;
-        } catch { /* not authenticated, continue */ }
-    }
+function optionalAuth(req, res, next) {
+    // Sliding sessions (server/auth/session.js): renewable tokens count, and get renewed.
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : req.cookies?.ov_token;
+    if (!token) return next();
+    try {
+        const { verifySession, COOKIE } = require('../auth/session');
+        const out = verifySession(token, { db: getDb(req), publicKey: req.app.locals.publicKey, config: req.app.locals.config });
+        if (out.error) return next();
+        // Routes here read both req.user.sub (JWT shape) and req.user.id (row shape) — give them both.
+        req.user = { ...out.decoded, ...out.user, sub: out.user.id, id: out.user.id }; req.token = token;
+        if (out.renew) {
+            try { const fresh = require('../auth/routes').signToken(out.user, req.app.locals.privateKey, req.app.locals.config); res.cookie('ov_token', fresh, COOKIE); res.set('X-OV-Token', fresh); res.set('Access-Control-Expose-Headers', 'X-OV-Token'); } catch { /* */ }
+        }
+    } catch { /* treat as anonymous */ }
     next();
 }
 

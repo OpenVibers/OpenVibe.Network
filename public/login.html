@@ -81,7 +81,7 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
 
 /* Logo */
 .logo{text-align:center;margin-bottom:28px}
-.logo .flame{font-size:48px;display:block;margin-bottom:8px;animation:flame-pulse 2s ease-in-out infinite}
+.logo .flame{display:block;margin:0 auto 8px;width:72px;height:72px;color:var(--accent-light,var(--accent,#a78bfa))}
 @keyframes flame-pulse{0%,100%{transform:scale(1);filter:brightness(1)}50%{transform:scale(1.08);filter:brightness(1.2)}}
 .logo h1{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
 .logo p{font-size:12px;color:var(--text-muted);font-weight:500}
@@ -215,7 +215,8 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
 
 @media(max-width:480px){
     .login-card{padding:28px 24px;border-radius:16px}
-    .logo .flame{font-size:36px}
+    .logo .flame{width:56px;height:56px}
+    .logo .flame .ov-mark{width:56px!important;height:56px!important}
     .logo h1{font-size:18px}
     .login-container{padding:16px}
 }
@@ -242,7 +243,7 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
 <div class="login-container">
     <div class="login-card">
         <div class="logo">
-            <span class="flame"><i class="fa-solid fa-circle-nodes"></i></span>
+            <span class="flame"><span class="ov-mark" data-size="72"></span></span>
             <h1>OpenVibe</h1>
             <p>One account. All of OpenVibe.</p>
         </div>
@@ -411,7 +412,7 @@ function clearAuthCookie() {
 
 function setAuthCookie(token) {
     const secure = location.protocol === 'https:' ? ';Secure' : '';
-    document.cookie = `ov_token=${token};path=/;max-age=${60*60*24*30};SameSite=Lax${secure}`;
+    document.cookie = `ov_token=${token};path=/;max-age=${60*60*24*90};SameSite=Lax${secure}`;
 }
 
 function clearLocalAuthState() {
@@ -478,6 +479,16 @@ function saveAnonAccount(user, token) {
     return entry;
 }
 
+function prefillAccount(account, msg) {
+    try {
+        if (typeof switchTab === 'function') { try { switchTab('login'); } catch { /* */ } }
+        const u = document.querySelector('form input[name="username"]');
+        const pw = document.querySelector('form input[name="password"]');
+        if (u) u.value = account.username || '';
+        if (pw) { pw.value = ''; pw.focus(); }
+    } catch { /* */ }
+    toast(msg || 'Enter your password to continue.', 'info');
+}
 function removeAccount(id) {
     const accounts = getSavedAccounts().filter(a => a.id !== id);
     localStorage.setItem('openvibe_accounts', JSON.stringify(accounts));
@@ -562,7 +573,7 @@ function renderChooser() {
         item.className = 'account-item' + (String(account.id) === String(activeId) ? ' active-account' : '');
         const avatarContent = account.avatar_url
             ? `<img src="${escapeHtml(account.avatar_url)}" alt="" onerror="this.parentElement.innerHTML='<i class=\'fa-solid fa-circle-nodes\'></i>'">`
-            : '<i class="fa-solid fa-circle-nodes"></i>';
+            : '<span class="ov-mark" data-size="28" data-static="1"></span>';
         item.innerHTML = `
             <div class="avatar">${avatarContent}</div>
             <div class="info">
@@ -605,9 +616,10 @@ async function selectAccount(account) {
                 account.token = validToken;
                 saveAccount(refreshData.user || account, validToken);
             } else {
-                // Refresh also failed — session is truly expired
-                toast('Session expired for ' + (account.display_name || account.username) + '. Please sign in again.', 'error');
-                removeAccount(account.id);
+                // Refresh also failed — this account needs its password again. Keep it in the
+                // list and prefill it instead of deleting it (deleting it is what made people
+                // re-add their account over and over).
+                prefillAccount(account, 'Welcome back, ' + (account.display_name || account.username) + ' — enter your password to continue.');
                 return;
             }
         }
@@ -638,8 +650,7 @@ async function selectAccount(account) {
             const data = await res.json();
             if (!res.ok) {
                 if (res.status === 401) {
-                    toast('Session expired for ' + (account.display_name || account.username) + '. Please sign in again.', 'error');
-                    removeAccount(account.id);
+                    prefillAccount(account, 'Welcome back, ' + (account.display_name || account.username) + ' — enter your password to continue.');
                     return;
                 }
                 if (res.status === 403) {
@@ -996,6 +1007,7 @@ async function continueAnonymous() {
     }
 })();
 </script>
+  <script src="/assets/ov-mark.js"></script>
   <script src="https://openvibe.live/live-notify.js" async></script>
 </body>
 </html>
