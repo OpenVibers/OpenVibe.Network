@@ -345,28 +345,8 @@ discordService.init().catch(err => console.error('[Discord] Init error:', err.me
 // requireAuth helper (needed by route factories)
 const authRoutes = require('./auth/routes');
 const jwt = require('jsonwebtoken');
-function requireAuth(req, res, next) {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : req.cookies?.ov_token;
-    if (!token) return res.status(401).json({ error: 'Authentication required' });
-    const algorithm = publicKey.includes('BEGIN') ? 'RS256' : 'HS256';
-    try {
-        const decoded = jwt.verify(token, publicKey, { algorithms: [algorithm], issuer: config.jwt.issuer });
-        const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.sub || decoded.id);
-        if (!user) return res.status(401).json({ error: 'User not found' });
-        if (user.is_banned) return res.status(403).json({ error: 'Account banned', ban_reason: user.ban_reason });
-        if (user.token_valid_after) {
-            const tokenIat = decoded.iat * 1000;
-            const validAfter = new Date(user.token_valid_after + (user.token_valid_after.includes('Z') ? '' : 'Z')).getTime();
-            if (tokenIat < validAfter) return res.status(401).json({ error: 'Token revoked' });
-        }
-        req.user = user;
-        req.token = token;
-        next();
-    } catch {
-        return res.status(401).json({ error: 'Invalid or expired token' });
-    }
-}
+// Sliding session guard (server/auth/session.js): renewable tokens are accepted and renewed.
+const requireAuth = require('./auth/session').makeRequireAuth(() => ({ db, publicKey, config }), authRoutes.signToken);
 
 // ── Routes ───────────────────────────────────────────────────
 // Public key endpoint (services fetch this to verify JWTs).

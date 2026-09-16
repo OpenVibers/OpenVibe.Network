@@ -19,7 +19,7 @@ module.exports = {
         //   openssl rsa -in data/keys/private.pem -pubout -out data/keys/public.pem
         privateKeyPath: process.env.JWT_PRIVATE_KEY || 'data/keys/private.pem',
         publicKeyPath:  process.env.JWT_PUBLIC_KEY  || 'data/keys/public.pem',
-        accessTokenExpiry:  '24h',
+        accessTokenExpiry:  '7d',
         refreshTokenExpiry: '30d',
         // issuer is the canonical public network URL — updated at runtime from registry
         issuer: process.env.OV_NETWORK_URL || process.env.BASE_URL || 'https://openvibe.network',

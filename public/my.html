@@ -549,6 +549,8 @@ async function apiFetch(path, opts = {}) {
     const authToken = getAuthToken();
     if (authToken) headers.Authorization = 'Bearer ' + authToken;
     const res = await fetchWithTimeout(API + path, { ...opts, headers, credentials: 'include' });
+    // Sliding sessions: the server hands back a renewed token when the old one is due.
+    try { const fresh = res.headers.get('X-OV-Token'); if (fresh) { localStorage.setItem('ov_token', fresh); document.cookie = `ov_token=${fresh};path=/;max-age=${60*60*24*90};SameSite=Lax${location.protocol === 'https:' ? ';Secure' : ''}`; } } catch { /* */ }
     let data = {};
     try { data = await res.json(); } catch { /* non-JSON (e.g. proxy error page) */ }
     if (!res.ok) { const err = new Error(data.error || res.statusText || 'Request failed'); err.status = res.status; throw err; }
@@ -888,6 +890,15 @@ async function loadUser() {
         // A genuine auth failure → send them to log in. Everything else (offline, weak signal,
         // timeout, server hiccup) → show a clear reason + retry instead of a stuck "Loading…".
         if (err.status === 401 || /401|Authentication|not found|revoked|Unauthorized/i.test(err.message || '')) {
+            // One refresh attempt before giving up on the session (a stale localStorage token
+            // with a still-good cookie used to bounce people to the login page for nothing).
+            if (!window._ovRefreshTried) {
+                window._ovRefreshTried = true;
+                try {
+                    const r = await fetchWithTimeout(API + '/api/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(getAuthToken() ? { Authorization: 'Bearer ' + getAuthToken() } : {}) }, credentials: 'include' });
+                    if (r.ok) { const d = await r.json(); if (d.token) { localStorage.setItem('ov_token', d.token); document.cookie = `ov_token=${d.token};path=/;max-age=${60*60*24*90};SameSite=Lax${location.protocol === 'https:' ? ';Secure' : ''}`; location.reload(); return; } }
+                } catch { /* fall through */ }
+            }
             window.location.href = '/login?return=' + encodeURIComponent(window.location.pathname);
             return;
         }

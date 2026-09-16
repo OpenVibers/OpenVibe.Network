@@ -38,7 +38,27 @@ router.get('/authorize', (req, res) => {
         return res.status(400).json({ error: 'Invalid redirect_uri' });
     }
 
-    // Always redirect to login/chooser — let the user pick which account to use
+    // prompt=none (silent SSO from an app whose own session lapsed): if this browser still has a
+    // live/renewable openvibe.network session, continue as that account with no chooser. With no
+    // session, bounce straight back with error=login_required so the app can stay quiet.
+    if (String(req.query.prompt || '') === 'none') {
+        const sep = redirect_uri.includes('?') ? '&' : '?';
+        try {
+            const { verifySession, COOKIE } = require('./session');
+            const out = verifySession(req.cookies?.ov_token, { db, publicKey: req.app.locals.publicKey, config: getConfig(req) });
+            if (!out.error) {
+                const token = out.renew ? require('./routes').signToken(out.user, req.app.locals.privateKey, getConfig(req)) : req.cookies.ov_token;
+                res.cookie('ov_token', token, COOKIE);
+                const code = crypto.randomBytes(32).toString('hex');
+                const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+                db.prepare(`INSERT INTO oauth_codes (code, client_id, user_id, redirect_uri, scope, expires_at) VALUES (?, ?, ?, ?, ?, ?)`)
+                    .run(code, client_id, out.user.id, redirect_uri, scope || 'profile theme', expiresAt);
+                return res.redirect(`${redirect_uri}${sep}code=${code}&state=${state || ''}`);
+            }
+        } catch { /* fall through */ }
+        return res.redirect(`${redirect_uri}${sep}error=login_required&state=${state || ''}`);
+    }
+    // Otherwise the account chooser — the user picks which account to continue with
     const loginParams = new URLSearchParams({
         client_id,
         client_name: client.name || client_id,
@@ -98,7 +118,7 @@ router.post('/confirm', (req, res) => {
 
     // Also set cookie to this account so openvibe.network itself knows the active session.
     // Host-only (NO Domain attribute) — the ov_token cookie belongs to openvibe.network alone.
-    res.cookie('ov_token', token, { httpOnly: false, maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: 'Lax', secure: true, path: '/' });
+    res.cookie('ov_token', token, { httpOnly: false, maxAge: 90 * 24 * 60 * 60 * 1000, sameSite: 'Lax', secure: true, path: '/' });
 
     const sep = redirect_uri.includes('?') ? '&' : '?';
     res.json({ redirect: `${redirect_uri}${sep}code=${code}&state=${state || ''}` });
