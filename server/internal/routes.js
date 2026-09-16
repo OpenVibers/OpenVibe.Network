@@ -174,6 +174,30 @@ function handleWalletError(res, err) {
     return res.status(500).json({ error: 'wallet_internal_error' });
 }
 
+// ── GET /internal/coins/stats ────────────────────────────────
+// Site-wide OpenCoins totals for public stat displays (OpenVibe.Live's home hero).
+// Summing the whole ledger is cheap at our size but pointless to repeat per pageview,
+// so the answer is held for a minute.
+let _coinStats = { at: 0, data: null };
+router.get('/coins/stats', (req, res) => {
+    try {
+        if (_coinStats.data && Date.now() - _coinStats.at < 60_000) return res.json(_coinStats.data);
+        const db = getDb(req);
+        const one = (sql) => { try { return db.prepare(sql).get()?.n || 0; } catch { return 0; } };
+        const data = {
+            earned: one('SELECT COALESCE(SUM(delta), 0) AS n FROM coin_transactions WHERE delta > 0'),
+            spent: one('SELECT COALESCE(-SUM(delta), 0) AS n FROM coin_transactions WHERE delta < 0'),
+            circulating: one('SELECT COALESCE(SUM(balance), 0) AS n FROM wallets'),
+            holders: one('SELECT COUNT(*) AS n FROM wallets WHERE balance > 0'),
+            transactions: one('SELECT COUNT(*) AS n FROM coin_transactions'),
+        };
+        _coinStats = { at: Date.now(), data };
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: String(err.message || err) });
+    }
+});
+
 // ── POST /internal/coins/credit ──────────────────────────────
 // Body: { user_id, app_id, amount (positive int), reason, ref?, idempotency_key }
 // → { balance }
