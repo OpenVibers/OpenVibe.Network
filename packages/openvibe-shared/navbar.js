@@ -702,9 +702,13 @@
         const loginHref = resolveLoginHref(currentHost(), window.location.href);
         const addAccountHref = `${_config.apiBase}/login?add_account=1&return=${encodeURIComponent(window.location.href)}`;
 
+        // The OV brand mark is a self-contained drop-in (mounts every .ov-mark it finds).
+        if (!window.__ovMark && !document.getElementById('ov-mark-loader')) {
+            try { const sc = document.createElement('script'); sc.id = 'ov-mark-loader'; sc.src = 'https://openvibe.network/shared/ov-mark.js'; sc.async = true; document.head.appendChild(sc); } catch { /* */ }
+        }
         nav.innerHTML = `
             <a class="openvibe-navbar-brand" href="${brandHref}">
-                <span class="flame"><i class="fa-solid ${svcIcon}"></i></span>
+                <span class="flame">${svcIcon === 'fa-circle-nodes' ? '<span class="ov-mark" data-size="28"></span>' : `<i class="fa-solid ${svcIcon}"></i>`}</span>
                 <div>
                     <div class="name">${svcName}</div>
                 </div>
@@ -715,7 +719,7 @@
             </div>
             <div class="openvibe-navbar-spacer"></div>
             <div class="openvibe-navbar-right">
-                <a class="openvibe-network-badge" href="https://openvibe.network" title="Connected to OpenVibe"><i class="fa-solid fa-circle-nodes"></i> OpenVibe</a>
+                <a class="openvibe-network-badge" href="https://openvibe.network" title="Connected to OpenVibe"><span class="ov-mark" data-size="16" data-static="1"></span> OpenVibe</a>
                 <div id="openvibe-bell-mount"></div>
                 ${u ? avatarImg(u, 64, 'openvibe-navbar-avatar', 'openvibe-avatar-btn') :
                     `<a class="openvibe-navbar-login" id="openvibe-login-btn" href="${escapeAttr(loginHref)}">Sign In</a>`}

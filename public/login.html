@@ -320,7 +320,7 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
                     <input type="password" name="password_confirm" placeholder="Repeat password" required autocomplete="new-password">
                 </div>
                 <button type="submit" class="submit-btn" id="register-submit">
-                    Create Account <i class="fa-solid fa-circle-nodes"></i>
+                    Create Account <span class="ov-mark" data-size="16" data-static="1"></span>
                 </button>
             </form>
             <a class="back-link" id="register-back" onclick="showChooser()" style="display:none">← Back to saved accounts</a>
@@ -673,7 +673,7 @@ async function selectAccount(account) {
         }
     } else {
         // Not OAuth — just switch the active account and go home
-        toast('Welcome back, ' + (account.display_name || account.username) + '! <i class="fa-solid fa-circle-nodes"></i>', 'success');
+        toast('Welcome back, ' + (account.display_name || account.username) + '! <span class="ov-mark" data-size="16" data-static="1"></span>', 'success');
         setTimeout(() => window.location.href = getReturnUrl(), 600);
     }
 }
@@ -775,10 +775,10 @@ async function handleLogin(e) {
             if (!confirmData.redirect || isLoginLikeRedirect(confirmData.redirect)) {
                 throw new Error('Invalid redirect target returned by OAuth server');
             }
-            toast('Welcome back, ' + (data.user.display_name || data.user.username) + '! <i class="fa-solid fa-circle-nodes"></i>');
+            toast('Welcome back, ' + (data.user.display_name || data.user.username) + '! <span class="ov-mark" data-size="16" data-static="1"></span>');
             setTimeout(() => window.location.href = confirmData.redirect, 800);
         } else {
-            toast('Welcome back, ' + (data.user.display_name || data.user.username) + '! <i class="fa-solid fa-circle-nodes"></i>');
+            toast('Welcome back, ' + (data.user.display_name || data.user.username) + '! <span class="ov-mark" data-size="16" data-static="1"></span>');
             setTimeout(() => window.location.href = getReturnUrl(), 800);
         }
     } catch (err) {
@@ -854,15 +854,15 @@ async function handleRegister(e) {
             if (!confirmData.redirect || isLoginLikeRedirect(confirmData.redirect)) {
                 throw new Error('Invalid redirect target returned by OAuth server');
             }
-            toast('Account created! Welcome to the network <i class="fa-solid fa-circle-nodes"></i>');
+            toast('Account created! Welcome to the network <span class="ov-mark" data-size="16" data-static="1"></span>');
             setTimeout(() => window.location.href = confirmData.redirect, 800);
         } else {
-            toast('Account created! Welcome to the network <i class="fa-solid fa-circle-nodes"></i>');
+            toast('Account created! Welcome to the network <span class="ov-mark" data-size="16" data-static="1"></span>');
             setTimeout(() => window.location.href = getReturnUrl(), 800);
         }
     } catch (err) {
         showMsg('register-msg', err.message, 'error');
-        btn.innerHTML = 'Create Account <i class="fa-solid fa-circle-nodes"></i>';
+        btn.innerHTML = 'Create Account <span class="ov-mark" data-size="16" data-static="1"></span>';
         btn.classList.remove('loading');
     } finally {
         oauthConfirmInFlight = false;
