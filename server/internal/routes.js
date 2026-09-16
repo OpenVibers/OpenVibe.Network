@@ -190,6 +190,22 @@ router.get('/coins/stats', (req, res) => {
             circulating: one('SELECT COALESCE(SUM(balance), 0) AS n FROM wallets'),
             holders: one('SELECT COUNT(*) AS n FROM wallets WHERE balance > 0'),
             transactions: one('SELECT COUNT(*) AS n FROM coin_transactions'),
+            // Rolling windows so the display can say whether the economy is speeding up. Same
+            // shape the Live stats use: this seven days, and the seven before it.
+            recent: {
+                earned: {
+                    w: one("SELECT COALESCE(SUM(delta), 0) AS n FROM coin_transactions WHERE delta > 0 AND created_at >= datetime('now','-7 days')"),
+                    pw: one("SELECT COALESCE(SUM(delta), 0) AS n FROM coin_transactions WHERE delta > 0 AND created_at >= datetime('now','-14 days') AND created_at < datetime('now','-7 days')"),
+                },
+                spent: {
+                    w: one("SELECT COALESCE(-SUM(delta), 0) AS n FROM coin_transactions WHERE delta < 0 AND created_at >= datetime('now','-7 days')"),
+                    pw: one("SELECT COALESCE(-SUM(delta), 0) AS n FROM coin_transactions WHERE delta < 0 AND created_at >= datetime('now','-14 days') AND created_at < datetime('now','-7 days')"),
+                },
+                holders: {
+                    w: one("SELECT COUNT(DISTINCT user_id) AS n FROM coin_transactions WHERE created_at >= datetime('now','-7 days')"),
+                    pw: one("SELECT COUNT(DISTINCT user_id) AS n FROM coin_transactions WHERE created_at >= datetime('now','-14 days') AND created_at < datetime('now','-7 days')"),
+                },
+            },
         };
         _coinStats = { at: Date.now(), data };
         res.json(data);
