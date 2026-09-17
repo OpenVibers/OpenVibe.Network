@@ -96,12 +96,24 @@ const DEFAULT_SERVICE_MAP = {
     live: {
         port: 3000,
         domains: ['openvibe.live', 'www.openvibe.live'],
+        // WHIP ingest and the RTMP-info hostname are served by the same app.
+        extraServerNames: ['whip.openvibe.live', 'ingest.openvibe.live'],
         wildcardDomain: 'openvibe.live',
         maxBodySize: '3m',
         rateZones: [
             { name: 'streamer_api', rate: '10r/s' },
             { name: 'streamer_login', rate: '5r/m' },
         ],
+        // Two per-IP connection budgets: long-lived WebSockets (5-6 per open tab) must not use up the
+        // budget a page load needs for its stylesheets and scripts. Mirrors OpenVibe.Live's
+        // deploy/nginx/openvibe.live.conf, which is what production runs.
+        connZones: ['addr_limit', 'asset_limit'],
+        connLimit: { zone: 'addr_limit', n: 256 },
+        // Static responses cached in front of Node; Node decides cacheability (content-hashed ?v=).
+        proxyCaches: [{ path: '/var/cache/nginx/openvibe-live', zone: 'live_static', size: '20m', maxSize: '1g', inactive: '30d' }],
+        gzip: true,
+        // WebSocket URLs carry session tokens in the query string; keep them out of access logs.
+        logWithoutQuery: true,
         locations: [
             {
                 match: '= /api/auth/register',
@@ -138,9 +150,15 @@ const DEFAULT_SERVICE_MAP = {
                 match: '/ws/',
                 websocket: true,
             },
+            {
+                match: '~ ^/(?!api/|ws/|data/|media/).*\\.(?:css|js|mjs|map|woff2?|ttf|otf|svg|png|jpe?g|gif|ico|webp|mp3|wav)$',
+                connLimit: { zone: 'asset_limit', n: 100 },
+                proxyCache: 'live_static',
+            },
         ],
         defaultLocationExtras: {
             websocket: true,
+            cfConnectingIp: true,
             headers: {
                 'Permissions-Policy': 'camera=*, microphone=*, display-capture=*',
             },
@@ -367,6 +385,10 @@ function generateProxyBlock(port, loc = {}) {
         lines.push('chunked_transfer_encoding off;');
     }
 
+    if (loc.cfConnectingIp) {
+        lines.push('proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;');
+    }
+
     if (loc.readTimeout) {
         lines.push(`proxy_read_timeout ${loc.readTimeout};`);
     }
@@ -392,6 +414,19 @@ function generateLocationBlock(port, loc) {
 
     if (loc.maxBodySize) {
         lines.push(`client_max_body_size ${loc.maxBodySize};`);
+    }
+
+    if (loc.connLimit) {
+        lines.push(`limit_conn ${loc.connLimit.zone} ${loc.connLimit.n};`);
+    }
+
+    if (loc.proxyCache) {
+        // Only responses the app marks cacheable are stored (nginx honours Cache-Control).
+        lines.push(`proxy_cache ${loc.proxyCache};`);
+        lines.push('proxy_cache_key "$host$uri$is_args$args";');
+        lines.push('proxy_cache_lock on;');
+        lines.push('proxy_cache_use_stale error timeout updating http_502 http_503;');
+        lines.push('add_header X-Cache $upstream_cache_status always;');
     }
 
     lines.push(generateProxyBlock(port, loc));
@@ -437,7 +472,7 @@ function parseDurationToSeconds(dur) {
  */
 function generateServiceConfig(serviceId, svc, opts = {}) {
     const lines = [];
-    const allDomains = [...(svc.domains || [])];
+    const allDomains = [...(svc.domains || []), ...(svc.extraServerNames || [])];
     if (svc.wildcardDomain && !svc.parentDomain) {
         // Add wildcard to server_name if this service owns the domain
         if (!allDomains.includes(`*.${svc.wildcardDomain}`)) {
@@ -461,6 +496,18 @@ function generateServiceConfig(serviceId, svc, opts = {}) {
         }
         lines.push('');
     }
+
+    if (svc.logWithoutQuery) {
+        lines.push(`log_format ${serviceId}_noquery '$remote_addr - $remote_user [$time_local] "$request_method $uri $server_protocol" $status $body_bytes_sent "$http_referer" "$http_user_agent"';`);
+    }
+    // Connection budgets and response caches
+    for (const zone of svc.connZones || []) {
+        lines.push(`limit_conn_zone $binary_remote_addr zone=${zone}:10m;`);
+    }
+    for (const c of svc.proxyCaches || []) {
+        lines.push(`proxy_cache_path ${c.path} levels=1:2 keys_zone=${c.zone}:${c.size || '10m'} max_size=${c.maxSize || '512m'} inactive=${c.inactive || '7d'} use_temp_path=off;`);
+    }
+    if ((svc.connZones || []).length || (svc.proxyCaches || []).length) lines.push('');
 
     // HTTP → HTTPS redirect
     lines.push('# HTTP → HTTPS redirect');
@@ -494,13 +541,29 @@ function generateServiceConfig(serviceId, svc, opts = {}) {
 
     // Logs
     const logName = svc.domains?.[0]?.replace(/\./g, '-') || serviceId;
-    lines.push(`    access_log /var/log/nginx/${logName}.access.log;`);
+    lines.push(`    access_log /var/log/nginx/${logName}.access.log${svc.logWithoutQuery ? ` ${serviceId}_noquery` : ''};`);
     lines.push(`    error_log  /var/log/nginx/${logName}.error.log;`);
     lines.push('');
 
     // Body size
     lines.push(`    client_max_body_size ${svc.maxBodySize || '5m'};`);
     lines.push('');
+
+    if (svc.connLimit) {
+        lines.push(`    limit_conn ${svc.connLimit.zone} ${svc.connLimit.n};`);
+        lines.push('');
+    }
+
+    if (svc.gzip) {
+        // Compress text on the hop to the CDN too; the global config does not compress proxied responses.
+        lines.push('    gzip on;');
+        lines.push('    gzip_proxied any;');
+        lines.push('    gzip_vary on;');
+        lines.push('    gzip_comp_level 5;');
+        lines.push('    gzip_min_length 1024;');
+        lines.push('    gzip_types text/css application/javascript text/javascript application/json image/svg+xml text/plain application/xml text/xml;');
+        lines.push('');
+    }
 
     // Security headers
     if (svc.headers) {
