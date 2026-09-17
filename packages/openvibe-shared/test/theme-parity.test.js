@@ -13,8 +13,8 @@ execFileSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'build-the
 // 2. Default and the three themes this round is about.
 assert.strictEqual(DEFAULT_THEME.id, 'vibe');
 const by = Object.fromEntries(BUILTIN_THEMES.map((t) => [t.id, t]));
-assert.ok(by['vibe-classic'], 'the old violet look is kept as Classic Vibe');
-assert.strictEqual(by['vibe-classic'].variables['--accent'], '#8b5cf6');
+assert.ok(by['violet-hour'], 'the original violet look is kept as Violet Hour');
+assert.strictEqual(by['violet-hour'].variables['--accent'], '#8b5cf6');
 assert.notStrictEqual(by.vibe.variables['--accent'], by.arctic.variables['--accent'], 'Vibe and Arctic are different blues');
 assert.notStrictEqual(by.vibe.variables['--bg-primary'], by.arctic.variables['--bg-primary']);
 
@@ -34,8 +34,16 @@ for (const t of BUILTIN_THEMES) {
 
 // 4. Loader: full sets and stale-token clearing are present.
 const loader = require('fs').readFileSync(path.join(__dirname, '..', 'theme-loader.js'), 'utf8');
-assert.ok(loader.includes("'vibe-classic': {"), 'loader knows Classic Vibe');
+assert.ok(loader.includes("'violet-hour': {"), 'loader knows Violet Hour');
 assert.ok(/'arctic': \{[^\n]*'--success'/.test(loader), 'loader entries carry the full token set');
 assert.ok(loader.includes('KNOWN_PROPS'), 'loader clears tokens the new theme does not set');
 
+// 5. Derived tokens: text on the accent always reads, on every theme.
+const { contrast, hexToRgb } = require('../builtin-themes');
+for (const t of BUILTIN_THEMES) {
+    const v = t.variables;
+    assert.ok(v['--on-accent'] && v['--accent-rgb'] && v['--accent-glow'] && v['--color-scheme'], `${t.id} lacks derived tokens`);
+    assert.ok(contrast(hexToRgb(v['--on-accent']), hexToRgb(v['--accent'])) >= 3, `${t.id}: --on-accent does not read on --accent`);
+    assert.strictEqual(v['--color-scheme'], t.mode === 'light' ? 'light' : 'dark');
+}
 console.log('theme parity: all checks passed');
