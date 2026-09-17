@@ -710,7 +710,10 @@ function initDb(dbPath) {
                 JSON.stringify(t.tags || [])
             );
         }
-        console.log(`[DB] Synced ${BUILTIN_THEMES.length} built-in themes`);
+        // A built-in that was renamed or removed must not linger as a stale catalog row.
+        const ids = BUILTIN_THEMES.map((t) => t.id);
+        const gone = db.prepare(`DELETE FROM themes WHERE is_builtin = 1 AND id NOT IN (${ids.map(() => '?').join(',')})`).run(...ids).changes;
+        console.log(`[DB] Synced ${BUILTIN_THEMES.length} built-in themes${gone ? ` (removed ${gone} stale)` : ''}`);
     }
 
     // ── Sync Roles From Linked OpenVibe.Live Accounts ────────
