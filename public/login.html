@@ -732,6 +732,9 @@ function getReturnUrl() {
 // then on to where the user was going. An OAuth client that just got its code is skipped
 // (it is about to sign in with that code).
 function viaFanout(url, skipClient) {
+    // Sites now pick the session up on their own (hidden /sso/check + silent sign-in when they
+    // are opened), so the chain only runs when explicitly asked for.
+    if (params.get('everywhere') !== '1') return url;
     if (!url || /[?&]error=/.test(String(url))) return url;
     const u = new URL('/sso/fanout', window.location.origin);
     u.searchParams.set('next', String(url));

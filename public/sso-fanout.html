@@ -73,6 +73,7 @@ li.now .dot i{animation:spin 1s linear infinite}
       // The network's own session goes last, after every site had its turn.
       try { for (const k of ['ov_token', 'openvibe_accounts', 'openvibe_active_account', 'openvibe_anon_token', 'openvibe_anon_tokens']) localStorage.removeItem(k); } catch (e) { /* */ }
       document.cookie = 'ov_token=;path=/;max-age=0;SameSite=Lax;Secure';
+      try { fetch('/api/auth/logout', { method: 'POST', credentials: 'include', keepalive: true }).catch(() => {}); } catch (e) { /* */ }
     }
     location.replace(next);
   };

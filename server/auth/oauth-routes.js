@@ -44,11 +44,12 @@ router.get('/authorize', (req, res) => {
     if (String(req.query.prompt || '') === 'none') {
         const sep = redirect_uri.includes('?') ? '&' : '?';
         try {
-            const { verifySession, COOKIE } = require('./session');
-            const out = verifySession(req.cookies?.ov_token, { db, publicKey: req.app.locals.publicKey, config: getConfig(req) });
+            const { verifySession, setSessionCookies } = require('./session');
+            const have = req.cookies?.ov_token || req.cookies?.ov_sso;
+            const out = verifySession(have, { db, publicKey: req.app.locals.publicKey, config: getConfig(req) });
             if (!out.error) {
-                const token = out.renew ? require('./routes').signToken(out.user, req.app.locals.privateKey, getConfig(req)) : req.cookies.ov_token;
-                res.cookie('ov_token', token, COOKIE);
+                const token = out.renew ? require('./routes').signToken(out.user, req.app.locals.privateKey, getConfig(req)) : have;
+                setSessionCookies(res, token);
                 const code = crypto.randomBytes(32).toString('hex');
                 const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
                 db.prepare(`INSERT INTO oauth_codes (code, client_id, user_id, redirect_uri, scope, expires_at) VALUES (?, ?, ?, ?, ?, ?)`)
@@ -118,7 +119,7 @@ router.post('/confirm', (req, res) => {
 
     // Also set cookie to this account so openvibe.network itself knows the active session.
     // Host-only (NO Domain attribute) — the ov_token cookie belongs to openvibe.network alone.
-    res.cookie('ov_token', token, { httpOnly: false, maxAge: 90 * 24 * 60 * 60 * 1000, sameSite: 'Lax', secure: true, path: '/' });
+    require('./session').setSessionCookies(res, token);
 
     const sep = redirect_uri.includes('?') ? '&' : '?';
     res.json({ redirect: `${redirect_uri}${sep}code=${code}&state=${state || ''}` });
