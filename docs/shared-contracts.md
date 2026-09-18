@@ -145,3 +145,28 @@ Public, CORS `*`, `max-age=600`, ETag. What the navbar and footer of every site 
 redirects). Placeholder domains and Games get static copies from OpenVibe.Sites. Facts in the
 documents (retention windows, cookies, providers) must match the code; they are templates for the
 owner to review, not legal advice.
+
+## 9. App icons (`require('openvibe-shared/app-icon')`)
+
+One mark for every site, tinted per site (`SITES`): `svg({ site, maskable })`, `favicon({ site })`,
+`manifest({ site, name, shortName, description, iconBase })`, `headTags({ site, iconBase })`.
+`scripts/build-app-icons.js <site> <outDir> [--sharp <module>]` renders `logo.svg`,
+`logo-{72,192,512}.png` and `logo-maskable-{192,512}.png`. `theme-loader.js` repaints
+`link[rel=icon][data-ov-icon]` and `meta[name=theme-color]` on every theme apply and emits `ov:theme`.
+
+## 10. Display preferences (in `theme-loader.js`)
+
+`OpenVibeThemeLoader.display.get()` / `.set({ motion: 'auto'|'reduced', text: '100'|'112'|'125' })`.
+Applied before first paint as `<html data-ov-motion>` and `--ov-text-scale` / `data-ov-text`; stored
+in `localStorage.ov_display`, synced across tabs, saved to the account through
+`PUT /api/themes/me/display` and returned by `GET /api/themes/me/active` (`display`). Emits
+`ov:display`. Controls: the navbar launcher everywhere, the user menu on Live. Site-specific layout
+choices (card density, chat width, units) stay local to the site that owns them.
+
+## 11. Internal routes
+
+Service-to-service routes need `X-Internal-Key` = the deployment's `INTERNAL_API_KEY` **and** a
+loopback caller with no proxy headers (Tools: `apps/_shared/internal-auth.js`; Live:
+`server/internal/routes.js`). No secret is ever a constant in a repository. Tools' gateway sums its
+satellites at `GET /api/internal/analytics`; Games and Media have no analytics, so the admin panel
+shows their navbar page-view count, labelled as such.
