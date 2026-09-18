@@ -11,7 +11,7 @@ const toolsCatalog = require('../domains/catalog');
 
 const SHELL = path.join(__dirname, '..', '..', 'public', 'index.html');
 const esc = seo.esc;
-const icon = (name, size) => `<span class="ov-icon" data-icon="${esc(name)}" data-fx="none" style="--ovi-size:${size}px" aria-hidden="true">${icons.svg(name)}</span>`;
+const icon = (name, size) => `<span class="ov-icon" data-icon="${esc(name)}" data-ovi="${esc(icons.resolve(name))}" data-fx="none" style="--ovi-size:${size}px" aria-hidden="true">${icons.svg(name)}</span>`;
 
 const SITES = [
     ['live', 'OpenVibe.Live', 'https://openvibe.live/', 'Live streaming', 'Go live from a browser, OBS or a phone. Restream to other platforms, clip moments, run chat games and keep your VODs.'],
@@ -22,6 +22,8 @@ const SITES = [
 ];
 const SOON = [['chat', 'Chat'], ['codes', 'Codes'], ['blog', 'Blog'], ['wiki', 'Wiki'], ['news', 'News'], ['reviews', 'Reviews'], ['tips', 'Tips'], ['vip', 'VIP'], ['trade', 'Trade'], ['host', 'Host'], ['deals', 'Deals'], ['coupons', 'Coupons']];
 const ACCOUNT = [
+    ['live', 'Go live and keep your VODs', 'Stream from a browser tab, clip the good parts, earn channel points and restream to other platforms.', 'https://openvibe.live/'],
+    ['tools', 'Tool results that stick around', 'Guests keep results for an hour. Signed in, they stay for a day and your recent tools follow you.', 'https://openvibe.tools/'],
     ['account', 'One sign-in', 'Sign in once. Every OpenVibe site recognises you, including the ones you have not visited yet.', '/login'],
     ['theme', 'Themes that follow you', 'Pick or build a theme and every site wears it.', '/themes'],
     ['history', 'History across sites', 'Streams you watched, tools you used and pastes you opened, in one list you control.', '/history'],
@@ -30,7 +32,7 @@ const ACCOUNT = [
 const POPULAR = ['yt', 'convert', 'mergepdf', 'jsonfmt', 'mp3', 'dns', 'whois', 'compress', 'fancy', 'ssl', 'logo', 'regex'];
 
 const CSS = `
-.home-sec{margin:56px 0 0}.home-sec>h2{font-size:clamp(22px,2.6vw,30px);letter-spacing:-.02em;margin:0 0 6px}.home-sec>p.lede{color:var(--text-secondary,#a8b3c4);margin:0 0 18px;max-width:760px}
+.home-sec{max-width:1080px;margin:56px auto 0;padding:0 24px}.home-sec>h2{font-size:clamp(22px,2.6vw,30px);letter-spacing:-.02em;margin:0 0 6px}.home-sec>p.lede{color:var(--text-secondary,#a8b3c4);margin:0 0 18px;max-width:760px}
 .home-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
 .home-card{display:flex;gap:14px;align-items:flex-start;padding:16px;border-radius:16px;border:1px solid var(--border,rgba(255,255,255,.08));background:var(--bg-secondary,#111826);color:inherit;text-decoration:none;transition:border-color .15s,transform .15s}
 .home-card:hover,.home-card:focus-visible{border-color:var(--accent,#3b82f6);transform:translateY(-2px);outline:0}
@@ -40,8 +42,8 @@ const CSS = `
 .home-fam{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.08));color:inherit;text-decoration:none}
 .home-fam:hover{border-color:var(--accent,#3b82f6)}.home-fam b{display:block;font-size:14.5px}.home-fam small{color:var(--text-muted,#7d8aa0);font-size:12.5px}
 .home-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;padding:0;list-style:none}
-.home-chips a,.home-chips span{display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 7px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));font-size:13.5px;font-weight:600;color:inherit;text-decoration:none}
-.home-chips a:hover{border-color:var(--accent,#3b82f6)}.home-chips span{color:var(--text-secondary,#a8b3c4)}
+.home-chips>li>a{display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 7px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));font-size:13.5px;font-weight:600;color:inherit;text-decoration:none}
+.home-chips>li>a:hover{border-color:var(--accent,#3b82f6)}
 .home-dev{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
 .home-dev div{padding:16px;border-radius:16px;border:1px dashed var(--border,rgba(255,255,255,.14))}.home-dev b{display:block;margin-bottom:4px}.home-dev p{margin:0;color:var(--text-secondary,#a8b3c4);font-size:13.5px}.home-dev code{font-size:12.5px}
 @media (prefers-reduced-motion:reduce){.home-card{transition:none}}
@@ -53,14 +55,14 @@ function body(catalog) {
     const fams = catalog.families.filter(f => f.url);
     const count = (f) => f.count || catalog.tools.filter(t => t.family === f.id).length;
     return `<style>${CSS}</style>
-<section class="home-sec" id="network" aria-labelledby="h-sites"><h2 id="h-sites">The network</h2><p class="lede">Five sites are open today. Your account, theme and notifications work on all of them.</p>
+<section class="home-sec" id="network" aria-labelledby="h-sites"><h2 id="h-sites">Five sites, one front door</h2><p class="lede">Stream, build, share, play and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.</p>
 <div class="home-grid">${SITES.map(([ic, n, u, tag, d]) => `<a class="home-card" href="${u}">${icon(ic, 48)}<span><b>${n}</b><em>${tag}</em><small>${d}</small></span></a>`).join('')}</div></section>
-<section class="home-sec" id="tools" aria-labelledby="h-tools"><h2 id="h-tools">${catalog.tools.length} tools, one toolbox</h2><p class="lede">Every tool has its own short address, so <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> or <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a> takes you straight there. Browse them all at <a href="https://openvibe.tools/">openvibe.tools</a>.</p>
+<section class="home-sec" id="tools" aria-labelledby="h-tools"><h2 id="h-tools">${catalog.tools.length} tools that just open</h2><p class="lede">No installs and no sign-up wall. Every tool has its own short address, so <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> or <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a> takes you straight there. Browse them all at <a href="https://openvibe.tools/">openvibe.tools</a>.</p>
 <div class="home-fams">${fams.map(f => `<a class="home-fam" href="${esc(f.path ? 'https://openvibe.tools' + f.path : f.url)}">${icon(f.icon, 38)}<span><b>${esc(f.name)}</b><small>${count(f)} tools · ${esc(f.tagline || '')}</small></span></a>`).join('')}</div>
 <ul class="home-chips">${popular.map(t => `<li><a href="${esc(t.url)}" title="${esc(t.tagline || '')}">${icon(t.icon, 22)}${esc(t.name)}</a></li>`).join('')}</ul></section>
-<section class="home-sec" aria-labelledby="h-acct"><h2 id="h-acct">What your account does</h2><p class="lede">openvibe.network is the identity behind every site. It holds your sign-in and your preferences, and nothing else.</p>
+<section class="home-sec" aria-labelledby="h-acct"><h2 id="h-acct">What signing in adds</h2><p class="lede">You can use almost everything as a guest. An account is for the things that need to remember you, and it works on every OpenVibe site the moment you arrive.</p>
 <div class="home-grid">${ACCOUNT.map(([ic, n, d, u]) => `<a class="home-card" href="${u}">${icon(ic, 44)}<span><b>${n}</b><small>${d}</small></span></a>`).join('')}</div></section>
-<section class="home-sec" aria-labelledby="h-soon"><h2 id="h-soon">More rooms being built</h2><p class="lede">These addresses are reserved and open as each one is ready.</p>
+<section class="home-sec" aria-labelledby="h-soon"><h2 id="h-soon">Opening next</h2><p class="lede">Thirteen more addresses are staked out. Each one opens when it is good enough to use daily, and your account will already work there.</p>
 <ul class="home-chips">${SOON.map(([id, n]) => `<li><a href="https://openvibe.${id}/">${icon(id, 22)}OpenVibe.${n}</a></li>`).join('')}<li><a href="https://openre.stream/">${icon('stream', 22)}OpenRe.Stream</a></li></ul></section>
 <section class="home-sec" aria-labelledby="h-dev"><h2 id="h-dev">For developers and crawlers</h2><p class="lede">OpenVibe is open source and community-run. Everything public is meant to be read by machines too.</p>
 <div class="home-dev"><div><b>Tool catalog</b><p>Every tool with its description, keywords and addresses as JSON: <a href="https://openvibe.tools/api/catalog.json"><code>openvibe.tools/api/catalog.json</code></a></p></div>

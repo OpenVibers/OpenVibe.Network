@@ -152,8 +152,8 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
     <!-- Hero -->
     <section class="hero">
         <div class="hero-badge"><span class="ov-mark" data-size="20" data-variant="network"></span> The OpenVibe Network — open source, community run</div>
-        <h1>One Account.<br><span class="grad">All of OpenVibe.</span></h1>
-        <p class="sub">Live streaming, <!--OV:COUNT--> online tools, games, media, pastes and community. One account works across the whole network: sign in once and every OpenVibe site knows you.</p>
+        <h1>The open network<br><span class="grad">for what you do online.</span></h1>
+        <p class="sub">Live streaming, <!--OV:COUNT--> online tools, games, community pastes and a shared media library. Open source, run by the people who use it, and open to everyone without an account. Sign in once and every site already knows you.</p>
         <div class="hero-ctas" id="hero-guest-ctas">
             <a class="btn btn-primary" href="/login"><i class="fa-solid fa-right-to-bracket"></i> Sign In</a>
             <a class="btn btn-ghost" href="/login?tab=register"><i class="fa-solid fa-user-plus"></i> Create Account</a>
@@ -193,7 +193,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 
     function initNavbar(user) {
         if (typeof OpenVibeNavbar !== 'undefined') {
-            OpenVibeNavbar.init({ service: 'network', token: token || null, user: user || null, links: [{ label: 'Home', href: '/' }, { label: 'My Account', href: '/my' }, { label: 'Themes', href: '/themes' }, { label: 'The network', href: '/#network' }] });
+            OpenVibeNavbar.init({ service: 'network', token: token || null, user: user || null, links: [{ label: 'My Account', href: '/my' }, { label: 'Themes', href: '/themes' }], networkLinks: 5 });
         }
         if (user) {
             document.getElementById('hero-guest-ctas').style.display = 'none';

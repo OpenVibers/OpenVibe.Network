@@ -415,6 +415,14 @@ function requireAdmin(req, res, next) {
     }
     next();
 }
+// Terms, Privacy and DMCA for this domain (openvibe-shared/legal; every site serves its own).
+{ const legal = require('openvibe-shared/legal'); app.get(legal.PATHS, legal.handler({ id: 'network', service: 'network', host: 'openvibe.network', name: 'OpenVibe.Network', profile: 'account' })); app.get('/tos', (_req, res) => res.redirect(301, '/terms')); }
+
+// Shared chrome: analytics-ranked navigation + footer copy for every site (server/chrome).
+const chromeService = require('./chrome/service').createChromeService(db, config, analytics);
+app.use('/api/chrome', rateLimit({ windowMs: 60_000, max: 240 }), chromeService.router);
+chromeService.start();
+
 // Tool domains: public list for the Tools gateway, owner-only management (docs/shared-contracts.md §1).
 const toolDomains = require('./domains/routes').createDomainRoutes(db, requireAuth);
 app.use('/api/domains', rateLimit({ windowMs: 60_000, max: 120 }), toolDomains.publicRouter);
