@@ -121,3 +121,11 @@ cookies and CORS and buys nothing at this size. `my.openvibe.network` already re
 - Shared package changes: edit in the Network, `npm test`, deploy the Network (browsers pick
   it up within the hour — nginx caches `/shared/` for 1h, Cloudflare respects it), then
   re-sync vendor copies in Live/Tools/Media/Community for the server-side helpers.
+
+## 2026-09-18 — shared systems shipped
+
+- **Shared browser modules** (`/shared/*`): `ov-icons.js` (animated icon family with progress and state), `island.js` (activity island docked beside the navbar brand, also `OpenVibeNavbar.activity`), `ui.js` (toast, confirm, alert), navbar launcher (sites + tool families + tool search from the catalog), linked brand segments (tool → OpenVibe → site apex), bell mounted by the navbar itself. Node: `openvibe-shared/seo`, `openvibe-shared/icons`. Contract: `docs/shared-contracts.md`.
+- **Tool registry** (OpenVibe.Tools `apps/gateway/server/registry`): every tool and family with canonical / short / alias hosts; unknown `*.openvibe.tools` → 301 to the index, unknown custom domains → 404; satellite hosts that reach the gateway are streamed to the satellite with `X-OV-*` headers. `GET https://openvibe.tools/api/catalog.json`.
+- **Owner-only domains**: `openvibe.network/admin` → Domains (API `/api/admin/domains`, public `/api/domains`). Custom domain flow: DNS → `deploy/scripts/add-custom-domain.sh <domain>` on the host → attach the host to a tool in admin. Tools picks it up within a minute.
+- **Server-rendered pages**: openvibe.tools index, family pages, `/tool/<id>`, `/all-tools`, `/search`, sitemap, robots, `llms.txt`; openvibe.network home rendered from the same catalog plus `/llms.txt`.
+- **Open items**: satellites other than YT still compute their own canonical host (they ignore `X-OV-Canonical-Host`); YouTube currently refuses the server's address, so YT needs `YT_PROXY` or `YT_COOKIES_FILE` in its unit environment; Tools deploy is `deploy/scripts/deploy.sh` (refreshes the copied shared package in each app's node_modules).
