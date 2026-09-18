@@ -388,7 +388,7 @@ router.put('/profile', requireAuth, (req, res) => {
     if (avatar_url !== undefined) {
         // Same rule as PUT /api/profile/avatar: only pictures on openvibe.media (or a paste, resolved to its screenshot).
         const n = require('../profile/avatar').normalizeAvatar(avatar_url);
-        if (n.error) return res.status(400).json({ error: n.error });
+        if (n.error || n.ingest) return res.status(400).json({ error: n.error || 'Set your picture from the Avatar card (PUT /api/profile/avatar): links are imported to openvibe.media first' });
         updates.push('avatar_url = ?'); params.push(n.url);
     }
     let emailChanged = false;

@@ -10,7 +10,9 @@ assert.equal(normalizeAvatar('https://openvibe.community/p/teal-holly-41').url, 
 assert.equal(normalizeAvatar('https://openvibe.live/p/teal-holly-41/').url, `${M}/p/teal-holly-41/screenshot`, 'a Live paste link');
 assert.equal(normalizeAvatar(`${M}/f/screenshots/avatar-1.png`).url, `${M}/f/screenshots/avatar-1.png`, 'a media file');
 assert.equal(normalizeAvatar('').url, null, 'empty clears it');
-for (const bad of ['https://evil.example/p.png', 'http://openvibe.media/x.png', 'javascript:alert(1)', 'https://openvibe.media.evil.example/x.png', 'https://user:pw@openvibe.media/x.png', 'data:image/png;base64,AAAA', '../../etc/passwd'])
+assert.deepEqual(normalizeAvatar('https://example.com/me.png'), { ingest: 'https://example.com/me.png' }, 'a link elsewhere is imported, never stored');
+assert.ok(!normalizeAvatar('https://openvibe.media.evil.example/x.png').url, 'look-alike hosts are not openvibe.media');
+for (const bad of ['http://openvibe.media/x.png', 'javascript:alert(1)', 'https://user:pw@openvibe.media/x.png', 'data:image/png;base64,AAAA', '../../etc/passwd'])
     assert.ok(normalizeAvatar(bad).error, `rejected: ${bad}`);
 
 (async () => {
