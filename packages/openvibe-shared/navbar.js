@@ -1200,7 +1200,6 @@
             </div>
             <div class="openvibe-navbar-spacer"></div>
             <div class="openvibe-navbar-right">
-                <a class="openvibe-network-badge" href="https://openvibe.network" title="Connected to OpenVibe"><span class="ov-mark" data-size="16" data-static="1"></span> OpenVibe</a>
                 <div id="openvibe-bell-mount"></div>
                 ${u ? avatarImg(u, 64, 'openvibe-navbar-avatar', 'openvibe-avatar-btn') :
                     `<a class="openvibe-navbar-login" id="openvibe-login-btn" href="${escapeAttr(loginHref)}">Sign In</a>`}
