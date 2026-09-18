@@ -83,7 +83,26 @@ router.get('/me/active', (req, res, next) => {
 
     let custom = null;
     try { custom = prefs.custom_theme_variables ? JSON.parse(prefs.custom_theme_variables) : null; } catch {}
-    res.json({ theme_id: prefs.theme_id, custom_variables: custom });
+    let display = null;
+    try { const d = db.prepare('SELECT display_prefs FROM user_preferences WHERE user_id = ?').get(userId); display = cleanDisplay(d && d.display_prefs ? JSON.parse(d.display_prefs) : null); } catch { /* column arrives with the migration */ }
+    res.json({ theme_id: prefs.theme_id, custom_variables: custom, display });
+});
+
+// ── Display preferences (motion, text size) — follow the account to every site ──
+const DISPLAY = { motion: ['auto', 'reduced'], text: ['100', '112', '125'] };
+function cleanDisplay(d) {
+    if (!d || typeof d !== 'object') return null;
+    const out = {};
+    for (const k of Object.keys(DISPLAY)) if (DISPLAY[k].includes(String(d[k]))) out[k] = String(d[k]);
+    return Object.keys(out).length ? out : null;
+}
+router.put('/me/display', requireAuth, (req, res) => {
+    const db = getDb(req);
+    const userId = req.user.sub || req.user.id;
+    const display = cleanDisplay(req.body) || {};
+    db.prepare(`INSERT INTO user_preferences (user_id, display_prefs, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_id) DO UPDATE SET display_prefs = excluded.display_prefs, updated_at = CURRENT_TIMESTAMP`).run(userId, JSON.stringify(display));
+    res.json({ ok: true, display });
 });
 
 // ── Get Theme by ID or Slug ──────────────────────────────────
