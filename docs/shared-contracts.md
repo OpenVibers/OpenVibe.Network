@@ -175,3 +175,37 @@ shows their navbar page-view count, labelled as such.
 
 Icon glyphs are optically centred from measured bounds: after adding or editing a glyph run
 `node packages/openvibe-shared/scripts/measure-icons.js <cdp harness>` to regenerate the offsets table.
+
+## 12. Avatar — one picture per account, always on openvibe.media
+
+Source of truth: `users.avatar_url` on the Network (`server/profile/avatar.js`). It is only ever an
+`https://openvibe.media/…` address. Clients never supply the stored address:
+
+| input to `PUT /api/profile/avatar { source }` | what happens |
+|---|---|
+| a paste link or slug (community, live, media) | resolved to `https://openvibe.media/p/<slug>/screenshot`, checked to be an image |
+| an `https://openvibe.media/…` image | checked to be an image |
+| any other https picture link | **imported**: Media fetches it once (`POST /internal/avatar-ingest`: public addresses only, connection pinned to the checked address, ≤ 3 redirects, 8 MB, 10 s), re-encodes to a 512×512 WebP and stores it as an unlisted avatar paste (`app_id = 'network'`) |
+| anything else | refused |
+
+`DELETE /api/profile/avatar` clears it. `GET https://openvibe.network/avatar/<username>[?s=96]` is public and
+cacheable: 302 to the picture, or a generated initial; usable in any `<img>` on any site.
+Sync: the Network pushes changes to Live (`POST /internal/user-avatar` on Live); Live reports its own avatar
+picker's changes to the Network (`POST /internal/user-avatar` on the Network, media addresses only). A change
+that came from a site is not echoed back to it.
+
+## 13. Navbar for app-style sites (what Live uses)
+
+`OpenVibeNavbar.init({ …, auth: 'external', className, links, chips, menu, onNavigate, onLogout, accounts, adminLink })`
+
+- `links[]`: `{ id, page, label, href, icon, elId, hidden, external, dot, dotId, onClick, children[] }` — children make a
+  dropdown; on narrow screens every link moves into the drawer behind the hamburger.
+- `chips[]` (beside the bell) and `menu.headerChips[]`: `{ id, icon, value, valueId, title, tone: 'gold'|'green', onClick }`.
+- `menu.sections[]`: `{ id, label, items: [{ id, label, icon, href, onClick, hidden, danger, value, elId }] }`;
+  `menu.defaults: false` drops the built-in "You"/account rows, the Display and Across OpenVibe groups stay.
+- `auth: 'external'`: the site signs people in itself and calls `setUser(user, token)`.
+- `onNavigate(href, event)`: same-origin links and menu rows go through the site's router (return `false` when handled).
+- API: `setUser`, `setActive(page)`, `setChip(id, text)`, `updateLink(id, patch)`, `updateMenuItem(id, patch)`.
+- State classes a site puts on the bar (Live's `nav-hero-top`) survive re-renders. Icons are inline SVG for the
+  31 names in `NAV_ICONS`; other Font Awesome names fall back to the page's font.
+Live's whole navbar is `public/js/ov-navbar-live.js` (config only) mounted in `#navbar-mount`.
