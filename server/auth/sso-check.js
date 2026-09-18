@@ -15,7 +15,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 // Only the zones OpenVibe owns — not openvibe.<anything>, which anyone could register.
-const OWNED = ['openvibe.network', 'openvibe.live', 'openvibe.tools', 'openvibe.media', 'openvibe.games', 'openvibe.community', 'openvibe.chat', 'openvibe.codes', 'openvibe.blog', 'openvibe.wiki', 'openvibe.news', 'openvibe.reviews', 'openvibe.tips', 'openvibe.vip', 'openvibe.trade', 'openvibe.host', 'openvibe.deals', 'openvibe.coupons', 'openre.stream'];
+const { OWNED_ZONES: OWNED } = require('./sso-owned');
 const ORIGIN_RE = new RegExp(`^https://(?:[a-z0-9-]+\\.)*(?:${OWNED.map(d => d.replace(/\./g, '\\.')).join('|')})$`, 'i');
 const LOCAL_RE = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/;
 

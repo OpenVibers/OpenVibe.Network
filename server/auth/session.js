@@ -51,8 +51,10 @@ const SSO_COOKIE = { httpOnly: true, maxAge: 90 * 24 * 60 * 60 * 1000, sameSite:
 function setSessionCookies(res, token) {
     res.cookie('ov_token', token, COOKIE);
     res.cookie('ov_sso', token, SSO_COOKIE);
+    res.set('Set-Login', 'logged-in');          // FedCM login-status: the browser may offer this account to RPs
 }
 function clearSessionCookies(res) {
+    res.set('Set-Login', 'logged-out');
     res.clearCookie('ov_token', { path: '/', sameSite: 'Lax', secure: true });
     res.clearCookie('ov_sso', { path: '/', sameSite: 'None', secure: true, httpOnly: true });
 }

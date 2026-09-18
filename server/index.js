@@ -538,6 +538,14 @@ app.get('/verify-email', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'verify-email.html'));
 });
 
+// FedCM identity provider (browser-native sign-in for the other OpenVibe sites) — server/auth/fedcm.js
+{
+    const fedcm = require('./auth/fedcm');
+    const ctx = () => ({ db, publicKey, privateKey, config });
+    app.get('/.well-known/web-identity', fedcm.wellKnown(ctx));
+    app.use('/fedcm', fedcm.createFedcmRoutes(ctx));
+}
+
 // Silent cross-site session check (hidden iframe from any OpenVibe site) — see server/auth/sso-check.js
 app.get('/sso/check', require('./auth/sso-check').createSsoCheckRoute(() => ({ db, publicKey, config })));
 

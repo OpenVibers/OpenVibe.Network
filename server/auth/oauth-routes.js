@@ -143,6 +143,8 @@ router.post('/token', (req, res) => {
         return handleAuthCodeGrant(db, config, req, res, client, code, redirect_uri);
     } else if (grant_type === 'refresh_token') {
         return handleRefreshGrant(db, config, req, res, client, refresh_token);
+    } else if (grant_type === 'urn:ietf:params:oauth:grant-type:jwt-bearer') {
+        return handleFedcmAssertionGrant(db, config, req, res, client, req.body.assertion);
     } else {
         return res.status(400).json({ error: 'unsupported_grant_type' });
     }
@@ -205,6 +207,31 @@ function handleAuthCodeGrant(db, config, req, res, client, code, redirectUri) {
         user: safeUser,
         preferences: prefs || { theme_id: 'vibe' },
     });
+}
+
+/**
+ * RFC 7523 jwt-bearer grant carrying a FedCM assertion (server/auth/fedcm.js): the RP's server
+ * hands back the assertion the browser obtained for it and receives the same token pair the
+ * code grant issues, so its session logic does not change. The assertion must be ours, unused,
+ * unexpired, and minted for an origin this client owns.
+ */
+function handleFedcmAssertionGrant(db, config, req, res, client, assertion) {
+    if (!assertion) return res.status(400).json({ error: 'invalid_request', error_description: 'Missing assertion' });
+    let decoded;
+    try {
+        const { verifyAssertion } = require('./fedcm');
+        const { clientOriginMatcher } = require('./sso-owned');
+        decoded = verifyAssertion(String(assertion), { publicKey: req.app.locals.publicKey, config }, clientOriginMatcher(client));
+    } catch (err) {
+        return res.status(400).json({ error: 'invalid_grant', error_description: err.message });
+    }
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.sub || decoded.id);
+    if (!user || user.is_banned) return res.status(400).json({ error: 'invalid_grant', error_description: 'User not found or banned' });
+    const { accessToken, refreshToken } = issueTokenPair(db, config, req, user, client);
+    recordLinkedService(db, user, client);
+    const prefs = db.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(user.id);
+    const { password_hash, token_valid_after, ...safeUser } = user;
+    res.json({ access_token: accessToken, refresh_token: refreshToken, token_type: 'Bearer', expires_in: 86400, scope: 'profile theme', user: safeUser, preferences: prefs || { theme_id: 'vibe' } });
 }
 
 function handleRefreshGrant(db, config, req, res, client, refreshToken) {
