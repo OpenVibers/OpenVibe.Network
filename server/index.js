@@ -426,6 +426,12 @@ app.get('/api/catalog.json', async (req, res) => {
     res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300, stale-while-revalidate=86400' }).json(catalog);
 });
 
+// The avatar: one picture per account, hosted on openvibe.media, used by every site (server/profile/avatar.js).
+const avatarService = require('./profile/avatar').createAvatarService({ db, config, requireAuth });
+app.use('/api/profile/avatar', rateLimit({ windowMs: 60_000, max: 20 }), avatarService.api);
+app.use('/avatar', rateLimit({ windowMs: 60_000, max: 600 }), avatarService.pub);
+app.locals.avatarService = avatarService;
+
 // Shared chrome: analytics-ranked navigation + footer copy for every site (server/chrome).
 const chromeService = require('./chrome/service').createChromeService(db, config, analytics);
 app.use('/api/chrome', rateLimit({ windowMs: 60_000, max: 240 }), chromeService.router);
