@@ -538,6 +538,9 @@ app.get('/verify-email', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'verify-email.html'));
 });
 
+// Silent cross-site session check (hidden iframe from any OpenVibe site) — see server/auth/sso-check.js
+app.get('/sso/check', require('./auth/sso-check').createSsoCheckRoute(() => ({ db, publicKey, config })));
+
 // Sign-in / sign-out everywhere: the redirect chain through every first-party site.
 app.get(['/sso/fanout', '/sso/fanout.html'], (req, res) => {
     res.setHeader('Cache-Control', 'no-store');

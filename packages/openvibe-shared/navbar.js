@@ -790,15 +790,56 @@
      * never for bots. The site's login route turns silent=1 into prompt=none and comes straight
      * back on error=login_required, so a signed-out visitor sees one quick redirect at most.
      */
-    function maybeSilentLogin() {
-        if (!_config.silentLogin || typeof location === 'undefined') return false;
-        if (ssoHint() !== 'account') return false;
-        if (/bot|crawl|spider|slurp|headless/i.test(navigator.userAgent || '')) return false;
-        try { if (sessionStorage.getItem('ov_silent_sso')) return false; sessionStorage.setItem('ov_silent_sso', '1'); } catch { return false; }
-        if (/[?&]sso=none\b/.test(location.search)) return false;
+    function silentLoginNow() {
         const url = String(_config.silentLogin).replace('{url}', encodeURIComponent(location.href));
         location.replace(url);
         return true;
+    }
+
+    /**
+     * Two ways to find out that this browser is signed in to the network without a session here:
+     *   1. the hint cookie this site set on an earlier sign-in ('account') — go straight to the
+     *      silent sign-in (one quick redirect, back where you were);
+     *   2. otherwise ask the network in a hidden iframe (GET /sso/check) — invisible, no
+     *      redirect unless the answer is yes. Browsers that partition third-party cookies answer
+     *      no and nothing happens, which is the same as before.
+     * At most once per tab per 10 minutes; never after an explicit sign-out ('guest'); never for bots.
+     */
+    function maybeSilentLogin() {
+        if (!_config.silentLogin || typeof location === 'undefined') return false;
+        const hint = ssoHint();
+        if (hint === 'guest') return false;
+        if (/bot|crawl|spider|slurp|headless/i.test(navigator.userAgent || '')) return false;
+        if (/[?&]sso=none\b/.test(location.search)) return false;
+        try {
+            const last = +sessionStorage.getItem('ov_silent_sso_at') || 0;
+            if (Date.now() - last < 10 * 60 * 1000) return false;
+            sessionStorage.setItem('ov_silent_sso_at', String(Date.now()));
+        } catch { return false; }
+        if (hint === 'account') return silentLoginNow();
+        checkNetworkSession().then((state) => { if (state && state.signedIn) silentLoginNow(); });
+        return false;
+    }
+
+    /** Ask the network (hidden iframe + postMessage) whether this browser is signed in there. */
+    function checkNetworkSession(timeoutMs = 4000) {
+        return new Promise((resolve) => {
+            let done = false, frame = null, timer = null;
+            const finish = (v) => { if (done) return; done = true; clearTimeout(timer); window.removeEventListener('message', onMsg); try { frame?.remove(); } catch { /* */ } resolve(v); };
+            const onMsg = (e) => {
+                if (e.origin !== _config.apiBase || !e.data || e.data.type !== 'ov-sso') return;
+                finish({ signedIn: !!e.data.signedIn, username: e.data.username || null });
+            };
+            try {
+                window.addEventListener('message', onMsg);
+                frame = document.createElement('iframe');
+                frame.setAttribute('aria-hidden', 'true'); frame.setAttribute('tabindex', '-1');
+                frame.style.cssText = 'position:absolute;width:0;height:0;border:0;opacity:0;pointer-events:none';
+                frame.src = `${_config.apiBase}/sso/check?origin=${encodeURIComponent(location.origin)}`;
+                (document.body || document.documentElement).appendChild(frame);
+                timer = setTimeout(() => finish(null), timeoutMs);
+            } catch { finish(null); }
+        });
     }
 
     function recordHistory() {
@@ -1092,6 +1133,9 @@
             for (const k of ['before', 'after']) _runtimeMenu[k] = _runtimeMenu[k].filter(i => i.id !== id);
             if (_navEl && _config.user) render();
         },
+
+        /** Is this browser signed in to the network? ({ signedIn, username } or null when unknown). */
+        checkNetworkSession,
 
         /** The resolved brand for this page ({ sub, core, tld, name, short, variant }). */
         brand() { return resolveBrand(); },

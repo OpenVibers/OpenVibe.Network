@@ -198,6 +198,7 @@ router.post('/login', (req, res) => {
     const token = signToken(user, req.app.locals.privateKey, config);
 
     console.log(`[Auth] Login: ${user.username}`);
+    require('./session').setSessionCookies(res, token);
     res.json({ token, user: sanitizeUser(user) });
 });
 
@@ -347,14 +348,8 @@ router.post('/refresh', (req, res) => {
     // Issue fresh token
     const newToken = signToken(user, req.app.locals.privateKey, config);
 
-    // Update session cookie — host-only on openvibe.network (NO Domain attribute)
-    res.cookie('ov_token', newToken, {
-        httpOnly: false,
-        maxAge: 90 * 24 * 60 * 60 * 1000,
-        sameSite: 'Lax',
-        secure: true,
-        path: '/',
-    });
+    // Update session cookies — host-only on openvibe.network (NO Domain attribute)
+    require('./session').setSessionCookies(res, newToken);
 
     res.json({
         token: newToken,
@@ -501,6 +496,14 @@ function logAnonIp(db, anonId, ip) {
 // POST /api/auth/anon-session
 // Creates a temporary anonymous identity with a unique number.
 // If force_new=true, always creates a new anon identity.
+// Server-side sign-out: the page-side storage is cleared by the caller; this drops the cookies
+// only the server can (ov_sso is httpOnly). Idempotent, no auth required.
+router.post('/logout', (req, res) => {
+    require('./session').clearSessionCookies(res);
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true });
+});
+
 router.post('/anon-session', (req, res) => {
     const db = getDb(req);
     const config = getConfig(req);

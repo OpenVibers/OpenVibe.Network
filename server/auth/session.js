@@ -42,11 +42,31 @@ function verifySession(token, { db, publicKey, config }) {
 }
 
 const COOKIE = { httpOnly: false, maxAge: 90 * 24 * 60 * 60 * 1000, sameSite: 'Lax', secure: true, path: '/' };
+// The same session for cross-site use: httpOnly and SameSite=None so a hidden <iframe> from
+// another OpenVibe site (GET /sso/check) can see whether this browser is signed in here without
+// any redirect. JS never reads it; prompt=none and /sso/check fall back to it when ov_token is
+// not sent (third-party context). Browsers that partition third-party cookies simply answer
+// "not signed in" and the site falls back to its own hint.
+const SSO_COOKIE = { httpOnly: true, maxAge: 90 * 24 * 60 * 60 * 1000, sameSite: 'None', secure: true, path: '/' };
+function setSessionCookies(res, token) {
+    res.cookie('ov_token', token, COOKIE);
+    res.cookie('ov_sso', token, SSO_COOKIE);
+}
+function clearSessionCookies(res) {
+    res.clearCookie('ov_token', { path: '/', sameSite: 'Lax', secure: true });
+    res.clearCookie('ov_sso', { path: '/', sameSite: 'None', secure: true, httpOnly: true });
+}
+/** The session token a request carries: Bearer header, then the page cookie, then the cross-site one. */
+function requestToken(req) {
+    const h = req.headers?.authorization;
+    if (h && h.startsWith('Bearer ')) return h.slice(7);
+    return req.cookies?.ov_token || req.cookies?.ov_sso || null;
+}
 /** Express guard factory: attaches req.user / req.token; slides the session when due. */
 function makeRequireAuth(getCtx, signToken) {
     return function requireAuth(req, res, next) {
         const authHeader = req.headers.authorization;
-        const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : req.cookies?.ov_token;
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : (req.cookies?.ov_token || req.cookies?.ov_sso);
         const ctx = getCtx(req);
         const out = verifySession(token, ctx);
         if (out.error) return res.status(out.status).json(out.status === 403 ? { error: out.error, ban_reason: out.ban_reason } : { error: out.error });
@@ -56,7 +76,7 @@ function makeRequireAuth(getCtx, signToken) {
             try {
                 const fresh = signToken(out.user, req.app.locals.privateKey, ctx.config);
                 req.token = fresh;
-                res.cookie('ov_token', fresh, COOKIE);
+                setSessionCookies(res, fresh);
                 res.set('X-OV-Token', fresh);                 // JS clients swap their stored token
                 res.set('Access-Control-Expose-Headers', 'X-OV-Token');
             } catch { /* renewal is best-effort */ }
@@ -65,4 +85,4 @@ function makeRequireAuth(getCtx, signToken) {
     };
 }
 
-module.exports = { verifySession, makeRequireAuth, GRACE_MS, COOKIE };
+module.exports = { verifySession, makeRequireAuth, GRACE_MS, COOKIE, SSO_COOKIE, setSessionCookies, clearSessionCookies, requestToken };
