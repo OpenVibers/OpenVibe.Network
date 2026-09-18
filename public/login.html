@@ -665,7 +665,7 @@ async function selectAccount(account) {
                 throw new Error('Invalid redirect target returned by OAuth server');
             }
             toast('Redirecting as ' + (account.display_name || account.username) + '...', 'success');
-            setTimeout(() => window.location.href = data.redirect, 400);
+            setTimeout(() => window.location.href = viaFanout(data.redirect, oauthClientId()), 400);
         } catch (err) {
             toast(err.message, 'error');
         } finally {
@@ -674,7 +674,7 @@ async function selectAccount(account) {
     } else {
         // Not OAuth — just switch the active account and go home
         toast('Welcome back, ' + (account.display_name || account.username) + '! <span class="ov-mark" data-size="16" data-static="1"></span>', 'success');
-        setTimeout(() => window.location.href = getReturnUrl(), 600);
+        setTimeout(() => window.location.href = viaFanout(getReturnUrl()), 600);
     }
 }
 
@@ -727,6 +727,19 @@ function getReturnUrl() {
     return params.get('return') || '/';
 }
 
+// After any successful sign-in the browser runs the sign-in-everywhere chain (/sso/fanout):
+// one silent hop through each first-party site so the account is signed in on all of them,
+// then on to where the user was going. An OAuth client that just got its code is skipped
+// (it is about to sign in with that code).
+function viaFanout(url, skipClient) {
+    if (!url || /[?&]error=/.test(String(url))) return url;
+    const u = new URL('/sso/fanout', window.location.origin);
+    u.searchParams.set('next', String(url));
+    if (skipClient) u.searchParams.set('skip', skipClient);
+    return u.toString();
+}
+function oauthClientId() { return params.get('client_id') || ''; }
+
 // ── Login Handler ───────────────────────────────────────────
 async function handleLogin(e) {
     e.preventDefault();
@@ -776,10 +789,10 @@ async function handleLogin(e) {
                 throw new Error('Invalid redirect target returned by OAuth server');
             }
             toast('Welcome back, ' + (data.user.display_name || data.user.username) + '! <span class="ov-mark" data-size="16" data-static="1"></span>');
-            setTimeout(() => window.location.href = confirmData.redirect, 800);
+            setTimeout(() => window.location.href = viaFanout(confirmData.redirect, oauthClientId()), 800);
         } else {
             toast('Welcome back, ' + (data.user.display_name || data.user.username) + '! <span class="ov-mark" data-size="16" data-static="1"></span>');
-            setTimeout(() => window.location.href = getReturnUrl(), 800);
+            setTimeout(() => window.location.href = viaFanout(getReturnUrl()), 800);
         }
     } catch (err) {
         showMsg('login-msg', err.message, 'error');
@@ -855,10 +868,10 @@ async function handleRegister(e) {
                 throw new Error('Invalid redirect target returned by OAuth server');
             }
             toast('Account created! Welcome to the network <span class="ov-mark" data-size="16" data-static="1"></span>');
-            setTimeout(() => window.location.href = confirmData.redirect, 800);
+            setTimeout(() => window.location.href = viaFanout(confirmData.redirect, oauthClientId()), 800);
         } else {
             toast('Account created! Welcome to the network <span class="ov-mark" data-size="16" data-static="1"></span>');
-            setTimeout(() => window.location.href = getReturnUrl(), 800);
+            setTimeout(() => window.location.href = viaFanout(getReturnUrl()), 800);
         }
     } catch (err) {
         showMsg('register-msg', err.message, 'error');
@@ -950,7 +963,7 @@ async function continueAnonymous() {
         saveAnonAccount(data.user, data.token);
 
         toast('Browsing as Anonymous #' + data.user.anon_number);
-        setTimeout(() => window.location.href = getReturnUrl(), 600);
+        setTimeout(() => window.location.href = viaFanout(getReturnUrl()), 600);
     } catch (err) {
         toast(err.message, 'error');
     }
