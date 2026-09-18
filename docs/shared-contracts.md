@@ -120,3 +120,28 @@ Rules: every public page is server-rendered (or static) and readable without Jav
 canonical URL per page; titles ≤ 60 chars, descriptions 120–160; JSON-LD on every page type;
 sitemaps list canonical hosts only; `/llms.txt` on every site; never the words "free", "$0",
 "no ads" as claims about the platform.
+
+## 7. Chrome data (`GET https://openvibe.network/api/chrome?host=<hostname>`)
+
+Public, CORS `*`, `max-age=600`, ETag. What the navbar and footer of every site show:
+`nav` (open sites, most used first), `soon` (reserved domains), `footer.blurb`, `footer.discover`,
+`footer.popular` (tools) and `footer.legal` (`terms`/`privacy`/`dmca` on the site's **own** domain).
+
+- Ranking = each service's 7-day page views and visitors plus signed-in cross-site history,
+  refreshed every 30 minutes and stored in `chrome_cache`, so an unreachable service keeps its last
+  score. The Network itself counts page views only, at half weight.
+- Copy = once a day the AI configured in admin (called through Live's internal
+  `POST /internal/ai/site-copy`, budget-gated) may write a blurb per site and pick links **by id**
+  from a list we supply. Ids resolve to our URLs server-side; text is length-capped and screened
+  (no markup, no URLs, no cost claims). Anything that fails keeps the hand-written copy.
+- Clients: `navbar.js` and `footer.js` share `window.OpenVibeChrome` — a per-host localStorage cache
+  (30 min, refreshed in the background). Navbar options: `networkLinks` (`false` | count, default 4).
+
+## 8. Legal (`require('openvibe-shared/legal')`)
+
+`app.get(legal.PATHS, legal.handler({ id, service, host, name, profile }))` serves `/terms`,
+`/privacy`, `/dmca` for that domain. Profiles: `streaming`, `tools`, `ugc`, `games`, `hosting`,
+`account`, `info`. Live keeps its own longer documents (`/tos`, `/privacy`, `/dmca`; `/terms`
+redirects). Placeholder domains and Games get static copies from OpenVibe.Sites. Facts in the
+documents (retention windows, cookies, providers) must match the code; they are templates for the
+owner to review, not legal advice.
