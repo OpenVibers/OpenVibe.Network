@@ -47,7 +47,10 @@ function createChromeService(db, config, analytics) {
         try { const own = analytics && analytics.getStats({ days: 7 }); if (own && own.summary) sources.push(['network', own.summary]); } catch { /* */ }
         for (const [name, sum] of sources) {
             if (!sum) continue;                                   // unreachable: keep the last known score
-            scores[name] = Math.round((Number(sum.total_pageviews) || 0) + 4 * (Number(sum.unique_visitors) || Number(sum.total_unique_visitors) || 0));
+            const views = Number(sum.total_pageviews) || 0, people = Number(sum.unique_visitors) || Number(sum.total_unique_visitors) || 0;
+            // The Network serves sign-in, themes and shared scripts to every other site, so its visitor count is
+            // everyone's. Only its own page views count, at half weight: it is the account desk, not a destination.
+            scores[name] = Math.round(name === 'network' ? views * 0.5 : views + 4 * people);
         }
         // Signed-in history covers every site (community has no analytics endpoint) and names the tools people use.
         let tools = rank.tools || [];
