@@ -274,10 +274,10 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
     <div class="section active" id="sec-profile">
         <div class="card" id="avatar-card">
             <h3><span class="icon"><i class="fa-solid fa-image-portrait"></i></span> Avatar</h3>
-            <p class="muted" style="margin-top:0">One picture for every OpenVibe site. It comes from <b>openvibe.media</b>: paste the link to one of your image pastes (from <a href="https://openvibe.community/my" target="_blank" rel="noopener">your pastes</a>), or the address of an image hosted there.</p>
+            <p class="muted" style="margin-top:0">One picture for every OpenVibe site. It always lives on <b>openvibe.media</b>. Paste the link to one of your image pastes (from <a href="https://openvibe.community/my" target="_blank" rel="noopener">your pastes</a>), or any picture link: we fetch it once, clean it, and keep our own copy.</p>
             <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
                 <img id="avatar-preview" alt="" width="64" height="64" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)">
-                <input type="url" id="avatar-source" placeholder="https://openvibe.community/p/your-paste" style="flex:1;min-width:220px" autocomplete="off" spellcheck="false">
+                <input type="url" id="avatar-source" placeholder="A paste link, or any https picture link" style="flex:1;min-width:220px" autocomplete="off" spellcheck="false">
                 <button type="button" class="btn btn-primary" id="avatar-save">Use this picture</button>
                 <button type="button" class="btn" id="avatar-clear">Remove</button>
             </div>
