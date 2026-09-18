@@ -665,6 +665,19 @@
         });
     }
 
+    /** One anonymous page-view count per page load (host only), which is what orders the network's
+     *  navigation. Skipped when the browser asks not to be tracked. */
+    let _counted = false;
+    function countView() {
+        if (_counted || _config.countViews === false) return; _counted = true;
+        try {
+            if (navigator.globalPrivacyControl || navigator.doNotTrack === '1') return;
+            if (!/^https:$/.test(location.protocol)) return;
+            const url = 'https://openvibe.network/api/chrome/hit';
+            if (navigator.sendBeacon) navigator.sendBeacon(url);
+        } catch { /* */ }
+    }
+
     /** The network's most used sites, after the page's own links (networkLinks: false turns it off). */
     function networkLinksHTML(pageLinks) {
         if (_config.networkLinks === false) return '';
@@ -1206,6 +1219,7 @@
             </div>
         `;
         bindLauncher(nav);
+        countView();
         // Pages that wire the bell themselves run right after init(); give them the first go.
         setTimeout(() => mountBell(nav, u), 0);
 

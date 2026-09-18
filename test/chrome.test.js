@@ -21,10 +21,12 @@ const ins = db.prepare("INSERT INTO user_history (user_id, service, sub, type, t
 for (let i = 0; i < 40; i++) ins.run(i % 9, 'community', null);
 for (let i = 0; i < 6; i++) ins.run(1, 'tools', 'dns');
 (async () => {
+    db.prepare("INSERT INTO chrome_hits (day, host, hits) VALUES (date('now'), 'openvibe.games', 900), (date('now'), 'dns.openvibe.tools', 50), (date('now'), 'openvibe.network', 1000)").run();
     const realFetch = global.fetch; global.fetch = async () => ({ ok: false });
     await svc.refreshRank(); global.fetch = realFetch;
     p = svc.payloadFor('openvibe.network');
-    assert.equal(p.nav[0].id, 'community', 'most used site comes first');
+    assert.equal(p.nav[0].id, 'games', 'most viewed site comes first');
+    assert.ok(p.nav.findIndex(n => n.id === 'network') > 0, 'the Network is never first on shared-service traffic alone');
     assert.ok(BANNED.test('Totally free tools') && BANNED.test('see https://x.y') && BANNED.test('<b>hi</b>') && !BANNED.test('Go live from a browser in seconds.'), 'AI copy screen');
     assert.equal(p.footer.ai, false);
     console.log('chrome service: all checks passed');
