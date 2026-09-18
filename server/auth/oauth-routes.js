@@ -147,6 +147,26 @@ router.post('/token', (req, res) => {
     }
 });
 
+/**
+ * Every successful OAuth exchange is the proof that this account is used on that service, so
+ * it is recorded as a linked service here — the Linked Services tab used to show only the
+ * sites that reported the link themselves (Live), and openvibe.tools never appeared even
+ * right after signing in there. A site that maps the account to its own user id (Live) still
+ * owns service_user_id; the exchange never overwrites it, only bumps last_used_at.
+ */
+function recordLinkedService(db, user, client) {
+    if (!client?.client_id || !user?.id || user.is_anon) return;
+    try {
+        db.prepare(`
+            INSERT INTO linked_accounts (user_id, service, service_user_id, service_username, linked_at, last_used_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id, service) DO UPDATE SET
+                service_username = COALESCE(service_username, excluded.service_username),
+                last_used_at = CURRENT_TIMESTAMP
+        `).run(user.id, client.client_id, `network:${user.id}`, user.username || null);
+    } catch (err) { console.warn('[OAuth] linked service record failed:', err.message); }
+}
+
 function handleAuthCodeGrant(db, config, req, res, client, code, redirectUri) {
     if (!code) return res.status(400).json({ error: 'invalid_request', error_description: 'Missing code' });
 
@@ -169,6 +189,7 @@ function handleAuthCodeGrant(db, config, req, res, client, code, redirectUri) {
 
     // Issue tokens
     const { accessToken, refreshToken } = issueTokenPair(db, config, req, user, client);
+    recordLinkedService(db, user, client);
 
     // Get preferences for theme sync
     const prefs = db.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(user.id);
@@ -206,6 +227,7 @@ function handleRefreshGrant(db, config, req, res, client, refreshToken) {
 
     // Issue new token pair
     const { accessToken, refreshToken: newRefresh } = issueTokenPair(db, config, req, user, client);
+    recordLinkedService(db, user, client);
 
     res.json({
         access_token: accessToken,

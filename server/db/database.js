@@ -486,6 +486,10 @@ function initDb(dbPath) {
         { table: 'users', column: 'email_verified_at', sql: "ALTER TABLE users ADD COLUMN email_verified_at DATETIME" },
         { table: 'users', column: 'email_bounced_at', sql: "ALTER TABLE users ADD COLUMN email_bounced_at DATETIME" },
         { table: 'users', column: 'email_bounce_reason', sql: "ALTER TABLE users ADD COLUMN email_bounce_reason TEXT" },
+        // When the account was last used on a service (bumped on every OAuth exchange).
+        { table: 'linked_accounts', column: 'last_used_at', sql: "ALTER TABLE linked_accounts ADD COLUMN last_used_at DATETIME" },
+        // Cross-site history can be paused by the user (server/history/routes.js).
+        { table: 'users', column: 'history_paused', sql: "ALTER TABLE users ADD COLUMN history_paused INTEGER DEFAULT 0" },
     ];
     for (const m of migrations) {
         const cols = db.prepare(`PRAGMA table_info(${m.table})`).all();
@@ -565,6 +569,11 @@ function initDb(dbPath) {
                 client_id: 'media',
                 name: 'OpenVibe.Media',
                 redirect_uris: ['https://openvibe.media/auth/callback'],
+            },
+            {
+                client_id: 'community',
+                name: 'OpenVibe.Community',
+                redirect_uris: ['https://openvibe.community/auth/callback'],
             },
         ];
         const insert = db.prepare(

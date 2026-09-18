@@ -123,7 +123,30 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 .notif-grid .toggle.off{background:var(--border)}
 
 /* Linked services */
-.linked-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:8px;background:var(--bg-input);margin-bottom:8px}
+.linked-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:8px;background:var(--bg-input);margin-bottom:8px;text-decoration:none;color:inherit;transition:transform .15s,background .15s}
+a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translateX(2px)}
+.linked-item .svc-meta{margin-left:auto;text-align:right;font-size:11px;color:var(--text-muted);white-space:nowrap}
+.linked-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:14px}
+.linked-grid a{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;border:1px dashed var(--border);font-size:12px;color:var(--text-secondary);text-decoration:none;transition:border-color .15s,color .15s}
+.linked-grid a:hover{border-color:var(--accent);color:var(--text)}
+.hist-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.hist-chips{display:flex;flex-wrap:wrap;gap:6px}
+.hist-chips button{padding:5px 10px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;transition:all .15s}
+.hist-chips button.active,.hist-chips button:hover{border-color:var(--accent);color:var(--accent-light);background:rgba(var(--accent-rgb,139,92,246),.08)}
+.hist-search{flex:1;min-width:160px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px}
+.hist-pause{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer}
+.btn-small{padding:6px 10px;font-size:12px}
+.hist-day{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);margin:14px 0 6px}
+.hist-item{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:8px;text-decoration:none;color:inherit;transition:background .12s;animation:sec-in .25s ease both}
+.hist-item:hover{background:var(--bg-input)}
+.hist-item .hi{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:rgba(var(--accent-rgb,139,92,246),.12);color:var(--accent-light);flex:none}
+.hist-item .ht{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-item .hs{font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-item .hx{margin-left:auto;display:flex;align-items:center;gap:10px;flex:none;font-size:11px;color:var(--text-muted)}
+.hist-item .hx button{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;opacity:0;transition:opacity .15s}
+.hist-item:hover .hx button{opacity:1}
+.hist-item .hx button:hover{color:var(--danger,#ef4444)}
+.hist-empty{padding:26px;text-align:center;color:var(--text-muted);font-size:13px}
 .linked-item .svc-icon{font-size:20px;width:32px;text-align:center}
 .linked-item .svc-name{font-size:13px;font-weight:600}
 .linked-item .svc-user{font-size:11px;color:var(--text-muted)}
@@ -241,6 +264,7 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
         <button onclick="showSection('themes',this)"><i class="fa-solid fa-palette"></i> Themes</button>
         <button onclick="showSection('accounts',this)"><i class="fa-solid fa-arrows-rotate"></i> Accounts</button>
         <button onclick="showSection('notifications',this)"><i class="fa-solid fa-bell"></i> Notifications</button>
+        <button onclick="showSection('history',this)"><i class="fa-solid fa-clock-rotate-left"></i> History</button>
         <button onclick="showSection('linked',this)"><i class="fa-solid fa-link"></i> Linked Services</button>
         <button onclick="showSection('security',this)"><i class="fa-solid fa-lock"></i> Security</button>
         <button onclick="showSection('anon',this)"><i class="fa-solid fa-user-secret"></i> Anon Info</button>
@@ -357,11 +381,31 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
         </div>
     </div>
 
+    <!-- History Section -->
+    <div class="section" id="sec-history">
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-clock-rotate-left"></i></span> History across OpenVibe</h3>
+            <p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">Everything this account opened on any OpenVibe site — tools, streams, pastes, games — in one timeline. Only you can see it; pause or clear it any time.</p>
+            <div class="hist-toolbar">
+                <div class="hist-chips" id="hist-chips"></div>
+                <input type="search" id="hist-q" class="hist-search" placeholder="Search history…" oninput="histDebounce()">
+                <label class="hist-pause" title="While paused nothing new is recorded"><input type="checkbox" id="hist-pause" onchange="toggleHistoryPause(this)"> Pause</label>
+                <button class="btn btn-small btn-danger" onclick="clearHistory()" title="Delete the whole timeline"><i class="fa-solid fa-trash"></i> Clear</button>
+            </div>
+            <div id="hist-list"><div class="loading-spinner">Loading history…</div></div>
+            <div class="btn-row" id="hist-more-row" style="display:none;margin-top:10px"><button class="btn" onclick="loadHistory(true)">Load more</button></div>
+        </div>
+    </div>
+
     <!-- Linked Services Section -->
     <div class="section" id="sec-linked">
         <div class="card">
             <h3><span class="icon"><i class="fa-solid fa-link"></i></span> Linked Services</h3>
-            <p style="margin-bottom:12px">Your OpenVibe account is connected to these services.</p>
+            <p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">Every OpenVibe site you have signed in to with this account. Sign in once here and the network signs you in everywhere; sign out everywhere with one click.</p>
+            <div class="btn-row" style="margin-bottom:14px">
+                <a class="btn btn-primary" href="/sso/fanout?next=%2Flinked"><i class="fa-solid fa-wand-magic-sparkles"></i> Sign in everywhere</a>
+                <a class="btn" href="/sso/fanout?action=logout&next=%2Flogin"><i class="fa-solid fa-right-from-bracket"></i> Sign out everywhere</a>
+            </div>
             <div id="linked-list">
                 <!-- Populated by JS -->
             </div>
@@ -597,6 +641,7 @@ function showSection(id, btn) {
     const targetBtn = btn || [...document.querySelectorAll('.section-tabs button')].find((button) => button.getAttribute('onclick')?.includes(`'${id}'`));
     targetBtn?.classList.add('active');
     history.replaceState(null, '', id === 'profile' ? window.location.pathname : `${window.location.pathname}#${id}`);
+    if (id === 'history' && typeof loadHistory === 'function') loadHistory();
 }
 
 function avatarPlaceholder(user, size = 96) {
@@ -780,7 +825,7 @@ async function resetCustomColors(btn) {
 }
 
 function openInitialSection() {
-    const pathSection = { '/themes': 'themes', '/notifications': 'notifications', '/verify-email': 'notifications', '/linked': 'linked', '/security': 'security', '/profile': 'profile' }[window.location.pathname];
+    const pathSection = { '/themes': 'themes', '/notifications': 'notifications', '/verify-email': 'notifications', '/linked': 'linked', '/security': 'security', '/profile': 'profile', '/history': 'history' }[window.location.pathname];
     const routeSection = pathSection || window.location.hash.replace(/^#/, '') || 'profile';
     if (window.location.pathname === '/verify-email') setTimeout(handleVerifyEmailToken, 50);
     if (isAnonSession() && ['notifications','linked','security'].includes(routeSection)) {
@@ -1133,28 +1178,84 @@ async function togglePref(btn) {
 // Linked services
 async function loadLinked() {
     if (isAnonSession()) return;
+    const list = document.getElementById('linked-list');
+    const SITES = {
+        live: { name: 'OpenVibe.Live', icon: 'fa-tower-broadcast', url: 'https://openvibe.live', color: '#ef4444' },
+        tools: { name: 'OpenVibe.Tools', icon: 'fa-screwdriver-wrench', url: 'https://openvibe.tools', color: '#8b5cf6' },
+        games: { name: 'OpenVibe.Games', icon: 'fa-gamepad', url: 'https://openvibe.games', color: '#22c55e' },
+        media: { name: 'OpenVibe.Media', icon: 'fa-photo-film', url: 'https://openvibe.media', color: '#22d3ee' },
+        community: { name: 'OpenVibe.Community', icon: 'fa-people-group', url: 'https://openvibe.community', color: '#f59e0b' },
+        discord: { name: 'Discord', icon: 'fa-brands fa-discord', url: 'https://discord.gg/M6MuRUaeJj', color: '#5865f2' },
+        network: { name: 'OpenVibe.Network', icon: 'fa-circle-nodes', url: '/', color: '#3b82f6' },
+    };
+    const ago = (iso) => { if (!iso) return ''; const d = (Date.now() - new Date(String(iso).replace(' ', 'T') + (String(iso).endsWith('Z') ? '' : 'Z')).getTime()) / 1000; if (d < 90) return 'just now'; if (d < 3600) return Math.round(d / 60) + 'm ago'; if (d < 86400) return Math.round(d / 3600) + 'h ago'; return Math.round(d / 86400) + 'd ago'; };
     try {
-        const data = await apiFetch('/api/auth/me');
-        // We don't have a direct linked endpoint from auth/me, let's check from card
         const card = await apiFetch('/api/auth/users/' + currentUser.id + '/card');
-        const list = document.getElementById('linked-list');
-        const icons = { openvibelive: '<i class="fa-solid fa-tv"></i>', openvibegames: '<i class="fa-solid fa-shield-halved"></i>', ovn: '<i class="fa-solid fa-screwdriver-wrench"></i>', openvibemaps: '<i class="fa-solid fa-map"></i>' };
         const linked = card.user?.linked_services || [];
-        if (linked.length === 0) {
-            list.innerHTML = '<p style="color:var(--text-muted);font-size:13px">No services linked yet. Use OpenVibe.Live or Scraplandia with your account to link them automatically.</p>';
-        } else {
-            list.innerHTML = linked.map(l => `
-                <div class="linked-item">
-                    <span class="svc-icon">${icons[l.service] || '<i class="fa-solid fa-link"></i>'}</span>
-                    <div>
-                        <div class="svc-name">${l.service}</div>
-                        <div class="svc-user">${l.service_username || l.service_user_id}</div>
-                    </div>
-                    <span class="svc-status"><i class="fa-solid fa-check"></i> Linked</span>
-                </div>
-            `).join('');
-        }
+        const known = new Set(linked.map(l => l.service));
+        const rows = linked.map(l => {
+            const site = SITES[l.service] || { name: l.service, icon: 'fa-link', url: null };
+            const who = l.service_username && !String(l.service_user_id || '').startsWith('network:') ? '@' + l.service_username : (l.service_username ? '@' + l.service_username : 'this account');
+            const inner = `<span class="svc-icon" style="color:${site.color || 'var(--accent-light)'}"><i class="fa-solid ${site.icon}"></i></span>
+                    <div><div class="svc-name">${esc(site.name)}</div><div class="svc-user">${esc(who)}</div></div>
+                    <div class="svc-meta">${l.last_used_at ? 'used ' + ago(l.last_used_at) : (l.linked_at ? 'linked ' + ago(l.linked_at) : '')}<br><span class="svc-status" style="color:var(--success)"><i class="fa-solid fa-check"></i> Linked</span></div>`;
+            return site.url ? `<a class="linked-item" href="${site.url}" target="_blank" rel="noopener">${inner}</a>` : `<div class="linked-item">${inner}</div>`;
+        }).join('');
+        const rest = Object.entries(SITES).filter(([id]) => !known.has(id) && id !== 'network' && id !== 'discord');
+        list.innerHTML = (rows || '<p style="color:var(--text-muted);font-size:13px">Nothing linked yet — the first sign-in on any OpenVibe site links it here automatically.</p>') +
+            (rest.length ? `<div class="linked-grid">${rest.map(([id, site]) => `<a href="${site.url}" target="_blank" rel="noopener" title="Open ${site.name}"><i class="fa-solid ${site.icon}" style="color:${site.color}"></i> ${esc(site.name.replace('OpenVibe.', ''))}<span style="margin-left:auto;font-size:10px;opacity:.7">not yet</span></a>`).join('')}</div>` : '');
     } catch (err) { console.error('Failed to load linked:', err); }
+}
+
+// ── History across the network ──
+let _histOffset = 0, _histService = '', _histTimer = null, _histLoaded = false;
+function histDebounce() { clearTimeout(_histTimer); _histTimer = setTimeout(() => loadHistory(false), 250); }
+function histFilter(svc, btn) { _histService = svc; document.querySelectorAll('#hist-chips button').forEach(b => b.classList.toggle('active', b === btn)); loadHistory(false); }
+async function loadHistory(more) {
+    if (isAnonSession()) { document.getElementById('hist-list').innerHTML = '<div class="hist-empty">History is only kept for signed-in accounts.</div>'; return; }
+    if (!more) _histOffset = 0;
+    const listEl = document.getElementById('hist-list');
+    if (!more) listEl.innerHTML = '<div class="loading-spinner">Loading history…</div>';
+    try {
+        const q = new URLSearchParams({ limit: '40', offset: String(_histOffset) });
+        if (_histService) q.set('service', _histService);
+        const term = document.getElementById('hist-q').value.trim(); if (term) q.set('q', term);
+        const data = await apiFetch('/api/history?' + q);
+        document.getElementById('hist-pause').checked = !!data.paused;
+        if (!_histLoaded || !more) {
+            const chips = document.getElementById('hist-chips');
+            chips.innerHTML = `<button class="${_histService ? '' : 'active'}" onclick="histFilter('', this)">All</button>` + (data.services || []).map(s => `<button class="${_histService === s.service ? 'active' : ''}" onclick="histFilter('${esc(s.service)}', this)">${esc(s.label || s.service)} <span style="opacity:.6">${s.count}</span></button>`).join('');
+            _histLoaded = true;
+        }
+        const items = data.items || [];
+        if (!more && !items.length) { listEl.innerHTML = `<div class="hist-empty"><i class="fa-solid fa-clock-rotate-left" style="font-size:22px;display:block;margin-bottom:8px;opacity:.5"></i>${term || _histService ? 'Nothing matches.' : 'Nothing yet — open a tool, watch a stream or read a paste and it shows up here.'}</div>`; document.getElementById('hist-more-row').style.display = 'none'; return; }
+        const dayOf = (iso) => { const d = new Date(String(iso).replace(' ', 'T') + 'Z'); const today = new Date(); const y = new Date(); y.setDate(today.getDate() - 1); if (d.toDateString() === today.toDateString()) return 'Today'; if (d.toDateString() === y.toDateString()) return 'Yesterday'; return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); };
+        const timeOf = (iso) => new Date(String(iso).replace(' ', 'T') + 'Z').toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        let html = '', lastDay = more ? (listEl.dataset.lastDay || '') : '';
+        for (const h of items) {
+            const day = dayOf(h.updated_at);
+            if (day !== lastDay) { html += `<div class="hist-day">${esc(day)}</div>`; lastDay = day; }
+            let host = ''; try { host = new URL(h.url).hostname; } catch {}
+            html += `<a class="hist-item" href="${esc(h.url)}" data-id="${h.id}"><span class="hi"><i class="fa-solid ${esc(h.icon || 'fa-file-lines')}"></i></span><div style="min-width:0"><div class="ht">${esc(h.title)}</div><div class="hs">${esc(h.service_label || host)} · ${esc(host)}${h.hits > 1 ? ` · ${h.hits}×` : ''}</div></div><div class="hx"><span>${esc(timeOf(h.updated_at))}</span><button title="Remove" onclick="removeHistoryItem(event, ${h.id})"><i class="fa-solid fa-xmark"></i></button></div></a>`;
+        }
+        listEl.dataset.lastDay = lastDay;
+        if (more) listEl.insertAdjacentHTML('beforeend', html); else listEl.innerHTML = html;
+        _histOffset += items.length;
+        document.getElementById('hist-more-row').style.display = _histOffset < (data.total || 0) ? '' : 'none';
+    } catch (err) { listEl.innerHTML = `<div class="hist-empty">Could not load history: ${esc(err.message)}</div>`; }
+}
+async function toggleHistoryPause(cb) {
+    try { await apiFetch('/api/history/settings', { method: 'PUT', body: JSON.stringify({ paused: cb.checked }) }); toast(cb.checked ? 'History paused — nothing new is recorded.' : 'History recording resumed.'); }
+    catch (e) { cb.checked = !cb.checked; toast(e.message, 'error'); }
+}
+async function clearHistory() {
+    if (!confirm('Delete your whole OpenVibe history? This cannot be undone.')) return;
+    try { await apiFetch('/api/history', { method: 'DELETE' }); _histLoaded = false; loadHistory(false); toast('History cleared.', 'success'); } catch (e) { toast(e.message, 'error'); }
+}
+async function removeHistoryItem(ev, id) {
+    ev.preventDefault(); ev.stopPropagation();
+    const el = document.querySelector(`.hist-item[data-id="${id}"]`);
+    try { await apiFetch('/api/history/' + id, { method: 'DELETE' }); if (el) { el.style.transition = 'opacity .2s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 200); } } catch (e) { toast(e.message, 'error'); }
 }
 
 // Sessions

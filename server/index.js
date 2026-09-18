@@ -398,6 +398,16 @@ const pushService = require('./push/push-service');
 pushService.initVapid(db);
 app.use('/api/push', requireAuth, require('./push/routes'));
 
+// Cross-site history (what the account touched anywhere on the network)
+app.use('/api/history', rateLimit({ windowMs: 60_000, max: 60 }), require('./history/routes').createHistoryRoutes(db, requireAuth));
+
+// "Sign in everywhere" chain targets (public: the fanout page reads them before hopping)
+app.get('/api/sso/targets', (req, res) => {
+    const { ssoTargets } = require('./auth/sso-targets');
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ targets: ssoTargets() });
+});
+
 // Discord bot admin API
 function requireAdmin(req, res, next) {
     if (!req.user || req.user.role !== 'admin') {
@@ -514,9 +524,25 @@ app.get(['/', '/index.html'], (req, res) => {
 
 // Account hub (my.html) — the apex hosts the account hub under /my
 // plus its client-routed sections.
-app.get(['/my', '/my.html', '/themes', '/notifications', '/linked', '/security', '/profile', '/billing', '/preferences', '/verify-email'], (req, res) => {
+app.get(['/my', '/my.html', '/themes', '/notifications', '/linked', '/security', '/profile', '/billing', '/preferences', '/history'], (req, res) => {
     if (req.path === '/my.html') return redirectWithoutHtml(req, res, '/my');
     return sendMyAccountApp(res);
+});
+
+// Email verification lands here from the message itself — on whatever device the mail was
+// opened, signed in or not — so it is its own page, not the signed-in account hub (which
+// bounced to /login and dropped the token).
+app.get('/verify-email', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Robots-Tag', 'noindex');
+    res.sendFile(path.join(__dirname, '..', 'public', 'verify-email.html'));
+});
+
+// Sign-in / sign-out everywhere: the redirect chain through every first-party site.
+app.get(['/sso/fanout', '/sso/fanout.html'], (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Robots-Tag', 'noindex');
+    res.sendFile(path.join(__dirname, '..', 'public', 'sso-fanout.html'));
 });
 
 app.use(express.static(path.join(__dirname, '..', 'public'), {

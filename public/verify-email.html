@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confirm your email — OpenVibe</title>
+<meta name="description" content="Confirming the email address on your OpenVibe account.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#3b82f6">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<script>
+(function(){try{var raw=localStorage.getItem('ov_theme');if(!raw)return;var t=JSON.parse(raw),v=t&&t.variables;if(!v)return;var el=document.documentElement;for(var k in v)if(k.charAt(0)==='-')el.style.setProperty(k,v[k]);if(t.id)el.setAttribute('data-theme',t.id);}catch(_){}})();
+</script>
+<script src="/shared/theme-loader.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg-primary:#0a0f1c;--bg-secondary:#101828;--bg-card:#131c2e;--bg-hover:#1c2a44;--border:#1f2d47;--text-primary:#e8ecf5;--text-secondary:#a9b3c9;--text-muted:#6b7590;--accent:#3b82f6;--accent-light:#60a5fa;--accent-rgb:59,130,246;--on-accent:#fff;--success:#22c55e;--danger:#ef4444;--warning:#f59e0b}
+html,body{min-height:100%}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column}
+.wrap{flex:1;display:grid;place-items:center;padding:32px 16px}
+.card{width:100%;max-width:480px;background:var(--bg-card);border:1px solid var(--border);border-radius:18px;padding:36px 32px;text-align:center;position:relative;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.35);animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
+.card::before{content:"";position:absolute;inset:-40% -20% auto;height:70%;background:radial-gradient(60% 60% at 50% 40%,rgba(var(--accent-rgb),.22),transparent 70%);pointer-events:none;transition:opacity .6s}
+.card[data-state="ok"]::before{background:radial-gradient(60% 60% at 50% 40%,rgba(34,197,94,.22),transparent 70%)}
+.card[data-state="bad"]::before{background:radial-gradient(60% 60% at 50% 40%,rgba(239,68,68,.18),transparent 70%)}
+@keyframes rise{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+.glyph{position:relative;width:96px;height:96px;margin:0 auto 22px}
+.ring{position:absolute;inset:0;border-radius:50%;border:3px solid rgba(var(--accent-rgb),.18)}
+.ring.spin{border-top-color:var(--accent);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.glyph .ico{position:absolute;inset:0;display:grid;place-items:center;font-size:38px;color:var(--accent-light);transition:transform .35s cubic-bezier(.2,1.4,.3,1),color .3s}
+.card[data-state="ok"] .ico{color:var(--success);transform:scale(1.12)}
+.card[data-state="bad"] .ico{color:var(--danger)}
+.card[data-state="ok"] .ring{border-color:rgba(34,197,94,.35);animation:pop .6s cubic-bezier(.2,1.6,.3,1) both}
+.card[data-state="bad"] .ring{border-color:rgba(239,68,68,.35)}
+@keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+.burst{position:absolute;inset:0;pointer-events:none}
+.burst i{position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;background:var(--success);opacity:0}
+.card[data-state="ok"] .burst i{animation:fly .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fly{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.2)}}
+h1{font-size:22px;letter-spacing:-.3px;margin-bottom:8px}
+p{color:var(--text-secondary);font-size:14px;line-height:1.6}
+.email{color:var(--text-primary);font-weight:600}
+.actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:24px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;border:1px solid var(--border);color:var(--text-primary);background:var(--bg-secondary);transition:transform .15s,background .15s,border-color .15s}
+.btn:hover{transform:translateY(-1px);border-color:var(--accent)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn-primary:hover{filter:brightness(1.08)}
+.hint{margin-top:18px;font-size:12px;color:var(--text-muted)}
+.hidden{display:none}
+.next{margin-top:22px;text-align:left;background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--text-secondary);animation:rise .5s .25s both}
+.next b{color:var(--text-primary)}
+.next ul{margin:8px 0 0 18px;line-height:1.7}
+@media (prefers-reduced-motion:reduce){.card,.ring,.ico,.burst i,.next{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="navbar-mount"></div>
+<main class="wrap">
+  <section class="card" id="card" data-state="busy" aria-live="polite">
+    <div class="glyph">
+      <div class="ring spin" id="ring"></div>
+      <div class="burst" id="burst"></div>
+      <div class="ico" id="ico"><i class="fa-solid fa-envelope"></i></div>
+    </div>
+    <h1 id="title">Confirming your email…</h1>
+    <p id="msg">One moment — we're checking the link from your inbox.</p>
+    <div class="actions" id="actions"></div>
+    <div class="hint" id="hint"></div>
+    <div class="next hidden" id="next">
+      <b>What this unlocks</b>
+      <ul>
+        <li>Go-live alerts when a streamer you follow starts (opt in under Notifications)</li>
+        <li>Account recovery and security emails</li>
+        <li>The occasional network update — never spam, never sold</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<script src="/shared/navbar.js"></script>
+<script>
+(function () {
+  if (window.OpenVibeNavbar) { try { OpenVibeNavbar.init({ service: 'network', apiBase: location.origin }); } catch (e) { /* */ } }
+  const card = document.getElementById('card'), ring = document.getElementById('ring'), ico = document.getElementById('ico');
+  const title = document.getElementById('title'), msg = document.getElementById('msg'), actions = document.getElementById('actions'), hint = document.getElementById('hint');
+  const burst = document.getElementById('burst');
+  for (let i = 0; i < 14; i++) { const s = document.createElement('i'); const a = (i / 14) * Math.PI * 2; const r = 46 + (i % 3) * 10; s.style.setProperty('--dx', Math.cos(a) * r + 'px'); s.style.setProperty('--dy', Math.sin(a) * r + 'px'); s.style.animationDelay = (i * 18) + 'ms'; burst.appendChild(s); }
+
+  const btn = (label, href, primary, icon) => `<a class="btn${primary ? ' btn-primary' : ''}" href="${href}">${icon ? `<i class="fa-solid ${icon}"></i>` : ''}${label}</a>`;
+  const signedIn = () => { try { return !!(localStorage.getItem('ov_token') || /(^|; )ov_token=/.test(document.cookie)); } catch { return /(^|; )ov_token=/.test(document.cookie); } };
+  const accountHref = (path) => signedIn() ? path : `/login?return=${encodeURIComponent(path)}`;
+
+  function show(state, t, m, acts, h) {
+    ring.classList.remove('spin');
+    card.setAttribute('data-state', state);
+    ico.innerHTML = state === 'ok' ? '<i class="fa-solid fa-circle-check"></i>' : state === 'bad' ? '<i class="fa-solid fa-circle-exclamation"></i>' : '<i class="fa-solid fa-envelope"></i>';
+    title.textContent = t; msg.innerHTML = m; actions.innerHTML = acts.join(''); hint.textContent = h || '';
+    document.title = t + ' — OpenVibe';
+    if (state === 'ok') document.getElementById('next').classList.remove('hidden');
+  }
+
+  const token = new URLSearchParams(location.search).get('token');
+  if (!token) {
+    show('bad', 'No verification link', 'This page only works from the link in the email we sent you. Open the message and tap <b>Verify email</b>, or request a new link from your account.',
+      [btn('Request a new link', accountHref('/notifications'), true, 'fa-paper-plane'), btn('My account', accountHref('/my'), false, 'fa-user')]);
+    return;
+  }
+  // Keep the token out of the address bar / history once we have it.
+  try { history.replaceState(null, '', '/verify-email'); } catch (e) { /* */ }
+
+  const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 12000);
+  fetch('/api/auth/email/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }), signal: ctrl.signal })
+    .then(async (r) => { const data = await r.json().catch(() => ({})); return { ok: r.ok, status: r.status, data }; })
+    .then(({ ok, data }) => {
+      clearTimeout(timer);
+      if (ok) {
+        const email = data.email ? `<span class="email">${String(data.email).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}</span>` : 'Your email';
+        show('ok', 'Email confirmed', `${email} is verified. Email alerts you opt into will reach your inbox from now on.`,
+          [btn('Notification settings', accountHref('/notifications'), true, 'fa-bell'), btn('Go to my account', accountHref('/my'), false, 'fa-user')],
+          signedIn() ? '' : 'You are not signed in on this device — sign in to change what OpenVibe emails you.');
+        return;
+      }
+      const err = String(data.error || 'This verification link could not be used.');
+      const expired = /expired/i.test(err), used = /already used/i.test(err), changed = /changed/i.test(err);
+      show('bad', expired ? 'This link has expired' : used ? 'Already confirmed' : changed ? 'Your email changed' : 'Link not valid',
+        used ? 'That link was used before, so there is nothing left to do — your address is already confirmed.' : err,
+        used ? [btn('Notification settings', accountHref('/notifications'), true, 'fa-bell')]
+             : [btn('Send a new link', accountHref('/notifications'), true, 'fa-paper-plane'), btn('My account', accountHref('/my'), false, 'fa-user')],
+        expired ? 'Links work for 60 minutes. Request a new one from Notifications on your account page.' : '');
+    })
+    .catch(() => {
+      clearTimeout(timer);
+      show('bad', 'Could not reach OpenVibe', 'The verification request did not go through. Check your connection and open the link again — it stays valid for 60 minutes.',
+        [btn('Try again', location.pathname + '?token=' + encodeURIComponent(token), true, 'fa-rotate-right'), btn('My account', accountHref('/my'), false, 'fa-user')]);
+    });
+})();
+</script>
+</body>
+</html>
