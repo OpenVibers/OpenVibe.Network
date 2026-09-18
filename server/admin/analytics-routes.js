@@ -13,7 +13,9 @@ const router = express.Router();
 
 module.exports = function createAnalyticsRoutes(analytics, requireAuth, config) {
 
-    const INTERNAL_SECRET = 'openvibe-internal-2026';
+    // Service-to-service calls carry the deployment's INTERNAL_API_KEY. (This used to be a constant in
+    // the source, which any reader of the repository could replay against the public tool hosts.)
+    const INTERNAL_KEY = config.internalKey;
 
     // All remote services with their internal URLs and fetch strategy
     const REMOTE_SERVICES = [
@@ -32,6 +34,17 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config) 
 
     router.use(requireAuth, requireAdmin);
 
+    // Games and Media keep no analytics of their own. The shared navbar's anonymous page-view count
+    // (chrome_hits: day + host, nothing else) is the honest number for them; the summary says so.
+    const BEACON_HOSTS = { games: 'openvibe.games', media: 'openvibe.media', tools: 'openvibe.tools' };
+    function beaconFallback(svc, days) {
+        try {
+            const host = BEACON_HOSTS[svc.name]; if (!host) return null;
+            const row = analytics.db.prepare("SELECT COALESCE(SUM(hits), 0) AS n FROM chrome_hits WHERE day >= date('now', ?) AND (host = ? OR host LIKE ?)").get(`-${Math.min(days || 30, 365)} days`, host, '%.' + host);
+            return { ok: true, analytics: { summary: { total_pageviews: row.n, source: 'navbar page-view count (no service analytics)' }, realtime: {} } };
+        } catch { return null; }
+    }
+
     // ── Helper: fetch analytics from a remote service ────────
     async function fetchRemoteAnalytics(svc, subPath, token, days, hours) {
         try {
@@ -40,17 +53,18 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config) 
             const headers = { 'Content-Type': 'application/json' };
 
             if (svc.auth === 'internal') {
-                headers['X-Internal-Secret'] = INTERNAL_SECRET;
+                if (!INTERNAL_KEY || INTERNAL_KEY === 'change-me-in-production') return null;
+                headers['X-Internal-Key'] = INTERNAL_KEY;
             } else {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
             const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
-            if (!res.ok) return null;
+            if (!res.ok) return subPath ? null : beaconFallback(svc, days);
             return await res.json();
         } catch (err) {
             console.warn(`[Analytics] Failed to fetch from ${svc.name}:`, err.message);
-            return null;
+            return subPath ? null : beaconFallback(svc, days);
         }
     }
 
