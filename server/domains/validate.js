@@ -3,7 +3,7 @@
 const net = require('net');
 const { OWNED_ZONES } = require('../auth/sso-owned');
 
-const ROLES = ['canonical', 'short', 'alias'];
+const ROLES = ['canonical', 'short', 'alias', 'mirror'];
 const TOOLS_ZONE = 'openvibe.tools';
 // Hosts under openvibe.tools that are the platform itself, never a tool.
 const RESERVED_TOOLS_SUBS = new Set(['www', 'api', 'admin', 'static', 'cdn', 'mail']);

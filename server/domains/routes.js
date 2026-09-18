@@ -28,12 +28,24 @@ const dnsCheck = require('./dns-check');
 const NOTE_MAX = 500;
 
 function ensureSchema(db) {
+    // 'mirror' joined the roles after the table shipped; SQLite cannot alter a CHECK, so rebuild once.
+    try {
+        const row = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'tool_domains'").get();
+        if (row && /CHECK \(role IN/.test(row.sql) && !/'mirror'/.test(row.sql)) {
+            db.exec('BEGIN; ALTER TABLE tool_domains RENAME TO tool_domains_old;');
+            _createTable(db);
+            db.exec('INSERT INTO tool_domains SELECT * FROM tool_domains_old; DROP TABLE tool_domains_old; COMMIT;');
+        }
+    } catch (err) { try { db.exec('ROLLBACK'); } catch { /* */ } console.error('[Domains] role migration failed:', err.message); }
+    _createTable(db);
+}
+function _createTable(db) {
     db.exec(`
         CREATE TABLE IF NOT EXISTS tool_domains (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             tool_id TEXT NOT NULL,
             host TEXT NOT NULL UNIQUE,
-            role TEXT NOT NULL DEFAULT 'alias' CHECK (role IN ('canonical', 'short', 'alias')),
+            role TEXT NOT NULL DEFAULT 'alias' CHECK (role IN ('canonical', 'short', 'alias', 'mirror')),
             enabled INTEGER NOT NULL DEFAULT 1,
             note TEXT,
             created_by INTEGER,
@@ -137,7 +149,7 @@ function createDomainRoutes(db, requireAuth, opts = {}) {
     /** Write inside one transaction; returns the row plus whatever was demoted to make room. */
     const write = db.transaction((next, current, userId) => {
         const demoted = [];
-        if (next.enabled && next.role !== 'alias') {
+        if (next.enabled && (next.role === 'canonical' || next.role === 'short')) {   // one of each; aliases and mirrors can be many
             for (const row of q.holders.all(next.tool_id, next.role, current ? current.id : 0)) {
                 q.demote.run(row.id);
                 demoted.push({ id: row.id, host: row.host, from: row.role });

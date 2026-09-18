@@ -16,6 +16,11 @@ x=await j('POST','/api/admin/domains','owner',{tool_id:'yt',host:'YoutubeDownloa
 x=await j('POST','/api/admin/domains','owner',{tool_id:'yt',host:'other.com',role:'canonical'});assert.ok(x.s<300);
 x=await j('POST','/api/admin/domains','owner',{tool_id:'nope',host:'a.com',role:'alias'});assert.equal(x.s,400);
 x=await j('POST','/api/admin/domains','owner',{tool_id:'yt',host:'bad host/../',role:'alias'});assert.equal(x.s,400);
+x=await j('POST','/api/admin/domains','owner',{tool_id:'yt',host:'youtubedownloader.openvibe.tools',role:'mirror'});assert.ok(x.s<300,'mirror role accepted: '+JSON.stringify(x.j));
+x=await j('POST','/api/admin/domains','owner',{tool_id:'yt',host:'ytmirror.example.com',role:'mirror'});assert.ok(x.s<300,'a tool may have several mirrors');
 x=await j('GET','/api/domains');console.log(x.s,JSON.stringify(x.j.domains));
 assert.equal(x.j.domains.filter(d=>d.role==='canonical').length,1);
+assert.equal(x.j.domains.filter(d=>d.role==='mirror').length,2);
+// an old table (CHECK without 'mirror') is rebuilt in place, rows kept
+{const D=require('better-sqlite3');const old=new D(':memory:');old.exec("CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT);CREATE TABLE audit_log(id INTEGER PRIMARY KEY,user_id INT,action TEXT,details TEXT,ip TEXT);CREATE TABLE tool_domains (id INTEGER PRIMARY KEY AUTOINCREMENT, tool_id TEXT NOT NULL, host TEXT NOT NULL UNIQUE, role TEXT NOT NULL DEFAULT 'alias' CHECK (role IN ('canonical', 'short', 'alias')), enabled INTEGER NOT NULL DEFAULT 1, note TEXT, created_by INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);INSERT INTO tool_domains (tool_id,host,role) VALUES ('yt','keep.example.com','alias')");require('../server/domains/routes').ensureSchema(old);old.prepare("INSERT INTO tool_domains (tool_id,host,role) VALUES ('yt','m.example.com','mirror')").run();assert.equal(old.prepare('SELECT COUNT(*) c FROM tool_domains').get().c,2,'rows survive the rebuild');}
 console.log('audit rows',db.prepare('select count(*) c from audit_log').get().c);console.log('domains: all checks passed');s.close();});
