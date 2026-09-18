@@ -415,6 +415,10 @@ function requireAdmin(req, res, next) {
     }
     next();
 }
+// Tool domains: public list for the Tools gateway, owner-only management (docs/shared-contracts.md §1).
+const toolDomains = require('./domains/routes').createDomainRoutes(db, requireAuth);
+app.use('/api/domains', rateLimit({ windowMs: 60_000, max: 120 }), toolDomains.publicRouter);
+app.use('/api/admin/domains', toolDomains.adminRouter);
 app.use('/api/admin/discord', createDiscordRoutes(db, discordService, requireAuth, requireAdmin));
 
 // Deploy (TLS / Nginx / Infrastructure) admin API
@@ -519,8 +523,9 @@ app.get(['/login.html', '/admin.html'], (req, res) => {
 // Landing page at the apex root
 app.get(['/', '/index.html'], (req, res) => {
     if (req.path === '/index.html') return redirectWithoutHtml(req, res, '/');
-    return sendLandingPage(res);
+    return require('./home/render').sendHome(req, res);
 });
+app.get('/llms.txt', (_req, res) => res.type('text/plain').set('Cache-Control', 'public, max-age=3600').send(require('./home/render').llmsTxt()));
 
 // Account hub (my.html) — the apex hosts the account hub under /my
 // plus its client-routed sections.

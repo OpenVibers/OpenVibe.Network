@@ -12,7 +12,8 @@
     "./middleware": "./middleware.js",
     "./notifications": "./notifications.js",
     "./url-resolver": "./url-resolver.js",
-    "./seo": "./seo.js"
+    "./seo": "./seo.js",
+    "./icons": "./ov-icons.js"
   },
   "license": "MIT",
   "dependencies": {
