@@ -69,7 +69,13 @@ router.get('/', (req, res) => {
 });
 
 // ── Get User's Active Theme ──────────────────────────────────
-router.get('/me/active', requireAuth, (req, res) => {
+// A request with no credentials at all is a guest asking "do I have a theme?": answer "no" with
+// a 200 so every page view by a guest does not log a failed request in the console.
+router.get('/me/active', (req, res, next) => {
+    const hasAuth = /^Bearer\s+\S/.test(req.headers.authorization || '') || /(?:^|;\s*)ov_token=/.test(req.headers.cookie || '');
+    if (!hasAuth) return res.set('Cache-Control', 'no-store').json({ theme_id: null, guest: true });
+    next();
+}, requireAuth, (req, res) => {
     const db = getDb(req);
     const userId = req.user.sub || req.user.id;
     const prefs = db.prepare('SELECT theme_id, custom_theme_variables FROM user_preferences WHERE user_id = ?').get(userId);
