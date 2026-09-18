@@ -56,7 +56,10 @@ function clearSessionCookies(res) {
     res.clearCookie('ov_token', { path: '/', sameSite: 'Lax', secure: true });
     res.clearCookie('ov_sso', { path: '/', sameSite: 'None', secure: true, httpOnly: true });
 }
-/** The session token a request carries: Bearer header, then the page cookie, then the cross-site one. */
+/**
+ * The session token a request carries: Bearer header, then the page cookie, then the cross-site
+ * one. Only for endpoints that change nothing (/sso/check) — see makeRequireAuth for why.
+ */
 function requestToken(req) {
     const h = req.headers?.authorization;
     if (h && h.startsWith('Bearer ')) return h.slice(7);
@@ -66,7 +69,10 @@ function requestToken(req) {
 function makeRequireAuth(getCtx, signToken) {
     return function requireAuth(req, res, next) {
         const authHeader = req.headers.authorization;
-        const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : (req.cookies?.ov_token || req.cookies?.ov_sso);
+        // Never ov_sso here: it is SameSite=None, so a hostile page could make the browser send it
+        // on a cross-site POST. Only the read-only /sso/check and the prompt=none authorize
+        // (which yields a code bound to a registered redirect_uri) may consult it.
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : req.cookies?.ov_token;
         const ctx = getCtx(req);
         const out = verifySession(token, ctx);
         if (out.error) return res.status(out.status).json(out.status === 403 ? { error: out.error, ban_reason: out.ban_reason } : { error: out.error });
