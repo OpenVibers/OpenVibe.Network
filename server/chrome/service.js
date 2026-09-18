@@ -19,12 +19,15 @@ const crypto = require('crypto');
 const { SITES, siteForHost } = require('./sites');
 const toolsCatalog = require('../domains/catalog');
 
-const RANK_MS = 30 * 60_000, COPY_MS = 24 * 60 * 60_000, INTERNAL_SECRET = 'openvibe-internal-2026';
+const RANK_MS = 30 * 60_000, COPY_MS = 24 * 60 * 60_000;
 const BANNED = /\b(free|\$0|no ads|ad[- ]free|no cost|gratis)\b|https?:|www\.|[<>{}]/i;
 const BASE_WEIGHT = { live: 6, tools: 5, community: 4, games: 3, media: 2, network: 1 };   // cold-start order only
 
 function createChromeService(db, config, analytics) {
     db.exec('CREATE TABLE IF NOT EXISTS chrome_cache (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)');
+    // Anonymous page-view counts per host and day, sent by the shared navbar. No user, no IP, no path.
+    db.exec('CREATE TABLE IF NOT EXISTS chrome_hits (day TEXT NOT NULL, host TEXT NOT NULL, hits INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, host))');
+    const bump = db.prepare("INSERT INTO chrome_hits (day, host, hits) VALUES (date('now'), ?, 1) ON CONFLICT(day, host) DO UPDATE SET hits = hits + 1");
     const load = (k) => { try { const r = db.prepare('SELECT value, updated_at FROM chrome_cache WHERE key = ?').get(k); return r ? { value: JSON.parse(r.value), at: Date.parse(r.updated_at + 'Z') || 0 } : null; } catch { return null; } };
     const save = (k, v) => db.prepare('INSERT INTO chrome_cache (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP').run(k, JSON.stringify(v));
 
@@ -38,26 +41,31 @@ function createChromeService(db, config, analytics) {
     }
 
     async function refreshRank() {
-        const sources = await Promise.all([
-            getJson(`${svcUrl('live', 'http://127.0.0.1:3000')}/internal/analytics-summary?days=7`, { 'X-Internal-Key': config.internalKey }).then(j => ['live', j && j.summary]),
-            ...[['tools', 'http://127.0.0.1:4001'], ['games', 'http://127.0.0.1:8000'], ['media', 'http://127.0.0.1:4100']].map(([n, u]) =>
-                getJson(`${svcUrl(n, u)}/api/internal/analytics?days=7`, { 'X-Internal-Secret': INTERNAL_SECRET }).then(j => [n, j && j.analytics && j.analytics.summary])),
-        ]);
         const scores = Object.assign({}, rank.scores);
-        try { const own = analytics && analytics.getStats({ days: 7 }); if (own && own.summary) sources.push(['network', own.summary]); } catch { /* */ }
-        for (const [name, sum] of sources) {
-            if (!sum) continue;                                   // unreachable: keep the last known score
-            const views = Number(sum.total_pageviews) || 0, people = Number(sum.unique_visitors) || Number(sum.total_unique_visitors) || 0;
-            // The Network serves sign-in, themes and shared scripts to every other site, so its visitor count is
-            // everyone's. Only its own page views count, at half weight: it is the account desk, not a destination.
-            scores[name] = Math.round(name === 'network' ? views * 0.5 : views + 4 * people);
-        }
-        // Signed-in history covers every site (community has no analytics endpoint) and names the tools people use.
+        // Live runs its own navbar and its own analytics: ask it for totals (internal key, totals only).
+        const live = await getJson(`${svcUrl('live', 'http://127.0.0.1:3000')}/internal/analytics-summary?days=7`, { 'X-Internal-Key': config.internalKey });
+        if (live && live.summary) scores.live = Math.round(Number(live.summary.total_pageviews) || 0);
+        // Everything else: the navbar's page-view beacon, summed per site over 7 days.
         let tools = rank.tools || [];
+        try {
+            const rows = db.prepare("SELECT host, SUM(hits) AS n FROM chrome_hits WHERE day >= date('now', '-7 days') GROUP BY host").all();
+            const perSite = {}; const perTool = new Map();
+            const { catalog } = toolsCatalog.peek();
+            const toolOfHost = new Map();
+            for (const t of catalog.tools) for (const h of [t.hosts && t.hosts.canonical, t.hosts && t.hosts.short, ...((t.hosts && t.hosts.aliases) || [])]) if (h) toolOfHost.set(h, t.id);
+            for (const r of rows) {
+                const site = siteForHost(r.host) || (toolOfHost.has(r.host) ? { id: 'tools' } : null);
+                if (!site) continue;
+                perSite[site.id] = (perSite[site.id] || 0) + r.n;
+                const tool = toolOfHost.get(r.host); if (tool) perTool.set(tool, (perTool.get(tool) || 0) + r.n);
+            }
+            for (const [id, n] of Object.entries(perSite)) if (id !== 'live') scores[id] = Math.round(id === 'network' ? n * 0.5 : n);   // the account desk is not a destination
+            if (perTool.size) tools = [...perTool.entries()].sort((x, y) => y[1] - x[1]).slice(0, 12).map(x => x[0]);
+        } catch { /* */ }
+        // Signed-in history is a second opinion that also covers hosts without the shared navbar.
         try {
             const bySvc = db.prepare("SELECT service, COUNT(*) AS n, COUNT(DISTINCT user_id) AS u FROM user_history WHERE created_at > datetime('now', '-14 days') GROUP BY service").all();
             for (const r of bySvc) { const id = r.service === 'pastes' ? 'community' : r.service; if (!id) continue; scores[id + ':history'] = r.n + 5 * r.u; }
-            tools = db.prepare("SELECT sub, COUNT(*) AS n FROM user_history WHERE service = 'tools' AND sub IS NOT NULL AND sub != '' AND created_at > datetime('now', '-30 days') GROUP BY sub ORDER BY n DESC LIMIT 12").all().map(r => r.sub);
         } catch { /* table appears on first history write */ }
         rank = { scores, tools };
         save('rank', rank); version = Date.now();
@@ -134,6 +142,23 @@ function createChromeService(db, config, analytics) {
         res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=600, stale-while-revalidate=86400', ETag: e.etag, 'Content-Type': 'application/json; charset=utf-8' });
         if (req.headers['if-none-match'] === e.etag) return res.status(304).end();
         res.send(e.body);
+    });
+
+    // POST /api/chrome/hit — one anonymous count for the calling page's host. The host comes from the
+    // browser-set Origin header (never the body) and must be one of ours or a registered tool domain.
+    const recent = new Map();   // ip → [count, windowStart]: 40/min is plenty for a person, useless for stuffing
+    router.post('/hit', (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' });
+        try {
+            const ua = String(req.headers['user-agent'] || '');
+            let host = ''; try { host = new URL(String(req.headers.origin || '')).hostname.toLowerCase(); } catch { /* */ }
+            const now = Date.now(); const k = req.ip || ''; const w = recent.get(k);
+            if (!w || now - w[1] > 60_000) recent.set(k, [1, now]); else w[0]++;
+            if (recent.size > 5000) recent.clear();
+            const known = host && (siteForHost(host) || toolsCatalog.peek().catalog.tools.some(t => t.hosts && (t.hosts.canonical === host || t.hosts.short === host)));
+            if (known && (recent.get(k) || [0])[0] <= 40 && !/bot|crawl|spider|slurp|headless|preview|monitor|curl|wget|python|node|go-http/i.test(ua)) bump.run(host);
+        } catch { /* counting must never fail a page */ }
+        res.status(204).end();
     });
 
     function start() {
