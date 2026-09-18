@@ -27,6 +27,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     'use strict';
 
+    const root = typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : {});
     // ── Shared chrome data (https://openvibe.network/api/chrome) ─────────────────────────────
     // Sites ordered by real use, footer copy and per-site legal links. Cached per host for 30
     // minutes in localStorage and refreshed in the background, so pages paint from cache and the
