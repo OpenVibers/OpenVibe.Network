@@ -208,6 +208,7 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
                 <button class="admin-tab-btn" onclick="showTab('vkeys',this)"><i class="fa-solid fa-key"></i> Keys</button>
                 <button class="admin-tab-btn" onclick="showTab('audit',this)"><i class="fa-solid fa-clipboard-list"></i> Audit</button>
                 <button class="admin-tab-btn" onclick="showTab('analytics',this)"><i class="fa-solid fa-chart-pie"></i> Analytics</button>
+                <button class="admin-tab-btn owner-only" onclick="showTab('domains',this)"><i class="fa-solid fa-globe"></i> Domains</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('deploy',this)"><i class="fa-solid fa-server"></i> Deploy</button>
                 <button class="admin-tab-btn" onclick="showTab('ssh',this)"><i class="fa-solid fa-terminal"></i> SSH</button>
             </div>
@@ -681,6 +682,9 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
     </div>
 
     <!-- SSH access provisioning -->
+    <div class="section" id="sec-domains">
+        <div id="domains-content"><div class="loading">Loading...</div></div>
+    </div>
     <div class="section" id="sec-ssh">
         <div id="ssh-content"><div class="loading">Loading...</div></div>
     </div>
@@ -769,7 +773,7 @@ let currentTab = 'dashboard';
 // Tabs restricted to the network owner (API keys / money / infrastructure / core settings).
 // NOTE: 'ai' is NOT here — admins may use its analytics/explorer tools; only the
 // AI configuration form inside it is owner-gated (see loadAi).
-const OWNER_ONLY_TABS = new Set(['deploy', 'payments', 'cashouts', 'storage', 'email', 'settings']);
+const OWNER_ONLY_TABS = new Set(['deploy', 'domains', 'payments', 'cashouts', 'storage', 'email', 'settings']);
 const tabLoaders = {
     dashboard: loadDashboard,
     users: loadUsers,
@@ -791,8 +795,59 @@ const tabLoaders = {
     audit: loadAudit,
     analytics: loadAnalytics,
     deploy: loadDeployOverview,
+    domains: loadDomains,
     ssh: loadSSH,
 };
+
+
+// ── Tool domains (owner only; the server enforces it) ───────────────
+let _domCatalog = null;
+async function loadDomains() {
+    const el = document.getElementById('domains-content');
+    try {
+        const [list, cat] = await Promise.all([api('/api/admin/domains'), _domCatalog ? Promise.resolve(_domCatalog) : api('/api/admin/domains/catalog')]);
+        _domCatalog = cat;
+        const byTool = {}; list.domains.forEach(d => { (byTool[d.tool_id] = byTool[d.tool_id] || []).push(d); });
+        const opts = [...cat.families.map(f => ({ id: f.id, name: f.name + ' (family)' })), ...cat.tools.map(t => ({ id: t.id, name: t.name }))];
+        const roleBadge = r => `<span class="badge ${r === 'canonical' ? 'badge-success' : r === 'short' ? 'badge-info' : ''}">${esc(r)}</span>`;
+        el.innerHTML = `
+        <div class="card"><h3><i class="fa-solid fa-globe"></i> Tool domains</h3>
+            <p class="muted">Every tool has a <b>canonical</b> host (used in links, sitemaps and canonical tags), a <b>short</b> host people type, and any number of <b>aliases</b> that redirect to the short one. Custom domains work the same way: point DNS at the server, add the host here, then run <code>add-custom-domain.sh</code> on the host for nginx and TLS. Tools picks changes up within a minute.${cat.source !== 'live' ? ' <br><span class="badge badge-warning">Tools catalog unreachable: showing the built-in list</span>' : ''}</p>
+            <div class="form-group" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end">
+                <div class="form-field"><label for="dom-tool">Tool</label><select id="dom-tool">${opts.map(o => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select></div>
+                <div class="form-field"><label for="dom-host">Host</label><input id="dom-host" placeholder="youtubedownloadonline.com" autocomplete="off" spellcheck="false"></div>
+                <div class="form-field"><label for="dom-role">Role</label><select id="dom-role"><option value="alias">alias (redirects)</option><option value="short">short (what people type)</option><option value="canonical">canonical (SEO host)</option></select></div>
+                <div class="form-field"><label for="dom-note">Note</label><input id="dom-note" maxlength="500"></div>
+                <div><button class="btn btn-outline" onclick="checkDomainDns()">Check DNS</button> <button class="btn btn-primary" onclick="addDomain()">Add</button></div>
+            </div>
+            <div id="dom-check" class="muted" style="margin-top:8px"></div>
+        </div>
+        <div class="card"><h3>Overrides</h3>
+            ${list.domains.length ? `<div style="overflow-x:auto"><table class="table" style="width:100%"><thead><tr><th>Tool</th><th>Host</th><th>Role</th><th>On</th><th>Note</th><th></th></tr></thead><tbody>
+            ${list.domains.map(d => `<tr><td>${esc(d.tool_id)}${d.tool_known === false ? ' <span class="badge badge-warning">unknown tool</span>' : ''}</td>
+                <td><a href="https://${esc(d.host)}/" target="_blank" rel="noopener">${esc(d.host)}</a></td><td>${roleBadge(d.role)}</td>
+                <td><input type="checkbox" ${d.enabled ? 'checked' : ''} onchange="updateDomain(${d.id},{enabled:this.checked})" aria-label="Enabled"></td>
+                <td>${esc(d.note || '')}</td>
+                <td style="white-space:nowrap"><select onchange="updateDomain(${d.id},{role:this.value})" aria-label="Role">${['canonical','short','alias'].map(r => `<option ${r === d.role ? 'selected' : ''}>${r}</option>`).join('')}</select>
+                    <button class="btn btn-sm btn-danger" onclick="deleteDomain(${d.id},'${esc(d.host)}')">Remove</button></td></tr>`).join('')}
+            </tbody></table></div>` : '<p class="muted">No overrides yet. Every tool is using its built-in hosts.</p>'}
+        </div>
+        <div class="card"><h3>Built-in hosts</h3><div style="overflow-x:auto"><table class="table" style="width:100%"><thead><tr><th>Tool</th><th>Canonical</th><th>Short</th><th>Aliases</th></tr></thead><tbody>
+            ${cat.tools.map(t => `<tr><td>${esc(t.name)} <small class="muted">${esc(t.id)}</small></td><td>${esc(t.hosts?.canonical || '')}</td><td>${esc(t.hosts?.short || '')}</td><td>${esc((t.hosts?.aliases || []).join(', '))}</td></tr>`).join('')}
+        </tbody></table></div></div>`;
+    } catch (e) { el.innerHTML = `<div class="card"><p class="muted">Could not load domains: ${esc(e.message)}</p></div>`; }
+}
+async function addDomain() {
+    const body = { tool_id: document.getElementById('dom-tool').value, host: document.getElementById('dom-host').value, role: document.getElementById('dom-role').value, note: document.getElementById('dom-note').value };
+    try { const r = await api('/api/admin/domains', { method: 'POST', body }); toast('Domain added', 'success'); (r.warnings || []).forEach(w => toast(w, 'warning')); loadDomains(); } catch (e) { toast(e.message, 'error'); }
+}
+async function updateDomain(id, patch) { try { const r = await api('/api/admin/domains/' + id, { method: 'PUT', body: patch }); (r.warnings || []).forEach(w => toast(w, 'warning')); toast('Saved', 'success'); } catch (e) { toast(e.message, 'error'); } loadDomains(); }
+async function deleteDomain(id, host) { if (!confirm(`Remove ${host}?`)) return; try { await api('/api/admin/domains/' + id, { method: 'DELETE' }); toast('Removed', 'success'); } catch (e) { toast(e.message, 'error'); } loadDomains(); }
+async function checkDomainDns() {
+    const out = document.getElementById('dom-check'); out.textContent = 'Checking…';
+    try { const r = await api('/api/admin/domains/check', { method: 'POST', body: { host: document.getElementById('dom-host').value } }); const c = r.check || {};
+        out.textContent = (c.status === 'ready' ? 'Ready. ' : '') + (c.message || c.status || ''); } catch (e) { out.textContent = e.message; }
+}
 
 function showTab(id, btn) {
     if (!tabLoaders[id]) id = 'dashboard';
