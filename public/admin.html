@@ -817,11 +817,11 @@ async function loadDomains() {
         const roleBadge = r => `<span class="badge ${r === 'canonical' ? 'badge-success' : r === 'short' ? 'badge-info' : ''}">${esc(r)}</span>`;
         el.innerHTML = `
         <div class="card"><h3><i class="fa-solid fa-globe"></i> Tool domains</h3>
-            <p class="muted">Every tool has a <b>canonical</b> host (used in links, sitemaps and canonical tags), a <b>short</b> host people type, and any number of <b>aliases</b> that redirect to the short one. Custom domains work the same way: point DNS at the server, add the host here, then run <code>add-custom-domain.sh</code> on the host for nginx and TLS. Tools picks changes up within a minute.${cat.source !== 'live' ? ' <br><span class="badge badge-warning">Tools catalog unreachable: showing the built-in list</span>' : ''}</p>
+            <p class="muted">Every tool has a <b>canonical</b> host (used in links, sitemaps and canonical tags), a <b>short</b> host people type, any number of <b>aliases</b> that redirect to the short one, and <b>mirrors</b> that serve the tool on another address while pointing search engines at the canonical host. Custom domains work the same way: point DNS at the server, add the host here, then run <code>add-custom-domain.sh</code> on the host for nginx and TLS. Tools picks changes up within a minute.${cat.source !== 'live' ? ' <br><span class="badge badge-warning">Tools catalog unreachable: showing the built-in list</span>' : ''}</p>
             <div class="form-group" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end">
                 <div class="form-field"><label for="dom-tool">Tool</label><select id="dom-tool">${opts.map(o => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select></div>
                 <div class="form-field"><label for="dom-host">Host</label><input id="dom-host" placeholder="youtubedownloadonline.com" autocomplete="off" spellcheck="false"></div>
-                <div class="form-field"><label for="dom-role">Role</label><select id="dom-role"><option value="alias">alias (redirects)</option><option value="short">short (what people type)</option><option value="canonical">canonical (SEO host)</option></select></div>
+                <div class="form-field"><label for="dom-role">Role</label><select id="dom-role"><option value="alias">alias (redirects to the short host)</option><option value="mirror">mirror (serves the tool, canonical tag points at the SEO host)</option><option value="short">short (what people type)</option><option value="canonical">canonical (SEO host)</option></select></div>
                 <div class="form-field"><label for="dom-note">Note</label><input id="dom-note" maxlength="500"></div>
                 <div><button class="btn btn-outline" onclick="checkDomainDns()">Check DNS</button> <button class="btn btn-primary" onclick="addDomain()">Add</button></div>
             </div>
@@ -833,7 +833,7 @@ async function loadDomains() {
                 <td><a href="https://${esc(d.host)}/" target="_blank" rel="noopener">${esc(d.host)}</a></td><td>${roleBadge(d.role)}</td>
                 <td><input type="checkbox" ${d.enabled ? 'checked' : ''} onchange="updateDomain(${d.id},{enabled:this.checked})" aria-label="Enabled"></td>
                 <td>${esc(d.note || '')}</td>
-                <td style="white-space:nowrap"><select onchange="updateDomain(${d.id},{role:this.value})" aria-label="Role">${['canonical','short','alias'].map(r => `<option ${r === d.role ? 'selected' : ''}>${r}</option>`).join('')}</select>
+                <td style="white-space:nowrap"><select onchange="updateDomain(${d.id},{role:this.value})" aria-label="Role">${['canonical','short','alias','mirror'].map(r => `<option ${r === d.role ? 'selected' : ''}>${r}</option>`).join('')}</select>
                     <button class="btn btn-sm btn-danger" onclick="deleteDomain(${d.id},'${esc(d.host)}')">Remove</button></td></tr>`).join('')}
             </tbody></table></div>` : '<p class="muted">No overrides yet. Every tool is using its built-in hosts.</p>'}
         </div>
