@@ -489,6 +489,7 @@ function initDb(dbPath) {
         // When the account was last used on a service (bumped on every OAuth exchange).
         { table: 'linked_accounts', column: 'last_used_at', sql: "ALTER TABLE linked_accounts ADD COLUMN last_used_at DATETIME" },
         // Cross-site history can be paused by the user (server/history/routes.js).
+        { table: 'user_preferences', column: 'display_prefs', sql: "ALTER TABLE user_preferences ADD COLUMN display_prefs TEXT" },
         { table: 'users', column: 'history_paused', sql: "ALTER TABLE users ADD COLUMN history_paused INTEGER DEFAULT 0" },
     ];
     for (const m of migrations) {
