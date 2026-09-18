@@ -72,7 +72,8 @@
         pill = el('button', 'ovi-pill'); pill.type = 'button'; pill.setAttribute('aria-haspopup', 'true'); pill.setAttribute('aria-expanded', 'false');
         card = el('div', 'ovi-card'); card.setAttribute('role', 'region'); card.setAttribute('aria-label', 'Activity');
         host.append(pill, card);
-        const brand = document.querySelector('.openvibe-navbar .ovnav-brand, .openvibe-navbar .openvibe-brand, .navbar .nav-brand, .navbar .logo');
+        // Dock after the brand (and its launcher button); sites with their own navbar mark the spot with [data-ov-island].
+        const brand = document.querySelector('[data-ov-island], .openvibe-navbar #openvibe-launcher-btn, .openvibe-navbar .openvibe-navbar-brand, .navbar .nav-brand');
         if (brand && brand.parentNode) brand.parentNode.insertBefore(host, brand.nextSibling);
         else { host.classList.add('is-floating'); document.body.appendChild(host); }
         const open = (v) => { host.classList.toggle('is-open', v); pill.setAttribute('aria-expanded', String(v)); };
@@ -86,7 +87,7 @@
 
     function brandMark(a) {
         // The navbar's own mark mirrors the top activity: progress ring + state colour.
-        document.querySelectorAll('.openvibe-navbar .ov-mark, .navbar .ov-mark').forEach((m) => {
+        document.querySelectorAll('.openvibe-navbar-brand .ov-mark, .navbar .nav-brand .ov-mark').forEach((m) => {
             if (m.closest('.openvibe-network-badge')) return;
             if (!a) { m.removeAttribute('data-state'); m.removeAttribute('data-progress'); m.style.removeProperty('--ovm-p'); return; }
             m.setAttribute('data-state', a.state === 'info' ? 'idle' : a.state);
