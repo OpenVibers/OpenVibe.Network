@@ -35,7 +35,7 @@ Host roles, enforced by the Tools gateway (and honoured by satellites through re
 
 | role | response | `<link rel=canonical>` | used in links / sitemaps |
 |---|---|---|---|
-| `canonical` | 200 | itself | yes |
+| `canonical` | 200 for crawlers and API calls; **302 → short** for a person's page load | itself | yes |
 | `short` | 200 | the canonical host | no (it is what people type and share) |
 | `alias` | 301 → short (or canonical when there is no short) | — | no |
 | unknown `*.openvibe.tools` | 301 → `https://openvibe.tools/` | — | — |
@@ -100,7 +100,9 @@ Unknown names fall back to the OV mark. Reduced motion is honoured.
 
 `OpenVibeUI.toast(message, { type: 'info|success|error|warning', title?, action?: { label, onClick|href }, ttl? })`,
 `OpenVibeUI.confirm({ title, message, confirmLabel, danger })` → Promise<boolean>,
-`OpenVibeUI.alert({ title, message })`. Themed, stacked, accessible (`role=status|alert`), one
+`OpenVibeUI.alert({ title, message })`,
+`OpenVibeUI.notice({ id, type, title, message, links: [{ label, href }], dismissible })` — the one page-level
+notice for status, maintenance and similar; it always sits directly under the navbar. Themed, stacked, accessible (`role=status|alert`), one
 implementation for every site.
 
 ## 6. SEO (`seo.js`, Node — `require('openvibe-shared/seo')`)
@@ -170,3 +172,6 @@ loopback caller with no proxy headers (Tools: `apps/_shared/internal-auth.js`; L
 `server/internal/routes.js`). No secret is ever a constant in a repository. Tools' gateway sums its
 satellites at `GET /api/internal/analytics`; Games and Media have no analytics, so the admin panel
 shows their navbar page-view count, labelled as such.
+
+Icon glyphs are optically centred from measured bounds: after adding or editing a glyph run
+`node packages/openvibe-shared/scripts/measure-icons.js <cdp harness>` to regenerate the offsets table.
