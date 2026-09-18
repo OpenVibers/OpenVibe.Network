@@ -118,7 +118,8 @@ function load(hostname, opts = {}) {
     assert.strictEqual(nav.getAttribute('data-compact'), 'always');
     assert.ok(nav.innerHTML.includes('class="b-sub">Pastes<') && nav.innerHTML.includes('class="b-tld">Tools<'), 'segments rendered');
     assert.ok(nav.innerHTML.includes('data-variant="tools"'), 'ov-mark variant');
-    assert.ok(nav.innerHTML.includes('href="/mine" class="active"'), 'current path marked active');
+    assert.ok(/href="\/mine" class="ovnav-link active"/.test(nav.innerHTML), 'current path marked active');
+    assert.ok(/class="ovnav-burger"/.test(nav.innerHTML) && /class="ovnav-drawer"/.test(nav.innerHTML), 'links get a mobile drawer');
     assert.ok(/<span class="icon"><svg class="ovnav-ic"/.test(nav.innerHTML), 'link icon rendered inline (no icon font needed)');
     assert.ok(!/fa-solid fa-plus/.test(nav.innerHTML), 'known icons do not depend on Font Awesome');
     const dd = created.find(e => e.tag === 'div' && /openvibe-navbar-dropdown-menu/.test(e.innerHTML));
