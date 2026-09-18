@@ -105,7 +105,7 @@ router.get('/users/:id/theme', (req, res) => {
 // When a user connects their OpenVibe.Live or OpenVibe.Games account,
 // the service reports the link here.
 router.post('/link-account', (req, res) => {
-    const { user_id, service, service_user_id, service_username } = req.body;
+    const { user_id, service, service_user_id, service_username, avatar_url, display_name } = req.body;
     if (!user_id || !service || !service_user_id) {
         return res.status(400).json({ error: 'user_id, service, and service_user_id required' });
     }
@@ -119,6 +119,20 @@ router.post('/link-account', (req, res) => {
             service_username = ?,
             linked_at = CURRENT_TIMESTAMP
     `).run(user_id, service, service_user_id, service_username || null, service_user_id, service_username || null);
+
+    // People set their picture on the site they use (usually Live). When the network account has none, adopt it,
+    // so every other site shows the same face. Never overwrites a picture or name the user set here, and only
+    // accepts https URLs on our own sites.
+    try {
+        const me = db.prepare('SELECT avatar_url, display_name, username FROM users WHERE id = ?').get(user_id);
+        if (me) {
+            let okAvatar = null;
+            try { const u = new URL(String(avatar_url || '')); if (u.protocol === 'https:' && /(^|\.)openvibe\.(live|media|network|games|community|tools)$/.test(u.hostname) && String(avatar_url).length < 500) okAvatar = u.toString(); } catch { /* not a URL */ }
+            if (okAvatar && !me.avatar_url) db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(okAvatar, user_id);
+            const name = String(display_name || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 60);
+            if (name && (!me.display_name || me.display_name === me.username)) db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(name, user_id);
+        }
+    } catch (err) { console.warn('[Internal] profile adopt failed:', err.message); }
 
     res.json({ success: true });
 });

@@ -20,7 +20,7 @@ console.log('shared modules: all checks passed');
 // The browser bundles must at least evaluate in a bare global (this caught a missing `root` once).
 {
     const vm = require('vm'); const fs = require('fs'); const path = require('path');
-    for (const f of ['footer.js', 'navbar.js', 'island.js', 'ui.js', 'ov-icons.js', 'history.js', 'sso-client.js']) {
+    for (const f of ['footer.js', 'navbar.js', 'island.js', 'ui.js', 'ov-icons.js', 'history.js', 'sso-client.js', 'panels.js']) {
         const ctx = vm.createContext({ console });
         ctx.globalThis = ctx; ctx.window = ctx; ctx.self = ctx;
         ctx.localStorage = { getItem: () => null, setItem() {} }; ctx.location = { hostname: 'openvibe.tools', href: 'https://openvibe.tools/' };
