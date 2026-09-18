@@ -14,6 +14,8 @@ assert.strictEqual(allowedOrigin('https://play.openvibe.games'), 'https://play.o
 assert.strictEqual(allowedOrigin('https://ingest.openre.stream'), 'https://ingest.openre.stream');
 assert.strictEqual(allowedOrigin('https://openvibe.tools.evil.com'), null, 'suffix spoof rejected');
 assert.strictEqual(allowedOrigin('https://evilopenvibe.tools'), null);
+assert.strictEqual(allowedOrigin('https://openvibe.xyz'), null, 'a TLD we do not own is not ours');
+assert.strictEqual(allowedOrigin('https://x.openvibe.deals'), 'https://x.openvibe.deals');
 assert.strictEqual(allowedOrigin('http://openvibe.tools'), null, 'plain http rejected');
 assert.strictEqual(allowedOrigin('https://openvibe.tools/path'), null, 'origins only');
 assert.strictEqual(allowedOrigin('http://localhost:4301', { NODE_ENV: 'development' }), 'http://localhost:4301');
