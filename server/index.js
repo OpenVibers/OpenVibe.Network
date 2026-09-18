@@ -418,6 +418,14 @@ function requireAdmin(req, res, next) {
 // Terms, Privacy and DMCA for this domain (openvibe-shared/legal; every site serves its own).
 { const legal = require('openvibe-shared/legal'); app.get(legal.PATHS, legal.handler({ id: 'network', service: 'network', host: 'openvibe.network', name: 'OpenVibe.Network', profile: 'account' })); app.get('/tos', (_req, res) => res.redirect(301, '/terms')); }
 
+// The tool catalog, re-served from here: every OpenVibe site's content-security policy already allows
+// openvibe.network, so the navbar's search works on hosts that may not call openvibe.tools directly.
+app.get('/api/catalog.json', async (req, res) => {
+    const toolsCatalog = require('./domains/catalog');
+    const { catalog } = await toolsCatalog.getCatalog().catch(() => toolsCatalog.peek());
+    res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300, stale-while-revalidate=86400' }).json(catalog);
+});
+
 // Shared chrome: analytics-ranked navigation + footer copy for every site (server/chrome).
 const chromeService = require('./chrome/service').createChromeService(db, config, analytics);
 app.use('/api/chrome', rateLimit({ windowMs: 60_000, max: 240 }), chromeService.router);

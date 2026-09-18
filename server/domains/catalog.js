@@ -31,6 +31,7 @@ function normalise(raw) {
         hosts: {
             canonical: str(t.hosts && t.hosts.canonical, 253), short: str(t.hosts && t.hosts.short, 253),
             aliases: Array.isArray(t.hosts && t.hosts.aliases) ? t.hosts.aliases.filter(h => typeof h === 'string').slice(0, 20) : [],
+            mirrors: Array.isArray(t.hosts && t.hosts.mirrors) ? t.hosts.mirrors.filter(h => typeof h === 'string').slice(0, 20) : [],
         },
         url: str(t.url, 300),
     }));
