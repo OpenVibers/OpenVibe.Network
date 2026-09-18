@@ -385,7 +385,12 @@ router.put('/profile', requireAuth, (req, res) => {
         updates.push('display_name = ?'); params.push(dn || uname);
     }
     if (bio !== undefined) { updates.push('bio = ?'); params.push(bio.slice(0, 500)); }
-    if (avatar_url !== undefined) { updates.push('avatar_url = ?'); params.push(avatar_url); }
+    if (avatar_url !== undefined) {
+        // Same rule as PUT /api/profile/avatar: only pictures on openvibe.media (or a paste, resolved to its screenshot).
+        const n = require('../profile/avatar').normalizeAvatar(avatar_url);
+        if (n.error) return res.status(400).json({ error: n.error });
+        updates.push('avatar_url = ?'); params.push(n.url);
+    }
     let emailChanged = false;
     if (email !== undefined) {
         const next = (email || '').trim() || null;

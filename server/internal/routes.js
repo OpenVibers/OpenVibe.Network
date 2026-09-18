@@ -126,15 +126,23 @@ router.post('/link-account', (req, res) => {
     try {
         const me = db.prepare('SELECT avatar_url, display_name, username FROM users WHERE id = ?').get(user_id);
         if (me) {
-            let okAvatar = null;
-            try { const u = new URL(String(avatar_url || '')); if (u.protocol === 'https:' && /(^|\.)openvibe\.(live|media|network|games|community|tools)$/.test(u.hostname) && String(avatar_url).length < 500) okAvatar = u.toString(); } catch { /* not a URL */ }
-            if (okAvatar && !me.avatar_url) db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(okAvatar, user_id);
-            const name = String(display_name || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 60);
-            if (name && (!me.display_name || me.display_name === me.username)) db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(name, user_id);
+            const svc = req.app.locals.avatarService;
+            if (svc && avatar_url && !me.avatar_url) svc.fromSite({ user_id, avatar_url, origin: service });
+            const name = String(display_name || '').trim().slice(0, 60);
+            // Same rule the profile form enforces: a display name only re-cases the username.
+            if (name && name !== me.display_name && name.toLowerCase() === String(me.username || '').toLowerCase()) db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(name, user_id);
         }
     } catch (err) { console.warn('[Internal] profile adopt failed:', err.message); }
 
     res.json({ success: true });
+});
+
+// ── A site changed someone's avatar (Live's avatar picker) ───
+router.post('/user-avatar', (req, res) => {
+    const svc = req.app.locals.avatarService;
+    if (!svc) return res.status(503).json({ error: 'avatar service unavailable' });
+    const r = svc.fromSite(req.body || {});
+    res.status(r.status).json(r.error ? { error: r.error } : { ok: true, changed: r.changed });
 });
 
 // ── Get Linked Accounts ──────────────────────────────────────
