@@ -27,7 +27,23 @@ fa-arrow-up-right-from-square fa-chevron-down fa-chevron-right fa-bars fa-xmark 
 fa-circle-half-stroke fa-moon fa-sun fa-file-pdf fa-arrow-down fa-arrow-right fa-clock fa-envelope fa-star
 fa-heart fa-play fa-circle-info fa-triangle-exclamation fa-check fa-globe fa-code fa-robot fa-photo-film
 fa-tower-cell fa-diagram-project fa-toolbox fa-comment-dots fa-money-bill-wave fa-crown fa-server fa-newspaper
-fa-tag fa-ticket fa-chart-line fa-pen-nib fa-key fa-plug fa-bolt fa-satellite-dish fa-brain fa-microchip""".split()
+fa-tag fa-ticket fa-chart-line fa-pen-nib fa-key fa-plug fa-bolt fa-satellite-dish fa-brain fa-microchip
+fa-circle-nodes fa-download fa-upload fa-image fa-music fa-file-lines fa-font fa-location-dot fa-lock fa-wave-square
+fa-map fa-utensils fa-user-shield""".split()
+# ov-icons.js glyph name -> Font Awesome solid icon (names without a twin keep their stroke glyph)
+OV_SOLID = {
+    'network': 'fa-circle-nodes', 'live': 'fa-tower-broadcast', 'tools': 'fa-screwdriver-wrench', 'media': 'fa-photo-film',
+    'games': 'fa-gamepad', 'community': 'fa-people-group', 'chat': 'fa-comments', 'codes': 'fa-code', 'code': 'fa-code',
+    'blog': 'fa-pen-nib', 'wiki': 'fa-book', 'news': 'fa-newspaper', 'reviews': 'fa-star', 'tips': 'fa-coins', 'vip': 'fa-crown',
+    'trade': 'fa-chart-line', 'host': 'fa-server', 'deals': 'fa-tag', 'coupons': 'fa-ticket', 'stream': 'fa-satellite-dish',
+    'video': 'fa-video', 'download': 'fa-download', 'upload': 'fa-upload', 'image': 'fa-image', 'audio': 'fa-music',
+    'pdf': 'fa-file-pdf', 'docs': 'fa-file-lines', 'text': 'fa-font', 'dns': 'fa-globe', 'ip': 'fa-location-dot',
+    'ssl': 'fa-lock', 'ping': 'fa-wave-square', 'whois': 'fa-magnifying-glass', 'search': 'fa-magnifying-glass', 'map': 'fa-map',
+    'food': 'fa-utensils', 'paste': 'fa-paste', 'account': 'fa-user', 'bell': 'fa-bell', 'history': 'fa-clock-rotate-left',
+    'theme': 'fa-palette', 'check': 'fa-check', 'error': 'fa-triangle-exclamation', 'clip': 'fa-scissors',
+}
+OVICONS = HERE.parent / 'ov-icons.js'
+OV_START, OV_END = '    // BEGIN generated solid glyphs (scripts/build-nav-icons.py)', '    // END generated solid glyphs'
 
 def main():
     ap = argparse.ArgumentParser()
@@ -60,5 +76,13 @@ def main():
     i, j = src.index(START), src.index(END) + len(END)
     NAVBAR.write_text(src[:i] + '\n'.join(js) + src[j:], encoding='utf-8')
     print(f'wrote {len(out)} icons; missing: {missing or "none"}')
+    ov = [OV_START, "    // Font Awesome Free 6 solid glyphs (CC BY 4.0) for the ring icons; viewBox 0 0 <w> 512.", "    const SOLID = {"]
+    for name, fa in OV_SOLID.items():
+        if fa in out: w, d = out[fa]; ov.append(f"        {name}: [{w}, '{d}'],")
+    ov += ["    };", OV_END]
+    src = OVICONS.read_text(encoding='utf-8')
+    i, j = src.index(OV_START), src.index(OV_END) + len(OV_END)
+    OVICONS.write_text(src[:i] + '\n'.join(ov) + src[j:], encoding='utf-8')
+    print(f'ov-icons: {sum(1 for fa in OV_SOLID.values() if fa in out)} solid glyphs')
 
 if __name__ == '__main__': main()
