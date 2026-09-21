@@ -335,10 +335,49 @@
         'fa-house': '<path d="M4.5 11.5 12 5l7.5 6.500M6.5 10v8.500h11V10"/>',
         'fa-gauge-high': '<path d="M4.5 17a8 8 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13.5" r="1.3"/>',
     };
+    // Icons: Font Awesome solid when the host page has Font Awesome (crisp, matches the rest of
+    // the page); the inline stroke sprite only as a fallback for pages without it. The sprite
+    // was drawn for self-containment, not looks — at 14px the thin strokes read as jagged
+    // "line icons" next to everything else being solid. `icons: 'fa' | 'svg'` in init() forces one.
+    let _faOk = null;
+    function faAvailable() {
+        if (_config.icons === 'fa') return true;
+        if (_config.icons === 'svg') return false;
+        if (_faOk !== null) return _faOk;
+        if (!document.body) return false;                       // too early to probe; don't cache
+        try {
+            const probe = document.createElement('i');
+            probe.className = 'fa-solid fa-house';
+            probe.style.cssText = 'position:absolute;left:-9999px;top:-9999px;visibility:hidden';
+            document.body.appendChild(probe);
+            const ff = getComputedStyle(probe).fontFamily || '';
+            probe.remove();
+            _faOk = /font awesome/i.test(ff);
+        } catch { _faOk = false; }
+        return _faOk;
+    }
     function navIcon(cls) {
+        if (!cls) return '';
+        if (faAvailable()) return `<i class="fa-solid ${escapeAttr(cls)}"></i>`;
         const key = String(cls || '').split(/\s+/).find(c => NAV_ICONS[c]);
-        if (!key) return cls ? `<i class="fa-solid ${escapeAttr(cls)}"></i>` : '';
-        return `<svg class="ovnav-ic" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${NAV_ICONS[key]}</svg>`;
+        if (!key) return `<i class="fa-solid ${escapeAttr(cls)}"></i>`;
+        return `<svg class="ovnav-ic" data-fa="${escapeAttr(cls)}" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" shape-rendering="geometricPrecision" aria-hidden="true" focusable="false">${NAV_ICONS[key]}</svg>`;
+    }
+    // If Font Awesome finishes loading after the navbar rendered (deferred stylesheet), swap the
+    // sprite icons for the real glyphs in place.
+    function upgradeIconsWhenFontsReady() {
+        try {
+            if (_faOk === true || _config.icons) return;
+            const run = () => {
+                _faOk = null;
+                if (!faAvailable()) return;
+                document.querySelectorAll('.openvibe-navbar svg.ovnav-ic[data-fa], .openvibe-navbar-dropdown svg.ovnav-ic[data-fa]').forEach(svg => {
+                    const i = document.createElement('i'); i.className = 'fa-solid ' + svg.getAttribute('data-fa'); svg.replaceWith(i);
+                });
+            };
+            if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(run, 0));
+            window.addEventListener('load', () => setTimeout(run, 50), { once: true });
+        } catch { /* */ }
     }
 
     // ─── Brand from hostname ───────────────────────────────────
@@ -1390,6 +1429,7 @@
             Object.assign(_config, opts);
             injectStyles();
             const el = render();
+            upgradeIconsWhenFontsReady();
             // Pages that hand us a resolved user (openvibe.network, the tools
             // gateway hub) keep full control. Everyone else — pages that pass
             // only a token, or nothing at all — gets the user resolved from
