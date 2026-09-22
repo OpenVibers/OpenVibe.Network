@@ -18,7 +18,7 @@ const db = initDb(path.join(dir, 'network.db'));
 console.log = log;
 
 db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
-db.prepare("UPDATE oauth_clients SET client_secret = 'tools-secret' WHERE client_id = 'tools'").run();
+db.prepare("UPDATE oauth_clients SET client_secret = 'media-secret' WHERE client_id = 'media'").run();
 db.prepare("INSERT INTO users (id, username, password_hash) VALUES (7, 'payee', 'x'), (8, 'payer', 'x')").run();
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
@@ -50,7 +50,7 @@ const server = http.createServer(app);
     const claims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.network' });
     assert.ok(claims.ok, claims.reason);
     assert.strictEqual(claims.claims.sub, 'svc:live');
-    assert.deepStrictEqual(claims.claims.cap, ['network.coins.credit', 'network.coins.debit', 'network.coins.transfer', 'network.notifications.push']);
+    assert.deepStrictEqual(claims.claims.cap, ['network.coins.credit', 'network.coins.debit', 'network.coins.transfer', 'network.modules.read', 'network.modules.write', 'network.notifications.push']);
     assert.ok(validate('identity.service-token-claims@1', claims.claims).valid);
     assert.ok(claims.claims.exp - claims.claims.iat <= 300, 'short-lived');
     const full = t.body.access_token;
@@ -64,7 +64,7 @@ const server = http.createServer(app);
     const creditOnly = t.body.access_token;
     t = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.network', scope: 'network.coins.credit identity.subject.resolve' });
     assert.strictEqual(t.status, 400); assert.strictEqual(t.body.error, 'invalid_scope', 'asking for an ungranted capability fails');
-    t = await token({ client_id: 'tools', client_secret: 'tools-secret', audience: 'openvibe.network' });
+    t = await token({ client_id: 'media', client_secret: 'media-secret', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 400); assert.strictEqual(t.body.error, 'invalid_scope', 'a client with no grants gets no token');
     t = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.media' });
     assert.strictEqual(t.status, 400, 'no grants for that audience');
