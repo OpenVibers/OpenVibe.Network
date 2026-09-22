@@ -106,8 +106,9 @@ function recordDecision(db) {
     const up = db.prepare(`INSERT INTO principal_usage (principal, route, capability, auth, allowed, code, count) VALUES (?, ?, ?, ?, ?, ?, 1)
         ON CONFLICT(principal, route, auth, allowed, code) DO UPDATE SET count = count + 1, last_at = CURRENT_TIMESTAMP`);
     return ({ req, capability, principal, allowed, code }) => {
-        const who = principal ? (principal.legacy ? 'legacy-key' : principal.sub) : 'unknown';
-        const auth = principal && principal.legacy ? 'internal-key' : 'service-token';
+        const bearer = String(req.headers.authorization || '').startsWith('Bearer ');
+        const auth = bearer ? 'service-token' : req.internalKeyOk ? 'internal-key' : 'none';
+        const who = principal ? (principal.legacy ? 'legacy-key' : principal.sub) : (auth === 'internal-key' ? 'legacy-key' : 'unknown');
         try { up.run(who, `${req.method} ${req.baseUrl || ''}${req.route ? req.route.path : req.path}`, capability, auth, allowed ? 1 : 0, code || ''); } catch { /* best effort */ }
     };
 }

@@ -78,6 +78,7 @@ const server = http.createServer(app);
     assert.strictEqual(r.status, 200); assert.strictEqual(r.body.data.voice, 'en-2');
     r = await call('PUT', `/internal/modules/live.profile/${ANN}`, { headers: { 'x-internal-key': 'legacy-key' }, body: { data: { followers: 1 } } });
     assert.strictEqual(r.status, 403, 'module routes never accept the shared key');
+    assert.ok(db.prepare("SELECT 1 FROM principal_usage WHERE principal = 'legacy-key' AND auth = 'internal-key' AND allowed = 0 AND route LIKE 'PUT /internal/modules%'").get(), 'a refused key is audited as the key');
     r = await call('PUT', `/internal/modules/live.profile/usr_01JAB2C3D4E5F6G7H8J9K0ZZZZ`, { headers: { authorization: `Bearer ${live}` }, body: { data: { followers: 1 } } });
     assert.strictEqual(r.status, 404, 'unknown subject');
     r = await call('PUT', `/internal/modules/live.profile/${ANN}`, { headers: { authorization: `Bearer ${live}`, 'if-match': '0' }, body: { data: { followers: 43 } } });
