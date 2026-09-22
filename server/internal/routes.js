@@ -30,12 +30,15 @@ function requireInternalKey(req, res, next) {
     return res.status(403).json({ error: 'Invalid or missing internal key' });
 }
 const principals = require('../identity/principals');
-const TOKEN_ROUTES = new Set(['POST /coins/credit', 'POST /coins/debit', 'POST /coins/transfer', 'POST /notifications/push', 'POST /notifications/push-bulk']);
+const TOKEN_ROUTES = new Set(['GET /identity/resolve', 'POST /identity/resolve-batch', 'POST /coins/credit', 'POST /coins/debit', 'POST /coins/transfer', 'POST /notifications/push', 'POST /notifications/push-bulk']);
 const TOKEN_ROUTE_PATTERNS = [/^(GET|PUT) \/modules\/[a-z0-9_.]+\/[A-Za-z0-9_]+$/];
 const forApp = (req) => (req.body && req.body.app_id !== undefined ? String(req.body.app_id) : undefined);
 const forService = (req) => (req.body && req.body.service !== undefined ? String(req.body.service) : undefined);
 
 router.use(requireInternalKey);
+// Identity lookups accept a service token with identity.subject.resolve (or the key, as before).
+router.get('/identity/resolve', principals.guard('identity.subject.resolve'));
+router.post('/identity/resolve-batch', principals.guard('identity.subject.resolve'));
 router.use('/identity', require('../identity/internal-routes'));
 
 // ── Verify Token ─────────────────────────────────────────────

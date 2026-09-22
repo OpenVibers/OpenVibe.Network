@@ -99,6 +99,20 @@ const server = http.createServer(app);
     r = await post('/internal/identity/legacy-map', { entries: [] }, { authorization: `Bearer ${full}` });
     assert.strictEqual(r.status, 403, 'token routes are an explicit list');
 
+    // Community resolves authors with its own token; Live's token lacks that grant.
+    db.prepare("UPDATE oauth_clients SET client_secret = 'community-secret' WHERE client_id = 'community'").run();
+    const com = await token({ client_id: 'community', client_secret: 'community-secret', audience: 'openvibe.network' });
+    assert.strictEqual(com.status, 200, JSON.stringify(com.body));
+    assert.deepStrictEqual(com.body.scope.split(' '), ['identity.subject.resolve']);
+    r = await post('/internal/identity/resolve-batch', { system: 'network', ids: ['7'] }, { authorization: `Bearer ${com.body.access_token}` });
+    assert.strictEqual(r.status, 200); assert.strictEqual(r.body.results['7'].username, 'payee');
+    r = await post('/internal/identity/resolve-batch', { system: 'network', ids: ['7'] }, { authorization: `Bearer ${full}` });
+    assert.strictEqual(r.status, 403, 'live has no identity.subject.resolve grant');
+    const media = await token({ client_id: 'community', client_secret: 'community-secret', audience: 'openvibe.media' });
+    assert.strictEqual(media.body.scope, 'media.object.upload', 'community may upload screenshot bytes to Media');
+    const cm = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.community' });
+    assert.deepStrictEqual(cm.body.scope.split(' '), ['community.paste.create', 'community.paste.moderate', 'community.paste.write']);
+
     // ── Legacy key keeps working ──
     r = await post('/internal/coins/credit', credit(), { 'x-internal-key': 'legacy-key' });
     assert.strictEqual(r.status, 200);

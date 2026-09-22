@@ -29,6 +29,13 @@ const DEFAULT_GRANTS = [
     ['tools', 'network.modules.write', SELF_AUDIENCE, ['tools.usage']],
     ['games', 'network.modules.read', SELF_AUDIENCE, ['games.progress.summary']],
     ['games', 'network.modules.write', SELF_AUDIENCE, ['games.progress.summary']],
+    // Wave 5: Community owns pastes. It resolves authors and uploads screenshot bytes to Media; Live writes
+    // pastes into Community on behalf of its users and its AI jobs.
+    ['community', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['community', 'media.object.upload', 'openvibe.media', ['community']],
+    ['live', 'community.paste.create', 'openvibe.community', []],
+    ['live', 'community.paste.write', 'openvibe.community', []],
+    ['live', 'community.paste.moderate', 'openvibe.community', []],
 ];
 
 function ensureSchema(db) {
