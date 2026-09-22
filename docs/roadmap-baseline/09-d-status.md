@@ -7,7 +7,7 @@ Deliverable 8. Family-level status from roadmap 3.2. Evidence paths are checked 
 | IDs | Family | Status | Disposition | Wave | Evidence | Measured |
 |---|---|---|---|---|---|---|
 | D01 | Identity/account | partial | partial | W1 | Network/server/auth; Community/server/live-client.js | 7 Live tables target OpenVibe.Network |
-| D02-D04 | Registry, capabilities, contracts | absent | missing | W1, W2 | Network/server/url-registry.js; Sites/sites.json | 21 charter-only repos of 32; Live 15, Network 0, Media 0, Tools 0, Community 0, Games 0, Sites 0 |
+| D02-D04 | Registry, capabilities, contracts | absent | missing | W1, W2 | Network/server/url-registry.js; Sites/sites.json | 20 charter-only repos of 32; Live 15, Network 0, Media 0, Tools 0, Community 0, Games 0, Sites 0 |
 | D05-D06 | Policy, staff, user modules | partial | partial | W1, W2 | Network/server/admin; Live/server/auth/permissions.js | - |
 | D07-D10 | Themes, notifications, social, analytics | partial | partial | W1, W2, Track O | Network/server/themes; Network/server/notifications | 5 repos carry their own analytics_events |
 | D11-D13 | Events, realtime, SDK | absent | missing | W2, W3 | Media/server/webhooks.js | 65 caller-file/target pairs across 50 files; 10 WebSocket server constructions |
@@ -18,7 +18,7 @@ Deliverable 8. Family-level status from roadmap 3.2. Evidence paths are checked 
 | D28-D30 | Billing, Tips, VIP | partial | partial | W8-W10 (ADR-012 first) | Live/server/monetization/payments.js; Network/server/coins | 2 Live tables target OpenVibe.Billing; 2 Network tables target OpenVibe.Billing (loyalty ledger) |
 | D31 | Tools | built | already-present-and-verified | W11 | Tools/apps/gateway | 2 test files |
 | D32 | Games | built | already-present-and-verified | W12 | Games/apps/server/src/net/sso.ts | 56 test files |
-| D33-D34 | Codes, Host | absent | missing | W20, W21 | - | 21 charter-only repos of 32 |
+| D33-D34 | Codes, Host | absent | missing | W20, W21 | - | 20 charter-only repos of 32 |
 | D35-D38 | AI, content, sources, search | partial | partial | W13-W15 | Live/server/ai/moment-registry.js; Live/server/ai/llm.js | 14 Live tables target OpenVibe.AI |
 | D39 | Mods | absent | missing | W12, W21 | - | - |
 | D40 | Open developer services | absent | missing | W20, W21 | Live/server/integrations/powerchat-routes.js | 28 of 65 call sites authenticate with the shared internal key |

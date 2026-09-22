@@ -16,7 +16,7 @@ Deliverable 2: every table declared in code or present in production, with curre
 | /opt/openvibe.live/data/live.db | 279.2 MB | 146 |
 | /opt/openvibe.live/data/rs-companion.db | 8.6 MB | 33 |
 | /opt/openvibe.media/data/media.db | 5.6 MB | 11 |
-| /opt/openvibe.network/data/network.db | 766.5 MB | 34 |
+| /opt/openvibe.network/data/network.db | 766.5 MB | 35 |
 | /opt/openvibe.tools/apps/audio/data/analytics.db | 59.9 MB | 4 |
 | /opt/openvibe.tools/apps/img/data/analytics.db | 5.5 MB | 4 |
 | /opt/openvibe.tools/apps/docs/data/analytics.db | 1.5 MB | 4 |
@@ -30,23 +30,23 @@ Deliverable 2: every table declared in code or present in production, with curre
 | Table | Declared at | In prod | Target owner | Disposition | Wave |
 |---|---|---|---|---|---|
 | active_effects | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| ai_chatbot_configs | server/db/database.js:1803 | live.db | OpenVibe.AI | extract | W13 |
+| ai_chatbot_configs | server/db/database.js:1807 | live.db | OpenVibe.AI | extract | W13 |
 | ai_conversations | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | ai_memory | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| ai_timeline_cache | server/db/database.js:1296 | live.db | OpenVibe.AI | extract | W13 |
-| ai_usage | server/db/database.js:1254 | live.db | OpenVibe.AI | extract | W13 |
-| ai_viewer_log | server/db/database.js:1887 | live.db | OpenVibe.AI | extract | W13 |
-| ai_viewer_threads | server/db/database.js:1873 | live.db | OpenVibe.AI | extract | W13 |
+| ai_timeline_cache | server/db/database.js:1300 | live.db | OpenVibe.AI | extract | W13 |
+| ai_usage | server/db/database.js:1258 | live.db | OpenVibe.AI | extract | W13 |
+| ai_viewer_log | server/db/database.js:1891 | live.db | OpenVibe.AI | extract | W13 |
+| ai_viewer_threads | server/db/database.js:1877 | live.db | OpenVibe.AI | extract | W13 |
 | analytics_daily | vendor/openvibe-shared/analytics.js:116 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
 | analytics_events | vendor/openvibe-shared/analytics.js:74 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
 | analytics_hourly | vendor/openvibe-shared/analytics.js:98 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
 | analytics_rate_tracking | vendor/openvibe-shared/analytics.js:137 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
 | analytics_snapshots | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| anon_ip_mappings | server/db/database.js:936 | live.db | OpenVibe.Network (policy) | extract | W1 |
+| anon_ip_mappings | server/db/database.js:940 | live.db | OpenVibe.Network (policy) | extract | W1 |
 | api_keys | server/db/schema.sql:391 | live.db | OpenVibe.Network (principals) / OpenVibe.Codes | extract | W1/W20 |
 | api_tokens | server/db/schema.sql:404 | live.db | OpenVibe.Network (principals) / OpenVibe.Codes | extract | W1/W20 |
-| app_state | server/db/database.js:1167 | live.db | OpenVibe.Live | keep | - |
-| approved_ips | server/db/database.js:2075 | live.db | OpenVibe.Network (policy) | extract | W1 |
+| app_state | server/db/database.js:1171 | live.db | OpenVibe.Live | keep | - |
+| approved_ips | server/db/database.js:2079 | live.db | OpenVibe.Network (policy) | extract | W1 |
 | arena_achievements | (prod only) | live.db | archive then drop | investigate | W0 |
 | arena_battles | (prod only) | live.db | archive then drop | investigate | W0 |
 | arena_beef_hype | server/arena/beef.js:58 | live.db | OpenVibe.Live | keep | - |
@@ -87,19 +87,19 @@ Deliverable 2: every table declared in code or present in production, with curre
 | canvas_tiles | (prod only) | live.db | OpenVibe.Games | frozen-legacy | W12 |
 | canvas_user_overrides | (prod only) | live.db | OpenVibe.Games | frozen-legacy | W12 |
 | changelog_entries | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| channel_ai_bots | server/db/database.js:1828 | live.db | OpenVibe.AI | extract | W13 |
-| channel_ai_config | server/db/database.js:1852 | live.db | OpenVibe.AI | extract | W13 |
-| channel_moderation_settings | server/db/database.js:1638, server/db/schema.sql:514 | live.db | OpenVibe.Chat | extract | W6 |
-| channel_moderators | server/db/database.js:1621, server/db/schema.sql:499 | live.db | OpenVibe.Chat | extract | W6 |
-| channel_points | server/db/database.js:760 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
-| channel_sounds | server/db/database.js:1741, server/db/schema.sql:625 | live.db | OpenVibe.Chat | extract | W6 |
-| channel_sounds_new | server/db/database.js:1765 | no | OpenVibe.Chat | extract | W6 |
+| channel_ai_bots | server/db/database.js:1832 | live.db | OpenVibe.AI | extract | W13 |
+| channel_ai_config | server/db/database.js:1856 | live.db | OpenVibe.AI | extract | W13 |
+| channel_moderation_settings | server/db/database.js:1642, server/db/schema.sql:514 | live.db | OpenVibe.Chat | extract | W6 |
+| channel_moderators | server/db/database.js:1625, server/db/schema.sql:499 | live.db | OpenVibe.Chat | extract | W6 |
+| channel_points | server/db/database.js:764 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
+| channel_sounds | server/db/database.js:1745, server/db/schema.sql:625 | live.db | OpenVibe.Chat | extract | W6 |
+| channel_sounds_new | server/db/database.js:1769 | no | OpenVibe.Chat | extract | W6 |
 | channels | server/db/schema.sql:26 | live.db | OpenVibe.Live | keep | - |
-| chat_ai_summaries | server/db/database.js:1308 | live.db | OpenVibe.Chat | extract | W6 |
+| chat_ai_summaries | server/db/database.js:1312 | live.db | OpenVibe.Chat | extract | W6 |
 | chat_log | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | chat_messages | server/db/schema.sql:148 | live.db | OpenVibe.Chat | extract | W6 |
-| chat_messages_new | server/db/database.js:415 | no | OpenVibe.Chat | extract | W6 |
-| chat_timeline_events | server/db/database.js:1328 | live.db | OpenVibe.Chat | extract | W6 |
+| chat_messages_new | server/db/database.js:419 | no | OpenVibe.Chat | extract | W6 |
+| chat_timeline_events | server/db/database.js:1332 | live.db | OpenVibe.Chat | extract | W6 |
 | chatter_profiles | (prod only) | live.db | archive then drop | investigate | W0 |
 | chatter_subjects | (prod only) | live.db | archive then drop | investigate | W0 |
 | chatter_xp_log | (prod only) | live.db | archive then drop | investigate | W0 |
@@ -108,11 +108,11 @@ Deliverable 2: every table declared in code or present in production, with curre
 | coin_redemptions | server/db/schema.sql:689 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
 | coin_rewards | server/db/schema.sql:668 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
 | coin_transactions | server/db/schema.sql:651 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
-| comments | server/db/database.js:849, server/db/schema.sql:585 | live.db | OpenVibe.Community | extract | W5 |
+| comments | server/db/database.js:853, server/db/schema.sql:585 | live.db | OpenVibe.Community | extract | W5 |
 | content_views | server/db/schema.sql:328 | live.db | OpenVibe.Live | keep | - |
-| control_config_buttons | server/db/database.js:2306 | live.db | OpenRe.Stream | extract | W7 |
-| control_configs | server/db/database.js:2292 | live.db | OpenRe.Stream | extract | W7 |
-| control_whitelist | server/db/database.js:2277 | live.db | OpenRe.Stream | extract | W7 |
+| control_config_buttons | server/db/database.js:2310 | live.db | OpenRe.Stream | extract | W7 |
+| control_configs | server/db/database.js:2296 | live.db | OpenRe.Stream | extract | W7 |
+| control_whitelist | server/db/database.js:2281 | live.db | OpenRe.Stream | extract | W7 |
 | custom_rewards | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | daily_claims | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | divorce_history | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
@@ -122,9 +122,9 @@ Deliverable 2: every table declared in code or present in production, with curre
 | dm_participants | server/chat/dm.js:31 | live.db | OpenVibe.Chat | extract | W6 |
 | donation_goals | server/db/schema.sql:264 | live.db | OpenVibe.Tips | extract | W9 |
 | dungeon_stats | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| easter_egg_solves | server/db/database.js:1340 | live.db | OpenVibe.AI | extract | W13 |
+| easter_egg_solves | server/db/database.js:1344 | live.db | OpenVibe.AI | extract | W13 |
 | emotes | server/db/schema.sql:603 | live.db | OpenVibe.Chat | extract | W6 |
-| emotes_new | server/db/database.js:1709 | no | OpenVibe.Chat | extract | W6 |
+| emotes_new | server/db/database.js:1713 | no | OpenVibe.Chat | extract | W6 |
 | event_log | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | farm_plots | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | file_checksums | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
@@ -146,55 +146,55 @@ Deliverable 2: every table declared in code or present in production, with curre
 | game_structures | server/game/schema.sql:87 | live.db | OpenVibe.Games | migrate-then-drop | W12 |
 | game_world_state | server/game/schema.sql:7 | live.db | OpenVibe.Games | migrate-then-drop | W12 |
 | gusher_profile | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| hidden_relay_users | server/db/database.js:2112 | live.db | OpenVibe.Chat | extract | W6 |
+| hidden_relay_users | server/db/database.js:2116 | live.db | OpenVibe.Chat | extract | W6 |
 | inventory | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| ip_log | server/db/database.js:2051 | live.db | OpenVibe.Network (policy) | extract | W1 |
+| ip_log | server/db/database.js:2055 | live.db | OpenVibe.Network (policy) | extract | W1 |
 | jo_profile | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| kick_channel_cache | server/db/database.js:774 | live.db | OpenRe.Stream | extract | W7 |
+| kick_channel_cache | server/db/database.js:778 | live.db | OpenRe.Stream | extract | W7 |
 | linked_accounts | server/db/database.js:384 | live.db | OpenVibe.Network | extract | W1 |
 | love_affinity | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | love_profile | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | love_proposals | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| managed_streams | server/db/database.js:2420, server/db/schema.sql:78 | live.db | OpenRe.Stream | extract | W7 |
-| media_request_settings | server/db/database.js:869, server/db/schema.sql:722 | live.db | OpenVibe.Chat | extract | W6 |
-| media_requests | server/db/database.js:883, server/db/schema.sql:739 | live.db, rs-companion.db | OpenVibe.Chat | extract | W6 |
+| managed_streams | server/db/database.js:2424, server/db/schema.sql:78 | live.db | OpenRe.Stream | extract | W7 |
+| media_request_settings | server/db/database.js:873, server/db/schema.sql:722 | live.db | OpenVibe.Chat | extract | W6 |
+| media_requests | server/db/database.js:887, server/db/schema.sql:739 | live.db, rs-companion.db | OpenVibe.Chat | extract | W6 |
 | mine_profile | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | mod_persuasion | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| moderation_actions | server/db/database.js:1920 | live.db | OpenVibe.Chat | extract | W6 |
+| moderation_actions | server/db/database.js:1924 | live.db | OpenVibe.Chat | extract | W6 |
 | music_profile | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | news_settings | server/news/news-service.js:47 | live.db | OpenVibe.Live | keep | - |
-| paste_comments | server/db/database.js:2008 | live.db | OpenVibe.Community | frozen-legacy | W5 |
-| paste_likes | server/db/database.js:1976 | live.db | OpenVibe.Community | frozen-legacy | W5 |
-| pastes | server/db/database.js:1939 | live.db | OpenVibe.Community | frozen-legacy | W5 |
-| payment_orders | server/db/database.js:1588 | live.db | OpenVibe.Billing | extract | W8 (after ADR-012) |
-| pending_ip_messages | server/db/database.js:2092 | live.db | OpenVibe.Chat | extract | W6 |
-| platform_connections | server/db/database.js:709 | live.db | OpenRe.Stream | extract | W7 |
-| powerchat_connections | server/db/database.js:731 | live.db | OpenVibe.Live | keep | W3 (deliveries -> Events) |
-| powerchat_webhook_deliveries | server/db/database.js:748 | live.db | OpenVibe.Live | keep | W3 (deliveries -> Events) |
+| paste_comments | server/db/database.js:2012 | live.db | OpenVibe.Community | frozen-legacy | W5 |
+| paste_likes | server/db/database.js:1980 | live.db | OpenVibe.Community | frozen-legacy | W5 |
+| pastes | server/db/database.js:1943 | live.db | OpenVibe.Community | frozen-legacy | W5 |
+| payment_orders | server/db/database.js:1592 | live.db | OpenVibe.Billing | extract | W8 (after ADR-012) |
+| pending_ip_messages | server/db/database.js:2096 | live.db | OpenVibe.Chat | extract | W6 |
+| platform_connections | server/db/database.js:713 | live.db | OpenRe.Stream | extract | W7 |
+| powerchat_connections | server/db/database.js:735 | live.db | OpenVibe.Live | keep | W3 (deliveries -> Events) |
+| powerchat_webhook_deliveries | server/db/database.js:752 | live.db | OpenVibe.Live | keep | W3 (deliveries -> Events) |
 | promo_claims | (prod only) | live.db | archive then drop | investigate | W0 |
-| relay_users | server/db/database.js:1466 | live.db | OpenVibe.Chat | extract | W6 |
-| restream_destinations | server/db/database.js:691 | live.db | OpenRe.Stream | extract | W7 |
+| relay_users | server/db/database.js:1470 | live.db | OpenVibe.Chat | extract | W6 |
+| restream_destinations | server/db/database.js:695 | live.db | OpenRe.Stream | extract | W7 |
 | roast_dossier | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | roast_log | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| robotstreamer_integrations | server/db/database.js:605, server/db/schema.sql:58 | live.db | OpenRe.Stream | extract | W7 |
-| robotstreamer_integrations_new | server/db/database.js:656 | no | OpenRe.Stream | extract | W7 |
+| robotstreamer_integrations | server/db/database.js:609, server/db/schema.sql:58 | live.db | OpenRe.Stream | extract | W7 |
+| robotstreamer_integrations_new | server/db/database.js:660 | no | OpenRe.Stream | extract | W7 |
 | schema_migrations | server/db/migrations.js:27 | live.db | OpenVibe.Live | keep | - |
 | site_settings | server/db/database.js:353, server/db/schema.sql:556 | live.db | OpenVibe.Live | keep | - |
 | stream_analytics | server/db/schema.sql:810 | live.db | OpenVibe.Live | keep | - |
 | stream_controls | server/db/schema.sql:372 | live.db | OpenRe.Stream | extract | W7 |
-| stream_controls_new | server/db/database.js:2385 | no | OpenRe.Stream | extract | W7 |
-| stream_first_chats | server/db/database.js:2040 | live.db | OpenVibe.Chat | extract | W6 |
-| stream_memories | server/db/database.js:1181 | live.db | OpenVibe.AI | extract | W13 |
+| stream_controls_new | server/db/database.js:2389 | no | OpenRe.Stream | extract | W7 |
+| stream_first_chats | server/db/database.js:2044 | live.db | OpenVibe.Chat | extract | W6 |
+| stream_memories | server/db/database.js:1185 | live.db | OpenVibe.AI | extract | W13 |
 | stream_recaps | server/recap/recap.js:27 | live.db | OpenVibe.AI | extract | W13 |
-| stream_timeline_events | server/db/database.js:1229 | live.db | OpenVibe.Live | keep | - |
-| streamer_overviews | server/db/database.js:1274 | live.db | OpenVibe.AI | extract | W13 |
+| stream_timeline_events | server/db/database.js:1233 | live.db | OpenVibe.Live | keep | - |
+| streamer_overviews | server/db/database.js:1278 | live.db | OpenVibe.AI | extract | W13 |
 | streams | server/db/schema.sql:103 | live.db | OpenVibe.Live | keep | - |
 | subscriptions | server/db/schema.sql:234 | live.db | OpenVibe.Billing + OpenVibe.VIP | extract | W8/W10 |
 | tag_guardian_defeats | server/game/tags.js:81 | live.db | OpenVibe.Live | keep | - |
 | themes | server/db/schema.sql:446 | live.db | OpenVibe.Network | extract | W1 |
 | transactions | server/db/schema.sql:247 | live.db | OpenVibe.Billing | extract | W8 (after ADR-012) |
-| translations | server/db/database.js:506, server/i18n/translate.js:145 | live.db | OpenVibe.AI | extract | W13 |
-| tts_voice_overrides | server/db/database.js:1352 | live.db | OpenVibe.Chat | extract | W6 |
+| translations | server/db/database.js:510, server/i18n/translate.js:145 | live.db | OpenVibe.AI | extract | W13 |
+| tts_voice_overrides | server/db/database.js:1356 | live.db | OpenVibe.Chat | extract | W6 |
 | unlocked_recipes | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | user_cosmetics | server/db/schema.sql:774, server/monetization/cosmetics.js:109 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
 | user_equipped | server/db/schema.sql:786, server/monetization/cosmetics.js:118 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
@@ -206,9 +206,9 @@ Deliverable 2: every table declared in code or present in production, with curre
 | user_voices | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | users | server/db/schema.sql:5 | live.db, rs-companion.db | OpenVibe.Network | extract | W1 |
 | verification_keys | server/db/database.js:364, server/db/schema.sql:567 | live.db | OpenVibe.Network | extract | W1 |
-| vibe_coding_events | server/db/database.js:2677, server/db/schema.sql:198 | live.db | OpenVibe.Codes | extract | W20 |
-| vibe_coding_sessions | server/db/database.js:2642, server/db/schema.sql:170 | live.db | OpenVibe.Codes | extract | W20 |
-| viewer_samples | server/db/database.js:3956 | live.db | OpenVibe.Live | keep | - |
+| vibe_coding_events | server/db/database.js:2681, server/db/schema.sql:198 | live.db | OpenVibe.Codes | extract | W20 |
+| vibe_coding_sessions | server/db/database.js:2646, server/db/schema.sql:170 | live.db | OpenVibe.Codes | extract | W20 |
+| viewer_samples | server/db/database.js:3960 | live.db | OpenVibe.Live | keep | - |
 | viewer_snapshots | server/db/schema.sql:799 | live.db | OpenVibe.Live | keep | - |
 | vod_ai_state | server/db/database.js:263 | live.db | OpenVibe.AI | extract | W13 |
 | vods | server/db/schema.sql:280 | live.db | OpenVibe.Media | frozen-legacy | W4 |
@@ -216,7 +216,7 @@ Deliverable 2: every table declared in code or present in production, with curre
 | watch_time | server/db/schema.sql:706 | live.db | OpenVibe.Live | keep | - |
 | woodcut_profile | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 
-## OpenVibe.Network (35)
+## OpenVibe.Network (36)
 
 | Table | Declared at | In prod | Target owner | Disposition | Wave |
 |---|---|---|---|---|---|
@@ -232,8 +232,9 @@ Deliverable 2: every table declared in code or present in production, with curre
 | chrome_hits | server/chrome/service.js:29 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | coin_transactions | server/db/database.js:407 | network.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
 | email_delivery_log | server/db/database.js:302 | network.db | OpenVibe.Network | keep | W3 (delivery -> Events outbox) |
-| email_verification_tokens | server/db/database.js:506 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| email_verification_tokens | server/db/database.js:509 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | follows | server/db/database.js:386 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| identity_legacy_map | server/identity/subjects.js:25 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | ip_log | server/db/database.js:225 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | linked_accounts | server/db/database.js:204 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | notification_preferences | server/db/database.js:290 | network.db | OpenVibe.Network | keep | W1 (module split) |
@@ -244,7 +245,7 @@ Deliverable 2: every table declared in code or present in production, with curre
 | password_reset_tokens | server/db/database.js:321 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | push_subscriptions | server/db/database.js:460 | network.db | OpenVibe.Network | keep | W3 (delivery -> Events outbox) |
 | site_settings | server/db/database.js:238 | network.db | OpenVibe.Network | keep | - |
-| stream_live_announcements | server/internal/routes.js:300 | network.db | OpenVibe.Events | extract | W3 |
+| stream_live_announcements | server/internal/routes.js:310 | network.db | OpenVibe.Events | extract | W3 |
 | themes | server/db/database.js:183 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | tool_domains | server/domains/routes.js:44 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | url_registry | server/db/database.js:245, server/url-registry.js:7 | network.db | OpenVibe.Network | keep | W1 (module split) |

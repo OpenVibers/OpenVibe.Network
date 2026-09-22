@@ -1,7 +1,7 @@
 {
  "generatedFrom": {
-  "OpenVibe.Live": "e31e3422db7e3846051aeeb07fa661b8812c123d",
-  "OpenVibe.Network": "71be248264060ca6d30d083571928f9a10002688",
+  "OpenVibe.Live": "24151bdc12ffe6e6f2fbe8c3770327b2d1635a8a",
+  "OpenVibe.Network": "9b4e262cd8daf05ee2b6b92a06dabe70e2d42bc7",
   "OpenVibe.Media": "6114bc61c466cd51335548d0ce87058df125c577",
   "OpenVibe.Tools": "0346edc57fb9f588abcdea171a22a5ca33f772d2",
   "OpenVibe.Community": "de947ead2addce29d7f9b98f3d894075ca4e82f2",
@@ -10,7 +10,7 @@
  },
  "prodSnapshot": {
   "host": "openvibe-oregon",
-  "collectedAt": "2026-09-22T20:43:28.028Z"
+  "collectedAt": "2026-09-22T21:23:31.121Z"
  },
  "repos": [
   {
@@ -18,13 +18,13 @@
    "service": "live",
    "present": true,
    "git": {
-    "head": "e31e3422db7e3846051aeeb07fa661b8812c123d",
+    "head": "24151bdc12ffe6e6f2fbe8c3770327b2d1635a8a",
     "branch": "main",
-    "originMain": "e31e3422db7e3846051aeeb07fa661b8812c123d",
-    "committedAt": "2026-09-21T12:34:30-07:00"
+    "originMain": "24151bdc12ffe6e6f2fbe8c3770327b2d1635a8a",
+    "committedAt": "2026-09-22T14:18:25-07:00"
    },
-   "sourceFiles": 164,
-   "loc": 69622,
+   "sourceFiles": 165,
+   "loc": 69699,
    "tables": [
     {
      "table": "arena_profiles",
@@ -125,319 +125,319 @@
     {
      "table": "chat_messages_new",
      "file": "server/db/database.js",
-     "line": 415,
+     "line": 419,
      "via": "repo"
     },
     {
      "table": "translations",
      "file": "server/db/database.js",
-     "line": 506,
+     "line": 510,
      "via": "repo"
     },
     {
      "table": "robotstreamer_integrations",
      "file": "server/db/database.js",
-     "line": 605,
+     "line": 609,
      "via": "repo"
     },
     {
      "table": "robotstreamer_integrations_new",
      "file": "server/db/database.js",
-     "line": 656,
+     "line": 660,
      "via": "repo"
     },
     {
      "table": "restream_destinations",
      "file": "server/db/database.js",
-     "line": 691,
+     "line": 695,
      "via": "repo"
     },
     {
      "table": "platform_connections",
      "file": "server/db/database.js",
-     "line": 709,
+     "line": 713,
      "via": "repo"
     },
     {
      "table": "powerchat_connections",
      "file": "server/db/database.js",
-     "line": 731,
+     "line": 735,
      "via": "repo"
     },
     {
      "table": "powerchat_webhook_deliveries",
      "file": "server/db/database.js",
-     "line": 748,
+     "line": 752,
      "via": "repo"
     },
     {
      "table": "channel_points",
      "file": "server/db/database.js",
-     "line": 760,
+     "line": 764,
      "via": "repo"
     },
     {
      "table": "kick_channel_cache",
      "file": "server/db/database.js",
-     "line": 774,
+     "line": 778,
      "via": "repo"
     },
     {
      "table": "comments",
      "file": "server/db/database.js",
-     "line": 849,
+     "line": 853,
      "via": "repo"
     },
     {
      "table": "media_request_settings",
      "file": "server/db/database.js",
-     "line": 869,
+     "line": 873,
      "via": "repo"
     },
     {
      "table": "media_requests",
      "file": "server/db/database.js",
-     "line": 883,
+     "line": 887,
      "via": "repo"
     },
     {
      "table": "anon_ip_mappings",
      "file": "server/db/database.js",
-     "line": 936,
+     "line": 940,
      "via": "repo"
     },
     {
      "table": "app_state",
      "file": "server/db/database.js",
-     "line": 1167,
+     "line": 1171,
      "via": "repo"
     },
     {
      "table": "stream_memories",
      "file": "server/db/database.js",
-     "line": 1181,
+     "line": 1185,
      "via": "repo"
     },
     {
      "table": "stream_timeline_events",
      "file": "server/db/database.js",
-     "line": 1229,
+     "line": 1233,
      "via": "repo"
     },
     {
      "table": "ai_usage",
      "file": "server/db/database.js",
-     "line": 1254,
+     "line": 1258,
      "via": "repo"
     },
     {
      "table": "streamer_overviews",
      "file": "server/db/database.js",
-     "line": 1274,
+     "line": 1278,
      "via": "repo"
     },
     {
      "table": "ai_timeline_cache",
      "file": "server/db/database.js",
-     "line": 1296,
+     "line": 1300,
      "via": "repo"
     },
     {
      "table": "chat_ai_summaries",
      "file": "server/db/database.js",
-     "line": 1308,
+     "line": 1312,
      "via": "repo"
     },
     {
      "table": "chat_timeline_events",
      "file": "server/db/database.js",
-     "line": 1328,
+     "line": 1332,
      "via": "repo"
     },
     {
      "table": "easter_egg_solves",
      "file": "server/db/database.js",
-     "line": 1340,
+     "line": 1344,
      "via": "repo"
     },
     {
      "table": "tts_voice_overrides",
      "file": "server/db/database.js",
-     "line": 1352,
+     "line": 1356,
      "via": "repo"
     },
     {
      "table": "relay_users",
      "file": "server/db/database.js",
-     "line": 1466,
+     "line": 1470,
      "via": "repo"
     },
     {
      "table": "payment_orders",
      "file": "server/db/database.js",
-     "line": 1588,
+     "line": 1592,
      "via": "repo"
     },
     {
      "table": "channel_moderators",
      "file": "server/db/database.js",
-     "line": 1621,
+     "line": 1625,
      "via": "repo"
     },
     {
      "table": "channel_moderation_settings",
      "file": "server/db/database.js",
-     "line": 1638,
+     "line": 1642,
      "via": "repo"
     },
     {
      "table": "emotes_new",
      "file": "server/db/database.js",
-     "line": 1709,
+     "line": 1713,
      "via": "repo"
     },
     {
      "table": "channel_sounds",
      "file": "server/db/database.js",
-     "line": 1741,
+     "line": 1745,
      "via": "repo"
     },
     {
      "table": "channel_sounds_new",
      "file": "server/db/database.js",
-     "line": 1765,
+     "line": 1769,
      "via": "repo"
     },
     {
      "table": "ai_chatbot_configs",
      "file": "server/db/database.js",
-     "line": 1803,
+     "line": 1807,
      "via": "repo"
     },
     {
      "table": "channel_ai_bots",
      "file": "server/db/database.js",
-     "line": 1828,
+     "line": 1832,
      "via": "repo"
     },
     {
      "table": "channel_ai_config",
      "file": "server/db/database.js",
-     "line": 1852,
+     "line": 1856,
      "via": "repo"
     },
     {
      "table": "ai_viewer_threads",
      "file": "server/db/database.js",
-     "line": 1873,
+     "line": 1877,
      "via": "repo"
     },
     {
      "table": "ai_viewer_log",
      "file": "server/db/database.js",
-     "line": 1887,
+     "line": 1891,
      "via": "repo"
     },
     {
      "table": "moderation_actions",
      "file": "server/db/database.js",
-     "line": 1920,
+     "line": 1924,
      "via": "repo"
     },
     {
      "table": "pastes",
      "file": "server/db/database.js",
-     "line": 1939,
+     "line": 1943,
      "via": "repo"
     },
     {
      "table": "paste_likes",
      "file": "server/db/database.js",
-     "line": 1976,
+     "line": 1980,
      "via": "repo"
     },
     {
      "table": "paste_comments",
      "file": "server/db/database.js",
-     "line": 2008,
+     "line": 2012,
      "via": "repo"
     },
     {
      "table": "stream_first_chats",
      "file": "server/db/database.js",
-     "line": 2040,
+     "line": 2044,
      "via": "repo"
     },
     {
      "table": "ip_log",
      "file": "server/db/database.js",
-     "line": 2051,
+     "line": 2055,
      "via": "repo"
     },
     {
      "table": "approved_ips",
      "file": "server/db/database.js",
-     "line": 2075,
+     "line": 2079,
      "via": "repo"
     },
     {
      "table": "pending_ip_messages",
      "file": "server/db/database.js",
-     "line": 2092,
+     "line": 2096,
      "via": "repo"
     },
     {
      "table": "hidden_relay_users",
      "file": "server/db/database.js",
-     "line": 2112,
+     "line": 2116,
      "via": "repo"
     },
     {
      "table": "control_whitelist",
      "file": "server/db/database.js",
-     "line": 2277,
+     "line": 2281,
      "via": "repo"
     },
     {
      "table": "control_configs",
      "file": "server/db/database.js",
-     "line": 2292,
+     "line": 2296,
      "via": "repo"
     },
     {
      "table": "control_config_buttons",
      "file": "server/db/database.js",
-     "line": 2306,
+     "line": 2310,
      "via": "repo"
     },
     {
      "table": "stream_controls_new",
      "file": "server/db/database.js",
-     "line": 2385,
+     "line": 2389,
      "via": "repo"
     },
     {
      "table": "managed_streams",
      "file": "server/db/database.js",
-     "line": 2420,
+     "line": 2424,
      "via": "repo"
     },
     {
      "table": "vibe_coding_sessions",
      "file": "server/db/database.js",
-     "line": 2642,
+     "line": 2646,
      "via": "repo"
     },
     {
      "table": "vibe_coding_events",
      "file": "server/db/database.js",
-     "line": 2677,
+     "line": 2681,
      "via": "repo"
     },
     {
      "table": "viewer_samples",
      "file": "server/db/database.js",
-     "line": 3956,
+     "line": 3960,
      "via": "repo"
     },
     {
@@ -5366,7 +5366,7 @@
    ],
    "contractTodos": 15,
    "unresolvedMounts": [],
-   "testFiles": 55,
+   "testFiles": 56,
    "ci": false
   },
   {
@@ -5374,13 +5374,13 @@
    "service": "network",
    "present": true,
    "git": {
-    "head": "71be248264060ca6d30d083571928f9a10002688",
+    "head": "9b4e262cd8daf05ee2b6b92a06dabe70e2d42bc7",
     "branch": "main",
-    "originMain": "71be248264060ca6d30d083571928f9a10002688",
-    "committedAt": "2026-09-21T11:57:37-07:00"
+    "originMain": "9b4e262cd8daf05ee2b6b92a06dabe70e2d42bc7",
+    "committedAt": "2026-09-22T14:14:53-07:00"
    },
-   "sourceFiles": 77,
-   "loc": 20399,
+   "sourceFiles": 79,
+   "loc": 20646,
    "tables": [
     {
      "table": "admin_rate_limits",
@@ -5547,7 +5547,7 @@
     {
      "table": "email_verification_tokens",
      "file": "server/db/database.js",
-     "line": 506,
+     "line": 509,
      "via": "repo"
     },
     {
@@ -5563,9 +5563,15 @@
      "via": "repo"
     },
     {
+     "table": "identity_legacy_map",
+     "file": "server/identity/subjects.js",
+     "line": 25,
+     "via": "repo"
+    },
+    {
      "table": "stream_live_announcements",
      "file": "server/internal/routes.js",
-     "line": 300,
+     "line": 310,
      "via": "repo"
     },
     {
@@ -5706,37 +5712,37 @@
      "method": "GET",
      "path": "/api/auth/anon-identities",
      "file": "server/auth/routes.js",
-     "line": 635
+     "line": 638
     },
     {
      "method": "POST",
      "path": "/api/auth/anon-session",
      "file": "server/auth/routes.js",
-     "line": 512
+     "line": 515
     },
     {
      "method": "GET",
      "path": "/api/auth/anon/:token",
      "file": "server/auth/routes.js",
-     "line": 582
+     "line": 585
     },
     {
      "method": "POST",
      "path": "/api/auth/anon/:token/link",
      "file": "server/auth/routes.js",
-     "line": 619
+     "line": 622
     },
     {
      "method": "PUT",
      "path": "/api/auth/anon/:token/preferences",
      "file": "server/auth/routes.js",
-     "line": 596
+     "line": 599
     },
     {
      "method": "POST",
      "path": "/api/auth/change-password",
      "file": "server/auth/routes.js",
-     "line": 422
+     "line": 425
     },
     {
      "method": "GET",
@@ -5784,97 +5790,97 @@
      "method": "POST",
      "path": "/api/auth/forgot-password",
      "file": "server/auth/routes.js",
-     "line": 206
+     "line": 208
     },
     {
      "method": "POST",
      "path": "/api/auth/login",
      "file": "server/auth/routes.js",
-     "line": 183
+     "line": 185
     },
     {
      "method": "POST",
      "path": "/api/auth/logout",
      "file": "server/auth/routes.js",
-     "line": 506
+     "line": 509
     },
     {
      "method": "GET",
      "path": "/api/auth/me",
      "file": "server/auth/routes.js",
-     "line": 362
+     "line": 364
     },
     {
      "method": "PUT",
      "path": "/api/auth/profile",
      "file": "server/auth/routes.js",
-     "line": 372
+     "line": 375
     },
     {
      "method": "POST",
      "path": "/api/auth/refresh",
      "file": "server/auth/routes.js",
-     "line": 300
+     "line": 302
     },
     {
      "method": "POST",
      "path": "/api/auth/register",
      "file": "server/auth/routes.js",
-     "line": 88
+     "line": 90
     },
     {
      "method": "POST",
      "path": "/api/auth/reset-password",
      "file": "server/auth/routes.js",
-     "line": 254
+     "line": 256
     },
     {
      "method": "GET",
      "path": "/api/auth/reset-password/validate",
      "file": "server/auth/routes.js",
-     "line": 238
+     "line": 240
     },
     {
      "method": "DELETE",
      "path": "/api/auth/sessions",
      "file": "server/auth/routes.js",
-     "line": 717
+     "line": 720
     },
     {
      "method": "GET",
      "path": "/api/auth/sessions",
      "file": "server/auth/routes.js",
-     "line": 673
+     "line": 676
     },
     {
      "method": "POST",
      "path": "/api/auth/sessions",
      "file": "server/auth/routes.js",
-     "line": 686
+     "line": 689
     },
     {
      "method": "DELETE",
      "path": "/api/auth/sessions/:id",
      "file": "server/auth/routes.js",
-     "line": 708
+     "line": 711
     },
     {
      "method": "GET",
      "path": "/api/auth/users/:id/card",
      "file": "server/auth/routes.js",
-     "line": 728
+     "line": 731
     },
     {
      "method": "DELETE",
      "path": "/api/auth/users/:id/follow",
      "file": "server/auth/routes.js",
-     "line": 811
+     "line": 814
     },
     {
      "method": "POST",
      "path": "/api/auth/users/:id/follow",
      "file": "server/auth/routes.js",
-     "line": 780
+     "line": 783
     },
     {
      "method": "GET",
@@ -6246,151 +6252,163 @@
      "method": "GET",
      "path": "/internal/anon-admin",
      "file": "server/internal/routes.js",
-     "line": 618
+     "line": 628
     },
     {
      "method": "GET",
      "path": "/internal/anon-list",
      "file": "server/internal/routes.js",
-     "line": 667
+     "line": 677
     },
     {
      "method": "POST",
      "path": "/internal/audit",
      "file": "server/internal/routes.js",
-     "line": 156
+     "line": 166
     },
     {
      "method": "POST",
      "path": "/internal/coins/credit",
      "file": "server/internal/routes.js",
-     "line": 242
+     "line": 252
     },
     {
      "method": "POST",
      "path": "/internal/coins/debit",
      "file": "server/internal/routes.js",
-     "line": 254
+     "line": 264
     },
     {
      "method": "GET",
      "path": "/internal/coins/stats",
      "file": "server/internal/routes.js",
-     "line": 204
+     "line": 214
     },
     {
      "method": "POST",
      "path": "/internal/coins/transfer",
      "file": "server/internal/routes.js",
-     "line": 267
+     "line": 277
     },
     {
      "method": "POST",
      "path": "/internal/events/stream-live",
      "file": "server/internal/routes.js",
-     "line": 284
+     "line": 294
+    },
+    {
+     "method": "POST",
+     "path": "/internal/identity/legacy-map",
+     "file": "server/identity/internal-routes.js",
+     "line": 29
+    },
+    {
+     "method": "GET",
+     "path": "/internal/identity/resolve",
+     "file": "server/identity/internal-routes.js",
+     "line": 18
     },
     {
      "method": "POST",
      "path": "/internal/issue-token",
      "file": "server/internal/routes.js",
-     "line": 508
+     "line": 518
     },
     {
      "method": "POST",
      "path": "/internal/link-account",
      "file": "server/internal/routes.js",
-     "line": 107
+     "line": 108
     },
     {
      "method": "POST",
      "path": "/internal/notifications/mark-read",
      "file": "server/internal/routes.js",
-     "line": 469
+     "line": 479
     },
     {
      "method": "POST",
      "path": "/internal/notifications/push",
      "file": "server/internal/routes.js",
-     "line": 411
+     "line": 421
     },
     {
      "method": "POST",
      "path": "/internal/notifications/push-bulk",
      "file": "server/internal/routes.js",
-     "line": 431
+     "line": 441
     },
     {
      "method": "POST",
      "path": "/internal/notifications/resolve-users",
      "file": "server/internal/routes.js",
-     "line": 488
+     "line": 498
     },
     {
      "method": "GET",
      "path": "/internal/notifications/unread/:userId",
      "file": "server/internal/routes.js",
-     "line": 454
+     "line": 464
     },
     {
      "method": "POST",
      "path": "/internal/resolve-anon",
      "file": "server/internal/routes.js",
-     "line": 539
+     "line": 549
     },
     {
      "method": "GET",
      "path": "/internal/stats",
      "file": "server/internal/routes.js",
-     "line": 165
+     "line": 175
     },
     {
      "method": "GET",
      "path": "/internal/url-registry/resolved",
      "file": "server/internal/routes.js",
-     "line": 174
+     "line": 184
     },
     {
      "method": "POST",
      "path": "/internal/user-avatar",
      "file": "server/internal/routes.js",
-     "line": 141
+     "line": 151
     },
     {
      "method": "GET",
      "path": "/internal/users/:id",
      "file": "server/internal/routes.js",
-     "line": 58
+     "line": 59
     },
     {
      "method": "GET",
      "path": "/internal/users/:id/linked-accounts",
      "file": "server/internal/routes.js",
-     "line": 149
+     "line": 159
     },
     {
      "method": "GET",
      "path": "/internal/users/:id/theme",
      "file": "server/internal/routes.js",
-     "line": 95
+     "line": 96
     },
     {
      "method": "POST",
      "path": "/internal/users/bulk",
      "file": "server/internal/routes.js",
-     "line": 80
+     "line": 81
     },
     {
      "method": "GET",
      "path": "/internal/users/by-username/:username",
      "file": "server/internal/routes.js",
-     "line": 69
+     "line": 70
     },
     {
      "method": "POST",
      "path": "/internal/verify-token",
      "file": "server/internal/routes.js",
-     "line": 36
+     "line": 37
     },
     {
      "method": "GET",
@@ -6462,25 +6480,25 @@
      "method": "GET",
      "path": "/oauth/.well-known/openid-configuration",
      "file": "server/auth/oauth-routes.js",
-     "line": 304
+     "line": 306
     },
     {
      "method": "GET",
      "path": "/oauth/authorize",
      "file": "server/auth/oauth-routes.js",
-     "line": 20
+     "line": 21
     },
     {
      "method": "POST",
      "path": "/oauth/confirm",
      "file": "server/auth/oauth-routes.js",
-     "line": 78
+     "line": 79
     },
     {
      "method": "POST",
      "path": "/oauth/token",
      "file": "server/auth/oauth-routes.js",
-     "line": 131
+     "line": 132
     },
     {
      "method": "GET",
@@ -7230,7 +7248,7 @@
    ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 17,
+   "testFiles": 18,
    "ci": false
   },
   {
@@ -11173,7 +11191,7 @@
    "repo": "OpenVibe.Live",
    "table": "ai_chatbot_configs",
    "declaredAt": [
-    "server/db/database.js:1803"
+    "server/db/database.js:1807"
    ],
    "prodDbs": [
     "live.db"
@@ -11217,7 +11235,7 @@
    "repo": "OpenVibe.Live",
    "table": "ai_timeline_cache",
    "declaredAt": [
-    "server/db/database.js:1296"
+    "server/db/database.js:1300"
    ],
    "prodDbs": [
     "live.db"
@@ -11233,7 +11251,7 @@
    "repo": "OpenVibe.Live",
    "table": "ai_usage",
    "declaredAt": [
-    "server/db/database.js:1254"
+    "server/db/database.js:1258"
    ],
    "prodDbs": [
     "live.db"
@@ -11249,7 +11267,7 @@
    "repo": "OpenVibe.Live",
    "table": "ai_viewer_log",
    "declaredAt": [
-    "server/db/database.js:1887"
+    "server/db/database.js:1891"
    ],
    "prodDbs": [
     "live.db"
@@ -11265,7 +11283,7 @@
    "repo": "OpenVibe.Live",
    "table": "ai_viewer_threads",
    "declaredAt": [
-    "server/db/database.js:1873"
+    "server/db/database.js:1877"
    ],
    "prodDbs": [
     "live.db"
@@ -11359,7 +11377,7 @@
    "repo": "OpenVibe.Live",
    "table": "anon_ip_mappings",
    "declaredAt": [
-    "server/db/database.js:936"
+    "server/db/database.js:940"
    ],
    "prodDbs": [
     "live.db"
@@ -11407,7 +11425,7 @@
    "repo": "OpenVibe.Live",
    "table": "app_state",
    "declaredAt": [
-    "server/db/database.js:1167"
+    "server/db/database.js:1171"
    ],
    "prodDbs": [
     "live.db"
@@ -11423,7 +11441,7 @@
    "repo": "OpenVibe.Live",
    "table": "approved_ips",
    "declaredAt": [
-    "server/db/database.js:2075"
+    "server/db/database.js:2079"
    ],
    "prodDbs": [
     "live.db"
@@ -12021,7 +12039,7 @@
    "repo": "OpenVibe.Live",
    "table": "channel_ai_bots",
    "declaredAt": [
-    "server/db/database.js:1828"
+    "server/db/database.js:1832"
    ],
    "prodDbs": [
     "live.db"
@@ -12037,7 +12055,7 @@
    "repo": "OpenVibe.Live",
    "table": "channel_ai_config",
    "declaredAt": [
-    "server/db/database.js:1852"
+    "server/db/database.js:1856"
    ],
    "prodDbs": [
     "live.db"
@@ -12053,7 +12071,7 @@
    "repo": "OpenVibe.Live",
    "table": "channel_moderation_settings",
    "declaredAt": [
-    "server/db/database.js:1638",
+    "server/db/database.js:1642",
     "server/db/schema.sql:514"
    ],
    "prodDbs": [
@@ -12070,7 +12088,7 @@
    "repo": "OpenVibe.Live",
    "table": "channel_moderators",
    "declaredAt": [
-    "server/db/database.js:1621",
+    "server/db/database.js:1625",
     "server/db/schema.sql:499"
    ],
    "prodDbs": [
@@ -12087,7 +12105,7 @@
    "repo": "OpenVibe.Live",
    "table": "channel_points",
    "declaredAt": [
-    "server/db/database.js:760"
+    "server/db/database.js:764"
    ],
    "prodDbs": [
     "live.db"
@@ -12103,7 +12121,7 @@
    "repo": "OpenVibe.Live",
    "table": "channel_sounds",
    "declaredAt": [
-    "server/db/database.js:1741",
+    "server/db/database.js:1745",
     "server/db/schema.sql:625"
    ],
    "prodDbs": [
@@ -12120,7 +12138,7 @@
    "repo": "OpenVibe.Live",
    "table": "channel_sounds_new",
    "declaredAt": [
-    "server/db/database.js:1765"
+    "server/db/database.js:1769"
    ],
    "prodDbs": [],
    "inCode": true,
@@ -12150,7 +12168,7 @@
    "repo": "OpenVibe.Live",
    "table": "chat_ai_summaries",
    "declaredAt": [
-    "server/db/database.js:1308"
+    "server/db/database.js:1312"
    ],
    "prodDbs": [
     "live.db"
@@ -12196,7 +12214,7 @@
    "repo": "OpenVibe.Live",
    "table": "chat_messages_new",
    "declaredAt": [
-    "server/db/database.js:415"
+    "server/db/database.js:419"
    ],
    "prodDbs": [],
    "inCode": true,
@@ -12210,7 +12228,7 @@
    "repo": "OpenVibe.Live",
    "table": "chat_timeline_events",
    "declaredAt": [
-    "server/db/database.js:1328"
+    "server/db/database.js:1332"
    ],
    "prodDbs": [
     "live.db"
@@ -12348,7 +12366,7 @@
    "repo": "OpenVibe.Live",
    "table": "comments",
    "declaredAt": [
-    "server/db/database.js:849",
+    "server/db/database.js:853",
     "server/db/schema.sql:585"
    ],
    "prodDbs": [
@@ -12381,7 +12399,7 @@
    "repo": "OpenVibe.Live",
    "table": "control_config_buttons",
    "declaredAt": [
-    "server/db/database.js:2306"
+    "server/db/database.js:2310"
    ],
    "prodDbs": [
     "live.db"
@@ -12397,7 +12415,7 @@
    "repo": "OpenVibe.Live",
    "table": "control_configs",
    "declaredAt": [
-    "server/db/database.js:2292"
+    "server/db/database.js:2296"
    ],
    "prodDbs": [
     "live.db"
@@ -12413,7 +12431,7 @@
    "repo": "OpenVibe.Live",
    "table": "control_whitelist",
    "declaredAt": [
-    "server/db/database.js:2277"
+    "server/db/database.js:2281"
    ],
    "prodDbs": [
     "live.db"
@@ -12565,7 +12583,7 @@
    "repo": "OpenVibe.Live",
    "table": "easter_egg_solves",
    "declaredAt": [
-    "server/db/database.js:1340"
+    "server/db/database.js:1344"
    ],
    "prodDbs": [
     "live.db"
@@ -12597,7 +12615,7 @@
    "repo": "OpenVibe.Live",
    "table": "emotes_new",
    "declaredAt": [
-    "server/db/database.js:1709"
+    "server/db/database.js:1713"
    ],
    "prodDbs": [],
    "inCode": true,
@@ -12940,7 +12958,7 @@
    "repo": "OpenVibe.Live",
    "table": "hidden_relay_users",
    "declaredAt": [
-    "server/db/database.js:2112"
+    "server/db/database.js:2116"
    ],
    "prodDbs": [
     "live.db"
@@ -12970,7 +12988,7 @@
    "repo": "OpenVibe.Live",
    "table": "ip_log",
    "declaredAt": [
-    "server/db/database.js:2051"
+    "server/db/database.js:2055"
    ],
    "prodDbs": [
     "live.db"
@@ -13000,7 +13018,7 @@
    "repo": "OpenVibe.Live",
    "table": "kick_channel_cache",
    "declaredAt": [
-    "server/db/database.js:774"
+    "server/db/database.js:778"
    ],
    "prodDbs": [
     "live.db"
@@ -13074,7 +13092,7 @@
    "repo": "OpenVibe.Live",
    "table": "managed_streams",
    "declaredAt": [
-    "server/db/database.js:2420",
+    "server/db/database.js:2424",
     "server/db/schema.sql:78"
    ],
    "prodDbs": [
@@ -13091,7 +13109,7 @@
    "repo": "OpenVibe.Live",
    "table": "media_request_settings",
    "declaredAt": [
-    "server/db/database.js:869",
+    "server/db/database.js:873",
     "server/db/schema.sql:722"
    ],
    "prodDbs": [
@@ -13108,7 +13126,7 @@
    "repo": "OpenVibe.Live",
    "table": "media_requests",
    "declaredAt": [
-    "server/db/database.js:883",
+    "server/db/database.js:887",
     "server/db/schema.sql:739"
    ],
    "prodDbs": [
@@ -13154,7 +13172,7 @@
    "repo": "OpenVibe.Live",
    "table": "moderation_actions",
    "declaredAt": [
-    "server/db/database.js:1920"
+    "server/db/database.js:1924"
    ],
    "prodDbs": [
     "live.db"
@@ -13200,7 +13218,7 @@
    "repo": "OpenVibe.Live",
    "table": "paste_comments",
    "declaredAt": [
-    "server/db/database.js:2008"
+    "server/db/database.js:2012"
    ],
    "prodDbs": [
     "live.db"
@@ -13216,7 +13234,7 @@
    "repo": "OpenVibe.Live",
    "table": "paste_likes",
    "declaredAt": [
-    "server/db/database.js:1976"
+    "server/db/database.js:1980"
    ],
    "prodDbs": [
     "live.db"
@@ -13232,7 +13250,7 @@
    "repo": "OpenVibe.Live",
    "table": "pastes",
    "declaredAt": [
-    "server/db/database.js:1939"
+    "server/db/database.js:1943"
    ],
    "prodDbs": [
     "live.db"
@@ -13248,7 +13266,7 @@
    "repo": "OpenVibe.Live",
    "table": "payment_orders",
    "declaredAt": [
-    "server/db/database.js:1588"
+    "server/db/database.js:1592"
    ],
    "prodDbs": [
     "live.db"
@@ -13264,7 +13282,7 @@
    "repo": "OpenVibe.Live",
    "table": "pending_ip_messages",
    "declaredAt": [
-    "server/db/database.js:2092"
+    "server/db/database.js:2096"
    ],
    "prodDbs": [
     "live.db"
@@ -13280,7 +13298,7 @@
    "repo": "OpenVibe.Live",
    "table": "platform_connections",
    "declaredAt": [
-    "server/db/database.js:709"
+    "server/db/database.js:713"
    ],
    "prodDbs": [
     "live.db"
@@ -13296,7 +13314,7 @@
    "repo": "OpenVibe.Live",
    "table": "powerchat_connections",
    "declaredAt": [
-    "server/db/database.js:731"
+    "server/db/database.js:735"
    ],
    "prodDbs": [
     "live.db"
@@ -13312,7 +13330,7 @@
    "repo": "OpenVibe.Live",
    "table": "powerchat_webhook_deliveries",
    "declaredAt": [
-    "server/db/database.js:748"
+    "server/db/database.js:752"
    ],
    "prodDbs": [
     "live.db"
@@ -13342,7 +13360,7 @@
    "repo": "OpenVibe.Live",
    "table": "relay_users",
    "declaredAt": [
-    "server/db/database.js:1466"
+    "server/db/database.js:1470"
    ],
    "prodDbs": [
     "live.db"
@@ -13358,7 +13376,7 @@
    "repo": "OpenVibe.Live",
    "table": "restream_destinations",
    "declaredAt": [
-    "server/db/database.js:691"
+    "server/db/database.js:695"
    ],
    "prodDbs": [
     "live.db"
@@ -13402,7 +13420,7 @@
    "repo": "OpenVibe.Live",
    "table": "robotstreamer_integrations",
    "declaredAt": [
-    "server/db/database.js:605",
+    "server/db/database.js:609",
     "server/db/schema.sql:58"
    ],
    "prodDbs": [
@@ -13419,7 +13437,7 @@
    "repo": "OpenVibe.Live",
    "table": "robotstreamer_integrations_new",
    "declaredAt": [
-    "server/db/database.js:656"
+    "server/db/database.js:660"
    ],
    "prodDbs": [],
    "inCode": true,
@@ -13498,7 +13516,7 @@
    "repo": "OpenVibe.Live",
    "table": "stream_controls_new",
    "declaredAt": [
-    "server/db/database.js:2385"
+    "server/db/database.js:2389"
    ],
    "prodDbs": [],
    "inCode": true,
@@ -13512,7 +13530,7 @@
    "repo": "OpenVibe.Live",
    "table": "stream_first_chats",
    "declaredAt": [
-    "server/db/database.js:2040"
+    "server/db/database.js:2044"
    ],
    "prodDbs": [
     "live.db"
@@ -13528,7 +13546,7 @@
    "repo": "OpenVibe.Live",
    "table": "stream_memories",
    "declaredAt": [
-    "server/db/database.js:1181"
+    "server/db/database.js:1185"
    ],
    "prodDbs": [
     "live.db"
@@ -13560,7 +13578,7 @@
    "repo": "OpenVibe.Live",
    "table": "stream_timeline_events",
    "declaredAt": [
-    "server/db/database.js:1229"
+    "server/db/database.js:1233"
    ],
    "prodDbs": [
     "live.db"
@@ -13576,7 +13594,7 @@
    "repo": "OpenVibe.Live",
    "table": "streamer_overviews",
    "declaredAt": [
-    "server/db/database.js:1274"
+    "server/db/database.js:1278"
    ],
    "prodDbs": [
     "live.db"
@@ -13672,7 +13690,7 @@
    "repo": "OpenVibe.Live",
    "table": "translations",
    "declaredAt": [
-    "server/db/database.js:506",
+    "server/db/database.js:510",
     "server/i18n/translate.js:145"
    ],
    "prodDbs": [
@@ -13689,7 +13707,7 @@
    "repo": "OpenVibe.Live",
    "table": "tts_voice_overrides",
    "declaredAt": [
-    "server/db/database.js:1352"
+    "server/db/database.js:1356"
    ],
    "prodDbs": [
     "live.db"
@@ -13879,7 +13897,7 @@
    "repo": "OpenVibe.Live",
    "table": "vibe_coding_events",
    "declaredAt": [
-    "server/db/database.js:2677",
+    "server/db/database.js:2681",
     "server/db/schema.sql:198"
    ],
    "prodDbs": [
@@ -13896,7 +13914,7 @@
    "repo": "OpenVibe.Live",
    "table": "vibe_coding_sessions",
    "declaredAt": [
-    "server/db/database.js:2642",
+    "server/db/database.js:2646",
     "server/db/schema.sql:170"
    ],
    "prodDbs": [
@@ -13913,7 +13931,7 @@
    "repo": "OpenVibe.Live",
    "table": "viewer_samples",
    "declaredAt": [
-    "server/db/database.js:3956"
+    "server/db/database.js:3960"
    ],
    "prodDbs": [
     "live.db"
@@ -14445,7 +14463,7 @@
    "repo": "OpenVibe.Network",
    "table": "email_verification_tokens",
    "declaredAt": [
-    "server/db/database.js:506"
+    "server/db/database.js:509"
    ],
    "prodDbs": [
     "network.db"
@@ -14462,6 +14480,22 @@
    "table": "follows",
    "declaredAt": [
     "server/db/database.js:386"
+   ],
+   "prodDbs": [
+    "network.db"
+   ],
+   "inCode": true,
+   "inProd": true,
+   "target": "OpenVibe.Network",
+   "disposition": "keep",
+   "wave": "W1 (module split)",
+   "note": "Identity, sessions, OAuth, themes, notifications, registry, chrome, audit, admin."
+  },
+  {
+   "repo": "OpenVibe.Network",
+   "table": "identity_legacy_map",
+   "declaredAt": [
+    "server/identity/subjects.js:25"
    ],
    "prodDbs": [
     "network.db"
@@ -14637,7 +14671,7 @@
    "repo": "OpenVibe.Network",
    "table": "stream_live_announcements",
    "declaredAt": [
-    "server/internal/routes.js:300"
+    "server/internal/routes.js:310"
    ],
    "prodDbs": [
     "network.db"
@@ -19283,7 +19317,7 @@
   }
  ],
  "metrics": {
-  "github.charters": "21 charter-only repos of 32",
+  "github.charters": "20 charter-only repos of 32",
   "contract.todo-markers": "Live 15, Network 0, Media 0, Tools 0, Community 0, Games 0, Sites 0",
   "outbound.call-sites": "65 caller-file/target pairs across 50 files",
   "outbound.internal-key": "28 of 65 call sites authenticate with the shared internal key",
@@ -19293,7 +19327,7 @@
   "vendored.divergent": "4 divergent: Community/ov-icons.js, Live/user-card.js, Media/ov-icons.js, Tools/ov-icons.js",
   "ci.repos": "0 of 7 scanned repos have .github/workflows",
   "deploy.drift": "1 service(s) not running origin/main",
-  "tests.OpenVibe.Live": "55 test files",
+  "tests.OpenVibe.Live": "56 test files",
   "tables.OpenVibe.Live": "125 tables",
   "tables.OpenVibe.Live.target:OpenVibe.Games (import source)": "31 Live tables target OpenVibe.Games (import source)",
   "tables.OpenVibe.Live.target:OpenVibe.AI": "14 Live tables target OpenVibe.AI",
@@ -19312,9 +19346,9 @@
   "tables.OpenVibe.Live.target:OpenVibe.Billing": "2 Live tables target OpenVibe.Billing",
   "tables.OpenVibe.Live.target:OpenVibe.Billing + OpenVibe.VIP": "1 Live tables target OpenVibe.Billing + OpenVibe.VIP",
   "tables.OpenVibe.Live.target:OpenVibe.Codes": "2 Live tables target OpenVibe.Codes",
-  "tests.OpenVibe.Network": "17 test files",
-  "tables.OpenVibe.Network": "35 tables",
-  "tables.OpenVibe.Network.target:OpenVibe.Network": "32 Network tables target OpenVibe.Network",
+  "tests.OpenVibe.Network": "18 test files",
+  "tables.OpenVibe.Network": "36 tables",
+  "tables.OpenVibe.Network.target:OpenVibe.Network": "33 Network tables target OpenVibe.Network",
   "tables.OpenVibe.Network.target:OpenVibe.Billing (loyalty ledger)": "2 Network tables target OpenVibe.Billing (loyalty ledger)",
   "tables.OpenVibe.Network.target:OpenVibe.Events": "1 Network tables target OpenVibe.Events",
   "tests.OpenVibe.Media": "4 test files",
@@ -19383,7 +19417,7 @@
    "metrics": [
     {
      "key": "github.charters",
-     "value": "21 charter-only repos of 32"
+     "value": "20 charter-only repos of 32"
     },
     {
      "key": "contract.todo-markers",
@@ -19660,7 +19694,7 @@
    "metrics": [
     {
      "key": "github.charters",
-     "value": "21 charter-only repos of 32"
+     "value": "20 charter-only repos of 32"
     }
    ],
    "verified": true
@@ -20034,13 +20068,13 @@
    "id": "EC1",
    "text": "Every table has an owner classification",
    "pass": true,
-   "detail": "249 tables classified, 0 unclassified"
+   "detail": "250 tables classified, 0 unclassified"
   },
   {
    "id": "EC2",
    "text": "Every route is attributed to a repo and source line",
    "pass": true,
-   "detail": "926 routes; 0 router mounts whose module could not be resolved (their routes are listed without the mount prefix)"
+   "detail": "928 routes; 0 router mounts whose module could not be resolved (their routes are listed without the mount prefix)"
   },
   {
    "id": "EC3",

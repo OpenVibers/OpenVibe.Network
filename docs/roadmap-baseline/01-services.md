@@ -8,8 +8,8 @@ Deliverable 1: runtimes, ports, units, env files and repository state.
 
 | Service | Repo | Stage | Ports | Units | Env file | Deployed | Databases |
 |---|---|---|---|---|---|---|---|
-| network | OpenVibe.Network | live | http 4000 | openvibe-network.service | /etc/openvibe/network.env | 71be248 | data/network.db |
-| live | OpenVibe.Live | live | http 3000, rtmp 1935/9935, mediasoup 11000-11300/udp, jsmpegRelayTls 9710-9789 | openvibe-live.socket, openvibe-live.service | /etc/openvibe/live.env | e31e342 | data/live.db, data/analytics.db, data/rs-companion.db |
+| network | OpenVibe.Network | live | http 4000 | openvibe-network.service | /etc/openvibe/network.env | 9b4e262 | data/network.db |
+| live | OpenVibe.Live | live | http 3000, rtmp 1935/9935, mediasoup 11000-11300/udp, jsmpegRelayTls 9710-9789 | openvibe-live.socket, openvibe-live.service | /etc/openvibe/live.env | 24151bd | data/live.db, data/analytics.db, data/rs-companion.db |
 | media | OpenVibe.Media | partial | http 4100, rtpIngest 12000-12199/udp (127.0.0.1) | openvibe-media.service | /etc/openvibe/media.env | 6114bc6 | data/media.db |
 | tools | OpenVibe.Tools | live | gateway 4001, maps 4010, food 4011, img 4012, yt 4013, audio 4014, text 4015, docs 4016 | openvibe-tools.service, openvibe-tools-maps.service, openvibe-tools-food.service, openvibe-tools-img.service, openvibe-tools-yt.service, openvibe-tools-audio.service, openvibe-tools-text.service, openvibe-tools-docs.service | /etc/openvibe/tools.env | 0346edc | apps/<satellite>/data/analytics.db |
 | games | OpenVibe.Games | live | http 8000 | openvibe-games.service | /etc/openvibe/games.env | 43c11f0 | data/world.db |
@@ -20,8 +20,8 @@ Deliverable 1: runtimes, ports, units, env files and repository state.
 
 | Repo | HEAD | origin/main | Source files | LOC | Test files | CI | Routes | Tables | WS servers | Timers/jobs | TODO(contract) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| OpenVibe.Live | e31e342 | e31e342 | 164 | 69622 | 55 | no | 532 | 125 | 8 | 48 | 15 |
-| OpenVibe.Network | 71be248 | 71be248 | 77 | 20399 | 17 | no | 185 | 35 | 0 | 11 | 0 |
+| OpenVibe.Live | 24151bd | 24151bd | 165 | 69699 | 56 | no | 532 | 125 | 8 | 48 | 15 |
+| OpenVibe.Network | 9b4e262 | 9b4e262 | 79 | 20646 | 18 | no | 187 | 36 | 0 | 11 | 0 |
 | OpenVibe.Media | 6114bc6 | 6114bc6 | 28 | 8702 | 4 | no | 67 | 15 | 0 | 9 | 0 |
 | OpenVibe.Tools | 0346edc | 0346edc | 117 | 20018 | 2 | no | 99 | 4 | 0 | 12 | 0 |
 | OpenVibe.Community | de947ea | de947ea | 11 | 1754 | 8 | no | 22 | 4 | 0 | 0 | 0 |
@@ -44,16 +44,16 @@ LOC counts non-test source files in the scanned directories only (`server/`, `ap
 | OpenVibe.Chat | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Rooms, messages, DMs, calls, TTS and audio queues, moderation and presence — one identity, every conversation. |
 | OpenVibe.Codes | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | The developer portal: registry and contract explorers, credentials, playgrounds, examples, mod/app publishing, governance. |
 | OpenVibe.Community | PUBLIC | - | 2026-09-21 | 687 KB |  |
-| OpenVibe.Contracts | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Machine-readable contracts for the whole OpenVibe network. |
+| OpenVibe.Contracts | PUBLIC | alpha | 2026-09-22 | 13 KB | Machine-readable contracts for the whole OpenVibe network. |
 | OpenVibe.Coupons | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Coupon codes with merchant matching, restrictions, expiry and real-people validity reports. |
 | OpenVibe.Deals | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Deals submitted and voted on by the community, with source, price and freshness always shown. |
 | OpenVibe.Events | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Durable events, subscriptions, delivery, retry, dead letters and replay for the network. |
 | OpenVibe.Examples | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Executable public integration examples, tested in CI against the platform. |
 | OpenVibe.Games | PUBLIC | - | 2026-09-21 | 4675 KB |  |
 | OpenVibe.Host | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | The network's deployment/control plane first; then isolated hosting for community sites, bots and mods. |
-| OpenVibe.Live | PUBLIC | - | 2026-09-21 | 6455 KB |  |
+| OpenVibe.Live | PUBLIC | - | 2026-09-22 | 6455 KB |  |
 | OpenVibe.Media | PUBLIC | - | 2026-09-21 | 847 KB |  |
-| OpenVibe.Network | PUBLIC | - | 2026-09-21 | 1037 KB |  |
+| OpenVibe.Network | PUBLIC | - | 2026-09-22 | 1037 KB |  |
 | OpenVibe.News | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Source-backed stories: clustered coverage, cited summaries, perspectives and timelines. |
 | OpenVibe.Realtime | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Browser delivery plane for events: authorised WS/SSE topics with cursors, resume and presence. |
 | OpenVibe.Reviews | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Review signals gathered across sources with provenance, entity resolution and honest aggregates. |

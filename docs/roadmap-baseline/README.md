@@ -2,15 +2,15 @@
 
 The audit baseline from the OpenVibe development roadmap (Wave 0; section 12 items 1-3): what exists across the estate, who owns each piece of data today and who should, what production looks like next to the repos, and which hazards constrain later waves. Every file here except `data/*.json` is generated.
 
-Source commits: Live `e31e342`, Network `71be248`, Media `6114bc6`, Tools `0346edc`, Community `de947ea`, Games `5710287`, Sites `185014f`. Production snapshot: openvibe-oregon, 2026-09-22.
+Source commits: Live `24151bd`, Network `9b4e262`, Media `6114bc6`, Tools `0346edc`, Community `de947ea`, Games `5710287`, Sites `185014f`. Production snapshot: openvibe-oregon, 2026-09-22.
 
 ## Deliverables
 
 | # | Artifact | Contents |
 |---|---|---|
 | 1 | [01-services.md](01-services.md) | services, ports, units, env files, repo state, GitHub census |
-| 2 | [02-schema.md](02-schema.md) | 249 tables with current/target owner |
-| 3 | [03-routes.md](03-routes.md), [04-cross-service.md](04-cross-service.md) | 926 routes; 65 cross-service call sites |
+| 2 | [02-schema.md](02-schema.md) | 250 tables with current/target owner |
+| 3 | [03-routes.md](03-routes.md), [04-cross-service.md](04-cross-service.md) | 928 routes; 65 cross-service call sites |
 | 4 | [05-realtime-and-jobs.md](05-realtime-and-jobs.md) | WebSocket servers and paths, non-HTTP protocols, background jobs |
 | 5 | [06-secrets.md](06-secrets.md) | auth mechanisms and secret names (no values) |
 | 6 | [07-ownership.md](07-ownership.md) | current vs target data ownership |
@@ -23,8 +23,8 @@ Source commits: Live `e31e342`, Network `71be248`, Media `6114bc6`, Tools `0346e
 
 |  | Criterion | Result |
 |---|---|---|
-| pass | Every table has an owner classification | 249 tables classified, 0 unclassified |
-| pass | Every route is attributed to a repo and source line | 926 routes; 0 router mounts whose module could not be resolved (their routes are listed without the mount prefix) |
+| pass | Every table has an owner classification | 250 tables classified, 0 unclassified |
+| pass | Every route is attributed to a repo and source line | 928 routes; 0 router mounts whose module could not be resolved (their routes are listed without the mount prefix) |
 | pass | Every background job is listed with its location | 82 timers/jobs |
 | pass | Every cross-service call records caller, callee, auth, timeout and retry | 65 call sites; 30 with no timeout detected |
 | pass | Unknowns are marked unknown, not guessed | 2 unknown items recorded |
