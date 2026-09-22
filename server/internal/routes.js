@@ -20,11 +20,19 @@ function getConfig(req) { return req.app.locals.config; }
 function requireInternalKey(req, res, next) {
     const key = req.headers['x-internal-key'];
     const config = getConfig(req);
-    if (!key || key !== config.internalKey) {
-        return res.status(403).json({ error: 'Invalid or missing internal key' });
+    if (key && key === config.internalKey) {
+        req.internalKeyOk = true;
+        return next();
     }
-    next();
+    // Routes guarded by a capability also accept a service-principal token instead of the key;
+    // principals.guard() on the route verifies it (and refuses anything it can't verify).
+    if (String(req.headers.authorization || '').startsWith('Bearer ') && TOKEN_ROUTES.has(`${req.method} ${req.path}`)) return next();
+    return res.status(403).json({ error: 'Invalid or missing internal key' });
 }
+const principals = require('../identity/principals');
+const TOKEN_ROUTES = new Set(['POST /coins/credit', 'POST /coins/debit', 'POST /coins/transfer', 'POST /notifications/push', 'POST /notifications/push-bulk']);
+const forApp = (req) => (req.body && req.body.app_id !== undefined ? String(req.body.app_id) : undefined);
+const forService = (req) => (req.body && req.body.service !== undefined ? String(req.body.service) : undefined);
 
 router.use(requireInternalKey);
 router.use('/identity', require('../identity/internal-routes'));
@@ -249,7 +257,7 @@ router.get('/coins/stats', (req, res) => {
 // ── POST /internal/coins/credit ──────────────────────────────
 // Body: { user_id, app_id, amount (positive int), reason, ref?, idempotency_key }
 // → { balance }
-router.post('/coins/credit', (req, res) => {
+router.post('/coins/credit', principals.guard('network.coins.credit', { ownApp: forApp }), (req, res) => {
     try {
         const { user_id, app_id, amount, reason, ref, idempotency_key } = req.body || {};
         const result = wallet.credit(getDb(req), { user_id, app_id, amount, reason, ref, idempotency_key });
@@ -261,7 +269,7 @@ router.post('/coins/credit', (req, res) => {
 
 // ── POST /internal/coins/debit ───────────────────────────────
 // Same body → { balance }; insufficient funds → 409 { error: 'insufficient_funds', balance }
-router.post('/coins/debit', (req, res) => {
+router.post('/coins/debit', principals.guard('network.coins.debit', { ownApp: forApp }), (req, res) => {
     try {
         const { user_id, app_id, amount, reason, ref, idempotency_key } = req.body || {};
         const result = wallet.debit(getDb(req), { user_id, app_id, amount, reason, ref, idempotency_key });
@@ -274,7 +282,7 @@ router.post('/coins/debit', (req, res) => {
 // ── POST /internal/coins/transfer ────────────────────────────
 // Body: { from_user_id, to_user_id, app_id, amount, reason, ref?, idempotency_key }
 // → { from_balance, to_balance } (atomic)
-router.post('/coins/transfer', (req, res) => {
+router.post('/coins/transfer', principals.guard('network.coins.transfer', { ownApp: forApp }), (req, res) => {
     try {
         const { from_user_id, to_user_id, app_id, amount, reason, ref, idempotency_key } = req.body || {};
         const result = wallet.transfer(getDb(req), { from_user_id, to_user_id, app_id, amount, reason, ref, idempotency_key });
@@ -418,7 +426,7 @@ router.post('/events/stream-live', async (req, res) => {
 // ── Push Single Notification ─────────────────────────────────
 // POST /internal/notifications/push
 // Body: { user_id, type, title, message, icon, sender_id, sender_name, sender_avatar, service, url, priority, category, rich_content, expires_at }
-router.post('/notifications/push', (req, res) => {
+router.post('/notifications/push', principals.guard('network.notifications.push', { ownApp: forService }), (req, res) => {
     const notifService = req.app.locals.notificationService;
     if (!notifService) return res.status(503).json({ error: 'Notification service unavailable' });
 
@@ -438,7 +446,7 @@ router.post('/notifications/push', (req, res) => {
 // ── Push Bulk Notifications ──────────────────────────────────
 // POST /internal/notifications/push-bulk
 // Body: { user_ids: [], type, title, message, ... }
-router.post('/notifications/push-bulk', (req, res) => {
+router.post('/notifications/push-bulk', principals.guard('network.notifications.push', { ownApp: forService }), (req, res) => {
     const notifService = req.app.locals.notificationService;
     if (!notifService) return res.status(503).json({ error: 'Notification service unavailable' });
 

@@ -783,6 +783,8 @@ function initDb(dbPath) {
 
     // Subject ids + identity_legacy_map (server/identity/subjects.js): backfill and seed, idempotent.
     require('../identity/subjects').ensureSchema(db);
+    // Service principals: grants per OAuth client + usage counters (server/identity/principals.js).
+    require('../identity/principals').ensureSchema(db);
 
     console.log('[DB] Central database initialized');
     return db;

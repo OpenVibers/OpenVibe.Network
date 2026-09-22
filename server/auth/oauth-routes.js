@@ -9,6 +9,7 @@ const express = require('express');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const subjects = require('../identity/subjects');
+const principals = require('../identity/principals');
 const router = express.Router();
 
 function getDb(req) { return req.app.locals.db; }
@@ -133,6 +134,17 @@ router.post('/token', (req, res) => {
     const db = getDb(req);
     const config = getConfig(req);
     const { grant_type, client_id, client_secret, code, redirect_uri, refresh_token } = req.body;
+
+    // Service principals (Wave 1): a first-party service trades its client credentials for a
+    // short-lived, capability-scoped token. Checked before the user-grant path below.
+    if (grant_type === 'client_credentials') {
+        const out = principals.issueToken(db, {
+            clientId: client_id, clientSecret: client_secret, audience: req.body.audience, scope: req.body.scope,
+            privateKey: req.app.locals.privateKey, issuer: config.jwt.issuer,
+        });
+        res.set('Cache-Control', 'no-store');
+        return res.status(out.status).json(out.body);
+    }
 
     // Validate client credentials
     const client = db.prepare('SELECT * FROM oauth_clients WHERE client_id = ?').get(client_id);
