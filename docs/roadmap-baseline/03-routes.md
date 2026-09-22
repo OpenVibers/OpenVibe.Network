@@ -8,11 +8,11 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 
 | Repo | Routes | GET | POST | PUT/PATCH | DELETE | Other | /internal/* |
 |---|---|---|---|---|---|---|---|
-| OpenVibe.Live | 532 | 274 | 160 | 50 | 47 | 1 | 6 |
-| OpenVibe.Network | 187 | 81 | 70 | 22 | 14 | 0 | 27 |
+| OpenVibe.Live | 537 | 275 | 163 | 50 | 48 | 1 | 6 |
+| OpenVibe.Network | 197 | 86 | 72 | 24 | 15 | 0 | 30 |
 | OpenVibe.Media | 67 | 28 | 27 | 4 | 8 | 0 | 1 |
 | OpenVibe.Tools | 99 | 84 | 12 | 0 | 2 | 1 | 0 |
-| OpenVibe.Community | 22 | 19 | 3 | 0 | 0 | 0 | 0 |
+| OpenVibe.Community | 47 | 30 | 13 | 1 | 3 | 0 | 0 |
 | OpenVibe.Games | 21 | 0 | 3 | 0 | 0 | 18 | 0 |
 
 
@@ -359,6 +359,7 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 | GET | /api/pastes/:slug | server/media-proxy/pastes.js:215 |
 | PUT | /api/pastes/:slug | server/media-proxy/pastes.js:216 |
 | POST | /api/pastes/:slug/censor | server/media-proxy/pastes.js:222 |
+| POST | /api/pastes/:slug/censor | server/media-proxy/pastes.js:315 |
 | GET | /api/pastes/:slug/comments | server/media-proxy/pastes.js:243 |
 | POST | /api/pastes/:slug/comments | server/media-proxy/pastes.js:246 |
 | DELETE | /api/pastes/:slug/comments/:commentId | server/media-proxy/pastes.js:248 |
@@ -366,10 +367,14 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 | POST | /api/pastes/:slug/fork | server/media-proxy/pastes.js:238 |
 | POST | /api/pastes/:slug/like | server/media-proxy/pastes.js:241 |
 | GET | /api/pastes/:slug/raw | server/media-proxy/pastes.js:240 |
+| GET | /api/pastes/:slug/raw | server/media-proxy/pastes.js:311 |
 | POST | /api/pastes/:slug/set-avatar | server/media-proxy/pastes.js:110 |
+| POST | /api/pastes/:slug/set-avatar | server/media-proxy/pastes.js:296 |
 | DELETE | /api/pastes/admin/forks | server/media-proxy/pastes.js:171 |
+| DELETE | /api/pastes/admin/forks | server/media-proxy/pastes.js:313 |
 | GET | /api/pastes/admin/stats | server/media-proxy/pastes.js:170 |
 | POST | /api/pastes/bulk | server/media-proxy/pastes.js:172 |
+| POST | /api/pastes/bulk | server/media-proxy/pastes.js:314 |
 | GET | /api/pastes/by-user/:username | server/media-proxy/pastes.js:177 |
 | GET | /api/pastes/config | server/media-proxy/pastes.js:169 |
 | POST | /api/pastes/screenshot | server/media-proxy/pastes.js:83 |
@@ -563,7 +568,7 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 | PUT | / | server/discord/routes.js:33 |
 | POST | /:id/dismiss | server/notifications/routes.js:100 |
 | POST | /:id/read | server/notifications/routes.js:67 |
-| GET | /.well-known/web-identity | server/index.js:572 |
+| GET | /.well-known/web-identity | server/index.js:574 |
 | POST | /admin | server/setup/routes.js:114 |
 | GET | /api/.well-known/jwks | server/index.js:356 |
 | GET | /api/admin/domains | server/domains/routes.js:176 |
@@ -573,7 +578,7 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 | PUT | /api/admin/domains/:id | server/domains/routes.js:238 |
 | GET | /api/admin/domains/catalog | server/domains/routes.js:206 |
 | POST | /api/admin/domains/check | server/domains/routes.js:217 |
-| GET | /api/admin/ssh-info | server/index.js:452 |
+| GET | /api/admin/ssh-info | server/index.js:454 |
 | GET | /api/auth/anon-identities | server/auth/routes.js:638 |
 | POST | /api/auth/anon-session | server/auth/routes.js:515 |
 | GET | /api/auth/anon/:token | server/auth/routes.js:585 |
@@ -604,7 +609,7 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 | DELETE | /api/auth/users/:id/follow | server/auth/routes.js:814 |
 | POST | /api/auth/users/:id/follow | server/auth/routes.js:783 |
 | GET | /api/brand | server/index.js:373 |
-| GET | /api/catalog.json | server/index.js:423 |
+| GET | /api/catalog.json | server/index.js:425 |
 | GET | /api/chrome | server/chrome/service.js:137 |
 | POST | /api/chrome/hit | server/chrome/service.js:150 |
 | GET | /api/domains | server/domains/routes.js:176 |
@@ -620,6 +625,13 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 | POST | /api/history | server/history/routes.js:108 |
 | DELETE | /api/history/:id | server/history/routes.js:148 |
 | PUT | /api/history/settings | server/history/routes.js:137 |
+| GET | /api/modules | server/identity/modules.js:101 |
+| DELETE | /api/modules/:ns | server/identity/modules.js:126 |
+| GET | /api/modules/:ns | server/identity/modules.js:109 |
+| PUT | /api/modules/:ns | server/identity/modules.js:117 |
+| GET | /api/modules/:ns/public/:subject | server/identity/modules.js:93 |
+| GET | /api/modules/modules/:ns/:subject | server/identity/modules.js:140 |
+| PUT | /api/modules/modules/:ns/:subject | server/identity/modules.js:149 |
 | DELETE | /api/profile/avatar | server/profile/avatar.js:107 |
 | PUT | /api/profile/avatar | server/profile/avatar.js:96 |
 | GET | /api/profile/avatar/:username | server/profile/avatar.js:110 |
@@ -628,7 +640,7 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 | POST | /api/push/subscribe | server/push/routes.js:17 |
 | POST | /api/push/unsubscribe | server/push/routes.js:29 |
 | GET | /api/push/vapid-key | server/push/routes.js:10 |
-| GET | /api/sso/targets | server/index.js:405 |
+| GET | /api/sso/targets | server/index.js:407 |
 | GET | /api/themes | server/themes/routes.js:41 |
 | POST | /api/themes | server/themes/routes.js:148 |
 | GET | /api/themes/:idOrSlug | server/themes/routes.js:109 |
@@ -664,34 +676,37 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 | POST | /fedcm/disconnect | server/auth/fedcm.js:142 |
 | GET | /health | server/admin/routes.js:766 |
 | POST | /identity | server/setup/routes.js:152 |
-| GET | /internal/anon-admin | server/internal/routes.js:628 |
-| GET | /internal/anon-list | server/internal/routes.js:677 |
-| POST | /internal/audit | server/internal/routes.js:166 |
-| POST | /internal/coins/credit | server/internal/routes.js:252 |
-| POST | /internal/coins/debit | server/internal/routes.js:264 |
-| GET | /internal/coins/stats | server/internal/routes.js:214 |
-| POST | /internal/coins/transfer | server/internal/routes.js:277 |
-| POST | /internal/events/stream-live | server/internal/routes.js:294 |
-| POST | /internal/identity/legacy-map | server/identity/internal-routes.js:29 |
+| GET | /internal/anon-admin | server/internal/routes.js:643 |
+| GET | /internal/anon-list | server/internal/routes.js:692 |
+| POST | /internal/audit | server/internal/routes.js:178 |
+| POST | /internal/coins/credit | server/internal/routes.js:267 |
+| POST | /internal/coins/debit | server/internal/routes.js:279 |
+| GET | /internal/coins/stats | server/internal/routes.js:226 |
+| POST | /internal/coins/transfer | server/internal/routes.js:292 |
+| POST | /internal/events/stream-live | server/internal/routes.js:309 |
+| POST | /internal/identity/legacy-map | server/identity/internal-routes.js:52 |
 | GET | /internal/identity/resolve | server/identity/internal-routes.js:18 |
-| POST | /internal/issue-token | server/internal/routes.js:518 |
-| POST | /internal/link-account | server/internal/routes.js:108 |
-| POST | /internal/notifications/mark-read | server/internal/routes.js:479 |
-| POST | /internal/notifications/push | server/internal/routes.js:421 |
-| POST | /internal/notifications/push-bulk | server/internal/routes.js:441 |
-| POST | /internal/notifications/resolve-users | server/internal/routes.js:498 |
-| GET | /internal/notifications/unread/:userId | server/internal/routes.js:464 |
-| POST | /internal/resolve-anon | server/internal/routes.js:549 |
-| GET | /internal/stats | server/internal/routes.js:175 |
-| GET | /internal/url-registry/resolved | server/internal/routes.js:184 |
-| POST | /internal/user-avatar | server/internal/routes.js:151 |
-| GET | /internal/users/:id | server/internal/routes.js:59 |
-| GET | /internal/users/:id/linked-accounts | server/internal/routes.js:159 |
-| GET | /internal/users/:id/theme | server/internal/routes.js:96 |
-| POST | /internal/users/bulk | server/internal/routes.js:81 |
-| GET | /internal/users/by-username/:username | server/internal/routes.js:70 |
-| POST | /internal/verify-token | server/internal/routes.js:37 |
-| GET | /llms.txt | server/index.js:550 |
+| GET | /internal/identity/resolve | server/internal/routes.js:40 |
+| POST | /internal/identity/resolve-batch | server/identity/internal-routes.js:35 |
+| POST | /internal/identity/resolve-batch | server/internal/routes.js:41 |
+| POST | /internal/issue-token | server/internal/routes.js:533 |
+| POST | /internal/link-account | server/internal/routes.js:120 |
+| POST | /internal/notifications/mark-read | server/internal/routes.js:494 |
+| POST | /internal/notifications/push | server/internal/routes.js:436 |
+| POST | /internal/notifications/push-bulk | server/internal/routes.js:456 |
+| POST | /internal/notifications/resolve-users | server/internal/routes.js:513 |
+| GET | /internal/notifications/unread/:userId | server/internal/routes.js:479 |
+| POST | /internal/resolve-anon | server/internal/routes.js:564 |
+| GET | /internal/stats | server/internal/routes.js:187 |
+| GET | /internal/url-registry/resolved | server/internal/routes.js:196 |
+| POST | /internal/user-avatar | server/internal/routes.js:163 |
+| GET | /internal/users/:id | server/internal/routes.js:71 |
+| GET | /internal/users/:id/linked-accounts | server/internal/routes.js:171 |
+| GET | /internal/users/:id/theme | server/internal/routes.js:108 |
+| POST | /internal/users/bulk | server/internal/routes.js:93 |
+| GET | /internal/users/by-username/:username | server/internal/routes.js:82 |
+| POST | /internal/verify-token | server/internal/routes.js:49 |
+| GET | /llms.txt | server/index.js:552 |
 | GET | /me | server/coins/routes.js:18 |
 | GET | /me/history | server/coins/routes.js:24 |
 | GET | /net-config | server/admin/routes.js:907 |
@@ -702,11 +717,11 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 | GET | /nginx/preview/:serviceId | server/deploy/routes.js:314 |
 | POST | /nginx/reload | server/deploy/routes.js:382 |
 | POST | /nginx/validate | server/deploy/routes.js:330 |
-| GET | /oauth/.well-known/openid-configuration | server/auth/oauth-routes.js:306 |
-| GET | /oauth/authorize | server/auth/oauth-routes.js:21 |
-| POST | /oauth/confirm | server/auth/oauth-routes.js:79 |
-| POST | /oauth/token | server/auth/oauth-routes.js:132 |
-| GET | /openvibe-sw.js | server/index.js:596 |
+| GET | /oauth/.well-known/openid-configuration | server/auth/oauth-routes.js:318 |
+| GET | /oauth/authorize | server/auth/oauth-routes.js:22 |
+| POST | /oauth/confirm | server/auth/oauth-routes.js:80 |
+| POST | /oauth/token | server/auth/oauth-routes.js:133 |
+| GET | /openvibe-sw.js | server/index.js:598 |
 | GET | /overview | server/admin/analytics-routes.js:75 |
 | GET | /preferences | server/notifications/routes.js:121 |
 | PUT | /preferences | server/notifications/routes.js:132 |
@@ -720,11 +735,11 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 | GET | /service/:name | server/admin/analytics-routes.js:224 |
 | GET | /settings | server/admin/routes.js:300 |
 | PUT | /settings | server/admin/routes.js:328 |
-| GET | /sso/check | server/index.js:577 |
+| GET | /sso/check | server/index.js:579 |
 | GET | /status | server/setup/routes.js:91 |
 | POST | /test | server/discord/routes.js:77 |
 | POST | /test-live | server/discord/routes.js:87 |
-| GET | /tos | server/index.js:419 |
+| GET | /tos | server/index.js:421 |
 | GET | /unread-by-category | server/notifications/routes.js:47 |
 | GET | /unread-count | server/notifications/routes.js:37 |
 | GET | /url-registry | server/admin/routes.js:353 |
@@ -743,7 +758,7 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 | GET | /verification-keys | server/admin/routes.js:824 |
 | POST | /verification-keys | server/admin/routes.js:833 |
 | DELETE | /verification-keys/:id | server/admin/routes.js:881 |
-| GET | /verify-email | server/index.js:562 |
+| GET | /verify-email | server/index.js:564 |
 
 ## OpenVibe.Media
 
@@ -771,26 +786,26 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 | POST | /api/v1/:app/files | server/files/routes.js:75 |
 | DELETE | /api/v1/:app/files/:key | server/files/routes.js:167 |
 | GET | /api/v1/:app/files/:key | server/files/routes.js:156 |
-| GET | /api/v1/:app/pastes | server/pastes/routes.js:248 |
-| POST | /api/v1/:app/pastes | server/pastes/routes.js:462 |
-| DELETE | /api/v1/:app/pastes/:slug | server/pastes/routes.js:616 |
-| GET | /api/v1/:app/pastes/:slug | server/pastes/routes.js:436 |
-| PUT | /api/v1/:app/pastes/:slug | server/pastes/routes.js:578 |
-| POST | /api/v1/:app/pastes/:slug/ai | server/pastes/routes.js:558 |
-| POST | /api/v1/:app/pastes/:slug/censor | server/pastes/routes.js:397 |
-| GET | /api/v1/:app/pastes/:slug/comments | server/pastes/routes.js:702 |
-| POST | /api/v1/:app/pastes/:slug/comments | server/pastes/routes.js:725 |
-| DELETE | /api/v1/:app/pastes/:slug/comments/:commentId | server/pastes/routes.js:803 |
-| POST | /api/v1/:app/pastes/:slug/copy | server/pastes/routes.js:677 |
-| POST | /api/v1/:app/pastes/:slug/fork | server/pastes/routes.js:634 |
-| POST | /api/v1/:app/pastes/:slug/like | server/pastes/routes.js:660 |
-| DELETE | /api/v1/:app/pastes/admin/forks | server/pastes/routes.js:359 |
-| GET | /api/v1/:app/pastes/admin/forks | server/pastes/routes.js:339 |
-| GET | /api/v1/:app/pastes/admin/stats | server/pastes/routes.js:329 |
-| POST | /api/v1/:app/pastes/bulk | server/pastes/routes.js:372 |
-| GET | /api/v1/:app/pastes/config | server/pastes/routes.js:307 |
-| GET | /api/v1/:app/stats | server/index.js:93 |
-| GET | /api/v1/:app/stats/series/:metric | server/index.js:103 |
+| GET | /api/v1/:app/pastes | server/pastes/routes.js:257 |
+| POST | /api/v1/:app/pastes | server/pastes/routes.js:471 |
+| DELETE | /api/v1/:app/pastes/:slug | server/pastes/routes.js:625 |
+| GET | /api/v1/:app/pastes/:slug | server/pastes/routes.js:445 |
+| PUT | /api/v1/:app/pastes/:slug | server/pastes/routes.js:587 |
+| POST | /api/v1/:app/pastes/:slug/ai | server/pastes/routes.js:567 |
+| POST | /api/v1/:app/pastes/:slug/censor | server/pastes/routes.js:406 |
+| GET | /api/v1/:app/pastes/:slug/comments | server/pastes/routes.js:711 |
+| POST | /api/v1/:app/pastes/:slug/comments | server/pastes/routes.js:734 |
+| DELETE | /api/v1/:app/pastes/:slug/comments/:commentId | server/pastes/routes.js:812 |
+| POST | /api/v1/:app/pastes/:slug/copy | server/pastes/routes.js:686 |
+| POST | /api/v1/:app/pastes/:slug/fork | server/pastes/routes.js:643 |
+| POST | /api/v1/:app/pastes/:slug/like | server/pastes/routes.js:669 |
+| DELETE | /api/v1/:app/pastes/admin/forks | server/pastes/routes.js:368 |
+| GET | /api/v1/:app/pastes/admin/forks | server/pastes/routes.js:348 |
+| GET | /api/v1/:app/pastes/admin/stats | server/pastes/routes.js:338 |
+| POST | /api/v1/:app/pastes/bulk | server/pastes/routes.js:381 |
+| GET | /api/v1/:app/pastes/config | server/pastes/routes.js:316 |
+| GET | /api/v1/:app/stats | server/index.js:94 |
+| GET | /api/v1/:app/stats/series/:metric | server/index.js:104 |
 | POST | /api/v1/:app/thumbnails/:kind/:id | server/thumbnails/routes.js:38 |
 | GET | /api/v1/:app/views | server/views/routes.js:39 |
 | POST | /api/v1/:app/views | server/views/routes.js:24 |
@@ -812,10 +827,10 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 | GET | /auth/logout | server/user-auth.js:355 |
 | GET | /auth/me | server/user-auth.js:379 |
 | POST | /auth/refresh | server/user-auth.js:389 |
-| GET | /healthz | server/index.js:82 |
-| POST | /internal/avatar-ingest | server/index.js:56 |
-| GET | /manifest.webmanifest | server/index.js:44 |
-| GET | /tos | server/index.js:41 |
+| GET | /healthz | server/index.js:83 |
+| POST | /internal/avatar-ingest | server/index.js:57 |
+| GET | /manifest.webmanifest | server/index.js:45 |
+| GET | /tos | server/index.js:42 |
 
 ## OpenVibe.Tools
 
@@ -925,28 +940,53 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 
 | Method | Path | Source |
 |---|---|---|
-| GET | / | server/app.js:106 |
-| GET | /api/health | server/app.js:81 |
-| GET | /api/ready | server/app.js:82 |
-| GET | /callback | server/auth/routes.js:281 |
-| POST | /fedcm | server/auth/routes.js:327 |
-| GET | /feed.xml | server/app.js:99 |
-| GET | /login | server/auth/routes.js:259 |
-| GET | /logout | server/auth/routes.js:355 |
-| GET | /me | server/auth/routes.js:379 |
-| GET | /my | server/app.js:186 |
-| GET | /new | server/app.js:150 |
-| POST | /new | server/app.js:159 |
-| GET | /p/:slug | server/app.js:119 |
-| GET | /p/:slug/download | server/app.js:138 |
-| GET | /p/:slug/raw | server/app.js:135 |
-| GET | /p/:slug/screenshot | server/app.js:136 |
-| GET | /pastes | server/app.js:111 |
-| GET | /pastes/:slug | server/app.js:117 |
-| POST | /refresh | server/auth/routes.js:389 |
-| GET | /robots.txt | server/app.js:97 |
-| GET | /sitemap.xml | server/app.js:98 |
-| GET | /tos | server/app.js:75 |
+| GET | / | server/app.js:146 |
+| GET | /api/health | server/app.js:120 |
+| GET | /api/pastes | server/pastes/api.js:102 |
+| POST | /api/pastes | server/pastes/api.js:106 |
+| DELETE | /api/pastes/:slug | server/pastes/api.js:124 |
+| GET | /api/pastes/:slug | server/pastes/api.js:122 |
+| PUT | /api/pastes/:slug | server/pastes/api.js:123 |
+| POST | /api/pastes/:slug/ai | server/pastes/api.js:127 |
+| POST | /api/pastes/:slug/censor | server/pastes/api.js:126 |
+| GET | /api/pastes/:slug/comments | server/pastes/api.js:136 |
+| POST | /api/pastes/:slug/comments | server/pastes/api.js:137 |
+| DELETE | /api/pastes/:slug/comments/:commentId | server/pastes/api.js:140 |
+| POST | /api/pastes/:slug/copy | server/pastes/api.js:134 |
+| POST | /api/pastes/:slug/fork | server/pastes/api.js:132 |
+| POST | /api/pastes/:slug/like | server/pastes/api.js:133 |
+| GET | /api/pastes/:slug/raw | server/pastes/api.js:129 |
+| POST | /api/pastes/:slug/set-avatar | server/pastes/api.js:143 |
+| GET | /api/pastes/:slug/versions | server/pastes/api.js:130 |
+| DELETE | /api/pastes/admin/forks | server/pastes/api.js:113 |
+| GET | /api/pastes/admin/forks | server/pastes/api.js:112 |
+| GET | /api/pastes/admin/stats | server/pastes/api.js:111 |
+| POST | /api/pastes/bulk | server/pastes/api.js:114 |
+| GET | /api/pastes/by-user/:username | server/pastes/api.js:119 |
+| GET | /api/pastes/config | server/pastes/api.js:109 |
+| POST | /api/pastes/screenshot | server/pastes/api.js:116 |
+| GET | /api/ready | server/app.js:121 |
+| GET | /callback | server/auth/routes.js:289 |
+| POST | /fedcm | server/auth/routes.js:335 |
+| GET | /feed.xml | server/app.js:138 |
+| GET | /login | server/auth/routes.js:267 |
+| GET | /logout | server/auth/routes.js:363 |
+| GET | /me | server/auth/routes.js:387 |
+| GET | /my | server/app.js:252 |
+| GET | /new | server/app.js:214 |
+| POST | /new | server/app.js:225 |
+| GET | /p/:slug | server/app.js:159 |
+| GET | /p/:slug/download | server/app.js:202 |
+| GET | /p/:slug/raw | server/app.js:178 |
+| GET | /p/:slug/raw | server/app.js:198 |
+| GET | /p/:slug/screenshot | server/app.js:191 |
+| GET | /p/:slug/screenshot | server/app.js:199 |
+| GET | /pastes | server/app.js:151 |
+| GET | /pastes/:slug | server/app.js:157 |
+| POST | /refresh | server/auth/routes.js:397 |
+| GET | /robots.txt | server/app.js:136 |
+| GET | /sitemap.xml | server/app.js:137 |
+| GET | /tos | server/app.js:82 |
 
 ## OpenVibe.Games
 

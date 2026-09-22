@@ -10,24 +10,24 @@ Deliverable 8. Family-level status from roadmap 3.2. Evidence paths are checked 
 | D02-D04 | Registry, capabilities, contracts | absent | missing | W1, W2 | Network/server/url-registry.js; Sites/sites.json | 20 charter-only repos of 32; Live 15, Network 0, Media 0, Tools 0, Community 0, Games 0, Sites 0 |
 | D05-D06 | Policy, staff, user modules | partial | partial | W1, W2 | Network/server/admin; Live/server/auth/permissions.js | - |
 | D07-D10 | Themes, notifications, social, analytics | partial | partial | W1, W2, Track O | Network/server/themes; Network/server/notifications | 5 repos carry their own analytics_events |
-| D11-D13 | Events, realtime, SDK | absent | missing | W2, W3 | Media/server/webhooks.js | 65 caller-file/target pairs across 50 files; 10 WebSocket server constructions |
+| D11-D13 | Events, realtime, SDK | absent | missing | W2, W3 | Media/server/webhooks.js | 68 caller-file/target pairs across 52 files; 10 WebSocket server constructions |
 | D14-D16 | Media | partial | partial | W4 | Media/server/vod; Media/server/pastes | 3 Media tables target OpenVibe.Community |
 | D17-D20 | Live, OpenRe, channel/VOD lineage | partial | partial | W7 | Live/server/streaming/rtmp-server.js; Live/server/streaming/restream-manager.js | 14 Live tables target OpenRe.Stream |
 | D21-D23 | Chat | partial | partial | W6 | Live/server/chat/chat-server.js; Live/server/streaming/call-server.js | 23 Live tables target OpenVibe.Chat |
-| D24-D27 | Community | partial | partial | W5 | Community/server/pastes | 4 tables; 4 Live tables target OpenVibe.Community |
+| D24-D27 | Community | partial | partial | W5 | Community/server/pastes | 13 tables; 4 Live tables target OpenVibe.Community |
 | D28-D30 | Billing, Tips, VIP | partial | partial | W8-W10 (ADR-012 first) | Live/server/monetization/payments.js; Network/server/coins | 2 Live tables target OpenVibe.Billing; 2 Network tables target OpenVibe.Billing (loyalty ledger) |
 | D31 | Tools | built | already-present-and-verified | W11 | Tools/apps/gateway | 2 test files |
 | D32 | Games | built | already-present-and-verified | W12 | Games/apps/server/src/net/sso.ts | 56 test files |
 | D33-D34 | Codes, Host | absent | missing | W20, W21 | - | 20 charter-only repos of 32 |
 | D35-D38 | AI, content, sources, search | partial | partial | W13-W15 | Live/server/ai/moment-registry.js; Live/server/ai/llm.js | 14 Live tables target OpenVibe.AI |
 | D39 | Mods | absent | missing | W12, W21 | - | - |
-| D40 | Open developer services | absent | missing | W20, W21 | Live/server/integrations/powerchat-routes.js | 28 of 65 call sites authenticate with the shared internal key |
+| D40 | Open developer services | absent | missing | W20, W21 | Live/server/integrations/powerchat-routes.js | 28 of 68 call sites authenticate with the shared internal key |
 | D41 | Independent runtime lifecycle | partial | partial | W7, W21 | Live/deploy | hazard H1; hazard H3 |
 | D42 | Shared component architecture | partial | partial | W2, Track R | Network/packages/openvibe-shared | 5 repos vendor openvibe-shared (129 files); 4 divergent: Community/ov-icons.js, Live/user-card.js, Media/ov-icons.js, Tools/ov-icons.js |
 | D43 | Safe active-client updates | absent | missing | Track R | Live/server/chat/deploy-notice.js; Live/server/web/assets.js | - |
 | D44 | Crawlable component rendering | built | already-present-and-verified | Track R (preserve) | Community/server/seo.js; Sites/build.js | - |
 | D45 | Release compatibility and recovery | absent | missing | Track R, W22 | - | 1 service(s) not running origin/main |
-| D46 | Update observability and acceptance | absent | missing | Track R, Track O | - | 0 of 7 scanned repos have .github/workflows |
+| D46 | Update observability and acceptance | absent | missing | Track R, Track O | - | 4 of 7 scanned repos have .github/workflows |
 
 Totals: 3 built, 11 partial, 8 absent across 22 families; 22 verified.
 

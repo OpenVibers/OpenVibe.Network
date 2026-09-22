@@ -22,18 +22,19 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 |---|---|---|---|
 | OpenVibe.Community | COOKIE_SECURE | **not set** | server/config.js |
 | OpenVibe.Community | OV_OAUTH_CLIENT_SECRET | community.env | server/config.js |
+| OpenVibe.Community | VIEW_HASH_SECRET | **not set** | server/pastes/service.js |
 | OpenVibe.Games | EDITOR_KEY | games.env | apps/server/src/config.ts |
 | OpenVibe.Games | OV_OAUTH_CLIENT_SECRET | games.env | apps/server/src/config.ts |
 | OpenVibe.Live | ADMIN_PASSWORD | live.env | server/config.js |
 | OpenVibe.Live | GH_TOKEN | **not set** | server/meta/routes.js |
 | OpenVibe.Live | GITHUB_TOKEN | **not set** | server/meta/routes.js |
-| OpenVibe.Live | INTERNAL_API_KEY | live.env | server/chat/chat-server.js, server/config.js, server/monetization/wallet-client.js +2 |
+| OpenVibe.Live | INTERNAL_API_KEY | live.env | server/chat/chat-server.js, server/config.js, server/monetization/wallet-client.js +3 |
 | OpenVibe.Live | JWT_SECRET | live.env | server/arena/arena-service.js, server/config.js, server/integrations/platform-oauth.js +1 |
 | OpenVibe.Live | MEDIA_API_KEY | live.env | server/media-client.js |
 | OpenVibe.Live | MEDIA_WEBHOOK_SECRET | live.env | server/media-proxy/webhook.js |
 | OpenVibe.Live | OPS_ALERT_WEBHOOK_URL | **not set** | server/media-proxy/webhook.js |
-| OpenVibe.Live | OV_INTERNAL_KEY | **not set** | server/chat/chat-server.js, server/config.js, server/monetization/wallet-client.js +2 |
-| OpenVibe.Live | OV_OAUTH_CLIENT_SECRET | live.env | server/auth/routes.js |
+| OpenVibe.Live | OV_INTERNAL_KEY | **not set** | server/chat/chat-server.js, server/config.js, server/monetization/wallet-client.js +3 |
+| OpenVibe.Live | OV_OAUTH_CLIENT_SECRET | live.env | server/auth/routes.js, server/net/network-principal.js |
 | OpenVibe.Live | PAYPAL_CLIENT_SECRET | live.env | server/config.js |
 | OpenVibe.Live | TURN_AUTH_SECRET | live.env | server/auth/routes.js, server/net/turn.js |
 | OpenVibe.Live | TURN_CREDENTIAL | live.env | server/config.js |
@@ -63,11 +64,11 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 
 | File | Variables |
 |---|---|
-| /etc/openvibe/community.env | 13 |
+| /etc/openvibe/community.env | 14 |
 | /etc/openvibe/games.env | 12 |
 | /etc/openvibe/generated-secrets.env | 6 |
-| /etc/openvibe/live.env | 53 |
-| /etc/openvibe/media.env | 26 |
+| /etc/openvibe/live.env | 54 |
+| /etc/openvibe/media.env | 28 |
 | /etc/openvibe/network.env | 21 |
 | /etc/openvibe/tools.env | 9 |
 
@@ -76,6 +77,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | Repo | Variable | In prod | Read at |
 |---|---|---|---|
 | OpenVibe.Community | BASE_URL | community.env | server/config.js |
+| OpenVibe.Community | COMMUNITY_DB_PATH |  | server/config.js |
 | OpenVibe.Community | HOST | community.env | server/config.js |
 | OpenVibe.Community | LOGIN_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Community | NODE_ENV | community.env | server/config.js |
@@ -90,6 +92,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Community | OV_LIVE_URL | community.env | server/config.js, vendor/openvibe-shared/brand.js |
 | OpenVibe.Community | OV_LOGO_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Community | OV_MAPS_URL |  | vendor/openvibe-shared/brand.js |
+| OpenVibe.Community | OV_MEDIA_INTERNAL_URL |  | server/config.js |
 | OpenVibe.Community | OV_MEDIA_URL | community.env | server/config.js, vendor/openvibe-shared/brand.js |
 | OpenVibe.Community | OV_NET_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Community | OV_NETWORK_INTERNAL_URL | community.env | server/config.js |
@@ -101,6 +104,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Community | OV_TEXT_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Community | OV_TOOLS_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Community | OV_YT_URL |  | vendor/openvibe-shared/brand.js |
+| OpenVibe.Community | PASTES_AUTHORITY | community.env | server/config.js |
 | OpenVibe.Community | PORT | community.env | server/config.js |
 | OpenVibe.Community | TRUST_PROXY | community.env | server/config.js |
 | OpenVibe.Games | DB_PATH | games.env | apps/server/src/config.ts |
@@ -162,7 +166,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | OFFLINE_SCREEN_PATH |  | server/monetization/routes.js, server/streaming/routes.js |
 | OpenVibe.Live | OV_APP_ROOT |  | server/docs/routes.js, server/web/assets.js |
 | OpenVibe.Live | OV_AUDIO_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Live | OV_COMMUNITY_URL | live.env | server/index.js, server/seo/seo.js +1 |
+| OpenVibe.Live | OV_COMMUNITY_INTERNAL_URL |  | server/pastes-client.js |
+| OpenVibe.Live | OV_COMMUNITY_URL | live.env | server/index.js, server/media-proxy/pastes.js +2 |
 | OpenVibe.Live | OV_DEV_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Live | OV_DOCS_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Live | OV_FOOD_URL |  | vendor/openvibe-shared/brand.js |
@@ -173,17 +178,18 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | OV_MAPS_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Live | OV_MEDIA_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Live | OV_NET_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Live | OV_NETWORK_INTERNAL_URL | live.env | server/chat/chat-server.js, server/monetization/wallet-client.js +1 |
+| OpenVibe.Live | OV_NETWORK_INTERNAL_URL | live.env | server/chat/chat-server.js, server/monetization/wallet-client.js +3 |
 | OpenVibe.Live | OV_NETWORK_LOGIN_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Live | OV_NETWORK_PUBLIC_KEY | live.env | server/auth/auth.js |
 | OpenVibe.Live | OV_NETWORK_URL | live.env | server/auth/auth.js, server/config.js +2 |
-| OpenVibe.Live | OV_OAUTH_CLIENT_ID | live.env | server/auth/routes.js |
+| OpenVibe.Live | OV_OAUTH_CLIENT_ID | live.env | server/auth/routes.js, server/net/network-principal.js |
 | OpenVibe.Live | OV_PASTES_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Live | OV_PUBLIC_DIR |  | server/web/assets.js |
 | OpenVibe.Live | OV_TEXT_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Live | OV_TOOLS_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Live | OV_YT_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Live | OWNER_USERNAME |  | server/db/database.js |
+| OpenVibe.Live | PASTES_AUTHORITY | live.env | server/pastes-client.js |
 | OpenVibe.Live | PASTES_ON_COMMUNITY | live.env | server/index.js, server/seo/seo.js |
 | OpenVibe.Live | PATH |  | server/media/media-downloader.js |
 | OpenVibe.Live | PAYPAL_CLIENT_ID | live.env | server/config.js |
@@ -273,6 +279,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Media | OV_TEXT_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Media | OV_TOOLS_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Media | OV_YT_URL |  | vendor/openvibe-shared/brand.js |
+| OpenVibe.Media | PASTES_FROZEN_APPS | media.env | server/pastes/routes.js |
+| OpenVibe.Media | PASTES_MOVED_TO | media.env | (not referenced) |
 | OpenVibe.Media | PASTES_PATH | media.env | server/config.js |
 | OpenVibe.Media | PORT | media.env | (not referenced) |
 | OpenVibe.Media | RTP_PORT_MAX | media.env | (not referenced) |

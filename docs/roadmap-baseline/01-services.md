@@ -8,23 +8,23 @@ Deliverable 1: runtimes, ports, units, env files and repository state.
 
 | Service | Repo | Stage | Ports | Units | Env file | Deployed | Databases |
 |---|---|---|---|---|---|---|---|
-| network | OpenVibe.Network | live | http 4000 | openvibe-network.service | /etc/openvibe/network.env | 9b4e262 | data/network.db |
-| live | OpenVibe.Live | live | http 3000, rtmp 1935/9935, mediasoup 11000-11300/udp, jsmpegRelayTls 9710-9789 | openvibe-live.socket, openvibe-live.service | /etc/openvibe/live.env | 24151bd | data/live.db, data/analytics.db, data/rs-companion.db |
-| media | OpenVibe.Media | partial | http 4100, rtpIngest 12000-12199/udp (127.0.0.1) | openvibe-media.service | /etc/openvibe/media.env | 6114bc6 | data/media.db |
+| network | OpenVibe.Network | live | http 4000 | openvibe-network.service | /etc/openvibe/network.env | 1b79576 | data/network.db |
+| live | OpenVibe.Live | live | http 3000, rtmp 1935/9935, mediasoup 11000-11300/udp, jsmpegRelayTls 9710-9789 | openvibe-live.socket, openvibe-live.service | /etc/openvibe/live.env | e266060 | data/live.db, data/analytics.db, data/rs-companion.db |
+| media | OpenVibe.Media | partial | http 4100, rtpIngest 12000-12199/udp (127.0.0.1) | openvibe-media.service | /etc/openvibe/media.env | ddfefcf | data/media.db |
 | tools | OpenVibe.Tools | live | gateway 4001, maps 4010, food 4011, img 4012, yt 4013, audio 4014, text 4015, docs 4016 | openvibe-tools.service, openvibe-tools-maps.service, openvibe-tools-food.service, openvibe-tools-img.service, openvibe-tools-yt.service, openvibe-tools-audio.service, openvibe-tools-text.service, openvibe-tools-docs.service | /etc/openvibe/tools.env | 0346edc | apps/<satellite>/data/analytics.db |
 | games | OpenVibe.Games | live | http 8000 | openvibe-games.service | /etc/openvibe/games.env | 43c11f0 | data/world.db |
-| community | OpenVibe.Community | partial | http 4200 | openvibe-community.service | /etc/openvibe/community.env | de947ea | none |
+| community | OpenVibe.Community | partial | http 4200 | openvibe-community.service | /etc/openvibe/community.env | d7c6e60 | none |
 | sites | OpenVibe.Sites | placeholder-host |  | - | - | 185014f | none |
 
 ## Scanned repositories
 
 | Repo | HEAD | origin/main | Source files | LOC | Test files | CI | Routes | Tables | WS servers | Timers/jobs | TODO(contract) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| OpenVibe.Live | 24151bd | 24151bd | 165 | 69699 | 56 | no | 532 | 125 | 8 | 48 | 15 |
-| OpenVibe.Network | 9b4e262 | 9b4e262 | 79 | 20646 | 18 | no | 187 | 36 | 0 | 11 | 0 |
-| OpenVibe.Media | 6114bc6 | 6114bc6 | 28 | 8702 | 4 | no | 67 | 15 | 0 | 9 | 0 |
+| OpenVibe.Live | e266060 | e266060 | 167 | 69978 | 58 | yes | 537 | 125 | 8 | 48 | 15 |
+| OpenVibe.Network | 1b79576 | 1b79576 | 81 | 21029 | 20 | yes | 197 | 39 | 0 | 11 | 0 |
+| OpenVibe.Media | ddfefcf | ddfefcf | 28 | 8752 | 6 | yes | 67 | 15 | 0 | 9 | 0 |
 | OpenVibe.Tools | 0346edc | 0346edc | 117 | 20018 | 2 | no | 99 | 4 | 0 | 12 | 0 |
-| OpenVibe.Community | de947ea | de947ea | 11 | 1754 | 8 | no | 22 | 4 | 0 | 0 | 0 |
+| OpenVibe.Community | d7c6e60 | d7c6e60 | 21 | 3950 | 14 | yes | 47 | 13 | 0 | 1 | 0 |
 | OpenVibe.Games | 5710287 | 5710287 | 101 | 18511 | 56 | no | 21 | 5 | 2 | 2 | 0 |
 | OpenVibe.Sites | 185014f | 185014f | 1 | 306 | 0 | no | 0 | 0 | 0 | 0 | 0 |
 
@@ -43,17 +43,17 @@ LOC counts non-test source files in the scanned directories only (`server/`, `ap
 | OpenVibe.Blog | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | The official OpenVibe blog and a blog for every member: drafts, revisions, series, scheduling, feeds. |
 | OpenVibe.Chat | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Rooms, messages, DMs, calls, TTS and audio queues, moderation and presence — one identity, every conversation. |
 | OpenVibe.Codes | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | The developer portal: registry and contract explorers, credentials, playgrounds, examples, mod/app publishing, governance. |
-| OpenVibe.Community | PUBLIC | - | 2026-09-21 | 687 KB |  |
-| OpenVibe.Contracts | PUBLIC | alpha | 2026-09-22 | 13 KB | Machine-readable contracts for the whole OpenVibe network. |
+| OpenVibe.Community | PUBLIC | - | 2026-09-22 | 689 KB |  |
+| OpenVibe.Contracts | PUBLIC | alpha | 2026-09-22 | 89 KB | Machine-readable contracts for the whole OpenVibe network. |
 | OpenVibe.Coupons | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Coupon codes with merchant matching, restrictions, expiry and real-people validity reports. |
 | OpenVibe.Deals | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Deals submitted and voted on by the community, with source, price and freshness always shown. |
 | OpenVibe.Events | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Durable events, subscriptions, delivery, retry, dead letters and replay for the network. |
 | OpenVibe.Examples | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Executable public integration examples, tested in CI against the platform. |
 | OpenVibe.Games | PUBLIC | - | 2026-09-21 | 4675 KB |  |
 | OpenVibe.Host | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | The network's deployment/control plane first; then isolated hosting for community sites, bots and mods. |
-| OpenVibe.Live | PUBLIC | - | 2026-09-22 | 6455 KB |  |
-| OpenVibe.Media | PUBLIC | - | 2026-09-21 | 847 KB |  |
-| OpenVibe.Network | PUBLIC | - | 2026-09-22 | 1037 KB |  |
+| OpenVibe.Live | PUBLIC | - | 2026-09-22 | 6507 KB |  |
+| OpenVibe.Media | PUBLIC | - | 2026-09-22 | 847 KB |  |
+| OpenVibe.Network | PUBLIC | - | 2026-09-22 | 1306 KB |  |
 | OpenVibe.News | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Source-backed stories: clustered coverage, cited summaries, perspectives and timelines. |
 | OpenVibe.Realtime | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Browser delivery plane for events: authorised WS/SSE topics with cursors, resume and presence. |
 | OpenVibe.Reviews | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Review signals gathered across sources with provenance, entity resolution and honest aggregates. |

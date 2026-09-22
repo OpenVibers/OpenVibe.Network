@@ -101,18 +101,18 @@ Deliverable 4, plus the background-job half of the exit criteria.
 | OpenVibe.Network | setInterval |  | ? | server/auth/discord-link.js:20 |
 | OpenVibe.Network | setInterval |  | ? | server/chrome/service.js:167 |
 | OpenVibe.Network | setInterval |  | ? | server/chrome/service.js:169 |
-| OpenVibe.Network | setInterval |  | 60 min | server/index.js:652 |
-| OpenVibe.Network | setInterval |  | 2 min | server/index.js:655 |
-| OpenVibe.Network | setInterval |  | ? | server/index.js:658 |
+| OpenVibe.Network | setInterval |  | 60 min | server/index.js:654 |
+| OpenVibe.Network | setInterval |  | 2 min | server/index.js:657 |
+| OpenVibe.Network | setInterval |  | ? | server/index.js:660 |
 | OpenVibe.Network | setInterval |  | 15 min | packages/openvibe-shared/account-switcher.js:624 |
 | OpenVibe.Network | setInterval |  | 5 s | packages/openvibe-shared/analytics.js:238 |
 | OpenVibe.Network | setInterval |  | 60 min | packages/openvibe-shared/analytics.js:241 |
 | OpenVibe.Network | setInterval |  | ? | packages/openvibe-shared/analytics.js:247 |
 | OpenVibe.Network | setInterval |  | ? | packages/openvibe-shared/notification-ui.js:548 |
-| OpenVibe.Media | setInterval |  | ? | server/auth.js:58 |
-| OpenVibe.Media | setInterval |  | 720 min | server/index.js:115 |
-| OpenVibe.Media | setInterval |  | ? | server/index.js:141 |
-| OpenVibe.Media | setInterval |  | ? | server/pastes/routes.js:694 |
+| OpenVibe.Media | setInterval |  | ? | server/auth.js:59 |
+| OpenVibe.Media | setInterval |  | 720 min | server/index.js:116 |
+| OpenVibe.Media | setInterval |  | ? | server/index.js:142 |
+| OpenVibe.Media | setInterval |  | ? | server/pastes/routes.js:703 |
 | OpenVibe.Media | setInterval |  | ? | server/vod/clip-cutter.js:111 |
 | OpenVibe.Media | setInterval |  | ? | server/vod/clip-jobs.js:117 |
 | OpenVibe.Media | setInterval |  | ? | server/vod/health-job.js:262 |
@@ -130,5 +130,6 @@ Deliverable 4, plus the background-job half of the exit criteria.
 | OpenVibe.Tools | setInterval |  | ? | apps/yt/server/downloader.js:555 |
 | OpenVibe.Tools | setInterval |  | 5 s | apps/yt/server/downloader.js:606 |
 | OpenVibe.Tools | setInterval |  | 0.5 s | apps/yt/server/index.js:196 |
+| OpenVibe.Community | setInterval |  | ? | server/pastes/service.js:211 |
 | OpenVibe.Games | setInterval |  | ? | apps/server/src/main.ts:159 |
 | OpenVibe.Games | setInterval |  | ? | apps/server/src/net/editorWs.ts:82 |

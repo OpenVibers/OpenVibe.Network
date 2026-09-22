@@ -1,16 +1,16 @@
 {
  "generatedFrom": {
-  "OpenVibe.Live": "24151bdc12ffe6e6f2fbe8c3770327b2d1635a8a",
-  "OpenVibe.Network": "9b4e262cd8daf05ee2b6b92a06dabe70e2d42bc7",
-  "OpenVibe.Media": "6114bc61c466cd51335548d0ce87058df125c577",
+  "OpenVibe.Live": "e26606082958f8cf6bb7c4587c225ca09335b5fe",
+  "OpenVibe.Network": "1b79576cb024714e56ae2ccc7728080d3d3e0118",
+  "OpenVibe.Media": "ddfefcf47740715f24fe7aa7dea648b4699162fc",
   "OpenVibe.Tools": "0346edc57fb9f588abcdea171a22a5ca33f772d2",
-  "OpenVibe.Community": "de947ead2addce29d7f9b98f3d894075ca4e82f2",
+  "OpenVibe.Community": "d7c6e608d8e27e6ddbfc78a15fa7590036b1dded",
   "OpenVibe.Games": "571028796639c00d5deecca038634ef1c52d3480",
   "OpenVibe.Sites": "185014ff01ed8bd8f6df3dd5099e2b6c904e235d"
  },
  "prodSnapshot": {
   "host": "openvibe-oregon",
-  "collectedAt": "2026-09-22T21:23:31.121Z"
+  "collectedAt": "2026-09-22T23:36:01.667Z"
  },
  "repos": [
   {
@@ -18,13 +18,13 @@
    "service": "live",
    "present": true,
    "git": {
-    "head": "24151bdc12ffe6e6f2fbe8c3770327b2d1635a8a",
+    "head": "e26606082958f8cf6bb7c4587c225ca09335b5fe",
     "branch": "main",
-    "originMain": "24151bdc12ffe6e6f2fbe8c3770327b2d1635a8a",
-    "committedAt": "2026-09-22T14:18:25-07:00"
+    "originMain": "e26606082958f8cf6bb7c4587c225ca09335b5fe",
+    "committedAt": "2026-09-22T16:28:23-07:00"
    },
-   "sourceFiles": 165,
-   "loc": 69699,
+   "sourceFiles": 167,
+   "loc": 69978,
    "tables": [
     {
      "table": "arena_profiles",
@@ -2921,6 +2921,12 @@
      "line": 222
     },
     {
+     "method": "POST",
+     "path": "/api/pastes/:slug/censor",
+     "file": "server/media-proxy/pastes.js",
+     "line": 315
+    },
+    {
      "method": "GET",
      "path": "/api/pastes/:slug/comments",
      "file": "server/media-proxy/pastes.js",
@@ -2963,16 +2969,34 @@
      "line": 240
     },
     {
+     "method": "GET",
+     "path": "/api/pastes/:slug/raw",
+     "file": "server/media-proxy/pastes.js",
+     "line": 311
+    },
+    {
      "method": "POST",
      "path": "/api/pastes/:slug/set-avatar",
      "file": "server/media-proxy/pastes.js",
      "line": 110
     },
     {
+     "method": "POST",
+     "path": "/api/pastes/:slug/set-avatar",
+     "file": "server/media-proxy/pastes.js",
+     "line": 296
+    },
+    {
      "method": "DELETE",
      "path": "/api/pastes/admin/forks",
      "file": "server/media-proxy/pastes.js",
      "line": 171
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/pastes/admin/forks",
+     "file": "server/media-proxy/pastes.js",
+     "line": 313
     },
     {
      "method": "GET",
@@ -2985,6 +3009,12 @@
      "path": "/api/pastes/bulk",
      "file": "server/media-proxy/pastes.js",
      "line": 172
+    },
+    {
+     "method": "POST",
+     "path": "/api/pastes/bulk",
+     "file": "server/media-proxy/pastes.js",
+     "line": 314
     },
     {
      "method": "GET",
@@ -4276,10 +4306,12 @@
      "server/auth/auth.js"
     ],
     "OV_OAUTH_CLIENT_ID": [
-     "server/auth/routes.js"
+     "server/auth/routes.js",
+     "server/net/network-principal.js"
     ],
     "OV_OAUTH_CLIENT_SECRET": [
-     "server/auth/routes.js"
+     "server/auth/routes.js",
+     "server/net/network-principal.js"
     ],
     "BASE_URL": [
      "server/auth/routes.js",
@@ -4295,12 +4327,15 @@
     "OV_NETWORK_INTERNAL_URL": [
      "server/chat/chat-server.js",
      "server/monetization/wallet-client.js",
+     "server/net/network-principal.js",
+     "server/pastes-client.js",
      "server/utils/notify.js"
     ],
     "INTERNAL_API_KEY": [
      "server/chat/chat-server.js",
      "server/config.js",
      "server/monetization/wallet-client.js",
+     "server/net/network-principal.js",
      "server/streaming/routes.js",
      "server/utils/notify.js"
     ],
@@ -4308,6 +4343,7 @@
      "server/chat/chat-server.js",
      "server/config.js",
      "server/monetization/wallet-client.js",
+     "server/net/network-principal.js",
      "server/streaming/routes.js",
      "server/utils/notify.js"
     ],
@@ -4482,6 +4518,7 @@
     ],
     "OV_COMMUNITY_URL": [
      "server/index.js",
+     "server/media-proxy/pastes.js",
      "server/seo/seo.js",
      "vendor/openvibe-shared/brand.js"
     ],
@@ -4543,6 +4580,12 @@
     "OFFLINE_SCREEN_PATH": [
      "server/monetization/routes.js",
      "server/streaming/routes.js"
+    ],
+    "OV_COMMUNITY_INTERNAL_URL": [
+     "server/pastes-client.js"
+    ],
+    "PASTES_AUTHORITY": [
+     "server/pastes-client.js"
     ],
     "OV_PUBLIC_DIR": [
      "server/web/assets.js"
@@ -4765,6 +4808,25 @@
      "retry": false
     },
     {
+     "file": "server/media-proxy/pastes.js",
+     "targets": [
+      {
+       "service": "community",
+       "refs": [
+        {
+         "via": "OV_COMMUNITY_URL",
+         "line": 311
+        }
+       ]
+      }
+     ],
+     "auth": [
+      "none-detected"
+     ],
+     "timeout": true,
+     "retry": true
+    },
+    {
      "file": "server/media-proxy/webhook.js",
      "targets": [
       {
@@ -4803,27 +4865,27 @@
         },
         {
          "via": "OV_NETWORK_INTERNAL_URL",
-         "line": 18
+         "line": 19
         },
         {
          "via": ":4000",
-         "line": 18
+         "line": 19
         },
         {
          "via": "/internal/coins",
-         "line": 71
+         "line": 79
         },
         {
          "via": "/internal/coins",
-         "line": 84
+         "line": 92
         },
         {
          "via": "/internal/coins",
-         "line": 95
+         "line": 103
         },
         {
          "via": "/internal/coins",
-         "line": 143
+         "line": 151
         }
        ]
       }
@@ -4833,7 +4895,39 @@
       "bearer"
      ],
      "timeout": true,
-     "retry": false
+     "retry": true
+    },
+    {
+     "file": "server/pastes-client.js",
+     "targets": [
+      {
+       "service": "community",
+       "refs": [
+        {
+         "via": "OV_COMMUNITY_INTERNAL_URL",
+         "line": 16
+        }
+       ]
+      },
+      {
+       "service": "network",
+       "refs": [
+        {
+         "via": "OV_NETWORK_INTERNAL_URL",
+         "line": 39
+        },
+        {
+         "via": ":4000",
+         "line": 39
+        }
+       ]
+      }
+     ],
+     "auth": [
+      "none-detected"
+     ],
+     "timeout": true,
+     "retry": true
     },
     {
      "file": "server/seo/seo.js",
@@ -4909,15 +5003,15 @@
         },
         {
          "via": "/internal/notifications",
-         "line": 60
+         "line": 66
         },
         {
          "via": "/internal/notifications",
-         "line": 114
+         "line": 120
         },
         {
          "via": "/internal/notifications",
-         "line": 137
+         "line": 143
         }
        ]
       }
@@ -4926,7 +5020,7 @@
       "internal-key"
      ],
      "timeout": false,
-     "retry": false
+     "retry": true
     },
     {
      "file": "vendor/openvibe-shared/account-switcher.js",
@@ -5366,21 +5460,21 @@
    ],
    "contractTodos": 15,
    "unresolvedMounts": [],
-   "testFiles": 56,
-   "ci": false
+   "testFiles": 58,
+   "ci": true
   },
   {
    "name": "OpenVibe.Network",
    "service": "network",
    "present": true,
    "git": {
-    "head": "9b4e262cd8daf05ee2b6b92a06dabe70e2d42bc7",
+    "head": "1b79576cb024714e56ae2ccc7728080d3d3e0118",
     "branch": "main",
-    "originMain": "9b4e262cd8daf05ee2b6b92a06dabe70e2d42bc7",
-    "committedAt": "2026-09-22T14:14:53-07:00"
+    "originMain": "1b79576cb024714e56ae2ccc7728080d3d3e0118",
+    "committedAt": "2026-09-22T16:11:37-07:00"
    },
-   "sourceFiles": 79,
-   "loc": 20646,
+   "sourceFiles": 81,
+   "loc": 21029,
    "tables": [
     {
      "table": "admin_rate_limits",
@@ -5563,6 +5657,24 @@
      "via": "repo"
     },
     {
+     "table": "user_modules",
+     "file": "server/identity/modules.js",
+     "line": 24,
+     "via": "repo"
+    },
+    {
+     "table": "principal_grants",
+     "file": "server/identity/principals.js",
+     "line": 44,
+     "via": "repo"
+    },
+    {
+     "table": "principal_usage",
+     "file": "server/identity/principals.js",
+     "line": 54,
+     "via": "repo"
+    },
+    {
      "table": "identity_legacy_map",
      "file": "server/identity/subjects.js",
      "line": 25,
@@ -5571,7 +5683,7 @@
     {
      "table": "stream_live_announcements",
      "file": "server/internal/routes.js",
-     "line": 310,
+     "line": 325,
      "via": "repo"
     },
     {
@@ -5646,7 +5758,7 @@
      "method": "GET",
      "path": "/.well-known/web-identity",
      "file": "server/index.js",
-     "line": 572
+     "line": 574
     },
     {
      "method": "POST",
@@ -5706,7 +5818,7 @@
      "method": "GET",
      "path": "/api/admin/ssh-info",
      "file": "server/index.js",
-     "line": 452
+     "line": 454
     },
     {
      "method": "GET",
@@ -5892,7 +6004,7 @@
      "method": "GET",
      "path": "/api/catalog.json",
      "file": "server/index.js",
-     "line": 423
+     "line": 425
     },
     {
      "method": "GET",
@@ -5985,6 +6097,48 @@
      "line": 137
     },
     {
+     "method": "GET",
+     "path": "/api/modules",
+     "file": "server/identity/modules.js",
+     "line": 101
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/modules/:ns",
+     "file": "server/identity/modules.js",
+     "line": 126
+    },
+    {
+     "method": "GET",
+     "path": "/api/modules/:ns",
+     "file": "server/identity/modules.js",
+     "line": 109
+    },
+    {
+     "method": "PUT",
+     "path": "/api/modules/:ns",
+     "file": "server/identity/modules.js",
+     "line": 117
+    },
+    {
+     "method": "GET",
+     "path": "/api/modules/:ns/public/:subject",
+     "file": "server/identity/modules.js",
+     "line": 93
+    },
+    {
+     "method": "GET",
+     "path": "/api/modules/modules/:ns/:subject",
+     "file": "server/identity/modules.js",
+     "line": 140
+    },
+    {
+     "method": "PUT",
+     "path": "/api/modules/modules/:ns/:subject",
+     "file": "server/identity/modules.js",
+     "line": 149
+    },
+    {
      "method": "DELETE",
      "path": "/api/profile/avatar",
      "file": "server/profile/avatar.js",
@@ -6036,7 +6190,7 @@
      "method": "GET",
      "path": "/api/sso/targets",
      "file": "server/index.js",
-     "line": 405
+     "line": 407
     },
     {
      "method": "GET",
@@ -6252,55 +6406,55 @@
      "method": "GET",
      "path": "/internal/anon-admin",
      "file": "server/internal/routes.js",
-     "line": 628
+     "line": 643
     },
     {
      "method": "GET",
      "path": "/internal/anon-list",
      "file": "server/internal/routes.js",
-     "line": 677
+     "line": 692
     },
     {
      "method": "POST",
      "path": "/internal/audit",
      "file": "server/internal/routes.js",
-     "line": 166
+     "line": 178
     },
     {
      "method": "POST",
      "path": "/internal/coins/credit",
      "file": "server/internal/routes.js",
-     "line": 252
+     "line": 267
     },
     {
      "method": "POST",
      "path": "/internal/coins/debit",
      "file": "server/internal/routes.js",
-     "line": 264
+     "line": 279
     },
     {
      "method": "GET",
      "path": "/internal/coins/stats",
      "file": "server/internal/routes.js",
-     "line": 214
+     "line": 226
     },
     {
      "method": "POST",
      "path": "/internal/coins/transfer",
      "file": "server/internal/routes.js",
-     "line": 277
+     "line": 292
     },
     {
      "method": "POST",
      "path": "/internal/events/stream-live",
      "file": "server/internal/routes.js",
-     "line": 294
+     "line": 309
     },
     {
      "method": "POST",
      "path": "/internal/identity/legacy-map",
      "file": "server/identity/internal-routes.js",
-     "line": 29
+     "line": 52
     },
     {
      "method": "GET",
@@ -6309,112 +6463,130 @@
      "line": 18
     },
     {
+     "method": "GET",
+     "path": "/internal/identity/resolve",
+     "file": "server/internal/routes.js",
+     "line": 40
+    },
+    {
+     "method": "POST",
+     "path": "/internal/identity/resolve-batch",
+     "file": "server/identity/internal-routes.js",
+     "line": 35
+    },
+    {
+     "method": "POST",
+     "path": "/internal/identity/resolve-batch",
+     "file": "server/internal/routes.js",
+     "line": 41
+    },
+    {
      "method": "POST",
      "path": "/internal/issue-token",
      "file": "server/internal/routes.js",
-     "line": 518
+     "line": 533
     },
     {
      "method": "POST",
      "path": "/internal/link-account",
      "file": "server/internal/routes.js",
-     "line": 108
+     "line": 120
     },
     {
      "method": "POST",
      "path": "/internal/notifications/mark-read",
      "file": "server/internal/routes.js",
-     "line": 479
+     "line": 494
     },
     {
      "method": "POST",
      "path": "/internal/notifications/push",
      "file": "server/internal/routes.js",
-     "line": 421
+     "line": 436
     },
     {
      "method": "POST",
      "path": "/internal/notifications/push-bulk",
      "file": "server/internal/routes.js",
-     "line": 441
+     "line": 456
     },
     {
      "method": "POST",
      "path": "/internal/notifications/resolve-users",
      "file": "server/internal/routes.js",
-     "line": 498
+     "line": 513
     },
     {
      "method": "GET",
      "path": "/internal/notifications/unread/:userId",
      "file": "server/internal/routes.js",
-     "line": 464
+     "line": 479
     },
     {
      "method": "POST",
      "path": "/internal/resolve-anon",
      "file": "server/internal/routes.js",
-     "line": 549
+     "line": 564
     },
     {
      "method": "GET",
      "path": "/internal/stats",
      "file": "server/internal/routes.js",
-     "line": 175
+     "line": 187
     },
     {
      "method": "GET",
      "path": "/internal/url-registry/resolved",
      "file": "server/internal/routes.js",
-     "line": 184
+     "line": 196
     },
     {
      "method": "POST",
      "path": "/internal/user-avatar",
      "file": "server/internal/routes.js",
-     "line": 151
+     "line": 163
     },
     {
      "method": "GET",
      "path": "/internal/users/:id",
      "file": "server/internal/routes.js",
-     "line": 59
+     "line": 71
     },
     {
      "method": "GET",
      "path": "/internal/users/:id/linked-accounts",
      "file": "server/internal/routes.js",
-     "line": 159
+     "line": 171
     },
     {
      "method": "GET",
      "path": "/internal/users/:id/theme",
      "file": "server/internal/routes.js",
-     "line": 96
+     "line": 108
     },
     {
      "method": "POST",
      "path": "/internal/users/bulk",
      "file": "server/internal/routes.js",
-     "line": 81
+     "line": 93
     },
     {
      "method": "GET",
      "path": "/internal/users/by-username/:username",
      "file": "server/internal/routes.js",
-     "line": 70
+     "line": 82
     },
     {
      "method": "POST",
      "path": "/internal/verify-token",
      "file": "server/internal/routes.js",
-     "line": 37
+     "line": 49
     },
     {
      "method": "GET",
      "path": "/llms.txt",
      "file": "server/index.js",
-     "line": 550
+     "line": 552
     },
     {
      "method": "GET",
@@ -6480,31 +6652,31 @@
      "method": "GET",
      "path": "/oauth/.well-known/openid-configuration",
      "file": "server/auth/oauth-routes.js",
-     "line": 306
+     "line": 318
     },
     {
      "method": "GET",
      "path": "/oauth/authorize",
      "file": "server/auth/oauth-routes.js",
-     "line": 21
+     "line": 22
     },
     {
      "method": "POST",
      "path": "/oauth/confirm",
      "file": "server/auth/oauth-routes.js",
-     "line": 79
+     "line": 80
     },
     {
      "method": "POST",
      "path": "/oauth/token",
      "file": "server/auth/oauth-routes.js",
-     "line": 132
+     "line": 133
     },
     {
      "method": "GET",
      "path": "/openvibe-sw.js",
      "file": "server/index.js",
-     "line": 596
+     "line": 598
     },
     {
      "method": "GET",
@@ -6588,7 +6760,7 @@
      "method": "GET",
      "path": "/sso/check",
      "file": "server/index.js",
-     "line": 577
+     "line": 579
     },
     {
      "method": "GET",
@@ -6612,7 +6784,7 @@
      "method": "GET",
      "path": "/tos",
      "file": "server/index.js",
-     "line": 419
+     "line": 421
     },
     {
      "method": "GET",
@@ -6726,7 +6898,7 @@
      "method": "GET",
      "path": "/verify-email",
      "file": "server/index.js",
-     "line": 562
+     "line": 564
     }
    ],
    "ws": {
@@ -7079,7 +7251,7 @@
         },
         {
          "via": "live.internalUrl",
-         "line": 477
+         "line": 479
         }
        ]
       },
@@ -7193,21 +7365,21 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 3600000,
-     "line": 652,
+     "line": 654,
      "file": "server/index.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": 120000,
-     "line": 655,
+     "line": 657,
      "file": "server/index.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 658,
+     "line": 660,
      "file": "server/index.js"
     },
     {
@@ -7248,21 +7420,21 @@
    ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 18,
-   "ci": false
+   "testFiles": 20,
+   "ci": true
   },
   {
    "name": "OpenVibe.Media",
    "service": "media",
    "present": true,
    "git": {
-    "head": "6114bc61c466cd51335548d0ce87058df125c577",
+    "head": "ddfefcf47740715f24fe7aa7dea648b4699162fc",
     "branch": "main",
-    "originMain": "6114bc61c466cd51335548d0ce87058df125c577",
-    "committedAt": "2026-09-21T09:58:34-07:00"
+    "originMain": "ddfefcf47740715f24fe7aa7dea648b4699162fc",
+    "committedAt": "2026-09-22T16:14:04-07:00"
    },
    "sourceFiles": 28,
-   "loc": 8702,
+   "loc": 8752,
    "tables": [
     {
      "table": "apps",
@@ -7492,121 +7664,121 @@
      "method": "GET",
      "path": "/api/v1/:app/pastes",
      "file": "server/pastes/routes.js",
-     "line": 248
+     "line": 257
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes",
      "file": "server/pastes/routes.js",
-     "line": 462
+     "line": 471
     },
     {
      "method": "DELETE",
      "path": "/api/v1/:app/pastes/:slug",
      "file": "server/pastes/routes.js",
-     "line": 616
+     "line": 625
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/pastes/:slug",
      "file": "server/pastes/routes.js",
-     "line": 436
+     "line": 445
     },
     {
      "method": "PUT",
      "path": "/api/v1/:app/pastes/:slug",
      "file": "server/pastes/routes.js",
-     "line": 578
+     "line": 587
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes/:slug/ai",
      "file": "server/pastes/routes.js",
-     "line": 558
+     "line": 567
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes/:slug/censor",
      "file": "server/pastes/routes.js",
-     "line": 397
+     "line": 406
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/pastes/:slug/comments",
      "file": "server/pastes/routes.js",
-     "line": 702
+     "line": 711
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes/:slug/comments",
      "file": "server/pastes/routes.js",
-     "line": 725
+     "line": 734
     },
     {
      "method": "DELETE",
      "path": "/api/v1/:app/pastes/:slug/comments/:commentId",
      "file": "server/pastes/routes.js",
-     "line": 803
+     "line": 812
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes/:slug/copy",
      "file": "server/pastes/routes.js",
-     "line": 677
+     "line": 686
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes/:slug/fork",
      "file": "server/pastes/routes.js",
-     "line": 634
+     "line": 643
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes/:slug/like",
      "file": "server/pastes/routes.js",
-     "line": 660
+     "line": 669
     },
     {
      "method": "DELETE",
      "path": "/api/v1/:app/pastes/admin/forks",
      "file": "server/pastes/routes.js",
-     "line": 359
+     "line": 368
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/pastes/admin/forks",
      "file": "server/pastes/routes.js",
-     "line": 339
+     "line": 348
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/pastes/admin/stats",
      "file": "server/pastes/routes.js",
-     "line": 329
+     "line": 338
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes/bulk",
      "file": "server/pastes/routes.js",
-     "line": 372
+     "line": 381
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/pastes/config",
      "file": "server/pastes/routes.js",
-     "line": 307
+     "line": 316
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/stats",
      "file": "server/index.js",
-     "line": 93
+     "line": 94
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/stats/series/:metric",
      "file": "server/index.js",
-     "line": 103
+     "line": 104
     },
     {
      "method": "POST",
@@ -7738,25 +7910,25 @@
      "method": "GET",
      "path": "/healthz",
      "file": "server/index.js",
-     "line": 82
+     "line": 83
     },
     {
      "method": "POST",
      "path": "/internal/avatar-ingest",
      "file": "server/index.js",
-     "line": 56
+     "line": 57
     },
     {
      "method": "GET",
      "path": "/manifest.webmanifest",
      "file": "server/index.js",
-     "line": 44
+     "line": 45
     },
     {
      "method": "GET",
      "path": "/tos",
      "file": "server/index.js",
-     "line": 41
+     "line": 42
     }
    ],
    "ws": {
@@ -7819,6 +7991,9 @@
     ],
     "OV_OAUTH_REDIRECT_URI": [
      "server/index.js"
+    ],
+    "PASTES_FROZEN_APPS": [
+     "server/pastes/routes.js"
     ],
     "APP_INTERNAL_URLS": [
      "server/thumbnails/live-frame-service.js"
@@ -7947,15 +8122,19 @@
        "refs": [
         {
          "via": "network.url",
-         "line": 28
+         "line": 29
         },
         {
          "via": "/api/.well-known/jwks",
-         "line": 28
+         "line": 29
         },
         {
          "via": "network.url",
-         "line": 83
+         "line": 84
+        },
+        {
+         "via": "network.url",
+         "line": 99
         }
        ]
       },
@@ -7964,7 +8143,7 @@
        "refs": [
         {
          "via": "webhook_url (per-app, configured in DB)",
-         "line": 268
+         "line": 305
         }
        ]
       }
@@ -8187,28 +8366,28 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 58,
+     "line": 59,
      "file": "server/auth.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": 43200000,
-     "line": 115,
+     "line": 116,
      "file": "server/index.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 141,
+     "line": 142,
      "file": "server/index.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 694,
+     "line": 703,
      "file": "server/pastes/routes.js"
     },
     {
@@ -8249,8 +8428,8 @@
    ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 4,
-   "ci": false
+   "testFiles": 6,
+   "ci": true
   },
   {
    "name": "OpenVibe.Tools",
@@ -9513,14 +9692,68 @@
    "service": "community",
    "present": true,
    "git": {
-    "head": "de947ead2addce29d7f9b98f3d894075ca4e82f2",
+    "head": "d7c6e608d8e27e6ddbfc78a15fa7590036b1dded",
     "branch": "main",
-    "originMain": "de947ead2addce29d7f9b98f3d894075ca4e82f2",
-    "committedAt": "2026-09-21T09:58:34-07:00"
+    "originMain": "d7c6e608d8e27e6ddbfc78a15fa7590036b1dded",
+    "committedAt": "2026-09-22T16:32:05-07:00"
    },
-   "sourceFiles": 11,
-   "loc": 1754,
+   "sourceFiles": 21,
+   "loc": 3950,
    "tables": [
+    {
+     "table": "pastes",
+     "file": "server/db.js",
+     "line": 18,
+     "via": "repo"
+    },
+    {
+     "table": "paste_versions",
+     "file": "server/db.js",
+     "line": 54,
+     "via": "repo"
+    },
+    {
+     "table": "paste_likes",
+     "file": "server/db.js",
+     "line": 65,
+     "via": "repo"
+    },
+    {
+     "table": "paste_comments",
+     "file": "server/db.js",
+     "line": 72,
+     "via": "repo"
+    },
+    {
+     "table": "paste_visits",
+     "file": "server/db.js",
+     "line": 88,
+     "via": "repo"
+    },
+    {
+     "table": "subject_projection",
+     "file": "server/db.js",
+     "line": 98,
+     "via": "repo"
+    },
+    {
+     "table": "migration_runs",
+     "file": "server/db.js",
+     "line": 108,
+     "via": "repo"
+    },
+    {
+     "table": "legacy_id_map",
+     "file": "server/db.js",
+     "line": 116,
+     "via": "repo"
+    },
+    {
+     "table": "import_hold",
+     "file": "server/db.js",
+     "line": 125,
+     "via": "repo"
+    },
     {
      "table": "analytics_events",
      "file": "vendor/openvibe-shared/analytics.js",
@@ -9551,133 +9784,283 @@
      "method": "GET",
      "path": "/",
      "file": "server/app.js",
-     "line": 106
+     "line": 146
     },
     {
      "method": "GET",
      "path": "/api/health",
      "file": "server/app.js",
-     "line": 81
+     "line": 120
+    },
+    {
+     "method": "GET",
+     "path": "/api/pastes",
+     "file": "server/pastes/api.js",
+     "line": 102
+    },
+    {
+     "method": "POST",
+     "path": "/api/pastes",
+     "file": "server/pastes/api.js",
+     "line": 106
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/pastes/:slug",
+     "file": "server/pastes/api.js",
+     "line": 124
+    },
+    {
+     "method": "GET",
+     "path": "/api/pastes/:slug",
+     "file": "server/pastes/api.js",
+     "line": 122
+    },
+    {
+     "method": "PUT",
+     "path": "/api/pastes/:slug",
+     "file": "server/pastes/api.js",
+     "line": 123
+    },
+    {
+     "method": "POST",
+     "path": "/api/pastes/:slug/ai",
+     "file": "server/pastes/api.js",
+     "line": 127
+    },
+    {
+     "method": "POST",
+     "path": "/api/pastes/:slug/censor",
+     "file": "server/pastes/api.js",
+     "line": 126
+    },
+    {
+     "method": "GET",
+     "path": "/api/pastes/:slug/comments",
+     "file": "server/pastes/api.js",
+     "line": 136
+    },
+    {
+     "method": "POST",
+     "path": "/api/pastes/:slug/comments",
+     "file": "server/pastes/api.js",
+     "line": 137
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/pastes/:slug/comments/:commentId",
+     "file": "server/pastes/api.js",
+     "line": 140
+    },
+    {
+     "method": "POST",
+     "path": "/api/pastes/:slug/copy",
+     "file": "server/pastes/api.js",
+     "line": 134
+    },
+    {
+     "method": "POST",
+     "path": "/api/pastes/:slug/fork",
+     "file": "server/pastes/api.js",
+     "line": 132
+    },
+    {
+     "method": "POST",
+     "path": "/api/pastes/:slug/like",
+     "file": "server/pastes/api.js",
+     "line": 133
+    },
+    {
+     "method": "GET",
+     "path": "/api/pastes/:slug/raw",
+     "file": "server/pastes/api.js",
+     "line": 129
+    },
+    {
+     "method": "POST",
+     "path": "/api/pastes/:slug/set-avatar",
+     "file": "server/pastes/api.js",
+     "line": 143
+    },
+    {
+     "method": "GET",
+     "path": "/api/pastes/:slug/versions",
+     "file": "server/pastes/api.js",
+     "line": 130
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/pastes/admin/forks",
+     "file": "server/pastes/api.js",
+     "line": 113
+    },
+    {
+     "method": "GET",
+     "path": "/api/pastes/admin/forks",
+     "file": "server/pastes/api.js",
+     "line": 112
+    },
+    {
+     "method": "GET",
+     "path": "/api/pastes/admin/stats",
+     "file": "server/pastes/api.js",
+     "line": 111
+    },
+    {
+     "method": "POST",
+     "path": "/api/pastes/bulk",
+     "file": "server/pastes/api.js",
+     "line": 114
+    },
+    {
+     "method": "GET",
+     "path": "/api/pastes/by-user/:username",
+     "file": "server/pastes/api.js",
+     "line": 119
+    },
+    {
+     "method": "GET",
+     "path": "/api/pastes/config",
+     "file": "server/pastes/api.js",
+     "line": 109
+    },
+    {
+     "method": "POST",
+     "path": "/api/pastes/screenshot",
+     "file": "server/pastes/api.js",
+     "line": 116
     },
     {
      "method": "GET",
      "path": "/api/ready",
      "file": "server/app.js",
-     "line": 82
+     "line": 121
     },
     {
      "method": "GET",
      "path": "/callback",
      "file": "server/auth/routes.js",
-     "line": 281
+     "line": 289
     },
     {
      "method": "POST",
      "path": "/fedcm",
      "file": "server/auth/routes.js",
-     "line": 327
+     "line": 335
     },
     {
      "method": "GET",
      "path": "/feed.xml",
      "file": "server/app.js",
-     "line": 99
+     "line": 138
     },
     {
      "method": "GET",
      "path": "/login",
      "file": "server/auth/routes.js",
-     "line": 259
+     "line": 267
     },
     {
      "method": "GET",
      "path": "/logout",
      "file": "server/auth/routes.js",
-     "line": 355
+     "line": 363
     },
     {
      "method": "GET",
      "path": "/me",
      "file": "server/auth/routes.js",
-     "line": 379
+     "line": 387
     },
     {
      "method": "GET",
      "path": "/my",
      "file": "server/app.js",
-     "line": 186
+     "line": 252
     },
     {
      "method": "GET",
      "path": "/new",
      "file": "server/app.js",
-     "line": 150
+     "line": 214
     },
     {
      "method": "POST",
      "path": "/new",
      "file": "server/app.js",
-     "line": 159
+     "line": 225
     },
     {
      "method": "GET",
      "path": "/p/:slug",
      "file": "server/app.js",
-     "line": 119
+     "line": 159
     },
     {
      "method": "GET",
      "path": "/p/:slug/download",
      "file": "server/app.js",
-     "line": 138
+     "line": 202
     },
     {
      "method": "GET",
      "path": "/p/:slug/raw",
      "file": "server/app.js",
-     "line": 135
+     "line": 178
+    },
+    {
+     "method": "GET",
+     "path": "/p/:slug/raw",
+     "file": "server/app.js",
+     "line": 198
     },
     {
      "method": "GET",
      "path": "/p/:slug/screenshot",
      "file": "server/app.js",
-     "line": 136
+     "line": 191
+    },
+    {
+     "method": "GET",
+     "path": "/p/:slug/screenshot",
+     "file": "server/app.js",
+     "line": 199
     },
     {
      "method": "GET",
      "path": "/pastes",
      "file": "server/app.js",
-     "line": 111
+     "line": 151
     },
     {
      "method": "GET",
      "path": "/pastes/:slug",
      "file": "server/app.js",
-     "line": 117
+     "line": 157
     },
     {
      "method": "POST",
      "path": "/refresh",
      "file": "server/auth/routes.js",
-     "line": 389
+     "line": 397
     },
     {
      "method": "GET",
      "path": "/robots.txt",
      "file": "server/app.js",
-     "line": 97
+     "line": 136
     },
     {
      "method": "GET",
      "path": "/sitemap.xml",
      "file": "server/app.js",
-     "line": 98
+     "line": 137
     },
     {
      "method": "GET",
      "path": "/tos",
      "file": "server/app.js",
-     "line": 75
+     "line": 82
     }
    ],
    "ws": {
@@ -9729,6 +10112,18 @@
     "OV_MEDIA_URL": [
      "server/config.js",
      "vendor/openvibe-shared/brand.js"
+    ],
+    "OV_MEDIA_INTERNAL_URL": [
+     "server/config.js"
+    ],
+    "PASTES_AUTHORITY": [
+     "server/config.js"
+    ],
+    "COMMUNITY_DB_PATH": [
+     "server/config.js"
+    ],
+    "VIEW_HASH_SECRET": [
+     "server/pastes/service.js"
     ],
     "LOGIN_URL": [
      "vendor/openvibe-shared/brand.js"
@@ -9800,35 +10195,35 @@
         },
         {
          "via": "networkInternalUrl",
-         "line": 67
+         "line": 75
         },
         {
          "via": "networkUrl",
-         "line": 67
+         "line": 75
         },
         {
          "via": "/api/.well-known/jwks",
-         "line": 70
+         "line": 78
         },
         {
          "via": "networkUrl",
-         "line": 146
+         "line": 154
         },
         {
          "via": "networkInternalUrl",
-         "line": 227
+         "line": 235
         },
         {
          "via": "networkUrl",
-         "line": 227
+         "line": 235
         },
         {
          "via": "/oauth/token",
-         "line": 230
+         "line": 238
         },
         {
          "via": "networkInternalUrl",
-         "line": 361
+         "line": 369
         }
        ]
       }
@@ -10000,11 +10395,19 @@
      "retry": true
     }
    ],
-   "jobs": [],
+   "jobs": [
+    {
+     "kind": "setInterval",
+     "name": null,
+     "intervalMs": null,
+     "line": 211,
+     "file": "server/pastes/service.js"
+    }
+   ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 8,
-   "ci": false
+   "testFiles": 14,
+   "ci": true
   },
   {
    "name": "OpenVibe.Games",
@@ -11089,6 +11492,150 @@
    "disposition": "keep",
    "wave": "Track O / ADR-021",
    "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "import_hold",
+   "declaredAt": [
+    "server/db.js:125"
+   ],
+   "prodDbs": [
+    "community.db"
+   ],
+   "inCode": true,
+   "inProd": true,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "legacy_id_map",
+   "declaredAt": [
+    "server/db.js:116"
+   ],
+   "prodDbs": [
+    "community.db"
+   ],
+   "inCode": true,
+   "inProd": true,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "migration_runs",
+   "declaredAt": [
+    "server/db.js:108"
+   ],
+   "prodDbs": [
+    "community.db"
+   ],
+   "inCode": true,
+   "inProd": true,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "paste_comments",
+   "declaredAt": [
+    "server/db.js:72"
+   ],
+   "prodDbs": [
+    "community.db"
+   ],
+   "inCode": true,
+   "inProd": true,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "paste_likes",
+   "declaredAt": [
+    "server/db.js:65"
+   ],
+   "prodDbs": [
+    "community.db"
+   ],
+   "inCode": true,
+   "inProd": true,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "paste_versions",
+   "declaredAt": [
+    "server/db.js:54"
+   ],
+   "prodDbs": [
+    "community.db"
+   ],
+   "inCode": true,
+   "inProd": true,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "paste_visits",
+   "declaredAt": [
+    "server/db.js:88"
+   ],
+   "prodDbs": [
+    "community.db"
+   ],
+   "inCode": true,
+   "inProd": true,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "pastes",
+   "declaredAt": [
+    "server/db.js:18"
+   ],
+   "prodDbs": [
+    "community.db"
+   ],
+   "inCode": true,
+   "inProd": true,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "subject_projection",
+   "declaredAt": [
+    "server/db.js:98"
+   ],
+   "prodDbs": [
+    "community.db"
+   ],
+   "inCode": true,
+   "inProd": true,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
   },
   {
    "repo": "OpenVibe.Games",
@@ -14637,6 +15184,38 @@
   },
   {
    "repo": "OpenVibe.Network",
+   "table": "principal_grants",
+   "declaredAt": [
+    "server/identity/principals.js:44"
+   ],
+   "prodDbs": [
+    "network.db"
+   ],
+   "inCode": true,
+   "inProd": true,
+   "target": "OpenVibe.Network",
+   "disposition": "keep",
+   "wave": "W1 (module split)",
+   "note": "Identity, sessions, OAuth, themes, notifications, registry, chrome, audit, admin."
+  },
+  {
+   "repo": "OpenVibe.Network",
+   "table": "principal_usage",
+   "declaredAt": [
+    "server/identity/principals.js:54"
+   ],
+   "prodDbs": [
+    "network.db"
+   ],
+   "inCode": true,
+   "inProd": true,
+   "target": "OpenVibe.Network",
+   "disposition": "keep",
+   "wave": "W1 (module split)",
+   "note": "Identity, sessions, OAuth, themes, notifications, registry, chrome, audit, admin."
+  },
+  {
+   "repo": "OpenVibe.Network",
    "table": "push_subscriptions",
    "declaredAt": [
     "server/db/database.js:460"
@@ -14671,7 +15250,7 @@
    "repo": "OpenVibe.Network",
    "table": "stream_live_announcements",
    "declaredAt": [
-    "server/internal/routes.js:310"
+    "server/internal/routes.js:325"
    ],
    "prodDbs": [
     "network.db"
@@ -14753,6 +15332,22 @@
    "table": "user_history",
    "declaredAt": [
     "server/history/routes.js:26"
+   ],
+   "prodDbs": [
+    "network.db"
+   ],
+   "inCode": true,
+   "inProd": true,
+   "target": "OpenVibe.Network",
+   "disposition": "keep",
+   "wave": "W1 (module split)",
+   "note": "Identity, sessions, OAuth, themes, notifications, registry, chrome, audit, admin."
+  },
+  {
+   "repo": "OpenVibe.Network",
+   "table": "user_modules",
+   "declaredAt": [
+    "server/identity/modules.js:24"
    ],
    "prodDbs": [
     "network.db"
@@ -14945,7 +15540,7 @@
    "file": "server/auth/routes.js",
    "target": "OpenVibe.Network",
    "via": "/api/.well-known/jwks, networkUrl, networkInternalUrl, /oauth/token",
-   "lines": "49,57,58,67,67,70,146,227,227,230,361",
+   "lines": "49,57,58,75,75,78,154,235,235,238,369",
    "auth": "oauth-client",
    "timeout": true,
    "retry": true
@@ -15009,6 +15604,26 @@
    "auth": "bearer",
    "timeout": false,
    "retry": false
+  },
+  {
+   "caller": "OpenVibe.Live",
+   "file": "server/media-proxy/pastes.js",
+   "target": "OpenVibe.Community",
+   "via": "OV_COMMUNITY_URL",
+   "lines": "311",
+   "auth": "none-detected",
+   "timeout": true,
+   "retry": true
+  },
+  {
+   "caller": "OpenVibe.Live",
+   "file": "server/pastes-client.js",
+   "target": "OpenVibe.Community",
+   "via": "OV_COMMUNITY_INTERNAL_URL",
+   "lines": "16",
+   "auth": "none-detected",
+   "timeout": true,
+   "retry": true
   },
   {
    "caller": "OpenVibe.Live",
@@ -15085,10 +15700,20 @@
    "file": "server/monetization/wallet-client.js",
    "target": "OpenVibe.Network",
    "via": "/internal/coins, OV_NETWORK_INTERNAL_URL, :4000",
-   "lines": "9,18,18,71,84,95,143",
+   "lines": "9,19,19,79,92,103,151",
    "auth": "internal-key, bearer",
    "timeout": true,
-   "retry": false
+   "retry": true
+  },
+  {
+   "caller": "OpenVibe.Live",
+   "file": "server/pastes-client.js",
+   "target": "OpenVibe.Network",
+   "via": "OV_NETWORK_INTERNAL_URL, :4000",
+   "lines": "39,39",
+   "auth": "none-detected",
+   "timeout": true,
+   "retry": true
   },
   {
    "caller": "OpenVibe.Live",
@@ -15115,10 +15740,10 @@
    "file": "server/utils/notify.js",
    "target": "OpenVibe.Network",
    "via": "OV_NETWORK_INTERNAL_URL, :4000, /internal/notifications",
-   "lines": "16,16,60,114,137",
+   "lines": "16,16,66,120,143",
    "auth": "internal-key",
    "timeout": false,
-   "retry": false
+   "retry": true
   },
   {
    "caller": "OpenVibe.Live",
@@ -15195,7 +15820,7 @@
    "file": "server/auth.js",
    "target": "OpenVibe.Network",
    "via": "network.url, /api/.well-known/jwks",
-   "lines": "28,28,83",
+   "lines": "29,29,84,99",
    "auth": "none-detected",
    "timeout": true,
    "retry": true
@@ -15255,7 +15880,7 @@
    "file": "server/auth.js",
    "target": "webhook",
    "via": "webhook_url (per-app, configured in DB)",
-   "lines": "268",
+   "lines": "305",
    "auth": "none-detected",
    "timeout": true,
    "retry": true
@@ -15335,7 +15960,7 @@
    "file": "server/index.js",
    "target": "OpenVibe.Live",
    "via": ":3000, live.internalUrl",
-   "lines": "215,289,477",
+   "lines": "215,289,479",
    "auth": "internal-key, bearer",
    "timeout": false,
    "retry": false
@@ -15573,6 +16198,15 @@
   },
   {
    "repo": "OpenVibe.Community",
+   "name": "COMMUNITY_DB_PATH",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Community",
    "name": "COOKIE_SECURE",
    "secret": true,
    "files": [
@@ -15709,6 +16343,15 @@
   },
   {
    "repo": "OpenVibe.Community",
+   "name": "OV_MEDIA_INTERNAL_URL",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Community",
    "name": "OV_MEDIA_URL",
    "secret": false,
    "files": [
@@ -15819,6 +16462,15 @@
   },
   {
    "repo": "OpenVibe.Community",
+   "name": "PASTES_AUTHORITY",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": "community.env"
+  },
+  {
+   "repo": "OpenVibe.Community",
    "name": "PORT",
    "secret": false,
    "files": [
@@ -15834,6 +16486,15 @@
     "server/config.js"
    ],
    "prod": "community.env"
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "name": "VIEW_HASH_SECRET",
+   "secret": true,
+   "files": [
+    "server/pastes/service.js"
+   ],
+   "prod": null
   },
   {
    "repo": "OpenVibe.Games",
@@ -16181,6 +16842,7 @@
     "server/chat/chat-server.js",
     "server/config.js",
     "server/monetization/wallet-client.js",
+    "server/net/network-principal.js",
     "server/streaming/routes.js",
     "server/utils/notify.js"
    ],
@@ -16476,10 +17138,20 @@
   },
   {
    "repo": "OpenVibe.Live",
+   "name": "OV_COMMUNITY_INTERNAL_URL",
+   "secret": false,
+   "files": [
+    "server/pastes-client.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Live",
    "name": "OV_COMMUNITY_URL",
    "secret": false,
    "files": [
     "server/index.js",
+    "server/media-proxy/pastes.js",
     "server/seo/seo.js",
     "vendor/openvibe-shared/brand.js"
    ],
@@ -16538,6 +17210,7 @@
     "server/chat/chat-server.js",
     "server/config.js",
     "server/monetization/wallet-client.js",
+    "server/net/network-principal.js",
     "server/streaming/routes.js",
     "server/utils/notify.js"
    ],
@@ -16595,6 +17268,8 @@
    "files": [
     "server/chat/chat-server.js",
     "server/monetization/wallet-client.js",
+    "server/net/network-principal.js",
+    "server/pastes-client.js",
     "server/utils/notify.js"
    ],
    "prod": "live.env"
@@ -16634,7 +17309,8 @@
    "name": "OV_OAUTH_CLIENT_ID",
    "secret": false,
    "files": [
-    "server/auth/routes.js"
+    "server/auth/routes.js",
+    "server/net/network-principal.js"
    ],
    "prod": "live.env"
   },
@@ -16643,7 +17319,8 @@
    "name": "OV_OAUTH_CLIENT_SECRET",
    "secret": true,
    "files": [
-    "server/auth/routes.js"
+    "server/auth/routes.js",
+    "server/net/network-principal.js"
    ],
    "prod": "live.env"
   },
@@ -16700,6 +17377,15 @@
     "server/db/database.js"
    ],
    "prod": null
+  },
+  {
+   "repo": "OpenVibe.Live",
+   "name": "PASTES_AUTHORITY",
+   "secret": false,
+   "files": [
+    "server/pastes-client.js"
+   ],
+   "prod": "live.env"
   },
   {
    "repo": "OpenVibe.Live",
@@ -17575,6 +18261,23 @@
     "vendor/openvibe-shared/brand.js"
    ],
    "prod": null
+  },
+  {
+   "repo": "OpenVibe.Media",
+   "name": "PASTES_FROZEN_APPS",
+   "secret": false,
+   "files": [
+    "server/pastes/routes.js"
+   ],
+   "prod": "media.env"
+  },
+  {
+   "repo": "OpenVibe.Media",
+   "name": "PASTES_MOVED_TO",
+   "secret": false,
+   "files": [],
+   "prod": "media.env",
+   "unreferenced": true
   },
   {
    "repo": "OpenVibe.Media",
@@ -18700,6 +19403,12 @@
   {
    "severity": "low",
    "area": "env",
+   "subject": "OpenVibe.Community:VIEW_HASH_SECRET",
+   "detail": "secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback"
+  },
+  {
+   "severity": "low",
+   "area": "env",
    "subject": "OpenVibe.Live:GH_TOKEN",
    "detail": "secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback"
   },
@@ -19198,6 +19907,12 @@
   {
    "severity": "info",
    "area": "env",
+   "subject": "OpenVibe.Media:PASTES_MOVED_TO",
+   "detail": "set in media.env but not referenced by scanned code (may be read by a dependency or stale)"
+  },
+  {
+   "severity": "info",
+   "area": "env",
    "subject": "OpenVibe.Media:PORT",
    "detail": "set in media.env but not referenced by scanned code (may be read by a dependency or stale)"
   },
@@ -19242,6 +19957,30 @@
    "area": "env",
    "subject": "OpenVibe.Tools:MEDIA_URL",
    "detail": "set in tools.env but not referenced by scanned code (may be read by a dependency or stale)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Community:analytics_daily",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Community:analytics_events",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Community:analytics_hourly",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Community:analytics_rate_tracking",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
   },
   {
    "severity": "info",
@@ -19319,15 +20058,15 @@
  "metrics": {
   "github.charters": "20 charter-only repos of 32",
   "contract.todo-markers": "Live 15, Network 0, Media 0, Tools 0, Community 0, Games 0, Sites 0",
-  "outbound.call-sites": "65 caller-file/target pairs across 50 files",
-  "outbound.internal-key": "28 of 65 call sites authenticate with the shared internal key",
+  "outbound.call-sites": "68 caller-file/target pairs across 52 files",
+  "outbound.internal-key": "28 of 68 call sites authenticate with the shared internal key",
   "ws.servers": "10 WebSocket server constructions",
   "tables.analytics-copies": "5 repos carry their own analytics_events",
   "vendored.copies": "5 repos vendor openvibe-shared (129 files)",
   "vendored.divergent": "4 divergent: Community/ov-icons.js, Live/user-card.js, Media/ov-icons.js, Tools/ov-icons.js",
-  "ci.repos": "0 of 7 scanned repos have .github/workflows",
+  "ci.repos": "4 of 7 scanned repos have .github/workflows",
   "deploy.drift": "1 service(s) not running origin/main",
-  "tests.OpenVibe.Live": "56 test files",
+  "tests.OpenVibe.Live": "58 test files",
   "tables.OpenVibe.Live": "125 tables",
   "tables.OpenVibe.Live.target:OpenVibe.Games (import source)": "31 Live tables target OpenVibe.Games (import source)",
   "tables.OpenVibe.Live.target:OpenVibe.AI": "14 Live tables target OpenVibe.AI",
@@ -19346,21 +20085,21 @@
   "tables.OpenVibe.Live.target:OpenVibe.Billing": "2 Live tables target OpenVibe.Billing",
   "tables.OpenVibe.Live.target:OpenVibe.Billing + OpenVibe.VIP": "1 Live tables target OpenVibe.Billing + OpenVibe.VIP",
   "tables.OpenVibe.Live.target:OpenVibe.Codes": "2 Live tables target OpenVibe.Codes",
-  "tests.OpenVibe.Network": "18 test files",
-  "tables.OpenVibe.Network": "36 tables",
-  "tables.OpenVibe.Network.target:OpenVibe.Network": "33 Network tables target OpenVibe.Network",
+  "tests.OpenVibe.Network": "20 test files",
+  "tables.OpenVibe.Network": "39 tables",
+  "tables.OpenVibe.Network.target:OpenVibe.Network": "36 Network tables target OpenVibe.Network",
   "tables.OpenVibe.Network.target:OpenVibe.Billing (loyalty ledger)": "2 Network tables target OpenVibe.Billing (loyalty ledger)",
   "tables.OpenVibe.Network.target:OpenVibe.Events": "1 Network tables target OpenVibe.Events",
-  "tests.OpenVibe.Media": "4 test files",
+  "tests.OpenVibe.Media": "6 test files",
   "tables.OpenVibe.Media": "15 tables",
   "tables.OpenVibe.Media.target:OpenVibe.Media": "12 Media tables target OpenVibe.Media",
   "tables.OpenVibe.Media.target:OpenVibe.Community": "3 Media tables target OpenVibe.Community",
   "tests.OpenVibe.Tools": "2 test files",
   "tables.OpenVibe.Tools": "4 tables",
   "tables.OpenVibe.Tools.target:OpenVibe.Tools": "4 Tools tables target OpenVibe.Tools",
-  "tests.OpenVibe.Community": "8 test files",
-  "tables.OpenVibe.Community": "4 tables",
-  "tables.OpenVibe.Community.target:OpenVibe.Community": "4 Community tables target OpenVibe.Community",
+  "tests.OpenVibe.Community": "14 test files",
+  "tables.OpenVibe.Community": "13 tables",
+  "tables.OpenVibe.Community.target:OpenVibe.Community": "13 Community tables target OpenVibe.Community",
   "tests.OpenVibe.Games": "56 test files",
   "tables.OpenVibe.Games": "5 tables",
   "tables.OpenVibe.Games.target:OpenVibe.Games": "5 Games tables target OpenVibe.Games",
@@ -19492,7 +20231,7 @@
    "metrics": [
     {
      "key": "outbound.call-sites",
-     "value": "65 caller-file/target pairs across 50 files"
+     "value": "68 caller-file/target pairs across 52 files"
     },
     {
      "key": "ws.servers",
@@ -19599,7 +20338,7 @@
    "metrics": [
     {
      "key": "tables.OpenVibe.Community",
-     "value": "4 tables"
+     "value": "13 tables"
     },
     {
      "key": "tables.OpenVibe.Live.target:OpenVibe.Community",
@@ -19754,7 +20493,7 @@
    "metrics": [
     {
      "key": "outbound.internal-key",
-     "value": "28 of 65 call sites authenticate with the shared internal key"
+     "value": "28 of 68 call sites authenticate with the shared internal key"
     }
    ],
    "verified": true
@@ -19877,7 +20616,7 @@
    "metrics": [
     {
      "key": "ci.repos",
-     "value": "0 of 7 scanned repos have .github/workflows"
+     "value": "4 of 7 scanned repos have .github/workflows"
     }
    ],
    "verified": true
@@ -19972,7 +20711,7 @@
    "mitigation": "Browser harness must support a remote/containerised runner; prune ~/.claude transcripts (~1.2 GB).",
    "status": "open",
    "check": "workstation-disk",
-   "checkResult": "workstation / is 82% used (at generation time)"
+   "checkResult": "workstation / is 83% used (at generation time)"
   },
   {
    "id": "H8",
@@ -20068,25 +20807,25 @@
    "id": "EC1",
    "text": "Every table has an owner classification",
    "pass": true,
-   "detail": "250 tables classified, 0 unclassified"
+   "detail": "262 tables classified, 0 unclassified"
   },
   {
    "id": "EC2",
    "text": "Every route is attributed to a repo and source line",
    "pass": true,
-   "detail": "928 routes; 0 router mounts whose module could not be resolved (their routes are listed without the mount prefix)"
+   "detail": "968 routes; 0 router mounts whose module could not be resolved (their routes are listed without the mount prefix)"
   },
   {
    "id": "EC3",
    "text": "Every background job is listed with its location",
    "pass": true,
-   "detail": "82 timers/jobs"
+   "detail": "83 timers/jobs"
   },
   {
    "id": "EC4",
    "text": "Every cross-service call records caller, callee, auth, timeout and retry",
    "pass": true,
-   "detail": "65 call sites; 30 with no timeout detected"
+   "detail": "68 call sites; 30 with no timeout detected"
   },
   {
    "id": "EC5",
