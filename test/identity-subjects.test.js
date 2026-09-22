@@ -21,6 +21,7 @@ const quiet = console.log; console.log = () => {};
 db.prepare("INSERT INTO users (id, username, password_hash, created_at, legacy_source, legacy_id) VALUES (1, 'alex', 'x', '2026-01-02 03:04:05', 'live', 77)").run();
 db.prepare("INSERT INTO users (id, username, password_hash, created_at) VALUES (2, 'beth', 'x', '2026-05-01 00:00:00')").run();
 db.prepare("INSERT INTO anon_users (id, anon_number, session_token) VALUES (5, 9, 'tok')").run();
+db.prepare("INSERT INTO linked_accounts (user_id, service, service_user_id) VALUES (2, 'live', '321'), (1, 'tools', 'network:1')").run();
 db.exec("UPDATE users SET subject_id = NULL; UPDATE anon_users SET subject_id = NULL; DROP TABLE identity_legacy_map;");
 db.close();
 db = initDb(dbPath);                               // boot again: backfill + seed
@@ -46,6 +47,8 @@ assert.strictEqual(viaLive.subject.id, before, 'Live-migrated account resolves b
 assert.strictEqual(viaLive.username, 'alex');
 assert.ok(!('email' in viaLive) && !('password_hash' in viaLive), 'projection carries no private fields');
 assert.strictEqual(subjects.resolve(db, { subject_id: guest.subject_id }).subject.type, 'guest');
+assert.strictEqual(subjects.resolve(db, { source_system: 'live', source_id: '321' }).subject.id, beth.subject_id, 'seeded from a reported Live link');
+assert.strictEqual(db.prepare("SELECT COUNT(*) n FROM identity_legacy_map WHERE source_system = 'tools'").get().n, 0, "OAuth 'network:<id>' links say nothing about site ids");
 assert.strictEqual(subjects.resolve(db, { source_system: 'live', source_id: '999' }), null);
 
 // A row inserted by a path that forgot subject_id is fixed lazily.
@@ -76,6 +79,7 @@ assert.strictEqual(subjects.resolve(db, { source_system: 'live', source_id: '88'
 const app = express();
 app.locals.db = db;
 app.locals.config = { internalKey: 'k-test' };
+app.use(express.json());
 app.use('/internal', require('../server/internal/routes'));
 const server = http.createServer(app);
 
@@ -101,6 +105,9 @@ const { signToken } = require('../server/auth/routes');
     assert.strictEqual(h.status, 400);
     h = await call('/legacy-map', { method: 'POST', body: JSON.stringify({ entries: [{ network_user_id: 3, source_system: 'live', source_id: 99 }] }) });
     assert.strictEqual(h.status, 200); assert.strictEqual(h.body.inserted, 1);
+    h = await fetch(base.replace('/identity', '/link-account'), { method: 'POST', headers: { 'x-internal-key': 'k-test', 'content-type': 'application/json' }, body: JSON.stringify({ user_id: 3, service: 'live', service_user_id: '555' }) });
+    assert.strictEqual(h.status, 200);
+    assert.strictEqual(subjects.resolve(db, { source_system: 'live', source_id: '555' }).network_user_id, 3, '/internal/link-account also writes the legacy map');
     h = await call('/legacy-map', { method: 'POST', body: JSON.stringify({ entries: [] }) });
     assert.strictEqual(h.status, 400);
     h = await fetch(base + '/resolve?system=live&id=77').then(x => ({ status: x.status }));

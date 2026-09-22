@@ -121,6 +121,15 @@ router.post('/link-account', (req, res) => {
             linked_at = CURRENT_TIMESTAMP
     `).run(user_id, service, service_user_id, service_username || null, service_user_id, service_username || null);
 
+    // The site told us its own id for this account: record it against the canonical subject too, so
+    // other services can resolve "<service> user N" without asking that site (Wave 1 legacy map).
+    if (!String(service_user_id).startsWith('network:')) {
+        try {
+            const r = require('../identity/subjects').upsertLegacy(db, [{ network_user_id: user_id, source_system: String(service), source_type: 'user', source_id: String(service_user_id), verified: true }]);
+            if (r.conflicts.length) console.warn(`[Identity] ${service} user ${service_user_id} is already mapped to another subject; not repointed`);
+        } catch (err) { console.warn('[Identity] legacy map from link-account failed:', err.message); }
+    }
+
     // People set their picture on the site they use (usually Live). When the network account has none, adopt it,
     // so every other site shows the same face. Never overwrites a picture or name the user set here, and only
     // accepts https URLs on our own sites.

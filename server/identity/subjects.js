@@ -58,8 +58,9 @@ function backfill(db) {
 }
 
 /**
- * Seed the map from what Network already knows: its own ids (so resolution is uniform) and the
- * Live ids of accounts migrated from Live (users.legacy_source/legacy_id).
+ * Seed the map from what Network already knows: its own ids (so resolution is uniform), the ids of
+ * accounts migrated from an older platform (users.legacy_source/legacy_id), and site-local ids
+ * reported through /internal/link-account.
  */
 function seedLegacyMap(db) {
     const ins = db.prepare(`INSERT OR IGNORE INTO identity_legacy_map (source_system, source_type, source_id, subject_id, verified_at)
@@ -72,6 +73,12 @@ function seedLegacyMap(db) {
         }
         for (const g of db.prepare('SELECT id, subject_id FROM anon_users WHERE subject_id IS NOT NULL').all()) {
             n += ins.run(SELF, 'anon_user', String(g.id), g.subject_id).changes;
+        }
+        // Sites that report their own local id through /internal/link-account (Live does). Rows written by
+        // the OAuth exchange hold 'network:<id>' instead and say nothing about the site's ids.
+        for (const l of db.prepare(`SELECT la.service, la.service_user_id, u.subject_id FROM linked_accounts la JOIN users u ON u.id = la.user_id
+                                    WHERE u.subject_id IS NOT NULL AND la.service_user_id NOT LIKE 'network:%'`).all()) {
+            if (/^[a-z][a-z0-9-]{1,39}$/.test(l.service)) n += ins.run(l.service, 'user', String(l.service_user_id), l.subject_id).changes;
         }
     })();
     return n;
