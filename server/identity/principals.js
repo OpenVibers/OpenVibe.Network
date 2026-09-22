@@ -33,6 +33,7 @@ const DEFAULT_GRANTS = [
     // pastes into Community on behalf of its users and its AI jobs.
     ['community', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['community', 'media.object.upload', 'openvibe.media', ['community']],
+    ['live', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['live', 'community.paste.create', 'openvibe.community', []],
     ['live', 'community.paste.write', 'openvibe.community', []],
     ['live', 'community.paste.moderate', 'openvibe.community', []],
