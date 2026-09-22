@@ -1,7 +1,7 @@
 {
  "generatedFrom": {
   "OpenVibe.Live": "e26606082958f8cf6bb7c4587c225ca09335b5fe",
-  "OpenVibe.Network": "1b79576cb024714e56ae2ccc7728080d3d3e0118",
+  "OpenVibe.Network": "1bc6a52174fc25a8f6f76d6ab72c08c05f3a3122",
   "OpenVibe.Media": "ddfefcf47740715f24fe7aa7dea648b4699162fc",
   "OpenVibe.Tools": "0346edc57fb9f588abcdea171a22a5ca33f772d2",
   "OpenVibe.Community": "d7c6e608d8e27e6ddbfc78a15fa7590036b1dded",
@@ -5468,10 +5468,10 @@
    "service": "network",
    "present": true,
    "git": {
-    "head": "1b79576cb024714e56ae2ccc7728080d3d3e0118",
+    "head": "1bc6a52174fc25a8f6f76d6ab72c08c05f3a3122",
     "branch": "main",
-    "originMain": "1b79576cb024714e56ae2ccc7728080d3d3e0118",
-    "committedAt": "2026-09-22T16:11:37-07:00"
+    "originMain": "1bc6a52174fc25a8f6f76d6ab72c08c05f3a3122",
+    "committedAt": "2026-09-22T16:36:13-07:00"
    },
    "sourceFiles": 81,
    "loc": 21029,
@@ -14764,9 +14764,9 @@
    "inCode": true,
    "inProd": true,
    "target": "OpenVibe.Community",
-   "disposition": "extract",
-   "wave": "W5",
-   "note": "Media keeps bytes (screenshots/raw); semantics move to Community."
+   "disposition": "frozen-legacy",
+   "wave": "W5 (done 2026-09-22)",
+   "note": "Community is the paste authority since 2026-09-22; Media answers 410 to paste writes (PASTES_FROZEN_APPS=live) and 301s /p/:slug to Community. Screenshot bytes stay here."
   },
   {
    "repo": "OpenVibe.Media",
@@ -14780,9 +14780,9 @@
    "inCode": true,
    "inProd": true,
    "target": "OpenVibe.Community",
-   "disposition": "extract",
-   "wave": "W5",
-   "note": "Media keeps bytes (screenshots/raw); semantics move to Community."
+   "disposition": "frozen-legacy",
+   "wave": "W5 (done 2026-09-22)",
+   "note": "Community is the paste authority since 2026-09-22; Media answers 410 to paste writes (PASTES_FROZEN_APPS=live) and 301s /p/:slug to Community. Screenshot bytes stay here."
   },
   {
    "repo": "OpenVibe.Media",
@@ -14796,9 +14796,9 @@
    "inCode": true,
    "inProd": true,
    "target": "OpenVibe.Community",
-   "disposition": "extract",
-   "wave": "W5",
-   "note": "Media keeps bytes (screenshots/raw); semantics move to Community."
+   "disposition": "frozen-legacy",
+   "wave": "W5 (done 2026-09-22)",
+   "note": "Community is the paste authority since 2026-09-22; Media answers 410 to paste writes (PASTES_FROZEN_APPS=live) and 301s /p/:slug to Community. Screenshot bytes stay here."
   },
   {
    "repo": "OpenVibe.Media",
@@ -19371,6 +19371,12 @@
  ],
  "discrepancies": [
   {
+   "severity": "medium",
+   "area": "deploy",
+   "subject": "network",
+   "detail": "deployed 1b79576 is 1 commit(s) behind origin/main 1bc6a52"
+  },
+  {
    "severity": "low",
    "area": "database",
    "subject": "/opt/openvibe.live/data/backups/live-pre-643a2e6.db",
@@ -20065,7 +20071,7 @@
   "vendored.copies": "5 repos vendor openvibe-shared (129 files)",
   "vendored.divergent": "4 divergent: Community/ov-icons.js, Live/user-card.js, Media/ov-icons.js, Tools/ov-icons.js",
   "ci.repos": "4 of 7 scanned repos have .github/workflows",
-  "deploy.drift": "1 service(s) not running origin/main",
+  "deploy.drift": "2 service(s) not running origin/main",
   "tests.OpenVibe.Live": "58 test files",
   "tables.OpenVibe.Live": "125 tables",
   "tables.OpenVibe.Live.target:OpenVibe.Games (import source)": "31 Live tables target OpenVibe.Games (import source)",
@@ -20600,7 +20606,7 @@
    "metrics": [
     {
      "key": "deploy.drift",
-     "value": "1 service(s) not running origin/main"
+     "value": "2 service(s) not running origin/main"
     }
    ],
    "verified": true
@@ -20786,7 +20792,7 @@
    "mitigation": "Deploy or record why each lagging service is held back.",
    "status": "open",
    "check": "deploy-drift",
-   "checkResult": "games: deployed 43c11f0 has the same file tree as origin/main 5710287 but a different SHA (pre-rewrite history); reset the checkout so later pulls fast-forward"
+   "checkResult": "network: deployed 1b79576 is 1 commit(s) behind origin/main 1bc6a52; games: deployed 43c11f0 has the same file tree as origin/main 5710287 but a different SHA (pre-rewrite history); reset the checkout so later pulls fast-forward"
   },
   {
    "id": "H14",

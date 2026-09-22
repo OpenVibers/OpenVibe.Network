@@ -6,6 +6,7 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-22 23:36 UTC compared w
 
 | Severity | Area | Subject | Detail |
 |---|---|---|---|
+| medium | deploy | network | deployed 1b79576 is 1 commit(s) behind origin/main 1bc6a52 |
 | low | database | /opt/openvibe.live/data/backups/live-pre-643a2e6.db | 264.7 MB backup inside the service data dir |
 | low | database | /opt/openvibe.live/data/hobo.db | 0 B, zero tables (dead file) |
 | low | database | /opt/openvibe.live/data/openvibe.db | 0 B, zero tables (dead file) |

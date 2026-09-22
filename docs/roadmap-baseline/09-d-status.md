@@ -26,7 +26,7 @@ Deliverable 8. Family-level status from roadmap 3.2. Evidence paths are checked 
 | D42 | Shared component architecture | partial | partial | W2, Track R | Network/packages/openvibe-shared | 5 repos vendor openvibe-shared (129 files); 4 divergent: Community/ov-icons.js, Live/user-card.js, Media/ov-icons.js, Tools/ov-icons.js |
 | D43 | Safe active-client updates | absent | missing | Track R | Live/server/chat/deploy-notice.js; Live/server/web/assets.js | - |
 | D44 | Crawlable component rendering | built | already-present-and-verified | Track R (preserve) | Community/server/seo.js; Sites/build.js | - |
-| D45 | Release compatibility and recovery | absent | missing | Track R, W22 | - | 1 service(s) not running origin/main |
+| D45 | Release compatibility and recovery | absent | missing | Track R, W22 | - | 2 service(s) not running origin/main |
 | D46 | Update observability and acceptance | absent | missing | Track R, Track O | - | 4 of 7 scanned repos have .github/workflows |
 
 Totals: 3 built, 11 partial, 8 absent across 22 families; 22 verified.

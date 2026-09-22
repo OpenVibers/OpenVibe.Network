@@ -10,7 +10,7 @@ Deliverable 6. Current owner = the repo that creates the table; target owner = r
 |---|---|---|---|---|---|
 | OpenVibe.Live | 186 | 26 | 94 | 43 | 23 |
 | OpenVibe.Network | 39 | 36 | 3 | 0 | 0 |
-| OpenVibe.Media | 15 | 12 | 3 | 0 | 0 |
+| OpenVibe.Media | 15 | 12 | 0 | 3 | 0 |
 | OpenVibe.Tools | 4 | 4 | 0 | 0 | 0 |
 | OpenVibe.Community | 13 | 13 | 0 | 0 | 0 |
 | OpenVibe.Games | 5 | 5 | 0 | 0 | 0 |
@@ -30,7 +30,7 @@ Deliverable 6. Current owner = the repo that creates the table; target owner = r
 | OpenVibe.Chat | OpenVibe.Live | channel_moderation_settings, channel_moderators, channel_sounds, channel_sounds_new, chat_ai_summaries, chat_messages, chat_messages_new, chat_timeline_events, dm_blocks, dm_conversations, dm_messages, dm_participants, emotes, emotes_new, hidden_relay_users, media_request_settings, media_requests, moderation_actions, pending_ip_messages, relay_users, stream_first_chats, tts_voice_overrides, user_tags | W6 |
 | OpenVibe.Codes | OpenVibe.Live | vibe_coding_events, vibe_coding_sessions | W20 |
 | OpenVibe.Community | OpenVibe.Live | comments, paste_comments, paste_likes, pastes | W5 |
-| OpenVibe.Community | OpenVibe.Media | paste_comments, paste_likes, pastes | W5 |
+| OpenVibe.Community | OpenVibe.Media | paste_comments, paste_likes, pastes | W5 (done 2026-09-22) |
 | OpenVibe.Events | OpenVibe.Network | stream_live_announcements | W3 |
 | OpenVibe.Games | OpenVibe.Live | canvas_actions, canvas_bans, canvas_region_locks, canvas_settings, canvas_snapshots, canvas_tiles, canvas_user_overrides, game_achievements, game_bank, game_battle_stats, game_daily_quest_claims, game_daily_quest_progress, game_dungeon_runs, game_effects, game_farm_plots, game_fish_collection, game_inventory, game_leaderboard, game_players, game_recipes, game_structures, game_world_state | W12 |
 | OpenVibe.Games (import source) | OpenVibe.Live | active_effects, ai_conversations, ai_memory, analytics_snapshots, bank_items, battle_stats, changelog_entries, chat_log, custom_rewards, daily_claims, divorce_history, dungeon_stats, event_log, farm_plots, file_checksums, fish_profile, gusher_profile, inventory, jo_profile, love_affinity, love_profile, love_proposals, mine_profile, mod_persuasion, music_profile, roast_dossier, roast_log, unlocked_recipes, user_voice_selection, user_voices, woodcut_profile | W12 |

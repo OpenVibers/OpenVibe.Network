@@ -276,9 +276,9 @@ Deliverable 2: every table declared in code or present in production, with curre
 | content_visits | server/views/service.js:43 | media.db | OpenVibe.Media | keep | W4 (object model) |
 | files | server/db/schema.sql:164 | media.db | OpenVibe.Media | keep | W4 (object model) |
 | media_settings | server/db/schema.sql:178 | media.db | OpenVibe.Media | keep | W4 (object model) |
-| paste_comments | server/db/schema.sql:146 | media.db | OpenVibe.Community | extract | W5 |
-| paste_likes | server/db/schema.sql:138 | media.db | OpenVibe.Community | extract | W5 |
-| pastes | server/db/schema.sql:105 | media.db | OpenVibe.Community | extract | W5 |
+| paste_comments | server/db/schema.sql:146 | media.db | OpenVibe.Community | frozen-legacy | W5 (done 2026-09-22) |
+| paste_likes | server/db/schema.sql:138 | media.db | OpenVibe.Community | frozen-legacy | W5 (done 2026-09-22) |
+| pastes | server/db/schema.sql:105 | media.db | OpenVibe.Community | frozen-legacy | W5 (done 2026-09-22) |
 | vods | server/db/schema.sql:22 | media.db | OpenVibe.Media | keep | W4 (object model) |
 
 ## OpenVibe.Tools (4)
