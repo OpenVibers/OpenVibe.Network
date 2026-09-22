@@ -49,10 +49,10 @@ function ensureAdminUser(db, config) {
     }
     const passwordHash = bcrypt.hashSync(password, 10);
     db.prepare(`
-        INSERT INTO users (username, email, password_hash, display_name, role, profile_color)
-        VALUES (?, ?, ?, ?, 'admin', '#8b5cf6')
+        INSERT INTO users (username, email, password_hash, display_name, role, profile_color, subject_id)
+        VALUES (?, ?, ?, ?, 'admin', '#8b5cf6', ?)
         ON CONFLICT(username) DO UPDATE SET role = 'admin', password_hash = excluded.password_hash
-    `).run(username, null, passwordHash, username);
+    `).run(username, null, passwordHash, username, require('./identity/subjects').newUserSubjectId());
     console.log(`[Setup] Admin user created or elevated: ${username}`);
 }
 

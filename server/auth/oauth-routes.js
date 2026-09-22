@@ -8,6 +8,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const subjects = require('../identity/subjects');
 const router = express.Router();
 
 function getDb(req) { return req.app.locals.db; }
@@ -274,6 +275,7 @@ function issueTokenPair(db, config, req, user, client) {
         {
             sub: user.id,
             id: user.id,
+            subject_id: subjects.ensureUserSubject(db, user) || undefined,
             username: user.username,
             display_name: user.display_name || user.username,
             role: user.role,

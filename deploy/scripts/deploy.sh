@@ -39,6 +39,12 @@ git pull "$GIT_REMOTE" "$GIT_BRANCH" --ff-only
 NEW_HASH=$(git rev-parse HEAD)
 echo "[Deploy] New commit: ${NEW_HASH:0:8}"
 
+# 2b. Install dependencies when the lockfile changed (e.g. a new openvibe-contracts release).
+if [ "$OLD_HASH" = "none" ] || ! git diff --quiet "$OLD_HASH" "$NEW_HASH" -- package-lock.json; then
+    echo "[Deploy] package-lock.json changed: npm ci --omit=dev"
+    npm ci --omit=dev --no-audit --no-fund
+fi
+
 # 3. Update systemd service config if the repo includes one
 UNIT_UPDATED=false
 if [ -f "$SERVICE_UNIT_SOURCE" ]; then

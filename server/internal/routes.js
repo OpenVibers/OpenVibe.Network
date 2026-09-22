@@ -27,6 +27,7 @@ function requireInternalKey(req, res, next) {
 }
 
 router.use(requireInternalKey);
+router.use('/identity', require('../identity/internal-routes'));
 
 // ── Verify Token ─────────────────────────────────────────────
 // Other services call this to validate an access token and get user data.
@@ -589,8 +590,8 @@ router.post('/resolve-anon', (req, res) => {
         const sessionToken = uuidv4();
 
         const result = db.prepare(
-            'INSERT INTO anon_users (anon_number, session_token, ip) VALUES (?, ?, ?)'
-        ).run(anonNumber, sessionToken, ip);
+            'INSERT INTO anon_users (anon_number, session_token, ip, subject_id) VALUES (?, ?, ?, ?)'
+        ).run(anonNumber, sessionToken, ip, require('../identity/subjects').newGuestSubjectId());
 
         // Log IP
         try {

@@ -1,12 +1,12 @@
 {
   "name": "openvibe-network",
   "version": "1.0.0",
-  "description": "OpenVibe.Network — Identity, SSO, Accounts, Themes, Notifications, and OpenCoins Wallet",
+  "description": "OpenVibe.Network \u2014 Identity, SSO, Accounts, Themes, Notifications, and OpenCoins Wallet",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
     "dev": "NODE_ENV=development node server/index.js",
-    "test": "node test/registry-bootstrap.test.js && node packages/openvibe-shared/test/theme-parity.test.js && node test/nginx-generator-live.test.js && node test/admin-refresh.test.js && node packages/openvibe-shared/test/url-resolver.test.js && node packages/openvibe-shared/test/url-resolver-deploy.test.js && node packages/openvibe-shared/test/navbar-auth.test.js && node packages/openvibe-shared/test/navbar-brand.test.js && node test/history-sso.test.js && node test/sso-check.test.js && node test/fedcm.test.js && node test/domains.test.js && node packages/openvibe-shared/test/shared-modules.test.js && node test/chrome.test.js && node packages/openvibe-shared/test/panels.test.js && node test/avatar.test.js && node test/roadmap-baseline.test.js",
+    "test": "node test/registry-bootstrap.test.js && node packages/openvibe-shared/test/theme-parity.test.js && node test/nginx-generator-live.test.js && node test/admin-refresh.test.js && node packages/openvibe-shared/test/url-resolver.test.js && node packages/openvibe-shared/test/url-resolver-deploy.test.js && node packages/openvibe-shared/test/navbar-auth.test.js && node packages/openvibe-shared/test/navbar-brand.test.js && node test/history-sso.test.js && node test/sso-check.test.js && node test/fedcm.test.js && node test/domains.test.js && node packages/openvibe-shared/test/shared-modules.test.js && node test/chrome.test.js && node packages/openvibe-shared/test/panels.test.js && node test/avatar.test.js && node test/roadmap-baseline.test.js && node test/identity-subjects.test.js",
     "reset-db": "node server/reset-db.js",
     "grant-admin": "node server/grant-admin.js"
   },
@@ -21,9 +21,10 @@
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.1.0",
-    "openvibe-shared": "file:./packages/openvibe-shared",
     "jsonwebtoken": "^9.0.0",
     "multer": "^1.4.5-lts.1",
+    "openvibe-contracts": "https://codeload.github.com/OpenVibers/OpenVibe.Contracts/tar.gz/refs/tags/v0.1.0",
+    "openvibe-shared": "file:./packages/openvibe-shared",
     "uuid": "^11.1.0",
     "web-push": "^3.6.7"
   }

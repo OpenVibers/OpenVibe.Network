@@ -53,7 +53,7 @@ function accountOf(user, base) {
 /** Sign the FedCM assertion for one RP. */
 function signAssertion(user, origin, nonce, ctx) {
     return jwt.sign(
-        { sub: user.id, id: user.id, username: user.username, display_name: user.display_name || user.username, avatar_url: user.avatar_url || null, nonce: nonce || null, typ: 'fedcm', jti: crypto.randomBytes(16).toString('hex') },
+        { sub: user.id, id: user.id, subject_id: user.subject_id || undefined, username: user.username, display_name: user.display_name || user.username, avatar_url: user.avatar_url || null, nonce: nonce || null, typ: 'fedcm', jti: crypto.randomBytes(16).toString('hex') },
         ctx.privateKey,
         { algorithm: ctx.privateKey.includes('BEGIN') ? 'RS256' : 'HS256', issuer: ctx.config.jwt.issuer, audience: origin, expiresIn: ASSERTION_TTL_S }
     );

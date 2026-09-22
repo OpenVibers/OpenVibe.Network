@@ -10,6 +10,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const subjects = require('../identity/subjects');
 const router = express.Router();
 
 
@@ -55,6 +56,7 @@ function signToken(user, privateKey, config) {
         {
             sub: user.id,
             id: user.id,
+            subject_id: user.subject_id || undefined,
             username: user.username,
             display_name: user.display_name || user.username,
             role: user.role,
@@ -141,9 +143,9 @@ router.post('/register', (req, res) => {
 
     const passwordHash = bcrypt.hashSync(password, 10);
     const result = db.prepare(`
-        INSERT INTO users (username, email, password_hash, display_name, profile_color)
-        VALUES (?, ?, ?, ?, '#8b5cf6')
-    `).run(username, email || null, passwordHash, username);
+        INSERT INTO users (username, email, password_hash, display_name, profile_color, subject_id)
+        VALUES (?, ?, ?, ?, '#8b5cf6', ?)
+    `).run(username, email || null, passwordHash, username, subjects.newUserSubjectId());
 
     // Create default preferences
     db.prepare('INSERT OR IGNORE INTO user_preferences (user_id) VALUES (?)').run(result.lastInsertRowid);
@@ -362,6 +364,7 @@ router.post('/refresh', (req, res) => {
 router.get('/me', requireAuth, (req, res) => {
     const db = getDb(req);
     const prefs = db.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(req.user.id);
+    subjects.ensureUserSubject(db, req.user);
     res.json({
         user: sanitizeUser(req.user),
         preferences: prefs || { theme_id: 'vibe' },
@@ -553,8 +556,8 @@ router.post('/anon-session', (req, res) => {
         const anonNumber = maxNum + 1;
 
         const result = db.prepare(
-            'INSERT INTO anon_users (anon_number, fingerprint, session_token, ip) VALUES (?, ?, ?, ?)'
-        ).run(anonNumber, fingerprint, sessionToken, ip);
+            'INSERT INTO anon_users (anon_number, fingerprint, session_token, ip, subject_id) VALUES (?, ?, ?, ?, ?)'
+        ).run(anonNumber, fingerprint, sessionToken, ip, subjects.newGuestSubjectId());
 
         logAnonIp(db, result.lastInsertRowid, ip);
 

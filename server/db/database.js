@@ -491,6 +491,9 @@ function initDb(dbPath) {
         // Cross-site history can be paused by the user (server/history/routes.js).
         { table: 'user_preferences', column: 'display_prefs', sql: "ALTER TABLE user_preferences ADD COLUMN display_prefs TEXT" },
         { table: 'users', column: 'history_paused', sql: "ALTER TABLE users ADD COLUMN history_paused INTEGER DEFAULT 0" },
+        // Canonical subject ids (roadmap Wave 1): usr_/gst_ ULIDs alongside the integer ids.
+        { table: 'users', column: 'subject_id', sql: "ALTER TABLE users ADD COLUMN subject_id TEXT" },
+        { table: 'anon_users', column: 'subject_id', sql: "ALTER TABLE anon_users ADD COLUMN subject_id TEXT" },
     ];
     for (const m of migrations) {
         const cols = db.prepare(`PRAGMA table_info(${m.table})`).all();
@@ -777,6 +780,9 @@ function initDb(dbPath) {
         const vk = this.prepare("SELECT id FROM verification_keys WHERE target_username = ? COLLATE NOCASE AND status = 'active'").get(username);
         return !!vk;
     };
+
+    // Subject ids + identity_legacy_map (server/identity/subjects.js): backfill and seed, idempotent.
+    require('../identity/subjects').ensureSchema(db);
 
     console.log('[DB] Central database initialized');
     return db;

@@ -121,12 +121,12 @@ function createSetupRoutes(db, config) {
             const normalizedUsername = String(username).trim().toLowerCase();
             const passwordHash = bcrypt.hashSync(String(password), 10);
             db.prepare(`
-                INSERT INTO users (username, email, password_hash, display_name, role, profile_color)
-                VALUES (?, ?, ?, ?, 'admin', '#8b5cf6')
+                INSERT INTO users (username, email, password_hash, display_name, role, profile_color, subject_id)
+                VALUES (?, ?, ?, ?, 'admin', '#8b5cf6', ?)
                 ON CONFLICT(username) DO UPDATE SET
                     password_hash = excluded.password_hash,
                     role = 'admin'
-            `).run(normalizedUsername, null, passwordHash, normalizedUsername);
+            `).run(normalizedUsername, null, passwordHash, normalizedUsername, require('../identity/subjects').newUserSubjectId());
             return res.json({ ok: true, message: 'Admin account created' });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
