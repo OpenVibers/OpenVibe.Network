@@ -389,6 +389,8 @@ app.use('/api/themes', require('./themes/routes'));
 
 // OpenCoins wallet API (user-facing, Bearer JWT)
 app.use('/api/coins', createCoinsRoutes(db, requireAuth));
+// Versioned user modules: portable per-person preferences and summaries (server/identity/modules.js).
+app.use('/api/modules', require('./identity/modules').userRouter(requireAuth));
 
 // Notification API (authenticated users)
 app.use('/api/notifications', createNotificationRoutes(db, notificationService, requireAuth));

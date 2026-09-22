@@ -785,6 +785,8 @@ function initDb(dbPath) {
     require('../identity/subjects').ensureSchema(db);
     // Service principals: grants per OAuth client + usage counters (server/identity/principals.js).
     require('../identity/principals').ensureSchema(db);
+    // Versioned user modules (server/identity/modules.js).
+    require('../identity/modules').ensureSchema(db);
 
     console.log('[DB] Central database initialized');
     return db;

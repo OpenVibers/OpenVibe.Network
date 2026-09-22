@@ -26,11 +26,12 @@ function requireInternalKey(req, res, next) {
     }
     // Routes guarded by a capability also accept a service-principal token instead of the key;
     // principals.guard() on the route verifies it (and refuses anything it can't verify).
-    if (String(req.headers.authorization || '').startsWith('Bearer ') && TOKEN_ROUTES.has(`${req.method} ${req.path}`)) return next();
+    if (String(req.headers.authorization || '').startsWith('Bearer ') && (TOKEN_ROUTES.has(`${req.method} ${req.path}`) || TOKEN_ROUTE_PATTERNS.some(re => re.test(`${req.method} ${req.path}`)))) return next();
     return res.status(403).json({ error: 'Invalid or missing internal key' });
 }
 const principals = require('../identity/principals');
 const TOKEN_ROUTES = new Set(['POST /coins/credit', 'POST /coins/debit', 'POST /coins/transfer', 'POST /notifications/push', 'POST /notifications/push-bulk']);
+const TOKEN_ROUTE_PATTERNS = [/^(GET|PUT) \/modules\/[a-z0-9_.]+\/[A-Za-z0-9_]+$/];
 const forApp = (req) => (req.body && req.body.app_id !== undefined ? String(req.body.app_id) : undefined);
 const forService = (req) => (req.body && req.body.service !== undefined ? String(req.body.service) : undefined);
 
@@ -257,6 +258,9 @@ router.get('/coins/stats', (req, res) => {
 // ── POST /internal/coins/credit ──────────────────────────────
 // Body: { user_id, app_id, amount (positive int), reason, ref?, idempotency_key }
 // → { balance }
+// User modules for services (token only; server/identity/modules.js).
+require('../identity/modules').serviceRoutes(router, principals);
+
 router.post('/coins/credit', principals.guard('network.coins.credit', { ownApp: forApp }), (req, res) => {
     try {
         const { user_id, app_id, amount, reason, ref, idempotency_key } = req.body || {};

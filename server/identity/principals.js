@@ -22,6 +22,13 @@ const DEFAULT_GRANTS = [
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],
     ['live', 'network.coins.transfer', SELF_AUDIENCE, ['live']],
     ['live', 'network.notifications.push', SELF_AUDIENCE, ['live']],
+    // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
+    ['live', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile']],
+    ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile']],
+    ['tools', 'network.modules.read', SELF_AUDIENCE, ['tools.usage']],
+    ['tools', 'network.modules.write', SELF_AUDIENCE, ['tools.usage']],
+    ['games', 'network.modules.read', SELF_AUDIENCE, ['games.progress.summary']],
+    ['games', 'network.modules.write', SELF_AUDIENCE, ['games.progress.summary']],
 ];
 
 function ensureSchema(db) {
@@ -110,7 +117,7 @@ function recordDecision(db) {
  * service token may only act for its own app (svc:live -> app_id 'live'). Legacy-key callers are
  * unchanged.
  */
-function guard(capability, { ownApp } = {}) {
+function guard(capability, { ownApp, namespace, legacy = true } = {}) {
     if (!capabilities.get(capability)) throw new Error(`unknown capability ${capability}`);
     let check = null;
     let record = null;
@@ -121,7 +128,9 @@ function guard(capability, { ownApp } = {}) {
                 getPublicKey: (r) => r.app.locals.publicKey,
                 issuer: req.app.locals.config.jwt && req.app.locals.config.jwt.issuer,
                 audience: SELF_AUDIENCE,
-                legacy: (r) => r.internalKeyOk === true,
+                // New routes can refuse the shared key outright (legacy: false) so its use never grows.
+                legacy: legacy ? (r) => r.internalKeyOk === true : undefined,
+                namespace,
                 // Denials are final here; an allow is recorded below, after the ownership check.
                 onDecision: (d) => { if (!d.allowed) record(d); },
             });
