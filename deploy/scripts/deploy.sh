@@ -41,8 +41,9 @@ echo "[Deploy] New commit: ${NEW_HASH:0:8}"
 
 # 2b. Install dependencies when the lockfile changed (e.g. a new openvibe-contracts release).
 if [ "$OLD_HASH" = "none" ] || ! git diff --quiet "$OLD_HASH" "$NEW_HASH" -- package-lock.json; then
-    echo "[Deploy] package-lock.json changed: npm ci --omit=dev"
-    npm ci --omit=dev --no-audit --no-fund
+    # install (not ci): updates node_modules in place instead of deleting it under the running service
+    echo "[Deploy] package-lock.json changed: npm install --omit=dev"
+    npm install --omit=dev --no-audit --no-fund
 fi
 
 # 3. Update systemd service config if the repo includes one
