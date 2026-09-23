@@ -5,8 +5,10 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const { OWNED_ZONES } = require('../server/auth/sso-owned');
+const { OWNED_ZONES, USER_CONTENT_ZONES } = require('../server/auth/sso-owned');
 const { safeNext } = require('../server/auth/sso-targets');
+const { allowedOrigin } = require('../server/auth/sso-check');
+const { rpOrigin } = require('../server/auth/fedcm');
 
 /** The page's navigation guard, evaluated as the browser would at `pageOrigin`. */
 function pageGuard(file, name, pageOrigin) {
@@ -15,7 +17,7 @@ function pageGuard(file, name, pageOrigin) {
     assert.ok(m, `${file} has a safe-redirect block`);
     const loc = new URL(pageOrigin);
     // eslint-disable-next-line no-new-func
-    return new Function('window', 'location', `${m[1]}\nreturn { fn: ${name}, zones: OV_OWNED_ZONES };`)({ location: loc }, loc);
+    return new Function('window', 'location', `${m[1]}\nreturn { fn: ${name}, zones: OV_OWNED_ZONES, userZones: OV_USER_CONTENT_ZONES };`)({ location: loc }, loc);
 }
 
 const BAD = [
@@ -24,6 +26,8 @@ const BAD = [
     '//evil.example', '/\\evil.example', '/\t/evil.example', '\\\\evil.example',
     'https://evil.example/', 'https://openvibe.network.evil.example/', 'https://evilopenvibe.network/',
     'https://openvibe.lol/', 'https://login.openvibe.xyz/', 'http://openvibe.live/', 'https://user:pw@evil.example/',
+    // *.openvibe.host are tenant sites (OpenVibe.Host Stage B): people's own content, not ours
+    'https://evil.openvibe.host/', 'https://a.b.openvibe.host/x',
 ];
 const GOOD = [
     ['/', '/'], ['/my#linked', '/my#linked'], ['/admin?tab=users', '/admin?tab=users'],
@@ -31,11 +35,13 @@ const GOOD = [
     ['https://json.openvibe.tools/', 'https://json.openvibe.tools/'],
     ['https://openvibe.network/admin', 'https://openvibe.network/admin'],
     ['https://ingest.openre.stream/', 'https://ingest.openre.stream/'],
+    ['https://openvibe.host/dashboard', 'https://openvibe.host/dashboard'],
 ];
 
 for (const [file, name] of [['login.html', 'safeReturnUrl'], ['sso-fanout.html', 'safeNext']]) {
-    const { fn, zones } = pageGuard(file, name, 'https://openvibe.network');
+    const { fn, zones, userZones } = pageGuard(file, name, 'https://openvibe.network');
     assert.deepStrictEqual([...zones].sort(), [...OWNED_ZONES].sort(), `${file}: owned zones match server/auth/sso-owned.js`);
+    assert.deepStrictEqual([...userZones].sort(), [...USER_CONTENT_ZONES].sort(), `${file}: user-content zones match server/auth/sso-owned.js`);
     for (const b of BAD) assert.strictEqual(fn(b), '/', `${file}: ${JSON.stringify(b)} is refused`);
     for (const [g, want] of GOOD) assert.strictEqual(fn(g), want, `${file}: ${g} is kept`);
     assert.strictEqual(fn(''), '/');
@@ -51,4 +57,15 @@ for (const [file, name] of [['login.html', 'safeReturnUrl'], ['sso-fanout.html',
 for (const b of BAD) assert.strictEqual(safeNext(b, { NODE_ENV: 'production' }), '/', `safeNext ${JSON.stringify(b)} is refused`);
 for (const [g, want] of GOOD) assert.strictEqual(safeNext(g, { NODE_ENV: 'production' }), want, `safeNext ${g} is kept`);
 
-console.log('post-sign-in redirects: all checks passed');
+// Cross-site trust (FedCM relying parties, the /sso/check frame) stops at tenant subdomains too:
+// a Host tenant page must not get a FedCM assertion or learn who is signed in.
+for (const check of [allowedOrigin, rpOrigin]) {
+    assert.strictEqual(check('https://evil.openvibe.host', { NODE_ENV: 'production' }), null, `${check.name}: tenant site refused`);
+    assert.strictEqual(check('https://A.B.openvibe.host', { NODE_ENV: 'production' }), null, `${check.name}: nested tenant site refused`);
+    assert.strictEqual(check('https://openvibe.host', { NODE_ENV: 'production' }), 'https://openvibe.host', `${check.name}: the Host dashboard is ours`);
+    assert.strictEqual(check('https://json.openvibe.tools', { NODE_ENV: 'production' }), 'https://json.openvibe.tools');
+    assert.strictEqual(check('https://openvibe.live', { NODE_ENV: 'production' }), 'https://openvibe.live');
+    assert.strictEqual(check('https://evilopenvibe.live', { NODE_ENV: 'production' }), null);
+}
+
+console.log('post-sign-in redirects and owned-zone trust: all checks passed');

@@ -15,14 +15,14 @@
 // ═══════════════════════════════════════════════════════════════
 
 // Only the zones OpenVibe owns — not openvibe.<anything>, which anyone could register.
-const { OWNED_ZONES: OWNED } = require('./sso-owned');
+const { OWNED_ZONES: OWNED, isTrustedHost } = require('./sso-owned');
 const ORIGIN_RE = new RegExp(`^https://(?:[a-z0-9-]+\\.)*(?:${OWNED.map(d => d.replace(/\./g, '\\.')).join('|')})$`, 'i');
 const LOCAL_RE = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/;
 
 function allowedOrigin(raw, env = process.env) {
     const o = String(raw || '').trim().replace(/\/$/, '');
     if (!o) return null;
-    if (ORIGIN_RE.test(o)) return o;
+    if (ORIGIN_RE.test(o) && isTrustedHost(new URL(o).hostname)) return o;
     if (env.NODE_ENV !== 'production' && LOCAL_RE.test(o)) return o;
     return null;
 }

@@ -14,7 +14,7 @@
 // it points at https://openvibe.network/… .
 // ═══════════════════════════════════════════════════════════════
 
-const { OWNED_ZONES } = require('./sso-owned');
+const { isTrustedHost } = require('./sso-owned');
 
 const DEFAULT_TARGETS = [
     { id: 'live', name: 'OpenVibe.Live', origin: 'https://openvibe.live',
@@ -59,8 +59,8 @@ function safeNext(raw, env = process.env) {
         if (u.username || u.password) return '/';
         if (u.protocol !== 'https:' && !(u.protocol === 'http:' && /^(localhost|127\.0\.0\.1)$/.test(u.hostname))) return '/';
         const h = u.hostname.toLowerCase();
-        // Only zones OpenVibe owns, never openvibe.<any tld> (anyone can register those).
-        if (OWNED_ZONES.some(z => h === z || h.endsWith('.' + z)) || /^(localhost|127\.0\.0\.1)$/.test(h)) return u.toString();
+        // Only zones OpenVibe owns (never openvibe.<any tld>, never a Host tenant site).
+        if (isTrustedHost(h) || /^(localhost|127\.0\.0\.1)$/.test(h)) return u.toString();
         for (const t of ssoTargets(env)) { try { if (t.origin && new URL(t.origin).hostname === h) return u.toString(); } catch { /* */ } }
     } catch { /* not a URL */ }
     return '/';

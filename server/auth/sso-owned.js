@@ -7,6 +7,16 @@ const OWNED_ZONES = [
     'openvibe.tips', 'openvibe.vip', 'openvibe.trade', 'openvibe.host', 'openvibe.deals', 'openvibe.coupons',
     'openre.stream',
 ];
+// Zones whose subdomains are people's own content (OpenVibe.Host tenant sites, <site>.openvibe.host,
+// which run the tenant's JS): only the apex is OpenVibe's. Domain validation still refuses them as
+// tool hosts through OWNED_ZONES; trust checks go through isTrustedHost.
+const USER_CONTENT_ZONES = ['openvibe.host'];
+
+/** Is `hostname` an OpenVibe site we trust across sites (an owned zone, minus tenant subdomains)? */
+function isTrustedHost(hostname) {
+    const h = String(hostname || '').toLowerCase();
+    return OWNED_ZONES.some(z => h === z || (h.endsWith('.' + z) && !USER_CONTENT_ZONES.includes(z)));
+}
 
 /** Which RP origins an OAuth client may exchange FedCM assertions for. */
 function clientOriginMatcher(client) {
@@ -22,4 +32,4 @@ function clientOriginMatcher(client) {
     };
 }
 
-module.exports = { OWNED_ZONES, clientOriginMatcher };
+module.exports = { OWNED_ZONES, USER_CONTENT_ZONES, isTrustedHost, clientOriginMatcher };
