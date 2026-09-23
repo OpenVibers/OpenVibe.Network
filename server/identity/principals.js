@@ -54,6 +54,19 @@ const DEFAULT_GRANTS = [
     ['wiki', 'community.comment.write', 'openvibe.community', []],
     ['wiki', 'sources.item.read', 'openvibe.sources', []],
     ['wiki', 'media.object.read', 'openvibe.media', ['wiki']],
+    // Wave 16: Blog (same shape as Wiki; it may hide the thread of a post that stopped being public).
+    ['blog', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['blog', 'events.event.publish', 'openvibe.events', []],
+    ['blog', 'community.comment.write', 'openvibe.community', []],
+    ['blog', 'community.comment.moderate', 'openvibe.community', []],
+    ['blog', 'media.object.read', 'openvibe.media', ['blog']],
+    // Wave 10: VIP sells plans through Billing and projects its entitlements from Billing events.
+    ['vip', 'billing.intent.create', 'openvibe.billing', []],
+    ['vip', 'billing.subscription.manage', 'openvibe.billing', []],
+    ['vip', 'billing.entitlement.check', 'openvibe.billing', []],
+    ['vip', 'events.event.publish', 'openvibe.events', []],
+    ['vip', 'events.subscription.manage', 'openvibe.events', []],
+    ['vip', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
     ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
     // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
