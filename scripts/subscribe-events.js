@@ -3,11 +3,16 @@
 /**
  * Create Network's OpenVibe.Events subscriptions for the notification consumer
  * (server/notifications/events-consumer.js): one per topic in TOPICS (deals.watch.matched,
- * trade.alert.triggered), all delivering to POST /internal/events. Events names the consumer after
- * the calling service: `network`.
+ * trade.alert.triggered, live.stream.started), all delivering to POST /internal/events. Events names
+ * the consumer after the calling service: `network`.
  *
  *   sudo node --env-file=/etc/openvibe/network.env scripts/subscribe-events.js \
- *        [--endpoint http://127.0.0.1:4000/internal/events] [--dry-run]
+ *        [--endpoint http://127.0.0.1:4000/internal/events] [--topic live.stream.started] [--dry-run]
+ *
+ * --topic limits the run to one of TOPICS (repeatable), e.g. to add live.stream.started to a host that
+ * already has the other two. live.stream.started needs Live's GET /internal/followers first (the
+ * consumer answers 503 until Live serves it, and Events retries), and the token Network signs for it
+ * carries live.follower.read for audience openvibe.live.
  *
  * Reads the environment: OV_EVENTS_INTERNAL_URL (Events, e.g. http://127.0.0.1:4300), OV_NETWORK_URL
  * (the token issuer), JWT_PRIVATE_KEY (default data/keys/private.pem) and NETWORK_EVENTS_SECRET — the
@@ -27,6 +32,11 @@ const { TOPICS, secretsFrom } = require('../server/notifications/events-consumer
 
 const args = process.argv.slice(2);
 const opt = (name, d) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : d; };
+const topicsFrom = (argv) => {
+    const picked = argv.flatMap((a, i) => (a === '--topic' && argv[i + 1] ? [argv[i + 1]] : []));
+    for (const t of picked) if (!TOPICS.includes(t)) throw new Error(`--topic ${t} is not one of ${TOPICS.join(', ')}`);
+    return picked.length ? picked : [...TOPICS];
+};
 
 function selfToken(privateKey, issuer) {
     const now = Math.floor(Date.now() / 1000);
@@ -38,7 +48,10 @@ function selfToken(privateKey, issuer) {
     return serviceAuth.signServiceToken(claims, privateKey);
 }
 
+if (require.main !== module) { module.exports = { topicsFrom }; return; }
+
 (async () => {
+    const topics = topicsFrom(args);
     const eventsUrl = String(config.eventsInternalUrl || '').replace(/\/+$/, '');
     const endpoint = opt('endpoint', `http://127.0.0.1:${config.port}/internal/events`);
     const secret = secretsFrom(config.eventsWebhookSecrets)[0];
@@ -47,11 +60,11 @@ function selfToken(privateKey, issuer) {
     const privateKey = fs.readFileSync(path.resolve(config.jwt.privateKeyPath), 'utf8');
     if (!privateKey.includes('BEGIN')) throw new Error(`${config.jwt.privateKeyPath} is not a PEM private key`);
     if (args.includes('--dry-run')) {
-        for (const t of TOPICS) console.log(`would subscribe: ${t} → ${endpoint} (consumer network, Events ${eventsUrl})`);
+        for (const t of topics) console.log(`would subscribe: ${t} → ${endpoint} (consumer network, Events ${eventsUrl})`);
         return;
     }
     const token = selfToken(privateKey, config.jwt.issuer);
-    for (const pattern of TOPICS) {
+    for (const pattern of topics) {
         const res = await fetch(`${eventsUrl}/api/v1/subscriptions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

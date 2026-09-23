@@ -7,6 +7,18 @@
  *                           payload.recipient is the watcher's usr_ subject
  *   trade.alert.triggered   a Trade alert rule fired (threshold crossed, filing/document seen);
  *                           event.subject { type: 'user', id } is the rule's owner
+ *   live.stream.started     a Live channel went live (OpenVibe.Live server/events/stream-events.js);
+ *                           payload.channel.subject is the streamer. Every follower is notified
+ *                           (STREAM_LIVE, category 'stream'), plus everyone who opted into all go-lives
+ *                           (stream_live_all), and the Discord live alert is sent once it has committed.
+ *
+ * Followers of a Live channel live in Live's database. Before the inbox transaction, Network reads
+ * them from Live's GET /internal/followers with its own service token (./live-followers.js); if Live
+ * cannot answer, the delivery is answered 503 and Events retries. The announcement window (one per
+ * streamer per hour, eight a day) is the same one Live's direct POST /internal/events/stream-live
+ * claims (./stream-live.js), so both paths can run during the switch without double notifications.
+ * A started event older than LIVE_STARTED_MAX_AGE (30 min; a replay, or Events catching up after an
+ * outage) announces nothing: the stream may be long over.
  *
  * Coupons publishes no watch event: its merchant watches never leave Coupons (server/domain/watches.js
  * there: "Delivery is not built yet"), and its coupons.* events name no person, so there is nothing
@@ -32,10 +44,13 @@ const express = require('express');
 const { http, ids } = require('openvibe-contracts');
 const { parseDelivery, createInbox } = require('openvibe-sdk/events');
 const { siteForHost } = require('../chrome/sites');
+const streamLive = require('./stream-live');
+const { LiveFollowersError } = require('./live-followers');
 
 const CONSUMER = 'network-notifications';
 const INBOX_TABLE = 'network_event_inbox';
-const TOPICS = Object.freeze(['deals.watch.matched', 'trade.alert.triggered']);
+const TOPICS = Object.freeze(['deals.watch.matched', 'trade.alert.triggered', 'live.stream.started']);
+const LIVE_STARTED_MAX_AGE_MS = 30 * 60 * 1000;
 const EVENT_ID_RE = /^evt_[0-9A-HJKMNP-TV-Z]{26}$/;
 
 /** Plain, single-line, length-capped text: no markup or control characters reach the inbox. */
@@ -111,21 +126,105 @@ const HANDLERS = {
     },
 };
 
+/** The facts of a live.stream.started envelope, or an 'ignored:*' outcome. No I/O. */
+function liveStarted(event, { now, maxAgeMs }) {
+    if (event.source !== 'live') return 'ignored:source';
+    const p = event.payload && typeof event.payload === 'object' ? event.payload : {};
+    if (p.redacted === true) return 'ignored:redacted';
+    const streamId = typeof p.stream_id === 'number' || /^\d{1,15}$/.test(String(p.stream_id)) ? Number(p.stream_id) : NaN;
+    if (!Number.isSafeInteger(streamId) || streamId <= 0) return 'ignored:payload';
+    const ch = p.channel && typeof p.channel === 'object' ? p.channel : {};
+    const subject = ch.subject && typeof ch.subject === 'object' && ch.subject.type === 'user' ? ch.subject.id : null;
+    if (!ids.isSubjectId('user', subject)) return 'ignored:channel';
+    const username = clean(ch.username, 40);
+    if (!username) return 'ignored:payload';
+    const started = Date.parse(p.started_at || event.occurred_at || '');
+    if (Number.isFinite(started) && now - started > maxAgeMs) return 'ignored:stale';
+    return {
+        streamId, subject, username, displayName: clean(ch.display_name, 60) || username,
+        title: clean(p.title, 200) || null, protocol: clean(p.protocol, 20) || null,
+        url: publicLink(ch.url) || `https://openvibe.live/${encodeURIComponent(username)}`,
+    };
+}
+
 /**
  * @param {object} o
  * @param {import('better-sqlite3').Database} o.db
  * @param {{ create(data: object): object|null }} o.notifications  NotificationService
  * @param {string|string[]} o.secrets  NETWORK_EVENTS_SECRET (comma list) or an array
+ * @param {{ forStream(id: number): Promise<object> }} [o.liveFollowers]  ./live-followers.js
+ * @param {() => ({ sendLiveAlert(streamer: object, stream: object): Promise<object> }|null)} [o.discord]
  */
-function createEventsConsumer({ db, notifications, secrets, now = () => Date.now(), log = console }) {
+function createEventsConsumer({ db, notifications, secrets, liveFollowers = null, discord = () => null, liveStartedMaxAgeMs = LIVE_STARTED_MAX_AGE_MS, now = () => Date.now(), log = console }) {
     const keys = Array.isArray(secrets) ? secrets.filter((s) => typeof s === 'string' && s.length >= 32) : secretsFrom(secrets);
     const inbox = createInbox(db, { table: INBOX_TABLE, now });
     inbox.ensureSchema();
     const userBySubject = db.prepare('SELECT id FROM users WHERE subject_id = ?');
+    const streamerBySubject = db.prepare('SELECT id, username, display_name, avatar_url FROM users WHERE subject_id = ?');
+    const userById = db.prepare('SELECT id FROM users WHERE id = ?');
 
-    /** Apply one envelope. Returns { duplicate, outcome }. Throws only on a storage failure. */
-    function apply(event) {
+    /**
+     * Work that needs I/O before the inbox transaction (it must be synchronous). Returns what the
+     * handler needs, or throws LiveFollowersError when the source cannot answer (retried by Events).
+     */
+    const PREPARE = {
+        async 'live.stream.started'(event) {
+            const v = liveStarted(event, { now: now(), maxAgeMs: liveStartedMaxAgeMs });
+            if (typeof v === 'string') return { skip: v };
+            if (!streamerBySubject.get(v.subject)) return { skip: 'ignored:channel' };   // not a Network account: nobody to announce
+            if (!liveFollowers) throw new LiveFollowersError('no Live followers client (RS256 signing key and OV_LIVE_INTERNAL_URL needed)');
+            return liveFollowers.forStream(v.streamId);
+        },
+    };
+
+    /** live.stream.started inside the inbox transaction: the announcement window, then one notification per person. */
+    function liveStreamStarted(event, prep) {
+        if (prep && prep.skip) return prep.skip;
+        const v = liveStarted(event, { now: now(), maxAgeMs: liveStartedMaxAgeMs });
+        if (typeof v === 'string') return v;
+        if (!prep || prep.missing) return 'ignored:stream';
+        if (prep.channelSubject !== v.subject) return 'ignored:channel-mismatch';   // that stream is not this channel's
+        const streamer = streamerBySubject.get(v.subject);
+        if (!streamer) return 'ignored:channel';
+        const claim = streamLive.claimAnnouncement(db, { streamerKey: streamer.id, streamId: v.streamId, now: now() });
+        if (claim.skipped) return { outcome: `skipped:${claim.reason}`, detail: { next_allowed_at: claim.next_allowed_at || null } };
+        const targets = new Set();
+        let unresolved = 0;
+        for (const f of prep.followers || []) {
+            let uid = null;
+            if (f.subject && ids.isSubjectId('user', f.subject)) { const u = userBySubject.get(f.subject); if (u) uid = u.id; }
+            if (uid == null && f.network_user_id) { const u = userById.get(f.network_user_id); if (u) uid = u.id; }
+            if (uid == null) { unresolved++; continue; }
+            targets.add(uid);
+        }
+        for (const uid of streamLive.allLiveSubscribers(db)) targets.add(uid);
+        targets.delete(streamer.id);   // never tell streamers about themselves
+        const notification = streamLive.streamLiveNotification({
+            username: v.username, displayName: v.displayName, avatarUrl: streamer.avatar_url, senderId: streamer.id,
+            stream: { id: v.streamId, title: v.title, protocol: v.protocol, event_id: event.event_id }, url: v.url,
+        });
+        const created = targets.size ? notifications.createBulk([...targets], notification) : [];
+        const detail = { followers: (prep.followers || []).length, unresolved, targets: targets.size, notified: created.length, ...(prep.truncated ? { truncated: true } : {}) };
+        const after = () => {
+            const d = discord && discord();
+            if (!d || typeof d.sendLiveAlert !== 'function') return;
+            Promise.resolve()
+                .then(() => d.sendLiveAlert({ username: v.username, display_name: v.displayName, avatar_url: streamer.avatar_url || null }, { id: v.streamId, title: v.title, protocol: v.protocol }))
+                .catch((err) => log.warn(`[Events consumer] Discord live alert for ${v.username} failed:`, err.message));
+        };
+        return { outcome: created.length ? 'notified' : targets.size ? 'suppressed:preference' : 'no-recipients', detail, after };
+    }
+
+    /** Apply one envelope (with what PREPARE fetched for it). Returns { duplicate, outcome, detail }. Throws only on a storage failure. */
+    function apply(event, prep) {
+        let after = null;
         const r = inbox.once(CONSUMER, event.event_id, () => {
+            if (event.event_type === 'live.stream.started') {
+                const out = liveStreamStarted(event, prep);
+                if (typeof out === 'string') return out;
+                after = out.after || null;
+                return { outcome: out.outcome, detail: out.detail };
+            }
             const handler = Object.prototype.hasOwnProperty.call(HANDLERS, event.event_type) ? HANDLERS[event.event_type] : null;
             if (!handler) return 'ignored:type';
             const out = handler(event);
@@ -136,11 +235,14 @@ function createEventsConsumer({ db, notifications, secrets, now = () => Date.now
             // create() returns null when the person turned the category off.
             return notifications.create({ ...out.notification, user_id: user.id }) ? 'notified' : 'suppressed:preference';
         });
-        return r.duplicate ? { duplicate: true, outcome: null } : { duplicate: false, outcome: r.result };
+        if (r.duplicate) return { duplicate: true, outcome: null };
+        // Side effects outside the database run only after the commit, once per event.
+        if (after) { try { after(); } catch (err) { log.warn('[Events consumer] after-commit step failed:', err.message); } }
+        return typeof r.result === 'object' && r.result ? { duplicate: false, outcome: r.result.outcome, detail: r.result.detail } : { duplicate: false, outcome: r.result };
     }
 
     const router = express.Router();
-    router.post('/', express.raw({ type: () => true, limit: '256kb' }), (req, res) => {
+    router.post('/', express.raw({ type: () => true, limit: '256kb' }), async (req, res) => {
         if (!keys.length) return http.sendProblem(res, 503, 'network.webhook_disabled', { detail: 'NETWORK_EVENTS_SECRET is not set' });
         const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
         let delivery = null;
@@ -151,18 +253,30 @@ function createEventsConsumer({ db, notifications, secrets, now = () => Date.now
         if (!event || typeof event !== 'object' || typeof event.event_id !== 'string' || !EVENT_ID_RE.test(event.event_id) || typeof event.event_type !== 'string') {
             return http.sendProblem(res, 400, 'network.bad_delivery', { detail: 'body must be { event: <envelope>, seq }' });
         }
+        let prep;
+        if (Object.prototype.hasOwnProperty.call(PREPARE, event.event_type)) {
+            // Already handled: answer without asking anyone anything.
+            if (inbox.seen(CONSUMER, event.event_id)) return res.status(200).json({ event_id: event.event_id, duplicate: true, outcome: null });
+            try {
+                prep = await PREPARE[event.event_type](event);
+            } catch (err) {
+                const known = err instanceof LiveFollowersError;
+                log.warn(`[Events consumer] ${event.event_id} (${event.event_type}) not ready: ${err.message}`);
+                return http.sendProblem(res, known ? 503 : 500, known ? 'network.dependency_unavailable' : 'network.event_failed', { detail: known ? 'the followers could not be read from Live; it will be retried' : 'processing failed; it will be retried' });
+            }
+        }
         let out;
         try {
-            out = apply(event);
+            out = apply(event, prep);
         } catch (err) {
             // Not acknowledged: the inbox claim rolled back with the notification, and Events retries.
             log.error(`[Events consumer] ${event.event_id} (${event.event_type}) failed:`, err.message);
             return http.sendProblem(res, 500, 'network.event_failed', { detail: 'processing failed; it will be retried' });
         }
-        res.status(200).json({ event_id: event.event_id, duplicate: out.duplicate, outcome: out.outcome });
+        res.status(200).json({ event_id: event.event_id, duplicate: out.duplicate, outcome: out.outcome, ...(out.detail ? { detail: out.detail } : {}) });
     });
 
     return { router, apply, enabled: keys.length > 0 };
 }
 
-module.exports = { createEventsConsumer, CONSUMER, TOPICS, INBOX_TABLE, secretsFrom };
+module.exports = { createEventsConsumer, CONSUMER, TOPICS, INBOX_TABLE, LIVE_STARTED_MAX_AGE_MS, secretsFrom };

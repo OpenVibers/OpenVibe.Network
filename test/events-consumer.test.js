@@ -1,7 +1,8 @@
 'use strict';
 // Events → notifications (server/notifications/events-consumer.js): POST /internal/events turns
 // deals.watch.matched and trade.alert.triggered into inbox notifications for the subscribed person,
-// exactly once, v2 signatures only, respecting their preferences.
+// and live.stream.started into one go-live notification per follower (read from Live with a service
+// token), exactly once, v2 signatures only, respecting their preferences.
 //   node test/events-consumer.test.js
 const assert = require('assert');
 const fs = require('fs');
@@ -9,11 +10,15 @@ const os = require('os');
 const path = require('path');
 const http = require('http');
 const express = require('express');
-const { ids } = require('openvibe-contracts');
+const crypto = require('crypto');
+const { ids, serviceAuth } = require('openvibe-contracts');
 const { signDeliveryHeaders } = require('openvibe-sdk/events');
 const { initDb } = require('../server/db/database');
 const { NotificationService } = require('../server/notifications/notification-service');
 const { createEventsConsumer, TOPICS } = require('../server/notifications/events-consumer');
+const { createLiveFollowers } = require('../server/notifications/live-followers');
+const streamLive = require('../server/notifications/stream-live');
+const { topicsFrom } = require('../scripts/subscribe-events');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-events-consumer-'));
 const log = console.log; console.log = () => {};
@@ -53,7 +58,10 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
 
 (async () => {
     // The subscriptions this consumer is meant for, and nothing else.
-    assert.deepStrictEqual(TOPICS, ['deals.watch.matched', 'trade.alert.triggered']);
+    assert.deepStrictEqual(TOPICS, ['deals.watch.matched', 'trade.alert.triggered', 'live.stream.started']);
+    assert.deepStrictEqual(topicsFrom([]), TOPICS, 'scripts/subscribe-events.js subscribes every topic');
+    assert.deepStrictEqual(topicsFrom(['--topic', 'live.stream.started']), ['live.stream.started']);
+    assert.throws(() => topicsFrom(['--topic', 'live.*']));
 
     let consumer = createEventsConsumer({ db, notifications, secrets: '' });
     const app = express();
@@ -181,6 +189,140 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
     r = await post({ event_id: 'nope', event_type: 'deals.watch.matched' });
     assert.strictEqual(r.status, 400);
 
+    // ── live.stream.started: every follower of the channel, once ──────────────────────────────
+    const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
+    const CAROL = ids.newId('user'), DAVE = ids.newId('user'), FRANK = ids.newId('user'), GINA = ids.newId('user'), HANK = ids.newId('user'), STRANGER = ids.newId('user');
+    db.prepare(`INSERT INTO users (id, username, password_hash, subject_id, avatar_url) VALUES
+        (20, 'carol', 'x', ?, 'https://openvibe.media/avatar/carol'), (21, 'dave', 'x', ?, NULL), (22, 'erin', 'x', NULL, NULL),
+        (23, 'frank', 'x', ?, NULL), (24, 'gina', 'x', ?, NULL), (25, 'hank', 'x', ?, NULL)`).run(CAROL, DAVE, FRANK, GINA, HANK);
+    notifications.setPreference(23, 'stream', { enabled: false });          // Frank muted go-lives
+    notifications.setPreference(24, 'stream_live_all', { enabled: true });  // Gina wants every go-live
+    // Live's GET /internal/followers, as the Live-side change specifies. Streams: 501 carol, 502 hank.
+    let liveMode = 'ok'; const liveCalls = []; const liveAuth = [];
+    const FOLLOWERS = {
+        501: { channel: CAROL, list: [{ subject: DAVE, network_user_id: 21 }, { subject: null, network_user_id: 22 }, { subject: FRANK, network_user_id: 23 }, { subject: STRANGER, network_user_id: null }, { subject: CAROL, network_user_id: 20 }] },
+        502: { channel: HANK, list: [{ subject: DAVE, network_user_id: 21 }] },
+    };
+    const live = http.createServer((req, res) => {
+        const u = new URL(req.url, 'http://x');
+        liveCalls.push(u.pathname + u.search);
+        res.setHeader('content-type', 'application/json');
+        if (liveMode === 'down') { res.statusCode = 502; return res.end('{}'); }
+        const v = serviceAuth.verifyServiceToken(String(req.headers.authorization || '').slice(7), { publicKey, issuer: 'https://openvibe.network', audience: 'openvibe.live' });
+        liveAuth.push(v.ok ? v.claims : null);
+        if (!v.ok || !v.claims.cap.includes('live.follower.read')) { res.statusCode = 401; return res.end('{"code":"token.invalid"}'); }
+        if (u.pathname !== '/internal/followers') { res.statusCode = 404; return res.end('{}'); }
+        const f = FOLLOWERS[u.searchParams.get('stream_id')];
+        if (!f) { res.statusCode = 404; return res.end('{"code":"live.unknown_stream"}'); }
+        const after = Number(u.searchParams.get('after') || 0);
+        const page = f.list.slice(after, after + 2);                       // two per page: exercises the cursor
+        const next = after + 2 < f.list.length ? after + 2 : null;
+        res.end(JSON.stringify({ stream_id: Number(u.searchParams.get('stream_id')), channel: { subject: f.channel }, followers: page, next }));
+    });
+    await new Promise(r => live.listen(0, '127.0.0.1', r));
+    const discordCalls = [];
+    let clock = Date.now();
+    consumer = createEventsConsumer({
+        db, notifications, secrets: SECRET, now: () => clock,
+        liveFollowers: createLiveFollowers({ privateKey, issuer: 'https://openvibe.network', liveUrl: `http://127.0.0.1:${live.address().port}` }),
+        discord: () => ({ sendLiveAlert: async (streamer, stream) => { discordCalls.push([streamer, stream]); return { sent: true }; } }),
+    });
+    const liveEvent = (over = {}, payload = {}) => ({
+        event_id: ids.newId('event'), event_type: 'live.stream.started', version: 1, source: 'live',
+        actor: { type: 'user', id: CAROL }, subject: { type: 'stream', id: '501', revision: 1 }, visibility: 'public', priority: 'important',
+        occurred_at: new Date(clock).toISOString(),
+        payload: {
+            stream_id: 501, channel: { username: 'carol', display_name: 'Carol <3', url: 'https://openvibe.live/carol', subject: { type: 'user', id: CAROL } },
+            title: 'Building a <b>robot</b>', category: null, protocol: 'rtmp', is_nsfw: false, started_at: new Date(clock).toISOString(), ...payload,
+        },
+        ...over,
+    });
+    const goLives = (uid) => db.prepare("SELECT * FROM notifications WHERE user_id = ? AND type = 'STREAM_LIVE' ORDER BY rowid").all(uid);
+
+    // One delivery: Dave (by subject), Erin (by network id, no subject yet) and Gina (all go-lives) are
+    // notified once each; Frank muted the category, Carol is the streamer, the stranger has no account.
+    const s1 = liveEvent();
+    r = await post(s1);
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    assert.strictEqual(r.body.outcome, 'notified');
+    assert.deepStrictEqual(r.body.detail, { followers: 5, unresolved: 1, targets: 4, notified: 3 });
+    for (const uid of [21, 22, 24]) assert.strictEqual(goLives(uid).length, 1, `user ${uid} is told once`);
+    assert.strictEqual(goLives(23).length, 0, 'the stream category is muted: preferences apply');
+    assert.strictEqual(goLives(20).length, 0, 'the streamer is not told about themself');
+    const n1 = goLives(21)[0];
+    assert.strictEqual(n1.title, 'Carol 3 is live!');
+    assert.strictEqual(n1.message, 'Building a b robot /b', 'no markup reaches the inbox');
+    assert.strictEqual(n1.category, 'stream');
+    assert.strictEqual(n1.url, 'https://openvibe.live/carol');
+    assert.strictEqual(n1.sender_id, 20, 'sender is the streamer\'s Network account (dedupe key)');
+    assert.strictEqual(n1.sender_avatar, 'https://openvibe.media/avatar/carol');
+    assert.strictEqual(JSON.parse(n1.rich_content).context.event_id, s1.event_id);
+    assert.deepStrictEqual(liveCalls.map(c => c.replace(/limit=\d+/, 'limit=N')), ['/internal/followers?stream_id=501&limit=N', '/internal/followers?stream_id=501&limit=N&after=2', '/internal/followers?stream_id=501&limit=N&after=4']);
+    assert.ok(liveAuth.every(c => c && c.sub === 'svc:network' && c.aud.includes('openvibe.live') && c.cap.includes('live.follower.read')), 'a Network service token for Live');
+    await new Promise(r2 => setImmediate(r2));
+    assert.strictEqual(discordCalls.length, 1, 'the Discord live alert, after the commit');
+    assert.deepStrictEqual(discordCalls[0][1], { id: 501, title: 'Building a b robot /b', protocol: 'rtmp' });
+
+    // The same delivery again: a duplicate. Live is not asked again, nobody is told twice, no second Discord post.
+    liveCalls.length = 0;
+    r = await post(s1);
+    assert.deepStrictEqual([r.status, r.body.duplicate, r.body.outcome], [200, true, null]);
+    assert.strictEqual(liveCalls.length, 0);
+    for (const uid of [21, 22, 24]) assert.strictEqual(goLives(uid).length, 1);
+    assert.strictEqual(discordCalls.length, 1);
+
+    // A new stream row from the same channel within the hour (a reconnect): the announcement window holds.
+    r = await post(liveEvent({}, { stream_id: 501 }));
+    assert.strictEqual(r.body.outcome, 'skipped:cooldown');
+    assert.strictEqual(goLives(21).length, 1);
+    // ...and it is the same window Live's direct POST /internal/events/stream-live claims (keyed by the Network id),
+    // so during the switch the two paths never both announce.
+    assert.strictEqual(streamLive.claimAnnouncement(db, { streamerKey: 20, streamId: 501 }).reason, 'cooldown');
+
+    // v1-only (and any unverifiable) live delivery: refused, not recorded, Live never asked.
+    liveCalls.length = 0;
+    const v1 = liveEvent({ subject: { type: 'stream', id: '502', revision: 1 }, actor: { type: 'user', id: HANK } }, { stream_id: 502, channel: { username: 'hank', subject: { type: 'user', id: HANK } } });
+    r = await post(v1, { strip: ['X-OpenVibe-Signature-V2', 'X-OpenVibe-Timestamp'] });
+    assert.deepStrictEqual([r.status, r.body.code], [401, 'network.bad_signature']);
+    assert.ok(!db.prepare('SELECT 1 FROM network_event_inbox WHERE event_id = ?').get(v1.event_id));
+    assert.strictEqual(liveCalls.length, 0);
+
+    // Live down: 503, nothing recorded, so Events' retry does the work once Live answers.
+    liveMode = 'down';
+    r = await post(v1);
+    assert.deepStrictEqual([r.status, r.body.code], [503, 'network.dependency_unavailable']);
+    assert.ok(!db.prepare('SELECT 1 FROM network_event_inbox WHERE event_id = ?').get(v1.event_id));
+    assert.strictEqual(goLives(21).length, 1);
+    liveMode = 'ok';
+    r = await post(v1);
+    assert.strictEqual(r.body.outcome, 'notified');
+    assert.strictEqual(goLives(21).length, 2, 'Dave follows Hank too');
+    assert.strictEqual(goLives(24).length, 2, 'Gina gets every go-live');
+
+    // Refused or ignored without notifying anyone.
+    liveCalls.length = 0;
+    const count = () => db.prepare("SELECT COUNT(*) AS c FROM notifications WHERE type = 'STREAM_LIVE'").get().c;
+    const total = count();
+    r = await post(liveEvent({ source: 'tips' }));
+    assert.strictEqual(r.body.outcome, 'ignored:source', 'only Live speaks for Live channels');
+    // The signatures are made at the consumer's clock (it moves forward below).
+    clock += 45 * 60 * 1000;
+    r = await post(liveEvent({ occurred_at: new Date(clock - 45 * 60 * 1000).toISOString() }, { started_at: new Date(clock - 45 * 60 * 1000).toISOString() }), { now: clock });
+    assert.strictEqual(r.body.outcome, 'ignored:stale', 'a late or replayed start announces nothing');
+    r = await post(liveEvent({}, { channel: { username: 'carol', subject: { type: 'user', id: '20' } } }), { now: clock });
+    assert.strictEqual(r.body.outcome, 'ignored:channel');
+    r = await post(liveEvent({}, { channel: { username: 'ghost', subject: { type: 'user', id: STRANGER } } }), { now: clock });
+    assert.strictEqual(r.body.outcome, 'ignored:channel', 'a channel with no Network account');
+    assert.strictEqual(liveCalls.length, 0, 'none of those asked Live');
+    clock += 2 * 60 * 60 * 1000;   // past Carol's cooldown
+    r = await post(liveEvent({}, { stream_id: 502 }), { now: clock });
+    assert.strictEqual(r.body.outcome, 'ignored:channel-mismatch', 'stream 502 is Hank\'s, not Carol\'s');
+    r = await post(liveEvent({}, { stream_id: 999 }), { now: clock });
+    assert.strictEqual(r.body.outcome, 'ignored:stream');
+    assert.strictEqual(count(), total);
+    assert.strictEqual(discordCalls.length, 2);
+
+    live.close();
     srv.close();
     console.log('events consumer: all checks passed');
 })().catch((err) => { console.error(err); process.exit(1); });

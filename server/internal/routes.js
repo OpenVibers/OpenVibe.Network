@@ -334,6 +334,7 @@ router.post('/coins/transfer', principals.guard('network.coins.transfer', { ownA
 // followers + "all streamer" subscribers.
 // ═══════════════════════════════════════════════════════════════
 
+const streamLive = require('../notifications/stream-live');
 router.post('/events/stream-live', principals.guard('network.notifications.push'), async (req, res) => {
     const { streamer, stream, follower_network_ids } = req.body;
     if (!streamer?.username || !stream?.id) {
@@ -347,31 +348,17 @@ router.post('/events/stream-live', principals.guard('network.notifications.push'
     // every time. One fan-out per streamer per `stream_live_cooldown_min` (default 60) and
     // at most `stream_live_daily_cap` (default 8) per rolling 24h — gating inbox, push,
     // email AND Discord. `force:true` (admin/manual) bypasses the cooldown, not the cap.
+    // The same window is claimed by the live.stream.started consumer (../notifications/stream-live.js).
     {
-        const db = getDb(req);
-        try {
-            db.exec(`CREATE TABLE IF NOT EXISTS stream_live_announcements (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, streamer_key TEXT NOT NULL, stream_id TEXT, sent_at DATETIME DEFAULT CURRENT_TIMESTAMP);
-                CREATE INDEX IF NOT EXISTS idx_sla_key ON stream_live_announcements(streamer_key, sent_at DESC)`);
-        } catch { /* */ }
-        const key = String(streamer.network_id || streamer.id || streamer.username).toLowerCase();
-        const cooldownMin = Math.max(1, parseInt(db.getSetting('stream_live_cooldown_min'), 10) || 60);
-        const dailyCap = Math.max(1, parseInt(db.getSetting('stream_live_daily_cap'), 10) || 8);
-        const last = db.prepare('SELECT sent_at FROM stream_live_announcements WHERE streamer_key = ? ORDER BY sent_at DESC LIMIT 1').get(key);
-        const today = db.prepare("SELECT COUNT(*) AS c FROM stream_live_announcements WHERE streamer_key = ? AND sent_at > datetime('now','-1 day')").get(key)?.c || 0;
-        const lastMs = last ? new Date(String(last.sent_at).replace(' ', 'T') + 'Z').getTime() : 0;
-        const sinceMin = last ? (Date.now() - lastMs) / 60000 : Infinity;
-        if (today >= dailyCap) {
-            console.log(`[StreamLive] ${streamer.username}: daily cap (${dailyCap}) reached — not announcing`);
-            return res.json({ ok: true, skipped: true, reason: 'daily-cap', announced_today: today, cap: dailyCap });
+        const claim = streamLive.claimAnnouncement(getDb(req), { streamerKey: streamer.network_id || streamer.id || streamer.username, streamId: stream.id, force: !!req.body.force });
+        if (claim.skipped && claim.reason === 'daily-cap') {
+            console.log(`[StreamLive] ${streamer.username}: daily cap (${claim.cap}) reached — not announcing`);
+            return res.json({ ok: true, ...claim });
         }
-        if (!req.body.force && sinceMin < cooldownMin) {
-            const nextAt = new Date(lastMs + cooldownMin * 60000).toISOString();
-            console.log(`[StreamLive] ${streamer.username}: announced ${Math.round(sinceMin)}m ago — cooling down until ${nextAt}`);
-            return res.json({ ok: true, skipped: true, reason: 'cooldown', next_allowed_at: nextAt });
+        if (claim.skipped) {
+            console.log(`[StreamLive] ${streamer.username}: cooling down until ${claim.next_allowed_at}`);
+            return res.json({ ok: true, ...claim });
         }
-        db.prepare('INSERT INTO stream_live_announcements (streamer_key, stream_id) VALUES (?, ?)').run(key, stream.id != null ? String(stream.id) : null);
-        db.prepare("DELETE FROM stream_live_announcements WHERE sent_at < datetime('now','-7 days')").run();
     }
 
     // ── Discord Alert ────────────────────────────────────────
@@ -388,27 +375,10 @@ router.post('/events/stream-live', principals.guard('network.notifications.push'
     const notifService = req.app.locals.notificationService;
     if (notifService) {
         const db = getDb(req);
-        const displayName = streamer.display_name || streamer.username;
-        const notifData = {
-            type: 'STREAM_LIVE',
-            title: `${displayName} is live!`,
-            message: stream.title || 'Started streaming',
-            icon: '🔴',
-            sender_id: streamer.id || null,
-            sender_name: displayName,
-            sender_avatar: streamer.avatar_url || null,
-            service: 'live',
-            url: `https://openvibe.live/${streamer.username}`,
-            rich_content: {
-                thumbnail: streamer.avatar_url || null,
-                context: {
-                    stream_id: stream.id,
-                    username: streamer.username,
-                    title: stream.title || 'Started streaming',
-                    protocol: stream.protocol || null,
-                },
-            },
-        };
+        const notifData = streamLive.streamLiveNotification({
+            username: streamer.username, displayName: streamer.display_name, avatarUrl: streamer.avatar_url,
+            senderId: streamer.id || null, stream, url: `https://openvibe.live/${streamer.username}`,
+        });
 
         // The streaming follow graph lives in OpenVibe.Live, keyed by LIVE user ids; Live
         // translates its followers to NETWORK ids via linked_accounts and sends them here.
@@ -429,10 +399,7 @@ router.post('/events/stream-live', principals.guard('network.notifications.push'
         } catch { /* keep Live id */ }
 
         // Find users who opted into "all live" notifications
-        const allLiveRows = db.prepare(
-            "SELECT user_id FROM notification_preferences WHERE category = 'stream_live_all' AND enabled = 1"
-        ).all();
-        const allLiveUserIds = allLiveRows.map(r => r.user_id);
+        const allLiveUserIds = streamLive.allLiveSubscribers(db);
 
         // Merge and deduplicate
         const targetIds = [...new Set([...followerIds, ...allLiveUserIds])];

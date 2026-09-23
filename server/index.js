@@ -358,7 +358,14 @@ const notificationService = new NotificationService(db);
 const emailService = new EmailService(db);
 app.locals.notificationService = notificationService;
 app.locals.emailService = emailService;
-eventsConsumer = require('./notifications/events-consumer').createEventsConsumer({ db, notifications: notificationService, secrets: config.eventsWebhookSecrets });
+// live.stream.started: the followers are read from Live (its follow graph) with Network's own service token.
+const liveFollowers = privateKey.includes('BEGIN')
+    ? require('./notifications/live-followers').createLiveFollowers({ privateKey, issuer: config.jwt.issuer, liveUrl: config.services.live.internalUrl })
+    : null;
+eventsConsumer = require('./notifications/events-consumer').createEventsConsumer({
+    db, notifications: notificationService, secrets: config.eventsWebhookSecrets,
+    liveFollowers, discord: () => app.locals.discordService || null,
+});
 console.log(`[Events consumer] ${eventsConsumer.enabled ? 'on' : 'off (NETWORK_EVENTS_SECRET unset)'}: POST /internal/events`);
 
 // Discord bot service

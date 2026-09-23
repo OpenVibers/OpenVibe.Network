@@ -202,6 +202,19 @@ their per-category email choice.
 |---|---|---|---|
 | `deals.watch.matched` | Deals (`source: deals`) | `payload.recipient` (`usr_…`) | `DEAL_WATCH_MATCH`, `service`, normal |
 | `trade.alert.triggered` | Trade (`source: trade`) | `subject.id` (`subject.type: user`) | `TRADE_ALERT`, `service`, high |
+| `live.stream.started` | Live (`source: live`) | every follower of `payload.channel.subject`, plus everyone with `stream_live_all` on | `STREAM_LIVE`, `stream`, high; the Discord live alert after commit |
+
+**Go-lives.** Live owns the follow graph, so Network reads it when the event arrives:
+`GET <OV_LIVE_INTERNAL_URL>/internal/followers?stream_id=<id>&limit=5000[&after=<cursor>]` with a
+self-signed service token (`sub svc:network`, `aud openvibe.live`, `cap live.follower.read`), answered
+with `{ channel: { subject }, followers: [{ subject, network_user_id }], next }`
+(`server/notifications/live-followers.js`). Followers resolve by `usr_` subject first, then by Network
+user id; the streamer never hears about themself; the `stream` category's mute and email choice apply.
+If Live cannot answer, the delivery gets 503 and nothing is recorded, so Events retries. A start more
+than 30 minutes old (a replay, or Events catching up) announces nothing. The per-streamer window (one
+announcement an hour, eight a day; `stream_live_cooldown_min`, `stream_live_daily_cap`) is shared with
+Live's direct `POST /internal/events/stream-live` (`server/notifications/stream-live.js`), so while Live
+still makes that call, whichever arrives first announces and the other is skipped.
 
 Coupons publishes no watch event yet: its merchant watches never leave Coupons, and its `coupons.*`
 events name no person. Every other type is acknowledged and ignored. Deliveries are v2-signed only
@@ -218,7 +231,10 @@ The route is inert until the operator does both of these:
    Restart `openvibe-network`; the log says `[Events consumer] on`.
 2. Create the subscriptions in Events (consumer `network`, which Events takes from the token's
    `svc:network`; endpoint `http://127.0.0.1:4000/internal/events`; topic patterns
-   `deals.watch.matched` and `trade.alert.triggered`; secret = the first `NETWORK_EVENTS_SECRET`):
+   `deals.watch.matched`, `trade.alert.triggered` and `live.stream.started`; secret = the first
+   `NETWORK_EVENTS_SECRET`). Subscribe `live.stream.started` only once Live serves
+   `GET /internal/followers`; on a host that already has the other two, add it alone with
+   `--topic live.stream.started`:
 
    ```bash
    cd /opt/openvibe.network
