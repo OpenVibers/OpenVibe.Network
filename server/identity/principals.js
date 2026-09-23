@@ -20,7 +20,6 @@ const SELF_AUDIENCE = 'openvibe.network';
 const DEFAULT_GRANTS = [
     ['live', 'network.coins.credit', SELF_AUDIENCE, ['live']],
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],
-    ['live', 'network.coins.transfer', SELF_AUDIENCE, ['live']],
     ['live', 'network.notifications.push', SELF_AUDIENCE, ['live']],
     // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
     ['live', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile']],
@@ -38,6 +37,9 @@ const DEFAULT_GRANTS = [
     ['live', 'community.paste.write', 'openvibe.community', []],
     ['live', 'community.paste.moderate', 'openvibe.community', []],
 ];
+
+// Grants withdrawn by decision; applied at every boot so an old default can't come back.
+const REVOKED_GRANTS = [['live', 'network.coins.transfer', SELF_AUDIENCE]];
 
 function ensureSchema(db) {
     db.exec(`
@@ -64,6 +66,10 @@ function ensureSchema(db) {
             PRIMARY KEY (principal, route, auth, allowed, code)
         );
     `);
+    // ADR-012 rule 5: loyalty is not transferable between people, so nobody holds the transfer grant.
+    for (const [client, cap, aud] of REVOKED_GRANTS) {
+        db.prepare("UPDATE principal_grants SET revoked_at = CURRENT_TIMESTAMP WHERE client_id = ? AND capability = ? AND audience = ? AND revoked_at IS NULL").run(client, cap, aud);
+    }
     const seed = db.prepare("INSERT OR IGNORE INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES (?, ?, ?, ?, 'default')");
     for (const [client, cap, aud, ns] of DEFAULT_GRANTS) {
         if (db.prepare('SELECT 1 FROM oauth_clients WHERE client_id = ?').get(client)) seed.run(client, cap, aud, JSON.stringify(ns));
