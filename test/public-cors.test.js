@@ -25,10 +25,10 @@ const { createEcosystemRegistry } = require('../server/registry/ecosystem');
     const allowed = new Set(['https://openvibe.live']);
     const eco = createEcosystemRegistry({ issuer: 'https://openvibe.network', internalOverrides: {} });
     const app = express();
-    app.use(publicCors.gate(cors({
-        origin(origin, cb) { if (!origin || allowed.has(origin)) return cb(null, true); return cb(new Error('Origin not allowed by CORS')); },
-        credentials: true,
-    })));
+    const warned = [];
+    const guard = publicCors.originGuard((o) => allowed.has(o), { log: { warn: (m) => warned.push(m) } });
+    app.use(publicCors.gate(cors({ origin: guard.origin, credentials: true })));
+    app.use(guard.denied);
     app.use(eco.router());
     app.post('/api/auth/login', (_req, res) => res.json({ ok: true }));
     app.get('/api/v1/projects', (_req, res) => res.json({ projects: [] }));
@@ -74,8 +74,9 @@ const { createEcosystemRegistry } = require('../server/registry/ecosystem');
         r = await req(method, p, { origin: FOREIGN, 'access-control-request-method': 'POST' });
         assert.notStrictEqual(r.headers.get('access-control-allow-origin'), '*', `${method} ${p} is not opened`);
         assert.notStrictEqual(r.headers.get('access-control-allow-origin'), FOREIGN, `${method} ${p} does not reflect a foreign origin`);
-        assert.strictEqual(r.status, 500, `${method} ${p} rejects the foreign origin`);
+        assert.strictEqual(r.status, 403, `${method} ${p} refuses the foreign origin (the route never runs)`);
     }
+    assert.strictEqual(warned.length, 1, 'a refused origin is logged once, not per request');
     // ...while first-party origins still work there, with credentials.
     r = await req('GET', '/api/v1/projects', { origin: 'https://openvibe.live' });
     assert.strictEqual(r.status, 200);

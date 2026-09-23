@@ -57,4 +57,32 @@ function gate(restricted) {
     };
 }
 
-module.exports = { gate, publicCors, isPublicDiscoveryPath, ALLOW_HEADERS, EXPOSE_HEADERS };
+/**
+ * The allow-list's `origin` option for cors(), plus the handler for what it refuses. A foreign
+ * origin is still refused server-side (so a cross-site form post never runs the route), but as a
+ * 403 JSON answer instead of Express's default 500 with a stack trace per request, and each
+ * refused origin is logged at most once an hour (a local renderer on a random port asked
+ * hundreds of times an hour).
+ */
+function originGuard(isAllowed, { log = console, everyMs = 60 * 60 * 1000 } = {}) {
+    const seen = new Map();
+    function origin(o, callback) {
+        if (!o || isAllowed(o)) return callback(null, true);   // no Origin: non-browser / server-to-server
+        const now = Date.now();
+        if (!(seen.get(o) > now - everyMs)) {
+            if (seen.size > 1000) seen.clear();
+            seen.set(o, now);
+            log.warn(`[CORS] Refused origin "${o}" (logged once an hour per origin)`);
+        }
+        const err = new Error('Origin not allowed by CORS');
+        err.code = 'cors.origin_denied';
+        return callback(err);
+    }
+    function denied(err, req, res, next) {
+        if (!err || err.code !== 'cors.origin_denied') return next(err);
+        res.status(403).json({ error: 'origin not allowed', code: 'cors.origin_denied' });
+    }
+    return { origin, denied };
+}
+
+module.exports = { gate, publicCors, isPublicDiscoveryPath, originGuard, ALLOW_HEADERS, EXPOSE_HEADERS };

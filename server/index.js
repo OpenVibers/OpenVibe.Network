@@ -272,15 +272,9 @@ function isAllowedOrigin(origin) {
 
 // Public discovery (/.well-known/openvibe, /api/v1/registry/*, /contracts/*.json) answers any
 // origin, preflight included; every other route keeps this allow-list (server/public-cors.js).
-app.use(require('./public-cors').gate(cors({
-    origin(origin, callback) {
-        if (!origin) return callback(null, true); // non-browser / server-to-server
-        if (isAllowedOrigin(origin)) return callback(null, true);
-        console.warn(`[CORS] Rejected origin: "${origin}" | allowed set: ${[...buildAllowedOriginsSet()].join(', ')} | subdomainBase: ${getToolsSubdomainBase()}`);
-        return callback(new Error('Origin not allowed by CORS'));
-    },
-    credentials: true,
-})));
+const corsGuard = require('./public-cors').originGuard(isAllowedOrigin);
+app.use(require('./public-cors').gate(cors({ origin: corsGuard.origin, credentials: true })));
+app.use(corsGuard.denied);
 
 // ── Rate Limiting ────────────────────────────────────────────
 app.use('/api/', rateLimit({ windowMs: 60_000, max: 120 }));
