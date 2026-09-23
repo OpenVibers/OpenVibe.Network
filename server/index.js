@@ -473,7 +473,7 @@ app.use('/avatar', rateLimit({ windowMs: 60_000, max: 600 }), avatarService.pub)
 app.locals.avatarService = avatarService;
 
 // Shared chrome: analytics-ranked navigation + footer copy for every site (server/chrome).
-const chromeService = require('./chrome/service').createChromeService(db, config, analytics);
+const chromeService = require('./chrome/service').createChromeService(db, config, analytics, { privateKey, issuer: config.jwt.issuer });
 app.use('/api/chrome', rateLimit({ windowMs: 60_000, max: 240 }), chromeService.router);
 chromeService.start();
 

@@ -23,7 +23,38 @@ const RANK_MS = 30 * 60_000, COPY_MS = 24 * 60 * 60_000;
 const BANNED = /\b(free|\$0|no ads|ad[- ]free|no cost|gratis)\b|https?:|www\.|[<>{}]/i;
 const BASE_WEIGHT = { live: 6, tools: 5, community: 4, games: 3, media: 2, network: 1 };   // cold-start order only
 
-function createChromeService(db, config, analytics) {
+/**
+ * Footer copy comes from OpenVibe.AI's network.site_copy workflow (roadmap Wave 13, ADR-015), called with a
+ * self-signed Network service token (sub svc:network, aud openvibe.ai, cap ai.run.create, ns network.*).
+ * Live's /internal/ai/site-copy stays only as a fallback while AI is unreachable.
+ */
+function aiSiteCopy({ privateKey, issuer, aiUrl }) {
+    const { serviceAuth } = require('openvibe-contracts');
+    let cached = null;
+    function token() {
+        const now = Math.floor(Date.now() / 1000);
+        if (cached && cached.exp - 60 > now) return cached.token;
+        const claims = { iss: issuer, sub: 'svc:network', actor_type: 'service', aud: ['openvibe.ai'], cap: ['ai.run.create', 'ai.run.read'], ns: ['network.*'], iat: now, exp: now + 300, jti: `tok_${require('crypto').randomBytes(12).toString('hex')}` };
+        cached = { token: serviceAuth.signServiceToken(claims, privateKey), exp: claims.exp };
+        return cached.token;
+    }
+    return async function run(body) {
+        const r = await fetch(`${aiUrl}/api/v1/runs?wait=90000`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+            body: JSON.stringify({ workflow: 'network.site_copy', input: body }),
+            signal: AbortSignal.timeout(100_000),
+        });
+        if (!r.ok) return null;
+        const j = await r.json().catch(() => null);
+        const run = j && j.run;
+        if (!run || run.status !== 'succeeded' && run.status !== 'cached' || !run.output || !Array.isArray(run.output.sites)) return null;
+        return { sites: run.output.sites, model: (run.model && (run.model.key || run.model.id)) || (run.route && run.route.key) || 'openvibe.ai' };
+    };
+}
+
+function createChromeService(db, config, analytics, { privateKey = null, issuer = null, aiUrl = process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700' } = {}) {
+    const fromAi = privateKey && issuer ? aiSiteCopy({ privateKey, issuer, aiUrl: String(aiUrl).replace(/\/+$/, '') }) : null;
     db.exec('CREATE TABLE IF NOT EXISTS chrome_cache (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)');
     // Anonymous page-view counts per host and day, sent by the shared navbar. No user, no IP, no path.
     db.exec('CREATE TABLE IF NOT EXISTS chrome_hits (day TEXT NOT NULL, host TEXT NOT NULL, hits INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, host))');
@@ -95,16 +126,19 @@ function createChromeService(db, config, analytics) {
     }
 
     async function refreshCopy() {
-        if (!config.internalKey || config.internalKey === 'change-me-in-production') return;
+        if (!fromAi && (!config.internalKey || config.internalKey === 'change-me-in-production')) return;
         const pool = linkPool();
         const popular = new Set(popularTools(12).map(t => t.url));
         const links = [...pool.entries()].filter(([id, l]) => !id.startsWith('tool:') || popular.has(l.url)).map(([id, l]) => ({ id, name: l.name, about: l.about }));
         const body = { sites: SITES.filter(s => s.status === 'open').map(s => ({ id: s.id, name: 'OpenVibe.' + s.name, what: s.what, popular: s.id === 'tools' ? popularTools(6).map(t => t.name) : [] })), links };
         let j = null;
-        try {
-            const r = await fetch(`${svcUrl('live', 'http://127.0.0.1:3000')}/internal/ai/site-copy`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Internal-Key': config.internalKey }, body: JSON.stringify(body), signal: AbortSignal.timeout(90_000) });
-            j = r.ok ? await r.json() : null;
-        } catch { j = null; }
+        if (fromAi) { try { j = await fromAi(body); } catch { j = null; } }
+        if (!j && config.internalKey && config.internalKey !== 'change-me-in-production') {
+            try {
+                const r = await fetch(`${svcUrl('live', 'http://127.0.0.1:3000')}/internal/ai/site-copy`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Internal-Key': config.internalKey }, body: JSON.stringify(body), signal: AbortSignal.timeout(90_000) });
+                j = r.ok ? await r.json() : null;
+            } catch { j = null; }
+        }
         if (!j || !Array.isArray(j.sites)) return;
         const next = {};
         for (const row of j.sites) {
