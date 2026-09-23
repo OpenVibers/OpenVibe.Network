@@ -41,9 +41,9 @@ function usableApp(db, clientId) {
     return { app, project };
 }
 
-/** Capabilities the app holds for an audience right now. */
-function effectiveGrants(db, app, project, audience) {
-    const allowance = new Set(JSON.parse(project.allowance || '[]'));
+/** Capabilities the app holds for an audience right now (sandbox apps: allowance ∪ sandbox allowance). */
+function effectiveGrants(db, app, project, audience, settings) {
+    const allowance = policy.allowanceFor(project, app, settings);
     return db.prepare("SELECT capability FROM dev_grants WHERE app_id = ? AND audience = ? AND status = 'approved' ORDER BY capability")
         .all(app.id, audience).map(r => r.capability)
         .filter(c => allowance.has(c) && policy.isGrantable(c) && policy.audienceOf(c) === audience);
@@ -55,7 +55,7 @@ function mint({ app, project, audience, scope, limit, onBehalfOf, privateKey, is
     if (app.environment === 'sandbox' && !settings.sandboxAudiences.has(aud)) {
         return oauthError(400, 'invalid_target', `${aud} does not accept sandbox tokens`);
     }
-    const held = effectiveGrants(db, app, project, aud).filter(c => !limit || limit.includes(c));
+    const held = effectiveGrants(db, app, project, aud, settings).filter(c => !limit || limit.includes(c));
     const wanted = scope ? String(scope).split(/\s+/).filter(Boolean) : null;
     const missing = wanted ? wanted.filter(w => !held.includes(w)) : [];
     if (missing.length) return oauthError(400, 'invalid_scope', `not granted: ${missing.join(' ')}`);

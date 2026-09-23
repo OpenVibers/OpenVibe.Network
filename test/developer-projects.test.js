@@ -36,7 +36,9 @@ app.locals.db = db;
 app.locals.config = {
     baseUrl: ISSUER, loginUrl: ISSUER, internalKey: 'legacy-key',
     jwt: { issuer: ISSUER, accessTokenExpiry: '1h' },
-    developer: { sandboxAudiences: 'openvibe.media', credentialOverlapS: 60 },
+    // No sandbox allowance here, so every grant goes through the staff-set allowance (the defaults
+    // are covered by test/developer-defaults.test.js).
+    developer: { sandboxAudiences: 'openvibe.media', sandboxAllowance: '', credentialOverlapS: 60 },
 };
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;

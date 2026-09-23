@@ -73,13 +73,17 @@ function router() {
         } catch (err) { send(req, res, err); }
     };
 
-    r.get('/catalog', (req, res) => res.json({ capabilities: policy.grantableCatalog(), rule: 'only active capabilities with visibility public (or partner, by staff allowance) are grantable to apps' }));
+    r.get('/catalog', (req, res) => res.json({
+        capabilities: policy.grantableCatalog(),
+        sandbox_allowance: policy.settings(req.app.locals.config).sandboxAllowance,
+        rule: 'only active capabilities with visibility public (or partner, by staff allowance) are grantable to apps; sandbox apps may hold sandbox_allowance without staff, production apps only the staff-set project allowance',
+    }));
 
     r.post('/', handle((db, a, req, o) => store.createProject(db, a, req.body || {}, o), 201));
-    r.get('/', handle((db, a, req) => ({ projects: store.listProjects(db, a, { all: req.query.all === '1' }) })));
-    r.get('/:project', handle((db, a, req) => {
+    r.get('/', handle((db, a, req, o) => ({ projects: store.listProjects(db, a, { all: req.query.all === '1', settings: o.settings }) })));
+    r.get('/:project', handle((db, a, req, o) => {
         const { project, role } = store.access(db, a, req.params.project, { allowArchived: true });
-        return store.projectView(db, project, role);
+        return store.projectView(db, project, role, o.settings);
     }));
     r.patch('/:project', handle((db, a, req, o) => store.renameProject(db, a, req.params.project, req.body || {}, o)));
     r.post('/:project/archive', handle((db, a, req, o) => store.archiveProject(db, a, req.params.project, o)));

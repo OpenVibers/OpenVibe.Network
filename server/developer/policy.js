@@ -43,18 +43,56 @@ function grantableCatalog() {
     }));
 }
 
-/** Developer settings with defaults (config.developer is optional so tests can omit it). */
+/**
+ * Audiences that accept sandbox app tokens when DEV_SANDBOX_AUDIENCES is unset. Each of these keeps
+ * sandbox traffic apart from real data: Media in a sandbox tenant, Events with env-marked events,
+ * Tools with sandbox jobs. openvibe.network is deliberately not one of them.
+ */
+const DEFAULT_SANDBOX_AUDIENCES = Object.freeze(['openvibe.media', 'openvibe.events', 'openvibe.tools']);
+
+/**
+ * Capabilities every project's SANDBOX apps may hold without a staff decision when
+ * DEV_SANDBOX_ALLOWANCE is unset. Only public, active capabilities of the installed contracts
+ * catalog count: an id the catalog does not know yet (events.app.* before openvibe-contracts
+ * v0.27.0) is left out until it does. Production apps never get these: their allowance is staff-set.
+ */
+const DEFAULT_SANDBOX_ALLOWANCE = Object.freeze([
+    'media.object.upload', 'media.object.read',
+    'events.app.publish', 'events.app.read', 'events.app.subscribe',
+    'tools.job.create', 'tools.job.read', 'tools.job.cancel',
+]);
+
+/** Public + grantable only (the rule for every allowance that is not set by staff by hand). */
+const publicOnly = (ids) => [...new Set(ids)].filter(id => grantability(id).grantable && DEFAULT_ALLOWANCE_VISIBILITIES.has(capabilities.get(id).visibility)).sort();
+
+/**
+ * Developer settings with defaults (config.developer is optional so tests can omit it).
+ * For DEV_SANDBOX_AUDIENCES and DEV_SANDBOX_ALLOWANCE, unset (undefined/null) means the code
+ * default above; set to an empty string means none.
+ */
 function settings(config) {
     const d = (config && config.developer) || {};
     const list = (v) => (Array.isArray(v) ? v : String(v || '').split(',')).map(s => String(s).trim()).filter(Boolean);
+    const orDefault = (v, dflt) => (v === undefined || v === null ? dflt : v);
     const num = (v, dflt, min, max) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.floor(n))) : dflt; };
     return {
-        sandboxAudiences: new Set(list(d.sandboxAudiences)),
+        sandboxAudiences: new Set(list(orDefault(d.sandboxAudiences, DEFAULT_SANDBOX_AUDIENCES))),
+        sandboxAllowance: publicOnly(list(orDefault(d.sandboxAllowance, DEFAULT_SANDBOX_ALLOWANCE))),
         credentialOverlapS: num(d.credentialOverlapS, 86400, 0, 7 * 86400),
-        defaultAllowance: list(d.defaultAllowance).filter(id => grantability(id).grantable && DEFAULT_ALLOWANCE_VISIBILITIES.has(capabilities.get(id).visibility)),
+        defaultAllowance: publicOnly(list(d.defaultAllowance)),
         maxProjectsPerOwner: num(d.maxProjectsPerOwner, 10, 1, 1000),
         maxAppsPerProject: num(d.maxAppsPerProject, 20, 1, 1000),
     };
+}
+
+/**
+ * The capabilities one app may hold: the project's staff-set allowance, plus the sandbox allowance
+ * for a sandbox app. `settings` is settings(config).
+ */
+function allowanceFor(project, app, s) {
+    const out = new Set(JSON.parse((project && project.allowance) || '[]'));
+    if (app && app.environment === 'sandbox') for (const id of (s || settings()).sandboxAllowance) out.add(id);
+    return out;
 }
 
 /**
@@ -75,6 +113,6 @@ function unverifiedClaims(token) {
 }
 
 module.exports = {
-    GRANTABLE_VISIBILITIES, ENVIRONMENTS, ENVIRONMENT_POLICIES,
-    grantability, isGrantable, audienceOf, grantableCatalog, settings, environmentDecision, unverifiedClaims,
+    GRANTABLE_VISIBILITIES, ENVIRONMENTS, ENVIRONMENT_POLICIES, DEFAULT_SANDBOX_AUDIENCES, DEFAULT_SANDBOX_ALLOWANCE,
+    grantability, isGrantable, audienceOf, grantableCatalog, settings, allowanceFor, environmentDecision, unverifiedClaims,
 };

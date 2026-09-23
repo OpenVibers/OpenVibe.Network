@@ -30,9 +30,14 @@ module.exports = {
 
     // Developer projects (server/developer, ADR-014)
     developer: {
-        // Audiences that accept sandbox app tokens (comma list, e.g. openvibe.media). Empty = none:
-        // sandbox apps then get no tokens, and every receiver refuses env=sandbox.
-        sandboxAudiences: process.env.DEV_SANDBOX_AUDIENCES || '',
+        // Audiences that accept sandbox app tokens (comma list). Unset = the code default
+        // (openvibe.media, openvibe.events, openvibe.tools: server/developer/policy.js); set to an
+        // empty value = none, so sandbox apps get no tokens at all.
+        sandboxAudiences: process.env.DEV_SANDBOX_AUDIENCES,
+        // Public capabilities every project's SANDBOX apps may hold without staff (comma list).
+        // Unset = the code default (media.object.*, events.app.*, tools.job.*); empty = none.
+        // Production apps only ever use the staff-set project allowance.
+        sandboxAllowance: process.env.DEV_SANDBOX_ALLOWANCE,
         // How long a rotated client secret keeps working (seconds, 0..604800).
         credentialOverlapS: process.env.DEV_CREDENTIAL_OVERLAP_S || 86400,
         // Capabilities every new project's allowance starts with (public ones only; comma list).
@@ -40,6 +45,10 @@ module.exports = {
         maxProjectsPerOwner: process.env.DEV_MAX_PROJECTS_PER_OWNER || 10,
         maxAppsPerProject: process.env.DEV_MAX_APPS_PER_PROJECT || 20,
     },
+
+    // OpenVibe.Events base URL for Network's own events (developer projects). Unset = no relay:
+    // events stay in dev_audit and are backfilled when it is set. Production: http://127.0.0.1:4300
+    eventsInternalUrl: process.env.OV_EVENTS_INTERNAL_URL || '',
 
     // Database
     db: {

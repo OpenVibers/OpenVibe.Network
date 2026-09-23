@@ -14,15 +14,15 @@
  *   it, shrinking the allowance revokes what falls outside, and token issuance intersects again.
  * - Quotas are recorded and exposed here; the owning service enforces them.
  * - dev_audit is append-only (triggers refuse UPDATE/DELETE). Rows that are platform events carry an
- *   event envelope (events.event-envelope@1).
- *   TODO(events): Network has no Events producer yet. When it gets one, relay dev_audit rows with an
- *   event envelope to OpenVibe.Events in id order (outbox semantics, keyed by event_id) instead of
- *   adding a second write path.
+ *   event envelope (events.event-envelope@1). When OV_EVENTS_INTERNAL_URL is set, the same
+ *   transaction enqueues the envelope into network_event_outbox and ./event-relay.js publishes it
+ *   to OpenVibe.Events (openvibe-sdk outbox; events written while the relay was off are backfilled).
  */
 const crypto = require('crypto');
 const { ids, validate } = require('openvibe-contracts');
 const subjects = require('../identity/subjects');
 const policy = require('./policy');
+const eventRelay = require('./event-relay');
 
 const ROLES = ['viewer', 'developer', 'admin', 'owner'];
 const RANK = { viewer: 1, developer: 2, admin: 3, owner: 4 };
@@ -162,10 +162,17 @@ function audit(db, { projectId, actor, action, target, detail, ctx, event }) {
         const v = validate('events.event-envelope@1', envelope);
         if (!v.valid) throw new Error(`bad event envelope: ${v.errors.map(e => `${e.path} ${e.message}`).join('; ')}`);
     }
-    db.prepare(`INSERT INTO dev_audit (at, project_id, actor, action, target, detail, request_id, event_type, event)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(nowIso(), projectId || null, actor, action, target || null, JSON.stringify(detail || {}), (ctx && ctx.requestId) || null,
-            envelope ? envelope.event_type : null, envelope ? JSON.stringify(envelope) : null);
+    // One transaction (a savepoint when the caller already has one): the audit row and, when the
+    // Events relay is on, its outbox row exist together or not at all.
+    const outbox = envelope ? eventRelay.outboxFor(db) : null;
+    db.transaction(() => {
+        db.prepare(`INSERT INTO dev_audit (at, project_id, actor, action, target, detail, request_id, event_type, event)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+            .run(nowIso(), projectId || null, actor, action, target || null, JSON.stringify(detail || {}), (ctx && ctx.requestId) || null,
+                envelope ? envelope.event_type : null, envelope ? JSON.stringify(envelope) : null);
+        if (outbox) outbox.enqueue(envelope, { traceparent: ctx && ctx.traceparent });
+    })();
+    if (outbox) outbox.kick();
 }
 
 function listAudit(db, projectId, { before, limit = 50 } = {}) {
@@ -216,11 +223,13 @@ const cleanName = (v, field = 'name') => {
     return s;
 };
 
-function projectView(db, p, role) {
+function projectView(db, p, role, settings) {
     return {
         id: p.id, name: p.name, owner: { type: 'user', id: p.owner_subject }, role: role || null,
         environment_policy: p.environment_policy, environments: policy.ENVIRONMENT_POLICIES[p.environment_policy],
         allowance: JSON.parse(p.allowance || '[]'),
+        // Held by sandbox apps without a staff decision (DEV_SANDBOX_ALLOWANCE); production apps use `allowance` only.
+        sandbox_allowance: (settings || policy.settings()).sandboxAllowance,
         created_at: p.created_at, archived_at: p.archived_at || null,
         counts: {
             members: db.prepare('SELECT COUNT(*) AS n FROM dev_project_members WHERE project_id = ?').get(p.id).n,
@@ -242,39 +251,39 @@ function createProject(db, actor, { name }, { settings, ctx }) {
             .run(id, actor.subject, 'owner', t, actor.label);
         audit(db, { projectId: id, actor: actor.label, action: 'project.created', target: id, detail: { name: n, allowance: settings.defaultAllowance }, ctx });
     })();
-    return projectView(db, db.prepare('SELECT * FROM dev_projects WHERE id = ?').get(id), 'owner');
+    return projectView(db, db.prepare('SELECT * FROM dev_projects WHERE id = ?').get(id), 'owner', settings);
 }
 
-function listProjects(db, actor, { all = false } = {}) {
+function listProjects(db, actor, { all = false, settings } = {}) {
     const rows = all && actor.staff
         ? db.prepare('SELECT p.*, m.role FROM dev_projects p LEFT JOIN dev_project_members m ON m.project_id = p.id AND m.subject_id = ? ORDER BY p.id DESC').all(actor.subject)
         : db.prepare('SELECT p.*, m.role FROM dev_projects p JOIN dev_project_members m ON m.project_id = p.id WHERE m.subject_id = ? ORDER BY p.id DESC').all(actor.subject);
-    return rows.map(r => projectView(db, r, r.role));
+    return rows.map(r => projectView(db, r, r.role, settings));
 }
 
-function renameProject(db, actor, projectId, { name }, { ctx }) {
+function renameProject(db, actor, projectId, { name }, { ctx, settings }) {
     const { project, role } = access(db, actor, projectId, { need: 'admin', staffOk: false });
     const n = cleanName(name);
     db.transaction(() => {
         db.prepare('UPDATE dev_projects SET name = ? WHERE id = ?').run(n, project.id);
         audit(db, { projectId: project.id, actor: actor.label, action: 'project.renamed', target: project.id, detail: { from: project.name, to: n }, ctx });
     })();
-    return projectView(db, db.prepare('SELECT * FROM dev_projects WHERE id = ?').get(project.id), role);
+    return projectView(db, db.prepare('SELECT * FROM dev_projects WHERE id = ?').get(project.id), role, settings);
 }
 
 /** Archive: irreversible. Every app of the project is revoked (credentials included). */
-function archiveProject(db, actor, projectId, { ctx }) {
+function archiveProject(db, actor, projectId, { ctx, settings }) {
     const { project, role } = access(db, actor, projectId, { need: 'owner', staffOk: true });
     db.transaction(() => {
         for (const app of db.prepare('SELECT * FROM dev_apps WHERE project_id = ? AND revoked_at IS NULL').all(project.id)) revokeAppTx(db, actor, project, app, ctx, 'project archived');
         db.prepare('UPDATE dev_projects SET archived_at = ?, archived_by = ? WHERE id = ?').run(nowIso(), actor.label, project.id);
         audit(db, { projectId: project.id, actor: actor.label, action: 'project.archived', target: project.id, ctx });
     })();
-    return projectView(db, db.prepare('SELECT * FROM dev_projects WHERE id = ?').get(project.id), role);
+    return projectView(db, db.prepare('SELECT * FROM dev_projects WHERE id = ?').get(project.id), role, settings);
 }
 
 /** Staff: the capabilities this project's apps may hold. Grants outside the new allowance are revoked. */
-function setAllowance(db, actor, projectId, { capabilities: list }, { ctx }) {
+function setAllowance(db, actor, projectId, { capabilities: list }, { ctx, settings }) {
     if (!actor.staff) fail(403, 'project.staff_only', 'only staff set a project allowance');
     const { project } = access(db, actor, projectId);
     if (!Array.isArray(list) || list.length > 200) fail(422, 'project.invalid', 'capabilities must be an array (at most 200)');
@@ -287,9 +296,11 @@ function setAllowance(db, actor, projectId, { capabilities: list }, { ctx }) {
     db.transaction(() => {
         db.prepare('UPDATE dev_projects SET allowance = ? WHERE id = ?').run(JSON.stringify(wanted), project.id);
         audit(db, { projectId: project.id, actor: actor.label, action: 'project.allowance_set', target: project.id, detail: { from: JSON.parse(project.allowance), to: wanted }, ctx });
-        const rows = db.prepare(`SELECT g.*, a.project_id FROM dev_grants g JOIN dev_apps a ON a.id = g.app_id
+        const rows = db.prepare(`SELECT g.*, a.project_id, a.environment FROM dev_grants g JOIN dev_apps a ON a.id = g.app_id
                                  WHERE a.project_id = ? AND g.status IN ('approved', 'requested')`).all(project.id);
-        for (const g of rows.filter(r => !wanted.includes(r.capability))) {
+        // A sandbox app's grant that is still inside the sandbox allowance survives a staff change.
+        const updated = { ...project, allowance: JSON.stringify(wanted) };
+        for (const g of rows.filter(r => !policy.allowanceFor(updated, { environment: r.environment }, settings).has(r.capability))) {
             const next = g.status === 'approved' ? 'revoked' : 'denied';
             db.prepare('UPDATE dev_grants SET status = ?, decided_by = ?, decided_at = ? WHERE app_id = ? AND capability = ?').run(next, actor.label, nowIso(), g.app_id, g.capability);
             grantEvent(db, actor, project.id, g.app_id, g.capability, g.audience, g.status, next, ctx, 'outside allowance');
@@ -602,15 +613,16 @@ function listGrants(db, actor, projectId, appId) {
     return db.prepare('SELECT * FROM dev_grants WHERE app_id = ? ORDER BY capability').all(app.id).map(grantView);
 }
 
-function withinAllowance(project, capability) {
-    return JSON.parse(project.allowance || '[]').includes(capability);
+/** Inside the project's allowance, or (sandbox apps) the sandbox allowance. */
+function withinAllowance(project, app, capability, settings) {
+    return policy.allowanceFor(project, app, settings).has(capability);
 }
 
 /**
  * Request a capability for an app (developer+). Owners and admins get it approved at once when it
  * is inside the allowance; otherwise it waits for an owner/admin.
  */
-function requestGrant(db, actor, projectId, appId, { capability }, { ctx }) {
+function requestGrant(db, actor, projectId, appId, { capability }, { ctx, settings }) {
     const { project, role } = access(db, actor, projectId, { need: 'developer', staffOk: false });
     const app = loadApp(db, project.id, appId);
     if (app.revoked_at) fail(409, 'app.revoked', 'app is revoked');
@@ -619,7 +631,7 @@ function requestGrant(db, actor, projectId, appId, { capability }, { ctx }) {
     const audience = policy.audienceOf(capability);
     const existing = db.prepare('SELECT * FROM dev_grants WHERE app_id = ? AND capability = ?').get(app.id, capability);
     if (existing && ['approved', 'requested'].includes(existing.status)) return grantView(existing);
-    const approveNow = RANK[role] >= RANK.admin && withinAllowance(project, capability);
+    const approveNow = RANK[role] >= RANK.admin && withinAllowance(project, app, capability, settings);
     const status = approveNow ? 'approved' : 'requested';
     const t = nowIso();
     db.transaction(() => {
@@ -634,7 +646,7 @@ function requestGrant(db, actor, projectId, appId, { capability }, { ctx }) {
     return grantView(db.prepare('SELECT * FROM dev_grants WHERE app_id = ? AND capability = ?').get(app.id, capability));
 }
 
-function decideGrant(db, actor, projectId, appId, capability, decision, { ctx }) {
+function decideGrant(db, actor, projectId, appId, capability, decision, { ctx, settings }) {
     const { project } = access(db, actor, projectId, { need: 'admin', staffOk: decision === 'revoked', allowArchived: decision === 'revoked' });
     const app = loadApp(db, project.id, appId);
     const g = db.prepare('SELECT * FROM dev_grants WHERE app_id = ? AND capability = ?').get(app.id, String(capability));
@@ -643,7 +655,9 @@ function decideGrant(db, actor, projectId, appId, capability, decision, { ctx })
         if (app.revoked_at) fail(409, 'app.revoked', 'app is revoked');
         const ok = policy.grantability(g.capability);
         if (!ok.grantable) fail(403, ok.code, ok.reason);
-        if (!withinAllowance(project, g.capability)) fail(403, 'grant.beyond_allowance', `${g.capability} is not in this project's allowance (staff set it)`);
+        if (!withinAllowance(project, app, g.capability, settings)) {
+            fail(403, 'grant.beyond_allowance', `${g.capability} is not in this project's ${app.environment === 'sandbox' ? 'allowance or the sandbox allowance' : 'allowance (staff set it for production apps)'}`);
+        }
         if (g.status === 'approved') return grantView(g);
     } else if (decision === 'denied') {
         if (g.status !== 'requested') fail(409, 'grant.not_pending', `grant is ${g.status}`);

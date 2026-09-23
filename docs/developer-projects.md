@@ -2,7 +2,7 @@
 
 Roadmap Wave 20 foundation. The binding decision is ADR-014 in OpenVibe.Contracts. Network owns developer projects: who may build on OpenVibe, which apps they run, what those apps may do, and how much they may use. OpenVibe.Codes (the portal, the next step) is a client of this API. It never enforces grants or quotas itself.
 
-What exists today: the data model, the `/api/v1/projects` API, app tokens from `/oauth/token`, the sandbox check in Network's own capability guard, and the audit. What does not exist yet: a UI (Codes), a consent screen that lists capabilities, refresh tokens for apps, an Events relay for the audit's event rows, service-side reads of projects (`network.project.read`, proposed), and quota enforcement in any owning service.
+What exists today: the data model, the `/api/v1/projects` API, app tokens from `/oauth/token`, the sandbox check in Network's own capability guard, defaults that let a new project's sandbox apps work without staff (sandbox audiences and a sandbox allowance), the audit, and a relay of the audit's events to OpenVibe.Events (off until `OV_EVENTS_INTERNAL_URL` is set). What does not exist yet: a UI (Codes), a consent screen that lists capabilities, refresh tokens for apps, and service-side reads of projects (`network.project.read`, proposed). Quotas are enforced by the owning services, not here.
 
 ## Model
 
@@ -43,8 +43,9 @@ A new project is `sandbox` only. Staff switch it to `sandbox+production`, which 
 
 - The only grants that exist are capabilities in the openvibe-contracts catalog, at the version Network has installed.
 - **The grantability rule.** The contracts `visibility` enum is `public | first-party | internal`. Only `active` capabilities with visibility `public` may be granted to apps. `first-party` and `internal` capabilities are never grantable: staff cannot add them to an allowance, members cannot request them, and token issuance filters them out again. The code also accepts a proposed `partner` visibility. Staff may put a `partner` capability in one project's allowance by hand, but it never comes from the default allowance. `partner` is not in the enum yet; see `docs/contracts-proposal/`.
-- **The allowance** is the set of grantable capabilities one project's apps may hold. Only staff set it. `DEV_DEFAULT_ALLOWANCE` seeds new projects, with public capabilities only. It is empty by default, so staff decide each project.
-- **A grant never exceeds the allowance.** It is checked in three places. Approval refuses with `403 grant.beyond_allowance`. Shrinking the allowance revokes approved grants, and denies requested ones, that fall outside it. Token issuance intersects approved grants with the current allowance and with the current grantability.
+- **The allowance** is the set of grantable capabilities one project's apps may hold. Only staff set it. `DEV_DEFAULT_ALLOWANCE` seeds new projects, with public capabilities only. It is empty by default, so staff decide each project's **production** apps.
+- **The sandbox allowance** is added to the allowance for **sandbox apps only**, in every project, without a staff decision. It comes from `DEV_SANDBOX_ALLOWANCE`. When that is unset, the code default is `media.object.upload`, `media.object.read`, `events.app.publish`, `events.app.read`, `events.app.subscribe`, `tools.job.create`, `tools.job.read` and `tools.job.cancel`. Only `public` + `active` capabilities of the installed openvibe-contracts catalog count. `partner`, `first-party`, `internal` and unknown ids are dropped. With openvibe-contracts v0.26.0 installed, the three `events.app.*` ids are not defined yet, so they are left out; they join the sandbox allowance on the first boot with v0.27.0 (not tagged at the time of writing). The project view and `GET /catalog` show it as `sandbox_allowance`. Production apps never use it.
+- **A grant never exceeds the allowance** (for a sandbox app: allowance ∪ sandbox allowance). It is checked in three places. Approval refuses with `403 grant.beyond_allowance`. Shrinking the allowance revokes approved grants, and denies requested ones, that fall outside it. A sandbox app's grant that is still inside the sandbox allowance is kept. Token issuance intersects approved grants with the current allowance and with the current grantability.
 - A developer's grant request waits in `requested`. When an owner or admin makes the request and the capability is inside the allowance, it is approved at once.
 - `GET /api/v1/projects/catalog` lists what could ever be granted.
 
@@ -81,10 +82,21 @@ No refresh tokens are issued to apps. A confidential app asks again with its sec
 
 The sandbox check works in two layers.
 
-1. **Issuance.** A sandbox app gets a token only for an audience listed in `DEV_SANDBOX_AUDIENCES`, which is empty by default. Any other audience gets `400 invalid_target`. This layer protects every receiver today, including ones whose openvibe-contracts `verifyServiceToken` does not know about `env` yet.
+1. **Issuance.** A sandbox app gets a token only for an audience listed in `DEV_SANDBOX_AUDIENCES`. When that is unset, the code default is `openvibe.media`, `openvibe.events` and `openvibe.tools`. Set it to an empty value to turn sandbox tokens off. Any other audience gets `400 invalid_target`. `openvibe.network` is not in the default. This layer protects every receiver today, including ones whose openvibe-contracts `verifyServiceToken` does not know about `env` yet.
 2. **Receivers.** A receiver refuses `env: sandbox` with `401 token.sandbox_refused` unless it opted in. Network does this in its own capability guard (`server/identity/principals.js`) and accepts sandbox only if `openvibe.network` is in `DEV_SANDBOX_AUDIENCES`. `server/developer/policy.js` exports `environmentDecision(claims, { acceptSandbox })` for the check. The proposal adds the same check to openvibe-contracts `verifyServiceToken` / `requireCapability` as an `acceptSandbox` option that defaults to false.
 
-An audience opts in when it can keep sandbox traffic apart from real data: for example, test-flagged money in Billing (ADR-012 rule 9), or a sandbox tenant in Media. First-party service tokens carry no `env` and are treated as production.
+An audience opts in when it can keep sandbox traffic apart from real data: for example, test-flagged money in Billing (ADR-012 rule 9), or a sandbox tenant in Media. First-party service tokens carry no `env` and are treated as production. The three default audiences must accept sandbox tokens themselves. Issuance working does not mean they do. Media (sandbox tenants keyed by project id) and Events (env-marked app events) take that on in the same Wave 20 step. Tools must accept `env: sandbox` on `/api/v1/jobs`; until it does, a sandbox app's Tools token is refused with `401 token.sandbox_refused` there.
+
+### A new project without staff
+
+With the defaults above, this works with no staff action:
+
+1. Create a project (`POST /api/v1/projects`). You are the owner.
+2. Create a sandbox confidential app (`POST /:project/apps` with `environment: sandbox`). The secret is shown once.
+3. Request grants from the sandbox allowance (`POST /:project/apps/:app/grants`). An owner's or admin's request is approved at once. A developer's request waits for an owner or admin, who can approve it without staff.
+4. `POST /oauth/token` with `grant_type=client_credentials` and `audience=openvibe.media` (or `openvibe.events`, `openvibe.tools`). The token has `env: sandbox`, `project_id` and `ns: [project_id]`.
+
+Production apps still need staff: the project's environment policy (`sandbox+production`) and its allowance.
 
 ### Revocation
 
@@ -156,7 +168,17 @@ Topic, with subject and payload:
 - `network.credential.revoked`: subject `{ type: 'app', id }`, payload `{ project_id, credential_id }`
 - `network.grant.changed`: subject `{ type: 'app', id }`, payload `{ project_id, capability, audience, from, to }`
 
-Network has no Events producer yet: no outbox, no Events client. Each event is written as a validated `events.event-envelope@1` in the same transaction as the change, inside its `dev_audit` row (`event_type`, `event`). This matches the outbox semantics. **TODO:** when Network gets an Events client, relay those rows in id order, keyed by `event_id`, instead of adding a second write path. Until then nobody else receives these events. Services must not assume they do.
+Each event is written as a validated `events.event-envelope@1` (source `network`, visibility `internal`) in the same transaction as the change, inside its `dev_audit` row (`event_type`, `event`).
+
+**Relay to OpenVibe.Events** (`server/developer/event-relay.js`, openvibe-sdk v0.2.2 `createOutbox` and `createEventsClient`):
+
+- It runs only when `OV_EVENTS_INTERNAL_URL` is set (production: `http://127.0.0.1:4300`). When it is unset, nothing is sent and no outbox table is created.
+- When the relay is on, `audit()` also enqueues the envelope into `network_event_outbox` in the same transaction as the audit row. If the enqueue fails, no audit row and no change are written.
+- On start it backfills every `dev_audit` event that is not in the outbox yet (`INSERT OR IGNORE` by `event_id`, in `dev_audit` id order). Events written while the relay was off are delivered too.
+- Rows are published in id order and at least once. Events answers a repeated `event_id` as a duplicate. Sent rows are kept (never pruned), so a later backfill cannot republish an event that Events has already forgotten.
+- Authentication: Network is the issuer, so it signs its own 5-minute service token: `sub svc:network`, `actor_type service`, `aud [openvibe.events]`, `cap [events.event.publish]`, shaped by `identity.service-token-claims@1`. Events allows the `network` source to publish `network.*`.
+
+Until the relay is turned on in an environment, nobody else receives these events there.
 
 ## Secrets
 
@@ -169,7 +191,9 @@ Network has no Events producer yet: no outbox, no Events client. Each event is w
 
 | Env var | Default | Meaning |
 |---|---|---|
-| `DEV_SANDBOX_AUDIENCES` | empty | Audiences that accept sandbox tokens (comma list) |
+| `DEV_SANDBOX_AUDIENCES` | unset: `openvibe.media,openvibe.events,openvibe.tools` | Audiences that accept sandbox tokens (comma list). Unset means the code default; an empty value means none. |
+| `DEV_SANDBOX_ALLOWANCE` | unset: `media.object.upload,media.object.read,events.app.publish,events.app.read,events.app.subscribe,tools.job.create,tools.job.read,tools.job.cancel` | Public capabilities sandbox apps may hold without staff (comma list, filtered to public + active capabilities of the installed catalog). Unset means the code default; an empty value means none. |
+| `OV_EVENTS_INTERNAL_URL` | unset (relay off) | OpenVibe.Events base URL for relaying developer-project events |
 | `DEV_CREDENTIAL_OVERLAP_S` | 86400 | Default rotation overlap (0–604800) |
 | `DEV_DEFAULT_ALLOWANCE` | empty | Public capabilities a new project starts with |
 | `DEV_MAX_PROJECTS_PER_OWNER` | 10 | Active projects per owner |
@@ -179,6 +203,17 @@ Network has no Events producer yet: no outbox, no Events client. Each event is w
 
 - **Consent screen.** The account chooser shows the app's name, not the capabilities it asks for. Codes and Network need a consent step before third-party production apps go live.
 - **Service-side project reads.** `network.project.read` (proposed) and `GET /internal/projects/:id` let owning services enforce quotas and check tenancy.
-- **Events relay.** See the TODO in [Events](#events).
 - **PowerChat as the first project** (ADR-014 migration). This is not done. PowerChat's existing OAuth client is unchanged.
-- **Receivers.** Media, Events and other services must adopt the `env` check (contracts proposal) and key tenancy by `project_id` before they opt in to sandbox tokens.
+- **Receivers.** Every default sandbox audience must refuse `env: sandbox` except on routes that keep sandbox data apart, and must key tenancy by `project_id`. Media and Events do this in Wave 20. Tools does not yet (see [Sandbox tokens](#sandbox-tokens)).
+- **Revocation fan-out.** The relayed `network.app.revoked` event is the signal receivers can use to disable an app's subscriptions or tenants early. A receiver that does not act on it only stops the app when its issued tokens expire (within 5 minutes); state the app created there (for example a webhook subscription) is untouched by Network.
+
+## Public discovery and CORS
+
+`/.well-known/openvibe`, `/api/v1/registry` with everything under it, and `/contracts/<domain>/<name>.v<N>.json` answer any origin (`server/public-cors.js`):
+
+- `Access-Control-Allow-Origin: *`, never with credentials
+- preflight `204` with `GET, HEAD, OPTIONS` and the request headers `traceparent`, `X-OpenVibe-Request-Id`, `Authorization` and `Content-Type`
+- `X-OpenVibe-Request-Id` and `traceparent` exposed
+- `Cross-Origin-Resource-Policy: cross-origin`
+
+A browser app can discover services, capabilities and schemas without a server of its own. Caching is unchanged (`public, max-age=…`). Every other route, including this projects API, `/api/auth/*` and `/oauth/*`, keeps the first-party CORS allow-list.
