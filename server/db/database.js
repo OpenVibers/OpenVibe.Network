@@ -581,6 +581,12 @@ function initDb(dbPath) {
                 name: 'OpenVibe.Community',
                 redirect_uris: ['https://openvibe.community/auth/callback'],
             },
+            // Waves 9-16 products with a signed-in UI. Create each with server/setup/service-principal.js
+            // first (secret into its env file); this only adds the redirect URI to that client.
+            { client_id: 'tips', name: 'OpenVibe.Tips', redirect_uris: ['https://openvibe.tips/auth/callback'] },
+            { client_id: 'vip', name: 'OpenVibe.VIP', redirect_uris: ['https://openvibe.vip/auth/callback'] },
+            { client_id: 'wiki', name: 'OpenVibe.Wiki', redirect_uris: ['https://openvibe.wiki/auth/callback'] },
+            { client_id: 'blog', name: 'OpenVibe.Blog', redirect_uris: ['https://openvibe.blog/auth/callback'] },
         ];
         const insert = db.prepare(
             'INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, ?, ?, ?, 1)'

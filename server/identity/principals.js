@@ -37,6 +37,14 @@ const DEFAULT_GRANTS = [
     ['tools', 'media.object.read', 'openvibe.media', ['tools']],
     ['games', 'media.object.upload', 'openvibe.media', ['games']],
     ['games', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    // Wave 9: Tips starts purchases and transfers in Billing, follows settlement through Events, and
+    // announces delivered tips in the creator's Live chat.
+    ['tips', 'billing.intent.create', 'openvibe.billing', []],
+    ['tips', 'billing.transfer.create', 'openvibe.billing', []],
+    ['tips', 'events.subscription.manage', 'openvibe.events', []],
+    ['tips', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['tips', 'live.tips_delivery.write', 'openvibe.live', []],
+    ['live', 'tips.interaction.record', 'openvibe.tips', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
     ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
     // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
