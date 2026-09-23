@@ -366,9 +366,9 @@ Google-style account management supporting up to 5 accounts:
 Network records one row per finished request in the `analytics_*` tables of `network.db` and rolls
 them up hourly and daily for the admin analytics pages (`/api/admin/analytics`, which also gathers
 Live, Tools, Games and Media). What a raw row may carry is bound by ADR-021 (OpenVibe.Contracts
-`docs/adr/ADR-021-analytics.md`). `server/analytics/` holds the same module as OpenVibe.Live
-(`server/analytics/`) and OpenVibe.Tools (`apps/_shared/analytics/`); Network's wiring is
-`server/analytics/network.js`.
+`docs/adr/ADR-021-analytics.md`). The module is `openvibe-shared/analytics` (openvibe-shared v1.4.0;
+the same one Live and Tools use). `server/analytics/network.js` holds only Network's wiring: its own
+connection, its path options (`paramPrefixes`, `pathRules`) and the prune job.
 
 - **Stored:** event type, service, **route template** (the matched Express route, else the path
   without its query and with ids, usernames and tokens replaced by `:id` / `:param`), method, status,
@@ -378,12 +378,15 @@ Live, Tools, Games and Media). What a raw row may carry is bound by ADR-021 (Ope
   The `ip`, `user_id` and `city` columns stay for compatibility and are always NULL. Per-IP counters
   for the bot rate check live in memory only. Unique visitors come from a daily-salted hash kept only
   until that day's final rollup. "New vs returning visitors" is no longer measured.
+- **Opt-out:** a request with `Sec-GPC: 1` or `DNT: 1` is not recorded at all (no raw row, visitor
+  hash, session id or rate counter), so it is also missing from the rollups.
 - **Admin panel:** the bot tables list user-agent classes and high-volume session ids, not IPs.
 - **Connection:** the tracker opens its own connection to `network.db`, so its settings
   (`busy_timeout` 250, `secure_delete`) never apply to the identity connection.
 - **Retention:** raw events older than 30 days are deleted every night in batches of 5000 (the
   `analytics-prune` job: first run 5 minutes after boot, then every 24 h). Rollups are kept.
-- **Operator CLI:** `scripts/analytics-prune.js` runs a dry run by default and changes nothing.
+- **Operator CLI:** `scripts/analytics-prune.js` (a wrapper over `openvibe-shared/analytics/prune-cli`
+  with Network's database and path rules) runs a dry run by default and changes nothing.
   `--apply` needs `--backup <new file>` (a verified, owner-only copy of all of `network.db`) or an
   explicit `--no-backup`. `--scrub` also rewrites the rows the old tracker wrote and the rollups'
   top-path and referer lists. Rollup totals are compared before and after the run. VACUUM rewrites

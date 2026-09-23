@@ -316,9 +316,10 @@ app.locals.urlRegistry = resolvedRegistry;
 config._registry = resolvedRegistry;
 
 // ── Analytics Tracking (ADR-021) ──────────────────────────────
-// Same tables in network.db, on a connection of the tracker's own (server/analytics/network.js).
-// Raw rows: route template, rotating session id, user-agent class, referer origin; never an IP or a
-// user id. Pruned after 30 days by the analytics-prune job below; rollups are kept.
+// openvibe-shared/analytics; same tables in network.db, on a connection of the tracker's own
+// (server/analytics/network.js). Raw rows: route template, rotating session id, user-agent class,
+// referer origin; never an IP or a user id. A Sec-GPC: 1 / DNT: 1 request is not recorded. Pruned after
+// 30 days by the analytics-prune job below; rollups are kept.
 const analytics = networkAnalytics.openAnalytics(config.db.path);
 app.locals.analytics = analytics;
 app.use(analytics.middleware());

@@ -1,8 +1,11 @@
 'use strict';
-// ADR-021 analytics bounds on OpenVibe.Network (server/analytics/, scripts/analytics-prune.js):
+// ADR-021 analytics bounds on OpenVibe.Network (openvibe-shared/analytics wired by
+// server/analytics/network.js, scripts/analytics-prune.js):
+//  - Network's path options (paramPrefixes, pathRules) template its usernames, anon tokens and slugs;
 //  - real requests through Network's own routers (auth, OAuth, avatars, admin analytics) leave no IP,
 //    user id, city, raw user agent, full referer, query value or username in any analytics table;
-//    the session id is a rotating id, paths are route templates;
+//    the session id is a rotating id, paths are route templates, every row is a valid analytics/event.v1;
+//  - a request with Sec-GPC: 1 or DNT: 1 is not recorded at all;
 //  - the tracker runs on its own connection to network.db: the identity connection keeps busy_timeout 5000;
 //  - the admin dashboards keep their shapes (bot rows carry ua_class / session_id, never an IP);
 //  - the analytics-prune job deletes raw rows older than 30 days and leaves rollups alone;
@@ -20,8 +23,8 @@ const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const Database = require('better-sqlite3');
 const { initDb } = require('../server/db/database');
-const { privacy, retention } = require('../server/analytics');
-const { sqlTime } = require('../server/analytics/tracker');
+const { privacy, retention, event } = require('openvibe-shared/analytics');
+const { sqlTime } = require('openvibe-shared/analytics/tracker');
 const networkAnalytics = require('../server/analytics/network');
 const cli = require('../scripts/analytics-prune');
 
@@ -46,7 +49,8 @@ function dumpAnalytics(db) {
 
 (async () => {
     await check('Network paths: usernames, anon tokens and project slugs become parameters', () => {
-        const t = (p) => privacy.normalisePath(networkAnalytics.preReducePath(p), networkAnalytics.PATH_OPTS);
+        const opts = privacy.pathOptions(networkAnalytics.PATH_OPTS);
+        const t = (p) => privacy.normalisePath(p, opts);
         const cases = {
             '/avatar/alex?s=96': '/avatar/:param',
             '/api/auth/anon/k3yF00barBaz?x=1': '/api/auth/anon/:param',
@@ -114,6 +118,9 @@ function dumpAnalytics(db) {
         await get('/no/such/page/424242?email=alex%40example.com', hdr());
         assert.strictEqual(await get('/internal/users/by-username/carolsecretname', hdr()), 403);
         await get('/api/auth/me', hdr({ 'user-agent': 'curl/8.5.0' }));
+        // Opted out (Sec-GPC / DNT): answered as usual, recorded nowhere.
+        assert.strictEqual(await get('/avatar/gpcsecretname', hdr({ 'sec-gpc': '1', 'x-forwarded-for': '198.51.100.61' })), 200);
+        assert.strictEqual(await get('/internal/users/by-username/dntsecretname', hdr({ dnt: '1', 'x-forwarded-for': '198.51.100.62' })), 403);
         await new Promise((r) => setTimeout(r, 50));
         analytics.flush();
 
@@ -129,6 +136,7 @@ function dumpAnalytics(db) {
             assert.ok(/^[0-9a-f]{16}$/.test(r.session_id), r.session_id);
             assert.strictEqual(r.country, 'NL');
             assert.ok(/^(none|bot:[a-z0-9]+|[a-z]+\/[a-z]+\/[a-z]+)$/.test(r.user_agent), r.user_agent);
+            assert.deepStrictEqual(event.checkRow(r), [], JSON.stringify(r));
         }
         assert.deepStrictEqual(rows.map((r) => r.path), [
             '/api/auth/me', '/avatar/:username', '/avatar/:param', '/oauth/authorize',
@@ -142,7 +150,8 @@ function dumpAnalytics(db) {
         const everything = dumpAnalytics(db);
         for (const needle of ['203.0.113.77', '198.51.100.9', '127.0.0.1', 'Amsterdam', 'supersecret', 'secret-query',
             '/search', 'statesecret', 'openvibe.live%2Fcb', USERNAME, 'bobsecretname', 'carolsecretname', '0123456789abcdefanon', '424242',
-            'alex%40example.com', 'alex@example.com', 'Mozilla/5.0', 'curl/8.5.0', 'Bearer', token.slice(0, 20)]) {
+            'alex%40example.com', 'alex@example.com', 'Mozilla/5.0', 'curl/8.5.0', 'Bearer', token.slice(0, 20),
+            'gpcsecretname', 'dntsecretname', '198.51.100.61', '198.51.100.62']) {
             assert.ok(!everything.includes(needle), `found ${needle} in the analytics tables`);
         }
         assert.strictEqual(db.prepare('SELECT COUNT(*) FROM analytics_rate_tracking').pluck().get(), 0);
