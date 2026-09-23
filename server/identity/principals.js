@@ -33,7 +33,9 @@ const DEFAULT_GRANTS = [
     ['community', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['community', 'media.object.upload', 'openvibe.media', ['community']],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
-    ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
+    ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
+    // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
+    ['search', 'events.subscription.manage', 'openvibe.events', []],
     ['live', 'events.subscription.manage', 'openvibe.events', []],
     ['live', 'events.event.read', 'openvibe.events', []],
     ['community', 'events.subscription.manage', 'openvibe.events', []],
