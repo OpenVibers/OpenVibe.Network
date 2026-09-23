@@ -38,6 +38,19 @@ const LABEL = {
 // 'placeholder' (a Sites/admin placeholder page) or null (no public domain).
 const SITE_PLACEHOLDER = 'the domain serves the OpenVibe.Sites placeholder page';
 const ADMIN_PLACEHOLDER = 'the domain serves the admin.openvibe.network placeholder page';
+
+// The libraries' release is the version Network itself installs (its pins move with every release),
+// so this never goes stale the way hand-written numbers did.
+function library(pkg, repo, note) {
+    let version = null;
+    try { version = require(`${pkg}/package.json`).version; } catch { /* not installed */ }
+    const release = version ? `v${version}` : null;
+    const out = { state: 'library', public_site: null, package: pkg, release,
+        distribution: release ? `https://codeload.github.com/OpenVibers/${repo}/tar.gz/refs/tags/${release}` : null };
+    if (note) out.note = note;
+    return out;
+}
+
 const EXPOSURE = {
     network: { state: 'live', public_site: 'service' },
     live: { state: 'live', public_site: 'service' },
@@ -66,9 +79,9 @@ const EXPOSURE = {
     chat: { state: 'internal', public_site: null, note: 'serves Live\'s chat through Live; openvibe.chat serves the OpenVibe.Sites placeholder page' },
     ai: { state: 'internal', public_site: null, note: 'called by other services at 127.0.0.1:4700; ai.openvibe.network serves the OpenVibe.Sites placeholder page' },
 
-    sdk: { state: 'library', public_site: null, package: 'openvibe-sdk', release: 'v0.4.0', distribution: 'https://codeload.github.com/OpenVibers/OpenVibe.SDK/tar.gz/refs/tags/v0.4.0' },
-    shared: { state: 'library', public_site: null, package: 'openvibe-shared', release: 'v1.3.0', distribution: 'https://codeload.github.com/OpenVibers/OpenVibe.Shared/tar.gz/refs/tags/v1.3.0', note: 'also served at /shared/* by each site' },
-    contracts: { state: 'library', public_site: null, package: 'openvibe-contracts', release: 'v0.30.1', distribution: 'https://codeload.github.com/OpenVibers/OpenVibe.Contracts/tar.gz/refs/tags/v0.30.1', note: 'schemas are also served by this registry at their $id URLs' },
+    sdk: library('openvibe-sdk', 'OpenVibe.SDK'),
+    shared: library('openvibe-shared', 'OpenVibe.Shared', 'also served at /shared/* by each site'),
+    contracts: library('openvibe-contracts', 'OpenVibe.Contracts', 'schemas are also served by this registry at their $id URLs'),
     examples: { state: 'repository', public_site: null, note: 'example apps with CI in OpenVibers/OpenVibe.Examples; not published as a package' },
 
     realtime: { state: 'placeholder', public_site: null },

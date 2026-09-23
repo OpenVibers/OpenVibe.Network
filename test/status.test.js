@@ -75,7 +75,7 @@ const rel = (release) => [200, { service: 'x', release, released_at: '2026-09-22
     assert.strictEqual(by.realtime.status, 'not-running');
     assert.strictEqual(by.realtime.label, 'not running (placeholder)');
     assert.strictEqual(by.contracts.status, 'not-running');
-    assert.strictEqual(by.contracts.label, 'not running (library, released v0.30.1)');
+    assert.strictEqual(by.contracts.label, `not running (library, released v${require('openvibe-contracts/package.json').version})`);
     for (const s of r.body.services) assert.ok(s.checked_at, `${s.id} says when it was checked`);
     assert.strictEqual(r.body.summary.up + r.body.summary.degraded + r.body.summary.down + r.body.summary['not-running'] + r.body.summary.unknown, contracts.services.manifests.length);
 

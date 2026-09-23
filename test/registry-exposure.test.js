@@ -45,8 +45,8 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
         assert.strictEqual(exposure.EXPOSURE[id].public_site, 'placeholder', `${id}'s domain serves a placeholder`);
         assert.strictEqual(exposure.publicOriginOf(contracts.services.get(id)), null, `${id} has no public origin`);
     }
-    assert.strictEqual(exposure.exposureOf('sdk').release, 'v0.4.0');
-    assert.strictEqual(exposure.exposureOf('shared').release, 'v1.3.0');
+    assert.strictEqual(exposure.exposureOf('sdk').release, `v${require('openvibe-sdk/package.json').version}`);
+    assert.strictEqual(exposure.exposureOf('shared').release, `v${require('openvibe-shared/package.json').version}`, 'the release is the installed version');
     assert.strictEqual(exposure.exposureOf('nope').state, 'unknown', 'an unclassified id is unknown, not public');
 
     // 2. Registry and status over fake loopback services.
@@ -84,7 +84,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     assert.strictEqual(by.ai.runtime.status, 'up', 'AI is polled on loopback although its pinned manifest says placeholder');
     assert.strictEqual(by.ai.runtime.basis, 'ready');
     assert.strictEqual(by.sdk.runtime.status, 'not-running');
-    assert.strictEqual(by.sdk.runtime.reason, 'library, released v0.4.0');
+    assert.strictEqual(by.sdk.runtime.reason, `library, released v${require('openvibe-sdk/package.json').version}`);
     assert.strictEqual(by.examples.runtime.reason, 'repository, nothing to run');
     assert.strictEqual(by.realtime.runtime.reason, 'placeholder');
     assert.strictEqual(by.live.runtime.scope, 'public');
@@ -100,7 +100,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     assert.strictEqual(sBy.news.planned_origin, 'https://openvibe.news');
     assert.strictEqual(sBy.live.label, 'up');
     assert.strictEqual(sBy.live.origin, 'https://openvibe.live');
-    assert.strictEqual(sBy.shared.label, 'not running (library, released v1.3.0)');
+    assert.strictEqual(sBy.shared.label, `not running (library, released v${require('openvibe-shared/package.json').version})`);
     assert.deepStrictEqual(st.exposure_summary, { live: 13, internal: 12, library: 3, repository: 1, placeholder: 1 });
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".

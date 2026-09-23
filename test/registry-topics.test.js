@@ -54,8 +54,10 @@ const rel = (contractsVersion, packages) => [200, { service: 'x', release: 'abcd
     assert.strictEqual(by['deals.watch.matched'].payload_contract.$id, 'https://openvibe.network/contracts/events/payloads/deals.watch.matched.v1.json');
 
     // 3. over HTTP
-    const svc = await fakeService({ '/api/ready': ready, '/ready': ready, '/api/health': [200, {}], '/health': [200, {}], '/healthz': [200, {}], '/release.json': rel('0.28.0', { 'openvibe-shared': '1.3.0', 'openvibe-sdk': '0.3.1', 'evil-pkg': '9.9.9' }) });
-    const cur = await fakeService({ '/api/ready': ready, '/api/health': [200, {}], '/release.json': rel('0.30.1', { 'openvibe-shared': '1.3.0', 'openvibe-sdk': '0.4.0' }) });
+    // The libraries' current release is the version Network installs (server/registry/exposure.js).
+    const INSTALLED = { shared: require('openvibe-shared/package.json').version, sdk: require('openvibe-sdk/package.json').version, contracts: require('openvibe-contracts/package.json').version };
+    const svc = await fakeService({ '/api/ready': ready, '/ready': ready, '/api/health': [200, {}], '/health': [200, {}], '/healthz': [200, {}], '/release.json': rel('0.28.0', { 'openvibe-shared': INSTALLED.shared, 'openvibe-sdk': '0.3.1', 'evil-pkg': '9.9.9' }) });
+    const cur = await fakeService({ '/api/ready': ready, '/api/health': [200, {}], '/release.json': rel(INSTALLED.contracts, { 'openvibe-shared': INSTALLED.shared, 'openvibe-sdk': INSTALLED.sdk }) });
     const eco = createEcosystemRegistry({ issuer: 'https://openvibe.network', internalOverrides: { network: cur.url, live: svc.url, media: 'http://127.0.0.1:1', events: svc.url } });
     await eco.pollAll();
     const app = express();
@@ -129,6 +131,9 @@ const rel = (contractsVersion, packages) => [200, { service: 'x', release: 'abcd
 
     // 4. scripts/contracts-drift.js: warns, never fails; reports an unpublished pin.
     const tags = ['v0.28.0', 'v0.29.0', 'v0.30.0', 'v0.30.1'];
+    // What GitHub lists in the CLI checks below: up to the contracts Network installs.
+    const LATEST = `v${INSTALLED.contracts}`;
+    const ghTags = [...new Set([...tags, LATEST])];
     const found = drift.assess([
         { service: 'a', repo: 'O/A', package: 'openvibe-contracts', spec: 'https://codeload.github.com/OpenVibers/OpenVibe.Contracts/tar.gz/refs/tags/v0.28.0' },
         { service: 'b', repo: 'O/B', package: 'openvibe-contracts', spec: 'https://codeload.github.com/OpenVibers/OpenVibe.Contracts/tar.gz/refs/tags/v0.30.1' },
@@ -143,14 +148,14 @@ const rel = (contractsVersion, packages) => [200, { service: 'x', release: 'abcd
     const out = { log: (s) => lines.push(s) };
     const fakeGithub = async (url) => {
         const u = String(url);
-        if (u.startsWith('https://api.github.com/repos/OpenVibers/OpenVibe.Contracts/tags')) return new Response(JSON.stringify(tags.map(name => ({ name }))), { status: 200 });
+        if (u.startsWith('https://api.github.com/repos/OpenVibers/OpenVibe.Contracts/tags')) return new Response(JSON.stringify(ghTags.map(name => ({ name }))), { status: 200 });
         if (u.includes('/OpenVibers/OpenVibe.Live/HEAD/package.json')) return new Response(JSON.stringify({ dependencies: { 'openvibe-contracts': 'https://codeload.github.com/OpenVibers/OpenVibe.Contracts/tar.gz/refs/tags/v0.28.0' } }), { status: 200 });
-        if (u.includes('raw.githubusercontent.com')) return new Response(JSON.stringify({ dependencies: { 'openvibe-contracts': 'https://codeload.github.com/OpenVibers/OpenVibe.Contracts/tar.gz/refs/tags/v0.30.1' } }), { status: 200 });
+        if (u.includes('raw.githubusercontent.com')) return new Response(JSON.stringify({ dependencies: { 'openvibe-contracts': `https://codeload.github.com/OpenVibers/OpenVibe.Contracts/tar.gz/refs/tags/${LATEST}` } }), { status: 200 });
         return new Response('{}', { status: 404 });
     };
     let code = await drift.main([], { fetchImpl: fakeGithub, env: { GITHUB_ACTIONS: 'true' }, out });
     assert.strictEqual(code, 0, 'drift is a warning, not a failure');
-    assert.ok(lines.some(l => l.startsWith('::warning title=openvibe-contracts drift::live (OpenVibers/OpenVibe.Live) pins v0.28.0, latest is v0.30.1')), lines.join('\n'));
+    assert.ok(lines.some(l => l.startsWith(`::warning title=openvibe-contracts drift::live (OpenVibers/OpenVibe.Live) pins v0.28.0, latest is ${LATEST}`)), lines.join('\n'));
     assert.ok(!lines.some(l => l.includes('::warning') && l.includes('OpenVibe.Media')));
     lines.length = 0;
     code = await drift.main(['--strict'], { fetchImpl: fakeGithub, env: {}, out });
@@ -159,8 +164,8 @@ const rel = (contractsVersion, packages) => [200, { service: 'x', release: 'abcd
     lines.length = 0;
     code = await drift.main(['--registry', base], { fetchImpl: (u, o) => (String(u).startsWith(base) ? fetch(u, o) : fakeGithub(u, o)), env: {}, out });
     assert.strictEqual(code, 0);
-    assert.ok(lines.some(l => l.startsWith('WARN openvibe-contracts live: pins v0.28.0, latest is v0.30.1')), lines.join('\n'));
-    assert.ok(lines.some(l => l.includes('network: pins v0.30.1 (latest)')));
+    assert.ok(lines.some(l => l.startsWith(`WARN openvibe-contracts live: pins v0.28.0, latest is ${LATEST}`)), lines.join('\n'));
+    assert.ok(lines.some(l => l.includes(`network: pins ${LATEST} (latest)`)), lines.join('\n'));
 
     eco.stop(); srv.close(); svc.srv.close(); cur.srv.close();
     console.log('registry topics, releases and drift: all checks passed');
