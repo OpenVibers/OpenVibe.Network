@@ -97,8 +97,10 @@ const DEFAULT_GRANTS = [
     // Wave 20: the Codes portal relays its release events.
     ['codes', 'events.event.publish', 'openvibe.events', []],
     // Wave 13: Live's AI features run as OpenVibe.AI workflows (AI_SERVICE=remote in live.env).
-    ['live', 'ai.run.create', 'openvibe.ai', []],
-    ['live', 'ai.run.read', 'openvibe.ai', []],
+    // Live runs its own live.* workflows and, as the footer-copy fallback, network.site_copy
+    // (OpenVibe.AI fails closed on a token with no ns).
+    ['live', 'ai.run.create', 'openvibe.ai', ['live.*', 'network.site_copy']],
+    ['live', 'ai.run.read', 'openvibe.ai', ['live.*', 'network.site_copy']],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
     ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
     // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
@@ -164,8 +166,13 @@ function ensureSchema(db) {
         db.prepare("UPDATE principal_grants SET revoked_at = CURRENT_TIMESTAMP WHERE client_id = ? AND capability = ? AND audience = ? AND revoked_at IS NULL").run(client, cap, aud);
     }
     const seed = db.prepare("INSERT OR IGNORE INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES (?, ?, ?, ?, 'default')");
+    // A default grant that later gained namespaces fills them in on a row still seeded without any
+    // (INSERT OR IGNORE alone would leave it at []); a row someone edited is left alone.
+    const fillNs = db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = ? AND capability = ? AND audience = ? AND granted_by = 'default' AND namespaces = '[]'");
     for (const [client, cap, aud, ns] of DEFAULT_GRANTS) {
-        if (db.prepare('SELECT 1 FROM oauth_clients WHERE client_id = ?').get(client)) seed.run(client, cap, aud, JSON.stringify(ns));
+        if (!db.prepare('SELECT 1 FROM oauth_clients WHERE client_id = ?').get(client)) continue;
+        seed.run(client, cap, aud, JSON.stringify(ns));
+        if (ns.length) fillNs.run(JSON.stringify(ns), client, cap, aud);
     }
 }
 
