@@ -6,1100 +6,2234 @@ Deliverable 3 (routes half). Paths include the prefix of the `app.use()` mount t
 
 ## Summary
 
-| Repo | Routes | GET | POST | PUT/PATCH | DELETE | Other | /internal/* |
-|---|---|---|---|---|---|---|---|
-| OpenVibe.Live | 537 | 275 | 163 | 50 | 48 | 1 | 6 |
-| OpenVibe.Network | 207 | 96 | 72 | 24 | 15 | 0 | 30 |
-| OpenVibe.Shared | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
-| OpenVibe.Media | 90 | 38 | 35 | 5 | 12 | 0 | 1 |
-| OpenVibe.Tools | 99 | 84 | 12 | 0 | 2 | 1 | 0 |
-| OpenVibe.Community | 97 | 51 | 30 | 7 | 9 | 0 | 0 |
-| OpenVibe.Games | 21 | 0 | 3 | 0 | 0 | 18 | 0 |
+| Repo | Routes | GET | POST | PUT/PATCH | DELETE | Other | /internal/* | Stay | Elsewhere or moving |
+|---|---|---|---|---|---|---|---|---|---|
+| OpenVibe.Live | 629 | 311 | 219 | 50 | 48 | 1 | 93 | 343 | 286 |
+| OpenVibe.Network | 247 | 116 | 82 | 30 | 19 | 0 | 30 | 246 | 1 |
+| OpenVibe.Shared | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 3 | 0 |
+| OpenVibe.Media | 92 | 40 | 35 | 5 | 12 | 0 | 1 | 74 | 18 |
+| OpenVibe.Tools | 118 | 98 | 14 | 1 | 4 | 1 | 0 | 118 | 0 |
+| OpenVibe.Community | 107 | 54 | 32 | 12 | 9 | 0 | 0 | 107 | 0 |
+| OpenVibe.Games | 21 | 0 | 3 | 0 | 0 | 18 | 0 | 21 | 0 |
+| OpenVibe.Events | 17 | 11 | 5 | 1 | 0 | 0 | 1 | 17 | 0 |
+| OpenVibe.Chat | 60 | 37 | 14 | 3 | 6 | 0 | 0 | 60 | 0 |
+| OpenRe.Stream | 37 | 25 | 8 | 2 | 2 | 0 | 0 | 37 | 0 |
+| OpenVibe.Billing | 54 | 31 | 22 | 0 | 0 | 1 | 0 | 54 | 0 |
+| OpenVibe.Tips | 45 | 27 | 15 | 3 | 0 | 0 | 0 | 45 | 0 |
+| OpenVibe.VIP | 40 | 24 | 12 | 3 | 1 | 0 | 0 | 40 | 0 |
+| OpenVibe.AI | 33 | 18 | 12 | 2 | 1 | 0 | 0 | 33 | 0 |
+| OpenVibe.Search | 20 | 15 | 2 | 1 | 2 | 0 | 1 | 20 | 0 |
+| OpenVibe.Sources | 17 | 11 | 3 | 1 | 2 | 0 | 0 | 17 | 0 |
+| OpenVibe.Wiki | 76 | 43 | 28 | 4 | 1 | 0 | 0 | 76 | 0 |
+| OpenVibe.Blog | 56 | 38 | 14 | 3 | 1 | 0 | 0 | 56 | 0 |
+| OpenVibe.News | 51 | 34 | 17 | 0 | 0 | 0 | 1 | 51 | 0 |
+| OpenVibe.Reviews | 70 | 34 | 31 | 2 | 3 | 0 | 0 | 70 | 0 |
+| OpenVibe.Deals | 58 | 31 | 23 | 2 | 2 | 0 | 1 | 58 | 0 |
+| OpenVibe.Coupons | 46 | 30 | 16 | 0 | 0 | 0 | 0 | 46 | 0 |
+| OpenVibe.Trade | 7 | 4 | 3 | 0 | 0 | 0 | 1 | 7 | 0 |
+| OpenVibe.Codes | 95 | 52 | 42 | 0 | 0 | 1 | 0 | 95 | 0 |
+| OpenVibe.Host | 56 | 23 | 24 | 2 | 7 | 0 | 0 | 56 | 0 |
+
+## Route authority
+
+Owner = the repository whose code answers the route; target = the authority it belongs to, from `data/ownership-rules.json` (`routes`). Dispositions: **keep** served and owned here; **shadowed** production nginx sends the path to the target service; this handler is the rollback path; **adapter** answers here but forwards to, or reads from, the target authority; **compat** legacy path kept for old callers, with an entry in the Host compatibility register; **frozen-legacy** writes refused or redirected; kept for the cutover rollback; **extract** authority still here; moves to the target in the named wave; **sample** example application, not a platform surface.
+
+| Owner (serves it) | Target authority | Disposition | Routes | Wave | Note |
+|---|---|---|---|---|---|
+| OpenVibe.Live | OpenRe.Stream | extract | 59 | W7 | Ingest, restream and controls: no slot cut over yet (WHIP not ported to OpenRe). |
+| OpenVibe.Live | OpenVibe.Billing | extract | 22 | W8 | Money authority stays in Live until the Billing cutover (PowerChat webhook re-point is the owner step). |
+| OpenVibe.Live | OpenVibe.Chat | extract | 24 | W6 (remainder) | Emotes and channel moderators are still Live-written (Chat holds staged copies). |
+| OpenVibe.Live | OpenVibe.Chat | shadowed | 52 | W6 (done 2026-09-23) | nginx sends /api/chat, /api/dm, /api/tts and /api/sounds on openvibe.live to Chat (:4400); Live's handlers remain for rollback. |
+| OpenVibe.Live | OpenVibe.Codes | extract | 4 | W20 | Coding-session capture belongs to Codes. |
+| OpenVibe.Live | OpenVibe.Community | adapter | 34 | W5 (done) | Forwards to Community with a service token (pastes since 2026-09-22, VOD/clip comments since b8afb71); /p/* 301s to openvibe.community. |
+| OpenVibe.Live | OpenVibe.Events | compat | 1 | W3 | Direct Media webhook kept while Events delivers the same outcomes (MEDIA_EVENTS_AUTHORITY); each outcome applies once (d2715e5). |
+| OpenVibe.Live | OpenVibe.Games | compat | 2 | W12 | 301 to openvibe.games. |
+| OpenVibe.Live | OpenVibe.Media | adapter | 36 | W4 | media-proxy: Media holds the objects; Live keeps presentation and AI state. |
+| OpenVibe.Live | OpenVibe.Network | compat | 3 | W1 (register C-54/C-55) | Key-authenticated internal routes; role truth moves to Network (ADR-022). |
+| OpenVibe.Live | OpenVibe.Network | extract | 8 | ADR-024 | Live still serves its own theme catalog (create, edit, delete, download, the user's choice); Network is the theme authority (ADR-024). |
+| OpenVibe.Live | OpenVibe.Network (policy) | extract | 26 | W1 / ADR-022 | Site-wide bans and moderation console move to the shared staff model. |
+| OpenVibe.Live | OpenVibe.Tips | extract | 15 | W9 | Donate, goals and cashout move to Tips over Billing after the cutover. |
+| OpenVibe.Media | OpenVibe.Community | frozen-legacy | 18 | W5 (done 2026-09-22) | PASTES_FROZEN_APPS=live: writes answer 410; kept as the rollback lever (register C-12). |
+| OpenVibe.Network | OpenVibe.Events | compat | 1 | W3 | Live's direct go-live push; the Events consumer (live.stream.started) shares its rate window, so only one announces. |
+
 
 
 ## OpenVibe.Live
 
-| Method | Path | Source |
-|---|---|---|
-| GET | /api/admin/admins | server/admin/routes.js:762 |
-| POST | /api/admin/admins | server/admin/routes.js:772 |
-| DELETE | /api/admin/admins/:id | server/admin/routes.js:791 |
-| GET | /api/admin/ai/explorer/:userId | server/admin/routes.js:551 |
-| GET | /api/admin/ai/overviews | server/admin/routes.js:583 |
-| GET | /api/admin/ai/status | server/admin/routes.js:541 |
-| POST | /api/admin/ai/streamer/:userId/overview | server/admin/routes.js:592 |
-| GET | /api/admin/ai/usage | server/admin/routes.js:494 |
-| POST | /api/admin/ai/viewers/:userId/:action | server/admin/routes.js:522 |
-| GET | /api/admin/ai/viewers/:userId/log | server/admin/routes.js:532 |
-| GET | /api/admin/ai/viewers/status | server/admin/routes.js:504 |
-| GET | /api/admin/analytics | server/index.js:708 |
-| GET | /api/admin/analytics/bots | server/index.js:717 |
-| GET | /api/admin/bans | server/admin/routes.js:429 |
-| POST | /api/admin/broadcast | server/index.js:826 |
-| PUT | /api/admin/channels/:id/force-nsfw | server/admin/routes.js:359 |
-| GET | /api/admin/diagnostics | server/admin/routes.js:51 |
-| DELETE | /api/admin/media-tools/cookies | server/admin/routes.js:1214 |
-| PUT | /api/admin/media-tools/cookies | server/admin/routes.js:1133 |
-| POST | /api/admin/media-tools/cookies/check | server/admin/routes.js:1192 |
-| DELETE | /api/admin/media-tools/extra-args | server/admin/routes.js:1247 |
-| PUT | /api/admin/media-tools/extra-args | server/admin/routes.js:1228 |
-| GET | /api/admin/media-tools/status | server/admin/routes.js:1088 |
-| POST | /api/admin/media-tools/test | server/admin/routes.js:1258 |
-| GET | /api/admin/moderators | server/admin/routes.js:697 |
-| POST | /api/admin/moderators | server/admin/routes.js:709 |
-| DELETE | /api/admin/moderators/:id | server/admin/routes.js:736 |
-| PUT | /api/admin/pastes/:id/nsfw | server/admin/routes.js:418 |
-| GET | /api/admin/settings | server/admin/routes.js:482 |
-| PUT | /api/admin/settings | server/admin/routes.js:607 |
-| DELETE | /api/admin/settings/:key | server/admin/routes.js:680 |
-| PUT | /api/admin/settings/:key | server/admin/routes.js:663 |
-| GET | /api/admin/stats | server/admin/routes.js:63 |
-| GET | /api/admin/storage | server/admin/routes.js:935 |
-| DELETE | /api/admin/storage/clips/bulk | server/admin/routes.js:1038 |
-| GET | /api/admin/storage/vods | server/admin/routes.js:989 |
-| DELETE | /api/admin/storage/vods/bulk | server/admin/routes.js:1008 |
-| GET | /api/admin/streams | server/admin/routes.js:294 |
-| DELETE | /api/admin/streams/:id | server/admin/routes.js:313 |
-| PUT | /api/admin/streams/:id/nsfw | server/admin/routes.js:407 |
-| GET | /api/admin/users | server/admin/routes.js:111 |
-| PUT | /api/admin/users/:id | server/admin/routes.js:147 |
-| DELETE | /api/admin/users/:id/ban | server/admin/routes.js:275 |
-| POST | /api/admin/users/:id/ban | server/admin/routes.js:237 |
-| PUT | /api/admin/users/:id/force-vod-recording | server/admin/routes.js:376 |
-| GET | /api/admin/verification-keys | server/admin/routes.js:813 |
-| POST | /api/admin/verification-keys | server/admin/routes.js:823 |
-| DELETE | /api/admin/verification-keys/:id | server/admin/routes.js:866 |
-| GET | /api/admin/vpn-queue | server/admin/routes.js:445 |
-| PUT | /api/admin/vpn-queue/:id | server/admin/routes.js:461 |
-| POST | /api/ai-viewers/${cmd} | server/ai/viewers/routes.js:117 |
-| DELETE | /api/ai-viewers/bots/:id | server/ai/viewers/routes.js:220 |
-| PATCH | /api/ai-viewers/bots/:id | server/ai/viewers/routes.js:185 |
-| POST | /api/ai-viewers/bots/:id/clear-memory | server/ai/viewers/routes.js:209 |
-| POST | /api/ai-viewers/bots/:id/mute | server/ai/viewers/routes.js:122 |
-| POST | /api/ai-viewers/bots/:id/unmute | server/ai/viewers/routes.js:123 |
-| POST | /api/ai-viewers/byo/test | server/ai/viewers/routes.js:124 |
-| POST | /api/ai-viewers/clone | server/ai/viewers/routes.js:233 |
-| GET | /api/ai-viewers/config | server/ai/viewers/routes.js:82 |
-| PUT | /api/ai-viewers/config | server/ai/viewers/routes.js:134 |
-| GET | /api/ai-viewers/log | server/ai/viewers/routes.js:106 |
-| POST | /api/ai-viewers/preview | server/ai/viewers/routes.js:282 |
-| GET | /api/ai-viewers/roster | server/ai/viewers/routes.js:167 |
-| GET | /api/ai-viewers/status | server/ai/viewers/routes.js:99 |
-| GET | /api/ai-viewers/threads | server/ai/viewers/routes.js:112 |
-| GET | /api/analytics/channel/:username | server/streaming/analytics-routes.js:22 |
-| GET | /api/analytics/channel/:username/dashboard | server/streaming/analytics-routes.js:156 |
-| GET | /api/analytics/channel/:username/streams | server/streaming/analytics-routes.js:57 |
-| GET | /api/analytics/stream/:id | server/streaming/analytics-routes.js:96 |
-| POST | /api/arena/backfill | server/arena/routes.js:80 |
-| GET | /api/arena/beefs | server/arena/routes.js:112 |
-| GET | /api/arena/beefs/:id | server/arena/routes.js:113 |
-| POST | /api/arena/beefs/:id/hype | server/arena/routes.js:117 |
-| GET | /api/arena/console/:user | server/arena/routes.js:85 |
-| GET | /api/arena/feed | server/arena/routes.js:37 |
-| GET | /api/arena/fighters | server/arena/routes.js:32 |
-| GET | /api/arena/fighters/:user | server/arena/routes.js:56 |
-| POST | /api/arena/fighters/:user/refresh | server/arena/routes.js:69 |
-| GET | /api/arena/fighters/:user/stat/:stat | server/arena/routes.js:46 |
-| GET | /api/arena/levels | server/arena/routes.js:150 |
-| GET | /api/arena/live | server/arena/routes.js:36 |
-| GET | /api/arena/me | server/arena/routes.js:138 |
-| GET | /api/arena/status | server/arena/routes.js:30 |
-| GET | /api/arena/voice/:user | server/arena/routes.js:122 |
-| POST | /api/auth/avatar | server/auth/routes.js:192 |
-| GET | /api/auth/avatar/history | server/auth/routes.js:246 |
-| GET | /api/auth/callback | server/auth/routes.js:488 |
-| POST | /api/auth/change-password | server/auth/routes.js:166 |
-| POST | /api/auth/fedcm | server/auth/routes.js:465 |
-| GET | /api/auth/ice-servers | server/auth/routes.js:898 |
-| POST | /api/auth/login | server/auth/routes.js:97 |
-| GET | /api/auth/logout | server/auth/routes.js:627 |
-| POST | /api/auth/logout | server/auth/routes.js:620 |
-| GET | /api/auth/me | server/auth/routes.js:102 |
-| GET | /api/auth/preferences | server/auth/routes.js:677 |
-| PUT | /api/auth/preferences | server/auth/routes.js:687 |
-| PUT | /api/auth/profile | server/auth/routes.js:110 |
-| POST | /api/auth/refresh | server/auth/routes.js:558 |
-| POST | /api/auth/register | server/auth/routes.js:92 |
-| GET | /api/auth/sso/login | server/auth/routes.js:312 |
-| GET | /api/auth/sso/status | server/auth/routes.js:638 |
-| GET | /api/auth/stream-key | server/auth/routes.js:171 |
-| POST | /api/auth/stream-key/regenerate | server/auth/routes.js:176 |
-| GET | /api/auth/tokens | server/auth/routes.js:857 |
-| POST | /api/auth/tokens | server/auth/routes.js:819 |
-| DELETE | /api/auth/tokens/:id | server/auth/routes.js:877 |
-| GET | /api/auth/user/:username | server/auth/routes.js:183 |
-| GET | /api/channels/:channelId/moderation | server/admin/channel-mod-routes.js:157 |
-| PUT | /api/channels/:channelId/moderation | server/admin/channel-mod-routes.js:170 |
-| GET | /api/channels/:channelId/moderation/chat-search | server/admin/channel-mod-routes.js:306 |
-| GET | /api/channels/:channelId/moderation/logs | server/admin/channel-mod-routes.js:288 |
-| POST | /api/channels/:channelId/moderation/messages/:messageId/delete | server/admin/channel-mod-routes.js:320 |
-| GET | /api/channels/:channelId/mods | server/admin/channel-mod-routes.js:75 |
-| POST | /api/channels/:channelId/mods | server/admin/channel-mod-routes.js:89 |
-| DELETE | /api/channels/:channelId/mods/:userId | server/admin/channel-mod-routes.js:127 |
-| GET | /api/channels/moderation/mine | server/admin/channel-mod-routes.js:49 |
-| GET | /api/chat-ai/anon/:anonId | server/ai/chat-ai-routes.js:83 |
-| GET | /api/chat-ai/global | server/ai/chat-ai-routes.js:14 |
-| GET | /api/chat-ai/live-captions/:username | server/ai/chat-ai-routes.js:230 |
-| GET | /api/chat-ai/relay/:platform/:username | server/ai/chat-ai-routes.js:95 |
-| GET | /api/chat-ai/timeline | server/ai/chat-ai-routes.js:24 |
-| GET | /api/chat-ai/timeline/:username | server/ai/chat-ai-routes.js:174 |
-| GET | /api/chat-ai/transcript/:streamId | server/ai/chat-ai-routes.js:322 |
-| GET | /api/chat-ai/user/:id | server/ai/chat-ai-routes.js:39 |
-| GET | /api/chat-ai/vod-transcripts | server/ai/chat-ai-routes.js:267 |
-| GET | /api/chat/:streamId/history | server/chat/routes.js:509 |
-| GET | /api/chat/:streamId/replay | server/chat/routes.js:487 |
-| GET | /api/chat/:streamId/users | server/chat/routes.js:633 |
-| GET | /api/chat/admin/logs | server/chat/routes.js:718 |
-| GET | /api/chat/admin/logs/export | server/chat/routes.js:755 |
-| DELETE | /api/chat/admin/purge | server/chat/routes.js:674 |
-| POST | /api/chat/admin/purge/preview | server/chat/routes.js:642 |
-| GET | /api/chat/anon/:anonId | server/chat/routes.js:419 |
-| GET | /api/chat/anon/:anonId/logs | server/chat/routes.js:430 |
-| GET | /api/chat/channel/:userId/history | server/chat/routes.js:609 |
-| GET | /api/chat/filters/friendly | server/chat/routes.js:462 |
-| GET | /api/chat/gif/providers | server/chat/routes.js:109 |
-| GET | /api/chat/gif/search | server/chat/routes.js:145 |
-| GET | /api/chat/gif/trending | server/chat/routes.js:119 |
-| GET | /api/chat/global/history | server/chat/routes.js:468 |
-| GET | /api/chat/relay-user/:platform/:username | server/chat/routes.js:409 |
-| GET | /api/chat/relay-user/:platform/:username/logs | server/chat/routes.js:446 |
-| GET | /api/chat/search | server/chat/routes.js:319 |
-| POST | /api/chat/send | server/chat/routes.js:209 |
-| GET | /api/chat/user/:userId/history | server/chat/routes.js:341 |
-| GET | /api/chat/user/:username/profile | server/chat/routes.js:360 |
-| GET | /api/clips | server/media-proxy/clips.js:149 |
-| DELETE | /api/clips/:id | server/media-proxy/clips.js:317 |
-| GET | /api/clips/:id | server/media-proxy/clips.js:178 |
-| POST | /api/clips/:id/recut | server/media-proxy/clips.js:335 |
-| PUT | /api/clips/:id/title | server/media-proxy/clips.js:251 |
-| PUT | /api/clips/:id/visibility | server/media-proxy/clips.js:268 |
-| POST | /api/clips/bulk | server/media-proxy/clips.js:292 |
-| GET | /api/clips/mine | server/media-proxy/clips.js:101 |
-| GET | /api/clips/my-stream | server/media-proxy/clips.js:115 |
-| GET | /api/clips/settings/channel | server/media-proxy/clips.js:127 |
-| PUT | /api/clips/settings/channel | server/media-proxy/clips.js:136 |
-| POST | /api/coins/admin/grant | server/monetization/coins-routes.js:310 |
-| GET | /api/coins/balance | server/monetization/coins-routes.js:26 |
-| POST | /api/coins/bonus | server/monetization/coins-routes.js:70 |
-| GET | /api/coins/channel-balance | server/monetization/coins-routes.js:31 |
-| PUT | /api/coins/config | server/monetization/coins-routes.js:95 |
-| GET | /api/coins/config/:userId | server/monetization/coins-routes.js:90 |
-| POST | /api/coins/heartbeat | server/monetization/coins-routes.js:52 |
-| GET | /api/coins/history | server/monetization/coins-routes.js:44 |
-| GET | /api/coins/rates | server/monetization/coins-routes.js:37 |
-| POST | /api/coins/redeem | server/monetization/coins-routes.js:207 |
-| GET | /api/coins/redemptions | server/monetization/coins-routes.js:261 |
-| POST | /api/coins/redemptions/:id | server/monetization/coins-routes.js:267 |
-| POST | /api/coins/rewards | server/monetization/coins-routes.js:116 |
-| DELETE | /api/coins/rewards/:id | server/monetization/coins-routes.js:193 |
-| PUT | /api/coins/rewards/:id | server/monetization/coins-routes.js:154 |
-| GET | /api/coins/rewards/:userId | server/monetization/coins-routes.js:83 |
-| DELETE | /api/comments/:commentId | server/media-proxy/comments.js:178 |
-| PUT | /api/comments/:commentId | server/media-proxy/comments.js:159 |
-| GET | /api/comments/:commentId/replies | server/media-proxy/comments.js:149 |
-| GET | /api/comments/:type/:id | server/media-proxy/comments.js:40 |
-| POST | /api/comments/:type/:id | server/media-proxy/comments.js:64 |
-| GET | /api/controls/:streamId | server/controls/routes.js:1460 |
-| GET | /api/controls/:streamId/config | server/controls/routes.js:1417 |
-| PUT | /api/controls/:streamId/config | server/controls/routes.js:1431 |
-| DELETE | /api/controls/:streamId/presets/cozmo | server/controls/routes.js:1507 |
-| POST | /api/controls/:streamId/presets/cozmo | server/controls/routes.js:1493 |
-| POST | /api/controls/api-key | server/controls/routes.js:1228 |
-| GET | /api/controls/api-keys | server/controls/routes.js:1255 |
-| GET | /api/controls/configs | server/controls/routes.js:979 |
-| POST | /api/controls/configs | server/controls/routes.js:994 |
-| DELETE | /api/controls/configs/:id | server/controls/routes.js:1053 |
-| GET | /api/controls/configs/:id | server/controls/routes.js:1018 |
-| PUT | /api/controls/configs/:id | server/controls/routes.js:1033 |
-| POST | /api/controls/configs/:id/activate | server/controls/routes.js:1183 |
-| POST | /api/controls/configs/:id/apply/:streamId | server/controls/routes.js:1208 |
-| GET | /api/controls/configs/:id/bridge-script | server/controls/routes.js:1391 |
-| POST | /api/controls/configs/:id/buttons | server/controls/routes.js:1073 |
-| DELETE | /api/controls/configs/:id/buttons/:btnId | server/controls/routes.js:1165 |
-| PUT | /api/controls/configs/:id/buttons/:btnId | server/controls/routes.js:1123 |
-| POST | /api/controls/configs/deactivate | server/controls/routes.js:1198 |
-| GET | /api/controls/cozmo-script | server/controls/routes.js:1373 |
-| GET | /api/controls/settings/channel | server/controls/routes.js:1270 |
-| PUT | /api/controls/settings/channel | server/controls/routes.js:1287 |
-| GET | /api/controls/whitelist | server/controls/routes.js:1325 |
-| POST | /api/controls/whitelist | server/controls/routes.js:1341 |
-| DELETE | /api/controls/whitelist/:id | server/controls/routes.js:1359 |
-| POST | /api/cosmetics/activate | server/monetization/cosmetics-routes.js:64 |
-| GET | /api/cosmetics/catalog | server/monetization/cosmetics-routes.js:20 |
-| POST | /api/cosmetics/deactivate | server/monetization/cosmetics-routes.js:73 |
-| POST | /api/cosmetics/equip | server/monetization/cosmetics-routes.js:46 |
-| GET | /api/cosmetics/equipped/:userId | server/monetization/cosmetics-routes.js:38 |
-| POST | /api/cosmetics/internal-unlock | server/monetization/cosmetics-routes.js:95 |
-| GET | /api/cosmetics/inventory | server/monetization/cosmetics-routes.js:32 |
-| POST | /api/cosmetics/unequip | server/monetization/cosmetics-routes.js:55 |
-| POST | /api/csp-report | server/index.js:847 |
-| GET | /api/dm/blocks | server/chat/dm-routes.js:401 |
-| DELETE | /api/dm/blocks/:userId | server/chat/dm-routes.js:389 |
-| POST | /api/dm/blocks/:userId | server/chat/dm-routes.js:374 |
-| GET | /api/dm/blocks/check/:userId | server/chat/dm-routes.js:411 |
-| GET | /api/dm/conversations | server/chat/dm-routes.js:49 |
-| POST | /api/dm/conversations | server/chat/dm-routes.js:64 |
-| GET | /api/dm/conversations/:id | server/chat/dm-routes.js:120 |
-| PATCH | /api/dm/conversations/:id | server/chat/dm-routes.js:331 |
-| GET | /api/dm/conversations/:id/messages | server/chat/dm-routes.js:137 |
-| POST | /api/dm/conversations/:id/messages | server/chat/dm-routes.js:155 |
-| DELETE | /api/dm/conversations/:id/messages/:msgId | server/chat/dm-routes.js:421 |
-| POST | /api/dm/conversations/:id/participants | server/chat/dm-routes.js:256 |
-| DELETE | /api/dm/conversations/:id/participants/:userId | server/chat/dm-routes.js:310 |
-| POST | /api/dm/conversations/:id/read | server/chat/dm-routes.js:234 |
-| GET | /api/dm/unread | server/chat/dm-routes.js:350 |
-| GET | /api/dm/users/search | server/chat/dm-routes.js:360 |
-| GET | /api/easter-egg/daily | server/ai/easter-egg-routes.js:16 |
-| POST | /api/easter-egg/reveal | server/ai/easter-egg-routes.js:69 |
-| POST | /api/easter-egg/solve | server/ai/easter-egg-routes.js:41 |
-| POST | /api/emotes | server/emotes/routes.js:279 |
-| DELETE | /api/emotes/:id | server/emotes/routes.js:473 |
-| PATCH | /api/emotes/:id | server/emotes/routes.js:416 |
-| GET | /api/emotes/7tv | server/emotes/routes.js:570 |
-| GET | /api/emotes/all/:streamId | server/emotes/routes.js:660 |
-| GET | /api/emotes/bttv | server/emotes/routes.js:552 |
-| GET | /api/emotes/channel/:userId | server/emotes/routes.js:234 |
-| GET | /api/emotes/defaults | server/emotes/routes.js:588 |
-| GET | /api/emotes/ffz | server/emotes/routes.js:533 |
-| GET | /api/emotes/file/:filename | server/emotes/routes.js:505 |
-| GET | /api/emotes/global | server/emotes/routes.js:215 |
-| GET | /api/emotes/mine | server/emotes/routes.js:257 |
-| GET | /api/emotes/search | server/emotes/routes.js:622 |
-| GET | /api/emotes/sources | server/emotes/routes.js:593 |
-| PUT | /api/emotes/sources | server/emotes/routes.js:608 |
-| GET | /api/funds/balance | server/monetization/routes.js:167 |
-| POST | /api/funds/cashout | server/monetization/routes.js:152 |
-| POST | /api/funds/cashout/:id/approve | server/monetization/routes.js:263 |
-| POST | /api/funds/cashout/:id/deny | server/monetization/routes.js:273 |
-| GET | /api/funds/cashouts/pending | server/monetization/routes.js:283 |
-| POST | /api/funds/donate | server/monetization/routes.js:53 |
-| POST | /api/funds/goals | server/monetization/routes.js:209 |
-| DELETE | /api/funds/goals/:id | server/monetization/routes.js:240 |
-| PUT | /api/funds/goals/:id | server/monetization/routes.js:223 |
-| GET | /api/funds/goals/:userId | server/monetization/routes.js:257 |
-| GET | /api/funds/goals/manage/mine | server/monetization/routes.js:204 |
-| GET | /api/funds/history | server/monetization/routes.js:191 |
-| GET | /api/funds/leaderboard/:streamId | server/monetization/routes.js:198 |
-| POST | /api/funds/purchase | server/monetization/routes.js:34 |
-| POST | /api/funds/recycle | server/monetization/routes.js:181 |
-| GET | /api/health | server/index.js:727 |
-| GET | /api/home/digest | server/home/routes.js:457 |
-| GET | /api/home/discover | server/home/routes.js:507 |
-| GET | /api/home/featured | server/home/routes.js:247 |
-| GET | /api/home/hero | server/home/routes.js:333 |
-| GET | /api/home/pulse | server/home/routes.js:406 |
-| GET | /api/home/star | server/home/routes.js:352 |
-| POST | /api/home/star/rotate | server/home/routes.js:569 |
-| GET | /api/home/stats-live | server/home/routes.js:287 |
-| GET | /api/home/stats/series/:metric | server/home/routes.js:177 |
-| GET | /api/i18n/languages | server/i18n/routes.js:31 |
-| POST | /api/i18n/translate | server/i18n/routes.js:36 |
-| GET | /api/img-proxy | server/media/external-image-proxy.js:31 |
-| GET | /api/kiosk/favicon | server/kiosk/routes.js:122 |
-| GET | /api/kiosk/site | server/kiosk/routes.js:77 |
-| GET | /api/live-events | server/index.js:655 |
-| POST | /api/media/advance | server/media/routes.js:262 |
-| GET | /api/media/channel/:username | server/media/routes.js:52 |
-| GET | /api/media/downloader/status | server/media/routes.js:413 |
-| DELETE | /api/media/queue/:id | server/media/routes.js:309 |
-| POST | /api/media/queue/:id/fail | server/media/routes.js:398 |
-| POST | /api/media/queue/:id/move | server/media/routes.js:299 |
-| POST | /api/media/queue/:id/play | server/media/routes.js:273 |
-| POST | /api/media/queue/:id/position | server/media/routes.js:365 |
-| POST | /api/media/queue/:id/refund | server/media/routes.js:383 |
-| POST | /api/media/queue/:id/skip | server/media/routes.js:290 |
-| GET | /api/media/queue/:id/stream-url | server/media/routes.js:320 |
-| POST | /api/media/quote | server/media/routes.js:165 |
-| POST | /api/media/request | server/media/routes.js:217 |
-| GET | /api/media/settings | server/media/routes.js:98 |
-| PUT | /api/media/settings | server/media/routes.js:102 |
-| POST | /api/media/start | server/media/routes.js:253 |
-| GET | /api/meta/openvibeapp | server/meta/routes.js:87 |
-| DELETE | /api/mod/ban/:id | server/admin/mod-routes.js:269 |
-| GET | /api/mod/bans | server/admin/mod-routes.js:42 |
-| GET | /api/mod/chat/search | server/admin/mod-routes.js:315 |
-| GET | /api/mod/chat/user/:userId | server/admin/mod-routes.js:346 |
-| POST | /api/mod/delete-message | server/admin/mod-routes.js:364 |
-| POST | /api/mod/delete-user-messages | server/admin/mod-routes.js:419 |
-| POST | /api/mod/global-ban | server/admin/mod-routes.js:146 |
-| POST | /api/mod/ip-approval/:channelId/approve | server/admin/mod-routes.js:611 |
-| POST | /api/mod/ip-approval/:channelId/deny | server/admin/mod-routes.js:668 |
-| GET | /api/mod/ip-approval/:channelId/pending | server/admin/mod-routes.js:584 |
-| POST | /api/mod/ip-approval/:channelId/review | server/admin/mod-routes.js:698 |
-| GET | /api/mod/ip/alts/:userId | server/admin/mod-routes.js:801 |
-| GET | /api/mod/ip/anon/:anonId | server/admin/mod-routes.js:755 |
-| POST | /api/mod/ip/ban-all | server/admin/mod-routes.js:813 |
-| GET | /api/mod/ip/log | server/admin/mod-routes.js:853 |
-| GET | /api/mod/ip/lookup/:ip | server/admin/mod-routes.js:786 |
-| GET | /api/mod/ip/user/:userId | server/admin/mod-routes.js:730 |
-| DELETE | /api/mod/relay-user/:id | server/admin/mod-routes.js:542 |
-| POST | /api/mod/relay-user/hide | server/admin/mod-routes.js:484 |
-| GET | /api/mod/relay-users/hidden/:channelId | server/admin/mod-routes.js:567 |
-| POST | /api/mod/stream-ban | server/admin/mod-routes.js:197 |
-| GET | /api/mod/tts-voice/:kind/:id | server/admin/mod-routes.js:889 |
-| PUT | /api/mod/tts-voice/:kind/:id | server/admin/mod-routes.js:910 |
-| POST | /api/mod/tts-voice/preview | server/admin/mod-routes.js:940 |
-| DELETE | /api/mod/users/:id/ban | server/admin/mod-routes.js:169 |
-| POST | /api/mod/users/:id/ban | server/admin/mod-routes.js:159 |
-| GET | /api/news/my-settings | server/news/news-routes.js:71 |
-| PUT | /api/news/my-settings | server/news/news-routes.js:77 |
-| GET | /api/news/sources | server/news/news-routes.js:35 |
-| PUT | /api/news/sources/:id | server/news/news-routes.js:43 |
-| GET | /api/onvif/cameras | server/controls/onvif-routes.js:182 |
-| POST | /api/onvif/cameras | server/controls/onvif-routes.js:105 |
-| DELETE | /api/onvif/cameras/:cameraId/presets/:presetId | server/controls/onvif-routes.js:419 |
-| DELETE | /api/onvif/cameras/:id | server/controls/onvif-routes.js:324 |
-| GET | /api/onvif/cameras/:id | server/controls/onvif-routes.js:210 |
-| PUT | /api/onvif/cameras/:id | server/controls/onvif-routes.js:263 |
-| GET | /api/onvif/cameras/:id/presets | server/controls/onvif-routes.js:349 |
-| POST | /api/onvif/cameras/:id/presets | server/controls/onvif-routes.js:372 |
-| POST | /api/onvif/discover | server/controls/onvif-routes.js:70 |
-| GET | /api/pastes | server/media-proxy/pastes.js:167 |
-| POST | /api/pastes | server/media-proxy/pastes.js:168 |
-| DELETE | /api/pastes/:slug | server/media-proxy/pastes.js:217 |
-| GET | /api/pastes/:slug | server/media-proxy/pastes.js:215 |
-| PUT | /api/pastes/:slug | server/media-proxy/pastes.js:216 |
-| POST | /api/pastes/:slug/censor | server/media-proxy/pastes.js:222 |
-| POST | /api/pastes/:slug/censor | server/media-proxy/pastes.js:315 |
-| GET | /api/pastes/:slug/comments | server/media-proxy/pastes.js:243 |
-| POST | /api/pastes/:slug/comments | server/media-proxy/pastes.js:246 |
-| DELETE | /api/pastes/:slug/comments/:commentId | server/media-proxy/pastes.js:248 |
-| POST | /api/pastes/:slug/copy | server/media-proxy/pastes.js:242 |
-| POST | /api/pastes/:slug/fork | server/media-proxy/pastes.js:238 |
-| POST | /api/pastes/:slug/like | server/media-proxy/pastes.js:241 |
-| GET | /api/pastes/:slug/raw | server/media-proxy/pastes.js:240 |
-| GET | /api/pastes/:slug/raw | server/media-proxy/pastes.js:311 |
-| POST | /api/pastes/:slug/set-avatar | server/media-proxy/pastes.js:110 |
-| POST | /api/pastes/:slug/set-avatar | server/media-proxy/pastes.js:296 |
-| DELETE | /api/pastes/admin/forks | server/media-proxy/pastes.js:171 |
-| DELETE | /api/pastes/admin/forks | server/media-proxy/pastes.js:313 |
-| GET | /api/pastes/admin/stats | server/media-proxy/pastes.js:170 |
-| POST | /api/pastes/bulk | server/media-proxy/pastes.js:172 |
-| POST | /api/pastes/bulk | server/media-proxy/pastes.js:314 |
-| GET | /api/pastes/by-user/:username | server/media-proxy/pastes.js:177 |
-| GET | /api/pastes/config | server/media-proxy/pastes.js:169 |
-| POST | /api/pastes/screenshot | server/media-proxy/pastes.js:83 |
-| POST | /api/payments/bucks/checkout | server/monetization/payments-routes.js:24 |
-| GET | /api/payments/channel/:username | server/monetization/payments-routes.js:192 |
-| GET | /api/payments/config | server/monetization/payments-routes.js:19 |
-| GET | /api/payments/paypal/return | server/monetization/payments-routes.js:82 |
-| POST | /api/payments/subscribe | server/monetization/payments-routes.js:102 |
-| POST | /api/payments/subscriptions/:id/cancel | server/monetization/payments-routes.js:208 |
-| GET | /api/payments/subscriptions/mine | server/monetization/payments-routes.js:187 |
-| ALL | /api/payments/webhook/ccbill | server/monetization/payments-routes.js:280 |
-| POST | /api/payments/webhook/crypto | server/monetization/payments-routes.js:299 |
-| POST | /api/payments/webhook/paypal | server/monetization/payments-routes.js:263 |
-| POST | /api/payments/webhook/stripe | server/monetization/payments-routes.js:233 |
-| GET | /api/powerchat/authorize-url | server/integrations/powerchat-routes.js:436 |
-| GET | /api/powerchat/donate-link | server/integrations/powerchat-routes.js:313 |
-| GET | /api/powerchat/oauth/callback | server/integrations/powerchat-routes.js:199 |
-| DELETE | /api/powerchat/oauth/connection | server/integrations/powerchat-routes.js:275 |
-| GET | /api/powerchat/oauth/start | server/integrations/powerchat-routes.js:182 |
-| POST | /api/powerchat/reconcile | server/integrations/powerchat-routes.js:339 |
-| GET | /api/powerchat/status | server/integrations/powerchat-routes.js:86 |
-| POST | /api/powerchat/test-alert | server/integrations/powerchat-routes.js:389 |
-| POST | /api/powerchat/test-tip | server/integrations/powerchat-routes.js:350 |
-| GET | /api/powerchat/tip-link | server/integrations/powerchat-routes.js:291 |
-| POST | /api/powerchat/webhook | server/integrations/powerchat-routes.js:442 |
-| GET | /api/ready | server/index.js:750 |
-| GET | /api/recap/:streamId | server/recap/routes.js:21 |
-| POST | /api/recap/:streamId/regenerate | server/recap/routes.js:43 |
-| GET | /api/recap/channel/:username | server/recap/routes.js:14 |
-| GET | /api/restream/destinations | server/streaming/restream-routes.js:157 |
-| POST | /api/restream/destinations | server/streaming/restream-routes.js:179 |
-| DELETE | /api/restream/destinations/:id | server/streaming/restream-routes.js:341 |
-| PUT | /api/restream/destinations/:id | server/streaming/restream-routes.js:253 |
-| POST | /api/restream/destinations/:id/start | server/streaming/restream-routes.js:364 |
-| POST | /api/restream/destinations/:id/stop | server/streaming/restream-routes.js:420 |
-| GET | /api/restream/oauth/:platform/callback | server/streaming/restream-routes.js:599 |
-| DELETE | /api/restream/oauth/:platform/connection | server/streaming/restream-routes.js:693 |
-| GET | /api/restream/oauth/:platform/start | server/streaming/restream-routes.js:585 |
-| GET | /api/restream/oauth/status | server/streaming/restream-routes.js:563 |
-| GET | /api/restream/presets | server/streaming/restream-routes.js:147 |
-| GET | /api/restream/status | server/streaming/restream-routes.js:440 |
-| GET | /api/restream/viewer-config | server/streaming/restream-routes.js:489 |
-| GET | /api/restream/viewer-counts | server/streaming/restream-routes.js:479 |
-| POST | /api/restream/viewer-counts | server/streaming/restream-routes.js:461 |
-| DELETE | /api/robotstreamer/integration | server/integrations/routes.js:226 |
-| GET | /api/robotstreamer/integration | server/integrations/routes.js:41 |
-| PUT | /api/robotstreamer/integration | server/integrations/routes.js:152 |
-| POST | /api/robotstreamer/integration/login | server/integrations/routes.js:107 |
-| POST | /api/robotstreamer/integration/validate | server/integrations/routes.js:70 |
-| POST | /api/robotstreamer/restream/start | server/integrations/routes.js:194 |
-| POST | /api/robotstreamer/restream/stop | server/integrations/routes.js:214 |
-| POST | /api/sounds | server/chat/sounds-routes.js:147 |
-| DELETE | /api/sounds/:id | server/chat/sounds-routes.js:287 |
-| DELETE | /api/sounds/alert/:kind | server/chat/sounds-routes.js:440 |
-| POST | /api/sounds/alert/:kind | server/chat/sounds-routes.js:403 |
-| GET | /api/sounds/alert/mine | server/chat/sounds-routes.js:393 |
-| GET | /api/sounds/all/:streamId | server/chat/sounds-routes.js:136 |
-| GET | /api/sounds/channel/:userId | server/chat/sounds-routes.js:125 |
-| PATCH | /api/sounds/command | server/chat/sounds-routes.js:313 |
-| GET | /api/sounds/file/:filename | server/chat/sounds-routes.js:371 |
-| GET | /api/streams | server/streaming/routes.js:1084 |
-| POST | /api/streams | server/streaming/routes.js:1886 |
-| DELETE | /api/streams/:id | server/streaming/routes.js:2081 |
-| GET | /api/streams/:id | server/streaming/routes.js:1838 |
-| PUT | /api/streams/:id | server/streaming/routes.js:2030 |
-| GET | /api/streams/:id/call | server/streaming/routes.js:2384 |
-| PUT | /api/streams/:id/call | server/streaming/routes.js:2345 |
-| GET | /api/streams/:id/endpoint | server/streaming/routes.js:2128 |
-| POST | /api/streams/:id/follow | server/streaming/routes.js:2253 |
-| POST | /api/streams/:id/heartbeat | server/streaming/routes.js:2214 |
-| GET | /api/streams/:id/rtmp-status | server/streaming/routes.js:2232 |
-| GET | /api/streams/broadcast-settings | server/streaming/routes.js:1383 |
-| PUT | /api/streams/broadcast-settings | server/streaming/routes.js:1400 |
-| GET | /api/streams/channel | server/streaming/routes.js:636 |
-| PUT | /api/streams/channel | server/streaming/routes.js:648 |
-| GET | /api/streams/channel/:username | server/streaming/routes.js:205 |
-| PUT | /api/streams/channel/:username/about | server/streaming/routes.js:763 |
-| GET | /api/streams/channel/:username/bio-en | server/streaming/routes.js:744 |
-| GET | /api/streams/channel/:username/clips-taken | server/streaming/routes.js:555 |
-| POST | /api/streams/channel/:username/follow | server/streaming/routes.js:2298 |
-| GET | /api/streams/channel/:username/live | server/streaming/routes.js:598 |
-| GET | /api/streams/channel/:username/popular | server/streaming/routes.js:529 |
-| GET | /api/streams/channel/:username/resolve/:ref | server/streaming/routes.js:1422 |
-| GET | /api/streams/channel/:username/weather | server/streaming/routes.js:973 |
-| POST | /api/streams/channel/offline-screen | server/streaming/routes.js:869 |
-| POST | /api/streams/diag-log | server/streaming/routes.js:2207 |
-| POST | /api/streams/goal-media | server/streaming/routes.js:834 |
-| GET | /api/streams/managed | server/streaming/routes.js:1567 |
-| POST | /api/streams/managed | server/streaming/routes.js:1579 |
-| DELETE | /api/streams/managed/:id | server/streaming/routes.js:1793 |
-| PUT | /api/streams/managed/:id | server/streaming/routes.js:1633 |
-| POST | /api/streams/managed/:id/regenerate-key | server/streaming/routes.js:1818 |
-| GET | /api/streams/managed/:managedStreamId/history | server/streaming/routes.js:1456 |
-| GET | /api/streams/managed/:managedStreamId/profile | server/streaming/routes.js:1470 |
-| GET | /api/streams/mine | server/streaming/routes.js:1120 |
-| POST | /api/streams/panel-image | server/streaming/routes.js:812 |
-| GET | /api/streams/recent | server/streaming/routes.js:1132 |
-| GET | /api/streams/recent-vods | server/streaming/routes.js:1202 |
-| GET | /api/streams/recently-online | server/streaming/routes.js:1148 |
-| GET | /api/streams/rtmp-proxy/:streamId.flv | server/streaming/routes.js:2405 |
-| GET | /api/streams/setup-progress | server/streaming/routes.js:1513 |
-| GET | /api/streams/voice-channels | server/streaming/routes.js:1232 |
-| POST | /api/streams/voice-channels | server/streaming/routes.js:1253 |
-| DELETE | /api/streams/voice-channels/:channelId | server/streaming/routes.js:1265 |
-| GET | /api/streams/voice-channels/:channelId | server/streaming/routes.js:1242 |
-| POST | /api/streams/voice-channels/call-user | server/streaming/routes.js:1277 |
-| POST | /api/streams/voice-channels/call-user/respond | server/streaming/routes.js:1346 |
-| GET | /api/themes | server/themes/routes.js:20 |
-| POST | /api/themes | server/themes/routes.js:108 |
-| DELETE | /api/themes/:id | server/themes/routes.js:147 |
-| PUT | /api/themes/:id | server/themes/routes.js:134 |
-| POST | /api/themes/:id/download | server/themes/routes.js:158 |
-| GET | /api/themes/:idOrSlug | server/themes/routes.js:88 |
-| GET | /api/themes/me | server/themes/routes.js:46 |
-| PUT | /api/themes/me | server/themes/routes.js:73 |
-| GET | /api/thumbnails/:filename | server/media-proxy/thumbnails.js:84 |
-| GET | /api/thumbnails/generate/clip/:id | server/media-proxy/thumbnails.js:80 |
-| POST | /api/thumbnails/generate/clip/:id | server/media-proxy/thumbnails.js:67 |
-| GET | /api/thumbnails/generate/vod/:id | server/media-proxy/thumbnails.js:79 |
-| POST | /api/thumbnails/generate/vod/:id | server/media-proxy/thumbnails.js:66 |
-| POST | /api/thumbnails/live/:streamId | server/media-proxy/thumbnails.js:29 |
-| GET | /api/tts/admin/settings | server/chat/tts-routes.js:64 |
-| PUT | /api/tts/admin/settings | server/chat/tts-routes.js:81 |
-| POST | /api/tts/admin/test | server/chat/tts-routes.js:110 |
-| GET | /api/tts/audio/:file | server/chat/tts-routes.js:125 |
-| GET | /api/tts/settings | server/chat/tts-routes.js:43 |
-| GET | /api/tts/voices | server/chat/tts-routes.js:33 |
-| GET | /api/updates | server/index.js:813 |
-| GET | /api/vibe-coding/channel/:username/:slotIdOrSlug/events | server/vibe-coding/routes.js:17 |
-| GET | /api/vibe-coding/managed/:managedStreamId/events | server/vibe-coding/routes.js:47 |
-| GET | /api/vibe-coding/managed/:managedStreamId/settings | server/vibe-coding/routes.js:74 |
-| PUT | /api/vibe-coding/managed/:managedStreamId/settings | server/vibe-coding/routes.js:91 |
-| GET | /api/vods | server/media-proxy/vods.js:270 |
-| DELETE | /api/vods/:id | server/media-proxy/vods.js:545 |
-| GET | /api/vods/:id | server/media-proxy/vods.js:429 |
-| PUT | /api/vods/:id | server/media-proxy/vods.js:500 |
-| GET | /api/vods/:id/context | server/media-proxy/vods.js:368 |
-| GET | /api/vods/:id/live-info | server/media-proxy/vods.js:248 |
-| GET | /api/vods/:id/memories | server/media-proxy/vods.js:344 |
-| POST | /api/vods/:id/publish | server/media-proxy/vods.js:556 |
-| POST | /api/vods/bulk | server/media-proxy/vods.js:517 |
-| POST | /api/vods/bulk-delete-old | server/media-proxy/vods.js:300 |
-| POST | /api/vods/clips | server/media-proxy/vods.js:616 |
-| POST | /api/vods/clips/:id/trim | server/media-proxy/vods.js:771 |
-| GET | /api/vods/clips/stream/:streamId | server/media-proxy/vods.js:760 |
-| GET | /api/vods/file/:filename | server/media-proxy/vods.js:572 |
-| GET | /api/vods/mine | server/media-proxy/vods.js:288 |
-| POST | /api/vods/stream/:streamId/chunk | server/media-proxy/vods.js:154 |
-| POST | /api/vods/stream/:streamId/finalize | server/media-proxy/vods.js:208 |
-| GET | /api/vods/stream/:streamId/live | server/media-proxy/vods.js:228 |
-| POST | /api/vods/upload | server/media-proxy/vods.js:578 |
-| GET | /banned | server/index.js:981 |
-| POST | /banned/continue | server/index.js:951 |
-| GET | /canvas | server/index.js:683 |
-| GET | /data/pastes/screenshots/:filename | server/index.js:606 |
-| GET | /dmca | server/index.js:890 |
-| GET | /docs | server/docs/routes.js:304 |
-| GET | /docs/:name | server/docs/routes.js:306 |
-| GET | /docs/:name.md | server/docs/routes.js:305 |
-| GET | /game | server/index.js:682 |
-| POST | /internal/ai/site-copy | server/internal/routes.js:25 |
-| GET | /internal/analytics-summary | server/index.js:578 |
-| POST | /internal/media-webhook | server/index.js:573 |
-| POST | /internal/url-registry/refresh | server/internal/routes.js:49 |
-| POST | /internal/user-avatar | server/internal/routes.js:67 |
-| POST | /internal/user-role | server/internal/routes.js:91 |
-| GET | /media/:username | server/index.js:885 |
-| GET | /obs/chat/:username | server/index.js:873 |
-| GET | /openvibe-sw.js | server/index.js:474 |
-| GET | /overlay/chat/:username | server/index.js:881 |
-| GET | /overlay/chat/:username/:slotIdOrSlug | server/index.js:878 |
-| GET | /p/:slug | server/index.js:624 |
-| GET | /p/:slug/raw | server/index.js:635 |
-| GET | /p/:slug/screenshot | server/index.js:631 |
-| GET | /pastes | server/index.js:625 |
-| GET | /privacy | server/index.js:899 |
-| GET | /sitemap.xml | server/seo/seo.js:594 |
-| GET | /terms | server/index.js:896 |
-| GET | /tos | server/index.js:893 |
-| POST | /whip/:streamId | server/index.js:908 |
-| DELETE | /whip/:streamId/:resourceId | server/index.js:910 |
-| PATCH | /whip/:streamId/:resourceId | server/index.js:909 |
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | /api/admin/admins | server/admin/routes.js:788 |  | keep |
+| POST | /api/admin/admins | server/admin/routes.js:798 |  | keep |
+| DELETE | /api/admin/admins/:id | server/admin/routes.js:817 |  | keep |
+| GET | /api/admin/ai/explorer/:userId | server/admin/routes.js:577 |  | keep |
+| GET | /api/admin/ai/overviews | server/admin/routes.js:609 |  | keep |
+| GET | /api/admin/ai/status | server/admin/routes.js:567 |  | keep |
+| POST | /api/admin/ai/streamer/:userId/overview | server/admin/routes.js:618 |  | keep |
+| GET | /api/admin/ai/usage | server/admin/routes.js:520 |  | keep |
+| POST | /api/admin/ai/viewers/:userId/:action | server/admin/routes.js:548 |  | keep |
+| GET | /api/admin/ai/viewers/:userId/log | server/admin/routes.js:558 |  | keep |
+| GET | /api/admin/ai/viewers/status | server/admin/routes.js:530 |  | keep |
+| GET | /api/admin/analytics | server/index.js:707 |  | keep |
+| GET | /api/admin/analytics/bots | server/index.js:716 |  | keep |
+| GET | /api/admin/bans | server/admin/routes.js:427 |  | keep |
+| POST | /api/admin/broadcast | server/index.js:824 |  | keep |
+| PUT | /api/admin/channels/:id/force-nsfw | server/admin/routes.js:368 |  | keep |
+| GET | /api/admin/diagnostics | server/admin/routes.js:55 |  | keep |
+| DELETE | /api/admin/media-tools/cookies | server/admin/routes.js:1242 |  | keep |
+| PUT | /api/admin/media-tools/cookies | server/admin/routes.js:1161 |  | keep |
+| POST | /api/admin/media-tools/cookies/check | server/admin/routes.js:1220 |  | keep |
+| DELETE | /api/admin/media-tools/extra-args | server/admin/routes.js:1275 |  | keep |
+| PUT | /api/admin/media-tools/extra-args | server/admin/routes.js:1256 |  | keep |
+| GET | /api/admin/media-tools/status | server/admin/routes.js:1116 |  | keep |
+| POST | /api/admin/media-tools/test | server/admin/routes.js:1286 |  | keep |
+| GET | /api/admin/moderators | server/admin/routes.js:723 |  | keep |
+| POST | /api/admin/moderators | server/admin/routes.js:735 |  | keep |
+| DELETE | /api/admin/moderators/:id | server/admin/routes.js:762 |  | keep |
+| GET | /api/admin/money | server/admin/routes.js:481 |  | keep |
+| POST | /api/admin/money/actions/:id/resolve | server/admin/routes.js:495 |  | keep |
+| POST | /api/admin/money/freeze | server/admin/routes.js:489 |  | keep |
+| PUT | /api/admin/openre/managed/:id/ingest-authority | server/openre/routes.js:35 |  | keep |
+| GET | /api/admin/openre/status | server/openre/routes.js:18 |  | keep |
+| GET | /api/admin/settings | server/admin/routes.js:508 |  | keep |
+| PUT | /api/admin/settings | server/admin/routes.js:633 |  | keep |
+| DELETE | /api/admin/settings/:key | server/admin/routes.js:706 |  | keep |
+| PUT | /api/admin/settings/:key | server/admin/routes.js:689 |  | keep |
+| GET | /api/admin/stats | server/admin/routes.js:67 |  | keep |
+| GET | /api/admin/storage | server/admin/routes.js:961 |  | keep |
+| DELETE | /api/admin/storage/clips/bulk | server/admin/routes.js:1066 |  | keep |
+| GET | /api/admin/storage/vods | server/admin/routes.js:1016 |  | keep |
+| DELETE | /api/admin/storage/vods/bulk | server/admin/routes.js:1035 |  | keep |
+| GET | /api/admin/streams | server/admin/routes.js:303 |  | keep |
+| DELETE | /api/admin/streams/:id | server/admin/routes.js:322 |  | keep |
+| PUT | /api/admin/streams/:id/nsfw | server/admin/routes.js:416 |  | keep |
+| GET | /api/admin/users | server/admin/routes.js:119 |  | keep |
+| PUT | /api/admin/users/:id | server/admin/routes.js:156 |  | keep |
+| DELETE | /api/admin/users/:id/ban | server/admin/routes.js:284 |  | keep |
+| POST | /api/admin/users/:id/ban | server/admin/routes.js:246 |  | keep |
+| PUT | /api/admin/users/:id/force-vod-recording | server/admin/routes.js:385 |  | keep |
+| GET | /api/admin/verification-keys | server/admin/routes.js:839 |  | keep |
+| POST | /api/admin/verification-keys | server/admin/routes.js:849 |  | keep |
+| DELETE | /api/admin/verification-keys/:id | server/admin/routes.js:892 |  | keep |
+| GET | /api/admin/vpn-queue | server/admin/routes.js:443 |  | keep |
+| PUT | /api/admin/vpn-queue/:id | server/admin/routes.js:459 |  | keep |
+| POST | /api/ai-viewers/${cmd} | server/ai/viewers/routes.js:117 |  | keep |
+| DELETE | /api/ai-viewers/bots/:id | server/ai/viewers/routes.js:220 |  | keep |
+| PATCH | /api/ai-viewers/bots/:id | server/ai/viewers/routes.js:185 |  | keep |
+| POST | /api/ai-viewers/bots/:id/clear-memory | server/ai/viewers/routes.js:209 |  | keep |
+| POST | /api/ai-viewers/bots/:id/mute | server/ai/viewers/routes.js:122 |  | keep |
+| POST | /api/ai-viewers/bots/:id/unmute | server/ai/viewers/routes.js:123 |  | keep |
+| POST | /api/ai-viewers/byo/test | server/ai/viewers/routes.js:124 |  | keep |
+| POST | /api/ai-viewers/clone | server/ai/viewers/routes.js:233 |  | keep |
+| GET | /api/ai-viewers/config | server/ai/viewers/routes.js:82 |  | keep |
+| PUT | /api/ai-viewers/config | server/ai/viewers/routes.js:134 |  | keep |
+| GET | /api/ai-viewers/log | server/ai/viewers/routes.js:106 |  | keep |
+| POST | /api/ai-viewers/preview | server/ai/viewers/routes.js:282 |  | keep |
+| GET | /api/ai-viewers/roster | server/ai/viewers/routes.js:167 |  | keep |
+| GET | /api/ai-viewers/status | server/ai/viewers/routes.js:99 |  | keep |
+| GET | /api/ai-viewers/threads | server/ai/viewers/routes.js:112 |  | keep |
+| GET | /api/analytics/channel/:username | server/streaming/analytics-routes.js:22 |  | keep |
+| GET | /api/analytics/channel/:username/dashboard | server/streaming/analytics-routes.js:156 |  | keep |
+| GET | /api/analytics/channel/:username/streams | server/streaming/analytics-routes.js:57 |  | keep |
+| GET | /api/analytics/stream/:id | server/streaming/analytics-routes.js:96 |  | keep |
+| POST | /api/arena/backfill | server/arena/routes.js:80 |  | keep |
+| GET | /api/arena/beefs | server/arena/routes.js:112 |  | keep |
+| GET | /api/arena/beefs/:id | server/arena/routes.js:113 |  | keep |
+| POST | /api/arena/beefs/:id/hype | server/arena/routes.js:117 |  | keep |
+| GET | /api/arena/console/:user | server/arena/routes.js:85 |  | keep |
+| GET | /api/arena/feed | server/arena/routes.js:37 |  | keep |
+| GET | /api/arena/fighters | server/arena/routes.js:32 |  | keep |
+| GET | /api/arena/fighters/:user | server/arena/routes.js:56 |  | keep |
+| POST | /api/arena/fighters/:user/refresh | server/arena/routes.js:69 |  | keep |
+| GET | /api/arena/fighters/:user/stat/:stat | server/arena/routes.js:46 |  | keep |
+| GET | /api/arena/levels | server/arena/routes.js:150 |  | keep |
+| GET | /api/arena/live | server/arena/routes.js:36 |  | keep |
+| GET | /api/arena/me | server/arena/routes.js:138 |  | keep |
+| GET | /api/arena/status | server/arena/routes.js:30 |  | keep |
+| GET | /api/arena/voice/:user | server/arena/routes.js:122 |  | keep |
+| POST | /api/auth/avatar | server/auth/routes.js:192 |  | keep |
+| GET | /api/auth/avatar/history | server/auth/routes.js:246 |  | keep |
+| GET | /api/auth/callback | server/auth/routes.js:488 |  | keep |
+| POST | /api/auth/change-password | server/auth/routes.js:166 |  | keep |
+| POST | /api/auth/fedcm | server/auth/routes.js:465 |  | keep |
+| GET | /api/auth/ice-servers | server/auth/routes.js:900 |  | keep |
+| POST | /api/auth/login | server/auth/routes.js:97 |  | keep |
+| GET | /api/auth/logout | server/auth/routes.js:627 |  | keep |
+| POST | /api/auth/logout | server/auth/routes.js:620 |  | keep |
+| GET | /api/auth/me | server/auth/routes.js:102 |  | keep |
+| GET | /api/auth/preferences | server/auth/routes.js:679 |  | keep |
+| PUT | /api/auth/preferences | server/auth/routes.js:689 |  | keep |
+| PUT | /api/auth/profile | server/auth/routes.js:110 |  | keep |
+| POST | /api/auth/refresh | server/auth/routes.js:558 |  | keep |
+| POST | /api/auth/register | server/auth/routes.js:92 |  | keep |
+| GET | /api/auth/sso/login | server/auth/routes.js:312 |  | keep |
+| GET | /api/auth/sso/status | server/auth/routes.js:638 |  | keep |
+| GET | /api/auth/stream-key | server/auth/routes.js:171 |  | keep |
+| POST | /api/auth/stream-key/regenerate | server/auth/routes.js:176 |  | keep |
+| GET | /api/auth/tokens | server/auth/routes.js:859 |  | keep |
+| POST | /api/auth/tokens | server/auth/routes.js:821 |  | keep |
+| DELETE | /api/auth/tokens/:id | server/auth/routes.js:879 |  | keep |
+| GET | /api/auth/user/:username | server/auth/routes.js:183 |  | keep |
+| GET | /api/channels/:channelId/moderation | server/admin/channel-mod-routes.js:157 | OpenVibe.Chat | extract |
+| PUT | /api/channels/:channelId/moderation | server/admin/channel-mod-routes.js:170 | OpenVibe.Chat | extract |
+| GET | /api/channels/:channelId/moderation/chat-search | server/admin/channel-mod-routes.js:306 | OpenVibe.Chat | extract |
+| GET | /api/channels/:channelId/moderation/logs | server/admin/channel-mod-routes.js:288 | OpenVibe.Chat | extract |
+| POST | /api/channels/:channelId/moderation/messages/:messageId/delete | server/admin/channel-mod-routes.js:320 | OpenVibe.Chat | extract |
+| GET | /api/channels/:channelId/mods | server/admin/channel-mod-routes.js:75 | OpenVibe.Chat | extract |
+| POST | /api/channels/:channelId/mods | server/admin/channel-mod-routes.js:89 | OpenVibe.Chat | extract |
+| DELETE | /api/channels/:channelId/mods/:userId | server/admin/channel-mod-routes.js:127 | OpenVibe.Chat | extract |
+| GET | /api/channels/moderation/mine | server/admin/channel-mod-routes.js:49 | OpenVibe.Chat | extract |
+| GET | /api/chat-ai/anon/:anonId | server/ai/chat-ai-routes.js:83 |  | keep |
+| GET | /api/chat-ai/global | server/ai/chat-ai-routes.js:14 |  | keep |
+| GET | /api/chat-ai/live-captions/:username | server/ai/chat-ai-routes.js:230 |  | keep |
+| GET | /api/chat-ai/relay/:platform/:username | server/ai/chat-ai-routes.js:95 |  | keep |
+| GET | /api/chat-ai/timeline | server/ai/chat-ai-routes.js:24 |  | keep |
+| GET | /api/chat-ai/timeline/:username | server/ai/chat-ai-routes.js:174 |  | keep |
+| GET | /api/chat-ai/transcript/:streamId | server/ai/chat-ai-routes.js:329 |  | keep |
+| GET | /api/chat-ai/user/:id | server/ai/chat-ai-routes.js:39 |  | keep |
+| GET | /api/chat-ai/vod-transcripts | server/ai/chat-ai-routes.js:267 |  | keep |
+| GET | /api/chat/:streamId/history | server/chat/routes.js:509 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/:streamId/replay | server/chat/routes.js:487 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/:streamId/users | server/chat/routes.js:633 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/admin/logs | server/chat/routes.js:718 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/admin/logs/export | server/chat/routes.js:755 | OpenVibe.Chat | shadowed |
+| DELETE | /api/chat/admin/purge | server/chat/routes.js:674 | OpenVibe.Chat | shadowed |
+| POST | /api/chat/admin/purge/preview | server/chat/routes.js:642 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/anon/:anonId | server/chat/routes.js:419 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/anon/:anonId/logs | server/chat/routes.js:430 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/channel/:userId/history | server/chat/routes.js:609 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/filters/friendly | server/chat/routes.js:462 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/gif/providers | server/chat/routes.js:109 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/gif/search | server/chat/routes.js:145 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/gif/trending | server/chat/routes.js:119 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/global/history | server/chat/routes.js:468 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/relay-user/:platform/:username | server/chat/routes.js:409 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/relay-user/:platform/:username/logs | server/chat/routes.js:446 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/search | server/chat/routes.js:319 | OpenVibe.Chat | shadowed |
+| POST | /api/chat/send | server/chat/routes.js:209 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/user/:userId/history | server/chat/routes.js:341 | OpenVibe.Chat | shadowed |
+| GET | /api/chat/user/:username/profile | server/chat/routes.js:360 | OpenVibe.Chat | shadowed |
+| GET | /api/clips | server/media-proxy/clips.js:166 | OpenVibe.Media | adapter |
+| DELETE | /api/clips/:id | server/media-proxy/clips.js:335 | OpenVibe.Media | adapter |
+| GET | /api/clips/:id | server/media-proxy/clips.js:195 | OpenVibe.Media | adapter |
+| POST | /api/clips/:id/recut | server/media-proxy/clips.js:354 | OpenVibe.Media | adapter |
+| PUT | /api/clips/:id/title | server/media-proxy/clips.js:269 | OpenVibe.Media | adapter |
+| PUT | /api/clips/:id/visibility | server/media-proxy/clips.js:286 | OpenVibe.Media | adapter |
+| POST | /api/clips/bulk | server/media-proxy/clips.js:310 | OpenVibe.Media | adapter |
+| GET | /api/clips/mine | server/media-proxy/clips.js:118 | OpenVibe.Media | adapter |
+| GET | /api/clips/my-stream | server/media-proxy/clips.js:132 | OpenVibe.Media | adapter |
+| GET | /api/clips/settings/channel | server/media-proxy/clips.js:144 | OpenVibe.Media | adapter |
+| PUT | /api/clips/settings/channel | server/media-proxy/clips.js:153 | OpenVibe.Media | adapter |
+| POST | /api/coins/admin/grant | server/monetization/coins-routes.js:310 |  | keep |
+| GET | /api/coins/balance | server/monetization/coins-routes.js:26 |  | keep |
+| POST | /api/coins/bonus | server/monetization/coins-routes.js:70 |  | keep |
+| GET | /api/coins/channel-balance | server/monetization/coins-routes.js:31 |  | keep |
+| PUT | /api/coins/config | server/monetization/coins-routes.js:95 |  | keep |
+| GET | /api/coins/config/:userId | server/monetization/coins-routes.js:90 |  | keep |
+| POST | /api/coins/heartbeat | server/monetization/coins-routes.js:52 |  | keep |
+| GET | /api/coins/history | server/monetization/coins-routes.js:44 |  | keep |
+| GET | /api/coins/rates | server/monetization/coins-routes.js:37 |  | keep |
+| POST | /api/coins/redeem | server/monetization/coins-routes.js:207 |  | keep |
+| GET | /api/coins/redemptions | server/monetization/coins-routes.js:261 |  | keep |
+| POST | /api/coins/redemptions/:id | server/monetization/coins-routes.js:267 |  | keep |
+| POST | /api/coins/rewards | server/monetization/coins-routes.js:116 |  | keep |
+| DELETE | /api/coins/rewards/:id | server/monetization/coins-routes.js:193 |  | keep |
+| PUT | /api/coins/rewards/:id | server/monetization/coins-routes.js:154 |  | keep |
+| GET | /api/coins/rewards/:userId | server/monetization/coins-routes.js:83 |  | keep |
+| DELETE | /api/comments/:commentId | server/media-proxy/comments.js:317 | OpenVibe.Community | adapter |
+| PUT | /api/comments/:commentId | server/media-proxy/comments.js:296 | OpenVibe.Community | adapter |
+| GET | /api/comments/:commentId/replies | server/media-proxy/comments.js:144 | OpenVibe.Community | adapter |
+| GET | /api/comments/:type/:id | server/media-proxy/comments.js:162 | OpenVibe.Community | adapter |
+| POST | /api/comments/:type/:id | server/media-proxy/comments.js:209 | OpenVibe.Community | adapter |
+| GET | /api/controls/:streamId | server/controls/routes.js:1460 | OpenRe.Stream | extract |
+| GET | /api/controls/:streamId/config | server/controls/routes.js:1417 | OpenRe.Stream | extract |
+| PUT | /api/controls/:streamId/config | server/controls/routes.js:1431 | OpenRe.Stream | extract |
+| DELETE | /api/controls/:streamId/presets/cozmo | server/controls/routes.js:1507 | OpenRe.Stream | extract |
+| POST | /api/controls/:streamId/presets/cozmo | server/controls/routes.js:1493 | OpenRe.Stream | extract |
+| POST | /api/controls/api-key | server/controls/routes.js:1228 | OpenRe.Stream | extract |
+| GET | /api/controls/api-keys | server/controls/routes.js:1255 | OpenRe.Stream | extract |
+| GET | /api/controls/configs | server/controls/routes.js:979 | OpenRe.Stream | extract |
+| POST | /api/controls/configs | server/controls/routes.js:994 | OpenRe.Stream | extract |
+| DELETE | /api/controls/configs/:id | server/controls/routes.js:1053 | OpenRe.Stream | extract |
+| GET | /api/controls/configs/:id | server/controls/routes.js:1018 | OpenRe.Stream | extract |
+| PUT | /api/controls/configs/:id | server/controls/routes.js:1033 | OpenRe.Stream | extract |
+| POST | /api/controls/configs/:id/activate | server/controls/routes.js:1183 | OpenRe.Stream | extract |
+| POST | /api/controls/configs/:id/apply/:streamId | server/controls/routes.js:1208 | OpenRe.Stream | extract |
+| GET | /api/controls/configs/:id/bridge-script | server/controls/routes.js:1391 | OpenRe.Stream | extract |
+| POST | /api/controls/configs/:id/buttons | server/controls/routes.js:1073 | OpenRe.Stream | extract |
+| DELETE | /api/controls/configs/:id/buttons/:btnId | server/controls/routes.js:1165 | OpenRe.Stream | extract |
+| PUT | /api/controls/configs/:id/buttons/:btnId | server/controls/routes.js:1123 | OpenRe.Stream | extract |
+| POST | /api/controls/configs/deactivate | server/controls/routes.js:1198 | OpenRe.Stream | extract |
+| GET | /api/controls/cozmo-script | server/controls/routes.js:1373 | OpenRe.Stream | extract |
+| GET | /api/controls/settings/channel | server/controls/routes.js:1270 | OpenRe.Stream | extract |
+| PUT | /api/controls/settings/channel | server/controls/routes.js:1287 | OpenRe.Stream | extract |
+| GET | /api/controls/whitelist | server/controls/routes.js:1325 | OpenRe.Stream | extract |
+| POST | /api/controls/whitelist | server/controls/routes.js:1341 | OpenRe.Stream | extract |
+| DELETE | /api/controls/whitelist/:id | server/controls/routes.js:1359 | OpenRe.Stream | extract |
+| POST | /api/cosmetics/activate | server/monetization/cosmetics-routes.js:64 |  | keep |
+| GET | /api/cosmetics/catalog | server/monetization/cosmetics-routes.js:20 |  | keep |
+| POST | /api/cosmetics/deactivate | server/monetization/cosmetics-routes.js:73 |  | keep |
+| POST | /api/cosmetics/equip | server/monetization/cosmetics-routes.js:46 |  | keep |
+| GET | /api/cosmetics/equipped/:userId | server/monetization/cosmetics-routes.js:38 |  | keep |
+| POST | /api/cosmetics/internal-unlock | server/monetization/cosmetics-routes.js:91 |  | keep |
+| GET | /api/cosmetics/inventory | server/monetization/cosmetics-routes.js:32 |  | keep |
+| POST | /api/cosmetics/unequip | server/monetization/cosmetics-routes.js:55 |  | keep |
+| POST | /api/csp-report | server/index.js:845 |  | keep |
+| GET | /api/dm/blocks | server/chat/dm-routes.js:401 | OpenVibe.Chat | shadowed |
+| DELETE | /api/dm/blocks/:userId | server/chat/dm-routes.js:389 | OpenVibe.Chat | shadowed |
+| POST | /api/dm/blocks/:userId | server/chat/dm-routes.js:374 | OpenVibe.Chat | shadowed |
+| GET | /api/dm/blocks/check/:userId | server/chat/dm-routes.js:411 | OpenVibe.Chat | shadowed |
+| GET | /api/dm/conversations | server/chat/dm-routes.js:49 | OpenVibe.Chat | shadowed |
+| POST | /api/dm/conversations | server/chat/dm-routes.js:64 | OpenVibe.Chat | shadowed |
+| GET | /api/dm/conversations/:id | server/chat/dm-routes.js:120 | OpenVibe.Chat | shadowed |
+| PATCH | /api/dm/conversations/:id | server/chat/dm-routes.js:331 | OpenVibe.Chat | shadowed |
+| GET | /api/dm/conversations/:id/messages | server/chat/dm-routes.js:137 | OpenVibe.Chat | shadowed |
+| POST | /api/dm/conversations/:id/messages | server/chat/dm-routes.js:155 | OpenVibe.Chat | shadowed |
+| DELETE | /api/dm/conversations/:id/messages/:msgId | server/chat/dm-routes.js:421 | OpenVibe.Chat | shadowed |
+| POST | /api/dm/conversations/:id/participants | server/chat/dm-routes.js:256 | OpenVibe.Chat | shadowed |
+| DELETE | /api/dm/conversations/:id/participants/:userId | server/chat/dm-routes.js:310 | OpenVibe.Chat | shadowed |
+| POST | /api/dm/conversations/:id/read | server/chat/dm-routes.js:234 | OpenVibe.Chat | shadowed |
+| GET | /api/dm/unread | server/chat/dm-routes.js:350 | OpenVibe.Chat | shadowed |
+| GET | /api/dm/users/search | server/chat/dm-routes.js:360 | OpenVibe.Chat | shadowed |
+| GET | /api/easter-egg/daily | server/ai/easter-egg-routes.js:16 |  | keep |
+| POST | /api/easter-egg/reveal | server/ai/easter-egg-routes.js:69 |  | keep |
+| POST | /api/easter-egg/solve | server/ai/easter-egg-routes.js:41 |  | keep |
+| POST | /api/emotes | server/emotes/routes.js:279 | OpenVibe.Chat | extract |
+| DELETE | /api/emotes/:id | server/emotes/routes.js:473 | OpenVibe.Chat | extract |
+| PATCH | /api/emotes/:id | server/emotes/routes.js:416 | OpenVibe.Chat | extract |
+| GET | /api/emotes/7tv | server/emotes/routes.js:570 | OpenVibe.Chat | extract |
+| GET | /api/emotes/all/:streamId | server/emotes/routes.js:660 | OpenVibe.Chat | extract |
+| GET | /api/emotes/bttv | server/emotes/routes.js:552 | OpenVibe.Chat | extract |
+| GET | /api/emotes/channel/:userId | server/emotes/routes.js:234 | OpenVibe.Chat | extract |
+| GET | /api/emotes/defaults | server/emotes/routes.js:588 | OpenVibe.Chat | extract |
+| GET | /api/emotes/ffz | server/emotes/routes.js:533 | OpenVibe.Chat | extract |
+| GET | /api/emotes/file/:filename | server/emotes/routes.js:505 | OpenVibe.Chat | extract |
+| GET | /api/emotes/global | server/emotes/routes.js:215 | OpenVibe.Chat | extract |
+| GET | /api/emotes/mine | server/emotes/routes.js:257 | OpenVibe.Chat | extract |
+| GET | /api/emotes/search | server/emotes/routes.js:622 | OpenVibe.Chat | extract |
+| GET | /api/emotes/sources | server/emotes/routes.js:593 | OpenVibe.Chat | extract |
+| PUT | /api/emotes/sources | server/emotes/routes.js:608 | OpenVibe.Chat | extract |
+| GET | /api/funds/balance | server/monetization/routes.js:183 | OpenVibe.Tips | extract |
+| POST | /api/funds/cashout | server/monetization/routes.js:165 | OpenVibe.Tips | extract |
+| POST | /api/funds/cashout/:id/approve | server/monetization/routes.js:298 | OpenVibe.Tips | extract |
+| POST | /api/funds/cashout/:id/deny | server/monetization/routes.js:309 | OpenVibe.Tips | extract |
+| GET | /api/funds/cashouts/pending | server/monetization/routes.js:320 | OpenVibe.Tips | extract |
+| POST | /api/funds/donate | server/monetization/routes.js:61 | OpenVibe.Tips | extract |
+| POST | /api/funds/goals | server/monetization/routes.js:244 | OpenVibe.Tips | extract |
+| DELETE | /api/funds/goals/:id | server/monetization/routes.js:275 | OpenVibe.Tips | extract |
+| PUT | /api/funds/goals/:id | server/monetization/routes.js:258 | OpenVibe.Tips | extract |
+| GET | /api/funds/goals/:userId | server/monetization/routes.js:292 | OpenVibe.Tips | extract |
+| GET | /api/funds/goals/manage/mine | server/monetization/routes.js:239 | OpenVibe.Tips | extract |
+| GET | /api/funds/history | server/monetization/routes.js:219 | OpenVibe.Tips | extract |
+| GET | /api/funds/leaderboard/:streamId | server/monetization/routes.js:233 | OpenVibe.Tips | extract |
+| POST | /api/funds/purchase | server/monetization/routes.js:42 | OpenVibe.Tips | extract |
+| POST | /api/funds/recycle | server/monetization/routes.js:206 | OpenVibe.Tips | extract |
+| GET | /api/health | server/index.js:726 |  | keep |
+| GET | /api/home/digest | server/home/routes.js:457 |  | keep |
+| GET | /api/home/discover | server/home/routes.js:507 |  | keep |
+| GET | /api/home/featured | server/home/routes.js:247 |  | keep |
+| GET | /api/home/hero | server/home/routes.js:333 |  | keep |
+| GET | /api/home/pulse | server/home/routes.js:406 |  | keep |
+| GET | /api/home/star | server/home/routes.js:352 |  | keep |
+| POST | /api/home/star/rotate | server/home/routes.js:569 |  | keep |
+| GET | /api/home/stats-live | server/home/routes.js:287 |  | keep |
+| GET | /api/home/stats/series/:metric | server/home/routes.js:177 |  | keep |
+| GET | /api/i18n/languages | server/i18n/routes.js:31 |  | keep |
+| POST | /api/i18n/translate | server/i18n/routes.js:36 |  | keep |
+| GET | /api/img-proxy | server/media/external-image-proxy.js:31 |  | keep |
+| GET | /api/kiosk/favicon | server/kiosk/routes.js:122 |  | keep |
+| GET | /api/kiosk/site | server/kiosk/routes.js:77 |  | keep |
+| GET | /api/live-events | server/index.js:649 |  | keep |
+| POST | /api/media/advance | server/media/routes.js:267 |  | keep |
+| GET | /api/media/channel/:username | server/media/routes.js:52 |  | keep |
+| GET | /api/media/downloader/status | server/media/routes.js:418 |  | keep |
+| DELETE | /api/media/queue/:id | server/media/routes.js:314 |  | keep |
+| POST | /api/media/queue/:id/fail | server/media/routes.js:403 |  | keep |
+| POST | /api/media/queue/:id/move | server/media/routes.js:304 |  | keep |
+| POST | /api/media/queue/:id/play | server/media/routes.js:278 |  | keep |
+| POST | /api/media/queue/:id/position | server/media/routes.js:370 |  | keep |
+| POST | /api/media/queue/:id/refund | server/media/routes.js:388 |  | keep |
+| POST | /api/media/queue/:id/skip | server/media/routes.js:295 |  | keep |
+| GET | /api/media/queue/:id/stream-url | server/media/routes.js:325 |  | keep |
+| POST | /api/media/quote | server/media/routes.js:165 |  | keep |
+| POST | /api/media/request | server/media/routes.js:222 |  | keep |
+| GET | /api/media/settings | server/media/routes.js:98 |  | keep |
+| PUT | /api/media/settings | server/media/routes.js:102 |  | keep |
+| POST | /api/media/start | server/media/routes.js:258 |  | keep |
+| GET | /api/meta/openvibeapp | server/meta/routes.js:87 |  | keep |
+| DELETE | /api/mod/ban/:id | server/admin/mod-routes.js:269 | OpenVibe.Network (policy) | extract |
+| GET | /api/mod/bans | server/admin/mod-routes.js:42 | OpenVibe.Network (policy) | extract |
+| GET | /api/mod/chat/search | server/admin/mod-routes.js:315 | OpenVibe.Network (policy) | extract |
+| GET | /api/mod/chat/user/:userId | server/admin/mod-routes.js:346 | OpenVibe.Network (policy) | extract |
+| POST | /api/mod/delete-message | server/admin/mod-routes.js:364 | OpenVibe.Network (policy) | extract |
+| POST | /api/mod/delete-user-messages | server/admin/mod-routes.js:419 | OpenVibe.Network (policy) | extract |
+| POST | /api/mod/global-ban | server/admin/mod-routes.js:146 | OpenVibe.Network (policy) | extract |
+| POST | /api/mod/ip-approval/:channelId/approve | server/admin/mod-routes.js:611 | OpenVibe.Network (policy) | extract |
+| POST | /api/mod/ip-approval/:channelId/deny | server/admin/mod-routes.js:668 | OpenVibe.Network (policy) | extract |
+| GET | /api/mod/ip-approval/:channelId/pending | server/admin/mod-routes.js:584 | OpenVibe.Network (policy) | extract |
+| POST | /api/mod/ip-approval/:channelId/review | server/admin/mod-routes.js:698 | OpenVibe.Network (policy) | extract |
+| GET | /api/mod/ip/alts/:userId | server/admin/mod-routes.js:801 | OpenVibe.Network (policy) | extract |
+| GET | /api/mod/ip/anon/:anonId | server/admin/mod-routes.js:755 | OpenVibe.Network (policy) | extract |
+| POST | /api/mod/ip/ban-all | server/admin/mod-routes.js:813 | OpenVibe.Network (policy) | extract |
+| GET | /api/mod/ip/log | server/admin/mod-routes.js:853 | OpenVibe.Network (policy) | extract |
+| GET | /api/mod/ip/lookup/:ip | server/admin/mod-routes.js:786 | OpenVibe.Network (policy) | extract |
+| GET | /api/mod/ip/user/:userId | server/admin/mod-routes.js:730 | OpenVibe.Network (policy) | extract |
+| DELETE | /api/mod/relay-user/:id | server/admin/mod-routes.js:542 | OpenVibe.Network (policy) | extract |
+| POST | /api/mod/relay-user/hide | server/admin/mod-routes.js:484 | OpenVibe.Network (policy) | extract |
+| GET | /api/mod/relay-users/hidden/:channelId | server/admin/mod-routes.js:567 | OpenVibe.Network (policy) | extract |
+| POST | /api/mod/stream-ban | server/admin/mod-routes.js:197 | OpenVibe.Network (policy) | extract |
+| GET | /api/mod/tts-voice/:kind/:id | server/admin/mod-routes.js:889 | OpenVibe.Network (policy) | extract |
+| PUT | /api/mod/tts-voice/:kind/:id | server/admin/mod-routes.js:910 | OpenVibe.Network (policy) | extract |
+| POST | /api/mod/tts-voice/preview | server/admin/mod-routes.js:940 | OpenVibe.Network (policy) | extract |
+| DELETE | /api/mod/users/:id/ban | server/admin/mod-routes.js:169 | OpenVibe.Network (policy) | extract |
+| POST | /api/mod/users/:id/ban | server/admin/mod-routes.js:159 | OpenVibe.Network (policy) | extract |
+| GET | /api/news/my-settings | server/news/news-routes.js:71 |  | keep |
+| PUT | /api/news/my-settings | server/news/news-routes.js:77 |  | keep |
+| GET | /api/news/sources | server/news/news-routes.js:35 |  | keep |
+| PUT | /api/news/sources/:id | server/news/news-routes.js:43 |  | keep |
+| GET | /api/onvif/cameras | server/controls/onvif-routes.js:182 | OpenRe.Stream | extract |
+| POST | /api/onvif/cameras | server/controls/onvif-routes.js:105 | OpenRe.Stream | extract |
+| DELETE | /api/onvif/cameras/:cameraId/presets/:presetId | server/controls/onvif-routes.js:419 | OpenRe.Stream | extract |
+| DELETE | /api/onvif/cameras/:id | server/controls/onvif-routes.js:324 | OpenRe.Stream | extract |
+| GET | /api/onvif/cameras/:id | server/controls/onvif-routes.js:210 | OpenRe.Stream | extract |
+| PUT | /api/onvif/cameras/:id | server/controls/onvif-routes.js:263 | OpenRe.Stream | extract |
+| GET | /api/onvif/cameras/:id/presets | server/controls/onvif-routes.js:349 | OpenRe.Stream | extract |
+| POST | /api/onvif/cameras/:id/presets | server/controls/onvif-routes.js:372 | OpenRe.Stream | extract |
+| POST | /api/onvif/discover | server/controls/onvif-routes.js:70 | OpenRe.Stream | extract |
+| GET | /api/pastes | server/media-proxy/pastes.js:167 | OpenVibe.Community | adapter |
+| POST | /api/pastes | server/media-proxy/pastes.js:168 | OpenVibe.Community | adapter |
+| DELETE | /api/pastes/:slug | server/media-proxy/pastes.js:217 | OpenVibe.Community | adapter |
+| GET | /api/pastes/:slug | server/media-proxy/pastes.js:215 | OpenVibe.Community | adapter |
+| PUT | /api/pastes/:slug | server/media-proxy/pastes.js:216 | OpenVibe.Community | adapter |
+| POST | /api/pastes/:slug/censor | server/media-proxy/pastes.js:222 | OpenVibe.Community | adapter |
+| POST | /api/pastes/:slug/censor | server/media-proxy/pastes.js:315 | OpenVibe.Community | adapter |
+| GET | /api/pastes/:slug/comments | server/media-proxy/pastes.js:243 | OpenVibe.Community | adapter |
+| POST | /api/pastes/:slug/comments | server/media-proxy/pastes.js:246 | OpenVibe.Community | adapter |
+| DELETE | /api/pastes/:slug/comments/:commentId | server/media-proxy/pastes.js:248 | OpenVibe.Community | adapter |
+| POST | /api/pastes/:slug/copy | server/media-proxy/pastes.js:242 | OpenVibe.Community | adapter |
+| POST | /api/pastes/:slug/fork | server/media-proxy/pastes.js:238 | OpenVibe.Community | adapter |
+| POST | /api/pastes/:slug/like | server/media-proxy/pastes.js:241 | OpenVibe.Community | adapter |
+| GET | /api/pastes/:slug/raw | server/media-proxy/pastes.js:240 | OpenVibe.Community | adapter |
+| GET | /api/pastes/:slug/raw | server/media-proxy/pastes.js:311 | OpenVibe.Community | adapter |
+| POST | /api/pastes/:slug/set-avatar | server/media-proxy/pastes.js:110 | OpenVibe.Community | adapter |
+| POST | /api/pastes/:slug/set-avatar | server/media-proxy/pastes.js:296 | OpenVibe.Community | adapter |
+| DELETE | /api/pastes/admin/forks | server/media-proxy/pastes.js:171 | OpenVibe.Community | adapter |
+| DELETE | /api/pastes/admin/forks | server/media-proxy/pastes.js:313 | OpenVibe.Community | adapter |
+| GET | /api/pastes/admin/stats | server/media-proxy/pastes.js:170 | OpenVibe.Community | adapter |
+| POST | /api/pastes/bulk | server/media-proxy/pastes.js:172 | OpenVibe.Community | adapter |
+| POST | /api/pastes/bulk | server/media-proxy/pastes.js:314 | OpenVibe.Community | adapter |
+| GET | /api/pastes/by-user/:username | server/media-proxy/pastes.js:177 | OpenVibe.Community | adapter |
+| GET | /api/pastes/config | server/media-proxy/pastes.js:169 | OpenVibe.Community | adapter |
+| POST | /api/pastes/screenshot | server/media-proxy/pastes.js:83 | OpenVibe.Community | adapter |
+| POST | /api/payments/bucks/checkout | server/monetization/payments-routes.js:41 | OpenVibe.Billing | extract |
+| GET | /api/payments/channel/:username | server/monetization/payments-routes.js:243 | OpenVibe.Billing | extract |
+| GET | /api/payments/config | server/monetization/payments-routes.js:36 | OpenVibe.Billing | extract |
+| GET | /api/payments/paypal/return | server/monetization/payments-routes.js:111 | OpenVibe.Billing | extract |
+| POST | /api/payments/subscribe | server/monetization/payments-routes.js:136 | OpenVibe.Billing | extract |
+| POST | /api/payments/subscriptions/:id/cancel | server/monetization/payments-routes.js:266 | OpenVibe.Billing | extract |
+| GET | /api/payments/subscriptions/mine | server/monetization/payments-routes.js:231 | OpenVibe.Billing | extract |
+| ALL | /api/payments/webhook/ccbill | server/monetization/payments-routes.js:347 | OpenVibe.Billing | extract |
+| POST | /api/payments/webhook/crypto | server/monetization/payments-routes.js:366 | OpenVibe.Billing | extract |
+| POST | /api/payments/webhook/paypal | server/monetization/payments-routes.js:330 | OpenVibe.Billing | extract |
+| POST | /api/payments/webhook/stripe | server/monetization/payments-routes.js:300 | OpenVibe.Billing | extract |
+| GET | /api/powerchat/authorize-url | server/integrations/powerchat-routes.js:436 | OpenVibe.Billing | extract |
+| GET | /api/powerchat/donate-link | server/integrations/powerchat-routes.js:313 | OpenVibe.Billing | extract |
+| GET | /api/powerchat/oauth/callback | server/integrations/powerchat-routes.js:199 | OpenVibe.Billing | extract |
+| DELETE | /api/powerchat/oauth/connection | server/integrations/powerchat-routes.js:275 | OpenVibe.Billing | extract |
+| GET | /api/powerchat/oauth/start | server/integrations/powerchat-routes.js:182 | OpenVibe.Billing | extract |
+| POST | /api/powerchat/reconcile | server/integrations/powerchat-routes.js:339 | OpenVibe.Billing | extract |
+| GET | /api/powerchat/status | server/integrations/powerchat-routes.js:86 | OpenVibe.Billing | extract |
+| POST | /api/powerchat/test-alert | server/integrations/powerchat-routes.js:389 | OpenVibe.Billing | extract |
+| POST | /api/powerchat/test-tip | server/integrations/powerchat-routes.js:350 | OpenVibe.Billing | extract |
+| GET | /api/powerchat/tip-link | server/integrations/powerchat-routes.js:291 | OpenVibe.Billing | extract |
+| POST | /api/powerchat/webhook | server/integrations/powerchat-routes.js:442 | OpenVibe.Billing | extract |
+| GET | /api/ready | server/index.js:764 |  | keep |
+| GET | /api/recap/:streamId | server/recap/routes.js:21 |  | keep |
+| POST | /api/recap/:streamId/regenerate | server/recap/routes.js:43 |  | keep |
+| GET | /api/recap/channel/:username | server/recap/routes.js:14 |  | keep |
+| GET | /api/restream/destinations | server/streaming/restream-routes.js:174 | OpenRe.Stream | extract |
+| POST | /api/restream/destinations | server/streaming/restream-routes.js:196 | OpenRe.Stream | extract |
+| DELETE | /api/restream/destinations/:id | server/streaming/restream-routes.js:362 | OpenRe.Stream | extract |
+| PUT | /api/restream/destinations/:id | server/streaming/restream-routes.js:272 | OpenRe.Stream | extract |
+| POST | /api/restream/destinations/:id/start | server/streaming/restream-routes.js:386 | OpenRe.Stream | extract |
+| POST | /api/restream/destinations/:id/stop | server/streaming/restream-routes.js:443 | OpenRe.Stream | extract |
+| GET | /api/restream/oauth/:platform/callback | server/streaming/restream-routes.js:623 | OpenRe.Stream | extract |
+| DELETE | /api/restream/oauth/:platform/connection | server/streaming/restream-routes.js:717 | OpenRe.Stream | extract |
+| GET | /api/restream/oauth/:platform/start | server/streaming/restream-routes.js:609 | OpenRe.Stream | extract |
+| GET | /api/restream/oauth/status | server/streaming/restream-routes.js:587 | OpenRe.Stream | extract |
+| GET | /api/restream/presets | server/streaming/restream-routes.js:164 | OpenRe.Stream | extract |
+| GET | /api/restream/status | server/streaming/restream-routes.js:464 | OpenRe.Stream | extract |
+| GET | /api/restream/viewer-config | server/streaming/restream-routes.js:513 | OpenRe.Stream | extract |
+| GET | /api/restream/viewer-counts | server/streaming/restream-routes.js:503 | OpenRe.Stream | extract |
+| POST | /api/restream/viewer-counts | server/streaming/restream-routes.js:485 | OpenRe.Stream | extract |
+| DELETE | /api/robotstreamer/integration | server/integrations/routes.js:226 | OpenRe.Stream | extract |
+| GET | /api/robotstreamer/integration | server/integrations/routes.js:41 | OpenRe.Stream | extract |
+| PUT | /api/robotstreamer/integration | server/integrations/routes.js:152 | OpenRe.Stream | extract |
+| POST | /api/robotstreamer/integration/login | server/integrations/routes.js:107 | OpenRe.Stream | extract |
+| POST | /api/robotstreamer/integration/validate | server/integrations/routes.js:70 | OpenRe.Stream | extract |
+| POST | /api/robotstreamer/restream/start | server/integrations/routes.js:194 | OpenRe.Stream | extract |
+| POST | /api/robotstreamer/restream/stop | server/integrations/routes.js:214 | OpenRe.Stream | extract |
+| POST | /api/sounds | server/chat/sounds-routes.js:147 | OpenVibe.Chat | shadowed |
+| DELETE | /api/sounds/:id | server/chat/sounds-routes.js:287 | OpenVibe.Chat | shadowed |
+| DELETE | /api/sounds/alert/:kind | server/chat/sounds-routes.js:440 | OpenVibe.Chat | shadowed |
+| POST | /api/sounds/alert/:kind | server/chat/sounds-routes.js:403 | OpenVibe.Chat | shadowed |
+| GET | /api/sounds/alert/mine | server/chat/sounds-routes.js:393 | OpenVibe.Chat | shadowed |
+| GET | /api/sounds/all/:streamId | server/chat/sounds-routes.js:136 | OpenVibe.Chat | shadowed |
+| GET | /api/sounds/channel/:userId | server/chat/sounds-routes.js:125 | OpenVibe.Chat | shadowed |
+| PATCH | /api/sounds/command | server/chat/sounds-routes.js:313 | OpenVibe.Chat | shadowed |
+| GET | /api/sounds/file/:filename | server/chat/sounds-routes.js:371 | OpenVibe.Chat | shadowed |
+| GET | /api/streams | server/streaming/routes.js:1086 |  | keep |
+| POST | /api/streams | server/streaming/routes.js:1908 |  | keep |
+| DELETE | /api/streams/:id | server/streaming/routes.js:2103 |  | keep |
+| GET | /api/streams/:id | server/streaming/routes.js:1860 |  | keep |
+| PUT | /api/streams/:id | server/streaming/routes.js:2052 |  | keep |
+| GET | /api/streams/:id/call | server/streaming/routes.js:2422 |  | keep |
+| PUT | /api/streams/:id/call | server/streaming/routes.js:2383 |  | keep |
+| GET | /api/streams/:id/endpoint | server/streaming/routes.js:2150 |  | keep |
+| POST | /api/streams/:id/follow | server/streaming/routes.js:2291 |  | keep |
+| POST | /api/streams/:id/heartbeat | server/streaming/routes.js:2248 |  | keep |
+| GET | /api/streams/:id/rtmp-status | server/streaming/routes.js:2266 |  | keep |
+| GET | /api/streams/broadcast-settings | server/streaming/routes.js:1385 |  | keep |
+| PUT | /api/streams/broadcast-settings | server/streaming/routes.js:1402 |  | keep |
+| GET | /api/streams/channel | server/streaming/routes.js:638 |  | keep |
+| PUT | /api/streams/channel | server/streaming/routes.js:650 |  | keep |
+| GET | /api/streams/channel/:username | server/streaming/routes.js:207 |  | keep |
+| PUT | /api/streams/channel/:username/about | server/streaming/routes.js:765 |  | keep |
+| GET | /api/streams/channel/:username/bio-en | server/streaming/routes.js:746 |  | keep |
+| GET | /api/streams/channel/:username/clips-taken | server/streaming/routes.js:557 |  | keep |
+| POST | /api/streams/channel/:username/follow | server/streaming/routes.js:2336 |  | keep |
+| GET | /api/streams/channel/:username/live | server/streaming/routes.js:600 |  | keep |
+| GET | /api/streams/channel/:username/popular | server/streaming/routes.js:531 |  | keep |
+| GET | /api/streams/channel/:username/resolve/:ref | server/streaming/routes.js:1424 |  | keep |
+| GET | /api/streams/channel/:username/weather | server/streaming/routes.js:975 |  | keep |
+| POST | /api/streams/channel/offline-screen | server/streaming/routes.js:871 |  | keep |
+| POST | /api/streams/diag-log | server/streaming/routes.js:2241 |  | keep |
+| POST | /api/streams/goal-media | server/streaming/routes.js:836 |  | keep |
+| GET | /api/streams/managed | server/streaming/routes.js:1578 |  | keep |
+| POST | /api/streams/managed | server/streaming/routes.js:1590 |  | keep |
+| DELETE | /api/streams/managed/:id | server/streaming/routes.js:1804 |  | keep |
+| PUT | /api/streams/managed/:id | server/streaming/routes.js:1644 |  | keep |
+| POST | /api/streams/managed/:id/regenerate-key | server/streaming/routes.js:1829 |  | keep |
+| GET | /api/streams/managed/:managedStreamId/history | server/streaming/routes.js:1458 |  | keep |
+| GET | /api/streams/managed/:managedStreamId/profile | server/streaming/routes.js:1472 |  | keep |
+| GET | /api/streams/mine | server/streaming/routes.js:1122 |  | keep |
+| POST | /api/streams/panel-image | server/streaming/routes.js:814 |  | keep |
+| GET | /api/streams/recent | server/streaming/routes.js:1134 |  | keep |
+| GET | /api/streams/recent-vods | server/streaming/routes.js:1204 |  | keep |
+| GET | /api/streams/recently-online | server/streaming/routes.js:1150 |  | keep |
+| GET | /api/streams/rtmp-proxy/:streamId.flv | server/streaming/routes.js:2443 |  | keep |
+| GET | /api/streams/setup-progress | server/streaming/routes.js:1524 |  | keep |
+| GET | /api/streams/voice-channels | server/streaming/routes.js:1234 |  | keep |
+| POST | /api/streams/voice-channels | server/streaming/routes.js:1255 |  | keep |
+| DELETE | /api/streams/voice-channels/:channelId | server/streaming/routes.js:1267 |  | keep |
+| GET | /api/streams/voice-channels/:channelId | server/streaming/routes.js:1244 |  | keep |
+| POST | /api/streams/voice-channels/call-user | server/streaming/routes.js:1279 |  | keep |
+| POST | /api/streams/voice-channels/call-user/respond | server/streaming/routes.js:1348 |  | keep |
+| GET | /api/themes | server/themes/routes.js:20 | OpenVibe.Network | extract |
+| POST | /api/themes | server/themes/routes.js:108 | OpenVibe.Network | extract |
+| DELETE | /api/themes/:id | server/themes/routes.js:147 | OpenVibe.Network | extract |
+| PUT | /api/themes/:id | server/themes/routes.js:134 | OpenVibe.Network | extract |
+| POST | /api/themes/:id/download | server/themes/routes.js:158 | OpenVibe.Network | extract |
+| GET | /api/themes/:idOrSlug | server/themes/routes.js:88 | OpenVibe.Network | extract |
+| GET | /api/themes/me | server/themes/routes.js:46 | OpenVibe.Network | extract |
+| PUT | /api/themes/me | server/themes/routes.js:73 | OpenVibe.Network | extract |
+| GET | /api/thumbnails/:filename | server/media-proxy/thumbnails.js:87 | OpenVibe.Media | adapter |
+| GET | /api/thumbnails/generate/clip/:id | server/media-proxy/thumbnails.js:83 | OpenVibe.Media | adapter |
+| POST | /api/thumbnails/generate/clip/:id | server/media-proxy/thumbnails.js:70 | OpenVibe.Media | adapter |
+| GET | /api/thumbnails/generate/vod/:id | server/media-proxy/thumbnails.js:82 | OpenVibe.Media | adapter |
+| POST | /api/thumbnails/generate/vod/:id | server/media-proxy/thumbnails.js:69 | OpenVibe.Media | adapter |
+| POST | /api/thumbnails/live/:streamId | server/media-proxy/thumbnails.js:30 | OpenVibe.Media | adapter |
+| GET | /api/tts/admin/settings | server/chat/tts-routes.js:64 | OpenVibe.Chat | shadowed |
+| PUT | /api/tts/admin/settings | server/chat/tts-routes.js:81 | OpenVibe.Chat | shadowed |
+| POST | /api/tts/admin/test | server/chat/tts-routes.js:110 | OpenVibe.Chat | shadowed |
+| GET | /api/tts/audio/:file | server/chat/tts-routes.js:125 | OpenVibe.Chat | shadowed |
+| GET | /api/tts/settings | server/chat/tts-routes.js:43 | OpenVibe.Chat | shadowed |
+| GET | /api/tts/voices | server/chat/tts-routes.js:33 | OpenVibe.Chat | shadowed |
+| GET | /api/updates | server/index.js:811 |  | keep |
+| GET | /api/vibe-coding/channel/:username/:slotIdOrSlug/events | server/vibe-coding/routes.js:17 | OpenVibe.Codes | extract |
+| GET | /api/vibe-coding/managed/:managedStreamId/events | server/vibe-coding/routes.js:47 | OpenVibe.Codes | extract |
+| GET | /api/vibe-coding/managed/:managedStreamId/settings | server/vibe-coding/routes.js:74 | OpenVibe.Codes | extract |
+| PUT | /api/vibe-coding/managed/:managedStreamId/settings | server/vibe-coding/routes.js:91 | OpenVibe.Codes | extract |
+| GET | /api/vods | server/media-proxy/vods.js:303 | OpenVibe.Media | adapter |
+| DELETE | /api/vods/:id | server/media-proxy/vods.js:565 | OpenVibe.Media | adapter |
+| GET | /api/vods/:id | server/media-proxy/vods.js:460 | OpenVibe.Media | adapter |
+| PUT | /api/vods/:id | server/media-proxy/vods.js:520 | OpenVibe.Media | adapter |
+| GET | /api/vods/:id/context | server/media-proxy/vods.js:401 | OpenVibe.Media | adapter |
+| GET | /api/vods/:id/live-info | server/media-proxy/vods.js:282 | OpenVibe.Media | adapter |
+| GET | /api/vods/:id/memories | server/media-proxy/vods.js:377 | OpenVibe.Media | adapter |
+| POST | /api/vods/:id/publish | server/media-proxy/vods.js:577 | OpenVibe.Media | adapter |
+| POST | /api/vods/bulk | server/media-proxy/vods.js:537 | OpenVibe.Media | adapter |
+| POST | /api/vods/bulk-delete-old | server/media-proxy/vods.js:333 | OpenVibe.Media | adapter |
+| POST | /api/vods/clips | server/media-proxy/vods.js:637 | OpenVibe.Media | adapter |
+| POST | /api/vods/clips/:id/trim | server/media-proxy/vods.js:791 | OpenVibe.Media | adapter |
+| GET | /api/vods/clips/stream/:streamId | server/media-proxy/vods.js:780 | OpenVibe.Media | adapter |
+| GET | /api/vods/file/:filename | server/media-proxy/vods.js:593 | OpenVibe.Media | adapter |
+| GET | /api/vods/mine | server/media-proxy/vods.js:321 | OpenVibe.Media | adapter |
+| POST | /api/vods/stream/:streamId/chunk | server/media-proxy/vods.js:183 | OpenVibe.Media | adapter |
+| POST | /api/vods/stream/:streamId/finalize | server/media-proxy/vods.js:237 | OpenVibe.Media | adapter |
+| GET | /api/vods/stream/:streamId/live | server/media-proxy/vods.js:257 | OpenVibe.Media | adapter |
+| POST | /api/vods/upload | server/media-proxy/vods.js:599 | OpenVibe.Media | adapter |
+| GET | /banned | server/index.js:979 |  | keep |
+| POST | /banned/continue | server/index.js:949 |  | keep |
+| GET | /canvas | server/index.js:682 | OpenVibe.Games | compat |
+| GET | /data/pastes/screenshots/:filename | server/index.js:600 |  | keep |
+| GET | /dmca | server/index.js:888 |  | keep |
+| GET | /docs | server/docs/routes.js:304 |  | keep |
+| GET | /docs/:name | server/docs/routes.js:306 |  | keep |
+| GET | /docs/:name.md | server/docs/routes.js:305 |  | keep |
+| GET | /game | server/index.js:681 | OpenVibe.Games | compat |
+| GET | /internal/analytics-summary | server/index.js:562 |  | keep |
+| POST | /internal/chat-context/ai/mod-command | server/chat/live-context-routes.js:459 |  | keep |
+| POST | /internal/chat-context/alert-sound | server/chat/live-context-routes.js:375 |  | keep |
+| POST | /internal/chat-context/anon | server/chat/live-context-routes.js:274 |  | keep |
+| GET | /internal/chat-context/anon-first-seen | server/chat/live-context-routes.js:244 |  | keep |
+| GET | /internal/chat-context/anon/:num | server/chat/live-context-routes.js:241 |  | keep |
+| POST | /internal/chat-context/approve-ip | server/chat/live-context-routes.js:354 |  | keep |
+| POST | /internal/chat-context/arena-command | server/chat/live-context-routes.js:470 |  | keep |
+| POST | /internal/chat-context/asset-sync | server/chat/live-context-routes.js:584 |  | keep |
+| POST | /internal/chat-context/auth | server/chat/live-context-routes.js:75 |  | keep |
+| POST | /internal/chat-context/ban | server/chat/live-context-routes.js:318 |  | keep |
+| GET | /internal/chat-context/bans | server/chat/live-context-routes.js:205 |  | keep |
+| POST | /internal/chat-context/channel-settings | server/chat/live-context-routes.js:363 |  | keep |
+| GET | /internal/chat-context/channels | server/chat/live-context-routes.js:180 |  | keep |
+| GET | /internal/chat-context/channels/:id/approved-ip | server/chat/live-context-routes.js:199 |  | keep |
+| GET | /internal/chat-context/channels/:id/policy | server/chat/live-context-routes.js:187 |  | keep |
+| GET | /internal/chat-context/channels/by-user/:userId | server/chat/live-context-routes.js:184 |  | keep |
+| POST | /internal/chat-context/chat-message | server/chat/live-context-routes.js:417 |  | keep |
+| POST | /internal/chat-context/decor | server/chat/live-context-routes.js:215 |  | keep |
+| POST | /internal/chat-context/ensure-channel | server/chat/live-context-routes.js:390 |  | keep |
+| POST | /internal/chat-context/hardware | server/chat/live-context-routes.js:511 |  | keep |
+| POST | /internal/chat-context/ip-log | server/chat/live-context-routes.js:280 |  | keep |
+| GET | /internal/chat-context/managed-streams | server/chat/live-context-routes.js:175 |  | keep |
+| POST | /internal/chat-context/media-queue | server/chat/live-context-routes.js:483 |  | keep |
+| POST | /internal/chat-context/mirror | server/chat/live-context-routes.js:259 |  | keep |
+| POST | /internal/chat-context/mirror | server/chat/live-context-routes.js:654 |  | keep |
+| POST | /internal/chat-context/notify/dm | server/chat/live-context-routes.js:554 |  | keep |
+| POST | /internal/chat-context/notify/dm-read | server/chat/live-context-routes.js:575 |  | keep |
+| POST | /internal/chat-context/paste | server/chat/live-context-routes.js:529 |  | keep |
+| GET | /internal/chat-context/settings | server/chat/live-context-routes.js:233 |  | keep |
+| POST | /internal/chat-context/site-settings | server/chat/live-context-routes.js:398 |  | keep |
+| GET | /internal/chat-context/streams | server/chat/live-context-routes.js:156 |  | keep |
+| GET | /internal/chat-context/streams/:id | server/chat/live-context-routes.js:164 |  | keep |
+| GET | /internal/chat-context/streams/active | server/chat/live-context-routes.js:161 |  | keep |
+| POST | /internal/chat-context/translate | server/chat/live-context-routes.js:544 |  | keep |
+| GET | /internal/chat-context/tts-audio/:file | server/chat/live-context-routes.js:248 |  | keep |
+| POST | /internal/chat-context/user-color | server/chat/live-context-routes.js:308 |  | keep |
+| GET | /internal/chat-context/users | server/chat/live-context-routes.js:95 |  | keep |
+| GET | /internal/chat-context/users/:id/follows | server/chat/live-context-routes.js:152 |  | keep |
+| POST | /internal/chat-context/users/lookup | server/chat/live-context-routes.js:100 |  | keep |
+| GET | /internal/chat-context/users/profile | server/chat/live-context-routes.js:109 |  | keep |
+| POST | /internal/chat-context/viewer-counts | server/chat/live-context-routes.js:293 |  | keep |
+| POST | /internal/chat-context/viewer-snapshots | server/chat/live-context-routes.js:300 |  | keep |
+| POST | /internal/chat-effects/ai/mod-command | server/chat/live-context-routes.js:459 |  | keep |
+| POST | /internal/chat-effects/alert-sound | server/chat/live-context-routes.js:375 |  | keep |
+| POST | /internal/chat-effects/anon | server/chat/live-context-routes.js:274 |  | keep |
+| GET | /internal/chat-effects/anon-first-seen | server/chat/live-context-routes.js:244 |  | keep |
+| GET | /internal/chat-effects/anon/:num | server/chat/live-context-routes.js:241 |  | keep |
+| POST | /internal/chat-effects/approve-ip | server/chat/live-context-routes.js:354 |  | keep |
+| POST | /internal/chat-effects/arena-command | server/chat/live-context-routes.js:470 |  | keep |
+| POST | /internal/chat-effects/asset-sync | server/chat/live-context-routes.js:584 |  | keep |
+| POST | /internal/chat-effects/auth | server/chat/live-context-routes.js:75 |  | keep |
+| POST | /internal/chat-effects/ban | server/chat/live-context-routes.js:318 |  | keep |
+| GET | /internal/chat-effects/bans | server/chat/live-context-routes.js:205 |  | keep |
+| POST | /internal/chat-effects/channel-settings | server/chat/live-context-routes.js:363 |  | keep |
+| GET | /internal/chat-effects/channels | server/chat/live-context-routes.js:180 |  | keep |
+| GET | /internal/chat-effects/channels/:id/approved-ip | server/chat/live-context-routes.js:199 |  | keep |
+| GET | /internal/chat-effects/channels/:id/policy | server/chat/live-context-routes.js:187 |  | keep |
+| GET | /internal/chat-effects/channels/by-user/:userId | server/chat/live-context-routes.js:184 |  | keep |
+| POST | /internal/chat-effects/chat-message | server/chat/live-context-routes.js:417 |  | keep |
+| POST | /internal/chat-effects/decor | server/chat/live-context-routes.js:215 |  | keep |
+| POST | /internal/chat-effects/ensure-channel | server/chat/live-context-routes.js:390 |  | keep |
+| POST | /internal/chat-effects/hardware | server/chat/live-context-routes.js:511 |  | keep |
+| POST | /internal/chat-effects/ip-log | server/chat/live-context-routes.js:280 |  | keep |
+| GET | /internal/chat-effects/managed-streams | server/chat/live-context-routes.js:175 |  | keep |
+| POST | /internal/chat-effects/media-queue | server/chat/live-context-routes.js:483 |  | keep |
+| POST | /internal/chat-effects/mirror | server/chat/live-context-routes.js:259 |  | keep |
+| POST | /internal/chat-effects/mirror | server/chat/live-context-routes.js:654 |  | keep |
+| POST | /internal/chat-effects/notify/dm | server/chat/live-context-routes.js:554 |  | keep |
+| POST | /internal/chat-effects/notify/dm-read | server/chat/live-context-routes.js:575 |  | keep |
+| POST | /internal/chat-effects/paste | server/chat/live-context-routes.js:529 |  | keep |
+| GET | /internal/chat-effects/settings | server/chat/live-context-routes.js:233 |  | keep |
+| POST | /internal/chat-effects/site-settings | server/chat/live-context-routes.js:398 |  | keep |
+| GET | /internal/chat-effects/streams | server/chat/live-context-routes.js:156 |  | keep |
+| GET | /internal/chat-effects/streams/:id | server/chat/live-context-routes.js:164 |  | keep |
+| GET | /internal/chat-effects/streams/active | server/chat/live-context-routes.js:161 |  | keep |
+| POST | /internal/chat-effects/translate | server/chat/live-context-routes.js:544 |  | keep |
+| GET | /internal/chat-effects/tts-audio/:file | server/chat/live-context-routes.js:248 |  | keep |
+| POST | /internal/chat-effects/user-color | server/chat/live-context-routes.js:308 |  | keep |
+| GET | /internal/chat-effects/users | server/chat/live-context-routes.js:95 |  | keep |
+| GET | /internal/chat-effects/users/:id/follows | server/chat/live-context-routes.js:152 |  | keep |
+| POST | /internal/chat-effects/users/lookup | server/chat/live-context-routes.js:100 |  | keep |
+| GET | /internal/chat-effects/users/profile | server/chat/live-context-routes.js:109 |  | keep |
+| POST | /internal/chat-effects/viewer-counts | server/chat/live-context-routes.js:293 |  | keep |
+| POST | /internal/chat-effects/viewer-snapshots | server/chat/live-context-routes.js:300 |  | keep |
+| GET | /internal/followers | server/streaming/followers-internal.js:12 |  | keep |
+| POST | /internal/media-events | server/index.js:554 |  | keep |
+| POST | /internal/media-webhook | server/index.js:552 | OpenVibe.Events | compat |
+| POST | /internal/openre-events | server/index.js:557 |  | keep |
+| POST | /internal/tips/deliveries | server/tips/delivery-routes.js:49 |  | keep |
+| POST | /internal/url-registry/refresh | server/internal/routes.js:28 | OpenVibe.Network | compat |
+| POST | /internal/user-avatar | server/internal/routes.js:46 | OpenVibe.Network | compat |
+| POST | /internal/user-role | server/internal/routes.js:71 | OpenVibe.Network | compat |
+| GET | /media/:username | server/index.js:883 |  | keep |
+| GET | /obs/chat/:username | server/index.js:871 |  | keep |
+| GET | /openvibe-sw.js | server/index.js:455 |  | keep |
+| GET | /overlay/chat/:username | server/index.js:879 |  | keep |
+| GET | /overlay/chat/:username/:slotIdOrSlug | server/index.js:876 |  | keep |
+| GET | /p/:slug | server/index.js:618 | OpenVibe.Community | adapter |
+| GET | /p/:slug/raw | server/index.js:629 | OpenVibe.Community | adapter |
+| GET | /p/:slug/screenshot | server/index.js:625 | OpenVibe.Community | adapter |
+| GET | /pastes | server/index.js:619 | OpenVibe.Community | adapter |
+| GET | /privacy | server/index.js:897 |  | keep |
+| GET | /release.json | server/index.js:751 |  | keep |
+| GET | /sitemap.xml | server/seo/seo.js:597 |  | keep |
+| GET | /terms | server/index.js:894 |  | keep |
+| GET | /tos | server/index.js:891 |  | keep |
+| POST | /whip/:streamId | server/index.js:906 | OpenRe.Stream | extract |
+| DELETE | /whip/:streamId/:resourceId | server/index.js:908 | OpenRe.Stream | extract |
+| PATCH | /whip/:streamId/:resourceId | server/index.js:907 | OpenRe.Stream | extract |
 
 ## OpenVibe.Network
 
-| Method | Path | Source |
-|---|---|---|
-| DELETE | / | server/notifications/routes.js:111 |
-| GET | / | server/discord/routes.js:17 |
-| GET | / | server/notifications/routes.js:16 |
-| PUT | / | server/discord/routes.js:33 |
-| POST | /:id/dismiss | server/notifications/routes.js:100 |
-| POST | /:id/read | server/notifications/routes.js:67 |
-| GET | /.well-known/openvibe | server/registry/ecosystem.js:83 |
-| GET | /.well-known/web-identity | server/index.js:579 |
-| POST | /admin | server/setup/routes.js:114 |
-| GET | /api/.well-known/jwks | server/index.js:361 |
-| GET | /api/admin/domains | server/domains/routes.js:176 |
-| GET | /api/admin/domains | server/domains/routes.js:197 |
-| POST | /api/admin/domains | server/domains/routes.js:224 |
-| DELETE | /api/admin/domains/:id | server/domains/routes.js:256 |
-| PUT | /api/admin/domains/:id | server/domains/routes.js:238 |
-| GET | /api/admin/domains/catalog | server/domains/routes.js:206 |
-| POST | /api/admin/domains/check | server/domains/routes.js:217 |
-| GET | /api/admin/ssh-info | server/index.js:459 |
-| GET | /api/auth/anon-identities | server/auth/routes.js:638 |
-| POST | /api/auth/anon-session | server/auth/routes.js:515 |
-| GET | /api/auth/anon/:token | server/auth/routes.js:585 |
-| POST | /api/auth/anon/:token/link | server/auth/routes.js:622 |
-| PUT | /api/auth/anon/:token/preferences | server/auth/routes.js:599 |
-| POST | /api/auth/change-password | server/auth/routes.js:425 |
-| GET | /api/auth/discord/callback | server/auth/discord-link.js:61 |
-| DELETE | /api/auth/discord/link | server/auth/discord-link.js:158 |
-| GET | /api/auth/discord/link | server/auth/discord-link.js:31 |
-| GET | /api/auth/discord/status | server/auth/discord-link.js:178 |
-| POST | /api/auth/email/send-verification | server/auth/email-verify.js:99 |
-| GET | /api/auth/email/status | server/auth/email-verify.js:83 |
-| POST | /api/auth/email/verify | server/auth/email-verify.js:122 |
-| POST | /api/auth/forgot-password | server/auth/routes.js:208 |
-| POST | /api/auth/login | server/auth/routes.js:185 |
-| POST | /api/auth/logout | server/auth/routes.js:509 |
-| GET | /api/auth/me | server/auth/routes.js:364 |
-| PUT | /api/auth/profile | server/auth/routes.js:375 |
-| POST | /api/auth/refresh | server/auth/routes.js:302 |
-| POST | /api/auth/register | server/auth/routes.js:90 |
-| POST | /api/auth/reset-password | server/auth/routes.js:256 |
-| GET | /api/auth/reset-password/validate | server/auth/routes.js:240 |
-| DELETE | /api/auth/sessions | server/auth/routes.js:720 |
-| GET | /api/auth/sessions | server/auth/routes.js:676 |
-| POST | /api/auth/sessions | server/auth/routes.js:689 |
-| DELETE | /api/auth/sessions/:id | server/auth/routes.js:711 |
-| GET | /api/auth/users/:id/card | server/auth/routes.js:731 |
-| DELETE | /api/auth/users/:id/follow | server/auth/routes.js:814 |
-| POST | /api/auth/users/:id/follow | server/auth/routes.js:783 |
-| GET | /api/brand | server/index.js:378 |
-| GET | /api/catalog.json | server/index.js:430 |
-| GET | /api/chrome | server/chrome/service.js:137 |
-| POST | /api/chrome/hit | server/chrome/service.js:150 |
-| GET | /api/domains | server/domains/routes.js:176 |
-| GET | /api/domains | server/domains/routes.js:197 |
-| POST | /api/domains | server/domains/routes.js:224 |
-| DELETE | /api/domains/:id | server/domains/routes.js:256 |
-| PUT | /api/domains/:id | server/domains/routes.js:238 |
-| GET | /api/domains/catalog | server/domains/routes.js:206 |
-| POST | /api/domains/check | server/domains/routes.js:217 |
-| GET | /api/health | server/index.js:373 |
-| DELETE | /api/history | server/history/routes.js:143 |
-| GET | /api/history | server/history/routes.js:92 |
-| POST | /api/history | server/history/routes.js:108 |
-| DELETE | /api/history/:id | server/history/routes.js:148 |
-| PUT | /api/history/settings | server/history/routes.js:137 |
-| GET | /api/modules | server/identity/modules.js:101 |
-| DELETE | /api/modules/:ns | server/identity/modules.js:126 |
-| GET | /api/modules/:ns | server/identity/modules.js:109 |
-| PUT | /api/modules/:ns | server/identity/modules.js:117 |
-| GET | /api/modules/:ns/public/:subject | server/identity/modules.js:93 |
-| GET | /api/modules/modules/:ns/:subject | server/identity/modules.js:140 |
-| PUT | /api/modules/modules/:ns/:subject | server/identity/modules.js:149 |
-| DELETE | /api/profile/avatar | server/profile/avatar.js:107 |
-| PUT | /api/profile/avatar | server/profile/avatar.js:96 |
-| GET | /api/profile/avatar/:username | server/profile/avatar.js:110 |
-| PUT | /api/push/live-preferences | server/push/routes.js:60 |
-| GET | /api/push/status | server/push/routes.js:37 |
-| POST | /api/push/subscribe | server/push/routes.js:17 |
-| POST | /api/push/unsubscribe | server/push/routes.js:29 |
-| GET | /api/push/vapid-key | server/push/routes.js:10 |
-| GET | /api/sso/targets | server/index.js:412 |
-| GET | /api/themes | server/themes/routes.js:41 |
-| POST | /api/themes | server/themes/routes.js:148 |
-| GET | /api/themes/:idOrSlug | server/themes/routes.js:109 |
-| PUT | /api/themes/me | server/themes/routes.js:119 |
-| GET | /api/themes/me/active | server/themes/routes.js:74 |
-| PUT | /api/themes/me/display | server/themes/routes.js:99 |
-| GET | /api/v1/registry | server/registry/ecosystem.js:84 |
-| GET | /api/v1/registry/capabilities | server/registry/ecosystem.js:101 |
-| GET | /api/v1/registry/capabilities/:id | server/registry/ecosystem.js:106 |
-| GET | /api/v1/registry/contracts | server/registry/ecosystem.js:112 |
-| GET | /api/v1/registry/domains/:domain | server/registry/ecosystem.js:95 |
-| GET | /api/v1/registry/namespaces | server/registry/ecosystem.js:111 |
-| GET | /api/v1/registry/services | server/registry/ecosystem.js:85 |
-| GET | /api/v1/registry/services/:id | server/registry/ecosystem.js:90 |
-| GET | /api/v1/registry/topics | server/registry/ecosystem.js:113 |
-| POST | /api/webhooks/resend | server/notifications/resend-webhook.js:26 |
-| GET | /audit | server/admin/routes.js:797 |
-| DELETE | /avatar | server/profile/avatar.js:107 |
-| PUT | /avatar | server/profile/avatar.js:96 |
-| GET | /avatar/:username | server/profile/avatar.js:110 |
-| POST | /bootstrap | server/setup/routes.js:99 |
-| GET | /bots | server/admin/analytics-routes.js:255 |
-| POST | /broadcast | server/admin/routes.js:721 |
-| GET | /certs | server/deploy/routes.js:139 |
-| POST | /certs/issue-cloudflare | server/deploy/routes.js:164 |
-| POST | /certs/issue-manual | server/deploy/routes.js:236 |
-| POST | /certs/manual-info | server/deploy/routes.js:215 |
-| POST | /certs/renew | server/deploy/routes.js:281 |
-| GET | /config | server/deploy/routes.js:81 |
-| PUT | /config | server/deploy/routes.js:95 |
-| POST | /deploy | server/setup/routes.js:239 |
-| GET | /deploy-status | server/setup/routes.js:309 |
-| GET | /domains | server/deploy/routes.js:406 |
-| PUT | /domains | server/deploy/routes.js:426 |
-| GET | /email | server/admin/routes.js:240 |
-| PUT | /email | server/admin/routes.js:250 |
-| POST | /email/test | server/admin/routes.js:283 |
-| GET | /fedcm/accounts | server/auth/fedcm.js:111 |
-| POST | /fedcm/assertion | server/auth/fedcm.js:125 |
-| GET | /fedcm/client-metadata | server/auth/fedcm.js:120 |
-| GET | /fedcm/config.json | server/auth/fedcm.js:97 |
-| POST | /fedcm/disconnect | server/auth/fedcm.js:142 |
-| GET | /health | server/admin/routes.js:766 |
-| POST | /identity | server/setup/routes.js:152 |
-| GET | /internal/anon-admin | server/internal/routes.js:643 |
-| GET | /internal/anon-list | server/internal/routes.js:692 |
-| POST | /internal/audit | server/internal/routes.js:178 |
-| POST | /internal/coins/credit | server/internal/routes.js:267 |
-| POST | /internal/coins/debit | server/internal/routes.js:279 |
-| GET | /internal/coins/stats | server/internal/routes.js:226 |
-| POST | /internal/coins/transfer | server/internal/routes.js:292 |
-| POST | /internal/events/stream-live | server/internal/routes.js:309 |
-| POST | /internal/identity/legacy-map | server/identity/internal-routes.js:52 |
-| GET | /internal/identity/resolve | server/identity/internal-routes.js:18 |
-| GET | /internal/identity/resolve | server/internal/routes.js:40 |
-| POST | /internal/identity/resolve-batch | server/identity/internal-routes.js:35 |
-| POST | /internal/identity/resolve-batch | server/internal/routes.js:41 |
-| POST | /internal/issue-token | server/internal/routes.js:533 |
-| POST | /internal/link-account | server/internal/routes.js:120 |
-| POST | /internal/notifications/mark-read | server/internal/routes.js:494 |
-| POST | /internal/notifications/push | server/internal/routes.js:436 |
-| POST | /internal/notifications/push-bulk | server/internal/routes.js:456 |
-| POST | /internal/notifications/resolve-users | server/internal/routes.js:513 |
-| GET | /internal/notifications/unread/:userId | server/internal/routes.js:479 |
-| POST | /internal/resolve-anon | server/internal/routes.js:564 |
-| GET | /internal/stats | server/internal/routes.js:187 |
-| GET | /internal/url-registry/resolved | server/internal/routes.js:196 |
-| POST | /internal/user-avatar | server/internal/routes.js:163 |
-| GET | /internal/users/:id | server/internal/routes.js:71 |
-| GET | /internal/users/:id/linked-accounts | server/internal/routes.js:171 |
-| GET | /internal/users/:id/theme | server/internal/routes.js:108 |
-| POST | /internal/users/bulk | server/internal/routes.js:93 |
-| GET | /internal/users/by-username/:username | server/internal/routes.js:82 |
-| POST | /internal/verify-token | server/internal/routes.js:49 |
-| GET | /llms.txt | server/index.js:557 |
-| GET | /me | server/coins/routes.js:18 |
-| GET | /me/history | server/coins/routes.js:24 |
-| GET | /net-config | server/admin/routes.js:907 |
-| PUT | /net-config | server/admin/routes.js:926 |
-| GET | /newest | server/notifications/routes.js:57 |
-| POST | /nginx/apply | server/deploy/routes.js:343 |
-| GET | /nginx/preview | server/deploy/routes.js:296 |
-| GET | /nginx/preview/:serviceId | server/deploy/routes.js:314 |
-| POST | /nginx/reload | server/deploy/routes.js:382 |
-| POST | /nginx/validate | server/deploy/routes.js:330 |
-| GET | /oauth/.well-known/openid-configuration | server/auth/oauth-routes.js:318 |
-| GET | /oauth/authorize | server/auth/oauth-routes.js:22 |
-| POST | /oauth/confirm | server/auth/oauth-routes.js:80 |
-| POST | /oauth/token | server/auth/oauth-routes.js:133 |
-| GET | /openvibe-sw.js | server/index.js:606 |
-| GET | /overview | server/admin/analytics-routes.js:75 |
-| GET | /preferences | server/notifications/routes.js:121 |
-| PUT | /preferences | server/notifications/routes.js:132 |
-| DELETE | /preferences/:category | server/notifications/routes.js:149 |
-| GET | /prerequisites | server/deploy/routes.js:57 |
-| POST | /read-all | server/notifications/routes.js:89 |
-| POST | /read-batch | server/notifications/routes.js:78 |
-| GET | /realtime | server/admin/analytics-routes.js:285 |
-| POST | /reinit | server/discord/routes.js:96 |
-| POST | /reset-db | server/admin/routes.js:473 |
-| GET | /service/:name | server/admin/analytics-routes.js:224 |
-| GET | /settings | server/admin/routes.js:300 |
-| PUT | /settings | server/admin/routes.js:328 |
-| GET | /sso/check | server/index.js:584 |
-| GET | /status | server/setup/routes.js:91 |
-| POST | /test | server/discord/routes.js:77 |
-| POST | /test-live | server/discord/routes.js:87 |
-| GET | /tos | server/index.js:426 |
-| GET | /unread-by-category | server/notifications/routes.js:47 |
-| GET | /unread-count | server/notifications/routes.js:37 |
-| GET | /url-registry | server/admin/routes.js:353 |
-| PUT | /url-registry | server/admin/routes.js:380 |
-| DELETE | /url-registry/:key | server/admin/routes.js:423 |
-| PUT | /url-registry/:key | server/admin/routes.js:401 |
-| POST | /url-registry/:key/reset | server/admin/routes.js:458 |
-| POST | /url-registry/refresh-all | server/admin/routes.js:438 |
-| POST | /urls | server/setup/routes.js:193 |
-| GET | /users | server/admin/routes.js:536 |
-| PUT | /users/:id/ban | server/admin/routes.js:691 |
-| PUT | /users/:id/email | server/admin/routes.js:568 |
-| PUT | /users/:id/role | server/admin/routes.js:666 |
-| POST | /users/:id/send-reset | server/admin/routes.js:607 |
-| POST | /users/grant-admin | server/admin/routes.js:500 |
-| GET | /verification-keys | server/admin/routes.js:824 |
-| POST | /verification-keys | server/admin/routes.js:833 |
-| DELETE | /verification-keys/:id | server/admin/routes.js:881 |
-| GET | /verify-email | server/index.js:569 |
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| DELETE | / | server/notifications/routes.js:111 |  | keep |
+| GET | / | server/discord/routes.js:17 |  | keep |
+| GET | / | server/notifications/routes.js:16 |  | keep |
+| POST | / | server/notifications/events-consumer.js:245 |  | keep |
+| PUT | / | server/discord/routes.js:33 |  | keep |
+| POST | /:id/dismiss | server/notifications/routes.js:100 |  | keep |
+| POST | /:id/read | server/notifications/routes.js:67 |  | keep |
+| GET | /.well-known/openvibe | server/registry/ecosystem.js:223 |  | keep |
+| GET | /.well-known/web-identity | server/index.js:630 |  | keep |
+| POST | /admin | server/setup/routes.js:114 |  | keep |
+| GET | /api/.well-known/jwks | server/index.js:395 |  | keep |
+| GET | /api/admin/domains | server/domains/routes.js:176 |  | keep |
+| GET | /api/admin/domains | server/domains/routes.js:197 |  | keep |
+| POST | /api/admin/domains | server/domains/routes.js:224 |  | keep |
+| DELETE | /api/admin/domains/:id | server/domains/routes.js:256 |  | keep |
+| PUT | /api/admin/domains/:id | server/domains/routes.js:238 |  | keep |
+| GET | /api/admin/domains/catalog | server/domains/routes.js:206 |  | keep |
+| POST | /api/admin/domains/check | server/domains/routes.js:217 |  | keep |
+| GET | /api/admin/ssh-info | server/index.js:510 |  | keep |
+| GET | /api/auth/anon-identities | server/auth/routes.js:641 |  | keep |
+| POST | /api/auth/anon-session | server/auth/routes.js:518 |  | keep |
+| GET | /api/auth/anon/:token | server/auth/routes.js:588 |  | keep |
+| POST | /api/auth/anon/:token/link | server/auth/routes.js:625 |  | keep |
+| PUT | /api/auth/anon/:token/preferences | server/auth/routes.js:602 |  | keep |
+| POST | /api/auth/change-password | server/auth/routes.js:428 |  | keep |
+| GET | /api/auth/discord/callback | server/auth/discord-link.js:61 |  | keep |
+| DELETE | /api/auth/discord/link | server/auth/discord-link.js:158 |  | keep |
+| GET | /api/auth/discord/link | server/auth/discord-link.js:31 |  | keep |
+| GET | /api/auth/discord/status | server/auth/discord-link.js:178 |  | keep |
+| POST | /api/auth/email/send-verification | server/auth/email-verify.js:99 |  | keep |
+| GET | /api/auth/email/status | server/auth/email-verify.js:83 |  | keep |
+| POST | /api/auth/email/verify | server/auth/email-verify.js:122 |  | keep |
+| POST | /api/auth/forgot-password | server/auth/routes.js:208 |  | keep |
+| POST | /api/auth/login | server/auth/routes.js:185 |  | keep |
+| POST | /api/auth/logout | server/auth/routes.js:512 |  | keep |
+| GET | /api/auth/me | server/auth/routes.js:367 |  | keep |
+| PUT | /api/auth/profile | server/auth/routes.js:378 |  | keep |
+| POST | /api/auth/refresh | server/auth/routes.js:302 |  | keep |
+| POST | /api/auth/register | server/auth/routes.js:90 |  | keep |
+| POST | /api/auth/reset-password | server/auth/routes.js:256 |  | keep |
+| GET | /api/auth/reset-password/validate | server/auth/routes.js:240 |  | keep |
+| DELETE | /api/auth/sessions | server/auth/routes.js:723 |  | keep |
+| GET | /api/auth/sessions | server/auth/routes.js:679 |  | keep |
+| POST | /api/auth/sessions | server/auth/routes.js:692 |  | keep |
+| DELETE | /api/auth/sessions/:id | server/auth/routes.js:714 |  | keep |
+| GET | /api/auth/users/:id/card | server/auth/routes.js:734 |  | keep |
+| DELETE | /api/auth/users/:id/follow | server/auth/routes.js:817 |  | keep |
+| POST | /api/auth/users/:id/follow | server/auth/routes.js:786 |  | keep |
+| GET | /api/brand | server/index.js:421 |  | keep |
+| GET | /api/catalog.json | server/index.js:481 |  | keep |
+| GET | /api/chrome | server/chrome/service.js:171 |  | keep |
+| POST | /api/chrome/hit | server/chrome/service.js:184 |  | keep |
+| GET | /api/domains | server/domains/routes.js:176 |  | keep |
+| GET | /api/domains | server/domains/routes.js:197 |  | keep |
+| POST | /api/domains | server/domains/routes.js:224 |  | keep |
+| DELETE | /api/domains/:id | server/domains/routes.js:256 |  | keep |
+| PUT | /api/domains/:id | server/domains/routes.js:238 |  | keep |
+| GET | /api/domains/catalog | server/domains/routes.js:206 |  | keep |
+| POST | /api/domains/check | server/domains/routes.js:217 |  | keep |
+| GET | /api/health | server/index.js:407 |  | keep |
+| DELETE | /api/history | server/history/routes.js:143 |  | keep |
+| GET | /api/history | server/history/routes.js:92 |  | keep |
+| POST | /api/history | server/history/routes.js:108 |  | keep |
+| DELETE | /api/history/:id | server/history/routes.js:148 |  | keep |
+| PUT | /api/history/settings | server/history/routes.js:137 |  | keep |
+| GET | /api/modules | server/identity/modules.js:101 |  | keep |
+| DELETE | /api/modules/:ns | server/identity/modules.js:126 |  | keep |
+| GET | /api/modules/:ns | server/identity/modules.js:109 |  | keep |
+| PUT | /api/modules/:ns | server/identity/modules.js:117 |  | keep |
+| GET | /api/modules/:ns/public/:subject | server/identity/modules.js:93 |  | keep |
+| GET | /api/modules/modules/:ns/:subject | server/identity/modules.js:140 |  | keep |
+| PUT | /api/modules/modules/:ns/:subject | server/identity/modules.js:149 |  | keep |
+| DELETE | /api/profile/avatar | server/profile/avatar.js:107 |  | keep |
+| PUT | /api/profile/avatar | server/profile/avatar.js:96 |  | keep |
+| GET | /api/profile/avatar/:username | server/profile/avatar.js:110 |  | keep |
+| PUT | /api/push/live-preferences | server/push/routes.js:60 |  | keep |
+| GET | /api/push/status | server/push/routes.js:37 |  | keep |
+| POST | /api/push/subscribe | server/push/routes.js:17 |  | keep |
+| POST | /api/push/unsubscribe | server/push/routes.js:29 |  | keep |
+| GET | /api/push/vapid-key | server/push/routes.js:10 |  | keep |
+| GET | /api/ready | server/index.js:417 |  | keep |
+| GET | /api/sso/targets | server/index.js:463 |  | keep |
+| GET | /api/themes | server/themes/routes.js:41 |  | keep |
+| POST | /api/themes | server/themes/routes.js:148 |  | keep |
+| GET | /api/themes/:idOrSlug | server/themes/routes.js:109 |  | keep |
+| PUT | /api/themes/me | server/themes/routes.js:119 |  | keep |
+| GET | /api/themes/me/active | server/themes/routes.js:74 |  | keep |
+| PUT | /api/themes/me/display | server/themes/routes.js:99 |  | keep |
+| GET | /api/v1/projects | server/developer/routes.js:83 |  | keep |
+| POST | /api/v1/projects | server/developer/routes.js:82 |  | keep |
+| GET | /api/v1/projects/:project | server/developer/routes.js:84 |  | keep |
+| PATCH | /api/v1/projects/:project | server/developer/routes.js:88 |  | keep |
+| PUT | /api/v1/projects/:project/allowance | server/developer/routes.js:90 |  | keep |
+| GET | /api/v1/projects/:project/apps | server/developer/routes.js:98 |  | keep |
+| POST | /api/v1/projects/:project/apps | server/developer/routes.js:99 |  | keep |
+| DELETE | /api/v1/projects/:project/apps/:app | server/developer/routes.js:102 |  | keep |
+| GET | /api/v1/projects/:project/apps/:app | server/developer/routes.js:100 |  | keep |
+| PATCH | /api/v1/projects/:project/apps/:app | server/developer/routes.js:101 |  | keep |
+| GET | /api/v1/projects/:project/apps/:app/credentials | server/developer/routes.js:104 |  | keep |
+| POST | /api/v1/projects/:project/apps/:app/credentials/:credential/revoke | server/developer/routes.js:106 |  | keep |
+| POST | /api/v1/projects/:project/apps/:app/credentials/rotate | server/developer/routes.js:105 |  | keep |
+| GET | /api/v1/projects/:project/apps/:app/grants | server/developer/routes.js:108 |  | keep |
+| POST | /api/v1/projects/:project/apps/:app/grants | server/developer/routes.js:109 |  | keep |
+| DELETE | /api/v1/projects/:project/apps/:app/grants/:capability | server/developer/routes.js:112 |  | keep |
+| POST | /api/v1/projects/:project/apps/:app/grants/:capability/approve | server/developer/routes.js:110 |  | keep |
+| POST | /api/v1/projects/:project/apps/:app/grants/:capability/deny | server/developer/routes.js:111 |  | keep |
+| POST | /api/v1/projects/:project/archive | server/developer/routes.js:89 |  | keep |
+| GET | /api/v1/projects/:project/audit | server/developer/routes.js:118 |  | keep |
+| PUT | /api/v1/projects/:project/environment-policy | server/developer/routes.js:91 |  | keep |
+| GET | /api/v1/projects/:project/members | server/developer/routes.js:93 |  | keep |
+| POST | /api/v1/projects/:project/members | server/developer/routes.js:94 |  | keep |
+| DELETE | /api/v1/projects/:project/members/:subject | server/developer/routes.js:96 |  | keep |
+| PATCH | /api/v1/projects/:project/members/:subject | server/developer/routes.js:95 |  | keep |
+| GET | /api/v1/projects/:project/quotas | server/developer/routes.js:114 |  | keep |
+| DELETE | /api/v1/projects/:project/quotas/:capability | server/developer/routes.js:116 |  | keep |
+| PUT | /api/v1/projects/:project/quotas/:capability | server/developer/routes.js:115 |  | keep |
+| GET | /api/v1/projects/catalog | server/developer/routes.js:76 |  | keep |
+| GET | /api/v1/registry | server/registry/ecosystem.js:224 |  | keep |
+| GET | /api/v1/registry/capabilities | server/registry/ecosystem.js:242 |  | keep |
+| GET | /api/v1/registry/capabilities/:id | server/registry/ecosystem.js:247 |  | keep |
+| GET | /api/v1/registry/contracts | server/registry/ecosystem.js:253 |  | keep |
+| GET | /api/v1/registry/domains/:domain | server/registry/ecosystem.js:236 |  | keep |
+| GET | /api/v1/registry/health | server/registry/ecosystem.js:271 |  | keep |
+| GET | /api/v1/registry/namespaces | server/registry/ecosystem.js:252 |  | keep |
+| GET | /api/v1/registry/releases | server/registry/ecosystem.js:270 |  | keep |
+| GET | /api/v1/registry/search | server/registry/ecosystem.js:277 |  | keep |
+| GET | /api/v1/registry/services | server/registry/ecosystem.js:225 |  | keep |
+| GET | /api/v1/registry/services/:id | server/registry/ecosystem.js:231 |  | keep |
+| GET | /api/v1/registry/topics | server/registry/ecosystem.js:254 |  | keep |
+| GET | /api/v1/registry/topics/:topic | server/registry/ecosystem.js:265 |  | keep |
+| GET | /api/v1/status | server/status/routes.js:157 |  | keep |
+| GET | /api/v1/status/slo | server/status/routes.js:171 |  | keep |
+| POST | /api/webhooks/resend | server/notifications/resend-webhook.js:26 |  | keep |
+| GET | /audit | server/admin/routes.js:797 |  | keep |
+| DELETE | /avatar | server/profile/avatar.js:107 |  | keep |
+| PUT | /avatar | server/profile/avatar.js:96 |  | keep |
+| GET | /avatar/:username | server/profile/avatar.js:110 |  | keep |
+| POST | /bootstrap | server/setup/routes.js:99 |  | keep |
+| GET | /bots | server/admin/analytics-routes.js:255 |  | keep |
+| POST | /broadcast | server/admin/routes.js:721 |  | keep |
+| GET | /certs | server/deploy/routes.js:139 |  | keep |
+| POST | /certs/issue-cloudflare | server/deploy/routes.js:164 |  | keep |
+| POST | /certs/issue-manual | server/deploy/routes.js:236 |  | keep |
+| POST | /certs/manual-info | server/deploy/routes.js:215 |  | keep |
+| POST | /certs/renew | server/deploy/routes.js:281 |  | keep |
+| GET | /config | server/deploy/routes.js:81 |  | keep |
+| PUT | /config | server/deploy/routes.js:95 |  | keep |
+| POST | /deploy | server/setup/routes.js:239 |  | keep |
+| GET | /deploy-status | server/setup/routes.js:309 |  | keep |
+| GET | /domains | server/deploy/routes.js:406 |  | keep |
+| PUT | /domains | server/deploy/routes.js:426 |  | keep |
+| GET | /email | server/admin/routes.js:240 |  | keep |
+| PUT | /email | server/admin/routes.js:250 |  | keep |
+| POST | /email/test | server/admin/routes.js:283 |  | keep |
+| GET | /fedcm/accounts | server/auth/fedcm.js:111 |  | keep |
+| POST | /fedcm/assertion | server/auth/fedcm.js:125 |  | keep |
+| GET | /fedcm/client-metadata | server/auth/fedcm.js:120 |  | keep |
+| GET | /fedcm/config.json | server/auth/fedcm.js:97 |  | keep |
+| POST | /fedcm/disconnect | server/auth/fedcm.js:142 |  | keep |
+| GET | /health | server/admin/routes.js:766 |  | keep |
+| POST | /identity | server/setup/routes.js:152 |  | keep |
+| GET | /internal/anon-admin | server/internal/routes.js:638 |  | keep |
+| GET | /internal/anon-list | server/internal/routes.js:687 |  | keep |
+| POST | /internal/audit | server/internal/routes.js:206 |  | keep |
+| POST | /internal/coins/credit | server/internal/routes.js:295 |  | keep |
+| POST | /internal/coins/debit | server/internal/routes.js:307 |  | keep |
+| GET | /internal/coins/stats | server/internal/routes.js:254 |  | keep |
+| POST | /internal/coins/transfer | server/internal/routes.js:320 |  | keep |
+| POST | /internal/events/stream-live | server/internal/routes.js:338 | OpenVibe.Events | compat |
+| POST | /internal/identity/legacy-map | server/identity/internal-routes.js:52 |  | keep |
+| GET | /internal/identity/resolve | server/identity/internal-routes.js:18 |  | keep |
+| GET | /internal/identity/resolve | server/internal/routes.js:66 |  | keep |
+| POST | /internal/identity/resolve-batch | server/identity/internal-routes.js:35 |  | keep |
+| POST | /internal/identity/resolve-batch | server/internal/routes.js:67 |  | keep |
+| POST | /internal/issue-token | server/internal/routes.js:528 |  | keep |
+| POST | /internal/link-account | server/internal/routes.js:148 |  | keep |
+| POST | /internal/notifications/mark-read | server/internal/routes.js:489 |  | keep |
+| POST | /internal/notifications/push | server/internal/routes.js:431 |  | keep |
+| POST | /internal/notifications/push-bulk | server/internal/routes.js:451 |  | keep |
+| POST | /internal/notifications/resolve-users | server/internal/routes.js:508 |  | keep |
+| GET | /internal/notifications/unread/:userId | server/internal/routes.js:474 |  | keep |
+| POST | /internal/resolve-anon | server/internal/routes.js:559 |  | keep |
+| GET | /internal/stats | server/internal/routes.js:215 |  | keep |
+| GET | /internal/url-registry/resolved | server/internal/routes.js:224 |  | keep |
+| POST | /internal/user-avatar | server/internal/routes.js:191 |  | keep |
+| GET | /internal/users/:id | server/internal/routes.js:99 |  | keep |
+| GET | /internal/users/:id/linked-accounts | server/internal/routes.js:199 |  | keep |
+| GET | /internal/users/:id/theme | server/internal/routes.js:136 |  | keep |
+| POST | /internal/users/bulk | server/internal/routes.js:121 |  | keep |
+| GET | /internal/users/by-username/:username | server/internal/routes.js:110 |  | keep |
+| POST | /internal/verify-token | server/internal/routes.js:75 |  | keep |
+| GET | /llms.txt | server/index.js:608 |  | keep |
+| GET | /me | server/coins/routes.js:18 |  | keep |
+| GET | /me/history | server/coins/routes.js:24 |  | keep |
+| GET | /net-config | server/admin/routes.js:907 |  | keep |
+| PUT | /net-config | server/admin/routes.js:926 |  | keep |
+| GET | /newest | server/notifications/routes.js:57 |  | keep |
+| POST | /nginx/apply | server/deploy/routes.js:343 |  | keep |
+| GET | /nginx/preview | server/deploy/routes.js:296 |  | keep |
+| GET | /nginx/preview/:serviceId | server/deploy/routes.js:314 |  | keep |
+| POST | /nginx/reload | server/deploy/routes.js:382 |  | keep |
+| POST | /nginx/validate | server/deploy/routes.js:330 |  | keep |
+| GET | /oauth/.well-known/openid-configuration | server/auth/oauth-routes.js:416 |  | keep |
+| GET | /oauth/authorize | server/auth/oauth-routes.js:53 |  | keep |
+| GET | /oauth/client-info | server/auth/oauth-routes.js:124 |  | keep |
+| POST | /oauth/confirm | server/auth/oauth-routes.js:149 |  | keep |
+| POST | /oauth/token | server/auth/oauth-routes.js:207 |  | keep |
+| GET | /openvibe-sw.js | server/index.js:657 |  | keep |
+| GET | /overview | server/admin/analytics-routes.js:75 |  | keep |
+| GET | /preferences | server/notifications/routes.js:121 |  | keep |
+| PUT | /preferences | server/notifications/routes.js:132 |  | keep |
+| DELETE | /preferences/:category | server/notifications/routes.js:149 |  | keep |
+| GET | /prerequisites | server/deploy/routes.js:57 |  | keep |
+| POST | /read-all | server/notifications/routes.js:89 |  | keep |
+| POST | /read-batch | server/notifications/routes.js:78 |  | keep |
+| GET | /realtime | server/admin/analytics-routes.js:285 |  | keep |
+| POST | /reinit | server/discord/routes.js:96 |  | keep |
+| GET | /release.json | server/index.js:684 |  | keep |
+| POST | /reset-db | server/admin/routes.js:473 |  | keep |
+| GET | /service/:name | server/admin/analytics-routes.js:224 |  | keep |
+| GET | /settings | server/admin/routes.js:300 |  | keep |
+| PUT | /settings | server/admin/routes.js:328 |  | keep |
+| GET | /sso/check | server/index.js:635 |  | keep |
+| GET | /status | server/setup/routes.js:91 |  | keep |
+| GET | /status | server/status/routes.js:174 |  | keep |
+| POST | /test | server/discord/routes.js:77 |  | keep |
+| POST | /test-live | server/discord/routes.js:87 |  | keep |
+| GET | /tos | server/index.js:477 |  | keep |
+| GET | /unread-by-category | server/notifications/routes.js:47 |  | keep |
+| GET | /unread-count | server/notifications/routes.js:37 |  | keep |
+| GET | /url-registry | server/admin/routes.js:353 |  | keep |
+| PUT | /url-registry | server/admin/routes.js:380 |  | keep |
+| DELETE | /url-registry/:key | server/admin/routes.js:423 |  | keep |
+| PUT | /url-registry/:key | server/admin/routes.js:401 |  | keep |
+| POST | /url-registry/:key/reset | server/admin/routes.js:458 |  | keep |
+| POST | /url-registry/refresh-all | server/admin/routes.js:438 |  | keep |
+| POST | /urls | server/setup/routes.js:193 |  | keep |
+| GET | /users | server/admin/routes.js:536 |  | keep |
+| PUT | /users/:id/ban | server/admin/routes.js:691 |  | keep |
+| PUT | /users/:id/email | server/admin/routes.js:568 |  | keep |
+| PUT | /users/:id/role | server/admin/routes.js:666 |  | keep |
+| POST | /users/:id/send-reset | server/admin/routes.js:607 |  | keep |
+| POST | /users/grant-admin | server/admin/routes.js:500 |  | keep |
+| GET | /verification-keys | server/admin/routes.js:824 |  | keep |
+| POST | /verification-keys | server/admin/routes.js:833 |  | keep |
+| DELETE | /verification-keys/:id | server/admin/routes.js:881 |  | keep |
+| GET | /verify-email | server/index.js:620 |  | keep |
 
 ## OpenVibe.Shared
 
-| Method | Path | Source |
-|---|---|---|
-| GET | /shared/:file | files.js:9 |
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | /api/ready | ready.js:15 |  | keep |
+| GET | /release.json | release.js:8 |  | keep |
+| GET | /shared/:file | files.js:9 |  | keep |
 
 ## OpenVibe.Media
 
-| Method | Path | Source |
-|---|---|---|
-| GET | /api/v1/:app/admin/storage | server/admin/routes.js:72 |
-| GET | /api/v1/:app/admin/storage/buckets | server/admin/routes.js:404 |
-| GET | /api/v1/:app/admin/storage/tiers | server/admin/routes.js:258 |
-| POST | /api/v1/:app/admin/storage/tiers/bulk-move | server/admin/routes.js:377 |
-| POST | /api/v1/:app/admin/storage/tiers/move | server/admin/routes.js:359 |
-| PUT | /api/v1/:app/admin/storage/tiers/settings | server/admin/routes.js:306 |
-| POST | /api/v1/:app/admin/storage/tiers/sweep | server/admin/routes.js:332 |
-| GET | /api/v1/:app/admin/storage/vods | server/admin/routes.js:127 |
-| DELETE | /api/v1/:app/admin/storage/vods/bulk | server/admin/routes.js:199 |
-| GET | /api/v1/:app/assets | server/assets/routes.js:72 |
-| POST | /api/v1/:app/assets | server/assets/routes.js:39 |
-| DELETE | /api/v1/:app/assets/:id | server/assets/routes.js:84 |
-| GET | /api/v1/:app/clips | server/vod/clips-routes.js:286 |
-| POST | /api/v1/:app/clips | server/vod/clips-routes.js:115 |
-| DELETE | /api/v1/:app/clips/:id | server/vod/clips-routes.js:367 |
-| GET | /api/v1/:app/clips/:id | server/vod/clips-routes.js:312 |
-| PUT | /api/v1/:app/clips/:id | server/vod/clips-routes.js:348 |
-| POST | /api/v1/:app/clips/:id/recut | server/vod/clips-routes.js:331 |
-| GET | /api/v1/:app/files | server/files/routes.js:139 |
-| POST | /api/v1/:app/files | server/files/routes.js:75 |
-| DELETE | /api/v1/:app/files/:key | server/files/routes.js:167 |
-| GET | /api/v1/:app/files/:key | server/files/routes.js:156 |
-| GET | /api/v1/:app/pastes | server/pastes/routes.js:260 |
-| POST | /api/v1/:app/pastes | server/pastes/routes.js:476 |
-| DELETE | /api/v1/:app/pastes/:slug | server/pastes/routes.js:631 |
-| GET | /api/v1/:app/pastes/:slug | server/pastes/routes.js:450 |
-| PUT | /api/v1/:app/pastes/:slug | server/pastes/routes.js:593 |
-| POST | /api/v1/:app/pastes/:slug/ai | server/pastes/routes.js:573 |
-| POST | /api/v1/:app/pastes/:slug/censor | server/pastes/routes.js:409 |
-| GET | /api/v1/:app/pastes/:slug/comments | server/pastes/routes.js:717 |
-| POST | /api/v1/:app/pastes/:slug/comments | server/pastes/routes.js:740 |
-| DELETE | /api/v1/:app/pastes/:slug/comments/:commentId | server/pastes/routes.js:818 |
-| POST | /api/v1/:app/pastes/:slug/copy | server/pastes/routes.js:692 |
-| POST | /api/v1/:app/pastes/:slug/fork | server/pastes/routes.js:649 |
-| POST | /api/v1/:app/pastes/:slug/like | server/pastes/routes.js:675 |
-| DELETE | /api/v1/:app/pastes/admin/forks | server/pastes/routes.js:371 |
-| GET | /api/v1/:app/pastes/admin/forks | server/pastes/routes.js:351 |
-| GET | /api/v1/:app/pastes/admin/stats | server/pastes/routes.js:341 |
-| POST | /api/v1/:app/pastes/bulk | server/pastes/routes.js:384 |
-| GET | /api/v1/:app/pastes/config | server/pastes/routes.js:319 |
-| GET | /api/v1/:app/stats | server/index.js:96 |
-| GET | /api/v1/:app/stats/series/:metric | server/index.js:106 |
-| POST | /api/v1/:app/thumbnails/:kind/:id | server/thumbnails/routes.js:38 |
-| GET | /api/v1/:app/views | server/views/routes.js:39 |
-| POST | /api/v1/:app/views | server/views/routes.js:24 |
-| GET | /api/v1/:app/vods | server/vod/routes.js:268 |
-| POST | /api/v1/:app/vods | server/vod/routes.js:90 |
-| DELETE | /api/v1/:app/vods/:id | server/vod/routes.js:356 |
-| GET | /api/v1/:app/vods/:id | server/vod/routes.js:307 |
-| PUT | /api/v1/:app/vods/:id | server/vod/routes.js:333 |
-| POST | /api/v1/:app/vods/:id/chunks | server/vod/routes.js:157 |
-| POST | /api/v1/:app/vods/:id/complete | server/vod/routes.js:261 |
-| POST | /api/v1/:app/vods/:id/finalize | server/vod/routes.js:262 |
-| POST | /api/v1/:app/vods/:id/ingest/rtmp | server/vod/routes.js:114 |
-| POST | /api/v1/:app/vods/:id/ingest/rtp/start | server/vod/routes.js:128 |
-| POST | /api/v1/:app/vods/:id/ingest/rtp/stop | server/vod/routes.js:142 |
-| GET | /api/v1/:app/vods/latest-thumbs | server/vod/routes.js:296 |
-| GET | /api/v2/:app/objects | server/objects/routes.js:267 |
-| POST | /api/v2/:app/objects | server/objects/routes.js:181 |
-| DELETE | /api/v2/:app/objects/:id | server/objects/routes.js:297 |
-| GET | /api/v2/:app/objects/:id | server/objects/routes.js:292 |
-| GET | /api/v2/:app/objects/:id | server/objects/routes.js:370 |
-| POST | /api/v2/:app/objects/:id/complete | server/objects/routes.js:237 |
-| PUT | /api/v2/:app/objects/:id/content | server/index.js:31 |
-| GET | /api/v2/:app/objects/:id/download | server/objects/routes.js:323 |
-| GET | /api/v2/:app/objects/:id/holds | server/objects/routes.js:341 |
-| POST | /api/v2/:app/objects/:id/holds | server/objects/routes.js:347 |
-| DELETE | /api/v2/:app/objects/:id/holds/:holdId | server/objects/routes.js:356 |
-| POST | /api/v2/:app/objects/:id/restore | server/objects/routes.js:313 |
-| GET | /auth/callback | server/user-auth.js:281 |
-| POST | /auth/fedcm | server/user-auth.js:327 |
-| GET | /auth/login | server/user-auth.js:259 |
-| GET | /auth/logout | server/user-auth.js:355 |
-| GET | /auth/me | server/user-auth.js:379 |
-| POST | /auth/refresh | server/user-auth.js:389 |
-| GET | /healthz | server/index.js:85 |
-| POST | /internal/avatar-ingest | server/index.js:59 |
-| GET | /manifest.webmanifest | server/index.js:47 |
-| GET | /o | server/objects/routes.js:267 |
-| POST | /o | server/objects/routes.js:181 |
-| DELETE | /o/:id | server/objects/routes.js:297 |
-| GET | /o/:id | server/objects/routes.js:292 |
-| GET | /o/:id | server/objects/routes.js:370 |
-| POST | /o/:id/complete | server/objects/routes.js:237 |
-| GET | /o/:id/download | server/objects/routes.js:323 |
-| GET | /o/:id/holds | server/objects/routes.js:341 |
-| POST | /o/:id/holds | server/objects/routes.js:347 |
-| DELETE | /o/:id/holds/:holdId | server/objects/routes.js:356 |
-| POST | /o/:id/restore | server/objects/routes.js:313 |
-| GET | /tos | server/index.js:44 |
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | /api/ready | server/observability.js:132 |  | keep |
+| GET | /api/v1/:app/admin/storage | server/admin/routes.js:72 |  | keep |
+| GET | /api/v1/:app/admin/storage/buckets | server/admin/routes.js:404 |  | keep |
+| GET | /api/v1/:app/admin/storage/tiers | server/admin/routes.js:258 |  | keep |
+| POST | /api/v1/:app/admin/storage/tiers/bulk-move | server/admin/routes.js:377 |  | keep |
+| POST | /api/v1/:app/admin/storage/tiers/move | server/admin/routes.js:359 |  | keep |
+| PUT | /api/v1/:app/admin/storage/tiers/settings | server/admin/routes.js:306 |  | keep |
+| POST | /api/v1/:app/admin/storage/tiers/sweep | server/admin/routes.js:332 |  | keep |
+| GET | /api/v1/:app/admin/storage/vods | server/admin/routes.js:127 |  | keep |
+| DELETE | /api/v1/:app/admin/storage/vods/bulk | server/admin/routes.js:199 |  | keep |
+| GET | /api/v1/:app/assets | server/assets/routes.js:72 |  | keep |
+| POST | /api/v1/:app/assets | server/assets/routes.js:39 |  | keep |
+| DELETE | /api/v1/:app/assets/:id | server/assets/routes.js:84 |  | keep |
+| GET | /api/v1/:app/clips | server/vod/clips-routes.js:301 |  | keep |
+| POST | /api/v1/:app/clips | server/vod/clips-routes.js:120 |  | keep |
+| DELETE | /api/v1/:app/clips/:id | server/vod/clips-routes.js:386 |  | keep |
+| GET | /api/v1/:app/clips/:id | server/vod/clips-routes.js:327 |  | keep |
+| PUT | /api/v1/:app/clips/:id | server/vod/clips-routes.js:367 |  | keep |
+| POST | /api/v1/:app/clips/:id/recut | server/vod/clips-routes.js:350 |  | keep |
+| GET | /api/v1/:app/files | server/files/routes.js:152 |  | keep |
+| POST | /api/v1/:app/files | server/files/routes.js:83 |  | keep |
+| DELETE | /api/v1/:app/files/:key | server/files/routes.js:180 |  | keep |
+| GET | /api/v1/:app/files/:key | server/files/routes.js:169 |  | keep |
+| GET | /api/v1/:app/pastes | server/pastes/routes.js:260 | OpenVibe.Community | frozen-legacy |
+| POST | /api/v1/:app/pastes | server/pastes/routes.js:476 | OpenVibe.Community | frozen-legacy |
+| DELETE | /api/v1/:app/pastes/:slug | server/pastes/routes.js:631 | OpenVibe.Community | frozen-legacy |
+| GET | /api/v1/:app/pastes/:slug | server/pastes/routes.js:450 | OpenVibe.Community | frozen-legacy |
+| PUT | /api/v1/:app/pastes/:slug | server/pastes/routes.js:593 | OpenVibe.Community | frozen-legacy |
+| POST | /api/v1/:app/pastes/:slug/ai | server/pastes/routes.js:573 | OpenVibe.Community | frozen-legacy |
+| POST | /api/v1/:app/pastes/:slug/censor | server/pastes/routes.js:409 | OpenVibe.Community | frozen-legacy |
+| GET | /api/v1/:app/pastes/:slug/comments | server/pastes/routes.js:717 | OpenVibe.Community | frozen-legacy |
+| POST | /api/v1/:app/pastes/:slug/comments | server/pastes/routes.js:740 | OpenVibe.Community | frozen-legacy |
+| DELETE | /api/v1/:app/pastes/:slug/comments/:commentId | server/pastes/routes.js:818 | OpenVibe.Community | frozen-legacy |
+| POST | /api/v1/:app/pastes/:slug/copy | server/pastes/routes.js:692 | OpenVibe.Community | frozen-legacy |
+| POST | /api/v1/:app/pastes/:slug/fork | server/pastes/routes.js:649 | OpenVibe.Community | frozen-legacy |
+| POST | /api/v1/:app/pastes/:slug/like | server/pastes/routes.js:675 | OpenVibe.Community | frozen-legacy |
+| DELETE | /api/v1/:app/pastes/admin/forks | server/pastes/routes.js:371 | OpenVibe.Community | frozen-legacy |
+| GET | /api/v1/:app/pastes/admin/forks | server/pastes/routes.js:351 | OpenVibe.Community | frozen-legacy |
+| GET | /api/v1/:app/pastes/admin/stats | server/pastes/routes.js:341 | OpenVibe.Community | frozen-legacy |
+| POST | /api/v1/:app/pastes/bulk | server/pastes/routes.js:384 | OpenVibe.Community | frozen-legacy |
+| GET | /api/v1/:app/pastes/config | server/pastes/routes.js:319 | OpenVibe.Community | frozen-legacy |
+| GET | /api/v1/:app/stats | server/index.js:114 |  | keep |
+| GET | /api/v1/:app/stats/series/:metric | server/index.js:124 |  | keep |
+| POST | /api/v1/:app/thumbnails/:kind/:id | server/thumbnails/routes.js:38 |  | keep |
+| GET | /api/v1/:app/views | server/views/routes.js:39 |  | keep |
+| POST | /api/v1/:app/views | server/views/routes.js:24 |  | keep |
+| GET | /api/v1/:app/vods | server/vod/routes.js:273 |  | keep |
+| POST | /api/v1/:app/vods | server/vod/routes.js:95 |  | keep |
+| DELETE | /api/v1/:app/vods/:id | server/vod/routes.js:366 |  | keep |
+| GET | /api/v1/:app/vods/:id | server/vod/routes.js:312 |  | keep |
+| PUT | /api/v1/:app/vods/:id | server/vod/routes.js:343 |  | keep |
+| POST | /api/v1/:app/vods/:id/chunks | server/vod/routes.js:162 |  | keep |
+| POST | /api/v1/:app/vods/:id/complete | server/vod/routes.js:266 |  | keep |
+| POST | /api/v1/:app/vods/:id/finalize | server/vod/routes.js:267 |  | keep |
+| POST | /api/v1/:app/vods/:id/ingest/rtmp | server/vod/routes.js:119 |  | keep |
+| POST | /api/v1/:app/vods/:id/ingest/rtp/start | server/vod/routes.js:133 |  | keep |
+| POST | /api/v1/:app/vods/:id/ingest/rtp/stop | server/vod/routes.js:147 |  | keep |
+| GET | /api/v1/:app/vods/latest-thumbs | server/vod/routes.js:301 |  | keep |
+| GET | /api/v2/:app/objects | server/objects/routes.js:278 |  | keep |
+| POST | /api/v2/:app/objects | server/objects/routes.js:188 |  | keep |
+| DELETE | /api/v2/:app/objects/:id | server/objects/routes.js:308 |  | keep |
+| GET | /api/v2/:app/objects/:id | server/objects/routes.js:303 |  | keep |
+| GET | /api/v2/:app/objects/:id | server/objects/routes.js:382 |  | keep |
+| POST | /api/v2/:app/objects/:id/complete | server/objects/routes.js:244 |  | keep |
+| PUT | /api/v2/:app/objects/:id/content | server/index.js:35 |  | keep |
+| GET | /api/v2/:app/objects/:id/download | server/objects/routes.js:334 |  | keep |
+| GET | /api/v2/:app/objects/:id/holds | server/objects/routes.js:353 |  | keep |
+| POST | /api/v2/:app/objects/:id/holds | server/objects/routes.js:359 |  | keep |
+| DELETE | /api/v2/:app/objects/:id/holds/:holdId | server/objects/routes.js:368 |  | keep |
+| POST | /api/v2/:app/objects/:id/restore | server/objects/routes.js:324 |  | keep |
+| GET | /auth/callback | server/user-auth.js:281 |  | keep |
+| POST | /auth/fedcm | server/user-auth.js:327 |  | keep |
+| GET | /auth/login | server/user-auth.js:259 |  | keep |
+| GET | /auth/logout | server/user-auth.js:355 |  | keep |
+| GET | /auth/me | server/user-auth.js:379 |  | keep |
+| POST | /auth/refresh | server/user-auth.js:389 |  | keep |
+| GET | /healthz | server/index.js:92 |  | keep |
+| POST | /internal/avatar-ingest | server/index.js:63 |  | keep |
+| GET | /manifest.webmanifest | server/index.js:51 |  | keep |
+| GET | /o | server/objects/routes.js:278 |  | keep |
+| POST | /o | server/objects/routes.js:188 |  | keep |
+| DELETE | /o/:id | server/objects/routes.js:308 |  | keep |
+| GET | /o/:id | server/objects/routes.js:303 |  | keep |
+| GET | /o/:id | server/objects/routes.js:382 |  | keep |
+| POST | /o/:id/complete | server/objects/routes.js:244 |  | keep |
+| GET | /o/:id/download | server/objects/routes.js:334 |  | keep |
+| GET | /o/:id/holds | server/objects/routes.js:353 |  | keep |
+| POST | /o/:id/holds | server/objects/routes.js:359 |  | keep |
+| DELETE | /o/:id/holds/:holdId | server/objects/routes.js:368 |  | keep |
+| POST | /o/:id/restore | server/objects/routes.js:324 |  | keep |
+| GET | /release.json | server/index.js:90 |  | keep |
+| GET | /tos | server/index.js:48 |  | keep |
 
 ## OpenVibe.Tools
 
-| Method | Path | Source |
-|---|---|---|
-| GET | / | apps/gateway/server/pages/site.js:249 |
-| GET | / | apps/text/server/index.js:194 |
-| GET | /:slug | apps/gateway/server/pages/site.js:257 |
-| GET | /all-tools | apps/gateway/server/pages/site.js:250 |
-| GET | /api/brand | apps/gateway/server/index.js:132 |
-| GET | /api/catalog.json | apps/gateway/server/pages/site.js:248 |
-| GET | /api/context | apps/audio/server/index.js:97 |
-| GET | /api/context | apps/docs/server/index.js:94 |
-| GET | /api/context | apps/img/server/index.js:95 |
-| GET | /api/dev/opengraph | apps/gateway/server/dev/routes.js:91 |
-| GET | /api/dev/tools | apps/gateway/server/dev/routes.js:79 |
-| POST | /api/dev/webhook/bins | apps/gateway/server/dev/routes.js:151 |
-| DELETE | /api/dev/webhook/bins/:binId | apps/gateway/server/dev/routes.js:217 |
-| GET | /api/dev/webhook/bins/:binId | apps/gateway/server/dev/routes.js:172 |
-| ALL | /api/dev/webhook/bins/:binId/in | apps/gateway/server/dev/routes.js:186 |
-| POST | /api/download | apps/yt/server/index.js:121 |
-| DELETE | /api/download/:id | apps/yt/server/index.js:202 |
-| GET | /api/download/:id | apps/audio/server/index.js:195 |
-| GET | /api/download/:id | apps/docs/server/index.js:236 |
-| GET | /api/download/:id | apps/img/server/index.js:209 |
-| GET | /api/download/:id | apps/yt/server/index.js:209 |
-| GET | /api/food-banks | apps/food/server/index.js:81 |
-| GET | /api/food-banks | apps/maps/server/index.js:374 |
-| GET | /api/foods | apps/food/server/index.js:83 |
-| GET | /api/foods | apps/maps/server/index.js:395 |
-| GET | /api/geocode | apps/food/server/index.js:85 |
-| GET | /api/geocode | apps/maps/server/index.js:97 |
-| GET | /api/health | apps/audio/server/index.js:91 |
-| GET | /api/health | apps/docs/server/index.js:88 |
-| GET | /api/health | apps/gateway/server/index.js:128 |
-| GET | /api/health | apps/img/server/index.js:89 |
-| GET | /api/health | apps/text/server/index.js:167 |
-| GET | /api/health | apps/yt/server/index.js:99 |
-| POST | /api/info | apps/docs/server/index.js:116 |
-| POST | /api/info | apps/yt/server/index.js:106 |
-| GET | /api/internal/analytics | apps/audio/server/index.js:244 |
-| GET | /api/internal/analytics | apps/docs/server/index.js:254 |
-| GET | /api/internal/analytics | apps/food/server/index.js:88 |
-| GET | /api/internal/analytics | apps/gateway/server/index.js:213 |
-| GET | /api/internal/analytics | apps/img/server/index.js:227 |
-| GET | /api/internal/analytics | apps/maps/server/index.js:417 |
-| GET | /api/internal/analytics | apps/text/server/index.js:155 |
-| GET | /api/internal/analytics | apps/yt/server/index.js:223 |
-| GET | /api/internal/analytics/bots | apps/audio/server/index.js:249 |
-| GET | /api/internal/analytics/bots | apps/docs/server/index.js:259 |
-| GET | /api/internal/analytics/bots | apps/food/server/index.js:93 |
-| GET | /api/internal/analytics/bots | apps/img/server/index.js:232 |
-| GET | /api/internal/analytics/bots | apps/maps/server/index.js:422 |
-| GET | /api/internal/analytics/bots | apps/text/server/index.js:160 |
-| GET | /api/internal/analytics/bots | apps/yt/server/index.js:228 |
-| GET | /api/meal-plan | apps/food/server/index.js:84 |
-| GET | /api/meal-plan | apps/maps/server/index.js:405 |
-| GET | /api/net/dns/:target? | apps/gateway/server/net/routes.js:273 |
-| GET | /api/net/headers/:target? | apps/gateway/server/net/routes.js:489 |
-| GET | /api/net/ip/:target? | apps/gateway/server/net/routes.js:97 |
-| GET | /api/net/ipv4/:target? | apps/gateway/server/net/routes.js:151 |
-| GET | /api/net/ipv6/:target? | apps/gateway/server/net/routes.js:225 |
-| GET | /api/net/lookup/:target? | apps/gateway/server/net/routes.js:695 |
-| GET | /api/net/myip | apps/gateway/server/net/routes.js:90 |
-| GET | /api/net/ping/:target? | apps/gateway/server/net/routes.js:639 |
-| GET | /api/net/port/:target? | apps/gateway/server/net/routes.js:590 |
-| GET | /api/net/rdap/:target? | apps/gateway/server/net/routes.js:361 |
-| GET | /api/net/rdns/:target? | apps/gateway/server/net/routes.js:333 |
-| GET | /api/net/redirects/:target? | apps/gateway/server/net/routes.js:539 |
-| GET | /api/net/ssl/:target? | apps/gateway/server/net/routes.js:409 |
-| GET | /api/net/tools | apps/gateway/server/net/routes.js:82 |
-| GET | /api/net/whois/:target? | apps/gateway/server/net/routes.js:398 |
-| GET | /api/preview/:id | apps/audio/server/index.js:213 |
-| POST | /api/probe | apps/audio/server/index.js:119 |
-| POST | /api/process | apps/audio/server/index.js:132 |
-| POST | /api/process | apps/docs/server/index.js:128 |
-| POST | /api/process | apps/img/server/index.js:117 |
-| POST | /api/process/direct | apps/img/server/index.js:174 |
-| POST | /api/process/multi | apps/docs/server/index.js:189 |
-| GET | /api/search | apps/maps/server/index.js:203 |
-| GET | /api/search/stream | apps/maps/server/index.js:248 |
-| GET | /api/status/:id | apps/yt/server/index.js:136 |
-| GET | /api/status/:id/stream | apps/yt/server/index.js:152 |
-| GET | /api/stores | apps/food/server/index.js:82 |
-| GET | /api/stores | apps/maps/server/index.js:385 |
-| GET | /api/terrain | apps/maps/server/index.js:364 |
-| GET | /api/tools | apps/audio/server/index.js:114 |
-| GET | /api/tools | apps/docs/server/index.js:111 |
-| GET | /api/tools | apps/img/server/index.js:112 |
-| GET | /api/weather | apps/maps/server/index.js:348 |
-| GET | /auth/fedcm/callback | apps/gateway/server/auth/routes.js:331 |
-| POST | /auth/fedcm/fedcm | apps/gateway/server/auth/routes.js:381 |
-| GET | /auth/fedcm/login | apps/gateway/server/auth/routes.js:303 |
-| GET | /auth/fedcm/logout | apps/gateway/server/auth/routes.js:431 |
-| GET | /auth/fedcm/me | apps/gateway/server/auth/routes.js:458 |
-| POST | /auth/fedcm/refresh | apps/gateway/server/auth/routes.js:469 |
-| GET | /llms.txt | apps/gateway/server/pages/site.js:255 |
-| GET | /openvibe-sw.js | apps/gateway/server/index.js:278 |
-| GET | /robots.txt | apps/gateway/server/pages/site.js:254 |
-| GET | /search | apps/gateway/server/pages/site.js:251 |
-| GET | /sitemap.xml | apps/gateway/server/pages/site.js:253 |
-| GET | /sitemap.xml | apps/text/server/index.js:188 |
-| GET | /tool/:id | apps/gateway/server/pages/site.js:252 |
-| GET | /tos | apps/gateway/server/index.js:238 |
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | apps/gateway/server/pages/site.js:257 |  | keep |
+| GET | / | apps/text/server/index.js:209 |  | keep |
+| GET | /:slug | apps/gateway/server/pages/site.js:265 |  | keep |
+| GET | /all-tools | apps/gateway/server/pages/site.js:258 |  | keep |
+| GET | /api/brand | apps/gateway/server/index.js:176 |  | keep |
+| GET | /api/catalog.json | apps/gateway/server/pages/site.js:256 |  | keep |
+| GET | /api/context | apps/audio/server/index.js:133 |  | keep |
+| GET | /api/context | apps/docs/server/index.js:129 |  | keep |
+| GET | /api/context | apps/img/server/index.js:130 |  | keep |
+| GET | /api/dev/opengraph | apps/gateway/server/dev/routes.js:83 |  | keep |
+| GET | /api/dev/tools | apps/gateway/server/dev/routes.js:71 |  | keep |
+| POST | /api/dev/webhook/bins | apps/gateway/server/dev/routes.js:151 |  | keep |
+| DELETE | /api/dev/webhook/bins/:binId | apps/gateway/server/dev/routes.js:217 |  | keep |
+| GET | /api/dev/webhook/bins/:binId | apps/gateway/server/dev/routes.js:172 |  | keep |
+| ALL | /api/dev/webhook/bins/:binId/in | apps/gateway/server/dev/routes.js:186 |  | keep |
+| POST | /api/download | apps/yt/server/index.js:142 |  | keep |
+| DELETE | /api/download/:id | apps/yt/server/index.js:223 |  | keep |
+| GET | /api/download/:id | apps/audio/server/index.js:222 |  | keep |
+| GET | /api/download/:id | apps/docs/server/index.js:269 |  | keep |
+| GET | /api/download/:id | apps/img/server/index.js:219 |  | keep |
+| GET | /api/download/:id | apps/yt/server/index.js:230 |  | keep |
+| GET | /api/food-banks | apps/food/server/index.js:105 |  | keep |
+| GET | /api/food-banks | apps/maps/server/index.js:398 |  | keep |
+| GET | /api/foods | apps/food/server/index.js:107 |  | keep |
+| GET | /api/foods | apps/maps/server/index.js:419 |  | keep |
+| GET | /api/geocode | apps/food/server/index.js:109 |  | keep |
+| GET | /api/geocode | apps/maps/server/index.js:121 |  | keep |
+| GET | /api/health | apps/audio/server/index.js:127 |  | keep |
+| GET | /api/health | apps/docs/server/index.js:123 |  | keep |
+| GET | /api/health | apps/gateway/server/index.js:172 |  | keep |
+| GET | /api/health | apps/img/server/index.js:124 |  | keep |
+| GET | /api/health | apps/text/server/index.js:182 |  | keep |
+| GET | /api/health | apps/yt/server/index.js:120 |  | keep |
+| POST | /api/info | apps/docs/server/index.js:151 |  | keep |
+| POST | /api/info | apps/yt/server/index.js:127 |  | keep |
+| GET | /api/internal/analytics | apps/audio/server/index.js:271 |  | keep |
+| GET | /api/internal/analytics | apps/docs/server/index.js:287 |  | keep |
+| GET | /api/internal/analytics | apps/food/server/index.js:112 |  | keep |
+| GET | /api/internal/analytics | apps/gateway/server/index.js:256 |  | keep |
+| GET | /api/internal/analytics | apps/img/server/index.js:237 |  | keep |
+| GET | /api/internal/analytics | apps/maps/server/index.js:441 |  | keep |
+| GET | /api/internal/analytics | apps/text/server/index.js:170 |  | keep |
+| GET | /api/internal/analytics | apps/yt/server/index.js:244 |  | keep |
+| GET | /api/internal/analytics/bots | apps/audio/server/index.js:276 |  | keep |
+| GET | /api/internal/analytics/bots | apps/docs/server/index.js:292 |  | keep |
+| GET | /api/internal/analytics/bots | apps/food/server/index.js:117 |  | keep |
+| GET | /api/internal/analytics/bots | apps/img/server/index.js:242 |  | keep |
+| GET | /api/internal/analytics/bots | apps/maps/server/index.js:446 |  | keep |
+| GET | /api/internal/analytics/bots | apps/text/server/index.js:175 |  | keep |
+| GET | /api/internal/analytics/bots | apps/yt/server/index.js:249 |  | keep |
+| GET | /api/meal-plan | apps/food/server/index.js:108 |  | keep |
+| GET | /api/meal-plan | apps/maps/server/index.js:429 |  | keep |
+| GET | /api/net/dns/:target? | apps/gateway/server/net/routes.js:298 |  | keep |
+| GET | /api/net/headers/:target? | apps/gateway/server/net/routes.js:504 |  | keep |
+| GET | /api/net/ip/:target? | apps/gateway/server/net/routes.js:122 |  | keep |
+| GET | /api/net/ipv4/:target? | apps/gateway/server/net/routes.js:176 |  | keep |
+| GET | /api/net/ipv6/:target? | apps/gateway/server/net/routes.js:250 |  | keep |
+| GET | /api/net/lookup/:target? | apps/gateway/server/net/routes.js:676 |  | keep |
+| GET | /api/net/myip | apps/gateway/server/net/routes.js:115 |  | keep |
+| GET | /api/net/ping/:target? | apps/gateway/server/net/routes.js:639 |  | keep |
+| GET | /api/net/port/:target? | apps/gateway/server/net/routes.js:613 |  | keep |
+| GET | /api/net/rdap/:target? | apps/gateway/server/net/routes.js:389 |  | keep |
+| GET | /api/net/rdns/:target? | apps/gateway/server/net/routes.js:361 |  | keep |
+| GET | /api/net/redirects/:target? | apps/gateway/server/net/routes.js:550 |  | keep |
+| GET | /api/net/ssl/:target? | apps/gateway/server/net/routes.js:437 |  | keep |
+| GET | /api/net/tools | apps/gateway/server/net/routes.js:107 |  | keep |
+| GET | /api/net/whois/:target? | apps/gateway/server/net/routes.js:426 |  | keep |
+| GET | /api/preview/:id | apps/audio/server/index.js:240 |  | keep |
+| POST | /api/probe | apps/audio/server/index.js:155 |  | keep |
+| POST | /api/process | apps/audio/server/index.js:168 |  | keep |
+| POST | /api/process | apps/docs/server/index.js:163 |  | keep |
+| POST | /api/process | apps/img/server/index.js:152 |  | keep |
+| POST | /api/process/direct | apps/img/server/index.js:180 |  | keep |
+| POST | /api/process/multi | apps/docs/server/index.js:210 |  | keep |
+| GET | /api/ready | apps/_shared/observe.js:73 |  | keep |
+| GET | /api/ready | apps/gateway/server/index.js:108 |  | keep |
+| GET | /api/search | apps/maps/server/index.js:227 |  | keep |
+| GET | /api/search/stream | apps/maps/server/index.js:272 |  | keep |
+| GET | /api/status/:id | apps/yt/server/index.js:157 |  | keep |
+| GET | /api/status/:id/stream | apps/yt/server/index.js:173 |  | keep |
+| GET | /api/stores | apps/food/server/index.js:106 |  | keep |
+| GET | /api/stores | apps/maps/server/index.js:409 |  | keep |
+| GET | /api/terrain | apps/maps/server/index.js:388 |  | keep |
+| GET | /api/tools | apps/audio/server/index.js:150 |  | keep |
+| GET | /api/tools | apps/docs/server/index.js:146 |  | keep |
+| GET | /api/tools | apps/img/server/index.js:147 |  | keep |
+| POST | /api/v1/jobs | apps/_shared/jobs/http.js:161 |  | keep |
+| DELETE | /api/v1/jobs/:id | apps/_shared/jobs/http.js:194 |  | keep |
+| GET | /api/v1/jobs/:id | apps/_shared/jobs/http.js:188 |  | keep |
+| GET | /api/v1/jobs/:id/events | apps/_shared/jobs/http.js:238 |  | keep |
+| GET | /api/v1/jobs/:id/files/:n | apps/_shared/jobs/http.js:275 |  | keep |
+| DELETE | /api/v1/jobs/:id/references/:ref | apps/_shared/jobs/http.js:236 |  | keep |
+| PUT | /api/v1/jobs/:id/references/:ref | apps/_shared/jobs/http.js:235 |  | keep |
+| POST | /api/v1/jobs/:id/retry | apps/_shared/jobs/http.js:204 |  | keep |
+| GET | /api/weather | apps/maps/server/index.js:372 |  | keep |
+| GET | /auth/fedcm/callback | apps/gateway/server/auth/routes.js:331 |  | keep |
+| POST | /auth/fedcm/fedcm | apps/gateway/server/auth/routes.js:381 |  | keep |
+| GET | /auth/fedcm/login | apps/gateway/server/auth/routes.js:303 |  | keep |
+| GET | /auth/fedcm/logout | apps/gateway/server/auth/routes.js:431 |  | keep |
+| GET | /auth/fedcm/me | apps/gateway/server/auth/routes.js:458 |  | keep |
+| POST | /auth/fedcm/refresh | apps/gateway/server/auth/routes.js:469 |  | keep |
+| GET | /js/ov-jobs.js | apps/_shared/jobs/http.js:143 |  | keep |
+| GET | /llms.txt | apps/gateway/server/pages/site.js:263 |  | keep |
+| GET | /openvibe-sw.js | apps/gateway/server/index.js:321 |  | keep |
+| GET | /release.json | apps/audio/server/index.js:64 |  | keep |
+| GET | /release.json | apps/docs/server/index.js:61 |  | keep |
+| GET | /release.json | apps/food/server/index.js:44 |  | keep |
+| GET | /release.json | apps/gateway/server/index.js:74 |  | keep |
+| GET | /release.json | apps/img/server/index.js:61 |  | keep |
+| GET | /release.json | apps/maps/server/index.js:45 |  | keep |
+| GET | /release.json | apps/text/server/index.js:37 |  | keep |
+| GET | /release.json | apps/yt/server/index.js:53 |  | keep |
+| GET | /robots.txt | apps/gateway/server/pages/site.js:262 |  | keep |
+| GET | /search | apps/gateway/server/pages/site.js:259 |  | keep |
+| GET | /sitemap.xml | apps/gateway/server/pages/site.js:261 |  | keep |
+| GET | /sitemap.xml | apps/text/server/index.js:203 |  | keep |
+| GET | /tool/:id | apps/gateway/server/pages/site.js:260 |  | keep |
+| GET | /tos | apps/gateway/server/index.js:281 |  | keep |
 
 ## OpenVibe.Community
 
-| Method | Path | Source |
-|---|---|---|
-| GET | / | server/app.js:186 |
-| GET | /api/health | server/app.js:160 |
-| GET | /api/pastes | server/pastes/api.js:102 |
-| POST | /api/pastes | server/pastes/api.js:106 |
-| DELETE | /api/pastes/:slug | server/pastes/api.js:124 |
-| GET | /api/pastes/:slug | server/pastes/api.js:122 |
-| PUT | /api/pastes/:slug | server/pastes/api.js:123 |
-| POST | /api/pastes/:slug/ai | server/pastes/api.js:127 |
-| POST | /api/pastes/:slug/censor | server/pastes/api.js:126 |
-| GET | /api/pastes/:slug/comments | server/pastes/api.js:136 |
-| POST | /api/pastes/:slug/comments | server/pastes/api.js:137 |
-| DELETE | /api/pastes/:slug/comments/:commentId | server/pastes/api.js:140 |
-| POST | /api/pastes/:slug/copy | server/pastes/api.js:134 |
-| POST | /api/pastes/:slug/fork | server/pastes/api.js:132 |
-| POST | /api/pastes/:slug/like | server/pastes/api.js:133 |
-| GET | /api/pastes/:slug/raw | server/pastes/api.js:129 |
-| POST | /api/pastes/:slug/set-avatar | server/pastes/api.js:143 |
-| GET | /api/pastes/:slug/versions | server/pastes/api.js:130 |
-| DELETE | /api/pastes/admin/forks | server/pastes/api.js:113 |
-| GET | /api/pastes/admin/forks | server/pastes/api.js:112 |
-| GET | /api/pastes/admin/stats | server/pastes/api.js:111 |
-| POST | /api/pastes/bulk | server/pastes/api.js:114 |
-| GET | /api/pastes/by-user/:username | server/pastes/api.js:119 |
-| GET | /api/pastes/config | server/pastes/api.js:109 |
-| POST | /api/pastes/screenshot | server/pastes/api.js:116 |
-| GET | /api/ready | server/app.js:161 |
-| DELETE | /api/v1/comments/:commentId | server/comments/api.js:40 |
-| POST | /api/v1/comments/:commentId/votes | server/comments/api.js:41 |
-| GET | /api/v1/comments/threads/:id | server/comments/api.js:36 |
-| POST | /api/v1/comments/threads/:id/comments | server/comments/api.js:37 |
-| PUT | /api/v1/comments/threads/:id/visibility | server/comments/api.js:39 |
-| POST | /api/v1/comments/threads/resolve | server/comments/api.js:34 |
-| GET | /api/v1/posts | server/forum/api.js:36 |
-| DELETE | /api/v1/posts/:id | server/forum/api.js:57 |
-| PUT | /api/v1/posts/:id | server/forum/api.js:56 |
-| GET | /api/v1/posts/:id/versions | server/forum/api.js:58 |
-| GET | /api/v1/posts/:space | server/forum/api.js:37 |
-| GET | /api/v1/posts/:space/threads | server/forum/api.js:38 |
-| POST | /api/v1/posts/:space/threads | server/forum/api.js:39 |
-| DELETE | /api/v1/posts/:space/threads/:slug | server/forum/api.js:41 |
-| GET | /api/v1/posts/:space/threads/:slug | server/forum/api.js:40 |
-| POST | /api/v1/posts/:space/threads/:slug/posts | server/forum/api.js:42 |
-| PUT | /api/v1/posts/:space/threads/:slug/state | server/forum/api.js:44 |
-| POST | /api/v1/posts/:space/threads/:slug/votes | server/forum/api.js:43 |
-| GET | /api/v1/pulse | server/pulse/api.js:27 |
-| POST | /api/v1/pulse/items | server/pulse/api.js:28 |
-| DELETE | /api/v1/pulse/items/:service/:type/:id | server/pulse/api.js:29 |
-| GET | /api/v1/relay/deliveries | server/relay/api.js:35 |
-| POST | /api/v1/relay/deliveries/:id/retry | server/relay/api.js:39 |
-| GET | /api/v1/relay/mappings | server/relay/api.js:43 |
-| POST | /api/v1/relay/mappings | server/relay/api.js:44 |
-| PUT | /api/v1/relay/mappings/:id | server/relay/api.js:52 |
-| GET | /api/v1/spaces | server/forum/api.js:36 |
-| DELETE | /api/v1/spaces/:id | server/forum/api.js:57 |
-| PUT | /api/v1/spaces/:id | server/forum/api.js:56 |
-| GET | /api/v1/spaces/:id/versions | server/forum/api.js:58 |
-| GET | /api/v1/spaces/:space | server/forum/api.js:37 |
-| GET | /api/v1/spaces/:space/threads | server/forum/api.js:38 |
-| POST | /api/v1/spaces/:space/threads | server/forum/api.js:39 |
-| DELETE | /api/v1/spaces/:space/threads/:slug | server/forum/api.js:41 |
-| GET | /api/v1/spaces/:space/threads/:slug | server/forum/api.js:40 |
-| POST | /api/v1/spaces/:space/threads/:slug/posts | server/forum/api.js:42 |
-| PUT | /api/v1/spaces/:space/threads/:slug/state | server/forum/api.js:44 |
-| POST | /api/v1/spaces/:space/threads/:slug/votes | server/forum/api.js:43 |
-| GET | /callback | server/auth/routes.js:289 |
-| POST | /fedcm | server/auth/routes.js:335 |
-| GET | /feed.xml | server/app.js:178 |
-| GET | /login | server/auth/routes.js:267 |
-| GET | /logout | server/auth/routes.js:363 |
-| GET | /me | server/auth/routes.js:387 |
-| GET | /my | server/app.js:302 |
-| GET | /new | server/app.js:254 |
-| POST | /new | server/app.js:265 |
-| GET | /p/:slug | server/app.js:199 |
-| GET | /p/:slug/download | server/app.js:242 |
-| GET | /p/:slug/raw | server/app.js:218 |
-| GET | /p/:slug/raw | server/app.js:238 |
-| GET | /p/:slug/screenshot | server/app.js:231 |
-| GET | /p/:slug/screenshot | server/app.js:239 |
-| GET | /pastes | server/app.js:191 |
-| GET | /pastes/:slug | server/app.js:197 |
-| GET | /pulse | server/app.js:294 |
-| POST | /refresh | server/auth/routes.js:397 |
-| GET | /robots.txt | server/app.js:176 |
-| GET | /s | server/forum/routes.js:45 |
-| GET | /s/:space | server/forum/routes.js:59 |
-| GET | /s/:space/feed.xml | server/forum/routes.js:53 |
-| GET | /s/:space/new | server/forum/routes.js:67 |
-| POST | /s/:space/new | server/forum/routes.js:74 |
-| GET | /s/:space/t/:slug | server/forum/routes.js:95 |
-| POST | /s/:space/t/:slug/delete | server/forum/routes.js:135 |
-| POST | /s/:space/t/:slug/reply | server/forum/routes.js:99 |
-| POST | /s/:space/t/:slug/state | server/forum/routes.js:124 |
-| POST | /s/:space/t/:slug/vote | server/forum/routes.js:117 |
-| GET | /s/feed.xml | server/forum/routes.js:49 |
-| GET | /sitemap.xml | server/app.js:177 |
-| GET | /tos | server/app.js:100 |
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/app.js:202 |  | keep |
+| GET | /api/health | server/app.js:172 |  | keep |
+| GET | /api/pastes | server/pastes/api.js:102 |  | keep |
+| POST | /api/pastes | server/pastes/api.js:106 |  | keep |
+| DELETE | /api/pastes/:slug | server/pastes/api.js:124 |  | keep |
+| GET | /api/pastes/:slug | server/pastes/api.js:122 |  | keep |
+| PUT | /api/pastes/:slug | server/pastes/api.js:123 |  | keep |
+| POST | /api/pastes/:slug/ai | server/pastes/api.js:127 |  | keep |
+| POST | /api/pastes/:slug/censor | server/pastes/api.js:126 |  | keep |
+| GET | /api/pastes/:slug/comments | server/pastes/api.js:136 |  | keep |
+| POST | /api/pastes/:slug/comments | server/pastes/api.js:137 |  | keep |
+| DELETE | /api/pastes/:slug/comments/:commentId | server/pastes/api.js:140 |  | keep |
+| POST | /api/pastes/:slug/copy | server/pastes/api.js:134 |  | keep |
+| POST | /api/pastes/:slug/fork | server/pastes/api.js:132 |  | keep |
+| POST | /api/pastes/:slug/like | server/pastes/api.js:133 |  | keep |
+| GET | /api/pastes/:slug/raw | server/pastes/api.js:129 |  | keep |
+| POST | /api/pastes/:slug/set-avatar | server/pastes/api.js:143 |  | keep |
+| GET | /api/pastes/:slug/versions | server/pastes/api.js:130 |  | keep |
+| DELETE | /api/pastes/admin/forks | server/pastes/api.js:113 |  | keep |
+| GET | /api/pastes/admin/forks | server/pastes/api.js:112 |  | keep |
+| GET | /api/pastes/admin/stats | server/pastes/api.js:111 |  | keep |
+| POST | /api/pastes/bulk | server/pastes/api.js:114 |  | keep |
+| GET | /api/pastes/by-user/:username | server/pastes/api.js:119 |  | keep |
+| GET | /api/pastes/config | server/pastes/api.js:109 |  | keep |
+| POST | /api/pastes/screenshot | server/pastes/api.js:116 |  | keep |
+| GET | /api/ready | server/app.js:177 |  | keep |
+| DELETE | /api/v1/comments/:commentId | server/comments/api.js:45 |  | keep |
+| GET | /api/v1/comments/:commentId | server/comments/api.js:43 |  | keep |
+| PATCH | /api/v1/comments/:commentId | server/comments/api.js:44 |  | keep |
+| POST | /api/v1/comments/:commentId/votes | server/comments/api.js:46 |  | keep |
+| GET | /api/v1/comments/threads/:id | server/comments/api.js:39 |  | keep |
+| POST | /api/v1/comments/threads/:id/comments | server/comments/api.js:40 |  | keep |
+| PUT | /api/v1/comments/threads/:id/visibility | server/comments/api.js:42 |  | keep |
+| POST | /api/v1/comments/threads/resolve | server/comments/api.js:37 |  | keep |
+| GET | /api/v1/posts | server/forum/api.js:41 |  | keep |
+| DELETE | /api/v1/posts/:id | server/forum/api.js:64 |  | keep |
+| PUT | /api/v1/posts/:id | server/forum/api.js:63 |  | keep |
+| GET | /api/v1/posts/:id/versions | server/forum/api.js:65 |  | keep |
+| GET | /api/v1/posts/:space | server/forum/api.js:42 |  | keep |
+| PUT | /api/v1/posts/:space/members-only | server/forum/api.js:51 |  | keep |
+| GET | /api/v1/posts/:space/threads | server/forum/api.js:43 |  | keep |
+| POST | /api/v1/posts/:space/threads | server/forum/api.js:44 |  | keep |
+| DELETE | /api/v1/posts/:space/threads/:slug | server/forum/api.js:46 |  | keep |
+| GET | /api/v1/posts/:space/threads/:slug | server/forum/api.js:45 |  | keep |
+| PUT | /api/v1/posts/:space/threads/:slug/members-only | server/forum/api.js:50 |  | keep |
+| POST | /api/v1/posts/:space/threads/:slug/posts | server/forum/api.js:47 |  | keep |
+| PUT | /api/v1/posts/:space/threads/:slug/state | server/forum/api.js:49 |  | keep |
+| POST | /api/v1/posts/:space/threads/:slug/votes | server/forum/api.js:48 |  | keep |
+| GET | /api/v1/pulse | server/pulse/api.js:27 |  | keep |
+| POST | /api/v1/pulse/items | server/pulse/api.js:28 |  | keep |
+| DELETE | /api/v1/pulse/items/:service/:type/:id | server/pulse/api.js:29 |  | keep |
+| GET | /api/v1/relay/deliveries | server/relay/api.js:35 |  | keep |
+| POST | /api/v1/relay/deliveries/:id/retry | server/relay/api.js:39 |  | keep |
+| GET | /api/v1/relay/mappings | server/relay/api.js:43 |  | keep |
+| POST | /api/v1/relay/mappings | server/relay/api.js:44 |  | keep |
+| PUT | /api/v1/relay/mappings/:id | server/relay/api.js:53 |  | keep |
+| GET | /api/v1/spaces | server/forum/api.js:41 |  | keep |
+| DELETE | /api/v1/spaces/:id | server/forum/api.js:64 |  | keep |
+| PUT | /api/v1/spaces/:id | server/forum/api.js:63 |  | keep |
+| GET | /api/v1/spaces/:id/versions | server/forum/api.js:65 |  | keep |
+| GET | /api/v1/spaces/:space | server/forum/api.js:42 |  | keep |
+| PUT | /api/v1/spaces/:space/members-only | server/forum/api.js:51 |  | keep |
+| GET | /api/v1/spaces/:space/threads | server/forum/api.js:43 |  | keep |
+| POST | /api/v1/spaces/:space/threads | server/forum/api.js:44 |  | keep |
+| DELETE | /api/v1/spaces/:space/threads/:slug | server/forum/api.js:46 |  | keep |
+| GET | /api/v1/spaces/:space/threads/:slug | server/forum/api.js:45 |  | keep |
+| PUT | /api/v1/spaces/:space/threads/:slug/members-only | server/forum/api.js:50 |  | keep |
+| POST | /api/v1/spaces/:space/threads/:slug/posts | server/forum/api.js:47 |  | keep |
+| PUT | /api/v1/spaces/:space/threads/:slug/state | server/forum/api.js:49 |  | keep |
+| POST | /api/v1/spaces/:space/threads/:slug/votes | server/forum/api.js:48 |  | keep |
+| GET | /c/:accessId | server/comments/routes.js:43 |  | keep |
+| POST | /c/:accessId | server/comments/routes.js:50 |  | keep |
+| GET | /callback | server/auth/routes.js:289 |  | keep |
+| POST | /fedcm | server/auth/routes.js:335 |  | keep |
+| GET | /feed.xml | server/app.js:194 |  | keep |
+| GET | /login | server/auth/routes.js:267 |  | keep |
+| GET | /logout | server/auth/routes.js:363 |  | keep |
+| GET | /me | server/auth/routes.js:387 |  | keep |
+| GET | /my | server/app.js:319 |  | keep |
+| GET | /new | server/app.js:270 |  | keep |
+| POST | /new | server/app.js:281 |  | keep |
+| GET | /p/:slug | server/app.js:215 |  | keep |
+| GET | /p/:slug/download | server/app.js:258 |  | keep |
+| GET | /p/:slug/raw | server/app.js:234 |  | keep |
+| GET | /p/:slug/raw | server/app.js:254 |  | keep |
+| GET | /p/:slug/screenshot | server/app.js:247 |  | keep |
+| GET | /p/:slug/screenshot | server/app.js:255 |  | keep |
+| GET | /pastes | server/app.js:207 |  | keep |
+| GET | /pastes/:slug | server/app.js:213 |  | keep |
+| GET | /pulse | server/app.js:311 |  | keep |
+| POST | /refresh | server/auth/routes.js:397 |  | keep |
+| GET | /release.json | server/app.js:173 |  | keep |
+| GET | /robots.txt | server/app.js:192 |  | keep |
+| GET | /s | server/forum/routes.js:51 |  | keep |
+| GET | /s/:space | server/forum/routes.js:65 |  | keep |
+| GET | /s/:space/feed.xml | server/forum/routes.js:59 |  | keep |
+| GET | /s/:space/new | server/forum/routes.js:73 |  | keep |
+| POST | /s/:space/new | server/forum/routes.js:82 |  | keep |
+| GET | /s/:space/t/:slug | server/forum/routes.js:104 |  | keep |
+| POST | /s/:space/t/:slug/delete | server/forum/routes.js:153 |  | keep |
+| POST | /s/:space/t/:slug/members-only | server/forum/routes.js:134 |  | keep |
+| POST | /s/:space/t/:slug/reply | server/forum/routes.js:108 |  | keep |
+| POST | /s/:space/t/:slug/state | server/forum/routes.js:142 |  | keep |
+| POST | /s/:space/t/:slug/vote | server/forum/routes.js:126 |  | keep |
+| GET | /s/feed.xml | server/forum/routes.js:55 |  | keep |
+| GET | /sitemap.xml | server/app.js:193 |  | keep |
+| GET | /tos | server/app.js:109 |  | keep |
 
 ## OpenVibe.Games
 
-| Method | Path | Source |
-|---|---|---|
-| ANY | / | apps/server/src/net/httpServer.ts:616 |
-| ANY | /api/characters | apps/server/src/net/httpServer.ts:302 |
-| POST | /api/map | apps/server/src/net/httpServer.ts:151 |
-| POST | /api/map-assets | apps/server/src/net/httpServer.ts:221 |
-| POST | /api/texture | apps/server/src/net/httpServer.ts:221 |
-| ANY | /auth/* | apps/server/src/net/httpServer.ts:322 |
-| ANY | /auth/callback | apps/server/src/net/httpServer.ts:388 |
-| ANY | /auth/fedcm | apps/server/src/net/httpServer.ts:474 |
-| ANY | /auth/login | apps/server/src/net/httpServer.ts:337 |
-| ANY | /auth/logout | apps/server/src/net/httpServer.ts:549 |
-| ANY | /auth/me | apps/server/src/net/httpServer.ts:566 |
-| ANY | /editor | apps/server/src/net/httpServer.ts:620 |
-| ANY | /editor.html | apps/server/src/net/httpServer.ts:603 |
-| ANY | /healthz | apps/server/src/net/httpServer.ts:584 |
-| ANY | /map-assets/* | apps/server/src/net/httpServer.ts:276 |
-| ANY | /map.json | apps/server/src/net/httpServer.ts:138 |
-| ANY | /metrics | apps/server/src/net/httpServer.ts:589 |
-| ANY | /play | apps/server/src/net/httpServer.ts:610 |
-| ANY | /play | apps/server/src/net/httpServer.ts:618 |
-| ANY | /play.html | apps/server/src/net/httpServer.ts:603 |
-| ANY | /play.html | apps/server/src/net/httpServer.ts:605 |
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| ANY | / | apps/server/src/net/httpServer.ts:628 |  | keep |
+| ANY | /api/characters | apps/server/src/net/httpServer.ts:313 |  | keep |
+| POST | /api/map | apps/server/src/net/httpServer.ts:161 |  | keep |
+| POST | /api/map-assets | apps/server/src/net/httpServer.ts:231 |  | keep |
+| POST | /api/texture | apps/server/src/net/httpServer.ts:231 |  | keep |
+| ANY | /auth/* | apps/server/src/net/httpServer.ts:333 |  | keep |
+| ANY | /auth/callback | apps/server/src/net/httpServer.ts:399 |  | keep |
+| ANY | /auth/fedcm | apps/server/src/net/httpServer.ts:485 |  | keep |
+| ANY | /auth/login | apps/server/src/net/httpServer.ts:348 |  | keep |
+| ANY | /auth/logout | apps/server/src/net/httpServer.ts:561 |  | keep |
+| ANY | /auth/me | apps/server/src/net/httpServer.ts:578 |  | keep |
+| ANY | /editor | apps/server/src/net/httpServer.ts:632 |  | keep |
+| ANY | /editor.html | apps/server/src/net/httpServer.ts:615 |  | keep |
+| ANY | /healthz | apps/server/src/net/httpServer.ts:596 |  | keep |
+| ANY | /map-assets/* | apps/server/src/net/httpServer.ts:287 |  | keep |
+| ANY | /map.json | apps/server/src/net/httpServer.ts:148 |  | keep |
+| ANY | /metrics | apps/server/src/net/httpServer.ts:601 |  | keep |
+| ANY | /play | apps/server/src/net/httpServer.ts:622 |  | keep |
+| ANY | /play | apps/server/src/net/httpServer.ts:630 |  | keep |
+| ANY | /play.html | apps/server/src/net/httpServer.ts:615 |  | keep |
+| ANY | /play.html | apps/server/src/net/httpServer.ts:617 |  | keep |
+
+## OpenVibe.Events
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/app.js:72 |  | keep |
+| GET | /api/health | server/app.js:35 |  | keep |
+| GET | /api/ready | server/app.js:66 |  | keep |
+| GET | /api/v1/checkpoints | server/api/read.js:94 |  | keep |
+| PUT | /api/v1/checkpoints | server/api/read.js:103 |  | keep |
+| GET | /api/v1/deliveries | server/api/read.js:114 |  | keep |
+| POST | /api/v1/deliveries/replay | server/api/read.js:139 |  | keep |
+| GET | /api/v1/events | server/api/read.js:58 |  | keep |
+| POST | /api/v1/events | server/api/publish.js:80 |  | keep |
+| GET | /api/v1/events/:id | server/api/read.js:85 |  | keep |
+| GET | /api/v1/subscriptions | server/api/subscriptions.js:133 |  | keep |
+| POST | /api/v1/subscriptions | server/api/subscriptions.js:74 |  | keep |
+| GET | /api/v1/subscriptions/:id | server/api/subscriptions.js:137 |  | keep |
+| POST | /api/v1/subscriptions/:id/${action} | server/api/subscriptions.js:143 |  | keep |
+| POST | /internal/events | lib/client.js:18 |  | keep |
+| GET | /realtime/stream | server/app.js:31 |  | keep |
+| GET | /release.json | server/app.js:23 |  | keep |
+
+## OpenVibe.Chat
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | /api/chat/:streamId/history | server/chat/routes.js:491 |  | keep |
+| GET | /api/chat/:streamId/replay | server/chat/routes.js:469 |  | keep |
+| GET | /api/chat/:streamId/users | server/chat/routes.js:617 |  | keep |
+| GET | /api/chat/admin/logs | server/chat/routes.js:702 |  | keep |
+| GET | /api/chat/admin/logs/export | server/chat/routes.js:740 |  | keep |
+| DELETE | /api/chat/admin/purge | server/chat/routes.js:658 |  | keep |
+| POST | /api/chat/admin/purge/preview | server/chat/routes.js:626 |  | keep |
+| GET | /api/chat/anon/:anonId | server/chat/routes.js:397 |  | keep |
+| GET | /api/chat/anon/:anonId/logs | server/chat/routes.js:411 |  | keep |
+| GET | /api/chat/channel/:userId/history | server/chat/routes.js:592 |  | keep |
+| GET | /api/chat/filters/friendly | server/chat/routes.js:443 |  | keep |
+| GET | /api/chat/gif/providers | server/chat/routes.js:125 |  | keep |
+| GET | /api/chat/gif/search | server/chat/routes.js:163 |  | keep |
+| GET | /api/chat/gif/trending | server/chat/routes.js:136 |  | keep |
+| GET | /api/chat/global/history | server/chat/routes.js:449 |  | keep |
+| GET | /api/chat/relay-user/:platform/:username | server/chat/routes.js:387 |  | keep |
+| GET | /api/chat/relay-user/:platform/:username/logs | server/chat/routes.js:427 |  | keep |
+| GET | /api/chat/search | server/chat/routes.js:331 |  | keep |
+| POST | /api/chat/send | server/chat/routes.js:228 |  | keep |
+| GET | /api/chat/user/:userId/history | server/chat/routes.js:354 |  | keep |
+| GET | /api/chat/user/:username/profile | server/chat/routes.js:374 |  | keep |
+| GET | /api/dm/blocks | server/chat/dm-routes.js:397 |  | keep |
+| DELETE | /api/dm/blocks/:userId | server/chat/dm-routes.js:385 |  | keep |
+| POST | /api/dm/blocks/:userId | server/chat/dm-routes.js:370 |  | keep |
+| GET | /api/dm/blocks/check/:userId | server/chat/dm-routes.js:407 |  | keep |
+| GET | /api/dm/conversations | server/chat/dm-routes.js:56 |  | keep |
+| POST | /api/dm/conversations | server/chat/dm-routes.js:71 |  | keep |
+| GET | /api/dm/conversations/:id | server/chat/dm-routes.js:127 |  | keep |
+| PATCH | /api/dm/conversations/:id | server/chat/dm-routes.js:327 |  | keep |
+| GET | /api/dm/conversations/:id/messages | server/chat/dm-routes.js:144 |  | keep |
+| POST | /api/dm/conversations/:id/messages | server/chat/dm-routes.js:162 |  | keep |
+| DELETE | /api/dm/conversations/:id/messages/:msgId | server/chat/dm-routes.js:417 |  | keep |
+| POST | /api/dm/conversations/:id/participants | server/chat/dm-routes.js:252 |  | keep |
+| DELETE | /api/dm/conversations/:id/participants/:userId | server/chat/dm-routes.js:306 |  | keep |
+| POST | /api/dm/conversations/:id/read | server/chat/dm-routes.js:231 |  | keep |
+| GET | /api/dm/unread | server/chat/dm-routes.js:346 |  | keep |
+| GET | /api/dm/users/search | server/chat/dm-routes.js:356 |  | keep |
+| POST | /api/sounds | server/chat/sounds-routes.js:160 |  | keep |
+| DELETE | /api/sounds/:id | server/chat/sounds-routes.js:302 |  | keep |
+| DELETE | /api/sounds/alert/:kind | server/chat/sounds-routes.js:458 |  | keep |
+| POST | /api/sounds/alert/:kind | server/chat/sounds-routes.js:420 |  | keep |
+| GET | /api/sounds/alert/mine | server/chat/sounds-routes.js:409 |  | keep |
+| GET | /api/sounds/all/:streamId | server/chat/sounds-routes.js:149 |  | keep |
+| GET | /api/sounds/channel/:userId | server/chat/sounds-routes.js:138 |  | keep |
+| PATCH | /api/sounds/command | server/chat/sounds-routes.js:329 |  | keep |
+| GET | /api/sounds/file/:filename | server/chat/sounds-routes.js:387 |  | keep |
+| GET | /api/tts/admin/settings | server/chat/tts-routes.js:112 |  | keep |
+| PUT | /api/tts/admin/settings | server/chat/tts-routes.js:130 |  | keep |
+| POST | /api/tts/admin/test | server/chat/tts-routes.js:162 |  | keep |
+| GET | /api/tts/audio/:file | server/chat/tts-routes.js:260 |  | keep |
+| GET | /api/tts/queue | server/chat/tts-routes.js:217 |  | keep |
+| POST | /api/tts/queue/:id/report | server/chat/tts-routes.js:247 |  | keep |
+| POST | /api/tts/queue/clear | server/chat/tts-routes.js:237 |  | keep |
+| POST | /api/tts/queue/skip | server/chat/tts-routes.js:225 |  | keep |
+| GET | /api/tts/settings | server/chat/tts-routes.js:90 |  | keep |
+| GET | /api/tts/voices | server/chat/tts-routes.js:80 |  | keep |
+| POST | /calls | server/bridge/live-bridge.js:220 |  | keep |
+| GET | /health | server/app.js:77 |  | keep |
+| GET | /presence | server/bridge/live-bridge.js:242 |  | keep |
+| GET | /ready | server/app.js:94 |  | keep |
+
+## OpenRe.Stream
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/ui/routes.js:82 |  | keep |
+| GET | /api/health | server/app.js:39 |  | keep |
+| GET | /api/ready | server/app.js:43 |  | keep |
+| GET | /auth/callback | server/auth/sso.js:71 |  | keep |
+| GET | /auth/login | server/auth/sso.js:64 |  | keep |
+| GET | /auth/logout | server/auth/sso.js:91 |  | keep |
+| GET | /auth/me | server/auth/sso.js:98 |  | keep |
+| POST | /auth/refresh | server/auth/sso.js:106 |  | keep |
+| DELETE | /destinations/:id | server/api/v1.js:230 |  | keep |
+| GET | /destinations/:id | server/ui/routes.js:236 |  | keep |
+| PATCH | /destinations/:id | server/api/v1.js:225 |  | keep |
+| GET | /destinations/:id/logs | server/api/v1.js:255 |  | keep |
+| POST | /destinations/:id/start | server/api/v1.js:245 |  | keep |
+| POST | /destinations/:id/stop | server/api/v1.js:250 |  | keep |
+| POST | /destinations/:id/test | server/api/v1.js:237 |  | keep |
+| GET | /outputs/:id/logs | server/api/v1.js:305 |  | keep |
+| GET | /play/:file | server/app.js:72 |  | keep |
+| GET | /robots.txt | server/app.js:90 |  | keep |
+| GET | /sessions | server/api/v1.js:262 |  | keep |
+| GET | /sessions | server/ui/routes.js:290 |  | keep |
+| GET | /sessions/:id | server/api/v1.js:283 |  | keep |
+| GET | /sessions/:id | server/ui/routes.js:296 |  | keep |
+| POST | /sessions/:id/end | server/api/v1.js:293 |  | keep |
+| GET | /sessions/:id/outputs | server/api/v1.js:300 |  | keep |
+| GET | /sessions/:id/playback | server/api/v1.js:288 |  | keep |
+| GET | /streams | server/api/v1.js:133 |  | keep |
+| GET | /streams | server/ui/routes.js:102 |  | keep |
+| POST | /streams | server/api/v1.js:148 |  | keep |
+| DELETE | /streams/:id | server/api/v1.js:182 |  | keep |
+| GET | /streams/:id | server/api/v1.js:166 |  | keep |
+| GET | /streams/:id | server/ui/routes.js:138 |  | keep |
+| PATCH | /streams/:id | server/api/v1.js:171 |  | keep |
+| GET | /streams/:id/destinations | server/api/v1.js:215 |  | keep |
+| POST | /streams/:id/destinations | server/api/v1.js:220 |  | keep |
+| GET | /streams/:id/keys | server/api/v1.js:189 |  | keep |
+| POST | /streams/:id/keys/rotate | server/api/v1.js:194 |  | keep |
+| GET | /workers | server/api/v1.js:312 |  | keep |
+
+## OpenVibe.Billing
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/console/index.js:207 |  | keep |
+| GET | /api/health | server/app.js:60 |  | keep |
+| GET | /api/ready | server/app.js:65 |  | keep |
+| POST | /api/v1/admin/adjustments | server/api/v1.js:286 |  | keep |
+| GET | /api/v1/admin/freeze | server/api/v1.js:242 |  | keep |
+| POST | /api/v1/admin/freeze | server/api/v1.js:243 |  | keep |
+| GET | /api/v1/admin/import-holds | server/api/v1.js:301 |  | keep |
+| GET | /api/v1/admin/provider-accounts | server/api/v1.js:275 |  | keep |
+| POST | /api/v1/admin/provider-accounts | server/api/v1.js:279 |  | keep |
+| GET | /api/v1/admin/provider-events | server/api/v1.js:291 |  | keep |
+| POST | /api/v1/admin/provider-events/:id/reprocess | server/api/v1.js:296 |  | keep |
+| GET | /api/v1/admin/reconcile | server/api/v1.js:251 |  | keep |
+| GET | /api/v1/admin/reconciliations | server/api/v1.js:256 |  | keep |
+| GET | /api/v1/admin/reconciliations/:id | server/api/v1.js:267 |  | keep |
+| POST | /api/v1/admin/sweep | server/api/v1.js:300 |  | keep |
+| GET | /api/v1/balances/:subject | server/api/v1.js:216 |  | keep |
+| GET | /api/v1/cashouts | server/api/v1.js:143 |  | keep |
+| POST | /api/v1/cashouts | server/api/v1.js:138 |  | keep |
+| GET | /api/v1/cashouts/:id | server/api/v1.js:147 |  | keep |
+| POST | /api/v1/cashouts/:id/approve | server/api/v1.js:152 |  | keep |
+| POST | /api/v1/cashouts/:id/deny | server/api/v1.js:157 |  | keep |
+| GET | /api/v1/entitlements/:subject | server/api/v1.js:200 |  | keep |
+| POST | /api/v1/intents | server/api/v1.js:64 |  | keep |
+| GET | /api/v1/intents/:id | server/api/v1.js:87 |  | keep |
+| POST | /api/v1/intents/:id/capture | server/api/v1.js:92 |  | keep |
+| POST | /api/v1/purchases/settle | server/api/v1.js:103 |  | keep |
+| GET | /api/v1/rates | server/api/v1.js:52 |  | keep |
+| POST | /api/v1/recycle | server/api/v1.js:130 |  | keep |
+| GET | /api/v1/subscriptions | server/api/v1.js:183 |  | keep |
+| POST | /api/v1/subscriptions | server/api/v1.js:163 |  | keep |
+| GET | /api/v1/subscriptions/:id | server/api/v1.js:191 |  | keep |
+| POST | /api/v1/subscriptions/:id/cancel | server/api/v1.js:196 |  | keep |
+| GET | /api/v1/transactions | server/api/v1.js:218 |  | keep |
+| GET | /api/v1/transactions/:id | server/api/v1.js:234 |  | keep |
+| POST | /api/v1/transfers | server/api/v1.js:115 |  | keep |
+| POST | /api/v1/transfers/:id/refund | server/api/v1.js:123 |  | keep |
+| GET | /audit | server/console/index.js:347 |  | keep |
+| GET | /auth/callback | server/console/index.js:166 |  | keep |
+| GET | /auth/login | server/console/index.js:159 |  | keep |
+| POST | /auth/logout | server/console/index.js:197 |  | keep |
+| GET | /cashouts | server/console/index.js:216 |  | keep |
+| GET | /cashouts/:id | server/console/index.js:229 |  | keep |
+| POST | /cashouts/:id/approve | server/console/index.js:270 |  | keep |
+| POST | /cashouts/:id/deny | server/console/index.js:279 |  | keep |
+| GET | /freeze | server/console/index.js:323 |  | keep |
+| POST | /freeze | server/console/index.js:324 |  | keep |
+| GET | /import-holds | server/console/index.js:303 |  | keep |
+| GET | /receipts | server/console/index.js:286 |  | keep |
+| POST | /receipts/:id/reprocess | server/console/index.js:287 |  | keep |
+| GET | /reconciliation | server/console/index.js:306 |  | keep |
+| POST | /reconciliation | server/console/index.js:312 |  | keep |
+| GET | /reconciliation/:id | server/console/index.js:307 |  | keep |
+| GET | /robots.txt | server/app.js:76 |  | keep |
+| ALL | /webhooks/:provider | server/api/webhooks.js:24 |  | keep |
+
+## OpenVibe.Tips
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/web/routes.js:54 |  | keep |
+| GET | /:handle | server/web/routes.js:233 |  | keep |
+| GET | /:handle/goals | server/web/routes.js:234 |  | keep |
+| POST | /:handle/tip | server/web/routes.js:245 |  | keep |
+| GET | /api/health | server/app.js:78 |  | keep |
+| GET | /api/ready | server/app.js:84 |  | keep |
+| POST | /api/v1/checkout | server/api/v1.js:160 |  | keep |
+| GET | /api/v1/goals | server/api/v1.js:213 |  | keep |
+| POST | /api/v1/goals | server/api/v1.js:226 |  | keep |
+| GET | /api/v1/goals/:id | server/api/v1.js:220 |  | keep |
+| PATCH | /api/v1/goals/:id | server/api/v1.js:238 |  | keep |
+| POST | /api/v1/goals/:id/close | server/api/v1.js:239 |  | keep |
+| GET | /api/v1/interactions | server/api/v1.js:166 |  | keep |
+| GET | /api/v1/interactions/:id | server/api/v1.js:185 |  | keep |
+| POST | /api/v1/interactions/external | server/api/v1.js:198 |  | keep |
+| POST | /api/v1/media-requests | server/api/v1.js:163 |  | keep |
+| GET | /api/v1/overlay-configs | server/api/v1.js:264 |  | keep |
+| POST | /api/v1/overlay-configs | server/api/v1.js:275 |  | keep |
+| GET | /api/v1/overlay-configs/:id | server/api/v1.js:269 |  | keep |
+| PATCH | /api/v1/overlay-configs/:id | server/api/v1.js:281 |  | keep |
+| GET | /api/v1/overlay-tokens | server/api/v1.js:242 |  | keep |
+| POST | /api/v1/overlay-tokens | server/api/v1.js:247 |  | keep |
+| POST | /api/v1/overlay-tokens/:id/revoke | server/api/v1.js:257 |  | keep |
+| POST | /api/v1/paid-messages | server/api/v1.js:161 |  | keep |
+| GET | /api/v1/profiles/:creator | server/api/v1.js:82 |  | keep |
+| PATCH | /api/v1/profiles/:creator | server/api/v1.js:93 |  | keep |
+| GET | /api/v1/profiles/:creator/totals | server/api/v1.js:112 |  | keep |
+| POST | /api/v1/simulate | server/api/v1.js:289 |  | keep |
+| POST | /api/v1/tts-requests | server/api/v1.js:162 |  | keep |
+| GET | /auth/callback | server/web/session.js:129 |  | keep |
+| POST | /auth/fedcm | server/web/session.js:155 |  | keep |
+| GET | /auth/login | server/web/session.js:116 |  | keep |
+| GET | /auth/logout | server/web/session.js:174 |  | keep |
+| GET | /auth/me | server/web/session.js:190 |  | keep |
+| POST | /auth/refresh | server/web/session.js:197 |  | keep |
+| GET | /dashboard | server/web/routes.js:108 |  | keep |
+| POST | /events | server/events/consumer.js:51 |  | keep |
+| GET | /overlay/:token | server/web/routes.js:183 |  | keep |
+| GET | /overlay/:token/events | server/web/routes.js:194 |  | keep |
+| GET | /overlay/:token/state | server/web/routes.js:204 |  | keep |
+| GET | /receipts | server/web/routes.js:71 |  | keep |
+| GET | /receipts/:id | server/web/routes.js:76 |  | keep |
+| GET | /release.json | server/app.js:85 |  | keep |
+| GET | /robots.txt | server/web/routes.js:58 |  | keep |
+| GET | /sitemap.xml | server/web/routes.js:60 |  | keep |
+
+## OpenVibe.VIP
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/web/routes.js:80 |  | keep |
+| GET | /:username | server/web/routes.js:219 |  | keep |
+| GET | /:username/plans/:slug | server/web/routes.js:237 |  | keep |
+| GET | /api/health | server/app.js:82 |  | keep |
+| GET | /api/ready | server/app.js:84 |  | keep |
+| POST | /api/v1/checkout | server/api/v1.js:203 |  | keep |
+| GET | /api/v1/creators/:ref | server/api/v1.js:99 |  | keep |
+| GET | /api/v1/creators/:ref/members | server/api/v1.js:331 |  | keep |
+| GET | /api/v1/entitlements/check | server/api/v1.js:269 |  | keep |
+| POST | /api/v1/entitlements/check | server/api/v1.js:270 |  | keep |
+| POST | /api/v1/memberships/:creator/cancel | server/api/v1.js:231 |  | keep |
+| PUT | /api/v1/memberships/:creator/preferences | server/api/v1.js:236 |  | keep |
+| GET | /api/v1/memberships/:subject | server/api/v1.js:215 |  | keep |
+| GET | /api/v1/perks | server/api/v1.js:166 |  | keep |
+| POST | /api/v1/perks | server/api/v1.js:173 |  | keep |
+| PATCH | /api/v1/perks/:id | server/api/v1.js:180 |  | keep |
+| GET | /api/v1/plans | server/api/v1.js:111 |  | keep |
+| POST | /api/v1/plans | server/api/v1.js:132 |  | keep |
+| GET | /api/v1/plans/:id | server/api/v1.js:125 |  | keep |
+| PATCH | /api/v1/plans/:id | server/api/v1.js:148 |  | keep |
+| POST | /api/v1/plans/:id/archive | server/api/v1.js:160 |  | keep |
+| POST | /api/v1/plans/:id/publish | server/api/v1.js:155 |  | keep |
+| GET | /api/v1/plans/:id/versions | server/api/v1.js:126 |  | keep |
+| GET | /api/v1/policies | server/api/v1.js:273 |  | keep |
+| POST | /api/v1/policies | server/api/v1.js:298 |  | keep |
+| DELETE | /api/v1/policies/:id | server/api/v1.js:306 |  | keep |
+| GET | /api/v1/policies/:id | server/api/v1.js:292 |  | keep |
+| POST | /api/v1/policies/evaluate | server/api/v1.js:312 |  | keep |
+| GET | /auth/callback | server/web/session.js:129 |  | keep |
+| POST | /auth/fedcm | server/web/session.js:155 |  | keep |
+| GET | /auth/login | server/web/session.js:116 |  | keep |
+| GET | /auth/logout | server/web/session.js:174 |  | keep |
+| GET | /auth/me | server/web/session.js:190 |  | keep |
+| POST | /auth/refresh | server/web/session.js:197 |  | keep |
+| GET | /dashboard | server/web/routes.js:121 |  | keep |
+| POST | /events | server/events/consumer.js:75 |  | keep |
+| GET | /me | server/web/routes.js:86 |  | keep |
+| GET | /release.json | server/app.js:85 |  | keep |
+| GET | /robots.txt | server/web/routes.js:74 |  | keep |
+| GET | /sitemap.xml | server/web/routes.js:75 |  | keep |
+
+## OpenVibe.AI
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/app.js:44 |  | keep |
+| GET | /api/health | server/app.js:31 |  | keep |
+| GET | /api/ready | server/app.js:38 |  | keep |
+| POST | /api/v1/${op} | server/api/runs.js:120 |  | keep |
+| GET | /api/v1/${plural} | server/api/admin.js:95 |  | keep |
+| GET | /api/v1/${plural}/:key | server/api/admin.js:96 |  | keep |
+| POST | /api/v1/${plural}/:key/versions | server/api/admin.js:103 |  | keep |
+| POST | /api/v1/${plural}/:key/versions/:version/status | server/api/admin.js:113 |  | keep |
+| GET | /api/v1/audit | server/api/admin.js:134 |  | keep |
+| DELETE | /api/v1/cache | server/api/admin.js:136 |  | keep |
+| GET | /api/v1/cache | server/api/admin.js:135 |  | keep |
+| GET | /api/v1/models | server/api/admin.js:81 |  | keep |
+| POST | /api/v1/models | server/api/admin.js:82 |  | keep |
+| PATCH | /api/v1/models/:provider/:model | server/api/admin.js:83 |  | keep |
+| GET | /api/v1/providers | server/api/admin.js:50 |  | keep |
+| POST | /api/v1/providers | server/api/admin.js:56 |  | keep |
+| GET | /api/v1/providers/:key | server/api/admin.js:51 |  | keep |
+| PATCH | /api/v1/providers/:key | server/api/admin.js:62 |  | keep |
+| POST | /api/v1/providers/:key/${action} | server/api/admin.js:69 |  | keep |
+| POST | /api/v1/providers/:key/reset | server/api/admin.js:74 |  | keep |
+| GET | /api/v1/quotas | server/api/admin.js:119 |  | keep |
+| POST | /api/v1/quotas | server/api/admin.js:120 |  | keep |
+| GET | /api/v1/requests | server/api/admin.js:122 |  | keep |
+| GET | /api/v1/runs | server/api/runs.js:63 |  | keep |
+| POST | /api/v1/runs | server/api/runs.js:56 |  | keep |
+| GET | /api/v1/runs/:id | server/api/runs.js:77 |  | keep |
+| POST | /api/v1/runs/:id/cancel | server/api/runs.js:84 |  | keep |
+| GET | /api/v1/runs/:id/citations | server/api/runs.js:97 |  | keep |
+| POST | /api/v1/runs/:id/citations | server/api/runs.js:101 |  | keep |
+| POST | /api/v1/runs/:id/retry | server/api/runs.js:88 |  | keep |
+| GET | /api/v1/status | server/api/admin.js:37 |  | keep |
+| GET | /api/v1/usage | server/api/admin.js:121 |  | keep |
+| GET | /release.json | server/app.js:39 |  | keep |
+
+## OpenVibe.Search
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/web/page.js:125 |  | keep |
+| GET | /api/health | server/app.js:37 |  | keep |
+| GET | /api/ready | server/app.js:44 |  | keep |
+| DELETE | /api/v1/documents/:owner/:type/:id | server/api/documents.js:80 |  | keep |
+| GET | /api/v1/documents/:owner/:type/:id | server/api/query.js:223 |  | keep |
+| PUT | /api/v1/documents/:owner/:type/:id | server/api/documents.js:62 |  | keep |
+| GET | /api/v1/owners/:owner/documents | server/api/documents.js:93 |  | keep |
+| GET | /api/v1/owners/:owner/documents/:type/:id | server/api/documents.js:103 |  | keep |
+| GET | /api/v1/owners/:owner/rejections | server/api/documents.js:118 |  | keep |
+| GET | /api/v1/owners/:owner/removals | server/api/documents.js:131 |  | keep |
+| GET | /api/v1/saved-searches | server/api/saved.js:53 |  | keep |
+| POST | /api/v1/saved-searches | server/api/saved.js:59 |  | keep |
+| DELETE | /api/v1/saved-searches/:id | server/api/saved.js:102 |  | keep |
+| GET | /api/v1/saved-searches/:id | server/api/saved.js:94 |  | keep |
+| GET | /api/v1/saved-searches/:id/results | server/api/saved.js:109 |  | keep |
+| GET | /api/v1/search | server/api/query.js:194 |  | keep |
+| GET | /api/v1/suggest | server/api/query.js:206 |  | keep |
+| POST | /internal/events | server/api/webhook.js:126 |  | keep |
+| GET | /release.json | server/app.js:45 |  | keep |
+| GET | /robots.txt | server/web/page.js:120 |  | keep |
+
+## OpenVibe.Sources
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/app.js:98 |  | keep |
+| GET | /api/health | server/app.js:82 |  | keep |
+| GET | /api/ready | server/app.js:89 |  | keep |
+| GET | /api/v1/health | server/api/sources.js:78 |  | keep |
+| GET | /api/v1/items | server/api/items.js:55 |  | keep |
+| DELETE | /api/v1/items/:id | server/api/items.js:99 |  | keep |
+| GET | /api/v1/items/:id | server/api/items.js:74 |  | keep |
+| GET | /api/v1/runs | server/api/sources.js:67 |  | keep |
+| GET | /api/v1/sources | server/api/sources.js:49 |  | keep |
+| POST | /api/v1/sources | server/api/sources.js:85 |  | keep |
+| DELETE | /api/v1/sources/:key | server/api/sources.js:100 |  | keep |
+| GET | /api/v1/sources/:key | server/api/sources.js:53 |  | keep |
+| PATCH | /api/v1/sources/:key | server/api/sources.js:92 |  | keep |
+| POST | /api/v1/sources/:key/fetch | server/api/sources.js:115 |  | keep |
+| POST | /api/v1/sources/:key/items | server/api/items.js:82 |  | keep |
+| GET | /api/v1/sources/:key/runs | server/api/sources.js:59 |  | keep |
+| GET | /release.json | server/app.js:90 |  | keep |
+
+## OpenVibe.Wiki
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/http/pages.js:96 |  | keep |
+| GET | /api/health | server/app.js:61 |  | keep |
+| GET | /api/ready | server/app.js:75 |  | keep |
+| DELETE | /api/v1/pages/:id | server/http/api.js:164 |  | keep |
+| GET | /api/v1/pages/:id | server/http/api.js:144 |  | keep |
+| PATCH | /api/v1/pages/:id | server/http/api.js:156 |  | keep |
+| GET | /api/v1/pages/:id/diff | server/http/api.js:188 |  | keep |
+| POST | /api/v1/pages/:id/media | server/http/api.js:226 |  | keep |
+| POST | /api/v1/pages/:id/media/verify | server/http/api.js:231 |  | keep |
+| POST | /api/v1/pages/:id/publish | server/http/api.js:208 |  | keep |
+| POST | /api/v1/pages/:id/revert | server/http/api.js:221 |  | keep |
+| GET | /api/v1/pages/:id/revisions | server/http/api.js:168 |  | keep |
+| POST | /api/v1/pages/:id/revisions | server/http/api.js:173 |  | keep |
+| GET | /api/v1/pages/:id/revisions/:n | server/http/api.js:183 |  | keep |
+| GET | /api/v1/pages/:id/revisions/:n/citations | server/http/api.js:193 |  | keep |
+| POST | /api/v1/pages/:id/revisions/:n/citations | server/http/api.js:198 |  | keep |
+| POST | /api/v1/pages/:id/revisions/:n/review | server/http/api.js:202 |  | keep |
+| POST | /api/v1/pages/:id/schedule | server/http/api.js:212 |  | keep |
+| POST | /api/v1/pages/:id/unpublish | server/http/api.js:217 |  | keep |
+| PUT | /api/v1/pages/:id/watch | server/http/api.js:236 |  | keep |
+| POST | /api/v1/proposals | server/http/api.js:239 |  | keep |
+| GET | /api/v1/proposals/:id | server/http/api.js:250 |  | keep |
+| POST | /api/v1/proposals/:id/review | server/http/api.js:258 |  | keep |
+| GET | /api/v1/search | server/http/api.js:263 |  | keep |
+| GET | /api/v1/spaces | server/http/api.js:116 |  | keep |
+| POST | /api/v1/spaces | server/http/api.js:117 |  | keep |
+| GET | /api/v1/spaces/:space | server/http/api.js:118 |  | keep |
+| PATCH | /api/v1/spaces/:space | server/http/api.js:122 |  | keep |
+| POST | /api/v1/spaces/:space/import | server/http/api.js:86 |  | keep |
+| POST | /api/v1/spaces/:space/import | server/http/api.js:133 |  | keep |
+| POST | /api/v1/spaces/:space/pages | server/http/api.js:125 |  | keep |
+| GET | /api/v1/spaces/:space/roles | server/http/api.js:123 |  | keep |
+| PUT | /api/v1/spaces/:space/roles/:subject | server/http/api.js:124 |  | keep |
+| GET | /auth/callback | server/auth/session.js:122 |  | keep |
+| POST | /auth/fedcm | server/auth/session.js:147 |  | keep |
+| GET | /auth/login | server/auth/session.js:108 |  | keep |
+| GET | /auth/logout | server/auth/session.js:161 |  | keep |
+| GET | /auth/me | server/auth/session.js:177 |  | keep |
+| POST | /auth/refresh | server/auth/session.js:183 |  | keep |
+| GET | /feed.atom | server/http/machine.js:84 |  | keep |
+| GET | /feed.json | server/http/machine.js:89 |  | keep |
+| GET | /llms.txt | server/http/machine.js:93 |  | keep |
+| GET | /new-space | server/http/pages.js:111 |  | keep |
+| POST | /new-space | server/http/pages.js:115 |  | keep |
+| POST | /proposals/:id | server/http/pages.js:243 |  | keep |
+| GET | /recent | server/http/pages.js:104 |  | keep |
+| GET | /release.json | server/app.js:62 |  | keep |
+| GET | /robots.txt | server/http/machine.js:24 |  | keep |
+| GET | /s/:space | server/http/pages.js:127 |  | keep |
+| GET | /s/:space/import | server/http/pages.js:211 |  | keep |
+| POST | /s/:space/import | server/http/pages.js:216 |  | keep |
+| GET | /s/:space/new | server/http/pages.js:154 |  | keep |
+| POST | /s/:space/new | server/http/pages.js:160 |  | keep |
+| GET | /s/:space/proposals | server/http/pages.js:236 |  | keep |
+| GET | /s/:space/settings | server/http/pages.js:179 |  | keep |
+| POST | /s/:space/settings | server/http/pages.js:186 |  | keep |
+| GET | /search | server/app.js:94 |  | keep |
+| GET | /search | server/http/pages.js:105 |  | keep |
+| GET | /sitemap.xml | server/http/machine.js:46 |  | keep |
+| GET | /sitemaps/pages-:n.xml | server/http/machine.js:53 |  | keep |
+| GET | /sitemaps/spaces.xml | server/http/machine.js:52 |  | keep |
+| GET | /w/:space/:slug | server/http/pages.js:281 |  | keep |
+| GET | /w/:space/:slug/compare | server/http/pages.js:345 |  | keep |
+| GET | /w/:space/:slug/diff/:a/:b | server/http/pages.js:353 |  | keep |
+| POST | /w/:space/:slug/discuss | server/http/pages.js:512 |  | keep |
+| GET | /w/:space/:slug/edit | server/http/pages.js:374 |  | keep |
+| POST | /w/:space/:slug/edit | server/http/pages.js:389 |  | keep |
+| GET | /w/:space/:slug/history | server/http/pages.js:320 |  | keep |
+| GET | /w/:space/:slug/publish | server/http/pages.js:437 |  | keep |
+| GET | /w/:space/:slug/revert | server/http/pages.js:416 |  | keep |
+| POST | /w/:space/:slug/revert | server/http/pages.js:427 |  | keep |
+| POST | /w/:space/:slug/review | server/http/pages.js:494 |  | keep |
+| GET | /w/:space/:slug/settings | server/http/pages.js:446 |  | keep |
+| POST | /w/:space/:slug/settings | server/http/pages.js:460 |  | keep |
+| GET | /w/:space/:slug/sources | server/http/pages.js:331 |  | keep |
+| POST | /w/:space/:slug/watch | server/http/pages.js:504 |  | keep |
+
+## OpenVibe.Blog
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/http/public.js:116 |  | keep |
+| GET | /@:handle | server/http/public.js:118 |  | keep |
+| GET | /@:handle/:slug | server/http/public.js:352 |  | keep |
+| POST | /@:handle/:slug/comments | server/http/public.js:369 |  | keep |
+| GET | /@:handle/${file} | server/http/public.js:144 |  | keep |
+| GET | /@:handle/authors/:who | server/http/public.js:215 |  | keep |
+| GET | /@:handle/categories/:category | server/http/public.js:191 |  | keep |
+| GET | /@:handle/series/:series | server/http/public.js:202 |  | keep |
+| GET | /@:handle/tags/:tag | server/http/public.js:176 |  | keep |
+| GET | /${file} | server/http/public.js:143 |  | keep |
+| GET | /api/health | server/app.js:107 |  | keep |
+| GET | /api/ready | server/app.js:110 |  | keep |
+| POST | /api/v1/blogs | server/http/api.js:127 |  | keep |
+| GET | /api/v1/blogs/:handle | server/http/api.js:122 |  | keep |
+| PATCH | /api/v1/blogs/:handle | server/http/api.js:134 |  | keep |
+| GET | /api/v1/blogs/:handle/feed | server/http/api.js:192 |  | keep |
+| GET | /api/v1/blogs/:handle/members | server/http/api.js:152 |  | keep |
+| DELETE | /api/v1/blogs/:handle/members/:subject | server/http/api.js:166 |  | keep |
+| PUT | /api/v1/blogs/:handle/members/:subject | server/http/api.js:160 |  | keep |
+| GET | /api/v1/blogs/:handle/posts | server/http/api.js:172 |  | keep |
+| POST | /api/v1/blogs/:handle/posts | server/http/api.js:185 |  | keep |
+| PUT | /api/v1/blogs/:handle/theme | server/http/api.js:146 |  | keep |
+| GET | /api/v1/posts/:id | server/http/api.js:203 |  | keep |
+| GET | /api/v1/posts/:id/diff | server/http/api.js:277 |  | keep |
+| POST | /api/v1/posts/:id/reviews | server/http/api.js:250 |  | keep |
+| GET | /api/v1/posts/:id/revisions | server/http/api.js:267 |  | keep |
+| GET | /api/v1/posts/:id/revisions/:n | server/http/api.js:271 |  | keep |
+| GET | /auth/callback | server/auth/sso.js:279 |  | keep |
+| POST | /auth/fedcm | server/auth/sso.js:325 |  | keep |
+| GET | /auth/login | server/auth/sso.js:257 |  | keep |
+| GET | /auth/logout | server/auth/sso.js:353 |  | keep |
+| GET | /auth/me | server/auth/sso.js:377 |  | keep |
+| POST | /auth/refresh | server/auth/sso.js:390 |  | keep |
+| GET | /authors/:who | server/http/public.js:223 |  | keep |
+| GET | /llms.txt | server/http/discovery.js:49 |  | keep |
+| GET | /release.json | server/app.js:108 |  | keep |
+| GET | /robots.txt | server/http/discovery.js:39 |  | keep |
+| GET | /sitemap.xml | server/http/discovery.js:69 |  | keep |
+| GET | /sitemaps/blogs.xml | server/http/discovery.js:83 |  | keep |
+| GET | /sitemaps/posts.xml | server/http/discovery.js:78 |  | keep |
+| GET | /tags/:tag | server/http/public.js:184 |  | keep |
+| GET | /write | server/http/editor.js:93 |  | keep |
+| GET | /write/@:handle | server/http/editor.js:108 |  | keep |
+| POST | /write/@:handle/members | server/http/editor.js:150 |  | keep |
+| POST | /write/@:handle/members/remove | server/http/editor.js:161 |  | keep |
+| GET | /write/@:handle/new | server/http/editor.js:116 |  | keep |
+| POST | /write/@:handle/new | server/http/editor.js:122 |  | keep |
+| GET | /write/@:handle/settings | server/http/editor.js:130 |  | keep |
+| POST | /write/@:handle/settings | server/http/editor.js:138 |  | keep |
+| GET | /write/posts/:id | server/http/editor.js:170 |  | keep |
+| POST | /write/posts/:id | server/http/editor.js:191 |  | keep |
+| POST | /write/posts/:id/${name} | server/http/editor.js:200 |  | keep |
+| POST | /write/posts/:id/media/:aid/remove | server/http/editor.js:230 |  | keep |
+| GET | /write/posts/:id/preview | server/http/editor.js:248 |  | keep |
+| GET | /write/posts/:id/revisions | server/http/editor.js:237 |  | keep |
+| POST | /write/start | server/http/editor.js:100 |  | keep |
+
+## OpenVibe.News
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/http/public.js:90 |  | keep |
+| GET | /${f.file} | server/http/public.js:122 |  | keep |
+| GET | /api/health | server/app.js:106 |  | keep |
+| GET | /api/ready | server/app.js:109 |  | keep |
+| GET | /api/v1/clusters | server/http/api.js:219 |  | keep |
+| GET | /api/v1/clusters/:id | server/http/api.js:224 |  | keep |
+| POST | /api/v1/clusters/:id/merge | server/http/api.js:235 |  | keep |
+| POST | /api/v1/clusters/:id/split | server/http/api.js:241 |  | keep |
+| POST | /api/v1/clusters/audit/:auditId/reverse | server/http/api.js:230 |  | keep |
+| GET | /api/v1/ingest | server/http/api.js:253 |  | keep |
+| GET | /api/v1/source-items/:id | server/http/api.js:247 |  | keep |
+| GET | /api/v1/stories | server/http/api.js:129 |  | keep |
+| POST | /api/v1/stories | server/http/api.js:152 |  | keep |
+| GET | /api/v1/stories/:id | server/http/api.js:139 |  | keep |
+| GET | /api/v1/stories/:id/diff | server/http/api.js:170 |  | keep |
+| POST | /api/v1/stories/:id/reviews | server/http/api.js:200 |  | keep |
+| GET | /api/v1/stories/:id/revisions | server/http/api.js:158 |  | keep |
+| GET | /api/v1/stories/:id/revisions/:n | server/http/api.js:163 |  | keep |
+| GET | /api/v1/topics | server/http/api.js:118 |  | keep |
+| POST | /api/v1/topics | server/http/api.js:120 |  | keep |
+| GET | /auth/callback | server/auth/sso.js:279 |  | keep |
+| POST | /auth/fedcm | server/auth/sso.js:325 |  | keep |
+| GET | /auth/login | server/auth/sso.js:257 |  | keep |
+| GET | /auth/logout | server/auth/sso.js:353 |  | keep |
+| GET | /auth/me | server/auth/sso.js:377 |  | keep |
+| POST | /auth/refresh | server/auth/sso.js:387 |  | keep |
+| GET | /clusters/:id | server/http/editor.js:105 |  | keep |
+| POST | /clusters/:id/merge | server/http/editor.js:114 |  | keep |
+| POST | /clusters/:id/split | server/http/editor.js:119 |  | keep |
+| POST | /clusters/:id/stories | server/http/editor.js:128 |  | keep |
+| POST | /clusters/audit/:aid/reverse | server/http/editor.js:124 |  | keep |
+| GET | /edit | server/http/editor.js:74 |  | keep |
+| POST | /edit/pull | server/http/editor.js:85 |  | keep |
+| GET | /edit/stories/:id | server/http/editor.js:142 |  | keep |
+| POST | /edit/stories/:id/${path} | server/http/editor.js:171 |  | keep |
+| GET | /edit/stories/:id/diff | server/http/editor.js:165 |  | keep |
+| GET | /edit/stories/:id/preview | server/http/editor.js:155 |  | keep |
+| GET | /edit/topics | server/http/editor.js:90 |  | keep |
+| POST | /edit/topics | server/http/editor.js:91 |  | keep |
+| POST | /internal/events | server/http/webhook.js:29 |  | keep |
+| GET | /llms.txt | server/http/discovery.js:47 |  | keep |
+| GET | /release.json | server/app.js:107 |  | keep |
+| GET | /robots.txt | server/http/discovery.js:35 |  | keep |
+| GET | /sitemap.xml | server/http/discovery.js:67 |  | keep |
+| GET | /sitemaps/stories.xml | server/http/discovery.js:76 |  | keep |
+| GET | /sitemaps/topics.xml | server/http/discovery.js:80 |  | keep |
+| GET | /stories/:slug | server/http/public.js:177 |  | keep |
+| POST | /stories/:slug/comments | server/http/public.js:193 |  | keep |
+| GET | /topics | server/http/public.js:92 |  | keep |
+| GET | /topics/:slug | server/http/public.js:96 |  | keep |
+| GET | /topics/:slug/${f.file} | server/http/public.js:123 |  | keep |
+
+## OpenVibe.Reviews
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/http/pages.js:139 |  | keep |
+| GET | /about | server/http/pages.js:146 |  | keep |
+| GET | /api/health | server/app.js:80 |  | keep |
+| GET | /api/ready | server/app.js:99 |  | keep |
+| GET | /api/v1/corrections | server/http/api.js:152 |  | keep |
+| PATCH | /api/v1/corrections/:id | server/http/api.js:156 |  | keep |
+| GET | /api/v1/entities | server/http/api.js:71 |  | keep |
+| POST | /api/v1/entities | server/http/api.js:91 |  | keep |
+| DELETE | /api/v1/entities/:ref | server/http/api.js:96 |  | keep |
+| GET | /api/v1/entities/:ref | server/http/api.js:78 |  | keep |
+| PATCH | /api/v1/entities/:ref | server/http/api.js:95 |  | keep |
+| GET | /api/v1/entities/:ref/aggregate | server/http/api.js:85 |  | keep |
+| POST | /api/v1/entities/:ref/aliases | server/http/api.js:97 |  | keep |
+| DELETE | /api/v1/entities/:ref/aliases/:id | server/http/api.js:98 |  | keep |
+| POST | /api/v1/entities/:ref/corrections | server/http/api.js:151 |  | keep |
+| GET | /api/v1/entities/:ref/history | server/http/api.js:84 |  | keep |
+| POST | /api/v1/entities/:ref/links | server/http/api.js:99 |  | keep |
+| DELETE | /api/v1/entities/:ref/links/:id | server/http/api.js:100 |  | keep |
+| POST | /api/v1/entities/:ref/merge | server/http/api.js:101 |  | keep |
+| POST | /api/v1/entities/:ref/split | server/http/api.js:105 |  | keep |
+| POST | /api/v1/entities/:ref/summary/proposals | server/http/api.js:145 |  | keep |
+| POST | /api/v1/entities/:ref/summary/publish | server/http/api.js:148 |  | keep |
+| POST | /api/v1/entities/:ref/summary/revisions | server/http/api.js:144 |  | keep |
+| GET | /api/v1/entities/:ref/summary/revisions/:n | server/http/api.js:146 |  | keep |
+| POST | /api/v1/entities/:ref/summary/revisions/:n/review | server/http/api.js:147 |  | keep |
+| POST | /api/v1/entities/:ref/summary/unpublish | server/http/api.js:149 |  | keep |
+| GET | /api/v1/items | server/http/api.js:111 |  | keep |
+| GET | /api/v1/items/:id | server/http/api.js:115 |  | keep |
+| POST | /api/v1/items/:id/resolution | server/http/api.js:122 |  | keep |
+| POST | /api/v1/resolve | server/http/api.js:77 |  | keep |
+| POST | /api/v1/signals/import | server/http/api.js:129 |  | keep |
+| POST | /api/v1/sources/sync | server/http/api.js:136 |  | keep |
+| POST | /api/v1/trust | server/http/api.js:109 |  | keep |
+| GET | /auth/callback | server/auth/session.js:122 |  | keep |
+| POST | /auth/fedcm | server/auth/session.js:147 |  | keep |
+| GET | /auth/login | server/auth/session.js:108 |  | keep |
+| GET | /auth/logout | server/auth/session.js:161 |  | keep |
+| GET | /auth/me | server/auth/session.js:177 |  | keep |
+| POST | /auth/refresh | server/auth/session.js:183 |  | keep |
+| GET | /e/:slug | server/http/pages.js:172 |  | keep |
+| GET | /e/:slug.json | server/http/pages.js:152 |  | keep |
+| GET | /e/:slug/correct | server/http/pages.js:200 |  | keep |
+| POST | /e/:slug/correct | server/app.js:113 |  | keep |
+| POST | /e/:slug/correct | server/http/pages.js:206 |  | keep |
+| POST | /e/:slug/discuss | server/http/pages.js:220 |  | keep |
+| GET | /e/:slug/edit | server/http/pages.js:281 |  | keep |
+| POST | /e/:slug/edit | server/http/pages.js:287 |  | keep |
+| GET | /e/:slug/history | server/http/pages.js:187 |  | keep |
+| POST | /e/:slug/merge | server/http/pages.js:335 |  | keep |
+| POST | /e/:slug/split | server/http/pages.js:344 |  | keep |
+| POST | /e/:slug/summary | server/http/pages.js:313 |  | keep |
+| GET | /e/:slug/summary/:n | server/http/pages.js:193 |  | keep |
+| POST | /e/:slug/summary/:n/review | server/http/pages.js:326 |  | keep |
+| GET | /editor | server/http/pages.js:238 |  | keep |
+| POST | /editor/corrections/:id | server/http/pages.js:372 |  | keep |
+| GET | /editor/entities/new | server/http/pages.js:254 |  | keep |
+| POST | /editor/entities/new | server/http/pages.js:258 |  | keep |
+| GET | /editor/items/:id | server/http/pages.js:353 |  | keep |
+| POST | /editor/items/:id | server/http/pages.js:361 |  | keep |
+| POST | /editor/sync | server/http/pages.js:246 |  | keep |
+| POST | /events | server/http/consumer.js:43 |  | keep |
+| GET | /feed.atom | server/http/machine.js:66 |  | keep |
+| GET | /feed.json | server/http/machine.js:71 |  | keep |
+| GET | /llms.txt | server/http/machine.js:75 |  | keep |
+| GET | /release.json | server/app.js:81 |  | keep |
+| GET | /robots.txt | server/http/machine.js:23 |  | keep |
+| GET | /search | server/http/pages.js:147 |  | keep |
+| GET | /sitemap.xml | server/http/machine.js:34 |  | keep |
+| GET | /sitemaps/entities-:n.xml | server/http/machine.js:45 |  | keep |
+| GET | /sitemaps/pages.xml | server/http/machine.js:40 |  | keep |
+
+## OpenVibe.Deals
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/http/pages.js:130 |  | keep |
+| GET | /api/health | server/app.js:113 |  | keep |
+| GET | /api/ready | server/app.js:116 |  | keep |
+| GET | /api/v1/flags | server/http/api.js:144 |  | keep |
+| POST | /api/v1/flags/:id/resolve | server/http/api.js:150 |  | keep |
+| GET | /api/v1/offers | server/http/api.js:65 |  | keep |
+| POST | /api/v1/offers | server/http/api.js:93 |  | keep |
+| GET | /api/v1/offers/:id | server/http/api.js:73 |  | keep |
+| PATCH | /api/v1/offers/:id | server/http/api.js:99 |  | keep |
+| POST | /api/v1/offers/:id/${action} | server/http/api.js:141 |  | keep |
+| POST | /api/v1/offers/:id/expire | server/http/api.js:107 |  | keep |
+| POST | /api/v1/offers/:id/flags | server/http/api.js:123 |  | keep |
+| GET | /api/v1/offers/:id/hotness | server/http/api.js:82 |  | keep |
+| POST | /api/v1/offers/:id/merge | server/http/api.js:129 |  | keep |
+| POST | /api/v1/offers/:id/observations | server/http/api.js:101 |  | keep |
+| POST | /api/v1/offers/:id/unmerge | server/http/api.js:135 |  | keep |
+| DELETE | /api/v1/offers/:id/vote | server/http/api.js:117 |  | keep |
+| PUT | /api/v1/offers/:id/vote | server/http/api.js:109 |  | keep |
+| GET | /api/v1/products/:slug | server/http/api.js:157 |  | keep |
+| POST | /api/v1/products/resolve | server/http/api.js:167 |  | keep |
+| GET | /api/v1/stores/:domain | server/http/api.js:181 |  | keep |
+| GET | /api/v1/watches | server/http/api.js:189 |  | keep |
+| POST | /api/v1/watches | server/http/api.js:191 |  | keep |
+| DELETE | /api/v1/watches/:id | server/http/api.js:196 |  | keep |
+| GET | /atom.xml | server/http/pages.js:416 |  | keep |
+| GET | /auth/callback | server/auth/sso.js:279 |  | keep |
+| POST | /auth/fedcm | server/auth/sso.js:325 |  | keep |
+| GET | /auth/login | server/auth/sso.js:257 |  | keep |
+| GET | /auth/logout | server/auth/sso.js:353 |  | keep |
+| GET | /auth/me | server/auth/sso.js:377 |  | keep |
+| POST | /auth/refresh | server/auth/sso.js:387 |  | keep |
+| GET | /d/:slug | server/http/pages.js:196 |  | keep |
+| POST | /d/:slug/comments | server/http/pages.js:227 |  | keep |
+| POST | /d/:slug/expire | server/http/pages.js:222 |  | keep |
+| POST | /d/:slug/flag | server/http/pages.js:217 |  | keep |
+| POST | /d/:slug/observe | server/http/pages.js:212 |  | keep |
+| POST | /d/:slug/vote | server/http/pages.js:204 |  | keep |
+| GET | /feed.json | server/http/pages.js:420 |  | keep |
+| GET | /feed.xml | server/http/pages.js:415 |  | keep |
+| POST | /internal/events | server/http/internal.js:24 |  | keep |
+| GET | /llms.txt | server/http/discovery.js:51 |  | keep |
+| GET | /mod | server/http/pages.js:363 |  | keep |
+| POST | /mod/flags/:id/:action | server/http/pages.js:390 |  | keep |
+| POST | /mod/offers/:slug/:action | server/http/pages.js:372 |  | keep |
+| GET | /new | server/http/pages.js:131 |  | keep |
+| GET | /p/:slug | server/http/pages.js:244 |  | keep |
+| GET | /release.json | server/app.js:114 |  | keep |
+| GET | /robots.txt | server/http/discovery.js:39 |  | keep |
+| GET | /s/:domain | server/http/pages.js:267 |  | keep |
+| GET | /search | server/http/pages.js:285 |  | keep |
+| GET | /sitemap.xml | server/http/discovery.js:69 |  | keep |
+| GET | /sitemaps/offers.xml | server/http/discovery.js:76 |  | keep |
+| GET | /sitemaps/products.xml | server/http/discovery.js:77 |  | keep |
+| GET | /submit | server/http/pages.js:299 |  | keep |
+| POST | /submit | server/http/pages.js:306 |  | keep |
+| GET | /watches | server/http/pages.js:333 |  | keep |
+| POST | /watches | server/http/pages.js:338 |  | keep |
+| POST | /watches/:id/delete | server/http/pages.js:350 |  | keep |
+
+## OpenVibe.Coupons
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/http/public.js:97 |  | keep |
+| GET | /about | server/http/public.js:110 |  | keep |
+| GET | /api/health | server/app.js:97 |  | keep |
+| GET | /api/ready | server/app.js:100 |  | keep |
+| GET | /api/v1/coupons/:id | server/http/api.js:143 |  | keep |
+| POST | /api/v1/coupons/:id/report | server/http/api.js:152 |  | keep |
+| POST | /api/v1/coupons/:id/status | server/http/api.js:176 |  | keep |
+| POST | /api/v1/coupons/submit | server/http/api.js:158 |  | keep |
+| POST | /api/v1/merchants | server/http/api.js:186 |  | keep |
+| GET | /api/v1/merchants/:id | server/http/api.js:137 |  | keep |
+| GET | /api/v1/merchants/:id/coupons | server/http/api.js:131 |  | keep |
+| POST | /api/v1/merchants/:id/domains | server/http/api.js:196 |  | keep |
+| POST | /api/v1/merchants/:id/status | server/http/api.js:205 |  | keep |
+| GET | /api/v1/merchants/resolve | server/http/api.js:115 |  | keep |
+| GET | /atom.xml | server/http/discovery.js:111 |  | keep |
+| GET | /auth/callback | server/auth/sso.js:279 |  | keep |
+| POST | /auth/fedcm | server/auth/sso.js:325 |  | keep |
+| GET | /auth/login | server/auth/sso.js:257 |  | keep |
+| GET | /auth/logout | server/auth/sso.js:353 |  | keep |
+| GET | /auth/me | server/auth/sso.js:377 |  | keep |
+| POST | /auth/refresh | server/auth/sso.js:387 |  | keep |
+| GET | /c/:id | server/http/public.js:191 |  | keep |
+| GET | /c/:id.json | server/http/public.js:181 |  | keep |
+| POST | /c/:id/report | server/http/public.js:205 |  | keep |
+| GET | /connect-extension | server/http/public.js:263 |  | keep |
+| POST | /connect-extension | server/http/public.js:264 |  | keep |
+| POST | /connect-extension/:id/revoke | server/http/public.js:274 |  | keep |
+| GET | /feed.json | server/http/discovery.js:117 |  | keep |
+| GET | /feed.xml | server/http/discovery.js:110 |  | keep |
+| GET | /llms.txt | server/http/discovery.js:50 |  | keep |
+| GET | /m/:slug | server/http/public.js:143 |  | keep |
+| GET | /m/:slug.json | server/http/public.js:132 |  | keep |
+| GET | /m/:slug/feed.xml | server/http/discovery.js:120 |  | keep |
+| POST | /m/:slug/watch | server/http/public.js:163 |  | keep |
+| GET | /release.json | server/app.js:98 |  | keep |
+| GET | /robots.txt | server/http/discovery.js:39 |  | keep |
+| GET | /sitemap.xml | server/http/discovery.js:70 |  | keep |
+| GET | /sitemaps/coupons.xml | server/http/discovery.js:79 |  | keep |
+| GET | /sitemaps/merchants.xml | server/http/discovery.js:83 |  | keep |
+| GET | /staff | server/http/public.js:316 |  | keep |
+| POST | /staff/coupons/:id/approve | server/http/public.js:329 |  | keep |
+| POST | /staff/merchants | server/http/public.js:317 |  | keep |
+| POST | /staff/merchants/:id/status | server/http/public.js:323 |  | keep |
+| GET | /submit | server/http/public.js:219 |  | keep |
+| POST | /submit | server/http/public.js:228 |  | keep |
+| GET | /watching | server/http/public.js:280 |  | keep |
+
+## OpenVibe.Trade
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | /auth/callback | server/auth/sso.js:279 |  | keep |
+| POST | /auth/fedcm | server/auth/sso.js:325 |  | keep |
+| GET | /auth/login | server/auth/sso.js:257 |  | keep |
+| GET | /auth/logout | server/auth/sso.js:353 |  | keep |
+| GET | /auth/me | server/auth/sso.js:377 |  | keep |
+| POST | /auth/refresh | server/auth/sso.js:387 |  | keep |
+| POST | /internal/events | server/events/webhook.js:22 |  | keep |
+
+## OpenVibe.Codes
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/http/pages.js:57 |  | keep |
+| GET | /api/health | server/app.js:97 |  | keep |
+| GET | /api/ready | server/app.js:100 |  | keep |
+| GET | /api/v1/apps/:app/releases | server/http/api.js:65 |  | keep |
+| POST | /api/v1/apps/:app/releases | server/http/api.js:107 |  | keep |
+| GET | /api/v1/apps/:app/trust | server/http/api.js:70 |  | keep |
+| GET | /api/v1/docs/versions | server/http/api.js:42 |  | keep |
+| POST | /api/v1/manifests/validate | server/http/api.js:46 |  | keep |
+| GET | /api/v1/releases/:id | server/http/api.js:75 |  | keep |
+| POST | /api/v1/releases/:id/${action} | server/http/api.js:123 |  | keep |
+| GET | /apps/:app | server/http/pages.js:177 |  | keep |
+| GET | /callback | server/auth/sso.js:182 |  | keep |
+| GET | /docs | server/http/docs.js:32 |  | keep |
+| GET | /docs/adr/:id | server/http/docs.js:216 |  | keep |
+| GET | /docs/capabilities | server/http/docs.js:109 |  | keep |
+| GET | /docs/capabilities/:id | server/http/docs.js:128 |  | keep |
+| GET | /docs/contracts | server/http/docs.js:56 |  | keep |
+| GET | /docs/contracts/:id | server/http/docs.js:75 |  | keep |
+| GET | /docs/contracts/:id.json | server/http/docs.js:69 |  | keep |
+| GET | /docs/events | server/http/docs.js:151 |  | keep |
+| GET | /docs/sdk | server/http/docs.js:191 |  | keep |
+| GET | /docs/sdk/:module | server/http/docs.js:203 |  | keep |
+| GET | /docs/services | server/http/docs.js:162 |  | keep |
+| GET | /login | server/auth/sso.js:173 |  | keep |
+| ALL | /logout | server/auth/sso.js:228 |  | keep |
+| GET | /logout | server/auth/sso.js:219 |  | keep |
+| POST | /logout | server/auth/sso.js:227 |  | keep |
+| GET | /manifests/validate | server/http/tools.js:172 |  | keep |
+| POST | /manifests/validate | server/http/tools.js:173 |  | keep |
+| GET | /me | server/auth/sso.js:242 |  | keep |
+| GET | /oauth | server/http/tools.js:29 |  | keep |
+| GET | /oauth/test-callback | server/http/tools.js:65 |  | keep |
+| GET | /policy | server/http/pages.js:85 |  | keep |
+| GET | /policy/${g.slug} | server/http/pages.js:97 |  | keep |
+| GET | /policy/compatibility | server/http/pages.js:120 |  | keep |
+| GET | /policy/licensing | server/http/pages.js:134 |  | keep |
+| GET | /policy/rfc | server/http/pages.js:106 |  | keep |
+| GET | /policy/transparency | server/http/pages.js:150 |  | keep |
+| GET | /projects | server/http/portal.js:109 |  | keep |
+| POST | /projects | server/http/portal.js:110 |  | keep |
+| POST | /projects/:id/${action} | server/http/portal.js:630 |  | keep |
+| GET | /projects/:project | server/http/portal.js:123 |  | keep |
+| POST | /projects/:project/apps | server/http/portal.js:305 |  | keep |
+| GET | /projects/:project/apps/:app | server/http/portal.js:348 |  | keep |
+| POST | /projects/:project/apps/:app/credentials/:credential/revoke | server/http/portal.js:457 |  | keep |
+| POST | /projects/:project/apps/:app/credentials/rotate | server/http/portal.js:446 |  | keep |
+| POST | /projects/:project/apps/:app/grants | server/http/portal.js:463 |  | keep |
+| POST | /projects/:project/apps/:app/grants/:capability/${action} | server/http/portal.js:479 |  | keep |
+| GET | /projects/:project/apps/:app/playground | server/http/portal.js:534 |  | keep |
+| POST | /projects/:project/apps/:app/playground/events | server/http/portal.js:536 |  | keep |
+| POST | /projects/:project/apps/:app/playground/media | server/http/portal.js:549 |  | keep |
+| POST | /projects/:project/apps/:app/redirects | server/http/portal.js:437 |  | keep |
+| POST | /projects/:project/apps/:app/releases | server/http/portal.js:590 |  | keep |
+| GET | /projects/:project/apps/:app/releases/new | server/http/portal.js:589 |  | keep |
+| POST | /projects/:project/apps/:app/revoke | server/http/portal.js:441 |  | keep |
+| POST | /projects/:project/archive | server/http/portal.js:226 |  | keep |
+| GET | /projects/:project/audit | server/http/portal.js:262 |  | keep |
+| POST | /projects/:project/delete | server/http/portal.js:245 |  | keep |
+| GET | /projects/:project/export | server/http/portal.js:232 |  | keep |
+| POST | /projects/:project/members | server/http/portal.js:209 |  | keep |
+| POST | /projects/:project/members/:subject/remove | server/http/portal.js:219 |  | keep |
+| POST | /projects/:project/members/:subject/role | server/http/portal.js:214 |  | keep |
+| GET | /release.json | server/app.js:98 |  | keep |
+| GET | /releases | server/http/portal.js:109 |  | keep |
+| POST | /releases | server/http/portal.js:110 |  | keep |
+| GET | /releases/:id | server/http/pages.js:197 |  | keep |
+| POST | /releases/:id/${action} | server/http/portal.js:630 |  | keep |
+| GET | /releases/:project | server/http/portal.js:123 |  | keep |
+| POST | /releases/:project/apps | server/http/portal.js:305 |  | keep |
+| GET | /releases/:project/apps/:app | server/http/portal.js:348 |  | keep |
+| POST | /releases/:project/apps/:app/credentials/:credential/revoke | server/http/portal.js:457 |  | keep |
+| POST | /releases/:project/apps/:app/credentials/rotate | server/http/portal.js:446 |  | keep |
+| POST | /releases/:project/apps/:app/grants | server/http/portal.js:463 |  | keep |
+| POST | /releases/:project/apps/:app/grants/:capability/${action} | server/http/portal.js:479 |  | keep |
+| GET | /releases/:project/apps/:app/playground | server/http/portal.js:534 |  | keep |
+| POST | /releases/:project/apps/:app/playground/events | server/http/portal.js:536 |  | keep |
+| POST | /releases/:project/apps/:app/playground/media | server/http/portal.js:549 |  | keep |
+| POST | /releases/:project/apps/:app/redirects | server/http/portal.js:437 |  | keep |
+| POST | /releases/:project/apps/:app/releases | server/http/portal.js:590 |  | keep |
+| GET | /releases/:project/apps/:app/releases/new | server/http/portal.js:589 |  | keep |
+| POST | /releases/:project/apps/:app/revoke | server/http/portal.js:441 |  | keep |
+| POST | /releases/:project/archive | server/http/portal.js:226 |  | keep |
+| GET | /releases/:project/audit | server/http/portal.js:262 |  | keep |
+| POST | /releases/:project/delete | server/http/portal.js:245 |  | keep |
+| GET | /releases/:project/export | server/http/portal.js:232 |  | keep |
+| POST | /releases/:project/members | server/http/portal.js:209 |  | keep |
+| POST | /releases/:project/members/:subject/remove | server/http/portal.js:219 |  | keep |
+| POST | /releases/:project/members/:subject/role | server/http/portal.js:214 |  | keep |
+| GET | /robots.txt | server/http/pages.js:263 |  | keep |
+| GET | /sitemap.xml | server/http/pages.js:269 |  | keep |
+| GET | /staff | server/http/pages.js:239 |  | keep |
+| POST | /staff/trust | server/http/pages.js:252 |  | keep |
+| GET | /tools/webhooks | server/http/tools.js:143 |  | keep |
+| POST | /tools/webhooks/sample | server/http/tools.js:149 |  | keep |
+| POST | /tools/webhooks/verify | server/http/tools.js:144 |  | keep |
+
+## OpenVibe.Host
+
+| Method | Path | Source | Target | Disposition |
+|---|---|---|---|---|
+| GET | / | server/http/dashboard.js:64 |  | keep |
+| GET | /api/health | server/app.js:130 |  | keep |
+| GET | /api/ready | server/app.js:133 |  | keep |
+| DELETE | /api/v1/deploys/:id | server/http/api.js:191 |  | keep |
+| GET | /api/v1/deploys/:id | server/http/api.js:173 |  | keep |
+| POST | /api/v1/deploys/:id/activate | server/http/api.js:181 |  | keep |
+| GET | /api/v1/deploys/:id/log | server/http/api.js:177 |  | keep |
+| DELETE | /api/v1/domains/:id | server/http/api.js:207 |  | keep |
+| POST | /api/v1/domains/:id/verify | server/http/api.js:202 |  | keep |
+| GET | /api/v1/projects | server/http/api.js:61 |  | keep |
+| POST | /api/v1/projects | server/http/api.js:65 |  | keep |
+| DELETE | /api/v1/projects/:id | server/http/api.js:74 |  | keep |
+| GET | /api/v1/projects/:id | server/http/api.js:70 |  | keep |
+| DELETE | /api/v1/projects/:id/members/:principal | server/http/api.js:92 |  | keep |
+| PUT | /api/v1/projects/:id/members/:principal | server/http/api.js:87 |  | keep |
+| GET | /api/v1/projects/:id/quota | server/http/api.js:78 |  | keep |
+| PUT | /api/v1/projects/:id/quota | server/http/api.js:82 |  | keep |
+| GET | /api/v1/projects/:id/sites | server/http/api.js:118 |  | keep |
+| POST | /api/v1/projects/:id/sites | server/http/api.js:122 |  | keep |
+| DELETE | /api/v1/projects/:id/takedown | server/http/api.js:104 |  | keep |
+| POST | /api/v1/projects/:id/takedown | server/http/api.js:100 |  | keep |
+| DELETE | /api/v1/sites/:id | server/http/api.js:131 |  | keep |
+| GET | /api/v1/sites/:id | server/http/api.js:127 |  | keep |
+| GET | /api/v1/sites/:id/deploys | server/http/api.js:134 |  | keep |
+| POST | /api/v1/sites/:id/deploys | server/http/api.js:144 |  | keep |
+| GET | /api/v1/sites/:id/domains | server/http/api.js:194 |  | keep |
+| POST | /api/v1/sites/:id/domains | server/http/api.js:198 |  | keep |
+| POST | /api/v1/sites/:id/rollback | server/http/api.js:186 |  | keep |
+| DELETE | /api/v1/sites/:id/takedown | server/http/api.js:112 |  | keep |
+| POST | /api/v1/sites/:id/takedown | server/http/api.js:108 |  | keep |
+| GET | /auth/callback | server/auth/sso.js:298 |  | keep |
+| POST | /auth/fedcm | server/auth/sso.js:344 |  | keep |
+| GET | /auth/login | server/auth/sso.js:276 |  | keep |
+| GET | /auth/logout | server/auth/sso.js:372 |  | keep |
+| GET | /auth/me | server/auth/sso.js:396 |  | keep |
+| POST | /auth/refresh | server/auth/sso.js:406 |  | keep |
+| GET | /deploys/:id | server/http/dashboard.js:91 |  | keep |
+| POST | /deploys/:id/activate | server/http/dashboard.js:143 |  | keep |
+| POST | /deploys/:id/delete | server/http/dashboard.js:148 |  | keep |
+| POST | /domains/:id/delete | server/http/dashboard.js:157 |  | keep |
+| POST | /domains/:id/verify | server/http/dashboard.js:153 |  | keep |
+| GET | /metrics | server/app.js:134 |  | keep |
+| POST | /projects | server/http/dashboard.js:100 |  | keep |
+| GET | /projects/:id | server/http/dashboard.js:71 |  | keep |
+| POST | /projects/:id/delete | server/http/dashboard.js:122 |  | keep |
+| POST | /projects/:id/members | server/http/dashboard.js:110 |  | keep |
+| POST | /projects/:id/members/remove | server/http/dashboard.js:116 |  | keep |
+| POST | /projects/:id/sites | server/http/dashboard.js:104 |  | keep |
+| GET | /release.json | server/app.js:131 |  | keep |
+| GET | /robots.txt | server/app.js:138 |  | keep |
+| GET | /sitemap.xml | server/app.js:140 |  | keep |
+| GET | /sites/:id | server/http/dashboard.js:81 |  | keep |
+| POST | /sites/:id/delete | server/http/dashboard.js:137 |  | keep |
+| POST | /sites/:id/deploys | server/http/dashboard.js:164 |  | keep |
+| POST | /sites/:id/domains | server/http/dashboard.js:129 |  | keep |
+| POST | /sites/:id/rollback | server/http/dashboard.js:133 |  | keep |

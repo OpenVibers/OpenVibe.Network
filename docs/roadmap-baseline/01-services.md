@@ -8,26 +8,64 @@ Deliverable 1: runtimes, ports, units, env files and repository state.
 
 | Service | Repo | Stage | Ports | Units | Env file | Deployed | Databases |
 |---|---|---|---|---|---|---|---|
-| network | OpenVibe.Network | live | http 4000 | openvibe-network.service | /etc/openvibe/network.env | 1b79576 | data/network.db |
-| live | OpenVibe.Live | live | http 3000, rtmp 1935/9935, mediasoup 11000-11300/udp, jsmpegRelayTls 9710-9789 | openvibe-live.socket, openvibe-live.service | /etc/openvibe/live.env | e266060 | data/live.db, data/analytics.db, data/rs-companion.db |
-| media | OpenVibe.Media | partial | http 4100, rtpIngest 12000-12199/udp (127.0.0.1) | openvibe-media.service | /etc/openvibe/media.env | ddfefcf | data/media.db |
-| tools | OpenVibe.Tools | live | gateway 4001, maps 4010, food 4011, img 4012, yt 4013, audio 4014, text 4015, docs 4016 | openvibe-tools.service, openvibe-tools-maps.service, openvibe-tools-food.service, openvibe-tools-img.service, openvibe-tools-yt.service, openvibe-tools-audio.service, openvibe-tools-text.service, openvibe-tools-docs.service | /etc/openvibe/tools.env | 0346edc | apps/<satellite>/data/analytics.db |
-| games | OpenVibe.Games | live | http 8000 | openvibe-games.service | /etc/openvibe/games.env | 43c11f0 | data/world.db |
-| community | OpenVibe.Community | partial | http 4200 | openvibe-community.service | /etc/openvibe/community.env | d7c6e60 | none |
-| sites | OpenVibe.Sites | placeholder-host |  | - | - | 185014f | none |
+| network | OpenVibe.Network | live | http 4000 | openvibe-network.service | /etc/openvibe/network.env | 9bbd90f | data/network.db |
+| live | OpenVibe.Live | live | http 3000, rtmp 1935/9935, mediasoup 11000-11300/udp, jsmpegRelayTls 9710-9789 | openvibe-live.socket, openvibe-live.service | /etc/openvibe/live.env | c893c6c | data/live.db, data/analytics.db, data/rs-companion.db |
+| media | OpenVibe.Media | live | http 4100, rtpIngest 12000-12199/udp (127.0.0.1) | openvibe-media.service | /etc/openvibe/media.env | 9de4b25 | data/media.db |
+| tools | OpenVibe.Tools | live | gateway 4001, maps 4010, food 4011, img 4012, yt 4013, audio 4014, text 4015, docs 4016 | openvibe-tools.service, openvibe-tools-maps.service, openvibe-tools-food.service, openvibe-tools-img.service, openvibe-tools-yt.service, openvibe-tools-audio.service, openvibe-tools-text.service, openvibe-tools-docs.service | /etc/openvibe/tools.env | 5d1b423 | apps/<app>/data/analytics.db, apps/<app>/data/jobs.db |
+| games | OpenVibe.Games | live | http 8000 | openvibe-games.service | /etc/openvibe/games.env | 474df50 | data/world.db |
+| community | OpenVibe.Community | live | http 4200 | openvibe-community.service | /etc/openvibe/community.env | 57d1dd4 | /var/lib/openvibe-community/community.db |
+| sites | OpenVibe.Sites | placeholder-host |  | - | - | d3b71af | none |
+| events | OpenVibe.Events | live | http 4300 | openvibe-events.service | /etc/openvibe/events.env | 3366132 | /var/lib/openvibe-events/events.db |
+| chat | OpenVibe.Chat | live | http 4400 | openvibe-chat.service | /etc/openvibe/chat.env | 7897688 | /var/lib/openvibe-chat/chat.db |
+| openre | OpenRe.Stream | shadow | http 4500, rtmp 1936 | openre-api.service, openre-session-coordinator.service, openre-rtmp-ingest@.service, openre-restream-worker@.service | /etc/openvibe/openre.env | e0dc1b4 | /var/lib/openre/openre.db |
+| billing | OpenVibe.Billing | shadow | http 4600 | openvibe-billing.service | /etc/openvibe/billing.env | c646279 | /var/lib/openvibe-billing/billing.db |
+| tips | OpenVibe.Tips | loopback | http 4610 | openvibe-tips.service | /etc/openvibe/tips.env | 15bfc12 | /var/lib/openvibe-tips/tips.db |
+| vip | OpenVibe.VIP | loopback | http 4620 | openvibe-vip.service | /etc/openvibe/vip.env | 9668a49 | /var/lib/openvibe-vip/vip.db |
+| ai | OpenVibe.AI | live-internal | http 4700 | openvibe-ai.service | /etc/openvibe/ai.env | 96dc8a3 | /var/lib/openvibe-ai/ai.db |
+| search | OpenVibe.Search | live | http 4710 | openvibe-search.service | /etc/openvibe/search.env | a707e38 | /var/lib/openvibe-search/search.db |
+| sources | OpenVibe.Sources | loopback | http 4720 | openvibe-sources.service | /etc/openvibe/sources.env | 2e986af | /var/lib/openvibe-sources/sources.db |
+| wiki | OpenVibe.Wiki | live | http 4800 | openvibe-wiki.service | /etc/openvibe/wiki.env | 011a68f | /var/lib/openvibe-wiki/wiki.db |
+| blog | OpenVibe.Blog | live | http 4810 | openvibe-blog.service | /etc/openvibe/blog.env | 95e99ac | /var/lib/openvibe-blog/blog.db |
+| news | OpenVibe.News | loopback | http 4820 | openvibe-news.service | /etc/openvibe/news.env | 5a17e7f | /var/lib/openvibe-news/news.db |
+| reviews | OpenVibe.Reviews | loopback | http 4830 | openvibe-reviews.service | /etc/openvibe/reviews.env | 1d462a2 | /var/lib/openvibe-reviews/reviews.db |
+| deals | OpenVibe.Deals | loopback | http 4840 | openvibe-deals.service | /etc/openvibe/deals.env | e72aeec | /var/lib/openvibe-deals/deals.db |
+| coupons | OpenVibe.Coupons | loopback | http 4850 | openvibe-coupons.service | /etc/openvibe/coupons.env | 54df411 | /var/lib/openvibe-coupons/coupons.db |
+| trade | OpenVibe.Trade | loopback | http 4860 | openvibe-trade.service | /etc/openvibe/trade.env | 9a55644 | /var/lib/openvibe-trade/trade.db |
+| codes | OpenVibe.Codes | live | http 4900 | openvibe-codes.service | /etc/openvibe/codes.env | d60f279 | /var/lib/openvibe-codes/codes.db |
+| host | OpenVibe.Host | loopback | http 4910 | openvibe-host.service, openvibe-backup.timer, openvibe-backup.service | /etc/openvibe/host.env | 30f08d6 | /var/lib/openvibe-host-api/host.db |
+| examples | OpenVibe.Examples | sample |  | - | - | - | none |
 
 ## Scanned repositories
 
 | Repo | HEAD | origin/main | Source files | LOC | Test files | CI | Routes | Tables | WS servers | Timers/jobs | TODO(contract) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| OpenVibe.Live | e266060 | e266060 | 167 | 69978 | 58 | yes | 537 | 125 | 8 | 48 | 15 |
-| OpenVibe.Network | 33156ef | 06e4a6b | 52 | 12043 | 15 | yes | 207 | 39 | 0 | 6 | 0 |
-| OpenVibe.Shared | 9b53beb | 9b53beb | 35 | 9484 | 11 | yes | 1 | 0 | 0 | 5 | 0 |
-| OpenVibe.Media | cced10f | cced10f | 34 | 10436 | 9 | yes | 90 | 18 | 0 | 9 | 0 |
-| OpenVibe.Tools | 4773f7b | fd5d318 | 117 | 20013 | 2 | no | 99 | 4 | 0 | 12 | 0 |
-| OpenVibe.Community | d7c6e60 | d7c6e60 | 41 | 6638 | 21 | yes | 97 | 20 | 0 | 3 | 0 |
-| OpenVibe.Games | 5710287 | 5710287 | 101 | 18511 | 56 | no | 21 | 5 | 2 | 2 | 0 |
-| OpenVibe.Sites | b689b41 | 7b7c917 | 1 | 308 | 0 | no | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Live | c893c6c | c893c6c | 189 | 74113 | 78 | yes | 629 | 125 | 8 | 51 | 15 |
+| OpenVibe.Network | 9bbd90f | 9bbd90f | 67 | 14871 | 28 | yes | 247 | 43 | 0 | 6 | 0 |
+| OpenVibe.Shared | c6405d4 | c6405d4 | 45 | 10921 | 17 | yes | 3 | 0 | 0 | 6 | 0 |
+| OpenVibe.Media | 9de4b25 | 9de4b25 | 38 | 11376 | 16 | yes | 92 | 20 | 0 | 11 | 0 |
+| OpenVibe.Tools | 5d1b423 | 5d1b423 | 130 | 22829 | 16 | yes | 118 | 3 | 0 | 16 | 0 |
+| OpenVibe.Community | 57d1dd4 | 57d1dd4 | 47 | 7885 | 25 | yes | 107 | 20 | 0 | 3 | 0 |
+| OpenVibe.Games | 7863fc6 | 7863fc6 | 117 | 22529 | 68 | yes | 21 | 12 | 2 | 3 | 0 |
+| OpenVibe.Sites | d6e4cbd | d6e4cbd | 1 | 308 | 1 | yes | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Events | efc09a7 | efc09a7 | 17 | 2914 | 12 | yes | 17 | 7 | 0 | 3 | 0 |
+| OpenVibe.Chat | 7897688 | 7897688 | 28 | 11140 | 16 | yes | 60 | 32 | 1 | 9 | 0 |
+| OpenRe.Stream | c091a09 | c091a09 | 34 | 4641 | 18 | yes | 37 | 12 | 0 | 2 | 0 |
+| OpenVibe.Billing | aa445d0 | aa445d0 | 36 | 5124 | 16 | yes | 54 | 19 | 0 | 3 | 0 |
+| OpenVibe.Tips | 9a3a186 | 9a3a186 | 26 | 4065 | 11 | yes | 45 | 14 | 0 | 3 | 0 |
+| OpenVibe.VIP | 9668a49 | 9668a49 | 27 | 3881 | 10 | yes | 40 | 13 | 0 | 2 | 0 |
+| OpenVibe.AI | 3a480ac | 3a480ac | 30 | 4576 | 17 | yes | 33 | 16 | 0 | 2 | 0 |
+| OpenVibe.Search | a707e38 | a707e38 | 17 | 2733 | 13 | yes | 20 | 11 | 0 | 4 | 0 |
+| OpenVibe.Sources | 2e986af | 2e986af | 23 | 2974 | 10 | yes | 17 | 8 | 0 | 4 | 0 |
+| OpenVibe.Wiki | b4e70ac | b4e70ac | 20 | 4297 | 21 | yes | 76 | 8 | 0 | 2 | 0 |
+| OpenVibe.Blog | 95e99ac | 95e99ac | 31 | 4663 | 14 | yes | 56 | 6 | 0 | 2 | 0 |
+| OpenVibe.News | 5b393d2 | 5b393d2 | 33 | 5080 | 16 | yes | 51 | 13 | 0 | 1 | 0 |
+| OpenVibe.Reviews | a7b50a6 | a7b50a6 | 22 | 4626 | 13 | yes | 70 | 14 | 0 | 2 | 0 |
+| OpenVibe.Deals | 91ca223 | 91ca223 | 35 | 4766 | 13 | yes | 58 | 15 | 0 | 1 | 0 |
+| OpenVibe.Coupons | 1c57c47 | 1c57c47 | 28 | 4081 | 12 | yes | 46 | 12 | 0 | 2 | 0 |
+| OpenVibe.Trade | ddbc60c | ddbc60c | 36 | 4405 | 13 | yes | 7 | 10 | 0 | 2 | 0 |
+| OpenVibe.Codes | 51d2386 | 51d2386 | 27 | 3966 | 19 | yes | 95 | 7 | 0 | 0 | 0 |
+| OpenVibe.Host | ea99b50 | ea99b50 | 55 | 8099 | 27 | yes | 56 | 11 | 0 | 1 | 0 |
+| OpenVibe.Examples | d5f4efc | d5f4efc | 11 | 1604 | 14 | yes | 0 | 1 | 0 | 0 | 0 |
 
 LOC counts non-test source files in the scanned directories only (`server/`, `apps/`, `packages/`), not frontend assets.
 
@@ -36,37 +74,41 @@ LOC counts non-test source files in the scanned directories only (`server/`, `ap
 
 | Repository | Visibility | Stage (STATUS.json) | Last push | Size | Description |
 |---|---|---|---|---|---|
-| AFResume | PUBLIC | - | 2026-09-21 | 23272 KB | AlexFrison.net |
+| AFResume | PUBLIC | - | 2026-09-23 | 23272 KB | AlexFrison.net |
 | BreakRoomSimulator | PUBLIC | - | 2026-09-21 | 2517 KB | Simulator.Rest - The most realistic break room simulator to ever exist |
-| OpenRe.Stream | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Ingest and restream: stream definitions, keys, sessions, transport workers, outputs and output health. |
-| OpenVibe.AI | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Providers, models, routing, prompt templates, workflows, runs, citations, cache and quotas for every product. |
-| OpenVibe.Billing | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | The isolated money ledger: providers, receipts, subscriptions, entitlements, refunds and payouts. |
-| OpenVibe.Blog | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | The official OpenVibe blog and a blog for every member: drafts, revisions, series, scheduling, feeds. |
-| OpenVibe.Chat | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Rooms, messages, DMs, calls, TTS and audio queues, moderation and presence — one identity, every conversation. |
-| OpenVibe.Codes | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | The developer portal: registry and contract explorers, credentials, playgrounds, examples, mod/app publishing, governance. |
-| OpenVibe.Community | PUBLIC | - | 2026-09-22 | 689 KB |  |
-| OpenVibe.Contracts | PUBLIC | alpha | 2026-09-22 | 89 KB | Machine-readable contracts for the whole OpenVibe network. |
-| OpenVibe.Coupons | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Coupon codes with merchant matching, restrictions, expiry and real-people validity reports. |
-| OpenVibe.Deals | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Deals submitted and voted on by the community, with source, price and freshness always shown. |
-| OpenVibe.Events | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Durable events, subscriptions, delivery, retry, dead letters and replay for the network. |
-| OpenVibe.Examples | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Executable public integration examples, tested in CI against the platform. |
-| OpenVibe.Games | PUBLIC | - | 2026-09-21 | 4675 KB |  |
-| OpenVibe.Host | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | The network's deployment/control plane first; then isolated hosting for community sites, bots and mods. |
-| OpenVibe.Live | PUBLIC | - | 2026-09-22 | 6507 KB |  |
-| OpenVibe.Media | PUBLIC | - | 2026-09-22 | 847 KB |  |
-| OpenVibe.Network | PUBLIC | - | 2026-09-22 | 1306 KB |  |
-| OpenVibe.News | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Source-backed stories: clustered coverage, cited summaries, perspectives and timelines. |
-| OpenVibe.Realtime | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Browser delivery plane for events: authorised WS/SSE topics with cursors, resume and presence. |
-| OpenVibe.Reviews | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Review signals gathered across sources with provenance, entity resolution and honest aggregates. |
-| OpenVibe.SDK | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Supported browser and server clients for the OpenVibe platform. |
-| OpenVibe.Shared | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Versioned UI, chrome, SEO, legal and release-client packages every OpenVibe site renders. |
-| OpenVibe.Sites | PUBLIC | - | 2026-09-21 | 271 KB | Static front pages for OpenVibe domains that are not full apps yet |
-| OpenVibe.Tips | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Creator support: tips, goals, paid messages, TTS and media requests, overlays. |
-| OpenVibe.Tools | PUBLIC | - | 2026-09-21 | 1416 KB |  |
-| OpenVibe.Trade | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Informational watchlists, sourced market context and alerts. No custody, no order execution. |
-| OpenVibe.VIP | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Memberships: plans, perks and benefits recognised across every OpenVibe site. |
-| OpenVibe.Wiki | PUBLIC | placeholder (no code) | 2026-09-21 | 13 KB | Wiki spaces with page trees, revisions, citations, media and discussion — editable together, source-backed. |
-| powerchat-devapp-demo | PUBLIC | - | 2026-09-21 | 200 KB |  |
+| OpenRe.Stream | PUBLIC | alpha | 2026-09-23 | 249 KB | Ingest and restream: stream definitions, keys, sessions, transport workers, outputs and output health. |
+| OpenVibe.AI | PUBLIC | alpha | 2026-09-23 | 241 KB | Providers, models, routing, prompt templates, workflows, runs, citations, cache and quotas for every product. |
+| OpenVibe.Billing | PUBLIC | alpha | 2026-09-23 | 395 KB | The isolated money ledger: providers, receipts, subscriptions, entitlements, refunds and payouts. |
+| OpenVibe.Blog | PUBLIC | alpha | 2026-09-23 | 167 KB | The official OpenVibe blog and a blog for every member: drafts, revisions, series, scheduling, feeds. |
+| OpenVibe.Chat | PUBLIC | alpha | 2026-09-23 | 369 KB | Rooms, messages, DMs, calls, TTS and audio queues, moderation and presence — one identity, every conversation. |
+| OpenVibe.Codes | PUBLIC | alpha | 2026-09-23 | 247 KB | The developer portal: registry and contract explorers, credentials, playgrounds, examples, mod/app publishing, governance. |
+| OpenVibe.Community | PUBLIC | - | 2026-09-23 | 1060 KB |  |
+| OpenVibe.Contracts | PUBLIC | alpha | 2026-09-23 | 457 KB | Machine-readable contracts for the whole OpenVibe network. |
+| OpenVibe.Coupons | PUBLIC | alpha | 2026-09-23 | 156 KB | Coupon codes with merchant matching, restrictions, expiry and real-people validity reports. |
+| OpenVibe.Deals | PUBLIC | alpha | 2026-09-23 | 198 KB | Deals submitted and voted on by the community, with source, price and freshness always shown. |
+| OpenVibe.Events | PUBLIC | alpha | 2026-09-23 | 217 KB | Durable events, subscriptions, delivery, retry, dead letters and replay for the network. |
+| OpenVibe.Examples | PUBLIC | alpha | 2026-09-23 | 207 KB | Executable public integration examples, tested in CI against the platform. |
+| OpenVibe.Extensions | PUBLIC | alpha | 2026-09-23 | 39 KB | First-party client surfaces for the network: the browser helper built on Coupons' public API with scoped, revocable credentials; later the kiosk/hardware companions and any desktop client (ADR-023). |
+| OpenVibe.Games | PUBLIC | - | 2026-09-23 | 4833 KB |  |
+| OpenVibe.Host | PUBLIC | alpha | 2026-09-23 | 555 KB | The network's deployment/control plane first; then isolated hosting for community sites, bots and mods. |
+| OpenVibe.Live | PUBLIC | - | 2026-09-23 | 5879 KB |  |
+| OpenVibe.Media | PUBLIC | - | 2026-09-23 | 1221 KB |  |
+| OpenVibe.Network | PUBLIC | - | 2026-09-23 | 1527 KB |  |
+| OpenVibe.News | PUBLIC | alpha | 2026-09-23 | 245 KB | Source-backed stories: clustered coverage, cited summaries, perspectives and timelines. |
+| OpenVibe.Publishing | PUBLIC | alpha | 2026-09-23 | 128 KB | Shared publishing packages (drafts, revisions, citations, SEO gate, feeds, structured data) for Wiki, Blog, News, Reviews, Deals, Coupons and Trade. Packages only, no authority. |
+| OpenVibe.Realtime | PUBLIC | closed (no code) | 2026-09-23 | 14 KB | Browser delivery plane for events: authorised WS/SSE topics with cursors, resume and presence. |
+| OpenVibe.Reviews | PUBLIC | alpha | 2026-09-23 | 259 KB | Review signals gathered across sources with provenance, entity resolution and honest aggregates. |
+| OpenVibe.SDK | PUBLIC | alpha | 2026-09-23 | 308 KB | Supported browser and server clients for the OpenVibe platform. |
+| OpenVibe.Search | PUBLIC | alpha | 2026-09-23 | 94 KB | Permission-aware, event-fed search index for the network: canonical index documents, ACL-filtered queries, deletion propagation. |
+| OpenVibe.Shared | PUBLIC | alpha | 2026-09-23 | 355 KB | Versioned UI, chrome, SEO, legal and release-client packages every OpenVibe site renders. |
+| OpenVibe.Sites | PUBLIC | - | 2026-09-23 | 319 KB | Static front pages for OpenVibe domains that are not full apps yet |
+| OpenVibe.Sources | PUBLIC | alpha | 2026-09-23 | 135 KB | Source registry and ingestion workers for the network: provenance, terms, rate limits, explicit failure states. |
+| OpenVibe.Tips | PUBLIC | alpha | 2026-09-23 | 209 KB | Creator support: tips, goals, paid messages, TTS and media requests, overlays. |
+| OpenVibe.Tools | PUBLIC | - | 2026-09-23 | 1735 KB |  |
+| OpenVibe.Trade | PUBLIC | alpha | 2026-09-23 | 184 KB | Informational watchlists, sourced market context and alerts. No custody, no order execution. |
+| OpenVibe.VIP | PUBLIC | alpha | 2026-09-23 | 158 KB | Memberships: plans, perks and benefits recognised across every OpenVibe site. |
+| OpenVibe.Wiki | PUBLIC | alpha | 2026-09-23 | 279 KB | Wiki spaces with page trees, revisions, citations, media and discussion — editable together, source-backed. |
+| powerchat-devapp-demo | PUBLIC | - | 2026-09-23 | 200 KB |  |
 | Source.OpenVibe.Games | PUBLIC | - | 2026-09-21 | 20385 KB | OpenVibe: Source Game |
 
-Collected 2026-09-22 via `gh repo list OpenVibers`.
+Collected 2026-09-23 via `gh repo list OpenVibers`.

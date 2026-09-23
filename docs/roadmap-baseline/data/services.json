@@ -1,75 +1,598 @@
 {
-  "_source": "Hand-maintained from ../../../../CONTRACTS.md (workspace root) and the production unit list. generate.js checks units/paths against prod-snapshot.json and flags drift.",
+  "_source": "Hand-maintained from ../../../../CONTRACTS.md (workspace root) and the production unit list. generate.js checks units/paths against prod-snapshot.json and flags drift. Services added 2026-09-23 from the production unit list and the roadmap port plan. `databases` are the files each service actually opens (absolute, or relative to deployPath; <app> matches one path segment): any other SQLite file found on the host is reported as a copy or an undeclared file, not as live schema.",
   "services": [
     {
-      "id": "network", "repo": "OpenVibe.Network", "stage": "live",
-      "domains": ["openvibe.network", "auth.openvibe.network", "api.openvibe.network", "admin.openvibe.network", "my.openvibe.network", "themes.openvibe.network"],
-      "ports": { "http": 4000 },
+      "id": "network",
+      "repo": "OpenVibe.Network",
+      "stage": "live",
+      "domains": [
+        "openvibe.network",
+        "auth.openvibe.network",
+        "api.openvibe.network",
+        "admin.openvibe.network",
+        "my.openvibe.network",
+        "themes.openvibe.network"
+      ],
+      "ports": {
+        "http": 4000
+      },
       "runtime": "Node/Express, SQLite (better-sqlite3)",
-      "units": ["openvibe-network.service"],
-      "deployPath": "/opt/openvibe.network", "envFile": "/etc/openvibe/network.env",
-      "databases": ["data/network.db"],
+      "units": [
+        "openvibe-network.service"
+      ],
+      "deployPath": "/opt/openvibe.network",
+      "envFile": "/etc/openvibe/network.env",
+      "databases": [
+        "data/network.db"
+      ],
       "owns": "identity/OAuth2/OIDC/FedCM, anonymous sessions, themes, notifications + push/email, OpenCoins wallet, url registry + domains, chrome, avatars, admin, serves openvibe-shared browser files at /shared/"
     },
     {
-      "id": "live", "repo": "OpenVibe.Live", "stage": "live",
-      "domains": ["openvibe.live", "ingest.openvibe.live", "relay.openvibe.live", "turn.openvibe.live"],
-      "ports": { "http": 3000, "rtmp": [1935, 9935], "mediasoup": "11000-11300/udp", "jsmpegRelayTls": "9710-9789" },
+      "id": "live",
+      "repo": "OpenVibe.Live",
+      "stage": "live",
+      "domains": [
+        "openvibe.live",
+        "ingest.openvibe.live",
+        "relay.openvibe.live",
+        "turn.openvibe.live"
+      ],
+      "ports": {
+        "http": 3000,
+        "rtmp": [
+          1935,
+          9935
+        ],
+        "mediasoup": "11000-11300/udp",
+        "jsmpegRelayTls": "9710-9789"
+      },
       "runtime": "Node/Express (socket-activated), SQLite, mediasoup/werift/Node-Media-Server/ffmpeg",
-      "units": ["openvibe-live.socket", "openvibe-live.service"],
-      "deployPath": "/opt/openvibe.live", "envFile": "/etc/openvibe/live.env",
-      "databases": ["data/live.db", "data/analytics.db", "data/rs-companion.db"],
-      "owns": "streaming product + (today) ingest, restream, chat, DMs, TTS, calls, Vibes/PayPal, subscriptions, comments, AI, arena, recap"
+      "units": [
+        "openvibe-live.socket",
+        "openvibe-live.service"
+      ],
+      "deployPath": "/opt/openvibe.live",
+      "envFile": "/etc/openvibe/live.env",
+      "databases": [
+        "data/live.db",
+        "data/analytics.db",
+        "data/rs-companion.db"
+      ],
+      "owns": "streaming product: channels, presentation, WHIP/WebRTC/JSMPEG ingest and RTMP for every slot (OpenRe holds none yet), restream, calls, Vibes/PayPal and subscriptions (Billing is a shadow), arena, recap; chat, pastes, comments and AI runs moved to Chat, Community and AI (Live keeps mirrors and adapters)"
     },
     {
-      "id": "media", "repo": "OpenVibe.Media", "stage": "partial",
-      "domains": ["openvibe.media"],
-      "ports": { "http": 4100, "rtpIngest": "12000-12199/udp (127.0.0.1)" },
+      "id": "media",
+      "repo": "OpenVibe.Media",
+      "stage": "live",
+      "domains": [
+        "openvibe.media"
+      ],
+      "ports": {
+        "http": 4100,
+        "rtpIngest": "12000-12199/udp (127.0.0.1)"
+      },
       "runtime": "Node/Express, SQLite, ffmpeg, B2 + R2 (S3 API)",
-      "units": ["openvibe-media.service"],
-      "deployPath": "/opt/openvibe.media", "envFile": "/etc/openvibe/media.env",
-      "databases": ["data/media.db"],
-      "owns": "Media API v1 (:app tenancy), VOD/clip recording + cutting, pastes (bytes + semantics today), files, thumbnails, views, avatars, B2/R2 tiering"
+      "units": [
+        "openvibe-media.service"
+      ],
+      "deployPath": "/opt/openvibe.media",
+      "envFile": "/etc/openvibe/media.env",
+      "databases": [
+        "data/media.db"
+      ],
+      "owns": "Media API v1/v2 objects (:app and project tenancy), VOD/clip recording + cutting, files, thumbnails, avatars, B2/R2 tiering and copy verification; paste writes frozen (Community owns pastes)"
     },
     {
-      "id": "tools", "repo": "OpenVibe.Tools", "stage": "live",
-      "domains": ["openvibe.tools", "maps.openvibe.tools", "food.openvibe.tools", "img.openvibe.tools", "yt.openvibe.tools", "audio.openvibe.tools", "text.openvibe.tools", "docs.openvibe.tools", "+ ~250 tool hosts"],
-      "ports": { "gateway": 4001, "maps": 4010, "food": 4011, "img": 4012, "yt": 4013, "audio": 4014, "text": 4015, "docs": 4016 },
+      "id": "tools",
+      "repo": "OpenVibe.Tools",
+      "stage": "live",
+      "domains": [
+        "openvibe.tools",
+        "maps.openvibe.tools",
+        "food.openvibe.tools",
+        "img.openvibe.tools",
+        "yt.openvibe.tools",
+        "audio.openvibe.tools",
+        "text.openvibe.tools",
+        "docs.openvibe.tools",
+        "+ ~250 tool hosts"
+      ],
+      "ports": {
+        "gateway": 4001,
+        "maps": 4010,
+        "food": 4011,
+        "img": 4012,
+        "yt": 4013,
+        "audio": 4014,
+        "text": 4015,
+        "docs": 4016
+      },
       "runtime": "8 Node/Express apps behind a catalog-driven gateway",
-      "units": ["openvibe-tools.service", "openvibe-tools-maps.service", "openvibe-tools-food.service", "openvibe-tools-img.service", "openvibe-tools-yt.service", "openvibe-tools-audio.service", "openvibe-tools-text.service", "openvibe-tools-docs.service"],
-      "deployPath": "/opt/openvibe.tools", "envFile": "/etc/openvibe/tools.env",
-      "databases": ["apps/<satellite>/data/analytics.db"],
-      "owns": "tool catalog, SSR tool pages, tool algorithms, per-satellite analytics"
+      "units": [
+        "openvibe-tools.service",
+        "openvibe-tools-maps.service",
+        "openvibe-tools-food.service",
+        "openvibe-tools-img.service",
+        "openvibe-tools-yt.service",
+        "openvibe-tools-audio.service",
+        "openvibe-tools-text.service",
+        "openvibe-tools-docs.service"
+      ],
+      "deployPath": "/opt/openvibe.tools",
+      "envFile": "/etc/openvibe/tools.env",
+      "databases": [
+        "apps/<app>/data/analytics.db",
+        "apps/<app>/data/jobs.db"
+      ],
+      "owns": "tool catalog, SSR tool pages, tool algorithms, durable tool jobs with results in Media, per-satellite analytics"
     },
     {
-      "id": "games", "repo": "OpenVibe.Games", "stage": "live",
-      "domains": ["openvibe.games", "play.openvibe.games"],
-      "ports": { "http": 8000 },
+      "id": "games",
+      "repo": "OpenVibe.Games",
+      "stage": "live",
+      "domains": [
+        "openvibe.games",
+        "play.openvibe.games"
+      ],
+      "ports": {
+        "http": 8000
+      },
       "runtime": "TypeScript pnpm workspace, raw http.Server + ws, Babylon.js/Havok, SQLite",
-      "units": ["openvibe-games.service"],
-      "deployPath": "/opt/openvibe.games", "envFile": "/etc/openvibe/games.env",
-      "databases": ["data/world.db"],
-      "owns": "Scraplandia authoritative world, editor, player persistence"
+      "units": [
+        "openvibe-games.service"
+      ],
+      "deployPath": "/opt/openvibe.games",
+      "envFile": "/etc/openvibe/games.env",
+      "databases": [
+        "data/world.db"
+      ],
+      "owns": "Scraplandia authoritative world, editor, player persistence, mods (declarative packs), legacy HoboQuest import archive"
     },
     {
-      "id": "community", "repo": "OpenVibe.Community", "stage": "partial",
-      "domains": ["openvibe.community"],
-      "ports": { "http": 4200 },
-      "runtime": "Node/Express SSR, no database of its own",
-      "units": ["openvibe-community.service"],
-      "deployPath": "/opt/openvibe.community", "envFile": "/etc/openvibe/community.env",
-      "databases": [],
-      "owns": "SSR paste pages; proxies /api/pastes/* to Live for identity translation"
+      "id": "community",
+      "repo": "OpenVibe.Community",
+      "stage": "live",
+      "domains": [
+        "openvibe.community"
+      ],
+      "ports": {
+        "http": 4200
+      },
+      "runtime": "Node/Express SSR, SQLite",
+      "units": [
+        "openvibe-community.service"
+      ],
+      "deployPath": "/opt/openvibe.community",
+      "envFile": "/etc/openvibe/community.env",
+      "databases": [
+        "/var/lib/openvibe-community/community.db"
+      ],
+      "owns": "paste authority (since 2026-09-22), typed comment threads (Wiki, Live VOD/clip comments), forum spaces, Pulse, Discord relay (off)"
     },
     {
-      "id": "sites", "repo": "OpenVibe.Sites", "stage": "placeholder-host",
-      "domains": ["openvibe.chat", "openre.stream", "openvibe.tips", "openvibe.vip", "openvibe.codes", "openvibe.host", "openvibe.wiki", "openvibe.blog", "openvibe.news", "openvibe.reviews", "openvibe.deals", "openvibe.coupons", "openvibe.trade"],
+      "id": "sites",
+      "repo": "OpenVibe.Sites",
+      "stage": "placeholder-host",
+      "domains": [
+        "openvibe.chat",
+        "openre.stream",
+        "openvibe.tips",
+        "openvibe.vip",
+        "openvibe.host",
+        "openvibe.news",
+        "openvibe.reviews",
+        "openvibe.deals",
+        "openvibe.coupons",
+        "openvibe.trade",
+        "ai.openvibe.network",
+        "+ network subdomains"
+      ],
       "ports": {},
       "runtime": "static build (build.js) served by nginx",
       "units": [],
-      "deployPath": "/opt/openvibe.sites", "envFile": null,
+      "deployPath": "/opt/openvibe.sites",
+      "envFile": null,
       "databases": [],
-      "owns": "truthful placeholder pages + nginx vhosts for not-yet-built products"
+      "owns": "truthful placeholder pages + nginx vhosts for products not yet public"
+    },
+    {
+      "id": "events",
+      "repo": "OpenVibe.Events",
+      "stage": "live",
+      "domains": [
+        "events.openvibe.network"
+      ],
+      "ports": {
+        "http": 4300
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3)",
+      "units": [
+        "openvibe-events.service"
+      ],
+      "deployPath": "/opt/openvibe.events",
+      "envFile": "/etc/openvibe/events.env",
+      "databases": [
+        "/var/lib/openvibe-events/events.db"
+      ],
+      "owns": "durable event store, signed webhook delivery with retry/DLQ/replay, SSE realtime (ADR-005), app event namespaces"
+    },
+    {
+      "id": "chat",
+      "repo": "OpenVibe.Chat",
+      "stage": "live",
+      "domains": [
+        "openvibe.live (/ws/chat, /api/chat, /api/dm, /api/tts, /api/sounds via nginx include)"
+      ],
+      "ports": {
+        "http": 4400
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3), ws",
+      "units": [
+        "openvibe-chat.service"
+      ],
+      "deployPath": "/opt/openvibe.chat",
+      "envFile": "/etc/openvibe/chat.env",
+      "databases": [
+        "/var/lib/openvibe-chat/chat.db"
+      ],
+      "owns": "chat authority since 2026-09-23 02:03 UTC: rooms, messages, DMs, TTS/sound queues, moderation; keeps Live's read mirror current"
+    },
+    {
+      "id": "openre",
+      "repo": "OpenRe.Stream",
+      "stage": "shadow",
+      "domains": [
+        "ingest.openre.stream (DNS-only)",
+        "openre.stream (Sites placeholder)"
+      ],
+      "ports": {
+        "http": 4500,
+        "rtmp": 1936
+      },
+      "runtime": "Node, release layout (releases/<sha>, current), ffmpeg workers per generation",
+      "units": [
+        "openre-api.service",
+        "openre-session-coordinator.service",
+        "openre-rtmp-ingest@.service",
+        "openre-restream-worker@.service"
+      ],
+      "deployPath": "/opt/openre.stream",
+      "envFile": "/etc/openvibe/openre.env",
+      "databases": [
+        "/var/lib/openre/openre.db"
+      ],
+      "owns": "RTMP ingest, restream and recording requests for slots cut over from Live (none yet), stream keys, sessions, worker generations"
+    },
+    {
+      "id": "billing",
+      "repo": "OpenVibe.Billing",
+      "stage": "shadow",
+      "domains": [
+        "billing.openvibe.network (staff console)"
+      ],
+      "ports": {
+        "http": 4600
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3)",
+      "units": [
+        "openvibe-billing.service"
+      ],
+      "deployPath": "/opt/openvibe.billing",
+      "envFile": "/etc/openvibe/billing.env",
+      "databases": [
+        "/var/lib/openvibe-billing/billing.db"
+      ],
+      "owns": "append-only ledger, provider receipts, intents, cashouts, entitlements, reconciliation (shadow: Live stays the money authority until the cutover)"
+    },
+    {
+      "id": "tips",
+      "repo": "OpenVibe.Tips",
+      "stage": "loopback",
+      "domains": [
+        "openvibe.tips (Sites placeholder)"
+      ],
+      "ports": {
+        "http": 4610
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3)",
+      "units": [
+        "openvibe-tips.service"
+      ],
+      "deployPath": "/opt/openvibe.tips",
+      "envFile": "/etc/openvibe/tips.env",
+      "databases": [
+        "/var/lib/openvibe-tips/tips.db"
+      ],
+      "owns": "tip interactions, goals, overlays over Billing settlement"
+    },
+    {
+      "id": "vip",
+      "repo": "OpenVibe.VIP",
+      "stage": "loopback",
+      "domains": [
+        "openvibe.vip (Sites placeholder)"
+      ],
+      "ports": {
+        "http": 4620
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3)",
+      "units": [
+        "openvibe-vip.service"
+      ],
+      "deployPath": "/opt/openvibe.vip",
+      "envFile": "/etc/openvibe/vip.env",
+      "databases": [
+        "/var/lib/openvibe-vip/vip.db"
+      ],
+      "owns": "membership plans, versioned terms, perks, entitlement checks (consumed by Chat, Community, Blog, Live)"
+    },
+    {
+      "id": "ai",
+      "repo": "OpenVibe.AI",
+      "stage": "live-internal",
+      "domains": [
+        "ai.openvibe.network (Sites placeholder)"
+      ],
+      "ports": {
+        "http": 4700
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3)",
+      "units": [
+        "openvibe-ai.service"
+      ],
+      "deployPath": "/opt/openvibe.ai",
+      "envFile": "/etc/openvibe/ai.env",
+      "databases": [
+        "/var/lib/openvibe-ai/ai.db"
+      ],
+      "owns": "AI provider/model/route registry, versioned templates and workflows, runs, scoped cache, quotas, audit; serves Live (AI_SERVICE=remote) and Network site copy"
+    },
+    {
+      "id": "search",
+      "repo": "OpenVibe.Search",
+      "stage": "live",
+      "domains": [
+        "search.openvibe.network"
+      ],
+      "ports": {
+        "http": 4710
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3) FTS5",
+      "units": [
+        "openvibe-search.service"
+      ],
+      "deployPath": "/opt/openvibe.search",
+      "envFile": "/etc/openvibe/search.env",
+      "databases": [
+        "/var/lib/openvibe-search/search.db"
+      ],
+      "owns": "permission-aware index of documents from Sources, Wiki, Blog, News, Reviews; query API"
+    },
+    {
+      "id": "sources",
+      "repo": "OpenVibe.Sources",
+      "stage": "loopback",
+      "domains": [
+        "sources.openvibe.network (says internal)"
+      ],
+      "ports": {
+        "http": 4720
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3)",
+      "units": [
+        "openvibe-sources.service"
+      ],
+      "deployPath": "/opt/openvibe.sources",
+      "envFile": "/etc/openvibe/sources.env",
+      "databases": [
+        "/var/lib/openvibe-sources/sources.db"
+      ],
+      "owns": "source registry, ingestion with provenance and robots/terms gating (all seeds disabled)"
+    },
+    {
+      "id": "wiki",
+      "repo": "OpenVibe.Wiki",
+      "stage": "live",
+      "domains": [
+        "openvibe.wiki"
+      ],
+      "ports": {
+        "http": 4800
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3), openvibe-publishing",
+      "units": [
+        "openvibe-wiki.service"
+      ],
+      "deployPath": "/opt/openvibe.wiki",
+      "envFile": "/etc/openvibe/wiki.env",
+      "databases": [
+        "/var/lib/openvibe-wiki/wiki.db"
+      ],
+      "owns": "wiki spaces, pages, revisions, citations, reviews"
+    },
+    {
+      "id": "blog",
+      "repo": "OpenVibe.Blog",
+      "stage": "live",
+      "domains": [
+        "openvibe.blog"
+      ],
+      "ports": {
+        "http": 4810
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3), openvibe-publishing",
+      "units": [
+        "openvibe-blog.service"
+      ],
+      "deployPath": "/opt/openvibe.blog",
+      "envFile": "/etc/openvibe/blog.env",
+      "databases": [
+        "/var/lib/openvibe-blog/blog.db"
+      ],
+      "owns": "blogs, posts, revisions, schedules, members-only posts"
+    },
+    {
+      "id": "news",
+      "repo": "OpenVibe.News",
+      "stage": "loopback",
+      "domains": [
+        "openvibe.news (Sites placeholder)"
+      ],
+      "ports": {
+        "http": 4820
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3), openvibe-publishing",
+      "units": [
+        "openvibe-news.service"
+      ],
+      "deployPath": "/opt/openvibe.news",
+      "envFile": "/etc/openvibe/news.env",
+      "databases": [
+        "/var/lib/openvibe-news/news.db"
+      ],
+      "owns": "sourced stories, clusters, perspectives, timelines"
+    },
+    {
+      "id": "reviews",
+      "repo": "OpenVibe.Reviews",
+      "stage": "loopback",
+      "domains": [
+        "openvibe.reviews (Sites placeholder)"
+      ],
+      "ports": {
+        "http": 4830
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3), openvibe-publishing",
+      "units": [
+        "openvibe-reviews.service"
+      ],
+      "deployPath": "/opt/openvibe.reviews",
+      "envFile": "/etc/openvibe/reviews.env",
+      "databases": [
+        "/var/lib/openvibe-reviews/reviews.db"
+      ],
+      "owns": "review entities, signals with provenance, summaries, corrections"
+    },
+    {
+      "id": "deals",
+      "repo": "OpenVibe.Deals",
+      "stage": "loopback",
+      "domains": [
+        "openvibe.deals (Sites placeholder)"
+      ],
+      "ports": {
+        "http": 4840
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3)",
+      "units": [
+        "openvibe-deals.service"
+      ],
+      "deployPath": "/opt/openvibe.deals",
+      "envFile": "/etc/openvibe/deals.env",
+      "databases": [
+        "/var/lib/openvibe-deals/deals.db"
+      ],
+      "owns": "offers, observations, votes and hotness, watches"
+    },
+    {
+      "id": "coupons",
+      "repo": "OpenVibe.Coupons",
+      "stage": "loopback",
+      "domains": [
+        "openvibe.coupons (Sites placeholder)"
+      ],
+      "ports": {
+        "http": 4850
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3)",
+      "units": [
+        "openvibe-coupons.service"
+      ],
+      "deployPath": "/opt/openvibe.coupons",
+      "envFile": "/etc/openvibe/coupons.env",
+      "databases": [
+        "/var/lib/openvibe-coupons/coupons.db"
+      ],
+      "owns": "merchants, domain rules, coupons, reports, extension credentials"
+    },
+    {
+      "id": "trade",
+      "repo": "OpenVibe.Trade",
+      "stage": "loopback",
+      "domains": [
+        "openvibe.trade (Sites placeholder)"
+      ],
+      "ports": {
+        "http": 4860
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3)",
+      "units": [
+        "openvibe-trade.service"
+      ],
+      "deployPath": "/opt/openvibe.trade",
+      "envFile": "/etc/openvibe/trade.env",
+      "databases": [
+        "/var/lib/openvibe-trade/trade.db"
+      ],
+      "owns": "instruments, timestamped observations, watchlists, alerts (no custody, execution or advice)"
+    },
+    {
+      "id": "codes",
+      "repo": "OpenVibe.Codes",
+      "stage": "live",
+      "domains": [
+        "openvibe.codes"
+      ],
+      "ports": {
+        "http": 4900
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3)",
+      "units": [
+        "openvibe-codes.service"
+      ],
+      "deployPath": "/opt/openvibe.codes",
+      "envFile": "/etc/openvibe/codes.env",
+      "databases": [
+        "/var/lib/openvibe-codes/codes.db"
+      ],
+      "owns": "developer portal: credentials, manifests, releases, playgrounds, docs generated from contracts"
+    },
+    {
+      "id": "host",
+      "repo": "OpenVibe.Host",
+      "stage": "loopback",
+      "domains": [
+        "openvibe.host (Sites placeholder)",
+        "*.openvibe.host (tenants-pending 404)"
+      ],
+      "ports": {
+        "http": 4910
+      },
+      "runtime": "Node/Express, SQLite (better-sqlite3); ovhost CLI in /usr/local/lib/openvibe-host",
+      "units": [
+        "openvibe-host.service",
+        "openvibe-backup.timer",
+        "openvibe-backup.service"
+      ],
+      "deployPath": "/opt/openvibe.host",
+      "envFile": "/etc/openvibe/host.env",
+      "databases": [
+        "/var/lib/openvibe-host-api/host.db"
+      ],
+      "owns": "operator plane (ovhost: inventory, validate, deploy/rollback, backups, restore drills), Stage B tenant hosting API"
+    },
+    {
+      "id": "examples",
+      "repo": "OpenVibe.Examples",
+      "stage": "sample",
+      "domains": [],
+      "ports": {},
+      "runtime": "sample applications (mock-backed tests)",
+      "units": [],
+      "deployPath": null,
+      "envFile": null,
+      "databases": [],
+      "owns": "nine example applications for external developers; not deployed"
     }
   ]
 }

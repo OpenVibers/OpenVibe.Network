@@ -1,5 +1,5 @@
 {
-  "_about": "Wave 0 hazard register (roadmap section 2.6 plus findings from this baseline). 'check' names an automatic evidence check run by generate.js against the repo scan and prod-snapshot.json; hazards without one carry manually verified evidence with a date. Owners are roles until the production-host owner reviews this register (Wave 0 exit criterion).",
+  "_about": "Wave 0 hazard register (roadmap section 2.6 plus findings from this baseline), statuses refreshed from production facts. 'check' names an automatic evidence check run by generate.js against the repo scan and prod-snapshot.json; hazards without one carry manually verified evidence with a date. 'ownerReview' says what the production-host owner has to decide or confirm; it is false when the status needs no decision. Status vocabulary: open, partial (some of the mitigation is in place), mitigated (the hazard no longer bites as described; the constraint stays), blocked-on-owner (the next step needs the owner), standing-rule. Owners are roles until the production-host owner reviews this register (Wave 0 exit criterion).",
   "reviewedBy": null,
   "hazards": [
     {
@@ -10,8 +10,10 @@
       "constraint": "RTMP ingest is owned by the Live Node process; a restart disconnects every RTMP broadcaster.",
       "owner": "Live maintainers",
       "wave": "W7 (OpenRe extraction removes the class); W21 encodes the rule in deploy tooling",
-      "mitigation": "Deploy Live with deploy.sh --wait-idle after checking /api/streams; never restart mid-broadcast for UI-only changes (static deploys need no restart).",
-      "status": "open"
+      "mitigation": "Per-slot cutover to OpenRe (ADR-009; OpenVibe.Host docs/cutover-runbook.md section F): OpenRe RTMP listens on 0.0.0.0:1936 since Phase A; each slot moves with its broadcaster present and gets a new key. Until then deploy Live with deploy.sh --wait-idle; ovhost refuses a Live restart while streams are live (tested).",
+      "status": "blocked-on-owner",
+      "evidence": "2026-09-23 20:24 UTC: 102 of 102 managed_streams rows have ingest_authority=live; Live still listens on *:1935 and OpenRe on 0.0.0.0:1936 (ss). The owner allowed restarts while live for the duration of the roadmap run (operator notes), so this is an accepted, not a removed, risk.",
+      "ownerReview": "Schedule per-slot cutover windows with the broadcasters (and confirm port 1936 is open at the provider edge); confirm that restarts while live stay acceptable until then."
     },
     {
       "id": "H2",
@@ -21,9 +23,11 @@
       "constraint": "Live uses systemd socket activation; stopping openvibe-live.socket drops the listening socket.",
       "owner": "Platform operator",
       "wave": "W21",
-      "mitigation": "Restart only openvibe-live.service; poll /api/ready (boot ~6s).",
-      "status": "open",
-      "check": "live-socket-unit"
+      "mitigation": "The socket unit no longer has PartOf= on the service (Live c456113), so restarting openvibe-live.service leaves the listening socket up; restart only the service and poll /api/ready.",
+      "status": "mitigated",
+      "check": "live-socket-unit",
+      "evidence": "2026-09-23 20:28 UTC: openvibe-live.socket active since 17:59:15 UTC while openvibe-live.service was restarted at 20:21:26 UTC (systemctl show ActiveEnterTimestamp).",
+      "ownerReview": false
     },
     {
       "id": "H3",
@@ -33,8 +37,10 @@
       "constraint": "Recording/finalisation runs inside the Media process. 55 objects / 14.50 GB already sit under B2 vods-orphans/ (21 Sep 2026).",
       "owner": "Media maintainers",
       "wave": "W4 (reconciliation + duration repair) / W7 (recording ownership to OpenRe)",
-      "mitigation": "Do not restart Media while a recording is active; reconcile vods-orphans/ before any retention change.",
-      "status": "open"
+      "mitigation": "openvibe-media.service TimeoutStopSec=80 lets a finalisation finish on stop; ovhost refuses a Media restart while a recording is active (tested); recording ownership moves to OpenRe per slot (W7). Reconcile vods-orphans/ before any retention change.",
+      "status": "partial",
+      "evidence": "2026-09-23 20:28 UTC: TimeoutStopUSec=1min 20s on openvibe-media.service. Recording still runs inside the Media process; the 55 objects under B2 vods-orphans/ (21 Sep) have not been reconciled.",
+      "ownerReview": false
     },
     {
       "id": "H4",
@@ -44,8 +50,10 @@
       "constraint": "Leaked keys remain valid until rotated; a rotation tool was declined earlier.",
       "owner": "Live maintainers (security track S)",
       "wave": "W7 (openre.key.rotate) - or earlier as a standalone rotation",
-      "mitigation": "Ship per-stream key regeneration and rotate every key; notify affected streamers.",
-      "status": "open"
+      "mitigation": "The one key committed to a repository (in Live's control-bridge example since ac0d6a47) was rotated on 2026-09-23 and replaced by a placeholder, with the commit allow-listed in the secret scan. The leaked slot keys are rotated per slot at its OpenRe cutover (ADR-009, openre.key.rotate), or by a standalone rotation in Live if the cutover slips.",
+      "status": "partial",
+      "evidence": "2026-09-23 20:28 UTC (counts only, keys never printed): 97 of the 97 slots present in the pre-leak backup live-pre-643a2e6.db still have the same stream_key; 102 slots in total, all ingest_authority=live.",
+      "ownerReview": "Choose: rotate the 97 leaked slot keys now in Live (each broadcaster must paste a new key), or rotate each at its OpenRe cutover window; and schedule those windows."
     },
     {
       "id": "H5",
@@ -58,7 +66,8 @@
       "mitigation": "Install the model and set WHISPER_MODEL_MULTI in live.env.",
       "status": "mitigated",
       "evidence": "2026-09-22: WHISPER_MODEL_MULTI is set in /etc/openvibe/live.env and the file it names exists on openvibe-oregon (checked with test -f; path not recorded).",
-      "check": "env:live.env:WHISPER_MODEL_MULTI"
+      "check": "env:live.env:WHISPER_MODEL_MULTI",
+      "ownerReview": false
     },
     {
       "id": "H6",
@@ -69,9 +78,10 @@
       "owner": "Platform operator",
       "wave": "W11",
       "mitigation": "Set YT_PROXY and/or YT_COOKIES_FILE for openvibe-tools-yt.",
-      "status": "open",
-      "evidence": "2026-09-22: neither YT_PROXY nor YT_COOKIES_FILE is set in /etc/openvibe/tools.env.",
-      "check": "env-absent:tools.env:YT_PROXY"
+      "status": "blocked-on-owner",
+      "evidence": "2026-09-23: neither YT_PROXY nor YT_COOKIES_FILE is set in /etc/openvibe/tools.env; the yt satellite reports youtube \"blocked\".",
+      "check": "env-absent:tools.env:YT_PROXY",
+      "ownerReview": "Provide a residential proxy or a cookies file for openvibe-tools-yt, or accept that YouTube downloads stay unavailable."
     },
     {
       "id": "H7",
@@ -83,7 +93,8 @@
       "wave": "Track Q",
       "mitigation": "Browser harness must support a remote/containerised runner; prune ~/.claude transcripts (~1.2 GB).",
       "status": "open",
-      "check": "workstation-disk"
+      "check": "workstation-disk",
+      "ownerReview": false
     },
     {
       "id": "H8",
@@ -93,8 +104,10 @@
       "constraint": "Any surviving openvibe-internal-* value and the Cloudflare token must be treated as exposed.",
       "owner": "Platform operator (security track S)",
       "wave": "W1 (scoped service principals) / Track S",
-      "mitigation": "Rotate INTERNAL_API_KEY per service and the Cloudflare token; move to scoped service tokens.",
-      "status": "open"
+      "mitigation": "Removed: the hard-coded openvibe-internal-2026 value and the hard-coded quest secret (register C-59, Live e505868). New services use Network-issued service tokens; Network records every legacy-key call per route (principal_usage) and the key-only routes have removal dates (register C-50..C-57). Remaining: rotate INTERNAL_API_KEY in every env file, then retire the key routes by their dates.",
+      "status": "partial",
+      "evidence": "2026-09-23: no evidence that INTERNAL_API_KEY was rotated after the exposure; the legacy key still authorises 4 Network routes (about 268 calls in the previous 24 h, principal_usage). The Cloudflare token was replaced by a scoped token that expires 2026-10-07 (see H18).",
+      "ownerReview": "Confirm whether INTERNAL_API_KEY was ever rotated after the exposure; approve a coordinated rotation across the env files that still set it."
     },
     {
       "id": "H9",
@@ -105,7 +118,8 @@
       "owner": "Every product wave",
       "wave": "all",
       "mitigation": "Product waves check the prohibitions list (roadmap 9.1) before adding copy or campaigns.",
-      "status": "standing-rule"
+      "status": "standing-rule",
+      "ownerReview": false
     },
     {
       "id": "H10",
@@ -115,9 +129,10 @@
       "constraint": "Commits must be OpenVibers <Contact@OpenVibe.Network> with no assistant trailers or co-author lines.",
       "owner": "Every contributor",
       "wave": "all",
-      "mitigation": "Per-repo git config user.email = Contact@OpenVibe.Network; review history before push.",
-      "status": "open",
-      "check": "commit-identity"
+      "mitigation": "Per-repo git config user.email = Contact@OpenVibe.Network; every new commit follows it. Older history keeps some assistant trailers.",
+      "status": "partial",
+      "check": "commit-identity",
+      "ownerReview": "Decide whether the remaining trailers in older main history are rewritten (a force-push per repo) or left as they are."
     },
     {
       "id": "H11",
@@ -127,9 +142,11 @@
       "constraint": "Raw analytics_events is never pruned although hourly/daily rollups exist; Live analytics.db and network.db are the estate's largest stores.",
       "owner": "OpenVibe.Shared maintainers (openvibe-shared/analytics.js)",
       "wave": "Track O / ADR-021 - before any schema wave touching Live or Network",
-      "mitigation": "Add a retention job that deletes raw rows older than the rollup window, then VACUUM in a maintenance window.",
-      "status": "open",
-      "check": "db-size"
+      "mitigation": "ADR-021: no IP, user id or city stored; raw analytics events are pruned after 30 days on a schedule in Live (nightly job), Tools (timer) and Network (openvibe-shared analytics retention.schedulePrune since 9bbd90f), rollups kept.",
+      "status": "mitigated",
+      "check": "db-size",
+      "evidence": "2026-09-23: Live analytics.db 1.7 GB -> about 500 MB and network.db 731 -> 276 MB after the prune and VACUUM. The pre-ADR-021 backups that still hold IPs are hazard H17.",
+      "ownerReview": false
     },
     {
       "id": "H12",
@@ -139,8 +156,11 @@
       "constraint": "A cacheable static asset stays stale at some edges until max-age expires; the only Cloudflare token is DNS-01 scoped.",
       "owner": "Platform operator",
       "wave": "W21 / Track I",
-      "mitigation": "Add a purge-scoped token and a purge step, or short max-age + stale-while-revalidate on non-hashed assets.",
-      "status": "open"
+      "mitigation": "Cache Rules \"browser_ttl respect_origin\" on every openvibe.* zone and openre.stream (2026-09-23) make the edge follow origin max-age; Search has a purge queue that stays inert until a purge-scoped token exists (CLOUDFLARE_PURGE_TOKEN).",
+      "status": "blocked-on-owner",
+      "evidence": "2026-09-23: CLOUDFLARE_PURGE_TOKEN is not set in search.env; the workstation Cloudflare token has DNS and rulesets scope only (no purge, no zone settings).",
+      "ownerReview": "Mint a purge-scoped Cloudflare token for the Search purge consumer and deploy steps, or accept stale edges until max-age expires.",
+      "check": "env-absent:search.env:CLOUDFLARE_PURGE_TOKEN"
     },
     {
       "id": "H13",
@@ -152,7 +172,8 @@
       "wave": "W0 (checklist) / W21 (release manifests)",
       "mitigation": "Deploy or record why each lagging service is held back.",
       "status": "open",
-      "check": "deploy-drift"
+      "check": "deploy-drift",
+      "ownerReview": false
     },
     {
       "id": "H14",
@@ -162,9 +183,10 @@
       "constraint": "Zero-table openvibe.db/hobo.db and a 260 MB pre-migration backup sit in /opt/openvibe.live/data; nothing records whether they are needed.",
       "owner": "Live maintainers",
       "wave": "W0",
-      "mitigation": "Confirm no code opens them, then delete the empty files and move the backup to /opt/backups with a retention date.",
+      "mitigation": "Confirm no code opens them, then delete the empty files; move copies (backups, import snapshots, rehearsal databases) to /var/backups/openvibe with a retention date.",
       "status": "open",
-      "check": "dead-dbs"
+      "check": "dead-dbs",
+      "ownerReview": "Approve deleting the zero-table files and moving or deleting the import snapshots and backups listed by the check."
     },
     {
       "id": "H15",
@@ -174,9 +196,51 @@
       "constraint": "The first full verification of stored copies found 4 B2 copies whose size does not match the database and 2 missing local files: 6 objects have no verified good copy.",
       "owner": "Media maintainers",
       "wave": "W4 (repair) / W22 (DR drills)",
-      "mitigation": "Re-upload from any surviving source or mark the objects unrecoverable with the owner told; run reconcile --verify on a schedule and alert on new findings.",
+      "mitigation": "Scheduled copy verification now runs inside Media and reports through /api/ready (object_copies); the 6 objects are marked degraded. Each needs a decision: re-upload from a surviving source, or mark it unrecoverable and tell its owner.",
+      "status": "blocked-on-owner",
+      "evidence": "2026-09-23 20:28 UTC: Media /api/ready degraded object_copies: \"6 ready object(s) with no good copy\", last verification run 20:28:17 UTC (report: scripts/no-good-copy-report.js).",
+      "ownerReview": "Decide for each of the 6 objects (3 public VODs, 1 private VOD, 2 screenshots): re-source or mark unrecoverable."
+    },
+    {
+      "id": "H16",
+      "title": "Off-host backups are unreadable without the backup key, which lives only on the host",
+      "source": "OpenVibe.Host docs/backups.md",
+      "severity": "high",
+      "constraint": "Nightly `ovhost backup --all --offsite` copies (openvibe-backup.timer) are encrypted with /etc/openvibe/backup.key. If the host is lost and the key has not been escrowed elsewhere, every off-host copy is unrecoverable.",
+      "owner": "Production-host owner",
+      "wave": "W22",
+      "mitigation": "Escrow the key offline (password manager or paper), record its key id (`ovhost offsite check`) next to it, and test a restore from the bucket with the escrowed copy.",
+      "status": "blocked-on-owner",
+      "evidence": "2026-09-23 20:30 UTC: /etc/openvibe/backup.key exists (root, 0600); first scheduled run 2026-09-24 03:36 UTC; the manual 18:47 run covered live, media and games. Escrow cannot be verified from here.",
+      "ownerReview": "Confirm the backup key is escrowed off the host.",
+      "check": "timer:openvibe-backup.timer"
+    },
+    {
+      "id": "H17",
+      "title": "Pre-ADR-021 analytics backups still hold IP addresses",
+      "source": "ADR-021 rollout, 2026-09-23",
+      "severity": "medium",
+      "constraint": "The safety copies taken before the ADR-021 scrub keep raw IPs, user ids and cities until they are deleted.",
+      "owner": "Platform operator",
+      "wave": "Track O / ADR-021",
+      "mitigation": "Delete after 2026-10-07: /opt/openvibe.live/data/backups/analytics-pre-adr021-2026-09-23.db, /opt/openvibe.tools/backups/analytics-2026-09-23/, and Network data/backups/network.db.pre-adr021-20260923T1634.",
       "status": "open",
-      "evidence": "2026-09-23: reconcile --verify over 3,020 objects and 2,847 locations; remote 686 checked (682 present, 4 corrupt)."
+      "evidence": "2026-09-23 20:23 UTC production snapshot: the Live and Tools copies are present (see the dead-dbs check under H14).",
+      "ownerReview": false
+    },
+    {
+      "id": "H18",
+      "title": "The Cloudflare API token expires on 2026-10-07",
+      "source": "operator notes (cloudflare-layout)",
+      "severity": "medium",
+      "constraint": "DNS records and cache rules for every zone are managed with a workstation-only token that expires 2026-10-07 and has no zone-settings, purge or token-creation scope. After expiry no DNS or cache change can be made by the agents.",
+      "owner": "Production-host owner",
+      "wave": "W21 / Track I",
+      "mitigation": "Mint a replacement before 2026-10-07 (DNS + rulesets, plus purge if H12 is to be closed); keep it off the server.",
+      "status": "blocked-on-owner",
+      "evidence": "2026-09-23: token scope and expiry recorded when it was issued; not re-checked against the Cloudflare API in this run.",
+      "ownerReview": "Mint the replacement token before 2026-10-07."
     }
-  ]
+  ],
+  "updated": "2026-09-23"
 }

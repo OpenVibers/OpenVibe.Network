@@ -10,7 +10,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 |---|---|---|
 | User JWT (RS256, Network-issued, verified offline via JWKS) | all services | Network server/auth, CONTRACTS.md |
 | OAuth2 client credentials per app (OV_OAUTH_CLIENT_ID/SECRET) | Live, Tools, Games, Media, Community | CONTRACTS.md |
-| Shared internal key (X-Internal-Key / INTERNAL_API_KEY) | 6 calling repos | Network /internal/*, Live /internal/* |
+| Shared internal key (X-Internal-Key / INTERNAL_API_KEY) | 15 calling repos | Network /internal/*, Live /internal/* |
 | Per-app Media API key (Bearer) | Live, Community, Tools | Media apps table + MEDIA_APP_KEYS |
 | HMAC webhook signatures | Media -> Live, PowerChat, Resend | X-OVMedia-Signature, Svix |
 | hbt_ API tokens | Live bots/integrations | Live api_tokens (docs/api-tokens.md) |
@@ -20,21 +20,59 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 
 | Repo | Variable | In prod | Read at |
 |---|---|---|---|
-| OpenVibe.Community | COOKIE_SECURE | **not set** | server/config.js |
+| OpenRe.Stream | MEDIA_API_KEY | openre.env | server/config.js |
+| OpenRe.Stream | OPENRE_SECRETS_KEY | openre.env | server/config.js |
+| OpenRe.Stream | OPENRE_SECRETS_KEY_PREVIOUS | **not set** | server/config.js |
+| OpenRe.Stream | OV_OAUTH_CLIENT_SECRET | openre.env | server/config.js |
+| OpenVibe.AI | AI_API_KEY | ai.env | (not referenced) |
+| OpenVibe.AI | OV_OAUTH_CLIENT_SECRET | ai.env | (not referenced) |
+| OpenVibe.Billing | BILLING_SESSION_SECRET | billing.env | server/config.js |
+| OpenVibe.Billing | CCBILL_WEBHOOK_SECRET | **not set** | server/config.js |
+| OpenVibe.Billing | NOWPAYMENTS_API_KEY | **not set** | server/config.js |
+| OpenVibe.Billing | NOWPAYMENTS_IPN_SECRET | **not set** | server/config.js |
+| OpenVibe.Billing | OV_OAUTH_CLIENT_SECRET | billing.env | server/config.js |
+| OpenVibe.Billing | PAYPAL_CLIENT_SECRET | **not set** | server/config.js |
+| OpenVibe.Billing | POWERCHAT_WEBHOOK_SECRET | **not set** | server/config.js |
+| OpenVibe.Billing | STRIPE_SECRET_KEY | **not set** | server/config.js |
+| OpenVibe.Billing | STRIPE_WEBHOOK_SECRET | **not set** | server/config.js |
+| OpenVibe.Blog | BLOG_FORM_SECRET | blog.env | server/config.js |
+| OpenVibe.Blog | OV_OAUTH_CLIENT_SECRET | blog.env | server/config.js |
+| OpenVibe.Chat | OV_OAUTH_CLIENT_SECRET | chat.env | server/config.js |
+| OpenVibe.Codes | CODES_FORM_SECRET | codes.env | server/config.js |
+| OpenVibe.Codes | OV_CLIENT_SECRET | **not set** | server/http/portal.js |
+| OpenVibe.Codes | OV_OAUTH_CLIENT_SECRET | codes.env | server/config.js |
+| OpenVibe.Community | DISCORD_RELAY_WEBHOOK_VARS | **not set** | server/config.js |
 | OpenVibe.Community | OV_OAUTH_CLIENT_SECRET | community.env | server/config.js |
 | OpenVibe.Community | VIEW_HASH_SECRET | **not set** | server/pastes/service.js |
+| OpenVibe.Coupons | COUPONS_FORM_SECRET | coupons.env | server/config.js |
+| OpenVibe.Coupons | COUPONS_LOOKUP_TOKEN_PER_MIN | **not set** | server/config.js |
+| OpenVibe.Coupons | COUPONS_REPORTER_KEY_SECRET | coupons.env | server/config.js |
+| OpenVibe.Coupons | OV_OAUTH_CLIENT_SECRET | coupons.env | server/config.js |
+| OpenVibe.Deals | DEALS_EVENTS_SECRET | deals.env | server/config.js |
+| OpenVibe.Deals | DEALS_FORM_SECRET | deals.env | server/config.js |
+| OpenVibe.Deals | DEALS_IP_HASH_SECRET | deals.env | server/config.js |
+| OpenVibe.Deals | OV_OAUTH_CLIENT_SECRET | deals.env | server/config.js |
+| OpenVibe.Events | OV_OAUTH_CLIENT_SECRET | events.env | (not referenced) |
+| OpenVibe.Examples | OV_CHAT_TOKEN | **not set** | examples/chat-bot/bot.js |
+| OpenVibe.Examples | OV_CLIENT_SECRET | **not set** | examples/event-subscriber/publish.js, examples/event-subscriber/subscriber.js, examples/media-uploader/upload.js +4 |
+| OpenVibe.Examples | OV_WEBHOOK_SECRET | **not set** | examples/webhook-consumer/server.js |
+| OpenVibe.Examples | OV_WEBHOOK_SECRET_PREVIOUS | **not set** | examples/webhook-consumer/server.js |
 | OpenVibe.Games | EDITOR_KEY | games.env | apps/server/src/config.ts |
 | OpenVibe.Games | OV_OAUTH_CLIENT_SECRET | games.env | apps/server/src/config.ts |
+| OpenVibe.Host | HOST_FORM_SECRET | host.env | server/config.js |
+| OpenVibe.Host | OV_OAUTH_CLIENT_SECRET | host.env | server/config.js |
 | OpenVibe.Live | ADMIN_PASSWORD | live.env | server/config.js |
 | OpenVibe.Live | GH_TOKEN | **not set** | server/meta/routes.js |
 | OpenVibe.Live | GITHUB_TOKEN | **not set** | server/meta/routes.js |
 | OpenVibe.Live | INTERNAL_API_KEY | live.env | server/chat/chat-server.js, server/config.js, server/monetization/wallet-client.js +3 |
 | OpenVibe.Live | JWT_SECRET | live.env | server/arena/arena-service.js, server/config.js, server/integrations/platform-oauth.js +1 |
 | OpenVibe.Live | MEDIA_API_KEY | live.env | server/media-client.js |
+| OpenVibe.Live | MEDIA_EVENTS_SECRET | live.env | server/media-proxy/media-events.js |
 | OpenVibe.Live | MEDIA_WEBHOOK_SECRET | live.env | server/media-proxy/webhook.js |
-| OpenVibe.Live | OPS_ALERT_WEBHOOK_URL | **not set** | server/media-proxy/webhook.js |
+| OpenVibe.Live | OPENRE_EVENTS_SECRET | live.env | server/openre/mirror.js, server/openre/routes.js |
+| OpenVibe.Live | OPS_ALERT_WEBHOOK_URL | **not set** | server/media-proxy/outcomes.js |
 | OpenVibe.Live | OV_INTERNAL_KEY | **not set** | server/chat/chat-server.js, server/config.js, server/monetization/wallet-client.js +3 |
-| OpenVibe.Live | OV_OAUTH_CLIENT_SECRET | live.env | server/auth/routes.js, server/net/network-principal.js |
+| OpenVibe.Live | OV_OAUTH_CLIENT_SECRET | live.env | server/auth/routes.js, server/events/stream-events.js, server/net/network-principal.js +2 |
 | OpenVibe.Live | PAYPAL_CLIENT_SECRET | live.env | server/config.js |
 | OpenVibe.Live | TURN_AUTH_SECRET | live.env | server/auth/routes.js, server/net/turn.js |
 | OpenVibe.Live | TURN_CREDENTIAL | live.env | server/config.js |
@@ -42,49 +80,351 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Media | MEDIA_B2_APP_KEY | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_R2_SECRET_ACCESS_KEY | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_SECRET | **not set** | server/views/service.js |
-| OpenVibe.Media | MEDIA_SIGNING_SECRET | **not set** | server/config.js |
-| OpenVibe.Media | OV_OAUTH_CLIENT_SECRET | media.env | server/index.js |
+| OpenVibe.Media | MEDIA_SIGNING_SECRET | media.env | server/config.js |
+| OpenVibe.Media | OV_OAUTH_CLIENT_SECRET | media.env | server/events.js, server/index.js |
 | OpenVibe.Media | VIEW_HASH_SECRET | **not set** | server/views/service.js |
 | OpenVibe.Network | ADMIN_PASSWORD | network.env | server/config.js |
+| OpenVibe.Network | DEV_CREDENTIAL_OVERLAP_S | **not set** | server/config.js |
 | OpenVibe.Network | INTERNAL_API_KEY | network.env | server/admin/routes.js, server/config.js |
 | OpenVibe.Network | JWT_PRIVATE_KEY | network.env | server/config.js |
+| OpenVibe.Network | NETWORK_EVENTS_SECRET | network.env | server/config.js |
 | OpenVibe.Network | OV_GAMES_WEBHOOK_SECRET | **not set** | server/config.js |
 | OpenVibe.Network | OV_INTERNAL_KEY | **not set** | server/admin/routes.js |
 | OpenVibe.Network | OV_LIVE_WEBHOOK_SECRET | **not set** | server/config.js |
 | OpenVibe.Network | SETUP_TOKEN | **not set** | server/config.js |
+| OpenVibe.News | NEWS_EVENTS_SECRET | news.env | server/config.js |
+| OpenVibe.News | NEWS_FORM_SECRET | news.env | server/config.js |
+| OpenVibe.News | OV_OAUTH_CLIENT_SECRET | news.env | server/config.js |
+| OpenVibe.Reviews | OV_OAUTH_CLIENT_SECRET | reviews.env | server/config.js |
+| OpenVibe.Reviews | REVIEWS_EVENTS_SECRET | reviews.env | server/config.js |
+| OpenVibe.Search | CLOUDFLARE_PURGE_TOKEN | **not set** | server/config.js |
+| OpenVibe.Search | OV_OAUTH_CLIENT_SECRET | search.env | server/config.js |
+| OpenVibe.Search | SEARCH_EVENTS_SECRET | search.env | server/config.js |
+| OpenVibe.Sources | OV_OAUTH_CLIENT_SECRET | sources.env | server/config.js |
+| OpenVibe.Sources | SOURCES_ALLOW_PRIVATE_HOSTS | **not set** | server/config.js |
+| OpenVibe.Tips | OV_OAUTH_CLIENT_SECRET | tips.env | server/config.js |
+| OpenVibe.Tips | TIPS_EVENTS_SECRET | tips.env | server/config.js |
+| OpenVibe.Tips | TIPS_FORM_SECRET | tips.env | server/config.js |
 | OpenVibe.Tools | COOKIE_DOMAIN | **not set** | apps/gateway/server/config.js |
-| OpenVibe.Tools | COOKIE_SECURE | **not set** | apps/gateway/server/config.js |
 | OpenVibe.Tools | INTERNAL_API_KEY | tools.env | apps/_shared/internal-auth.js |
 | OpenVibe.Tools | NPS_API_KEY | **not set** | apps/maps/server/config.js |
 | OpenVibe.Tools | OPEN_CHARGE_MAP_KEY | **not set** | apps/maps/server/config.js |
 | OpenVibe.Tools | OV_INTERNAL_KEY | **not set** | apps/_shared/internal-auth.js |
-| OpenVibe.Tools | OV_OAUTH_CLIENT_SECRET | tools.env | apps/gateway/server/config.js |
+| OpenVibe.Tools | OV_OAUTH_CLIENT_SECRET | tools.env | apps/_shared/jobs/events.js, apps/_shared/jobs/index.js, apps/gateway/server/config.js |
 | OpenVibe.Tools | RIDB_API_KEY | **not set** | apps/maps/server/config.js, apps/maps/server/sources/ridb.js |
+| OpenVibe.Trade | OV_OAUTH_CLIENT_SECRET | trade.env | server/config.js |
+| OpenVibe.Trade | TRADE_EVENTS_WEBHOOK_SECRET | **not set** | server/config.js |
+| OpenVibe.Trade | TRADE_FORM_SECRET | trade.env | server/config.js |
+| OpenVibe.VIP | OV_OAUTH_CLIENT_SECRET | vip.env | server/config.js |
+| OpenVibe.VIP | VIP_EVENTS_SECRET | vip.env | server/config.js |
+| OpenVibe.VIP | VIP_FORM_SECRET | vip.env | server/config.js |
+| OpenVibe.Wiki | OV_OAUTH_CLIENT_SECRET | wiki.env | server/config.js |
 
 ## Env files on the production host
 
 | File | Variables |
 |---|---|
+| /etc/openvibe/ai.env | 22 |
+| /etc/openvibe/backup.env | 7 |
+| /etc/openvibe/billing.env | 11 |
+| /etc/openvibe/blog.env | 13 |
+| /etc/openvibe/chat.env | 10 |
+| /etc/openvibe/codes.env | 10 |
 | /etc/openvibe/community.env | 14 |
-| /etc/openvibe/games.env | 12 |
+| /etc/openvibe/coupons.env | 12 |
+| /etc/openvibe/deals.env | 14 |
+| /etc/openvibe/events.env | 2 |
+| /etc/openvibe/games.env | 15 |
 | /etc/openvibe/generated-secrets.env | 6 |
-| /etc/openvibe/live.env | 54 |
-| /etc/openvibe/media.env | 28 |
-| /etc/openvibe/network.env | 21 |
-| /etc/openvibe/tools.env | 9 |
+| /etc/openvibe/host.env | 12 |
+| /etc/openvibe/live.env | 63 |
+| /etc/openvibe/media.env | 30 |
+| /etc/openvibe/network.env | 23 |
+| /etc/openvibe/news.env | 12 |
+| /etc/openvibe/openre.env | 12 |
+| /etc/openvibe/reviews.env | 12 |
+| /etc/openvibe/search.env | 9 |
+| /etc/openvibe/sources.env | 7 |
+| /etc/openvibe/tips.env | 12 |
+| /etc/openvibe/tools.env | 12 |
+| /etc/openvibe/trade.env | 11 |
+| /etc/openvibe/vip.env | 11 |
+| /etc/openvibe/wiki.env | 13 |
 
 ## Other configuration variables
 
 | Repo | Variable | In prod | Read at |
 |---|---|---|---|
+| OpenRe.Stream | BASE_URL |  | server/config.js |
+| OpenRe.Stream | COOKIE_SECURE |  | server/config.js |
+| OpenRe.Stream | EVENTS_PUBLISH |  | server/config.js |
+| OpenRe.Stream | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenRe.Stream | EVENTS_URL | openre.env | server/config.js |
+| OpenRe.Stream | HOST |  | server/config.js |
+| OpenRe.Stream | MEDIA_APP_ID | openre.env | server/config.js |
+| OpenRe.Stream | MEDIA_URL | openre.env | server/config.js |
+| OpenRe.Stream | NODE_ENV |  | server/config.js |
+| OpenRe.Stream | OPENRE_COORDINATOR_INTERVAL_MS |  | server/config.js |
+| OpenRe.Stream | OPENRE_DB_PATH |  | server/config.js |
+| OpenRe.Stream | OPENRE_DEST_ALLOW_PRIVATE |  | server/config.js |
+| OpenRe.Stream | OPENRE_DRAIN_MAX_MS |  | server/config.js |
+| OpenRe.Stream | OPENRE_DRILL |  | server/config.js |
+| OpenRe.Stream | OPENRE_ENV_FILE |  | server/index.js, workers/coordinator.js +3 |
+| OpenRe.Stream | OPENRE_FFMPEG_OPENSSL_PATH |  | server/config.js |
+| OpenRe.Stream | OPENRE_FFMPEG_PATH |  | server/config.js |
+| OpenRe.Stream | OPENRE_LIVE_ACK_TIMEOUT_MS |  | server/config.js |
+| OpenRe.Stream | OPENRE_MAX_DESTINATIONS |  | server/config.js |
+| OpenRe.Stream | OPENRE_MAX_RESTARTS |  | server/config.js |
+| OpenRe.Stream | OPENRE_MEDIA_AUTH |  | server/config.js |
+| OpenRe.Stream | OPENRE_OUTPUT_LOG_LIMIT |  | server/config.js |
+| OpenRe.Stream | OPENRE_OUTPUT_START_DELAY_MS |  | server/config.js |
+| OpenRe.Stream | OPENRE_RAPID_CRASH_GIVEUP |  | server/config.js |
+| OpenRe.Stream | OPENRE_RAPID_CRASH_MS |  | server/config.js |
+| OpenRe.Stream | OPENRE_RECORDING |  | server/config.js |
+| OpenRe.Stream | OPENRE_RECORDING_START_DELAY_MS |  | server/config.js |
+| OpenRe.Stream | OPENRE_RELEASE |  | server/config.js |
+| OpenRe.Stream | OPENRE_RESTART_BASE_MS |  | server/config.js |
+| OpenRe.Stream | OPENRE_RESTART_MAX_MS |  | server/config.js |
+| OpenRe.Stream | OPENRE_RESTREAM_POLL_MS |  | server/config.js |
+| OpenRe.Stream | OPENRE_RTMP_BIND | openre.env | server/config.js |
+| OpenRe.Stream | OPENRE_RTMP_CHUNK_SIZE |  | server/config.js |
+| OpenRe.Stream | OPENRE_RTMP_EXTRA_PORTS |  | server/config.js |
+| OpenRe.Stream | OPENRE_RTMP_INTERNAL_PORT_MAX |  | server/config.js |
+| OpenRe.Stream | OPENRE_RTMP_INTERNAL_PORT_MIN |  | server/config.js |
+| OpenRe.Stream | OPENRE_RTMP_MAX_PUBLISHERS |  | server/config.js |
+| OpenRe.Stream | OPENRE_RTMP_PORT | openre.env | server/config.js |
+| OpenRe.Stream | OPENRE_RTMP_PUBLIC_HOST | openre.env | server/config.js |
+| OpenRe.Stream | OPENRE_RTMP_PUBLIC_PORT |  | server/config.js |
+| OpenRe.Stream | OPENRE_STABLE_MS |  | server/config.js |
+| OpenRe.Stream | OPENRE_USER_AUDIENCES |  | server/config.js |
+| OpenRe.Stream | OPENRE_WORKER_HEARTBEAT_MS |  | server/config.js |
+| OpenRe.Stream | OPENRE_WORKER_LEASE_MS |  | server/config.js |
+| OpenRe.Stream | OV_LIVE_URL |  | server/config.js |
+| OpenRe.Stream | OV_NETWORK_INTERNAL_URL | openre.env | server/config.js |
+| OpenRe.Stream | OV_NETWORK_ISSUER |  | server/config.js |
+| OpenRe.Stream | OV_NETWORK_PUBLIC_KEY |  | server/config.js |
+| OpenRe.Stream | OV_NETWORK_URL | openre.env | server/config.js |
+| OpenRe.Stream | OV_OAUTH_CLIENT_ID | openre.env | server/config.js |
+| OpenRe.Stream | OV_OAUTH_REDIRECT_URI |  | server/config.js |
+| OpenRe.Stream | PORT |  | server/config.js |
+| OpenRe.Stream | TRUST_PROXY |  | server/config.js |
+| OpenVibe.AI | AI_BASE_URL | ai.env | server/config.js |
+| OpenVibe.AI | AI_BREAKER_COOLDOWN_MS |  | server/config.js |
+| OpenVibe.AI | AI_BREAKER_FAILURES |  | server/config.js |
+| OpenVibe.AI | AI_CACHE_TTL_SEC |  | server/config.js |
+| OpenVibe.AI | AI_DB_PATH |  | server/config.js |
+| OpenVibe.AI | AI_DEBUG_RAW_LOG |  | server/config.js |
+| OpenVibe.AI | AI_EMBEDDING_MODEL |  | server/workflows/seed.js |
+| OpenVibe.AI | AI_ENABLED | ai.env | server/config.js |
+| OpenVibe.AI | AI_FALLBACK_BASE_URL |  | server/config.js |
+| OpenVibe.AI | AI_FALLBACK_MODEL |  | server/config.js |
+| OpenVibe.AI | AI_FALLBACK_PROVIDER |  | server/config.js |
+| OpenVibe.AI | AI_FETCH_ALLOW_HOSTS |  | server/config.js |
+| OpenVibe.AI | AI_FETCH_MAX_BYTES |  | server/config.js |
+| OpenVibe.AI | AI_FETCH_MAX_IMAGE_BYTES |  | server/config.js |
+| OpenVibe.AI | AI_FETCH_TIMEOUT_MS |  | server/config.js |
+| OpenVibe.AI | AI_HTTP_SEAM_URL |  | server/config.js |
+| OpenVibe.AI | AI_INPUT_COST_PER_MTOK | ai.env | server/config.js |
+| OpenVibe.AI | AI_MAX_CONCURRENT_RUNS |  | server/config.js |
+| OpenVibe.AI | AI_MAX_COST_USD_PER_DAY | ai.env | server/config.js |
+| OpenVibe.AI | AI_MAX_INPUT_BYTES |  | server/config.js |
+| OpenVibe.AI | AI_MAX_QUEUED_RUNS |  | server/config.js |
+| OpenVibe.AI | AI_MAX_QUEUED_RUNS_PER_CALLER |  | server/config.js |
+| OpenVibe.AI | AI_MAX_WAIT_MS |  | server/config.js |
+| OpenVibe.AI | AI_MODEL | ai.env | server/config.js |
+| OpenVibe.AI | AI_NS_FALLBACK |  | server/config.js |
+| OpenVibe.AI | AI_NS_REQUIRED |  | server/config.js |
+| OpenVibe.AI | AI_OUTPUT_COST_PER_MTOK | ai.env | server/config.js |
+| OpenVibe.AI | AI_PRICING_JSON | ai.env | server/config.js |
+| OpenVibe.AI | AI_PROVIDER | ai.env | server/config.js |
+| OpenVibe.AI | AI_PROVIDER_RETRIES |  | server/config.js |
+| OpenVibe.AI | AI_PROVIDER_RETRY_DELAY_MS |  | server/config.js |
+| OpenVibe.AI | AI_PROVIDER_TIMEOUT_MS |  | server/config.js |
+| OpenVibe.AI | AI_QUOTA_SERVICE_RPD |  | server/config.js |
+| OpenVibe.AI | AI_QUOTA_SERVICE_RPM |  | server/config.js |
+| OpenVibe.AI | AI_RUN_RETENTION_DAYS |  | server/config.js |
+| OpenVibe.AI | AI_SCHEMA_CACHE_MAX |  | server/config.js |
+| OpenVibe.AI | AI_SCHEMA_CACHE_MAX_BYTES |  | server/config.js |
+| OpenVibe.AI | AI_STUB_FALLBACK | ai.env | server/config.js |
+| OpenVibe.AI | BASE_URL | ai.env | server/config.js |
+| OpenVibe.AI | HOST | ai.env | server/config.js |
+| OpenVibe.AI | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.AI | NAME |  | server/util.js |
+| OpenVibe.AI | NODE_ENV |  | server/config.js |
+| OpenVibe.AI | OV_MEDIA_INTERNAL_URL |  | server/config.js |
+| OpenVibe.AI | OV_MEDIA_URL | ai.env | server/config.js |
+| OpenVibe.AI | OV_NETWORK_INTERNAL_URL | ai.env | server/config.js |
+| OpenVibe.AI | OV_NETWORK_ISSUER |  | server/config.js |
+| OpenVibe.AI | OV_NETWORK_PUBLIC_KEY |  | server/config.js |
+| OpenVibe.AI | OV_NETWORK_URL | ai.env | server/config.js |
+| OpenVibe.AI | OV_OAUTH_CLIENT_ID | ai.env | (not referenced) |
+| OpenVibe.AI | PORT |  | server/config.js |
+| OpenVibe.AI | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.AI | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.AI | WHISPER_BEAM |  | server/config.js |
+| OpenVibe.AI | WHISPER_BIN | ai.env | server/config.js |
+| OpenVibe.AI | WHISPER_MAX_CONCURRENT |  | server/config.js |
+| OpenVibe.AI | WHISPER_MODEL | ai.env | server/config.js |
+| OpenVibe.AI | WHISPER_MODEL_LIVE | ai.env | server/config.js |
+| OpenVibe.AI | WHISPER_MODEL_MULTI | ai.env | server/config.js |
+| OpenVibe.AI | WHISPER_THREADS |  | server/config.js |
+| OpenVibe.AI | WHISPER_VAD |  | server/config.js |
+| OpenVibe.AI | WHISPER_VAD_MODEL | ai.env | server/config.js |
+| OpenVibe.Billing | BASE_URL | billing.env | server/config.js |
+| OpenVibe.Billing | BILLING_AUDIENCE | billing.env | server/config.js |
+| OpenVibe.Billing | BILLING_AUTHORITY |  | server/config.js |
+| OpenVibe.Billing | BILLING_BITS_PER_USD |  | server/config.js |
+| OpenVibe.Billing | BILLING_DB_PATH |  | server/config.js |
+| OpenVibe.Billing | BILLING_ESCROW_DAYS |  | server/config.js |
+| OpenVibe.Billing | BILLING_JOBS |  | server/config.js |
+| OpenVibe.Billing | BILLING_MAX_BITS |  | server/config.js |
+| OpenVibe.Billing | BILLING_MIN_CASHOUT_BITS |  | server/config.js |
+| OpenVibe.Billing | BILLING_MIN_PURCHASE_BITS |  | server/config.js |
+| OpenVibe.Billing | BILLING_PRICE_TIERS |  | server/config.js |
+| OpenVibe.Billing | BILLING_RECONCILE_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Billing | BILLING_RECONCILE_KEEP_DAYS |  | server/config.js |
+| OpenVibe.Billing | BILLING_RECONCILE_STALE_RECEIPT_MIN |  | server/config.js |
+| OpenVibe.Billing | BILLING_SESSION_TTL_MIN |  | server/config.js |
+| OpenVibe.Billing | BILLING_SITE_ROUTE_FEE_PCT |  | server/config.js |
+| OpenVibe.Billing | BILLING_SSO_AUDIENCE |  | server/config.js |
+| OpenVibe.Billing | BILLING_STAFF_SUBJECTS | billing.env | server/config.js |
+| OpenVibe.Billing | BILLING_STRIPE_GRACE_DAYS |  | server/config.js |
+| OpenVibe.Billing | BILLING_SUB_PERIOD_DAYS |  | server/config.js |
+| OpenVibe.Billing | BILLING_SUB_PRICE_CENTS |  | server/config.js |
+| OpenVibe.Billing | BILLING_SUB_SHARE_PCT |  | server/config.js |
+| OpenVibe.Billing | BILLING_SWEEP_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Billing | BILLING_WEBHOOK_RETRY_MS |  | server/config.js |
+| OpenVibe.Billing | CCBILL_CLIENT_ACCOUNT |  | server/config.js |
+| OpenVibe.Billing | CCBILL_FLEXFORM_ID |  | server/config.js |
+| OpenVibe.Billing | CCBILL_SALT |  | server/config.js |
+| OpenVibe.Billing | CCBILL_SUBACCOUNT |  | server/config.js |
+| OpenVibe.Billing | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Billing | EVENTS_URL | billing.env | server/config.js |
+| OpenVibe.Billing | HOST |  | server/config.js |
+| OpenVibe.Billing | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Billing | NODE_ENV |  | server/config.js |
+| OpenVibe.Billing | NOWPAYMENTS_API_BASE |  | server/config.js |
+| OpenVibe.Billing | OV_NETWORK_INTERNAL_URL | billing.env | server/config.js |
+| OpenVibe.Billing | OV_NETWORK_ISSUER |  | server/config.js |
+| OpenVibe.Billing | OV_NETWORK_PUBLIC_KEY |  | server/config.js |
+| OpenVibe.Billing | OV_NETWORK_URL | billing.env | server/config.js |
+| OpenVibe.Billing | OV_OAUTH_CLIENT_ID | billing.env | server/config.js |
+| OpenVibe.Billing | PAYPAL_API_BASE |  | server/config.js |
+| OpenVibe.Billing | PAYPAL_CLIENT_ID |  | server/config.js |
+| OpenVibe.Billing | PAYPAL_MODE |  | server/config.js |
+| OpenVibe.Billing | PAYPAL_WEBHOOK_ID |  | server/config.js |
+| OpenVibe.Billing | PORT |  | server/config.js |
+| OpenVibe.Billing | POWERCHAT_ALLOW_TEST_FULFILLMENT |  | server/config.js |
+| OpenVibe.Billing | POWERCHAT_MAX_SKEW_MS |  | server/config.js |
+| OpenVibe.Billing | POWERCHAT_SITE_USERNAME | billing.env | server/config.js |
+| OpenVibe.Billing | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Billing | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Billing | STRIPE_API_BASE |  | server/config.js |
+| OpenVibe.Billing | STRIPE_TOLERANCE_SEC |  | server/config.js |
+| OpenVibe.Billing | TRUST_PROXY | billing.env | server/config.js |
+| OpenVibe.Blog | API_CORS_ORIGINS |  | server/config.js |
+| OpenVibe.Blog | BASE_URL | blog.env | server/config.js |
+| OpenVibe.Blog | BLOG_DB_PATH |  | server/config.js |
+| OpenVibe.Blog | BLOG_ENTITLEMENTS_PROVIDER |  | server/config.js |
+| OpenVibe.Blog | BLOG_MEDIA_APP |  | server/config.js |
+| OpenVibe.Blog | BLOG_MEDIA_VERIFY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Blog | BLOG_OFFICIAL_DESCRIPTION |  | server/config.js |
+| OpenVibe.Blog | BLOG_OFFICIAL_OWNERS | blog.env | server/config.js |
+| OpenVibe.Blog | BLOG_OFFICIAL_TITLE |  | server/config.js |
+| OpenVibe.Blog | BLOG_SCHEDULE_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Blog | BLOG_VIP_CACHE_DENY_TTL_MS |  | server/config.js |
+| OpenVibe.Blog | BLOG_VIP_CACHE_TTL_MS |  | server/config.js |
+| OpenVibe.Blog | BLOG_VIP_CACHE_UNAVAILABLE_TTL_MS |  | server/config.js |
+| OpenVibe.Blog | BLOG_VIP_TIMEOUT_MS |  | server/config.js |
+| OpenVibe.Blog | BLOG_WORKER |  | server/config.js |
+| OpenVibe.Blog | BLOG_WORKER_ID |  | server/config.js |
+| OpenVibe.Blog | COOKIE_SECURE |  | server/config.js |
+| OpenVibe.Blog | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Blog | EVENTS_URL | blog.env | server/config.js |
+| OpenVibe.Blog | HOST | blog.env | server/config.js |
+| OpenVibe.Blog | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Blog | NODE_ENV |  | server/config.js |
+| OpenVibe.Blog | OV_COMMUNITY_INTERNAL_URL | blog.env | server/config.js |
+| OpenVibe.Blog | OV_COMMUNITY_URL |  | server/config.js |
+| OpenVibe.Blog | OV_MEDIA_INTERNAL_URL | blog.env | server/config.js |
+| OpenVibe.Blog | OV_MEDIA_URL | blog.env | server/config.js |
+| OpenVibe.Blog | OV_NETWORK_INTERNAL_URL | blog.env | server/config.js |
+| OpenVibe.Blog | OV_NETWORK_URL | blog.env | server/config.js |
+| OpenVibe.Blog | OV_OAUTH_CLIENT_ID | blog.env | server/config.js |
+| OpenVibe.Blog | OV_OAUTH_REDIRECT_URI |  | server/config.js |
+| OpenVibe.Blog | OV_VIP_INTERNAL_URL |  | server/config.js |
+| OpenVibe.Blog | OV_VIP_URL |  | server/config.js |
+| OpenVibe.Blog | PORT |  | server/config.js |
+| OpenVibe.Blog | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Blog | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Blog | TRUST_PROXY | blog.env | server/config.js |
+| OpenVibe.Chat | ALLOWED_ORIGINS |  | server/config.js |
+| OpenVibe.Chat | BASE_URL | chat.env | server/config.js |
+| OpenVibe.Chat | CHAT_CACHE_DIR |  | server/config.js |
+| OpenVibe.Chat | CHAT_DB_PATH |  | server/config.js |
+| OpenVibe.Chat | CHAT_VIP_BADGE_DENY_TTL_MS |  | server/config.js |
+| OpenVibe.Chat | CHAT_VIP_BADGE_TTL_MS |  | server/config.js |
+| OpenVibe.Chat | CHAT_VIP_BADGE_UNAVAILABLE_TTL_MS |  | server/config.js |
+| OpenVibe.Chat | CHAT_VIP_BADGES |  | server/config.js |
+| OpenVibe.Chat | CLOUDFLARE_IP_RANGES |  | server/net/client-ip.js |
+| OpenVibe.Chat | DEBUG_DM_DELIVERY |  | server/chat/chat-server.js |
+| OpenVibe.Chat | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Chat | EVENTS_URL | chat.env | server/config.js |
+| OpenVibe.Chat | HOST |  | server/config.js |
+| OpenVibe.Chat | LIVE_MIRROR | chat.env | server/config.js |
+| OpenVibe.Chat | LIVE_MIRROR_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Chat | LIVE_SYNC_STALE_MS |  | server/config.js |
+| OpenVibe.Chat | LIVE_TIMEOUT_MS |  | server/config.js |
+| OpenVibe.Chat | MAX_SOUND_SIZE_KB |  | server/config.js |
+| OpenVibe.Chat | MAX_SOUNDS_PER_CHANNEL |  | server/config.js |
+| OpenVibe.Chat | MAX_SOUNDS_PER_UPLOADER_PER_CHANNEL |  | server/config.js |
+| OpenVibe.Chat | NODE_ENV |  | server/config.js |
+| OpenVibe.Chat | OV_LIVE_INTERNAL_URL | chat.env | server/config.js |
+| OpenVibe.Chat | OV_NETWORK_INTERNAL_URL | chat.env | server/config.js |
+| OpenVibe.Chat | OV_NETWORK_PUBLIC_KEY |  | server/config.js |
+| OpenVibe.Chat | OV_NETWORK_URL | chat.env | server/config.js |
+| OpenVibe.Chat | OV_OAUTH_CLIENT_ID | chat.env | server/config.js |
+| OpenVibe.Chat | OV_VIP_INTERNAL_URL |  | server/config.js |
+| OpenVibe.Chat | PORT |  | server/config.js |
+| OpenVibe.Chat | SITE_URL | chat.env | server/chat/chat-server.js |
+| OpenVibe.Chat | SOUND_DEFAULT_MAX_SECONDS |  | server/config.js |
+| OpenVibe.Chat | SOUNDS_PATH |  | server/config.js |
+| OpenVibe.Chat | TRUST_PROXY | chat.env | server/config.js |
+| OpenVibe.Chat | VIP_TIMEOUT_MS |  | server/config.js |
+| OpenVibe.Codes | BASE_URL | codes.env | server/config.js |
+| OpenVibe.Codes | CODES_DB_PATH |  | server/config.js |
+| OpenVibe.Codes | CODES_PLAYGROUND_EVENTS_URL |  | server/config.js |
+| OpenVibe.Codes | CODES_PLAYGROUND_MAX_UPLOAD_BYTES |  | server/config.js |
+| OpenVibe.Codes | CODES_PLAYGROUND_MEDIA_URL |  | server/config.js |
+| OpenVibe.Codes | CODES_PLAYGROUND_RUNS_PER_HOUR |  | server/config.js |
+| OpenVibe.Codes | CODES_REGISTRY_TTL_MS |  | server/config.js |
+| OpenVibe.Codes | CODES_STAFF_SUBJECTS | codes.env | server/config.js |
+| OpenVibe.Codes | COOKIE_SECURE |  | server/config.js |
+| OpenVibe.Codes | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Codes | EVENTS_URL | codes.env | server/config.js |
+| OpenVibe.Codes | HOST | codes.env | server/config.js |
+| OpenVibe.Codes | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Codes | NODE_ENV |  | server/config.js |
+| OpenVibe.Codes | OV_NETWORK_INTERNAL_URL | codes.env | server/config.js |
+| OpenVibe.Codes | OV_NETWORK_ISSUER |  | server/config.js |
+| OpenVibe.Codes | OV_NETWORK_URL | codes.env | server/config.js |
+| OpenVibe.Codes | OV_OAUTH_CLIENT_ID | codes.env | server/config.js |
+| OpenVibe.Codes | OV_OAUTH_REDIRECT_URI |  | server/config.js |
+| OpenVibe.Codes | OV_SESSION_AUDIENCE |  | server/config.js |
+| OpenVibe.Codes | PORT |  | server/config.js |
+| OpenVibe.Codes | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Codes | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Codes | TRUST_PROXY | codes.env | server/config.js |
 | OpenVibe.Community | API_CORS_ORIGINS |  | server/config.js |
 | OpenVibe.Community | BASE_URL | community.env | server/config.js |
 | OpenVibe.Community | COMMUNITY_DB_PATH |  | server/config.js |
+| OpenVibe.Community | COOKIE_SECURE |  | server/config.js |
 | OpenVibe.Community | DISCORD_RELAY_BACKOFF_MS |  | server/config.js |
 | OpenVibe.Community | DISCORD_RELAY_ENABLED |  | server/config.js |
 | OpenVibe.Community | DISCORD_RELAY_MAX_ATTEMPTS |  | server/config.js |
 | OpenVibe.Community | DISCORD_RELAY_POLL_MS |  | server/config.js |
 | OpenVibe.Community | HOST | community.env | server/config.js |
+| OpenVibe.Community | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
 | OpenVibe.Community | NODE_ENV | community.env | server/config.js |
 | OpenVibe.Community | OV_LIVE_INTERNAL_URL | community.env | server/config.js |
 | OpenVibe.Community | OV_LIVE_URL | community.env | server/config.js |
@@ -94,17 +434,180 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Community | OV_NETWORK_URL | community.env | server/config.js |
 | OpenVibe.Community | OV_OAUTH_CLIENT_ID | community.env | server/config.js |
 | OpenVibe.Community | OV_OAUTH_REDIRECT_URI | community.env | server/config.js |
+| OpenVibe.Community | OV_VIP_INTERNAL_URL |  | server/config.js |
+| OpenVibe.Community | OV_VIP_URL |  | server/config.js |
 | OpenVibe.Community | PASTES_AUTHORITY | community.env | server/config.js |
 | OpenVibe.Community | PORT | community.env | server/config.js |
+| OpenVibe.Community | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Community | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
 | OpenVibe.Community | TRUST_PROXY | community.env | server/config.js |
+| OpenVibe.Community | VIP_CACHE_DENY_TTL_MS |  | server/config.js |
+| OpenVibe.Community | VIP_CACHE_TTL_MS |  | server/config.js |
+| OpenVibe.Community | VIP_CACHE_UNAVAILABLE_TTL_MS |  | server/config.js |
+| OpenVibe.Community | VIP_TIMEOUT_MS |  | server/config.js |
+| OpenVibe.Coupons | BASE_URL | coupons.env | server/config.js |
+| OpenVibe.Coupons | COOKIE_SECURE |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_DB_PATH |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_EXTENSION_ORIGINS |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_INSTALL_TTL_DAYS |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_INSTALLS_PER_SUBJECT |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_LOOKUP_ANON_PER_MIN |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_LOOKUP_SERVICE_PER_MIN |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_REPORTS_PER_DAY |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_REPORTS_PER_HOUR |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_SOURCES_AUTO_PUBLISH |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_SOURCES_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_SOURCES_KEYS |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_STAFF_SUBJECTS | coupons.env | server/config.js |
+| OpenVibe.Coupons | COUPONS_SUBMISSIONS_PER_DAY |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_SUBMISSIONS_PER_HOUR |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_SWEEP_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_WORKER |  | server/config.js |
+| OpenVibe.Coupons | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Coupons | EVENTS_URL | coupons.env | server/config.js |
+| OpenVibe.Coupons | HOST | coupons.env | server/config.js |
+| OpenVibe.Coupons | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Coupons | NODE_ENV |  | server/config.js |
+| OpenVibe.Coupons | OV_NETWORK_INTERNAL_URL | coupons.env | server/config.js |
+| OpenVibe.Coupons | OV_NETWORK_URL | coupons.env | server/config.js |
+| OpenVibe.Coupons | OV_OAUTH_CLIENT_ID | coupons.env | server/config.js |
+| OpenVibe.Coupons | OV_OAUTH_REDIRECT_URI |  | server/config.js |
+| OpenVibe.Coupons | OV_SOURCES_INTERNAL_URL | coupons.env | server/config.js |
+| OpenVibe.Coupons | PORT |  | server/config.js |
+| OpenVibe.Coupons | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Coupons | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Coupons | TRUST_PROXY | coupons.env | server/config.js |
+| OpenVibe.Deals | API_CORS_ORIGINS |  | server/config.js |
+| OpenVibe.Deals | BASE_URL | deals.env | server/config.js |
+| OpenVibe.Deals | COOKIE_SECURE |  | server/config.js |
+| OpenVibe.Deals | DEALS_DB_PATH |  | server/config.js |
+| OpenVibe.Deals | DEALS_FLAG_LIMIT_DAY |  | server/config.js |
+| OpenVibe.Deals | DEALS_FRESHNESS_HOURS |  | server/config.js |
+| OpenVibe.Deals | DEALS_HOT_WINDOW_DAYS |  | server/config.js |
+| OpenVibe.Deals | DEALS_IMPORT |  | server/config.js |
+| OpenVibe.Deals | DEALS_IMPORT_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Deals | DEALS_IMPORT_MAX_PAGES |  | server/config.js |
+| OpenVibe.Deals | DEALS_IMPORT_PAGE_SIZE |  | server/config.js |
+| OpenVibe.Deals | DEALS_IMPORT_REFRESH_BATCH |  | server/config.js |
+| OpenVibe.Deals | DEALS_MODERATORS | deals.env | server/config.js |
+| OpenVibe.Deals | DEALS_NEW_ACCOUNT_DAYS |  | server/config.js |
+| OpenVibe.Deals | DEALS_NEW_ACCOUNT_WEIGHT |  | server/config.js |
+| OpenVibe.Deals | DEALS_OBSERVE_LIMIT_HOUR |  | server/config.js |
+| OpenVibe.Deals | DEALS_RING_COVOTE_MIN |  | server/config.js |
+| OpenVibe.Deals | DEALS_RING_IP_MIN |  | server/config.js |
+| OpenVibe.Deals | DEALS_RING_WINDOW_MIN |  | server/config.js |
+| OpenVibe.Deals | DEALS_SUBMIT_LIMIT_DAY |  | server/config.js |
+| OpenVibe.Deals | DEALS_VOTE_LIMIT_IP_HOUR |  | server/config.js |
+| OpenVibe.Deals | DEALS_VOTE_LIMIT_OFFER_HOUR |  | server/config.js |
+| OpenVibe.Deals | DEALS_VOTE_LIMIT_SUBJECT_HOUR |  | server/config.js |
+| OpenVibe.Deals | DEALS_WATCH_LIMIT |  | server/config.js |
+| OpenVibe.Deals | DEALS_WORKER |  | server/config.js |
+| OpenVibe.Deals | DEALS_WORKER_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Deals | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Deals | EVENTS_URL | deals.env | server/config.js |
+| OpenVibe.Deals | HOST | deals.env | server/config.js |
+| OpenVibe.Deals | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Deals | NODE_ENV |  | server/config.js |
+| OpenVibe.Deals | OV_COMMUNITY_INTERNAL_URL | deals.env | server/config.js |
+| OpenVibe.Deals | OV_COMMUNITY_URL |  | server/config.js |
+| OpenVibe.Deals | OV_NETWORK_INTERNAL_URL | deals.env | server/config.js |
+| OpenVibe.Deals | OV_NETWORK_URL | deals.env | server/config.js |
+| OpenVibe.Deals | OV_OAUTH_CLIENT_ID | deals.env | server/config.js |
+| OpenVibe.Deals | OV_OAUTH_REDIRECT_URI |  | server/config.js |
+| OpenVibe.Deals | OV_SOURCES_INTERNAL_URL | deals.env | server/config.js |
+| OpenVibe.Deals | PORT |  | server/config.js |
+| OpenVibe.Deals | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Deals | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Deals | TRUST_PROXY | deals.env | server/config.js |
+| OpenVibe.Events | BASE_URL |  | server/config.js |
+| OpenVibe.Events | EVENTS_APP_MAX_INFLIGHT |  | server/config.js |
+| OpenVibe.Events | EVENTS_APP_MAX_SUBSCRIPTIONS |  | server/config.js |
+| OpenVibe.Events | EVENTS_APP_PUBLISH_PER_MINUTE |  | server/config.js |
+| OpenVibe.Events | EVENTS_APP_RETAINED_BYTES |  | server/config.js |
+| OpenVibe.Events | EVENTS_APP_SANDBOX_MAX_SUBSCRIPTIONS |  | server/config.js |
+| OpenVibe.Events | EVENTS_APP_SANDBOX_PUBLISH_PER_MINUTE |  | server/config.js |
+| OpenVibe.Events | EVENTS_APP_SANDBOX_RETAINED_BYTES |  | server/config.js |
+| OpenVibe.Events | EVENTS_APP_SANDBOX_RETENTION_DAYS |  | server/config.js |
+| OpenVibe.Events | EVENTS_APPS |  | server/config.js |
+| OpenVibe.Events | EVENTS_BACKOFF_MS |  | server/config.js |
+| OpenVibe.Events | EVENTS_DB_PATH |  | server/config.js |
+| OpenVibe.Events | EVENTS_DELIVERY_TIMEOUT_MS |  | server/config.js |
+| OpenVibe.Events | EVENTS_DLQ_DEGRADED_AT |  | server/config.js |
+| OpenVibe.Events | EVENTS_ENDPOINT_HOSTS |  | server/config.js |
+| OpenVibe.Events | EVENTS_MAX_ATTEMPTS |  | server/config.js |
+| OpenVibe.Events | EVENTS_MAX_HOPS |  | server/config.js |
+| OpenVibe.Events | EVENTS_MAX_INFLIGHT |  | server/config.js |
+| OpenVibe.Events | EVENTS_MAX_PAYLOAD_BYTES |  | server/config.js |
+| OpenVibe.Events | EVENTS_MAX_SUBSCRIPTIONS |  | server/config.js |
+| OpenVibe.Events | EVENTS_PRUNE_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Events | EVENTS_RECEIPT_RETENTION_DAYS |  | server/config.js |
+| OpenVibe.Events | EVENTS_RETENTION_DAYS |  | server/config.js |
+| OpenVibe.Events | EVENTS_SOURCE_PREFIXES |  | server/config.js |
+| OpenVibe.Events | EVENTS_USER_AUDIENCES |  | server/config.js |
+| OpenVibe.Events | EVENTS_WORKER |  | server/config.js |
+| OpenVibe.Events | EVENTS_WORKER_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Events | HOST |  | server/config.js |
+| OpenVibe.Events | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Events | NODE_ENV |  | server/config.js |
+| OpenVibe.Events | OV_NETWORK_INTERNAL_URL |  | server/config.js |
+| OpenVibe.Events | OV_NETWORK_ISSUER |  | server/config.js |
+| OpenVibe.Events | OV_NETWORK_PUBLIC_KEY |  | server/config.js |
+| OpenVibe.Events | OV_NETWORK_URL |  | server/config.js |
+| OpenVibe.Events | OV_OAUTH_CLIENT_ID | events.env | (not referenced) |
+| OpenVibe.Events | PORT |  | server/config.js |
+| OpenVibe.Events | REALTIME_ALLOW_ANONYMOUS |  | server/config.js |
+| OpenVibe.Events | REALTIME_CORS_ORIGINS |  | server/config.js |
+| OpenVibe.Events | REALTIME_HEARTBEAT_MS |  | server/config.js |
+| OpenVibe.Events | REALTIME_MAX_CONNECTIONS |  | server/config.js |
+| OpenVibe.Events | REALTIME_MAX_TOPICS |  | server/config.js |
+| OpenVibe.Events | REALTIME_PUBLIC_REPLAY_SECONDS |  | server/config.js |
+| OpenVibe.Events | REALTIME_REPLAY_MAX |  | server/config.js |
+| OpenVibe.Events | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Events | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Examples | OV_AUDIENCE |  | examples/browser-app/server.js, examples/oauth-app/server.js |
+| OpenVibe.Examples | OV_AUDIENCES |  | examples/node-server-app/server.js |
+| OpenVibe.Examples | OV_BOT_MIN_INTERVAL_MS |  | examples/chat-bot/bot.js |
+| OpenVibe.Examples | OV_BOT_OWNER |  | examples/chat-bot/bot.js |
+| OpenVibe.Examples | OV_BOT_PREFIX |  | examples/chat-bot/bot.js |
+| OpenVibe.Examples | OV_BOT_TRIGGER |  | examples/chat-bot/bot.js |
+| OpenVibe.Examples | OV_CHAT_CHANNEL_USER_ID |  | examples/chat-bot/bot.js |
+| OpenVibe.Examples | OV_CHAT_STREAM_ID |  | examples/chat-bot/bot.js |
+| OpenVibe.Examples | OV_CHAT_WS_URL |  | examples/chat-bot/bot.js |
+| OpenVibe.Examples | OV_CLIENT_ID |  | examples/browser-app/server.js, examples/event-subscriber/publish.js +6 |
+| OpenVibe.Examples | OV_CURSOR_PATH |  | examples/event-subscriber/subscriber.js |
+| OpenVibe.Examples | OV_DB_PATH |  | examples/webhook-consumer/server.js |
+| OpenVibe.Examples | OV_EVENTS_MODE |  | examples/event-subscriber/subscriber.js |
+| OpenVibe.Examples | OV_EVENTS_URL |  | examples/event-subscriber/publish.js, examples/event-subscriber/subscriber.js +1 |
+| OpenVibe.Examples | OV_JOB_INPUT |  | examples/tool-job/run-job.js |
+| OpenVibe.Examples | OV_JOB_STATE |  | examples/tool-job/run-job.js |
+| OpenVibe.Examples | OV_JOB_TYPE |  | examples/tool-job/run-job.js |
+| OpenVibe.Examples | OV_MEDIA_URL |  | examples/media-uploader/upload.js |
+| OpenVibe.Examples | OV_NETWORK_URL |  | examples/browser-app/server.js, examples/event-subscriber/publish.js +7 |
+| OpenVibe.Examples | OV_OUT_DIR |  | examples/tool-job/run-job.js |
+| OpenVibe.Examples | OV_PLATFORM_TOPICS |  | examples/event-subscriber/subscriber.js |
+| OpenVibe.Examples | OV_POLL_MS |  | examples/event-subscriber/subscriber.js |
+| OpenVibe.Examples | OV_PORT |  | examples/browser-app/server.js, examples/node-server-app/server.js +2 |
+| OpenVibe.Examples | OV_PROJECT_ID |  | examples/event-subscriber/publish.js, examples/event-subscriber/subscriber.js +2 |
+| OpenVibe.Examples | OV_REDIRECT_URI |  | examples/browser-app/server.js, examples/oauth-app/server.js |
+| OpenVibe.Examples | OV_REGISTRY_PROXY |  | examples/browser-app/server.js |
+| OpenVibe.Examples | OV_SCOPE |  | examples/browser-app/server.js, examples/oauth-app/server.js |
+| OpenVibe.Examples | OV_TOOLS_JOBS_URL |  | examples/tool-job/run-job.js |
+| OpenVibe.Examples | OV_TOPICS |  | examples/event-subscriber/subscriber.js |
+| OpenVibe.Examples | OV_WEBHOOK_PATH |  | examples/webhook-consumer/server.js |
 | OpenVibe.Games | DB_PATH | games.env | apps/server/src/config.ts |
 | OpenVibe.Games | EVENT_INTERVAL_SCALE |  | apps/server/src/config.ts |
+| OpenVibe.Games | EVENTS_PUBLISH |  | apps/server/src/config.ts |
+| OpenVibe.Games | EVENTS_URL | games.env | apps/server/src/config.ts |
 | OpenVibe.Games | GUEST_IP_BINDING |  | apps/server/src/config.ts |
 | OpenVibe.Games | HOST | games.env | apps/server/src/config.ts |
 | OpenVibe.Games | LOG_LEVEL |  | apps/server/src/main.ts |
 | OpenVibe.Games | MAP_PATH |  | apps/server/src/config.ts |
+| OpenVibe.Games | MEDIA_MIRROR |  | apps/server/src/config.ts |
+| OpenVibe.Games | MEDIA_NAMESPACE |  | apps/server/src/config.ts |
+| OpenVibe.Games | MEDIA_URL | games.env | apps/server/src/config.ts |
 | OpenVibe.Games | NODE_ENV | games.env | (not referenced) |
 | OpenVibe.Games | OV_NETWORK_AUTH_URL |  | apps/server/src/config.ts |
+| OpenVibe.Games | OV_NETWORK_INTERNAL_URL | games.env | apps/server/src/config.ts |
 | OpenVibe.Games | OV_NETWORK_URL | games.env | apps/server/src/config.ts |
 | OpenVibe.Games | OV_OAUTH_CLIENT_ID | games.env | apps/server/src/config.ts |
 | OpenVibe.Games | OWNER_USERNAME | games.env | apps/server/src/net/networkAuth.ts |
@@ -112,25 +615,71 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Games | PORT | games.env | (not referenced) |
 | OpenVibe.Games | SELF_URL | games.env | apps/server/src/config.ts |
 | OpenVibe.Games | STATIC_DIR | games.env | apps/server/src/config.ts |
+| OpenVibe.Host | API_CORS_ORIGINS |  | server/config.js |
+| OpenVibe.Host | BASE_URL | host.env | server/config.js |
+| OpenVibe.Host | COOKIE_SECURE |  | server/config.js |
+| OpenVibe.Host | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Host | EVENTS_URL | host.env | server/config.js |
+| OpenVibe.Host | HOST | host.env | server/config.js |
+| OpenVibe.Host | HOST_CNAME_TARGET | host.env | server/config.js |
+| OpenVibe.Host | HOST_DB_PATH |  | server/config.js |
+| OpenVibe.Host | HOST_DNS_SERVERS |  | server/config.js |
+| OpenVibe.Host | HOST_DOMAIN_LAPSE_DAYS |  | server/config.js |
+| OpenVibe.Host | HOST_DOMAIN_PENDING_DAYS |  | server/config.js |
+| OpenVibe.Host | HOST_DOMAIN_RECHECK_MS |  | server/config.js |
+| OpenVibe.Host | HOST_MAX_CONCURRENT_UPLOADS |  | server/config.js |
+| OpenVibe.Host | HOST_MAX_PROJECTS_PER_OWNER |  | server/config.js |
+| OpenVibe.Host | HOST_MAX_UNPACKED_BYTES |  | server/config.js |
+| OpenVibe.Host | HOST_MAX_UPLOAD_BYTES |  | server/config.js |
+| OpenVibe.Host | HOST_MIN_FREE_BYTES |  | server/config.js |
+| OpenVibe.Host | HOST_ORIGIN_IPV4 | host.env | server/config.js |
+| OpenVibe.Host | HOST_ORIGIN_IPV6 |  | server/config.js |
+| OpenVibe.Host | HOST_RESERVED_DOMAINS |  | server/config.js |
+| OpenVibe.Host | HOST_RESERVED_SITE_NAMES |  | server/config.js |
+| OpenVibe.Host | HOST_SITES_DOMAIN | host.env | server/config.js |
+| OpenVibe.Host | HOST_STORAGE_DIR |  | server/config.js |
+| OpenVibe.Host | HOST_WORKER |  | server/config.js |
+| OpenVibe.Host | HOST_WORKER_ID |  | server/config.js |
+| OpenVibe.Host | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Host | NODE_ENV |  | server/config.js |
+| OpenVibe.Host | OV_NETWORK_INTERNAL_URL | host.env | server/config.js |
+| OpenVibe.Host | OV_NETWORK_URL | host.env | server/config.js |
+| OpenVibe.Host | OV_OAUTH_CLIENT_ID | host.env | server/config.js |
+| OpenVibe.Host | OV_OAUTH_REDIRECT_URI |  | server/config.js |
+| OpenVibe.Host | OVHOST_BACKUP_ENV |  | lib/offsite.js |
+| OpenVibe.Host | OVHOST_INVENTORY |  | lib/inventory.js |
+| OpenVibe.Host | PATH |  | lib/executor.js |
+| OpenVibe.Host | PORT |  | server/config.js |
+| OpenVibe.Host | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Host | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Host | SUDO_USER |  | lib/commands/drill.js, lib/release-ops.js |
+| OpenVibe.Host | TRUST_PROXY | host.env | server/config.js |
+| OpenVibe.Host | USER |  | lib/executor.js |
 | OpenVibe.Live | ADMIN_USERNAME | live.env | server/config.js |
 | OpenVibe.Live | AI_HEAR_MAX_SPOOL |  | server/ai/stream-audio.js |
 | OpenVibe.Live | AI_HEAR_SEGMENT_SEC |  | server/ai/stream-audio.js |
 | OpenVibe.Live | AI_MOMENTS_PATH |  | server/ai/stream-memory-job.js, server/arena/arena-service.js +1 |
+| OpenVibe.Live | AI_SERVICE | live.env | server/ai/ai-service.js |
 | OpenVibe.Live | AI_VOD_MAX_WINDOWS |  | server/ai/media-analysis.js |
 | OpenVibe.Live | ALLOW_P2P_FALLBACK |  | server/config.js |
 | OpenVibe.Live | ARENA_IMAGE_PATH |  | server/arena/arena-service.js, server/index.js |
 | OpenVibe.Live | BASE_URL | live.env | server/auth/routes.js, server/config.js |
+| OpenVibe.Live | BILLING_AUTHORITY |  | server/admin/routes.js, server/db/database.js +1 |
 | OpenVibe.Live | BTTV_CACHE_TTL |  | server/config.js |
+| OpenVibe.Live | CHAT_AUTHORITY | live.env | server/chat/chat-authority.js |
 | OpenVibe.Live | CLIPS_PATH |  | server/config.js |
 | OpenVibe.Live | COLD_STORAGE_PATH |  | server/config.js |
 | OpenVibe.Live | DB_PATH | live.env | server/config.js, server/db/database.js +1 |
 | OpenVibe.Live | DEBUG_DM_DELIVERY |  | server/chat/chat-server.js |
 | OpenVibe.Live | EMOTES_PATH | live.env | server/config.js, server/media-proxy/asset-sync.js |
 | OpenVibe.Live | ESCROW_HOLD_DAYS | live.env | server/config.js |
+| OpenVibe.Live | EVENTS_PUBLISH |  | server/events/stream-events.js |
+| OpenVibe.Live | EVENTS_URL | live.env | server/events/stream-events.js |
 | OpenVibe.Live | FFZ_CACHE_TTL |  | server/config.js |
 | OpenVibe.Live | HOST | live.env | server/config.js |
 | OpenVibe.Live | JSMPEG_AUDIO_PORT | live.env | server/config.js |
 | OpenVibe.Live | JSMPEG_VIDEO_PORT | live.env | server/config.js |
+| OpenVibe.Live | LEGACY_QUEST_API_URL |  | server/monetization/cosmetics.js |
 | OpenVibe.Live | LISTEN_FDS |  | server/index.js |
 | OpenVibe.Live | LISTEN_PID |  | server/index.js |
 | OpenVibe.Live | LIVE_THUMBS_PATH |  | server/media-proxy/live-thumbs.js |
@@ -142,7 +691,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | MAX_SOUNDS_PER_CHANNEL |  | server/config.js |
 | OpenVibe.Live | MAX_SOUNDS_PER_UPLOADER_PER_CHANNEL |  | server/config.js |
 | OpenVibe.Live | MAX_VOD_SIZE_MB |  | server/config.js, server/media-proxy/vods.js |
-| OpenVibe.Live | MEDIA_APP_ID | live.env | server/config.js, server/media-client.js |
+| OpenVibe.Live | MEDIA_APP_ID | live.env | server/config.js, server/media-client.js +1 |
+| OpenVibe.Live | MEDIA_EVENTS_AUTHORITY | live.env | server/media-proxy/outcomes.js |
 | OpenVibe.Live | MEDIA_PUBLIC_URL | live.env | server/config.js, server/media-client.js |
 | OpenVibe.Live | MEDIA_URL | live.env | server/config.js, server/media-client.js |
 | OpenVibe.Live | MEDIASOUP_ANNOUNCED_IP | live.env | server/config.js |
@@ -151,16 +701,24 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | MEDIASOUP_MIN_PORT | live.env | server/config.js |
 | OpenVibe.Live | MIN_CASHOUT | live.env | (not referenced) |
 | OpenVibe.Live | MIN_CASHOUT_BUCKS |  | server/config.js |
-| OpenVibe.Live | NODE_ENV | live.env | server/config.js, server/index.js |
+| OpenVibe.Live | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Live | NODE_ENV | live.env | server/comments-client.js, server/config.js +1 |
 | OpenVibe.Live | OFFLINE_SCREEN_PATH |  | server/monetization/routes.js, server/streaming/routes.js |
+| OpenVibe.Live | OPENRE_PUBLIC_URL | live.env | server/openre/openre-client.js |
+| OpenVibe.Live | OPENRE_URL | live.env | server/openre/openre-client.js |
+| OpenVibe.Live | OV_AI_INTERNAL_URL |  | server/ai/ai-service.js |
 | OpenVibe.Live | OV_APP_ROOT |  | server/docs/routes.js, server/web/assets.js |
-| OpenVibe.Live | OV_COMMUNITY_INTERNAL_URL |  | server/pastes-client.js |
-| OpenVibe.Live | OV_COMMUNITY_URL | live.env | server/index.js, server/media-proxy/pastes.js +1 |
+| OpenVibe.Live | OV_BILLING_INTERNAL_URL |  | server/monetization/billing-client.js |
+| OpenVibe.Live | OV_BILLING_PUBLIC_URL |  | server/monetization/billing-client.js |
+| OpenVibe.Live | OV_BILLING_TIMEOUT_MS |  | server/monetization/billing-client.js |
+| OpenVibe.Live | OV_CHAT_INTERNAL_URL | live.env | server/chat/chat-authority.js |
+| OpenVibe.Live | OV_COMMUNITY_INTERNAL_URL |  | server/comments-client.js, server/pastes-client.js |
+| OpenVibe.Live | OV_COMMUNITY_URL | live.env | server/ai/ai-moments-job.js, server/comments-client.js +3 |
 | OpenVibe.Live | OV_LIVE_URL | live.env | (not referenced) |
-| OpenVibe.Live | OV_NETWORK_INTERNAL_URL | live.env | server/chat/chat-server.js, server/monetization/wallet-client.js +3 |
+| OpenVibe.Live | OV_NETWORK_INTERNAL_URL | live.env | server/chat/chat-server.js, server/events/stream-events.js +6 |
 | OpenVibe.Live | OV_NETWORK_PUBLIC_KEY | live.env | server/auth/auth.js |
 | OpenVibe.Live | OV_NETWORK_URL | live.env | server/auth/auth.js, server/config.js +1 |
-| OpenVibe.Live | OV_OAUTH_CLIENT_ID | live.env | server/auth/routes.js, server/net/network-principal.js |
+| OpenVibe.Live | OV_OAUTH_CLIENT_ID | live.env | server/auth/routes.js, server/events/stream-events.js +2 |
 | OpenVibe.Live | OV_PUBLIC_DIR |  | server/web/assets.js |
 | OpenVibe.Live | OWNER_USERNAME |  | server/db/database.js |
 | OpenVibe.Live | PASTES_AUTHORITY | live.env | server/pastes-client.js |
@@ -169,6 +727,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | PAYPAL_CLIENT_ID | live.env | server/config.js |
 | OpenVibe.Live | PAYPAL_MODE | live.env | server/config.js |
 | OpenVibe.Live | PORT | live.env | server/config.js |
+| OpenVibe.Live | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Live | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
 | OpenVibe.Live | RS_COMPANION_DB_PATH | live.env | (not referenced) |
 | OpenVibe.Live | RS_PASSTHROUGH |  | server/config.js |
 | OpenVibe.Live | RS_PASSTHROUGH_INJECT_PARAMS |  | server/integrations/rs-passthrough-relay.js |
@@ -215,6 +775,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Media | CLIP_QUEUE_WAIT_MS |  | server/vod/clip-cutter.js |
 | OpenVibe.Media | CLIPS_PATH | media.env | server/config.js |
 | OpenVibe.Media | DB_PATH | media.env | server/config.js |
+| OpenVibe.Media | EVENTS_PUBLISH |  | server/events.js |
+| OpenVibe.Media | EVENTS_URL | media.env | server/events.js |
 | OpenVibe.Media | FILES_PATH | media.env | server/config.js |
 | OpenVibe.Media | HOST | media.env | server/config.js |
 | OpenVibe.Media | LIVE_APP_INTERNAL_URL |  | server/thumbnails/live-frame-service.js |
@@ -229,17 +791,22 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Media | MEDIA_R2_BUCKET | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_R2_ENDPOINT | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_R2_REGION |  | server/vod/vod-storage.js |
+| OpenVibe.Media | MEDIA_VERIFY_ENABLED |  | server/config.js |
+| OpenVibe.Media | MEDIA_VERIFY_REPAIR_CORRUPT |  | server/config.js |
+| OpenVibe.Media | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
 | OpenVibe.Media | MIN_VOD_SECONDS |  | server/vod/finalize.js |
 | OpenVibe.Media | NODE_ENV | media.env | server/config.js |
 | OpenVibe.Media | OBJECTS_PATH |  | server/config.js |
-| OpenVibe.Media | OV_NETWORK_INTERNAL_URL | media.env | server/config.js |
+| OpenVibe.Media | OV_NETWORK_INTERNAL_URL | media.env | server/config.js, server/events.js |
 | OpenVibe.Media | OV_NETWORK_URL | media.env | server/config.js |
-| OpenVibe.Media | OV_OAUTH_CLIENT_ID | media.env | server/index.js |
+| OpenVibe.Media | OV_OAUTH_CLIENT_ID | media.env | server/events.js, server/index.js |
 | OpenVibe.Media | OV_OAUTH_REDIRECT_URI |  | server/index.js |
 | OpenVibe.Media | PASTES_FROZEN_APPS | media.env | server/pastes/routes.js |
 | OpenVibe.Media | PASTES_MOVED_TO | media.env | (not referenced) |
 | OpenVibe.Media | PASTES_PATH | media.env | server/config.js |
 | OpenVibe.Media | PORT | media.env | (not referenced) |
+| OpenVibe.Media | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Media | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
 | OpenVibe.Media | RTP_PORT_MAX | media.env | (not referenced) |
 | OpenVibe.Media | RTP_PORT_MIN | media.env | (not referenced) |
 | OpenVibe.Media | THUMBNAILS_PATH | media.env | server/config.js |
@@ -254,49 +821,145 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Network | BOOTSTRAP_PROFILE |  | server/config.js, server/db/database.js |
 | OpenVibe.Network | CERTBOT_BIN |  | server/deploy/cert-manager.js |
 | OpenVibe.Network | DB_PATH | network.env | server/config.js, server/grant-admin.js +2 |
+| OpenVibe.Network | DEV_DEFAULT_ALLOWANCE |  | server/config.js |
+| OpenVibe.Network | DEV_MAX_APPS_PER_PROJECT |  | server/config.js |
+| OpenVibe.Network | DEV_MAX_PROJECTS_PER_OWNER |  | server/config.js |
+| OpenVibe.Network | DEV_SANDBOX_ALLOWANCE |  | server/config.js |
+| OpenVibe.Network | DEV_SANDBOX_AUDIENCES |  | server/config.js |
 | OpenVibe.Network | HOST | network.env | server/config.js |
 | OpenVibe.Network | INTERNAL_URL |  | server/config.js |
 | OpenVibe.Network | JWT_PUBLIC_KEY | network.env | server/config.js |
 | OpenVibe.Network | LETSENCRYPT_DIR |  | server/deploy/cert-manager.js |
-| OpenVibe.Network | LOGIN_URL |  | node_modules/openvibe-shared/brand.js, server/config.js |
+| OpenVibe.Network | LOGIN_URL |  | OpenVibe.Shared/brand.js, server/config.js |
 | OpenVibe.Network | MEDIASOUP_ANNOUNCED_IP |  | server/domains/dns-check.js |
-| OpenVibe.Network | NODE_ENV | network.env | server/auth/fedcm.js, server/auth/sso-check.js +3 |
+| OpenVibe.Network | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Network | NODE_ENV | network.env | server/auth/fedcm.js, server/auth/sso-check.js +4 |
 | OpenVibe.Network | NOTIFICATION_EMAIL_CRITICAL_ONLY | network.env | (not referenced) |
 | OpenVibe.Network | NOTIFICATION_MAX_AGE_DAYS | network.env | (not referenced) |
 | OpenVibe.Network | NOTIFICATIONS_ENABLED | network.env | (not referenced) |
-| OpenVibe.Network | OPENVIBELIVE_DB_PATH |  | server/db/database.js |
-| OpenVibe.Network | OV_AUDIO_URL |  | node_modules/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_COMMUNITY_URL |  | node_modules/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_DEV_URL |  | node_modules/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_DOCS_URL |  | node_modules/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_FOOD_URL |  | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_AI_INTERNAL_URL |  | server/chrome/service.js |
+| OpenVibe.Network | OV_AUDIO_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Network | OV_COMMUNITY_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Network | OV_DEV_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Network | OV_DOCS_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Network | OV_EVENTS_INTERNAL_URL | network.env | server/config.js |
+| OpenVibe.Network | OV_FOOD_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Network | OV_GAMES_INTERNAL_URL | network.env | server/config.js |
-| OpenVibe.Network | OV_GAMES_URL | network.env | node_modules/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_IMG_URL |  | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_GAMES_URL | network.env | OpenVibe.Shared/brand.js |
+| OpenVibe.Network | OV_IMG_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Network | OV_LIVE_INTERNAL_URL | network.env | server/admin/routes.js, server/config.js |
-| OpenVibe.Network | OV_LIVE_URL | network.env | node_modules/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_LOGO_URL |  | node_modules/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_MAPS_URL |  | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_LIVE_URL | network.env | OpenVibe.Shared/brand.js |
+| OpenVibe.Network | OV_LOGO_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Network | OV_MAPS_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Network | OV_MEDIA_INTERNAL_URL | network.env | server/config.js |
-| OpenVibe.Network | OV_MEDIA_URL | network.env | node_modules/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_NET_URL |  | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_MEDIA_URL | network.env | OpenVibe.Shared/brand.js |
+| OpenVibe.Network | OV_NET_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Network | OV_NETWORK_BASE_URL |  | server/auth/reset-tokens.js |
 | OpenVibe.Network | OV_NETWORK_INTERNAL_URL |  | server/config.js |
-| OpenVibe.Network | OV_NETWORK_LOGIN_URL |  | node_modules/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_NETWORK_URL |  | node_modules/openvibe-shared/brand.js, server/config.js |
-| OpenVibe.Network | OV_PASTES_URL |  | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_NETWORK_LOGIN_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Network | OV_NETWORK_URL |  | OpenVibe.Shared/brand.js, server/config.js |
+| OpenVibe.Network | OV_PASTES_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Network | OV_SSO_TARGETS |  | server/auth/sso-targets.js |
 | OpenVibe.Network | OV_SSO_TARGETS_DISABLED |  | server/auth/sso-targets.js |
-| OpenVibe.Network | OV_TEXT_URL |  | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_TEXT_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Network | OV_TOOLS_INTERNAL_URL | network.env | server/config.js, server/domains/catalog.js |
-| OpenVibe.Network | OV_TOOLS_URL | network.env | node_modules/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_YT_URL |  | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_TOOLS_URL | network.env | OpenVibe.Shared/brand.js |
+| OpenVibe.Network | OV_YT_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Network | OWNER_USERNAME |  | server/admin/routes.js, server/auth/owner-guard.js +3 |
 | OpenVibe.Network | PORT | network.env | server/config.js |
 | OpenVibe.Network | PUBLIC_IP |  | server/domains/dns-check.js |
+| OpenVibe.Network | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Network | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
 | OpenVibe.Network | SSH_PROJECTS_ROOT |  | server/index.js |
 | OpenVibe.Network | SSH_SERVER_HOST |  | server/index.js |
+| OpenVibe.News | API_CORS_ORIGINS |  | server/config.js |
+| OpenVibe.News | BASE_URL | news.env | server/config.js |
+| OpenVibe.News | COOKIE_SECURE |  | server/config.js |
+| OpenVibe.News | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.News | EVENTS_URL | news.env | server/config.js |
+| OpenVibe.News | HOST | news.env | server/config.js |
+| OpenVibe.News | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.News | NEWS_AI_WAIT_MS |  | server/config.js |
+| OpenVibe.News | NEWS_CLUSTER_WINDOW_HOURS |  | server/config.js |
+| OpenVibe.News | NEWS_DB_PATH |  | server/config.js |
+| OpenVibe.News | NEWS_EDITORS | news.env | server/config.js |
+| OpenVibe.News | NEWS_MIN_INDEPENDENT_SOURCES |  | server/config.js |
+| OpenVibe.News | NEWS_PULL_INTERVAL_MS |  | server/config.js |
+| OpenVibe.News | NEWS_PULL_MAX_PAGES |  | server/config.js |
+| OpenVibe.News | NEWS_PULL_PAGE_SIZE |  | server/config.js |
+| OpenVibe.News | NEWS_SOURCES_TIMEOUT_MS |  | server/config.js |
+| OpenVibe.News | NEWS_SUMMARY_MAX_CHARS |  | server/config.js |
+| OpenVibe.News | NEWS_WORKER |  | server/config.js |
+| OpenVibe.News | NODE_ENV |  | server/config.js |
+| OpenVibe.News | OV_AI_INTERNAL_URL |  | server/config.js |
+| OpenVibe.News | OV_COMMUNITY_INTERNAL_URL |  | server/config.js |
+| OpenVibe.News | OV_COMMUNITY_URL |  | server/config.js |
+| OpenVibe.News | OV_NETWORK_INTERNAL_URL | news.env | server/config.js |
+| OpenVibe.News | OV_NETWORK_URL | news.env | server/config.js |
+| OpenVibe.News | OV_OAUTH_CLIENT_ID | news.env | server/config.js |
+| OpenVibe.News | OV_OAUTH_REDIRECT_URI |  | server/config.js |
+| OpenVibe.News | OV_SOURCES_INTERNAL_URL | news.env | server/config.js |
+| OpenVibe.News | PORT |  | server/config.js |
+| OpenVibe.News | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.News | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.News | TRUST_PROXY | news.env | server/config.js |
+| OpenVibe.Reviews | BASE_URL | reviews.env | server/config.js |
+| OpenVibe.Reviews | COOKIE_SECURE |  | server/config.js |
+| OpenVibe.Reviews | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Reviews | EVENTS_URL | reviews.env | server/config.js |
+| OpenVibe.Reviews | HOST | reviews.env | server/config.js |
+| OpenVibe.Reviews | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Reviews | NODE_ENV |  | server/config.js |
+| OpenVibe.Reviews | OV_COMMUNITY_INTERNAL_URL | reviews.env | server/config.js |
+| OpenVibe.Reviews | OV_COMMUNITY_URL |  | server/config.js |
+| OpenVibe.Reviews | OV_NETWORK_INTERNAL_URL | reviews.env | server/config.js |
+| OpenVibe.Reviews | OV_NETWORK_ISSUER |  | server/config.js |
+| OpenVibe.Reviews | OV_NETWORK_PUBLIC_KEY |  | server/config.js |
+| OpenVibe.Reviews | OV_NETWORK_URL | reviews.env | server/config.js |
+| OpenVibe.Reviews | OV_OAUTH_CLIENT_ID | reviews.env | server/config.js |
+| OpenVibe.Reviews | OV_OAUTH_REDIRECT_URI |  | server/config.js |
+| OpenVibe.Reviews | OV_SOURCES_INTERNAL_URL | reviews.env | server/config.js |
+| OpenVibe.Reviews | PORT |  | server/config.js |
+| OpenVibe.Reviews | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Reviews | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Reviews | REVIEWS_DB_PATH |  | server/config.js |
+| OpenVibe.Reviews | REVIEWS_EDITORS | reviews.env | server/config.js |
+| OpenVibe.Reviews | REVIEWS_GATE_MIN_SIGNALS |  | server/config.js |
+| OpenVibe.Reviews | REVIEWS_GATE_MIN_WORDS |  | server/config.js |
+| OpenVibe.Reviews | REVIEWS_IMPORT_QUEUE_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Reviews | REVIEWS_SOURCES_PAGE_SIZE |  | server/config.js |
+| OpenVibe.Reviews | REVIEWS_SOURCES_SYNC |  | server/config.js |
+| OpenVibe.Reviews | REVIEWS_SOURCES_SYNC_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Reviews | REVIEWS_USER_AUDIENCES |  | server/config.js |
+| OpenVibe.Reviews | TRUST_PROXY | reviews.env | server/config.js |
+| OpenVibe.Search | BASE_URL | search.env | server/config.js |
+| OpenVibe.Search | CLOUDFLARE_API_BASE |  | server/config.js |
+| OpenVibe.Search | CLOUDFLARE_PURGE_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Search | CLOUDFLARE_PURGE_RELATED_PATHS |  | server/config.js |
+| OpenVibe.Search | CLOUDFLARE_ZONE_IDS |  | server/config.js |
+| OpenVibe.Search | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Search | EVENTS_URL | search.env | server/config.js |
+| OpenVibe.Search | HOST | search.env | server/config.js |
+| OpenVibe.Search | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Search | NODE_ENV |  | server/config.js |
+| OpenVibe.Search | OV_NETWORK_INTERNAL_URL | search.env | server/config.js |
+| OpenVibe.Search | OV_NETWORK_ISSUER |  | server/config.js |
+| OpenVibe.Search | OV_NETWORK_PUBLIC_KEY |  | server/config.js |
+| OpenVibe.Search | OV_NETWORK_URL | search.env | server/config.js |
+| OpenVibe.Search | OV_OAUTH_CLIENT_ID | search.env | server/config.js |
+| OpenVibe.Search | PORT |  | server/config.js |
+| OpenVibe.Search | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Search | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Search | SEARCH_DB_PATH |  | server/config.js |
+| OpenVibe.Search | SEARCH_EVENT_OWNERS | search.env | server/config.js |
+| OpenVibe.Search | SEARCH_FRESHNESS_HALF_LIFE_DAYS |  | server/config.js |
+| OpenVibe.Search | SEARCH_FRESHNESS_WEIGHT |  | server/config.js |
+| OpenVibe.Search | SEARCH_MAX_BODY_BYTES |  | server/config.js |
+| OpenVibe.Search | SEARCH_SAVED_MAX_PER_SUBJECT |  | server/config.js |
+| OpenVibe.Search | SEARCH_USER_AUDIENCES |  | server/config.js |
+| OpenVibe.Shared | ANALYTICS_DB |  | analytics/prune-cli.js |
 | OpenVibe.Shared | LOGIN_URL |  | brand.js |
+| OpenVibe.Shared | MIN_CLIENT_RELEASE |  | release.js |
 | OpenVibe.Shared | OV_AUDIO_URL |  | brand.js |
 | OpenVibe.Shared | OV_COMMUNITY_URL |  | brand.js |
 | OpenVibe.Shared | OV_DEV_URL |  | brand.js |
@@ -315,45 +978,220 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Shared | OV_TEXT_URL |  | brand.js |
 | OpenVibe.Shared | OV_TOOLS_URL |  | brand.js |
 | OpenVibe.Shared | OV_YT_URL |  | brand.js |
+| OpenVibe.Shared | RELEASE_AT |  | release.js |
+| OpenVibe.Shared | RELEASE_COMMIT |  | release.js |
+| OpenVibe.Sources | BASE_URL | sources.env | server/config.js |
+| OpenVibe.Sources | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Sources | EVENTS_URL | sources.env | server/config.js |
+| OpenVibe.Sources | HOST | sources.env | server/config.js |
+| OpenVibe.Sources | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Sources | NODE_ENV |  | server/config.js |
+| OpenVibe.Sources | OV_NETWORK_INTERNAL_URL | sources.env | server/config.js |
+| OpenVibe.Sources | OV_NETWORK_ISSUER |  | server/config.js |
+| OpenVibe.Sources | OV_NETWORK_PUBLIC_KEY |  | server/config.js |
+| OpenVibe.Sources | OV_NETWORK_URL | sources.env | server/config.js |
+| OpenVibe.Sources | OV_OAUTH_CLIENT_ID | sources.env | server/config.js |
+| OpenVibe.Sources | PORT |  | server/config.js |
+| OpenVibe.Sources | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Sources | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Sources | SOURCES_ALLOWED_PORTS |  | server/config.js |
+| OpenVibe.Sources | SOURCES_DB_PATH |  | server/config.js |
+| OpenVibe.Sources | SOURCES_FETCH_TIMEOUT_MS |  | server/config.js |
+| OpenVibe.Sources | SOURCES_HOST_MIN_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Sources | SOURCES_MAX_BACKOFF_MS |  | server/config.js |
+| OpenVibe.Sources | SOURCES_MAX_BYTES |  | server/config.js |
+| OpenVibe.Sources | SOURCES_MAX_CONCURRENT |  | server/config.js |
+| OpenVibe.Sources | SOURCES_MAX_ITEMS_PER_FETCH |  | server/config.js |
+| OpenVibe.Sources | SOURCES_MAX_REDIRECTS |  | server/config.js |
+| OpenVibe.Sources | SOURCES_ROBOTS_AGENT |  | server/config.js |
+| OpenVibe.Sources | SOURCES_ROBOTS_TTL_MS |  | server/config.js |
+| OpenVibe.Sources | SOURCES_TICK_MS |  | server/config.js |
+| OpenVibe.Sources | SOURCES_USER_AGENT |  | server/config.js |
+| OpenVibe.Sources | SOURCES_WORKER |  | server/config.js |
+| OpenVibe.Tips | BASE_URL | tips.env | server/config.js |
+| OpenVibe.Tips | BILLING_AUDIENCE |  | server/config.js |
+| OpenVibe.Tips | BILLING_URL | tips.env | server/config.js |
+| OpenVibe.Tips | COOKIE_SECURE |  | server/config.js |
+| OpenVibe.Tips | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Tips | EVENTS_URL | tips.env | server/config.js |
+| OpenVibe.Tips | HOST |  | server/config.js |
+| OpenVibe.Tips | LIVE_AUDIENCE |  | server/config.js |
+| OpenVibe.Tips | LIVE_INTERNAL_URL |  | server/config.js |
+| OpenVibe.Tips | LIVE_URL |  | server/config.js |
+| OpenVibe.Tips | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Tips | NODE_ENV |  | server/config.js |
+| OpenVibe.Tips | OV_NETWORK_INTERNAL_URL | tips.env | server/config.js |
+| OpenVibe.Tips | OV_NETWORK_ISSUER |  | server/config.js |
+| OpenVibe.Tips | OV_NETWORK_PUBLIC_KEY |  | server/config.js |
+| OpenVibe.Tips | OV_NETWORK_URL | tips.env | server/config.js |
+| OpenVibe.Tips | OV_OAUTH_CLIENT_ID | tips.env | server/config.js |
+| OpenVibe.Tips | OV_OAUTH_REDIRECT_URI |  | server/config.js |
+| OpenVibe.Tips | OV_OAUTH_SCOPE |  | server/config.js |
+| OpenVibe.Tips | PORT |  | server/config.js |
+| OpenVibe.Tips | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Tips | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Tips | TIPS_AUDIENCE | tips.env | server/config.js |
+| OpenVibe.Tips | TIPS_BILLING_RETRY_MS |  | server/config.js |
+| OpenVibe.Tips | TIPS_CHAT_ADAPTER | tips.env | server/config.js |
+| OpenVibe.Tips | TIPS_CHECKOUT_PROVIDERS |  | server/config.js |
+| OpenVibe.Tips | TIPS_DB_PATH |  | server/config.js |
+| OpenVibe.Tips | TIPS_DELIVERY_BACKOFF_MS |  | server/config.js |
+| OpenVibe.Tips | TIPS_DELIVERY_MAX_ATTEMPTS |  | server/config.js |
+| OpenVibe.Tips | TIPS_JOBS |  | server/config.js |
+| OpenVibe.Tips | TIPS_JOBS_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Tips | TIPS_MAX_BITS |  | server/config.js |
+| OpenVibe.Tips | TIPS_MEDIA_HOSTS |  | server/config.js |
+| OpenVibe.Tips | TIPS_MESSAGE_CHARS |  | server/config.js |
+| OpenVibe.Tips | TIPS_MIN_CHECKOUT_BITS |  | server/config.js |
+| OpenVibe.Tips | TIPS_OVERLAY_HEARTBEAT_MS |  | server/config.js |
+| OpenVibe.Tips | TIPS_OVERLAY_REPLAY_LIMIT |  | server/config.js |
+| OpenVibe.Tips | TIPS_OVERLAY_TTL_MS |  | server/config.js |
+| OpenVibe.Tips | TIPS_POWERCHAT_LINK_TEMPLATE |  | server/config.js |
+| OpenVibe.Tips | TIPS_TTS_HARD_CAP |  | server/config.js |
+| OpenVibe.Tips | TRUST_PROXY | tips.env | server/config.js |
 | OpenVibe.Tools | BASE_URL |  | apps/gateway/server/config.js, apps/maps/server/config.js +1 |
-| OpenVibe.Tools | DATA_DIR |  | apps/audio/server/config.js, apps/docs/server/config.js +2 |
+| OpenVibe.Tools | COOKIE_SECURE |  | apps/gateway/server/config.js |
+| OpenVibe.Tools | DATA_DIR |  | apps/audio/server/config.js, apps/docs/server/config.js +3 |
 | OpenVibe.Tools | DOWNLOADS_DIR |  | apps/yt/server/config.js |
+| OpenVibe.Tools | EVENTS_PUBLISH |  | apps/_shared/jobs/events.js |
+| OpenVibe.Tools | EVENTS_RELAY_INTERVAL_MS |  | apps/_shared/jobs/events.js |
+| OpenVibe.Tools | EVENTS_URL | tools.env | apps/_shared/jobs/events.js, apps/_shared/jobs/index.js |
+| OpenVibe.Tools | FFMPEG_PATH |  | apps/audio/server/index.js, apps/yt/server/index.js |
 | OpenVibe.Tools | HOST | tools.env | apps/audio/server/config.js, apps/docs/server/config.js +5 |
 | OpenVibe.Tools | LIVE_URL |  | apps/gateway/server/config.js |
-| OpenVibe.Tools | LOGIN_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | LOGIN_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Tools | MAPS_API |  | apps/food/server/index.js |
-| OpenVibe.Tools | MEDIA_PUBLIC_URL | tools.env | (not referenced) |
-| OpenVibe.Tools | MEDIA_URL | tools.env | (not referenced) |
-| OpenVibe.Tools | NODE_ENV | tools.env | apps/audio/server/index.js, apps/docs/server/index.js +6 |
+| OpenVibe.Tools | MEDIA_PUBLIC_URL | tools.env | apps/_shared/jobs/index.js |
+| OpenVibe.Tools | MEDIA_URL | tools.env | apps/_shared/jobs/index.js |
+| OpenVibe.Tools | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Tools | NODE_ENV | tools.env | apps/_shared/jobs/http.js, apps/audio/server/index.js +7 |
 | OpenVibe.Tools | OUTPUT_DIR |  | apps/audio/server/config.js, apps/docs/server/config.js +1 |
-| OpenVibe.Tools | OV_AUDIO_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_AUDIO_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Tools | OV_COMMUNITY_INTERNAL_URL |  | apps/gateway/server/config.js |
-| OpenVibe.Tools | OV_COMMUNITY_URL |  | apps/audio/node_modules/openvibe-shared/brand.js, apps/gateway/server/index.js |
-| OpenVibe.Tools | OV_DEV_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_DOCS_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_COMMUNITY_URL |  | OpenVibe.Shared/brand.js, apps/gateway/server/index.js |
+| OpenVibe.Tools | OV_DEV_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Tools | OV_DOCS_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Tools | OV_DOMAINS_URL |  | apps/gateway/server/registry/index.js |
 | OpenVibe.Tools | OV_ENFORCE_HOSTS |  | apps/gateway/server/index.js |
 | OpenVibe.Tools | OV_EXTRA_HOSTS |  | apps/_shared/host-role.js |
-| OpenVibe.Tools | OV_FOOD_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_GAMES_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_IMG_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_LIVE_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_LOGO_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_MAPS_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_MEDIA_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_NET_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_NETWORK_INTERNAL_URL | tools.env | apps/audio/server/config.js, apps/docs/server/config.js +3 |
-| OpenVibe.Tools | OV_NETWORK_LOGIN_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_FOOD_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Tools | OV_GAMES_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Tools | OV_IMG_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Tools | OV_LIVE_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Tools | OV_LOGO_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Tools | OV_MAPS_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Tools | OV_MEDIA_INTERNAL_URL | tools.env | apps/_shared/jobs/index.js |
+| OpenVibe.Tools | OV_MEDIA_URL |  | OpenVibe.Shared/brand.js, apps/_shared/jobs/index.js |
+| OpenVibe.Tools | OV_NET_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Tools | OV_NETWORK_INTERNAL_URL | tools.env | apps/_shared/jobs/events.js, apps/_shared/jobs/index.js +6 |
+| OpenVibe.Tools | OV_NETWORK_LOGIN_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Tools | OV_NETWORK_PUBLIC_KEY |  | apps/audio/server/config.js, apps/docs/server/config.js +2 |
-| OpenVibe.Tools | OV_NETWORK_URL | tools.env | apps/audio/node_modules/openvibe-shared/brand.js, apps/audio/server/config.js +5 |
-| OpenVibe.Tools | OV_OAUTH_CLIENT_ID | tools.env | apps/gateway/server/config.js |
+| OpenVibe.Tools | OV_NETWORK_URL | tools.env | OpenVibe.Shared/brand.js, apps/audio/server/config.js +6 |
+| OpenVibe.Tools | OV_OAUTH_CLIENT_ID | tools.env | apps/_shared/jobs/events.js, apps/_shared/jobs/index.js +1 |
 | OpenVibe.Tools | OV_OAUTH_REDIRECT_URI |  | apps/gateway/server/config.js |
-| OpenVibe.Tools | OV_PASTES_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_TEXT_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_TOOLS_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_YT_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_PASTES_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Tools | OV_REGISTRY_URL |  | apps/gateway/server/registry/services.js |
+| OpenVibe.Tools | OV_TEXT_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Tools | OV_TOOLS_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Tools | OV_YT_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Tools | PATH |  | apps/_shared/observe.js |
 | OpenVibe.Tools | PORT |  | apps/audio/server/config.js, apps/docs/server/config.js +6 |
+| OpenVibe.Tools | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Tools | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Tools | TOOLS_JOB_RESULTS | tools.env | apps/_shared/jobs/index.js |
+| OpenVibe.Tools | TOOLS_MEDIA_NAMESPACE |  | apps/_shared/jobs/index.js |
+| OpenVibe.Tools | TOOLS_SATELLITE_PORTS |  | apps/gateway/server/index.js |
 | OpenVibe.Tools | UPLOADS_DIR |  | apps/audio/server/config.js, apps/docs/server/config.js +1 |
-| OpenVibe.Tools | YT_COOKIES_FILE |  | apps/yt/server/downloader.js |
-| OpenVibe.Tools | YT_PROXY |  | apps/yt/server/downloader.js |
+| OpenVibe.Tools | YT_COOKIES_FILE |  | apps/yt/server/downloader.js, apps/yt/server/index.js |
+| OpenVibe.Tools | YT_PROXY |  | apps/yt/server/downloader.js, apps/yt/server/index.js |
 | OpenVibe.Tools | YTDLP_PATH |  | apps/yt/server/config.js |
+| OpenVibe.Trade | API_CORS_ORIGINS |  | server/config.js |
+| OpenVibe.Trade | BASE_URL | trade.env | server/config.js |
+| OpenVibe.Trade | COOKIE_SECURE |  | server/config.js |
+| OpenVibe.Trade | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Trade | EVENTS_URL | trade.env | server/config.js |
+| OpenVibe.Trade | HOST | trade.env | server/config.js |
+| OpenVibe.Trade | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Trade | NODE_ENV |  | server/config.js |
+| OpenVibe.Trade | OV_NETWORK_INTERNAL_URL | trade.env | server/config.js |
+| OpenVibe.Trade | OV_NETWORK_URL | trade.env | server/config.js |
+| OpenVibe.Trade | OV_OAUTH_CLIENT_ID | trade.env | server/config.js |
+| OpenVibe.Trade | OV_OAUTH_REDIRECT_URI |  | server/config.js |
+| OpenVibe.Trade | OV_SOURCES_INTERNAL_URL | trade.env | server/config.js |
+| OpenVibe.Trade | PORT |  | server/config.js |
+| OpenVibe.Trade | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Trade | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Trade | TRADE_DB_PATH |  | server/config.js |
+| OpenVibe.Trade | TRADE_DEFAULT_STALE_AFTER_SEC |  | server/config.js |
+| OpenVibe.Trade | TRADE_EDITORS | trade.env | server/config.js |
+| OpenVibe.Trade | TRADE_FRESHNESS_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Trade | TRADE_GATE_MIN_WORDS |  | server/config.js |
+| OpenVibe.Trade | TRADE_PRICE_MAX_AGE_SEC |  | server/config.js |
+| OpenVibe.Trade | TRADE_SYNC_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Trade | TRADE_SYNC_MAX_PAGES |  | server/config.js |
+| OpenVibe.Trade | TRADE_SYNC_PAGE_LIMIT |  | server/config.js |
+| OpenVibe.Trade | TRADE_WORKER |  | server/config.js |
+| OpenVibe.Trade | TRUST_PROXY | trade.env | server/config.js |
+| OpenVibe.VIP | BASE_URL | vip.env | server/config.js |
+| OpenVibe.VIP | BILLING_AUDIENCE |  | server/config.js |
+| OpenVibe.VIP | BILLING_URL | vip.env | server/config.js |
+| OpenVibe.VIP | COOKIE_SECURE |  | server/config.js |
+| OpenVibe.VIP | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.VIP | EVENTS_URL | vip.env | server/config.js |
+| OpenVibe.VIP | HOST |  | server/config.js |
+| OpenVibe.VIP | LIVE_URL |  | server/config.js |
+| OpenVibe.VIP | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.VIP | NODE_ENV |  | server/config.js |
+| OpenVibe.VIP | OV_NETWORK_INTERNAL_URL | vip.env | server/config.js |
+| OpenVibe.VIP | OV_NETWORK_ISSUER |  | server/config.js |
+| OpenVibe.VIP | OV_NETWORK_PUBLIC_KEY |  | server/config.js |
+| OpenVibe.VIP | OV_NETWORK_URL | vip.env | server/config.js |
+| OpenVibe.VIP | OV_OAUTH_CLIENT_ID | vip.env | server/config.js |
+| OpenVibe.VIP | OV_OAUTH_REDIRECT_URI |  | server/config.js |
+| OpenVibe.VIP | OV_OAUTH_SCOPE |  | server/config.js |
+| OpenVibe.VIP | PORT |  | server/config.js |
+| OpenVibe.VIP | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.VIP | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.VIP | TRUST_PROXY | vip.env | server/config.js |
+| OpenVibe.VIP | VIP_AUDIENCE |  | server/config.js |
+| OpenVibe.VIP | VIP_BILLING_RATES_TTL_MS |  | server/config.js |
+| OpenVibe.VIP | VIP_BILLING_TIMEOUT_MS |  | server/config.js |
+| OpenVibe.VIP | VIP_CHECKOUT_PROVIDERS | vip.env | server/config.js |
+| OpenVibe.VIP | VIP_DB_PATH |  | server/config.js |
+| OpenVibe.VIP | VIP_JOBS |  | server/config.js |
+| OpenVibe.VIP | VIP_POWERCHAT_LINK_TEMPLATE |  | server/config.js |
+| OpenVibe.VIP | VIP_PROJECTION_GRACE_MS |  | server/config.js |
+| OpenVibe.VIP | VIP_PROJECTION_MAX_AGE_MS |  | server/config.js |
+| OpenVibe.VIP | VIP_REFRESH_INTERVAL_MS |  | server/config.js |
+| OpenVibe.VIP | VIP_STAFF_ROLES |  | server/config.js |
+| OpenVibe.Wiki | BASE_URL | wiki.env | server/config.js |
+| OpenVibe.Wiki | COOKIE_SECURE |  | server/config.js |
+| OpenVibe.Wiki | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Wiki | EVENTS_URL | wiki.env | server/config.js |
+| OpenVibe.Wiki | HOST | wiki.env | server/config.js |
+| OpenVibe.Wiki | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Wiki | NODE_ENV |  | server/config.js |
+| OpenVibe.Wiki | OV_COMMUNITY_INTERNAL_URL | wiki.env | server/config.js |
+| OpenVibe.Wiki | OV_COMMUNITY_URL |  | server/config.js |
+| OpenVibe.Wiki | OV_MEDIA_INTERNAL_URL | wiki.env | server/config.js |
+| OpenVibe.Wiki | OV_MEDIA_URL | wiki.env | server/config.js |
+| OpenVibe.Wiki | OV_NETWORK_INTERNAL_URL | wiki.env | server/config.js |
+| OpenVibe.Wiki | OV_NETWORK_ISSUER |  | server/config.js |
+| OpenVibe.Wiki | OV_NETWORK_PUBLIC_KEY |  | server/config.js |
+| OpenVibe.Wiki | OV_NETWORK_URL | wiki.env | server/config.js |
+| OpenVibe.Wiki | OV_OAUTH_CLIENT_ID | wiki.env | server/config.js |
+| OpenVibe.Wiki | OV_OAUTH_REDIRECT_URI |  | server/config.js |
+| OpenVibe.Wiki | OV_SOURCES_INTERNAL_URL | wiki.env | server/config.js |
+| OpenVibe.Wiki | PORT |  | server/config.js |
+| OpenVibe.Wiki | RELEASE_AT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Wiki | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Wiki | TRUST_PROXY | wiki.env | server/config.js |
+| OpenVibe.Wiki | WIKI_DB_PATH |  | server/config.js |
+| OpenVibe.Wiki | WIKI_GATE_MIN_SOURCES |  | server/config.js |
+| OpenVibe.Wiki | WIKI_GATE_MIN_WORDS |  | server/config.js |
+| OpenVibe.Wiki | WIKI_GATE_REQUIRE_SOURCES |  | server/config.js |
+| OpenVibe.Wiki | WIKI_MEDIA_APP | wiki.env | server/config.js |
+| OpenVibe.Wiki | WIKI_MEDIA_VERIFY_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Wiki | WIKI_SCHEDULE_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Wiki | WIKI_USER_AUDIENCES |  | server/config.js |
+| OpenVibe.Wiki | WIKI_WORKER_ID |  | server/config.js |

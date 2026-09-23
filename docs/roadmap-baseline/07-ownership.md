@@ -6,16 +6,35 @@ Deliverable 6. Current owner = the repo that creates the table; target owner = r
 
 ## Summary
 
-| Current owner | Tables | Stay | Move | Frozen legacy | Investigate |
-|---|---|---|---|---|---|
-| OpenVibe.Live | 186 | 26 | 94 | 43 | 23 |
-| OpenVibe.Network | 39 | 36 | 3 | 0 | 0 |
-| OpenVibe.Shared | 0 | 0 | 0 | 0 | 0 |
-| OpenVibe.Media | 18 | 15 | 0 | 3 | 0 |
-| OpenVibe.Tools | 4 | 4 | 0 | 0 | 0 |
-| OpenVibe.Community | 20 | 20 | 0 | 0 | 0 |
-| OpenVibe.Games | 5 | 5 | 0 | 0 | 0 |
-| OpenVibe.Sites | 0 | 0 | 0 | 0 | 0 |
+| Current owner | Tables | Stay | Staged copy | Moved (mirror left) | To move | Frozen legacy | Investigate |
+|---|---|---|---|---|---|---|---|
+| OpenVibe.Live | 193 | 33 | 0 | 12 | 81 | 44 | 23 |
+| OpenVibe.Network | 51 | 48 | 0 | 0 | 3 | 0 | 0 |
+| OpenVibe.Shared | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Media | 21 | 18 | 0 | 0 | 0 | 3 | 0 |
+| OpenVibe.Tools | 10 | 10 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Community | 20 | 20 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Games | 13 | 13 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Sites | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Events | 7 | 7 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Chat | 32 | 26 | 6 | 0 | 0 | 0 | 0 |
+| OpenRe.Stream | 13 | 13 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Billing | 19 | 19 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Tips | 16 | 16 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.VIP | 15 | 15 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.AI | 16 | 16 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Search | 21 | 21 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Sources | 8 | 8 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Wiki | 20 | 20 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Blog | 20 | 20 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.News | 23 | 23 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Reviews | 23 | 23 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Deals | 19 | 19 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Coupons | 14 | 14 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Trade | 17 | 17 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Codes | 8 | 8 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Host | 12 | 12 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Examples | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 
 ## Authority moves
 
@@ -28,9 +47,9 @@ Deliverable 6. Current owner = the repo that creates the table; target owner = r
 | OpenVibe.Billing (loyalty ledger) | OpenVibe.Live | channel_points, coin_redemptions, coin_rewards, coin_transactions, user_cosmetics, user_equipped, user_equipped_tag | W8 (after ADR-012) |
 | OpenVibe.Billing (loyalty ledger) | OpenVibe.Network | coin_transactions, wallets | W8 (after ADR-012) |
 | OpenVibe.Billing + OpenVibe.VIP | OpenVibe.Live | subscriptions | W8/W10 |
-| OpenVibe.Chat | OpenVibe.Live | channel_moderation_settings, channel_moderators, channel_sounds, channel_sounds_new, chat_ai_summaries, chat_messages, chat_messages_new, chat_timeline_events, dm_blocks, dm_conversations, dm_messages, dm_participants, emotes, emotes_new, hidden_relay_users, media_request_settings, media_requests, moderation_actions, pending_ip_messages, relay_users, stream_first_chats, tts_voice_overrides, user_tags | W6 |
+| OpenVibe.Chat | OpenVibe.Live | channel_moderation_settings, channel_moderators, channel_sounds, channel_sounds_new, chat_ai_summaries, chat_messages, chat_messages_new, chat_timeline_events, dm_blocks, dm_conversations, dm_messages, dm_participants, emotes, emotes_new, hidden_relay_users, media_request_settings, media_requests, moderation_actions, pending_ip_messages, relay_users, stream_first_chats, tts_voice_overrides, user_tags | W6 (remainder) |
 | OpenVibe.Codes | OpenVibe.Live | vibe_coding_events, vibe_coding_sessions | W20 |
-| OpenVibe.Community | OpenVibe.Live | comments, paste_comments, paste_likes, pastes | W5 |
+| OpenVibe.Community | OpenVibe.Live | comments, paste_comments, paste_likes, pastes | W5 (done 2026-09-23) |
 | OpenVibe.Community | OpenVibe.Media | paste_comments, paste_likes, pastes | W5 (done 2026-09-22) |
 | OpenVibe.Events | OpenVibe.Network | stream_live_announcements | W3 |
 | OpenVibe.Games | OpenVibe.Live | canvas_actions, canvas_bans, canvas_region_locks, canvas_settings, canvas_snapshots, canvas_tiles, canvas_user_overrides, game_achievements, game_bank, game_battle_stats, game_daily_quest_claims, game_daily_quest_progress, game_dungeon_runs, game_effects, game_farm_plots, game_fish_collection, game_inventory, game_leaderboard, game_players, game_recipes, game_structures, game_world_state | W12 |

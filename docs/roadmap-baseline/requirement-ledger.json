@@ -1,0 +1,3170 @@
+{
+ "_about": "Generated from data/requirement-ledger.json by scripts/roadmap-baseline/generate.js. Umbrella-level ledger (roadmap §22.4/§25): one row per D01-D46 requirement, every artifact re-verified against the scanned origin/main checkouts and prod-snapshot.json. Do not edit; edit the data file and regenerate.",
+ "asOf": "2026-09-23T20:30Z",
+ "generatedFrom": {
+  "OpenVibe.Live": "c893c6ca709926635522bac053f52062b5d3e1ad",
+  "OpenVibe.Network": "9bbd90f786fb80b02cbf7592ff9217844a714c32",
+  "OpenVibe.Shared": "c6405d48fabede75e2a9ef417fae46d493cfb940",
+  "OpenVibe.Media": "9de4b2528dd5787e7b5633d16eed40d8b4d43b4b",
+  "OpenVibe.Tools": "5d1b42357392d47e5cc3f6bef3f22facdc6c23cd",
+  "OpenVibe.Community": "57d1dd4cbdc79f39ae5e98cc0d09b03a75508f5d",
+  "OpenVibe.Games": "7863fc6a71890b264c29ddd6bfa7e4c162da4883",
+  "OpenVibe.Sites": "d6e4cbd3a2091bb9970ee15504c7758da8a96a24",
+  "OpenVibe.Events": "efc09a795ea0fdea9e6eca04f20cc44362b91e3f",
+  "OpenVibe.Chat": "789768806b0d217b0bc735c319d20d1b6ebb4df8",
+  "OpenRe.Stream": "c091a0959a6d727ec702ee589300cd42a0902be9",
+  "OpenVibe.Billing": "aa445d0c8b7351afae910b9572a2f9ae674e0914",
+  "OpenVibe.Tips": "9a3a186182df7d150780b31d191ea1eb99c95962",
+  "OpenVibe.VIP": "9668a492b8f5b6c111261cf0e4270fc4ffcf521d",
+  "OpenVibe.AI": "3a480ac9f20ca018f5c2c8973f92d32dbe1a44cd",
+  "OpenVibe.Search": "a707e38f87a077bbf2f570537a89b2f890d45e22",
+  "OpenVibe.Sources": "2e986af27a5554fd01803daf9e55c726deded80d",
+  "OpenVibe.Wiki": "b4e70acdab789cefc24aa9b5ab2a40fecc7be9d5",
+  "OpenVibe.Blog": "95e99acdcf4610f244b64d8e34afcb8f394685d9",
+  "OpenVibe.News": "5b393d27ba4167910e8019874a92f3d5dbf455cb",
+  "OpenVibe.Reviews": "a7b50a6231c44271e0611df2e25e366a980a13c4",
+  "OpenVibe.Deals": "91ca2235e0a4c7018a0b0bf5f49ba1f32db6d018",
+  "OpenVibe.Coupons": "1c57c4743b016ecf6f72d8d03feb7f56806920a6",
+  "OpenVibe.Trade": "ddbc60c5e2f5ab16cfd17cd126803c9c24784662",
+  "OpenVibe.Codes": "51d23865f2630203cf734c019309c7ffc053f89c",
+  "OpenVibe.Host": "ea99b502c072ae6635f7705e002e0ec174cae16d",
+  "OpenVibe.Examples": "d5f4efc02165f42b9feac5d2743de6e6c75c27de"
+ },
+ "prodSnapshot": {
+  "host": "openvibe-oregon",
+  "collectedAt": "2026-09-23T20:32:59.561Z"
+ },
+ "statuses": {
+  "met": "the §15.0 required target is demonstrated by current evidence: a test that exercises it, and production evidence where the target is a production authority or state.",
+  "partial": "some of the target is demonstrated and the next steps are agent-doable; an owner item may also be named.",
+  "not-met": "essentially nothing of the target is demonstrated.",
+  "blocked-on-owner": "the core of the target cannot be demonstrated until the owner acts (the action is named); agent-doable items that remain are listed too."
+ },
+ "counts": {
+  "requirements": {
+   "met": 3,
+   "partial": 35,
+   "not-met": 1,
+   "blocked-on-owner": 7
+  },
+  "families": {
+   "met": 0,
+   "partial": 21,
+   "not-met": 0,
+   "blocked-on-owner": 1
+  }
+ },
+ "verified": {
+  "requirements": 46,
+  "of": 46,
+  "missing": [],
+  "duplicated": []
+ },
+ "families": [
+  {
+   "ids": "D01",
+   "name": "Identity/account",
+   "w0": "partial",
+   "wave": "W1",
+   "status": "partial",
+   "members": [
+    "D01"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "tables.OpenVibe.Live.target:OpenVibe.Network",
+     "value": "7 Live tables target OpenVibe.Network"
+    }
+   ]
+  },
+  {
+   "ids": "D02-D04",
+   "name": "Registry, capabilities, contracts",
+   "w0": "absent",
+   "wave": "W1, W2",
+   "status": "partial",
+   "members": [
+    "D02",
+    "D03",
+    "D04"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "github.charters",
+     "value": "1 charter-only repos of 36"
+    },
+    {
+     "key": "contract.todo-markers",
+     "value": "Live 15, Network 0, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0, Events 0, Chat 0, OpenRe.Stream 0, Billing 0, Tips 0, VIP 0, AI 0, Search 0, Sources 0, Wiki 0, Blog 0, News 0, Reviews 0, Deals 0, Coupons 0, Trade 0, Codes 0, Host 0, Examples 0"
+    }
+   ]
+  },
+  {
+   "ids": "D05-D06",
+   "name": "Policy, staff, user modules",
+   "w0": "partial",
+   "wave": "W1, W2",
+   "status": "partial",
+   "members": [
+    "D05",
+    "D06"
+   ],
+   "verified": true,
+   "metrics": []
+  },
+  {
+   "ids": "D07-D10",
+   "name": "Themes, notifications, social, analytics",
+   "w0": "partial",
+   "wave": "W1, W2, Track O",
+   "status": "partial",
+   "members": [
+    "D07",
+    "D08",
+    "D09",
+    "D10"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "tables.analytics-copies",
+     "value": "3 repos carry their own analytics_events"
+    }
+   ]
+  },
+  {
+   "ids": "D11-D13",
+   "name": "Events, realtime, SDK",
+   "w0": "absent",
+   "wave": "W2, W3",
+   "status": "partial",
+   "members": [
+    "D11",
+    "D12",
+    "D13"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "outbound.call-sites",
+     "value": "97 caller-file/target pairs across 74 files"
+    },
+    {
+     "key": "ws.servers",
+     "value": "11 WebSocket server constructions"
+    }
+   ]
+  },
+  {
+   "ids": "D14-D16",
+   "name": "Media",
+   "w0": "partial",
+   "wave": "W4",
+   "status": "partial",
+   "members": [
+    "D14",
+    "D15",
+    "D16"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "tables.OpenVibe.Media.target:OpenVibe.Community",
+     "value": "3 Media tables target OpenVibe.Community"
+    }
+   ]
+  },
+  {
+   "ids": "D17-D20",
+   "name": "Live, OpenRe, channel/VOD lineage",
+   "w0": "partial",
+   "wave": "W7",
+   "status": "partial",
+   "members": [
+    "D17",
+    "D18",
+    "D19",
+    "D20"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "tables.OpenVibe.Live.target:OpenRe.Stream",
+     "value": "14 Live tables target OpenRe.Stream"
+    },
+    {
+     "key": "tests.OpenRe.Stream",
+     "value": "18 test files"
+    }
+   ]
+  },
+  {
+   "ids": "D21-D23",
+   "name": "Chat",
+   "w0": "partial",
+   "wave": "W6",
+   "status": "partial",
+   "members": [
+    "D21",
+    "D22",
+    "D23"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "tables.OpenVibe.Live.target:OpenVibe.Chat",
+     "value": "23 Live tables target OpenVibe.Chat"
+    },
+    {
+     "key": "tests.OpenVibe.Chat",
+     "value": "16 test files"
+    }
+   ]
+  },
+  {
+   "ids": "D24-D27",
+   "name": "Community",
+   "w0": "partial",
+   "wave": "W5",
+   "status": "partial",
+   "members": [
+    "D24",
+    "D25",
+    "D26",
+    "D27"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "tables.OpenVibe.Community",
+     "value": "20 tables"
+    },
+    {
+     "key": "tables.OpenVibe.Live.target:OpenVibe.Community",
+     "value": "4 Live tables target OpenVibe.Community"
+    }
+   ]
+  },
+  {
+   "ids": "D28-D30",
+   "name": "Billing, Tips, VIP",
+   "w0": "partial",
+   "wave": "W8-W10 (ADR-012 first)",
+   "status": "blocked-on-owner",
+   "members": [
+    "D28",
+    "D29",
+    "D30"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "tables.OpenVibe.Live.target:OpenVibe.Billing",
+     "value": "2 Live tables target OpenVibe.Billing"
+    },
+    {
+     "key": "tests.OpenVibe.Billing",
+     "value": "16 test files"
+    }
+   ]
+  },
+  {
+   "ids": "D31",
+   "name": "Tools",
+   "w0": "built",
+   "wave": "W11",
+   "status": "partial",
+   "members": [
+    "D31"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "tests.OpenVibe.Tools",
+     "value": "16 test files"
+    }
+   ]
+  },
+  {
+   "ids": "D32",
+   "name": "Games",
+   "w0": "built",
+   "wave": "W12",
+   "status": "partial",
+   "members": [
+    "D32"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "tests.OpenVibe.Games",
+     "value": "68 test files"
+    }
+   ]
+  },
+  {
+   "ids": "D33-D34",
+   "name": "Codes, Host",
+   "w0": "absent",
+   "wave": "W20, W21",
+   "status": "partial",
+   "members": [
+    "D33",
+    "D34"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "tests.OpenVibe.Codes",
+     "value": "19 test files"
+    },
+    {
+     "key": "tests.OpenVibe.Host",
+     "value": "27 test files"
+    }
+   ]
+  },
+  {
+   "ids": "D35-D38",
+   "name": "AI, content, sources, search",
+   "w0": "partial",
+   "wave": "W13-W15",
+   "status": "partial",
+   "members": [
+    "D35",
+    "D36",
+    "D37",
+    "D38"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "tables.OpenVibe.Live.target:OpenVibe.AI",
+     "value": "14 Live tables target OpenVibe.AI"
+    },
+    {
+     "key": "tests.OpenVibe.AI",
+     "value": "17 test files"
+    }
+   ]
+  },
+  {
+   "ids": "D39",
+   "name": "Mods",
+   "w0": "absent",
+   "wave": "W12, W21",
+   "status": "partial",
+   "members": [
+    "D39"
+   ],
+   "verified": true,
+   "metrics": []
+  },
+  {
+   "ids": "D40",
+   "name": "Open developer services",
+   "w0": "absent",
+   "wave": "W20, W21",
+   "status": "partial",
+   "members": [
+    "D40"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "outbound.internal-key",
+     "value": "39 of 97 call sites authenticate with the shared internal key"
+    }
+   ]
+  },
+  {
+   "ids": "D41",
+   "name": "Independent runtime lifecycle",
+   "w0": "partial",
+   "wave": "W7, W21",
+   "status": "partial",
+   "members": [
+    "D41"
+   ],
+   "verified": true,
+   "metrics": []
+  },
+  {
+   "ids": "D42",
+   "name": "Shared component architecture",
+   "w0": "partial",
+   "wave": "W2, Track R",
+   "status": "partial",
+   "members": [
+    "D42"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "shared.pins",
+     "value": "23 repos pin a tagged openvibe-shared release (latest v1.4.0): OpenRe.Stream v1.2.1, AI v1.3.0, Billing v1.3.0, Blog v1.3.0, Codes v1.3.0, Community v1.3.0, Coupons v1.3.0, Deals v1.3.0, Events v1.3.0, Host v1.3.0, Live v1.4.0, Media v1.3.0, Network v1.4.0, News v1.3.0, Reviews v1.3.0, Search v1.3.0, Sites v1.0.0, Sources v1.3.0, Tips v1.3.0, Tools v1.4.0, Trade v1.3.0, VIP v1.3.0, Wiki v1.3.0"
+    },
+    {
+     "key": "shared.drift",
+     "value": "20 manifests unpinned or behind: OpenRe.Stream (v1.2.1), AI (v1.3.0), Billing (v1.3.0), Blog (v1.3.0), Codes (v1.3.0), Community (v1.3.0), Coupons (v1.3.0), Deals (v1.3.0), Events (v1.3.0), Host (v1.3.0), Media (v1.3.0), News (v1.3.0), Reviews (v1.3.0), Search (v1.3.0), Sites (v1.0.0), Sources (v1.3.0), Tips (v1.3.0), Trade (v1.3.0), VIP (v1.3.0), Wiki (v1.3.0)"
+    }
+   ]
+  },
+  {
+   "ids": "D43",
+   "name": "Safe active-client updates",
+   "w0": "absent",
+   "wave": "Track R",
+   "status": "partial",
+   "members": [
+    "D43"
+   ],
+   "verified": true,
+   "metrics": []
+  },
+  {
+   "ids": "D44",
+   "name": "Crawlable component rendering",
+   "w0": "built",
+   "wave": "Track R (preserve)",
+   "status": "partial",
+   "members": [
+    "D44"
+   ],
+   "verified": true,
+   "metrics": []
+  },
+  {
+   "ids": "D45",
+   "name": "Release compatibility and recovery",
+   "w0": "absent",
+   "wave": "Track R, W22",
+   "status": "partial",
+   "members": [
+    "D45"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "deploy.drift",
+     "value": "15 service(s) not running origin/main"
+    }
+   ]
+  },
+  {
+   "ids": "D46",
+   "name": "Update observability and acceptance",
+   "w0": "absent",
+   "wave": "Track R, Track O",
+   "status": "partial",
+   "members": [
+    "D46"
+   ],
+   "verified": true,
+   "metrics": [
+    {
+     "key": "ci.repos",
+     "value": "27 of 27 scanned repos have .github/workflows"
+    }
+   ]
+  }
+ ],
+ "requirements": [
+  {
+   "id": "D01",
+   "title": "Identity/account",
+   "owner": "OpenVibe.Network (canonical identity, subject ids, identity_legacy_map, service principals); product-side projections in Live, Media, Community and Games",
+   "target": "canonical subjects, legacy maps, service identities",
+   "status": "partial",
+   "summary": "Network gives every account a canonical subject id (prod 2026-09-23 20:21Z: users 393/393, anon_users 27,856/27,856), keeps identity_legacy_map (network 393 + 27,856, live 327, hobostreamer 29) behind resolve/resolve-batch, and issues short-lived scoped service tokens (21 clients, 111 active grants). Product-side adoption is incomplete. Media has owner_subject on 0 of 3,032 user-owned objects. Live has subject_id on 4 of 327 linked_accounts, and Games on 1 of 28 players. Live still holds 351 user rows with 30 bcrypt hashes, 200 emails and role truth. The shared X-Internal-Key still authorizes 4 Network compat routes (268 allowed calls in the last 24 h).",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/identity-subjects.test.js",
+     "contains": "a mapped id is never repointed",
+     "proves": "Backfills subject ids for users and guests (stable across boots), seeds and resolves the legacy map (Live id -> subject) over /internal/identity/resolve(-batch), never repoints a mapped legacy id, and issues tokens that carry subject_id next to the integer sub. Passed on Node 22 against origin/main 2026-09-23.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/principals.test.js",
+     "contains": "a bad token is not rescued by the legacy key",
+     "proves": "The client_credentials service principals issue 300 s tokens (sub svc:live, aud, cap, ns) that validate against identity.service-token-claims@1. Forged, expired, wrong-audience and narrowed tokens are refused. The legacy key works only in compat mode and each use is counted. Passed 2026-09-23.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/service-principal.test.js",
+     "contains": "service principals cannot do user sign-in",
+     "proves": "Service identities are provisioned and rotated without printing secrets, and a service client cannot act as a user sign-in client",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u ubuntu sqlite3 -readonly /opt/openvibe.network/data/network.db \"SELECT count(*), sum(subject_id IS NOT NULL) FROM users; SELECT count(*), sum(subject_id IS NOT NULL) FROM anon_users; SELECT source_system, source_type, count(*) FROM identity_legacy_map GROUP BY 1,2; SELECT count(*), count(DISTINCT client_id) FROM principal_grants WHERE revoked_at IS NULL\"'",
+     "observed": "users 393|393; anon_users 27856|27856; legacy map hobostreamer|user|29, live|user|327, network|anon_user|27856, network|user|393; active grants 111 across 21 clients",
+     "at": "2026-09-23T20:21Z",
+     "proves": "Every Network account and guest has a canonical subject, the legacy maps are populated, and the service identities are provisioned in production",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u ubuntu sqlite3 -readonly /opt/openvibe.media/data/media.db \"SELECT count(*), sum(owner_user_id IS NOT NULL), sum(owner_user_id IS NOT NULL AND owner_subject IS NOT NULL) FROM media_objects\"; sudo -n -u ubuntu sqlite3 -readonly /opt/openvibe.live/data/live.db \"SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM linked_accounts), (SELECT count(*) FROM linked_accounts WHERE subject_id IS NOT NULL); SELECT sum(password_hash LIKE ''\\$2%''), sum(email IS NOT NULL AND email <> '''') FROM users\"; sudo -n -u ubuntu sqlite3 -readonly /opt/openvibe.games/data/world.db \"SELECT count(*), sum(subject_id IS NOT NULL) FROM players\"'",
+     "observed": "Media 3056 objects, 3032 user-owned, 0 with owner_subject; Live users 351, linked_accounts 327, 4 with subject_id, 30 bcrypt hashes, 200 emails; Games players 28, 1 with subject_id",
+     "at": "2026-09-23T20:21Z",
+     "proves": "The gap: product databases have not adopted canonical subjects, and Live still holds its own credential and role truth",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u ubuntu sqlite3 -readonly /opt/openvibe.network/data/network.db \"SELECT count(DISTINCT route), sum(count) FROM principal_usage WHERE principal = ''legacy-key'' AND allowed = 1 AND last_at >= datetime(''now'',''-1 day'')\"'",
+     "observed": "4|268",
+     "at": "2026-09-23T20:21Z",
+     "proves": "The legacy X-Internal-Key is still in active use on Network's compat routes, so the service-identity migration (step 7, revoke the key) is not done",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Host",
+     "path": "docs/compatibility-register.md",
+     "contains": "| C-50 | **Network key-only `/internal/*` routes**",
+     "proves": "Key retirement is scheduled, not done: rows C-50 to C-57 (Network, Live, Media and Tools key paths) carry dated removal conditions",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Backfill Media media_objects.owner_subject for the 3,032 user-owned objects (0 today), so no service translates Live integer ids through another service",
+    "Map Live linked_accounts.subject_id (4/327) and Games players.subject_id (1/28; the Games legacy import held 200 rows with no subject)",
+    "Replace Live's own users table (351 rows, 30 bcrypt hashes, 200 emails, a role column) with a subject_projection plus Live channel state, and stop pushing role truth over the key-only /internal/user-role route (C-54/C-55)",
+    "Retire X-Internal-Key per register rows C-50 to C-57 once principal_usage shows zero key calls, and move Live->Media off MEDIA_API_KEY (C-70)",
+    "Build and test the §15.4/§20 identity edge cases: guest conversion keeps permitted state, account switch invalidates sockets and caches, revocation converges across services, a merge cannot take an identity another subject owns, and old usernames redirect"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D02",
+   "title": "Registry",
+   "owner": "OpenVibe.Network (registry API, exposure overlay) over OpenVibe.Contracts (service, capability, namespace manifests)",
+   "target": "one ecosystem service-manifest registry",
+   "status": "partial",
+   "summary": "Network serves one registry built from the openvibe-contracts manifests. Endpoints: /.well-known/openvibe, /api/v1/registry/{services, domains, capabilities, namespaces, contracts}. Since 5ad26ec (2026-09-23) it also serves topics (133 in prod), releases, health and search. An exposure overlay (29cdb09) keeps placeholder domains from being reported as running. The registry is not yet manifest-driven end to end. Network hand-codes internal addresses, readiness paths, exposure states, library releases and the navbar's RAW_SITES. Production pins contracts v0.30.1, so at 20:22Z the registry still said live owns chat.message.send and reported contracts v0.30.1 and Shared v1.3.0 as the latest releases, although v0.30.2 and v1.4.0 are tagged.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/registry-topics.test.js",
+     "contains": "no longer empty",
+     "proves": "/topics lists every produced and consumed event type with its payload contract. /releases reads each service's /release.json and reports library drift. /health gives one timestamped row per manifest, /search covers services, capabilities, topics and contracts, and payload schemas are served at their $id. Passed 2026-09-23.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/registry-exposure.test.js",
+     "contains": "clients never route to a placeholder page",
+     "proves": "Every manifest gets one exposure state. /.well-known, /registry, /status and the navbar agree, and a service whose domain serves a placeholder is never presented as public. Passed 2026-09-23.",
+     "ok": true
+    },
+    {
+     "kind": "commit",
+     "repo": "OpenVibe.Network",
+     "sha": "5ad26ec",
+     "proves": "Registry completeness: the /topics, /releases, /health and /search endpoints (all 404 or empty at the audit)",
+     "ok": true
+    },
+    {
+     "kind": "commit",
+     "repo": "OpenVibe.Network",
+     "sha": "29cdb09",
+     "proves": "Honest registry exposure overlay (server/registry/exposure.js) shared by the registry, the status page and the navbar",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'curl -s http://127.0.0.1:4000/api/v1/registry/topics | jq -c \"{topics: (.topics|length), contracts_version}\"; curl -s http://127.0.0.1:4000/api/v1/registry/releases | jq -c \"{checked_at, libraries: [.libraries[]|{id,release}], n: (.services|length)}\"; curl -s http://127.0.0.1:4000/api/v1/registry/health | jq -c \"{checked_at, summary}\"; curl -s \"http://127.0.0.1:4000/api/v1/registry/search?q=chat.message\" | jq -c \"{caps: [.capabilities[].id]}\"'",
+     "observed": "topics 133, contracts_version 0.30.1; releases checked_at 2026-09-23T20:20:56Z, libraries sdk v0.4.0, shared v1.3.0, contracts v0.30.1, 27 services; health summary up 22, not-running 6, degraded 2; search returns chat.message.send",
+     "at": "2026-09-23T20:21Z",
+     "proves": "The new registry endpoints answer in production with timestamped data",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'curl -s http://127.0.0.1:4000/api/v1/registry/capabilities/chat.message.send | jq -c \"{id, owner, status}\"'",
+     "observed": "{\"id\":\"chat.message.send\",\"owner\":\"live\",\"status\":\"active\"}",
+     "at": "2026-09-23T20:22Z",
+     "proves": "The gap: production runs contracts v0.30.1, so the registry is a release behind Contracts v0.30.2, which moved chat.message.send to chat",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Derive each service's internal address, readiness path and exposure from its manifest plus validated host or env overrides, instead of Network's INTERNAL, READY_PATHS and EXPOSURE maps and the chrome RAW_SITES list. Prove the §20 acceptance, 'a new service manifest becomes discoverable without editing hard-coded navbar or server maps', with a test",
+    "Read the library releases in /releases from the published tags, not the values hard-coded in exposure.js (contracts v0.30.1 and Shared v1.3.0, both already superseded)",
+    "Deploy Network on openvibe-contracts v0.30.2, so the registry serves the current ownership (chat.message.send owned by chat), Live's and Media's eventsProduced, and live.follower.read",
+    "Register the product catalogs (Tools' tool catalog, Source's game-server registry) as resources behind the platform catalog (§15.5), and list deprecations with their replacement and window",
+    "Hub UX from the registry: directory search, featured and trending entries with a freshness rule, favourites and recents (§15.5)"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D03",
+   "title": "Capabilities",
+   "owner": "OpenVibe.Contracts (capability manifests), OpenVibe.Network (grants, token issuance), each owning service (enforcement at its boundary)",
+   "target": "action-level capability contracts and grants",
+   "status": "partial",
+   "summary": "Contracts CI validates 171 action-level capability manifests against capabilities.capability@1 (163 active), each with owner, permissions, resourceConstraints, quotaClass, events and implementedBy. Network turns grants into scoped 300 s service and app tokens: 111 active grants for 21 clients in prod on 2026-09-23. Developer-app grants need a staff allowance and owner approval. Owning services refuse ungranted calls, with denial tests in Network, Contracts, Media, Community and Chat. Chat has enforced chat.message.send since 791cd3d; the grant is 1633b6a, 19:11 UTC. That build is deployed, with 0 refusals since. Gaps: only 12 of 171 capabilities declare an inputSchema. Chat still pins contracts v0.13.0 and keeps the id where its CI check cannot see it. The legacy key still bypasses grants on compat routes.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Contracts",
+     "path": "test/run.js",
+     "contains": "a family grant never crosses owners",
+     "proves": "Every capability manifest validates, is owned by a registered service and lists its implementing route. capabilities.check denies ungranted, unknown, other-namespace and cross-owner calls. requireCapability returns a 403 problem without a grant and passes with one. 2,896 checks passed on 2026-09-23.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/principals.test.js",
+     "contains": "asking for an ungranted capability fails",
+     "proves": "Grants become token scopes. A scope narrows the token, an ungranted scope is invalid_scope, a narrowed token is refused with capability.denied, owner_denied is audited, and a revoked grant drops out of new tokens (§20: 'denied without a grant and accepted with a scoped grant')",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Chat",
+     "path": "test/bridge.test.js",
+     "contains": "sending a chat message needs chat.message.send; without it only those ops are refused",
+     "proves": "Chat refuses message-sending bridge ops from a service or app principal without chat.message.send: nothing is persisted and no event is written. A principal holding both capabilities may send. Passed 2026-09-23.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/developer-projects.test.js",
+     "contains": "first-party capabilities are never grantable",
+     "proves": "Third-party app grants: only public catalog capabilities, requested by developers, capped by a staff allowance and approved by the owner. Tokens carry only approved grants, and shrinking the allowance revokes them.",
+     "ok": true
+    },
+    {
+     "kind": "commit",
+     "repo": "OpenVibe.Chat",
+     "sha": "791cd3d",
+     "proves": "Chat enforces chat.message.send on its service API (the audit found it enforced nowhere)",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u ubuntu sqlite3 -readonly /opt/openvibe.network/data/network.db \"SELECT client_id, capability, audience, granted_at FROM principal_grants WHERE capability = ''chat.message.send''\"; grep -c MESSAGE_SEND /opt/openvibe.chat/server/bridge/live-bridge.js; journalctl -u openvibe-chat --since \"2026-09-23 19:00:00 UTC\" --no-pager | grep -c \"lacks chat.message.send\"'",
+     "observed": "live|chat.message.send|openvibe.chat|2026-09-23 19:11:32; deployed live-bridge.js has 5 MESSAGE_SEND references; 0 refusals since 19:00 UTC (openvibe-chat active since 20:06:17 UTC)",
+     "at": "2026-09-23T20:23Z",
+     "proves": "In production the grant exists, Chat runs the enforcing code, and Live's granted traffic is accepted",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Give capabilities input and output schemas (12 of 171 have an inputSchema), so each contract describes its action's payload (§15.1)",
+    "Chat: move to openvibe-contracts >= 0.30.2, where chat.message.send is owned by chat, guard it with a literal that openvibe-contracts-check can see, and make Chat's contracts CI job blocking",
+    "Stop the legacy X-Internal-Key from authorizing capability-guarded routes (register rows C-50 to C-57), so a grant is the only way in",
+    "Add an audited admin path for first-party grants: today they are code edits to DEFAULT_GRANTS in server/identity/principals.js (overlaps D05)"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D04",
+   "title": "Contracts/config",
+   "owner": "OpenVibe.Contracts (plus the SDK's version negotiation and Network's /registry/releases drift report)",
+   "target": "dedicated contracts repository, generated types, version negotiation",
+   "status": "partial",
+   "summary": "OpenVibe.Contracts is the dedicated repository. v0.30.2 was tagged on 2026-09-23 with 75 schema files and fixtures for every contract. Its 2,896 checks pass, including generate.js --check (generated TypeScript and JSON Schema bundle) and a compat gate against v0.30.1. openvibe-contracts-check runs in the CI of 21 repositories. The SDK negotiates the network's contracts version (warns, or throws in strict mode; tested), and /registry/releases plus scripts/contracts-drift.js report drift. The loop is not closed. Drift only warns, and 17 of the 20 reporting services run behind (prod, 20:21Z). Network itself serves v0.30.1. Games has no contracts dependency or check. There is no OpenAPI output, the deprecation list is empty, and the configuration model (§15.5) does not exist.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Contracts",
+     "path": "test/run.js",
+     "contains": "generated types reference undeclared names",
+     "proves": "The catalog carries id, semver, owner, visibility, compatibility and status for every contract, with valid and invalid fixtures. Generated types are current (generate.js --check), compat.js finds no breaking change against the previous tag, and the openvibe-contracts-check CLI rejects unknown or foreign capabilities and unknown majors. 'compat vs v0.30.1: no breaking changes' on 2026-09-23.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.SDK",
+     "path": "test/registry.test.js",
+     "contains": "version negotiation: warn by default, throw when strict",
+     "proves": "Clients compare the contracts version from /.well-known/openvibe with their supported range: they warn once, throw sdk.incompatible_contracts in strict mode, and accept a widened range. Passed 2026-09-23.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/registry-topics.test.js",
+     "contains": "drift is a warning, not a failure",
+     "proves": "scripts/contracts-drift.js classifies pins as behind, current, unpublished, not-pinned or unknown from GitHub tags or /registry/releases. It warns by default and fails only with --strict.",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "docs/adr/ADR-002-contract-repository.md",
+     "contains": "**Status:** Accepted, implemented 2026-09-22 (openvibe-contracts v0.1.0+)",
+     "proves": "The contract-repository and compatibility-policy decision",
+     "ok": true
+    },
+    {
+     "kind": "commit",
+     "repo": "OpenVibe.Contracts",
+     "sha": "6874873",
+     "proves": "v0.30.2, the current release (chat.message.send owned by chat, and Live and Media declare their events)",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'curl -s http://127.0.0.1:4000/api/v1/registry/releases | jq -c \"{behind, n: (.services|length), with_release: ([.services[]|select(.release!=null)]|length)}\"; curl -s http://127.0.0.1:4000/.well-known/openvibe | jq -c \"{contracts: .contracts.version}\"'",
+     "observed": "behind: ai, blog, codes, community, coupons, deals, events, host, media, news, reviews, search, sources, tips, trade, vip, wiki (17); 27 services, 20 report a release; .well-known contracts 0.30.1",
+     "at": "2026-09-23T20:21Z",
+     "proves": "Version reporting works in production, and it shows that most services and Network itself run behind the latest contracts",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Games: depend on openvibe-contracts and run openvibe-contracts-check in CI (it is the only product service without it)",
+    "Make drift act, not just warn: run contracts-drift with --strict, or fail on unpublished pins, in CI, and move the lagging services (Chat v0.13.0, Community v0.11.0, the 17 flagged by /releases) and Network (v0.30.1) to the current release",
+    "Generate OpenAPI fragments (there is no generated/openapi) and route-shape schemas for Live, Media and Community",
+    "Build the configuration model of §15.5: classify each setting, version snapshots, validate before activation, keep a last-known-good, and publish service.configuration.updated. Nothing exists beyond env-name inventories",
+    "Run the deprecation path end to end: a deprecated contract listed with its replacement and window and visible through the registry (compatibility/deprecations.json is empty)"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D05",
+   "title": "Policy/staff",
+   "owner": "OpenVibe.Network (grants, principal_usage audit, the staff directory under ADR-022), OpenVibe.Contracts (vocabulary); Live, Chat and Community enforce",
+   "target": "shared policy vocabulary, resource scopes, audited grants",
+   "status": "partial",
+   "summary": "Service and app principals share one policy vocabulary: capability ids, permissions strings and a fixed resourceConstraints enum (namespace, owner, room_member, space_member, project) in Contracts. capabilities.check answers capability.denied, namespace_denied or owner_denied (tested), and namespace scopes travel in the token's ns claim. Decisions are audited in Network's principal_usage (prod: 64 allowed and 3 denied token calls, 268 allowed key calls), and developer-app grant changes in the append-only dev_audit. Community refuses staff vouching without the moderate capability. Staff policy is not shared: ADR-022 (Network as staff directory, with a moderation audit log) is accepted but unbuilt. Live (55 lines matching `role ===` in server/), Chat (9) and Community (STAFF_ROLES) keep raw role checks, and Network still pushes role truth to Live over the key-only /internal/user-role route.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Contracts",
+     "path": "test/run.js",
+     "contains": "namespace constraint enforced",
+     "proves": "Resource scopes: a token's ns claim is checked against the resource namespace, a wildcard never matches a longer sibling name, and every decision reaches the audit hook",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/developer-projects.test.js",
+     "contains": "audit is for admins and owners",
+     "proves": "App grant requests, approvals and allowance changes are recorded in an append-only dev_audit (UPDATE and DELETE throw) that only admins and owners can read",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Community",
+     "path": "test/pastes-api.test.js",
+     "contains": "staff: X-OV-Staff needs community.paste.moderate",
+     "proves": "ADR-022 service vouching: a service can assert staff only while it holds the moderate capability. Passed 2026-09-23.",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u ubuntu sqlite3 -readonly /opt/openvibe.network/data/network.db \"SELECT auth, allowed, sum(count) FROM principal_usage GROUP BY 1,2; SELECT code, sum(count), max(last_at) FROM principal_usage WHERE allowed = 0 GROUP BY code\"'",
+     "observed": "internal-key-route|1|268; service-token|0|3; service-token|1|64; denials capability.denied 1, capability.namespace_denied 1, capability.owner_denied 1 (last 2026-09-22)",
+     "at": "2026-09-23T20:21Z",
+     "proves": "Network audits every principal decision in production, denials included",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "docs/adr/ADR-022-moderation-console.md",
+     "contains": "**Network is the staff directory.**",
+     "proves": "The staff-policy decision exists; its moderation audit log and its first acceptance test are not implemented",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Add a staff capability map (role -> capabilities) to Contracts, issued by Network through claims or a resolve API, and use it in Live, Chat and Community instead of raw role comparisons",
+    "Build the ADR-022 moderation audit log: Network consumes <service>.moderation.action events (Chat already emits chat.moderation.action) and lists them in admin. Test 'every staff action in Live, Community and Chat appears in the audit log with actor and reason'",
+    "Give first-party grants an audited admin path with actor and reason; today they change only through code (DEFAULT_GRANTS, granted_by 'default')",
+    "Stop pushing roles to Live over the key-only /internal/user-role route (C-54/C-55); Live should read role truth from Network",
+    "Make platform bans distinct from product moderation (§15.4), and let admin invoke product actions through scoped service admin capabilities (§15.5)"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D06",
+   "title": "User modules",
+   "owner": "OpenVibe.Network (storage and API), OpenVibe.Contracts (namespace manifests); consumers expected in Chat, Live, Tools, Games and AI",
+   "target": "versioned owner-controlled modules",
+   "status": "partial",
+   "summary": "Network stores one versioned record per (subject, namespace). Writes need an If-Match revision and are checked against the schema and quota of the Contracts namespace manifests. Only the owning service may write, through network.modules.write with namespace scopes. Reads can be public per field, and users can export and delete their records (test passed 2026-09-23). The six initial namespaces from §15.4 exist. Nothing uses them: production user_modules has 0 rows (2026-09-23 20:21Z), and no product reads or writes a module. onOwnerRemoved and retention are declared but not implemented, network.module.updated is never emitted, and the chat.* namespaces are still owned by live.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/modules.test.js",
+     "contains": "stale revision refused",
+     "proves": "User writes need If-Match; a stale revision gets 412 and an invalid schema 422. A user cannot write a service-owned namespace, services write only namespaces they are granted and own, the shared key is refused, public reads return only public fields, and users can export and delete. Passed on Node 22 on 2026-09-23.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Contracts",
+     "path": "test/run.js",
+     "contains": "only the owning service writes",
+     "proves": "Namespace manifests validate against modules.namespace@1 with owner, writers, publicFields, quota and onOwnerRemoved. Data validation enforces the schema and quota, and write permission follows the declared writers.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.SDK",
+     "path": "test/modules.test.js",
+     "contains": "update() re-reads and reapplies fn after a 412",
+     "proves": "The SDK client for modules does revision-safe read-modify-write, so consumers can adopt it",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u ubuntu sqlite3 -readonly /opt/openvibe.network/data/network.db \"SELECT count(*) FROM user_modules\"'",
+     "observed": "0",
+     "at": "2026-09-23T20:21Z",
+     "proves": "The gap: no module record exists in production, so no product uses modules yet",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Add first consumers with the §4.3 initial migrations of existing preferences: Chat reads and writes chat.preferences and chat.tts_defaults, Live writes live.profile, Tools tools.usage, Games games.progress.summary, AI ai.preferences",
+    "Move the chat.preferences and chat.tts_defaults namespaces to owner chat (the manifests still say live)",
+    "Implement the lifecycle: onOwnerRemoved behaviour (retain-readonly, delete-after-retention), retention, migration between schema versions, and network.module.updated with revision ordering (declared in the network.modules.write manifest, never emitted)",
+    "Separate read and write grants at field level, with a test that 'a grant to read live.stats.level must never imply the ability to write live.stats' (§15.4)",
+    "Show module-backed preferences on my.openvibe.network (§15.4)"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D07",
+   "title": "Themes",
+   "owner": "OpenVibe.Network (catalog, ratings, user preference, /api/themes); OpenVibe.Shared (token vocabulary, built-in themes, theme-loader, theme-sync)",
+   "target": "move contract and UI to Shared; retain authority in Network",
+   "status": "partial",
+   "summary": "ADR-024 (accepted 2026-09-23) sets the boundary, and code and production follow it. Shared owns the token vocabulary, the built-in catalog and the first-paint loader, with a parity test. Network seeds its catalog from openvibe-shared/theme-sync and serves /api/themes (35 themes in network.db at 20:22Z). Media's page paints an inline #ov-critical canvas and loads the theme loader deferred. ADR-024's own acceptance tests are not automated: that every site paints with Network down, and that a preference follows the user across sites. The preference is stored in Network's user_preferences table, not in the user module the ADR names.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Shared",
+     "path": "test/theme-parity.test.js",
+     "contains": "theme parity: all checks passed",
+     "proves": "Shared's built-in catalog is the single source: the browser loader copy is generated from it and is checked for staleness; every theme has the full token set after defaults, including the derived --on-accent family, with contrast checked",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "docs/adr/ADR-024-theme-authority.md",
+     "contains": "**Network owns data.**",
+     "proves": "The accepted boundary: Network holds the catalog, ratings and preferences; Shared owns tokens, the built-in themes, the loader and Network-independent first paint",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'curl -s https://openvibe.network/api/themes'; ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.network/data/network.db)\" sqlite3 -readonly /opt/openvibe.network/data/network.db \"SELECT count(*) FROM themes;\"'",
+     "observed": "200 JSON {\"themes\":[{\"id\":\"abyss\",...}]}; themes = 35",
+     "at": "2026-09-23T20:22Z",
+     "proves": "Network is the serving authority for the theme catalog in production",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "curl -s https://openvibe.media/ | grep -o '<style id=\"ov-critical\">[^<]*</style>\\|<script[^>]*theme-loader[^>]*>'",
+     "observed": "<script src=\"https://openvibe.network/shared/theme-loader.js\" defer> and <style id=\"ov-critical\">html{background:#0a0f1c;color:#e6edf7;color-scheme:dark}</style>",
+     "at": "2026-09-23T20:22Z",
+     "proves": "A product page (Media) takes the Shared first-paint pattern: an inline critical canvas and a deferred theme loader, so first paint does not wait on Network",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Automate ADR-024's acceptance tests: a browser run with *openvibe.network* blocked showing every public site paints with the default theme, and a signed-in run showing a theme chosen on one site applies on another",
+    "Store the theme preference as the user module ADR-024 names (today it is Network's user_preferences.theme_id), or amend the ADR"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D08",
+   "title": "Notifications",
+   "owner": "OpenVibe.Network (store, preferences, email/push, Events consumer); OpenVibe.Events (transport); OpenVibe.Shared (notification vocabulary and UI); OpenVibe.Live (legacy go-live push)",
+   "target": "events and realtime delivery plus reusable preferences",
+   "status": "partial",
+   "summary": "Network consumes three topics through Events: deals.watch.matched, trade.alert.triggered and, since Network 2a95548 (subscribed 2026-09-23 19:54 UTC), live.stream.started. It applies per-category preferences and uses an inbox so a redelivery never notifies twice; test/events-consumer.test.js covers this. In production at 20:22Z the consumer has received nothing: network_event_inbox is empty, and there has been no live.stream.started since 16:21 UTC. Live's direct go-live push still runs beside it (C-85), and all 675 STREAM_LIVE notifications came from that push. Browsers get the inbox by polling every 15 s plus Web Push, not through a realtime plane.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/events-consumer.test.js",
+     "contains": "the stream category is muted: preferences apply",
+     "proves": "Signed v2 Events deliveries become inbox notifications: one per follower for live.stream.started, with followers read from Live using a service token. A redelivery is a duplicate and notifies nobody twice. When Live is down the consumer answers 503 and records nothing, so Events retries. Per-category mute and email opt-in apply.",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "docs/adr/ADR-020-notification-delivery.md",
+     "contains": "**Events owns durable transport.**",
+     "proves": "Accepted split: Network keeps addressing, preferences and the store; producers emit domain events through Events; Network subscribes with an inbox",
+     "ok": true
+    },
+    {
+     "kind": "commit",
+     "repo": "OpenVibe.Network",
+     "sha": "2a95548",
+     "proves": "Go-live notifications consumed from Events (live.stream.started), sharing the per-streamer announcement window with the legacy push",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /var/lib/openvibe-events/events.db)\" sqlite3 -readonly /var/lib/openvibe-events/events.db \"SELECT consumer, topic_pattern, enabled FROM subscriptions ORDER BY consumer;\"'; ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.network/data/network.db)\" sqlite3 -readonly /opt/openvibe.network/data/network.db \"SELECT consumer, count(*) FROM network_event_inbox GROUP BY 1;\"'; ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.network/data/network.db)\" sqlite3 -readonly /opt/openvibe.network/data/network.db \"SELECT type, count(*) FROM notifications WHERE type IN ('DEAL_WATCH_MATCH','TRADE_ALERT','STREAM_LIVE') GROUP BY 1;\"'",
+     "observed": "consumer network: 3 enabled subscriptions (deals.watch.matched, trade.alert.triggered, live.stream.started); network_event_inbox: no rows; STREAM_LIVE 675, no DEAL_WATCH_MATCH or TRADE_ALERT",
+     "at": "2026-09-23T20:22Z",
+     "proves": "The Events path is subscribed but has not delivered a notification in production yet; the legacy push still produces every go-live notification",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "A production go-live notified through the Network consumer (a network_event_inbox row with outcome notified), then delete Live's golive-notify.js push and Network's /internal/events/stream-live (C-85)",
+    "Realtime browser delivery of new notifications: the Shared notification UI polls every 15 s, and nothing reads the Events realtime plane",
+    "Move Live's other direct pushes (utils/notify.js /internal/notifications/push and push-bulk) that have a domain event onto Events, per ADR-020",
+    "ADR-020 acceptance test: a Network restart during a go-live loses no notification"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D09",
+   "title": "Social graph",
+   "owner": "OpenVibe.Live (follows, the real graph); OpenVibe.Network (its own follows table, unused); OpenVibe.Chat (dm_blocks); Community and VIP (memberships)",
+   "target": "canonical follows, blocks and membership APIs",
+   "status": "partial",
+   "summary": "There is no canonical social graph yet. Live's follows table (62 rows in production at 20:22Z) is the real follow graph. Since Live 456eccd, other services can read it through GET /internal/followers (service token with live.follower.read, loopback only, paged), and Network's go-live consumer uses that read. Network's own follows table has 0 rows. Blocks exist only as Chat's dm_blocks, and memberships only inside Community and VIP. No product shares a follow, block or membership API.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Live",
+     "path": "test/followers-internal.test.js",
+     "contains": "needs live.follower.read",
+     "proves": "The follower read is guarded by capability (live.follower.read), loopback-only and paged: no token gives 401, the wrong capability or a forwarded client gives 403",
+     "ok": true
+    },
+    {
+     "kind": "commit",
+     "repo": "OpenVibe.Live",
+     "sha": "456eccd",
+     "proves": "GET /internal/followers for Network's live.stream.started consumer (the first cross-service read of the follow graph)",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.live/data/live.db)\" sqlite3 -readonly /opt/openvibe.live/data/live.db \"SELECT count(*) FROM follows;\"'; ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.network/data/network.db)\" sqlite3 -readonly /opt/openvibe.network/data/network.db \"SELECT count(*) FROM follows;\"'",
+     "observed": "Live follows = 62; Network follows = 0",
+     "at": "2026-09-23T20:22Z",
+     "proves": "Two follow tables exist and the live one is product-local to Live: no canonical graph",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Decide in an ADR who owns the canonical follow graph (Network per roadmap §15.4, or Live), keyed by subject ids, and migrate Live's follows into it",
+    "Public follow, unfollow and list APIs, plus follow events, used by every product instead of Live-local routes",
+    "A platform blocks API honoured by chat, DMs, comments and notifications (today only Chat's dm_blocks exist)",
+    "A membership API (spaces, VIP memberships, teams) behind one contract"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D10",
+   "title": "Analytics",
+   "owner": "OpenVibe.Shared (ADR-021 analytics module v1.4.0); Network, Live and Tools (their own trackers and rollups); Live (creator stream analytics)",
+   "target": "event-fed, privacy-governed platform and creator analytics",
+   "status": "partial",
+   "summary": "Privacy governance is in place. ADR-021's module moved into Shared v1.4.0 (9aaf919), with a Sec-GPC/DNT opt-out and an analytics/event.v1 schema. Live and Network run it in production (releases c893c6ca7099 and 9bbd90f786fb at 20:22Z, both committed after the scan-root snapshot). Production holds no IP, user id or city in 780,665 Network and 1,773,833 Live analytics rows, and the oldest row is from 2026-08-24 (30-day prune). The analytics are not event-fed: each service runs a request-level tracker, creator analytics are Live's own queries on live.db, and nothing consumes OpenVibe.Events for analytics.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Shared",
+     "path": "test/analytics-privacy.test.js",
+     "contains": "Sec-GPC: 1 and DNT: 1 requests leave nothing: no row, hash, session or rate counter",
+     "proves": "The shared tracker stores no IP, user id, city, raw UA, referer or query; opted-out requests leave no trace; raw events are pruned at 30 days",
+     "ok": true
+    },
+    {
+     "kind": "commit",
+     "repo": "OpenVibe.Shared",
+     "sha": "9aaf919",
+     "proves": "The ADR-021 module moved into Shared (retires the hand-kept copies, C-80), with GPC/DNT and the analytics/event.v1 schema",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "docs/adr/ADR-021-analytics.md",
+     "contains": "**Shared contract, not a shared service.**",
+     "proves": "The accepted privacy bounds: no IP, precise location or subject id; 30-day raw retention; no analytics service extracted before Wave 22",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.network/data/network.db)\" sqlite3 -readonly /opt/openvibe.network/data/network.db \"SELECT count(*), sum(ip IS NOT NULL OR user_id IS NOT NULL OR city IS NOT NULL), min(created_at) FROM analytics_events;\"'; same on /opt/openvibe.live/data/analytics.db",
+     "observed": "Network 780665 rows, 0 with ip/user_id/city, oldest 2026-08-24 20:05:07; Live 1773833 rows, 0 with ip/user_id/city, oldest 2026-08-24 20:13:04",
+     "at": "2026-09-23T20:22Z",
+     "proves": "ADR-021's acceptance conditions hold on production data: no identifying columns, retention near 30 days",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'curl -s 127.0.0.1:3000/api/ready'",
+     "observed": "ready, release c893c6ca7099 (Live analytics from openvibe-shared/analytics v1.4.0)",
+     "at": "2026-09-23T20:22Z",
+     "proves": "Live serves production traffic with the Shared analytics module",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Feed platform and creator analytics from domain events (live.stream.*, media.*, chat, tools.job.*) through Events subscriptions, not only from per-request trackers",
+    "Put analytics/event.v1 in OpenVibe.Contracts, as ADR-021 decides; today it ships in Shared's docs/schemas",
+    "Build creator analytics on the shared contract and privacy bounds (Live's /api/analytics reads live.db directly)",
+    "Confirm that Tools (5d1b423, on the Shared module since after the snapshot) is deployed"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D11",
+   "title": "Durable events",
+   "owner": "OpenVibe.Events",
+   "target": "durable Events authority with retry, DLQ, replay",
+   "status": "met",
+   "summary": "OpenVibe.Events is the production event store. At 20:21Z, /api/ready reported ready: db, JWKS and the delivery worker ok, DLQ depth 0. The store held 199 events from Live, Media, Chat, Games, VIP, Network, Wiki, Blog, Trade, OpenRe, Community and a developer app, and 16 subscriptions for 7 consumers; all 20 deliveries so far succeeded, with 0 failed or dead. The restore drill passed at 05:22. Tests prove retry with backoff, dead-lettering after 8 attempts, operator replay (by event and from a sequence), and exactly-once effects through the SDK inbox after a consumer crash. The store is SQLite, not the roadmap's PostgreSQL, a choice that rests on ADR-004 and ADR-007.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Events",
+     "path": "test/delivery.test.js",
+     "contains": "retries with backoff (injectable clock), then DLQ after 8 attempts, then replay",
+     "proves": "Signed retries on the backoff schedule, the dead state after 8 attempts, the admin-only DLQ listing, and replay delivering once the consumer is healthy",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Events",
+     "path": "test/outbox-inbox.test.js",
+     "contains": "consumer crash mid-processing + redelivery + replay -> exactly one effect (createInbox)",
+     "proves": "Transactional outbox plus idempotent inbox: a crash, a redelivery or a replay still yields exactly one effect",
+     "ok": true
+    },
+    {
+     "kind": "drill",
+     "repo": "OpenVibe.Host",
+     "path": "docs/restore-drills.md",
+     "contains": "| 2026-09-23 05:22 | events |",
+     "proves": "The store's backup restores with matching counts: the durability claim is exercised",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'curl -s 127.0.0.1:4300/api/ready'",
+     "observed": "ready; checks db, network_jwks, delivery_worker ok; dlq depth 0 (threshold 100); latest_seq 199; deliveries pending 0, delivered 20, failed 0, dead 0",
+     "at": "2026-09-23T20:21Z",
+     "proves": "The durable store and delivery worker run in production, and the DLQ is monitored",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /var/lib/openvibe-events/events.db)\" sqlite3 -readonly /var/lib/openvibe-events/events.db \"SELECT count(*), max(seq) FROM events;\"'; ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /var/lib/openvibe-events/events.db)\" sqlite3 -readonly /var/lib/openvibe-events/events.db \"SELECT consumer, topic_pattern, enabled FROM subscriptions ORDER BY consumer;\"'",
+     "observed": "199|199; 16 subscriptions, all enabled: live 4, network 3, news 2, reviews 1, search 1, tips 2, vip 3",
+     "at": "2026-09-23T20:21Z",
+     "proves": "Many producers publish to and many consumers subscribe to the one Events authority",
+     "ok": true
+    }
+   ],
+   "remaining": [],
+   "blockedOn": null,
+   "ownerReview": true,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D12",
+   "title": "Realtime",
+   "owner": "OpenVibe.Events (SSE /realtime/stream, per ADR-005); OpenVibe.Realtime closed as a decision record",
+   "target": "authorised shared delivery layer; media and game protocols separate",
+   "status": "partial",
+   "summary": "ADR-005 (accepted 2026-09-22) replaced the separate Realtime service with an SSE plane inside Events. The plane authorises each topic by visibility, resumes from Last-Event-ID, and sends gap markers. Since 18b873f it also redacts deleted chat messages and limits public replay to 300 s. Media and game traffic keep their own protocols. In production at 20:23Z, an anonymous replay from cursor 0 got only a gap marker. However, events_realtime_connections was 0: no product browser uses the plane, and presence does not exist.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Events",
+     "path": "test/realtime.test.js",
+     "contains": "a guessed private topic yields no data",
+     "proves": "Topic authorisation per visibility (public, subject, internal never to browsers), Last-Event-ID resume and gap markers",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Events",
+     "path": "test/redaction.test.js",
+     "contains": "anonymous SSE replay: the tombstone, never the text",
+     "proves": "A deleted chat message is never replayed: SSE, pull and durable delivery all get the tombstone, and the text is removed from the database",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "docs/adr/ADR-005-realtime.md",
+     "contains": "Media and game traffic never go through this plane.",
+     "proves": "The decision: realtime inside Events, SSE only, media and game protocols separate",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "curl -s -m 4 -H 'Last-Event-ID: 0' 'https://events.openvibe.network/realtime/stream?topics=chat.*' (and topics=media.*,network.*,openre.*)",
+     "observed": ": connected anonymous, then event: gap {\"reason\":\"public_window\",\"from_seq\":1,\"to_seq\":197,\"latest_seq\":199,\"window_seconds\":300}; no event data",
+     "at": "2026-09-23T20:23Z",
+     "proves": "In production, anonymous clients get neither private topics nor old public events (the deleted-message leak found in the audit is closed)",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh \"curl -s 127.0.0.1:4300/metrics | grep -i 'realtime\\|dlq' | grep -v '^#'\"",
+     "observed": "events_dlq_depth 0; events_realtime_connections 0",
+     "at": "2026-09-23T20:21Z",
+     "proves": "No product is using the plane yet",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Put at least one product surface on the plane through the SDK realtime client, for example Live stream cards from live.stream.* or the Shared notification badge, with reconnect and resume in a real browser",
+    "Presence as ephemeral state (roadmap §15.6), or record in ADR-005 that it is out of scope",
+    "C-82 leftovers: Contracts manifests/services/realtime.json still says placeholder; realtime.openvibe.network is still a Sites placeholder; the OpenVibe.Realtime repository is not archived"
+   ],
+   "blockedOn": "Owner acceptance of ADR-005's deviation from the roadmap (no separate Realtime service, SSE only, no WebSocket cursor plane) and archiving the OpenVibe.Realtime GitHub repository",
+   "ownerReview": true,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D13",
+   "title": "SDK",
+   "owner": "OpenVibe.SDK",
+   "target": "public generated and handwritten SDK packages",
+   "status": "partial",
+   "summary": "openvibe-sdk v0.4.0 lives in a public repository and installs by tag. It has hand-written clients (core, auth, registry, identity, modules, events with outbox and inbox, realtime, media, community, jobs, projects), generated ESM and browser bundles, and contract types copied from Contracts' generated output. CI passed on the last three main runs (from 654d4b2, 20:20Z check), and 17 repositories pin it, 12 of them at v0.4.0. It still lacks Chat, Live, Billing and Games clients and a Media v2 object client, its contract types stop at Contracts v0.28.0 (Contracts is at v0.30.2), and it has only been tested against stubs and the mock platform.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.SDK",
+     "path": "test/pack.test.js",
+     "contains": "the tarball installs and every subpath loads (CJS and ESM)",
+     "proves": "The published package installs into a fresh project, and every subpath, CJS and ESM, loads as a consumer would use it",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.SDK",
+     "path": "test/browser-entries.test.js",
+     "contains": "No secrets or Node-only code in anything a browser bundle can reach",
+     "proves": "The browser and server split: no secrets, node: imports, crypto or process.env are reachable from browser entries",
+     "ok": true
+    },
+    {
+     "kind": "commit",
+     "repo": "OpenVibe.SDK",
+     "sha": "654d4b2",
+     "proves": "CI installs dependencies before the tests; it had been red since v0.3.0",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "gh run list -R OpenVibers/OpenVibe.SDK -L 3",
+     "observed": "3 of 3 completed success on main (2026-09-23 18:23, 18:36 and 19:39 UTC)",
+     "at": "2026-09-23T20:20Z",
+     "proves": "The SDK's CI is green",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "A Media v2 object client (init, PUT, complete, list, signed download, holds); the media module wraps only /api/v1/:app/files",
+    "Chat, Live, Billing and Games clients (roadmap §15.2), or a recorded decision that each ships with its service",
+    "Regenerate the contract types from Contracts v0.30.x (types/contracts.d.ts is copied from v0.28.0) and fail CI on drift",
+    "Run the SDK end to end against production (the Examples e2e), not only against stubs and the mock platform",
+    "Move the repositories still on v0.2.2 (Media, Blog, Wiki, Coupons, Host, Games) forward"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D14",
+   "title": "Media object model",
+   "owner": "OpenVibe.Media",
+   "target": "generalised object, location and relationship model",
+   "status": "partial",
+   "summary": "The generalised model is in production. At 20:22Z Media held 3,056 media_objects, 2,881 media_locations, 1,288 media_relationships and 998 media_variants; the backfill projected every legacy row, is idempotent, and is tested. But it is still a projection of the predecessor tables: vods, clips and files are written first and then synced, and a failed sync only logs (C-75). So VODs and clips are not yet typed projections over objects. Namespaces are the :app tenants without per-namespace read, write, list, delete and transform grants, and there is no segment model.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Media",
+     "path": "test/objects-model.test.js",
+     "contains": "backfill: one object per row, locations mirror where the bytes are, relationships + thumbnail variants",
+     "proves": "Every VOD, clip, file, screenshot, avatar and thumbnail row maps to an object with location, relationship and variant rows. The backfill is idempotent; write hooks and tier moves keep the model current.",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "docs/adr/ADR-006-media-objects.md",
+     "contains": "`media_objects` (`med_<ULID>`) is the canonical record",
+     "proves": "The accepted target: objects canonical, with VOD, clip and file rows as typed projections",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Host",
+     "path": "docs/compatibility-register.md",
+     "contains": "**Media dual write**",
+     "proves": "C-75: the legacy tables are still written first and synced into media_objects; a failed sync only logs",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.media/data/media.db)\" sqlite3 -readonly /opt/openvibe.media/data/media.db \"SELECT (SELECT count(*) FROM media_objects),(SELECT count(*) FROM media_locations),(SELECT count(*) FROM media_relationships),(SELECT count(*) FROM media_variants),(SELECT count(*) FROM media_jobs),(SELECT count(*) FROM media_holds);\"'",
+     "observed": "3056|2881|1288|998|0|0 (objects|locations|relationships|variants|jobs|holds)",
+     "at": "2026-09-23T20:22Z",
+     "proves": "The object, location, relationship and variant tables are populated in production",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Reverse the write path: write the media object first and derive vods, clips and files from it, so a failed sync cannot leave the model stale (retire C-75)",
+    "Per-namespace grants with read, write, list, delete and transform permissions plus quota (roadmap §15.7); namespaces are the :app tenants today",
+    "Segment and part timeline schema (Wave 4 deliverable 7), and object, namespace and media.* schemas in Contracts",
+    "Project app assets (emotes, sounds), and move Community's media references from the legacy: form to med_ ids"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D15",
+   "title": "Media lifecycle",
+   "owner": "OpenVibe.Media (lifecycle, uploads, outbox); OpenVibe.Live (outcome consumer)",
+   "target": "canonical lifecycle, jobs, signed direct uploads",
+   "status": "partial",
+   "summary": "Objects have a canonical lifecycle: uploading, then ready or failed, then soft delete with restore, plus retention holds and purge. Since cbf8410, Media writes each outcome's Events outbox row in the same transaction as the state change. Live consumes media.vod, media.clip and media.storage outcomes through Events (d2715e5, MEDIA_EVENTS_AUTHORITY=both) and applies each one once. There is no job system: media_jobs had 0 rows in production at 20:22Z, and no outcome has yet been applied through Live's Events inbox (its table is not created yet). Uploads are signed single-part PUTs to Media; there is no multipart or presigned direct-to-bucket upload.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Media",
+     "path": "test/outbox-transaction.test.js",
+     "contains": "media outbox: state change and event commit together (no lost or phantom outcome), webhook carries event_id",
+     "proves": "Lifecycle outcomes cannot be lost or phantom: the event and the state change commit together, and the webhook carries the same event id",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Media",
+     "path": "test/objects-api.test.js",
+     "contains": "init → PUT (upload token) → complete; size + sha256 checked",
+     "proves": "Signed single-part upload lifecycle with a size and hash check, quota, holds, and soft delete and restore",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Live",
+     "path": "test/media-events.test.js",
+     "contains": "webhook ⇄ Events transition, applied once per outcome",
+     "proves": "Live applies each Media outcome once, whether the webhook or the Events delivery arrives first, under each authority setting",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.media/data/media.db)\" sqlite3 -readonly /opt/openvibe.media/data/media.db \"SELECT (SELECT count(*) FROM media_objects),(SELECT count(*) FROM media_locations),(SELECT count(*) FROM media_relationships),(SELECT count(*) FROM media_variants),(SELECT count(*) FROM media_jobs),(SELECT count(*) FROM media_holds);\"'; ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.live/data/live.db)\" sqlite3 -readonly /opt/openvibe.live/data/live.db \"SELECT consumer, count(*) FROM idempotency_receipts GROUP BY 1;\"'",
+     "observed": "3056|2881|1288|998|0|0 (media_jobs = 0); live.db: Error: no such table: idempotency_receipts",
+     "at": "2026-09-23T20:22Z",
+     "proves": "No job system is in use, and no production outcome has gone through the Events inbox yet",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "A media_jobs worker with media.job.* events, with clip cuts, thumbnails and remux moved onto it",
+    "Multipart uploads and presigned direct-to-bucket uploads, with complete and abort, plus an SDK client for them",
+    "A production Media outcome applied through Events, then MEDIA_EVENTS_AUTHORITY=events and removal of /internal/media-webhook (C-83)",
+    "Readiness levels that separate metadata, bytes and playable output, and a split or segment path for public playback objects over the 500 MB policy (177 unresolved media_invariant_violations rows)"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D16",
+   "title": "Storage direction",
+   "owner": "OpenVibe.Media",
+   "target": "make copies explicit; reconciliation and object API",
+   "status": "partial",
+   "summary": "Copies are explicit: media_locations holds one row per provider copy. In production at 20:22Z that was local 2,172 present and 2 missing, B2 684 present and 4 corrupt, and R2 19 present. Reconciliation detects missing canonical copies, lost files, size and hash mismatches, orphan location rows and deleted-but-served objects. Since e42af9e, a scheduled verification has run every 10 minutes (11 runs and 550 objects since 18:42 UTC). The v2 object API signs private downloads, and a private object answers exactly like a missing one. Still open: 6 ready objects have no good copy; orphan provider objects and incomplete multipart uploads are not detected; there is no R2-eviction drill; and native objects are never tiered to B2 or R2.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Media",
+     "path": "test/objects-reconcile.test.js",
+     "contains": "--verify: HEADs remotes (fake provider), records states; detects lost canonical with a surviving replica",
+     "proves": "Reconciliation against a fake provider records location states and finds a lost canonical copy that still has a surviving replica, plus lost files, orphans and deleted-but-served objects",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Media",
+     "path": "test/objects-verify.test.js",
+     "contains": "missing remote copy restored from a verified-good local copy (budgeted; corrupt only when opted in)",
+     "proves": "The scheduled verification rotates through every ready object, records verdicts, repairs a missing remote copy from a good local copy, and never deletes anything",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Media",
+     "path": "test/private-not-found.test.js",
+     "contains": "/o: private objects look missing before any lifecycle answer",
+     "proves": "The object API does not reveal that a private object exists",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.media/data/media.db)\" sqlite3 -readonly /opt/openvibe.media/data/media.db \"SELECT provider, state, count(*) FROM media_locations GROUP BY 1,2;\"'; ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.media/data/media.db)\" sqlite3 -readonly /opt/openvibe.media/data/media.db \"SELECT count(*), min(started_at), max(finished_at), sum(objects_checked), sum(reuploaded) FROM media_verify_runs;\"'",
+     "observed": "b2 corrupt 4, b2 present 684, local missing 2, local present 2172, r2 present 19; 11|2026-09-23T18:42:11.974Z|2026-09-23T20:18:17.139Z|550|0 (11 verify runs, 550 objects checked, 0 re-uploads)",
+     "at": "2026-09-23T20:22Z",
+     "proves": "Explicit per-provider copies and scheduled verification running in production",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh \"curl -s 127.0.0.1:4100/metrics | grep -E '^media_(objects_no_good_copy|verify_last_run)'; curl -s 127.0.0.1:4100/api/ready\"",
+     "observed": "media_objects_no_good_copy 6; /api/ready object_copies optional check failing (degraded): 6 ready object(s) with no good copy",
+     "at": "2026-09-23T20:23Z",
+     "proves": "Missing copies are detected and shown to operators; 6 are unresolved",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Resolve the 6 ready objects with no good copy and the 4 corrupt B2 copies",
+    "Detect orphan provider objects (bucket listing) and incomplete multipart uploads",
+    "Drill: demote an R2 copy, confirm the canonical B2 copy still serves /v/:id, and record the result",
+    "Tier native v2 objects to B2 and R2 (their bytes are local only), and add copy/move aliases and lifecycle rules to the object API",
+    "Operator object explorer and storage views (only the predecessor /admin/storage exists)"
+   ],
+   "blockedOn": "Owner decision on the 6 ready objects with no good copy (scripts/no-good-copy-report.js): re-source them, mark them failed, or accept the loss",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D17",
+   "title": "Live product",
+   "owner": "OpenVibe.Live",
+   "target": "keep UX; reduce authority overload",
+   "status": "partial",
+   "summary": "Chat (2026-09-23 02:03 UTC), pastes (2026-09-22) and VOD/clip comments (Live b8afb71, deployed 2026-09-23 between 19:00 and 19:25 UTC) have left Live's authority, and the old response shapes and pages were kept. One UX regression from the paste move (broken AI Moments thumbnails) was fixed in Live 047f206. Production on 2026-09-23 20:23 UTC: CHAT_AUTHORITY, PASTES_AUTHORITY and AI_SERVICE are set in live.env, BILLING_AUTHORITY is not, Live still listens on *:1935, and all 102 slots have ingest_authority=live. Live therefore still holds ingest, money and calls.",
+   "artifacts": [
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'for v in CHAT_AUTHORITY PASTES_AUTHORITY AI_SERVICE BILLING_AUTHORITY; do sudo -n grep -c \"^$v=\" /etc/openvibe/live.env; done'",
+     "observed": "CHAT_AUTHORITY 1, PASTES_AUTHORITY 1, AI_SERVICE 1, BILLING_AUTHORITY 0 (variable names only; no values read)",
+     "at": "2026-09-23T20:23Z",
+     "proves": "Chat, pastes and AI are delegated out of Live in production; money is still Live's (BILLING_AUTHORITY unset = live)",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.live/data/live.db)\" sqlite3 -readonly /opt/openvibe.live/data/live.db \"SELECT ingest_authority, count(*) FROM managed_streams GROUP BY 1\"; ss -ltnH \"( sport = :1935 or sport = :1936 )\"'",
+     "observed": "live|102; listeners *:1935 (Live) and 0.0.0.0:1936 (OpenRe)",
+     "at": "2026-09-23T20:19Z",
+     "proves": "Live is still the ingest authority for every slot and still binds RTMP 1935 in its own process",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Live",
+     "path": "test/comments-community.test.js",
+     "contains": "the old response shape, notifications to the owner",
+     "proves": "Live's /api/comments keeps its paths and response shapes while the thread lives in OpenVibe.Community (Live stores no comment rows)",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Chat",
+     "path": "test/ws-protocol.test.js",
+     "contains": "stream history and channel history return the message like Live did",
+     "proves": "Chat serves Live's chat protocol and history shapes unchanged, so the chat UX survived the move",
+     "ok": true
+    },
+    {
+     "kind": "commit",
+     "repo": "OpenVibe.Live",
+     "sha": "b8afb71",
+     "proves": "VOD and clip comments became Community threads (Live's comments table is read-only); deployed (production Live c893c6c contains it)",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Ingest transport: move RTMP slots to OpenRe (0 of 102 switched), then WHIP, JSMPEG and SFU, so Live stops binding 1935 and a Live deploy stops dropping streams",
+    "Money: Billing cutover (BILLING_AUTHORITY=billing) so Live's openvibe_bucks_*/transactions/payment_orders/subscriptions become read-only",
+    "Call signalling: /ws/call is still Live's call-server (server/index.js:1046); move it to Chat",
+    "Six staged chat tables (channel_moderators, channel_moderation_settings, emotes, user_tags, chat_ai_summaries, chat_timeline_events) and media_requests are still Live-owned",
+    "Stop reading the frozen vods/pastes tables for live pages (compatibility register C-73 steps 2-3)",
+    "An automated browser UX check that runs against each Live release (test/browser/smoke.js is manual)"
+   ],
+   "blockedOn": "Per-slot OpenRe cutover windows with broadcasters present (OpenRe docs/cutover.md B0-B6), and the owner's Billing cutover steps (Host docs/cutover-runbook.md section E: PowerChat dashboard and webhook re-point)",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D18",
+   "title": "Stream Manager",
+   "owner": "OpenVibe.Live (Stream Manager UX) + OpenRe.Stream (control API)",
+   "target": "rebind controls to OpenRe APIs",
+   "status": "blocked-on-owner",
+   "summary": "Live f0ca18b (deployed, wired to OpenRe since 2026-09-23 19:23 UTC) rebinds a switched slot's key, ingest URL and key rotation to OpenRe, and sends restream edits to OpenRe's own destinations UI. On 2026-09-23 20:18 UTC no slot is switched (102/102 ingest_authority=live, openre_stream_id set on 0, openre_sessions 0), so no production Stream Manager control operates on OpenRe state yet.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Live",
+     "path": "test/openre-switch.test.js",
+     "contains": "openre switch: off = unchanged, switch/rotation, RTMP refusal, signed mirror (once, ordered), reconcile, rollback",
+     "proves": "for a switched slot Live shows OpenRe's ingest URL, rotates the key through OpenRe as the owner's subject, refuses Live RTMP, and mirrors OpenRe sessions",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenRe.Stream",
+     "path": "test/destinations-ui.test.js",
+     "contains": "forms need the CSRF token; creating a stream shows the key once",
+     "proves": "OpenRe exposes its own stream and destination controls (key shown once, CSRF-protected forms)",
+     "ok": true
+    },
+    {
+     "kind": "commit",
+     "repo": "OpenVibe.Live",
+     "sha": "f0ca18b",
+     "proves": "the per-slot ingest_authority switch, OpenRe keys and ingest URL on Go Live, and the session mirror",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.live/data/live.db)\" sqlite3 -readonly /opt/openvibe.live/data/live.db \"SELECT ingest_authority, count(*) FROM managed_streams GROUP BY 1; SELECT count(*), sum(openre_stream_id IS NOT NULL) FROM managed_streams; SELECT count(*) FROM openre_sessions;\"'",
+     "observed": "live|102; 102|0; 0",
+     "at": "2026-09-23T20:18Z",
+     "proves": "no production slot is bound to OpenRe yet",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Switch slots to OpenRe (OpenRe docs/cutover.md A7 rehearsal, then B1-B6 per slot) so the rebinding runs in production",
+    "Stream Manager on authoritative OpenRe state for output status, logs and health, start/resume/end, destination test, and recording finalisation (today these run on Live state for every slot)",
+    "Destination add/edit/delete for a switched slot: Live answers 409 with openre.stream's manage_url, but openre.stream still serves the Sites placeholder",
+    "WHIP, WebRTC/SFU and JSMPEG controls cannot rebind until OpenRe has those workers"
+   ],
+   "blockedOn": "Owner B0 decision (launch the openre.stream UI or freeze destinations at cutover) and the A7 rehearsal inputs (a test account and a real rtmp:// destination), then broadcaster windows per slot",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D19",
+   "title": "OpenRe",
+   "owner": "OpenRe.Stream (runtime); OpenVibe.Live still ingests every slot",
+   "target": "independent runtime and control plane",
+   "status": "partial",
+   "summary": "OpenRe runs as its own units on production release e0dc1b4 (openre-api, session-coordinator, rtmp-ingest@ and restream-worker@ all active on 2026-09-23 20:19 UTC), with RTMP 1936 reachable from outside the host, a production worker generation rollover (generation 1 stopped, generation 2 ready), and a passed restore drill at 19:24 UTC. It carries no broadcaster: 0 of 102 slots are switched, openre.db has 1 session (the ended rehearsal) and 0 destinations, and WHIP, SFU and JSMPEG are not ported.",
+   "artifacts": [
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'systemctl list-units --no-legend \"openre*\"; curl -s http://127.0.0.1:4500/api/ready'",
+     "observed": "openre-api, openre-session-coordinator, openre-rtmp-ingest@e0dc1b46fd99, openre-restream-worker@e0dc1b46fd99 active running; /api/ready status ready, workers restream and rtmp-ingest generation 2 ready, coordinator lease_valid true, events pending 0",
+     "at": "2026-09-23T20:19Z",
+     "proves": "OpenRe's API, coordinator and transport workers run as separate units, independent of Live",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /var/lib/openre/openre.db)\" sqlite3 -readonly /var/lib/openre/openre.db \"SELECT generation, state, count(*) FROM workers GROUP BY 1,2; SELECT (SELECT count(*) FROM stream_definitions),(SELECT count(*) FROM ingest_sessions),(SELECT count(*) FROM destinations),(SELECT count(*) FROM migration_map)\"'; timeout 6 bash -c '</dev/tcp/ingest.openre.stream/1936' (from the workstation)",
+     "observed": "workers: gen 1 stopped 2, gen 2 ready 2; definitions 1, sessions 1 (ended), destinations 0, migration_map 0; 1936 TCP connect from outside: open",
+     "at": "2026-09-23T20:23Z",
+     "proves": "a worker generation rollover happened in production and public ingest is reachable, but no real stream, destination or migrated slot exists",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenRe.Stream",
+     "path": "test/rtmp-e2e.test.js",
+     "contains": "a new rtmp-ingest generation takes new sessions; generation 1 drains but keeps session A",
+     "proves": "with real ffmpeg, a new worker generation takes new sessions while the old one drains its live session",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenRe.Stream",
+     "path": "test/rtmp-e2e.test.js",
+     "contains": "restarting the API during the broadcast ends nothing; playback works through the new API",
+     "proves": "an OpenRe API deploy does not end worker-owned transport",
+     "ok": true
+    },
+    {
+     "kind": "drill",
+     "repo": "OpenVibe.Host",
+     "path": "docs/restore-drills.md",
+     "contains": "| 2026-09-23 19:24 | openre |",
+     "proves": "openre.db restores from backup into a working read-only instance",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Cut slots over (0 of 102 switched; migrate-from-live.js never applied, migration_map 0) so OpenRe owns real sessions",
+    "openre-webrtc-ingest and openre-sfu units: port WHIP, WebRTC/SFU and JSMPEG so Live can stop listening on 1935 and a Live deploy stops ending ingest",
+    "A7 rehearsal with a real restream destination (production restream never exercised: destinations 0)",
+    "Rotate the leaked stream keys at each slot's cutover (97 of 97 identical to the pre-leak backup per the audit)",
+    "Segment-native timeline (not ported)",
+    "Launch the openre.stream UI (still a Sites placeholder)"
+   ],
+   "blockedOn": "A7 rehearsal inputs (test account + real rtmp:// destination), the B0 decisions (openre.stream UI launch, H4 key rotation) and broadcaster windows for per-slot cutover (OpenRe docs/cutover.md)",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D20",
+   "title": "Canonical resolver",
+   "owner": "none (per-product mappings in OpenVibe.Live; typed refs in OpenVibe.Contracts)",
+   "target": "shared lineage-resolver contract",
+   "status": "not-met",
+   "summary": "No lineage-resolver contract or shared resolver exists in any repo (no 'lineage' or resolver code in Contracts, Live, Media, OpenRe or Community on origin/main, 2026-09-23). The pieces that exist are the EntityRef typed-reference schema and OpenRe stream definitions carrying external refs to Live's slot and user; in production no Live slot has an openre_stream_id and openre_sessions is empty, so VOD to channel/stream/session lineage is not recorded.",
+   "artifacts": [
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "contracts/common/entity-ref.v1.json",
+     "contains": "Typed reference to another service's entity",
+     "proves": "only a typed-reference schema is shared; it carries no resolution rules or lineage",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Live",
+     "path": "test/openre-switch.test.js",
+     "contains": "['live:managed_stream:701', 'live:user:601']",
+     "proves": "an OpenRe definition records typed refs back to Live's slot and owner: one lineage input, not a shared resolver",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.live/data/live.db)\" sqlite3 -readonly /opt/openvibe.live/data/live.db \"SELECT count(*), sum(openre_stream_id IS NOT NULL) FROM managed_streams; SELECT count(*) FROM openre_sessions;\"'",
+     "observed": "102|0; 0",
+     "at": "2026-09-23T20:18Z",
+     "proves": "no stream/session lineage exists in production to resolve against",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Write the lineage-resolver contract in OpenVibe.Contracts (inputs: explicit slug, nested/parent slug, channel id, stream lookup, VOD parent, media lineage, owner subject, legacy metadata and maps; output includes an explicit unresolved state)",
+    "Implement it once and use it from channel, stream, VOD, clip, Pulse and creator UI; never derive ownership from a display name",
+    "Record VOD/clip lineage to channel, stream and OpenRe session (roadmap §20 'VOD lineage maps back to the canonical channel, stream and session') with a test that an unresolvable item returns unresolved",
+    "Backfill Media owner_subject so the resolver has a subject for every object"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D21",
+   "title": "Chat model",
+   "owner": "OpenVibe.Chat (Live keeps 6 staged tables, media requests and calls)",
+   "target": "Chat authority",
+   "status": "partial",
+   "summary": "OpenVibe.Chat has been the production chat authority since 2026-09-23 02:03 UTC: CHAT_AUTHORITY is set in live.env, 12 tables have table_authority=chat, and chat.db holds 70,864 stream/global messages and 1,522 DMs in 11 conversations (checked 20:18 UTC; Chat active, NRestarts 0). Six staged tables are still Live's, call signalling is still Live's /ws/call, and Chat has no room, membership or unread model.",
+   "artifacts": [
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /var/lib/openvibe-chat/chat.db)\" sqlite3 -readonly /var/lib/openvibe-chat/chat.db \"SELECT authority, count(*) FROM table_authority GROUP BY 1; SELECT (SELECT count(*) FROM chat_messages),(SELECT count(*) FROM dm_conversations),(SELECT count(*) FROM dm_messages),(SELECT count(*) FROM import_hold)\"; sudo -n grep -c \"^CHAT_AUTHORITY=\" /etc/openvibe/live.env'",
+     "observed": "chat|12, live|6 (channel_moderators, channel_moderation_settings, emotes, user_tags, chat_ai_summaries, chat_timeline_events); 70864|11|1522|0; CHAT_AUTHORITY present (1)",
+     "at": "2026-09-23T20:18Z",
+     "proves": "Chat is the production authority for conversation; six channel tables are still Live's",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'curl -s http://127.0.0.1:4400/ready; systemctl show openvibe-chat -p ActiveState -p NRestarts'",
+     "observed": "ready true, db ok (max_message_id 80870), live_sync ok; ActiveState=active NRestarts=0",
+     "at": "2026-09-23T20:19Z",
+     "proves": "Chat runs as its own service with its own database",
+     "ok": true
+    },
+    {
+     "kind": "drill",
+     "repo": "OpenVibe.Host",
+     "path": "docs/restore-drills.md",
+     "contains": "| 2026-09-23 05:22 | chat |",
+     "proves": "chat.db restores from backup into a working instance",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "docs/adr/ADR-010-chat-boundary.md",
+     "contains": "**OpenVibe.Chat owns conversation.**",
+     "proves": "the Chat/Live boundary decision, executed at the 02:03 UTC cutover",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Move call signalling and call state from Live's /ws/call into Chat",
+    "Move the six staged tables (channel moderators and settings, emotes, user tags, chat-AI) and their writers to Chat, per ADR-010",
+    "Room model: community, call and system rooms, membership and roles, unread/last-seen state",
+    "Retire the Live read mirror (C-02) and chat_bridge_outbox (C-03) once no Live reader needs them"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D22",
+   "title": "Chat authorization",
+   "owner": "OpenVibe.Chat (user identity still resolved by OpenVibe.Live)",
+   "target": "centralised Chat policy plus event and realtime integration",
+   "status": "partial",
+   "summary": "Chat enforces the chat.message.send capability on its service API (791cd3d, deployed in Chat 7897688 on 2026-09-23), checks DM participants on every route, and publishes chat.message.created (5 public events in Events on 20:23 UTC) with chat.message.deleted redaction. But browser tokens and roles are still resolved by Live, legacy token forms are still accepted, and no consumer subscribes to chat.* events.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Chat",
+     "path": "test/bridge.test.js",
+     "contains": "sending a chat message needs chat.message.send; without it only those ops are refused",
+     "proves": "service callers need the chat.message.send capability; a denied op persists nothing and emits no event",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Chat",
+     "path": "test/rest.test.js",
+     "contains": "DMs: participant checks on every conversation route",
+     "proves": "DM isolation is enforced server-side by Chat",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Chat",
+     "path": "test/message-deleted.test.js",
+     "contains": "e2e: the relay publishes the message, then its deletion; replay serves only the tombstone",
+     "proves": "chat events flow through OpenVibe.Events and a deletion redacts the public replay",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /var/lib/openvibe-events/events.db)\" sqlite3 -readonly /var/lib/openvibe-events/events.db \"SELECT event_type, visibility, count(*) FROM events WHERE event_type LIKE \\\"chat.%\\\" GROUP BY 1,2; SELECT count(*) FROM subscriptions WHERE topic_pattern LIKE \\\"chat.%\\\"\"'",
+     "observed": "chat.message.created|public|5; 0 subscriptions to chat.*",
+     "at": "2026-09-23T20:23Z",
+     "proves": "Chat publishes to Events in production, but nothing consumes chat events yet",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Host",
+     "path": "docs/compatibility-register.md",
+     "contains": "**Legacy chat auth**: the `token` cookie",
+     "proves": "the legacy token cookie and ?token= WebSocket fallback are still accepted (C-05)",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Authenticate browsers in Chat from Network tokens and a central capability/staff map; today Chat's auth.js resolves users, roles and API-token scopes through Live (live-context.authenticate)",
+    "Retire the legacy token cookie and ?token= fallback (C-05) and the REST send fallback (C-06)",
+    "Realtime: authorised topic subscriptions on the Events realtime plane (ADR-005) for chat events, and at least one real consumer of chat.*",
+    "A reconnect test that deleted and blocked state converges (roadmap §20 Chat)"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D23",
+   "title": "Chat parity",
+   "owner": "OpenVibe.Chat",
+   "target": "migrate without regression",
+   "status": "partial",
+   "summary": "History, DMs, TTS overrides, sounds and moderation were imported with stable ids and nothing held (70,864 messages and 1,522 DMs in chat.db on 2026-09-23 20:18 UTC; 15/15 read paths identical at cutover). Since the audit, Chat added a restart-and-cursor-resume test (49a5011) and a persisted TTS/sound queue with skip, clear and failure states (bf88760); one post-cutover regression (deploy cards folding across rooms) was fixed in 7897688. Calls are not migrated and there is no browser parity test.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Chat",
+     "path": "test/import.test.js",
+     "contains": "import copies every table with ids kept, subjects filled, headroom set",
+     "proves": "the Live import keeps legacy ids and fills subjects, idempotently",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Chat",
+     "path": "test/restart-resume.test.js",
+     "contains": "the stream reader drops off; messages keep coming; Chat restarts (SIGTERM, new process)",
+     "proves": "after a Chat restart, readers resume from their cursor with no gap and no duplicate",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Chat",
+     "path": "test/audio-queue.test.js",
+     "contains": "restart: what was playing is finished, what waited plays in order once, stale requests expire",
+     "proves": "TTS and sounds are a persisted bounded queue with skip, clear and failure states that survives restarts",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "docs/adr/ADR-010-chat-boundary.md",
+     "contains": "Read parity was checked at the cutover: 15 of 15 paths identical",
+     "proves": "read-path parity was recorded at the cutover",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /var/lib/openvibe-chat/chat.db)\" sqlite3 -readonly /var/lib/openvibe-chat/chat.db \"SELECT (SELECT count(*) FROM chat_messages),(SELECT count(*) FROM dm_messages),(SELECT count(*) FROM import_runs),(SELECT count(*) FROM import_hold)\"; git -c safe.directory=* -C /opt/openvibe.chat log -1 --format=%h'",
+     "observed": "70864|1522|2|0; deployed 7897688",
+     "at": "2026-09-23T20:21Z",
+     "proves": "the imported history is in production with nothing held, and the deployed Chat contains the resume and queue changes",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Calls: move signalling to Chat with the pending|ringing|active|ended|missed|declined|failed lifecycle and an explicit failure state (roadmap §15.9, §20)",
+    "Browser parity script (join, send, DM, /tts, moderation) against a rehearsal Chat; Live's test/browser/smoke.js checks only history render and popout",
+    "Reconnect convergence test for deleted and blocked state",
+    "Parity items not yet present: community/call/system rooms, membership, unread/last-seen, chat export"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D24",
+   "title": "Community models",
+   "owner": "OpenVibe.Community",
+   "target": "Community PostgreSQL authority",
+   "status": "partial",
+   "summary": "Community is the production authority for pastes (since 2026-09-22) and for typed comment threads, including Live's VOD/clip comments since 2026-09-23 (on 20:18 UTC: 903 pastes; 40 threads = live/vod 22, live/clip 8, wiki/page 10; 20 comments; 3 spaces). Its store is SQLite, not PostgreSQL, under ADR-007, and the categories, attachments, moderation-action and external-message-map schema families do not exist.",
+   "artifacts": [
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /var/lib/openvibe-community/community.db)\" sqlite3 -readonly /var/lib/openvibe-community/community.db \"SELECT (SELECT count(*) FROM pastes),(SELECT count(*) FROM comment_threads),(SELECT count(*) FROM comments),(SELECT count(*) FROM spaces),(SELECT count(*) FROM threads); SELECT ref_service, ref_type, count(*) FROM comment_threads GROUP BY 1,2\"; sudo -n grep -c \"^PASTES_AUTHORITY=\" /etc/openvibe/community.env /etc/openvibe/live.env'",
+     "observed": "903|40|20|3|0; live|clip|8, live|vod|22, wiki|page|10; PASTES_AUTHORITY present in both env files (1, 1)",
+     "at": "2026-09-23T20:18Z",
+     "proves": "Community holds pastes and typed comment threads for Live and Wiki in production",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Community",
+     "path": "test/comments.test.js",
+     "contains": "resolve: get-or-create, idempotent (201 then 200, same id), unique per service+type+id",
+     "proves": "one reusable typed comment thread per service+type+id",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Community",
+     "path": "test/import-live-comments.test.js",
+     "contains": "apply: threads per VOD/clip, authors as subjects, one level of nesting",
+     "proves": "Live's VOD/clip comments import into Community threads with subjects, holds and a run record",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "docs/adr/ADR-007-data-ownership.md",
+     "contains": "SQLite remains the documented store per service while the platform is single-host",
+     "proves": "the SQLite-instead-of-PostgreSQL deviation is an ADR decision, which needs the owner's acceptance against the roadmap target",
+     "ok": true
+    },
+    {
+     "kind": "drill",
+     "repo": "OpenVibe.Host",
+     "path": "docs/restore-drills.md",
+     "contains": "| 2026-09-23 05:22 | community |",
+     "proves": "community.db restores from backup into a working instance",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Owner review: accept ADR-007 (SQLite per service) as meeting the PostgreSQL target for Community, or schedule a PostgreSQL migration",
+    "Add the missing schema families: categories, attachments (Media refs only), moderation actions, external message mappings",
+    "Pastes with a Media screenshot still use legacy: refs (C-24); move to Media object ids",
+    "Resolve the 5 ambiguous_owner import holds"
+   ],
+   "blockedOn": null,
+   "ownerReview": true,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D25",
+   "title": "Community UI",
+   "owner": "OpenVibe.Community",
+   "target": "spaces, threads, posts, votes, moderation",
+   "status": "met",
+   "summary": "Community serves spaces, threads, replies (posts), thread and comment votes, and staff moderation (pin, lock, delete, hide) over the API and as no-JS SSR pages; behavioural tests cover each, including concurrent votes. Production serves the forum (openvibe.community/s and /api/v1/spaces answer 200 with 3 public spaces on 2026-09-23 20:22 UTC) but has no threads yet; the wider §15.8 obligations (categories, tags, profiles, search) are outside this target.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Community",
+     "path": "test/forum.test.js",
+     "contains": "replies: reply_count and last activity move; locked threads refuse people, not moderators",
+     "proves": "threads, replies and lock moderation through the API",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Community",
+     "path": "test/forum.test.js",
+     "contains": "votes on threads: add/change/remove, score recomputed, my_vote shown",
+     "proves": "vote add, change and remove semantics",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Community",
+     "path": "test/forum-ssr.test.js",
+     "contains": "moderation forms: people 403, staff pin and lock; the author deletes their thread",
+     "proves": "the server-rendered UI exposes moderation to staff only",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Community",
+     "path": "test/votes-race.test.js",
+     "contains": "four worker threads voting concurrently on one comment and one thread",
+     "proves": "votes stay consistent under concurrency (roadmap §20 Community and social)",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "curl -s -o /dev/null -w '%{http_code}' https://openvibe.community/s; curl -s https://openvibe.community/api/v1/spaces",
+     "observed": "/s 200; /api/v1/spaces 200 with general, feedback and showcase (public), thread_count 0",
+     "at": "2026-09-23T20:22Z",
+     "proves": "the forum UI and spaces API are live in production (no threads posted yet)",
+     "ok": true
+    }
+   ],
+   "remaining": [],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D26",
+   "title": "Discord bridge",
+   "owner": "OpenVibe.Community",
+   "target": "Community relay authority plus Events worker",
+   "status": "partial",
+   "summary": "Community has an outbound Discord relay for new threads, with dedupe, retry/backoff, loop prevention and an allow-list, covered by tests. It is off in production on 2026-09-23 (no DISCORD_* variables in community.env, 0 relay mappings, 0 deliveries). It does not run behind Events (Community publishes no relay events), and it has no edit/delete mapping and no inbound direction (schema allows direction 'out' only).",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Community",
+     "path": "test/relay.test.js",
+     "contains": "a new thread in a mapped space is posted once, with attribution, a link, and no mentions",
+     "proves": "Community owns outbound relay with a per-thread dedupe key",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Community",
+     "path": "test/relay.test.js",
+     "contains": "loop prevention: Discord-origin threads are never relayed; members/staff spaces never leave the site",
+     "proves": "loop prevention and the private-space rule",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n grep -c \"^DISCORD\" /etc/openvibe/community.env; sudo -n -u \"$(stat -c %U /var/lib/openvibe-community/community.db)\" sqlite3 -readonly /var/lib/openvibe-community/community.db \"SELECT (SELECT count(*) FROM relay_mappings),(SELECT count(*) FROM relay_deliveries)\"; sudo -n -u \"$(stat -c %U /var/lib/openvibe-events/events.db)\" sqlite3 -readonly /var/lib/openvibe-events/events.db \"SELECT event_type, count(*) FROM events WHERE event_type LIKE \\\"community.%\\\" GROUP BY 1\"'",
+     "observed": "DISCORD* variables 0; relay_mappings 0, relay_deliveries 0; Events community.* = community.smoke.checked 1 only",
+     "at": "2026-09-23T20:23Z",
+     "proves": "the relay is off in production and no Events worker drives it",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Run the relay as an Events worker (Community publishes thread/post events; the relay consumes them with retry and DLQ)",
+    "Edit and delete propagation with an external message-id mapping, plus the §20 test that relay edit/delete loops do not duplicate native posts",
+    "Inbound direction (Discord to Community) with webhook verification and the direction policy",
+    "Admin-visible relay errors; then one real round-trip in production"
+   ],
+   "blockedOn": "A Discord webhook and a target space from the owner for the first real round-trip (after the agent-doable work above)",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D27",
+   "title": "Paste migration",
+   "owner": "OpenVibe.Community (Live, Media and Tools redirect or forward)",
+   "target": "authoritative import with legacy redirects",
+   "status": "met",
+   "summary": "Community has been the paste authority since 2026-09-22 ~23:35 UTC: every source row was imported (889+2 pastes, 60 comments, 48 likes) with a legacy id map, reconciliation and sha256 checks, and 903 pastes, 991 legacy map rows and 3 migration runs were present on 2026-09-23 20:18 UTC. A pre-migration paste (created 2026-03-11) 301s from both Live and Media to Community, and pastes.openvibe.tools 301s to Community. The 5 ambiguous_owner holds (1 paste, 4 comments) were imported ownerless as the import-hold rule requires, and their attribution waits for the owner.",
+   "artifacts": [
+    {
+     "kind": "prod",
+     "check": "curl -sI https://openvibe.live/p/-wgXuYn0; curl -sI https://openvibe.media/p/-wgXuYn0; curl -sI https://pastes.openvibe.tools/ (slug = oldest public paste from https://openvibe.community/api/pastes?limit=1&sort=oldest, created 2026-03-11)",
+     "observed": "Live 301 -> https://openvibe.community/p/-wgXuYn0; Media 301 -> https://openvibe.community/p/-wgXuYn0; pastes.openvibe.tools 301 -> https://openvibe.community/pastes",
+     "at": "2026-09-23T20:19Z",
+     "proves": "legacy paste URLs on every old host redirect to Community",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n grep -c \"^PASTES_AUTHORITY=\" /etc/openvibe/community.env /etc/openvibe/live.env; sudo -n -u \"$(stat -c %U /var/lib/openvibe-community/community.db)\" sqlite3 -readonly /var/lib/openvibe-community/community.db \"SELECT (SELECT count(*) FROM pastes),(SELECT count(*) FROM legacy_id_map),(SELECT count(*) FROM migration_runs); SELECT reason, count(*) FROM import_hold GROUP BY 1\"'",
+     "observed": "PASTES_AUTHORITY present in both (1, 1); 903|991|3; ambiguous_owner|5",
+     "at": "2026-09-23T20:18Z",
+     "proves": "Community is the production paste authority with a legacy map, recorded runs and held (not dropped) ambiguous rows",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Community",
+     "path": "test/import.test.js",
+     "contains": "refuses a bundle whose format, version, counts or sha256 do not check out",
+     "proves": "the import refuses a bundle that does not reconcile",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Community",
+     "path": "test/import.test.js",
+     "contains": "holds: ambiguous / unmapped owners, unmappable likes and orphan comments",
+     "proves": "unrepresentable ownership is held rather than dropped",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Media",
+     "path": "test/pastes-moved.test.js",
+     "contains": "After the Wave 5 cutover: paste writes for a frozen app answer 410",
+     "proves": "Media refuses paste writes and 301s paste pages and raw text to Community",
+     "ok": true
+    }
+   ],
+   "remaining": [],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D28",
+   "title": "Billing",
+   "owner": "OpenVibe.Billing (ledger, deployed as a shadow); OpenVibe.Live (still the money authority: server/monetization/money-authority.js, BILLING_AUTHORITY default live)",
+   "target": "isolated append-only ledger",
+   "status": "blocked-on-owner",
+   "summary": "Billing's balanced, append-only journal is deployed (c646279) with database triggers that refuse updates and deletes, hourly reconciliation (runs at 18:54, 19:05 and 20:04 UTC on 2026-09-23, all ok) and /metrics. It is still a shadow: all 322 transactions are `import`, every provider is off, and BILLING_AUTHORITY does not appear in live.env (count 0 at 20:18 UTC), so Live remains the ledger.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Billing",
+     "path": "test/ledger.test.js",
+     "contains": "ledger entries and transactions cannot be updated or deleted",
+     "proves": "the journal is append-only at the database level, and an unbalanced posting is refused",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Billing",
+     "path": "test/webhooks.test.js",
+     "contains": "a duplicated delivery produces exactly one accounting effect",
+     "proves": "provider webhook redelivery is booked exactly once (idempotent receipts)",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Billing",
+     "path": "test/hygiene.test.js",
+     "contains": "20 concurrent copies of one delivery settle it once",
+     "proves": "race and overflow hardening (b774c5c): concurrent deliveries and processes settle a receipt once",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Live",
+     "path": "test/billing-authority.test.js",
+     "contains": "the tripwire: Live",
+     "proves": "with BILLING_AUTHORITY=billing, Live's money columns and tables cannot be written, so Billing would be the only ledger",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n grep -c \"^BILLING_AUTHORITY=\" /etc/openvibe/live.env; curl -s http://127.0.0.1:4600/api/health'",
+     "observed": "0; {\"authority\":\"live\",\"frozen\":false,\"providers\":{\"powerchat\":false,\"stripe\":false,\"paypal\":false,\"ccbill\":false,\"nowpayments\":false}}",
+     "at": "2026-09-23T20:18Z",
+     "proves": "Live is still the money authority; Billing has no live provider and is a shadow",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u ubuntu sqlite3 -readonly /var/lib/openvibe-billing/billing.db \"SELECT type,count(*) FROM transactions GROUP BY type; SELECT started_at,ok FROM reconciliation_runs ORDER BY started_at DESC LIMIT 3; SELECT name FROM sqlite_master WHERE type=\\\"trigger\\\"\"'",
+     "observed": "import|322 (accounts 22, ledger_entries 996, subscriptions 0, entitlements 0, external_receipts 0, staff_audit 0); reconciliations 20:04:21Z ok=1, 19:05:21Z ok=1, 18:54:53Z ok=1; triggers ledger_entries_no_update/no_delete, transactions_no_update/no_delete, provider_events_immutable/no_delete, staff_audit_no_update/no_delete",
+     "at": "2026-09-23T20:18Z",
+     "proves": "the append-only triggers and hourly reconciliation are live in production, over imported shadow data only",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Run docs/live-cutover.md: once the owner steps are done, set BILLING_AUTHORITY=billing in live.env and billing.env in the same window, so Billing becomes the only ledger",
+    "Prove exactly-once accounting in production with a real signed PowerChat redelivery after the cutover, and a passing reconciliation over real (non-import) transactions",
+    "Partial provider outage reconciliation (roadmap §20 Billing): backfill and reconcile from PowerChat after an outage, with a test",
+    "ADR-012 rule 5: Live still makes random or time-based loyalty idempotency keys (server/media/media-queue.js:164, server/monetization/opencoins.js:306); make them deterministic",
+    "Record that ADR-012 supersedes the roadmap line making Network's OpenCoins wallet a Billing client (OpenCoins stays loyalty)"
+   ],
+   "blockedOn": "Owner: add the PowerChat webhook signing secret (POWERCHAT_WEBHOOK_SECRET is absent from /etc/openvibe/billing.env), sign in to https://billing.openvibe.network once (staff_audit = 0), and re-point the PowerChat dashboard webhook to https://billing.openvibe.network/webhooks/powerchat (OpenVibe.Billing docs/live-cutover.md)",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D29",
+   "title": "Tips",
+   "owner": "OpenVibe.Tips (loopback :4610, deployed 15bfc12); OpenVibe.Live still serves donate, goals and cashout",
+   "target": "orchestration over Billing, Chat and Live",
+   "status": "blocked-on-owner",
+   "summary": "Tips settles through Billing and delivers to Live and Chat as retryable effects. It consumes Billing's EXTERNAL PowerChat receipts (Events subscriptions billing.transaction.* and billing.receipt.*). The Live history import was applied: 139 interactions, all test-era (128 imported, 11 external), 4 goals and 143 migration maps. No real settlement has happened yet: Billing is a shadow, the Events store holds 0 billing.* or tips.* events, TIPS_CHAT_ADAPTER=none, Live's /api/funds routes remain the authority, and openvibe.tips serves the Sites placeholder (checked 2026-09-23 20:19 UTC).",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Tips",
+     "path": "test/settlement.test.js",
+     "contains": "a duplicate provider webhook (Billing settles once) → one logical interaction for a donation Tips did not start",
+     "proves": "one Billing settlement maps to exactly one logical Tips interaction",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Tips",
+     "path": "test/settlement.test.js",
+     "contains": "delivery runs after settlement; a delivery failure never touches payment state",
+     "proves": "'payment settled' is separate from 'interaction delivered' (a Chat, Live or overlay failure never invalidates the money)",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Tips",
+     "path": "test/overlays.test.js",
+     "contains": "overlay replay (Last-Event-ID) resends but never charges, re-counts or re-emits",
+     "proves": "overlay replay cannot recharge or duplicate effects",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Tips",
+     "path": "test/external.test.js",
+     "contains": "a redelivery or a republish of the same payment announces nothing more",
+     "proves": "EXTERNAL PowerChat receipts from Billing (6d14574) are celebrated once",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u ubuntu sqlite3 -readonly /var/lib/openvibe-tips/tips.db \"SELECT settlement,origin,test,count(*) FROM tip_interactions GROUP BY 1,2,3\"; sudo -n grep -c \"^TIPS_CHAT_ADAPTER=none\" /etc/openvibe/tips.env'; curl -s https://openvibe.tips | grep -ci 'nothing here is live yet'",
+     "observed": "external|import|1|11 and imported|import|1|128 (tip_goals 4, migration_maps 143, import_runs 3, overlay_tokens 0, overlay_deliveries 0); TIPS_CHAT_ADAPTER=none count 1; placeholder count 1",
+     "at": "2026-09-23T20:19Z",
+     "proves": "the import was applied, but only test-era history exists, no live chat delivery is wired, and openvibe.tips is still a placeholder",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "After the Billing cutover (D28), real Tips checkout and settlement through Billing; then set TIPS_CHAT_ADAPTER=live-chat",
+    "Turn Live's /api/funds donate, goals, alerts and cashout into adapters over Tips and Billing; persist the Idempotency-Key of Live's tips delivery (an in-memory Map at server/tips/delivery-routes.js:25)",
+    "Launch openvibe.tips publicly (vhost, removal from Sites, registry) and show checkout, history and configuration working with Live stopped",
+    "An end-to-end production run: a duplicate provider webhook gives one Billing transaction and one interaction; creator goal totals reconcile with settled and refunded Billing transactions",
+    "Privacy and moderation controls with moderation-outcome events, and an independent security review"
+   ],
+   "blockedOn": "Owner: the Billing cutover prerequisites: the PowerChat webhook secret in billing.env and re-pointing the PowerChat webhook to https://billing.openvibe.network/webhooks/powerchat",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D30",
+   "title": "VIP",
+   "owner": "OpenVibe.VIP (loopback :4620, deployed 9668a49); consumers OpenVibe.Chat, OpenVibe.Community, OpenVibe.Blog, OpenVibe.Live",
+   "target": "plans and entitlements backed by Billing",
+   "status": "blocked-on-owner",
+   "summary": "VIP has immutable plan versions and an entitlement projection fed by Billing events, with a tested convergence bound. Since the audit, consumers gate on it: Chat member badges (d02a73c), Community members-only spaces (57d1dd4), Blog members-only posts (95e99ac) and Network grants (50552b6). In production (2026-09-23 20:18 UTC) VIP holds 44 creators and 43 imported plans, but 0 memberships and 0 projections. Checkout providers are empty, Billing has 0 subscriptions and 0 entitlements, and openvibe.vip is the Sites placeholder.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.VIP",
+     "path": "test/plans.test.js",
+     "contains": "editing a published plan creates v2, publishes it, and never touches v1",
+     "proves": "plan edits are versioned and never rewrite historical terms",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.VIP",
+     "path": "test/entitlements.test.js",
+     "contains": "a stale projection cannot authorize past valid_until + grace, even with Billing down",
+     "proves": "entitlements are Billing-backed and a stale cache cannot grant access indefinitely",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.VIP",
+     "path": "test/convergence.test.js",
+     "contains": "VIP emits vip.membership.changed; a cache given the event stops granting at once",
+     "proves": "the product cache converges on revoke (2accbeb)",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Community",
+     "path": "test/members-only.test.js",
+     "contains": "convergence: VIP stops granting → Community refuses within the cache TTL (30 s); at once on vip.membership.changed",
+     "proves": "a consumer product enforces VIP entitlements and converges on revoke",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u ubuntu sqlite3 -readonly /var/lib/openvibe-vip/vip.db \"SELECT (SELECT count(*) FROM vip_creators),(SELECT count(*) FROM vip_plans),(SELECT count(*) FROM vip_memberships),(SELECT count(*) FROM vip_entitlement_projection)\"; sudo -n -u ubuntu sqlite3 -readonly /var/lib/openvibe-billing/billing.db \"SELECT (SELECT count(*) FROM subscriptions),(SELECT count(*) FROM entitlements)\"'; curl -s https://openvibe.vip | grep -ci 'nothing here is live yet'",
+     "observed": "44|43|0|0 (vip_migration_maps 87; plan-version immutability triggers present; VIP_CHECKOUT_PROVIDERS empty); Billing 0|0; placeholder count 1",
+     "at": "2026-09-23T20:19Z",
+     "proves": "plans exist, but no membership or entitlement backed by Billing exists in production, and VIP is not public",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "After the Billing cutover, open VIP checkout (VIP_CHECKOUT_PROVIDERS) so memberships and entitlements come from real Billing subscriptions",
+    "Show in production that cancel, renew and refund transitions reach Live, Chat and Community within the window",
+    "Launch openvibe.vip publicly and show a creator managing plans and a member checking status with Live unavailable",
+    "Membership badge, card and widget endpoints (a widgets package); retire Live's /subscribe as an authority"
+   ],
+   "blockedOn": "Owner: the Billing cutover prerequisites: the PowerChat webhook secret in billing.env and re-pointing the PowerChat webhook to https://billing.openvibe.network/webhooks/powerchat",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D31",
+   "title": "Tools",
+   "owner": "OpenVibe.Tools",
+   "target": "shared tool runtime plus jobs and media integration",
+   "status": "partial",
+   "summary": "Tools has a durable, restart-safe shared job runtime with cancel, retry (2aff45d), referenced-result retention (8b317eb), Media object results and lifecycle events through an outbox (tools.job.*, 5f3c304). The SSRF guard is live: a public probe at 20:22 UTC got 403 tools.net.target_not_public. The runtime is still repo-local apps/_shared: no @openvibe/tool-runtime or tool-web package, and jobs run in-process. Production has 0 jobs and 0 tools.* events.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Tools",
+     "path": "apps/_shared/test/jobs.test.js",
+     "contains": "the event log spans the restart",
+     "proves": "an accepted job survives a satellite restart and reattaches by id",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Tools",
+     "path": "apps/_shared/test/jobs.test.js",
+     "contains": "the result is a Media object reference",
+     "proves": "job results are stored as OpenVibe.Media objects",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Tools",
+     "path": "apps/_shared/test/job-events.test.js",
+     "contains": "['tools.job.created', 'tools.job.started', 'tools.job.succeeded']",
+     "proves": "job lifecycle is published to Events through a transactional outbox",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Tools",
+     "path": "apps/gateway/test/net-ssrf.test.js",
+     "contains": "tools.net.target_not_public",
+     "proves": "network diagnostics refuse loopback, private, metadata and rebinding targets (f9a1441)",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "curl -s 'https://openvibe.tools/api/net/ssl?target=127.0.0.1'; ssh openvibe-ovh 'for a in img audio docs; do sudo -n -u ubuntu sqlite3 -readonly /opt/openvibe.tools/apps/$a/data/jobs.db \"SELECT (SELECT count(*) FROM tool_jobs),(SELECT count(*) FROM event_outbox)\"; done'",
+     "observed": "HTTP 403 {\"code\":\"tools.net.target_not_public\"}; img 0|0, audio 0|0, docs 0|0; the Events store holds 0 events with a tools.* type",
+     "at": "2026-09-23T20:22Z",
+     "proves": "the destination restriction is enforced in production; the job and event path is unused in production",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Extract, version and adopt @openvibe/tool-runtime and @openvibe/tool-web (rate limit, upload policy, SSR shell and chrome are still repeated per app)",
+    "Isolated worker pools (child or worker processes with leases) for CPU-heavy conversions",
+    "One converter end to end in production: capability token, Media result object, durable job, tools.job.* progress seen in the Events store, the activity island and an SDK-only client",
+    "Send developer (sandbox) job results to Media and meter usage quota; register tool families and tools in the platform registry",
+    "Separate acceptance for the network-diagnostics family: catalog registration, AI/help content, and each tool's end-to-end behaviour"
+   ],
+   "blockedOn": "Owner: supply YT_PROXY or YT_COOKIES_FILE for the YouTube downloader (:4013/api/health reports youtube \"blocked\" at 2026-09-23 20:19 UTC)",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D32",
+   "title": "Games",
+   "owner": "OpenVibe.Games (deployed 474df50); Source.OpenVibe.Games has no platform work",
+   "target": "platform adapters and mod contracts",
+   "status": "partial",
+   "summary": "The browser Games runtime uses Network identity, a transactional outbox to Events (73 games events in the store), the Contracts mod manifest (mod-manifest.v1.json, ADR-013) and a grant/revoke runtime seam. The Live HoboQuest legacy import is applied: 616 rows archived in legacy_live_rows. In production (2026-09-23 20:20 UTC) there are 0 mods, 0 grants and 0 Media mirrors. Executable (Source/QuickJS) mods are refused until Host Stage C, and Source.OpenVibe.Games has no adapters.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Games",
+     "path": "apps/server/src/game/platformIntegration.test.ts",
+     "contains": "runs identity, mods and events against the live world",
+     "proves": "identity, mod install/grant/revoke and events work against a real server",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Games",
+     "path": "apps/server/src/mods/runtime.test.ts",
+     "contains": "a denied capability cannot be reached: the binding throws and the host is never called",
+     "proves": "grants, not trust tiers, gate mod capabilities in the declarative runtime",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Games",
+     "path": "apps/server/src/mods/manifest.test.ts",
+     "contains": "is the same document as the Contracts proposal",
+     "proves": "the mod manifest contract matches OpenVibe.Contracts",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Games",
+     "path": "apps/server/src/platform/liveLegacyImport.test.ts",
+     "contains": "accounts for every source row: read = imported + held + excluded",
+     "proves": "the Live game-state migration reconciles every row",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u ubuntu sqlite3 -readonly /opt/openvibe.games/data/world.db \"SELECT (SELECT count(*) FROM mods),(SELECT count(*) FROM mod_grants),(SELECT count(*) FROM media_mirrors),(SELECT count(*) FROM legacy_live_rows)\"'",
+     "observed": "0|0|0|616; Events store: 73 events with source games",
+     "at": "2026-09-23T20:20Z",
+     "proves": "the legacy import was applied and Events carries game events, but no mod or Media asset has ever flowed in production",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Network-side mod principals and grants (mods.grant.manage is still planned), an event-flood throttle, a namespace-escape test, and one production install, grant and revoke",
+    "Source.OpenVibe.Games platform adapters (identity, Events, Media, a source-quickjs@1 manifest) with a denied-capability test",
+    "A resource-budget breach terminates only the offending mod (needs Host Stage C)",
+    "A real Media asset flow (media_mirrors = 0) and achievement events",
+    "Resolve the 200 held legacy rows that have no Network subject"
+   ],
+   "blockedOn": "Owner: accept ADR-013's trust-tier names (unreviewed/reviewed/first-party) in place of roadmap §15.17's untrusted/verified/trusted/platform-maintained",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D33",
+   "title": "Codes",
+   "owner": "OpenVibe.Codes (public at openvibe.codes, release d60f279); OpenVibe.Examples",
+   "target": "real developer portal with SDK and playgrounds",
+   "status": "partial",
+   "summary": "openvibe.codes is the real portal, not a Sites placeholder (release d60f279 at 20:21 UTC). It has docs generated from the pinned contracts and SDK, a credential scope editor with rotate and revoke, Media and Events playgrounds bound to project grants, a webhook tester for signature v2, and project export and delete. Production holds 0 manifests, 0 releases and 0 playground runs. The committed developer-path check (Examples 919d26b) runs only against the SDK mock and has not been run on production. Realtime, Billing-sandbox and Chat-bot playgrounds and usage/trace dashboards do not exist.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Codes",
+     "path": "test/playground.test.js",
+     "contains": "revoking the grant in Network stops the playground at once",
+     "proves": "the playground cannot exceed the project's grants",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Codes",
+     "path": "test/scope-editor.test.js",
+     "contains": "a forged request for an internal capability is refused before Network sees it",
+     "proves": "app credentials can be scoped only to grantable capabilities",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Codes",
+     "path": "test/docs.test.js",
+     "contains": "every docs page states the versions it was generated from",
+     "proves": "docs are generated from the published contract and SDK versions",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Examples",
+     "path": "test/developer-path.test.js",
+     "contains": "the first credential was revoked",
+     "proves": "the nine-step external developer path (project, app, grants, Media, events, rotate, revoke, archive) passes against the SDK mock",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "curl -s https://openvibe.codes | grep -ci 'nothing here is live yet'; curl -s https://openvibe.codes/release.json; ssh openvibe-ovh 'sudo -n -u ubuntu sqlite3 -readonly /var/lib/openvibe-codes/codes.db \"SELECT (SELECT count(*) FROM manifests),(SELECT count(*) FROM releases),(SELECT count(*) FROM playground_runs)\"'",
+     "observed": "0 (title 'OpenVibe.Codes: the OpenVibe developer portal'); release d60f279a49aa, contracts_version 0.28.0, openvibe-sdk 0.4.0; 0|0|0",
+     "at": "2026-09-23T20:21Z",
+     "proves": "the portal is public and real, but its publish and playground flows are unused in production",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Run scripts/developer-path.js against production (a working external integration from public docs, the SDK and scoped credentials only) and keep it as a scheduled or integration check; run the Examples in CI against an integration environment (mock-only today)",
+    "Realtime, Chat-bot and Billing-sandbox playgrounds (the Billing sandbox after the Billing cutover)",
+    "Per-project usage, quota, trace and error dashboards",
+    "Exercise the manifest publish, release, deprecate and revoke flow in production",
+    "Bump the contracts pin from 0.28.0"
+   ],
+   "blockedOn": "Owner: review and accept the governance drafts (code of conduct, contributing guide, contributor ladder, moderation policy; Codes d60f279). The Billing-sandbox playground also waits on the Billing cutover (PowerChat webhook re-point).",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D34",
+   "title": "Host",
+   "owner": "OpenVibe.Host (ovhost at /usr/local/bin/ovhost; Stage B service on loopback :4910)",
+   "target": "operator plane, then isolated creator hosting",
+   "status": "partial",
+   "summary": "Stage A (the operator plane) is used in production. A manual `ovhost backup --all --offsite` at 18:47 UTC covered 24 services, including live, media and games, with the off-host copy ok, and openvibe-backup.timer is active (first scheduled run 2026-09-24 03:36 UTC). 20 restore drills are recorded, and the D41 proof passed on production for sources at 20:09 UTC. Stage B (isolated static hosting) is proven in tests only: openvibe.host serves the Sites placeholder, *.openvibe.host answers 404 and there are 0 projects. Stage C has not started, and most services still deploy with their own scripts.",
+   "artifacts": [
+    {
+     "kind": "drill",
+     "repo": "OpenVibe.Host",
+     "path": "docs/d41-proof.md",
+     "contains": "| 2026-09-23 20:09 | sources |",
+     "proves": "ovhost deployed, rolled back and redeployed one production service while 37 other units kept their processes",
+     "ok": true
+    },
+    {
+     "kind": "drill",
+     "repo": "OpenVibe.Host",
+     "path": "docs/restore-drills.md",
+     "contains": "| 2026-09-23 05:22 | billing |",
+     "proves": "the operator plane's backup and restore hooks reconstruct a service (integrity, readiness, identical reads, row counts)",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Host",
+     "path": "test/host-isolation.test.js",
+     "contains": "each site serves only its own deploy",
+     "proves": "Stage B tenant isolation (path, Host-header and cross-tenant tricks), tested only",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Host",
+     "path": "test/backup-offsite.test.js",
+     "contains": "encryption: tampering, truncation, appended data, a header edit and another key all fail",
+     "proves": "off-host backups are authenticated-encrypted (34d706c)",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n jq -c \"{ok, services: ([.services[]]|length), offsite_ok: .offsite.ok}\" /var/lib/openvibe-host/backup-runs/20260923-184740.json; systemctl show openvibe-backup.timer -p ActiveState,NextElapseUSecRealtime; sudo -n -u ubuntu sqlite3 -readonly /var/lib/openvibe-host-api/host.db \"SELECT (SELECT count(*) FROM host_projects),(SELECT count(*) FROM host_deploys)\"'; curl -s https://openvibe.host | grep -ci 'nothing here is live yet'; curl -s -o /dev/null -w '%{http_code}' https://test.openvibe.host/",
+     "observed": "{\"ok\":true,\"services\":24,\"offsite_ok\":true} (live, media and games included); ActiveState=active, next run Thu 2026-09-24 03:36:44 UTC, never triggered yet; 0|0; placeholder count 1; tenant 404",
+     "at": "2026-09-23T20:21Z",
+     "proves": "scheduled off-host backups are installed; Stage B is not launched",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Launch Stage B per docs/launch.md: install the tenant vhost, route openvibe.host to :4910, remove it from Sites and flip the registry in one release; then run one real tenant deploy and a production cross-tenant isolation check",
+    "Store Stage B artifacts through Media (local disk today), add build logs and custom-domain TLS",
+    "Move service deploys onto ovhost (Live still uses the in-place layout, where rollback is refused, C-76); add a DNS adapter, incident and maintenance controls, and a container adapter or an ADR ruling containers out",
+    "Restore drills in production for Live, Media, Tools, Games and AI (Tools and Games drill support 8575c91 has not been run), and run each service's acceptance tests on the restored copy",
+    "Confirm the first timer-driven backup (2026-09-24 03:36 UTC) succeeds",
+    "Stage C: sandboxed bots, mods and apps with budgets, where killing or revoking one does not affect Chat, OpenRe or Live"
+   ],
+   "blockedOn": "Owner: confirm /etc/openvibe/backup.key is escrowed off the host; without it the off-host copies cannot be decrypted after a host loss (OpenVibe.Host docs/backups.md)",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D35",
+   "title": "AI",
+   "owner": "OpenVibe.AI (loopback :4700, deployed 96dc8a3); Live keeps captions and bring-your-own keys",
+   "target": "reusable AI service and workflow authority",
+   "status": "partial",
+   "summary": "OpenVibe.AI is the AI authority for Live and Network. At 2026-09-23 20:19 UTC it held 421 runs (419 from Live, 2 network.site_copy) and 546 audit rows. The Live import was applied (79,657 ledger rows, 11 holds), and Network no longer falls back to Live's site-copy route (31b234a, 0a115f6). Still missing: 0 citation rows, none of the 19 active routes declares a fallback, captions/whisper and streamers' own keys remain in Live, no product (News, Blog, Wiki and so on) has run a workflow in production, and ai.openvibe.network is a Sites placeholder.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.AI",
+     "path": "test/cache.test.js",
+     "contains": "resource scope: the same input for a different target misses",
+     "proves": "the private cache never crosses actor or resource scope",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.AI",
+     "path": "test/fallback.test.js",
+     "contains": "a failing primary falls back, and the run, request log and audit all say so",
+     "proves": "a degraded primary uses the declared fallback and records it (test only; no production route declares one)",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.AI",
+     "path": "test/workflows.test.js",
+     "contains": "a workflow with nothing to work from fails explicitly (no fabricated output)",
+     "proves": "the workflows are versioned and schema-checked, and nothing is fabricated",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/chrome.test.js",
+     "contains": "no fallback to Live when AI fails",
+     "proves": "Network's generated copy no longer depends on a Live internal endpoint",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u ubuntu sqlite3 -readonly /var/lib/openvibe-ai/ai.db \"SELECT source_service,count(*) FROM runs GROUP BY 1; SELECT (SELECT count(*) FROM citations),(SELECT count(*) FROM import_ledger),(SELECT count(*) FROM import_holds); SELECT count(*),sum(fallbacks<>\\\"[]\\\") FROM routes WHERE status=\\\"active\\\"\"'",
+     "observed": "live|419, network|2; citations 0, import_ledger 79657, import_holds 11; active routes 19, with fallbacks 0",
+     "at": "2026-09-23T20:19Z",
+     "proves": "AI serves Live and Network in production with the import applied, but has no citations or fallbacks and no other consumer",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Declare a fallback provider or model on production routes (every route has fallbacks=[])",
+    "Move VOD captions/whisper (Live server/ai/timeline-job.js:50 and media-analysis.js:215 still require ./transcribe) and streamers' own keys into AI; move Live's passthrough prompts into AI templates",
+    "Citations or explicit gaps on live.* and network.site_copy outputs (0 citation rows)",
+    "Run a real product workflow (for example news.summarize_story or blog.draft_post) against the production provider",
+    "Move per-streamer budgets into AI quotas, and remove Live's ai_api_key once the switch has held"
+   ],
+   "blockedOn": "Owner: provide a second provider key or a local model so production routes can declare a fallback (an OpenAI outage fails every AI feature today)",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D36",
+   "title": "Sources",
+   "owner": "OpenVibe.Sources (loopback :4720, deployed 2e986af)",
+   "target": "source registry, ingestion jobs, provenance",
+   "status": "blocked-on-owner",
+   "summary": "Sources has a registry with terms and robots notes, conditional-GET ingestion with provenance and revisions, explicit failure states, robots and SSRF refusal, /metrics and an honest public page. All of this is proven in tests. At 2026-09-23 20:19 UTC all 6 seed sources are disabled, with 0 fetch runs and 0 items, so no real source has ever been ingested.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Sources",
+     "path": "test/ingest.test.js",
+     "contains": "a good fetch creates items with full provenance and an ok run",
+     "proves": "items carry source, URL, retrieval time and content hash",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Sources",
+     "path": "test/ingest.test.js",
+     "contains": "failure never fabricates: http errors, timeouts, parse errors and oversize bodies leave items exactly as they were",
+     "proves": "a fetch failure is an explicit state, never fabricated content",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Sources",
+     "path": "test/robots-ssrf.test.js",
+     "contains": "a disallowed endpoint is robots_denied and never requested",
+     "proves": "a source blocked by robots policy is refused, not scraped",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Sources",
+     "path": "test/api.test.js",
+     "contains": "registry validation: terms before enabling, credentials by SOURCES_CRED_ name only, sane types",
+     "proves": "the registry requires terms before a source can be enabled",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u ubuntu sqlite3 -readonly /var/lib/openvibe-sources/sources.db \"SELECT sum(enabled),count(*) FROM sources; SELECT (SELECT count(*) FROM fetch_runs),(SELECT count(*) FROM items)\"'",
+     "observed": "0|6; 0|0 (/api/ready ready, /metrics 200 on loopback)",
+     "at": "2026-09-23T20:19Z",
+     "proves": "the registry is deployed, but no ingestion has ever run in production",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Enable at least one owner-verified source per category and observe real fetch runs and items with provenance in production",
+    "Job types beyond fetch (dedupe, classify, summarize, quality-check), mapped onto the shared outcome vocabulary, or assigned to the products",
+    "AI reading source adapters directly (AI has no Sources client), or a record that products pass sources in"
+   ],
+   "blockedOn": "Owner: verify terms and robots for at least one source (news, reviews, deals, coupons or trade/SEC XBRL) and approve enabling it in Sources",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D37",
+   "title": "Search/SEO",
+   "owner": "OpenVibe.Search (deployed a707e38; public page at search.openvibe.network); OpenVibe.Contracts (search/index-document.v1.json)",
+   "target": "permission-aware indexing contract",
+   "status": "blocked-on-owner",
+   "summary": "The index-document contract and an event-fed, ACL-filtered SQLite FTS5 Search are tested for leaks, revision order, tombstones and CDN purge. search.openvibe.network has served a public search page since 2026-09-23 (HTML 200 at 20:19 UTC). The production index holds 10 documents, all wiki tombstones (0 public or restricted indexed), so no content document has ever been indexed. The removal purge is inert because CLOUDFLARE_PURGE_TOKEN is not set.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Search",
+     "path": "test/acl-leak.test.js",
+     "contains": "anonymous sees public listed documents only — hits, snippets, facets, suggestions",
+     "proves": "private and draft documents never reach an unauthorized query",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Search",
+     "path": "test/webhook-inbox.test.js",
+     "contains": "a deletion event tombstones and wins over upserts delivered after it",
+     "proves": "event-fed indexing with v2 signatures, revision order and deletion markers",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Search",
+     "path": "test/purge.test.js",
+     "contains": "with a token: the formerly public URL and its sitemap are purged in one call per zone",
+     "proves": "removal purges cached public delivery once a token exists (dd7bcab)",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "contracts/search/index-document.v1.json",
+     "contains": "Search keeps a revision-ordered, permission-aware copy for discovery",
+     "proves": "the canonical index-document contract (owner, revision, visibility/ACL, canonical URL, tombstone)",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n -u ubuntu sqlite3 -readonly /var/lib/openvibe-search/search.db \"SELECT owner,type,deleted,exposure,count(*) FROM documents GROUP BY 1,2,3,4\"; sudo -n grep -c \"^CLOUDFLARE_PURGE_TOKEN=.\" /etc/openvibe/search.env'; curl -s -H 'Accept: text/html' -o /dev/null -w '%{http_code} %{content_type}' 'https://search.openvibe.network/?q=openvibe'",
+     "observed": "wiki|page|1|0|10 (doc_acl 0, ingest_rejections 10, cdn_purges 0); purge token count 0; 200 text/html",
+     "at": "2026-09-23T20:19Z",
+     "proves": "the public search surface is live, but the index holds only tombstones and purging is inert",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Index real content: once wiki pages are reviewed or the blog post is published, re-send the upserts and verify they land (only tombstones so far)",
+    "Configure a Cloudflare token with cache-purge scope and verify one removal purge in production",
+    "Have at least one product consume the query API for its readers"
+   ],
+   "blockedOn": "Owner: review the 10 Wiki seed pages or publish the Blog seed post so real documents can index; mint a Cloudflare token with cache-purge scope; accept ADR-018's SQLite FTS5 engine in place of the roadmap's 'PostgreSQL FTS first'",
+   "ownerReview": true,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D38",
+   "title": "Publishing",
+   "owner": "OpenVibe.Publishing (openvibe-publishing v0.2.1); consumers OpenVibe.Wiki, Blog, News, Reviews, Deals, Coupons, Trade",
+   "target": "shared publishing runtime plus product workflows",
+   "status": "blocked-on-owner",
+   "summary": "The shared runtime (drafts and revisions, scheduling, the SEO/indexability gate, citations, index hooks, authorship) is tested and pinned at v0.2.1 by all seven products. Wiki and Blog are public (no placeholder at 20:19 UTC). Nothing is published yet. Wiki has 10 pages with 0 reviews (all noindex), and Blog has 1 post, a draft. News, Reviews, Deals, Coupons and Trade still serve the Sites placeholder over empty databases (0 stories, entities, offers, coupons and instruments).",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Publishing",
+     "path": "test/two-products.test.js",
+     "contains": "scheduled blog publication is idempotent across a worker restart",
+     "proves": "two products share the runtime without sharing a database, and scheduling is exactly-once",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Publishing",
+     "path": "test/two-products.test.js",
+     "contains": "AI-generated wiki page: draft + noindex until a person reviews it",
+     "proves": "generated content defaults to draft and noindex",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Publishing",
+     "path": "test/seo.test.js",
+     "contains": "every reason code fires on its own fact, with a stable effect",
+     "proves": "indexability is deterministic and server-enforced, with explicit noindex reasons",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Blog",
+     "path": "test/members-vip.test.js",
+     "contains": "feeds, sitemaps, listings, Search documents and product events never carry the body",
+     "proves": "a product workflow on the runtime keeps gated content out of feeds, sitemaps and search",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "for d in openvibe.wiki openvibe.blog openvibe.news openvibe.reviews openvibe.deals openvibe.coupons openvibe.trade; do curl -s https://$d | grep -ci 'nothing here is live yet'; done; ssh openvibe-ovh 'q(){ sudo -n -u \"$(stat -c %U \"$1\")\" sqlite3 -readonly \"$1\" \"$2\"; }; q /var/lib/openvibe-wiki/wiki.db \"SELECT (SELECT count(*) FROM wiki_pages),(SELECT count(*) FROM wiki_page_reviews)\"; q /var/lib/openvibe-blog/blog.db \"SELECT state,count(*) FROM blog_posts GROUP BY 1\"; q /var/lib/openvibe-news/news.db \"SELECT count(*) FROM news_stories\"; q /var/lib/openvibe-reviews/reviews.db \"SELECT count(*) FROM review_entities\"; q /var/lib/openvibe-deals/deals.db \"SELECT count(*) FROM deal_offers\"; q /var/lib/openvibe-coupons/coupons.db \"SELECT count(*) FROM coupons\"; q /var/lib/openvibe-trade/trade.db \"SELECT count(*) FROM trade_instruments\"'",
+     "observed": "wiki 0, blog 0, news 1, reviews 1, deals 1, coupons 1, trade 1; wiki pages 10, reviews 0; blog draft|1; news_stories 0, review_entities 0, deal_offers 0, coupons 0, trade_instruments 0",
+     "at": "2026-09-23T20:23Z",
+     "proves": "the runtime backs two public products, but no content is published, and five products are not launched",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Publish the first real content: reviewed wiki pages and the Blog seed post, then verify that the published revision, search document, feed, sitemap and SSR page converge (roadmap §20.1)",
+    "Launch News, Reviews, Deals, Coupons and Trade (vhost, removal from Sites, registry) once each has an enabled source and editors",
+    "Run one seed AI product workflow (for example wiki.generate_page or news.summarize_story) on the production provider as a draft/evidence package",
+    "Exercise the scheduling and revise/diff/revert paths once in production (10 wiki pages hold 10 revisions at 20:23 UTC, so diff and revert have never been used)"
+   ],
+   "blockedOn": "Owner: review the 10 Wiki seed pages and check the quotes before publishing the Blog seed post; verify and enable sources and name editors for News, Reviews, Deals, Coupons and Trade (and a licensed market-data feed for Trade)",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D39",
+   "title": "Mods",
+   "owner": "OpenVibe.Games (registry, grants and runtime today); OpenVibe.Contracts (mods/mod-manifest.v1, ADR-013); OpenVibe.Network (planned mod grants); OpenVibe.Host (Stage C sandbox)",
+   "target": "mod manifests, capabilities, quotas, runtime adapters",
+   "status": "partial",
+   "summary": "The mod manifest (Contracts mods/mod-manifest.v1, ADR-013 accepted 2026-09-23) and a Games-local registry are tested: grants are the approved subset, installs and grants are audited, and revoking a mod removes its effect on the next tick and across a restart. Only declarative games-content packs run. Executable runtimes are refused, and the CPU budget is metered and audited but not enforced. Network's mods.grant.manage capability is still `planned`, and on 2026-09-23 at 20:22 UTC production world.db held 0 mods, 0 grants and 0 audit rows.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Games",
+     "path": "apps/server/src/mods/runtime.test.ts",
+     "contains": "a denied capability cannot be reached: the binding throws and the host is never called",
+     "proves": "A capability the mod was not granted cannot be reached through the Games runtime seam (ADR-013 acceptance 1).",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Games",
+     "path": "apps/server/src/mods/runtime.test.ts",
+     "contains": "revocation survives a restart: the next boot retracts what the old process left",
+     "proves": "A revoked mod stops affecting the world on the next tick and stays revoked after a restart. The same file tests that a trust tier never stands in for a grant and that executable runtimes are refused.",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "docs/adr/ADR-013-mod-manifest.md",
+     "contains": "**Manifest in Contracts:** a mod is described by `mods/mod-manifest.v1`",
+     "proves": "The accepted manifest carries the target runtime, the requested capabilities, a resource budget and a compatibility range. Grants belong in Network and the sandbox in Host.",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "manifests/capabilities/mods.grant.manage.json",
+     "contains": "Until Network implements it, each runtime keeps the approved subset itself",
+     "proves": "Network-side mod principals and grants are not implemented: the status is planned and implementedBy is empty.",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'db=/opt/openvibe.games/data/world.db; sudo -n -u \"$(stat -c %U $db)\" sqlite3 -readonly $db \"SELECT count(*) FROM mods\"' (also mod_grants, mod_audit); curl -s http://127.0.0.1:8000/api/v1/mods",
+     "observed": "mods 0, mod_grants 0, mod_audit 0; /api/v1/mods -> {\"mods\":[]}",
+     "at": "2026-09-23T20:22Z",
+     "proves": "No mod has ever been installed, granted, used or revoked in production.",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Network-side mod principals and grants (capability mods.grant.manage, still planned with implementedBy []): an install should create a mod:<id> principal whose grants Network checks, as ADR-013 decides",
+    "Quotas: the manifest's resource budget is only metered and audited in Games (runtime.ts budget_exceeded, with no test). Still to do: enforce it, prove that a budget breach terminates only the offending mod, and add an event-flood throttle, each with tests (roadmap §20 Mods)",
+    "Runtime adapters beyond declarative Games content packs: executable runtimes (source-quickjs, target games.source) are refused. Source.OpenVibe.Games has no adapter, and there is no live.overlay adapter. Sandboxed execution waits for Host Stage C",
+    "The §20 Mods acceptance tests still missing: namespace escape denied, and no forged Billing or Media ownership",
+    "One production install -> grant -> use -> revoke run with audit rows (production has 0 mods)"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D40",
+   "title": "Developer services",
+   "owner": "OpenVibe.Network (projects, apps, credentials, grants, quota records); OpenVibe.Media, OpenVibe.Events, OpenVibe.Tools (tenant storage, app events, jobs); OpenVibe.SDK; OpenVibe.Codes (portal); OpenVibe.Examples",
+   "target": "public projects, quotas, storage, jobs, events SDK",
+   "status": "partial",
+   "summary": "Tests cover each part: developer projects, sandbox apps, scoped app credentials and grants (Network /api/v1/projects); per-project Media tenants with byte quotas; Events app events with publish-rate and retained-bytes quotas; Tools jobs for app principals; and the SDK clients. The path ran once on production (dev_projects: one project created 2026-09-23 04:30 UTC, now archived). Its committed, repeatable version (Examples 919d26b, npm run developer-path) runs in CI only against the SDK mock and has never run against production. Codes production holds 0 manifests, 0 releases and 0 playground runs.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/developer-projects.test.js",
+     "contains": "Developer projects (server/developer, roadmap Wave 20 foundation, ADR-014)",
+     "proves": "Covers projects, members, apps and credentials (the secret is shown once and never logged). Grants stay inside the allowance and are never first-party. Quotas are recorded, and X-Internal-Key opens nothing.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Media",
+     "path": "test/app-tenants.test.js",
+     "contains": "Developer-project tenants (roadmap Wave 20, ADR-014)",
+     "proves": "A project gets its own Media storage tenant, with sandbox and production separated and a byte quota. No other credential can reach it.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Events",
+     "path": "test/apps.test.js",
+     "contains": "quotas: per-project publish rate and retained bytes",
+     "proves": "Events enforces per-project publish-rate and retained-bytes quotas on developer app events (429 events.quota_exceeded).",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Tools",
+     "path": "apps/_shared/test/jobs.test.js",
+     "contains": "an app with tools.job.create can submit",
+     "proves": "Developer app principals can submit and read jobs, which are scoped to their owner. Cancelling needs its own capability, and a wrong audience is refused.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Examples",
+     "path": "test/developer-path.test.js",
+     "contains": "The developer path (scripts/developer-path.js) against openvibe-sdk/testing's mock platform",
+     "proves": "The nine-step Wave 20 developer path runs through the SDK against the mock platform in CI. It covers the account, project, app, grants, Media, events, credential rotation and revocation, and archiving the project, and leaves nothing behind.",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'db=/opt/openvibe.network/data/network.db; sudo -n -u \"$(stat -c %U $db)\" sqlite3 -readonly $db \"SELECT count(*),sum(archived_at IS NULL),max(created_at) FROM dev_projects\"' (also dev_apps, dev_grants, dev_quotas; codes.db manifests, releases, playground_runs)",
+     "observed": "dev_projects 1 (0 active, created 2026-09-23T04:30:06Z); dev_apps 1 (revoked); dev_grants 4; dev_quotas 0; codes manifests 0, releases 0, playground_runs 0",
+     "at": "2026-09-23T20:22Z",
+     "proves": "The only production developer project is the archived 04:30 UTC one-off W20 run. The committed developer-path check has not been run against production.",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Run the committed developer path (OpenVibe.Examples npm run developer-path) against production and record the result",
+    "An Examples integration job with sandbox credentials, so the nine examples run against a real environment. CI is mock-only, and npm run e2e covers 3 of 9 and runs only on demand",
+    "Per-project usage reporting and a usage, quota and trace dashboard. Network records quotas (0 rows in production) and each service enforces its own defaults; Codes shows only the recorded limits",
+    "Show in production a webhook delivered to an external endpoint and an app or mod release published through Codes",
+    "Realtime and Chat-bot playgrounds, and the Billing-sandbox playground (which waits for the money cutover, runbook E); a consent screen for third-party production apps; and a Network project erasure endpoint (only archive exists)"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D41",
+   "title": "Runtime lifecycle",
+   "owner": "OpenVibe.Host (ovhost inventory, deploy, rollback, drain); each service (readiness endpoint)",
+   "target": "standardised readiness, drain and recovery manifests",
+   "status": "partial",
+   "summary": "The production ovhost inventory has 25 services. 24 declare a loopback readiness URL. Drain policies and protected-session probes are declared for Live, Media and Events, along with worker units and databases. Deploy and rollback with readiness polling, auto-rollback and --wait-idle are tested. The D41 proof passed on production at 20:09 UTC on 2026-09-23: sources was deployed, rolled back and redeployed, and the 37 other units were identical. Gaps: shutdown deadlines, liveness, startup recovery and rollback conditions are not declared; the proof covers only one low-risk service; and Live still runs the in-place layout, where rollback is refused (C-76).",
+   "artifacts": [
+    {
+     "kind": "drill",
+     "repo": "OpenVibe.Host",
+     "path": "docs/d41-proof.md",
+     "contains": "| 2026-09-23 20:09 | sources |",
+     "proves": "Production D41 proof: `ovhost deploy`, `ovhost rollback` and `ovhost deploy` of sources restarted only its own unit. The other 37 units kept their MainPID and InvocationID, and readiness held.",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n cat /var/lib/openvibe-host/d41/sources-20260923-200932/summary.md'",
+     "observed": "PASS: steps A/B/C exit 0 (2e986af27a55 -> 202aec4fa0e5 -> 2e986af27a55), 37 other units identical, 24 services ready before and after, protected sessions live streams 0->0, recordings 0->0, SSE 0->0",
+     "at": "2026-09-23T20:21Z",
+     "proves": "The proof row matches the evidence on the host.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Host",
+     "path": "test/deploy.test.js",
+     "contains": "--wait-idle holds until two consecutive idle checks, then deploys",
+     "proves": "Tests cover drain before restart (--wait-idle, refusal while Live streams or Media records), automatic rollback when readiness fails, a lock against concurrent operations, and a socket unit that is never restarted.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Host",
+     "path": "test/d41-proof.test.js",
+     "contains": "FAIL: a unit that changes as a side effect (here Chat, restarted along with the target) is detected and named",
+     "proves": "The proof script detects collateral restarts, so a PASS means that no other unit moved.",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'sudo -n python3 -c <summarise /etc/openvibe/host.json: ready, drain.policy, protected.kind, workerUnits, socketUnit, layout, managed per service>'",
+     "observed": "25 services: 24 declare a ready URL (sites none). Only live (refuse, socket unit, http-json-count probe), media (refuse, sqlite-count probe) and events (report, http-json-count) declare drain or protected-session probes. openre declares workerUnits. games is unmanaged. chat has no protected-session probe",
+     "at": "2026-09-23T20:22Z",
+     "proves": "Readiness is declared almost everywhere, but drain and protected-session declarations cover only three services, and the manifest has no fields for shutdown deadline, liveness, startup recovery or rollback conditions.",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Declare the rest of the §15.18 lifecycle for each deployable unit: liveness, shutdown deadline, startup recovery, rollback conditions, supported contract ranges, and leases or fencing for competing workers. The inventory has only ready, drain policy, protected probe, workerUnits and databases",
+    "Protected-session probes for Chat (WebSocket clients) and the other stateful runtimes. Only live, media and events declare one",
+    "Move Live to the release layout (C-76, due 2026-10-09) so its rollback works. Absorb the per-repo deploy.sh of Live, Tools, Network, Sites and OpenRe into ovhost. Games is unmanaged",
+    "Production deploy and rollback proofs for the stateful runtime types: web renderer drain, recorder or media-worker checkpoint, chat resume and game shard. So far only sources has one",
+    "Route ingest by generation: until OpenRe takes the slots, a Live restart still drops RTMP publishers (runbook F)"
+   ],
+   "blockedOn": "Open 1936/tcp at the host firewall and at the provider edge, and agree broadcaster windows, so RTMP ingest can move to OpenRe (cutover runbook F)",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D42",
+   "title": "Shared components",
+   "owner": "OpenVibe.Shared (package); OpenVibe.Network (serves /shared/*); every consuming product",
+   "target": "versioned Shared packages and artifacts",
+   "status": "partial",
+   "summary": "openvibe-shared is released by semver tags. v1.4.0 was released at 19:38 UTC on 2026-09-23, and its last 3 CI runs are green. The package has explicit subpath exports and a check that browser files carry no server-only code, and 24 consuming repositories pin a tag (21 of them v1.3.0). The browser files are not versioned per consumer, though: Community, Wiki, Codes and Tools pages load https://openvibe.network/shared/navbar.js with no hash (max-age=300), which is whatever release Network pins. The one-package decision (Shared ADR 0001) is only proposed.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Shared",
+     "path": "test/package.test.js",
+     "contains": "Shared ADR 0001: the exports map is the public surface, one explicit entry per subpath, no patterns.",
+     "proves": "Every module is published through an explicit, wildcard-free subpath that resolves by the package's own name.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Shared",
+     "path": "test/browser-bundles.test.js",
+     "contains": "Node-only modules stay out of the list.",
+     "proves": "Browser files have no require(), Node globals or other server-only code.",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "docs/adr/ADR-008-shared-packages.md",
+     "contains": "`OpenVibe.Shared` is the canonical package, released by semver tags and consumed by tarball pin",
+     "proves": "Accepted decision: consumers pin versioned Shared releases instead of vendored copies.",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Shared",
+     "path": "docs/adr/0001-one-package-subpath-exports.md",
+     "contains": "**Status:** Proposed 2026-09-23",
+     "proves": "The choice of one package with subpath groups, instead of the charter's separate @openvibe/* packages, is awaiting owner review.",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "curl -s https://openvibe.community/ | grep -o 'src=\"[^\"]*shared/[^\"]*\"' (also openvibe.wiki, openvibe.codes, openvibe.tools, openvibe.live); curl -s -D - -o /dev/null https://openvibe.network/shared/navbar.js",
+     "observed": "community, wiki, codes and tools load src=\"https://openvibe.network/shared/navbar.js\" (and footer.js, theme-loader.js) with no hash, served with cache-control: public, max-age=300, stale-while-revalidate=60. Live alone loads its own content-hashed /shared/navbar.js?v=9e6c54748c6a",
+     "at": "2026-09-23T20:23Z",
+     "proves": "Four public products run mutable, unversioned shared browser code, contrary to ADR-016's asset rule and the roadmap's §9.1 prohibition.",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Serve shared browser files immutably for each consumer. Community, Wiki, Codes and Tools reference unversioned https://openvibe.network/shared/*.js, which serves Network's pinned release, not their own pin. Use the content-hash ?v= or a site-local copy, as Live does",
+    "Move consumers to the current tag: 21 of 24 pin v1.3.0; Publishing and Sites pin v1.0.0 and OpenRe v1.2.1. Also correct the registry's library list, which still reports openvibe-shared v1.3.0 as latest",
+    "Extract Live's feature loader into the web-runtime group (§15.18): route generation, scoped timers and listeners, AbortController lifecycle, prefetch budget, transactional asset-group activation and leak diagnostics",
+    "Test each new Shared release against consumers pinned to the previous minor, and add ADR-008's CI check for vendored copies",
+    "Test that basic public rendering survives when the shared asset host (openvibe.network) is down"
+   ],
+   "blockedOn": "Accept or amend Shared ADR 0001 (one openvibe-shared package with subpath exports instead of separate @openvibe/* packages)",
+   "ownerReview": true,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D43",
+   "title": "Active-client updates",
+   "owner": "OpenVibe.Shared (release.js, release-watch.js); OpenVibe.Contracts (release-manifest.v1, ADR-016); every web product",
+   "target": "release manifests plus a safe update coordinator",
+   "status": "partial",
+   "summary": "At 20:20 UTC on 2026-09-23, 20 running services published /release.json under ADR-016. Billing, Chat and OpenRe answered 404, and Games served HTML. The shared release-watch prompts open tabs and reloads only when that is safe: never while someone is typing, uploading, in a call, playing media or capturing. A Shared test covers this. It is only a deferred full reload, though. The manifest lacks the shell, per-component versions, asset URLs and generations, and none of the §15.18 in-place update matrix exists (CSS or theme swap, content patching, component replacement).",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Shared",
+     "path": "test/release.test.js",
+     "contains": "never during a protected session (upload, call, broadcast)",
+     "proves": "release-watch prompts once for a newer release and reloads only when that is safe: outside the window or when the server requires it, and never with a focused field, playing media, live capture or a protected session.",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "contracts/registry/release-manifest.v1.json",
+     "contains": "What a running web surface is serving (GET /release.json, ADR-016).",
+     "proves": "The release-manifest contract: service, release, released_at, contracts_version, packages, min_client_release and mixed_version_window_hours. It has no shell, component, asset or generation fields.",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "docs/adr/ADR-016-active-client-updates.md",
+     "contains": "reload automatically only when idle with no unsent input, upload, call or stream",
+     "proves": "The accepted update policy is a prompt plus a safe deferred reload, not in-place swaps.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Live",
+     "path": "test/asset-versioning.test.js",
+     "contains": "a hash from the previous release is served from that release",
+     "proves": "Under the release layout, HTML rendered before a deploy keeps loading its own assets. Production Live still runs the in-place layout, where there are no previous-release bytes (C-76).",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "curl -s https://openvibe.network/api/v1/registry/releases",
+     "observed": "checked_at 2026-09-23T20:20:56Z: 20 services report a release (ai, blog, codes, community, coupons, deals, events, host, live, media, network, news, reviews, search, sources, tips, tools, trade, vip, wiki); billing, chat and openre: release.json answered 404; games: release.json answered 200 with HTML",
+     "at": "2026-09-23T20:21Z",
+     "proves": "Release manifests are published by most, but not all, running services.",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Complete the §15.18 release manifest: shell, per-component versions, contract ranges, asset URLs, schema generation and a minimum client generation",
+    "Publish /release.json from Billing, Chat and OpenRe (all 404) and from Games (whose SPA fallback serves HTML)",
+    "Implement the active-browser update matrix in the Shared release client. This means: a stylesheet or theme swap after a full load; content patches that know revisions and keep focus and scroll; and component replacement at dependency boundaries, with transactional asset groups and disposal. Today release-watch only prompts and defers a full reload",
+    "Release-id notifications (identifiers only, coalesced) instead of polling on focus and every 10 minutes. Track site, shell, component, contract and account generations separately, including account-switch invalidation during an update",
+    "Keep old assets usable for open tabs in production. Live's in-place layout cannot serve previous-release bytes (C-76), and Community, Wiki, Codes and Tools load mutable shared JS",
+    "Provide automated or browser evidence for the §15.18 mandatory modularity scenarios; only the JS-disabled-route scenario has tests"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D44",
+   "title": "Crawlable rendering",
+   "owner": "each public product; OpenVibe.Publishing (SSR/SEO runtime for publication products); OpenVibe.Shared (seo, chrome-ssr)",
+   "target": "make it an invariant across all public products",
+   "status": "partial",
+   "summary": "Server-rendered public pages are tested without JavaScript in Wiki, News, Reviews, Blog, Community and the Publishing runtime. In production on 2026-09-23 at 20:23 UTC, Wiki, Community, Codes and Tools answered an unknown path with a real 404. It is not yet an invariant. Live is an SPA shell with per-route meta and noscript snapshots only for listed routes, and it answers unknown paths 200 with the home canonical. Games serves its landing page for every path. Media has no sitemap, and no gate checks every product.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Wiki",
+     "path": "test/nojs.test.js",
+     "contains": "A public page is useful with JavaScript disabled",
+     "proves": "With scripts stripped, Wiki's public pages and editing work through plain GETs and form posts.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Community",
+     "path": "test/ssr.test.js",
+     "contains": "home renders hero, latest + trending pastes, CTA and roadmap with full SEO head",
+     "proves": "Community's public pages are server-rendered with a canonical URL, OG and Twitter tags, JSON-LD and content in the initial HTML.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Publishing",
+     "path": "test/ssr.test.js",
+     "contains": "pagination is plain links and clamps out-of-range pages",
+     "proves": "The shared publishing runtime renders server pagination as plain links, along with honest <time>, breadcrumbs and safe markdown.",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "curl -s -H 'Accept: text/html' -o /dev/null -w '%{http_code}' https://<site>/zz-no-such-page-xyz for openvibe.wiki, openvibe.community, openvibe.codes, openvibe.tools, openvibe.live, openvibe.games; curl -s -o /dev/null -w '%{http_code}' https://openvibe.media/sitemap.xml",
+     "observed": "wiki 404, community 404, codes 404, tools 404; live 200 (home title, canonical https://openvibe.live/); games 200 (landing page, canonical https://openvibe.games/, no noscript); media sitemap.xml 404",
+     "at": "2026-09-23T20:27Z",
+     "proves": "Correct status codes and SSR hold on the newer products, but Live and Games return soft-404s and Media has no sitemap.",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Live: server-render its public routes (channels, and VOD, clip and paste lists and details) as real HTML rather than an SPA shell plus a noscript snapshot, and return 404 for unknown paths. Today they return 200 with the home canonical, and no Live test covers the output without JavaScript",
+    "Games: unknown paths return 200 with the landing page (SPA fallback). Add correct status codes and server-rendered or static routes",
+    "A cross-product acceptance gate run against every public product, using the Track Q browser and no-JS harness. It should check initial HTML content, status codes, the canonical, JSON-LD tied to visible facts and server pagination",
+    "Media sitemap.xml (404), Codes JSON-LD (none on the home page), and accessibility tests"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D45",
+   "title": "Compatibility/recovery",
+   "owner": "OpenVibe.Contracts (compatibility policy and gate); OpenVibe.Host (compatibility register, backups, restore drills); each service (authority flags, migrations)",
+   "target": "platform compatibility windows and expand/migrate/contract",
+   "status": "partial",
+   "summary": "ADR-016 and every /release.json declare a 24-hour mixed-version window. The Contracts compat gate fails a breaking schema change within a major. The Host compatibility register dates each shim, and cutovers used expand/migrate/contract through authority flags (for example MEDIA_EVENTS_AUTHORITY=webhook|both|events, which is tested). But no N/N-1 mixed-version test exists, expand/migrate/contract is not a written per-change rule with CI enforcement, and recovery is partial. A manual backup of all 24 services at 18:47 UTC on 2026-09-23 went off-host to B2, but the nightly timer has not fired yet, and Live and Media have no restore drill.",
+   "artifacts": [
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Contracts",
+     "path": "docs/adr/ADR-016-active-client-updates.md",
+     "contains": "a server supports clients from the current and the previous release of its API contract",
+     "proves": "The mixed-version window is defined: at least 24 hours for clients one release behind.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Contracts",
+     "path": "test/run.js",
+     "contains": "Generated output and compatibility gate",
+     "proves": "npm test and CI run scripts/compat.js. It fails when a property is removed or retyped, a property is newly required, an enum value is removed or a catalog entry is dropped without a deprecation, compared with the previous tag.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Live",
+     "path": "test/media-events.test.js",
+     "contains": "MEDIA_EVENTS_AUTHORITY=webhook|both|events decides which path",
+     "proves": "An expand/migrate/contract cutover in practice. The old path and the new one run side by side, and each outcome is applied exactly once whichever copy arrives first.",
+     "ok": true
+    },
+    {
+     "kind": "doc",
+     "repo": "OpenVibe.Host",
+     "path": "docs/compatibility-register.md",
+     "contains": "| C-76 |",
+     "proves": "Compatibility shims are registered with owners and removal dates. C-76, the Live in-place layout that refuses rollback, is due 2026-10-09.",
+     "ok": true
+    },
+    {
+     "kind": "drill",
+     "repo": "OpenVibe.Host",
+     "path": "docs/restore-drills.md",
+     "contains": "| 2026-09-23 19:24 | openre |",
+     "proves": "Restore drills run on production backups: 20 passing rows covering 19 services. The drill table has no Live, Media, Tools or Games row.",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "ssh openvibe-ovh 'systemctl list-timers openvibe-backup.timer --all; sudo -n cat /var/lib/openvibe-host/backup-runs/20260923-184740.json'",
+     "observed": "timer NEXT Thu 2026-09-24 03:36:44 UTC, LAST - (never fired; openvibe-backup.service has no start timestamp). Run 20260923-184740 (18:47:40-18:48:18Z): ok=true, 24 services ok including live (live.db, rs-companion.db), media, games and openre; offsite ok to B2 prefix openvibe-backups/openvibe-oregon/20260923-184740/",
+     "at": "2026-09-23T20:21Z",
+     "proves": "Off-host encrypted backups now cover the money, media and world databases, from one manual run. The scheduled run has not happened yet.",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "An automated test of an N-1 client against an N server, and of an N-1 worker against the N schema, through rollout, drain and rollback. Today the 24-hour window is only declared",
+    "Write expand -> migrate -> contract as a rule for every schema change (as an ADR or Host runbook), with a CI check, and add the schema generation to the release manifests",
+    "A rollback-with-newer-writes test, showing that rolling back process or UI code never reverses committed business data (§15.18 scenario)",
+    "Move Live to the release layout (C-76, due 2026-10-09), so a Live rollback restores code and dependencies and old assets stay servable",
+    "Restore drills for Live (the money ledger) and Media (drill unsupported); first production runs of the Tools and Games drill modes (Host 8575c91); and drills that run each service's acceptance tests rather than comparing reads",
+    "Confirm the first scheduled openvibe-backup.timer run (next 2026-09-24 03:36 UTC; it has never fired)"
+   ],
+   "blockedOn": "Escrow the off-host backup encryption key (/etc/openvibe/backup.key) somewhere other than the host (Host docs/backups.md); without it the B2 copies cannot be read if the host is lost",
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  },
+  {
+   "id": "D46",
+   "title": "Update observability",
+   "owner": "OpenVibe.Shared (metrics.js, release-watch.js); OpenVibe.Network (registry /releases); each service (/metrics). No repository owns the acceptance suite yet",
+   "target": "cross-product release and session telemetry plus an acceptance suite",
+   "status": "partial",
+   "summary": "Release identity is reported across products: release_info{service,release} in the shared metrics module and in the /metrics of Live, Network, Community, Events, Billing, AI and Codes, Network's /api/v1/registry/releases with library drift (20 services on 2026-09-23 at 20:20 UTC), and Live's live.release.deployed events (4 in production). Session telemetry is limited to Live's stream and WebSocket gauges. No update success, deferral or failure metrics exist, nothing reports sessions by generation, no collector scrapes the /metrics endpoints on the host, and no release-lifecycle acceptance suite exists.",
+   "artifacts": [
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/registry-topics.test.js",
+     "contains": "/releases: running releases from /release.json, drift against the libraries' current releases.",
+     "proves": "Network aggregates each service's running release and its contracts, SDK and Shared drift. scripts/contracts-drift.js warns without failing.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Shared",
+     "path": "test/metrics.test.js",
+     "contains": "release_info{service=\"s\",release=\"r\"} 1",
+     "proves": "The shared metrics module exports the running release as a gauge for every service that uses it.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Live",
+     "path": "test/release-events.test.js",
+     "contains": "the deploy notice queues live.release.deployed",
+     "proves": "A Live deploy is published as a durable event in the same transaction as the chat deploy notice.",
+     "ok": true
+    },
+    {
+     "kind": "prod",
+     "check": "curl -s https://openvibe.network/api/v1/registry/releases; ssh openvibe-ovh 'db=/var/lib/openvibe-events/events.db; sudo -n -u \"$(stat -c %U $db)\" sqlite3 -readonly $db \"SELECT event_type,count(*) FROM events WHERE event_type LIKE \\\"%release%\\\" GROUP BY event_type\"; ps -eo comm= | grep -i -E \"prom|grafana|otel|vmagent|alloy|telegraf|netdata\"'",
+     "observed": "registry: 20 services report a release, billing/chat/openre 404, games HTML; events: live.release.deployed|4; no metrics collector process on the host",
+     "at": "2026-09-23T20:25Z",
+     "proves": "Cross-product release reporting works in production, but nothing collects the metrics and no other product emits release events.",
+     "ok": true
+    }
+   ],
+   "remaining": [
+    "Client update telemetry from release-watch, per site and release: prompts shown, updates applied, updates deferred (and why) and failures. None is emitted",
+    "Active sessions by generation (tabs, sockets, streams, calls and uploads per release), plus affected-session counts, drain duration and rollback outcomes as metrics. Today these appear only in d41-proof evidence files",
+    "Collect the /metrics the services expose (no Prometheus-compatible collector runs on the host) and build an operator view of release health",
+    "The release-lifecycle acceptance suite (§20 Release lifecycle and the §15.18 mandatory modularity scenarios) with scenario gates. Only the JS-disabled-route scenario has tests",
+    "Close the release-reporting gaps: Billing, Chat and OpenRe answer /release.json with 404 and Games with HTML, and the registry lists openvibe-shared v1.3.0 as latest although v1.4.0 is tagged"
+   ],
+   "blockedOn": null,
+   "ownerReview": false,
+   "problems": [],
+   "verified": true
+  }
+ ]
+}

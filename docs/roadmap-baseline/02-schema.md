@@ -9,45 +9,85 @@ Deliverable 2: every table declared in code or present in production, with curre
 | File | Size | Tables |
 |---|---|---|
 | /opt/openvibe.community/data/community.db | 115 KB | 9 |
-| /opt/openvibe.games/data/world.db | 74 KB | 5 |
+| /opt/openvibe.games/data/legacy-import/world-before-20260923T184930Z.db | 193 KB | 13 |
+| /opt/openvibe.games/data/world.db | 336 KB | 13 |
+| /opt/openvibe.live/data/analytics.db | 500.5 MB | 6 |
+| /opt/openvibe.live/data/backups/analytics-pre-adr021-2026-09-23.db | 1.76 GB | 6 |
 | /opt/openvibe.live/data/backups/live-pre-643a2e6.db | 264.7 MB | 145 |
-| /opt/openvibe.live/data/openvibe.db | 0 B | 0 |
 | /opt/openvibe.live/data/hobo.db | 0 B | 0 |
-| /opt/openvibe.live/data/analytics.db | 1.75 GB | 4 |
-| /opt/openvibe.live/data/live.db | 279.2 MB | 146 |
+| /opt/openvibe.live/data/live.db | 279.2 MB | 150 |
+| /opt/openvibe.live/data/openvibe.db | 0 B | 0 |
 | /opt/openvibe.live/data/rs-companion.db | 8.6 MB | 33 |
-| /opt/openvibe.media/data/media.db | 5.6 MB | 11 |
-| /opt/openvibe.network/data/network.db | 766.5 MB | 38 |
-| /opt/openvibe.tools/apps/audio/data/analytics.db | 59.9 MB | 4 |
-| /opt/openvibe.tools/apps/img/data/analytics.db | 5.5 MB | 4 |
-| /opt/openvibe.tools/apps/docs/data/analytics.db | 1.5 MB | 4 |
-| /opt/openvibe.tools/apps/maps/data/analytics.db | 532 KB | 4 |
-| /opt/openvibe.tools/apps/text/data/analytics.db | 5.9 MB | 4 |
-| /opt/openvibe.tools/apps/yt/data/analytics.db | 901 KB | 4 |
-| /opt/openvibe.tools/apps/food/data/analytics.db | 414 KB | 4 |
+| /opt/openvibe.media/data/media.db | 8.7 MB | 21 |
+| /opt/openvibe.network/data/network.db | 277.7 MB | 50 |
+| /opt/openvibe.tips/data/tips.db | 4 KB | 15 |
+| /opt/openvibe.tools/apps/audio/data/analytics.db | 35.4 MB | 6 |
+| /opt/openvibe.tools/apps/audio/data/jobs.db | 61 KB | 4 |
+| /opt/openvibe.tools/apps/docs/data/analytics.db | 983 KB | 6 |
+| /opt/openvibe.tools/apps/docs/data/jobs.db | 61 KB | 4 |
+| /opt/openvibe.tools/apps/food/data/analytics.db | 319 KB | 6 |
+| /opt/openvibe.tools/apps/img/data/analytics.db | 3.7 MB | 6 |
+| /opt/openvibe.tools/apps/img/data/jobs.db | 61 KB | 4 |
+| /opt/openvibe.tools/apps/maps/data/analytics.db | 377 KB | 6 |
+| /opt/openvibe.tools/apps/text/data/analytics.db | 5.5 MB | 6 |
+| /opt/openvibe.tools/apps/yt/data/analytics.db | 594 KB | 6 |
+| /opt/openvibe.tools/backups/analytics-2026-09-23/audio.analytics.db | 60.3 MB | 6 |
+| /opt/openvibe.tools/backups/analytics-2026-09-23/docs.analytics.db | 1.7 MB | 6 |
+| /opt/openvibe.tools/backups/analytics-2026-09-23/food.analytics.db | 459 KB | 6 |
+| /opt/openvibe.tools/backups/analytics-2026-09-23/img.analytics.db | 5.7 MB | 6 |
+| /opt/openvibe.tools/backups/analytics-2026-09-23/maps.analytics.db | 590 KB | 6 |
+| /opt/openvibe.tools/backups/analytics-2026-09-23/text.analytics.db | 9.5 MB | 6 |
+| /opt/openvibe.tools/backups/analytics-2026-09-23/yt.analytics.db | 975 KB | 6 |
+| /var/lib/openre/openre.db | 201 KB | 13 |
+| /var/lib/openvibe-ai/ai.db | 14.4 MB | 16 |
+| /var/lib/openvibe-billing/billing.db | 590 KB | 19 |
+| /var/lib/openvibe-billing/live-snapshot-202609230121.db | 279.2 MB | 146 |
+| /var/lib/openvibe-blog/blog.db | 283 KB | 20 |
+| /var/lib/openvibe-chat/chat.db | 22.8 MB | 32 |
+| /var/lib/openvibe-chat/live-snap-a.db | 279.2 MB | 147 |
+| /var/lib/openvibe-chat/live-snap-b.db | 279.2 MB | 148 |
+| /var/lib/openvibe-chat/live-snapshot-0159.db | 279.2 MB | 147 |
+| /var/lib/openvibe-chat/rehearsal.db | 360 KB | 30 |
+| /var/lib/openvibe-codes/codes.db | 94 KB | 7 |
+| /var/lib/openvibe-community/community.db | 1.8 MB | 20 |
+| /var/lib/openvibe-community/community.pre-live-comments-20260923T191345Z.db | 2.0 MB | 20 |
+| /var/lib/openvibe-coupons/coupons.db | 197 KB | 14 |
+| /var/lib/openvibe-deals/deals.db | 266 KB | 19 |
+| /var/lib/openvibe-events/events.db | 348 KB | 7 |
+| /var/lib/openvibe-host-api/host.db | 152 KB | 11 |
+| /var/lib/openvibe-news/news.db | 319 KB | 23 |
+| /var/lib/openvibe-reviews/reviews.db | 307 KB | 23 |
+| /var/lib/openvibe-search/search.db | 119 KB | 21 |
+| /var/lib/openvibe-sources/sources.db | 106 KB | 8 |
+| /var/lib/openvibe-tips/tips.db | 385 KB | 16 |
+| /var/lib/openvibe-trade/trade.db | 229 KB | 17 |
+| /var/lib/openvibe-vip/vip.db | 344 KB | 15 |
+| /var/lib/openvibe-wiki/wiki.db | 377 KB | 20 |
 
-## OpenVibe.Live (186)
+## OpenVibe.Live (193)
 
 | Table | Declared at | In prod | Target owner | Disposition | Wave |
 |---|---|---|---|---|---|
 | active_effects | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| ai_chatbot_configs | server/db/database.js:1807 | live.db | OpenVibe.AI | extract | W13 |
+| ai_chatbot_configs | server/db/database.js:1810 | live.db | OpenVibe.AI | extract | W13 |
 | ai_conversations | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | ai_memory | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| ai_timeline_cache | server/db/database.js:1300 | live.db | OpenVibe.AI | extract | W13 |
-| ai_usage | server/db/database.js:1258 | live.db | OpenVibe.AI | extract | W13 |
-| ai_viewer_log | server/db/database.js:1891 | live.db | OpenVibe.AI | extract | W13 |
-| ai_viewer_threads | server/db/database.js:1877 | live.db | OpenVibe.AI | extract | W13 |
-| analytics_daily | vendor/openvibe-shared/analytics.js:116 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
-| analytics_events | vendor/openvibe-shared/analytics.js:74 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
-| analytics_hourly | vendor/openvibe-shared/analytics.js:98 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
-| analytics_rate_tracking | vendor/openvibe-shared/analytics.js:137 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
+| ai_timeline_cache | server/db/database.js:1303 | live.db | OpenVibe.AI | extract | W13 |
+| ai_usage | server/db/database.js:1261 | live.db | OpenVibe.AI | extract | W13 |
+| ai_viewer_log | server/db/database.js:1894 | live.db | OpenVibe.AI | extract | W13 |
+| ai_viewer_threads | server/db/database.js:1880 | live.db | OpenVibe.AI | extract | W13 |
+| analytics_daily | (prod only) | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
+| analytics_day_salts | (prod only) | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
+| analytics_events | (prod only) | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
+| analytics_hourly | (prod only) | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
+| analytics_rate_tracking | (prod only) | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
 | analytics_snapshots | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| anon_ip_mappings | server/db/database.js:940 | live.db | OpenVibe.Network (policy) | extract | W1 |
+| analytics_visitor_days | (prod only) | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
+| anon_ip_mappings | server/db/database.js:942 | live.db | OpenVibe.Network (policy) | extract | W1 |
 | api_keys | server/db/schema.sql:391 | live.db | OpenVibe.Network (principals) / OpenVibe.Codes | extract | W1/W20 |
 | api_tokens | server/db/schema.sql:404 | live.db | OpenVibe.Network (principals) / OpenVibe.Codes | extract | W1/W20 |
-| app_state | server/db/database.js:1171 | live.db | OpenVibe.Live | keep | - |
-| approved_ips | server/db/database.js:2079 | live.db | OpenVibe.Network (policy) | extract | W1 |
+| app_state | server/db/database.js:1174 | live.db | OpenVibe.Live | keep | - |
+| approved_ips | server/db/database.js:2082 | live.db | OpenVibe.Network (policy) | extract | W1 |
 | arena_achievements | (prod only) | live.db | archive then drop | investigate | W0 |
 | arena_battles | (prod only) | live.db | archive then drop | investigate | W0 |
 | arena_beef_hype | server/arena/beef.js:58 | live.db | OpenVibe.Live | keep | - |
@@ -77,6 +117,7 @@ Deliverable 2: every table declared in code or present in production, with curre
 | bank_items | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | bans | server/db/schema.sql:418 | live.db | OpenVibe.Network (policy) | extract | W1 |
 | battle_stats | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
+| billing_actions | server/monetization/billing-actions.js:36 | no | OpenVibe.Live | keep | W8 |
 | camera_presets | server/db/schema.sql:359 | live.db | OpenRe.Stream | extract | W7 |
 | camera_profiles | server/db/schema.sql:339 | live.db | OpenRe.Stream | extract | W7 |
 | cameras | server/db/schema.sql:133 | live.db | OpenRe.Stream | extract | W7 |
@@ -88,45 +129,48 @@ Deliverable 2: every table declared in code or present in production, with curre
 | canvas_tiles | (prod only) | live.db | OpenVibe.Games | frozen-legacy | W12 |
 | canvas_user_overrides | (prod only) | live.db | OpenVibe.Games | frozen-legacy | W12 |
 | changelog_entries | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| channel_ai_bots | server/db/database.js:1832 | live.db | OpenVibe.AI | extract | W13 |
-| channel_ai_config | server/db/database.js:1856 | live.db | OpenVibe.AI | extract | W13 |
-| channel_moderation_settings | server/db/database.js:1642, server/db/schema.sql:514 | live.db | OpenVibe.Chat | extract | W6 |
-| channel_moderators | server/db/database.js:1625, server/db/schema.sql:499 | live.db | OpenVibe.Chat | extract | W6 |
-| channel_points | server/db/database.js:764 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
-| channel_sounds | server/db/database.js:1745, server/db/schema.sql:625 | live.db | OpenVibe.Chat | extract | W6 |
-| channel_sounds_new | server/db/database.js:1769 | no | OpenVibe.Chat | extract | W6 |
+| channel_ai_bots | server/db/database.js:1835 | live.db | OpenVibe.AI | extract | W13 |
+| channel_ai_config | server/db/database.js:1859 | live.db | OpenVibe.AI | extract | W13 |
+| channel_moderation_settings | server/db/database.js:1645, server/db/schema.sql:514 | live.db | OpenVibe.Chat | extract | W6 (remainder) |
+| channel_moderators | server/db/database.js:1628, server/db/schema.sql:499 | live.db | OpenVibe.Chat | extract | W6 (remainder) |
+| channel_points | server/db/database.js:766 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
+| channel_sounds | server/db/database.js:1748, server/db/schema.sql:625 | live.db | OpenVibe.Chat | mirror | W6 (done 2026-09-23) |
+| channel_sounds_new | server/db/database.js:1772 | no | OpenVibe.Chat | extract | W6 (remainder) |
 | channels | server/db/schema.sql:26 | live.db | OpenVibe.Live | keep | - |
-| chat_ai_summaries | server/db/database.js:1312 | live.db | OpenVibe.Chat | extract | W6 |
+| chat_ai_summaries | server/db/database.js:1315 | live.db | OpenVibe.Chat | extract | W6 (remainder) |
+| chat_bridge_outbox | server/chat/chat-remote.js:94 | live.db | OpenVibe.Live | keep | W6 (compat) |
 | chat_log | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| chat_messages | server/db/schema.sql:148 | live.db | OpenVibe.Chat | extract | W6 |
-| chat_messages_new | server/db/database.js:419 | no | OpenVibe.Chat | extract | W6 |
-| chat_timeline_events | server/db/database.js:1332 | live.db | OpenVibe.Chat | extract | W6 |
+| chat_messages | server/db/schema.sql:148 | live.db | OpenVibe.Chat | mirror | W6 (done 2026-09-23) |
+| chat_messages_new | server/db/database.js:421 | no | OpenVibe.Chat | extract | W6 (remainder) |
+| chat_timeline_events | server/db/database.js:1335 | live.db | OpenVibe.Chat | extract | W6 (remainder) |
 | chatter_profiles | (prod only) | live.db | archive then drop | investigate | W0 |
 | chatter_subjects | (prod only) | live.db | archive then drop | investigate | W0 |
 | chatter_xp_log | (prod only) | live.db | archive then drop | investigate | W0 |
-| clip_ai_state | server/db/database.js:272 | live.db | OpenVibe.AI | extract | W13 |
+| clip_ai_state | server/db/database.js:274 | live.db | OpenVibe.AI | extract | W13 |
 | clips | server/db/schema.sql:307 | live.db | OpenVibe.Media | frozen-legacy | W4 |
 | coin_redemptions | server/db/schema.sql:689 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
 | coin_rewards | server/db/schema.sql:668 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
 | coin_transactions | server/db/schema.sql:651 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
-| comments | server/db/database.js:853, server/db/schema.sql:585 | live.db | OpenVibe.Community | extract | W5 |
+| comment_thread_refs | server/comments-client.js:47 | live.db | OpenVibe.Live | keep | W5 |
+| comments | server/db/database.js:855, server/db/schema.sql:585 | live.db | OpenVibe.Community | frozen-legacy | W5 (done 2026-09-23) |
 | content_views | server/db/schema.sql:328 | live.db | OpenVibe.Live | keep | - |
-| control_config_buttons | server/db/database.js:2310 | live.db | OpenRe.Stream | extract | W7 |
-| control_configs | server/db/database.js:2296 | live.db | OpenRe.Stream | extract | W7 |
-| control_whitelist | server/db/database.js:2281 | live.db | OpenRe.Stream | extract | W7 |
+| control_config_buttons | server/db/database.js:2313 | live.db | OpenRe.Stream | extract | W7 |
+| control_configs | server/db/database.js:2299 | live.db | OpenRe.Stream | extract | W7 |
+| control_whitelist | server/db/database.js:2284 | live.db | OpenRe.Stream | extract | W7 |
 | custom_rewards | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | daily_claims | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | divorce_history | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| dm_blocks | server/chat/dm.js:57 | live.db | OpenVibe.Chat | extract | W6 |
-| dm_conversations | server/chat/dm.js:21 | live.db | OpenVibe.Chat | extract | W6 |
-| dm_messages | server/chat/dm.js:42 | live.db | OpenVibe.Chat | extract | W6 |
-| dm_participants | server/chat/dm.js:31 | live.db | OpenVibe.Chat | extract | W6 |
+| dm_blocks | server/chat/dm.js:57 | live.db | OpenVibe.Chat | mirror | W6 (done 2026-09-23) |
+| dm_conversations | server/chat/dm.js:21 | live.db | OpenVibe.Chat | mirror | W6 (done 2026-09-23) |
+| dm_messages | server/chat/dm.js:42 | live.db | OpenVibe.Chat | mirror | W6 (done 2026-09-23) |
+| dm_participants | server/chat/dm.js:31 | live.db | OpenVibe.Chat | mirror | W6 (done 2026-09-23) |
 | donation_goals | server/db/schema.sql:264 | live.db | OpenVibe.Tips | extract | W9 |
 | dungeon_stats | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| easter_egg_solves | server/db/database.js:1344 | live.db | OpenVibe.AI | extract | W13 |
-| emotes | server/db/schema.sql:603 | live.db | OpenVibe.Chat | extract | W6 |
-| emotes_new | server/db/database.js:1713 | no | OpenVibe.Chat | extract | W6 |
+| easter_egg_solves | server/db/database.js:1347 | live.db | OpenVibe.AI | extract | W13 |
+| emotes | server/db/schema.sql:603 | live.db | OpenVibe.Chat | extract | W6 (remainder) |
+| emotes_new | server/db/database.js:1716 | no | OpenVibe.Chat | extract | W6 (remainder) |
 | event_log | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
+| event_outbox | (prod only) | live.db | OpenVibe.Live | keep | W3 |
 | farm_plots | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | file_checksums | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | fish_profile | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
@@ -147,125 +191,138 @@ Deliverable 2: every table declared in code or present in production, with curre
 | game_structures | server/game/schema.sql:87 | live.db | OpenVibe.Games | migrate-then-drop | W12 |
 | game_world_state | server/game/schema.sql:7 | live.db | OpenVibe.Games | migrate-then-drop | W12 |
 | gusher_profile | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| hidden_relay_users | server/db/database.js:2116 | live.db | OpenVibe.Chat | extract | W6 |
+| hidden_relay_users | server/db/database.js:2119 | live.db | OpenVibe.Chat | mirror | W6 (done 2026-09-23) |
 | inventory | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| ip_log | server/db/database.js:2055 | live.db | OpenVibe.Network (policy) | extract | W1 |
+| ip_log | server/db/database.js:2058 | live.db | OpenVibe.Network (policy) | extract | W1 |
 | jo_profile | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| kick_channel_cache | server/db/database.js:778 | live.db | OpenRe.Stream | extract | W7 |
-| linked_accounts | server/db/database.js:384 | live.db | OpenVibe.Network | extract | W1 |
+| kick_channel_cache | server/db/database.js:780 | live.db | OpenRe.Stream | extract | W7 |
+| linked_accounts | server/db/database.js:386 | live.db | OpenVibe.Network | extract | W1 |
 | love_affinity | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | love_profile | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | love_proposals | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| managed_streams | server/db/database.js:2424, server/db/schema.sql:78 | live.db | OpenRe.Stream | extract | W7 |
-| media_request_settings | server/db/database.js:873, server/db/schema.sql:722 | live.db | OpenVibe.Chat | extract | W6 |
-| media_requests | server/db/database.js:887, server/db/schema.sql:739 | live.db, rs-companion.db | OpenVibe.Chat | extract | W6 |
+| managed_streams | server/db/database.js:2427, server/db/schema.sql:78 | live.db | OpenRe.Stream | extract | W7 |
+| media_request_settings | server/db/database.js:875, server/db/schema.sql:722 | live.db | OpenVibe.Chat | extract | W6 (remainder) |
+| media_requests | server/db/database.js:889, server/db/schema.sql:739 | live.db, rs-companion.db | OpenVibe.Chat | extract | W6 (remainder) |
 | mine_profile | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | mod_persuasion | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| moderation_actions | server/db/database.js:1924 | live.db | OpenVibe.Chat | extract | W6 |
+| moderation_actions | server/db/database.js:1927 | live.db | OpenVibe.Chat | mirror | W6 (done 2026-09-23) |
 | music_profile | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | news_settings | server/news/news-service.js:47 | live.db | OpenVibe.Live | keep | - |
-| paste_comments | server/db/database.js:2012 | live.db | OpenVibe.Community | frozen-legacy | W5 |
-| paste_likes | server/db/database.js:1980 | live.db | OpenVibe.Community | frozen-legacy | W5 |
-| pastes | server/db/database.js:1943 | live.db | OpenVibe.Community | frozen-legacy | W5 |
-| payment_orders | server/db/database.js:1592 | live.db | OpenVibe.Billing | extract | W8 (after ADR-012) |
-| pending_ip_messages | server/db/database.js:2096 | live.db | OpenVibe.Chat | extract | W6 |
-| platform_connections | server/db/database.js:713 | live.db | OpenRe.Stream | extract | W7 |
-| powerchat_connections | server/db/database.js:735 | live.db | OpenVibe.Live | keep | W3 (deliveries -> Events) |
-| powerchat_webhook_deliveries | server/db/database.js:752 | live.db | OpenVibe.Live | keep | W3 (deliveries -> Events) |
+| openre_sessions | server/openre/schema.js:21 | live.db | OpenVibe.Live | keep | W7 |
+| paste_comments | server/db/database.js:2015 | live.db | OpenVibe.Community | frozen-legacy | W5 |
+| paste_likes | server/db/database.js:1983 | live.db | OpenVibe.Community | frozen-legacy | W5 |
+| pastes | server/db/database.js:1946 | live.db | OpenVibe.Community | frozen-legacy | W5 |
+| payment_orders | server/db/database.js:1595 | live.db | OpenVibe.Billing | extract | W8 (after ADR-012) |
+| pending_ip_messages | server/db/database.js:2099 | live.db | OpenVibe.Chat | mirror | W6 (done 2026-09-23) |
+| platform_connections | server/db/database.js:715 | live.db | OpenRe.Stream | extract | W7 |
+| powerchat_connections | server/db/database.js:737 | live.db | OpenVibe.Live | keep | W3 (deliveries -> Events) |
+| powerchat_webhook_deliveries | server/db/database.js:754 | live.db | OpenVibe.Live | keep | W3 (deliveries -> Events) |
 | promo_claims | (prod only) | live.db | archive then drop | investigate | W0 |
-| relay_users | server/db/database.js:1470 | live.db | OpenVibe.Chat | extract | W6 |
-| restream_destinations | server/db/database.js:695 | live.db | OpenRe.Stream | extract | W7 |
+| relay_users | server/db/database.js:1473 | live.db | OpenVibe.Chat | mirror | W6 (done 2026-09-23) |
+| restream_destinations | server/db/database.js:697 | live.db | OpenRe.Stream | extract | W7 |
 | roast_dossier | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | roast_log | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| robotstreamer_integrations | server/db/database.js:609, server/db/schema.sql:58 | live.db | OpenRe.Stream | extract | W7 |
-| robotstreamer_integrations_new | server/db/database.js:660 | no | OpenRe.Stream | extract | W7 |
+| robotstreamer_integrations | server/db/database.js:611, server/db/schema.sql:58 | live.db | OpenRe.Stream | extract | W7 |
+| robotstreamer_integrations_new | server/db/database.js:662 | no | OpenRe.Stream | extract | W7 |
 | schema_migrations | server/db/migrations.js:27 | live.db | OpenVibe.Live | keep | - |
-| site_settings | server/db/database.js:353, server/db/schema.sql:556 | live.db | OpenVibe.Live | keep | - |
+| site_settings | server/db/database.js:355, server/db/schema.sql:556 | live.db | OpenVibe.Live | keep | - |
 | stream_analytics | server/db/schema.sql:810 | live.db | OpenVibe.Live | keep | - |
 | stream_controls | server/db/schema.sql:372 | live.db | OpenRe.Stream | extract | W7 |
-| stream_controls_new | server/db/database.js:2389 | no | OpenRe.Stream | extract | W7 |
-| stream_first_chats | server/db/database.js:2044 | live.db | OpenVibe.Chat | extract | W6 |
-| stream_memories | server/db/database.js:1185 | live.db | OpenVibe.AI | extract | W13 |
+| stream_controls_new | server/db/database.js:2392 | no | OpenRe.Stream | extract | W7 |
+| stream_first_chats | server/db/database.js:2047 | live.db | OpenVibe.Chat | mirror | W6 (done 2026-09-23) |
+| stream_memories | server/db/database.js:1188 | live.db | OpenVibe.AI | extract | W13 |
 | stream_recaps | server/recap/recap.js:27 | live.db | OpenVibe.AI | extract | W13 |
-| stream_timeline_events | server/db/database.js:1233 | live.db | OpenVibe.Live | keep | - |
-| streamer_overviews | server/db/database.js:1278 | live.db | OpenVibe.AI | extract | W13 |
+| stream_timeline_events | server/db/database.js:1236 | live.db | OpenVibe.Live | keep | - |
+| streamer_overviews | server/db/database.js:1281 | live.db | OpenVibe.AI | extract | W13 |
 | streams | server/db/schema.sql:103 | live.db | OpenVibe.Live | keep | - |
 | subscriptions | server/db/schema.sql:234 | live.db | OpenVibe.Billing + OpenVibe.VIP | extract | W8/W10 |
 | tag_guardian_defeats | server/game/tags.js:81 | live.db | OpenVibe.Live | keep | - |
 | themes | server/db/schema.sql:446 | live.db | OpenVibe.Network | extract | W1 |
 | transactions | server/db/schema.sql:247 | live.db | OpenVibe.Billing | extract | W8 (after ADR-012) |
-| translations | server/db/database.js:510, server/i18n/translate.js:145 | live.db | OpenVibe.AI | extract | W13 |
-| tts_voice_overrides | server/db/database.js:1356 | live.db | OpenVibe.Chat | extract | W6 |
+| translations | server/db/database.js:512, server/i18n/translate.js:147 | live.db | OpenVibe.AI | extract | W13 |
+| tts_voice_overrides | server/db/database.js:1359 | live.db | OpenVibe.Chat | mirror | W6 (done 2026-09-23) |
 | unlocked_recipes | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
-| user_cosmetics | server/db/schema.sql:774, server/monetization/cosmetics.js:109 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
-| user_equipped | server/db/schema.sql:786, server/monetization/cosmetics.js:118 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
+| user_cosmetics | server/db/schema.sql:774, server/monetization/cosmetics.js:111 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
+| user_equipped | server/db/schema.sql:786, server/monetization/cosmetics.js:120 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
 | user_equipped_tag | server/game/tags.js:76 | live.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
 | user_preferences | server/db/schema.sql:825 | live.db | OpenVibe.Network | extract | W1 |
-| user_tags | server/game/tags.js:67 | live.db | OpenVibe.Chat | extract | W6 |
+| user_tags | server/game/tags.js:67 | live.db | OpenVibe.Chat | extract | W6 (remainder) |
 | user_themes | server/db/schema.sql:467 | live.db | OpenVibe.Network | extract | W1 |
 | user_voice_selection | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | user_voices | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | users | server/db/schema.sql:5 | live.db, rs-companion.db | OpenVibe.Network | extract | W1 |
-| verification_keys | server/db/database.js:364, server/db/schema.sql:567 | live.db | OpenVibe.Network | extract | W1 |
-| vibe_coding_events | server/db/database.js:2681, server/db/schema.sql:198 | live.db | OpenVibe.Codes | extract | W20 |
-| vibe_coding_sessions | server/db/database.js:2646, server/db/schema.sql:170 | live.db | OpenVibe.Codes | extract | W20 |
-| viewer_samples | server/db/database.js:3960 | live.db | OpenVibe.Live | keep | - |
+| verification_keys | server/db/database.js:366, server/db/schema.sql:567 | live.db | OpenVibe.Network | extract | W1 |
+| vibe_coding_events | server/db/database.js:2684, server/db/schema.sql:198 | live.db | OpenVibe.Codes | extract | W20 |
+| vibe_coding_sessions | server/db/database.js:2649, server/db/schema.sql:170 | live.db | OpenVibe.Codes | extract | W20 |
+| viewer_samples | server/db/database.js:3983 | live.db | OpenVibe.Live | keep | - |
 | viewer_snapshots | server/db/schema.sql:799 | live.db | OpenVibe.Live | keep | - |
-| vod_ai_state | server/db/database.js:263 | live.db | OpenVibe.AI | extract | W13 |
+| vod_ai_state | server/db/database.js:265 | live.db | OpenVibe.AI | extract | W13 |
 | vods | server/db/schema.sql:280 | live.db | OpenVibe.Media | frozen-legacy | W4 |
 | vpn_approvals | server/db/schema.sql:434 | live.db | OpenVibe.Network (policy) | extract | W1 |
 | watch_time | server/db/schema.sql:706 | live.db | OpenVibe.Live | keep | - |
 | woodcut_profile | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 
-## OpenVibe.Network (39)
+## OpenVibe.Network (51)
 
 | Table | Declared at | In prod | Target owner | Disposition | Wave |
 |---|---|---|---|---|---|
 | admin_rate_limits | server/auth/admin-limits.js:24 | no | OpenVibe.Network | keep | W1 (module split) |
-| analytics_daily | node_modules/openvibe-shared/analytics.js:116 | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
-| analytics_events | node_modules/openvibe-shared/analytics.js:74 | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
-| analytics_hourly | node_modules/openvibe-shared/analytics.js:98 | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
-| analytics_rate_tracking | node_modules/openvibe-shared/analytics.js:137 | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
-| anon_ip_log | server/db/database.js:443 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| anon_users | server/db/database.js:340 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| audit_log | server/db/database.js:215 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| chrome_cache | server/chrome/service.js:27 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| chrome_hits | server/chrome/service.js:29 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| coin_transactions | server/db/database.js:407 | network.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
-| email_delivery_log | server/db/database.js:302 | network.db | OpenVibe.Network | keep | W3 (delivery -> Events outbox) |
-| email_verification_tokens | server/db/database.js:509 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| follows | server/db/database.js:386 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| analytics_daily | (prod only) | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
+| analytics_day_salts | (prod only) | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
+| analytics_events | (prod only) | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
+| analytics_hourly | (prod only) | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
+| analytics_rate_tracking | (prod only) | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
+| analytics_visitor_days | (prod only) | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
+| anon_ip_log | server/db/database.js:363 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| anon_users | server/db/database.js:260 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| audit_log | server/db/database.js:135 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| chrome_cache | server/chrome/service.js:63 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| chrome_hits | server/chrome/service.js:65 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| coin_transactions | server/db/database.js:327 | network.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
+| dev_apps | server/developer/store.js:66 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| dev_audit | server/developer/store.js:124 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| dev_auth_codes | server/developer/store.js:114 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| dev_credentials | server/developer/store.js:80 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| dev_grants | server/developer/store.js:93 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| dev_project_members | server/developer/store.js:57 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| dev_projects | server/developer/store.js:45 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| dev_quotas | server/developer/store.js:104 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| email_delivery_log | server/db/database.js:222 | network.db | OpenVibe.Network | keep | W3 (delivery -> Events outbox) |
+| email_verification_tokens | server/db/database.js:431 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| follows | server/db/database.js:306 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | identity_legacy_map | server/identity/subjects.js:25 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| ip_log | server/db/database.js:225 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| linked_accounts | server/db/database.js:204 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| notification_preferences | server/db/database.js:290 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| notifications | server/db/database.js:263 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| oauth_clients | server/db/database.js:134 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| oauth_codes | server/db/database.js:144 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| oauth_tokens | server/db/database.js:158 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| password_reset_tokens | server/db/database.js:321 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| principal_grants | server/identity/principals.js:54 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| principal_usage | server/identity/principals.js:64 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| push_subscriptions | server/db/database.js:460 | network.db | OpenVibe.Network | keep | W3 (delivery -> Events outbox) |
-| site_settings | server/db/database.js:238 | network.db | OpenVibe.Network | keep | - |
-| stream_live_announcements | server/internal/routes.js:325 | network.db | OpenVibe.Events | extract | W3 |
-| themes | server/db/database.js:183 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| ip_log | server/db/database.js:145 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| linked_accounts | server/db/database.js:124 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| network_event_inbox | (prod only) | network.db | OpenVibe.Network | keep | W3 |
+| network_event_outbox | (prod only) | network.db | OpenVibe.Network | keep | W3 |
+| notification_preferences | server/db/database.js:210 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| notifications | server/db/database.js:183 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| oauth_clients | server/db/database.js:54 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| oauth_codes | server/db/database.js:64 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| oauth_tokens | server/db/database.js:78 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| password_reset_tokens | server/db/database.js:241 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| principal_grants | server/identity/principals.js:151 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| principal_usage | server/identity/principals.js:161 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| push_subscriptions | server/db/database.js:380 | network.db | OpenVibe.Network | keep | W3 (delivery -> Events outbox) |
+| site_settings | server/db/database.js:158 | network.db | OpenVibe.Network | keep | - |
+| stream_live_announcements | server/notifications/stream-live.js:17 | network.db | OpenVibe.Events | extract | W3 |
+| themes | server/db/database.js:103 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | tool_domains | server/domains/routes.js:44 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| url_registry | server/db/database.js:245, server/url-registry.js:7 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| user_effects | server/db/database.js:375 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| url_registry | server/db/database.js:165, server/url-registry.js:7 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| user_effects | server/db/database.js:295 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | user_history | server/history/routes.js:26 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | user_modules | server/identity/modules.js:24 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| user_preferences | server/db/database.js:172 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| user_sessions | server/db/database.js:354 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| users | server/db/database.js:113 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| verification_keys | server/db/database.js:422 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| wallets | server/db/database.js:400 | network.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
+| user_preferences | server/db/database.js:92 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| user_sessions | server/db/database.js:274 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| users | server/db/database.js:33 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| verification_keys | server/db/database.js:342 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| wallets | server/db/database.js:320 | network.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
 
 ## OpenVibe.Shared
 
 No tables.
 
-## OpenVibe.Media (18)
+## OpenVibe.Media (21)
 
 | Table | Declared at | In prod | Target owner | Disposition | Wave |
 |---|---|---|---|---|---|
@@ -274,64 +331,480 @@ No tables.
 | clips | server/db/schema.sql:64 | media.db | OpenVibe.Media | keep | W4 (object model) |
 | content_views | server/db/schema.sql:96 | media.db | OpenVibe.Media | keep | W4 (object model) |
 | content_visits | server/views/service.js:43 | media.db | OpenVibe.Media | keep | W4 (object model) |
+| event_outbox | (prod only) | media.db | OpenVibe.Media | keep | W3 |
 | files | server/db/schema.sql:167 | media.db | OpenVibe.Media | keep | W4 (object model) |
-| media_holds | server/db/schema.sql:293 | no | OpenVibe.Media | keep | W4 (object model) |
-| media_invariant_violations | server/db/schema.sql:306 | no | OpenVibe.Media | keep | W4 (object model) |
-| media_jobs | server/db/schema.sql:279 | no | OpenVibe.Media | keep | W4 (object model) |
-| media_locations | server/db/schema.sql:241 | no | OpenVibe.Media | keep | W4 (object model) |
-| media_objects | server/db/schema.sql:214 | no | OpenVibe.Media | keep | W4 (object model) |
-| media_relationships | server/db/schema.sql:257 | no | OpenVibe.Media | keep | W4 (object model) |
+| media_holds | server/db/schema.sql:293 | media.db | OpenVibe.Media | keep | W4 (object model) |
+| media_invariant_violations | server/db/schema.sql:306 | media.db | OpenVibe.Media | keep | W4 (object model) |
+| media_jobs | server/db/schema.sql:279 | media.db | OpenVibe.Media | keep | W4 (object model) |
+| media_locations | server/db/schema.sql:241 | media.db | OpenVibe.Media | keep | W4 (object model) |
+| media_objects | server/db/schema.sql:214 | media.db | OpenVibe.Media | keep | W4 (object model) |
+| media_relationships | server/db/schema.sql:257 | media.db | OpenVibe.Media | keep | W4 (object model) |
 | media_settings | server/db/schema.sql:182 | media.db | OpenVibe.Media | keep | W4 (object model) |
-| media_variants | server/db/schema.sql:268 | no | OpenVibe.Media | keep | W4 (object model) |
+| media_variants | server/db/schema.sql:268 | media.db | OpenVibe.Media | keep | W4 (object model) |
+| media_verifications | server/db/schema.sql:320 | media.db | OpenVibe.Media | keep | W4 (object model) |
+| media_verify_runs | server/db/schema.sql:332 | media.db | OpenVibe.Media | keep | W4 (object model) |
 | paste_comments | server/db/schema.sql:149 | media.db | OpenVibe.Community | frozen-legacy | W5 (done 2026-09-22) |
 | paste_likes | server/db/schema.sql:141 | media.db | OpenVibe.Community | frozen-legacy | W5 (done 2026-09-22) |
 | pastes | server/db/schema.sql:107 | media.db | OpenVibe.Community | frozen-legacy | W5 (done 2026-09-22) |
 | vods | server/db/schema.sql:22 | media.db | OpenVibe.Media | keep | W4 (object model) |
 
-## OpenVibe.Tools (4)
+## OpenVibe.Tools (10)
 
 | Table | Declared at | In prod | Target owner | Disposition | Wave |
 |---|---|---|---|---|---|
-| analytics_daily | apps/audio/node_modules/openvibe-shared/analytics.js:116 | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
-| analytics_events | apps/audio/node_modules/openvibe-shared/analytics.js:74 | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
-| analytics_hourly | apps/audio/node_modules/openvibe-shared/analytics.js:98 | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
-| analytics_rate_tracking | apps/audio/node_modules/openvibe-shared/analytics.js:137 | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
+| analytics_daily | (prod only) | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
+| analytics_day_salts | (prod only) | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
+| analytics_events | (prod only) | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
+| analytics_hourly | (prod only) | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
+| analytics_rate_tracking | (prod only) | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
+| analytics_visitor_days | (prod only) | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
+| event_outbox | (prod only) | jobs.db | OpenVibe.Tools | keep | W3 |
+| tool_job_events | apps/_shared/jobs/store.js:47 | jobs.db | OpenVibe.Tools | keep | - |
+| tool_job_references | apps/_shared/jobs/store.js:55 | jobs.db | OpenVibe.Tools | keep | - |
+| tool_jobs | apps/_shared/jobs/store.js:17 | jobs.db | OpenVibe.Tools | keep | - |
 
 ## OpenVibe.Community (20)
 
 | Table | Declared at | In prod | Target owner | Disposition | Wave |
 |---|---|---|---|---|---|
-| comment_threads | server/db.js:129 | no | OpenVibe.Community | keep | W5 |
-| comment_votes | server/db.js:163 | no | OpenVibe.Community | keep | W5 |
-| comments | server/db.js:143 | no | OpenVibe.Community | keep | W5 |
-| import_hold | server/db.js:292 | community.db | OpenVibe.Community | keep | W5 |
-| legacy_id_map | server/db.js:117 | community.db | OpenVibe.Community | keep | W5 |
-| migration_runs | server/db.js:109 | community.db | OpenVibe.Community | keep | W5 |
-| paste_comments | server/db.js:73 | community.db | OpenVibe.Community | keep | W5 |
-| paste_likes | server/db.js:66 | community.db | OpenVibe.Community | keep | W5 |
-| paste_versions | server/db.js:55 | community.db | OpenVibe.Community | keep | W5 |
-| paste_visits | server/db.js:89 | community.db | OpenVibe.Community | keep | W5 |
-| pastes | server/db.js:19 | community.db | OpenVibe.Community | keep | W5 |
-| post_versions | server/db.js:224 | no | OpenVibe.Community | keep | W5 |
-| posts | server/db.js:209 | no | OpenVibe.Community | keep | W5 |
-| pulse_items | server/db.js:275 | no | OpenVibe.Community | keep | W5 |
-| relay_deliveries | server/db.js:256 | no | OpenVibe.Community | keep | W5 |
-| relay_mappings | server/db.js:245 | no | OpenVibe.Community | keep | W5 |
-| spaces | server/db.js:174 | no | OpenVibe.Community | keep | W5 |
-| subject_projection | server/db.js:99 | community.db | OpenVibe.Community | keep | W5 |
-| thread_votes | server/db.js:233 | no | OpenVibe.Community | keep | W5 |
-| threads | server/db.js:190 | no | OpenVibe.Community | keep | W5 |
+| comment_threads | server/db.js:130 | community.db | OpenVibe.Community | keep | W5 |
+| comment_votes | server/db.js:166 | community.db | OpenVibe.Community | keep | W5 |
+| comments | server/db.js:145 | community.db | OpenVibe.Community | keep | W5 |
+| import_hold | server/db.js:295 | community.db | OpenVibe.Community | keep | W5 |
+| legacy_id_map | server/db.js:118 | community.db | OpenVibe.Community | keep | W5 |
+| migration_runs | server/db.js:110 | community.db | OpenVibe.Community | keep | W5 |
+| paste_comments | server/db.js:74 | community.db | OpenVibe.Community | keep | W5 |
+| paste_likes | server/db.js:67 | community.db | OpenVibe.Community | keep | W5 |
+| paste_versions | server/db.js:56 | community.db | OpenVibe.Community | keep | W5 |
+| paste_visits | server/db.js:90 | community.db | OpenVibe.Community | keep | W5 |
+| pastes | server/db.js:20 | community.db | OpenVibe.Community | keep | W5 |
+| post_versions | server/db.js:227 | community.db | OpenVibe.Community | keep | W5 |
+| posts | server/db.js:212 | community.db | OpenVibe.Community | keep | W5 |
+| pulse_items | server/db.js:278 | community.db | OpenVibe.Community | keep | W5 |
+| relay_deliveries | server/db.js:259 | community.db | OpenVibe.Community | keep | W5 |
+| relay_mappings | server/db.js:248 | community.db | OpenVibe.Community | keep | W5 |
+| spaces | server/db.js:177 | community.db | OpenVibe.Community | keep | W5 |
+| subject_projection | server/db.js:100 | community.db | OpenVibe.Community | keep | W5 |
+| thread_votes | server/db.js:236 | community.db | OpenVibe.Community | keep | W5 |
+| threads | server/db.js:193 | community.db | OpenVibe.Community | keep | W5 |
 
-## OpenVibe.Games (5)
+## OpenVibe.Games (13)
 
 | Table | Declared at | In prod | Target owner | Disposition | Wave |
 |---|---|---|---|---|---|
-| constraints | packages/persistence/src/sqlite/sqliteStore.ts:55, packages/persistence/src/sqlite/sqliteStore.ts:78 | world.db | OpenVibe.Games | keep | W12 |
-| guest_ips | packages/persistence/src/sqlite/sqliteStore.ts:63, packages/persistence/src/sqlite/sqliteStore.ts:123 | world.db | OpenVibe.Games | keep | W12 |
-| meta | packages/persistence/src/sqlite/sqliteStore.ts:67 | world.db | OpenVibe.Games | keep | W12 |
-| players | packages/persistence/src/sqlite/sqliteStore.ts:36, packages/persistence/src/sqlite/sqliteStore.ts:101 | world.db | OpenVibe.Games | keep | W12 |
-| world_entities | packages/persistence/src/sqlite/sqliteStore.ts:25 | world.db | OpenVibe.Games | keep | W12 |
+| constraints | packages/persistence/src/sqlite/sqliteStore.ts:70, packages/persistence/src/sqlite/sqliteStore.ts:184 | world.db | OpenVibe.Games | keep | W12 |
+| event_outbox | (prod only) | world.db | OpenVibe.Games | keep | W3 |
+| guest_ips | packages/persistence/src/sqlite/sqliteStore.ts:78, packages/persistence/src/sqlite/sqliteStore.ts:229 | world.db | OpenVibe.Games | keep | W12 |
+| identity_legacy_map | packages/persistence/src/sqlite/sqliteStore.ts:95 | world.db | OpenVibe.Games | keep | W12 |
+| legacy_live_rows | packages/persistence/src/sqlite/sqliteStore.ts:167 | world.db | OpenVibe.Games | keep | W12 |
+| media_mirrors | packages/persistence/src/sqlite/sqliteStore.ts:143 | world.db | OpenVibe.Games | keep | W12 |
+| meta | packages/persistence/src/sqlite/sqliteStore.ts:82 | world.db | OpenVibe.Games | keep | W12 |
+| mod_audit | packages/persistence/src/sqlite/sqliteStore.ts:133 | world.db | OpenVibe.Games | keep | W12 |
+| mod_grants | packages/persistence/src/sqlite/sqliteStore.ts:117 | world.db | OpenVibe.Games | keep | W12 |
+| mod_placements | packages/persistence/src/sqlite/sqliteStore.ts:126 | world.db | OpenVibe.Games | keep | W12 |
+| mods | packages/persistence/src/sqlite/sqliteStore.ts:103 | world.db | OpenVibe.Games | keep | W12 |
+| players | packages/persistence/src/sqlite/sqliteStore.ts:50, packages/persistence/src/sqlite/sqliteStore.ts:207 | world.db | OpenVibe.Games | keep | W12 |
+| world_entities | packages/persistence/src/sqlite/sqliteStore.ts:39 | world.db | OpenVibe.Games | keep | W12 |
 
 ## OpenVibe.Sites
 
 No tables.
+
+## OpenVibe.Events (7)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| app_revocations | server/store.js:90 | events.db | OpenVibe.Events | keep | W3 |
+| consumer_checkpoints | server/store.js:79 | events.db | OpenVibe.Events | keep | W3 |
+| deliveries | server/store.js:61 | events.db | OpenVibe.Events | keep | W3 |
+| events | server/store.js:24 | events.db | OpenVibe.Events | keep | W3 |
+| idempotency_receipts | server/store.js:99 | events.db | OpenVibe.Events | keep | W3 |
+| sequences | server/store.js:20 | events.db | OpenVibe.Events | keep | W3 |
+| subscriptions | server/store.js:48 | events.db | OpenVibe.Events | keep | W3 |
+
+## OpenVibe.Chat (32)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| audio_requests | server/db/schema.sql:408 | chat.db | OpenVibe.Chat | keep | W6 |
+| bridge_applied | server/db/schema.sql:398 | chat.db | OpenVibe.Chat | keep | W6 |
+| bridge_refs | server/db/schema.sql:435 | chat.db | OpenVibe.Chat | keep | W6 |
+| channel_moderation_settings | server/db/schema.sql:201 | chat.db | OpenVibe.Chat | staged | W6 (remainder) |
+| channel_moderators | server/db/schema.sql:190 | chat.db | OpenVibe.Chat | staged | W6 (remainder) |
+| channel_sounds | server/db/schema.sql:109 | chat.db | OpenVibe.Chat | keep | W6 |
+| chat_ai_summaries | server/db/schema.sql:277 | chat.db | OpenVibe.Chat | staged | W6 (remainder) |
+| chat_messages | server/db/schema.sql:24 | chat.db | OpenVibe.Chat | keep | W6 |
+| chat_meta | server/db/schema.sql:463 | chat.db | OpenVibe.Chat | keep | W6 |
+| chat_timeline_events | server/db/schema.sql:295 | chat.db | OpenVibe.Chat | staged | W6 (remainder) |
+| ctx_channels | server/db/schema.sql:360 | chat.db | OpenVibe.Chat | keep | W6 |
+| ctx_managed_streams | server/db/schema.sql:349 | chat.db | OpenVibe.Chat | keep | W6 |
+| ctx_streams | server/db/schema.sql:333 | chat.db | OpenVibe.Chat | keep | W6 |
+| ctx_sync | server/db/schema.sql:367 | chat.db | OpenVibe.Chat | keep | W6 |
+| ctx_users | server/db/schema.sql:316 | chat.db | OpenVibe.Chat | keep | W6 |
+| dm_blocks | server/db/schema.sql:88 | chat.db | OpenVibe.Chat | keep | W6 |
+| dm_conversations | server/db/schema.sql:54 | chat.db | OpenVibe.Chat | keep | W6 |
+| dm_messages | server/db/schema.sql:76 | chat.db | OpenVibe.Chat | keep | W6 |
+| dm_participants | server/db/schema.sql:63 | chat.db | OpenVibe.Chat | keep | W6 |
+| emotes | server/db/schema.sql:247 | chat.db | OpenVibe.Chat | staged | W6 (remainder) |
+| events_outbox | server/db/schema.sql:374 | chat.db | OpenVibe.Chat | keep | W6 |
+| hidden_relay_users | server/db/schema.sql:138 | chat.db | OpenVibe.Chat | keep | W6 |
+| import_hold | server/db/schema.sql:444 | chat.db | OpenVibe.Chat | keep | W6 |
+| import_runs | server/db/schema.sql:454 | chat.db | OpenVibe.Chat | keep | W6 |
+| live_mirror_outbox | server/db/schema.sql:388 | chat.db | OpenVibe.Chat | keep | W6 |
+| moderation_actions | server/db/schema.sql:173 | chat.db | OpenVibe.Chat | keep | W6 |
+| pending_ip_messages | server/db/schema.sql:150 | chat.db | OpenVibe.Chat | keep | W6 |
+| relay_users | server/db/schema.sql:128 | chat.db | OpenVibe.Chat | keep | W6 |
+| stream_first_chats | server/db/schema.sql:165 | chat.db | OpenVibe.Chat | keep | W6 |
+| table_authority | server/db/schema.sql:307 | chat.db | OpenVibe.Chat | keep | W6 |
+| tts_voice_overrides | server/db/schema.sql:99 | chat.db | OpenVibe.Chat | keep | W6 |
+| user_tags | server/db/schema.sql:267 | chat.db | OpenVibe.Chat | staged | W6 (remainder) |
+
+## OpenRe.Stream (13)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| destinations | server/db.js:126 | openre.db | OpenRe.Stream | keep | W7 |
+| event_outbox | (prod only) | openre.db | OpenRe.Stream | keep | W3 |
+| external_refs | server/db.js:42 | openre.db | OpenRe.Stream | keep | W7 |
+| ingest_keys | server/db.js:54 | openre.db | OpenRe.Stream | keep | W7 |
+| ingest_sessions | server/db.js:89 | openre.db | OpenRe.Stream | keep | W7 |
+| leases | server/db.js:220 | openre.db | OpenRe.Stream | keep | W7 |
+| migration_map | server/db.js:207 | openre.db | OpenRe.Stream | keep | W7 |
+| output_logs | server/db.js:179 | openre.db | OpenRe.Stream | keep | W7 |
+| outputs | server/db.js:155 | openre.db | OpenRe.Stream | keep | W7 |
+| recordings | server/db.js:191 | openre.db | OpenRe.Stream | keep | W7 |
+| session_transitions | server/db.js:115 | openre.db | OpenRe.Stream | keep | W7 |
+| stream_definitions | server/db.js:22 | openre.db | OpenRe.Stream | keep | W7 |
+| workers | server/db.js:69 | openre.db | OpenRe.Stream | keep | W7 |
+
+## OpenVibe.Billing (19)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| account_balances | server/db.js:71 | billing.db | OpenVibe.Billing | keep | W8 |
+| accounts | server/db.js:29 | billing.db | OpenVibe.Billing | keep | W8 |
+| cashouts | server/db.js:163 | billing.db | OpenVibe.Billing | keep | W8 |
+| entitlements | server/db.js:205 | billing.db | OpenVibe.Billing | keep | W8 |
+| external_receipts | server/db.js:110 | billing.db | OpenVibe.Billing | keep | W8 |
+| idempotency_keys | server/db.js:221 | billing.db | OpenVibe.Billing | keep | W8 |
+| import_holds | server/db.js:257 | billing.db | OpenVibe.Billing | keep | W8 |
+| import_runs | server/db.js:248 | billing.db | OpenVibe.Billing | keep | W8 |
+| ledger_entries | server/db.js:63 | billing.db | OpenVibe.Billing | keep | W8 |
+| outbox | server/db.js:268 | billing.db | OpenVibe.Billing | keep | W8 |
+| payment_intents | server/db.js:141 | billing.db | OpenVibe.Billing | keep | W8 |
+| provider_accounts | server/db.js:128 | billing.db | OpenVibe.Billing | keep | W8 |
+| provider_events | server/db.js:86 | billing.db | OpenVibe.Billing | keep | W8 |
+| reconciliation_runs | server/db.js:240 | billing.db | OpenVibe.Billing | keep | W8 |
+| settings | server/db.js:231 | billing.db | OpenVibe.Billing | keep | W8 |
+| staff_audit | server/db.js:281 | billing.db | OpenVibe.Billing | keep | W8 |
+| staff_sessions | server/db.js:303 | billing.db | OpenVibe.Billing | keep | W8 |
+| subscriptions | server/db.js:184 | billing.db | OpenVibe.Billing | keep | W8 |
+| transactions | server/db.js:40 | billing.db | OpenVibe.Billing | keep | W8 |
+
+## OpenVibe.Tips (16)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| api_idempotency | server/db.js:249 | tips.db | OpenVibe.Tips | keep | W9 |
+| creator_tip_profiles | server/db.js:36 | tips.db | OpenVibe.Tips | keep | W9 |
+| event_outbox | (prod only) | tips.db | OpenVibe.Tips | keep | W3 |
+| idempotency_receipts | (prod only) | tips.db | OpenVibe.Tips | keep | W3 |
+| import_runs | server/db.js:240 | tips.db | OpenVibe.Tips | keep | W9 |
+| interaction_effects | server/db.js:208 | tips.db | OpenVibe.Tips | keep | W9 |
+| migration_maps | server/db.js:224 | tips.db | OpenVibe.Tips | keep | W9 |
+| overlay_configs | server/db.js:162 | tips.db | OpenVibe.Tips | keep | W9 |
+| overlay_deliveries | server/db.js:189 | tips.db | OpenVibe.Tips | keep | W9 |
+| overlay_tokens | server/db.js:175 | tips.db | OpenVibe.Tips | keep | W9 |
+| paid_media_requests | server/db.js:149 | tips.db | OpenVibe.Tips | keep | W9 |
+| paid_messages | server/db.js:134 | tips.db | OpenVibe.Tips | keep | W9 |
+| settings | server/db.js:30 | tips.db | OpenVibe.Tips | keep | W9 |
+| tip_goal_contributions | server/db.js:123 | tips.db | OpenVibe.Tips | keep | W9 |
+| tip_goals | server/db.js:103 | tips.db | OpenVibe.Tips | keep | W9 |
+| tip_interactions | server/db.js:58 | tips.db | OpenVibe.Tips | keep | W9 |
+
+## OpenVibe.VIP (15)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| event_outbox | (prod only) | vip.db | OpenVibe.VIP | keep | W3 |
+| idempotency_receipts | (prod only) | vip.db | OpenVibe.VIP | keep | W3 |
+| settings | server/db.js:31 | vip.db | OpenVibe.VIP | keep | W10 |
+| vip_checkouts | server/db.js:214 | vip.db | OpenVibe.VIP | keep | W10 |
+| vip_creators | server/db.js:36 | vip.db | OpenVibe.VIP | keep | W10 |
+| vip_entitlement_projection | server/db.js:194 | vip.db | OpenVibe.VIP | keep | W10 |
+| vip_gated_resource_rules | server/db.js:143 | vip.db | OpenVibe.VIP | keep | W10 |
+| vip_member_preferences | server/db.js:134 | vip.db | OpenVibe.VIP | keep | W10 |
+| vip_memberships | server/db.js:179 | vip.db | OpenVibe.VIP | keep | W10 |
+| vip_migration_maps | server/db.js:165 | vip.db | OpenVibe.VIP | keep | W10 |
+| vip_perks | server/db.js:94 | vip.db | OpenVibe.VIP | keep | W10 |
+| vip_plan_perks | server/db.js:108 | vip.db | OpenVibe.VIP | keep | W10 |
+| vip_plan_versions | server/db.js:71 | vip.db | OpenVibe.VIP | keep | W10 |
+| vip_plans | server/db.js:51 | vip.db | OpenVibe.VIP | keep | W10 |
+| vip_product_bindings | server/db.js:122 | vip.db | OpenVibe.VIP | keep | W10 |
+
+## OpenVibe.AI (16)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| audit_log | server/db.js:272 | ai.db | OpenVibe.AI | keep | W13 |
+| cache_entries | server/db.js:213 | ai.db | OpenVibe.AI | keep | W13 |
+| citations | server/db.js:194 | ai.db | OpenVibe.AI | keep | W13 |
+| import_holds | server/db.js:291 | ai.db | OpenVibe.AI | keep | W13 |
+| import_ledger | server/db.js:284 | ai.db | OpenVibe.AI | keep | W13 |
+| models | server/db.js:48 | ai.db | OpenVibe.AI | keep | W13 |
+| provider_health | server/db.js:39 | ai.db | OpenVibe.AI | keep | W13 |
+| providers | server/db.js:22 | ai.db | OpenVibe.AI | keep | W13 |
+| quotas | server/db.js:232 | ai.db | OpenVibe.AI | keep | W13 |
+| requests | server/db.js:166 | ai.db | OpenVibe.AI | keep | W13 |
+| routes | server/db.js:68 | ai.db | OpenVibe.AI | keep | W13 |
+| runs | server/db.js:120 | ai.db | OpenVibe.AI | keep | W13 |
+| templates | server/db.js:84 | ai.db | OpenVibe.AI | keep | W13 |
+| usage_counters | server/db.js:247 | ai.db | OpenVibe.AI | keep | W13 |
+| usage_daily | server/db.js:258 | ai.db | OpenVibe.AI | keep | W13 |
+| workflows | server/db.js:102 | ai.db | OpenVibe.AI | keep | W13 |
+
+## OpenVibe.Search (21)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| cdn_purges | server/purge.js:45 | search.db | OpenVibe.Search | keep | W14 |
+| doc_acl | server/db.js:43 | search.db | OpenVibe.Search | keep | W14 |
+| doc_facets | server/db.js:51 | search.db | OpenVibe.Search | keep | W14 |
+| documents | server/db.js:14 | search.db | OpenVibe.Search | keep | W14 |
+| event_outbox | server/events/outbox.js:20 | search.db | OpenVibe.Search | keep | W14 |
+| fts_public | server/engine/fts5.js:50 | search.db | OpenVibe.Search | keep | W14 |
+| fts_public_config | (prod only) | search.db | OpenVibe.Search | keep | W14 |
+| fts_public_content | (prod only) | search.db | OpenVibe.Search | keep | W14 |
+| fts_public_data | (prod only) | search.db | OpenVibe.Search | keep | W14 |
+| fts_public_docsize | (prod only) | search.db | OpenVibe.Search | keep | W14 |
+| fts_public_idx | (prod only) | search.db | OpenVibe.Search | keep | W14 |
+| fts_restricted | server/engine/fts5.js:51 | search.db | OpenVibe.Search | keep | W14 |
+| fts_restricted_config | (prod only) | search.db | OpenVibe.Search | keep | W14 |
+| fts_restricted_content | (prod only) | search.db | OpenVibe.Search | keep | W14 |
+| fts_restricted_data | (prod only) | search.db | OpenVibe.Search | keep | W14 |
+| fts_restricted_docsize | (prod only) | search.db | OpenVibe.Search | keep | W14 |
+| fts_restricted_idx | (prod only) | search.db | OpenVibe.Search | keep | W14 |
+| idempotency_receipts | server/db.js:60 | search.db | OpenVibe.Search | keep | W14 |
+| ingest_rejections | server/db.js:70 | search.db | OpenVibe.Search | keep | W14 |
+| removals | server/purge.js:30 | search.db | OpenVibe.Search | keep | W14 |
+| saved_searches | server/saved.js:18 | search.db | OpenVibe.Search | keep | W14 |
+
+## OpenVibe.Sources (8)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| counters | server/db.js:124 | sources.db | OpenVibe.Sources | keep | W14 |
+| endpoint_state | server/db.js:45 | sources.db | OpenVibe.Sources | keep | W14 |
+| event_outbox | server/events/outbox.js:20 | sources.db | OpenVibe.Sources | keep | W14 |
+| fetch_runs | server/db.js:56 | sources.db | OpenVibe.Sources | keep | W14 |
+| item_revisions | server/db.js:112 | sources.db | OpenVibe.Sources | keep | W14 |
+| items | server/db.js:79 | sources.db | OpenVibe.Sources | keep | W14 |
+| robots_cache | server/db.js:129 | sources.db | OpenVibe.Sources | keep | W14 |
+| sources | server/db.js:12 | sources.db | OpenVibe.Sources | keep | W14 |
+
+## OpenVibe.Wiki (20)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| wiki_ai_proposals | server/db.js:116 | wiki.db | OpenVibe.Wiki | keep | W16 |
+| wiki_attachment_origins | server/db.js:138 | wiki.db | OpenVibe.Wiki | keep | W16 |
+| wiki_citation_purges | (prod only) | wiki.db | OpenVibe.Wiki | keep | W15 |
+| wiki_citations | (prod only) | wiki.db | OpenVibe.Wiki | keep | W15 |
+| wiki_discussion_refs | (prod only) | wiki.db | OpenVibe.Wiki | keep | W15 |
+| wiki_event_outbox | (prod only) | wiki.db | OpenVibe.Wiki | keep | W3 |
+| wiki_index_revisions | (prod only) | wiki.db | OpenVibe.Wiki | keep | W15 |
+| wiki_infobox_values | server/db.js:80 | wiki.db | OpenVibe.Wiki | keep | W16 |
+| wiki_page_attachments | (prod only) | wiki.db | OpenVibe.Wiki | keep | W15 |
+| wiki_page_drafts | (prod only) | wiki.db | OpenVibe.Wiki | keep | W15 |
+| wiki_page_links | server/db.js:70 | wiki.db | OpenVibe.Wiki | keep | W16 |
+| wiki_page_redirects | (prod only) | wiki.db | OpenVibe.Wiki | keep | W15 |
+| wiki_page_reviews | (prod only) | wiki.db | OpenVibe.Wiki | keep | W15 |
+| wiki_page_revision_purges | (prod only) | wiki.db | OpenVibe.Wiki | keep | W15 |
+| wiki_page_revisions | (prod only) | wiki.db | OpenVibe.Wiki | keep | W15 |
+| wiki_pages | server/db.js:49 | wiki.db | OpenVibe.Wiki | keep | W16 |
+| wiki_permissions | server/db.js:99 | wiki.db | OpenVibe.Wiki | keep | W16 |
+| wiki_schedule_jobs | (prod only) | wiki.db | OpenVibe.Wiki | keep | W15 |
+| wiki_spaces | server/db.js:35 | wiki.db | OpenVibe.Wiki | keep | W16 |
+| wiki_watchers | server/db.js:109 | wiki.db | OpenVibe.Wiki | keep | W16 |
+
+## OpenVibe.Blog (20)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| blog_feed_settings | server/db.js:106 | blog.db | OpenVibe.Blog | keep | W16 |
+| blog_index_revisions | (prod only) | blog.db | OpenVibe.Blog | keep | W15 |
+| blog_memberships | server/db.js:57 | blog.db | OpenVibe.Blog | keep | W16 |
+| blog_post_attachments | (prod only) | blog.db | OpenVibe.Blog | keep | W15 |
+| blog_post_citation_purges | (prod only) | blog.db | OpenVibe.Blog | keep | W15 |
+| blog_post_citations | (prod only) | blog.db | OpenVibe.Blog | keep | W15 |
+| blog_post_discussion_refs | (prod only) | blog.db | OpenVibe.Blog | keep | W15 |
+| blog_post_drafts | (prod only) | blog.db | OpenVibe.Blog | keep | W15 |
+| blog_post_reviews | (prod only) | blog.db | OpenVibe.Blog | keep | W15 |
+| blog_post_revision_purges | (prod only) | blog.db | OpenVibe.Blog | keep | W15 |
+| blog_post_revisions | (prod only) | blog.db | OpenVibe.Blog | keep | W15 |
+| blog_posts | server/db.js:79 | blog.db | OpenVibe.Blog | keep | W16 |
+| blog_redirects | (prod only) | blog.db | OpenVibe.Blog | keep | W15 |
+| blog_schedule_jobs | (prod only) | blog.db | OpenVibe.Blog | keep | W15 |
+| blog_series | server/db.js:68 | blog.db | OpenVibe.Blog | keep | W16 |
+| blog_term_links | (prod only) | blog.db | OpenVibe.Blog | keep | W15 |
+| blog_terms | (prod only) | blog.db | OpenVibe.Blog | keep | W15 |
+| blogs | server/db.js:42 | blog.db | OpenVibe.Blog | keep | W16 |
+| event_outbox | (prod only) | blog.db | OpenVibe.Blog | keep | W3 |
+| subject_projections | server/db.js:117 | blog.db | OpenVibe.Blog | keep | W16 |
+
+## OpenVibe.News (23)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| event_outbox | (prod only) | news.db | OpenVibe.News | keep | W3 |
+| idempotency_receipts | (prod only) | news.db | OpenVibe.News | keep | W3 |
+| news_cluster_audit | server/db.js:173 | news.db | OpenVibe.News | keep | W17 |
+| news_editorial_flags | server/db.js:156 | news.db | OpenVibe.News | keep | W17 |
+| news_index_revisions | (prod only) | news.db | OpenVibe.News | keep | W15 |
+| news_ingest_runs | server/db.js:188 | news.db | OpenVibe.News | keep | W17 |
+| news_perspectives | server/db.js:119 | news.db | OpenVibe.News | keep | W17 |
+| news_source_items | server/db.js:65 | news.db | OpenVibe.News | keep | W17 |
+| news_source_status | server/db.js:210 | news.db | OpenVibe.News | keep | W17 |
+| news_state | server/db.js:203 | news.db | OpenVibe.News | keep | W17 |
+| news_stories | server/db.js:99 | news.db | OpenVibe.News | keep | W17 |
+| news_story_citation_purges | (prod only) | news.db | OpenVibe.News | keep | W15 |
+| news_story_citations | (prod only) | news.db | OpenVibe.News | keep | W15 |
+| news_story_clusters | server/db.js:49 | news.db | OpenVibe.News | keep | W17 |
+| news_story_discussion_refs | (prod only) | news.db | OpenVibe.News | keep | W15 |
+| news_story_drafts | (prod only) | news.db | OpenVibe.News | keep | W15 |
+| news_story_reviews | (prod only) | news.db | OpenVibe.News | keep | W15 |
+| news_story_revision_purges | (prod only) | news.db | OpenVibe.News | keep | W15 |
+| news_story_revisions | (prod only) | news.db | OpenVibe.News | keep | W15 |
+| news_story_sources | server/db.js:132 | news.db | OpenVibe.News | keep | W17 |
+| news_timeline_entries | server/db.js:144 | news.db | OpenVibe.News | keep | W17 |
+| news_topics | server/db.js:39 | news.db | OpenVibe.News | keep | W17 |
+| subject_projections | server/db.js:221 | news.db | OpenVibe.News | keep | W17 |
+
+## OpenVibe.Reviews (23)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| review_aggregates | server/db.js:227 | reviews.db | OpenVibe.Reviews | keep | W17 |
+| review_audit | server/db.js:260 | reviews.db | OpenVibe.Reviews | keep | W17 |
+| review_corrections | server/db.js:241 | reviews.db | OpenVibe.Reviews | keep | W17 |
+| review_discussion_refs | (prod only) | reviews.db | OpenVibe.Reviews | keep | W15 |
+| review_entities | server/db.js:46 | reviews.db | OpenVibe.Reviews | keep | W17 |
+| review_entity_aliases | server/db.js:64 | reviews.db | OpenVibe.Reviews | keep | W17 |
+| review_entity_links | server/db.js:209 | reviews.db | OpenVibe.Reviews | keep | W17 |
+| review_entity_redirects | (prod only) | reviews.db | OpenVibe.Reviews | keep | W15 |
+| review_event_inbox | (prod only) | reviews.db | OpenVibe.Reviews | keep | W3 |
+| review_event_outbox | (prod only) | reviews.db | OpenVibe.Reviews | keep | W3 |
+| review_import_queue | server/db.js:275 | reviews.db | OpenVibe.Reviews | keep | W17 |
+| review_index_revisions | (prod only) | reviews.db | OpenVibe.Reviews | keep | W15 |
+| review_signals | server/db.js:128 | reviews.db | OpenVibe.Reviews | keep | W17 |
+| review_source_items | server/db.js:95 | reviews.db | OpenVibe.Reviews | keep | W17 |
+| review_sources | server/db.js:81 | reviews.db | OpenVibe.Reviews | keep | W17 |
+| review_summaries | server/db.js:168 | reviews.db | OpenVibe.Reviews | keep | W17 |
+| review_summary_citations | server/db.js:182 | reviews.db | OpenVibe.Reviews | keep | W17 |
+| review_summary_drafts | (prod only) | reviews.db | OpenVibe.Reviews | keep | W15 |
+| review_summary_reviews | (prod only) | reviews.db | OpenVibe.Reviews | keep | W15 |
+| review_summary_revision_purges | (prod only) | reviews.db | OpenVibe.Reviews | keep | W15 |
+| review_summary_revisions | (prod only) | reviews.db | OpenVibe.Reviews | keep | W15 |
+| review_sync_state | server/db.js:284 | reviews.db | OpenVibe.Reviews | keep | W17 |
+| review_trust_metadata | server/db.js:195 | reviews.db | OpenVibe.Reviews | keep | W17 |
+
+## OpenVibe.Deals (19)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| deal_flags | server/db.js:205 | deals.db | OpenVibe.Deals | keep | W18 |
+| deal_hotness_snapshots | server/db.js:170 | deals.db | OpenVibe.Deals | keep | W18 |
+| deal_index_revisions | (prod only) | deals.db | OpenVibe.Deals | keep | W15 |
+| deal_offer_discussion_refs | (prod only) | deals.db | OpenVibe.Deals | keep | W15 |
+| deal_offer_sources | server/db.js:110 | deals.db | OpenVibe.Deals | keep | W18 |
+| deal_offers | server/db.js:73 | deals.db | OpenVibe.Deals | keep | W18 |
+| deal_price_observations | server/db.js:133 | deals.db | OpenVibe.Deals | keep | W18 |
+| deal_product_aliases | server/db.js:60 | deals.db | OpenVibe.Deals | keep | W18 |
+| deal_products | server/db.js:48 | deals.db | OpenVibe.Deals | keep | W18 |
+| deal_stores | server/db.js:40 | deals.db | OpenVibe.Deals | keep | W18 |
+| deal_votes | server/db.js:156 | deals.db | OpenVibe.Deals | keep | W18 |
+| deal_watches | server/db.js:186 | deals.db | OpenVibe.Deals | keep | W18 |
+| event_outbox | (prod only) | deals.db | OpenVibe.Deals | keep | W3 |
+| idempotency_receipts | (prod only) | deals.db | OpenVibe.Deals | keep | W3 |
+| import_state | server/db.js:257 | deals.db | OpenVibe.Deals | keep | W18 |
+| moderation_log | server/db.js:236 | deals.db | OpenVibe.Deals | keep | W18 |
+| rate_events | server/db.js:249 | deals.db | OpenVibe.Deals | keep | W18 |
+| subject_projections | server/db.js:263 | deals.db | OpenVibe.Deals | keep | W18 |
+| watch_notifications | server/db.js:224 | deals.db | OpenVibe.Deals | keep | W18 |
+
+## OpenVibe.Coupons (14)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| coupon_application_hints | server/db.js:151 | coupons.db | OpenVibe.Coupons | keep | W18 |
+| coupon_import_holds | server/db.js:190 | coupons.db | OpenVibe.Coupons | keep | W18 |
+| coupon_merchant_domains | server/db.js:45 | coupons.db | OpenVibe.Coupons | keep | W18 |
+| coupon_merchants | server/db.js:33 | coupons.db | OpenVibe.Coupons | keep | W18 |
+| coupon_restrictions | server/db.js:110 | coupons.db | OpenVibe.Coupons | keep | W18 |
+| coupon_sources | server/db.js:90 | coupons.db | OpenVibe.Coupons | keep | W18 |
+| coupon_status_history | server/db.js:138 | coupons.db | OpenVibe.Coupons | keep | W18 |
+| coupon_validation_reports | server/db.js:122 | coupons.db | OpenVibe.Coupons | keep | W18 |
+| coupon_watches | server/db.js:161 | coupons.db | OpenVibe.Coupons | keep | W18 |
+| coupons | server/db.js:59 | coupons.db | OpenVibe.Coupons | keep | W18 |
+| coupons_index_revisions | (prod only) | coupons.db | OpenVibe.Coupons | keep | W15 |
+| event_outbox | (prod only) | coupons.db | OpenVibe.Coupons | keep | W3 |
+| extension_installs | server/db.js:168 | coupons.db | OpenVibe.Coupons | keep | W18 |
+| import_state | server/db.js:182 | coupons.db | OpenVibe.Coupons | keep | W18 |
+
+## OpenVibe.Trade (17)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| event_outbox | (prod only) | trade.db | OpenVibe.Trade | keep | W3 |
+| idempotency_receipts | (prod only) | trade.db | OpenVibe.Trade | keep | W3 |
+| trade_alert_deliveries | server/db.js:158 | trade.db | OpenVibe.Trade | keep | W19 |
+| trade_alert_rules | server/db.js:135 | trade.db | OpenVibe.Trade | keep | W19 |
+| trade_context_drafts | (prod only) | trade.db | OpenVibe.Trade | keep | W15 |
+| trade_context_reviews | (prod only) | trade.db | OpenVibe.Trade | keep | W15 |
+| trade_context_revision_purges | (prod only) | trade.db | OpenVibe.Trade | keep | W15 |
+| trade_context_revisions | (prod only) | trade.db | OpenVibe.Trade | keep | W15 |
+| trade_index_revisions | (prod only) | trade.db | OpenVibe.Trade | keep | W15 |
+| trade_instrument_aliases | server/db.js:52 | trade.db | OpenVibe.Trade | keep | W19 |
+| trade_instruments | server/db.js:36 | trade.db | OpenVibe.Trade | keep | W19 |
+| trade_market_observations | server/db.js:83 | trade.db | OpenVibe.Trade | keep | W19 |
+| trade_source_documents | server/db.js:109 | trade.db | OpenVibe.Trade | keep | W19 |
+| trade_source_status | server/db.js:173 | trade.db | OpenVibe.Trade | keep | W19 |
+| trade_sync_state | server/db.js:187 | trade.db | OpenVibe.Trade | keep | W19 |
+| trade_watchlist_items | server/db.js:75 | trade.db | OpenVibe.Trade | keep | W19 |
+| trade_watchlists | server/db.js:66 | trade.db | OpenVibe.Trade | keep | W19 |
+
+## OpenVibe.Codes (8)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| event_outbox | (prod only) | codes.db | OpenVibe.Codes | keep | W3 |
+| manifests | server/db.js:21 | codes.db | OpenVibe.Codes | keep | W20 |
+| playground_runs | server/db.js:88 | codes.db | OpenVibe.Codes | keep | W20 |
+| release_log | server/db.js:57 | codes.db | OpenVibe.Codes | keep | W20 |
+| releases | server/db.js:35 | codes.db | OpenVibe.Codes | keep | W20 |
+| trust | server/db.js:71 | codes.db | OpenVibe.Codes | keep | W20 |
+| trust_adr013 | server/db.js:124 | no | OpenVibe.Codes | keep | W20 |
+| trust_history | server/db.js:78 | codes.db | OpenVibe.Codes | keep | W20 |
+
+## OpenVibe.Host (12)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| event_outbox | (prod only) | host.db | OpenVibe.Host | keep | W3 |
+| host_activations | server/db.js:116 | host.db | OpenVibe.Host | keep | W21 |
+| host_blobs | server/db.js:108 | host.db | OpenVibe.Host | keep | W21 |
+| host_deploy_files | server/db.js:98 | host.db | OpenVibe.Host | keep | W21 |
+| host_deploy_logs | server/db.js:127 | host.db | OpenVibe.Host | keep | W21 |
+| host_deploys | server/db.js:79 | host.db | OpenVibe.Host | keep | W21 |
+| host_domains | server/db.js:136 | host.db | OpenVibe.Host | keep | W21 |
+| host_project_members | server/db.js:43 | host.db | OpenVibe.Host | keep | W21 |
+| host_projects | server/db.js:29 | host.db | OpenVibe.Host | keep | W21 |
+| host_quotas | server/db.js:53 | host.db | OpenVibe.Host | keep | W21 |
+| host_sites | server/db.js:65 | host.db | OpenVibe.Host | keep | W21 |
+| host_takedowns | server/db.js:158 | no | OpenVibe.Host | keep | W21 |
+
+## OpenVibe.Examples (1)
+
+| Table | Declared at | In prod | Target owner | Disposition | Wave |
+|---|---|---|---|---|---|
+| received_events | examples/webhook-consumer/server.js:51 | no | OpenVibe.Examples | sample | W20 |

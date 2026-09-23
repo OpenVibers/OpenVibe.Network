@@ -1,20 +1,23 @@
 {
-  "_about": "Table -> target authority classification (roadmap sections 14.1 and 16). First matching rule wins, per repo. 'keep' means the table stays with its current repo. A table no rule matches is reported as UNCLASSIFIED and fails the Wave 0 exit criterion. Rules with repo 'prod-only' apply to tables found only in production and may name the database file ('db').",
+  "_about": "Table, route and job -> target authority classification (roadmap sections 14.1 and 16). First matching rule wins, per repo. 'keep' means it stays with its current repo. A table, route or job no rule matches is reported as UNCLASSIFIED and fails the Wave 0 exit criteria. Table rules with repo 'prod-only' apply to tables found only in production and may name the database file ('db', exact) or a pattern ('dbMatch'). Route rules match the path ('match') and optionally 'method'/'file'; job rules match 'file' and optionally 'name'. Live has no catch-all route or job rule on purpose: a new Live route or job must be classified here.",
   "_dispositions": {
     "keep": "stays with the current owner",
     "extract": "authority moves to the target service in the named wave; current repo keeps a projection or adapter",
     "frozen-legacy": "read-only; already superseded, kept for cutover/migration only (never written)",
     "migrate-then-drop": "data migrates to the target, then the table is removed",
-    "investigate": "no clear owner yet; needs a decision"
+    "investigate": "no clear owner yet; needs a decision",
+    "mirror": "a read copy the target authority keeps current; the current repo no longer writes it",
+    "staged": "a copy held in the target service while the source still writes it (authority not moved yet)",
+    "sample": "example application data, not platform data"
   },
   "rules": [
     {
       "repo": "*",
-      "match": "^analytics_(events|hourly|daily|rate_tracking)$",
+      "match": "^analytics_(events|hourly|daily|rate_tracking|day_salts|visitor_days)$",
       "target": "keep",
       "disposition": "keep",
       "wave": "Track O / ADR-021",
-      "note": "Per-site analytics from openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+      "note": "Per-site analytics from openvibe-shared/analytics.js; ADR-021 (2026-09-23): no IP, user id or city stored, raw rows pruned (hazard H11)."
     },
     {
       "repo": "*",
@@ -52,17 +55,25 @@
       "repo": "OpenVibe.Live",
       "match": "^comments$",
       "target": "OpenVibe.Community",
-      "disposition": "extract",
-      "wave": "W5",
-      "note": "Typed reusable comment threads."
+      "disposition": "frozen-legacy",
+      "wave": "W5 (done 2026-09-23)",
+      "note": "VOD/clip comments are Community threads since b8afb71; Live writes are refused (test/frozen-tables.test.js tripwire)."
     },
     {
       "repo": "OpenVibe.Live",
-      "match": "^(chat_messages|chat_messages_new|chat_timeline_events|chat_ai_summaries|stream_first_chats|dm_\\w+|tts_voice_overrides|emotes|emotes_new|channel_sounds|channel_sounds_new|media_requests|media_request_settings|moderation_actions|channel_moderators|channel_moderation_settings|user_tags|hidden_relay_users|relay_users|pending_ip_messages)$",
+      "match": "^(chat_messages|dm_\\w+|tts_voice_overrides|channel_sounds|moderation_actions|hidden_relay_users|relay_users|pending_ip_messages|stream_first_chats)$",
+      "target": "OpenVibe.Chat",
+      "disposition": "mirror",
+      "wave": "W6 (done 2026-09-23)",
+      "note": "Chat is the authority (CHAT_AUTHORITY=chat since 2026-09-23 02:03 UTC; chat.db table_authority=chat). Live's rows are a read mirror Chat keeps current; Live's remaining writers forward through chat_bridge_outbox."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(chat_messages_new|chat_timeline_events|chat_ai_summaries|emotes|emotes_new|channel_sounds_new|media_requests|media_request_settings|channel_moderators|channel_moderation_settings|user_tags)$",
       "target": "OpenVibe.Chat",
       "disposition": "extract",
-      "wave": "W6",
-      "note": "Rooms, messages, DMs, TTS/audio queues, chat moderation."
+      "wave": "W6 (remainder)",
+      "note": "Still written by Live: Chat holds staged copies (table_authority=live) of moderators, moderation settings, emotes, user tags and the chat AI tables; media requests were not moved."
     },
     {
       "repo": "OpenVibe.Live",
@@ -178,6 +189,38 @@
     },
     {
       "repo": "OpenVibe.Live",
+      "match": "^billing_actions$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W8",
+      "note": "Idempotency log of Live's Billing client actions (money-authority.js); used only with BILLING_AUTHORITY=billing."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^chat_bridge_outbox$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W6 (compat)",
+      "note": "Live's remaining chat writers forward to Chat through it; goes with the bridge (Host compatibility register)."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^comment_thread_refs$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W5",
+      "note": "Live VOD/clip -> Community thread references."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^openre_sessions$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W7",
+      "note": "Live's projection of OpenRe sessions (fed by /internal/openre-events once slots cut over)."
+    },
+    {
+      "repo": "OpenVibe.Live",
       "match": "^(channels|streams|stream_analytics|stream_timeline_events|viewer_snapshots|viewer_samples|watch_time|content_views|news_settings)$",
       "target": "keep",
       "disposition": "keep",
@@ -257,6 +300,174 @@
       "note": ""
     },
     {
+      "repo": "OpenVibe.Chat",
+      "match": "^(channel_moderators|channel_moderation_settings|chat_ai_summaries|chat_timeline_events|emotes|user_tags)$",
+      "target": "keep",
+      "disposition": "staged",
+      "wave": "W6 (remainder)",
+      "note": "table_authority=live: Live still writes these; Chat holds the imported copy."
+    },
+    {
+      "repo": "OpenVibe.Chat",
+      "match": "^ctx_\\w+$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W6",
+      "note": "Read projection of Live context (channels, managed streams, streams, users) that Chat needs for authorization."
+    },
+    {
+      "repo": "OpenVibe.Chat",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W6",
+      "note": "Chat authority tables (table_authority=chat), bridge/mirror outboxes and import bookkeeping."
+    },
+    {
+      "repo": "OpenVibe.Events",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W3",
+      "note": "Event store, subscriptions, deliveries, checkpoints, idempotency receipts."
+    },
+    {
+      "repo": "OpenRe.Stream",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W7",
+      "note": "Stream definitions, keys, sessions, worker generations, destinations, recording requests, migration map."
+    },
+    {
+      "repo": "OpenVibe.Billing",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W8",
+      "note": "Append-only ledger and receipts. Shadow: Live stays the money authority until the cutover (BILLING_AUTHORITY unset in live.env)."
+    },
+    {
+      "repo": "OpenVibe.Tips",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W9",
+      "note": "Tip interactions, goals, overlays, imports."
+    },
+    {
+      "repo": "OpenVibe.VIP",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W10",
+      "note": "Plans, versioned terms, perks, memberships, entitlement projections."
+    },
+    {
+      "repo": "OpenVibe.AI",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W13",
+      "note": "Provider/model/route registry, templates, workflows, runs, cache, quotas, audit, imports."
+    },
+    {
+      "repo": "OpenVibe.Search",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W14",
+      "note": "Index documents, ACLs, facets, purge queue."
+    },
+    {
+      "repo": "OpenVibe.Sources",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W14",
+      "note": "Source registry, items, revisions, fetch runs."
+    },
+    {
+      "repo": "OpenVibe.Wiki",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W16",
+      "note": "Wiki spaces, pages, links, reviews (plus openvibe-publishing stores)."
+    },
+    {
+      "repo": "OpenVibe.Blog",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W16",
+      "note": "Blogs, posts, terms (plus openvibe-publishing stores)."
+    },
+    {
+      "repo": "OpenVibe.News",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W17",
+      "note": "Topics, source items, clusters, stories, perspectives, timelines."
+    },
+    {
+      "repo": "OpenVibe.Reviews",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W17",
+      "note": "Entities, aliases, sources, signals, summaries, trust metadata."
+    },
+    {
+      "repo": "OpenVibe.Deals",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W18",
+      "note": "Offers, products, observations, votes, watches."
+    },
+    {
+      "repo": "OpenVibe.Coupons",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W18",
+      "note": "Merchants, domains, coupons, reports, extension credentials."
+    },
+    {
+      "repo": "OpenVibe.Trade",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W19",
+      "note": "Instruments, observations, watchlists, alerts."
+    },
+    {
+      "repo": "OpenVibe.Codes",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W20",
+      "note": "Developer manifests, releases, trust, playground runs."
+    },
+    {
+      "repo": "OpenVibe.Host",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W21",
+      "note": "Host Stage B projects, sites, deploys, domains."
+    },
+    {
+      "repo": "OpenVibe.Examples",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "sample",
+      "wave": "W20",
+      "note": "Example application storage; not deployed."
+    },
+    {
       "repo": "prod-only",
       "db": "rs-companion.db",
       "match": ".*",
@@ -294,11 +505,699 @@
     },
     {
       "repo": "prod-only",
+      "match": "^(event_outbox|idempotency_receipts|\\w+_event_(outbox|inbox))$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W3",
+      "note": "Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers."
+    },
+    {
+      "repo": "prod-only",
+      "dbMatch": "^(wiki|blog|news|reviews|trade|deals|coupons)\\.db$",
+      "match": "_(index_revisions|drafts|reviews|revision_purges|revisions|citations|citation_purges|discussion_refs|attachments|redirects|entity_redirects|schedule_jobs|terms|term_links)$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W15",
+      "note": "Prefixed stores created at runtime by openvibe-publishing (revisions, citations, schedules, redirects, index hooks)."
+    },
+    {
+      "repo": "prod-only",
+      "db": "search.db",
+      "match": "^fts_(public|restricted)_(config|content|data|docsize|idx)$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W14",
+      "note": "FTS5 shadow tables of the per-audience full-text indexes."
+    },
+    {
+      "repo": "prod-only",
       "match": ".*",
       "target": "?",
       "disposition": "investigate",
       "wave": "W0",
       "note": "Exists in a production database but no CREATE TABLE in the repo."
+    }
+  ],
+  "_routeDispositions": {
+    "keep": "served and owned here",
+    "shadowed": "production nginx sends the path to the target service; this handler is the rollback path",
+    "adapter": "answers here but forwards to, or reads from, the target authority",
+    "compat": "legacy path kept for old callers, with an entry in the Host compatibility register",
+    "frozen-legacy": "writes refused or redirected; kept for the cutover rollback",
+    "extract": "authority still here; moves to the target in the named wave",
+    "sample": "example application, not a platform surface"
+  },
+  "routes": [
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/api/(chat|dm|tts|sounds)(/|$)",
+      "target": "OpenVibe.Chat",
+      "disposition": "shadowed",
+      "wave": "W6 (done 2026-09-23)",
+      "note": "nginx sends /api/chat, /api/dm, /api/tts and /api/sounds on openvibe.live to Chat (:4400); Live's handlers remain for rollback."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/api/(emotes|channels)(/|$)",
+      "target": "OpenVibe.Chat",
+      "disposition": "extract",
+      "wave": "W6 (remainder)",
+      "note": "Emotes and channel moderators are still Live-written (Chat holds staged copies)."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/api/(pastes|comments)(/|$)|^/(pastes|p)(/|$)",
+      "target": "OpenVibe.Community",
+      "disposition": "adapter",
+      "wave": "W5 (done)",
+      "note": "Forwards to Community with a service token (pastes since 2026-09-22, VOD/clip comments since b8afb71); /p/* 301s to openvibe.community."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/api/(vods|clips|thumbnails)(/|$)",
+      "target": "OpenVibe.Media",
+      "disposition": "adapter",
+      "wave": "W4",
+      "note": "media-proxy: Media holds the objects; Live keeps presentation and AI state."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/api/(payments|powerchat)(/|$)",
+      "target": "OpenVibe.Billing",
+      "disposition": "extract",
+      "wave": "W8",
+      "note": "Money authority stays in Live until the Billing cutover (PowerChat webhook re-point is the owner step)."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/api/funds(/|$)",
+      "target": "OpenVibe.Tips",
+      "disposition": "extract",
+      "wave": "W9",
+      "note": "Donate, goals and cashout move to Tips over Billing after the cutover."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/api/(restream|robotstreamer|controls|onvif)(/|$)|^/whip(/|$)",
+      "target": "OpenRe.Stream",
+      "disposition": "extract",
+      "wave": "W7",
+      "note": "Ingest, restream and controls: no slot cut over yet (WHIP not ported to OpenRe)."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/api/vibe-coding(/|$)",
+      "target": "OpenVibe.Codes",
+      "disposition": "extract",
+      "wave": "W20",
+      "note": "Coding-session capture belongs to Codes."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/api/themes(/|$)",
+      "target": "OpenVibe.Network",
+      "disposition": "extract",
+      "wave": "ADR-024",
+      "note": "Live still serves its own theme catalog (create, edit, delete, download, the user's choice); Network is the theme authority (ADR-024)."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/api/mod(/|$)",
+      "target": "OpenVibe.Network (policy)",
+      "disposition": "extract",
+      "wave": "W1 / ADR-022",
+      "note": "Site-wide bans and moderation console move to the shared staff model."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/(game|canvas)$",
+      "target": "OpenVibe.Games",
+      "disposition": "compat",
+      "wave": "W12",
+      "note": "301 to openvibe.games."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/internal/media-webhook$",
+      "target": "OpenVibe.Events",
+      "disposition": "compat",
+      "wave": "W3",
+      "note": "Direct Media webhook kept while Events delivers the same outcomes (MEDIA_EVENTS_AUTHORITY); each outcome applies once (d2715e5)."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/internal/(user-role|user-avatar|url-registry)(/|$)",
+      "target": "OpenVibe.Network",
+      "disposition": "compat",
+      "wave": "W1 (register C-54/C-55)",
+      "note": "Key-authenticated internal routes; role truth moves to Network (ADR-022)."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/internal/",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W3",
+      "note": "Live consumer and provider endpoints (media events, OpenRe events, followers, tips deliveries, chat context, analytics summary)."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/api/(admin|ai-viewers|analytics|arena|auth|chat-ai|coins|cosmetics|csp-report|easter-egg|health|home|i18n|img-proxy|kiosk|live-events|media|meta|news|ready|recap|streams|updates)(/|$)",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Live product surface. AI features call OpenVibe.AI (AI_SERVICE=remote); coins/cosmetics are loyalty and cosmetic entitlements (ADR-012); /api/media is the chat media-request queue."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/(banned|data|dmca|docs|media|obs|overlay|openvibe-sw\\.js|privacy|release\\.json|sitemap\\.xml|terms|tos)(/|$)",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Live pages, overlays, docs and release manifest."
+    },
+    {
+      "repo": "OpenVibe.Media",
+      "match": "^/api/v1/:app/pastes(/|$)",
+      "target": "OpenVibe.Community",
+      "disposition": "frozen-legacy",
+      "wave": "W5 (done 2026-09-22)",
+      "note": "PASTES_FROZEN_APPS=live: writes answer 410; kept as the rollback lever (register C-12)."
+    },
+    {
+      "repo": "OpenVibe.Network",
+      "match": "^/internal/events/stream-live$",
+      "target": "OpenVibe.Events",
+      "disposition": "compat",
+      "wave": "W3",
+      "note": "Live's direct go-live push; the Events consumer (live.stream.started) shares its rate window, so only one announces."
+    },
+    {
+      "repo": "OpenVibe.Network",
+      "match": "^/internal/",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W1",
+      "note": "Internal identity, notifications, coins and registry routes; key-only ones are dated in the register (C-50..C-57)."
+    },
+    {
+      "repo": "OpenVibe.Examples",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "sample",
+      "wave": "W20",
+      "note": "Example applications."
+    },
+    {
+      "repo": "OpenVibe.Network",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Shared",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Media",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Tools",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Community",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Games",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Sites",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Events",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Chat",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenRe.Stream",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Billing",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Tips",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.VIP",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.AI",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Search",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Sources",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Wiki",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Blog",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.News",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Reviews",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Deals",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Coupons",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Trade",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Codes",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Host",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "The service is the authority for its own API and pages."
+    }
+  ],
+  "jobs": [
+    {
+      "repo": "OpenVibe.Live",
+      "file": "^server/chat/",
+      "target": "OpenVibe.Chat",
+      "disposition": "compat",
+      "wave": "W6",
+      "note": "Live's in-process chat server, DM sweeps and the Chat bridge flush; production chat traffic is Chat's."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "file": "^server/streaming/call-server\\.js$",
+      "target": "OpenVibe.Chat",
+      "disposition": "extract",
+      "wave": "W6 (remainder)",
+      "note": "/ws/call signalling is still Live's."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "file": "^server/integrations/chat-relay-service\\.js$",
+      "target": "OpenVibe.Chat",
+      "disposition": "extract",
+      "wave": "W6 (remainder)",
+      "note": "External chat relays."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "file": "^server/streaming/(rtmp-server|whip-handler|broadcast-server)\\.js$",
+      "target": "OpenRe.Stream",
+      "disposition": "extract",
+      "wave": "W7",
+      "note": "Ingest runs in the Live process until each slot cuts over."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "file": "^server/integrations/(robotstreamer-service|rs-passthrough-relay)\\.js$",
+      "target": "OpenRe.Stream",
+      "disposition": "extract",
+      "wave": "W7",
+      "note": "RobotStreamer relay and restream."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "file": "^server/utils/jobs\\.js$",
+      "name": "^restream-",
+      "target": "OpenRe.Stream",
+      "disposition": "extract",
+      "wave": "W7",
+      "note": "restream-viewer-counts polls restream destinations."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "file": "^server/integrations/powerchat-platform\\.js$",
+      "target": "OpenVibe.Billing",
+      "disposition": "extract",
+      "wave": "W8",
+      "note": "PowerChat polling and delivery; Billing takes provider receipts after the webhook re-point."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "file": "^server/monetization/payments\\.js$",
+      "target": "OpenVibe.Billing",
+      "disposition": "extract",
+      "wave": "W8",
+      "note": "Payment order sweeps."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "file": "^server/ai/timeline-job\\.js$",
+      "target": "OpenVibe.AI",
+      "disposition": "extract",
+      "wave": "W13 (remainder)",
+      "note": "Captions/whisper still transcribe in Live."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "file": "^server/(ai|home|recap|arena|news|analytics|events|openre|media|media-proxy|streaming)/|^server/(index|diagnostics)\\.js$|^server/utils/jobs\\.js$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Live product jobs. AI jobs call OpenVibe.AI (AI_SERVICE=remote); analytics is ADR-021; events/stream-events.js relays the outbox; openre/mirror.js is inert until slots cut over."
+    },
+    {
+      "repo": "OpenVibe.Media",
+      "file": "^server/pastes/",
+      "target": "OpenVibe.Community",
+      "disposition": "frozen-legacy",
+      "wave": "W5",
+      "note": "Frozen paste code (register C-12)."
+    },
+    {
+      "repo": "OpenVibe.Network",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Shared",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Media",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Tools",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Community",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Games",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Events",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Chat",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenRe.Stream",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Billing",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Tips",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.VIP",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.AI",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Search",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Sources",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Wiki",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Blog",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.News",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Reviews",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Deals",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Coupons",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Trade",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Codes",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Host",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
+    },
+    {
+      "repo": "OpenVibe.Examples",
+      "file": ".*",
+      "target": "keep",
+      "disposition": "sample",
+      "wave": "-",
+      "note": "Runs in, and for, the service that owns it."
     }
   ]
 }

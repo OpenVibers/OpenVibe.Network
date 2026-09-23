@@ -183,17 +183,31 @@ function extractEnv(text) {
 
 /** Names that carry credentials. Classification only — values are never read. */
 function isSecretName(name) {
+    if (/_SECURE$|_ALLOW_PRIVATE$/.test(name)) return false; // COOKIE_SECURE, *_ALLOW_PRIVATE: boolean flags
     if (/PUBLIC|_PATH$|_FILE$|_DIR$|_TTL|_MS$|_SECONDS$|_MINUTES$|_ID$|_URL$|_HOST$|_PORT$|_MODE$|_ENABLED$|_LIMIT$/.test(name)
         && !/WEBHOOK_URL$|SECRET|PASSWORD|PRIVATE/.test(name)) return false;
     return /SECRET|PASSWORD|PASSWD|TOKEN|PRIVATE|CREDENTIAL|(^|_)KEY($|_)|APIKEY|WEBHOOK|COOKIE/.test(name);
 }
 
 // ── Cross-service calls ──────────────────────────────────────────────────
-const SERVICE_PORTS = { 4000: 'network', 4001: 'tools', 4100: 'media', 3000: 'live', 8000: 'games' };
+// Loopback ports of the services on the production host (roadmap port plan).
+const SERVICE_PORTS = {
+    3000: 'live', 4000: 'network', 4001: 'tools', 4100: 'media', 4200: 'community', 4300: 'events', 4400: 'chat',
+    4500: 'openre', 4600: 'billing', 4610: 'tips', 4620: 'vip', 4700: 'ai', 4710: 'search', 4720: 'sources',
+    4800: 'wiki', 4810: 'blog', 4820: 'news', 4830: 'reviews', 4840: 'deals', 4850: 'coupons', 4860: 'trade',
+    4900: 'codes', 4910: 'host', 8000: 'games',
+};
 for (let p = 4010; p <= 4016; p++) SERVICE_PORTS[p] = 'tools';
 
+// Services another service can name in an env var or a config key. `host` is left out on purpose:
+// HOST / hostUrl are generic names, and nothing calls the Host API by env var today.
+const SERVICE_NAMES = ['network', 'media', 'live', 'tools', 'games', 'community', 'events', 'chat', 'openre', 'billing',
+    'tips', 'vip', 'ai', 'search', 'sources', 'wiki', 'blog', 'news', 'reviews', 'deals', 'coupons', 'trade', 'codes'];
+const ENV_TARGET_RE = new RegExp(`^(?:OV_)?(${SERVICE_NAMES.join('|').toUpperCase()})_(?:INTERNAL_)?(?:URL|API_URL|BASE_URL|ORIGIN)$`);
+const IDENT_TARGET_RE = new RegExp(`\\b(${SERVICE_NAMES.join('|')})(Internal)?(Url|URL|Base|Origin)\\b|\\b(${SERVICE_NAMES.join('|')})\\.(url|internalUrl|baseUrl|apiUrl)\\b`, 'gi');
+
 function envTarget(name) {
-    const m = name.match(/^(?:OV_)?(NETWORK|MEDIA|LIVE|TOOLS|GAMES|COMMUNITY)_(?:INTERNAL_)?(?:URL|API_URL|BASE_URL|ORIGIN)$/);
+    const m = name.match(ENV_TARGET_RE);
     return m ? m[1].toLowerCase() : null;
 }
 
@@ -217,8 +231,8 @@ function extractOutbound(text, selfService) {
         const envRe = /\b(?:process\.)?env\.([A-Z][A-Z0-9_]+)/g;
         while ((m = envRe.exec(line))) add(envTarget(m[1]), m[1], i + 1);
         // Config indirection: config.networkInternalUrl, cfg.media.url, liveInternalUrl, ...
-        const identRe = /\b(network|media|live|tools|games|community)(Internal)?(Url|URL|Base|Origin)\b|\b(network|media|live|tools|games|community)\.(url|internalUrl|baseUrl|apiUrl)\b/gi;
-        while ((m = identRe.exec(line))) add((m[1] || m[4]).toLowerCase(), m[0], i + 1);
+        IDENT_TARGET_RE.lastIndex = 0;
+        while ((m = IDENT_TARGET_RE.exec(line))) add((m[1] || m[4]).toLowerCase(), m[0], i + 1);
         if (/webhook_?url/i.test(line)) add('webhook', 'webhook_url (per-app, configured in DB)', i + 1);
         // Contract paths that only one service serves (CONTRACTS.md), for URLs built from config objects.
         for (const [re, svc] of PATH_TARGETS) if (re.test(line)) add(svc, line.match(re)[0], i + 1);
@@ -232,6 +246,8 @@ function extractOutbound(text, selfService) {
     if (/Authorization['"]?\s*:\s*[`'"]Bearer|Bearer \$\{/.test(text)) auth.push('bearer');
     if (/createHmac\(/.test(text)) auth.push('hmac');
     if (/client_secret|OAUTH_CLIENT_SECRET/.test(text)) auth.push('oauth-client');
+    // Network-issued service tokens (client_credentials), from openvibe-contracts/openvibe-sdk token clients.
+    if (/client_credentials|createTokenClient|tokenClient|serviceAuth|serviceToken|getServiceToken/.test(text)) auth.push('service-token');
     return {
         targets: [...targets.entries()].map(([service, refs]) => ({ service, refs })),
         auth: auth.length ? auth : ['none-detected'],
@@ -266,5 +282,5 @@ function extractJobs(text) {
 module.exports = {
     walk, isTestFile, extractTables, extractRoutes, extractMounts, resolveModule, computePrefixes,
     joinPath, extractRawRoutes, extractWebSockets, extractEnv, isSecretName, envTarget,
-    extractOutbound, extractJobs, SERVICE_PORTS,
+    extractOutbound, extractJobs, SERVICE_PORTS, SERVICE_NAMES,
 };
