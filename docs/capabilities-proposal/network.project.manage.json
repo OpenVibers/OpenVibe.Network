@@ -1,0 +1,29 @@
+{
+  "id": "network.project.manage",
+  "version": "1.0",
+  "owner": "network",
+  "status": "planned",
+  "visibility": "public",
+  "description": "Manage developer projects on behalf of a signed-in member: projects, members, apps, credential rotation and revocation, grant requests and approvals within the project allowance. Today the API is used with the member's own Network access token and authorized by project role; this capability is what a delegated client (Codes CLI, SDK) will hold. Allowance, environment policy and quotas stay staff-only.",
+  "permissions": [
+    "projects:write"
+  ],
+  "resourceConstraints": [
+    "project"
+  ],
+  "quotaClass": "projects-write",
+  "events": [
+    "network.app.created",
+    "network.app.revoked",
+    "network.credential.rotated",
+    "network.credential.revoked",
+    "network.grant.changed"
+  ],
+  "implementedBy": [
+    "POST /api/v1/projects",
+    "POST /api/v1/projects/:project/apps",
+    "POST /api/v1/projects/:project/apps/:app/credentials/rotate",
+    "POST /api/v1/projects/:project/apps/:app/credentials/:credential/revoke",
+    "POST /api/v1/projects/:project/apps/:app/grants"
+  ]
+}

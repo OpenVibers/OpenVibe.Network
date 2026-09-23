@@ -16,6 +16,7 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 - **Theme Catalog** — Shared theme system with ~30 built-in themes and community submissions. Theme preferences sync across all services.
 - **Admin Panel** — email configuration, user management (role changes, bans), broadcast notifications, system health dashboard, and audit log.
 - **Internal API** — Server-to-server endpoints for token verification, user lookup, notification push, account linking, and audit logging. Protected by `X-Internal-Key`.
+- **Developer projects (foundation)** — projects, members, apps (OAuth clients with `app_` subjects), hashed client secrets with rotation and revocation, capability grants within a staff-set allowance, recorded quotas and an append-only audit at `/api/v1/projects`. Bearer user tokens only; no portal UI yet (that is OpenVibe.Codes). See [docs/developer-projects.md](docs/developer-projects.md).
 - **OpenCoins Wallet** — Network-wide currency. User balance/history at `/api/coins/*`; atomic credit/debit/transfer for services at `/internal/coins/*` with idempotency-key dedupe.
 
 ---
@@ -357,6 +358,10 @@ Accessible to users with `role = 'admin'`. All endpoints under `/api/admin/`.
 | `follows` | User follow relationships |
 | `wallets` | OpenCoins balance per Network user |
 | `coin_transactions` | OpenCoins ledger (idempotency-key deduped) |
+| `dev_projects`, `dev_project_members` | Developer projects and member roles |
+| `dev_apps`, `dev_credentials`, `dev_auth_codes` | Developer apps, hashed client secrets, app authorization codes |
+| `dev_grants`, `dev_quotas` | App capability grants; per-project quotas (enforced by the owning service) |
+| `dev_audit` | Append-only developer audit; rows that are platform events carry an event envelope |
 
 ---
 

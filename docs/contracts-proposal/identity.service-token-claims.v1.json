@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openvibe.network/contracts/identity/service-token-claims.v1.json",
+  "title": "ServiceTokenClaims",
+  "description": "Claims of a short-lived RS256 client-credentials token issued by OpenVibe.Network to a service or app principal. Replaces X-Internal-Key. App tokens (actor_type app) also carry project_id and env; receivers refuse env=sandbox unless they opted in.",
+  "type": "object",
+  "required": [
+    "iss",
+    "sub",
+    "actor_type",
+    "aud",
+    "cap",
+    "iat",
+    "exp",
+    "jti"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "iss": {
+      "type": "string",
+      "format": "uri",
+      "description": "Issuer; https://openvibe.network in production. Receivers pass the issuer they expect to verifyServiceToken()."
+    },
+    "sub": {
+      "type": "string",
+      "pattern": "^(svc:[a-z][a-z0-9-]{1,39}|app:app_[0-9A-HJKMNP-TV-Z]{26}|mod:mod_[0-9A-HJKMNP-TV-Z]{26})$"
+    },
+    "actor_type": {
+      "enum": [
+        "service",
+        "app",
+        "mod"
+      ]
+    },
+    "aud": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9.-]+$"
+      }
+    },
+    "cap": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_*]+)+$"
+      },
+      "description": "Granted capability ids; a trailing .* grants a family."
+    },
+    "ns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Namespace constraints, e.g. live.* or mod.example.*"
+    },
+    "iat": {
+      "type": "integer"
+    },
+    "exp": {
+      "type": "integer"
+    },
+    "jti": {
+      "type": "string",
+      "minLength": 8
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "Developer project of an app principal (ADR-014). Services key tenancy by it. Absent on first-party service tokens."
+    },
+    "env": {
+      "enum": [
+        "sandbox",
+        "production"
+      ],
+      "description": "Environment of an app principal. A receiver MUST refuse env=sandbox (401 token.sandbox_refused) unless it opted in to sandbox tokens. Absent on first-party service tokens, which are production."
+    },
+    "on_behalf_of": {
+      "type": "string",
+      "pattern": "^usr_[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "The person who authorized an app through the authorization-code flow. Absent on client_credentials tokens."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "actor_type": {
+            "const": "app"
+          }
+        },
+        "required": [
+          "actor_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "project_id",
+          "env"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "version": "0.1.0",
+  "contractRanges": {
+    "openvibe-contracts": ">=0.2.0 <1.0.0"
+  },
+  "id": "network",
+  "name": "OpenVibe.Network",
+  "status": "stable",
+  "repository": "OpenVibers/OpenVibe.Network",
+  "domains": [
+    "openvibe.network",
+    "auth.openvibe.network",
+    "api.openvibe.network",
+    "admin.openvibe.network",
+    "my.openvibe.network",
+    "themes.openvibe.network"
+  ],
+  "publicOrigin": "https://openvibe.network",
+  "health": "/api/health",
+  "capabilities": [
+    "identity.subject.resolve",
+    "network.coins.credit",
+    "network.coins.debit",
+    "network.coins.transfer",
+    "network.notifications.push",
+    "network.modules.read",
+    "network.modules.write",
+    "mods.grant.manage",
+    "network.project.read",
+    "network.project.manage"
+  ],
+  "eventsProduced": [
+    "network.app.created",
+    "network.app.revoked",
+    "network.credential.rotated",
+    "network.credential.revoked",
+    "network.grant.changed"
+  ],
+  "eventsConsumed": [],
+  "namespacesOwned": [
+    "identity.*",
+    "network.*",
+    "theme.*",
+    "notification.*"
+  ]
+}
