@@ -32,6 +32,14 @@ const DEFAULT_GRANTS = [
     // pastes into Community on behalf of its users and its AI jobs.
     ['community', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['community', 'media.object.upload', 'openvibe.media', ['community']],
+    // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
+    ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
+    ['live', 'events.subscription.manage', 'openvibe.events', []],
+    ['live', 'events.event.read', 'openvibe.events', []],
+    ['community', 'events.subscription.manage', 'openvibe.events', []],
+    ['community', 'events.event.read', 'openvibe.events', []],
+    ['billing', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['chat', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['live', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['live', 'community.paste.create', 'openvibe.community', []],
     ['live', 'community.paste.write', 'openvibe.community', []],
