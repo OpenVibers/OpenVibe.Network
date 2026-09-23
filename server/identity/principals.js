@@ -67,6 +67,12 @@ const DEFAULT_GRANTS = [
     ['vip', 'events.event.publish', 'openvibe.events', []],
     ['vip', 'events.subscription.manage', 'openvibe.events', []],
     ['vip', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    // Wave 17: Reviews reads Sources review items (and follows them by event), links Community discussion.
+    ['reviews', 'sources.item.read', 'openvibe.sources', []],
+    ['reviews', 'sources.source.read', 'openvibe.sources', []],
+    ['reviews', 'events.event.publish', 'openvibe.events', []],
+    ['reviews', 'events.subscription.manage', 'openvibe.events', []],
+    ['reviews', 'community.comment.write', 'openvibe.community', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
     ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
     // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
