@@ -161,7 +161,6 @@ const DEFAULT_SERVICE_MAP = {
         ],
         defaultLocationExtras: {
             websocket: true,
-            cfConnectingIp: true,
             headers: {
                 'Permissions-Policy': 'camera=*, microphone=*, display-capture=*',
             },
@@ -372,8 +371,13 @@ function generateProxyBlock(port, loc = {}) {
     lines.push(`proxy_pass http://127.0.0.1:${port};`);
     lines.push('proxy_http_version 1.1;');
     lines.push('proxy_set_header Host $host;');
+    // Client address headers come only from $remote_addr (realip: the visitor when the peer is a
+    // Cloudflare edge, else the TCP peer). Appending to, or passing through, a client-sent
+    // X-Forwarded-For / CF-Connecting-IP lets anyone reaching the origin directly (DNS-only
+    // hosts, the bare IP) choose the address upstreams ban and rate-limit by.
     lines.push('proxy_set_header X-Real-IP $remote_addr;');
-    lines.push('proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;');
+    lines.push('proxy_set_header X-Forwarded-For $remote_addr;');
+    lines.push('proxy_set_header CF-Connecting-IP $remote_addr;');
     lines.push('proxy_set_header X-Forwarded-Proto $scheme;');
 
     if (loc.websocket) {
@@ -386,10 +390,6 @@ function generateProxyBlock(port, loc = {}) {
         lines.push('proxy_buffering off;');
         lines.push('proxy_cache off;');
         lines.push('chunked_transfer_encoding off;');
-    }
-
-    if (loc.cfConnectingIp) {
-        lines.push('proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;');
     }
 
     if (loc.readTimeout) {
