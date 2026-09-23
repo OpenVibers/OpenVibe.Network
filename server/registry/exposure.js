@@ -61,8 +61,8 @@ const EXPOSURE = {
     tips: { state: 'internal', public_site: 'placeholder', note: SITE_PLACEHOLDER },
     vip: { state: 'internal', public_site: 'placeholder', note: SITE_PLACEHOLDER },
     openre: { state: 'internal', public_site: 'placeholder', note: SITE_PLACEHOLDER },
-    search: { state: 'internal', public_site: 'placeholder', note: ADMIN_PLACEHOLDER },
-    sources: { state: 'internal', public_site: 'placeholder', note: ADMIN_PLACEHOLDER },
+    search: { state: 'live', public_site: 'service', note: 'public search page and query API at search.openvibe.network (since 2026-09-23)' },
+    sources: { state: 'internal', public_site: null, note: 'internal ingestion service; sources.openvibe.network says so (its API is loopback-only)' },
     chat: { state: 'internal', public_site: null, note: 'serves Live\'s chat through Live; openvibe.chat serves the OpenVibe.Sites placeholder page' },
     ai: { state: 'internal', public_site: null, note: 'called by other services at 127.0.0.1:4700; ai.openvibe.network serves the OpenVibe.Sites placeholder page' },
 
