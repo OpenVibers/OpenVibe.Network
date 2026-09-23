@@ -93,7 +93,6 @@ function renderPage(list, slo, generatedAt) {
 <meta name="robots" content="noindex, nofollow">
 ${require('openvibe-shared/app-icon').headTags({ site: 'network', iconBase: '/assets' })}
 <meta name="color-scheme" content="dark light">
-<script>(function(){try{var raw=localStorage.getItem('ov_theme');if(!raw)return;var t=JSON.parse(raw),v=t&&t.variables;if(!v)return;var el=document.documentElement;for(var k in v)if(k.charAt(0)==='-')el.style.setProperty(k,v[k]);if(t.id)el.setAttribute('data-theme',t.id);}catch(_){}})();</script>
 <script src="/shared/theme-loader.js" defer></script>
 <style>
 *,*::before,*::after{box-sizing:border-box}

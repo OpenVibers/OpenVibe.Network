@@ -27,6 +27,11 @@ const INTERNAL = {
     network: 'http://127.0.0.1:4000', live: 'http://127.0.0.1:3000', media: 'http://127.0.0.1:4100',
     tools: 'http://127.0.0.1:4001', games: 'http://127.0.0.1:8000', community: 'http://127.0.0.1:4200',
     events: 'http://127.0.0.1:4300', billing: 'http://127.0.0.1:4600',
+    // Assigned ports of services that are placeholders or new; a placeholder is never polled.
+    chat: 'http://127.0.0.1:4400', openre: 'http://127.0.0.1:4500', tips: 'http://127.0.0.1:4610', vip: 'http://127.0.0.1:4620',
+    ai: 'http://127.0.0.1:4700', search: 'http://127.0.0.1:4710', sources: 'http://127.0.0.1:4720', wiki: 'http://127.0.0.1:4800',
+    blog: 'http://127.0.0.1:4810', news: 'http://127.0.0.1:4820', reviews: 'http://127.0.0.1:4830', deals: 'http://127.0.0.1:4840',
+    coupons: 'http://127.0.0.1:4850', trade: 'http://127.0.0.1:4860', codes: 'http://127.0.0.1:4900', host: 'http://127.0.0.1:4910',
 };
 const POLL_MS = 60 * 1000;
 // Readiness paths of services whose manifest (openvibe-contracts) does not carry `ready` yet. Each

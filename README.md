@@ -260,6 +260,29 @@ Google-style account management supporting up to 5 accounts:
 
 ---
 
+## Observability and status
+
+- `GET /api/ready`: named checks from `openvibe-shared/ready`, each with `status`, `required`,
+  `latency_ms` and `checked_at`. `db` and `signing_key` are required (`signing_key` means an RS256
+  keypair that signs and verifies a probe token; it is only optional outside production).
+  `registry_poll` and `discord_bot` are optional. The answer is 503 only when a required check fails.
+  Otherwise it is 200, with `status: "degraded"` when an optional check has failed.
+- `GET /metrics`: Prometheus text for direct loopback callers only. Any proxied request gets a 404,
+  and `deploy/nginx` blocks the path too. Besides the HTTP golden signals by route template, it
+  exports process metrics and `release_info`. Network's own counters are
+  `network_tokens_issued_total{grant_type}`, `network_token_failures_total{grant_type,error}` and
+  `network_principal_token_failures_total{code}`.
+- `GET /status` is the operator page: server-rendered, no JavaScript needed, `noindex`.
+  `GET /api/v1/status` returns the same data as JSON. Each OpenVibe service shows as up, degraded,
+  down, not running (placeholder or no runtime) or unknown, with its release, boot time and
+  `checked_at`. The data comes from the ecosystem registry poll (`server/registry/ecosystem.js`),
+  which reads each service's readiness endpoint and `/release.json` about once a minute. A service
+  not checked yet, or whose last check is more than three intervals old, shows as unknown.
+- `GET /api/v1/status/slo` returns the proposed SLO categories, as does
+  [docs/slo.md](docs/slo.md) / [docs/slo.json](docs/slo.json).
+- [docs/patches/live-observability.diff](docs/patches/live-observability.diff) is the same change for
+  OpenVibe.Live, to be applied there.
+
 ## Shared Client Libraries
 
 The `openvibe-shared` package ([OpenVibers/OpenVibe.Shared](https://github.com/OpenVibers/OpenVibe.Shared), pinned in package.json) provides drop-in vanilla JS components served at `/shared/` (and `/shared/v1/`). Only the package's browser files are served; a `?v=` equal to a file's content hash is cached for a year, anything else for five minutes:
