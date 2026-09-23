@@ -6,7 +6,7 @@
  *
  *   GET /.well-known/openvibe
  *   GET /api/v1/registry and /api/v1/registry/<...>
- *   GET /contracts/<domain>/<name>.v<N>.json
+ *   GET /contracts/<domain>/<name>.v<N>.json (and /contracts/events/payloads/<event_type>.v<N>.json)
  *
  * These answer every origin, preflight included, with `Access-Control-Allow-Origin: *` and no
  * credentials (cookies are never needed and never sent). Every other route keeps the first-party
@@ -19,7 +19,8 @@ const MAX_AGE_S = 86400;
 
 // A registry segment: URL-safe characters, never '.' or '..' and never an encoded dot or slash.
 const SEGMENT_RE = /^[A-Za-z0-9_~:@!$&'()*+,;=.-]+$/;
-const CONTRACT_RE = /^\/contracts\/[a-z0-9-]+\/[a-z0-9-]+\.v\d+\.json$/;
+// Event payload contracts sit one level deeper: /contracts/events/payloads/<event_type>.v<N>.json.
+const CONTRACT_RE = /^\/contracts\/[a-z0-9-]+(?:\/[a-z0-9-]+)?\/[a-z0-9_.-]+\.v\d+\.json$/;
 
 function isPublicDiscoveryPath(p) {
     const path = String(p || '');

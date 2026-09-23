@@ -16,13 +16,22 @@
  *   GET /api/v1/registry/capabilities/:id
  *   GET /api/v1/registry/namespaces                 user-module namespaces
  *   GET /api/v1/registry/contracts                  contract catalog
- *   GET /api/v1/registry/topics                     event topics (Events, Wave 3)
+ *   GET /api/v1/registry/topics[?service=&producer=&consumer=&prefix=]
+ *                                                   event topics: producers, consumers, payload contract
+ *   GET /api/v1/registry/topics/:topic
+ *   GET /api/v1/registry/releases                   what each running service runs (its /release.json,
+ *                                                   polled on loopback with health) and the libraries'
+ *                                                   current releases, with contracts/sdk/shared drift
+ *   GET /api/v1/registry/health                     one line per service: status, checked_at
+ *   GET /api/v1/registry/search?q=                  services, capabilities, topics and contracts by text
  *   GET /contracts/<domain>/<name>.v<N>.json        the schema at its $id URL
  */
 const express = require('express');
 const contracts = require('openvibe-contracts');
 const contractsPkg = require('openvibe-contracts/package.json');
-const { exposureOf, publicOriginOf } = require('./exposure');
+const { exposureOf, publicOriginOf, libraries } = require('./exposure');
+const { buildTopics, eventsOf } = require('./topics');
+const { driftOf } = require('./versions');
 
 // Where each running service answers health checks from this host (manifests carry the public origin).
 const INTERNAL = {
@@ -89,7 +98,14 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         try {
             const { res, body } = await getJson(`${base}/release.json`);
             if (!res.ok || !body || typeof body.release !== 'string') return { release: null, error: `release.json answered ${res.status}` };
-            return { release: body.release.slice(0, 40), released_at: body.released_at || null, booted_at: body.booted_at || null };
+            // registry.release-manifest@1 (openvibe-shared/release): the commit, when it was made and booted,
+            // and the installed openvibe-contracts / openvibe-* package versions (names and x.y.z only).
+            const packages = {};
+            if (body.packages && typeof body.packages === 'object') {
+                for (const [k, v] of Object.entries(body.packages).slice(0, 10)) if (/^openvibe-[a-z-]{1,30}$/.test(k) && /^\d+\.\d+\.\d+/.test(String(v))) packages[k] = String(v).slice(0, 20);
+            }
+            const ver = (v) => (typeof v === 'string' && /^\d+\.\d+\.\d+/.test(v) ? v.slice(0, 20) : null);
+            return { release: body.release.slice(0, 40), released_at: body.released_at || null, booted_at: body.booted_at || null, contracts_version: ver(body.contracts_version), packages };
         } catch (err) {
             return { release: null, error: err.name === 'TimeoutError' ? 'timeout' : 'unreachable' };
         }
@@ -151,8 +167,35 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         return h;
     }
 
-    // The manifest as published, plus where it can be reached (exposure) and what the last check saw (runtime).
-    const withHealth = (m) => ({ ...m, exposure: exposureOf(m.id), runtime: current(m.id) });
+    // The manifest as published, with the event types Network observed it producing or consuming merged
+    // in (./topics.js; `observed` names them), plus where it can be reached (exposure) and what the last
+    // check saw (runtime).
+    const withHealth = (m) => {
+        const ev = eventsOf(m);
+        return { ...m, eventsProduced: ev.eventsProduced, eventsConsumed: ev.eventsConsumed, ...(ev.observed ? { observed: ev.observed } : {}), exposure: exposureOf(m.id), runtime: current(m.id) };
+    };
+
+    /** Each service's running release (from the health poll) and drift against the libraries' releases. */
+    function releases() {
+        const libs = libraries();
+        const services = contracts.services.manifests.map((m) => {
+            const e = exposureOf(m.id);
+            if (e.state === 'library') return null;
+            const h = current(m.id);
+            const r = h.release && typeof h.release === 'object' ? h.release : null;
+            const row = { id: m.id, state: e.state, status: h.status, checked_at: h.checked_at || null, release: r ? r.release : null };
+            if (!r || !r.release) { row.error = (r && r.error) || h.reason || null; return row; }
+            Object.assign(row, { released_at: r.released_at, booted_at: r.booted_at, contracts_version: r.contracts_version || null, packages: r.packages || {} });
+            row.drift = {};
+            for (const l of libs) {
+                const installed = l.package === 'openvibe-contracts' ? r.contracts_version : (r.packages || {})[l.package];
+                if (installed) row.drift[l.package] = { installed, latest: l.release, state: driftOf(installed, l.release) };
+            }
+            return row;
+        }).filter(Boolean);
+        const behind = services.filter(s => s.drift && Object.values(s.drift).some(d => d.state === 'behind')).map(s => s.id);
+        return { checked_at: lastPollAt ? new Date(lastPollAt).toISOString() : null, poll_interval_s: Math.round(pollMs / 1000), libraries: libs, services, behind };
+    }
 
     function descriptor() {
         return {
@@ -178,7 +221,7 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         const notFound = (res, code, detail) => contracts.http.sendProblem(res, 404, code, { detail });
 
         r.get('/.well-known/openvibe', (_req, res) => cache(res, 300).json(descriptor()));
-        r.get('/api/v1/registry', (_req, res) => cache(res).json({ services: '/api/v1/registry/services', capabilities: '/api/v1/registry/capabilities', namespaces: '/api/v1/registry/namespaces', contracts: '/api/v1/registry/contracts', topics: '/api/v1/registry/topics', domains: '/api/v1/registry/domains/:domain' }));
+        r.get('/api/v1/registry', (_req, res) => cache(res).json({ services: '/api/v1/registry/services', capabilities: '/api/v1/registry/capabilities', namespaces: '/api/v1/registry/namespaces', contracts: '/api/v1/registry/contracts', topics: '/api/v1/registry/topics', releases: '/api/v1/registry/releases', health: '/api/v1/registry/health', search: '/api/v1/registry/search?q=', domains: '/api/v1/registry/domains/:domain' }));
         r.get('/api/v1/registry/services', (req, res) => {
             let list = contracts.services.manifests.map(withHealth);
             if (req.query.status) list = list.filter(m => m.status === String(req.query.status));
@@ -208,8 +251,41 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         });
         r.get('/api/v1/registry/namespaces', (_req, res) => cache(res).json({ namespaces: contracts.modules.namespaces }));
         r.get('/api/v1/registry/contracts', (_req, res) => cache(res).json({ version: contractsPkg.version, contracts: contracts.catalog.map(c => ({ ...c, $id: contracts.schema(c.id).$id })) }));
-        r.get('/api/v1/registry/topics', (_req, res) => cache(res).json({ topics: [], note: 'Durable event topics are published by OpenVibe.Events (roadmap Wave 3).' }));
-        r.get(/^\/contracts\/([a-z0-9-]+)\/([a-z0-9-]+\.v\d+)\.json$/, (req, res) => {
+        r.get('/api/v1/registry/topics', (req, res) => {
+            const built = buildTopics();
+            let list = built.topics;
+            const q = (k) => (req.query[k] ? String(req.query[k]).toLowerCase().slice(0, 100) : null);
+            const svc = q('service'), producer = q('producer'), consumer = q('consumer'), prefix = q('prefix');
+            if (svc) list = list.filter(t => t.services.includes(svc));
+            if (producer) list = list.filter(t => t.producers.some(p => p.service === producer));
+            if (consumer) list = list.filter(t => t.consumers.some(c => c.service === consumer));
+            if (prefix) list = list.filter(t => t.topic.startsWith(prefix));
+            cache(res).json({ topics: list, patterns: built.patterns, contracts_version: contractsPkg.version, delivery: 'OpenVibe.Events: subscribe with POST /api/v1/subscriptions { topic_pattern, endpoint }' });
+        });
+        r.get('/api/v1/registry/topics/:topic', (req, res) => {
+            const t = buildTopics().topics.find(x => x.topic === String(req.params.topic));
+            if (!t) return notFound(res, 'registry.unknown_topic', `no topic ${req.params.topic}`);
+            cache(res).json(t);
+        });
+        r.get('/api/v1/registry/releases', (_req, res) => cache(res, 30).json(releases()));
+        r.get('/api/v1/registry/health', (_req, res) => {
+            const services = contracts.services.manifests.map((m) => { const h = current(m.id); return { id: m.id, state: exposureOf(m.id).state, status: h.status, checked_at: h.checked_at || null, ...(h.stale ? { stale: true } : {}) }; });
+            const summary = {};
+            for (const s of services) summary[s.status] = (summary[s.status] || 0) + 1;
+            cache(res, 30).json({ checked_at: lastPollAt ? new Date(lastPollAt).toISOString() : null, summary, services });
+        });
+        r.get('/api/v1/registry/search', (req, res) => {
+            const q = String(req.query.q || '').toLowerCase().trim().slice(0, 100);
+            if (q.length < 2) return contracts.http.sendProblem(res, 400, 'registry.bad_query', { detail: 'q must be at least 2 characters' });
+            const hit = (...fields) => fields.some(f => typeof f === 'string' && f.toLowerCase().includes(q));
+            const services = contracts.services.manifests.filter(m => hit(m.id, m.name, m.notes, ...(m.domains || []))).map(m => ({ id: m.id, name: m.name, status: m.status, state: exposureOf(m.id).state }));
+            const capabilities = contracts.capabilities.manifests.filter(c => hit(c.id, c.description, c.owner)).slice(0, 50).map(c => ({ id: c.id, owner: c.owner, status: c.status, visibility: c.visibility }));
+            const topics = buildTopics().topics.filter(t => hit(t.topic)).slice(0, 50).map(t => ({ topic: t.topic, status: t.status, producers: t.producers.map(p => p.service) }));
+            const found = contracts.catalog.filter(c => hit(c.id, c.owner)).slice(0, 50).map(c => ({ id: c.id, version: c.version, owner: c.owner, status: c.status }));
+            cache(res).json({ q, services, capabilities, topics, contracts: found });
+        });
+        // Event payload contracts sit one level deeper (events/payloads/<event_type>.v<N>.json).
+        r.get(/^\/contracts\/([a-z0-9-]+(?:\/[a-z0-9-]+)?)\/([a-z0-9_.-]+\.v\d+)\.json$/, (req, res) => {
             const file = `${req.params[0]}/${req.params[1]}.json`;
             const entry = contracts.catalog.find(c => c.schema === file);
             if (!entry) return notFound(res, 'registry.unknown_contract', `no contract ${file}`);

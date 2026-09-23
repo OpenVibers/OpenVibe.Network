@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: '17 6 * * 1'   # weekly: drift appears when another repository releases, not only on our pushes
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -16,6 +18,11 @@ jobs:
       - run: npm test
       - name: contract check (openvibe-contracts)
         run: npx openvibe-contracts-check --service network --src server
+      - name: contracts version drift (warning only)
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/contracts-drift.js --package all
   # Secret scan (gitleaks) and dependency audit, shared by every OpenVibers repo (Track Q).
   security:
     uses: OpenVibers/OpenVibe.Shared/.github/workflows/security.yml@83c998b65424fb97e6f6de55ad9cc5981767e89c

@@ -66,9 +66,9 @@ const EXPOSURE = {
     chat: { state: 'internal', public_site: null, note: 'serves Live\'s chat through Live; openvibe.chat serves the OpenVibe.Sites placeholder page' },
     ai: { state: 'internal', public_site: null, note: 'called by other services at 127.0.0.1:4700; ai.openvibe.network serves the OpenVibe.Sites placeholder page' },
 
-    sdk: { state: 'library', public_site: null, release: 'v0.4.0', distribution: 'https://codeload.github.com/OpenVibers/OpenVibe.SDK/tar.gz/refs/tags/v0.4.0' },
-    shared: { state: 'library', public_site: null, release: 'v1.3.0', distribution: 'https://codeload.github.com/OpenVibers/OpenVibe.Shared/tar.gz/refs/tags/v1.3.0', note: 'also served at /shared/* by each site' },
-    contracts: { state: 'library', public_site: null, release: 'v0.30.1', distribution: 'https://codeload.github.com/OpenVibers/OpenVibe.Contracts/tar.gz/refs/tags/v0.30.1', note: 'schemas are also served by this registry at their $id URLs' },
+    sdk: { state: 'library', public_site: null, package: 'openvibe-sdk', release: 'v0.4.0', distribution: 'https://codeload.github.com/OpenVibers/OpenVibe.SDK/tar.gz/refs/tags/v0.4.0' },
+    shared: { state: 'library', public_site: null, package: 'openvibe-shared', release: 'v1.3.0', distribution: 'https://codeload.github.com/OpenVibers/OpenVibe.Shared/tar.gz/refs/tags/v1.3.0', note: 'also served at /shared/* by each site' },
+    contracts: { state: 'library', public_site: null, package: 'openvibe-contracts', release: 'v0.30.1', distribution: 'https://codeload.github.com/OpenVibers/OpenVibe.Contracts/tar.gz/refs/tags/v0.30.1', note: 'schemas are also served by this registry at their $id URLs' },
     examples: { state: 'repository', public_site: null, note: 'example apps with CI in OpenVibers/OpenVibe.Examples; not published as a package' },
 
     realtime: { state: 'placeholder', public_site: null },
@@ -78,7 +78,7 @@ const EXPOSURE = {
 function exposureOf(id) {
     const e = EXPOSURE[id];
     if (!e) return { state: 'unknown', label: 'unknown (not classified by Network)', public_site: null, note: null };
-    return { state: e.state, label: LABEL[e.state], public_site: e.public_site, note: e.note || null, ...(e.release ? { release: e.release, distribution: e.distribution || null } : {}) };
+    return { state: e.state, label: LABEL[e.state], public_site: e.public_site, note: e.note || null, ...(e.release ? { package: e.package || null, release: e.release, distribution: e.distribution || null } : {}) };
 }
 
 /** A manifest's public origin only when its domain serves the service itself. */
@@ -87,4 +87,9 @@ function publicOriginOf(m) {
     return e && e.state === 'live' && e.public_site === 'service' ? m.publicOrigin || null : null;
 }
 
-module.exports = { STATES, LABEL, EXPOSURE, exposureOf, publicOriginOf };
+/** The released libraries (sdk, shared, contracts): { id, package, release, distribution }. */
+function libraries() {
+    return Object.entries(EXPOSURE).filter(([, e]) => e.state === 'library').map(([id, e]) => ({ id, package: e.package, release: e.release, distribution: e.distribution || null }));
+}
+
+module.exports = { STATES, LABEL, EXPOSURE, exposureOf, publicOriginOf, libraries };
