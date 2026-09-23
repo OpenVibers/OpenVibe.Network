@@ -265,7 +265,9 @@ function isAllowedOrigin(origin) {
     return false;
 }
 
-app.use(cors({
+// Public discovery (/.well-known/openvibe, /api/v1/registry/*, /contracts/*.json) answers any
+// origin, preflight included; every other route keeps this allow-list (server/public-cors.js).
+app.use(require('./public-cors').gate(cors({
     origin(origin, callback) {
         if (!origin) return callback(null, true); // non-browser / server-to-server
         if (isAllowedOrigin(origin)) return callback(null, true);
@@ -273,7 +275,7 @@ app.use(cors({
         return callback(new Error('Origin not allowed by CORS'));
     },
     credentials: true,
-}));
+})));
 
 // ── Rate Limiting ────────────────────────────────────────────
 app.use('/api/', rateLimit({ windowMs: 60_000, max: 120 }));
@@ -424,6 +426,9 @@ app.use('/api/modules', require('./identity/modules').userRouter(requireAuth));
 // Developer projects, apps, credentials, grants and quotas (server/developer, ADR-014). Bearer user
 // tokens only; never X-Internal-Key.
 app.use('/api/v1/projects', rateLimit({ windowMs: 60_000, max: 60 }), require('./developer/routes').router());
+// Their network.app.* / credential / grant events go to OpenVibe.Events through an outbox when
+// OV_EVENTS_INTERNAL_URL is set (server/developer/event-relay.js); off otherwise.
+require('./developer/event-relay').startRelay(db, { eventsUrl: config.eventsInternalUrl, privateKey, issuer: config.jwt.issuer });
 
 // Notification API (authenticated users)
 app.use('/api/notifications', createNotificationRoutes(db, notificationService, requireAuth));
