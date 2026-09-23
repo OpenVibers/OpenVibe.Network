@@ -11,7 +11,7 @@ const svc = createChromeService(db, { internalKey: 'change-me-in-production', se
 assert.equal(siteForHost('yt.openvibe.tools').id, 'tools');
 assert.equal(siteForHost('evil.example'), null);
 let p = svc.payloadFor('openvibe.media');
-assert.deepEqual(p.nav.map(n => n.id), ['live', 'tools', 'community', 'games', 'media', 'network', 'blog', 'wiki'], 'cold start follows the base order');
+assert.deepEqual(p.nav.map(n => n.id), ['live', 'tools', 'community', 'games', 'media', 'network', 'codes', 'blog', 'wiki'], 'cold start follows the base order');
 assert.equal(p.footer.legal.dmca, 'https://openvibe.media/dmca', 'legal links stay on the site\'s own domain');
 assert.ok(!p.footer.discover.some(l => l.url === 'https://openvibe.media/'), 'a site never recommends itself');
 assert.ok(p.soon.length >= 10);
