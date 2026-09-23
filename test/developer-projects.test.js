@@ -61,7 +61,8 @@ const secretsSeen = [];
     const token = (form) => fetch(`${base}/oauth/token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(form) })
         .then(async r => ({ status: r.status, cache: r.headers.get('cache-control'), body: await r.json() }));
     const cc = (appId, secret, audience = 'openvibe.media', extra = {}) => token({ grant_type: 'client_credentials', client_id: appId, client_secret: secret, audience, ...extra });
-    const verify = (t, audience = 'openvibe.media') => serviceAuth.verifyServiceToken(t, { publicKey: keys.publicKey, issuer: ISSUER, audience });
+    // Inspects token contents, so it opts in to sandbox tokens (contracts v0.26.0 refuses them by default).
+    const verify = (t, audience = 'openvibe.media') => serviceAuth.verifyServiceToken(t, { publicKey: keys.publicKey, issuer: ISSUER, audience, acceptSandbox: true });
 
     // ── Authentication: Bearer user tokens only; never X-Internal-Key ──
     let r = await api(null, 'GET', '', null, { 'x-internal-key': 'legacy-key' });

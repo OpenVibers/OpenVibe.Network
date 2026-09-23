@@ -83,6 +83,16 @@ const DEFAULT_GRANTS = [
     ['trade', 'events.event.publish', 'openvibe.events', []],
     ['trade', 'sources.item.read', 'openvibe.sources', []],
     ['trade', 'sources.source.read', 'openvibe.sources', []],
+    // Wave 18: Deals and Coupons; Wave 21 Stage B: the Host API publishes deploy/domain events.
+    ['deals', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['deals', 'events.event.publish', 'openvibe.events', []],
+    ['deals', 'events.subscription.manage', 'openvibe.events', []],
+    ['deals', 'sources.item.read', 'openvibe.sources', []],
+    ['deals', 'community.comment.write', 'openvibe.community', []],
+    ['deals', 'community.comment.moderate', 'openvibe.community', []],
+    ['coupons', 'events.event.publish', 'openvibe.events', []],
+    ['coupons', 'sources.item.read', 'openvibe.sources', []],
+    ['host', 'events.event.publish', 'openvibe.events', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
     ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
     // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
