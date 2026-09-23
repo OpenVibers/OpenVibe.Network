@@ -80,6 +80,10 @@ const DEFAULT_GRANTS = [
     ['news', 'events.event.publish', 'openvibe.events', []],
     ['news', 'events.subscription.manage', 'openvibe.events', []],
     ['news', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['news', 'community.comment.write', 'openvibe.community', []],
+    ['news', 'community.comment.moderate', 'openvibe.community', []],
+    ['news', 'ai.run.create', 'openvibe.ai', ['news.*']],
+    ['news', 'ai.run.read', 'openvibe.ai', ['news.*']],
     // Wave 19: Trade (informational) reads Sources filings and publishes events.
     ['trade', 'events.event.publish', 'openvibe.events', []],
     ['trade', 'sources.item.read', 'openvibe.sources', []],
