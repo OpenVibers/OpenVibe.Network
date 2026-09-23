@@ -124,6 +124,10 @@ const server = http.createServer(app);
     assert.strictEqual(r.status, 200);
     r = await post('/internal/coins/credit', credit(), {});
     assert.strictEqual(r.status, 403);
+    // Every legacy-key call is counted per route (Wave 22 retirement telemetry).
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const legacy = db.prepare("SELECT route, count FROM principal_usage WHERE principal = 'legacy-key' AND auth = 'internal-key-route' AND allowed = 1").all();
+    assert.ok(legacy.some(row => row.route === 'POST /internal/coins/credit' && row.count >= 1), JSON.stringify(legacy));
 
     // ── Revocation: new tokens stop carrying a revoked grant ──
     db.prepare("UPDATE principal_grants SET revoked_at = CURRENT_TIMESTAMP WHERE client_id = 'live' AND capability = 'network.coins.debit'").run();

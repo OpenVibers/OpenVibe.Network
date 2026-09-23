@@ -17,11 +17,29 @@ function getDb(req) { return req.app.locals.db; }
 function getConfig(req) { return req.app.locals.config; }
 
 // ── Internal Key Middleware ──────────────────────────────────
+let legacyStmt = null;
+function countLegacyKey(req, res) {
+    res.on('finish', () => {
+        try {
+            const db = getDb(req);
+            if (!legacyStmt) {
+                legacyStmt = db.prepare(`INSERT INTO principal_usage (principal, route, capability, auth, allowed, code, count) VALUES ('legacy-key', ?, '-', 'internal-key-route', ?, '', 1)
+                    ON CONFLICT(principal, route, auth, allowed, code) DO UPDATE SET count = count + 1, last_at = CURRENT_TIMESTAMP`);
+            }
+            const route = `${req.method} ${req.baseUrl || ''}${req.route ? req.route.path : req.path}`;
+            legacyStmt.run(route, res.statusCode < 400 ? 1 : 0);
+        } catch { /* telemetry is best effort */ }
+    });
+}
 function requireInternalKey(req, res, next) {
     const key = req.headers['x-internal-key'];
     const config = getConfig(req);
     if (key && key === config.internalKey) {
         req.internalKeyOk = true;
+        // Retirement telemetry (roadmap Wave 22): count every legacy-key call per route, so the key can
+        // be removed route by route once nothing uses it. Capability-guarded routes also record their
+        // decision; this covers the routes that only know the key.
+        countLegacyKey(req, res);
         return next();
     }
     // Routes guarded by a capability also accept a service-principal token instead of the key;
