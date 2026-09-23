@@ -10,9 +10,10 @@
 // Ranking: page views and visitors from each service's own analytics (last 7 days) plus signed-in
 // cross-site history, refreshed every 30 minutes and kept in the database so a restart or an
 // unreachable service never reorders the network at random. Only totals cross the wire.
-// Copy: once a day the configured AI (through OpenVibe.Live's internal API) may write a blurb per
-// site and pick "discover" links BY ID from a list we supply; ids resolve to our own URLs here, text
-// is stripped, length-capped and screened. No AI, or a bad answer → the hand-written copy stays.
+// Copy: once a day OpenVibe.AI (network.site_copy) may write a blurb per site and pick "discover"
+// links BY ID from a list we supply; ids resolve to our own URLs here, text is stripped, length-capped
+// and screened. AI unreachable, failing or answering badly → the last good copy stays (kept in
+// chrome_cache across restarts), or the hand-written copy when there has never been one.
 // ═══════════════════════════════════════════════════════════════
 const express = require('express');
 const crypto = require('crypto');
@@ -26,7 +27,7 @@ const BASE_WEIGHT = { live: 6, tools: 5, community: 4, games: 3, media: 2, netwo
 /**
  * Footer copy comes from OpenVibe.AI's network.site_copy workflow (roadmap Wave 13, ADR-015), called with a
  * self-signed Network service token (sub svc:network, aud openvibe.ai, cap ai.run.create, ns network.*).
- * Live's /internal/ai/site-copy stays only as a fallback while AI is unreachable.
+ * There is no other source: Live's /internal/ai/site-copy is no longer called.
  */
 function aiSiteCopy({ privateKey, issuer, aiUrl }) {
     const { serviceAuth } = require('openvibe-contracts');
@@ -126,20 +127,14 @@ function createChromeService(db, config, analytics, { privateKey = null, issuer 
     }
 
     async function refreshCopy() {
-        if (!fromAi && (!config.internalKey || config.internalKey === 'change-me-in-production')) return;
+        if (!fromAi) return;
         const pool = linkPool();
         const popular = new Set(popularTools(12).map(t => t.url));
         const links = [...pool.entries()].filter(([id, l]) => !id.startsWith('tool:') || popular.has(l.url)).map(([id, l]) => ({ id, name: l.name, about: l.about }));
         const body = { sites: SITES.filter(s => s.status === 'open').map(s => ({ id: s.id, name: 'OpenVibe.' + s.name, what: s.what, popular: s.id === 'tools' ? popularTools(6).map(t => t.name) : [] })), links };
         let j = null;
-        if (fromAi) { try { j = await fromAi(body); } catch { j = null; } }
-        if (!j && config.internalKey && config.internalKey !== 'change-me-in-production') {
-            try {
-                const r = await fetch(`${svcUrl('live', 'http://127.0.0.1:3000')}/internal/ai/site-copy`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Internal-Key': config.internalKey }, body: JSON.stringify(body), signal: AbortSignal.timeout(90_000) });
-                j = r.ok ? await r.json() : null;
-            } catch { j = null; }
-        }
-        if (!j || !Array.isArray(j.sites)) return;
+        try { j = await fromAi(body); } catch { j = null; }
+        if (!j || !Array.isArray(j.sites)) return;   // keep the last good copy
         const next = {};
         for (const row of j.sites) {
             const site = SITES.find(s => s.id === row.id); if (!site) continue;
