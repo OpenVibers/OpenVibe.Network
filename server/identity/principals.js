@@ -111,6 +111,11 @@ const DEFAULT_GRANTS = [
     ['search', 'events.subscription.manage', 'openvibe.events', []],
     ['live', 'events.subscription.manage', 'openvibe.events', []],
     ['live', 'events.event.read', 'openvibe.events', []],
+    // VIP gates in products: Chat's subscriber badge, Community's and Blog's members-only content, Live's own checks.
+    ['chat', 'vip.entitlement.check', 'openvibe.vip', []],
+    ['community', 'vip.resource.policy.evaluate', 'openvibe.vip', []],
+    ['blog', 'vip.resource.policy.evaluate', 'openvibe.vip', []],
+    ['live', 'vip.entitlement.check', 'openvibe.vip', []],
     ['community', 'events.subscription.manage', 'openvibe.events', []],
     ['community', 'events.event.read', 'openvibe.events', []],
     ['billing', 'identity.subject.resolve', SELF_AUDIENCE, []],
