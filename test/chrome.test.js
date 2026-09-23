@@ -76,5 +76,17 @@ for (let i = 0; i < 6; i++) ins.run(1, 'tools', 'dns');
     await createChromeService(new Database(':memory:'), cfg, null).refreshCopy();
     assert.equal(liveHits, 0, 'Live is never asked for copy');
     live.close(); ai.close();
+    // The page-view beacon (navigator.sendBeacon, a no-cors request) is readable cross-origin, so no
+    // site's console reports it as blocked.
+    {
+        const express = require('express');
+        const app = express(); app.use('/api/chrome', svc.router);
+        const srv = await new Promise(r => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
+        const r = await fetch(`http://127.0.0.1:${srv.address().port}/api/chrome/hit`, { method: 'POST', headers: { origin: 'https://case.openvibe.tools', 'content-type': 'text/plain' }, body: '' });
+        assert.equal(r.status, 204);
+        assert.equal(r.headers.get('cross-origin-resource-policy'), 'cross-origin');
+        assert.equal(r.headers.get('access-control-allow-origin'), '*');
+        srv.close();
+    }
     console.log('chrome service: all checks passed');
 })().catch(e => { console.error(e); process.exit(1); });

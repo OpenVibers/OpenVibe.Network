@@ -182,7 +182,9 @@ function createChromeService(db, config, analytics, { privateKey = null, issuer 
     // browser-set Origin header (never the body) and must be one of ours or a registered tool domain.
     const recent = new Map();   // ip → [count, windowStart]: 40/min is plenty for a person, useless for stuffing
     router.post('/hit', (req, res) => {
-        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' });
+        // sendBeacon is a no-cors request: without CORP cross-origin the browser logs every beacon's
+        // (empty) answer as blocked on every page of every site (the count itself was never affected).
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin', 'Cache-Control': 'no-store' });
         try {
             const ua = String(req.headers['user-agent'] || '');
             let host = ''; try { host = new URL(String(req.headers.origin || '')).hostname.toLowerCase(); } catch { /* */ }
