@@ -50,7 +50,11 @@ function aiSiteCopy({ privateKey, issuer, aiUrl }) {
         const j = await r.json().catch(() => null);
         const run = j && j.run;
         if (!run || run.status !== 'succeeded' && run.status !== 'cached' || !run.output || !Array.isArray(run.output.sites)) return null;
-        return { sites: run.output.sites, model: (run.model && (run.model.key || run.model.id)) || (run.route && run.route.key) || 'openvibe.ai' };
+        // ai.run@1: the model that answered is provenance.model (null for a cached or unresolved run);
+        // run.route is the provider route { key, version }. There is no top-level run.model.
+        const prov = run.provenance && typeof run.provenance === 'object' ? run.provenance : {};
+        const route = run.route && typeof run.route === 'object' ? run.route.key : prov.route;
+        return { sites: run.output.sites, model: prov.model || route || 'openvibe.ai' };
     };
 }
 

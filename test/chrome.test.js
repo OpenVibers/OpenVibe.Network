@@ -40,7 +40,7 @@ for (let i = 0; i < 6; i++) ins.run(1, 'tools', 'dns');
         aiAuth = req.headers.authorization;
         if (aiMode === 'down') { res.statusCode = 503; return res.end('{}'); }
         res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({ run: { status: 'succeeded', model: { key: 'test-model' }, output: { sites: [{ id: 'games', blurb: 'Play Scraplandia and the shared pixel canvas in a tab.', picks: ['site:live'] }] } } }));
+        res.end(JSON.stringify({ run: { status: 'succeeded', route: { key: 'site-copy', version: 1 }, provenance: { origin: 'ai', workflow: 'network.site_copy', model: 'test-model', route: 'site-copy' }, output: { sites: [{ id: 'games', blurb: 'Play Scraplandia and the shared pixel canvas in a tab.', picks: ['site:live'] }] } } }));
     });
     await Promise.all([live, ai].map(s => new Promise(r => s.listen(0, '127.0.0.1', r))));
     const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
@@ -63,6 +63,7 @@ for (let i = 0; i < 6; i++) ins.run(1, 'tools', 'dns');
     p = s2.payloadFor('openvibe.games');
     assert.equal(p.footer.ai, true);
     assert.equal(p.footer.blurb, 'Play Scraplandia and the shared pixel canvas in a tab.');
+    assert.equal(JSON.parse(db2.prepare("SELECT value FROM chrome_cache WHERE key = 'copy'").get().value).model, 'test-model', 'the model is read from run.provenance.model (ai.run@1)');
 
     aiMode = 'down';
     await s2.refreshCopy();

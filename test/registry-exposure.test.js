@@ -51,7 +51,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
 
     // 2. Registry and status over fake loopback services.
     const up = await fakeService({ '/api/ready': ready, '/ready': ready, '/api/health': [200, { status: 'ok' }], '/health': [200, {}], '/healthz': [200, {}] });
-    const ai = await fakeService({ '/api/ready': ready, '/api/health': [200, { status: 'ok' }] });   // AI's manifest (contracts 0.28.0) has no paths
+    const ai = await fakeService({ '/api/ready': ready, '/api/health': [200, { status: 'ok' }] });   // AI answers its manifest's /api/ready (contracts 0.30)
     const overrides = {};
     for (const id of Object.keys(exposure.EXPOSURE)) overrides[id] = up.url;
     overrides.ai = ai.url;

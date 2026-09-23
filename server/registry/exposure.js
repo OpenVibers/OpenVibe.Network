@@ -7,8 +7,10 @@
  * the service is meant to answer. Neither says whether that public domain serves the service today:
  * on 2026-09-23 openvibe.news, .reviews, .deals, .coupons, .trade, .host, .tips, .vip and openre.stream
  * served the OpenVibe.Sites "coming soon" placeholder, search. and sources.openvibe.network served the
- * admin placeholder, while each of those services ran on this host's loopback only. And AI, SDK,
- * Shared and Examples existed although their manifests (openvibe-contracts 0.28.0) said placeholder.
+ * admin placeholder, while each of those services ran on this host's loopback only. (Until
+ * openvibe-contracts 0.30 the AI, SDK, Shared and Examples manifests said placeholder although all four
+ * existed; since 0.30 they are alpha, and this overlay says how each one exists: AI runs on loopback,
+ * SDK and Shared are released libraries, Examples is a repository.)
  *
  * Every manifest id has exactly one state here (test/registry-exposure.test.js pins them):
  *
@@ -66,7 +68,7 @@ const EXPOSURE = {
 
     sdk: { state: 'library', public_site: null, release: 'v0.4.0', distribution: 'https://codeload.github.com/OpenVibers/OpenVibe.SDK/tar.gz/refs/tags/v0.4.0' },
     shared: { state: 'library', public_site: null, release: 'v1.3.0', distribution: 'https://codeload.github.com/OpenVibers/OpenVibe.Shared/tar.gz/refs/tags/v1.3.0', note: 'also served at /shared/* by each site' },
-    contracts: { state: 'library', public_site: null, release: 'v0.29.0', distribution: 'https://codeload.github.com/OpenVibers/OpenVibe.Contracts/tar.gz/refs/tags/v0.29.0', note: 'schemas are also served by this registry at their $id URLs' },
+    contracts: { state: 'library', public_site: null, release: 'v0.30.1', distribution: 'https://codeload.github.com/OpenVibers/OpenVibe.Contracts/tar.gz/refs/tags/v0.30.1', note: 'schemas are also served by this registry at their $id URLs' },
     examples: { state: 'repository', public_site: null, note: 'example apps with CI in OpenVibers/OpenVibe.Examples; not published as a package' },
 
     realtime: { state: 'placeholder', public_site: null },

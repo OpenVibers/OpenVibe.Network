@@ -39,10 +39,10 @@ const POLL_MS = 60 * 1000;
 // Readiness paths of services whose manifest (openvibe-contracts) does not carry `ready` yet. Each
 // answers with openvibe-shared/ready's shape; until a service deploys it, its health path is used
 // and the row says so (basis: 'health').
-const READY_PATHS = { network: '/api/ready', media: '/api/ready', tools: '/api/ready', ai: '/api/ready' };
-// Liveness paths of services whose manifest in the pinned openvibe-contracts has none (AI is a
-// placeholder there but runs on loopback; see ./exposure.js).
-const HEALTH_PATHS = { ai: '/api/health' };
+const READY_PATHS = { network: '/api/ready', media: '/api/ready', tools: '/api/ready' };
+// Liveness paths of services whose manifest in the pinned openvibe-contracts has none (none since
+// 0.30, where AI's manifest carries /api/health and /api/ready).
+const HEALTH_PATHS = {};
 
 /** Row status from a readiness body (openvibe-shared/ready shape, or an older ad-hoc one). */
 function statusFromReady(res, body) {
