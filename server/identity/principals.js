@@ -45,6 +45,10 @@ const DEFAULT_GRANTS = [
     ['tips', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['tips', 'live.tips_delivery.write', 'openvibe.live', []],
     ['live', 'tips.interaction.record', 'openvibe.tips', []],
+    // Wave 7: Live manages its slots' streams, keys and sessions on OpenRe.Stream; OpenRe publishes
+    // session/output events (Live consumes openre.session.* by webhook).
+    ...['openre.stream.read', 'openre.stream.write', 'openre.key.rotate', 'openre.session.read'].map(c => ['live', c, 'openvibe.openre', []]),
+    ['openre', 'events.event.publish', 'openvibe.events', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
     ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
     // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
