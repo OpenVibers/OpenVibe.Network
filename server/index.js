@@ -353,6 +353,11 @@ const requireAuth = require('./auth/session').makeRequireAuth(() => ({ db, publi
 // Serves BOTH the standard JWKS `keys` array (RFC 7517 — Media and other
 // spec-compliant consumers) and the legacy `public_key` PEM shape that the
 // inherited service clients read.
+// Ecosystem registry: services, capabilities, namespaces and contracts from openvibe-contracts, with polled health.
+const ecosystem = require('./registry/ecosystem').createEcosystemRegistry({ issuer: config.jwt.issuer });
+app.use(ecosystem.router());
+ecosystem.start();
+
 app.get('/api/.well-known/jwks', (_req, res) => {
     const out = { public_key: publicKey, algorithm: privateKey === publicKey ? 'HS256' : 'RS256' };
     if (publicKey.includes('BEGIN')) {
