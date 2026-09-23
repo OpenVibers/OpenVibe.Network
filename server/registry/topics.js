@@ -6,10 +6,10 @@
  * service manifests (eventsProduced / eventsConsumed) and the event payload contracts
  * (contracts/events/payloads/<type>.v<N>.json), plus two things Network itself knows:
  *
- *   OBSERVED   types a service publishes today that its manifest (openvibe-contracts 0.30.1) does not
- *              list yet. Live and Media declare no eventsProduced there, although both relay these
- *              through their outboxes to OpenVibe.Events. Each row names the code that emits it, so
- *              the row can be deleted once the manifest lists the type.
+ *   OBSERVED   types a service publishes today that its manifest does not list yet, as
+ *              `{ [service]: { produced: [types], source: 'the code that emits them' } }`. A row is
+ *              deleted once the manifest lists the type. Empty since openvibe-contracts 0.32.0: the
+ *              Live, Media and Network manifests list every type they publish.
  *   Network's own consumer  the topics server/notifications/events-consumer.js subscribes to (its
  *              TOPICS), so the registry cannot disagree with what Network actually consumes.
  *
@@ -18,20 +18,7 @@
  */
 const contracts = require('openvibe-contracts');
 
-const OBSERVED = {
-    live: {
-        produced: ['live.stream.started', 'live.stream.ended'],
-        source: 'OpenVibe.Live server/events/stream-events.js (event_outbox, visibility public, priority important)',
-    },
-    media: {
-        produced: ['media.vod.ready', 'media.vod.failed', 'media.clip.ready', 'media.clip.failed', 'media.object.uploaded', 'media.storage.alert', 'media.storage.recovered'],
-        source: 'OpenVibe.Media server/events.js TYPES (event_outbox, visibility internal)',
-    },
-    network: {
-        produced: ['network.module.updated'],
-        source: 'OpenVibe.Network server/identity/module-events.js (network_event_outbox, visibility internal)',
-    },
-};
+const OBSERVED = {};
 
 const SEGMENT = /^[a-z0-9_]+$/;
 function patternRe(p) {

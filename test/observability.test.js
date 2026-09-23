@@ -44,6 +44,9 @@ const ready = observability.createNetworkReadiness({
     discordService: { isReady: () => discordReady, _getSetting: () => 'configured-token' },
 });
 app.get('/api/ready', ready.handler);
+// The release manifest as server/index.js mounts it: GET /release.json, POST /release-metrics into /metrics.
+const release = require('openvibe-shared/release').createRelease({ service: 'network', root: path.join(__dirname, '..') });
+release.mount(app, { registry: observability.registry });
 const server = http.createServer(app);
 
 (async () => {
@@ -72,8 +75,20 @@ const server = http.createServer(app);
     r = await fetch(`${base}/internal/coins/credit`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer not-a-token' }, body: '{}' });
     assert.strictEqual(r.status, 401);
 
+    // ── Release manifest (ADR-016) and open tabs' update reports ──
+    const rel = await get('/release.json');
+    assert.strictEqual(rel.status, 200);
+    const manifest = JSON.parse(rel.text);
+    assert.deepStrictEqual(require('openvibe-contracts').validate('registry.release-manifest@1', manifest).errors, []);
+    assert.strictEqual(release.validate().valid, true);
+    assert.strictEqual(manifest.metrics_url, '/release-metrics');
+    r = await fetch(`${base}/release-metrics`, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ counts: { applied: { style: 2 }, reloaded: { nonsense: 1 } } }) });
+    assert.strictEqual(r.status, 204);
+
     const m = await get('/metrics');
     assert.strictEqual(m.status, 200);
+    assert.ok(m.text.includes('release_client_updates_total{outcome="applied",reason="style"} 2\n'), m.text);
+    assert.ok(m.text.includes('release_client_updates_total{outcome="reloaded",reason="other"} 1\n'), 'unknown reasons never become labels');
     assert.ok(m.text.includes('network_tokens_issued_total{grant_type="client_credentials"} 2\n'), m.text);
     assert.ok(m.text.includes('network_token_failures_total{grant_type="client_credentials",error="invalid_client"} 1\n'));
     assert.ok(/network_token_failures_total\{grant_type="refresh_token",error="[a-z_]+"\} 1\n/.test(m.text));

@@ -35,14 +35,17 @@ const rel = (contractsVersion, packages) => [200, { service: 'x', release: 'abcd
     assert.strictEqual(driftOf('0.28.0', 'v0.30.1'), 'behind');
     assert.strictEqual(driftOf('0.30.1', 'v0.30.1'), 'current');
 
-    // 2. topics: every produced type, payload contract and consumer; Live and Media from Network's observation.
+    // 2. topics: every produced type, payload contract and consumer; Live and Media from their manifests.
     const built = buildTopics();
     const by = Object.fromEntries(built.topics.map(t => [t.topic, t]));
     const produced = new Set(contracts.services.manifests.flatMap(m => m.eventsProduced || []));
     for (const t of produced) assert.ok(by[t], `${t} is listed`);
     for (const c of contracts.catalog.filter(c => c.schema.startsWith('events/payloads/'))) assert.strictEqual(by[c.id].payload_contract.id, `${c.id}@1`);
-    for (const id of ['live', 'media']) for (const t of OBSERVED[id].produced) {
-        assert.deepStrictEqual(by[t].producers, [{ service: id, declared: (contracts.services.get(id).eventsProduced || []).includes(t) ? 'manifest' : 'observed' }]);
+    for (const id of ['live', 'media']) for (const t of contracts.services.get(id).eventsProduced) {
+        assert.deepStrictEqual(by[t].producers, [{ service: id, declared: 'manifest' }]);
+    }
+    for (const [id, o] of Object.entries(OBSERVED)) for (const t of o.produced) {
+        assert.ok(!(contracts.services.get(id).eventsProduced || []).includes(t), `${id}'s manifest lists ${t}: delete it from OBSERVED`);
     }
     for (const t of TOPICS) assert.ok(by[t].consumers.some(c => c.service === 'network'), `Network consumes ${t}`);
     assert.ok(by['wiki.index_document.upserted'].consumers.some(c => c.service === 'search' && c.pattern === '*.index_document.upserted'), 'a consumer pattern is listed on each topic it matches');
@@ -65,7 +68,7 @@ const rel = (contractsVersion, packages) => [200, { service: 'x', release: 'abcd
     let r = await get('/api/v1/registry/topics');
     assert.ok(r.body.topics.length >= produced.size, 'no longer empty');
     r = await get('/api/v1/registry/topics?producer=live');
-    assert.deepStrictEqual(r.body.topics.map(t => t.topic).sort(), ['live.stream.ended', 'live.stream.started']);
+    assert.deepStrictEqual(r.body.topics.map(t => t.topic).sort(), ['live.release.deployed', 'live.stream.ended', 'live.stream.started']);
     r = await get('/api/v1/registry/topics?consumer=network');
     assert.deepStrictEqual(r.body.topics.map(t => t.topic).sort(), [...TOPICS].sort());
     r = await get('/api/v1/registry/topics?prefix=media.vod.');

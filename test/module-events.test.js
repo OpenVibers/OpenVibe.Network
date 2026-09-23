@@ -2,7 +2,7 @@
 // User modules, Wave 1 item 24 (server/identity/modules.js, module-events.js):
 //   - every change emits network.module.updated in the same transaction (network_event_outbox), with the
 //     owner, namespace, changed keys and revision, never a private value; revisions survive deletes
-//   - chat.preferences is owned by Chat (handoff over the 0.30.x manifest); Live's old write grant narrows
+//   - chat.preferences is owned by Chat (the contracts' owner since 0.32.0); Live's old write grant narrows
 //   - owner-service DELETE; account removal and merge (onSubjectRemoved/onSubjectMerged) with events, and
 //     triggers that refuse deleting or re-keying an account while module rows remain; guest -> account link
 //   - onOwnerRemoved: a retired owner makes its namespace read-only; delete-after-retention sweeps
@@ -80,8 +80,7 @@ const valid = (e) => { const v = contracts.validate('events.event-envelope@1', e
     const chat = { authorization: `Bearer ${chatTok.access_token}` };
     const live = { authorization: `Bearer ${(await svc('live')).access_token}` };
 
-    // ── Handoff: chat.preferences belongs to Chat while the manifest still says live ──
-    assert.strictEqual(contracts.modules.get('chat.preferences').owner, 'live', 'Contracts moved the owner: delete the OWNER_HANDOFFS entry and this line');
+    // ── Ownership: chat.preferences belongs to Chat ──
     assert.strictEqual(modulesLib.ownerOf('chat.preferences'), 'chat');
     assert.strictEqual(modulesLib.ownerOf('chat.tts_defaults'), 'live');
     let r = await call('PUT', `/internal/modules/chat.preferences/${ANN}`, { headers: live, body: { data: { timestamps: true } } });

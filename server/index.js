@@ -681,7 +681,9 @@ function serveShared(req, res, next) {
 app.use('/shared/v1', serveShared);
 app.use('/shared', serveShared);
 
-app.get('/release.json', release.handler);
+// GET /release.json, and POST /release-metrics: open tabs' update outcomes into /metrics
+// (release_client_updates_total, openvibe-shared 1.5.0).
+release.mount(app, { registry: observability.registry });
 
 // Avatar serving
 const avatarDir = path.resolve(config.avatars.path);

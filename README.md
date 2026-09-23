@@ -350,9 +350,14 @@ Google-style account management supporting up to 5 accounts:
   Otherwise it is 200, with `status: "degraded"` when an optional check has failed.
 - `GET /metrics`: Prometheus text for direct loopback callers only. Any proxied request gets a 404,
   and `deploy/nginx` blocks the path too. Besides the HTTP golden signals by route template, it
-  exports process metrics and `release_info`. Network's own counters are
+  exports process metrics, `release_info` and `release_client_updates_total{outcome,reason}` (what
+  open tabs report to `POST /release-metrics`). Network's own counters are
   `network_tokens_issued_total{grant_type}`, `network_token_failures_total{grant_type,error}` and
   `network_principal_token_failures_total{code}`.
+- `GET /release.json` is Network's release manifest (ADR-016, `registry.release-manifest@1`, from
+  `openvibe-shared/release`'s `release.mount`): the deployed commit, the library versions and, since
+  openvibe-contracts 0.32.0, the 1.1.0 fields. No components are declared, so every release still
+  prompts open tabs to reload.
 - `GET /status` is the operator page: server-rendered, no JavaScript needed, `noindex`.
   `GET /api/v1/status` returns the same data as JSON. Each OpenVibe service shows as up, degraded,
   down, not running (placeholder or no runtime) or unknown, with its release, boot time and
@@ -371,9 +376,10 @@ Google-style account management supporting up to 5 accounts:
   consumer pattern and the payload contract; filters `service`, `producer`, `consumer`, `prefix`),
   `/topics/:topic`, `/releases` (each running service's `/release.json` from the same loopback poll,
   with its installed openvibe-contracts/sdk/shared versions and drift against the libraries' current
-  releases), `/health` and `/search?q=`. Live and Media list no `eventsProduced` in openvibe-contracts
-  0.30.1; the registry adds what their code publishes (`server/registry/topics.js` OBSERVED, marked
-  `observed` on the service), and Network's consumed topics come from its own Events consumer.
+  releases), `/health` and `/search?q=`. A type a service's code publishes before its manifest lists
+  it is added from `server/registry/topics.js` OBSERVED (marked `observed` on the service; empty since
+  openvibe-contracts 0.32.0 lists Live's, Media's and Network's), and Network's consumed topics come
+  from its own Events consumer.
   Payload schemas are served at their `$id` (`/contracts/events/payloads/<type>.v1.json`).
 - `node scripts/contracts-drift.js` warns about services that pin an older openvibe-contracts than
   the latest tag, or a tag that was never published (`--dir ~/OpenVibers` for local checkouts,

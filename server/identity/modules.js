@@ -37,14 +37,12 @@ const moduleEvents = require('./module-events');
 const SUBJECT_RE = /^(usr|gst)_[0-9A-HJKMNP-TV-Z]{26}$/;
 
 /**
- * Namespaces whose owner moved before openvibe-contracts caught up. The manifest of chat.preferences
- * (0.30.x) still names live and says it "moves to OpenVibe.Chat in Wave 6"; Chat has served Live's chat
- * since the Wave 6 cutover (2026-09-23). The handoff applies only while the installed manifest still
- * names `from`: once Contracts publishes owner `to` it is a no-op, and the entry can be deleted.
+ * Namespaces whose owner moved before openvibe-contracts caught up: `{ [namespace]: { from, to } }`.
+ * A handoff applies only while the installed manifest still names `from`: once Contracts publishes
+ * owner `to` it is a no-op, and the entry can be deleted. None is pending: chat.preferences, the last
+ * one (live → chat, the Wave 6 cutover), is owned by chat in the contracts since openvibe-contracts 0.32.0.
  */
-const OWNER_HANDOFFS = Object.freeze({
-    'chat.preferences': Object.freeze({ from: 'live', to: 'chat' }),
-});
+const OWNER_HANDOFFS = Object.freeze({});
 
 /** The service that owns a namespace now (the manifest's owner unless a handoff moved it). */
 function ownerOf(namespace) {

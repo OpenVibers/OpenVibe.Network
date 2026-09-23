@@ -22,7 +22,7 @@ const DEFAULT_GRANTS = [
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],
     ['live', 'network.notifications.push', SELF_AUDIENCE, ['live']],
     // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
-    // chat.preferences moved to Chat with the Wave 6 cutover (modules.js OWNER_HANDOFFS); Live keeps reading it.
+    // chat.preferences moved to Chat with the Wave 6 cutover (its owner in the contracts); Live keeps reading it.
     ['live', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile']],
     ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.tts_defaults', 'live.profile']],
     ['chat', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences']],
