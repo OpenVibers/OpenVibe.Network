@@ -44,6 +44,11 @@ const DEFAULT_GRANTS = [
     ['live', 'community.paste.create', 'openvibe.community', []],
     ['live', 'community.paste.write', 'openvibe.community', []],
     ['live', 'community.paste.moderate', 'openvibe.community', []],
+    // Wave 5 remainder: Live comments on its own entities, publishes stream/VOD items to Pulse, and
+    // hides a thread when it takes the entity down.
+    ['live', 'community.comment.write', 'openvibe.community', []],
+    ['live', 'community.comment.moderate', 'openvibe.community', []],
+    ['live', 'community.pulse.write', 'openvibe.community', []],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.

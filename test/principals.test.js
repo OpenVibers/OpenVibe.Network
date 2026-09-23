@@ -111,7 +111,7 @@ const server = http.createServer(app);
     const media = await token({ client_id: 'community', client_secret: 'community-secret', audience: 'openvibe.media' });
     assert.strictEqual(media.body.scope, 'media.object.upload', 'community may upload screenshot bytes to Media');
     const cm = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.community' });
-    assert.deepStrictEqual(cm.body.scope.split(' '), ['community.paste.create', 'community.paste.moderate', 'community.paste.write']);
+    assert.deepStrictEqual(cm.body.scope.split(' '), ['community.comment.moderate', 'community.comment.write', 'community.paste.create', 'community.paste.moderate', 'community.paste.write', 'community.pulse.write']);
 
     // ── Legacy key keeps working ──
     r = await post('/internal/coins/credit', credit(), { 'x-internal-key': 'legacy-key' });
