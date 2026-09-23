@@ -287,10 +287,11 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config) 
             const fiveMinAgo = new Date(Date.now() - 300000).toISOString().slice(0, 19).replace('T', ' ');
             const db = analytics.db;
 
+            // ADR-021: raw events carry no IP; visitors are distinct rotating session ids.
             const realtime = db.prepare(`
                 SELECT
                     COUNT(*) as requests,
-                    COUNT(DISTINCT ip) as visitors,
+                    COUNT(DISTINCT session_id) as visitors,
                     COUNT(*) FILTER (WHERE is_bot = 1) as bots,
                     COUNT(*) FILTER (WHERE event_type = 'pageview') as pageviews,
                     COUNT(*) FILTER (WHERE event_type = 'api_call') as api_calls

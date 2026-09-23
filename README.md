@@ -285,6 +285,35 @@ Google-style account management supporting up to 5 accounts:
 - [docs/patches/live-observability.diff](docs/patches/live-observability.diff) is the same change for
   OpenVibe.Live, to be applied there.
 
+## Analytics (ADR-021)
+
+Network records one row per finished request in the `analytics_*` tables of `network.db` and rolls
+them up hourly and daily for the admin analytics pages (`/api/admin/analytics`, which also gathers
+Live, Tools, Games and Media). What a raw row may carry is bound by ADR-021 (OpenVibe.Contracts
+`docs/adr/ADR-021-analytics.md`). `server/analytics/` holds the same module as OpenVibe.Live
+(`server/analytics/`) and OpenVibe.Tools (`apps/_shared/analytics/`); Network's wiring is
+`server/analytics/network.js`.
+
+- **Stored:** event type, service, **route template** (the matched Express route, else the path
+  without its query and with ids, usernames and tokens replaced by `:id` / `:param`), method, status,
+  response time, a **rotating session id**, country (CDN header), **user-agent class**
+  (`chrome/windows/desktop`, `bot:curl`), referer **origin** only, bot flags, a signed-in flag.
+- **Never stored:** IP address, user or subject id, city, the user-agent string, full referer URLs.
+  The `ip`, `user_id` and `city` columns stay for compatibility and are always NULL. Per-IP counters
+  for the bot rate check live in memory only. Unique visitors come from a daily-salted hash kept only
+  until that day's final rollup. "New vs returning visitors" is no longer measured.
+- **Admin panel:** the bot tables list user-agent classes and high-volume session ids, not IPs.
+- **Connection:** the tracker opens its own connection to `network.db`, so its settings
+  (`busy_timeout` 250, `secure_delete`) never apply to the identity connection.
+- **Retention:** raw events older than 30 days are deleted every night in batches of 5000 (the
+  `analytics-prune` job: first run 5 minutes after boot, then every 24 h). Rollups are kept.
+- **Operator CLI:** `scripts/analytics-prune.js` runs a dry run by default and changes nothing.
+  `--apply` needs `--backup <new file>` (a verified, owner-only copy of all of `network.db`) or an
+  explicit `--no-backup`. `--scrub` also rewrites the rows the old tracker wrote and the rollups'
+  top-path and referer lists. Rollup totals are compared before and after the run. VACUUM rewrites
+  all of `network.db`, so run it with the service stopped, or pass `--no-vacuum` while it is up. Run
+  the CLI as the service user.
+
 ## Shared Client Libraries
 
 The `openvibe-shared` package ([OpenVibers/OpenVibe.Shared](https://github.com/OpenVibers/OpenVibe.Shared), pinned in package.json) provides drop-in vanilla JS components served at `/shared/` (and `/shared/v1/`). Only the package's browser files are served; a `?v=` equal to a file's content hash is cached for a year, anything else for five minutes:
@@ -363,6 +392,8 @@ Accessible to users with `role = 'admin'`. All endpoints under `/api/admin/`.
 | `dev_apps`, `dev_credentials`, `dev_auth_codes` | Developer apps, hashed client secrets, app authorization codes |
 | `dev_grants`, `dev_quotas` | App capability grants; per-project quotas (enforced by the owning service) |
 | `dev_audit` | Append-only developer audit; rows that are platform events carry an event envelope |
+| `analytics_events`, `analytics_hourly`, `analytics_daily` | Request analytics (raw ≤ 30 days) and rollups, within ADR-021; see [Analytics](#analytics-adr-021) |
+| `analytics_visitor_days`, `analytics_day_salts` | The current day's salted visitor hashes and salt, deleted after the day's final rollup |
 
 ---
 

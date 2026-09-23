@@ -25,7 +25,7 @@ const { EmailService } = require('./notifications/email-service');
 const createNotificationRoutes = require('./notifications/routes');
 const createAdminRoutes = require('./admin/routes');
 const createSetupRoutes = require('./setup/routes');
-const { AnalyticsTracker } = require('openvibe-shared/analytics');
+const networkAnalytics = require('./analytics/network'); // ADR-021: no IP/user id, route templates, 30-day raw retention
 const { DiscordService } = require('./discord/discord-service');
 const createDiscordRoutes = require('./discord/routes');
 const createDeployRoutes = require('./deploy/routes');
@@ -310,8 +310,11 @@ app.locals.urlRegistry = resolvedRegistry;
 // Make registry accessible to signToken via config._registry
 config._registry = resolvedRegistry;
 
-// ── Analytics Tracking ────────────────────────────────────────
-const analytics = new AnalyticsTracker(db, 'openvibe-network');
+// ── Analytics Tracking (ADR-021) ──────────────────────────────
+// Same tables in network.db, on a connection of the tracker's own (server/analytics/network.js).
+// Raw rows: route template, rotating session id, user-agent class, referer origin; never an IP or a
+// user id. Pruned after 30 days by the analytics-prune job below; rollups are kept.
+const analytics = networkAnalytics.openAnalytics(config.db.path);
 app.locals.analytics = analytics;
 app.use(analytics.middleware());
 
@@ -705,6 +708,10 @@ app.listen(config.port, config.host, () => {
 
     // Process email queue every 2 minutes
     setInterval(() => emailService.processQueue(notificationService), 2 * 60 * 1000);
+
+    // Raw analytics retention (ADR-021), job analytics-prune: events older than 30 days go, in
+    // bounded batches; hourly/daily rollups stay. First run 5 minutes after boot, then every 24 h.
+    networkAnalytics.schedulePrune(analytics);
 
     // Clean expired sessions daily
     setInterval(() => {

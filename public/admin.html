@@ -3186,8 +3186,9 @@ async function loadServiceAnalytics(serviceName) {
             { icon: 'fa-circle-exclamation', label: 'Errors', value: fmtNum(s.total_errors) },
             { icon: 'fa-gauge-high', label: 'Avg Response', value: (s.avg_response_ms || 0) + 'ms' },
             { icon: 'fa-arrow-up-from-bracket', label: 'Est. Bandwidth', value: fmtBytes(bw.estimated_bytes) },
-            { icon: 'fa-user-plus', label: 'New Visitors', value: fmtNum(vis.new_visitors) },
-        ].map(s => `<div class="stat-card"><div class="value">${s.value}</div><div class="label"><i class="fa-solid ${s.icon}"></i> ${s.label}</div></div>`).join('');
+            // New vs returning needs a visitor identity that outlives a day; ADR-021 analytics keeps none.
+            vis.new_visitors != null ? { icon: 'fa-user-plus', label: 'New Visitors', value: fmtNum(vis.new_visitors) } : null,
+        ].filter(Boolean).map(s => `<div class="stat-card"><div class="value">${s.value}</div><div class="label"><i class="fa-solid ${s.icon}"></i> ${s.label}</div></div>`).join('');
 
         // For sub-day ranges, use timeBuckets for the "daily" chart
         const isSubDay = period.hours && period.hours < 24;
@@ -3322,7 +3323,9 @@ async function loadServiceAnalytics(serviceName) {
                 <div><strong style="color:var(--info)">${fmtNum(bw.page_requests)}</strong><br><span class="muted">Page Loads</span></div>
                 <div><strong style="color:var(--info)">${fmtNum(bw.api_requests)}</strong><br><span class="muted">API Requests</span></div>
                 <div><strong style="color:var(--success)">${fmtNum(a.sessionCount || 0)}</strong><br><span class="muted">Sessions</span></div>
-                <div><strong style="color:var(--success)">${fmtNum(vis.new_visitors || 0)}</strong> new / <strong>${fmtNum(vis.returning_visitors || 0)}</strong> returning<br><span class="muted">Visitors</span></div>
+                ${vis.new_visitors != null
+                    ? `<div><strong style="color:var(--success)">${fmtNum(vis.new_visitors)}</strong> new / <strong>${fmtNum(vis.returning_visitors)}</strong> returning<br><span class="muted">Visitors</span></div>`
+                    : '<div><strong class="muted">Not measured</strong><br><span class="muted" title="ADR-021: no visitor identity outlives a day">New / returning</span></div>'}
             </div>`;
 
         // Auth vs anonymous chart
@@ -3438,30 +3441,31 @@ async function loadBotAnalysis() {
             const types = svcBots.botTypes || [];
             if (types.length) {
                 html += `<h4 style="font-size:12px;color:var(--text-muted);margin:12px 0 8px">Bot Types</h4>
-                    <table class="admin-table"><thead><tr><th>Type</th><th>Hits</th><th>Unique IPs</th></tr></thead>
-                    <tbody>${types.map(t => `<tr><td><span class="badge badge-danger">${esc(t.bot_type || 'unknown')}</span></td><td>${fmtNum(t.hits)}</td><td>${fmtNum(t.unique_ips)}</td></tr>`).join('')}</tbody></table>`;
+                    <table class="admin-table"><thead><tr><th>Type</th><th>Hits</th><th>Sessions</th></tr></thead>
+                    <tbody>${types.map(t => `<tr><td><span class="badge badge-danger">${esc(t.bot_type || 'unknown')}</span></td><td>${fmtNum(t.hits)}</td><td>${t.unique_sessions != null ? fmtNum(t.unique_sessions) : '-'}</td></tr>`).join('')}</tbody></table>`;
             }
 
-            // Top bot IPs
-            const topIPs = svcBots.topBotIPs || [];
-            if (topIPs.length) {
-                html += `<h4 style="font-size:12px;color:var(--text-muted);margin:12px 0 8px">Top Bot IPs</h4>
-                    <table class="admin-table"><thead><tr><th>IP</th><th>Hits</th><th>Type</th><th>First Seen</th><th>Last Seen</th></tr></thead>
-                    <tbody>${topIPs.slice(0, 15).map(ip => `
-                        <tr><td style="font-family:monospace;font-size:11px">${esc(ip.ip)}</td><td>${fmtNum(ip.hits)}</td>
-                        <td><span class="badge badge-warning">${esc(ip.bot_type || '?')}</span></td>
-                        <td style="font-size:11px">${ip.first_seen ? timeAgo(ip.first_seen) : '-'}</td>
-                        <td style="font-size:11px">${ip.last_seen ? timeAgo(ip.last_seen) : '-'}</td></tr>
+            // Top bots by user-agent class (ADR-021: analytics stores no IP addresses)
+            const topBots = svcBots.topBotIPs || [];
+            if (topBots.length) {
+                html += `<h4 style="font-size:12px;color:var(--text-muted);margin:12px 0 8px">Top Bots (user-agent class)</h4>
+                    <table class="admin-table"><thead><tr><th>User-agent class</th><th>Hits</th><th>Sessions</th><th>Type</th><th>First Seen</th><th>Last Seen</th></tr></thead>
+                    <tbody>${topBots.slice(0, 15).map(b => `
+                        <tr><td style="font-family:monospace;font-size:11px">${esc(b.ua_class || '-')}</td><td>${fmtNum(b.hits)}</td>
+                        <td>${b.sessions != null ? fmtNum(b.sessions) : '-'}</td>
+                        <td><span class="badge badge-warning">${esc(b.bot_type || '?')}</span></td>
+                        <td style="font-size:11px">${b.first_seen ? timeAgo(b.first_seen) : '-'}</td>
+                        <td style="font-size:11px">${b.last_seen ? timeAgo(b.last_seen) : '-'}</td></tr>
                     `).join('')}</tbody></table>`;
             }
 
-            // Suspicious human IPs  
+            // High-volume sessions classified as human (rotating session ids, never an IP or user id)
             const suspicious = svcBots.suspiciousIPs || [];
             if (suspicious.length) {
-                html += `<h4 style="font-size:12px;color:var(--text-muted);margin:12px 0 8px">Suspicious IPs (high volume, classified as human)</h4>
-                    <table class="admin-table"><thead><tr><th>IP</th><th>Total Hits</th><th>Errors</th><th>Unique Paths</th><th>Period</th></tr></thead>
+                html += `<h4 style="font-size:12px;color:var(--text-muted);margin:12px 0 8px">Suspicious Sessions (high volume, classified as human)</h4>
+                    <table class="admin-table"><thead><tr><th>Session</th><th>Total Hits</th><th>Errors</th><th>Unique Paths</th><th>Period</th></tr></thead>
                     <tbody>${suspicious.map(s => `
-                        <tr><td style="font-family:monospace;font-size:11px">${esc(s.ip)}</td><td>${fmtNum(s.total_hits)}</td>
+                        <tr><td style="font-family:monospace;font-size:11px">${esc(s.session_id || '-')}</td><td>${fmtNum(s.total_hits)}</td>
                         <td style="color:var(--danger)">${fmtNum(s.error_hits)}</td><td>${fmtNum(s.unique_paths)}</td>
                         <td style="font-size:11px">${s.first_seen ? timeAgo(s.first_seen) : '-'} — ${s.last_seen ? timeAgo(s.last_seen) : '-'}</td></tr>
                     `).join('')}</tbody></table>`;
