@@ -71,6 +71,9 @@ const valid = (e) => { const v = contracts.validate('events.event-envelope@1', e
     assert.deepStrictEqual(grant('chat', 'network.modules.write'), ['chat.preferences']);
     assert.deepStrictEqual(grant('live', 'network.modules.write'), ['chat.tts_defaults', 'live.profile'], 'the old default narrows at boot');
     assert.ok(grant('live', 'network.modules.read').includes('chat.preferences'), 'Live keeps reading it');
+    // Chat manages its own Events subscriptions (live.release.deployed, network.module.updated).
+    const chatEvents = await fetch(`${base}/oauth/token`, { method: 'POST', body: new URLSearchParams({ grant_type: 'client_credentials', client_id: 'chat', client_secret: 'chat-secret', audience: 'openvibe.events', scope: 'events.subscription.manage' }) }).then(r => r.json());
+    assert.strictEqual(chatEvents.scope, 'events.subscription.manage', JSON.stringify(chatEvents));
     const chatTok = await svc('chat');
     const claims = JSON.parse(Buffer.from(chatTok.access_token.split('.')[1], 'base64url').toString());
     assert.deepStrictEqual(claims.ns, ['chat.preferences']);

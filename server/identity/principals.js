@@ -137,6 +137,9 @@ const DEFAULT_GRANTS = [
     ['chat', 'live.chat_context.read', 'openvibe.live', []],
     ['chat', 'live.chat_effects.write', 'openvibe.live', []],
     ['chat', 'live.chat_mirror.write', 'openvibe.live', []],
+    // Chat consumes live.release.deployed (the deploy card, register C-84) and network.module.updated
+    // (its chat.preferences cache) through its own Events subscriptions, created at Chat's boot.
+    ['chat', 'events.subscription.manage', 'openvibe.events', []],
     ['live', 'chat.live_bridge.write', 'openvibe.chat', []],
     ['live', 'chat.presence.read', 'openvibe.chat', []],
     ['live', 'chat.message.send', 'openvibe.chat', []],
