@@ -42,12 +42,9 @@ const server = http.createServer(app);
 const userToken = (id) => jwt.sign({ sub: id, id }, keys.privateKey, { algorithm: 'RS256', issuer: ISSUER, expiresIn: '1h' });
 const T = { owner: userToken(10), dev: userToken(11), staff: userToken(14) };
 
-// The three app-scoped Events capabilities as openvibe-contracts v0.27.0 defines them. v0.26.0 (installed)
-// does not know them yet; withV027() adds them to the loaded catalog for the duration of fn.
-const EVENTS_APP = ['events.app.publish', 'events.app.read', 'events.app.subscribe'].map(id => ({
-    id, version: '1.0', owner: 'events', status: 'active', visibility: 'public', description: `${id} (test copy of the v0.27.0 manifest)`,
-    permissions: ['events:app'], resourceConstraints: ['owner'], quotaClass: 'events-app', events: [], implementedBy: [],
-}));
+// The three app-scoped Events capabilities (openvibe-contracts >= 0.28.0, installed). withoutCatalog()
+// hides them, to show what a release that does not define them does.
+const EVENTS_APP_IDS = ['events.app.publish', 'events.app.read', 'events.app.subscribe'];
 const PARTNER = { id: 'media.partner.test', version: '1.0', owner: 'media', status: 'active', visibility: 'partner', description: 'test', permissions: [], resourceConstraints: [], events: [], implementedBy: [] };
 async function withCatalog(extra, fn) {
     const caps = contracts.capabilities;
@@ -57,14 +54,22 @@ async function withCatalog(extra, fn) {
     caps.manifests = [...origManifests, ...extra];
     try { return await fn(); } finally { caps.get = origGet; caps.manifests = origManifests; }
 }
+async function withoutCatalog(hidden, fn) {
+    const caps = contracts.capabilities;
+    const origGet = caps.get;
+    const origManifests = caps.manifests;
+    caps.get = (id) => (hidden.includes(id) ? undefined : origGet.call(caps, id));
+    caps.manifests = origManifests.filter(c => !hidden.includes(c.id));
+    try { return await fn(); } finally { caps.get = origGet; caps.manifests = origManifests; }
+}
 
 (async () => {
     // ── Settings: defaults, env overrides, and the public-only rule ──
     let s = policy.settings({});
     assert.deepStrictEqual([...s.sandboxAudiences].sort(), ['openvibe.events', 'openvibe.media', 'openvibe.tools']);
     assert.ok(!s.sandboxAudiences.has('openvibe.network'), 'Network itself never defaults to accepting sandbox tokens');
-    assert.deepStrictEqual(s.sandboxAllowance, ['media.object.read', 'media.object.upload', 'tools.job.cancel', 'tools.job.create', 'tools.job.read'],
-        'events.app.* are silently left out while the installed contracts do not define them');
+    assert.deepStrictEqual(s.sandboxAllowance, ['events.app.publish', 'events.app.read', 'events.app.subscribe',
+        'media.object.read', 'media.object.upload', 'tools.job.cancel', 'tools.job.create', 'tools.job.read'], 'the default sandbox allowance');
     assert.deepStrictEqual(policy.DEFAULT_SANDBOX_ALLOWANCE.filter(id => id.startsWith('events.')), ['events.app.publish', 'events.app.read', 'events.app.subscribe']);
     s = policy.settings({ developer: { sandboxAudiences: '', sandboxAllowance: '' } });
     assert.strictEqual(s.sandboxAudiences.size, 0, 'set-but-empty means none');
@@ -77,9 +82,9 @@ async function withCatalog(extra, fn) {
         assert.deepStrictEqual(policy.settings({ developer: { sandboxAllowance: 'media.partner.test,media.object.read' } }).sandboxAllowance, ['media.object.read'],
             'partner capabilities never come from the sandbox allowance');
     });
-    await withCatalog(EVENTS_APP, () => {
-        assert.deepStrictEqual(policy.settings({}).sandboxAllowance.filter(id => id.startsWith('events.')), ['events.app.publish', 'events.app.read', 'events.app.subscribe'],
-            'with contracts v0.27.0 the app-scoped Events capabilities are in the default sandbox allowance');
+    await withoutCatalog(EVENTS_APP_IDS, () => {
+        assert.deepStrictEqual(policy.settings({}).sandboxAllowance.filter(id => id.startsWith('events.')), [],
+            'capabilities the installed contracts do not define are silently left out');
     });
 
     await new Promise(r => server.listen(0, '127.0.0.1', r));
@@ -172,8 +177,8 @@ async function withCatalog(extra, fn) {
     assert.ok(r.body.trimmed.some(x => x.app_id === C && x.capability === 'media.object.upload'));
     assert.ok(!r.body.trimmed.some(x => x.app_id === A && x.capability === 'media.object.upload'));
 
-    // ── contracts v0.27.0: events.app.* in sandbox without staff ──
-    await withCatalog(EVENTS_APP, async () => {
+    // ── events.app.* in sandbox without staff ──
+    {
         for (const c of ['events.app.publish', 'events.app.read', 'events.app.subscribe']) {
             r = await api('owner', 'POST', `/${P}/apps/${A}/grants`, { capability: c });
             assert.strictEqual(r.status, 201, r.text);
@@ -187,10 +192,12 @@ async function withCatalog(extra, fn) {
         assert.strictEqual(v.claims.env, 'sandbox');
         r = await api('owner', 'POST', `/${P}/apps/${C}/grants`, { capability: 'events.app.publish' });
         assert.strictEqual(r.body.status, 'requested', 'production still needs staff');
+    }
+    // Without the capabilities in the catalog they fall out of tokens again (grantability is re-checked).
+    await withoutCatalog(EVENTS_APP_IDS, async () => {
+        t = await cc(A, secret, 'openvibe.events');
+        assert.strictEqual(t.body.error, 'invalid_scope');
     });
-    // Back on v0.26.0 the unknown capabilities fall out of tokens again (grantability is re-checked).
-    t = await cc(A, secret, 'openvibe.events');
-    assert.strictEqual(t.body.error, 'invalid_scope');
 
     // ── Relay off: nothing is sent ──
     assert.strictEqual(relay.startRelay(db, { eventsUrl: '', privateKey: keys.privateKey, issuer: ISSUER, fetch: () => { throw new Error('no fetch when off'); } }), null);

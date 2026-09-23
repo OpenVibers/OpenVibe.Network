@@ -72,8 +72,8 @@ const rel = (release) => [200, { service: 'x', release, released_at: '2026-09-22
     assert.ok(by.tools.release_error);
     assert.strictEqual(by.events.basis, 'ready-legacy');
     assert.strictEqual(by.live.status, 'down', 'unreachable is down');
-    assert.strictEqual(by.codes.status, 'not-running');
-    assert.strictEqual(by.codes.label, 'not running (placeholder)');
+    assert.strictEqual(by.realtime.status, 'not-running');
+    assert.strictEqual(by.realtime.label, 'not running (placeholder)');
     assert.strictEqual(by.contracts.status, 'not-running');
     assert.strictEqual(by.contracts.label, 'not running (no runtime)');
     for (const s of r.body.services) assert.ok(s.checked_at, `${s.id} says when it was checked`);
@@ -106,7 +106,7 @@ const rel = (release) => [200, { service: 'x', release, released_at: '2026-09-22
     assert.ok(html.includes('<meta name="robots" content="noindex, nofollow">'));
     assert.ok(html.includes('id="svc-media"') && /id="svc-media"[\s\S]*?Degraded/.test(html));
     assert.ok(/id="svc-community"[\s\S]*?Down[\s\S]*?SQLITE_CANTOPEN/.test(html));
-    assert.ok(/id="svc-codes"[\s\S]*?not running \(placeholder\)/.test(html));
+    assert.ok(/id="svc-realtime"[\s\S]*?not running \(placeholder\)/.test(html));
     assert.ok(/id="svc-tools"[\s\S]*?liveness only/.test(html));
     assert.ok(html.includes('<noscript>'), 'navigation without JavaScript');
     assert.ok(html.includes('SLO categories (proposals)'));
