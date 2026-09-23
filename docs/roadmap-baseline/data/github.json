@@ -1,0 +1,456 @@
+{
+  "owner": "OpenVibers",
+  "collectedAt": "2026-09-22T23:36:12.720Z",
+  "repos": [
+    {
+      "description": "AlexFrison.net",
+      "diskUsage": 23272,
+      "isArchived": false,
+      "name": "AFResume",
+      "pushedAt": "2026-09-21T17:05:17Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": null
+    },
+    {
+      "description": "Simulator.Rest - The most realistic break room simulator to ever exist",
+      "diskUsage": 2517,
+      "isArchived": false,
+      "name": "BreakRoomSimulator",
+      "pushedAt": "2026-09-21T17:05:22Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": null
+    },
+    {
+      "description": "Ingest and restream: stream definitions, keys, sessions, transport workers, outputs and output health.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenRe.Stream",
+      "pushedAt": "2026-09-21T17:05:26Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenRe.Stream",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "Providers, models, routing, prompt templates, workflows, runs, citations, cache and quotas for every product.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.AI",
+      "pushedAt": "2026-09-21T17:05:29Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.AI",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "The isolated money ledger: providers, receipts, subscriptions, entitlements, refunds and payouts.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Billing",
+      "pushedAt": "2026-09-21T17:05:33Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Billing",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "The official OpenVibe blog and a blog for every member: drafts, revisions, series, scheduling, feeds.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Blog",
+      "pushedAt": "2026-09-21T17:05:36Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Blog",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "Rooms, messages, DMs, calls, TTS and audio queues, moderation and presence — one identity, every conversation.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Chat",
+      "pushedAt": "2026-09-21T17:05:40Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Chat",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "The developer portal: registry and contract explorers, credentials, playgrounds, examples, mod/app publishing, governance.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Codes",
+      "pushedAt": "2026-09-21T17:05:43Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Codes",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "",
+      "diskUsage": 689,
+      "isArchived": false,
+      "name": "OpenVibe.Community",
+      "pushedAt": "2026-09-22T23:32:06Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": null
+    },
+    {
+      "description": "Machine-readable contracts for the whole OpenVibe network.",
+      "diskUsage": 89,
+      "isArchived": false,
+      "name": "OpenVibe.Contracts",
+      "pushedAt": "2026-09-22T23:07:34Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Contracts",
+        "stage": "alpha",
+        "code": true,
+        "wave": "W1",
+        "dependsOn": [
+          "OpenVibe.Network"
+        ],
+        "plan": "OpenVibe Development Roadmap (combined), Wave 1; implementation plan rev 3 section 3.1",
+        "updated": "2026-09-22"
+      }
+    },
+    {
+      "description": "Coupon codes with merchant matching, restrictions, expiry and real-people validity reports.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Coupons",
+      "pushedAt": "2026-09-21T17:05:53Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Coupons",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "Deals submitted and voted on by the community, with source, price and freshness always shown.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Deals",
+      "pushedAt": "2026-09-21T17:05:57Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Deals",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "Durable events, subscriptions, delivery, retry, dead letters and replay for the network.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Events",
+      "pushedAt": "2026-09-21T17:06:00Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Events",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "Executable public integration examples, tested in CI against the platform.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Examples",
+      "pushedAt": "2026-09-21T17:06:04Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Examples",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "",
+      "diskUsage": 4675,
+      "isArchived": false,
+      "name": "OpenVibe.Games",
+      "pushedAt": "2026-09-21T17:06:08Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": null
+    },
+    {
+      "description": "The network's deployment/control plane first; then isolated hosting for community sites, bots and mods.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Host",
+      "pushedAt": "2026-09-21T17:06:12Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Host",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "",
+      "diskUsage": 6507,
+      "isArchived": false,
+      "name": "OpenVibe.Live",
+      "pushedAt": "2026-09-22T23:28:24Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": null
+    },
+    {
+      "description": "",
+      "diskUsage": 847,
+      "isArchived": false,
+      "name": "OpenVibe.Media",
+      "pushedAt": "2026-09-22T23:14:07Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": null
+    },
+    {
+      "description": "",
+      "diskUsage": 1306,
+      "isArchived": false,
+      "name": "OpenVibe.Network",
+      "pushedAt": "2026-09-22T23:11:39Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": null
+    },
+    {
+      "description": "Source-backed stories: clustered coverage, cited summaries, perspectives and timelines.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.News",
+      "pushedAt": "2026-09-21T17:06:29Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.News",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "Browser delivery plane for events: authorised WS/SSE topics with cursors, resume and presence.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Realtime",
+      "pushedAt": "2026-09-21T17:06:32Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Realtime",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "Review signals gathered across sources with provenance, entity resolution and honest aggregates.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Reviews",
+      "pushedAt": "2026-09-21T17:06:35Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Reviews",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "Supported browser and server clients for the OpenVibe platform.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.SDK",
+      "pushedAt": "2026-09-21T17:06:39Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.SDK",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "Versioned UI, chrome, SEO, legal and release-client packages every OpenVibe site renders.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Shared",
+      "pushedAt": "2026-09-21T17:06:42Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Shared",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "Static front pages for OpenVibe domains that are not full apps yet",
+      "diskUsage": 271,
+      "isArchived": false,
+      "name": "OpenVibe.Sites",
+      "pushedAt": "2026-09-21T17:06:45Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": null
+    },
+    {
+      "description": "Creator support: tips, goals, paid messages, TTS and media requests, overlays.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Tips",
+      "pushedAt": "2026-09-21T17:06:48Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Tips",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "",
+      "diskUsage": 1416,
+      "isArchived": false,
+      "name": "OpenVibe.Tools",
+      "pushedAt": "2026-09-21T17:06:52Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": null
+    },
+    {
+      "description": "Informational watchlists, sourced market context and alerts. No custody, no order execution.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Trade",
+      "pushedAt": "2026-09-21T17:06:56Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Trade",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "Memberships: plans, perks and benefits recognised across every OpenVibe site.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.VIP",
+      "pushedAt": "2026-09-21T17:06:59Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.VIP",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "Wiki spaces with page trees, revisions, citations, media and discussion — editable together, source-backed.",
+      "diskUsage": 13,
+      "isArchived": false,
+      "name": "OpenVibe.Wiki",
+      "pushedAt": "2026-09-21T17:07:02Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Wiki",
+        "stage": "placeholder",
+        "code": false,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "updated": "2026-09-21"
+      }
+    },
+    {
+      "description": "",
+      "diskUsage": 200,
+      "isArchived": false,
+      "name": "powerchat-devapp-demo",
+      "pushedAt": "2026-09-21T17:07:06Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": null
+    },
+    {
+      "description": "OpenVibe: Source Game",
+      "diskUsage": 20385,
+      "isArchived": false,
+      "name": "Source.OpenVibe.Games",
+      "pushedAt": "2026-09-21T17:07:12Z",
+      "visibility": "PUBLIC",
+      "defaultBranch": "main",
+      "status": null
+    }
+  ]
+}

@@ -6,3 +6,6 @@ dist/
 *.db-wal
 *.db-shm
 *.log
+
+# Wave 0 baseline inputs are hand-maintained source files, not runtime data.
+!docs/roadmap-baseline/data/

@@ -1,0 +1,304 @@
+{
+  "_about": "Table -> target authority classification (roadmap sections 14.1 and 16). First matching rule wins, per repo. 'keep' means the table stays with its current repo. A table no rule matches is reported as UNCLASSIFIED and fails the Wave 0 exit criterion. Rules with repo 'prod-only' apply to tables found only in production and may name the database file ('db').",
+  "_dispositions": {
+    "keep": "stays with the current owner",
+    "extract": "authority moves to the target service in the named wave; current repo keeps a projection or adapter",
+    "frozen-legacy": "read-only; already superseded, kept for cutover/migration only (never written)",
+    "migrate-then-drop": "data migrates to the target, then the table is removed",
+    "investigate": "no clear owner yet; needs a decision"
+  },
+  "rules": [
+    {
+      "repo": "*",
+      "match": "^analytics_(events|hourly|daily|rate_tracking)$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "Track O / ADR-021",
+      "note": "Per-site analytics from openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+    },
+    {
+      "repo": "*",
+      "match": "^(schema_migrations|app_state|site_settings)$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Service-local config/bookkeeping."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(vods|clips)$",
+      "target": "OpenVibe.Media",
+      "disposition": "frozen-legacy",
+      "wave": "W4",
+      "note": "Frozen for the Media cutover (AGENTS.md: never write)."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(vod_ai_state|clip_ai_state)$",
+      "target": "OpenVibe.AI",
+      "disposition": "extract",
+      "wave": "W13",
+      "note": "Live-owned AI state for Media-hosted content."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(pastes|paste_comments|paste_likes)$",
+      "target": "OpenVibe.Community",
+      "disposition": "frozen-legacy",
+      "wave": "W5",
+      "note": "Frozen; Community must own paste semantics."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^comments$",
+      "target": "OpenVibe.Community",
+      "disposition": "extract",
+      "wave": "W5",
+      "note": "Typed reusable comment threads."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(chat_messages|chat_messages_new|chat_timeline_events|chat_ai_summaries|stream_first_chats|dm_\\w+|tts_voice_overrides|emotes|emotes_new|channel_sounds|channel_sounds_new|media_requests|media_request_settings|moderation_actions|channel_moderators|channel_moderation_settings|user_tags|hidden_relay_users|relay_users|pending_ip_messages)$",
+      "target": "OpenVibe.Chat",
+      "disposition": "extract",
+      "wave": "W6",
+      "note": "Rooms, messages, DMs, TTS/audio queues, chat moderation."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(ai_\\w+|channel_ai_bots|channel_ai_config|stream_memories|stream_recaps|streamer_overviews|translations|easter_egg_solves)$",
+      "target": "OpenVibe.AI",
+      "disposition": "extract",
+      "wave": "W13",
+      "note": "AI runs, caches and derived artifacts; products keep the published projections."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(managed_streams|restream_destinations|robotstreamer_integrations|robotstreamer_integrations_new|platform_connections|kick_channel_cache|stream_controls|stream_controls_new|control_configs|control_config_buttons|control_whitelist|cameras|camera_presets|camera_profiles)$",
+      "target": "OpenRe.Stream",
+      "disposition": "extract",
+      "wave": "W7",
+      "note": "Stream definitions/keys, outputs, restream and control presets. managed_streams.stream_key rotation is open (hazard H4)."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(transactions|payment_orders)$",
+      "target": "OpenVibe.Billing",
+      "disposition": "extract",
+      "wave": "W8 (after ADR-012)",
+      "note": "Real-money Vibes/PayPal records."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^subscriptions$",
+      "target": "OpenVibe.Billing + OpenVibe.VIP",
+      "disposition": "extract",
+      "wave": "W8/W10",
+      "note": "Billing owns the contract/entitlement, VIP the plan/perk UX."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^donation_goals$",
+      "target": "OpenVibe.Tips",
+      "disposition": "extract",
+      "wave": "W9",
+      "note": ""
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(coin_transactions|coin_rewards|coin_redemptions|channel_points|user_cosmetics|user_equipped|user_equipped_tag)$",
+      "target": "OpenVibe.Billing (loyalty ledger)",
+      "disposition": "extract",
+      "wave": "W8 (after ADR-012)",
+      "note": "Loyalty/progression, never money. Classification blocks migration."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(users|linked_accounts|verification_keys|user_preferences|user_themes|themes)$",
+      "target": "OpenVibe.Network",
+      "disposition": "extract",
+      "wave": "W1",
+      "note": "Identity truth moves to Network subjects; Live keeps a subject projection + channel state."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^follows$",
+      "target": "OpenVibe.Network",
+      "disposition": "extract",
+      "wave": "W1",
+      "note": "Social graph consolidates in Network."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(api_keys|api_tokens)$",
+      "target": "OpenVibe.Network (principals) / OpenVibe.Codes",
+      "disposition": "extract",
+      "wave": "W1/W20",
+      "note": "hbt_ tokens become scoped principals; raw secrets are never migrated."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(bans|ip_log|anon_ip_mappings|approved_ips|vpn_approvals)$",
+      "target": "OpenVibe.Network (policy)",
+      "disposition": "extract",
+      "wave": "W1",
+      "note": "Platform bans/abuse policy vs product moderation. Admin IP-ban exemption must survive."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(vibe_coding_sessions|vibe_coding_events)$",
+      "target": "OpenVibe.Codes",
+      "disposition": "extract",
+      "wave": "W20",
+      "note": "Scoped vibe-coding publication (roadmap 15.5)."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^game_\\w+$",
+      "target": "OpenVibe.Games",
+      "disposition": "migrate-then-drop",
+      "wave": "W12",
+      "note": "Legacy HoboQuest state (progression, bank, farming, dungeons, quests). /api/game already returns 410."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(powerchat_connections|powerchat_webhook_deliveries)$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W3 (deliveries -> Events)",
+      "note": "External PowerChat integration."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(arena_\\w+|tag_guardian_defeats)$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Live product feature."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(channels|streams|stream_analytics|stream_timeline_events|viewer_snapshots|viewer_samples|watch_time|content_views|news_settings)$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Live product data and read models."
+    },
+    {
+      "repo": "OpenVibe.Network",
+      "match": "^(wallets|coin_transactions)$",
+      "target": "OpenVibe.Billing (loyalty ledger)",
+      "disposition": "extract",
+      "wave": "W8 (after ADR-012)",
+      "note": "OpenCoins are earned loyalty, not money."
+    },
+    {
+      "repo": "OpenVibe.Network",
+      "match": "^stream_live_announcements$",
+      "target": "OpenVibe.Events",
+      "disposition": "extract",
+      "wave": "W3",
+      "note": "Go-live fanout rate state; durable delivery moves to Events."
+    },
+    {
+      "repo": "OpenVibe.Network",
+      "match": "^(email_delivery_log|push_subscriptions)$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W3 (delivery -> Events outbox)",
+      "note": "ADR-020: Network keeps addressing/authority."
+    },
+    {
+      "repo": "OpenVibe.Network",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W1 (module split)",
+      "note": "Identity, sessions, OAuth, themes, notifications, registry, chrome, audit, admin."
+    },
+    {
+      "repo": "OpenVibe.Media",
+      "match": "^(pastes|paste_comments|paste_likes)$",
+      "target": "OpenVibe.Community",
+      "disposition": "frozen-legacy",
+      "wave": "W5 (done 2026-09-22)",
+      "note": "Community is the paste authority since 2026-09-22; Media answers 410 to paste writes (PASTES_FROZEN_APPS=live) and 301s /p/:slug to Community. Screenshot bytes stay here."
+    },
+    {
+      "repo": "OpenVibe.Media",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W4 (object model)",
+      "note": "Becomes projections over media_objects/media_locations."
+    },
+    {
+      "repo": "OpenVibe.Games",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W12",
+      "note": "Authoritative game state."
+    },
+    {
+      "repo": "OpenVibe.Tools",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": ""
+    },
+    {
+      "repo": "OpenVibe.Community",
+      "match": ".*",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W5",
+      "note": ""
+    },
+    {
+      "repo": "prod-only",
+      "db": "rs-companion.db",
+      "match": ".*",
+      "target": "OpenVibe.Games (import source)",
+      "disposition": "frozen-legacy",
+      "wave": "W12",
+      "note": "RobotStreamer companion game DB (unmodified since Mar 2026); read only by scripts/migrate-rs-companion.js."
+    },
+    {
+      "repo": "prod-only",
+      "db": "live.db",
+      "match": "^canvas_",
+      "target": "OpenVibe.Games",
+      "disposition": "frozen-legacy",
+      "wave": "W12",
+      "note": "Collaborative canvas state (roadmap 14.4); Live code removed in 8fa04cc, data still in live.db."
+    },
+    {
+      "repo": "prod-only",
+      "db": "live.db",
+      "match": "^(arena_\\w+|chatter_\\w+)$",
+      "target": "archive then drop",
+      "disposition": "investigate",
+      "wave": "W0",
+      "note": "Left behind by the Arena v1/v2 -> v3 rewrite (4ea1a7c); no code reads them."
+    },
+    {
+      "repo": "prod-only",
+      "db": "live.db",
+      "match": "^promo_claims$",
+      "target": "archive then drop",
+      "disposition": "investigate",
+      "wave": "W0",
+      "note": "RobotStreamer promo cashout ledger; campaign removed in a4c8aea and must not be rebuilt. May hold payout records: archive before dropping."
+    },
+    {
+      "repo": "prod-only",
+      "match": ".*",
+      "target": "?",
+      "disposition": "investigate",
+      "wave": "W0",
+      "note": "Exists in a production database but no CREATE TABLE in the repo."
+    }
+  ]
+}
