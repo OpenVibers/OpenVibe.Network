@@ -590,6 +590,7 @@ function initDb(dbPath) {
             { client_id: 'openre', name: 'OpenRe.Stream', redirect_uris: ['https://openre.stream/auth/callback'] },
             { client_id: 'reviews', name: 'OpenVibe.Reviews', redirect_uris: ['https://openvibe.reviews/auth/callback'] },
             { client_id: 'news', name: 'OpenVibe.News', redirect_uris: ['https://openvibe.news/auth/callback'] },
+            { client_id: 'trade', name: 'OpenVibe.Trade', redirect_uris: ['https://openvibe.trade/auth/callback'] },
             // Billing's staff console (Wave 8): Network admins listed in BILLING_STAFF_SUBJECTS.
             { client_id: 'billing', name: 'OpenVibe.Billing', redirect_uris: ['https://billing.openvibe.network/auth/callback'] },
         ];

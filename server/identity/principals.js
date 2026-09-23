@@ -79,6 +79,10 @@ const DEFAULT_GRANTS = [
     ['news', 'events.event.publish', 'openvibe.events', []],
     ['news', 'events.subscription.manage', 'openvibe.events', []],
     ['news', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    // Wave 19: Trade (informational) reads Sources filings and publishes events.
+    ['trade', 'events.event.publish', 'openvibe.events', []],
+    ['trade', 'sources.item.read', 'openvibe.sources', []],
+    ['trade', 'sources.source.read', 'openvibe.sources', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
     ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
     // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
