@@ -30,7 +30,7 @@ function requireInternalKey(req, res, next) {
     return res.status(403).json({ error: 'Invalid or missing internal key' });
 }
 const principals = require('../identity/principals');
-const TOKEN_ROUTES = new Set(['GET /identity/resolve', 'POST /identity/resolve-batch', 'POST /coins/credit', 'POST /coins/debit', 'POST /coins/transfer', 'POST /notifications/push', 'POST /notifications/push-bulk']);
+const TOKEN_ROUTES = new Set(['GET /identity/resolve', 'POST /identity/resolve-batch', 'POST /coins/credit', 'POST /coins/debit', 'POST /coins/transfer', 'POST /notifications/push', 'POST /notifications/push-bulk', 'POST /events/stream-live']);
 const TOKEN_ROUTE_PATTERNS = [/^(GET|PUT) \/modules\/[a-z0-9_.]+\/[A-Za-z0-9_]+$/];
 const forApp = (req) => (req.body && req.body.app_id !== undefined ? String(req.body.app_id) : undefined);
 const forService = (req) => (req.body && req.body.service !== undefined ? String(req.body.service) : undefined);
@@ -306,7 +306,7 @@ router.post('/coins/transfer', principals.guard('network.coins.transfer', { ownA
 // followers + "all streamer" subscribers.
 // ═══════════════════════════════════════════════════════════════
 
-router.post('/events/stream-live', async (req, res) => {
+router.post('/events/stream-live', principals.guard('network.notifications.push'), async (req, res) => {
     const { streamer, stream, follower_network_ids } = req.body;
     if (!streamer?.username || !stream?.id) {
         return res.status(400).json({ error: 'streamer and stream objects required' });

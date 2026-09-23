@@ -113,6 +113,12 @@ const server = http.createServer(app);
     const cm = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.community' });
     assert.deepStrictEqual(cm.body.scope.split(' '), ['community.comment.moderate', 'community.comment.write', 'community.paste.create', 'community.paste.moderate', 'community.paste.write', 'community.pulse.write']);
 
+    // Go-live fan-out accepts Live's token (network.notifications.push); a narrower token is refused.
+    r = await post('/internal/events/stream-live', {}, { authorization: `Bearer ${full}` });
+    assert.strictEqual(r.status, 400, 'guard passed, handler validated the body');
+    r = await post('/internal/events/stream-live', {}, { authorization: `Bearer ${creditOnly}` });
+    assert.strictEqual(r.status, 403);
+
     // ── Legacy key keeps working ──
     r = await post('/internal/coins/credit', credit(), { 'x-internal-key': 'legacy-key' });
     assert.strictEqual(r.status, 200);
