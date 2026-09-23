@@ -630,6 +630,11 @@ function serveShared(req, res, next) {
 app.use('/shared/v1', serveShared);
 app.use('/shared', serveShared);
 
+// What this server is running (ADR-016, registry.release-manifest@1); open tabs poll it through
+// /shared/release-watch.js and are prompted, or reloaded when safe, after a deploy.
+const release = require('openvibe-shared/release').createRelease({ service: 'network', root: path.join(__dirname, '..') });
+app.get('/release.json', release.handler);
+
 // Avatar serving
 const avatarDir = path.resolve(config.avatars.path);
 if (!fs.existsSync(avatarDir)) fs.mkdirSync(avatarDir, { recursive: true });
