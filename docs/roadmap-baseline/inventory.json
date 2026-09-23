@@ -1,12 +1,13 @@
 {
  "generatedFrom": {
-  "OpenVibe.Live": "e26606082958f8cf6bb7c4587c225ca09335b5fe",
-  "OpenVibe.Network": "1bc6a52174fc25a8f6f76d6ab72c08c05f3a3122",
-  "OpenVibe.Media": "ddfefcf47740715f24fe7aa7dea648b4699162fc",
-  "OpenVibe.Tools": "0346edc57fb9f588abcdea171a22a5ca33f772d2",
+  "OpenVibe.Live": "c9af7800c4a528791b2e870dc7099a3d926b2733",
+  "OpenVibe.Network": "06e4a6bd803f7dc358cbb5ee21dff888c594b07c",
+  "OpenVibe.Shared": "9b53bebe7dee7884a440d620ad099631e962fd77",
+  "OpenVibe.Media": "cced10f81e529c76346d6578c8b26a5350f744be",
+  "OpenVibe.Tools": "4773f7b1098e98743be03095e44afeac1928bdf5",
   "OpenVibe.Community": "d7c6e608d8e27e6ddbfc78a15fa7590036b1dded",
   "OpenVibe.Games": "571028796639c00d5deecca038634ef1c52d3480",
-  "OpenVibe.Sites": "185014ff01ed8bd8f6df3dd5099e2b6c904e235d"
+  "OpenVibe.Sites": "b689b41ccd03cd213dfb5c0af4805c99e441e60d"
  },
  "prodSnapshot": {
   "host": "openvibe-oregon",
@@ -18,13 +19,13 @@
    "service": "live",
    "present": true,
    "git": {
-    "head": "e26606082958f8cf6bb7c4587c225ca09335b5fe",
-    "branch": "main",
+    "head": "c9af7800c4a528791b2e870dc7099a3d926b2733",
+    "branch": "seadragon",
     "originMain": "e26606082958f8cf6bb7c4587c225ca09335b5fe",
-    "committedAt": "2026-09-22T16:28:23-07:00"
+    "committedAt": "2026-09-22T18:03:10-07:00"
    },
    "sourceFiles": 167,
-   "loc": 69978,
+   "loc": 69945,
    "tables": [
     {
      "table": "arena_profiles",
@@ -862,27 +863,27 @@
     },
     {
      "table": "analytics_events",
-     "file": "vendor/openvibe-shared/analytics.js",
+     "file": "node_modules/openvibe-shared/analytics.js",
      "line": 74,
-     "via": "vendored openvibe-shared"
+     "via": "openvibe-shared"
     },
     {
      "table": "analytics_hourly",
-     "file": "vendor/openvibe-shared/analytics.js",
+     "file": "node_modules/openvibe-shared/analytics.js",
      "line": 98,
-     "via": "vendored openvibe-shared"
+     "via": "openvibe-shared"
     },
     {
      "table": "analytics_daily",
-     "file": "vendor/openvibe-shared/analytics.js",
+     "file": "node_modules/openvibe-shared/analytics.js",
      "line": 116,
-     "via": "vendored openvibe-shared"
+     "via": "openvibe-shared"
     },
     {
      "table": "analytics_rate_tracking",
-     "file": "vendor/openvibe-shared/analytics.js",
+     "file": "node_modules/openvibe-shared/analytics.js",
      "line": 137,
-     "via": "vendored openvibe-shared"
+     "via": "openvibe-shared"
     }
    ],
    "routes": [
@@ -956,13 +957,13 @@
      "method": "GET",
      "path": "/api/admin/analytics",
      "file": "server/index.js",
-     "line": 708
+     "line": 675
     },
     {
      "method": "GET",
      "path": "/api/admin/analytics/bots",
      "file": "server/index.js",
-     "line": 717
+     "line": 684
     },
     {
      "method": "GET",
@@ -974,7 +975,7 @@
      "method": "POST",
      "path": "/api/admin/broadcast",
      "file": "server/index.js",
-     "line": 826
+     "line": 793
     },
     {
      "method": "PUT",
@@ -2156,7 +2157,7 @@
      "method": "POST",
      "path": "/api/csp-report",
      "file": "server/index.js",
-     "line": 847
+     "line": 814
     },
     {
      "method": "GET",
@@ -2456,7 +2457,7 @@
      "method": "GET",
      "path": "/api/health",
      "file": "server/index.js",
-     "line": 727
+     "line": 694
     },
     {
      "method": "GET",
@@ -2546,7 +2547,7 @@
      "method": "GET",
      "path": "/api/live-events",
      "file": "server/index.js",
-     "line": 655
+     "line": 622
     },
     {
      "method": "POST",
@@ -3170,7 +3171,7 @@
      "method": "GET",
      "path": "/api/ready",
      "file": "server/index.js",
-     "line": 750
+     "line": 717
     },
     {
      "method": "GET",
@@ -3782,7 +3783,7 @@
      "method": "GET",
      "path": "/api/updates",
      "file": "server/index.js",
-     "line": 813
+     "line": 780
     },
     {
      "method": "GET",
@@ -3926,31 +3927,31 @@
      "method": "GET",
      "path": "/banned",
      "file": "server/index.js",
-     "line": 981
+     "line": 948
     },
     {
      "method": "POST",
      "path": "/banned/continue",
      "file": "server/index.js",
-     "line": 951
+     "line": 918
     },
     {
      "method": "GET",
      "path": "/canvas",
      "file": "server/index.js",
-     "line": 683
+     "line": 650
     },
     {
      "method": "GET",
      "path": "/data/pastes/screenshots/:filename",
      "file": "server/index.js",
-     "line": 606
+     "line": 573
     },
     {
      "method": "GET",
      "path": "/dmca",
      "file": "server/index.js",
-     "line": 890
+     "line": 857
     },
     {
      "method": "GET",
@@ -3974,7 +3975,7 @@
      "method": "GET",
      "path": "/game",
      "file": "server/index.js",
-     "line": 682
+     "line": 649
     },
     {
      "method": "POST",
@@ -3986,13 +3987,13 @@
      "method": "GET",
      "path": "/internal/analytics-summary",
      "file": "server/index.js",
-     "line": 578
+     "line": 545
     },
     {
      "method": "POST",
      "path": "/internal/media-webhook",
      "file": "server/index.js",
-     "line": 573
+     "line": 540
     },
     {
      "method": "POST",
@@ -4016,61 +4017,61 @@
      "method": "GET",
      "path": "/media/:username",
      "file": "server/index.js",
-     "line": 885
+     "line": 852
     },
     {
      "method": "GET",
      "path": "/obs/chat/:username",
      "file": "server/index.js",
-     "line": 873
+     "line": 840
     },
     {
      "method": "GET",
      "path": "/openvibe-sw.js",
      "file": "server/index.js",
-     "line": 474
+     "line": 446
     },
     {
      "method": "GET",
      "path": "/overlay/chat/:username",
      "file": "server/index.js",
-     "line": 881
+     "line": 848
     },
     {
      "method": "GET",
      "path": "/overlay/chat/:username/:slotIdOrSlug",
      "file": "server/index.js",
-     "line": 878
+     "line": 845
     },
     {
      "method": "GET",
      "path": "/p/:slug",
      "file": "server/index.js",
-     "line": 624
+     "line": 591
     },
     {
      "method": "GET",
      "path": "/p/:slug/raw",
      "file": "server/index.js",
-     "line": 635
+     "line": 602
     },
     {
      "method": "GET",
      "path": "/p/:slug/screenshot",
      "file": "server/index.js",
-     "line": 631
+     "line": 598
     },
     {
      "method": "GET",
      "path": "/pastes",
      "file": "server/index.js",
-     "line": 625
+     "line": 592
     },
     {
      "method": "GET",
      "path": "/privacy",
      "file": "server/index.js",
-     "line": 899
+     "line": 866
     },
     {
      "method": "GET",
@@ -4082,31 +4083,31 @@
      "method": "GET",
      "path": "/terms",
      "file": "server/index.js",
-     "line": 896
+     "line": 863
     },
     {
      "method": "GET",
      "path": "/tos",
      "file": "server/index.js",
-     "line": 893
+     "line": 860
     },
     {
      "method": "POST",
      "path": "/whip/:streamId",
      "file": "server/index.js",
-     "line": 908
+     "line": 875
     },
     {
      "method": "DELETE",
      "path": "/whip/:streamId/:resourceId",
      "file": "server/index.js",
-     "line": 910
+     "line": 877
     },
     {
      "method": "PATCH",
      "path": "/whip/:streamId/:resourceId",
      "file": "server/index.js",
-     "line": 909
+     "line": 876
     }
    ],
    "ws": {
@@ -4168,47 +4169,47 @@
      {
       "path": "/ws/",
       "file": "server/index.js",
-      "line": 1002
+      "line": 969
      },
      {
       "path": "/ws/chat",
       "file": "server/index.js",
-      "line": 1040
+      "line": 1007
      },
      {
       "path": "/ws/vibe-coding/publish",
       "file": "server/index.js",
-      "line": 1042
+      "line": 1009
      },
      {
       "path": "/ws/broadcast",
       "file": "server/index.js",
-      "line": 1044
+      "line": 1011
      },
      {
       "path": "/ws/control",
       "file": "server/index.js",
-      "line": 1046
+      "line": 1013
      },
      {
       "path": "/ws/call",
       "file": "server/index.js",
-      "line": 1048
+      "line": 1015
      },
      {
       "path": "/ws/game",
       "file": "server/index.js",
-      "line": 1050
+      "line": 1017
      },
      {
       "path": "/ws/canvas",
       "file": "server/index.js",
-      "line": 1050
+      "line": 1017
      },
      {
       "path": "/ws/robotstreamer-publish",
       "file": "server/index.js",
-      "line": 1052
+      "line": 1019
      },
      {
       "path": "/ws/robotstreamer-publish",
@@ -4299,8 +4300,7 @@
     "OV_NETWORK_URL": [
      "server/auth/auth.js",
      "server/config.js",
-     "server/index.js",
-     "vendor/openvibe-shared/brand.js"
+     "server/index.js"
     ],
     "OV_NETWORK_PUBLIC_KEY": [
      "server/auth/auth.js"
@@ -4519,8 +4519,7 @@
     "OV_COMMUNITY_URL": [
      "server/index.js",
      "server/media-proxy/pastes.js",
-     "server/seo/seo.js",
-     "vendor/openvibe-shared/brand.js"
+     "server/seo/seo.js"
     ],
     "PASTES_ON_COMMUNITY": [
      "server/index.js",
@@ -4589,57 +4588,6 @@
     ],
     "OV_PUBLIC_DIR": [
      "server/web/assets.js"
-    ],
-    "LOGIN_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_NETWORK_LOGIN_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_TOOLS_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_LIVE_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_GAMES_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_MEDIA_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_MAPS_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_FOOD_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_IMG_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_YT_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_AUDIO_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_TEXT_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_LOGO_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_DOCS_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_NET_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_DEV_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_PASTES_URL": [
-     "vendor/openvibe-shared/brand.js"
     ]
    },
    "outbound": [
@@ -5021,103 +4969,6 @@
      ],
      "timeout": false,
      "retry": true
-    },
-    {
-     "file": "vendor/openvibe-shared/account-switcher.js",
-     "targets": [
-      {
-       "service": "network",
-       "refs": [
-        {
-         "via": "/api/auth/me",
-         "line": 176
-        }
-       ]
-      }
-     ],
-     "auth": [
-      "bearer"
-     ],
-     "timeout": false,
-     "retry": true
-    },
-    {
-     "file": "vendor/openvibe-shared/auth-client.js",
-     "targets": [
-      {
-       "service": "network",
-       "refs": [
-        {
-         "via": ":4000",
-         "line": 23
-        },
-        {
-         "via": ":4000",
-         "line": 31
-        },
-        {
-         "via": "/oauth/token",
-         "line": 60
-        },
-        {
-         "via": "/oauth/token",
-         "line": 84
-        }
-       ]
-      }
-     ],
-     "auth": [
-      "internal-key",
-      "oauth-client"
-     ],
-     "timeout": false,
-     "retry": false
-    },
-    {
-     "file": "vendor/openvibe-shared/footer.js",
-     "targets": [
-      {
-       "service": "network",
-       "refs": [
-        {
-         "via": "/api/auth/me",
-         "line": 280
-        }
-       ]
-      }
-     ],
-     "auth": [
-      "bearer"
-     ],
-     "timeout": false,
-     "retry": false
-    },
-    {
-     "file": "vendor/openvibe-shared/navbar.js",
-     "targets": [
-      {
-       "service": "network",
-       "refs": [
-        {
-         "via": "/api/auth/me",
-         "line": 10
-        },
-        {
-         "via": "/api/auth/me",
-         "line": 998
-        },
-        {
-         "via": "/api/auth/me",
-         "line": 1001
-        }
-       ]
-      }
-     ],
-     "auth": [
-      "bearer"
-     ],
-     "timeout": false,
-     "retry": true
     }
    ],
    "jobs": [
@@ -5265,28 +5116,28 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 21600000,
-     "line": 1322,
+     "line": 1289,
      "file": "server/index.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": 45000,
-     "line": 1339,
+     "line": 1306,
      "file": "server/index.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 1363,
+     "line": 1330,
      "file": "server/index.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 1374,
+     "line": 1341,
      "file": "server/index.js"
     },
     {
@@ -5468,13 +5319,13 @@
    "service": "network",
    "present": true,
    "git": {
-    "head": "1bc6a52174fc25a8f6f76d6ab72c08c05f3a3122",
+    "head": "06e4a6bd803f7dc358cbb5ee21dff888c594b07c",
     "branch": "main",
-    "originMain": "1bc6a52174fc25a8f6f76d6ab72c08c05f3a3122",
-    "committedAt": "2026-09-22T16:36:13-07:00"
+    "originMain": "06e4a6bd803f7dc358cbb5ee21dff888c594b07c",
+    "committedAt": "2026-09-22T17:55:21-07:00"
    },
-   "sourceFiles": 81,
-   "loc": 21029,
+   "sourceFiles": 52,
+   "loc": 12043,
    "tables": [
     {
      "table": "admin_rate_limits",
@@ -5665,13 +5516,13 @@
     {
      "table": "principal_grants",
      "file": "server/identity/principals.js",
-     "line": 44,
+     "line": 54,
      "via": "repo"
     },
     {
      "table": "principal_usage",
      "file": "server/identity/principals.js",
-     "line": 54,
+     "line": 64,
      "via": "repo"
     },
     {
@@ -5694,27 +5545,27 @@
     },
     {
      "table": "analytics_events",
-     "file": "packages/openvibe-shared/analytics.js",
+     "file": "node_modules/openvibe-shared/analytics.js",
      "line": 74,
-     "via": "repo"
+     "via": "openvibe-shared"
     },
     {
      "table": "analytics_hourly",
-     "file": "packages/openvibe-shared/analytics.js",
+     "file": "node_modules/openvibe-shared/analytics.js",
      "line": 98,
-     "via": "repo"
+     "via": "openvibe-shared"
     },
     {
      "table": "analytics_daily",
-     "file": "packages/openvibe-shared/analytics.js",
+     "file": "node_modules/openvibe-shared/analytics.js",
      "line": 116,
-     "via": "repo"
+     "via": "openvibe-shared"
     },
     {
      "table": "analytics_rate_tracking",
-     "file": "packages/openvibe-shared/analytics.js",
+     "file": "node_modules/openvibe-shared/analytics.js",
      "line": 137,
-     "via": "repo"
+     "via": "openvibe-shared"
     }
    ],
    "routes": [
@@ -5756,9 +5607,15 @@
     },
     {
      "method": "GET",
+     "path": "/.well-known/openvibe",
+     "file": "server/registry/ecosystem.js",
+     "line": 83
+    },
+    {
+     "method": "GET",
      "path": "/.well-known/web-identity",
      "file": "server/index.js",
-     "line": 574
+     "line": 579
     },
     {
      "method": "POST",
@@ -5770,7 +5627,7 @@
      "method": "GET",
      "path": "/api/.well-known/jwks",
      "file": "server/index.js",
-     "line": 356
+     "line": 361
     },
     {
      "method": "GET",
@@ -5818,7 +5675,7 @@
      "method": "GET",
      "path": "/api/admin/ssh-info",
      "file": "server/index.js",
-     "line": 454
+     "line": 459
     },
     {
      "method": "GET",
@@ -5998,13 +5855,13 @@
      "method": "GET",
      "path": "/api/brand",
      "file": "server/index.js",
-     "line": 373
+     "line": 378
     },
     {
      "method": "GET",
      "path": "/api/catalog.json",
      "file": "server/index.js",
-     "line": 425
+     "line": 430
     },
     {
      "method": "GET",
@@ -6064,7 +5921,7 @@
      "method": "GET",
      "path": "/api/health",
      "file": "server/index.js",
-     "line": 368
+     "line": 373
     },
     {
      "method": "DELETE",
@@ -6190,7 +6047,7 @@
      "method": "GET",
      "path": "/api/sso/targets",
      "file": "server/index.js",
-     "line": 407
+     "line": 412
     },
     {
      "method": "GET",
@@ -6227,6 +6084,60 @@
      "path": "/api/themes/me/display",
      "file": "server/themes/routes.js",
      "line": 99
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/registry",
+     "file": "server/registry/ecosystem.js",
+     "line": 84
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/registry/capabilities",
+     "file": "server/registry/ecosystem.js",
+     "line": 101
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/registry/capabilities/:id",
+     "file": "server/registry/ecosystem.js",
+     "line": 106
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/registry/contracts",
+     "file": "server/registry/ecosystem.js",
+     "line": 112
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/registry/domains/:domain",
+     "file": "server/registry/ecosystem.js",
+     "line": 95
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/registry/namespaces",
+     "file": "server/registry/ecosystem.js",
+     "line": 111
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/registry/services",
+     "file": "server/registry/ecosystem.js",
+     "line": 85
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/registry/services/:id",
+     "file": "server/registry/ecosystem.js",
+     "line": 90
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/registry/topics",
+     "file": "server/registry/ecosystem.js",
+     "line": 113
     },
     {
      "method": "POST",
@@ -6586,7 +6497,7 @@
      "method": "GET",
      "path": "/llms.txt",
      "file": "server/index.js",
-     "line": 552
+     "line": 557
     },
     {
      "method": "GET",
@@ -6676,7 +6587,7 @@
      "method": "GET",
      "path": "/openvibe-sw.js",
      "file": "server/index.js",
-     "line": 598
+     "line": 606
     },
     {
      "method": "GET",
@@ -6760,7 +6671,7 @@
      "method": "GET",
      "path": "/sso/check",
      "file": "server/index.js",
-     "line": 579
+     "line": 584
     },
     {
      "method": "GET",
@@ -6784,7 +6695,7 @@
      "method": "GET",
      "path": "/tos",
      "file": "server/index.js",
-     "line": 421
+     "line": 426
     },
     {
      "method": "GET",
@@ -6898,7 +6809,7 @@
      "method": "GET",
      "path": "/verify-email",
      "file": "server/index.js",
-     "line": 564
+     "line": 569
     }
    ],
    "ws": {
@@ -6907,7 +6818,7 @@
      {
       "path": "/ws/",
       "file": "server/deploy/nginx-generator.js",
-      "line": 150
+      "line": 151
      }
     ]
    },
@@ -6959,11 +6870,11 @@
     ],
     "OV_NETWORK_URL": [
      "server/config.js",
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "LOGIN_URL": [
      "server/config.js",
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "INTERNAL_URL": [
      "server/config.js"
@@ -6987,7 +6898,8 @@
     "DB_PATH": [
      "server/config.js",
      "server/grant-admin.js",
-     "server/reset-db.js"
+     "server/reset-db.js",
+     "server/setup/service-principal.js"
     ],
     "ADMIN_USERNAME": [
      "server/config.js"
@@ -7036,55 +6948,55 @@
      "server/index.js"
     ],
     "OV_NETWORK_LOGIN_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_TOOLS_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_LIVE_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_GAMES_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_MEDIA_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_COMMUNITY_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_MAPS_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_FOOD_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_IMG_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_YT_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_AUDIO_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_TEXT_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_LOGO_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_DOCS_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_NET_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_DEV_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ],
     "OV_PASTES_URL": [
-     "packages/openvibe-shared/brand.js"
+     "node_modules/openvibe-shared/brand.js"
     ]
    },
    "outbound": [
@@ -7251,7 +7163,7 @@
         },
         {
          "via": "live.internalUrl",
-         "line": 479
+         "line": 484
         }
        ]
       },
@@ -7365,62 +7277,252 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 3600000,
-     "line": 654,
+     "line": 669,
      "file": "server/index.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": 120000,
-     "line": 657,
+     "line": 672,
      "file": "server/index.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 660,
+     "line": 675,
      "file": "server/index.js"
+    }
+   ],
+   "contractTodos": 0,
+   "unresolvedMounts": [],
+   "testFiles": 15,
+   "ci": true
+  },
+  {
+   "name": "OpenVibe.Shared",
+   "service": "shared",
+   "present": true,
+   "git": {
+    "head": "9b53bebe7dee7884a440d620ad099631e962fd77",
+    "branch": "main",
+    "originMain": "9b53bebe7dee7884a440d620ad099631e962fd77",
+    "committedAt": "2026-09-22T17:56:50-07:00"
+   },
+   "sourceFiles": 35,
+   "loc": 9484,
+   "tables": [],
+   "routes": [
+    {
+     "method": "GET",
+     "path": "/shared/:file",
+     "file": "files.js",
+     "line": 9
+    }
+   ],
+   "ws": {
+    "servers": [],
+    "paths": []
+   },
+   "env": {
+    "OV_NETWORK_URL": [
+     "brand.js"
+    ],
+    "LOGIN_URL": [
+     "brand.js"
+    ],
+    "OV_NETWORK_LOGIN_URL": [
+     "brand.js"
+    ],
+    "OV_TOOLS_URL": [
+     "brand.js"
+    ],
+    "OV_LIVE_URL": [
+     "brand.js"
+    ],
+    "OV_GAMES_URL": [
+     "brand.js"
+    ],
+    "OV_MEDIA_URL": [
+     "brand.js"
+    ],
+    "OV_COMMUNITY_URL": [
+     "brand.js"
+    ],
+    "OV_MAPS_URL": [
+     "brand.js"
+    ],
+    "OV_FOOD_URL": [
+     "brand.js"
+    ],
+    "OV_IMG_URL": [
+     "brand.js"
+    ],
+    "OV_YT_URL": [
+     "brand.js"
+    ],
+    "OV_AUDIO_URL": [
+     "brand.js"
+    ],
+    "OV_TEXT_URL": [
+     "brand.js"
+    ],
+    "OV_LOGO_URL": [
+     "brand.js"
+    ],
+    "OV_DOCS_URL": [
+     "brand.js"
+    ],
+    "OV_NET_URL": [
+     "brand.js"
+    ],
+    "OV_DEV_URL": [
+     "brand.js"
+    ],
+    "OV_PASTES_URL": [
+     "brand.js"
+    ]
+   },
+   "outbound": [
+    {
+     "file": "account-switcher.js",
+     "targets": [
+      {
+       "service": "network",
+       "refs": [
+        {
+         "via": "/api/auth/me",
+         "line": 176
+        }
+       ]
+      }
+     ],
+     "auth": [
+      "bearer"
+     ],
+     "timeout": false,
+     "retry": true
     },
+    {
+     "file": "auth-client.js",
+     "targets": [
+      {
+       "service": "network",
+       "refs": [
+        {
+         "via": ":4000",
+         "line": 23
+        },
+        {
+         "via": ":4000",
+         "line": 31
+        },
+        {
+         "via": "/oauth/token",
+         "line": 60
+        },
+        {
+         "via": "/oauth/token",
+         "line": 84
+        }
+       ]
+      }
+     ],
+     "auth": [
+      "internal-key",
+      "oauth-client"
+     ],
+     "timeout": false,
+     "retry": false
+    },
+    {
+     "file": "footer.js",
+     "targets": [
+      {
+       "service": "network",
+       "refs": [
+        {
+         "via": "/api/auth/me",
+         "line": 280
+        }
+       ]
+      }
+     ],
+     "auth": [
+      "bearer"
+     ],
+     "timeout": false,
+     "retry": false
+    },
+    {
+     "file": "navbar.js",
+     "targets": [
+      {
+       "service": "network",
+       "refs": [
+        {
+         "via": "/api/auth/me",
+         "line": 10
+        },
+        {
+         "via": "/api/auth/me",
+         "line": 997
+        },
+        {
+         "via": "/api/auth/me",
+         "line": 1000
+        }
+       ]
+      }
+     ],
+     "auth": [
+      "bearer"
+     ],
+     "timeout": false,
+     "retry": true
+    }
+   ],
+   "jobs": [
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": 900000,
      "line": 624,
-     "file": "packages/openvibe-shared/account-switcher.js"
+     "file": "account-switcher.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": 5000,
      "line": 238,
-     "file": "packages/openvibe-shared/analytics.js"
+     "file": "analytics.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": 3600000,
      "line": 241,
-     "file": "packages/openvibe-shared/analytics.js"
+     "file": "analytics.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
      "line": 247,
-     "file": "packages/openvibe-shared/analytics.js"
+     "file": "analytics.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
      "line": 548,
-     "file": "packages/openvibe-shared/notification-ui.js"
+     "file": "notification-ui.js"
     }
    ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 20,
+   "testFiles": 11,
    "ci": true
   },
   {
@@ -7428,13 +7530,13 @@
    "service": "media",
    "present": true,
    "git": {
-    "head": "ddfefcf47740715f24fe7aa7dea648b4699162fc",
+    "head": "cced10f81e529c76346d6578c8b26a5350f744be",
     "branch": "main",
-    "originMain": "ddfefcf47740715f24fe7aa7dea648b4699162fc",
-    "committedAt": "2026-09-22T16:14:04-07:00"
+    "originMain": "cced10f81e529c76346d6578c8b26a5350f744be",
+    "committedAt": "2026-09-22T18:01:01-07:00"
    },
-   "sourceFiles": 28,
-   "loc": 8752,
+   "sourceFiles": 34,
+   "loc": 10436,
    "tables": [
     {
      "table": "apps",
@@ -7451,49 +7553,91 @@
     {
      "table": "clips",
      "file": "server/db/schema.sql",
-     "line": 63,
+     "line": 64,
      "via": "repo"
     },
     {
      "table": "content_views",
      "file": "server/db/schema.sql",
-     "line": 94,
+     "line": 96,
      "via": "repo"
     },
     {
      "table": "pastes",
      "file": "server/db/schema.sql",
-     "line": 105,
+     "line": 107,
      "via": "repo"
     },
     {
      "table": "paste_likes",
      "file": "server/db/schema.sql",
-     "line": 138,
+     "line": 141,
      "via": "repo"
     },
     {
      "table": "paste_comments",
      "file": "server/db/schema.sql",
-     "line": 146,
+     "line": 149,
      "via": "repo"
     },
     {
      "table": "files",
      "file": "server/db/schema.sql",
-     "line": 164,
+     "line": 167,
      "via": "repo"
     },
     {
      "table": "media_settings",
      "file": "server/db/schema.sql",
-     "line": 178,
+     "line": 182,
      "via": "repo"
     },
     {
      "table": "assets",
      "file": "server/db/schema.sql",
-     "line": 189,
+     "line": 193,
+     "via": "repo"
+    },
+    {
+     "table": "media_objects",
+     "file": "server/db/schema.sql",
+     "line": 214,
+     "via": "repo"
+    },
+    {
+     "table": "media_locations",
+     "file": "server/db/schema.sql",
+     "line": 241,
+     "via": "repo"
+    },
+    {
+     "table": "media_relationships",
+     "file": "server/db/schema.sql",
+     "line": 257,
+     "via": "repo"
+    },
+    {
+     "table": "media_variants",
+     "file": "server/db/schema.sql",
+     "line": 268,
+     "via": "repo"
+    },
+    {
+     "table": "media_jobs",
+     "file": "server/db/schema.sql",
+     "line": 279,
+     "via": "repo"
+    },
+    {
+     "table": "media_holds",
+     "file": "server/db/schema.sql",
+     "line": 293,
+     "via": "repo"
+    },
+    {
+     "table": "media_invariant_violations",
+     "file": "server/db/schema.sql",
+     "line": 306,
      "via": "repo"
     },
     {
@@ -7501,30 +7645,6 @@
      "file": "server/views/service.js",
      "line": 43,
      "via": "repo"
-    },
-    {
-     "table": "analytics_events",
-     "file": "vendor/openvibe-shared/analytics.js",
-     "line": 74,
-     "via": "vendored openvibe-shared"
-    },
-    {
-     "table": "analytics_hourly",
-     "file": "vendor/openvibe-shared/analytics.js",
-     "line": 98,
-     "via": "vendored openvibe-shared"
-    },
-    {
-     "table": "analytics_daily",
-     "file": "vendor/openvibe-shared/analytics.js",
-     "line": 116,
-     "via": "vendored openvibe-shared"
-    },
-    {
-     "table": "analytics_rate_tracking",
-     "file": "vendor/openvibe-shared/analytics.js",
-     "line": 137,
-     "via": "vendored openvibe-shared"
     }
    ],
    "routes": [
@@ -7538,37 +7658,37 @@
      "method": "GET",
      "path": "/api/v1/:app/admin/storage/buckets",
      "file": "server/admin/routes.js",
-     "line": 403
+     "line": 404
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/admin/storage/tiers",
      "file": "server/admin/routes.js",
-     "line": 257
+     "line": 258
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/admin/storage/tiers/bulk-move",
      "file": "server/admin/routes.js",
-     "line": 376
+     "line": 377
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/admin/storage/tiers/move",
      "file": "server/admin/routes.js",
-     "line": 358
+     "line": 359
     },
     {
      "method": "PUT",
      "path": "/api/v1/:app/admin/storage/tiers/settings",
      "file": "server/admin/routes.js",
-     "line": 305
+     "line": 306
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/admin/storage/tiers/sweep",
      "file": "server/admin/routes.js",
-     "line": 331
+     "line": 332
     },
     {
      "method": "GET",
@@ -7604,37 +7724,37 @@
      "method": "GET",
      "path": "/api/v1/:app/clips",
      "file": "server/vod/clips-routes.js",
-     "line": 283
+     "line": 286
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/clips",
      "file": "server/vod/clips-routes.js",
-     "line": 114
+     "line": 115
     },
     {
      "method": "DELETE",
      "path": "/api/v1/:app/clips/:id",
      "file": "server/vod/clips-routes.js",
-     "line": 363
+     "line": 367
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/clips/:id",
      "file": "server/vod/clips-routes.js",
-     "line": 309
+     "line": 312
     },
     {
      "method": "PUT",
      "path": "/api/v1/:app/clips/:id",
      "file": "server/vod/clips-routes.js",
-     "line": 345
+     "line": 348
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/clips/:id/recut",
      "file": "server/vod/clips-routes.js",
-     "line": 328
+     "line": 331
     },
     {
      "method": "GET",
@@ -7664,121 +7784,121 @@
      "method": "GET",
      "path": "/api/v1/:app/pastes",
      "file": "server/pastes/routes.js",
-     "line": 257
+     "line": 260
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes",
      "file": "server/pastes/routes.js",
-     "line": 471
+     "line": 476
     },
     {
      "method": "DELETE",
      "path": "/api/v1/:app/pastes/:slug",
      "file": "server/pastes/routes.js",
-     "line": 625
+     "line": 631
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/pastes/:slug",
      "file": "server/pastes/routes.js",
-     "line": 445
+     "line": 450
     },
     {
      "method": "PUT",
      "path": "/api/v1/:app/pastes/:slug",
      "file": "server/pastes/routes.js",
-     "line": 587
+     "line": 593
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes/:slug/ai",
      "file": "server/pastes/routes.js",
-     "line": 567
+     "line": 573
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes/:slug/censor",
      "file": "server/pastes/routes.js",
-     "line": 406
+     "line": 409
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/pastes/:slug/comments",
      "file": "server/pastes/routes.js",
-     "line": 711
+     "line": 717
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes/:slug/comments",
      "file": "server/pastes/routes.js",
-     "line": 734
+     "line": 740
     },
     {
      "method": "DELETE",
      "path": "/api/v1/:app/pastes/:slug/comments/:commentId",
      "file": "server/pastes/routes.js",
-     "line": 812
+     "line": 818
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes/:slug/copy",
      "file": "server/pastes/routes.js",
-     "line": 686
+     "line": 692
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes/:slug/fork",
      "file": "server/pastes/routes.js",
-     "line": 643
+     "line": 649
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes/:slug/like",
      "file": "server/pastes/routes.js",
-     "line": 669
+     "line": 675
     },
     {
      "method": "DELETE",
      "path": "/api/v1/:app/pastes/admin/forks",
      "file": "server/pastes/routes.js",
-     "line": 368
+     "line": 371
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/pastes/admin/forks",
      "file": "server/pastes/routes.js",
-     "line": 348
+     "line": 351
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/pastes/admin/stats",
      "file": "server/pastes/routes.js",
-     "line": 338
+     "line": 341
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/pastes/bulk",
      "file": "server/pastes/routes.js",
-     "line": 381
+     "line": 384
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/pastes/config",
      "file": "server/pastes/routes.js",
-     "line": 316
+     "line": 319
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/stats",
      "file": "server/index.js",
-     "line": 94
+     "line": 96
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/stats/series/:metric",
      "file": "server/index.js",
-     "line": 104
+     "line": 106
     },
     {
      "method": "POST",
@@ -7802,73 +7922,145 @@
      "method": "GET",
      "path": "/api/v1/:app/vods",
      "file": "server/vod/routes.js",
-     "line": 266
+     "line": 268
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/vods",
      "file": "server/vod/routes.js",
-     "line": 89
+     "line": 90
     },
     {
      "method": "DELETE",
      "path": "/api/v1/:app/vods/:id",
      "file": "server/vod/routes.js",
-     "line": 353
+     "line": 356
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/vods/:id",
      "file": "server/vod/routes.js",
-     "line": 305
+     "line": 307
     },
     {
      "method": "PUT",
      "path": "/api/v1/:app/vods/:id",
      "file": "server/vod/routes.js",
-     "line": 331
+     "line": 333
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/vods/:id/chunks",
      "file": "server/vod/routes.js",
-     "line": 155
+     "line": 157
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/vods/:id/complete",
      "file": "server/vod/routes.js",
-     "line": 259
+     "line": 261
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/vods/:id/finalize",
      "file": "server/vod/routes.js",
-     "line": 260
+     "line": 262
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/vods/:id/ingest/rtmp",
      "file": "server/vod/routes.js",
-     "line": 112
+     "line": 114
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/vods/:id/ingest/rtp/start",
      "file": "server/vod/routes.js",
-     "line": 126
+     "line": 128
     },
     {
      "method": "POST",
      "path": "/api/v1/:app/vods/:id/ingest/rtp/stop",
      "file": "server/vod/routes.js",
-     "line": 140
+     "line": 142
     },
     {
      "method": "GET",
      "path": "/api/v1/:app/vods/latest-thumbs",
      "file": "server/vod/routes.js",
-     "line": 294
+     "line": 296
+    },
+    {
+     "method": "GET",
+     "path": "/api/v2/:app/objects",
+     "file": "server/objects/routes.js",
+     "line": 267
+    },
+    {
+     "method": "POST",
+     "path": "/api/v2/:app/objects",
+     "file": "server/objects/routes.js",
+     "line": 181
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/v2/:app/objects/:id",
+     "file": "server/objects/routes.js",
+     "line": 297
+    },
+    {
+     "method": "GET",
+     "path": "/api/v2/:app/objects/:id",
+     "file": "server/objects/routes.js",
+     "line": 292
+    },
+    {
+     "method": "GET",
+     "path": "/api/v2/:app/objects/:id",
+     "file": "server/objects/routes.js",
+     "line": 370
+    },
+    {
+     "method": "POST",
+     "path": "/api/v2/:app/objects/:id/complete",
+     "file": "server/objects/routes.js",
+     "line": 237
+    },
+    {
+     "method": "PUT",
+     "path": "/api/v2/:app/objects/:id/content",
+     "file": "server/index.js",
+     "line": 31
+    },
+    {
+     "method": "GET",
+     "path": "/api/v2/:app/objects/:id/download",
+     "file": "server/objects/routes.js",
+     "line": 323
+    },
+    {
+     "method": "GET",
+     "path": "/api/v2/:app/objects/:id/holds",
+     "file": "server/objects/routes.js",
+     "line": 341
+    },
+    {
+     "method": "POST",
+     "path": "/api/v2/:app/objects/:id/holds",
+     "file": "server/objects/routes.js",
+     "line": 347
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/v2/:app/objects/:id/holds/:holdId",
+     "file": "server/objects/routes.js",
+     "line": 356
+    },
+    {
+     "method": "POST",
+     "path": "/api/v2/:app/objects/:id/restore",
+     "file": "server/objects/routes.js",
+     "line": 313
     },
     {
      "method": "GET",
@@ -7910,25 +8102,91 @@
      "method": "GET",
      "path": "/healthz",
      "file": "server/index.js",
-     "line": 83
+     "line": 85
     },
     {
      "method": "POST",
      "path": "/internal/avatar-ingest",
      "file": "server/index.js",
-     "line": 57
+     "line": 59
     },
     {
      "method": "GET",
      "path": "/manifest.webmanifest",
      "file": "server/index.js",
-     "line": 45
+     "line": 47
+    },
+    {
+     "method": "GET",
+     "path": "/o",
+     "file": "server/objects/routes.js",
+     "line": 267
+    },
+    {
+     "method": "POST",
+     "path": "/o",
+     "file": "server/objects/routes.js",
+     "line": 181
+    },
+    {
+     "method": "DELETE",
+     "path": "/o/:id",
+     "file": "server/objects/routes.js",
+     "line": 297
+    },
+    {
+     "method": "GET",
+     "path": "/o/:id",
+     "file": "server/objects/routes.js",
+     "line": 292
+    },
+    {
+     "method": "GET",
+     "path": "/o/:id",
+     "file": "server/objects/routes.js",
+     "line": 370
+    },
+    {
+     "method": "POST",
+     "path": "/o/:id/complete",
+     "file": "server/objects/routes.js",
+     "line": 237
+    },
+    {
+     "method": "GET",
+     "path": "/o/:id/download",
+     "file": "server/objects/routes.js",
+     "line": 323
+    },
+    {
+     "method": "GET",
+     "path": "/o/:id/holds",
+     "file": "server/objects/routes.js",
+     "line": 341
+    },
+    {
+     "method": "POST",
+     "path": "/o/:id/holds",
+     "file": "server/objects/routes.js",
+     "line": 347
+    },
+    {
+     "method": "DELETE",
+     "path": "/o/:id/holds/:holdId",
+     "file": "server/objects/routes.js",
+     "line": 356
+    },
+    {
+     "method": "POST",
+     "path": "/o/:id/restore",
+     "file": "server/objects/routes.js",
+     "line": 313
     },
     {
      "method": "GET",
      "path": "/tos",
      "file": "server/index.js",
-     "line": 42
+     "line": 44
     }
    ],
    "ws": {
@@ -7966,9 +8224,14 @@
     "FILES_PATH": [
      "server/config.js"
     ],
+    "OBJECTS_PATH": [
+     "server/config.js"
+    ],
+    "MEDIA_SIGNING_SECRET": [
+     "server/config.js"
+    ],
     "OV_NETWORK_URL": [
-     "server/config.js",
-     "vendor/openvibe-shared/brand.js"
+     "server/config.js"
     ],
     "OV_NETWORK_INTERNAL_URL": [
      "server/config.js"
@@ -8057,60 +8320,6 @@
     ],
     "MEDIA_R2_SECRET_ACCESS_KEY": [
      "server/vod/vod-storage.js"
-    ],
-    "LOGIN_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_NETWORK_LOGIN_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_TOOLS_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_LIVE_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_GAMES_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_MEDIA_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_COMMUNITY_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_MAPS_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_FOOD_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_IMG_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_YT_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_AUDIO_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_TEXT_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_LOGO_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_DOCS_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_NET_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_DEV_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_PASTES_URL": [
-     "vendor/openvibe-shared/brand.js"
     ]
    },
    "outbound": [
@@ -8264,25 +8473,6 @@
      "retry": true
     },
     {
-     "file": "vendor/openvibe-shared/account-switcher.js",
-     "targets": [
-      {
-       "service": "network",
-       "refs": [
-        {
-         "via": "/api/auth/me",
-         "line": 176
-        }
-       ]
-      }
-     ],
-     "auth": [
-      "bearer"
-     ],
-     "timeout": false,
-     "retry": true
-    },
-    {
      "file": "vendor/openvibe-shared/auth-client.js",
      "targets": [
       {
@@ -8313,52 +8503,6 @@
      ],
      "timeout": false,
      "retry": false
-    },
-    {
-     "file": "vendor/openvibe-shared/footer.js",
-     "targets": [
-      {
-       "service": "network",
-       "refs": [
-        {
-         "via": "/api/auth/me",
-         "line": 280
-        }
-       ]
-      }
-     ],
-     "auth": [
-      "bearer"
-     ],
-     "timeout": false,
-     "retry": false
-    },
-    {
-     "file": "vendor/openvibe-shared/navbar.js",
-     "targets": [
-      {
-       "service": "network",
-       "refs": [
-        {
-         "via": "/api/auth/me",
-         "line": 10
-        },
-        {
-         "via": "/api/auth/me",
-         "line": 998
-        },
-        {
-         "via": "/api/auth/me",
-         "line": 1001
-        }
-       ]
-      }
-     ],
-     "auth": [
-      "bearer"
-     ],
-     "timeout": false,
-     "retry": true
     }
    ],
    "jobs": [
@@ -8373,21 +8517,21 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 43200000,
-     "line": 116,
+     "line": 118,
      "file": "server/index.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 142,
+     "line": 146,
      "file": "server/index.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 703,
+     "line": 709,
      "file": "server/pastes/routes.js"
     },
     {
@@ -8401,14 +8545,14 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 117,
+     "line": 119,
      "file": "server/vod/clip-jobs.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 262,
+     "line": 266,
      "file": "server/vod/health-job.js"
     },
     {
@@ -8422,13 +8566,13 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 466,
+     "line": 480,
      "file": "server/vod/vod-storage.js"
     }
    ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 6,
+   "testFiles": 9,
    "ci": true
   },
   {
@@ -8436,37 +8580,37 @@
    "service": "tools",
    "present": true,
    "git": {
-    "head": "0346edc57fb9f588abcdea171a22a5ca33f772d2",
+    "head": "4773f7b1098e98743be03095e44afeac1928bdf5",
     "branch": "main",
-    "originMain": "0346edc57fb9f588abcdea171a22a5ca33f772d2",
-    "committedAt": "2026-09-21T09:58:34-07:00"
+    "originMain": "fd5d318e91d451046f172c9599413eed135443d8",
+    "committedAt": "2026-09-22T17:59:26-07:00"
    },
    "sourceFiles": 117,
-   "loc": 20018,
+   "loc": 20013,
    "tables": [
     {
      "table": "analytics_events",
-     "file": "vendor/openvibe-shared/analytics.js",
+     "file": "apps/audio/node_modules/openvibe-shared/analytics.js",
      "line": 74,
-     "via": "vendored openvibe-shared"
+     "via": "openvibe-shared"
     },
     {
      "table": "analytics_hourly",
-     "file": "vendor/openvibe-shared/analytics.js",
+     "file": "apps/audio/node_modules/openvibe-shared/analytics.js",
      "line": 98,
-     "via": "vendored openvibe-shared"
+     "via": "openvibe-shared"
     },
     {
      "table": "analytics_daily",
-     "file": "vendor/openvibe-shared/analytics.js",
+     "file": "apps/audio/node_modules/openvibe-shared/analytics.js",
      "line": 116,
-     "via": "vendored openvibe-shared"
+     "via": "openvibe-shared"
     },
     {
      "table": "analytics_rate_tracking",
-     "file": "vendor/openvibe-shared/analytics.js",
+     "file": "apps/audio/node_modules/openvibe-shared/analytics.js",
      "line": 137,
-     "via": "vendored openvibe-shared"
+     "via": "openvibe-shared"
     }
    ],
    "routes": [
@@ -8702,7 +8846,7 @@
      "method": "GET",
      "path": "/api/internal/analytics",
      "file": "apps/gateway/server/index.js",
-     "line": 220
+     "line": 213
     },
     {
      "method": "GET",
@@ -9026,7 +9170,7 @@
      "method": "GET",
      "path": "/openvibe-sw.js",
      "file": "apps/gateway/server/index.js",
-     "line": 285
+     "line": 278
     },
     {
      "method": "GET",
@@ -9062,7 +9206,7 @@
      "method": "GET",
      "path": "/tos",
      "file": "apps/gateway/server/index.js",
-     "line": 245
+     "line": 238
     }
    ],
    "ws": {
@@ -9121,7 +9265,7 @@
      "apps/img/server/config.js",
      "apps/text/server/config.js",
      "apps/yt/server/config.js",
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_NETWORK_INTERNAL_URL": [
      "apps/audio/server/config.js",
@@ -9172,12 +9316,15 @@
     "LIVE_URL": [
      "apps/gateway/server/config.js"
     ],
+    "OV_COMMUNITY_INTERNAL_URL": [
+     "apps/gateway/server/config.js"
+    ],
     "OV_ENFORCE_HOSTS": [
      "apps/gateway/server/index.js"
     ],
     "OV_COMMUNITY_URL": [
      "apps/gateway/server/index.js",
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_DOMAINS_URL": [
      "apps/gateway/server/registry/index.js"
@@ -9205,55 +9352,55 @@
      "apps/yt/server/downloader.js"
     ],
     "LOGIN_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_NETWORK_LOGIN_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_TOOLS_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_LIVE_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_GAMES_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_MEDIA_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_MAPS_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_FOOD_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_IMG_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_YT_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_AUDIO_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_TEXT_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_LOGO_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_DOCS_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_NET_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_DEV_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ],
     "OV_PASTES_URL": [
-     "vendor/openvibe-shared/brand.js"
+     "apps/audio/node_modules/openvibe-shared/brand.js"
     ]
    },
    "outbound": [
@@ -9390,24 +9537,15 @@
      "file": "apps/gateway/server/index.js",
      "targets": [
       {
-       "service": "live",
-       "refs": [
-        {
-         "via": "liveUrl",
-         "line": 148
-        },
-        {
-         "via": "liveUrl",
-         "line": 318
-        }
-       ]
-      },
-      {
        "service": "community",
        "refs": [
         {
+         "via": "communityUrl",
+         "line": 141
+        },
+        {
          "via": "OV_COMMUNITY_URL",
-         "line": 266
+         "line": 259
         }
        ]
       },
@@ -9416,7 +9554,16 @@
        "refs": [
         {
          "via": "networkUrl",
-         "line": 317
+         "line": 310
+        }
+       ]
+      },
+      {
+       "service": "live",
+       "refs": [
+        {
+         "via": "liveUrl",
+         "line": 311
         }
        ]
       }
@@ -9499,26 +9646,7 @@
      "retry": true
     },
     {
-     "file": "vendor/openvibe-shared/account-switcher.js",
-     "targets": [
-      {
-       "service": "network",
-       "refs": [
-        {
-         "via": "/api/auth/me",
-         "line": 176
-        }
-       ]
-      }
-     ],
-     "auth": [
-      "bearer"
-     ],
-     "timeout": false,
-     "retry": true
-    },
-    {
-     "file": "vendor/openvibe-shared/auth-client.js",
+     "file": "apps/audio/node_modules/openvibe-shared/auth-client.js",
      "targets": [
       {
        "service": "network",
@@ -9550,7 +9678,7 @@
      "retry": false
     },
     {
-     "file": "vendor/openvibe-shared/footer.js",
+     "file": "apps/audio/node_modules/openvibe-shared/footer.js",
      "targets": [
       {
        "service": "network",
@@ -9567,33 +9695,6 @@
      ],
      "timeout": false,
      "retry": false
-    },
-    {
-     "file": "vendor/openvibe-shared/navbar.js",
-     "targets": [
-      {
-       "service": "network",
-       "refs": [
-        {
-         "via": "/api/auth/me",
-         "line": 10
-        },
-        {
-         "via": "/api/auth/me",
-         "line": 998
-        },
-        {
-         "via": "/api/auth/me",
-         "line": 1001
-        }
-       ]
-      }
-     ],
-     "auth": [
-      "bearer"
-     ],
-     "timeout": false,
-     "retry": true
     }
    ],
    "jobs": [
@@ -9697,86 +9798,128 @@
     "originMain": "d7c6e608d8e27e6ddbfc78a15fa7590036b1dded",
     "committedAt": "2026-09-22T16:32:05-07:00"
    },
-   "sourceFiles": 21,
-   "loc": 3950,
+   "sourceFiles": 41,
+   "loc": 6638,
    "tables": [
     {
      "table": "pastes",
      "file": "server/db.js",
-     "line": 18,
+     "line": 19,
      "via": "repo"
     },
     {
      "table": "paste_versions",
      "file": "server/db.js",
-     "line": 54,
+     "line": 55,
      "via": "repo"
     },
     {
      "table": "paste_likes",
      "file": "server/db.js",
-     "line": 65,
+     "line": 66,
      "via": "repo"
     },
     {
      "table": "paste_comments",
      "file": "server/db.js",
-     "line": 72,
+     "line": 73,
      "via": "repo"
     },
     {
      "table": "paste_visits",
      "file": "server/db.js",
-     "line": 88,
+     "line": 89,
      "via": "repo"
     },
     {
      "table": "subject_projection",
      "file": "server/db.js",
-     "line": 98,
+     "line": 99,
      "via": "repo"
     },
     {
      "table": "migration_runs",
      "file": "server/db.js",
-     "line": 108,
+     "line": 109,
      "via": "repo"
     },
     {
      "table": "legacy_id_map",
      "file": "server/db.js",
-     "line": 116,
+     "line": 117,
+     "via": "repo"
+    },
+    {
+     "table": "comment_threads",
+     "file": "server/db.js",
+     "line": 129,
+     "via": "repo"
+    },
+    {
+     "table": "comments",
+     "file": "server/db.js",
+     "line": 143,
+     "via": "repo"
+    },
+    {
+     "table": "comment_votes",
+     "file": "server/db.js",
+     "line": 163,
+     "via": "repo"
+    },
+    {
+     "table": "spaces",
+     "file": "server/db.js",
+     "line": 174,
+     "via": "repo"
+    },
+    {
+     "table": "threads",
+     "file": "server/db.js",
+     "line": 190,
+     "via": "repo"
+    },
+    {
+     "table": "posts",
+     "file": "server/db.js",
+     "line": 209,
+     "via": "repo"
+    },
+    {
+     "table": "post_versions",
+     "file": "server/db.js",
+     "line": 224,
+     "via": "repo"
+    },
+    {
+     "table": "thread_votes",
+     "file": "server/db.js",
+     "line": 233,
+     "via": "repo"
+    },
+    {
+     "table": "relay_mappings",
+     "file": "server/db.js",
+     "line": 245,
+     "via": "repo"
+    },
+    {
+     "table": "relay_deliveries",
+     "file": "server/db.js",
+     "line": 256,
+     "via": "repo"
+    },
+    {
+     "table": "pulse_items",
+     "file": "server/db.js",
+     "line": 275,
      "via": "repo"
     },
     {
      "table": "import_hold",
      "file": "server/db.js",
-     "line": 125,
+     "line": 292,
      "via": "repo"
-    },
-    {
-     "table": "analytics_events",
-     "file": "vendor/openvibe-shared/analytics.js",
-     "line": 74,
-     "via": "vendored openvibe-shared"
-    },
-    {
-     "table": "analytics_hourly",
-     "file": "vendor/openvibe-shared/analytics.js",
-     "line": 98,
-     "via": "vendored openvibe-shared"
-    },
-    {
-     "table": "analytics_daily",
-     "file": "vendor/openvibe-shared/analytics.js",
-     "line": 116,
-     "via": "vendored openvibe-shared"
-    },
-    {
-     "table": "analytics_rate_tracking",
-     "file": "vendor/openvibe-shared/analytics.js",
-     "line": 137,
-     "via": "vendored openvibe-shared"
     }
    ],
    "routes": [
@@ -9784,13 +9927,13 @@
      "method": "GET",
      "path": "/",
      "file": "server/app.js",
-     "line": 146
+     "line": 186
     },
     {
      "method": "GET",
      "path": "/api/health",
      "file": "server/app.js",
-     "line": 120
+     "line": 160
     },
     {
      "method": "GET",
@@ -9934,7 +10077,235 @@
      "method": "GET",
      "path": "/api/ready",
      "file": "server/app.js",
-     "line": 121
+     "line": 161
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/v1/comments/:commentId",
+     "file": "server/comments/api.js",
+     "line": 40
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/comments/:commentId/votes",
+     "file": "server/comments/api.js",
+     "line": 41
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/comments/threads/:id",
+     "file": "server/comments/api.js",
+     "line": 36
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/comments/threads/:id/comments",
+     "file": "server/comments/api.js",
+     "line": 37
+    },
+    {
+     "method": "PUT",
+     "path": "/api/v1/comments/threads/:id/visibility",
+     "file": "server/comments/api.js",
+     "line": 39
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/comments/threads/resolve",
+     "file": "server/comments/api.js",
+     "line": 34
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/posts",
+     "file": "server/forum/api.js",
+     "line": 36
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/v1/posts/:id",
+     "file": "server/forum/api.js",
+     "line": 57
+    },
+    {
+     "method": "PUT",
+     "path": "/api/v1/posts/:id",
+     "file": "server/forum/api.js",
+     "line": 56
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/posts/:id/versions",
+     "file": "server/forum/api.js",
+     "line": 58
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/posts/:space",
+     "file": "server/forum/api.js",
+     "line": 37
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/posts/:space/threads",
+     "file": "server/forum/api.js",
+     "line": 38
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/posts/:space/threads",
+     "file": "server/forum/api.js",
+     "line": 39
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/v1/posts/:space/threads/:slug",
+     "file": "server/forum/api.js",
+     "line": 41
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/posts/:space/threads/:slug",
+     "file": "server/forum/api.js",
+     "line": 40
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/posts/:space/threads/:slug/posts",
+     "file": "server/forum/api.js",
+     "line": 42
+    },
+    {
+     "method": "PUT",
+     "path": "/api/v1/posts/:space/threads/:slug/state",
+     "file": "server/forum/api.js",
+     "line": 44
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/posts/:space/threads/:slug/votes",
+     "file": "server/forum/api.js",
+     "line": 43
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/pulse",
+     "file": "server/pulse/api.js",
+     "line": 27
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/pulse/items",
+     "file": "server/pulse/api.js",
+     "line": 28
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/v1/pulse/items/:service/:type/:id",
+     "file": "server/pulse/api.js",
+     "line": 29
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/relay/deliveries",
+     "file": "server/relay/api.js",
+     "line": 35
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/relay/deliveries/:id/retry",
+     "file": "server/relay/api.js",
+     "line": 39
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/relay/mappings",
+     "file": "server/relay/api.js",
+     "line": 43
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/relay/mappings",
+     "file": "server/relay/api.js",
+     "line": 44
+    },
+    {
+     "method": "PUT",
+     "path": "/api/v1/relay/mappings/:id",
+     "file": "server/relay/api.js",
+     "line": 52
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/spaces",
+     "file": "server/forum/api.js",
+     "line": 36
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/v1/spaces/:id",
+     "file": "server/forum/api.js",
+     "line": 57
+    },
+    {
+     "method": "PUT",
+     "path": "/api/v1/spaces/:id",
+     "file": "server/forum/api.js",
+     "line": 56
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/spaces/:id/versions",
+     "file": "server/forum/api.js",
+     "line": 58
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/spaces/:space",
+     "file": "server/forum/api.js",
+     "line": 37
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/spaces/:space/threads",
+     "file": "server/forum/api.js",
+     "line": 38
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/spaces/:space/threads",
+     "file": "server/forum/api.js",
+     "line": 39
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/v1/spaces/:space/threads/:slug",
+     "file": "server/forum/api.js",
+     "line": 41
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/spaces/:space/threads/:slug",
+     "file": "server/forum/api.js",
+     "line": 40
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/spaces/:space/threads/:slug/posts",
+     "file": "server/forum/api.js",
+     "line": 42
+    },
+    {
+     "method": "PUT",
+     "path": "/api/v1/spaces/:space/threads/:slug/state",
+     "file": "server/forum/api.js",
+     "line": 44
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/spaces/:space/threads/:slug/votes",
+     "file": "server/forum/api.js",
+     "line": 43
     },
     {
      "method": "GET",
@@ -9952,7 +10323,7 @@
      "method": "GET",
      "path": "/feed.xml",
      "file": "server/app.js",
-     "line": 138
+     "line": 178
     },
     {
      "method": "GET",
@@ -9976,67 +10347,73 @@
      "method": "GET",
      "path": "/my",
      "file": "server/app.js",
-     "line": 252
+     "line": 302
     },
     {
      "method": "GET",
      "path": "/new",
      "file": "server/app.js",
-     "line": 214
+     "line": 254
     },
     {
      "method": "POST",
      "path": "/new",
      "file": "server/app.js",
-     "line": 225
+     "line": 265
     },
     {
      "method": "GET",
      "path": "/p/:slug",
      "file": "server/app.js",
-     "line": 159
+     "line": 199
     },
     {
      "method": "GET",
      "path": "/p/:slug/download",
      "file": "server/app.js",
-     "line": 202
+     "line": 242
     },
     {
      "method": "GET",
      "path": "/p/:slug/raw",
      "file": "server/app.js",
-     "line": 178
+     "line": 218
     },
     {
      "method": "GET",
      "path": "/p/:slug/raw",
      "file": "server/app.js",
-     "line": 198
+     "line": 238
     },
     {
      "method": "GET",
      "path": "/p/:slug/screenshot",
      "file": "server/app.js",
-     "line": 191
+     "line": 231
     },
     {
      "method": "GET",
      "path": "/p/:slug/screenshot",
      "file": "server/app.js",
-     "line": 199
+     "line": 239
     },
     {
      "method": "GET",
      "path": "/pastes",
      "file": "server/app.js",
-     "line": 151
+     "line": 191
     },
     {
      "method": "GET",
      "path": "/pastes/:slug",
      "file": "server/app.js",
-     "line": 157
+     "line": 197
+    },
+    {
+     "method": "GET",
+     "path": "/pulse",
+     "file": "server/app.js",
+     "line": 294
     },
     {
      "method": "POST",
@@ -10048,19 +10425,85 @@
      "method": "GET",
      "path": "/robots.txt",
      "file": "server/app.js",
-     "line": 136
+     "line": 176
+    },
+    {
+     "method": "GET",
+     "path": "/s",
+     "file": "server/forum/routes.js",
+     "line": 45
+    },
+    {
+     "method": "GET",
+     "path": "/s/:space",
+     "file": "server/forum/routes.js",
+     "line": 59
+    },
+    {
+     "method": "GET",
+     "path": "/s/:space/feed.xml",
+     "file": "server/forum/routes.js",
+     "line": 53
+    },
+    {
+     "method": "GET",
+     "path": "/s/:space/new",
+     "file": "server/forum/routes.js",
+     "line": 67
+    },
+    {
+     "method": "POST",
+     "path": "/s/:space/new",
+     "file": "server/forum/routes.js",
+     "line": 74
+    },
+    {
+     "method": "GET",
+     "path": "/s/:space/t/:slug",
+     "file": "server/forum/routes.js",
+     "line": 95
+    },
+    {
+     "method": "POST",
+     "path": "/s/:space/t/:slug/delete",
+     "file": "server/forum/routes.js",
+     "line": 135
+    },
+    {
+     "method": "POST",
+     "path": "/s/:space/t/:slug/reply",
+     "file": "server/forum/routes.js",
+     "line": 99
+    },
+    {
+     "method": "POST",
+     "path": "/s/:space/t/:slug/state",
+     "file": "server/forum/routes.js",
+     "line": 124
+    },
+    {
+     "method": "POST",
+     "path": "/s/:space/t/:slug/vote",
+     "file": "server/forum/routes.js",
+     "line": 117
+    },
+    {
+     "method": "GET",
+     "path": "/s/feed.xml",
+     "file": "server/forum/routes.js",
+     "line": 49
     },
     {
      "method": "GET",
      "path": "/sitemap.xml",
      "file": "server/app.js",
-     "line": 137
+     "line": 177
     },
     {
      "method": "GET",
      "path": "/tos",
      "file": "server/app.js",
-     "line": 82
+     "line": 100
     }
    ],
    "ws": {
@@ -10084,8 +10527,7 @@
      "server/config.js"
     ],
     "OV_NETWORK_URL": [
-     "server/config.js",
-     "vendor/openvibe-shared/brand.js"
+     "server/config.js"
     ],
     "OV_NETWORK_INTERNAL_URL": [
      "server/config.js"
@@ -10106,12 +10548,10 @@
      "server/config.js"
     ],
     "OV_LIVE_URL": [
-     "server/config.js",
-     "vendor/openvibe-shared/brand.js"
+     "server/config.js"
     ],
     "OV_MEDIA_URL": [
-     "server/config.js",
-     "vendor/openvibe-shared/brand.js"
+     "server/config.js"
     ],
     "OV_MEDIA_INTERNAL_URL": [
      "server/config.js"
@@ -10122,56 +10562,23 @@
     "COMMUNITY_DB_PATH": [
      "server/config.js"
     ],
+    "API_CORS_ORIGINS": [
+     "server/config.js"
+    ],
+    "DISCORD_RELAY_ENABLED": [
+     "server/config.js"
+    ],
+    "DISCORD_RELAY_POLL_MS": [
+     "server/config.js"
+    ],
+    "DISCORD_RELAY_BACKOFF_MS": [
+     "server/config.js"
+    ],
+    "DISCORD_RELAY_MAX_ATTEMPTS": [
+     "server/config.js"
+    ],
     "VIEW_HASH_SECRET": [
      "server/pastes/service.js"
-    ],
-    "LOGIN_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_NETWORK_LOGIN_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_TOOLS_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_GAMES_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_COMMUNITY_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_MAPS_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_FOOD_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_IMG_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_YT_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_AUDIO_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_TEXT_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_LOGO_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_DOCS_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_NET_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_DEV_URL": [
-     "vendor/openvibe-shared/brand.js"
-    ],
-    "OV_PASTES_URL": [
-     "vendor/openvibe-shared/brand.js"
     ]
    },
    "outbound": [
@@ -10298,25 +10705,6 @@
      "retry": true
     },
     {
-     "file": "vendor/openvibe-shared/account-switcher.js",
-     "targets": [
-      {
-       "service": "network",
-       "refs": [
-        {
-         "via": "/api/auth/me",
-         "line": 176
-        }
-       ]
-      }
-     ],
-     "auth": [
-      "bearer"
-     ],
-     "timeout": false,
-     "retry": true
-    },
-    {
      "file": "vendor/openvibe-shared/auth-client.js",
      "targets": [
       {
@@ -10366,33 +10754,6 @@
      ],
      "timeout": false,
      "retry": false
-    },
-    {
-     "file": "vendor/openvibe-shared/navbar.js",
-     "targets": [
-      {
-       "service": "network",
-       "refs": [
-        {
-         "via": "/api/auth/me",
-         "line": 10
-        },
-        {
-         "via": "/api/auth/me",
-         "line": 998
-        },
-        {
-         "via": "/api/auth/me",
-         "line": 1001
-        }
-       ]
-      }
-     ],
-     "auth": [
-      "bearer"
-     ],
-     "timeout": false,
-     "retry": true
     }
    ],
    "jobs": [
@@ -10400,13 +10761,27 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 211,
+     "line": 47,
+     "file": "server/limits.js"
+    },
+    {
+     "kind": "setInterval",
+     "name": null,
+     "intervalMs": null,
+     "line": 213,
      "file": "server/pastes/service.js"
+    },
+    {
+     "kind": "setInterval",
+     "name": null,
+     "intervalMs": null,
+     "line": 142,
+     "file": "server/relay/discord.js"
     }
    ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 14,
+   "testFiles": 21,
    "ci": true
   },
   {
@@ -10747,13 +11122,13 @@
    "service": "sites",
    "present": true,
    "git": {
-    "head": "185014ff01ed8bd8f6df3dd5099e2b6c904e235d",
+    "head": "b689b41ccd03cd213dfb5c0af4805c99e441e60d",
     "branch": "main",
-    "originMain": "185014ff01ed8bd8f6df3dd5099e2b6c904e235d",
-    "committedAt": "2026-09-21T09:22:26-07:00"
+    "originMain": "7b7c917eac88f1c33ce41a372d231f0c203b38f2",
+    "committedAt": "2026-09-22T17:58:25-07:00"
    },
    "sourceFiles": 1,
-   "loc": 306,
+   "loc": 308,
    "tables": [],
    "routes": [],
    "ws": {
@@ -10763,7 +11138,7 @@
    "env": {},
    "outbound": [
     {
-     "file": "vendor/openvibe-shared/footer.js",
+     "file": "node_modules/openvibe-shared/footer.js",
      "targets": [
       {
        "service": "network",
@@ -10789,715 +11164,134 @@
    "ci": false
   }
  ],
- "vendored": [
+ "sharedPins": [
   {
    "repo": "OpenVibe.Community",
-   "file": "account-switcher.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "analytics.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "app-icon.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "auth-client.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "brand.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "builtin-themes.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "chrome-ssr.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "footer.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "history.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "index.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "island.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "legal.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "middleware.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "navbar.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "notification-ui.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "notifications.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "openvibe-sw.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "ov-icons.js",
-   "state": "divergent"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "ov-mark.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "panels.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "scripts/build-app-icons.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "scripts/build-theme-loader.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "scripts/measure-icons.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "seo.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "sso-client.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "theme-loader.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "theme-sync.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "tooltip.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "ui.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "url-resolver.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "file": "user-card.js",
-   "state": "identical"
+   "manifest": "package.json",
+   "spec": "file:./vendor/openvibe-shared",
+   "state": "unpinned"
   },
   {
    "repo": "OpenVibe.Live",
-   "file": "account-switcher.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "analytics.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "app-icon.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "auth-client.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "brand.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "builtin-themes.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "chrome-ssr.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "footer.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "history.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "index.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "island.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "legal.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "middleware.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "navbar.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "notification-ui.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "notifications.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "openvibe-sw.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "ov-icons.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "ov-mark.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "panels.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "scripts/build-app-icons.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "scripts/build-theme-loader.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "scripts/measure-icons.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "seo.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "sso-client.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "theme-loader.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "theme-sync.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "tooltip.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "ui.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "url-resolver.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "file": "user-card.js",
-   "state": "divergent"
+   "manifest": "package.json",
+   "spec": "v1.0.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Media",
-   "file": "account-switcher.js",
-   "state": "identical"
+   "manifest": "package.json",
+   "spec": "file:./vendor/openvibe-shared",
+   "state": "unpinned"
   },
   {
-   "repo": "OpenVibe.Media",
-   "file": "analytics.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "app-icon.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "auth-client.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "brand.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "builtin-themes.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "chrome-ssr.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "footer.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "history.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "index.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "island.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "legal.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "middleware.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "navbar.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "notification-ui.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "notifications.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "openvibe-sw.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "ov-icons.js",
-   "state": "divergent"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "ov-mark.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "panels.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "scripts/build-app-icons.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "scripts/build-theme-loader.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "scripts/measure-icons.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "seo.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "sso-client.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "theme-loader.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "theme-sync.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "tooltip.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "ui.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "url-resolver.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "file": "user-card.js",
-   "state": "identical"
+   "repo": "OpenVibe.Network",
+   "manifest": "package.json",
+   "spec": "v1.0.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Sites",
-   "file": "app-icon.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Sites",
-   "file": "chrome-ssr.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Sites",
-   "file": "footer.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Sites",
-   "file": "legal.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Sites",
-   "file": "seo.js",
-   "state": "identical"
+   "manifest": "package.json",
+   "spec": "v1.0.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Tools",
-   "file": "account-switcher.js",
-   "state": "identical"
+   "manifest": "apps/audio/package.json",
+   "spec": "v1.0.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Tools",
-   "file": "analytics.js",
-   "state": "identical"
+   "manifest": "apps/docs/package.json",
+   "spec": "v1.0.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Tools",
-   "file": "app-icon.js",
-   "state": "identical"
+   "manifest": "apps/food/package.json",
+   "spec": "v1.0.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Tools",
-   "file": "auth-client.js",
-   "state": "identical"
+   "manifest": "apps/gateway/package.json",
+   "spec": "v1.0.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Tools",
-   "file": "brand.js",
-   "state": "identical"
+   "manifest": "apps/img/package.json",
+   "spec": "v1.0.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Tools",
-   "file": "builtin-themes.js",
-   "state": "identical"
+   "manifest": "apps/maps/package.json",
+   "spec": "v1.0.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Tools",
-   "file": "chrome-ssr.js",
-   "state": "identical"
+   "manifest": "apps/text/package.json",
+   "spec": "v1.0.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Tools",
-   "file": "footer.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "history.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "index.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "island.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "legal.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "middleware.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "navbar.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "notification-ui.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "notifications.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "openvibe-sw.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "ov-icons.js",
-   "state": "divergent"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "ov-mark.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "panels.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "scripts/build-app-icons.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "scripts/build-theme-loader.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "scripts/measure-icons.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "seo.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "sso-client.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "theme-loader.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "theme-sync.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "tooltip.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "ui.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "url-resolver.js",
-   "state": "identical"
-  },
-  {
-   "repo": "OpenVibe.Tools",
-   "file": "user-card.js",
-   "state": "identical"
+   "manifest": "apps/yt/package.json",
+   "spec": "v1.0.0",
+   "state": "current"
   }
  ],
  "ownership": [
   {
    "repo": "OpenVibe.Community",
-   "table": "analytics_daily",
+   "table": "comment_threads",
    "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:116"
+    "server/db.js:129"
    ],
    "prodDbs": [],
    "inCode": true,
    "inProd": false,
    "target": "OpenVibe.Community",
    "disposition": "keep",
-   "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "wave": "W5",
+   "note": ""
   },
   {
    "repo": "OpenVibe.Community",
-   "table": "analytics_events",
+   "table": "comment_votes",
    "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:74"
+    "server/db.js:163"
    ],
    "prodDbs": [],
    "inCode": true,
    "inProd": false,
    "target": "OpenVibe.Community",
    "disposition": "keep",
-   "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "wave": "W5",
+   "note": ""
   },
   {
    "repo": "OpenVibe.Community",
-   "table": "analytics_hourly",
+   "table": "comments",
    "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:98"
+    "server/db.js:143"
    ],
    "prodDbs": [],
    "inCode": true,
    "inProd": false,
    "target": "OpenVibe.Community",
    "disposition": "keep",
-   "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "table": "analytics_rate_tracking",
-   "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:137"
-   ],
-   "prodDbs": [],
-   "inCode": true,
-   "inProd": false,
-   "target": "OpenVibe.Community",
-   "disposition": "keep",
-   "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "wave": "W5",
+   "note": ""
   },
   {
    "repo": "OpenVibe.Community",
    "table": "import_hold",
    "declaredAt": [
-    "server/db.js:125"
+    "server/db.js:292"
    ],
    "prodDbs": [
     "community.db"
@@ -11513,7 +11307,7 @@
    "repo": "OpenVibe.Community",
    "table": "legacy_id_map",
    "declaredAt": [
-    "server/db.js:116"
+    "server/db.js:117"
    ],
    "prodDbs": [
     "community.db"
@@ -11529,7 +11323,7 @@
    "repo": "OpenVibe.Community",
    "table": "migration_runs",
    "declaredAt": [
-    "server/db.js:108"
+    "server/db.js:109"
    ],
    "prodDbs": [
     "community.db"
@@ -11545,7 +11339,7 @@
    "repo": "OpenVibe.Community",
    "table": "paste_comments",
    "declaredAt": [
-    "server/db.js:72"
+    "server/db.js:73"
    ],
    "prodDbs": [
     "community.db"
@@ -11561,7 +11355,7 @@
    "repo": "OpenVibe.Community",
    "table": "paste_likes",
    "declaredAt": [
-    "server/db.js:65"
+    "server/db.js:66"
    ],
    "prodDbs": [
     "community.db"
@@ -11577,7 +11371,7 @@
    "repo": "OpenVibe.Community",
    "table": "paste_versions",
    "declaredAt": [
-    "server/db.js:54"
+    "server/db.js:55"
    ],
    "prodDbs": [
     "community.db"
@@ -11593,7 +11387,7 @@
    "repo": "OpenVibe.Community",
    "table": "paste_visits",
    "declaredAt": [
-    "server/db.js:88"
+    "server/db.js:89"
    ],
    "prodDbs": [
     "community.db"
@@ -11609,7 +11403,7 @@
    "repo": "OpenVibe.Community",
    "table": "pastes",
    "declaredAt": [
-    "server/db.js:18"
+    "server/db.js:19"
    ],
    "prodDbs": [
     "community.db"
@@ -11623,15 +11417,127 @@
   },
   {
    "repo": "OpenVibe.Community",
+   "table": "post_versions",
+   "declaredAt": [
+    "server/db.js:224"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "posts",
+   "declaredAt": [
+    "server/db.js:209"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "pulse_items",
+   "declaredAt": [
+    "server/db.js:275"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "relay_deliveries",
+   "declaredAt": [
+    "server/db.js:256"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "relay_mappings",
+   "declaredAt": [
+    "server/db.js:245"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "spaces",
+   "declaredAt": [
+    "server/db.js:174"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
    "table": "subject_projection",
    "declaredAt": [
-    "server/db.js:98"
+    "server/db.js:99"
    ],
    "prodDbs": [
     "community.db"
    ],
    "inCode": true,
    "inProd": true,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "thread_votes",
+   "declaredAt": [
+    "server/db.js:233"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Community",
+   "disposition": "keep",
+   "wave": "W5",
+   "note": ""
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "table": "threads",
+   "declaredAt": [
+    "server/db.js:190"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
    "target": "OpenVibe.Community",
    "disposition": "keep",
    "wave": "W5",
@@ -11846,7 +11752,7 @@
    "repo": "OpenVibe.Live",
    "table": "analytics_daily",
    "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:116"
+    "node_modules/openvibe-shared/analytics.js:116"
    ],
    "prodDbs": [
     "analytics.db"
@@ -11856,13 +11762,13 @@
    "target": "OpenVibe.Live",
    "disposition": "keep",
    "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "note": "Per-site analytics from openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
   },
   {
    "repo": "OpenVibe.Live",
    "table": "analytics_events",
    "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:74"
+    "node_modules/openvibe-shared/analytics.js:74"
    ],
    "prodDbs": [
     "analytics.db"
@@ -11872,13 +11778,13 @@
    "target": "OpenVibe.Live",
    "disposition": "keep",
    "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "note": "Per-site analytics from openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
   },
   {
    "repo": "OpenVibe.Live",
    "table": "analytics_hourly",
    "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:98"
+    "node_modules/openvibe-shared/analytics.js:98"
    ],
    "prodDbs": [
     "analytics.db"
@@ -11888,13 +11794,13 @@
    "target": "OpenVibe.Live",
    "disposition": "keep",
    "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "note": "Per-site analytics from openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
   },
   {
    "repo": "OpenVibe.Live",
    "table": "analytics_rate_tracking",
    "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:137"
+    "node_modules/openvibe-shared/analytics.js:137"
    ],
    "prodDbs": [
     "analytics.db"
@@ -11904,7 +11810,7 @@
    "target": "OpenVibe.Live",
    "disposition": "keep",
    "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "note": "Per-site analytics from openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
   },
   {
    "repo": "OpenVibe.Live",
@@ -14586,62 +14492,6 @@
   },
   {
    "repo": "OpenVibe.Media",
-   "table": "analytics_daily",
-   "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:116"
-   ],
-   "prodDbs": [],
-   "inCode": true,
-   "inProd": false,
-   "target": "OpenVibe.Media",
-   "disposition": "keep",
-   "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "table": "analytics_events",
-   "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:74"
-   ],
-   "prodDbs": [],
-   "inCode": true,
-   "inProd": false,
-   "target": "OpenVibe.Media",
-   "disposition": "keep",
-   "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "table": "analytics_hourly",
-   "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:98"
-   ],
-   "prodDbs": [],
-   "inCode": true,
-   "inProd": false,
-   "target": "OpenVibe.Media",
-   "disposition": "keep",
-   "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "table": "analytics_rate_tracking",
-   "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:137"
-   ],
-   "prodDbs": [],
-   "inCode": true,
-   "inProd": false,
-   "target": "OpenVibe.Media",
-   "disposition": "keep",
-   "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
-  },
-  {
-   "repo": "OpenVibe.Media",
    "table": "apps",
    "declaredAt": [
     "server/db/schema.sql:8"
@@ -14660,7 +14510,7 @@
    "repo": "OpenVibe.Media",
    "table": "assets",
    "declaredAt": [
-    "server/db/schema.sql:189"
+    "server/db/schema.sql:193"
    ],
    "prodDbs": [
     "media.db"
@@ -14676,7 +14526,7 @@
    "repo": "OpenVibe.Media",
    "table": "clips",
    "declaredAt": [
-    "server/db/schema.sql:63"
+    "server/db/schema.sql:64"
    ],
    "prodDbs": [
     "media.db"
@@ -14692,7 +14542,7 @@
    "repo": "OpenVibe.Media",
    "table": "content_views",
    "declaredAt": [
-    "server/db/schema.sql:94"
+    "server/db/schema.sql:96"
    ],
    "prodDbs": [
     "media.db"
@@ -14724,13 +14574,97 @@
    "repo": "OpenVibe.Media",
    "table": "files",
    "declaredAt": [
-    "server/db/schema.sql:164"
+    "server/db/schema.sql:167"
    ],
    "prodDbs": [
     "media.db"
    ],
    "inCode": true,
    "inProd": true,
+   "target": "OpenVibe.Media",
+   "disposition": "keep",
+   "wave": "W4 (object model)",
+   "note": "Becomes projections over media_objects/media_locations."
+  },
+  {
+   "repo": "OpenVibe.Media",
+   "table": "media_holds",
+   "declaredAt": [
+    "server/db/schema.sql:293"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Media",
+   "disposition": "keep",
+   "wave": "W4 (object model)",
+   "note": "Becomes projections over media_objects/media_locations."
+  },
+  {
+   "repo": "OpenVibe.Media",
+   "table": "media_invariant_violations",
+   "declaredAt": [
+    "server/db/schema.sql:306"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Media",
+   "disposition": "keep",
+   "wave": "W4 (object model)",
+   "note": "Becomes projections over media_objects/media_locations."
+  },
+  {
+   "repo": "OpenVibe.Media",
+   "table": "media_jobs",
+   "declaredAt": [
+    "server/db/schema.sql:279"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Media",
+   "disposition": "keep",
+   "wave": "W4 (object model)",
+   "note": "Becomes projections over media_objects/media_locations."
+  },
+  {
+   "repo": "OpenVibe.Media",
+   "table": "media_locations",
+   "declaredAt": [
+    "server/db/schema.sql:241"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Media",
+   "disposition": "keep",
+   "wave": "W4 (object model)",
+   "note": "Becomes projections over media_objects/media_locations."
+  },
+  {
+   "repo": "OpenVibe.Media",
+   "table": "media_objects",
+   "declaredAt": [
+    "server/db/schema.sql:214"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Media",
+   "disposition": "keep",
+   "wave": "W4 (object model)",
+   "note": "Becomes projections over media_objects/media_locations."
+  },
+  {
+   "repo": "OpenVibe.Media",
+   "table": "media_relationships",
+   "declaredAt": [
+    "server/db/schema.sql:257"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
    "target": "OpenVibe.Media",
    "disposition": "keep",
    "wave": "W4 (object model)",
@@ -14740,7 +14674,7 @@
    "repo": "OpenVibe.Media",
    "table": "media_settings",
    "declaredAt": [
-    "server/db/schema.sql:178"
+    "server/db/schema.sql:182"
    ],
    "prodDbs": [
     "media.db"
@@ -14754,9 +14688,23 @@
   },
   {
    "repo": "OpenVibe.Media",
+   "table": "media_variants",
+   "declaredAt": [
+    "server/db/schema.sql:268"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Media",
+   "disposition": "keep",
+   "wave": "W4 (object model)",
+   "note": "Becomes projections over media_objects/media_locations."
+  },
+  {
+   "repo": "OpenVibe.Media",
    "table": "paste_comments",
    "declaredAt": [
-    "server/db/schema.sql:146"
+    "server/db/schema.sql:149"
    ],
    "prodDbs": [
     "media.db"
@@ -14772,7 +14720,7 @@
    "repo": "OpenVibe.Media",
    "table": "paste_likes",
    "declaredAt": [
-    "server/db/schema.sql:138"
+    "server/db/schema.sql:141"
    ],
    "prodDbs": [
     "media.db"
@@ -14788,7 +14736,7 @@
    "repo": "OpenVibe.Media",
    "table": "pastes",
    "declaredAt": [
-    "server/db/schema.sql:105"
+    "server/db/schema.sql:107"
    ],
    "prodDbs": [
     "media.db"
@@ -14834,7 +14782,7 @@
    "repo": "OpenVibe.Network",
    "table": "analytics_daily",
    "declaredAt": [
-    "packages/openvibe-shared/analytics.js:116"
+    "node_modules/openvibe-shared/analytics.js:116"
    ],
    "prodDbs": [
     "network.db"
@@ -14844,13 +14792,13 @@
    "target": "OpenVibe.Network",
    "disposition": "keep",
    "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "note": "Per-site analytics from openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
   },
   {
    "repo": "OpenVibe.Network",
    "table": "analytics_events",
    "declaredAt": [
-    "packages/openvibe-shared/analytics.js:74"
+    "node_modules/openvibe-shared/analytics.js:74"
    ],
    "prodDbs": [
     "network.db"
@@ -14860,13 +14808,13 @@
    "target": "OpenVibe.Network",
    "disposition": "keep",
    "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "note": "Per-site analytics from openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
   },
   {
    "repo": "OpenVibe.Network",
    "table": "analytics_hourly",
    "declaredAt": [
-    "packages/openvibe-shared/analytics.js:98"
+    "node_modules/openvibe-shared/analytics.js:98"
    ],
    "prodDbs": [
     "network.db"
@@ -14876,13 +14824,13 @@
    "target": "OpenVibe.Network",
    "disposition": "keep",
    "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "note": "Per-site analytics from openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
   },
   {
    "repo": "OpenVibe.Network",
    "table": "analytics_rate_tracking",
    "declaredAt": [
-    "packages/openvibe-shared/analytics.js:137"
+    "node_modules/openvibe-shared/analytics.js:137"
    ],
    "prodDbs": [
     "network.db"
@@ -14892,7 +14840,7 @@
    "target": "OpenVibe.Network",
    "disposition": "keep",
    "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "note": "Per-site analytics from openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
   },
   {
    "repo": "OpenVibe.Network",
@@ -15186,7 +15134,7 @@
    "repo": "OpenVibe.Network",
    "table": "principal_grants",
    "declaredAt": [
-    "server/identity/principals.js:44"
+    "server/identity/principals.js:54"
    ],
    "prodDbs": [
     "network.db"
@@ -15202,7 +15150,7 @@
    "repo": "OpenVibe.Network",
    "table": "principal_usage",
    "declaredAt": [
-    "server/identity/principals.js:54"
+    "server/identity/principals.js:64"
    ],
    "prodDbs": [
     "network.db"
@@ -15443,7 +15391,7 @@
    "repo": "OpenVibe.Tools",
    "table": "analytics_daily",
    "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:116"
+    "apps/audio/node_modules/openvibe-shared/analytics.js:116"
    ],
    "prodDbs": [
     "analytics.db"
@@ -15453,13 +15401,13 @@
    "target": "OpenVibe.Tools",
    "disposition": "keep",
    "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "note": "Per-site analytics from openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
   },
   {
    "repo": "OpenVibe.Tools",
    "table": "analytics_events",
    "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:74"
+    "apps/audio/node_modules/openvibe-shared/analytics.js:74"
    ],
    "prodDbs": [
     "analytics.db"
@@ -15469,13 +15417,13 @@
    "target": "OpenVibe.Tools",
    "disposition": "keep",
    "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "note": "Per-site analytics from openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
   },
   {
    "repo": "OpenVibe.Tools",
    "table": "analytics_hourly",
    "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:98"
+    "apps/audio/node_modules/openvibe-shared/analytics.js:98"
    ],
    "prodDbs": [
     "analytics.db"
@@ -15485,13 +15433,13 @@
    "target": "OpenVibe.Tools",
    "disposition": "keep",
    "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "note": "Per-site analytics from openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
   },
   {
    "repo": "OpenVibe.Tools",
    "table": "analytics_rate_tracking",
    "declaredAt": [
-    "vendor/openvibe-shared/analytics.js:137"
+    "apps/audio/node_modules/openvibe-shared/analytics.js:137"
    ],
    "prodDbs": [
     "analytics.db"
@@ -15501,7 +15449,7 @@
    "target": "OpenVibe.Tools",
    "disposition": "keep",
    "wave": "Track O / ADR-021",
-   "note": "Per-site analytics from vendored openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
+   "note": "Per-site analytics from openvibe-shared/analytics.js. Raw analytics_events has no pruning (hazard H11)."
   }
  ],
  "calls": [
@@ -15547,16 +15495,6 @@
   },
   {
    "caller": "OpenVibe.Community",
-   "file": "vendor/openvibe-shared/account-switcher.js",
-   "target": "OpenVibe.Network",
-   "via": "/api/auth/me",
-   "lines": "176",
-   "auth": "bearer",
-   "timeout": false,
-   "retry": true
-  },
-  {
-   "caller": "OpenVibe.Community",
    "file": "vendor/openvibe-shared/auth-client.js",
    "target": "OpenVibe.Network",
    "via": ":4000, /oauth/token",
@@ -15574,16 +15512,6 @@
    "auth": "bearer",
    "timeout": false,
    "retry": false
-  },
-  {
-   "caller": "OpenVibe.Community",
-   "file": "vendor/openvibe-shared/navbar.js",
-   "target": "OpenVibe.Network",
-   "via": "/api/auth/me",
-   "lines": "10,998,1001",
-   "auth": "bearer",
-   "timeout": false,
-   "retry": true
   },
   {
    "caller": "OpenVibe.Games",
@@ -15747,46 +15675,6 @@
   },
   {
    "caller": "OpenVibe.Live",
-   "file": "vendor/openvibe-shared/account-switcher.js",
-   "target": "OpenVibe.Network",
-   "via": "/api/auth/me",
-   "lines": "176",
-   "auth": "bearer",
-   "timeout": false,
-   "retry": true
-  },
-  {
-   "caller": "OpenVibe.Live",
-   "file": "vendor/openvibe-shared/auth-client.js",
-   "target": "OpenVibe.Network",
-   "via": ":4000, /oauth/token",
-   "lines": "23,31,60,84",
-   "auth": "internal-key, oauth-client",
-   "timeout": false,
-   "retry": false
-  },
-  {
-   "caller": "OpenVibe.Live",
-   "file": "vendor/openvibe-shared/footer.js",
-   "target": "OpenVibe.Network",
-   "via": "/api/auth/me",
-   "lines": "280",
-   "auth": "bearer",
-   "timeout": false,
-   "retry": false
-  },
-  {
-   "caller": "OpenVibe.Live",
-   "file": "vendor/openvibe-shared/navbar.js",
-   "target": "OpenVibe.Network",
-   "via": "/api/auth/me",
-   "lines": "10,998,1001",
-   "auth": "bearer",
-   "timeout": false,
-   "retry": true
-  },
-  {
-   "caller": "OpenVibe.Live",
    "file": "server/integrations/discord-webhook.js",
    "target": "webhook",
    "via": "webhook_url (per-app, configured in DB)",
@@ -15837,16 +15725,6 @@
   },
   {
    "caller": "OpenVibe.Media",
-   "file": "vendor/openvibe-shared/account-switcher.js",
-   "target": "OpenVibe.Network",
-   "via": "/api/auth/me",
-   "lines": "176",
-   "auth": "bearer",
-   "timeout": false,
-   "retry": true
-  },
-  {
-   "caller": "OpenVibe.Media",
    "file": "vendor/openvibe-shared/auth-client.js",
    "target": "OpenVibe.Network",
    "via": ":4000, /oauth/token",
@@ -15854,26 +15732,6 @@
    "auth": "internal-key, oauth-client",
    "timeout": false,
    "retry": false
-  },
-  {
-   "caller": "OpenVibe.Media",
-   "file": "vendor/openvibe-shared/footer.js",
-   "target": "OpenVibe.Network",
-   "via": "/api/auth/me",
-   "lines": "280",
-   "auth": "bearer",
-   "timeout": false,
-   "retry": false
-  },
-  {
-   "caller": "OpenVibe.Media",
-   "file": "vendor/openvibe-shared/navbar.js",
-   "target": "OpenVibe.Network",
-   "via": "/api/auth/me",
-   "lines": "10,998,1001",
-   "auth": "bearer",
-   "timeout": false,
-   "retry": true
   },
   {
    "caller": "OpenVibe.Media",
@@ -15960,7 +15818,7 @@
    "file": "server/index.js",
    "target": "OpenVibe.Live",
    "via": ":3000, live.internalUrl",
-   "lines": "215,289,479",
+   "lines": "215,289,484",
    "auth": "internal-key, bearer",
    "timeout": false,
    "retry": false
@@ -16056,8 +15914,48 @@
    "retry": false
   },
   {
+   "caller": "OpenVibe.Shared",
+   "file": "account-switcher.js",
+   "target": "OpenVibe.Network",
+   "via": "/api/auth/me",
+   "lines": "176",
+   "auth": "bearer",
+   "timeout": false,
+   "retry": true
+  },
+  {
+   "caller": "OpenVibe.Shared",
+   "file": "auth-client.js",
+   "target": "OpenVibe.Network",
+   "via": ":4000, /oauth/token",
+   "lines": "23,31,60,84",
+   "auth": "internal-key, oauth-client",
+   "timeout": false,
+   "retry": false
+  },
+  {
+   "caller": "OpenVibe.Shared",
+   "file": "footer.js",
+   "target": "OpenVibe.Network",
+   "via": "/api/auth/me",
+   "lines": "280",
+   "auth": "bearer",
+   "timeout": false,
+   "retry": false
+  },
+  {
+   "caller": "OpenVibe.Shared",
+   "file": "navbar.js",
+   "target": "OpenVibe.Network",
+   "via": "/api/auth/me",
+   "lines": "10,997,1000",
+   "auth": "bearer",
+   "timeout": false,
+   "retry": true
+  },
+  {
    "caller": "OpenVibe.Sites",
-   "file": "vendor/openvibe-shared/footer.js",
+   "file": "node_modules/openvibe-shared/footer.js",
    "target": "OpenVibe.Network",
    "via": "/api/auth/me",
    "lines": "280",
@@ -16069,8 +15967,8 @@
    "caller": "OpenVibe.Tools",
    "file": "apps/gateway/server/index.js",
    "target": "OpenVibe.Community",
-   "via": "OV_COMMUNITY_URL",
-   "lines": "266",
+   "via": "communityUrl, OV_COMMUNITY_URL",
+   "lines": "141,259",
    "auth": "internal-key, bearer",
    "timeout": true,
    "retry": false
@@ -16080,9 +15978,29 @@
    "file": "apps/gateway/server/index.js",
    "target": "OpenVibe.Live",
    "via": "liveUrl",
-   "lines": "148,318",
+   "lines": "311",
    "auth": "internal-key, bearer",
    "timeout": true,
+   "retry": false
+  },
+  {
+   "caller": "OpenVibe.Tools",
+   "file": "apps/audio/node_modules/openvibe-shared/auth-client.js",
+   "target": "OpenVibe.Network",
+   "via": ":4000, /oauth/token",
+   "lines": "23,31,60,84",
+   "auth": "internal-key, oauth-client",
+   "timeout": false,
+   "retry": false
+  },
+  {
+   "caller": "OpenVibe.Tools",
+   "file": "apps/audio/node_modules/openvibe-shared/footer.js",
+   "target": "OpenVibe.Network",
+   "via": "/api/auth/me",
+   "lines": "280",
+   "auth": "bearer",
+   "timeout": false,
    "retry": false
   },
   {
@@ -16120,7 +16038,7 @@
    "file": "apps/gateway/server/index.js",
    "target": "OpenVibe.Network",
    "via": "networkUrl",
-   "lines": "317",
+   "lines": "310",
    "auth": "internal-key, bearer",
    "timeout": true,
    "retry": false
@@ -16144,49 +16062,18 @@
    "auth": "none-detected",
    "timeout": true,
    "retry": true
-  },
-  {
-   "caller": "OpenVibe.Tools",
-   "file": "vendor/openvibe-shared/account-switcher.js",
-   "target": "OpenVibe.Network",
-   "via": "/api/auth/me",
-   "lines": "176",
-   "auth": "bearer",
-   "timeout": false,
-   "retry": true
-  },
-  {
-   "caller": "OpenVibe.Tools",
-   "file": "vendor/openvibe-shared/auth-client.js",
-   "target": "OpenVibe.Network",
-   "via": ":4000, /oauth/token",
-   "lines": "23,31,60,84",
-   "auth": "internal-key, oauth-client",
-   "timeout": false,
-   "retry": false
-  },
-  {
-   "caller": "OpenVibe.Tools",
-   "file": "vendor/openvibe-shared/footer.js",
-   "target": "OpenVibe.Network",
-   "via": "/api/auth/me",
-   "lines": "280",
-   "auth": "bearer",
-   "timeout": false,
-   "retry": false
-  },
-  {
-   "caller": "OpenVibe.Tools",
-   "file": "vendor/openvibe-shared/navbar.js",
-   "target": "OpenVibe.Network",
-   "via": "/api/auth/me",
-   "lines": "10,998,1001",
-   "auth": "bearer",
-   "timeout": false,
-   "retry": true
   }
  ],
  "env": [
+  {
+   "repo": "OpenVibe.Community",
+   "name": "API_CORS_ORIGINS",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
   {
    "repo": "OpenVibe.Community",
    "name": "BASE_URL",
@@ -16216,6 +16103,42 @@
   },
   {
    "repo": "OpenVibe.Community",
+   "name": "DISCORD_RELAY_BACKOFF_MS",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "name": "DISCORD_RELAY_ENABLED",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "name": "DISCORD_RELAY_MAX_ATTEMPTS",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Community",
+   "name": "DISCORD_RELAY_POLL_MS",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Community",
    "name": "HOST",
    "secret": false,
    "files": [
@@ -16225,84 +16148,12 @@
   },
   {
    "repo": "OpenVibe.Community",
-   "name": "LOGIN_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Community",
    "name": "NODE_ENV",
    "secret": false,
    "files": [
     "server/config.js"
    ],
    "prod": "community.env"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "name": "OV_AUDIO_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "name": "OV_COMMUNITY_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "name": "OV_DEV_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "name": "OV_DOCS_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "name": "OV_FOOD_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "name": "OV_GAMES_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "name": "OV_IMG_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
   },
   {
    "repo": "OpenVibe.Community",
@@ -16318,28 +16169,9 @@
    "name": "OV_LIVE_URL",
    "secret": false,
    "files": [
-    "server/config.js",
-    "vendor/openvibe-shared/brand.js"
+    "server/config.js"
    ],
    "prod": "community.env"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "name": "OV_LOGO_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "name": "OV_MAPS_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
   },
   {
    "repo": "OpenVibe.Community",
@@ -16355,19 +16187,9 @@
    "name": "OV_MEDIA_URL",
    "secret": false,
    "files": [
-    "server/config.js",
-    "vendor/openvibe-shared/brand.js"
+    "server/config.js"
    ],
    "prod": "community.env"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "name": "OV_NET_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
   },
   {
    "repo": "OpenVibe.Community",
@@ -16380,20 +16202,10 @@
   },
   {
    "repo": "OpenVibe.Community",
-   "name": "OV_NETWORK_LOGIN_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Community",
    "name": "OV_NETWORK_URL",
    "secret": false,
    "files": [
-    "server/config.js",
-    "vendor/openvibe-shared/brand.js"
+    "server/config.js"
    ],
    "prod": "community.env"
   },
@@ -16423,42 +16235,6 @@
     "server/config.js"
    ],
    "prod": "community.env"
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "name": "OV_PASTES_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "name": "OV_TEXT_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "name": "OV_TOOLS_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Community",
-   "name": "OV_YT_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
   },
   {
    "repo": "OpenVibe.Community",
@@ -16907,15 +16683,6 @@
   },
   {
    "repo": "OpenVibe.Live",
-   "name": "LOGIN_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Live",
    "name": "MAX_EMOTE_SIZE_KB",
    "secret": false,
    "files": [
@@ -17129,15 +16896,6 @@
   },
   {
    "repo": "OpenVibe.Live",
-   "name": "OV_AUDIO_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Live",
    "name": "OV_COMMUNITY_INTERNAL_URL",
    "secret": false,
    "files": [
@@ -17152,55 +16910,9 @@
    "files": [
     "server/index.js",
     "server/media-proxy/pastes.js",
-    "server/seo/seo.js",
-    "vendor/openvibe-shared/brand.js"
+    "server/seo/seo.js"
    ],
    "prod": "live.env"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "name": "OV_DEV_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "name": "OV_DOCS_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "name": "OV_FOOD_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "name": "OV_GAMES_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "name": "OV_IMG_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
   },
   {
    "repo": "OpenVibe.Live",
@@ -17220,46 +16932,9 @@
    "repo": "OpenVibe.Live",
    "name": "OV_LIVE_URL",
    "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": "live.env"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "name": "OV_LOGO_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "name": "OV_MAPS_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "name": "OV_MEDIA_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "name": "OV_NET_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
+   "files": [],
+   "prod": "live.env",
+   "unreferenced": true
   },
   {
    "repo": "OpenVibe.Live",
@@ -17273,15 +16948,6 @@
     "server/utils/notify.js"
    ],
    "prod": "live.env"
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "name": "OV_NETWORK_LOGIN_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
   },
   {
    "repo": "OpenVibe.Live",
@@ -17299,8 +16965,7 @@
    "files": [
     "server/auth/auth.js",
     "server/config.js",
-    "server/index.js",
-    "vendor/openvibe-shared/brand.js"
+    "server/index.js"
    ],
    "prod": "live.env"
   },
@@ -17326,46 +16991,10 @@
   },
   {
    "repo": "OpenVibe.Live",
-   "name": "OV_PASTES_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Live",
    "name": "OV_PUBLIC_DIR",
    "secret": false,
    "files": [
     "server/web/assets.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "name": "OV_TEXT_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "name": "OV_TOOLS_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Live",
-   "name": "OV_YT_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -17912,15 +17541,6 @@
   },
   {
    "repo": "OpenVibe.Media",
-   "name": "LOGIN_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
    "name": "MEDIA_APP_KEYS",
    "secret": false,
    "files": [
@@ -18047,6 +17667,15 @@
   },
   {
    "repo": "OpenVibe.Media",
+   "name": "MEDIA_SIGNING_SECRET",
+   "secret": true,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Media",
    "name": "MIN_VOD_SECONDS",
    "secret": false,
    "files": [
@@ -18065,109 +17694,10 @@
   },
   {
    "repo": "OpenVibe.Media",
-   "name": "OV_AUDIO_URL",
+   "name": "OBJECTS_PATH",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_COMMUNITY_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_DEV_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_DOCS_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_FOOD_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_GAMES_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_IMG_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_LIVE_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_LOGO_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_MAPS_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_MEDIA_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_NET_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
+    "server/config.js"
    ],
    "prod": null
   },
@@ -18182,20 +17712,10 @@
   },
   {
    "repo": "OpenVibe.Media",
-   "name": "OV_NETWORK_LOGIN_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
    "name": "OV_NETWORK_URL",
    "secret": false,
    "files": [
-    "server/config.js",
-    "vendor/openvibe-shared/brand.js"
+    "server/config.js"
    ],
    "prod": "media.env"
   },
@@ -18223,42 +17743,6 @@
    "secret": false,
    "files": [
     "server/index.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_PASTES_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_TEXT_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_TOOLS_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
-   ],
-   "prod": null
-  },
-  {
-   "repo": "OpenVibe.Media",
-   "name": "OV_YT_URL",
-   "secret": false,
-   "files": [
-    "vendor/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -18439,7 +17923,8 @@
    "files": [
     "server/config.js",
     "server/grant-admin.js",
-    "server/reset-db.js"
+    "server/reset-db.js",
+    "server/setup/service-principal.js"
    ],
    "prod": "network.env"
   },
@@ -18503,7 +17988,7 @@
    "name": "LOGIN_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js",
+    "node_modules/openvibe-shared/brand.js",
     "server/config.js"
    ],
    "prod": null
@@ -18568,7 +18053,7 @@
    "name": "OV_AUDIO_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -18577,7 +18062,7 @@
    "name": "OV_COMMUNITY_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -18586,7 +18071,7 @@
    "name": "OV_DEV_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -18595,7 +18080,7 @@
    "name": "OV_DOCS_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -18604,7 +18089,7 @@
    "name": "OV_FOOD_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -18622,7 +18107,7 @@
    "name": "OV_GAMES_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": "network.env"
   },
@@ -18640,7 +18125,7 @@
    "name": "OV_IMG_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -18668,7 +18153,7 @@
    "name": "OV_LIVE_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": "network.env"
   },
@@ -18686,7 +18171,7 @@
    "name": "OV_LOGO_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -18695,7 +18180,7 @@
    "name": "OV_MAPS_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -18713,7 +18198,7 @@
    "name": "OV_MEDIA_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": "network.env"
   },
@@ -18722,7 +18207,7 @@
    "name": "OV_NET_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -18749,7 +18234,7 @@
    "name": "OV_NETWORK_LOGIN_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -18758,7 +18243,7 @@
    "name": "OV_NETWORK_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js",
+    "node_modules/openvibe-shared/brand.js",
     "server/config.js"
    ],
    "prod": null
@@ -18768,7 +18253,7 @@
    "name": "OV_PASTES_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -18795,7 +18280,7 @@
    "name": "OV_TEXT_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -18814,7 +18299,7 @@
    "name": "OV_TOOLS_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": "network.env"
   },
@@ -18823,7 +18308,7 @@
    "name": "OV_YT_URL",
    "secret": false,
    "files": [
-    "packages/openvibe-shared/brand.js"
+    "node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -18882,6 +18367,177 @@
    "secret": false,
    "files": [
     "server/index.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "LOGIN_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_AUDIO_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_COMMUNITY_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_DEV_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_DOCS_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_FOOD_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_GAMES_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_IMG_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_LIVE_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_LOGO_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_MAPS_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_MEDIA_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_NET_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_NETWORK_LOGIN_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_NETWORK_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_PASTES_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_TEXT_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_TOOLS_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
+   "name": "OV_YT_URL",
+   "secret": false,
+   "files": [
+    "brand.js"
    ],
    "prod": null
   },
@@ -18973,7 +18629,7 @@
    "name": "LOGIN_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19052,7 +18708,16 @@
    "name": "OV_AUDIO_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Tools",
+   "name": "OV_COMMUNITY_INTERNAL_URL",
+   "secret": false,
+   "files": [
+    "apps/gateway/server/config.js"
    ],
    "prod": null
   },
@@ -19061,8 +18726,8 @@
    "name": "OV_COMMUNITY_URL",
    "secret": false,
    "files": [
-    "apps/gateway/server/index.js",
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js",
+    "apps/gateway/server/index.js"
    ],
    "prod": null
   },
@@ -19071,7 +18736,7 @@
    "name": "OV_DEV_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19080,7 +18745,7 @@
    "name": "OV_DOCS_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19116,7 +18781,7 @@
    "name": "OV_FOOD_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19125,7 +18790,7 @@
    "name": "OV_GAMES_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19134,7 +18799,7 @@
    "name": "OV_IMG_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19152,7 +18817,7 @@
    "name": "OV_LIVE_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19161,7 +18826,7 @@
    "name": "OV_LOGO_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19170,7 +18835,7 @@
    "name": "OV_MAPS_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19179,7 +18844,7 @@
    "name": "OV_MEDIA_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19188,7 +18853,7 @@
    "name": "OV_NET_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19210,7 +18875,7 @@
    "name": "OV_NETWORK_LOGIN_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19231,13 +18896,13 @@
    "name": "OV_NETWORK_URL",
    "secret": false,
    "files": [
+    "apps/audio/node_modules/openvibe-shared/brand.js",
     "apps/audio/server/config.js",
     "apps/docs/server/config.js",
     "apps/gateway/server/config.js",
     "apps/img/server/config.js",
     "apps/text/server/config.js",
-    "apps/yt/server/config.js",
-    "vendor/openvibe-shared/brand.js"
+    "apps/yt/server/config.js"
    ],
    "prod": "tools.env"
   },
@@ -19273,7 +18938,7 @@
    "name": "OV_PASTES_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19282,7 +18947,7 @@
    "name": "OV_TEXT_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19291,7 +18956,7 @@
    "name": "OV_TOOLS_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19300,7 +18965,7 @@
    "name": "OV_YT_URL",
    "secret": false,
    "files": [
-    "vendor/openvibe-shared/brand.js"
+    "apps/audio/node_modules/openvibe-shared/brand.js"
    ],
    "prod": null
   },
@@ -19373,8 +19038,26 @@
   {
    "severity": "medium",
    "area": "deploy",
+   "subject": "media",
+   "detail": "deployed ddfefcf is 1 commit(s) behind origin/main cced10f"
+  },
+  {
+   "severity": "medium",
+   "area": "deploy",
    "subject": "network",
-   "detail": "deployed 1b79576 is 1 commit(s) behind origin/main 1bc6a52"
+   "detail": "deployed 1b79576 is 8 commit(s) behind origin/main 06e4a6b"
+  },
+  {
+   "severity": "medium",
+   "area": "deploy",
+   "subject": "sites",
+   "detail": "deployed 185014f is 1 commit(s) behind origin/main 7b7c917"
+  },
+  {
+   "severity": "medium",
+   "area": "deploy",
+   "subject": "tools",
+   "detail": "deployed 0346edc is 1 commit(s) behind origin/main fd5d318"
   },
   {
    "severity": "low",
@@ -19440,6 +19123,12 @@
    "severity": "low",
    "area": "env",
    "subject": "OpenVibe.Media:MEDIA_SECRET",
+   "detail": "secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback"
+  },
+  {
+   "severity": "low",
+   "area": "env",
+   "subject": "OpenVibe.Media:MEDIA_SIGNING_SECRET",
    "detail": "secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback"
   },
   {
@@ -19876,6 +19565,24 @@
   },
   {
    "severity": "info",
+   "area": "checkout",
+   "subject": "OpenVibe.Live",
+   "detail": "local checkout c9af780 differs from origin/main e266060; scan reflects the checkout"
+  },
+  {
+   "severity": "info",
+   "area": "checkout",
+   "subject": "OpenVibe.Sites",
+   "detail": "local checkout b689b41 differs from origin/main 7b7c917; scan reflects the checkout"
+  },
+  {
+   "severity": "info",
+   "area": "checkout",
+   "subject": "OpenVibe.Tools",
+   "detail": "local checkout 4773f7b differs from origin/main fd5d318; scan reflects the checkout"
+  },
+  {
+   "severity": "info",
    "area": "env",
    "subject": "OpenVibe.Games:NODE_ENV",
    "detail": "set in games.env but not referenced by scanned code (may be read by a dependency or stale)"
@@ -19890,6 +19597,12 @@
    "severity": "info",
    "area": "env",
    "subject": "OpenVibe.Live:MIN_CASHOUT",
+   "detail": "set in live.env but not referenced by scanned code (may be read by a dependency or stale)"
+  },
+  {
+   "severity": "info",
+   "area": "env",
+   "subject": "OpenVibe.Live:OV_LIVE_URL",
    "detail": "set in live.env but not referenced by scanned code (may be read by a dependency or stale)"
   },
   {
@@ -19967,25 +19680,67 @@
   {
    "severity": "info",
    "area": "schema",
-   "subject": "OpenVibe.Community:analytics_daily",
+   "subject": "OpenVibe.Community:comment_threads",
    "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
   },
   {
    "severity": "info",
    "area": "schema",
-   "subject": "OpenVibe.Community:analytics_events",
+   "subject": "OpenVibe.Community:comment_votes",
    "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
   },
   {
    "severity": "info",
    "area": "schema",
-   "subject": "OpenVibe.Community:analytics_hourly",
+   "subject": "OpenVibe.Community:comments",
    "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
   },
   {
    "severity": "info",
    "area": "schema",
-   "subject": "OpenVibe.Community:analytics_rate_tracking",
+   "subject": "OpenVibe.Community:post_versions",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Community:posts",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Community:pulse_items",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Community:relay_deliveries",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Community:relay_mappings",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Community:spaces",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Community:thread_votes",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Community:threads",
    "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
   },
   {
@@ -20021,25 +19776,43 @@
   {
    "severity": "info",
    "area": "schema",
-   "subject": "OpenVibe.Media:analytics_daily",
+   "subject": "OpenVibe.Media:media_holds",
    "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
   },
   {
    "severity": "info",
    "area": "schema",
-   "subject": "OpenVibe.Media:analytics_events",
+   "subject": "OpenVibe.Media:media_invariant_violations",
    "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
   },
   {
    "severity": "info",
    "area": "schema",
-   "subject": "OpenVibe.Media:analytics_hourly",
+   "subject": "OpenVibe.Media:media_jobs",
    "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
   },
   {
    "severity": "info",
    "area": "schema",
-   "subject": "OpenVibe.Media:analytics_rate_tracking",
+   "subject": "OpenVibe.Media:media_locations",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Media:media_objects",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Media:media_relationships",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Media:media_variants",
    "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
   },
   {
@@ -20063,15 +19836,15 @@
  ],
  "metrics": {
   "github.charters": "20 charter-only repos of 32",
-  "contract.todo-markers": "Live 15, Network 0, Media 0, Tools 0, Community 0, Games 0, Sites 0",
-  "outbound.call-sites": "68 caller-file/target pairs across 52 files",
-  "outbound.internal-key": "28 of 68 call sites authenticate with the shared internal key",
+  "contract.todo-markers": "Live 15, Network 0, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0",
+  "outbound.call-sites": "61 caller-file/target pairs across 45 files",
+  "outbound.internal-key": "28 of 61 call sites authenticate with the shared internal key",
   "ws.servers": "10 WebSocket server constructions",
-  "tables.analytics-copies": "5 repos carry their own analytics_events",
-  "vendored.copies": "5 repos vendor openvibe-shared (129 files)",
-  "vendored.divergent": "4 divergent: Community/ov-icons.js, Live/user-card.js, Media/ov-icons.js, Tools/ov-icons.js",
-  "ci.repos": "4 of 7 scanned repos have .github/workflows",
-  "deploy.drift": "2 service(s) not running origin/main",
+  "tables.analytics-copies": "3 repos carry their own analytics_events",
+  "shared.pins": "4 repos pin a tagged openvibe-shared release (latest v1.0.0): Live v1.0.0, Network v1.0.0, Sites v1.0.0, Tools v1.0.0",
+  "shared.drift": "2 manifests unpinned or behind: Community (file:./vendor/openvibe-shared), Media (file:./vendor/openvibe-shared)",
+  "ci.repos": "5 of 8 scanned repos have .github/workflows",
+  "deploy.drift": "5 service(s) not running origin/main",
   "tests.OpenVibe.Live": "58 test files",
   "tables.OpenVibe.Live": "125 tables",
   "tables.OpenVibe.Live.target:OpenVibe.Games (import source)": "31 Live tables target OpenVibe.Games (import source)",
@@ -20091,21 +19864,23 @@
   "tables.OpenVibe.Live.target:OpenVibe.Billing": "2 Live tables target OpenVibe.Billing",
   "tables.OpenVibe.Live.target:OpenVibe.Billing + OpenVibe.VIP": "1 Live tables target OpenVibe.Billing + OpenVibe.VIP",
   "tables.OpenVibe.Live.target:OpenVibe.Codes": "2 Live tables target OpenVibe.Codes",
-  "tests.OpenVibe.Network": "20 test files",
+  "tests.OpenVibe.Network": "15 test files",
   "tables.OpenVibe.Network": "39 tables",
   "tables.OpenVibe.Network.target:OpenVibe.Network": "36 Network tables target OpenVibe.Network",
   "tables.OpenVibe.Network.target:OpenVibe.Billing (loyalty ledger)": "2 Network tables target OpenVibe.Billing (loyalty ledger)",
   "tables.OpenVibe.Network.target:OpenVibe.Events": "1 Network tables target OpenVibe.Events",
-  "tests.OpenVibe.Media": "6 test files",
-  "tables.OpenVibe.Media": "15 tables",
-  "tables.OpenVibe.Media.target:OpenVibe.Media": "12 Media tables target OpenVibe.Media",
+  "tests.OpenVibe.Shared": "11 test files",
+  "tables.OpenVibe.Shared": "0 tables",
+  "tests.OpenVibe.Media": "9 test files",
+  "tables.OpenVibe.Media": "18 tables",
+  "tables.OpenVibe.Media.target:OpenVibe.Media": "15 Media tables target OpenVibe.Media",
   "tables.OpenVibe.Media.target:OpenVibe.Community": "3 Media tables target OpenVibe.Community",
   "tests.OpenVibe.Tools": "2 test files",
   "tables.OpenVibe.Tools": "4 tables",
   "tables.OpenVibe.Tools.target:OpenVibe.Tools": "4 Tools tables target OpenVibe.Tools",
-  "tests.OpenVibe.Community": "14 test files",
-  "tables.OpenVibe.Community": "13 tables",
-  "tables.OpenVibe.Community.target:OpenVibe.Community": "13 Community tables target OpenVibe.Community",
+  "tests.OpenVibe.Community": "21 test files",
+  "tables.OpenVibe.Community": "20 tables",
+  "tables.OpenVibe.Community.target:OpenVibe.Community": "20 Community tables target OpenVibe.Community",
   "tests.OpenVibe.Games": "56 test files",
   "tables.OpenVibe.Games": "5 tables",
   "tables.OpenVibe.Games.target:OpenVibe.Games": "5 Games tables target OpenVibe.Games",
@@ -20166,7 +19941,7 @@
     },
     {
      "key": "contract.todo-markers",
-     "value": "Live 15, Network 0, Media 0, Tools 0, Community 0, Games 0, Sites 0"
+     "value": "Live 15, Network 0, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0"
     }
    ],
    "verified": true
@@ -20215,7 +19990,7 @@
    "metrics": [
     {
      "key": "tables.analytics-copies",
-     "value": "5 repos carry their own analytics_events"
+     "value": "3 repos carry their own analytics_events"
     }
    ],
    "verified": true
@@ -20237,7 +20012,7 @@
    "metrics": [
     {
      "key": "outbound.call-sites",
-     "value": "68 caller-file/target pairs across 52 files"
+     "value": "61 caller-file/target pairs across 45 files"
     },
     {
      "key": "ws.servers",
@@ -20344,7 +20119,7 @@
    "metrics": [
     {
      "key": "tables.OpenVibe.Community",
-     "value": "13 tables"
+     "value": "20 tables"
     },
     {
      "key": "tables.OpenVibe.Live.target:OpenVibe.Community",
@@ -20499,7 +20274,7 @@
    "metrics": [
     {
      "key": "outbound.internal-key",
-     "value": "28 of 68 call sites authenticate with the shared internal key"
+     "value": "28 of 61 call sites authenticate with the shared internal key"
     }
    ],
    "verified": true
@@ -20531,22 +20306,27 @@
    "status": "partial",
    "disposition": "partial",
    "wave": "W2, Track R",
-   "finding": "openvibe-shared is vendored by copy; consumers can drift from canonical.",
+   "finding": "openvibe-shared is a tagged OpenVibe.Shared release that consumers pin in package.json; a consumer can lag the newest tag or still carry a vendored copy.",
    "evidence": [
     {
+     "repo": "OpenVibe.Shared",
+     "path": "files.js",
+     "ok": true
+    },
+    {
      "repo": "OpenVibe.Network",
-     "path": "packages/openvibe-shared",
+     "path": "package.json",
      "ok": true
     }
    ],
    "metrics": [
     {
-     "key": "vendored.copies",
-     "value": "5 repos vendor openvibe-shared (129 files)"
+     "key": "shared.pins",
+     "value": "4 repos pin a tagged openvibe-shared release (latest v1.0.0): Live v1.0.0, Network v1.0.0, Sites v1.0.0, Tools v1.0.0"
     },
     {
-     "key": "vendored.divergent",
-     "value": "4 divergent: Community/ov-icons.js, Live/user-card.js, Media/ov-icons.js, Tools/ov-icons.js"
+     "key": "shared.drift",
+     "value": "2 manifests unpinned or behind: Community (file:./vendor/openvibe-shared), Media (file:./vendor/openvibe-shared)"
     }
    ],
    "verified": true
@@ -20606,7 +20386,7 @@
    "metrics": [
     {
      "key": "deploy.drift",
-     "value": "2 service(s) not running origin/main"
+     "value": "5 service(s) not running origin/main"
     }
    ],
    "verified": true
@@ -20622,7 +20402,7 @@
    "metrics": [
     {
      "key": "ci.repos",
-     "value": "4 of 7 scanned repos have .github/workflows"
+     "value": "5 of 8 scanned repos have .github/workflows"
     }
    ],
    "verified": true
@@ -20762,7 +20542,7 @@
    "source": "roadmap 2.7.2",
    "severity": "medium",
    "constraint": "Raw analytics_events is never pruned although hourly/daily rollups exist; Live analytics.db and network.db are the estate's largest stores.",
-   "owner": "Network maintainers (canonical openvibe-shared/analytics.js)",
+   "owner": "OpenVibe.Shared maintainers (openvibe-shared/analytics.js)",
    "wave": "Track O / ADR-021 - before any schema wave touching Live or Network",
    "mitigation": "Add a retention job that deletes raw rows older than the rollup window, then VACUUM in a maintenance window.",
    "status": "open",
@@ -20792,7 +20572,7 @@
    "mitigation": "Deploy or record why each lagging service is held back.",
    "status": "open",
    "check": "deploy-drift",
-   "checkResult": "network: deployed 1b79576 is 1 commit(s) behind origin/main 1bc6a52; games: deployed 43c11f0 has the same file tree as origin/main 5710287 but a different SHA (pre-rewrite history); reset the checkout so later pulls fast-forward"
+   "checkResult": "media: deployed ddfefcf is 1 commit(s) behind origin/main cced10f; network: deployed 1b79576 is 8 commit(s) behind origin/main 06e4a6b; sites: deployed 185014f is 1 commit(s) behind origin/main 7b7c917; tools: deployed 0346edc is 1 commit(s) behind origin/main fd5d318; games: deployed 43c11f0 has the same file tree as origin/main 5710287 but a different SHA (pre-rewrite history); reset the checkout so later pulls fast-forward"
   },
   {
    "id": "H14",
@@ -20813,25 +20593,25 @@
    "id": "EC1",
    "text": "Every table has an owner classification",
    "pass": true,
-   "detail": "262 tables classified, 0 unclassified"
+   "detail": "272 tables classified, 0 unclassified"
   },
   {
    "id": "EC2",
    "text": "Every route is attributed to a repo and source line",
    "pass": true,
-   "detail": "968 routes; 0 router mounts whose module could not be resolved (their routes are listed without the mount prefix)"
+   "detail": "1052 routes; 0 router mounts whose module could not be resolved (their routes are listed without the mount prefix)"
   },
   {
    "id": "EC3",
    "text": "Every background job is listed with its location",
    "pass": true,
-   "detail": "83 timers/jobs"
+   "detail": "85 timers/jobs"
   },
   {
    "id": "EC4",
    "text": "Every cross-service call records caller, callee, auth, timeout and retry",
    "pass": true,
-   "detail": "68 call sites; 30 with no timeout detected"
+   "detail": "61 call sites; 23 with no timeout detected"
   },
   {
    "id": "EC5",

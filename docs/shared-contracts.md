@@ -1,9 +1,9 @@
 # Shared contracts — what every OpenVibe site builds against
 
-*2026-09-18. The shared browser modules live in `OpenVibe.Network/packages/openvibe-shared` and are
-served from `https://openvibe.network/shared/<file>.js` (5-minute edge cache). Node helpers are
-vendored (`vendor/openvibe-shared`, rsync, never edited). This file is the contract; the modules
-are the implementation.*
+*2026-09-18. The shared browser modules live in OpenVibe.Shared, consumed as a pinned release
+tarball, and are served from `https://openvibe.network/shared/<file>.js` (5-minute edge cache; a
+year for a `?v=` content-hash URL). Node helpers come from the same pinned release in each
+service's `node_modules`. This file is the contract; the modules are the implementation.*
 
 ## 1. Tool catalog and domains
 
@@ -174,7 +174,7 @@ satellites at `GET /api/internal/analytics`; Games and Media have no analytics, 
 shows their navbar page-view count, labelled as such.
 
 Icon glyphs are optically centred from measured bounds: after adding or editing a glyph run
-`node packages/openvibe-shared/scripts/measure-icons.js <cdp harness>` to regenerate the offsets table.
+`node scripts/measure-icons.js <cdp harness>` (in OpenVibe.Shared) to regenerate the offsets table.
 
 ## 12. Avatar — one picture per account, always on openvibe.media
 

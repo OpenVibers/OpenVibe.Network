@@ -598,27 +598,37 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
     },
 }));
 
+// openvibe-shared: the OpenVibe.Shared release package.json pins, from node_modules.
+const sharedFiles = require('openvibe-shared/files');
+
 // Web-push service worker: must be served from THIS origin (scope /), so each site
 // exposes the shared worker at /openvibe-sw.js rather than loading it from Network.
 app.get('/openvibe-sw.js', (req, res) => {
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Service-Worker-Allowed', '/');
     res.setHeader('Cache-Control', 'no-cache');
-    res.sendFile(path.resolve(__dirname, '..', 'packages', 'openvibe-shared', 'openvibe-sw.js'));
+    res.sendFile(sharedFiles.path('openvibe-sw.js'));
 });
 
-// Serve openvibe-shared client-side libs (notification-ui.js, navbar.js, etc.)
-// Accessible at https://openvibe.network/shared/notification-ui.js etc.
-const sharedPath = path.resolve(__dirname, '..', 'packages', 'openvibe-shared');
-app.use('/shared', express.static(sharedPath, {
-    setHeaders(res, filePath) {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        // Override helmet's same-origin policies so other domains can load these scripts
-        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-        res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
-        res.setHeader('Cache-Control', 'public, max-age=300');
-    },
-}));
+// Serve openvibe-shared client-side libs (notification-ui.js, navbar.js, etc.) to every site at
+// https://openvibe.network/shared/<file>, and the same release at /shared/v1/<file> (OpenVibe.Shared
+// README, compatibility policy). Only the package's browser files: its server modules, tests and
+// scripts are not served. A ?v= equal to the file's content hash (navbar.js asks for nav-icons.js
+// that way) is cacheable forever; anything else gets five minutes.
+const sharedRev = new Map();
+function serveShared(req, res, next) {
+    const name = req.path.slice(1);
+    if (!sharedFiles.isBrowserFile(name)) return next();
+    if (!sharedRev.has(name)) sharedRev.set(name, require('crypto').createHash('sha256').update(fs.readFileSync(sharedFiles.path(name))).digest('hex').slice(0, 12));
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    // Override helmet's same-origin policies so other domains can load these scripts
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
+    res.setHeader('Cache-Control', req.query.v === sharedRev.get(name) ? 'public, max-age=31536000, immutable' : 'public, max-age=300, stale-while-revalidate=60');
+    res.sendFile(sharedFiles.path(name));
+}
+app.use('/shared/v1', serveShared);
+app.use('/shared', serveShared);
 
 // Avatar serving
 const avatarDir = path.resolve(config.avatars.path);

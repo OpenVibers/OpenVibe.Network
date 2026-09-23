@@ -7,27 +7,27 @@ Deliverable 8. Family-level status from roadmap 3.2. Evidence paths are checked 
 | IDs | Family | Status | Disposition | Wave | Evidence | Measured |
 |---|---|---|---|---|---|---|
 | D01 | Identity/account | partial | partial | W1 | Network/server/auth; Community/server/live-client.js | 7 Live tables target OpenVibe.Network |
-| D02-D04 | Registry, capabilities, contracts | absent | missing | W1, W2 | Network/server/url-registry.js; Sites/sites.json | 20 charter-only repos of 32; Live 15, Network 0, Media 0, Tools 0, Community 0, Games 0, Sites 0 |
+| D02-D04 | Registry, capabilities, contracts | absent | missing | W1, W2 | Network/server/url-registry.js; Sites/sites.json | 20 charter-only repos of 32; Live 15, Network 0, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0 |
 | D05-D06 | Policy, staff, user modules | partial | partial | W1, W2 | Network/server/admin; Live/server/auth/permissions.js | - |
-| D07-D10 | Themes, notifications, social, analytics | partial | partial | W1, W2, Track O | Network/server/themes; Network/server/notifications | 5 repos carry their own analytics_events |
-| D11-D13 | Events, realtime, SDK | absent | missing | W2, W3 | Media/server/webhooks.js | 68 caller-file/target pairs across 52 files; 10 WebSocket server constructions |
+| D07-D10 | Themes, notifications, social, analytics | partial | partial | W1, W2, Track O | Network/server/themes; Network/server/notifications | 3 repos carry their own analytics_events |
+| D11-D13 | Events, realtime, SDK | absent | missing | W2, W3 | Media/server/webhooks.js | 61 caller-file/target pairs across 45 files; 10 WebSocket server constructions |
 | D14-D16 | Media | partial | partial | W4 | Media/server/vod; Media/server/pastes | 3 Media tables target OpenVibe.Community |
 | D17-D20 | Live, OpenRe, channel/VOD lineage | partial | partial | W7 | Live/server/streaming/rtmp-server.js; Live/server/streaming/restream-manager.js | 14 Live tables target OpenRe.Stream |
 | D21-D23 | Chat | partial | partial | W6 | Live/server/chat/chat-server.js; Live/server/streaming/call-server.js | 23 Live tables target OpenVibe.Chat |
-| D24-D27 | Community | partial | partial | W5 | Community/server/pastes | 13 tables; 4 Live tables target OpenVibe.Community |
+| D24-D27 | Community | partial | partial | W5 | Community/server/pastes | 20 tables; 4 Live tables target OpenVibe.Community |
 | D28-D30 | Billing, Tips, VIP | partial | partial | W8-W10 (ADR-012 first) | Live/server/monetization/payments.js; Network/server/coins | 2 Live tables target OpenVibe.Billing; 2 Network tables target OpenVibe.Billing (loyalty ledger) |
 | D31 | Tools | built | already-present-and-verified | W11 | Tools/apps/gateway | 2 test files |
 | D32 | Games | built | already-present-and-verified | W12 | Games/apps/server/src/net/sso.ts | 56 test files |
 | D33-D34 | Codes, Host | absent | missing | W20, W21 | - | 20 charter-only repos of 32 |
 | D35-D38 | AI, content, sources, search | partial | partial | W13-W15 | Live/server/ai/moment-registry.js; Live/server/ai/llm.js | 14 Live tables target OpenVibe.AI |
 | D39 | Mods | absent | missing | W12, W21 | - | - |
-| D40 | Open developer services | absent | missing | W20, W21 | Live/server/integrations/powerchat-routes.js | 28 of 68 call sites authenticate with the shared internal key |
+| D40 | Open developer services | absent | missing | W20, W21 | Live/server/integrations/powerchat-routes.js | 28 of 61 call sites authenticate with the shared internal key |
 | D41 | Independent runtime lifecycle | partial | partial | W7, W21 | Live/deploy | hazard H1; hazard H3 |
-| D42 | Shared component architecture | partial | partial | W2, Track R | Network/packages/openvibe-shared | 5 repos vendor openvibe-shared (129 files); 4 divergent: Community/ov-icons.js, Live/user-card.js, Media/ov-icons.js, Tools/ov-icons.js |
+| D42 | Shared component architecture | partial | partial | W2, Track R | Shared/files.js; Network/package.json | 4 repos pin a tagged openvibe-shared release (latest v1.0.0): Live v1.0.0, Network v1.0.0, Sites v1.0.0, Tools v1.0.0; 2 manifests unpinned or behind: Community (file:./vendor/openvibe-shared), Media (file:./vendor/openvibe-shared) |
 | D43 | Safe active-client updates | absent | missing | Track R | Live/server/chat/deploy-notice.js; Live/server/web/assets.js | - |
 | D44 | Crawlable component rendering | built | already-present-and-verified | Track R (preserve) | Community/server/seo.js; Sites/build.js | - |
-| D45 | Release compatibility and recovery | absent | missing | Track R, W22 | - | 2 service(s) not running origin/main |
-| D46 | Update observability and acceptance | absent | missing | Track R, Track O | - | 4 of 7 scanned repos have .github/workflows |
+| D45 | Release compatibility and recovery | absent | missing | Track R, W22 | - | 5 service(s) not running origin/main |
+| D46 | Update observability and acceptance | absent | missing | Track R, Track O | - | 5 of 8 scanned repos have .github/workflows |
 
 Totals: 3 built, 11 partial, 8 absent across 22 families; 22 verified.
 
@@ -50,7 +50,7 @@ Totals: 3 built, 11 partial, 8 absent across 22 families; 22 verified.
 - **D39 Mods.** No mod manifest, grants or sandbox in the platform (Source.OpenVibe.Games has its own runtime, not audited here).
 - **D40 Open developer services.** Only a first-party PowerChat integration; internal calls use shared loopback keys.
 - **D41 Independent runtime lifecycle.** Repos deploy independently and Live is socket-activated, but Live restarts drop RTMP and Media restarts orphan recordings.
-- **D42 Shared component architecture.** openvibe-shared is vendored by copy; consumers can drift from canonical.
+- **D42 Shared component architecture.** openvibe-shared is a tagged OpenVibe.Shared release that consumers pin in package.json; a consumer can lag the newest tag or still carry a vendored copy.
 - **D43 Safe active-client updates.** Live has a deploy notice and content-hashed assets; no release manifests or update coordinator.
 - **D44 Crawlable component rendering.** SSR/static with metadata in Network, Tools, Media, Community and Sites.
 - **D45 Release compatibility and recovery.** Deploy is git pull + restart; no versioned releases or mixed-version policy.

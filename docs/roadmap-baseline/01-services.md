@@ -20,13 +20,14 @@ Deliverable 1: runtimes, ports, units, env files and repository state.
 
 | Repo | HEAD | origin/main | Source files | LOC | Test files | CI | Routes | Tables | WS servers | Timers/jobs | TODO(contract) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| OpenVibe.Live | e266060 | e266060 | 167 | 69978 | 58 | yes | 537 | 125 | 8 | 48 | 15 |
-| OpenVibe.Network | 1bc6a52 | 1bc6a52 | 81 | 21029 | 20 | yes | 197 | 39 | 0 | 11 | 0 |
-| OpenVibe.Media | ddfefcf | ddfefcf | 28 | 8752 | 6 | yes | 67 | 15 | 0 | 9 | 0 |
-| OpenVibe.Tools | 0346edc | 0346edc | 117 | 20018 | 2 | no | 99 | 4 | 0 | 12 | 0 |
-| OpenVibe.Community | d7c6e60 | d7c6e60 | 21 | 3950 | 14 | yes | 47 | 13 | 0 | 1 | 0 |
+| OpenVibe.Live | c9af780 | e266060 | 167 | 69945 | 58 | yes | 537 | 125 | 8 | 48 | 15 |
+| OpenVibe.Network | 06e4a6b | 06e4a6b | 52 | 12043 | 15 | yes | 207 | 39 | 0 | 6 | 0 |
+| OpenVibe.Shared | 9b53beb | 9b53beb | 35 | 9484 | 11 | yes | 1 | 0 | 0 | 5 | 0 |
+| OpenVibe.Media | cced10f | cced10f | 34 | 10436 | 9 | yes | 90 | 18 | 0 | 9 | 0 |
+| OpenVibe.Tools | 4773f7b | fd5d318 | 117 | 20013 | 2 | no | 99 | 4 | 0 | 12 | 0 |
+| OpenVibe.Community | d7c6e60 | d7c6e60 | 41 | 6638 | 21 | yes | 97 | 20 | 0 | 3 | 0 |
 | OpenVibe.Games | 5710287 | 5710287 | 101 | 18511 | 56 | no | 21 | 5 | 2 | 2 | 0 |
-| OpenVibe.Sites | 185014f | 185014f | 1 | 306 | 0 | no | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Sites | b689b41 | 7b7c917 | 1 | 308 | 0 | no | 0 | 0 | 0 | 0 | 0 |
 
 LOC counts non-test source files in the scanned directories only (`server/`, `apps/`, `packages/`), not frontend assets.
 

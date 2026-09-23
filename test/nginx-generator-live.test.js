@@ -27,4 +27,10 @@ const must = [
 for (const [name, re] of must) assert.ok(re.test(conf), `generated live config is missing: ${name}`);
 // The asset regex must not swallow /api/ or /ws/ (a regex location beats prefix locations).
 assert.ok(!/location ~ \^\/\.\*\\\.\(\?:css/.test(conf), 'asset location must exclude /api/ and /ws/');
-console.log(`nginx generator (live): ${must.length} checks passed`);
+// The Network's /shared/ location must leave Cache-Control to the app (five minutes, or immutable
+// for a ?v= content-hash URL); an expires/add_header there would send a second, conflicting one.
+const net = g.generateServiceConfig('network', g.DEFAULT_SERVICE_MAP.network, { sslEnabled: true, certPath: '/c/f.pem', keyPath: '/c/k.pem' });
+const sharedLoc = net.match(/location \/shared\/ \{[^}]*\}/);
+assert.ok(sharedLoc, 'generated network config is missing location /shared/');
+assert.ok(!/expires|Cache-Control/.test(sharedLoc[0]), 'network /shared/ must not set its own cache headers');
+console.log(`nginx generator (live): ${must.length} checks passed; network /shared/ leaves caching to the app`);

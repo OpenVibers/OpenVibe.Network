@@ -10,9 +10,10 @@ Deliverable 6. Current owner = the repo that creates the table; target owner = r
 |---|---|---|---|---|---|
 | OpenVibe.Live | 186 | 26 | 94 | 43 | 23 |
 | OpenVibe.Network | 39 | 36 | 3 | 0 | 0 |
-| OpenVibe.Media | 15 | 12 | 0 | 3 | 0 |
+| OpenVibe.Shared | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Media | 18 | 15 | 0 | 3 | 0 |
 | OpenVibe.Tools | 4 | 4 | 0 | 0 | 0 |
-| OpenVibe.Community | 13 | 13 | 0 | 0 | 0 |
+| OpenVibe.Community | 20 | 20 | 0 | 0 | 0 |
 | OpenVibe.Games | 5 | 5 | 0 | 0 | 0 |
 | OpenVibe.Sites | 0 | 0 | 0 | 0 | 0 |
 

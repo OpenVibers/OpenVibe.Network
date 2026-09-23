@@ -27,14 +27,17 @@ const CHECK = process.argv.includes('--check');
 
 const REPOS = [
     { name: 'OpenVibe.Live', service: 'live', scan: ['server'] },
-    { name: 'OpenVibe.Network', service: 'network', scan: ['server', 'packages/openvibe-shared'] },
+    { name: 'OpenVibe.Network', service: 'network', scan: ['server'] },
+    // The shared package's own repo. Its tables are created in each consumer's database, so they are
+    // attributed to the repos that require the module (below), not to this repo.
+    { name: 'OpenVibe.Shared', service: 'shared', scan: ['.'], library: true },
     { name: 'OpenVibe.Media', service: 'media', scan: ['server'] },
     { name: 'OpenVibe.Tools', service: 'tools', scan: ['apps'] },
     { name: 'OpenVibe.Community', service: 'community', scan: ['server'] },
     { name: 'OpenVibe.Games', service: 'games', scan: ['apps/server/src', 'packages'] },
     { name: 'OpenVibe.Sites', service: 'sites', scan: ['build.js'] },
 ];
-const CANONICAL_SHARED = path.join(NETWORK_DIR, 'packages/openvibe-shared');
+const CANONICAL_SHARED = path.join(ROOT, 'OpenVibe.Shared');
 
 const readJson = (f, fallback) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return fallback; } };
 const git = (dir, ...args) => { try { return execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; } };
@@ -73,13 +76,15 @@ function scanRepo(cfg) {
     repo.env = {}; repo.outbound = []; repo.jobs = []; repo.contractTodos = 0;
     const mountsByFile = {}; const routesByFile = {}; const texts = {};
 
+    const sharedRequires = new Set();
     for (const f of source) {
         const text = fs.readFileSync(f, 'utf8');
         texts[f] = text;
         const r = rel(f);
         repo.loc += text.split('\n').length;
         repo.contractTodos += (text.match(/TODO\(contract/g) || []).length;
-        for (const t of X.extractTables(text)) repo.tables.push({ table: t.table, file: r, line: t.line, via: 'repo' });
+        for (const m of text.matchAll(/require\(\s*['"]openvibe-shared\/([\w.-]+)['"]\s*\)/g)) sharedRequires.add(m[1]);
+        if (!cfg.library) for (const t of X.extractTables(text)) repo.tables.push({ table: t.table, file: r, line: t.line, via: 'repo' });
         const mounts = X.extractMounts(text).map(m => ({ ...m, target: X.resolveModule(f, m.spec) }));
         if (mounts.length) mountsByFile[f] = mounts;
         const routes = cfg.service === 'games' ? X.extractRawRoutes(text) : X.extractRoutes(text);
@@ -93,16 +98,19 @@ function scanRepo(cfg) {
         for (const j of X.extractJobs(text)) repo.jobs.push({ ...j, file: r });
     }
 
-    // Tables created by the vendored shared package (analytics etc.) belong to this service's DB.
-    const vendored = path.join(dir, 'vendor/openvibe-shared');
-    if (fs.existsSync(vendored)) {
-        for (const f of X.walk(vendored).filter(f => !X.isTestFile(path.relative(vendored, f)))) {
-            const text = fs.readFileSync(f, 'utf8');
-            for (const t of X.extractTables(text)) repo.tables.push({ table: t.table, file: rel(f), line: t.line, via: 'vendored openvibe-shared' });
-            const ob = X.extractOutbound(text, cfg.service);
-            if (ob) repo.outbound.push({ file: rel(f), ...ob });
-            for (const name of X.extractEnv(text)) (repo.env[name] ||= []).push(rel(f));
-        }
+    // Tables created by the openvibe-shared modules this repo requires (analytics etc.) belong to this
+    // service's DB. Read from the repo's installed copy (a pre-migration vendor/ copy, node_modules, or
+    // an app's node_modules in Tools), else from the OpenVibe.Shared checkout.
+    const sharedDir = sharedPackageDir(dir);
+    for (const sub of [...sharedRequires].sort()) {
+        const f = sharedModuleFile(sharedDir, sub);
+        if (!f) continue;
+        const text = fs.readFileSync(f, 'utf8');
+        const shown = f.startsWith(dir + path.sep) ? rel(f) : `OpenVibe.Shared/${path.relative(sharedDir, f)}`;
+        for (const t of X.extractTables(text)) repo.tables.push({ table: t.table, file: shown, line: t.line, via: 'openvibe-shared' });
+        const ob = X.extractOutbound(text, cfg.service);
+        if (ob) repo.outbound.push({ file: shown, ...ob });
+        for (const name of X.extractEnv(text)) (repo.env[name] ||= []).push(shown);
     }
 
     const { prefixesOf } = X.computePrefixes(mountsByFile);
@@ -122,26 +130,44 @@ function scanRepo(cfg) {
     return repo;
 }
 
+function sharedPackageDir(dir) {
+    const apps = path.join(dir, 'apps');
+    const candidates = [path.join(dir, 'vendor/openvibe-shared'), path.join(dir, 'node_modules/openvibe-shared'),
+        ...(fs.existsSync(apps) ? fs.readdirSync(apps).sort().map(a => path.join(apps, a, 'node_modules/openvibe-shared')) : [])];
+    return candidates.find(d => fs.existsSync(path.join(d, 'package.json'))) || CANONICAL_SHARED;
+}
+function sharedModuleFile(pkgDir, sub) {
+    const exp = (readJson(path.join(pkgDir, 'package.json'), {}).exports || readJson(path.join(CANONICAL_SHARED, 'package.json'), {}).exports || {})[`./${sub}`];
+    const f = path.join(pkgDir, exp || (sub.endsWith('.js') ? sub : `${sub}.js`));
+    return fs.existsSync(f) && f.endsWith('.js') ? f : null;
+}
+
 const repos = REPOS.map(scanRepo);
 const byName = Object.fromEntries(repos.map(r => [r.name, r]));
 const repoOfService = Object.fromEntries(REPOS.map(r => [r.service, r.name]));
 
-// ── 2. Vendored shared-package drift ────────────────────────────────────
-const sha1 = (f) => crypto.createHash('sha1').update(fs.readFileSync(f)).digest('hex');
-const vendored = [];
-for (const r of repos) {
-    const vdir = path.join(ROOT, r.name, 'vendor/openvibe-shared');
-    if (!fs.existsSync(vdir)) continue;
-    const files = X.walk(vdir).concat(fs.readdirSync(vdir).filter(n => /\.(css|json)$/.test(n)).map(n => path.join(vdir, n)));
-    for (const f of [...new Set(files)]) {
-        const relPath = path.relative(vdir, f);
-        if (relPath.startsWith('test/') || relPath === 'package.json') continue;
-        const canon = path.join(CANONICAL_SHARED, relPath);
-        const state = !fs.existsSync(canon) ? 'not-in-canonical' : sha1(canon) === sha1(f) ? 'identical' : 'divergent';
-        vendored.push({ repo: r.name, file: relPath, state });
+// ── 2. openvibe-shared pins ─────────────────────────────────────────────
+// Each consumer pins a tagged OpenVibe.Shared release in package.json (Tools: per app). A pin behind
+// the newest tag, or a leftover file:/vendor copy, is drift.
+const semver = (t) => (String(t).match(/^v?(\d+)\.(\d+)\.(\d+)$/) || []).slice(1).map(Number);
+const newer = (a, b) => { const x = semver(a), y = semver(b); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); return false; };
+const sharedTags = (git(CANONICAL_SHARED, 'tag', '--list', 'v*') || '').split('\n').filter(t => semver(t).length === 3);
+const latestShared = sharedTags.reduce((a, t) => (!a || newer(t, a) ? t : a), null);
+const sharedPins = [];
+for (const r of repos.filter(r => r.present && r.service !== 'shared')) {
+    const dir = path.join(ROOT, r.name);
+    const apps = path.join(dir, 'apps');
+    const manifests = ['package.json', ...(fs.existsSync(apps) ? fs.readdirSync(apps).sort().map(a => `apps/${a}/package.json`) : [])];
+    for (const m of manifests) {
+        const spec = ((readJson(path.join(dir, m), {}).dependencies) || {})['openvibe-shared'];
+        if (!spec) continue;
+        const tag = (spec.match(/\/refs\/tags\/(v[\d.]+)$/) || spec.match(/#(v[\d.]+)$/) || [])[1] || null;
+        const state = !tag ? 'unpinned' : latestShared && newer(latestShared, tag) ? 'behind' : 'current';
+        sharedPins.push({ repo: r.name, manifest: m, spec: tag || spec, state });
     }
 }
-sortBy(vendored, 'repo', 'file');
+sortBy(sharedPins, 'repo', 'manifest');
+const pinLabel = (p) => `${p.repo.replace('OpenVibe.', '')}${p.manifest === 'package.json' ? '' : '/' + path.dirname(p.manifest)}`;
 
 // ── 3. Table ownership ──────────────────────────────────────────────────
 function classify(repo, tableName, dbs = []) {
@@ -263,8 +289,8 @@ const metrics = {
     'outbound.internal-key': `${calls.filter(c => c.auth.includes('internal-key')).length} of ${calls.length} call sites authenticate with the shared internal key`,
     'ws.servers': `${repos.reduce((n, r) => n + (r.ws ? r.ws.servers.length : 0), 0)} WebSocket server constructions`,
     'tables.analytics-copies': `${new Set(ownership.filter(o => o.table === 'analytics_events').map(o => o.repo)).size} repos carry their own analytics_events`,
-    'vendored.copies': `${new Set(vendored.map(v => v.repo)).size} repos vendor openvibe-shared (${vendored.length} files)`,
-    'vendored.divergent': `${vendored.filter(v => v.state === 'divergent').length} divergent: ${vendored.filter(v => v.state === 'divergent').map(v => `${v.repo.replace('OpenVibe.', '')}/${v.file}`).join(', ') || 'none'}`,
+    'shared.pins': `${new Set(sharedPins.filter(p => p.state !== 'unpinned').map(p => p.repo)).size} repos pin a tagged openvibe-shared release (latest ${latestShared || 'unknown'}): ${[...new Set(sharedPins.filter(p => p.state !== 'unpinned').map(p => `${p.repo.replace('OpenVibe.', '')} ${p.spec}`))].join(', ') || 'none'}`,
+    'shared.drift': `${sharedPins.filter(p => p.state !== 'current').length} manifests unpinned or behind: ${sharedPins.filter(p => p.state !== 'current').map(p => `${pinLabel(p)} (${p.spec})`).join(', ') || 'none'}`,
     'ci.repos': `${repos.filter(r => r.ci).length} of ${repos.filter(r => r.present).length} scanned repos have .github/workflows`,
     'deploy.drift': `${discrepancies.filter(d => d.area === 'deploy').length} service(s) not running origin/main`,
 };
@@ -350,7 +376,7 @@ const criteria = [
 const inventory = {
     generatedFrom: Object.fromEntries(repos.filter(r => r.present).map(r => [r.name, r.git.head])),
     prodSnapshot: prod ? { host: prod.host, collectedAt: prod.collectedAt } : null,
-    repos: repos.map(r => ({ ...r })), vendored, ownership, calls, env: envRows, discrepancies, metrics,
+    repos: repos.map(r => ({ ...r })), sharedPins, ownership, calls, env: envRows, discrepancies, metrics,
     dStatus: dRows, hazards: hazardRows, criteria,
 };
 fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -497,7 +523,7 @@ docs['README.md'] = `# Wave 0 baseline\n\nThe audit baseline from the OpenVibe d
         ['-', '[inventory.json](inventory.json)', 'everything above, machine-readable'],
     ])
     + '\n\n## Exit criteria\n\n' + table(['', 'Criterion', 'Result'], criteria.map(c => [c.pass ? 'pass' : '**open**', c.text, c.detail]))
-    + `\n\n## Regenerating\n\n\`\`\`bash\nscripts/roadmap-baseline/collect-prod.sh      # read-only SSH: deployed SHAs, units, DB table names, env var NAMES\nscripts/roadmap-baseline/collect-github.sh    # gh: repo list + charter STATUS.json\nnode scripts/roadmap-baseline/generate.js     # scan sibling checkouts, write this directory\nnode scripts/roadmap-baseline/generate.js --check   # also exit 1 while an exit criterion is open\n\`\`\`\n\nThe generator reads sibling checkouts under \`OPENVIBE_ROOT\` (default: the parent of this repo). Keep them on \`main\` and pulled before regenerating.\n\n## What this baseline does not claim\n\n- Extraction is static pattern matching. Routes built at runtime, calls through helper wrappers without an internal URL or port, and tables created by dependencies outside \`vendor/openvibe-shared\` can be missed. Treat counts as a floor.\n- Timeout/retry/auth detection is per file, not per request. A module that exports several routers gets every mount prefix it is loaded under.\n- No production row data, env values, provider console or payment record was read.\n- \`Source.OpenVibe.Games\`, \`AFResume\` and \`BreakRoomSimulator\` are not scanned; the charter repos have no code to scan.\n`;
+    + `\n\n## Regenerating\n\n\`\`\`bash\nscripts/roadmap-baseline/collect-prod.sh      # read-only SSH: deployed SHAs, units, DB table names, env var NAMES\nscripts/roadmap-baseline/collect-github.sh    # gh: repo list + charter STATUS.json\nnode scripts/roadmap-baseline/generate.js     # scan sibling checkouts, write this directory\nnode scripts/roadmap-baseline/generate.js --check   # also exit 1 while an exit criterion is open\n\`\`\`\n\nThe generator reads sibling checkouts under \`OPENVIBE_ROOT\` (default: the parent of this repo). Keep them on \`main\` and pulled before regenerating.\n\n## What this baseline does not claim\n\n- Extraction is static pattern matching. Routes built at runtime, calls through helper wrappers without an internal URL or port, and tables created by dependencies other than the \`openvibe-shared\` modules a repo requires can be missed. Treat counts as a floor.\n- Timeout/retry/auth detection is per file, not per request. A module that exports several routers gets every mount prefix it is loaded under.\n- No production row data, env values, provider console or payment record was read.\n- \`Source.OpenVibe.Games\`, \`AFResume\` and \`BreakRoomSimulator\` are not scanned; the charter repos have no code to scan.\n`;
 
 for (const [f, body] of Object.entries(docs)) fs.writeFileSync(path.join(OUT_DIR, f), body);
 

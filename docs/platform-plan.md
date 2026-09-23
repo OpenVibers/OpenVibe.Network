@@ -31,9 +31,10 @@ certificate (DNS-01 via Cloudflare) and its own nginx vhost.
 
 ## 3. Shared systems (the "kernel"), where they live, and how a room uses them
 
-All of these are **in `OpenVibe.Network/packages/openvibe-shared`**, served to browsers from
-`https://openvibe.network/shared/*` and vendored (`vendor/openvibe-shared`, re-synced, never edited)
-into the Node services that need the server-side helpers.
+All of these are **in OpenVibe.Shared, consumed as a pinned release tarball**
+(`"openvibe-shared": "…/refs/tags/vX.Y.Z"` in each package.json), served to browsers from
+`https://openvibe.network/shared/*` and installed into the Node services that need the server-side
+helpers.
 
 | System | Module | How a room uses it |
 |---|---|---|

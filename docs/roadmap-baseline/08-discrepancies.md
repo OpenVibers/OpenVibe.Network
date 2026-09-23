@@ -6,7 +6,10 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-22 23:36 UTC compared w
 
 | Severity | Area | Subject | Detail |
 |---|---|---|---|
-| medium | deploy | network | deployed 1b79576 is 1 commit(s) behind origin/main 1bc6a52 |
+| medium | deploy | media | deployed ddfefcf is 1 commit(s) behind origin/main cced10f |
+| medium | deploy | network | deployed 1b79576 is 8 commit(s) behind origin/main 06e4a6b |
+| medium | deploy | sites | deployed 185014f is 1 commit(s) behind origin/main 7b7c917 |
+| medium | deploy | tools | deployed 0346edc is 1 commit(s) behind origin/main fd5d318 |
 | low | database | /opt/openvibe.live/data/backups/live-pre-643a2e6.db | 264.7 MB backup inside the service data dir |
 | low | database | /opt/openvibe.live/data/hobo.db | 0 B, zero tables (dead file) |
 | low | database | /opt/openvibe.live/data/openvibe.db | 0 B, zero tables (dead file) |
@@ -18,6 +21,7 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-22 23:36 UTC compared w
 | low | env | OpenVibe.Live:OPS_ALERT_WEBHOOK_URL | secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback |
 | low | env | OpenVibe.Live:OV_INTERNAL_KEY | secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback |
 | low | env | OpenVibe.Media:MEDIA_SECRET | secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback |
+| low | env | OpenVibe.Media:MEDIA_SIGNING_SECRET | secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback |
 | low | env | OpenVibe.Media:VIEW_HASH_SECRET | secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback |
 | low | env | OpenVibe.Network:OV_GAMES_WEBHOOK_SECRET | secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback |
 | low | env | OpenVibe.Network:OV_INTERNAL_KEY | secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback |
@@ -90,9 +94,13 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-22 23:36 UTC compared w
 | low | schema | OpenVibe.Live:user_voice_selection | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) |
 | low | schema | OpenVibe.Live:user_voices | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) |
 | low | schema | OpenVibe.Live:woodcut_profile | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) |
+| info | checkout | OpenVibe.Live | local checkout c9af780 differs from origin/main e266060; scan reflects the checkout |
+| info | checkout | OpenVibe.Sites | local checkout b689b41 differs from origin/main 7b7c917; scan reflects the checkout |
+| info | checkout | OpenVibe.Tools | local checkout 4773f7b differs from origin/main fd5d318; scan reflects the checkout |
 | info | env | OpenVibe.Games:NODE_ENV | set in games.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Games:PORT | set in games.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Live:MIN_CASHOUT | set in live.env but not referenced by scanned code (may be read by a dependency or stale) |
+| info | env | OpenVibe.Live:OV_LIVE_URL | set in live.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Live:RS_COMPANION_DB_PATH | set in live.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Live:RS_PASSTHROUGH_ROBOTS | set in live.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Live:UNSAFE_WORDS_PATH | set in live.env but not referenced by scanned code (may be read by a dependency or stale) |
@@ -105,19 +113,29 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-22 23:36 UTC compared w
 | info | env | OpenVibe.Network:NOTIFICATIONS_ENABLED | set in network.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Tools:MEDIA_PUBLIC_URL | set in tools.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Tools:MEDIA_URL | set in tools.env but not referenced by scanned code (may be read by a dependency or stale) |
-| info | schema | OpenVibe.Community:analytics_daily | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
-| info | schema | OpenVibe.Community:analytics_events | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
-| info | schema | OpenVibe.Community:analytics_hourly | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
-| info | schema | OpenVibe.Community:analytics_rate_tracking | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Community:comment_threads | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Community:comment_votes | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Community:comments | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Community:post_versions | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Community:posts | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Community:pulse_items | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Community:relay_deliveries | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Community:relay_mappings | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Community:spaces | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Community:thread_votes | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Community:threads | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Live:channel_sounds_new | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Live:chat_messages_new | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Live:emotes_new | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Live:robotstreamer_integrations_new | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Live:stream_controls_new | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
-| info | schema | OpenVibe.Media:analytics_daily | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
-| info | schema | OpenVibe.Media:analytics_events | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
-| info | schema | OpenVibe.Media:analytics_hourly | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
-| info | schema | OpenVibe.Media:analytics_rate_tracking | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Media:media_holds | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Media:media_invariant_violations | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Media:media_jobs | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Media:media_locations | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Media:media_objects | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Media:media_relationships | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Media:media_variants | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Network:admin_rate_limits | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | unknown | host | powerchat.gg, raspi/hobo.tools (LAN) | unreachable from this environment; state not verified |
 | unknown | provider | B2/R2/Cloudflare/PayPal consoles | console configuration (billing, lifecycle rules, zone settings, app config) is not visible from this environment |

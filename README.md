@@ -262,11 +262,12 @@ Google-style account management supporting up to 5 accounts:
 
 ## Shared Client Libraries
 
-The `packages/openvibe-shared/` directory provides drop-in vanilla JS components served at `/shared/`:
+The `openvibe-shared` package ([OpenVibers/OpenVibe.Shared](https://github.com/OpenVibers/OpenVibe.Shared), pinned in package.json) provides drop-in vanilla JS components served at `/shared/` (and `/shared/v1/`). Only the package's browser files are served; a `?v=` equal to a file's content hash is cached for a year, anything else for five minutes:
 
 | File | Purpose |
 |------|---------|
 | `navbar.js` | Universal top bar with service links, notification bell mount, user dropdown |
+| `nav-icons.js` | Navbar glyphs, loaded by navbar.js |
 | `notification-ui.js` | Toast popups, bell badge, notification panel with category tabs |
 | `account-switcher.js` | Multi-account switcher panel with anonymous mode |
 | `user-card.js` | Right-click context menu + user profile card with name effects |

@@ -38,10 +38,10 @@ Deliverable 2: every table declared in code or present in production, with curre
 | ai_usage | server/db/database.js:1258 | live.db | OpenVibe.AI | extract | W13 |
 | ai_viewer_log | server/db/database.js:1891 | live.db | OpenVibe.AI | extract | W13 |
 | ai_viewer_threads | server/db/database.js:1877 | live.db | OpenVibe.AI | extract | W13 |
-| analytics_daily | vendor/openvibe-shared/analytics.js:116 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
-| analytics_events | vendor/openvibe-shared/analytics.js:74 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
-| analytics_hourly | vendor/openvibe-shared/analytics.js:98 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
-| analytics_rate_tracking | vendor/openvibe-shared/analytics.js:137 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
+| analytics_daily | node_modules/openvibe-shared/analytics.js:116 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
+| analytics_events | node_modules/openvibe-shared/analytics.js:74 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
+| analytics_hourly | node_modules/openvibe-shared/analytics.js:98 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
+| analytics_rate_tracking | node_modules/openvibe-shared/analytics.js:137 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
 | analytics_snapshots | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | anon_ip_mappings | server/db/database.js:940 | live.db | OpenVibe.Network (policy) | extract | W1 |
 | api_keys | server/db/schema.sql:391 | live.db | OpenVibe.Network (principals) / OpenVibe.Codes | extract | W1/W20 |
@@ -222,10 +222,10 @@ Deliverable 2: every table declared in code or present in production, with curre
 | Table | Declared at | In prod | Target owner | Disposition | Wave |
 |---|---|---|---|---|---|
 | admin_rate_limits | server/auth/admin-limits.js:24 | no | OpenVibe.Network | keep | W1 (module split) |
-| analytics_daily | packages/openvibe-shared/analytics.js:116 | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
-| analytics_events | packages/openvibe-shared/analytics.js:74 | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
-| analytics_hourly | packages/openvibe-shared/analytics.js:98 | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
-| analytics_rate_tracking | packages/openvibe-shared/analytics.js:137 | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
+| analytics_daily | node_modules/openvibe-shared/analytics.js:116 | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
+| analytics_events | node_modules/openvibe-shared/analytics.js:74 | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
+| analytics_hourly | node_modules/openvibe-shared/analytics.js:98 | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
+| analytics_rate_tracking | node_modules/openvibe-shared/analytics.js:137 | network.db | OpenVibe.Network | keep | Track O / ADR-021 |
 | anon_ip_log | server/db/database.js:443 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | anon_users | server/db/database.js:340 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | audit_log | server/db/database.js:215 | network.db | OpenVibe.Network | keep | W1 (module split) |
@@ -244,8 +244,8 @@ Deliverable 2: every table declared in code or present in production, with curre
 | oauth_codes | server/db/database.js:144 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | oauth_tokens | server/db/database.js:158 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | password_reset_tokens | server/db/database.js:321 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| principal_grants | server/identity/principals.js:44 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| principal_usage | server/identity/principals.js:54 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| principal_grants | server/identity/principals.js:54 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| principal_usage | server/identity/principals.js:64 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | push_subscriptions | server/db/database.js:460 | network.db | OpenVibe.Network | keep | W3 (delivery -> Events outbox) |
 | site_settings | server/db/database.js:238 | network.db | OpenVibe.Network | keep | - |
 | stream_live_announcements | server/internal/routes.js:325 | network.db | OpenVibe.Events | extract | W3 |
@@ -261,52 +261,66 @@ Deliverable 2: every table declared in code or present in production, with curre
 | verification_keys | server/db/database.js:422 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | wallets | server/db/database.js:400 | network.db | OpenVibe.Billing (loyalty ledger) | extract | W8 (after ADR-012) |
 
-## OpenVibe.Media (15)
+## OpenVibe.Shared
+
+No tables.
+
+## OpenVibe.Media (18)
 
 | Table | Declared at | In prod | Target owner | Disposition | Wave |
 |---|---|---|---|---|---|
-| analytics_daily | vendor/openvibe-shared/analytics.js:116 | no | OpenVibe.Media | keep | Track O / ADR-021 |
-| analytics_events | vendor/openvibe-shared/analytics.js:74 | no | OpenVibe.Media | keep | Track O / ADR-021 |
-| analytics_hourly | vendor/openvibe-shared/analytics.js:98 | no | OpenVibe.Media | keep | Track O / ADR-021 |
-| analytics_rate_tracking | vendor/openvibe-shared/analytics.js:137 | no | OpenVibe.Media | keep | Track O / ADR-021 |
 | apps | server/db/schema.sql:8 | media.db | OpenVibe.Media | keep | W4 (object model) |
-| assets | server/db/schema.sql:189 | media.db | OpenVibe.Media | keep | W4 (object model) |
-| clips | server/db/schema.sql:63 | media.db | OpenVibe.Media | keep | W4 (object model) |
-| content_views | server/db/schema.sql:94 | media.db | OpenVibe.Media | keep | W4 (object model) |
+| assets | server/db/schema.sql:193 | media.db | OpenVibe.Media | keep | W4 (object model) |
+| clips | server/db/schema.sql:64 | media.db | OpenVibe.Media | keep | W4 (object model) |
+| content_views | server/db/schema.sql:96 | media.db | OpenVibe.Media | keep | W4 (object model) |
 | content_visits | server/views/service.js:43 | media.db | OpenVibe.Media | keep | W4 (object model) |
-| files | server/db/schema.sql:164 | media.db | OpenVibe.Media | keep | W4 (object model) |
-| media_settings | server/db/schema.sql:178 | media.db | OpenVibe.Media | keep | W4 (object model) |
-| paste_comments | server/db/schema.sql:146 | media.db | OpenVibe.Community | frozen-legacy | W5 (done 2026-09-22) |
-| paste_likes | server/db/schema.sql:138 | media.db | OpenVibe.Community | frozen-legacy | W5 (done 2026-09-22) |
-| pastes | server/db/schema.sql:105 | media.db | OpenVibe.Community | frozen-legacy | W5 (done 2026-09-22) |
+| files | server/db/schema.sql:167 | media.db | OpenVibe.Media | keep | W4 (object model) |
+| media_holds | server/db/schema.sql:293 | no | OpenVibe.Media | keep | W4 (object model) |
+| media_invariant_violations | server/db/schema.sql:306 | no | OpenVibe.Media | keep | W4 (object model) |
+| media_jobs | server/db/schema.sql:279 | no | OpenVibe.Media | keep | W4 (object model) |
+| media_locations | server/db/schema.sql:241 | no | OpenVibe.Media | keep | W4 (object model) |
+| media_objects | server/db/schema.sql:214 | no | OpenVibe.Media | keep | W4 (object model) |
+| media_relationships | server/db/schema.sql:257 | no | OpenVibe.Media | keep | W4 (object model) |
+| media_settings | server/db/schema.sql:182 | media.db | OpenVibe.Media | keep | W4 (object model) |
+| media_variants | server/db/schema.sql:268 | no | OpenVibe.Media | keep | W4 (object model) |
+| paste_comments | server/db/schema.sql:149 | media.db | OpenVibe.Community | frozen-legacy | W5 (done 2026-09-22) |
+| paste_likes | server/db/schema.sql:141 | media.db | OpenVibe.Community | frozen-legacy | W5 (done 2026-09-22) |
+| pastes | server/db/schema.sql:107 | media.db | OpenVibe.Community | frozen-legacy | W5 (done 2026-09-22) |
 | vods | server/db/schema.sql:22 | media.db | OpenVibe.Media | keep | W4 (object model) |
 
 ## OpenVibe.Tools (4)
 
 | Table | Declared at | In prod | Target owner | Disposition | Wave |
 |---|---|---|---|---|---|
-| analytics_daily | vendor/openvibe-shared/analytics.js:116 | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
-| analytics_events | vendor/openvibe-shared/analytics.js:74 | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
-| analytics_hourly | vendor/openvibe-shared/analytics.js:98 | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
-| analytics_rate_tracking | vendor/openvibe-shared/analytics.js:137 | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
+| analytics_daily | apps/audio/node_modules/openvibe-shared/analytics.js:116 | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
+| analytics_events | apps/audio/node_modules/openvibe-shared/analytics.js:74 | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
+| analytics_hourly | apps/audio/node_modules/openvibe-shared/analytics.js:98 | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
+| analytics_rate_tracking | apps/audio/node_modules/openvibe-shared/analytics.js:137 | analytics.db | OpenVibe.Tools | keep | Track O / ADR-021 |
 
-## OpenVibe.Community (13)
+## OpenVibe.Community (20)
 
 | Table | Declared at | In prod | Target owner | Disposition | Wave |
 |---|---|---|---|---|---|
-| analytics_daily | vendor/openvibe-shared/analytics.js:116 | no | OpenVibe.Community | keep | Track O / ADR-021 |
-| analytics_events | vendor/openvibe-shared/analytics.js:74 | no | OpenVibe.Community | keep | Track O / ADR-021 |
-| analytics_hourly | vendor/openvibe-shared/analytics.js:98 | no | OpenVibe.Community | keep | Track O / ADR-021 |
-| analytics_rate_tracking | vendor/openvibe-shared/analytics.js:137 | no | OpenVibe.Community | keep | Track O / ADR-021 |
-| import_hold | server/db.js:125 | community.db | OpenVibe.Community | keep | W5 |
-| legacy_id_map | server/db.js:116 | community.db | OpenVibe.Community | keep | W5 |
-| migration_runs | server/db.js:108 | community.db | OpenVibe.Community | keep | W5 |
-| paste_comments | server/db.js:72 | community.db | OpenVibe.Community | keep | W5 |
-| paste_likes | server/db.js:65 | community.db | OpenVibe.Community | keep | W5 |
-| paste_versions | server/db.js:54 | community.db | OpenVibe.Community | keep | W5 |
-| paste_visits | server/db.js:88 | community.db | OpenVibe.Community | keep | W5 |
-| pastes | server/db.js:18 | community.db | OpenVibe.Community | keep | W5 |
-| subject_projection | server/db.js:98 | community.db | OpenVibe.Community | keep | W5 |
+| comment_threads | server/db.js:129 | no | OpenVibe.Community | keep | W5 |
+| comment_votes | server/db.js:163 | no | OpenVibe.Community | keep | W5 |
+| comments | server/db.js:143 | no | OpenVibe.Community | keep | W5 |
+| import_hold | server/db.js:292 | community.db | OpenVibe.Community | keep | W5 |
+| legacy_id_map | server/db.js:117 | community.db | OpenVibe.Community | keep | W5 |
+| migration_runs | server/db.js:109 | community.db | OpenVibe.Community | keep | W5 |
+| paste_comments | server/db.js:73 | community.db | OpenVibe.Community | keep | W5 |
+| paste_likes | server/db.js:66 | community.db | OpenVibe.Community | keep | W5 |
+| paste_versions | server/db.js:55 | community.db | OpenVibe.Community | keep | W5 |
+| paste_visits | server/db.js:89 | community.db | OpenVibe.Community | keep | W5 |
+| pastes | server/db.js:19 | community.db | OpenVibe.Community | keep | W5 |
+| post_versions | server/db.js:224 | no | OpenVibe.Community | keep | W5 |
+| posts | server/db.js:209 | no | OpenVibe.Community | keep | W5 |
+| pulse_items | server/db.js:275 | no | OpenVibe.Community | keep | W5 |
+| relay_deliveries | server/db.js:256 | no | OpenVibe.Community | keep | W5 |
+| relay_mappings | server/db.js:245 | no | OpenVibe.Community | keep | W5 |
+| spaces | server/db.js:174 | no | OpenVibe.Community | keep | W5 |
+| subject_projection | server/db.js:99 | community.db | OpenVibe.Community | keep | W5 |
+| thread_votes | server/db.js:233 | no | OpenVibe.Community | keep | W5 |
+| threads | server/db.js:190 | no | OpenVibe.Community | keep | W5 |
 
 ## OpenVibe.Games (5)
 

@@ -10,7 +10,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 |---|---|---|
 | User JWT (RS256, Network-issued, verified offline via JWKS) | all services | Network server/auth, CONTRACTS.md |
 | OAuth2 client credentials per app (OV_OAUTH_CLIENT_ID/SECRET) | Live, Tools, Games, Media, Community | CONTRACTS.md |
-| Shared internal key (X-Internal-Key / INTERNAL_API_KEY) | 5 calling repos | Network /internal/*, Live /internal/* |
+| Shared internal key (X-Internal-Key / INTERNAL_API_KEY) | 6 calling repos | Network /internal/*, Live /internal/* |
 | Per-app Media API key (Bearer) | Live, Community, Tools | Media apps table + MEDIA_APP_KEYS |
 | HMAC webhook signatures | Media -> Live, PowerChat, Resend | X-OVMedia-Signature, Svix |
 | hbt_ API tokens | Live bots/integrations | Live api_tokens (docs/api-tokens.md) |
@@ -42,6 +42,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Media | MEDIA_B2_APP_KEY | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_R2_SECRET_ACCESS_KEY | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_SECRET | **not set** | server/views/service.js |
+| OpenVibe.Media | MEDIA_SIGNING_SECRET | **not set** | server/config.js |
 | OpenVibe.Media | OV_OAUTH_CLIENT_SECRET | media.env | server/index.js |
 | OpenVibe.Media | VIEW_HASH_SECRET | **not set** | server/views/service.js |
 | OpenVibe.Network | ADMIN_PASSWORD | network.env | server/config.js |
@@ -76,34 +77,23 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 
 | Repo | Variable | In prod | Read at |
 |---|---|---|---|
+| OpenVibe.Community | API_CORS_ORIGINS |  | server/config.js |
 | OpenVibe.Community | BASE_URL | community.env | server/config.js |
 | OpenVibe.Community | COMMUNITY_DB_PATH |  | server/config.js |
+| OpenVibe.Community | DISCORD_RELAY_BACKOFF_MS |  | server/config.js |
+| OpenVibe.Community | DISCORD_RELAY_ENABLED |  | server/config.js |
+| OpenVibe.Community | DISCORD_RELAY_MAX_ATTEMPTS |  | server/config.js |
+| OpenVibe.Community | DISCORD_RELAY_POLL_MS |  | server/config.js |
 | OpenVibe.Community | HOST | community.env | server/config.js |
-| OpenVibe.Community | LOGIN_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Community | NODE_ENV | community.env | server/config.js |
-| OpenVibe.Community | OV_AUDIO_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Community | OV_COMMUNITY_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Community | OV_DEV_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Community | OV_DOCS_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Community | OV_FOOD_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Community | OV_GAMES_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Community | OV_IMG_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Community | OV_LIVE_INTERNAL_URL | community.env | server/config.js |
-| OpenVibe.Community | OV_LIVE_URL | community.env | server/config.js, vendor/openvibe-shared/brand.js |
-| OpenVibe.Community | OV_LOGO_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Community | OV_MAPS_URL |  | vendor/openvibe-shared/brand.js |
+| OpenVibe.Community | OV_LIVE_URL | community.env | server/config.js |
 | OpenVibe.Community | OV_MEDIA_INTERNAL_URL |  | server/config.js |
-| OpenVibe.Community | OV_MEDIA_URL | community.env | server/config.js, vendor/openvibe-shared/brand.js |
-| OpenVibe.Community | OV_NET_URL |  | vendor/openvibe-shared/brand.js |
+| OpenVibe.Community | OV_MEDIA_URL | community.env | server/config.js |
 | OpenVibe.Community | OV_NETWORK_INTERNAL_URL | community.env | server/config.js |
-| OpenVibe.Community | OV_NETWORK_LOGIN_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Community | OV_NETWORK_URL | community.env | server/config.js, vendor/openvibe-shared/brand.js |
+| OpenVibe.Community | OV_NETWORK_URL | community.env | server/config.js |
 | OpenVibe.Community | OV_OAUTH_CLIENT_ID | community.env | server/config.js |
 | OpenVibe.Community | OV_OAUTH_REDIRECT_URI | community.env | server/config.js |
-| OpenVibe.Community | OV_PASTES_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Community | OV_TEXT_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Community | OV_TOOLS_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Community | OV_YT_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Community | PASTES_AUTHORITY | community.env | server/config.js |
 | OpenVibe.Community | PORT | community.env | server/config.js |
 | OpenVibe.Community | TRUST_PROXY | community.env | server/config.js |
@@ -144,7 +134,6 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | LISTEN_FDS |  | server/index.js |
 | OpenVibe.Live | LISTEN_PID |  | server/index.js |
 | OpenVibe.Live | LIVE_THUMBS_PATH |  | server/media-proxy/live-thumbs.js |
-| OpenVibe.Live | LOGIN_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Live | MAX_EMOTE_SIZE_KB | live.env | server/config.js |
 | OpenVibe.Live | MAX_EMOTES_PER_CHANNEL |  | server/config.js |
 | OpenVibe.Live | MAX_EMOTES_PER_UPLOADER_PER_CHANNEL |  | server/config.js |
@@ -165,29 +154,14 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | NODE_ENV | live.env | server/config.js, server/index.js |
 | OpenVibe.Live | OFFLINE_SCREEN_PATH |  | server/monetization/routes.js, server/streaming/routes.js |
 | OpenVibe.Live | OV_APP_ROOT |  | server/docs/routes.js, server/web/assets.js |
-| OpenVibe.Live | OV_AUDIO_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Live | OV_COMMUNITY_INTERNAL_URL |  | server/pastes-client.js |
-| OpenVibe.Live | OV_COMMUNITY_URL | live.env | server/index.js, server/media-proxy/pastes.js +2 |
-| OpenVibe.Live | OV_DEV_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Live | OV_DOCS_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Live | OV_FOOD_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Live | OV_GAMES_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Live | OV_IMG_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Live | OV_LIVE_URL | live.env | vendor/openvibe-shared/brand.js |
-| OpenVibe.Live | OV_LOGO_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Live | OV_MAPS_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Live | OV_MEDIA_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Live | OV_NET_URL |  | vendor/openvibe-shared/brand.js |
+| OpenVibe.Live | OV_COMMUNITY_URL | live.env | server/index.js, server/media-proxy/pastes.js +1 |
+| OpenVibe.Live | OV_LIVE_URL | live.env | (not referenced) |
 | OpenVibe.Live | OV_NETWORK_INTERNAL_URL | live.env | server/chat/chat-server.js, server/monetization/wallet-client.js +3 |
-| OpenVibe.Live | OV_NETWORK_LOGIN_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Live | OV_NETWORK_PUBLIC_KEY | live.env | server/auth/auth.js |
-| OpenVibe.Live | OV_NETWORK_URL | live.env | server/auth/auth.js, server/config.js +2 |
+| OpenVibe.Live | OV_NETWORK_URL | live.env | server/auth/auth.js, server/config.js +1 |
 | OpenVibe.Live | OV_OAUTH_CLIENT_ID | live.env | server/auth/routes.js, server/net/network-principal.js |
-| OpenVibe.Live | OV_PASTES_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Live | OV_PUBLIC_DIR |  | server/web/assets.js |
-| OpenVibe.Live | OV_TEXT_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Live | OV_TOOLS_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Live | OV_YT_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Live | OWNER_USERNAME |  | server/db/database.js |
 | OpenVibe.Live | PASTES_AUTHORITY | live.env | server/pastes-client.js |
 | OpenVibe.Live | PASTES_ON_COMMUNITY | live.env | server/index.js, server/seo/seo.js |
@@ -244,7 +218,6 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Media | FILES_PATH | media.env | server/config.js |
 | OpenVibe.Media | HOST | media.env | server/config.js |
 | OpenVibe.Media | LIVE_APP_INTERNAL_URL |  | server/thumbnails/live-frame-service.js |
-| OpenVibe.Media | LOGIN_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Media | MEDIA_APP_KEYS |  | server/config.js |
 | OpenVibe.Media | MEDIA_APPS_SEED | media.env | server/config.js |
 | OpenVibe.Media | MEDIA_B2_BUCKET | media.env | server/vod/vod-storage.js |
@@ -258,27 +231,11 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Media | MEDIA_R2_REGION |  | server/vod/vod-storage.js |
 | OpenVibe.Media | MIN_VOD_SECONDS |  | server/vod/finalize.js |
 | OpenVibe.Media | NODE_ENV | media.env | server/config.js |
-| OpenVibe.Media | OV_AUDIO_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_COMMUNITY_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_DEV_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_DOCS_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_FOOD_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_GAMES_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_IMG_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_LIVE_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_LOGO_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_MAPS_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_MEDIA_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_NET_URL |  | vendor/openvibe-shared/brand.js |
+| OpenVibe.Media | OBJECTS_PATH |  | server/config.js |
 | OpenVibe.Media | OV_NETWORK_INTERNAL_URL | media.env | server/config.js |
-| OpenVibe.Media | OV_NETWORK_LOGIN_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_NETWORK_URL | media.env | server/config.js, vendor/openvibe-shared/brand.js |
+| OpenVibe.Media | OV_NETWORK_URL | media.env | server/config.js |
 | OpenVibe.Media | OV_OAUTH_CLIENT_ID | media.env | server/index.js |
 | OpenVibe.Media | OV_OAUTH_REDIRECT_URI |  | server/index.js |
-| OpenVibe.Media | OV_PASTES_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_TEXT_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_TOOLS_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Media | OV_YT_URL |  | vendor/openvibe-shared/brand.js |
 | OpenVibe.Media | PASTES_FROZEN_APPS | media.env | server/pastes/routes.js |
 | OpenVibe.Media | PASTES_MOVED_TO | media.env | (not referenced) |
 | OpenVibe.Media | PASTES_PATH | media.env | server/config.js |
@@ -296,85 +253,105 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Network | BASE_URL | network.env | server/admin/routes.js, server/config.js +1 |
 | OpenVibe.Network | BOOTSTRAP_PROFILE |  | server/config.js, server/db/database.js |
 | OpenVibe.Network | CERTBOT_BIN |  | server/deploy/cert-manager.js |
-| OpenVibe.Network | DB_PATH | network.env | server/config.js, server/grant-admin.js +1 |
+| OpenVibe.Network | DB_PATH | network.env | server/config.js, server/grant-admin.js +2 |
 | OpenVibe.Network | HOST | network.env | server/config.js |
 | OpenVibe.Network | INTERNAL_URL |  | server/config.js |
 | OpenVibe.Network | JWT_PUBLIC_KEY | network.env | server/config.js |
 | OpenVibe.Network | LETSENCRYPT_DIR |  | server/deploy/cert-manager.js |
-| OpenVibe.Network | LOGIN_URL |  | packages/openvibe-shared/brand.js, server/config.js |
+| OpenVibe.Network | LOGIN_URL |  | node_modules/openvibe-shared/brand.js, server/config.js |
 | OpenVibe.Network | MEDIASOUP_ANNOUNCED_IP |  | server/domains/dns-check.js |
 | OpenVibe.Network | NODE_ENV | network.env | server/auth/fedcm.js, server/auth/sso-check.js +3 |
 | OpenVibe.Network | NOTIFICATION_EMAIL_CRITICAL_ONLY | network.env | (not referenced) |
 | OpenVibe.Network | NOTIFICATION_MAX_AGE_DAYS | network.env | (not referenced) |
 | OpenVibe.Network | NOTIFICATIONS_ENABLED | network.env | (not referenced) |
 | OpenVibe.Network | OPENVIBELIVE_DB_PATH |  | server/db/database.js |
-| OpenVibe.Network | OV_AUDIO_URL |  | packages/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_COMMUNITY_URL |  | packages/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_DEV_URL |  | packages/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_DOCS_URL |  | packages/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_FOOD_URL |  | packages/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_AUDIO_URL |  | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_COMMUNITY_URL |  | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_DEV_URL |  | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_DOCS_URL |  | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_FOOD_URL |  | node_modules/openvibe-shared/brand.js |
 | OpenVibe.Network | OV_GAMES_INTERNAL_URL | network.env | server/config.js |
-| OpenVibe.Network | OV_GAMES_URL | network.env | packages/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_IMG_URL |  | packages/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_GAMES_URL | network.env | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_IMG_URL |  | node_modules/openvibe-shared/brand.js |
 | OpenVibe.Network | OV_LIVE_INTERNAL_URL | network.env | server/admin/routes.js, server/config.js |
-| OpenVibe.Network | OV_LIVE_URL | network.env | packages/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_LOGO_URL |  | packages/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_MAPS_URL |  | packages/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_LIVE_URL | network.env | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_LOGO_URL |  | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_MAPS_URL |  | node_modules/openvibe-shared/brand.js |
 | OpenVibe.Network | OV_MEDIA_INTERNAL_URL | network.env | server/config.js |
-| OpenVibe.Network | OV_MEDIA_URL | network.env | packages/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_NET_URL |  | packages/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_MEDIA_URL | network.env | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_NET_URL |  | node_modules/openvibe-shared/brand.js |
 | OpenVibe.Network | OV_NETWORK_BASE_URL |  | server/auth/reset-tokens.js |
 | OpenVibe.Network | OV_NETWORK_INTERNAL_URL |  | server/config.js |
-| OpenVibe.Network | OV_NETWORK_LOGIN_URL |  | packages/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_NETWORK_URL |  | packages/openvibe-shared/brand.js, server/config.js |
-| OpenVibe.Network | OV_PASTES_URL |  | packages/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_NETWORK_LOGIN_URL |  | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_NETWORK_URL |  | node_modules/openvibe-shared/brand.js, server/config.js |
+| OpenVibe.Network | OV_PASTES_URL |  | node_modules/openvibe-shared/brand.js |
 | OpenVibe.Network | OV_SSO_TARGETS |  | server/auth/sso-targets.js |
 | OpenVibe.Network | OV_SSO_TARGETS_DISABLED |  | server/auth/sso-targets.js |
-| OpenVibe.Network | OV_TEXT_URL |  | packages/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_TEXT_URL |  | node_modules/openvibe-shared/brand.js |
 | OpenVibe.Network | OV_TOOLS_INTERNAL_URL | network.env | server/config.js, server/domains/catalog.js |
-| OpenVibe.Network | OV_TOOLS_URL | network.env | packages/openvibe-shared/brand.js |
-| OpenVibe.Network | OV_YT_URL |  | packages/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_TOOLS_URL | network.env | node_modules/openvibe-shared/brand.js |
+| OpenVibe.Network | OV_YT_URL |  | node_modules/openvibe-shared/brand.js |
 | OpenVibe.Network | OWNER_USERNAME |  | server/admin/routes.js, server/auth/owner-guard.js +3 |
 | OpenVibe.Network | PORT | network.env | server/config.js |
 | OpenVibe.Network | PUBLIC_IP |  | server/domains/dns-check.js |
 | OpenVibe.Network | SSH_PROJECTS_ROOT |  | server/index.js |
 | OpenVibe.Network | SSH_SERVER_HOST |  | server/index.js |
+| OpenVibe.Shared | LOGIN_URL |  | brand.js |
+| OpenVibe.Shared | OV_AUDIO_URL |  | brand.js |
+| OpenVibe.Shared | OV_COMMUNITY_URL |  | brand.js |
+| OpenVibe.Shared | OV_DEV_URL |  | brand.js |
+| OpenVibe.Shared | OV_DOCS_URL |  | brand.js |
+| OpenVibe.Shared | OV_FOOD_URL |  | brand.js |
+| OpenVibe.Shared | OV_GAMES_URL |  | brand.js |
+| OpenVibe.Shared | OV_IMG_URL |  | brand.js |
+| OpenVibe.Shared | OV_LIVE_URL |  | brand.js |
+| OpenVibe.Shared | OV_LOGO_URL |  | brand.js |
+| OpenVibe.Shared | OV_MAPS_URL |  | brand.js |
+| OpenVibe.Shared | OV_MEDIA_URL |  | brand.js |
+| OpenVibe.Shared | OV_NET_URL |  | brand.js |
+| OpenVibe.Shared | OV_NETWORK_LOGIN_URL |  | brand.js |
+| OpenVibe.Shared | OV_NETWORK_URL |  | brand.js |
+| OpenVibe.Shared | OV_PASTES_URL |  | brand.js |
+| OpenVibe.Shared | OV_TEXT_URL |  | brand.js |
+| OpenVibe.Shared | OV_TOOLS_URL |  | brand.js |
+| OpenVibe.Shared | OV_YT_URL |  | brand.js |
 | OpenVibe.Tools | BASE_URL |  | apps/gateway/server/config.js, apps/maps/server/config.js +1 |
 | OpenVibe.Tools | DATA_DIR |  | apps/audio/server/config.js, apps/docs/server/config.js +2 |
 | OpenVibe.Tools | DOWNLOADS_DIR |  | apps/yt/server/config.js |
 | OpenVibe.Tools | HOST | tools.env | apps/audio/server/config.js, apps/docs/server/config.js +5 |
 | OpenVibe.Tools | LIVE_URL |  | apps/gateway/server/config.js |
-| OpenVibe.Tools | LOGIN_URL |  | vendor/openvibe-shared/brand.js |
+| OpenVibe.Tools | LOGIN_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
 | OpenVibe.Tools | MAPS_API |  | apps/food/server/index.js |
 | OpenVibe.Tools | MEDIA_PUBLIC_URL | tools.env | (not referenced) |
 | OpenVibe.Tools | MEDIA_URL | tools.env | (not referenced) |
 | OpenVibe.Tools | NODE_ENV | tools.env | apps/audio/server/index.js, apps/docs/server/index.js +6 |
 | OpenVibe.Tools | OUTPUT_DIR |  | apps/audio/server/config.js, apps/docs/server/config.js +1 |
-| OpenVibe.Tools | OV_AUDIO_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_COMMUNITY_URL |  | apps/gateway/server/index.js, vendor/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_DEV_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_DOCS_URL |  | vendor/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_AUDIO_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_COMMUNITY_INTERNAL_URL |  | apps/gateway/server/config.js |
+| OpenVibe.Tools | OV_COMMUNITY_URL |  | apps/audio/node_modules/openvibe-shared/brand.js, apps/gateway/server/index.js |
+| OpenVibe.Tools | OV_DEV_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_DOCS_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
 | OpenVibe.Tools | OV_DOMAINS_URL |  | apps/gateway/server/registry/index.js |
 | OpenVibe.Tools | OV_ENFORCE_HOSTS |  | apps/gateway/server/index.js |
 | OpenVibe.Tools | OV_EXTRA_HOSTS |  | apps/_shared/host-role.js |
-| OpenVibe.Tools | OV_FOOD_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_GAMES_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_IMG_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_LIVE_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_LOGO_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_MAPS_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_MEDIA_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_NET_URL |  | vendor/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_FOOD_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_GAMES_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_IMG_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_LIVE_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_LOGO_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_MAPS_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_MEDIA_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_NET_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
 | OpenVibe.Tools | OV_NETWORK_INTERNAL_URL | tools.env | apps/audio/server/config.js, apps/docs/server/config.js +3 |
-| OpenVibe.Tools | OV_NETWORK_LOGIN_URL |  | vendor/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_NETWORK_LOGIN_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
 | OpenVibe.Tools | OV_NETWORK_PUBLIC_KEY |  | apps/audio/server/config.js, apps/docs/server/config.js +2 |
-| OpenVibe.Tools | OV_NETWORK_URL | tools.env | apps/audio/server/config.js, apps/docs/server/config.js +5 |
+| OpenVibe.Tools | OV_NETWORK_URL | tools.env | apps/audio/node_modules/openvibe-shared/brand.js, apps/audio/server/config.js +5 |
 | OpenVibe.Tools | OV_OAUTH_CLIENT_ID | tools.env | apps/gateway/server/config.js |
 | OpenVibe.Tools | OV_OAUTH_REDIRECT_URI |  | apps/gateway/server/config.js |
-| OpenVibe.Tools | OV_PASTES_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_TEXT_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_TOOLS_URL |  | vendor/openvibe-shared/brand.js |
-| OpenVibe.Tools | OV_YT_URL |  | vendor/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_PASTES_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_TEXT_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_TOOLS_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
+| OpenVibe.Tools | OV_YT_URL |  | apps/audio/node_modules/openvibe-shared/brand.js |
 | OpenVibe.Tools | PORT |  | apps/audio/server/config.js, apps/docs/server/config.js +6 |
 | OpenVibe.Tools | UPLOADS_DIR |  | apps/audio/server/config.js, apps/docs/server/config.js +1 |
 | OpenVibe.Tools | YT_COOKIES_FILE |  | apps/yt/server/downloader.js |

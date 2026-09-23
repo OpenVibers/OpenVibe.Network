@@ -31,8 +31,9 @@ const DEFAULT_SERVICE_MAP = {
                 rateBurst: 5,
             },
             {
+                // No cacheTime: the app sets Cache-Control on /shared/ (five minutes, a year for a
+                // ?v= content-hash URL); expires/add_header here would send a second, conflicting one.
                 match: '/shared/',
-                cacheTime: '1h',
             },
             {
                 match: '/api/',
