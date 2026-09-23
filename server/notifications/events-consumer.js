@@ -143,7 +143,7 @@ function liveStarted(event, { now, maxAgeMs }) {
     return {
         streamId, subject, username, displayName: clean(ch.display_name, 60) || username,
         title: clean(p.title, 200) || null, protocol: clean(p.protocol, 20) || null,
-        url: publicLink(ch.url) || `https://openvibe.live/${encodeURIComponent(username)}`,
+        url: require('./stream-live').canonicalChannelUrl(publicLink(ch.url), username),
     };
 }
 

@@ -253,7 +253,16 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
     assert.strictEqual(n1.title, 'Carol 3 is live!');
     assert.strictEqual(n1.message, 'Building a b robot /b', 'no markup reaches the inbox');
     assert.strictEqual(n1.category, 'stream');
-    assert.strictEqual(n1.url, 'https://openvibe.live/carol');
+    assert.strictEqual(n1.url, 'https://openvibe.live/@carol', 'an old-style channel link is rewritten to the channel page');
+    {
+        const { channelUrl, canonicalChannelUrl } = require('../server/notifications/stream-live');
+        assert.strictEqual(channelUrl('carol'), 'https://openvibe.live/@carol');
+        assert.strictEqual(channelUrl('@carol'), 'https://openvibe.live/@carol');
+        assert.strictEqual(canonicalChannelUrl('https://openvibe.live/@carol', 'carol'), 'https://openvibe.live/@carol', 'a channel link is kept');
+        assert.strictEqual(canonicalChannelUrl('https://openvibe.live/carol/', 'carol'), 'https://openvibe.live/@carol');
+        assert.strictEqual(canonicalChannelUrl('https://openvibe.live/vod/5', 'carol'), 'https://openvibe.live/vod/5', 'other Live pages are kept');
+        assert.strictEqual(canonicalChannelUrl(null, 'carol'), 'https://openvibe.live/@carol', 'no link: the channel page');
+    }
     assert.strictEqual(n1.sender_id, 20, 'sender is the streamer\'s Network account (dedupe key)');
     assert.strictEqual(n1.sender_avatar, 'https://openvibe.media/avatar/carol');
     assert.strictEqual(JSON.parse(n1.rich_content).context.event_id, s1.event_id);

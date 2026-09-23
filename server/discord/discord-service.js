@@ -133,7 +133,7 @@ class DiscordService {
             }
 
             const displayName = streamer.display_name || streamer.username;
-            const streamUrl = `https://openvibe.live/${streamer.username}`;
+            const streamUrl = require('../notifications/stream-live').channelUrl(streamer.username);
             const title = stream.title || 'Started streaming';
 
             const embed = new Discord.EmbedBuilder()

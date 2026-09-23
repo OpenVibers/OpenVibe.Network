@@ -377,7 +377,7 @@ router.post('/events/stream-live', principals.guard('network.notifications.push'
         const db = getDb(req);
         const notifData = streamLive.streamLiveNotification({
             username: streamer.username, displayName: streamer.display_name, avatarUrl: streamer.avatar_url,
-            senderId: streamer.id || null, stream, url: `https://openvibe.live/${streamer.username}`,
+            senderId: streamer.id || null, stream, url: streamLive.channelUrl(streamer.username),
         });
 
         // The streaming follow graph lives in OpenVibe.Live, keyed by LIVE user ids; Live

@@ -12,6 +12,20 @@
  * consumes the event, whichever arrives first announces and the other is skipped as `cooldown`.
  */
 
+/**
+ * A channel's page on OpenVibe.Live is /@<username>. Links built before 2026-09-23 (and events
+ * still queued from then) say https://openvibe.live/<username>, which is not a page: rewrite those.
+ */
+const LIVE_ORIGIN = 'https://openvibe.live';
+function channelUrl(username) {
+    return `${LIVE_ORIGIN}/@${encodeURIComponent(String(username || '').replace(/^@+/, ''))}`;
+}
+function canonicalChannelUrl(url, username) {
+    const m = /^https:\/\/openvibe\.live\/([A-Za-z0-9_]{3,24})\/?$/.exec(String(url || ''));
+    if (m) return channelUrl(m[1]);
+    return url || channelUrl(username);
+}
+
 /** One fan-out per streamer per `stream_live_cooldown_min` (60) and at most `stream_live_daily_cap` (8) per 24h. */
 function ensureAnnouncements(db) {
     db.exec(`CREATE TABLE IF NOT EXISTS stream_live_announcements (
@@ -62,7 +76,7 @@ function streamLiveNotification({ username, displayName, avatarUrl, senderId, st
         sender_name: name,
         sender_avatar: avatarUrl || null,
         service: 'live',
-        url: url || `https://openvibe.live/${encodeURIComponent(username)}`,
+        url: canonicalChannelUrl(url, username),
         rich_content: {
             thumbnail: avatarUrl || null,
             context: {
@@ -76,4 +90,4 @@ function streamLiveNotification({ username, displayName, avatarUrl, senderId, st
     };
 }
 
-module.exports = { ensureAnnouncements, claimAnnouncement, allLiveSubscribers, streamLiveNotification };
+module.exports = { ensureAnnouncements, claimAnnouncement, allLiveSubscribers, streamLiveNotification, channelUrl, canonicalChannelUrl };
