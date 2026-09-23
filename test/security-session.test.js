@@ -64,6 +64,14 @@ const sign = (sub, opts = {}) => jwt.sign({ sub, id: sub, username: 'u' }, keys.
     assert.strictEqual(r.body.valid, false, 'internal verify-token does not call a FedCM assertion a user token');
     r = await post('/internal/verify-token', { token: sign(7) }, { 'x-internal-key': config.internalKey });
     assert.strictEqual(r.body.valid, true);
+    // nginx only lets loopback reach `location /internal/` (case-sensitive); Express mounts are not,
+    // so another spelling must not reach the internal router from outside.
+    r = await post('/INTERNAL/verify-token', { token: sign(7) }, { 'x-internal-key': config.internalKey });
+    assert.strictEqual(r.status, 404, '/INTERNAL/... is not the internal API');
+    r = await post('/Internal/verify-token', { token: sign(7) }, { 'x-internal-key': config.internalKey });
+    assert.strictEqual(r.status, 404);
+    r = await post('/internal/verify-token', { token: sign(7) }, { 'x-internal-key': 'k'.repeat(31) + 'x' });
+    assert.strictEqual(r.status, 403, 'wrong internal key');
 
     // ── Revoked tokens (password changed after iat) ──────────────────
     const old = sign(8, { expiresIn: '1h' });

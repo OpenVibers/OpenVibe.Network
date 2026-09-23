@@ -31,10 +31,18 @@ function countLegacyKey(req, res) {
         } catch { /* telemetry is best effort */ }
     });
 }
+function sameKey(a, b) {
+    const x = Buffer.from(String(a || ''));
+    const y = Buffer.from(String(b || ''));
+    return x.length === y.length && x.length > 0 && require('crypto').timingSafeEqual(x, y);
+}
 function requireInternalKey(req, res, next) {
+    // Express mounts are case-insensitive, nginx locations are not: /INTERNAL/... would skip the
+    // proxy's loopback-only `location /internal/` rule. Only the exact spelling is served.
+    if (req.baseUrl !== '/internal') return res.status(404).json({ error: 'Not found' });
     const key = req.headers['x-internal-key'];
     const config = getConfig(req);
-    if (key && key === config.internalKey) {
+    if (key && sameKey(key, config.internalKey)) {
         req.internalKeyOk = true;
         // Retirement telemetry (roadmap Wave 22): count every legacy-key call per route, so the key can
         // be removed route by route once nothing uses it. Capability-guarded routes also record their
