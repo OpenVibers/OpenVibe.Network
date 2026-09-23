@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const subjects = require('../identity/subjects');
 const principals = require('../identity/principals');
+const devTokens = require('../developer/tokens');
 const router = express.Router();
 
 function getDb(req) { return req.app.locals.db; }
@@ -53,6 +54,19 @@ router.get('/authorize', (req, res) => {
     }
     if (!client_id || !redirect_uri) {
         return res.status(400).json({ error: 'client_id and redirect_uri are required' });
+    }
+
+    // Developer apps (app_<ULID>, server/developer): exact redirect URI, PKCE S256 always, no silent
+    // prompt=none (a third-party app never gets a code without the person choosing to continue).
+    if (devTokens.isAppClient(client_id)) {
+        const found = devTokens.checkAuthorizeRequest(db, req.query);
+        if (found.error) return res.status(400).json({ error: found.pkce ? 'invalid_request' : found.error, error_description: found.error });
+        if (String(req.query.prompt || '') === 'none') {
+            return res.redirect(`${redirect_uri}${redirect_uri.includes('?') ? '&' : '?'}error=interaction_required&state=${encodeURIComponent(state || '')}`);
+        }
+        const params = new URLSearchParams({ client_id, client_name: `${found.app.name} (third-party app)`, redirect_uri, response_type, scope: scope || '', state: state || '',
+            code_challenge: String(req.query.code_challenge), code_challenge_method: 'S256' });
+        return res.redirect(`${getConfig(req).loginUrl}/login?${params.toString()}`);
     }
 
     // Validate client
@@ -111,17 +125,22 @@ router.post('/confirm', (req, res) => {
         return res.status(400).json({ error: 'token, client_id, and redirect_uri are required' });
     }
 
-    // Validate client
-    const client = db.prepare('SELECT * FROM oauth_clients WHERE client_id = ?').get(client_id);
-    if (!client) return res.status(400).json({ error: 'Unknown client_id' });
+    const devApp = devTokens.isAppClient(client_id) ? devTokens.checkAuthorizeRequest(db, req.body) : null;
+    if (devApp && devApp.error) return res.status(400).json({ error: devApp.pkce ? 'invalid_request' : devApp.error, error_description: devApp.error });
+    let pkce = null;
+    if (!devApp) {
+        // Validate client
+        const client = db.prepare('SELECT * FROM oauth_clients WHERE client_id = ?').get(client_id);
+        if (!client) return res.status(400).json({ error: 'Unknown client_id' });
 
-    const allowedUris = JSON.parse(client.redirect_uris || '[]');
-    const uriLower = redirect_uri.toLowerCase();
-    if (!allowedUris.some(u => u.toLowerCase() === uriLower)) {
-        return res.status(400).json({ error: 'Invalid redirect_uri' });
+        const allowedUris = JSON.parse(client.redirect_uris || '[]');
+        const uriLower = redirect_uri.toLowerCase();
+        if (!allowedUris.some(u => u.toLowerCase() === uriLower)) {
+            return res.status(400).json({ error: 'Invalid redirect_uri' });
+        }
+        pkce = readChallenge(req.body);
+        if (pkce.error) return res.status(400).json({ error: 'invalid_request', error_description: pkce.error });
     }
-    const pkce = readChallenge(req.body);
-    if (pkce.error) return res.status(400).json({ error: 'invalid_request', error_description: pkce.error });
 
     // Verify the token
     const publicKey = req.app.locals.publicKey;
@@ -136,6 +155,13 @@ router.post('/confirm', (req, res) => {
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.sub || decoded.id);
     if (!user || user.is_banned) {
         return res.status(403).json({ error: 'User not found or banned' });
+    }
+
+    if (devApp) {
+        const out = devTokens.issueCode(db, { app: devApp.app, project: devApp.project, user, redirectUri: redirect_uri, scope, challenge: String(req.body.code_challenge) });
+        if (out.error) return res.status(out.status).json({ error: out.error });
+        require('./session').setSessionCookies(res, token);
+        return res.json({ redirect: withCode(redirect_uri, out.code, state) });
     }
 
     // Issue authorization code (bound to the PKCE challenge when the client sent one)
@@ -155,6 +181,13 @@ router.post('/token', (req, res) => {
     const db = getDb(req);
     const config = getConfig(req);
     const { grant_type, client_id, client_secret, code, redirect_uri, refresh_token } = req.body;
+
+    // Developer apps (app_<ULID>): client_credentials or authorization_code + PKCE, own credential store.
+    if (devTokens.isAppClient(client_id)) {
+        const out = devTokens.handleTokenRequest(db, req.body, { privateKey: req.app.locals.privateKey, issuer: config.jwt.issuer, config });
+        res.set('Cache-Control', 'no-store');
+        return res.status(out.status).json(out.body);
+    }
 
     // Service principals (Wave 1): a first-party service trades its client credentials for a
     // short-lived, capability-scoped token. Checked before the user-grant path below.
@@ -353,11 +386,11 @@ router.get('/.well-known/openid-configuration', (req, res) => {
         userinfo_endpoint: `${config.baseUrl}/api/auth/me`,
         jwks_uri: `${config.baseUrl}/api/.well-known/jwks`,
         response_types_supported: ['code'],
-        grant_types_supported: ['authorization_code', 'refresh_token'],
+        grant_types_supported: ['authorization_code', 'refresh_token', 'client_credentials'],
         subject_types_supported: ['public'],
         id_token_signing_alg_values_supported: ['RS256'],
         scopes_supported: ['profile', 'theme', 'openid'],
-        token_endpoint_auth_methods_supported: ['client_secret_post'],
+        token_endpoint_auth_methods_supported: ['client_secret_post', 'none'],
         code_challenge_methods_supported: ['S256'],
     });
 });

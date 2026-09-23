@@ -28,6 +28,19 @@ module.exports = {
     // Internal API key for server-to-server calls (X-Internal-Key)
     internalKey: process.env.INTERNAL_API_KEY || 'change-me-in-production',
 
+    // Developer projects (server/developer, ADR-014)
+    developer: {
+        // Audiences that accept sandbox app tokens (comma list, e.g. openvibe.media). Empty = none:
+        // sandbox apps then get no tokens, and every receiver refuses env=sandbox.
+        sandboxAudiences: process.env.DEV_SANDBOX_AUDIENCES || '',
+        // How long a rotated client secret keeps working (seconds, 0..604800).
+        credentialOverlapS: process.env.DEV_CREDENTIAL_OVERLAP_S || 86400,
+        // Capabilities every new project's allowance starts with (public ones only; comma list).
+        defaultAllowance: process.env.DEV_DEFAULT_ALLOWANCE || '',
+        maxProjectsPerOwner: process.env.DEV_MAX_PROJECTS_PER_OWNER || 10,
+        maxAppsPerProject: process.env.DEV_MAX_APPS_PER_PROJECT || 20,
+    },
+
     // Database
     db: {
         path: process.env.DB_PATH || './data/network.db',

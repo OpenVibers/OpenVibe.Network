@@ -801,6 +801,8 @@ function initDb(dbPath) {
     require('../identity/principals').ensureSchema(db);
     // Versioned user modules (server/identity/modules.js).
     require('../identity/modules').ensureSchema(db);
+    // Developer projects, apps, credentials, grants, quotas and audit (server/developer/store.js).
+    require('../developer/store').ensureSchema(db);
 
     console.log('[DB] Central database initialized');
     return db;

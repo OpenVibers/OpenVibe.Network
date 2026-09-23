@@ -421,6 +421,10 @@ app.use('/api/coins', createCoinsRoutes(db, requireAuth));
 // Versioned user modules: portable per-person preferences and summaries (server/identity/modules.js).
 app.use('/api/modules', require('./identity/modules').userRouter(requireAuth));
 
+// Developer projects, apps, credentials, grants and quotas (server/developer, ADR-014). Bearer user
+// tokens only; never X-Internal-Key.
+app.use('/api/v1/projects', rateLimit({ windowMs: 60_000, max: 60 }), require('./developer/routes').router());
+
 // Notification API (authenticated users)
 app.use('/api/notifications', createNotificationRoutes(db, notificationService, requireAuth));
 

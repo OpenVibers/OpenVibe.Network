@@ -229,6 +229,18 @@ function guard(capability, { ownApp, namespace, legacy = true } = {}) {
         }
         check(req, res, () => {
             const principal = req.principal;
+            // Developer sandbox tokens (env: sandbox) are refused unless Network opted in as an audience
+            // (DEV_SANDBOX_AUDIENCES); the signature was verified by check() above.
+            if (principal && !principal.legacy) {
+                const devPolicy = require('../developer/policy');
+                const claims = devPolicy.unverifiedClaims(String(req.headers.authorization || '').slice(7).trim());
+                const env = devPolicy.environmentDecision(claims, { acceptSandbox: devPolicy.settings(req.app.locals.config).sandboxAudiences.has(SELF_AUDIENCE) });
+                if (!env.ok) {
+                    record({ req, capability, principal, allowed: false, code: env.code });
+                    require('../observability').principalDenied({ req, code: env.code });
+                    return http.sendProblem(res, 401, env.code, { detail: env.reason, ctx: req.ov });
+                }
+            }
             if (ownApp && principal && !principal.legacy) {
                 const app = ownApp(req);
                 const self = String(principal.sub).replace(/^svc:/, '');
