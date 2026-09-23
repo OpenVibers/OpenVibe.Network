@@ -1,7 +1,7 @@
 {
  "generatedFrom": {
-  "OpenVibe.Live": "c9af7800c4a528791b2e870dc7099a3d926b2733",
-  "OpenVibe.Network": "06e4a6bd803f7dc358cbb5ee21dff888c594b07c",
+  "OpenVibe.Live": "e26606082958f8cf6bb7c4587c225ca09335b5fe",
+  "OpenVibe.Network": "33156ef5686d5e8636e2fb411b55d999cfe14953",
   "OpenVibe.Shared": "9b53bebe7dee7884a440d620ad099631e962fd77",
   "OpenVibe.Media": "cced10f81e529c76346d6578c8b26a5350f744be",
   "OpenVibe.Tools": "4773f7b1098e98743be03095e44afeac1928bdf5",
@@ -19,13 +19,13 @@
    "service": "live",
    "present": true,
    "git": {
-    "head": "c9af7800c4a528791b2e870dc7099a3d926b2733",
-    "branch": "seadragon",
+    "head": "e26606082958f8cf6bb7c4587c225ca09335b5fe",
+    "branch": "main",
     "originMain": "e26606082958f8cf6bb7c4587c225ca09335b5fe",
-    "committedAt": "2026-09-22T18:03:10-07:00"
+    "committedAt": "2026-09-22T16:28:23-07:00"
    },
    "sourceFiles": 167,
-   "loc": 69945,
+   "loc": 69978,
    "tables": [
     {
      "table": "arena_profiles",
@@ -863,25 +863,25 @@
     },
     {
      "table": "analytics_events",
-     "file": "node_modules/openvibe-shared/analytics.js",
+     "file": "vendor/openvibe-shared/analytics.js",
      "line": 74,
      "via": "openvibe-shared"
     },
     {
      "table": "analytics_hourly",
-     "file": "node_modules/openvibe-shared/analytics.js",
+     "file": "vendor/openvibe-shared/analytics.js",
      "line": 98,
      "via": "openvibe-shared"
     },
     {
      "table": "analytics_daily",
-     "file": "node_modules/openvibe-shared/analytics.js",
+     "file": "vendor/openvibe-shared/analytics.js",
      "line": 116,
      "via": "openvibe-shared"
     },
     {
      "table": "analytics_rate_tracking",
-     "file": "node_modules/openvibe-shared/analytics.js",
+     "file": "vendor/openvibe-shared/analytics.js",
      "line": 137,
      "via": "openvibe-shared"
     }
@@ -957,13 +957,13 @@
      "method": "GET",
      "path": "/api/admin/analytics",
      "file": "server/index.js",
-     "line": 675
+     "line": 708
     },
     {
      "method": "GET",
      "path": "/api/admin/analytics/bots",
      "file": "server/index.js",
-     "line": 684
+     "line": 717
     },
     {
      "method": "GET",
@@ -975,7 +975,7 @@
      "method": "POST",
      "path": "/api/admin/broadcast",
      "file": "server/index.js",
-     "line": 793
+     "line": 826
     },
     {
      "method": "PUT",
@@ -2157,7 +2157,7 @@
      "method": "POST",
      "path": "/api/csp-report",
      "file": "server/index.js",
-     "line": 814
+     "line": 847
     },
     {
      "method": "GET",
@@ -2457,7 +2457,7 @@
      "method": "GET",
      "path": "/api/health",
      "file": "server/index.js",
-     "line": 694
+     "line": 727
     },
     {
      "method": "GET",
@@ -2547,7 +2547,7 @@
      "method": "GET",
      "path": "/api/live-events",
      "file": "server/index.js",
-     "line": 622
+     "line": 655
     },
     {
      "method": "POST",
@@ -3171,7 +3171,7 @@
      "method": "GET",
      "path": "/api/ready",
      "file": "server/index.js",
-     "line": 717
+     "line": 750
     },
     {
      "method": "GET",
@@ -3783,7 +3783,7 @@
      "method": "GET",
      "path": "/api/updates",
      "file": "server/index.js",
-     "line": 780
+     "line": 813
     },
     {
      "method": "GET",
@@ -3927,31 +3927,31 @@
      "method": "GET",
      "path": "/banned",
      "file": "server/index.js",
-     "line": 948
+     "line": 981
     },
     {
      "method": "POST",
      "path": "/banned/continue",
      "file": "server/index.js",
-     "line": 918
+     "line": 951
     },
     {
      "method": "GET",
      "path": "/canvas",
      "file": "server/index.js",
-     "line": 650
+     "line": 683
     },
     {
      "method": "GET",
      "path": "/data/pastes/screenshots/:filename",
      "file": "server/index.js",
-     "line": 573
+     "line": 606
     },
     {
      "method": "GET",
      "path": "/dmca",
      "file": "server/index.js",
-     "line": 857
+     "line": 890
     },
     {
      "method": "GET",
@@ -3975,7 +3975,7 @@
      "method": "GET",
      "path": "/game",
      "file": "server/index.js",
-     "line": 649
+     "line": 682
     },
     {
      "method": "POST",
@@ -3987,13 +3987,13 @@
      "method": "GET",
      "path": "/internal/analytics-summary",
      "file": "server/index.js",
-     "line": 545
+     "line": 578
     },
     {
      "method": "POST",
      "path": "/internal/media-webhook",
      "file": "server/index.js",
-     "line": 540
+     "line": 573
     },
     {
      "method": "POST",
@@ -4017,61 +4017,61 @@
      "method": "GET",
      "path": "/media/:username",
      "file": "server/index.js",
-     "line": 852
+     "line": 885
     },
     {
      "method": "GET",
      "path": "/obs/chat/:username",
      "file": "server/index.js",
-     "line": 840
+     "line": 873
     },
     {
      "method": "GET",
      "path": "/openvibe-sw.js",
      "file": "server/index.js",
-     "line": 446
+     "line": 474
     },
     {
      "method": "GET",
      "path": "/overlay/chat/:username",
      "file": "server/index.js",
-     "line": 848
+     "line": 881
     },
     {
      "method": "GET",
      "path": "/overlay/chat/:username/:slotIdOrSlug",
      "file": "server/index.js",
-     "line": 845
+     "line": 878
     },
     {
      "method": "GET",
      "path": "/p/:slug",
      "file": "server/index.js",
-     "line": 591
+     "line": 624
     },
     {
      "method": "GET",
      "path": "/p/:slug/raw",
      "file": "server/index.js",
-     "line": 602
+     "line": 635
     },
     {
      "method": "GET",
      "path": "/p/:slug/screenshot",
      "file": "server/index.js",
-     "line": 598
+     "line": 631
     },
     {
      "method": "GET",
      "path": "/pastes",
      "file": "server/index.js",
-     "line": 592
+     "line": 625
     },
     {
      "method": "GET",
      "path": "/privacy",
      "file": "server/index.js",
-     "line": 866
+     "line": 899
     },
     {
      "method": "GET",
@@ -4083,31 +4083,31 @@
      "method": "GET",
      "path": "/terms",
      "file": "server/index.js",
-     "line": 863
+     "line": 896
     },
     {
      "method": "GET",
      "path": "/tos",
      "file": "server/index.js",
-     "line": 860
+     "line": 893
     },
     {
      "method": "POST",
      "path": "/whip/:streamId",
      "file": "server/index.js",
-     "line": 875
+     "line": 908
     },
     {
      "method": "DELETE",
      "path": "/whip/:streamId/:resourceId",
      "file": "server/index.js",
-     "line": 877
+     "line": 910
     },
     {
      "method": "PATCH",
      "path": "/whip/:streamId/:resourceId",
      "file": "server/index.js",
-     "line": 876
+     "line": 909
     }
    ],
    "ws": {
@@ -4169,47 +4169,47 @@
      {
       "path": "/ws/",
       "file": "server/index.js",
-      "line": 969
+      "line": 1002
      },
      {
       "path": "/ws/chat",
       "file": "server/index.js",
-      "line": 1007
+      "line": 1040
      },
      {
       "path": "/ws/vibe-coding/publish",
       "file": "server/index.js",
-      "line": 1009
+      "line": 1042
      },
      {
       "path": "/ws/broadcast",
       "file": "server/index.js",
-      "line": 1011
+      "line": 1044
      },
      {
       "path": "/ws/control",
       "file": "server/index.js",
-      "line": 1013
+      "line": 1046
      },
      {
       "path": "/ws/call",
       "file": "server/index.js",
-      "line": 1015
+      "line": 1048
      },
      {
       "path": "/ws/game",
       "file": "server/index.js",
-      "line": 1017
+      "line": 1050
      },
      {
       "path": "/ws/canvas",
       "file": "server/index.js",
-      "line": 1017
+      "line": 1050
      },
      {
       "path": "/ws/robotstreamer-publish",
       "file": "server/index.js",
-      "line": 1019
+      "line": 1052
      },
      {
       "path": "/ws/robotstreamer-publish",
@@ -5116,28 +5116,28 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 21600000,
-     "line": 1289,
+     "line": 1322,
      "file": "server/index.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": 45000,
-     "line": 1306,
+     "line": 1339,
      "file": "server/index.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 1330,
+     "line": 1363,
      "file": "server/index.js"
     },
     {
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 1341,
+     "line": 1374,
      "file": "server/index.js"
     },
     {
@@ -5319,10 +5319,10 @@
    "service": "network",
    "present": true,
    "git": {
-    "head": "06e4a6bd803f7dc358cbb5ee21dff888c594b07c",
+    "head": "33156ef5686d5e8636e2fb411b55d999cfe14953",
     "branch": "main",
     "originMain": "06e4a6bd803f7dc358cbb5ee21dff888c594b07c",
-    "committedAt": "2026-09-22T17:55:21-07:00"
+    "committedAt": "2026-09-22T18:05:33-07:00"
    },
    "sourceFiles": 52,
    "loc": 12043,
@@ -11174,8 +11174,8 @@
   {
    "repo": "OpenVibe.Live",
    "manifest": "package.json",
-   "spec": "v1.0.0",
-   "state": "current"
+   "spec": "file:./vendor/openvibe-shared",
+   "state": "unpinned"
   },
   {
    "repo": "OpenVibe.Media",
@@ -11752,7 +11752,7 @@
    "repo": "OpenVibe.Live",
    "table": "analytics_daily",
    "declaredAt": [
-    "node_modules/openvibe-shared/analytics.js:116"
+    "vendor/openvibe-shared/analytics.js:116"
    ],
    "prodDbs": [
     "analytics.db"
@@ -11768,7 +11768,7 @@
    "repo": "OpenVibe.Live",
    "table": "analytics_events",
    "declaredAt": [
-    "node_modules/openvibe-shared/analytics.js:74"
+    "vendor/openvibe-shared/analytics.js:74"
    ],
    "prodDbs": [
     "analytics.db"
@@ -11784,7 +11784,7 @@
    "repo": "OpenVibe.Live",
    "table": "analytics_hourly",
    "declaredAt": [
-    "node_modules/openvibe-shared/analytics.js:98"
+    "vendor/openvibe-shared/analytics.js:98"
    ],
    "prodDbs": [
     "analytics.db"
@@ -11800,7 +11800,7 @@
    "repo": "OpenVibe.Live",
    "table": "analytics_rate_tracking",
    "declaredAt": [
-    "node_modules/openvibe-shared/analytics.js:137"
+    "vendor/openvibe-shared/analytics.js:137"
    ],
    "prodDbs": [
     "analytics.db"
@@ -19566,8 +19566,8 @@
   {
    "severity": "info",
    "area": "checkout",
-   "subject": "OpenVibe.Live",
-   "detail": "local checkout c9af780 differs from origin/main e266060; scan reflects the checkout"
+   "subject": "OpenVibe.Network",
+   "detail": "local checkout 33156ef differs from origin/main 06e4a6b; scan reflects the checkout"
   },
   {
    "severity": "info",
@@ -19841,8 +19841,8 @@
   "outbound.internal-key": "28 of 61 call sites authenticate with the shared internal key",
   "ws.servers": "10 WebSocket server constructions",
   "tables.analytics-copies": "3 repos carry their own analytics_events",
-  "shared.pins": "4 repos pin a tagged openvibe-shared release (latest v1.0.0): Live v1.0.0, Network v1.0.0, Sites v1.0.0, Tools v1.0.0",
-  "shared.drift": "2 manifests unpinned or behind: Community (file:./vendor/openvibe-shared), Media (file:./vendor/openvibe-shared)",
+  "shared.pins": "3 repos pin a tagged openvibe-shared release (latest v1.0.0): Network v1.0.0, Sites v1.0.0, Tools v1.0.0",
+  "shared.drift": "3 manifests unpinned or behind: Community (file:./vendor/openvibe-shared), Live (file:./vendor/openvibe-shared), Media (file:./vendor/openvibe-shared)",
   "ci.repos": "5 of 8 scanned repos have .github/workflows",
   "deploy.drift": "5 service(s) not running origin/main",
   "tests.OpenVibe.Live": "58 test files",
@@ -20322,11 +20322,11 @@
    "metrics": [
     {
      "key": "shared.pins",
-     "value": "4 repos pin a tagged openvibe-shared release (latest v1.0.0): Live v1.0.0, Network v1.0.0, Sites v1.0.0, Tools v1.0.0"
+     "value": "3 repos pin a tagged openvibe-shared release (latest v1.0.0): Network v1.0.0, Sites v1.0.0, Tools v1.0.0"
     },
     {
      "key": "shared.drift",
-     "value": "2 manifests unpinned or behind: Community (file:./vendor/openvibe-shared), Media (file:./vendor/openvibe-shared)"
+     "value": "3 manifests unpinned or behind: Community (file:./vendor/openvibe-shared), Live (file:./vendor/openvibe-shared), Media (file:./vendor/openvibe-shared)"
     }
    ],
    "verified": true
@@ -20586,6 +20586,19 @@
    "status": "open",
    "check": "dead-dbs",
    "checkResult": "live/data/backups/live-pre-643a2e6.db, live/data/hobo.db, live/data/openvibe.db"
+  },
+  {
+   "id": "H15",
+   "title": "Media objects with no good copy",
+   "source": "OpenVibe.Media reconcile-objects.js --verify, 2026-09-23",
+   "severity": "medium",
+   "constraint": "The first full verification of stored copies found 4 B2 copies whose size does not match the database and 2 missing local files: 6 objects have no verified good copy.",
+   "owner": "Media maintainers",
+   "wave": "W4 (repair) / W22 (DR drills)",
+   "mitigation": "Re-upload from any surviving source or mark the objects unrecoverable with the owner told; run reconcile --verify on a schedule and alert on new findings.",
+   "status": "open",
+   "evidence": "2026-09-23: reconcile --verify over 3,020 objects and 2,847 locations; remote 686 checked (682 present, 4 corrupt).",
+   "checkResult": null
   }
  ],
  "criteria": [

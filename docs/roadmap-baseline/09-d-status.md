@@ -23,7 +23,7 @@ Deliverable 8. Family-level status from roadmap 3.2. Evidence paths are checked 
 | D39 | Mods | absent | missing | W12, W21 | - | - |
 | D40 | Open developer services | absent | missing | W20, W21 | Live/server/integrations/powerchat-routes.js | 28 of 61 call sites authenticate with the shared internal key |
 | D41 | Independent runtime lifecycle | partial | partial | W7, W21 | Live/deploy | hazard H1; hazard H3 |
-| D42 | Shared component architecture | partial | partial | W2, Track R | Shared/files.js; Network/package.json | 4 repos pin a tagged openvibe-shared release (latest v1.0.0): Live v1.0.0, Network v1.0.0, Sites v1.0.0, Tools v1.0.0; 2 manifests unpinned or behind: Community (file:./vendor/openvibe-shared), Media (file:./vendor/openvibe-shared) |
+| D42 | Shared component architecture | partial | partial | W2, Track R | Shared/files.js; Network/package.json | 3 repos pin a tagged openvibe-shared release (latest v1.0.0): Network v1.0.0, Sites v1.0.0, Tools v1.0.0; 3 manifests unpinned or behind: Community (file:./vendor/openvibe-shared), Live (file:./vendor/openvibe-shared), Media (file:./vendor/openvibe-shared) |
 | D43 | Safe active-client updates | absent | missing | Track R | Live/server/chat/deploy-notice.js; Live/server/web/assets.js | - |
 | D44 | Crawlable component rendering | built | already-present-and-verified | Track R (preserve) | Community/server/seo.js; Sites/build.js | - |
 | D45 | Release compatibility and recovery | absent | missing | Track R, W22 | - | 5 service(s) not running origin/main |

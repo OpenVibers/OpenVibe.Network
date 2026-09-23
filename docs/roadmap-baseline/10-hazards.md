@@ -20,6 +20,7 @@ Deliverable 9. **Not yet reviewed by the production-host owner** (Wave 0 exit cr
 | H12 | No Cloudflare cache-purge step after deploys | low | open | Platform operator | W21 / Track I | Add a purge-scoped token and a purge step, or short max-age + stale-while-revalidate on non-hashed assets. | - |
 | H13 | Production drifts from main | medium | open | Platform operator | W0 (checklist) / W21 (release manifests) | Deploy or record why each lagging service is held back. | media: deployed ddfefcf is 1 commit(s) behind origin/main cced10f; network: deployed 1b79576 is 8 commit(s) behind origin/main 06e4a6b; sites: deployed 185014f is 1 commit(s) behind origin/main 7b7c917; tools: deployed 0346edc is 1 commit(s) behind origin/main fd5d318; games: deployed 43c11f0 has the same file tree as origin/main 5710287 but a different SHA (pre-rewrite history); reset the checkout so later pulls fast-forward |
 | H14 | Dead and backup database files on the production host | low | open | Live maintainers | W0 | Confirm no code opens them, then delete the empty files and move the backup to /opt/backups with a retention date. | live/data/backups/live-pre-643a2e6.db, live/data/hobo.db, live/data/openvibe.db |
+| H15 | Media objects with no good copy | medium | open | Media maintainers | W4 (repair) / W22 (DR drills) | Re-upload from any surviving source or mark the objects unrecoverable with the owner told; run reconcile --verify on a schedule and alert on new findings. | 2026-09-23: reconcile --verify over 3,020 objects and 2,847 locations; remote 686 checked (682 present, 4 corrupt). |
 
 ## Constraints
 
@@ -37,3 +38,4 @@ Deliverable 9. **Not yet reviewed by the production-host owner** (Wave 0 exit cr
 - **H12** (roadmap 2.7.5): A cacheable static asset stays stale at some edges until max-age expires; the only Cloudflare token is DNS-01 scoped.
 - **H13** (this baseline (prod-snapshot.json)): A service running an older commit than main means repo-based reasoning does not describe production.
 - **H14** (this baseline (prod-snapshot.json)): Zero-table openvibe.db/hobo.db and a 260 MB pre-migration backup sit in /opt/openvibe.live/data; nothing records whether they are needed.
+- **H15** (OpenVibe.Media reconcile-objects.js --verify, 2026-09-23): The first full verification of stored copies found 4 B2 copies whose size does not match the database and 2 missing local files: 6 objects have no verified good copy. _Evidence: 2026-09-23: reconcile --verify over 3,020 objects and 2,847 locations; remote 686 checked (682 present, 4 corrupt)._

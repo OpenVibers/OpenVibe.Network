@@ -94,7 +94,7 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-22 23:36 UTC compared w
 | low | schema | OpenVibe.Live:user_voice_selection | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) |
 | low | schema | OpenVibe.Live:user_voices | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) |
 | low | schema | OpenVibe.Live:woodcut_profile | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) |
-| info | checkout | OpenVibe.Live | local checkout c9af780 differs from origin/main e266060; scan reflects the checkout |
+| info | checkout | OpenVibe.Network | local checkout 33156ef differs from origin/main 06e4a6b; scan reflects the checkout |
 | info | checkout | OpenVibe.Sites | local checkout b689b41 differs from origin/main 7b7c917; scan reflects the checkout |
 | info | checkout | OpenVibe.Tools | local checkout 4773f7b differs from origin/main fd5d318; scan reflects the checkout |
 | info | env | OpenVibe.Games:NODE_ENV | set in games.env but not referenced by scanned code (may be read by a dependency or stale) |

@@ -38,10 +38,10 @@ Deliverable 2: every table declared in code or present in production, with curre
 | ai_usage | server/db/database.js:1258 | live.db | OpenVibe.AI | extract | W13 |
 | ai_viewer_log | server/db/database.js:1891 | live.db | OpenVibe.AI | extract | W13 |
 | ai_viewer_threads | server/db/database.js:1877 | live.db | OpenVibe.AI | extract | W13 |
-| analytics_daily | node_modules/openvibe-shared/analytics.js:116 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
-| analytics_events | node_modules/openvibe-shared/analytics.js:74 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
-| analytics_hourly | node_modules/openvibe-shared/analytics.js:98 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
-| analytics_rate_tracking | node_modules/openvibe-shared/analytics.js:137 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
+| analytics_daily | vendor/openvibe-shared/analytics.js:116 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
+| analytics_events | vendor/openvibe-shared/analytics.js:74 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
+| analytics_hourly | vendor/openvibe-shared/analytics.js:98 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
+| analytics_rate_tracking | vendor/openvibe-shared/analytics.js:137 | analytics.db | OpenVibe.Live | keep | Track O / ADR-021 |
 | analytics_snapshots | (prod only) | rs-companion.db | OpenVibe.Games (import source) | frozen-legacy | W12 |
 | anon_ip_mappings | server/db/database.js:940 | live.db | OpenVibe.Network (policy) | extract | W1 |
 | api_keys | server/db/schema.sql:391 | live.db | OpenVibe.Network (principals) / OpenVibe.Codes | extract | W1/W20 |

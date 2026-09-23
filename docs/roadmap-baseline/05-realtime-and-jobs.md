@@ -23,15 +23,15 @@ Deliverable 4, plus the background-job half of the exit criteria.
 
 | Repo | Path | Referenced at |
 |---|---|---|
-| OpenVibe.Live | /ws/ | server/index.js:418, server/index.js:428, server/index.js:969 |
-| OpenVibe.Live | /ws/broadcast | server/index.js:1011, server/streaming/broadcast-server.js:187 |
-| OpenVibe.Live | /ws/call | server/index.js:1015, server/streaming/call-server.js:98 |
-| OpenVibe.Live | /ws/canvas | server/index.js:1017 |
-| OpenVibe.Live | /ws/chat | server/chat/chat-server.js:294, server/index.js:1007 |
-| OpenVibe.Live | /ws/control | server/controls/control-server.js:46, server/index.js:1013 |
-| OpenVibe.Live | /ws/game | server/index.js:1017 |
-| OpenVibe.Live | /ws/robotstreamer-publish | server/index.js:1019, server/integrations/robotstreamer-service.js:807 |
-| OpenVibe.Live | /ws/vibe-coding/publish | server/index.js:1009, server/vibe-coding/publish-server.js:31 |
+| OpenVibe.Live | /ws/ | server/index.js:418, server/index.js:428, server/index.js:1002 |
+| OpenVibe.Live | /ws/broadcast | server/index.js:1044, server/streaming/broadcast-server.js:187 |
+| OpenVibe.Live | /ws/call | server/index.js:1048, server/streaming/call-server.js:98 |
+| OpenVibe.Live | /ws/canvas | server/index.js:1050 |
+| OpenVibe.Live | /ws/chat | server/chat/chat-server.js:294, server/index.js:1040 |
+| OpenVibe.Live | /ws/control | server/controls/control-server.js:46, server/index.js:1046 |
+| OpenVibe.Live | /ws/game | server/index.js:1050 |
+| OpenVibe.Live | /ws/robotstreamer-publish | server/index.js:1052, server/integrations/robotstreamer-service.js:807 |
+| OpenVibe.Live | /ws/vibe-coding/publish | server/index.js:1042, server/vibe-coding/publish-server.js:31 |
 | OpenVibe.Network | /ws/ | server/deploy/nginx-generator.js:151 |
 | OpenVibe.Games | /ws | apps/server/src/main.ts:129 |
 
@@ -70,10 +70,10 @@ Deliverable 4, plus the background-job half of the exit criteria.
 | OpenVibe.Live | setInterval |  | ? | server/diagnostics.js:18 |
 | OpenVibe.Live | setInterval |  | 5 min | server/home/routes.js:583 |
 | OpenVibe.Live | setInterval |  | ? | server/home/star-job.js:130 |
-| OpenVibe.Live | setInterval |  | 360 min | server/index.js:1289 |
-| OpenVibe.Live | setInterval |  | 45 s | server/index.js:1306 |
-| OpenVibe.Live | setInterval |  | ? | server/index.js:1330 |
-| OpenVibe.Live | setInterval |  | ? | server/index.js:1341 |
+| OpenVibe.Live | setInterval |  | 360 min | server/index.js:1322 |
+| OpenVibe.Live | setInterval |  | 45 s | server/index.js:1339 |
+| OpenVibe.Live | setInterval |  | ? | server/index.js:1363 |
+| OpenVibe.Live | setInterval |  | ? | server/index.js:1374 |
 | OpenVibe.Live | setInterval |  | ? | server/integrations/chat-relay-service.js:615 |
 | OpenVibe.Live | setInterval |  | 1 s | server/integrations/powerchat-platform.js:296 |
 | OpenVibe.Live | setInterval |  | ? | server/integrations/powerchat-platform.js:430 |

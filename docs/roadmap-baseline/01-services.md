@@ -20,8 +20,8 @@ Deliverable 1: runtimes, ports, units, env files and repository state.
 
 | Repo | HEAD | origin/main | Source files | LOC | Test files | CI | Routes | Tables | WS servers | Timers/jobs | TODO(contract) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| OpenVibe.Live | c9af780 | e266060 | 167 | 69945 | 58 | yes | 537 | 125 | 8 | 48 | 15 |
-| OpenVibe.Network | 06e4a6b | 06e4a6b | 52 | 12043 | 15 | yes | 207 | 39 | 0 | 6 | 0 |
+| OpenVibe.Live | e266060 | e266060 | 167 | 69978 | 58 | yes | 537 | 125 | 8 | 48 | 15 |
+| OpenVibe.Network | 33156ef | 06e4a6b | 52 | 12043 | 15 | yes | 207 | 39 | 0 | 6 | 0 |
 | OpenVibe.Shared | 9b53beb | 9b53beb | 35 | 9484 | 11 | yes | 1 | 0 | 0 | 5 | 0 |
 | OpenVibe.Media | cced10f | cced10f | 34 | 10436 | 9 | yes | 90 | 18 | 0 | 9 | 0 |
 | OpenVibe.Tools | 4773f7b | fd5d318 | 117 | 20013 | 2 | no | 99 | 4 | 0 | 12 | 0 |

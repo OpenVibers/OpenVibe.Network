@@ -2,7 +2,7 @@
 
 The audit baseline from the OpenVibe development roadmap (Wave 0; section 12 items 1-3): what exists across the estate, who owns each piece of data today and who should, what production looks like next to the repos, and which hazards constrain later waves. Every file here except `data/*.json` is generated.
 
-Source commits: Live `c9af780`, Network `06e4a6b`, Shared `9b53beb`, Media `cced10f`, Tools `4773f7b`, Community `d7c6e60`, Games `5710287`, Sites `b689b41`. Production snapshot: openvibe-oregon, 2026-09-22.
+Source commits: Live `e266060`, Network `33156ef`, Shared `9b53beb`, Media `cced10f`, Tools `4773f7b`, Community `d7c6e60`, Games `5710287`, Sites `b689b41`. Production snapshot: openvibe-oregon, 2026-09-22.
 
 ## Deliverables
 
@@ -16,7 +16,7 @@ Source commits: Live `c9af780`, Network `06e4a6b`, Shared `9b53beb`, Media `cced
 | 6 | [07-ownership.md](07-ownership.md) | current vs target data ownership |
 | 7 | [08-discrepancies.md](08-discrepancies.md) | 133 production-vs-repo items |
 | 8 | [09-d-status.md](09-d-status.md) | D01-D46 family status from evidence |
-| 9 | [10-hazards.md](10-hazards.md) | 14 hazards with owners, mitigations and waves |
+| 9 | [10-hazards.md](10-hazards.md) | 15 hazards with owners, mitigations and waves |
 | - | [inventory.json](inventory.json) | everything above, machine-readable |
 
 ## Exit criteria
