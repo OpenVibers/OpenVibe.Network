@@ -63,7 +63,26 @@ li.now .dot i{animation:spin 1s linear infinite}
   const doneIds = (q.get('done') || '').split(',').filter(Boolean);
   const skippedIds = (q.get('skipped') || '').split(',').filter(Boolean);
   const nextRaw = q.get('next') || '/';
-  const safeNext = (s) => { try { if (s.startsWith('/') && !s.startsWith('//')) return s; const u = new URL(s); if (u.protocol !== 'https:' && u.protocol !== 'http:') return '/'; return /(^|\.)(openvibe\.[a-z]+|openre\.stream)$/.test(u.hostname) || /^(localhost|127\.0\.0\.1)$/.test(u.hostname) ? u.toString() : '/'; } catch { return '/'; } };
+  // safe-redirect:begin
+  // Where a sign-in may send the browser: a path on this site, this origin, or https on a zone
+  // OpenVibe owns (server/auth/sso-owned.js). Never javascript:/data:, never another host.
+  const OV_OWNED_ZONES = ['openvibe.network', 'openvibe.live', 'openvibe.tools', 'openvibe.media', 'openvibe.games', 'openvibe.community', 'openvibe.chat', 'openvibe.codes', 'openvibe.blog', 'openvibe.wiki', 'openvibe.news', 'openvibe.reviews', 'openvibe.tips', 'openvibe.vip', 'openvibe.trade', 'openvibe.host', 'openvibe.deals', 'openvibe.coupons', 'openre.stream'];
+  function safeNext(raw) {
+      const s = String(raw == null ? '' : raw);
+      if (!s || /[\\\u0000-\u001f\u007f]/.test(s)) return '/';
+      if (s.startsWith('/') && !s.startsWith('//')) return s;
+      try {
+          const u = new URL(s);
+          if (u.username || u.password) return '/';
+          if (u.origin === window.location.origin) return u.toString();
+          const h = u.hostname.toLowerCase();
+          if (u.protocol === 'https:' && OV_OWNED_ZONES.some(z => h === z || h.endsWith('.' + z))) return u.toString();
+          const local = /^(localhost|127\.0\.0\.1)$/;
+          if (u.protocol === 'http:' && local.test(h) && local.test(window.location.hostname)) return u.toString();
+      } catch (e) { /* not a URL */ }
+      return '/';
+  }
+  // safe-redirect:end
   const next = safeNext(nextRaw);
   document.getElementById('skip').href = next;
   if (action === 'logout') { document.getElementById('h').textContent = 'Signing you out everywhere'; document.getElementById('p').textContent = 'Closing your session on every OpenVibe site.'; }

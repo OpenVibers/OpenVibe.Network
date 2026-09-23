@@ -14,6 +14,8 @@
 // it points at https://openvibe.network/… .
 // ═══════════════════════════════════════════════════════════════
 
+const { OWNED_ZONES } = require('./sso-owned');
+
 const DEFAULT_TARGETS = [
     { id: 'live', name: 'OpenVibe.Live', origin: 'https://openvibe.live',
       login: 'https://openvibe.live/api/auth/sso/login?silent=1&next={next}',
@@ -49,12 +51,16 @@ function ssoTargets(env = process.env) {
 function safeNext(raw, env = process.env) {
     const s = String(raw || '');
     if (!s) return '/';
+    // Backslashes and control characters: browsers read '/\\evil' and '/\t/evil' as '//evil'.
+    if (/[\\\u0000-\u001f\u007f]/.test(s)) return '/';
     if (s.startsWith('/') && !s.startsWith('//')) return s;
     try {
         const u = new URL(s);
+        if (u.username || u.password) return '/';
         if (u.protocol !== 'https:' && !(u.protocol === 'http:' && /^(localhost|127\.0\.0\.1)$/.test(u.hostname))) return '/';
         const h = u.hostname.toLowerCase();
-        if (/(^|\.)openvibe\.[a-z]+$/.test(h) || /(^|\.)openre\.stream$/.test(h) || /^(localhost|127\.0\.0\.1)$/.test(h)) return u.toString();
+        // Only zones OpenVibe owns, never openvibe.<any tld> (anyone can register those).
+        if (OWNED_ZONES.some(z => h === z || h.endsWith('.' + z)) || /^(localhost|127\.0\.0\.1)$/.test(h)) return u.toString();
         for (const t of ssoTargets(env)) { try { if (t.origin && new URL(t.origin).hostname === h) return u.toString(); } catch { /* */ } }
     } catch { /* not a URL */ }
     return '/';
