@@ -588,6 +588,8 @@ function initDb(dbPath) {
             { client_id: 'wiki', name: 'OpenVibe.Wiki', redirect_uris: ['https://openvibe.wiki/auth/callback'] },
             { client_id: 'blog', name: 'OpenVibe.Blog', redirect_uris: ['https://openvibe.blog/auth/callback'] },
             { client_id: 'openre', name: 'OpenRe.Stream', redirect_uris: ['https://openre.stream/auth/callback'] },
+            // Billing's staff console (Wave 8): Network admins listed in BILLING_STAFF_SUBJECTS.
+            { client_id: 'billing', name: 'OpenVibe.Billing', redirect_uris: ['https://billing.openvibe.network/auth/callback'] },
         ];
         const insert = db.prepare(
             'INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, ?, ?, ?, 1)'

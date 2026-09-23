@@ -49,6 +49,11 @@ const DEFAULT_GRANTS = [
     // session/output events (Live consumes openre.session.* by webhook).
     ...['openre.stream.read', 'openre.stream.write', 'openre.key.rotate', 'openre.session.read'].map(c => ['live', c, 'openvibe.openre', []]),
     ['openre', 'events.event.publish', 'openvibe.events', []],
+    // Wave 16: Wiki publishes events, attaches Community discussion, cites Sources items, reads its Media.
+    ['wiki', 'events.event.publish', 'openvibe.events', []],
+    ['wiki', 'community.comment.write', 'openvibe.community', []],
+    ['wiki', 'sources.item.read', 'openvibe.sources', []],
+    ['wiki', 'media.object.read', 'openvibe.media', ['wiki']],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
     ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
     // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
