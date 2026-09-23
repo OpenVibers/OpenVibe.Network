@@ -64,8 +64,13 @@ const server = http.createServer(app);
     const creditOnly = t.body.access_token;
     t = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.network', scope: 'network.coins.credit network.coins.mint' });
     assert.strictEqual(t.status, 400); assert.strictEqual(t.body.error, 'invalid_scope', 'asking for an ungranted capability fails');
-    t = await token({ client_id: 'media', client_secret: 'media-secret', audience: 'openvibe.network' });
+    db.prepare("UPDATE oauth_clients SET client_secret = 'openre-secret' WHERE client_id = 'openre'").run();
+    t = await token({ client_id: 'openre', client_secret: 'openre-secret', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 400); assert.strictEqual(t.body.error, 'invalid_scope', 'a client with no grants gets no token');
+    t = await token({ client_id: 'media', client_secret: 'media-secret', audience: 'openvibe.network' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    assert.strictEqual(t.body.scope, 'identity.subject.resolve', 'Media resolves object owners to subjects, and nothing else here');
+    const mediaResolve = t.body.access_token;
     t = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.media' });
     assert.strictEqual(t.status, 400, 'no grants for that audience');
 
@@ -108,6 +113,13 @@ const server = http.createServer(app);
     assert.strictEqual(r.status, 200); assert.strictEqual(r.body.results['7'].username, 'payee');
     r = await post('/internal/identity/resolve-batch', { system: 'network', ids: ['7'] }, { authorization: `Bearer ${creditOnly}` });
     assert.strictEqual(r.status, 403, 'a token narrowed to coins cannot resolve identities');
+    // Media's owner_subject backfill: Live user ids -> subjects, an unknown id answers null.
+    db.prepare("INSERT OR IGNORE INTO identity_legacy_map (source_system, source_type, source_id, subject_id) SELECT 'live', 'user', '42', subject_id FROM users WHERE id = 7").run();
+    r = await post('/internal/identity/resolve-batch', { system: 'live', type: 'user', ids: ['42', '43'] }, { authorization: `Bearer ${mediaResolve}` });
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    assert.match(r.body.results['42'].subject.id, /^usr_/); assert.strictEqual(r.body.results['43'], null);
+    r = await post('/internal/coins/credit', credit(), { authorization: `Bearer ${mediaResolve}` });
+    assert.strictEqual(r.status, 403, 'Media holds no coin capability');
     const media = await token({ client_id: 'community', client_secret: 'community-secret', audience: 'openvibe.media' });
     assert.strictEqual(media.body.scope, 'media.object.upload', 'community may upload screenshot bytes to Media');
     const cm = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.community' });

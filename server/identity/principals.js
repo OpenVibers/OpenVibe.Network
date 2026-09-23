@@ -124,6 +124,9 @@ const DEFAULT_GRANTS = [
     ['billing', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['chat', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['live', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    // Media records each object's owner as a canonical subject (roadmap D01/D20): it resolves the app-local
+    // owner ids it is given (X-OV-User-Id) through resolve-batch, in its backfill and its reconcile job.
+    ['media', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['live', 'community.paste.create', 'openvibe.community', []],
     ['live', 'community.paste.write', 'openvibe.community', []],
     ['live', 'community.paste.moderate', 'openvibe.community', []],
