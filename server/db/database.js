@@ -589,7 +589,7 @@ function initDb(dbPath) {
             if (!existing) {
                 const secret = uuidv4();
                 insert.run(c.client_id, secret, c.name, JSON.stringify(c.redirect_uris));
-                console.log(`[DB] Seeded OAuth2 client: ${c.client_id} (secret: ${secret})`);
+                console.log(`[DB] Seeded OAuth2 client: ${c.client_id} (secret stored in oauth_clients; read it with sqlite, never from logs)`);
                 seededAny = true;
                 continue;
             }
@@ -607,7 +607,7 @@ function initDb(dbPath) {
                 }
             } catch { /* malformed redirect_uris — leave untouched */ }
         }
-        if (seededAny) console.log('[DB] ⚠️  Save these client secrets! They are shown only once.');
+        if (seededAny) console.log('[DB] New OAuth2 clients seeded; their secrets are in oauth_clients (they are never logged).');
     }
 
     function ensureLocalOauthRedirects() {
