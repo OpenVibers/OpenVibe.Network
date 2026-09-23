@@ -167,7 +167,7 @@ function guard(capability, { ownApp, namespace, legacy = true } = {}) {
                 legacy: legacy ? (r) => r.internalKeyOk === true : undefined,
                 namespace,
                 // Denials are final here; an allow is recorded below, after the ownership check.
-                onDecision: (d) => { if (!d.allowed) record(d); },
+                onDecision: (d) => { if (!d.allowed) { record(d); require('../observability').principalDenied(d); } },
             });
         }
         check(req, res, () => {
@@ -177,6 +177,7 @@ function guard(capability, { ownApp, namespace, legacy = true } = {}) {
                 const self = String(principal.sub).replace(/^svc:/, '');
                 if (app !== undefined && app !== self) {
                     record({ req, capability, principal, allowed: false, code: 'capability.owner_denied' });
+                    require('../observability').principalDenied({ req, code: 'capability.owner_denied' });
                     return http.sendProblem(res, 403, 'capability.owner_denied', { detail: `${principal.sub} may only act for app_id '${self}'` });
                 }
             }

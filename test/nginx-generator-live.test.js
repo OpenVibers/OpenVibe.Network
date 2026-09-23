@@ -23,6 +23,7 @@ const must = [
     ['Cloudflare client IP forwarded', /proxy_set_header CF-Connecting-IP \$http_cf_connecting_ip;/],
     ['access log without query strings (tokens)', /log_format live_noquery [^;]*\$uri[^;]*;[\s\S]*access_log [^;]* live_noquery;/],
     ['capture permissions header', /Permissions-Policy "camera=\*, microphone=\*, display-capture=\*"/],
+    ['OpenVibe.Chat locations (glob, before /api/)', /include \/opt\/openvibe\.chat\/deploy\/nginx\/\*\.locations\.conf;[\s\S]*location \/api\/ \{/],
 ];
 for (const [name, re] of must) assert.ok(re.test(conf), `generated live config is missing: ${name}`);
 // The asset regex must not swallow /api/ or /ws/ (a regex location beats prefix locations).

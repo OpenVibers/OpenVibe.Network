@@ -29,28 +29,91 @@ const INTERNAL = {
     events: 'http://127.0.0.1:4300', billing: 'http://127.0.0.1:4600',
 };
 const POLL_MS = 60 * 1000;
+// Readiness paths of services whose manifest (openvibe-contracts) does not carry `ready` yet. Each
+// answers with openvibe-shared/ready's shape; until a service deploys it, its health path is used
+// and the row says so (basis: 'health').
+const READY_PATHS = { network: '/api/ready', media: '/api/ready', tools: '/api/ready' };
 
-function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = globalThis.fetch, pollMs = POLL_MS } = {}) {
+/** Row status from a readiness body (openvibe-shared/ready shape, or an older ad-hoc one). */
+function statusFromReady(res, body) {
+    const shared = body && typeof body === 'object' && typeof body.ready === 'boolean' && body.checks && typeof body.checks === 'object';
+    if (!shared) return { status: res.ok ? 'up' : 'down', basis: 'ready-legacy' };
+    if (!body.ready) return { status: 'down', basis: 'ready' };
+    const degraded = Array.isArray(body.degraded) ? body.degraded : [];
+    return { status: body.status === 'degraded' || degraded.length ? 'degraded' : 'up', basis: 'ready' };
+}
+
+/** What a status row may repeat from a service's readiness body: names, states and times, no free-form detail. */
+function readySummary(body) {
+    if (!body || typeof body !== 'object' || typeof body.ready !== 'boolean') return null;
+    const checks = {};
+    for (const [name, c] of Object.entries(body.checks || {}).slice(0, 40)) {
+        if (!c || typeof c !== 'object') continue;
+        checks[String(name).slice(0, 64)] = {
+            status: c.status === 'ok' ? 'ok' : 'fail', required: c.required !== false,
+            latency_ms: Number.isFinite(c.latency_ms) ? c.latency_ms : null,
+            checked_at: typeof c.checked_at === 'string' ? c.checked_at.slice(0, 40) : null,
+            ...(c.error ? { error: String(c.error).slice(0, 200) } : {}),
+        };
+    }
+    const names = (a) => (Array.isArray(a) ? a.map(x => String(x).slice(0, 64)).slice(0, 40) : []);
+    return { ready: body.ready, status: String(body.status || (body.ready ? 'ready' : 'not_ready')).slice(0, 20), checked_at: typeof body.checked_at === 'string' ? body.checked_at.slice(0, 40) : null, failed: names(body.failed), degraded: names(body.degraded), checks };
+}
+
+function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = globalThis.fetch, pollMs = POLL_MS, readyPaths = READY_PATHS, now = () => Date.now() } = {}) {
     const internal = { ...INTERNAL, ...internalOverrides };
-    const health = new Map();   // id -> { status: up|down|unknown, http_status, latency_ms, checked_at }
+    // id -> { status: up|degraded|down|not-running|unknown, basis, reason, http_status, latency_ms, checked_at, ready, release }
+    const health = new Map();
     let timer = null;
+    let lastPollAt = null;
 
-    async function checkOne(m) {
-        const base = internal[m.id];
-        const path = m.ready || m.health;
-        if (m.status === 'placeholder' || !base || !path) {
-            health.set(m.id, { status: m.status === 'placeholder' ? 'not-running' : 'unknown', checked_at: new Date().toISOString() });
-            return;
-        }
-        const t0 = Date.now();
+    async function getJson(url) {
+        const t0 = now();
+        const res = await fetchImpl(url, { signal: AbortSignal.timeout(3000), headers: { accept: 'application/json' } });
+        let body = null;
+        try { body = await res.json(); } catch { body = null; }
+        return { res, body, latency: now() - t0 };
+    }
+
+    async function releaseOf(base) {
         try {
-            const res = await fetchImpl(`${base}${path}`, { signal: AbortSignal.timeout(3000) });
-            health.set(m.id, { status: res.ok ? 'up' : 'down', http_status: res.status, latency_ms: Date.now() - t0, checked_at: new Date().toISOString() });
+            const { res, body } = await getJson(`${base}/release.json`);
+            if (!res.ok || !body || typeof body.release !== 'string') return { release: null, error: `release.json answered ${res.status}` };
+            return { release: body.release.slice(0, 40), released_at: body.released_at || null, booted_at: body.booted_at || null };
         } catch (err) {
-            health.set(m.id, { status: 'down', error: err.name === 'TimeoutError' ? 'timeout' : 'unreachable', checked_at: new Date().toISOString() });
+            return { release: null, error: err.name === 'TimeoutError' ? 'timeout' : 'unreachable' };
         }
     }
-    const pollAll = () => Promise.all(contracts.services.manifests.map(checkOne));
+
+    async function checkOne(m) {
+        const at = () => new Date(now()).toISOString();
+        const base = internal[m.id];
+        if (m.status === 'placeholder') { health.set(m.id, { status: 'not-running', reason: 'placeholder', checked_at: at() }); return; }
+        const readyPath = m.ready || readyPaths[m.id] || null;
+        if (!m.health && !readyPath && !(m.domains || []).length) { health.set(m.id, { status: 'not-running', reason: 'no runtime', checked_at: at() }); return; }
+        if (!base) { health.set(m.id, { status: 'unknown', reason: 'no internal address known to Network', checked_at: at() }); return; }
+        if (!readyPath && !m.health) { health.set(m.id, { status: 'unknown', reason: 'no health or readiness path in its manifest', checked_at: at() }); return; }
+        const releaseP = releaseOf(base);
+        let entry;
+        try {
+            let got = readyPath ? await getJson(`${base}${readyPath}`) : null;
+            if (got && got.res.status !== 404) {
+                entry = { ...statusFromReady(got.res, got.body), ready: readySummary(got.body) };
+            } else {
+                // No readiness endpoint (yet): liveness is all that can be said.
+                got = await getJson(`${base}${m.health}`);
+                entry = { status: got.res.ok ? 'up' : 'down', basis: 'health', reason: 'liveness only: no readiness endpoint answered', ready: null };
+            }
+            entry.http_status = got.res.status;
+            entry.latency_ms = got.latency;
+        } catch (err) {
+            entry = { status: 'down', basis: 'unreachable', error: err.name === 'TimeoutError' ? 'timeout' : 'unreachable', ready: null };
+        }
+        entry.release = await releaseP;
+        entry.checked_at = at();
+        health.set(m.id, entry);
+    }
+    const pollAll = async () => { await Promise.all(contracts.services.manifests.map(checkOne)); lastPollAt = now(); };
     function start() {
         if (timer) return;
         const loop = async () => { try { await pollAll(); } catch { /* one bad poll never stops the loop */ } timer = setTimeout(loop, pollMs); if (timer.unref) timer.unref(); };
@@ -60,7 +123,16 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
     }
     function stop() { if (timer) clearTimeout(timer); timer = null; }
 
-    const withHealth = (m) => ({ ...m, runtime: health.get(m.id) || { status: 'unknown', checked_at: null } });
+    /** The row as it stands now: a result older than three poll intervals is 'unknown', never a stale 'up'. */
+    function current(id) {
+        const h = health.get(id);
+        if (!h) return { status: 'unknown', reason: 'not checked yet', checked_at: null };
+        const age = now() - Date.parse(h.checked_at);
+        if (age > 3 * pollMs) return { ...h, status: 'unknown', reason: `last check is ${Math.round(age / 1000)}s old`, last_status: h.status, stale: true };
+        return h;
+    }
+
+    const withHealth = (m) => ({ ...m, runtime: current(m.id) });
 
     function descriptor() {
         return {
@@ -120,7 +192,7 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         return r;
     }
 
-    return { router, start, stop, pollAll, health, descriptor };
+    return { router, start, stop, pollAll, health, current, descriptor, lastPollAt: () => lastPollAt, pollMs, internal };
 }
 
-module.exports = { createEcosystemRegistry, INTERNAL };
+module.exports = { createEcosystemRegistry, INTERNAL, READY_PATHS, statusFromReady, readySummary };

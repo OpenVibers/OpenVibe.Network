@@ -34,6 +34,18 @@ const { signToken } = require('./auth/routes');
 
 const app = express();
 
+// What this server is running (ADR-016, registry.release-manifest@1); open tabs poll it through
+// /shared/release-watch.js and are prompted, or reloaded when safe, after a deploy.
+const release = require('openvibe-shared/release').createRelease({ service: 'network', root: path.join(__dirname, '..') });
+
+// Metrics first, so every request is measured: HTTP golden signals by route template, process
+// metrics, release_info, and GET /metrics for direct loopback callers only (server/observability.js).
+const observability = require('./observability');
+require('openvibe-shared/metrics').instrument(app, {
+    service: 'network', release: release.release, registry: observability.registry,
+    normalize: (req) => (req.route ? null : /^\/shared\//.test(req.originalUrl) ? '/shared/*' : /^\/data\/avatars\//.test(req.originalUrl) ? '/data/avatars/*' : null),
+});
+
 function getRequestHost(req) {
     return String(req.headers.host || '').split(':')[0].toLowerCase();
 }
@@ -357,6 +369,8 @@ const requireAuth = require('./auth/session').makeRequireAuth(() => ({ db, publi
 const ecosystem = require('./registry/ecosystem').createEcosystemRegistry({ issuer: config.jwt.issuer });
 app.use(ecosystem.router());
 ecosystem.start();
+// Operator status: GET /status (server-rendered, noindex), /api/v1/status, /api/v1/status/slo.
+app.use(require('./status/routes').createStatusRoutes({ ecosystem }));
 
 app.get('/api/.well-known/jwks', (_req, res) => {
     const out = { public_key: publicKey, algorithm: privateKey === publicKey ? 'HS256' : 'RS256' };
@@ -374,6 +388,15 @@ app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', service: 'openvibe-network', version: '1.0.0' });
 });
 
+// Readiness: named checks with status, latency and checked_at; 503 only when a required one fails.
+{
+    const ready = observability.createNetworkReadiness({
+        db, release: release.release, ecosystem, discordService,
+        getKeys: () => ({ privateKey: app.locals.privateKey, publicKey: app.locals.publicKey }),
+    });
+    app.get('/api/ready', ready.handler);
+}
+
 // Brand info (used by all frontends for consistent URLs/names)
 app.get('/api/brand', (_req, res) => res.json(BRAND));
 
@@ -386,7 +409,8 @@ app.use('/api/auth', require('./auth/email-verify').routes(requireAuth));
 // Discord account linking (OAuth2 flow)
 app.use('/api/auth/discord', requireAuth, require('./auth/discord-link'));
 
-// OAuth2 authorization endpoints
+// OAuth2 authorization endpoints (token issuance counted by grant type: server/observability.js)
+app.use('/oauth/token', observability.tokenEndpointMetrics);
 app.use('/oauth', require('./auth/oauth-routes'));
 
 // Theme API
@@ -630,9 +654,6 @@ function serveShared(req, res, next) {
 app.use('/shared/v1', serveShared);
 app.use('/shared', serveShared);
 
-// What this server is running (ADR-016, registry.release-manifest@1); open tabs poll it through
-// /shared/release-watch.js and are prompted, or reloaded when safe, after a deploy.
-const release = require('openvibe-shared/release').createRelease({ service: 'network', root: path.join(__dirname, '..') });
 app.get('/release.json', release.handler);
 
 // Avatar serving

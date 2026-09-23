@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "status": "proposal",
+  "source": "OpenVibe realignment roadmap §15.19 (Observability and reliability)",
+  "note": "Every target below is a PROPOSAL for discussion. None is agreed, none is enforced, and no alerting exists for any of them. 'measured_by' names what can be measured today; 'not instrumented' means nothing measures it yet.",
+  "binding": "Correctness-sensitive systems (billing, authentication) prioritise integrity over availability; live transport prioritises continuity, with eventual control-plane convergence.",
+  "categories": [
+    {
+      "id": "identity-login-token-exchange",
+      "name": "Identity login and token exchange",
+      "services": ["network"],
+      "priority": "integrity",
+      "sli": "Share of POST /oauth/token and sign-in requests that answer without a 5xx; p95 latency of token issuance.",
+      "proposed_target": { "availability": "99.9% of requests over 30 days", "latency_p95_seconds": 0.5 },
+      "measured_by": ["network: http_requests_total{route=\"/oauth/token\"}", "network: http_request_duration_seconds{route=\"/oauth/token\"}", "network: network_tokens_issued_total{grant_type}", "network: network_token_failures_total{grant_type,error}"],
+      "integrity_rule": "A token is never issued with a capability that was not granted; refusing is always preferred to issuing wrongly."
+    },
+    {
+      "id": "public-page-availability",
+      "name": "Public page availability",
+      "services": ["live", "community", "tools", "media", "network"],
+      "priority": "availability",
+      "sli": "Share of GET requests to server-rendered public pages that answer without a 5xx.",
+      "proposed_target": { "availability": "99.5% of requests over 30 days" },
+      "measured_by": ["each service: http_requests_total{method=\"GET\",status_class}"]
+    },
+    {
+      "id": "control-apis",
+      "name": "Control APIs",
+      "services": ["live", "media", "events", "community", "tools"],
+      "priority": "availability",
+      "sli": "Share of authenticated write/control API requests (stream settings, object writes, subscriptions, jobs) that answer without a 5xx; p95 latency.",
+      "proposed_target": { "availability": "99.5% over 30 days", "latency_p95_seconds": 1.0 },
+      "measured_by": ["each service: http_requests_total and http_request_duration_seconds by route template"]
+    },
+    {
+      "id": "chat-persistence-delivery",
+      "name": "Chat message persistence and delivery",
+      "services": ["live", "chat"],
+      "priority": "integrity",
+      "sli": "Share of accepted chat messages that are persisted and delivered to connected viewers; delivery delay.",
+      "proposed_target": { "persisted": "99.99% of accepted messages", "delivery_p95_seconds": 1.0 },
+      "measured_by": [],
+      "measurement_status": "not instrumented: Live exposes live_ws_connections only; no per-message persistence or delivery counter exists yet"
+    },
+    {
+      "id": "ingest-acceptance",
+      "name": "Ingest acceptance",
+      "services": ["live", "openre"],
+      "priority": "continuity",
+      "sli": "Share of publish attempts (RTMP, WHIP, WebRTC, SRT) with a valid key that are accepted.",
+      "proposed_target": { "accepted": "99.5% of valid publish attempts over 30 days" },
+      "measured_by": [],
+      "measurement_status": "not instrumented: no publish-attempt counter exists yet"
+    },
+    {
+      "id": "active-stream-continuity",
+      "name": "Active stream continuity",
+      "services": ["live", "openre", "media"],
+      "priority": "continuity",
+      "sli": "Share of live streams that end by the broadcaster's action rather than by a server restart, deploy or crash.",
+      "proposed_target": { "unplanned_interruptions": "fewer than 1 per 1000 stream-hours" },
+      "measured_by": ["live: live_streams_live (count only)"],
+      "measurement_status": "partly instrumented: the number of live streams is measured; the cause of each stream end is not recorded"
+    },
+    {
+      "id": "media-upload-processing",
+      "name": "Media upload and processing",
+      "services": ["media"],
+      "priority": "integrity",
+      "sli": "Share of uploads and recordings that reach ready (never silently lost); time from upload or stream end to ready.",
+      "proposed_target": { "reach_ready_or_explicit_failure": "100%", "processing_p95_seconds": 600 },
+      "measured_by": ["media: media_recordings_in_progress", "media: media_objects{lifecycle_status}", "media: media_object_locations{provider,state}"],
+      "measurement_status": "partly instrumented: states are counted; time-to-ready is not measured"
+    },
+    {
+      "id": "ledger-settlement-correctness",
+      "name": "Ledger settlement correctness",
+      "services": ["billing"],
+      "priority": "integrity",
+      "sli": "Share of settlements whose journal balances and reconciles with the provider; duplicate monetary effects.",
+      "proposed_target": { "unbalanced_or_duplicate_settlements": 0 },
+      "measured_by": [],
+      "measurement_status": "not instrumented by this change (Billing is owned by another track)"
+    },
+    {
+      "id": "event-delivery-latency",
+      "name": "Event delivery latency",
+      "services": ["events"],
+      "priority": "integrity",
+      "sli": "Time from an event's acceptance to its successful delivery to each subscriber; dead-letter depth.",
+      "proposed_target": { "delivery_p95_seconds": 30, "dead_letters_unreviewed_after_24h": 0 },
+      "measured_by": ["events: events_delivery_latency_seconds", "events: events_deliveries{status}", "events: events_dlq_depth"]
+    },
+    {
+      "id": "developer-api-availability",
+      "name": "Developer API availability",
+      "services": ["network", "events", "media"],
+      "priority": "availability",
+      "sli": "Share of public developer API requests (registry, JWKS, events pull, object API) that answer without a 5xx.",
+      "proposed_target": { "availability": "99.9% of requests over 30 days" },
+      "measured_by": ["each service: http_requests_total by route template"]
+    }
+  ]
+}

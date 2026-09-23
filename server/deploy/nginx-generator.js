@@ -115,6 +115,8 @@ const DEFAULT_SERVICE_MAP = {
         gzip: true,
         // WebSocket URLs carry session tokens in the query string; keep them out of access logs.
         logWithoutQuery: true,
+        // Wave 6: OpenVibe.Chat serves /ws/chat, /api/chat/, /api/dm/, /api/tts/ and /api/sounds.
+        includes: ['/opt/openvibe.chat/deploy/nginx/*.locations.conf'],
         locations: [
             {
                 match: '= /api/auth/register',
@@ -571,6 +573,13 @@ function generateServiceConfig(serviceId, svc, opts = {}) {
         for (const [k, v] of Object.entries(svc.headers)) {
             lines.push(`    add_header ${k} ${v} always;`);
         }
+        lines.push('');
+    }
+
+    // Location files other services ship for this host (e.g. OpenVibe.Chat's chat paths on
+    // openvibe.live). A glob include is a no-op when the service is not installed.
+    for (const inc of svc.includes || []) {
+        lines.push(`    include ${inc};`);
         lines.push('');
     }
 
