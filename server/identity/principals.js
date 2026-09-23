@@ -32,6 +32,11 @@ const DEFAULT_GRANTS = [
     // pastes into Community on behalf of its users and its AI jobs.
     ['community', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['community', 'media.object.upload', 'openvibe.media', ['community']],
+    // Wave 11: Tools job results as Media objects; Wave 12: Games map-editor assets.
+    ['tools', 'media.object.upload', 'openvibe.media', ['tools']],
+    ['tools', 'media.object.read', 'openvibe.media', ['tools']],
+    ['games', 'media.object.upload', 'openvibe.media', ['games']],
+    ['games', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
     ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
     // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
