@@ -1,19 +1,19 @@
 {
  "generatedFrom": {
-  "OpenVibe.Live": "c893c6ca709926635522bac053f52062b5d3e1ad",
-  "OpenVibe.Network": "9bbd90f786fb80b02cbf7592ff9217844a714c32",
-  "OpenVibe.Shared": "c6405d48fabede75e2a9ef417fae46d493cfb940",
-  "OpenVibe.Media": "9de4b2528dd5787e7b5633d16eed40d8b4d43b4b",
+  "OpenVibe.Live": "ca7cc87672602e35756b8b348559543efab1bc38",
+  "OpenVibe.Network": "09bf748b7f459ac127b3f4045085c20189d39dbb",
+  "OpenVibe.Shared": "c2726807c19505bc22d2bce794188a9d1516b022",
+  "OpenVibe.Media": "ad2217be56627efca799fd3ce0987d91cb6f3e24",
   "OpenVibe.Tools": "5d1b42357392d47e5cc3f6bef3f22facdc6c23cd",
-  "OpenVibe.Community": "57d1dd4cbdc79f39ae5e98cc0d09b03a75508f5d",
+  "OpenVibe.Community": "63b90a838d280aada7d6c98aee61335b972c1105",
   "OpenVibe.Games": "7863fc6a71890b264c29ddd6bfa7e4c162da4883",
   "OpenVibe.Sites": "d6e4cbd3a2091bb9970ee15504c7758da8a96a24",
   "OpenVibe.Events": "efc09a795ea0fdea9e6eca04f20cc44362b91e3f",
-  "OpenVibe.Chat": "789768806b0d217b0bc735c319d20d1b6ebb4df8",
+  "OpenVibe.Chat": "ed90461e2fd4537332275f6efec8bb878ce4ac2a",
   "OpenRe.Stream": "c091a0959a6d727ec702ee589300cd42a0902be9",
   "OpenVibe.Billing": "aa445d0c8b7351afae910b9572a2f9ae674e0914",
-  "OpenVibe.Tips": "9a3a186182df7d150780b31d191ea1eb99c95962",
-  "OpenVibe.VIP": "9668a492b8f5b6c111261cf0e4270fc4ffcf521d",
+  "OpenVibe.Tips": "f211c03ed01b58dd52d104bda8b07ce1a82da2db",
+  "OpenVibe.VIP": "fe7eaad183622f303d2ea1efde80d1674478d948",
   "OpenVibe.AI": "3a480ac9f20ca018f5c2c8973f92d32dbe1a44cd",
   "OpenVibe.Search": "a707e38f87a077bbf2f570537a89b2f890d45e22",
   "OpenVibe.Sources": "2e986af27a5554fd01803daf9e55c726deded80d",
@@ -25,7 +25,7 @@
   "OpenVibe.Coupons": "1c57c4743b016ecf6f72d8d03feb7f56806920a6",
   "OpenVibe.Trade": "ddbc60c5e2f5ab16cfd17cd126803c9c24784662",
   "OpenVibe.Codes": "51d23865f2630203cf734c019309c7ffc053f89c",
-  "OpenVibe.Host": "ea99b502c072ae6635f7705e002e0ec174cae16d",
+  "OpenVibe.Host": "03dfcb32a9fecb85d509f5d92d0a166a26d86fe7",
   "OpenVibe.Examples": "d5f4efc02165f42b9feac5d2743de6e6c75c27de"
  },
  "prodSnapshot": {
@@ -38,13 +38,13 @@
    "service": "live",
    "present": true,
    "git": {
-    "head": "c893c6ca709926635522bac053f52062b5d3e1ad",
+    "head": "ca7cc87672602e35756b8b348559543efab1bc38",
     "branch": "main",
-    "originMain": "c893c6ca709926635522bac053f52062b5d3e1ad",
-    "committedAt": "2026-09-23T13:15:56-07:00"
+    "originMain": "ca7cc87672602e35756b8b348559543efab1bc38",
+    "committedAt": "2026-09-23T14:33:07-07:00"
    },
-   "sourceFiles": 189,
-   "loc": 74113,
+   "sourceFiles": 194,
+   "loc": 74460,
    "tables": [
     {
      "table": "arena_profiles",
@@ -301,175 +301,175 @@
     {
      "table": "relay_users",
      "file": "server/db/database.js",
-     "line": 1473,
+     "line": 1472,
      "via": "repo"
     },
     {
      "table": "payment_orders",
      "file": "server/db/database.js",
-     "line": 1595,
+     "line": 1567,
      "via": "repo"
     },
     {
      "table": "channel_moderators",
      "file": "server/db/database.js",
-     "line": 1628,
+     "line": 1600,
      "via": "repo"
     },
     {
      "table": "channel_moderation_settings",
      "file": "server/db/database.js",
-     "line": 1645,
+     "line": 1617,
      "via": "repo"
     },
     {
      "table": "emotes_new",
      "file": "server/db/database.js",
-     "line": 1716,
+     "line": 1688,
      "via": "repo"
     },
     {
      "table": "channel_sounds",
      "file": "server/db/database.js",
-     "line": 1748,
+     "line": 1720,
      "via": "repo"
     },
     {
      "table": "channel_sounds_new",
      "file": "server/db/database.js",
-     "line": 1772,
+     "line": 1744,
      "via": "repo"
     },
     {
      "table": "ai_chatbot_configs",
      "file": "server/db/database.js",
-     "line": 1810,
+     "line": 1782,
      "via": "repo"
     },
     {
      "table": "channel_ai_bots",
      "file": "server/db/database.js",
-     "line": 1835,
+     "line": 1807,
      "via": "repo"
     },
     {
      "table": "channel_ai_config",
      "file": "server/db/database.js",
-     "line": 1859,
+     "line": 1831,
      "via": "repo"
     },
     {
      "table": "ai_viewer_threads",
      "file": "server/db/database.js",
-     "line": 1880,
+     "line": 1852,
      "via": "repo"
     },
     {
      "table": "ai_viewer_log",
      "file": "server/db/database.js",
-     "line": 1894,
+     "line": 1866,
      "via": "repo"
     },
     {
      "table": "moderation_actions",
      "file": "server/db/database.js",
-     "line": 1927,
+     "line": 1899,
      "via": "repo"
     },
     {
      "table": "pastes",
      "file": "server/db/database.js",
-     "line": 1946,
+     "line": 1918,
      "via": "repo"
     },
     {
      "table": "paste_likes",
      "file": "server/db/database.js",
-     "line": 1983,
+     "line": 1955,
      "via": "repo"
     },
     {
      "table": "paste_comments",
      "file": "server/db/database.js",
-     "line": 2015,
+     "line": 1987,
      "via": "repo"
     },
     {
      "table": "stream_first_chats",
      "file": "server/db/database.js",
-     "line": 2047,
+     "line": 2019,
      "via": "repo"
     },
     {
      "table": "ip_log",
      "file": "server/db/database.js",
-     "line": 2058,
+     "line": 2030,
      "via": "repo"
     },
     {
      "table": "approved_ips",
      "file": "server/db/database.js",
-     "line": 2082,
+     "line": 2054,
      "via": "repo"
     },
     {
      "table": "pending_ip_messages",
      "file": "server/db/database.js",
-     "line": 2099,
+     "line": 2071,
      "via": "repo"
     },
     {
      "table": "hidden_relay_users",
      "file": "server/db/database.js",
-     "line": 2119,
+     "line": 2091,
      "via": "repo"
     },
     {
      "table": "control_whitelist",
      "file": "server/db/database.js",
-     "line": 2284,
+     "line": 2249,
      "via": "repo"
     },
     {
      "table": "control_configs",
      "file": "server/db/database.js",
-     "line": 2299,
+     "line": 2264,
      "via": "repo"
     },
     {
      "table": "control_config_buttons",
      "file": "server/db/database.js",
-     "line": 2313,
+     "line": 2278,
      "via": "repo"
     },
     {
      "table": "stream_controls_new",
      "file": "server/db/database.js",
-     "line": 2392,
+     "line": 2357,
      "via": "repo"
     },
     {
      "table": "managed_streams",
      "file": "server/db/database.js",
-     "line": 2427,
+     "line": 2392,
      "via": "repo"
     },
     {
      "table": "vibe_coding_sessions",
      "file": "server/db/database.js",
-     "line": 2649,
+     "line": 2614,
      "via": "repo"
     },
     {
      "table": "vibe_coding_events",
      "file": "server/db/database.js",
-     "line": 2684,
+     "line": 2649,
      "via": "repo"
     },
     {
      "table": "viewer_samples",
      "file": "server/db/database.js",
-     "line": 3983,
+     "line": 3832,
      "via": "repo"
     },
     {
@@ -910,7 +910,7 @@
      "method": "GET",
      "path": "/api/admin/admins",
      "file": "server/admin/routes.js",
-     "line": 788,
+     "line": 796,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -920,7 +920,7 @@
      "method": "POST",
      "path": "/api/admin/admins",
      "file": "server/admin/routes.js",
-     "line": 798,
+     "line": 806,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -930,7 +930,7 @@
      "method": "DELETE",
      "path": "/api/admin/admins/:id",
      "file": "server/admin/routes.js",
-     "line": 817,
+     "line": 825,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -940,7 +940,7 @@
      "method": "GET",
      "path": "/api/admin/ai/explorer/:userId",
      "file": "server/admin/routes.js",
-     "line": 577,
+     "line": 580,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -950,7 +950,7 @@
      "method": "GET",
      "path": "/api/admin/ai/overviews",
      "file": "server/admin/routes.js",
-     "line": 609,
+     "line": 617,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -960,7 +960,7 @@
      "method": "GET",
      "path": "/api/admin/ai/status",
      "file": "server/admin/routes.js",
-     "line": 567,
+     "line": 569,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -970,7 +970,7 @@
      "method": "POST",
      "path": "/api/admin/ai/streamer/:userId/overview",
      "file": "server/admin/routes.js",
-     "line": 618,
+     "line": 626,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -980,7 +980,7 @@
      "method": "GET",
      "path": "/api/admin/ai/usage",
      "file": "server/admin/routes.js",
-     "line": 520,
+     "line": 522,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -990,7 +990,7 @@
      "method": "POST",
      "path": "/api/admin/ai/viewers/:userId/:action",
      "file": "server/admin/routes.js",
-     "line": 548,
+     "line": 550,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1000,7 +1000,7 @@
      "method": "GET",
      "path": "/api/admin/ai/viewers/:userId/log",
      "file": "server/admin/routes.js",
-     "line": 558,
+     "line": 560,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1010,7 +1010,7 @@
      "method": "GET",
      "path": "/api/admin/ai/viewers/status",
      "file": "server/admin/routes.js",
-     "line": 530,
+     "line": 532,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1020,7 +1020,7 @@
      "method": "GET",
      "path": "/api/admin/analytics",
      "file": "server/index.js",
-     "line": 707,
+     "line": 709,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1030,7 +1030,7 @@
      "method": "GET",
      "path": "/api/admin/analytics/bots",
      "file": "server/index.js",
-     "line": 716,
+     "line": 718,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1040,7 +1040,7 @@
      "method": "GET",
      "path": "/api/admin/bans",
      "file": "server/admin/routes.js",
-     "line": 427,
+     "line": 429,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1050,7 +1050,7 @@
      "method": "POST",
      "path": "/api/admin/broadcast",
      "file": "server/index.js",
-     "line": 824,
+     "line": 826,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1060,7 +1060,7 @@
      "method": "PUT",
      "path": "/api/admin/channels/:id/force-nsfw",
      "file": "server/admin/routes.js",
-     "line": 368,
+     "line": 370,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1080,7 +1080,7 @@
      "method": "DELETE",
      "path": "/api/admin/media-tools/cookies",
      "file": "server/admin/routes.js",
-     "line": 1242,
+     "line": 1250,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1090,7 +1090,7 @@
      "method": "PUT",
      "path": "/api/admin/media-tools/cookies",
      "file": "server/admin/routes.js",
-     "line": 1161,
+     "line": 1169,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1100,7 +1100,7 @@
      "method": "POST",
      "path": "/api/admin/media-tools/cookies/check",
      "file": "server/admin/routes.js",
-     "line": 1220,
+     "line": 1228,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1110,7 +1110,7 @@
      "method": "DELETE",
      "path": "/api/admin/media-tools/extra-args",
      "file": "server/admin/routes.js",
-     "line": 1275,
+     "line": 1283,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1120,7 +1120,7 @@
      "method": "PUT",
      "path": "/api/admin/media-tools/extra-args",
      "file": "server/admin/routes.js",
-     "line": 1256,
+     "line": 1264,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1130,7 +1130,7 @@
      "method": "GET",
      "path": "/api/admin/media-tools/status",
      "file": "server/admin/routes.js",
-     "line": 1116,
+     "line": 1124,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1140,7 +1140,7 @@
      "method": "POST",
      "path": "/api/admin/media-tools/test",
      "file": "server/admin/routes.js",
-     "line": 1286,
+     "line": 1294,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1150,7 +1150,7 @@
      "method": "GET",
      "path": "/api/admin/moderators",
      "file": "server/admin/routes.js",
-     "line": 723,
+     "line": 731,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1160,7 +1160,7 @@
      "method": "POST",
      "path": "/api/admin/moderators",
      "file": "server/admin/routes.js",
-     "line": 735,
+     "line": 743,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1170,7 +1170,7 @@
      "method": "DELETE",
      "path": "/api/admin/moderators/:id",
      "file": "server/admin/routes.js",
-     "line": 762,
+     "line": 770,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1180,7 +1180,7 @@
      "method": "GET",
      "path": "/api/admin/money",
      "file": "server/admin/routes.js",
-     "line": 481,
+     "line": 483,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1190,7 +1190,7 @@
      "method": "POST",
      "path": "/api/admin/money/actions/:id/resolve",
      "file": "server/admin/routes.js",
-     "line": 495,
+     "line": 497,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1200,7 +1200,7 @@
      "method": "POST",
      "path": "/api/admin/money/freeze",
      "file": "server/admin/routes.js",
-     "line": 489,
+     "line": 491,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1230,7 +1230,7 @@
      "method": "GET",
      "path": "/api/admin/settings",
      "file": "server/admin/routes.js",
-     "line": 508,
+     "line": 510,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1240,7 +1240,7 @@
      "method": "PUT",
      "path": "/api/admin/settings",
      "file": "server/admin/routes.js",
-     "line": 633,
+     "line": 641,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1250,7 +1250,7 @@
      "method": "DELETE",
      "path": "/api/admin/settings/:key",
      "file": "server/admin/routes.js",
-     "line": 706,
+     "line": 714,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1260,7 +1260,7 @@
      "method": "PUT",
      "path": "/api/admin/settings/:key",
      "file": "server/admin/routes.js",
-     "line": 689,
+     "line": 697,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1280,7 +1280,7 @@
      "method": "GET",
      "path": "/api/admin/storage",
      "file": "server/admin/routes.js",
-     "line": 961,
+     "line": 969,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1290,7 +1290,7 @@
      "method": "DELETE",
      "path": "/api/admin/storage/clips/bulk",
      "file": "server/admin/routes.js",
-     "line": 1066,
+     "line": 1074,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1300,7 +1300,7 @@
      "method": "GET",
      "path": "/api/admin/storage/vods",
      "file": "server/admin/routes.js",
-     "line": 1016,
+     "line": 1024,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1310,7 +1310,7 @@
      "method": "DELETE",
      "path": "/api/admin/storage/vods/bulk",
      "file": "server/admin/routes.js",
-     "line": 1035,
+     "line": 1043,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1320,7 +1320,7 @@
      "method": "GET",
      "path": "/api/admin/streams",
      "file": "server/admin/routes.js",
-     "line": 303,
+     "line": 305,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1330,7 +1330,7 @@
      "method": "DELETE",
      "path": "/api/admin/streams/:id",
      "file": "server/admin/routes.js",
-     "line": 322,
+     "line": 324,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1340,7 +1340,7 @@
      "method": "PUT",
      "path": "/api/admin/streams/:id/nsfw",
      "file": "server/admin/routes.js",
-     "line": 416,
+     "line": 418,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1350,7 +1350,7 @@
      "method": "GET",
      "path": "/api/admin/users",
      "file": "server/admin/routes.js",
-     "line": 119,
+     "line": 121,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1360,7 +1360,7 @@
      "method": "PUT",
      "path": "/api/admin/users/:id",
      "file": "server/admin/routes.js",
-     "line": 156,
+     "line": 158,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1370,7 +1370,7 @@
      "method": "DELETE",
      "path": "/api/admin/users/:id/ban",
      "file": "server/admin/routes.js",
-     "line": 284,
+     "line": 286,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1380,7 +1380,7 @@
      "method": "POST",
      "path": "/api/admin/users/:id/ban",
      "file": "server/admin/routes.js",
-     "line": 246,
+     "line": 248,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1390,7 +1390,7 @@
      "method": "PUT",
      "path": "/api/admin/users/:id/force-vod-recording",
      "file": "server/admin/routes.js",
-     "line": 385,
+     "line": 387,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1400,7 +1400,7 @@
      "method": "GET",
      "path": "/api/admin/verification-keys",
      "file": "server/admin/routes.js",
-     "line": 839,
+     "line": 847,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1410,7 +1410,7 @@
      "method": "POST",
      "path": "/api/admin/verification-keys",
      "file": "server/admin/routes.js",
-     "line": 849,
+     "line": 857,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1420,7 +1420,7 @@
      "method": "DELETE",
      "path": "/api/admin/verification-keys/:id",
      "file": "server/admin/routes.js",
-     "line": 892,
+     "line": 900,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1430,7 +1430,7 @@
      "method": "GET",
      "path": "/api/admin/vpn-queue",
      "file": "server/admin/routes.js",
-     "line": 443,
+     "line": 445,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1440,7 +1440,7 @@
      "method": "PUT",
      "path": "/api/admin/vpn-queue/:id",
      "file": "server/admin/routes.js",
-     "line": 459,
+     "line": 461,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1800,7 +1800,7 @@
      "method": "GET",
      "path": "/api/auth/avatar/history",
      "file": "server/auth/routes.js",
-     "line": 246,
+     "line": 248,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1810,7 +1810,7 @@
      "method": "GET",
      "path": "/api/auth/callback",
      "file": "server/auth/routes.js",
-     "line": 488,
+     "line": 491,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1830,7 +1830,7 @@
      "method": "POST",
      "path": "/api/auth/fedcm",
      "file": "server/auth/routes.js",
-     "line": 465,
+     "line": 468,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1840,7 +1840,7 @@
      "method": "GET",
      "path": "/api/auth/ice-servers",
      "file": "server/auth/routes.js",
-     "line": 900,
+     "line": 903,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1860,7 +1860,7 @@
      "method": "GET",
      "path": "/api/auth/logout",
      "file": "server/auth/routes.js",
-     "line": 627,
+     "line": 630,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1870,7 +1870,7 @@
      "method": "POST",
      "path": "/api/auth/logout",
      "file": "server/auth/routes.js",
-     "line": 620,
+     "line": 623,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1890,7 +1890,7 @@
      "method": "GET",
      "path": "/api/auth/preferences",
      "file": "server/auth/routes.js",
-     "line": 679,
+     "line": 682,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1900,7 +1900,7 @@
      "method": "PUT",
      "path": "/api/auth/preferences",
      "file": "server/auth/routes.js",
-     "line": 689,
+     "line": 692,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1920,7 +1920,7 @@
      "method": "POST",
      "path": "/api/auth/refresh",
      "file": "server/auth/routes.js",
-     "line": 558,
+     "line": 561,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1940,7 +1940,7 @@
      "method": "GET",
      "path": "/api/auth/sso/login",
      "file": "server/auth/routes.js",
-     "line": 312,
+     "line": 315,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1950,7 +1950,7 @@
      "method": "GET",
      "path": "/api/auth/sso/status",
      "file": "server/auth/routes.js",
-     "line": 638,
+     "line": 641,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1980,7 +1980,7 @@
      "method": "GET",
      "path": "/api/auth/tokens",
      "file": "server/auth/routes.js",
-     "line": 859,
+     "line": 862,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -1990,7 +1990,7 @@
      "method": "POST",
      "path": "/api/auth/tokens",
      "file": "server/auth/routes.js",
-     "line": 821,
+     "line": 824,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -2000,7 +2000,7 @@
      "method": "DELETE",
      "path": "/api/auth/tokens/:id",
      "file": "server/auth/routes.js",
-     "line": 879,
+     "line": 882,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -2130,7 +2130,7 @@
      "method": "GET",
      "path": "/api/chat-ai/live-captions/:username",
      "file": "server/ai/chat-ai-routes.js",
-     "line": 230,
+     "line": 236,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -2170,7 +2170,7 @@
      "method": "GET",
      "path": "/api/chat-ai/transcript/:streamId",
      "file": "server/ai/chat-ai-routes.js",
-     "line": 329,
+     "line": 335,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -2190,7 +2190,7 @@
      "method": "GET",
      "path": "/api/chat-ai/vod-transcripts",
      "file": "server/ai/chat-ai-routes.js",
-     "line": 267,
+     "line": 273,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -2410,7 +2410,7 @@
      "method": "GET",
      "path": "/api/clips",
      "file": "server/media-proxy/clips.js",
-     "line": 166,
+     "line": 168,
      "target": "OpenVibe.Media",
      "disposition": "adapter",
      "wave": "W4",
@@ -2420,7 +2420,7 @@
      "method": "DELETE",
      "path": "/api/clips/:id",
      "file": "server/media-proxy/clips.js",
-     "line": 335,
+     "line": 337,
      "target": "OpenVibe.Media",
      "disposition": "adapter",
      "wave": "W4",
@@ -2430,7 +2430,7 @@
      "method": "GET",
      "path": "/api/clips/:id",
      "file": "server/media-proxy/clips.js",
-     "line": 195,
+     "line": 197,
      "target": "OpenVibe.Media",
      "disposition": "adapter",
      "wave": "W4",
@@ -2440,7 +2440,7 @@
      "method": "POST",
      "path": "/api/clips/:id/recut",
      "file": "server/media-proxy/clips.js",
-     "line": 354,
+     "line": 356,
      "target": "OpenVibe.Media",
      "disposition": "adapter",
      "wave": "W4",
@@ -2450,7 +2450,7 @@
      "method": "PUT",
      "path": "/api/clips/:id/title",
      "file": "server/media-proxy/clips.js",
-     "line": 269,
+     "line": 271,
      "target": "OpenVibe.Media",
      "disposition": "adapter",
      "wave": "W4",
@@ -2460,7 +2460,7 @@
      "method": "PUT",
      "path": "/api/clips/:id/visibility",
      "file": "server/media-proxy/clips.js",
-     "line": 286,
+     "line": 288,
      "target": "OpenVibe.Media",
      "disposition": "adapter",
      "wave": "W4",
@@ -2470,7 +2470,7 @@
      "method": "POST",
      "path": "/api/clips/bulk",
      "file": "server/media-proxy/clips.js",
-     "line": 310,
+     "line": 312,
      "target": "OpenVibe.Media",
      "disposition": "adapter",
      "wave": "W4",
@@ -2480,7 +2480,7 @@
      "method": "GET",
      "path": "/api/clips/mine",
      "file": "server/media-proxy/clips.js",
-     "line": 118,
+     "line": 120,
      "target": "OpenVibe.Media",
      "disposition": "adapter",
      "wave": "W4",
@@ -2490,7 +2490,7 @@
      "method": "GET",
      "path": "/api/clips/my-stream",
      "file": "server/media-proxy/clips.js",
-     "line": 132,
+     "line": 134,
      "target": "OpenVibe.Media",
      "disposition": "adapter",
      "wave": "W4",
@@ -2500,7 +2500,7 @@
      "method": "GET",
      "path": "/api/clips/settings/channel",
      "file": "server/media-proxy/clips.js",
-     "line": 144,
+     "line": 146,
      "target": "OpenVibe.Media",
      "disposition": "adapter",
      "wave": "W4",
@@ -2510,7 +2510,7 @@
      "method": "PUT",
      "path": "/api/clips/settings/channel",
      "file": "server/media-proxy/clips.js",
-     "line": 153,
+     "line": 155,
      "target": "OpenVibe.Media",
      "disposition": "adapter",
      "wave": "W4",
@@ -3060,7 +3060,7 @@
      "method": "POST",
      "path": "/api/csp-report",
      "file": "server/index.js",
-     "line": 845,
+     "line": 847,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -3560,7 +3560,7 @@
      "method": "GET",
      "path": "/api/health",
      "file": "server/index.js",
-     "line": 726,
+     "line": 728,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -3570,7 +3570,7 @@
      "method": "GET",
      "path": "/api/home/digest",
      "file": "server/home/routes.js",
-     "line": 457,
+     "line": 437,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -3580,7 +3580,7 @@
      "method": "GET",
      "path": "/api/home/discover",
      "file": "server/home/routes.js",
-     "line": 507,
+     "line": 487,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -3590,7 +3590,7 @@
      "method": "GET",
      "path": "/api/home/featured",
      "file": "server/home/routes.js",
-     "line": 247,
+     "line": 227,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -3600,7 +3600,7 @@
      "method": "GET",
      "path": "/api/home/hero",
      "file": "server/home/routes.js",
-     "line": 333,
+     "line": 313,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -3610,7 +3610,7 @@
      "method": "GET",
      "path": "/api/home/pulse",
      "file": "server/home/routes.js",
-     "line": 406,
+     "line": 386,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -3620,7 +3620,7 @@
      "method": "GET",
      "path": "/api/home/star",
      "file": "server/home/routes.js",
-     "line": 352,
+     "line": 332,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -3630,7 +3630,7 @@
      "method": "POST",
      "path": "/api/home/star/rotate",
      "file": "server/home/routes.js",
-     "line": 569,
+     "line": 549,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -3640,7 +3640,7 @@
      "method": "GET",
      "path": "/api/home/stats-live",
      "file": "server/home/routes.js",
-     "line": 287,
+     "line": 267,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -3650,7 +3650,7 @@
      "method": "GET",
      "path": "/api/home/stats/series/:metric",
      "file": "server/home/routes.js",
-     "line": 177,
+     "line": 166,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -3710,7 +3710,7 @@
      "method": "GET",
      "path": "/api/live-events",
      "file": "server/index.js",
-     "line": 649,
+     "line": 651,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -4750,7 +4750,7 @@
      "method": "GET",
      "path": "/api/ready",
      "file": "server/index.js",
-     "line": 764,
+     "line": 766,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5100,7 +5100,7 @@
      "method": "GET",
      "path": "/api/streams",
      "file": "server/streaming/routes.js",
-     "line": 1086,
+     "line": 1093,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5110,7 +5110,7 @@
      "method": "POST",
      "path": "/api/streams",
      "file": "server/streaming/routes.js",
-     "line": 1908,
+     "line": 1924,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5120,7 +5120,7 @@
      "method": "DELETE",
      "path": "/api/streams/:id",
      "file": "server/streaming/routes.js",
-     "line": 2103,
+     "line": 2119,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5130,7 +5130,7 @@
      "method": "GET",
      "path": "/api/streams/:id",
      "file": "server/streaming/routes.js",
-     "line": 1860,
+     "line": 1876,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5140,7 +5140,7 @@
      "method": "PUT",
      "path": "/api/streams/:id",
      "file": "server/streaming/routes.js",
-     "line": 2052,
+     "line": 2068,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5150,7 +5150,7 @@
      "method": "GET",
      "path": "/api/streams/:id/call",
      "file": "server/streaming/routes.js",
-     "line": 2422,
+     "line": 2438,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5160,7 +5160,7 @@
      "method": "PUT",
      "path": "/api/streams/:id/call",
      "file": "server/streaming/routes.js",
-     "line": 2383,
+     "line": 2399,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5170,7 +5170,7 @@
      "method": "GET",
      "path": "/api/streams/:id/endpoint",
      "file": "server/streaming/routes.js",
-     "line": 2150,
+     "line": 2166,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5180,7 +5180,7 @@
      "method": "POST",
      "path": "/api/streams/:id/follow",
      "file": "server/streaming/routes.js",
-     "line": 2291,
+     "line": 2307,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5190,7 +5190,7 @@
      "method": "POST",
      "path": "/api/streams/:id/heartbeat",
      "file": "server/streaming/routes.js",
-     "line": 2248,
+     "line": 2264,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5200,7 +5200,7 @@
      "method": "GET",
      "path": "/api/streams/:id/rtmp-status",
      "file": "server/streaming/routes.js",
-     "line": 2266,
+     "line": 2282,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5210,7 +5210,7 @@
      "method": "GET",
      "path": "/api/streams/broadcast-settings",
      "file": "server/streaming/routes.js",
-     "line": 1385,
+     "line": 1393,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5220,7 +5220,7 @@
      "method": "PUT",
      "path": "/api/streams/broadcast-settings",
      "file": "server/streaming/routes.js",
-     "line": 1402,
+     "line": 1410,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5230,7 +5230,7 @@
      "method": "GET",
      "path": "/api/streams/channel",
      "file": "server/streaming/routes.js",
-     "line": 638,
+     "line": 645,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5240,7 +5240,7 @@
      "method": "PUT",
      "path": "/api/streams/channel",
      "file": "server/streaming/routes.js",
-     "line": 650,
+     "line": 657,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5260,7 +5260,7 @@
      "method": "PUT",
      "path": "/api/streams/channel/:username/about",
      "file": "server/streaming/routes.js",
-     "line": 765,
+     "line": 772,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5270,7 +5270,7 @@
      "method": "GET",
      "path": "/api/streams/channel/:username/bio-en",
      "file": "server/streaming/routes.js",
-     "line": 746,
+     "line": 753,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5280,7 +5280,7 @@
      "method": "GET",
      "path": "/api/streams/channel/:username/clips-taken",
      "file": "server/streaming/routes.js",
-     "line": 557,
+     "line": 564,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5290,7 +5290,7 @@
      "method": "POST",
      "path": "/api/streams/channel/:username/follow",
      "file": "server/streaming/routes.js",
-     "line": 2336,
+     "line": 2352,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5300,7 +5300,7 @@
      "method": "GET",
      "path": "/api/streams/channel/:username/live",
      "file": "server/streaming/routes.js",
-     "line": 600,
+     "line": 607,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5310,7 +5310,7 @@
      "method": "GET",
      "path": "/api/streams/channel/:username/popular",
      "file": "server/streaming/routes.js",
-     "line": 531,
+     "line": 538,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5320,7 +5320,7 @@
      "method": "GET",
      "path": "/api/streams/channel/:username/resolve/:ref",
      "file": "server/streaming/routes.js",
-     "line": 1424,
+     "line": 1432,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5330,7 +5330,7 @@
      "method": "GET",
      "path": "/api/streams/channel/:username/weather",
      "file": "server/streaming/routes.js",
-     "line": 975,
+     "line": 982,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5340,7 +5340,7 @@
      "method": "POST",
      "path": "/api/streams/channel/offline-screen",
      "file": "server/streaming/routes.js",
-     "line": 871,
+     "line": 878,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5350,7 +5350,7 @@
      "method": "POST",
      "path": "/api/streams/diag-log",
      "file": "server/streaming/routes.js",
-     "line": 2241,
+     "line": 2257,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5360,7 +5360,7 @@
      "method": "POST",
      "path": "/api/streams/goal-media",
      "file": "server/streaming/routes.js",
-     "line": 836,
+     "line": 843,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5370,7 +5370,7 @@
      "method": "GET",
      "path": "/api/streams/managed",
      "file": "server/streaming/routes.js",
-     "line": 1578,
+     "line": 1594,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5380,7 +5380,7 @@
      "method": "POST",
      "path": "/api/streams/managed",
      "file": "server/streaming/routes.js",
-     "line": 1590,
+     "line": 1606,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5390,7 +5390,7 @@
      "method": "DELETE",
      "path": "/api/streams/managed/:id",
      "file": "server/streaming/routes.js",
-     "line": 1804,
+     "line": 1820,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5400,7 +5400,7 @@
      "method": "PUT",
      "path": "/api/streams/managed/:id",
      "file": "server/streaming/routes.js",
-     "line": 1644,
+     "line": 1660,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5410,7 +5410,7 @@
      "method": "POST",
      "path": "/api/streams/managed/:id/regenerate-key",
      "file": "server/streaming/routes.js",
-     "line": 1829,
+     "line": 1845,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5420,7 +5420,7 @@
      "method": "GET",
      "path": "/api/streams/managed/:managedStreamId/history",
      "file": "server/streaming/routes.js",
-     "line": 1458,
+     "line": 1466,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5430,7 +5430,7 @@
      "method": "GET",
      "path": "/api/streams/managed/:managedStreamId/profile",
      "file": "server/streaming/routes.js",
-     "line": 1472,
+     "line": 1487,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5440,7 +5440,7 @@
      "method": "GET",
      "path": "/api/streams/mine",
      "file": "server/streaming/routes.js",
-     "line": 1122,
+     "line": 1129,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5450,7 +5450,7 @@
      "method": "POST",
      "path": "/api/streams/panel-image",
      "file": "server/streaming/routes.js",
-     "line": 814,
+     "line": 821,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5460,7 +5460,7 @@
      "method": "GET",
      "path": "/api/streams/recent",
      "file": "server/streaming/routes.js",
-     "line": 1134,
+     "line": 1141,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5470,7 +5470,7 @@
      "method": "GET",
      "path": "/api/streams/recent-vods",
      "file": "server/streaming/routes.js",
-     "line": 1204,
+     "line": 1212,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5480,7 +5480,7 @@
      "method": "GET",
      "path": "/api/streams/recently-online",
      "file": "server/streaming/routes.js",
-     "line": 1150,
+     "line": 1158,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5490,7 +5490,7 @@
      "method": "GET",
      "path": "/api/streams/rtmp-proxy/:streamId.flv",
      "file": "server/streaming/routes.js",
-     "line": 2443,
+     "line": 2459,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5500,7 +5500,7 @@
      "method": "GET",
      "path": "/api/streams/setup-progress",
      "file": "server/streaming/routes.js",
-     "line": 1524,
+     "line": 1539,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5510,7 +5510,7 @@
      "method": "GET",
      "path": "/api/streams/voice-channels",
      "file": "server/streaming/routes.js",
-     "line": 1234,
+     "line": 1242,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5520,7 +5520,7 @@
      "method": "POST",
      "path": "/api/streams/voice-channels",
      "file": "server/streaming/routes.js",
-     "line": 1255,
+     "line": 1263,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5530,7 +5530,7 @@
      "method": "DELETE",
      "path": "/api/streams/voice-channels/:channelId",
      "file": "server/streaming/routes.js",
-     "line": 1267,
+     "line": 1275,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5540,7 +5540,7 @@
      "method": "GET",
      "path": "/api/streams/voice-channels/:channelId",
      "file": "server/streaming/routes.js",
-     "line": 1244,
+     "line": 1252,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5550,7 +5550,7 @@
      "method": "POST",
      "path": "/api/streams/voice-channels/call-user",
      "file": "server/streaming/routes.js",
-     "line": 1279,
+     "line": 1287,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5560,7 +5560,7 @@
      "method": "POST",
      "path": "/api/streams/voice-channels/call-user/respond",
      "file": "server/streaming/routes.js",
-     "line": 1348,
+     "line": 1356,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5770,7 +5770,7 @@
      "method": "GET",
      "path": "/api/updates",
      "file": "server/index.js",
-     "line": 811,
+     "line": 813,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -6010,7 +6010,7 @@
      "method": "GET",
      "path": "/banned",
      "file": "server/index.js",
-     "line": 979,
+     "line": 985,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -6020,7 +6020,7 @@
      "method": "POST",
      "path": "/banned/continue",
      "file": "server/index.js",
-     "line": 949,
+     "line": 955,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -6030,7 +6030,7 @@
      "method": "GET",
      "path": "/canvas",
      "file": "server/index.js",
-     "line": 682,
+     "line": 684,
      "target": "OpenVibe.Games",
      "disposition": "compat",
      "wave": "W12",
@@ -6040,7 +6040,7 @@
      "method": "GET",
      "path": "/data/pastes/screenshots/:filename",
      "file": "server/index.js",
-     "line": 600,
+     "line": 602,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -6050,7 +6050,7 @@
      "method": "GET",
      "path": "/dmca",
      "file": "server/index.js",
-     "line": 888,
+     "line": 894,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -6090,7 +6090,7 @@
      "method": "GET",
      "path": "/game",
      "file": "server/index.js",
-     "line": 681,
+     "line": 683,
      "target": "OpenVibe.Games",
      "disposition": "compat",
      "wave": "W12",
@@ -6957,6 +6957,26 @@
      "note": "Live consumer and provider endpoints (media events, OpenRe events, followers, tips deliveries, chat context, analytics summary)."
     },
     {
+     "method": "GET",
+     "path": "/internal/lineage/resolve",
+     "file": "server/lineage/routes.js",
+     "line": 33,
+     "target": "OpenVibe.Live",
+     "disposition": "keep",
+     "wave": "W3",
+     "note": "Live consumer and provider endpoints (media events, OpenRe events, followers, tips deliveries, chat context, analytics summary)."
+    },
+    {
+     "method": "POST",
+     "path": "/internal/lineage/resolve",
+     "file": "server/lineage/routes.js",
+     "line": 34,
+     "target": "OpenVibe.Live",
+     "disposition": "keep",
+     "wave": "W3",
+     "note": "Live consumer and provider endpoints (media events, OpenRe events, followers, tips deliveries, chat context, analytics summary)."
+    },
+    {
      "method": "POST",
      "path": "/internal/media-events",
      "file": "server/index.js",
@@ -7030,7 +7050,7 @@
      "method": "GET",
      "path": "/media/:username",
      "file": "server/index.js",
-     "line": 883,
+     "line": 885,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -7040,7 +7060,7 @@
      "method": "GET",
      "path": "/obs/chat/:username",
      "file": "server/index.js",
-     "line": 871,
+     "line": 873,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -7060,7 +7080,7 @@
      "method": "GET",
      "path": "/overlay/chat/:username",
      "file": "server/index.js",
-     "line": 879,
+     "line": 881,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -7070,7 +7090,7 @@
      "method": "GET",
      "path": "/overlay/chat/:username/:slotIdOrSlug",
      "file": "server/index.js",
-     "line": 876,
+     "line": 878,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -7080,7 +7100,7 @@
      "method": "GET",
      "path": "/p/:slug",
      "file": "server/index.js",
-     "line": 618,
+     "line": 620,
      "target": "OpenVibe.Community",
      "disposition": "adapter",
      "wave": "W5 (done)",
@@ -7090,7 +7110,7 @@
      "method": "GET",
      "path": "/p/:slug/raw",
      "file": "server/index.js",
-     "line": 629,
+     "line": 631,
      "target": "OpenVibe.Community",
      "disposition": "adapter",
      "wave": "W5 (done)",
@@ -7100,7 +7120,7 @@
      "method": "GET",
      "path": "/p/:slug/screenshot",
      "file": "server/index.js",
-     "line": 625,
+     "line": 627,
      "target": "OpenVibe.Community",
      "disposition": "adapter",
      "wave": "W5 (done)",
@@ -7110,7 +7130,7 @@
      "method": "GET",
      "path": "/pastes",
      "file": "server/index.js",
-     "line": 619,
+     "line": 621,
      "target": "OpenVibe.Community",
      "disposition": "adapter",
      "wave": "W5 (done)",
@@ -7120,7 +7140,7 @@
      "method": "GET",
      "path": "/privacy",
      "file": "server/index.js",
-     "line": 897,
+     "line": 903,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -7130,7 +7150,7 @@
      "method": "GET",
      "path": "/release.json",
      "file": "server/index.js",
-     "line": 751,
+     "line": 753,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -7140,7 +7160,7 @@
      "method": "GET",
      "path": "/sitemap.xml",
      "file": "server/seo/seo.js",
-     "line": 597,
+     "line": 602,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -7150,7 +7170,7 @@
      "method": "GET",
      "path": "/terms",
      "file": "server/index.js",
-     "line": 894,
+     "line": 900,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -7160,7 +7180,7 @@
      "method": "GET",
      "path": "/tos",
      "file": "server/index.js",
-     "line": 891,
+     "line": 897,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -7170,7 +7190,7 @@
      "method": "POST",
      "path": "/whip/:streamId",
      "file": "server/index.js",
-     "line": 906,
+     "line": 912,
      "target": "OpenRe.Stream",
      "disposition": "extract",
      "wave": "W7",
@@ -7180,7 +7200,7 @@
      "method": "DELETE",
      "path": "/whip/:streamId/:resourceId",
      "file": "server/index.js",
-     "line": 908,
+     "line": 914,
      "target": "OpenRe.Stream",
      "disposition": "extract",
      "wave": "W7",
@@ -7190,7 +7210,7 @@
      "method": "PATCH",
      "path": "/whip/:streamId/:resourceId",
      "file": "server/index.js",
-     "line": 907,
+     "line": 913,
      "target": "OpenRe.Stream",
      "disposition": "extract",
      "wave": "W7",
@@ -7254,49 +7274,44 @@
       "line": 437
      },
      {
-      "path": "/ws/",
-      "file": "server/index.js",
-      "line": 1000
-     },
-     {
       "path": "/ws/chat",
-      "file": "server/index.js",
-      "line": 1038
-     },
-     {
-      "path": "/ws/vibe-coding/publish",
-      "file": "server/index.js",
-      "line": 1040
-     },
-     {
-      "path": "/ws/broadcast",
       "file": "server/index.js",
       "line": 1042
      },
      {
-      "path": "/ws/control",
+      "path": "/ws/vibe-coding/publish",
       "file": "server/index.js",
       "line": 1044
      },
      {
-      "path": "/ws/call",
+      "path": "/ws/broadcast",
       "file": "server/index.js",
       "line": 1046
      },
      {
-      "path": "/ws/game",
+      "path": "/ws/control",
       "file": "server/index.js",
       "line": 1048
+     },
+     {
+      "path": "/ws/call",
+      "file": "server/index.js",
+      "line": 1050
+     },
+     {
+      "path": "/ws/game",
+      "file": "server/index.js",
+      "line": 1052
      },
      {
       "path": "/ws/canvas",
       "file": "server/index.js",
-      "line": 1048
+      "line": 1052
      },
      {
       "path": "/ws/robotstreamer-publish",
       "file": "server/index.js",
-      "line": 1050
+      "line": 1054
      },
      {
       "path": "/ws/robotstreamer-publish",
@@ -7317,6 +7332,11 @@
       "path": "/ws/vibe-coding/publish",
       "file": "server/vibe-coding/publish-server.js",
       "line": 31
+     },
+     {
+      "path": "/ws/",
+      "file": "server/web/page-status.js",
+      "line": 180
      }
     ]
    },
@@ -7675,6 +7695,10 @@
     "RS_PASSTHROUGH_INJECT_PARAMS": [
      "server/integrations/rs-passthrough-relay.js"
     ],
+    "MEDIA_API_KEY": [
+     "server/lineage/media-source.js",
+     "server/media-client.js"
+    ],
     "YTDLP_PATH": [
      "server/media/media-downloader.js"
     ],
@@ -7683,9 +7707,6 @@
     ],
     "PATH": [
      "server/media/media-downloader.js"
-    ],
-    "MEDIA_API_KEY": [
-     "server/media-client.js"
     ],
     "LIVE_THUMBS_PATH": [
      "server/media-proxy/live-thumbs.js"
@@ -8243,7 +8264,7 @@
        "refs": [
         {
          "via": "OV_COMMUNITY_URL",
-         "line": 427
+         "line": 432
         }
        ]
       }
@@ -8349,7 +8370,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 300000,
-     "line": 500,
+     "line": 495,
      "file": "server/ai/ai-moments-job.js",
      "target": "OpenVibe.Live",
      "disposition": "keep",
@@ -8360,7 +8381,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 312,
+     "line": 308,
      "file": "server/ai/auto-clip-job.js",
      "target": "OpenVibe.Live",
      "disposition": "keep",
@@ -8569,7 +8590,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 300000,
-     "line": 583,
+     "line": 563,
      "file": "server/home/routes.js",
      "target": "OpenVibe.Live",
      "disposition": "keep",
@@ -8591,7 +8612,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 21600000,
-     "line": 1310,
+     "line": 1314,
      "file": "server/index.js",
      "target": "OpenVibe.Live",
      "disposition": "keep",
@@ -8602,7 +8623,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 45000,
-     "line": 1327,
+     "line": 1331,
      "file": "server/index.js",
      "target": "OpenVibe.Live",
      "disposition": "keep",
@@ -8613,7 +8634,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 1351,
+     "line": 1355,
      "file": "server/index.js",
      "target": "OpenVibe.Live",
      "disposition": "keep",
@@ -8624,7 +8645,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 1362,
+     "line": 1366,
      "file": "server/index.js",
      "target": "OpenVibe.Live",
      "disposition": "keep",
@@ -8907,9 +8928,9 @@
      "note": "Live product jobs. AI jobs call OpenVibe.AI (AI_SERVICE=remote); analytics is ADR-021; events/stream-events.js relays the outbox; openre/mirror.js is inert until slots cut over."
     }
    ],
-   "contractTodos": 15,
+   "contractTodos": 14,
    "unresolvedMounts": [],
-   "testFiles": 78,
+   "testFiles": 81,
    "ci": true
   },
   {
@@ -8917,13 +8938,13 @@
    "service": "network",
    "present": true,
    "git": {
-    "head": "9bbd90f786fb80b02cbf7592ff9217844a714c32",
+    "head": "09bf748b7f459ac127b3f4045085c20189d39dbb",
     "branch": "main",
-    "originMain": "9bbd90f786fb80b02cbf7592ff9217844a714c32",
-    "committedAt": "2026-09-23T13:18:14-07:00"
+    "originMain": "09bf748b7f459ac127b3f4045085c20189d39dbb",
+    "committedAt": "2026-09-23T14:33:16-07:00"
    },
-   "sourceFiles": 67,
-   "loc": 14871,
+   "sourceFiles": 68,
+   "loc": 15275,
    "tables": [
     {
      "table": "admin_rate_limits",
@@ -9156,19 +9177,31 @@
     {
      "table": "user_modules",
      "file": "server/identity/modules.js",
-     "line": 24,
+     "line": 75,
+     "via": "repo"
+    },
+    {
+     "table": "user_module_revisions",
+     "file": "server/identity/modules.js",
+     "line": 86,
+     "via": "repo"
+    },
+    {
+     "table": "user_module_retirements",
+     "file": "server/identity/modules.js",
+     "line": 93,
      "via": "repo"
     },
     {
      "table": "principal_grants",
      "file": "server/identity/principals.js",
-     "line": 151,
+     "line": 164,
      "via": "repo"
     },
     {
      "table": "principal_usage",
      "file": "server/identity/principals.js",
-     "line": 161,
+     "line": 174,
      "via": "repo"
     },
     {
@@ -9180,7 +9213,7 @@
     {
      "table": "stream_live_announcements",
      "file": "server/notifications/stream-live.js",
-     "line": 17,
+     "line": 31,
      "via": "repo"
     },
     {
@@ -9385,7 +9418,7 @@
      "method": "GET",
      "path": "/api/auth/anon-identities",
      "file": "server/auth/routes.js",
-     "line": 641,
+     "line": 647,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9605,7 +9638,7 @@
      "method": "DELETE",
      "path": "/api/auth/sessions",
      "file": "server/auth/routes.js",
-     "line": 723,
+     "line": 729,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9615,7 +9648,7 @@
      "method": "GET",
      "path": "/api/auth/sessions",
      "file": "server/auth/routes.js",
-     "line": 679,
+     "line": 685,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9625,7 +9658,7 @@
      "method": "POST",
      "path": "/api/auth/sessions",
      "file": "server/auth/routes.js",
-     "line": 692,
+     "line": 698,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9635,7 +9668,7 @@
      "method": "DELETE",
      "path": "/api/auth/sessions/:id",
      "file": "server/auth/routes.js",
-     "line": 714,
+     "line": 720,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9645,7 +9678,7 @@
      "method": "GET",
      "path": "/api/auth/users/:id/card",
      "file": "server/auth/routes.js",
-     "line": 734,
+     "line": 740,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9655,7 +9688,7 @@
      "method": "DELETE",
      "path": "/api/auth/users/:id/follow",
      "file": "server/auth/routes.js",
-     "line": 817,
+     "line": 823,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9665,7 +9698,7 @@
      "method": "POST",
      "path": "/api/auth/users/:id/follow",
      "file": "server/auth/routes.js",
-     "line": 786,
+     "line": 792,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9845,7 +9878,7 @@
      "method": "GET",
      "path": "/api/modules",
      "file": "server/identity/modules.js",
-     "line": 101,
+     "line": 322,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9855,7 +9888,7 @@
      "method": "DELETE",
      "path": "/api/modules/:ns",
      "file": "server/identity/modules.js",
-     "line": 126,
+     "line": 347,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9865,7 +9898,7 @@
      "method": "GET",
      "path": "/api/modules/:ns",
      "file": "server/identity/modules.js",
-     "line": 109,
+     "line": 330,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9875,7 +9908,7 @@
      "method": "PUT",
      "path": "/api/modules/:ns",
      "file": "server/identity/modules.js",
-     "line": 117,
+     "line": 338,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9885,7 +9918,17 @@
      "method": "GET",
      "path": "/api/modules/:ns/public/:subject",
      "file": "server/identity/modules.js",
-     "line": 93,
+     "line": 314,
+     "target": "OpenVibe.Network",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/modules/modules/:ns/:subject",
+     "file": "server/identity/modules.js",
+     "line": 382,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9895,7 +9938,7 @@
      "method": "GET",
      "path": "/api/modules/modules/:ns/:subject",
      "file": "server/identity/modules.js",
-     "line": 140,
+     "line": 362,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9905,7 +9948,7 @@
      "method": "PUT",
      "path": "/api/modules/modules/:ns/:subject",
      "file": "server/identity/modules.js",
-     "line": 149,
+     "line": 371,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -12247,7 +12290,18 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 732,
+     "line": 740,
+     "file": "server/index.js",
+     "target": "OpenVibe.Network",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "Runs in, and for, the service that owns it."
+    },
+    {
+     "kind": "setInterval",
+     "name": null,
+     "intervalMs": null,
+     "line": 743,
      "file": "server/index.js",
      "target": "OpenVibe.Network",
      "disposition": "keep",
@@ -12257,7 +12311,7 @@
    ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 28,
+   "testFiles": 29,
    "ci": true
   },
   {
@@ -12265,13 +12319,13 @@
    "service": "shared",
    "present": true,
    "git": {
-    "head": "c6405d48fabede75e2a9ef417fae46d493cfb940",
+    "head": "c2726807c19505bc22d2bce794188a9d1516b022",
     "branch": "main",
-    "originMain": "c6405d48fabede75e2a9ef417fae46d493cfb940",
-    "committedAt": "2026-09-23T12:38:03-07:00"
+    "originMain": "c2726807c19505bc22d2bce794188a9d1516b022",
+    "committedAt": "2026-09-23T13:40:53-07:00"
    },
-   "sourceFiles": 45,
-   "loc": 10921,
+   "sourceFiles": 47,
+   "loc": 11774,
    "tables": [],
    "routes": [
     {
@@ -12279,16 +12333,6 @@
      "path": "/api/ready",
      "file": "ready.js",
      "line": 15,
-     "target": "OpenVibe.Shared",
-     "disposition": "keep",
-     "wave": "-",
-     "note": "The service is the authority for its own API and pages."
-    },
-    {
-     "method": "GET",
-     "path": "/release.json",
-     "file": "release.js",
-     "line": 8,
      "target": "OpenVibe.Shared",
      "disposition": "keep",
      "wave": "-",
@@ -12466,11 +12510,11 @@
         },
         {
          "via": "/api/auth/me",
-         "line": 1010
+         "line": 1013
         },
         {
          "via": "/api/auth/me",
-         "line": 1013
+         "line": 1016
         }
        ]
       }
@@ -12530,8 +12574,8 @@
     {
      "kind": "setInterval",
      "name": null,
-     "intervalMs": 30000,
-     "line": 88,
+     "intervalMs": null,
+     "line": 170,
      "file": "release-watch.js",
      "target": "OpenVibe.Shared",
      "disposition": "keep",
@@ -12542,7 +12586,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 600000,
-     "line": 89,
+     "line": 175,
      "file": "release-watch.js",
      "target": "OpenVibe.Shared",
      "disposition": "keep",
@@ -12552,7 +12596,7 @@
    ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 17,
+   "testFiles": 19,
    "ci": true
   },
   {
@@ -12560,13 +12604,13 @@
    "service": "media",
    "present": true,
    "git": {
-    "head": "9de4b2528dd5787e7b5633d16eed40d8b4d43b4b",
+    "head": "ad2217be56627efca799fd3ce0987d91cb6f3e24",
     "branch": "main",
-    "originMain": "9de4b2528dd5787e7b5633d16eed40d8b4d43b4b",
-    "committedAt": "2026-09-23T13:04:44-07:00"
+    "originMain": "ad2217be56627efca799fd3ce0987d91cb6f3e24",
+    "committedAt": "2026-09-23T14:23:36-07:00"
    },
-   "sourceFiles": 38,
-   "loc": 11376,
+   "sourceFiles": 47,
+   "loc": 13469,
    "tables": [
     {
      "table": "apps",
@@ -12655,31 +12699,43 @@
     {
      "table": "media_jobs",
      "file": "server/db/schema.sql",
-     "line": 279,
+     "line": 281,
+     "via": "repo"
+    },
+    {
+     "table": "media_uploads",
+     "file": "server/db/schema.sql",
+     "line": 312,
+     "via": "repo"
+    },
+    {
+     "table": "media_upload_parts",
+     "file": "server/db/schema.sql",
+     "line": 328,
      "via": "repo"
     },
     {
      "table": "media_holds",
      "file": "server/db/schema.sql",
-     "line": 293,
+     "line": 338,
      "via": "repo"
     },
     {
      "table": "media_invariant_violations",
      "file": "server/db/schema.sql",
-     "line": 306,
+     "line": 351,
      "via": "repo"
     },
     {
      "table": "media_verifications",
      "file": "server/db/schema.sql",
-     "line": 320,
+     "line": 365,
      "via": "repo"
     },
     {
      "table": "media_verify_runs",
      "file": "server/db/schema.sql",
-     "line": 332,
+     "line": 377,
      "via": "repo"
     },
     {
@@ -12694,7 +12750,7 @@
      "method": "GET",
      "path": "/api/ready",
      "file": "server/observability.js",
-     "line": 132,
+     "line": 140,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13104,7 +13160,7 @@
      "method": "GET",
      "path": "/api/v1/:app/stats",
      "file": "server/index.js",
-     "line": 114,
+     "line": 115,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13114,7 +13170,7 @@
      "method": "GET",
      "path": "/api/v1/:app/stats/series/:metric",
      "file": "server/index.js",
-     "line": 124,
+     "line": 125,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13124,7 +13180,7 @@
      "method": "POST",
      "path": "/api/v1/:app/thumbnails/:kind/:id",
      "file": "server/thumbnails/routes.js",
-     "line": 38,
+     "line": 42,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13272,9 +13328,69 @@
     },
     {
      "method": "GET",
+     "path": "/api/v2/:app/jobs",
+     "file": "server/jobs/routes.js",
+     "line": 63,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/api/v2/:app/jobs",
+     "file": "server/jobs/routes.js",
+     "line": 76,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/v2/:app/jobs/:jobId",
+     "file": "server/jobs/routes.js",
+     "line": 135,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/api/v2/:app/jobs/:jobId",
+     "file": "server/jobs/routes.js",
+     "line": 108,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/api/v2/:app/jobs/:jobId/approve",
+     "file": "server/jobs/routes.js",
+     "line": 113,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/api/v2/:app/jobs/:jobId/cancel",
+     "file": "server/jobs/routes.js",
+     "line": 134,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
      "path": "/api/v2/:app/objects",
      "file": "server/objects/routes.js",
-     "line": 278,
+     "line": 497,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13284,7 +13400,7 @@
      "method": "POST",
      "path": "/api/v2/:app/objects",
      "file": "server/objects/routes.js",
-     "line": 188,
+     "line": 261,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13294,7 +13410,7 @@
      "method": "DELETE",
      "path": "/api/v2/:app/objects/:id",
      "file": "server/objects/routes.js",
-     "line": 308,
+     "line": 527,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13304,7 +13420,7 @@
      "method": "GET",
      "path": "/api/v2/:app/objects/:id",
      "file": "server/objects/routes.js",
-     "line": 303,
+     "line": 522,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13314,7 +13430,7 @@
      "method": "GET",
      "path": "/api/v2/:app/objects/:id",
      "file": "server/objects/routes.js",
-     "line": 382,
+     "line": 601,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13324,7 +13440,7 @@
      "method": "POST",
      "path": "/api/v2/:app/objects/:id/complete",
      "file": "server/objects/routes.js",
-     "line": 244,
+     "line": 371,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13344,7 +13460,7 @@
      "method": "GET",
      "path": "/api/v2/:app/objects/:id/download",
      "file": "server/objects/routes.js",
-     "line": 334,
+     "line": 553,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13354,7 +13470,7 @@
      "method": "GET",
      "path": "/api/v2/:app/objects/:id/holds",
      "file": "server/objects/routes.js",
-     "line": 353,
+     "line": 572,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13364,7 +13480,7 @@
      "method": "POST",
      "path": "/api/v2/:app/objects/:id/holds",
      "file": "server/objects/routes.js",
-     "line": 359,
+     "line": 578,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13374,7 +13490,57 @@
      "method": "DELETE",
      "path": "/api/v2/:app/objects/:id/holds/:holdId",
      "file": "server/objects/routes.js",
-     "line": 368,
+     "line": 587,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/api/v2/:app/objects/:id/multipart",
+     "file": "server/objects/routes.js",
+     "line": 411,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "DELETE",
+     "path": "/api/v2/:app/objects/:id/multipart/:uploadId",
+     "file": "server/objects/routes.js",
+     "line": 486,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/api/v2/:app/objects/:id/multipart/:uploadId",
+     "file": "server/objects/routes.js",
+     "line": 440,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/api/v2/:app/objects/:id/multipart/:uploadId/complete",
+     "file": "server/objects/routes.js",
+     "line": 449,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "PUT",
+     "path": "/api/v2/:app/objects/:id/multipart/:uploadId/parts/:n",
+     "file": "server/index.js",
+     "line": 36,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13384,7 +13550,17 @@
      "method": "POST",
      "path": "/api/v2/:app/objects/:id/restore",
      "file": "server/objects/routes.js",
-     "line": 324,
+     "line": 543,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/api/v2/:app/objects/:id/upload-url",
+     "file": "server/objects/routes.js",
+     "line": 387,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13454,7 +13630,7 @@
      "method": "GET",
      "path": "/healthz",
      "file": "server/index.js",
-     "line": 92,
+     "line": 93,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13464,7 +13640,7 @@
      "method": "POST",
      "path": "/internal/avatar-ingest",
      "file": "server/index.js",
-     "line": 63,
+     "line": 64,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13474,7 +13650,7 @@
      "method": "GET",
      "path": "/manifest.webmanifest",
      "file": "server/index.js",
-     "line": 51,
+     "line": 52,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13484,7 +13660,7 @@
      "method": "GET",
      "path": "/o",
      "file": "server/objects/routes.js",
-     "line": 278,
+     "line": 497,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13494,7 +13670,7 @@
      "method": "POST",
      "path": "/o",
      "file": "server/objects/routes.js",
-     "line": 188,
+     "line": 261,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13504,7 +13680,7 @@
      "method": "DELETE",
      "path": "/o/:id",
      "file": "server/objects/routes.js",
-     "line": 308,
+     "line": 527,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13514,7 +13690,7 @@
      "method": "GET",
      "path": "/o/:id",
      "file": "server/objects/routes.js",
-     "line": 303,
+     "line": 522,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13524,7 +13700,7 @@
      "method": "GET",
      "path": "/o/:id",
      "file": "server/objects/routes.js",
-     "line": 382,
+     "line": 601,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13534,7 +13710,7 @@
      "method": "POST",
      "path": "/o/:id/complete",
      "file": "server/objects/routes.js",
-     "line": 244,
+     "line": 371,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13544,7 +13720,7 @@
      "method": "GET",
      "path": "/o/:id/download",
      "file": "server/objects/routes.js",
-     "line": 334,
+     "line": 553,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13554,7 +13730,7 @@
      "method": "GET",
      "path": "/o/:id/holds",
      "file": "server/objects/routes.js",
-     "line": 353,
+     "line": 572,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13564,7 +13740,7 @@
      "method": "POST",
      "path": "/o/:id/holds",
      "file": "server/objects/routes.js",
-     "line": 359,
+     "line": 578,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13574,7 +13750,47 @@
      "method": "DELETE",
      "path": "/o/:id/holds/:holdId",
      "file": "server/objects/routes.js",
-     "line": 368,
+     "line": 587,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/o/:id/multipart",
+     "file": "server/objects/routes.js",
+     "line": 411,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "DELETE",
+     "path": "/o/:id/multipart/:uploadId",
+     "file": "server/objects/routes.js",
+     "line": 486,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/o/:id/multipart/:uploadId",
+     "file": "server/objects/routes.js",
+     "line": 440,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/o/:id/multipart/:uploadId/complete",
+     "file": "server/objects/routes.js",
+     "line": 449,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13584,7 +13800,17 @@
      "method": "POST",
      "path": "/o/:id/restore",
      "file": "server/objects/routes.js",
-     "line": 324,
+     "line": 543,
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/o/:id/upload-url",
+     "file": "server/objects/routes.js",
+     "line": 387,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13594,7 +13820,7 @@
      "method": "GET",
      "path": "/release.json",
      "file": "server/index.js",
-     "line": 90,
+     "line": 91,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13604,7 +13830,7 @@
      "method": "GET",
      "path": "/tos",
      "file": "server/index.js",
-     "line": 48,
+     "line": 49,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -13650,6 +13876,12 @@
      "server/config.js"
     ],
     "MEDIA_SIGNING_SECRET": [
+     "server/config.js"
+    ],
+    "MEDIA_JOBS_ENABLED": [
+     "server/config.js"
+    ],
+    "MEDIA_JOBS_HEAVY_WHILE_RECORDING": [
      "server/config.js"
     ],
     "MEDIA_VERIFY_ENABLED": [
@@ -13967,7 +14199,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 64,
+     "line": 73,
      "file": "server/events.js",
      "target": "OpenVibe.Media",
      "disposition": "keep",
@@ -13978,7 +14210,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 43200000,
-     "line": 136,
+     "line": 137,
      "file": "server/index.js",
      "target": "OpenVibe.Media",
      "disposition": "keep",
@@ -13989,8 +14221,30 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 164,
+     "line": 166,
      "file": "server/index.js",
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "Runs in, and for, the service that owns it."
+    },
+    {
+     "kind": "setInterval",
+     "name": null,
+     "intervalMs": null,
+     "line": 64,
+     "file": "server/jobs/worker.js",
+     "target": "OpenVibe.Media",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "Runs in, and for, the service that owns it."
+    },
+    {
+     "kind": "setInterval",
+     "name": null,
+     "intervalMs": null,
+     "line": 183,
+     "file": "server/jobs/worker.js",
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -14066,7 +14320,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 480,
+     "line": 484,
      "file": "server/vod/vod-storage.js",
      "target": "OpenVibe.Media",
      "disposition": "keep",
@@ -14076,7 +14330,7 @@
    ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 16,
+   "testFiles": 20,
    "ci": true
   },
   {
@@ -16181,13 +16435,13 @@
    "service": "community",
    "present": true,
    "git": {
-    "head": "57d1dd4cbdc79f39ae5e98cc0d09b03a75508f5d",
+    "head": "63b90a838d280aada7d6c98aee61335b972c1105",
     "branch": "main",
-    "originMain": "57d1dd4cbdc79f39ae5e98cc0d09b03a75508f5d",
-    "committedAt": "2026-09-23T12:38:51-07:00"
+    "originMain": "63b90a838d280aada7d6c98aee61335b972c1105",
+    "committedAt": "2026-09-23T14:22:33-07:00"
    },
    "sourceFiles": 47,
-   "loc": 7885,
+   "loc": 7886,
    "tables": [
     {
      "table": "pastes",
@@ -18660,13 +18914,13 @@
    "service": "chat",
    "present": true,
    "git": {
-    "head": "789768806b0d217b0bc735c319d20d1b6ebb4df8",
+    "head": "ed90461e2fd4537332275f6efec8bb878ce4ac2a",
     "branch": "main",
-    "originMain": "789768806b0d217b0bc735c319d20d1b6ebb4df8",
-    "committedAt": "2026-09-23T13:06:03-07:00"
+    "originMain": "ed90461e2fd4537332275f6efec8bb878ce4ac2a",
+    "committedAt": "2026-09-23T14:40:27-07:00"
    },
-   "sourceFiles": 28,
-   "loc": 11140,
+   "sourceFiles": 34,
+   "loc": 11947,
    "tables": [
     {
      "table": "chat_messages",
@@ -18859,9 +19113,31 @@
      "file": "server/db/schema.sql",
      "line": 463,
      "via": "repo"
+    },
+    {
+     "table": "deploy_releases",
+     "file": "server/db/schema.sql",
+     "line": 473,
+     "via": "repo"
+    },
+    {
+     "table": "chat_event_inbox",
+     "file": "server/db/schema.sql",
+     "line": 487,
+     "via": "repo"
     }
    ],
    "routes": [
+    {
+     "method": "POST",
+     "path": "/",
+     "file": "server/events/consumer.js",
+     "line": 91,
+     "target": "OpenVibe.Chat",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
     {
      "method": "GET",
      "path": "/api/chat/:streamId/history",
@@ -19007,6 +19283,26 @@
      "path": "/api/chat/global/history",
      "file": "server/chat/routes.js",
      "line": 449,
+     "target": "OpenVibe.Chat",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/api/chat/preferences",
+     "file": "server/prefs/routes.js",
+     "line": 30,
+     "target": "OpenVibe.Chat",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "PUT",
+     "path": "/api/chat/preferences",
+     "file": "server/prefs/routes.js",
+     "line": 34,
      "target": "OpenVibe.Chat",
      "disposition": "keep",
      "wave": "-",
@@ -19436,7 +19732,7 @@
      "method": "GET",
      "path": "/health",
      "file": "server/app.js",
-     "line": 77,
+     "line": 80,
      "target": "OpenVibe.Chat",
      "disposition": "keep",
      "wave": "-",
@@ -19456,7 +19752,7 @@
      "method": "GET",
      "path": "/ready",
      "file": "server/app.js",
-     "line": 94,
+     "line": 97,
      "target": "OpenVibe.Chat",
      "disposition": "keep",
      "wave": "-",
@@ -19474,7 +19770,7 @@
      {
       "path": "/ws/chat",
       "file": "server/app.js",
-      "line": 202
+      "line": 210
      },
      {
       "path": "/ws/chat",
@@ -19559,10 +19855,31 @@
     "CHAT_VIP_BADGE_UNAVAILABLE_TTL_MS": [
      "server/config.js"
     ],
+    "CHAT_PREFS_ENABLED": [
+     "server/config.js"
+    ],
+    "CHAT_PREFS_TTL_MS": [
+     "server/config.js"
+    ],
+    "CHAT_PREFS_TIMEOUT_MS": [
+     "server/config.js"
+    ],
+    "CHAT_PREFS_CACHE_MAX": [
+     "server/config.js"
+    ],
     "EVENTS_URL": [
      "server/config.js"
     ],
     "EVENTS_RELAY_INTERVAL_MS": [
+     "server/config.js"
+    ],
+    "CHAT_EVENTS_SECRET": [
+     "server/config.js"
+    ],
+    "CHAT_EVENTS_SUBSCRIBE": [
+     "server/config.js"
+    ],
+    "CHAT_EVENTS_ENDPOINT": [
      "server/config.js"
     ],
     "SOUNDS_PATH": [
@@ -19696,6 +20013,25 @@
      ],
      "timeout": true,
      "retry": false
+    },
+    {
+     "file": "server/prefs/network-modules.js",
+     "targets": [
+      {
+       "service": "network",
+       "refs": [
+        {
+         "via": "networkInternalUrl",
+         "line": 21
+        }
+       ]
+      }
+     ],
+     "auth": [
+      "service-token"
+     ],
+     "timeout": true,
+     "retry": true
     }
    ],
    "jobs": [
@@ -19768,6 +20104,17 @@
     {
      "kind": "setInterval",
      "name": null,
+     "intervalMs": 21600000,
+     "line": 136,
+     "file": "server/events/consumer.js",
+     "target": "OpenVibe.Chat",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "Runs in, and for, the service that owns it."
+    },
+    {
+     "kind": "setInterval",
+     "name": null,
      "intervalMs": null,
      "line": 112,
      "file": "server/events/outbox.js",
@@ -19801,7 +20148,7 @@
    ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 16,
+   "testFiles": 19,
    "ci": true
   },
   {
@@ -21430,96 +21777,114 @@
    "service": "tips",
    "present": true,
    "git": {
-    "head": "9a3a186182df7d150780b31d191ea1eb99c95962",
+    "head": "f211c03ed01b58dd52d104bda8b07ce1a82da2db",
     "branch": "main",
-    "originMain": "9a3a186182df7d150780b31d191ea1eb99c95962",
-    "committedAt": "2026-09-23T12:33:56-07:00"
+    "originMain": "f211c03ed01b58dd52d104bda8b07ce1a82da2db",
+    "committedAt": "2026-09-23T14:22:34-07:00"
    },
-   "sourceFiles": 26,
-   "loc": 4065,
+   "sourceFiles": 29,
+   "loc": 5250,
    "tables": [
     {
      "table": "settings",
      "file": "server/db.js",
-     "line": 30,
+     "line": 31,
      "via": "repo"
     },
     {
      "table": "creator_tip_profiles",
      "file": "server/db.js",
-     "line": 36,
+     "line": 37,
      "via": "repo"
     },
     {
      "table": "tip_interactions",
      "file": "server/db.js",
-     "line": 58,
+     "line": 59,
      "via": "repo"
     },
     {
      "table": "tip_goals",
      "file": "server/db.js",
-     "line": 103,
+     "line": 104,
      "via": "repo"
     },
     {
      "table": "tip_goal_contributions",
      "file": "server/db.js",
-     "line": 123,
+     "line": 124,
      "via": "repo"
     },
     {
      "table": "paid_messages",
      "file": "server/db.js",
-     "line": 134,
+     "line": 135,
      "via": "repo"
     },
     {
      "table": "paid_media_requests",
      "file": "server/db.js",
-     "line": 149,
+     "line": 150,
      "via": "repo"
     },
     {
      "table": "overlay_configs",
      "file": "server/db.js",
-     "line": 162,
+     "line": 163,
      "via": "repo"
     },
     {
      "table": "overlay_tokens",
      "file": "server/db.js",
-     "line": 175,
+     "line": 176,
      "via": "repo"
     },
     {
      "table": "overlay_deliveries",
      "file": "server/db.js",
-     "line": 189,
+     "line": 190,
      "via": "repo"
     },
     {
      "table": "interaction_effects",
      "file": "server/db.js",
-     "line": 208,
+     "line": 209,
      "via": "repo"
     },
     {
      "table": "migration_maps",
      "file": "server/db.js",
-     "line": 224,
+     "line": 225,
      "via": "repo"
     },
     {
      "table": "import_runs",
      "file": "server/db.js",
-     "line": 240,
+     "line": 241,
+     "via": "repo"
+    },
+    {
+     "table": "tip_moderators",
+     "file": "server/db.js",
+     "line": 252,
+     "via": "repo"
+    },
+    {
+     "table": "tip_moderator_invites",
+     "file": "server/db.js",
+     "line": 263,
+     "via": "repo"
+    },
+    {
+     "table": "tip_moderation_log",
+     "file": "server/db.js",
+     "line": 275,
      "via": "repo"
     },
     {
      "table": "api_idempotency",
      "file": "server/db.js",
-     "line": 249,
+     "line": 287,
      "via": "repo"
     }
    ],
@@ -21528,7 +21893,7 @@
      "method": "GET",
      "path": "/",
      "file": "server/web/routes.js",
-     "line": 54,
+     "line": 65,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21538,7 +21903,7 @@
      "method": "GET",
      "path": "/:handle",
      "file": "server/web/routes.js",
-     "line": 233,
+     "line": 361,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21548,7 +21913,17 @@
      "method": "GET",
      "path": "/:handle/goals",
      "file": "server/web/routes.js",
-     "line": 234,
+     "line": 362,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/:handle/supporters",
+     "file": "server/web/routes.js",
+     "line": 372,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21558,7 +21933,7 @@
      "method": "POST",
      "path": "/:handle/tip",
      "file": "server/web/routes.js",
-     "line": 245,
+     "line": 387,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21588,7 +21963,7 @@
      "method": "POST",
      "path": "/api/v1/checkout",
      "file": "server/api/v1.js",
-     "line": 160,
+     "line": 194,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21598,7 +21973,7 @@
      "method": "GET",
      "path": "/api/v1/goals",
      "file": "server/api/v1.js",
-     "line": 213,
+     "line": 248,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21608,7 +21983,7 @@
      "method": "POST",
      "path": "/api/v1/goals",
      "file": "server/api/v1.js",
-     "line": 226,
+     "line": 262,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21618,7 +21993,7 @@
      "method": "GET",
      "path": "/api/v1/goals/:id",
      "file": "server/api/v1.js",
-     "line": 220,
+     "line": 256,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21628,7 +22003,7 @@
      "method": "PATCH",
      "path": "/api/v1/goals/:id",
      "file": "server/api/v1.js",
-     "line": 238,
+     "line": 274,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21638,7 +22013,7 @@
      "method": "POST",
      "path": "/api/v1/goals/:id/close",
      "file": "server/api/v1.js",
-     "line": 239,
+     "line": 275,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21648,7 +22023,7 @@
      "method": "GET",
      "path": "/api/v1/interactions",
      "file": "server/api/v1.js",
-     "line": 166,
+     "line": 200,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21658,7 +22033,17 @@
      "method": "GET",
      "path": "/api/v1/interactions/:id",
      "file": "server/api/v1.js",
-     "line": 185,
+     "line": 219,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/interactions/:id/${action}",
+     "file": "server/api/v1.js",
+     "line": 350,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21668,7 +22053,27 @@
      "method": "POST",
      "path": "/api/v1/interactions/external",
      "file": "server/api/v1.js",
-     "line": 198,
+     "line": 232,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/me/erase",
+     "file": "server/api/v1.js",
+     "line": 125,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/me/export",
+     "file": "server/api/v1.js",
+     "line": 124,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21678,7 +22083,57 @@
      "method": "POST",
      "path": "/api/v1/media-requests",
      "file": "server/api/v1.js",
-     "line": 163,
+     "line": 197,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/moderation",
+     "file": "server/api/v1.js",
+     "line": 338,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/moderation/log",
+     "file": "server/api/v1.js",
+     "line": 344,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/moderators",
+     "file": "server/api/v1.js",
+     "line": 358,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/moderators",
+     "file": "server/api/v1.js",
+     "line": 363,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/api/v1/moderators/:subject/remove",
+     "file": "server/api/v1.js",
+     "line": 370,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21688,7 +22143,7 @@
      "method": "GET",
      "path": "/api/v1/overlay-configs",
      "file": "server/api/v1.js",
-     "line": 264,
+     "line": 301,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21698,7 +22153,7 @@
      "method": "POST",
      "path": "/api/v1/overlay-configs",
      "file": "server/api/v1.js",
-     "line": 275,
+     "line": 312,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21708,7 +22163,7 @@
      "method": "GET",
      "path": "/api/v1/overlay-configs/:id",
      "file": "server/api/v1.js",
-     "line": 269,
+     "line": 306,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21718,7 +22173,7 @@
      "method": "PATCH",
      "path": "/api/v1/overlay-configs/:id",
      "file": "server/api/v1.js",
-     "line": 281,
+     "line": 318,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21728,7 +22183,7 @@
      "method": "GET",
      "path": "/api/v1/overlay-tokens",
      "file": "server/api/v1.js",
-     "line": 242,
+     "line": 278,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21738,7 +22193,7 @@
      "method": "POST",
      "path": "/api/v1/overlay-tokens",
      "file": "server/api/v1.js",
-     "line": 247,
+     "line": 283,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21748,7 +22203,7 @@
      "method": "POST",
      "path": "/api/v1/overlay-tokens/:id/revoke",
      "file": "server/api/v1.js",
-     "line": 257,
+     "line": 294,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21758,7 +22213,7 @@
      "method": "POST",
      "path": "/api/v1/paid-messages",
      "file": "server/api/v1.js",
-     "line": 161,
+     "line": 195,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21766,16 +22221,6 @@
     },
     {
      "method": "GET",
-     "path": "/api/v1/profiles/:creator",
-     "file": "server/api/v1.js",
-     "line": 82,
-     "target": "OpenVibe.Tips",
-     "disposition": "keep",
-     "wave": "-",
-     "note": "The service is the authority for its own API and pages."
-    },
-    {
-     "method": "PATCH",
      "path": "/api/v1/profiles/:creator",
      "file": "server/api/v1.js",
      "line": 93,
@@ -21785,10 +22230,30 @@
      "note": "The service is the authority for its own API and pages."
     },
     {
+     "method": "PATCH",
+     "path": "/api/v1/profiles/:creator",
+     "file": "server/api/v1.js",
+     "line": 127,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/api/v1/profiles/:creator/supporters",
+     "file": "server/api/v1.js",
+     "line": 106,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
      "method": "GET",
      "path": "/api/v1/profiles/:creator/totals",
      "file": "server/api/v1.js",
-     "line": 112,
+     "line": 146,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21798,7 +22263,7 @@
      "method": "POST",
      "path": "/api/v1/simulate",
      "file": "server/api/v1.js",
-     "line": 289,
+     "line": 377,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21808,7 +22273,7 @@
      "method": "POST",
      "path": "/api/v1/tts-requests",
      "file": "server/api/v1.js",
-     "line": 162,
+     "line": 196,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21878,7 +22343,7 @@
      "method": "GET",
      "path": "/dashboard",
      "file": "server/web/routes.js",
-     "line": 108,
+     "line": 149,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21896,9 +22361,49 @@
     },
     {
      "method": "GET",
+     "path": "/moderate/:handle",
+     "file": "server/web/routes.js",
+     "line": 321,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/moderate/:handle/:id/:act(hide|restore)",
+     "file": "server/web/routes.js",
+     "line": 327,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/moderate/invite/:token",
+     "file": "server/web/routes.js",
+     "line": 283,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/moderate/invite/:token",
+     "file": "server/web/routes.js",
+     "line": 292,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
      "path": "/overlay/:token",
      "file": "server/web/routes.js",
-     "line": 183,
+     "line": 234,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21908,7 +22413,7 @@
      "method": "GET",
      "path": "/overlay/:token/events",
      "file": "server/web/routes.js",
-     "line": 194,
+     "line": 245,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21918,7 +22423,7 @@
      "method": "GET",
      "path": "/overlay/:token/state",
      "file": "server/web/routes.js",
-     "line": 204,
+     "line": 259,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21928,7 +22433,7 @@
      "method": "GET",
      "path": "/receipts",
      "file": "server/web/routes.js",
-     "line": 71,
+     "line": 82,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21938,7 +22443,37 @@
      "method": "GET",
      "path": "/receipts/:id",
      "file": "server/web/routes.js",
-     "line": 76,
+     "line": 112,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/receipts/erase",
+     "file": "server/web/routes.js",
+     "line": 102,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "POST",
+     "path": "/receipts/erase",
+     "file": "server/web/routes.js",
+     "line": 106,
+     "target": "OpenVibe.Tips",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/receipts/export",
+     "file": "server/web/routes.js",
+     "line": 89,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21958,7 +22493,7 @@
      "method": "GET",
      "path": "/robots.txt",
      "file": "server/web/routes.js",
-     "line": 58,
+     "line": 69,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -21968,7 +22503,7 @@
      "method": "GET",
      "path": "/sitemap.xml",
      "file": "server/web/routes.js",
-     "line": 60,
+     "line": 71,
      "target": "OpenVibe.Tips",
      "disposition": "keep",
      "wave": "-",
@@ -22082,6 +22617,9 @@
     "TIPS_OVERLAY_REPLAY_LIMIT": [
      "server/config.js"
     ],
+    "TIPS_OVERLAY_MAX_STREAMS": [
+     "server/config.js"
+    ],
     "TIPS_MAX_BITS": [
      "server/config.js"
     ],
@@ -22089,6 +22627,9 @@
      "server/config.js"
     ],
     "TIPS_TTS_HARD_CAP": [
+     "server/config.js"
+    ],
+    "TIPS_MAX_PENDING_CHECKOUTS": [
      "server/config.js"
     ],
     "TIPS_JOBS": [
@@ -22152,7 +22693,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 268,
+     "line": 307,
      "file": "server/domain/overlays.js",
      "target": "OpenVibe.Tips",
      "disposition": "keep",
@@ -22163,7 +22704,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 21,
+     "line": 22,
      "file": "server/index.js",
      "target": "OpenVibe.Tips",
      "disposition": "keep",
@@ -22184,7 +22725,7 @@
    ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 11,
+   "testFiles": 15,
    "ci": true
   },
   {
@@ -22192,13 +22733,13 @@
    "service": "vip",
    "present": true,
    "git": {
-    "head": "9668a492b8f5b6c111261cf0e4270fc4ffcf521d",
+    "head": "fe7eaad183622f303d2ea1efde80d1674478d948",
     "branch": "main",
-    "originMain": "9668a492b8f5b6c111261cf0e4270fc4ffcf521d",
-    "committedAt": "2026-09-23T12:33:56-07:00"
+    "originMain": "fe7eaad183622f303d2ea1efde80d1674478d948",
+    "committedAt": "2026-09-23T13:50:44-07:00"
    },
-   "sourceFiles": 27,
-   "loc": 3881,
+   "sourceFiles": 29,
+   "loc": 4194,
    "tables": [
     {
      "table": "settings",
@@ -22294,7 +22835,7 @@
      "method": "GET",
      "path": "/:username",
      "file": "server/web/routes.js",
-     "line": 219,
+     "line": 220,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22304,7 +22845,7 @@
      "method": "GET",
      "path": "/:username/plans/:slug",
      "file": "server/web/routes.js",
-     "line": 237,
+     "line": 238,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22314,7 +22855,7 @@
      "method": "GET",
      "path": "/api/health",
      "file": "server/app.js",
-     "line": 82,
+     "line": 86,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22324,7 +22865,7 @@
      "method": "GET",
      "path": "/api/ready",
      "file": "server/app.js",
-     "line": 84,
+     "line": 88,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22334,7 +22875,7 @@
      "method": "POST",
      "path": "/api/v1/checkout",
      "file": "server/api/v1.js",
-     "line": 203,
+     "line": 210,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22352,9 +22893,19 @@
     },
     {
      "method": "GET",
+     "path": "/api/v1/creators/:ref/card",
+     "file": "server/api/v1.js",
+     "line": 111,
+     "target": "OpenVibe.VIP",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
      "path": "/api/v1/creators/:ref/members",
      "file": "server/api/v1.js",
-     "line": 331,
+     "line": 338,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22364,7 +22915,7 @@
      "method": "GET",
      "path": "/api/v1/entitlements/check",
      "file": "server/api/v1.js",
-     "line": 269,
+     "line": 276,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22374,7 +22925,7 @@
      "method": "POST",
      "path": "/api/v1/entitlements/check",
      "file": "server/api/v1.js",
-     "line": 270,
+     "line": 277,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22384,7 +22935,7 @@
      "method": "POST",
      "path": "/api/v1/memberships/:creator/cancel",
      "file": "server/api/v1.js",
-     "line": 231,
+     "line": 238,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22394,7 +22945,7 @@
      "method": "PUT",
      "path": "/api/v1/memberships/:creator/preferences",
      "file": "server/api/v1.js",
-     "line": 236,
+     "line": 243,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22404,7 +22955,7 @@
      "method": "GET",
      "path": "/api/v1/memberships/:subject",
      "file": "server/api/v1.js",
-     "line": 215,
+     "line": 222,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22412,16 +22963,6 @@
     },
     {
      "method": "GET",
-     "path": "/api/v1/perks",
-     "file": "server/api/v1.js",
-     "line": 166,
-     "target": "OpenVibe.VIP",
-     "disposition": "keep",
-     "wave": "-",
-     "note": "The service is the authority for its own API and pages."
-    },
-    {
-     "method": "POST",
      "path": "/api/v1/perks",
      "file": "server/api/v1.js",
      "line": 173,
@@ -22431,10 +22972,20 @@
      "note": "The service is the authority for its own API and pages."
     },
     {
+     "method": "POST",
+     "path": "/api/v1/perks",
+     "file": "server/api/v1.js",
+     "line": 180,
+     "target": "OpenVibe.VIP",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
      "method": "PATCH",
      "path": "/api/v1/perks/:id",
      "file": "server/api/v1.js",
-     "line": 180,
+     "line": 187,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22444,7 +22995,7 @@
      "method": "GET",
      "path": "/api/v1/plans",
      "file": "server/api/v1.js",
-     "line": 111,
+     "line": 118,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22454,7 +23005,7 @@
      "method": "POST",
      "path": "/api/v1/plans",
      "file": "server/api/v1.js",
-     "line": 132,
+     "line": 139,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22464,7 +23015,7 @@
      "method": "GET",
      "path": "/api/v1/plans/:id",
      "file": "server/api/v1.js",
-     "line": 125,
+     "line": 132,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22474,7 +23025,7 @@
      "method": "PATCH",
      "path": "/api/v1/plans/:id",
      "file": "server/api/v1.js",
-     "line": 148,
+     "line": 155,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22484,7 +23035,7 @@
      "method": "POST",
      "path": "/api/v1/plans/:id/archive",
      "file": "server/api/v1.js",
-     "line": 160,
+     "line": 167,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22494,7 +23045,7 @@
      "method": "POST",
      "path": "/api/v1/plans/:id/publish",
      "file": "server/api/v1.js",
-     "line": 155,
+     "line": 162,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22504,7 +23055,7 @@
      "method": "GET",
      "path": "/api/v1/plans/:id/versions",
      "file": "server/api/v1.js",
-     "line": 126,
+     "line": 133,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22514,7 +23065,7 @@
      "method": "GET",
      "path": "/api/v1/policies",
      "file": "server/api/v1.js",
-     "line": 273,
+     "line": 280,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22524,7 +23075,7 @@
      "method": "POST",
      "path": "/api/v1/policies",
      "file": "server/api/v1.js",
-     "line": 298,
+     "line": 305,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22534,7 +23085,7 @@
      "method": "DELETE",
      "path": "/api/v1/policies/:id",
      "file": "server/api/v1.js",
-     "line": 306,
+     "line": 313,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22544,7 +23095,7 @@
      "method": "GET",
      "path": "/api/v1/policies/:id",
      "file": "server/api/v1.js",
-     "line": 292,
+     "line": 299,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22554,7 +23105,7 @@
      "method": "POST",
      "path": "/api/v1/policies/evaluate",
      "file": "server/api/v1.js",
-     "line": 312,
+     "line": 319,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22631,6 +23182,36 @@
      "note": "The service is the authority for its own API and pages."
     },
     {
+     "method": "GET",
+     "path": "/embed/:username/badge.svg",
+     "file": "server/web/embeds.js",
+     "line": 103,
+     "target": "OpenVibe.VIP",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/embed/:username/card.json",
+     "file": "server/web/embeds.js",
+     "line": 94,
+     "target": "OpenVibe.VIP",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
+     "method": "GET",
+     "path": "/embed/:username/widget",
+     "file": "server/web/embeds.js",
+     "line": 113,
+     "target": "OpenVibe.VIP",
+     "disposition": "keep",
+     "wave": "-",
+     "note": "The service is the authority for its own API and pages."
+    },
+    {
      "method": "POST",
      "path": "/events",
      "file": "server/events/consumer.js",
@@ -22654,7 +23235,7 @@
      "method": "GET",
      "path": "/release.json",
      "file": "server/app.js",
-     "line": 85,
+     "line": 89,
      "target": "OpenVibe.VIP",
      "disposition": "keep",
      "wave": "-",
@@ -22782,6 +23363,12 @@
     "LIVE_URL": [
      "server/config.js"
     ],
+    "VIP_WIDGET_FRAME_ANCESTORS": [
+     "server/config.js"
+    ],
+    "VIP_MEMBER_COUNT_TTL_MS": [
+     "server/config.js"
+    ],
     "MIN_CLIENT_RELEASE": [
      "OpenVibe.Shared/release.js"
     ],
@@ -22852,7 +23439,7 @@
    ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 10,
+   "testFiles": 11,
    "ci": true
   },
   {
@@ -31080,10 +31667,10 @@
    "service": "host",
    "present": true,
    "git": {
-    "head": "ea99b502c072ae6635f7705e002e0ec174cae16d",
+    "head": "03dfcb32a9fecb85d509f5d92d0a166a26d86fe7",
     "branch": "main",
-    "originMain": "ea99b502c072ae6635f7705e002e0ec174cae16d",
-    "committedAt": "2026-09-23T13:22:16-07:00"
+    "originMain": "03dfcb32a9fecb85d509f5d92d0a166a26d86fe7",
+    "committedAt": "2026-09-23T13:48:51-07:00"
    },
    "sourceFiles": 55,
    "loc": 8099,
@@ -32201,7 +32788,7 @@
    "repo": "OpenVibe.Live",
    "manifest": "package.json",
    "spec": "v1.4.0",
-   "state": "current"
+   "state": "behind"
   },
   {
    "repo": "OpenVibe.Media",
@@ -32213,7 +32800,7 @@
    "repo": "OpenVibe.Network",
    "manifest": "package.json",
    "spec": "v1.4.0",
-   "state": "current"
+   "state": "behind"
   },
   {
    "repo": "OpenVibe.News",
@@ -32255,49 +32842,49 @@
    "repo": "OpenVibe.Tools",
    "manifest": "apps/audio/package.json",
    "spec": "v1.4.0",
-   "state": "current"
+   "state": "behind"
   },
   {
    "repo": "OpenVibe.Tools",
    "manifest": "apps/docs/package.json",
    "spec": "v1.4.0",
-   "state": "current"
+   "state": "behind"
   },
   {
    "repo": "OpenVibe.Tools",
    "manifest": "apps/food/package.json",
    "spec": "v1.4.0",
-   "state": "current"
+   "state": "behind"
   },
   {
    "repo": "OpenVibe.Tools",
    "manifest": "apps/gateway/package.json",
    "spec": "v1.4.0",
-   "state": "current"
+   "state": "behind"
   },
   {
    "repo": "OpenVibe.Tools",
    "manifest": "apps/img/package.json",
    "spec": "v1.4.0",
-   "state": "current"
+   "state": "behind"
   },
   {
    "repo": "OpenVibe.Tools",
    "manifest": "apps/maps/package.json",
    "spec": "v1.4.0",
-   "state": "current"
+   "state": "behind"
   },
   {
    "repo": "OpenVibe.Tools",
    "manifest": "apps/text/package.json",
    "spec": "v1.4.0",
-   "state": "current"
+   "state": "behind"
   },
   {
    "repo": "OpenVibe.Tools",
    "manifest": "apps/yt/package.json",
    "spec": "v1.4.0",
-   "state": "current"
+   "state": "behind"
   },
   {
    "repo": "OpenVibe.Trade",
@@ -33491,6 +34078,20 @@
   },
   {
    "repo": "OpenVibe.Chat",
+   "table": "chat_event_inbox",
+   "declaredAt": [
+    "server/db/schema.sql:487"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Chat",
+   "disposition": "keep",
+   "wave": "W6",
+   "note": "Chat authority tables (table_authority=chat), bridge/mirror outboxes and import bookkeeping."
+  },
+  {
+   "repo": "OpenVibe.Chat",
    "table": "chat_messages",
    "declaredAt": [
     "server/db/schema.sql:24"
@@ -33616,6 +34217,20 @@
    "disposition": "keep",
    "wave": "W6",
    "note": "Read projection of Live context (channels, managed streams, streams, users) that Chat needs for authorization."
+  },
+  {
+   "repo": "OpenVibe.Chat",
+   "table": "deploy_releases",
+   "declaredAt": [
+    "server/db/schema.sql:473"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Chat",
+   "disposition": "keep",
+   "wave": "W6",
+   "note": "Chat authority tables (table_authority=chat), bridge/mirror outboxes and import bookkeeping."
   },
   {
    "repo": "OpenVibe.Chat",
@@ -35390,7 +36005,7 @@
    "repo": "OpenVibe.Live",
    "table": "ai_chatbot_configs",
    "declaredAt": [
-    "server/db/database.js:1810"
+    "server/db/database.js:1782"
    ],
    "prodDbs": [
     "live.db"
@@ -35466,7 +36081,7 @@
    "repo": "OpenVibe.Live",
    "table": "ai_viewer_log",
    "declaredAt": [
-    "server/db/database.js:1894"
+    "server/db/database.js:1866"
    ],
    "prodDbs": [
     "live.db"
@@ -35482,7 +36097,7 @@
    "repo": "OpenVibe.Live",
    "table": "ai_viewer_threads",
    "declaredAt": [
-    "server/db/database.js:1880"
+    "server/db/database.js:1852"
    ],
    "prodDbs": [
     "live.db"
@@ -35660,7 +36275,7 @@
    "repo": "OpenVibe.Live",
    "table": "approved_ips",
    "declaredAt": [
-    "server/db/database.js:2082"
+    "server/db/database.js:2054"
    ],
    "prodDbs": [
     "live.db"
@@ -36272,7 +36887,7 @@
    "repo": "OpenVibe.Live",
    "table": "channel_ai_bots",
    "declaredAt": [
-    "server/db/database.js:1835"
+    "server/db/database.js:1807"
    ],
    "prodDbs": [
     "live.db"
@@ -36288,7 +36903,7 @@
    "repo": "OpenVibe.Live",
    "table": "channel_ai_config",
    "declaredAt": [
-    "server/db/database.js:1859"
+    "server/db/database.js:1831"
    ],
    "prodDbs": [
     "live.db"
@@ -36304,7 +36919,7 @@
    "repo": "OpenVibe.Live",
    "table": "channel_moderation_settings",
    "declaredAt": [
-    "server/db/database.js:1645",
+    "server/db/database.js:1617",
     "server/db/schema.sql:514"
    ],
    "prodDbs": [
@@ -36321,7 +36936,7 @@
    "repo": "OpenVibe.Live",
    "table": "channel_moderators",
    "declaredAt": [
-    "server/db/database.js:1628",
+    "server/db/database.js:1600",
     "server/db/schema.sql:499"
    ],
    "prodDbs": [
@@ -36354,7 +36969,7 @@
    "repo": "OpenVibe.Live",
    "table": "channel_sounds",
    "declaredAt": [
-    "server/db/database.js:1748",
+    "server/db/database.js:1720",
     "server/db/schema.sql:625"
    ],
    "prodDbs": [
@@ -36371,7 +36986,7 @@
    "repo": "OpenVibe.Live",
    "table": "channel_sounds_new",
    "declaredAt": [
-    "server/db/database.js:1772"
+    "server/db/database.js:1744"
    ],
    "prodDbs": [],
    "inCode": true,
@@ -36664,7 +37279,7 @@
    "repo": "OpenVibe.Live",
    "table": "control_config_buttons",
    "declaredAt": [
-    "server/db/database.js:2313"
+    "server/db/database.js:2278"
    ],
    "prodDbs": [
     "live.db"
@@ -36680,7 +37295,7 @@
    "repo": "OpenVibe.Live",
    "table": "control_configs",
    "declaredAt": [
-    "server/db/database.js:2299"
+    "server/db/database.js:2264"
    ],
    "prodDbs": [
     "live.db"
@@ -36696,7 +37311,7 @@
    "repo": "OpenVibe.Live",
    "table": "control_whitelist",
    "declaredAt": [
-    "server/db/database.js:2284"
+    "server/db/database.js:2249"
    ],
    "prodDbs": [
     "live.db"
@@ -36880,7 +37495,7 @@
    "repo": "OpenVibe.Live",
    "table": "emotes_new",
    "declaredAt": [
-    "server/db/database.js:1716"
+    "server/db/database.js:1688"
    ],
    "prodDbs": [],
    "inCode": true,
@@ -37237,7 +37852,7 @@
    "repo": "OpenVibe.Live",
    "table": "hidden_relay_users",
    "declaredAt": [
-    "server/db/database.js:2119"
+    "server/db/database.js:2091"
    ],
    "prodDbs": [
     "live.db"
@@ -37267,7 +37882,7 @@
    "repo": "OpenVibe.Live",
    "table": "ip_log",
    "declaredAt": [
-    "server/db/database.js:2058"
+    "server/db/database.js:2030"
    ],
    "prodDbs": [
     "live.db"
@@ -37371,7 +37986,7 @@
    "repo": "OpenVibe.Live",
    "table": "managed_streams",
    "declaredAt": [
-    "server/db/database.js:2427",
+    "server/db/database.js:2392",
     "server/db/schema.sql:78"
    ],
    "prodDbs": [
@@ -37451,7 +38066,7 @@
    "repo": "OpenVibe.Live",
    "table": "moderation_actions",
    "declaredAt": [
-    "server/db/database.js:1927"
+    "server/db/database.js:1899"
    ],
    "prodDbs": [
     "live.db"
@@ -37513,7 +38128,7 @@
    "repo": "OpenVibe.Live",
    "table": "paste_comments",
    "declaredAt": [
-    "server/db/database.js:2015"
+    "server/db/database.js:1987"
    ],
    "prodDbs": [
     "live.db"
@@ -37529,7 +38144,7 @@
    "repo": "OpenVibe.Live",
    "table": "paste_likes",
    "declaredAt": [
-    "server/db/database.js:1983"
+    "server/db/database.js:1955"
    ],
    "prodDbs": [
     "live.db"
@@ -37545,7 +38160,7 @@
    "repo": "OpenVibe.Live",
    "table": "pastes",
    "declaredAt": [
-    "server/db/database.js:1946"
+    "server/db/database.js:1918"
    ],
    "prodDbs": [
     "live.db"
@@ -37561,7 +38176,7 @@
    "repo": "OpenVibe.Live",
    "table": "payment_orders",
    "declaredAt": [
-    "server/db/database.js:1595"
+    "server/db/database.js:1567"
    ],
    "prodDbs": [
     "live.db"
@@ -37577,7 +38192,7 @@
    "repo": "OpenVibe.Live",
    "table": "pending_ip_messages",
    "declaredAt": [
-    "server/db/database.js:2099"
+    "server/db/database.js:2071"
    ],
    "prodDbs": [
     "live.db"
@@ -37655,7 +38270,7 @@
    "repo": "OpenVibe.Live",
    "table": "relay_users",
    "declaredAt": [
-    "server/db/database.js:1473"
+    "server/db/database.js:1472"
    ],
    "prodDbs": [
     "live.db"
@@ -37811,7 +38426,7 @@
    "repo": "OpenVibe.Live",
    "table": "stream_controls_new",
    "declaredAt": [
-    "server/db/database.js:2392"
+    "server/db/database.js:2357"
    ],
    "prodDbs": [],
    "inCode": true,
@@ -37825,7 +38440,7 @@
    "repo": "OpenVibe.Live",
    "table": "stream_first_chats",
    "declaredAt": [
-    "server/db/database.js:2047"
+    "server/db/database.js:2019"
    ],
    "prodDbs": [
     "live.db"
@@ -38192,7 +38807,7 @@
    "repo": "OpenVibe.Live",
    "table": "vibe_coding_events",
    "declaredAt": [
-    "server/db/database.js:2684",
+    "server/db/database.js:2649",
     "server/db/schema.sql:198"
    ],
    "prodDbs": [
@@ -38209,7 +38824,7 @@
    "repo": "OpenVibe.Live",
    "table": "vibe_coding_sessions",
    "declaredAt": [
-    "server/db/database.js:2649",
+    "server/db/database.js:2614",
     "server/db/schema.sql:170"
    ],
    "prodDbs": [
@@ -38226,7 +38841,7 @@
    "repo": "OpenVibe.Live",
    "table": "viewer_samples",
    "declaredAt": [
-    "server/db/database.js:3983"
+    "server/db/database.js:3832"
    ],
    "prodDbs": [
     "live.db"
@@ -38446,7 +39061,7 @@
    "repo": "OpenVibe.Media",
    "table": "media_holds",
    "declaredAt": [
-    "server/db/schema.sql:293"
+    "server/db/schema.sql:338"
    ],
    "prodDbs": [
     "media.db"
@@ -38462,7 +39077,7 @@
    "repo": "OpenVibe.Media",
    "table": "media_invariant_violations",
    "declaredAt": [
-    "server/db/schema.sql:306"
+    "server/db/schema.sql:351"
    ],
    "prodDbs": [
     "media.db"
@@ -38478,7 +39093,7 @@
    "repo": "OpenVibe.Media",
    "table": "media_jobs",
    "declaredAt": [
-    "server/db/schema.sql:279"
+    "server/db/schema.sql:281"
    ],
    "prodDbs": [
     "media.db"
@@ -38556,6 +39171,34 @@
   },
   {
    "repo": "OpenVibe.Media",
+   "table": "media_upload_parts",
+   "declaredAt": [
+    "server/db/schema.sql:328"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Media",
+   "disposition": "keep",
+   "wave": "W4 (object model)",
+   "note": "Becomes projections over media_objects/media_locations."
+  },
+  {
+   "repo": "OpenVibe.Media",
+   "table": "media_uploads",
+   "declaredAt": [
+    "server/db/schema.sql:312"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Media",
+   "disposition": "keep",
+   "wave": "W4 (object model)",
+   "note": "Becomes projections over media_objects/media_locations."
+  },
+  {
+   "repo": "OpenVibe.Media",
    "table": "media_variants",
    "declaredAt": [
     "server/db/schema.sql:268"
@@ -38574,7 +39217,7 @@
    "repo": "OpenVibe.Media",
    "table": "media_verifications",
    "declaredAt": [
-    "server/db/schema.sql:320"
+    "server/db/schema.sql:365"
    ],
    "prodDbs": [
     "media.db"
@@ -38590,7 +39233,7 @@
    "repo": "OpenVibe.Media",
    "table": "media_verify_runs",
    "declaredAt": [
-    "server/db/schema.sql:332"
+    "server/db/schema.sql:377"
    ],
    "prodDbs": [
     "media.db"
@@ -39212,7 +39855,7 @@
    "repo": "OpenVibe.Network",
    "table": "principal_grants",
    "declaredAt": [
-    "server/identity/principals.js:151"
+    "server/identity/principals.js:164"
    ],
    "prodDbs": [
     "network.db"
@@ -39228,7 +39871,7 @@
    "repo": "OpenVibe.Network",
    "table": "principal_usage",
    "declaredAt": [
-    "server/identity/principals.js:161"
+    "server/identity/principals.js:174"
    ],
    "prodDbs": [
     "network.db"
@@ -39276,7 +39919,7 @@
    "repo": "OpenVibe.Network",
    "table": "stream_live_announcements",
    "declaredAt": [
-    "server/notifications/stream-live.js:17"
+    "server/notifications/stream-live.js:31"
    ],
    "prodDbs": [
     "network.db"
@@ -39371,9 +40014,37 @@
   },
   {
    "repo": "OpenVibe.Network",
+   "table": "user_module_retirements",
+   "declaredAt": [
+    "server/identity/modules.js:93"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Network",
+   "disposition": "keep",
+   "wave": "W1 (module split)",
+   "note": "Identity, sessions, OAuth, themes, notifications, registry, chrome, audit, admin."
+  },
+  {
+   "repo": "OpenVibe.Network",
+   "table": "user_module_revisions",
+   "declaredAt": [
+    "server/identity/modules.js:86"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Network",
+   "disposition": "keep",
+   "wave": "W1 (module split)",
+   "note": "Identity, sessions, OAuth, themes, notifications, registry, chrome, audit, admin."
+  },
+  {
+   "repo": "OpenVibe.Network",
    "table": "user_modules",
    "declaredAt": [
-    "server/identity/modules.js:24"
+    "server/identity/modules.js:75"
    ],
    "prodDbs": [
     "network.db"
@@ -40611,7 +41282,7 @@
    "repo": "OpenVibe.Tips",
    "table": "api_idempotency",
    "declaredAt": [
-    "server/db.js:249"
+    "server/db.js:287"
    ],
    "prodDbs": [
     "tips.db"
@@ -40627,7 +41298,7 @@
    "repo": "OpenVibe.Tips",
    "table": "creator_tip_profiles",
    "declaredAt": [
-    "server/db.js:36"
+    "server/db.js:37"
    ],
    "prodDbs": [
     "tips.db"
@@ -40671,7 +41342,7 @@
    "repo": "OpenVibe.Tips",
    "table": "import_runs",
    "declaredAt": [
-    "server/db.js:240"
+    "server/db.js:241"
    ],
    "prodDbs": [
     "tips.db"
@@ -40687,7 +41358,7 @@
    "repo": "OpenVibe.Tips",
    "table": "interaction_effects",
    "declaredAt": [
-    "server/db.js:208"
+    "server/db.js:209"
    ],
    "prodDbs": [
     "tips.db"
@@ -40703,7 +41374,7 @@
    "repo": "OpenVibe.Tips",
    "table": "migration_maps",
    "declaredAt": [
-    "server/db.js:224"
+    "server/db.js:225"
    ],
    "prodDbs": [
     "tips.db"
@@ -40719,7 +41390,7 @@
    "repo": "OpenVibe.Tips",
    "table": "overlay_configs",
    "declaredAt": [
-    "server/db.js:162"
+    "server/db.js:163"
    ],
    "prodDbs": [
     "tips.db"
@@ -40735,7 +41406,7 @@
    "repo": "OpenVibe.Tips",
    "table": "overlay_deliveries",
    "declaredAt": [
-    "server/db.js:189"
+    "server/db.js:190"
    ],
    "prodDbs": [
     "tips.db"
@@ -40751,7 +41422,7 @@
    "repo": "OpenVibe.Tips",
    "table": "overlay_tokens",
    "declaredAt": [
-    "server/db.js:175"
+    "server/db.js:176"
    ],
    "prodDbs": [
     "tips.db"
@@ -40767,7 +41438,7 @@
    "repo": "OpenVibe.Tips",
    "table": "paid_media_requests",
    "declaredAt": [
-    "server/db.js:149"
+    "server/db.js:150"
    ],
    "prodDbs": [
     "tips.db"
@@ -40783,7 +41454,7 @@
    "repo": "OpenVibe.Tips",
    "table": "paid_messages",
    "declaredAt": [
-    "server/db.js:134"
+    "server/db.js:135"
    ],
    "prodDbs": [
     "tips.db"
@@ -40799,7 +41470,7 @@
    "repo": "OpenVibe.Tips",
    "table": "settings",
    "declaredAt": [
-    "server/db.js:30"
+    "server/db.js:31"
    ],
    "prodDbs": [
     "tips.db"
@@ -40815,7 +41486,7 @@
    "repo": "OpenVibe.Tips",
    "table": "tip_goal_contributions",
    "declaredAt": [
-    "server/db.js:123"
+    "server/db.js:124"
    ],
    "prodDbs": [
     "tips.db"
@@ -40831,7 +41502,7 @@
    "repo": "OpenVibe.Tips",
    "table": "tip_goals",
    "declaredAt": [
-    "server/db.js:103"
+    "server/db.js:104"
    ],
    "prodDbs": [
     "tips.db"
@@ -40847,13 +41518,55 @@
    "repo": "OpenVibe.Tips",
    "table": "tip_interactions",
    "declaredAt": [
-    "server/db.js:58"
+    "server/db.js:59"
    ],
    "prodDbs": [
     "tips.db"
    ],
    "inCode": true,
    "inProd": true,
+   "target": "OpenVibe.Tips",
+   "disposition": "keep",
+   "wave": "W9",
+   "note": "Tip interactions, goals, overlays, imports."
+  },
+  {
+   "repo": "OpenVibe.Tips",
+   "table": "tip_moderation_log",
+   "declaredAt": [
+    "server/db.js:275"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Tips",
+   "disposition": "keep",
+   "wave": "W9",
+   "note": "Tip interactions, goals, overlays, imports."
+  },
+  {
+   "repo": "OpenVibe.Tips",
+   "table": "tip_moderator_invites",
+   "declaredAt": [
+    "server/db.js:263"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
+   "target": "OpenVibe.Tips",
+   "disposition": "keep",
+   "wave": "W9",
+   "note": "Tip interactions, goals, overlays, imports."
+  },
+  {
+   "repo": "OpenVibe.Tips",
+   "table": "tip_moderators",
+   "declaredAt": [
+    "server/db.js:252"
+   ],
+   "prodDbs": [],
+   "inCode": true,
+   "inProd": false,
    "target": "OpenVibe.Tips",
    "disposition": "keep",
    "wave": "W9",
@@ -41869,6 +42582,16 @@
   },
   {
    "caller": "OpenVibe.Chat",
+   "file": "server/prefs/network-modules.js",
+   "target": "OpenVibe.Network",
+   "via": "networkInternalUrl",
+   "lines": "21",
+   "auth": "service-token",
+   "timeout": true,
+   "retry": true
+  },
+  {
+   "caller": "OpenVibe.Chat",
    "file": "server/chat/routes.js",
    "target": "OpenVibe.Search",
    "via": "searchUrl",
@@ -42092,7 +42815,7 @@
    "file": "server/seo/seo.js",
    "target": "OpenVibe.Community",
    "via": "OV_COMMUNITY_URL",
-   "lines": "427",
+   "lines": "432",
    "auth": "none-detected",
    "timeout": false,
    "retry": false
@@ -42562,7 +43285,7 @@
    "file": "navbar.js",
    "target": "OpenVibe.Network",
    "via": "/api/auth/me",
-   "lines": "10,1010,1013",
+   "lines": "10,1013,1016",
    "auth": "bearer",
    "timeout": false,
    "retry": true
@@ -44780,6 +45503,69 @@
   {
    "repo": "OpenVibe.Chat",
    "name": "CHAT_DB_PATH",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Chat",
+   "name": "CHAT_EVENTS_ENDPOINT",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Chat",
+   "name": "CHAT_EVENTS_SECRET",
+   "secret": true,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Chat",
+   "name": "CHAT_EVENTS_SUBSCRIBE",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Chat",
+   "name": "CHAT_PREFS_CACHE_MAX",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Chat",
+   "name": "CHAT_PREFS_ENABLED",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Chat",
+   "name": "CHAT_PREFS_TIMEOUT_MS",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Chat",
+   "name": "CHAT_PREFS_TTL_MS",
    "secret": false,
    "files": [
     "server/config.js"
@@ -48060,6 +48846,7 @@
    "name": "MEDIA_API_KEY",
    "secret": true,
    "files": [
+    "server/lineage/media-source.js",
     "server/media-client.js"
    ],
    "prod": "live.env"
@@ -49051,6 +49838,24 @@
     "server/vod/vod-storage.js"
    ],
    "prod": "media.env"
+  },
+  {
+   "repo": "OpenVibe.Media",
+   "name": "MEDIA_JOBS_ENABLED",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Media",
+   "name": "MEDIA_JOBS_HEAVY_WHILE_RECORDING",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
   },
   {
    "repo": "OpenVibe.Media",
@@ -51599,6 +52404,15 @@
   },
   {
    "repo": "OpenVibe.Tips",
+   "name": "TIPS_MAX_PENDING_CHECKOUTS",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Tips",
    "name": "TIPS_MEDIA_HOSTS",
    "secret": false,
    "files": [
@@ -51627,6 +52441,15 @@
   {
    "repo": "OpenVibe.Tips",
    "name": "TIPS_OVERLAY_HEARTBEAT_MS",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Tips",
+   "name": "TIPS_OVERLAY_MAX_STREAMS",
    "secret": false,
    "files": [
     "server/config.js"
@@ -52846,6 +53669,15 @@
   },
   {
    "repo": "OpenVibe.VIP",
+   "name": "VIP_MEMBER_COUNT_TTL_MS",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.VIP",
    "name": "VIP_POWERCHAT_LINK_TEMPLATE",
    "secret": false,
    "files": [
@@ -52883,6 +53715,15 @@
   {
    "repo": "OpenVibe.VIP",
    "name": "VIP_STAFF_ROLES",
+   "secret": false,
+   "files": [
+    "server/config.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.VIP",
+   "name": "VIP_WIDGET_FRAME_ANCESTORS",
    "secret": false,
    "files": [
     "server/config.js"
@@ -53194,8 +54035,20 @@
   {
    "severity": "medium",
    "area": "deploy",
+   "subject": "chat",
+   "detail": "deployed 7897688 is 2 commit(s) behind origin/main ed90461"
+  },
+  {
+   "severity": "medium",
+   "area": "deploy",
    "subject": "codes",
    "detail": "deployed d60f279 is 1 commit(s) behind origin/main 51d2386"
+  },
+  {
+   "severity": "medium",
+   "area": "deploy",
+   "subject": "community",
+   "detail": "deployed 57d1dd4 is 1 commit(s) behind origin/main 63b90a8"
   },
   {
    "severity": "medium",
@@ -53225,7 +54078,25 @@
    "severity": "medium",
    "area": "deploy",
    "subject": "host",
-   "detail": "deployed 30f08d6 is 14 commit(s) behind origin/main ea99b50"
+   "detail": "deployed 30f08d6 is 15 commit(s) behind origin/main 03dfcb3"
+  },
+  {
+   "severity": "medium",
+   "area": "deploy",
+   "subject": "live",
+   "detail": "deployed c893c6c is 12 commit(s) behind origin/main ca7cc87"
+  },
+  {
+   "severity": "medium",
+   "area": "deploy",
+   "subject": "media",
+   "detail": "deployed 9de4b25 is 4 commit(s) behind origin/main ad2217b"
+  },
+  {
+   "severity": "medium",
+   "area": "deploy",
+   "subject": "network",
+   "detail": "deployed 9bbd90f is 4 commit(s) behind origin/main 09bf748"
   },
   {
    "severity": "medium",
@@ -53255,13 +54126,19 @@
    "severity": "medium",
    "area": "deploy",
    "subject": "tips",
-   "detail": "deployed 15bfc12 is 1 commit(s) behind origin/main 9a3a186"
+   "detail": "deployed 15bfc12 is 6 commit(s) behind origin/main f211c03"
   },
   {
    "severity": "medium",
    "area": "deploy",
    "subject": "trade",
    "detail": "deployed 9a55644 is 2 commit(s) behind origin/main ddbc60c"
+  },
+  {
+   "severity": "medium",
+   "area": "deploy",
+   "subject": "vip",
+   "detail": "deployed 9668a49 is 1 commit(s) behind origin/main fe7eaad"
   },
   {
    "severity": "medium",
@@ -53435,6 +54312,12 @@
    "severity": "low",
    "area": "env",
    "subject": "OpenVibe.Billing:STRIPE_WEBHOOK_SECRET",
+   "detail": "secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback"
+  },
+  {
+   "severity": "low",
+   "area": "env",
+   "subject": "OpenVibe.Chat:CHAT_EVENTS_SECRET",
    "detail": "secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback"
   },
   {
@@ -54172,6 +55055,18 @@
   {
    "severity": "info",
    "area": "schema",
+   "subject": "OpenVibe.Chat:chat_event_inbox",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Chat:deploy_releases",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
    "subject": "OpenVibe.Codes:event_outbox",
    "detail": "in production (codes.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Codes (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.)"
   },
@@ -54322,6 +55217,18 @@
   {
    "severity": "info",
    "area": "schema",
+   "subject": "OpenVibe.Media:media_upload_parts",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Media:media_uploads",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
    "subject": "OpenVibe.Network:admin_rate_limits",
    "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
   },
@@ -54372,6 +55279,18 @@
    "area": "schema",
    "subject": "OpenVibe.Network:network_event_outbox",
    "detail": "in production (network.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Network (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Network:user_module_retirements",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Network:user_module_revisions",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
   },
   {
    "severity": "info",
@@ -54562,6 +55481,24 @@
   {
    "severity": "info",
    "area": "schema",
+   "subject": "OpenVibe.Tips:tip_moderation_log",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Tips:tip_moderator_invites",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
+   "subject": "OpenVibe.Tips:tip_moderators",
+   "detail": "declared in code but absent from every production database for this service (lazy/unused/legacy migration)"
+  },
+  {
+   "severity": "info",
+   "area": "schema",
    "subject": "OpenVibe.Tools:analytics_daily",
    "detail": "in production (analytics.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Tools (Per-site analytics from openvibe-shared/analytics.js; ADR-021 (2026-09-23): no IP, user id or city stored, raw rows pruned (hazard H11).)"
   },
@@ -54742,16 +55679,16 @@
  ],
  "metrics": {
   "github.charters": "1 charter-only repos of 36",
-  "contract.todo-markers": "Live 15, Network 0, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0, Events 0, Chat 0, OpenRe.Stream 0, Billing 0, Tips 0, VIP 0, AI 0, Search 0, Sources 0, Wiki 0, Blog 0, News 0, Reviews 0, Deals 0, Coupons 0, Trade 0, Codes 0, Host 0, Examples 0",
-  "outbound.call-sites": "97 caller-file/target pairs across 74 files",
-  "outbound.internal-key": "39 of 97 call sites authenticate with the shared internal key",
+  "contract.todo-markers": "Live 14, Network 0, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0, Events 0, Chat 0, OpenRe.Stream 0, Billing 0, Tips 0, VIP 0, AI 0, Search 0, Sources 0, Wiki 0, Blog 0, News 0, Reviews 0, Deals 0, Coupons 0, Trade 0, Codes 0, Host 0, Examples 0",
+  "outbound.call-sites": "98 caller-file/target pairs across 75 files",
+  "outbound.internal-key": "39 of 98 call sites authenticate with the shared internal key",
   "ws.servers": "11 WebSocket server constructions",
   "tables.analytics-copies": "3 repos carry their own analytics_events",
-  "shared.pins": "23 repos pin a tagged openvibe-shared release (latest v1.4.0): OpenRe.Stream v1.2.1, AI v1.3.0, Billing v1.3.0, Blog v1.3.0, Codes v1.3.0, Community v1.3.0, Coupons v1.3.0, Deals v1.3.0, Events v1.3.0, Host v1.3.0, Live v1.4.0, Media v1.3.0, Network v1.4.0, News v1.3.0, Reviews v1.3.0, Search v1.3.0, Sites v1.0.0, Sources v1.3.0, Tips v1.3.0, Tools v1.4.0, Trade v1.3.0, VIP v1.3.0, Wiki v1.3.0",
-  "shared.drift": "20 manifests unpinned or behind: OpenRe.Stream (v1.2.1), AI (v1.3.0), Billing (v1.3.0), Blog (v1.3.0), Codes (v1.3.0), Community (v1.3.0), Coupons (v1.3.0), Deals (v1.3.0), Events (v1.3.0), Host (v1.3.0), Media (v1.3.0), News (v1.3.0), Reviews (v1.3.0), Search (v1.3.0), Sites (v1.0.0), Sources (v1.3.0), Tips (v1.3.0), Trade (v1.3.0), VIP (v1.3.0), Wiki (v1.3.0)",
+  "shared.pins": "23 repos pin a tagged openvibe-shared release (latest v1.5.0): OpenRe.Stream v1.2.1, AI v1.3.0, Billing v1.3.0, Blog v1.3.0, Codes v1.3.0, Community v1.3.0, Coupons v1.3.0, Deals v1.3.0, Events v1.3.0, Host v1.3.0, Live v1.4.0, Media v1.3.0, Network v1.4.0, News v1.3.0, Reviews v1.3.0, Search v1.3.0, Sites v1.0.0, Sources v1.3.0, Tips v1.3.0, Tools v1.4.0, Trade v1.3.0, VIP v1.3.0, Wiki v1.3.0",
+  "shared.drift": "30 manifests unpinned or behind: OpenRe.Stream (v1.2.1), AI (v1.3.0), Billing (v1.3.0), Blog (v1.3.0), Codes (v1.3.0), Community (v1.3.0), Coupons (v1.3.0), Deals (v1.3.0), Events (v1.3.0), Host (v1.3.0), Live (v1.4.0), Media (v1.3.0), Network (v1.4.0), News (v1.3.0), Reviews (v1.3.0), Search (v1.3.0), Sites (v1.0.0), Sources (v1.3.0), Tips (v1.3.0), Tools/apps/audio (v1.4.0), Tools/apps/docs (v1.4.0), Tools/apps/food (v1.4.0), Tools/apps/gateway (v1.4.0), Tools/apps/img (v1.4.0), Tools/apps/maps (v1.4.0), Tools/apps/text (v1.4.0), Tools/apps/yt (v1.4.0), Trade (v1.3.0), VIP (v1.3.0), Wiki (v1.3.0)",
   "ci.repos": "27 of 27 scanned repos have .github/workflows",
-  "deploy.drift": "15 service(s) not running origin/main",
-  "tests.OpenVibe.Live": "78 test files",
+  "deploy.drift": "21 service(s) not running origin/main",
+  "tests.OpenVibe.Live": "81 test files",
   "tables.OpenVibe.Live": "125 tables",
   "tables.OpenVibe.Live.target:OpenVibe.Games (import source)": "31 Live tables target OpenVibe.Games (import source)",
   "tables.OpenVibe.Live.target:OpenVibe.AI": "14 Live tables target OpenVibe.AI",
@@ -54770,16 +55707,16 @@
   "tables.OpenVibe.Live.target:OpenVibe.Billing": "2 Live tables target OpenVibe.Billing",
   "tables.OpenVibe.Live.target:OpenVibe.Billing + OpenVibe.VIP": "1 Live tables target OpenVibe.Billing + OpenVibe.VIP",
   "tables.OpenVibe.Live.target:OpenVibe.Codes": "2 Live tables target OpenVibe.Codes",
-  "tests.OpenVibe.Network": "28 test files",
-  "tables.OpenVibe.Network": "43 tables",
-  "tables.OpenVibe.Network.target:OpenVibe.Network": "48 Network tables target OpenVibe.Network",
+  "tests.OpenVibe.Network": "29 test files",
+  "tables.OpenVibe.Network": "45 tables",
+  "tables.OpenVibe.Network.target:OpenVibe.Network": "50 Network tables target OpenVibe.Network",
   "tables.OpenVibe.Network.target:OpenVibe.Billing (loyalty ledger)": "2 Network tables target OpenVibe.Billing (loyalty ledger)",
   "tables.OpenVibe.Network.target:OpenVibe.Events": "1 Network tables target OpenVibe.Events",
-  "tests.OpenVibe.Shared": "17 test files",
+  "tests.OpenVibe.Shared": "19 test files",
   "tables.OpenVibe.Shared": "0 tables",
-  "tests.OpenVibe.Media": "16 test files",
-  "tables.OpenVibe.Media": "20 tables",
-  "tables.OpenVibe.Media.target:OpenVibe.Media": "18 Media tables target OpenVibe.Media",
+  "tests.OpenVibe.Media": "20 test files",
+  "tables.OpenVibe.Media": "22 tables",
+  "tables.OpenVibe.Media.target:OpenVibe.Media": "20 Media tables target OpenVibe.Media",
   "tables.OpenVibe.Media.target:OpenVibe.Community": "3 Media tables target OpenVibe.Community",
   "tests.OpenVibe.Tools": "16 test files",
   "tables.OpenVibe.Tools": "3 tables",
@@ -54795,19 +55732,19 @@
   "tests.OpenVibe.Events": "12 test files",
   "tables.OpenVibe.Events": "7 tables",
   "tables.OpenVibe.Events.target:OpenVibe.Events": "7 Events tables target OpenVibe.Events",
-  "tests.OpenVibe.Chat": "16 test files",
-  "tables.OpenVibe.Chat": "32 tables",
-  "tables.OpenVibe.Chat.target:OpenVibe.Chat": "32 Chat tables target OpenVibe.Chat",
+  "tests.OpenVibe.Chat": "19 test files",
+  "tables.OpenVibe.Chat": "34 tables",
+  "tables.OpenVibe.Chat.target:OpenVibe.Chat": "34 Chat tables target OpenVibe.Chat",
   "tests.OpenRe.Stream": "18 test files",
   "tables.OpenRe.Stream": "12 tables",
   "tables.OpenRe.Stream.target:OpenRe.Stream": "13 OpenRe.Stream tables target OpenRe.Stream",
   "tests.OpenVibe.Billing": "16 test files",
   "tables.OpenVibe.Billing": "19 tables",
   "tables.OpenVibe.Billing.target:OpenVibe.Billing": "19 Billing tables target OpenVibe.Billing",
-  "tests.OpenVibe.Tips": "11 test files",
-  "tables.OpenVibe.Tips": "14 tables",
-  "tables.OpenVibe.Tips.target:OpenVibe.Tips": "16 Tips tables target OpenVibe.Tips",
-  "tests.OpenVibe.VIP": "10 test files",
+  "tests.OpenVibe.Tips": "15 test files",
+  "tables.OpenVibe.Tips": "17 tables",
+  "tables.OpenVibe.Tips.target:OpenVibe.Tips": "19 Tips tables target OpenVibe.Tips",
+  "tests.OpenVibe.VIP": "11 test files",
   "tables.OpenVibe.VIP": "13 tables",
   "tables.OpenVibe.VIP.target:OpenVibe.VIP": "15 VIP tables target OpenVibe.VIP",
   "tests.OpenVibe.AI": "17 test files",
@@ -54883,7 +55820,7 @@
     },
     {
      "key": "contract.todo-markers",
-     "value": "Live 15, Network 0, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0, Events 0, Chat 0, OpenRe.Stream 0, Billing 0, Tips 0, VIP 0, AI 0, Search 0, Sources 0, Wiki 0, Blog 0, News 0, Reviews 0, Deals 0, Coupons 0, Trade 0, Codes 0, Host 0, Examples 0"
+     "value": "Live 14, Network 0, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0, Events 0, Chat 0, OpenRe.Stream 0, Billing 0, Tips 0, VIP 0, AI 0, Search 0, Sources 0, Wiki 0, Blog 0, News 0, Reviews 0, Deals 0, Coupons 0, Trade 0, Codes 0, Host 0, Examples 0"
     }
    ],
    "members": [
@@ -54950,7 +55887,7 @@
    "metrics": [
     {
      "key": "outbound.call-sites",
-     "value": "97 caller-file/target pairs across 74 files"
+     "value": "98 caller-file/target pairs across 75 files"
     },
     {
      "key": "ws.servers",
@@ -55019,7 +55956,7 @@
     "D17 partial",
     "D18 blocked on owner",
     "D19 partial",
-    "D20 not met"
+    "D20 partial"
    ],
    "status": "partial",
    "verified": true
@@ -55036,7 +55973,7 @@
     },
     {
      "key": "tests.OpenVibe.Chat",
-     "value": "16 test files"
+     "value": "19 test files"
     }
    ],
    "members": [
@@ -55229,7 +56166,7 @@
    "metrics": [
     {
      "key": "outbound.internal-key",
-     "value": "39 of 97 call sites authenticate with the shared internal key"
+     "value": "39 of 98 call sites authenticate with the shared internal key"
     }
    ],
    "members": [
@@ -55264,11 +56201,11 @@
    "metrics": [
     {
      "key": "shared.pins",
-     "value": "23 repos pin a tagged openvibe-shared release (latest v1.4.0): OpenRe.Stream v1.2.1, AI v1.3.0, Billing v1.3.0, Blog v1.3.0, Codes v1.3.0, Community v1.3.0, Coupons v1.3.0, Deals v1.3.0, Events v1.3.0, Host v1.3.0, Live v1.4.0, Media v1.3.0, Network v1.4.0, News v1.3.0, Reviews v1.3.0, Search v1.3.0, Sites v1.0.0, Sources v1.3.0, Tips v1.3.0, Tools v1.4.0, Trade v1.3.0, VIP v1.3.0, Wiki v1.3.0"
+     "value": "23 repos pin a tagged openvibe-shared release (latest v1.5.0): OpenRe.Stream v1.2.1, AI v1.3.0, Billing v1.3.0, Blog v1.3.0, Codes v1.3.0, Community v1.3.0, Coupons v1.3.0, Deals v1.3.0, Events v1.3.0, Host v1.3.0, Live v1.4.0, Media v1.3.0, Network v1.4.0, News v1.3.0, Reviews v1.3.0, Search v1.3.0, Sites v1.0.0, Sources v1.3.0, Tips v1.3.0, Tools v1.4.0, Trade v1.3.0, VIP v1.3.0, Wiki v1.3.0"
     },
     {
      "key": "shared.drift",
-     "value": "20 manifests unpinned or behind: OpenRe.Stream (v1.2.1), AI (v1.3.0), Billing (v1.3.0), Blog (v1.3.0), Codes (v1.3.0), Community (v1.3.0), Coupons (v1.3.0), Deals (v1.3.0), Events (v1.3.0), Host (v1.3.0), Media (v1.3.0), News (v1.3.0), Reviews (v1.3.0), Search (v1.3.0), Sites (v1.0.0), Sources (v1.3.0), Tips (v1.3.0), Trade (v1.3.0), VIP (v1.3.0), Wiki (v1.3.0)"
+     "value": "30 manifests unpinned or behind: OpenRe.Stream (v1.2.1), AI (v1.3.0), Billing (v1.3.0), Blog (v1.3.0), Codes (v1.3.0), Community (v1.3.0), Coupons (v1.3.0), Deals (v1.3.0), Events (v1.3.0), Host (v1.3.0), Live (v1.4.0), Media (v1.3.0), Network (v1.4.0), News (v1.3.0), Reviews (v1.3.0), Search (v1.3.0), Sites (v1.0.0), Sources (v1.3.0), Tips (v1.3.0), Tools/apps/audio (v1.4.0), Tools/apps/docs (v1.4.0), Tools/apps/food (v1.4.0), Tools/apps/gateway (v1.4.0), Tools/apps/img (v1.4.0), Tools/apps/maps (v1.4.0), Tools/apps/text (v1.4.0), Tools/apps/yt (v1.4.0), Trade (v1.3.0), VIP (v1.3.0), Wiki (v1.3.0)"
     }
    ],
    "members": [
@@ -55318,7 +56255,7 @@
    "metrics": [
     {
      "key": "deploy.drift",
-     "value": "15 service(s) not running origin/main"
+     "value": "21 service(s) not running origin/main"
     }
    ],
    "members": [
@@ -55451,7 +56388,7 @@
    "status": "open",
    "check": "workstation-disk",
    "ownerReview": false,
-   "checkResult": "workstation / is 86% used (at generation time)"
+   "checkResult": "workstation / is 87% used (at generation time)"
   },
   {
    "id": "H8",
@@ -55536,7 +56473,7 @@
    "status": "open",
    "check": "deploy-drift",
    "ownerReview": false,
-   "checkResult": "ai: deployed 96dc8a3 is 1 commit(s) behind origin/main 3a480ac; billing: deployed c646279 is 1 commit(s) behind origin/main aa445d0; codes: deployed d60f279 is 1 commit(s) behind origin/main 51d2386; coupons: deployed 54df411 is 3 commit(s) behind origin/main 1c57c47; deals: deployed e72aeec is 2 commit(s) behind origin/main 91ca223; events: deployed 3366132 is 1 commit(s) behind origin/main efc09a7; games: deployed 474df50 is 1 commit(s) behind origin/main 7863fc6; host: deployed 30f08d6 is 14 commit(s) behind origin/main ea99b50; news: deployed 5a17e7f is 1 commit(s) behind origin/main 5b393d2; openre: deployed e0dc1b4 is 2 commit(s) behind origin/main c091a09; reviews: deployed 1d462a2 is 1 commit(s) behind origin/main a7b50a6; sites: deployed d3b71af is 2 commit(s) behind origin/main d6e4cbd; tips: deployed 15bfc12 is 1 commit(s) behind origin/main 9a3a186; trade: deployed 9a55644 is 2 commit(s) behind origin/main ddbc60c; wiki: deployed 011a68f is 1 commit(s) behind origin/main b4e70ac"
+   "checkResult": "ai: deployed 96dc8a3 is 1 commit(s) behind origin/main 3a480ac; billing: deployed c646279 is 1 commit(s) behind origin/main aa445d0; chat: deployed 7897688 is 2 commit(s) behind origin/main ed90461; codes: deployed d60f279 is 1 commit(s) behind origin/main 51d2386; community: deployed 57d1dd4 is 1 commit(s) behind origin/main 63b90a8; coupons: deployed 54df411 is 3 commit(s) behind origin/main 1c57c47; deals: deployed e72aeec is 2 commit(s) behind origin/main 91ca223; events: deployed 3366132 is 1 commit(s) behind origin/main efc09a7; games: deployed 474df50 is 1 commit(s) behind origin/main 7863fc6; host: deployed 30f08d6 is 15 commit(s) behind origin/main 03dfcb3; live: deployed c893c6c is 12 commit(s) behind origin/main ca7cc87; media: deployed 9de4b25 is 4 commit(s) behind origin/main ad2217b; network: deployed 9bbd90f is 4 commit(s) behind origin/main 09bf748; news: deployed 5a17e7f is 1 commit(s) behind origin/main 5b393d2; openre: deployed e0dc1b4 is 2 commit(s) behind origin/main c091a09; reviews: deployed 1d462a2 is 1 commit(s) behind origin/main a7b50a6; sites: deployed d3b71af is 2 commit(s) behind origin/main d6e4cbd; tips: deployed 15bfc12 is 6 commit(s) behind origin/main f211c03; trade: deployed 9a55644 is 2 commit(s) behind origin/main ddbc60c; vip: deployed 9668a49 is 1 commit(s) behind origin/main fe7eaad; wiki: deployed 011a68f is 1 commit(s) behind origin/main b4e70ac"
   },
   {
    "id": "H14",
@@ -55615,25 +56552,25 @@
    "id": "EC1",
    "text": "Every table has an owner classification",
    "pass": true,
-   "detail": "612 tables classified, 0 unclassified"
+   "detail": "621 tables classified, 0 unclassified"
   },
   {
    "id": "EC2",
    "text": "Every route is attributed to a repo and source line, with an owner classification",
    "pass": true,
-   "detail": "2055 routes, 0 unclassified; 0 router mounts whose module could not be resolved (their routes are listed without the mount prefix)"
+   "detail": "2098 routes, 0 unclassified; 0 router mounts whose module could not be resolved (their routes are listed without the mount prefix)"
   },
   {
    "id": "EC3",
    "text": "Every background job is listed with its location and an owner classification",
    "pass": true,
-   "detail": "141 timers/jobs, 0 unclassified"
+   "detail": "145 timers/jobs, 0 unclassified"
   },
   {
    "id": "EC4",
    "text": "Every cross-service call records caller, callee, auth, timeout and retry",
    "pass": true,
-   "detail": "97 call sites; 36 with no timeout detected"
+   "detail": "98 call sites; 36 with no timeout detected"
   },
   {
    "id": "EC5",

@@ -37,6 +37,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Billing | STRIPE_WEBHOOK_SECRET | **not set** | server/config.js |
 | OpenVibe.Blog | BLOG_FORM_SECRET | blog.env | server/config.js |
 | OpenVibe.Blog | OV_OAUTH_CLIENT_SECRET | blog.env | server/config.js |
+| OpenVibe.Chat | CHAT_EVENTS_SECRET | **not set** | server/config.js |
 | OpenVibe.Chat | OV_OAUTH_CLIENT_SECRET | chat.env | server/config.js |
 | OpenVibe.Codes | CODES_FORM_SECRET | codes.env | server/config.js |
 | OpenVibe.Codes | OV_CLIENT_SECRET | **not set** | server/http/portal.js |
@@ -66,7 +67,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | GITHUB_TOKEN | **not set** | server/meta/routes.js |
 | OpenVibe.Live | INTERNAL_API_KEY | live.env | server/chat/chat-server.js, server/config.js, server/monetization/wallet-client.js +3 |
 | OpenVibe.Live | JWT_SECRET | live.env | server/arena/arena-service.js, server/config.js, server/integrations/platform-oauth.js +1 |
-| OpenVibe.Live | MEDIA_API_KEY | live.env | server/media-client.js |
+| OpenVibe.Live | MEDIA_API_KEY | live.env | server/lineage/media-source.js, server/media-client.js |
 | OpenVibe.Live | MEDIA_EVENTS_SECRET | live.env | server/media-proxy/media-events.js |
 | OpenVibe.Live | MEDIA_WEBHOOK_SECRET | live.env | server/media-proxy/webhook.js |
 | OpenVibe.Live | OPENRE_EVENTS_SECRET | live.env | server/openre/mirror.js, server/openre/routes.js |
@@ -362,6 +363,12 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Chat | BASE_URL | chat.env | server/config.js |
 | OpenVibe.Chat | CHAT_CACHE_DIR |  | server/config.js |
 | OpenVibe.Chat | CHAT_DB_PATH |  | server/config.js |
+| OpenVibe.Chat | CHAT_EVENTS_ENDPOINT |  | server/config.js |
+| OpenVibe.Chat | CHAT_EVENTS_SUBSCRIBE |  | server/config.js |
+| OpenVibe.Chat | CHAT_PREFS_CACHE_MAX |  | server/config.js |
+| OpenVibe.Chat | CHAT_PREFS_ENABLED |  | server/config.js |
+| OpenVibe.Chat | CHAT_PREFS_TIMEOUT_MS |  | server/config.js |
+| OpenVibe.Chat | CHAT_PREFS_TTL_MS |  | server/config.js |
 | OpenVibe.Chat | CHAT_VIP_BADGE_DENY_TTL_MS |  | server/config.js |
 | OpenVibe.Chat | CHAT_VIP_BADGE_TTL_MS |  | server/config.js |
 | OpenVibe.Chat | CHAT_VIP_BADGE_UNAVAILABLE_TTL_MS |  | server/config.js |
@@ -786,6 +793,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Media | MEDIA_B2_ENDPOINT | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_B2_KEY_ID | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_B2_REGION | media.env | server/vod/vod-storage.js |
+| OpenVibe.Media | MEDIA_JOBS_ENABLED |  | server/config.js |
+| OpenVibe.Media | MEDIA_JOBS_HEAVY_WHILE_RECORDING |  | server/config.js |
 | OpenVibe.Media | MEDIA_PUBLIC_URL |  | server/config.js |
 | OpenVibe.Media | MEDIA_R2_ACCESS_KEY_ID | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_R2_BUCKET | media.env | server/vod/vod-storage.js |
@@ -1040,10 +1049,12 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Tips | TIPS_JOBS |  | server/config.js |
 | OpenVibe.Tips | TIPS_JOBS_INTERVAL_MS |  | server/config.js |
 | OpenVibe.Tips | TIPS_MAX_BITS |  | server/config.js |
+| OpenVibe.Tips | TIPS_MAX_PENDING_CHECKOUTS |  | server/config.js |
 | OpenVibe.Tips | TIPS_MEDIA_HOSTS |  | server/config.js |
 | OpenVibe.Tips | TIPS_MESSAGE_CHARS |  | server/config.js |
 | OpenVibe.Tips | TIPS_MIN_CHECKOUT_BITS |  | server/config.js |
 | OpenVibe.Tips | TIPS_OVERLAY_HEARTBEAT_MS |  | server/config.js |
+| OpenVibe.Tips | TIPS_OVERLAY_MAX_STREAMS |  | server/config.js |
 | OpenVibe.Tips | TIPS_OVERLAY_REPLAY_LIMIT |  | server/config.js |
 | OpenVibe.Tips | TIPS_OVERLAY_TTL_MS |  | server/config.js |
 | OpenVibe.Tips | TIPS_POWERCHAT_LINK_TEMPLATE |  | server/config.js |
@@ -1159,11 +1170,13 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.VIP | VIP_CHECKOUT_PROVIDERS | vip.env | server/config.js |
 | OpenVibe.VIP | VIP_DB_PATH |  | server/config.js |
 | OpenVibe.VIP | VIP_JOBS |  | server/config.js |
+| OpenVibe.VIP | VIP_MEMBER_COUNT_TTL_MS |  | server/config.js |
 | OpenVibe.VIP | VIP_POWERCHAT_LINK_TEMPLATE |  | server/config.js |
 | OpenVibe.VIP | VIP_PROJECTION_GRACE_MS |  | server/config.js |
 | OpenVibe.VIP | VIP_PROJECTION_MAX_AGE_MS |  | server/config.js |
 | OpenVibe.VIP | VIP_REFRESH_INTERVAL_MS |  | server/config.js |
 | OpenVibe.VIP | VIP_STAFF_ROLES |  | server/config.js |
+| OpenVibe.VIP | VIP_WIDGET_FRAME_ANCESTORS |  | server/config.js |
 | OpenVibe.Wiki | BASE_URL | wiki.env | server/config.js |
 | OpenVibe.Wiki | COOKIE_SECURE |  | server/config.js |
 | OpenVibe.Wiki | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |

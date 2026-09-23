@@ -39,20 +39,20 @@ Deliverable 1: runtimes, ports, units, env files and repository state.
 
 | Repo | HEAD | origin/main | Source files | LOC | Test files | CI | Routes | Tables | WS servers | Timers/jobs | TODO(contract) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| OpenVibe.Live | c893c6c | c893c6c | 189 | 74113 | 78 | yes | 629 | 125 | 8 | 51 | 15 |
-| OpenVibe.Network | 9bbd90f | 9bbd90f | 67 | 14871 | 28 | yes | 247 | 43 | 0 | 6 | 0 |
-| OpenVibe.Shared | c6405d4 | c6405d4 | 45 | 10921 | 17 | yes | 3 | 0 | 0 | 6 | 0 |
-| OpenVibe.Media | 9de4b25 | 9de4b25 | 38 | 11376 | 16 | yes | 92 | 20 | 0 | 11 | 0 |
+| OpenVibe.Live | ca7cc87 | ca7cc87 | 194 | 74460 | 81 | yes | 631 | 125 | 8 | 51 | 14 |
+| OpenVibe.Network | 09bf748 | 09bf748 | 68 | 15275 | 29 | yes | 248 | 45 | 0 | 7 | 0 |
+| OpenVibe.Shared | c272680 | c272680 | 47 | 11774 | 19 | yes | 2 | 0 | 0 | 6 | 0 |
+| OpenVibe.Media | ad2217b | ad2217b | 47 | 13469 | 20 | yes | 109 | 22 | 0 | 13 | 0 |
 | OpenVibe.Tools | 5d1b423 | 5d1b423 | 130 | 22829 | 16 | yes | 118 | 3 | 0 | 16 | 0 |
-| OpenVibe.Community | 57d1dd4 | 57d1dd4 | 47 | 7885 | 25 | yes | 107 | 20 | 0 | 3 | 0 |
+| OpenVibe.Community | 63b90a8 | 63b90a8 | 47 | 7886 | 25 | yes | 107 | 20 | 0 | 3 | 0 |
 | OpenVibe.Games | 7863fc6 | 7863fc6 | 117 | 22529 | 68 | yes | 21 | 12 | 2 | 3 | 0 |
 | OpenVibe.Sites | d6e4cbd | d6e4cbd | 1 | 308 | 1 | yes | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.Events | efc09a7 | efc09a7 | 17 | 2914 | 12 | yes | 17 | 7 | 0 | 3 | 0 |
-| OpenVibe.Chat | 7897688 | 7897688 | 28 | 11140 | 16 | yes | 60 | 32 | 1 | 9 | 0 |
+| OpenVibe.Chat | ed90461 | ed90461 | 34 | 11947 | 19 | yes | 63 | 34 | 1 | 10 | 0 |
 | OpenRe.Stream | c091a09 | c091a09 | 34 | 4641 | 18 | yes | 37 | 12 | 0 | 2 | 0 |
 | OpenVibe.Billing | aa445d0 | aa445d0 | 36 | 5124 | 16 | yes | 54 | 19 | 0 | 3 | 0 |
-| OpenVibe.Tips | 9a3a186 | 9a3a186 | 26 | 4065 | 11 | yes | 45 | 14 | 0 | 3 | 0 |
-| OpenVibe.VIP | 9668a49 | 9668a49 | 27 | 3881 | 10 | yes | 40 | 13 | 0 | 2 | 0 |
+| OpenVibe.Tips | f211c03 | f211c03 | 29 | 5250 | 15 | yes | 62 | 17 | 0 | 3 | 0 |
+| OpenVibe.VIP | fe7eaad | fe7eaad | 29 | 4194 | 11 | yes | 44 | 13 | 0 | 2 | 0 |
 | OpenVibe.AI | 3a480ac | 3a480ac | 30 | 4576 | 17 | yes | 33 | 16 | 0 | 2 | 0 |
 | OpenVibe.Search | a707e38 | a707e38 | 17 | 2733 | 13 | yes | 20 | 11 | 0 | 4 | 0 |
 | OpenVibe.Sources | 2e986af | 2e986af | 23 | 2974 | 10 | yes | 17 | 8 | 0 | 4 | 0 |
@@ -64,7 +64,7 @@ Deliverable 1: runtimes, ports, units, env files and repository state.
 | OpenVibe.Coupons | 1c57c47 | 1c57c47 | 28 | 4081 | 12 | yes | 46 | 12 | 0 | 2 | 0 |
 | OpenVibe.Trade | ddbc60c | ddbc60c | 36 | 4405 | 13 | yes | 7 | 10 | 0 | 2 | 0 |
 | OpenVibe.Codes | 51d2386 | 51d2386 | 27 | 3966 | 19 | yes | 95 | 7 | 0 | 0 | 0 |
-| OpenVibe.Host | ea99b50 | ea99b50 | 55 | 8099 | 27 | yes | 56 | 11 | 0 | 1 | 0 |
+| OpenVibe.Host | 03dfcb3 | 03dfcb3 | 55 | 8099 | 27 | yes | 56 | 11 | 0 | 1 | 0 |
 | OpenVibe.Examples | d5f4efc | d5f4efc | 11 | 1604 | 14 | yes | 0 | 1 | 0 | 0 | 0 |
 
 LOC counts non-test source files in the scanned directories only (`server/`, `apps/`, `packages/`), not frontend assets.

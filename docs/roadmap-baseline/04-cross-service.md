@@ -11,7 +11,7 @@ Deliverable 3 (dependency half). A call site is a source file that makes HTTP re
 | OpenRe.Stream | OpenVibe.Network | 2 | bearer, internal-key, oauth-client |
 | OpenVibe.Blog | OpenVibe.Network | 2 | internal-key, oauth-client |
 | OpenVibe.Chat | OpenVibe.Live | 2 | service-token |
-| OpenVibe.Chat | OpenVibe.Network | 1 | oauth-client, service-token |
+| OpenVibe.Chat | OpenVibe.Network | 2 | oauth-client, service-token |
 | OpenVibe.Chat | OpenVibe.Search | 1 | none-detected |
 | OpenVibe.Community | OpenVibe.Live | 2 | bearer |
 | OpenVibe.Community | OpenVibe.Media | 1 | bearer |
@@ -62,6 +62,7 @@ Deliverable 3 (dependency half). A call site is a source file that makes HTTP re
 | Chat/server/bridge/live-mirror.js:77 | OpenVibe.Live | live.internalUrl | service-token | yes | no |
 | Chat/server/live-context.js:130 | OpenVibe.Live | live.internalUrl | service-token | yes | yes |
 | Chat/server/net/service-auth.js:5 | OpenVibe.Network | /oauth/token, networkInternalUrl, /api/.well-known/jwks, networkUrl | oauth-client, service-token | yes | no |
+| Chat/server/prefs/network-modules.js:21 | OpenVibe.Network | networkInternalUrl | service-token | yes | yes |
 | Chat/server/chat/routes.js:72 | OpenVibe.Search | searchUrl | none-detected | **no** | no |
 | Community/server/live-client.js:6 | OpenVibe.Live | liveInternalUrl | bearer | yes | no |
 | Community/server/pastes/proxy.js:26 | OpenVibe.Live | liveUrl, liveInternalUrl | bearer | yes | yes |
@@ -84,7 +85,7 @@ Deliverable 3 (dependency half). A call site is a source file that makes HTTP re
 | Live/server/comments-client.js:29 | OpenVibe.Community | OV_COMMUNITY_INTERNAL_URL, :4200, OV_COMMUNITY_URL | none-detected | yes | yes |
 | Live/server/media-proxy/pastes.js:311 | OpenVibe.Community | OV_COMMUNITY_URL | none-detected | yes | yes |
 | Live/server/pastes-client.js:16 | OpenVibe.Community | OV_COMMUNITY_INTERNAL_URL, :4200 | none-detected | yes | yes |
-| Live/server/seo/seo.js:427 | OpenVibe.Community | OV_COMMUNITY_URL | none-detected | **no** | no |
+| Live/server/seo/seo.js:432 | OpenVibe.Community | OV_COMMUNITY_URL | none-detected | **no** | no |
 | Live/server/config.js:175 | OpenVibe.Media | MEDIA_URL, :4100 | internal-key | yes | no |
 | Live/server/media-client.js:14 | OpenVibe.Media | :4100, MEDIA_URL, /api/v1/${ | api-key, bearer | yes | no |
 | Live/server/chat/chat-server.js:84 | OpenVibe.Network | OV_NETWORK_INTERNAL_URL | internal-key | **no** | no |

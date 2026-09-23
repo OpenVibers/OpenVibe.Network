@@ -8,18 +8,24 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-23 20:32 UTC compared w
 |---|---|---|---|
 | medium | deploy | ai | deployed 96dc8a3 is 1 commit(s) behind origin/main 3a480ac |
 | medium | deploy | billing | deployed c646279 is 1 commit(s) behind origin/main aa445d0 |
+| medium | deploy | chat | deployed 7897688 is 2 commit(s) behind origin/main ed90461 |
 | medium | deploy | codes | deployed d60f279 is 1 commit(s) behind origin/main 51d2386 |
+| medium | deploy | community | deployed 57d1dd4 is 1 commit(s) behind origin/main 63b90a8 |
 | medium | deploy | coupons | deployed 54df411 is 3 commit(s) behind origin/main 1c57c47 |
 | medium | deploy | deals | deployed e72aeec is 2 commit(s) behind origin/main 91ca223 |
 | medium | deploy | events | deployed 3366132 is 1 commit(s) behind origin/main efc09a7 |
 | medium | deploy | games | deployed 474df50 is 1 commit(s) behind origin/main 7863fc6 |
-| medium | deploy | host | deployed 30f08d6 is 14 commit(s) behind origin/main ea99b50 |
+| medium | deploy | host | deployed 30f08d6 is 15 commit(s) behind origin/main 03dfcb3 |
+| medium | deploy | live | deployed c893c6c is 12 commit(s) behind origin/main ca7cc87 |
+| medium | deploy | media | deployed 9de4b25 is 4 commit(s) behind origin/main ad2217b |
+| medium | deploy | network | deployed 9bbd90f is 4 commit(s) behind origin/main 09bf748 |
 | medium | deploy | news | deployed 5a17e7f is 1 commit(s) behind origin/main 5b393d2 |
 | medium | deploy | openre | deployed e0dc1b4 is 2 commit(s) behind origin/main c091a09 |
 | medium | deploy | reviews | deployed 1d462a2 is 1 commit(s) behind origin/main a7b50a6 |
 | medium | deploy | sites | deployed d3b71af is 2 commit(s) behind origin/main d6e4cbd |
-| medium | deploy | tips | deployed 15bfc12 is 1 commit(s) behind origin/main 9a3a186 |
+| medium | deploy | tips | deployed 15bfc12 is 6 commit(s) behind origin/main f211c03 |
 | medium | deploy | trade | deployed 9a55644 is 2 commit(s) behind origin/main ddbc60c |
+| medium | deploy | vip | deployed 9668a49 is 1 commit(s) behind origin/main fe7eaad |
 | medium | deploy | wiki | deployed 011a68f is 1 commit(s) behind origin/main b4e70ac |
 | low | database | /opt/openvibe.community/data/community.db | 115 KB, 9 tables, not a database the service opens (services.json): stale file or undeclared copy |
 | low | database | /opt/openvibe.games/data/legacy-import/world-before-20260923T184930Z.db | 193 KB, 13 tables, not a database the service opens (services.json): stale file or undeclared copy |
@@ -49,6 +55,7 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-23 20:32 UTC compared w
 | low | env | OpenVibe.Billing:POWERCHAT_WEBHOOK_SECRET | secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback |
 | low | env | OpenVibe.Billing:STRIPE_SECRET_KEY | secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback |
 | low | env | OpenVibe.Billing:STRIPE_WEBHOOK_SECRET | secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback |
+| low | env | OpenVibe.Chat:CHAT_EVENTS_SECRET | secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback |
 | low | env | OpenVibe.Codes:OV_CLIENT_SECRET | secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback |
 | low | env | OpenVibe.Community:DISCORD_RELAY_WEBHOOK_VARS | secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback |
 | low | env | OpenVibe.Community:VIEW_HASH_SECRET | secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback |
@@ -171,6 +178,8 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-23 20:32 UTC compared w
 | info | schema | OpenVibe.Blog:blog_term_links | in production (blog.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Blog (Prefixed stores created at runtime by openvibe-publishing (revisions, citations, schedules, redirects, index hooks).) |
 | info | schema | OpenVibe.Blog:blog_terms | in production (blog.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Blog (Prefixed stores created at runtime by openvibe-publishing (revisions, citations, schedules, redirects, index hooks).) |
 | info | schema | OpenVibe.Blog:event_outbox | in production (blog.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Blog (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.) |
+| info | schema | OpenVibe.Chat:chat_event_inbox | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Chat:deploy_releases | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Codes:event_outbox | in production (codes.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Codes (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.) |
 | info | schema | OpenVibe.Codes:trust_adr013 | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Coupons:coupons_index_revisions | in production (coupons.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Coupons (Prefixed stores created at runtime by openvibe-publishing (revisions, citations, schedules, redirects, index hooks).) |
@@ -196,6 +205,8 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-23 20:32 UTC compared w
 | info | schema | OpenVibe.Live:robotstreamer_integrations_new | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Live:stream_controls_new | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Media:event_outbox | in production (media.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Media (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.) |
+| info | schema | OpenVibe.Media:media_upload_parts | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Media:media_uploads | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Network:admin_rate_limits | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Network:analytics_daily | in production (network.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Network (Per-site analytics from openvibe-shared/analytics.js; ADR-021 (2026-09-23): no IP, user id or city stored, raw rows pruned (hazard H11).) |
 | info | schema | OpenVibe.Network:analytics_day_salts | in production (network.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Network (Per-site analytics from openvibe-shared/analytics.js; ADR-021 (2026-09-23): no IP, user id or city stored, raw rows pruned (hazard H11).) |
@@ -205,6 +216,8 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-23 20:32 UTC compared w
 | info | schema | OpenVibe.Network:analytics_visitor_days | in production (network.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Network (Per-site analytics from openvibe-shared/analytics.js; ADR-021 (2026-09-23): no IP, user id or city stored, raw rows pruned (hazard H11).) |
 | info | schema | OpenVibe.Network:network_event_inbox | in production (network.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Network (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.) |
 | info | schema | OpenVibe.Network:network_event_outbox | in production (network.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Network (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.) |
+| info | schema | OpenVibe.Network:user_module_retirements | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Network:user_module_revisions | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.News:event_outbox | in production (news.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.News (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.) |
 | info | schema | OpenVibe.News:idempotency_receipts | in production (news.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.News (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.) |
 | info | schema | OpenVibe.News:news_index_revisions | in production (news.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.News (Prefixed stores created at runtime by openvibe-publishing (revisions, citations, schedules, redirects, index hooks).) |
@@ -236,6 +249,9 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-23 20:32 UTC compared w
 | info | schema | OpenVibe.Search:fts_restricted_idx | in production (search.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Search (FTS5 shadow tables of the per-audience full-text indexes.) |
 | info | schema | OpenVibe.Tips:event_outbox | in production (tips.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Tips (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.) |
 | info | schema | OpenVibe.Tips:idempotency_receipts | in production (tips.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Tips (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.) |
+| info | schema | OpenVibe.Tips:tip_moderation_log | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Tips:tip_moderator_invites | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Tips:tip_moderators | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Tools:analytics_daily | in production (analytics.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Tools (Per-site analytics from openvibe-shared/analytics.js; ADR-021 (2026-09-23): no IP, user id or city stored, raw rows pruned (hazard H11).) |
 | info | schema | OpenVibe.Tools:analytics_day_salts | in production (analytics.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Tools (Per-site analytics from openvibe-shared/analytics.js; ADR-021 (2026-09-23): no IP, user id or city stored, raw rows pruned (hazard H11).) |
 | info | schema | OpenVibe.Tools:analytics_events | in production (analytics.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Tools (Per-site analytics from openvibe-shared/analytics.js; ADR-021 (2026-09-23): no IP, user id or city stored, raw rows pruned (hazard H11).) |

@@ -2,20 +2,20 @@
  "_about": "Generated from data/requirement-ledger.json by scripts/roadmap-baseline/generate.js. Umbrella-level ledger (roadmap §22.4/§25): one row per D01-D46 requirement, every artifact re-verified against the scanned origin/main checkouts and prod-snapshot.json. Do not edit; edit the data file and regenerate.",
  "asOf": "2026-09-23T20:30Z",
  "generatedFrom": {
-  "OpenVibe.Live": "c893c6ca709926635522bac053f52062b5d3e1ad",
-  "OpenVibe.Network": "9bbd90f786fb80b02cbf7592ff9217844a714c32",
-  "OpenVibe.Shared": "c6405d48fabede75e2a9ef417fae46d493cfb940",
-  "OpenVibe.Media": "9de4b2528dd5787e7b5633d16eed40d8b4d43b4b",
+  "OpenVibe.Live": "ca7cc87672602e35756b8b348559543efab1bc38",
+  "OpenVibe.Network": "09bf748b7f459ac127b3f4045085c20189d39dbb",
+  "OpenVibe.Shared": "c2726807c19505bc22d2bce794188a9d1516b022",
+  "OpenVibe.Media": "ad2217be56627efca799fd3ce0987d91cb6f3e24",
   "OpenVibe.Tools": "5d1b42357392d47e5cc3f6bef3f22facdc6c23cd",
-  "OpenVibe.Community": "57d1dd4cbdc79f39ae5e98cc0d09b03a75508f5d",
+  "OpenVibe.Community": "63b90a838d280aada7d6c98aee61335b972c1105",
   "OpenVibe.Games": "7863fc6a71890b264c29ddd6bfa7e4c162da4883",
   "OpenVibe.Sites": "d6e4cbd3a2091bb9970ee15504c7758da8a96a24",
   "OpenVibe.Events": "efc09a795ea0fdea9e6eca04f20cc44362b91e3f",
-  "OpenVibe.Chat": "789768806b0d217b0bc735c319d20d1b6ebb4df8",
+  "OpenVibe.Chat": "ed90461e2fd4537332275f6efec8bb878ce4ac2a",
   "OpenRe.Stream": "c091a0959a6d727ec702ee589300cd42a0902be9",
   "OpenVibe.Billing": "aa445d0c8b7351afae910b9572a2f9ae674e0914",
-  "OpenVibe.Tips": "9a3a186182df7d150780b31d191ea1eb99c95962",
-  "OpenVibe.VIP": "9668a492b8f5b6c111261cf0e4270fc4ffcf521d",
+  "OpenVibe.Tips": "f211c03ed01b58dd52d104bda8b07ce1a82da2db",
+  "OpenVibe.VIP": "fe7eaad183622f303d2ea1efde80d1674478d948",
   "OpenVibe.AI": "3a480ac9f20ca018f5c2c8973f92d32dbe1a44cd",
   "OpenVibe.Search": "a707e38f87a077bbf2f570537a89b2f890d45e22",
   "OpenVibe.Sources": "2e986af27a5554fd01803daf9e55c726deded80d",
@@ -27,7 +27,7 @@
   "OpenVibe.Coupons": "1c57c4743b016ecf6f72d8d03feb7f56806920a6",
   "OpenVibe.Trade": "ddbc60c5e2f5ab16cfd17cd126803c9c24784662",
   "OpenVibe.Codes": "51d23865f2630203cf734c019309c7ffc053f89c",
-  "OpenVibe.Host": "ea99b502c072ae6635f7705e002e0ec174cae16d",
+  "OpenVibe.Host": "03dfcb32a9fecb85d509f5d92d0a166a26d86fe7",
   "OpenVibe.Examples": "d5f4efc02165f42b9feac5d2743de6e6c75c27de"
  },
  "prodSnapshot": {
@@ -43,8 +43,8 @@
  "counts": {
   "requirements": {
    "met": 3,
-   "partial": 35,
-   "not-met": 1,
+   "partial": 36,
+   "not-met": 0,
    "blocked-on-owner": 7
   },
   "families": {
@@ -97,7 +97,7 @@
     },
     {
      "key": "contract.todo-markers",
-     "value": "Live 15, Network 0, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0, Events 0, Chat 0, OpenRe.Stream 0, Billing 0, Tips 0, VIP 0, AI 0, Search 0, Sources 0, Wiki 0, Blog 0, News 0, Reviews 0, Deals 0, Coupons 0, Trade 0, Codes 0, Host 0, Examples 0"
+     "value": "Live 14, Network 0, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0, Events 0, Chat 0, OpenRe.Stream 0, Billing 0, Tips 0, VIP 0, AI 0, Search 0, Sources 0, Wiki 0, Blog 0, News 0, Reviews 0, Deals 0, Coupons 0, Trade 0, Codes 0, Host 0, Examples 0"
     }
    ]
   },
@@ -149,7 +149,7 @@
    "metrics": [
     {
      "key": "outbound.call-sites",
-     "value": "97 caller-file/target pairs across 74 files"
+     "value": "98 caller-file/target pairs across 75 files"
     },
     {
      "key": "ws.servers",
@@ -219,7 +219,7 @@
     },
     {
      "key": "tests.OpenVibe.Chat",
-     "value": "16 test files"
+     "value": "19 test files"
     }
    ]
   },
@@ -375,7 +375,7 @@
    "metrics": [
     {
      "key": "outbound.internal-key",
-     "value": "39 of 97 call sites authenticate with the shared internal key"
+     "value": "39 of 98 call sites authenticate with the shared internal key"
     }
    ]
   },
@@ -404,11 +404,11 @@
    "metrics": [
     {
      "key": "shared.pins",
-     "value": "23 repos pin a tagged openvibe-shared release (latest v1.4.0): OpenRe.Stream v1.2.1, AI v1.3.0, Billing v1.3.0, Blog v1.3.0, Codes v1.3.0, Community v1.3.0, Coupons v1.3.0, Deals v1.3.0, Events v1.3.0, Host v1.3.0, Live v1.4.0, Media v1.3.0, Network v1.4.0, News v1.3.0, Reviews v1.3.0, Search v1.3.0, Sites v1.0.0, Sources v1.3.0, Tips v1.3.0, Tools v1.4.0, Trade v1.3.0, VIP v1.3.0, Wiki v1.3.0"
+     "value": "23 repos pin a tagged openvibe-shared release (latest v1.5.0): OpenRe.Stream v1.2.1, AI v1.3.0, Billing v1.3.0, Blog v1.3.0, Codes v1.3.0, Community v1.3.0, Coupons v1.3.0, Deals v1.3.0, Events v1.3.0, Host v1.3.0, Live v1.4.0, Media v1.3.0, Network v1.4.0, News v1.3.0, Reviews v1.3.0, Search v1.3.0, Sites v1.0.0, Sources v1.3.0, Tips v1.3.0, Tools v1.4.0, Trade v1.3.0, VIP v1.3.0, Wiki v1.3.0"
     },
     {
      "key": "shared.drift",
-     "value": "20 manifests unpinned or behind: OpenRe.Stream (v1.2.1), AI (v1.3.0), Billing (v1.3.0), Blog (v1.3.0), Codes (v1.3.0), Community (v1.3.0), Coupons (v1.3.0), Deals (v1.3.0), Events (v1.3.0), Host (v1.3.0), Media (v1.3.0), News (v1.3.0), Reviews (v1.3.0), Search (v1.3.0), Sites (v1.0.0), Sources (v1.3.0), Tips (v1.3.0), Trade (v1.3.0), VIP (v1.3.0), Wiki (v1.3.0)"
+     "value": "30 manifests unpinned or behind: OpenRe.Stream (v1.2.1), AI (v1.3.0), Billing (v1.3.0), Blog (v1.3.0), Codes (v1.3.0), Community (v1.3.0), Coupons (v1.3.0), Deals (v1.3.0), Events (v1.3.0), Host (v1.3.0), Live (v1.4.0), Media (v1.3.0), Network (v1.4.0), News (v1.3.0), Reviews (v1.3.0), Search (v1.3.0), Sites (v1.0.0), Sources (v1.3.0), Tips (v1.3.0), Tools/apps/audio (v1.4.0), Tools/apps/docs (v1.4.0), Tools/apps/food (v1.4.0), Tools/apps/gateway (v1.4.0), Tools/apps/img (v1.4.0), Tools/apps/maps (v1.4.0), Tools/apps/text (v1.4.0), Tools/apps/yt (v1.4.0), Trade (v1.3.0), VIP (v1.3.0), Wiki (v1.3.0)"
     }
    ]
   },
@@ -449,7 +449,7 @@
    "metrics": [
     {
      "key": "deploy.drift",
-     "value": "15 service(s) not running origin/main"
+     "value": "21 service(s) not running origin/main"
     }
    ]
   },
@@ -1576,41 +1576,40 @@
   {
    "id": "D20",
    "title": "Canonical resolver",
-   "owner": "none (per-product mappings in OpenVibe.Live; typed refs in OpenVibe.Contracts)",
+   "owner": "OpenVibe.Live (server/lineage/resolver.js, GET|POST /internal/lineage/resolve); contract in OpenVibe.Contracts",
    "target": "shared lineage-resolver contract",
-   "status": "not-met",
-   "summary": "No lineage-resolver contract or shared resolver exists in any repo (no 'lineage' or resolver code in Contracts, Live, Media, OpenRe or Community on origin/main, 2026-09-23). The pieces that exist are the EntityRef typed-reference schema and OpenRe stream definitions carrying external refs to Live's slot and user; in production no Live slot has an openre_stream_id and openre_sessions is empty, so VOD to channel/stream/session lineage is not recorded.",
+   "status": "partial",
+   "summary": "The lineage-resolver contract exists (openvibe-contracts v0.32.0: lineage.resolve-request@1 -> lineage.resolution@1, capability live.lineage.resolve) and is implemented once in Live, deployed 2026-09-23 21:36 UTC: it answers which channel, and whose, a slug, nested slug, channel id, stream, slot, VOD, clip, Media object, owner subject or legacy id belongs to, in the roadmap's precedence, with explicit unresolved states (conflict, source_unavailable, display_name_only, not_found) and never from a display name; VODs, clips and objects come from Media. Live's clip owner check uses it. No other service calls it yet (no principal holds live.lineage.resolve), OpenRe sessions record no lineage, and Media objects still lack owner_subject.",
    "artifacts": [
     {
      "kind": "doc",
      "repo": "OpenVibe.Contracts",
-     "path": "contracts/common/entity-ref.v1.json",
-     "contains": "Typed reference to another service's entity",
-     "proves": "only a typed-reference schema is shared; it carries no resolution rules or lineage",
+     "path": "contracts/lineage/resolve-request.v1.json",
+     "contains": "LineageResolveRequest",
+     "proves": "the shared resolver contract (inputs) is published in v0.32.0",
      "ok": true
     },
     {
      "kind": "test",
      "repo": "OpenVibe.Live",
-     "path": "test/openre-switch.test.js",
-     "contains": "['live:managed_stream:701', 'live:user:601']",
-     "proves": "an OpenRe definition records typed refs back to Live's slot and owner: one lineage input, not a shared resolver",
+     "path": "test/lineage-resolver.test.js",
+     "contains": "expectUnresolved({ display_name: 'alice' }, 'display_name_only')",
+     "proves": "the resolver never derives ownership from a display name, even one equal to a username; every answer is validated against lineage.resolution@1",
      "ok": true
     },
     {
      "kind": "prod",
-     "check": "ssh openvibe-ovh 'sudo -n -u \"$(stat -c %U /opt/openvibe.live/data/live.db)\" sqlite3 -readonly /opt/openvibe.live/data/live.db \"SELECT count(*), sum(openre_stream_id IS NOT NULL) FROM managed_streams; SELECT count(*) FROM openre_sessions;\"'",
-     "observed": "102|0; 0",
-     "at": "2026-09-23T20:18Z",
-     "proves": "no stream/session lineage exists in production to resolve against",
+     "check": "ssh openvibe-ovh 'curl -s -o /dev/null -w \"%{http_code}\" \"http://127.0.0.1:3000/internal/lineage/resolve?slug=goosely\"'",
+     "observed": "401",
+     "at": "2026-09-23T21:37Z",
+     "proves": "the resolver is deployed on production behind a service token (loopback only; 403 through nginx)",
      "ok": true
     }
    ],
    "remaining": [
-    "Write the lineage-resolver contract in OpenVibe.Contracts (inputs: explicit slug, nested/parent slug, channel id, stream lookup, VOD parent, media lineage, owner subject, legacy metadata and maps; output includes an explicit unresolved state)",
-    "Implement it once and use it from channel, stream, VOD, clip, Pulse and creator UI; never derive ownership from a display name",
-    "Record VOD/clip lineage to channel, stream and OpenRe session (roadmap §20 'VOD lineage maps back to the canonical channel, stream and session') with a test that an unresolvable item returns unresolved",
-    "Backfill Media owner_subject so the resolver has a subject for every object"
+    "Grant live.lineage.resolve to the consumers (OpenRe, Media, Pulse, creator UI) once their contracts pin is 0.32.0+, and switch their per-product channel mappings to the resolver",
+    "Record VOD/clip lineage to OpenRe session (roadmap §20 'VOD lineage maps back to the canonical channel, stream and session'); no OpenRe session exists in production yet",
+    "Backfill Media owner_subject so the resolver has a subject for every object (Live now knows the subject of all 328 linked accounts)"
    ],
    "blockedOn": null,
    "ownerReview": false,
