@@ -93,6 +93,8 @@ const DEFAULT_GRANTS = [
     ['coupons', 'events.event.publish', 'openvibe.events', []],
     ['coupons', 'sources.item.read', 'openvibe.sources', []],
     ['host', 'events.event.publish', 'openvibe.events', []],
+    // Wave 20: the Codes portal relays its release events.
+    ['codes', 'events.event.publish', 'openvibe.events', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
     ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
     // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
