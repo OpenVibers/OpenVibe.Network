@@ -334,6 +334,9 @@ router.post('/refresh', (req, res) => {
         }
     }
 
+    // A FedCM assertion or a service/app token is not a session to refresh.
+    if (!require('./session').isUserSessionClaims(decoded)) return res.status(401).json({ error: 'Invalid token' });
+
     // Verify user still exists and is valid
     const db = getDb(req);
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.sub || decoded.id);

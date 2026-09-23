@@ -31,6 +31,11 @@ function verifierMatches(verifier, challenge) {
     const a = Buffer.from(digest); const b = Buffer.from(String(challenge));
     return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
+function sameSecret(a, b) {
+    const x = Buffer.from(String(a || ''));
+    const y = Buffer.from(String(b || ''));
+    return x.length === y.length && x.length > 0 && crypto.timingSafeEqual(x, y);
+}
 function issueCode(db, { clientId, userId, redirectUri, scope, pkce }) {
     const code = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
@@ -142,20 +147,17 @@ router.post('/confirm', (req, res) => {
         if (pkce.error) return res.status(400).json({ error: 'invalid_request', error_description: pkce.error });
     }
 
-    // Verify the token
-    const publicKey = req.app.locals.publicKey;
-    const algorithm = publicKey.includes('BEGIN') ? 'RS256' : 'HS256';
-    let decoded;
-    try {
-        decoded = jwt.verify(token, publicKey, { algorithms: [algorithm], issuer: config.jwt.issuer });
-    } catch {
+    // Verify the token as a live, unexpired session: not revoked by a password change
+    // (token_valid_after), not a FedCM assertion or a service/app token.
+    const out = require('./session').verifySession(String(token), { db, publicKey: req.app.locals.publicKey, config });
+    if (out.error) {
+        if (out.status === 403 || out.error === 'User not found') return res.status(403).json({ error: 'User not found or banned' });
         return res.status(401).json({ error: 'Invalid or expired token' });
     }
-
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.sub || decoded.id);
-    if (!user || user.is_banned) {
-        return res.status(403).json({ error: 'User not found or banned' });
+    if (typeof out.decoded.exp !== 'number' || out.decoded.exp * 1000 < Date.now()) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
     }
+    const user = out.user;
 
     if (devApp) {
         const out = devTokens.issueCode(db, { app: devApp.app, project: devApp.project, user, redirectUri: redirect_uri, scope, challenge: String(req.body.code_challenge) });
@@ -202,7 +204,7 @@ router.post('/token', (req, res) => {
 
     // Validate client credentials
     const client = db.prepare('SELECT * FROM oauth_clients WHERE client_id = ?').get(client_id);
-    if (!client || client.client_secret !== client_secret) {
+    if (!client || !sameSecret(client.client_secret, client_secret)) {
         return res.status(401).json({ error: 'invalid_client', error_description: 'Invalid client credentials' });
     }
 
@@ -321,12 +323,21 @@ function handleRefreshGrant(db, config, req, res, client, refreshToken) {
     const expiresAt = new Date(stored.expires_at + (stored.expires_at.includes('Z') ? '' : 'Z'));
     if (now > expiresAt) return res.status(400).json({ error: 'invalid_grant', error_description: 'Refresh token expired' });
 
-    // Revoke old refresh token (rotation)
-    db.prepare('UPDATE oauth_tokens SET revoked = 1 WHERE id = ?').run(stored.id);
+    // Revoke old refresh token (rotation), atomically: two concurrent uses cannot both succeed
+    if (db.prepare('UPDATE oauth_tokens SET revoked = 1 WHERE id = ? AND revoked = 0').run(stored.id).changes !== 1) {
+        return res.status(400).json({ error: 'invalid_grant', error_description: 'Refresh token revoked' });
+    }
 
     // Get user
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(stored.user_id);
     if (!user || user.is_banned) return res.status(400).json({ error: 'invalid_grant', error_description: 'User not found or banned' });
+    // A password change/reset (token_valid_after) ends every refresh token issued before it.
+    if (user.token_valid_after && stored.created_at) {
+        const at = (v) => new Date(String(v).replace(' ', 'T') + (String(v).includes('Z') ? '' : 'Z')).getTime();
+        if (at(stored.created_at) < at(user.token_valid_after)) {
+            return res.status(400).json({ error: 'invalid_grant', error_description: 'Refresh token revoked' });
+        }
+    }
 
     // Issue new token pair
     const { accessToken, refreshToken: newRefresh } = issueTokenPair(db, config, req, user, client);

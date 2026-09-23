@@ -77,6 +77,8 @@ router.post('/verify-token', (req, res) => {
             algorithms: [algorithm],
             issuer: config.jwt.issuer
         });
+        // A FedCM assertion or a service/app token (same signing key) is not a user token.
+        if (!require('../auth/session').isUserSessionClaims(decoded)) return res.json({ valid: false, error: 'not a user token' });
         const db = getDb(req);
         const user = db.prepare('SELECT id, username, display_name, role, avatar_url, profile_color AS color FROM users WHERE id = ?').get(decoded.sub || decoded.id);
         res.json({ valid: true, decoded, user: user || null });

@@ -13,6 +13,11 @@ const jwt = require('jsonwebtoken');
 
 const GRACE_MS = 60 * 24 * 60 * 60 * 1000;      // renewable for 60 days after the token's exp
 
+/** Claims of a user session token, as opposed to a FedCM assertion or a service/app token. */
+function isUserSessionClaims(decoded) {
+    return !!decoded && typeof decoded === 'object' && decoded.typ === undefined && decoded.actor_type === undefined;
+}
+
 function verifySession(token, { db, publicKey, config }) {
     if (!token) return { error: 'Authentication required', status: 401 };
     const algorithm = publicKey.includes('BEGIN') ? 'RS256' : 'HS256';
@@ -28,6 +33,9 @@ function verifySession(token, { db, publicKey, config }) {
             return { error: 'Invalid or expired token', status: 401 };
         }
     }
+    // Same signing key, different token kinds: a FedCM assertion (minted for one RP origin, to be
+    // exchanged by that RP's server) and service/app tokens are never a person's session.
+    if (!isUserSessionClaims(decoded)) return { error: 'Invalid token', status: 401 };
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.sub || decoded.id);
     if (!user) return { error: 'User not found', status: 401 };
     if (user.is_banned) return { error: 'Account banned', status: 403, ban_reason: user.ban_reason };
@@ -93,4 +101,4 @@ function makeRequireAuth(getCtx, signToken) {
     };
 }
 
-module.exports = { verifySession, makeRequireAuth, GRACE_MS, COOKIE, SSO_COOKIE, setSessionCookies, clearSessionCookies, requestToken };
+module.exports = { verifySession, isUserSessionClaims, makeRequireAuth, GRACE_MS, COOKIE, SSO_COOKIE, setSessionCookies, clearSessionCookies, requestToken };
