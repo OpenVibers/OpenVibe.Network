@@ -650,6 +650,8 @@ async function selectAccount(account) {
                     redirect_uri: params.get('redirect_uri'),
                     scope: params.get('scope') || 'profile theme',
                     state: params.get('state') || '',
+                    code_challenge: params.get('code_challenge') || undefined,
+                    code_challenge_method: params.get('code_challenge_method') || undefined,
                 }),
             });
             const data = await res.json();
@@ -783,6 +785,8 @@ async function handleLogin(e) {
                     redirect_uri: params.get('redirect_uri'),
                     scope: params.get('scope') || 'profile theme',
                     state: params.get('state') || '',
+                    code_challenge: params.get('code_challenge') || undefined,
+                    code_challenge_method: params.get('code_challenge_method') || undefined,
                 }),
             });
             const confirmData = await confirmRes.json();
@@ -862,6 +866,8 @@ async function handleRegister(e) {
                     redirect_uri: params.get('redirect_uri'),
                     scope: params.get('scope') || 'profile theme',
                     state: params.get('state') || '',
+                    code_challenge: params.get('code_challenge') || undefined,
+                    code_challenge_method: params.get('code_challenge_method') || undefined,
                 }),
             });
             const confirmData = await confirmRes.json();

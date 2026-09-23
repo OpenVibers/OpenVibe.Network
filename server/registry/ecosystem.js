@@ -26,7 +26,7 @@ const contractsPkg = require('openvibe-contracts/package.json');
 const INTERNAL = {
     network: 'http://127.0.0.1:4000', live: 'http://127.0.0.1:3000', media: 'http://127.0.0.1:4100',
     tools: 'http://127.0.0.1:4001', games: 'http://127.0.0.1:8000', community: 'http://127.0.0.1:4200',
-    events: 'http://127.0.0.1:4300',
+    events: 'http://127.0.0.1:4300', billing: 'http://127.0.0.1:4600',
 };
 const POLL_MS = 60 * 1000;
 

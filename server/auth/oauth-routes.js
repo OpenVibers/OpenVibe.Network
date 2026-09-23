@@ -13,6 +13,31 @@ const principals = require('../identity/principals');
 const router = express.Router();
 
 function getDb(req) { return req.app.locals.db; }
+
+// PKCE (RFC 7636). S256 only: a `plain` challenge protects nothing once the authorize URL leaks.
+const PKCE_RE = /^[A-Za-z0-9_-]{43,128}$/;
+function readChallenge(src) {
+    const challenge = src.code_challenge ? String(src.code_challenge) : null;
+    const method = src.code_challenge_method ? String(src.code_challenge_method) : (challenge ? 'plain' : null);
+    if (!challenge) return { challenge: null, method: null };
+    if (method !== 'S256') return { error: 'code_challenge_method must be S256' };
+    if (!PKCE_RE.test(challenge)) return { error: 'malformed code_challenge' };
+    return { challenge, method };
+}
+function verifierMatches(verifier, challenge) {
+    if (!PKCE_RE.test(String(verifier || ''))) return false;
+    const digest = crypto.createHash('sha256').update(String(verifier)).digest('base64url');
+    const a = Buffer.from(digest); const b = Buffer.from(String(challenge));
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+function issueCode(db, { clientId, userId, redirectUri, scope, pkce }) {
+    const code = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    db.prepare(`INSERT INTO oauth_codes (code, client_id, user_id, redirect_uri, scope, expires_at, code_challenge, code_challenge_method)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(code, clientId, userId, redirectUri, scope || 'profile theme', expiresAt, pkce.challenge, pkce.method);
+    return code;
+}
+const withCode = (redirectUri, code, state) => `${redirectUri}${redirectUri.includes('?') ? '&' : '?'}code=${code}&state=${encodeURIComponent(state || '')}`;
 function getConfig(req) { return req.app.locals.config; }
 
 // ── GET /authorize ───────────────────────────────────────────
@@ -39,6 +64,8 @@ router.get('/authorize', (req, res) => {
     if (!allowedUris.some(u => u.toLowerCase() === uriLower)) {
         return res.status(400).json({ error: 'Invalid redirect_uri' });
     }
+    const pkce = readChallenge(req.query);
+    if (pkce.error) return res.status(400).json({ error: 'invalid_request', error_description: pkce.error });
 
     // prompt=none (silent SSO from an app whose own session lapsed): if this browser still has a
     // live/renewable openvibe.network session, continue as that account with no chooser. With no
@@ -52,14 +79,11 @@ router.get('/authorize', (req, res) => {
             if (!out.error) {
                 const token = out.renew ? require('./routes').signToken(out.user, req.app.locals.privateKey, getConfig(req)) : have;
                 setSessionCookies(res, token);
-                const code = crypto.randomBytes(32).toString('hex');
-                const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-                db.prepare(`INSERT INTO oauth_codes (code, client_id, user_id, redirect_uri, scope, expires_at) VALUES (?, ?, ?, ?, ?, ?)`)
-                    .run(code, client_id, out.user.id, redirect_uri, scope || 'profile theme', expiresAt);
-                return res.redirect(`${redirect_uri}${sep}code=${code}&state=${state || ''}`);
+                const code = issueCode(db, { clientId: client_id, userId: out.user.id, redirectUri: redirect_uri, scope, pkce });
+                return res.redirect(withCode(redirect_uri, code, state));
             }
         } catch { /* fall through */ }
-        return res.redirect(`${redirect_uri}${sep}error=login_required&state=${state || ''}`);
+        return res.redirect(`${redirect_uri}${sep}error=login_required&state=${encodeURIComponent(state || '')}`);
     }
     // Otherwise the account chooser — the user picks which account to continue with
     const loginParams = new URLSearchParams({
@@ -70,6 +94,7 @@ router.get('/authorize', (req, res) => {
         scope: scope || 'profile theme',
         state: state || '',
     });
+    if (pkce.challenge) { loginParams.set('code_challenge', pkce.challenge); loginParams.set('code_challenge_method', pkce.method); }
     res.redirect(`${getConfig(req).loginUrl}/login?${loginParams.toString()}`);
 });
 
@@ -95,6 +120,8 @@ router.post('/confirm', (req, res) => {
     if (!allowedUris.some(u => u.toLowerCase() === uriLower)) {
         return res.status(400).json({ error: 'Invalid redirect_uri' });
     }
+    const pkce = readChallenge(req.body);
+    if (pkce.error) return res.status(400).json({ error: 'invalid_request', error_description: pkce.error });
 
     // Verify the token
     const publicKey = req.app.locals.publicKey;
@@ -111,20 +138,14 @@ router.post('/confirm', (req, res) => {
         return res.status(403).json({ error: 'User not found or banned' });
     }
 
-    // Issue authorization code
-    const code = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-    db.prepare(`
-        INSERT INTO oauth_codes (code, client_id, user_id, redirect_uri, scope, expires_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-    `).run(code, client_id, user.id, redirect_uri, scope || 'profile theme', expiresAt);
+    // Issue authorization code (bound to the PKCE challenge when the client sent one)
+    const code = issueCode(db, { clientId: client_id, userId: user.id, redirectUri: redirect_uri, scope, pkce });
 
     // Also set cookie to this account so openvibe.network itself knows the active session.
     // Host-only (NO Domain attribute) — the ov_token cookie belongs to openvibe.network alone.
     require('./session').setSessionCookies(res, token);
 
-    const sep = redirect_uri.includes('?') ? '&' : '?';
-    res.json({ redirect: `${redirect_uri}${sep}code=${code}&state=${state || ''}` });
+    res.json({ redirect: withCode(redirect_uri, code, state) });
 });
 
 // ── POST /token ──────────────────────────────────────────────
@@ -153,7 +174,7 @@ router.post('/token', (req, res) => {
     }
 
     if (grant_type === 'authorization_code') {
-        return handleAuthCodeGrant(db, config, req, res, client, code, redirect_uri);
+        return handleAuthCodeGrant(db, config, req, res, client, code, redirect_uri, req.body.code_verifier);
     } else if (grant_type === 'refresh_token') {
         return handleRefreshGrant(db, config, req, res, client, refresh_token);
     } else if (grant_type === 'urn:ietf:params:oauth:grant-type:jwt-bearer') {
@@ -183,7 +204,7 @@ function recordLinkedService(db, user, client) {
     } catch (err) { console.warn('[OAuth] linked service record failed:', err.message); }
 }
 
-function handleAuthCodeGrant(db, config, req, res, client, code, redirectUri) {
+function handleAuthCodeGrant(db, config, req, res, client, code, redirectUri, codeVerifier) {
     if (!code) return res.status(400).json({ error: 'invalid_request', error_description: 'Missing code' });
 
     const authCode = db.prepare('SELECT * FROM oauth_codes WHERE code = ?').get(code);
@@ -196,8 +217,16 @@ function handleAuthCodeGrant(db, config, req, res, client, code, redirectUri) {
     const expiresAt = new Date(authCode.expires_at + (authCode.expires_at.includes('Z') ? '' : 'Z'));
     if (now > expiresAt) return res.status(400).json({ error: 'invalid_grant', error_description: 'Authorization code expired' });
 
-    // Mark code as used
-    db.prepare('UPDATE oauth_codes SET used = 1 WHERE code = ?').run(code);
+    // A code bound to a PKCE challenge is only redeemable with the matching verifier.
+    if (authCode.code_challenge && !verifierMatches(codeVerifier, authCode.code_challenge)) {
+        db.prepare('UPDATE oauth_codes SET used = 1 WHERE code = ?').run(code);
+        return res.status(400).json({ error: 'invalid_grant', error_description: 'PKCE verification failed' });
+    }
+
+    // Mark code as used (atomically: two concurrent exchanges of one code cannot both succeed)
+    if (db.prepare('UPDATE oauth_codes SET used = 1 WHERE code = ? AND used = 0').run(code).changes !== 1) {
+        return res.status(400).json({ error: 'invalid_grant', error_description: 'Code already used' });
+    }
 
     // Get user
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(authCode.user_id);
@@ -329,6 +358,7 @@ router.get('/.well-known/openid-configuration', (req, res) => {
         id_token_signing_alg_values_supported: ['RS256'],
         scopes_supported: ['profile', 'theme', 'openid'],
         token_endpoint_auth_methods_supported: ['client_secret_post'],
+        code_challenge_methods_supported: ['S256'],
     });
 });
 
