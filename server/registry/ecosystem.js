@@ -54,7 +54,9 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
     function start() {
         if (timer) return;
         const loop = async () => { try { await pollAll(); } catch { /* one bad poll never stops the loop */ } timer = setTimeout(loop, pollMs); if (timer.unref) timer.unref(); };
-        loop();
+        // First poll a few seconds in: this process is one of the services it checks, and it is not listening yet.
+        timer = setTimeout(loop, 5000);
+        if (timer.unref) timer.unref();
     }
     function stop() { if (timer) clearTimeout(timer); timer = null; }
 
