@@ -57,7 +57,7 @@ function requireInternalKey(req, res, next) {
 }
 const principals = require('../identity/principals');
 const TOKEN_ROUTES = new Set(['GET /identity/resolve', 'POST /identity/resolve-batch', 'POST /coins/credit', 'POST /coins/debit', 'POST /coins/transfer', 'POST /notifications/push', 'POST /notifications/push-bulk', 'POST /events/stream-live']);
-const TOKEN_ROUTE_PATTERNS = [/^(GET|PUT) \/modules\/[a-z0-9_.]+\/[A-Za-z0-9_]+$/];
+const TOKEN_ROUTE_PATTERNS = [/^(GET|PUT|DELETE) \/modules\/[a-z0-9_.]+\/[A-Za-z0-9_]+$/];
 const forApp = (req) => (req.body && req.body.app_id !== undefined ? String(req.body.app_id) : undefined);
 const forService = (req) => (req.body && req.body.service !== undefined ? String(req.body.service) : undefined);
 

@@ -23,10 +23,31 @@ const { createEventsClient, createOutbox } = require('openvibe-sdk/events');
 const TABLE = 'network_event_outbox';
 const TOKEN_TTL_S = 300;
 const outboxes = new WeakMap();   // db -> outbox, only while the relay is configured
+const passives = new WeakMap();   // db -> outbox that only writes rows (never started)
 
 /** The outbox registered for this database, or null (relay off). store.audit() enqueues into it. */
 function outboxFor(db) {
     return outboxes.get(db) || null;
+}
+
+/**
+ * An outbox to enqueue into whether or not this process relays: the running relay's, else a passive
+ * one on the same table that is never started. Rows written while the relay is off (OV_EVENTS_INTERNAL_URL
+ * unset, or a script beside the server) wait in network_event_outbox; whichever process relays sends them,
+ * the server within its next poll. Used by events that have no other durable record to backfill from
+ * (user modules: server/identity/module-events.js); dev_audit events keep their backfill.
+ */
+function writerFor(db) {
+    const live = outboxes.get(db);
+    if (live) return live;
+    let p = passives.get(db);
+    if (!p) {
+        const events = createEventsClient(createClient({ network: 'https://openvibe.network', baseUrls: { events: 'http://127.0.0.1:1' } }), { source: 'network' });
+        p = createOutbox(db, { events, table: TABLE });
+        p.ensureSchema();
+        passives.set(db, p);
+    }
+    return p;
 }
 
 /** A self-signed Network service token for publishing to Events, cached until a minute before exp. */
@@ -100,4 +121,4 @@ function stopRelay(db) {
     return outbox ? outbox.stop() : Promise.resolve();
 }
 
-module.exports = { startRelay, stopRelay, outboxFor, backfill, createSelfTokenSource, TABLE };
+module.exports = { startRelay, stopRelay, outboxFor, writerFor, backfill, createSelfTokenSource, TABLE };

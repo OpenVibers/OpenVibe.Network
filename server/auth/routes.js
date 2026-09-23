@@ -627,9 +627,15 @@ router.post('/anon/:token/link', requireAuth, (req, res) => {
     const anon = db.prepare('SELECT * FROM anon_users WHERE session_token = ?').get(req.params.token);
     if (!anon) return res.status(404).json({ error: 'Anonymous session not found' });
 
-    // Store anon number on the user for reference
-    db.prepare('UPDATE users SET anon_number = ? WHERE id = ? AND anon_number IS NULL')
-        .run(anon.anon_number, req.user.id);
+    const userSubject = subjects.ensureUserSubject(db, req.user);
+    db.transaction(() => {
+        // Store anon number on the user for reference
+        db.prepare('UPDATE users SET anon_number = ? WHERE id = ? AND anon_number IS NULL')
+            .run(anon.anon_number, req.user.id);
+        // The guest's user modules (portable preferences) move to the account; where the account already
+        // has a record in a namespace, the account's is kept (server/identity/modules.js onSubjectMerged).
+        if (anon.subject_id && userSubject) require('../identity/modules').onSubjectMerged(db, { from: anon.subject_id, into: userSubject });
+    })();
 
     console.log(`[Auth] Linked anon #${anon.anon_number} → user ${req.user.username}`);
     res.json({ ok: true, anon_number: anon.anon_number });

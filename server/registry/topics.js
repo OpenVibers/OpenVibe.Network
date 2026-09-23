@@ -27,6 +27,10 @@ const OBSERVED = {
         produced: ['media.vod.ready', 'media.vod.failed', 'media.clip.ready', 'media.clip.failed', 'media.object.uploaded', 'media.storage.alert', 'media.storage.recovered'],
         source: 'OpenVibe.Media server/events.js TYPES (event_outbox, visibility internal)',
     },
+    network: {
+        produced: ['network.module.updated'],
+        source: 'OpenVibe.Network server/identity/module-events.js (network_event_outbox, visibility internal)',
+    },
 };
 
 const SEGMENT = /^[a-z0-9_]+$/;
@@ -54,7 +58,8 @@ function eventsOf(m, { consumedByNetwork = networkConsumed() } = {}) {
     const addP = o ? o.produced.filter(t => !produced.includes(t)) : [];
     const addC = m.id === 'network' ? consumedByNetwork.filter(t => !consumed.includes(t)) : [];
     const observed = addP.length || addC.length
-        ? { ...(addP.length ? { eventsProduced: addP } : {}), ...(addC.length ? { eventsConsumed: addC } : {}), source: addC.length && !addP.length ? 'OpenVibe.Network server/notifications/events-consumer.js TOPICS' : o.source }
+        ? { ...(addP.length ? { eventsProduced: addP } : {}), ...(addC.length ? { eventsConsumed: addC } : {}),
+            source: [addP.length ? o.source : null, addC.length ? 'OpenVibe.Network server/notifications/events-consumer.js TOPICS' : null].filter(Boolean).join('; ') }
         : null;
     return { eventsProduced: uniq([...produced, ...addP]), eventsConsumed: uniq([...consumed, ...addC]), observed };
 }

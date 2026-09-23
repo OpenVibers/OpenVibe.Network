@@ -19,6 +19,7 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 - **Developer projects (foundation)** — projects, members, apps (OAuth clients with `app_` subjects), hashed client secrets with rotation and revocation, capability grants within a staff-set allowance (sandbox apps also get a default sandbox allowance of public Media, Events-app and Tools-job capabilities, so a new project works without staff), recorded quotas and an append-only audit at `/api/v1/projects`. Its events can be relayed to OpenVibe.Events through an outbox when `OV_EVENTS_INTERNAL_URL` is set. Bearer user tokens only; no portal UI yet (that is OpenVibe.Codes). See [docs/developer-projects.md](docs/developer-projects.md).
 - **Public discovery** — `/.well-known/openvibe`, `/api/v1/registry/*` and `/contracts/*.json` (services, capabilities, contract schemas) answer any origin with `Access-Control-Allow-Origin: *`, preflight included, so a browser app can discover the platform directly. Every other route keeps the first-party CORS allow-list (`server/public-cors.js`).
 - **OpenCoins Wallet** — Network-wide currency. User balance/history at `/api/coins/*`; atomic credit/debit/transfer for services at `/internal/coins/*` with idempotency-key dedupe.
+- **User modules** — versioned per-person preferences and summaries in namespaces owned by services (openvibe-contracts `manifests/namespaces`); see [User modules](#user-modules).
 
 ---
 
@@ -276,7 +277,7 @@ Anonymous users can browse and interact without creating an account:
 - Each anon user gets a unique number (e.g., "Anonymous #42")
 - Stats and preferences are tracked via a session token
 - Fingerprint matching reconnects returning anonymous visitors
-- Anon identities can be linked to a registered account at any time, merging stats
+- Anon identities can be linked to a registered account at any time, merging stats; the guest's user modules move to the account (the account's own record wins in a namespace where it has one)
 - Multi-account switcher includes a "Continue as Anonymous" option
 
 ### API
@@ -285,6 +286,28 @@ Anonymous users can browse and interact without creating an account:
 - `GET /api/auth/anon/:token` — get anon user info
 - `PUT /api/auth/anon/:token/preferences` — update anon preferences
 - `POST /api/auth/anon/:token/link` — link anon identity to registered account
+
+---
+
+## User modules
+
+One JSON record per (person, namespace), for portable preferences and summaries (never domain truth).
+Namespaces, schemas, writers, public fields and quotas come from openvibe-contracts
+(`manifests/namespaces`); `server/identity/modules.js` enforces them.
+
+- People: `GET /api/modules` (export), `GET|PUT|DELETE /api/modules/:ns` (`If-Match: <revision>` on PUT).
+  Anyone: `GET /api/modules/:ns/public/:subject` (public fields only).
+- Services: `GET|PUT|DELETE /internal/modules/:ns/:subject`, service token only (`network.modules.read` /
+  `network.modules.write` with the namespace in the grant); only the namespace's owner writes.
+  `chat.preferences` is owned by Chat since the Wave 6 cutover (`OWNER_HANDOFFS`, until Contracts says so).
+- Every change emits `network.module.updated` through `network_event_outbox` (relayed to OpenVibe.Events
+  when `OV_EVENTS_INTERNAL_URL` is set; rows wait there otherwise). The payload names the owner subject,
+  namespace, schema version, revision, change, reason and the changed keys; values only for fields the
+  namespace declares public. Revisions only grow for a (person, namespace), deletes included.
+- Accounts: `onSubjectRemoved` / `onSubjectMerged` delete or re-key a subject's records with events; triggers
+  refuse deleting a `users`/`anon_users` row, or changing its `subject_id`, while records remain.
+- Owning service retired (its manifest `status: retired`): the namespace turns read-only;
+  `delete-after-retention` namespaces are emptied `retentionDays` after Network first saw it (daily sweep).
 
 ---
 
@@ -472,6 +495,8 @@ Accessible to users with `role = 'admin'`. All endpoints under `/api/admin/`.
 | `dev_grants`, `dev_quotas` | App capability grants; per-project quotas (enforced by the owning service) |
 | `dev_audit` | Append-only developer audit; rows that are platform events carry an event envelope |
 | `analytics_events`, `analytics_hourly`, `analytics_daily` | Request analytics (raw ≤ 30 days) and rollups, within ADR-021; see [Analytics](#analytics-adr-021) |
+| `user_modules`, `user_module_revisions`, `user_module_retirements` | User-module records, the last revision issued per (subject, namespace), retired namespace owners |
+| `network_event_outbox` | Network's events on their way to OpenVibe.Events (developer projects, user modules) |
 | `analytics_visitor_days`, `analytics_day_salts` | The current day's salted visitor hashes and salt, deleted after the day's final rollup |
 
 ---

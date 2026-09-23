@@ -728,6 +728,17 @@ app.listen(config.port, config.host, () => {
     // bounded batches; hourly/daily rollups stay. First run 5 minutes after boot, then every 24 h.
     networkAnalytics.schedulePrune(analytics);
 
+    // User modules of a retired owning service (onOwnerRemoved, server/identity/modules.js): writes stop at
+    // once; delete-after-retention records go retentionDays after Network first saw the retirement.
+    const sweepModules = () => {
+        try {
+            const n = require('./identity/modules').sweepRetired(db);
+            if (n) console.log(`[Modules] Deleted ${n} record(s) of retired namespace owners`);
+        } catch (e) { console.warn('[Modules] retired-owner sweep:', e.message); }
+    };
+    setTimeout(sweepModules, 5 * 60 * 1000);
+    setInterval(sweepModules, 24 * 60 * 60 * 1000);
+
     // Clean expired sessions daily
     setInterval(() => {
         const cleaned = db.prepare("DELETE FROM user_sessions WHERE expires_at < datetime('now') OR is_active = 0").run().changes;

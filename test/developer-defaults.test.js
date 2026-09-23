@@ -202,7 +202,8 @@ async function withoutCatalog(hidden, fn) {
     // ── Relay off: nothing is sent ──
     assert.strictEqual(relay.startRelay(db, { eventsUrl: '', privateKey: keys.privateKey, issuer: ISSUER, fetch: () => { throw new Error('no fetch when off'); } }), null);
     assert.strictEqual(relay.outboxFor(db), null);
-    assert.strictEqual(db.prepare("SELECT name FROM sqlite_master WHERE name = 'network_event_outbox'").get(), undefined);
+    // (The table itself exists from boot: user modules write their events into it whether or not a relay runs.)
+    assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM network_event_outbox').get().n, 0, 'nothing queued while the relay is off');
 
     // ── Relay on: a fake Events receives every envelope once, in order, with a Network service token ──
     const received = [];

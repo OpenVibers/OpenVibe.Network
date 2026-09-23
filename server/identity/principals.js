@@ -22,8 +22,11 @@ const DEFAULT_GRANTS = [
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],
     ['live', 'network.notifications.push', SELF_AUDIENCE, ['live']],
     // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
+    // chat.preferences moved to Chat with the Wave 6 cutover (modules.js OWNER_HANDOFFS); Live keeps reading it.
     ['live', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile']],
-    ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile']],
+    ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.tts_defaults', 'live.profile']],
+    ['chat', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences']],
+    ['chat', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences']],
     ['tools', 'network.modules.read', SELF_AUDIENCE, ['tools.usage']],
     ['tools', 'network.modules.write', SELF_AUDIENCE, ['tools.usage']],
     ['games', 'network.modules.read', SELF_AUDIENCE, ['games.progress.summary']],
@@ -146,6 +149,13 @@ const DEFAULT_GRANTS = [
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
 const REVOKED_GRANTS = [['live', 'network.coins.transfer', SELF_AUDIENCE]];
 
+// Default grants whose namespaces changed: a row still exactly as the old default seeded it is moved to
+// the new list at boot (a row someone edited is left alone). Live's write grant lost chat.preferences
+// when the namespace moved to Chat (Wave 6).
+const CHANGED_DEFAULT_NAMESPACES = [
+    ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile'], ['chat.tts_defaults', 'live.profile']],
+];
+
 function ensureSchema(db) {
     db.exec(`
         CREATE TABLE IF NOT EXISTS principal_grants (
@@ -174,6 +184,10 @@ function ensureSchema(db) {
     // ADR-012 rule 5: loyalty is not transferable between people, so nobody holds the transfer grant.
     for (const [client, cap, aud] of REVOKED_GRANTS) {
         db.prepare("UPDATE principal_grants SET revoked_at = CURRENT_TIMESTAMP WHERE client_id = ? AND capability = ? AND audience = ? AND revoked_at IS NULL").run(client, cap, aud);
+    }
+    for (const [client, cap, aud, was, now] of CHANGED_DEFAULT_NAMESPACES) {
+        db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = ? AND capability = ? AND audience = ? AND granted_by = 'default' AND namespaces = ?")
+            .run(JSON.stringify(now), client, cap, aud, JSON.stringify(was));
     }
     const seed = db.prepare("INSERT OR IGNORE INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES (?, ?, ?, ?, 'default')");
     // A default grant that later gained namespaces fills them in on a row still seeded without any
