@@ -58,6 +58,10 @@ const DEFAULT_GRANTS = [
     ['chat', 'live.chat_mirror.write', 'openvibe.live', []],
     ['live', 'chat.live_bridge.write', 'openvibe.chat', []],
     ['live', 'chat.presence.read', 'openvibe.chat', []],
+    // Wave 8: Live as a Billing client (used only with BILLING_AUTHORITY=billing). Never cashout.manage
+    // or ledger.admin: approving payouts is a separately controlled capability (ADR-012 rule 10).
+    ...['billing.intent.create', 'billing.transfer.create', 'billing.balance.read', 'billing.cashout.request',
+        'billing.subscription.manage', 'billing.entitlement.check'].map(c => ['live', c, 'openvibe.billing', []]),
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
