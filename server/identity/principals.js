@@ -49,6 +49,13 @@ const DEFAULT_GRANTS = [
     ['live', 'community.comment.write', 'openvibe.community', []],
     ['live', 'community.comment.moderate', 'openvibe.community', []],
     ['live', 'community.pulse.write', 'openvibe.community', []],
+    // Wave 6: OpenVibe.Chat reads Live's chat context, asks Live for effects and mirrors chat rows
+    // back; Live bridges its remaining chat writers to Chat and reads presence.
+    ['chat', 'live.chat_context.read', 'openvibe.live', []],
+    ['chat', 'live.chat_effects.write', 'openvibe.live', []],
+    ['chat', 'live.chat_mirror.write', 'openvibe.live', []],
+    ['live', 'chat.live_bridge.write', 'openvibe.chat', []],
+    ['live', 'chat.presence.read', 'openvibe.chat', []],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
