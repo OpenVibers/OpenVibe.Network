@@ -251,6 +251,15 @@ const secretsSeen = [];
     a = await authorize({ code_challenge: challenge, code_challenge_method: 'S256' });
     assert.strictEqual(a.status, 302);
     assert.match(new URL(a.headers.get('location')).searchParams.get('client_name'), /third-party app/);
+    // The chooser's app name comes from the Network, by client_id and a registered redirect only.
+    const info = (q) => fetch(`${base}/oauth/client-info?${new URLSearchParams(q)}`).then(async x => ({ status: x.status, body: await x.json() }));
+    let ci = await info({ client_id: B, redirect_uri: REDIRECT, code_challenge: challenge, code_challenge_method: 'S256' });
+    assert.strictEqual(ci.status, 200);
+    assert.strictEqual(ci.body.third_party, true);
+    assert.strictEqual(ci.body.redirect_host, new URL(REDIRECT).host);
+    assert.ok(ci.body.name && !/OpenVibe Official/.test(ci.body.name));
+    ci = await info({ client_id: B, redirect_uri: 'https://evil.example.com/cb', client_name: 'OpenVibe Official' });
+    assert.strictEqual(ci.status, 404, 'no name for an unregistered redirect');
     a = await authorize({ code_challenge: challenge, code_challenge_method: 'S256', prompt: 'none' });
     assert.strictEqual(new URL(a.headers.get('location')).searchParams.get('error'), 'interaction_required', 'no silent codes for apps');
     const confirm = (who, extra = {}) => fetch(`${base}/oauth/confirm`, { method: 'POST', headers: { 'content-type': 'application/json' },

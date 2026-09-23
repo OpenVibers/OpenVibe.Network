@@ -392,7 +392,22 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
 const API_BASE = window.location.origin;
 const params = new URLSearchParams(window.location.search);
 const isOAuth = params.has('client_id') && params.has('redirect_uri');
-const clientName = params.get('client_name') || params.get('client_id') || '';
+// The app's name comes from the Network (GET /oauth/client-info), never from this page's URL:
+// a crafted link could otherwise claim to be any app. Until it answers, show nothing.
+let clientName = '';
+let clientHost = '';
+if (isOAuth) {
+    fetch(`${API_BASE}/oauth/client-info?${new URLSearchParams({ client_id: params.get('client_id'), redirect_uri: params.get('redirect_uri'),
+        code_challenge: params.get('code_challenge') || '', code_challenge_method: params.get('code_challenge_method') || '' })}`, { credentials: 'omit' })
+        .then(r => (r.ok ? r.json() : null))
+        .then((info) => {
+            if (!info || !info.name) return;
+            clientName = info.third_party ? `${info.name} (third-party app)` : info.name;
+            clientHost = info.third_party ? info.redirect_host || '' : '';
+            renderChooserSubtitle();
+        })
+        .catch(() => {});
+}
 let oauthConfirmInFlight = false;
 
 // Generate particles
@@ -559,19 +574,24 @@ function showResetForm(token) {
 }
 
 // ── Render Account Chooser ──────────────────────────────────
+function renderChooserSubtitle() {
+    const subtitle = document.getElementById('chooser-subtitle');
+    if (!subtitle) return;
+    if (isOAuth && clientName) {
+        subtitle.innerHTML = `Choose an account to continue to <span class="app-name">${escapeHtml(clientName)}</span>`
+            + (clientHost ? ` <span class="app-host">(${escapeHtml(clientHost)})</span>` : '');
+    } else {
+        subtitle.textContent = 'Choose an account to continue';
+    }
+}
+
 function renderChooser() {
     const accounts = getSavedAccounts();
     const list = document.getElementById('account-list');
     const activeId = localStorage.getItem('openvibe_active_account');
     list.innerHTML = '';
 
-    // Set subtitle
-    const subtitle = document.getElementById('chooser-subtitle');
-    if (isOAuth && clientName) {
-        subtitle.innerHTML = `Choose an account to continue to <span class="app-name">${escapeHtml(clientName)}</span>`;
-    } else {
-        subtitle.textContent = 'Choose an account to continue';
-    }
+    renderChooserSubtitle();
 
     accounts.forEach(account => {
         const item = document.createElement('div');
