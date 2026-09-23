@@ -52,6 +52,7 @@ const DEFAULT_GRANTS = [
     // Wave 16: Wiki publishes events, attaches Community discussion, cites Sources items, reads its Media.
     ['wiki', 'events.event.publish', 'openvibe.events', []],
     ['wiki', 'community.comment.write', 'openvibe.community', []],
+    ['wiki', 'community.comment.moderate', 'openvibe.community', []],
     ['wiki', 'sources.item.read', 'openvibe.sources', []],
     ['wiki', 'media.object.read', 'openvibe.media', ['wiki']],
     // Wave 16: Blog (same shape as Wiki; it may hide the thread of a post that stopped being public).
