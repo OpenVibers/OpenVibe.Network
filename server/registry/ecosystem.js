@@ -5,10 +5,11 @@
  * What exists, what each service can do, and whether it is up — built from the versioned manifests in
  * openvibe-contracts (services, capabilities, user-module namespaces, contract catalog) instead of route
  * maps hard-coded into each product. Health is polled here and every value says when it was checked;
- * nothing is presented as live without a timestamp.
+ * nothing is presented as live without a timestamp. Whether a service's public domain serves it, or it
+ * runs on loopback only, is Network's exposure overlay (./exposure.js): the manifests say maturity.
  *
  *   GET /.well-known/openvibe                       platform descriptor
- *   GET /api/v1/registry/services[?status=]         manifests + health
+ *   GET /api/v1/registry/services[?status=&state=]  manifests + exposure + health
  *   GET /api/v1/registry/services/:id
  *   GET /api/v1/registry/domains/:domain            which service answers for a host
  *   GET /api/v1/registry/capabilities[?owner=]      capability manifests
@@ -21,6 +22,7 @@
 const express = require('express');
 const contracts = require('openvibe-contracts');
 const contractsPkg = require('openvibe-contracts/package.json');
+const { exposureOf, publicOriginOf } = require('./exposure');
 
 // Where each running service answers health checks from this host (manifests carry the public origin).
 const INTERNAL = {
@@ -37,7 +39,10 @@ const POLL_MS = 60 * 1000;
 // Readiness paths of services whose manifest (openvibe-contracts) does not carry `ready` yet. Each
 // answers with openvibe-shared/ready's shape; until a service deploys it, its health path is used
 // and the row says so (basis: 'health').
-const READY_PATHS = { network: '/api/ready', media: '/api/ready', tools: '/api/ready' };
+const READY_PATHS = { network: '/api/ready', media: '/api/ready', tools: '/api/ready', ai: '/api/ready' };
+// Liveness paths of services whose manifest in the pinned openvibe-contracts has none (AI is a
+// placeholder there but runs on loopback; see ./exposure.js).
+const HEALTH_PATHS = { ai: '/api/health' };
 
 /** Row status from a readiness body (openvibe-shared/ready shape, or an older ad-hoc one). */
 function statusFromReady(res, body) {
@@ -65,7 +70,7 @@ function readySummary(body) {
     return { ready: body.ready, status: String(body.status || (body.ready ? 'ready' : 'not_ready')).slice(0, 20), checked_at: typeof body.checked_at === 'string' ? body.checked_at.slice(0, 40) : null, failed: names(body.failed), degraded: names(body.degraded), checks };
 }
 
-function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = globalThis.fetch, pollMs = POLL_MS, readyPaths = READY_PATHS, now = () => Date.now() } = {}) {
+function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = globalThis.fetch, pollMs = POLL_MS, readyPaths = READY_PATHS, healthPaths = HEALTH_PATHS, now = () => Date.now() } = {}) {
     const internal = { ...INTERNAL, ...internalOverrides };
     // id -> { status: up|degraded|down|not-running|unknown, basis, reason, http_status, latency_ms, checked_at, ready, release }
     const health = new Map();
@@ -93,11 +98,16 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
     async function checkOne(m) {
         const at = () => new Date(now()).toISOString();
         const base = internal[m.id];
-        if (m.status === 'placeholder') { health.set(m.id, { status: 'not-running', reason: 'placeholder', checked_at: at() }); return; }
+        // What runs is decided by Network's exposure overlay, not the manifest's maturity label.
+        const exp = exposureOf(m.id);
+        if (exp.state === 'placeholder' || (exp.state === 'unknown' && m.status === 'placeholder')) { health.set(m.id, { status: 'not-running', reason: 'placeholder', checked_at: at() }); return; }
+        if (exp.state === 'library') { health.set(m.id, { status: 'not-running', reason: `library, released ${exp.release}`, checked_at: at() }); return; }
+        if (exp.state === 'repository') { health.set(m.id, { status: 'not-running', reason: 'repository, nothing to run', checked_at: at() }); return; }
         const readyPath = m.ready || readyPaths[m.id] || null;
-        if (!m.health && !readyPath && !(m.domains || []).length) { health.set(m.id, { status: 'not-running', reason: 'no runtime', checked_at: at() }); return; }
+        const healthPath = m.health || healthPaths[m.id] || null;
+        if (!healthPath && !readyPath && !(m.domains || []).length) { health.set(m.id, { status: 'not-running', reason: 'no runtime', checked_at: at() }); return; }
         if (!base) { health.set(m.id, { status: 'unknown', reason: 'no internal address known to Network', checked_at: at() }); return; }
-        if (!readyPath && !m.health) { health.set(m.id, { status: 'unknown', reason: 'no health or readiness path in its manifest', checked_at: at() }); return; }
+        if (!readyPath && !healthPath) { health.set(m.id, { status: 'unknown', reason: 'no health or readiness path in its manifest', checked_at: at() }); return; }
         const releaseP = releaseOf(base);
         let entry;
         try {
@@ -106,14 +116,18 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
                 entry = { ...statusFromReady(got.res, got.body), ready: readySummary(got.body) };
             } else {
                 // No readiness endpoint (yet): liveness is all that can be said.
-                got = await getJson(`${base}${m.health}`);
+                if (!healthPath) throw Object.assign(new Error('readiness endpoint answered 404'), { name: 'NoReadiness' });
+                got = await getJson(`${base}${healthPath}`);
                 entry = { status: got.res.ok ? 'up' : 'down', basis: 'health', reason: 'liveness only: no readiness endpoint answered', ready: null };
             }
             entry.http_status = got.res.status;
             entry.latency_ms = got.latency;
         } catch (err) {
-            entry = { status: 'down', basis: 'unreachable', error: err.name === 'TimeoutError' ? 'timeout' : 'unreachable', ready: null };
+            entry = { status: 'down', basis: 'unreachable', error: err.name === 'TimeoutError' ? 'timeout' : err.name === 'NoReadiness' ? err.message : 'unreachable', ready: null };
         }
+        // Polled on loopback: a running internal service is up there, not at its public domain.
+        entry.scope = exp.state === 'live' ? 'public' : 'loopback';
+        if (exp.state === 'internal') entry.reason = ['loopback only, no public site yet', entry.reason].filter(Boolean).join('; ');
         entry.release = await releaseP;
         entry.checked_at = at();
         health.set(m.id, entry);
@@ -137,7 +151,8 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         return h;
     }
 
-    const withHealth = (m) => ({ ...m, runtime: current(m.id) });
+    // The manifest as published, plus where it can be reached (exposure) and what the last check saw (runtime).
+    const withHealth = (m) => ({ ...m, exposure: exposureOf(m.id), runtime: current(m.id) });
 
     function descriptor() {
         return {
@@ -148,7 +163,12 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
             openid_configuration: `${issuer}/oauth/.well-known/openid-configuration`,
             registry: `${issuer}/api/v1/registry`,
             contracts: { package: 'openvibe-contracts', version: contractsPkg.version, repository: 'https://github.com/OpenVibers/OpenVibe.Contracts', catalog: `${issuer}/api/v1/registry/contracts` },
-            services: contracts.services.manifests.map(m => ({ id: m.id, status: m.status, origin: m.publicOrigin || null })),
+            // origin is set only where the public domain serves the service itself; a domain that still
+            // serves a placeholder is planned_origin, so a client never routes calls to a placeholder page.
+            services: contracts.services.manifests.map((m) => {
+                const e = exposureOf(m.id); const origin = publicOriginOf(m);
+                return { id: m.id, status: m.status, state: e.state, origin, ...(!origin && m.publicOrigin ? { planned_origin: m.publicOrigin } : {}) };
+            }),
         };
     }
 
@@ -162,6 +182,7 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         r.get('/api/v1/registry/services', (req, res) => {
             let list = contracts.services.manifests.map(withHealth);
             if (req.query.status) list = list.filter(m => m.status === String(req.query.status));
+            if (req.query.state) list = list.filter(m => m.exposure.state === String(req.query.state));
             cache(res, 30).json({ services: list, contracts_version: contractsPkg.version });
         });
         r.get('/api/v1/registry/services/:id', (req, res) => {
@@ -200,4 +221,4 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
     return { router, start, stop, pollAll, health, current, descriptor, lastPollAt: () => lastPollAt, pollMs, internal };
 }
 
-module.exports = { createEcosystemRegistry, INTERNAL, READY_PATHS, statusFromReady, readySummary };
+module.exports = { createEcosystemRegistry, INTERNAL, READY_PATHS, HEALTH_PATHS, statusFromReady, readySummary };

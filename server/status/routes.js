@@ -11,12 +11,17 @@
  * service's readiness (openvibe-shared/ready shape) and /release.json. Every row is one of
  * up | degraded | down | not-running | unknown and carries checked_at; a service not checked yet, or
  * whose last check is stale, is 'unknown' — never an optimistic default.
+ *
+ * Each row also carries its exposure (server/registry/exposure.js): live (public), internal (loopback
+ * only), library, repository or placeholder. A service that is up on loopback while its public domain
+ * serves a placeholder reads "up (loopback only)" and has no public origin, never a bare "up".
  */
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const contracts = require('openvibe-contracts');
 const seo = require('openvibe-shared/seo');
+const exposure = require('../registry/exposure');
 
 const SLO_FILE = path.join(__dirname, '..', '..', 'docs', 'slo.json');
 const esc = seo.esc;
@@ -29,13 +34,18 @@ function rows(ecosystem) {
     return contracts.services.manifests.map((m) => {
         const r = ecosystem.current(m.id);
         const status = STATES.includes(r.status) ? r.status : 'unknown';
+        const exp = exposure.exposureOf(m.id);
+        const origin = exposure.publicOriginOf(m);
+        const loopback = exp.state !== 'live' && !['not-running', 'unknown'].includes(status);
         return {
             id: m.id,
             name: m.name,
             manifest_status: m.status,
-            origin: m.publicOrigin || null,
+            exposure: exp,
+            origin,
+            ...(!origin && m.publicOrigin ? { planned_origin: m.publicOrigin } : {}),
             status,
-            label: status === 'not-running' && r.reason ? `not running (${r.reason})` : status,
+            label: status === 'not-running' && r.reason ? `not running (${r.reason})` : loopback ? `${status} (loopback only)` : status,
             basis: r.basis || null,
             reason: r.reason || r.error || null,
             checked_at: r.checked_at || null,
@@ -53,6 +63,19 @@ function summary(list) {
     const counts = Object.fromEntries(STATES.map((s) => [s, 0]));
     for (const r of list) counts[r.status]++;
     return counts;
+}
+
+function exposureSummary(list) {
+    const counts = Object.fromEntries(exposure.STATES.map((s) => [s, 0]));
+    for (const r of list) counts[r.exposure.state] = (counts[r.exposure.state] || 0) + 1;
+    return counts;
+}
+
+function exposureCell(r) {
+    const e = r.exposure;
+    const where = r.origin ? `<small><a href="${esc(r.origin)}" rel="noopener">${esc(r.origin.replace(/^https:\/\//, ''))}</a></small>`
+        : r.planned_origin ? `<small>${esc(r.planned_origin.replace(/^https:\/\//, ''))}: not this service yet</small>` : '';
+    return `${esc(e.label)}${e.release ? ` <code>${esc(e.release)}</code>` : ''}${where}${e.note ? `<small>${esc(e.note)}</small>` : ''}`;
 }
 
 const CSS = `
@@ -78,7 +101,8 @@ function renderPage(list, slo, generatedAt) {
     const counts = summary(list);
     const tr = list.map((r) => `<tr id="svc-${esc(r.id)}">
 <td><b>${esc(r.name)}</b><small>${esc(r.id)} · manifest: ${esc(r.manifest_status)}</small></td>
-<td><span class="st-b st-${esc(r.status)}">${esc(r.status === 'not-running' ? r.label : LABEL[r.status])}</span>${r.stale ? `<small>last seen ${esc(r.last_status)}</small>` : ''}${r.basis === 'health' ? '<small>liveness only (no readiness endpoint)</small>' : ''}${r.reason && r.status !== 'not-running' ? `<small>${esc(r.reason)}</small>` : ''}${checksList(r.ready)}</td>
+<td>${exposureCell(r)}</td>
+<td><span class="st-b st-${esc(r.status)}">${esc(r.status === 'not-running' ? r.label : LABEL[r.status] + (r.label.endsWith('(loopback only)') ? ' · loopback only' : ''))}</span>${r.stale ? `<small>last seen ${esc(r.last_status)}</small>` : ''}${r.basis === 'health' ? '<small>liveness only (no readiness endpoint)</small>' : ''}${r.reason && r.status !== 'not-running' ? `<small>${esc(r.reason)}</small>` : ''}${checksList(r.ready)}</td>
 <td>${r.release ? `<code>${esc(r.release.release)}</code>${r.release.booted_at ? `<small>booted ${esc(r.release.booted_at)}</small>` : ''}` : `<small>${r.status === 'not-running' ? '—' : esc(r.release_error ? `unknown (${r.release_error})` : 'unknown')}</small>`}</td>
 <td>${r.checked_at ? `<time datetime="${esc(r.checked_at)}">${esc(r.checked_at)}</time>` : '<small>not checked yet</small>'}${r.latency_ms != null ? `<small>${esc(r.latency_ms)} ms</small>` : ''}</td>
 </tr>`).join('\n');
@@ -107,10 +131,10 @@ ${CSS}
 ${require('openvibe-shared/chrome-ssr').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Status', href: '/status' }] })}
 <main class="st" id="main">
 <h1>Service status</h1>
-<p class="lede">What Network observed when it last checked each service: its readiness endpoint (named checks, required or optional), its deployed release, and when. A service that has not been checked, or whose last check is out of date, shows as <b>unknown</b>. Placeholders show as not running. Page generated <time datetime="${esc(generatedAt)}">${esc(generatedAt)}</time>; checks run about every ${esc(Math.round(slo.pollSeconds || 60))} seconds. JSON: <a href="/api/v1/status"><code>/api/v1/status</code></a>.</p>
+<p class="lede">What Network observed when it last checked each service: its readiness endpoint (named checks, required or optional), its deployed release, and when. A service that has not been checked, or whose last check is out of date, shows as <b>unknown</b>. Placeholders, libraries and repositories show as not running. <b>Where</b> says whether the public domain serves the service itself (live), or the service runs on this host's loopback only while its domain still serves a placeholder page (internal). Page generated <time datetime="${esc(generatedAt)}">${esc(generatedAt)}</time>; checks run about every ${esc(Math.round(slo.pollSeconds || 60))} seconds. JSON: <a href="/api/v1/status"><code>/api/v1/status</code></a>.</p>
 <ul class="st-sum">${STATES.map((s) => `<li class="st-${s}">${esc(LABEL[s])}: ${counts[s]}</li>`).join('')}</ul>
 <table>
-<thead><tr><th>Service</th><th>Status</th><th>Release</th><th>Checked</th></tr></thead>
+<thead><tr><th>Service</th><th>Where</th><th>Status</th><th>Release</th><th>Checked</th></tr></thead>
 <tbody>
 ${tr}
 </tbody>
@@ -139,6 +163,8 @@ function createStatusRoutes({ ecosystem, now = () => new Date() }) {
             poll_seconds: Math.round(ecosystem.pollMs / 1000),
             states: STATES,
             summary: summary(list),
+            exposure_states: exposure.STATES,
+            exposure_summary: exposureSummary(list),
             services: list,
         });
     });

@@ -4,7 +4,7 @@
 //
 //   GET /api/chrome?host=<hostname>     public, CORS *, max-age=600, ETag
 //   → { updated, nav: [{ id, name, url, icon, tagline }],            open sites, most used first
-//       soon: [{ id, name, url, icon }],
+//       soon: [{ id, name, url, icon, state }],                       state: internal | placeholder
 //       footer: { blurb, discover: [{ name, url }], popular: [{ name, url }], legal: { terms, privacy, dmca } } }
 //
 // Ranking: page views and visitors from each service's own analytics (last 7 days) plus signed-in
@@ -159,9 +159,10 @@ function createChromeService(db, config, analytics, { privateKey = null, issuer 
         // Legal documents live on the site's own apex, so each domain answers for itself.
         const legalBase = `https://${site.host}`;
         return {
-            updated: new Date(version).toISOString(), site: { id: site.id, name: site.name, host: site.host, status: site.status },
+            updated: new Date(version).toISOString(), site: { id: site.id, name: site.name, host: site.host, status: site.status, state: site.state },
             nav: open.map(s => ({ id: s.id, name: s.name, url: `https://${s.host}/`, icon: s.icon, tagline: s.tagline })),
-            soon: SITES.filter(s => s.status === 'soon').map(s => ({ id: s.id, name: s.name, url: `https://${s.host}/`, icon: s.icon })),
+            // state: 'internal' (runs on loopback, the domain still shows a placeholder) or 'placeholder' (planned).
+            soon: SITES.filter(s => s.status === 'soon').map(s => ({ id: s.id, name: s.name, url: `https://${s.host}/`, icon: s.icon, state: s.state })),
             footer: { blurb: (ai && ai.blurb) || site.what, ai: !!ai, discover, popular: popularTools(8), legal: { terms: legalBase + '/terms', privacy: legalBase + '/privacy', dmca: legalBase + '/dmca' } },
         };
     }

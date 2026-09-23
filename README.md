@@ -280,6 +280,13 @@ Google-style account management supporting up to 5 accounts:
   `checked_at`. The data comes from the ecosystem registry poll (`server/registry/ecosystem.js`),
   which reads each service's readiness endpoint and `/release.json` about once a minute. A service
   not checked yet, or whose last check is more than three intervals old, shows as unknown.
+- Where each service can be reached is Network's exposure overlay (`server/registry/exposure.js`), not
+  the manifest's maturity label: `live` (its public domain serves it), `internal` (loopback only, the
+  domain still serves a placeholder page), `library` (released package), `repository` (code with CI,
+  nothing to run) or `placeholder` (planned). The registry adds `exposure` to each service, the
+  descriptor gives an `origin` only to `live` services (`planned_origin` otherwise), `/status` reads
+  "up (loopback only)" for an internal service, and the chrome nav lists only `live` sites. Change a
+  row when a domain stops serving its placeholder; `test/registry-exposure.test.js` pins the states.
 - `GET /api/v1/status/slo` returns the proposed SLO categories, as does
   [docs/slo.md](docs/slo.md) / [docs/slo.json](docs/slo.json).
 - [docs/patches/live-observability.diff](docs/patches/live-observability.diff) is the same change for
