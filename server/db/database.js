@@ -10,92 +10,12 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-const ROLE_PRIORITY = {
-    user: 0,
-    streamer: 1,
-    global_mod: 2,
-    admin: 3,
-};
-
 function previewFromVars(vars) {
     return JSON.stringify({
         bg: vars['--bg-primary'] || '#0d0d0f',
         accent: vars['--accent'] || '#8b5cf6',
         text: vars['--text-primary'] || '#e8e6e3',
     });
-}
-
-function resolveLiveDbPath() {
-    const candidates = [
-        process.env.OPENVIBELIVE_DB_PATH,
-        '/opt/openvibelive/data/live.db',
-        path.resolve(process.cwd(), '..', 'live', 'data', 'live.db'),
-        path.resolve(__dirname, '..', '..', '..', 'live', 'data', 'live.db'),
-    ].filter(Boolean);
-
-    return candidates.find((candidate) => fs.existsSync(candidate)) || null;
-}
-
-function syncLinkedLiveRoles(db) {
-    const hsDbPath = resolveLiveDbPath();
-    if (!hsDbPath) return;
-
-    let hsDb;
-    try {
-        hsDb = new Database(hsDbPath, { readonly: true, fileMustExist: true });
-        const rows = db.prepare(`
-            SELECT
-                u.id AS user_id,
-                u.username,
-                u.role AS current_role,
-                u.legacy_id,
-                la.service_user_id,
-                la.service_username
-            FROM users u
-            LEFT JOIN linked_accounts la
-                ON la.user_id = u.id
-               AND la.service = 'live'
-            WHERE u.legacy_source = 'live'
-               OR la.service_user_id IS NOT NULL
-               OR la.service_username IS NOT NULL
-        `).all();
-
-        const selectById = hsDb.prepare('SELECT id, username, role FROM users WHERE id = ?');
-        const selectByUsername = hsDb.prepare('SELECT id, username, role FROM users WHERE LOWER(username) = LOWER(?)');
-        const updateRole = db.prepare('UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-
-        let synced = 0;
-        for (const row of rows) {
-            const lookupId = Number.parseInt(row.service_user_id || row.legacy_id, 10);
-            const lookupUsername = row.service_username || row.username;
-            let sourceUser = null;
-
-            if (Number.isFinite(lookupId)) {
-                sourceUser = selectById.get(lookupId);
-            }
-            if (!sourceUser && lookupUsername) {
-                sourceUser = selectByUsername.get(lookupUsername);
-            }
-            if (!sourceUser || !ROLE_PRIORITY.hasOwnProperty(sourceUser.role)) {
-                continue;
-            }
-
-            const currentRank = ROLE_PRIORITY[row.current_role] ?? 0;
-            const sourceRank = ROLE_PRIORITY[sourceUser.role] ?? 0;
-            if (sourceRank > currentRank) {
-                updateRole.run(sourceUser.role, row.user_id);
-                synced += 1;
-            }
-        }
-
-        if (synced > 0) {
-            console.log(`[DB] Synced ${synced} network role(s) from linked OpenVibe.Live accounts`);
-        }
-    } catch (err) {
-        console.warn('[DB] Role sync from OpenVibe.Live skipped:', err.message);
-    } finally {
-        try { hsDb?.close(); } catch {}
-    }
 }
 
 function initDb(dbPath) {
@@ -747,8 +667,10 @@ function initDb(dbPath) {
         console.log(`[DB] Synced ${BUILTIN_THEMES.length} built-in themes${gone ? ` (removed ${gone} stale)` : ''}`);
     }
 
-    // ── Sync Roles From Linked OpenVibe.Live Accounts ────────
-    syncLinkedLiveRoles(db);
+    // Roles are Network's own data. Network never opens another service's database (ADR-007):
+    // role changes made here reach Live through POST /internal/user-role (admin/routes.js), and
+    // Live never downgrades from a stale SSO token. The boot-time read of Live's database that
+    // used to live here was removed (compatibility register C-58).
 
     // ── Helper: getSetting ───────────────────────────────────
     db.getSetting = function (key) {
