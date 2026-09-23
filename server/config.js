@@ -49,6 +49,11 @@ module.exports = {
     // OpenVibe.Events base URL for Network's own events (developer projects). Unset = no relay:
     // events stay in dev_audit and are backfilled when it is set. Production: http://127.0.0.1:4300
     eventsInternalUrl: process.env.OV_EVENTS_INTERNAL_URL || '',
+    // Signing secret(s) of Network's Events subscriptions (POST /internal/events → notifications;
+    // server/notifications/events-consumer.js). Comma-separated for rotation, each 32+ characters.
+    // Unset = the consumer answers 503 and nothing is delivered. Handed to Events by
+    // scripts/subscribe-events.js.
+    eventsWebhookSecrets: process.env.NETWORK_EVENTS_SECRET || '',
 
     // Database
     db: {

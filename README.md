@@ -191,6 +191,46 @@ curl -X POST http://127.0.0.1:4000/internal/notifications/push \
   -d '{"userId": 42, "type": "new_follower", "data": {"actorName": "someone"}}'
 ```
 
+### Notifications from Events
+
+`POST /internal/events` (`server/notifications/events-consumer.js`) turns OpenVibe.Events deliveries
+into inbox notifications for the person they name, through the same `NotificationService.create()`
+as everything else, so a person who turned the `service` category off gets nothing and email follows
+their per-category email choice.
+
+| Event type | From | Person | Notification |
+|---|---|---|---|
+| `deals.watch.matched` | Deals (`source: deals`) | `payload.recipient` (`usr_…`) | `DEAL_WATCH_MATCH`, `service`, normal |
+| `trade.alert.triggered` | Trade (`source: trade`) | `subject.id` (`subject.type: user`) | `TRADE_ALERT`, `service`, high |
+
+Coupons publishes no watch event yet: its merchant watches never leave Coupons, and its `coupons.*`
+events name no person. Every other type is acknowledged and ignored. Deliveries are v2-signed only
+(`openvibe-sdk` `parseDelivery` with `requireV2`, ±300 s), and each `event_id` is handled once
+(openvibe-sdk inbox, table `network_event_inbox`, consumer `network-notifications`). Links point at a
+site only when its domain serves the service (the exposure overlay above); until then the URL is kept
+in `rich_content.context.planned_url`.
+
+The route is inert until the operator does both of these:
+
+1. Generate the signing secret and give it to Network: add
+   `NETWORK_EVENTS_SECRET=<openssl rand -hex 32>` to `/etc/openvibe/network.env` (comma-separate a
+   second value to rotate), and make sure `OV_EVENTS_INTERNAL_URL=http://127.0.0.1:4300` is set.
+   Restart `openvibe-network`; the log says `[Events consumer] on`.
+2. Create the subscriptions in Events (consumer `network`, which Events takes from the token's
+   `svc:network`; endpoint `http://127.0.0.1:4000/internal/events`; topic patterns
+   `deals.watch.matched` and `trade.alert.triggered`; secret = the first `NETWORK_EVENTS_SECRET`):
+
+   ```bash
+   cd /opt/openvibe.network
+   sudo node --env-file=/etc/openvibe/network.env scripts/subscribe-events.js --dry-run
+   sudo node --env-file=/etc/openvibe/network.env scripts/subscribe-events.js
+   ```
+
+   The script signs its own 5-minute service token (Network is the issuer: `sub svc:network`,
+   `aud openvibe.events`, `cap events.subscription.manage`) and hands the secret to Events in the
+   subscription body, the way Deals, News and Tips do with theirs. It prints the subscription ids,
+   never the secret, and reports an existing identical subscription instead of duplicating it.
+
 ---
 
 ## Email Setup

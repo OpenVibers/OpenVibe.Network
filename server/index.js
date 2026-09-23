@@ -150,6 +150,11 @@ app.use(cookieParser());
 // Provider webhooks (Resend bounces/complaints) — mounted BEFORE the JSON body parser so
 // the route sees the raw bytes it must verify the Svix signature over.
 app.use('/api/webhooks', require('./notifications/resend-webhook')());
+// OpenVibe.Events deliveries → notifications (server/notifications/events-consumer.js), also before the
+// JSON parser (the v2 signature covers the raw body). Built once the database and the notification
+// service exist (below); inert (503) until NETWORK_EVENTS_SECRET is set.
+let eventsConsumer = null;
+app.use('/internal/events', (req, res, next) => (eventsConsumer ? eventsConsumer.router(req, res, next) : res.status(503).json({ error: 'starting' })));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -353,6 +358,8 @@ const notificationService = new NotificationService(db);
 const emailService = new EmailService(db);
 app.locals.notificationService = notificationService;
 app.locals.emailService = emailService;
+eventsConsumer = require('./notifications/events-consumer').createEventsConsumer({ db, notifications: notificationService, secrets: config.eventsWebhookSecrets });
+console.log(`[Events consumer] ${eventsConsumer.enabled ? 'on' : 'off (NETWORK_EVENTS_SECRET unset)'}: POST /internal/events`);
 
 // Discord bot service
 const discordService = new DiscordService(db);
