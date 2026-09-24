@@ -19,7 +19,7 @@ const PINNED = {
     billing: 'live', codes: 'live', blog: 'live', wiki: 'live', sites: 'live',
     news: 'internal', reviews: 'internal', deals: 'internal', coupons: 'internal', trade: 'internal', host: 'internal',
     tips: 'internal', vip: 'internal', openre: 'internal', search: 'live', sources: 'internal', chat: 'internal', ai: 'internal',
-    sdk: 'library', shared: 'library', contracts: 'library',
+    sdk: 'library', shared: 'library', contracts: 'library', publishing: 'library',
     examples: 'repository',
     realtime: 'placeholder',
 };
@@ -101,7 +101,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     assert.strictEqual(sBy.live.label, 'up');
     assert.strictEqual(sBy.live.origin, 'https://openvibe.live');
     assert.strictEqual(sBy.shared.label, `not running (library, released v${require('openvibe-shared/package.json').version})`);
-    assert.deepStrictEqual(st.exposure_summary, { live: 13, internal: 12, library: 3, repository: 1, placeholder: 1 });
+    assert.deepStrictEqual(st.exposure_summary, { live: 13, internal: 12, library: 4, repository: 1, placeholder: 1 });
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());

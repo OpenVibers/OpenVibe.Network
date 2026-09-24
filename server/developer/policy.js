@@ -37,7 +37,8 @@ function audienceOf(id) {
 
 /** Capabilities an app could ever be granted (the catalog view Codes shows). */
 function grantableCatalog() {
-    return capabilities.manifests.filter(c => isGrantable(c.id)).map(c => ({
+    // What an app may ask for itself: public capabilities. Partner ones (e.g. tools.net.probe) are granted by staff only.
+    return capabilities.manifests.filter(c => isGrantable(c.id) && c.visibility === 'public').map(c => ({
         id: c.id, owner: c.owner, audience: `openvibe.${c.owner}`, visibility: c.visibility, description: c.description || '',
         resourceConstraints: c.resourceConstraints, quotaClass: c.quotaClass,
     }));
@@ -59,7 +60,7 @@ const DEFAULT_SANDBOX_AUDIENCES = Object.freeze(['openvibe.media', 'openvibe.eve
 const DEFAULT_SANDBOX_ALLOWANCE = Object.freeze([
     'media.object.upload', 'media.object.read',
     'events.app.publish', 'events.app.read', 'events.app.subscribe',
-    'tools.job.create', 'tools.job.read', 'tools.job.cancel',
+    'tools.job.create', 'tools.job.read', 'tools.job.cancel', 'tools.tool.read', 'tools.tool.run',
 ]);
 
 /** Public + grantable only (the rule for every allowance that is not set by staff by hand). */

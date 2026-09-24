@@ -88,6 +88,7 @@ const EXPOSURE = {
     sdk: library('openvibe-sdk', 'OpenVibe.SDK'),
     shared: library('openvibe-shared', 'OpenVibe.Shared', 'also served at /shared/* by each site'),
     contracts: library('openvibe-contracts', 'OpenVibe.Contracts', 'schemas are also served by this registry at their $id URLs'),
+    publishing: library('openvibe-publishing', 'OpenVibe.Publishing', 'the shared publishing runtime used by Wiki, Blog, News, Reviews, Deals, Coupons and Trade'),
     examples: { state: 'repository', public_site: null, note: 'example apps with CI in OpenVibers/OpenVibe.Examples; not published as a package' },
 
     realtime: { state: 'placeholder', public_site: null },

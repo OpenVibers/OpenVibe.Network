@@ -102,7 +102,7 @@ const rel = (contractsVersion, packages) => [200, { service: 'x', release: 'abcd
     r = await get('/api/v1/registry/releases');
     const rel2 = Object.fromEntries(r.body.services.map(s => [s.id, s]));
     assert.ok(r.body.checked_at);
-    assert.deepStrictEqual(r.body.libraries.map(l => l.id).sort(), ['contracts', 'sdk', 'shared']);
+    assert.deepStrictEqual(r.body.libraries.map(l => l.id).sort(), ['contracts', 'publishing', 'sdk', 'shared']);
     assert.ok(!rel2.sdk && !rel2.contracts, 'libraries are not services');
     assert.strictEqual(rel2.live.release, 'abcdef123456');
     assert.strictEqual(rel2.live.contracts_version, '0.28.0');

@@ -33,9 +33,10 @@ const { createEcosystemRegistry } = require('../server/registry/ecosystem');
     assert.strictEqual(byId.realtime.runtime.status, 'not-running', 'placeholders are never shown as running');
     assert.ok(r.body.services.every(s => contracts.validate('registry.service-manifest@1', Object.fromEntries(Object.entries(s).filter(([k]) => !['runtime', 'exposure', 'observed'].includes(k)))).valid));
     r = await get('/api/v1/registry/services?status=placeholder');
-    // openvibe-contracts 0.30: realtime is the only placeholder manifest left (AI, SDK, Shared, Examples are alpha).
-    assert.ok(r.body.services.length >= 1 && r.body.services.every(s => s.status === 'placeholder'));
-    assert.ok(r.body.services.some(s => s.id === 'realtime'));
+    assert.ok(r.body.services.every(s => s.status === 'placeholder'), 'the status filter only returns that status');
+    // openvibe-contracts 0.34: realtime is retired (ADR-005 folded it into Events).
+    r = await get('/api/v1/registry/services?status=retired');
+    assert.ok(r.body.services.some(s => s.id === 'realtime') && r.body.services.every(s => s.status === 'retired'));
 
     r = await get('/api/v1/registry/services/network');
     assert.ok(r.body.capability_details.some(c => c.id === 'network.coins.credit'));
