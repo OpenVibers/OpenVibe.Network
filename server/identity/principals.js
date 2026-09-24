@@ -155,6 +155,9 @@ const DEFAULT_GRANTS = [
     // or ledger.admin: approving payouts is a separately controlled capability (ADR-012 rule 10).
     ...['billing.intent.create', 'billing.transfer.create', 'billing.balance.read', 'billing.cashout.request',
         'billing.subscription.manage', 'billing.entitlement.check'].map(c => ['live', c, 'openvibe.billing', []]),
+    // Tools platform S9: products call the Tools run API (the kiosk's page titles, Chat's audio conversion,
+    // Community's save-as-paste) with their own token, on the service tier instead of the anonymous one.
+    ...['live', 'chat', 'community'].flatMap(c => ['tools.tool.run', 'tools.job.read'].map(cap => [c, cap, 'openvibe.tools', []])),
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
