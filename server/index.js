@@ -216,6 +216,9 @@ function buildAllowedOriginsSet() {
         }
     }
 
+    // Every first-party domain the service manifests declare (openvibe.blog, openvibe.wiki, …)
+    for (const o of require('./first-party-origins').manifestOrigins()) origins.add(o);
+
     // Hard-coded OpenVibe defaults as baseline (survive registry reset/failure)
     for (const o of [
         'https://openvibe.network',
