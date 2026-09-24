@@ -99,9 +99,9 @@ const server = http.createServer(app);
     assert.strictEqual(r.body.code, 'token.wrong_audience');
     r = await post('/internal/notifications/push', { user_id: 7, service: 'games', title: 'x' }, { authorization: `Bearer ${full}` });
     assert.strictEqual(r.status, 403, 'notifications are sent only as the principal\'s own service');
-    r = await fetch(`${base}/internal/coins/stats`, { headers: { authorization: `Bearer ${full}` } }).then(x => ({ status: x.status }));
-    assert.strictEqual(r.status, 403, 'unguarded internal routes still need the key');
-    r = await post('/internal/identity/legacy-map', { entries: [] }, { authorization: `Bearer ${full}` });
+    r = await fetch(`${base}/internal/stats`, { headers: { authorization: `Bearer ${full}` } }).then(x => ({ status: x.status }));
+    assert.strictEqual(r.status, 403, 'key-only internal routes still need the key');
+    r = await post('/internal/audit', { action: 'x' }, { authorization: `Bearer ${full}` });
     assert.strictEqual(r.status, 403, 'token routes are an explicit list');
 
     // Community resolves authors with its own token; Live's token lacks that grant.
@@ -130,6 +130,42 @@ const server = http.createServer(app);
     assert.strictEqual(r.status, 400, 'guard passed, handler validated the body');
     r = await post('/internal/events/stream-live', {}, { authorization: `Bearer ${creditOnly}` });
     assert.strictEqual(r.status, 403);
+
+    // ── The routes Live still called with the key (register C-50/C-52) take its token too ──
+    const get = (p, headers) => fetch(base + p, { headers }).then(async x => ({ status: x.status, body: await x.json() }));
+    const KEY = { 'x-internal-key': 'legacy-key' };
+    const LIVE = { authorization: `Bearer ${full}` };
+    r = await get('/internal/url-registry/resolved', LIVE);
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body)); assert.strictEqual(r.body.ok, true);
+    assert.strictEqual((await get('/internal/url-registry/resolved', { authorization: `Bearer ${creditOnly}` })).status, 403, 'needs identity.subject.resolve');
+    r = await get('/internal/coins/stats', LIVE);
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body)); assert.ok(Number.isFinite(r.body.earned) && r.body.recent);
+    assert.strictEqual((await get('/internal/coins/stats', { authorization: `Bearer ${mediaResolve}` })).status, 403, 'needs network.coins.credit');
+    r = await post('/internal/resolve-anon', { ip: '203.0.113.9' }, LIVE);
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body)); assert.ok(r.body.anon_number >= 1);
+    assert.strictEqual((await post('/internal/resolve-anon', { ip: '203.0.113.9' }, { authorization: `Bearer ${creditOnly}` })).status, 403);
+    r = await post('/internal/identity/legacy-map', { entries: [{ network_user_id: 7, source_system: 'live', source_type: 'user', source_id: '900' }] }, LIVE);
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    r = await post('/internal/identity/legacy-map', { entries: [{ network_user_id: 7, source_system: 'games', source_type: 'user', source_id: '900' }] }, LIVE);
+    assert.strictEqual(r.status, 403); assert.strictEqual(r.body.code, 'capability.owner_denied', 'a token maps only its own system\'s ids');
+    r = await post('/internal/identity/legacy-map', { entries: [{ network_user_id: 7, source_system: 'live', source_id: '901' }] }, { authorization: `Bearer ${creditOnly}` });
+    assert.strictEqual(r.status, 403);
+    r = await post('/internal/link-account', { user_id: 7, service: 'live', service_user_id: '4242' }, LIVE);
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    assert.strictEqual(db.prepare("SELECT service_user_id FROM linked_accounts WHERE user_id = 7 AND service = 'live'").get().service_user_id, '4242');
+    r = await post('/internal/link-account', { user_id: 7, service: 'games', service_user_id: '4242' }, LIVE);
+    assert.strictEqual(r.status, 403); assert.strictEqual(r.body.code, 'capability.owner_denied', 'a token links accounts only for its own service');
+    // The key still works on all five (callers switch later), unchanged: no ownership rule for the key.
+    assert.strictEqual((await get('/internal/url-registry/resolved', KEY)).status, 200);
+    assert.strictEqual((await get('/internal/coins/stats', KEY)).status, 200);
+    assert.strictEqual((await post('/internal/resolve-anon', { ip: '203.0.113.10' }, KEY)).status, 200);
+    assert.strictEqual((await post('/internal/identity/legacy-map', { entries: [{ network_user_id: 8, source_system: 'games', source_id: '77' }] }, KEY)).status, 200);
+    assert.strictEqual((await post('/internal/link-account', { user_id: 8, service: 'games', service_user_id: '77' }, KEY)).status, 200);
+    for (const p of ['/internal/url-registry/resolved', '/internal/coins/stats']) assert.strictEqual((await get(p, {})).status, 403, `${p}: neither key nor token`);
+    const decided = db.prepare("SELECT route FROM principal_usage WHERE principal = 'svc:live' AND allowed = 1").all().map(x => x.route);
+    for (const route of ['GET /internal/url-registry/resolved', 'GET /internal/coins/stats', 'POST /internal/resolve-anon', 'POST /internal/identity/legacy-map', 'POST /internal/link-account']) {
+        assert.ok(decided.includes(route), `token use of ${route} is recorded`);
+    }
 
     // ── Legacy key keeps working ──
     r = await post('/internal/coins/credit', credit(), { 'x-internal-key': 'legacy-key' });

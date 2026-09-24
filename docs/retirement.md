@@ -29,3 +29,23 @@ GROUP BY route ORDER BY calls DESC;
 5. When no route accepts the key, delete `INTERNAL_API_KEY` from every env file and the middleware.
 
 First observation (2026-09-23 04:50 UTC): `GET /internal/url-registry/resolved` (Live's registry refresh).
+
+## Routes that take a token (Network side of step 2)
+
+| Route | Capability | Rule for a token | Default grant holders |
+| --- | --- | --- | --- |
+| `GET /internal/identity/resolve`, `POST /internal/identity/resolve-batch` | `identity.subject.resolve` | — | Live, Media, Chat, Community, Billing, Tips, VIP, Blog, News, Deals, Games |
+| `POST /internal/coins/credit`, `/debit` (`/transfer`: nobody holds it) | `network.coins.credit` / `.debit` | `app_id` = its own service | Live |
+| `POST /internal/notifications/push`, `/push-bulk`, `/events/stream-live` | `network.notifications.push` | `service` = its own service | Live |
+| `GET\|PUT\|DELETE /internal/modules/:ns/:subject` | `network.modules.read` / `.write` | granted namespaces | Live, Chat, Tools, Games |
+| `GET /internal/url-registry/resolved` | `identity.subject.resolve` | — | Live (its only caller; still sends the key) |
+| `GET /internal/coins/stats` | `network.coins.credit` | — | Live (its only caller; still sends the key) |
+| `POST /internal/resolve-anon` | `identity.subject.resolve` | — | Live (its only caller; still sends the key) |
+| `POST /internal/identity/legacy-map` | `identity.subject.resolve` | every `source_system` = its own service | Live (its only caller; still sends the key) |
+| `POST /internal/link-account` | `identity.subject.resolve` | `service` = its own service | Live (its only caller; still sends the key) |
+
+The last five accept a token since 2026-09-24 and keep the key. No new grant was needed: their only caller,
+Live, already holds `identity.subject.resolve` and `network.coins.credit` on `openvibe.network`. Live switches by
+adding the five paths to `TOKEN_PATHS` in its `server/net/network-principal.js` and sending those calls through
+`headersFor(path)`. The capability names are the closest existing ones in openvibe-contracts 0.33; narrower ones
+(`network.registry.read`, `network.coins.read`, an identity legacy-map write) are a contracts change.

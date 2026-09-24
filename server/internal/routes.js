@@ -56,15 +56,32 @@ function requireInternalKey(req, res, next) {
     return res.status(403).json({ error: 'Invalid or missing internal key' });
 }
 const principals = require('../identity/principals');
-const TOKEN_ROUTES = new Set(['GET /identity/resolve', 'POST /identity/resolve-batch', 'POST /coins/credit', 'POST /coins/debit', 'POST /coins/transfer', 'POST /notifications/push', 'POST /notifications/push-bulk', 'POST /events/stream-live']);
+const TOKEN_ROUTES = new Set(['GET /identity/resolve', 'POST /identity/resolve-batch', 'POST /coins/credit', 'POST /coins/debit', 'POST /coins/transfer', 'POST /notifications/push', 'POST /notifications/push-bulk', 'POST /events/stream-live',
+    // Internal-key retirement (register C-50/C-52): the routes Live still calls with the key also take a token.
+    'GET /url-registry/resolved', 'GET /coins/stats', 'POST /resolve-anon', 'POST /identity/legacy-map', 'POST /link-account']);
 const TOKEN_ROUTE_PATTERNS = [/^(GET|PUT|DELETE) \/modules\/[a-z0-9_.]+\/[A-Za-z0-9_]+$/];
 const forApp = (req) => (req.body && req.body.app_id !== undefined ? String(req.body.app_id) : undefined);
 const forService = (req) => (req.body && req.body.service !== undefined ? String(req.body.service) : undefined);
+
+// A service token may only map ids of its own system (svc:live -> source_system 'live'); the key is unchanged.
+function ownSourceSystem(req, res, next) {
+    const p = req.principal;
+    if (!p || p.legacy) return next();
+    const self = String(p.sub).replace(/^svc:/, '');
+    const entries = req.body && Array.isArray(req.body.entries) ? req.body.entries : [];
+    if (entries.some(e => !e || String(e.source_system) !== self)) {
+        return require('openvibe-contracts').http.sendProblem(res, 403, 'capability.owner_denied', { detail: `${p.sub} may only map ids whose source_system is '${self}'` });
+    }
+    next();
+}
 
 router.use(requireInternalKey);
 // Identity lookups accept a service token with identity.subject.resolve (or the key, as before).
 router.get('/identity/resolve', principals.guard('identity.subject.resolve'));
 router.post('/identity/resolve-batch', principals.guard('identity.subject.resolve'));
+// Writing the legacy map is part of identity resolution (ADR-001; identity.subject.resolve takes
+// identity.legacy-identity-map@1). TODO(contracts): a narrower identity.legacy_map.write capability.
+router.post('/identity/legacy-map', principals.guard('identity.subject.resolve'), ownSourceSystem);
 router.use('/identity', require('../identity/internal-routes'));
 
 // ── Verify Token ─────────────────────────────────────────────
@@ -145,7 +162,8 @@ router.get('/users/:id/theme', (req, res) => {
 // ── Sync Linked Account ──────────────────────────────────────
 // When a user connects their OpenVibe.Live or OpenVibe.Games account,
 // the service reports the link here.
-router.post('/link-account', (req, res) => {
+// A service token may only report links for its own service (svc:live -> service 'live').
+router.post('/link-account', principals.guard('identity.subject.resolve', { ownApp: forService }), (req, res) => {
     const { user_id, service, service_user_id, service_username, avatar_url, display_name } = req.body;
     if (!user_id || !service || !service_user_id) {
         return res.status(400).json({ error: 'user_id, service, and service_user_id required' });
@@ -221,7 +239,9 @@ router.get('/stats', (req, res) => {
     res.json({ users: userCount, themes: themeCount, linked_accounts: linkedCount, notifications: notifCount });
 });
 
-router.get('/url-registry/resolved', (req, res) => {
+// Service URLs only (no secrets); any first-party service that resolves identities may read them.
+// TODO(contracts): a network.registry.read capability would say it more exactly.
+router.get('/url-registry/resolved', principals.guard('identity.subject.resolve'), (req, res) => {
     try {
         const db = getDb(req);
         const resolved = urlRegistry.getResolvedRegistry(db, process.env);
@@ -251,7 +271,8 @@ function handleWalletError(res, err) {
 // Summing the whole ledger is cheap at our size but pointless to repeat per pageview,
 // so the answer is held for a minute.
 let _coinStats = { at: 0, data: null };
-router.get('/coins/stats', (req, res) => {
+// Guarded by the ledger capability its caller (Live's home hero) holds. TODO(contracts): network.coins.read.
+router.get('/coins/stats', principals.guard('network.coins.credit'), (req, res) => {
     try {
         if (_coinStats.data && Date.now() - _coinStats.at < 60_000) return res.json(_coinStats.data);
         const db = getDb(req);
@@ -556,7 +577,7 @@ router.post('/issue-token', (req, res) => {
 // Body: { ip }
 // Called by first-party services to get or create a unified
 // anon identity for a given IP address. Single source of truth.
-router.post('/resolve-anon', (req, res) => {
+router.post('/resolve-anon', principals.guard('identity.subject.resolve'), (req, res) => {
     const { ip } = req.body;
     if (!ip) return res.status(400).json({ error: 'ip required' });
 
