@@ -395,6 +395,8 @@ app.use(ecosystem.router());
 ecosystem.start();
 // Operator status: GET /status (server-rendered, noindex), /api/v1/status, /api/v1/status/slo.
 app.use(require('./status/routes').createStatusRoutes({ ecosystem }));
+// What shipped network-wide: the changelog proxy every site's widget reads, and /updates.
+app.use(require('./updates/routes').createUpdatesRoutes({ blogUrl: process.env.OV_BLOG_INTERNAL_URL || 'http://127.0.0.1:4810' }).router);
 
 app.get('/api/.well-known/jwks', (_req, res) => {
     const out = { public_key: publicKey, algorithm: privateKey === publicKey ? 'HS256' : 'RS256' };

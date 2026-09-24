@@ -193,7 +193,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 <script src="/shared/navbar.js"></script>
 <script src="/shared/footer.js"></script>
 <script src="/shared/shipped.js" defer></script>
-<script>document.addEventListener('DOMContentLoaded', function () { if (window.OpenVibeShipped) OpenVibeShipped.mount('#ov-shipped', { limit: 8, title: 'Recently shipped across OpenVibe' }); });</script>
+<script>document.addEventListener('DOMContentLoaded', function () { if (window.OpenVibeShipped) OpenVibeShipped.mount('#ov-shipped', { limit: 8, title: 'Recently shipped across OpenVibe', more: '/updates' }); });</script>
 <script>
 (function () {
     if (window.OpenVibeFooter) { try { OpenVibeFooter.init({ service: 'network', variant: 'full', links: [{ heading: 'OpenVibe.Network', items: [{ name: 'My account', url: '/my' }, { name: 'History', url: '/my#history' }, { name: 'Themes', url: '/themes' }, { name: 'Linked services', url: '/my#linked' }, { name: 'Sign in', url: '/login' }] }] }); } catch (e) { /* */ } }

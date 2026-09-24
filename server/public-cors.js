@@ -25,6 +25,7 @@ const CONTRACT_RE = /^\/contracts\/[a-z0-9-]+(?:\/[a-z0-9-]+)?\/[a-z0-9_.-]+\.v\
 function isPublicDiscoveryPath(p) {
     const path = String(p || '');
     if (path === '/.well-known/openvibe') return true;
+    if (path === '/api/v1/changelog') return true;   // the network changelog every site's "shipped" widget reads
     if (CONTRACT_RE.test(path)) return true;
     if (path === '/api/v1/registry' || path === '/api/v1/registry/') return true;
     if (!path.startsWith('/api/v1/registry/')) return false;
