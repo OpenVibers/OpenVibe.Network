@@ -680,7 +680,11 @@ function initDb(dbPath) {
     // used to live here was removed (compatibility register C-58).
 
     // ── Helper: getSetting ───────────────────────────────────
+    // Provider secrets (server/secrets.js) come from their environment variable when it is set.
+    const secrets = require('../secrets');
     db.getSetting = function (key) {
+        const fromEnv = secrets.fromEnv(key);
+        if (fromEnv !== null) return fromEnv;
         const row = this.prepare('SELECT value, type FROM site_settings WHERE key = ?').get(key);
         if (!row) return null;
         if (row.type === 'boolean') return row.value === 'true';

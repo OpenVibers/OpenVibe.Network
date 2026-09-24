@@ -7,6 +7,7 @@
 
 const express = require('express');
 const { isOwner, isSensitiveSettingKey } = require('../auth/owner-guard');
+const secrets = require('../secrets');
 
 module.exports = function createDiscordRoutes(db, discordService, requireAuth, requireAdmin) {
     const router = express.Router();
@@ -26,7 +27,10 @@ module.exports = function createDiscordRoutes(db, discordService, requireAuth, r
             discord_oauth_client_id: db.getSetting('discord_oauth_client_id') || '',
             discord_oauth_client_secret: db.getSetting('discord_oauth_client_secret') ? '••••••••' : '',
         };
-        res.json({ ok: true, status, settings });
+        // env: the variable provides it and the form cannot change it (server/secrets.js).
+        const sources = {};
+        for (const k of ['discord_bot_token', 'discord_oauth_client_secret']) sources[k] = { source: secrets.source(db, k), env: secrets.envName(k) };
+        res.json({ ok: true, status, settings, sources });
     });
 
     /** PUT /api/admin/discord — update Discord configuration */
@@ -48,8 +52,11 @@ module.exports = function createDiscordRoutes(db, discordService, requireAuth, r
         let tokenChanged = false;
 
         const owner = isOwner(req.user);
+        const skipped = [];
         for (const [key, value] of Object.entries(settings)) {
             if (!allowedKeys.includes(key)) continue;
+            // Never save a secret into the database while its environment variable provides it.
+            if (secrets.isManaged(key) && secrets.source(db, key) === 'env') { if (String(value ?? '').trim() && String(value).trim() !== '••••••••') skipped.push(key); continue; }
             // Bot token / OAuth secret are owner-only — silently skip for admins.
             if (isSensitiveSettingKey(key) && !owner) continue;
             const strVal = String(value ?? '').trim();
@@ -70,7 +77,7 @@ module.exports = function createDiscordRoutes(db, discordService, requireAuth, r
             }
         }
 
-        res.json({ ok: true, status: discordService.getStatus() });
+        res.json({ ok: true, status: discordService.getStatus(), ...(skipped.length ? { skipped, note: 'set in the environment; not saved to the database' } : {}) });
     });
 
     /** POST /api/admin/discord/test — send a test alert to the configured channel */

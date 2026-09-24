@@ -265,10 +265,44 @@ Email is optional — the notification system works without it. Email is only se
 
 ### Admin panel configuration
 
-Instead of `.env`, configure email at runtime via the admin panel:
-- `GET /api/admin/email` — view current email config
+Configure email at runtime via the admin panel (the API key only when `RESEND_API_KEY` is not set; see below):
+- `GET /api/admin/email` — view current email config (`api_key_source`: `env`, `database` or `unset`)
 - `PUT /api/admin/email` — update API key, default from address, and per-service from addresses
 - `POST /api/admin/email/test` — send a test email
+
+## Provider secrets
+
+Each provider secret has an environment variable, read first; the `site_settings` row is only a
+fallback (`server/secrets.js`, roadmap §18.2(12)). While a variable is set, the admin panel shows the
+secret as "set in the environment" and never saves one into the database. `GET /api/admin/secrets`
+(owner) and the boot line `[Secrets] resend_api_key=env …` say which source each one uses, never a value.
+
+| Setting | Variable | Used for |
+| --- | --- | --- |
+| `resend_api_key` | `RESEND_API_KEY` | email delivery |
+| `resend_webhook_secret` | `RESEND_WEBHOOK_SECRET` | Resend delivery webhooks (Svix `whsec_…`) |
+| `discord_bot_token` | `DISCORD_BOT_TOKEN` | Discord bot alerts |
+| `discord_oauth_client_secret` | `DISCORD_OAUTH_CLIENT_SECRET` | Discord account linking |
+| `vapid_private_key` | `VAPID_PRIVATE_KEY` | web push (the public key is derived from it; `VAPID_PUBLIC_KEY` optional) |
+
+`net.ipinfo_token`, `net.globalping_token` and the old `ses_*` keys are never read by Network (the Tools
+gateway reads `NET_IPINFO_TOKEN` / `NET_GLOBALPING_TOKEN` from its own env file).
+
+Moving them out of the database (operator):
+
+```bash
+cd /opt/openvibe.network
+sudo node scripts/secrets-out-of-db.js                 # dry run: names, env file and running service, per secret
+# copy each value the dry run lists into /etc/openvibe/network.env (VAR=value), then
+sudo systemctl restart openvibe-network                # the boot line shows <key>=env
+sudo node scripts/secrets-out-of-db.js --apply --backup data/network-pre-secrets-$(date +%F).db
+# rollback: sudo node scripts/secrets-out-of-db.js --restore-from data/network-pre-secrets-<date>.db --apply
+```
+
+`--apply` blanks a database copy only when the env file sets the variable to the same value (a
+different one only with `--allow-different`) and the running service already has it, plus the secrets
+Network never reads; everything else is kept and the dry run says why. The script reads the env file
+and the service's environment as root, then becomes the database owner. It never prints a value.
 
 ---
 

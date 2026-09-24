@@ -1374,6 +1374,12 @@ async function loadToolsSettings() {
                 ${keys.map(key => {
                     const s = settings[key];
                     const isSensitive = /(password|secret|token|private|credential|api[_-]?key|bearer)/i.test(key);
+                    if (s.source === 'env') return `
+                        <div class="setting-row" style="flex-direction:column;align-items:stretch">
+                            <label for="ts-${esc(key)}"><strong>${esc(key)}</strong></label>
+                            <input type="password" id="ts-${esc(key)}" data-key="${esc(key)}" data-type="${esc(s.type||'string')}" value="" disabled placeholder="Set in the environment (${esc(s.env || '')})"
+                                style="margin-top:4px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">
+                        </div>`;
                     if (s.type === 'boolean') return `
                         <div class="setting-row">
                             <label for="ts-${esc(key)}"><strong>${esc(key)}</strong></label>
@@ -1384,6 +1390,7 @@ async function loadToolsSettings() {
                             <label for="ts-${esc(key)}"><strong>${esc(key)}</strong></label>
                             <input type="${isSensitive?'password':'text'}" id="ts-${esc(key)}" data-key="${esc(key)}" data-type="${esc(s.type||'string')}" value="${esc(s.value)}"
                                 style="margin-top:4px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">
+                            ${s.source === 'database' && s.env ? `<span class="muted" style="font-size:12px;margin-top:4px">Stored in the database; prefer <code>${esc(s.env)}</code> in the server's environment file.</span>` : ''}
                         </div>`;
                 }).join('')}
                 <div style="margin-top:16px"><button type="button" class="btn btn-primary" onclick="saveToolsSettings()"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button></div>
@@ -1396,6 +1403,7 @@ async function saveToolsSettings() {
     const inputs = document.querySelectorAll('#tools-settings-form [data-key]');
     const changed = [];
     for (const input of inputs) {
+        if (input.disabled) continue;                                 // provided by the environment
         const key = input.dataset.key;
         const value = input.dataset.type === 'boolean' ? (input.checked ? 'true' : 'false') : input.value;
         if (value.startsWith('••••')) continue;                       // masked secret, untouched
@@ -2673,8 +2681,11 @@ async function loadEmail() {
                 ${email.issue ? `<div style="background:#e74c3c22;border:1px solid #e74c3c44;border-radius:8px;padding:10px 14px;margin:8px 0 12px;font-size:13px;color:#e74c3c"><i class="fa-solid fa-triangle-exclamation"></i> ${esc(email.issue)}</div>` : email.ready ? `<div style="background:#27ae6022;border:1px solid #27ae6044;border-radius:8px;padding:10px 14px;margin:8px 0 12px;font-size:13px;color:#27ae60"><i class="fa-solid fa-circle-check"></i> Resend is ready — emails will be delivered</div>` : ''}
 
                 <h4 style="margin:12px 0 10px;font-size:14px"><i class="fa-solid fa-key"></i> Resend API</h4>
-                <div class="form-field"><label>API Key</label><input type="password" id="email-api-key" value="${esc(email.api_key || '')}" placeholder="re_xxxxxxxxxxxx" autocomplete="off"></div>
-                <p class="muted" style="margin:-4px 0 8px;font-size:11px">Get your API key from <a href="https://resend.com/api-keys" target="_blank" style="color:var(--accent)">resend.com/api-keys</a>. Key is masked after saving.</p>
+                ${email.api_key_source === 'env'
+                    ? `<div class="form-field"><label>API Key</label><input type="password" id="email-api-key" value="" placeholder="Set in the environment (${esc(email.api_key_env || 'RESEND_API_KEY')})" disabled autocomplete="off"></div>
+                <p class="muted" style="margin:-4px 0 8px;font-size:11px">The key comes from <code>${esc(email.api_key_env || 'RESEND_API_KEY')}</code> in the server's environment file and cannot be changed here.</p>`
+                    : `<div class="form-field"><label>API Key</label><input type="password" id="email-api-key" value="${esc(email.api_key || '')}" placeholder="re_xxxxxxxxxxxx" autocomplete="off"></div>
+                <p class="muted" style="margin:-4px 0 8px;font-size:11px">Get your API key from <a href="https://resend.com/api-keys" target="_blank" style="color:var(--accent)">resend.com/api-keys</a>. Key is masked after saving.${email.api_key_source === 'database' ? ` Stored in the database; prefer <code>${esc(email.api_key_env || 'RESEND_API_KEY')}</code> in the server's environment file.` : ''}</p>`}
 
                 <h4 style="margin:20px 0 10px;font-size:14px"><i class="fa-solid fa-envelope"></i> From Addresses</h4>
                 <div class="form-field"><label>Default From Email</label><input type="email" id="email-from-email" value="${esc(email.from_email || '')}" placeholder="noreply@openvibe.network"></div>
@@ -2738,7 +2749,7 @@ async function saveEmail() {
     try {
         await api('/api/admin/email', { method: 'PUT', body: {
             enabled: document.getElementById('email-enabled').checked,
-            api_key: document.getElementById('email-api-key').value,
+            api_key: document.getElementById('email-api-key').disabled ? undefined : document.getElementById('email-api-key').value,
             from_email: document.getElementById('email-from-email').value,
             from_name: document.getElementById('email-from-name').value,
             from_email_openvibelive: document.getElementById('email-from-openvibelive').value,
@@ -3538,6 +3549,14 @@ async function loadAudit() {
 // ═══════════════════════════════════════════════════════════════
 // Discord Bot Settings
 // ═══════════════════════════════════════════════════════════════
+// A secret input for a provider secret: disabled when its environment variable provides it (server/secrets.js).
+function envSecretInput(sources, key, value, placeholder, style) {
+    const src = (sources || {})[key] || {};
+    if (src.source === 'env') return `<input type="password" data-key="${esc(key)}" value="" placeholder="Set in the environment (${esc(src.env || '')})" disabled style="${style}">`;
+    return `<input type="password" data-key="${esc(key)}" value="${esc(value || '')}" placeholder="${esc(placeholder)}" style="${style}">`
+        + (src.source === 'database' && src.env ? `<div class="muted" style="font-size:12px;margin-top:4px">Stored in the database; prefer <code>${esc(src.env)}</code> in the server's environment file.</div>` : '');
+}
+
 async function loadDiscordSettings() {
     const c = document.getElementById('settings-discord');
     c.innerHTML = '<p class="muted">Loading Discord settings...</p>';
@@ -3557,7 +3576,7 @@ async function loadDiscordSettings() {
             <form id="discord-settings-form">
                 <div class="setting-row">
                     <label>Bot Token</label>
-                    <input type="password" data-key="discord_bot_token" value="${esc(s.discord_bot_token || '')}" placeholder="Bot token from Discord Developer Portal" style="width:100%;max-width:500px">
+                    ${envSecretInput(data.sources, 'discord_bot_token', s.discord_bot_token, 'Bot token from Discord Developer Portal', 'width:100%;max-width:500px')}
                 </div>
                 <div class="setting-row">
                     <label>Guild / Server ID</label>
@@ -3588,7 +3607,7 @@ async function loadDiscordSettings() {
                 </div>
                 <div class="setting-row">
                     <label>OAuth2 Client Secret</label>
-                    <input type="password" data-key="discord_oauth_client_secret" value="${esc(s.discord_oauth_client_secret || '')}" placeholder="Discord application client secret" style="width:300px">
+                    ${envSecretInput(data.sources, 'discord_oauth_client_secret', s.discord_oauth_client_secret, 'Discord application client secret', 'width:300px')}
                 </div>
                 <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
                     <button type="button" class="btn btn-primary" onclick="saveDiscordSettings()"><i class="fa-solid fa-save"></i> Save Settings</button>
@@ -3607,6 +3626,7 @@ async function saveDiscordSettings() {
         const form = document.getElementById('discord-settings-form');
         const settings = {};
         form.querySelectorAll('[data-key]').forEach(el => {
+            if (el.disabled) return;                               // provided by the environment
             settings[el.dataset.key] = el.value;
         });
         await api('/api/admin/discord', { method: 'PUT', body: JSON.stringify({ settings }) });

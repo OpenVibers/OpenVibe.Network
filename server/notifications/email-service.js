@@ -427,6 +427,7 @@ body { margin: 0; padding: 0; background: #1a1a24; font-family: -apple-system, B
     getStatus() {
         const apiKey = this.db.getSetting('resend_api_key') || '';
         const issue = this.diagnose();
+        const secrets = require('../secrets');
         return {
             enabled: this._enabled,
             ready: this.isEnabled,
@@ -440,6 +441,9 @@ body { margin: 0; padding: 0; background: #1a1a24; font-family: -apple-system, B
             hasApiKey: !!apiKey,
             // Masked API key for display (show first 6 chars + last 4)
             api_key: apiKey ? apiKey.slice(0, 6) + '••••' + apiKey.slice(-4) : '',
+            // Where the key comes from: env (RESEND_API_KEY, the admin UI cannot change it), database, unset.
+            api_key_source: secrets.source(this.db, 'resend_api_key'),
+            api_key_env: secrets.envName('resend_api_key'),
         };
     }
 

@@ -15,6 +15,7 @@ const childProcess = require('child_process');
 const urlRegistry = require('../url-registry');
 const { URL_DEFINITIONS } = require('openvibe-shared/url-resolver');
 const { isOwner, requireOwner, isSensitiveSettingKey, maskSecret } = require('../auth/owner-guard');
+const secrets = require('../secrets');
 const { issueResetToken } = require('../auth/reset-tokens');
 const { checkAdminLimit, recordAdminAction } = require('../auth/admin-limits');
 
@@ -252,11 +253,16 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             const { enabled, api_key, from_email, from_name,
                     from_email_openvibelive, from_email_openvibegames, from_email_openvibenetwork } = req.body;
             const setSetting = db.prepare('INSERT OR REPLACE INTO site_settings (key, value, type) VALUES (?, ?, ?)');
+            const skipped = [];
 
             const tx = db.transaction(() => {
                 if (enabled !== undefined) setSetting.run('email_enabled', String(enabled), 'boolean');
-                // Only update API key if it's not a masked placeholder
-                if (api_key && !/\u2022/.test(api_key)) setSetting.run('resend_api_key', api_key, 'string');
+                // Only update API key if it's not a masked placeholder, and never while RESEND_API_KEY
+                // provides it (server/secrets.js): the environment is the source then.
+                if (api_key && !/\u2022/.test(api_key)) {
+                    if (secrets.source(db, 'resend_api_key') === 'env') skipped.push('resend_api_key');
+                    else setSetting.run('resend_api_key', api_key, 'string');
+                }
                 if (from_email) setSetting.run('email_from_address', from_email, 'string');
                 if (from_name !== undefined) setSetting.run('email_from_name', from_name || 'OpenVibe', 'string');
                 // Per-service from addresses
@@ -273,7 +279,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                 req.user.id, 'email_config_update', JSON.stringify({ from_email })
             );
 
-            res.json({ ok: true, email: emailService.getStatus() });
+            res.json({ ok: true, email: emailService.getStatus(), ...(skipped.length ? { skipped, note: 'set in the environment; not saved to the database' } : {}) });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
         }
@@ -296,6 +302,11 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // Site Settings
     // ═══════════════════════════════════════════════════════
 
+    // Where each provider secret comes from (server/secrets.js): names and sources, never values.
+    router.get('/secrets', requireOwner, (req, res) => {
+        res.json({ ok: true, secrets: secrets.report(db) });
+    });
+
     // Core site settings are owner-only (off-limits to admins).
     router.get('/settings', requireOwner, (req, res) => {
         try {
@@ -312,6 +323,15 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             const owner = isOwner(req.user);
             for (const r of rows) {
                 if (EMAIL_MANAGED_KEYS.has(r.key)) continue;
+                // Provider secrets set in the environment (server/secrets.js): the database copy is not
+                // used, and the value is never shown; the UI says which variable provides it.
+                if (secrets.isManaged(r.key)) {
+                    const src = secrets.source(db, r.key);
+                    if (src === 'env') { settings[r.key] = { value: '', type: r.type, source: 'env', env: secrets.envName(r.key), redacted: true }; continue; }
+                    if (!owner) { settings[r.key] = { value: maskSecret(r.value), type: r.type, source: src, env: secrets.envName(r.key), redacted: true }; continue; }
+                    settings[r.key] = { value: r.value, type: r.type, source: src, env: secrets.envName(r.key) };
+                    continue;
+                }
                 // Secrets (API keys / tokens / credentials) are owner-only — mask for admins.
                 if (!owner && (r.type === 'secret' || isSensitiveSettingKey(r.key))) {
                     settings[r.key] = { value: maskSecret(r.value), type: r.type, redacted: true };
@@ -336,6 +356,10 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             // Prevent overwriting secrets with masked values
             if (typeof value === 'string' && /^••••/.test(value)) {
                 return res.json({ ok: true, skipped: true });
+            }
+            // A provider secret the environment provides is never saved into the database.
+            if (secrets.isManaged(key) && secrets.source(db, key) === 'env') {
+                return res.json({ ok: true, skipped: true, source: 'env', env: secrets.envName(key), note: `set in the environment (${secrets.envName(key)}); not saved to the database` });
             }
             db.prepare('INSERT OR REPLACE INTO site_settings (key, value, type) VALUES (?, ?, ?)').run(key, String(value), type || 'string');
             db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(

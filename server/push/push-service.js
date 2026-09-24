@@ -1,6 +1,7 @@
 'use strict';
 
 let _db = null;
+let _publicKey = null;
 
 let webpush;
 try {
@@ -13,12 +14,30 @@ try {
  * Initialize VAPID keys. Generates a new keypair on first run and stores in site_settings.
  * @param {object} db - better-sqlite3 Database instance
  */
+function publicFromPrivate(privateKey) {
+    const ecdh = require('crypto').createECDH('prime256v1');
+    ecdh.setPrivateKey(Buffer.from(String(privateKey), 'base64url'));
+    return ecdh.getPublicKey().toString('base64url');
+}
+
 function initVapid(db) {
     _db = db;
     if (!webpush) return;
     const upsert = db.prepare('INSERT OR REPLACE INTO site_settings (key, value, type) VALUES (?, ?, ?)');
+    // Both are environment-first (VAPID_PRIVATE_KEY / VAPID_PUBLIC_KEY, server/secrets.js), else site_settings.
     let publicKey = db.getSetting('vapid_public_key');
     let privateKey = db.getSetting('vapid_private_key');
+
+    // The public key is derived from the private one, so a private key alone (or a stale public key
+    // beside it) still gives a matching pair; a new pair is made only when there is no private key.
+    if (privateKey) {
+        try {
+            const derived = publicFromPrivate(privateKey);
+            if (publicKey && publicKey !== derived) console.warn('[push] vapid_public_key does not match the private key; using the key derived from it');
+            publicKey = derived;
+        } catch (err) { console.warn('[push] VAPID private key unreadable:', err.message); }
+    }
+    _publicKey = publicKey || null;
 
     if (!publicKey || !privateKey) {
         const keys = webpush.generateVAPIDKeys();
@@ -26,6 +45,7 @@ function initVapid(db) {
         privateKey = keys.privateKey;
         upsert.run('vapid_public_key', publicKey, 'secret');
         upsert.run('vapid_private_key', privateKey, 'secret');
+        _publicKey = publicKey;
         console.log('[push] Generated new VAPID keypair');
     }
 
@@ -38,7 +58,7 @@ function initVapid(db) {
  * Get the public VAPID key for client subscription.
  */
 function getPublicKey() {
-    return _db?.getSetting('vapid_public_key') || null;
+    return _publicKey || _db?.getSetting('vapid_public_key') || null;
 }
 
 /**

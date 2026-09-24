@@ -348,6 +348,9 @@ app.locals.privateKey = privateKey;
 app.locals.publicKey = publicKey;
 app.locals.config = config;
 
+// Provider secrets: environment first, database fallback (server/secrets.js). Names and sources only.
+console.log(`[Secrets] ${require('./secrets').summary(db)}`);
+
 // ── Initialize Services ──────────────────────────────────────
 const notificationService = new NotificationService(db);
 const emailService = new EmailService(db);
