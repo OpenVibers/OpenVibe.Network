@@ -212,6 +212,7 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
                 <button class="admin-tab-btn owner-only" onclick="showTab('email',this)"><i class="fa-solid fa-envelope"></i> Email</button>
                 <button class="admin-tab-btn" onclick="showTab('vkeys',this)"><i class="fa-solid fa-key"></i> Keys</button>
                 <button class="admin-tab-btn" onclick="showTab('audit',this)"><i class="fa-solid fa-clipboard-list"></i> Audit</button>
+                <button class="admin-tab-btn" onclick="showTab('modlog',this)"><i class="fa-solid fa-gavel"></i> Moderation log</button>
                 <button class="admin-tab-btn" onclick="showTab('analytics',this)"><i class="fa-solid fa-chart-pie"></i> Analytics</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('domains',this)"><i class="fa-solid fa-globe"></i> Domains</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('deploy',this)"><i class="fa-solid fa-server"></i> Deploy</button>
@@ -381,6 +382,17 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
     <div class="section" id="sec-audit">
         <div id="audit-content"><div class="loading">Loading...</div></div>
         <div id="audit-pager" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:12px"></div>
+    </div>
+
+    <!-- Moderation log (ADR-022): every staff action any service reports, from /api/v1/staff/moderation-audit -->
+    <div class="section" id="sec-modlog">
+        <p class="muted" style="margin:0 0 10px">Staff actions reported by Chat and Live, Community, Tips and Billing. Each service enforces its own moderation; this is the record.</p>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+            <label for="modlog-service" class="muted" style="font-size:12px">Service</label>
+            <select id="modlog-service" onchange="loadModLog(true)"><option value="">All</option><option value="chat">Chat and Live</option><option value="community">Community</option><option value="tips">Tips</option><option value="billing">Billing</option></select>
+        </div>
+        <div id="modlog-content"><div class="loading">Loading...</div></div>
+        <div style="display:flex;justify-content:center;margin-top:12px"><button id="modlog-more" class="btn" hidden onclick="loadModLog(false)">Load more</button></div>
     </div>
 
     <!-- Analytics -->
@@ -798,6 +810,7 @@ const tabLoaders = {
     email: loadEmail,
     vkeys: loadVKeys,
     audit: loadAudit,
+    modlog: () => loadModLog(true),
     analytics: loadAnalytics,
     deploy: loadDeployOverview,
     domains: loadDomains,
@@ -3516,6 +3529,39 @@ async function loadBotAnalysis() {
 // Audit Log
 // ═══════════════════════════════════════════════════════════════
 let auditOffset = 0;
+let _modlogNext = null;
+async function loadModLog(reset) {
+    const c = document.getElementById('modlog-content');
+    const more = document.getElementById('modlog-more');
+    const service = document.getElementById('modlog-service').value;
+    if (reset) { _modlogNext = null; c.innerHTML = '<div class="loading">Loading...</div>'; }
+    try {
+        const q = new URLSearchParams({ limit: '50' });
+        if (service) q.set('service', service);
+        if (!reset && _modlogNext) q.set('before', String(_modlogNext));
+        const data = await api(`/api/v1/staff/moderation-audit?${q}`);
+        const items = data.items || [];
+        const rowsHtml = items.map(e => `
+            <tr>
+                <td style="white-space:nowrap;font-size:11px" title="${esc(e.occurred_at)}">${e.occurred_at ? timeAgo(e.occurred_at) : '-'}</td>
+                <td><span class="badge badge-info">${esc(e.service)}</span></td>
+                <td><strong>${esc(e.action)}</strong>${e.scope ? `<div class="muted" style="font-size:11px">${esc(e.scope)}</div>` : ''}</td>
+                <td style="font-size:11px"><code>${esc(e.actor_subject || '-')}</code></td>
+                <td style="font-size:11px">${esc(e.target_type || '')} <code>${esc(e.target_id || '-')}</code>${e.target_subject && e.target_subject !== e.target_id ? `<div class="muted">${esc(e.target_subject)}</div>` : ''}</td>
+                <td style="font-size:11px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.reason || '')}">${esc(e.reason || '-')}</td>
+            </tr>`).join('');
+        if (reset) {
+            c.innerHTML = items.length ? `<table class="admin-table"><thead><tr><th>When</th><th>Service</th><th>Action</th><th>By</th><th>Target</th><th>Reason</th></tr></thead><tbody id="modlog-rows">${rowsHtml}</tbody></table>` : '<p class="muted">No staff actions recorded yet.</p>';
+        } else {
+            document.getElementById('modlog-rows')?.insertAdjacentHTML('beforeend', rowsHtml);
+        }
+        _modlogNext = data.next || null;
+        more.hidden = !_modlogNext;
+    } catch (err) {
+        c.innerHTML = `<p class="muted">The moderation log could not be loaded: ${esc(err.message || 'error')}</p>`;
+    }
+}
+
 async function loadAudit() {
     const c = document.getElementById('audit-content');
     const pager = document.getElementById('audit-pager');

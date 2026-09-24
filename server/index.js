@@ -364,9 +364,11 @@ app.locals.emailService = emailService;
 const liveFollowers = privateKey.includes('BEGIN')
     ? require('./notifications/live-followers').createLiveFollowers({ privateKey, issuer: config.jwt.issuer, liveUrl: config.services.live.internalUrl })
     : null;
+// The moderation audit log (ADR-022): staff actions every service reports, readable by staff.
+const moderationAudit = require('./admin/moderation-audit').createModerationAudit(db);
 eventsConsumer = require('./notifications/events-consumer').createEventsConsumer({
     db, notifications: notificationService, secrets: config.eventsWebhookSecrets,
-    liveFollowers, discord: () => app.locals.discordService || null,
+    liveFollowers, discord: () => app.locals.discordService || null, moderationAudit,
 });
 console.log(`[Events consumer] ${eventsConsumer.enabled ? 'on' : 'off (NETWORK_EVENTS_SECRET unset)'}: POST /internal/events`);
 
@@ -380,6 +382,8 @@ const authRoutes = require('./auth/routes');
 const jwt = require('jsonwebtoken');
 // Sliding session guard (server/auth/session.js): renewable tokens are accepted and renewed.
 const requireAuth = require('./auth/session').makeRequireAuth(() => ({ db, publicKey, config }), authRoutes.signToken);
+// The moderation audit log for staff (staff.moderation.logs): server/admin/moderation-audit.js.
+app.use('/api/v1/staff/moderation-audit', requireAuth, moderationAudit.router());
 
 // ── Routes ───────────────────────────────────────────────────
 // Public key endpoint (services fetch this to verify JWTs).

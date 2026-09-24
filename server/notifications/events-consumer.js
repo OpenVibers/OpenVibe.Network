@@ -49,7 +49,8 @@ const { LiveFollowersError } = require('./live-followers');
 
 const CONSUMER = 'network-notifications';
 const INBOX_TABLE = 'network_event_inbox';
-const TOPICS = Object.freeze(['deals.watch.matched', 'trade.alert.triggered', 'live.stream.started']);
+const AUDIT_TOPICS = require('../admin/moderation-audit').TOPICS;
+const TOPICS = Object.freeze(['deals.watch.matched', 'trade.alert.triggered', 'live.stream.started', ...AUDIT_TOPICS]);
 const LIVE_STARTED_MAX_AGE_MS = 30 * 60 * 1000;
 const EVENT_ID_RE = /^evt_[0-9A-HJKMNP-TV-Z]{26}$/;
 
@@ -155,7 +156,7 @@ function liveStarted(event, { now, maxAgeMs }) {
  * @param {{ forStream(id: number): Promise<object> }} [o.liveFollowers]  ./live-followers.js
  * @param {() => ({ sendLiveAlert(streamer: object, stream: object): Promise<object> }|null)} [o.discord]
  */
-function createEventsConsumer({ db, notifications, secrets, liveFollowers = null, discord = () => null, liveStartedMaxAgeMs = LIVE_STARTED_MAX_AGE_MS, now = () => Date.now(), log = console }) {
+function createEventsConsumer({ db, notifications, secrets, liveFollowers = null, discord = () => null, moderationAudit = null, liveStartedMaxAgeMs = LIVE_STARTED_MAX_AGE_MS, now = () => Date.now(), log = console }) {
     const keys = Array.isArray(secrets) ? secrets.filter((s) => typeof s === 'string' && s.length >= 32) : secretsFrom(secrets);
     const inbox = createInbox(db, { table: INBOX_TABLE, now });
     inbox.ensureSchema();
@@ -219,6 +220,8 @@ function createEventsConsumer({ db, notifications, secrets, liveFollowers = null
     function apply(event, prep) {
         let after = null;
         const r = inbox.once(CONSUMER, event.event_id, () => {
+            // Staff actions go to the moderation audit log (ADR-022), never to anyone's inbox.
+            if (AUDIT_TOPICS.includes(event.event_type)) return moderationAudit ? moderationAudit.record(event) : 'ignored:audit_off';
             if (event.event_type === 'live.stream.started') {
                 const out = liveStreamStarted(event, prep);
                 if (typeof out === 'string') return out;
