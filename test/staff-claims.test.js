@@ -7,8 +7,8 @@ const { staffClaims } = require('../server/auth/staff-claims');
 
 assert.deepStrictEqual(staffClaims({ role: 'user', username: 'a' }), {}, 'not staff: no claims, small token');
 assert.deepStrictEqual(staffClaims({ role: 'streamer', username: 'b' }), {});
-assert.deepStrictEqual(staffClaims({ role: 'global_mod', username: 'm' }), { staff_caps: staff.capabilitiesOf('global_mod') });
-assert.deepStrictEqual(staffClaims({ role: 'admin', username: 'boss' }), { staff_caps: staff.capabilitiesOf('admin') });
+assert.deepStrictEqual(staffClaims({ role: 'global_mod', username: 'm' }), { staff_caps: staff.capabilitiesOf('global_mod'), staff_map: '1.1.0' });
+assert.deepStrictEqual(staffClaims({ role: 'admin', username: 'boss' }), { staff_caps: staff.capabilitiesOf('admin'), staff_map: '1.1.0' });
 const owner = staffClaims({ role: 'admin', username: 'TheOwner' });
 assert.strictEqual(owner.is_owner, true);
 assert.deepStrictEqual(owner.staff_caps, staff.capabilitiesOf('owner'));

@@ -14,7 +14,7 @@ function staffClaims(user) {
     const owner = user.role === 'admin' && isOwner(user);
     const caps = staff.capabilitiesOf({ role: user.role, is_owner: owner });
     if (!caps.length) return {};
-    return { ...(owner ? { is_owner: true } : {}), staff_caps: caps };
+    return { ...(owner ? { is_owner: true } : {}), staff_caps: caps, staff_map: staff.map.version };
 }
 
 module.exports = { staffClaims };
