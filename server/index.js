@@ -654,13 +654,7 @@ app.get(['/sso/fanout', '/sso/fanout.html'], (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'sso-fanout.html'));
 });
 
-app.use(express.static(path.join(__dirname, '..', 'public'), {
-    setHeaders(res, filePath) {
-        if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
-            res.setHeader('Cache-Control', 'no-cache');
-        }
-    },
-}));
+app.use(express.static(path.join(__dirname, '..', 'public'), { setHeaders: require('./static-headers').publicStaticHeaders }));
 
 // openvibe-shared: the OpenVibe.Shared release package.json pins, from node_modules.
 const sharedFiles = require('openvibe-shared/files');
