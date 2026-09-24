@@ -51,7 +51,13 @@ try {
     assert.ok(/usernames'\)\.isReserved\(db, username\)/.test(auth));
     const admin = fs.readFileSync(path.join(__dirname, '../server/admin/routes.js'), 'utf8');
     assert.ok(/router\.put\('\/users\/:id\/username'/.test(admin) && /Only the owner renames the owner/.test(admin));
-    assert.ok(/app\.get\('\/api\/v1\/users\/renamed\/:name'/.test(fs.readFileSync(path.join(__dirname, '../server/index.js'), 'utf8')));
+    assert.ok(/app\.get\('\/api\/v1\/users\/names\/:name'/.test(fs.readFileSync(path.join(__dirname, '../server/index.js'), 'utf8')));
+    // The public record: an old name and the current one both lead to the same person.
+    assert.deepStrictEqual(u.lookup(db, 'ann_old'), { current: 'ann_third', network_id: ann, renamed: true, previous_names: ['ann_new', 'ann_old'] });
+    assert.deepStrictEqual(u.lookup(db, 'ANN_THIRD'), { current: 'ann_third', network_id: ann, renamed: false, previous_names: ['ann_new', 'ann_old'] });
+    assert.strictEqual(u.lookup(db, 'nobody_here'), null);
+    db.prepare('UPDATE users SET is_banned = 1 WHERE id = ?').run(ann);
+    assert.strictEqual(u.lookup(db, 'ann_old'), null, 'banned accounts are not looked up');
 } finally {
     fs.rmSync(dir, { recursive: true, force: true });
 }

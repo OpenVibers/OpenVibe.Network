@@ -384,12 +384,13 @@ const jwt = require('jsonwebtoken');
 const requireAuth = require('./auth/session').makeRequireAuth(() => ({ db, publicKey, config }), authRoutes.signToken);
 // The moderation audit log for staff (staff.moderation.logs): server/admin/moderation-audit.js.
 app.use('/api/v1/staff/moderation-audit', requireAuth, moderationAudit.router());
-// Username history (WS-B task 6): the current name for an old one, so sites redirect /@old → /@new.
-app.get('/api/v1/users/renamed/:name', rateLimit({ windowMs: 60_000, max: 120 }), (req, res) => {
-    const to = require('./identity/usernames').renamedTo(db, req.params.name);
-    res.set('Cache-Control', 'public, max-age=300');
-    if (!to) return res.status(404).json({ error: 'not_renamed' });
-    res.json({ username: to });
+// Username history (WS-B task 6): who holds a name now, so sites redirect /@old → /@new and pick up a
+// new name before they have seen it. Banned accounts and unknown names are 404.
+app.get('/api/v1/users/names/:name', rateLimit({ windowMs: 60_000, max: 240 }), (req, res) => {
+    const rec = require('./identity/usernames').lookup(db, req.params.name);
+    res.set('Cache-Control', 'public, max-age=120');
+    if (!rec) return res.status(404).json({ error: 'not_found' });
+    res.json(rec);
 });
 // The GitHub token (admin → Settings → GitHub, or GITHUB_TOKEN): owner-only admin, and Blog's changelog reads it.
 app.use('/api/admin/integrations/github', requireAuth, require('./integrations/github').adminRouter(db));

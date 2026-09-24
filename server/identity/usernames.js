@@ -6,7 +6,8 @@
  * Users → Rename). Every rename is kept in username_history, so:
  *   - openvibe.live answers /@old with a 301 to /@new for renamed channels (never for a bare /old,
  *     which stays a 404: channel URLs are /@username only);
- *   - GET /api/v1/users/renamed/:name tells any site the current name for an old one;
+ *   - GET /api/v1/users/names/:name tells any site who holds a name now (current name, Network id,
+ *     past names), for an old name and for a new one it has not seen yet;
  *   - an old name stays reserved for RESERVE_DAYS, so nobody can take it over and inherit the
  *     person's links, mentions and reputation. Only the person who held it may take it back.
  */
@@ -78,10 +79,30 @@ function renamedTo(db, oldName) {
     return row ? row.username : null;
 }
 
+/**
+ * The public record for a name: { current, network_id, renamed, previous_names } when it is someone's
+ * current name or one they were renamed away from; null otherwise.
+ */
+function lookup(db, name) {
+    ensureSchema(db);
+    if (!NAME_RE.test(String(name || ''))) return null;
+    let user = db.prepare('SELECT id, username FROM users WHERE LOWER(username) = LOWER(?) AND COALESCE(is_banned, 0) = 0').get(name);
+    let renamed = false;
+    if (!user) {
+        const h = db.prepare('SELECT user_id FROM username_history WHERE old_username = ? COLLATE NOCASE ORDER BY id DESC LIMIT 1').get(name);
+        if (!h) return null;
+        user = db.prepare('SELECT id, username FROM users WHERE id = ? AND COALESCE(is_banned, 0) = 0').get(h.user_id);
+        if (!user) return null;
+        renamed = true;
+    }
+    const previous = db.prepare('SELECT old_username FROM username_history WHERE user_id = ? ORDER BY id DESC').all(user.id).map(r => r.old_username);
+    return { current: user.username, network_id: user.id, renamed, previous_names: previous };
+}
+
 /** A user's past usernames, newest first. */
 function historyOf(db, userId) {
     ensureSchema(db);
     return db.prepare('SELECT old_username, new_username, changed_at FROM username_history WHERE user_id = ? ORDER BY id DESC').all(userId);
 }
 
-module.exports = { ensureSchema, isReserved, problemWith, rename, renamedTo, historyOf, RESERVE_DAYS, NAME_RE };
+module.exports = { ensureSchema, isReserved, problemWith, rename, renamedTo, lookup, historyOf, RESERVE_DAYS, NAME_RE };
