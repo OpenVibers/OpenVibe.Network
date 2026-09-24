@@ -82,7 +82,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Media | MEDIA_R2_SECRET_ACCESS_KEY | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_SECRET | **not set** | server/views/service.js |
 | OpenVibe.Media | MEDIA_SIGNING_SECRET | media.env | server/config.js |
-| OpenVibe.Media | OV_OAUTH_CLIENT_SECRET | media.env | server/events.js, server/index.js |
+| OpenVibe.Media | OV_OAUTH_CLIENT_SECRET | media.env | server/events.js, server/index.js, server/objects/owner-subject.js |
 | OpenVibe.Media | VIEW_HASH_SECRET | **not set** | server/views/service.js |
 | OpenVibe.Network | ADMIN_PASSWORD | network.env | server/config.js |
 | OpenVibe.Network | DEV_CREDENTIAL_OVERLAP_S | **not set** | server/config.js |
@@ -404,6 +404,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Codes | CODES_PLAYGROUND_MAX_UPLOAD_BYTES |  | server/config.js |
 | OpenVibe.Codes | CODES_PLAYGROUND_MEDIA_URL |  | server/config.js |
 | OpenVibe.Codes | CODES_PLAYGROUND_RUNS_PER_HOUR |  | server/config.js |
+| OpenVibe.Codes | CODES_RATE_LIMIT_PER_MIN |  | server/app.js |
 | OpenVibe.Codes | CODES_REGISTRY_TTL_MS |  | server/config.js |
 | OpenVibe.Codes | CODES_STAFF_SUBJECTS | codes.env | server/config.js |
 | OpenVibe.Codes | COOKIE_SECURE |  | server/config.js |
@@ -665,31 +666,29 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | ADMIN_USERNAME | live.env | server/config.js |
 | OpenVibe.Live | AI_HEAR_MAX_SPOOL |  | server/ai/stream-audio.js |
 | OpenVibe.Live | AI_HEAR_SEGMENT_SEC |  | server/ai/stream-audio.js |
-| OpenVibe.Live | AI_MOMENTS_PATH |  | server/ai/stream-memory-job.js, server/arena/arena-service.js +1 |
 | OpenVibe.Live | AI_SERVICE | live.env | server/ai/ai-service.js |
 | OpenVibe.Live | AI_VOD_MAX_WINDOWS |  | server/ai/media-analysis.js |
 | OpenVibe.Live | ALLOW_P2P_FALLBACK |  | server/config.js |
-| OpenVibe.Live | ARENA_IMAGE_PATH |  | server/arena/arena-service.js, server/index.js |
 | OpenVibe.Live | BASE_URL | live.env | server/auth/routes.js, server/config.js |
 | OpenVibe.Live | BILLING_AUTHORITY |  | server/admin/routes.js, server/db/database.js +1 |
 | OpenVibe.Live | BTTV_CACHE_TTL |  | server/config.js |
 | OpenVibe.Live | CHAT_AUTHORITY | live.env | server/chat/chat-authority.js |
-| OpenVibe.Live | CLIPS_PATH |  | server/config.js |
 | OpenVibe.Live | COLD_STORAGE_PATH |  | server/config.js |
-| OpenVibe.Live | DB_PATH | live.env | server/config.js, server/db/database.js +1 |
+| OpenVibe.Live | DATA_DIR |  | server/drill.js, server/index.js +1 |
+| OpenVibe.Live | DB_PATH | live.env | server/db/init.js, server/drill.js +2 |
 | OpenVibe.Live | DEBUG_DM_DELIVERY |  | server/chat/chat-server.js |
-| OpenVibe.Live | EMOTES_PATH | live.env | server/config.js, server/media-proxy/asset-sync.js |
+| OpenVibe.Live | EMOTES_PATH | live.env | (not referenced) |
 | OpenVibe.Live | ESCROW_HOLD_DAYS | live.env | server/config.js |
 | OpenVibe.Live | EVENTS_PUBLISH |  | server/events/stream-events.js |
 | OpenVibe.Live | EVENTS_URL | live.env | server/events/stream-events.js |
 | OpenVibe.Live | FFZ_CACHE_TTL |  | server/config.js |
-| OpenVibe.Live | HOST | live.env | server/config.js |
+| OpenVibe.Live | HOST | live.env | server/config.js, server/drill.js +1 |
 | OpenVibe.Live | JSMPEG_AUDIO_PORT | live.env | server/config.js |
 | OpenVibe.Live | JSMPEG_VIDEO_PORT | live.env | server/config.js |
 | OpenVibe.Live | LEGACY_QUEST_API_URL |  | server/monetization/cosmetics.js |
-| OpenVibe.Live | LISTEN_FDS |  | server/index.js |
-| OpenVibe.Live | LISTEN_PID |  | server/index.js |
-| OpenVibe.Live | LIVE_THUMBS_PATH |  | server/media-proxy/live-thumbs.js |
+| OpenVibe.Live | LISTEN_FDS |  | server/drill.js, server/index.js |
+| OpenVibe.Live | LISTEN_PID |  | server/drill.js, server/index.js |
+| OpenVibe.Live | LIVE_DRILL |  | server/drill.js |
 | OpenVibe.Live | MAX_EMOTE_SIZE_KB | live.env | server/config.js |
 | OpenVibe.Live | MAX_EMOTES_PER_CHANNEL |  | server/config.js |
 | OpenVibe.Live | MAX_EMOTES_PER_UPLOADER_PER_CHANNEL |  | server/config.js |
@@ -710,7 +709,6 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | MIN_CASHOUT_BUCKS |  | server/config.js |
 | OpenVibe.Live | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
 | OpenVibe.Live | NODE_ENV | live.env | server/comments-client.js, server/config.js +1 |
-| OpenVibe.Live | OFFLINE_SCREEN_PATH |  | server/monetization/routes.js, server/streaming/routes.js |
 | OpenVibe.Live | OPENRE_PUBLIC_URL | live.env | server/openre/openre-client.js |
 | OpenVibe.Live | OPENRE_URL | live.env | server/openre/openre-client.js |
 | OpenVibe.Live | OV_AI_INTERNAL_URL |  | server/ai/ai-service.js |
@@ -729,11 +727,11 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | OV_PUBLIC_DIR |  | server/web/assets.js |
 | OpenVibe.Live | OWNER_USERNAME |  | server/db/database.js |
 | OpenVibe.Live | PASTES_AUTHORITY | live.env | server/pastes-client.js |
-| OpenVibe.Live | PASTES_ON_COMMUNITY | live.env | server/index.js, server/seo/seo.js |
+| OpenVibe.Live | PASTES_ON_COMMUNITY | live.env | server/seo/seo.js, server/web/paste-handover.js |
 | OpenVibe.Live | PATH |  | server/media/media-downloader.js |
 | OpenVibe.Live | PAYPAL_CLIENT_ID | live.env | server/config.js |
 | OpenVibe.Live | PAYPAL_MODE | live.env | server/config.js |
-| OpenVibe.Live | PORT | live.env | server/config.js |
+| OpenVibe.Live | PORT | live.env | server/config.js, server/drill.js +1 |
 | OpenVibe.Live | RELEASE_AT |  | OpenVibe.Shared/release.js |
 | OpenVibe.Live | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
 | OpenVibe.Live | RS_COMPANION_DB_PATH | live.env | (not referenced) |
@@ -746,14 +744,10 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | SEVENTV_CACHE_TTL |  | server/config.js |
 | OpenVibe.Live | SITE_URL |  | server/chat/chat-server.js |
 | OpenVibe.Live | SOUND_DEFAULT_MAX_SECONDS |  | server/config.js |
-| OpenVibe.Live | SOUNDS_PATH |  | server/config.js, server/media-proxy/asset-sync.js |
 | OpenVibe.Live | STAR_STREAMER | live.env | server/config.js |
-| OpenVibe.Live | THUMBNAILS_PATH |  | server/config.js |
-| OpenVibe.Live | TTS_CACHE_PATH |  | server/arena/voice.js |
 | OpenVibe.Live | TURN_URL | live.env | server/config.js |
 | OpenVibe.Live | TURN_USERNAME | live.env | server/config.js |
 | OpenVibe.Live | UNSAFE_WORDS_PATH | live.env | (not referenced) |
-| OpenVibe.Live | VOD_PATH |  | server/config.js |
 | OpenVibe.Live | WEBRTC_PORT | live.env | server/config.js |
 | OpenVibe.Live | WHIP_PUBLIC_URL |  | server/config.js |
 | OpenVibe.Live | WHIP_PUBLIC_URL_ENABLED |  | server/config.js |
@@ -781,11 +775,11 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Media | CLIP_MAX_CONCURRENT_FFMPEG |  | server/vod/clip-cutter.js |
 | OpenVibe.Media | CLIP_QUEUE_WAIT_MS |  | server/vod/clip-cutter.js |
 | OpenVibe.Media | CLIPS_PATH | media.env | server/config.js |
-| OpenVibe.Media | DB_PATH | media.env | server/config.js |
+| OpenVibe.Media | DB_PATH | media.env | server/config.js, server/drill.js +1 |
 | OpenVibe.Media | EVENTS_PUBLISH |  | server/events.js |
 | OpenVibe.Media | EVENTS_URL | media.env | server/events.js |
 | OpenVibe.Media | FILES_PATH | media.env | server/config.js |
-| OpenVibe.Media | HOST | media.env | server/config.js |
+| OpenVibe.Media | HOST | media.env | server/config.js, server/drill.js +1 |
 | OpenVibe.Media | LIVE_APP_INTERNAL_URL |  | server/thumbnails/live-frame-service.js |
 | OpenVibe.Media | MEDIA_APP_KEYS |  | server/config.js |
 | OpenVibe.Media | MEDIA_APPS_SEED | media.env | server/config.js |
@@ -793,13 +787,17 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Media | MEDIA_B2_ENDPOINT | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_B2_KEY_ID | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_B2_REGION | media.env | server/vod/vod-storage.js |
+| OpenVibe.Media | MEDIA_DRILL |  | server/drill.js |
+| OpenVibe.Media | MEDIA_DURATION_RECONCILE_APPLY |  | server/jobs/duration-reconcile.js |
 | OpenVibe.Media | MEDIA_JOBS_ENABLED |  | server/config.js |
 | OpenVibe.Media | MEDIA_JOBS_HEAVY_WHILE_RECORDING |  | server/config.js |
+| OpenVibe.Media | MEDIA_OWNER_SUBJECT_SYNC |  | server/config.js |
 | OpenVibe.Media | MEDIA_PUBLIC_URL |  | server/config.js |
 | OpenVibe.Media | MEDIA_R2_ACCESS_KEY_ID | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_R2_BUCKET | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_R2_ENDPOINT | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_R2_REGION |  | server/vod/vod-storage.js |
+| OpenVibe.Media | MEDIA_RTMP_PULL_ALLOW |  | server/config.js |
 | OpenVibe.Media | MEDIA_VERIFY_ENABLED |  | server/config.js |
 | OpenVibe.Media | MEDIA_VERIFY_REPAIR_CORRUPT |  | server/config.js |
 | OpenVibe.Media | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
@@ -808,12 +806,12 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Media | OBJECTS_PATH |  | server/config.js |
 | OpenVibe.Media | OV_NETWORK_INTERNAL_URL | media.env | server/config.js, server/events.js |
 | OpenVibe.Media | OV_NETWORK_URL | media.env | server/config.js |
-| OpenVibe.Media | OV_OAUTH_CLIENT_ID | media.env | server/events.js, server/index.js |
+| OpenVibe.Media | OV_OAUTH_CLIENT_ID | media.env | server/events.js, server/index.js +1 |
 | OpenVibe.Media | OV_OAUTH_REDIRECT_URI |  | server/index.js |
 | OpenVibe.Media | PASTES_FROZEN_APPS | media.env | server/pastes/routes.js |
 | OpenVibe.Media | PASTES_MOVED_TO | media.env | (not referenced) |
 | OpenVibe.Media | PASTES_PATH | media.env | server/config.js |
-| OpenVibe.Media | PORT | media.env | (not referenced) |
+| OpenVibe.Media | PORT | media.env | server/drill.js, server/index.js |
 | OpenVibe.Media | RELEASE_AT |  | OpenVibe.Shared/release.js |
 | OpenVibe.Media | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
 | OpenVibe.Media | RTP_PORT_MAX | media.env | (not referenced) |
@@ -1060,9 +1058,10 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Tips | TIPS_POWERCHAT_LINK_TEMPLATE |  | server/config.js |
 | OpenVibe.Tips | TIPS_TTS_HARD_CAP |  | server/config.js |
 | OpenVibe.Tips | TRUST_PROXY | tips.env | server/config.js |
+| OpenVibe.Tools | AUDIO_MAX_DURATION |  | apps/audio/server/descriptors.js |
 | OpenVibe.Tools | BASE_URL |  | apps/gateway/server/config.js, apps/maps/server/config.js +1 |
 | OpenVibe.Tools | COOKIE_SECURE |  | apps/gateway/server/config.js |
-| OpenVibe.Tools | DATA_DIR |  | apps/audio/server/config.js, apps/docs/server/config.js +3 |
+| OpenVibe.Tools | DATA_DIR |  | apps/audio/server/config.js, apps/docs/server/config.js +4 |
 | OpenVibe.Tools | DOWNLOADS_DIR |  | apps/yt/server/config.js |
 | OpenVibe.Tools | EVENTS_PUBLISH |  | apps/_shared/jobs/events.js |
 | OpenVibe.Tools | EVENTS_RELAY_INTERVAL_MS |  | apps/_shared/jobs/events.js |
@@ -1074,8 +1073,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Tools | MAPS_API |  | apps/food/server/index.js |
 | OpenVibe.Tools | MEDIA_PUBLIC_URL | tools.env | apps/_shared/jobs/index.js |
 | OpenVibe.Tools | MEDIA_URL | tools.env | apps/_shared/jobs/index.js |
-| OpenVibe.Tools | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
-| OpenVibe.Tools | NODE_ENV | tools.env | apps/_shared/jobs/http.js, apps/audio/server/index.js +7 |
+| OpenVibe.Tools | NODE_ENV | tools.env | apps/_shared/guard/caller.js, apps/_shared/guard/index.js +8 |
 | OpenVibe.Tools | OUTPUT_DIR |  | apps/audio/server/config.js, apps/docs/server/config.js +1 |
 | OpenVibe.Tools | OV_AUDIO_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Tools | OV_COMMUNITY_INTERNAL_URL |  | apps/gateway/server/config.js |
@@ -1094,26 +1092,32 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Tools | OV_MEDIA_INTERNAL_URL | tools.env | apps/_shared/jobs/index.js |
 | OpenVibe.Tools | OV_MEDIA_URL |  | OpenVibe.Shared/brand.js, apps/_shared/jobs/index.js |
 | OpenVibe.Tools | OV_NET_URL |  | OpenVibe.Shared/brand.js |
-| OpenVibe.Tools | OV_NETWORK_INTERNAL_URL | tools.env | apps/_shared/jobs/events.js, apps/_shared/jobs/index.js +6 |
+| OpenVibe.Tools | OV_NETWORK_INTERNAL_URL | tools.env | apps/_shared/jobs/events.js, apps/_shared/jobs/index.js +9 |
 | OpenVibe.Tools | OV_NETWORK_LOGIN_URL |  | OpenVibe.Shared/brand.js |
-| OpenVibe.Tools | OV_NETWORK_PUBLIC_KEY |  | apps/audio/server/config.js, apps/docs/server/config.js +2 |
-| OpenVibe.Tools | OV_NETWORK_URL | tools.env | OpenVibe.Shared/brand.js, apps/audio/server/config.js +6 |
+| OpenVibe.Tools | OV_NETWORK_PUBLIC_KEY |  | apps/audio/server/config.js, apps/docs/server/config.js +5 |
+| OpenVibe.Tools | OV_NETWORK_URL | tools.env | OpenVibe.Shared/brand.js, apps/audio/server/config.js +9 |
 | OpenVibe.Tools | OV_OAUTH_CLIENT_ID | tools.env | apps/_shared/jobs/events.js, apps/_shared/jobs/index.js +1 |
 | OpenVibe.Tools | OV_OAUTH_REDIRECT_URI |  | apps/gateway/server/config.js |
 | OpenVibe.Tools | OV_PASTES_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Tools | OV_REGISTRY_URL |  | apps/gateway/server/registry/services.js |
 | OpenVibe.Tools | OV_TEXT_URL |  | OpenVibe.Shared/brand.js |
+| OpenVibe.Tools | OV_TOOLS_AUDIENCE |  | apps/_shared/guard/index.js |
 | OpenVibe.Tools | OV_TOOLS_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Tools | OV_YT_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Tools | PATH |  | apps/_shared/observe.js |
+| OpenVibe.Tools | PDF_MAX_PAGES |  | apps/docs/server/descriptors.js, apps/docs/server/tools/pdf.js |
+| OpenVibe.Tools | PDF2IMG_MAX_PAGES |  | apps/docs/server/descriptors.js, apps/docs/server/tools/pdf2img.js |
 | OpenVibe.Tools | PORT |  | apps/audio/server/config.js, apps/docs/server/config.js +6 |
-| OpenVibe.Tools | RELEASE_AT |  | OpenVibe.Shared/release.js |
-| OpenVibe.Tools | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
+| OpenVibe.Tools | TOOLS_GUARD |  | apps/_shared/guard/index.js |
+| OpenVibe.Tools | TOOLS_GUARD_LIMITS |  | apps/_shared/guard/limits.js |
 | OpenVibe.Tools | TOOLS_JOB_RESULTS | tools.env | apps/_shared/jobs/index.js |
 | OpenVibe.Tools | TOOLS_MEDIA_NAMESPACE |  | apps/_shared/jobs/index.js |
-| OpenVibe.Tools | TOOLS_SATELLITE_PORTS |  | apps/gateway/server/index.js |
+| OpenVibe.Tools | TOOLS_SATELLITE_PORTS |  | apps/_shared/tools/satellites.js |
 | OpenVibe.Tools | UPLOADS_DIR |  | apps/audio/server/config.js, apps/docs/server/config.js +1 |
 | OpenVibe.Tools | YT_COOKIES_FILE |  | apps/yt/server/downloader.js, apps/yt/server/index.js |
+| OpenVibe.Tools | YT_INFO_CONCURRENCY |  | apps/yt/server/config.js |
+| OpenVibe.Tools | YT_MAX_DURATION |  | apps/yt/server/config.js, apps/yt/server/descriptors.js |
+| OpenVibe.Tools | YT_MAX_FILESIZE_MB |  | apps/yt/server/config.js |
 | OpenVibe.Tools | YT_PROXY |  | apps/yt/server/downloader.js, apps/yt/server/index.js |
 | OpenVibe.Tools | YTDLP_PATH |  | apps/yt/server/config.js |
 | OpenVibe.Trade | API_CORS_ORIGINS |  | server/config.js |

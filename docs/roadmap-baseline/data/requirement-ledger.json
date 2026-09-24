@@ -1193,7 +1193,7 @@
       "owner": "OpenVibe.Live (server/lineage/resolver.js, GET|POST /internal/lineage/resolve); contract in OpenVibe.Contracts",
       "target": "shared lineage-resolver contract",
       "status": "partial",
-      "summary": "The lineage-resolver contract exists (openvibe-contracts v0.32.0: lineage.resolve-request@1 -> lineage.resolution@1, capability live.lineage.resolve) and is implemented once in Live, deployed 2026-09-23 21:36 UTC: it answers which channel, and whose, a slug, nested slug, channel id, stream, slot, VOD, clip, Media object, owner subject or legacy id belongs to, in the roadmap's precedence, with explicit unresolved states (conflict, source_unavailable, display_name_only, not_found) and never from a display name; VODs, clips and objects come from Media. Live's clip owner check uses it. No other service calls it yet (no principal holds live.lineage.resolve), OpenRe sessions record no lineage, and Media objects still lack owner_subject.",
+      "summary": "The lineage-resolver contract exists (openvibe-contracts v0.32.0: lineage.resolve-request@1 -> lineage.resolution@1, capability live.lineage.resolve) and is implemented once in Live, deployed 2026-09-23 21:36 UTC: it answers which channel, and whose, a slug, nested slug, channel id, stream, slot, VOD, clip, Media object, owner subject or legacy id belongs to, in the roadmap's precedence, with explicit unresolved states (conflict, source_unavailable, display_name_only, not_found) and never from a display name; VODs, clips and objects come from Media. Live's clip owner check uses it. OpenRe, Media and Community hold live.lineage.resolve (2026-09-24) but do not call it yet; OpenRe sessions record no lineage. Media owner_subject is filled on all 3,034 owned objects (2026-09-23) with a 10-minute reconcile job for new ones.",
       "artifacts": [
         {
           "kind": "doc",
@@ -1218,9 +1218,8 @@
         }
       ],
       "remaining": [
-        "Grant live.lineage.resolve to the consumers (OpenRe, Media, Pulse, creator UI) once their contracts pin is 0.32.0+, and switch their per-product channel mappings to the resolver",
-        "Record VOD/clip lineage to OpenRe session (roadmap §20 'VOD lineage maps back to the canonical channel, stream and session'); no OpenRe session exists in production yet",
-        "Backfill Media owner_subject so the resolver has a subject for every object (Live now knows the subject of all 328 linked accounts)"
+        "Switch OpenRe, Media and Community (Pulse) channel mappings to the resolver: they hold live.lineage.resolve since 2026-09-24 (Network 80a841c) but still use their own mappings",
+        "Record VOD/clip lineage to OpenRe session (roadmap §20); no OpenRe session exists in production yet"
       ],
       "blockedOn": null,
       "ownerReview": false

@@ -6,27 +6,31 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-23 20:32 UTC compared w
 
 | Severity | Area | Subject | Detail |
 |---|---|---|---|
-| medium | deploy | ai | deployed 96dc8a3 is 1 commit(s) behind origin/main 3a480ac |
-| medium | deploy | billing | deployed c646279 is 1 commit(s) behind origin/main aa445d0 |
-| medium | deploy | chat | deployed 7897688 is 2 commit(s) behind origin/main ed90461 |
-| medium | deploy | codes | deployed d60f279 is 1 commit(s) behind origin/main 51d2386 |
-| medium | deploy | community | deployed 57d1dd4 is 1 commit(s) behind origin/main 63b90a8 |
-| medium | deploy | coupons | deployed 54df411 is 3 commit(s) behind origin/main 1c57c47 |
-| medium | deploy | deals | deployed e72aeec is 2 commit(s) behind origin/main 91ca223 |
-| medium | deploy | events | deployed 3366132 is 1 commit(s) behind origin/main efc09a7 |
-| medium | deploy | games | deployed 474df50 is 1 commit(s) behind origin/main 7863fc6 |
-| medium | deploy | host | deployed 30f08d6 is 15 commit(s) behind origin/main 03dfcb3 |
-| medium | deploy | live | deployed c893c6c is 12 commit(s) behind origin/main ca7cc87 |
-| medium | deploy | media | deployed 9de4b25 is 4 commit(s) behind origin/main ad2217b |
-| medium | deploy | network | deployed 9bbd90f is 4 commit(s) behind origin/main 09bf748 |
-| medium | deploy | news | deployed 5a17e7f is 1 commit(s) behind origin/main 5b393d2 |
-| medium | deploy | openre | deployed e0dc1b4 is 2 commit(s) behind origin/main c091a09 |
-| medium | deploy | reviews | deployed 1d462a2 is 1 commit(s) behind origin/main a7b50a6 |
-| medium | deploy | sites | deployed d3b71af is 2 commit(s) behind origin/main d6e4cbd |
-| medium | deploy | tips | deployed 15bfc12 is 6 commit(s) behind origin/main f211c03 |
-| medium | deploy | trade | deployed 9a55644 is 2 commit(s) behind origin/main ddbc60c |
-| medium | deploy | vip | deployed 9668a49 is 1 commit(s) behind origin/main fe7eaad |
-| medium | deploy | wiki | deployed 011a68f is 1 commit(s) behind origin/main b4e70ac |
+| medium | deploy | ai | deployed 96dc8a3 is 4 commit(s) behind origin/main a6d4f39 |
+| medium | deploy | billing | deployed c646279 is 4 commit(s) behind origin/main 42ad547 |
+| medium | deploy | blog | deployed 95e99ac is 5 commit(s) behind origin/main 0784b42 |
+| medium | deploy | chat | deployed 7897688 is 6 commit(s) behind origin/main 1ef6f99 |
+| medium | deploy | codes | deployed d60f279 is 5 commit(s) behind origin/main a129415 |
+| medium | deploy | community | deployed 57d1dd4 is 5 commit(s) behind origin/main e075d39 |
+| medium | deploy | coupons | deployed 54df411 is 8 commit(s) behind origin/main ae3a25e |
+| medium | deploy | deals | deployed e72aeec is 7 commit(s) behind origin/main 3910b58 |
+| medium | deploy | events | deployed 3366132 is 6 commit(s) behind origin/main 9f51514 |
+| medium | deploy | games | deployed 474df50 is 4 commit(s) behind origin/main 4e5bc50 |
+| medium | deploy | host | deployed 30f08d6 is 22 commit(s) behind origin/main f8ac37d |
+| medium | deploy | live | deployed c893c6c is 47 commit(s) behind origin/main 12c1c11 |
+| medium | deploy | media | deployed 9de4b25 is 22 commit(s) behind origin/main 984e7ad |
+| medium | deploy | network | deployed 9bbd90f is 24 commit(s) behind origin/main 26c0395 |
+| medium | deploy | news | deployed 5a17e7f is 6 commit(s) behind origin/main 42ce43b |
+| medium | deploy | openre | deployed e0dc1b4 is 5 commit(s) behind origin/main e517ed4 |
+| medium | deploy | reviews | deployed 1d462a2 is 5 commit(s) behind origin/main 70de372 |
+| medium | deploy | search | deployed a707e38 is 3 commit(s) behind origin/main 4603541 |
+| medium | deploy | sites | deployed d3b71af is 13 commit(s) behind origin/main 63683d2 |
+| medium | deploy | sources | deployed 2e986af is 3 commit(s) behind origin/main cf00390 |
+| medium | deploy | tips | deployed 15bfc12 is 9 commit(s) behind origin/main 847d22a |
+| medium | deploy | tools | deployed 5d1b423 is 22 commit(s) behind origin/main b0aada2 |
+| medium | deploy | trade | deployed 9a55644 is 6 commit(s) behind origin/main 7f418d2 |
+| medium | deploy | vip | deployed 9668a49 is 4 commit(s) behind origin/main a0a8f75 |
+| medium | deploy | wiki | deployed 011a68f is 5 commit(s) behind origin/main fe113b9 |
 | low | database | /opt/openvibe.community/data/community.db | 115 KB, 9 tables, not a database the service opens (services.json): stale file or undeclared copy |
 | low | database | /opt/openvibe.games/data/legacy-import/world-before-20260923T184930Z.db | 193 KB, 13 tables, not a database the service opens (services.json): stale file or undeclared copy |
 | low | database | /opt/openvibe.live/data/backups/analytics-pre-adr021-2026-09-23.db | 1.76 GB copy (backup, import snapshot or rehearsal) kept beside the service data |
@@ -128,6 +132,21 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-23 20:32 UTC compared w
 | low | schema | OpenVibe.Live:farm_plots | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) (RobotStreamer companion game DB (unmodified since Mar 2026); read only by scripts/migrate-rs-companion.js.) |
 | low | schema | OpenVibe.Live:file_checksums | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) (RobotStreamer companion game DB (unmodified since Mar 2026); read only by scripts/migrate-rs-companion.js.) |
 | low | schema | OpenVibe.Live:fish_profile | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) (RobotStreamer companion game DB (unmodified since Mar 2026); read only by scripts/migrate-rs-companion.js.) |
+| low | schema | OpenVibe.Live:game_achievements | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
+| low | schema | OpenVibe.Live:game_bank | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
+| low | schema | OpenVibe.Live:game_battle_stats | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
+| low | schema | OpenVibe.Live:game_daily_quest_claims | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
+| low | schema | OpenVibe.Live:game_daily_quest_progress | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
+| low | schema | OpenVibe.Live:game_dungeon_runs | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
+| low | schema | OpenVibe.Live:game_effects | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
+| low | schema | OpenVibe.Live:game_farm_plots | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
+| low | schema | OpenVibe.Live:game_fish_collection | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
+| low | schema | OpenVibe.Live:game_inventory | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
+| low | schema | OpenVibe.Live:game_leaderboard | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
+| low | schema | OpenVibe.Live:game_players | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
+| low | schema | OpenVibe.Live:game_recipes | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
+| low | schema | OpenVibe.Live:game_structures | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
+| low | schema | OpenVibe.Live:game_world_state | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
 | low | schema | OpenVibe.Live:gusher_profile | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) (RobotStreamer companion game DB (unmodified since Mar 2026); read only by scripts/migrate-rs-companion.js.) |
 | low | schema | OpenVibe.Live:inventory | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) (RobotStreamer companion game DB (unmodified since Mar 2026); read only by scripts/migrate-rs-companion.js.) |
 | low | schema | OpenVibe.Live:jo_profile | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) (RobotStreamer companion game DB (unmodified since Mar 2026); read only by scripts/migrate-rs-companion.js.) |
@@ -140,6 +159,7 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-23 20:32 UTC compared w
 | low | schema | OpenVibe.Live:promo_claims | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> archive then drop (RobotStreamer promo cashout ledger; campaign removed in a4c8aea and must not be rebuilt. May hold payout records: archive before dropping.) |
 | low | schema | OpenVibe.Live:roast_dossier | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) (RobotStreamer companion game DB (unmodified since Mar 2026); read only by scripts/migrate-rs-companion.js.) |
 | low | schema | OpenVibe.Live:roast_log | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) (RobotStreamer companion game DB (unmodified since Mar 2026); read only by scripts/migrate-rs-companion.js.) |
+| low | schema | OpenVibe.Live:tag_guardian_defeats | in production (live.db) but no CREATE TABLE in the repo; classified investigate -> ? (Exists in a production database but no CREATE TABLE in the repo.) |
 | low | schema | OpenVibe.Live:unlocked_recipes | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) (RobotStreamer companion game DB (unmodified since Mar 2026); read only by scripts/migrate-rs-companion.js.) |
 | low | schema | OpenVibe.Live:user_voice_selection | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) (RobotStreamer companion game DB (unmodified since Mar 2026); read only by scripts/migrate-rs-companion.js.) |
 | low | schema | OpenVibe.Live:user_voices | in production (rs-companion.db) but no CREATE TABLE in the repo; classified frozen-legacy -> OpenVibe.Games (import source) (RobotStreamer companion game DB (unmodified since Mar 2026); read only by scripts/migrate-rs-companion.js.) |
@@ -151,13 +171,13 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-23 20:32 UTC compared w
 | info | env | OpenVibe.Events:OV_OAUTH_CLIENT_SECRET | set in events.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Games:NODE_ENV | set in games.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Games:PORT | set in games.env but not referenced by scanned code (may be read by a dependency or stale) |
+| info | env | OpenVibe.Live:EMOTES_PATH | set in live.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Live:MIN_CASHOUT | set in live.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Live:OV_LIVE_URL | set in live.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Live:RS_COMPANION_DB_PATH | set in live.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Live:RS_PASSTHROUGH_ROBOTS | set in live.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Live:UNSAFE_WORDS_PATH | set in live.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Media:PASTES_MOVED_TO | set in media.env but not referenced by scanned code (may be read by a dependency or stale) |
-| info | env | OpenVibe.Media:PORT | set in media.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Media:RTP_PORT_MAX | set in media.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Media:RTP_PORT_MIN | set in media.env but not referenced by scanned code (may be read by a dependency or stale) |
 | info | env | OpenVibe.Network:NOTIFICATION_EMAIL_CRITICAL_ONLY | set in network.env but not referenced by scanned code (may be read by a dependency or stale) |
@@ -198,13 +218,18 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-23 20:32 UTC compared w
 | info | schema | OpenVibe.Live:analytics_rate_tracking | in production (analytics.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Live (Per-site analytics from openvibe-shared/analytics.js; ADR-021 (2026-09-23): no IP, user id or city stored, raw rows pruned (hazard H11).) |
 | info | schema | OpenVibe.Live:analytics_visitor_days | in production (analytics.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Live (Per-site analytics from openvibe-shared/analytics.js; ADR-021 (2026-09-23): no IP, user id or city stored, raw rows pruned (hazard H11).) |
 | info | schema | OpenVibe.Live:billing_actions | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Live:channel_points_log | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Live:channel_sounds_new | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Live:chat_messages_new | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Live:emotes_new | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Live:event_outbox | in production (live.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Live (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.) |
+| info | schema | OpenVibe.Live:opencoin_admin_grants | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Live:robotstreamer_integrations_new | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Live:stream_controls_new | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Live:tips_deliveries | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Media:event_outbox | in production (media.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Media (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.) |
+| info | schema | OpenVibe.Media:media_object_changes | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Media:media_tier_decisions | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Media:media_upload_parts | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Media:media_uploads | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Network:admin_rate_limits | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
@@ -259,6 +284,9 @@ Deliverable 7. Snapshot of openvibe-oregon taken 2026-09-23 20:32 UTC compared w
 | info | schema | OpenVibe.Tools:analytics_rate_tracking | in production (analytics.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Tools (Per-site analytics from openvibe-shared/analytics.js; ADR-021 (2026-09-23): no IP, user id or city stored, raw rows pruned (hazard H11).) |
 | info | schema | OpenVibe.Tools:analytics_visitor_days | in production (analytics.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Tools (Per-site analytics from openvibe-shared/analytics.js; ADR-021 (2026-09-23): no IP, user id or city stored, raw rows pruned (hazard H11).) |
 | info | schema | OpenVibe.Tools:event_outbox | in production (jobs.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Tools (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.) |
+| info | schema | OpenVibe.Tools:guard_abuse | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Tools:guard_day | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
+| info | schema | OpenVibe.Tools:guard_salt | declared in code but absent from every production database for this service (lazy/unused/legacy migration) |
 | info | schema | OpenVibe.Trade:event_outbox | in production (trade.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Trade (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.) |
 | info | schema | OpenVibe.Trade:idempotency_receipts | in production (trade.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Trade (Created at runtime by the openvibe-sdk / openvibe-events outbox and inbox helpers.) |
 | info | schema | OpenVibe.Trade:trade_context_drafts | in production (trade.db) but no CREATE TABLE in the repo; classified keep -> OpenVibe.Trade (Prefixed stores created at runtime by openvibe-publishing (revisions, citations, schedules, redirects, index hooks).) |

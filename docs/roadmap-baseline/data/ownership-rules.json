@@ -536,6 +536,22 @@
       "disposition": "investigate",
       "wave": "W0",
       "note": "Exists in a production database but no CREATE TABLE in the repo."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(channel_points_log|opencoin_admin_grants)$",
+      "target": "OpenVibe.Billing (loyalty ledger)",
+      "disposition": "extract",
+      "wave": "W8 (after ADR-012)",
+      "note": "Idempotency logs for channel points and admin OpenCoins grants (2026-09-24, ADR-012 rule 5); they move with the loyalty tables."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^tips_deliveries$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "W9",
+      "note": "Live's side of Tips delivery idempotency (Idempotency-Key -> stored response, pruned after 7 days); Live renders the delivery."
     }
   ],
   "_routeDispositions": {
@@ -907,6 +923,22 @@
       "disposition": "keep",
       "wave": "-",
       "note": "The service is the authority for its own API and pages."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/api/content/(feed|moments)$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "§33",
+      "note": "Content (human) and Moments (AI) feeds merged from Media and Community (2026-09-23)."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^/llms\\.txt$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "§32",
+      "note": "Crawler/AI readability page."
     }
   ],
   "jobs": [

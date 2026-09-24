@@ -51,7 +51,7 @@ Every run re-verifies each artifact: a test, doc or drill file must exist at ori
 | [D17](#d17) | Live product | **partial** | OpenVibe.Live | 5/5 | Ingest transport: move RTMP slots to OpenRe (0 of 102 switched), then WHIP, JSMPEG and SFU, so Live stops binding 1935 and a Live deploy stops dropping streams |
 | [D18](#d18) | Stream Manager | **blocked on owner** | OpenVibe.Live (Stream Manager UX) + OpenRe.Stream (control API) | 4/4 | Switch slots to OpenRe (OpenRe docs/cutover.md A7 rehearsal, then B1-B6 per slot) so the rebinding runs in production |
 | [D19](#d19) | OpenRe | **partial** | OpenRe.Stream (runtime); OpenVibe.Live still ingests every slot | 5/5 | Cut slots over (0 of 102 switched; migrate-from-live.js never applied, migration_map 0) so OpenRe owns real sessions |
-| [D20](#d20) | Canonical resolver | **partial** | OpenVibe.Live (server/lineage/resolver.js, GET\|POST /internal/lineage/resolve); contract in OpenVibe.Contracts | 3/3 | Grant live.lineage.resolve to the consumers (OpenRe, Media, Pulse, creator UI) once their contracts pin is 0.32.0+, and switch their per-product channel mappings to the resolver |
+| [D20](#d20) | Canonical resolver | **partial** | OpenVibe.Live (server/lineage/resolver.js, GET\|POST /internal/lineage/resolve); contract in OpenVibe.Contracts | 3/3 | Switch OpenRe, Media and Community (Pulse) channel mappings to the resolver: they hold live.lineage.resolve since 2026-09-24 (Network 80a841c) but still use their own mappings |
 | [D21](#d21) | Chat model | **partial** | OpenVibe.Chat (Live keeps 6 staged tables, media requests and calls) | 4/4 | Move call signalling and call state from Live's /ws/call into Chat |
 | [D22](#d22) | Chat authorization | **partial** | OpenVibe.Chat (user identity still resolved by OpenVibe.Live) | 5/5 | Authenticate browsers in Chat from Network tokens and a central capability/staff map; today Chat's auth.js resolves users, roles and API-token scopes through Live (live-context.authenticate) |
 | [D23](#d23) | Chat parity | **partial** | OpenVibe.Chat | 5/5 | Calls: move signalling to Chat with the pending\|ringing\|active\|ended\|missed\|declined\|failed lifecycle and an explicit failure state (roadmap §15.9, §20) |
@@ -143,7 +143,7 @@ Remaining:
 
 ### D02-D04 Registry, capabilities, contracts: partial
 
-Roadmap §3.2 (W0, 2026-09-22): absent. Waves: W1, W2. Measured this run: 1 charter-only repos of 36; Live 14, Network 0, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0, Events 0, Chat 0, OpenRe.Stream 0, Billing 0, Tips 0, VIP 0, AI 0, Search 0, Sources 0, Wiki 0, Blog 0, News 0, Reviews 0, Deals 0, Coupons 0, Trade 0, Codes 0, Host 0, Examples 0.
+Roadmap §3.2 (W0, 2026-09-22): absent. Waves: W1, W2. Measured this run: 1 charter-only repos of 36; Live 14, Network 4, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0, Events 0, Chat 0, OpenRe.Stream 0, Billing 0, Tips 0, VIP 0, AI 0, Search 0, Sources 0, Wiki 0, Blog 0, News 0, Reviews 0, Deals 0, Coupons 0, Trade 0, Codes 0, Host 0, Examples 0.
 
 #### D02
 
@@ -555,7 +555,7 @@ Blocked on the owner: A7 rehearsal inputs (test account + real rtmp:// destinati
 
 **Canonical resolver: partial**. Owner today: OpenVibe.Live (server/lineage/resolver.js, GET|POST /internal/lineage/resolve); contract in OpenVibe.Contracts. Target (§15.0): shared lineage-resolver contract.
 
-The lineage-resolver contract exists (openvibe-contracts v0.32.0: lineage.resolve-request@1 -> lineage.resolution@1, capability live.lineage.resolve) and is implemented once in Live, deployed 2026-09-23 21:36 UTC: it answers which channel, and whose, a slug, nested slug, channel id, stream, slot, VOD, clip, Media object, owner subject or legacy id belongs to, in the roadmap's precedence, with explicit unresolved states (conflict, source_unavailable, display_name_only, not_found) and never from a display name; VODs, clips and objects come from Media. Live's clip owner check uses it. No other service calls it yet (no principal holds live.lineage.resolve), OpenRe sessions record no lineage, and Media objects still lack owner_subject.
+The lineage-resolver contract exists (openvibe-contracts v0.32.0: lineage.resolve-request@1 -> lineage.resolution@1, capability live.lineage.resolve) and is implemented once in Live, deployed 2026-09-23 21:36 UTC: it answers which channel, and whose, a slug, nested slug, channel id, stream, slot, VOD, clip, Media object, owner subject or legacy id belongs to, in the roadmap's precedence, with explicit unresolved states (conflict, source_unavailable, display_name_only, not_found) and never from a display name; VODs, clips and objects come from Media. Live's clip owner check uses it. OpenRe, Media and Community hold live.lineage.resolve (2026-09-24) but do not call it yet; OpenRe sessions record no lineage. Media owner_subject is filled on all 3,034 owned objects (2026-09-23) with a 10-minute reconcile job for new ones.
 
 Acceptance artifacts:
 
@@ -565,9 +565,8 @@ Acceptance artifacts:
 
 Remaining:
 
-- Grant live.lineage.resolve to the consumers (OpenRe, Media, Pulse, creator UI) once their contracts pin is 0.32.0+, and switch their per-product channel mappings to the resolver
-- Record VOD/clip lineage to OpenRe session (roadmap §20 'VOD lineage maps back to the canonical channel, stream and session'); no OpenRe session exists in production yet
-- Backfill Media owner_subject so the resolver has a subject for every object (Live now knows the subject of all 328 linked accounts)
+- Switch OpenRe, Media and Community (Pulse) channel mappings to the resolver: they hold live.lineage.resolve since 2026-09-24 (Network 80a841c) but still use their own mappings
+- Record VOD/clip lineage to OpenRe session (roadmap §20); no OpenRe session exists in production yet
 
 ### D21-D23 Chat: partial
 
@@ -789,7 +788,7 @@ Blocked on the owner: Owner: the Billing cutover prerequisites: the PowerChat we
 
 ### D31 Tools: partial
 
-Roadmap §3.2 (W0, 2026-09-22): built. Waves: W11. Measured this run: 16 test files.
+Roadmap §3.2 (W0, 2026-09-22): built. Waves: W11. Measured this run: 39 test files.
 
 #### D31
 
@@ -817,7 +816,7 @@ Blocked on the owner: Owner: supply YT_PROXY or YT_COOKIES_FILE for the YouTube 
 
 ### D32 Games: partial
 
-Roadmap §3.2 (W0, 2026-09-22): built. Waves: W12. Measured this run: 68 test files.
+Roadmap §3.2 (W0, 2026-09-22): built. Waves: W12. Measured this run: 69 test files.
 
 #### D32
 
@@ -845,7 +844,7 @@ Blocked on the owner: Owner: accept ADR-013's trust-tier names (unreviewed/revie
 
 ### D33-D34 Codes, Host: partial
 
-Roadmap §3.2 (W0, 2026-09-22): absent. Waves: W20, W21. Measured this run: 19 test files; 27 test files.
+Roadmap §3.2 (W0, 2026-09-22): absent. Waves: W20, W21. Measured this run: 19 test files; 28 test files.
 
 #### D33
 
@@ -1076,7 +1075,7 @@ Blocked on the owner: Open 1936/tcp at the host firewall and at the provider edg
 
 ### D42 Shared component architecture: partial
 
-Roadmap §3.2 (W0, 2026-09-22): partial. Waves: W2, Track R. Measured this run: 23 repos pin a tagged openvibe-shared release (latest v1.5.0): OpenRe.Stream v1.2.1, AI v1.3.0, Billing v1.3.0, Blog v1.3.0, Codes v1.3.0, Community v1.3.0, Coupons v1.3.0, Deals v1.3.0, Events v1.3.0, Host v1.3.0, Live v1.4.0, Media v1.3.0, Network v1.4.0, News v1.3.0, Reviews v1.3.0, Search v1.3.0, Sites v1.0.0, Sources v1.3.0, Tips v1.3.0, Tools v1.4.0, Trade v1.3.0, VIP v1.3.0, Wiki v1.3.0; 30 manifests unpinned or behind: OpenRe.Stream (v1.2.1), AI (v1.3.0), Billing (v1.3.0), Blog (v1.3.0), Codes (v1.3.0), Community (v1.3.0), Coupons (v1.3.0), Deals (v1.3.0), Events (v1.3.0), Host (v1.3.0), Live (v1.4.0), Media (v1.3.0), Network (v1.4.0), News (v1.3.0), Reviews (v1.3.0), Search (v1.3.0), Sites (v1.0.0), Sources (v1.3.0), Tips (v1.3.0), Tools/apps/audio (v1.4.0), Tools/apps/docs (v1.4.0), Tools/apps/food (v1.4.0), Tools/apps/gateway (v1.4.0), Tools/apps/img (v1.4.0), Tools/apps/maps (v1.4.0), Tools/apps/text (v1.4.0), Tools/apps/yt (v1.4.0), Trade (v1.3.0), VIP (v1.3.0), Wiki (v1.3.0).
+Roadmap §3.2 (W0, 2026-09-22): partial. Waves: W2, Track R. Measured this run: 23 repos pin a tagged openvibe-shared release (latest v1.5.1): OpenRe.Stream v1.5.1, AI v1.5.1, Billing v1.5.1, Blog v1.5.1, Codes v1.5.1, Community v1.5.1, Coupons v1.5.1, Deals v1.5.1, Events v1.5.1, Host v1.5.1, Live v1.5.1, Media v1.5.1, Network v1.5.1, News v1.5.1, Reviews v1.5.1, Search v1.5.1, Sites v1.5.1, Sources v1.5.1, Tips v1.5.1, Tools v1.5.1, Trade v1.5.1, VIP v1.5.1, Wiki v1.5.1; 0 manifests unpinned or behind: none.
 
 #### D42
 
@@ -1157,7 +1156,7 @@ Remaining:
 
 ### D45 Release compatibility and recovery: partial
 
-Roadmap §3.2 (W0, 2026-09-22): absent. Waves: Track R, W22. Measured this run: 21 service(s) not running origin/main.
+Roadmap §3.2 (W0, 2026-09-22): absent. Waves: Track R, W22. Measured this run: 25 service(s) not running origin/main.
 
 #### D45
 
