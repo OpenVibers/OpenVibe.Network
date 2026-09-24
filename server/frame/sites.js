@@ -11,7 +11,7 @@ const { exposureOf } = require('../registry/exposure');
 // Network's exposure overlay (server/registry/exposure.js); every other site is 'soon' and says why
 // (state: internal = runs on loopback only, placeholder = planned). The two lists cannot disagree.
 // host comes from the service's manifest (openvibe-contracts publicOrigin); an entry names its host only
-// while its manifest has no public origin (chat). TODO(plan §5.1/§5.3): name, icon, tagline, what and the
+// while its manifest has no public origin. TODO(plan §5.1/§5.3): name, icon, tagline, what and the
 // legal profile are presentation with no manifest field yet; they move when the manifest schema has them.
 const RAW_SITES = [
     { id: 'live', name: 'Live', icon: 'live', service: 'live', profile: 'streaming', tagline: 'Streams, clips and chat', what: 'Live streaming from a browser, OBS or a phone, with restreaming, clips, VODs, chat games and channel points.' },
@@ -20,7 +20,7 @@ const RAW_SITES = [
     { id: 'games', name: 'Games', icon: 'games', service: 'games', profile: 'games', tagline: 'Browser games', what: 'Scraplandia, a shared pixel canvas and other games that run in a tab and know your OpenVibe account.' },
     { id: 'media', name: 'Media', icon: 'media', service: 'media', profile: 'hosting', tagline: 'VODs, clips, files', what: 'The public media library behind every site: recorded streams, clips, images and uploads.' },
     { id: 'network', name: 'Network', icon: 'network', service: 'network', profile: 'account', tagline: 'Account and themes', what: 'The account behind every site: one sign-in, themes, notifications, history and linked services.' },
-    { id: 'chat', name: 'Chat', host: 'openvibe.chat', icon: 'chat', service: 'chat', profile: 'ugc', tagline: 'One chat for the network', what: 'Rooms, stream chat, direct messages, calls and text-to-speech under one identity.' },
+    { id: 'chat', name: 'Chat', icon: 'chat', service: 'chat', profile: 'ugc', tagline: 'One chat for the network', what: 'Rooms, stream chat, direct messages, calls and text-to-speech under one identity.' },
     { id: 'codes', name: 'Codes', icon: 'codes', service: 'codes', profile: 'ugc', tagline: 'Build on OpenVibe', what: 'The developer portal: API and SDK docs, the service and capability registry, event schemas, credentials, playgrounds and mod publishing.' },
     { id: 'blog', name: 'Blog', icon: 'blog', service: 'blog', profile: 'info', tagline: 'Long-form, yours to keep', what: 'The official OpenVibe blog and a blog for every member: drafts, scheduling, media, comments and feeds.' },
     { id: 'wiki', name: 'Wiki', icon: 'wiki', service: 'wiki', profile: 'ugc', tagline: 'Knowledge, with sources', what: 'Wiki spaces with page trees, revision history, citations and discussion, editable together.' },

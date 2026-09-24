@@ -18,7 +18,7 @@ const PINNED = {
     network: 'live', live: 'live', tools: 'live', media: 'live', games: 'live', community: 'live', events: 'live',
     billing: 'live', codes: 'live', blog: 'live', wiki: 'live', sites: 'live',
     news: 'internal', reviews: 'internal', deals: 'internal', coupons: 'internal', trade: 'internal', host: 'internal',
-    tips: 'internal', vip: 'internal', openre: 'internal', search: 'live', sources: 'internal', chat: 'internal', ai: 'internal',
+    tips: 'internal', vip: 'internal', openre: 'internal', search: 'live', sources: 'internal', chat: 'live', ai: 'internal',
     sdk: 'library', shared: 'library', contracts: 'library', publishing: 'library',
     examples: 'repository',
     realtime: 'placeholder',
@@ -101,11 +101,11 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     assert.strictEqual(sBy.live.label, 'up');
     assert.strictEqual(sBy.live.origin, 'https://openvibe.live');
     assert.strictEqual(sBy.shared.label, `not running (library, released v${require('openvibe-shared/package.json').version})`);
-    assert.deepStrictEqual(st.exposure_summary, { live: 13, internal: 12, library: 4, repository: 1, placeholder: 1 });
+    assert.deepStrictEqual(st.exposure_summary, { live: 14, internal: 11, library: 4, repository: 1, placeholder: 1 });
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());
-    for (const id of PLACEHOLDER_DOMAINS.concat(['chat', 'ai'])) {
+    for (const id of PLACEHOLDER_DOMAINS.concat(['ai'])) {
         const row = html.match(new RegExp(`<tr id="svc-${id}">[\\s\\S]*?</tr>`))[0];
         assert.ok(!/>Up<\/span>/.test(row), `${id} row must not read a bare Up`);
         assert.ok(row.includes('Up · loopback only'), `${id} row says loopback only`);
@@ -116,12 +116,12 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
 
     // 3. The Frame: the nav lists only sites whose domain serves the service; the rest are soon with a reason.
     const open = SITES.filter(s => s.status === 'open').map(s => s.id);
-    assert.deepStrictEqual(open, ['live', 'tools', 'community', 'games', 'media', 'network', 'codes', 'blog', 'wiki']);
+    assert.deepStrictEqual(open, ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'codes', 'blog', 'wiki']);
     for (const s of SITES) {
         assert.ok(s.service && PINNED[s.service], `${s.id} names its service`);
         assert.strictEqual(s.status === 'open', PINNED[s.service] === 'live', `${s.id} nav status follows exposure`);
     }
-    for (const id of ['news', 'reviews', 'deals', 'coupons', 'trade', 'host', 'tips', 'vip', 'stream', 'chat']) {
+    for (const id of ['news', 'reviews', 'deals', 'coupons', 'trade', 'host', 'tips', 'vip', 'stream']) {
         const s = SITES.find(x => x.id === id);
         assert.strictEqual(s.status, 'soon'); assert.strictEqual(s.state, 'internal');
     }

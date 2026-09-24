@@ -14,10 +14,10 @@ assert.equal(siteForHost('yt.openvibe.tools').id, 'tools');
 assert.equal(siteForHost('evil.example'), null);
 assert.strictEqual(svc.ranking().at, null, 'cold start: no use counted yet (the registry\'s featured list says so)');
 let p = svc.payloadFor('openvibe.media');
-assert.deepEqual(p.nav.map(n => n.id), ['live', 'tools', 'community', 'games', 'media', 'network', 'codes', 'blog', 'wiki'], 'cold start follows the base order');
+assert.deepEqual(p.nav.map(n => n.id), ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'codes', 'blog', 'wiki'], 'cold start follows the base order');
 assert.equal(p.footer.legal.dmca, 'https://openvibe.media/dmca', 'legal links stay on the site\'s own domain');
 assert.ok(!p.footer.discover.some(l => l.url === 'https://openvibe.media/'), 'a site never recommends itself');
-assert.ok(p.soon.length >= 10);
+assert.ok(p.soon.length >= 9, 'every planned site still listed as soon (chat launched 2026-09-24)');
 
 // Real use reorders: community gets the history, so it rises above the cold-start order.
 const ins = db.prepare("INSERT INTO user_history (user_id, service, sub, type, title, url) VALUES (?, ?, ?, 'page', 't', 'u')");
