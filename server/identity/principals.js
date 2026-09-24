@@ -121,6 +121,7 @@ const DEFAULT_GRANTS = [
     ['live', 'vip.entitlement.check', 'openvibe.vip', []],
     ['community', 'events.subscription.manage', 'openvibe.events', []],
     ['community', 'events.event.read', 'openvibe.events', []],
+    ['community', 'events.event.publish', 'openvibe.events', []],   // community.* events (Community server/events.js, 2026-09-24)
     ['billing', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['chat', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['live', 'identity.subject.resolve', SELF_AUDIENCE, []],
