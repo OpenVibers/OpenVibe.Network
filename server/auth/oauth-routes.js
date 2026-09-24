@@ -12,6 +12,7 @@ const subjects = require('../identity/subjects');
 const principals = require('../identity/principals');
 const devTokens = require('../developer/tokens');
 const oidc = require('./oidc');
+const refreshTokens = require('./refresh-tokens');
 const router = express.Router();
 
 function getDb(req) { return req.app.locals.db; }
@@ -350,19 +351,13 @@ function handleFedcmAssertionGrant(db, config, req, res, client, assertion) {
 function handleRefreshGrant(db, config, req, res, client, refreshToken) {
     if (!refreshToken) return res.status(400).json({ error: 'invalid_request', error_description: 'Missing refresh_token' });
 
-    const stored = db.prepare('SELECT * FROM oauth_tokens WHERE token = ?').get(refreshToken);
-    if (!stored) return res.status(400).json({ error: 'invalid_grant', error_description: 'Invalid refresh token' });
-    if (stored.revoked) return res.status(400).json({ error: 'invalid_grant', error_description: 'Refresh token revoked' });
-    if (stored.client_id !== client.client_id) return res.status(400).json({ error: 'invalid_grant', error_description: 'Client mismatch' });
-
-    const now = new Date();
-    const expiresAt = new Date(stored.expires_at + (stored.expires_at.includes('Z') ? '' : 'Z'));
-    if (now > expiresAt) return res.status(400).json({ error: 'invalid_grant', error_description: 'Refresh token expired' });
-
-    // Revoke old refresh token (rotation), atomically: two concurrent uses cannot both succeed
-    if (db.prepare('UPDATE oauth_tokens SET revoked = 1 WHERE id = ? AND revoked = 0').run(stored.id).changes !== 1) {
-        return res.status(400).json({ error: 'invalid_grant', error_description: 'Refresh token revoked' });
+    // Hashed lookup, rotation, and family revocation on reuse (server/auth/refresh-tokens.js).
+    const r = refreshTokens.rotate(db, refreshToken, client.client_id);
+    if (!r.ok) {
+        if (r.reuse) console.warn(`[OAuth] refresh token reuse (${client.client_id}): family revoked`);
+        return res.status(400).json({ error: r.error, error_description: r.description });
     }
+    const stored = r.row;
 
     // Get user
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(stored.user_id);
@@ -375,8 +370,8 @@ function handleRefreshGrant(db, config, req, res, client, refreshToken) {
         }
     }
 
-    // Issue new token pair
-    const { accessToken, refreshToken: newRefresh } = issueTokenPair(db, config, req, user, client);
+    // Issue new token pair: the next generation of the same family
+    const { accessToken, refreshToken: newRefresh } = issueTokenPair(db, config, req, user, client, { familyId: r.familyId, generation: r.generation });
     recordLinkedService(db, user, client);
 
     res.json({
@@ -388,7 +383,7 @@ function handleRefreshGrant(db, config, req, res, client, refreshToken) {
     });
 }
 
-function issueTokenPair(db, config, req, user, client) {
+function issueTokenPair(db, config, req, user, client, family = {}) {
     const privateKey = req.app.locals.privateKey;
     const algorithm = privateKey.includes('BEGIN') ? 'RS256' : 'HS256';
 
@@ -412,12 +407,8 @@ function issueTokenPair(db, config, req, user, client) {
         }
     );
 
-    const refreshTokenValue = crypto.randomBytes(48).toString('hex');
-    const refreshExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
-    db.prepare(`
-        INSERT INTO oauth_tokens (token, client_id, user_id, scope, expires_at)
-        VALUES (?, ?, ?, 'profile theme', ?)
-    `).run(refreshTokenValue, client.client_id, user.id, refreshExpires);
+    // 30 days; only its SHA-256 is stored. A sign-in starts a family; a refresh continues it.
+    const refreshTokenValue = refreshTokens.issue(db, { clientId: client.client_id, userId: user.id, familyId: family.familyId, generation: family.generation || 0 });
 
     return { accessToken, refreshToken: refreshTokenValue };
 }
