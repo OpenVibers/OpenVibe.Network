@@ -203,7 +203,7 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
             issuer,
             jwks_uri: `${issuer}/api/.well-known/jwks`,
             token_endpoint: `${issuer}/oauth/token`,
-            openid_configuration: `${issuer}/oauth/.well-known/openid-configuration`,
+            openid_configuration: `${issuer}/.well-known/openid-configuration`,
             registry: `${issuer}/api/v1/registry`,
             contracts: { package: 'openvibe-contracts', version: contractsPkg.version, repository: 'https://github.com/OpenVibers/OpenVibe.Contracts', catalog: `${issuer}/api/v1/registry/contracts` },
             // origin is set only where the public domain serves the service itself; a domain that still

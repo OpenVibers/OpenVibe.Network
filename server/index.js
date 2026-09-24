@@ -622,6 +622,8 @@ app.get('/verify-email', (req, res) => {
     const fedcm = require('./auth/fedcm');
     const ctx = () => ({ db, publicKey, privateKey, config });
     app.get('/.well-known/web-identity', fedcm.wellKnown(ctx));
+    // OpenID Connect discovery at the issuer's root (and RFC 8414's name for it): server/auth/oidc.js
+    require('./auth/oidc').mount(app);
     app.use('/fedcm', fedcm.createFedcmRoutes(ctx));
 }
 

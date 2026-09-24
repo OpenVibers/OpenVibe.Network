@@ -11,6 +11,7 @@ const jwt = require('jsonwebtoken');
 const subjects = require('../identity/subjects');
 const principals = require('../identity/principals');
 const devTokens = require('../developer/tokens');
+const oidc = require('./oidc');
 const router = express.Router();
 
 function getDb(req) { return req.app.locals.db; }
@@ -36,11 +37,11 @@ function sameSecret(a, b) {
     const y = Buffer.from(String(b || ''));
     return x.length === y.length && x.length > 0 && crypto.timingSafeEqual(x, y);
 }
-function issueCode(db, { clientId, userId, redirectUri, scope, pkce }) {
+function issueCode(db, { clientId, userId, redirectUri, scope, pkce, nonce }) {
     const code = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-    db.prepare(`INSERT INTO oauth_codes (code, client_id, user_id, redirect_uri, scope, expires_at, code_challenge, code_challenge_method)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(code, clientId, userId, redirectUri, scope || 'profile theme', expiresAt, pkce.challenge, pkce.method);
+    db.prepare(`INSERT INTO oauth_codes (code, client_id, user_id, redirect_uri, scope, expires_at, code_challenge, code_challenge_method, nonce)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(code, clientId, userId, redirectUri, scope || 'profile theme', expiresAt, pkce.challenge, pkce.method, nonce || null);
     return code;
 }
 const withCode = (redirectUri, code, state) => `${redirectUri}${redirectUri.includes('?') ? '&' : '?'}code=${code}&state=${encodeURIComponent(state || '')}`;
@@ -85,6 +86,8 @@ router.get('/authorize', (req, res) => {
     }
     const pkce = readChallenge(req.query);
     if (pkce.error) return res.status(400).json({ error: 'invalid_request', error_description: pkce.error });
+    const nonce = oidc.cleanNonce(req.query.nonce);
+    if (nonce === undefined) return res.status(400).json({ error: 'invalid_request', error_description: 'malformed nonce' });
 
     // prompt=none (silent SSO from an app whose own session lapsed): if this browser still has a
     // live/renewable openvibe.network session, continue as that account with no chooser. With no
@@ -98,7 +101,7 @@ router.get('/authorize', (req, res) => {
             if (!out.error) {
                 const token = out.renew ? require('./routes').signToken(out.user, req.app.locals.privateKey, getConfig(req)) : have;
                 setSessionCookies(res, token);
-                const code = issueCode(db, { clientId: client_id, userId: out.user.id, redirectUri: redirect_uri, scope, pkce });
+                const code = issueCode(db, { clientId: client_id, userId: out.user.id, redirectUri: redirect_uri, scope, pkce, nonce });
                 return res.redirect(withCode(redirect_uri, code, state));
             }
         } catch { /* fall through */ }
@@ -114,6 +117,7 @@ router.get('/authorize', (req, res) => {
         state: state || '',
     });
     if (pkce.challenge) { loginParams.set('code_challenge', pkce.challenge); loginParams.set('code_challenge_method', pkce.method); }
+    if (nonce) loginParams.set('nonce', nonce);
     res.redirect(`${getConfig(req).loginUrl}/login?${loginParams.toString()}`);
 });
 
@@ -171,6 +175,8 @@ router.post('/confirm', (req, res) => {
         pkce = readChallenge(req.body);
         if (pkce.error) return res.status(400).json({ error: 'invalid_request', error_description: pkce.error });
     }
+    const nonce = oidc.cleanNonce(req.body.nonce);
+    if (nonce === undefined) return res.status(400).json({ error: 'invalid_request', error_description: 'malformed nonce' });
 
     // Verify the token as a live, unexpired session: not revoked by a password change
     // (token_valid_after), not a FedCM assertion or a service/app token.
@@ -192,7 +198,7 @@ router.post('/confirm', (req, res) => {
     }
 
     // Issue authorization code (bound to the PKCE challenge when the client sent one)
-    const code = issueCode(db, { clientId: client_id, userId: user.id, redirectUri: redirect_uri, scope, pkce });
+    const code = issueCode(db, { clientId: client_id, userId: user.id, redirectUri: redirect_uri, scope, pkce, nonce });
 
     // Also set cookie to this account so openvibe.network itself knows the active session.
     // Host-only (NO Domain attribute) — the ov_token cookie belongs to openvibe.network alone.
@@ -300,12 +306,17 @@ function handleAuthCodeGrant(db, config, req, res, client, code, redirectUri, co
     const prefs = db.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(user.id);
 
     const { password_hash, token_valid_after, ...safeUser } = user;
+    // OpenID Connect (server/auth/oidc.js): scope openid adds an id_token for this client.
+    const idToken = oidc.wantsOpenid(authCode.scope)
+        ? oidc.idToken({ user: { ...user, subject_id: subjects.ensureUserSubject(db, user) || user.subject_id }, clientId: client.client_id, nonce: authCode.nonce, privateKey: req.app.locals.privateKey, issuer: config.jwt.issuer })
+        : undefined;
     res.json({
         access_token: accessToken,
         refresh_token: refreshToken,
         token_type: 'Bearer',
         expires_in: 86400, // 24h
         scope: authCode.scope,
+        ...(idToken ? { id_token: idToken } : {}),
         user: safeUser,
         preferences: prefs || { theme_id: 'vibe' },
     });
@@ -411,24 +422,14 @@ function issueTokenPair(db, config, req, user, client) {
     return { accessToken, refreshToken: refreshTokenValue };
 }
 
-// ── GET /.well-known/openid-configuration ────────────────────
-// Discovery endpoint for OIDC-compatible clients.
-router.get('/.well-known/openid-configuration', (req, res) => {
-    const config = getConfig(req);
-    res.json({
-        issuer: config.jwt.issuer,
-        authorization_endpoint: `${config.baseUrl}/oauth/authorize`,
-        token_endpoint: `${config.baseUrl}/oauth/token`,
-        userinfo_endpoint: `${config.baseUrl}/api/auth/me`,
-        jwks_uri: `${config.baseUrl}/api/.well-known/jwks`,
-        response_types_supported: ['code'],
-        grant_types_supported: ['authorization_code', 'refresh_token', 'client_credentials'],
-        subject_types_supported: ['public'],
-        id_token_signing_alg_values_supported: ['RS256'],
-        scopes_supported: ['profile', 'theme', 'openid'],
-        token_endpoint_auth_methods_supported: ['client_secret_post', 'none'],
-        code_challenge_methods_supported: ['S256'],
-    });
-});
+// ── GET /oauth/.well-known/openid-configuration ──────────────
+// The older discovery location; the standard one is the issuer's root (server/auth/oidc.js mounts
+// /.well-known/openid-configuration and /.well-known/oauth-authorization-server). Same document.
+router.get('/.well-known/openid-configuration', oidc.sendMetadata);
+
+// ── GET|POST /oauth/userinfo ─────────────────────────────────
+// OpenID Connect UserInfo: standard claims for a Network access token (Bearer).
+router.get('/userinfo', oidc.userinfo);
+router.post('/userinfo', oidc.userinfo);
 
 module.exports = router;

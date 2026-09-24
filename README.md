@@ -9,6 +9,7 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 ## What it does
 
 - **SSO Identity Provider** — "One Account. All of OpenVibe." Central registration and login, OAuth2 Authorization Code flow for OpenVibe.Live, OpenVibe.Tools, OpenVibe.Games, and OpenVibe.Media.
+- **OpenID Connect** — discovery at the issuer's root, `/.well-known/openid-configuration` (also `/.well-known/oauth-authorization-server`, and the older `/oauth/.well-known/openid-configuration`). With scope `openid` the code grant adds an RS256 `id_token` (aud = client, the authorize `nonce` echoed, `sub` = the Network id as a string, `subject_id` = the canonical usr_ id); `/oauth/userinfo` returns the same claims for an access token (`server/auth/oidc.js`).
 - **Unified Notification System** — Cross-service notifications with priority levels, category filtering, toast popups, bell badge, sounds, and rich content (buttons, inputs, media). All services push notifications to the central API; clients poll every 15 seconds.
 - **Email Alerts** — Critical notifications (moderation actions, system alerts) can be delivered by the built-in email service. Configuration is managed through the admin panel.
 - **Anonymous Users** — Browse and interact without an account. Anon users receive a unique number, can accumulate stats, and optionally link to a registered account later.

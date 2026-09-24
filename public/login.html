@@ -672,6 +672,7 @@ async function selectAccount(account) {
                     state: params.get('state') || '',
                     code_challenge: params.get('code_challenge') || undefined,
                     code_challenge_method: params.get('code_challenge_method') || undefined,
+                    nonce: params.get('nonce') || undefined,
                 }),
             });
             const data = await res.json();
@@ -829,6 +830,7 @@ async function handleLogin(e) {
                     state: params.get('state') || '',
                     code_challenge: params.get('code_challenge') || undefined,
                     code_challenge_method: params.get('code_challenge_method') || undefined,
+                    nonce: params.get('nonce') || undefined,
                 }),
             });
             const confirmData = await confirmRes.json();
@@ -910,6 +912,7 @@ async function handleRegister(e) {
                     state: params.get('state') || '',
                     code_challenge: params.get('code_challenge') || undefined,
                     code_challenge_method: params.get('code_challenge_method') || undefined,
+                    nonce: params.get('nonce') || undefined,
                 }),
             });
             const confirmData = await confirmRes.json();

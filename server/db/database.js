@@ -397,6 +397,8 @@ function initDb(dbPath) {
         { table: 'linked_accounts', column: 'service_username', sql: "ALTER TABLE linked_accounts ADD COLUMN service_username TEXT" },
         { table: 'oauth_codes', column: 'code_challenge', sql: "ALTER TABLE oauth_codes ADD COLUMN code_challenge TEXT" },
         { table: 'oauth_codes', column: 'code_challenge_method', sql: "ALTER TABLE oauth_codes ADD COLUMN code_challenge_method TEXT" },
+        // OpenID Connect: the nonce sent to /oauth/authorize, echoed in the id_token (server/auth/oidc.js).
+        { table: 'oauth_codes', column: 'nonce', sql: "ALTER TABLE oauth_codes ADD COLUMN nonce TEXT" },
         { table: 'url_registry', column: 'source', sql: "ALTER TABLE url_registry ADD COLUMN source TEXT NOT NULL DEFAULT 'admin'" },
         { table: 'users', column: 'is_anon', sql: "ALTER TABLE users ADD COLUMN is_anon INTEGER DEFAULT 0" },
         { table: 'users', column: 'anon_number', sql: "ALTER TABLE users ADD COLUMN anon_number INTEGER" },
