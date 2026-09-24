@@ -1390,7 +1390,7 @@ async function loadToolsSettings() {
                             <label for="ts-${esc(key)}"><strong>${esc(key)}</strong></label>
                             <input type="${isSensitive?'password':'text'}" id="ts-${esc(key)}" data-key="${esc(key)}" data-type="${esc(s.type||'string')}" value="${esc(s.value)}"
                                 style="margin-top:4px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">
-                            ${s.source === 'database' && s.env ? `<span class="muted" style="font-size:12px;margin-top:4px">Stored in the database; prefer <code>${esc(s.env)}</code> in the server's environment file.</span>` : ''}
+                            ${s.source === 'database' && s.env && s.secret ? `<span class="muted" style="font-size:12px;margin-top:4px">Stored in the database; prefer <code>${esc(s.env)}</code> in the server's environment file.</span>` : ''}
                         </div>`;
                 }).join('')}
                 <div style="margin-top:16px"><button type="button" class="btn btn-primary" onclick="saveToolsSettings()"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button></div>

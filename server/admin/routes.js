@@ -329,7 +329,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                     const src = secrets.source(db, r.key);
                     if (src === 'env') { settings[r.key] = { value: '', type: r.type, source: 'env', env: secrets.envName(r.key), redacted: true }; continue; }
                     if (!owner) { settings[r.key] = { value: maskSecret(r.value), type: r.type, source: src, env: secrets.envName(r.key), redacted: true }; continue; }
-                    settings[r.key] = { value: r.value, type: r.type, source: src, env: secrets.envName(r.key) };
+                    settings[r.key] = { value: r.value, type: r.type, source: src, env: secrets.envName(r.key), secret: secrets.isSecret(r.key) };
                     continue;
                 }
                 // Secrets (API keys / tokens / credentials) are owner-only — mask for admins.
