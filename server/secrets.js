@@ -20,6 +20,7 @@ const SECRETS = [
     { key: 'discord_bot_token', env: 'DISCORD_BOT_TOKEN', use: 'Discord bot (go-live and system alerts)' },
     { key: 'discord_oauth_client_secret', env: 'DISCORD_OAUTH_CLIENT_SECRET', use: 'Discord account linking (OAuth client secret)' },
     { key: 'vapid_private_key', env: 'VAPID_PRIVATE_KEY', use: 'web push (VAPID private key; must stay the pair of vapid_public_key)' },
+    { key: 'github_token', env: 'GITHUB_TOKEN', use: 'GitHub API, read-only public repositories (registry library versions; OpenVibe.Blog\'s network changelog)' },
 ];
 
 // Read environment-first too, but not secret: never blanked, only listed.

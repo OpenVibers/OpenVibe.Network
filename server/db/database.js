@@ -633,6 +633,7 @@ function initDb(dbPath) {
             ['discord_alert_message', '', 'string'],
             ['discord_oauth_client_id', '', 'string'],
             ['discord_oauth_client_secret', '', 'secret'],
+            ['github_token', '', 'secret'],   // server/integrations/github.js (admin → Settings → GitHub)
         ];
         const insertSeed = db.prepare('INSERT OR IGNORE INTO site_settings (key, value, type) VALUES (?, ?, ?)');
         for (const [k, v, t] of alwaysSeed) insertSeed.run(k, v, t);

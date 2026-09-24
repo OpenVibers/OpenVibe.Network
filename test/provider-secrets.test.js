@@ -46,7 +46,7 @@ const quiet = async (fn) => { const l = console.log, w = console.warn; console.l
     assert.strictEqual(secrets.source(db, 'resend_webhook_secret'), 'database');
     assert.strictEqual(db.getSetting('email_user_daily_cap'), 30, 'other settings are untouched');
     const rep = secrets.report(db);
-    assert.deepStrictEqual(rep.filter(r => r.secret).map(r => r.key), ['resend_api_key', 'resend_webhook_secret', 'discord_bot_token', 'discord_oauth_client_secret', 'vapid_private_key']);
+    assert.deepStrictEqual(rep.filter(r => r.secret).map(r => r.key), ['resend_api_key', 'resend_webhook_secret', 'discord_bot_token', 'discord_oauth_client_secret', 'vapid_private_key', 'github_token']);
     assert.ok(!JSON.stringify(rep).includes('re_env_key_999') && !JSON.stringify(rep).includes('re_db_key_111'), 'the report carries no value');
     assert.match(secrets.summary(db), /resend_api_key=env resend_webhook_secret=database discord_bot_token=database/);
 

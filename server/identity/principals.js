@@ -60,6 +60,8 @@ const DEFAULT_GRANTS = [
     ['wiki', 'media.object.read', 'openvibe.media', ['wiki']],
     // Wave 16: Blog (same shape as Wiki; it may hide the thread of a post that stopped being public).
     ['blog', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    // The network changelog reads the GitHub token the owner configures (server/integrations/github.js).
+    ['blog', 'network.integration.github.read', SELF_AUDIENCE, []],
     ['blog', 'events.event.publish', 'openvibe.events', []],
     ['blog', 'community.comment.write', 'openvibe.community', []],
     ['blog', 'community.comment.moderate', 'openvibe.community', []],

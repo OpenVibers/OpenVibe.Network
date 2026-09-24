@@ -20,14 +20,15 @@ function latestOf(names) {
     return best ? best.name : null;
 }
 
-function createLibraryTags({ fetchImpl = globalThis.fetch, token = process.env.GITHUB_TOKEN || '', intervalMs = 3600e3, onUpdate = null, log = console } = {}) {
+function createLibraryTags({ fetchImpl = globalThis.fetch, token = () => process.env.GITHUB_TOKEN || '', intervalMs = 3600e3, onUpdate = null, log = console } = {}) {
+    const tokenNow = () => (typeof token === 'function' ? token() : token) || '';
     const latest = new Map();   // package -> 'vX.Y.Z'
     let timer = null;
     async function refresh() {
         for (const [pkg, repo] of Object.entries(REPOS)) {
             try {
                 const res = await fetchImpl(`https://api.github.com/repos/OpenVibers/${repo}/tags?per_page=100`, {
-                    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenVibe.Network registry', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenVibe.Network registry', ...(tokenNow() ? { Authorization: `Bearer ${tokenNow()}` } : {}) },
                     signal: AbortSignal.timeout(10000),
                 });
                 if (!res.ok) continue;

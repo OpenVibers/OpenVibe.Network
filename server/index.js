@@ -384,6 +384,9 @@ const jwt = require('jsonwebtoken');
 const requireAuth = require('./auth/session').makeRequireAuth(() => ({ db, publicKey, config }), authRoutes.signToken);
 // The moderation audit log for staff (staff.moderation.logs): server/admin/moderation-audit.js.
 app.use('/api/v1/staff/moderation-audit', requireAuth, moderationAudit.router());
+// The GitHub token (admin → Settings → GitHub, or GITHUB_TOKEN): owner-only admin, and Blog's changelog reads it.
+app.use('/api/admin/integrations/github', requireAuth, require('./integrations/github').adminRouter(db));
+app.get('/internal/integrations/github-token', require('./identity/principals').guard('network.integration.github.read', { legacy: false }), require('./integrations/github').internalHandler(db));
 
 // ── Routes ───────────────────────────────────────────────────
 // Public key endpoint (services fetch this to verify JWTs).
@@ -398,7 +401,7 @@ const ecosystem = require('./registry/ecosystem').createEcosystemRegistry({ issu
 app.use(ecosystem.router());
 ecosystem.start();
 // The released libraries' latest published tags (not the versions Network installs) for the registry.
-require('./registry/library-tags').createLibraryTags({ onUpdate: require('./registry/exposure').setLibraryReleases }).start();
+require('./registry/library-tags').createLibraryTags({ onUpdate: require('./registry/exposure').setLibraryReleases, token: () => require('./integrations/github').tokenOf(db) }).start();
 // Operator status: GET /status (server-rendered, noindex), /api/v1/status, /api/v1/status/slo.
 app.use(require('./status/routes').createStatusRoutes({ ecosystem }));
 // What shipped network-wide: the changelog proxy every site's widget reads, and /updates.
