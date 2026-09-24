@@ -123,21 +123,23 @@ canonical URL per page; titles ≤ 60 chars, descriptions 120–160; JSON-LD on 
 sitemaps list canonical hosts only; `/llms.txt` on every site; never the words "free", "$0",
 "no ads" as claims about the platform.
 
-## 7. Chrome data (`GET https://openvibe.network/api/chrome?host=<hostname>`)
+## 7. Frame data (`GET https://openvibe.network/api/frame?host=<hostname>`)
+
+The OpenVibe Frame is the navbar, footer and "shipped" views every OpenVibe site sits in. `/api/chrome` is the old name of this endpoint, kept for copies of openvibe-shared older than 1.11.0.
 
 Public, CORS `*`, `max-age=600`, ETag. What the navbar and footer of every site show:
 `nav` (open sites, most used first), `soon` (reserved domains), `footer.blurb`, `footer.discover`,
 `footer.popular` (tools) and `footer.legal` (`terms`/`privacy`/`dmca` on the site's **own** domain).
 
 - Ranking = each service's 7-day page views and visitors plus signed-in cross-site history,
-  refreshed every 30 minutes and stored in `chrome_cache`, so an unreachable service keeps its last
+  refreshed every 30 minutes and stored in `frame_cache`, so an unreachable service keeps its last
   score. The Network itself counts page views only, at half weight.
 - Copy = once a day OpenVibe.AI's `network.site_copy` workflow (self-signed `svc:network` service
   token, `ns network.*`) may write a blurb per site and pick links **by id** from a list we supply.
   Ids resolve to our URLs server-side; text is length-capped and screened (no markup, no URLs, no
   cost claims). There is no fallback source: when AI fails, the last good copy (kept in
-  `chrome_cache`) stays, or the hand-written copy if there has never been one.
-- Clients: `navbar.js` and `footer.js` share `window.OpenVibeChrome` — a per-host localStorage cache
+  `frame_cache`) stays, or the hand-written copy if there has never been one.
+- Clients: `navbar.js` and `footer.js` share `window.OpenVibeFrame` (`OpenVibeChrome` is the old alias) — a per-host localStorage cache
   (30 min, refreshed in the background). Navbar options: `networkLinks` (`false` | count, default 4).
 
 ## 8. Legal (`require('openvibe-shared/legal')`)

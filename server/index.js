@@ -496,12 +496,15 @@ app.use('/api/profile/avatar', rateLimit({ windowMs: 60_000, max: 20 }), avatarS
 app.use('/avatar', rateLimit({ windowMs: 60_000, max: 600 }), avatarService.pub);
 app.locals.avatarService = avatarService;
 
-// Shared chrome: analytics-ranked navigation + footer copy for every site (server/chrome).
-const chromeService = require('./chrome/service').createChromeService(db, config, analytics, { privateKey, issuer: config.jwt.issuer });
-app.use('/api/chrome', rateLimit({ windowMs: 60_000, max: 240 }), chromeService.router);
-chromeService.start();
+// The OpenVibe Frame: analytics-ranked navigation + footer copy for every site (server/frame).
+// /api/chrome is the old name, kept for copies of openvibe-shared older than 1.11.0.
+const frameService = require('./frame/service').createFrameService(db, config, analytics, { privateKey, issuer: config.jwt.issuer });
+const frameLimit = rateLimit({ windowMs: 60_000, max: 240 });
+app.use('/api/frame', frameLimit, frameService.router);
+app.use('/api/chrome', frameLimit, frameService.router);
+frameService.start();
 // /api/v1/registry/featured follows the navigation's usage ranking.
-ecosystem.setRanking(() => chromeService.ranking());
+ecosystem.setRanking(() => frameService.ranking());
 
 // Tool domains: public list for the Tools gateway, owner-only management (docs/shared-contracts.md §1).
 const toolDomains = require('./domains/routes').createDomainRoutes(db, requireAuth);

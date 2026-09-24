@@ -106,7 +106,7 @@ const { createEcosystemRegistry } = require('../server/registry/ecosystem');
     const env = internalFromEnv({ OV_EVENTS_INTERNAL_URL: 'http://127.0.0.1:4300/', OV_AI_INTERNAL_URL: 'http://localhost:4700', OV_LIVE_INTERNAL_URL: 'https://live.example.com', OV_NOPE_INTERNAL_URL: 'http://127.0.0.1:1' });
     assert.deepStrictEqual(env.overrides, { events: 'http://127.0.0.1:4300', ai: 'http://localhost:4700' }, 'loopback URLs of known services override');
     assert.deepStrictEqual(env.ignored, ['OV_LIVE_INTERNAL_URL'], 'a non-loopback address is ignored and reported');
-    const { SITES } = require('../server/chrome/sites');
+    const { SITES } = require('../server/frame/sites');
     for (const site of SITES) {
         const m = contracts.services.get(site.service);
         if (m && m.publicOrigin) assert.strictEqual(site.host, new URL(m.publicOrigin).hostname, `${site.id}: host from the manifest`);

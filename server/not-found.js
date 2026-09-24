@@ -24,7 +24,7 @@ function page() {
     let nav = '';
     try { footer = require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact' }); } catch { /* optional */ }
     try { icons = require('openvibe-shared/app-icon').headTags({ site: 'network', iconBase: '/assets' }); } catch { /* optional */ }
-    try { nav = require('openvibe-shared/chrome-ssr').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }] }); } catch { /* optional */ }
+    try { nav = require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }] }); } catch { /* optional */ }
     cached = `<!DOCTYPE html>
 <html lang="en">
 <head>

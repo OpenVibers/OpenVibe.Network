@@ -1,8 +1,8 @@
 'use strict';
 // ═══════════════════════════════════════════════════════════════
-// Shared chrome data: what the navbar and footer of every site show.
+// OpenVibe Frame data: what the navbar and footer of every site show.
 //
-//   GET /api/chrome?host=<hostname>     public, CORS *, max-age=600, ETag
+//   GET /api/frame?host=<hostname>     public, CORS *, max-age=600, ETag
 //   → { updated, nav: [{ id, name, url, icon, tagline }],            open sites, most used first
 //       soon: [{ id, name, url, icon, state }],                       state: internal | placeholder
 //       footer: { blurb, discover: [{ name, url }], popular: [{ name, url }], legal: { terms, privacy, dmca } } }
@@ -13,7 +13,7 @@
 // Copy: once a day OpenVibe.AI (network.site_copy) may write a blurb per site and pick "discover"
 // links BY ID from a list we supply; ids resolve to our own URLs here, text is stripped, length-capped
 // and screened. AI unreachable, failing or answering badly → the last good copy stays (kept in
-// chrome_cache across restarts), or the hand-written copy when there has never been one.
+// frame_cache across restarts), or the hand-written copy when there has never been one.
 // ═══════════════════════════════════════════════════════════════
 const express = require('express');
 const crypto = require('crypto');
@@ -58,14 +58,19 @@ function aiSiteCopy({ privateKey, issuer, aiUrl }) {
     };
 }
 
-function createChromeService(db, config, analytics, { privateKey = null, issuer = null, aiUrl = process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700' } = {}) {
+function createFrameService(db, config, analytics, { privateKey = null, issuer = null, aiUrl = process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700' } = {}) {
     const fromAi = privateKey && issuer ? aiSiteCopy({ privateKey, issuer, aiUrl: String(aiUrl).replace(/\/+$/, '') }) : null;
-    db.exec('CREATE TABLE IF NOT EXISTS chrome_cache (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)');
+    // Renamed from chrome_cache/chrome_hits (2026-09-24): carry the old tables over once.
+    for (const [from, to] of [['chrome_cache', 'frame_cache'], ['chrome_hits', 'frame_hits']]) {
+        const has = (t) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t));
+        if (has(from) && !has(to)) db.exec(`ALTER TABLE ${from} RENAME TO ${to}`);
+    }
+    db.exec('CREATE TABLE IF NOT EXISTS frame_cache (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)');
     // Anonymous page-view counts per host and day, sent by the shared navbar. No user, no IP, no path.
-    db.exec('CREATE TABLE IF NOT EXISTS chrome_hits (day TEXT NOT NULL, host TEXT NOT NULL, hits INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, host))');
-    const bump = db.prepare("INSERT INTO chrome_hits (day, host, hits) VALUES (date('now'), ?, 1) ON CONFLICT(day, host) DO UPDATE SET hits = hits + 1");
-    const load = (k) => { try { const r = db.prepare('SELECT value, updated_at FROM chrome_cache WHERE key = ?').get(k); return r ? { value: JSON.parse(r.value), at: Date.parse(r.updated_at + 'Z') || 0 } : null; } catch { return null; } };
-    const save = (k, v) => db.prepare('INSERT INTO chrome_cache (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP').run(k, JSON.stringify(v));
+    db.exec('CREATE TABLE IF NOT EXISTS frame_hits (day TEXT NOT NULL, host TEXT NOT NULL, hits INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, host))');
+    const bump = db.prepare("INSERT INTO frame_hits (day, host, hits) VALUES (date('now'), ?, 1) ON CONFLICT(day, host) DO UPDATE SET hits = hits + 1");
+    const load = (k) => { try { const r = db.prepare('SELECT value, updated_at FROM frame_cache WHERE key = ?').get(k); return r ? { value: JSON.parse(r.value), at: Date.parse(r.updated_at + 'Z') || 0 } : null; } catch { return null; } };
+    const save = (k, v) => db.prepare('INSERT INTO frame_cache (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP').run(k, JSON.stringify(v));
 
     const savedRank = load('rank') || {};
     let rank = savedRank.value || { scores: {}, tools: [] };
@@ -86,7 +91,7 @@ function createChromeService(db, config, analytics, { privateKey = null, issuer 
         // Everything else: the navbar's page-view beacon, summed per site over 7 days.
         let tools = rank.tools || [];
         try {
-            const rows = db.prepare("SELECT host, SUM(hits) AS n FROM chrome_hits WHERE day >= date('now', '-7 days') GROUP BY host").all();
+            const rows = db.prepare("SELECT host, SUM(hits) AS n FROM frame_hits WHERE day >= date('now', '-7 days') GROUP BY host").all();
             const perSite = {}; const perTool = new Map();
             const { catalog } = toolsCatalog.peek();
             const toolOfHost = new Map();
@@ -180,7 +185,7 @@ function createChromeService(db, config, analytics, { privateKey = null, issuer 
         res.send(e.body);
     });
 
-    // POST /api/chrome/hit — one anonymous count for the calling page's host. The host comes from the
+    // POST /api/frame/hit — one anonymous count for the calling page's host. The host comes from the
     // browser-set Origin header (never the body) and must be one of ours or a registered tool domain.
     const recent = new Map();   // ip → [count, windowStart]: 40/min is plenty for a person, useless for stuffing
     router.post('/hit', (req, res) => {
@@ -215,4 +220,4 @@ function createChromeService(db, config, analytics, { privateKey = null, issuer 
     return { router, start, refreshRank, refreshCopy, payloadFor, ranking, _state: () => ({ rank, copy }) };
 }
 
-module.exports = { createChromeService, BANNED };
+module.exports = { createFrameService, BANNED };

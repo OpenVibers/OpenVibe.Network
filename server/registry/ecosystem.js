@@ -36,7 +36,7 @@ const contractsPkg = require('openvibe-contracts/package.json');
 const { exposureOf, publicOriginOf, libraries } = require('./exposure');
 const { buildTopics, eventsOf } = require('./topics');
 const { driftOf } = require('./versions');
-const { SITES } = require('../chrome/sites');
+const { SITES } = require('../frame/sites');
 
 // Where each running service answers health checks from this host (manifests carry the public origin).
 // TODO(plan §5.1 "contract manifests plus validated environment overrides"): registry.service-manifest@1 has
@@ -110,9 +110,9 @@ function internalFromEnv(env = process.env) {
 }
 
 // What each category means; categoryOf() applies it. Derived from Network's exposure overlay and its site
-// list (server/chrome/sites.js), never set by hand per service.
+// list (server/frame/sites.js), never set by hand per service.
 const CATEGORIES = [
-    { id: 'site', name: 'Sites', rule: 'a product people use in a browser: it has an entry in the network\'s site list (server/chrome/sites.js), open in the navigation once its public domain serves it' },
+    { id: 'site', name: 'Sites', rule: 'a product people use in a browser: it has an entry in the network\'s site list (server/frame/sites.js), open in the navigation once its public domain serves it' },
     { id: 'platform', name: 'Platform services', rule: 'runs (publicly or on loopback) but is not a site people visit: other services call it' },
     { id: 'library', name: 'Libraries', rule: 'exposure library: a released package other code installs' },
     { id: 'repository', name: 'Repositories', rule: 'exposure repository: code with CI, neither released nor run' },
@@ -256,7 +256,7 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
 
     /**
      * Featured: the sites whose public domain serves them and whose last check (not stale) was up or degraded,
-     * in the navbar's usage order (server/chrome/service.js: page views over 7 days plus signed-in history
+     * in the navbar's usage order (server/frame/service.js: page views over 7 days plus signed-in history
      * over 14, recounted every 30 minutes). The hub does not feature itself. Nothing is picked by hand.
      */
     function featured() {

@@ -1,6 +1,6 @@
 'use strict';
 // Exposure overlay (server/registry/exposure.js): every service has one honest state, and the
-// registry, the status page and the chrome nav all say the same thing. A service that runs on
+// registry, the status page and the Frame's nav all say the same thing. A service that runs on
 // loopback while its public domain still serves a placeholder is never "up" at that domain.
 //   node test/registry-exposure.test.js
 const assert = require('assert');
@@ -10,7 +10,7 @@ const contracts = require('openvibe-contracts');
 const exposure = require('../server/registry/exposure');
 const { createEcosystemRegistry } = require('../server/registry/ecosystem');
 const { createStatusRoutes } = require('../server/status/routes');
-const { SITES } = require('../server/chrome/sites');
+const { SITES } = require('../server/frame/sites');
 
 // Observed 2026-09-23 with curl against every public domain. Change a row only after the domain
 // stops answering "this page is a placeholder" (or a library ships a new release).
@@ -114,7 +114,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     assert.ok(/<tr id="svc-news">[\s\S]*?openvibe\.news: not this service yet/.test(html));
     assert.ok(/<tr id="svc-live">[\s\S]*?>Up<\/span>/.test(html), 'a public service still reads Up');
 
-    // 3. Chrome: the nav lists only sites whose domain serves the service; the rest are soon with a reason.
+    // 3. The Frame: the nav lists only sites whose domain serves the service; the rest are soon with a reason.
     const open = SITES.filter(s => s.status === 'open').map(s => s.id);
     assert.deepStrictEqual(open, ['live', 'tools', 'community', 'games', 'media', 'network', 'codes', 'blog', 'wiki']);
     for (const s of SITES) {

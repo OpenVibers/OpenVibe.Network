@@ -127,7 +127,7 @@ a{color:var(--accent)}
 </head>
 <body>
 <div id="navbar-mount"></div>
-${require('openvibe-shared/chrome-ssr').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Updates', href: '/updates' }, { label: 'Status', href: '/status' }] })}
+${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Updates', href: '/updates' }, { label: 'Status', href: '/status' }] })}
 <main class="up" id="main">
 <h1>${esc(title)}</h1>
 <p class="lede">Every change deployed to OpenVibe, newest first. Each line is a commit from the OpenVibers repositories, linked to the change itself. When enough have gathered, or a large feature lands, they are written up as <a href="https://openvibe.blog/@openvibe">Patch notes on openvibe.blog</a>. JSON: <a href="/api/v1/changelog"><code>/api/v1/changelog</code></a>.</p>

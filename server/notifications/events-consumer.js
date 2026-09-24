@@ -36,14 +36,14 @@
  * operator sets it and creates the subscriptions.
  *
  * Links: a notification links to the event's URL only when that host is one of our sites whose
- * public domain serves the service (server/chrome/sites.js, via the exposure overlay). Today Deals
+ * public domain serves the service (server/frame/sites.js, via the exposure overlay). Today Deals
  * and Trade are loopback-only and their domains show placeholder pages, so the link is kept in
  * rich_content.context.planned_url and the notification has no click-through yet.
  */
 const express = require('express');
 const { http, ids } = require('openvibe-contracts');
 const { parseDelivery, createInbox } = require('openvibe-sdk/events');
-const { siteForHost } = require('../chrome/sites');
+const { siteForHost } = require('../frame/sites');
 const streamLive = require('./stream-live');
 const { LiveFollowersError } = require('./live-followers');
 

@@ -77,7 +77,7 @@ function render() {
     const key = `${stat.mtimeMs}:${catalog.updated}:${catalog.tools.length}`;
     if (cache.key === key) return cache;
     const ld = seo.jsonLdTag(seo.jsonLd.itemList('OpenVibe sites', SITES.map(([, n, u, , d]) => ({ name: n, url: u, description: d }))));
-    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + require('openvibe-shared/chrome-ssr').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog)).replace('<!--OV:COUNT-->', String(catalog.tools.length)).replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', `${ld}\n</head>`);
+    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog)).replace('<!--OV:COUNT-->', String(catalog.tools.length)).replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', `${ld}\n</head>`);
     cache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
     return cache;
 }

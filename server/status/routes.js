@@ -128,7 +128,7 @@ ${CSS}
 </head>
 <body>
 <div id="navbar-mount"></div>
-${require('openvibe-shared/chrome-ssr').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Status', href: '/status' }] })}
+${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Status', href: '/status' }] })}
 <main class="st" id="main">
 <h1>Service status</h1>
 <p class="lede">What Network observed when it last checked each service: its readiness endpoint (named checks, required or optional), its deployed release, and when. A service that has not been checked, or whose last check is out of date, shows as <b>unknown</b>. Placeholders, libraries and repositories show as not running. <b>Where</b> says whether the public domain serves the service itself (live), or the service runs on this host's loopback only while its domain still serves a placeholder page (internal). Page generated <time datetime="${esc(generatedAt)}">${esc(generatedAt)}</time>; checks run about every ${esc(Math.round(slo.pollSeconds || 60))} seconds. JSON: <a href="/api/v1/status"><code>/api/v1/status</code></a>.</p>

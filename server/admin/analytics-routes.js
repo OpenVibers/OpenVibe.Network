@@ -35,12 +35,12 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config) 
     router.use(requireAuth, requireAdmin);
 
     // Games and Media keep no analytics of their own. The shared navbar's anonymous page-view count
-    // (chrome_hits: day + host, nothing else) is the honest number for them; the summary says so.
+    // (frame_hits: day + host, nothing else) is the honest number for them; the summary says so.
     const BEACON_HOSTS = { games: 'openvibe.games', media: 'openvibe.media', tools: 'openvibe.tools' };
     function beaconFallback(svc, days) {
         try {
             const host = BEACON_HOSTS[svc.name]; if (!host) return null;
-            const row = analytics.db.prepare("SELECT COALESCE(SUM(hits), 0) AS n FROM chrome_hits WHERE day >= date('now', ?) AND (host = ? OR host LIKE ?)").get(`-${Math.min(days || 30, 365)} days`, host, '%.' + host);
+            const row = analytics.db.prepare("SELECT COALESCE(SUM(hits), 0) AS n FROM frame_hits WHERE day >= date('now', ?) AND (host = ? OR host LIKE ?)").get(`-${Math.min(days || 30, 365)} days`, host, '%.' + host);
             return { ok: true, analytics: { summary: { total_pageviews: row.n, source: 'navbar page-view count (no service analytics)' }, realtime: {} } };
         } catch { return null; }
     }

@@ -408,7 +408,7 @@ Google-style account management supporting up to 5 accounts:
   domain still serves a placeholder page), `library` (released package), `repository` (code with CI,
   nothing to run) or `placeholder` (planned). The registry adds `exposure` to each service, the
   descriptor gives an `origin` only to `live` services (`planned_origin` otherwise), `/status` reads
-  "up (loopback only)" for an internal service, and the chrome nav lists only `live` sites. Change a
+  "up (loopback only)" for an internal service, and the Frame's nav lists only `live` sites. Change a
   row when a domain stops serving its placeholder; `test/registry-exposure.test.js` pins the states.
 - The registry also answers `GET /api/v1/registry/topics` (every event type from the manifests'
   `eventsProduced`/`eventsConsumed` and the payload contracts, with producers, consumers, the matching
@@ -421,7 +421,7 @@ Google-style account management supporting up to 5 accounts:
   from its own Events consumer.
   Payload schemas are served at their `$id` (`/contracts/events/payloads/<type>.v1.json`).
 - `GET /api/v1/registry/categories[/:id]` groups every service by what it is, each with its rule:
-  `site` (in the network's site list, `server/chrome/sites.js`), `platform` (runs, but other services call
+  `site` (in the network's site list, `server/frame/sites.js`), `platform` (runs, but other services call
   it), `library`, `repository`, `planned`. `GET /api/v1/registry/featured` lists the open sites whose last
   check was up or degraded, in the navigation's usage order (7-day page views plus 14-day signed-in
   history, recounted every 30 minutes), with `ranked_at` and `stale`; the hub is not listed and nothing
