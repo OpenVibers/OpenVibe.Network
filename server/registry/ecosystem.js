@@ -24,6 +24,10 @@
  *                                                   current releases, with contracts/sdk/shared drift
  *   GET /api/v1/registry/health                     one line per service: status, checked_at
  *   GET /api/v1/registry/search?q=                  services, capabilities, topics and contracts by text
+ *   GET /api/v1/registry/categories[/:id]           services grouped by what they are (site, platform,
+ *                                                   library, repository, planned), each rule stated
+ *   GET /api/v1/registry/featured                   public sites that are up, most used first (the navbar's
+ *                                                   usage ranking), with when that use was counted
  *   GET /contracts/<domain>/<name>.v<N>.json        the schema at its $id URL
  */
 const express = require('express');
@@ -32,8 +36,13 @@ const contractsPkg = require('openvibe-contracts/package.json');
 const { exposureOf, publicOriginOf, libraries } = require('./exposure');
 const { buildTopics, eventsOf } = require('./topics');
 const { driftOf } = require('./versions');
+const { SITES } = require('../chrome/sites');
 
 // Where each running service answers health checks from this host (manifests carry the public origin).
+// TODO(plan §5.1 "contract manifests plus validated environment overrides"): registry.service-manifest@1 has
+// no internal address, so these loopback ports stay here until Contracts adds one (or Network reads
+// OpenVibe.Host's host.json). Until then OV_<ID>_INTERNAL_URL overrides any of them (internalFromEnv below),
+// validated as a loopback http(s) URL, which is the environment half of that rule.
 const INTERNAL = {
     network: 'http://127.0.0.1:4000', live: 'http://127.0.0.1:3000', media: 'http://127.0.0.1:4100',
     tools: 'http://127.0.0.1:4001', games: 'http://127.0.0.1:8000', community: 'http://127.0.0.1:4200',
@@ -45,10 +54,12 @@ const INTERNAL = {
     coupons: 'http://127.0.0.1:4850', trade: 'http://127.0.0.1:4860', codes: 'http://127.0.0.1:4900', host: 'http://127.0.0.1:4910',
 };
 const POLL_MS = 60 * 1000;
-// Readiness paths of services whose manifest (openvibe-contracts) does not carry `ready` yet. Each
-// answers with openvibe-shared/ready's shape; until a service deploys it, its health path is used
-// and the row says so (basis: 'health').
-const READY_PATHS = { network: '/api/ready', media: '/api/ready', tools: '/api/ready' };
+// Readiness paths of services whose manifest (openvibe-contracts) does not carry `ready` yet; a manifest's
+// own `ready` always wins. Each answers with openvibe-shared/ready's shape; until a service deploys it, its
+// health path is used and the row says so (basis: 'health'). Only entries whose manifest still lacks `ready`
+// may stay (test/registry-ecosystem.test.js): tools left when its manifest gained one. TODO(contracts): add
+// `ready: /api/ready` to the network and media manifests, then this map is empty.
+const READY_PATHS = { network: '/api/ready', media: '/api/ready' };
 // Liveness paths of services whose manifest in the pinned openvibe-contracts has none (none since
 // 0.30, where AI's manifest carries /api/health and /api/ready).
 const HEALTH_PATHS = {};
@@ -79,8 +90,45 @@ function readySummary(body) {
     return { ready: body.ready, status: String(body.status || (body.ready ? 'ready' : 'not_ready')).slice(0, 20), checked_at: typeof body.checked_at === 'string' ? body.checked_at.slice(0, 40) : null, failed: names(body.failed), degraded: names(body.degraded), checks };
 }
 
-function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = globalThis.fetch, pollMs = POLL_MS, readyPaths = READY_PATHS, healthPaths = HEALTH_PATHS, now = () => Date.now() } = {}) {
+/**
+ * OV_<ID>_INTERNAL_URL (e.g. OV_EVENTS_INTERNAL_URL, OV_AI_INTERNAL_URL) for each manifest id, when it is a
+ * loopback http(s) URL: health is polled on this host only. Anything else is ignored (and reported).
+ */
+function internalFromEnv(env = process.env) {
+    const out = {}; const ignored = [];
+    for (const m of contracts.services.manifests) {
+        const name = `OV_${m.id.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_INTERNAL_URL`;
+        const v = env[name];
+        if (!v) continue;
+        try {
+            const u = new URL(String(v));
+            if ((u.protocol === 'http:' || u.protocol === 'https:') && ['127.0.0.1', 'localhost', '[::1]'].includes(u.hostname)) { out[m.id] = `${u.protocol}//${u.host}`; continue; }
+        } catch { /* fall through */ }
+        ignored.push(name);
+    }
+    return { overrides: out, ignored };
+}
+
+// What each category means; categoryOf() applies it. Derived from Network's exposure overlay and its site
+// list (server/chrome/sites.js), never set by hand per service.
+const CATEGORIES = [
+    { id: 'site', name: 'Sites', rule: 'a product people use in a browser: it has an entry in the network\'s site list (server/chrome/sites.js), open in the navigation once its public domain serves it' },
+    { id: 'platform', name: 'Platform services', rule: 'runs (publicly or on loopback) but is not a site people visit: other services call it' },
+    { id: 'library', name: 'Libraries', rule: 'exposure library: a released package other code installs' },
+    { id: 'repository', name: 'Repositories', rule: 'exposure repository: code with CI, neither released nor run' },
+    { id: 'planned', name: 'Planned', rule: 'exposure placeholder: charter only, nothing runs' },
+];
+function categoryOf(m) {
+    const e = exposureOf(m.id);
+    if (e.state === 'library') return 'library';
+    if (e.state === 'repository') return 'repository';
+    if (e.state === 'placeholder' || (e.state === 'unknown' && m.status === 'placeholder')) return 'planned';
+    return SITES.some(s => s.service === m.id) ? 'site' : 'platform';
+}
+
+function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = globalThis.fetch, pollMs = POLL_MS, readyPaths = READY_PATHS, healthPaths = HEALTH_PATHS, now = () => Date.now(), ranking = null } = {}) {
     const internal = { ...INTERNAL, ...internalOverrides };
+    let rankingOf = ranking;
     // id -> { status: up|degraded|down|not-running|unknown, basis, reason, http_status, latency_ms, checked_at, ready, release }
     const health = new Map();
     let timer = null;
@@ -197,6 +245,47 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         return { checked_at: lastPollAt ? new Date(lastPollAt).toISOString() : null, poll_interval_s: Math.round(pollMs / 1000), libraries: libs, services, behind };
     }
 
+    /** Services grouped by category, each with its maturity, exposure and last check. */
+    function categories() {
+        const rowOf = (m) => { const h = current(m.id); return { id: m.id, name: m.name || m.id, status: m.status, state: exposureOf(m.id).state, origin: publicOriginOf(m), runtime: h.status, checked_at: h.checked_at || null }; };
+        return CATEGORIES.map((c) => {
+            const services = contracts.services.manifests.filter(m => categoryOf(m) === c.id).map(rowOf);
+            return { ...c, count: services.length, services };
+        });
+    }
+
+    /**
+     * Featured: the sites whose public domain serves them and whose last check (not stale) was up or degraded,
+     * in the navbar's usage order (server/chrome/service.js: page views over 7 days plus signed-in history
+     * over 14, recounted every 30 minutes). The hub does not feature itself. Nothing is picked by hand.
+     */
+    function featured() {
+        const r = typeof rankingOf === 'function' ? rankingOf() : null;
+        const open = SITES.filter(s => s.status === 'open');
+        const order = r && Array.isArray(r.order) ? r.order : open.map(s => s.id);
+        const bySite = new Map(open.map(s => [s.id, s]));
+        const list = [];
+        for (const siteId of order) {
+            const site = bySite.get(siteId);
+            if (!site || site.service === 'network') continue;
+            const m = contracts.services.get(site.service);
+            if (!m) continue;
+            const h = current(m.id);
+            if (h.status !== 'up' && h.status !== 'degraded') continue;
+            list.push({ rank: list.length + 1, id: m.id, name: m.name || m.id, site: site.name, origin: publicOriginOf(m) || `https://${site.host}`, tagline: site.tagline, status: h.status, checked_at: h.checked_at });
+        }
+        const at = r && r.at ? r.at : null;
+        const every = (r && r.everyMs) || 30 * 60 * 1000;
+        return {
+            derivation: 'Sites whose public domain serves the service itself and whose last health check (at most three poll intervals old) was up or degraded, ordered by use: page views over the last 7 days (the shared navbar\'s anonymous count, and Live\'s own analytics) plus signed-in cross-site history over 14 days, the order the network navigation uses. The hub itself is not listed; nothing is featured by hand.',
+            ordered_by: at ? 'usage' : 'site list order (no use counted yet)',
+            ranked_at: at ? new Date(at).toISOString() : null,
+            stale: !at || now() - at > 4 * every,
+            checked_at: lastPollAt ? new Date(lastPollAt).toISOString() : null,
+            featured: list,
+        };
+    }
+
     function descriptor() {
         return {
             name: 'OpenVibe',
@@ -221,7 +310,14 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         const notFound = (res, code, detail) => contracts.http.sendProblem(res, 404, code, { detail });
 
         r.get('/.well-known/openvibe', (_req, res) => cache(res, 300).json(descriptor()));
-        r.get('/api/v1/registry', (_req, res) => cache(res).json({ services: '/api/v1/registry/services', capabilities: '/api/v1/registry/capabilities', namespaces: '/api/v1/registry/namespaces', contracts: '/api/v1/registry/contracts', topics: '/api/v1/registry/topics', releases: '/api/v1/registry/releases', health: '/api/v1/registry/health', search: '/api/v1/registry/search?q=', domains: '/api/v1/registry/domains/:domain' }));
+        r.get('/api/v1/registry', (_req, res) => cache(res).json({ services: '/api/v1/registry/services', capabilities: '/api/v1/registry/capabilities', namespaces: '/api/v1/registry/namespaces', contracts: '/api/v1/registry/contracts', topics: '/api/v1/registry/topics', releases: '/api/v1/registry/releases', health: '/api/v1/registry/health', search: '/api/v1/registry/search?q=', domains: '/api/v1/registry/domains/:domain', categories: '/api/v1/registry/categories', featured: '/api/v1/registry/featured' }));
+        r.get('/api/v1/registry/categories', (_req, res) => cache(res, 30).json({ categories: categories(), checked_at: lastPollAt ? new Date(lastPollAt).toISOString() : null }));
+        r.get('/api/v1/registry/categories/:id', (req, res) => {
+            const c = categories().find(x => x.id === String(req.params.id));
+            if (!c) return notFound(res, 'registry.unknown_category', `no category ${req.params.id}; categories: ${CATEGORIES.map(x => x.id).join(', ')}`);
+            cache(res, 30).json(c);
+        });
+        r.get('/api/v1/registry/featured', (_req, res) => cache(res, 60).json(featured()));
         r.get('/api/v1/registry/services', (req, res) => {
             let list = contracts.services.manifests.map(withHealth);
             if (req.query.status) list = list.filter(m => m.status === String(req.query.status));
@@ -294,7 +390,7 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         return r;
     }
 
-    return { router, start, stop, pollAll, health, current, descriptor, lastPollAt: () => lastPollAt, pollMs, internal };
+    return { router, start, stop, pollAll, health, current, descriptor, categories, featured, setRanking: (fn) => { rankingOf = fn; }, lastPollAt: () => lastPollAt, pollMs, internal };
 }
 
-module.exports = { createEcosystemRegistry, INTERNAL, READY_PATHS, HEALTH_PATHS, statusFromReady, readySummary };
+module.exports = { createEcosystemRegistry, INTERNAL, READY_PATHS, HEALTH_PATHS, CATEGORIES, categoryOf, internalFromEnv, statusFromReady, readySummary };

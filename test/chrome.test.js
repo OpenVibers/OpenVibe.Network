@@ -12,6 +12,7 @@ const svc = createChromeService(db, { internalKey: 'change-me-in-production', se
 
 assert.equal(siteForHost('yt.openvibe.tools').id, 'tools');
 assert.equal(siteForHost('evil.example'), null);
+assert.strictEqual(svc.ranking().at, null, 'cold start: no use counted yet (the registry\'s featured list says so)');
 let p = svc.payloadFor('openvibe.media');
 assert.deepEqual(p.nav.map(n => n.id), ['live', 'tools', 'community', 'games', 'media', 'network', 'codes', 'blog', 'wiki'], 'cold start follows the base order');
 assert.equal(p.footer.legal.dmca, 'https://openvibe.media/dmca', 'legal links stay on the site\'s own domain');
@@ -28,6 +29,8 @@ for (let i = 0; i < 6; i++) ins.run(1, 'tools', 'dns');
     await svc.refreshRank(); global.fetch = realFetch;
     p = svc.payloadFor('openvibe.network');
     assert.equal(p.nav[0].id, 'games', 'most viewed site comes first');
+    assert.deepEqual(svc.ranking().order, p.nav.map(n => n.id), 'ranking() is the navigation order (the registry features by it)');
+    assert.ok(Date.now() - svc.ranking().at < 5000, 'and says when it was counted');
     assert.ok(p.nav.findIndex(n => n.id === 'network') > 0, 'the Network is never first on shared-service traffic alone');
     assert.ok(BANNED.test('Totally free tools') && BANNED.test('see https://x.y') && BANNED.test('<b>hi</b>') && !BANNED.test('Go live from a browser in seconds.'), 'AI copy screen');
     assert.equal(p.footer.ai, false);

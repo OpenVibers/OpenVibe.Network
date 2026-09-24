@@ -420,6 +420,15 @@ Google-style account management supporting up to 5 accounts:
   openvibe-contracts 0.32.0 lists Live's, Media's and Network's), and Network's consumed topics come
   from its own Events consumer.
   Payload schemas are served at their `$id` (`/contracts/events/payloads/<type>.v1.json`).
+- `GET /api/v1/registry/categories[/:id]` groups every service by what it is, each with its rule:
+  `site` (in the network's site list, `server/chrome/sites.js`), `platform` (runs, but other services call
+  it), `library`, `repository`, `planned`. `GET /api/v1/registry/featured` lists the open sites whose last
+  check was up or degraded, in the navigation's usage order (7-day page views plus 14-day signed-in
+  history, recounted every 30 minutes), with `ranked_at` and `stale`; the hub is not listed and nothing
+  is featured by hand.
+- Loopback addresses for the health poll: the built-in ports in `server/registry/ecosystem.js`, each
+  overridable by `OV_<ID>_INTERNAL_URL` (loopback URLs only; anything else is ignored and logged). Site
+  hosts come from each manifest's `publicOrigin`.
 - `node scripts/contracts-drift.js` warns about services that pin an older openvibe-contracts than
   the latest tag, or a tag that was never published (`--dir ~/OpenVibers` for local checkouts,
   `--registry https://openvibe.network` for what is running, `--package all` for sdk and shared too).

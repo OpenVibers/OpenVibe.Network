@@ -67,7 +67,9 @@ function createChromeService(db, config, analytics, { privateKey = null, issuer 
     const load = (k) => { try { const r = db.prepare('SELECT value, updated_at FROM chrome_cache WHERE key = ?').get(k); return r ? { value: JSON.parse(r.value), at: Date.parse(r.updated_at + 'Z') || 0 } : null; } catch { return null; } };
     const save = (k, v) => db.prepare('INSERT INTO chrome_cache (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP').run(k, JSON.stringify(v));
 
-    let rank = (load('rank') || {}).value || { scores: {}, tools: [] };
+    const savedRank = load('rank') || {};
+    let rank = savedRank.value || { scores: {}, tools: [] };
+    let rankedAt = savedRank.value ? savedRank.at || null : null;
     let copy = (load('copy') || {}).value || { sites: {} };
     let version = Date.now();
 
@@ -104,7 +106,7 @@ function createChromeService(db, config, analytics, { privateKey = null, issuer 
             for (const r of bySvc) { const id = r.service === 'pastes' ? 'community' : r.service; if (!id) continue; scores[id + ':history'] = r.n + 5 * r.u; }
         } catch { /* table appears on first history write */ }
         rank = { scores, tools };
-        save('rank', rank); version = Date.now();
+        save('rank', rank); version = Date.now(); rankedAt = Date.now();
     }
 
     const scoreOf = (id) => (rank.scores[id] || 0) + 3 * (rank.scores[id + ':history'] || 0);
@@ -205,7 +207,12 @@ function createChromeService(db, config, analytics, { privateKey = null, issuer 
         const i2 = setInterval(() => refreshCopy().catch(() => {}), COPY_MS); i2.unref();
     }
 
-    return { router, start, refreshRank, refreshCopy, payloadFor, _state: () => ({ rank, copy }) };
+    /** The open sites in navbar order (most used first), and when that use was last counted (ms, or null: cold start). */
+    function ranking() {
+        return { at: rankedAt, order: orderedOpen().map(s => s.id), everyMs: RANK_MS };
+    }
+
+    return { router, start, refreshRank, refreshCopy, payloadFor, ranking, _state: () => ({ rank, copy }) };
 }
 
 module.exports = { createChromeService, BANNED };

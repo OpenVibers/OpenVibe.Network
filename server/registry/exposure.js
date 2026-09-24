@@ -23,6 +23,12 @@
  *
  * When a service goes public, change its row here in the same commit that points its domain at it,
  * after checking the domain no longer answers with "this page is a placeholder".
+ *
+ * TODO(plan §5.1 "data from contract manifests plus validated overrides"): this overlay is the override
+ * half. It cannot come from the manifests (they say maturity, and the question here is what a domain
+ * serves today), so it stays Network's, pinned id by id by test/registry-exposure.test.js. Candidates to
+ * derive it later: each repository's STATUS.json `deployed`, or OpenVibe.Sites' sites.json (which domains
+ * still get a placeholder page), once both are published somewhere Network can read.
  */
 
 const STATES = ['live', 'internal', 'library', 'repository', 'placeholder'];

@@ -383,7 +383,10 @@ const requireAuth = require('./auth/session').makeRequireAuth(() => ({ db, publi
 // spec-compliant consumers) and the legacy `public_key` PEM shape that the
 // inherited service clients read.
 // Ecosystem registry: services, capabilities, namespaces and contracts from openvibe-contracts, with polled health.
-const ecosystem = require('./registry/ecosystem').createEcosystemRegistry({ issuer: config.jwt.issuer });
+// Loopback addresses: the built-in ports, overridden by OV_<ID>_INTERNAL_URL (loopback URLs only).
+const ecosystemInternal = require('./registry/ecosystem').internalFromEnv(process.env);
+if (ecosystemInternal.ignored.length) console.warn(`[Registry] ignored (not a loopback URL): ${ecosystemInternal.ignored.join(', ')}`);
+const ecosystem = require('./registry/ecosystem').createEcosystemRegistry({ issuer: config.jwt.issuer, internalOverrides: ecosystemInternal.overrides });
 app.use(ecosystem.router());
 ecosystem.start();
 // Operator status: GET /status (server-rendered, noindex), /api/v1/status, /api/v1/status/slo.
@@ -491,6 +494,8 @@ app.locals.avatarService = avatarService;
 const chromeService = require('./chrome/service').createChromeService(db, config, analytics, { privateKey, issuer: config.jwt.issuer });
 app.use('/api/chrome', rateLimit({ windowMs: 60_000, max: 240 }), chromeService.router);
 chromeService.start();
+// /api/v1/registry/featured follows the navigation's usage ranking.
+ecosystem.setRanking(() => chromeService.ranking());
 
 // Tool domains: public list for the Tools gateway, owner-only management (docs/shared-contracts.md §1).
 const toolDomains = require('./domains/routes').createDomainRoutes(db, requireAuth);

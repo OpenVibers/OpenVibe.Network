@@ -57,6 +57,60 @@ const { createEcosystemRegistry } = require('../server/registry/ecosystem');
     r = await get('/contracts/identity/nope.v1.json');
     assert.strictEqual(r.status, 404);
 
+    // ── Categories: every manifest in exactly one, by the stated rule ──
+    r = await get('/api/v1/registry/categories');
+    assert.strictEqual(r.status, 200); assert.strictEqual(r.cors, '*');
+    const cats = Object.fromEntries(r.body.categories.map(c => [c.id, c]));
+    assert.deepStrictEqual(Object.keys(cats), ['site', 'platform', 'library', 'repository', 'planned']);
+    for (const c of r.body.categories) assert.ok(c.rule && c.count === c.services.length, `${c.id} states its rule and count`);
+    const listed = r.body.categories.flatMap(c => c.services.map(x => x.id)).sort();
+    assert.deepStrictEqual(listed, contracts.services.manifests.map(m => m.id).sort(), 'every service in exactly one category');
+    const inCat = (id) => r.body.categories.find(c => c.services.some(x => x.id === id)).id;
+    assert.strictEqual(inCat('live'), 'site'); assert.strictEqual(inCat('network'), 'site'); assert.strictEqual(inCat('tips'), 'site', 'a site whose domain is still a placeholder is a site, not open yet');
+    assert.strictEqual(inCat('events'), 'platform'); assert.strictEqual(inCat('ai'), 'platform'); assert.strictEqual(inCat('sources'), 'platform');
+    assert.strictEqual(inCat('sdk'), 'library'); assert.strictEqual(inCat('contracts'), 'library');
+    assert.strictEqual(inCat('examples'), 'repository'); assert.strictEqual(inCat('realtime'), 'planned');
+    const liveRow = cats.site.services.find(x => x.id === 'live');
+    assert.strictEqual(liveRow.runtime, 'down'); assert.ok(liveRow.checked_at, 'rows carry the last check');
+    r = await get('/api/v1/registry/categories/library');
+    assert.strictEqual(r.status, 200); assert.ok(r.body.services.some(x => x.id === 'shared'));
+    r = await get('/api/v1/registry/categories/nope');
+    assert.strictEqual(r.status, 404); assert.strictEqual(r.body.code, 'registry.unknown_category');
+
+    // ── Featured: open sites that are up, in the navigation's usage order; stale or cold start says so ──
+    eco.health.set('media', { status: 'up', checked_at: new Date().toISOString() });
+    r = await get('/api/v1/registry/featured');
+    assert.strictEqual(r.status, 200); assert.strictEqual(r.cors, '*');
+    assert.ok(r.body.derivation.includes('7 days'), 'the rule is stated');
+    assert.strictEqual(r.body.ordered_by, 'site list order (no use counted yet)'); assert.strictEqual(r.body.stale, true);
+    assert.deepStrictEqual(r.body.featured.map(f => f.id), ['media'], 'only a site that is up (media), never network itself or a down one (live)');
+    assert.strictEqual(r.body.featured[0].rank, 1); assert.strictEqual(r.body.featured[0].origin, 'https://openvibe.media');
+    // With a usage ranking: its order, and when it was counted.
+    eco.health.set('live', { status: 'degraded', checked_at: new Date().toISOString() });
+    eco.health.set('tools', { status: 'up', checked_at: new Date().toISOString() });
+    eco.health.set('tips', { status: 'up', checked_at: new Date().toISOString() });
+    eco.setRanking(() => ({ at: Date.now() - 60_000, order: ['tools', 'network', 'media', 'live', 'tips'], everyMs: 30 * 60_000 }));
+    r = await get('/api/v1/registry/featured');
+    assert.deepStrictEqual(r.body.featured.map(f => f.id), ['tools', 'media', 'live'], 'usage order; a site that is not open (tips) is never featured');
+    assert.deepStrictEqual(r.body.featured.map(f => f.rank), [1, 2, 3]);
+    assert.strictEqual(r.body.ordered_by, 'usage'); assert.strictEqual(r.body.stale, false); assert.ok(r.body.ranked_at);
+    eco.setRanking(() => ({ at: Date.now() - 3 * 3600_000, order: ['tools'], everyMs: 30 * 60_000 }));
+    assert.strictEqual((await get('/api/v1/registry/featured')).body.stale, true, 'a ranking four refreshes old is stale');
+    r = await get('/api/v1/registry');
+    assert.strictEqual(r.body.categories, '/api/v1/registry/categories'); assert.strictEqual(r.body.featured, '/api/v1/registry/featured');
+
+    // ── Hand-kept maps only where the manifests have nothing ──
+    const { READY_PATHS, internalFromEnv } = require('../server/registry/ecosystem');
+    for (const id of Object.keys(READY_PATHS)) assert.ok(!contracts.services.get(id).ready, `READY_PATHS.${id}: its manifest has no ready path (drop the entry once it does)`);
+    const env = internalFromEnv({ OV_EVENTS_INTERNAL_URL: 'http://127.0.0.1:4300/', OV_AI_INTERNAL_URL: 'http://localhost:4700', OV_LIVE_INTERNAL_URL: 'https://live.example.com', OV_NOPE_INTERNAL_URL: 'http://127.0.0.1:1' });
+    assert.deepStrictEqual(env.overrides, { events: 'http://127.0.0.1:4300', ai: 'http://localhost:4700' }, 'loopback URLs of known services override');
+    assert.deepStrictEqual(env.ignored, ['OV_LIVE_INTERNAL_URL'], 'a non-loopback address is ignored and reported');
+    const { SITES } = require('../server/chrome/sites');
+    for (const site of SITES) {
+        const m = contracts.services.get(site.service);
+        if (m && m.publicOrigin) assert.strictEqual(site.host, new URL(m.publicOrigin).hostname, `${site.id}: host from the manifest`);
+    }
+
     eco.stop(); srv.close(); up.close();
     console.log('ecosystem registry: all checks passed');
 })().catch(err => { console.error(err); process.exit(1); });
