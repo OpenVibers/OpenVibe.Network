@@ -1102,6 +1102,8 @@ async function loadUsers() {
                                 `<button class="btn btn-sm btn-success" onclick="toggleBan('${u.id}','${esc(u.username)}',false)"><i class="fa-solid fa-user-check"></i></button>` :
                                 `<button class="btn btn-sm btn-danger" onclick="toggleBan('${u.id}','${esc(u.username)}',true)"><i class="fa-solid fa-ban"></i></button>`
                             }
+                            <button class="btn btn-sm btn-outline" title="Rename (the old name redirects on Live and stays reserved)" onclick="renameUser('${u.id}','${esc(u.username)}')"><i class="fa-solid fa-signature"></i></button>
+                            <button class="btn btn-sm btn-outline" title="Sign out on every device and site" onclick="signOutUser('${u.id}','${esc(u.username)}')"><i class="fa-solid fa-right-from-bracket"></i></button>
                             ${currentUser?.is_owner ? `
                                 <button class="btn btn-sm btn-outline" title="Edit email address"
                                         onclick="editUserEmail('${u.id}','${esc(u.username)}','${esc(u.email || '')}')"><i class="fa-solid fa-envelope"></i></button>
@@ -1153,6 +1155,24 @@ async function sendUserReset(userId, username) {
     try {
         const r = await api(`/api/admin/users/${userId}/send-reset`, { method: 'POST' });
         toast(`Reset link sent to ${r.sentTo} (expires in ${r.expiresMinutes} min)`, 'success');
+    } catch (e) { toast(e.message, 'error'); }
+}
+
+async function renameUser(userId, username) {
+    const next = prompt(`New username for ${username}? (3-24 letters, numbers, underscores. /@${username} will redirect to it on Live, and "${username}" stays reserved for them.)`, username);
+    if (next === null || next.trim() === username) return;
+    try {
+        const r = await api(`/api/admin/users/${userId}/username`, { method: 'PUT', body: { username: next.trim() } });
+        toast(`${r.from} is now ${r.to}`, 'success');
+        loadUsers();
+    } catch (e) { toast(e.message, 'error'); }
+}
+
+async function signOutUser(userId, username) {
+    if (!confirm(`Sign ${username} out on every device and every OpenVibe site?`)) return;
+    try {
+        await api(`/api/admin/users/${userId}/sign-out`, { method: 'POST' });
+        toast(`${username} signed out everywhere`, 'success');
     } catch (e) { toast(e.message, 'error'); }
 }
 

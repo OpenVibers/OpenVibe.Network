@@ -120,6 +120,8 @@ router.post('/register', (req, res) => {
 
     const existing = db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(username);
     if (existing) return res.status(409).json({ error: 'Username already taken' });
+    // A name someone was renamed away from stays theirs for a while (links, mentions, reputation).
+    if (require('../identity/usernames').isReserved(db, username)) return res.status(409).json({ error: 'Username already taken' });
 
     // Check if username is reserved (has an active verification key)
     const reserved = db.isUsernameReserved(username);

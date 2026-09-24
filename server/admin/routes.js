@@ -742,6 +742,20 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
         }
     });
 
+    // Rename someone (their old name redirects on Live and stays reserved; server/identity/usernames.js).
+    router.put('/users/:id/username', (req, res) => {
+        try {
+            const target = db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(req.params.id);
+            if (!target) return res.status(404).json({ ok: false, error: 'No such user' });
+            if (isOwner(target) && !isOwner(req.user)) return res.status(403).json({ ok: false, error: "Only the owner renames the owner" });
+            const out = require('../identity/usernames').rename(db, target.id, String((req.body && req.body.username) || ''), { actorId: req.user.id });
+            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'user_rename', JSON.stringify({ targetId: target.id, ...out }));
+            res.json({ ok: true, ...out });
+        } catch (err) {
+            res.status(err.status || 500).json({ ok: false, error: err.message });
+        }
+    });
+
     // End someone's sessions on every device and site (a stolen token, a shared computer).
     router.post('/users/:id/sign-out', (req, res) => {
         try {
