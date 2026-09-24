@@ -457,8 +457,10 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
         <div class="card">
             <h3><span class="icon"><i class="fa-solid fa-mobile-screen"></i></span> Active Sessions</h3>
             <div id="sessions-list"><div class="loading-spinner">Loading sessions...</div></div>
-            <div class="btn-row" style="margin-top:12px">
-                <button class="btn btn-danger" onclick="revokeAllSessions()">Revoke All Sessions</button>
+            <p style="margin-top:12px;color:var(--text-secondary);font-size:13px">Lost a phone or used a shared computer? Signing out ends every sign-in on every OpenVibe site at once, and open chats and games disconnect.</p>
+            <div class="btn-row" style="margin-top:10px">
+                <button class="btn btn-danger" onclick="revokeAllSessions()"><i class="fa-solid fa-mobile-screen-button"></i> Sign out other devices</button>
+                <button class="btn" onclick="signOutEverywhere()"><i class="fa-solid fa-right-from-bracket"></i> Sign out everywhere, this device too</button>
             </div>
         </div>
     </div>
@@ -1361,9 +1363,24 @@ async function revokeSession(id) {
 }
 
 async function revokeAllSessions() {
-    if (!confirm('Revoke all sessions? You will need to log in again on other devices.')) return;
-    try { await apiFetch('/api/auth/sessions', { method: 'DELETE' }); loadSessions(); }
-    catch (err) { alert('Error: ' + err.message); }
+    if (!confirm('Sign out every other device? They will need to sign in again. You stay signed in here.')) return;
+    try {
+        const data = await apiFetch('/api/auth/sessions', { method: 'DELETE' });
+        if (data.token) {
+            localStorage.setItem('ov_token', data.token);
+            document.cookie = `ov_token=${data.token};path=/;max-age=${60*60*24*30};SameSite=Lax${location.protocol === 'https:' ? ';Secure' : ''}`;
+        }
+        loadSessions();
+        alert('Signed out everywhere else.');
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
+async function signOutEverywhere() {
+    if (!confirm('Sign out on every device and every OpenVibe site, this one included?')) return;
+    try { await apiFetch('/api/auth/sign-out-everywhere', { method: 'POST' }); }
+    catch (err) { alert('Error: ' + err.message); return; }
+    try { localStorage.removeItem('ov_token'); } catch { /* storage may be blocked */ }
+    location.href = '/sso/fanout?action=logout&next=%2Flogin';
 }
 
 // Anon info

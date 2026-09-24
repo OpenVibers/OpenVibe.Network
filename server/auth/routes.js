@@ -12,6 +12,7 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const subjects = require('../identity/subjects');
 const { staffClaims } = require('./staff-claims');
+const revocation = require('./revocation');
 const router = express.Router();
 
 
@@ -269,15 +270,13 @@ router.post('/reset-password', (req, res) => {
 
     const hash = bcrypt.hashSync(newPassword, 10);
     const tx = db.transaction(() => {
-        db.prepare(`
-            UPDATE users
-            SET password_hash = ?, token_valid_after = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        `).run(hash, reset.user_id);
-        db.prepare('UPDATE user_sessions SET is_active = 0 WHERE user_id = ?').run(reset.user_id);
+        db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(hash, reset.user_id);
+        // Every token and session from before the reset ends, on every site (network.user.token_valid_after).
+        revocation.revokeTokens(db, reset.user_id, { reason: 'password_reset', ctx: req.ov });
         db.prepare('UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL').run(reset.user_id);
     });
     tx();
+    revocation.kick(db);
 
     if (notifService) {
         notifService.create({
@@ -439,10 +438,13 @@ router.post('/change-password', requireAuth, (req, res) => {
     }
 
     const hash = bcrypt.hashSync(new_password, 10);
-    db.prepare('UPDATE users SET password_hash = ?, token_valid_after = CURRENT_TIMESTAMP WHERE id = ?')
-        .run(hash, req.user.id);
-    db.prepare('UPDATE user_sessions SET is_active = 0 WHERE user_id = ?').run(req.user.id);
-    db.prepare('UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL').run(req.user.id);
+    db.transaction(() => {
+        db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, req.user.id);
+        // Every other token and session ends, on every site; this one gets a fresh token below.
+        revocation.revokeTokens(db, req.user.id, { reason: 'password_changed', ctx: req.ov });
+        db.prepare('UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL').run(req.user.id);
+    })();
+    revocation.kick(db);
 
     // Issue fresh token
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
@@ -509,6 +511,20 @@ function logAnonIp(db, anonId, ip) {
 // POST /api/auth/anon-session
 // Creates a temporary anonymous identity with a unique number.
 // If force_new=true, always creates a new anon identity.
+// ── Sign out on every device ─────────────────────────────────
+// POST /api/auth/sign-out-everywhere: every token and session this person holds ends, here and (via
+// network.user.token_valid_after) on every OpenVibe site; open chat and game sockets close. The page
+// then runs the sign-out fanout so this browser's site sessions are cleared too.
+router.post('/sign-out-everywhere', requireAuth, (req, res) => {
+    const db = getDb(req);
+    const { validAfter } = revocation.revokeTokens(db, req.user.id, { reason: 'signed_out_everywhere', ctx: req.ov });
+    revocation.kick(db);
+    try { db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'sign_out_everywhere', JSON.stringify({ valid_after: validAfter })); } catch { /* audit is best effort */ }
+    require('./session').clearSessionCookies(res);
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true, valid_after: validAfter });
+});
+
 // Server-side sign-out: the page-side storage is cleared by the caller; this drops the cookies
 // only the server can (ov_sso is httpOnly). Idempotent, no auth required.
 router.post('/logout', (req, res) => {
@@ -726,12 +742,17 @@ router.delete('/sessions/:id', requireAuth, (req, res) => {
     res.json({ ok: true, revoked: result.changes > 0 });
 });
 
-// ── Revoke All Sessions ──────────────────────────────────────
-// DELETE /api/auth/sessions
+// ── Sign out other devices ───────────────────────────────────
+// DELETE /api/auth/sessions: every token and session ends on every site (network.user.token_valid_after),
+// and this browser gets a fresh token so it stays signed in (same as a password change).
 router.delete('/sessions', requireAuth, (req, res) => {
     const db = getDb(req);
-    const result = db.prepare('UPDATE user_sessions SET is_active = 0 WHERE user_id = ?').run(req.user.id);
-    res.json({ ok: true, revoked: result.changes });
+    const active = db.prepare('SELECT COUNT(*) AS n FROM user_sessions WHERE user_id = ? AND is_active = 1').get(req.user.id).n;
+    revocation.revokeTokens(db, req.user.id, { reason: 'signed_out_everywhere', ctx: req.ov });
+    revocation.kick(db);
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true, revoked: active, token: signToken(user, req.app.locals.privateKey, getConfig(req)) });
 });
 
 // ═══════════════════════════════════════════════════════════════

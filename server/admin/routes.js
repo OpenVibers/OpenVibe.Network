@@ -18,6 +18,8 @@ const { isOwner, requireOwner, isSensitiveSettingKey, maskSecret } = require('..
 const secrets = require('../secrets');
 const { issueResetToken } = require('../auth/reset-tokens');
 const { checkAdminLimit, recordAdminAction } = require('../auth/admin-limits');
+const revocation = require('../auth/revocation');
+const staffActor = (u) => (u && /^usr_/.test(String(u.subject_id || '')) ? { type: 'user', id: u.subject_id } : { type: 'system', id: 'network' });
 
 const LOCAL_REFRESH_SERVICES = new Set(['network']);
 
@@ -719,6 +721,8 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, banned ? 'user_ban' : 'user_unban', JSON.stringify({ targetId: req.params.id, reason })
             );
+            // A ban ends the person's tokens on every site at once (network.user.token_valid_after).
+            if (banned) { revocation.revokeTokens(db, Number(req.params.id), { reason: 'banned', actor: staffActor(req.user) }); revocation.kick(db); }
 
             // Notify the user
             if (banned) {
@@ -733,6 +737,21 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             }
 
             res.json({ ok: true });
+        } catch (err) {
+            res.status(500).json({ ok: false, error: err.message });
+        }
+    });
+
+    // End someone's sessions on every device and site (a stolen token, a shared computer).
+    router.post('/users/:id/sign-out', (req, res) => {
+        try {
+            const target = db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(req.params.id);
+            if (!target) return res.status(404).json({ ok: false, error: 'No such user' });
+            if (isOwner(target) && !isOwner(req.user)) return res.status(403).json({ ok: false, error: "Only the owner ends the owner's sessions" });
+            const { validAfter } = revocation.revokeTokens(db, target.id, { reason: 'staff_revoked', actor: staffActor(req.user) });
+            revocation.kick(db);
+            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'user_sign_out', JSON.stringify({ targetId: target.id, valid_after: validAfter }));
+            res.json({ ok: true, valid_after: validAfter });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
         }
