@@ -130,6 +130,10 @@ const DEFAULT_GRANTS = [
     ['live', 'community.paste.create', 'openvibe.community', []],
     ['live', 'community.paste.write', 'openvibe.community', []],
     ['live', 'community.paste.moderate', 'openvibe.community', []],
+    // One canonical channel/owner resolver (roadmap §10.5/§15.10, D20-R1): OpenRe, Media and Community (Pulse)
+    // resolve channels, streams, VODs and clips through Live's /internal/lineage/resolve instead of their own
+    // channel mappings.
+    ...['openre', 'media', 'community'].map(c => [c, 'live.lineage.resolve', 'openvibe.live', []]),
     // Wave 5 remainder: Live comments on its own entities, publishes stream/VOD items to Pulse, and
     // hides a thread when it takes the entity down.
     ['live', 'community.comment.write', 'openvibe.community', []],

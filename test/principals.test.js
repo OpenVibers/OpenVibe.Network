@@ -67,6 +67,19 @@ const server = http.createServer(app);
     db.prepare("UPDATE oauth_clients SET client_secret = 'openre-secret' WHERE client_id = 'openre'").run();
     t = await token({ client_id: 'openre', client_secret: 'openre-secret', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 400); assert.strictEqual(t.body.error, 'invalid_scope', 'a client with no grants gets no token');
+    // The canonical channel/owner resolver on Live (D20-R1): OpenRe, Media and Community hold it, nobody else.
+    db.prepare("UPDATE oauth_clients SET client_secret = 'community-secret' WHERE client_id = 'community'").run();
+    for (const [client, secret] of [['openre', 'openre-secret'], ['media', 'media-secret'], ['community', 'community-secret']]) {
+        t = await token({ client_id: client, client_secret: secret, audience: 'openvibe.live' });
+        assert.strictEqual(t.status, 200, `${client}: ${JSON.stringify(t.body)}`);
+        assert.ok(t.body.scope.split(' ').includes('live.lineage.resolve'), `${client} may resolve lineage on Live`);
+        const c = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.live' });
+        assert.ok(c.ok && c.claims.sub === `svc:${client}` && c.claims.aud.includes('openvibe.live'));
+    }
+    t = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.live', scope: 'live.lineage.resolve' });
+    assert.strictEqual(t.status, 400, 'Live does not grant itself its own resolver');
+    const holders = db.prepare("SELECT client_id FROM principal_grants WHERE capability = 'live.lineage.resolve' AND audience = 'openvibe.live' AND revoked_at IS NULL ORDER BY client_id").all().map(x => x.client_id);
+    assert.deepStrictEqual(holders, ['community', 'media', 'openre']);
     t = await token({ client_id: 'media', client_secret: 'media-secret', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
     assert.strictEqual(t.body.scope, 'identity.subject.resolve', 'Media resolves object owners to subjects, and nothing else here');
