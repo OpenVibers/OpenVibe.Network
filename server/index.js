@@ -393,6 +393,8 @@ if (ecosystemInternal.ignored.length) console.warn(`[Registry] ignored (not a lo
 const ecosystem = require('./registry/ecosystem').createEcosystemRegistry({ issuer: config.jwt.issuer, internalOverrides: ecosystemInternal.overrides });
 app.use(ecosystem.router());
 ecosystem.start();
+// The released libraries' latest published tags (not the versions Network installs) for the registry.
+require('./registry/library-tags').createLibraryTags({ onUpdate: require('./registry/exposure').setLibraryReleases }).start();
 // Operator status: GET /status (server-rendered, noindex), /api/v1/status, /api/v1/status/slo.
 app.use(require('./status/routes').createStatusRoutes({ ecosystem }));
 // What shipped network-wide: the changelog proxy every site's widget reads, and /updates.

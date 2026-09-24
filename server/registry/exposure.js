@@ -107,9 +107,22 @@ function publicOriginOf(m) {
     return e && e.state === 'live' && e.public_site === 'service' ? m.publicOrigin || null : null;
 }
 
+/**
+ * The latest published tags (server/registry/library-tags.js) replace the installed versions once
+ * known: { 'openvibe-sdk': 'v0.8.0', … }. Unknown packages keep the installed version.
+ */
+function setLibraryReleases(tags) {
+    for (const e of Object.values(EXPOSURE)) {
+        if (e.state !== 'library' || !e.package || !tags || !tags[e.package]) continue;
+        const repo = e.distribution ? e.distribution.split('/')[4] : null;
+        e.release = tags[e.package];
+        if (repo) e.distribution = `https://codeload.github.com/OpenVibers/${repo}/tar.gz/refs/tags/${e.release}`;
+    }
+}
+
 /** The released libraries (sdk, shared, contracts): { id, package, release, distribution }. */
 function libraries() {
     return Object.entries(EXPOSURE).filter(([, e]) => e.state === 'library').map(([id, e]) => ({ id, package: e.package, release: e.release, distribution: e.distribution || null }));
 }
 
-module.exports = { STATES, LABEL, EXPOSURE, exposureOf, publicOriginOf, libraries };
+module.exports = { STATES, LABEL, EXPOSURE, exposureOf, publicOriginOf, libraries, setLibraryReleases };
