@@ -128,27 +128,42 @@ const quiet = async (fn) => { const l = console.log, w = console.warn; console.l
     // ── scripts/secrets-out-of-db.js ──
     const script = require('../scripts/secrets-out-of-db');
     const envFile = path.join(dir, 'network.env');
-    // The lead copied three values into the env file: two equal to the database, one different.
-    fs.writeFileSync(envFile, [
-        'NODE_ENV=production',
-        'RESEND_API_KEY=re_db_key_111',
-        'DISCORD_BOT_TOKEN=db.bot.token.333',
-        'DISCORD_OAUTH_CLIENT_SECRET=rotated-secret',
-        '',
-    ].join('\n'), { mode: 0o600 });
+    // The env file before the move: one rotated value already there, one variable present but empty.
+    fs.writeFileSync(envFile, ['NODE_ENV=production', 'DISCORD_OAUTH_CLIENT_SECRET=rotated-secret', 'RESEND_WEBHOOK_SECRET=', ''].join('\n'), { mode: 0o600 });
     const out = [];
     const running = { vars: { RESEND_API_KEY: 're_db_key_111', DISCORD_BOT_TOKEN: 'db.bot.token.333', DISCORD_OAUTH_CLIENT_SECRET: 'rotated-secret' }, pid: 4242 };
     const run = (argv, service = running) => script.main(['--db', dbPath, '--env-file', envFile, ...argv], (m) => out.push(m), { readService: () => service });
     const values = ['re_db_key_111', 'whsec_db_222', 'db.bot.token.333', 'db-oauth-secret-444', 'ipinfo-555', 'ses-666', 'unknown-777', 'rotated-secret'];
     const noValues = () => { const text = out.join('\n'); for (const v of values) assert.ok(!text.includes(v), `the script never prints a value (${v.slice(0, 3)}…)`); };
 
+    // --copy-to-env: the values move from the database into the env file without being shown.
+    assert.strictEqual(await run(['--copy-to-env']), 0);
+    let text = out.join('\n');
+    assert.match(text, /RESEND_API_KEY: would be appended/);
+    assert.match(text, /RESEND_WEBHOOK_SECRET: would be appended/, 'an empty variable counts as unset');
+    assert.match(text, /DISCORD_BOT_TOKEN: would be appended/);
+    assert.match(text, /DISCORD_OAUTH_CLIENT_SECRET: already in the env file \(DIFFERENT value, left as it is\)/);
+    assert.match(text, /VAPID_PRIVATE_KEY: the database holds no vapid_private_key/);
+    assert.ok(!fs.readFileSync(envFile, 'utf8').includes('RESEND_API_KEY'), 'the dry run writes nothing');
+    assert.strictEqual(await run(['--copy-to-env', '--apply']), 0);
+    const envText = fs.readFileSync(envFile, 'utf8');
+    assert.ok(envText.includes('\nRESEND_API_KEY=re_db_key_111\n') && envText.includes('\nDISCORD_BOT_TOKEN=db.bot.token.333\n') && envText.includes('\nRESEND_WEBHOOK_SECRET=whsec_db_222\n'), 'appended');
+    assert.ok(envText.startsWith('NODE_ENV=production\nDISCORD_OAUTH_CLIENT_SECRET=rotated-secret\n'), 'the existing lines are untouched');
+    assert.strictEqual(fs.statSync(envFile).mode & 0o777, 0o600, 'the env file keeps its mode');
+    const baks = fs.readdirSync(dir).filter(f => f.startsWith('network.env.bak-'));
+    assert.strictEqual(baks.length, 1, 'the previous env file is kept');
+    assert.ok(!fs.readFileSync(path.join(dir, baks[0]), 'utf8').includes('RESEND_API_KEY'));
+    assert.strictEqual(require('util').parseEnv(envText).RESEND_WEBHOOK_SECRET, 'whsec_db_222', 'the later assignment wins');
+    noValues();
+
+    out.length = 0;
     assert.strictEqual(await run([]), 0);
     noValues();
-    let text = out.join('\n');
+    text = out.join('\n');
     for (const k of ['resend_api_key', 'resend_webhook_secret', 'discord_bot_token', 'discord_oauth_client_secret', 'vapid_private_key', 'net.ipinfo_token', 'ses_secret_access_key', 'some_new_api_key']) assert.ok(text.includes(`  ${k}\n`), `lists ${k}`);
     assert.ok(!text.includes('  discord_oauth_client_id\n') && !text.includes('  vapid_public_key\n'), 'non-secrets are not listed');
     assert.match(text, /resend_api_key\n.*env file: set, same value · service: has it\n\s+--apply: BLANK/);
-    assert.match(text, /resend_webhook_secret\n.*env file: not set.*\n\s+--apply: keep: put RESEND_WEBHOOK_SECRET in the env file first/);
+    assert.match(text, /resend_webhook_secret\n.*env file: set, same value · service: not set \(restart it\)\n\s+--apply: keep: the running service does not have this RESEND_WEBHOOK_SECRET yet/);
     assert.match(text, /discord_oauth_client_secret\n.*DIFFERENT value.*\n\s+--apply: keep: the env file value differs/);
     assert.match(text, /net\.ipinfo_token\n.*\n\s+--apply: BLANK \(Network never reads it/);
     assert.match(text, /some_new_api_key\n.*\n\s+--apply: keep: not classified/);
@@ -163,7 +178,7 @@ const quiet = async (fn) => { const l = console.log, w = console.warn; console.l
     assert.strictEqual(dbVal('resend_api_key'), '', 'blanked: env file and running service have it');
     assert.strictEqual(dbVal('discord_bot_token'), 'db.bot.token.333', 'kept: the running service does not have DISCORD_BOT_TOKEN yet');
     assert.strictEqual(dbVal('discord_oauth_client_secret'), 'db-oauth-secret-444', 'kept: different value');
-    assert.strictEqual(dbVal('resend_webhook_secret'), 'whsec_db_222', 'kept: not in the env file');
+    assert.strictEqual(dbVal('resend_webhook_secret'), 'whsec_db_222', 'kept: the running service does not have it');
     assert.strictEqual(dbVal('net.ipinfo_token'), '', 'unused secret blanked');
     assert.strictEqual(dbVal('ses_secret_access_key'), '', 'unused secret blanked');
     assert.strictEqual(dbVal('some_new_api_key'), 'unknown-777', 'unclassified left alone');
@@ -174,7 +189,7 @@ const quiet = async (fn) => { const l = console.log, w = console.warn; console.l
     assert.strictEqual(await run(['--apply', '--backup', path.join(dir, 'pre-secrets-2.db'), '--allow-different']), 0);
     assert.strictEqual(dbVal('discord_bot_token'), '');
     assert.strictEqual(dbVal('discord_oauth_client_secret'), '', '--allow-different blanks a differing copy');
-    assert.strictEqual(dbVal('resend_webhook_secret'), 'whsec_db_222');
+    assert.strictEqual(dbVal('resend_webhook_secret'), 'whsec_db_222', 'still kept until the service has it');
     noValues();
     // An unreadable env file refuses --apply.
     out.length = 0;

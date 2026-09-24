@@ -293,7 +293,8 @@ Moving them out of the database (operator):
 ```bash
 cd /opt/openvibe.network
 sudo node scripts/secrets-out-of-db.js                 # dry run: names, env file and running service, per secret
-# copy each value the dry run lists into /etc/openvibe/network.env (VAR=value), then
+sudo node scripts/secrets-out-of-db.js --copy-to-env   # dry run of the copy into /etc/openvibe/network.env
+sudo node scripts/secrets-out-of-db.js --copy-to-env --apply   # appends VAR=value lines (backup: network.env.bak-<time>)
 sudo systemctl restart openvibe-network                # the boot line shows <key>=env
 sudo node scripts/secrets-out-of-db.js --apply --backup data/network-pre-secrets-$(date +%F).db
 # rollback: sudo node scripts/secrets-out-of-db.js --restore-from data/network-pre-secrets-<date>.db --apply
@@ -302,7 +303,9 @@ sudo node scripts/secrets-out-of-db.js --apply --backup data/network-pre-secrets
 `--apply` blanks a database copy only when the env file sets the variable to the same value (a
 different one only with `--allow-different`) and the running service already has it, plus the secrets
 Network never reads; everything else is kept and the dry run says why. The script reads the env file
-and the service's environment as root, then becomes the database owner. It never prints a value.
+and the service's environment as root, then becomes the database owner. It never prints a value:
+`--copy-to-env` reads the database in a child process running as its owner and hands the values to the
+env file through a pipe (a value that would need quoting is left for the operator to add by hand).
 
 ---
 
