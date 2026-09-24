@@ -139,6 +139,9 @@ const server = http.createServer(app);
     assert.deepStrictEqual(cm.body.scope.split(' '), ['community.comment.moderate', 'community.comment.write', 'community.paste.create', 'community.paste.moderate', 'community.paste.write', 'community.pulse.write']);
     const tl = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.tools' });
     assert.deepStrictEqual(tl.body.scope.split(' '), ['tools.job.read', 'tools.tool.run'], 'Live runs Tools on the service tier, never probes');
+    db.prepare("UPDATE oauth_clients SET client_secret = 'tools-secret' WHERE client_id = 'tools'").run();
+    const ts = await token({ client_id: 'tools', client_secret: 'tools-secret', audience: 'openvibe.search' });
+    assert.strictEqual(ts.body.scope, 'search.document.write', 'Tools indexes its tools in Search');
 
     // Go-live fan-out accepts Live's token (network.notifications.push); a narrower token is refused.
     r = await post('/internal/events/stream-live', {}, { authorization: `Bearer ${full}` });

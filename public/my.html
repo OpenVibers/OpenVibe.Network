@@ -233,6 +233,11 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
 .quick-link:nth-child(6) { animation-delay: 0.35s; }
 .quick-link:hover { border-color: var(--accent); color: var(--accent-light); background: rgba(139,92,246,0.08); }
 @media(max-width:600px){ .showcase-grid { grid-template-columns: repeat(2, 1fr); } .quick-access { grid-template-columns: repeat(3, 1fr); } }
+.recent-tools { margin-top: 14px; }
+.recent-tools h3 { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin: 0 0 8px; display: flex; gap: 6px; align-items: center; }
+.recent-tools-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.recent-tool { padding: 6px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; font-weight: 600; text-decoration: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-tool:hover { border-color: var(--accent); color: var(--accent-light); }
 </style>
 </head>
 <body>
@@ -257,6 +262,10 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
         </div>
         <div class="showcase-grid" id="my-showcase-grid"></div>
         <div class="quick-access" id="my-quick-access"></div>
+        <div class="recent-tools" id="my-recent-tools" hidden>
+            <h3><i class="fa-solid fa-screwdriver-wrench"></i> Your recent tools</h3>
+            <div class="recent-tools-list" id="my-recent-tools-list"></div>
+        </div>
     </div>
 
     <div class="section-tabs">
@@ -644,6 +653,34 @@ function buildDashboardShowcase() {
     quickAccess.innerHTML = quickLinks.map(l => `<a class="quick-link" onclick="${l.onclick}"><i class="fa-solid ${l.icon}"></i>${l.label}</a>`).join('');
 }
 
+// Recently used tools: the tools.usage module OpenVibe.Tools keeps for this person, named from the
+// public Tools registry (a tool that is gone from it is skipped).
+async function loadRecentTools() {
+    const box = document.getElementById('my-recent-tools');
+    const list = document.getElementById('my-recent-tools-list');
+    if (!box || !list) return;
+    try {
+        const rec = await apiFetch('/api/modules/tools.usage').catch(() => null);
+        const recent = rec && rec.data && Array.isArray(rec.data.recent) ? rec.data.recent : [];
+        if (!recent.length) return;
+        const reg = await fetchWithTimeout('https://openvibe.tools/api/v1/tools', {}, 8000).then(r => (r.ok ? r.json() : { tools: [] }));
+        const byId = new Map((reg.tools || []).map(t => [t.id, t]));
+        list.replaceChildren();
+        for (const e of recent) {
+            const t = byId.get(e.tool);
+            if (!t || list.childElementCount >= 12) continue;
+            const a = document.createElement('a');
+            a.className = 'recent-tool';
+            a.href = t.hosts && t.hosts[0] ? 'https://' + t.hosts[0] : 'https://openvibe.tools/tool/' + encodeURIComponent(t.id);
+            a.target = '_blank'; a.rel = 'noopener';
+            a.textContent = t.name;
+            if (e.at) a.title = 'Last used ' + new Date(e.at).toLocaleString();
+            list.appendChild(a);
+        }
+        box.hidden = list.childElementCount === 0;
+    } catch { /* optional */ }
+}
+
 // Section switching
 function showSection(id, btn) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -930,6 +967,7 @@ async function loadUser() {
             loadSessions();
             loadAnonInfo();
             loadEmailStatus();
+            loadRecentTools();
 
             // Init navbar
             OpenVibeNavbar.init({ service: 'network', token: authToken, user: currentUser });

@@ -158,6 +158,8 @@ const DEFAULT_GRANTS = [
     // Tools platform S9: products call the Tools run API (the kiosk's page titles, Chat's audio conversion,
     // Community's save-as-paste) with their own token, on the service tier instead of the anonymous one.
     ...['live', 'chat', 'community'].flatMap(c => ['tools.tool.run', 'tools.job.read'].map(cap => [c, cap, 'openvibe.tools', []])),
+    // Tools indexes its own tool pages in Search through the owner API (owner tools only).
+    ['tools', 'search.document.write', 'openvibe.search', []],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
