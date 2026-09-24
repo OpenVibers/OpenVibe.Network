@@ -103,6 +103,7 @@ const DEFAULT_GRANTS = [
     ['host', 'events.event.publish', 'openvibe.events', []],
     // Wave 20: the Codes portal relays its release events.
     ['codes', 'events.event.publish', 'openvibe.events', []],
+    ['ai', 'events.event.publish', 'openvibe.events', []],          // ai.run.* (AI server/events.js, 2026-09-24)
     // Wave 13: Live's AI features run as OpenVibe.AI workflows (AI_SERVICE=remote in live.env).
     // Live runs its own live.* workflows and, as the footer-copy fallback, network.site_copy
     // (OpenVibe.AI fails closed on a token with no ns).
