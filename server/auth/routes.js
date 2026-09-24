@@ -808,7 +808,7 @@ router.post('/users/:id/follow', requireAuth, (req, res) => {
                 sender_id: req.user.id,
                 sender_name: req.user.display_name || req.user.username,
                 sender_avatar: req.user.avatar_url,
-                url: `https://openvibe.network/user/${req.user.username}`,
+                url: `https://openvibe.live/@${encodeURIComponent(req.user.username)}`,   // the follower's channel (Network has no public profile page)
                 service: 'network',
             });
         }
