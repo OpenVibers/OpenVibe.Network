@@ -87,6 +87,9 @@ const DEFAULT_GRANTS = [
     ['news', 'community.comment.moderate', 'openvibe.community', []],
     ['news', 'ai.run.create', 'openvibe.ai', ['news.*']],
     ['news', 'ai.run.read', 'openvibe.ai', ['news.*']],
+    // Blog's "Draft with AI" (blog.draft_post; Blog server/domain/ai-drafts.js, 2026-09-24).
+    ['blog', 'ai.run.create', 'openvibe.ai', ['blog.*']],
+    ['blog', 'ai.run.read', 'openvibe.ai', ['blog.*']],
     // Wave 19: Trade (informational) reads Sources filings and publishes events.
     ['trade', 'events.event.publish', 'openvibe.events', []],
     ['trade', 'sources.item.read', 'openvibe.sources', []],
