@@ -9,6 +9,7 @@ const express = require('express');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const subjects = require('../identity/subjects');
+const { staffClaims } = require('./staff-claims');
 const principals = require('../identity/principals');
 const devTokens = require('../developer/tokens');
 const oidc = require('./oidc');
@@ -397,6 +398,7 @@ function issueTokenPair(db, config, req, user, client, family = {}) {
             role: user.role,
             avatar_url: user.avatar_url,
             profile_color: user.profile_color,
+            ...staffClaims(user),
         },
         privateKey,
         {

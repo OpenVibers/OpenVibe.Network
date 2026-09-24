@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const subjects = require('../identity/subjects');
+const { staffClaims } = require('./staff-claims');
 const router = express.Router();
 
 
@@ -62,6 +63,7 @@ function signToken(user, privateKey, config) {
             role: user.role,
             avatar_url: user.avatar_url,
             profile_color: user.profile_color,
+            ...staffClaims(user),
         },
         privateKey,
         {
