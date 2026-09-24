@@ -603,7 +603,7 @@ app.get('/llms.txt', (_req, res) => res.type('text/plain').set('Cache-Control', 
 
 // Account hub (my.html) — the apex hosts the account hub under /my
 // plus its client-routed sections.
-app.get(['/my', '/my.html', '/themes', '/notifications', '/linked', '/security', '/profile', '/billing', '/preferences', '/history'], (req, res) => {
+app.get(require('./not-found').ACCOUNT_HUB_PATHS, (req, res) => {
     if (req.path === '/my.html') return redirectWithoutHtml(req, res, '/my');
     return sendMyAccountApp(res);
 });
@@ -695,13 +695,9 @@ app.get(['/admin', '/admin/*'], (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'admin.html'));
 });
 
-app.get('*', (req, res) => {
-    if (req.path.startsWith('/api/') || req.path.startsWith('/internal/')) {
-        return res.status(404).json({ error: 'Not found' });
-    }
-    // Unknown paths fall through to the account hub SPA (apex is the account-hub host)
-    return sendMyAccountApp(res);
-});
+// Anything no route above answered is a 404: JSON under /api, /internal and /oauth, otherwise a small
+// noindex page (server/not-found.js). The account hub is served only at its own paths.
+app.use(require('./not-found').notFound);
 
 // ── Start ────────────────────────────────────────────────────
 app.listen(config.port, config.host, () => {
