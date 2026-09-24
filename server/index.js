@@ -139,6 +139,7 @@ app.use(helmet({
                 "https://openvibe.games", "https://play.openvibe.games",
                 "https://openvibe.media",
                 "https://openvibe.community",
+                "https://openvibe.blog",
             ],
             frameSrc: ["'none'"],
             scriptSrcAttr: ["'unsafe-inline'"],

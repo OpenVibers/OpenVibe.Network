@@ -117,6 +117,8 @@ a{color:inherit}
 }
 
 /* One account strip */
+    .shipped-strip { max-width: 900px; margin: 0 auto 48px; padding: 0 16px; }
+    .shipped-inner { background: var(--bg-card, rgba(255,255,255,0.03)); border: 1px solid var(--border, rgba(255,255,255,0.08)); border-radius: 14px; padding: 18px 20px; }
 .sso-strip{max-width:820px;margin:0 auto;padding:0 24px 80px;text-align:center}
 .sso-inner{
     border:1px solid var(--border);border-radius:18px;background:var(--bg-secondary);
@@ -168,6 +170,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 
     <!--OV:HOME-->
 
+    <!-- What shipped across the network (the changelog on openvibe.blog; openvibe-shared shipped.js) -->
+    <section class="shipped-strip" aria-label="Recently shipped across OpenVibe">
+        <div id="ov-shipped" class="shipped-inner" hidden></div>
+        <noscript><p class="shipped-inner"><a href="https://openvibe.blog/@openvibe/series/patch-notes">Patch notes on openvibe.blog</a></p></noscript>
+    </section>
+
     <!-- SSO strip -->
     <section class="sso-strip">
         <div class="sso-inner">
@@ -184,6 +192,8 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 
 <script src="/shared/navbar.js"></script>
 <script src="/shared/footer.js"></script>
+<script src="/shared/shipped.js" defer></script>
+<script>document.addEventListener('DOMContentLoaded', function () { if (window.OpenVibeShipped) OpenVibeShipped.mount('#ov-shipped', { limit: 8, title: 'Recently shipped across OpenVibe' }); });</script>
 <script>
 (function () {
     if (window.OpenVibeFooter) { try { OpenVibeFooter.init({ service: 'network', variant: 'full', links: [{ heading: 'OpenVibe.Network', items: [{ name: 'My account', url: '/my' }, { name: 'History', url: '/my#history' }, { name: 'Themes', url: '/themes' }, { name: 'Linked services', url: '/my#linked' }, { name: 'Sign in', url: '/login' }] }] }); } catch (e) { /* */ } }
