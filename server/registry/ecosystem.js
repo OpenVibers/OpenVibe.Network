@@ -218,6 +218,9 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
             const row = { id: m.id, state: e.state, status: h.status, checked_at: h.checked_at || null, release: r ? r.release : null };
             if (!r || !r.release) { row.error = (r && r.error) || h.reason || null; return row; }
             Object.assign(row, { released_at: r.released_at, booted_at: r.booted_at, contracts_version: r.contracts_version || null, packages: r.packages || {} });
+            // How far the deployed commit is behind the repository's main branch (./deploy-drift.js).
+            const dd = require('./deploy-drift').current(m.id);
+            if (dd) row.main = { state: dd.state, behind_by: dd.behind_by ?? null, since: dd.since || null, head: dd.main || null, checked_at: dd.checked_at, ...(dd.error ? { error: dd.error } : {}) };
             row.drift = {};
             for (const l of libs) {
                 const installed = l.package === 'openvibe-contracts' ? r.contracts_version : (r.packages || {})[l.package];
@@ -226,7 +229,10 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
             return row;
         }).filter(Boolean);
         const behind = services.filter(s => s.drift && Object.values(s.drift).some(d => d.state === 'behind')).map(s => s.id);
-        return { checked_at: lastPollAt ? new Date(lastPollAt).toISOString() : null, poll_interval_s: Math.round(pollMs / 1000), libraries: libs, services, behind };
+        // Deployed behind main for more than a day (WS-S task 7).
+        const dayAgo = now() - 24 * 3600e3;
+        const undeployed = services.filter(s => s.main && s.main.state === 'behind' && s.main.since && Date.parse(s.main.since) < dayAgo).map(s => s.id);
+        return { checked_at: lastPollAt ? new Date(lastPollAt).toISOString() : null, poll_interval_s: Math.round(pollMs / 1000), libraries: libs, services, behind, undeployed };
     }
 
     /** Services grouped by category, each with its maturity, exposure and last check. */

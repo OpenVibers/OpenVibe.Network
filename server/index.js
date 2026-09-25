@@ -408,6 +408,11 @@ app.get('/internal/integrations/github-token', require('./identity/principals').
 const ecosystemInternal = require('./registry/ecosystem').internalFromEnv(process.env);
 if (ecosystemInternal.ignored.length) console.warn(`[Registry] ignored (not a loopback URL): ${ecosystemInternal.ignored.join(', ')}`);
 const ecosystem = require('./registry/ecosystem').createEcosystemRegistry({ issuer: config.jwt.issuer, internalOverrides: ecosystemInternal.overrides });
+// Production drift: each running service's deployed commit against its repository's main (WS-S task 7).
+require('./registry/deploy-drift').createDeployDrift({
+    services: () => ecosystem.releases().services.filter((r) => r.release).map((r) => ({ id: r.id, release: r.release, repository: ((require('openvibe-contracts').services.manifests.find((m) => m.id === r.id)) || {}).repository })),
+    token: () => process.env.GITHUB_TOKEN || require('./integrations/github').tokenOf(db) || '',
+}).start();
 app.use(ecosystem.router());
 ecosystem.start();
 // The released libraries' latest published tags (not the versions Network installs) for the registry.

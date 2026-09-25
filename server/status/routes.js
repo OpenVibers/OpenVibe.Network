@@ -28,6 +28,15 @@ const esc = seo.esc;
 const STATES = ['up', 'degraded', 'down', 'not-running', 'unknown'];
 const LABEL = { up: 'Up', degraded: 'Degraded', down: 'Down', 'not-running': 'Not running', unknown: 'Unknown' };
 
+/** The deployed commit against main (registry/deploy-drift.js), as a short note under the release. */
+function mainNote(d) {
+    if (!d) return '';
+    if (d.state === 'current') return '<small>main: current</small>';
+    if (d.state === 'behind') return `<small>main: ${esc(String(d.behind_by))} commit${d.behind_by === 1 ? '' : 's'} not deployed${d.since ? ` since <time datetime="${esc(d.since)}">${esc(d.since.slice(0, 16).replace('T', ' '))} UTC</time>` : ''}</small>`;
+    if (d.state === 'diverged') return '<small>main: not on main (a local build)</small>';
+    return '';
+}
+
 function loadSlo() { return JSON.parse(fs.readFileSync(SLO_FILE, 'utf8')); }
 
 function rows(ecosystem) {
@@ -52,6 +61,7 @@ function rows(ecosystem) {
             http_status: r.http_status ?? null,
             latency_ms: r.latency_ms ?? null,
             release: r.release && r.release.release ? { release: r.release.release, released_at: r.release.released_at || null, booted_at: r.release.booted_at || null } : null,
+            main: (() => { const d = require('../registry/deploy-drift').current(m.id); return d ? { state: d.state, behind_by: d.behind_by ?? null, since: d.since || null } : null; })(),
             release_error: r.release && !r.release.release ? r.release.error || 'unknown' : null,
             ready: r.ready || null,
             ...(r.stale ? { stale: true, last_status: r.last_status } : {}),
@@ -103,7 +113,7 @@ function renderPage(list, slo, generatedAt) {
 <td><b>${esc(r.name)}</b><small>${esc(r.id)} · manifest: ${esc(r.manifest_status)}</small></td>
 <td>${exposureCell(r)}</td>
 <td><span class="st-b st-${esc(r.status)}">${esc(r.status === 'not-running' ? r.label : LABEL[r.status] + (r.label.endsWith('(loopback only)') ? ' · loopback only' : ''))}</span>${r.stale ? `<small>last seen ${esc(r.last_status)}</small>` : ''}${r.basis === 'health' ? '<small>liveness only (no readiness endpoint)</small>' : ''}${r.reason && r.status !== 'not-running' ? `<small>${esc(r.reason)}</small>` : ''}${checksList(r.ready)}</td>
-<td>${r.release ? `<code>${esc(r.release.release)}</code>${r.release.booted_at ? `<small>booted ${esc(r.release.booted_at)}</small>` : ''}` : `<small>${r.status === 'not-running' ? '—' : esc(r.release_error ? `unknown (${r.release_error})` : 'unknown')}</small>`}</td>
+<td>${r.release ? `<code>${esc(r.release.release)}</code>${r.release.booted_at ? `<small>booted ${esc(r.release.booted_at)}</small>` : ''}${mainNote(r.main)}` : `<small>${r.status === 'not-running' ? '—' : esc(r.release_error ? `unknown (${r.release_error})` : 'unknown')}</small>`}</td>
 <td>${r.checked_at ? `<time datetime="${esc(r.checked_at)}">${esc(r.checked_at)}</time>` : '<small>not checked yet</small>'}${r.latency_ms != null ? `<small>${esc(r.latency_ms)} ms</small>` : ''}</td>
 </tr>`).join('\n');
     const sloRows = slo.categories.map((c) => `<dt>${esc(c.name)}</dt><dd>${esc(c.sli)} <br><small>Proposed: ${esc(Object.entries(c.proposed_target).map(([k, v]) => `${k.replace(/_/g, ' ')} ${v}`).join('; '))} · priority: ${esc(c.priority)} · ${esc(c.measurement_status || (c.measured_by.length ? 'measured' : 'not instrumented'))}</small></dd>`).join('\n');

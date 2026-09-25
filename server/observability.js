@@ -21,6 +21,9 @@ const grantLabel = (g) => (g === 'urn:ietf:params:oauth:grant-type:jwt-bearer' ?
 
 const tokensIssued = registry.counter({ name: 'network_tokens_issued_total', help: 'Tokens issued by POST /oauth/token, by grant type', labelNames: ['grant_type'] });
 const tokenFailures = registry.counter({ name: 'network_token_failures_total', help: 'POST /oauth/token requests refused, by grant type and OAuth error code', labelNames: ['grant_type', 'error'] });
+// Seconds each service's main has been ahead of what runs (registry/deploy-drift.js); alert at 24 h.
+registry.gauge({ name: 'openvibe_deploy_drift_seconds', help: 'Seconds since the oldest commit on main that the running service does not have (0 when current)', labelNames: ['service'], maxSeries: 60,
+    collect: () => require('./registry/deploy-drift').driftSeconds() });
 const principalFailures = registry.counter({ name: 'network_principal_token_failures_total', help: 'Service (principal) tokens refused at capability-guarded Network routes, by problem code', labelNames: ['code'], maxSeries: 50 });
 
 /** Middleware for POST /oauth/token: counts the outcome without reading or logging any secret. */
