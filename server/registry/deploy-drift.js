@@ -79,9 +79,10 @@ function createDeployDrift({ services, fetchImpl = globalThis.fetch, token = () 
     }
     function start() {
         if (timer) return;
-        const first = setTimeout(() => { refresh().catch(() => {}); }, 60 * 1000);
+        const run = () => refresh().catch((err) => { if (log && log.warn) log.warn(`[drift] refresh failed: ${err.message}`); });
+        const first = setTimeout(run, 60 * 1000);
         if (first.unref) first.unref();
-        timer = setInterval(() => { refresh().catch(() => {}); }, intervalMs);
+        timer = setInterval(run, intervalMs);
         if (timer.unref) timer.unref();
     }
     function stop() { if (timer) clearInterval(timer); timer = null; }

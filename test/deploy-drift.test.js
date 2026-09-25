@@ -58,5 +58,9 @@ const fetchImpl = async (url, opts) => {
     await d.refresh();
     assert.strictEqual(drift.current('media'), null, 'a service that stopped running is dropped');
     drift._reset();
+    // server/index.js feeds the checks from the registry's releases view.
+    const eco = require('../server/registry/ecosystem').createEcosystemRegistry({ issuer: 'https://openvibe.network', fetchImpl: async () => { throw new Error('offline'); } });
+    assert.strictEqual(typeof eco.releases, 'function', 'the registry exposes releases()');
+    assert.ok(Array.isArray(eco.releases().services));
     console.log('deploy drift: all checks passed');
 })().catch((err) => { console.error(err); process.exit(1); });

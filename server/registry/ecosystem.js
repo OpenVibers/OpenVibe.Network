@@ -380,7 +380,7 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         return r;
     }
 
-    return { router, start, stop, pollAll, health, current, descriptor, categories, featured, setRanking: (fn) => { rankingOf = fn; }, lastPollAt: () => lastPollAt, pollMs, internal };
+    return { router, start, stop, pollAll, health, current, descriptor, categories, featured, releases, setRanking: (fn) => { rankingOf = fn; }, lastPollAt: () => lastPollAt, pollMs, internal };
 }
 
 module.exports = { createEcosystemRegistry, INTERNAL, READY_PATHS, HEALTH_PATHS, CATEGORIES, categoryOf, internalFromEnv, statusFromReady, readySummary };
