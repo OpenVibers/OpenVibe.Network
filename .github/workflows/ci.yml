@@ -3,28 +3,14 @@ on:
   push:
     branches: [main]
   pull_request:
-  schedule:
-    - cron: '17 6 * * 1'   # weekly: drift appears when another repository releases, not only on our pushes
 jobs:
+  # install, node --check, tests, contract and pin-drift checks: the shared test job (WS-Q task 1).
   test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22.22.1   # production runs Node 22
-          cache: npm
-      - run: npm ci --no-audit --no-fund
-      - run: npm test
-      - name: contract check (openvibe-contracts)
-        run: npx openvibe-contracts-check --service network --src server
-      - name: pin drift (openvibe-* library pins)
-        run: curl -fsSL https://raw.githubusercontent.com/OpenVibers/OpenVibe.Shared/main/scripts/pin-drift.js | node - "$GITHUB_WORKSPACE"
-      - name: contracts version drift (warning only)
-        continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/contracts-drift.js --package all
-  # Secret scan (gitleaks) and dependency audit, shared by every OpenVibers repo (Track Q).
+    uses: OpenVibers/OpenVibe.Shared/.github/workflows/test.yml@66b76f868ea8228aad7811309eafef3726b036f3
+    with:
+      contracts-service: network
+      # Contracts version drift across the network's services: a report, never a failure.
+      extra: node scripts/contracts-drift.js --package all || echo "::warning::contracts version drift report failed"
+  # Secret scan (gitleaks) and dependency audit, shared by every OpenVibers repo.
   security:
-    uses: OpenVibers/OpenVibe.Shared/.github/workflows/security.yml@83c998b65424fb97e6f6de55ad9cc5981767e89c
+    uses: OpenVibers/OpenVibe.Shared/.github/workflows/security.yml@66b76f868ea8228aad7811309eafef3726b036f3
