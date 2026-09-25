@@ -18,6 +18,8 @@ jobs:
       - run: npm test
       - name: contract check (openvibe-contracts)
         run: npx openvibe-contracts-check --service network --src server
+      - name: pin drift (openvibe-* library pins)
+        run: curl -fsSL https://raw.githubusercontent.com/OpenVibers/OpenVibe.Shared/main/scripts/pin-drift.js | node - "$GITHUB_WORKSPACE"
       - name: contracts version drift (warning only)
         continue-on-error: true
         env:

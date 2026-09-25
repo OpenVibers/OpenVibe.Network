@@ -70,7 +70,7 @@ const rel = (contractsVersion, packages) => [200, { service: 'x', release: 'abcd
     let r = await get('/api/v1/registry/topics');
     assert.ok(r.body.topics.length >= produced.size, 'no longer empty');
     r = await get('/api/v1/registry/topics?producer=live');
-    assert.deepStrictEqual(r.body.topics.map(t => t.topic).sort(), ['live.release.deployed', 'live.stream.ended', 'live.stream.started']);
+    assert.deepStrictEqual(r.body.topics.map(t => t.topic).sort(), ['live.index_document.deleted', 'live.index_document.upserted', 'live.release.deployed', 'live.stream.ended', 'live.stream.started']);
     r = await get('/api/v1/registry/topics?consumer=network');
     assert.deepStrictEqual(r.body.topics.map(t => t.topic).sort(), [...TOPICS].sort());
     r = await get('/api/v1/registry/topics?prefix=media.vod.');
