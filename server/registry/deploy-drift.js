@@ -55,9 +55,12 @@ function createDeployDrift({ services, fetchImpl = globalThis.fetch, token = () 
             const behind = Number(body.behind_by) || 0;
             const commits = Array.isArray(body.commits) ? body.commits : [];
             const main = commits.length ? String(commits[commits.length - 1].sha || '').slice(0, 12) : String(release).slice(0, 12);
+            // GitHub's status (base = deployed, head = main): identical | ahead (main has more) | behind |
+            // diverged (the deployed build has commits main lacks); the counts when it is missing.
+            const st = body.status || (behind > 0 ? 'diverged' : ahead > 0 ? 'ahead' : 'identical');
             let row;
-            if (behind > 0 && ahead === 0) row = { state: 'diverged', behind_by: 0 };
-            else if (ahead === 0) row = { state: 'current', behind_by: 0 };
+            if (st === 'behind' || st === 'diverged') row = { state: 'diverged', behind_by: ahead };
+            else if (st === 'identical' || ahead === 0) row = { state: 'current', behind_by: 0 };
             else {
                 const first = commits[0] && commits[0].commit && (commits[0].commit.committer || commits[0].commit.author);
                 row = { state: 'behind', behind_by: ahead, since: first && first.date ? new Date(first.date).toISOString() : null };

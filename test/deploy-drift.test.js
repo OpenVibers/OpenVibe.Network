@@ -14,7 +14,7 @@ const answers = {
         { sha: 'c2', commit: { committer: { date: '2026-09-25T11:00:00Z' } } },
         { sha: 'c3ffffffffffff', commit: { committer: { date: '2026-09-26T09:00:00Z' } } },
     ] } },
-    'OpenVibers/OpenVibe.Media/compare/ccccccc3...main': { status: 200, body: { ahead_by: 0, behind_by: 2, commits: [] } },
+    'OpenVibers/OpenVibe.Media/compare/ccccccc3...main': { status: 200, body: { status: 'diverged', ahead_by: 1, behind_by: 2, commits: [] } },
     'OpenVibers/OpenVibe.Tools/compare/ddddddd4...main': { status: 404, body: { message: 'Not Found' } },
 };
 let failing = false;
