@@ -101,7 +101,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     assert.strictEqual(sBy.live.label, 'up');
     assert.strictEqual(sBy.live.origin, 'https://openvibe.live');
     assert.strictEqual(sBy.shared.label, `not running (library, released v${require('openvibe-shared/package.json').version})`);
-    assert.deepStrictEqual(st.exposure_summary, { live: 14, internal: 11, library: 4, repository: 1, placeholder: 1 });
+    assert.deepStrictEqual(st.exposure_summary, { live: 14, internal: 11, library: 4, repository: 1, placeholder: 1, retired: 0 });
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());

@@ -24,75 +24,41 @@
  * When a service goes public, change its row here in the same commit that points its domain at it,
  * after checking the domain no longer answers with "this page is a placeholder".
  *
- * TODO(plan §5.1 "data from contract manifests plus validated overrides"): this overlay is the override
- * half. It cannot come from the manifests (they say maturity, and the question here is what a domain
- * serves today), so it stays Network's, pinned id by id by test/registry-exposure.test.js. Candidates to
- * derive it later: each repository's STATUS.json `deployed`, or OpenVibe.Sites' sites.json (which domains
- * still get a placeholder page), once both are published somewhere Network can read.
+ * Since openvibe-contracts 0.42.0 (WS-C task 1) the states are the manifests' `exposure`: a service going
+ * public is one manifest edit in Contracts (in the release that points its domain at it), no Network code.
  */
 
-const STATES = ['live', 'internal', 'library', 'repository', 'placeholder'];
+const contracts = require('openvibe-contracts');
+
+const STATES = ['live', 'internal', 'library', 'repository', 'placeholder', 'retired'];
 const LABEL = {
     live: 'live (public)',
     internal: 'internal (loopback only, no public site yet)',
     library: 'library (released)',
     repository: 'repository (code with CI, nothing released or running)',
     placeholder: 'placeholder (planned)',
+    retired: 'retired',
 };
 
-// public_site: what the service's public domain(s) answer today — 'service' (the service itself),
-// 'placeholder' (a Sites/admin placeholder page) or null (no public domain).
-const SITE_PLACEHOLDER = 'the domain serves the OpenVibe.Sites placeholder page';
-const ADMIN_PLACEHOLDER = 'the domain serves the admin.openvibe.network placeholder page';
-
-// The libraries' release is the version Network itself installs (its pins move with every release),
-// so this never goes stale the way hand-written numbers did.
-function library(pkg, repo, note) {
+// The libraries' release starts as the version Network itself installs (its pins move with every release)
+// and becomes the latest published tag once library-tags.js has one (setLibraryReleases).
+function libraryRelease(pkg, repo) {
     let version = null;
     try { version = require(`${pkg}/package.json`).version; } catch { /* not installed */ }
     const release = version ? `v${version}` : null;
-    const out = { state: 'library', public_site: null, package: pkg, release,
-        distribution: release ? `https://codeload.github.com/OpenVibers/${repo}/tar.gz/refs/tags/${release}` : null };
-    if (note) out.note = note;
-    return out;
+    return { release, distribution: release && repo ? `https://codeload.github.com/OpenVibers/${repo}/tar.gz/refs/tags/${release}` : null };
 }
 
-const EXPOSURE = {
-    network: { state: 'live', public_site: 'service' },
-    live: { state: 'live', public_site: 'service' },
-    tools: { state: 'live', public_site: 'service' },
-    media: { state: 'live', public_site: 'service' },
-    games: { state: 'live', public_site: 'service' },
-    community: { state: 'live', public_site: 'service' },
-    events: { state: 'live', public_site: 'service' },
-    billing: { state: 'live', public_site: 'service', note: 'the public domain is the staff console; accounts pay through each product' },
-    codes: { state: 'live', public_site: 'service' },
-    blog: { state: 'live', public_site: 'service' },
-    wiki: { state: 'live', public_site: 'service' },
-    sites: { state: 'live', public_site: 'service', note: 'serves the placeholder pages of domains whose service is not public yet' },
-
-    news: { state: 'internal', public_site: 'placeholder', note: SITE_PLACEHOLDER },
-    reviews: { state: 'internal', public_site: 'placeholder', note: SITE_PLACEHOLDER },
-    deals: { state: 'internal', public_site: 'placeholder', note: SITE_PLACEHOLDER },
-    coupons: { state: 'internal', public_site: 'placeholder', note: SITE_PLACEHOLDER },
-    trade: { state: 'internal', public_site: 'placeholder', note: SITE_PLACEHOLDER },
-    host: { state: 'internal', public_site: 'placeholder', note: SITE_PLACEHOLDER },
-    tips: { state: 'internal', public_site: 'placeholder', note: SITE_PLACEHOLDER },
-    vip: { state: 'internal', public_site: 'placeholder', note: SITE_PLACEHOLDER },
-    openre: { state: 'internal', public_site: 'placeholder', note: SITE_PLACEHOLDER },
-    search: { state: 'live', public_site: 'service', note: 'public search page and query API at search.openvibe.network (since 2026-09-23)' },
-    sources: { state: 'internal', public_site: null, note: 'internal ingestion service; sources.openvibe.network says so (its API is loopback-only)' },
-    chat: { state: 'live', public_site: 'service', note: 'openvibe.chat since 2026-09-24 (global chat, messages, settings); also serves Live\'s chat paths' },
-    ai: { state: 'internal', public_site: null, note: 'called by other services at 127.0.0.1:4700; ai.openvibe.network serves the OpenVibe.Sites placeholder page' },
-
-    sdk: library('openvibe-sdk', 'OpenVibe.SDK'),
-    shared: library('openvibe-shared', 'OpenVibe.Shared', 'also served at /shared/* by each site'),
-    contracts: library('openvibe-contracts', 'OpenVibe.Contracts', 'schemas are also served by this registry at their $id URLs'),
-    publishing: library('openvibe-publishing', 'OpenVibe.Publishing', 'the shared publishing runtime used by Wiki, Blog, News, Reviews, Deals, Coupons and Trade'),
-    examples: { state: 'repository', public_site: null, note: 'example apps with CI in OpenVibers/OpenVibe.Examples; not published as a package' },
-
-    realtime: { state: 'placeholder', public_site: null },
-};
+/**
+ * Each manifest's `exposure` (openvibe-contracts ≥ 0.42.0, WS-C task 1): { state, public_site, note } plus,
+ * for libraries, package / release / distribution. A service going public is a manifest change in Contracts.
+ */
+const EXPOSURE = Object.fromEntries(contracts.services.manifests.filter((m) => m.exposure && STATES.includes(m.exposure.state)).map((m) => {
+    const e = { state: m.exposure.state, public_site: m.exposure.publicSite == null ? null : m.exposure.publicSite };
+    if (m.exposure.note) e.note = m.exposure.note;
+    if (e.state === 'library') Object.assign(e, { package: m.exposure.package, ...libraryRelease(m.exposure.package, m.exposure.repo) });
+    return [m.id, e];
+}));
 
 /** The exposure of one service id; an id nobody classified is 'unknown', never assumed public. */
 function exposureOf(id) {

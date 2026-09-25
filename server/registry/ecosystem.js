@@ -38,30 +38,14 @@ const { buildTopics, eventsOf } = require('./topics');
 const { driftOf } = require('./versions');
 const { SITES } = require('../frame/sites');
 
-// Where each running service answers health checks from this host (manifests carry the public origin).
-// TODO(plan §5.1 "contract manifests plus validated environment overrides"): registry.service-manifest@1 has
-// no internal address, so these loopback ports stay here until Contracts adds one (or Network reads
-// OpenVibe.Host's host.json). Until then OV_<ID>_INTERNAL_URL overrides any of them (internalFromEnv below),
-// validated as a loopback http(s) URL, which is the environment half of that rule.
-const INTERNAL = {
-    network: 'http://127.0.0.1:4000', live: 'http://127.0.0.1:3000', media: 'http://127.0.0.1:4100',
-    tools: 'http://127.0.0.1:4001', games: 'http://127.0.0.1:8000', community: 'http://127.0.0.1:4200',
-    events: 'http://127.0.0.1:4300', billing: 'http://127.0.0.1:4600',
-    // Assigned ports of services that are placeholders or new; a placeholder is never polled.
-    chat: 'http://127.0.0.1:4400', openre: 'http://127.0.0.1:4500', tips: 'http://127.0.0.1:4610', vip: 'http://127.0.0.1:4620',
-    ai: 'http://127.0.0.1:4700', search: 'http://127.0.0.1:4710', sources: 'http://127.0.0.1:4720', wiki: 'http://127.0.0.1:4800',
-    blog: 'http://127.0.0.1:4810', news: 'http://127.0.0.1:4820', reviews: 'http://127.0.0.1:4830', deals: 'http://127.0.0.1:4840',
-    coupons: 'http://127.0.0.1:4850', trade: 'http://127.0.0.1:4860', codes: 'http://127.0.0.1:4900', host: 'http://127.0.0.1:4910',
-};
+// Where each running service answers health checks from this host: its manifest's `internalOrigin`
+// (openvibe-contracts ≥ 0.42.0, WS-C task 1). OV_<ID>_INTERNAL_URL overrides any of them (internalFromEnv
+// below), validated as a loopback http(s) URL: the environment half of "manifests plus validated overrides".
+const INTERNAL = Object.fromEntries(contracts.services.manifests.filter((m) => m.internalOrigin).map((m) => [m.id, m.internalOrigin]));
 const POLL_MS = 60 * 1000;
-// Readiness paths of services whose manifest (openvibe-contracts) does not carry `ready` yet; a manifest's
-// own `ready` always wins. Each answers with openvibe-shared/ready's shape; until a service deploys it, its
-// health path is used and the row says so (basis: 'health'). Only entries whose manifest still lacks `ready`
-// may stay (test/registry-ecosystem.test.js): tools left when its manifest gained one. TODO(contracts): add
-// `ready: /api/ready` to the network and media manifests, then this map is empty.
-const READY_PATHS = { network: '/api/ready', media: '/api/ready' };
-// Liveness paths of services whose manifest in the pinned openvibe-contracts has none (none since
-// 0.30, where AI's manifest carries /api/health and /api/ready).
+// Readiness and liveness paths come from the manifests (`ready`, `health`); these maps are for a manifest
+// that lacks one and stay empty (test/registry-ecosystem.test.js).
+const READY_PATHS = {};
 const HEALTH_PATHS = {};
 
 /** Row status from a readiness body (openvibe-shared/ready shape, or an older ad-hoc one). */
