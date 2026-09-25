@@ -100,6 +100,15 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 .btn-danger{background:rgba(231,76,60,0.1);color:var(--live-red);border:1px solid rgba(231,76,60,0.2)}
 .btn-danger:hover{background:rgba(231,76,60,0.2)}
 .btn-row{display:flex;gap:8px;margin-top:12px}
+.data-check{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--text-secondary);line-height:1.5}
+.data-check input{margin-top:3px}
+.data-status{align-self:center;font-size:12px;color:var(--text-secondary)}
+.module-row{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--border)}
+.module-row:first-child{border-top:0}
+.module-row-main{flex:1;min-width:0}
+.module-row-main strong{display:block;font-size:13px}
+.module-row-main small{display:block;font-size:12px;color:var(--text-muted);line-height:1.5}
+.module-row-main code{display:block;margin-top:4px;font-size:11px;color:var(--text-secondary);white-space:pre-wrap;word-break:break-word;max-height:7.5em;overflow:auto}
 
 /* Account list */
 .account-list{display:flex;flex-direction:column;gap:8px}
@@ -281,6 +290,7 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
         <button onclick="showSection('accounts',this)"><i class="fa-solid fa-arrows-rotate"></i> Accounts</button>
         <button onclick="showSection('notifications',this)"><i class="fa-solid fa-bell"></i> Notifications</button>
         <button onclick="showSection('history',this)"><i class="fa-solid fa-clock-rotate-left"></i> History</button>
+        <button onclick="showSection('data',this)"><i class="fa-solid fa-database"></i> AI &amp; Data</button>
         <button onclick="showSection('linked',this)"><i class="fa-solid fa-link"></i> Linked Services</button>
         <button onclick="showSection('security',this)"><i class="fa-solid fa-lock"></i> Security</button>
         <button onclick="showSection('anon',this)"><i class="fa-solid fa-user-secret"></i> Anon Info</button>
@@ -421,6 +431,27 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
             </div>
             <div id="hist-list"><div class="loading-spinner">Loading history…</div></div>
             <div class="btn-row" id="hist-more-row" style="display:none;margin-top:10px"><button class="btn" onclick="loadHistory(true)">Load more</button></div>
+        </div>
+    </div>
+
+    <!-- AI & Data Section: the ai.preferences module and every module record kept with this account -->
+    <div class="section" id="sec-data">
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span> AI preferences</h3>
+            <p style="margin-bottom:12px">How OpenVibe AI writes for you when you ask it for something, such as a blog draft. Saved to your account and used on every OpenVibe site.</p>
+            <form id="ai-prefs-form" onsubmit="saveAiPrefs(event)">
+                <div class="form-field"><label for="ai-style">Style</label><select id="ai-style" name="style"><option value="">No preference</option><option value="neutral">Neutral</option><option value="casual">Casual</option><option value="formal">Formal</option></select></div>
+                <div class="form-field"><label for="ai-length">Length</label><select id="ai-length" name="length"><option value="">No preference</option><option value="short">Short</option><option value="medium">Medium</option><option value="long">Long</option></select></div>
+                <div class="form-field"><label for="ai-perspective">Perspective</label><input id="ai-perspective" name="perspective" maxlength="80" placeholder="For example: a beginner, a night-shift worker"></div>
+                <label class="data-check"><input type="checkbox" id="ai-history" name="history" checked> Keep what I ask AI. When this is off, OpenVibe AI keeps neither your request nor a reusable copy of the answer.</label>
+                <div class="btn-row"><button class="btn btn-primary" type="submit">Save</button><span class="data-status" id="ai-prefs-status" role="status"></span></div>
+            </form>
+        </div>
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-database"></i></span> Your data on OpenVibe</h3>
+            <p style="margin-bottom:12px">Settings and summaries OpenVibe sites keep with your account: your chat settings, favourite tools, streaming and community summaries and more. The sites themselves keep the full records. You can download all of this, or delete any of it. A site that writes a summary may write it again the next time you use that site.</p>
+            <div id="modules-list"><div class="loading-spinner">Loading…</div></div>
+            <div class="btn-row"><button class="btn" type="button" onclick="exportModules()"><i class="fa-solid fa-download"></i> Download as JSON</button></div>
         </div>
     </div>
 
@@ -729,6 +760,77 @@ async function loadRecentTools() {
     } catch { /* optional */ }
 }
 
+// AI & Data: the ai.preferences user module (read by OpenVibe.AI for runs made on your behalf) and the list
+// of every module record kept with this account (GET /api/modules), each deletable, all downloadable.
+let aiPrefsRecord = null, modulesExport = null;
+async function loadDataSection() {
+    const status = document.getElementById('ai-prefs-status');
+    try {
+        aiPrefsRecord = await apiFetch('/api/modules/ai.preferences').catch((e) => { if (e.status === 404) return { revision: 0, data: {} }; throw e; });
+        const d = aiPrefsRecord.data || {};
+        document.getElementById('ai-style').value = d.style || '';
+        document.getElementById('ai-length').value = d.length || '';
+        document.getElementById('ai-perspective').value = d.perspective || '';
+        document.getElementById('ai-history').checked = d.history !== false;
+    } catch { if (status) status.textContent = 'Could not load your AI preferences.'; }
+    loadModules();
+}
+async function saveAiPrefs(event) {
+    event.preventDefault();
+    const status = document.getElementById('ai-prefs-status');
+    const data = { ...((aiPrefsRecord && aiPrefsRecord.data) || {}) };
+    for (const k of ['style', 'length', 'perspective']) {
+        const v = document.getElementById('ai-' + k).value.trim();
+        if (v) data[k] = v; else delete data[k];
+    }
+    if (document.getElementById('ai-history').checked) delete data.history; else data.history = false;
+    try {
+        aiPrefsRecord = await apiFetch('/api/modules/ai.preferences', { method: 'PUT', headers: { 'If-Match': String(aiPrefsRecord ? aiPrefsRecord.revision : 0) }, body: JSON.stringify({ data }) });
+        status.textContent = 'Saved.';
+        loadModules();
+    } catch (e) {
+        status.textContent = e.status === 412 ? 'Changed somewhere else: reloaded. Save again.' : 'Could not save. Try again.';
+        if (e.status === 412) loadDataSection();
+    }
+}
+async function loadModules() {
+    const box = document.getElementById('modules-list');
+    if (!box) return;
+    try {
+        modulesExport = await apiFetch('/api/modules');
+        const about = new Map((modulesExport.namespaces || []).map((n) => [n.namespace, n]));
+        box.replaceChildren();
+        if (!(modulesExport.modules || []).length) { const p = document.createElement('p'); p.textContent = 'Nothing yet.'; box.appendChild(p); return; }
+        for (const m of modulesExport.modules) {
+            const row = document.createElement('div'); row.className = 'module-row';
+            const main = document.createElement('div'); main.className = 'module-row-main';
+            const title = document.createElement('strong'); title.textContent = m.namespace;
+            const info = document.createElement('small');
+            const n = about.get(m.namespace);
+            info.textContent = `${n && n.description ? n.description + ' ' : ''}Kept by ${n && n.owner ? n.owner : 'OpenVibe'}; updated ${m.updated_at ? new Date(String(m.updated_at).replace(' ', 'T') + (String(m.updated_at).includes('Z') ? '' : 'Z')).toLocaleString() : 'recently'}.`;
+            const code = document.createElement('code'); code.textContent = JSON.stringify(m.data);
+            main.append(title, info, code);
+            const del = document.createElement('button'); del.type = 'button'; del.className = 'btn btn-small btn-danger';
+            del.textContent = 'Delete'; del.setAttribute('aria-label', 'Delete ' + m.namespace);
+            del.addEventListener('click', async () => {
+                if (!confirm(`Delete ${m.namespace}? A site may write its summary again the next time you use it.`)) return;
+                try { await apiFetch('/api/modules/' + encodeURIComponent(m.namespace), { method: 'DELETE' }); } catch { /* shown by the reload */ }
+                if (m.namespace === 'ai.preferences') loadDataSection(); else loadModules();
+            });
+            row.append(main, del);
+            box.appendChild(row);
+        }
+    } catch { box.textContent = 'Could not load your data. Try again later.'; }
+}
+function exportModules() {
+    if (!modulesExport) return;
+    const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), subject: modulesExport.subject, modules: modulesExport.modules }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'openvibe-account-modules.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
 // Section switching
 function showSection(id, btn) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -738,6 +840,7 @@ function showSection(id, btn) {
     targetBtn?.classList.add('active');
     history.replaceState(null, '', id === 'profile' ? window.location.pathname : `${window.location.pathname}#${id}`);
     if (id === 'history' && typeof loadHistory === 'function') loadHistory();
+    if (id === 'data') loadDataSection();
 }
 
 function avatarPlaceholder(user, size = 96) {
@@ -924,7 +1027,7 @@ function openInitialSection() {
     const pathSection = { '/themes': 'themes', '/notifications': 'notifications', '/verify-email': 'notifications', '/linked': 'linked', '/security': 'security', '/profile': 'profile', '/history': 'history' }[window.location.pathname];
     const routeSection = pathSection || window.location.hash.replace(/^#/, '') || 'profile';
     if (window.location.pathname === '/verify-email') setTimeout(handleVerifyEmailToken, 50);
-    if (isAnonSession() && ['notifications','linked','security'].includes(routeSection)) {
+    if (isAnonSession() && ['notifications','linked','security','data'].includes(routeSection)) {
         return showSection('anon');
     }
     if (document.getElementById('sec-' + routeSection)) {
