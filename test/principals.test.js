@@ -121,7 +121,7 @@ const server = http.createServer(app);
     db.prepare("UPDATE oauth_clients SET client_secret = 'community-secret' WHERE client_id = 'community'").run();
     const com = await token({ client_id: 'community', client_secret: 'community-secret', audience: 'openvibe.network' });
     assert.strictEqual(com.status, 200, JSON.stringify(com.body));
-    assert.deepStrictEqual(com.body.scope.split(' '), ['identity.subject.resolve', 'network.modules.read', 'network.modules.write'], 'resolve, plus its community.profile module');
+    assert.deepStrictEqual(com.body.scope.split(' '), ['identity.subject.resolve', 'network.blocks.read', 'network.modules.read', 'network.modules.write'], 'resolve, platform blocks, plus its community.profile module');
     r = await post('/internal/identity/resolve-batch', { system: 'network', ids: ['7'] }, { authorization: `Bearer ${com.body.access_token}` });
     assert.strictEqual(r.status, 200); assert.strictEqual(r.body.results['7'].username, 'payee');
     r = await post('/internal/identity/resolve-batch', { system: 'network', ids: ['7'] }, { authorization: `Bearer ${creditOnly}` });

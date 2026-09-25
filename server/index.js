@@ -397,6 +397,10 @@ app.get('/api/v1/users/names/:name', rateLimit({ windowMs: 60_000, max: 240 }), 
 // The GitHub token (admin → Settings → GitHub, or GITHUB_TOKEN): owner-only admin, and Blog's changelog reads it.
 app.use('/api/admin/integrations/github', requireAuth, require('./integrations/github').adminRouter(db));
 app.get('/internal/integrations/github-token', require('./identity/principals').guard('network.integration.github.read', { legacy: false }), require('./integrations/github').internalHandler(db));
+// Platform blocks (WS-E task 5): a person's own list, and who blocked whom for Chat and Community
+// (network.blocks.read, service token only). Every change is network.block.changed (server/identity/blocks.js).
+app.use('/api/v1/me/blocks', rateLimit({ windowMs: 60_000, max: 60 }), require('./identity/blocks').userRouter(requireAuth));
+app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read', { legacy: false }), require('./identity/blocks').internalHandler(db));
 
 // ── Routes ───────────────────────────────────────────────────
 // Public key endpoint (services fetch this to verify JWTs).

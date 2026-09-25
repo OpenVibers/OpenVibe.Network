@@ -168,6 +168,10 @@ const DEFAULT_GRANTS = [
     // Chat consumes live.release.deployed (the deploy card, register C-84) and network.module.updated
     // (its chat.preferences cache) through its own Events subscriptions, created at Chat's boot.
     ['chat', 'events.subscription.manage', 'openvibe.events', []],
+    // Platform blocks (WS-E task 5): Chat (DMs, mentions) and Community (replies) read who blocked whom;
+    // both also follow network.block.changed through their own Events subscriptions.
+    ['chat', 'network.blocks.read', SELF_AUDIENCE, []],
+    ['community', 'network.blocks.read', SELF_AUDIENCE, []],
     ['live', 'chat.live_bridge.write', 'openvibe.chat', []],
     ['live', 'chat.presence.read', 'openvibe.chat', []],
     ['live', 'chat.message.send', 'openvibe.chat', []],

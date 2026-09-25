@@ -501,6 +501,16 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
                 <button class="btn" onclick="signOutEverywhere()"><i class="fa-solid fa-right-from-bracket"></i> Sign out everywhere, this device too</button>
             </div>
         </div>
+        <div class="card" id="blocks-card">
+            <h3><span class="icon"><i class="fa-solid fa-user-slash"></i></span> Blocked people</h3>
+            <p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">People you block cannot message you, mention you or reply to what you post on OpenVibe sites, and you get no notifications from them. Moderators' actions still reach you.</p>
+            <form id="block-form" onsubmit="blockPerson(event)" style="margin-bottom:12px">
+                <div class="form-field"><label for="block-username">Block someone</label><input id="block-username" name="username" maxlength="64" autocomplete="off" placeholder="username"></div>
+                <div class="btn-row"><button class="btn btn-danger" type="submit">Block</button></div>
+            </form>
+            <div id="blocks-list"><div class="loading-spinner">Loading…</div></div>
+            <p class="data-status" id="blocks-status" role="status"></p>
+        </div>
     </div>
 
     <!-- Anon Info Section -->
@@ -1117,6 +1127,7 @@ async function loadUser() {
             loadNotifPrefs();
             loadLinked();
             loadSessions();
+            loadBlocks();
             loadAnonInfo();
             loadEmailStatus();
             loadRecentTools();
@@ -1505,6 +1516,60 @@ async function loadSessions() {
             `).join('');
         }
     } catch (err) { document.getElementById('sessions-list').innerHTML = '<p style="color:var(--text-muted)">Unable to load sessions.</p>'; }
+}
+
+// Blocked people (platform blocks: /api/v1/me/blocks), built from DOM nodes.
+async function loadBlocks() {
+    const box = document.getElementById('blocks-list');
+    if (!box) return;
+    if (isAnonSession()) { box.textContent = 'Anonymous identities cannot block people.'; return; }
+    try {
+        const data = await apiFetch('/api/v1/me/blocks');
+        box.replaceChildren();
+        if (!(data.blocks || []).length) {
+            const p = document.createElement('p'); p.style.cssText = 'color:var(--text-muted);font-size:13px'; p.textContent = 'You have not blocked anyone.';
+            box.appendChild(p); return;
+        }
+        for (const b of data.blocks) {
+            const row = document.createElement('div'); row.className = 'module-row';
+            const main = document.createElement('div'); main.className = 'module-row-main';
+            const title = document.createElement('strong'); title.textContent = b.display_name || b.username || 'Deleted account';
+            const info = document.createElement('small');
+            info.textContent = `${b.username ? '@' + b.username + ' · ' : ''}blocked ${b.blocked_at ? new Date(b.blocked_at).toLocaleDateString() : 'recently'}`;
+            main.append(title, info);
+            const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn btn-small';
+            btn.textContent = 'Unblock'; btn.setAttribute('aria-label', 'Unblock ' + (b.username || b.subject));
+            btn.addEventListener('click', () => unblockPerson(b, btn));
+            row.append(main, btn);
+            box.appendChild(row);
+        }
+    } catch { box.textContent = 'Could not load the people you blocked. Try again later.'; }
+}
+async function blockPerson(e) {
+    e.preventDefault();
+    const input = document.getElementById('block-username');
+    const status = document.getElementById('blocks-status');
+    const name = input.value.trim().replace(/^@/, '');
+    if (!name) return;
+    try {
+        await apiFetch('/api/v1/me/blocks/' + encodeURIComponent(name), { method: 'PUT' });
+        if (status) status.textContent = `Blocked @${name}.`;
+        input.value = '';
+    } catch (err) {
+        if (status) status.textContent = err.status === 404 ? 'Nobody has that username.' : err.status === 400 ? 'You cannot block that account.' : 'Could not block. Try again.';
+    }
+    loadBlocks();
+}
+async function unblockPerson(b, btn) {
+    const status = document.getElementById('blocks-status');
+    btn.disabled = true;
+    try {
+        await apiFetch('/api/v1/me/blocks/' + encodeURIComponent(b.subject), { method: 'DELETE' });
+        if (status) status.textContent = `Unblocked ${b.username ? '@' + b.username : 'that account'}.`;
+    } catch (e) {
+        if (status) status.textContent = e.status === 404 ? 'Already unblocked.' : 'Could not unblock. Try again.';
+    }
+    loadBlocks();
 }
 
 async function revokeSession(id) {

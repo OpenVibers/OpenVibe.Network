@@ -9,6 +9,9 @@
 const { v4: uuidv4 } = require('uuid');
 const { TYPES, PRIORITY, EMAIL_ELIGIBLE_CATEGORIES, EMAIL_DEFAULT_TYPES } = require('openvibe-shared/notifications');
 
+// Staff and platform notices: never hidden by a block.
+const BLOCK_EXEMPT_CATEGORIES = new Set(['moderation', 'system', 'admin']);
+
 class NotificationService {
     constructor(db) {
         this.db = db;
@@ -108,6 +111,18 @@ class NotificationService {
             SELECT COUNT(*) AS c FROM email_delivery_log WHERE status = 'sent' AND created_at > datetime('now', '-1 day')
         `);
 
+        // Platform blocks (server/identity/blocks.js): the recipient blocked the actor, named by subject or
+        // by Network user id (sender_id).
+        require('../identity/blocks').ensureSchema(db);
+        this._blockedActorSubject = db.prepare(`
+            SELECT 1 FROM user_blocks b JOIN users r ON r.subject_id = b.blocker_subject
+            WHERE r.id = ? AND b.blocked_subject = ? AND b.active = 1 LIMIT 1
+        `);
+        this._blockedActorId = db.prepare(`
+            SELECT 1 FROM user_blocks b JOIN users r ON r.subject_id = b.blocker_subject JOIN users s ON s.subject_id = b.blocked_subject
+            WHERE r.id = ? AND s.id = ? AND b.active = 1 LIMIT 1
+        `);
+
         this._newestForUser = db.prepare(`
             SELECT * FROM notifications
             WHERE user_id = ? AND is_dismissed = 0
@@ -133,6 +148,9 @@ class NotificationService {
         // Check user's preferences — skip if disabled
         const pref = this._getPrefByCategory.get(data.user_id, category);
         if (pref && !pref.enabled) return null;
+        // Nothing from a person the recipient blocked (platform blocks, WS-E task 5). A block never hides a
+        // staff action: moderation, system and admin notices are always created.
+        if (!BLOCK_EXEMPT_CATEGORIES.has(category) && this.fromBlockedActor(data)) return null;
         // Go-live dedupe (see _recentFromSender).
         if (data.type === 'STREAM_LIVE' && data.sender_id != null) {
             try { if (this._recentFromSender.get(data.user_id, 'STREAM_LIVE', data.sender_id)) return null; } catch { /* */ }
@@ -161,6 +179,20 @@ class NotificationService {
         } catch (_) { /* push module not available */ }
 
         return { id, user_id: data.user_id, type: data.type, category, priority, title, message: data.message, icon, service: data.service, url: data.url, rich_content: data.rich_content, is_read: 0, created_at: new Date().toISOString() };
+    }
+
+    /**
+     * Whether the recipient (data.user_id) blocked the notification's actor: data.actor_subject (a usr_
+     * subject; null = no known person) when given, else data.sender_id as a Network user id.
+     */
+    fromBlockedActor(data) {
+        try {
+            if (Object.prototype.hasOwnProperty.call(data, 'actor_subject')) {
+                return /^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(String(data.actor_subject || '')) && !!this._blockedActorSubject.get(data.user_id, data.actor_subject);
+            }
+            const sender = Number(data.sender_id);
+            return Number.isInteger(sender) && sender > 0 && Number(data.user_id) !== sender && !!this._blockedActorId.get(data.user_id, sender);
+        } catch { return false; }
     }
 
     /**

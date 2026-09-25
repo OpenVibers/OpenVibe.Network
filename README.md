@@ -350,6 +350,26 @@ Namespaces, schemas, writers, public fields and quotas come from openvibe-contra
 
 ---
 
+## Platform blocks
+
+A person blocks someone once, on the network, and every product honours it (roadmap WS-E task 5,
+Contracts 0.49.0; `server/identity/blocks.js`). `user_blocks` is keyed by subjects, one row per
+(blocker, blocked) with `active` and a per-pair `revision` that grows on every change.
+
+- People: `GET /api/v1/me/blocks` (who I blocked, with names and avatars), `PUT|DELETE /api/v1/me/blocks/:subjectOrUsername`.
+  Nobody blocks themselves; guests neither block nor are blocked. Staff can be blocked, but a block never hides a
+  staff action. The account page (Security → Blocked people) lists blocks with unblock buttons.
+- Services: `GET /internal/blocks?subject=usr_…` → `{ subject, blocks, blocked_by }`, service token with
+  `network.blocks.read` only (Chat and Community hold it by default; never the shared key).
+- Every change writes `network.block.changed` into `network_event_outbox` in the same transaction. Chat
+  (DMs, mentions) and Community (replies) keep projections from their own Events subscriptions.
+- Network's notifications: nothing is created from a person the recipient blocked (`sender_id` as a Network
+  id, or `actor_subject`); moderation, system and admin notices always are.
+- Import (once, from Chat's `dm_blocks` export): `node scripts/import-blocks.js --file <json>` (dry run),
+  then `--apply`. Pairs Network already knows are left alone.
+
+---
+
 ## Multi-Account Switching
 
 Google-style account management supporting up to 5 accounts:
@@ -550,7 +570,8 @@ Accessible to users with `role = 'admin'`. All endpoints under `/api/admin/`.
 | `dev_audit` | Append-only developer audit; rows that are platform events carry an event envelope |
 | `analytics_events`, `analytics_hourly`, `analytics_daily` | Request analytics (raw ≤ 30 days) and rollups, within ADR-021; see [Analytics](#analytics-adr-021) |
 | `user_modules`, `user_module_revisions`, `user_module_retirements` | User-module records, the last revision issued per (subject, namespace), retired namespace owners |
-| `network_event_outbox` | Network's events on their way to OpenVibe.Events (developer projects, user modules) |
+| `network_event_outbox` | Network's events on their way to OpenVibe.Events (developer projects, user modules, blocks) |
+| `user_blocks` | Platform blocks by subject (blocker, blocked, active, per-pair revision) |
 | `analytics_visitor_days`, `analytics_day_salts` | The current day's salted visitor hashes and salt, deleted after the day's final rollup |
 
 ---

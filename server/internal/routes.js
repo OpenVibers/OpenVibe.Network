@@ -417,7 +417,9 @@ router.post('/events/stream-live', principals.guard('network.notifications.push'
         try {
             const link = streamer.id ? db.prepare("SELECT user_id FROM linked_accounts WHERE service = 'live' AND service_user_id = ?").get(String(streamer.id)) : null;
             if (link) notifData.sender_id = link.user_id;
-        } catch { /* keep Live id */ }
+            // A Live id is not a Network person: no block check against whoever has that Network id.
+            else notifData.actor_subject = null;
+        } catch { notifData.actor_subject = null; /* keep Live id */ }
 
         // Find users who opted into "all live" notifications
         const allLiveUserIds = streamLive.allLiveSubscribers(db);
