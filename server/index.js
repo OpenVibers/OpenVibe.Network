@@ -731,6 +731,8 @@ app.use(require('./not-found').notFound);
 
 // ── Start ────────────────────────────────────────────────────
 app.listen(config.port, config.host, () => {
+    // The home page renders the Tools catalog it already holds: fetch it now, not on the first visit.
+    require('./domains/catalog').refresh().catch(() => {});
     console.log(`\n╔═══════════════════════════════════════╗`);
     console.log(`║   OpenVibe.Network — Identity Service ║`);
     console.log(`╠═══════════════════════════════════════╣`);
