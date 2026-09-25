@@ -120,6 +120,11 @@ const DEFAULT_GRANTS = [
     ['coupons', 'events.event.publish', 'openvibe.events', []],
     ['coupons', 'sources.item.read', 'openvibe.sources', []],
     ['host', 'events.event.publish', 'openvibe.events', []],
+    // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples
+    // scripts/tools-job-proof.js) submits a converter job as `probe` and finds its tools.job.* events.
+    ['probe', 'tools.job.create', 'openvibe.tools', []],
+    ['probe', 'tools.job.read', 'openvibe.tools', []],
+    ['probe', 'events.event.read', 'openvibe.events', []],
     // Wave 20: the Codes portal relays its release events.
     ['codes', 'events.event.publish', 'openvibe.events', []],
     ['ai', 'events.event.publish', 'openvibe.events', []],          // ai.run.* (AI server/events.js, 2026-09-24)

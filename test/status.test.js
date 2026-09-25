@@ -77,6 +77,7 @@ const rel = (release) => [200, { service: 'x', release, released_at: '2026-09-22
     assert.strictEqual(by.contracts.status, 'not-running');
     assert.strictEqual(by.contracts.label, `not running (library, released v${require('openvibe-contracts/package.json').version})`);
     for (const s of r.body.services) assert.ok(s.checked_at, `${s.id} says when it was checked`);
+    assert.ok('developer_path' in r.body && 'tools_job_proof' in r.body, 'the scheduled proofs are in the API (null until they report)');
     assert.strictEqual(r.body.summary.up + r.body.summary.degraded + r.body.summary.down + r.body.summary['not-running'] + r.body.summary.unknown, contracts.services.manifests.length);
 
     // A required failure on the service is 'down', with its failed checks.
@@ -110,6 +111,7 @@ const rel = (release) => [200, { service: 'x', release, released_at: '2026-09-22
     assert.ok(/id="svc-tools"[\s\S]*?liveness only/.test(html));
     assert.ok(html.includes('<noscript>'), 'navigation without JavaScript');
     assert.ok(html.includes('SLO categories (proposals)'));
+    assert.ok(html.includes('id="h-devpath"') && html.includes('id="h-toolsjob"'), 'both scheduled proofs have a section');
     const noScript = html.replace(/<script[\s\S]*?<\/script>/g, '');
     assert.ok(noScript.includes('aaaaaaaaaaaa'), 'the rows are in the HTML itself');
 

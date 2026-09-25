@@ -27,6 +27,9 @@ const SLO_FILE = path.join(__dirname, '..', '..', 'docs', 'slo.json');
 // The daily developer path against production (OpenVibe.Host openvibe-devpath.timer, WS-N task 1): step
 // names and outcomes only, written by OpenVibe.Examples' developer-path --result.
 const DEVPATH_FILE = process.env.DEVPATH_RESULT_FILE || '/var/lib/openvibe-devpath/last.json';
+// The Tools job proof (openvibe-toolsjob.timer, WS-L task 4): the same record from OpenVibe.Examples'
+// tools-job-proof --result, read by the same loader.
+const TOOLSJOB_FILE = process.env.TOOLSJOB_RESULT_FILE || '/var/lib/openvibe-devpath/tools-job.json';
 function loadDevPath(file = DEVPATH_FILE) {
     try {
         const d = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -117,7 +120,13 @@ function checksList(ready) {
     return items.length ? `<ul class="chk">${items.join('')}</ul>` : '';
 }
 
-function renderPage(list, slo, generatedAt, devPath = null) {
+/** A scheduled proof's step list (developer path, Tools job proof). */
+function proofSteps(rec) {
+    return `<ul class="st-sum">${rec.steps.map((st) => `<li class="st-${st.ok ? 'up' : st.skipped ? 'unknown' : 'down'}">${esc(st.name)}: ${st.ok ? 'ok' : st.skipped ? 'skipped' : 'failed'}</li>`).join('')}</ul>`;
+}
+const lastRun = (rec) => `Last run <time datetime="${esc(rec.finished_at)}">${esc(rec.finished_at)}</time>: <b>${rec.ok ? 'passed' : 'failed'}</b> (${rec.steps.filter((st) => st.ok).length}/${rec.steps.length} steps).`;
+
+function renderPage(list, slo, generatedAt, devPath = null, toolsJob = null) {
     const counts = summary(list);
     const tr = list.map((r) => `<tr id="svc-${esc(r.id)}">
 <td><b>${esc(r.name)}</b><small>${esc(r.id)} · manifest: ${esc(r.manifest_status)}</small></td>
@@ -160,8 +169,12 @@ ${tr}
 </tbody>
 </table>
 <section aria-labelledby="h-devpath"><h2 id="h-devpath">Developer path</h2>
-${devPath ? `<p class="lede">Once a day a test developer account goes from sign-in to a sandbox project, a Media upload, an Events publish and pull, a credential rotation and revocation, and cleanup, through the public API and the SDK. Last run <time datetime="${esc(devPath.finished_at)}">${esc(devPath.finished_at)}</time>: <b>${devPath.ok ? 'passed' : 'failed'}</b> (${devPath.steps.filter((st) => st.ok).length}/${devPath.steps.length} steps).</p>
-<ul class="st-sum">${devPath.steps.map((st) => `<li class="st-${st.ok ? 'up' : st.skipped ? 'unknown' : 'down'}">${esc(st.name)}: ${st.ok ? 'ok' : st.skipped ? 'skipped' : 'failed'}</li>`).join('')}</ul>` : '<p class="lede">The daily developer path has not reported here yet.</p>'}
+${devPath ? `<p class="lede">Once a day a test developer account goes from sign-in to a sandbox project, a Media upload, an Events publish and pull, a credential rotation and revocation, and cleanup, through the public API and the SDK. ${lastRun(devPath)}</p>
+${proofSteps(devPath)}` : '<p class="lede">The daily developer path has not reported here yet.</p>'}
+</section>
+<section aria-labelledby="h-toolsjob"><h2 id="h-toolsjob">Tools job proof</h2>
+${toolsJob ? `<p class="lede">Every six hours a service client submits a converter job to OpenVibe.Tools through the SDK, drops and reattaches its progress stream, downloads the result from OpenVibe.Media and finds the job's events in OpenVibe.Events. ${lastRun(toolsJob)}</p>
+${proofSteps(toolsJob)}` : '<p class="lede">The Tools job proof has not reported here yet.</p>'}
 </section>
 <section aria-labelledby="h-slo"><h2 id="h-slo">SLO categories (proposals)</h2>
 <p class="lede">${esc(slo.note)} ${esc(slo.binding)} JSON: <a href="/api/v1/status/slo"><code>/api/v1/status/slo</code></a>.</p>
@@ -190,6 +203,7 @@ function createStatusRoutes({ ecosystem, now = () => new Date() }) {
             exposure_states: exposure.STATES,
             exposure_summary: exposureSummary(list),
             developer_path: loadDevPath(),
+            tools_job_proof: loadDevPath(TOOLSJOB_FILE),
             services: list,
         });
     });
@@ -199,7 +213,7 @@ function createStatusRoutes({ ecosystem, now = () => new Date() }) {
     r.get('/status', (_req, res) => {
         const slo = { ...loadSlo(), pollSeconds: ecosystem.pollMs / 1000 };
         res.set('Content-Type', 'text/html; charset=utf-8').set('Cache-Control', 'no-cache, max-age=0').set('X-Robots-Tag', 'noindex, nofollow');
-        res.send(renderPage(rows(ecosystem), slo, now().toISOString(), loadDevPath()));
+        res.send(renderPage(rows(ecosystem), slo, now().toISOString(), loadDevPath(), loadDevPath(TOOLSJOB_FILE)));
     });
     return r;
 }
