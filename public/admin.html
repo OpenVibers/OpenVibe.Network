@@ -388,11 +388,18 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 
     <!-- Moderation log (ADR-022): every staff action any service reports, from /api/v1/staff/moderation-audit -->
     <div class="section" id="sec-modlog">
-        <p class="muted" style="margin:0 0 10px">Staff actions reported by Chat and Live, Community, Tips and Billing. Each service enforces its own moderation; this is the record.</p>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-            <label for="modlog-service" class="muted" style="font-size:12px">Service</label>
-            <select id="modlog-service" onchange="loadModLog(true)"><option value="">All</option><option value="chat">Chat and Live</option><option value="community">Community</option><option value="tips">Tips</option><option value="billing">Billing</option></select>
-        </div>
+        <p class="muted" style="margin:0 0 10px">Staff actions reported by Chat, Live, Community, Tips and Billing. Each service enforces its own moderation; this is the record.</p>
+        <form id="modlog-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:10px" onsubmit="event.preventDefault(); loadModLog(true)">
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Service
+                <select id="modlog-service" onchange="loadModLog(true)"><option value="">All</option><option value="chat">Chat</option><option value="live">Live</option><option value="community">Community</option><option value="tips">Tips</option><option value="billing">Billing</option></select></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Action<input id="modlog-action" placeholder="e.g. site_ban" maxlength="64" style="width:130px"></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">By (subject)<input id="modlog-actor" placeholder="usr_…" maxlength="64" style="width:150px"></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Target<input id="modlog-target" placeholder="subject or id" maxlength="200" style="width:150px"></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">From<input id="modlog-since" type="date"></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Until<input id="modlog-until" type="date"></label>
+            <button class="btn" type="submit">Filter</button>
+            <button class="btn" type="button" onclick="exportModLog()">Export CSV</button>
+        </form>
         <div id="modlog-content"><div class="loading">Loading...</div></div>
         <div style="display:flex;justify-content:center;margin-top:12px"><button id="modlog-more" class="btn" hidden onclick="loadModLog(false)">Load more</button></div>
     </div>
@@ -3554,14 +3561,36 @@ async function loadBotAnalysis() {
 // ═══════════════════════════════════════════════════════════════
 let auditOffset = 0;
 let _modlogNext = null;
+// The filters as a query: dates are whole days (until includes its day).
+function modLogQuery() {
+    const q = new URLSearchParams();
+    const val = (id) => (document.getElementById(id)?.value || '').trim();
+    for (const [k, id] of [['service', 'modlog-service'], ['action', 'modlog-action'], ['actor', 'modlog-actor'], ['target', 'modlog-target']]) if (val(id)) q.set(k, val(id));
+    if (val('modlog-since')) q.set('since', `${val('modlog-since')}T00:00:00Z`);
+    if (val('modlog-until')) { const d = new Date(`${val('modlog-until')}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); q.set('until', d.toISOString()); }
+    return q;
+}
+async function exportModLog() {
+    const q = modLogQuery();
+    q.set('format', 'csv');
+    try {
+        const headers = token ? { Authorization: 'Bearer ' + token } : {};
+        const res = await fetch(`${API}/api/v1/staff/moderation-audit?${q}`, { headers, credentials: 'include' });
+        if (!res.ok) throw new Error(`export failed (${res.status})`);
+        const url = URL.createObjectURL(await res.blob());
+        const a = document.createElement('a');
+        a.href = url; a.download = `moderation-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (err) { alert(err.message || 'Export failed'); }
+}
 async function loadModLog(reset) {
     const c = document.getElementById('modlog-content');
     const more = document.getElementById('modlog-more');
-    const service = document.getElementById('modlog-service').value;
     if (reset) { _modlogNext = null; c.innerHTML = '<div class="loading">Loading...</div>'; }
     try {
-        const q = new URLSearchParams({ limit: '50' });
-        if (service) q.set('service', service);
+        const q = modLogQuery();
+        q.set('limit', '50');
         if (!reset && _modlogNext) q.set('before', String(_modlogNext));
         const data = await api(`/api/v1/staff/moderation-audit?${q}`);
         const items = data.items || [];
