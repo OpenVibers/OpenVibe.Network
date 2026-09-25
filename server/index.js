@@ -734,6 +734,12 @@ if (!fs.existsSync(avatarDir)) fs.mkdirSync(avatarDir, { recursive: true });
 app.use('/data/avatars', express.static(avatarDir, { maxAge: '7d' }));
 
 // Serve clean auth + recovery routes
+// People type /register and /signup: the sign-in page's create-account view (WS-B task 10), query kept.
+app.get(['/register', '/signup', '/sign-up'], (req, res) => {
+    const q = new URLSearchParams(req.query);
+    q.set('tab', 'register');
+    res.redirect(302, `/login?${q}`);
+});
 app.get(['/login', '/forgot-password', '/reset-password'], (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
 });

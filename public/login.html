@@ -305,15 +305,16 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
                 <div class="field">
                     <label>Username</label>
                     <input type="text" name="username" placeholder="Choose a username" required minlength="3" maxlength="24" pattern="^[a-zA-Z0-9_]+$" title="Use letters, numbers, and underscores only" autocomplete="username">
-                    <small class="panel-note">Allowed: letters, numbers, and underscores only; 3–24 characters; cannot start with "anon".</small>
+                    <small class="panel-note">Letters, numbers and underscores, 3 to 24 characters. You can pick a display name later.</small>
                 </div>
                 <div class="field">
                     <label>Email <span style="color:var(--text-dim)">(optional)</span></label>
                     <input type="email" name="email" placeholder="your@email.com" autocomplete="email">
                 </div>
-                <div class="field">
-                    <label>Verification Key <span style="color:var(--text-dim)">(optional)</span></label>
-                    <input type="text" name="verification_key" placeholder="OPENVIBE-XXXX-XXXX-XXXX" style="font-family:monospace">
+                <div class="field" id="claim-field" hidden>
+                    <label for="claim-code">Claim code</label>
+                    <input type="text" id="claim-code" name="verification_key" placeholder="OPENVIBE-XXXX-XXXX-XXXX" style="font-family:monospace" autocomplete="off">
+                    <small class="panel-note">This name is reserved for someone. If it is yours, enter the code you were given to claim it; otherwise choose another name.</small>
                 </div>
                 <div class="field">
                     <label>Password</label>
@@ -893,6 +894,12 @@ async function handleRegister(e) {
             }),
         });
         const data = await res.json();
+        // A reserved name: show the claim-code field only now (most people never need it).
+        if (!res.ok && data.reserved) {
+            const claim = document.getElementById('claim-field');
+            if (claim) { claim.hidden = false; document.getElementById('claim-code').focus(); }
+            throw new Error('This username is reserved. Enter its claim code, or choose another name.');
+        }
         if (!res.ok) throw new Error(data.error || 'Registration failed');
 
         localStorage.setItem('ov_token', data.token);
