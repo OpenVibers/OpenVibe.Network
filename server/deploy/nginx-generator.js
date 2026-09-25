@@ -529,6 +529,7 @@ function generateServiceConfig(serviceId, svc, opts = {}) {
     lines.push('    listen [::]:443 ssl;');
     lines.push('    http2 on;');
     lines.push(`    server_name ${serverNames};`);
+    lines.push('    include snippets/security-txt.conf;   # /.well-known/security.txt (the host\'s file; WS-R task 7)');
     lines.push('');
 
     // SSL certificate
