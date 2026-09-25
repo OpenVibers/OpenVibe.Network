@@ -238,10 +238,13 @@ function ensureSchema(db) {
         seed.run(client, cap, aud, JSON.stringify(ns));
         if (ns.length) fillNs.run(JSON.stringify(ns), client, cap, aud);
     }
+    // Owner changes (expiry, reason, who revoked) and their audit trail (WS-D task 3).
+    require('./grants-admin').ensureSchema(db);
 }
 
 function grantsFor(db, clientId, audience) {
-    return db.prepare('SELECT capability, namespaces FROM principal_grants WHERE client_id = ? AND audience = ? AND revoked_at IS NULL ORDER BY capability')
+    // An expired grant stops counting at once; grants-admin.expireDue() records the expiry.
+    return db.prepare('SELECT capability, namespaces FROM principal_grants WHERE client_id = ? AND audience = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP) ORDER BY capability')
         .all(clientId, audience).map(r => ({ capability: r.capability, namespaces: JSON.parse(r.namespaces || '[]') }));
 }
 

@@ -384,6 +384,8 @@ const jwt = require('jsonwebtoken');
 const requireAuth = require('./auth/session').makeRequireAuth(() => ({ db, publicKey, config }), authRoutes.signToken);
 // The moderation audit log for staff (staff.moderation.logs): server/admin/moderation-audit.js.
 app.use('/api/v1/staff/moderation-audit', requireAuth, moderationAudit.router());
+// Staff capabilities and the staff list (WS-D task 4; services need network.staff.read).
+app.use('/api/v1/staff', require('./admin/staff-api').createStaffApi({ db, requireAuth, guard: require('./identity/principals').guard }));
 // Username history (WS-B task 6): who holds a name now, so sites redirect /@old → /@new and pick up a
 // new name before they have seen it. Banned accounts and unknown names are 404.
 app.get('/api/v1/users/names/:name', rateLimit({ windowMs: 60_000, max: 240 }), (req, res) => {
@@ -473,6 +475,7 @@ require('./developer/event-relay').startRelay(db, { eventsUrl: config.eventsInte
 // network.user.updated (WS-B task 2): profile, role and ban changes, recorded by triggers on users and relayed
 // through the same outbox (server/identity/profile-events.js).
 require('./identity/profile-events').start(db);
+require('./identity/grants-admin').start(db);
 
 // Notification API (authenticated users)
 app.use('/api/notifications', createNotificationRoutes(db, notificationService, requireAuth));
@@ -554,6 +557,8 @@ app.get('/api/admin/ssh-info', requireAuth, requireAdmin, (req, res) => {
 app.use('/api/setup', createSetupRoutes(db, config));
 
 // Admin panel API
+// Service grants: owner-only, audited, network.principal_grant.changed (WS-D task 3).
+app.use('/api/admin/grants', requireAuth, require('./identity/grants-admin').router(db));
 app.use('/api/admin', createAdminRoutes(db, notificationService, emailService, requireAuth));
 
 // Analytics admin API

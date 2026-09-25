@@ -213,6 +213,7 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
                 <button class="admin-tab-btn" onclick="showTab('vkeys',this)"><i class="fa-solid fa-key"></i> Keys</button>
                 <button class="admin-tab-btn" onclick="showTab('audit',this)"><i class="fa-solid fa-clipboard-list"></i> Audit</button>
                 <button class="admin-tab-btn" onclick="showTab('modlog',this)"><i class="fa-solid fa-gavel"></i> Moderation log</button>
+                <button class="admin-tab-btn owner-only" onclick="showTab('grants',this)"><i class="fa-solid fa-key"></i> Service grants</button>
                 <button class="admin-tab-btn" onclick="showTab('analytics',this)"><i class="fa-solid fa-chart-pie"></i> Analytics</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('domains',this)"><i class="fa-solid fa-globe"></i> Domains</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('deploy',this)"><i class="fa-solid fa-server"></i> Deploy</button>
@@ -402,6 +403,26 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
         </form>
         <div id="modlog-content"><div class="loading">Loading...</div></div>
         <div style="display:flex;justify-content:center;margin-top:12px"><button id="modlog-more" class="btn" hidden onclick="loadModLog(false)">Load more</button></div>
+    </div>
+
+    <!-- Service grants (WS-D task 3): what each service principal may do, owner-only and audited -->
+    <div class="section" id="sec-grants">
+        <p class="muted" style="margin:0 0 10px">What each service may ask other services for. Tokens carry a change within 5 minutes. Every change needs a reason, is audited below and is announced as <code>network.principal_grant.changed</code>. Defaults come from the code.</p>
+        <form id="grant-form" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:12px" onsubmit="event.preventDefault(); submitGrant()">
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Service<input id="grant-client" placeholder="live" maxlength="64" style="width:110px" required></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Capability<input id="grant-cap" placeholder="network.staff.read" maxlength="120" style="width:210px" required></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Namespaces<input id="grant-ns" placeholder="comma separated (optional)" maxlength="400" style="width:180px"></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Expires<input id="grant-exp" type="date"></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Reason<input id="grant-reason" maxlength="500" style="width:220px" required></label>
+            <button class="btn" type="submit">Grant</button>
+        </form>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <label for="grant-filter" class="muted" style="font-size:12px">Show</label>
+            <input id="grant-filter" placeholder="service" maxlength="64" style="width:120px" oninput="renderGrants()">
+        </div>
+        <div id="grants-content"><div class="loading">Loading...</div></div>
+        <h3 style="margin:18px 0 8px;font-size:14px">Changes</h3>
+        <div id="grant-changes"></div>
     </div>
 
     <!-- Analytics -->
@@ -799,7 +820,7 @@ let currentTab = 'dashboard';
 // Tabs restricted to the network owner (API keys / money / infrastructure / core settings).
 // NOTE: 'ai' is NOT here — admins may use its analytics/explorer tools; only the
 // AI configuration form inside it is owner-gated (see loadAi).
-const OWNER_ONLY_TABS = new Set(['deploy', 'domains', 'payments', 'cashouts', 'storage', 'email', 'settings']);
+const OWNER_ONLY_TABS = new Set(['deploy', 'domains', 'payments', 'cashouts', 'storage', 'email', 'settings', 'grants']);
 const tabLoaders = {
     dashboard: loadDashboard,
     users: loadUsers,
@@ -820,6 +841,7 @@ const tabLoaders = {
     vkeys: loadVKeys,
     audit: loadAudit,
     modlog: () => loadModLog(true),
+    grants: () => loadGrants(),
     analytics: loadAnalytics,
     deploy: loadDeployOverview,
     domains: loadDomains,
@@ -3583,6 +3605,42 @@ async function exportModLog() {
         document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 5000);
     } catch (err) { alert(err.message || 'Export failed'); }
+}
+let _grants = [];
+async function loadGrants() {
+    const c = document.getElementById('grants-content');
+    try {
+        const [g, ch] = await Promise.all([api('/api/admin/grants'), api('/api/admin/grants/changes?limit=50')]);
+        _grants = g.grants || [];
+        renderGrants();
+        const rows = (ch.changes || []).map(x => `<tr><td style="white-space:nowrap;font-size:11px" title="${esc(x.at)}">${timeAgo(x.at)}</td><td><strong>${esc(x.change)}</strong></td><td><code>${esc(x.client_id)}</code></td><td><code>${esc(x.capability)}</code></td><td style="font-size:11px">${esc(x.reason || '-')}</td><td style="font-size:11px"><code>${esc(x.actor || 'system')}</code></td></tr>`).join('');
+        document.getElementById('grant-changes').innerHTML = rows ? `<table class="admin-table"><thead><tr><th>When</th><th>Change</th><th>Service</th><th>Capability</th><th>Reason</th><th>By</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="muted">No changes yet: every grant is still a default.</p>';
+    } catch (err) {
+        c.innerHTML = `<p class="muted">Grants could not be loaded: ${esc(err.message || 'error')}</p>`;
+    }
+}
+function renderGrants() {
+    const f = (document.getElementById('grant-filter').value || '').trim().toLowerCase();
+    const list = _grants.filter(g => !f || g.client_id.includes(f));
+    const badge = { active: 'badge-success', revoked: 'badge-danger', expired: 'badge-warning' };
+    document.getElementById('grants-content').innerHTML = list.length ? `<table class="admin-table"><thead><tr><th>Service</th><th>Capability</th><th>Audience</th><th>Namespaces</th><th>State</th><th>Expires</th><th>By</th><th></th></tr></thead><tbody>${list.map(g => `
+        <tr><td><code>${esc(g.client_id)}</code></td><td><code>${esc(g.capability)}</code></td><td style="font-size:11px">${esc(g.audience)}</td>
+        <td style="font-size:11px">${esc((g.namespaces || []).join(', ') || '-')}</td><td><span class="badge ${badge[g.state] || ''}">${esc(g.state)}</span></td>
+        <td style="font-size:11px">${g.expires_at ? esc(g.expires_at.slice(0, 10)) : '-'}</td><td style="font-size:11px">${esc(g.granted_by === 'default' ? 'default' : (g.granted_by || '-'))}</td>
+        <td>${g.state === 'active' ? `<button class="btn btn-sm" data-client="${esc(g.client_id)}" data-cap="${esc(g.capability)}" onclick="revokeGrant(this.dataset.client, this.dataset.cap)">Revoke</button>` : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">No grants match.</p>';
+}
+async function submitGrant() {
+    const v = (id) => document.getElementById(id).value.trim();
+    const body = { client_id: v('grant-client'), capability: v('grant-cap'), reason: v('grant-reason'), namespaces: v('grant-ns') ? v('grant-ns').split(',').map(x => x.trim()).filter(Boolean) : [] };
+    if (v('grant-exp')) body.expires_at = `${v('grant-exp')}T00:00:00Z`;
+    try { await api('/api/admin/grants', { method: 'POST', body }); document.getElementById('grant-reason').value = ''; loadGrants(); }
+    catch (err) { alert(err.message || 'Grant failed'); }
+}
+async function revokeGrant(client, capability) {
+    const reason = prompt(`Revoke ${capability} from ${client}? Reason:`);
+    if (!reason) return;
+    try { await api('/api/admin/grants/revoke', { method: 'POST', body: { client_id: client, capability, reason } }); loadGrants(); }
+    catch (err) { alert(err.message || 'Revoke failed'); }
 }
 async function loadModLog(reset) {
     const c = document.getElementById('modlog-content');
