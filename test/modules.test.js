@@ -16,7 +16,13 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-modules-'));
 const log = console.log; console.log = () => {};
 const db = initDb(path.join(dir, 'network.db'));
 console.log = log;
-for (const [c, s] of [['live', 'live-secret'], ['tools', 'tools-secret'], ['games', 'games-secret']]) db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(s, c);
+// chat and ai are registered on the host, not seeded: add them as copies of tools, then seed their grants again.
+for (const c of ['chat', 'ai']) {
+    const cols = db.prepare('PRAGMA table_info(oauth_clients)').all().map(x => x.name).filter(n => n !== 'client_id' && n !== 'id');
+    db.prepare(`INSERT INTO oauth_clients (client_id, ${cols.join(', ')}) SELECT ?, ${cols.join(', ')} FROM oauth_clients WHERE client_id = 'tools'`).run(c);
+}
+require('../server/identity/principals').ensureSchema(db);
+for (const [c, s] of [['live', 'live-secret'], ['tools', 'tools-secret'], ['games', 'games-secret'], ['chat', 'chat-secret'], ['ai', 'ai-secret']]) db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(s, c);
 db.prepare("INSERT INTO users (id, username, password_hash, subject_id) VALUES (1, 'ann', 'x', 'usr_01JAB2C3D4E5F6G7H8J9K0MNPA'), (2, 'bob', 'x', 'usr_01JAB2C3D4E5F6G7H8J9K0MNPB')").run();
 const ANN = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPA';
 
@@ -45,18 +51,18 @@ const server = http.createServer(app);
     // ── The user ──
     let r = await call('GET', '/api/modules/chat.tts_defaults', { headers: me });
     assert.strictEqual(r.status, 404);
-    r = await call('PUT', '/api/modules/chat.tts_defaults', { headers: me, body: { data: { voice: 'en-1', rate: 1.2 } } });
+    r = await call('PUT', '/api/modules/chat.tts_defaults', { headers: me, body: { data: { send: true, volume: 40 } } });
     assert.strictEqual(r.status, 428, 'a user write must say which revision it read');
-    r = await call('PUT', '/api/modules/chat.tts_defaults', { headers: { ...me, 'if-match': '0' }, body: { data: { voice: 'en-1', rate: 1.2 } } });
+    r = await call('PUT', '/api/modules/chat.tts_defaults', { headers: { ...me, 'if-match': '0' }, body: { data: { send: true, volume: 40 } } });
     assert.strictEqual(r.status, 201, JSON.stringify(r.body));
     assert.strictEqual(r.body.revision, 1); assert.strictEqual(r.etag, '"1"');
     assert.ok(validate('modules.module-record@1', r.body).valid);
     assert.deepStrictEqual(r.body.subject, { type: 'user', id: ANN });
-    r = await call('PUT', '/api/modules/chat.tts_defaults', { headers: { ...me, 'if-match': '0' }, body: { data: { voice: 'en-2' } } });
+    r = await call('PUT', '/api/modules/chat.tts_defaults', { headers: { ...me, 'if-match': '0' }, body: { data: { volume: 50 } } });
     assert.strictEqual(r.status, 412, 'stale revision refused'); assert.strictEqual(r.body.code, 'modules.revision_conflict');
-    r = await call('PUT', '/api/modules/chat.tts_defaults', { headers: { ...me, 'if-match': '"1"' }, body: { data: { voice: 'en-2', rate: 5 } } });
+    r = await call('PUT', '/api/modules/chat.tts_defaults', { headers: { ...me, 'if-match': '"1"' }, body: { data: { volume: 500 } } });
     assert.strictEqual(r.status, 422, 'schema enforced'); assert.ok(r.body.errors.length);
-    r = await call('PUT', '/api/modules/chat.tts_defaults', { headers: { ...me, 'if-match': '"1"' }, body: { data: { voice: 'en-2' } } });
+    r = await call('PUT', '/api/modules/chat.tts_defaults', { headers: { ...me, 'if-match': '"1"' }, body: { data: { volume: 50 } } });
     assert.strictEqual(r.status, 200); assert.strictEqual(r.body.revision, 2);
     r = await call('PUT', '/api/modules/live.profile', { headers: { ...me, 'if-match': '0' }, body: { data: { followers: 1000000 } } });
     assert.strictEqual(r.status, 403, 'users cannot write a service-owned summary'); assert.strictEqual(r.body.code, 'modules.write_denied');
@@ -75,7 +81,36 @@ const server = http.createServer(app);
     r = await call('GET', `/internal/modules/chat.tts_defaults/${ANN}`, { headers: { authorization: `Bearer ${tools}` } });
     assert.strictEqual(r.status, 403, 'tools cannot read chat preferences');
     r = await call('GET', `/internal/modules/chat.tts_defaults/${ANN}`, { headers: { authorization: `Bearer ${live}` } });
-    assert.strictEqual(r.status, 200); assert.strictEqual(r.body.data.voice, 'en-2');
+    assert.strictEqual(r.status, 403, 'chat.tts_defaults is Chat\'s since contracts 0.41.0: Live has no grant');
+    const chat = await svc('chat');
+    r = await call('GET', `/internal/modules/chat.tts_defaults/${ANN}`, { headers: { authorization: `Bearer ${chat}` } });
+    assert.strictEqual(r.status, 200); assert.strictEqual(r.body.data.volume, 50);
+
+    // ── Field-level read rules (readers) ──
+    r = await call('PUT', '/api/modules/ai.preferences', { headers: { ...me, 'if-match': '0' }, body: { data: { style: 'casual', history: false } } });
+    assert.strictEqual(r.status, 201, JSON.stringify(r.body));
+    const ai = await svc('ai');
+    r = await call('GET', `/internal/modules/ai.preferences/${ANN}`, { headers: { authorization: `Bearer ${ai}` } });
+    assert.deepStrictEqual(r.body.data, { style: 'casual', history: false }, 'ai is a listed reader of ai.preferences');
+    r = await call('PUT', `/internal/modules/live.stats/${ANN}`, { headers: { authorization: `Bearer ${live}` }, body: { data: { streams_30d: 3, peak_viewers_30d: 12, new_followers_30d: 7 } } });
+    assert.strictEqual(r.status, 201, JSON.stringify(r.body));
+    db.prepare("UPDATE principal_grants SET namespaces = '[\"tools.usage\",\"live.stats\"]' WHERE client_id = 'tools' AND capability = 'network.modules.read'").run();
+    const tools2 = await svc('tools');
+    r = await call('GET', `/internal/modules/live.stats/${ANN}`, { headers: { authorization: `Bearer ${tools2}` } });
+    assert.deepStrictEqual(r.body.data, { streams_30d: 3, peak_viewers_30d: 12 }, 'a granted service that is not a listed reader sees public fields only');
+    r = await call('GET', `/internal/modules/live.stats/${ANN}`, { headers: { authorization: `Bearer ${live}` } });
+    assert.strictEqual(r.body.data.new_followers_30d, 7, 'the owner reads the whole record');
+
+    // ── Version migration: a stored v1 record reads as the current version ──
+    db.prepare("INSERT INTO user_modules (subject_id, namespace, version, revision, data) VALUES (?, 'tools.usage', 1, 1, ?)").run(ANN, JSON.stringify({ recent: [{ tool: 'img' }] }));
+    r = await call('GET', '/api/modules/tools.usage', { headers: me });
+    assert.strictEqual(r.body.version, 2); assert.deepStrictEqual(r.body.data, { recent: [{ tool: 'img' }] });
+    r = await call('PUT', '/api/modules/tools.usage', { headers: { ...me, 'if-match': '1' }, body: { data: { ...r.body.data, favorites: ['img'] } } });
+    assert.strictEqual(r.status, 200, 'the person may star tools (tools.usage v2)');
+    assert.strictEqual(db.prepare("SELECT version FROM user_modules WHERE subject_id = ? AND namespace = 'tools.usage'").get(ANN).version, 2, 'the next write stores the current version');
+    db.prepare("INSERT INTO user_modules (subject_id, namespace, version, revision, data) VALUES ('usr_01JAB2C3D4E5F6G7H8J9K0MNPB', 'chat.tts_defaults', 1, 1, ?)").run(JSON.stringify({ voice: 'en-1', rate: 1.2, muted: true }));
+    r = await call('GET', '/internal/modules/chat.tts_defaults/usr_01JAB2C3D4E5F6G7H8J9K0MNPB', { headers: { authorization: `Bearer ${chat}` } });
+    assert.strictEqual(r.body.version, 2); assert.deepStrictEqual(r.body.data, {}, 'v1 tts fields are dropped by the migration');
     r = await call('PUT', `/internal/modules/live.profile/${ANN}`, { headers: { 'x-internal-key': 'legacy-key' }, body: { data: { followers: 1 } } });
     assert.strictEqual(r.status, 403, 'module routes never accept the shared key');
     assert.ok(db.prepare("SELECT 1 FROM principal_usage WHERE principal = 'legacy-key' AND auth = 'internal-key' AND allowed = 0 AND route LIKE 'PUT /internal/modules%'").get(), 'a refused key is audited as the key');
@@ -95,7 +130,7 @@ const server = http.createServer(app);
 
     // ── Export and delete: the user's data ──
     r = await call('GET', '/api/modules', { headers: me });
-    assert.deepStrictEqual(r.body.modules.map(m => m.namespace), ['chat.tts_defaults', 'live.profile']);
+    assert.deepStrictEqual(r.body.modules.map(m => m.namespace), ['ai.preferences', 'chat.tts_defaults', 'live.profile', 'live.stats', 'tools.usage']);
     assert.ok(r.body.namespaces.find(n => n.namespace === 'chat.preferences').userWritable);
     assert.ok(r.cache.includes('no-store'));
     r = await call('DELETE', '/api/modules/live.profile', { headers: me });

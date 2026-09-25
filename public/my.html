@@ -238,6 +238,12 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
 .recent-tools-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .recent-tool { padding: 6px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; font-weight: 600; text-decoration: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .recent-tool:hover { border-color: var(--accent); color: var(--accent-light); }
+.recent-tools-status { margin: 6px 0 0; font-size: 12px; color: var(--text-secondary); }
+.recent-tools-status:empty { display: none; }
+.recent-tool-item { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; }
+.recent-tool-star { border: 0; background: none; color: var(--text-secondary); cursor: pointer; padding: 6px; font-size: 12px; border-radius: 999px; }
+.recent-tool-star[aria-pressed="true"] { color: var(--accent-light); }
+.recent-tool-star:hover, .recent-tool-star:focus-visible { color: var(--accent-light); }
 </style>
 </head>
 <body>
@@ -263,8 +269,9 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
         <div class="showcase-grid" id="my-showcase-grid"></div>
         <div class="quick-access" id="my-quick-access"></div>
         <div class="recent-tools" id="my-recent-tools" hidden>
-            <h3><i class="fa-solid fa-screwdriver-wrench"></i> Your recent tools</h3>
+            <h3><i class="fa-solid fa-screwdriver-wrench"></i> Your tools</h3>
             <div class="recent-tools-list" id="my-recent-tools-list"></div>
+            <p class="recent-tools-status" id="my-recent-tools-status" role="status"></p>
         </div>
     </div>
 
@@ -655,31 +662,70 @@ function buildDashboardShowcase() {
     quickAccess.innerHTML = quickLinks.map(l => `<a class="quick-link" onclick="${l.onclick}"><i class="fa-solid ${l.icon}"></i>${l.label}</a>`).join('');
 }
 
-// Recently used tools: the tools.usage module OpenVibe.Tools keeps for this person, named from the
-// public Tools registry (a tool that is gone from it is skipped).
-async function loadRecentTools() {
+// Your tools: the tools.usage module (contracts 0.41.0, v2). OpenVibe.Tools keeps `recent`; `favorites`
+// is the person's own (starred here or in the Tools launcher). Names come from the public Tools
+// registry; a tool that is gone from it is skipped. Writes name the revision read (If-Match).
+let toolsUsage = null, toolsRegistry = null;
+async function saveToolFavorites(next) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+        const data = { ...(toolsUsage ? toolsUsage.data : {}), favorites: next };
+        try {
+            toolsUsage = await apiFetch('/api/modules/tools.usage', { method: 'PUT', headers: { 'If-Match': String(toolsUsage ? toolsUsage.revision : 0) }, body: JSON.stringify({ data }) });
+            return true;
+        } catch (e) {
+            if (e.status !== 412) return false;
+            toolsUsage = await apiFetch('/api/modules/tools.usage').catch(() => null);   // moved: read again, then retry
+        }
+    }
+    return false;
+}
+function renderYourTools() {
     const box = document.getElementById('my-recent-tools');
     const list = document.getElementById('my-recent-tools-list');
-    if (!box || !list) return;
+    if (!box || !list || !toolsRegistry) return;
+    const data = toolsUsage && toolsUsage.data ? toolsUsage.data : {};
+    const favorites = Array.isArray(data.favorites) ? data.favorites : [];
+    const recent = Array.isArray(data.recent) ? data.recent : [];
+    const entries = [...favorites.map(tool => ({ tool, fav: true })), ...recent.filter(e => !favorites.includes(e.tool)).map(e => ({ ...e, fav: false }))];
+    list.replaceChildren();
+    for (const e of entries) {
+        const t = toolsRegistry.get(e.tool);
+        if (!t || list.childElementCount >= 16) continue;
+        const item = document.createElement('span');
+        item.className = 'recent-tool-item';
+        const a = document.createElement('a');
+        a.className = 'recent-tool';
+        a.href = t.hosts && t.hosts[0] ? 'https://' + t.hosts[0] : 'https://openvibe.tools/tool/' + encodeURIComponent(t.id);
+        a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = t.name;
+        if (e.at) a.title = 'Last used ' + new Date(e.at).toLocaleString();
+        const star = document.createElement('button');
+        star.type = 'button';
+        star.className = 'recent-tool-star';
+        star.setAttribute('aria-pressed', String(e.fav));
+        star.setAttribute('aria-label', (e.fav ? 'Remove ' : 'Add ') + t.name + (e.fav ? ' from favourites' : ' to favourites'));
+        star.innerHTML = `<i class="fa-${e.fav ? 'solid' : 'regular'} fa-star"></i>`;
+        star.addEventListener('click', async () => {
+            star.disabled = true;
+            const next = e.fav ? favorites.filter(id => id !== e.tool) : [e.tool, ...favorites].slice(0, 24);
+            const ok = await saveToolFavorites(next);
+            const status = document.getElementById('my-recent-tools-status');
+            if (status) status.textContent = ok ? '' : 'Could not save your favourites. Try again.';
+            renderYourTools();
+        });
+        item.append(a, star);
+        list.appendChild(item);
+    }
+    box.hidden = list.childElementCount === 0;
+}
+async function loadRecentTools() {
     try {
-        const rec = await apiFetch('/api/modules/tools.usage').catch(() => null);
-        const recent = rec && rec.data && Array.isArray(rec.data.recent) ? rec.data.recent : [];
-        if (!recent.length) return;
+        toolsUsage = await apiFetch('/api/modules/tools.usage').catch(() => null);
+        const d = toolsUsage && toolsUsage.data ? toolsUsage.data : {};
+        if (!(d.recent || []).length && !(d.favorites || []).length) return;
         const reg = await fetchWithTimeout('https://openvibe.tools/api/v1/tools', {}, 8000).then(r => (r.ok ? r.json() : { tools: [] }));
-        const byId = new Map((reg.tools || []).map(t => [t.id, t]));
-        list.replaceChildren();
-        for (const e of recent) {
-            const t = byId.get(e.tool);
-            if (!t || list.childElementCount >= 12) continue;
-            const a = document.createElement('a');
-            a.className = 'recent-tool';
-            a.href = t.hosts && t.hosts[0] ? 'https://' + t.hosts[0] : 'https://openvibe.tools/tool/' + encodeURIComponent(t.id);
-            a.target = '_blank'; a.rel = 'noopener';
-            a.textContent = t.name;
-            if (e.at) a.title = 'Last used ' + new Date(e.at).toLocaleString();
-            list.appendChild(a);
-        }
-        box.hidden = list.childElementCount === 0;
+        toolsRegistry = new Map((reg.tools || []).map(t => [t.id, t]));
+        renderYourTools();
     } catch { /* optional */ }
 }
 

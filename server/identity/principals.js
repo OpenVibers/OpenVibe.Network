@@ -16,17 +16,26 @@ const { serviceAuth, capabilities, assertValid, http } = require('openvibe-contr
 const TOKEN_TTL_S = 300;
 const SELF_AUDIENCE = 'openvibe.network';
 
+const CHAT_NAMESPACES = ['chat.preferences', 'chat.tts_defaults', 'chat.dm_settings', 'chat.presence_prefs'];
+
 // Initial grants: what each service does against Network today (docs/roadmap-baseline/04-cross-service.md).
 const DEFAULT_GRANTS = [
     ['live', 'network.coins.credit', SELF_AUDIENCE, ['live']],
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],
     ['live', 'network.notifications.push', SELF_AUDIENCE, ['live']],
     // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
-    // chat.preferences moved to Chat with the Wave 6 cutover (its owner in the contracts); Live keeps reading it.
-    ['live', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile']],
-    ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.tts_defaults', 'live.profile']],
-    ['chat', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences']],
-    ['chat', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences']],
+    // The chat.* namespaces are Chat's (chat.preferences since the Wave 6 cutover, chat.tts_defaults since
+    // contracts 0.41.0). A service reading another's namespace sees only the fields `readers` lists for it.
+    ['live', 'network.modules.read', SELF_AUDIENCE, ['live.profile', 'live.stats']],
+    ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats']],
+    ['chat', 'network.modules.read', SELF_AUDIENCE, CHAT_NAMESPACES],
+    ['chat', 'network.modules.write', SELF_AUDIENCE, CHAT_NAMESPACES],
+    ['ai', 'network.modules.read', SELF_AUDIENCE, ['ai.preferences', 'ai.usage_summary']],
+    ['ai', 'network.modules.write', SELF_AUDIENCE, ['ai.usage_summary']],
+    ['community', 'network.modules.read', SELF_AUDIENCE, ['community.profile']],
+    ['community', 'network.modules.write', SELF_AUDIENCE, ['community.profile']],
+    ['wiki', 'network.modules.read', SELF_AUDIENCE, ['wiki.projects']],
+    ['wiki', 'network.modules.write', SELF_AUDIENCE, ['wiki.projects']],
     ['tools', 'network.modules.read', SELF_AUDIENCE, ['tools.usage']],
     ['tools', 'network.modules.write', SELF_AUDIENCE, ['tools.usage']],
     ['games', 'network.modules.read', SELF_AUDIENCE, ['games.progress.summary']],
@@ -177,10 +186,14 @@ const DEFAULT_GRANTS = [
 const REVOKED_GRANTS = [['live', 'network.coins.transfer', SELF_AUDIENCE]];
 
 // Default grants whose namespaces changed: a row still exactly as the old default seeded it is moved to
-// the new list at boot (a row someone edited is left alone). Live's write grant lost chat.preferences
-// when the namespace moved to Chat (Wave 6).
+// the new list at boot, in this order (a row someone edited is left alone). Live's write grant lost
+// chat.preferences when the namespace moved to Chat (Wave 6), then chat.tts_defaults (contracts 0.41.0).
 const CHANGED_DEFAULT_NAMESPACES = [
     ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile'], ['chat.tts_defaults', 'live.profile']],
+    ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.tts_defaults', 'live.profile'], ['live.profile', 'live.stats']],
+    ['live', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile'], ['live.profile', 'live.stats']],
+    ['chat', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences'], CHAT_NAMESPACES],
+    ['chat', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences'], CHAT_NAMESPACES],
 ];
 
 function ensureSchema(db) {

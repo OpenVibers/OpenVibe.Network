@@ -27,6 +27,8 @@ for (const [c, s] of [['live', 'live-secret'], ['tools', 'tools-secret']]) db.pr
 db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('chat', 'chat-secret', 'OpenVibe.Chat', '[]', 1)").run();
 // A Live write grant as an older boot seeded it (with chat.preferences), to see it narrow.
 db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = 'live' AND capability = 'network.modules.write'").run(JSON.stringify(['chat.preferences', 'chat.tts_defaults', 'live.profile']));
+// Chat's grants as a boot before contracts 0.41.0 seeded them (chat.preferences only), to see them widen.
+for (const cap of ['network.modules.read', 'network.modules.write']) db.prepare("INSERT INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES ('chat', ?, 'openvibe.network', '[\"chat.preferences\"]', 'default')").run(cap);
 require('../server/identity/principals').ensureSchema(db);
 
 const ANN = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPA';
@@ -65,24 +67,25 @@ const valid = (e) => { const v = contracts.validate('events.event-envelope@1', e
     const tokenOf = (id) => ({ authorization: `Bearer ${signToken(db.prepare('SELECT * FROM users WHERE id = ?').get(id), keys.privateKey, config)}` });
     const svc = async (client) => (await fetch(`${base}/oauth/token`, { method: 'POST', body: new URLSearchParams({ grant_type: 'client_credentials', client_id: client, client_secret: `${client}-secret`, audience: 'openvibe.network' }) }).then(r => r.json()));
 
-    // ── Grants: Chat reads and writes chat.preferences; Live's write grant lost it ──
+    // ── Grants: Chat reads and writes the chat.* namespaces; Live's grants lost them (contracts 0.41.0) ──
+    const CHAT_NS = ['chat.preferences', 'chat.tts_defaults', 'chat.dm_settings', 'chat.presence_prefs'];
     const grant = (c, cap) => JSON.parse(db.prepare('SELECT namespaces FROM principal_grants WHERE client_id = ? AND capability = ?').get(c, cap).namespaces);
-    assert.deepStrictEqual(grant('chat', 'network.modules.read'), ['chat.preferences']);
-    assert.deepStrictEqual(grant('chat', 'network.modules.write'), ['chat.preferences']);
-    assert.deepStrictEqual(grant('live', 'network.modules.write'), ['chat.tts_defaults', 'live.profile'], 'the old default narrows at boot');
-    assert.ok(grant('live', 'network.modules.read').includes('chat.preferences'), 'Live keeps reading it');
+    assert.deepStrictEqual(grant('chat', 'network.modules.read'), CHAT_NS);
+    assert.deepStrictEqual(grant('chat', 'network.modules.write'), CHAT_NS);
+    assert.deepStrictEqual(grant('live', 'network.modules.write'), ['live.profile', 'live.stats'], 'the old defaults move to the new one at boot');
+    assert.deepStrictEqual(grant('live', 'network.modules.read'), ['live.profile', 'live.stats']);
     // Chat manages its own Events subscriptions (live.release.deployed, network.module.updated).
     const chatEvents = await fetch(`${base}/oauth/token`, { method: 'POST', body: new URLSearchParams({ grant_type: 'client_credentials', client_id: 'chat', client_secret: 'chat-secret', audience: 'openvibe.events', scope: 'events.subscription.manage' }) }).then(r => r.json());
     assert.strictEqual(chatEvents.scope, 'events.subscription.manage', JSON.stringify(chatEvents));
     const chatTok = await svc('chat');
     const claims = JSON.parse(Buffer.from(chatTok.access_token.split('.')[1], 'base64url').toString());
-    assert.deepStrictEqual(claims.ns, ['chat.preferences']);
+    assert.deepStrictEqual(claims.ns, CHAT_NS);
     const chat = { authorization: `Bearer ${chatTok.access_token}` };
     const live = { authorization: `Bearer ${(await svc('live')).access_token}` };
 
     // ── Ownership: chat.preferences belongs to Chat ──
     assert.strictEqual(modulesLib.ownerOf('chat.preferences'), 'chat');
-    assert.strictEqual(modulesLib.ownerOf('chat.tts_defaults'), 'live');
+    assert.strictEqual(modulesLib.ownerOf('chat.tts_defaults'), 'chat', 'Chat\'s since contracts 0.41.0');
     let r = await call('PUT', `/internal/modules/chat.preferences/${ANN}`, { headers: live, body: { data: { timestamps: true } } });
     assert.strictEqual(r.status, 403, 'Live no longer writes chat.preferences');
 
@@ -183,11 +186,11 @@ const valid = (e) => { const v = contracts.validate('events.event-envelope@1', e
 
     // ── Guest -> account: POST /api/auth/anon/:token/link moves the guest's modules ──
     modulesLib.write(db, GUEST, 'chat.preferences', { compact: true }, { writer: { type: 'service', id: 'chat' } });
-    modulesLib.write(db, GUEST, 'chat.tts_defaults', { rate: 1.5 }, { writer: { type: 'user' }, expectedRevision: 0 });
+    modulesLib.write(db, GUEST, 'chat.tts_defaults', { volume: 15 }, { writer: { type: 'user' }, expectedRevision: 0 });
     assert.throws(() => db.prepare('DELETE FROM anon_users WHERE id = 50').run(), /onSubjectRemoved/);
     r = await call('POST', '/api/auth/anon/anon-token-7/link', { headers: tokenOf(1) });
     assert.strictEqual(r.status, 200, JSON.stringify(r.body));
-    assert.deepStrictEqual(modulesLib.read(db, ANN, 'chat.tts_defaults').data, { rate: 1.5 }, 'moved');
+    assert.deepStrictEqual(modulesLib.read(db, ANN, 'chat.tts_defaults').data, { volume: 15 }, 'moved');
     assert.deepStrictEqual(modulesLib.read(db, ANN, 'chat.preferences').data, { hide_emotes: true }, 'the account kept its own');
     assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM user_modules WHERE subject_id = ?').get(GUEST).n, 0);
 

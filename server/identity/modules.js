@@ -113,9 +113,16 @@ function ensureSchema(db) {
 
 const subjectRef = (sid) => ({ type: sid.startsWith('gst_') ? 'guest' : 'user', id: sid });
 
+/**
+ * A stored row as a record at the namespace's current version (its declarative migrations, contract
+ * modules.namespace@1). The row itself is rewritten at the current version on its next write.
+ */
 function toRecord(row) {
-    return { subject: subjectRef(row.subject_id), namespace: row.namespace, version: row.version, revision: row.revision,
-        data: JSON.parse(row.data), updated_at: row.updated_at, updated_by: row.updated_by || undefined };
+    let data = JSON.parse(row.data), version = row.version;
+    const up = modules.upgrade(row.namespace, data, version);
+    if (up && up.upgraded) ({ data, version } = up);
+    return { subject: subjectRef(row.subject_id), namespace: row.namespace, version, revision: row.revision,
+        data, updated_at: row.updated_at, updated_by: row.updated_by || undefined };
 }
 
 function read(db, subjectId, namespace) {
@@ -363,6 +370,9 @@ function serviceRoutes(router, principals) {
         const sid = resolveSubject(db, req.params.subject);
         const rec = sid && read(db, sid, req.params.ns);
         if (!rec) return problem(res, { status: 404, code: 'modules.not_found' }, req);
+        // Field-level read rules: the owner reads everything, another service what `readers` lists for it.
+        const svc = serviceOf(req);
+        if (svc !== ownerOf(req.params.ns)) rec.data = modules.serviceView(req.params.ns, svc, rec.data);
         withEtag(res, rec).json(rec);
     });
 
