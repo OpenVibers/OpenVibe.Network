@@ -214,6 +214,7 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
                 <button class="admin-tab-btn" onclick="showTab('audit',this)"><i class="fa-solid fa-clipboard-list"></i> Audit</button>
                 <button class="admin-tab-btn" onclick="showTab('modlog',this)"><i class="fa-solid fa-gavel"></i> Moderation log</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('grants',this)"><i class="fa-solid fa-key"></i> Service grants</button>
+                <button class="admin-tab-btn owner-only" onclick="showTab('eventsops',this)"><i class="fa-solid fa-route"></i> Event deliveries</button>
                 <button class="admin-tab-btn" onclick="showTab('analytics',this)"><i class="fa-solid fa-chart-pie"></i> Analytics</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('domains',this)"><i class="fa-solid fa-globe"></i> Domains</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('deploy',this)"><i class="fa-solid fa-server"></i> Deploy</button>
@@ -423,6 +424,19 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
         <div id="grants-content"><div class="loading">Loading...</div></div>
         <h3 style="margin:18px 0 8px;font-size:14px">Changes</h3>
         <div id="grant-changes"></div>
+    </div>
+
+    <!-- Event deliveries (WS-F task 3): OpenVibe.Events' dead-letter queue and replays -->
+    <div class="section" id="sec-eventsops">
+        <p class="muted" style="margin:0 0 10px">Deliveries OpenVibe.Events could not make. A dead delivery stopped retrying; replay it once its consumer is fixed. Replays are audited.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:10px">
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Status
+                <select id="dlq-status" onchange="loadDeliveries()"><option value="dead">Dead</option><option value="failed">Failing (retrying)</option><option value="pending">Pending</option></select></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Subscription<input id="dlq-sub" placeholder="sub_…" maxlength="40" style="width:240px"></label>
+            <button class="btn" type="button" onclick="loadDeliveries()">Show</button>
+        </div>
+        <div id="dlq-counts" class="muted" style="font-size:12px;margin-bottom:8px"></div>
+        <div id="dlq-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Analytics -->
@@ -820,7 +834,7 @@ let currentTab = 'dashboard';
 // Tabs restricted to the network owner (API keys / money / infrastructure / core settings).
 // NOTE: 'ai' is NOT here — admins may use its analytics/explorer tools; only the
 // AI configuration form inside it is owner-gated (see loadAi).
-const OWNER_ONLY_TABS = new Set(['deploy', 'domains', 'payments', 'cashouts', 'storage', 'email', 'settings', 'grants']);
+const OWNER_ONLY_TABS = new Set(['deploy', 'domains', 'payments', 'cashouts', 'storage', 'email', 'settings', 'grants', 'eventsops']);
 const tabLoaders = {
     dashboard: loadDashboard,
     users: loadUsers,
@@ -842,6 +856,7 @@ const tabLoaders = {
     audit: loadAudit,
     modlog: () => loadModLog(true),
     grants: () => loadGrants(),
+    eventsops: () => loadDeliveries(),
     analytics: loadAnalytics,
     deploy: loadDeployOverview,
     domains: loadDomains,
@@ -3605,6 +3620,35 @@ async function exportModLog() {
         document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 5000);
     } catch (err) { alert(err.message || 'Export failed'); }
+}
+let _deliveries = [];
+async function loadDeliveries() {
+    const c = document.getElementById('dlq-content');
+    const q = new URLSearchParams({ status: document.getElementById('dlq-status').value, limit: '200' });
+    const sub = document.getElementById('dlq-sub').value.trim();
+    if (sub) q.set('subscription_id', sub);
+    c.innerHTML = '<div class="loading">Loading...</div>';
+    try {
+        const d = await api(`/api/admin/events/deliveries?${q}`);
+        _deliveries = d.deliveries || [];
+        const counts = d.counts || {};
+        document.getElementById('dlq-counts').textContent = Object.entries(counts).map(([k, v]) => `${k}: ${v}`).join(' · ');
+        const bySub = {};
+        for (const x of _deliveries) (bySub[x.subscription_id] = bySub[x.subscription_id] || []).push(x.event_id);
+        const replayAll = Object.entries(bySub).map(([s, ids]) => `<button class="btn btn-sm" data-sub="${esc(s)}" onclick="replayDeliveries(this.dataset.sub, null)">Replay ${ids.length} for ${esc(s.slice(0, 14))}…</button>`).join(' ');
+        c.innerHTML = _deliveries.length ? `<div style="margin-bottom:8px">${replayAll}</div><table class="admin-table"><thead><tr><th>Event</th><th>Subscription</th><th>Seq</th><th>Attempts</th><th>Last answer</th><th></th></tr></thead><tbody>${_deliveries.map(x => `
+            <tr><td style="font-size:11px"><code>${esc(x.event_id)}</code></td><td style="font-size:11px"><code>${esc(x.subscription_id)}</code></td><td>${esc(String(x.seq))}</td><td>${esc(String(x.attempt))}</td>
+            <td style="font-size:11px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(x.last_error || '')}">${esc(x.last_status ? String(x.last_status) : '-')} ${esc(x.last_error || '')}</td>
+            <td><button class="btn btn-sm" data-sub="${esc(x.subscription_id)}" data-evt="${esc(x.event_id)}" onclick="replayDeliveries(this.dataset.sub, [this.dataset.evt])">Replay</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted">Nothing here.</p>';
+    } catch (err) {
+        c.innerHTML = `<p class="muted">Deliveries could not be loaded: ${esc(err.message || 'error')}</p>`;
+    }
+}
+async function replayDeliveries(sub, ids) {
+    const eventIds = ids || _deliveries.filter(x => x.subscription_id === sub).map(x => x.event_id);
+    if (!eventIds.length || !confirm(`Replay ${eventIds.length} deliver${eventIds.length === 1 ? 'y' : 'ies'} to ${sub}?`)) return;
+    try { const r = await api('/api/admin/events/replay', { method: 'POST', body: { subscription_id: sub, event_ids: eventIds } }); alert(`Queued ${r.queued}`); loadDeliveries(); }
+    catch (err) { alert(err.message || 'Replay failed'); }
 }
 let _grants = [];
 async function loadGrants() {

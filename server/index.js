@@ -557,6 +557,8 @@ app.get('/api/admin/ssh-info', requireAuth, requireAdmin, (req, res) => {
 app.use('/api/setup', createSetupRoutes(db, config));
 
 // Admin panel API
+// OpenVibe.Events' dead-letter queue and replays, owner-only (WS-F task 3).
+app.use('/api/admin/events', requireAuth, require('./admin/events-ops').createEventsOps({ db, eventsUrl: config.eventsInternalUrl, privateKey, issuer: config.jwt.issuer }));
 // Service grants: owner-only, audited, network.principal_grant.changed (WS-D task 3).
 app.use('/api/admin/grants', requireAuth, require('./identity/grants-admin').router(db));
 app.use('/api/admin', createAdminRoutes(db, notificationService, emailService, requireAuth));
