@@ -123,6 +123,19 @@ const rel = (release) => [200, { service: 'x', release, released_at: '2026-09-22
         if (!c.measured_by.length) assert.ok(/not instrumented/.test(c.measurement_status), `${c.id} says it is not measured`);
     }
 
+    // The daily developer path (WS-N task 1): read from its result file, names and outcomes only.
+    {
+        const fsx = require('fs'); const osx = require('os'); const px = require('path');
+        const { loadDevPath } = require('../server/status/routes');
+        const f = px.join(fsx.mkdtempSync(px.join(osx.tmpdir(), 'ov-devpath-')), 'last.json');
+        assert.strictEqual(loadDevPath(f), null, 'no file: nothing reported');
+        fsx.writeFileSync(f, JSON.stringify({ ok: false, finished_at: '2026-09-25T22:54:43.000Z', steps: [{ name: 'account', ok: true }, { name: 'media', ok: false }, { name: 'events', ok: false, skipped: true }], secret: 'x' }));
+        const d = loadDevPath(f);
+        assert.deepStrictEqual(d, { ok: false, finished_at: '2026-09-25T22:54:43.000Z', steps: [{ name: 'account', ok: true, skipped: false }, { name: 'media', ok: false, skipped: false }, { name: 'events', ok: false, skipped: true }] }, 'only names and outcomes pass through');
+        fsx.writeFileSync(f, 'not json');
+        assert.strictEqual(loadDevPath(f), null);
+    }
+
     for (const s of [network, media, community, tools, events]) s.srv.close();
     srv.close();
     console.log('status: all checks passed');

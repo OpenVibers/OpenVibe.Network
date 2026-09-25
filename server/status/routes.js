@@ -24,6 +24,16 @@ const seo = require('openvibe-shared/seo');
 const exposure = require('../registry/exposure');
 
 const SLO_FILE = path.join(__dirname, '..', '..', 'docs', 'slo.json');
+// The daily developer path against production (OpenVibe.Host openvibe-devpath.timer, WS-N task 1): step
+// names and outcomes only, written by OpenVibe.Examples' developer-path --result.
+const DEVPATH_FILE = process.env.DEVPATH_RESULT_FILE || '/var/lib/openvibe-devpath/last.json';
+function loadDevPath(file = DEVPATH_FILE) {
+    try {
+        const d = JSON.parse(fs.readFileSync(file, 'utf8'));
+        if (!d || !Array.isArray(d.steps)) return null;
+        return { ok: !!d.ok, finished_at: String(d.finished_at || ''), steps: d.steps.slice(0, 20).map((st) => ({ name: String(st.name).slice(0, 40), ok: !!st.ok, skipped: !!st.skipped })) };
+    } catch { return null; }
+}
 const esc = seo.esc;
 const STATES = ['up', 'degraded', 'down', 'not-running', 'unknown'];
 const LABEL = { up: 'Up', degraded: 'Degraded', down: 'Down', 'not-running': 'Not running', unknown: 'Unknown' };
@@ -107,7 +117,7 @@ function checksList(ready) {
     return items.length ? `<ul class="chk">${items.join('')}</ul>` : '';
 }
 
-function renderPage(list, slo, generatedAt) {
+function renderPage(list, slo, generatedAt, devPath = null) {
     const counts = summary(list);
     const tr = list.map((r) => `<tr id="svc-${esc(r.id)}">
 <td><b>${esc(r.name)}</b><small>${esc(r.id)} · manifest: ${esc(r.manifest_status)}</small></td>
@@ -149,6 +159,10 @@ ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links
 ${tr}
 </tbody>
 </table>
+<section aria-labelledby="h-devpath"><h2 id="h-devpath">Developer path</h2>
+${devPath ? `<p class="lede">Once a day a test developer account goes from sign-in to a sandbox project, a Media upload, an Events publish and pull, a credential rotation and revocation, and cleanup, through the public API and the SDK. Last run <time datetime="${esc(devPath.finished_at)}">${esc(devPath.finished_at)}</time>: <b>${devPath.ok ? 'passed' : 'failed'}</b> (${devPath.steps.filter((st) => st.ok).length}/${devPath.steps.length} steps).</p>
+<ul class="st-sum">${devPath.steps.map((st) => `<li class="st-${st.ok ? 'up' : st.skipped ? 'unknown' : 'down'}">${esc(st.name)}: ${st.ok ? 'ok' : st.skipped ? 'skipped' : 'failed'}</li>`).join('')}</ul>` : '<p class="lede">The daily developer path has not reported here yet.</p>'}
+</section>
 <section aria-labelledby="h-slo"><h2 id="h-slo">SLO categories (proposals)</h2>
 <p class="lede">${esc(slo.note)} ${esc(slo.binding)} JSON: <a href="/api/v1/status/slo"><code>/api/v1/status/slo</code></a>.</p>
 <dl>
@@ -175,6 +189,7 @@ function createStatusRoutes({ ecosystem, now = () => new Date() }) {
             summary: summary(list),
             exposure_states: exposure.STATES,
             exposure_summary: exposureSummary(list),
+            developer_path: loadDevPath(),
             services: list,
         });
     });
@@ -184,9 +199,9 @@ function createStatusRoutes({ ecosystem, now = () => new Date() }) {
     r.get('/status', (_req, res) => {
         const slo = { ...loadSlo(), pollSeconds: ecosystem.pollMs / 1000 };
         res.set('Content-Type', 'text/html; charset=utf-8').set('Cache-Control', 'no-cache, max-age=0').set('X-Robots-Tag', 'noindex, nofollow');
-        res.send(renderPage(rows(ecosystem), slo, now().toISOString()));
+        res.send(renderPage(rows(ecosystem), slo, now().toISOString(), loadDevPath()));
     });
     return r;
 }
 
-module.exports = { createStatusRoutes, rows, STATES };
+module.exports = { loadDevPath, createStatusRoutes, rows, STATES };
