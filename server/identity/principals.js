@@ -42,6 +42,9 @@ const DEFAULT_GRANTS = [
     ['games', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Games subscribes to network.user.token_valid_after (sign-out everywhere closes game sessions).
     ['games', 'events.subscription.manage', 'openvibe.events', []],
+    // Media and Tools subscribe to network.user.token_valid_after too (their sign-in refuses older tokens).
+    ['media', 'events.subscription.manage', 'openvibe.events', []],
+    ['tools', 'events.subscription.manage', 'openvibe.events', []],
     // Wave 9: Tips starts purchases and transfers in Billing, follows settlement through Events, and
     // announces delivered tips in the creator's Live chat.
     ['tips', 'billing.intent.create', 'openvibe.billing', []],
