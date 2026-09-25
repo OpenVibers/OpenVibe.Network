@@ -470,6 +470,9 @@ app.use('/api/v1/projects', rateLimit({ windowMs: 60_000, max: 60 }), require('.
 // Their network.app.* / credential / grant events go to OpenVibe.Events through an outbox when
 // OV_EVENTS_INTERNAL_URL is set (server/developer/event-relay.js); off otherwise.
 require('./developer/event-relay').startRelay(db, { eventsUrl: config.eventsInternalUrl, privateKey, issuer: config.jwt.issuer });
+// network.user.updated (WS-B task 2): profile, role and ban changes, recorded by triggers on users and relayed
+// through the same outbox (server/identity/profile-events.js).
+require('./identity/profile-events').start(db);
 
 // Notification API (authenticated users)
 app.use('/api/notifications', createNotificationRoutes(db, notificationService, requireAuth));
