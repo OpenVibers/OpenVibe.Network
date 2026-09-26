@@ -37,6 +37,7 @@ const { exposureOf, publicOriginOf, libraries } = require('./exposure');
 const { buildTopics, eventsOf } = require('./topics');
 const { driftOf } = require('./versions');
 const { SITES } = require('../frame/sites');
+const { createReleaseHealth, parseClientMetrics } = require('./release-health');
 
 // Where each running service answers health checks from this host: its manifest's `internalOrigin`
 // (openvibe-contracts ≥ 0.42.0, WS-C task 1). OV_<ID>_INTERNAL_URL overrides any of them (internalFromEnv
@@ -110,7 +111,7 @@ function categoryOf(m) {
     return SITES.some(s => s.service === m.id) ? 'site' : 'platform';
 }
 
-function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = globalThis.fetch, pollMs = POLL_MS, readyPaths = READY_PATHS, healthPaths = HEALTH_PATHS, now = () => Date.now(), ranking = null } = {}) {
+function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = globalThis.fetch, pollMs = POLL_MS, readyPaths = READY_PATHS, healthPaths = HEALTH_PATHS, now = () => Date.now(), ranking = null, releaseHealth = createReleaseHealth({ now }) } = {}) {
     const internal = { ...INTERNAL, ...internalOverrides };
     let rankingOf = ranking;
     // id -> { status: up|degraded|down|not-running|unknown, basis, reason, http_status, latency_ms, checked_at, ready, release }
@@ -126,6 +127,15 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         return { res, body, latency: now() - t0 };
     }
 
+    /** The release-client series of a service's /metrics (loopback, no forwarding headers), or null. */
+    async function clientMetricsOf(base) {
+        try {
+            const res = await fetchImpl(`${base}/metrics`, { signal: AbortSignal.timeout(3000), headers: { accept: 'text/plain' } });
+            if (!res.ok || typeof res.text !== 'function') return null;
+            return parseClientMetrics(await res.text());
+        } catch { return null; }
+    }
+
     async function releaseOf(base) {
         try {
             const { res, body } = await getJson(`${base}/release.json`);
@@ -137,7 +147,7 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
                 for (const [k, v] of Object.entries(body.packages).slice(0, 10)) if (/^openvibe-[a-z-]{1,30}$/.test(k) && /^\d+\.\d+\.\d+/.test(String(v))) packages[k] = String(v).slice(0, 20);
             }
             const ver = (v) => (typeof v === 'string' && /^\d+\.\d+\.\d+/.test(v) ? v.slice(0, 20) : null);
-            return { release: body.release.slice(0, 40), released_at: body.released_at || null, booted_at: body.booted_at || null, contracts_version: ver(body.contracts_version), packages };
+            return { release: body.release.slice(0, 40), released_at: body.released_at || null, booted_at: body.booted_at || null, contracts_version: ver(body.contracts_version), packages, collects: typeof body.metrics_url === 'string' };
         } catch (err) {
             return { release: null, error: err.name === 'TimeoutError' ? 'timeout' : 'unreachable' };
         }
@@ -179,6 +189,11 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         entry.release = await releaseP;
         entry.checked_at = at();
         health.set(m.id, entry);
+        // Release health (WS-P task 15): a service that collects release-watch reports has them in its /metrics.
+        if (entry.release && entry.release.release) {
+            const metrics = entry.release.collects ? await clientMetricsOf(base) : null;
+            releaseHealth.observe(m.id, entry.release, metrics);
+        }
     }
     const pollAll = async () => { await Promise.all(contracts.services.manifests.map(checkOne)); lastPollAt = now(); };
     function start() {
@@ -380,7 +395,7 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         return r;
     }
 
-    return { router, start, stop, pollAll, health, current, descriptor, categories, featured, releases, setRanking: (fn) => { rankingOf = fn; }, lastPollAt: () => lastPollAt, pollMs, internal };
+    return { router, start, stop, pollAll, health, current, descriptor, categories, featured, releases, setRanking: (fn) => { rankingOf = fn; }, lastPollAt: () => lastPollAt, pollMs, internal, releaseHealth: (id) => releaseHealth.view(id), releaseHealthSince: () => releaseHealth.startedAt() };
 }
 
 module.exports = { createEcosystemRegistry, INTERNAL, READY_PATHS, HEALTH_PATHS, CATEGORIES, categoryOf, internalFromEnv, statusFromReady, readySummary };

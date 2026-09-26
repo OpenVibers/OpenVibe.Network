@@ -12,6 +12,10 @@
  * up | degraded | down | not-running | unknown and carries checked_at; a service not checked yet, or
  * whose last check is stale, is 'unknown' — never an optimistic default.
  *
+ * Each row also carries release_health (server/registry/release-health.js, WS-P task 15): what open tabs
+ * report for services that collect release-watch reports: tabs on the current and older releases, prompts,
+ * updates, deferrals and failures, and how long the last release took to drain.
+ *
  * Each row also carries its exposure (server/registry/exposure.js): live (public), internal (loopback
  * only), library, repository or placeholder. A service that is up on loopback while its public domain
  * serves a placeholder reads "up (loopback only)" and has no public origin, never a bare "up".
@@ -77,9 +81,36 @@ function rows(ecosystem) {
             main: (() => { const d = require('../registry/deploy-drift').current(m.id); return d ? { state: d.state, behind_by: d.behind_by ?? null, since: d.since || null } : null; })(),
             release_error: r.release && !r.release.release ? r.release.error || 'unknown' : null,
             ready: r.ready || null,
+            release_health: typeof ecosystem.releaseHealth === 'function' ? ecosystem.releaseHealth(m.id) : null,
             ...(r.stale ? { stale: true, last_status: r.last_status } : {}),
         };
     });
+}
+
+const dur = (s) => (s == null ? '—' : s < 90 ? `${s} s` : s < 5400 ? `${Math.round(s / 60)} min` : `${(s / 3600).toFixed(1)} h`);
+const reasons = (o) => Object.entries(o || {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${v}`).join(', ');
+function drainCell(d) {
+    if (!d || d.state === 'unknown') return '<small>no reports yet</small>';
+    if (d.state === 'warming') return `warming up<small>${esc(d.older)} older tab(s) so far; reliable in ${esc(dur(d.ready_in_s))}</small>`;
+    if (d.state === 'draining') return `<b>${esc(d.older)}</b> older tab(s)<small>for ${esc(dur(d.for_s))}</small>`;
+    if (d.seen_late) return 'drained<small>before Network watched</small>';
+    return `drained ${d.within ? 'within' : 'in'} ${esc(dur(d.seconds))}`;
+}
+/** The release-health section: services whose tabs report (WS-P task 15). */
+function releaseHealthSection(list, since) {
+    const rowsOf = list.filter((r) => r.release_health);
+    if (!rowsOf.length) return '<p class="lede">No service has reported release health yet.</p>';
+    const tr = rowsOf.map((r) => {
+        const h = r.release_health; const s = h.sessions; const c = h.counts;
+        const mix = s ? (s.current + s.older ? `${s.current} / ${s.older}<small>${Math.round((100 * s.current) / (s.current + s.older))}% on current</small>` : '0 / 0') : '<small>—</small>';
+        return `<tr><td><b>${esc(r.name)}</b><small><code>${esc(h.release)}</code></small></td><td>${mix}</td><td>${drainCell(h.drain)}</td>
+<td>${esc(c.prompted)} · ${esc(c.applied)} · ${esc(c.reloaded)}</td><td>${esc(c.deferred)}${c.deferred ? `<small>${esc(reasons(h.deferred))}</small>` : ''}</td><td>${esc(c.failed)}${c.failed ? `<small>${esc(reasons(h.failed))}</small>` : ''}</td></tr>`;
+    }).join('\n');
+    return `<p class="lede">What open tabs report through release-watch: tabs heard from in the last 12 minutes on the release each service serves and on older ones, and since that release started, how many were prompted, updated in place or reloaded, deferred (and why) or failed. Drain is how long after a release went live the last older tab left; tabs report every 5 minutes, so it reads true only 6 minutes after a start. Watched since ${esc(since)}.</p>
+<table><thead><tr><th>Service</th><th>Tabs current / older</th><th>Drain</th><th>Prompted · applied · reloaded</th><th>Deferred</th><th>Failed</th></tr></thead>
+<tbody>
+${tr}
+</tbody></table>`;
 }
 
 function summary(list) {
@@ -126,7 +157,7 @@ function proofSteps(rec) {
 }
 const lastRun = (rec) => `Last run <time datetime="${esc(rec.finished_at)}">${esc(rec.finished_at)}</time>: <b>${rec.ok ? 'passed' : 'failed'}</b> (${rec.steps.filter((st) => st.ok).length}/${rec.steps.length} steps).`;
 
-function renderPage(list, slo, generatedAt, devPath = null, toolsJob = null) {
+function renderPage(list, slo, generatedAt, devPath = null, toolsJob = null, healthSince = null) {
     const counts = summary(list);
     const tr = list.map((r) => `<tr id="svc-${esc(r.id)}">
 <td><b>${esc(r.name)}</b><small>${esc(r.id)} · manifest: ${esc(r.manifest_status)}</small></td>
@@ -168,6 +199,9 @@ ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links
 ${tr}
 </tbody>
 </table>
+<section aria-labelledby="h-release-health"><h2 id="h-release-health">Release health</h2>
+${releaseHealthSection(list, healthSince || generatedAt)}
+</section>
 <section aria-labelledby="h-devpath"><h2 id="h-devpath">Developer path</h2>
 ${devPath ? `<p class="lede">Once a day a test developer account goes from sign-in to a sandbox project, a Media upload, an Events publish and pull, a credential rotation and revocation, and cleanup, through the public API and the SDK. ${lastRun(devPath)}</p>
 ${proofSteps(devPath)}` : '<p class="lede">The daily developer path has not reported here yet.</p>'}
@@ -202,6 +236,7 @@ function createStatusRoutes({ ecosystem, now = () => new Date() }) {
             summary: summary(list),
             exposure_states: exposure.STATES,
             exposure_summary: exposureSummary(list),
+            release_health_since: typeof ecosystem.releaseHealthSince === 'function' ? ecosystem.releaseHealthSince() : null,
             developer_path: loadDevPath(),
             tools_job_proof: loadDevPath(TOOLSJOB_FILE),
             services: list,
@@ -213,7 +248,7 @@ function createStatusRoutes({ ecosystem, now = () => new Date() }) {
     r.get('/status', (_req, res) => {
         const slo = { ...loadSlo(), pollSeconds: ecosystem.pollMs / 1000 };
         res.set('Content-Type', 'text/html; charset=utf-8').set('Cache-Control', 'no-cache, max-age=0').set('X-Robots-Tag', 'noindex, nofollow');
-        res.send(renderPage(rows(ecosystem), slo, now().toISOString(), loadDevPath(), loadDevPath(TOOLSJOB_FILE)));
+        res.send(renderPage(rows(ecosystem), slo, now().toISOString(), loadDevPath(), loadDevPath(TOOLSJOB_FILE), typeof ecosystem.releaseHealthSince === 'function' ? ecosystem.releaseHealthSince() : null));
     });
     return r;
 }
