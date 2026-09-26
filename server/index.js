@@ -457,7 +457,10 @@ app.use(require('./status/routes').createStatusRoutes({ ecosystem }));
 app.use(require('./updates/routes').createUpdatesRoutes({ blogUrl: process.env.OV_BLOG_INTERNAL_URL || 'http://127.0.0.1:4810' }).router);
 
 app.get('/api/.well-known/jwks', (_req, res) => {
-    const out = { public_key: publicKey, algorithm: privateKey === publicKey ? 'HS256' : 'RS256' };
+    // Without key files the ephemeral HS256 "key pair" is one shared secret: publishing it would let
+    // anyone sign sessions. Only a real public key is ever served.
+    if (privateKey === publicKey || !String(publicKey).includes('BEGIN')) return res.json({ algorithm: 'HS256', keys: [] });
+    const out = { public_key: publicKey, algorithm: 'RS256' };
     if (publicKey.includes('BEGIN')) {
         try {
             const jwk = require('crypto').createPublicKey(publicKey).export({ format: 'jwk' });

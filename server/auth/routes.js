@@ -14,6 +14,9 @@ const subjects = require('../identity/subjects');
 const { staffClaims } = require('./staff-claims');
 const revocation = require('./revocation');
 const router = express.Router();
+// Sign-in, refresh, password change, sessions and anonymous identities answer with tokens: none of
+// these answers may be kept by a browser or proxy cache (a route may still set its own policy).
+router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
 
 // ── Helpers ──────────────────────────────────────────────────

@@ -216,6 +216,7 @@ router.post('/token', (req, res) => {
     const db = getDb(req);
     const config = getConfig(req);
     const { grant_type, client_id, client_secret, code, redirect_uri, refresh_token } = req.body;
+    res.set('Cache-Control', 'no-store');   // every grant answers with tokens (RFC 6749 §5.1)
 
     // Developer apps (app_<ULID>): client_credentials or authorization_code + PKCE, own credential store.
     if (devTokens.isAppClient(client_id)) {

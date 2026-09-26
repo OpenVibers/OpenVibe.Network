@@ -242,11 +242,15 @@ router.get('/stats', (req, res) => {
 });
 
 // Service URLs only (no secrets); any first-party service that resolves identities may read them.
+// Secret-typed entries (DEPLOY_CLOUDFLARE_TOKEN) are left out: they are the owner's, not the services'.
 // TODO(contracts): a network.registry.read capability would say it more exactly.
 router.get('/url-registry/resolved', principals.guard('identity.subject.resolve'), (req, res) => {
     try {
         const db = getDb(req);
-        const resolved = urlRegistry.getResolvedRegistry(db, process.env);
+        const { URL_DEFINITIONS } = require('openvibe-shared/url-resolver');
+        const { isSensitiveSettingKey } = require('../auth/owner-guard');
+        const resolved = Object.fromEntries(Object.entries(urlRegistry.getResolvedRegistry(db, process.env))
+            .filter(([key]) => !((URL_DEFINITIONS[key] || {}).type === 'secret' || isSensitiveSettingKey(key))));
         res.json({ ok: true, registry: resolved });
     } catch (err) {
         res.status(500).json({ ok: false, error: err.message });

@@ -301,6 +301,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
 
     // Core site settings are owner-only (off-limits to admins).
     router.get('/settings', requireOwner, (req, res) => {
+        res.set('Cache-Control', 'private, no-store');   // the owner sees secrets in clear here
         try {
             const rows = db.prepare('SELECT * FROM site_settings').all();
             const settings = {};
@@ -396,6 +397,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // URL Registry
 
     router.get('/url-registry', (req, res) => {
+        res.set('Cache-Control', 'private, no-store');   // the owner sees secret-typed values in clear here
         try {
             let entries = urlRegistry.getAllRegistryEntries(db);
             // Mask secret-typed registry values (e.g. DEPLOY_CLOUDFLARE_TOKEN) for non-owners.
