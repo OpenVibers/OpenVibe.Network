@@ -135,7 +135,7 @@ function exposureCell(r) {
 const CSS = `
 .st{max-width:1080px;margin:32px auto 64px;padding:0 20px}.st h1{font-size:clamp(24px,3vw,32px);letter-spacing:-.02em;margin:0 0 6px}
 .st p.lede{color:var(--text-secondary,#96a7c2);margin:0 0 18px;max-width:780px;line-height:1.5}
-.st-sum{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;padding:0;list-style:none}.st-sum li{padding:6px 12px;border-radius:999px;border:1px solid var(--border,#1f2d47);font-size:13.5px}
+.st-incidents{margin:0 0 20px}.st-incident{border:1px solid var(--border,#1f2d47);border-left:4px solid var(--warning,#f59e0b);border-radius:10px;padding:10px 14px;margin:0 0 10px}.st-incident h3{margin:0 0 4px;font-size:16px}.st-incident p{margin:4px 0}.st-maintenance{border-left-color:var(--info,#38bdf8)}.st-sev-critical,.st-sev-major{border-left-color:var(--danger,#ef4444)}.st-quiet{color:var(--text-muted,#8b93ad);margin:0 0 14px}.st-sum{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;padding:0;list-style:none}.st-sum li{padding:6px 12px;border-radius:999px;border:1px solid var(--border,#1f2d47);font-size:13.5px}
 .st table{width:100%;border-collapse:collapse;font-size:14px}.st th,.st td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--border,#1f2d47);vertical-align:top}
 .st th{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted,#7386a3)}
 .st td small{display:block;color:var(--text-muted,#7386a3);font-size:12.5px;margin-top:2px}
@@ -157,7 +157,20 @@ function proofSteps(rec) {
 }
 const lastRun = (rec) => `Last run <time datetime="${esc(rec.finished_at)}">${esc(rec.finished_at)}</time>: <b>${rec.ok ? 'passed' : 'failed'}</b> (${rec.steps.filter((st) => st.ok).length}/${rec.steps.length} steps).`;
 
-function renderPage(list, slo, generatedAt, devPath = null, toolsJob = null, healthSince = null) {
+/** Open incidents and maintenance windows (server/status/incidents.js), at the top of /status. */
+function incidentsSection(incidents) {
+    const active = (incidents && incidents.active) || [];
+    if (!active.length) return '<p class="st-quiet">No open incidents or maintenance. <a href="/api/v1/status/incidents">History</a></p>';
+    const LBL = { investigating: 'Investigating', identified: 'Identified', monitoring: 'Monitoring', scheduled: 'Scheduled', in_progress: 'In progress' };
+    return `<section class="st-incidents" aria-labelledby="h-incidents"><h2 id="h-incidents">Incidents and maintenance</h2>${active.map((i) => {
+        const last = i.updates[i.updates.length - 1] || {};
+        const when = i.kind === 'maintenance' ? `${esc(i.starts_at)}${i.ends_at ? ` – ${esc(i.ends_at)}` : ''}` : `since ${esc(i.starts_at)}`;
+        return `<article class="st-incident st-${esc(i.kind)}${i.severity ? ` st-sev-${esc(i.severity)}` : ''}"><h3>${esc(i.title)}</h3>
+<p><strong>${esc(LBL[i.state] || i.state)}</strong>${i.severity ? ` · ${esc(i.severity)}` : ''} · ${esc(i.services.join(', '))} · ${when}</p><p>${esc(last.message || '')}</p></article>`;
+    }).join('')}<p><a href="/api/v1/status/incidents">History (JSON)</a></p></section>`;
+}
+
+function renderPage(list, slo, generatedAt, devPath = null, toolsJob = null, healthSince = null, incidents = null) {
     const counts = summary(list);
     const tr = list.map((r) => `<tr id="svc-${esc(r.id)}">
 <td><b>${esc(r.name)}</b><small>${esc(r.id)} · manifest: ${esc(r.manifest_status)}</small></td>
@@ -191,6 +204,7 @@ ${CSS}
 ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Status', href: '/status' }] })}
 <main class="st" id="main">
 <h1>Service status</h1>
+${incidentsSection(incidents)}
 <p class="lede">What Network observed when it last checked each service: its readiness endpoint (named checks, required or optional), its deployed release, and when. A service that has not been checked, or whose last check is out of date, shows as <b>unknown</b>. Placeholders, libraries and repositories show as not running. <b>Where</b> says whether the public domain serves the service itself (live), or the service runs on this host's loopback only while its domain still serves a placeholder page (internal). Page generated <time datetime="${esc(generatedAt)}">${esc(generatedAt)}</time>; checks run about every ${esc(Math.round(slo.pollSeconds || 60))} seconds. JSON: <a href="/api/v1/status"><code>/api/v1/status</code></a>.</p>
 <ul class="st-sum">${STATES.map((s) => `<li class="st-${s}">${esc(LABEL[s])}: ${counts[s]}</li>`).join('')}</ul>
 <table>
@@ -248,7 +262,9 @@ function createStatusRoutes({ ecosystem, now = () => new Date() }) {
     r.get('/status', (_req, res) => {
         const slo = { ...loadSlo(), pollSeconds: ecosystem.pollMs / 1000 };
         res.set('Content-Type', 'text/html; charset=utf-8').set('Cache-Control', 'no-cache, max-age=0').set('X-Robots-Tag', 'noindex, nofollow');
-        res.send(renderPage(rows(ecosystem), slo, now().toISOString(), loadDevPath(), loadDevPath(TOOLSJOB_FILE), typeof ecosystem.releaseHealthSince === 'function' ? ecosystem.releaseHealthSince() : null));
+        let incidents = null;
+        try { incidents = require('./incidents').list(_req.app.locals.db); } catch { incidents = null; }
+        res.send(renderPage(rows(ecosystem), slo, now().toISOString(), loadDevPath(), loadDevPath(TOOLSJOB_FILE), typeof ecosystem.releaseHealthSince === 'function' ? ecosystem.releaseHealthSince() : null, incidents));
     });
     return r;
 }

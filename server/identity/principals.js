@@ -125,6 +125,8 @@ const DEFAULT_GRANTS = [
     ['live', 'network.follows.read', SELF_AUDIENCE, []],
     // WS-H task 11: Host relays the alerts firing on the production host (ovhost alerts relay).
     ['host', 'network.operator.alert', SELF_AUDIENCE, []],
+    // WS-N task 12: ovhost incident / maintenance post to the status page.
+    ['host', 'network.status.incident', SELF_AUDIENCE, []],
     // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples
     // scripts/tools-job-proof.js) submits a converter job as `probe` and finds its tools.job.* events.
     ['probe', 'tools.job.create', 'openvibe.tools', []],

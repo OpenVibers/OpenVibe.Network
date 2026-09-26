@@ -444,6 +444,8 @@ ecosystem.start();
 const libraryTags = require('./registry/library-tags').createLibraryTags({ onUpdate: require('./registry/exposure').setLibraryReleases, token: () => require('./integrations/github').tokenOf(db) });
 libraryTags.start();
 // Operator status: GET /status (server-rendered, noindex), /api/v1/status, /api/v1/status/slo.
+// Incidents and maintenance (WS-N task 12): public list; staff admins or network.status.incident (ovhost) write.
+app.use('/api/v1/status/incidents', rateLimit({ windowMs: 60_000, max: 120 }), require('./status/incidents').router({ requireAuth, incidentGuard: require('./identity/principals').guard('network.status.incident', { legacy: false }) }));
 app.use(require('./status/routes').createStatusRoutes({ ecosystem }));
 // What shipped network-wide: the changelog proxy every site's widget reads, and /updates.
 app.use(require('./updates/routes').createUpdatesRoutes({ blogUrl: process.env.OV_BLOG_INTERNAL_URL || 'http://127.0.0.1:4810' }).router);
