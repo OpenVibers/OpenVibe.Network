@@ -118,7 +118,7 @@ a{color:var(--accent)}
 .up{max-width:960px;margin:0 auto;padding:24px 16px 40px}
 .up h1{font-size:clamp(1.5rem,4vw,2rem);margin:.2em 0 .3em}.up .lede{color:var(--text-secondary);margin:0 0 18px;line-height:1.55}
 .up-sites{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px}.up-sites a{font-size:.8rem;padding:4px 12px;border-radius:999px;border:1px solid var(--border);color:var(--text-secondary);text-decoration:none}
-.up-sites a[aria-current]{background:var(--accent);border-color:var(--accent);color:#fff}
+.up-sites a[aria-current]{background:var(--accent-strong,#1d4ed8);border-color:var(--accent-strong,#1d4ed8);color:var(--on-accent-strong,#fff)}
 .ov-shipped-day h3{font-size:.95rem;color:var(--text-secondary);border-bottom:1px solid var(--border);padding-bottom:8px;margin:18px 0 4px}
 .ov-shipped-entry{display:flex;gap:10px;align-items:baseline;padding:8px 12px;flex-wrap:wrap}.ov-shipped-text{flex:1;min-width:0;overflow-wrap:anywhere}
 .ov-shipped-meta{font-size:.75rem;color:var(--text-secondary)}.ov-shipped-hash{font-family:ui-monospace,monospace;font-size:.8rem}

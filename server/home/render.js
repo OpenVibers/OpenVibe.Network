@@ -50,13 +50,17 @@ const CSS = `
 @media (prefers-reduced-motion:reduce){.home-card{transition:none}}
 ${icons.CSS}`;
 
+// The sites section's heading; the JSON-LD ItemList of the same sites carries it as its name, so the
+// structured data names something a visitor can see (browser check, WS-Q task 3).
+const sitesHeading = () => `${inWords(OPEN.length)} sites, one front door`;
+
 function body(catalog) {
     const byId = new Map(catalog.tools.map(t => [t.id, t]));
     const popular = POPULAR.map(id => byId.get(id)).filter(Boolean);
     const fams = catalog.families.filter(f => f.url);
     const count = (f) => f.count || catalog.tools.filter(t => t.family === f.id).length;
     return `<style>${CSS}</style>
-<section class="home-sec" id="network" aria-labelledby="h-sites"><h2 id="h-sites">${inWords(OPEN.length)} sites, one front door</h2><p class="lede">Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.</p>
+<section class="home-sec" id="network" aria-labelledby="h-sites"><h2 id="h-sites">${esc(sitesHeading())}</h2><p class="lede">Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.</p>
 <div class="home-grid">${OPEN.map((site) => `<a class="home-card" href="https://${esc(site.host)}/">${icon(site.icon, 48)}<span><b>${esc(siteName(site))}</b><em>${esc(site.tagline)}</em><small>${esc(site.what)}</small></span></a>`).join('')}</div></section>
 <section class="home-sec" id="tools" aria-labelledby="h-tools"><h2 id="h-tools">${catalog.tools.length} tools that just open</h2><p class="lede">No installs and no sign-up wall. Every tool has its own short address, so <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> or <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a> takes you straight there. Browse them all at <a href="https://openvibe.tools/">openvibe.tools</a>.</p>
 <div class="home-fams">${fams.map(f => `<a class="home-fam" href="${esc(f.path ? 'https://openvibe.tools' + f.path : f.url)}">${icon(f.icon, 38)}<span><b>${esc(f.name)}</b><small>${count(f)} tools · ${esc(f.tagline || '')}</small></span></a>`).join('')}</div>
@@ -77,7 +81,7 @@ function render() {
     const stat = fs.statSync(SHELL);
     const key = `${stat.mtimeMs}:${catalog.updated}:${catalog.tools.length}`;
     if (cache.key === key) return cache;
-    const ld = seo.jsonLdTag(seo.jsonLd.itemList('OpenVibe sites', OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what }))));
+    const ld = seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what }))));
     const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog)).replace('<!--OV:COUNT-->', String(catalog.tools.length)).replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', `${ld}\n</head>`);
     cache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
     return cache;
