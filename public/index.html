@@ -206,7 +206,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 
     function initNavbar(user) {
         if (typeof OpenVibeNavbar !== 'undefined') {
-            OpenVibeNavbar.init({ service: 'network', token: token || null, user: user || null, links: [{ label: 'My Account', href: '/my' }, { label: 'Themes', href: '/themes' }], networkLinks: 5 });
+            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: token || null, user: user || null, links: [{ label: 'My Account', href: '/my' }, { label: 'Themes', href: '/themes' }], networkLinks: 5 });
         }
         if (user) {
             document.getElementById('hero-guest-ctas').style.display = 'none';

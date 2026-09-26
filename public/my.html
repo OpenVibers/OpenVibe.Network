@@ -1197,7 +1197,7 @@ async function loadUser() {
             applyAnonModeUI(currentUser);
             loadAccounts();
             loadAnonInfo();
-            OpenVibeNavbar.init({ service: 'network', token: null, user: currentUser });
+            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: null, user: currentUser });
         } else {
             const data = await apiFetch('/api/auth/me');
             currentUser = data.user;
@@ -1214,7 +1214,7 @@ async function loadUser() {
             loadRecentTools();
 
             // Init navbar
-            OpenVibeNavbar.init({ service: 'network', token: authToken, user: currentUser });
+            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: authToken, user: currentUser });
             const bellMount = OpenVibeNavbar.getBellMount();
             if (bellMount && window.OpenVibeNotifications && authToken) {
                 OpenVibeNotifications.init({ token: authToken, apiBase: API, swPath: '/openvibe-sw.js' });
