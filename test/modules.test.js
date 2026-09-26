@@ -16,10 +16,10 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-modules-'));
 const log = console.log; console.log = () => {};
 const db = initDb(path.join(dir, 'network.db'));
 console.log = log;
-// chat and ai are registered on the host, not seeded: add them as copies of tools, then seed their grants again.
+// chat is registered on the host, not seeded (ai is seeded since its console, WS-O task 4): add a missing one as a copy of tools, then seed the grants again.
 for (const c of ['chat', 'ai']) {
     const cols = db.prepare('PRAGMA table_info(oauth_clients)').all().map(x => x.name).filter(n => n !== 'client_id' && n !== 'id');
-    db.prepare(`INSERT INTO oauth_clients (client_id, ${cols.join(', ')}) SELECT ?, ${cols.join(', ')} FROM oauth_clients WHERE client_id = 'tools'`).run(c);
+    db.prepare(`INSERT OR IGNORE INTO oauth_clients (client_id, ${cols.join(', ')}) SELECT ?, ${cols.join(', ')} FROM oauth_clients WHERE client_id = 'tools'`).run(c);
 }
 require('../server/identity/principals').ensureSchema(db);
 for (const [c, s] of [['live', 'live-secret'], ['tools', 'tools-secret'], ['games', 'games-secret'], ['chat', 'chat-secret'], ['ai', 'ai-secret']]) db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(s, c);

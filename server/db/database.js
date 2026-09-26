@@ -524,6 +524,8 @@ function initDb(dbPath) {
             { client_id: 'codes', name: 'OpenVibe.Codes', redirect_uris: ['https://openvibe.codes/auth/callback'] },
             // Billing's staff console (Wave 8): Network admins listed in BILLING_STAFF_SUBJECTS.
             { client_id: 'billing', name: 'OpenVibe.Billing', redirect_uris: ['https://billing.openvibe.network/auth/callback'] },
+            // OpenVibe.AI's operator console (WS-O task 4): Network staff, capabilities from the staff role map.
+            { client_id: 'ai', name: 'OpenVibe.AI', redirect_uris: ['https://ai.openvibe.network/auth/callback'] },
         ];
         const insert = db.prepare(
             'INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, ?, ?, ?, 1)'
