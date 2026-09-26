@@ -408,6 +408,24 @@ Contracts 0.49.0; `server/identity/blocks.js`). `user_blocks` is keyed by subjec
 
 ---
 
+## Follow graph (ADR-030)
+
+Network owns follows, keyed by subjects (`server/identity/follows.js`; roadmap WS-E task 4, Contracts 0.65.0).
+A target is a Live channel today (`channel`, named by its owner's subject), and other kinds join as products need them.
+
+- **Public:** `GET /api/v1/follows/:type/:target` gives the follower count, and for a signed-in caller whether
+  they follow and how they are notified.
+- **People:** `GET /api/v1/me/follows` lists what the caller follows. `PUT|DELETE /api/v1/me/follows/:type/:target`
+  follow and unfollow (`:target` is a subject or a username). Both are idempotent, and the PUT body can carry
+  `{ notify_email, notify_push }`.
+- **Who follows a target:** `GET /api/v1/follows/:type/:target/followers` is open to the target's owner, and to
+  services with `network.follows.read` (service token only). Lists are never public.
+- **Events:** every change writes `network.follow.created` or `network.follow.deleted` (subject visibility,
+  growing per-pair revision) to the outbox in the same transaction. Live keeps a projection from them.
+- **Migration:** `scripts/follows-backfill.js --live-db <live.db>` does a dry run by default. `--apply --backup <file>`
+  imports Live's follows without events: a pair whose side has no subject goes to `follow_import_holds`, and
+  nothing is dropped. `--reconcile` compares per-channel counts and pair sets.
+
 ## Multi-Account Switching
 
 Google-style account management supporting up to 5 accounts:
@@ -611,6 +629,8 @@ Accessible to users with `role = 'admin'`. All endpoints under `/api/admin/`.
 | `user_modules`, `user_module_revisions`, `user_module_retirements` | User-module records, the last revision issued per (subject, namespace), retired namespace owners |
 | `network_event_outbox` | Network's events on their way to OpenVibe.Events (developer projects, user modules, blocks) |
 | `user_blocks` | Platform blocks by subject (blocker, blocked, active, per-pair revision) |
+| `user_follows` | The follow graph by subject (follower, target type and id, active, notify flags, per-pair revision, source) |
+| `follow_import_holds` | Imported follows held because a side had no subject (ADR-030 step 2) |
 | `analytics_visitor_days`, `analytics_day_salts` | The current day's salted visitor hashes and salt, deleted after the day's final rollup |
 
 ---

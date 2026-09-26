@@ -408,6 +408,13 @@ app.get('/internal/integrations/github-token', require('./identity/principals').
 // (network.blocks.read, service token only). Every change is network.block.changed (server/identity/blocks.js).
 app.use('/api/v1/me/blocks', rateLimit({ windowMs: 60_000, max: 60 }), require('./identity/blocks').userRouter(requireAuth));
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read', { legacy: false }), require('./identity/blocks').internalHandler(db));
+// The follow graph (WS-E task 4, ADR-030): public counts, a person's own follows, and who follows a target
+// (its owner, or network.follows.read, service token only). Every change is network.follow.* (server/identity/follows.js).
+{
+    const followRouters = require('./identity/follows').routers({ requireAuth, followsGuard: require('./identity/principals').guard('network.follows.read', { legacy: false }) });
+    app.use('/api/v1/me/follows', rateLimit({ windowMs: 60_000, max: 120 }), followRouters.me);
+    app.use('/api/v1/follows', rateLimit({ windowMs: 60_000, max: 300 }), followRouters.pub);
+}
 // Realtime tickets (WS-E task 3, WS-F task 1; ADR-005 amendment 2): the notification badge on any site opens
 // OpenVibe.Events' /realtime/stream as the signed-in person with a two-minute, single-use ticket
 // (server/auth/realtime-ticket.js). REALTIME_TICKETS=off answers 503 and every badge stays on polling.

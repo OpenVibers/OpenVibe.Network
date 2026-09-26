@@ -748,6 +748,8 @@ function initDb(dbPath) {
     require('../developer/usage').ensure(db);
     // Platform blocks, keyed by subjects (server/identity/blocks.js).
     require('../identity/blocks').ensureSchema(db);
+    // The follow graph, keyed by subjects (server/identity/follows.js; ADR-030).
+    require('../identity/follows').ensureSchema(db);
 
     console.log('[DB] Central database initialized');
     return db;

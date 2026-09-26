@@ -121,6 +121,8 @@ const DEFAULT_GRANTS = [
     ['coupons', 'events.event.publish', 'openvibe.events', []],
     ['coupons', 'sources.item.read', 'openvibe.sources', []],
     ['host', 'events.event.publish', 'openvibe.events', []],
+    // ADR-030 (WS-E task 4): Live rebuilds its follows projection from Network's graph.
+    ['live', 'network.follows.read', SELF_AUDIENCE, []],
     // WS-H task 11: Host relays the alerts firing on the production host (ovhost alerts relay).
     ['host', 'network.operator.alert', SELF_AUDIENCE, []],
     // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples
