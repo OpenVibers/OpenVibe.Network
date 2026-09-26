@@ -390,10 +390,10 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 
     <!-- Moderation log (ADR-022): every staff action any service reports, from /api/v1/staff/moderation-audit -->
     <div class="section" id="sec-modlog">
-        <p class="muted" style="margin:0 0 10px">Staff actions reported by Chat, Live, Community, Tips and Billing. Each service enforces its own moderation; this is the record.</p>
+        <p class="muted" style="margin:0 0 10px">Staff actions reported by Chat, Live, Community, Tips, Billing and the other services (Tools, Games, Wiki, Blog, News, Reviews, Deals, Coupons, Trade, Codes). Each service enforces its own moderation; this is the record.</p>
         <form id="modlog-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:10px" onsubmit="event.preventDefault(); loadModLog(true)">
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Service
-                <select id="modlog-service" onchange="loadModLog(true)"><option value="">All</option><option value="chat">Chat</option><option value="live">Live</option><option value="community">Community</option><option value="tips">Tips</option><option value="billing">Billing</option></select></label>
+                <select id="modlog-service" onchange="loadModLog(true)"><option value="">All</option><option value="chat">Chat</option><option value="live">Live</option><option value="community">Community</option><option value="tips">Tips</option><option value="billing">Billing</option><option value="blog">Blog</option><option value="codes">Codes</option><option value="coupons">Coupons</option><option value="deals">Deals</option><option value="games">Games</option><option value="news">News</option><option value="reviews">Reviews</option><option value="tools">Tools</option><option value="trade">Trade</option><option value="wiki">Wiki</option></select></label>
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Action<input id="modlog-action" placeholder="e.g. site_ban" maxlength="64" style="width:130px"></label>
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">By (subject)<input id="modlog-actor" placeholder="usr_…" maxlength="64" style="width:150px"></label>
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Target<input id="modlog-target" placeholder="subject or id" maxlength="200" style="width:150px"></label>

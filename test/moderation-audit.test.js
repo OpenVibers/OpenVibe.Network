@@ -1,7 +1,7 @@
 'use strict';
-// The moderation audit log (ADR-022): staff actions from Chat/Live, Community, Tips and Billing arrive as
-// events, are recorded once (inside the consumer's inbox transaction), and staff with
-// staff.moderation.logs can list them; nobody else can.
+// The moderation audit log (ADR-022): staff actions from Chat/Live, Community, Tips, Billing and the ten
+// services on common.moderation-action@1 arrive as events, are recorded once (inside the consumer's inbox
+// transaction), and staff with staff.moderation.logs can list them; nobody else can.
 const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
@@ -58,6 +58,29 @@ const ev = (type, payload, actor = { type: 'user', id: MOD }) => ({ event_id: id
     assert.strictEqual(page.items.length, 2);
     assert.strictEqual(audit.list({ limit: 2, before: page.next }).items.length, 2, 'paged by id');
     assert.strictEqual(rowOf(ev('chat.message.deleted', {})), null);
+
+    // The ten services on common.moderation-action@1 (Contracts 0.53.0): subscribed, one row each, the service from the prefix.
+    const contracts = require('openvibe-contracts');
+    const { TOPICS } = require('../server/notifications/events-consumer');
+    const COMMON = ['tools', 'games', 'wiki', 'blog', 'news', 'reviews', 'deals', 'coupons', 'trade', 'codes'];
+    for (const svc of COMMON) {
+        const type = `${svc}.moderation.action`;
+        assert.ok(TOPICS.includes(type), `${type} is one of the consumer's subscriptions`);
+        const payload = { action: 'item.hidden', target: { type: `${svc}_item`, id: `${svc}-1`, owner_subject: TARGET }, actor_subject: MOD, reason: `${svc} reason`, details: { previous: 'visible' } };
+        assert.ok(contracts.validate(`${type}@1`, payload).valid, `${type}: a valid payload`);
+        assert.strictEqual(consumer.apply(ev(type, payload)).outcome, 'recorded', type);
+    }
+    for (const svc of COMMON) {
+        const rows = audit.list({ service: svc }).items;
+        assert.strictEqual(rows.length, 1, svc);
+        const r = rows[0];
+        assert.deepStrictEqual([r.action, r.actor_subject, r.target_type, r.target_id, r.target_subject, r.scope, r.reason, r.details],
+            ['item.hidden', MOD, `${svc}_item`, `${svc}-1`, TARGET, null, `${svc} reason`, { previous: 'visible' }], svc);
+    }
+    assert.strictEqual(audit.list({ action: 'item.hidden' }).items.length, COMMON.length);
+    // A service acting without a person names no actor; an unknown owner is no target subject.
+    const bySvc = rowOf(ev('coupons.moderation.action', { action: 'merchant.disabled', target: { type: 'merchant', id: 'mer_1', owner_subject: null }, actor_subject: null, details: {} }, { type: 'service', id: 'coupons' }));
+    assert.deepStrictEqual([bySvc.service, bySvc.action, bySvc.actor_subject, bySvc.target_subject, bySvc.reason], ['coupons', 'merchant.disabled', null, null, null]);
 
     // Only staff with staff.moderation.logs read it.
     const app = express();

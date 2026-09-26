@@ -8,6 +8,10 @@
  *   community.moderation.action  staff actions on other people's content in Community
  *   tips.interaction.moderated   a paid message filtered, held, hidden or restored
  *   billing.staff.action         a staff money action in the Billing console
+ *   <service>.moderation.action  common.moderation-action@1 (Contracts 0.53.0) from tools, games, wiki,
+ *                                blog, news, reviews, deals, coupons, trade and codes: a staff or
+ *                                moderator action on someone else's content there; the service is the
+ *                                event's prefix
  *
  * Rows are written by the Events consumer (server/notifications/events-consumer.js) inside its inbox
  * transaction, so a redelivery records nothing twice. GET /api/v1/staff/moderation-audit lists them for
@@ -19,7 +23,10 @@ const express = require('express');
 const { staff } = require('openvibe-contracts');
 const { staffClaims } = require('../auth/staff-claims');
 
-const TOPICS = Object.freeze(['chat.moderation.action', 'live.moderation.action', 'community.moderation.action', 'tips.interaction.moderated', 'billing.staff.action']);
+// Producers whose event is common.moderation-action@1 (action, target { type, id, owner_subject }, actor_subject, reason, details).
+const COMMON_SERVICES = Object.freeze(['tools', 'games', 'wiki', 'blog', 'news', 'reviews', 'deals', 'coupons', 'trade', 'codes']);
+const TOPICS = Object.freeze(['chat.moderation.action', 'live.moderation.action', 'community.moderation.action', 'tips.interaction.moderated', 'billing.staff.action',
+    ...COMMON_SERVICES.map((svc) => `${svc}.moderation.action`)]);
 const str = (v, n) => (v == null || v === '' ? null : String(v).replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, n));
 const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
 const json = (v) => { const s = JSON.stringify(obj(v)); return s.length > 4000 ? JSON.stringify({ truncated: true }) : s; };
@@ -71,6 +78,20 @@ function rowOf(event) {
             return { ...base, service: 'tips', action: `interaction.${str(p.action, 32) || 'unknown'}`, actor_subject: null,
                 target_type: 'interaction', target_id: str(p.interaction_id, 64), target_subject: str(c.id, 64), scope: str(`by:${p.by || 'unknown'}`, 64), reason: null,
                 details: json({ moderation_state: p.moderation_state, cancelled_effects: p.cancelled_effects }) };
+        }
+        case 'tools.moderation.action':
+        case 'games.moderation.action':
+        case 'wiki.moderation.action':
+        case 'blog.moderation.action':
+        case 'news.moderation.action':
+        case 'reviews.moderation.action':
+        case 'deals.moderation.action':
+        case 'coupons.moderation.action':
+        case 'trade.moderation.action':
+        case 'codes.moderation.action': {
+            const t = obj(p.target);
+            return { ...base, service: event.event_type.split('.')[0], action: str(p.action, 64) || 'unknown', actor_subject: str(p.actor_subject || actorId, 64),
+                target_type: str(t.type, 40), target_id: str(t.id, 200), target_subject: str(t.owner_subject, 64), scope: null, reason: str(p.reason, 500), details: json(p.details) };
         }
         case 'billing.staff.action': {
             const t = obj(p.target);
