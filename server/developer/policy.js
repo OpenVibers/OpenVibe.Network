@@ -55,10 +55,12 @@ const DEFAULT_SANDBOX_AUDIENCES = Object.freeze(['openvibe.media', 'openvibe.eve
  * Capabilities every project's SANDBOX apps may hold without a staff decision when
  * DEV_SANDBOX_ALLOWANCE is unset. Only public, active capabilities of the installed contracts
  * catalog count: an id the catalog does not know (events.app.* before openvibe-contracts
- * v0.28.0) is left out until it does. Production apps never get these: their allowance is staff-set.
+ * v0.28.0; media.object.list and media.object.delete, Media's list and delete verbs, before the
+ * contracts release that adds them) is left out until it does. Production apps never get these:
+ * their allowance is staff-set.
  */
 const DEFAULT_SANDBOX_ALLOWANCE = Object.freeze([
-    'media.object.upload', 'media.object.read',
+    'media.object.upload', 'media.object.read', 'media.object.list', 'media.object.delete',
     'events.app.publish', 'events.app.read', 'events.app.subscribe',
     'tools.job.create', 'tools.job.read', 'tools.job.cancel', 'tools.tool.read', 'tools.tool.run',
 ]);

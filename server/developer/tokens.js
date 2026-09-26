@@ -10,8 +10,11 @@
  *
  * Tokens are RS256, 5 minutes, shaped by identity.service-token-claims@1:
  *   sub app:app_<ULID>, actor_type app, aud [audience], cap (approved grants ∩ allowance ∩ still
- *   grantable, for that audience), ns [project_id], project_id, env sandbox|production,
- *   on_behalf_of usr_<ULID> (authorization code only).
+ *   grantable, for that audience), ns [project_id, app.<project_id>.*], project_id,
+ *   env sandbox|production, on_behalf_of usr_<ULID> (authorization code only).
+ * The ns: services key a project's tenancy by its id (ADR-014), and Media names a project's
+ * namespaces app.<project_id> (production) and app.<project_id>.sandbox, with children below them
+ * (roadmap WS-G task 2), so the grant covers exactly the project's namespaces in both.
  * A sandbox app gets a token only for an audience that opted in to sandbox tokens
  * (DEV_SANDBOX_AUDIENCES); receivers also refuse env=sandbox unless they opted in.
  * No refresh tokens: a revoked credential or app stops new tokens at once, and issued tokens end
@@ -49,6 +52,11 @@ function effectiveGrants(db, app, project, audience, settings) {
         .filter(c => allowance.has(c) && policy.isGrantable(c) && policy.audienceOf(c) === audience);
 }
 
+/** The namespaces an app token names: its project, and the project's app.<project_id>.* namespaces. */
+function projectNamespaces(projectId) {
+    return [projectId, `app.${projectId}.*`];
+}
+
 function mint({ app, project, audience, scope, limit, onBehalfOf, privateKey, issuer, settings, db }) {
     const aud = String(audience || '').trim();
     if (!aud || !/^[a-z0-9.-]+$/.test(aud)) return oauthError(400, 'invalid_request', 'audience is required');
@@ -63,7 +71,7 @@ function mint({ app, project, audience, scope, limit, onBehalfOf, privateKey, is
     if (!cap.length) return oauthError(400, 'invalid_scope', `no grants for audience ${aud}`);
     const now = Math.floor(Date.now() / 1000);
     const claims = {
-        iss: issuer, sub: `app:${app.id}`, actor_type: 'app', aud: [aud], cap, ns: [project.id],
+        iss: issuer, sub: `app:${app.id}`, actor_type: 'app', aud: [aud], cap, ns: projectNamespaces(project.id),
         project_id: project.id, env: app.environment,
         ...(onBehalfOf ? { on_behalf_of: onBehalfOf } : {}),
         iat: now, exp: now + TOKEN_TTL_S, jti: `tok_${crypto.randomBytes(12).toString('hex')}`,
@@ -159,4 +167,4 @@ function issueCode(db, { app, project, user, redirectUri, scope, challenge }) {
     return { code };
 }
 
-module.exports = { isAppClient, handleTokenRequest, checkAuthorizeRequest, issueCode, effectiveGrants, TOKEN_TTL_S };
+module.exports = { isAppClient, handleTokenRequest, checkAuthorizeRequest, issueCode, effectiveGrants, projectNamespaces, TOKEN_TTL_S };

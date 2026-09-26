@@ -44,7 +44,7 @@ A new project is `sandbox` only. Staff switch it to `sandbox+production`, which 
 - The only grants that exist are capabilities in the openvibe-contracts catalog, at the version Network has installed.
 - **The grantability rule.** The contracts `visibility` enum is `public | first-party | internal`. Only `active` capabilities with visibility `public` may be granted to apps. `first-party` and `internal` capabilities are never grantable: staff cannot add them to an allowance, members cannot request them, and token issuance filters them out again. The code also accepts a proposed `partner` visibility. Staff may put a `partner` capability in one project's allowance by hand, but it never comes from the default allowance. `partner` is not in the enum yet; see `docs/contracts-proposal/`.
 - **The allowance** is the set of grantable capabilities one project's apps may hold. Only staff set it. `DEV_DEFAULT_ALLOWANCE` seeds new projects, with public capabilities only. It is empty by default, so staff decide each project's **production** apps.
-- **The sandbox allowance** is added to the allowance for **sandbox apps only**, in every project, without a staff decision. It comes from `DEV_SANDBOX_ALLOWANCE`. When that is unset, the code default is `media.object.upload`, `media.object.read`, `events.app.publish`, `events.app.read`, `events.app.subscribe`, `tools.job.create`, `tools.job.read` and `tools.job.cancel`. Only `public` + `active` capabilities of the installed openvibe-contracts catalog count. `partner`, `first-party`, `internal` and unknown ids are dropped. The three `events.app.*` ids are defined from openvibe-contracts v0.28.0 (Network pins v0.30.1); with an older release they would be left out. The project view and `GET /catalog` show it as `sandbox_allowance`. Production apps never use it.
+- **The sandbox allowance** is added to the allowance for **sandbox apps only**, in every project, without a staff decision. It comes from `DEV_SANDBOX_ALLOWANCE`. When that is unset, the code default is `media.object.upload`, `media.object.read`, `media.object.list`, `media.object.delete`, `events.app.publish`, `events.app.read`, `events.app.subscribe`, `tools.job.create`, `tools.job.read` and `tools.job.cancel`. Only `public` + `active` capabilities of the installed openvibe-contracts catalog count. `partner`, `first-party`, `internal` and unknown ids are dropped. The three `events.app.*` ids are defined from openvibe-contracts v0.28.0 (Network pins v0.30.1); with an older release they would be left out. `media.object.list` and `media.object.delete` (Media's list and delete verbs, WS-G task 2) are left out the same way until the pinned release defines them; until then a sandbox app's upload and read grants cover them at Media. The project view and `GET /catalog` show it as `sandbox_allowance`. Production apps never use it.
 - **A grant never exceeds the allowance** (for a sandbox app: allowance ∪ sandbox allowance). It is checked in three places. Approval refuses with `403 grant.beyond_allowance`. Shrinking the allowance revokes approved grants, and denies requested ones, that fall outside it. A sandbox app's grant that is still inside the sandbox allowance is kept. Token issuance intersects approved grants with the current allowance and with the current grantability.
 - A developer's grant request waits in `requested`. When an owner or admin makes the request and the capability is inside the allowance, it is approved at once.
 - `GET /api/v1/projects/catalog` lists what could ever be granted.
@@ -70,7 +70,7 @@ Tokens are RS256 and last 5 minutes. They are signed with Network's key (JWKS at
 | `actor_type` | `app` |
 | `aud` | `[audience]`, one audience per token |
 | `cap` | approved grants for that audience ∩ allowance ∩ grantable now (or the requested `scope` subset) |
-| `ns` | `[project_id]`. Tenancy in other services is keyed by project id (ADR-014). |
+| `ns` | `[project_id, app.<project_id>.*]`. Tenancy in other services is keyed by project id (ADR-014). Media names the project's namespaces `app.<project_id>` (production) and `app.<project_id>.sandbox`, with children below them, and checks each verb (read, list, write, delete, transform) per namespace; it reads an older token's `[project_id]` as `app.<project_id>.*` (roadmap WS-G task 2). |
 | `project_id` | `prj_<ULID>` (optional in the contract today; proposed as required for apps) |
 | `env` | `sandbox` or `production` (same) |
 | `on_behalf_of` | `usr_<ULID>` of the person who authorized the app (authorization code only) |
@@ -94,7 +94,7 @@ With the defaults above, this works with no staff action:
 1. Create a project (`POST /api/v1/projects`). You are the owner.
 2. Create a sandbox confidential app (`POST /:project/apps` with `environment: sandbox`). The secret is shown once.
 3. Request grants from the sandbox allowance (`POST /:project/apps/:app/grants`). An owner's or admin's request is approved at once. A developer's request waits for an owner or admin, who can approve it without staff.
-4. `POST /oauth/token` with `grant_type=client_credentials` and `audience=openvibe.media` (or `openvibe.events`, `openvibe.tools`). The token has `env: sandbox`, `project_id` and `ns: [project_id]`.
+4. `POST /oauth/token` with `grant_type=client_credentials` and `audience=openvibe.media` (or `openvibe.events`, `openvibe.tools`). The token has `env: sandbox`, `project_id` and `ns: [project_id, app.<project_id>.*]`.
 
 Production apps still need staff: the project's environment policy (`sandbox+production`) and its allowance.
 
@@ -192,7 +192,7 @@ Until the relay is turned on in an environment, nobody else receives these event
 | Env var | Default | Meaning |
 |---|---|---|
 | `DEV_SANDBOX_AUDIENCES` | unset: `openvibe.media,openvibe.events,openvibe.tools` | Audiences that accept sandbox tokens (comma list). Unset means the code default; an empty value means none. |
-| `DEV_SANDBOX_ALLOWANCE` | unset: `media.object.upload,media.object.read,events.app.publish,events.app.read,events.app.subscribe,tools.job.create,tools.job.read,tools.job.cancel` | Public capabilities sandbox apps may hold without staff (comma list, filtered to public + active capabilities of the installed catalog). Unset means the code default; an empty value means none. |
+| `DEV_SANDBOX_ALLOWANCE` | unset: `media.object.upload,media.object.read,media.object.list,media.object.delete,events.app.publish,events.app.read,events.app.subscribe,tools.job.create,tools.job.read,tools.job.cancel` | Public capabilities sandbox apps may hold without staff (comma list, filtered to public + active capabilities of the installed catalog). Unset means the code default; an empty value means none. |
 | `OV_EVENTS_INTERNAL_URL` | unset (relay off) | OpenVibe.Events base URL for relaying developer-project events |
 | `DEV_CREDENTIAL_OVERLAP_S` | 86400 | Default rotation overlap (0–604800) |
 | `DEV_DEFAULT_ALLOWANCE` | empty | Public capabilities a new project starts with |

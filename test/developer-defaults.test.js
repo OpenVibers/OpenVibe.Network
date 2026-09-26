@@ -86,6 +86,17 @@ async function withoutCatalog(hidden, fn) {
         assert.deepStrictEqual(policy.settings({}).sandboxAllowance.filter(id => id.startsWith('events.')), [],
             'capabilities the installed contracts do not define are silently left out');
     });
+    // Media's list and delete verbs (WS-G task 2) enter the default sandbox allowance once the pinned
+    // contracts define them as public and active; until then they are left out like any unknown id.
+    assert.ok(['media.object.list', 'media.object.delete'].every(id => policy.DEFAULT_SANDBOX_ALLOWANCE.includes(id)));
+    const MEDIA_VERBS = ['media.object.list', 'media.object.delete'].map(id => ({ id, version: '1.0', owner: 'media', status: 'active', visibility: 'public', description: 'test', permissions: [], resourceConstraints: ['namespace'], events: [], implementedBy: [] }));
+    await withoutCatalog(MEDIA_VERBS.map(c => c.id), () => withCatalog(MEDIA_VERBS, () => {
+        const media = policy.settings({}).sandboxAllowance.filter(id => id.startsWith('media.'));
+        assert.deepStrictEqual(media, ['media.object.delete', 'media.object.list', 'media.object.read', 'media.object.upload'], 'with the verbs in the catalog, sandbox apps may hold them');
+    }));
+    await withoutCatalog(['media.object.list', 'media.object.delete'], () => {
+        assert.deepStrictEqual(policy.settings({}).sandboxAllowance.filter(id => id.startsWith('media.')), ['media.object.read', 'media.object.upload'], 'without them, as before');
+    });
 
     await new Promise(r => server.listen(0, '127.0.0.1', r));
     const base = `http://127.0.0.1:${server.address().port}`;
@@ -122,7 +133,7 @@ async function withoutCatalog(hidden, fn) {
     let v = verify(t.body.access_token, 'openvibe.media');
     assert.ok(v.ok, v.reason);
     assert.strictEqual(v.claims.env, 'sandbox');
-    assert.deepStrictEqual(v.claims.ns, [P]);
+    assert.deepStrictEqual(v.claims.ns, [P, `app.${P}.*`], 'the project, and its app.<project_id>.* namespaces (Media, WS-G task 2)');
     assert.strictEqual(v.claims.project_id, P);
     assert.deepStrictEqual(v.claims.cap, ['media.object.read', 'media.object.upload']);
     assert.strictEqual(serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.media' }).code, 'token.sandbox_refused',

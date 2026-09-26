@@ -178,7 +178,7 @@ const secretsSeen = [];
     assert.deepStrictEqual(v.claims.cap, ['media.object.upload'], 'only the approved grant');
     assert.strictEqual(v.claims.project_id, P);
     assert.strictEqual(v.claims.env, 'sandbox');
-    assert.deepStrictEqual(v.claims.ns, [P]);
+    assert.deepStrictEqual(v.claims.ns, [P, `app.${P}.*`], 'the project and its app.<project_id>.* namespaces');
     assert.strictEqual(v.claims.exp - v.claims.iat, 300);
     assert.ok(validate('identity.service-token-claims@1', v.claims).valid);
     r = await fetch(`${base}/api/v1/projects`, { headers: { authorization: `Bearer ${t.body.access_token}` } });
