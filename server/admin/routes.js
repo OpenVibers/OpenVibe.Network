@@ -168,6 +168,7 @@ async function refreshServiceByKey(req, key) {
 }
 
 function createAdminRoutes(db, notificationService, emailService, requireAuth) {
+    const siteConfig = require('./site-config');
 
     function getEmailMetrics() {
         const summary = {
@@ -250,14 +251,16 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     });
 
     // PUT /api/admin/email — update email config (owner-only: writes resend_api_key)
-    router.put('/email', requireOwner, (req, res) => {
+    router.put('/email', requireOwner, async (req, res) => {
         try {
             const { enabled, api_key, from_email, from_name,
                     from_email_openvibelive, from_email_openvibegames, from_email_openvibenetwork } = req.body;
-            const setSetting = db.prepare('INSERT OR REPLACE INTO site_settings (key, value, type) VALUES (?, ?, ?)');
+            // One revision of network.site_settings (./site-config.js): who, why, history, rollback.
+            const changes = { set: {}, types: {} };
+            const setSetting = { run: (k, v, type) => { changes.set[k] = v; changes.types[k] = type; } };
             const skipped = [];
 
-            const tx = db.transaction(() => {
+            const collect = () => {
                 if (enabled !== undefined) setSetting.run('email_enabled', String(enabled), 'boolean');
                 // Only update API key if it's not a masked placeholder, and never while RESEND_API_KEY
                 // provides it (server/secrets.js): the environment is the source then.
@@ -271,8 +274,9 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                 if (from_email_openvibelive !== undefined) setSetting.run('email_from_openvibelive', from_email_openvibelive, 'string');
                 if (from_email_openvibegames !== undefined) setSetting.run('email_from_openvibegames', from_email_openvibegames, 'string');
                 if (from_email_openvibenetwork !== undefined) setSetting.run('email_from_openvibenetwork', from_email_openvibenetwork, 'string');
-            });
-            tx();
+            };
+            collect();
+            if (Object.keys(changes.set).length) await siteConfig.forDb(db).change(changes, { actor: siteConfig.actorOf(req.user), reason: String(req.body.reason || 'email settings').slice(0, 300) });
 
             emailService.reload();
 
@@ -283,6 +287,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
 
             res.json({ ok: true, email: emailService.getStatus(), ...(skipped.length ? { skipped, note: 'set in the environment; not saved to the database' } : {}) });
         } catch (err) {
+            if (err && err.status && err.code) return res.status(err.status).json({ ok: false, error: err.message, code: err.code, errors: err.errors });
             res.status(500).json({ ok: false, error: err.message });
         }
     });
@@ -347,7 +352,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
         }
     });
 
-    router.put('/settings', requireOwner, (req, res) => {
+    router.put('/settings', requireOwner, async (req, res) => {
         try {
             const { key, value, type } = req.body;
             if (!key) return res.status(400).json({ ok: false, error: 'Key required' });
@@ -363,12 +368,41 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             if (secrets.isManaged(key) && secrets.source(db, key) === 'env') {
                 return res.json({ ok: true, skipped: true, source: 'env', env: secrets.envName(key), note: `set in the environment (${secrets.envName(key)}); not saved to the database` });
             }
-            db.prepare('INSERT OR REPLACE INTO site_settings (key, value, type) VALUES (?, ?, ?)').run(key, String(value), type || 'string');
+            let revision = null;
+            if (siteConfig.isConfigKey(key)) {
+                revision = (await siteConfig.forDb(db).change({ set: { [key]: String(value) }, types: { [key]: type || 'string' } }, { actor: siteConfig.actorOf(req.user), reason: String(req.body.reason || `setting ${key}`).slice(0, 300) })).revision;
+            } else {
+                db.prepare('INSERT OR REPLACE INTO site_settings (key, value, type) VALUES (?, ?, ?)').run(key, String(value), type || 'string');
+            }
             db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'setting_update', JSON.stringify({ key })
             );
-            res.json({ ok: true });
+            res.json({ ok: true, ...(revision ? { revision } : {}) });
         } catch (err) {
+            if (err && err.status && err.code) return res.status(err.status).json({ ok: false, error: err.message, code: err.code, errors: err.errors });
+            res.status(500).json({ ok: false, error: err.message });
+        }
+    });
+
+    // ── Configuration history (openvibe-shared/config, namespace network.site_settings), owner only ──
+    // GET /config, /config/:namespace, /config/:namespace/history; POST /config/:namespace/rollback { to?, reason }
+    // (the rollback first records rows changed outside the journal, so it only undoes configuration changes).
+    let configRoutes = null;
+    const configHandlers = () => configRoutes || (configRoutes = require('openvibe-shared/config').adminRoutes([siteConfig.forDb(db).store], {
+        requireAdmin: (_q, _s, next) => next(), basePath: '/config', actor: (q) => siteConfig.actorOf(q.user),
+    }));
+    router.get('/config', requireOwner, (req, res, next) => configHandlers().list(req, res, next));
+    router.get('/config/:namespace', requireOwner, (req, res, next) => configHandlers().get(req, res, next));
+    router.get('/config/:namespace/history', requireOwner, (req, res, next) => configHandlers().history(req, res, next));
+    router.post('/config/:namespace/rollback', requireOwner, async (req, res) => {
+        try {
+            if (req.params.namespace !== 'network.site_settings') return res.status(404).json({ ok: false, error: 'No such configuration namespace' });
+            const to = req.body && req.body.to != null ? Number(req.body.to) : undefined;
+            const snap = await siteConfig.forDb(db).rollback({ actor: siteConfig.actorOf(req.user), reason: String((req.body && req.body.reason) || 'rollback').slice(0, 300), to });
+            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'setting_rollback', JSON.stringify({ revision: snap.revision }));
+            res.json(snap);
+        } catch (err) {
+            if (err && err.status && err.code) return res.status(err.status).json({ ok: false, error: err.message, code: err.code });
             res.status(500).json({ ok: false, error: err.message });
         }
     });

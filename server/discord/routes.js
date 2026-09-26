@@ -46,9 +46,7 @@ module.exports = function createDiscordRoutes(db, discordService, requireAuth, r
             'discord_oauth_client_id', 'discord_oauth_client_secret',
         ];
 
-        const upsert = db.prepare(
-            'INSERT OR REPLACE INTO site_settings (key, value, type) VALUES (?, ?, ?)'
-        );
+        const changes = { set: {}, types: {} };
         let tokenChanged = false;
 
         const owner = isOwner(req.user);
@@ -65,7 +63,17 @@ module.exports = function createDiscordRoutes(db, discordService, requireAuth, r
             if (key === 'discord_oauth_client_secret' && (strVal === '••••••••' || strVal === '')) continue;
             if (key === 'discord_bot_token') tokenChanged = true;
             const type = key === 'discord_dedupe_minutes' ? 'number' : 'string';
-            upsert.run(key, strVal, type);
+            changes.set[key] = strVal;
+            changes.types[key] = type;
+        }
+        // One revision of network.site_settings (server/admin/site-config.js): who, why, history, rollback.
+        if (Object.keys(changes.set).length) {
+            const siteConfig = require('../admin/site-config');
+            try {
+                await siteConfig.forDb(db).change(changes, { actor: siteConfig.actorOf(req.user), reason: 'Discord settings' });
+            } catch (err) {
+                return res.status(err.status || 500).json({ ok: false, error: err.message, code: err.code, errors: err.errors });
+            }
         }
 
         // Reinit bot if token changed
