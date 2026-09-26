@@ -3,14 +3,16 @@
 /**
  * Create Network's OpenVibe.Events subscriptions for the notification consumer
  * (server/notifications/events-consumer.js): one per topic in TOPICS (deals.watch.matched,
- * trade.alert.triggered, live.stream.started), all delivering to POST /internal/events. Events names
- * the consumer after the calling service: `network`.
+ * trade.alert.triggered, live.stream.started, the moderation audit topics and the project usage
+ * rollups tools.usage.recorded and events.usage.recorded), all delivering to POST /internal/events.
+ * Events names the consumer after the calling service: `network`.
  *
  *   sudo node --env-file=/etc/openvibe/network.env scripts/subscribe-events.js \
  *        [--endpoint http://127.0.0.1:4000/internal/events] [--topic live.stream.started] [--dry-run]
  *
  * --topic limits the run to one of TOPICS (repeatable), e.g. to add live.stream.started to a host that
- * already has the other two. live.stream.started needs Live's GET /internal/followers first (the
+ * already has the other two, or `--topic tools.usage.recorded --topic events.usage.recorded` for the
+ * project dashboards (WS-N task 4). live.stream.started needs Live's GET /internal/followers first (the
  * consumer answers 503 until Live serves it, and Events retries), and the token Network signs for it
  * carries live.follower.read for audience openvibe.live.
  *

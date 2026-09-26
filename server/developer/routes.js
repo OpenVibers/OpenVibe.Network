@@ -35,6 +35,8 @@
  *   GET    /:project/quotas                                 viewer+
  *   PUT    /:project/quotas/:capability { limit, window, unit }  staff
  *   DELETE /:project/quotas/:capability                     staff
+ *   GET    /:project/usage[?days=30&env=all]               owner/admin or staff: usage per day, quotas and
+ *                                                           errors from the services' rollups (usage.js)
  *   GET    /:project/audit[?before=&limit=]                 admin+ or staff
  *   POST   /:project/export-tokens { audience, env }         owner or admin member (not staff as such):
  *                                                           a 5-minute read-only export token (tokens.js)
@@ -45,6 +47,7 @@ const { verifySession } = require('../auth/session');
 const store = require('./store');
 const policy = require('./policy');
 const tokens = require('./tokens');
+const usage = require('./usage');
 
 function router() {
     const r = express.Router();
@@ -118,6 +121,12 @@ function router() {
     r.put('/:project/quotas/:capability', handle((db, a, req, o) => store.setQuota(db, a, req.params.project, req.params.capability, req.body || {}, o)));
     r.delete('/:project/quotas/:capability', handle((db, a, req, o) => store.deleteQuota(db, a, req.params.project, req.params.capability, o)));
 
+    // Usage (WS-N task 4): network.project-usage-result@1, for the owner and admins (and staff).
+    r.get('/:project/usage', handle((db, a, req) => {
+        const { project } = store.access(db, a, req.params.project, { need: 'admin', allowArchived: true });
+        return usage.summary(db, project.id, usage.parseQuery(req.query));
+    }));
+
     r.get('/:project/audit', handle((db, a, req) => {
         const { project } = store.access(db, a, req.params.project, { need: 'admin', allowArchived: true });
         return store.listAudit(db, project.id, { before: req.query.before, limit: req.query.limit });
@@ -134,7 +143,7 @@ function router() {
 }
 
 function send(req, res, err) {
-    if (err instanceof store.DevError) return http.sendProblem(res, err.status, err.code, { detail: err.detail, ctx: req.ov });
+    if (err instanceof store.DevError || err instanceof usage.UsageQueryError) return http.sendProblem(res, err.status, err.code, { detail: err.detail, ctx: req.ov });
     if (err && err.type === 'entity.parse.failed') return http.sendProblem(res, 400, 'request.malformed_json', { detail: 'body is not valid JSON', ctx: req.ov });
     if (err && err.type === 'entity.too.large') return http.sendProblem(res, 413, 'request.too_large', { ctx: req.ov });
     // Never echo internals (and so never a secret) to the client.

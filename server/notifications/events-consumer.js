@@ -20,6 +20,10 @@
  * A started event older than LIVE_STARTED_MAX_AGE (30 min; a replay, or Events catching up after an
  * outage) announces nothing: the stream may be long over.
  *
+ *   <service>.usage.recorded  a developer project's hourly usage rollup from Tools or Events
+ *                           (common.usage-recorded@1): kept per project and day for its dashboard
+ *                           (server/developer/usage.js), never anyone's notification.
+ *
  * Coupons publishes no watch event: its merchant watches never leave Coupons (server/domain/watches.js
  * there: "Delivery is not built yet"), and its coupons.* events name no person, so there is nothing
  * of Coupons' to consume yet. README "Notifications from Events" has the operator steps.
@@ -50,7 +54,8 @@ const { LiveFollowersError } = require('./live-followers');
 const CONSUMER = 'network-notifications';
 const INBOX_TABLE = 'network_event_inbox';
 const AUDIT_TOPICS = require('../admin/moderation-audit').TOPICS;
-const TOPICS = Object.freeze(['deals.watch.matched', 'trade.alert.triggered', 'live.stream.started', ...AUDIT_TOPICS]);
+const USAGE_TOPICS = require('../developer/usage').TOPICS;
+const TOPICS = Object.freeze(['deals.watch.matched', 'trade.alert.triggered', 'live.stream.started', ...AUDIT_TOPICS, ...USAGE_TOPICS]);
 const LIVE_STARTED_MAX_AGE_MS = 30 * 60 * 1000;
 const EVENT_ID_RE = /^evt_[0-9A-HJKMNP-TV-Z]{26}$/;
 
@@ -155,8 +160,9 @@ function liveStarted(event, { now, maxAgeMs }) {
  * @param {string|string[]} o.secrets  NETWORK_EVENTS_SECRET (comma list) or an array
  * @param {{ forStream(id: number): Promise<object> }} [o.liveFollowers]  ./live-followers.js
  * @param {() => ({ sendLiveAlert(streamer: object, stream: object): Promise<object> }|null)} [o.discord]
+ * @param {{ record(event: object): string }} [o.projectUsage]  ../developer/usage.js createProjectUsage()
  */
-function createEventsConsumer({ db, notifications, secrets, liveFollowers = null, discord = () => null, moderationAudit = null, liveStartedMaxAgeMs = LIVE_STARTED_MAX_AGE_MS, now = () => Date.now(), log = console }) {
+function createEventsConsumer({ db, notifications, secrets, liveFollowers = null, discord = () => null, moderationAudit = null, projectUsage = null, liveStartedMaxAgeMs = LIVE_STARTED_MAX_AGE_MS, now = () => Date.now(), log = console }) {
     const keys = Array.isArray(secrets) ? secrets.filter((s) => typeof s === 'string' && s.length >= 32) : secretsFrom(secrets);
     const inbox = createInbox(db, { table: INBOX_TABLE, now });
     inbox.ensureSchema();
@@ -222,6 +228,8 @@ function createEventsConsumer({ db, notifications, secrets, liveFollowers = null
         const r = inbox.once(CONSUMER, event.event_id, () => {
             // Staff actions go to the moderation audit log (ADR-022), never to anyone's inbox.
             if (AUDIT_TOPICS.includes(event.event_type)) return moderationAudit ? moderationAudit.record(event) : 'ignored:audit_off';
+            // Developer projects' usage rollups go to their dashboards (WS-N task 4), never to an inbox.
+            if (USAGE_TOPICS.includes(event.event_type)) return projectUsage ? projectUsage.record(event) : 'ignored:usage_off';
             if (event.event_type === 'live.stream.started') {
                 const out = liveStreamStarted(event, prep);
                 if (typeof out === 'string') return out;

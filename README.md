@@ -18,7 +18,7 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 - **Theme Catalog** — Shared theme system with ~30 built-in themes and community submissions. Theme preferences sync across all services.
 - **Admin Panel** — email configuration, user management (role changes, bans), broadcast notifications, system health dashboard, and audit log.
 - **Internal API** — Server-to-server endpoints for token verification, user lookup, notification push, account linking, and audit logging. Protected by `X-Internal-Key`; the routes listed in [docs/retirement.md](docs/retirement.md#routes-that-take-a-token-network-side-of-step-2) also take a capability-scoped service token, and the key is retired route by route.
-- **Developer projects (foundation)** — projects, members, apps (OAuth clients with `app_` subjects), hashed client secrets with rotation and revocation, capability grants within a staff-set allowance (sandbox apps also get a default sandbox allowance of public Media, Events-app and Tools-job capabilities, so a new project works without staff), recorded quotas and an append-only audit at `/api/v1/projects`. Its events can be relayed to OpenVibe.Events through an outbox when `OV_EVENTS_INTERNAL_URL` is set. Bearer user tokens only; no portal UI yet (that is OpenVibe.Codes). See [docs/developer-projects.md](docs/developer-projects.md).
+- **Developer projects (foundation)** — projects, members, apps (OAuth clients with `app_` subjects), hashed client secrets with rotation and revocation, capability grants within a staff-set allowance (sandbox apps also get a default sandbox allowance of public Media, Events-app and Tools-job capabilities, so a new project works without staff), recorded quotas, per-project usage from the services' hourly rollups (`GET /api/v1/projects/:project/usage`) and an append-only audit at `/api/v1/projects`. Its events can be relayed to OpenVibe.Events through an outbox when `OV_EVENTS_INTERNAL_URL` is set. Bearer user tokens only; no portal UI yet (that is OpenVibe.Codes). See [docs/developer-projects.md](docs/developer-projects.md).
 - **Public discovery** — `/.well-known/openvibe`, `/api/v1/registry/*` and `/contracts/*.json` (services, capabilities, contract schemas) answer any origin with `Access-Control-Allow-Origin: *`, preflight included, so a browser app can discover the platform directly. Every other route keeps the first-party CORS allow-list (`server/public-cors.js`).
 - **OpenCoins Wallet** — Network-wide currency. User balance/history at `/api/coins/*`; atomic credit/debit/transfer for services at `/internal/coins/*` with idempotency-key dedupe.
 - **User modules** — versioned per-person preferences and summaries in namespaces owned by services (openvibe-contracts `manifests/namespaces`); see [User modules](#user-modules).
@@ -219,6 +219,12 @@ announcement an hour, eight a day; `stream_live_cooldown_min`, `stream_live_dail
 Live's direct `POST /internal/events/stream-live` (`server/notifications/stream-live.js`), so while Live
 still makes that call, whichever arrives first announces and the other is skipped.
 
+**Project usage.** `tools.usage.recorded` and `events.usage.recorded` (hourly rollups of a developer
+project's use, `common.usage-recorded@1`) are kept per project and day (`server/developer/usage.js`,
+tables `dev_usage_windows`, `dev_usage_daily`, `dev_usage_errors`) for `GET /api/v1/projects/:project/usage`
+and the project's usage page on openvibe.codes; they notify nobody. See
+[docs/developer-projects.md](docs/developer-projects.md#usage).
+
 Coupons publishes no watch event yet: its merchant watches never leave Coupons, and its `coupons.*`
 events name no person. Every other type is acknowledged and ignored. Deliveries are v2-signed only
 (`openvibe-sdk` `parseDelivery` with `requireV2`, ±300 s), and each `event_id` is handled once
@@ -237,7 +243,8 @@ The route is inert until the operator does both of these:
    `deals.watch.matched`, `trade.alert.triggered` and `live.stream.started`; secret = the first
    `NETWORK_EVENTS_SECRET`). Subscribe `live.stream.started` only once Live serves
    `GET /internal/followers`; on a host that already has the other two, add it alone with
-   `--topic live.stream.started`:
+   `--topic live.stream.started` (and the project usage rollups with
+   `--topic tools.usage.recorded --topic events.usage.recorded`):
 
    ```bash
    cd /opt/openvibe.network
@@ -599,6 +606,7 @@ Accessible to users with `role = 'admin'`. All endpoints under `/api/admin/`.
 | `dev_apps`, `dev_credentials`, `dev_auth_codes` | Developer apps, hashed client secrets, app authorization codes |
 | `dev_grants`, `dev_quotas` | App capability grants; per-project quotas (enforced by the owning service) |
 | `dev_audit` | Append-only developer audit; rows that are platform events carry an event envelope |
+| `dev_usage_windows`, `dev_usage_daily`, `dev_usage_errors` | Developer projects' usage from the services' hourly rollups (35 days), per day (400 days), sampled failures (30 days) |
 | `analytics_events`, `analytics_hourly`, `analytics_daily` | Request analytics (raw ≤ 30 days) and rollups, within ADR-021; see [Analytics](#analytics-adr-021) |
 | `user_modules`, `user_module_revisions`, `user_module_retirements` | User-module records, the last revision issued per (subject, namespace), retired namespace owners |
 | `network_event_outbox` | Network's events on their way to OpenVibe.Events (developer projects, user modules, blocks) |

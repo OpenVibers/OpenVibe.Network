@@ -133,7 +133,23 @@ This is ADR-014's acceptance rule: "a revoked credential fails everywhere within
 
 ## Quotas
 
-A quota says how much of one capability a project may use: for example, `media.object.upload` with limit 1073741824, window `total`, unit `bytes`. Network records quotas and shows them to members. **Network does not enforce them.** The service that owns the capability does (`enforced_by` in the response is that audience). Until an owning service reads project quotas (proposed capability `network.project.read`), a quota is a recorded limit and not a guarantee. No usage numbers are collected here.
+A quota says how much of one capability a project may use: for example, `media.object.upload` with limit 1073741824, window `total`, unit `bytes`. Network records quotas and shows them to members. **Network does not enforce them.** The service that owns the capability does (`enforced_by` in the response is that audience). Until an owning service reads project quotas (proposed capability `network.project.read`), a quota is a recorded limit and not a guarantee. What a quota's current window has used is measured from the services' usage rollups ([Usage](#usage)).
+
+## Usage
+
+The services that own developer capabilities count each project's use per environment and UTC hour, and send one rollup per closed hour through OpenVibe.Events (roadmap WS-N task 4): `tools.usage.recorded` from each Tools satellite (jobs, per `tools.job.create` or `tools.tool.run` and job type or tool) and `events.usage.recorded` from Events (`events.app.publish` in `events`, `events.app.subscribe` in `deliveries`). The payload is `common.usage-recorded@1` (openvibe-contracts 0.63.0): project, environment, capability, dimension, unit, window, quantity, errors, errors by code and up to ten sampled failures (time, code, status, trace id, job or event id). A rollup never names who did the work.
+
+The Events consumer (`POST /internal/events`, [server/developer/usage.js](../server/developer/usage.js)) records each one inside its inbox transaction:
+
+- `dev_usage_windows`: one row per rollup key (service, project, environment, capability, dimension, unit, window start). A later rollup for the same key replaces it (the higher `revision` wins), so a re-sent hour is never counted twice. Kept 35 days.
+- `dev_usage_daily`: the same key per UTC day, added up again from its windows on every change. Kept 400 days.
+- `dev_usage_errors`: the sampled failures. Kept 30 days, at most 200 per project.
+
+A rollup for a project Network does not know, from the wrong source, whose subject is not its project, whose window is not a whole hour (or day), from the future or older than 35 days, or that fails its contract is ignored (the consumer's `outcome` says which).
+
+`GET /api/v1/projects/:project/usage?days=30&env=all` (owner and admins, and staff) answers `network.project-usage-result@1`: `daily` rows (newest first), `totals` for the range, `quotas` (each recorded quota with `used` and `remaining` for its current window: today or this month in UTC, or the 400 days kept for `total`, in every environment together; `null` with a `note` for a minute or hour window, which rollups cannot show, and for a capability or unit no service reports), and `errors` (`total`, `by_code`, and the 50 most recent sampled failures). `days` is 1 to 90; `env` is `all`, `sandbox` or `production`; anything else is `422 usage.invalid`. The numbers lag by one hour: an hour appears a few minutes after it closes. OpenVibe.Codes shows it as the project's usage page (`/projects/:project/usage`).
+
+Operator steps: subscribe Network to the two topics once (`node --env-file=/etc/openvibe/network.env scripts/subscribe-events.js --topic tools.usage.recorded --topic events.usage.recorded`), with Events' usage on (default) and Tools' job events on (`EVENTS_URL` set for the satellites).
 
 ## API
 
@@ -175,6 +191,7 @@ Base: `/api/v1/projects`. Every call needs `Authorization: Bearer <Network user 
 | `DELETE /:project/apps/:app/grants/:capability` | admin+, staff | revoke |
 | `GET /:project/quotas` | viewer+ | |
 | `PUT /:project/quotas/:capability` / `DELETE` | staff | `{ limit, window, unit }` |
+| `GET /:project/usage[?days=&env=]` | admin+, staff | usage per day, totals, quotas with their use, errors ([Usage](#usage)) |
 | `GET /:project/audit[?before=&limit=]` | admin+, staff | newest first, paged by `next_before` |
 | `POST /:project/export-tokens` | owner, admin (not staff as such) | `{ audience, env }` → a 5-minute read-only export token ([Export tokens](#export-tokens)) |
 

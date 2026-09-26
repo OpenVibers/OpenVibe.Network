@@ -371,9 +371,11 @@ const liveFollowers = privateKey.includes('BEGIN')
     : null;
 // The moderation audit log (ADR-022): staff actions every service reports, readable by staff.
 const moderationAudit = require('./admin/moderation-audit').createModerationAudit(db);
+// Developer projects' usage (WS-N task 4): the services' hourly rollups, per project and day.
+const projectUsage = require('./developer/usage').createProjectUsage(db);
 eventsConsumer = require('./notifications/events-consumer').createEventsConsumer({
     db, notifications: notificationService, secrets: config.eventsWebhookSecrets,
-    liveFollowers, discord: () => app.locals.discordService || null, moderationAudit,
+    liveFollowers, discord: () => app.locals.discordService || null, moderationAudit, projectUsage,
 });
 console.log(`[Events consumer] ${eventsConsumer.enabled ? 'on' : 'off (NETWORK_EVENTS_SECRET unset)'}: POST /internal/events`);
 
