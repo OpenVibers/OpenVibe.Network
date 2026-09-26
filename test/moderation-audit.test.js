@@ -62,7 +62,7 @@ const ev = (type, payload, actor = { type: 'user', id: MOD }) => ({ event_id: id
     // The ten services on common.moderation-action@1 (Contracts 0.53.0): subscribed, one row each, the service from the prefix.
     const contracts = require('openvibe-contracts');
     const { TOPICS } = require('../server/notifications/events-consumer');
-    const COMMON = ['tools', 'games', 'wiki', 'blog', 'news', 'reviews', 'deals', 'coupons', 'trade', 'codes'];
+    const COMMON = ['media', 'tools', 'games', 'wiki', 'blog', 'news', 'reviews', 'deals', 'coupons', 'trade', 'codes'];
     for (const svc of COMMON) {
         const type = `${svc}.moderation.action`;
         assert.ok(TOPICS.includes(type), `${type} is one of the consumer's subscriptions`);

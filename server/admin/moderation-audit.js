@@ -24,7 +24,7 @@ const { staff } = require('openvibe-contracts');
 const { staffClaims } = require('../auth/staff-claims');
 
 // Producers whose event is common.moderation-action@1 (action, target { type, id, owner_subject }, actor_subject, reason, details).
-const COMMON_SERVICES = Object.freeze(['tools', 'games', 'wiki', 'blog', 'news', 'reviews', 'deals', 'coupons', 'trade', 'codes']);
+const COMMON_SERVICES = Object.freeze(['media', 'tools', 'games', 'wiki', 'blog', 'news', 'reviews', 'deals', 'coupons', 'trade', 'codes']);
 const TOPICS = Object.freeze(['chat.moderation.action', 'live.moderation.action', 'community.moderation.action', 'tips.interaction.moderated', 'billing.staff.action',
     ...COMMON_SERVICES.map((svc) => `${svc}.moderation.action`)]);
 const str = (v, n) => (v == null || v === '' ? null : String(v).replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, n));
@@ -79,6 +79,7 @@ function rowOf(event) {
                 target_type: 'interaction', target_id: str(p.interaction_id, 64), target_subject: str(c.id, 64), scope: str(`by:${p.by || 'unknown'}`, 64), reason: null,
                 details: json({ moderation_state: p.moderation_state, cancelled_effects: p.cancelled_effects }) };
         }
+        case 'media.moderation.action':
         case 'tools.moderation.action':
         case 'games.moderation.action':
         case 'wiki.moderation.action':
