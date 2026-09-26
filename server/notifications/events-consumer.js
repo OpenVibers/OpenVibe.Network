@@ -276,6 +276,11 @@ function createEventsConsumer({ db, notifications, secrets, liveFollowers = null
             log.error(`[Events consumer] ${event.event_id} (${event.event_type}) failed:`, err.message);
             return http.sendProblem(res, 500, 'network.event_failed', { detail: 'processing failed; it will be retried' });
         }
+        // A go-live's outcome is logged (counts only): how an operator sees that the consumer, not Live's
+        // direct call, notified a real go-live (compatibility register C-85).
+        if (event.event_type === 'live.stream.started' && !out.duplicate && typeof log.log === 'function') {
+            log.log(`[Events consumer] live.stream.started ${event.event_id}: ${out.outcome}${out.detail ? ` ${JSON.stringify(out.detail)}` : ''}`);
+        }
         res.status(200).json({ event_id: event.event_id, duplicate: out.duplicate, outcome: out.outcome, ...(out.detail ? { detail: out.detail } : {}) });
     });
 

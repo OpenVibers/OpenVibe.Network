@@ -165,7 +165,7 @@ sudo apt install certbot python3-certbot-dns-cloudflare
 
 1. **Any service** pushes notifications to openvibe.network via `POST /internal/notifications/push`
 2. **openvibe.network** stores them in SQLite with priority, category, and optional rich content
-3. **Clients** poll `GET /api/notifications` every 15 seconds, rendering toasts and updating the bell badge
+3. **Clients** poll `GET /api/notifications` every 15 seconds, rendering toasts and updating the bell badge (or, where a site turned realtime on, hear each new notification over OpenVibe.Events and poll every 2 minutes as a safety net: see *Realtime badge* below)
 4. **Critical notifications** are queued for email delivery via the built-in email service (Resend by default).
 
 ### Priorities
@@ -249,6 +249,37 @@ The route is inert until the operator does both of these:
    `aud openvibe.events`, `cap events.subscription.manage`) and hands the secret to Events in the
    subscription body, the way Deals, News and Tips do with theirs. It prints the subscription ids,
    never the secret, and reports an existing identical subscription instead of duplicating it.
+
+Each go-live's outcome is logged, with counts only:
+
+```
+[Events consumer] live.stream.started evt_…: notified {"followers":3,"unresolved":0,"targets":3,"notified":3}
+```
+
+This is the evidence compatibility register row C-85 waits for. A `notified` line for a real go-live means the consumer, not Live's direct call, told the followers. While Live still makes the direct `POST /internal/events/stream-live`, that call usually claims the per-streamer window first, and the consumer logs `skipped:cooldown`.
+
+### Realtime badge (network.notification.created)
+
+Every notification `NotificationService.create()` stores is announced as **`network.notification.created`** (Contracts 0.61.0; ADR-005 amendment 2). The envelope goes into `network_event_outbox` in the same transaction as the notification: both exist or neither. The relay then publishes it to Events.
+- **Envelope:** subject `{ type: user, id: <recipient usr_> }`, visibility `subject` (Events streams it to that person only), actor `system:network`.
+- **Payload:** `notification_id`, `type`, `category`, `priority`, `service`, `created_at` and the recipient's `unread_count`. Never the title, message, link or sender.
+- **Nothing announced:** a muted category, a blocked sender or a go-live dedupe stores nothing, so it announces nothing. Guests and accounts without a `usr_` subject get no event.
+
+The badge on other sites cannot use a cookie of events.openvibe.network, so it asks here for a **realtime ticket**:
+
+```
+POST /api/v1/realtime/ticket          (Bearer Network JWT, or the ov_token cookie here; 60/min per IP)
+→ 200 { ticket, expires_at, expires_in: 120, stream_url, topics: ["network.notification.*"], subject }
+```
+
+It then opens `${stream_url}?topics=network.notification.*&ticket=…[&last_event_id=…]`.
+- **The ticket** (`server/auth/realtime-ticket.js`, `identity.realtime-ticket-claims@1`) is an RS256 JWT: `iss <issuer>/realtime`, `sub <usr_>`, `aud [openvibe.events]`, `typ` and `purpose` `realtime`, 120 s, `jti rtk_…`. Events accepts each one once.
+- **Never a session:** its issuer, `typ` and audience each rule that out, and this session guard refuses it too.
+- **Not stored, logged or audited:** it grants the person only their own stream.
+- **Refusals:** a guest gets 403 `realtime.guest`. `REALTIME_TICKETS=off` in `/etc/openvibe/network.env` answers 503 `realtime.disabled`, and every badge stays on polling. `OV_EVENTS_PUBLIC_URL` overrides the stream origin (default `https://events.openvibe.network`).
+- **Client:** openvibe-shared `notification-live.js`, on where a site sets `notificationsRealtime: true`.
+
+A digest (a daily or weekly summary instead of one alert per notification) is designed in [docs/notification-digest.md](docs/notification-digest.md) for a later release.
 
 ---
 

@@ -8,9 +8,26 @@
 
 const { v4: uuidv4 } = require('uuid');
 const { TYPES, PRIORITY, EMAIL_ELIGIBLE_CATEGORIES, EMAIL_DEFAULT_TYPES } = require('openvibe-shared/notifications');
+const contracts = require('openvibe-contracts');
+const eventRelay = require('../developer/event-relay');
 
 // Staff and platform notices: never hidden by a block.
 const BLOCK_EXEMPT_CATEGORIES = new Set(['moderation', 'system', 'admin']);
+
+/**
+ * network.notification.created (Contracts 0.61.0; ADR-005 amendment 2, roadmap WS-E task 3): every stored
+ * notification is announced to its person over OpenVibe.Events, so the notification badge on any site
+ * updates without polling. The envelope goes into network_event_outbox in the transaction that stores the
+ * notification (relayed by server/developer/event-relay.js): both exist or neither. Subject the recipient,
+ * visibility subject (Events streams it to that person only), actor system:network (never the sender: a
+ * subject event reaches its actor too). The payload is what a badge needs, never what it shows: no title,
+ * message, link or sender. Guests and accounts without a usr_ subject get no event.
+ */
+const NOTIFICATION_EVENT = 'network.notification.created';
+const SUBJECT_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
+const PRIORITIES = new Set(['low', 'normal', 'high', 'critical']);
+// Checked against its contract once the installed openvibe-contracts knows it (0.61.0+).
+const knowsNotificationEvent = (() => { try { return !!contracts.resolve(`${NOTIFICATION_EVENT}@1`); } catch { return false; } })();
 
 class NotificationService {
     constructor(db) {
@@ -123,6 +140,8 @@ class NotificationService {
             WHERE r.id = ? AND s.id = ? AND b.active = 1 LIMIT 1
         `);
 
+        this._recipient = db.prepare('SELECT subject_id, is_anon FROM users WHERE id = ?');
+
         this._newestForUser = db.prepare(`
             SELECT * FROM notifications
             WHERE user_id = ? AND is_dismissed = 0
@@ -157,14 +176,22 @@ class NotificationService {
         }
 
         const richContent = data.rich_content ? JSON.stringify(data.rich_content) : null;
+        const createdAt = new Date().toISOString();
 
-        this._insertNotif.run(
-            id, data.user_id, data.type || 'GENERIC', category, priority,
-            title, data.message || null, icon,
-            data.sender_id || null, data.sender_name || null, data.sender_avatar || null,
-            data.service || null, data.url || null, richContent,
-            data.expires_at || null,
-        );
+        // The notification and its network.notification.created event: one transaction.
+        let announced = false;
+        this.db.transaction(() => {
+            this._insertNotif.run(
+                id, data.user_id, data.type || 'GENERIC', category, priority,
+                title, data.message || null, icon,
+                data.sender_id || null, data.sender_name || null, data.sender_avatar || null,
+                data.service || null, data.url || null, richContent,
+                data.expires_at || null,
+            );
+            announced = this._announce({ id, userId: data.user_id, type: data.type, category, priority, service: data.service, createdAt });
+        })();
+        // Wake the relay (it reads after the outermost transaction commits: better-sqlite3 is synchronous).
+        if (announced) { const live = eventRelay.outboxFor(this.db); if (live) live.kick(); }
 
         // Fire browser push notification (async, non-blocking)
         try {
@@ -178,7 +205,41 @@ class NotificationService {
             }).catch(() => {});
         } catch (_) { /* push module not available */ }
 
-        return { id, user_id: data.user_id, type: data.type, category, priority, title, message: data.message, icon, service: data.service, url: data.url, rich_content: data.rich_content, is_read: 0, created_at: new Date().toISOString() };
+        return { id, user_id: data.user_id, type: data.type, category, priority, title, message: data.message, icon, service: data.service, url: data.url, rich_content: data.rich_content, is_read: 0, created_at: createdAt };
+    }
+
+    /**
+     * Queue network.notification.created for a notification just inserted (inside its transaction).
+     * Returns whether an event was queued. A recipient without a usr_ subject (a guest, an account not yet
+     * given one) gets none; an envelope that would not match its contract is skipped with a warning rather
+     * than losing the notification (the badge's polling still finds it).
+     */
+    _announce({ id, userId, type, category, priority, service, createdAt }) {
+        const r = this._recipient.get(userId);
+        if (!r || r.is_anon || !SUBJECT_RE.test(String(r.subject_id || ''))) return false;
+        const payload = {
+            notification_id: String(id),
+            type: /^[A-Z][A-Z0-9_]{1,63}$/.test(String(type || '')) ? String(type) : 'GENERIC',
+            category: /^[a-z][a-z0-9_]{1,31}$/.test(String(category || '')) ? String(category) : 'system',
+            priority: PRIORITIES.has(priority) ? priority : 'normal',
+            service: /^[a-z][a-z0-9-]{1,39}$/.test(String(service || '')) ? String(service) : null,
+            created_at: createdAt,
+            unread_count: this._unreadCount.get(userId)?.count || 0,
+        };
+        const ms = Date.parse(createdAt) || Date.now();
+        const env = {
+            event_id: contracts.ids.newId('event', ms), event_type: NOTIFICATION_EVENT, version: 1, source: 'network',
+            actor: { type: 'system', id: 'network' }, timestamp: createdAt, visibility: 'subject', priority: 'low',
+            subject: { type: 'user', id: r.subject_id }, payload,
+        };
+        const v = contracts.validate('events.event-envelope@1', env);
+        const pv = knowsNotificationEvent ? contracts.validate(`${NOTIFICATION_EVENT}@1`, payload) : { valid: true };
+        if (!v.valid || !pv.valid) {
+            console.warn(`[Notifications] ${NOTIFICATION_EVENT} not queued for notification ${id}: ${JSON.stringify((v.errors || []).concat(pv.errors || [])).slice(0, 200)}`);
+            return false;
+        }
+        eventRelay.writerFor(this.db).enqueue(env);
+        return true;
     }
 
     /**
@@ -418,4 +479,4 @@ class NotificationService {
     }
 }
 
-module.exports = { NotificationService };
+module.exports = { NotificationService, NOTIFICATION_EVENT };

@@ -406,6 +406,12 @@ app.get('/internal/integrations/github-token', require('./identity/principals').
 // (network.blocks.read, service token only). Every change is network.block.changed (server/identity/blocks.js).
 app.use('/api/v1/me/blocks', rateLimit({ windowMs: 60_000, max: 60 }), require('./identity/blocks').userRouter(requireAuth));
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read', { legacy: false }), require('./identity/blocks').internalHandler(db));
+// Realtime tickets (WS-E task 3, WS-F task 1; ADR-005 amendment 2): the notification badge on any site opens
+// OpenVibe.Events' /realtime/stream as the signed-in person with a two-minute, single-use ticket
+// (server/auth/realtime-ticket.js). REALTIME_TICKETS=off answers 503 and every badge stays on polling.
+app.use('/api/v1/realtime', rateLimit({ windowMs: 60_000, max: 60 }), require('./auth/realtime-ticket').router({
+    db, requireAuth, privateKey, issuer: config.jwt.issuer, streamUrl: process.env.OV_EVENTS_PUBLIC_URL,
+}));
 
 // ── Routes ───────────────────────────────────────────────────
 // Public key endpoint (services fetch this to verify JWTs).
