@@ -376,6 +376,21 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
                 </div>
             </div>
         </div>
+
+        <div class="card" style="margin-top:16px">
+            <h3 style="margin:0"><span class="icon"><i class="fa-solid fa-share-nodes"></i></span> Share a theme</h3>
+            <p style="margin:6px 0 12px;color:var(--text-secondary);font-size:0.9rem">Export your active theme as a file, import one, or submit your colours as a community theme. Submissions are reviewed before anyone else sees them; you can use yours right away.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                <button class="btn btn-outline" onclick="exportActiveTheme(this)"><i class="fa-solid fa-file-export"></i> Export active theme</button>
+                <label class="btn btn-outline" style="cursor:pointer"><i class="fa-solid fa-file-import"></i> Import a theme file<input type="file" accept=".json,application/json" onchange="importThemeFile(this)" style="display:none"></label>
+            </div>
+            <form onsubmit="submitMyTheme(event)" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:14px">
+                <label style="display:grid;gap:4px;font-size:0.85rem">Name<input id="theme-submit-name" required minlength="2" maxlength="60" style="min-width:180px"></label>
+                <label style="display:grid;gap:4px;font-size:0.85rem">Address (lowercase, hyphens)<input id="theme-submit-slug" required pattern="[a-z0-9-]{2,48}" style="min-width:180px"></label>
+                <button class="btn btn-primary" type="submit"><i class="fa-solid fa-paper-plane"></i> Submit my colours</button>
+            </form>
+            <div id="theme-submissions" style="margin-top:14px"></div>
+        </div>
     </div>
 
     <!-- Accounts Section -->
@@ -1023,6 +1038,72 @@ async function saveCustomColors(btn) {
     } catch (err) { alert('Error: ' + err.message); }
     finally { if (btn) btn.disabled = false; }
 }
+// ── Share a theme (export, import, submit for review; WS-E task 2) ──
+async function exportActiveTheme(btn) {
+    if (btn) btn.disabled = true;
+    try {
+        const res = await fetch('/api/themes/' + encodeURIComponent(activeThemeId) + '/export', { credentials: 'include' });
+        if (!res.ok) throw new Error('This theme cannot be exported');
+        const file = await res.json();
+        if (activeCustomVars && Object.keys(activeCustomVars).length) file.variables = Object.assign({}, file.variables, activeCustomVars);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }));
+        a.download = (file.slug || 'theme') + '.openvibe-theme.json';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } catch (err) { alert('Error: ' + err.message); }
+    finally { if (btn) btn.disabled = false; }
+}
+async function importThemeFile(input) {
+    const f = input.files && input.files[0];
+    input.value = '';
+    if (!f) return;
+    try {
+        const file = JSON.parse(await f.text());
+        const out = await apiFetch('/api/themes/import', { method: 'POST', body: JSON.stringify(file) });
+        alert('Imported "' + out.theme.name + '". It is waiting for review; you can use it now from your submissions.');
+        loadThemeSubmissions();
+    } catch (err) { alert('Import failed: ' + err.message); }
+}
+async function submitMyTheme(ev) {
+    ev.preventDefault();
+    const name = document.getElementById('theme-submit-name').value.trim();
+    const slug = document.getElementById('theme-submit-slug').value.trim();
+    const variables = Object.assign({}, activeThemeVars, activeCustomVars);
+    try {
+        await apiFetch('/api/themes', { method: 'POST', body: JSON.stringify({ name, slug, variables, mode: document.documentElement.dataset.mode === 'light' ? 'light' : 'dark' }) });
+        ev.target.reset();
+        loadThemeSubmissions();
+    } catch (err) { alert('Not submitted: ' + err.message); }
+}
+async function loadThemeSubmissions() {
+    const box = document.getElementById('theme-submissions');
+    if (!box) return;
+    let list = [];
+    try { list = (await apiFetch('/api/themes/me/submissions')).themes || []; } catch { return; }
+    box.replaceChildren();
+    if (!list.length) return;
+    const h = document.createElement('div');
+    h.textContent = 'Your submissions';
+    h.style.cssText = 'font-weight:600;margin-bottom:6px';
+    box.appendChild(h);
+    const labels = { pending: 'Waiting for review', approved: 'Approved', rejected: 'Not accepted' };
+    for (const t of list) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border)';
+        const n = document.createElement('strong'); n.textContent = t.name;
+        const st = document.createElement('span'); st.textContent = labels[t.review_status] || t.review_status;
+        st.style.cssText = 'font-size:0.8rem;color:var(--text-secondary)';
+        row.append(n, st);
+        if (t.review_note) { const note = document.createElement('span'); note.textContent = '— ' + t.review_note; note.style.cssText = 'font-size:0.8rem;color:var(--text-muted)'; row.appendChild(note); }
+        if (t.review_status !== 'rejected') {
+            const use = document.createElement('button'); use.type = 'button'; use.className = 'btn btn-outline'; use.textContent = 'Use';
+            use.onclick = async () => { try { await apiFetch('/api/themes/me', { method: 'PUT', body: JSON.stringify({ theme_id: t.id }) }); location.reload(); } catch (err) { alert('Error: ' + err.message); } };
+            row.appendChild(use);
+        }
+        box.appendChild(row);
+    }
+}
 async function resetCustomColors(btn) {
     if (btn) btn.disabled = true;
     try {
@@ -1122,7 +1203,7 @@ async function loadUser() {
             currentUser = data.user;
             renderHeader(data.user);
             renderProfile(data.user);
-            loadThemes();
+            loadThemes(); loadThemeSubmissions();
             loadAccounts();
             loadNotifPrefs();
             loadLinked();

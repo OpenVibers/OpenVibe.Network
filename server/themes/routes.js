@@ -7,7 +7,30 @@
 
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const { cleanVariables } = require('./validate');
 const router = express.Router();
+
+// Community themes are reviewed before anyone else sees them (roadmap WS-E task 2): a submission is
+// pending and private to its author until an admin approves it (GET/POST /api/admin/themes, reviewRouter
+// below). Built-in themes and anything that existed before the review columns count as approved.
+const EXPORT_FORMAT = 'openvibe-theme@1';
+const MAX_PENDING = 5;
+let reviewReady = false;
+function ensureReview(db) {
+    if (reviewReady) return;
+    for (const col of ["review_status TEXT NOT NULL DEFAULT 'approved'", 'reviewed_by INTEGER', 'reviewed_at DATETIME', 'review_note TEXT']) {
+        try { db.exec(`ALTER TABLE themes ADD COLUMN ${col}`); } catch { /* already there */ }
+    }
+    reviewReady = true;
+}
+const parseTheme = (t) => {
+    if (!t) return t;
+    try { t.variables = JSON.parse(t.variables); } catch { t.variables = {}; }
+    try { t.tags = JSON.parse(t.tags); } catch { t.tags = []; }
+    try { t.preview_colors = t.preview_colors ? JSON.parse(t.preview_colors) : null; } catch { t.preview_colors = null; }
+    return t;
+};
+const visibleTo = (t, userId) => t && ((t.is_public === 1 && t.review_status === 'approved') || (userId != null && String(t.author_id) === String(userId)));
 
 function getDb(req) { return req.app.locals.db; }
 function getConfig(req) { return req.app.locals.config; }
@@ -40,9 +63,10 @@ function requireAuth(req, res, next) {
 // ── List Themes ──────────────────────────────────────────────
 router.get('/', (req, res) => {
     const db = getDb(req);
+    ensureReview(db);
     const { mode, search, sort, limit } = req.query;
 
-    let sql = 'SELECT id, name, slug, description, mode, variables, preview_colors, is_builtin, downloads, rating_sum, rating_count, tags FROM themes WHERE is_public = 1';
+    let sql = "SELECT id, name, slug, description, mode, variables, preview_colors, is_builtin, downloads, rating_sum, rating_count, tags FROM themes WHERE is_public = 1 AND review_status = 'approved'";
     const params = [];
 
     if (mode && (mode === 'dark' || mode === 'light')) {
@@ -105,14 +129,33 @@ router.put('/me/display', requireAuth, (req, res) => {
     res.json({ ok: true, display });
 });
 
-// ── Get Theme by ID or Slug ──────────────────────────────────
-router.get('/:idOrSlug', (req, res) => {
+// ── Your submissions, with their review status ────────────────
+router.get('/me/submissions', requireAuth, (req, res) => {
     const db = getDb(req);
+    ensureReview(db);
+    const userId = req.user.sub || req.user.id;
+    const themes = db.prepare('SELECT id, name, slug, description, mode, variables, tags, review_status, review_note, reviewed_at, created_at FROM themes WHERE author_id = ? AND is_builtin = 0 ORDER BY created_at DESC LIMIT 50').all(userId).map(parseTheme);
+    res.set('Cache-Control', 'private, no-store').json({ themes });
+});
+
+// ── Get Theme by ID or Slug (approved themes; your own at any status) ──
+router.get('/:idOrSlug', optionalAuth, (req, res) => {
+    const db = getDb(req);
+    ensureReview(db);
     const theme = db.prepare('SELECT * FROM themes WHERE id = ? OR slug = ?').get(req.params.idOrSlug, req.params.idOrSlug);
-    if (!theme) return res.status(404).json({ error: 'Theme not found' });
-    try { theme.variables = JSON.parse(theme.variables); } catch { theme.variables = {}; }
-    try { theme.tags = JSON.parse(theme.tags); } catch { theme.tags = []; }
-    res.json({ theme });
+    if (!visibleTo(theme, req.user && (req.user.sub || req.user.id))) return res.status(404).json({ error: 'Theme not found' });
+    res.json({ theme: parseTheme(theme) });
+});
+
+// ── Export a theme as a file (import it elsewhere, or submit an edited copy) ──
+router.get('/:idOrSlug/export', optionalAuth, (req, res) => {
+    const db = getDb(req);
+    ensureReview(db);
+    const t = db.prepare('SELECT * FROM themes WHERE id = ? OR slug = ?').get(req.params.idOrSlug, req.params.idOrSlug);
+    if (!visibleTo(t, req.user && (req.user.sub || req.user.id))) return res.status(404).json({ error: 'Theme not found' });
+    parseTheme(t);
+    const file = { format: EXPORT_FORMAT, name: t.name, slug: t.slug, description: t.description || '', mode: t.mode, variables: t.variables, tags: t.tags };
+    res.set('Content-Disposition', `attachment; filename="${t.slug}.openvibe-theme.json"`).json(file);
 });
 
 // ── Set User's Active Theme ──────────────────────────────────
@@ -121,9 +164,15 @@ router.put('/me', requireAuth, (req, res) => {
     const userId = req.user.sub || req.user.id;
     const { theme_id, custom_variables } = req.body;
 
+    ensureReview(db);
     if (theme_id) {
-        const theme = db.prepare('SELECT id FROM themes WHERE id = ? OR slug = ?').get(theme_id, theme_id);
-        if (!theme) return res.status(404).json({ error: 'Theme not found' });
+        const theme = db.prepare('SELECT id, author_id, is_public, review_status FROM themes WHERE id = ? OR slug = ?').get(theme_id, theme_id);
+        if (!visibleTo(theme, userId)) return res.status(404).json({ error: 'Theme not found' });
+    }
+    if (custom_variables) {
+        const v = cleanVariables(custom_variables);
+        if (!v.ok) return res.status(422).json({ error: 'Custom colours rejected', code: 'theme.invalid_variables', errors: v.errors });
+        req.body.custom_variables = v.variables;
     }
 
     db.prepare(`
@@ -136,36 +185,75 @@ router.put('/me', requireAuth, (req, res) => {
     `).run(
         userId,
         theme_id || 'vibe',
-        custom_variables ? JSON.stringify(custom_variables) : null,
+        req.body.custom_variables ? JSON.stringify(req.body.custom_variables) : null,
         theme_id || null,
-        custom_variables ? JSON.stringify(custom_variables) : null
+        req.body.custom_variables ? JSON.stringify(req.body.custom_variables) : null
     );
 
-    res.json({ success: true, theme_id, custom_variables });
+    res.json({ success: true, theme_id, custom_variables: req.body.custom_variables || null });
 });
 
-// ── Submit Community Theme ───────────────────────────────────
-router.post('/', requireAuth, (req, res) => {
-    const db = getDb(req);
-    const userId = req.user.sub || req.user.id;
-    const { name, slug, description, mode, variables, tags } = req.body;
-
-    if (!name || !slug || !variables) return res.status(400).json({ error: 'name, slug, and variables required' });
-    if (typeof variables !== 'object') return res.status(400).json({ error: 'variables must be an object' });
-    if (!/^[a-z0-9-]+$/.test(slug)) return res.status(400).json({ error: 'slug must be lowercase alphanumeric with hyphens' });
-
-    const existing = db.prepare('SELECT id FROM themes WHERE slug = ?').get(slug);
-    if (existing) return res.status(409).json({ error: 'A theme with that slug already exists' });
-
+// ── Submit a community theme (pending review) ─────────────────
+function submitTheme(db, userId, body) {
+    ensureReview(db);
+    const { name, slug, description, mode, variables, tags } = body || {};
+    if (!name || !slug || !variables) return [400, { error: 'name, slug, and variables required' }];
+    if (typeof name !== 'string' || name.trim().length < 2 || name.length > 60) return [400, { error: 'name is 2 to 60 characters' }];
+    if (typeof slug !== 'string' || !/^[a-z0-9-]{2,48}$/.test(slug)) return [400, { error: 'slug must be lowercase alphanumeric with hyphens' }];
+    if (mode && mode !== 'dark' && mode !== 'light') return [400, { error: 'mode is dark or light' }];
+    const v = cleanVariables(variables);
+    if (!v.ok) return [422, { error: 'Theme rejected', code: 'theme.invalid_variables', errors: v.errors }];
+    const cleanTags = Array.isArray(tags) ? tags.filter((t) => typeof t === 'string' && /^[a-z0-9-]{1,24}$/.test(t)).slice(0, 8) : [];
+    if (db.prepare('SELECT id FROM themes WHERE slug = ?').get(slug)) return [409, { error: 'A theme with that slug already exists' }];
+    const pending = db.prepare("SELECT COUNT(*) AS n FROM themes WHERE author_id = ? AND review_status = 'pending'").get(userId).n;
+    if (pending >= MAX_PENDING) return [429, { error: `You have ${pending} themes waiting for review; wait for those first`, code: 'theme.too_many_pending' }];
     const id = `community-${slug}`;
-    db.prepare(`
-        INSERT INTO themes (id, name, slug, author_id, description, mode, variables, is_builtin, is_public, tags)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, ?)
-    `).run(id, name, slug, userId, description || '', mode || 'dark', JSON.stringify(variables), JSON.stringify(tags || []));
+    db.prepare(`INSERT INTO themes (id, name, slug, author_id, description, mode, variables, is_builtin, is_public, tags, review_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, 'pending')`)
+        .run(id, name.trim(), slug, userId, String(description || '').slice(0, 300), mode || 'dark', JSON.stringify(v.variables), JSON.stringify(cleanTags));
+    return [201, { theme: parseTheme(db.prepare('SELECT * FROM themes WHERE id = ?').get(id)), review: 'pending', note: 'Submitted themes are reviewed before anyone else sees them. You can use yours right away.' }];
+}
 
-    const theme = db.prepare('SELECT * FROM themes WHERE id = ?').get(id);
-    try { theme.variables = JSON.parse(theme.variables); } catch {}
-    res.status(201).json({ theme });
+router.post('/', requireAuth, (req, res) => {
+    const [status, body] = submitTheme(getDb(req), req.user.sub || req.user.id, req.body);
+    res.status(status).json(body);
 });
+
+// ── Import a theme file (openvibe-theme@1, as /:id/export writes it): a submission like any other ──
+router.post('/import', requireAuth, (req, res) => {
+    const file = req.body || {};
+    if (file.format !== EXPORT_FORMAT) return res.status(400).json({ error: `Not an ${EXPORT_FORMAT} file`, code: 'theme.bad_format' });
+    const [status, body] = submitTheme(getDb(req), req.user.sub || req.user.id, file);
+    res.status(status).json(body);
+});
+
+// ── Review queue (admins; mounted at /api/admin/themes behind requireAuth + requireAdmin) ──
+function reviewRouter() {
+    const r = express.Router();
+    r.get('/', (req, res) => {
+        const db = getDb(req);
+        ensureReview(db);
+        const status = ['pending', 'approved', 'rejected'].includes(req.query.status) ? req.query.status : 'pending';
+        const themes = db.prepare(`SELECT t.id, t.name, t.slug, t.description, t.mode, t.variables, t.tags, t.review_status, t.review_note, t.reviewed_at, t.created_at, u.username AS author
+            FROM themes t LEFT JOIN users u ON u.id = t.author_id WHERE t.is_builtin = 0 AND t.review_status = ? ORDER BY t.created_at ASC LIMIT 200`).all(status).map(parseTheme);
+        res.set('Cache-Control', 'private, no-store').json({ status, themes });
+    });
+    r.post('/:id/review', (req, res) => {
+        const db = getDb(req);
+        ensureReview(db);
+        const decision = req.body && req.body.decision;
+        if (!['approve', 'reject'].includes(decision)) return res.status(400).json({ error: 'decision is approve or reject' });
+        const note = String((req.body && req.body.note) || '').slice(0, 300) || null;
+        if (decision === 'reject' && !note) return res.status(400).json({ error: 'Say why it is rejected (note)', code: 'theme.note_required' });
+        const t = db.prepare('SELECT id, is_builtin FROM themes WHERE id = ?').get(req.params.id);
+        if (!t || t.is_builtin) return res.status(404).json({ error: 'No such community theme' });
+        db.prepare("UPDATE themes SET review_status = ?, is_public = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, review_note = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+            .run(decision === 'approve' ? 'approved' : 'rejected', decision === 'approve' ? 1 : 0, req.user.id || req.user.sub, note, t.id);
+        res.json({ theme: parseTheme(db.prepare('SELECT * FROM themes WHERE id = ?').get(t.id)) });
+    });
+    return r;
+}
 
 module.exports = router;
+module.exports.reviewRouter = reviewRouter;
+module.exports.submitTheme = submitTheme;

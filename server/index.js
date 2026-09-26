@@ -572,6 +572,8 @@ app.use('/api/setup', createSetupRoutes(db, config));
 app.use('/api/admin/events', requireAuth, require('./admin/events-ops').createEventsOps({ db, eventsUrl: config.eventsInternalUrl, privateKey, issuer: config.jwt.issuer }));
 // Service grants: owner-only, audited, network.principal_grant.changed (WS-D task 3).
 app.use('/api/admin/grants', requireAuth, require('./identity/grants-admin').router(db));
+// Community theme review queue (WS-E task 2): submissions stay private until an admin approves them.
+app.use('/api/admin/themes', requireAuth, requireAdmin, require('./themes/routes').reviewRouter());
 app.use('/api/admin', createAdminRoutes(db, notificationService, emailService, requireAuth));
 
 // Analytics admin API
