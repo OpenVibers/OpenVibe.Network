@@ -69,7 +69,8 @@ async function withoutCatalog(hidden, fn) {
     assert.deepStrictEqual([...s.sandboxAudiences].sort(), ['openvibe.events', 'openvibe.media', 'openvibe.tools']);
     assert.ok(!s.sandboxAudiences.has('openvibe.network'), 'Network itself never defaults to accepting sandbox tokens');
     assert.deepStrictEqual(s.sandboxAllowance, ['events.app.publish', 'events.app.read', 'events.app.subscribe',
-        'media.object.read', 'media.object.upload', 'tools.job.cancel', 'tools.job.create', 'tools.job.read', 'tools.tool.read', 'tools.tool.run'], 'the default sandbox allowance');
+        'media.object.delete', 'media.object.list', 'media.object.read', 'media.object.upload', 'tools.job.cancel', 'tools.job.create', 'tools.job.read', 'tools.tool.read', 'tools.tool.run'],
+        'the default sandbox allowance (openvibe-contracts 0.59.0 defines media.object.list and .delete)');
     assert.deepStrictEqual(policy.DEFAULT_SANDBOX_ALLOWANCE.filter(id => id.startsWith('events.')), ['events.app.publish', 'events.app.read', 'events.app.subscribe']);
     s = policy.settings({ developer: { sandboxAudiences: '', sandboxAllowance: '' } });
     assert.strictEqual(s.sandboxAudiences.size, 0, 'set-but-empty means none');

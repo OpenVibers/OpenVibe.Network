@@ -23,9 +23,9 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.0",
     "multer": "^1.4.5-lts.1",
-    "openvibe-contracts": "https://codeload.github.com/OpenVibers/OpenVibe.Contracts/tar.gz/refs/tags/v0.56.0",
+    "openvibe-contracts": "https://codeload.github.com/OpenVibers/OpenVibe.Contracts/tar.gz/refs/tags/v0.59.0",
     "openvibe-sdk": "https://codeload.github.com/OpenVibers/OpenVibe.SDK/tar.gz/refs/tags/v0.11.0",
-    "openvibe-shared": "https://codeload.github.com/OpenVibers/OpenVibe.Shared/tar.gz/refs/tags/v1.17.1",
+    "openvibe-shared": "https://codeload.github.com/OpenVibers/OpenVibe.Shared/tar.gz/refs/tags/v1.18.0",
     "uuid": "^11.1.0",
     "web-push": "^3.6.7"
   }
