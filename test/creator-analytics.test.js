@@ -90,6 +90,31 @@ const ended = (streamId, startedAt, minutes, stats) => ({
         const cols = db.prepare('PRAGMA table_info(creator_streams)').all().map((c) => c.name);
         assert.deepStrictEqual(cols, creators.COLUMNS);
         assert.ok(!cols.some((c) => /ip|viewer_id|chatter_id|user_id|follower/.test(c)), 'no viewer, chatter or IP column');
+
+        // History from Live's tables (scripts/creator-analytics-backfill.js): dry run, --backup required, event rows kept.
+        const Database = require('better-sqlite3');
+        const liveFile = path.join(dir, 'live.db');
+        const live = new Database(liveFile);
+        live.exec(`CREATE TABLE streams (id INTEGER PRIMARY KEY, user_id INTEGER, title TEXT, category TEXT, started_at TEXT, ended_at TEXT, duration_seconds INTEGER, peak_viewers INTEGER);
+            CREATE TABLE stream_analytics (stream_id INTEGER PRIMARY KEY, avg_viewers REAL, unique_chatters INTEGER, total_messages INTEGER, total_watch_minutes INTEGER);
+            CREATE TABLE linked_accounts (id INTEGER PRIMARY KEY, user_id INTEGER, service TEXT, service_user_id TEXT, subject_id TEXT);`);
+        live.prepare("INSERT INTO linked_accounts (user_id, service, service_user_id, subject_id) VALUES (70, 'network', '20', ?)").run(CAROL);
+        const t = (h) => new Date(Date.now() - h * 3600000).toISOString().replace('T', ' ').slice(0, 19);
+        live.prepare('INSERT INTO streams VALUES (400, 70, ?, NULL, ?, ?, 1800, 9), (501, 70, ?, NULL, ?, ?, 3600, 99), (402, 71, ?, NULL, ?, ?, 600, 1)')
+            .run('Old one', t(200), t(199.5), 'From events already', t(30), t(29), 'No subject', t(10), t(9.9));
+        live.prepare('INSERT INTO stream_analytics VALUES (400, 4.2, 3, 50, 90)').run();
+        live.close();
+        const bf = require('../scripts/creator-analytics-backfill');
+        const lines = [];
+        db.close();
+        assert.strictEqual(await bf.main(['--live-db', liveFile, '--db', path.join(dir, 'network.db')], (x) => lines.push(x)), 0);
+        assert.match(lines.join('\n'), /import 1, already on Network 1, channel without a subject 1/);
+        assert.strictEqual(await bf.main(['--live-db', liveFile, '--db', path.join(dir, 'network.db'), '--apply'], (x) => lines.push(x)), 2, 'a backup is required');
+        assert.strictEqual(await bf.main(['--live-db', liveFile, '--db', path.join(dir, 'network.db'), '--apply', '--backup', path.join(dir, 'pre.db')], (x) => lines.push(x)), 0);
+        const db2 = new Database(path.join(dir, 'network.db'), { readonly: true });
+        assert.deepStrictEqual(db2.prepare('SELECT stream_id, messages, peak_viewers FROM creator_streams ORDER BY stream_id').all().map((x) => [x.stream_id, x.messages, x.peak_viewers]),
+            [[400, 50, 9], [501, 120, 12], [502, 200, 20], [503, null, null]], 'imported the old stream; the event-sourced 501 kept its numbers');
+        db2.close();
     } finally {
         server.close();
         fs.rmSync(dir, { recursive: true, force: true });
