@@ -1,7 +1,28 @@
 'use strict';
+const https = require('https');
+const net = require('net');
+const { isPublicAddress, isInternalName, normalizeHost, safeLookup } = require('openvibe-shared/egress');
 
 let _db = null;
 let _publicKey = null;
+
+/**
+ * A subscription's endpoint is a URL the browser hands us, so anyone signed in chooses where Network
+ * POSTs. Only https, no credentials, and a public host: an IP literal must be a public address, a name
+ * must not be an internal one (localhost, *.internal, ...). Names are checked again where the
+ * connection is made (pushAgent), so a DNS answer cannot turn internal after this check.
+ */
+function endpointAllowed(endpoint) {
+    let u;
+    try { u = new URL(String(endpoint)); } catch { return false; }
+    if (u.protocol !== 'https:' || u.username || u.password) return false;
+    const host = normalizeHost(u.hostname);
+    if (net.isIP(host)) return isPublicAddress(host);
+    return !isInternalName(host);
+}
+// Every push connects through safeLookup: it fails unless every DNS answer is a public address, and the
+// socket connects to the address it checked (no second resolution, no rebinding).
+const pushAgent = new https.Agent({ lookup: safeLookup, keepAlive: true, maxSockets: 32 });
 
 let webpush;
 try {
@@ -69,6 +90,7 @@ function subscribe(userId, subscription) {
     if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
         throw new Error('Invalid push subscription');
     }
+    if (String(subscription.endpoint).length > 1000 || !endpointAllowed(subscription.endpoint)) throw new Error('Invalid push subscription endpoint');
     const stmt = _db.prepare(`
         INSERT OR REPLACE INTO push_subscriptions (user_id, endpoint, keys_p256dh, keys_auth, user_agent, created_at)
         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -113,11 +135,12 @@ async function sendPush(userId, payload) {
 
     const stale = [];
     await Promise.allSettled(subs.map(async (sub) => {
+        if (!endpointAllowed(sub.endpoint)) { stale.push(sub.id); return; }   // stored before the rule existed
         try {
             await webpush.sendNotification({
                 endpoint: sub.endpoint,
                 keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
-            }, pushPayload);
+            }, pushPayload, { agent: pushAgent, timeout: 10000 });
         } catch (err) {
             if (err.statusCode === 404 || err.statusCode === 410) {
                 stale.push(sub.id);
@@ -141,4 +164,4 @@ async function sendPushBulk(userIds, payload) {
     await Promise.allSettled(userIds.map(uid => sendPush(uid, payload)));
 }
 
-module.exports = { initVapid, getPublicKey, subscribe, unsubscribe, unsubscribeAll, sendPush, sendPushBulk };
+module.exports = { initVapid, getPublicKey, subscribe, unsubscribe, unsubscribeAll, sendPush, sendPushBulk, endpointAllowed };
