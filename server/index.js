@@ -413,14 +413,16 @@ const ecosystemInternal = require('./registry/ecosystem').internalFromEnv(proces
 if (ecosystemInternal.ignored.length) console.warn(`[Registry] ignored (not a loopback URL): ${ecosystemInternal.ignored.join(', ')}`);
 const ecosystem = require('./registry/ecosystem').createEcosystemRegistry({ issuer: config.jwt.issuer, internalOverrides: ecosystemInternal.overrides });
 // Production drift: each running service's deployed commit against its repository's main (WS-S task 7).
-require('./registry/deploy-drift').createDeployDrift({
+const deployDrift = require('./registry/deploy-drift').createDeployDrift({
     services: () => ecosystem.releases().services.filter((r) => r.release).map((r) => ({ id: r.id, release: r.release, repository: ((require('openvibe-contracts').services.manifests.find((m) => m.id === r.id)) || {}).repository })),
     token: () => process.env.GITHUB_TOKEN || require('./integrations/github').tokenOf(db) || '',
-}).start();
+});
+deployDrift.start();
 app.use(ecosystem.router());
 ecosystem.start();
 // The released libraries' latest published tags (not the versions Network installs) for the registry.
-require('./registry/library-tags').createLibraryTags({ onUpdate: require('./registry/exposure').setLibraryReleases, token: () => require('./integrations/github').tokenOf(db) }).start();
+const libraryTags = require('./registry/library-tags').createLibraryTags({ onUpdate: require('./registry/exposure').setLibraryReleases, token: () => require('./integrations/github').tokenOf(db) });
+libraryTags.start();
 // Operator status: GET /status (server-rendered, noindex), /api/v1/status, /api/v1/status/slo.
 app.use(require('./status/routes').createStatusRoutes({ ecosystem }));
 // What shipped network-wide: the changelog proxy every site's widget reads, and /updates.
@@ -755,6 +757,8 @@ app.get(['/admin', '/admin/*'], (req, res) => {
 app.use(require('./not-found').notFound);
 
 // ── Start ────────────────────────────────────────────────────
+const timers = [];   // the periodic maintenance below, cleared on stop
+let analyticsPrune = null;
 const server = app.listen(config.port, config.host, () => {
     // The home page renders the Tools catalog it already holds: fetch it now, not on the first visit.
     require('./domains/catalog').refresh().catch(() => {});
@@ -768,14 +772,14 @@ const server = app.listen(config.port, config.host, () => {
 
     // ── Periodic Maintenance ─────────────────────────────────
     // Clean expired notifications every hour
-    setInterval(() => notificationService.maintenance(), 60 * 60 * 1000);
+    timers.push(setInterval(() => notificationService.maintenance(), 60 * 60 * 1000));
 
     // Process email queue every 2 minutes
-    setInterval(() => emailService.processQueue(notificationService), 2 * 60 * 1000);
+    timers.push(setInterval(() => emailService.processQueue(notificationService), 2 * 60 * 1000));
 
     // Raw analytics retention (ADR-021), job analytics-prune: events older than 30 days go, in
     // bounded batches; hourly/daily rollups stay. First run 5 minutes after boot, then every 24 h.
-    networkAnalytics.schedulePrune(analytics);
+    analyticsPrune = networkAnalytics.schedulePrune(analytics);
 
     // User modules of a retired owning service (onOwnerRemoved, server/identity/modules.js): writes stop at
     // once; delete-after-retention records go retentionDays after Network first saw the retirement.
@@ -785,28 +789,38 @@ const server = app.listen(config.port, config.host, () => {
             if (n) console.log(`[Modules] Deleted ${n} record(s) of retired namespace owners`);
         } catch (e) { console.warn('[Modules] retired-owner sweep:', e.message); }
     };
-    setTimeout(sweepModules, 5 * 60 * 1000);
-    setInterval(sweepModules, 24 * 60 * 60 * 1000);
+    timers.push(setTimeout(sweepModules, 5 * 60 * 1000), setInterval(sweepModules, 24 * 60 * 60 * 1000));
 
     // Clean expired sessions daily
-    setInterval(() => {
+    timers.push(setInterval(() => {
         const cleaned = db.prepare("DELETE FROM user_sessions WHERE expires_at < datetime('now') OR is_active = 0").run().changes;
         if (cleaned > 0) console.log(`[Sessions] Cleaned ${cleaned} expired sessions`);
-    }, 24 * 60 * 60 * 1000);
+    }, 24 * 60 * 60 * 1000));
 });
 
-// ── Stop (roadmap WS-P lifecycle) ────────────────────────────
-// systemd sends SIGTERM on a restart or deploy: stop taking connections, close idle keep-alive ones,
-// let requests in flight finish (at most 10 s, well inside the unit's stop timeout), then exit. Work
-// kept in the database (outboxes, the email queue) resumes on the next start.
-function shutdown(signal) {
-    if (shutdown.started) return;
-    shutdown.started = true;
-    console.log(`[Network] ${signal}: closing`);
-    server.close(() => process.exit(0));
-    if (typeof server.closeIdleConnections === 'function') server.closeIdleConnections();
-    setTimeout(() => process.exit(0), 10000).unref();
-}
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
-
+// ── Stop (roadmap WS-P lifecycle; server/graceful.js) ─────────
+// systemd sends SIGTERM on a restart or deploy. The maintenance timers, the registry, drift and library
+// pollers, the frame refreshes, the profile-event and grant-expiry timers stop (nothing new starts); the
+// server stops taking connections, closes idle keep-alive ones and lets requests in flight finish (8 s at
+// most, Connection: close); then the developer/profile/grant event relay finishes its send in progress
+// (unsent rows stay in the outbox), analytics flush and close, network.db closes, and the process exits 0,
+// within 10 s (well inside the unit's stop timeout). The email queue resumes on the next start.
+const { within } = require('./graceful');
+require('./graceful').gracefulStop({
+    name: 'Network', server, drainMs: 8000, deadlineMs: 10000,
+    stop: [
+        () => { for (const t of timers) { clearTimeout(t); clearInterval(t); } },
+        () => { if (analyticsPrune) analyticsPrune.stop(); },
+        () => ecosystem.stop(),
+        () => deployDrift.stop(),
+        () => libraryTags.stop(),
+        () => frameService.stop(),
+        () => require('./identity/profile-events').stop(),
+        () => require('./identity/grants-admin').stop(),
+    ],
+    close: [
+        () => within(1500, require('./developer/event-relay').stopRelay(db)),
+        () => { analytics.destroy(); analytics.db.close(); },
+        () => db.close(),
+    ],
+});

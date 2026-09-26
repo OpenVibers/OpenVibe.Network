@@ -1,6 +1,8 @@
 'use strict';
-// A restart drains instead of cutting (roadmap WS-P lifecycle): on SIGTERM the server stops taking
-// connections, closes idle keep-alive ones and exits 0, promptly, even with a keep-alive client connected.
+// A restart drains instead of cutting (roadmap WS-P lifecycle; server/graceful.js): on SIGTERM the server
+// stops taking connections, closes idle keep-alive ones, answers the request in flight (Connection: close),
+// stops its timers, pollers and relay, closes the databases and exits 0 within the manifest's 10 s, promptly,
+// even with a keep-alive client connected.
 //   node test/shutdown.test.js
 const assert = require('assert');
 const fs = require('fs');
@@ -33,12 +35,31 @@ const freePort = () => new Promise((resolve) => { const s = net.createServer(); 
         // A keep-alive client that finished its request and keeps the connection open.
         const agent = new http.Agent({ keepAlive: true });
         await new Promise((resolve, reject) => http.get({ host: '127.0.0.1', port, path: '/api/health', agent }, (res) => { res.resume(); res.on('end', resolve); }).on('error', reject));
+        // A request in flight: its JSON body is still coming (express.json reads it before any route answers).
+        const body = Buffer.from(JSON.stringify({ probe: 'graceful-stop', pad: 'x'.repeat(64) }));
+        const req = http.request({ host: '127.0.0.1', port, path: '/api/graceful-probe', method: 'POST', agent: false, headers: { 'Content-Type': 'application/json', 'Content-Length': body.length } });
+        const answered = new Promise((resolve, reject) => {
+            req.on('response', (res) => { res.resume(); res.on('end', () => resolve({ status: res.statusCode, connection: res.headers.connection, at: Date.now() })); });
+            req.on('error', reject);
+        });
+        req.write(body.subarray(0, 10));
+        await new Promise((r) => setTimeout(r, 200));
         const t0 = Date.now();
         child.kill('SIGTERM');
-        const r = await Promise.race([exited, new Promise((res) => setTimeout(() => res({ timeout: true }), 8000))]);
-        assert.ok(!r.timeout, 'exits within 8 s with an idle keep-alive connection open');
+        await new Promise((r) => setTimeout(r, 300));
+        const refused = await fetch(`http://127.0.0.1:${port}/api/health`, { signal: AbortSignal.timeout(1000) }).then(() => false, () => true);
+        assert.ok(refused, 'no new connections once stopping');
+        req.end(body.subarray(10));
+        const a = await answered;
+        assert.ok(a.at > t0, 'the request was still in flight at SIGTERM');
+        assert.ok(a.status >= 200 && a.status < 600, `answered, not cut (${a.status})`);
+        assert.strictEqual(a.connection, 'close');
+        const r = await Promise.race([exited, new Promise((res) => setTimeout(() => res({ timeout: true }), 10000))]);
+        assert.ok(!r.timeout, "exits within the manifest's 10 s with an idle keep-alive connection open");
         assert.deepStrictEqual([r.code, r.signal], [0, null], `a clean exit, not a kill: ${JSON.stringify(r)}\n${out.slice(-800)}`);
-        assert.ok(/SIGTERM: closing/.test(out), 'says it is closing');
+        assert.ok(/\[Network\] SIGTERM: stopping/.test(out), 'says it is stopping');
+        assert.ok(/\[Network\] stopped in \d+ ms/.test(out), `ran every stop and close step\n${out.slice(-800)}`);
+        assert.ok(!/stop: (stop|close) step failed/.test(out), `no step failed\n${out.slice(-1500)}`);
         console.log(`shutdown: exited 0 in ${Date.now() - t0} ms`);
         agent.destroy();
     } finally {

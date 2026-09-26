@@ -204,20 +204,24 @@ function createFrameService(db, config, analytics, { privateKey = null, issuer =
         res.status(204).end();
     });
 
+    let timers = [];
     function start() {
         const rankAge = Date.now() - ((load('rank') || {}).at || 0), copyAge = Date.now() - ((load('copy') || {}).at || 0);
         const t1 = setTimeout(() => refreshRank().catch(() => {}), rankAge > RANK_MS ? 8000 : RANK_MS - rankAge); t1.unref();
         const i1 = setInterval(() => refreshRank().catch(() => {}), RANK_MS); i1.unref();
         const t2 = setTimeout(() => refreshCopy().catch(() => {}), copyAge > COPY_MS ? 60_000 : COPY_MS - copyAge); t2.unref();
         const i2 = setInterval(() => refreshCopy().catch(() => {}), COPY_MS); i2.unref();
+        timers = [t1, i1, t2, i2];
     }
+    /** Graceful stop: no further rank or copy refreshes. */
+    function stop() { for (const t of timers) { clearTimeout(t); clearInterval(t); } timers = []; }
 
     /** The open sites in navbar order (most used first), and when that use was last counted (ms, or null: cold start). */
     function ranking() {
         return { at: rankedAt, order: orderedOpen().map(s => s.id), everyMs: RANK_MS };
     }
 
-    return { router, start, refreshRank, refreshCopy, payloadFor, ranking, _state: () => ({ rank, copy }) };
+    return { router, start, stop, refreshRank, refreshCopy, payloadFor, ranking, _state: () => ({ rank, copy }) };
 }
 
 module.exports = { createFrameService, BANNED };
