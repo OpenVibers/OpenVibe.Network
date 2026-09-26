@@ -146,6 +146,8 @@ const DEFAULT_GRANTS = [
     ['chat', 'vip.entitlement.check', 'openvibe.vip', []],
     ['community', 'vip.resource.policy.evaluate', 'openvibe.vip', []],
     ['blog', 'vip.resource.policy.evaluate', 'openvibe.vip', []],
+    // WS-K task 8: Wiki's VIP spaces and pages (Wiki server/integrations/vip.js).
+    ['wiki', 'vip.resource.policy.evaluate', 'openvibe.vip', []],
     ['live', 'vip.entitlement.check', 'openvibe.vip', []],
     ['community', 'events.subscription.manage', 'openvibe.events', []],
     ['community', 'events.event.read', 'openvibe.events', []],
