@@ -49,3 +49,9 @@ Live, already holds `identity.subject.resolve` and `network.coins.credit` on `op
 adding the five paths to `TOKEN_PATHS` in its `server/net/network-principal.js` and sending those calls through
 `headersFor(path)`. The capability names are the closest existing ones in openvibe-contracts 0.33; narrower ones
 (`network.registry.read`, `network.coins.read`, an identity legacy-map write) are a contracts change.
+
+## Removed key calls
+
+| Call | Removed | Instead |
+| --- | --- | --- |
+| Network → Live `POST /internal/user-role` (register C-55; Live's route, C-54, went in the same change) | 2026-09-26, WS-B task 2 step 5 | `network.user.updated`: the `users` trigger records a role change in the admin request's own transaction and `server/identity/profile-events.js` relays it; Live applies it, downgrades too (`test/admin-role-events.test.js`) |

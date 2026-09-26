@@ -676,9 +676,10 @@ function initDb(dbPath) {
     }
 
     // Roles are Network's own data. Network never opens another service's database (ADR-007):
-    // role changes made here reach Live through POST /internal/user-role (admin/routes.js), and
-    // Live never downgrades from a stale SSO token. The boot-time read of Live's database that
-    // used to live here was removed (compatibility register C-58).
+    // role changes made here reach Live as network.user.updated (server/identity/profile-events.js;
+    // the key-only POST /internal/user-role push was retired, register C-54/C-55), and Live never
+    // downgrades from a stale SSO token. The boot-time read of Live's database that used to live
+    // here was removed (compatibility register C-58).
 
     // ── Helper: getSetting ───────────────────────────────────
     // Provider secrets (server/secrets.js) come from their environment variable when it is set.

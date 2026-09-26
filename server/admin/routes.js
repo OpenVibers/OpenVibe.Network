@@ -215,24 +215,9 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
         return refreshServiceByKey(req, key);
     }
 
-    // Push an authoritative role change to OpenVibe.Live so it takes effect
-    // immediately (chat Staff badge, moderation powers) instead of waiting on the
-    // user's next SSO token. Fire-and-forget — never blocks the admin response.
-    function pushRoleToStreamer(user, role) {
-        try {
-            const base = (process.env.OV_LIVE_INTERNAL_URL || 'http://127.0.0.1:3000').replace(/\/$/, '');
-            const key = process.env.INTERNAL_API_KEY || process.env.OV_INTERNAL_KEY;
-            if (!key || !user) return;
-            fetch(`${base}/internal/user-role`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Internal-Key': key },
-                body: JSON.stringify({ openvibenetwork_id: user.id, username: user.username, role }),
-            }).then(r => { if (!r.ok) console.warn('[AdminRole] streamer role push HTTP', r.status); })
-              .catch(e => console.warn('[AdminRole] streamer role push failed:', e.message));
-        } catch (e) {
-            console.warn('[AdminRole] streamer role push error:', e.message);
-        }
-    }
+    // A role change reaches Live (and every other consumer) as network.user.updated: the users trigger records
+    // it in this request's transaction and server/identity/profile-events.js relays it (WS-B task 2). The
+    // key-only push to Live's /internal/user-role that used to follow it is retired (register C-54/C-55).
 
     router.use(requireAuth, requireAdmin);
 
@@ -582,7 +567,6 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                 'grant_admin',
                 JSON.stringify({ targetId: user.id, targetUsername: user.username, targetEmail: user.email }),
             );
-            pushRoleToStreamer(user, 'admin');
             res.json({ ok: true, user: { id: user.id, username: user.username, email: user.email, role: 'admin' } });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
@@ -740,8 +724,6 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'user_role_change', JSON.stringify({ targetId: req.params.id, role })
             );
-            const changed = db.prepare('SELECT id, username FROM users WHERE id = ?').get(req.params.id);
-            if (changed) pushRoleToStreamer(changed, role);
             res.json({ ok: true });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
