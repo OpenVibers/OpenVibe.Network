@@ -80,6 +80,70 @@ function mint({ app, project, audience, scope, limit, onBehalfOf, privateKey, is
     return { status: 200, body: { access_token: serviceAuth.signServiceToken(claims, privateKey), token_type: 'Bearer', expires_in: TOKEN_TTL_S, scope: cap.join(' ') } };
 }
 
+// ── Export tokens (roadmap WS-N task 9) ─────────────────────────
+
+/**
+ * What an export token may do at each audience: list and read, never write, publish or subscribe.
+ * Media checks media.object.list for its list verb (media.object.read grants it too, for receivers
+ * whose contracts do not know .list yet); Events answers the pull API to events.app.read.
+ */
+const EXPORT_CAPS = Object.freeze({
+    'openvibe.media': Object.freeze(['media.object.list', 'media.object.read']),
+    'openvibe.events': Object.freeze(['events.app.read']),
+});
+const EXPORT_PURPOSE = 'export';
+
+/**
+ * The project's export principal, app:app_<the project's ULID>. No dev_apps row carries it and
+ * /oauth/token never issues it; it exists only in export tokens, so every receiver log line that
+ * names it is an export of that project (the jti leads to the dev_audit row and the person).
+ */
+const exportSubject = (projectId) => `app:app_${String(projectId).replace(/^prj_/, '')}`;
+
+/**
+ * POST /api/v1/projects/:project/export-tokens { audience, env }: a read-only token with which
+ * OpenVibe.Codes downloads what the project holds in one service and environment (its Media objects
+ * and namespaces, its app events) for the person exporting it.
+ *
+ * Who: the project's owner or an admin member (Network's roles, checked here at mint time). Staff
+ * get none for projects they are not an admin of. Archived projects can still be exported.
+ *
+ * Shape: an app token (identity.service-token-claims@1) so Media and Events accept it unchanged:
+ *   sub app:app_<project ULID> (exportSubject), actor_type app, aud [audience], cap EXPORT_CAPS,
+ *   ns [project_id, app.<project_id>.*], project_id, env, on_behalf_of usr_<person>,
+ *   purpose 'export', 5 minutes, no refresh (Codes asks again for a long export).
+ * The caps are not taken from the project's grants or allowance: those bound what the project's
+ * apps may do; this reads back what the project already holds, for its owner or admin.
+ *
+ * Every mint writes a dev_audit row (project.export_token_issued: audience, env, cap, jti, expiry);
+ * the token itself is never stored or logged. Returns the token response; throws DevError.
+ */
+function mintExportToken(db, actor, projectId, body, { privateKey, issuer, ctx }) {
+    const { project } = store.access(db, actor, projectId, { need: 'admin', staffOk: false, allowArchived: true });
+    const audience = String((body && body.audience) || '');
+    const cap = EXPORT_CAPS[audience];
+    if (!cap) throw new store.DevError(422, 'export.invalid_audience', `audience is one of ${Object.keys(EXPORT_CAPS).join(', ')}`);
+    const env = String((body && body.env) || '');
+    if (!policy.ENVIRONMENTS.includes(env)) throw new store.DevError(422, 'export.invalid_env', `env is one of ${policy.ENVIRONMENTS.join(', ')}`);
+    const now = Math.floor(Date.now() / 1000);
+    const claims = {
+        iss: issuer, sub: exportSubject(project.id), actor_type: 'app', aud: [audience], cap: [...cap], ns: projectNamespaces(project.id),
+        project_id: project.id, env, on_behalf_of: actor.subject, purpose: EXPORT_PURPOSE,
+        iat: now, exp: now + TOKEN_TTL_S, jti: `tok_${crypto.randomBytes(12).toString('hex')}`,
+    };
+    assertValid('identity.service-token-claims@1', claims);
+    const token = serviceAuth.signServiceToken(claims, privateKey);
+    const expiresAt = new Date(claims.exp * 1000).toISOString();
+    store.audit(db, {
+        projectId: project.id, actor: actor.label, action: 'project.export_token_issued', target: claims.sub,
+        detail: { audience, env, cap: claims.cap, jti: claims.jti, expires_at: expiresAt, purpose: EXPORT_PURPOSE }, ctx,
+    });
+    return {
+        access_token: token, token_type: 'Bearer', expires_in: TOKEN_TTL_S, expires_at: expiresAt, scope: claims.cap.join(' '),
+        audience, env, purpose: EXPORT_PURPOSE, subject: claims.sub, project_id: project.id, jti: claims.jti,
+    };
+}
+
 /** Authenticate the client of a token request. Public apps present no secret. */
 function authenticate(db, app, clientSecret) {
     if (app.client_type === 'public') {
@@ -167,4 +231,7 @@ function issueCode(db, { app, project, user, redirectUri, scope, challenge }) {
     return { code };
 }
 
-module.exports = { isAppClient, handleTokenRequest, checkAuthorizeRequest, issueCode, effectiveGrants, projectNamespaces, TOKEN_TTL_S };
+module.exports = {
+    isAppClient, handleTokenRequest, checkAuthorizeRequest, issueCode, effectiveGrants, projectNamespaces, TOKEN_TTL_S,
+    mintExportToken, exportSubject, EXPORT_CAPS, EXPORT_PURPOSE,
+};

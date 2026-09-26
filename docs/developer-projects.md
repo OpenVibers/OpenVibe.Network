@@ -31,6 +31,7 @@ What exists today: the data model, the `/api/v1/projects` API, app tokens from `
 | Add or remove admins | | | | yes | |
 | Read the audit | | | yes | yes | yes |
 | Archive the project | | | | yes | yes |
+| Mint an export token (read-only, for OpenVibe.Codes' project export) | | | yes | yes | only as an admin member |
 | Set the allowance, environment policy and quotas | | | | | yes |
 
 Non-members get `404 project.not_found`, so a project's existence is not disclosed. Any member can leave, except the owner.
@@ -86,6 +87,26 @@ The sandbox check works in two layers.
 2. **Receivers.** A receiver refuses `env: sandbox` with `401 token.sandbox_refused` unless it opted in. Network does this in its own capability guard (`server/identity/principals.js`) and accepts sandbox only if `openvibe.network` is in `DEV_SANDBOX_AUDIENCES`. `server/developer/policy.js` exports `environmentDecision(claims, { acceptSandbox })` for the check. openvibe-contracts (≥ 0.26.0) `verifyServiceToken` / `requireCapability` do the same with an `acceptSandbox` option that defaults to false.
 
 An audience opts in when it can keep sandbox traffic apart from real data: for example, test-flagged money in Billing (ADR-012 rule 9), or a sandbox tenant in Media. First-party service tokens carry no `env` and are treated as production. The three default audiences must accept sandbox tokens themselves. Issuance working does not mean they do. Media (sandbox tenants keyed by project id) and Events (env-marked app events) take that on in the same Wave 20 step. Tools must accept `env: sandbox` on `/api/v1/jobs`; until it does, a sandbox app's Tools token is refused with `401 token.sandbox_refused` there.
+
+### Export tokens
+
+A project's owner or admin exports everything the project holds on openvibe.codes (roadmap WS-N task 9). Codes calls `POST /api/v1/projects/:project/export-tokens { audience, env }` with the person's own token, once per audience and environment, and reads with what Network returns. Network checks the role at mint time; developers and viewers get `403 project.forbidden`, non-members `404`, and staff who are not an admin member of the project `403`. An archived project can still be exported.
+
+The token is shaped as an app token, so Media and Events accept it without changes:
+
+| Claim | Value |
+|---|---|
+| `sub` | `app:app_<the project's ULID>`: the project's export principal. No app has this id and `/oauth/token` never issues it, so a receiver log line naming it is an export of that project. |
+| `actor_type` | `app` |
+| `aud` | `[openvibe.media]` or `[openvibe.events]` (anything else is `422 export.invalid_audience`) |
+| `cap` | Media: `media.object.list`, `media.object.read`. Events: `events.app.read`. Never a write, publish or subscribe capability. |
+| `ns`, `project_id` | as for app tokens: `[project_id, app.<project_id>.*]` |
+| `env` | `sandbox` or `production`, as asked (anything else is `422 export.invalid_env`). Each receiver still decides whether it accepts `env: sandbox`. |
+| `on_behalf_of` | the person exporting |
+| `purpose` | `export` |
+| `iat`, `exp`, `jti` | 300-second lifetime, no refresh (Codes asks again during a long export) |
+
+The capabilities do not come from the project's grants or allowance. Those bound what the project's apps may do; an export token reads back what the project already holds, for its owner or admin. Every mint writes a `dev_audit` row, `project.export_token_issued`, with the audience, environment, capabilities, `jti` and expiry. The row is not a platform event, and the token itself is never stored or logged (`test/developer-export-tokens.test.js`).
 
 ### A new project without staff
 
@@ -155,6 +176,7 @@ Base: `/api/v1/projects`. Every call needs `Authorization: Bearer <Network user 
 | `GET /:project/quotas` | viewer+ | |
 | `PUT /:project/quotas/:capability` / `DELETE` | staff | `{ limit, window, unit }` |
 | `GET /:project/audit[?before=&limit=]` | admin+, staff | newest first, paged by `next_before` |
+| `POST /:project/export-tokens` | owner, admin (not staff as such) | `{ audience, env }` → a 5-minute read-only export token ([Export tokens](#export-tokens)) |
 
 Redirect URIs must be https. `http://localhost`, `127.0.0.1` and `[::1]` are allowed for sandbox apps only. Fragments and embedded credentials are refused. At most 10 per app. A public app needs at least one. A project has at most `DEV_MAX_APPS_PER_PROJECT` active apps.
 

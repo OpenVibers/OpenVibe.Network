@@ -36,12 +36,15 @@
  *   PUT    /:project/quotas/:capability { limit, window, unit }  staff
  *   DELETE /:project/quotas/:capability                     staff
  *   GET    /:project/audit[?before=&limit=]                 admin+ or staff
+ *   POST   /:project/export-tokens { audience, env }         owner or admin member (not staff as such):
+ *                                                           a 5-minute read-only export token (tokens.js)
  */
 const express = require('express');
 const { http } = require('openvibe-contracts');
 const { verifySession } = require('../auth/session');
 const store = require('./store');
 const policy = require('./policy');
+const tokens = require('./tokens');
 
 function router() {
     const r = express.Router();
@@ -119,6 +122,11 @@ function router() {
         const { project } = store.access(db, a, req.params.project, { need: 'admin', allowArchived: true });
         return store.listAudit(db, project.id, { before: req.query.before, limit: req.query.limit });
     }));
+
+    // Project export (WS-N task 9): Codes asks with the person's token, once per audience and env.
+    r.post('/:project/export-tokens', handle((db, a, req, o) => tokens.mintExportToken(db, a, req.params.project, req.body || {}, {
+        privateKey: req.app.locals.privateKey, issuer: req.app.locals.config.jwt.issuer, ctx: o.ctx,
+    }), 201));
 
     // Malformed JSON and other body errors as problems too.
     r.use((err, req, res, _next) => send(req, res, err));
