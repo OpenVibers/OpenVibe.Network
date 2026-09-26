@@ -197,6 +197,7 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
                 <button class="admin-tab-btn active" onclick="showTab('dashboard',this)"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
                 <button class="admin-tab-btn" onclick="showTab('users',this)"><i class="fa-solid fa-users"></i> Users</button>
                 <button class="admin-tab-btn" onclick="showTab('streams',this)"><i class="fa-solid fa-broadcast-tower"></i> Streams</button>
+                <button class="admin-tab-btn" onclick="showTab('lineage',this)"><i class="fa-solid fa-diagram-project"></i> Lineage</button>
                 <button class="admin-tab-btn" onclick="showTab('bans',this)"><i class="fa-solid fa-ban"></i> Bans</button>
                 <button class="admin-tab-btn" onclick="showTab('chat-logs',this)"><i class="fa-solid fa-message"></i> Chat Logs</button>
                 <button class="admin-tab-btn" onclick="showTab('moderators',this)"><i class="fa-solid fa-shield-halved"></i> Moderators</button>
@@ -250,6 +251,13 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
     <!-- Streams -->
     <div class="section" id="sec-streams">
         <div id="streams-content"><div class="loading">Loading...</div></div>
+    </div>
+
+    <!-- Lineage: references the canonical resolver could not resolve (Live, roadmap D20) -->
+    <div class="section" id="sec-lineage">
+        <p class="muted">References Live's canonical channel/owner resolver answered <em>unresolved</em>, from other services and Live's own checks, counted by inputs and reason over the last 30 days. A display name never resolves anything.</p>
+        <div class="sub-tabs" id="lineage-reasons"></div>
+        <div id="lineage-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Bans -->
@@ -853,6 +861,7 @@ const tabLoaders = {
     dashboard: loadDashboard,
     users: loadUsers,
     streams: loadStreams,
+    lineage: () => loadLineage(),
     bans: loadBans,
     'chat-logs': () => {}, // manual search
     moderators: loadModerators,
@@ -1282,6 +1291,35 @@ async function loadStreams() {
                     </tr>
                 `).join('')}</tbody>
             </table>`;
+    } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
+}
+
+// Unresolved lineage references (Live GET /api/admin/lineage/unresolved through the /api/admin/streamer proxy).
+async function loadLineage(reason = '') {
+    const c = document.getElementById('lineage-content');
+    const tabs = document.getElementById('lineage-reasons');
+    c.innerHTML = '<div class="loading">Loading...</div>';
+    try {
+        const data = await api(`/api/admin/streamer/lineage/unresolved${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`);
+        const by = data.by_reason || {};
+        tabs.innerHTML = [['', 'All']].concat(Object.keys(by).sort().map(r => [r, `${r.replace(/_/g, ' ')} (${by[r].refs})`]))
+            .map(([r, label]) => `<button class="${r === reason ? 'active' : ''}" onclick="loadLineage('${esc(r)}')">${esc(label)}</button>`).join('');
+        const rows = data.unresolved || [];
+        if (!rows.length) { c.innerHTML = '<p class="muted">Nothing unresolved in the last 30 days.</p>'; return; }
+        c.innerHTML = `
+            <div style="overflow-x:auto"><table class="admin-table">
+                <thead><tr><th>Reference</th><th>Reason</th><th>Detail</th><th>Last caller</th><th>Times</th><th>First seen</th><th>Last seen</th></tr></thead>
+                <tbody>${rows.map(u => `
+                    <tr>
+                        <td><code>${esc(u.ref)}</code></td>
+                        <td><span class="badge badge-warning">${esc(u.reason)}</span></td>
+                        <td>${esc(u.detail || '')}</td>
+                        <td>${esc(u.last_caller || '-')}</td>
+                        <td>${Number(u.count) || 0}</td>
+                        <td>${u.first_at ? timeAgo(u.first_at) : '-'}</td>
+                        <td>${u.last_at ? timeAgo(u.last_at) : '-'}</td>
+                    </tr>`).join('')}</tbody>
+            </table></div>`;
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
 }
 
