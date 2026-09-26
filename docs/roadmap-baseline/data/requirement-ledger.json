@@ -1448,7 +1448,7 @@
           "kind": "test",
           "repo": "OpenVibe.Community",
           "path": "test/forum.test.js",
-          "contains": "votes on threads: add/change/remove, score recomputed, my_vote shown",
+          "contains": "add/change/remove, score recomputed, my_vote shown",
           "proves": "vote add, change and remove semantics"
         },
         {
@@ -1489,14 +1489,14 @@
           "kind": "test",
           "repo": "OpenVibe.Community",
           "path": "test/relay.test.js",
-          "contains": "a new thread in a mapped space is posted once, with attribution, a link, and no mentions",
+          "contains": "a new thread is posted once with ?wait=true, attribution, a link and no mentions",
           "proves": "Community owns outbound relay with a per-thread dedupe key"
         },
         {
           "kind": "test",
           "repo": "OpenVibe.Community",
           "path": "test/relay.test.js",
-          "contains": "loop prevention: Discord-origin threads are never relayed; members/staff spaces never leave the site",
+          "contains": "loop prevention: Discord-origin threads and posts are never relayed; members/staff spaces never leave the site",
           "proves": "loop prevention and the private-space rule"
         },
         {
@@ -1981,7 +1981,7 @@
         {
           "kind": "test",
           "repo": "OpenVibe.Network",
-          "path": "test/chrome.test.js",
+          "path": "test/frame.test.js",
           "contains": "no fallback to Live when AI fails",
           "proves": "Network's generated copy no longer depends on a Live internal endpoint"
         },

@@ -13,6 +13,54 @@
   "rules": [
     {
       "repo": "*",
+      "match": "^config_(keys|snapshots)$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "openvibe-shared/config.js: each service's own revisioned settings (keys and snapshots for rollback)."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^chat_(staged_outbox|dual_read_stats)$",
+      "target": "OpenVibe.Chat",
+      "disposition": "staged",
+      "wave": "C-04",
+      "note": "Bookkeeping of the staged chat tables' move to Chat (server/chat/chat-tables-sync.js): the outbox of Live's writes and the dual-read comparison counts; removed with the staged tables."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^(module_summary_pushes|search_doc_pushes|search_media_pushes)$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "Live's push bookkeeping: what it last sent to Network's user modules and to OpenVibe.Search (revisions and hashes), so a push is sent once."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^subject_projection$",
+      "target": "OpenVibe.Network",
+      "disposition": "mirror",
+      "wave": "WS-B task 2",
+      "note": "Live's projection of Network profiles, kept from network.user.updated (ADR-030 pattern); Network is the authority."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^token_revocations$",
+      "target": "OpenVibe.Network",
+      "disposition": "mirror",
+      "wave": "W1",
+      "note": "A local cache of Network's token revocations (network.token.revoked), checked on every request."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^username_history$",
+      "target": "OpenVibe.Network",
+      "disposition": "mirror",
+      "wave": "WS-B",
+      "note": "Old usernames so /@old keeps answering after a rename; Network keeps the authoritative history."
+    },
+    {
+      "repo": "*",
       "match": "^analytics_(events|hourly|daily|rate_tracking|day_salts|visitor_days)$",
       "target": "keep",
       "disposition": "keep",
@@ -566,6 +614,14 @@
   "routes": [
     {
       "repo": "OpenVibe.Live",
+      "match": "^/api/search(/suggest)?$",
+      "target": "OpenVibe.Search",
+      "disposition": "adapter",
+      "wave": "WS-O task 10",
+      "note": "Live's search box asks OpenVibe.Search for Live's own documents (owner live) and shapes the answer."
+    },
+    {
+      "repo": "OpenVibe.Live",
       "match": "^/api/(chat|dm|tts|sounds)(/|$)",
       "target": "OpenVibe.Chat",
       "disposition": "shadowed",
@@ -942,6 +998,14 @@
     }
   ],
   "jobs": [
+    {
+      "repo": "OpenVibe.Live",
+      "name": "^module-summaries-(scan|refresh)$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "WS-B task 9",
+      "note": "Live pushes its summaries (live.profile, live.stats, live.loyalty) to Network's user modules."
+    },
     {
       "repo": "OpenVibe.Live",
       "file": "^server/chat/",

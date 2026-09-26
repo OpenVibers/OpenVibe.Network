@@ -8,25 +8,25 @@ Deliverable 6. Current owner = the repo that creates the table; target owner = r
 
 | Current owner | Tables | Stay | Staged copy | Moved (mirror left) | To move | Frozen legacy | Investigate |
 |---|---|---|---|---|---|---|---|
-| OpenVibe.Live | 196 | 33 | 0 | 12 | 68 | 44 | 39 |
-| OpenVibe.Network | 53 | 50 | 0 | 0 | 3 | 0 | 0 |
-| OpenVibe.Shared | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| OpenVibe.Media | 25 | 22 | 0 | 0 | 0 | 3 | 0 |
+| OpenVibe.Live | 122 | 31 | 2 | 15 | 70 | 6 | 0 |
+| OpenVibe.Network | 60 | 57 | 0 | 0 | 3 | 0 | 0 |
+| OpenVibe.Shared | 2 | 2 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Media | 31 | 26 | 0 | 0 | 0 | 3 | 2 |
 | OpenVibe.Tools | 13 | 13 | 0 | 0 | 0 | 0 | 0 |
-| OpenVibe.Community | 20 | 20 | 0 | 0 | 0 | 0 | 0 |
-| OpenVibe.Games | 13 | 13 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Community | 36 | 35 | 0 | 0 | 0 | 0 | 1 |
+| OpenVibe.Games | 14 | 13 | 0 | 0 | 0 | 0 | 1 |
 | OpenVibe.Sites | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.Events | 7 | 7 | 0 | 0 | 0 | 0 | 0 |
-| OpenVibe.Chat | 34 | 28 | 6 | 0 | 0 | 0 | 0 |
-| OpenRe.Stream | 13 | 13 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Chat | 41 | 35 | 6 | 0 | 0 | 0 | 0 |
+| OpenRe.Stream | 14 | 14 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.Billing | 19 | 19 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.Tips | 19 | 19 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.VIP | 15 | 15 | 0 | 0 | 0 | 0 | 0 |
-| OpenVibe.AI | 16 | 16 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.AI | 19 | 19 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.Search | 21 | 21 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.Sources | 8 | 8 | 0 | 0 | 0 | 0 | 0 |
-| OpenVibe.Wiki | 20 | 20 | 0 | 0 | 0 | 0 | 0 |
-| OpenVibe.Blog | 20 | 20 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Wiki | 22 | 22 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Blog | 24 | 24 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.News | 23 | 23 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.Reviews | 23 | 23 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.Deals | 19 | 19 | 0 | 0 | 0 | 0 | 0 |
@@ -40,23 +40,22 @@ Deliverable 6. Current owner = the repo that creates the table; target owner = r
 
 | Target authority | From | Tables | Wave |
 |---|---|---|---|
-| ? | OpenVibe.Live | game_achievements, game_bank, game_battle_stats, game_daily_quest_claims, game_daily_quest_progress, game_dungeon_runs, game_effects, game_farm_plots, game_fish_collection, game_inventory, game_leaderboard, game_players, game_recipes, game_structures, game_world_state, tag_guardian_defeats | W0 |
-| archive then drop | OpenVibe.Live | arena_achievements, arena_battles, arena_events, arena_talk, arena_talk_hype, arena_talk_session_hype, arena_talk_session_topics, arena_talk_sessions, arena_talk_topics, arena_tier_paid, arena_topic_hype, arena_topic_members, arena_topic_moments, arena_topic_progress, arena_topic_sides, arena_topic_threads, arena_topics, arena_viewer_clout, arena_votes, chatter_profiles, chatter_subjects, chatter_xp_log, promo_claims | W0 |
+| ? | OpenVibe.Community | token_revocations | W0 |
+| ? | OpenVibe.Games | token_revocations | W0 |
+| ? | OpenVibe.Media | search_doc_pushes, token_revocations | W0 |
 | OpenRe.Stream | OpenVibe.Live | camera_presets, camera_profiles, cameras, control_config_buttons, control_configs, control_whitelist, kick_channel_cache, managed_streams, platform_connections, restream_destinations, robotstreamer_integrations, robotstreamer_integrations_new, stream_controls, stream_controls_new | W7 |
 | OpenVibe.AI | OpenVibe.Live | ai_chatbot_configs, ai_timeline_cache, ai_usage, ai_viewer_log, ai_viewer_threads, channel_ai_bots, channel_ai_config, clip_ai_state, easter_egg_solves, stream_memories, stream_recaps, streamer_overviews, translations, vod_ai_state | W13 |
 | OpenVibe.Billing | OpenVibe.Live | payment_orders, transactions | W8 (after ADR-012) |
 | OpenVibe.Billing (loyalty ledger) | OpenVibe.Live | channel_points, channel_points_log, coin_redemptions, coin_rewards, coin_transactions, opencoin_admin_grants, user_cosmetics, user_equipped, user_equipped_tag | W8 (after ADR-012) |
 | OpenVibe.Billing (loyalty ledger) | OpenVibe.Network | coin_transactions, wallets | W8 (after ADR-012) |
 | OpenVibe.Billing + OpenVibe.VIP | OpenVibe.Live | subscriptions | W8/W10 |
-| OpenVibe.Chat | OpenVibe.Live | channel_moderation_settings, channel_moderators, channel_sounds, channel_sounds_new, chat_ai_summaries, chat_messages, chat_messages_new, chat_timeline_events, dm_blocks, dm_conversations, dm_messages, dm_participants, emotes, emotes_new, hidden_relay_users, media_request_settings, media_requests, moderation_actions, pending_ip_messages, relay_users, stream_first_chats, tts_voice_overrides, user_tags | W6 (remainder) |
+| OpenVibe.Chat | OpenVibe.Live | channel_moderation_settings, channel_moderators, channel_sounds, channel_sounds_new, chat_ai_summaries, chat_dual_read_stats, chat_messages, chat_messages_new, chat_staged_outbox, chat_timeline_events, dm_blocks, dm_conversations, dm_messages, dm_participants, emotes, emotes_new, hidden_relay_users, media_request_settings, media_requests, moderation_actions, pending_ip_messages, relay_users, stream_first_chats, tts_voice_overrides, user_tags | W6 (remainder) |
 | OpenVibe.Codes | OpenVibe.Live | vibe_coding_events, vibe_coding_sessions | W20 |
 | OpenVibe.Community | OpenVibe.Live | comments, paste_comments, paste_likes, pastes | W5 (done 2026-09-23) |
 | OpenVibe.Community | OpenVibe.Media | paste_comments, paste_likes, pastes | W5 (done 2026-09-22) |
 | OpenVibe.Events | OpenVibe.Network | stream_live_announcements | W3 |
-| OpenVibe.Games | OpenVibe.Live | canvas_actions, canvas_bans, canvas_region_locks, canvas_settings, canvas_snapshots, canvas_tiles, canvas_user_overrides | W12 |
-| OpenVibe.Games (import source) | OpenVibe.Live | active_effects, ai_conversations, ai_memory, analytics_snapshots, bank_items, battle_stats, changelog_entries, chat_log, custom_rewards, daily_claims, divorce_history, dungeon_stats, event_log, farm_plots, file_checksums, fish_profile, gusher_profile, inventory, jo_profile, love_affinity, love_profile, love_proposals, mine_profile, mod_persuasion, music_profile, roast_dossier, roast_log, unlocked_recipes, user_voice_selection, user_voices, woodcut_profile | W12 |
 | OpenVibe.Media | OpenVibe.Live | clips, vods | W4 |
-| OpenVibe.Network | OpenVibe.Live | follows, linked_accounts, themes, user_preferences, user_themes, users, verification_keys | W1 |
+| OpenVibe.Network | OpenVibe.Live | follows, linked_accounts, subject_projection, themes, token_revocations, user_preferences, user_themes, username_history, users, verification_keys | W1 |
 | OpenVibe.Network (policy) | OpenVibe.Live | anon_ip_mappings, approved_ips, bans, ip_log, vpn_approvals | W1 |
 | OpenVibe.Network (principals) / OpenVibe.Codes | OpenVibe.Live | api_keys, api_tokens | W1/W20 |
 | OpenVibe.Tips | OpenVibe.Live | donation_goals | W9 |

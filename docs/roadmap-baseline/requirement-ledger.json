@@ -2,37 +2,37 @@
  "_about": "Generated from data/requirement-ledger.json by scripts/roadmap-baseline/generate.js. Umbrella-level ledger (roadmap §22.4/§25): one row per D01-D46 requirement, every artifact re-verified against the scanned origin/main checkouts and prod-snapshot.json. Do not edit; edit the data file and regenerate.",
  "asOf": "2026-09-23T20:30Z",
  "generatedFrom": {
-  "OpenVibe.Live": "12c1c11920027b5c511a2916bbe63aae699596e7",
-  "OpenVibe.Network": "26c0395dbd9b654cd53c9ba33d38255a5fc32d27",
-  "OpenVibe.Shared": "c7489fc8690967ffebcd9f0b45790e577b9fa468",
-  "OpenVibe.Media": "984e7ad9364971286ed1a9665159c5f304372344",
-  "OpenVibe.Tools": "b0aada2c3887b009176ceb934e7df98faa666cae",
-  "OpenVibe.Community": "e075d39907c6e9f6d02ae45a760b1052158417d5",
-  "OpenVibe.Games": "4e5bc50590375e514de14b9a0fa384a601f69b2a",
-  "OpenVibe.Sites": "63683d22217b0ddb7488b5e4b56932c37b426e28",
-  "OpenVibe.Events": "9f515142868af343b42c1c58faac1fd6805076fc",
-  "OpenVibe.Chat": "1ef6f992570328e6f7c8c7a8e5168226fb2987db",
-  "OpenRe.Stream": "e517ed43466184790187143c974313f1fe7125b3",
-  "OpenVibe.Billing": "42ad547a34d098e28e1ad9abb4ad6759fbac5bdb",
-  "OpenVibe.Tips": "847d22a7a0594881c3204b6aac48bacbfa6087ea",
-  "OpenVibe.VIP": "a0a8f7566414fd0c04da0ddbe5a6bcb1df624027",
-  "OpenVibe.AI": "a6d4f39b6562dbd70a343a7d1c61ad46f57c3826",
-  "OpenVibe.Search": "46035416946d065627a4ed1ec89b5b0ac7a302ec",
-  "OpenVibe.Sources": "cf003901ae1000a9f0e568d05390da2c36180dcc",
-  "OpenVibe.Wiki": "fe113b90321852c24f11f1d19905bd77fbe7f463",
-  "OpenVibe.Blog": "0784b429a1bdcc3c770abed5800ca5171ecb0cf2",
-  "OpenVibe.News": "42ce43b84b830ed37f8e02389f4bbdae20212510",
-  "OpenVibe.Reviews": "70de372e0c2826c061080826f192ca2d0a51c6a4",
-  "OpenVibe.Deals": "3910b58cd10a700a22c6c7129cd4c1c1e586cc95",
-  "OpenVibe.Coupons": "ae3a25ed5d4e33f81df1147940d8f3100d13513b",
-  "OpenVibe.Trade": "7f418d25e8ca7288a8cf09738e7c8b5609c2578b",
-  "OpenVibe.Codes": "a1294156cdb9aa3d82c15708c12509d805ff561f",
-  "OpenVibe.Host": "f8ac37d08425f0ff3779084db7146eb262576769",
-  "OpenVibe.Examples": "0bbe579f685cfe1b495699b0e69c7fbf6ee1f27c"
+  "OpenVibe.Live": "8caa540466f9af86247febdbba1339b68919a42f",
+  "OpenVibe.Network": "a7b99c7f8791a9ebe42b550d17e89b4599b26715",
+  "OpenVibe.Shared": "dbf9d39750e9f0dd0f19d8571d278eb303f3b83f",
+  "OpenVibe.Media": "b7fbe65029f38fd3ec6b10919eab9b8ba13df9d4",
+  "OpenVibe.Tools": "168e5110d062f076c2c4afe88e3fc3c53ab44613",
+  "OpenVibe.Community": "19441aa2511a7648f1dd3c1d9f70fe74e41cb530",
+  "OpenVibe.Games": "b207e78909f7d2927bbb2ebc802389b4dd4f2647",
+  "OpenVibe.Sites": "3802ee3d9ada9b8490134ece350420e627866a8c",
+  "OpenVibe.Events": "eb98f8cad2a738fec45f1c10e373081532c83e91",
+  "OpenVibe.Chat": "739d3a1cdc22fbb0717e4df4abd6b7e4ad31a8f1",
+  "OpenRe.Stream": "b34dcd688867f0c6ae6c16f03b206e1bd3cd7304",
+  "OpenVibe.Billing": "180e246a3a344c062f1c7435303f4aa748f17046",
+  "OpenVibe.Tips": "1d558c51e25b5c9a8f9a3e3312905103eb1fa879",
+  "OpenVibe.VIP": "4ddf723e72b141d05e55dfcbfd3126e20da3f47d",
+  "OpenVibe.AI": "c3ee6056b96d74a99b25ebebf671e86c9d9d4b24",
+  "OpenVibe.Search": "b00aa4c20c0f6e8d9a3a1c85f543ee2d384da050",
+  "OpenVibe.Sources": "29cd386241c44456ffcebf70b6be287fa9a08aaa",
+  "OpenVibe.Wiki": "38a17bddaba5748ed44622f204cb3a2716c7fd6a",
+  "OpenVibe.Blog": "79e9e153ca1308311993a31295fd471a8becaf8d",
+  "OpenVibe.News": "0860cf20dd3d8e8032caad300e0ce90497195b96",
+  "OpenVibe.Reviews": "cfc37ac5b72ecc7a4e913881d3c916a1f3823fa8",
+  "OpenVibe.Deals": "99bd438b40abd42502e3b2c4c57a62eaabd091a9",
+  "OpenVibe.Coupons": "348f585cd6549a5c506171fba0fc2c5462dede32",
+  "OpenVibe.Trade": "fa382881cd92ee90b6329699d7d79129e32a6325",
+  "OpenVibe.Codes": "0bfdf708ffae5d1ad02f8572ccbc9505b06ade82",
+  "OpenVibe.Host": "75147890e32dd63fd1363f843c87415f90d5b2dd",
+  "OpenVibe.Examples": "36901ffc052752754608df8764a9f2942069da9a"
  },
  "prodSnapshot": {
   "host": "openvibe-oregon",
-  "collectedAt": "2026-09-23T20:32:59.561Z"
+  "collectedAt": "2026-09-26T13:29:03.103Z"
  },
  "statuses": {
   "met": "the §15.0 required target is demonstrated by current evidence: a test that exercises it, and production evidence where the target is a production authority or state.",
@@ -74,7 +74,7 @@
    "metrics": [
     {
      "key": "tables.OpenVibe.Live.target:OpenVibe.Network",
-     "value": "7 Live tables target OpenVibe.Network"
+     "value": "10 Live tables target OpenVibe.Network"
     }
    ]
   },
@@ -97,7 +97,7 @@
     },
     {
      "key": "contract.todo-markers",
-     "value": "Live 14, Network 4, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0, Events 0, Chat 0, OpenRe.Stream 0, Billing 0, Tips 0, VIP 0, AI 0, Search 0, Sources 0, Wiki 0, Blog 0, News 0, Reviews 0, Deals 0, Coupons 0, Trade 0, Codes 0, Host 0, Examples 0"
+     "value": "Live 14, Network 3, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0, Events 0, Chat 0, OpenRe.Stream 0, Billing 0, Tips 0, VIP 0, AI 0, Search 0, Sources 0, Wiki 0, Blog 0, News 0, Reviews 0, Deals 0, Coupons 0, Trade 0, Codes 0, Host 0, Examples 0"
     }
    ]
   },
@@ -130,7 +130,7 @@
    "metrics": [
     {
      "key": "tables.analytics-copies",
-     "value": "3 repos carry their own analytics_events"
+     "value": "2 repos carry their own analytics_events"
     }
    ]
   },
@@ -149,11 +149,11 @@
    "metrics": [
     {
      "key": "outbound.call-sites",
-     "value": "98 caller-file/target pairs across 75 files"
+     "value": "107 caller-file/target pairs across 76 files"
     },
     {
      "key": "ws.servers",
-     "value": "11 WebSocket server constructions"
+     "value": "12 WebSocket server constructions"
     }
    ]
   },
@@ -196,7 +196,7 @@
     },
     {
      "key": "tests.OpenRe.Stream",
-     "value": "18 test files"
+     "value": "19 test files"
     }
    ]
   },
@@ -215,11 +215,11 @@
    "metrics": [
     {
      "key": "tables.OpenVibe.Live.target:OpenVibe.Chat",
-     "value": "23 Live tables target OpenVibe.Chat"
+     "value": "25 Live tables target OpenVibe.Chat"
     },
     {
      "key": "tests.OpenVibe.Chat",
-     "value": "19 test files"
+     "value": "35 test files"
     }
    ]
   },
@@ -239,7 +239,7 @@
    "metrics": [
     {
      "key": "tables.OpenVibe.Community",
-     "value": "20 tables"
+     "value": "33 tables"
     },
     {
      "key": "tables.OpenVibe.Live.target:OpenVibe.Community",
@@ -266,7 +266,7 @@
     },
     {
      "key": "tests.OpenVibe.Billing",
-     "value": "16 test files"
+     "value": "21 test files"
     }
    ]
   },
@@ -283,7 +283,7 @@
    "metrics": [
     {
      "key": "tests.OpenVibe.Tools",
-     "value": "39 test files"
+     "value": "49 test files"
     }
    ]
   },
@@ -300,7 +300,7 @@
    "metrics": [
     {
      "key": "tests.OpenVibe.Games",
-     "value": "69 test files"
+     "value": "76 test files"
     }
    ]
   },
@@ -318,11 +318,11 @@
    "metrics": [
     {
      "key": "tests.OpenVibe.Codes",
-     "value": "19 test files"
+     "value": "27 test files"
     },
     {
      "key": "tests.OpenVibe.Host",
-     "value": "28 test files"
+     "value": "38 test files"
     }
    ]
   },
@@ -346,7 +346,7 @@
     },
     {
      "key": "tests.OpenVibe.AI",
-     "value": "17 test files"
+     "value": "20 test files"
     }
    ]
   },
@@ -375,7 +375,7 @@
    "metrics": [
     {
      "key": "outbound.internal-key",
-     "value": "39 of 98 call sites authenticate with the shared internal key"
+     "value": "40 of 107 call sites authenticate with the shared internal key"
     }
    ]
   },
@@ -404,7 +404,7 @@
    "metrics": [
     {
      "key": "shared.pins",
-     "value": "23 repos pin a tagged openvibe-shared release (latest v1.5.1): OpenRe.Stream v1.5.1, AI v1.5.1, Billing v1.5.1, Blog v1.5.1, Codes v1.5.1, Community v1.5.1, Coupons v1.5.1, Deals v1.5.1, Events v1.5.1, Host v1.5.1, Live v1.5.1, Media v1.5.1, Network v1.5.1, News v1.5.1, Reviews v1.5.1, Search v1.5.1, Sites v1.5.1, Sources v1.5.1, Tips v1.5.1, Tools v1.5.1, Trade v1.5.1, VIP v1.5.1, Wiki v1.5.1"
+     "value": "24 repos pin a tagged openvibe-shared release (latest v1.22.0): OpenRe.Stream v1.22.0, AI v1.22.0, Billing v1.22.0, Blog v1.22.0, Chat v1.22.0, Codes v1.22.0, Community v1.22.0, Coupons v1.22.0, Deals v1.22.0, Events v1.22.0, Host v1.22.0, Live v1.22.0, Media v1.22.0, Network v1.22.0, News v1.22.0, Reviews v1.22.0, Search v1.22.0, Sites v1.22.0, Sources v1.22.0, Tips v1.22.0, Tools v1.22.0, Trade v1.22.0, VIP v1.22.0, Wiki v1.22.0"
     },
     {
      "key": "shared.drift",
@@ -449,7 +449,7 @@
    "metrics": [
     {
      "key": "deploy.drift",
-     "value": "25 service(s) not running origin/main"
+     "value": "1 service(s) not running origin/main"
     }
    ]
   },
@@ -1867,7 +1867,7 @@
      "kind": "test",
      "repo": "OpenVibe.Community",
      "path": "test/forum.test.js",
-     "contains": "votes on threads: add/change/remove, score recomputed, my_vote shown",
+     "contains": "add/change/remove, score recomputed, my_vote shown",
      "proves": "vote add, change and remove semantics",
      "ok": true
     },
@@ -1914,7 +1914,7 @@
      "kind": "test",
      "repo": "OpenVibe.Community",
      "path": "test/relay.test.js",
-     "contains": "a new thread in a mapped space is posted once, with attribution, a link, and no mentions",
+     "contains": "a new thread is posted once with ?wait=true, attribution, a link and no mentions",
      "proves": "Community owns outbound relay with a per-thread dedupe key",
      "ok": true
     },
@@ -1922,7 +1922,7 @@
      "kind": "test",
      "repo": "OpenVibe.Community",
      "path": "test/relay.test.js",
-     "contains": "loop prevention: Discord-origin threads are never relayed; members/staff spaces never leave the site",
+     "contains": "loop prevention: Discord-origin threads and posts are never relayed; members/staff spaces never leave the site",
      "proves": "loop prevention and the private-space rule",
      "ok": true
     },
@@ -2471,7 +2471,7 @@
     {
      "kind": "test",
      "repo": "OpenVibe.Network",
-     "path": "test/chrome.test.js",
+     "path": "test/frame.test.js",
      "contains": "no fallback to Live when AI fails",
      "proves": "Network's generated copy no longer depends on a Live internal endpoint",
      "ok": true

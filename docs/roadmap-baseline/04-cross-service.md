@@ -13,9 +13,15 @@ Deliverable 3 (dependency half). A call site is a source file that makes HTTP re
 | OpenVibe.Chat | OpenVibe.Live | 2 | service-token |
 | OpenVibe.Chat | OpenVibe.Network | 2 | oauth-client, service-token |
 | OpenVibe.Chat | OpenVibe.Search | 1 | none-detected |
+| OpenVibe.Codes | OpenVibe.Billing | 1 | none-detected |
+| OpenVibe.Codes | OpenVibe.Events | 2 | none-detected |
+| OpenVibe.Codes | OpenVibe.Host | 1 | none-detected |
+| OpenVibe.Codes | OpenVibe.Media | 2 | none-detected |
+| OpenVibe.Codes | OpenVibe.Network | 2 | none-detected |
+| OpenVibe.Codes | OpenVibe.Tools | 1 | none-detected |
 | OpenVibe.Community | OpenVibe.Live | 2 | bearer |
 | OpenVibe.Community | OpenVibe.Media | 1 | bearer |
-| OpenVibe.Community | OpenVibe.Network | 3 | bearer, internal-key, oauth-client |
+| OpenVibe.Community | OpenVibe.Network | 2 | internal-key, oauth-client |
 | OpenVibe.Coupons | OpenVibe.Network | 2 | internal-key, oauth-client |
 | OpenVibe.Deals | OpenVibe.Network | 2 | internal-key, oauth-client |
 | OpenVibe.Games | OpenVibe.Network | 2 | bearer, oauth-client |
@@ -25,28 +31,31 @@ Deliverable 3 (dependency half). A call site is a source file that makes HTTP re
 | OpenVibe.Live | OpenVibe.Billing | 1 | none-detected |
 | OpenVibe.Live | OpenVibe.Chat | 1 | none-detected |
 | OpenVibe.Live | OpenVibe.Community | 4 | none-detected |
-| OpenVibe.Live | OpenVibe.Media | 2 | api-key, bearer, internal-key |
+| OpenVibe.Live | OpenVibe.Media | 2 | api-key, bearer, internal-key, oauth-client |
 | OpenVibe.Live | OpenVibe.Network | 11 | bearer, hmac, internal-key, none-detected, oauth-client, service-token |
 | OpenVibe.Live | OpenVibe.Search | 2 | bearer, none-detected, oauth-client, service-token |
+| OpenVibe.Live | OpenVibe.Tools | 1 | none-detected |
 | OpenVibe.Live | webhook | 2 | none-detected |
 | OpenVibe.Media | OpenVibe.Live | 1 | none-detected |
 | OpenVibe.Media | OpenVibe.Network | 3 | internal-key, oauth-client, service-token |
 | OpenVibe.Media | webhook | 2 | hmac, service-token |
 | OpenVibe.Network | OpenVibe.AI | 1 | bearer, internal-key, service-token |
+| OpenVibe.Network | OpenVibe.Blog | 1 | bearer, internal-key |
 | OpenVibe.Network | OpenVibe.Events | 1 | bearer, internal-key |
 | OpenVibe.Network | OpenVibe.Games | 3 | bearer, internal-key |
 | OpenVibe.Network | OpenVibe.Live | 5 | bearer, internal-key, service-token |
 | OpenVibe.Network | OpenVibe.Media | 4 | bearer, internal-key |
 | OpenVibe.Network | OpenVibe.Tools | 4 | bearer, internal-key, none-detected |
 | OpenVibe.News | OpenVibe.Network | 2 | internal-key, oauth-client |
+| OpenVibe.Shared | OpenVibe.Events | 1 | none-detected |
 | OpenVibe.Shared | OpenVibe.Network | 4 | bearer, internal-key, oauth-client |
-| OpenVibe.Sites | OpenVibe.Network | 2 | bearer, none-detected |
+| OpenVibe.Sites | OpenVibe.Network | 1 | none-detected |
 | OpenVibe.Tips | OpenVibe.Network | 1 | internal-key, oauth-client |
 | OpenVibe.Tools | OpenVibe.Community | 1 | bearer, internal-key |
 | OpenVibe.Tools | OpenVibe.Events | 1 | oauth-client, service-token |
 | OpenVibe.Tools | OpenVibe.Live | 1 | bearer, internal-key |
 | OpenVibe.Tools | OpenVibe.Media | 1 | oauth-client, service-token |
-| OpenVibe.Tools | OpenVibe.Network | 9 | bearer, internal-key, none-detected, oauth-client, service-token |
+| OpenVibe.Tools | OpenVibe.Network | 8 | bearer, internal-key, none-detected, oauth-client, service-token |
 | OpenVibe.Tools | OpenVibe.Search | 1 | none-detected |
 | OpenVibe.Trade | OpenVibe.Network | 2 | internal-key, oauth-client |
 | OpenVibe.VIP | OpenVibe.Network | 1 | internal-key, oauth-client |
@@ -56,25 +65,33 @@ Deliverable 3 (dependency half). A call site is a source file that makes HTTP re
 | Caller file | Callee | Via | Auth | Timeout | Retry |
 |---|---|---|---|---|---|
 | OpenRe.Stream/OpenVibe.Shared/auth-client.js:23 | OpenVibe.Network | :4000, /oauth/token | internal-key, oauth-client | **no** | no |
-| OpenRe.Stream/OpenVibe.Shared/footer.js:280 | OpenVibe.Network | /api/auth/me | bearer | **no** | no |
+| OpenRe.Stream/OpenVibe.Shared/footer.js:307 | OpenVibe.Network | /api/auth/me | bearer | **no** | no |
 | Blog/OpenVibe.Shared/auth-client.js:23 | OpenVibe.Network | :4000, /oauth/token | internal-key, oauth-client | **no** | no |
 | Blog/server/auth/sso.js:39 | OpenVibe.Network | /api/.well-known/jwks, networkUrl, networkInternalUrl, /oauth/token | oauth-client | yes | yes |
-| Chat/server/bridge/live-mirror.js:77 | OpenVibe.Live | live.internalUrl | service-token | yes | no |
-| Chat/server/live-context.js:130 | OpenVibe.Live | live.internalUrl | service-token | yes | yes |
+| Chat/server/bridge/live-mirror.js:79 | OpenVibe.Live | live.internalUrl | service-token | yes | no |
+| Chat/server/live-context.js:139 | OpenVibe.Live | live.internalUrl | service-token | yes | yes |
 | Chat/server/net/service-auth.js:5 | OpenVibe.Network | /oauth/token, networkInternalUrl, /api/.well-known/jwks, networkUrl | oauth-client, service-token | yes | no |
 | Chat/server/prefs/network-modules.js:21 | OpenVibe.Network | networkInternalUrl | service-token | yes | yes |
-| Chat/server/chat/routes.js:72 | OpenVibe.Search | searchUrl | none-detected | **no** | no |
+| Chat/server/chat/routes.js:111 | OpenVibe.Search | searchUrl | none-detected | **no** | no |
+| Codes/server/http/docs.js:369 | OpenVibe.Billing | OV_BILLING_INTERNAL_URL, :4600 | none-detected | yes | yes |
+| Codes/server/domain/project-archive.js:109 | OpenVibe.Events | eventsUrl | none-detected | **no** | yes |
+| Codes/server/http/docs.js:421 | OpenVibe.Events | OV_EVENTS_INTERNAL_URL, :4300 | none-detected | yes | yes |
+| Codes/server/http/docs.js:420 | OpenVibe.Host | :4910 | none-detected | yes | yes |
+| Codes/server/domain/project-archive.js:109 | OpenVibe.Media | mediaUrl | none-detected | **no** | yes |
+| Codes/server/http/docs.js:422 | OpenVibe.Media | OV_MEDIA_INTERNAL_URL, :4100 | none-detected | yes | yes |
+| Codes/server/domain/project-archive.js:90 | OpenVibe.Network | networkInternalUrl | none-detected | **no** | yes |
+| Codes/server/http/docs.js:250 | OpenVibe.Network | networkUrl | none-detected | yes | yes |
+| Codes/server/http/docs.js:336 | OpenVibe.Tools | OV_TOOLS_INTERNAL_URL, :4001 | none-detected | yes | yes |
 | Community/server/live-client.js:6 | OpenVibe.Live | liveInternalUrl | bearer | yes | no |
 | Community/server/pastes/proxy.js:26 | OpenVibe.Live | liveUrl, liveInternalUrl | bearer | yes | yes |
 | Community/server/live-client.js:86 | OpenVibe.Media | mediaUrl | bearer | yes | no |
 | Community/OpenVibe.Shared/auth-client.js:23 | OpenVibe.Network | :4000, /oauth/token | internal-key, oauth-client | **no** | no |
-| Community/OpenVibe.Shared/footer.js:280 | OpenVibe.Network | /api/auth/me | bearer | **no** | no |
 | Community/server/auth/routes.js:49 | OpenVibe.Network | /api/.well-known/jwks, networkUrl, networkInternalUrl, /oauth/token | oauth-client | yes | yes |
 | Coupons/OpenVibe.Shared/auth-client.js:23 | OpenVibe.Network | :4000, /oauth/token | internal-key, oauth-client | **no** | no |
 | Coupons/server/auth/sso.js:39 | OpenVibe.Network | /api/.well-known/jwks, networkUrl, networkInternalUrl, /oauth/token | oauth-client | yes | yes |
 | Deals/OpenVibe.Shared/auth-client.js:23 | OpenVibe.Network | :4000, /oauth/token | internal-key, oauth-client | **no** | no |
 | Deals/server/auth/sso.js:39 | OpenVibe.Network | /api/.well-known/jwks, networkUrl, networkInternalUrl, /oauth/token | oauth-client | yes | yes |
-| Games/apps/server/src/net/httpServer.ts:362 | OpenVibe.Network | /api/auth/me, /oauth/token | oauth-client | **no** | yes |
+| Games/apps/server/src/net/httpServer.ts:363 | OpenVibe.Network | /api/auth/me, /oauth/token | oauth-client | **no** | yes |
 | Games/apps/server/src/net/networkAuth.ts:3 | OpenVibe.Network | /api/auth/me | bearer | **no** | no |
 | Host/OpenVibe.Shared/auth-client.js:23 | OpenVibe.Network | :4000, /oauth/token | internal-key, oauth-client | **no** | no |
 | Host/server/auth/sso.js:47 | OpenVibe.Network | /api/.well-known/jwks, networkUrl, networkInternalUrl, /oauth/token | oauth-client | yes | yes |
@@ -83,72 +100,73 @@ Deliverable 3 (dependency half). A call site is a source file that makes HTTP re
 | Live/server/monetization/billing-client.js:28 | OpenVibe.Billing | OV_BILLING_INTERNAL_URL, :4600 | none-detected | yes | yes |
 | Live/server/integrations/robotstreamer-service.js:568 | OpenVibe.Chat | chatUrl | none-detected | yes | no |
 | Live/server/comments-client.js:29 | OpenVibe.Community | OV_COMMUNITY_INTERNAL_URL, :4200, OV_COMMUNITY_URL | none-detected | yes | yes |
-| Live/server/media-proxy/pastes.js:312 | OpenVibe.Community | OV_COMMUNITY_URL | none-detected | yes | yes |
+| Live/server/media-proxy/pastes.js:313 | OpenVibe.Community | OV_COMMUNITY_URL | none-detected | yes | yes |
 | Live/server/pastes-client.js:16 | OpenVibe.Community | OV_COMMUNITY_INTERNAL_URL, :4200 | none-detected | yes | yes |
-| Live/server/seo/seo.js:145 | OpenVibe.Community | OV_COMMUNITY_URL | none-detected | **no** | no |
-| Live/server/config.js:177 | OpenVibe.Media | MEDIA_URL, :4100 | internal-key | yes | no |
+| Live/server/seo/seo.js:160 | OpenVibe.Community | OV_COMMUNITY_URL | none-detected | **no** | no |
+| Live/server/config.js:180 | OpenVibe.Media | MEDIA_URL, :4100 | internal-key, oauth-client | yes | no |
 | Live/server/media-client.js:14 | OpenVibe.Media | :4100, MEDIA_URL, /api/v1/${ | api-key, bearer | yes | no |
 | Live/server/chat/chat-server.js:84 | OpenVibe.Network | OV_NETWORK_INTERNAL_URL | internal-key | **no** | no |
-| Live/server/config.js:23 | OpenVibe.Network | :4000, OV_NETWORK_URL | internal-key | yes | no |
+| Live/server/config.js:23 | OpenVibe.Network | :4000, OV_NETWORK_URL | internal-key, oauth-client | yes | no |
 | Live/server/integrations/platform-oauth.js:52 | OpenVibe.Network | /oauth/token | bearer, hmac, oauth-client | **no** | yes |
 | Live/server/integrations/powerchat-oauth.js:51 | OpenVibe.Network | /oauth/token | bearer, hmac, oauth-client | **no** | yes |
 | Live/server/monetization/billing-client.js:112 | OpenVibe.Network | OV_NETWORK_INTERNAL_URL, :4000 | none-detected | yes | yes |
 | Live/server/monetization/wallet-client.js:9 | OpenVibe.Network | /internal/coins, OV_NETWORK_INTERNAL_URL, :4000 | internal-key, bearer | yes | yes |
 | Live/server/openre/openre-client.js:27 | OpenVibe.Network | OV_NETWORK_INTERNAL_URL, networkInternalUrl, :4000, /oauth/token | bearer, oauth-client, service-token | yes | no |
 | Live/server/pastes-client.js:39 | OpenVibe.Network | OV_NETWORK_INTERNAL_URL, :4000 | none-detected | yes | yes |
-| Live/server/streaming/golive-notify.js:62 | OpenVibe.Network | /internal/events | internal-key, oauth-client | **no** | no |
+| Live/server/streaming/golive-notify.js:80 | OpenVibe.Network | /internal/events | internal-key, oauth-client | **no** | yes |
 | Live/server/streaming/restream-manager.js:1383 | OpenVibe.Network | /oauth/token | bearer, oauth-client, service-token | yes | yes |
 | Live/server/utils/notify.js:16 | OpenVibe.Network | OV_NETWORK_INTERNAL_URL, :4000, /internal/notifications | internal-key | **no** | yes |
 | Live/server/chat/routes.js:56 | OpenVibe.Search | searchUrl | none-detected | **no** | no |
 | Live/server/streaming/restream-manager.js:1635 | OpenVibe.Search | searchUrl | bearer, oauth-client, service-token | yes | yes |
+| Live/server/kiosk/routes.js:75 | OpenVibe.Tools | OV_TOOLS_INTERNAL_URL, :4001 | none-detected | yes | no |
 | Live/server/integrations/discord-webhook.js:16 | webhook | webhook_url (per-app, configured in DB) | none-detected | **no** | no |
 | Live/server/media-proxy/outcomes.js:78 | webhook | webhook_url (per-app, configured in DB) | none-detected | yes | no |
 | Media/server/thumbnails/live-frame-service.js:170 | OpenVibe.Live | :3000 | none-detected | yes | yes |
 | Media/OpenVibe.Shared/auth-client.js:23 | OpenVibe.Network | :4000, /oauth/token | internal-key, oauth-client | **no** | no |
-| Media/server/auth.js:29 | OpenVibe.Network | network.url, /api/.well-known/jwks | service-token | yes | yes |
+| Media/server/auth.js:32 | OpenVibe.Network | network.url, /api/.well-known/jwks | service-token | yes | yes |
 | Media/server/user-auth.js:49 | OpenVibe.Network | /api/.well-known/jwks, networkUrl, networkInternalUrl, /oauth/token | oauth-client | yes | yes |
-| Media/server/auth.js:385 | webhook | webhook_url (per-app, configured in DB) | service-token | yes | yes |
+| Media/server/auth.js:473 | webhook | webhook_url (per-app, configured in DB) | service-token | yes | yes |
 | Media/server/webhooks.js:4 | webhook | webhook_url (per-app, configured in DB) | hmac | yes | yes |
-| Network/server/chrome/service.js:32 | OpenVibe.AI | aiUrl, OV_AI_INTERNAL_URL, :4700 | internal-key, bearer, service-token | yes | no |
-| Network/server/index.js:449 | OpenVibe.Events | eventsUrl, eventsInternalUrl | internal-key, bearer | **no** | no |
+| Network/server/frame/service.js:32 | OpenVibe.AI | aiUrl, OV_AI_INTERNAL_URL, :4700 | internal-key, bearer, service-token | yes | no |
+| Network/server/index.js:440 | OpenVibe.Blog | OV_BLOG_INTERNAL_URL, blogUrl, :4810 | internal-key, bearer | **no** | no |
+| Network/server/index.js:496 | OpenVibe.Events | eventsUrl, eventsInternalUrl | internal-key, bearer | **no** | no |
 | Network/server/admin/analytics-routes.js:24 | OpenVibe.Games | :8000 | internal-key, bearer | yes | no |
-| Network/server/admin/routes.js:72 | OpenVibe.Games | games.internalUrl | internal-key | yes | no |
-| Network/server/index.js:236 | OpenVibe.Games | :8000, games.internalUrl | internal-key, bearer | **no** | no |
+| Network/server/admin/routes.js:74 | OpenVibe.Games | games.internalUrl | internal-key | yes | no |
+| Network/server/index.js:245 | OpenVibe.Games | :8000, games.internalUrl | internal-key, bearer | **no** | no |
 | Network/server/admin/analytics-routes.js:22 | OpenVibe.Live | :3000 | internal-key, bearer | yes | no |
-| Network/server/admin/routes.js:70 | OpenVibe.Live | live.internalUrl, OV_LIVE_INTERNAL_URL, :3000 | internal-key | yes | no |
-| Network/server/chrome/service.js:84 | OpenVibe.Live | :3000 | internal-key, bearer, service-token | yes | no |
-| Network/server/index.js:232 | OpenVibe.Live | :3000, live.internalUrl, liveUrl | internal-key, bearer | **no** | no |
+| Network/server/admin/routes.js:72 | OpenVibe.Live | live.internalUrl | internal-key | yes | no |
+| Network/server/frame/service.js:89 | OpenVibe.Live | :3000 | internal-key, bearer, service-token | yes | no |
+| Network/server/index.js:241 | OpenVibe.Live | :3000, live.internalUrl, liveUrl | internal-key, bearer | **no** | no |
 | Network/server/profile/avatar.js:64 | OpenVibe.Live | live.internalUrl, :3000 | internal-key | yes | no |
 | Network/server/admin/analytics-routes.js:25 | OpenVibe.Media | :4100 | internal-key, bearer | yes | no |
-| Network/server/admin/routes.js:73 | OpenVibe.Media | media.internalUrl | internal-key | yes | no |
-| Network/server/index.js:235 | OpenVibe.Media | :4100, media.internalUrl | internal-key, bearer | **no** | no |
+| Network/server/admin/routes.js:75 | OpenVibe.Media | media.internalUrl | internal-key | yes | no |
+| Network/server/index.js:244 | OpenVibe.Media | :4100, media.internalUrl | internal-key, bearer | **no** | no |
 | Network/server/profile/avatar.js:72 | OpenVibe.Media | media.internalUrl, :4100 | internal-key | yes | no |
 | Network/server/admin/analytics-routes.js:23 | OpenVibe.Tools | :4001 | internal-key, bearer | yes | no |
-| Network/server/admin/routes.js:71 | OpenVibe.Tools | tools.internalUrl | internal-key | yes | no |
+| Network/server/admin/routes.js:73 | OpenVibe.Tools | tools.internalUrl | internal-key | yes | no |
 | Network/server/domains/catalog.js:17 | OpenVibe.Tools | OV_TOOLS_INTERNAL_URL, :4001 | none-detected | yes | no |
-| Network/server/index.js:234 | OpenVibe.Tools | :4001, tools.internalUrl | internal-key, bearer | **no** | no |
+| Network/server/index.js:243 | OpenVibe.Tools | :4001, tools.internalUrl | internal-key, bearer | **no** | no |
 | News/OpenVibe.Shared/auth-client.js:23 | OpenVibe.Network | :4000, /oauth/token | internal-key, oauth-client | **no** | no |
 | News/server/auth/sso.js:39 | OpenVibe.Network | /api/.well-known/jwks, networkUrl, networkInternalUrl, /oauth/token | oauth-client | yes | yes |
+| Shared/release-watch.js:12 | OpenVibe.Events | eventsUrl | none-detected | **no** | yes |
 | Shared/account-switcher.js:176 | OpenVibe.Network | /api/auth/me | bearer | **no** | yes |
 | Shared/auth-client.js:23 | OpenVibe.Network | :4000, /oauth/token | internal-key, oauth-client | **no** | no |
-| Shared/footer.js:280 | OpenVibe.Network | /api/auth/me | bearer | **no** | no |
-| Shared/navbar.js:10 | OpenVibe.Network | /api/auth/me | bearer | **no** | yes |
+| Shared/footer.js:307 | OpenVibe.Network | /api/auth/me | bearer | **no** | no |
+| Shared/navbar.js:13 | OpenVibe.Network | /api/auth/me | bearer | **no** | yes |
 | Sites/build.js:100 | OpenVibe.Network | networkUrl | none-detected | **no** | no |
-| Sites/OpenVibe.Shared/footer.js:280 | OpenVibe.Network | /api/auth/me | bearer | **no** | no |
 | Tips/OpenVibe.Shared/auth-client.js:23 | OpenVibe.Network | :4000, /oauth/token | internal-key, oauth-client | **no** | no |
-| Tools/apps/gateway/server/index.js:84 | OpenVibe.Community | communityUrl, OV_COMMUNITY_URL | internal-key, bearer | yes | yes |
+| Tools/apps/gateway/server/index.js:86 | OpenVibe.Community | communityUrl, OV_COMMUNITY_URL | internal-key, bearer | yes | yes |
 | Tools/apps/_shared/jobs/index.js:96 | OpenVibe.Events | EVENTS_URL | oauth-client, service-token | yes | no |
-| Tools/apps/gateway/server/index.js:443 | OpenVibe.Live | liveUrl | internal-key, bearer | yes | yes |
+| Tools/apps/gateway/server/index.js:505 | OpenVibe.Live | liveUrl | internal-key, bearer | yes | yes |
 | Tools/apps/_shared/jobs/index.js:18 | OpenVibe.Media | :4100, OV_MEDIA_INTERNAL_URL, MEDIA_URL, mediaOrigin, OV_MEDIA_URL | oauth-client, service-token | yes | no |
 | Tools/apps/_shared/guard/tokens.js:25 | OpenVibe.Network | /api/.well-known/jwks, networkUrl, networkInternalUrl | service-token | yes | yes |
 | Tools/apps/_shared/jobs/index.js:20 | OpenVibe.Network | :4000, OV_NETWORK_INTERNAL_URL, /oauth/token | oauth-client, service-token | yes | no |
 | Tools/apps/food/server/index.js:33 | OpenVibe.Network | OV_NETWORK_URL, OV_NETWORK_INTERNAL_URL, networkUrl, networkInternalUrl, :4000 | none-detected | yes | no |
 | Tools/apps/gateway/server/auth/routes.js:53 | OpenVibe.Network | /oauth/token, /api/.well-known/jwks, networkUrl, networkInternalUrl | oauth-client | yes | yes |
-| Tools/apps/gateway/server/index.js:61 | OpenVibe.Network | networkUrl | internal-key, bearer | yes | yes |
+| Tools/apps/gateway/server/index.js:34 | OpenVibe.Network | /internal/events, networkUrl | internal-key, bearer | yes | yes |
 | Tools/apps/gateway/server/registry/services.js:28 | OpenVibe.Network | OV_NETWORK_URL, OV_NETWORK_INTERNAL_URL | none-detected | yes | no |
 | Tools/apps/maps/server/index.js:39 | OpenVibe.Network | OV_NETWORK_URL, OV_NETWORK_INTERNAL_URL, networkUrl, networkInternalUrl, :4000 | none-detected | yes | yes |
 | Tools/OpenVibe.Shared/auth-client.js:23 | OpenVibe.Network | :4000, /oauth/token | internal-key, oauth-client | **no** | no |
-| Tools/OpenVibe.Shared/footer.js:280 | OpenVibe.Network | /api/auth/me | bearer | **no** | no |
 | Tools/apps/maps/server/sources/grocery.js:27 | OpenVibe.Search | searchUrl | none-detected | yes | no |
 | Trade/OpenVibe.Shared/auth-client.js:23 | OpenVibe.Network | :4000, /oauth/token | internal-key, oauth-client | **no** | no |
 | Trade/server/auth/sso.js:39 | OpenVibe.Network | /api/.well-known/jwks, networkUrl, networkInternalUrl, /oauth/token | oauth-client | yes | yes |

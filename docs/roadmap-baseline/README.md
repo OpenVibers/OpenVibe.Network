@@ -2,19 +2,19 @@
 
 The audit baseline from the OpenVibe development roadmap (Wave 0; section 12 items 1-3): what exists across the estate, who owns each piece of data today and who should, what production looks like next to the repos, and which hazards constrain later waves. Every file here except `data/*.json` is generated.
 
-Source commits: Live `12c1c11`, Network `26c0395`, Shared `c7489fc`, Media `984e7ad`, Tools `b0aada2`, Community `e075d39`, Games `4e5bc50`, Sites `63683d2`, Events `9f51514`, Chat `1ef6f99`, OpenRe.Stream `e517ed4`, Billing `42ad547`, Tips `847d22a`, VIP `a0a8f75`, AI `a6d4f39`, Search `4603541`, Sources `cf00390`, Wiki `fe113b9`, Blog `0784b42`, News `42ce43b`, Reviews `70de372`, Deals `3910b58`, Coupons `ae3a25e`, Trade `7f418d2`, Codes `a129415`, Host `f8ac37d`, Examples `0bbe579`. Production snapshot: openvibe-oregon, 2026-09-23.
+Source commits: Live `8caa540`, Network `a7b99c7`, Shared `dbf9d39`, Media `b7fbe65`, Tools `168e511`, Community `19441aa`, Games `b207e78`, Sites `3802ee3`, Events `eb98f8c`, Chat `739d3a1`, OpenRe.Stream `b34dcd6`, Billing `180e246`, Tips `1d558c5`, VIP `4ddf723`, AI `c3ee605`, Search `b00aa4c`, Sources `29cd386`, Wiki `38a17bd`, Blog `79e9e15`, News `0860cf2`, Reviews `cfc37ac`, Deals `99bd438`, Coupons `348f585`, Trade `fa38288`, Codes `0bfdf70`, Host `7514789`, Examples `36901ff`. Production snapshot: openvibe-oregon, 2026-09-26.
 
 ## Deliverables
 
 | # | Artifact | Contents |
 |---|---|---|
 | 1 | [01-services.md](01-services.md) | services, ports, units, env files, repo state, GitHub census |
-| 2 | [02-schema.md](02-schema.md) | 629 tables with current/target owner |
-| 3 | [03-routes.md](03-routes.md), [04-cross-service.md](04-cross-service.md) | 2102 routes; 98 cross-service call sites |
+| 2 | [02-schema.md](02-schema.md) | 604 tables with current/target owner |
+| 3 | [03-routes.md](03-routes.md), [04-cross-service.md](04-cross-service.md) | 2381 routes; 107 cross-service call sites |
 | 4 | [05-realtime-and-jobs.md](05-realtime-and-jobs.md) | WebSocket servers and paths, non-HTTP protocols, background jobs |
 | 5 | [06-secrets.md](06-secrets.md) | auth mechanisms and secret names (no values) |
 | 6 | [07-ownership.md](07-ownership.md) | current vs target data ownership |
-| 7 | [08-discrepancies.md](08-discrepancies.md) | 304 production-vs-repo items |
+| 7 | [08-discrepancies.md](08-discrepancies.md) | 341 production-vs-repo items |
 | 8 | [09-d-status.md](09-d-status.md) | D01-D46 family status, derived from the requirement ledger (families: 0 met, 21 partial, 0 not met, 1 blocked on owner) |
 | 9 | [10-hazards.md](10-hazards.md) | 18 hazards with owners, mitigations and waves; 10 need the owner's review |
 | 10 | [requirement-ledger.md](requirement-ledger.md), [requirement-ledger.json](requirement-ledger.json) | D01-D46 with acceptance artifacts (roadmap §22.4/§25): 3 met, 36 partial, 0 not met, 7 blocked on owner |
@@ -24,10 +24,10 @@ Source commits: Live `12c1c11`, Network `26c0395`, Shared `c7489fc`, Media `984e
 
 |  | Criterion | Result |
 |---|---|---|
-| pass | Every table has an owner classification | 629 tables classified, 0 unclassified |
-| pass | Every route is attributed to a repo and source line, with an owner classification | 2102 routes, 0 unclassified; 0 router mounts whose module could not be resolved (their routes are listed without the mount prefix) |
-| pass | Every background job is listed with its location and an owner classification | 147 timers/jobs, 0 unclassified |
-| pass | Every cross-service call records caller, callee, auth, timeout and retry | 98 call sites; 37 with no timeout detected |
+| pass | Every table has an owner classification | 604 tables classified, 0 unclassified |
+| pass | Every route is attributed to a repo and source line, with an owner classification | 2381 routes, 0 unclassified; 0 router mounts whose module could not be resolved (their routes are listed without the mount prefix) |
+| pass | Every background job is listed with its location and an owner classification | 175 timers/jobs, 0 unclassified |
+| pass | Every cross-service call records caller, callee, auth, timeout and retry | 107 call sites; 39 with no timeout detected |
 | pass | Unknowns are marked unknown, not guessed | 2 unknown items recorded |
 | pass | Every D01-D46 requirement has a status and verified acceptance artifacts (requirement ledger) | 46/46 requirements verified |
 | **open** | Hazard register reviewed by the production-host owner | pending: set reviewedBy in data/hazards.json after review |

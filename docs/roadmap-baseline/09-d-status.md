@@ -6,27 +6,27 @@ Deliverable 8, derived from the [requirement ledger](requirement-ledger.md) (as 
 
 | IDs | Family | W0 (2026-09-22) | Now | Requirements | Wave | Verified | Measured |
 |---|---|---|---|---|---|---|---|
-| D01 | Identity/account | partial | **partial** | D01 partial | W1 | yes | 7 Live tables target OpenVibe.Network |
-| D02-D04 | Registry, capabilities, contracts | absent | **partial** | D02 partial, D03 partial, D04 partial | W1, W2 | yes | 1 charter-only repos of 36; Live 14, Network 4, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0, Events 0, Chat 0, OpenRe.Stream 0, Billing 0, Tips 0, VIP 0, AI 0, Search 0, Sources 0, Wiki 0, Blog 0, News 0, Reviews 0, Deals 0, Coupons 0, Trade 0, Codes 0, Host 0, Examples 0 |
+| D01 | Identity/account | partial | **partial** | D01 partial | W1 | yes | 10 Live tables target OpenVibe.Network |
+| D02-D04 | Registry, capabilities, contracts | absent | **partial** | D02 partial, D03 partial, D04 partial | W1, W2 | yes | 1 charter-only repos of 36; Live 14, Network 3, Shared 0, Media 0, Tools 0, Community 0, Games 0, Sites 0, Events 0, Chat 0, OpenRe.Stream 0, Billing 0, Tips 0, VIP 0, AI 0, Search 0, Sources 0, Wiki 0, Blog 0, News 0, Reviews 0, Deals 0, Coupons 0, Trade 0, Codes 0, Host 0, Examples 0 |
 | D05-D06 | Policy, staff, user modules | partial | **partial** | D05 partial, D06 partial | W1, W2 | yes | - |
-| D07-D10 | Themes, notifications, social, analytics | partial | **partial** | D07 partial, D08 partial, D09 partial, D10 partial | W1, W2, Track O | yes | 3 repos carry their own analytics_events |
-| D11-D13 | Events, realtime, SDK | absent | **partial** | D11 met, D12 partial, D13 partial | W2, W3 | yes | 98 caller-file/target pairs across 75 files; 11 WebSocket server constructions |
+| D07-D10 | Themes, notifications, social, analytics | partial | **partial** | D07 partial, D08 partial, D09 partial, D10 partial | W1, W2, Track O | yes | 2 repos carry their own analytics_events |
+| D11-D13 | Events, realtime, SDK | absent | **partial** | D11 met, D12 partial, D13 partial | W2, W3 | yes | 107 caller-file/target pairs across 76 files; 12 WebSocket server constructions |
 | D14-D16 | Media | partial | **partial** | D14 partial, D15 partial, D16 partial | W4 | yes | 3 Media tables target OpenVibe.Community |
-| D17-D20 | Live, OpenRe, channel/VOD lineage | partial | **partial** | D17 partial, D18 blocked on owner, D19 partial, D20 partial | W7 | yes | 14 Live tables target OpenRe.Stream; 18 test files |
-| D21-D23 | Chat | partial | **partial** | D21 partial, D22 partial, D23 partial | W6 | yes | 23 Live tables target OpenVibe.Chat; 19 test files |
-| D24-D27 | Community | partial | **partial** | D24 partial, D25 met, D26 partial, D27 met | W5 | yes | 20 tables; 4 Live tables target OpenVibe.Community |
-| D28-D30 | Billing, Tips, VIP | partial | **blocked on owner** | D28 blocked on owner, D29 blocked on owner, D30 blocked on owner | W8-W10 (ADR-012 first) | yes | 2 Live tables target OpenVibe.Billing; 16 test files |
-| D31 | Tools | built | **partial** | D31 partial | W11 | yes | 39 test files |
-| D32 | Games | built | **partial** | D32 partial | W12 | yes | 69 test files |
-| D33-D34 | Codes, Host | absent | **partial** | D33 partial, D34 partial | W20, W21 | yes | 19 test files; 28 test files |
-| D35-D38 | AI, content, sources, search | partial | **partial** | D35 partial, D36 blocked on owner, D37 blocked on owner, D38 blocked on owner | W13-W15 | yes | 14 Live tables target OpenVibe.AI; 17 test files |
+| D17-D20 | Live, OpenRe, channel/VOD lineage | partial | **partial** | D17 partial, D18 blocked on owner, D19 partial, D20 partial | W7 | yes | 14 Live tables target OpenRe.Stream; 19 test files |
+| D21-D23 | Chat | partial | **partial** | D21 partial, D22 partial, D23 partial | W6 | yes | 25 Live tables target OpenVibe.Chat; 35 test files |
+| D24-D27 | Community | partial | **partial** | D24 partial, D25 met, D26 partial, D27 met | W5 | yes | 33 tables; 4 Live tables target OpenVibe.Community |
+| D28-D30 | Billing, Tips, VIP | partial | **blocked on owner** | D28 blocked on owner, D29 blocked on owner, D30 blocked on owner | W8-W10 (ADR-012 first) | yes | 2 Live tables target OpenVibe.Billing; 21 test files |
+| D31 | Tools | built | **partial** | D31 partial | W11 | yes | 49 test files |
+| D32 | Games | built | **partial** | D32 partial | W12 | yes | 76 test files |
+| D33-D34 | Codes, Host | absent | **partial** | D33 partial, D34 partial | W20, W21 | yes | 27 test files; 38 test files |
+| D35-D38 | AI, content, sources, search | partial | **partial** | D35 partial, D36 blocked on owner, D37 blocked on owner, D38 blocked on owner | W13-W15 | yes | 14 Live tables target OpenVibe.AI; 20 test files |
 | D39 | Mods | absent | **partial** | D39 partial | W12, W21 | yes | - |
-| D40 | Open developer services | absent | **partial** | D40 partial | W20, W21 | yes | 39 of 98 call sites authenticate with the shared internal key |
+| D40 | Open developer services | absent | **partial** | D40 partial | W20, W21 | yes | 40 of 107 call sites authenticate with the shared internal key |
 | D41 | Independent runtime lifecycle | partial | **partial** | D41 partial | W7, W21 | yes | - |
-| D42 | Shared component architecture | partial | **partial** | D42 partial | W2, Track R | yes | 23 repos pin a tagged openvibe-shared release (latest v1.5.1): OpenRe.Stream v1.5.1, AI v1.5.1, Billing v1.5.1, Blog v1.5.1, Codes v1.5.1, Community v1.5.1, Coupons v1.5.1, Deals v1.5.1, Events v1.5.1, Host v1.5.1, Live v1.5.1, Media v1.5.1, Network v1.5.1, News v1.5.1, Reviews v1.5.1, Search v1.5.1, Sites v1.5.1, Sources v1.5.1, Tips v1.5.1, Tools v1.5.1, Trade v1.5.1, VIP v1.5.1, Wiki v1.5.1; 0 manifests unpinned or behind: none |
+| D42 | Shared component architecture | partial | **partial** | D42 partial | W2, Track R | yes | 24 repos pin a tagged openvibe-shared release (latest v1.22.0): OpenRe.Stream v1.22.0, AI v1.22.0, Billing v1.22.0, Blog v1.22.0, Chat v1.22.0, Codes v1.22.0, Community v1.22.0, Coupons v1.22.0, Deals v1.22.0, Events v1.22.0, Host v1.22.0, Live v1.22.0, Media v1.22.0, Network v1.22.0, News v1.22.0, Reviews v1.22.0, Search v1.22.0, Sites v1.22.0, Sources v1.22.0, Tips v1.22.0, Tools v1.22.0, Trade v1.22.0, VIP v1.22.0, Wiki v1.22.0; 0 manifests unpinned or behind: none |
 | D43 | Safe active-client updates | absent | **partial** | D43 partial | Track R | yes | - |
 | D44 | Crawlable component rendering | built | **partial** | D44 partial | Track R (preserve) | yes | - |
-| D45 | Release compatibility and recovery | absent | **partial** | D45 partial | Track R, W22 | yes | 25 service(s) not running origin/main |
+| D45 | Release compatibility and recovery | absent | **partial** | D45 partial | Track R, W22 | yes | 1 service(s) not running origin/main |
 | D46 | Update observability and acceptance | absent | **partial** | D46 partial | Track R, Track O | yes | 27 of 27 scanned repos have .github/workflows |
 
 Families: 0 met, 21 partial, 0 not met, 1 blocked on owner (of 22). Requirements: 3 met, 36 partial, 0 not met, 7 blocked on owner (of 46); 46 verified. At Wave 0 the same 22 families were 3 built, 11 partial, 8 absent.

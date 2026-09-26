@@ -8,7 +8,7 @@ Deliverable 4, plus the background-job half of the exit criteria.
 
 | Repo | Constructed at |
 |---|---|
-| OpenVibe.Live | server/chat/chat-server.js:244 |
+| OpenVibe.Live | server/chat/chat-server.js:245 |
 | OpenVibe.Live | server/controls/control-server.js:32 |
 | OpenVibe.Live | server/integrations/robotstreamer-service.js:42 |
 | OpenVibe.Live | server/streaming/broadcast-server.js:130 |
@@ -16,26 +16,28 @@ Deliverable 4, plus the background-job half of the exit criteria.
 | OpenVibe.Live | server/streaming/jsmpeg-relay.js:53 |
 | OpenVibe.Live | server/streaming/jsmpeg-relay.js:99 |
 | OpenVibe.Live | server/vibe-coding/publish-server.js:27 |
-| OpenVibe.Games | apps/server/src/net/editorWs.ts:53 |
+| OpenVibe.Games | apps/server/src/net/editorWs.ts:55 |
 | OpenVibe.Games | apps/server/src/net/wsTransport.ts:19 |
-| OpenVibe.Chat | server/chat/chat-server.js:172 |
+| OpenVibe.Chat | server/calls/call-server.js:87 |
+| OpenVibe.Chat | server/chat/chat-server.js:184 |
 
 ## WebSocket paths referenced
 
 | Repo | Path | Referenced at |
 |---|---|---|
-| OpenVibe.Live | /ws/ | server/index.js:450, server/index.js:460, server/web/page-status.js:184 |
-| OpenVibe.Live | /ws/broadcast | server/index.js:1073, server/streaming/broadcast-server.js:187 |
-| OpenVibe.Live | /ws/call | server/index.js:1077, server/streaming/call-server.js:98 |
-| OpenVibe.Live | /ws/canvas | server/index.js:1079 |
-| OpenVibe.Live | /ws/chat | server/chat/chat-server.js:294, server/index.js:1069 |
-| OpenVibe.Live | /ws/control | server/controls/control-server.js:46, server/index.js:1075 |
-| OpenVibe.Live | /ws/game | server/index.js:1079 |
-| OpenVibe.Live | /ws/robotstreamer-publish | server/index.js:1081, server/integrations/robotstreamer-service.js:789 |
-| OpenVibe.Live | /ws/vibe-coding/publish | server/index.js:1071, server/vibe-coding/publish-server.js:35 |
+| OpenVibe.Live | /ws/ | server/index.js:460, server/index.js:470, server/web/page-status.js:186 |
+| OpenVibe.Live | /ws/broadcast | server/index.js:1089, server/streaming/broadcast-server.js:187 |
+| OpenVibe.Live | /ws/call | server/index.js:1093, server/streaming/call-server.js:98 |
+| OpenVibe.Live | /ws/canvas | server/index.js:1095 |
+| OpenVibe.Live | /ws/chat | server/chat/chat-server.js:295, server/index.js:1085 |
+| OpenVibe.Live | /ws/control | server/controls/control-server.js:46, server/index.js:1091 |
+| OpenVibe.Live | /ws/game | server/index.js:1095 |
+| OpenVibe.Live | /ws/robotstreamer-publish | server/index.js:1097, server/integrations/robotstreamer-service.js:789 |
+| OpenVibe.Live | /ws/vibe-coding/publish | server/index.js:1087, server/vibe-coding/publish-server.js:35 |
 | OpenVibe.Network | /ws/ | server/deploy/nginx-generator.js:153 |
-| OpenVibe.Games | /ws | apps/server/src/main.ts:254 |
-| OpenVibe.Chat | /ws/chat | server/app.js:210, server/chat/chat-server.js:234 |
+| OpenVibe.Games | /ws | apps/server/src/main.ts:320 |
+| OpenVibe.Chat | /ws/call | server/app.js:244, server/calls/call-server.js:130 |
+| OpenVibe.Chat | /ws/chat | server/app.js:245, server/chat/chat-server.js:246 |
 | OpenVibe.Host | /ws/ | lib/nginx.js:60 |
 
 ## Non-HTTP protocols
@@ -59,9 +61,9 @@ Owner = the repository whose process runs the job; target = the authority the wo
 | OpenVibe.Live | setInterval |  | 5 min | server/ai/ai-moments-job.js:496 |  | keep |
 | OpenVibe.Live | setInterval |  | ? | server/ai/auto-clip-job.js:354 |  | keep |
 | OpenVibe.Live | setInterval |  | 1 min | server/ai/backfill-job.js:160 |  | keep |
-| OpenVibe.Live | setInterval |  | ? | server/ai/chat-ai.js:473 |  | keep |
+| OpenVibe.Live | setInterval |  | ? | server/ai/chat-ai.js:476 |  | keep |
 | OpenVibe.Live | setInterval |  | 5 min | server/ai/easter-egg-job.js:215 |  | keep |
-| OpenVibe.Live | setInterval |  | ? | server/ai/slogan-job.js:190 |  | keep |
+| OpenVibe.Live | setInterval |  | ? | server/ai/slogan-job.js:193 |  | keep |
 | OpenVibe.Live | setInterval |  | 30 s | server/ai/stream-memory-job.js:241 |  | keep |
 | OpenVibe.Live | setInterval |  | ? | server/ai/streamer-overview-job.js:40 |  | keep |
 | OpenVibe.Live | setInterval |  | ? | server/ai/timeline-job.js:205 | OpenVibe.AI | extract |
@@ -69,19 +71,25 @@ Owner = the repository whose process runs the job; target = the authority the wo
 | OpenVibe.Live | setInterval |  | ? | server/arena/arena-job.js:33 |  | keep |
 | OpenVibe.Live | setInterval |  | ? | server/arena/arena-job.js:39 |  | keep |
 | OpenVibe.Live | setInterval |  | ? | server/arena/listener.js:323 |  | keep |
+| OpenVibe.Live | jobs.every | module-summaries-scan | 0.005 s | server/auth/module-summaries.js:189 |  | keep |
+| OpenVibe.Live | jobs.every | module-summaries-refresh | ? | server/auth/module-summaries.js:190 |  | keep |
 | OpenVibe.Live | setInterval |  | ? | server/chat/chat-remote.js:273 | OpenVibe.Chat | compat |
-| OpenVibe.Live | setInterval |  | ? | server/chat/chat-server.js:250 | OpenVibe.Chat | compat |
-| OpenVibe.Live | setInterval |  | ? | server/chat/chat-server.js:272 | OpenVibe.Chat | compat |
-| OpenVibe.Live | setInterval |  | ? | server/chat/chat-server.js:277 | OpenVibe.Chat | compat |
+| OpenVibe.Live | setInterval |  | ? | server/chat/chat-server.js:251 | OpenVibe.Chat | compat |
+| OpenVibe.Live | setInterval |  | ? | server/chat/chat-server.js:273 | OpenVibe.Chat | compat |
+| OpenVibe.Live | setInterval |  | ? | server/chat/chat-server.js:278 | OpenVibe.Chat | compat |
 | OpenVibe.Live | setInterval |  | ? | server/chat/dm-routes.js:40 | OpenVibe.Chat | compat |
 | OpenVibe.Live | setInterval |  | ? | server/diagnostics.js:19 |  | keep |
+| OpenVibe.Live | jobs.every | search-documents-scan | 0.005 s | server/events/search-documents.js:128 |  | keep |
+| OpenVibe.Live | jobs.every | search-documents-refresh | ? | server/events/search-documents.js:129 |  | keep |
+| OpenVibe.Live | jobs.every | search-media-scan | 0.005 s | server/events/search-media-documents.js:210 |  | keep |
+| OpenVibe.Live | jobs.every | search-media-refresh | ? | server/events/search-media-documents.js:211 |  | keep |
 | OpenVibe.Live | setInterval |  | ? | server/events/stream-events.js:100 |  | keep |
-| OpenVibe.Live | setInterval |  | 5 min | server/home/routes.js:564 |  | keep |
+| OpenVibe.Live | setInterval |  | 5 min | server/home/routes.js:570 |  | keep |
 | OpenVibe.Live | setInterval |  | ? | server/home/star-job.js:130 |  | keep |
-| OpenVibe.Live | setInterval |  | 360 min | server/index.js:1342 |  | keep |
-| OpenVibe.Live | setInterval |  | 45 s | server/index.js:1359 |  | keep |
-| OpenVibe.Live | setInterval |  | ? | server/index.js:1383 |  | keep |
-| OpenVibe.Live | setInterval |  | ? | server/index.js:1394 |  | keep |
+| OpenVibe.Live | setInterval |  | 360 min | server/index.js:1364 |  | keep |
+| OpenVibe.Live | setInterval |  | 45 s | server/index.js:1381 |  | keep |
+| OpenVibe.Live | setInterval |  | ? | server/index.js:1405 |  | keep |
+| OpenVibe.Live | setInterval |  | ? | server/index.js:1416 |  | keep |
 | OpenVibe.Live | setInterval |  | ? | server/integrations/chat-relay-service.js:615 | OpenVibe.Chat | extract |
 | OpenVibe.Live | setInterval |  | 1 s | server/integrations/powerchat-platform.js:296 | OpenVibe.Billing | extract |
 | OpenVibe.Live | setInterval |  | ? | server/integrations/powerchat-platform.js:430 | OpenVibe.Billing | extract |
@@ -92,7 +100,7 @@ Owner = the repository whose process runs the job; target = the authority the wo
 | OpenVibe.Live | setInterval |  | ? | server/integrations/rs-passthrough-relay.js:965 | OpenRe.Stream | extract |
 | OpenVibe.Live | setInterval |  | 60 min | server/media/media-downloader.js:554 |  | keep |
 | OpenVibe.Live | setInterval |  | ? | server/media/media-downloader.js:557 |  | keep |
-| OpenVibe.Live | setInterval |  | ? | server/media-proxy/asset-sync.js:120 |  | keep |
+| OpenVibe.Live | setInterval |  | ? | server/media-proxy/asset-sync.js:121 |  | keep |
 | OpenVibe.Live | setInterval |  | ? | server/media-proxy/clip-notify.js:95 |  | keep |
 | OpenVibe.Live | setInterval |  | 60 min | server/monetization/payments.js:390 | OpenVibe.Billing | extract |
 | OpenVibe.Live | setInterval |  | 30 s | server/news/news-service.js:94 |  | keep |
@@ -108,70 +116,88 @@ Owner = the repository whose process runs the job; target = the authority the wo
 | OpenVibe.Live | jobs.every | restream-viewer-counts | 1 min | server/utils/jobs.js:12 | OpenRe.Stream | extract |
 | OpenVibe.Live | jobs.singleFlight | auto-clip-backfill | ? | server/utils/jobs.js:13 |  | keep |
 | OpenVibe.Network | setInterval |  | ? | server/auth/discord-link.js:20 |  | keep |
-| OpenVibe.Network | setInterval |  | ? | server/chrome/service.js:205 |  | keep |
-| OpenVibe.Network | setInterval |  | ? | server/chrome/service.js:207 |  | keep |
-| OpenVibe.Network | setInterval |  | 60 min | server/index.js:724 |  | keep |
-| OpenVibe.Network | setInterval |  | 2 min | server/index.js:727 |  | keep |
-| OpenVibe.Network | setInterval |  | ? | server/index.js:742 |  | keep |
-| OpenVibe.Network | setInterval |  | ? | server/index.js:745 |  | keep |
+| OpenVibe.Network | setInterval |  | ? | server/frame/service.js:211 |  | keep |
+| OpenVibe.Network | setInterval |  | ? | server/frame/service.js:213 |  | keep |
+| OpenVibe.Network | setInterval |  | 0.05 s | server/graceful.js:77 |  | keep |
+| OpenVibe.Network | setInterval |  | ? | server/identity/grants-admin.js:201 |  | keep |
+| OpenVibe.Network | setInterval |  | ? | server/identity/profile-events.js:104 |  | keep |
+| OpenVibe.Network | setInterval |  | 60 min | server/index.js:790 |  | keep |
+| OpenVibe.Network | setInterval |  | 2 min | server/index.js:793 |  | keep |
+| OpenVibe.Network | setInterval |  | 5 min | server/index.js:807 |  | keep |
+| OpenVibe.Network | setInterval |  | ? | server/index.js:810 |  | keep |
+| OpenVibe.Network | setInterval |  | ? | server/registry/deploy-drift.js:88 |  | keep |
+| OpenVibe.Network | setInterval |  | ? | server/registry/library-tags.js:47 |  | keep |
 | OpenVibe.Shared | setInterval |  | 15 min | account-switcher.js:624 |  | keep |
 | OpenVibe.Shared | setInterval |  | ? | analytics/retention.js:230 |  | keep |
 | OpenVibe.Shared | setInterval |  | ? | analytics/tracker.js:115 |  | keep |
-| OpenVibe.Shared | setInterval |  | ? | notification-ui.js:548 |  | keep |
-| OpenVibe.Shared | setInterval |  | ? | release-watch.js:170 |  | keep |
-| OpenVibe.Shared | setInterval |  | 10 min | release-watch.js:175 |  | keep |
-| OpenVibe.Media | setInterval |  | ? | server/auth.js:59 |  | keep |
+| OpenVibe.Shared | setInterval |  | ? | notification-ui.js:557 |  | keep |
+| OpenVibe.Shared | setInterval |  | ? | release-watch.js:265 |  | keep |
+| OpenVibe.Shared | setInterval |  | 10 min | release-watch.js:271 |  | keep |
+| OpenVibe.Shared | setInterval |  | ? | shipped.js:154 |  | keep |
+| OpenVibe.Media | setInterval |  | ? | server/auth.js:62 |  | keep |
 | OpenVibe.Media | setInterval |  | 60 min | server/events.js:68 |  | keep |
 | OpenVibe.Media | setInterval |  | ? | server/events.js:86 |  | keep |
 | OpenVibe.Media | setInterval |  | ? | server/events.js:90 |  | keep |
-| OpenVibe.Media | setInterval |  | 720 min | server/index.js:170 |  | keep |
-| OpenVibe.Media | setInterval |  | ? | server/index.js:199 |  | keep |
-| OpenVibe.Media | setInterval |  | ? | server/jobs/worker.js:68 |  | keep |
-| OpenVibe.Media | setInterval |  | ? | server/jobs/worker.js:193 |  | keep |
+| OpenVibe.Media | setInterval |  | 720 min | server/index.js:178 |  | keep |
+| OpenVibe.Media | setInterval |  | ? | server/index.js:214 |  | keep |
+| OpenVibe.Media | setInterval |  | ? | server/jobs/worker.js:75 |  | keep |
+| OpenVibe.Media | setInterval |  | ? | server/jobs/worker.js:202 |  | keep |
 | OpenVibe.Media | setInterval |  | ? | server/objects/owner-subject-job.js:51 |  | keep |
 | OpenVibe.Media | setInterval |  | ? | server/objects/verify-job.js:226 |  | keep |
-| OpenVibe.Media | setInterval |  | ? | server/pastes/routes.js:710 | OpenVibe.Community | frozen-legacy |
+| OpenVibe.Media | setInterval |  | ? | server/pastes/routes.js:713 | OpenVibe.Community | frozen-legacy |
 | OpenVibe.Media | setInterval |  | ? | server/vod/clip-cutter.js:111 |  | keep |
-| OpenVibe.Media | setInterval |  | ? | server/vod/clip-jobs.js:125 |  | keep |
-| OpenVibe.Media | setInterval |  | ? | server/vod/health-job.js:266 |  | keep |
+| OpenVibe.Media | setInterval |  | ? | server/vod/clip-jobs.js:142 |  | keep |
+| OpenVibe.Media | setInterval |  | ? | server/vod/health-job.js:276 |  | keep |
 | OpenVibe.Media | setInterval |  | 1 min | server/vod/recorder.js:235 |  | keep |
-| OpenVibe.Media | setInterval |  | ? | server/vod/vod-storage.js:571 |  | keep |
-| OpenVibe.Tools | setInterval |  | ? | apps/_shared/guard/index.js:484 |  | keep |
+| OpenVibe.Media | setInterval |  | ? | server/vod/vod-storage.js:595 |  | keep |
+| OpenVibe.Tools | setInterval |  | 0.05 s | apps/_shared/graceful.js:77 |  | keep |
+| OpenVibe.Tools | setInterval |  | ? | apps/_shared/guard/index.js:487 |  | keep |
 | OpenVibe.Tools | setInterval |  | 15 s | apps/_shared/jobs/http.js:270 |  | keep |
 | OpenVibe.Tools | setInterval |  | ? | apps/_shared/jobs/index.js:123 |  | keep |
-| OpenVibe.Tools | setInterval |  | ? | apps/_shared/jobs/system.js:648 |  | keep |
+| OpenVibe.Tools | setInterval |  | ? | apps/_shared/jobs/system.js:660 |  | keep |
+| OpenVibe.Tools | setInterval |  | ? | apps/_shared/usage.js:105 |  | keep |
 | OpenVibe.Tools | setInterval |  | ? | apps/audio/server/retention/manager.js:193 |  | keep |
 | OpenVibe.Tools | setInterval |  | ? | apps/docs/server/retention/manager.js:145 |  | keep |
 | OpenVibe.Tools | setInterval |  | 5 min | apps/gateway/server/dev/routes.js:32 |  | keep |
 | OpenVibe.Tools | setInterval |  | ? | apps/gateway/server/registry/descriptors.js:162 |  | keep |
 | OpenVibe.Tools | setInterval |  | 1 min | apps/gateway/server/registry/index.js:176 |  | keep |
 | OpenVibe.Tools | setInterval |  | ? | apps/gateway/server/registry/services.js:109 |  | keep |
+| OpenVibe.Tools | setInterval |  | ? | apps/gateway/server/search-index.js:97 |  | keep |
 | OpenVibe.Tools | setInterval |  | ? | apps/img/server/retention/manager.js:146 |  | keep |
 | OpenVibe.Tools | setInterval |  | ? | apps/yt/server/downloader.js:662 |  | keep |
 | OpenVibe.Tools | setInterval |  | 5 s | apps/yt/server/downloader.js:713 |  | keep |
-| OpenVibe.Tools | setInterval |  | 10 min | apps/yt/server/index.js:135 |  | keep |
-| OpenVibe.Tools | setInterval |  | 0.5 s | apps/yt/server/index.js:252 |  | keep |
+| OpenVibe.Tools | setInterval |  | 10 min | apps/yt/server/index.js:138 |  | keep |
+| OpenVibe.Tools | setInterval |  | 0.5 s | apps/yt/server/index.js:255 |  | keep |
+| OpenVibe.Community | setInterval |  | ? | server/events.js:39 |  | keep |
+| OpenVibe.Community | setInterval |  | 0.05 s | server/graceful.js:77 |  | keep |
+| OpenVibe.Community | setInterval |  | ? | server/identity/profile-module.js:109 |  | keep |
 | OpenVibe.Community | setInterval |  | ? | server/limits.js:47 |  | keep |
-| OpenVibe.Community | setInterval |  | ? | server/pastes/service.js:221 |  | keep |
-| OpenVibe.Community | setInterval |  | ? | server/relay/discord.js:152 |  | keep |
-| OpenVibe.Games | setInterval |  | 360 min | apps/server/src/main.ts:148 |  | keep |
-| OpenVibe.Games | setInterval |  | ? | apps/server/src/main.ts:284 |  | keep |
-| OpenVibe.Games | setInterval |  | ? | apps/server/src/net/editorWs.ts:82 |  | keep |
-| OpenVibe.Events | setInterval |  | ? | server/auth.js:80 |  | keep |
+| OpenVibe.Community | setInterval |  | ? | server/pastes/service.js:223 |  | keep |
+| OpenVibe.Community | setInterval |  | ? | server/relay/discord-gateway.js:83 |  | keep |
+| OpenVibe.Community | setInterval |  | ? | server/relay/discord.js:401 |  | keep |
+| OpenVibe.Community | setInterval |  | ? | server/relay/events-worker.js:137 |  | keep |
+| OpenVibe.Community | setInterval |  | ? | server/search/documents.js:171 |  | keep |
+| OpenVibe.Games | setInterval |  | 360 min | apps/server/src/main.ts:162 |  | keep |
+| OpenVibe.Games | setInterval |  | ? | apps/server/src/main.ts:350 |  | keep |
+| OpenVibe.Games | setInterval |  | ? | apps/server/src/net/editorWs.ts:84 |  | keep |
+| OpenVibe.Games | setInterval |  | 0.05 s | apps/server/src/net/gracefulStop.ts:54 |  | keep |
+| OpenVibe.Events | setInterval |  | ? | server/auth.js:85 |  | keep |
 | OpenVibe.Events | setInterval |  | ? | server/index.js:49 |  | keep |
-| OpenVibe.Events | setInterval |  | ? | server/realtime.js:192 |  | keep |
-| OpenVibe.Chat | setInterval |  | 1 min | server/bridge/live-bridge.js:132 |  | keep |
-| OpenVibe.Chat | setInterval |  | ? | server/bridge/live-mirror.js:105 |  | keep |
-| OpenVibe.Chat | setInterval |  | ? | server/chat/chat-server.js:178 |  | keep |
-| OpenVibe.Chat | setInterval |  | ? | server/chat/chat-server.js:200 |  | keep |
-| OpenVibe.Chat | setInterval |  | ? | server/chat/chat-server.js:205 |  | keep |
-| OpenVibe.Chat | setInterval |  | ? | server/chat/dm-routes.js:46 |  | keep |
-| OpenVibe.Chat | setInterval |  | 360 min | server/events/consumer.js:136 |  | keep |
+| OpenVibe.Events | setInterval |  | ? | server/realtime.js:198 |  | keep |
+| OpenVibe.Chat | setInterval |  | 1 min | server/bridge/live-bridge.js:177 |  | keep |
+| OpenVibe.Chat | setInterval |  | ? | server/bridge/live-mirror.js:107 |  | keep |
+| OpenVibe.Chat | setInterval |  | ? | server/calls/call-server.js:89 |  | keep |
+| OpenVibe.Chat | setInterval |  | 5 min | server/calls/call-server.js:102 |  | keep |
+| OpenVibe.Chat | setInterval |  | ? | server/chat/chat-server.js:190 |  | keep |
+| OpenVibe.Chat | setInterval |  | ? | server/chat/chat-server.js:212 |  | keep |
+| OpenVibe.Chat | setInterval |  | ? | server/chat/chat-server.js:217 |  | keep |
+| OpenVibe.Chat | setInterval |  | ? | server/chat/dm-routes.js:56 |  | keep |
+| OpenVibe.Chat | setInterval |  | 360 min | server/events/consumer.js:188 |  | keep |
 | OpenVibe.Chat | setInterval |  | ? | server/events/outbox.js:112 |  | keep |
-| OpenVibe.Chat | setInterval |  | ? | server/live-context.js:726 |  | keep |
-| OpenVibe.Chat | setInterval |  | 2 s | server/live-context.js:728 |  | keep |
+| OpenVibe.Chat | setInterval |  | ? | server/live-context.js:835 |  | keep |
+| OpenVibe.Chat | setInterval |  | 2 s | server/live-context.js:837 |  | keep |
 | OpenRe.Stream | setInterval |  | ? | server/auth/index.js:64 |  | keep |
-| OpenRe.Stream | setInterval |  | ? | workers/coordinator.js:24 |  | keep |
+| OpenRe.Stream | setInterval |  | ? | workers/coordinator.js:25 |  | keep |
 | OpenVibe.Billing | setInterval |  | ? | server/index.js:30 |  | keep |
 | OpenVibe.Billing | setInterval |  | ? | server/network.js:40 |  | keep |
 | OpenVibe.Billing | setInterval |  | ? | server/outbox.js:96 |  | keep |
@@ -181,7 +207,9 @@ Owner = the repository whose process runs the job; target = the authority the wo
 | OpenVibe.VIP | setInterval |  | ? | server/index.js:25 |  | keep |
 | OpenVibe.VIP | setInterval |  | ? | server/network.js:42 |  | keep |
 | OpenVibe.AI | setInterval |  | ? | server/auth.js:70 |  | keep |
-| OpenVibe.AI | setInterval |  | ? | server/index.js:44 |  | keep |
+| OpenVibe.AI | setInterval |  | ? | server/events.js:36 |  | keep |
+| OpenVibe.AI | setInterval |  | ? | server/index.js:49 |  | keep |
+| OpenVibe.AI | setInterval |  | 5 min | server/user-modules.js:135 |  | keep |
 | OpenVibe.Search | setInterval |  | ? | server/auth.js:74 |  | keep |
 | OpenVibe.Search | setInterval |  | ? | server/events/outbox.js:166 |  | keep |
 | OpenVibe.Search | setInterval |  | 360 min | server/index.js:41 |  | keep |
@@ -192,6 +220,8 @@ Owner = the repository whose process runs the job; target = the authority the wo
 | OpenVibe.Sources | setInterval |  | ? | server/scheduler.js:28 |  | keep |
 | OpenVibe.Wiki | setInterval |  | ? | server/index.js:35 |  | keep |
 | OpenVibe.Wiki | setInterval |  | ? | server/index.js:44 |  | keep |
+| OpenVibe.Wiki | setInterval |  | 1 min | server/index.js:49 |  | keep |
+| OpenVibe.Blog | setInterval |  | ? | server/changelog.js:356 |  | keep |
 | OpenVibe.Blog | setInterval |  | ? | server/worker.js:48 |  | keep |
 | OpenVibe.Blog | setInterval |  | ? | server/worker.js:51 |  | keep |
 | OpenVibe.News | setInterval |  | ? | server/worker.js:29 |  | keep |
