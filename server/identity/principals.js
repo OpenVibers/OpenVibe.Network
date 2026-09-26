@@ -45,8 +45,9 @@ const DEFAULT_GRANTS = [
     ['community', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['community', 'media.object.upload', 'openvibe.media', ['community']],
     // Wave 11: Tools job results as Media objects; Wave 12: Games map-editor assets.
-    ['tools', 'media.object.upload', 'openvibe.media', ['tools']],
-    ['tools', 'media.object.read', 'openvibe.media', ['tools']],
+    // tools.* : developer projects' results go to tools.app.<project_id>[.sandbox] (WS-L task 5).
+    ['tools', 'media.object.upload', 'openvibe.media', ['tools', 'tools.*']],
+    ['tools', 'media.object.read', 'openvibe.media', ['tools', 'tools.*']],
     ['games', 'media.object.upload', 'openvibe.media', ['games']],
     ['games', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Games subscribes to network.user.token_valid_after (sign-out everywhere closes game sessions).
@@ -206,6 +207,9 @@ const CHANGED_DEFAULT_NAMESPACES = [
     ['live', 'network.modules.read', SELF_AUDIENCE, ['live.profile', 'live.stats'], ['live.profile', 'live.stats', 'live.loyalty']],
     ['chat', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences'], CHAT_NAMESPACES],
     ['chat', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences'], CHAT_NAMESPACES],
+    // Tools' job results under each developer project's child namespace (WS-L task 5, Media namespaces WS-G task 2).
+    ['tools', 'media.object.upload', 'openvibe.media', ['tools'], ['tools', 'tools.*']],
+    ['tools', 'media.object.read', 'openvibe.media', ['tools'], ['tools', 'tools.*']],
 ];
 
 function ensureSchema(db) {
