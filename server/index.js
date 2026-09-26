@@ -755,7 +755,7 @@ app.get(['/admin', '/admin/*'], (req, res) => {
 app.use(require('./not-found').notFound);
 
 // ── Start ────────────────────────────────────────────────────
-app.listen(config.port, config.host, () => {
+const server = app.listen(config.port, config.host, () => {
     // The home page renders the Tools catalog it already holds: fetch it now, not on the first visit.
     require('./domains/catalog').refresh().catch(() => {});
     console.log(`\n╔═══════════════════════════════════════╗`);
@@ -794,3 +794,19 @@ app.listen(config.port, config.host, () => {
         if (cleaned > 0) console.log(`[Sessions] Cleaned ${cleaned} expired sessions`);
     }, 24 * 60 * 60 * 1000);
 });
+
+// ── Stop (roadmap WS-P lifecycle) ────────────────────────────
+// systemd sends SIGTERM on a restart or deploy: stop taking connections, close idle keep-alive ones,
+// let requests in flight finish (at most 10 s, well inside the unit's stop timeout), then exit. Work
+// kept in the database (outboxes, the email queue) resumes on the next start.
+function shutdown(signal) {
+    if (shutdown.started) return;
+    shutdown.started = true;
+    console.log(`[Network] ${signal}: closing`);
+    server.close(() => process.exit(0));
+    if (typeof server.closeIdleConnections === 'function') server.closeIdleConnections();
+    setTimeout(() => process.exit(0), 10000).unref();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
