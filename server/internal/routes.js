@@ -58,7 +58,9 @@ function requireInternalKey(req, res, next) {
 const principals = require('../identity/principals');
 const TOKEN_ROUTES = new Set(['GET /identity/resolve', 'POST /identity/resolve-batch', 'POST /coins/credit', 'POST /coins/debit', 'POST /coins/transfer', 'POST /notifications/push', 'POST /notifications/push-bulk', 'POST /events/stream-live',
     // Internal-key retirement (register C-50/C-52): the routes Live still calls with the key also take a token.
-    'GET /url-registry/resolved', 'GET /coins/stats', 'POST /resolve-anon', 'POST /identity/legacy-map', 'POST /link-account']);
+    'GET /url-registry/resolved', 'GET /coins/stats', 'POST /resolve-anon', 'POST /identity/legacy-map', 'POST /link-account',
+    // Token only (legacy: false): Host's relay of the alerts firing on the production host (WS-H task 11).
+    'POST /operator/alerts']);
 const TOKEN_ROUTE_PATTERNS = [/^(GET|PUT|DELETE) \/modules\/[a-z0-9_.]+\/[A-Za-z0-9_]+$/];
 const forApp = (req) => (req.body && req.body.app_id !== undefined ? String(req.body.app_id) : undefined);
 const forService = (req) => (req.body && req.body.service !== undefined ? String(req.body.service) : undefined);
@@ -489,6 +491,24 @@ router.post('/notifications/push-bulk', principals.guard('network.notifications.
     } catch (err) {
         console.error('[Internal] Bulk notification push error:', err);
         res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Operator alerts (roadmap WS-H task 11) ───────────────────
+// POST /internal/operator/alerts — network.operator-alerts-request@1 → network.operator-alerts-result@1.
+// Host's relay (ovhost alerts relay) sends the complete set of alerts firing now; server/operator/alerts.js
+// pages the owner when one opens, once a day while it stays open, and when it resolves. Token only.
+router.post('/operator/alerts', principals.guard('network.operator.alert', { legacy: false }), (req, res) => {
+    const contracts = require('openvibe-contracts');
+    const v = contracts.validate('network.operator-alerts-request@1', req.body);
+    if (!v.valid) return res.status(400).json({ error: 'The body does not match network.operator-alerts-request@1', details: (v.errors || []).slice(0, 5) });
+    const notifService = req.app.locals.notificationService;
+    const notify = notifService ? (userId, n) => notifService.create({ user_id: userId, ...n }) : null;
+    try {
+        res.json(require('../operator/alerts').receive(getDb(req), req.body, { notify }));
+    } catch (err) {
+        console.error('[Internal] Operator alerts error:', err.message);
+        res.status(500).json({ error: 'Operator alerts failed' });
     }
 });
 
