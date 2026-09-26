@@ -215,6 +215,7 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
                 <button class="admin-tab-btn" onclick="showTab('modlog',this)"><i class="fa-solid fa-gavel"></i> Moderation log</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('grants',this)"><i class="fa-solid fa-key"></i> Service grants</button>
                 <button class="admin-tab-btn" onclick="showTab('themes',this)"><i class="fa-solid fa-palette"></i> Theme review</button>
+                <button class="admin-tab-btn" onclick="showTab('checklist',this)"><i class="fa-solid fa-list-check"></i> Operator checklist</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('eventsops',this)"><i class="fa-solid fa-route"></i> Event deliveries</button>
                 <button class="admin-tab-btn" onclick="showTab('analytics',this)"><i class="fa-solid fa-chart-pie"></i> Analytics</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('domains',this)"><i class="fa-solid fa-globe"></i> Domains</button>
@@ -405,6 +406,12 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
         </form>
         <div id="modlog-content"><div class="loading">Loading...</div></div>
         <div style="display:flex;justify-content:center;margin-top:12px"><button id="modlog-more" class="btn" hidden onclick="loadModLog(false)">Load more</button></div>
+    </div>
+
+    <!-- Operator parity checklist (WS-D task 5): where each operator job is done, and what has no console yet -->
+    <div class="section" id="sec-checklist">
+        <p class="muted" style="margin:0 0 10px">Every operator job the old admin did, and where it is done now: a tab here, another service's console, the host CLI, or an API that has no console yet (shown, not hidden). The dot is that service's readiness as the status page last saw it.</p>
+        <div id="checklist-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Community theme review (WS-E task 2): submissions stay private until approved here -->
@@ -864,6 +871,7 @@ const tabLoaders = {
     modlog: () => loadModLog(true),
     grants: () => loadGrants(),
     themes: () => loadThemeReview(),
+    checklist: () => loadOperatorChecklist(),
     eventsops: () => loadDeliveries(),
     analytics: loadAnalytics,
     deploy: loadDeployOverview,
@@ -3658,6 +3666,36 @@ async function replayDeliveries(sub, ids) {
     try { const r = await api('/api/admin/events/replay', { method: 'POST', body: { subscription_id: sub, event_ids: eventIds } }); alert(`Queued ${r.queued}`); loadDeliveries(); }
     catch (err) { alert(err.message || 'Replay failed'); }
 }
+async function loadOperatorChecklist() {
+    const c = document.getElementById('checklist-content');
+    let areas = [];
+    try { areas = (await api('/api/admin/operator-checklist')).areas || []; } catch (err) { c.textContent = 'Could not load: ' + err.message; return; }
+    c.replaceChildren();
+    const colour = { ready: 'var(--success, #3ee6b0)', degraded: 'var(--warning, #f5a524)', down: 'var(--danger, #ef4444)' };
+    for (const a of areas) {
+        const h = document.createElement('h3'); h.textContent = a.area; h.style.margin = '14px 0 6px'; c.appendChild(h);
+        for (const it of a.items) {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border)';
+            const dot = document.createElement('span'); dot.title = (it.service || '') + ': ' + it.status;
+            dot.style.cssText = 'width:10px;height:10px;border-radius:50%;margin-top:6px;flex:none'; dot.style.background = colour[it.status] || 'var(--text-muted, #888)';
+            const name = document.createElement('strong'); name.textContent = it.item; name.style.minWidth = '260px';
+            const places = document.createElement('div'); places.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
+            for (const w of it.where) {
+                let el;
+                if (w.kind === 'tab') { el = document.createElement('button'); el.type = 'button'; el.className = 'btn'; el.textContent = 'Open ' + w.tab; el.onclick = () => showTab(w.tab, null); }
+                else if (w.kind === 'url') { el = document.createElement('a'); el.href = w.url; el.target = '_blank'; el.rel = 'noopener'; el.textContent = w.url.replace(/^https:\/\//, ''); }
+                else { el = document.createElement('code'); el.textContent = (w.kind === 'cli' ? '$ ' : 'API ') + (w.cli || w.api); }
+                places.appendChild(el);
+                if (w.note) { const n = document.createElement('span'); n.className = 'muted'; n.textContent = '(' + w.note + ')'; places.appendChild(n); }
+            }
+            if (!it.console) { const gap = document.createElement('span'); gap.className = 'muted'; gap.textContent = 'no console yet'; gap.style.color = 'var(--warning, #f5a524)'; places.appendChild(gap); }
+            row.append(dot, name, places);
+            c.appendChild(row);
+        }
+    }
+}
+
 async function loadThemeReview() {
     const c = document.getElementById('themes-review-content');
     let list = [];
