@@ -447,6 +447,9 @@ ecosystem.start();
 const libraryTags = require('./registry/library-tags').createLibraryTags({ onUpdate: require('./registry/exposure').setLibraryReleases, token: () => require('./integrations/github').tokenOf(db) });
 libraryTags.start();
 // Operator status: GET /status (server-rendered, noindex), /api/v1/status, /api/v1/status/slo.
+// Creator analytics (WS-E task 6): from live.stream.ended, counts only; the full figures for the creator or
+// network.analytics.creator.read (Live's dashboards).
+app.use('/api/v1/creators', rateLimit({ windowMs: 60_000, max: 300 }), require('./analytics/creators').router({ fullGuard: require('./identity/principals').guard('network.analytics.creator.read', { legacy: false }) }));
 // Incidents and maintenance (WS-N task 12): public list; staff admins or network.status.incident (ovhost) write.
 app.use('/api/v1/status/incidents', rateLimit({ windowMs: 60_000, max: 120 }), require('./status/incidents').router({ requireAuth, incidentGuard: require('./identity/principals').guard('network.status.incident', { legacy: false }) }));
 app.use(require('./status/routes').createStatusRoutes({ ecosystem }));

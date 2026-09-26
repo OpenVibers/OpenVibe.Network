@@ -752,6 +752,8 @@ function initDb(dbPath) {
     require('../identity/follows').ensureSchema(db);
     // Incidents and maintenance on /status (server/status/incidents.js).
     require('../status/incidents').ensureSchema(db);
+    // Creator analytics from live.stream.ended (server/analytics/creators.js).
+    require('../analytics/creators').ensureSchema(db);
 
     console.log('[DB] Central database initialized');
     return db;

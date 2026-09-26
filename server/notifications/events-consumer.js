@@ -55,7 +55,7 @@ const CONSUMER = 'network-notifications';
 const INBOX_TABLE = 'network_event_inbox';
 const AUDIT_TOPICS = require('../admin/moderation-audit').TOPICS;
 const USAGE_TOPICS = require('../developer/usage').TOPICS;
-const TOPICS = Object.freeze(['deals.watch.matched', 'trade.alert.triggered', 'live.stream.started', ...AUDIT_TOPICS, ...USAGE_TOPICS]);
+const TOPICS = Object.freeze(['deals.watch.matched', 'trade.alert.triggered', 'live.stream.started', 'live.stream.ended', ...AUDIT_TOPICS, ...USAGE_TOPICS]);
 const LIVE_STARTED_MAX_AGE_MS = 30 * 60 * 1000;
 const EVENT_ID_RE = /^evt_[0-9A-HJKMNP-TV-Z]{26}$/;
 
@@ -236,6 +236,8 @@ function createEventsConsumer({ db, notifications, secrets, liveFollowers = null
             if (AUDIT_TOPICS.includes(event.event_type)) return moderationAudit ? moderationAudit.record(event) : 'ignored:audit_off';
             // Developer projects' usage rollups go to their dashboards (WS-N task 4), never to an inbox.
             if (USAGE_TOPICS.includes(event.event_type)) return projectUsage ? projectUsage.record(event) : 'ignored:usage_off';
+            // Creator analytics (WS-E task 6): each ended stream's totals, counts only.
+            if (event.event_type === 'live.stream.ended') return require('../analytics/creators').record(db, event);
             if (event.event_type === 'live.stream.started') {
                 const out = liveStreamStarted(event, prep);
                 if (typeof out === 'string') return out;

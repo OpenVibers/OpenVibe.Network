@@ -58,7 +58,7 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
 
 (async () => {
     // The subscriptions this consumer is meant for, and nothing else.
-    assert.deepStrictEqual(TOPICS, ['deals.watch.matched', 'trade.alert.triggered', 'live.stream.started', 'chat.moderation.action', 'live.moderation.action', 'community.moderation.action', 'tips.interaction.moderated', 'billing.staff.action',
+    assert.deepStrictEqual(TOPICS, ['deals.watch.matched', 'trade.alert.triggered', 'live.stream.started', 'live.stream.ended', 'chat.moderation.action', 'live.moderation.action', 'community.moderation.action', 'tips.interaction.moderated', 'billing.staff.action',
         ...['media', 'tools', 'games', 'wiki', 'blog', 'news', 'reviews', 'deals', 'coupons', 'trade', 'codes'].map((svc) => `${svc}.moderation.action`),
         'tools.usage.recorded', 'events.usage.recorded']);
     assert.deepStrictEqual(topicsFrom([]), TOPICS, 'scripts/subscribe-events.js subscribes every topic');

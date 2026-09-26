@@ -521,6 +521,13 @@ Google-style account management supporting up to 5 accounts:
 
 ## Analytics (ADR-021)
 
+**Creator analytics** (roadmap WS-E task 6, Contracts 0.68.0; `server/analytics/creators.js`) are built from
+events, not from Live's tables. Every `live.stream.ended` becomes one `creator_streams` row, with the stream's
+totals from the event's `stats`: counts only, never who watched or chatted, and kept 400 days.
+`GET /api/v1/creators/:creator/analytics?days=` shows everyone streams, minutes and peak viewers. The creator,
+and services with `network.analytics.creator.read` (Live's dashboards), also get average viewers, chatters,
+messages and watch minutes.
+
 Network records one row per finished request in the `analytics_*` tables of `network.db` and rolls
 them up hourly and daily for the admin analytics pages (`/api/admin/analytics`, which also gathers
 Live, Tools, Games and Media). What a raw row may carry is bound by ADR-021 (OpenVibe.Contracts

@@ -50,7 +50,7 @@ const server = http.createServer(app);
     const claims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.network' });
     assert.ok(claims.ok, claims.reason);
     assert.strictEqual(claims.claims.sub, 'svc:live');
-    assert.deepStrictEqual(claims.claims.cap, ['identity.subject.resolve', 'network.coins.credit', 'network.coins.debit', 'network.follows.read', 'network.follows.write', 'network.modules.read', 'network.modules.write', 'network.notifications.push']);
+    assert.deepStrictEqual(claims.claims.cap, ['identity.subject.resolve', 'network.analytics.creator.read', 'network.coins.credit', 'network.coins.debit', 'network.follows.read', 'network.follows.write', 'network.modules.read', 'network.modules.write', 'network.notifications.push']);
     assert.ok(validate('identity.service-token-claims@1', claims.claims).valid);
     assert.ok(claims.claims.exp - claims.claims.iat <= 300, 'short-lived');
     const full = t.body.access_token;
