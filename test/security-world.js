@@ -149,8 +149,8 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
     const must = (r, status, what) => { if (r.status !== status) throw new Error(`${what}: ${r.status} ${r.text.slice(0, 300)}`); return r; };
     const dev = {};
     for (const [owner, name] of [['alice', 'PA'], ['bob', 'PB']]) {
-        const p = must(await call(owner, 'POST', '/api/v1/projects', { name: `${owner} project` }), 201, `${owner} project`).body;
-        const a = once(`app creation ${name}`, must(await call(owner, 'POST', `/api/v1/projects/${p.id}/apps`, { name: `${owner} app`, environment: 'sandbox', type: 'confidential' }), 201, `${owner} app`));
+        const p = must(await call(owner, 'POST', '/api/v1/projects', { name: `${owner}-private-project` }), 201, `${owner} project`).body;
+        const a = once(`app creation ${name}`, must(await call(owner, 'POST', `/api/v1/projects/${p.id}/apps`, { name: `${owner}-private-app`, environment: 'sandbox', type: 'confidential' }), 201, `${owner} app`));
         dev[name] = { id: p.id, app: a.body.id, clientId: a.body.oauth_client_id || a.body.client_id || a.body.id, secret: a.body.credential.client_secret, credential: a.body.credential.id, owner };
         secrets[`dev credential ${name}`] = dev[name].secret;
     }
@@ -168,10 +168,10 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
     const appToken = appTok.status === 200 ? appTok.body.access_token : null;
 
     // ── Per-person data ──────────────────────────────────────────────
-    await call('alice', 'PUT', '/api/modules/ai.preferences', { data: { style: 'casual', history: false } }, { 'if-match': '0' });
+    await call('alice', 'PUT', '/api/modules/ai.preferences', { data: { style: 'casual', perspective: 'alice-private-perspective', history: false } }, { 'if-match': '0' });
     await call('alice', 'PUT', '/api/modules/chat.tts_defaults', { data: { send: true, volume: 37 } }, { 'if-match': '0' });
     await call('alice', 'PUT', `/api/v1/me/blocks/${users.carol.subject}`, {});
-    await call('alice', 'PUT', `/api/v1/me/follows/user/${users.bob.subject}`, {});
+    await call('alice', 'PUT', `/api/v1/me/follows/channel/${users.bob.subject}`, {});
     await call({ authorization: `Bearer ${liveToken}` }, 'POST', '/internal/notifications/push', { user_id: users.alice.id, type: 'system', category: 'system', title: 'alice-private-notification', message: 'for alice only', service: 'live' });
     const sess = once('session creation', await call('alice', 'POST', '/api/auth/sessions', { device_name: 'alice-laptop' }));
     if (sess.body && sess.body.session_token) secrets['alice session token'] = sess.body.session_token;
@@ -216,6 +216,8 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
     return {
         dir: srv.dir, srv, db, keys, vapid, issuer: ISSUER, routes, sentinels, secrets, users, dev, callers, clientSecrets,
         liveToken, appToken, anonToken, verificationKey: vk, pushSub, shownOnce, call, serviceToken, sign, S,
+        // Every TCP connection the server made so far, as 'host port' lines (the preload logs them).
+        connects: () => { try { return fs.readFileSync(dump.OV_CONNECT_LOG, 'utf8').split('\n').filter(Boolean); } catch { return []; } },
         stop: async () => { try { db.close(); } catch { /* */ } await srv.stop(); try { fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(srv.dir, { recursive: true, force: true }); } catch { /* */ } },
     };
 }
