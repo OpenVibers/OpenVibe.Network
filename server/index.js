@@ -376,6 +376,7 @@ const projectUsage = require('./developer/usage').createProjectUsage(db);
 eventsConsumer = require('./notifications/events-consumer').createEventsConsumer({
     db, notifications: notificationService, secrets: config.eventsWebhookSecrets,
     liveFollowers, discord: () => app.locals.discordService || null, moderationAudit, projectUsage,
+    followsAuthority: process.env.FOLLOWS_AUTHORITY === 'network' ? 'network' : 'live',   // ADR-030 step 4
 });
 console.log(`[Events consumer] ${eventsConsumer.enabled ? 'on' : 'off (NETWORK_EVENTS_SECRET unset)'}: POST /internal/events`);
 
@@ -414,6 +415,8 @@ app.get('/internal/blocks', require('./identity/principals').guard('network.bloc
     const followRouters = require('./identity/follows').routers({ requireAuth, followsGuard: require('./identity/principals').guard('network.follows.read', { legacy: false }) });
     app.use('/api/v1/me/follows', rateLimit({ windowMs: 60_000, max: 120 }), followRouters.me);
     app.use('/api/v1/follows', rateLimit({ windowMs: 60_000, max: 300 }), followRouters.pub);
+    // ADR-030 step 4: products record follows on a person's behalf (network.follows.write, service token only).
+    app.use('/internal/follows', require('./identity/principals').guard('network.follows.write', { legacy: false }), followRouters.internal);
 }
 // Realtime tickets (WS-E task 3, WS-F task 1; ADR-005 amendment 2): the notification badge on any site opens
 // OpenVibe.Events' /realtime/stream as the signed-in person with a two-minute, single-use ticket

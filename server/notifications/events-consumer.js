@@ -162,7 +162,7 @@ function liveStarted(event, { now, maxAgeMs }) {
  * @param {() => ({ sendLiveAlert(streamer: object, stream: object): Promise<object> }|null)} [o.discord]
  * @param {{ record(event: object): string }} [o.projectUsage]  ../developer/usage.js createProjectUsage()
  */
-function createEventsConsumer({ db, notifications, secrets, liveFollowers = null, discord = () => null, moderationAudit = null, projectUsage = null, liveStartedMaxAgeMs = LIVE_STARTED_MAX_AGE_MS, now = () => Date.now(), log = console }) {
+function createEventsConsumer({ db, notifications, secrets, liveFollowers = null, followsAuthority = 'live', discord = () => null, moderationAudit = null, projectUsage = null, liveStartedMaxAgeMs = LIVE_STARTED_MAX_AGE_MS, now = () => Date.now(), log = console }) {
     const keys = Array.isArray(secrets) ? secrets.filter((s) => typeof s === 'string' && s.length >= 32) : secretsFrom(secrets);
     const inbox = createInbox(db, { table: INBOX_TABLE, now });
     inbox.ensureSchema();
@@ -179,6 +179,12 @@ function createEventsConsumer({ db, notifications, secrets, liveFollowers = null
             const v = liveStarted(event, { now: now(), maxAgeMs: liveStartedMaxAgeMs });
             if (typeof v === 'string') return { skip: v };
             if (!streamerBySubject.get(v.subject)) return { skip: 'ignored:channel' };   // not a Network account: nobody to announce
+            // ADR-030 step 4: with FOLLOWS_AUTHORITY=network the followers come from Network's own graph
+            // (server/identity/follows.js), not from Live. Rollback: unset it.
+            if (followsAuthority === 'network') {
+                const rows = db.prepare("SELECT follower_subject FROM user_follows WHERE target_type = 'channel' AND target_id = ? AND active = 1").all(v.subject);
+                return { channelSubject: v.subject, followers: rows.map((r) => ({ subject: r.follower_subject })) };
+            }
             if (!liveFollowers) throw new LiveFollowersError('no Live followers client (RS256 signing key and OV_LIVE_INTERNAL_URL needed)');
             return liveFollowers.forStream(v.streamId);
         },

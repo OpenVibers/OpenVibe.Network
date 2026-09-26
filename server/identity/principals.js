@@ -123,6 +123,7 @@ const DEFAULT_GRANTS = [
     ['host', 'events.event.publish', 'openvibe.events', []],
     // ADR-030 (WS-E task 4): Live rebuilds its follows projection from Network's graph.
     ['live', 'network.follows.read', SELF_AUDIENCE, []],
+    ['live', 'network.follows.write', SELF_AUDIENCE, []],
     // WS-H task 11: Host relays the alerts firing on the production host (ovhost alerts relay).
     ['host', 'network.operator.alert', SELF_AUDIENCE, []],
     // WS-N task 12: ovhost incident / maintenance post to the status page.

@@ -312,7 +312,39 @@ function routers({ requireAuth, followsGuard }) {
         return followsGuard(req, res, answer);
     });
 
-    return { me, pub };
+    // ADR-030 step 4: a first-party product (network.follows.write, checked by the mount) records a follow
+    // on a person's behalf (network.follow-write-request@1). The follower must be a Network account.
+    const internal = express.Router();
+    internal.use(http.middleware());
+    const followerOrFail = (db, subject) => {
+        const u = SUBJECT_RE.test(String(subject || '')) ? personRow(db, 'subject_id = ?', subject) : null;
+        if (!u || u.is_anon) throw new FollowError(404, 'follows.unknown_follower', 'the follower is not a Network account');
+        return u.subject_id;
+    };
+    internal.put('/:type/:target', express.json({ limit: '4kb' }), (req, res) => send(req, res, (db) => {
+        const b = req.body && typeof req.body === 'object' ? req.body : {};
+        const v = validate('network.follow-write-request@1', b);
+        if (!v.valid) throw new FollowError(400, 'follows.invalid_request', 'the body does not match network.follow-write-request@1');
+        const follower = followerOrFail(db, b.follower);
+        const t = targetOrFail(db, req.params.type, req.params.target);
+        const out = setFollow(db, follower, req.params.type, t.subject_id, true, {
+            notifyEmail: typeof b.notify_email === 'boolean' ? b.notify_email : undefined, notifyPush: typeof b.notify_push === 'boolean' ? b.notify_push : undefined,
+            source: req.principal ? String(req.principal.sub).replace(/^svc:/, '') : 'network',
+        });
+        if (out.changed) kick(db);
+        res.status(out.changed && out.revision === 1 ? 201 : 200).json(status(db, req.params.type, t.subject_id, follower));
+    }));
+    internal.delete('/:type/:target', (req, res) => send(req, res, (db) => {
+        const follower = followerOrFail(db, req.query.follower);
+        const key = String(req.params.target || '');
+        const t = findTarget(db, req.params.type, key) || (SUBJECT_RE.test(key) ? { subject_id: key } : null);
+        if (!t || !t.subject_id) throw new FollowError(404, 'follows.unknown_target', 'no such channel');
+        const out = setFollow(db, follower, req.params.type, t.subject_id, false, { source: req.principal ? String(req.principal.sub).replace(/^svc:/, '') : 'network' });
+        if (out.changed) kick(db);
+        res.json(status(db, req.params.type, t.subject_id, follower));
+    }));
+
+    return { me, pub, internal };
 }
 
 module.exports = { TYPES, FollowError, ensureSchema, setFollow, status, list, count, findTarget, buildEnvelope, onSubjectRemoved, importFollows, routers, kick };

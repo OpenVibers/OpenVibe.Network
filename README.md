@@ -422,6 +422,11 @@ A target is a Live channel today (`channel`, named by its owner's subject), and 
   services with `network.follows.read` (service token only). Lists are never public.
 - **Events:** every change writes `network.follow.created` or `network.follow.deleted` (subject visibility,
   growing per-pair revision) to the outbox in the same transaction. Live keeps a projection from them.
+- **Products writing for a person** (ADR-030 step 4): `PUT|DELETE /internal/follows/:type/:target` needs
+  `network.follows.write`, a service token and `network.follow-write-request@1`. It is granted to Live, whose
+  buttons use it.
+- **Go-live source:** with `FOLLOWS_AUTHORITY=network`, go-live notifications read the followers here
+  instead of asking Live. Unset it to roll back.
 - **Migration:** `scripts/follows-backfill.js --live-db <live.db>` does a dry run by default. `--apply --backup <file>`
   imports Live's follows without events: a pair whose side has no subject goes to `follow_import_holds`, and
   nothing is dropped. `--reconcile` compares per-channel counts and pair sets.
