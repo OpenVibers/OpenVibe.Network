@@ -143,6 +143,9 @@ const DEFAULT_GRANTS = [
     ['probe', 'tools.job.create', 'openvibe.tools', []],
     ['probe', 'tools.job.read', 'openvibe.tools', []],
     ['probe', 'events.event.read', 'openvibe.events', []],
+    // The production mod lifecycle proof (WS-M task 6, Games apps/server/scripts/modLifecycleProof.ts): install, grant,
+    // use and revoke a proof mod through Games' staff API.
+    ['probe', 'games.mod.manage', 'openvibe.games', []],
     // Wave 20: the Codes portal relays its release events.
     ['codes', 'events.event.publish', 'openvibe.events', []],
     ['ai', 'events.event.publish', 'openvibe.events', []],          // ai.run.* (AI server/events.js, 2026-09-24)
