@@ -136,8 +136,11 @@ function resolve(db, { subject_id, source_system, source_type, source_id }) {
             sid = row && row.subject_id;
         }
     }
-    const p = sid ? projection(db, sid) : null;
+    // A subject merged into another (ADR-029) resolves to the survivor, saying where it came from.
+    const survivor = sid ? require('./account-merge').survivorOf(db, sid) : sid;
+    const p = survivor ? projection(db, survivor) : null;
     if (!p) return null;
+    if (survivor !== sid) p.merged_from = sid;
     p.legacy_ids = db.prepare('SELECT source_system, source_type, source_id FROM identity_legacy_map WHERE subject_id = ? ORDER BY source_system, source_type')
         .all(p.subject.id);
     return p;

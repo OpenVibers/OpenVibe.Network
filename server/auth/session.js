@@ -88,9 +88,10 @@ function makeRequireAuth(getCtx, signToken) {
         if (out.error) return res.status(out.status).json(out.status === 403 ? { error: out.error, ban_reason: out.ban_reason } : { error: out.error });
         req.user = out.user;
         req.token = token;
+        req.tokenClaims = out.decoded;   // auth_time: account merge needs a recent real sign-in
         if (out.renew && typeof signToken === 'function') {
             try {
-                const fresh = signToken(out.user, req.app.locals.privateKey, ctx.config);
+                const fresh = signToken(out.user, req.app.locals.privateKey, ctx.config, { renew: out.decoded });
                 req.token = fresh;
                 setSessionCookies(res, fresh);
                 res.set('X-OV-Token', fresh);                 // JS clients swap their stored token

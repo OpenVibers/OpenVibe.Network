@@ -169,7 +169,7 @@ const valid = (e) => { const v = contracts.validate('events.event-envelope@1', e
     modulesLib.write(db, CAT, 'live.profile', { followers: 9 }, { writer: { type: 'service', id: 'live' } });
     mark = lastId();
     const merged = modulesLib.onSubjectMerged(db, { from: CAT, into: ANN });
-    assert.deepStrictEqual(merged, { moved: 1, dropped: 1 });
+    assert.deepStrictEqual(merged, { moved: 1, filled: 0, dropped: 1 }, 'ANN already has followers: nothing to fill (ADR-029 fills only missing fields; test/account-merge.test.js)');
     const annPrefs = modulesLib.read(db, ANN, 'chat.preferences');
     assert.deepStrictEqual(annPrefs.data, { hide_emotes: true });
     assert.strictEqual(annPrefs.revision, 6, 'continues from ANN\'s own history');
@@ -191,7 +191,7 @@ const valid = (e) => { const v = contracts.validate('events.event-envelope@1', e
     r = await call('POST', '/api/auth/anon/anon-token-7/link', { headers: tokenOf(1) });
     assert.strictEqual(r.status, 200, JSON.stringify(r.body));
     assert.deepStrictEqual(modulesLib.read(db, ANN, 'chat.tts_defaults').data, { volume: 15 }, 'moved');
-    assert.deepStrictEqual(modulesLib.read(db, ANN, 'chat.preferences').data, { hide_emotes: true }, 'the account kept its own');
+    assert.deepStrictEqual(modulesLib.read(db, ANN, 'chat.preferences').data, { hide_emotes: true, compact: true }, 'the account kept its own values and gained only the field it lacked (ADR-029)');
     assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM user_modules WHERE subject_id = ?').get(GUEST).n, 0);
 
     // ── onOwnerRemoved: a retired owner freezes its namespaces; delete-after-retention sweeps ──

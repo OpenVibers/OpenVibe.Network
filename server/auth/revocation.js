@@ -17,7 +17,7 @@ const { ids, validate } = require('openvibe-contracts');
 const eventRelay = require('../developer/event-relay');
 
 const EVENT_TYPE = 'network.user.token_valid_after';
-const REASONS = ['password_changed', 'password_reset', 'signed_out_everywhere', 'banned', 'account_deleted', 'staff_revoked'];
+const REASONS = ['password_changed', 'password_reset', 'signed_out_everywhere', 'banned', 'account_deleted', 'staff_revoked', 'account_merged'];
 
 const iso = (v) => new Date(String(v) + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(v)) ? '' : 'Z')).toISOString();
 

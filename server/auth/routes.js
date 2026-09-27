@@ -41,7 +41,12 @@ function findValidResetToken(db, token) {
 // Contract audience (CONTRACTS.md): every first-party service domain.
 const DEFAULT_AUDIENCE = ['openvibe.live', 'openvibe.tools', 'openvibe.games', 'openvibe.media', 'openvibe.network'];
 
-function signToken(user, privateKey, config) {
+/**
+ * A person's session token. auth_time (OIDC) is when they actually signed in: now for a sign-in, register or
+ * password change; a renewal passes `renew` (the claims of the token it replaces) and keeps that token's
+ * auth_time, or none when it had none. An account merge needs a real sign-in within 10 minutes (ADR-029).
+ */
+function signToken(user, privateKey, config, { renew = null } = {}) {
     const algorithm = privateKey.includes('BEGIN') ? 'RS256' : 'HS256';
     // Audience always includes the contract service domains, plus the issuer
     // host and any registry-configured service hosts (white-label installs).
@@ -68,6 +73,7 @@ function signToken(user, privateKey, config) {
             avatar_url: user.avatar_url,
             profile_color: user.profile_color,
             ...staffClaims(user),
+            auth_time: renew ? (Number.isFinite(renew.auth_time) ? renew.auth_time : undefined) : Math.floor(Date.now() / 1000),
         },
         privateKey,
         {
@@ -203,13 +209,16 @@ router.post('/login', (req, res) => {
     if (!bcrypt.compareSync(password, user.password_hash)) {
         return res.status(401).json({ error: 'Invalid username or password' });
     }
+    // An account merged into another (ADR-029) signs in to the survivor.
+    const signedIn = require('../identity/account-merge').effectiveUser(db, user);
+    if (signedIn.is_banned) return res.status(403).json({ error: 'Account banned', ban_reason: signedIn.ban_reason });
 
-    db.prepare('UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
-    const token = signToken(user, req.app.locals.privateKey, config);
+    db.prepare('UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?').run(signedIn.id);
+    const token = signToken(signedIn, req.app.locals.privateKey, config);
 
-    console.log(`[Auth] Login: ${user.username}`);
+    console.log(`[Auth] Login: ${user.username}${signedIn.id !== user.id ? ` (merged into ${signedIn.username})` : ''}`);
     require('./session').setSessionCookies(res, token);
-    res.json({ token, user: sanitizeUser(user) });
+    res.json({ token, user: sanitizeUser(signedIn), ...(signedIn.id !== user.id ? { merged_into: signedIn.username } : {}) });
 });
 
 // ── Forgot Password ─────────────────────────────────────────
@@ -356,8 +365,8 @@ router.post('/refresh', (req, res) => {
         if (tokenIat < validAfter) return res.status(401).json({ error: 'Token revoked' });
     }
 
-    // Issue fresh token
-    const newToken = signToken(user, req.app.locals.privateKey, config);
+    // Issue fresh token (a renewal: the sign-in time stays)
+    const newToken = signToken(user, req.app.locals.privateKey, config, { renew: decoded });
 
     // Update session cookies — host-only on openvibe.network (NO Domain attribute)
     require('./session').setSessionCookies(res, newToken);
@@ -732,8 +741,8 @@ router.post('/sessions', requireAuth, (req, res) => {
         VALUES (?, ?, ?, ?, ?, ?)
     `).run(req.user.id, sessionToken, deviceName, ip, req.headers['user-agent'] || '', expiresAt);
 
-    // Issue a JWT for this session
-    const token = signToken(req.user, req.app.locals.privateKey, config);
+    // Issue a JWT for this session (the sign-in time stays)
+    const token = signToken(req.user, req.app.locals.privateKey, config, { renew: req.tokenClaims || {} });
 
     res.json({ ok: true, session_token: sessionToken, token });
 });
@@ -757,7 +766,7 @@ router.delete('/sessions', requireAuth, (req, res) => {
     revocation.kick(db);
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
     res.set('Cache-Control', 'no-store');
-    res.json({ ok: true, revoked: active, token: signToken(user, req.app.locals.privateKey, getConfig(req)) });
+    res.json({ ok: true, revoked: active, token: signToken(user, req.app.locals.privateKey, getConfig(req), { renew: req.tokenClaims || {} }) });
 });
 
 // ═══════════════════════════════════════════════════════════════

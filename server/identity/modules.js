@@ -240,18 +240,19 @@ function onSubjectRemoved(db, subjectId, { ctx } = {}) {
 }
 
 /**
- * Two accounts become one (`from` folds into `into`, which survives). Each record of `from` moves to
+ * Two accounts become one (`from` folds into `into`, which survives; ADR-029). Each record of `from` moves to
  * `into` when `into` has none in that namespace (created there, reason subject_merged, merged_from);
- * when `into` has one, the survivor's record is kept and `from`'s is dropped. Every record of `from`
- * ends deleted (reason subject_merged, merged_into). Moved records say updated_by svc:network.
- * Call inside the merge's transaction, before `from`'s row goes. Returns { moved, dropped }.
+ * when `into` has one, the survivor's record is kept and gains only the top-level fields it lacks from `from`'s
+ * (updated, reason subject_merged, merged_from; its own values always win). Every record of `from` ends deleted
+ * (reason subject_merged, merged_into). Moved and filled records say updated_by svc:network.
+ * Call inside the merge's transaction, before `from`'s row goes. Returns { moved, filled, dropped }.
  */
 function onSubjectMerged(db, { from, into, ctx } = {}) {
     if (!SUBJECT_RE.test(String(from || '')) || !SUBJECT_RE.test(String(into || ''))) throw new TypeError('onSubjectMerged: from and into must be usr_/gst_ subject ids');
     if (from === into) throw new TypeError('onSubjectMerged: from and into are the same subject');
     const system = { type: 'system', id: 'network' };
     const out = db.transaction(() => {
-        const res = { moved: 0, dropped: 0 };
+        const res = { moved: 0, filled: 0, dropped: 0 };
         for (const row of db.prepare('SELECT * FROM user_modules WHERE subject_id = ? ORDER BY namespace').all(from)) {
             const has = db.prepare('SELECT 1 FROM user_modules WHERE subject_id = ? AND namespace = ?').get(into, row.namespace);
             if (!has) {
@@ -264,14 +265,31 @@ function onSubjectMerged(db, { from, into, ctx } = {}) {
                 });
                 res.moved++;
             } else {
-                res.dropped++;
+                // The survivor's fields win; the other record fills only what it lacks (objects only).
+                const mine = db.prepare('SELECT * FROM user_modules WHERE subject_id = ? AND namespace = ?').get(into, row.namespace);
+                let a = null; let b = null;
+                try { a = JSON.parse(mine.data); b = JSON.parse(row.data); } catch { /* unreadable: keep the survivor's */ }
+                const isObj = (x) => x && typeof x === 'object' && !Array.isArray(x);
+                const gaps = isObj(a) && isObj(b) ? Object.keys(b).filter((k) => !Object.prototype.hasOwnProperty.call(a, k)) : [];
+                if (gaps.length) {
+                    const next = { ...a };
+                    for (const k of gaps) next[k] = b[k];
+                    const revision = nextRevision(db, into, row.namespace, mine.revision);
+                    db.prepare("UPDATE user_modules SET data = ?, revision = ?, updated_at = CURRENT_TIMESTAMP, updated_by = 'svc:network' WHERE subject_id = ? AND namespace = ?")
+                        .run(JSON.stringify(next), revision, into, row.namespace);
+                    moduleEvents.record(db, {
+                        subjectId: into, namespace: row.namespace, namespaceOwner: ownerOf(row.namespace) || 'network', schemaVersion: mine.version, revision,
+                        change: 'updated', reason: 'subject_merged', before: a, after: next, actor: system, mergedFrom: from, ctx,
+                    });
+                    res.filled++;
+                } else res.dropped++;
             }
             removeRow(db, from, row.namespace, { actor: system, reason: 'subject_merged', mergedInto: into, ctx });
         }
         db.prepare('DELETE FROM user_module_revisions WHERE subject_id = ?').run(from);
         return res;
     })();
-    if (out.moved || out.dropped) moduleEvents.kick(db);
+    if (out.moved || out.filled || out.dropped) moduleEvents.kick(db);
     return out;
 }
 

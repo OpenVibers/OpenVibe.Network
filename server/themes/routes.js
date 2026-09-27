@@ -47,7 +47,7 @@ function optionalAuth(req, res, next) {
         // Routes here read both req.user.sub (JWT shape) and req.user.id (row shape) — give them both.
         req.user = { ...out.decoded, ...out.user, sub: out.user.id, id: out.user.id }; req.token = token;
         if (out.renew) {
-            try { const fresh = require('../auth/routes').signToken(out.user, req.app.locals.privateKey, req.app.locals.config); res.cookie('ov_token', fresh, COOKIE); res.set('X-OV-Token', fresh); res.set('Access-Control-Expose-Headers', 'X-OV-Token'); } catch { /* */ }
+            try { const fresh = require('../auth/routes').signToken(out.user, req.app.locals.privateKey, req.app.locals.config, { renew: out.decoded }); res.cookie('ov_token', fresh, COOKIE); res.set('X-OV-Token', fresh); res.set('Access-Control-Expose-Headers', 'X-OV-Token'); } catch { /* */ }
         }
     } catch { /* treat as anonymous */ }
     next();

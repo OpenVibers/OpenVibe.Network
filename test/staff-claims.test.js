@@ -7,14 +7,16 @@ const { staffClaims } = require('../server/auth/staff-claims');
 
 assert.deepStrictEqual(staffClaims({ role: 'user', username: 'a' }), {}, 'not staff: no claims, small token');
 assert.deepStrictEqual(staffClaims({ role: 'streamer', username: 'b' }), {});
-assert.deepStrictEqual(staffClaims({ role: 'global_mod', username: 'm' }), { staff_caps: staff.capabilitiesOf('global_mod'), staff_map: '1.1.0' });
-assert.deepStrictEqual(staffClaims({ role: 'admin', username: 'boss' }), { staff_caps: staff.capabilitiesOf('admin'), staff_map: '1.1.0' });
+assert.deepStrictEqual(staffClaims({ role: 'global_mod', username: 'm' }), { staff_caps: staff.capabilitiesOf('global_mod'), staff_map: staff.map.version });
+assert.deepStrictEqual(staffClaims({ role: 'admin', username: 'boss' }), { staff_caps: staff.capabilitiesOf('admin'), staff_map: staff.map.version });
 const owner = staffClaims({ role: 'admin', username: 'TheOwner' });
 assert.strictEqual(owner.is_owner, true);
 assert.deepStrictEqual(owner.staff_caps, staff.capabilitiesOf('owner'));
 assert.deepStrictEqual(staffClaims({ role: 'user', username: 'theowner' }), {}, 'the owner name without the admin role is nobody');
 // Services read the issued claims exactly as the map answers.
 assert.strictEqual(staff.can(owner, 'staff.secrets.manage'), true);
+assert.strictEqual(staff.can(owner, 'staff.identity.merge'), true, 'account-recovery merges: the owner (map 1.2.0, ADR-029)');
+assert.strictEqual(staff.can({ role: 'admin', ...staffClaims({ role: 'admin', username: 'boss' }) }, 'staff.identity.merge'), false);
 assert.strictEqual(staff.can({ role: 'admin', ...staffClaims({ role: 'admin', username: 'boss' }) }, 'staff.secrets.manage'), false);
 // Both user-token signers add them.
 const fs = require('fs');

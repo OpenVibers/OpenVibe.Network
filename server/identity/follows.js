@@ -347,4 +347,31 @@ function routers({ requireAuth, followsGuard }) {
     return { me, pub, internal };
 }
 
-module.exports = { TYPES, FollowError, ensureSchema, setFollow, status, list, count, findTarget, buildEnvelope, onSubjectRemoved, importFollows, routers, kick };
+/**
+ * Account merge (ADR-029): `from`'s follows become `into`'s, both as the follower and as the followed channel
+ * owner. A pair the survivor already has keeps the survivor's row (the other is dropped), and following oneself
+ * is dropped. No follow events: services repoint on network.subject.merged. Inside the merge's transaction.
+ * → { moved, dropped }
+ */
+function onSubjectMerged(db, { from, into }) {
+    ensureSchema(db);
+    const out = { moved: 0, dropped: 0 };
+    const rows = db.prepare('SELECT * FROM user_follows WHERE follower_subject = ? OR target_id = ?').all(from, from);
+    for (const r of rows) {
+        const follower = r.follower_subject === from ? into : r.follower_subject;
+        const target = r.target_id === from ? into : r.target_id;
+        const clash = follower === target
+            || db.prepare('SELECT 1 FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ?').get(follower, r.target_type, target);
+        if (clash) {
+            db.prepare('DELETE FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ?').run(r.follower_subject, r.target_type, r.target_id);
+            out.dropped++;
+        } else {
+            db.prepare('UPDATE user_follows SET follower_subject = ?, target_id = ?, updated_at = CURRENT_TIMESTAMP WHERE follower_subject = ? AND target_type = ? AND target_id = ?')
+                .run(follower, target, r.follower_subject, r.target_type, r.target_id);
+            out.moved++;
+        }
+    }
+    return out;
+}
+
+module.exports = { onSubjectMerged, TYPES, FollowError, ensureSchema, setFollow, status, list, count, findTarget, buildEnvelope, onSubjectRemoved, importFollows, routers, kick };

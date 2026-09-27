@@ -89,7 +89,7 @@ async function proxyJsonRequest(req, res, targetUrl, errorLabel) {
         let upstreamToken = req.token;
         try {
             if (req.user && req.app.locals.privateKey) {
-                upstreamToken = signToken(req.user, req.app.locals.privateKey, req.app.locals.config);
+                upstreamToken = signToken(req.user, req.app.locals.privateKey, req.app.locals.config, { renew: req.tokenClaims || {} });
             }
         } catch (e) {
             console.error('[AdminProxy] token re-mint failed, forwarding original:', e.message);
@@ -408,6 +408,15 @@ app.get('/internal/integrations/github-token', require('./identity/principals').
 // Platform blocks (WS-E task 5): a person's own list, and who blocked whom for Chat and Community
 // (network.blocks.read, service token only). Every change is network.block.changed (server/identity/blocks.js).
 app.use('/api/v1/me/blocks', rateLimit({ windowMs: 60_000, max: 60 }), require('./identity/blocks').userRouter(requireAuth));
+// Account merge (roadmap WS-B task 5, ADR-029): the person folds a second account into this one; staff
+// (staff.identity.merge) for account recovery, with a reason.
+{
+    const accountMerge = require('./identity/account-merge');
+    accountMerge.ensureSchema(db);
+    const mergeRouters = accountMerge.routers({ requireAuth, staffClaims: require('./auth/staff-claims').staffClaims });
+    app.use('/api/v1/account', rateLimit({ windowMs: 60_000, max: 20 }), mergeRouters.me);
+    app.use('/api/admin/account-merges', mergeRouters.admin);
+}
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read', { legacy: false }), require('./identity/blocks').internalHandler(db));
 // The follow graph (WS-E task 4, ADR-030): public counts, a person's own follows, and who follows a target
 // (its owner, or network.follows.read, service token only). Every change is network.follow.* (server/identity/follows.js).
@@ -825,6 +834,9 @@ const server = app.listen(config.port, config.host, () => {
         } catch (e) { console.warn('[Modules] retired-owner sweep:', e.message); }
     };
     timers.push(setTimeout(sweepModules, 5 * 60 * 1000), setInterval(sweepModules, 24 * 60 * 60 * 1000));
+    // Account merges older than 30 days keep only the alias facts (ADR-029).
+    const reduceMerges = () => { try { const n = require('./identity/account-merge').reduceExpired(db); if (n) console.log(`[AccountMerge] reduced ${n} merge record(s) past 30 days`); } catch (e) { console.warn('[AccountMerge] reduce failed:', e.message); } };
+    timers.push(setTimeout(reduceMerges, 6 * 60 * 1000), setInterval(reduceMerges, 24 * 60 * 60 * 1000));
 
     // Clean expired sessions daily
     timers.push(setInterval(() => {

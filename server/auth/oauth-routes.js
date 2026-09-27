@@ -101,7 +101,7 @@ router.get('/authorize', (req, res) => {
             const have = req.cookies?.ov_token || req.cookies?.ov_sso;
             const out = verifySession(have, { db, publicKey: req.app.locals.publicKey, config: getConfig(req) });
             if (!out.error) {
-                const token = out.renew ? require('./routes').signToken(out.user, req.app.locals.privateKey, getConfig(req)) : have;
+                const token = out.renew ? require('./routes').signToken(out.user, req.app.locals.privateKey, getConfig(req), { renew: out.decoded }) : have;
                 setSessionCookies(res, token);
                 const code = issueCode(db, { clientId: client_id, userId: out.user.id, redirectUri: redirect_uri, scope, pkce, nonce });
                 return res.redirect(withCode(redirect_uri, code, state));
