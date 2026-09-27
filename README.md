@@ -53,6 +53,7 @@ openvibe.network (port 4000)
 │   └── my.html               # Account management (profile, sessions, notifications)
 ├── deploy/
 │   ├── nginx/                # openvibe.network.conf
+│   ├── scripts/              # deploy.sh (runs `ovhost deploy network`), deploy-legacy.sh (its fallback)
 │   └── systemd/              # openvibe-network.service (EnvironmentFile=/etc/openvibe/network.env)
 └── .env.example
 ```
@@ -81,6 +82,19 @@ After the first run the service will seed the URL registry with safe defaults an
 ```
 
 The server auto-creates the SQLite database and seeds OAuth2 clients on first run. Client secrets are logged to console once on creation — copy them to the consuming services' env files (`/etc/openvibe/<svc>.env`).
+
+---
+
+## Deploying
+
+`sudo /opt/openvibe.network/deploy/scripts/deploy.sh` runs `ovhost deploy network --install-units`
+(OpenVibe.Host, strategy `git-checkout`; roadmap WS-N task 11): a fast-forward pull as the checkout owner,
+`npm install --omit=dev` when the lockfile or dependency fields changed, every dependency checked before
+anything restarts, `deploy/systemd/openvibe-network.service` installed when it differs (daemon-reload), the
+restart, `/api/ready` polled, an automatic rollback if it does not come up, and the release announced.
+`--restart`, `--wait-idle`, `--force` and `--rollback` (`ovhost rollback network`) are passed on; `DRY_RUN=1`
+prints `ovhost plan network`. When ovhost is missing, too old or does not manage Network, the wrapper runs
+`deploy/scripts/deploy-legacy.sh`, the previous script, unchanged (`OVHOST_LEGACY=1` forces it).
 
 ---
 

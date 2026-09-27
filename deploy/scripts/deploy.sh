@@ -1,105 +1,66 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════
-# OpenVibe.Network — Deploy Script
-# Pulls latest from GitHub, updates the systemd service unit, and restarts the service.
+# OpenVibe.Network — deploy: a thin wrapper around `ovhost deploy network --install-units`
+# (OpenVibe.Host, strategy git-checkout; roadmap WS-N task 11; OpenVibe.Host docs/deploy-strategies.md).
 #
-# Usage (from the server):
-#   sudo /opt/openvibe.network/deploy/scripts/deploy.sh
+#   sudo /opt/openvibe.network/deploy/scripts/deploy.sh               ovhost deploy network --install-units
+#   sudo /opt/openvibe.network/deploy/scripts/deploy.sh --restart     … --restart (the old script restarted even
+#                                                                     with nothing new; ovhost does only when asked)
+#   sudo /opt/openvibe.network/deploy/scripts/deploy.sh --rollback    ovhost rollback network
+#   DRY_RUN=1 /opt/openvibe.network/deploy/scripts/deploy.sh          ovhost plan network
 #
-# Or remotely:
-#   ssh openvibe.network "sudo /opt/openvibe.network/deploy/scripts/deploy.sh"
+# ovhost does what this script did, as the checkout owner: pull (fast-forward only), npm install --omit=dev when
+# the lockfile or dependency fields changed (then the lockfile is restored), deploy/systemd/openvibe-network.service
+# installed when it differs (daemon-reload), restart, /api/ready polled. New: every dependency must resolve before
+# the restart, a release that does not come up is rolled back (exit 3), every attempt is in `ovhost releases
+# network`, freezes are honoured (exit 6) and the release is announced.
+#
+# Fallback: deploy-legacy.sh (the previous script, unchanged) when ovhost is missing or too old (no
+# `capabilities`, deploy-api < 1), or the host inventory does not manage network; OVHOST_LEGACY=1 forces it.
 # ═══════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
-REPO_DIR="${REPO_DIR:-/opt/openvibe.network}"
-SERVICE="${SERVICE:-openvibe-network}"
-SERVICE_UNIT_SOURCE="${SERVICE_UNIT_SOURCE:-$REPO_DIR/deploy/systemd/${SERVICE}.service}"
-SERVICE_UNIT_DEST="${SERVICE_UNIT_DEST:-/etc/systemd/system/${SERVICE}.service}"
-SITE_URL="${SITE_URL:-https://openvibe.network}"
-API_URL="${API_URL:-http://127.0.0.1:4000}"
-GIT_REMOTE="${GIT_REMOTE:-origin}"
-GIT_BRANCH="${GIT_BRANCH:-main}"
-HEALTH_PATH="${HEALTH_PATH:-/api/health}"
-DEPLOY_TIMEOUT="${DEPLOY_TIMEOUT:-15}"
+SERVICE=network
+STRATEGY=git-checkout
+HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+LEGACY="${DEPLOY_LEGACY:-$HERE/deploy-legacy.sh}"
+OVHOST="${OVHOST:-/usr/local/bin/ovhost}"
+if [ "${OVHOST_SUDO-auto}" = auto ]; then if [ "$(id -u)" -eq 0 ]; then SUDO=(); else SUDO=(sudo); fi; elif [ -n "${OVHOST_SUDO}" ]; then SUDO=("$OVHOST_SUDO"); else SUDO=(); fi
 
-cd "$REPO_DIR"
+CMD=deploy
+FLAGS=()
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --wait-idle|--restart|--force) FLAGS+=("$1"); shift ;;
+        --rollback) CMD=rollback; shift ;;
+        --) shift; break ;;
+        *) echo "Usage: $0 [--restart] [--wait-idle] [--force] [--rollback]   (DRY_RUN=1 for the plan)"; exit 1 ;;
+    esac
+done
 
-echo "╔══════════════════════════════════════╗"
-echo "║      OpenVibe.Network Deploy Script      ║"
-echo "╚══════════════════════════════════════╝"
-echo ""
+legacy() {
+    echo "[Deploy] $1 — running deploy-legacy.sh (the previous deploy script) instead"
+    if [ "$CMD" = rollback ] || [ "${DRY_RUN:-0}" = 1 ]; then echo "[Deploy] ✗ deploy-legacy.sh has no --rollback or DRY_RUN; nothing was done" >&2; exit 1; fi
+    exec bash "$LEGACY"
+}
 
-# 1. Record current commit before pull
-OLD_HASH=$(git rev-parse HEAD 2>/dev/null || echo "none")
-echo "[Deploy] Current commit: ${OLD_HASH:0:8}"
+REASON=""
+probe() {
+    if [ "${OVHOST_LEGACY:-0}" = 1 ]; then REASON="OVHOST_LEGACY=1"; return 1; fi
+    if ! command -v "$OVHOST" >/dev/null 2>&1; then REASON="ovhost not found ($OVHOST)"; return 1; fi
+    local caps api
+    if ! caps=$("${SUDO[@]}" "$OVHOST" capabilities "$SERVICE" 2>/dev/null); then REASON="this ovhost has no 'capabilities' (too old) or no inventory entry for $SERVICE"; return 1; fi
+    api=$(printf '%s\n' "$caps" | sed -n 's/^deploy-api=//p')
+    case "$api" in ''|*[!0-9]*) REASON="this ovhost reports no deploy-api (too old)"; return 1 ;; esac
+    if [ "$api" -lt 1 ]; then REASON="this ovhost's deploy-api is $api, 1 is needed"; return 1; fi
+    if ! printf '%s\n' "$caps" | grep -qx "strategy=$STRATEGY"; then REASON="the host inventory does not deploy $SERVICE with strategy $STRATEGY ($(printf '%s\n' "$caps" | sed -n 's/^strategy=//p'))"; return 1; fi
+    if ! printf '%s\n' "$caps" | grep -qx "managed=yes"; then REASON="ovhost does not manage $SERVICE"; return 1; fi
+    return 0
+}
 
-# 2. Pull latest from GitHub
-echo "[Deploy] Pulling from ${GIT_REMOTE} ${GIT_BRANCH}..."
-git pull "$GIT_REMOTE" "$GIT_BRANCH" --ff-only
-NEW_HASH=$(git rev-parse HEAD)
-echo "[Deploy] New commit: ${NEW_HASH:0:8}"
+probe || legacy "$REASON"
 
-# 2b. Install dependencies when the lockfile changed (e.g. a new openvibe-contracts release).
-if [ "$OLD_HASH" = "none" ] || ! git diff --quiet "$OLD_HASH" "$NEW_HASH" -- package-lock.json; then
-    # install (not ci): updates node_modules in place instead of deleting it under the running service
-    echo "[Deploy] package-lock.json changed: npm install --omit=dev"
-    npm install --omit=dev --no-audit --no-fund
-fi
-
-# 3. Update systemd service config if the repo includes one
-UNIT_UPDATED=false
-if [ -f "$SERVICE_UNIT_SOURCE" ]; then
-    echo "[Deploy] Found service unit source: ${SERVICE_UNIT_SOURCE}"
-    if [ ! -f "$SERVICE_UNIT_DEST" ] || ! cmp -s "$SERVICE_UNIT_SOURCE" "$SERVICE_UNIT_DEST"; then
-        echo "[Deploy] Installing updated service unit to ${SERVICE_UNIT_DEST}"
-        sudo cp "$SERVICE_UNIT_SOURCE" "$SERVICE_UNIT_DEST"
-        sudo chmod 644 "$SERVICE_UNIT_DEST"
-        UNIT_UPDATED=true
-    else
-        echo "[Deploy] Service unit is already up to date."
-    fi
-    if [ "$UNIT_UPDATED" = true ]; then
-        echo "[Deploy] Reloading systemd daemon..."
-        sudo systemctl daemon-reload
-        sudo systemctl enable "$SERVICE" >/dev/null 2>&1 || true
-    fi
-else
-    echo "[Deploy] No service unit file found at ${SERVICE_UNIT_SOURCE}, skipping systemd update."
-fi
-
-# 4. Check if there are actually new commits
-if [ "$OLD_HASH" = "$NEW_HASH" ]; then
-    echo "[Deploy] Already up to date — no new commits."
-    echo "[Deploy] Restarting service anyway..."
-    sudo systemctl restart "$SERVICE"
-    echo "[Deploy] Done. ✅"
-    exit 0
-fi
-
-# 5. Get commit log between old and new
-COMMIT_LOG=$(git --no-pager log --oneline "${OLD_HASH}..${NEW_HASH}" 2>/dev/null || echo "Update deployed")
-COMMIT_COUNT=$(echo "$COMMIT_LOG" | wc -l | tr -d ' ')
-echo "[Deploy] ${COMMIT_COUNT} new commit(s):"
-echo "$COMMIT_LOG"
-echo ""
-
-# 6. Restart the service
-echo "[Deploy] Restarting ${SERVICE}..."
-sudo systemctl restart "$SERVICE"
-
-# 7. Wait for service to come back up
-if [ "$COMMIT_COUNT" -gt 0 ]; then
-    echo -n "[Deploy] Waiting for server..."
-    for i in $(seq 1 "${DEPLOY_TIMEOUT}"); do
-        sleep 1
-        if curl -sf "${API_URL}${HEALTH_PATH}" > /dev/null 2>&1; then
-            echo " up! ✅"
-            break
-        fi
-        echo -n "."
-    done
-fi
-
-echo ""
-echo "[Deploy] Deployment complete! 🎉"
-echo "[Deploy] ${COMMIT_COUNT} commit(s) deployed: ${OLD_HASH:0:8} → ${NEW_HASH:0:8}"
+if [ "${DRY_RUN:-0}" = 1 ]; then exec "${SUDO[@]}" "$OVHOST" plan "$SERVICE"; fi
+[ "$CMD" = deploy ] && FLAGS+=(--install-units)
+echo "[Deploy] ovhost $CMD $SERVICE ${FLAGS[*]}"
+exec "${SUDO[@]}" "$OVHOST" "$CMD" "$SERVICE" "${FLAGS[@]}"
