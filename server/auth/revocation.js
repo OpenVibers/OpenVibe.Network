@@ -43,12 +43,14 @@ function buildEnvelope({ subjectId, validAfter, reason, actor, ctx }) {
  * @param {{ reason: string, actor?: object, ctx?: object }} opts  actor defaults to the person themself
  * @returns {{ validAfter: string, event: object|null }}  event is null for an account with no subject
  */
-function revokeTokens(db, userId, { reason, actor, ctx } = {}) {
+// strict: the cutoff is one second ahead, so a token minted in this same second is refused too (an account merge:
+// the folded-in account's fresh sign-in token must not outlive the merge).
+function revokeTokens(db, userId, { reason, actor, ctx, strict = false } = {}) {
     if (!REASONS.includes(reason)) throw new Error(`revocation: unknown reason ${reason}`);
     return db.transaction(() => {
         const user = db.prepare('SELECT id, subject_id FROM users WHERE id = ?').get(userId);
         if (!user) throw new Error(`revocation: no user ${userId}`);
-        db.prepare('UPDATE users SET token_valid_after = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
+        db.prepare(strict ? "UPDATE users SET token_valid_after = datetime(CURRENT_TIMESTAMP, '+1 second') WHERE id = ?" : 'UPDATE users SET token_valid_after = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
         db.prepare('UPDATE user_sessions SET is_active = 0 WHERE user_id = ?').run(user.id);
         const validAfter = iso(db.prepare('SELECT token_valid_after AS t FROM users WHERE id = ?').get(user.id).t);
         let event = null;

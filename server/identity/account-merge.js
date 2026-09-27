@@ -220,7 +220,7 @@ function merge(db, fromUser, intoUser, { initiatedBy = 'person', actorSubject, r
         // The folded-in account: merged, its tokens revoked and announced (network.user.token_valid_after, reason
         // account_merged: sites close its sockets). Its sessions already belong to the survivor.
         db.prepare('UPDATE users SET merged_into = ? WHERE id = ?').run(intoUser.id, fromUser.id);
-        revocation.revokeTokens(db, fromUser.id, { reason: 'account_merged', actor: { type: 'user', id: actor } });
+        revocation.revokeTokens(db, fromUser.id, { reason: 'account_merged', actor: { type: 'user', id: actor }, strict: true });
         db.prepare(`INSERT INTO account_merges (id, from_subject, into_subject, from_user_id, into_user_id, initiated_by, actor_subject, reason, moved, pre_state, merged_at, split_until)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
             .run(mergeId, from, into, fromUser.id, intoUser.id, initiatedBy, actor, reason, JSON.stringify({ ...moved, dropped }), JSON.stringify(pre), mergedAt, splitUntil);

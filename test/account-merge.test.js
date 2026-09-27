@@ -91,6 +91,7 @@ const server = http.createServer(app);
         db.prepare("INSERT INTO user_preferences (user_id, language) VALUES (?, 'en'), (?, 'pt')").run(carol.id, carol2.id);
         db.prepare("INSERT INTO identity_legacy_map (source_system, source_type, source_id, subject_id) VALUES ('live', 'user', '70', ?)").run(carol2.subject_id);
         const oldCarol2 = tok(carol2);
+        const sameSecond = jwt.sign({ sub: carol2.id, id: carol2.id, subject_id: carol2.subject_id, username: carol2.username, role: 'user', auth_time: Math.floor(Date.now() / 1000) }, keys.privateKey, { algorithm: 'RS256', issuer: ISSUER, expiresIn: '1h' });
 
         // ── Refusals ──
         let r = await call('POST', '/api/v1/account/merge/intents', tok(carol));
@@ -153,6 +154,8 @@ const server = http.createServer(app);
         const revoked = events('network.user.token_valid_after').filter((e) => e.subject.id === carol2.subject_id);
         assert.deepStrictEqual(revoked.map((e) => e.payload.reason), ['account_merged']);
         assert.strictEqual((await call('GET', '/api/auth/me', oldCarol2)).status, 401, "the folded-in account's old token is refused");
+        assert.strictEqual((await call('GET', '/api/auth/me', sameSecond)).status, 401, 'even one minted in the second of the merge (strict cutoff; merged accounts have no tokens)');
+        assert.ok(Date.parse(revoked[0].payload.valid_after) > Date.parse(merged[0].payload.merged_at) - 1000, 'services get a cutoff past the merge second');
         // Signing in to the folded-in account signs in to the survivor.
         r = await call('POST', '/api/auth/login', null, { username: 'carol_old', password: 'secret12' });
         assert.deepStrictEqual([r.status, r.body.user && r.body.user.username, r.body.merged_into], [200, 'carol', 'carol']);
