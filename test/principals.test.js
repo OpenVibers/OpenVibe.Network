@@ -54,6 +54,11 @@ const server = http.createServer(app);
     assert.ok(validate('identity.service-token-claims@1', claims.claims).valid);
     assert.ok(claims.claims.exp - claims.claims.iat <= 300, 'short-lived');
     const full = t.body.access_token;
+    // Live's OpenVibe.AI token: its own workflows, the footer copy and media.analyze (WS-O task 5), nothing else.
+    t = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.ai' });
+    const aiClaims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.ai' });
+    assert.ok(aiClaims.ok, aiClaims.reason);
+    assert.deepStrictEqual([aiClaims.claims.cap, aiClaims.claims.ns], [['ai.run.create', 'ai.run.read'], ['live.*', 'network.site_copy', 'media.analyze']]);
 
     t = await token({ client_id: 'live', client_secret: 'wrong', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 401); assert.strictEqual(t.body.error, 'invalid_client');

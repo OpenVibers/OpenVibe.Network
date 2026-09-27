@@ -139,10 +139,10 @@ const DEFAULT_GRANTS = [
     ['codes', 'events.event.publish', 'openvibe.events', []],
     ['ai', 'events.event.publish', 'openvibe.events', []],          // ai.run.* (AI server/events.js, 2026-09-24)
     // Wave 13: Live's AI features run as OpenVibe.AI workflows (AI_SERVICE=remote in live.env).
-    // Live runs its own live.* workflows and, as the footer-copy fallback, network.site_copy
-    // (OpenVibe.AI fails closed on a token with no ns).
-    ['live', 'ai.run.create', 'openvibe.ai', ['live.*', 'network.site_copy']],
-    ['live', 'ai.run.read', 'openvibe.ai', ['live.*', 'network.site_copy']],
+    // Live runs its own live.* workflows, network.site_copy as the footer-copy fallback, and media.analyze
+    // (local-first VOD/clip analysis, roadmap WS-O task 5) (OpenVibe.AI fails closed on a token with no ns).
+    ['live', 'ai.run.create', 'openvibe.ai', ['live.*', 'network.site_copy', 'media.analyze']],
+    ['live', 'ai.run.read', 'openvibe.ai', ['live.*', 'network.site_copy', 'media.analyze']],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
     ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
     // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
