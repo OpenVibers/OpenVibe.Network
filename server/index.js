@@ -419,6 +419,16 @@ app.use('/api/v1/me/blocks', rateLimit({ windowMs: 60_000, max: 60 }), require('
     app.use('/api/v1/account', rateLimit({ windowMs: 60_000, max: 20 }), mergeRouters.me);
     app.use('/api/admin/account-merges', mergeRouters.admin);
 }
+// Mod principals (roadmap WS-M task 3, ADR-013): the runtime that installs a mod registers mod:<mod_id> and changes
+// its grants (mods.grant.manage, service token only); staff (staff.games.manage) from /api/admin/mods.
+{
+    const modRouters = require('./identity/mod-principals').routers({
+        guard: require('./identity/principals').guard('mods.grant.manage', { legacy: false }), requireAuth, staffClaims: require('./auth/staff-claims').staffClaims,
+    });
+    require('./identity/mod-principals').ensureSchema(db);
+    app.use('/internal/mods', modRouters.internal);
+    app.use('/api/admin/mods', modRouters.admin);
+}
 // Account export and deletion (roadmap WS-B task 7, ADR-033): the person's export job and scheduled deletion;
 // services push export parts and confirm deletions with service tokens; staff (staff.users.manage) see what is
 // outstanding. Archives live next to the database for 7 days.

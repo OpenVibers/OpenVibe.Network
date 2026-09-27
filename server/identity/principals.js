@@ -55,6 +55,8 @@ const DEFAULT_GRANTS = [
     // Media and Tools subscribe to network.user.token_valid_after too (their sign-in refuses older tokens).
     ['media', 'events.subscription.manage', 'openvibe.events', []],
     ['tools', 'events.subscription.manage', 'openvibe.events', []],
+    // Mod principals (ADR-013, WS-M task 3): Games registers its mod installs and changes their grants.
+    ['games', 'mods.grant.manage', SELF_AUDIENCE, []],
     // Account export and deletion (ADR-033): the services that keep data about people push their export part and
     // confirm a deletion; the holders of each grant are the services Network waits for.
     ...['live', 'chat', 'community', 'media', 'games'].flatMap((svc) => [
