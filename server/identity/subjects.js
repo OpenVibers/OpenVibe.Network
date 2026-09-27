@@ -109,8 +109,10 @@ const newGuestSubjectId = () => ids.newId('guest');
 function projection(db, subjectId) {
     if (typeof subjectId !== 'string') return null;
     if (subjectId.startsWith('usr_')) {
-        const u = db.prepare('SELECT id, subject_id, username, display_name, avatar_url, is_banned FROM users WHERE subject_id = ?').get(subjectId);
+        const u = db.prepare('SELECT * FROM users WHERE subject_id = ?').get(subjectId);
         if (!u) return null;
+        // A deleted account (ADR-033) resolves as a tombstone, so services show "Deleted account" and keep nothing.
+        if (u.deleted_at) return { subject: { type: 'user', id: u.subject_id }, network_user_id: u.id, username: u.username, display_name: 'Deleted account', avatar_url: null, banned: false, deleted: true };
         return { subject: { type: 'user', id: u.subject_id }, network_user_id: u.id, username: u.username,
             display_name: u.display_name || u.username, avatar_url: u.avatar_url || null, banned: Boolean(u.is_banned) };
     }

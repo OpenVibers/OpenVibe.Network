@@ -412,6 +412,17 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
             <p>Own two accounts? Fold one into the other. Its follows, OpenCoins, linked sign-ins, sessions and settings move to the account you keep, which keeps its name and profile. The other account can't be used on its own afterwards: signing in to it signs you in to the one you kept. If it was a mistake, support can split it by hand within 30 days.</p>
             <div id="merge-body" style="margin-top:12px"></div>
         </div>
+        <!-- Your data (ADR-033): a copy of everything, and deleting the account after 30 days. -->
+        <div class="card" id="export-card" style="margin-top:16px">
+            <h3><span class="icon"><i class="fa-solid fa-file-zipper"></i></span> Download your data</h3>
+            <p>Get a copy of what OpenVibe keeps about you: your account here, and your part of Live, Chat, Community, Media and Games, as JSON files in one .zip. Each service adds its own files, so it takes up to half an hour. You can download it for 7 days, and ask for one a day.</p>
+            <div id="export-body" style="margin-top:12px"></div>
+        </div>
+        <div class="card" id="delete-card" style="margin-top:16px">
+            <h3><span class="icon"><i class="fa-solid fa-user-xmark"></i></span> Delete your account</h3>
+            <p>Your account is deleted 30 days after you ask, and you can cancel any time before then; until that date everything works as usual. On the day, your account here is erased and every service erases what it keeps about you: messages, posts, follows, media and settings. Replies other people wrote under your posts stay, without your name. Payment records are kept without your name, as the law requires. After that it cannot be undone, and your username becomes free for someone else.</p>
+            <div id="delete-body" style="margin-top:12px"></div>
+        </div>
     </div>
 
     <!-- Notifications Section -->
@@ -1212,6 +1223,7 @@ async function loadUser() {
             loadThemes(); loadThemeSubmissions();
             loadAccounts();
             renderMerge();
+            renderExport(); renderDeletion();
             if (pendingMerge() && String(pendingMerge().into_id) !== String(currentUser.id)) showSection('accounts');
             loadNotifPrefs();
             loadLinked();
@@ -1450,6 +1462,128 @@ function renderMerge() {
         }
     };
     row.append(doIt, cancel); body.appendChild(row);
+}
+
+// ── Your data (ADR-033): the export job (each service adds its part; ready within 30 minutes, kept 7 days) and
+// the scheduled deletion (30 days of grace, cancellable; scheduling it needs a fresh sign-in and the username).
+async function accountApi(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+    const t = getAuthToken();
+    if (t) headers.Authorization = 'Bearer ' + t;
+    const res = await fetchWithTimeout(API + path, { ...opts, headers, credentials: 'include' });
+    let body = {};
+    try { body = await res.json(); } catch { /* */ }
+    return { status: res.status, ok: res.ok, body };
+}
+const ovEl = (tag, text, cls) => { const n = document.createElement(tag); if (text) n.textContent = text; if (cls) n.className = cls; return n; };
+const whenText = (s) => new Date(s).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+const sizeText = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+let exportPoll = null;
+async function renderExport() {
+    const body = document.getElementById('export-body');
+    if (!body || !currentUser) return;
+    clearTimeout(exportPoll);
+    body.textContent = '';
+    if (currentUser.is_anon) { body.appendChild(ovEl('p', 'Guests have no account to export.')); return; }
+    const r = await accountApi('/api/v1/account/export');
+    const latest = ((r.body && r.body.exports) || [])[0];
+    const row = ovEl('div', '', 'btn-row');
+    if (latest && latest.status === 'pending') {
+        const waiting = latest.services.filter((s) => s.status === 'waiting').map((s) => s.service);
+        body.appendChild(ovEl('p', `Gathering your data since ${whenText(latest.requested_at)}${waiting.length ? `; waiting for ${waiting.join(', ')}` : ''}. It is ready by ${whenText(latest.deadline)} at the latest, and you get a notification.`));
+        exportPoll = setTimeout(renderExport, 15000);
+        return;
+    }
+    if (latest && (latest.status === 'ready' || latest.status === 'partial')) {
+        const missing = latest.services.filter((s) => s.status === 'missing').map((s) => s.service);
+        body.appendChild(ovEl('p', `Ready since ${whenText(latest.ready_at)} (${sizeText(latest.size_bytes || 0)}), until ${whenText(latest.expires_at)}.${missing.length ? ` Not included, because they did not answer in time: ${missing.join(', ')}. Ask again tomorrow for a complete copy.` : ''}`));
+        const dl = ovEl('button', 'Download (.zip)', 'btn btn-primary');
+        dl.type = 'button';
+        dl.onclick = () => downloadExport(latest.export_id, dl);
+        row.appendChild(dl);
+    } else if (latest && latest.status === 'failed') {
+        body.appendChild(ovEl('p', 'The last export could not be built. Ask again.'));
+    }
+    const since = latest && latest.status !== 'failed' ? Date.now() - Date.parse(latest.requested_at) : Infinity;
+    if (since >= 86400000) {
+        const start = ovEl('button', latest ? 'Request a new copy' : 'Request my data', latest ? 'btn btn-outline' : 'btn btn-primary');
+        start.type = 'button';
+        start.onclick = async () => {
+            start.disabled = true;
+            const s = await accountApi('/api/v1/account/export', { method: 'POST', body: '{}' });
+            if (!s.ok) { start.disabled = false; toast(s.body.detail || 'Could not start the export', 'error'); return; }
+            toast('Gathering your data. You get a notification when it is ready.', 'success');
+            renderExport();
+        };
+        row.appendChild(start);
+    } else if (latest) {
+        body.appendChild(ovEl('p', `You can ask for a new copy from ${whenText(Date.parse(latest.requested_at) + 86400000)}.`));
+    }
+    if (row.children.length) body.appendChild(row);
+}
+async function downloadExport(id, btn) {
+    btn.disabled = true;
+    try {
+        const headers = {};
+        const t = getAuthToken();
+        if (t) headers.Authorization = 'Bearer ' + t;
+        const res = await fetch(API + `/api/v1/account/export/${encodeURIComponent(id)}/download`, { headers, credentials: 'include' });
+        if (!res.ok) { toast('That copy is no longer available.', 'error'); renderExport(); return; }
+        const blob = await res.blob();
+        const name = (/filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '') || [])[1] || 'openvibe-data.zip';
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    } catch { toast('The download failed. Try again.', 'error'); } finally { btn.disabled = false; }
+}
+async function renderDeletion() {
+    const body = document.getElementById('delete-body');
+    if (!body || !currentUser) return;
+    body.textContent = '';
+    if (currentUser.is_anon) { body.appendChild(ovEl('p', 'Guests have no account to delete.')); return; }
+    const r = await accountApi('/api/v1/account/deletion');
+    const d = r.body && r.body.deletion;
+    const row = ovEl('div', '', 'btn-row');
+    if (d) {
+        body.appendChild(ovEl('p', `Your account will be deleted on ${whenText(d.delete_after)}. Download your data before then if you want a copy.`));
+        const keep = ovEl('button', 'Keep my account', 'btn btn-primary');
+        keep.type = 'button';
+        keep.onclick = async () => {
+            keep.disabled = true;
+            const c = await accountApi('/api/v1/account/deletion', { method: 'DELETE' });
+            if (c.ok) toast('Deletion cancelled. Your account stays.', 'success');
+            renderDeletion();
+        };
+        row.appendChild(keep); body.appendChild(row);
+        return;
+    }
+    const field = ovEl('div', '', 'form-field');
+    const label = ovEl('label', `Type your username, ${currentUser.username}, to confirm`);
+    const input = ovEl('input');
+    input.type = 'text'; input.autocomplete = 'off'; input.spellcheck = false; input.id = 'delete-confirm';
+    label.htmlFor = 'delete-confirm';
+    field.append(label, input);
+    const go = ovEl('button', 'Delete my account in 30 days', 'btn btn-danger');
+    go.type = 'button';
+    go.onclick = async () => {
+        go.disabled = true;
+        const s = await accountApi('/api/v1/account/deletion', { method: 'POST', body: JSON.stringify({ confirm_username: input.value }) });
+        go.disabled = false;
+        if (s.status === 401 && s.body.error === 'deletion.sign_in_again') {
+            toast('To make sure it is you, sign in again, then come back here and confirm.', 'error');
+            const again = ovEl('button', 'Sign in again', 'btn btn-outline');
+            again.type = 'button'; again.onclick = addAccount;
+            if (!row.querySelector('.btn-outline')) row.appendChild(again);
+            return;
+        }
+        if (!s.ok) { toast(s.body.detail || 'That did not work', 'error'); return; }
+        toast(`Scheduled: your account will be deleted on ${whenText(s.body.delete_after)}. You can cancel until then.`, 'success');
+        renderDeletion();
+    };
+    row.appendChild(go);
+    body.append(field, row);
 }
 
 function switchAccount(id) { OpenVibeAccountSwitcher.switchTo(id); }

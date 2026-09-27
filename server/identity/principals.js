@@ -55,6 +55,12 @@ const DEFAULT_GRANTS = [
     // Media and Tools subscribe to network.user.token_valid_after too (their sign-in refuses older tokens).
     ['media', 'events.subscription.manage', 'openvibe.events', []],
     ['tools', 'events.subscription.manage', 'openvibe.events', []],
+    // Account export and deletion (ADR-033): the services that keep data about people push their export part and
+    // confirm a deletion; the holders of each grant are the services Network waits for.
+    ...['live', 'chat', 'community', 'media', 'games'].flatMap((svc) => [
+        [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
+        [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
+    ]),
     // Wave 9: Tips starts purchases and transfers in Billing, follows settlement through Events, and
     // announces delivered tips in the creator's Live chat.
     ['tips', 'billing.intent.create', 'openvibe.billing', []],

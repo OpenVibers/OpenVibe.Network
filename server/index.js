@@ -161,7 +161,9 @@ app.use('/api/webhooks', require('./notifications/resend-webhook')());
 // service exist (below); inert (503) until NETWORK_EVENTS_SECRET is set.
 let eventsConsumer = null;
 app.use('/internal/events', (req, res, next) => (eventsConsumer ? eventsConsumer.router(req, res, next) : res.status(503).json({ error: 'starting' })));
-app.use(express.json({ limit: '1mb' }));
+// Export parts (ADR-033) carry up to 20 MB and are parsed by their own route.
+const jsonBody = express.json({ limit: '1mb' });
+app.use((req, res, next) => (req.method === 'POST' && /^\/internal\/account-exports\/[^/]+\/parts$/.test(req.path) ? next() : jsonBody(req, res, next)));
 app.use(express.urlencoded({ extended: true }));
 
 // ── CORS ─────────────────────────────────────────────────────
@@ -416,6 +418,23 @@ app.use('/api/v1/me/blocks', rateLimit({ windowMs: 60_000, max: 60 }), require('
     const mergeRouters = accountMerge.routers({ requireAuth, staffClaims: require('./auth/staff-claims').staffClaims });
     app.use('/api/v1/account', rateLimit({ windowMs: 60_000, max: 20 }), mergeRouters.me);
     app.use('/api/admin/account-merges', mergeRouters.admin);
+}
+// Account export and deletion (roadmap WS-B task 7, ADR-033): the person's export job and scheduled deletion;
+// services push export parts and confirm deletions with service tokens; staff (staff.users.manage) see what is
+// outstanding. Archives live next to the database for 7 days.
+const ACCOUNT_EXPORT_DIR = path.join(path.dirname(path.resolve(config.db.path)), 'account-exports');
+const notifyAccountData = (userId, n) => notificationService.create({ user_id: userId, type: 'GENERIC', category: 'system', service: 'network', url: 'https://openvibe.network/my#accounts', ...n });
+{
+    const accountData = require('./identity/account-data');
+    accountData.ensureSchema(db);
+    const guard = require('./identity/principals').guard;
+    const dataRouters = accountData.routers({
+        requireAuth, staffClaims: require('./auth/staff-claims').staffClaims, dir: ACCOUNT_EXPORT_DIR, notify: notifyAccountData,
+        contributeGuard: guard('network.account.export.contribute', { legacy: false }), confirmGuard: guard('network.account.deletion.confirm', { legacy: false }),
+    });
+    app.use('/api/v1/account', rateLimit({ windowMs: 60_000, max: 20 }), dataRouters.me);
+    app.use('/internal', dataRouters.internal);
+    app.use('/api/admin/account-deletions', dataRouters.admin);
 }
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read', { legacy: false }), require('./identity/blocks').internalHandler(db));
 // The follow graph (WS-E task 4, ADR-030): public counts, a person's own follows, and who follows a target
@@ -837,6 +856,14 @@ const server = app.listen(config.port, config.host, () => {
     // Account merges older than 30 days keep only the alias facts (ADR-029).
     const reduceMerges = () => { try { const n = require('./identity/account-merge').reduceExpired(db); if (n) console.log(`[AccountMerge] reduced ${n} merge record(s) past 30 days`); } catch (e) { console.warn('[AccountMerge] reduce failed:', e.message); } };
     timers.push(setTimeout(reduceMerges, 6 * 60 * 1000), setInterval(reduceMerges, 24 * 60 * 60 * 1000));
+    // Exports past their deadline are built, archives past 7 days deleted, deletions past their 30-day grace carried out (ADR-033).
+    const sweepAccountData = () => {
+        try {
+            const n = require('./identity/account-data').sweep(db, { dir: ACCOUNT_EXPORT_DIR, notify: notifyAccountData });
+            if (n.built || n.expired || n.deleted) console.log(`[AccountData] sweep: ${JSON.stringify(n)}`);
+        } catch (e) { console.warn('[AccountData] sweep failed:', e.message); }
+    };
+    timers.push(setTimeout(sweepAccountData, 60 * 1000), setInterval(sweepAccountData, 2 * 60 * 1000));
 
     // Clean expired sessions daily
     timers.push(setInterval(() => {

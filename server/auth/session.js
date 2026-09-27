@@ -41,6 +41,8 @@ function verifySession(token, { db, publicKey, config }) {
     if (user.is_banned) return { error: 'Account banned', status: 403, ban_reason: user.ban_reason };
     // An account merged into another (ADR-029) has no tokens of its own any more; signing in lands on the survivor.
     if (user.merged_into) return { error: 'Account merged', status: 401, merged: true };
+    // A deleted account (ADR-033) is a tombstone: none of its tokens is accepted.
+    if (user.deleted_at) return { error: 'Account deleted', status: 401, deleted: true };
     if (user.token_valid_after) {
         const validAfter = new Date(user.token_valid_after + (user.token_valid_after.includes('Z') ? '' : 'Z')).getTime();
         if (decoded.iat * 1000 < validAfter) return { error: 'Token revoked', status: 401 };
