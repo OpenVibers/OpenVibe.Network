@@ -221,6 +221,9 @@ const CHANGED_DEFAULT_NAMESPACES = [
     // Tools' job results under each developer project's child namespace (WS-L task 5, Media namespaces WS-G task 2).
     ['tools', 'media.object.upload', 'openvibe.media', ['tools'], ['tools', 'tools.*']],
     ['tools', 'media.object.read', 'openvibe.media', ['tools'], ['tools', 'tools.*']],
+    // Live runs media.analyze on OpenVibe.AI (WS-O task 5).
+    ['live', 'ai.run.create', 'openvibe.ai', ['live.*', 'network.site_copy'], ['live.*', 'network.site_copy', 'media.analyze']],
+    ['live', 'ai.run.read', 'openvibe.ai', ['live.*', 'network.site_copy'], ['live.*', 'network.site_copy', 'media.analyze']],
 ];
 
 function ensureSchema(db) {

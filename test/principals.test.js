@@ -20,6 +20,9 @@ console.log = log;
 db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
 db.prepare("UPDATE oauth_clients SET client_secret = 'media-secret' WHERE client_id = 'media'").run();
 db.prepare("INSERT INTO users (id, username, password_hash) VALUES (7, 'payee', 'x'), (8, 'payer', 'x')").run();
+// A database seeded before media.analyze (Live's AI grants as the old default) is moved at the next boot.
+db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = 'live' AND audience = 'openvibe.ai'").run(JSON.stringify(['live.*', 'network.site_copy']));
+require('../server/identity/principals').ensureSchema(db);
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
 const ISSUER = 'https://openvibe.network';
