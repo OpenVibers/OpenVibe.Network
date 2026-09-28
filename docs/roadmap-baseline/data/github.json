@@ -1,6 +1,6 @@
 {
   "owner": "OpenVibers",
-  "collectedAt": "2026-09-26T13:29:22.404Z",
+  "collectedAt": "2026-09-28T03:25:56.178Z",
   "repos": [
     {
       "description": "AlexFrison.net",
@@ -24,10 +24,10 @@
     },
     {
       "description": "Ingest and restream: stream definitions, keys, sessions, transport workers, outputs and output health.",
-      "diskUsage": 413,
+      "diskUsage": 433,
       "isArchived": false,
       "name": "OpenRe.Stream",
-      "pushedAt": "2026-09-26T13:22:50Z",
+      "pushedAt": "2026-09-28T03:20:27Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -40,7 +40,7 @@
         "port": 4500,
         "rtmpPort": 1936,
         "domain": "openre.stream",
-        "contracts": "openvibe-contracts v0.33.0 (openvibe-sdk v0.5.0, openvibe-shared v1.5.1)",
+        "contracts": "openvibe-contracts v0.49.0 (openvibe-sdk v0.12.0, openvibe-shared v1.22.0)",
         "protocols": {
           "rtmp": "ingest ported (openre-rtmp-ingest)",
           "restream": "RTMP source to RTMP/RTMPS/SRT destinations ported (openre-restream-worker)",
@@ -58,18 +58,31 @@
           "openre.output.write"
         ],
         "capabilitiesRegistered": true,
-        "livePatch": "applied in Live f0ca18b and deployed, but inert: live.env has no OPENRE_URL/OPENRE_PUBLIC_URL/OPENRE_EVENTS_SECRET and there is no Events subscription openre.session.* -> Live; 102 of 102 Live slots have ingest_authority=live, so no broadcaster uses OpenRe",
+        "livePatch": "applied in Live f0ca18b and deployed; Live wired on 2026-09-23 (OPENRE_URL and the openre.session.* subscription, docs/cutover.md phase A); every Live slot keeps ingest_authority=live until its per-slot cutover (phase B), so no broadcaster uses OpenRe yet",
         "deployed": true,
-        "deployment": "Production release e0dc1b46fd99 (2026-09-23 19:23 UTC): API + coordinator on 127.0.0.1:4500, RTMP ingest public on 0.0.0.0:1936 (ingest.openre.stream, DNS-only; reachable from outside), Live wired (OPENRE_URL, openre.session.* subscription), preflight all PASS, restore drill passed. No slot switched yet: every slot is still ingested by Live until the per-slot cutover (docs/cutover.md phase B).",
-        "updated": "2026-09-23"
+        "deployment": "Deployed with `sudo ovhost deploy openre` (OpenVibe.Host strategy release-layout since the 2026-09-27 cutover; deploy/scripts/deploy.sh is the wrapper and keeps workers/status/prune): API + coordinator on 127.0.0.1:4500, RTMP ingest public on 0.0.0.0:1936 (ingest.openre.stream, DNS-only; reachable from outside since 2026-09-23), Live wired (OPENRE_URL, openre.session.* subscription), preflight all PASS, restore drill passed. No slot switched yet: every slot is still ingested by Live until the per-slot cutover (docs/cutover.md phase B).",
+        "updated": "2026-09-28",
+        "features": [
+          "stream definitions owned by a Network subject, with typed references",
+          "ingest keys hashed at rest, shown once, rotation with grace",
+          "RTMP ingest workers with generations, leases and drains that survive API deploys",
+          "RTMP/RTMPS/SRT restream with output health and a circuit breaker",
+          "SSRF-checked destinations with sealed keys",
+          "recording requests to OpenVibe.Media",
+          "HTTP-FLV playback descriptors",
+          "outbox events openre.session.*, openre.output.*, openre.recording.requested, openre.key.rotated",
+          "migration from Live without importing old keys",
+          "restore-drill read-only mode",
+          "per-actor limits (openvibe-sdk/limits)"
+        ]
       }
     },
     {
       "description": "Providers, models, routing, prompt templates, workflows, runs, citations, cache and quotas for every product.",
-      "diskUsage": 526,
+      "diskUsage": 1033,
       "isArchived": false,
       "name": "OpenVibe.AI",
-      "pushedAt": "2026-09-26T13:22:54Z",
+      "pushedAt": "2026-09-28T03:20:29Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -80,14 +93,16 @@
         "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
         "runtime": "node 22, express, better-sqlite3",
         "port": 4700,
-        "domain": "ai.openvibe.network still serves the OpenVibe.Sites placeholder; the service runs on openvibe-ovh (/opt/openvibe.ai, release bdca064, unit openvibe-ai) on 127.0.0.1:4700, loopback only, used by OpenVibe.Live and OpenVibe.Network",
-        "contracts": "openvibe-contracts v0.33.0",
+        "domain": "ai.openvibe.network still serves the OpenVibe.Sites placeholder; the service runs on openvibe-ovh (/opt/openvibe.ai, unit openvibe-ai) on 127.0.0.1:4700, loopback only, used by OpenVibe.Live and OpenVibe.Network",
+        "contracts": "openvibe-contracts v0.75.0",
         "capabilities": [
           "ai.run.create",
           "ai.run.read",
           "ai.workflow.manage",
           "ai.provider.manage",
-          "ai.usage.read"
+          "ai.usage.read",
+          "ai.credential.manage",
+          "ai.quota.attribution.manage"
         ],
         "capabilitiesRegistered": true,
         "providers": [
@@ -95,19 +110,34 @@
           "openai-compatible",
           "anthropic",
           "http-seam",
-          "whisper.cpp"
+          "whisper.cpp",
+          "local llama.cpp server (openvibe-llm.service)"
         ],
-        "livePatch": "applied: Live fa22de5 runs AI_SERVICE=remote in production since 2026-09-23 ~15:34 UTC (309 runs by 18:30 UTC across 13 live.* workflows and 1 network.site_copy, 0 failed). Not moved yet: VOD captions/whisper and streamers' own provider keys stay in Live; most Live features are passthrough prompts built by Live; the deployed Network still falls back to Live's /internal/ai/site-copy; scripts/import-from-live.js ran on production at 2026-09-23 18:29 UTC (79,657 ledger rows: 79,647 live.ai_usage, 2 channel_ai_config, 8 site_settings; 11 holds: provider settings and the key stay env references, 1 streamer BYO key stays in Live, 3,021 translations are unrepresentable and stay in Live); every route has fallbacks=[]; 0 citation rows; no /metrics",
+        "livePatch": "applied: Live fa22de5 runs AI_SERVICE=remote in production since 2026-09-23 ~15:34 UTC (309 runs by 18:30 UTC across 13 live.* workflows and 1 network.site_copy, 0 failed). As of 2026-09-23, not moved yet: VOD captions/whisper and streamers' own provider keys stayed in Live and most Live features were passthrough prompts built by Live (since 2026-09-27 AI has live.media.transcribe, stored provider keys and versioned templates for most live.* workflows); the deployed Network still falls back to Live's /internal/ai/site-copy; scripts/import-from-live.js ran on production at 2026-09-23 18:29 UTC (79,657 ledger rows: 79,647 live.ai_usage, 2 channel_ai_config, 8 site_settings; 11 holds: provider settings and the key stay env references, 1 streamer BYO key stays in Live, 3,021 translations are unrepresentable and stay in Live); every route has fallbacks=[]; 0 citation rows; no /metrics",
         "deployed": true,
-        "updated": "2026-09-23"
+        "updated": "2026-09-28",
+        "features": [
+          "versioned templates, workflows and routing profiles",
+          "runs with idempotency, cancel, retry, async polling and restart recovery",
+          "provider fallback and circuit breakers",
+          "quotas before any provider call, including per-streamer attribution quotas",
+          "scoped cache",
+          "citations or explicit gaps on every run",
+          "people's own provider keys, encrypted at rest",
+          "media.analyze: local-first recording analysis with windowed speech-to-text",
+          "ai.run.* events through the SDK outbox",
+          "ai.preferences and ai.usage_summary user modules",
+          "server-rendered operator console for Network staff",
+          "Live import"
+        ]
       }
     },
     {
       "description": "The isolated money ledger: providers, receipts, subscriptions, entitlements, refunds and payouts.",
-      "diskUsage": 591,
+      "diskUsage": 597,
       "isArchived": false,
       "name": "OpenVibe.Billing",
-      "pushedAt": "2026-09-26T13:22:57Z",
+      "pushedAt": "2026-09-28T03:20:31Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -118,17 +148,33 @@
         "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
         "adr": "ADR-012",
         "authoritative": false,
-        "deployment": "Deployed in shadow on openvibe-ovh: /opt/openvibe.billing (release 421beb4, openvibe-contracts 0.33.0, openvibe-shared 1.5.1), unit openvibe-billing, API on 127.0.0.1:4600 (loopback only; /api/v1 is denied on the public host). Public at https://billing.openvibe.network: the staff console (Network SSO + PKCE, BILLING_STAFF_SUBJECTS = the owner only), /api/health, /api/ready (openvibe-shared/ready shape), /release.json and /webhooks/*. No provider secret is configured, so every provider is off and /webhooks/* answers 404 billing.provider_disabled.",
+        "deployed": true,
+        "deployment": "Deployed in shadow with `sudo ovhost deploy billing`: /opt/openvibe.billing, unit openvibe-billing, API on 127.0.0.1:4600 (loopback only; /api/v1 is denied on the public host). Public at https://billing.openvibe.network: the staff console (Network SSO + PKCE, BILLING_STAFF_SUBJECTS = the owner only), the billing policy (/policy), /api/health, /api/ready (openvibe-shared/ready shape), /release.json and /webhooks/*. No provider secret is configured, so every provider is off and /webhooks/* answers 404 billing.provider_disabled.",
+        "contracts": "openvibe-contracts v0.49.0",
         "notes": "Runtime, journal, adapters, import, reconciliation and the staff console (cashout approve/deny, review queue, reconciliation, freeze, audit log) are built, tested and deployed, with /metrics (loopback only), hourly scheduled reconciliation (GET /api/v1/admin/reconciliations; 16 runs by 2026-09-24 05:06 UTC, ledger-vs-receipt checks), EXTERNAL PowerChat receipts (billing.receipt.external under BILLING_AUTHORITY=billing; recorded only while Live is the authority), overflow guards and IMMEDIATE-transaction settlement. Production holds the shadow import of Live (322 transactions, 996 ledger entries), 0 subscriptions and 0 entitlements; the console has never been used (staff_audit 0). BILLING_AUTHORITY is not set in live.env, so Live stays the money authority. The cutover (README runbook, docs/live-cutover.md) waits on the owner putting the PowerChat secret in billing.env and re-pointing the PowerChat webhook to https://billing.openvibe.network/webhooks/powerchat; a duplicate-webhook proof in production follows it. Live's payouts, refunds and plans have no tables of their own; where they map is docs/live-mapping.md.",
-        "updated": "2026-09-24"
+        "updated": "2026-09-28",
+        "features": [
+          "append-only double-entry journal in bits and cents, balanced per currency",
+          "provider receipts stored before processing, settled once (PowerChat, Stripe, PayPal, CCBill, NOWPayments adapters)",
+          "intents, transfers, refunds, recycle, cashouts with escrow",
+          "subscriptions and entitlements",
+          "EXTERNAL PowerChat receipts (billing.receipt.external under BILLING_AUTHORITY=billing)",
+          "economy freeze",
+          "hourly reconciliation, ledger against receipts",
+          "staff console: cashouts, review queue, reconciliation, freeze, audit log",
+          "public billing policy page",
+          "Live shadow import",
+          "outbox events billing.*",
+          "per-person limits (openvibe-sdk/limits)"
+        ]
       }
     },
     {
       "description": "The official OpenVibe blog and a blog for every member: drafts, revisions, series, scheduling, feeds.",
-      "diskUsage": 667,
+      "diskUsage": 722,
       "isArchived": false,
       "name": "OpenVibe.Blog",
-      "pushedAt": "2026-09-26T13:23:02Z",
+      "pushedAt": "2026-09-28T03:20:33Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -140,11 +186,12 @@
         "runtime": "node 22, express 4, better-sqlite3 11",
         "port": 4810,
         "domain": "openvibe.blog",
+        "contracts": "openvibe-contracts v0.53.0",
         "packages": [
-          "openvibe-publishing v0.2.1",
-          "openvibe-contracts v0.33.0",
-          "openvibe-shared v1.5.1",
-          "openvibe-sdk v0.5.0"
+          "openvibe-publishing v0.4.0",
+          "openvibe-contracts v0.53.0",
+          "openvibe-shared v1.22.0",
+          "openvibe-sdk v0.12.0"
         ],
         "capabilities": [
           "blog.blog.create",
@@ -162,21 +209,37 @@
         ],
         "capabilitiesRegistered": true,
         "serviceManifestRegistered": true,
-        "entitlements": "OpenVibe.VIP in code (policies/evaluate with the blog owner and the blog:gated_post default gate, cached 30 s; teaser and join link otherwise). Not deployed yet, and the Network has not granted blog vip.resource.policy.evaluate: until both, members-only posts admit only the blog's members and staff",
-        "seedPost": "draft in production (verbatim quotes; not reviewed by a person); 0 posts published",
+        "entitlements": "OpenVibe.VIP in code (policies/evaluate with the blog owner and the blog:gated_post default gate, cached 30 s; teaser and join link otherwise). It needs the Network grant [blog, vip.resource.policy.evaluate, openvibe.vip]; without it, or when VIP is unreachable, members-only posts admit only the blog's members and staff (the gate fails closed)",
+        "seedPost": "a draft (verbatim quotes; not reviewed by a person)",
         "deployed": true,
-        "deployment": "Public at https://openvibe.blog since 2026-09-23 (~03:00 UTC): /opt/openvibe.blog at e7b4986, unit openvibe-blog on 127.0.0.1:4810 behind the openvibe.blog nginx vhost, principal blog. Production content: 1 blog (official), 1 post, which is a draft, so the public site shows nothing published yet. Restore drill passed 2026-09-23.",
+        "deployment": "Public at https://openvibe.blog since 2026-09-23 (~03:00 UTC): deployed with `sudo ovhost deploy blog`, /opt/openvibe.blog, unit openvibe-blog on 127.0.0.1:4810 behind the openvibe.blog nginx vhost, principal blog. The network changelog publishes Patch notes posts on the official blog. Restore drill passed 2026-09-23.",
         "placeholderInSites": false,
-        "updated": "2026-09-23",
-        "deployedAt": "2026-09-23"
+        "updated": "2026-09-28",
+        "deployedAt": "2026-09-23",
+        "features": [
+          "the official blog and a blog for every member, with owners, editors and authors",
+          "drafts and immutable revisions with conflict detection, diff and revert",
+          "publish, unpublish, soft delete and scheduled publishing",
+          "tags, categories, series and 301s on slug changes",
+          "Media-backed covers, inline figures and galleries",
+          "six theme presets",
+          "Community comment threads",
+          "AI drafts that need a person's review",
+          "members-only posts gated by OpenVibe.VIP (fails closed)",
+          "network changelog feed and Patch notes posts",
+          "feeds, sitemaps and server-rendered pages useful without JavaScript",
+          "/api/v1 by capability",
+          "SDK outbox events and Search index documents",
+          "per-actor limits (openvibe-sdk/limits)"
+        ]
       }
     },
     {
       "description": "Rooms, messages, DMs, calls, TTS and audio queues, moderation and presence — one identity, every conversation.",
-      "diskUsage": 842,
+      "diskUsage": 977,
       "isArchived": false,
       "name": "OpenVibe.Chat",
-      "pushedAt": "2026-09-26T13:23:06Z",
+      "pushedAt": "2026-09-28T03:20:35Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -187,8 +250,8 @@
         "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
         "runtime": "node 22, express, ws, better-sqlite3",
         "port": 4400,
-        "domain": "openvibe.live (/ws/chat, /api/chat/, /api/dm/, /api/tts/, /api/sounds via an nginx include in openvibe.live's vhost); openvibe.chat is still the OpenVibe.Sites placeholder",
-        "contracts": "openvibe-contracts v0.33.0",
+        "domain": "openvibe.chat (Chat's own site: global chat, messages, rooms, settings; the service manifest records it live since 2026-09-24) and openvibe.live (/ws/chat, /api/chat/, /api/dm/, /api/tts/, /api/sounds via an nginx include in openvibe.live's vhost)",
+        "contracts": "openvibe-contracts v0.71.0",
         "capabilities": [
           "chat.live_bridge.write",
           "chat.message.send",
@@ -202,31 +265,50 @@
           "events.subscription.manage",
           "vip.entitlement.check",
           "network.modules.read",
-          "network.modules.write"
+          "network.modules.write",
+          "tools.tool.run",
+          "tools.job.read"
         ],
         "capabilitiesRegistered": true,
         "events": [
           "chat.message.created",
           "chat.message.deleted",
           "chat.dm.created",
-          "chat.moderation.action"
+          "chat.moderation.action",
+          "chat.room.message.created",
+          "chat.room.message.deleted"
         ],
-        "eventsConsumed": "live.release.deployed (the deploy card, folded by subject.id with the bridge's deployNotice: one card per head whichever comes first; register C-84) and network.module.updated (drops a cached chat.preferences copy), POST /internal/events, signature v2, openvibe-sdk inbox; subscriptions created at boot. In code only, not deployed; needs CHAT_EVENTS_SECRET in chat.env and the Network grant chat events.subscription.manage openvibe.events",
+        "eventsConsumed": "live.release.deployed, network.module.updated, network.user.token_valid_after, vip.membership.changed, network.block.changed, network.subject.merged, network.account.export_requested and network.account.deleted at POST /internal/events (signature v2, openvibe-sdk inbox); subscriptions created at boot when missing (CHAT_EVENTS_SECRET and the Network grant chat events.subscription.manage openvibe.events)",
         "liveAuthorityFlag": "CHAT_AUTHORITY=chat is set in production live.env since the cutover (2026-09-23 02:03 UTC); Live's chat tables are a read mirror Chat keeps current",
-        "vip": "Member badges from OpenVibe.VIP (server/vip/badges.js: entitlements/check with product chat, cached 60 s, never blocks sending, fails closed). In code only, not deployed; needs the Network grant chat vip.entitlement.check openvibe.vip and Live's chat UI to render vip_badge / chat_vip_badge",
-        "preferences": "Chat preferences in the Network user module chat.preferences (server/prefs/: GET/PUT /api/chat/preferences with Chat's service token, cached 60 s, If-Match on every write; scripts/migrate-chat-preferences.js moves the choices in Live's user_preferences). In code only, not deployed; needs Network with the chat.preferences handoff and the grants chat network.modules.read/write on chat.preferences, then the migration, then Live's chat.js calling /api/chat/preferences",
-        "calls": "Live's call server, call routes and stream hooks ported to server/calls/ with a calls lifecycle table (WS-I task 1). In code only, off (CHAT_CALLS unset); the switch is CHAT_CALLS=1, Live CALLS_AUTHORITY=chat and the nginx include deploy/nginx/calls/openvibe.live-calls.locations.conf (docs/calls-cutover.md)",
+        "vip": "Member badges from OpenVibe.VIP (server/vip/badges.js: entitlements/check with product chat, cached 60 s, never blocks sending, fails closed; vip.membership.changed drops the cache). Needs the Network grant chat vip.entitlement.check openvibe.vip",
+        "preferences": "Chat preferences in the Network user module chat.preferences, plus chat.tts_defaults, chat.dm_settings and chat.presence_prefs (server/prefs/: /api/chat/preferences and siblings with Chat's service token, cached 60 s, If-Match on every write; scripts/migrate-chat-preferences.js moves the choices in Live's user_preferences). Needs the grants chat network.modules.read/write",
+        "calls": "Live's call server, call routes and stream hooks ported to server/calls/ with a calls lifecycle table (WS-I task 1). Off unless CHAT_CALLS=1; the switch is CHAT_CALLS=1, Live CALLS_AUTHORITY=chat and the nginx include deploy/nginx/calls/openvibe.live-calls.locations.conf (docs/calls-cutover.md)",
         "deployed": true,
-        "deployment": "openvibe-ovh /opt/openvibe.chat, unit openvibe-chat, 127.0.0.1:4400 (loopback); public only through openvibe.live's nginx include for the chat paths; release 45f2b1f; EVENTS_URL set (chat.message.created reaches OpenVibe.Events); restore drill passed 2026-09-23",
-        "updated": "2026-09-23"
+        "deployment": "Deployed with `sudo ovhost deploy chat`: /opt/openvibe.chat, unit openvibe-chat, 127.0.0.1:4400 (loopback); public through the openvibe.chat vhost and openvibe.live's nginx include for the chat paths; EVENTS_URL set (chat.message.created reaches OpenVibe.Events); restore drill passed 2026-09-23",
+        "updated": "2026-09-28",
+        "features": [
+          "Live's global, stream and channel chat (authority since 2026-09-23, Live keeps a read mirror)",
+          "DMs and group DMs, participants only",
+          "rooms: public and private, roles, invitations, slow mode, unread counts",
+          "moderation: bans, timeouts, purges, filters, slow, sub-only and member-only modes, audited log access",
+          "TTS, sounds and soundboard with persisted queues",
+          "calls ported from Live (off until the calls cutover)",
+          "openvibe.chat site: global chat, messages, rooms, settings, history download",
+          "chat preferences in Network user modules",
+          "VIP subscriber badges",
+          "network blocks, revocation, account merge, export and deletion from Network events",
+          "outbox events and chat.room.message.* on the realtime plane",
+          "N-1 compatibility tests",
+          "per-actor limits (openvibe-sdk/limits)"
+        ]
       }
     },
     {
       "description": "The developer portal: registry and contract explorers, credentials, playgrounds, examples, mod/app publishing, governance.",
-      "diskUsage": 706,
+      "diskUsage": 814,
       "isArchived": false,
       "name": "OpenVibe.Codes",
-      "pushedAt": "2026-09-26T13:23:10Z",
+      "pushedAt": "2026-09-28T03:20:37Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -238,15 +320,17 @@
         "runtime": "node 22, express 4, better-sqlite3 11",
         "port": 4900,
         "domain": "openvibe.codes",
+        "contracts": "openvibe-contracts v0.53.0",
         "packages": [
-          "openvibe-contracts v0.33.0",
-          "openvibe-sdk v0.5.0",
-          "openvibe-shared v1.5.1"
+          "openvibe-contracts v0.53.0",
+          "openvibe-sdk v0.12.0",
+          "openvibe-shared v1.22.0"
         ],
-        "summary": "Deployed and public since 2026-09-23: https://openvibe.codes is served by this portal (openvibe-ovh, unit openvibe-codes on 127.0.0.1:4900 behind nginx, release a9371c3), and the domain left OpenVibe.Sites. Sign-in uses the registered Network OAuth client `codes` (PKCE S256); the principal `codes` holds events.event.publish and the Events relay is configured. It is barely used yet: production holds 0 manifests, 0 releases and 0 playground runs. The external-developer path (account, project, sandbox app, grants, Media upload, app events) was run once on production on 2026-09-23 with public endpoints and curl, not through these playgrounds; that check is not committed to a repository or CI.",
+        "summary": "Deployed and public since 2026-09-23: https://openvibe.codes is served by this portal (deployed with `sudo ovhost deploy codes`, unit openvibe-codes on 127.0.0.1:4900 behind nginx), and the domain left OpenVibe.Sites. Sign-in uses the registered Network OAuth client `codes` (PKCE S256); the principal `codes` holds events.event.publish and the Events relay is configured. On 2026-09-23 production held 0 manifests, 0 releases and 0 playground runs. The external-developer path (account, project, sandbox app, grants, Media upload, app events) was run once on production on 2026-09-23 with public endpoints and curl, not through these playgrounds; that check is not committed to a repository or CI.",
         "works": [
           "Sign-in with OpenVibe.Network (authorization code + PKCE S256), session tokens in httpOnly cookies",
           "Projects, members, apps, credentials (rotate, revoke), grants (request, approve, deny, revoke), quotas and audit over Network's /api/v1/projects API with the person's own token; Network's errors shown as Network answered them",
+          "Per-project usage page (owner, admins, staff): Network's GET /api/v1/projects/:project/usage rendered server-side, with quota headroom, published service limits and sampled failures",
           "Project export (one JSON document: Network's project, members, apps, credential ids and hints, grants, quotas, audit for admin+, plus Codes' releases, manifests, trust and playground runs) and delete (owner: archive in Network first, then drafts and playground runs deleted, public releases revoked). Network has no project erasure endpoint, only archive",
           "Full project archive for the owner and admins (roadmap WS-N task 9): one zip with the metadata document (audit included), the release manifests (the project's modules), Media objects (listed with public or 1-hour signed download URLs) and namespaces, and the app events Events still keeps, for production and sandbox; read with Network's read-only export tokens (POST /api/v1/projects/:project/export-tokens, 5 minutes, audited). All or nothing when a service fails; at most CODES_EXPORT_MAX_OBJECTS / CODES_EXPORT_MAX_EVENTS per environment, stated in manifest.json when reached",
           "Client secrets shown once, in the create/rotate response only, with no-store; never stored or logged (tested)",
@@ -262,7 +346,7 @@
         ],
         "notYet": [
           "The playgrounds have never been used on production (0 playground runs); the one production end-to-end run used curl, and it is not a committed, repeatable check",
-          "No usage, trace or error dashboards: no service reports per-project usage yet; quotas show recorded limits only",
+          "Usage covers only what services report in their hourly *.usage.recorded rollups (Network adds them up per day; the current hour is not counted); no trace or error dashboards beyond the sampled failures",
           "Billing sandbox, Chat bot and Realtime playgrounds; CLI and scaffolding; templates",
           "Consent screen for third-party production apps (a Network gap)",
           "No JSON-LD or llms.txt on the public pages",
@@ -272,25 +356,82 @@
         "serviceManifestRegistered": true,
         "deployed": true,
         "placeholderInSites": false,
-        "updated": "2026-09-23"
+        "updated": "2026-09-28",
+        "features": [
+          "developer portal over Network's projects, apps, credentials, grants, quotas and audit",
+          "per-project usage page from Network's rollups",
+          "project export (JSON) and full archive (zip)",
+          "secrets shown once, never stored or logged",
+          "scope editor offering only grantable capabilities",
+          "docs generated from the pinned contracts and SDK",
+          "OAuth helper and webhook tester (signature v1 and v2)",
+          "grant-respecting Media and Events playgrounds",
+          "app and mod manifest validation and release metadata with codes.app.* events",
+          "ADR-013 trust tiers",
+          "policy and governance pages (governance drafts pending owner review)",
+          "per-actor limits (openvibe-sdk/limits)"
+        ]
       }
     },
     {
       "description": "",
-      "diskUsage": 1474,
+      "diskUsage": 1778,
       "isArchived": false,
       "name": "OpenVibe.Community",
-      "pushedAt": "2026-09-26T13:23:14Z",
+      "pushedAt": "2026-09-28T03:20:39Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
-      "status": null
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Community",
+        "stage": "alpha",
+        "code": true,
+        "wave": "W5",
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "runtime": "node 22, express, better-sqlite3",
+        "port": 4200,
+        "domain": "openvibe.community",
+        "contracts": "openvibe-contracts v0.71.0",
+        "capabilities": [
+          "community.paste.create",
+          "community.paste.write",
+          "community.paste.moderate",
+          "community.post.create",
+          "community.comment.write",
+          "community.comment.moderate",
+          "community.pulse.write",
+          "community.space.read",
+          "community.space.manage",
+          "community.thread.read",
+          "community.vote.set",
+          "community.pulse.read"
+        ],
+        "capabilitiesRegistered": true,
+        "pastesAuthority": "community in production since 2026-09-22 (~23:35 UTC); live is the rollback mode",
+        "deployed": true,
+        "deployment": "Public at https://openvibe.community: deployed with `sudo ovhost deploy community`, /opt/openvibe.community, unit openvibe-community on 127.0.0.1:4200 behind the openvibe.community nginx vhost, principal community. The paste import brought 889 + 2 pastes, 60 comments and 48 likes (5 rows held). The Discord relay is off. Restore drill passed 2026-09-23.",
+        "features": [
+          "pastes: code, text and screenshots, with versions, likes, comments, forks and burn-after-read",
+          "typed comment threads embedded by other products",
+          "forum: spaces, threads, posts, categories and votes",
+          "members-only spaces and threads gated by OpenVibe.VIP",
+          "a space's chat room on OpenVibe.Chat",
+          "Pulse: the network's public activity from Events",
+          "Discord relay (off in production)",
+          "server-rendered pages with full SEO",
+          "Search documents and community.* events",
+          "revocation, blocks, account merge, export and deletion from Network events",
+          "N-1 compatibility tests",
+          "per-actor limits (openvibe-sdk/limits)"
+        ],
+        "updated": "2026-09-28"
+      }
     },
     {
       "description": "Machine-readable contracts for the whole OpenVibe network.",
-      "diskUsage": 2738,
+      "diskUsage": 3315,
       "isArchived": false,
       "name": "OpenVibe.Contracts",
-      "pushedAt": "2026-09-26T13:03:25Z",
+      "pushedAt": "2026-09-28T03:22:17Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -302,15 +443,29 @@
           "OpenVibe.Network"
         ],
         "plan": "OpenVibe Development Roadmap (combined), Wave 1; implementation plan rev 3 section 3.1",
-        "updated": "2026-09-24"
+        "deployed": false,
+        "deployment": "none of its own: a library and artifact repository published as release tags; services pin a tag and deploy it with their own releases",
+        "contracts": "openvibe-contracts v0.75.0 (this package; the newest tag)",
+        "features": [
+          "540 JSON Schemas with valid and invalid fixtures",
+          "31 service manifests with lifecycle declarations",
+          "205 capability manifests and the staff capability map",
+          "13 user-module namespace manifests",
+          "validate, ids, http (problem+json, trace and idempotency middleware), capabilities.check and serviceAuth",
+          "openvibe-contracts-check for service CI",
+          "generated TypeScript types, JSON Schema bundle and per-service OpenAPI 3.1",
+          "compatibility check against the previous tag (scripts/compat.js)",
+          "documentation-currency check (scripts/docs-currency.js)"
+        ],
+        "updated": "2026-09-28"
       }
     },
     {
       "description": "Coupon codes with merchant matching, restrictions, expiry and real-people validity reports.",
-      "diskUsage": 408,
+      "diskUsage": 462,
       "isArchived": false,
       "name": "OpenVibe.Coupons",
-      "pushedAt": "2026-09-26T13:23:18Z",
+      "pushedAt": "2026-09-28T03:20:43Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -322,11 +477,12 @@
         "runtime": "node 22, express 4, better-sqlite3 11",
         "port": 4850,
         "domain": "openvibe.coupons",
+        "contracts": "openvibe-contracts v0.53.0",
         "packages": [
-          "openvibe-publishing v0.2.1",
-          "openvibe-contracts v0.33.0",
-          "openvibe-shared v1.5.1",
-          "openvibe-sdk v0.5.0"
+          "openvibe-publishing v0.4.0",
+          "openvibe-contracts v0.53.0",
+          "openvibe-shared v1.22.0",
+          "openvibe-sdk v0.12.0"
         ],
         "capabilities": [
           "coupons.coupon.submit",
@@ -346,17 +502,28 @@
         "notifications": "watches are recorded; no notification is sent: OpenVibe.Network has no notification consumer yet",
         "client": "OpenVibers/OpenVibe.Extensions browser/ (not published to any store; the Coupons API it calls is not public yet)",
         "deployed": true,
-        "deployment": "openvibe-ovh, unit openvibe-coupons, 127.0.0.1:4850 loopback only (release 54df411; the later 9b9549e changes only the repo's nginx reference file); /api/ready 200 with every check ok; Network OAuth client coupons and its grants exist; production database holds 0 coupons. Deployed internally, not launched: openvibe.coupons still serves the OpenVibe.Sites placeholder until a person verifies a coupons source's terms and enables it in Sources",
+        "deployment": "Deployed with `sudo ovhost deploy coupons`: unit openvibe-coupons, 127.0.0.1:4850 loopback only; Network OAuth client coupons and its grants exist; on 2026-09-23 /api/ready answered 200 and the production database held 0 coupons. Deployed internally, not launched: openvibe.coupons still serves the OpenVibe.Sites placeholder until a person verifies a coupons source's terms and enables it in Sources",
         "placeholderInSites": true,
-        "updated": "2026-09-23"
+        "updated": "2026-09-28",
+        "features": [
+          "merchants with normalized domain rules (public-suffix subset, path rules)",
+          "codes with restrictions, known or unknown expiry and evidence",
+          "validity reports by people, one per person per day, with confidence and decay",
+          "expired codes leave API, pages, feeds, sitemaps and Search at the instant of expiry",
+          "server-rendered pages useful without JavaScript",
+          "/api/v1 by capability and browser-helper install tokens",
+          "OpenVibe.Sources coupons import with holds",
+          "SDK outbox events and Search index documents",
+          "per-actor limits (openvibe-sdk/limits)"
+        ]
       }
     },
     {
       "description": "Deals submitted and voted on by the community, with source, price and freshness always shown.",
-      "diskUsage": 445,
+      "diskUsage": 493,
       "isArchived": false,
       "name": "OpenVibe.Deals",
-      "pushedAt": "2026-09-26T13:23:22Z",
+      "pushedAt": "2026-09-28T03:20:45Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -368,11 +535,12 @@
         "runtime": "node 22, express 4, better-sqlite3 11",
         "port": 4840,
         "domain": "openvibe.deals",
+        "contracts": "openvibe-contracts v0.53.0",
         "packages": [
-          "openvibe-publishing v0.2.1",
-          "openvibe-contracts v0.33.0",
-          "openvibe-shared v1.5.1",
-          "openvibe-sdk v0.5.0"
+          "openvibe-publishing v0.4.0",
+          "openvibe-contracts v0.53.0",
+          "openvibe-shared v1.22.0",
+          "openvibe-sdk v0.12.0"
         ],
         "capabilities": [
           "deals.offer.submit",
@@ -394,17 +562,31 @@
         "sourcesImport": "code and tests; the sources.item.read grant exists in production, but no deals-category source is enabled in OpenVibe.Sources (the seeded dealnews-daily is disabled), so nothing has been imported",
         "watchNotifications": "deals.watch.matched events only; OpenVibe.Network's notification consumer does not exist yet",
         "deployed": true,
-        "deployment": "openvibe-ovh, unit openvibe-deals, 127.0.0.1:4840 loopback only (release e72aeec); /api/ready 200 with every check ok; Network OAuth client deals and its grants exist; production database holds 0 offers. Deployed internally, not launched: openvibe.deals still serves the OpenVibe.Sites placeholder until a person verifies a deals source's terms and enables it in Sources",
+        "deployment": "Deployed with `sudo ovhost deploy deals`: unit openvibe-deals, 127.0.0.1:4840 loopback only; Network OAuth client deals and its grants exist; on 2026-09-23 /api/ready answered 200 and the production database held 0 offers. Deployed internally, not launched: openvibe.deals still serves the OpenVibe.Sites placeholder until a person verifies a deals source's terms and enables it in Sources",
         "placeholderInSites": true,
-        "updated": "2026-09-23"
+        "updated": "2026-09-28",
+        "features": [
+          "offers with timestamped price observations shown \"as of\" and stale labels",
+          "unknown prices stay unknown in pages, JSON, JSON-LD, feeds and Search",
+          "server-authoritative votes and deterministic hotness (hot@1)",
+          "duplicate merge and unmerge without losing votes or history",
+          "watches and saved searches (deals.watch.matched events; no delivery yet)",
+          "vote abuse controls and moderation queue",
+          "OpenVibe.Sources deals import with review",
+          "Community comment threads",
+          "server-rendered pages, feeds and sitemaps useful without JavaScript",
+          "/api/v1 by capability",
+          "SDK outbox events and Search index documents",
+          "per-actor limits (openvibe-sdk/limits)"
+        ]
       }
     },
     {
       "description": "Durable events, subscriptions, delivery, retry, dead letters and replay for the network.",
-      "diskUsage": 388,
+      "diskUsage": 550,
       "isArchived": false,
       "name": "OpenVibe.Events",
-      "pushedAt": "2026-09-26T13:23:26Z",
+      "pushedAt": "2026-09-28T03:20:47Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -416,7 +598,7 @@
         "runtime": "node 22, express, better-sqlite3",
         "port": 4300,
         "domain": "events.openvibe.network",
-        "contracts": "openvibe-contracts v0.28.0",
+        "contracts": "openvibe-contracts v0.63.0",
         "capabilities": [
           "events.event.publish",
           "events.subscription.manage",
@@ -428,8 +610,19 @@
         ],
         "capabilitiesRegistered": true,
         "deployed": true,
-        "deployment": "openvibe-ovh /opt/openvibe.events, unit openvibe-events, 127.0.0.1:4300; public at https://events.openvibe.network (realtime SSE, health, token-guarded /api/v1/events, /api/v1/subscriptions, /api/v1/checkpoints; /api/v1/deliveries host-local); release 5def126; real traffic since 2026-09-23 (Live, Media, Chat, Games, Network and OpenRe publish; 8 subscriptions, held by Search, Tips, VIP, News and Reviews); restore drill passed 2026-09-23",
-        "updated": "2026-09-23"
+        "deployment": "Deployed with `sudo ovhost deploy events`: /opt/openvibe.events, unit openvibe-events, 127.0.0.1:4300; public at https://events.openvibe.network (realtime SSE, health, token-guarded /api/v1/events, /api/v1/subscriptions, /api/v1/checkpoints; /api/v1/deliveries host-local); real traffic since 2026-09-23 (Live, Media, Chat, Games, Network and OpenRe publish; on 2026-09-23 8 subscriptions, held by Search, Tips, VIP, News and Reviews); restore drill passed 2026-09-23",
+        "updated": "2026-09-28",
+        "features": [
+          "durable event store with the canonical envelope",
+          "subscriptions with signed webhook delivery (v1 and v2), retry, dead letters and replay",
+          "priority classes and backpressure",
+          "pull consumers with cursors and checkpoints",
+          "realtime SSE with cursor resume, gap reports and Network tickets",
+          "developer-app publish, read and subscribe with sandbox separation, SSRF-guarded webhooks and project quotas",
+          "hourly project usage rollups (events.usage.recorded)",
+          "redaction tombstones",
+          "per-actor limits (openvibe-sdk/limits)"
+        ]
       }
     },
     {
@@ -437,7 +630,7 @@
       "diskUsage": 320,
       "isArchived": false,
       "name": "OpenVibe.Examples",
-      "pushedAt": "2026-09-26T11:53:18Z",
+      "pushedAt": "2026-09-28T03:20:49Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -446,8 +639,18 @@
         "code": true,
         "wave": "W20",
         "version": "0.3.0",
-        "sdk": "openvibe-sdk v0.4.0",
-        "contracts": "openvibe-contracts v0.28.0 (mod-manifest example)",
+        "sdk": "openvibe-sdk v0.11.0",
+        "contracts": "openvibe-contracts v0.49.0 (mod-manifest example)",
+        "deployed": false,
+        "deployment": "none: a repository with CI, not a runtime and not a published package",
+        "features": [
+          "nine copyable examples: browser app, Node server app, Media uploader, event subscriber, webhook consumer, tool job, OAuth app, chat bot, mod manifest",
+          "smoke tests against openvibe-sdk/testing's mock platform, offline",
+          "create-openvibe-app scaffolder",
+          "npm run e2e against the real platform (on demand)",
+          "developer path check (mock in CI, real on demand)",
+          "public-surface check: no loopback keys, internal routes or secret values"
+        ],
         "ci": "every example's smoke test runs on Node 22.22.1 against openvibe-sdk/testing's mock platform (developer-app rules for Events, Media and Tools as in production) plus a local Chat WebSocket mock; none reaches the network; a second job runs the developer path check (scripts/developer-path.js) against the same mock platform",
         "e2e": "npm run e2e runs media-uploader, event-subscriber (pull) and tool-job against the real platform with a sandbox app's OV_CLIENT_ID/OV_CLIENT_SECRET/OV_PROJECT_ID; on demand only, not in CI or npm test; not run against production as part of this release",
         "platform": "sandbox developer path (projects, sandbox grants, app tokens for openvibe.media/events/tools, Media project tenant, Events app.<project_key>.* events, Tools jobs, CORS-open discovery) verified in production on 2026-09-23 by the platform's W20 exit check (a curl script against the public endpoints); that check is now committed as npm run developer-path (SDK and examples, plus credential rotation, revocation and archive), which runs in CI against the mock platform and on demand against production (credentials from env only; refuses in CI against production); not yet run against production",
@@ -459,7 +662,7 @@
           "mod publishing is first-party"
         ],
         "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026), §15.1, §18.9; roadmap Wave 20, §30, ADR-014",
-        "updated": "2026-09-23"
+        "updated": "2026-09-28"
       }
     },
     {
@@ -511,20 +714,50 @@
     },
     {
       "description": "",
-      "diskUsage": 5417,
+      "diskUsage": 5596,
       "isArchived": false,
       "name": "OpenVibe.Games",
-      "pushedAt": "2026-09-26T12:39:26Z",
+      "pushedAt": "2026-09-28T03:20:51Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
-      "status": null
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Games",
+        "stage": "stable",
+        "code": true,
+        "product": "Scraplandia",
+        "runtime": "node 22, TypeScript (tsx), pnpm workspace; Babylon.js + Havok; better-sqlite3",
+        "port": 8000,
+        "domain": "openvibe.games, play.openvibe.games",
+        "contracts": "openvibe-contracts v0.71.0 (apps/server/package.json)",
+        "capabilities": [
+          "games.mod.manage",
+          "games.mod.read",
+          "games.world.announce",
+          "games.prop.place"
+        ],
+        "deployed": true,
+        "deployment": "Public at https://openvibe.games and https://play.openvibe.games: deployed with `sudo ovhost deploy games` (OpenVibe.Host strategy pnpm-build since the 2026-09-27 cutover; deploy/scripts/deploy.sh is the wrapper), unit openvibe-games on 127.0.0.1:8000, env /etc/openvibe/games.env, principal games.",
+        "features": [
+          "authoritative multiplayer physics sandbox (Havok on the server)",
+          "Source-style movement, physgun building, gathering, crafting, skills",
+          "persistent world, characters and props in SQLite",
+          "map editor with assets mirrored to OpenVibe.Media",
+          "declarative mods (games-content@1) with per-install grants and audit",
+          "players keyed by Network subjects",
+          "games.* events through a transactional outbox",
+          "games.progress.summary user module",
+          "the OpenVibe Frame from its own pinned copy",
+          "per-actor limits on capability-boundary writes (openvibe-sdk/limits)"
+        ],
+        "updated": "2026-09-28"
+      }
     },
     {
       "description": "The network's deployment/control plane first; then isolated hosting for community sites, bots and mods.",
-      "diskUsage": 950,
+      "diskUsage": 1384,
       "isArchived": false,
       "name": "OpenVibe.Host",
-      "pushedAt": "2026-09-26T13:23:30Z",
+      "pushedAt": "2026-09-28T03:22:19Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -537,10 +770,11 @@
         "port": 4910,
         "domain": "openvibe.host",
         "tenantDomain": "*.openvibe.host",
+        "contracts": "openvibe-contracts v0.66.0",
         "packages": [
-          "openvibe-contracts v0.33.0 (host.* capabilities and manifest released in v0.24.0; v0.32.0 adds the takedown routes to host.site.manage)",
-          "openvibe-sdk v0.5.0",
-          "openvibe-shared v1.5.1"
+          "openvibe-contracts v0.66.0 (host.* capabilities and manifest released in v0.24.0; v0.32.0 adds the takedown routes to host.site.manage)",
+          "openvibe-sdk v0.12.0",
+          "openvibe-shared v1.22.0"
         ],
         "capabilities": [
           "host.site.manage",
@@ -557,7 +791,7 @@
           "host.release.published"
         ],
         "stages": {
-          "A": "alpha: ovhost CLI installed on the production host 2026-09-23 (/usr/local/bin/ovhost, inventory /etc/openvibe/host.json); status/validate/backup/drill used there (19 restore drills passed 2026-09-23, docs/restore-drills.md); no service deploy has moved to it yet; the D41 deploy-and-rollback proof (scripts/d41-proof.sh) is written and tested, not run",
+          "A": "alpha: ovhost CLI installed on the production host 2026-09-23 (/usr/local/bin/ovhost, inventory /etc/openvibe/host.json); every service deploys with `sudo ovhost deploy <svc>` since the 2026-09-27 cutover (roadmap WS-N task 11: Live, Tools, Sites, Games and OpenRe through the release-layout, multi-app, static-build and pnpm-build strategies); nightly backups, restore drills (19 passed 2026-09-23, docs/restore-drills.md), release notifications, incidents and maintenance, the alerts relay; the D41 deploy-and-rollback proof (scripts/d41-proof.sh) is written and tested",
           "B": "alpha: running on the host on loopback :4910 (2026-09-23 audit), not launched; launch-rule items met in code and tests, launch steps in docs/launch.md, threat review in docs/threat-review.md",
           "C": "not started (deliberately: blocked until isolation and metering are proven)"
         },
@@ -567,47 +801,179 @@
         "deployed": "loopback only, not launched",
         "placeholderInSites": true,
         "adoptedByServices": [],
-        "updated": "2026-09-23",
+        "updated": "2026-09-28",
         "capabilitiesNote": "released in openvibe-contracts v0.24.0; v0.32.0 adds the four takedown routes to host.site.manage.implementedBy",
-        "launchReady": true
+        "launchReady": true,
+        "features": [
+          "ovhost: inventory, validate, plan, deploy with automatic rollback, rollback, status, releases",
+          "deploy strategies: git-checkout, multi-app, static-build, pnpm-build, release-layout",
+          "protected-session probes and drain policies (--wait-idle)",
+          "certificate inventory and transactional nginx vhost install",
+          "scheduled SQLite backups with retention and encrypted off-host copies",
+          "restore drills",
+          "release notifications (host.release.published), incidents, maintenance windows and freezes",
+          "Prometheus alerts relay to Network",
+          "browser check and release-lifecycle acceptance suite",
+          "Stage B: tenant static sites with immutable deploys, activation, rollback, custom domains, quotas and takedowns (not launched)",
+          "per-actor limits on Stage B writes (openvibe-sdk/limits)"
+        ]
       }
     },
     {
       "description": "",
-      "diskUsage": 8126,
+      "diskUsage": 9109,
       "isArchived": false,
       "name": "OpenVibe.Live",
-      "pushedAt": "2026-09-26T13:24:25Z",
+      "pushedAt": "2026-09-28T03:25:00Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
-      "status": null
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Live",
+        "stage": "stable",
+        "code": true,
+        "runtime": "node 22, express, better-sqlite3, node-media-server, mediasoup; no build step",
+        "port": 3000,
+        "domain": "openvibe.live (www, ingest, whip)",
+        "contracts": "openvibe-contracts v0.71.0",
+        "sdk": "openvibe-sdk v0.12.0",
+        "capabilities": [
+          "live.chat_context.read",
+          "live.chat_effects.write",
+          "live.chat_mirror.write",
+          "live.follower.read",
+          "live.lineage.resolve",
+          "live.tips_delivery.write",
+          "live.channel.read",
+          "live.stream.read",
+          "live.discovery.read",
+          "live.owner.resolve"
+        ],
+        "deployed": true,
+        "deployment": "Production release layout /opt/openvibe.live (current -> releases/<time>-<sha>), unit openvibe-live.service on the systemd socket 127.0.0.1:3000, deployed with `sudo ovhost deploy live --wait-idle`.",
+        "features": [
+          "RTMP, WHIP, WebRTC and JSMPEG ingest; viewer playback; the broadcast page",
+          "channels, go-live, stream keys, managed streams, restreaming (managed ingest on OpenRe.Stream)",
+          "the watch page and its chat surface (messages stored by OpenVibe.Chat), TTS, sounds, emotes, overlays",
+          "VODs and clips recorded and stored by OpenVibe.Media; pastes and comments on OpenVibe.Community",
+          "AI viewers, stream memories, overviews, moments, recaps, translation: every prompt an OpenVibe.AI template; VOD and clip transcripts by window on OpenVibe.AI",
+          "streamers' own AI keys stored encrypted in OpenVibe.AI; per-streamer daily AI budgets as AI quotas",
+          "channel points and Vibes; the Arena (Battle Cam); after-show recaps; the Star of OpenVibe",
+          "per-actor limits on API writes; account export and deletion contributions; follows on OpenVibe.Network"
+        ],
+        "updated": "2026-09-28"
+      }
     },
     {
       "description": "",
-      "diskUsage": 1696,
+      "diskUsage": 2022,
       "isArchived": false,
       "name": "OpenVibe.Media",
-      "pushedAt": "2026-09-26T13:23:33Z",
+      "pushedAt": "2026-09-28T03:20:55Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
-      "status": null
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Media",
+        "stage": "beta",
+        "code": true,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "runtime": "node 22, express, better-sqlite3, ffmpeg",
+        "port": 4100,
+        "domain": "openvibe.media",
+        "contracts": "openvibe-contracts v0.71.0",
+        "capabilities": [
+          "media.object.upload",
+          "media.object.read",
+          "media.object.list",
+          "media.object.delete",
+          "media.upload.create",
+          "media.derivative.create",
+          "media.derivative.read",
+          "media.lifecycle.read",
+          "media.lifecycle.transition"
+        ],
+        "capabilitiesRegistered": true,
+        "pastes": "OpenVibe.Community is the paste authority since 2026-09-22 (PASTES_FROZEN_APPS=live, PASTES_MOVED_TO); the paste routes stay as the rollback path",
+        "deployed": true,
+        "deployment": "Public at https://openvibe.media: deployed with `sudo ovhost deploy media` (restart refused while a VOD records; --wait-idle), /opt/openvibe.media, unit openvibe-media on 127.0.0.1:4100 behind the openvibe.media nginx vhost, principal media.",
+        "features": [
+          "VOD recording (RTMP pull, RTP ingest), chunk ingest and finalize",
+          "clip cutting",
+          "storage tiering local, Backblaze B2, Cloudflare R2 with copy verification and a disk guardian",
+          "canonical object model (/api/v2) with namespaces, holds, derivatives and lifecycle",
+          "media jobs with leases, retries and proposals",
+          "multi-tenant apps and developer-project tenants (sandbox separated)",
+          "public serving with presigned URLs; signed access for private and sandbox items",
+          "the object explorer (/me) and operator views",
+          "media.* events through the SDK outbox, webhooks during the transition",
+          "restore-drill mode and N-1 compatibility tests",
+          "per-actor limits (openvibe-sdk/limits)"
+        ],
+        "updated": "2026-09-28"
+      }
     },
     {
       "description": "",
-      "diskUsage": 2413,
+      "diskUsage": 3416,
       "isArchived": false,
       "name": "OpenVibe.Network",
-      "pushedAt": "2026-09-26T13:27:42Z",
+      "pushedAt": "2026-09-28T03:20:56Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
-      "status": null
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Network",
+        "stage": "stable",
+        "code": true,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "runtime": "node 22, express, better-sqlite3",
+        "port": 4000,
+        "domain": "openvibe.network (with auth., api., admin., my. and themes.openvibe.network in its manifest)",
+        "contracts": "openvibe-contracts v0.75.0",
+        "capabilities": [
+          "identity.subject.resolve",
+          "mods.grant.manage",
+          "network.account.deletion.confirm",
+          "network.account.export.contribute",
+          "network.analytics.creator.read",
+          "network.blocks.read",
+          "network.coins.credit",
+          "network.coins.debit",
+          "network.coins.transfer",
+          "network.follows.read",
+          "network.follows.write",
+          "network.integration.github.read",
+          "network.modules.read",
+          "network.modules.write",
+          "network.notifications.push",
+          "network.operator.alert",
+          "network.project.manage",
+          "network.project.read",
+          "network.staff.read",
+          "network.status.incident"
+        ],
+        "capabilitiesRegistered": true,
+        "deployed": true,
+        "deployment": "Public at https://openvibe.network: deployed with `sudo ovhost deploy network --install-units` (deploy/scripts/deploy.sh is the wrapper), /opt/openvibe.network, unit openvibe-network on 127.0.0.1:4000, env /etc/openvibe/network.env.",
+        "features": [
+          "SSO identity provider: OAuth2 code flow with PKCE, OIDC, FedCM, rotating refresh tokens",
+          "canonical subjects, anonymous users, multi-account switching, account merge, export and deletion",
+          "service principals and grants; developer projects, apps, credentials, grants, quotas and usage",
+          "notifications (realtime through Events), email and web push",
+          "themes and preferences, user modules, platform blocks, follow graph, creator analytics",
+          "OpenCoins wallet",
+          "service registry, public discovery and the status page with incidents",
+          "operator alerts relay target and admin panel",
+          "serves /shared/* from its pinned openvibe-shared",
+          "per-actor limits (openvibe-sdk/limits)"
+        ],
+        "updated": "2026-09-28"
+      }
     },
     {
       "description": "Source-backed stories: clustered coverage, cited summaries, perspectives and timelines.",
-      "diskUsage": 447,
+      "diskUsage": 466,
       "isArchived": false,
       "name": "OpenVibe.News",
-      "pushedAt": "2026-09-26T13:23:41Z",
+      "pushedAt": "2026-09-28T03:20:58Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -619,11 +985,12 @@
         "runtime": "node 22, express 4, better-sqlite3 11",
         "port": 4820,
         "domain": "openvibe.news",
+        "contracts": "openvibe-contracts v0.49.0",
         "packages": [
-          "openvibe-publishing v0.2.1",
-          "openvibe-contracts v0.33.0",
-          "openvibe-shared v1.5.1",
-          "openvibe-sdk v0.5.0"
+          "openvibe-publishing v0.4.0",
+          "openvibe-contracts v0.49.0",
+          "openvibe-shared v1.22.0",
+          "openvibe-sdk v0.12.0"
         ],
         "capabilities": [
           "news.story.create",
@@ -644,17 +1011,32 @@
         "ai": "optional seam (news.summarize_story, news.compare_perspectives) tested against a mock; not configured in production (OV_AI_INTERNAL_URL unset); OpenVibe.AI output only ever lands as a draft that needs a person's review",
         "seed": "topics only (12 in production); no stories, source items or clusters",
         "deployed": true,
-        "deployment": "openvibe-ovh, unit openvibe-news, 127.0.0.1:4820 loopback only (release 1802e7d); /api/ready 200; production database holds 12 topics and 0 stories. Deployed internally, not launched: openvibe.news still serves the OpenVibe.Sites placeholder until a person verifies a news source's terms, enables it in Sources, and an editor publishes a reviewed story",
+        "deployment": "Deployed with `sudo ovhost deploy news`: unit openvibe-news, 127.0.0.1:4820 loopback only; on 2026-09-23 /api/ready answered 200 and the production database held 12 topics and 0 stories. Deployed internally, not launched: openvibe.news still serves the OpenVibe.Sites placeholder until a person verifies a news source's terms, enables it in Sources, and an editor publishes a reviewed story",
         "placeholderInSites": true,
-        "updated": "2026-09-23"
+        "updated": "2026-09-28",
+        "features": [
+          "Sources ingestion by Events subscription and cursor pull, with dedupe",
+          "failed ingestion recorded, never fabricated",
+          "deterministic, explained clusters with audited merge and split",
+          "stories whose paragraphs cite Sources items; no publish without sources",
+          "revisions, corrections, timelines, perspectives and final retractions",
+          "independent-source index gate",
+          "licensing limits on stored and shown text",
+          "Community comment threads by reference",
+          "optional OpenVibe.AI drafts that need a person's review",
+          "server-rendered editorial and public pages useful without JavaScript",
+          "/api/v1 by capability",
+          "SDK outbox events and Search index documents",
+          "per-actor limits (openvibe-sdk/limits)"
+        ]
       }
     },
     {
       "description": "Shared publishing packages (drafts, revisions, citations, SEO gate, feeds, structured data) for Wiki, Blog, News, Reviews, Deals, Coupons and Trade. Packages only, no authority.",
-      "diskUsage": 247,
+      "diskUsage": 248,
       "isArchived": false,
       "name": "OpenVibe.Publishing",
-      "pushedAt": "2026-09-26T13:23:45Z",
+      "pushedAt": "2026-09-28T03:21:00Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -664,7 +1046,7 @@
         "wave": "W15",
         "kind": "packages",
         "package": "openvibe-publishing",
-        "version": "0.2.1",
+        "version": "0.4.0",
         "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
         "runtime": null,
         "port": null,
@@ -680,22 +1062,38 @@
           "seo",
           "authorship",
           "index-hooks",
+          "ai",
           "ssr"
         ],
         "consumers": [
-          "OpenVibe.Wiki (v0.2.1; public at https://openvibe.wiki)",
-          "OpenVibe.Blog (v0.2.1; public at https://openvibe.blog)",
-          "OpenVibe.News (v0.2.1; deployed loopback-only, not launched)",
-          "OpenVibe.Reviews (v0.2.1; deployed loopback-only, not launched)",
-          "OpenVibe.Deals (v0.2.1; deployed loopback-only, not launched)",
-          "OpenVibe.Coupons (v0.2.1; deployed loopback-only, not launched)",
-          "OpenVibe.Trade (v0.2.1; deployed loopback-only, not launched)"
+          "OpenVibe.Wiki (v0.4.0; public at https://openvibe.wiki)",
+          "OpenVibe.Blog (v0.4.0; public at https://openvibe.blog)",
+          "OpenVibe.News (v0.4.0; deployed loopback-only, not launched)",
+          "OpenVibe.Reviews (v0.4.0; deployed loopback-only, not launched)",
+          "OpenVibe.Deals (v0.4.0; deployed loopback-only, not launched)",
+          "OpenVibe.Coupons (v0.4.0; deployed loopback-only, not launched)",
+          "OpenVibe.Trade (v0.4.0; deployed loopback-only, not launched)"
         ],
         "plannedConsumers": [],
         "exitProof": "examples/two-products + test/two-products.test.js",
-        "contracts": "openvibe-contracts v0.33.0: emits search.index-document@1 and events.event-envelope@1 (validated in tests)",
+        "contracts": "openvibe-contracts v0.49.0 (devDependency): emits search.index-document@1 and events.event-envelope@1 (validated in tests)",
         "released": true,
-        "updated": "2026-09-23"
+        "deployed": false,
+        "deployment": "none: a package released as git tags; products pin the tag and deploy it with their own releases",
+        "features": [
+          "revisions with optimistic concurrency, diff and revert",
+          "idempotent lease-based scheduling",
+          "taxonomy with hierarchical categories",
+          "append-only citations",
+          "Media attachment references with honest broken states",
+          "Community discussion references",
+          "deterministic indexability gate, redirects, sitemaps and feeds",
+          "authorship and AI disclosure, held until a person's review",
+          "OpenVibe.AI draft client",
+          "Search index documents, tombstones and publication events",
+          "auto-escaping SSR and a safe Markdown subset"
+        ],
+        "updated": "2026-09-28"
       }
     },
     {
@@ -718,10 +1116,10 @@
     },
     {
       "description": "Review signals gathered across sources with provenance, entity resolution and honest aggregates.",
-      "diskUsage": 503,
+      "diskUsage": 501,
       "isArchived": false,
       "name": "OpenVibe.Reviews",
-      "pushedAt": "2026-09-26T13:23:49Z",
+      "pushedAt": "2026-09-28T03:21:02Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -733,11 +1131,11 @@
         "runtime": "node 22, express, better-sqlite3",
         "port": 4830,
         "domain": "openvibe.reviews",
-        "contracts": "openvibe-contracts v0.33.0",
+        "contracts": "openvibe-contracts v0.49.0",
         "packages": [
-          "openvibe-publishing v0.2.1",
-          "openvibe-shared v1.5.1",
-          "openvibe-sdk v0.5.0"
+          "openvibe-publishing v0.4.0",
+          "openvibe-shared v1.22.0",
+          "openvibe-sdk v0.12.0"
         ],
         "capabilities": [
           "reviews.entity.resolve",
@@ -751,19 +1149,33 @@
         ],
         "capabilitiesRegistered": true,
         "deployed": true,
-        "deployment": "openvibe-ovh, unit openvibe-reviews, 127.0.0.1:4830 loopback only (release 3151c05); /api/ready 200; Events subscription sources.item.* in place; production database holds 0 entities and 0 signals. Deployed internally, not launched: openvibe.reviews still serves the OpenVibe.Sites placeholder until a person verifies a review source's terms and enables it in Sources, and an editor publishes (REVIEWS_EDITORS holds the owner only)",
+        "deployment": "Deployed with `sudo ovhost deploy reviews`: unit openvibe-reviews, 127.0.0.1:4830 loopback only; Events subscription sources.item.* in place; on 2026-09-23 /api/ready answered 200 and the production database held 0 entities and 0 signals. Deployed internally, not launched: openvibe.reviews still serves the OpenVibe.Sites placeholder until a person verifies a review source's terms and enables it in Sources, and an editor publishes (REVIEWS_EDITORS holds the owner only)",
         "onOpenVibeSites": true,
         "seed": "none: no entities, signals, summaries or ratings are seeded",
         "dataSource": "OpenVibe.Sources category reviews; no review source is enabled there yet (all 6 Sources seeds are disabled)",
-        "updated": "2026-09-23"
+        "updated": "2026-09-28",
+        "features": [
+          "signals from OpenVibe.Sources by cursor pull and signed webhook, with provenance",
+          "deterministic entity resolution; a name alone never resolves",
+          "aggregates only from existing signals, with revisions",
+          "exact merge and split round trips, audited",
+          "editor trust decisions shown with reasons",
+          "summaries written or approved by a person; AI drafts never yield a rating",
+          "public corrections as new revisions",
+          "Community discussion threads by reference",
+          "server-rendered pages and editor workflows useful without JavaScript",
+          "/api/v1 by capability",
+          "SDK outbox events and Search index documents",
+          "per-actor limits (openvibe-sdk/limits)"
+        ]
       }
     },
     {
       "description": "Supported browser and server clients for the OpenVibe platform.",
-      "diskUsage": 657,
+      "diskUsage": 706,
       "isArchived": false,
       "name": "OpenVibe.SDK",
-      "pushedAt": "2026-09-25T22:31:12Z",
+      "pushedAt": "2026-09-28T03:23:32Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -771,17 +1183,33 @@
         "stage": "alpha",
         "code": true,
         "wave": "W2",
-        "version": "0.6.0",
+        "version": "0.12.0",
         "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026), §3.2; roadmap §30",
-        "updated": "2026-09-23"
+        "deployed": false,
+        "deployment": "none: a package released as git tags; services and apps pin a tag",
+        "contracts": "openvibe-contracts v0.49.0 (devDependency; runtime contracts range >=0.5.0 <1.0.0)",
+        "features": [
+          "core client: retries, timeouts, problem+json errors, trace propagation",
+          "auth: service and app tokens, PKCE, offline verification, revocation cutoffs",
+          "registry discovery and contracts version checks",
+          "events: publish, pull, app events, webhook verification (v2), outbox and inbox",
+          "realtime SSE",
+          "media files and objects v2",
+          "community, search, chat, ai, jobs, tools, projects, modules, identity and vip clients",
+          "per-actor limiter for services (openvibe-sdk/limits)",
+          "the OpenVibe Frame for any app",
+          "mock platform for tests (openvibe-sdk/testing)",
+          "ESM entries, TypeScript types and a browser bundle"
+        ],
+        "updated": "2026-09-28"
       }
     },
     {
       "description": "Permission-aware, event-fed search index for the network: canonical index documents, ACL-filtered queries, deletion propagation.",
-      "diskUsage": 278,
+      "diskUsage": 318,
       "isArchived": false,
       "name": "OpenVibe.Search",
-      "pushedAt": "2026-09-26T13:23:54Z",
+      "pushedAt": "2026-09-28T03:21:06Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -792,11 +1220,12 @@
         "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
         "runtime": "node 22, express, better-sqlite3 (FTS5)",
         "port": 4710,
-        "domain": "search.openvibe.network (vhost in deploy/nginx, not installed: until it is, the name falls through to the admin.openvibe.network placeholder; README \"Public host\")",
-        "contracts": "openvibe-contracts v0.33.0",
+        "domain": "search.openvibe.network (vhost in deploy/nginx; the service manifest records the search page and query API as public since 2026-09-23)",
+        "contracts": "openvibe-contracts v0.49.0",
         "capabilities": [
           "search.document.write",
-          "search.query.delegate"
+          "search.query.delegate",
+          "search.query.run"
         ],
         "capabilitiesRegistered": true,
         "contractsProposed": [
@@ -804,7 +1233,7 @@
         ],
         "engine": "sqlite-fts5 (docs/adr-engine.md)",
         "deployed": true,
-        "deployment": "Deployed internally, not launched: /opt/openvibe.search at 5a7e59b, unit openvibe-search, 127.0.0.1:4710 only, principal search, Events subscription *.index_document.*, accepted event owners sources, wiki, blog, news, reviews, trade, deals, coupons. Production index: 10 documents, all tombstones (wiki), 0 public. Restore drill passed 2026-09-23.",
+        "deployment": "Deployed with `sudo ovhost deploy search`: /opt/openvibe.search, unit openvibe-search, 127.0.0.1:4710, principal search, Events subscription *.index_document.*, accepted event owners sources, wiki, blog, news, reviews, trade, deals, coupons. On 2026-09-23 the production index held 10 documents, all tombstones (wiki), 0 public. Restore drill passed 2026-09-23.",
         "indexedProducers": [
           "wiki (tombstones only so far)"
         ],
@@ -816,17 +1245,18 @@
           "saved searches (notifications wait for Network notifications)",
           "server-rendered search page",
           "owner removal feed",
-          "Cloudflare purge queue (inert until CLOUDFLARE_PURGE_TOKEN is set)"
+          "Cloudflare purge queue (inert until CLOUDFLARE_PURGE_TOKEN is set)",
+          "per-actor limits (openvibe-sdk/limits)"
         ],
-        "updated": "2026-09-23"
+        "updated": "2026-09-28"
       }
     },
     {
       "description": "Versioned UI, chrome, SEO, legal and release-client packages every OpenVibe site renders.",
-      "diskUsage": 843,
+      "diskUsage": 1084,
       "isArchived": false,
       "name": "OpenVibe.Shared",
-      "pushedAt": "2026-09-26T13:06:00Z",
+      "pushedAt": "2026-09-28T03:21:08Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -835,27 +1265,74 @@
         "code": true,
         "wave": "W2",
         "package": "openvibe-shared",
-        "version": "1.8.0",
+        "version": "1.23.1",
         "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
-        "updated": "2026-09-24"
+        "deployed": false,
+        "deployment": "none of its own: a package released as git tags; OpenVibe.Network serves /shared/* from its pinned tag, and a site can serve its own pinned copy (openvibe-shared/serve)",
+        "contracts": "openvibe-contracts v0.61.0 (devDependency: the release manifest contract)",
+        "features": [
+          "the OpenVibe Frame: navbar, footer, panels, account switcher, notification UI with realtime",
+          "themes, design tokens and icons",
+          "release manifest, in-place updates in open tabs and update metrics",
+          "web runtime (feature loader)",
+          "shipped pill, recent list and /updates log",
+          "server helpers: ready, metrics, trace, egress, config, analytics, legal, SEO, frame SSR",
+          "browser harness and perf budgets for tests"
+        ],
+        "updated": "2026-09-28"
       }
     },
     {
       "description": "Static front pages for OpenVibe domains that are not full apps yet",
-      "diskUsage": 741,
+      "diskUsage": 967,
       "isArchived": false,
       "name": "OpenVibe.Sites",
-      "pushedAt": "2026-09-26T13:23:57Z",
+      "pushedAt": "2026-09-28T03:21:10Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
-      "status": null
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Sites",
+        "stage": "stable",
+        "code": true,
+        "kind": "static site generator",
+        "domains": [
+          "openvibe.news",
+          "openvibe.reviews",
+          "openvibe.tips",
+          "openvibe.vip",
+          "openvibe.trade",
+          "openvibe.host",
+          "openvibe.deals",
+          "openvibe.coupons",
+          "openre.stream",
+          "auth.openvibe.network",
+          "api.openvibe.network",
+          "admin.openvibe.network",
+          "themes.openvibe.network",
+          "ai.openvibe.network",
+          "realtime.openvibe.network (closed notice)",
+          "status.openvibe.network (status notice)"
+        ],
+        "contracts": "none: package.json pins no openvibe-contracts (openvibe-shared v1.23.0 only)",
+        "deployed": true,
+        "deployment": "Deployed with `sudo ovhost deploy sites --restart` (OpenVibe.Host strategy static-build since the 2026-09-27 cutover): /opt/openvibe.sites, nginx serves dist/<domain>/ through deploy/nginx/<domain>.conf; no unit, no port, no env file",
+        "features": [
+          "one catalog and one template for every placeholder and notice page",
+          "labels built from facts.json (each repository's STATUS.json and Network's registry), never a hand-kept list",
+          "the pinned OpenVibe Frame served from dist/_shared/",
+          "full SEO: canonical, Open Graph, Twitter, JSON-LD, robots, sitemap, manifest",
+          "404 pages and generated nginx vhosts",
+          "a release.json per domain and host.release.published on deploy"
+        ],
+        "updated": "2026-09-28"
+      }
     },
     {
       "description": "Source registry and ingestion workers for the network: provenance, terms, rate limits, explicit failure states.",
-      "diskUsage": 299,
+      "diskUsage": 309,
       "isArchived": false,
       "name": "OpenVibe.Sources",
-      "pushedAt": "2026-09-26T13:24:02Z",
+      "pushedAt": "2026-09-28T03:21:12Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -866,8 +1343,8 @@
         "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
         "runtime": "node 22, express, better-sqlite3, fast-xml-parser",
         "port": 4720,
-        "domain": "sources.openvibe.network (vhost in deploy/nginx, not installed: until it is, the name falls through to the admin.openvibe.network placeholder; once installed it answers an internal-service page, health and JSON 404s, API loopback-only; README \"Public host\")",
-        "contracts": "openvibe-contracts v0.33.0",
+        "domain": "sources.openvibe.network (vhost in deploy/nginx: an internal-service page, health and JSON 404s; the API is loopback-only; README \"Public host\")",
+        "contracts": "openvibe-contracts v0.49.0",
         "capabilities": [
           "sources.source.read",
           "sources.item.read",
@@ -889,16 +1366,28 @@
         "seededSources": 6,
         "enabledSources": 0,
         "deployed": true,
-        "deployment": "Deployed internally, not launched: /opt/openvibe.sources at f727a40 since 2026-09-23 (origin 60a920d adds only an nginx file), unit openvibe-sources, 127.0.0.1:4720 only, principal sources. All 6 seeds disabled; 0 fetch runs and 0 items in production. Restore drill passed 2026-09-23.",
-        "updated": "2026-09-23"
+        "deployment": "Deployed with `sudo ovhost deploy sources`: /opt/openvibe.sources, unit openvibe-sources, 127.0.0.1:4720, principal sources. All 6 seeds disabled; on 2026-09-23 production had 0 fetch runs and 0 items. Restore drill passed 2026-09-23.",
+        "features": [
+          "source registry with terms, robots and licence notes",
+          "rss, atom, sitemap, jsonld, api and manual adapters",
+          "polite scheduler: robots.txt, per-host spacing, conditional GET, backoff",
+          "SSRF-guarded fetcher",
+          "failed fetches recorded, never fabricated",
+          "item revisions and sticky removals with provenance",
+          "cursor item API by capability",
+          "transactional outbox to Events",
+          "staff-only index documents for Search",
+          "per-actor limits (openvibe-sdk/limits)"
+        ],
+        "updated": "2026-09-28"
       }
     },
     {
       "description": "Creator support: tips, goals, paid messages, TTS and media requests, overlays.",
-      "diskUsage": 496,
+      "diskUsage": 563,
       "isArchived": false,
       "name": "OpenVibe.Tips",
-      "pushedAt": "2026-09-26T13:24:05Z",
+      "pushedAt": "2026-09-28T03:21:14Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -909,27 +1398,85 @@
         "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
         "adr": "ADR-012",
         "authoritative": false,
-        "deployment": "Deployed internally, not launched: openvibe-ovh /opt/openvibe.tips (release 3fb582e, openvibe-contracts 0.33.0, openvibe-sdk 0.5.0, openvibe-shared 1.5.1), unit openvibe-tips, 127.0.0.1:4610 loopback only; https://openvibe.tips still serves the OpenVibe.Sites placeholder. Principal tips; Events subscriptions billing.transaction.* and billing.receipt.* -> /internal/events (secret rotated 2026-09-24); TIPS_CHAT_ADAPTER is empty (no chat side effects).",
-        "notes": "Runtime, API, SSR pages, overlays, the Billing settlement consumer, events outbox, Live import and reconciliation are built, tested and deployed, together with /metrics (loopback only), truthful /api/ready (Billing and Events checks), supporter privacy (anonymous, hidden amount, private message), goal and supporter-page settings, export and erasure (tips.interaction.erased), and moderation (word filter, hide/show, invited moderators, tips.interaction.moderated). Capabilities (17 tips.*) and payload schemas are in openvibe-contracts. Production holds the Live import (3 import runs, the last 2026-09-23 18:31 UTC: 139 interactions, 4 goals, 143 migration maps); 0 creator profiles and 0 overlay tokens (nobody has set up the product). No billing.* event has arrived: Billing runs in shadow. A written internal threat review (docs/threat-review.md) with its fixes and test/security.test.js. Not done: an independent security review; the openvibe.tips launch. Live stays the place tips happen until the Billing cutover (blocked on the owner re-pointing the PowerChat webhook) and the launch rule in README.md holds.",
-        "updated": "2026-09-24"
+        "deployed": true,
+        "deployment": "Deployed internally, not launched: deployed with `sudo ovhost deploy tips`, /opt/openvibe.tips, unit openvibe-tips, 127.0.0.1:4610 loopback only; https://openvibe.tips still serves the OpenVibe.Sites placeholder. Principal tips; Events subscriptions billing.transaction.* and billing.receipt.* -> /internal/events (secret rotated 2026-09-24); TIPS_CHAT_ADAPTER is empty (no chat side effects).",
+        "contracts": "openvibe-contracts v0.49.0",
+        "notes": "Runtime, API, SSR pages, overlays, the Billing settlement consumer, events outbox, Live import and reconciliation are built, tested and deployed, together with /metrics (loopback only), truthful /api/ready (Billing and Events checks), supporter privacy (anonymous, hidden amount, private message), goal and supporter-page settings, export and erasure (tips.interaction.erased), moderation (word filter, hide/show, invited moderators, tips.interaction.moderated) and per-actor limits. Capabilities (18 tips.*) and payload schemas are in openvibe-contracts. On 2026-09-24 production held the Live import (3 import runs, the last 2026-09-23 18:31 UTC: 139 interactions, 4 goals, 143 migration maps); 0 creator profiles and 0 overlay tokens (nobody had set up the product). No billing.* event had arrived: Billing runs in shadow. A written internal threat review (docs/threat-review.md) with its fixes and test/security.test.js. Not done: an independent security review; the openvibe.tips launch. Live stays the place tips happen until the Billing cutover (blocked on the owner re-pointing the PowerChat webhook) and the launch rule in README.md holds.",
+        "updated": "2026-09-28",
+        "features": [
+          "tips, paid messages, TTS and media requests settled by OpenVibe.Billing (never Tips' own money)",
+          "goals counted from settled payments only",
+          "overlays with revocable scoped tokens and replay without recharging",
+          "EXTERNAL PowerChat tips from billing.receipt.external",
+          "supporter privacy, export and erasure",
+          "moderation: word filter, hide and show, invited moderators",
+          "Live chat delivery adapter",
+          "Live import and reconciliation against Billing",
+          "server-rendered creator pages useful without JavaScript",
+          "/api/v1 by capability",
+          "SDK outbox and inbox",
+          "per-actor limits (openvibe-sdk/limits)"
+        ]
       }
     },
     {
       "description": "",
-      "diskUsage": 3267,
+      "diskUsage": 2632,
       "isArchived": false,
       "name": "OpenVibe.Tools",
-      "pushedAt": "2026-09-26T13:24:09Z",
+      "pushedAt": "2026-09-28T03:21:16Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
-      "status": null
+      "status": {
+        "repository": "OpenVibers/OpenVibe.Tools",
+        "stage": "stable",
+        "code": true,
+        "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
+        "runtime": "node 22, express, better-sqlite3; eight apps (gateway, maps, food, img, yt, audio, text, docs)",
+        "port": 4001,
+        "ports": {
+          "gateway": 4001,
+          "maps": 4010,
+          "food": 4011,
+          "img": 4012,
+          "yt": 4013,
+          "audio": 4014,
+          "text": 4015,
+          "docs": 4016
+        },
+        "domain": "openvibe.tools and *.openvibe.tools",
+        "contracts": "openvibe-contracts v0.63.0 (each app's package.json; the root package.json pins none)",
+        "capabilities": [
+          "tools.job.create",
+          "tools.job.read",
+          "tools.job.cancel",
+          "tools.tool.read",
+          "tools.tool.run",
+          "tools.net.probe"
+        ],
+        "capabilitiesRegistered": true,
+        "deployed": true,
+        "deployment": "Public at https://openvibe.tools: deployed with `sudo ovhost deploy tools` (OpenVibe.Host strategy multi-app since the 2026-09-27 cutover; deploy/scripts/deploy.sh is the wrapper), /opt/openvibe.tools, units openvibe-tools (gateway, 127.0.0.1:4001) and openvibe-tools-<app> per satellite, env /etc/openvibe/tools.env.",
+        "features": [
+          "tool registry with descriptors, canonical hosts, aliases and owner-attached custom domains",
+          "server-rendered catalog and tool pages with full SEO",
+          "public registry API (tools.tool.read) and run API (tools.tool.run)",
+          "jobs runtime for img, audio and docs with SSE progress and Media results",
+          "net and dev tools on the gateway; maps, food, img, yt, audio, text and docs satellites",
+          "guard: callers, tiered quotas, upload sniffing, SSRF-safe egress, abuse log",
+          "tools.* events and Search documents",
+          "analytics within ADR-021",
+          "per-actor limits (openvibe-sdk/limits)"
+        ],
+        "updated": "2026-09-28"
+      }
     },
     {
       "description": "Informational watchlists, sourced market context and alerts. No custody, no order execution.",
-      "diskUsage": 399,
+      "diskUsage": 418,
       "isArchived": false,
       "name": "OpenVibe.Trade",
-      "pushedAt": "2026-09-26T13:24:13Z",
+      "pushedAt": "2026-09-28T03:21:18Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -942,11 +1489,12 @@
         "port": 4860,
         "domain": "openvibe.trade",
         "scope": "informational only (ADR-025): no custody, no order execution, no escrow, no listings between users, no personalised advice",
+        "contracts": "openvibe-contracts v0.49.0",
         "packages": [
-          "openvibe-contracts v0.33.0",
-          "openvibe-publishing v0.2.1",
-          "openvibe-shared v1.5.1",
-          "openvibe-sdk v0.5.0"
+          "openvibe-contracts v0.49.0",
+          "openvibe-publishing v0.4.0",
+          "openvibe-shared v1.22.0",
+          "openvibe-sdk v0.12.0"
         ],
         "capabilities": [
           "trade.instrument.resolve",
@@ -967,17 +1515,31 @@
         "marketDataFeeds": "none configured: the only seeded trade source in OpenVibe.Sources (SEC EDGAR XBRL filings RSS) is disabled there, and it carries filings, not prices; no observation exists until a source states one",
         "seed": "none (tests create their own instruments; production holds 0 instruments and 0 observations)",
         "deployed": true,
-        "deployment": "openvibe-ovh, unit openvibe-trade, 127.0.0.1:4860 loopback only (release 9a55644); /api/ready 200 with status degraded [freshness], which is honest: no feed is configured; Network OAuth client trade and its grants exist; no Events subscription; production database holds 0 instruments and 0 observations. Deployed internally, not launched: openvibe.trade still serves the OpenVibe.Sites placeholder until a person verifies the SEC XBRL terms and enables sec-xbrl-filings in Sources, a licensed market data feed exists, and editors add instruments",
+        "deployment": "Deployed with `sudo ovhost deploy trade`: unit openvibe-trade, 127.0.0.1:4860 loopback only; on 2026-09-23 /api/ready answered 200 with status degraded [freshness], which is honest: no feed is configured; Network OAuth client trade and its grants exist; no Events subscription; production database held 0 instruments and 0 observations. Deployed internally, not launched: openvibe.trade still serves the OpenVibe.Sites placeholder until a person verifies the SEC XBRL terms and enables sec-xbrl-filings in Sources, a licensed market data feed exists, and editors add instruments",
         "placeholderInSites": true,
-        "updated": "2026-09-23"
+        "updated": "2026-09-28",
+        "features": [
+          "informational only: a route-inventory test refuses any execution, custody or advice endpoint",
+          "instruments with exact, deterministic resolution (CIK, ticker, name)",
+          "observations with required timestamps; no observation, no number",
+          "per-source freshness with stale badges and transition events",
+          "SEC EDGAR filings from Sources matched to instruments",
+          "private watchlists",
+          "threshold, filing-type and new-document alerts (trade.alert.triggered)",
+          "cited editor context; AI drafts need approval; advice refused",
+          "server-rendered pages useful without JavaScript",
+          "/api/v1 by capability",
+          "SDK outbox events and Search index documents",
+          "per-actor limits (openvibe-sdk/limits)"
+        ]
       }
     },
     {
       "description": "Memberships: plans, perks and benefits recognised across every OpenVibe site.",
-      "diskUsage": 440,
+      "diskUsage": 510,
       "isArchived": false,
       "name": "OpenVibe.VIP",
-      "pushedAt": "2026-09-26T13:24:17Z",
+      "pushedAt": "2026-09-28T03:21:20Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -985,7 +1547,8 @@
         "stage": "alpha",
         "code": true,
         "deployed": true,
-        "deployment": "Deployed internally, not launched: openvibe-ovh /opt/openvibe.vip (release a675577, openvibe-contracts 0.33.0, openvibe-sdk 0.5.0, openvibe-shared 1.5.1), unit openvibe-vip, 127.0.0.1:4620 loopback only; https://openvibe.vip still serves the OpenVibe.Sites placeholder. Principal vip; three Events subscriptions for Billing's events (secret rotated 2026-09-24); checkout closed (VIP_CHECKOUT_PROVIDERS empty). Production holds the Live import: 44 creators, 43 plans (one per creator), 0 memberships while Billing runs in shadow.",
+        "deployment": "Deployed internally, not launched: deployed with `sudo ovhost deploy vip`, /opt/openvibe.vip, unit openvibe-vip, 127.0.0.1:4620 loopback only; https://openvibe.vip still serves the OpenVibe.Sites placeholder. Principal vip; three Events subscriptions for Billing's events (secret rotated 2026-09-24); checkout closed (VIP_CHECKOUT_PROVIDERS empty). On 2026-09-24 production held the Live import: 44 creators, 43 plans (one per creator), 0 memberships while Billing runs in shadow.",
+        "contracts": "openvibe-contracts v0.49.0",
         "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
         "roadmap": "Wave 10",
         "works": [
@@ -993,15 +1556,16 @@
           "entitlement projection fed by Billing events (signed webhook + openvibe-sdk inbox) with valid_until, grace and a direct Billing fallback; 'unknown' never authorizes",
           "checkout hand-off and cancellation through OpenVibe.Billing; the membership is filed under the plan version chosen",
           "API /api/v1 for service and user tokens; consumer client openvibe-vip/client that fails closed, with createVipCache (the product cache and its convergence bound, test/convergence.test.js)",
-          "the product's default gate (evaluate fallback, honouring product bindings such as blog gated_post) and entitlements/check product perks (Chat's badge); Chat, Community and Blog consume them in code (not deployed, grants pending)",
+          "the product's default gate (evaluate fallback, honouring product bindings such as blog gated_post) and entitlements/check product perks (Chat's badge); Chat, Community, Blog and Wiki consume them in code",
           "server-rendered creator plan pages, terms history, member status and creator dashboard with the shared chrome",
           "outbox events vip.plan.published and vip.membership.changed (openvibe-sdk)",
           "import of Live's subscription offering, memberships from Billing entitlements",
-          "14 vip.* capabilities, the service manifest and its events registered in openvibe-contracts v0.19.0",
           "deployed on the host (loopback only) with truthful /api/ready and /metrics; restore drill passed on the host 2026-09-23 05:23 UTC",
           "reusable membership card (GET /embed/:username/card.json, GET /api/v1/creators/:ref/card), badge (/embed/:username/badge.svg) and embeddable widget (/embed/:username/widget): public data only, no cookies, the widget's CSP frame-ancestors configurable (VIP_WIDGET_FRAME_ANCESTORS), member count from Billing that the creator can hide (not deployed yet)",
           "the Live subscription import has run: 43 plans and plan versions, 44 creators, 87 migration maps (production, 2026-09-23)",
-          "Chat (subscriber badge, vip.entitlement.check), Community (members-only spaces and threads) and Blog (members-only posts) call VIP in production (vip.resource.policy.evaluate grants for Community and Blog)"
+          "Chat (subscriber badge, vip.entitlement.check), Community (members-only spaces and threads) and Blog (members-only posts) call VIP in production (vip.resource.policy.evaluate grants for Community and Blog)",
+          "14 vip.* capabilities, the service manifest and its events registered in openvibe-contracts v0.19.0 (this repository pins v0.49.0)",
+          "per-actor limits on /api/v1 (openvibe-sdk/limits)"
         ],
         "not_yet": [
           "not launched: openvibe.vip is still an OpenVibe.Sites placeholder and the service answers on loopback only",
@@ -1009,15 +1573,27 @@
           "Billing sells one channel subscription per member and creator: one purchasable plan per creator, no tiers, no network membership product",
           "revocations reach Chat and Community through vip.membership.changed subscriptions (2026-09-24); Blog and Live still converge by the cache TTL (30-60 s)"
         ],
-        "updated": "2026-09-24"
+        "updated": "2026-09-28",
+        "features": [
+          "plans with immutable versions, perks and product bindings",
+          "entitlement projection from Billing events with valid_until, grace and a Billing fallback; unknown never authorizes",
+          "checkout and cancel through OpenVibe.Billing",
+          "gated-resource policy evaluation for products (fails closed)",
+          "openvibe-vip/client with the product cache and its convergence bound",
+          "creator plan pages, terms history, member status and creator dashboard",
+          "public membership card, badge and embeddable widget",
+          "Live subscription import",
+          "SDK outbox events vip.plan.published and vip.membership.changed",
+          "per-actor limits (openvibe-sdk/limits)"
+        ]
       }
     },
     {
       "description": "Wiki spaces with page trees, revisions, citations, media and discussion — editable together, source-backed.",
-      "diskUsage": 598,
+      "diskUsage": 754,
       "isArchived": false,
       "name": "OpenVibe.Wiki",
-      "pushedAt": "2026-09-26T13:24:21Z",
+      "pushedAt": "2026-09-28T03:21:22Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -1029,11 +1605,11 @@
         "runtime": "node 22, express, better-sqlite3",
         "port": 4800,
         "domain": "openvibe.wiki",
-        "contracts": "openvibe-contracts v0.33.0",
+        "contracts": "openvibe-contracts v0.64.0",
         "packages": [
-          "openvibe-publishing v0.2.1",
-          "openvibe-shared v1.5.1",
-          "openvibe-sdk v0.5.0"
+          "openvibe-publishing v0.4.0",
+          "openvibe-shared v1.22.0",
+          "openvibe-sdk v0.12.0"
         ],
         "capabilities": [
           "wiki.space.create",
@@ -1047,11 +1623,25 @@
         ],
         "capabilitiesRegistered": true,
         "deployed": true,
-        "deployment": "Public at https://openvibe.wiki since 2026-09-23 (~03:00 UTC): /opt/openvibe.wiki at c1e6ff5, unit openvibe-wiki on 127.0.0.1:4800 behind the openvibe.wiki nginx vhost, principal wiki. Production content: 1 space, the 10 seed pages (1 revision each), 0 person reviews, so every page is noindex and nothing public is in Search yet. Restore drill passed 2026-09-23.",
+        "deployment": "Public at https://openvibe.wiki since 2026-09-23 (~03:00 UTC): deployed with `sudo ovhost deploy wiki`, /opt/openvibe.wiki, unit openvibe-wiki on 127.0.0.1:4800 behind the openvibe.wiki nginx vhost, principal wiki. On 2026-09-23 production held 1 space and the 10 seed pages (1 revision each), 0 person reviews, so every page was noindex and nothing public was in Search. Restore drill passed 2026-09-23.",
         "onOpenVibeSites": false,
         "seed": "official space \"openvibe\" (10 pages summarised with AI assistance from the repositories' README/STATUS files, cited; noindex until a person reviews each; 0 of 10 reviewed as of 2026-09-23)",
-        "updated": "2026-09-23",
-        "deployedAt": "2026-09-23"
+        "updated": "2026-09-28",
+        "deployedAt": "2026-09-23",
+        "features": [
+          "spaces with page trees and roles",
+          "immutable revisions with diff, revert and scheduled publication",
+          "citations and infobox values bound to the revision that used them",
+          "public, signed-in, VIP (OpenVibe.VIP), private and members-only visibility",
+          "Media attachments with a broken-asset state",
+          "Community discussion threads by reference",
+          "AI proposals that need a person's approval",
+          "space import bundles (owners only)",
+          "feeds, sitemaps and server-rendered pages useful without JavaScript",
+          "/api/v1 by capability",
+          "SDK outbox events and Search index documents",
+          "per-actor limits (openvibe-sdk/limits)"
+        ]
       }
     },
     {

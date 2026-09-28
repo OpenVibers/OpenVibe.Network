@@ -8,21 +8,21 @@ Deliverable 6. Current owner = the repo that creates the table; target owner = r
 
 | Current owner | Tables | Stay | Staged copy | Moved (mirror left) | To move | Frozen legacy | Investigate |
 |---|---|---|---|---|---|---|---|
-| OpenVibe.Live | 122 | 31 | 2 | 15 | 70 | 6 | 0 |
-| OpenVibe.Network | 60 | 57 | 0 | 0 | 3 | 0 | 0 |
+| OpenVibe.Live | 126 | 35 | 2 | 15 | 70 | 6 | 0 |
+| OpenVibe.Network | 78 | 75 | 0 | 0 | 3 | 0 | 0 |
 | OpenVibe.Shared | 2 | 2 | 0 | 0 | 0 | 0 | 0 |
-| OpenVibe.Media | 31 | 26 | 0 | 0 | 0 | 3 | 2 |
-| OpenVibe.Tools | 13 | 13 | 0 | 0 | 0 | 0 | 0 |
-| OpenVibe.Community | 36 | 35 | 0 | 0 | 0 | 0 | 1 |
-| OpenVibe.Games | 14 | 13 | 0 | 0 | 0 | 0 | 1 |
+| OpenVibe.Media | 37 | 32 | 0 | 0 | 0 | 3 | 2 |
+| OpenVibe.Tools | 14 | 14 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Community | 38 | 37 | 0 | 0 | 0 | 0 | 1 |
+| OpenVibe.Games | 15 | 14 | 0 | 0 | 0 | 0 | 1 |
 | OpenVibe.Sites | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| OpenVibe.Events | 7 | 7 | 0 | 0 | 0 | 0 | 0 |
-| OpenVibe.Chat | 41 | 35 | 6 | 0 | 0 | 0 | 0 |
+| OpenVibe.Events | 8 | 8 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.Chat | 42 | 36 | 6 | 0 | 0 | 0 | 0 |
 | OpenRe.Stream | 14 | 14 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.Billing | 19 | 19 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.Tips | 19 | 19 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.VIP | 15 | 15 | 0 | 0 | 0 | 0 | 0 |
-| OpenVibe.AI | 19 | 19 | 0 | 0 | 0 | 0 | 0 |
+| OpenVibe.AI | 20 | 20 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.Search | 21 | 21 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.Sources | 8 | 8 | 0 | 0 | 0 | 0 | 0 |
 | OpenVibe.Wiki | 22 | 22 | 0 | 0 | 0 | 0 | 0 |

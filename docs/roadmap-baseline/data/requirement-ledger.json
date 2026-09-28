@@ -2163,10 +2163,10 @@
     {
       "id": "D39",
       "title": "Mods",
-      "owner": "OpenVibe.Games (registry, grants and runtime today); OpenVibe.Contracts (mods/mod-manifest.v1, ADR-013); OpenVibe.Network (planned mod grants); OpenVibe.Host (Stage C sandbox)",
+      "owner": "OpenVibe.Games (registry, runtime, the hot path's copy of grants); OpenVibe.Network (mod principals and grants, mods.grant.manage); OpenVibe.Contracts (mods/mod-manifest.v1, ADR-013); OpenVibe.Host (Stage C sandbox)",
       "target": "mod manifests, capabilities, quotas, runtime adapters",
       "status": "partial",
-      "summary": "The mod manifest (Contracts mods/mod-manifest.v1, ADR-013 accepted 2026-09-23) and a Games-local registry are tested: grants are the approved subset, installs and grants are audited, and revoking a mod removes its effect on the next tick and across a restart. Only declarative games-content packs run. Executable runtimes are refused, and the CPU budget is metered and audited but not enforced. Network's mods.grant.manage capability is still `planned`, and on 2026-09-23 at 20:22 UTC production world.db held 0 mods, 0 grants and 0 audit rows.",
+      "summary": "The mod manifest (Contracts mods/mod-manifest.v1, ADR-013) and the Games registry are tested. Since 2026-09-27 every install is a Network principal mod:<id> whose grants Network holds (mods.grant.manage active; Games asks Network first, and network.mod.grants_changed keeps its copy current). The budget is enforced: 5 reconciles over cpuMs, or 3 minutes over 60 effects a minute, disable only the offending mod. Security tests cover namespace escape, event flood, resource budget and forged ownership. One production install -> grant -> use -> revoke run is recorded. Only declarative games-content packs run; executable runtimes wait for Host Stage C.",
       "artifacts": [
         {
           "kind": "test",
@@ -2193,23 +2193,40 @@
           "kind": "doc",
           "repo": "OpenVibe.Contracts",
           "path": "manifests/capabilities/mods.grant.manage.json",
-          "contains": "Until Network implements it, each runtime keeps the approved subset itself",
-          "proves": "Network-side mod principals and grants are not implemented: the status is planned and implementedBy is empty."
+          "contains": "\"status\": \"active\"",
+          "proves": "Network implements mod principals and grants: the capability is active."
+        },
+        {
+          "kind": "test",
+          "repo": "OpenVibe.Network",
+          "path": "test/mod-principals.test.js",
+          "contains": "another runtime can neither register nor change it",
+          "proves": "An install registers mod:<id> with the approved subset of what its manifest requests; the registering runtime owns it; staff changes carry a reason and an audit row; every change is announced with the complete approved set."
+        },
+        {
+          "kind": "test",
+          "repo": "OpenVibe.Games",
+          "path": "apps/server/src/mods/security.test.ts",
+          "contains": "forged ownership",
+          "proves": "Namespace escape, event flood, resource budget and forged ownership: a flooding or over-budget mod is disabled while the others run; props are always the mod's."
+        },
+        {
+          "kind": "test",
+          "repo": "OpenVibe.Games",
+          "path": "apps/server/src/mods/networkGrants.test.ts",
+          "contains": "installs with what Network approved",
+          "proves": "The mods API asks Network first and applies only its answer; an older grants_changed revision changes nothing."
         },
         {
           "kind": "prod",
-          "check": "ssh openvibe-ovh 'db=/opt/openvibe.games/data/world.db; sudo -n -u \"$(stat -c %U $db)\" sqlite3 -readonly $db \"SELECT count(*) FROM mods\"' (also mod_grants, mod_audit); curl -s http://127.0.0.1:8000/api/v1/mods",
-          "observed": "mods 0, mod_grants 0, mod_audit 0; /api/v1/mods -> {\"mods\":[]}",
-          "at": "2026-09-23T20:22Z",
-          "proves": "No mod has ever been installed, granted, used or revoked in production."
+          "check": "ssh openvibe-ovh: sudo sh -c '. /etc/openvibe/probe.env; cd /opt/openvibe.games && node --import tsx apps/server/scripts/modLifecycleProof.ts'",
+          "observed": "install 201 -> grant 200 -> use (prop placed) -> revoke 200 -> retract; the Network principal ended revoked with three network.mod.grants_changed events",
+          "at": "2026-09-27T23:45Z",
+          "proves": "One production install -> grant -> use -> revoke run with audit rows."
         }
       ],
       "remaining": [
-        "Network-side mod principals and grants (capability mods.grant.manage, still planned with implementedBy []): an install should create a mod:<id> principal whose grants Network checks, as ADR-013 decides",
-        "Quotas: the manifest's resource budget is only metered and audited in Games (runtime.ts budget_exceeded, with no test). Still to do: enforce it, prove that a budget breach terminates only the offending mod, and add an event-flood throttle, each with tests (roadmap §20 Mods)",
-        "Runtime adapters beyond declarative Games content packs: executable runtimes (source-quickjs, target games.source) are refused. Source.OpenVibe.Games has no adapter, and there is no live.overlay adapter. Sandboxed execution waits for Host Stage C",
-        "The §20 Mods acceptance tests still missing: namespace escape denied, and no forged Billing or Media ownership",
-        "One production install -> grant -> use -> revoke run with audit rows (production has 0 mods)"
+        "Runtime adapters beyond declarative Games content packs: executable runtimes (source-quickjs, target games.source) are refused. Source.OpenVibe.Games has no adapter, and there is no live.overlay adapter. Sandboxed execution waits for Host Stage C"
       ],
       "blockedOn": null,
       "ownerReview": false

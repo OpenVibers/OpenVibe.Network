@@ -2,37 +2,37 @@
  "_about": "Generated from data/requirement-ledger.json by scripts/roadmap-baseline/generate.js. Umbrella-level ledger (roadmap §22.4/§25): one row per D01-D46 requirement, every artifact re-verified against the scanned origin/main checkouts and prod-snapshot.json. Do not edit; edit the data file and regenerate.",
  "asOf": "2026-09-23T20:30Z",
  "generatedFrom": {
-  "OpenVibe.Live": "8caa540466f9af86247febdbba1339b68919a42f",
-  "OpenVibe.Network": "a7b99c7f8791a9ebe42b550d17e89b4599b26715",
-  "OpenVibe.Shared": "dbf9d39750e9f0dd0f19d8571d278eb303f3b83f",
-  "OpenVibe.Media": "b7fbe65029f38fd3ec6b10919eab9b8ba13df9d4",
-  "OpenVibe.Tools": "168e5110d062f076c2c4afe88e3fc3c53ab44613",
-  "OpenVibe.Community": "19441aa2511a7648f1dd3c1d9f70fe74e41cb530",
-  "OpenVibe.Games": "b207e78909f7d2927bbb2ebc802389b4dd4f2647",
-  "OpenVibe.Sites": "3802ee3d9ada9b8490134ece350420e627866a8c",
-  "OpenVibe.Events": "eb98f8cad2a738fec45f1c10e373081532c83e91",
-  "OpenVibe.Chat": "739d3a1cdc22fbb0717e4df4abd6b7e4ad31a8f1",
-  "OpenRe.Stream": "b34dcd688867f0c6ae6c16f03b206e1bd3cd7304",
-  "OpenVibe.Billing": "180e246a3a344c062f1c7435303f4aa748f17046",
-  "OpenVibe.Tips": "1d558c51e25b5c9a8f9a3e3312905103eb1fa879",
-  "OpenVibe.VIP": "4ddf723e72b141d05e55dfcbfd3126e20da3f47d",
-  "OpenVibe.AI": "c3ee6056b96d74a99b25ebebf671e86c9d9d4b24",
-  "OpenVibe.Search": "b00aa4c20c0f6e8d9a3a1c85f543ee2d384da050",
-  "OpenVibe.Sources": "29cd386241c44456ffcebf70b6be287fa9a08aaa",
-  "OpenVibe.Wiki": "38a17bddaba5748ed44622f204cb3a2716c7fd6a",
-  "OpenVibe.Blog": "79e9e153ca1308311993a31295fd471a8becaf8d",
-  "OpenVibe.News": "0860cf20dd3d8e8032caad300e0ce90497195b96",
-  "OpenVibe.Reviews": "cfc37ac5b72ecc7a4e913881d3c916a1f3823fa8",
-  "OpenVibe.Deals": "99bd438b40abd42502e3b2c4c57a62eaabd091a9",
-  "OpenVibe.Coupons": "348f585cd6549a5c506171fba0fc2c5462dede32",
-  "OpenVibe.Trade": "fa382881cd92ee90b6329699d7d79129e32a6325",
-  "OpenVibe.Codes": "0bfdf708ffae5d1ad02f8572ccbc9505b06ade82",
-  "OpenVibe.Host": "75147890e32dd63fd1363f843c87415f90d5b2dd",
-  "OpenVibe.Examples": "36901ffc052752754608df8764a9f2942069da9a"
+  "OpenVibe.Live": "03f49b7716b7cee1cce8a44e7155aeb96a67d004",
+  "OpenVibe.Network": "5a50c12a83f6501aacd663f15d3c06c718a4c83a",
+  "OpenVibe.Shared": "b5a9bd77171fcf75f42ff33fe86b7ad06baac1c8",
+  "OpenVibe.Media": "14cac06886649848c332cfa564aa6b3594ea09bc",
+  "OpenVibe.Tools": "4f4ed6e8f3f3c8e1a83dd644dd3c0659a7bccce4",
+  "OpenVibe.Community": "2da3501e28457fa4978c0bc4a1b3bfc9188b77b9",
+  "OpenVibe.Games": "eb2d00880d3231b2c68cb1753b4542044edef1e5",
+  "OpenVibe.Sites": "304e8b12b535f4b562f23027ae84f1a5d515cc6c",
+  "OpenVibe.Events": "19919ece79707eed051c3f18ab37b7fdb6d939a6",
+  "OpenVibe.Chat": "d87c8d3c906ad52ef8bf123ce60373fdefcf09e6",
+  "OpenRe.Stream": "c77ec2a9a1e350fb4ae1c646ec74693fae4f2fa3",
+  "OpenVibe.Billing": "f24684bb84ec1670bd08670891e6742fa433a548",
+  "OpenVibe.Tips": "13986b59e697d12a328a4f12e993295445ca40be",
+  "OpenVibe.VIP": "95b3e196daa152c2e7f8e940a1f02b7fe32706ba",
+  "OpenVibe.AI": "6c8b8338be936cbd3a6f50dee3f790807f145a0e",
+  "OpenVibe.Search": "e8511d849720534a9ffcd54b052663111e5b1e6f",
+  "OpenVibe.Sources": "167085388a637eed3f0d47b3c6eabb8c9d00814d",
+  "OpenVibe.Wiki": "3302540e8b5fdf3c07db9fce688be2f4ab8b847b",
+  "OpenVibe.Blog": "8a7f8ebe862b0e1c0bb119ee96c42f38fc0e5321",
+  "OpenVibe.News": "97dae43a2d41c5528bbb4c93ff2ea7ea456203dd",
+  "OpenVibe.Reviews": "c87b34440b0d50bc2cdf6c136775002ed9080c1e",
+  "OpenVibe.Deals": "533450f9cc4a358ba50f353f06826ec3611b4ddc",
+  "OpenVibe.Coupons": "b91cd795e8ee4a3e49317a6e3cb000fa92da9325",
+  "OpenVibe.Trade": "273bce7b1b8771037bc2a660fa8784dc1aa049a7",
+  "OpenVibe.Codes": "7d6f65ac198d95f70ac840c24d03d1407affb7a9",
+  "OpenVibe.Host": "6d2aaaa630e29d2bfd261a7f75cbbbaa2b8c1d46",
+  "OpenVibe.Examples": "92eb7c3b0f50fea9f76086ed3eeda3664de93494"
  },
  "prodSnapshot": {
   "host": "openvibe-oregon",
-  "collectedAt": "2026-09-26T13:29:03.103Z"
+  "collectedAt": "2026-09-28T03:25:35.860Z"
  },
  "statuses": {
   "met": "the §15.0 required target is demonstrated by current evidence: a test that exercises it, and production evidence where the target is a production authority or state.",
@@ -149,7 +149,7 @@
    "metrics": [
     {
      "key": "outbound.call-sites",
-     "value": "107 caller-file/target pairs across 76 files"
+     "value": "112 caller-file/target pairs across 82 files"
     },
     {
      "key": "ws.servers",
@@ -196,7 +196,7 @@
     },
     {
      "key": "tests.OpenRe.Stream",
-     "value": "19 test files"
+     "value": "21 test files"
     }
    ]
   },
@@ -219,7 +219,7 @@
     },
     {
      "key": "tests.OpenVibe.Chat",
-     "value": "35 test files"
+     "value": "48 test files"
     }
    ]
   },
@@ -239,7 +239,7 @@
    "metrics": [
     {
      "key": "tables.OpenVibe.Community",
-     "value": "33 tables"
+     "value": "35 tables"
     },
     {
      "key": "tables.OpenVibe.Live.target:OpenVibe.Community",
@@ -266,7 +266,7 @@
     },
     {
      "key": "tests.OpenVibe.Billing",
-     "value": "21 test files"
+     "value": "22 test files"
     }
    ]
   },
@@ -283,7 +283,7 @@
    "metrics": [
     {
      "key": "tests.OpenVibe.Tools",
-     "value": "49 test files"
+     "value": "61 test files"
     }
    ]
   },
@@ -300,7 +300,7 @@
    "metrics": [
     {
      "key": "tests.OpenVibe.Games",
-     "value": "76 test files"
+     "value": "82 test files"
     }
    ]
   },
@@ -318,11 +318,11 @@
    "metrics": [
     {
      "key": "tests.OpenVibe.Codes",
-     "value": "27 test files"
+     "value": "34 test files"
     },
     {
      "key": "tests.OpenVibe.Host",
-     "value": "38 test files"
+     "value": "48 test files"
     }
    ]
   },
@@ -346,7 +346,7 @@
     },
     {
      "key": "tests.OpenVibe.AI",
-     "value": "20 test files"
+     "value": "26 test files"
     }
    ]
   },
@@ -375,7 +375,7 @@
    "metrics": [
     {
      "key": "outbound.internal-key",
-     "value": "40 of 107 call sites authenticate with the shared internal key"
+     "value": "40 of 112 call sites authenticate with the shared internal key"
     }
    ]
   },
@@ -404,11 +404,11 @@
    "metrics": [
     {
      "key": "shared.pins",
-     "value": "24 repos pin a tagged openvibe-shared release (latest v1.22.0): OpenRe.Stream v1.22.0, AI v1.22.0, Billing v1.22.0, Blog v1.22.0, Chat v1.22.0, Codes v1.22.0, Community v1.22.0, Coupons v1.22.0, Deals v1.22.0, Events v1.22.0, Host v1.22.0, Live v1.22.0, Media v1.22.0, Network v1.22.0, News v1.22.0, Reviews v1.22.0, Search v1.22.0, Sites v1.22.0, Sources v1.22.0, Tips v1.22.0, Tools v1.22.0, Trade v1.22.0, VIP v1.22.0, Wiki v1.22.0"
+     "value": "25 repos pin a tagged openvibe-shared release (latest v1.23.1): OpenRe.Stream v1.22.0, AI v1.22.0, Billing v1.22.0, Blog v1.22.0, Chat v1.22.0, Codes v1.22.0, Community v1.22.0, Coupons v1.22.0, Deals v1.22.0, Events v1.22.0, Games v1.23.0, Host v1.22.0, Live v1.23.1, Media v1.22.0, Network v1.22.0, News v1.22.0, Reviews v1.22.0, Search v1.22.0, Sites v1.23.0, Sources v1.22.0, Tips v1.22.0, Tools v1.23.0, Trade v1.22.0, VIP v1.22.0, Wiki v1.22.0"
     },
     {
      "key": "shared.drift",
-     "value": "0 manifests unpinned or behind: none"
+     "value": "31 manifests unpinned or behind: OpenRe.Stream (v1.22.0), AI (v1.22.0), Billing (v1.22.0), Blog (v1.22.0), Chat (v1.22.0), Codes (v1.22.0), Community (v1.22.0), Coupons (v1.22.0), Deals (v1.22.0), Events (v1.22.0), Games/apps/server (v1.23.0), Host (v1.22.0), Media (v1.22.0), Network (v1.22.0), News (v1.22.0), Reviews (v1.22.0), Search (v1.22.0), Sites (v1.23.0), Sources (v1.22.0), Tips (v1.22.0), Tools/apps/audio (v1.23.0), Tools/apps/docs (v1.23.0), Tools/apps/food (v1.23.0), Tools/apps/gateway (v1.23.0), Tools/apps/img (v1.23.0), Tools/apps/maps (v1.23.0), Tools/apps/text (v1.23.0), Tools/apps/yt (v1.23.0), Trade (v1.22.0), VIP (v1.22.0), Wiki (v1.22.0)"
     }
    ]
   },
@@ -449,7 +449,7 @@
    "metrics": [
     {
      "key": "deploy.drift",
-     "value": "1 service(s) not running origin/main"
+     "value": "25 service(s) not running origin/main"
     }
    ]
   },
@@ -2678,10 +2678,10 @@
   {
    "id": "D39",
    "title": "Mods",
-   "owner": "OpenVibe.Games (registry, grants and runtime today); OpenVibe.Contracts (mods/mod-manifest.v1, ADR-013); OpenVibe.Network (planned mod grants); OpenVibe.Host (Stage C sandbox)",
+   "owner": "OpenVibe.Games (registry, runtime, the hot path's copy of grants); OpenVibe.Network (mod principals and grants, mods.grant.manage); OpenVibe.Contracts (mods/mod-manifest.v1, ADR-013); OpenVibe.Host (Stage C sandbox)",
    "target": "mod manifests, capabilities, quotas, runtime adapters",
    "status": "partial",
-   "summary": "The mod manifest (Contracts mods/mod-manifest.v1, ADR-013 accepted 2026-09-23) and a Games-local registry are tested: grants are the approved subset, installs and grants are audited, and revoking a mod removes its effect on the next tick and across a restart. Only declarative games-content packs run. Executable runtimes are refused, and the CPU budget is metered and audited but not enforced. Network's mods.grant.manage capability is still `planned`, and on 2026-09-23 at 20:22 UTC production world.db held 0 mods, 0 grants and 0 audit rows.",
+   "summary": "The mod manifest (Contracts mods/mod-manifest.v1, ADR-013) and the Games registry are tested. Since 2026-09-27 every install is a Network principal mod:<id> whose grants Network holds (mods.grant.manage active; Games asks Network first, and network.mod.grants_changed keeps its copy current). The budget is enforced: 5 reconciles over cpuMs, or 3 minutes over 60 effects a minute, disable only the offending mod. Security tests cover namespace escape, event flood, resource budget and forged ownership. One production install -> grant -> use -> revoke run is recorded. Only declarative games-content packs run; executable runtimes wait for Host Stage C.",
    "artifacts": [
     {
      "kind": "test",
@@ -2711,25 +2711,45 @@
      "kind": "doc",
      "repo": "OpenVibe.Contracts",
      "path": "manifests/capabilities/mods.grant.manage.json",
-     "contains": "Until Network implements it, each runtime keeps the approved subset itself",
-     "proves": "Network-side mod principals and grants are not implemented: the status is planned and implementedBy is empty.",
+     "contains": "\"status\": \"active\"",
+     "proves": "Network implements mod principals and grants: the capability is active.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Network",
+     "path": "test/mod-principals.test.js",
+     "contains": "another runtime can neither register nor change it",
+     "proves": "An install registers mod:<id> with the approved subset of what its manifest requests; the registering runtime owns it; staff changes carry a reason and an audit row; every change is announced with the complete approved set.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Games",
+     "path": "apps/server/src/mods/security.test.ts",
+     "contains": "forged ownership",
+     "proves": "Namespace escape, event flood, resource budget and forged ownership: a flooding or over-budget mod is disabled while the others run; props are always the mod's.",
+     "ok": true
+    },
+    {
+     "kind": "test",
+     "repo": "OpenVibe.Games",
+     "path": "apps/server/src/mods/networkGrants.test.ts",
+     "contains": "installs with what Network approved",
+     "proves": "The mods API asks Network first and applies only its answer; an older grants_changed revision changes nothing.",
      "ok": true
     },
     {
      "kind": "prod",
-     "check": "ssh openvibe-ovh 'db=/opt/openvibe.games/data/world.db; sudo -n -u \"$(stat -c %U $db)\" sqlite3 -readonly $db \"SELECT count(*) FROM mods\"' (also mod_grants, mod_audit); curl -s http://127.0.0.1:8000/api/v1/mods",
-     "observed": "mods 0, mod_grants 0, mod_audit 0; /api/v1/mods -> {\"mods\":[]}",
-     "at": "2026-09-23T20:22Z",
-     "proves": "No mod has ever been installed, granted, used or revoked in production.",
+     "check": "ssh openvibe-ovh: sudo sh -c '. /etc/openvibe/probe.env; cd /opt/openvibe.games && node --import tsx apps/server/scripts/modLifecycleProof.ts'",
+     "observed": "install 201 -> grant 200 -> use (prop placed) -> revoke 200 -> retract; the Network principal ended revoked with three network.mod.grants_changed events",
+     "at": "2026-09-27T23:45Z",
+     "proves": "One production install -> grant -> use -> revoke run with audit rows.",
      "ok": true
     }
    ],
    "remaining": [
-    "Network-side mod principals and grants (capability mods.grant.manage, still planned with implementedBy []): an install should create a mod:<id> principal whose grants Network checks, as ADR-013 decides",
-    "Quotas: the manifest's resource budget is only metered and audited in Games (runtime.ts budget_exceeded, with no test). Still to do: enforce it, prove that a budget breach terminates only the offending mod, and add an event-flood throttle, each with tests (roadmap §20 Mods)",
-    "Runtime adapters beyond declarative Games content packs: executable runtimes (source-quickjs, target games.source) are refused. Source.OpenVibe.Games has no adapter, and there is no live.overlay adapter. Sandboxed execution waits for Host Stage C",
-    "The §20 Mods acceptance tests still missing: namespace escape denied, and no forged Billing or Media ownership",
-    "One production install -> grant -> use -> revoke run with audit rows (production has 0 mods)"
+    "Runtime adapters beyond declarative Games content packs: executable runtimes (source-quickjs, target games.source) are refused. Source.OpenVibe.Games has no adapter, and there is no live.overlay adapter. Sandboxed execution waits for Host Stage C"
    ],
    "blockedOn": null,
    "ownerReview": false,

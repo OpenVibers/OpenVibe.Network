@@ -600,6 +600,38 @@
       "disposition": "keep",
       "wave": "W9",
       "note": "Live's side of Tips delivery idempotency (Idempotency-Key -> stored response, pruned after 7 days); Live renders the delivery."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^account_data_events$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "server/auth/account-data.js: which network.account.export_requested / deleted events Live has answered (ADR-033), so a redelivery is applied once."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^subject_merges$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "server/auth/subject-merge.js: the network.subject.merged events Live has applied (ADR-029), once each."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^follow_projection_revisions$",
+      "target": "keep",
+      "disposition": "projection",
+      "wave": "-",
+      "note": "server/social/network-follows.js: the per-pair revision of Live's follows projection of Network's graph (ADR-030); an older network.follow.* event changes nothing."
+    },
+    {
+      "repo": "OpenVibe.Live",
+      "match": "^lineage_unresolved$",
+      "target": "keep",
+      "disposition": "keep",
+      "wave": "-",
+      "note": "server/lineage/unresolved.js: media and session references the lineage resolver could not resolve yet, for the operator view (WS-H task 8)."
     }
   ],
   "_routeDispositions": {

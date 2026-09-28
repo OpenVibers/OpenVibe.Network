@@ -1,61 +1,61 @@
 {
   "host": "openvibe-oregon",
-  "collectedAt": "2026-09-26T13:29:03.103Z",
+  "collectedAt": "2026-09-28T03:25:35.860Z",
   "deployments": {
     "ai": {
       "path": "/opt/openvibe.ai",
-      "sha": "c3ee6056b96d74a99b25ebebf671e86c9d9d4b24",
-      "committedAt": "2026-09-26T06:09:19-07:00"
+      "sha": "549bed09452233c6b21d529ab905a7bd8fbad4da",
+      "committedAt": "2026-09-27T19:43:37-07:00"
     },
     "billing": {
       "path": "/opt/openvibe.billing",
-      "sha": "180e246a3a344c062f1c7435303f4aa748f17046",
-      "committedAt": "2026-09-26T06:09:39-07:00"
+      "sha": "80f97aabbecb0fcb81842480166533ff0452c8a5",
+      "committedAt": "2026-09-27T19:45:09-07:00"
     },
     "blog": {
       "path": "/opt/openvibe.blog",
-      "sha": "79e9e153ca1308311993a31295fd471a8becaf8d",
-      "committedAt": "2026-09-26T06:09:58-07:00"
+      "sha": "21d537c6e6b90712512916e4d7377d581ee2f646",
+      "committedAt": "2026-09-27T18:49:25-07:00"
     },
     "chat": {
       "path": "/opt/openvibe.chat",
-      "sha": "739d3a1cdc22fbb0717e4df4abd6b7e4ad31a8f1",
-      "committedAt": "2026-09-26T06:12:38-07:00"
+      "sha": "3aab730c5105594523ed58ab0643c6eedc6b5214",
+      "committedAt": "2026-09-27T19:10:37-07:00"
     },
     "codes": {
       "path": "/opt/openvibe.codes",
-      "sha": "0bfdf708ffae5d1ad02f8572ccbc9505b06ade82",
-      "committedAt": "2026-09-26T06:13:08-07:00"
+      "sha": "d78de7052c08dc38c6e2c400a0b63a1b00793f1f",
+      "committedAt": "2026-09-27T18:55:28-07:00"
     },
     "community": {
       "path": "/opt/openvibe.community",
-      "sha": "19441aa2511a7648f1dd3c1d9f70fe74e41cb530",
-      "committedAt": "2026-09-26T06:13:46-07:00"
+      "sha": "52d923a941f659ccfc7cb442efb2b10349663175",
+      "committedAt": "2026-09-27T18:07:00-07:00"
     },
     "coupons": {
       "path": "/opt/openvibe.coupons",
-      "sha": "348f585cd6549a5c506171fba0fc2c5462dede32",
-      "committedAt": "2026-09-26T06:13:57-07:00"
+      "sha": "64835d2a1c926e89116a35218d7a2d081f38b67a",
+      "committedAt": "2026-09-27T19:02:19-07:00"
     },
     "deals": {
       "path": "/opt/openvibe.deals",
-      "sha": "99bd438b40abd42502e3b2c4c57a62eaabd091a9",
-      "committedAt": "2026-09-26T06:14:11-07:00"
+      "sha": "fa0582d267ef61e7b141299008d6239dd34f49ce",
+      "committedAt": "2026-09-27T18:58:50-07:00"
     },
     "events": {
       "path": "/opt/openvibe.events",
-      "sha": "eb98f8cad2a738fec45f1c10e373081532c83e91",
-      "committedAt": "2026-09-26T06:14:37-07:00"
+      "sha": "f55f7eb601be58220089c197f7dd2178b46d8d15",
+      "committedAt": "2026-09-27T19:55:58-07:00"
     },
     "games": {
       "path": "/opt/openvibe.games",
-      "sha": "b207e78909f7d2927bbb2ebc802389b4dd4f2647",
-      "committedAt": "2026-09-26T05:39:23-07:00"
+      "sha": "51d86883a1dc1fb4098866fd2426516e09e05335",
+      "committedAt": "2026-09-27T19:29:46-07:00"
     },
     "host": {
       "path": "/opt/openvibe.host",
-      "sha": "75147890e32dd63fd1363f843c87415f90d5b2dd",
-      "committedAt": "2026-09-26T06:15:11-07:00"
+      "sha": "2b633899f41b559586e3d6c234925d498c7bf2cd",
+      "committedAt": "2026-09-27T19:35:46-07:00"
     },
     "live": {
       "path": "/opt/openvibe.live",
@@ -64,70 +64,70 @@
     },
     "media": {
       "path": "/opt/openvibe.media",
-      "sha": "b7fbe65029f38fd3ec6b10919eab9b8ba13df9d4",
-      "committedAt": "2026-09-26T06:16:26-07:00"
+      "sha": "62483631db9b9c120662abf2b21d4cff0a2bdc80",
+      "committedAt": "2026-09-27T19:50:40-07:00"
     },
     "network": {
       "path": "/opt/openvibe.network",
-      "sha": "a7b99c7f8791a9ebe42b550d17e89b4599b26715",
-      "committedAt": "2026-09-26T06:27:40-07:00"
+      "sha": "ddd87b6844fad1f0f878ed574ce0e2c990e5e695",
+      "committedAt": "2026-09-27T19:26:13-07:00"
     },
     "news": {
       "path": "/opt/openvibe.news",
-      "sha": "0860cf20dd3d8e8032caad300e0ce90497195b96",
-      "committedAt": "2026-09-26T06:17:45-07:00"
+      "sha": "8ab47a6a78168e1b25ac07c01aeb3a0bb743bbb9",
+      "committedAt": "2026-09-27T19:20:19-07:00"
     },
     "reviews": {
       "path": "/opt/openvibe.reviews",
-      "sha": "cfc37ac5b72ecc7a4e913881d3c916a1f3823fa8",
-      "committedAt": "2026-09-26T06:18:06-07:00"
+      "sha": "1cff36b8b9d385c4effb323f0506ede106b18d22",
+      "committedAt": "2026-09-27T19:23:25-07:00"
     },
     "search": {
       "path": "/opt/openvibe.search",
-      "sha": "b00aa4c20c0f6e8d9a3a1c85f543ee2d384da050",
-      "committedAt": "2026-09-26T06:18:19-07:00"
+      "sha": "8ed7667ff1e383271ddcc67c709be1bf5e1ba43d",
+      "committedAt": "2026-09-27T17:59:00-07:00"
     },
     "sites": {
       "path": "/opt/openvibe.sites",
-      "sha": "3802ee3d9ada9b8490134ece350420e627866a8c",
-      "committedAt": "2026-09-26T06:18:20-07:00"
+      "sha": "32464ecd99ae34236fdb12039fa904f010941ff4",
+      "committedAt": "2026-09-27T14:01:00-07:00"
     },
     "sources": {
       "path": "/opt/openvibe.sources",
-      "sha": "29cd386241c44456ffcebf70b6be287fa9a08aaa",
-      "committedAt": "2026-09-26T06:18:36-07:00"
+      "sha": "351383e8111395668a16f66b11d659549c6483fb",
+      "committedAt": "2026-09-27T19:29:11-07:00"
     },
     "tips": {
       "path": "/opt/openvibe.tips",
-      "sha": "1d558c51e25b5c9a8f9a3e3312905103eb1fa879",
-      "committedAt": "2026-09-26T06:18:52-07:00"
+      "sha": "1e6bfbb8294c9401c46c066457b165c24bc90d02",
+      "committedAt": "2026-09-27T18:11:05-07:00"
     },
     "tools": {
       "path": "/opt/openvibe.tools",
-      "sha": "168e5110d062f076c2c4afe88e3fc3c53ab44613",
-      "committedAt": "2026-09-26T06:20:57-07:00"
+      "sha": "e55469f2bf9ede55f08b5fb58951a00d375595b9",
+      "committedAt": "2026-09-27T19:38:13-07:00"
     },
     "trade": {
       "path": "/opt/openvibe.trade",
-      "sha": "fa382881cd92ee90b6329699d7d79129e32a6325",
-      "committedAt": "2026-09-26T06:21:08-07:00"
+      "sha": "4658447782c7d259e59d8c1060fd05c60cf66574",
+      "committedAt": "2026-09-27T19:26:12-07:00"
     },
     "vip": {
       "path": "/opt/openvibe.vip",
-      "sha": "4ddf723e72b141d05e55dfcbfd3126e20da3f47d",
-      "committedAt": "2026-09-26T06:21:19-07:00"
+      "sha": "0fbcbb53802d2bd4e4dc6e393465a1fce1fc75a9",
+      "committedAt": "2026-09-27T18:14:01-07:00"
     },
     "wiki": {
       "path": "/opt/openvibe.wiki",
-      "sha": "38a17bddaba5748ed44622f204cb3a2716c7fd6a",
-      "committedAt": "2026-09-26T06:21:43-07:00"
+      "sha": "32a26ef43c5f4ac2c02c813f0ba68fda5f8cd5cf",
+      "committedAt": "2026-09-27T18:44:27-07:00"
     },
     "openre": {
       "path": "/opt/openre.stream",
       "layout": "release",
-      "release": "b34dcd688867",
-      "sha": "b34dcd688867f0c6ae6c16f03b206e1bd3cd7304",
-      "committedAt": "2026-09-26T06:08:48-07:00"
+      "release": "cf423e377878",
+      "sha": "cf423e377878eb60e449205a670130e6febb6b07",
+      "committedAt": "2026-09-27T19:32:33-07:00"
     }
   },
   "units": [
@@ -162,6 +162,18 @@
       "sub": "running"
     },
     {
+      "unit": "openvibe-alerts.service",
+      "load": "loaded",
+      "active": "inactive",
+      "sub": "dead"
+    },
+    {
+      "unit": "openvibe-alerts.timer",
+      "load": "loaded",
+      "active": "active",
+      "sub": "waiting"
+    },
+    {
       "unit": "openvibe-backup.service",
       "load": "loaded",
       "active": "inactive",
@@ -184,6 +196,18 @@
       "load": "loaded",
       "active": "active",
       "sub": "running"
+    },
+    {
+      "unit": "openvibe-browsercheck.service",
+      "load": "loaded",
+      "active": "inactive",
+      "sub": "dead"
+    },
+    {
+      "unit": "openvibe-browsercheck.timer",
+      "load": "loaded",
+      "active": "active",
+      "sub": "waiting"
     },
     {
       "unit": "openvibe-chat.service",
@@ -253,6 +277,12 @@
     },
     {
       "unit": "openvibe-live.socket",
+      "load": "loaded",
+      "active": "active",
+      "sub": "running"
+    },
+    {
+      "unit": "openvibe-llm.service",
       "load": "loaded",
       "active": "active",
       "sub": "running"
@@ -456,9 +486,10 @@
     },
     {
       "file": "/opt/openvibe.games/data/world.db",
-      "bytes": 507904,
+      "bytes": 610304,
       "owner": "ubuntu",
       "tables": [
+        "account_data_events",
         "constraints",
         "event_outbox",
         "guest_ips",
@@ -477,7 +508,7 @@
     },
     {
       "file": "/opt/openvibe.live/shared/data/analytics.db",
-      "bytes": 518029312,
+      "bytes": 525406208,
       "owner": "ubuntu",
       "tables": [
         "analytics_daily",
@@ -990,6 +1021,175 @@
       ]
     },
     {
+      "file": "/opt/openvibe.live/shared/data/backups/live-pre-identity-contract-20260928-001702Z.db",
+      "bytes": 284688384,
+      "owner": "ubuntu",
+      "tables": [
+        "account_data_events",
+        "ai_chatbot_configs",
+        "ai_timeline_cache",
+        "ai_usage",
+        "ai_viewer_log",
+        "ai_viewer_threads",
+        "anon_ip_mappings",
+        "api_keys",
+        "api_tokens",
+        "app_state",
+        "approved_ips",
+        "arena_achievements",
+        "arena_battles",
+        "arena_beef_hype",
+        "arena_beef_sides",
+        "arena_beefs",
+        "arena_events",
+        "arena_mic_moments",
+        "arena_profiles",
+        "arena_talk",
+        "arena_talk_hype",
+        "arena_talk_session_hype",
+        "arena_talk_session_topics",
+        "arena_talk_sessions",
+        "arena_talk_topics",
+        "arena_tier_paid",
+        "arena_topic_hype",
+        "arena_topic_members",
+        "arena_topic_moments",
+        "arena_topic_progress",
+        "arena_topic_sides",
+        "arena_topic_threads",
+        "arena_topics",
+        "arena_trash_levels",
+        "arena_viewer_clout",
+        "arena_votes",
+        "arena_xp_log",
+        "bans",
+        "camera_presets",
+        "camera_profiles",
+        "cameras",
+        "canvas_actions",
+        "canvas_bans",
+        "canvas_region_locks",
+        "canvas_settings",
+        "canvas_snapshots",
+        "canvas_tiles",
+        "canvas_user_overrides",
+        "channel_ai_bots",
+        "channel_ai_config",
+        "channel_moderation_settings",
+        "channel_moderators",
+        "channel_points",
+        "channel_points_log",
+        "channel_sounds",
+        "channels",
+        "chat_ai_summaries",
+        "chat_bridge_outbox",
+        "chat_dual_read_stats",
+        "chat_messages",
+        "chat_staged_outbox",
+        "chat_timeline_events",
+        "chatter_profiles",
+        "chatter_subjects",
+        "chatter_xp_log",
+        "clip_ai_state",
+        "clips",
+        "coin_redemptions",
+        "coin_rewards",
+        "coin_transactions",
+        "comment_thread_refs",
+        "comments",
+        "content_views",
+        "control_config_buttons",
+        "control_configs",
+        "control_whitelist",
+        "dm_blocks",
+        "dm_conversations",
+        "dm_messages",
+        "dm_participants",
+        "donation_goals",
+        "easter_egg_solves",
+        "emotes",
+        "event_outbox",
+        "follows",
+        "game_achievements",
+        "game_bank",
+        "game_battle_stats",
+        "game_daily_quest_claims",
+        "game_daily_quest_progress",
+        "game_dungeon_runs",
+        "game_effects",
+        "game_farm_plots",
+        "game_fish_collection",
+        "game_inventory",
+        "game_leaderboard",
+        "game_players",
+        "game_recipes",
+        "game_structures",
+        "game_world_state",
+        "hidden_relay_users",
+        "idempotency_receipts",
+        "ip_log",
+        "kick_channel_cache",
+        "linked_accounts",
+        "managed_streams",
+        "media_request_settings",
+        "media_requests",
+        "moderation_actions",
+        "moderation_events_backfill",
+        "module_summary_pushes",
+        "news_settings",
+        "openre_sessions",
+        "paste_comments",
+        "paste_likes",
+        "pastes",
+        "payment_orders",
+        "pending_ip_messages",
+        "platform_connections",
+        "powerchat_connections",
+        "powerchat_webhook_deliveries",
+        "promo_claims",
+        "relay_users",
+        "restream_destinations",
+        "robotstreamer_integrations",
+        "schema_migrations",
+        "search_doc_pushes",
+        "search_media_pushes",
+        "site_settings",
+        "stream_analytics",
+        "stream_controls",
+        "stream_first_chats",
+        "stream_memories",
+        "stream_recaps",
+        "stream_timeline_events",
+        "streamer_overviews",
+        "streams",
+        "subject_projection",
+        "subscriptions",
+        "tag_guardian_defeats",
+        "themes",
+        "token_revocations",
+        "transactions",
+        "translations",
+        "tts_voice_overrides",
+        "user_cosmetics",
+        "user_equipped",
+        "user_equipped_tag",
+        "user_preferences",
+        "user_tags",
+        "user_themes",
+        "username_history",
+        "users",
+        "verification_keys",
+        "vibe_coding_events",
+        "vibe_coding_sessions",
+        "viewer_samples",
+        "viewer_snapshots",
+        "vod_ai_state",
+        "vods",
+        "vpn_approvals",
+        "watch_time"
+      ]
+    },
+    {
       "file": "/opt/openvibe.live/shared/data/hobo.db",
       "bytes": 0,
       "owner": "ubuntu",
@@ -1155,9 +1355,10 @@
     },
     {
       "file": "/opt/openvibe.live/shared/data/live.db",
-      "bytes": 284057600,
+      "bytes": 284700672,
       "owner": "ubuntu",
       "tables": [
+        "account_data_events",
         "ai_chatbot_configs",
         "ai_timeline_cache",
         "ai_usage",
@@ -1399,9 +1600,10 @@
     },
     {
       "file": "/opt/openvibe.media/data/media.db",
-      "bytes": 11538432,
+      "bytes": 11735040,
       "owner": "ubuntu",
       "tables": [
+        "account_data_events",
         "apps",
         "assets",
         "clips",
@@ -1417,6 +1619,10 @@
         "media_locations",
         "media_namespaces",
         "media_object_changes",
+        "media_object_tier_decisions",
+        "media_object_view_salts",
+        "media_object_viewer_days",
+        "media_object_views_daily",
         "media_objects",
         "media_quota_reservations",
         "media_relationships",
@@ -1467,6 +1673,149 @@
         "search_doc_pushes",
         "token_revocations",
         "vods"
+      ]
+    },
+    {
+      "file": "/opt/openvibe.network/data/backups/network-pre-creator-analytics-20260926.db",
+      "bytes": 292413440,
+      "owner": "ubuntu",
+      "tables": [
+        "analytics_daily",
+        "analytics_day_salts",
+        "analytics_events",
+        "analytics_hourly",
+        "analytics_rate_tracking",
+        "analytics_visitor_days",
+        "anon_ip_log",
+        "anon_users",
+        "audit_log",
+        "coin_transactions",
+        "creator_streams",
+        "dev_apps",
+        "dev_audit",
+        "dev_auth_codes",
+        "dev_credentials",
+        "dev_grants",
+        "dev_project_members",
+        "dev_projects",
+        "dev_quotas",
+        "dev_usage_daily",
+        "dev_usage_errors",
+        "dev_usage_windows",
+        "email_delivery_log",
+        "email_verification_tokens",
+        "follow_import_holds",
+        "follows",
+        "frame_cache",
+        "frame_hits",
+        "identity_legacy_map",
+        "ip_log",
+        "linked_accounts",
+        "moderation_audit",
+        "network_event_inbox",
+        "network_event_outbox",
+        "notification_preferences",
+        "notifications",
+        "oauth_clients",
+        "oauth_codes",
+        "oauth_tokens",
+        "operator_alerts",
+        "password_reset_tokens",
+        "principal_grant_changes",
+        "principal_grants",
+        "principal_usage",
+        "push_subscriptions",
+        "site_settings",
+        "status_incident_updates",
+        "status_incidents",
+        "stream_live_announcements",
+        "themes",
+        "tool_domains",
+        "url_registry",
+        "user_blocks",
+        "user_effects",
+        "user_follows",
+        "user_history",
+        "user_module_retirements",
+        "user_module_revisions",
+        "user_modules",
+        "user_preferences",
+        "user_profile_changes",
+        "user_sessions",
+        "username_history",
+        "users",
+        "verification_keys",
+        "wallets"
+      ]
+    },
+    {
+      "file": "/opt/openvibe.network/data/backups/network-pre-follows-20260926.db",
+      "bytes": 292061184,
+      "owner": "ubuntu",
+      "tables": [
+        "analytics_daily",
+        "analytics_day_salts",
+        "analytics_events",
+        "analytics_hourly",
+        "analytics_rate_tracking",
+        "analytics_visitor_days",
+        "anon_ip_log",
+        "anon_users",
+        "audit_log",
+        "coin_transactions",
+        "dev_apps",
+        "dev_audit",
+        "dev_auth_codes",
+        "dev_credentials",
+        "dev_grants",
+        "dev_project_members",
+        "dev_projects",
+        "dev_quotas",
+        "dev_usage_daily",
+        "dev_usage_errors",
+        "dev_usage_windows",
+        "email_delivery_log",
+        "email_verification_tokens",
+        "follow_import_holds",
+        "follows",
+        "frame_cache",
+        "frame_hits",
+        "identity_legacy_map",
+        "ip_log",
+        "linked_accounts",
+        "moderation_audit",
+        "network_event_inbox",
+        "network_event_outbox",
+        "notification_preferences",
+        "notifications",
+        "oauth_clients",
+        "oauth_codes",
+        "oauth_tokens",
+        "operator_alerts",
+        "password_reset_tokens",
+        "principal_grant_changes",
+        "principal_grants",
+        "principal_usage",
+        "push_subscriptions",
+        "site_settings",
+        "stream_live_announcements",
+        "themes",
+        "tool_domains",
+        "url_registry",
+        "user_blocks",
+        "user_effects",
+        "user_follows",
+        "user_history",
+        "user_module_retirements",
+        "user_module_revisions",
+        "user_modules",
+        "user_preferences",
+        "user_profile_changes",
+        "user_sessions",
+        "username_history",
+        "users",
+        "verification_keys",
+        "wallets"
       ]
     },
     {
@@ -1589,9 +1938,15 @@
     },
     {
       "file": "/opt/openvibe.network/data/network.db",
-      "bytes": 290332672,
+      "bytes": 302370816,
       "owner": "ubuntu",
       "tables": [
+        "account_deletion_confirmations",
+        "account_deletions",
+        "account_export_parts",
+        "account_exports",
+        "account_merge_intents",
+        "account_merges",
         "analytics_daily",
         "analytics_day_salts",
         "analytics_events",
@@ -1602,6 +1957,7 @@
         "anon_users",
         "audit_log",
         "coin_transactions",
+        "creator_streams",
         "dev_apps",
         "dev_audit",
         "dev_auth_codes",
@@ -1610,14 +1966,20 @@
         "dev_project_members",
         "dev_projects",
         "dev_quotas",
+        "dev_usage_daily",
+        "dev_usage_errors",
+        "dev_usage_windows",
         "email_delivery_log",
         "email_verification_tokens",
+        "follow_import_holds",
         "follows",
         "frame_cache",
         "frame_hits",
         "identity_legacy_map",
         "ip_log",
         "linked_accounts",
+        "mod_principal_grants",
+        "mod_principals",
         "moderation_audit",
         "network_event_inbox",
         "network_event_outbox",
@@ -1626,18 +1988,23 @@
         "oauth_clients",
         "oauth_codes",
         "oauth_tokens",
+        "operator_alerts",
         "password_reset_tokens",
         "principal_grant_changes",
         "principal_grants",
         "principal_usage",
         "push_subscriptions",
         "site_settings",
+        "status_incident_updates",
+        "status_incidents",
         "stream_live_announcements",
+        "subject_aliases",
         "themes",
         "tool_domains",
         "url_registry",
         "user_blocks",
         "user_effects",
+        "user_follows",
         "user_history",
         "user_module_retirements",
         "user_module_revisions",
@@ -1675,7 +2042,7 @@
     },
     {
       "file": "/opt/openvibe.tools/apps/audio/data/analytics.db",
-      "bytes": 36556800,
+      "bytes": 36667392,
       "owner": "ubuntu",
       "tables": [
         "analytics_daily",
@@ -1698,18 +2065,19 @@
     },
     {
       "file": "/opt/openvibe.tools/apps/audio/data/jobs.db",
-      "bytes": 73728,
+      "bytes": 81920,
       "owner": "ubuntu",
       "tables": [
         "event_outbox",
         "tool_job_events",
         "tool_job_references",
+        "tool_job_usage",
         "tool_jobs"
       ]
     },
     {
       "file": "/opt/openvibe.tools/apps/docs/data/analytics.db",
-      "bytes": 1081344,
+      "bytes": 1114112,
       "owner": "ubuntu",
       "tables": [
         "analytics_daily",
@@ -1732,18 +2100,19 @@
     },
     {
       "file": "/opt/openvibe.tools/apps/docs/data/jobs.db",
-      "bytes": 65536,
+      "bytes": 81920,
       "owner": "ubuntu",
       "tables": [
         "event_outbox",
         "tool_job_events",
         "tool_job_references",
+        "tool_job_usage",
         "tool_jobs"
       ]
     },
     {
       "file": "/opt/openvibe.tools/apps/food/data/analytics.db",
-      "bytes": 331776,
+      "bytes": 344064,
       "owner": "ubuntu",
       "tables": [
         "analytics_daily",
@@ -1784,7 +2153,7 @@
     },
     {
       "file": "/opt/openvibe.tools/apps/img/data/analytics.db",
-      "bytes": 4677632,
+      "bytes": 4775936,
       "owner": "ubuntu",
       "tables": [
         "analytics_daily",
@@ -1807,18 +2176,19 @@
     },
     {
       "file": "/opt/openvibe.tools/apps/img/data/jobs.db",
-      "bytes": 245760,
+      "bytes": 327680,
       "owner": "ubuntu",
       "tables": [
         "event_outbox",
         "tool_job_events",
         "tool_job_references",
+        "tool_job_usage",
         "tool_jobs"
       ]
     },
     {
       "file": "/opt/openvibe.tools/apps/maps/data/analytics.db",
-      "bytes": 389120,
+      "bytes": 401408,
       "owner": "ubuntu",
       "tables": [
         "analytics_daily",
@@ -1841,7 +2211,7 @@
     },
     {
       "file": "/opt/openvibe.tools/apps/text/data/analytics.db",
-      "bytes": 5791744,
+      "bytes": 5865472,
       "owner": "ubuntu",
       "tables": [
         "analytics_daily",
@@ -1864,7 +2234,7 @@
     },
     {
       "file": "/opt/openvibe.tools/apps/yt/data/analytics.db",
-      "bytes": 630784,
+      "bytes": 647168,
       "owner": "ubuntu",
       "tables": [
         "analytics_daily",
@@ -1999,7 +2369,7 @@
     },
     {
       "file": "/var/lib/openvibe-ai/ai.db",
-      "bytes": 62640128,
+      "bytes": 115773440,
       "owner": "ubuntu",
       "tables": [
         "ai_module_pushes",
@@ -2017,6 +2387,7 @@
         "requests",
         "routes",
         "runs",
+        "subject_credentials",
         "templates",
         "usage_counters",
         "usage_daily",
@@ -2025,7 +2396,7 @@
     },
     {
       "file": "/var/lib/openvibe-billing/billing.db",
-      "bytes": 745472,
+      "bytes": 831488,
       "owner": "ubuntu",
       "tables": [
         "account_balances",
@@ -2204,7 +2575,7 @@
     },
     {
       "file": "/var/lib/openvibe-blog/blog.db",
-      "bytes": 1527808,
+      "bytes": 1863680,
       "owner": "ubuntu",
       "tables": [
         "blog_feed_settings",
@@ -2235,9 +2606,10 @@
     },
     {
       "file": "/var/lib/openvibe-chat/chat.db",
-      "bytes": 25276416,
+      "bytes": 25325568,
       "owner": "ubuntu",
       "tables": [
+        "account_data_events",
         "audio_requests",
         "bridge_applied",
         "bridge_refs",
@@ -2783,7 +3155,7 @@
     },
     {
       "file": "/var/lib/openvibe-codes/codes.db",
-      "bytes": 102400,
+      "bytes": 110592,
       "owner": "ubuntu",
       "tables": [
         "event_outbox",
@@ -2797,9 +3169,10 @@
     },
     {
       "file": "/var/lib/openvibe-community/community.db",
-      "bytes": 4419584,
+      "bytes": 5300224,
       "owner": "ubuntu",
       "tables": [
+        "account_data_events",
         "attachments",
         "categories",
         "comment_threads",
@@ -2807,6 +3180,7 @@
         "comments",
         "community_event_inbox",
         "event_outbox",
+        "game_progress",
         "import_hold",
         "legacy_id_map",
         "migration_runs",
@@ -3020,10 +3394,11 @@
     },
     {
       "file": "/var/lib/openvibe-events/events.db",
-      "bytes": 17305600,
+      "bytes": 23531520,
       "owner": "ubuntu",
       "tables": [
         "app_revocations",
+        "app_usage",
         "consumer_checkpoints",
         "deliveries",
         "events",
@@ -3053,7 +3428,7 @@
     },
     {
       "file": "/var/lib/openvibe-news/news.db",
-      "bytes": 446464,
+      "bytes": 507904,
       "owner": "ubuntu",
       "tables": [
         "event_outbox",
@@ -3113,7 +3488,7 @@
     },
     {
       "file": "/var/lib/openvibe-search/search.db",
-      "bytes": 12021760,
+      "bytes": 13271040,
       "owner": "ubuntu",
       "tables": [
         "cdn_purges",
@@ -3228,7 +3603,7 @@
     },
     {
       "file": "/var/lib/openvibe-wiki/wiki.db",
-      "bytes": 401408,
+      "bytes": 409600,
       "owner": "ubuntu",
       "tables": [
         "wiki_ai_proposals",
@@ -3261,8 +3636,11 @@
       "AI_API_KEY",
       "AI_BASE_URL",
       "AI_CONSOLE_SESSION_SECRET",
+      "AI_CREDENTIALS_KEY",
       "AI_ENABLED",
       "AI_INPUT_COST_PER_MTOK",
+      "AI_LOCAL_LLM_MODEL",
+      "AI_LOCAL_LLM_URL",
       "AI_MAX_COST_USD_PER_DAY",
       "AI_MODEL",
       "AI_OUTPUT_COST_PER_MTOK",
@@ -3450,6 +3828,7 @@
       "ADMIN_PASSWORD",
       "ADMIN_USERNAME",
       "AI_SERVICE",
+      "ANALYTICS_SOURCE",
       "BASE_URL",
       "CALLS_AUTHORITY",
       "CHAT_AUTHORITY",
@@ -3457,6 +3836,7 @@
       "EMOTES_PATH",
       "ESCROW_HOLD_DAYS",
       "EVENTS_URL",
+      "FOLLOWS_AUTHORITY",
       "GOLIVE_NOTIFY",
       "HOST",
       "INTERNAL_API_KEY",
@@ -3552,6 +3932,7 @@
       "ADMIN_USERNAME",
       "BASE_URL",
       "DB_PATH",
+      "FOLLOWS_AUTHORITY",
       "HOST",
       "INTERNAL_API_KEY",
       "JWT_PRIVATE_KEY",
@@ -3591,6 +3972,7 @@
     ],
     "openre.env": [
       "EVENTS_URL",
+      "HOST",
       "MEDIA_API_KEY",
       "MEDIA_APP_ID",
       "MEDIA_URL",
@@ -3602,6 +3984,10 @@
       "OV_NETWORK_URL",
       "OV_OAUTH_CLIENT_ID",
       "OV_OAUTH_CLIENT_SECRET"
+    ],
+    "probe-merge.env": [
+      "PROBE_MERGE_FOLD_PW",
+      "PROBE_MERGE_KEEP_PW"
     ],
     "probe.env": [
       "OV_OAUTH_CLIENT_ID",
@@ -3667,6 +4053,7 @@
       "OV_NETWORK_URL",
       "OV_OAUTH_CLIENT_ID",
       "OV_OAUTH_CLIENT_SECRET",
+      "RIDB_API_KEY",
       "SEARCH_URL",
       "TOOLS_EVENTS_SECRET",
       "TOOLS_JOB_RESULTS"

@@ -26,6 +26,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenRe.Stream | OV_OAUTH_CLIENT_SECRET | openre.env | server/config.js |
 | OpenVibe.AI | AI_API_KEY | ai.env | (not referenced) |
 | OpenVibe.AI | AI_CONSOLE_SESSION_SECRET | ai.env | (not referenced) |
+| OpenVibe.AI | AI_CREDENTIALS_KEY | ai.env | server/config.js |
 | OpenVibe.AI | OV_OAUTH_CLIENT_SECRET | ai.env | server/events.js, server/user-modules.js |
 | OpenVibe.Billing | BILLING_SESSION_SECRET | billing.env | server/config.js |
 | OpenVibe.Billing | CCBILL_WEBHOOK_SECRET | **not set** | server/config.js |
@@ -67,6 +68,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Games | EDITOR_KEY | games.env | apps/server/src/config.ts |
 | OpenVibe.Games | GAMES_EVENTS_SECRET | games.env | apps/server/src/config.ts |
 | OpenVibe.Games | OV_OAUTH_CLIENT_SECRET | games.env | apps/server/src/config.ts |
+| OpenVibe.Host | CLOUDFLARE_API_TOKEN | **not set** | lib/dns.js |
 | OpenVibe.Host | HOST_FORM_SECRET | host.env | server/config.js |
 | OpenVibe.Host | OV_OAUTH_CLIENT_SECRET | host.env | server/config.js |
 | OpenVibe.Live | ADMIN_PASSWORD | live.env | server/config.js |
@@ -91,7 +93,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Media | MEDIA_R2_SECRET_ACCESS_KEY | media.env | server/vod/vod-storage.js |
 | OpenVibe.Media | MEDIA_SECRET | **not set** | server/views/service.js |
 | OpenVibe.Media | MEDIA_SIGNING_SECRET | media.env | server/config.js |
-| OpenVibe.Media | OV_OAUTH_CLIENT_SECRET | media.env | server/events.js, server/index.js, server/lineage-client.js +2 |
+| OpenVibe.Media | OV_OAUTH_CLIENT_SECRET | media.env | server/account-data.js, server/events.js, server/index.js +3 |
 | OpenVibe.Media | VIEW_HASH_SECRET | **not set** | server/views/service.js |
 | OpenVibe.Network | ADMIN_PASSWORD | network.env | server/config.js |
 | OpenVibe.Network | DEV_CREDENTIAL_OVERLAP_S | **not set** | server/config.js |
@@ -123,7 +125,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Tools | OPEN_CHARGE_MAP_KEY | **not set** | apps/maps/server/config.js |
 | OpenVibe.Tools | OV_INTERNAL_KEY | **not set** | apps/_shared/internal-auth.js |
 | OpenVibe.Tools | OV_OAUTH_CLIENT_SECRET | tools.env | apps/_shared/jobs/events.js, apps/_shared/jobs/index.js, apps/_shared/usage.js +3 |
-| OpenVibe.Tools | RIDB_API_KEY | **not set** | apps/maps/server/config.js, apps/maps/server/sources/ridb.js |
+| OpenVibe.Tools | RIDB_API_KEY | tools.env | apps/maps/server/config.js, apps/maps/server/sources/ridb.js |
 | OpenVibe.Tools | TOOLS_EVENTS_SECRET | tools.env | apps/gateway/server/revocation-events.js |
 | OpenVibe.Trade | OV_OAUTH_CLIENT_SECRET | trade.env | server/config.js |
 | OpenVibe.Trade | TRADE_EVENTS_WEBHOOK_SECRET | **not set** | server/config.js |
@@ -137,7 +139,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 
 | File | Variables |
 |---|---|
-| /etc/openvibe/ai.env | 24 |
+| /etc/openvibe/ai.env | 27 |
 | /etc/openvibe/backup.env | 7 |
 | /etc/openvibe/billing.env | 11 |
 | /etc/openvibe/blog.env | 14 |
@@ -151,17 +153,18 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | /etc/openvibe/games.env | 16 |
 | /etc/openvibe/generated-secrets.env | 6 |
 | /etc/openvibe/host.env | 12 |
-| /etc/openvibe/live.env | 65 |
+| /etc/openvibe/live.env | 67 |
 | /etc/openvibe/media.env | 32 |
-| /etc/openvibe/network.env | 25 |
+| /etc/openvibe/network.env | 26 |
 | /etc/openvibe/news.env | 13 |
-| /etc/openvibe/openre.env | 12 |
+| /etc/openvibe/openre.env | 13 |
+| /etc/openvibe/probe-merge.env | 2 |
 | /etc/openvibe/probe.env | 2 |
 | /etc/openvibe/reviews.env | 12 |
 | /etc/openvibe/search.env | 9 |
 | /etc/openvibe/sources.env | 7 |
 | /etc/openvibe/tips.env | 12 |
-| /etc/openvibe/tools.env | 14 |
+| /etc/openvibe/tools.env | 15 |
 | /etc/openvibe/trade.env | 11 |
 | /etc/openvibe/vip.env | 11 |
 | /etc/openvibe/wiki.env | 13 |
@@ -175,7 +178,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenRe.Stream | EVENTS_PUBLISH |  | server/config.js |
 | OpenRe.Stream | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
 | OpenRe.Stream | EVENTS_URL | openre.env | server/config.js |
-| OpenRe.Stream | HOST |  | server/config.js |
+| OpenRe.Stream | HOST | openre.env | server/config.js |
 | OpenRe.Stream | MEDIA_APP_ID | openre.env | server/config.js |
 | OpenRe.Stream | MEDIA_URL | openre.env | server/config.js |
 | OpenRe.Stream | MIN_CLIENT_GENERATION |  | OpenVibe.Shared/release.js |
@@ -189,6 +192,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenRe.Stream | OPENRE_ENV_FILE |  | server/index.js, workers/coordinator.js +3 |
 | OpenRe.Stream | OPENRE_FFMPEG_OPENSSL_PATH |  | server/config.js |
 | OpenRe.Stream | OPENRE_FFMPEG_PATH |  | server/config.js |
+| OpenRe.Stream | OPENRE_LIMITS_HOUR |  | server/api/actor-limits.js |
+| OpenRe.Stream | OPENRE_LIMITS_MINUTE |  | server/api/actor-limits.js |
 | OpenRe.Stream | OPENRE_LINEAGE |  | server/lineage.js |
 | OpenRe.Stream | OPENRE_LIVE_ACK_TIMEOUT_MS |  | server/config.js |
 | OpenRe.Stream | OPENRE_MAX_DESTINATIONS |  | server/config.js |
@@ -248,15 +253,24 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.AI | AI_FETCH_TIMEOUT_MS |  | server/config.js |
 | OpenVibe.AI | AI_HTTP_SEAM_URL |  | server/config.js |
 | OpenVibe.AI | AI_INPUT_COST_PER_MTOK | ai.env | server/config.js |
+| OpenVibe.AI | AI_LOCAL_LLM_MODEL | ai.env | server/config.js |
+| OpenVibe.AI | AI_LOCAL_LLM_TIMEOUT_MS |  | server/config.js |
+| OpenVibe.AI | AI_LOCAL_LLM_URL | ai.env | server/config.js |
 | OpenVibe.AI | AI_MAX_CONCURRENT_RUNS |  | server/config.js |
 | OpenVibe.AI | AI_MAX_COST_USD_PER_DAY | ai.env | server/config.js |
 | OpenVibe.AI | AI_MAX_INPUT_BYTES |  | server/config.js |
 | OpenVibe.AI | AI_MAX_QUEUED_RUNS |  | server/config.js |
 | OpenVibe.AI | AI_MAX_QUEUED_RUNS_PER_CALLER |  | server/config.js |
 | OpenVibe.AI | AI_MAX_WAIT_MS |  | server/config.js |
+| OpenVibe.AI | AI_MEDIA_ANALYSIS_DIR |  | server/config.js |
+| OpenVibe.AI | AI_MEDIA_ANALYSIS_DISK_RESERVE_BYTES |  | server/config.js |
+| OpenVibe.AI | AI_MEDIA_ANALYSIS_FETCH_TIMEOUT_MS |  | server/config.js |
+| OpenVibe.AI | AI_MEDIA_ANALYSIS_MAX_BYTES |  | server/config.js |
+| OpenVibe.AI | AI_MEDIA_SCENE_THRESHOLD |  | server/config.js |
+| OpenVibe.AI | AI_MEDIA_STORAGE_HOSTS |  | server/config.js |
+| OpenVibe.AI | AI_MEDIA_STREAM |  | server/config.js |
+| OpenVibe.AI | AI_MEDIA_STT_WINDOW_SEC |  | server/config.js |
 | OpenVibe.AI | AI_MODEL | ai.env | server/config.js |
-| OpenVibe.AI | AI_NS_FALLBACK |  | server/config.js |
-| OpenVibe.AI | AI_NS_REQUIRED |  | server/config.js |
 | OpenVibe.AI | AI_OUTPUT_COST_PER_MTOK | ai.env | server/config.js |
 | OpenVibe.AI | AI_PRICING_JSON | ai.env | server/config.js |
 | OpenVibe.AI | AI_PROVIDER | ai.env | server/config.js |
@@ -274,6 +288,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.AI | BASE_URL | ai.env | server/config.js |
 | OpenVibe.AI | EVENTS_PUBLISH |  | server/events.js |
 | OpenVibe.AI | EVENTS_URL | ai.env | server/events.js |
+| OpenVibe.AI | FFMPEG_BIN |  | server/config.js |
+| OpenVibe.AI | FFPROBE_BIN |  | server/config.js |
 | OpenVibe.AI | HOST | ai.env | server/config.js |
 | OpenVibe.AI | MIN_CLIENT_GENERATION |  | OpenVibe.Shared/release.js |
 | OpenVibe.AI | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
@@ -306,6 +322,9 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Billing | BILLING_DB_PATH |  | server/config.js |
 | OpenVibe.Billing | BILLING_ESCROW_DAYS |  | server/config.js |
 | OpenVibe.Billing | BILLING_JOBS |  | server/config.js |
+| OpenVibe.Billing | BILLING_LIMITS |  | server/config.js |
+| OpenVibe.Billing | BILLING_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.Billing | BILLING_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.Billing | BILLING_MAX_BITS |  | server/config.js |
 | OpenVibe.Billing | BILLING_MIN_CASHOUT_BITS |  | server/config.js |
 | OpenVibe.Billing | BILLING_MIN_PURCHASE_BITS |  | server/config.js |
@@ -357,6 +376,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Blog | BASE_URL | blog.env | server/config.js |
 | OpenVibe.Blog | BLOG_DB_PATH |  | server/config.js |
 | OpenVibe.Blog | BLOG_ENTITLEMENTS_PROVIDER |  | server/config.js |
+| OpenVibe.Blog | BLOG_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.Blog | BLOG_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.Blog | BLOG_MEDIA_APP |  | server/config.js |
 | OpenVibe.Blog | BLOG_MEDIA_VERIFY_INTERVAL_MS |  | server/config.js |
 | OpenVibe.Blog | BLOG_OFFICIAL_DESCRIPTION |  | server/config.js |
@@ -410,6 +431,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Chat | CHAT_DB_PATH |  | server/config.js |
 | OpenVibe.Chat | CHAT_EVENTS_ENDPOINT |  | server/config.js |
 | OpenVibe.Chat | CHAT_EVENTS_SUBSCRIBE |  | server/config.js |
+| OpenVibe.Chat | CHAT_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.Chat | CHAT_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.Chat | CHAT_OAUTH_REDIRECT_URI |  | server/config.js |
 | OpenVibe.Chat | CHAT_PREFS_CACHE_MAX |  | server/config.js |
 | OpenVibe.Chat | CHAT_PREFS_ENABLED |  | server/config.js |
@@ -463,6 +486,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Codes | CODES_EXPORT_MAX_OBJECTS |  | server/config.js |
 | OpenVibe.Codes | CODES_EXPORT_MEDIA_URL |  | server/config.js |
 | OpenVibe.Codes | CODES_EXPORT_URL_TTL_S |  | server/config.js |
+| OpenVibe.Codes | CODES_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.Codes | CODES_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.Codes | CODES_PLAYGROUND_EVENTS_URL |  | server/config.js |
 | OpenVibe.Codes | CODES_PLAYGROUND_MAX_UPLOAD_BYTES |  | server/config.js |
 | OpenVibe.Codes | CODES_PLAYGROUND_MEDIA_URL |  | server/config.js |
@@ -478,9 +503,9 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Codes | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
 | OpenVibe.Codes | NODE_ENV |  | server/config.js |
 | OpenVibe.Codes | OV_BILLING_INTERNAL_URL |  | server/http/docs.js |
-| OpenVibe.Codes | OV_EVENTS_INTERNAL_URL |  | server/config.js, server/http/docs.js |
-| OpenVibe.Codes | OV_HOST_INTERNAL_URL |  | server/http/docs.js |
-| OpenVibe.Codes | OV_MEDIA_INTERNAL_URL |  | server/config.js, server/http/docs.js |
+| OpenVibe.Codes | OV_EVENTS_INTERNAL_URL |  | server/config.js, server/domain/limits.js |
+| OpenVibe.Codes | OV_HOST_INTERNAL_URL |  | server/domain/limits.js |
+| OpenVibe.Codes | OV_MEDIA_INTERNAL_URL |  | server/config.js, server/domain/limits.js |
 | OpenVibe.Codes | OV_NETWORK_INTERNAL_URL | codes.env | server/config.js |
 | OpenVibe.Codes | OV_NETWORK_ISSUER |  | server/config.js |
 | OpenVibe.Codes | OV_NETWORK_URL | codes.env | server/config.js |
@@ -498,6 +523,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Community | COMMUNITY_DB_PATH |  | server/config.js |
 | OpenVibe.Community | COMMUNITY_EVENTS_ENDPOINT |  | server/pulse/consumer.js |
 | OpenVibe.Community | COMMUNITY_EVENTS_SUBSCRIBE |  | server/pulse/consumer.js |
+| OpenVibe.Community | COMMUNITY_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.Community | COMMUNITY_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.Community | COMMUNITY_PROFILE_MODULE |  | server/identity/profile-module.js |
 | OpenVibe.Community | COMMUNITY_SEARCH_DOCUMENTS |  | server/search/documents.js |
 | OpenVibe.Community | COOKIE_SECURE |  | server/config.js |
@@ -545,6 +572,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Coupons | COUPONS_EXTENSION_ORIGINS |  | server/config.js |
 | OpenVibe.Coupons | COUPONS_INSTALL_TTL_DAYS |  | server/config.js |
 | OpenVibe.Coupons | COUPONS_INSTALLS_PER_SUBJECT |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.Coupons | COUPONS_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.Coupons | COUPONS_LOOKUP_ANON_PER_MIN |  | server/config.js |
 | OpenVibe.Coupons | COUPONS_LOOKUP_SERVICE_PER_MIN |  | server/config.js |
 | OpenVibe.Coupons | COUPONS_REPORTS_PER_DAY |  | server/config.js |
@@ -584,6 +613,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Deals | DEALS_IMPORT_MAX_PAGES |  | server/config.js |
 | OpenVibe.Deals | DEALS_IMPORT_PAGE_SIZE |  | server/config.js |
 | OpenVibe.Deals | DEALS_IMPORT_REFRESH_BATCH |  | server/config.js |
+| OpenVibe.Deals | DEALS_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.Deals | DEALS_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.Deals | DEALS_MODERATORS | deals.env | server/config.js |
 | OpenVibe.Deals | DEALS_NEW_ACCOUNT_DAYS |  | server/config.js |
 | OpenVibe.Deals | DEALS_NEW_ACCOUNT_WEIGHT |  | server/config.js |
@@ -630,6 +661,9 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Events | EVENTS_DELIVERY_TIMEOUT_MS |  | server/config.js |
 | OpenVibe.Events | EVENTS_DLQ_DEGRADED_AT |  | server/config.js |
 | OpenVibe.Events | EVENTS_ENDPOINT_HOSTS |  | server/config.js |
+| OpenVibe.Events | EVENTS_LIMITS |  | server/config.js |
+| OpenVibe.Events | EVENTS_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.Events | EVENTS_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.Events | EVENTS_MAX_ATTEMPTS |  | server/config.js |
 | OpenVibe.Events | EVENTS_MAX_HOPS |  | server/config.js |
 | OpenVibe.Events | EVENTS_MAX_INFLIGHT |  | server/config.js |
@@ -639,6 +673,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Events | EVENTS_RECEIPT_RETENTION_DAYS |  | server/config.js |
 | OpenVibe.Events | EVENTS_RETENTION_DAYS |  | server/config.js |
 | OpenVibe.Events | EVENTS_SOURCE_PREFIXES |  | server/config.js |
+| OpenVibe.Events | EVENTS_USAGE |  | server/config.js |
+| OpenVibe.Events | EVENTS_USAGE_FLUSH_MS |  | server/config.js |
 | OpenVibe.Events | EVENTS_USER_AUDIENCES |  | server/config.js |
 | OpenVibe.Events | EVENTS_WORKER |  | server/config.js |
 | OpenVibe.Events | EVENTS_WORKER_INTERVAL_MS |  | server/config.js |
@@ -696,6 +732,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Games | EVENTS_PUBLISH |  | apps/server/src/config.ts |
 | OpenVibe.Games | EVENTS_URL | games.env | apps/server/src/config.ts |
 | OpenVibe.Games | GAMES_EVENTS_ENDPOINT |  | apps/server/src/config.ts |
+| OpenVibe.Games | GAMES_LIMITS_HOUR |  | apps/server/src/net/actorLimits.ts |
+| OpenVibe.Games | GAMES_LIMITS_MINUTE |  | apps/server/src/net/actorLimits.ts |
 | OpenVibe.Games | GUEST_IP_BINDING |  | apps/server/src/config.ts |
 | OpenVibe.Games | HOST | games.env | apps/server/src/config.ts |
 | OpenVibe.Games | LOG_LEVEL |  | apps/server/src/main.ts |
@@ -717,16 +755,21 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Games | STATIC_DIR | games.env | apps/server/src/config.ts |
 | OpenVibe.Host | API_CORS_ORIGINS |  | server/config.js |
 | OpenVibe.Host | BASE_URL | host.env | server/config.js |
+| OpenVibe.Host | CLOUDFLARE_API_TOKEN_FILE |  | lib/dns.js |
 | OpenVibe.Host | COOKIE_SECURE |  | server/config.js |
 | OpenVibe.Host | EVENTS_RELAY_INTERVAL_MS |  | server/config.js |
 | OpenVibe.Host | EVENTS_URL | host.env | server/config.js |
+| OpenVibe.Host | HOME |  | lib/dns.js |
 | OpenVibe.Host | HOST | host.env | server/config.js |
+| OpenVibe.Host | HOST_ACTOR_LIMITS |  | server/http/actor-limits.js |
 | OpenVibe.Host | HOST_CNAME_TARGET | host.env | server/config.js |
 | OpenVibe.Host | HOST_DB_PATH |  | server/config.js |
 | OpenVibe.Host | HOST_DNS_SERVERS |  | server/config.js |
 | OpenVibe.Host | HOST_DOMAIN_LAPSE_DAYS |  | server/config.js |
 | OpenVibe.Host | HOST_DOMAIN_PENDING_DAYS |  | server/config.js |
 | OpenVibe.Host | HOST_DOMAIN_RECHECK_MS |  | server/config.js |
+| OpenVibe.Host | HOST_LIMITS_HOUR |  | server/http/actor-limits.js |
+| OpenVibe.Host | HOST_LIMITS_MINUTE |  | server/http/actor-limits.js |
 | OpenVibe.Host | HOST_MAX_CONCURRENT_UPLOADS |  | server/config.js |
 | OpenVibe.Host | HOST_MAX_PROJECTS_PER_OWNER |  | server/config.js |
 | OpenVibe.Host | HOST_MAX_UNPACKED_BYTES |  | server/config.js |
@@ -750,25 +793,26 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Host | OVHOST_BACKUP_ENV |  | lib/offsite.js |
 | OpenVibe.Host | OVHOST_EVENTS_ENV |  | lib/announce.js |
 | OpenVibe.Host | OVHOST_INVENTORY |  | lib/inventory.js |
+| OpenVibe.Host | OVHOST_PROMETHEUS_URL |  | lib/alerts.js |
 | OpenVibe.Host | PATH |  | lib/executor.js |
 | OpenVibe.Host | PORT |  | server/config.js |
 | OpenVibe.Host | RELEASE_AT |  | OpenVibe.Shared/release.js |
 | OpenVibe.Host | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
-| OpenVibe.Host | SUDO_USER |  | lib/commands/drill.js, lib/release-ops.js |
+| OpenVibe.Host | SUDO_USER |  | lib/cli.js, lib/commands/drill.js +1 |
 | OpenVibe.Host | TRUST_PROXY | host.env | server/config.js |
-| OpenVibe.Host | USER |  | lib/executor.js |
+| OpenVibe.Host | USER |  | lib/cli.js, lib/executor.js |
 | OpenVibe.Live | ADMIN_USERNAME | live.env | server/config.js |
 | OpenVibe.Live | AI_HEAR_MAX_SPOOL |  | server/ai/stream-audio.js |
 | OpenVibe.Live | AI_HEAR_SEGMENT_SEC |  | server/ai/stream-audio.js |
 | OpenVibe.Live | AI_SERVICE | live.env | server/ai/ai-service.js |
 | OpenVibe.Live | AI_VOD_MAX_WINDOWS |  | server/ai/media-analysis.js |
 | OpenVibe.Live | ALLOW_P2P_FALLBACK |  | server/config.js |
+| OpenVibe.Live | ANALYTICS_SOURCE | live.env | server/analytics/network-analytics.js |
 | OpenVibe.Live | BASE_URL | live.env | server/auth/routes.js, server/config.js |
 | OpenVibe.Live | BILLING_AUTHORITY |  | server/admin/routes.js, server/chat/live-context-routes.js +2 |
 | OpenVibe.Live | BTTV_CACHE_TTL |  | server/config.js |
 | OpenVibe.Live | CALLS_AUTHORITY | live.env | server/streaming/calls-authority.js |
 | OpenVibe.Live | CHAT_AUTHORITY | live.env | server/chat/chat-authority.js |
-| OpenVibe.Live | COLD_STORAGE_PATH |  | server/config.js |
 | OpenVibe.Live | DATA_DIR |  | server/drill.js, server/index.js +1 |
 | OpenVibe.Live | DB_PATH | live.env | server/db/init.js, server/drill.js +2 |
 | OpenVibe.Live | DEBUG_DM_DELIVERY |  | server/chat/chat-server.js |
@@ -777,6 +821,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | EVENTS_PUBLISH |  | server/events/stream-events.js |
 | OpenVibe.Live | EVENTS_URL | live.env | server/events/stream-events.js |
 | OpenVibe.Live | FFZ_CACHE_TTL |  | server/config.js |
+| OpenVibe.Live | FOLLOWS_AUTHORITY | live.env | server/social/network-follows.js |
 | OpenVibe.Live | GOLIVE_NOTIFY | live.env | server/streaming/golive-notify.js |
 | OpenVibe.Live | HOST | live.env | server/config.js, server/drill.js +1 |
 | OpenVibe.Live | JSMPEG_AUDIO_PORT | live.env | server/config.js |
@@ -786,6 +831,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | LISTEN_HOST |  | server/config.js |
 | OpenVibe.Live | LISTEN_PID |  | server/drill.js, server/index.js |
 | OpenVibe.Live | LIVE_DRILL |  | server/drill.js |
+| OpenVibe.Live | LIVE_LIMITS_HOUR |  | server/net/actor-limits.js |
+| OpenVibe.Live | LIVE_LIMITS_MINUTE |  | server/net/actor-limits.js |
 | OpenVibe.Live | LIVE_MODULE_SUMMARIES |  | server/auth/module-summaries.js |
 | OpenVibe.Live | LIVE_PUBLIC_ORIGIN |  | server/auth/module-summaries.js, server/events/search-documents.js +1 |
 | OpenVibe.Live | LIVE_SEARCH_DOCUMENTS |  | server/events/search-documents.js, server/events/search-media-documents.js |
@@ -798,7 +845,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | MAX_SOUND_SIZE_KB |  | server/config.js |
 | OpenVibe.Live | MAX_SOUNDS_PER_CHANNEL |  | server/config.js |
 | OpenVibe.Live | MAX_SOUNDS_PER_UPLOADER_PER_CHANNEL |  | server/config.js |
-| OpenVibe.Live | MAX_VOD_SIZE_MB |  | server/config.js, server/media-proxy/vods.js |
+| OpenVibe.Live | MAX_VOD_SIZE_MB |  | server/media-proxy/vods.js |
 | OpenVibe.Live | MEDIA_APP_ID | live.env | server/config.js, server/media-client.js +1 |
 | OpenVibe.Live | MEDIA_EVENTS_AUTHORITY | live.env | server/media-proxy/outcomes.js |
 | OpenVibe.Live | MEDIA_PUBLIC_URL | live.env | server/config.js, server/media-client.js |
@@ -814,8 +861,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | NODE_ENV | live.env | server/comments-client.js, server/config.js +1 |
 | OpenVibe.Live | OPENRE_PUBLIC_URL | live.env | server/openre/openre-client.js |
 | OpenVibe.Live | OPENRE_URL | live.env | server/openre/openre-client.js |
-| OpenVibe.Live | OV_AI_INTERNAL_URL |  | server/ai/ai-service.js |
-| OpenVibe.Live | OV_APP_ROOT |  | server/docs/routes.js, server/web/assets.js |
+| OpenVibe.Live | OV_AI_INTERNAL_URL |  | server/ai/ai-service.js, server/ai/byo-credentials.js +1 |
+| OpenVibe.Live | OV_APP_ROOT |  | server/docs/routes.js, server/index.js +1 |
 | OpenVibe.Live | OV_BILLING_INTERNAL_URL |  | server/monetization/billing-client.js |
 | OpenVibe.Live | OV_BILLING_PUBLIC_URL |  | server/monetization/billing-client.js |
 | OpenVibe.Live | OV_BILLING_TIMEOUT_MS |  | server/monetization/billing-client.js |
@@ -823,7 +870,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Live | OV_COMMUNITY_INTERNAL_URL |  | server/comments-client.js, server/pastes-client.js |
 | OpenVibe.Live | OV_COMMUNITY_URL | live.env | server/ai/ai-moments-job.js, server/comments-client.js +3 |
 | OpenVibe.Live | OV_LIVE_URL | live.env | (not referenced) |
-| OpenVibe.Live | OV_NETWORK_INTERNAL_URL | live.env | server/auth/module-summaries.js, server/chat/chat-server.js +7 |
+| OpenVibe.Live | OV_NETWORK_INTERNAL_URL | live.env | server/analytics/network-analytics.js, server/auth/account-data.js +11 |
 | OpenVibe.Live | OV_NETWORK_PUBLIC_KEY | live.env | server/auth/auth.js |
 | OpenVibe.Live | OV_NETWORK_URL | live.env | server/auth/auth.js, server/config.js +1 |
 | OpenVibe.Live | OV_OAUTH_CLIENT_ID | live.env | server/auth/module-summaries.js, server/auth/routes.js +3 |
@@ -916,9 +963,9 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Media | NODE_ENV | media.env | server/config.js |
 | OpenVibe.Media | OBJECTS_PATH |  | server/config.js |
 | OpenVibe.Media | OV_LIVE_INTERNAL_URL |  | server/lineage-client.js |
-| OpenVibe.Media | OV_NETWORK_INTERNAL_URL | media.env | server/config.js, server/events.js +2 |
+| OpenVibe.Media | OV_NETWORK_INTERNAL_URL | media.env | server/account-data.js, server/config.js +3 |
 | OpenVibe.Media | OV_NETWORK_URL | media.env | server/config.js |
-| OpenVibe.Media | OV_OAUTH_CLIENT_ID | media.env | server/events.js, server/index.js +3 |
+| OpenVibe.Media | OV_OAUTH_CLIENT_ID | media.env | server/account-data.js, server/events.js +4 |
 | OpenVibe.Media | OV_OAUTH_REDIRECT_URI |  | server/index.js |
 | OpenVibe.Media | PASTES_FROZEN_APPS | media.env | server/pastes/routes.js |
 | OpenVibe.Media | PASTES_MOVED_TO | media.env | (not referenced) |
@@ -946,6 +993,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Network | DEV_SANDBOX_ALLOWANCE |  | server/config.js |
 | OpenVibe.Network | DEV_SANDBOX_AUDIENCES |  | server/config.js |
 | OpenVibe.Network | DEVPATH_RESULT_FILE |  | server/status/routes.js |
+| OpenVibe.Network | FOLLOWS_AUTHORITY | network.env | server/index.js |
 | OpenVibe.Network | HOST | network.env | server/config.js |
 | OpenVibe.Network | INTERNAL_URL |  | server/config.js |
 | OpenVibe.Network | JWT_PUBLIC_KEY | network.env | server/config.js |
@@ -954,10 +1002,13 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Network | MEDIASOUP_ANNOUNCED_IP |  | server/domains/dns-check.js |
 | OpenVibe.Network | MIN_CLIENT_GENERATION |  | OpenVibe.Shared/release.js |
 | OpenVibe.Network | MIN_CLIENT_RELEASE |  | OpenVibe.Shared/release.js |
+| OpenVibe.Network | NETWORK_LIMITS_HOUR |  | server/auth/actor-limits.js |
+| OpenVibe.Network | NETWORK_LIMITS_MINUTE |  | server/auth/actor-limits.js |
 | OpenVibe.Network | NODE_ENV | network.env | server/auth/fedcm.js, server/auth/sso-check.js +4 |
 | OpenVibe.Network | NOTIFICATION_EMAIL_CRITICAL_ONLY | network.env | (not referenced) |
 | OpenVibe.Network | NOTIFICATION_MAX_AGE_DAYS | network.env | (not referenced) |
 | OpenVibe.Network | NOTIFICATIONS_ENABLED | network.env | (not referenced) |
+| OpenVibe.Network | OPERATOR_ALERT_USERNAMES |  | server/operator/alerts.js |
 | OpenVibe.Network | OV_AI_INTERNAL_URL |  | server/frame/service.js |
 | OpenVibe.Network | OV_AUDIO_URL |  | OpenVibe.Shared/brand.js |
 | OpenVibe.Network | OV_BLOG_INTERNAL_URL |  | server/index.js |
@@ -988,7 +1039,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Network | OV_TOOLS_INTERNAL_URL | network.env | server/config.js, server/domains/catalog.js |
 | OpenVibe.Network | OV_TOOLS_URL | network.env | OpenVibe.Shared/brand.js |
 | OpenVibe.Network | OV_YT_URL |  | OpenVibe.Shared/brand.js |
-| OpenVibe.Network | OWNER_USERNAME |  | server/admin/routes.js, server/auth/owner-guard.js +3 |
+| OpenVibe.Network | OWNER_USERNAME |  | server/admin/routes.js, server/auth/owner-guard.js +6 |
 | OpenVibe.Network | PORT | network.env | server/config.js |
 | OpenVibe.Network | PUBLIC_IP |  | server/domains/dns-check.js |
 | OpenVibe.Network | REALTIME_TICKETS |  | server/auth/realtime-ticket.js |
@@ -1009,6 +1060,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.News | NEWS_CLUSTER_WINDOW_HOURS |  | server/config.js |
 | OpenVibe.News | NEWS_DB_PATH |  | server/config.js |
 | OpenVibe.News | NEWS_EDITORS | news.env | server/config.js |
+| OpenVibe.News | NEWS_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.News | NEWS_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.News | NEWS_MIN_INDEPENDENT_SOURCES |  | server/config.js |
 | OpenVibe.News | NEWS_PULL_INTERVAL_MS |  | server/config.js |
 | OpenVibe.News | NEWS_PULL_MAX_PAGES |  | server/config.js |
@@ -1054,6 +1107,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Reviews | REVIEWS_GATE_MIN_SIGNALS |  | server/config.js |
 | OpenVibe.Reviews | REVIEWS_GATE_MIN_WORDS |  | server/config.js |
 | OpenVibe.Reviews | REVIEWS_IMPORT_QUEUE_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Reviews | REVIEWS_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.Reviews | REVIEWS_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.Reviews | REVIEWS_SOURCES_PAGE_SIZE |  | server/config.js |
 | OpenVibe.Reviews | REVIEWS_SOURCES_SYNC |  | server/config.js |
 | OpenVibe.Reviews | REVIEWS_SOURCES_SYNC_INTERVAL_MS |  | server/config.js |
@@ -1083,6 +1138,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Search | SEARCH_EVENT_OWNERS | search.env | server/config.js |
 | OpenVibe.Search | SEARCH_FRESHNESS_HALF_LIFE_DAYS |  | server/config.js |
 | OpenVibe.Search | SEARCH_FRESHNESS_WEIGHT |  | server/config.js |
+| OpenVibe.Search | SEARCH_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.Search | SEARCH_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.Search | SEARCH_MAX_BODY_BYTES |  | server/config.js |
 | OpenVibe.Search | SEARCH_SAVED_MAX_PER_SUBJECT |  | server/config.js |
 | OpenVibe.Search | SEARCH_USER_AUDIENCES |  | server/config.js |
@@ -1133,6 +1190,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Sources | SOURCES_DB_PATH |  | server/config.js |
 | OpenVibe.Sources | SOURCES_FETCH_TIMEOUT_MS |  | server/config.js |
 | OpenVibe.Sources | SOURCES_HOST_MIN_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Sources | SOURCES_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.Sources | SOURCES_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.Sources | SOURCES_MAX_BACKOFF_MS |  | server/config.js |
 | OpenVibe.Sources | SOURCES_MAX_BYTES |  | server/config.js |
 | OpenVibe.Sources | SOURCES_MAX_CONCURRENT |  | server/config.js |
@@ -1176,6 +1235,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Tips | TIPS_DELIVERY_MAX_ATTEMPTS |  | server/config.js |
 | OpenVibe.Tips | TIPS_JOBS |  | server/config.js |
 | OpenVibe.Tips | TIPS_JOBS_INTERVAL_MS |  | server/config.js |
+| OpenVibe.Tips | TIPS_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.Tips | TIPS_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.Tips | TIPS_MAX_BITS |  | server/config.js |
 | OpenVibe.Tips | TIPS_MAX_PENDING_CHECKOUTS |  | server/config.js |
 | OpenVibe.Tips | TIPS_MEDIA_HOSTS |  | server/config.js |
@@ -1243,6 +1304,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Tools | TOOLS_GUARD |  | apps/_shared/guard/index.js |
 | OpenVibe.Tools | TOOLS_GUARD_LIMITS |  | apps/_shared/guard/limits.js |
 | OpenVibe.Tools | TOOLS_JOB_RESULTS | tools.env | apps/_shared/jobs/index.js |
+| OpenVibe.Tools | TOOLS_LIMITS_HOUR |  | apps/_shared/actor-limits.js |
+| OpenVibe.Tools | TOOLS_LIMITS_MINUTE |  | apps/_shared/actor-limits.js |
 | OpenVibe.Tools | TOOLS_MEDIA_NAMESPACE |  | apps/_shared/jobs/index.js |
 | OpenVibe.Tools | TOOLS_REVOCATIONS_DB |  | apps/_shared/guard/revocations.js |
 | OpenVibe.Tools | TOOLS_SATELLITE_PORTS |  | apps/_shared/tools/satellites.js |
@@ -1277,6 +1340,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Trade | TRADE_EDITORS | trade.env | server/config.js |
 | OpenVibe.Trade | TRADE_FRESHNESS_INTERVAL_MS |  | server/config.js |
 | OpenVibe.Trade | TRADE_GATE_MIN_WORDS |  | server/config.js |
+| OpenVibe.Trade | TRADE_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.Trade | TRADE_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.Trade | TRADE_PRICE_MAX_AGE_SEC |  | server/config.js |
 | OpenVibe.Trade | TRADE_SYNC_INTERVAL_MS |  | server/config.js |
 | OpenVibe.Trade | TRADE_SYNC_MAX_PAGES |  | server/config.js |
@@ -1311,6 +1376,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.VIP | VIP_CHECKOUT_PROVIDERS | vip.env | server/config.js |
 | OpenVibe.VIP | VIP_DB_PATH |  | server/config.js |
 | OpenVibe.VIP | VIP_JOBS |  | server/config.js |
+| OpenVibe.VIP | VIP_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.VIP | VIP_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.VIP | VIP_MEMBER_COUNT_TTL_MS |  | server/config.js |
 | OpenVibe.VIP | VIP_POWERCHAT_LINK_TEMPLATE |  | server/config.js |
 | OpenVibe.VIP | VIP_PROJECTION_GRACE_MS |  | server/config.js |
@@ -1336,6 +1403,8 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Wiki | OV_OAUTH_CLIENT_ID | wiki.env | server/config.js |
 | OpenVibe.Wiki | OV_OAUTH_REDIRECT_URI |  | server/config.js |
 | OpenVibe.Wiki | OV_SOURCES_INTERNAL_URL | wiki.env | server/config.js |
+| OpenVibe.Wiki | OV_VIP_INTERNAL_URL |  | server/config.js |
+| OpenVibe.Wiki | OV_VIP_URL |  | server/config.js |
 | OpenVibe.Wiki | PORT |  | server/config.js |
 | OpenVibe.Wiki | RELEASE_AT |  | OpenVibe.Shared/release.js |
 | OpenVibe.Wiki | RELEASE_COMMIT |  | OpenVibe.Shared/release.js |
@@ -1345,8 +1414,14 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Wiki | WIKI_GATE_MIN_SOURCES |  | server/config.js |
 | OpenVibe.Wiki | WIKI_GATE_MIN_WORDS |  | server/config.js |
 | OpenVibe.Wiki | WIKI_GATE_REQUIRE_SOURCES |  | server/config.js |
+| OpenVibe.Wiki | WIKI_LIMITS_HOUR |  | server/config.js |
+| OpenVibe.Wiki | WIKI_LIMITS_MINUTE |  | server/config.js |
 | OpenVibe.Wiki | WIKI_MEDIA_APP | wiki.env | server/config.js |
 | OpenVibe.Wiki | WIKI_MEDIA_VERIFY_INTERVAL_MS |  | server/config.js |
 | OpenVibe.Wiki | WIKI_SCHEDULE_INTERVAL_MS |  | server/config.js |
 | OpenVibe.Wiki | WIKI_USER_AUDIENCES |  | server/config.js |
+| OpenVibe.Wiki | WIKI_VIP_CACHE_DENY_TTL_MS |  | server/config.js |
+| OpenVibe.Wiki | WIKI_VIP_CACHE_TTL_MS |  | server/config.js |
+| OpenVibe.Wiki | WIKI_VIP_CACHE_UNAVAILABLE_TTL_MS |  | server/config.js |
+| OpenVibe.Wiki | WIKI_VIP_TIMEOUT_MS |  | server/config.js |
 | OpenVibe.Wiki | WIKI_WORKER_ID |  | server/config.js |
