@@ -359,6 +359,9 @@ app.locals.privateKey = privateKey;
 app.locals.publicKey = publicKey;
 app.locals.config = config;
 
+// Per-actor limits on API writes, by the person whose session makes them (server/auth/actor-limits.js; WS-R task 4).
+app.use('/api/', require('./auth/actor-limits').createNetworkActorLimits({ publicKey, issuer: config.jwt.issuer, registry: observability.registry }));
+
 // Provider secrets: environment first, database fallback (server/secrets.js). Names and sources only.
 console.log(`[Secrets] ${require('./secrets').summary(db)}`);
 
