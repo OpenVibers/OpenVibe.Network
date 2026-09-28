@@ -61,7 +61,7 @@ const server = http.createServer(app);
     t = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.ai' });
     const aiClaims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.ai' });
     assert.ok(aiClaims.ok, aiClaims.reason);
-    assert.deepStrictEqual([aiClaims.claims.cap, aiClaims.claims.ns], [['ai.credential.manage', 'ai.run.create', 'ai.run.read'], ['live.*', 'network.site_copy', 'media.analyze']]);
+    assert.deepStrictEqual([aiClaims.claims.cap, aiClaims.claims.ns], [['ai.credential.manage', 'ai.quota.attribution.manage', 'ai.run.create', 'ai.run.read'], ['live.*', 'network.site_copy', 'media.analyze']]);
 
     t = await token({ client_id: 'live', client_secret: 'wrong', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 401); assert.strictEqual(t.body.error, 'invalid_client');
