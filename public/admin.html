@@ -1888,10 +1888,10 @@ async function savePayments() {
 }
 
 // ── AI: provider config + usage cost breakdown ──
-const AI_KEYS = ['ai_enabled', 'ai_provider', 'ai_api_key', 'ai_base_url', 'ai_model',
-    'ai_model_chat', 'ai_model_vision', 'ai_model_director', 'ai_model_summary',
+// Live's own provider settings are gone (WS-O task 2): OpenVibe.AI holds the key, the models and their prices.
+const AI_KEYS = ['ai_enabled',
     'ai_paste_analysis_enabled', 'ai_stream_memory_enabled', 'ai_stream_capture_interval_sec', 'ai_transcription_enabled', 'ai_timeline_enabled',
-    'ai_max_cost_usd_per_day', 'ai_input_cost_per_mtok', 'ai_output_cost_per_mtok', 'ai_pricing_json',
+    'ai_max_cost_usd_per_day',
     'ai_viewers_enabled', 'ai_viewers_max_roster', 'ai_viewers_max_lines_per_min', 'ai_viewers_global_cap_usd_per_day', 'ai_viewers_default_settings_json'];
 
 async function loadAi() {
@@ -1945,7 +1945,7 @@ async function loadAi() {
         }
         c.innerHTML = `
             <div style="max-width:760px">
-                <p class="muted" style="margin-bottom:12px">AI analysis for pastes + live-stream memories. Nothing runs until <strong>ai_enabled</strong> is on with a valid key. Default provider is Anthropic (Claude vision); set <strong>ai_base_url</strong> for an OpenAI-compatible endpoint. Set <strong>ai_max_cost_usd_per_day</strong> to cap spend.</p>
+                <p class="muted" style="margin-bottom:12px">AI analysis for pastes, live-stream memories and AI viewers. Every call is a run on OpenVibe.AI, which holds the provider keys, models and prices (its console at ai.openvibe.network/console). Nothing runs until <strong>ai_enabled</strong> is on. Set <strong>ai_max_cost_usd_per_day</strong> to cap Live's daily spend.</p>
                 <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px">
                     <legend style="padding:0 8px;font-weight:700">Estimated Cost</legend>
                     ${costHtml}
@@ -2036,8 +2036,8 @@ async function testAiStatus() {
         const { status } = await api('/api/admin/streamer/ai/status');
         const badge = status.ok ? '<span style="color:#4ade80">● OK</span>' : '<span style="color:#f87171">● Problem</span>';
         out.innerHTML = `<div style="font-size:13px;line-height:1.7">
-            ${badge} &nbsp; provider <b>${esc(status.provider)}</b>, model <b>${esc(status.model)}</b>${status.probed ? ` · reply "${esc(status.reply||'')}" · ${status.latency_ms}ms` : ''}
-            <br>enabled: <b>${status.enabled}</b> · key set: <b>${status.has_key}</b> · paste analysis: ${status.paste_analysis} · stream memory: ${status.stream_memory}
+            ${badge} &nbsp; via <b>${esc(status.service || 'openvibe-ai')}</b>${status.probed ? ` · reply "${esc(status.reply||'')}" · ${status.latency_ms}ms` : ''}
+            <br>enabled: <b>${status.enabled}</b> · paste analysis: ${status.paste_analysis} · stream memory: ${status.stream_memory}
             <br>cost today: <b>$${Number(status.cost_today||0).toFixed(4)}</b> · daily cap: ${status.budget_cap_usd_per_day ? '$'+status.budget_cap_usd_per_day : 'none'}
             ${status.error ? `<br><span style="color:#f87171">${esc(status.error)}</span>` : ''}
         </div>`;
