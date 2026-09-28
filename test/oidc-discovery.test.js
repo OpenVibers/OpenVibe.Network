@@ -36,6 +36,7 @@ const REQUIRED = ['issuer', 'authorization_endpoint', 'token_endpoint', 'jwks_ur
         assert.deepStrictEqual(root.body.response_types_supported, ['code']);
         assert.deepStrictEqual(root.body.code_challenge_methods_supported, ['S256']);
         assert.ok(root.body.scopes_supported.includes('openid'));
+        assert.ok(root.body.scopes_supported.includes('email') && root.body.claims_supported.includes('email_verified'));
         assert.ok(root.body.grant_types_supported.includes('authorization_code') && root.body.grant_types_supported.includes('refresh_token'));
         assert.deepStrictEqual(root.body.id_token_signing_alg_values_supported, ['RS256']);
         // The same document at RFC 8414's name and at the older path.
@@ -115,6 +116,10 @@ const REQUIRED = ['issuer', 'authorization_endpoint', 'token_endpoint', 'jwks_ur
     assert.strictEqual(u.body.preferred_username, 'viewer');
     assert.strictEqual(u.body.name, 'Viewer');
     assert.match(u.body.subject_id, /^usr_/);
+    // A no-reply alias from the stable subject, never the real address (git.openvibe.codes needs one per account).
+    assert.strictEqual(u.body.email, `${u.body.subject_id.toLowerCase()}@noreply.openvibe.network`);
+    assert.strictEqual(u.body.email_verified, true);
+    assert.ok(!JSON.stringify(u.body).includes('@example'), 'no real address leaks');
     u = await fetch(`${base}/oauth/userinfo`, { method: 'POST', headers: { authorization: `Bearer ${access}` } });
     assert.strictEqual(u.status, 200, 'POST works too');
     u = await fetch(`${base}/oauth/userinfo`);

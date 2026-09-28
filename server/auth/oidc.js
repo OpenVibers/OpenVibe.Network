@@ -30,7 +30,7 @@ function metadata(config) {
         jwks_uri: `${base}/api/.well-known/jwks`,
         // openid adds an id_token to the code grant; profile and theme are the first-party scopes.
         // Developer apps (app_<ULID>) ask for capability ids instead (docs/developer-projects.md).
-        scopes_supported: ['openid', 'profile', 'theme'],
+        scopes_supported: ['openid', 'profile', 'email', 'theme'],
         response_types_supported: ['code'],
         response_modes_supported: ['query'],
         grant_types_supported: ['authorization_code', 'refresh_token', 'client_credentials', 'urn:ietf:params:oauth:grant-type:jwt-bearer'],
@@ -39,7 +39,7 @@ function metadata(config) {
         // 'none' is for public developer apps, which always use PKCE.
         token_endpoint_auth_methods_supported: ['client_secret_post', 'none'],
         code_challenge_methods_supported: ['S256'],
-        claims_supported: ['iss', 'sub', 'aud', 'exp', 'iat', 'nonce', 'name', 'preferred_username', 'picture', 'subject_id'],
+        claims_supported: ['iss', 'sub', 'aud', 'exp', 'iat', 'nonce', 'name', 'preferred_username', 'picture', 'subject_id', 'email', 'email_verified'],
         request_parameter_supported: false,
         request_uri_parameter_supported: false,
         claims_parameter_supported: false,
@@ -65,12 +65,19 @@ function cleanNonce(v) {
     return s.length <= NONCE_MAX && /^[\x21-\x7e]+$/.test(s) ? s : undefined;   // undefined = refuse
 }
 
+// Clients that need an address per account (git.openvibe.codes, WS-X12) get a no-reply alias built from the stable
+// subject, never the person's real email: it identifies the account, receives nothing, and survives a rename.
+const NOREPLY_DOMAIN = 'noreply.openvibe.network';
+const noreplyEmail = (user) => `${user.subject_id || `u${user.id}`}@${NOREPLY_DOMAIN}`.toLowerCase();
+
 function profileClaims(user) {
     return {
         preferred_username: user.username,
         name: user.display_name || user.username,
         ...(user.avatar_url ? { picture: user.avatar_url } : {}),
         ...(user.subject_id ? { subject_id: user.subject_id } : {}),
+        email: noreplyEmail(user),
+        email_verified: true,
     };
 }
 
@@ -99,4 +106,4 @@ function userinfo(req, res) {
     res.json({ sub: String(user.id), ...profileClaims({ ...user, subject_id: subjectId }) });
 }
 
-module.exports = { metadata, mount, sendMetadata, idToken, userinfo, wantsOpenid, cleanNonce, KID, ID_TOKEN_TTL_S };
+module.exports = { metadata, mount, sendMetadata, idToken, userinfo, wantsOpenid, cleanNonce, noreplyEmail, KID, ID_TOKEN_TTL_S };
