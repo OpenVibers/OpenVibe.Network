@@ -16,6 +16,11 @@ const answers = {
     ] } },
     'OpenVibers/OpenVibe.Media/compare/ccccccc3...main': { status: 200, body: { status: 'diverged', ahead_by: 1, behind_by: 2, commits: [] } },
     'OpenVibers/OpenVibe.Tools/compare/ddddddd4...main': { status: 404, body: { message: 'Not Found' } },
+    // Main ahead by documentation and tests only: nothing that runs differs, so it is current.
+    'OpenVibers/OpenVibe.Wiki/compare/eeeeeee5...main': { status: 200, body: { ahead_by: 2, behind_by: 0, files: [{ filename: 'README.md' }, { filename: 'docs/api.md' }, { filename: 'test/x.test.js' }, { filename: 'STATUS.json' }], commits: [
+        { sha: 'e1', commit: { committer: { date: '2026-09-20T10:00:00Z' } } }, { sha: 'e2', commit: { committer: { date: '2026-09-21T10:00:00Z' } } }] } },
+    'OpenVibers/OpenVibe.Blog/compare/fffffff6...main': { status: 200, body: { ahead_by: 1, behind_by: 0, files: [{ filename: 'README.md' }, { filename: 'server/index.js' }], commits: [
+        { sha: 'f1', commit: { committer: { date: '2026-09-26T10:00:00Z' } } }] } },
 };
 let failing = false;
 const asked = [];
@@ -34,10 +39,12 @@ const fetchImpl = async (url, opts) => {
         { id: 'media', release: 'ccccccc3', repository: 'OpenVibers/OpenVibe.Media' },
         { id: 'tools', release: 'ddddddd4', repository: 'OpenVibers/OpenVibe.Tools' },
         { id: 'sites', release: 'not-a-sha', repository: 'OpenVibers/OpenVibe.Sites' },
+        { id: 'wiki', release: 'eeeeeee5', repository: 'OpenVibers/OpenVibe.Wiki' },
+        { id: 'blog', release: 'fffffff6', repository: 'OpenVibers/OpenVibe.Blog' },
     ];
     const d = drift.createDeployDrift({ services: () => running, fetchImpl, token: 'ghp_test', now: () => NOW, log: null });
     await d.refresh();
-    assert.strictEqual(asked.length, 4, 'a release that is not a commit is not looked up');
+    assert.strictEqual(asked.length, 6, 'a release that is not a commit is not looked up');
     assert.strictEqual(asked[0].auth, 'Bearer ghp_test');
     assert.strictEqual(drift.current('live').state, 'current');
     const chat = drift.current('chat');
@@ -46,7 +53,10 @@ const fetchImpl = async (url, opts) => {
     assert.deepStrictEqual([drift.current('tools').state, drift.current('tools').error], ['unknown', 'commit not on GitHub']);
     assert.strictEqual(drift.current('sites'), null);
     const g = Object.fromEntries(drift.driftSeconds(NOW).map((x) => [x.labels.service, x.value]));
-    assert.deepStrictEqual(g, { live: 0, chat: 26 * 3600 }, 'seconds since the oldest undeployed commit; unknown and diverged are not measured');
+    assert.deepStrictEqual([drift.current('wiki').state, drift.current('wiki').docs_only_ahead], ['current', 2], 'docs and tests only: not drift');
+    assert.strictEqual(drift.current('blog').state, 'behind', 'one runtime file makes it drift');
+    delete g.blog;
+    assert.deepStrictEqual(g, { live: 0, chat: 26 * 3600, wiki: 0 }, 'seconds since the oldest undeployed commit; unknown and diverged are not measured');
 
     failing = true;
     await d.refresh();

@@ -10,12 +10,16 @@
  *
  * Read hourly with GitHub's compare API (GET /repos/{repo}/compare/{deployed}...main, one call per
  * running service; GITHUB_TOKEN or the admin GitHub token raises the rate limit). A failure keeps the
- * last answer. `since` is the committer date of the oldest undeployed commit, so the drift age is how
+ * last answer. Main ahead by documentation and tests only (README, STATUS.json, docs/*.md, tests, .github/) counts
+ * as current: nothing that runs differs. `since` is the committer date of the oldest undeployed commit, so the drift age is how
  * long main has had something production does not run. Shown on /status and in
  * /api/v1/registry/releases; openvibe_deploy_drift_seconds{service} feeds the Prometheus alert
  * OpenVibeDeployDrift (24 hours; OpenVibe.Host deploy/prometheus/openvibe-rules.yml).
  */
 const SHA_RE = /^[0-9a-f]{7,40}$/;
+// Files that document or test a service and are not part of what it runs (OpenVibe.Host lib/reconcile.js, the
+// deploy controller, does not deploy them either): main ahead by only these is not drift.
+const DOCS_OR_TESTS = /^(README\.md|STATUS\.json|CHANGELOG\.md|SECURITY\.md|docs\/.*\.md|tests?\/|\.github\/)|\.test\.[cm]?[jt]s$/;
 const REPO_RE = /^OpenVibers\/[A-Za-z0-9._-]{1,100}$/;
 
 const state = new Map();   // service id -> { repo, deployed, state, behind_by, since, main, checked_at, error }
@@ -61,7 +65,9 @@ function createDeployDrift({ services, fetchImpl = globalThis.fetch, token = () 
             let row;
             if (st === 'behind' || st === 'diverged') row = { state: 'diverged', behind_by: ahead };
             else if (st === 'identical' || ahead === 0) row = { state: 'current', behind_by: 0 };
-            else {
+            else if (Array.isArray(body.files) && body.files.length && body.files.length < 300 && body.files.every((f) => DOCS_OR_TESTS.test(String(f.filename || '')))) {
+                row = { state: 'current', behind_by: 0, docs_only_ahead: ahead };
+            } else {
                 const first = commits[0] && commits[0].commit && (commits[0].commit.committer || commits[0].commit.author);
                 row = { state: 'behind', behind_by: ahead, since: first && first.date ? new Date(first.date).toISOString() : null };
             }

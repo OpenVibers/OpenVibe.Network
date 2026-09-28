@@ -508,8 +508,9 @@ router.post('/operator/alerts', principals.guard('network.operator.alert', { leg
     if (!v.valid) return res.status(400).json({ error: 'The body does not match network.operator-alerts-request@1', details: (v.errors || []).slice(0, 5) });
     const notifService = req.app.locals.notificationService;
     const notify = notifService ? (userId, n) => notifService.create({ user_id: userId, ...n }) : null;
+    const revise = notifService ? (userId, id, fields) => notifService.revise(id, userId, fields) : null;
     try {
-        res.json(require('../operator/alerts').receive(getDb(req), req.body, { notify }));
+        res.json(require('../operator/alerts').receive(getDb(req), req.body, { notify, revise }));
     } catch (err) {
         console.error('[Internal] Operator alerts error:', err.message);
         res.status(500).json({ error: 'Operator alerts failed' });

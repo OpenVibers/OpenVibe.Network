@@ -194,8 +194,8 @@ class NotificationService {
         // Wake the relay (it reads after the outermost transaction commits: better-sqlite3 is synchronous).
         if (announced) { const live = eventRelay.outboxFor(this.db); if (live) live.kick(); }
 
-        // Fire browser push notification (async, non-blocking)
-        try {
+        // Fire browser push notification (async, non-blocking); `silent` keeps it to the bell.
+        if (!data.silent) try {
             const pushService = require('../push/push-service');
             pushService.sendPush(data.user_id, {
                 title,
@@ -339,6 +339,18 @@ class NotificationService {
     }
 
     // ─── Update ────────────────────────────────────────────────
+
+    /** Edit one of a user's notifications in place (an operator alert that resolves or fires again). */
+    revise(id, userId, { title, message, icon, is_read: isRead } = {}) {
+        const sets = []; const args = [];
+        if (title != null) { sets.push('title = ?'); args.push(String(title).slice(0, 200)); }
+        if (message != null) { sets.push('message = ?'); args.push(String(message)); }
+        if (icon != null) { sets.push('icon = ?'); args.push(String(icon)); }
+        if (isRead != null) { sets.push('is_read = ?'); args.push(isRead ? 1 : 0); }
+        if (!sets.length) return false;
+        const r = this.db.prepare(`UPDATE notifications SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`).run(...args, id, userId);
+        return r.changes > 0;
+    }
 
     markRead(id, userId) {
         return this._markRead.run(id, userId).changes > 0;
