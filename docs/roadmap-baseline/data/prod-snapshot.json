@@ -1,6 +1,6 @@
 {
   "host": "openvibe-oregon",
-  "collectedAt": "2026-09-28T03:25:35.860Z",
+  "collectedAt": "2026-09-28T03:31:00.238Z",
   "deployments": {
     "ai": {
       "path": "/opt/openvibe.ai",
@@ -24,8 +24,8 @@
     },
     "codes": {
       "path": "/opt/openvibe.codes",
-      "sha": "d78de7052c08dc38c6e2c400a0b63a1b00793f1f",
-      "committedAt": "2026-09-27T18:55:28-07:00"
+      "sha": "64d8feb1ac841c01f93e197b6a20eb07a09ef428",
+      "committedAt": "2026-09-27T20:27:52-07:00"
     },
     "community": {
       "path": "/opt/openvibe.community",
@@ -59,8 +59,10 @@
     },
     "live": {
       "path": "/opt/openvibe.live",
-      "sha": "9f7f36c7d492266f27484c659ed84a7481803345",
-      "committedAt": "2026-09-23T22:50:15-07:00"
+      "layout": "release",
+      "release": "20260928-032420-b0cc2ef4",
+      "sha": "b0cc2ef4f8a57c9624b88af64a6aa4bd1e425279",
+      "committedAt": "2026-09-27T19:58:34-07:00"
     },
     "media": {
       "path": "/opt/openvibe.media",

@@ -9,7 +9,7 @@ Deliverable 1: runtimes, ports, units, env files and repository state.
 | Service | Repo | Stage | Ports | Units | Env file | Deployed | Databases |
 |---|---|---|---|---|---|---|---|
 | network | OpenVibe.Network | live | http 4000 | openvibe-network.service | /etc/openvibe/network.env | ddd87b6 | data/network.db |
-| live | OpenVibe.Live | live | http 3000, rtmp 1935/9935, mediasoup 11000-11300/udp, jsmpegRelayTls 9710-9789 | openvibe-live.socket, openvibe-live.service | /etc/openvibe/live.env | 9f7f36c | data/live.db, data/analytics.db, data/rs-companion.db |
+| live | OpenVibe.Live | live | http 3000, rtmp 1935/9935, mediasoup 11000-11300/udp, jsmpegRelayTls 9710-9789 | openvibe-live.socket, openvibe-live.service | /etc/openvibe/live.env | b0cc2ef | data/live.db, data/analytics.db, data/rs-companion.db |
 | media | OpenVibe.Media | live | http 4100, rtpIngest 12000-12199/udp (127.0.0.1) | openvibe-media.service | /etc/openvibe/media.env | 6248363 | data/media.db |
 | tools | OpenVibe.Tools | live | gateway 4001, maps 4010, food 4011, img 4012, yt 4013, audio 4014, text 4015, docs 4016 | openvibe-tools.service, openvibe-tools-maps.service, openvibe-tools-food.service, openvibe-tools-img.service, openvibe-tools-yt.service, openvibe-tools-audio.service, openvibe-tools-text.service, openvibe-tools-docs.service | /etc/openvibe/tools.env | e55469f | apps/<app>/data/analytics.db, apps/<app>/data/jobs.db |
 | games | OpenVibe.Games | live | http 8000 | openvibe-games.service | /etc/openvibe/games.env | 51d8688 | data/world.db |
@@ -31,7 +31,7 @@ Deliverable 1: runtimes, ports, units, env files and repository state.
 | deals | OpenVibe.Deals | loopback | http 4840 | openvibe-deals.service | /etc/openvibe/deals.env | fa0582d | /var/lib/openvibe-deals/deals.db |
 | coupons | OpenVibe.Coupons | loopback | http 4850 | openvibe-coupons.service | /etc/openvibe/coupons.env | 64835d2 | /var/lib/openvibe-coupons/coupons.db |
 | trade | OpenVibe.Trade | loopback | http 4860 | openvibe-trade.service | /etc/openvibe/trade.env | 4658447 | /var/lib/openvibe-trade/trade.db |
-| codes | OpenVibe.Codes | live | http 4900 | openvibe-codes.service | /etc/openvibe/codes.env | d78de70 | /var/lib/openvibe-codes/codes.db |
+| codes | OpenVibe.Codes | live | http 4900 | openvibe-codes.service | /etc/openvibe/codes.env | 64d8feb | /var/lib/openvibe-codes/codes.db |
 | host | OpenVibe.Host | loopback | http 4910 | openvibe-host.service, openvibe-backup.timer, openvibe-backup.service | /etc/openvibe/host.env | 2b63389 | /var/lib/openvibe-host-api/host.db |
 | examples | OpenVibe.Examples | sample |  | - | - | - | none |
 
@@ -40,7 +40,7 @@ Deliverable 1: runtimes, ports, units, env files and repository state.
 | Repo | HEAD | origin/main | Source files | LOC | Test files | CI | Routes | Tables | WS servers | Timers/jobs | TODO(contract) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | OpenVibe.Live | 03f49b7 | 03f49b7 | 221 | 75126 | 158 | yes | 648 | 126 | 8 | 57 | 14 |
-| OpenVibe.Network | 5a50c12 | 5a50c12 | 103 | 21114 | 77 | yes | 355 | 70 | 0 | 14 | 3 |
+| OpenVibe.Network | c022f86 | c022f86 | 103 | 21114 | 77 | yes | 355 | 70 | 0 | 14 | 3 |
 | OpenVibe.Shared | b5a9bd7 | b5a9bd7 | 58 | 15503 | 39 | yes | 2 | 2 | 0 | 8 | 0 |
 | OpenVibe.Media | 14cac06 | 14cac06 | 79 | 20861 | 67 | yes | 144 | 34 | 0 | 16 | 0 |
 | OpenVibe.Tools | 4f4ed6e | 4f4ed6e | 176 | 30522 | 61 | yes | 125 | 7 | 0 | 18 | 0 |
@@ -63,7 +63,7 @@ Deliverable 1: runtimes, ports, units, env files and repository state.
 | OpenVibe.Deals | 533450f | 533450f | 36 | 4980 | 17 | yes | 58 | 15 | 0 | 1 | 0 |
 | OpenVibe.Coupons | b91cd79 | b91cd79 | 29 | 4289 | 16 | yes | 46 | 12 | 0 | 2 | 0 |
 | OpenVibe.Trade | 273bce7 | 273bce7 | 37 | 4562 | 16 | yes | 7 | 10 | 0 | 2 | 0 |
-| OpenVibe.Codes | 7d6f65a | 7d6f65a | 32 | 5091 | 34 | yes | 107 | 7 | 0 | 0 | 0 |
+| OpenVibe.Codes | 64d8feb | 64d8feb | 32 | 5072 | 34 | yes | 107 | 7 | 0 | 0 | 0 |
 | OpenVibe.Host | 6d2aaaa | 6d2aaaa | 68 | 11899 | 48 | yes | 57 | 11 | 0 | 1 | 0 |
 | OpenVibe.Examples | 92eb7c3 | 92eb7c3 | 11 | 1604 | 16 | yes | 0 | 1 | 0 | 0 | 0 |
 
@@ -89,11 +89,11 @@ LOC counts non-test source files in the scanned directories only (`server/`, `ap
 | OpenVibe.Events | PUBLIC | alpha | 2026-09-28 | 550 KB | Durable events, subscriptions, delivery, retry, dead letters and replay for the network. |
 | OpenVibe.Examples | PUBLIC | alpha | 2026-09-28 | 320 KB | Executable public integration examples, tested in CI against the platform. |
 | OpenVibe.Extensions | PUBLIC | alpha | 2026-09-25 | 58 KB | First-party client surfaces for the network: the browser helper built on Coupons' public API with scoped, revocable credentials; later the kiosk/hardware companions and any desktop client (ADR-023). |
-| OpenVibe.Games | PUBLIC | stable | 2026-09-28 | 5596 KB |  |
+| OpenVibe.Games | PUBLIC | stable | 2026-09-28 | 5693 KB |  |
 | OpenVibe.Host | PUBLIC | alpha | 2026-09-28 | 1384 KB | The network's deployment/control plane first; then isolated hosting for community sites, bots and mods. |
 | OpenVibe.Live | PUBLIC | stable | 2026-09-28 | 9109 KB |  |
 | OpenVibe.Media | PUBLIC | beta | 2026-09-28 | 2022 KB |  |
-| OpenVibe.Network | PUBLIC | stable | 2026-09-28 | 3416 KB |  |
+| OpenVibe.Network | PUBLIC | stable | 2026-09-28 | 3471 KB |  |
 | OpenVibe.News | PUBLIC | alpha | 2026-09-28 | 466 KB | Source-backed stories: clustered coverage, cited summaries, perspectives and timelines. |
 | OpenVibe.Publishing | PUBLIC | alpha | 2026-09-28 | 248 KB | Shared publishing packages (drafts, revisions, citations, SEO gate, feeds, structured data) for Wiki, Blog, News, Reviews, Deals, Coupons and Trade. Packages only, no authority. |
 | OpenVibe.Realtime | PUBLIC | closed (no code) | 2026-09-25 | 16 KB | Archived: browser realtime runs in OpenVibe.Events (/realtime/stream). Decision record for ADR-005. |

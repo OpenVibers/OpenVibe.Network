@@ -4,7 +4,8 @@
 #   scripts/roadmap-baseline/collect-prod.sh [ssh-host]   (default: openvibe-ovh)
 #
 # Writes docs/roadmap-baseline/data/prod-snapshot.json. What it records, and nothing more:
-#   - deployed git SHA per /opt/openvibe.<svc>, and the current release of /opt/openre.stream
+#   - deployed git SHA per /opt/openvibe.<svc> (its current release when it uses the release layout), and the
+#     current release of /opt/openre.stream
 #   - openvibe-* and openre-* systemd units and timers, with their state
 #   - every SQLite file under /opt/openvibe.*, /opt/openre.stream, /var/lib/openvibe-* and /var/lib/openre:
 #     size, owner and TABLE NAMES (sqlite3 -readonly, run as the file's owner; no rows read). The drill
@@ -29,10 +30,15 @@ const git = (dir, ...args) => run('git', ['-c', `safe.directory=${dir}`, '-C', d
 const deployments = {};
 for (const d of fs.readdirSync('/opt').filter(n => n.startsWith('openvibe.')).sort()) {
     const dir = '/opt/' + d;
+    // The release layout (ovhost, Live since 2026-09-27): current -> releases/<time>-<sha>, a git worktree of repo/.
+    // The top-level checkout is then the pre-release one and no longer what runs.
+    const rel = fs.existsSync(dir + '/current') ? sh(`readlink -f '${dir}/current'`) : '';
+    const src = rel || dir;
     deployments[d.slice('openvibe.'.length)] = {
         path: dir,
-        sha: git(dir, 'rev-parse', 'HEAD') || null,
-        committedAt: git(dir, 'log', '-1', '--format=%cI') || null,
+        ...(rel ? { layout: 'release', release: path.basename(rel) } : {}),
+        sha: git(src, 'rev-parse', 'HEAD') || null,
+        committedAt: git(src, 'log', '-1', '--format=%cI') || null,
     };
 }
 // OpenRe.Stream uses the release layout: /opt/openre.stream/current -> releases/<sha prefix>, repo/ is the clone.

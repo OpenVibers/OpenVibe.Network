@@ -3,7 +3,7 @@
  "asOf": "2026-09-23T20:30Z",
  "generatedFrom": {
   "OpenVibe.Live": "03f49b7716b7cee1cce8a44e7155aeb96a67d004",
-  "OpenVibe.Network": "5a50c12a83f6501aacd663f15d3c06c718a4c83a",
+  "OpenVibe.Network": "c022f86236f3e8251c924fae6c98494658b795a4",
   "OpenVibe.Shared": "b5a9bd77171fcf75f42ff33fe86b7ad06baac1c8",
   "OpenVibe.Media": "14cac06886649848c332cfa564aa6b3594ea09bc",
   "OpenVibe.Tools": "4f4ed6e8f3f3c8e1a83dd644dd3c0659a7bccce4",
@@ -26,13 +26,13 @@
   "OpenVibe.Deals": "533450f9cc4a358ba50f353f06826ec3611b4ddc",
   "OpenVibe.Coupons": "b91cd795e8ee4a3e49317a6e3cb000fa92da9325",
   "OpenVibe.Trade": "273bce7b1b8771037bc2a660fa8784dc1aa049a7",
-  "OpenVibe.Codes": "7d6f65ac198d95f70ac840c24d03d1407affb7a9",
+  "OpenVibe.Codes": "64d8feb1ac841c01f93e197b6a20eb07a09ef428",
   "OpenVibe.Host": "6d2aaaa630e29d2bfd261a7f75cbbbaa2b8c1d46",
   "OpenVibe.Examples": "92eb7c3b0f50fea9f76086ed3eeda3664de93494"
  },
  "prodSnapshot": {
   "host": "openvibe-oregon",
-  "collectedAt": "2026-09-28T03:25:35.860Z"
+  "collectedAt": "2026-09-28T03:31:00.238Z"
  },
  "statuses": {
   "met": "the §15.0 required target is demonstrated by current evidence: a test that exercises it, and production evidence where the target is a production authority or state.",
@@ -449,7 +449,7 @@
    "metrics": [
     {
      "key": "deploy.drift",
-     "value": "25 service(s) not running origin/main"
+     "value": "24 service(s) not running origin/main"
     }
    ]
   },

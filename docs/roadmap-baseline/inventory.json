@@ -1,7 +1,7 @@
 {
  "generatedFrom": {
   "OpenVibe.Live": "03f49b7716b7cee1cce8a44e7155aeb96a67d004",
-  "OpenVibe.Network": "5a50c12a83f6501aacd663f15d3c06c718a4c83a",
+  "OpenVibe.Network": "c022f86236f3e8251c924fae6c98494658b795a4",
   "OpenVibe.Shared": "b5a9bd77171fcf75f42ff33fe86b7ad06baac1c8",
   "OpenVibe.Media": "14cac06886649848c332cfa564aa6b3594ea09bc",
   "OpenVibe.Tools": "4f4ed6e8f3f3c8e1a83dd644dd3c0659a7bccce4",
@@ -24,13 +24,13 @@
   "OpenVibe.Deals": "533450f9cc4a358ba50f353f06826ec3611b4ddc",
   "OpenVibe.Coupons": "b91cd795e8ee4a3e49317a6e3cb000fa92da9325",
   "OpenVibe.Trade": "273bce7b1b8771037bc2a660fa8784dc1aa049a7",
-  "OpenVibe.Codes": "7d6f65ac198d95f70ac840c24d03d1407affb7a9",
+  "OpenVibe.Codes": "64d8feb1ac841c01f93e197b6a20eb07a09ef428",
   "OpenVibe.Host": "6d2aaaa630e29d2bfd261a7f75cbbbaa2b8c1d46",
   "OpenVibe.Examples": "92eb7c3b0f50fea9f76086ed3eeda3664de93494"
  },
  "prodSnapshot": {
   "host": "openvibe-oregon",
-  "collectedAt": "2026-09-28T03:25:35.860Z"
+  "collectedAt": "2026-09-28T03:31:00.238Z"
  },
  "repos": [
   {
@@ -9302,10 +9302,10 @@
    "service": "network",
    "present": true,
    "git": {
-    "head": "5a50c12a83f6501aacd663f15d3c06c718a4c83a",
+    "head": "c022f86236f3e8251c924fae6c98494658b795a4",
     "branch": "main",
-    "originMain": "5a50c12a83f6501aacd663f15d3c06c718a4c83a",
-    "committedAt": "2026-09-27T20:18:27-07:00"
+    "originMain": "c022f86236f3e8251c924fae6c98494658b795a4",
+    "committedAt": "2026-09-27T20:27:57-07:00"
    },
    "sourceFiles": 103,
    "loc": 21114,
@@ -35668,13 +35668,13 @@
    "service": "codes",
    "present": true,
    "git": {
-    "head": "7d6f65ac198d95f70ac840c24d03d1407affb7a9",
+    "head": "64d8feb1ac841c01f93e197b6a20eb07a09ef428",
     "branch": "main",
-    "originMain": "7d6f65ac198d95f70ac840c24d03d1407affb7a9",
-    "committedAt": "2026-09-27T20:00:39-07:00"
+    "originMain": "64d8feb1ac841c01f93e197b6a20eb07a09ef428",
+    "committedAt": "2026-09-27T20:27:52-07:00"
    },
    "sourceFiles": 32,
-   "loc": 5091,
+   "loc": 5072,
    "tables": [
     {
      "table": "manifests",
@@ -36074,7 +36074,7 @@
      "method": "GET",
      "path": "/manifests/validate",
      "file": "server/http/tools.js",
-     "line": 175,
+     "line": 170,
      "target": "OpenVibe.Codes",
      "disposition": "keep",
      "wave": "-",
@@ -36084,7 +36084,7 @@
      "method": "POST",
      "path": "/manifests/validate",
      "file": "server/http/tools.js",
-     "line": 176,
+     "line": 171,
      "target": "OpenVibe.Codes",
      "disposition": "keep",
      "wave": "-",
@@ -36754,7 +36754,7 @@
      "method": "GET",
      "path": "/tools/webhooks",
      "file": "server/http/tools.js",
-     "line": 146,
+     "line": 141,
      "target": "OpenVibe.Codes",
      "disposition": "keep",
      "wave": "-",
@@ -36764,7 +36764,7 @@
      "method": "POST",
      "path": "/tools/webhooks/sample",
      "file": "server/http/tools.js",
-     "line": 152,
+     "line": 147,
      "target": "OpenVibe.Codes",
      "disposition": "keep",
      "wave": "-",
@@ -36774,7 +36774,7 @@
      "method": "POST",
      "path": "/tools/webhooks/verify",
      "file": "server/http/tools.js",
-     "line": 147,
+     "line": 142,
      "target": "OpenVibe.Codes",
      "disposition": "keep",
      "wave": "-",
@@ -61770,156 +61770,6 @@
  ],
  "discrepancies": [
   {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "ai",
-   "detail": "deployed 549bed0 is 1 commit(s) behind origin/main 6c8b833"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "billing",
-   "detail": "deployed 80f97aa is 1 commit(s) behind origin/main f24684b"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "blog",
-   "detail": "deployed 21d537c is 1 commit(s) behind origin/main 8a7f8eb"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "chat",
-   "detail": "deployed 3aab730 is 1 commit(s) behind origin/main d87c8d3"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "codes",
-   "detail": "deployed d78de70 is 1 commit(s) behind origin/main 7d6f65a"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "community",
-   "detail": "deployed 52d923a is 1 commit(s) behind origin/main 2da3501"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "coupons",
-   "detail": "deployed 64835d2 is 1 commit(s) behind origin/main b91cd79"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "deals",
-   "detail": "deployed fa0582d is 1 commit(s) behind origin/main 533450f"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "events",
-   "detail": "deployed f55f7eb is 1 commit(s) behind origin/main 19919ec"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "games",
-   "detail": "deployed 51d8688 is 1 commit(s) behind origin/main eb2d008"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "host",
-   "detail": "deployed 2b63389 is 2 commit(s) behind origin/main 6d2aaaa"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "live",
-   "detail": "deployed 9f7f36c is 120 commit(s) behind origin/main 03f49b7"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "media",
-   "detail": "deployed 6248363 is 1 commit(s) behind origin/main 14cac06"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "network",
-   "detail": "deployed ddd87b6 is 1 commit(s) behind origin/main 5a50c12"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "news",
-   "detail": "deployed 8ab47a6 is 1 commit(s) behind origin/main 97dae43"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "openre",
-   "detail": "deployed cf423e3 is 1 commit(s) behind origin/main c77ec2a"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "reviews",
-   "detail": "deployed 1cff36b is 1 commit(s) behind origin/main c87b344"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "search",
-   "detail": "deployed 8ed7667 is 1 commit(s) behind origin/main e8511d8"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "sites",
-   "detail": "deployed 32464ec is 1 commit(s) behind origin/main 304e8b1"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "sources",
-   "detail": "deployed 351383e is 1 commit(s) behind origin/main 1670853"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "tips",
-   "detail": "deployed 1e6bfbb is 1 commit(s) behind origin/main 13986b5"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "tools",
-   "detail": "deployed e55469f is 1 commit(s) behind origin/main 4f4ed6e"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "trade",
-   "detail": "deployed 4658447 is 1 commit(s) behind origin/main 273bce7"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "vip",
-   "detail": "deployed 0fbcbb5 is 1 commit(s) behind origin/main 95b3e19"
-  },
-  {
-   "severity": "medium",
-   "area": "deploy",
-   "subject": "wiki",
-   "detail": "deployed 32a26ef is 1 commit(s) behind origin/main 3302540"
-  },
-  {
    "severity": "low",
    "area": "database",
    "subject": "/opt/openvibe.blog/data/blog.db",
@@ -62194,6 +62044,150 @@
    "area": "database",
    "subject": "/var/lib/openvibe-community/community.pre-live-comments-20260923T191345Z.db",
    "detail": "2.0 MB copy (backup, import snapshot or rehearsal) kept beside the service data"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "ai",
+   "detail": "deployed 549bed0 is 1 commit(s) behind origin/main 6c8b833; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "billing",
+   "detail": "deployed 80f97aa is 1 commit(s) behind origin/main f24684b; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "blog",
+   "detail": "deployed 21d537c is 1 commit(s) behind origin/main 8a7f8eb; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "chat",
+   "detail": "deployed 3aab730 is 1 commit(s) behind origin/main d87c8d3; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "community",
+   "detail": "deployed 52d923a is 1 commit(s) behind origin/main 2da3501; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "coupons",
+   "detail": "deployed 64835d2 is 1 commit(s) behind origin/main b91cd79; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "deals",
+   "detail": "deployed fa0582d is 1 commit(s) behind origin/main 533450f; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "events",
+   "detail": "deployed f55f7eb is 1 commit(s) behind origin/main 19919ec; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "games",
+   "detail": "deployed 51d8688 is 1 commit(s) behind origin/main eb2d008; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "host",
+   "detail": "deployed 2b63389 is 2 commit(s) behind origin/main 6d2aaaa; only documentation and tests changed (README.md, STATUS.json, docs/deploy-strategies.md)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "live",
+   "detail": "deployed b0cc2ef is 1 commit(s) behind origin/main 03f49b7; only documentation and tests changed (test/fixtures/n-1/client.json, test/fixtures/n-1/worker.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "media",
+   "detail": "deployed 6248363 is 1 commit(s) behind origin/main 14cac06; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "network",
+   "detail": "deployed ddd87b6 is 2 commit(s) behind origin/main c022f86; only documentation and tests changed (README.md, STATUS.json, docs/roadmap-baseline/01-services.md and 17 more)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "news",
+   "detail": "deployed 8ab47a6 is 1 commit(s) behind origin/main 97dae43; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "openre",
+   "detail": "deployed cf423e3 is 1 commit(s) behind origin/main c77ec2a; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "reviews",
+   "detail": "deployed 1cff36b is 1 commit(s) behind origin/main c87b344; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "search",
+   "detail": "deployed 8ed7667 is 1 commit(s) behind origin/main e8511d8; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "sites",
+   "detail": "deployed 32464ec is 1 commit(s) behind origin/main 304e8b1; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "sources",
+   "detail": "deployed 351383e is 1 commit(s) behind origin/main 1670853; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "tips",
+   "detail": "deployed 1e6bfbb is 1 commit(s) behind origin/main 13986b5; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "tools",
+   "detail": "deployed e55469f is 1 commit(s) behind origin/main 4f4ed6e; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "trade",
+   "detail": "deployed 4658447 is 1 commit(s) behind origin/main 273bce7; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "vip",
+   "detail": "deployed 0fbcbb5 is 1 commit(s) behind origin/main 95b3e19; only documentation and tests changed (README.md, STATUS.json)"
+  },
+  {
+   "severity": "low",
+   "area": "deploy",
+   "subject": "wiki",
+   "detail": "deployed 32a26ef is 1 commit(s) behind origin/main 3302540; only documentation and tests changed (README.md, STATUS.json)"
   },
   {
    "severity": "low",
@@ -64048,7 +64042,7 @@
   "shared.pins": "25 repos pin a tagged openvibe-shared release (latest v1.23.1): OpenRe.Stream v1.22.0, AI v1.22.0, Billing v1.22.0, Blog v1.22.0, Chat v1.22.0, Codes v1.22.0, Community v1.22.0, Coupons v1.22.0, Deals v1.22.0, Events v1.22.0, Games v1.23.0, Host v1.22.0, Live v1.23.1, Media v1.22.0, Network v1.22.0, News v1.22.0, Reviews v1.22.0, Search v1.22.0, Sites v1.23.0, Sources v1.22.0, Tips v1.22.0, Tools v1.23.0, Trade v1.22.0, VIP v1.22.0, Wiki v1.22.0",
   "shared.drift": "31 manifests unpinned or behind: OpenRe.Stream (v1.22.0), AI (v1.22.0), Billing (v1.22.0), Blog (v1.22.0), Chat (v1.22.0), Codes (v1.22.0), Community (v1.22.0), Coupons (v1.22.0), Deals (v1.22.0), Events (v1.22.0), Games/apps/server (v1.23.0), Host (v1.22.0), Media (v1.22.0), Network (v1.22.0), News (v1.22.0), Reviews (v1.22.0), Search (v1.22.0), Sites (v1.23.0), Sources (v1.22.0), Tips (v1.22.0), Tools/apps/audio (v1.23.0), Tools/apps/docs (v1.23.0), Tools/apps/food (v1.23.0), Tools/apps/gateway (v1.23.0), Tools/apps/img (v1.23.0), Tools/apps/maps (v1.23.0), Tools/apps/text (v1.23.0), Tools/apps/yt (v1.23.0), Trade (v1.22.0), VIP (v1.22.0), Wiki (v1.22.0)",
   "ci.repos": "27 of 27 scanned repos have .github/workflows",
-  "deploy.drift": "25 service(s) not running origin/main",
+  "deploy.drift": "24 service(s) not running origin/main",
   "tests.OpenVibe.Live": "158 test files",
   "tables.OpenVibe.Live": "126 tables",
   "tables.OpenVibe.Live.target:OpenVibe.Live": "35 Live tables target OpenVibe.Live",
@@ -64617,7 +64611,7 @@
    "metrics": [
     {
      "key": "deploy.drift",
-     "value": "25 service(s) not running origin/main"
+     "value": "24 service(s) not running origin/main"
     }
    ],
    "members": [
@@ -64835,7 +64829,7 @@
    "status": "open",
    "check": "deploy-drift",
    "ownerReview": false,
-   "checkResult": "ai: deployed 549bed0 is 1 commit(s) behind origin/main 6c8b833; billing: deployed 80f97aa is 1 commit(s) behind origin/main f24684b; blog: deployed 21d537c is 1 commit(s) behind origin/main 8a7f8eb; chat: deployed 3aab730 is 1 commit(s) behind origin/main d87c8d3; codes: deployed d78de70 is 1 commit(s) behind origin/main 7d6f65a; community: deployed 52d923a is 1 commit(s) behind origin/main 2da3501; coupons: deployed 64835d2 is 1 commit(s) behind origin/main b91cd79; deals: deployed fa0582d is 1 commit(s) behind origin/main 533450f; events: deployed f55f7eb is 1 commit(s) behind origin/main 19919ec; games: deployed 51d8688 is 1 commit(s) behind origin/main eb2d008; host: deployed 2b63389 is 2 commit(s) behind origin/main 6d2aaaa; live: deployed 9f7f36c is 120 commit(s) behind origin/main 03f49b7; media: deployed 6248363 is 1 commit(s) behind origin/main 14cac06; network: deployed ddd87b6 is 1 commit(s) behind origin/main 5a50c12; news: deployed 8ab47a6 is 1 commit(s) behind origin/main 97dae43; openre: deployed cf423e3 is 1 commit(s) behind origin/main c77ec2a; reviews: deployed 1cff36b is 1 commit(s) behind origin/main c87b344; search: deployed 8ed7667 is 1 commit(s) behind origin/main e8511d8; sites: deployed 32464ec is 1 commit(s) behind origin/main 304e8b1; sources: deployed 351383e is 1 commit(s) behind origin/main 1670853; tips: deployed 1e6bfbb is 1 commit(s) behind origin/main 13986b5; tools: deployed e55469f is 1 commit(s) behind origin/main 4f4ed6e; trade: deployed 4658447 is 1 commit(s) behind origin/main 273bce7; vip: deployed 0fbcbb5 is 1 commit(s) behind origin/main 95b3e19; wiki: deployed 32a26ef is 1 commit(s) behind origin/main 3302540"
+   "checkResult": "ai: deployed 549bed0 is 1 commit(s) behind origin/main 6c8b833; only documentation and tests changed (README.md, STATUS.json); billing: deployed 80f97aa is 1 commit(s) behind origin/main f24684b; only documentation and tests changed (README.md, STATUS.json); blog: deployed 21d537c is 1 commit(s) behind origin/main 8a7f8eb; only documentation and tests changed (README.md, STATUS.json); chat: deployed 3aab730 is 1 commit(s) behind origin/main d87c8d3; only documentation and tests changed (README.md, STATUS.json); community: deployed 52d923a is 1 commit(s) behind origin/main 2da3501; only documentation and tests changed (README.md, STATUS.json); coupons: deployed 64835d2 is 1 commit(s) behind origin/main b91cd79; only documentation and tests changed (README.md, STATUS.json); deals: deployed fa0582d is 1 commit(s) behind origin/main 533450f; only documentation and tests changed (README.md, STATUS.json); events: deployed f55f7eb is 1 commit(s) behind origin/main 19919ec; only documentation and tests changed (README.md, STATUS.json); games: deployed 51d8688 is 1 commit(s) behind origin/main eb2d008; only documentation and tests changed (README.md, STATUS.json); host: deployed 2b63389 is 2 commit(s) behind origin/main 6d2aaaa; only documentation and tests changed (README.md, STATUS.json, docs/deploy-strategies.md); live: deployed b0cc2ef is 1 commit(s) behind origin/main 03f49b7; only documentation and tests changed (test/fixtures/n-1/client.json, test/fixtures/n-1/worker.json); media: deployed 6248363 is 1 commit(s) behind origin/main 14cac06; only documentation and tests changed (README.md, STATUS.json); network: deployed ddd87b6 is 2 commit(s) behind origin/main c022f86; only documentation and tests changed (README.md, STATUS.json, docs/roadmap-baseline/01-services.md and 17 more); news: deployed 8ab47a6 is 1 commit(s) behind origin/main 97dae43; only documentation and tests changed (README.md, STATUS.json); openre: deployed cf423e3 is 1 commit(s) behind origin/main c77ec2a; only documentation and tests changed (README.md, STATUS.json); reviews: deployed 1cff36b is 1 commit(s) behind origin/main c87b344; only documentation and tests changed (README.md, STATUS.json); search: deployed 8ed7667 is 1 commit(s) behind origin/main e8511d8; only documentation and tests changed (README.md, STATUS.json); sites: deployed 32464ec is 1 commit(s) behind origin/main 304e8b1; only documentation and tests changed (README.md, STATUS.json); sources: deployed 351383e is 1 commit(s) behind origin/main 1670853; only documentation and tests changed (README.md, STATUS.json); tips: deployed 1e6bfbb is 1 commit(s) behind origin/main 13986b5; only documentation and tests changed (README.md, STATUS.json); tools: deployed e55469f is 1 commit(s) behind origin/main 4f4ed6e; only documentation and tests changed (README.md, STATUS.json); trade: deployed 4658447 is 1 commit(s) behind origin/main 273bce7; only documentation and tests changed (README.md, STATUS.json); vip: deployed 0fbcbb5 is 1 commit(s) behind origin/main 95b3e19; only documentation and tests changed (README.md, STATUS.json); wiki: deployed 32a26ef is 1 commit(s) behind origin/main 3302540; only documentation and tests changed (README.md, STATUS.json)"
   },
   {
    "id": "H14",

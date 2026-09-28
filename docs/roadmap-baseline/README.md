@@ -2,7 +2,7 @@
 
 The audit baseline from the OpenVibe development roadmap (Wave 0; section 12 items 1-3): what exists across the estate, who owns each piece of data today and who should, what production looks like next to the repos, and which hazards constrain later waves. Every file here except `data/*.json` is generated.
 
-Source commits: Live `03f49b7`, Network `5a50c12`, Shared `b5a9bd7`, Media `14cac06`, Tools `4f4ed6e`, Community `2da3501`, Games `eb2d008`, Sites `304e8b1`, Events `19919ec`, Chat `d87c8d3`, OpenRe.Stream `c77ec2a`, Billing `f24684b`, Tips `13986b5`, VIP `95b3e19`, AI `6c8b833`, Search `e8511d8`, Sources `1670853`, Wiki `3302540`, Blog `8a7f8eb`, News `97dae43`, Reviews `c87b344`, Deals `533450f`, Coupons `b91cd79`, Trade `273bce7`, Codes `7d6f65a`, Host `6d2aaaa`, Examples `92eb7c3`. Production snapshot: openvibe-oregon, 2026-09-28.
+Source commits: Live `03f49b7`, Network `c022f86`, Shared `b5a9bd7`, Media `14cac06`, Tools `4f4ed6e`, Community `2da3501`, Games `eb2d008`, Sites `304e8b1`, Events `19919ec`, Chat `d87c8d3`, OpenRe.Stream `c77ec2a`, Billing `f24684b`, Tips `13986b5`, VIP `95b3e19`, AI `6c8b833`, Search `e8511d8`, Sources `1670853`, Wiki `3302540`, Blog `8a7f8eb`, News `97dae43`, Reviews `c87b344`, Deals `533450f`, Coupons `b91cd79`, Trade `273bce7`, Codes `64d8feb`, Host `6d2aaaa`, Examples `92eb7c3`. Production snapshot: openvibe-oregon, 2026-09-28.
 
 ## Deliverables
 
@@ -14,7 +14,7 @@ Source commits: Live `03f49b7`, Network `5a50c12`, Shared `b5a9bd7`, Media `14ca
 | 4 | [05-realtime-and-jobs.md](05-realtime-and-jobs.md) | WebSocket servers and paths, non-HTTP protocols, background jobs |
 | 5 | [06-secrets.md](06-secrets.md) | auth mechanisms and secret names (no values) |
 | 6 | [07-ownership.md](07-ownership.md) | current vs target data ownership |
-| 7 | [08-discrepancies.md](08-discrepancies.md) | 378 production-vs-repo items |
+| 7 | [08-discrepancies.md](08-discrepancies.md) | 377 production-vs-repo items |
 | 8 | [09-d-status.md](09-d-status.md) | D01-D46 family status, derived from the requirement ledger (families: 0 met, 21 partial, 0 not met, 1 blocked on owner) |
 | 9 | [10-hazards.md](10-hazards.md) | 18 hazards with owners, mitigations and waves; 10 need the owner's review |
 | 10 | [requirement-ledger.md](requirement-ledger.md), [requirement-ledger.json](requirement-ledger.json) | D01-D46 with acceptance artifacts (roadmap §22.4/§25): 3 met, 36 partial, 0 not met, 7 blocked on owner |

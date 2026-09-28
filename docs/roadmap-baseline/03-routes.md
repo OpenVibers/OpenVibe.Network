@@ -2502,8 +2502,8 @@ Owner = the repository whose code answers the route; target = the authority it b
 | ALL | /logout | server/auth/sso.js:233 |  | keep |
 | GET | /logout | server/auth/sso.js:224 |  | keep |
 | POST | /logout | server/auth/sso.js:232 |  | keep |
-| GET | /manifests/validate | server/http/tools.js:175 |  | keep |
-| POST | /manifests/validate | server/http/tools.js:176 |  | keep |
+| GET | /manifests/validate | server/http/tools.js:170 |  | keep |
+| POST | /manifests/validate | server/http/tools.js:171 |  | keep |
 | GET | /me | server/auth/sso.js:247 |  | keep |
 | GET | /oauth | server/http/tools.js:32 |  | keep |
 | GET | /oauth/test-callback | server/http/tools.js:68 |  | keep |
@@ -2570,9 +2570,9 @@ Owner = the repository whose code answers the route; target = the authority it b
 | GET | /sitemap.xml | server/http/pages.js:274 |  | keep |
 | GET | /staff | server/http/pages.js:243 |  | keep |
 | POST | /staff/trust | server/http/pages.js:257 |  | keep |
-| GET | /tools/webhooks | server/http/tools.js:146 |  | keep |
-| POST | /tools/webhooks/sample | server/http/tools.js:152 |  | keep |
-| POST | /tools/webhooks/verify | server/http/tools.js:147 |  | keep |
+| GET | /tools/webhooks | server/http/tools.js:141 |  | keep |
+| POST | /tools/webhooks/sample | server/http/tools.js:147 |  | keep |
+| POST | /tools/webhooks/verify | server/http/tools.js:142 |  | keep |
 | GET | /updates | server/http/pages.js:88 |  | keep |
 
 ## OpenVibe.Host

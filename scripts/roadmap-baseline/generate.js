@@ -313,6 +313,8 @@ sortBy(envRows, 'repo', 'name');
 const discrepancies = [];
 const addD = (severity, area, subject, detail) => discrepancies.push({ severity, area, subject, detail });
 // A unit spec ending in "@.service" is a template: it matches every instance (openre-rtmp-ingest@<release>.service).
+// Files that document or test a service and are not part of what it runs.
+const DOCS_OR_TESTS = /^(README\.md|STATUS\.json|CHANGELOG\.md|SECURITY\.md|docs\/.*\.md|docs\/roadmap-baseline\/|tests?\/|\.github\/)|\.test\.[cm]?[jt]s$/;
 const unitMatches = (spec, unit) => spec.endsWith('@.service') ? unit.startsWith(spec.slice(0, -'.service'.length)) && unit.endsWith('.service') : spec === unit;
 if (!prod) addD('unknown', 'production', 'all', 'prod-snapshot.json missing: run collect-prod.sh');
 else {
@@ -329,9 +331,13 @@ else {
         } else if (dep.sha && target && dep.sha !== target) {
             const behind = git(path.join(ROOT, s.repo), 'rev-list', '--count', `${dep.sha}..${target}`);
             const ahead = git(path.join(ROOT, s.repo), 'rev-list', '--count', `${target}..${dep.sha}`);
-            addD('medium', 'deploy', s.id, behind === null
+            // Commits that change only documentation and tests (a README/STATUS refresh, re-recorded fixtures) need
+            // no deploy of their own; they ride the next one, so they rank below drift in what runs.
+            const changed = behind === null ? null : (git(path.join(ROOT, s.repo), 'diff', '--name-only', dep.sha, target) || '').split('\n').filter(Boolean);
+            const docsOnly = changed && changed.length && changed.every(f => DOCS_OR_TESTS.test(f));
+            addD(docsOnly ? 'low' : 'medium', 'deploy', s.id, behind === null
                 ? `deployed ${dep.sha.slice(0, 7)} is not in the local clone (unknown commit)`
-                : `deployed ${dep.sha.slice(0, 7)} is ${behind} commit(s) behind origin/main ${target.slice(0, 7)}${ahead && ahead !== '0' ? `, ${ahead} ahead` : ''}`);
+                : `deployed ${dep.sha.slice(0, 7)} is ${behind} commit(s) behind origin/main ${target.slice(0, 7)}${ahead && ahead !== '0' ? `, ${ahead} ahead` : ''}${docsOnly ? `; only documentation and tests changed (${changed.length > 3 ? `${changed.slice(0, 3).join(', ')} and ${changed.length - 3} more` : changed.join(', ')})` : ''}`);
         }
         if (r && r.git.originMain && r.git.head && r.git.head !== r.git.originMain) {
             addD('info', 'checkout', s.repo, `local checkout ${r.git.head.slice(0, 7)} differs from origin/main ${r.git.originMain.slice(0, 7)}; scan reflects the checkout`);
