@@ -175,7 +175,7 @@ const valid = (e) => {
     assert.ok(notes.create({ user_id: 1, type: 'SERVICE_ANNOUNCEMENT', title: 'hello' }), 'no actor: unchanged');
     assert.strictEqual(notes.createBulk([1, 3], { type: 'STREAM_LIVE', sender_id: 2, title: 'bob is live' }).length, 1, 'bulk: only cat hears bob went live');
     await call('DELETE', '/api/v1/me/blocks/bob', { headers: as(1) });
-    assert.ok(notes.create({ user_id: 1, type: 'FOLLOW', sender_id: 2 }), 'unblocked: notifications again');
+    assert.ok(notes.create({ user_id: 1, type: 'MENTION', sender_id: 2, message: 'bob mentioned you' }), 'unblocked: notifications again (a MENTION: a second FOLLOW from bob within the hour is deduped)');
 
     // ── Import of Chat's exported dm_blocks ──
     const importer = require('../scripts/import-blocks');

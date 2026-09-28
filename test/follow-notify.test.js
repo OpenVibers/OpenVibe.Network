@@ -1,0 +1,94 @@
+'use strict';
+// FOLLOW notifications from Network's follow graph (roadmap WS-E task 3, ADR-020, ADR-030): a follow that
+// starts tells the followed person once, in the follow's transaction with its network.notification.created
+// event; following again within the hour, changing flags, importing and unfollowing notify nobody; the
+// person's social preference and blocks apply; a failing notifier never fails the follow.
+//   node test/follow-notify.test.js
+const assert = require('assert');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { initDb } = require('../server/db/database');
+
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-follow-notify-'));
+const log = console.log; console.log = () => {};
+const db = initDb(path.join(dir, 'network.db'));
+console.log = log;
+require('../server/identity/blocks').ensureSchema(db);
+
+const ANN = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPA';
+const BOB = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPB';
+const CAT = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPC';
+const DAN = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPD';
+db.prepare(`INSERT INTO users (id, username, display_name, password_hash, subject_id, avatar_url) VALUES
+    (1, 'ann', 'Ann', 'x', ?, 'https://openvibe.media/avatar/ann'), (2, 'bob', 'Bob', 'x', ?, NULL),
+    (3, 'cat', NULL, 'x', ?, NULL), (4, 'dan', 'Dan', 'x', ?, NULL)`).run(ANN, BOB, CAT, DAN);
+
+const { NotificationService } = require('../server/notifications/notification-service');
+const notifications = new NotificationService(db);
+const follows = require('../server/identity/follows');
+follows.ensureSchema(db);
+follows.setNotifier(require('../server/notifications/follow-notify').followNotifier(notifications));
+
+const followsOf = (userId) => db.prepare("SELECT * FROM notifications WHERE user_id = ? AND type = 'FOLLOW' ORDER BY created_at").all(userId);
+const announced = () => db.prepare('SELECT envelope FROM network_event_outbox ORDER BY id').all().map((r) => JSON.parse(r.envelope))
+    .filter((e) => e.event_type === 'network.notification.created');
+
+// A new follow: one FOLLOW for the followed person, from the follower, linking to the follower's channel.
+follows.setFollow(db, ANN, 'channel', BOB, true);
+let n = followsOf(2);
+assert.strictEqual(n.length, 1);
+assert.strictEqual(n[0].message, 'Ann followed you');
+assert.strictEqual(n[0].title, 'New Follower');
+assert.strictEqual(n[0].url, 'https://openvibe.live/@ann');
+assert.strictEqual(n[0].service, 'live');
+assert.strictEqual(n[0].category, 'social');
+assert.strictEqual(n[0].sender_id, 1);
+assert.strictEqual(n[0].sender_avatar, 'https://openvibe.media/avatar/ann');
+assert.deepStrictEqual(announced().map((e) => [e.subject.id, e.payload.type]), [[BOB, 'FOLLOW']], 'announced to the followed person');
+assert.strictEqual(followsOf(1).length, 0, 'the follower is not notified');
+
+// Same follow again, a flag change, an unfollow, and following again within the hour: nothing new.
+follows.setFollow(db, ANN, 'channel', BOB, true);
+follows.setFollow(db, ANN, 'channel', BOB, true, { notifyEmail: false });
+follows.setFollow(db, ANN, 'channel', BOB, false);
+follows.setFollow(db, ANN, 'channel', BOB, true);
+assert.strictEqual(followsOf(2).length, 1, 'one an hour per follower');
+assert.strictEqual(announced().length, 1);
+
+// Another follower is another notification; a name falls back to the username.
+follows.setFollow(db, CAT, 'channel', BOB, true);
+n = followsOf(2);
+assert.strictEqual(n.length, 2);
+assert.strictEqual(n[1].message, 'cat followed you');
+
+// An import (Live's backfill) announces nothing and notifies nobody.
+follows.importFollows(db, 'live', [{ follower_ref: 4, target_ref: 1 }], (ref) => ({ 4: DAN, 1: ANN })[ref]);
+assert.ok(follows.status(db, 'channel', ANN, DAN).following, 'imported');
+assert.strictEqual(followsOf(1).length, 0);
+
+// The followed person's social preference off: the follow is made, no notification.
+notifications.setPreference(4, 'social', { enabled: false });
+follows.setFollow(db, ANN, 'channel', DAN, true);
+assert.ok(follows.status(db, 'channel', DAN, ANN).following);
+assert.strictEqual(followsOf(4).length, 0);
+
+// A follower the followed person blocked: no notification.
+db.prepare('INSERT INTO user_blocks (blocker_subject, blocked_subject) VALUES (?, ?)').run(ANN, CAT);
+follows.setFollow(db, CAT, 'channel', ANN, true);
+assert.strictEqual(followsOf(1).length, 0, 'blocked follower');
+follows.setFollow(db, BOB, 'channel', ANN, true);
+assert.strictEqual(followsOf(1).length, 1, 'anyone else still notifies');
+
+// A notifier that throws never fails the follow, and the follow and its event still commit.
+follows.setNotifier(() => { throw new Error('boom'); });
+const warn = console.warn; console.warn = () => {};
+const out = follows.setFollow(db, DAN, 'channel', CAT, true);
+console.warn = warn;
+assert.ok(out.changed && out.active);
+assert.ok(follows.status(db, 'channel', CAT, DAN).following);
+assert.ok(db.prepare("SELECT 1 FROM network_event_outbox WHERE envelope LIKE '%network.follow.created%' AND envelope LIKE ?").get(`%"follower":"${DAN}","target_type":"channel","target_id":"${CAT}"%`));
+follows.setNotifier(null);
+
+fs.rmSync(dir, { recursive: true, force: true });
+console.log('follow notifications: ok');

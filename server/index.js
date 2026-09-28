@@ -458,6 +458,8 @@ app.get('/internal/blocks', require('./identity/principals').guard('network.bloc
     app.use('/api/v1/follows', rateLimit({ windowMs: 60_000, max: 300 }), followRouters.pub);
     // ADR-030 step 4: products record follows on a person's behalf (network.follows.write, service token only).
     app.use('/internal/follows', require('./identity/principals').guard('network.follows.write', { legacy: false }), followRouters.internal);
+    // A follow that starts notifies the followed person (FOLLOW), in the follow's transaction.
+    require('./identity/follows').setNotifier(require('./notifications/follow-notify').followNotifier(notificationService));
 }
 // Realtime tickets (WS-E task 3, WS-F task 1; ADR-005 amendment 2): the notification badge on any site opens
 // OpenVibe.Events' /realtime/stream as the signed-in person with a two-minute, single-use ticket

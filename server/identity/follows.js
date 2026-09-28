@@ -34,6 +34,12 @@ const SUBJECT_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 const NAME_RE = /^[A-Za-z0-9_]{1,64}$/;
 const MAX_FOLLOWING = 5000;
 
+// A follow that starts tells the followed person (a FOLLOW notification, server/notifications/follow-notify.js),
+// set at boot. It runs inside setFollow's transaction, so the follow, its event and the notification commit
+// together; a notifier that throws never fails the follow. Imports (emit: false) and flag changes notify nobody.
+let notifier = null;
+function setNotifier(fn) { notifier = typeof fn === 'function' ? fn : null; }
+
 class FollowError extends Error {
     constructor(status, code, detail) { super(detail); this.status = status; this.code = code; }
 }
@@ -126,6 +132,9 @@ function setFollow(db, follower, type, target, active, { notifyEmail, notifyPush
                         VALUES (?, ?, ?, 1, ?, ?, 1, ?, ?, ?)`).run(follower, type, target, email ? 1 : 0, push ? 1 : 0, source, at, at);
         }
         if (emit) eventRelay.writerFor(db).enqueue(buildEnvelope({ follower, type, target, active, notifyEmail: email, notifyPush: push, revision, at, reason, actor }));
+        if (emit && active && !(prev && prev.active) && notifier) {
+            try { notifier(db, { follower, type, target, at }); } catch (err) { console.warn('[Follows] follow notification not created:', err.message); }
+        }
         return { changed: true, active: !!active, notify_email: email, notify_push: push, revision, created_at: active ? createdAt : null, at };
     })();
 }
@@ -374,4 +383,4 @@ function onSubjectMerged(db, { from, into }) {
     return out;
 }
 
-module.exports = { onSubjectMerged, TYPES, FollowError, ensureSchema, setFollow, status, list, count, findTarget, buildEnvelope, onSubjectRemoved, importFollows, routers, kick };
+module.exports = { setNotifier, onSubjectMerged, TYPES, FollowError, ensureSchema, setFollow, status, list, count, findTarget, buildEnvelope, onSubjectRemoved, importFollows, routers, kick };

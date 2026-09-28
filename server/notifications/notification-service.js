@@ -170,9 +170,10 @@ class NotificationService {
         // Nothing from a person the recipient blocked (platform blocks, WS-E task 5). A block never hides a
         // staff action: moderation, system and admin notices are always created.
         if (!BLOCK_EXEMPT_CATEGORIES.has(category) && this.fromBlockedActor(data)) return null;
-        // Go-live dedupe (see _recentFromSender).
-        if (data.type === 'STREAM_LIVE' && data.sender_id != null) {
-            try { if (this._recentFromSender.get(data.user_id, 'STREAM_LIVE', data.sender_id)) return null; } catch { /* */ }
+        // Go-live and follow dedupe (see _recentFromSender): one an hour per sender, so following again after an
+        // unfollow does not notify again.
+        if ((data.type === 'STREAM_LIVE' || data.type === 'FOLLOW') && data.sender_id != null) {
+            try { if (this._recentFromSender.get(data.user_id, data.type, data.sender_id)) return null; } catch { /* */ }
         }
 
         const richContent = data.rich_content ? JSON.stringify(data.rich_content) : null;
