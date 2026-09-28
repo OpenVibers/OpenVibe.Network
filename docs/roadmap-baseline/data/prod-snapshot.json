@@ -1,51 +1,51 @@
 {
   "host": "openvibe-oregon",
-  "collectedAt": "2026-09-28T03:31:00.238Z",
+  "collectedAt": "2026-09-28T05:20:11.716Z",
   "deployments": {
     "ai": {
       "path": "/opt/openvibe.ai",
-      "sha": "549bed09452233c6b21d529ab905a7bd8fbad4da",
-      "committedAt": "2026-09-27T19:43:37-07:00"
+      "sha": "f6fdbc9cbc3c87d684046940e49dd5ddffd5c79b",
+      "committedAt": "2026-09-27T21:20:27-07:00"
     },
     "billing": {
       "path": "/opt/openvibe.billing",
-      "sha": "80f97aabbecb0fcb81842480166533ff0452c8a5",
-      "committedAt": "2026-09-27T19:45:09-07:00"
+      "sha": "1f9df5681486992d3fa8f076ff11f22aea5f0b25",
+      "committedAt": "2026-09-27T21:18:42-07:00"
     },
     "blog": {
       "path": "/opt/openvibe.blog",
-      "sha": "21d537c6e6b90712512916e4d7377d581ee2f646",
-      "committedAt": "2026-09-27T18:49:25-07:00"
+      "sha": "9f339e3c27abfa4445a7d52cc6c1153c4a88b5ec",
+      "committedAt": "2026-09-27T21:20:31-07:00"
     },
     "chat": {
       "path": "/opt/openvibe.chat",
-      "sha": "3aab730c5105594523ed58ab0643c6eedc6b5214",
-      "committedAt": "2026-09-27T19:10:37-07:00"
+      "sha": "4c517a59ead3c9e71139b6d4954de8306a4d83ba",
+      "committedAt": "2026-09-27T21:25:00-07:00"
     },
     "codes": {
       "path": "/opt/openvibe.codes",
-      "sha": "64d8feb1ac841c01f93e197b6a20eb07a09ef428",
-      "committedAt": "2026-09-27T20:27:52-07:00"
+      "sha": "1246445c4abaddcacf4d04adf172d601700833e3",
+      "committedAt": "2026-09-27T21:20:29-07:00"
     },
     "community": {
       "path": "/opt/openvibe.community",
-      "sha": "52d923a941f659ccfc7cb442efb2b10349663175",
-      "committedAt": "2026-09-27T18:07:00-07:00"
+      "sha": "581d80535f4bd1081afeb7a564392d4e1e5eb000",
+      "committedAt": "2026-09-27T21:17:37-07:00"
     },
     "coupons": {
       "path": "/opt/openvibe.coupons",
-      "sha": "64835d2a1c926e89116a35218d7a2d081f38b67a",
-      "committedAt": "2026-09-27T19:02:19-07:00"
+      "sha": "168262d1baa81ab1973863d66d52ab213711ef81",
+      "committedAt": "2026-09-27T21:18:44-07:00"
     },
     "deals": {
       "path": "/opt/openvibe.deals",
-      "sha": "fa0582d267ef61e7b141299008d6239dd34f49ce",
-      "committedAt": "2026-09-27T18:58:50-07:00"
+      "sha": "0bf25e2e5a50e0dca1887d3545be2c95c3cd2749",
+      "committedAt": "2026-09-27T21:20:34-07:00"
     },
     "events": {
       "path": "/opt/openvibe.events",
-      "sha": "f55f7eb601be58220089c197f7dd2178b46d8d15",
-      "committedAt": "2026-09-27T19:55:58-07:00"
+      "sha": "7c575cd8ba545dfb7c4c53667dac7a71f77ac309",
+      "committedAt": "2026-09-27T21:12:06-07:00"
     },
     "games": {
       "path": "/opt/openvibe.games",
@@ -54,40 +54,40 @@
     },
     "host": {
       "path": "/opt/openvibe.host",
-      "sha": "2b633899f41b559586e3d6c234925d498c7bf2cd",
-      "committedAt": "2026-09-27T19:35:46-07:00"
+      "sha": "02c68f694a28f06e3056a05055f4515b3d4e7c64",
+      "committedAt": "2026-09-27T22:19:53-07:00"
     },
     "live": {
       "path": "/opt/openvibe.live",
       "layout": "release",
-      "release": "20260928-032420-b0cc2ef4",
-      "sha": "b0cc2ef4f8a57c9624b88af64a6aa4bd1e425279",
-      "committedAt": "2026-09-27T19:58:34-07:00"
+      "release": "20260928-040645-278cd404",
+      "sha": "278cd4047e57f4a4849b2adde497894a4f985445",
+      "committedAt": "2026-09-27T21:06:08-07:00"
     },
     "media": {
       "path": "/opt/openvibe.media",
-      "sha": "62483631db9b9c120662abf2b21d4cff0a2bdc80",
-      "committedAt": "2026-09-27T19:50:40-07:00"
+      "sha": "47b21bde0b4863344fafbb90109922fbf8757687",
+      "committedAt": "2026-09-27T22:17:11-07:00"
     },
     "network": {
       "path": "/opt/openvibe.network",
-      "sha": "ddd87b6844fad1f0f878ed574ce0e2c990e5e695",
-      "committedAt": "2026-09-27T19:26:13-07:00"
+      "sha": "ac71bb4d82b09a1fe384119a22d92bd3eb98abbf",
+      "committedAt": "2026-09-27T20:53:11-07:00"
     },
     "news": {
       "path": "/opt/openvibe.news",
-      "sha": "8ab47a6a78168e1b25ac07c01aeb3a0bb743bbb9",
-      "committedAt": "2026-09-27T19:20:19-07:00"
+      "sha": "cb6d79e2a6d9c7c07ca76eb7bdb14d41c81b7278",
+      "committedAt": "2026-09-27T21:21:11-07:00"
     },
     "reviews": {
       "path": "/opt/openvibe.reviews",
-      "sha": "1cff36b8b9d385c4effb323f0506ede106b18d22",
-      "committedAt": "2026-09-27T19:23:25-07:00"
+      "sha": "8416fcb1f0f2b1969a1261fe4ee5bf6aa3600cd2",
+      "committedAt": "2026-09-27T21:17:09-07:00"
     },
     "search": {
       "path": "/opt/openvibe.search",
-      "sha": "8ed7667ff1e383271ddcc67c709be1bf5e1ba43d",
-      "committedAt": "2026-09-27T17:59:00-07:00"
+      "sha": "04f9fd45c3c10b401704da2994700c14290b5051",
+      "committedAt": "2026-09-27T21:16:50-07:00"
     },
     "sites": {
       "path": "/opt/openvibe.sites",
@@ -96,13 +96,13 @@
     },
     "sources": {
       "path": "/opt/openvibe.sources",
-      "sha": "351383e8111395668a16f66b11d659549c6483fb",
-      "committedAt": "2026-09-27T19:29:11-07:00"
+      "sha": "6e1185e5c315ff3f5676b86dd3dfe6761ef82e32",
+      "committedAt": "2026-09-27T21:17:07-07:00"
     },
     "tips": {
       "path": "/opt/openvibe.tips",
-      "sha": "1e6bfbb8294c9401c46c066457b165c24bc90d02",
-      "committedAt": "2026-09-27T18:11:05-07:00"
+      "sha": "3cc8c8354183008026e38a99db9ef96014663467",
+      "committedAt": "2026-09-27T21:21:09-07:00"
     },
     "tools": {
       "path": "/opt/openvibe.tools",
@@ -111,25 +111,25 @@
     },
     "trade": {
       "path": "/opt/openvibe.trade",
-      "sha": "4658447782c7d259e59d8c1060fd05c60cf66574",
-      "committedAt": "2026-09-27T19:26:12-07:00"
+      "sha": "d515e46f7f32a6265a8e7feab49e97b9811094ed",
+      "committedAt": "2026-09-27T21:21:13-07:00"
     },
     "vip": {
       "path": "/opt/openvibe.vip",
-      "sha": "0fbcbb53802d2bd4e4dc6e393465a1fce1fc75a9",
-      "committedAt": "2026-09-27T18:14:01-07:00"
+      "sha": "63f46fa5a5ff7ccda8acb0a63ff0f64db5f7805b",
+      "committedAt": "2026-09-27T21:20:38-07:00"
     },
     "wiki": {
       "path": "/opt/openvibe.wiki",
-      "sha": "32a26ef43c5f4ac2c02c813f0ba68fda5f8cd5cf",
-      "committedAt": "2026-09-27T18:44:27-07:00"
+      "sha": "a81573f9ad37722a4d4ffc5bce36565d7d8e5096",
+      "committedAt": "2026-09-27T21:17:39-07:00"
     },
     "openre": {
       "path": "/opt/openre.stream",
       "layout": "release",
-      "release": "cf423e377878",
-      "sha": "cf423e377878eb60e449205a670130e6febb6b07",
-      "committedAt": "2026-09-27T19:32:33-07:00"
+      "release": "d9f42407f666",
+      "sha": "d9f42407f66648c547c32989ecf862b0bc949b63",
+      "committedAt": "2026-09-27T21:16:46-07:00"
     }
   },
   "units": [
@@ -488,7 +488,7 @@
     },
     {
       "file": "/opt/openvibe.games/data/world.db",
-      "bytes": 610304,
+      "bytes": 634880,
       "owner": "ubuntu",
       "tables": [
         "account_data_events",
@@ -1357,7 +1357,7 @@
     },
     {
       "file": "/opt/openvibe.live/shared/data/live.db",
-      "bytes": 284700672,
+      "bytes": 284712960,
       "owner": "ubuntu",
       "tables": [
         "account_data_events",
@@ -1444,6 +1444,7 @@
         "easter_egg_solves",
         "emotes",
         "event_outbox",
+        "follow_projection_revisions",
         "follows",
         "game_achievements",
         "game_bank",
@@ -1661,6 +1662,49 @@
         "media_locations",
         "media_object_changes",
         "media_objects",
+        "media_relationships",
+        "media_settings",
+        "media_tier_decisions",
+        "media_upload_parts",
+        "media_uploads",
+        "media_variants",
+        "media_verifications",
+        "media_verify_runs",
+        "paste_comments",
+        "paste_likes",
+        "pastes",
+        "search_doc_pushes",
+        "token_revocations",
+        "vods"
+      ]
+    },
+    {
+      "file": "/opt/openvibe.media/data/reports/h15-resize-applied-20260928.media.db",
+      "bytes": 11735040,
+      "owner": "ubuntu",
+      "tables": [
+        "account_data_events",
+        "apps",
+        "assets",
+        "clips",
+        "config_keys",
+        "config_snapshots",
+        "content_views",
+        "content_visits",
+        "event_outbox",
+        "files",
+        "media_holds",
+        "media_invariant_violations",
+        "media_jobs",
+        "media_locations",
+        "media_namespaces",
+        "media_object_changes",
+        "media_object_tier_decisions",
+        "media_object_view_salts",
+        "media_object_viewer_days",
+        "media_object_views_daily",
+        "media_objects",
+        "media_quota_reservations",
         "media_relationships",
         "media_settings",
         "media_tier_decisions",
@@ -2371,7 +2415,7 @@
     },
     {
       "file": "/var/lib/openvibe-ai/ai.db",
-      "bytes": 115773440,
+      "bytes": 118628352,
       "owner": "ubuntu",
       "tables": [
         "ai_module_pushes",
@@ -2398,7 +2442,7 @@
     },
     {
       "file": "/var/lib/openvibe-billing/billing.db",
-      "bytes": 831488,
+      "bytes": 839680,
       "owner": "ubuntu",
       "tables": [
         "account_balances",
@@ -2577,7 +2621,7 @@
     },
     {
       "file": "/var/lib/openvibe-blog/blog.db",
-      "bytes": 1863680,
+      "bytes": 1892352,
       "owner": "ubuntu",
       "tables": [
         "blog_feed_settings",
@@ -2608,7 +2652,7 @@
     },
     {
       "file": "/var/lib/openvibe-chat/chat.db",
-      "bytes": 25325568,
+      "bytes": 25337856,
       "owner": "ubuntu",
       "tables": [
         "account_data_events",
@@ -3171,7 +3215,7 @@
     },
     {
       "file": "/var/lib/openvibe-community/community.db",
-      "bytes": 5300224,
+      "bytes": 5464064,
       "owner": "ubuntu",
       "tables": [
         "account_data_events",
@@ -3396,7 +3440,7 @@
     },
     {
       "file": "/var/lib/openvibe-events/events.db",
-      "bytes": 23531520,
+      "bytes": 23937024,
       "owner": "ubuntu",
       "tables": [
         "app_revocations",
@@ -3430,7 +3474,7 @@
     },
     {
       "file": "/var/lib/openvibe-news/news.db",
-      "bytes": 507904,
+      "bytes": 512000,
       "owner": "ubuntu",
       "tables": [
         "event_outbox",

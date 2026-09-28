@@ -2,37 +2,37 @@
  "_about": "Generated from data/requirement-ledger.json by scripts/roadmap-baseline/generate.js. Umbrella-level ledger (roadmap §22.4/§25): one row per D01-D46 requirement, every artifact re-verified against the scanned origin/main checkouts and prod-snapshot.json. Do not edit; edit the data file and regenerate.",
  "asOf": "2026-09-23T20:30Z",
  "generatedFrom": {
-  "OpenVibe.Live": "03f49b7716b7cee1cce8a44e7155aeb96a67d004",
-  "OpenVibe.Network": "c022f86236f3e8251c924fae6c98494658b795a4",
-  "OpenVibe.Shared": "b5a9bd77171fcf75f42ff33fe86b7ad06baac1c8",
-  "OpenVibe.Media": "14cac06886649848c332cfa564aa6b3594ea09bc",
-  "OpenVibe.Tools": "4f4ed6e8f3f3c8e1a83dd644dd3c0659a7bccce4",
-  "OpenVibe.Community": "2da3501e28457fa4978c0bc4a1b3bfc9188b77b9",
+  "OpenVibe.Live": "7fd7bea040f590b2e0720010bdd9c86c7d7420ea",
+  "OpenVibe.Network": "2c1dacbe5fb7c92afccde6448e4e39a7bd06c5c3",
+  "OpenVibe.Shared": "919c10811cc3a4dc62fda32228f5d82a7aef1045",
+  "OpenVibe.Media": "47b21bde0b4863344fafbb90109922fbf8757687",
+  "OpenVibe.Tools": "9339e1500139b229e2e2f59ed7cba336dced8897",
+  "OpenVibe.Community": "581d80535f4bd1081afeb7a564392d4e1e5eb000",
   "OpenVibe.Games": "eb2d00880d3231b2c68cb1753b4542044edef1e5",
   "OpenVibe.Sites": "304e8b12b535f4b562f23027ae84f1a5d515cc6c",
-  "OpenVibe.Events": "19919ece79707eed051c3f18ab37b7fdb6d939a6",
-  "OpenVibe.Chat": "d87c8d3c906ad52ef8bf123ce60373fdefcf09e6",
-  "OpenRe.Stream": "c77ec2a9a1e350fb4ae1c646ec74693fae4f2fa3",
-  "OpenVibe.Billing": "f24684bb84ec1670bd08670891e6742fa433a548",
-  "OpenVibe.Tips": "13986b59e697d12a328a4f12e993295445ca40be",
-  "OpenVibe.VIP": "95b3e196daa152c2e7f8e940a1f02b7fe32706ba",
-  "OpenVibe.AI": "6c8b8338be936cbd3a6f50dee3f790807f145a0e",
-  "OpenVibe.Search": "e8511d849720534a9ffcd54b052663111e5b1e6f",
-  "OpenVibe.Sources": "167085388a637eed3f0d47b3c6eabb8c9d00814d",
-  "OpenVibe.Wiki": "3302540e8b5fdf3c07db9fce688be2f4ab8b847b",
-  "OpenVibe.Blog": "8a7f8ebe862b0e1c0bb119ee96c42f38fc0e5321",
-  "OpenVibe.News": "97dae43a2d41c5528bbb4c93ff2ea7ea456203dd",
-  "OpenVibe.Reviews": "c87b34440b0d50bc2cdf6c136775002ed9080c1e",
-  "OpenVibe.Deals": "533450f9cc4a358ba50f353f06826ec3611b4ddc",
-  "OpenVibe.Coupons": "b91cd795e8ee4a3e49317a6e3cb000fa92da9325",
-  "OpenVibe.Trade": "273bce7b1b8771037bc2a660fa8784dc1aa049a7",
-  "OpenVibe.Codes": "64d8feb1ac841c01f93e197b6a20eb07a09ef428",
-  "OpenVibe.Host": "6d2aaaa630e29d2bfd261a7f75cbbbaa2b8c1d46",
-  "OpenVibe.Examples": "92eb7c3b0f50fea9f76086ed3eeda3664de93494"
+  "OpenVibe.Events": "7c575cd8ba545dfb7c4c53667dac7a71f77ac309",
+  "OpenVibe.Chat": "4c517a59ead3c9e71139b6d4954de8306a4d83ba",
+  "OpenRe.Stream": "d9f42407f66648c547c32989ecf862b0bc949b63",
+  "OpenVibe.Billing": "1f9df5681486992d3fa8f076ff11f22aea5f0b25",
+  "OpenVibe.Tips": "3cc8c8354183008026e38a99db9ef96014663467",
+  "OpenVibe.VIP": "63f46fa5a5ff7ccda8acb0a63ff0f64db5f7805b",
+  "OpenVibe.AI": "f6fdbc9cbc3c87d684046940e49dd5ddffd5c79b",
+  "OpenVibe.Search": "04f9fd45c3c10b401704da2994700c14290b5051",
+  "OpenVibe.Sources": "6e1185e5c315ff3f5676b86dd3dfe6761ef82e32",
+  "OpenVibe.Wiki": "a81573f9ad37722a4d4ffc5bce36565d7d8e5096",
+  "OpenVibe.Blog": "9f339e3c27abfa4445a7d52cc6c1153c4a88b5ec",
+  "OpenVibe.News": "cb6d79e2a6d9c7c07ca76eb7bdb14d41c81b7278",
+  "OpenVibe.Reviews": "8416fcb1f0f2b1969a1261fe4ee5bf6aa3600cd2",
+  "OpenVibe.Deals": "0bf25e2e5a50e0dca1887d3545be2c95c3cd2749",
+  "OpenVibe.Coupons": "168262d1baa81ab1973863d66d52ab213711ef81",
+  "OpenVibe.Trade": "d515e46f7f32a6265a8e7feab49e97b9811094ed",
+  "OpenVibe.Codes": "1246445c4abaddcacf4d04adf172d601700833e3",
+  "OpenVibe.Host": "02c68f694a28f06e3056a05055f4515b3d4e7c64",
+  "OpenVibe.Examples": "058c71a5ddee4103a314ff211c5c869f9478a23f"
  },
  "prodSnapshot": {
   "host": "openvibe-oregon",
-  "collectedAt": "2026-09-28T03:31:00.238Z"
+  "collectedAt": "2026-09-28T05:20:11.716Z"
  },
  "statuses": {
   "met": "the §15.0 required target is demonstrated by current evidence: a test that exercises it, and production evidence where the target is a production authority or state.",
@@ -404,11 +404,11 @@
    "metrics": [
     {
      "key": "shared.pins",
-     "value": "25 repos pin a tagged openvibe-shared release (latest v1.23.1): OpenRe.Stream v1.22.0, AI v1.22.0, Billing v1.22.0, Blog v1.22.0, Chat v1.22.0, Codes v1.22.0, Community v1.22.0, Coupons v1.22.0, Deals v1.22.0, Events v1.22.0, Games v1.23.0, Host v1.22.0, Live v1.23.1, Media v1.22.0, Network v1.22.0, News v1.22.0, Reviews v1.22.0, Search v1.22.0, Sites v1.23.0, Sources v1.22.0, Tips v1.22.0, Tools v1.23.0, Trade v1.22.0, VIP v1.22.0, Wiki v1.22.0"
+     "value": "25 repos pin a tagged openvibe-shared release (latest v1.25.0): OpenRe.Stream v1.25.0, AI v1.25.0, Billing v1.25.0, Blog v1.25.0, Chat v1.25.0, Codes v1.25.0, Community v1.25.0, Coupons v1.25.0, Deals v1.25.0, Events v1.25.0, Games v1.23.0, Host v1.25.0, Live v1.25.0, Media v1.25.0, Network v1.24.0, News v1.25.0, Reviews v1.25.0, Search v1.25.0, Sites v1.23.0, Sources v1.25.0, Tips v1.25.0, Tools v1.23.0, Trade v1.25.0, VIP v1.25.0, Wiki v1.25.0"
     },
     {
      "key": "shared.drift",
-     "value": "31 manifests unpinned or behind: OpenRe.Stream (v1.22.0), AI (v1.22.0), Billing (v1.22.0), Blog (v1.22.0), Chat (v1.22.0), Codes (v1.22.0), Community (v1.22.0), Coupons (v1.22.0), Deals (v1.22.0), Events (v1.22.0), Games/apps/server (v1.23.0), Host (v1.22.0), Media (v1.22.0), Network (v1.22.0), News (v1.22.0), Reviews (v1.22.0), Search (v1.22.0), Sites (v1.23.0), Sources (v1.22.0), Tips (v1.22.0), Tools/apps/audio (v1.23.0), Tools/apps/docs (v1.23.0), Tools/apps/food (v1.23.0), Tools/apps/gateway (v1.23.0), Tools/apps/img (v1.23.0), Tools/apps/maps (v1.23.0), Tools/apps/text (v1.23.0), Tools/apps/yt (v1.23.0), Trade (v1.22.0), VIP (v1.22.0), Wiki (v1.22.0)"
+     "value": "11 manifests unpinned or behind: Games/apps/server (v1.23.0), Network (v1.24.0), Sites (v1.23.0), Tools/apps/audio (v1.23.0), Tools/apps/docs (v1.23.0), Tools/apps/food (v1.23.0), Tools/apps/gateway (v1.23.0), Tools/apps/img (v1.23.0), Tools/apps/maps (v1.23.0), Tools/apps/text (v1.23.0), Tools/apps/yt (v1.23.0)"
     }
    ]
   },
@@ -449,7 +449,7 @@
    "metrics": [
     {
      "key": "deploy.drift",
-     "value": "24 service(s) not running origin/main"
+     "value": "1 service(s) behind origin/main in what runs, 4 more only in documentation and tests"
     }
    ]
   },

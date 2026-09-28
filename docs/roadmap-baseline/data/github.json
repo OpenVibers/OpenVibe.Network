@@ -1,6 +1,6 @@
 {
   "owner": "OpenVibers",
-  "collectedAt": "2026-09-28T03:32:40.497Z",
+  "collectedAt": "2026-09-28T05:20:29.699Z",
   "repos": [
     {
       "description": "AlexFrison.net",
@@ -24,10 +24,10 @@
     },
     {
       "description": "Ingest and restream: stream definitions, keys, sessions, transport workers, outputs and output health.",
-      "diskUsage": 433,
+      "diskUsage": 541,
       "isArchived": false,
       "name": "OpenRe.Stream",
-      "pushedAt": "2026-09-28T03:20:27Z",
+      "pushedAt": "2026-09-28T04:16:48Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -40,7 +40,7 @@
         "port": 4500,
         "rtmpPort": 1936,
         "domain": "openre.stream",
-        "contracts": "openvibe-contracts v0.49.0 (openvibe-sdk v0.12.0, openvibe-shared v1.22.0)",
+        "contracts": "openvibe-contracts v0.49.0 (openvibe-sdk v0.12.0, openvibe-shared v1.25.0)",
         "protocols": {
           "rtmp": "ingest ported (openre-rtmp-ingest)",
           "restream": "RTMP source to RTMP/RTMPS/SRT destinations ported (openre-restream-worker)",
@@ -79,10 +79,10 @@
     },
     {
       "description": "Providers, models, routing, prompt templates, workflows, runs, citations, cache and quotas for every product.",
-      "diskUsage": 1033,
+      "diskUsage": 1037,
       "isArchived": false,
       "name": "OpenVibe.AI",
-      "pushedAt": "2026-09-28T03:20:29Z",
+      "pushedAt": "2026-09-28T04:20:29Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -134,10 +134,10 @@
     },
     {
       "description": "The isolated money ledger: providers, receipts, subscriptions, entitlements, refunds and payouts.",
-      "diskUsage": 597,
+      "diskUsage": 680,
       "isArchived": false,
       "name": "OpenVibe.Billing",
-      "pushedAt": "2026-09-28T03:20:31Z",
+      "pushedAt": "2026-09-28T04:18:44Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -171,10 +171,10 @@
     },
     {
       "description": "The official OpenVibe blog and a blog for every member: drafts, revisions, series, scheduling, feeds.",
-      "diskUsage": 722,
+      "diskUsage": 756,
       "isArchived": false,
       "name": "OpenVibe.Blog",
-      "pushedAt": "2026-09-28T03:20:33Z",
+      "pushedAt": "2026-09-28T04:20:33Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -190,7 +190,7 @@
         "packages": [
           "openvibe-publishing v0.4.0",
           "openvibe-contracts v0.53.0",
-          "openvibe-shared v1.22.0",
+          "openvibe-shared v1.25.0",
           "openvibe-sdk v0.12.0"
         ],
         "capabilities": [
@@ -236,10 +236,10 @@
     },
     {
       "description": "Rooms, messages, DMs, calls, TTS and audio queues, moderation and presence — one identity, every conversation.",
-      "diskUsage": 977,
+      "diskUsage": 981,
       "isArchived": false,
       "name": "OpenVibe.Chat",
-      "pushedAt": "2026-09-28T03:20:35Z",
+      "pushedAt": "2026-09-28T04:25:02Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -305,10 +305,10 @@
     },
     {
       "description": "The developer portal: registry and contract explorers, credentials, playgrounds, examples, mod/app publishing, governance.",
-      "diskUsage": 814,
+      "diskUsage": 872,
       "isArchived": false,
       "name": "OpenVibe.Codes",
-      "pushedAt": "2026-09-28T03:29:24Z",
+      "pushedAt": "2026-09-28T04:20:31Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -324,7 +324,7 @@
         "packages": [
           "openvibe-contracts v0.53.0",
           "openvibe-sdk v0.13.0",
-          "openvibe-shared v1.22.0"
+          "openvibe-shared v1.25.0"
         ],
         "summary": "Deployed and public since 2026-09-23: https://openvibe.codes is served by this portal (deployed with `sudo ovhost deploy codes`, unit openvibe-codes on 127.0.0.1:4900 behind nginx), and the domain left OpenVibe.Sites. Sign-in uses the registered Network OAuth client `codes` (PKCE S256); the principal `codes` holds events.event.publish and the Events relay is configured. On 2026-09-23 production held 0 manifests, 0 releases and 0 playground runs. The external-developer path (account, project, sandbox app, grants, Media upload, app events) was run once on production on 2026-09-23 with public endpoints and curl, not through these playgrounds; that check is not committed to a repository or CI.",
         "works": [
@@ -375,10 +375,10 @@
     },
     {
       "description": "",
-      "diskUsage": 1778,
+      "diskUsage": 1888,
       "isArchived": false,
       "name": "OpenVibe.Community",
-      "pushedAt": "2026-09-28T03:20:39Z",
+      "pushedAt": "2026-09-28T04:17:39Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -428,10 +428,10 @@
     },
     {
       "description": "Machine-readable contracts for the whole OpenVibe network.",
-      "diskUsage": 3315,
+      "diskUsage": 3357,
       "isArchived": false,
       "name": "OpenVibe.Contracts",
-      "pushedAt": "2026-09-28T03:22:17Z",
+      "pushedAt": "2026-09-28T04:18:50Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -462,10 +462,10 @@
     },
     {
       "description": "Coupon codes with merchant matching, restrictions, expiry and real-people validity reports.",
-      "diskUsage": 462,
+      "diskUsage": 496,
       "isArchived": false,
       "name": "OpenVibe.Coupons",
-      "pushedAt": "2026-09-28T03:20:43Z",
+      "pushedAt": "2026-09-28T04:18:46Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -481,7 +481,7 @@
         "packages": [
           "openvibe-publishing v0.4.0",
           "openvibe-contracts v0.53.0",
-          "openvibe-shared v1.22.0",
+          "openvibe-shared v1.25.0",
           "openvibe-sdk v0.12.0"
         ],
         "capabilities": [
@@ -520,10 +520,10 @@
     },
     {
       "description": "Deals submitted and voted on by the community, with source, price and freshness always shown.",
-      "diskUsage": 493,
+      "diskUsage": 527,
       "isArchived": false,
       "name": "OpenVibe.Deals",
-      "pushedAt": "2026-09-28T03:20:45Z",
+      "pushedAt": "2026-09-28T04:20:35Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -539,7 +539,7 @@
         "packages": [
           "openvibe-publishing v0.4.0",
           "openvibe-contracts v0.53.0",
-          "openvibe-shared v1.22.0",
+          "openvibe-shared v1.25.0",
           "openvibe-sdk v0.12.0"
         ],
         "capabilities": [
@@ -583,10 +583,10 @@
     },
     {
       "description": "Durable events, subscriptions, delivery, retry, dead letters and replay for the network.",
-      "diskUsage": 550,
+      "diskUsage": 627,
       "isArchived": false,
       "name": "OpenVibe.Events",
-      "pushedAt": "2026-09-28T03:20:47Z",
+      "pushedAt": "2026-09-28T04:12:07Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -627,10 +627,10 @@
     },
     {
       "description": "Executable public integration examples, tested in CI against the platform.",
-      "diskUsage": 320,
+      "diskUsage": 329,
       "isArchived": false,
       "name": "OpenVibe.Examples",
-      "pushedAt": "2026-09-28T03:20:49Z",
+      "pushedAt": "2026-09-28T04:21:34Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -667,10 +667,10 @@
     },
     {
       "description": "First-party client surfaces for the network: the browser helper built on Coupons' public API with scoped, revocable credentials; later the kiosk/hardware companions and any desktop client (ADR-023).",
-      "diskUsage": 58,
+      "diskUsage": 61,
       "isArchived": false,
       "name": "OpenVibe.Extensions",
-      "pushedAt": "2026-09-25T21:11:21Z",
+      "pushedAt": "2026-09-28T04:18:48Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -709,7 +709,7 @@
           "store listings (Chrome Web Store, addons.mozilla.org) and the store extension ids in COUPONS_EXTENSION_ORIGINS"
         ],
         "deployed": false,
-        "updated": "2026-09-23"
+        "updated": "2026-09-28"
       }
     },
     {
@@ -754,10 +754,10 @@
     },
     {
       "description": "The network's deployment/control plane first; then isolated hosting for community sites, bots and mods.",
-      "diskUsage": 1384,
+      "diskUsage": 1479,
       "isArchived": false,
       "name": "OpenVibe.Host",
-      "pushedAt": "2026-09-28T03:22:19Z",
+      "pushedAt": "2026-09-28T05:19:55Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -774,7 +774,7 @@
         "packages": [
           "openvibe-contracts v0.66.0 (host.* capabilities and manifest released in v0.24.0; v0.32.0 adds the takedown routes to host.site.manage)",
           "openvibe-sdk v0.12.0",
-          "openvibe-shared v1.22.0"
+          "openvibe-shared v1.25.0"
         ],
         "capabilities": [
           "host.site.manage",
@@ -821,10 +821,10 @@
     },
     {
       "description": "",
-      "diskUsage": 9109,
+      "diskUsage": 8547,
       "isArchived": false,
       "name": "OpenVibe.Live",
-      "pushedAt": "2026-09-28T03:25:00Z",
+      "pushedAt": "2026-09-28T04:07:18Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -865,10 +865,10 @@
     },
     {
       "description": "",
-      "diskUsage": 2022,
+      "diskUsage": 2183,
       "isArchived": false,
       "name": "OpenVibe.Media",
-      "pushedAt": "2026-09-28T03:20:55Z",
+      "pushedAt": "2026-09-28T05:17:13Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -913,10 +913,10 @@
     },
     {
       "description": "",
-      "diskUsage": 3471,
+      "diskUsage": 3661,
       "isArchived": false,
       "name": "OpenVibe.Network",
-      "pushedAt": "2026-09-28T03:27:59Z",
+      "pushedAt": "2026-09-28T04:10:06Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -970,10 +970,10 @@
     },
     {
       "description": "Source-backed stories: clustered coverage, cited summaries, perspectives and timelines.",
-      "diskUsage": 466,
+      "diskUsage": 575,
       "isArchived": false,
       "name": "OpenVibe.News",
-      "pushedAt": "2026-09-28T03:20:58Z",
+      "pushedAt": "2026-09-28T04:21:13Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -989,7 +989,7 @@
         "packages": [
           "openvibe-publishing v0.4.0",
           "openvibe-contracts v0.49.0",
-          "openvibe-shared v1.22.0",
+          "openvibe-shared v1.25.0",
           "openvibe-sdk v0.12.0"
         ],
         "capabilities": [
@@ -1033,10 +1033,10 @@
     },
     {
       "description": "Shared publishing packages (drafts, revisions, citations, SEO gate, feeds, structured data) for Wiki, Blog, News, Reviews, Deals, Coupons and Trade. Packages only, no authority.",
-      "diskUsage": 248,
+      "diskUsage": 271,
       "isArchived": false,
       "name": "OpenVibe.Publishing",
-      "pushedAt": "2026-09-28T03:21:00Z",
+      "pushedAt": "2026-09-28T04:20:38Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -1116,10 +1116,10 @@
     },
     {
       "description": "Review signals gathered across sources with provenance, entity resolution and honest aggregates.",
-      "diskUsage": 501,
+      "diskUsage": 591,
       "isArchived": false,
       "name": "OpenVibe.Reviews",
-      "pushedAt": "2026-09-28T03:21:02Z",
+      "pushedAt": "2026-09-28T04:17:11Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -1134,7 +1134,7 @@
         "contracts": "openvibe-contracts v0.49.0",
         "packages": [
           "openvibe-publishing v0.4.0",
-          "openvibe-shared v1.22.0",
+          "openvibe-shared v1.25.0",
           "openvibe-sdk v0.12.0"
         ],
         "capabilities": [
@@ -1172,10 +1172,10 @@
     },
     {
       "description": "Supported browser and server clients for the OpenVibe platform.",
-      "diskUsage": 706,
+      "diskUsage": 733,
       "isArchived": false,
       "name": "OpenVibe.SDK",
-      "pushedAt": "2026-09-28T03:23:32Z",
+      "pushedAt": "2026-09-28T04:21:17Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -1206,10 +1206,10 @@
     },
     {
       "description": "Permission-aware, event-fed search index for the network: canonical index documents, ACL-filtered queries, deletion propagation.",
-      "diskUsage": 318,
+      "diskUsage": 340,
       "isArchived": false,
       "name": "OpenVibe.Search",
-      "pushedAt": "2026-09-28T03:21:06Z",
+      "pushedAt": "2026-09-28T04:16:52Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -1253,10 +1253,10 @@
     },
     {
       "description": "Versioned UI, chrome, SEO, legal and release-client packages every OpenVibe site renders.",
-      "diskUsage": 1084,
+      "diskUsage": 1260,
       "isArchived": false,
       "name": "OpenVibe.Shared",
-      "pushedAt": "2026-09-28T03:21:08Z",
+      "pushedAt": "2026-09-28T04:04:32Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -1265,7 +1265,7 @@
         "code": true,
         "wave": "W2",
         "package": "openvibe-shared",
-        "version": "1.23.1",
+        "version": "1.25.0",
         "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
         "deployed": false,
         "deployment": "none of its own: a package released as git tags; OpenVibe.Network serves /shared/* from its pinned tag, and a site can serve its own pinned copy (openvibe-shared/serve)",
@@ -1284,7 +1284,7 @@
     },
     {
       "description": "Static front pages for OpenVibe domains that are not full apps yet",
-      "diskUsage": 967,
+      "diskUsage": 970,
       "isArchived": false,
       "name": "OpenVibe.Sites",
       "pushedAt": "2026-09-28T03:21:10Z",
@@ -1329,10 +1329,10 @@
     },
     {
       "description": "Source registry and ingestion workers for the network: provenance, terms, rate limits, explicit failure states.",
-      "diskUsage": 309,
+      "diskUsage": 369,
       "isArchived": false,
       "name": "OpenVibe.Sources",
-      "pushedAt": "2026-09-28T03:21:12Z",
+      "pushedAt": "2026-09-28T04:17:09Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -1384,10 +1384,10 @@
     },
     {
       "description": "Creator support: tips, goals, paid messages, TTS and media requests, overlays.",
-      "diskUsage": 563,
+      "diskUsage": 583,
       "isArchived": false,
       "name": "OpenVibe.Tips",
-      "pushedAt": "2026-09-28T03:21:14Z",
+      "pushedAt": "2026-09-28T04:21:11Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -1421,10 +1421,10 @@
     },
     {
       "description": "",
-      "diskUsage": 2632,
+      "diskUsage": 2703,
       "isArchived": false,
       "name": "OpenVibe.Tools",
-      "pushedAt": "2026-09-28T03:21:16Z",
+      "pushedAt": "2026-09-28T04:22:25Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -1473,10 +1473,10 @@
     },
     {
       "description": "Informational watchlists, sourced market context and alerts. No custody, no order execution.",
-      "diskUsage": 418,
+      "diskUsage": 449,
       "isArchived": false,
       "name": "OpenVibe.Trade",
-      "pushedAt": "2026-09-28T03:21:18Z",
+      "pushedAt": "2026-09-28T04:21:15Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -1493,7 +1493,7 @@
         "packages": [
           "openvibe-contracts v0.49.0",
           "openvibe-publishing v0.4.0",
-          "openvibe-shared v1.22.0",
+          "openvibe-shared v1.25.0",
           "openvibe-sdk v0.12.0"
         ],
         "capabilities": [
@@ -1536,10 +1536,10 @@
     },
     {
       "description": "Memberships: plans, perks and benefits recognised across every OpenVibe site.",
-      "diskUsage": 510,
+      "diskUsage": 525,
       "isArchived": false,
       "name": "OpenVibe.VIP",
-      "pushedAt": "2026-09-28T03:21:20Z",
+      "pushedAt": "2026-09-28T04:20:39Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -1590,10 +1590,10 @@
     },
     {
       "description": "Wiki spaces with page trees, revisions, citations, media and discussion — editable together, source-backed.",
-      "diskUsage": 754,
+      "diskUsage": 787,
       "isArchived": false,
       "name": "OpenVibe.Wiki",
-      "pushedAt": "2026-09-28T03:21:22Z",
+      "pushedAt": "2026-09-28T04:17:41Z",
       "visibility": "PUBLIC",
       "defaultBranch": "main",
       "status": {
@@ -1608,7 +1608,7 @@
         "contracts": "openvibe-contracts v0.64.0",
         "packages": [
           "openvibe-publishing v0.4.0",
-          "openvibe-shared v1.22.0",
+          "openvibe-shared v1.25.0",
           "openvibe-sdk v0.12.0"
         ],
         "capabilities": [

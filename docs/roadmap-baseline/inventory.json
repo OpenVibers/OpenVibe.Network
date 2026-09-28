@@ -1,36 +1,36 @@
 {
  "generatedFrom": {
-  "OpenVibe.Live": "03f49b7716b7cee1cce8a44e7155aeb96a67d004",
-  "OpenVibe.Network": "c022f86236f3e8251c924fae6c98494658b795a4",
-  "OpenVibe.Shared": "b5a9bd77171fcf75f42ff33fe86b7ad06baac1c8",
-  "OpenVibe.Media": "14cac06886649848c332cfa564aa6b3594ea09bc",
-  "OpenVibe.Tools": "4f4ed6e8f3f3c8e1a83dd644dd3c0659a7bccce4",
-  "OpenVibe.Community": "2da3501e28457fa4978c0bc4a1b3bfc9188b77b9",
+  "OpenVibe.Live": "7fd7bea040f590b2e0720010bdd9c86c7d7420ea",
+  "OpenVibe.Network": "2c1dacbe5fb7c92afccde6448e4e39a7bd06c5c3",
+  "OpenVibe.Shared": "919c10811cc3a4dc62fda32228f5d82a7aef1045",
+  "OpenVibe.Media": "47b21bde0b4863344fafbb90109922fbf8757687",
+  "OpenVibe.Tools": "9339e1500139b229e2e2f59ed7cba336dced8897",
+  "OpenVibe.Community": "581d80535f4bd1081afeb7a564392d4e1e5eb000",
   "OpenVibe.Games": "eb2d00880d3231b2c68cb1753b4542044edef1e5",
   "OpenVibe.Sites": "304e8b12b535f4b562f23027ae84f1a5d515cc6c",
-  "OpenVibe.Events": "19919ece79707eed051c3f18ab37b7fdb6d939a6",
-  "OpenVibe.Chat": "d87c8d3c906ad52ef8bf123ce60373fdefcf09e6",
-  "OpenRe.Stream": "c77ec2a9a1e350fb4ae1c646ec74693fae4f2fa3",
-  "OpenVibe.Billing": "f24684bb84ec1670bd08670891e6742fa433a548",
-  "OpenVibe.Tips": "13986b59e697d12a328a4f12e993295445ca40be",
-  "OpenVibe.VIP": "95b3e196daa152c2e7f8e940a1f02b7fe32706ba",
-  "OpenVibe.AI": "6c8b8338be936cbd3a6f50dee3f790807f145a0e",
-  "OpenVibe.Search": "e8511d849720534a9ffcd54b052663111e5b1e6f",
-  "OpenVibe.Sources": "167085388a637eed3f0d47b3c6eabb8c9d00814d",
-  "OpenVibe.Wiki": "3302540e8b5fdf3c07db9fce688be2f4ab8b847b",
-  "OpenVibe.Blog": "8a7f8ebe862b0e1c0bb119ee96c42f38fc0e5321",
-  "OpenVibe.News": "97dae43a2d41c5528bbb4c93ff2ea7ea456203dd",
-  "OpenVibe.Reviews": "c87b34440b0d50bc2cdf6c136775002ed9080c1e",
-  "OpenVibe.Deals": "533450f9cc4a358ba50f353f06826ec3611b4ddc",
-  "OpenVibe.Coupons": "b91cd795e8ee4a3e49317a6e3cb000fa92da9325",
-  "OpenVibe.Trade": "273bce7b1b8771037bc2a660fa8784dc1aa049a7",
-  "OpenVibe.Codes": "64d8feb1ac841c01f93e197b6a20eb07a09ef428",
-  "OpenVibe.Host": "6d2aaaa630e29d2bfd261a7f75cbbbaa2b8c1d46",
-  "OpenVibe.Examples": "92eb7c3b0f50fea9f76086ed3eeda3664de93494"
+  "OpenVibe.Events": "7c575cd8ba545dfb7c4c53667dac7a71f77ac309",
+  "OpenVibe.Chat": "4c517a59ead3c9e71139b6d4954de8306a4d83ba",
+  "OpenRe.Stream": "d9f42407f66648c547c32989ecf862b0bc949b63",
+  "OpenVibe.Billing": "1f9df5681486992d3fa8f076ff11f22aea5f0b25",
+  "OpenVibe.Tips": "3cc8c8354183008026e38a99db9ef96014663467",
+  "OpenVibe.VIP": "63f46fa5a5ff7ccda8acb0a63ff0f64db5f7805b",
+  "OpenVibe.AI": "f6fdbc9cbc3c87d684046940e49dd5ddffd5c79b",
+  "OpenVibe.Search": "04f9fd45c3c10b401704da2994700c14290b5051",
+  "OpenVibe.Sources": "6e1185e5c315ff3f5676b86dd3dfe6761ef82e32",
+  "OpenVibe.Wiki": "a81573f9ad37722a4d4ffc5bce36565d7d8e5096",
+  "OpenVibe.Blog": "9f339e3c27abfa4445a7d52cc6c1153c4a88b5ec",
+  "OpenVibe.News": "cb6d79e2a6d9c7c07ca76eb7bdb14d41c81b7278",
+  "OpenVibe.Reviews": "8416fcb1f0f2b1969a1261fe4ee5bf6aa3600cd2",
+  "OpenVibe.Deals": "0bf25e2e5a50e0dca1887d3545be2c95c3cd2749",
+  "OpenVibe.Coupons": "168262d1baa81ab1973863d66d52ab213711ef81",
+  "OpenVibe.Trade": "d515e46f7f32a6265a8e7feab49e97b9811094ed",
+  "OpenVibe.Codes": "1246445c4abaddcacf4d04adf172d601700833e3",
+  "OpenVibe.Host": "02c68f694a28f06e3056a05055f4515b3d4e7c64",
+  "OpenVibe.Examples": "058c71a5ddee4103a314ff211c5c869f9478a23f"
  },
  "prodSnapshot": {
   "host": "openvibe-oregon",
-  "collectedAt": "2026-09-28T03:31:00.238Z"
+  "collectedAt": "2026-09-28T05:20:11.716Z"
  },
  "repos": [
   {
@@ -38,13 +38,13 @@
    "service": "live",
    "present": true,
    "git": {
-    "head": "03f49b7716b7cee1cce8a44e7155aeb96a67d004",
+    "head": "7fd7bea040f590b2e0720010bdd9c86c7d7420ea",
     "branch": "main",
-    "originMain": "03f49b7716b7cee1cce8a44e7155aeb96a67d004",
-    "committedAt": "2026-09-27T20:24:58-07:00"
+    "originMain": "7fd7bea040f590b2e0720010bdd9c86c7d7420ea",
+    "committedAt": "2026-09-27T21:07:16-07:00"
    },
    "sourceFiles": 221,
-   "loc": 75126,
+   "loc": 75127,
    "tables": [
     {
      "table": "arena_profiles",
@@ -5238,7 +5238,7 @@
      "method": "GET",
      "path": "/api/streams/:id/call",
      "file": "server/streaming/routes.js",
-     "line": 2491,
+     "line": 2492,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5248,7 +5248,7 @@
      "method": "PUT",
      "path": "/api/streams/:id/call",
      "file": "server/streaming/routes.js",
-     "line": 2452,
+     "line": 2453,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5378,7 +5378,7 @@
      "method": "POST",
      "path": "/api/streams/channel/:username/follow",
      "file": "server/streaming/routes.js",
-     "line": 2402,
+     "line": 2403,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -5588,7 +5588,7 @@
      "method": "GET",
      "path": "/api/streams/rtmp-proxy/:streamId.flv",
      "file": "server/streaming/routes.js",
-     "line": 2512,
+     "line": 2513,
      "target": "OpenVibe.Live",
      "disposition": "keep",
      "wave": "-",
@@ -9302,13 +9302,13 @@
    "service": "network",
    "present": true,
    "git": {
-    "head": "c022f86236f3e8251c924fae6c98494658b795a4",
+    "head": "2c1dacbe5fb7c92afccde6448e4e39a7bd06c5c3",
     "branch": "main",
-    "originMain": "c022f86236f3e8251c924fae6c98494658b795a4",
-    "committedAt": "2026-09-27T20:27:57-07:00"
+    "originMain": "2c1dacbe5fb7c92afccde6448e4e39a7bd06c5c3",
+    "committedAt": "2026-09-27T21:10:04-07:00"
    },
-   "sourceFiles": 103,
-   "loc": 21114,
+   "sourceFiles": 104,
+   "loc": 21166,
    "tables": [
     {
      "table": "moderation_audit",
@@ -9619,13 +9619,13 @@
     {
      "table": "user_follows",
      "file": "server/identity/follows.js",
-     "line": 42,
+     "line": 48,
      "via": "repo"
     },
     {
      "table": "follow_import_holds",
      "file": "server/identity/follows.js",
-     "line": 57,
+     "line": 63,
      "via": "repo"
     },
     {
@@ -9852,7 +9852,7 @@
      "method": "GET",
      "path": "/.well-known/openvibe",
      "file": "server/registry/ecosystem.js",
-     "line": 317,
+     "line": 326,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9862,7 +9862,7 @@
      "method": "GET",
      "path": "/.well-known/web-identity",
      "file": "server/index.js",
-     "line": 755,
+     "line": 757,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -9902,7 +9902,7 @@
      "method": "GET",
      "path": "/api/.well-known/jwks",
      "file": "server/index.js",
-     "line": 500,
+     "line": 502,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -10172,7 +10172,7 @@
      "method": "GET",
      "path": "/api/admin/ssh-info",
      "file": "server/index.js",
-     "line": 627,
+     "line": 629,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -10592,7 +10592,7 @@
      "method": "GET",
      "path": "/api/brand",
      "file": "server/index.js",
-     "line": 529,
+     "line": 531,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -10602,7 +10602,7 @@
      "method": "GET",
      "path": "/api/catalog.json",
      "file": "server/index.js",
-     "line": 593,
+     "line": 595,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -10722,7 +10722,7 @@
      "method": "GET",
      "path": "/api/health",
      "file": "server/index.js",
-     "line": 515,
+     "line": 517,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -10942,7 +10942,7 @@
      "method": "GET",
      "path": "/api/ready",
      "file": "server/index.js",
-     "line": 525,
+     "line": 527,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -10952,7 +10952,7 @@
      "method": "GET",
      "path": "/api/sso/targets",
      "file": "server/index.js",
-     "line": 575,
+     "line": 577,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11092,7 +11092,7 @@
      "method": "GET",
      "path": "/api/v1/follows",
      "file": "server/identity/follows.js",
-     "line": 262,
+     "line": 271,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11102,7 +11102,7 @@
      "method": "DELETE",
      "path": "/api/v1/follows/:type/:target",
      "file": "server/identity/follows.js",
-     "line": 278,
+     "line": 287,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11112,7 +11112,7 @@
      "method": "DELETE",
      "path": "/api/v1/follows/:type/:target",
      "file": "server/identity/follows.js",
-     "line": 337,
+     "line": 346,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11122,7 +11122,7 @@
      "method": "GET",
      "path": "/api/v1/follows/:type/:target",
      "file": "server/identity/follows.js",
-     "line": 291,
+     "line": 300,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11132,7 +11132,7 @@
      "method": "PUT",
      "path": "/api/v1/follows/:type/:target",
      "file": "server/identity/follows.js",
-     "line": 268,
+     "line": 277,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11142,7 +11142,7 @@
      "method": "PUT",
      "path": "/api/v1/follows/:type/:target",
      "file": "server/identity/follows.js",
-     "line": 324,
+     "line": 333,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11152,7 +11152,7 @@
      "method": "GET",
      "path": "/api/v1/follows/:type/:target/followers",
      "file": "server/identity/follows.js",
-     "line": 304,
+     "line": 313,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11192,7 +11192,7 @@
      "method": "GET",
      "path": "/api/v1/me/follows",
      "file": "server/identity/follows.js",
-     "line": 262,
+     "line": 271,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11202,7 +11202,7 @@
      "method": "DELETE",
      "path": "/api/v1/me/follows/:type/:target",
      "file": "server/identity/follows.js",
-     "line": 278,
+     "line": 287,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11212,7 +11212,7 @@
      "method": "DELETE",
      "path": "/api/v1/me/follows/:type/:target",
      "file": "server/identity/follows.js",
-     "line": 337,
+     "line": 346,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11222,7 +11222,7 @@
      "method": "GET",
      "path": "/api/v1/me/follows/:type/:target",
      "file": "server/identity/follows.js",
-     "line": 291,
+     "line": 300,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11232,7 +11232,7 @@
      "method": "PUT",
      "path": "/api/v1/me/follows/:type/:target",
      "file": "server/identity/follows.js",
-     "line": 268,
+     "line": 277,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11242,7 +11242,7 @@
      "method": "PUT",
      "path": "/api/v1/me/follows/:type/:target",
      "file": "server/identity/follows.js",
-     "line": 324,
+     "line": 333,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11252,7 +11252,7 @@
      "method": "GET",
      "path": "/api/v1/me/follows/:type/:target/followers",
      "file": "server/identity/follows.js",
-     "line": 304,
+     "line": 313,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11582,7 +11582,7 @@
      "method": "GET",
      "path": "/api/v1/registry",
      "file": "server/registry/ecosystem.js",
-     "line": 318,
+     "line": 327,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11592,7 +11592,7 @@
      "method": "GET",
      "path": "/api/v1/registry/capabilities",
      "file": "server/registry/ecosystem.js",
-     "line": 343,
+     "line": 352,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11602,7 +11602,7 @@
      "method": "GET",
      "path": "/api/v1/registry/capabilities/:id",
      "file": "server/registry/ecosystem.js",
-     "line": 348,
+     "line": 357,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11612,7 +11612,7 @@
      "method": "GET",
      "path": "/api/v1/registry/categories",
      "file": "server/registry/ecosystem.js",
-     "line": 319,
+     "line": 328,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11622,7 +11622,7 @@
      "method": "GET",
      "path": "/api/v1/registry/categories/:id",
      "file": "server/registry/ecosystem.js",
-     "line": 320,
+     "line": 329,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11632,7 +11632,7 @@
      "method": "GET",
      "path": "/api/v1/registry/contracts",
      "file": "server/registry/ecosystem.js",
-     "line": 354,
+     "line": 363,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11642,7 +11642,7 @@
      "method": "GET",
      "path": "/api/v1/registry/domains/:domain",
      "file": "server/registry/ecosystem.js",
-     "line": 337,
+     "line": 346,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11652,7 +11652,7 @@
      "method": "GET",
      "path": "/api/v1/registry/featured",
      "file": "server/registry/ecosystem.js",
-     "line": 325,
+     "line": 334,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11662,7 +11662,7 @@
      "method": "GET",
      "path": "/api/v1/registry/health",
      "file": "server/registry/ecosystem.js",
-     "line": 372,
+     "line": 381,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11672,7 +11672,7 @@
      "method": "GET",
      "path": "/api/v1/registry/namespaces",
      "file": "server/registry/ecosystem.js",
-     "line": 353,
+     "line": 362,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11682,7 +11682,7 @@
      "method": "GET",
      "path": "/api/v1/registry/releases",
      "file": "server/registry/ecosystem.js",
-     "line": 371,
+     "line": 380,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11692,7 +11692,7 @@
      "method": "GET",
      "path": "/api/v1/registry/search",
      "file": "server/registry/ecosystem.js",
-     "line": 378,
+     "line": 387,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11702,7 +11702,7 @@
      "method": "GET",
      "path": "/api/v1/registry/services",
      "file": "server/registry/ecosystem.js",
-     "line": 326,
+     "line": 335,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11712,7 +11712,7 @@
      "method": "GET",
      "path": "/api/v1/registry/services/:id",
      "file": "server/registry/ecosystem.js",
-     "line": 332,
+     "line": 341,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11722,7 +11722,7 @@
      "method": "GET",
      "path": "/api/v1/registry/topics",
      "file": "server/registry/ecosystem.js",
-     "line": 355,
+     "line": 364,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -11732,7 +11732,7 @@
      "method": "GET",
      "path": "/api/v1/registry/topics/:topic",
      "file": "server/registry/ecosystem.js",
-     "line": 366,
+     "line": 375,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -12652,7 +12652,7 @@
      "method": "GET",
      "path": "/llms.txt",
      "file": "server/index.js",
-     "line": 733,
+     "line": 735,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -12862,7 +12862,7 @@
      "method": "GET",
      "path": "/openvibe-sw.js",
      "file": "server/index.js",
-     "line": 778,
+     "line": 780,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -13012,7 +13012,7 @@
      "method": "GET",
      "path": "/sso/check",
      "file": "server/index.js",
-     "line": 762,
+     "line": 764,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -13062,7 +13062,7 @@
      "method": "GET",
      "path": "/tos",
      "file": "server/index.js",
-     "line": 589,
+     "line": 591,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -13282,7 +13282,7 @@
      "method": "GET",
      "path": "/verify-email",
      "file": "server/index.js",
-     "line": 745,
+     "line": 747,
      "target": "OpenVibe.Network",
      "disposition": "keep",
      "wave": "-",
@@ -13738,7 +13738,7 @@
         },
         {
          "via": "live.internalUrl",
-         "line": 660
+         "line": 662
         }
        ]
       },
@@ -13786,15 +13786,15 @@
        "refs": [
         {
          "via": "OV_BLOG_INTERNAL_URL",
-         "line": 498
+         "line": 500
         },
         {
          "via": "blogUrl",
-         "line": 498
+         "line": 500
         },
         {
          "via": ":4810",
-         "line": 498
+         "line": 500
         }
        ]
       },
@@ -13803,19 +13803,19 @@
        "refs": [
         {
          "via": "eventsUrl",
-         "line": 557
+         "line": 559
         },
         {
          "via": "eventsInternalUrl",
-         "line": 557
+         "line": 559
         },
         {
          "via": "eventsUrl",
-         "line": 644
+         "line": 646
         },
         {
          "via": "eventsInternalUrl",
-         "line": 644
+         "line": 646
         }
        ]
       }
@@ -13935,7 +13935,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 3600000,
-     "line": 851,
+     "line": 853,
      "file": "server/index.js",
      "target": "OpenVibe.Network",
      "disposition": "keep",
@@ -13946,7 +13946,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 120000,
-     "line": 854,
+     "line": 856,
      "file": "server/index.js",
      "target": "OpenVibe.Network",
      "disposition": "keep",
@@ -13957,7 +13957,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 300000,
-     "line": 868,
+     "line": 870,
      "file": "server/index.js",
      "target": "OpenVibe.Network",
      "disposition": "keep",
@@ -13968,7 +13968,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 360000,
-     "line": 871,
+     "line": 873,
      "file": "server/index.js",
      "target": "OpenVibe.Network",
      "disposition": "keep",
@@ -13979,7 +13979,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": 60000,
-     "line": 879,
+     "line": 881,
      "file": "server/index.js",
      "target": "OpenVibe.Network",
      "disposition": "keep",
@@ -13990,7 +13990,7 @@
      "kind": "setInterval",
      "name": null,
      "intervalMs": null,
-     "line": 882,
+     "line": 884,
      "file": "server/index.js",
      "target": "OpenVibe.Network",
      "disposition": "keep",
@@ -14022,7 +14022,7 @@
    ],
    "contractTodos": 3,
    "unresolvedMounts": [],
-   "testFiles": 77,
+   "testFiles": 78,
    "ci": true
   },
   {
@@ -14030,13 +14030,13 @@
    "service": "shared",
    "present": true,
    "git": {
-    "head": "b5a9bd77171fcf75f42ff33fe86b7ad06baac1c8",
+    "head": "919c10811cc3a4dc62fda32228f5d82a7aef1045",
     "branch": "main",
-    "originMain": "b5a9bd77171fcf75f42ff33fe86b7ad06baac1c8",
-    "committedAt": "2026-09-27T20:13:02-07:00"
+    "originMain": "919c10811cc3a4dc62fda32228f5d82a7aef1045",
+    "committedAt": "2026-09-27T21:03:43-07:00"
    },
-   "sourceFiles": 58,
-   "loc": 15503,
+   "sourceFiles": 59,
+   "loc": 15638,
    "tables": [
     {
      "table": "config_snapshots",
@@ -14161,6 +14161,10 @@
     "RELEASE_AT": [
      "release.js",
      "release.js"
+    ],
+    "OV_TEST_STRICT": [
+     "test-runner.js",
+     "test-runner.js"
     ],
     "TRACE_HOSTS": [
      "trace.js",
@@ -14393,7 +14397,7 @@
    ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 39,
+   "testFiles": 40,
    "ci": true
   },
   {
@@ -14401,13 +14405,13 @@
    "service": "media",
    "present": true,
    "git": {
-    "head": "14cac06886649848c332cfa564aa6b3594ea09bc",
+    "head": "47b21bde0b4863344fafbb90109922fbf8757687",
     "branch": "main",
-    "originMain": "14cac06886649848c332cfa564aa6b3594ea09bc",
-    "committedAt": "2026-09-27T20:17:24-07:00"
+    "originMain": "47b21bde0b4863344fafbb90109922fbf8757687",
+    "committedAt": "2026-09-27T22:17:11-07:00"
    },
    "sourceFiles": 79,
-   "loc": 20861,
+   "loc": 20902,
    "tables": [
     {
      "table": "account_data_events",
@@ -14619,7 +14623,7 @@
      "method": "GET",
      "path": "/api/ready",
      "file": "server/observability.js",
-     "line": 156,
+     "line": 158,
      "target": "OpenVibe.Media",
      "disposition": "keep",
      "wave": "-",
@@ -16664,7 +16668,7 @@
    ],
    "contractTodos": 0,
    "unresolvedMounts": [],
-   "testFiles": 67,
+   "testFiles": 68,
    "ci": true
   },
   {
@@ -16672,10 +16676,10 @@
    "service": "tools",
    "present": true,
    "git": {
-    "head": "4f4ed6e8f3f3c8e1a83dd644dd3c0659a7bccce4",
+    "head": "9339e1500139b229e2e2f59ed7cba336dced8897",
     "branch": "main",
-    "originMain": "4f4ed6e8f3f3c8e1a83dd644dd3c0659a7bccce4",
-    "committedAt": "2026-09-27T20:19:31-07:00"
+    "originMain": "9339e1500139b229e2e2f59ed7cba336dced8897",
+    "committedAt": "2026-09-27T21:22:24-07:00"
    },
    "sourceFiles": 176,
    "loc": 30522,
@@ -18905,10 +18909,10 @@
    "service": "community",
    "present": true,
    "git": {
-    "head": "2da3501e28457fa4978c0bc4a1b3bfc9188b77b9",
+    "head": "581d80535f4bd1081afeb7a564392d4e1e5eb000",
     "branch": "main",
-    "originMain": "2da3501e28457fa4978c0bc4a1b3bfc9188b77b9",
-    "committedAt": "2026-09-27T20:14:58-07:00"
+    "originMain": "581d80535f4bd1081afeb7a564392d4e1e5eb000",
+    "committedAt": "2026-09-27T21:17:37-07:00"
    },
    "sourceFiles": 66,
    "loc": 12037,
@@ -22082,10 +22086,10 @@
    "service": "events",
    "present": true,
    "git": {
-    "head": "19919ece79707eed051c3f18ab37b7fdb6d939a6",
+    "head": "7c575cd8ba545dfb7c4c53667dac7a71f77ac309",
     "branch": "main",
-    "originMain": "19919ece79707eed051c3f18ab37b7fdb6d939a6",
-    "committedAt": "2026-09-27T20:03:54-07:00"
+    "originMain": "7c575cd8ba545dfb7c4c53667dac7a71f77ac309",
+    "committedAt": "2026-09-27T21:12:06-07:00"
    },
    "sourceFiles": 20,
    "loc": 3357,
@@ -22534,10 +22538,10 @@
    "service": "chat",
    "present": true,
    "git": {
-    "head": "d87c8d3c906ad52ef8bf123ce60373fdefcf09e6",
+    "head": "4c517a59ead3c9e71139b6d4954de8306a4d83ba",
     "branch": "main",
-    "originMain": "d87c8d3c906ad52ef8bf123ce60373fdefcf09e6",
-    "committedAt": "2026-09-27T20:03:11-07:00"
+    "originMain": "4c517a59ead3c9e71139b6d4954de8306a4d83ba",
+    "committedAt": "2026-09-27T21:25:00-07:00"
    },
    "sourceFiles": 53,
    "loc": 16898,
@@ -24520,13 +24524,13 @@
    "service": "openre",
    "present": true,
    "git": {
-    "head": "c77ec2a9a1e350fb4ae1c646ec74693fae4f2fa3",
+    "head": "d9f42407f66648c547c32989ecf862b0bc949b63",
     "branch": "main",
-    "originMain": "c77ec2a9a1e350fb4ae1c646ec74693fae4f2fa3",
-    "committedAt": "2026-09-27T20:06:06-07:00"
+    "originMain": "d9f42407f66648c547c32989ecf862b0bc949b63",
+    "committedAt": "2026-09-27T21:16:46-07:00"
    },
    "sourceFiles": 36,
-   "loc": 4806,
+   "loc": 4834,
    "tables": [
     {
      "table": "stream_definitions",
@@ -24622,7 +24626,7 @@
      "method": "GET",
      "path": "/api/health",
      "file": "server/app.js",
-     "line": 48,
+     "line": 50,
      "target": "OpenRe.Stream",
      "disposition": "keep",
      "wave": "-",
@@ -24632,7 +24636,7 @@
      "method": "GET",
      "path": "/api/ready",
      "file": "server/app.js",
-     "line": 61,
+     "line": 110,
      "target": "OpenRe.Stream",
      "disposition": "keep",
      "wave": "-",
@@ -24772,7 +24776,7 @@
      "method": "GET",
      "path": "/play/:file",
      "file": "server/app.js",
-     "line": 92,
+     "line": 120,
      "target": "OpenRe.Stream",
      "disposition": "keep",
      "wave": "-",
@@ -24782,7 +24786,7 @@
      "method": "GET",
      "path": "/robots.txt",
      "file": "server/app.js",
-     "line": 110,
+     "line": 138,
      "target": "OpenRe.Stream",
      "disposition": "keep",
      "wave": "-",
@@ -25285,10 +25289,10 @@
    "service": "billing",
    "present": true,
    "git": {
-    "head": "f24684bb84ec1670bd08670891e6742fa433a548",
+    "head": "1f9df5681486992d3fa8f076ff11f22aea5f0b25",
     "branch": "main",
-    "originMain": "f24684bb84ec1670bd08670891e6742fa433a548",
-    "committedAt": "2026-09-27T20:08:06-07:00"
+    "originMain": "1f9df5681486992d3fa8f076ff11f22aea5f0b25",
+    "committedAt": "2026-09-27T21:18:42-07:00"
    },
    "sourceFiles": 38,
    "loc": 5452,
@@ -26220,10 +26224,10 @@
    "service": "tips",
    "present": true,
    "git": {
-    "head": "13986b59e697d12a328a4f12e993295445ca40be",
+    "head": "3cc8c8354183008026e38a99db9ef96014663467",
     "branch": "main",
-    "originMain": "13986b59e697d12a328a4f12e993295445ca40be",
-    "committedAt": "2026-09-27T20:01:20-07:00"
+    "originMain": "3cc8c8354183008026e38a99db9ef96014663467",
+    "committedAt": "2026-09-27T21:21:09-07:00"
    },
    "sourceFiles": 30,
    "loc": 5346,
@@ -27185,10 +27189,10 @@
    "service": "vip",
    "present": true,
    "git": {
-    "head": "95b3e196daa152c2e7f8e940a1f02b7fe32706ba",
+    "head": "63f46fa5a5ff7ccda8acb0a63ff0f64db5f7805b",
     "branch": "main",
-    "originMain": "95b3e196daa152c2e7f8e940a1f02b7fe32706ba",
-    "committedAt": "2026-09-27T20:01:51-07:00"
+    "originMain": "63f46fa5a5ff7ccda8acb0a63ff0f64db5f7805b",
+    "committedAt": "2026-09-27T21:20:38-07:00"
    },
    "sourceFiles": 30,
    "loc": 4293,
@@ -27905,10 +27909,10 @@
    "service": "ai",
    "present": true,
    "git": {
-    "head": "6c8b8338be936cbd3a6f50dee3f790807f145a0e",
+    "head": "f6fdbc9cbc3c87d684046940e49dd5ddffd5c79b",
     "branch": "main",
-    "originMain": "6c8b8338be936cbd3a6f50dee3f790807f145a0e",
-    "committedAt": "2026-09-27T20:07:22-07:00"
+    "originMain": "f6fdbc9cbc3c87d684046940e49dd5ddffd5c79b",
+    "committedAt": "2026-09-27T21:20:27-07:00"
    },
    "sourceFiles": 44,
    "loc": 7919,
@@ -28923,10 +28927,10 @@
    "service": "search",
    "present": true,
    "git": {
-    "head": "e8511d849720534a9ffcd54b052663111e5b1e6f",
+    "head": "04f9fd45c3c10b401704da2994700c14290b5051",
     "branch": "main",
-    "originMain": "e8511d849720534a9ffcd54b052663111e5b1e6f",
-    "committedAt": "2026-09-27T19:55:17-07:00"
+    "originMain": "04f9fd45c3c10b401704da2994700c14290b5051",
+    "committedAt": "2026-09-27T21:16:50-07:00"
    },
    "sourceFiles": 18,
    "loc": 2868,
@@ -29369,10 +29373,10 @@
    "service": "sources",
    "present": true,
    "git": {
-    "head": "167085388a637eed3f0d47b3c6eabb8c9d00814d",
+    "head": "6e1185e5c315ff3f5676b86dd3dfe6761ef82e32",
     "branch": "main",
-    "originMain": "167085388a637eed3f0d47b3c6eabb8c9d00814d",
-    "committedAt": "2026-09-27T19:55:56-07:00"
+    "originMain": "6e1185e5c315ff3f5676b86dd3dfe6761ef82e32",
+    "committedAt": "2026-09-27T21:17:07-07:00"
    },
    "sourceFiles": 24,
    "loc": 3100,
@@ -29753,10 +29757,10 @@
    "service": "wiki",
    "present": true,
    "git": {
-    "head": "3302540e8b5fdf3c07db9fce688be2f4ab8b847b",
+    "head": "a81573f9ad37722a4d4ffc5bce36565d7d8e5096",
     "branch": "main",
-    "originMain": "3302540e8b5fdf3c07db9fce688be2f4ab8b847b",
-    "committedAt": "2026-09-27T20:00:00-07:00"
+    "originMain": "a81573f9ad37722a4d4ffc5bce36565d7d8e5096",
+    "committedAt": "2026-09-27T21:17:39-07:00"
    },
    "sourceFiles": 23,
    "loc": 4751,
@@ -30762,10 +30766,10 @@
    "service": "blog",
    "present": true,
    "git": {
-    "head": "8a7f8ebe862b0e1c0bb119ee96c42f38fc0e5321",
+    "head": "9f339e3c27abfa4445a7d52cc6c1153c4a88b5ec",
     "branch": "main",
-    "originMain": "8a7f8ebe862b0e1c0bb119ee96c42f38fc0e5321",
-    "committedAt": "2026-09-27T19:58:44-07:00"
+    "originMain": "9f339e3c27abfa4445a7d52cc6c1153c4a88b5ec",
+    "committedAt": "2026-09-27T21:20:31-07:00"
    },
    "sourceFiles": 34,
    "loc": 5185,
@@ -31779,13 +31783,13 @@
    "service": "news",
    "present": true,
    "git": {
-    "head": "97dae43a2d41c5528bbb4c93ff2ea7ea456203dd",
+    "head": "cb6d79e2a6d9c7c07ca76eb7bdb14d41c81b7278",
     "branch": "main",
-    "originMain": "97dae43a2d41c5528bbb4c93ff2ea7ea456203dd",
-    "committedAt": "2026-09-27T19:57:37-07:00"
+    "originMain": "cb6d79e2a6d9c7c07ca76eb7bdb14d41c81b7278",
+    "committedAt": "2026-09-27T21:21:11-07:00"
    },
    "sourceFiles": 34,
-   "loc": 5251,
+   "loc": 5252,
    "tables": [
     {
      "table": "news_topics",
@@ -32611,10 +32615,10 @@
    "service": "reviews",
    "present": true,
    "git": {
-    "head": "c87b34440b0d50bc2cdf6c136775002ed9080c1e",
+    "head": "8416fcb1f0f2b1969a1261fe4ee5bf6aa3600cd2",
     "branch": "main",
-    "originMain": "c87b34440b0d50bc2cdf6c136775002ed9080c1e",
-    "committedAt": "2026-09-27T19:59:21-07:00"
+    "originMain": "8416fcb1f0f2b1969a1261fe4ee5bf6aa3600cd2",
+    "committedAt": "2026-09-27T21:17:09-07:00"
    },
    "sourceFiles": 23,
    "loc": 4792,
@@ -33552,10 +33556,10 @@
    "service": "deals",
    "present": true,
    "git": {
-    "head": "533450f9cc4a358ba50f353f06826ec3611b4ddc",
+    "head": "0bf25e2e5a50e0dca1887d3545be2c95c3cd2749",
     "branch": "main",
-    "originMain": "533450f9cc4a358ba50f353f06826ec3611b4ddc",
-    "committedAt": "2026-09-27T19:57:12-07:00"
+    "originMain": "0bf25e2e5a50e0dca1887d3545be2c95c3cd2749",
+    "committedAt": "2026-09-27T21:20:34-07:00"
    },
    "sourceFiles": 36,
    "loc": 4980,
@@ -34502,10 +34506,10 @@
    "service": "coupons",
    "present": true,
    "git": {
-    "head": "b91cd795e8ee4a3e49317a6e3cb000fa92da9325",
+    "head": "168262d1baa81ab1973863d66d52ab213711ef81",
     "branch": "main",
-    "originMain": "b91cd795e8ee4a3e49317a6e3cb000fa92da9325",
-    "committedAt": "2026-09-27T19:56:35-07:00"
+    "originMain": "168262d1baa81ab1973863d66d52ab213711ef81",
+    "committedAt": "2026-09-27T21:18:44-07:00"
    },
    "sourceFiles": 29,
    "loc": 4289,
@@ -35295,10 +35299,10 @@
    "service": "trade",
    "present": true,
    "git": {
-    "head": "273bce7b1b8771037bc2a660fa8784dc1aa049a7",
+    "head": "d515e46f7f32a6265a8e7feab49e97b9811094ed",
     "branch": "main",
-    "originMain": "273bce7b1b8771037bc2a660fa8784dc1aa049a7",
-    "committedAt": "2026-09-27T19:58:02-07:00"
+    "originMain": "d515e46f7f32a6265a8e7feab49e97b9811094ed",
+    "committedAt": "2026-09-27T21:21:13-07:00"
    },
    "sourceFiles": 37,
    "loc": 4562,
@@ -35668,10 +35672,10 @@
    "service": "codes",
    "present": true,
    "git": {
-    "head": "64d8feb1ac841c01f93e197b6a20eb07a09ef428",
+    "head": "1246445c4abaddcacf4d04adf172d601700833e3",
     "branch": "main",
-    "originMain": "64d8feb1ac841c01f93e197b6a20eb07a09ef428",
-    "committedAt": "2026-09-27T20:27:52-07:00"
+    "originMain": "1246445c4abaddcacf4d04adf172d601700833e3",
+    "committedAt": "2026-09-27T21:20:29-07:00"
    },
    "sourceFiles": 32,
    "loc": 5072,
@@ -37062,10 +37066,10 @@
    "service": "host",
    "present": true,
    "git": {
-    "head": "6d2aaaa630e29d2bfd261a7f75cbbbaa2b8c1d46",
+    "head": "02c68f694a28f06e3056a05055f4515b3d4e7c64",
     "branch": "main",
-    "originMain": "6d2aaaa630e29d2bfd261a7f75cbbbaa2b8c1d46",
-    "committedAt": "2026-09-27T20:22:17-07:00"
+    "originMain": "02c68f694a28f06e3056a05055f4515b3d4e7c64",
+    "committedAt": "2026-09-27T22:19:53-07:00"
    },
    "sourceFiles": 68,
    "loc": 11899,
@@ -37993,10 +37997,10 @@
    "service": "examples",
    "present": true,
    "git": {
-    "head": "92eb7c3b0f50fea9f76086ed3eeda3664de93494",
+    "head": "058c71a5ddee4103a314ff211c5c869f9478a23f",
     "branch": "main",
-    "originMain": "92eb7c3b0f50fea9f76086ed3eeda3664de93494",
-    "committedAt": "2026-09-27T20:10:31-07:00"
+    "originMain": "058c71a5ddee4103a314ff211c5c869f9478a23f",
+    "committedAt": "2026-09-27T21:21:32-07:00"
    },
    "sourceFiles": 11,
    "loc": 1604,
@@ -38161,62 +38165,62 @@
   {
    "repo": "OpenRe.Stream",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.AI",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Billing",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Blog",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Chat",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Codes",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Community",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Coupons",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Deals",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Events",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Games",
@@ -38227,44 +38231,44 @@
   {
    "repo": "OpenVibe.Host",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Live",
    "manifest": "package.json",
-   "spec": "v1.23.1",
+   "spec": "v1.25.0",
    "state": "current"
   },
   {
    "repo": "OpenVibe.Media",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Network",
    "manifest": "package.json",
-   "spec": "v1.22.0",
+   "spec": "v1.24.0",
    "state": "behind"
   },
   {
    "repo": "OpenVibe.News",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Reviews",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Search",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Sites",
@@ -38275,14 +38279,14 @@
   {
    "repo": "OpenVibe.Sources",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Tips",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Tools",
@@ -38335,20 +38339,20 @@
   {
    "repo": "OpenVibe.Trade",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.VIP",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   },
   {
    "repo": "OpenVibe.Wiki",
    "manifest": "package.json",
-   "spec": "v1.22.0",
-   "state": "behind"
+   "spec": "v1.25.0",
+   "state": "current"
   }
  ],
  "ownership": [
@@ -44910,7 +44914,7 @@
    "repo": "OpenVibe.Network",
    "table": "follow_import_holds",
    "declaredAt": [
-    "server/identity/follows.js:57"
+    "server/identity/follows.js:63"
    ],
    "prodDbs": [
     "network.db"
@@ -45435,7 +45439,7 @@
    "repo": "OpenVibe.Network",
    "table": "user_follows",
    "declaredAt": [
-    "server/identity/follows.js:42"
+    "server/identity/follows.js:48"
    ],
    "prodDbs": [
     "network.db"
@@ -48816,7 +48820,7 @@
    "file": "server/index.js",
    "target": "OpenVibe.Blog",
    "via": "OV_BLOG_INTERNAL_URL, blogUrl, :4810",
-   "lines": "498,498,498",
+   "lines": "500,500,500",
    "auth": "internal-key, bearer",
    "timeout": false,
    "retry": false
@@ -48826,7 +48830,7 @@
    "file": "server/index.js",
    "target": "OpenVibe.Events",
    "via": "eventsUrl, eventsInternalUrl",
-   "lines": "557,557,644,644",
+   "lines": "559,559,646,646",
    "auth": "internal-key, bearer",
    "timeout": false,
    "retry": false
@@ -48896,7 +48900,7 @@
    "file": "server/index.js",
    "target": "OpenVibe.Live",
    "via": ":3000, live.internalUrl, liveUrl",
-   "lines": "243,313,375,375,660",
+   "lines": "243,313,375,375,662",
    "auth": "internal-key, bearer",
    "timeout": false,
    "retry": false
@@ -59157,6 +59161,15 @@
   },
   {
    "repo": "OpenVibe.Shared",
+   "name": "OV_TEST_STRICT",
+   "secret": false,
+   "files": [
+    "test-runner.js"
+   ],
+   "prod": null
+  },
+  {
+   "repo": "OpenVibe.Shared",
    "name": "OV_TEXT_URL",
    "secret": false,
    "files": [
@@ -61770,6 +61783,12 @@
  ],
  "discrepancies": [
   {
+   "severity": "medium",
+   "area": "deploy",
+   "subject": "network",
+   "detail": "deployed ac71bb4 is 1 commit(s) behind origin/main 2c1dacb"
+  },
+  {
    "severity": "low",
    "area": "database",
    "subject": "/opt/openvibe.blog/data/blog.db",
@@ -61839,7 +61858,7 @@
    "severity": "low",
    "area": "database",
    "subject": "/opt/openvibe.live/shared/data/live.db",
-   "detail": "284.7 MB, 162 tables, not a database the service opens (services.json): stale file or undeclared copy"
+   "detail": "284.7 MB, 163 tables, not a database the service opens (services.json): stale file or undeclared copy"
   },
   {
    "severity": "low",
@@ -61864,6 +61883,12 @@
    "area": "database",
    "subject": "/opt/openvibe.media/data/reports/h15-repair-applied-20260925.media.db",
    "detail": "11.3 MB, 27 tables, not a database the service opens (services.json): stale file or undeclared copy"
+  },
+  {
+   "severity": "low",
+   "area": "database",
+   "subject": "/opt/openvibe.media/data/reports/h15-resize-applied-20260928.media.db",
+   "detail": "11.7 MB, 36 tables, not a database the service opens (services.json): stale file or undeclared copy"
   },
   {
    "severity": "low",
@@ -62048,104 +62073,14 @@
   {
    "severity": "low",
    "area": "deploy",
-   "subject": "ai",
-   "detail": "deployed 549bed0 is 1 commit(s) behind origin/main 6c8b833; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "billing",
-   "detail": "deployed 80f97aa is 1 commit(s) behind origin/main f24684b; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "blog",
-   "detail": "deployed 21d537c is 1 commit(s) behind origin/main 8a7f8eb; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "chat",
-   "detail": "deployed 3aab730 is 1 commit(s) behind origin/main d87c8d3; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "community",
-   "detail": "deployed 52d923a is 1 commit(s) behind origin/main 2da3501; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "coupons",
-   "detail": "deployed 64835d2 is 1 commit(s) behind origin/main b91cd79; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "deals",
-   "detail": "deployed fa0582d is 1 commit(s) behind origin/main 533450f; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "events",
-   "detail": "deployed f55f7eb is 1 commit(s) behind origin/main 19919ec; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
    "subject": "games",
    "detail": "deployed 51d8688 is 1 commit(s) behind origin/main eb2d008; only documentation and tests changed (README.md, STATUS.json)"
   },
   {
    "severity": "low",
    "area": "deploy",
-   "subject": "host",
-   "detail": "deployed 2b63389 is 2 commit(s) behind origin/main 6d2aaaa; only documentation and tests changed (README.md, STATUS.json, docs/deploy-strategies.md)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
    "subject": "live",
-   "detail": "deployed b0cc2ef is 1 commit(s) behind origin/main 03f49b7; only documentation and tests changed (test/fixtures/n-1/client.json, test/fixtures/n-1/worker.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "media",
-   "detail": "deployed 6248363 is 1 commit(s) behind origin/main 14cac06; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "network",
-   "detail": "deployed ddd87b6 is 2 commit(s) behind origin/main c022f86; only documentation and tests changed (README.md, STATUS.json, docs/roadmap-baseline/01-services.md and 17 more)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "news",
-   "detail": "deployed 8ab47a6 is 1 commit(s) behind origin/main 97dae43; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "openre",
-   "detail": "deployed cf423e3 is 1 commit(s) behind origin/main c77ec2a; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "reviews",
-   "detail": "deployed 1cff36b is 1 commit(s) behind origin/main c87b344; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "search",
-   "detail": "deployed 8ed7667 is 1 commit(s) behind origin/main e8511d8; only documentation and tests changed (README.md, STATUS.json)"
+   "detail": "deployed 278cd40 is 1 commit(s) behind origin/main 7fd7bea; only documentation and tests changed (test/fixtures/n-1/client.json, test/fixtures/n-1/worker.json)"
   },
   {
    "severity": "low",
@@ -62156,38 +62091,8 @@
   {
    "severity": "low",
    "area": "deploy",
-   "subject": "sources",
-   "detail": "deployed 351383e is 1 commit(s) behind origin/main 1670853; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "tips",
-   "detail": "deployed 1e6bfbb is 1 commit(s) behind origin/main 13986b5; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
    "subject": "tools",
-   "detail": "deployed e55469f is 1 commit(s) behind origin/main 4f4ed6e; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "trade",
-   "detail": "deployed 4658447 is 1 commit(s) behind origin/main 273bce7; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "vip",
-   "detail": "deployed 0fbcbb5 is 1 commit(s) behind origin/main 95b3e19; only documentation and tests changed (README.md, STATUS.json)"
-  },
-  {
-   "severity": "low",
-   "area": "deploy",
-   "subject": "wiki",
-   "detail": "deployed 32a26ef is 1 commit(s) behind origin/main 3302540; only documentation and tests changed (README.md, STATUS.json)"
+   "detail": "deployed e55469f is 2 commit(s) behind origin/main 9339e15; only documentation and tests changed (README.md, STATUS.json, apps/audio/test/hardening.test.js and 3 more)"
   },
   {
    "severity": "low",
@@ -64039,10 +63944,10 @@
   "outbound.internal-key": "40 of 112 call sites authenticate with the shared internal key",
   "ws.servers": "12 WebSocket server constructions",
   "tables.analytics-copies": "2 repos carry their own analytics_events",
-  "shared.pins": "25 repos pin a tagged openvibe-shared release (latest v1.23.1): OpenRe.Stream v1.22.0, AI v1.22.0, Billing v1.22.0, Blog v1.22.0, Chat v1.22.0, Codes v1.22.0, Community v1.22.0, Coupons v1.22.0, Deals v1.22.0, Events v1.22.0, Games v1.23.0, Host v1.22.0, Live v1.23.1, Media v1.22.0, Network v1.22.0, News v1.22.0, Reviews v1.22.0, Search v1.22.0, Sites v1.23.0, Sources v1.22.0, Tips v1.22.0, Tools v1.23.0, Trade v1.22.0, VIP v1.22.0, Wiki v1.22.0",
-  "shared.drift": "31 manifests unpinned or behind: OpenRe.Stream (v1.22.0), AI (v1.22.0), Billing (v1.22.0), Blog (v1.22.0), Chat (v1.22.0), Codes (v1.22.0), Community (v1.22.0), Coupons (v1.22.0), Deals (v1.22.0), Events (v1.22.0), Games/apps/server (v1.23.0), Host (v1.22.0), Media (v1.22.0), Network (v1.22.0), News (v1.22.0), Reviews (v1.22.0), Search (v1.22.0), Sites (v1.23.0), Sources (v1.22.0), Tips (v1.22.0), Tools/apps/audio (v1.23.0), Tools/apps/docs (v1.23.0), Tools/apps/food (v1.23.0), Tools/apps/gateway (v1.23.0), Tools/apps/img (v1.23.0), Tools/apps/maps (v1.23.0), Tools/apps/text (v1.23.0), Tools/apps/yt (v1.23.0), Trade (v1.22.0), VIP (v1.22.0), Wiki (v1.22.0)",
+  "shared.pins": "25 repos pin a tagged openvibe-shared release (latest v1.25.0): OpenRe.Stream v1.25.0, AI v1.25.0, Billing v1.25.0, Blog v1.25.0, Chat v1.25.0, Codes v1.25.0, Community v1.25.0, Coupons v1.25.0, Deals v1.25.0, Events v1.25.0, Games v1.23.0, Host v1.25.0, Live v1.25.0, Media v1.25.0, Network v1.24.0, News v1.25.0, Reviews v1.25.0, Search v1.25.0, Sites v1.23.0, Sources v1.25.0, Tips v1.25.0, Tools v1.23.0, Trade v1.25.0, VIP v1.25.0, Wiki v1.25.0",
+  "shared.drift": "11 manifests unpinned or behind: Games/apps/server (v1.23.0), Network (v1.24.0), Sites (v1.23.0), Tools/apps/audio (v1.23.0), Tools/apps/docs (v1.23.0), Tools/apps/food (v1.23.0), Tools/apps/gateway (v1.23.0), Tools/apps/img (v1.23.0), Tools/apps/maps (v1.23.0), Tools/apps/text (v1.23.0), Tools/apps/yt (v1.23.0)",
   "ci.repos": "27 of 27 scanned repos have .github/workflows",
-  "deploy.drift": "24 service(s) not running origin/main",
+  "deploy.drift": "1 service(s) behind origin/main in what runs, 4 more only in documentation and tests",
   "tests.OpenVibe.Live": "158 test files",
   "tables.OpenVibe.Live": "126 tables",
   "tables.OpenVibe.Live.target:OpenVibe.Live": "35 Live tables target OpenVibe.Live",
@@ -64059,15 +63964,15 @@
   "tables.OpenVibe.Live.target:OpenVibe.Billing": "2 Live tables target OpenVibe.Billing",
   "tables.OpenVibe.Live.target:OpenVibe.Billing + OpenVibe.VIP": "1 Live tables target OpenVibe.Billing + OpenVibe.VIP",
   "tables.OpenVibe.Live.target:OpenVibe.Codes": "2 Live tables target OpenVibe.Codes",
-  "tests.OpenVibe.Network": "77 test files",
+  "tests.OpenVibe.Network": "78 test files",
   "tables.OpenVibe.Network": "70 tables",
   "tables.OpenVibe.Network.target:OpenVibe.Network": "75 Network tables target OpenVibe.Network",
   "tables.OpenVibe.Network.target:OpenVibe.Billing (loyalty ledger)": "2 Network tables target OpenVibe.Billing (loyalty ledger)",
   "tables.OpenVibe.Network.target:OpenVibe.Events": "1 Network tables target OpenVibe.Events",
-  "tests.OpenVibe.Shared": "39 test files",
+  "tests.OpenVibe.Shared": "40 test files",
   "tables.OpenVibe.Shared": "2 tables",
   "tables.OpenVibe.Shared.target:OpenVibe.Shared": "2 Shared tables target OpenVibe.Shared",
-  "tests.OpenVibe.Media": "67 test files",
+  "tests.OpenVibe.Media": "68 test files",
   "tables.OpenVibe.Media": "34 tables",
   "tables.OpenVibe.Media.target:OpenVibe.Media": "32 Media tables target OpenVibe.Media",
   "tables.OpenVibe.Media.target:OpenVibe.Community": "3 Media tables target OpenVibe.Community",
@@ -64557,11 +64462,11 @@
    "metrics": [
     {
      "key": "shared.pins",
-     "value": "25 repos pin a tagged openvibe-shared release (latest v1.23.1): OpenRe.Stream v1.22.0, AI v1.22.0, Billing v1.22.0, Blog v1.22.0, Chat v1.22.0, Codes v1.22.0, Community v1.22.0, Coupons v1.22.0, Deals v1.22.0, Events v1.22.0, Games v1.23.0, Host v1.22.0, Live v1.23.1, Media v1.22.0, Network v1.22.0, News v1.22.0, Reviews v1.22.0, Search v1.22.0, Sites v1.23.0, Sources v1.22.0, Tips v1.22.0, Tools v1.23.0, Trade v1.22.0, VIP v1.22.0, Wiki v1.22.0"
+     "value": "25 repos pin a tagged openvibe-shared release (latest v1.25.0): OpenRe.Stream v1.25.0, AI v1.25.0, Billing v1.25.0, Blog v1.25.0, Chat v1.25.0, Codes v1.25.0, Community v1.25.0, Coupons v1.25.0, Deals v1.25.0, Events v1.25.0, Games v1.23.0, Host v1.25.0, Live v1.25.0, Media v1.25.0, Network v1.24.0, News v1.25.0, Reviews v1.25.0, Search v1.25.0, Sites v1.23.0, Sources v1.25.0, Tips v1.25.0, Tools v1.23.0, Trade v1.25.0, VIP v1.25.0, Wiki v1.25.0"
     },
     {
      "key": "shared.drift",
-     "value": "31 manifests unpinned or behind: OpenRe.Stream (v1.22.0), AI (v1.22.0), Billing (v1.22.0), Blog (v1.22.0), Chat (v1.22.0), Codes (v1.22.0), Community (v1.22.0), Coupons (v1.22.0), Deals (v1.22.0), Events (v1.22.0), Games/apps/server (v1.23.0), Host (v1.22.0), Media (v1.22.0), Network (v1.22.0), News (v1.22.0), Reviews (v1.22.0), Search (v1.22.0), Sites (v1.23.0), Sources (v1.22.0), Tips (v1.22.0), Tools/apps/audio (v1.23.0), Tools/apps/docs (v1.23.0), Tools/apps/food (v1.23.0), Tools/apps/gateway (v1.23.0), Tools/apps/img (v1.23.0), Tools/apps/maps (v1.23.0), Tools/apps/text (v1.23.0), Tools/apps/yt (v1.23.0), Trade (v1.22.0), VIP (v1.22.0), Wiki (v1.22.0)"
+     "value": "11 manifests unpinned or behind: Games/apps/server (v1.23.0), Network (v1.24.0), Sites (v1.23.0), Tools/apps/audio (v1.23.0), Tools/apps/docs (v1.23.0), Tools/apps/food (v1.23.0), Tools/apps/gateway (v1.23.0), Tools/apps/img (v1.23.0), Tools/apps/maps (v1.23.0), Tools/apps/text (v1.23.0), Tools/apps/yt (v1.23.0)"
     }
    ],
    "members": [
@@ -64611,7 +64516,7 @@
    "metrics": [
     {
      "key": "deploy.drift",
-     "value": "24 service(s) not running origin/main"
+     "value": "1 service(s) behind origin/main in what runs, 4 more only in documentation and tests"
     }
    ],
    "members": [
@@ -64829,7 +64734,7 @@
    "status": "open",
    "check": "deploy-drift",
    "ownerReview": false,
-   "checkResult": "ai: deployed 549bed0 is 1 commit(s) behind origin/main 6c8b833; only documentation and tests changed (README.md, STATUS.json); billing: deployed 80f97aa is 1 commit(s) behind origin/main f24684b; only documentation and tests changed (README.md, STATUS.json); blog: deployed 21d537c is 1 commit(s) behind origin/main 8a7f8eb; only documentation and tests changed (README.md, STATUS.json); chat: deployed 3aab730 is 1 commit(s) behind origin/main d87c8d3; only documentation and tests changed (README.md, STATUS.json); community: deployed 52d923a is 1 commit(s) behind origin/main 2da3501; only documentation and tests changed (README.md, STATUS.json); coupons: deployed 64835d2 is 1 commit(s) behind origin/main b91cd79; only documentation and tests changed (README.md, STATUS.json); deals: deployed fa0582d is 1 commit(s) behind origin/main 533450f; only documentation and tests changed (README.md, STATUS.json); events: deployed f55f7eb is 1 commit(s) behind origin/main 19919ec; only documentation and tests changed (README.md, STATUS.json); games: deployed 51d8688 is 1 commit(s) behind origin/main eb2d008; only documentation and tests changed (README.md, STATUS.json); host: deployed 2b63389 is 2 commit(s) behind origin/main 6d2aaaa; only documentation and tests changed (README.md, STATUS.json, docs/deploy-strategies.md); live: deployed b0cc2ef is 1 commit(s) behind origin/main 03f49b7; only documentation and tests changed (test/fixtures/n-1/client.json, test/fixtures/n-1/worker.json); media: deployed 6248363 is 1 commit(s) behind origin/main 14cac06; only documentation and tests changed (README.md, STATUS.json); network: deployed ddd87b6 is 2 commit(s) behind origin/main c022f86; only documentation and tests changed (README.md, STATUS.json, docs/roadmap-baseline/01-services.md and 17 more); news: deployed 8ab47a6 is 1 commit(s) behind origin/main 97dae43; only documentation and tests changed (README.md, STATUS.json); openre: deployed cf423e3 is 1 commit(s) behind origin/main c77ec2a; only documentation and tests changed (README.md, STATUS.json); reviews: deployed 1cff36b is 1 commit(s) behind origin/main c87b344; only documentation and tests changed (README.md, STATUS.json); search: deployed 8ed7667 is 1 commit(s) behind origin/main e8511d8; only documentation and tests changed (README.md, STATUS.json); sites: deployed 32464ec is 1 commit(s) behind origin/main 304e8b1; only documentation and tests changed (README.md, STATUS.json); sources: deployed 351383e is 1 commit(s) behind origin/main 1670853; only documentation and tests changed (README.md, STATUS.json); tips: deployed 1e6bfbb is 1 commit(s) behind origin/main 13986b5; only documentation and tests changed (README.md, STATUS.json); tools: deployed e55469f is 1 commit(s) behind origin/main 4f4ed6e; only documentation and tests changed (README.md, STATUS.json); trade: deployed 4658447 is 1 commit(s) behind origin/main 273bce7; only documentation and tests changed (README.md, STATUS.json); vip: deployed 0fbcbb5 is 1 commit(s) behind origin/main 95b3e19; only documentation and tests changed (README.md, STATUS.json); wiki: deployed 32a26ef is 1 commit(s) behind origin/main 3302540; only documentation and tests changed (README.md, STATUS.json)"
+   "checkResult": "network: deployed ac71bb4 is 1 commit(s) behind origin/main 2c1dacb; games: deployed 51d8688 is 1 commit(s) behind origin/main eb2d008; only documentation and tests changed (README.md, STATUS.json); live: deployed 278cd40 is 1 commit(s) behind origin/main 7fd7bea; only documentation and tests changed (test/fixtures/n-1/client.json, test/fixtures/n-1/worker.json); sites: deployed 32464ec is 1 commit(s) behind origin/main 304e8b1; only documentation and tests changed (README.md, STATUS.json); tools: deployed e55469f is 2 commit(s) behind origin/main 9339e15; only documentation and tests changed (README.md, STATUS.json, apps/audio/test/hardening.test.js and 3 more)"
   },
   {
    "id": "H14",
@@ -64843,7 +64748,7 @@
    "status": "open",
    "check": "dead-dbs",
    "ownerReview": "Approve deleting the zero-table files and moving or deleting the import snapshots and backups listed by the check.",
-   "checkResult": "blog/data/blog.db, community/data/community.db, games/data/legacy-import/world-before-20260923T184930Z.db, live/shared/data/analytics.db, live/shared/data/backups/analytics-pre-adr021-2026-09-23.db, live/shared/data/backups/live-20260926-072748.db, live/shared/data/backups/live-20260926-095352.db, live/shared/data/backups/live-pre-643a2e6.db, live/shared/data/backups/live-pre-identity-contract-20260928-001702Z.db, live/shared/data/hobo.db, live/shared/data/live-before-rs-slots-20260924T0153Z.db, live/shared/data/live.db, live/shared/data/openvibe.db, live/shared/data/rs-companion.db, media/data/backups/owner-subject-20260923.media.db, media/data/reports/h15-repair-applied-20260925.media.db, network/data/backups/network-pre-creator-analytics-20260926.db, network/data/backups/network-pre-follows-20260926.db, network/data/network-pre-refresh-hash-2026-09-24.db, network/data/network-pre-secrets-2026-09-24.db, tips/data/tips.db, tools/apps/audio/data/guard.db, tools/apps/docs/data/guard.db, tools/apps/food/data/guard.db, tools/apps/gateway/data/guard.db, tools/apps/gateway/data/token-revocations.db, tools/apps/img/data/guard.db, tools/apps/maps/data/guard.db, tools/apps/text/data/guard.db, tools/apps/yt/data/guard.db, tools/backups/analytics-2026-09-23/audio.analytics.db, tools/backups/analytics-2026-09-23/docs.analytics.db, tools/backups/analytics-2026-09-23/food.analytics.db, tools/backups/analytics-2026-09-23/img.analytics.db, tools/backups/analytics-2026-09-23/maps.analytics.db, tools/backups/analytics-2026-09-23/text.analytics.db, tools/backups/analytics-2026-09-23/yt.analytics.db, billing/live-snapshot-202609230121.db, chat/live-snap-a.db, chat/live-snap-b.db, chat/live-snapshot-0159.db, chat/rehearsal.db, community/community.pre-c24-20260925T185117Z.db, community/community.pre-c24b-20260925T185400Z.db, community/community.pre-c24c-20260925T185425Z.db, community/community.pre-live-comments-20260923T191345Z.db"
+   "checkResult": "blog/data/blog.db, community/data/community.db, games/data/legacy-import/world-before-20260923T184930Z.db, live/shared/data/analytics.db, live/shared/data/backups/analytics-pre-adr021-2026-09-23.db, live/shared/data/backups/live-20260926-072748.db, live/shared/data/backups/live-20260926-095352.db, live/shared/data/backups/live-pre-643a2e6.db, live/shared/data/backups/live-pre-identity-contract-20260928-001702Z.db, live/shared/data/hobo.db, live/shared/data/live-before-rs-slots-20260924T0153Z.db, live/shared/data/live.db, live/shared/data/openvibe.db, live/shared/data/rs-companion.db, media/data/backups/owner-subject-20260923.media.db, media/data/reports/h15-repair-applied-20260925.media.db, media/data/reports/h15-resize-applied-20260928.media.db, network/data/backups/network-pre-creator-analytics-20260926.db, network/data/backups/network-pre-follows-20260926.db, network/data/network-pre-refresh-hash-2026-09-24.db, network/data/network-pre-secrets-2026-09-24.db, tips/data/tips.db, tools/apps/audio/data/guard.db, tools/apps/docs/data/guard.db, tools/apps/food/data/guard.db, tools/apps/gateway/data/guard.db, tools/apps/gateway/data/token-revocations.db, tools/apps/img/data/guard.db, tools/apps/maps/data/guard.db, tools/apps/text/data/guard.db, tools/apps/yt/data/guard.db, tools/backups/analytics-2026-09-23/audio.analytics.db, tools/backups/analytics-2026-09-23/docs.analytics.db, tools/backups/analytics-2026-09-23/food.analytics.db, tools/backups/analytics-2026-09-23/img.analytics.db, tools/backups/analytics-2026-09-23/maps.analytics.db, tools/backups/analytics-2026-09-23/text.analytics.db, tools/backups/analytics-2026-09-23/yt.analytics.db, billing/live-snapshot-202609230121.db, chat/live-snap-a.db, chat/live-snap-b.db, chat/live-snapshot-0159.db, chat/rehearsal.db, community/community.pre-c24-20260925T185117Z.db, community/community.pre-c24b-20260925T185400Z.db, community/community.pre-c24c-20260925T185425Z.db, community/community.pre-live-comments-20260923T191345Z.db"
   },
   {
    "id": "H15",
@@ -64932,7 +64837,7 @@
    "id": "EC5",
    "text": "Unknowns are marked unknown, not guessed",
    "pass": true,
-   "detail": "2 unknown items recorded"
+   "detail": "2 unknown items recorded; 0 things this run could not observe, each marked unknown"
   },
   {
    "id": "EC6",

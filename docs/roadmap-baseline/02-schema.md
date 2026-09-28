@@ -11,7 +11,7 @@ Deliverable 2: every table declared in code or present in production, with curre
 | /opt/openvibe.blog/data/blog.db | 401 KB | 20 |
 | /opt/openvibe.community/data/community.db | 258 KB | 21 |
 | /opt/openvibe.games/data/legacy-import/world-before-20260923T184930Z.db | 193 KB | 13 |
-| /opt/openvibe.games/data/world.db | 610 KB | 15 |
+| /opt/openvibe.games/data/world.db | 635 KB | 15 |
 | /opt/openvibe.live/shared/data/analytics.db | 525.4 MB | 6 |
 | /opt/openvibe.live/shared/data/backups/analytics-pre-adr021-2026-09-23.db | 1.76 GB | 6 |
 | /opt/openvibe.live/shared/data/backups/live-20260926-072748.db | 284.0 MB | 161 |
@@ -20,12 +20,13 @@ Deliverable 2: every table declared in code or present in production, with curre
 | /opt/openvibe.live/shared/data/backups/live-pre-identity-contract-20260928-001702Z.db | 284.7 MB | 162 |
 | /opt/openvibe.live/shared/data/hobo.db | 0 B | 0 |
 | /opt/openvibe.live/shared/data/live-before-rs-slots-20260924T0153Z.db | 279.2 MB | 151 |
-| /opt/openvibe.live/shared/data/live.db | 284.7 MB | 162 |
+| /opt/openvibe.live/shared/data/live.db | 284.7 MB | 163 |
 | /opt/openvibe.live/shared/data/openvibe.db | 0 B | 0 |
 | /opt/openvibe.live/shared/data/rs-companion.db | 8.6 MB | 33 |
 | /opt/openvibe.media/data/backups/owner-subject-20260923.media.db | 9.5 MB | 23 |
 | /opt/openvibe.media/data/media.db | 11.7 MB | 36 |
 | /opt/openvibe.media/data/reports/h15-repair-applied-20260925.media.db | 11.3 MB | 27 |
+| /opt/openvibe.media/data/reports/h15-resize-applied-20260928.media.db | 11.7 MB | 36 |
 | /opt/openvibe.network/data/backups/network-pre-creator-analytics-20260926.db | 292.4 MB | 66 |
 | /opt/openvibe.network/data/backups/network-pre-follows-20260926.db | 292.1 MB | 63 |
 | /opt/openvibe.network/data/network-pre-refresh-hash-2026-09-24.db | 279.1 MB | 52 |
@@ -59,8 +60,8 @@ Deliverable 2: every table declared in code or present in production, with curre
 | /opt/openvibe.tools/backups/analytics-2026-09-23/text.analytics.db | 9.5 MB | 6 |
 | /opt/openvibe.tools/backups/analytics-2026-09-23/yt.analytics.db | 975 KB | 6 |
 | /var/lib/openre/openre.db | 209 KB | 14 |
-| /var/lib/openvibe-ai/ai.db | 115.8 MB | 20 |
-| /var/lib/openvibe-billing/billing.db | 831 KB | 19 |
+| /var/lib/openvibe-ai/ai.db | 118.6 MB | 20 |
+| /var/lib/openvibe-billing/billing.db | 840 KB | 19 |
 | /var/lib/openvibe-billing/live-snapshot-202609230121.db | 279.2 MB | 146 |
 | /var/lib/openvibe-blog/blog.db | 1.9 MB | 24 |
 | /var/lib/openvibe-chat/chat.db | 25.3 MB | 42 |
@@ -69,16 +70,16 @@ Deliverable 2: every table declared in code or present in production, with curre
 | /var/lib/openvibe-chat/live-snapshot-0159.db | 279.2 MB | 147 |
 | /var/lib/openvibe-chat/rehearsal.db | 360 KB | 30 |
 | /var/lib/openvibe-codes/codes.db | 111 KB | 7 |
-| /var/lib/openvibe-community/community.db | 5.3 MB | 36 |
+| /var/lib/openvibe-community/community.db | 5.5 MB | 36 |
 | /var/lib/openvibe-community/community.pre-c24-20260925T185117Z.db | 2.2 MB | 29 |
 | /var/lib/openvibe-community/community.pre-c24b-20260925T185400Z.db | 2.2 MB | 29 |
 | /var/lib/openvibe-community/community.pre-c24c-20260925T185425Z.db | 2.2 MB | 29 |
 | /var/lib/openvibe-community/community.pre-live-comments-20260923T191345Z.db | 2.0 MB | 20 |
 | /var/lib/openvibe-coupons/coupons.db | 197 KB | 14 |
 | /var/lib/openvibe-deals/deals.db | 266 KB | 19 |
-| /var/lib/openvibe-events/events.db | 23.5 MB | 8 |
+| /var/lib/openvibe-events/events.db | 23.9 MB | 8 |
 | /var/lib/openvibe-host-api/host.db | 160 KB | 12 |
-| /var/lib/openvibe-news/news.db | 508 KB | 23 |
+| /var/lib/openvibe-news/news.db | 512 KB | 23 |
 | /var/lib/openvibe-reviews/reviews.db | 311 KB | 23 |
 | /var/lib/openvibe-search/search.db | 13.3 MB | 21 |
 | /var/lib/openvibe-sources/sources.db | 106 KB | 8 |
@@ -255,7 +256,7 @@ Deliverable 2: every table declared in code or present in production, with curre
 | dev_usage_windows | server/developer/usage.js:50 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | email_delivery_log | server/db/database.js:222 | network.db | OpenVibe.Network | keep | W3 (delivery -> Events outbox) |
 | email_verification_tokens | server/db/database.js:438 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| follow_import_holds | server/identity/follows.js:57 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| follow_import_holds | server/identity/follows.js:63 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | follows | server/db/database.js:306 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | frame_cache | server/frame/service.js:68 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | frame_hits | server/frame/service.js:70 | network.db | OpenVibe.Network | keep | W1 (module split) |
@@ -288,7 +289,7 @@ Deliverable 2: every table declared in code or present in production, with curre
 | url_registry | server/db/database.js:165, server/url-registry.js:7 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | user_blocks | server/identity/blocks.js:41 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | user_effects | server/db/database.js:295 | network.db | OpenVibe.Network | keep | W1 (module split) |
-| user_follows | server/identity/follows.js:42 | network.db | OpenVibe.Network | keep | W1 (module split) |
+| user_follows | server/identity/follows.js:48 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | user_history | server/history/routes.js:26 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | user_module_retirements | server/identity/modules.js:91 | network.db | OpenVibe.Network | keep | W1 (module split) |
 | user_module_revisions | server/identity/modules.js:84 | network.db | OpenVibe.Network | keep | W1 (module split) |

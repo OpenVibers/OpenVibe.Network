@@ -133,8 +133,8 @@ Deliverable 3 (dependency half). A call site is a source file that makes HTTP re
 | Media/server/auth.js:473 | webhook | webhook_url (per-app, configured in DB) | service-token | yes | yes |
 | Media/server/webhooks.js:4 | webhook | webhook_url (per-app, configured in DB) | hmac | yes | yes |
 | Network/server/frame/service.js:32 | OpenVibe.AI | aiUrl, OV_AI_INTERNAL_URL, :4700 | internal-key, bearer, service-token | yes | no |
-| Network/server/index.js:498 | OpenVibe.Blog | OV_BLOG_INTERNAL_URL, blogUrl, :4810 | internal-key, bearer | **no** | no |
-| Network/server/index.js:557 | OpenVibe.Events | eventsUrl, eventsInternalUrl | internal-key, bearer | **no** | no |
+| Network/server/index.js:500 | OpenVibe.Blog | OV_BLOG_INTERNAL_URL, blogUrl, :4810 | internal-key, bearer | **no** | no |
+| Network/server/index.js:559 | OpenVibe.Events | eventsUrl, eventsInternalUrl | internal-key, bearer | **no** | no |
 | Network/server/admin/analytics-routes.js:24 | OpenVibe.Games | :8000 | internal-key, bearer | yes | no |
 | Network/server/admin/routes.js:74 | OpenVibe.Games | games.internalUrl | internal-key | yes | no |
 | Network/server/index.js:247 | OpenVibe.Games | :8000, games.internalUrl | internal-key, bearer | **no** | no |

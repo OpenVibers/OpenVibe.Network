@@ -1164,6 +1164,7 @@ Deliverable 5. Names and locations only; no value was read. "In prod" names the 
 | OpenVibe.Shared | OV_NETWORK_LOGIN_URL |  | brand.js |
 | OpenVibe.Shared | OV_NETWORK_URL |  | brand.js |
 | OpenVibe.Shared | OV_PASTES_URL |  | brand.js |
+| OpenVibe.Shared | OV_TEST_STRICT |  | test-runner.js |
 | OpenVibe.Shared | OV_TEXT_URL |  | brand.js |
 | OpenVibe.Shared | OV_TOOLS_URL |  | brand.js |
 | OpenVibe.Shared | OV_YT_URL |  | brand.js |

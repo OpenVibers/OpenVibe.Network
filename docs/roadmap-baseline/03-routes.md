@@ -497,8 +497,8 @@ Owner = the repository whose code answers the route; target = the authority it b
 | DELETE | /api/streams/:id | server/streaming/routes.js:2166 |  | keep |
 | GET | /api/streams/:id | server/streaming/routes.js:1923 |  | keep |
 | PUT | /api/streams/:id | server/streaming/routes.js:2115 |  | keep |
-| GET | /api/streams/:id/call | server/streaming/routes.js:2491 |  | keep |
-| PUT | /api/streams/:id/call | server/streaming/routes.js:2452 |  | keep |
+| GET | /api/streams/:id/call | server/streaming/routes.js:2492 |  | keep |
+| PUT | /api/streams/:id/call | server/streaming/routes.js:2453 |  | keep |
 | GET | /api/streams/:id/endpoint | server/streaming/routes.js:2213 |  | keep |
 | POST | /api/streams/:id/follow | server/streaming/routes.js:2354 |  | keep |
 | POST | /api/streams/:id/heartbeat | server/streaming/routes.js:2311 |  | keep |
@@ -511,7 +511,7 @@ Owner = the repository whose code answers the route; target = the authority it b
 | PUT | /api/streams/channel/:username/about | server/streaming/routes.js:808 |  | keep |
 | GET | /api/streams/channel/:username/bio-en | server/streaming/routes.js:789 |  | keep |
 | GET | /api/streams/channel/:username/clips-taken | server/streaming/routes.js:595 |  | keep |
-| POST | /api/streams/channel/:username/follow | server/streaming/routes.js:2402 |  | keep |
+| POST | /api/streams/channel/:username/follow | server/streaming/routes.js:2403 |  | keep |
 | GET | /api/streams/channel/:username/game | server/streaming/routes.js:1020 |  | keep |
 | GET | /api/streams/channel/:username/live | server/streaming/routes.js:639 |  | keep |
 | GET | /api/streams/channel/:username/popular | server/streaming/routes.js:569 |  | keep |
@@ -532,7 +532,7 @@ Owner = the repository whose code answers the route; target = the authority it b
 | GET | /api/streams/recent | server/streaming/routes.js:1188 |  | keep |
 | GET | /api/streams/recent-vods | server/streaming/routes.js:1259 |  | keep |
 | GET | /api/streams/recently-online | server/streaming/routes.js:1205 |  | keep |
-| GET | /api/streams/rtmp-proxy/:streamId.flv | server/streaming/routes.js:2512 |  | keep |
+| GET | /api/streams/rtmp-proxy/:streamId.flv | server/streaming/routes.js:2513 |  | keep |
 | GET | /api/streams/setup-progress | server/streaming/routes.js:1586 |  | keep |
 | GET | /api/streams/voice-channels | server/streaming/routes.js:1289 |  | keep |
 | POST | /api/streams/voice-channels | server/streaming/routes.js:1310 |  | keep |
@@ -727,12 +727,12 @@ Owner = the repository whose code answers the route; target = the authority it b
 | POST | /:id/cancel | server/identity/account-data.js:565 |  | keep |
 | POST | /:id/dismiss | server/notifications/routes.js:100 |  | keep |
 | POST | /:id/read | server/notifications/routes.js:67 |  | keep |
-| GET | /.well-known/openvibe | server/registry/ecosystem.js:317 |  | keep |
-| GET | /.well-known/web-identity | server/index.js:755 |  | keep |
+| GET | /.well-known/openvibe | server/registry/ecosystem.js:326 |  | keep |
+| GET | /.well-known/web-identity | server/index.js:757 |  | keep |
 | POST | /account-deletions/:id/confirmations | server/identity/account-data.js:547 |  | keep |
 | POST | /account-exports/:id/parts | server/identity/account-data.js:539 |  | keep |
 | POST | /admin | server/setup/routes.js:114 |  | keep |
-| GET | /api/.well-known/jwks | server/index.js:500 |  | keep |
+| GET | /api/.well-known/jwks | server/index.js:502 |  | keep |
 | GET | /api/admin/domains | server/domains/routes.js:176 |  | keep |
 | GET | /api/admin/domains | server/domains/routes.js:197 |  | keep |
 | POST | /api/admin/domains | server/domains/routes.js:224 |  | keep |
@@ -759,7 +759,7 @@ Owner = the repository whose code answers the route; target = the authority it b
 | POST | /api/admin/mods/:id/revoke | server/identity/mod-principals.js:186 |  | keep |
 | POST | /api/admin/mods/:id/revoke | server/identity/mod-principals.js:210 |  | keep |
 | GET | /api/admin/operator-checklist | server/admin/operator-checklist.js:70 |  | keep |
-| GET | /api/admin/ssh-info | server/index.js:627 |  | keep |
+| GET | /api/admin/ssh-info | server/index.js:629 |  | keep |
 | GET | /api/admin/themes | server/themes/routes.js:64 |  | keep |
 | GET | /api/admin/themes | server/themes/routes.js:233 |  | keep |
 | POST | /api/admin/themes | server/themes/routes.js:217 |  | keep |
@@ -801,8 +801,8 @@ Owner = the repository whose code answers the route; target = the authority it b
 | GET | /api/auth/users/:id/card | server/auth/routes.js:777 |  | keep |
 | DELETE | /api/auth/users/:id/follow | server/auth/routes.js:860 |  | keep |
 | POST | /api/auth/users/:id/follow | server/auth/routes.js:829 |  | keep |
-| GET | /api/brand | server/index.js:529 |  | keep |
-| GET | /api/catalog.json | server/index.js:593 |  | keep |
+| GET | /api/brand | server/index.js:531 |  | keep |
+| GET | /api/catalog.json | server/index.js:595 |  | keep |
 | GET | /api/chrome | server/frame/service.js:178 |  | keep |
 | POST | /api/chrome/hit | server/frame/service.js:191 |  | keep |
 | GET | /api/domains | server/domains/routes.js:176 |  | keep |
@@ -814,7 +814,7 @@ Owner = the repository whose code answers the route; target = the authority it b
 | POST | /api/domains/check | server/domains/routes.js:217 |  | keep |
 | GET | /api/frame | server/frame/service.js:178 |  | keep |
 | POST | /api/frame/hit | server/frame/service.js:191 |  | keep |
-| GET | /api/health | server/index.js:515 |  | keep |
+| GET | /api/health | server/index.js:517 |  | keep |
 | DELETE | /api/history | server/history/routes.js:143 |  | keep |
 | GET | /api/history | server/history/routes.js:92 |  | keep |
 | POST | /api/history | server/history/routes.js:108 |  | keep |
@@ -836,8 +836,8 @@ Owner = the repository whose code answers the route; target = the authority it b
 | POST | /api/push/subscribe | server/push/routes.js:17 |  | keep |
 | POST | /api/push/unsubscribe | server/push/routes.js:29 |  | keep |
 | GET | /api/push/vapid-key | server/push/routes.js:10 |  | keep |
-| GET | /api/ready | server/index.js:525 |  | keep |
-| GET | /api/sso/targets | server/index.js:575 |  | keep |
+| GET | /api/ready | server/index.js:527 |  | keep |
+| GET | /api/sso/targets | server/index.js:577 |  | keep |
 | GET | /api/themes | server/themes/routes.js:64 |  | keep |
 | GET | /api/themes | server/themes/routes.js:233 |  | keep |
 | POST | /api/themes | server/themes/routes.js:217 |  | keep |
@@ -851,23 +851,23 @@ Owner = the repository whose code answers the route; target = the authority it b
 | GET | /api/themes/me/submissions | server/themes/routes.js:133 |  | keep |
 | GET | /api/v1/changelog | server/updates/routes.js:51 |  | keep |
 | GET | /api/v1/creators/:creator/analytics | server/analytics/creators.js:121 |  | keep |
-| GET | /api/v1/follows | server/identity/follows.js:262 |  | keep |
-| DELETE | /api/v1/follows/:type/:target | server/identity/follows.js:278 |  | keep |
-| DELETE | /api/v1/follows/:type/:target | server/identity/follows.js:337 |  | keep |
-| GET | /api/v1/follows/:type/:target | server/identity/follows.js:291 |  | keep |
-| PUT | /api/v1/follows/:type/:target | server/identity/follows.js:268 |  | keep |
-| PUT | /api/v1/follows/:type/:target | server/identity/follows.js:324 |  | keep |
-| GET | /api/v1/follows/:type/:target/followers | server/identity/follows.js:304 |  | keep |
+| GET | /api/v1/follows | server/identity/follows.js:271 |  | keep |
+| DELETE | /api/v1/follows/:type/:target | server/identity/follows.js:287 |  | keep |
+| DELETE | /api/v1/follows/:type/:target | server/identity/follows.js:346 |  | keep |
+| GET | /api/v1/follows/:type/:target | server/identity/follows.js:300 |  | keep |
+| PUT | /api/v1/follows/:type/:target | server/identity/follows.js:277 |  | keep |
+| PUT | /api/v1/follows/:type/:target | server/identity/follows.js:333 |  | keep |
+| GET | /api/v1/follows/:type/:target/followers | server/identity/follows.js:313 |  | keep |
 | GET | /api/v1/me/blocks | server/identity/blocks.js:159 |  | keep |
 | DELETE | /api/v1/me/blocks/:target | server/identity/blocks.js:175 |  | keep |
 | PUT | /api/v1/me/blocks/:target | server/identity/blocks.js:164 |  | keep |
-| GET | /api/v1/me/follows | server/identity/follows.js:262 |  | keep |
-| DELETE | /api/v1/me/follows/:type/:target | server/identity/follows.js:278 |  | keep |
-| DELETE | /api/v1/me/follows/:type/:target | server/identity/follows.js:337 |  | keep |
-| GET | /api/v1/me/follows/:type/:target | server/identity/follows.js:291 |  | keep |
-| PUT | /api/v1/me/follows/:type/:target | server/identity/follows.js:268 |  | keep |
-| PUT | /api/v1/me/follows/:type/:target | server/identity/follows.js:324 |  | keep |
-| GET | /api/v1/me/follows/:type/:target/followers | server/identity/follows.js:304 |  | keep |
+| GET | /api/v1/me/follows | server/identity/follows.js:271 |  | keep |
+| DELETE | /api/v1/me/follows/:type/:target | server/identity/follows.js:287 |  | keep |
+| DELETE | /api/v1/me/follows/:type/:target | server/identity/follows.js:346 |  | keep |
+| GET | /api/v1/me/follows/:type/:target | server/identity/follows.js:300 |  | keep |
+| PUT | /api/v1/me/follows/:type/:target | server/identity/follows.js:277 |  | keep |
+| PUT | /api/v1/me/follows/:type/:target | server/identity/follows.js:333 |  | keep |
+| GET | /api/v1/me/follows/:type/:target/followers | server/identity/follows.js:313 |  | keep |
 | GET | /api/v1/projects | server/developer/routes.js:89 |  | keep |
 | POST | /api/v1/projects | server/developer/routes.js:88 |  | keep |
 | GET | /api/v1/projects/:project | server/developer/routes.js:90 |  | keep |
@@ -900,22 +900,22 @@ Owner = the repository whose code answers the route; target = the authority it b
 | GET | /api/v1/projects/:project/usage | server/developer/routes.js:125 |  | keep |
 | GET | /api/v1/projects/catalog | server/developer/routes.js:82 |  | keep |
 | POST | /api/v1/realtime/ticket | server/auth/realtime-ticket.js:63 |  | keep |
-| GET | /api/v1/registry | server/registry/ecosystem.js:318 |  | keep |
-| GET | /api/v1/registry/capabilities | server/registry/ecosystem.js:343 |  | keep |
-| GET | /api/v1/registry/capabilities/:id | server/registry/ecosystem.js:348 |  | keep |
-| GET | /api/v1/registry/categories | server/registry/ecosystem.js:319 |  | keep |
-| GET | /api/v1/registry/categories/:id | server/registry/ecosystem.js:320 |  | keep |
-| GET | /api/v1/registry/contracts | server/registry/ecosystem.js:354 |  | keep |
-| GET | /api/v1/registry/domains/:domain | server/registry/ecosystem.js:337 |  | keep |
-| GET | /api/v1/registry/featured | server/registry/ecosystem.js:325 |  | keep |
-| GET | /api/v1/registry/health | server/registry/ecosystem.js:372 |  | keep |
-| GET | /api/v1/registry/namespaces | server/registry/ecosystem.js:353 |  | keep |
-| GET | /api/v1/registry/releases | server/registry/ecosystem.js:371 |  | keep |
-| GET | /api/v1/registry/search | server/registry/ecosystem.js:378 |  | keep |
-| GET | /api/v1/registry/services | server/registry/ecosystem.js:326 |  | keep |
-| GET | /api/v1/registry/services/:id | server/registry/ecosystem.js:332 |  | keep |
-| GET | /api/v1/registry/topics | server/registry/ecosystem.js:355 |  | keep |
-| GET | /api/v1/registry/topics/:topic | server/registry/ecosystem.js:366 |  | keep |
+| GET | /api/v1/registry | server/registry/ecosystem.js:327 |  | keep |
+| GET | /api/v1/registry/capabilities | server/registry/ecosystem.js:352 |  | keep |
+| GET | /api/v1/registry/capabilities/:id | server/registry/ecosystem.js:357 |  | keep |
+| GET | /api/v1/registry/categories | server/registry/ecosystem.js:328 |  | keep |
+| GET | /api/v1/registry/categories/:id | server/registry/ecosystem.js:329 |  | keep |
+| GET | /api/v1/registry/contracts | server/registry/ecosystem.js:363 |  | keep |
+| GET | /api/v1/registry/domains/:domain | server/registry/ecosystem.js:346 |  | keep |
+| GET | /api/v1/registry/featured | server/registry/ecosystem.js:334 |  | keep |
+| GET | /api/v1/registry/health | server/registry/ecosystem.js:381 |  | keep |
+| GET | /api/v1/registry/namespaces | server/registry/ecosystem.js:362 |  | keep |
+| GET | /api/v1/registry/releases | server/registry/ecosystem.js:380 |  | keep |
+| GET | /api/v1/registry/search | server/registry/ecosystem.js:387 |  | keep |
+| GET | /api/v1/registry/services | server/registry/ecosystem.js:335 |  | keep |
+| GET | /api/v1/registry/services/:id | server/registry/ecosystem.js:341 |  | keep |
+| GET | /api/v1/registry/topics | server/registry/ecosystem.js:364 |  | keep |
+| GET | /api/v1/registry/topics/:topic | server/registry/ecosystem.js:375 |  | keep |
 | GET | /api/v1/staff/capabilities | server/admin/staff-api.js:34 |  | keep |
 | GET | /api/v1/staff/moderation-audit | server/admin/moderation-audit.js:140 |  | keep |
 | GET | /api/v1/staff/moderators | server/admin/staff-api.js:45 |  | keep |
@@ -1007,7 +1007,7 @@ Owner = the repository whose code answers the route; target = the authority it b
 | POST | /internal/users/bulk | server/internal/routes.js:140 |  | keep |
 | GET | /internal/users/by-username/:username | server/internal/routes.js:129 |  | keep |
 | POST | /internal/verify-token | server/internal/routes.js:94 |  | keep |
-| GET | /llms.txt | server/index.js:733 |  | keep |
+| GET | /llms.txt | server/index.js:735 |  | keep |
 | GET | /me | server/coins/routes.js:18 |  | keep |
 | GET | /me/history | server/coins/routes.js:24 |  | keep |
 | POST | /merge | server/identity/account-merge.js:293 |  | keep |
@@ -1028,7 +1028,7 @@ Owner = the repository whose code answers the route; target = the authority it b
 | POST | /oauth/token | server/auth/oauth-routes.js:215 |  | keep |
 | GET | /oauth/userinfo | server/auth/oauth-routes.js:426 |  | keep |
 | POST | /oauth/userinfo | server/auth/oauth-routes.js:427 |  | keep |
-| GET | /openvibe-sw.js | server/index.js:778 |  | keep |
+| GET | /openvibe-sw.js | server/index.js:780 |  | keep |
 | GET | /overview | server/admin/analytics-routes.js:75 |  | keep |
 | GET | /preferences | server/notifications/routes.js:121 |  | keep |
 | PUT | /preferences | server/notifications/routes.js:132 |  | keep |
@@ -1043,12 +1043,12 @@ Owner = the repository whose code answers the route; target = the authority it b
 | GET | /service/:name | server/admin/analytics-routes.js:224 |  | keep |
 | GET | /settings | server/admin/routes.js:303 |  | keep |
 | PUT | /settings | server/admin/routes.js:341 |  | keep |
-| GET | /sso/check | server/index.js:762 |  | keep |
+| GET | /sso/check | server/index.js:764 |  | keep |
 | GET | /status | server/setup/routes.js:91 |  | keep |
 | GET | /status | server/status/routes.js:262 |  | keep |
 | POST | /test | server/discord/routes.js:92 |  | keep |
 | POST | /test-live | server/discord/routes.js:102 |  | keep |
-| GET | /tos | server/index.js:589 |  | keep |
+| GET | /tos | server/index.js:591 |  | keep |
 | GET | /unread-by-category | server/notifications/routes.js:47 |  | keep |
 | GET | /unread-count | server/notifications/routes.js:37 |  | keep |
 | GET | /updates | server/updates/routes.js:59 |  | keep |
@@ -1070,7 +1070,7 @@ Owner = the repository whose code answers the route; target = the authority it b
 | GET | /verification-keys | server/admin/routes.js:899 |  | keep |
 | POST | /verification-keys | server/admin/routes.js:908 |  | keep |
 | DELETE | /verification-keys/:id | server/admin/routes.js:956 |  | keep |
-| GET | /verify-email | server/index.js:745 |  | keep |
+| GET | /verify-email | server/index.js:747 |  | keep |
 
 ## OpenVibe.Shared
 
@@ -1083,7 +1083,7 @@ Owner = the repository whose code answers the route; target = the authority it b
 
 | Method | Path | Source | Target | Disposition |
 |---|---|---|---|---|
-| GET | /api/ready | server/observability.js:156 |  | keep |
+| GET | /api/ready | server/observability.js:158 |  | keep |
 | GET | /api/v1/:app/admin/storage | server/admin/routes.js:102 |  | keep |
 | GET | /api/v1/:app/admin/storage/buckets | server/admin/routes.js:692 |  | keep |
 | GET | /api/v1/:app/admin/storage/holds | server/admin/routes.js:590 |  | keep |
@@ -1731,8 +1731,8 @@ Owner = the repository whose code answers the route; target = the authority it b
 | Method | Path | Source | Target | Disposition |
 |---|---|---|---|---|
 | GET | / | server/ui/routes.js:86 |  | keep |
-| GET | /api/health | server/app.js:48 |  | keep |
-| GET | /api/ready | server/app.js:61 |  | keep |
+| GET | /api/health | server/app.js:50 |  | keep |
+| GET | /api/ready | server/app.js:110 |  | keep |
 | GET | /auth/callback | server/auth/sso.js:71 |  | keep |
 | GET | /auth/login | server/auth/sso.js:64 |  | keep |
 | GET | /auth/logout | server/auth/sso.js:91 |  | keep |
@@ -1746,8 +1746,8 @@ Owner = the repository whose code answers the route; target = the authority it b
 | POST | /destinations/:id/stop | server/api/v1.js:250 |  | keep |
 | POST | /destinations/:id/test | server/api/v1.js:237 |  | keep |
 | GET | /outputs/:id/logs | server/api/v1.js:305 |  | keep |
-| GET | /play/:file | server/app.js:92 |  | keep |
-| GET | /robots.txt | server/app.js:110 |  | keep |
+| GET | /play/:file | server/app.js:120 |  | keep |
+| GET | /robots.txt | server/app.js:138 |  | keep |
 | GET | /sessions | server/api/v1.js:262 |  | keep |
 | GET | /sessions | server/ui/routes.js:295 |  | keep |
 | GET | /sessions/:id | server/api/v1.js:283 |  | keep |
