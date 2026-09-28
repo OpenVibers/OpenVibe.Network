@@ -1,5 +1,7 @@
 # OpenVibe.Network
 
+## Purpose
+
 Identity and account service for the OpenVibe network. Manages user accounts, OAuth2 authorization, theme preferences, notifications, email alerts, anonymous identities, the network-wide OpenCoins wallet, and internal APIs that connect all OpenVibe services together.
 
 **Part of the [OpenVibe](../ARCHITECTURE.md)** — `https://openvibe.network`
@@ -24,6 +26,44 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 - **User modules** — versioned per-person preferences and summaries in namespaces owned by services (openvibe-contracts `manifests/namespaces`); see [User modules](#user-modules).
 
 ---
+
+## Owns
+
+- accounts, sessions, anonymous identities, canonical subjects (`usr_…`, `gst_…`) and account merges
+- OAuth2/OIDC (the network's token issuer and its signing key), service principals and their grants,
+  developer projects, apps, credentials, grants and quotas (ADR-014), mod principals
+- notifications and email, themes and theme preferences, user modules, platform blocks, the follow
+  graph (ADR-030), creator analytics (ADR-021), the OpenCoins wallet
+- the service registry (`/api/v1/registry/*`, `/.well-known/openvibe`), the status page, the network
+  changelog proxy, and the files at `/shared/*` (the pinned openvibe-shared release)
+
+## Does not own
+
+- money (OpenVibe.Billing), channel points and streams (OpenVibe.Live), each service's data (a user
+  module's namespace belongs to the service that owns it)
+- the contracts it serves (OpenVibe.Contracts) and the Frame's code (OpenVibe.Shared)
+
+## Depends on
+
+- `openvibe-contracts` v0.75.0 (registry manifests, capability checks), `openvibe-sdk` v0.12.0 (events,
+  per-actor limits), `openvibe-shared` v1.22.0, pinned by release tarball
+- OpenVibe.Events (Network's outbox relay; the events it consumes), OpenVibe.AI (the `network.site_copy`
+  workflow), OpenVibe.Blog (the changelog feed it proxies)
+- email (Resend), Discord and GitHub when their secrets are set ([Provider secrets](#provider-secrets))
+
+## Capabilities
+
+Implemented here (the service manifest's 20 `capabilities`, audience `openvibe.network`):
+`identity.subject.resolve`, `mods.grant.manage`, `network.account.deletion.confirm`,
+`network.account.export.contribute`, `network.analytics.creator.read`, `network.blocks.read`,
+`network.coins.credit|debit|transfer`, `network.follows.read|write`, `network.integration.github.read`,
+`network.modules.read|write`, `network.notifications.push`, `network.operator.alert`,
+`network.project.manage|read`, `network.staff.read` and `network.status.incident`. The grants other
+services hold are seeded in [server/identity/principals.js](server/identity/principals.js).
+
+Called elsewhere: Network is the issuer, so it signs its own `svc:network` tokens: `events.event.publish`
+(and `events.delivery.admin` for the admin Events views) at OpenVibe.Events, and `ai.run.create` /
+`ai.run.read` at OpenVibe.AI for the footer's site copy.
 
 ## Architecture
 
@@ -95,6 +135,12 @@ restart, `/api/ready` polled, an automatic rollback if it does not come up, and 
 `--restart`, `--wait-idle`, `--force` and `--rollback` (`ovhost rollback network`) are passed on; `DRY_RUN=1`
 prints `ovhost plan network`. When ovhost is missing, too old or does not manage Network, the wrapper runs
 `deploy/scripts/deploy-legacy.sh`, the previous script, unchanged (`OVHOST_LEGACY=1` forces it).
+
+The unit is `openvibe-network.service` (runs as `ubuntu` from `/opt/openvibe.network`) on
+`127.0.0.1:4000`, the env file `/etc/openvibe/network.env`. Rollback: automatic when `/api/ready` does not
+come up; afterwards `sudo ovhost rollback network --to <sha>`. Two blockers: `chrome_cache`/`chrome_hits`
+became `frame_cache`/`frame_hits` on 2026-09-24 (an older release starts with empty caches), and
+`tool_domains` was rebuilt once for the mirror role (an older release does not know mirror rows).
 
 ---
 
@@ -660,6 +706,35 @@ Accessible to users with `role = 'admin'`. All endpoints under `/api/admin/`.
 | `analytics_visitor_days`, `analytics_day_salts` | The current day's salted visitor hashes and salt, deleted after the day's final rollup |
 
 ---
+
+## Acceptance
+
+`npm test` runs the 74 test files listed in `package.json` (temp databases, no network). They
+cover OAuth with PKCE, OIDC discovery, refresh-token rotation and reuse, SSO and FedCM, subjects,
+principals and grants, account merge, export and deletion, developer projects, export tokens and usage,
+user modules, blocks, follows and their authority switch, analytics privacy, the registry and its
+exposure, notifications and events, status and incidents, operator alerts, per-actor limits, and the
+security suites (`security-session`, `security-redirects`, `security-secrets`, `security-private`,
+`security-idor`, `security-ssrf`), plus the deploy wrapper.
+
+## Security
+
+Reporting a vulnerability: [SECURITY.md](SECURITY.md). The rules the code keeps:
+
+- **Tokens.** Network signs every token with its RS256 key (`JWT_PRIVATE_KEY` or `data/keys`); refresh
+  tokens are stored as SHA-256 and a reused one revokes its family; `token_valid_after` cutoffs are
+  published so services refuse older tokens; client secrets are stored hashed and shown once.
+- **Redirects.** Post-sign-in targets (`/login?return=`, `/sso/fanout?next=`) never run `javascript:`
+  URLs or leave for a host OpenVibe does not own (`test/security-redirects.test.js`); OAuth redirects
+  must be one of the client's registered URIs.
+- **Private data.** Analytics keep no personal data beyond a day's salted hash; account export and
+  deletion follow ADR-033; the internal routes take a capability-scoped service token or, while it is
+  retired route by route, `X-Internal-Key`.
+- **CORS.** Only discovery and the registry are open to any origin; every other route uses the
+  first-party allow-list.
+- **Secrets.** Provider secrets come from the environment first, never printed; `INTERNAL_API_KEY`,
+  `SETUP_TOKEN`, `ADMIN_PASSWORD`, `NETWORK_EVENTS_SECRET`, the webhook secrets and `GITHUB_TOKEN` live in
+  `/etc/openvibe/network.env` (0600), by name only.
 
 ## License
 
