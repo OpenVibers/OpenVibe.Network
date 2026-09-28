@@ -449,6 +449,12 @@ const notifyAccountData = (userId, n) => notificationService.create({ user_id: u
     app.use('/internal', dataRouters.internal);
     app.use('/api/admin/account-deletions', dataRouters.admin);
 }
+// The node registry (WS-X1, ADR-034 §12): public list for the geo API; Host reports its inventory's machines.
+{
+    const nodeRouters = require('./registry/nodes').routers({ guard: require('./identity/principals').guard('network.node.report', { legacy: false }) });
+    app.use('/api/v1/nodes', nodeRouters.pub);
+    app.use('/internal/nodes', nodeRouters.internal);
+}
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read', { legacy: false }), require('./identity/blocks').internalHandler(db));
 // The follow graph (WS-E task 4, ADR-030): public counts, a person's own follows, and who follows a target
 // (its owner, or network.follows.read, service token only). Every change is network.follow.* (server/identity/follows.js).
