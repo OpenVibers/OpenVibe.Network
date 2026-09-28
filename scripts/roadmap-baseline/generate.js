@@ -361,6 +361,9 @@ else {
     for (const e of envRows.filter(e => e.unreferenced)) addD('info', 'env', `${e.repo}:${e.name}`, `set in ${e.prod} but not referenced by scanned code (may be read by a dependency or stale)`);
     for (const e of envRows.filter(e => e.secret && !e.unreferenced && !e.prod)) addD('low', 'env', `${e.repo}:${e.name}`, 'secret-named variable read by code but not set in the service env file: verify it is optional or has no hardcoded fallback');
 }
+// A repository with no checkout under the scan root is not scanned: its tables, routes, jobs and calls are in no
+// count below, so it is recorded as unknown rather than left out (WS-Q task 7, EC5).
+for (const r of repos.filter(r => !r.present)) addD('unknown', 'checkout', r.name, 'not scanned: no checkout under the scan root, so its tables, routes, jobs and calls are missing from every count');
 addD('unknown', 'provider', 'B2/R2/Cloudflare/PayPal consoles', 'console configuration (billing, lifecycle rules, zone settings, app config) is not visible from this environment');
 addD('unknown', 'host', 'powerchat.gg, raspi/hobo.tools (LAN)', 'unreachable from this environment; state not verified');
 const sevOrder = { high: 0, medium: 1, low: 2, info: 3, unknown: 4 };
@@ -378,7 +381,7 @@ const metrics = {
     'shared.pins': `${new Set(sharedPins.filter(p => p.state !== 'unpinned').map(p => p.repo)).size} repos pin a tagged openvibe-shared release (latest ${latestShared || 'unknown'}): ${[...new Set(sharedPins.filter(p => p.state !== 'unpinned').map(p => `${p.repo.replace('OpenVibe.', '')} ${p.spec}`))].join(', ') || 'none'}`,
     'shared.drift': `${sharedPins.filter(p => p.state !== 'current').length} manifests unpinned or behind: ${sharedPins.filter(p => p.state !== 'current').map(p => `${pinLabel(p)} (${p.spec})`).join(', ') || 'none'}`,
     'ci.repos': `${repos.filter(r => r.ci).length} of ${repos.filter(r => r.present).length} scanned repos have .github/workflows`,
-    'deploy.drift': `${discrepancies.filter(d => d.area === 'deploy').length} service(s) not running origin/main`,
+    'deploy.drift': `${discrepancies.filter(d => d.area === 'deploy' && d.severity !== 'low').length} service(s) behind origin/main in what runs, ${discrepancies.filter(d => d.area === 'deploy' && d.severity === 'low').length} more only in documentation and tests`,
 };
 for (const r of repos.filter(r => r.present)) {
     metrics[`tests.${r.name}`] = `${r.testFiles} test files`;
@@ -498,15 +501,20 @@ const familyRows = (ledger.families || []).map(f => {
 const countBy = (rows) => Object.fromEntries(STATUSES.map(st => [st, rows.filter(r => r.status === st).length]));
 const ledgerCounts = { requirements: countBy(ledgerRows), families: countBy(familyRows) };
 
+// null = not evaluated (rendered unknown and recorded by EC5): every check that reads production answers null
+// without a snapshot, rather than "not found", "unset" or "none", which would read as observations.
 function runCheck(check) {
     if (!check) return null;
     if (check === 'live-socket-unit') {
-        const u = prod && prod.units.find(x => x.unit === 'openvibe-live.socket');
+        if (!prod) return null;
+        const u = prod.units.find(x => x.unit === 'openvibe-live.socket');
         return u ? `openvibe-live.socket is ${u.active}/${u.sub}` : 'socket unit not found';
     }
     const snap = snapshotCheck(check);
     if (snap) return snap.detail;
     let m;
+    // An env file the snapshot does not list was not observed.
+    if (/^env(-absent)?:/.test(check) && (!prod || !(check.split(':')[1] in prodEnv))) return null;
     if ((m = check.match(/^env:([\w.-]+):(\w+)$/))) return (prodEnv[m[1]] || []).includes(m[2]) ? `${m[2]} is set in ${m[1]}` : `${m[2]} NOT set in ${m[1]}`;
     if ((m = check.match(/^env-absent:([\w.-]+):(\w+)$/))) return (prodEnv[m[1]] || []).includes(m[2]) ? `${m[2]} is now set in ${m[1]}: re-verify` : `${m[2]} still unset in ${m[1]}`;
     if (check === 'workstation-disk') {
@@ -533,14 +541,25 @@ function runCheck(check) {
         const big = prod.databases.filter(d => d.tables.includes('analytics_events') && !isCopyDb(d.file)).sort((a, b) => b.bytes - a.bytes).slice(0, 4);
         return big.length ? 'largest analytics stores: ' + big.map(d => `${d.file.replace('/opt/openvibe.', '')} ${fmtBytes(d.bytes)}`).join('; ') : 'no analytics_events store';
     }
+    if ((check === 'deploy-drift' || check === 'dead-dbs') && !prod) return null;
     if (check === 'deploy-drift') return discrepancies.filter(d => d.area === 'deploy').map(d => `${d.subject}: ${d.detail}`).join('; ') || 'every service runs origin/main';
     if (check === 'dead-dbs') return discrepancies.filter(d => d.area === 'database' && d.severity !== 'info').map(d => d.subject.replace('/opt/openvibe.', '').replace('/var/lib/openvibe-', '')).join(', ') || 'none';
     return null;
 }
 const hazardRows = hazards.hazards.map(h => ({ ...h, checkResult: runCheck(h.check) }));
+// A hazard check this run could not evaluate (no production snapshot, or a check the generator does not know) is
+// unknown, never a blank that reads as fine (WS-Q task 7, EC5).
+for (const h of hazardRows.filter(h => h.check && h.checkResult == null)) addD('unknown', 'hazard', h.id, `check ${h.check} could not be evaluated (no production snapshot, or a check this generator does not know)`);
+discrepancies.sort((a, b) => sevOrder[a.severity] - sevOrder[b.severity] || a.area.localeCompare(b.area) || a.subject.localeCompare(b.subject));
 
 // ── 8. Exit criteria ────────────────────────────────────────────────────
 const unresolvedMounts = repos.flatMap(r => (r.unresolvedMounts || []).map(m => ({ repo: r.name, ...m })));
+// What this run could not observe, found independently of the rows that record it (EC5 compares the two).
+const unobserved = [
+    ...(prod ? [] : [{ area: 'production', subject: 'all' }]),
+    ...repos.filter(r => !r.present).map(r => ({ area: 'checkout', subject: r.name })),
+    ...hazardRows.filter(h => h.check && h.checkResult == null).map(h => ({ area: 'hazard', subject: h.id })),
+];
 const callsWithoutTimeout = calls.filter(c => !c.timeout);
 const criteria = [
     { id: 'EC1', text: 'Every table has an owner classification', pass: unclassified.length === 0,
@@ -551,8 +570,9 @@ const criteria = [
       detail: `${allJobs.length} timers/jobs, ${unclassifiedJobs.length} unclassified` },
     { id: 'EC4', text: 'Every cross-service call records caller, callee, auth, timeout and retry', pass: calls.length > 0,
       detail: `${calls.length} call sites; ${callsWithoutTimeout.length} with no timeout detected` },
-    { id: 'EC5', text: 'Unknowns are marked unknown, not guessed', pass: true,
-      detail: `${discrepancies.filter(d => d.severity === 'unknown').length} unknown items recorded` },
+    // Computed, never asserted (WS-Q task 7): everything this run could not observe has an unknown row.
+    { id: 'EC5', text: 'Unknowns are marked unknown, not guessed', pass: unobserved.every(u => discrepancies.some(d => d.severity === 'unknown' && d.area === u.area && d.subject === u.subject)),
+      detail: `${discrepancies.filter(d => d.severity === 'unknown').length} unknown items recorded; ${unobserved.length} things this run could not observe${unobserved.length ? ` (${unobserved.map(u => `${u.area} ${u.subject}`).join(', ')})` : ''}, each ${unobserved.every(u => discrepancies.some(d => d.severity === 'unknown' && d.area === u.area && d.subject === u.subject)) ? 'marked unknown' : 'NOT all marked unknown'}` },
     { id: 'EC6', text: 'Every D01-D46 requirement has a status and verified acceptance artifacts (requirement ledger)',
       pass: !missingIds.length && !duplicateIds.length && ledgerRows.every(r => r.verified),
       detail: `${ledgerRows.filter(r => r.verified).length}/${expectedIds.length} requirements verified${missingIds.length ? `; missing ${missingIds.join(', ')}` : ''}${duplicateIds.length ? `; duplicated ${duplicateIds.join(', ')}` : ''}` },
@@ -755,7 +775,7 @@ docs['09-d-status.md'] = header('D01-D46 status', `Deliverable 8, derived from t
 
 const hazardReview = hazardRows.filter(h => h.ownerReview);
 docs['10-hazards.md'] = header('Hazard register', `Deliverable 9. ${hazards.reviewedBy ? `Reviewed by ${hazards.reviewedBy}.` : '**Not yet reviewed by the production-host owner** (Wave 0 exit criterion EC7).'} Statuses updated ${hazards.updated || '-'}. "Check" is re-evaluated against the production snapshot on every run.`) + '\n'
-    + table(['ID', 'Hazard', 'Severity', 'Status', 'Owner review', 'Owner', 'Wave', 'Mitigation', 'Check'], hazardRows.map(h => [h.id, h.title, h.severity, h.status, h.ownerReview ? '**needed**' : '-', h.owner, h.wave, h.mitigation, h.checkResult || '-']))
+    + table(['ID', 'Hazard', 'Severity', 'Status', 'Owner review', 'Owner', 'Wave', 'Mitigation', 'Check'], hazardRows.map(h => [h.id, h.title, h.severity, h.status, h.ownerReview ? '**needed**' : '-', h.owner, h.wave, h.mitigation, (h.checkResult == null ? (h.check ? '**unknown** (not evaluated)' : '-') : h.checkResult)]))
     + (hazardReview.length ? '\n\n## Needs the owner\'s review\n\n' + hazardReview.map(h => `- **${h.id} ${h.title}** (${h.status}): ${h.ownerReview}`).join('\n') : '')
     + '\n\n## Constraints and evidence\n\n' + hazardRows.map(h => `- **${h.id}** (${h.source}): ${h.constraint}${h.evidence ? ` _Evidence: ${h.evidence}_` : ''}`).join('\n') + '\n';
 
