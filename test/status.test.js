@@ -66,12 +66,26 @@ const rel = (release) => [200, { service: 'x', release, released_at: '2026-09-22
     assert.deepStrictEqual(by.media.ready.degraded, ['remote_b2']);
     assert.strictEqual(by.media.ready.checks.remote_b2.error, 'timeout');
     assert.strictEqual(by.community.status, 'up');
-    assert.strictEqual(by.tools.status, 'up');
+    assert.strictEqual(by.tools.status, 'degraded', 'liveness only is never green (WS-Q task 7)');
     assert.strictEqual(by.tools.basis, 'health', 'no readiness endpoint: liveness only, and the row says so');
     assert.strictEqual(by.tools.release, null);
     assert.ok(by.tools.release_error);
     assert.strictEqual(by.events.basis, 'ready-legacy');
+    assert.strictEqual(by.events.status, 'degraded', 'an ad-hoc readiness body: no check can be verified, so not green');
+    assert.match(by.events.reason, /not in the openvibe-shared\/ready shape/);
     assert.strictEqual(by.live.status, 'down', 'unreachable is down');
+
+    // No fake green (WS-Q task 7): skipped checks never make a row green, whatever Shared version wrote the body.
+    const { statusFromReady, readySummary } = require('../server/registry/ecosystem');
+    const okRes = { ok: true };
+    const skippedCheck = { status: 'skipped', required: false, reason: 'not configured', latency_ms: 0, checked_at: '2026-09-28T00:00:00Z' };
+    const withSkip = { ready: true, status: 'ready', failed: [], degraded: [], skipped: ['discord_bot'], checks: { db: check('ok', true), discord_bot: skippedCheck } };
+    assert.strictEqual(statusFromReady(okRes, withSkip).status, 'up', 'an optional skip beside a passing check stays up');
+    assert.deepStrictEqual(readySummary(withSkip).checks.discord_bot, { status: 'skipped', required: false, latency_ms: 0, checked_at: '2026-09-28T00:00:00Z', reason: 'not configured' });
+    assert.deepStrictEqual(readySummary(withSkip).skipped, ['discord_bot']);
+    assert.strictEqual(statusFromReady(okRes, { ready: true, status: 'ready', failed: [], degraded: [], checks: { a: skippedCheck } }).status, 'degraded', 'all skipped: not green');
+    assert.strictEqual(statusFromReady(okRes, { ready: true, status: 'ready', failed: [], degraded: [], checks: {} }).status, 'degraded', 'no checks: not green');
+    assert.strictEqual(statusFromReady({ ok: false }, { status: 'x' }).status, 'down');
     assert.strictEqual(by.realtime.status, 'not-running');
     assert.strictEqual(by.realtime.label, 'not running (placeholder)');
     assert.strictEqual(by.contracts.status, 'not-running');

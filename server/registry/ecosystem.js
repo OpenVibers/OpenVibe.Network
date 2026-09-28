@@ -49,13 +49,20 @@ const POLL_MS = 60 * 1000;
 const READY_PATHS = {};
 const HEALTH_PATHS = {};
 
-/** Row status from a readiness body (openvibe-shared/ready shape, or an older ad-hoc one). */
+/**
+ * Row status from a readiness body (openvibe-shared/ready shape, or an older ad-hoc one). No fake green (roadmap
+ * WS-Q task 7): `up` needs a shared-shape body that says ready, degrades nothing and has at least one check that
+ * really passed (status ok; skipped never counts). An ad-hoc body is `degraded` at best, since none of its checks
+ * can be read here, and a body whose checks all skipped (or none) is `degraded`, whatever Shared version wrote it.
+ */
 function statusFromReady(res, body) {
     const shared = body && typeof body === 'object' && typeof body.ready === 'boolean' && body.checks && typeof body.checks === 'object';
-    if (!shared) return { status: res.ok ? 'up' : 'down', basis: 'ready-legacy' };
+    if (!shared) return res.ok ? { status: 'degraded', basis: 'ready-legacy', reason: 'readiness is not in the openvibe-shared/ready shape: no check can be verified' } : { status: 'down', basis: 'ready-legacy' };
     if (!body.ready) return { status: 'down', basis: 'ready' };
     const degraded = Array.isArray(body.degraded) ? body.degraded : [];
-    return { status: body.status === 'degraded' || degraded.length ? 'degraded' : 'up', basis: 'ready' };
+    const verified = Object.values(body.checks).some((c) => c && typeof c === 'object' && c.status === 'ok');
+    if (!verified) return { status: 'degraded', basis: 'ready', reason: 'no readiness check passed (none, or all skipped)' };
+    return { status: body.status === 'ready' && !degraded.length ? 'up' : 'degraded', basis: 'ready' };
 }
 
 /** What a status row may repeat from a service's readiness body: names, states and times, no free-form detail. */
@@ -65,14 +72,15 @@ function readySummary(body) {
     for (const [name, c] of Object.entries(body.checks || {}).slice(0, 40)) {
         if (!c || typeof c !== 'object') continue;
         checks[String(name).slice(0, 64)] = {
-            status: c.status === 'ok' ? 'ok' : 'fail', required: c.required !== false,
+            status: c.status === 'ok' ? 'ok' : c.status === 'skipped' ? 'skipped' : 'fail', required: c.required !== false,
             latency_ms: Number.isFinite(c.latency_ms) ? c.latency_ms : null,
             checked_at: typeof c.checked_at === 'string' ? c.checked_at.slice(0, 40) : null,
             ...(c.error ? { error: String(c.error).slice(0, 200) } : {}),
+            ...(c.status === 'skipped' && c.reason ? { reason: String(c.reason).slice(0, 200) } : {}),
         };
     }
     const names = (a) => (Array.isArray(a) ? a.map(x => String(x).slice(0, 64)).slice(0, 40) : []);
-    return { ready: body.ready, status: String(body.status || (body.ready ? 'ready' : 'not_ready')).slice(0, 20), checked_at: typeof body.checked_at === 'string' ? body.checked_at.slice(0, 40) : null, failed: names(body.failed), degraded: names(body.degraded), checks };
+    return { ready: body.ready, status: String(body.status || (body.ready ? 'ready' : 'not_ready')).slice(0, 20), checked_at: typeof body.checked_at === 'string' ? body.checked_at.slice(0, 40) : null, failed: names(body.failed), degraded: names(body.degraded), skipped: names(body.skipped), checks };
 }
 
 /**
@@ -176,7 +184,8 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
                 // No readiness endpoint (yet): liveness is all that can be said.
                 if (!healthPath) throw Object.assign(new Error('readiness endpoint answered 404'), { name: 'NoReadiness' });
                 got = await getJson(`${base}${healthPath}`);
-                entry = { status: got.res.ok ? 'up' : 'down', basis: 'health', reason: 'liveness only: no readiness endpoint answered', ready: null };
+                // Liveness says the process answers, not that it serves: never green (WS-Q task 7).
+                entry = { status: got.res.ok ? 'degraded' : 'down', basis: 'health', reason: 'liveness only: no readiness endpoint answered', ready: null };
             }
             entry.http_status = got.res.status;
             entry.latency_ms = got.latency;

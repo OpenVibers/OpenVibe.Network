@@ -8,7 +8,13 @@ const contracts = require('openvibe-contracts');
 const { createEcosystemRegistry } = require('../server/registry/ecosystem');
 
 (async () => {
-    const up = http.createServer((req, res) => { res.statusCode = req.url === '/api/health' ? 200 : 404; res.end('{}'); });
+    // A running service answers readiness in the openvibe-shared/ready shape with a check that passed (liveness
+    // alone is never 'up': test/status.test.js).
+    const READY = JSON.stringify({ ready: true, status: 'ready', failed: [], degraded: [], skipped: [], checks: { db: { status: 'ok', required: true } } });
+    const up = http.createServer((req, res) => {
+        res.statusCode = req.url === '/api/health' || req.url === '/api/ready' ? 200 : 404;
+        res.end(req.url === '/api/ready' ? READY : '{}');
+    });
     await new Promise(r => up.listen(0, '127.0.0.1', r));
     const upUrl = `http://127.0.0.1:${up.address().port}`;
     const eco = createEcosystemRegistry({ issuer: 'https://openvibe.network', internalOverrides: { network: upUrl, live: 'http://127.0.0.1:1', media: upUrl } });

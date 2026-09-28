@@ -115,6 +115,17 @@ const server = http.createServer(app);
     rd = await get('/api/ready'); body = JSON.parse(rd.text);
     assert.strictEqual(body.status, 'ready');
 
+    // No bot token: the Discord check verified nothing, so it is skipped with the reason, never ok (WS-Q task 7),
+    // and an optional skip leaves the verified service ready.
+    const noBot = observability.createNetworkReadiness({
+        db, release: 'x', production: true, getKeys: () => keysNow, ecosystem: { lastPollAt: () => lastPoll },
+        discordService: { isReady: () => false, _getSetting: () => null },
+    });
+    body = await noBot.run();
+    assert.deepStrictEqual([body.checks.discord_bot.status, body.checks.discord_bot.reason], ['skipped', 'not configured']);
+    assert.deepStrictEqual(body.skipped, ['discord_bot']);
+    assert.strictEqual(body.status, 'ready');
+
     // An ephemeral HS256 key in production is not ready: nothing else can verify its tokens.
     const eph = crypto.randomBytes(32).toString('hex');
     keysNow = { privateKey: eph, publicKey: eph };

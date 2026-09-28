@@ -11,7 +11,7 @@
  */
 const jwt = require('jsonwebtoken');
 const metrics = require('openvibe-shared/metrics');
-const { createReadiness } = require('openvibe-shared/ready');
+const { createReadiness, skip } = require('openvibe-shared/ready');
 
 const registry = metrics.createRegistry();
 
@@ -56,7 +56,7 @@ function principalDenied({ req, code }) {
  *   signing_key (required in production) an RS256 keypair is loaded and signs a token its own public
  *               key verifies — the thing every service's offline verification depends on
  *   registry_poll (optional) the ecosystem health poll has run recently (status page freshness)
- *   discord_bot (optional, only when a bot token is configured) the bot is connected
+ *   discord_bot (optional) the bot is connected; skipped (never ok) while no bot token is configured
  */
 function createNetworkReadiness({ db, getKeys, release, ecosystem = null, discordService = null, production = process.env.NODE_ENV === 'production', pollMs = 60000 }) {
     const checks = [
@@ -90,7 +90,7 @@ function createNetworkReadiness({ db, getKeys, release, ecosystem = null, discor
             check: () => {
                 let configured = false;
                 try { configured = !!discordService._getSetting('discord_bot_token'); } catch { configured = false; }
-                if (!configured) return { detail: 'not configured' };
+                if (!configured) return skip('not configured');   // verified nothing: skipped, never ok (WS-Q task 7)
                 return discordService.isReady() || 'bot token configured but the bot is not connected';
             },
         });
