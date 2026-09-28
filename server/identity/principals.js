@@ -154,6 +154,8 @@ const DEFAULT_GRANTS = [
     // (local-first VOD/clip analysis, roadmap WS-O task 5) (OpenVibe.AI fails closed on a token with no ns).
     ['live', 'ai.run.create', 'openvibe.ai', ['live.*', 'network.site_copy', 'media.analyze']],
     ['live', 'ai.run.read', 'openvibe.ai', ['live.*', 'network.site_copy', 'media.analyze']],
+    // A streamer's own provider key for their AI viewers lives in OpenVibe.AI (WS-O task 2): Live stores it there.
+    ['live', 'ai.credential.manage', 'openvibe.ai', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
     ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
     // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
