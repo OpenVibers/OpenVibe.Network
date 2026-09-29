@@ -53,9 +53,24 @@ module.exports = {
     // scripts/subscribe-events.js.
     eventsWebhookSecrets: process.env.NETWORK_EVENTS_SECRET || '',
 
-    // Database
+    // Database (ADR-035, plan T2): PostgreSQL through PgBouncer in production. `url` (DATABASE_URL) serves
+    // requests; `directUrl` (DATABASE_DIRECT_URL, the owner role on a direct connection) runs migrations.
+    // Without DATABASE_URL, development and tests run an embedded PGlite database in `pgliteDir`
+    // (PGLITE_DIR overrides it); production refuses to boot. `path` is the retired SQLite file: it is
+    // read only by the one-time import (scripts/migrate-to-postgres.js) and reset-db, never by serving code.
     db: {
         path: process.env.DB_PATH || './data/network.db',
+        url: process.env.DATABASE_URL || '',
+        directUrl: process.env.DATABASE_DIRECT_URL || '',
+        pgliteDir: process.env.PGLITE_DIR || 'data/pglite',
+    },
+
+    // Valkey (ADR-035, plan T2): the shared store behind the per-actor limits and any short-lived shared
+    // state, so every process and host counts one actor together. Unset = this process's own counters
+    // (and, for the limits, a Valkey outage degrades to them rather than answering 500). PostgreSQL stays
+    // the source of truth; nothing here is a cache of record.
+    valkey: {
+        url: process.env.VALKEY_URL || '',
     },
 
     // Admin auto-creation
