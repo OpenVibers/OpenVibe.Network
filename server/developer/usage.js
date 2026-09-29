@@ -183,7 +183,7 @@ async function summary(db, projectId, { days = 30, env = 'all', now = () => Date
 
     // Quotas (dev_quotas, staff-set): what their current window used, every environment together.
     const seen = new Set((await db.prepare('SELECT DISTINCT capability, unit FROM dev_usage_daily WHERE project_id = ?').all(projectId)).map((r) => `${r.capability}|${r.unit}`));
-    const usedSince = db.prepare('SELECT COALESCE(SUM(quantity), 0) AS n FROM dev_usage_daily WHERE project_id = ? AND capability = ? AND unit = ? AND day >= ?');
+    const usedSince = db.prepare('SELECT COALESCE(SUM(quantity), 0)::bigint AS n FROM dev_usage_daily WHERE project_id = ? AND capability = ? AND unit = ? AND day >= ?');
     const quotas = (await Promise.all((await db.prepare('SELECT * FROM dev_quotas WHERE project_id = ? ORDER BY capability').all(projectId)).map(async (qr) => {
         const cap = capabilities.get(qr.capability);
         const out = { capability: qr.capability, limit: qr.limit_value, window: qr.quota_window, unit: qr.unit, enforced_by: cap ? `openvibe.${cap.owner}` : null, used: null, remaining: null, window_start: null, note: null };

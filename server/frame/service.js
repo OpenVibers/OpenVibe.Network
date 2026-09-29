@@ -86,7 +86,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         // Everything else: the navbar's page-view beacon, summed per site over 7 days.
         let tools = rank.tools || [];
         try {
-            const rows = await db.prepare("SELECT host, SUM(hits) AS n FROM frame_hits WHERE day >= substring(datetime('now', '-7 days'), 1, 10) GROUP BY host").all();
+            const rows = await db.prepare("SELECT host, SUM(hits)::bigint AS n FROM frame_hits WHERE day >= substring(datetime('now', '-7 days'), 1, 10) GROUP BY host").all();
             const perSite = {}; const perTool = new Map();
             const { catalog } = toolsCatalog.peek();
             const toolOfHost = new Map();

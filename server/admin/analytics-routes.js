@@ -40,7 +40,7 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config, 
     async function beaconFallback(svc, days) {
         try {
             const host = BEACON_HOSTS[svc.name]; if (!host) return null;
-            const row = await analytics.db.prepare("SELECT COALESCE(SUM(hits), 0) AS n FROM frame_hits WHERE day >= substring(datetime('now', ?), 1, 10) AND (host = ? OR host LIKE ?)").get(`-${Math.min(days || 30, 365)} days`, host, '%.' + host);
+            const row = await analytics.db.prepare("SELECT COALESCE(SUM(hits), 0)::bigint AS n FROM frame_hits WHERE day >= substring(datetime('now', ?), 1, 10) AND (host = ? OR host LIKE ?)").get(`-${Math.min(days || 30, 365)} days`, host, '%.' + host);
             return { ok: true, analytics: { summary: { total_pageviews: row.n, source: 'navbar page-view count (no service analytics)' }, realtime: {} } };
         } catch { return null; }
     }

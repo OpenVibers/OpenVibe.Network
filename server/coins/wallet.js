@@ -44,7 +44,7 @@ async function getBalance(db, userId) {
 
 async function balanceAfterTx(db, tx) {
     const row = await db.prepare(
-        'SELECT COALESCE(SUM(delta), 0) AS bal FROM coin_transactions WHERE user_id = ? AND id <= ?'
+        'SELECT COALESCE(SUM(delta), 0)::bigint AS bal FROM coin_transactions WHERE user_id = ? AND id <= ?'
     ).get(tx.user_id, tx.id);
     return row.bal;
 }
