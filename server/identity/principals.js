@@ -262,56 +262,32 @@ const CHANGED_DEFAULT_NAMESPACES = [
     ['live', 'ai.run.read', 'openvibe.ai', ['live.*', 'network.site_copy'], ['live.*', 'network.site_copy', 'media.analyze']],
 ];
 
-function ensureSchema(db) {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS principal_grants (
-            client_id  TEXT NOT NULL,
-            capability TEXT NOT NULL,
-            audience   TEXT NOT NULL,
-            namespaces TEXT NOT NULL DEFAULT '[]',
-            granted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            granted_by TEXT,
-            revoked_at DATETIME,
-            PRIMARY KEY (client_id, capability, audience)
-        );
-        CREATE TABLE IF NOT EXISTS principal_usage (
-            principal  TEXT NOT NULL,
-            route      TEXT NOT NULL,
-            capability TEXT NOT NULL,
-            auth       TEXT NOT NULL,
-            allowed    INTEGER NOT NULL,
-            code       TEXT NOT NULL DEFAULT '',
-            count      INTEGER NOT NULL DEFAULT 0,
-            first_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-            last_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (principal, route, auth, allowed, code)
-        );
-    `);
-    // ADR-012 rule 5: loyalty is not transferable between people, so nobody holds the transfer grant.
+async function ensureSchema(db) {
+    // adr-012 rule 5: loyalty is not transferable between people, so nobody holds the transfer grant.
     for (const [client, cap, aud] of REVOKED_GRANTS) {
-        db.prepare("UPDATE principal_grants SET revoked_at = CURRENT_TIMESTAMP WHERE client_id = ? AND capability = ? AND audience = ? AND revoked_at IS NULL").run(client, cap, aud);
+        await db.prepare("UPDATE principal_grants SET revoked_at = ov_now() WHERE client_id = ? AND capability = ? AND audience = ? AND revoked_at IS NULL").run(client, cap, aud);
     }
     for (const [client, cap, aud, was, now] of CHANGED_DEFAULT_NAMESPACES) {
-        db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = ? AND capability = ? AND audience = ? AND granted_by = 'default' AND namespaces = ?")
+        await db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = ? AND capability = ? AND audience = ? AND granted_by = 'default' AND namespaces = ?")
             .run(JSON.stringify(now), client, cap, aud, JSON.stringify(was));
     }
-    const seed = db.prepare("INSERT OR IGNORE INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES (?, ?, ?, ?, 'default')");
+    const seed = db.prepare("INSERT INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES (?, ?, ?, ?, 'default') ON CONFLICT DO NOTHING");
     // A default grant that later gained namespaces fills them in on a row still seeded without any
     // (INSERT OR IGNORE alone would leave it at []); a row someone edited is left alone.
     const fillNs = db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = ? AND capability = ? AND audience = ? AND granted_by = 'default' AND namespaces = '[]'");
     for (const [client, cap, aud, ns] of DEFAULT_GRANTS) {
-        if (!db.prepare('SELECT 1 FROM oauth_clients WHERE client_id = ?').get(client)) continue;
-        seed.run(client, cap, aud, JSON.stringify(ns));
-        if (ns.length) fillNs.run(JSON.stringify(ns), client, cap, aud);
+        if (!await db.prepare('SELECT 1 FROM oauth_clients WHERE client_id = ?').get(client)) continue;
+        await seed.run(client, cap, aud, JSON.stringify(ns));
+        if (ns.length) await fillNs.run(JSON.stringify(ns), client, cap, aud);
     }
     // Owner changes (expiry, reason, who revoked) and their audit trail (WS-D task 3).
-    require('./grants-admin').ensureSchema(db);
+    await require('./grants-admin').ensureSchema(db);
 }
 
-function grantsFor(db, clientId, audience) {
+async function grantsFor(db, clientId, audience) {
     // An expired grant stops counting at once; grants-admin.expireDue() records the expiry.
-    return db.prepare('SELECT capability, namespaces FROM principal_grants WHERE client_id = ? AND audience = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP) ORDER BY capability')
-        .all(clientId, audience).map(r => ({ capability: r.capability, namespaces: JSON.parse(r.namespaces || '[]') }));
+    return (await db.prepare('SELECT capability, namespaces FROM principal_grants WHERE client_id = ? AND audience = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ov_now()) ORDER BY capability')
+        .all(clientId, audience)).map(r => ({ capability: r.capability, namespaces: JSON.parse(r.namespaces || '[]') }));
 }
 
 function sameSecret(a, b) {
@@ -324,13 +300,13 @@ function sameSecret(a, b) {
  * grant_type=client_credentials. Returns { status, body } (OAuth error shapes on failure).
  * `scope` (space-separated capability ids) narrows the token; omitted = every grant for the audience.
  */
-function issueToken(db, { clientId, clientSecret, audience, scope, privateKey, issuer }) {
-    const client = db.prepare('SELECT client_id, client_secret FROM oauth_clients WHERE client_id = ?').get(String(clientId || ''));
+async function issueToken(db, { clientId, clientSecret, audience, scope, privateKey, issuer }) {
+    const client = await db.prepare('SELECT client_id, client_secret FROM oauth_clients WHERE client_id = ?').get(String(clientId || ''));
     if (!client || !sameSecret(client.client_secret, clientSecret)) return { status: 401, body: { error: 'invalid_client', error_description: 'Invalid client credentials' } };
     if (!/^[a-z][a-z0-9-]{1,39}$/.test(client.client_id)) return { status: 400, body: { error: 'unauthorized_client', error_description: 'client id is not a service principal' } };
     const aud = String(audience || '').trim();
     if (!aud) return { status: 400, body: { error: 'invalid_request', error_description: 'audience is required' } };
-    const grants = grantsFor(db, client.client_id, aud);
+    const grants = await grantsFor(db, client.client_id, aud);
     const wanted = scope ? String(scope).split(/\s+/).filter(Boolean) : null;
     const chosen = wanted ? grants.filter(g => wanted.includes(g.capability)) : grants;
     if (wanted && wanted.some(w => !chosen.find(g => g.capability === w))) {
@@ -351,12 +327,12 @@ function issueToken(db, { clientId, clientSecret, audience, scope, privateKey, i
 /** Audit hook for requireCapability: one counter row per (principal, route, auth, outcome). */
 function recordDecision(db) {
     const up = db.prepare(`INSERT INTO principal_usage (principal, route, capability, auth, allowed, code, count) VALUES (?, ?, ?, ?, ?, ?, 1)
-        ON CONFLICT(principal, route, auth, allowed, code) DO UPDATE SET count = count + 1, last_at = CURRENT_TIMESTAMP`);
-    return ({ req, capability, principal, allowed, code }) => {
+        ON CONFLICT(principal, route, auth, allowed, code) DO UPDATE SET count = principal_usage.count + 1, last_at = ov_now()`);
+    return async ({ req, capability, principal, allowed, code }) => {
         const bearer = String(req.headers.authorization || '').startsWith('Bearer ');
         const auth = bearer ? 'service-token' : 'none';
         const who = principal ? principal.sub : 'unknown';
-        try { up.run(who, `${req.method} ${req.baseUrl || ''}${req.route ? req.route.path : req.path}`, capability, auth, allowed ? 1 : 0, code || ''); } catch { /* best effort */ }
+        try { await up.run(who, `${req.method} ${req.baseUrl || ''}${req.route ? req.route.path : req.path}`, capability, auth, allowed ? 1 : 0, code || ''); } catch { /* best effort */ }
     };
 }
 
@@ -370,6 +346,18 @@ function guard(capability, { ownApp, namespace } = {}) {
     let check = null;
     let record = null;
     return function principalGuard(req, res, next) {
+        // The audit row for this request is written before its response leaves: the contracts' decision hooks
+        // are synchronous while the insert is async, so the first res.end waits for the request's audits.
+        const audits = [];
+        req._ovAudits = audits;
+        const end = res.end.bind(res);
+        let ended = false;
+        res.end = (...args) => {
+            if (ended) return end(...args);
+            ended = true;
+            Promise.allSettled(audits).then(() => end(...args));
+            return res;
+        };
         if (!check) {
             record = recordDecision(req.app.locals.db);
             check = serviceAuth.requireCapability(capability, {
@@ -378,7 +366,12 @@ function guard(capability, { ownApp, namespace } = {}) {
                 audience: SELF_AUDIENCE,
                 namespace,
                 // Denials are final here; an allow is recorded below, after the ownership check.
-                onDecision: (d) => { if (!d.allowed) { record(d); require('../observability').principalDenied(d); } },
+                onDecision: (d) => {
+                    if (d.allowed) return;
+                    const list = d.req && d.req._ovAudits;
+                    if (list) list.push(record(d));
+                    require('../observability').principalDenied(d);
+                },
             });
         }
         check(req, res, () => {
@@ -390,7 +383,7 @@ function guard(capability, { ownApp, namespace } = {}) {
                 const claims = devPolicy.unverifiedClaims(String(req.headers.authorization || '').slice(7).trim());
                 const env = devPolicy.environmentDecision(claims, { acceptSandbox: devPolicy.settings(req.app.locals.config).sandboxAudiences.has(SELF_AUDIENCE) });
                 if (!env.ok) {
-                    record({ req, capability, principal, allowed: false, code: env.code });
+                    audits.push(record({ req, capability, principal, allowed: false, code: env.code }));
                     require('../observability').principalDenied({ req, code: env.code });
                     return http.sendProblem(res, 401, env.code, { detail: env.reason, ctx: req.ov });
                 }
@@ -399,12 +392,12 @@ function guard(capability, { ownApp, namespace } = {}) {
                 const app = ownApp(req);
                 const self = String(principal.sub).replace(/^svc:/, '');
                 if (app !== undefined && app !== self) {
-                    record({ req, capability, principal, allowed: false, code: 'capability.owner_denied' });
+                    audits.push(record({ req, capability, principal, allowed: false, code: 'capability.owner_denied' }));
                     require('../observability').principalDenied({ req, code: 'capability.owner_denied' });
                     return http.sendProblem(res, 403, 'capability.owner_denied', { detail: `${principal.sub} may only act for app_id '${self}'` });
                 }
             }
-            record({ req, capability, principal, allowed: true, code: null });
+            audits.push(record({ req, capability, principal, allowed: true, code: null }));
             next();
         });
     };

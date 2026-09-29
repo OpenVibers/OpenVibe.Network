@@ -11,14 +11,15 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const metrics = require('openvibe-shared/metrics');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const observability = require('../server/observability');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-observability-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
-db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
 const ISSUER = 'https://openvibe.network';
@@ -138,17 +139,15 @@ const server = http.createServer(app);
     assert.strictEqual(body.ready, true, 'outside production the dev key only degrades');
     assert.deepStrictEqual(body.degraded, ['signing_key']);
 
-    // The database gone: not ready.
-    console.log = () => {};
-    const db2 = initDb(path.join(dir, 'other.db'));
-    console.log = log;
+    // The database gone: not ready. A handle whose query rejects stands in for a PostgreSQL server
+    // that answers nothing (there is no second, unopenable database file any more — plan T2).
+    const db2 = { prepare: () => ({ get: async () => { throw new Error('connection refused'); } }) };
     const ready3 = observability.createNetworkReadiness({ db: db2, release: 'x', production: true, getKeys: () => ({ privateKey: keys.privateKey, publicKey: keys.publicKey }) });
-    db2.close();
     body = await ready3.run();
     assert.strictEqual(body.ready, false);
     assert.deepStrictEqual(body.failed, ['db']);
 
     server.close();
-    db.close();
     console.log('observability: all checks passed');
+})().catch(err => { console.error(err); process.exit(1); });
 })().catch(err => { console.error(err); process.exit(1); });

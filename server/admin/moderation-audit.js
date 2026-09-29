@@ -31,28 +31,7 @@ const str = (v, n) => (v == null || v === '' ? null : String(v).replace(/[\u0000
 const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
 const json = (v) => { const s = JSON.stringify(obj(v)); return s.length > 4000 ? JSON.stringify({ truncated: true }) : s; };
 
-function ensure(db) {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS moderation_audit (
-            id             INTEGER PRIMARY KEY AUTOINCREMENT,
-            event_id       TEXT NOT NULL UNIQUE,
-            service        TEXT NOT NULL,
-            action         TEXT NOT NULL,
-            actor_subject  TEXT,
-            target_type    TEXT,
-            target_id      TEXT,
-            target_subject TEXT,
-            scope          TEXT,
-            reason         TEXT,
-            details        TEXT NOT NULL DEFAULT '{}',
-            occurred_at    TEXT NOT NULL,
-            recorded_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-        );
-        CREATE INDEX IF NOT EXISTS idx_modaudit_when ON moderation_audit(occurred_at);
-        CREATE INDEX IF NOT EXISTS idx_modaudit_service ON moderation_audit(service, id);
-        CREATE INDEX IF NOT EXISTS idx_modaudit_actor ON moderation_audit(actor_subject, id);
-    `);
-}
+function ensure(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
 /** One envelope → one audit row (or null when it is not an audit event). No I/O. */
 function rowOf(event) {
@@ -105,17 +84,17 @@ function rowOf(event) {
 
 function createModerationAudit(db) {
     ensure(db);
-    const ins = db.prepare(`INSERT OR IGNORE INTO moderation_audit (event_id, service, action, actor_subject, target_type, target_id, target_subject, scope, reason, details, occurred_at)
-        VALUES (@event_id, @service, @action, @actor_subject, @target_type, @target_id, @target_subject, @scope, @reason, @details, @occurred_at)`);
+    const ins = db.prepare(`INSERT INTO moderation_audit (event_id, service, action, actor_subject, target_type, target_id, target_subject, scope, reason, details, occurred_at)
+        VALUES (@event_id, @service, @action, @actor_subject, @target_type, @target_id, @target_subject, @scope, @reason, @details, @occurred_at) ON CONFLICT DO NOTHING`);
 
     /** Inside the consumer's inbox transaction: 'recorded' or an 'ignored:*' outcome. */
-    function record(event) {
+    async function record(event) {
         const row = rowOf(event);
         if (!row) return 'ignored:type';
-        return ins.run(row).changes ? 'recorded' : 'ignored:duplicate';
+        return (await ins.run(row)).changes ? 'recorded' : 'ignored:duplicate';
     }
 
-    function list({ service = null, action = null, actor = null, target = null, since = null, until = null, before = null, limit = 50, max = 200 } = {}) {
+    async function list({ service = null, action = null, actor = null, target = null, since = null, until = null, before = null, limit = 50, max = 200 } = {}) {
         const where = [];
         const args = [];
         const day = (v) => { const d = new Date(String(v || '')); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };
@@ -128,7 +107,7 @@ function createModerationAudit(db) {
         const b = parseInt(before, 10);
         if (Number.isFinite(b) && b > 0) { where.push('id < ?'); args.push(b); }
         const n = Math.min(Math.max(parseInt(limit, 10) || 50, 1), max);
-        const rows = db.prepare(`SELECT * FROM moderation_audit ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY id DESC LIMIT ?`).all(...args, n + 1);
+        const rows = await db.prepare(`SELECT * FROM moderation_audit ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY id DESC LIMIT ?`).all(...args, n + 1);
         const more = rows.length > n;
         const items = rows.slice(0, n).map((r) => ({ ...r, details: (() => { try { return JSON.parse(r.details); } catch { return {}; } })() }));
         return { items, next: more && items.length ? items[items.length - 1].id : null };
@@ -137,16 +116,16 @@ function createModerationAudit(db) {
     /** Express router for GET /api/v1/staff/moderation-audit (mount behind requireAuth). */
     function router() {
         const r = express.Router();
-        r.get('/', (req, res) => {
+        r.get('/', async (req, res) => {
             if (!req.user || !staff.can(staffClaims(req.user), 'staff.moderation.logs')) return res.status(403).json({ error: 'forbidden', detail: 'staff.moderation.logs required' });
             res.set('Cache-Control', 'private, no-store');
             const filters = { service: req.query.service, action: req.query.action, actor: req.query.actor, target: req.query.target, since: req.query.since, until: req.query.until };
             if (req.query.format === 'csv') {
-                const { items } = list({ ...filters, limit: CSV_MAX, max: CSV_MAX });
+                const { items } = await list({ ...filters, limit: CSV_MAX, max: CSV_MAX });
                 res.set('Content-Disposition', `attachment; filename="moderation-audit-${new Date().toISOString().slice(0, 10)}.csv"`);
                 return res.type('text/csv').send(toCsv(items));
             }
-            res.json(list({ ...filters, before: req.query.before, limit: req.query.limit }));
+            res.json(await list({ ...filters, before: req.query.before, limit: req.query.limit }));
         });
         return r;
     }

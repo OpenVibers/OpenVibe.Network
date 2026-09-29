@@ -17,6 +17,7 @@
 // without its key files never publishes its ephemeral HS256 secret as a "public key".
 //   node test/security-secrets.test.js
 const assert = require('assert');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { buildWorld } = require('./security-world');
 const { bootServer } = require('./helpers/boot-server');
@@ -111,6 +112,11 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         assert.strictEqual(jwks.status, 200);
         assert.ok(jwks.body.public_key.includes('BEGIN PUBLIC KEY') && jwks.body.keys.length === 1);
         for (const f of ['d', 'p', 'q', 'dp', 'dq', 'qi']) assert.ok(!(f in jwks.body.keys[0]), `JWKS has no private member ${f}`);
+        // The configured key (decision 2, plan T2): the kid and modulus JWKS serves are the signing key's.
+        const jwk = jwks.body.keys[0];
+        assert.strictEqual(jwk.kty, 'RSA');
+        assert.strictEqual(jwk.kid, 'ov-network-1', 'the kid /api/.well-known/jwks publishes');
+        assert.strictEqual(jwk.n, crypto.createPublicKey(w.keys.publicKey).export({ format: 'jwk' }).n, 'the modulus is the configured key\'s');
         assert.ok(!/PRIVATE/.test(jwks.text));
 
         // ── Error paths: every write route, refused or malformed ─────────
@@ -165,21 +171,22 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         delete all['verification key'];   // stored in its own table by design; only its readers are checked above
         const logHits = crawler.leaks({ text: w.srv.logs(), headers: {} }, all).map((l) => l.label);
         assert.deepStrictEqual(logHits, [], 'nothing secret was logged');
-        const tables = w.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND (name LIKE '%outbox%' OR name LIKE '%audit%' OR name LIKE '%log%' OR name LIKE '%usage%' OR name LIKE '%changes%' OR name LIKE '%alerts%' OR name LIKE '%revisions%' OR name = 'notifications')").all().map((r) => r.name);
+        const tables = (await w.db.prepare("SELECT table_name AS name FROM information_schema.tables WHERE table_schema = current_schema() AND (table_name LIKE '%outbox%' OR table_name LIKE '%audit%' OR table_name LIKE '%log%' OR table_name LIKE '%usage%' OR table_name LIKE '%changes%' OR table_name LIKE '%alerts%' OR table_name LIKE '%revisions%' OR table_name = 'notifications')").all()).map((r) => r.name);
         assert.ok(tables.includes('network_event_outbox') && tables.includes('dev_audit') && tables.includes('audit_log'), tables.join(','));
         const rowHits = [];
         for (const t of tables) {
-            const text = JSON.stringify(w.db.prepare(`SELECT * FROM "${t}"`).all());
+            const text = JSON.stringify(await w.db.prepare(`SELECT * FROM "${t}"`).all());
             for (const l of crawler.leaks({ text, headers: {} }, all)) rowHits.push(`${t}: ${l.label}`);
         }
         assert.deepStrictEqual(rowHits, [], 'no secret in the outbox, audit or log tables');
-        assert.ok(w.db.prepare('SELECT COUNT(*) AS n FROM network_event_outbox').get().n > 0, 'the outbox was written meanwhile');
+        assert.ok((await w.db.prepare('SELECT COUNT(*) AS n FROM network_event_outbox').get()).n > 0, 'the outbox was written meanwhile');
     } finally {
         await w.stop();
     }
 
-    // ── Without key files: the ephemeral HS256 secret is never published ───
-    const bare = await bootServer();
+    // ── Without key files: the ephemeral HS256 secret is never published (a child of its own, so its
+    // database and process are not the seeded world's) ───
+    const bare = await bootServer({ child: true });
     try {
         const r = await fetch(`${bare.base}/api/.well-known/jwks`);
         const body = await r.json();
@@ -195,4 +202,4 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         await bare.stop();
     }
     out(`security secrets: all checks passed (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
-})().catch((err) => { console.error(err); process.exit(1); });
+})().then(() => process.exit(0)).catch((err) => { console.error(err); process.exit(1); });

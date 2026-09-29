@@ -6,43 +6,30 @@
 //   node test/refresh-tokens.test.js
 const assert = require('assert');
 const crypto = require('crypto');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
 const http = require('http');
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const Database = require('better-sqlite3');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const refreshTokens = require('../server/auth/refresh-tokens');
 
 const quiet = (fn) => { const log = console.log; console.log = () => {}; try { return fn(); } finally { console.log = log; } };
 
 (async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-refresh-'));
-    const dbPath = path.join(dir, 'network.db');
-
-    // ── A database as the old code left it: raw refresh tokens, no family or generation ──
-    {
-        const old = new Database(dbPath);
-        old.exec(`CREATE TABLE oauth_tokens (id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE NOT NULL, client_id TEXT NOT NULL,
-            user_id INTEGER NOT NULL, scope TEXT DEFAULT 'profile theme', expires_at DATETIME NOT NULL, revoked INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-        old.close();
-    }
+    // ── Rows as the old code left them: raw refresh tokens, no family or generation ──
     const RAW_LIVE = crypto.randomBytes(48).toString('hex');
     const RAW_ROTATED = crypto.randomBytes(48).toString('hex');
+    const db = getDb();
+    // The token rows' foreign key needs their user: PostgreSQL enforces the constraint SQLite only declared.
+    await db.prepare("INSERT INTO users (id, username, password_hash) VALUES (7, 'viewer', 'x')").run();
     {
-        const old = new Database(dbPath);
-        const ins = old.prepare('INSERT INTO oauth_tokens (token, client_id, user_id, expires_at, revoked) VALUES (?, ?, ?, ?, ?)');
-        ins.run(RAW_LIVE, 'live', 7, new Date(Date.now() + 86400e3).toISOString(), 0);
-        ins.run(RAW_ROTATED, 'live', 7, new Date(Date.now() + 86400e3).toISOString(), 1);
-        old.close();
+        const ins = db.prepare('INSERT INTO oauth_tokens (token, client_id, user_id, expires_at, revoked) VALUES (?, ?, ?, ?, ?)');
+        await ins.run(RAW_LIVE, 'live', 7, new Date(Date.now() + 86400e3).toISOString(), 0);
+        await ins.run(RAW_ROTATED, 'live', 7, new Date(Date.now() + 86400e3).toISOString(), 1);
     }
 
-    // Boot: initDb only adds the columns; the raw rows are still raw (and still work, below).
-    const db = quiet(() => initDb(dbPath));
-    let rows = db.prepare('SELECT * FROM oauth_tokens ORDER BY id').all();
+    // The columns family_id, generation and revoked_reason are part of the migration; the raw rows are
+    // still raw (and still work, below).
+    let rows = await db.prepare('SELECT * FROM oauth_tokens ORDER BY id').all();
     assert.strictEqual(rows.length, 2);
     assert.ok('family_id' in rows[0] && 'generation' in rows[0] && 'revoked_reason' in rows[0], 'boot adds the columns');
     assert.strictEqual(rows[0].token, RAW_LIVE, 'boot changes no data');
@@ -51,9 +38,8 @@ const quiet = (fn) => { const log = console.log; console.log = () => {}; try { r
     // the server hashes one on its first use, below.
     assert.strictEqual(rows[1].token, RAW_ROTATED, 'a raw row stays raw until it is used');
 
-    db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
-    db.prepare("UPDATE oauth_clients SET client_secret = 'tools-secret' WHERE client_id = 'tools'").run();
-    db.prepare("INSERT INTO users (id, username, password_hash) VALUES (7, 'viewer', 'x')").run();
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'tools-secret' WHERE client_id = 'tools'").run();
 
     const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
     const ISSUER = 'https://openvibe.network';
@@ -77,67 +63,67 @@ const quiet = (fn) => { const log = console.log; console.log = () => {}; try { r
         assert.strictEqual(t.status, 200, JSON.stringify(t.body));
         return t.body.refresh_token;
     };
-    const rowOf = (token) => db.prepare('SELECT * FROM oauth_tokens WHERE token = ?').get(refreshTokens.hash(token));
-    const age = (token, seconds) => db.prepare("UPDATE oauth_tokens SET revoked_at = datetime('now', ?) WHERE token = ?").run(`-${seconds} seconds`, refreshTokens.hash(token));
+    const rowOf = async (token) => await db.prepare('SELECT * FROM oauth_tokens WHERE token = ?').get(refreshTokens.hash(token));
+    const age = async (token, seconds) => await db.prepare("UPDATE oauth_tokens SET revoked_at = datetime('now', ?) WHERE token = ?").run(`-${seconds} seconds`, refreshTokens.hash(token));
 
     // ── A migrated (pre-change) token still refreshes, once ──
     let r = await refresh(RAW_LIVE);
     assert.strictEqual(r.status, 200, `a token written before the change still works: ${JSON.stringify(r.body)}`);
-    const legacyFamily = rowOf(RAW_LIVE).family_id;
-    assert.strictEqual(rowOf(r.body.refresh_token).family_id, legacyFamily, 'its successor continues the legacy family');
-    assert.strictEqual(rowOf(r.body.refresh_token).generation, 1);
+    const legacyFamily = (await rowOf(RAW_LIVE)).family_id;
+    assert.strictEqual((await rowOf(r.body.refresh_token)).family_id, legacyFamily, 'its successor continues the legacy family');
+    assert.strictEqual((await rowOf(r.body.refresh_token)).generation, 1);
     r = await refresh(RAW_ROTATED);
     assert.strictEqual(r.status, 400, 'a token the old code had already rotated stays dead');
 
     // ── New sign-ins: hash only, family, generations ──
     const t0 = await signIn();
     assert.match(t0, /^[0-9a-f]{96}$/);
-    const row0 = rowOf(t0);
+    const row0 = await rowOf(t0);
     assert.ok(row0, 'found by its hash');
-    assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM oauth_tokens WHERE token = ?').get(t0).n, 0, 'the token itself is not stored');
+    assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM oauth_tokens WHERE token = ?').get(t0)).n, 0, 'the token itself is not stored');
     assert.strictEqual(row0.generation, 0);
     assert.match(row0.family_id, /^fam_[0-9a-f]{24}$/);
     r = await refresh(t0);
     assert.strictEqual(r.status, 200);
     const t1 = r.body.refresh_token;
-    assert.strictEqual(rowOf(t1).family_id, row0.family_id, 'rotation stays in the family');
-    assert.strictEqual(rowOf(t1).generation, 1, 'generation counts rotations');
-    assert.strictEqual(rowOf(t0).revoked_reason, 'rotated');
+    assert.strictEqual((await rowOf(t1)).family_id, row0.family_id, 'rotation stays in the family');
+    assert.strictEqual((await rowOf(t1)).generation, 1, 'generation counts rotations');
+    assert.strictEqual((await rowOf(t0)).revoked_reason, 'rotated');
     r = await refresh(t1);
     const t2 = r.body.refresh_token;
-    assert.strictEqual(rowOf(t2).generation, 2);
+    assert.strictEqual((await rowOf(t2)).generation, 2);
 
     // The stored hash is not a token, and a malformed token is refused without a lookup.
-    r = await refresh(rowOf(t2).token);
+    r = await refresh((await rowOf(t2)).token);
     assert.strictEqual(r.status, 400, 'presenting the stored hash does not work');
-    r = await refresh(rowOf(t2).token.slice('sha256:'.length));
+    r = await refresh((await rowOf(t2)).token.slice('sha256:'.length));
     assert.strictEqual(r.status, 400, 'nor its hex');
 
     // Another client cannot use (or burn) the family.
     r = await refresh(t2, 'tools', 'tools-secret');
     assert.strictEqual(r.status, 400);
-    assert.strictEqual(rowOf(t2).revoked, 0, 'a client mismatch revokes nothing');
+    assert.strictEqual((await rowOf(t2)).revoked, 0, 'a client mismatch revokes nothing');
 
     // ── Reuse within the grace window (two tabs at once): refused, family intact ──
     r = await refresh(t1);
     assert.strictEqual(r.status, 400, 'a just-rotated token is single-use');
-    assert.strictEqual(rowOf(t2).revoked, 0, 'a concurrent double refresh does not revoke the family');
+    assert.strictEqual((await rowOf(t2)).revoked, 0, 'a concurrent double refresh does not revoke the family');
 
     // ── Reuse after the grace window: the whole family is revoked ──
-    age(t1, refreshTokens.REUSE_GRACE_S + 5);
+    await age(t1, refreshTokens.REUSE_GRACE_S + 5);
     r = await refresh(t1);
     assert.strictEqual(r.status, 400, 'a replayed rotated token is refused');
-    assert.strictEqual(rowOf(t2).revoked, 1, 'and its family is revoked: the latest generation dies too');
-    assert.strictEqual(rowOf(t2).revoked_reason, 'reuse');
+    assert.strictEqual((await rowOf(t2)).revoked, 1, 'and its family is revoked: the latest generation dies too');
+    assert.strictEqual((await rowOf(t2)).revoked_reason, 'reuse');
     r = await refresh(t2);
     assert.strictEqual(r.status, 400, 'the latest token no longer refreshes');
-    const auditRow = db.prepare("SELECT * FROM audit_log WHERE action = 'oauth_refresh_reuse' ORDER BY id DESC").get();
+    const auditRow = await db.prepare("SELECT * FROM audit_log WHERE action = 'oauth_refresh_reuse' ORDER BY id DESC").get();
     assert.ok(auditRow, 'reuse is audited');
     const details = JSON.parse(auditRow.details);
     assert.strictEqual(details.family_id, row0.family_id);
     assert.strictEqual(details.generation_presented, 1);
     assert.strictEqual(details.generation_current, 2);
-    assert.ok(!auditRow.details.includes(t1) && !auditRow.details.includes(rowOf(t1).token), 'the audit carries no token or hash');
+    assert.ok(!auditRow.details.includes(t1) && !auditRow.details.includes((await rowOf(t1)).token), 'the audit carries no token or hash');
     // Other families of the same account are untouched.
     const other = await signIn();
     r = await refresh(other);
@@ -152,15 +138,15 @@ const quiet = (fn) => { const log = console.log; console.log = () => {}; try { r
 
     // ── A raw row that appears after boot (defensive path) is hashed on first use ──
     const late = crypto.randomBytes(48).toString('hex');
-    db.prepare('INSERT INTO oauth_tokens (token, client_id, user_id, expires_at) VALUES (?, ?, ?, ?)').run(late, 'live', 7, new Date(Date.now() + 86400e3).toISOString());
+    await db.prepare('INSERT INTO oauth_tokens (token, client_id, user_id, expires_at) VALUES (?, ?, ?, ?)').run(late, 'live', 7, new Date(Date.now() + 86400e3).toISOString());
     r = await refresh(late);
     assert.strictEqual(r.status, 200, 'a raw row still works');
-    assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM oauth_tokens WHERE token = ?').get(late).n, 0, 'and is hashed on use');
-    assert.strictEqual(rowOf(late).revoked_reason, 'rotated');
+    assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM oauth_tokens WHERE token = ?').get(late)).n, 0, 'and is hashed on use');
+    assert.strictEqual((await rowOf(late)).revoked_reason, 'rotated');
 
     // Expired tokens are refused.
     const exp = await signIn();
-    db.prepare('UPDATE oauth_tokens SET expires_at = ? WHERE token = ?').run(new Date(Date.now() - 1000).toISOString(), refreshTokens.hash(exp));
+    await db.prepare('UPDATE oauth_tokens SET expires_at = ? WHERE token = ?').run(new Date(Date.now() - 1000).toISOString(), refreshTokens.hash(exp));
     assert.strictEqual((await refresh(exp)).status, 400, 'an expired refresh token is refused');
 
     server.close();

@@ -4,11 +4,12 @@
 const assert = require('assert');
 const http = require('http');
 const express = require('express');
-const Database = require('better-sqlite3');
+const { getDb } = require('../server/db/database');
 const { createHistoryRoutes, allowedUrl, serviceFromUrl } = require('../server/history/routes');
 const { ssoTargets, safeNext } = require('../server/auth/sso-targets');
 
 // ── pure helpers ─────────────────────────────────────────────
+(async () => {
 assert.strictEqual(allowedUrl('https://json.openvibe.tools/?x=1&token=abc#frag'), 'https://json.openvibe.tools/?x=1', 'tokens + fragments stripped');
 assert.strictEqual(allowedUrl('https://evil.example.com/'), null, 'off-network URLs are dropped');
 assert.strictEqual(allowedUrl('javascript:alert(1)'), null);
@@ -25,15 +26,14 @@ assert.strictEqual(safeNext('https://phish.example/'), '/', 'foreign hosts fall 
 assert.strictEqual(safeNext('//evil'), '/');
 assert.strictEqual(safeNext('/my#linked'), '/my#linked');
 
-// ── API against an in-memory database ────────────────────────
-const db = new Database(':memory:');
-db.exec(`CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, is_anon INTEGER DEFAULT 0);
-         INSERT INTO users (id, username) VALUES (1, 'alex'), (2, 'other');`);
+// ── API against the process database ─────────────────────────
+const db = getDb();
+await db.prepare("INSERT INTO users (id, username, password_hash) VALUES (1, 'alex', 'x'), (2, 'other', 'x')").run();
 const users = { a: { id: 1, username: 'alex' }, b: { id: 2, username: 'other' }, anon: { id: 3, username: 'anon', is_anon: true } };
 const requireAuth = (req, res, next) => { const u = users[req.headers['x-user']]; if (!u) return res.status(401).json({ error: 'no' }); req.user = u; next(); };
 const app = express();
 app.use(express.json());
-app.use('/api/history', createHistoryRoutes(db, requireAuth));
+app.use('/api/history', await createHistoryRoutes(db, requireAuth));
 const server = http.createServer(app);
 
 (async () => {
@@ -86,3 +86,4 @@ const server = http.createServer(app);
     server.close();
     console.log('history + sso targets: all checks passed');
 })().catch((err) => { console.error(err); server.close(); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

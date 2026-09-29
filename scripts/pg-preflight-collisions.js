@@ -15,11 +15,12 @@
  */
 require('dotenv').config();
 const fs = require('fs');
-const config = require('../server/config');
+const path = require('path');
 
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : def; };
-const file = opt('--sqlite', config.db.path);
+// The retired SQLite file: --sqlite, else DB_PATH, else data/network.db (relative to the repo root).
+const file = opt('--sqlite', path.resolve(__dirname, '..', process.env.DB_PATH || path.join('data', 'network.db')));
 const asJson = args.includes('--json');
 
 /** [table, column, the WHERE the uniqueness applies under, why it must not fold]. */

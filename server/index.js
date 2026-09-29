@@ -32,6 +32,9 @@ const createDeployRoutes = require('./deploy/routes');
 const createCoinsRoutes = require('./coins/routes');
 const { signToken } = require('./auth/routes');
 
+// The boot runs asynchronously: opening PostgreSQL (migrations, seeds) is async (plan T2, ADR-035).
+const ready = (async () => {
+
 const app = express();
 
 // What this server is running (ADR-016, registry.release-manifest@1); open tabs poll it through
@@ -50,8 +53,8 @@ function getRequestHost(req) {
     return String(req.headers.host || '').split(':')[0].toLowerCase();
 }
 
-function ensureAdminUser(db, config) {
-    const adminExists = db.prepare("SELECT 1 FROM users WHERE role = 'admin' LIMIT 1").get();
+async function ensureAdminUser(db, config) {
+    const adminExists = await db.prepare("SELECT 1 FROM users WHERE role = 'admin' LIMIT 1").get();
     if (adminExists) return;
     const username = config.admin.username || (config.nodeEnv !== 'production' ? 'admin' : null);
     const password = config.admin.password || (config.nodeEnv !== 'production' ? 'admin' : null);
@@ -60,10 +63,10 @@ function ensureAdminUser(db, config) {
         return;
     }
     const passwordHash = bcrypt.hashSync(password, 10);
-    db.prepare(`
+    await db.prepare(`
         INSERT INTO users (username, email, password_hash, display_name, role, profile_color, subject_id)
         VALUES (?, ?, ?, ?, 'admin', '#8b5cf6', ?)
-        ON CONFLICT(username) DO UPDATE SET role = 'admin', password_hash = excluded.password_hash
+        ON CONFLICT (lower(username)) DO UPDATE SET role = 'admin', password_hash = excluded.password_hash
     `).run(username, null, passwordHash, username, require('./identity/subjects').newUserSubjectId());
     console.log(`[Setup] Admin user created or elevated: ${username}`);
 }
@@ -292,11 +295,11 @@ app.use('/api/', rateLimit({ windowMs: 60_000, max: 120 }));
 app.use('/api/auth/', rateLimit({ windowMs: 15 * 60_000, max: 30, skipSuccessfulRequests: true }));
 
 // ── Database ─────────────────────────────────────────────────
-const db = initDb(config.db.path);
-urlRegistry.initializeUrlRegistry(db);
-urlRegistry.seedBootstrapRegistry(db, process.env, config.bootstrapProfile);
-ensureAdminUser(db, config);
-const resolvedRegistry = urlRegistry.getResolvedRegistry(db, process.env);
+const db = await initDb();
+await urlRegistry.initializeUrlRegistry(db);
+await urlRegistry.seedBootstrapRegistry(db, process.env, config.bootstrapProfile);
+await ensureAdminUser(db, config);
+const resolvedRegistry = await urlRegistry.getResolvedRegistry(db, process.env);
 
 // Apply resolved network registry values to runtime config
 if (resolvedRegistry.OV_NETWORK_URL?.value) {
@@ -321,11 +324,11 @@ app.locals.urlRegistry = resolvedRegistry;
 config._registry = resolvedRegistry;
 
 // ── Analytics Tracking (ADR-021) ──────────────────────────────
-// openvibe-shared/analytics; same tables in network.db, on a connection of the tracker's own
-// (server/analytics/network.js). Raw rows: route template, rotating session id, user-agent class,
-// referer origin; never an IP or a user id. A Sec-GPC: 1 / DNT: 1 request is not recorded. Pruned after
-// 30 days by the analytics-prune job below; rollups are kept.
-const analytics = networkAnalytics.openAnalytics(config.db.path);
+// openvibe-shared/analytics on PostgreSQL (server/analytics/network.js; migrations/0002_analytics.sql).
+// Raw rows: route template, rotating session id, user-agent class, referer origin; never an IP or a
+// user id. A Sec-GPC: 1 / DNT: 1 request is not recorded. Pruned after 30 days by the tracker itself;
+// rollups are kept.
+const analytics = networkAnalytics.openAnalytics(db);
 app.locals.analytics = analytics;
 app.use(analytics.middleware());
 
@@ -362,11 +365,19 @@ app.locals.selfToken = selfToken;
 app.locals.publicKey = publicKey;
 app.locals.config = config;
 
+// Shared counters on Valkey when VALKEY_URL is set (ADR-035, plan T2): every process and host counts one
+// actor together. Unset — or unreachable — the limits fall back to this process's own counters (never 500).
+const valkey = config.valkey.url ? require('openvibe-sdk/valkey').createValkey({ url: config.valkey.url, prefix: config.valkey.prefix }) : null;
+app.locals.valkey = valkey;
+
 // Per-actor limits on API writes, by the person whose session makes them (server/auth/actor-limits.js; WS-R task 4).
-app.use('/api/', require('./auth/actor-limits').createNetworkActorLimits({ publicKey, issuer: config.jwt.issuer, registry: observability.registry }));
+app.use('/api/', require('./auth/actor-limits').createNetworkActorLimits({
+    publicKey, issuer: config.jwt.issuer, registry: observability.registry,
+    store: valkey ? require('openvibe-sdk/limits').createValkeyLimitStore(valkey) : null,
+}));
 
 // Provider secrets: environment first, database fallback (server/secrets.js). Names and sources only.
-console.log(`[Secrets] ${require('./secrets').summary(db)}`);
+console.log(`[Secrets] ${await require('./secrets').summary(db)}`);
 
 // ── Initialize Services ──────────────────────────────────────
 const notificationService = new NotificationService(db);
@@ -381,7 +392,7 @@ const liveFollowers = privateKey.includes('BEGIN')
 const moderationAudit = require('./admin/moderation-audit').createModerationAudit(db);
 // Developer projects' usage (WS-N task 4): the services' hourly rollups, per project and day.
 const projectUsage = require('./developer/usage').createProjectUsage(db);
-eventsConsumer = require('./notifications/events-consumer').createEventsConsumer({
+eventsConsumer = await require('./notifications/events-consumer').createEventsConsumer({
     db, notifications: notificationService, secrets: config.eventsWebhookSecrets,
     liveFollowers, discord: () => app.locals.discordService || null, moderationAudit, projectUsage,
     followsAuthority: process.env.FOLLOWS_AUTHORITY === 'network' ? 'network' : 'live',   // ADR-030 step 4
@@ -404,8 +415,8 @@ app.use('/api/v1/staff/moderation-audit', requireAuth, moderationAudit.router())
 app.use('/api/v1/staff', require('./admin/staff-api').createStaffApi({ db, requireAuth, guard: require('./identity/principals').guard }));
 // Username history (WS-B task 6): who holds a name now, so sites redirect /@old → /@new and pick up a
 // new name before they have seen it. Banned accounts and unknown names are 404.
-app.get('/api/v1/users/names/:name', rateLimit({ windowMs: 60_000, max: 240 }), (req, res) => {
-    const rec = require('./identity/usernames').lookup(db, req.params.name);
+app.get('/api/v1/users/names/:name', rateLimit({ windowMs: 60_000, max: 240 }), async (req, res) => {
+    const rec = await require('./identity/usernames').lookup(db, req.params.name);
     res.set('Cache-Control', 'public, max-age=120');
     if (!rec) return res.status(404).json({ error: 'not_found' });
     res.json(rec);
@@ -420,7 +431,7 @@ app.use('/api/v1/me/blocks', rateLimit({ windowMs: 60_000, max: 60 }), require('
 // (staff.identity.merge) for account recovery, with a reason.
 {
     const accountMerge = require('./identity/account-merge');
-    accountMerge.ensureSchema(db);
+    await accountMerge.ensureSchema(db);
     const mergeRouters = accountMerge.routers({ requireAuth, staffClaims: require('./auth/staff-claims').staffClaims });
     app.use('/api/v1/account', rateLimit({ windowMs: 60_000, max: 20 }), mergeRouters.me);
     app.use('/api/admin/account-merges', mergeRouters.admin);
@@ -437,12 +448,12 @@ app.use('/api/v1/me/blocks', rateLimit({ windowMs: 60_000, max: 60 }), require('
 }
 // Account export and deletion (roadmap WS-B task 7, ADR-033): the person's export job and scheduled deletion;
 // services push export parts and confirm deletions with service tokens; staff (staff.users.manage) see what is
-// outstanding. Archives live next to the database for 7 days.
-const ACCOUNT_EXPORT_DIR = path.join(path.dirname(path.resolve(config.db.path)), 'account-exports');
-const notifyAccountData = (userId, n) => notificationService.create({ user_id: userId, type: 'GENERIC', category: 'system', service: 'network', url: 'https://openvibe.network/my#accounts', ...n });
+// outstanding. Archives live under the data directory for 7 days.
+const ACCOUNT_EXPORT_DIR = path.join(path.resolve(config.dataDir), 'account-exports');
+const notifyAccountData = async (userId, n) => await notificationService.create({ user_id: userId, type: 'GENERIC', category: 'system', service: 'network', url: 'https://openvibe.network/my#accounts', ...n });
 {
     const accountData = require('./identity/account-data');
-    accountData.ensureSchema(db);
+    await accountData.ensureSchema(db);
     const guard = require('./identity/principals').guard;
     const dataRouters = accountData.routers({
         requireAuth, staffClaims: require('./auth/staff-claims').staffClaims, dir: ACCOUNT_EXPORT_DIR, notify: notifyAccountData,
@@ -490,13 +501,13 @@ const ecosystem = require('./registry/ecosystem').createEcosystemRegistry({ issu
 // Production drift: each running service's deployed commit against its repository's main (WS-S task 7).
 const deployDrift = require('./registry/deploy-drift').createDeployDrift({
     services: () => ecosystem.releases().services.filter((r) => r.release).map((r) => ({ id: r.id, release: r.release, repository: ((require('openvibe-contracts').services.manifests.find((m) => m.id === r.id)) || {}).repository })),
-    token: () => process.env.GITHUB_TOKEN || require('./integrations/github').tokenOf(db) || '',
+    token: async () => process.env.GITHUB_TOKEN || await require('./integrations/github').tokenOf(db) || '',
 });
 deployDrift.start();
 app.use(ecosystem.router());
 ecosystem.start();
 // The released libraries' latest published tags (not the versions Network installs) for the registry.
-const libraryTags = require('./registry/library-tags').createLibraryTags({ onUpdate: require('./registry/exposure').setLibraryReleases, token: () => require('./integrations/github').tokenOf(db) });
+const libraryTags = require('./registry/library-tags').createLibraryTags({ onUpdate: require('./registry/exposure').setLibraryReleases, token: async () => await require('./integrations/github').tokenOf(db) });
 libraryTags.start();
 // Operator status: GET /status (server-rendered, noindex), /api/v1/status, /api/v1/status/slo.
 // Creator analytics (WS-E task 6): from live.stream.ended, counts only; the full figures for the creator or
@@ -565,7 +576,7 @@ app.use('/api/modules', require('./identity/modules').userRouter(requireAuth));
 app.use('/api/v1/projects', rateLimit({ windowMs: 60_000, max: 60 }), require('./developer/routes').router());
 // Their network.app.* / credential / grant events go to OpenVibe.Events through an outbox when
 // OV_EVENTS_INTERNAL_URL is set (server/developer/event-relay.js); off otherwise.
-require('./developer/event-relay').startRelay(db, { eventsUrl: config.eventsInternalUrl, privateKey, issuer: config.jwt.issuer });
+await require('./developer/event-relay').startRelay(db, { eventsUrl: config.eventsInternalUrl, privateKey, issuer: config.jwt.issuer });
 // network.user.updated (WS-B task 2): profile, role and ban changes, recorded by triggers on users and relayed
 // through the same outbox (server/identity/profile-events.js).
 require('./identity/profile-events').start(db);
@@ -576,11 +587,11 @@ app.use('/api/notifications', createNotificationRoutes(db, notificationService, 
 
 // Push Notifications API
 const pushService = require('./push/push-service');
-pushService.initVapid(db);
+await pushService.initVapid(db);
 app.use('/api/push', requireAuth, require('./push/routes'));
 
 // Cross-site history (what the account touched anywhere on the network)
-app.use('/api/history', rateLimit({ windowMs: 60_000, max: 60 }), require('./history/routes').createHistoryRoutes(db, requireAuth));
+app.use('/api/history', rateLimit({ windowMs: 60_000, max: 60 }), await require('./history/routes').createHistoryRoutes(db, requireAuth));
 
 // "Sign in everywhere" chain targets (public: the fanout page reads them before hopping)
 app.get('/api/sso/targets', (req, res) => {
@@ -615,7 +626,7 @@ app.locals.avatarService = avatarService;
 
 // The OpenVibe Frame: analytics-ranked navigation + footer copy for every site (server/frame).
 // /api/chrome is the old name, kept for copies of openvibe-shared older than 1.11.0.
-const frameService = require('./frame/service').createFrameService(db, config, analytics, { privateKey, issuer: config.jwt.issuer, selfToken });
+const frameService = await require('./frame/service').createFrameService(db, config, analytics, { privateKey, issuer: config.jwt.issuer, selfToken });
 const frameLimit = rateLimit({ windowMs: 60_000, max: 240 });
 app.use('/api/frame', frameLimit, frameService.router);
 app.use('/api/chrome', frameLimit, frameService.router);
@@ -624,7 +635,7 @@ frameService.start();
 ecosystem.setRanking(() => frameService.ranking());
 
 // Tool domains: public list for the Tools gateway, owner-only management (docs/shared-contracts.md §1).
-const toolDomains = require('./domains/routes').createDomainRoutes(db, requireAuth);
+const toolDomains = await require('./domains/routes').createDomainRoutes(db, requireAuth);
 app.use('/api/domains', rateLimit({ windowMs: 60_000, max: 120 }), toolDomains.publicRouter);
 app.use('/api/admin/domains', toolDomains.adminRouter);
 app.use('/api/admin/discord', createDiscordRoutes(db, discordService, requireAuth, requireAdmin));
@@ -675,7 +686,7 @@ app.use('/api/admin/streamer', requireAuth, (req, res, next) => {
     }
     next();
 }, async (req, res) => {
-    return proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/admin${req.url}`, 'Streamer proxy error');
+    return await proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/admin${req.url}`, 'Streamer proxy error');
 });
 
 // Proxy /api/mod/* for moderator routes
@@ -685,7 +696,7 @@ app.use('/api/admin/streamer-mod', requireAuth, (req, res, next) => {
     }
     next();
 }, async (req, res) => {
-    return proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/mod${req.url}`, 'Mod proxy error');
+    return await proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/mod${req.url}`, 'Mod proxy error');
 });
 
 app.use('/api/admin/streamer-tts', requireAuth, (req, res, next) => {
@@ -694,7 +705,7 @@ app.use('/api/admin/streamer-tts', requireAuth, (req, res, next) => {
     }
     next();
 }, async (req, res) => {
-    return proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/tts${req.url}`, 'TTS proxy error');
+    return await proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/tts${req.url}`, 'TTS proxy error');
 });
 
 app.use('/api/admin/streamer-funds', requireAuth, (req, res, next) => {
@@ -703,7 +714,7 @@ app.use('/api/admin/streamer-funds', requireAuth, (req, res, next) => {
     }
     next();
 }, async (req, res) => {
-    return proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/funds${req.url}`, 'Funds proxy error');
+    return await proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/funds${req.url}`, 'Funds proxy error');
 });
 
 app.use('/api/admin/streamer-pastes', requireAuth, (req, res, next) => {
@@ -712,7 +723,7 @@ app.use('/api/admin/streamer-pastes', requireAuth, (req, res, next) => {
     }
     next();
 }, async (req, res) => {
-    return proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/pastes${req.url}`, 'Pastes proxy error');
+    return await proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/pastes${req.url}`, 'Pastes proxy error');
 });
 
 // Internal API (server-to-server, capability-scoped service tokens only)
@@ -845,7 +856,6 @@ app.use(require('./not-found').notFound);
 
 // ── Start ────────────────────────────────────────────────────
 const timers = [];   // the periodic maintenance below, cleared on stop
-let analyticsPrune = null;
 const server = app.listen(config.port, config.host, () => {
     // The home page renders the Tools catalog it already holds: fetch it now, not on the first visit.
     require('./domains/catalog').refresh().catch(() => {});
@@ -864,34 +874,33 @@ const server = app.listen(config.port, config.host, () => {
     // Process email queue every 2 minutes
     timers.push(setInterval(() => emailService.processQueue(notificationService), 2 * 60 * 1000));
 
-    // Raw analytics retention (ADR-021), job analytics-prune: events older than 30 days go, in
-    // bounded batches; hourly/daily rollups stay. First run 5 minutes after boot, then every 24 h.
-    analyticsPrune = networkAnalytics.schedulePrune(analytics);
+    // Raw analytics retention (ADR-021) is scheduled by the PostgreSQL tracker itself: events older
+    // than 30 days go, in bounded batches; hourly/daily rollups stay.
 
     // User modules of a retired owning service (onOwnerRemoved, server/identity/modules.js): writes stop at
     // once; delete-after-retention records go retentionDays after Network first saw the retirement.
-    const sweepModules = () => {
+    const sweepModules = async () => {
         try {
-            const n = require('./identity/modules').sweepRetired(db);
+            const n = await require('./identity/modules').sweepRetired(db);
             if (n) console.log(`[Modules] Deleted ${n} record(s) of retired namespace owners`);
         } catch (e) { console.warn('[Modules] retired-owner sweep:', e.message); }
     };
     timers.push(setTimeout(sweepModules, 5 * 60 * 1000), setInterval(sweepModules, 24 * 60 * 60 * 1000));
     // Account merges older than 30 days keep only the alias facts (ADR-029).
-    const reduceMerges = () => { try { const n = require('./identity/account-merge').reduceExpired(db); if (n) console.log(`[AccountMerge] reduced ${n} merge record(s) past 30 days`); } catch (e) { console.warn('[AccountMerge] reduce failed:', e.message); } };
+    const reduceMerges = async () => { try { const n = await require('./identity/account-merge').reduceExpired(db); if (n) console.log(`[AccountMerge] reduced ${n} merge record(s) past 30 days`); } catch (e) { console.warn('[AccountMerge] reduce failed:', e.message); } };
     timers.push(setTimeout(reduceMerges, 6 * 60 * 1000), setInterval(reduceMerges, 24 * 60 * 60 * 1000));
     // Exports past their deadline are built, archives past 7 days deleted, deletions past their 30-day grace carried out (ADR-033).
-    const sweepAccountData = () => {
+    const sweepAccountData = async () => {
         try {
-            const n = require('./identity/account-data').sweep(db, { dir: ACCOUNT_EXPORT_DIR, notify: notifyAccountData });
+            const n = await require('./identity/account-data').sweep(db, { dir: ACCOUNT_EXPORT_DIR, notify: notifyAccountData });
             if (n.built || n.expired || n.deleted) console.log(`[AccountData] sweep: ${JSON.stringify(n)}`);
         } catch (e) { console.warn('[AccountData] sweep failed:', e.message); }
     };
     timers.push(setTimeout(sweepAccountData, 60 * 1000), setInterval(sweepAccountData, 2 * 60 * 1000));
 
     // Clean expired sessions daily
-    timers.push(setInterval(() => {
-        const cleaned = db.prepare("DELETE FROM user_sessions WHERE expires_at < datetime('now') OR is_active = 0").run().changes;
+    timers.push(setInterval(async () => {
+        const cleaned = (await db.prepare("DELETE FROM user_sessions WHERE expires_at < datetime('now') OR is_active = 0").run()).changes;
         if (cleaned > 0) console.log(`[Sessions] Cleaned ${cleaned} expired sessions`);
     }, 24 * 60 * 60 * 1000));
 });
@@ -901,14 +910,14 @@ const server = app.listen(config.port, config.host, () => {
 // pollers, the frame refreshes, the profile-event and grant-expiry timers stop (nothing new starts); the
 // server stops taking connections, closes idle keep-alive ones and lets requests in flight finish (8 s at
 // most, Connection: close); then the developer/profile/grant event relay finishes its send in progress
-// (unsent rows stay in the outbox), analytics flush and close, network.db closes, and the process exits 0,
-// within 10 s (well inside the unit's stop timeout). The email queue resumes on the next start.
+// (unsent rows stay in the outbox), analytics flush and close, the database and the Valkey connection
+// close, and the process exits 0, within 10 s (well inside the unit's stop timeout). The email queue
+// resumes on the next start.
 const { within } = require('./graceful');
 require('./graceful').gracefulStop({
     name: 'Network', server, drainMs: 8000, deadlineMs: 10000,
     stop: [
         () => { for (const t of timers) { clearTimeout(t); clearInterval(t); } },
-        () => { if (analyticsPrune) analyticsPrune.stop(); },
         () => ecosystem.stop(),
         () => deployDrift.stop(),
         () => libraryTags.stop(),
@@ -918,7 +927,17 @@ require('./graceful').gracefulStop({
     ],
     close: [
         () => within(1500, require('./developer/event-relay').stopRelay(db)),
-        () => { analytics.destroy(); analytics.db.close(); },
+        () => analytics.destroy().catch(() => {}),
         () => db.close(),
+        () => valkey && valkey.close().catch(() => {}),
     ],
 });
+
+return { app, server };
+})();
+ready.catch((err) => {
+    console.error('[Network] failed to start:', err);
+    process.exit(1);
+});
+
+module.exports = { ready };

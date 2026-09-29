@@ -58,5 +58,27 @@ console.warn = () => {};
     } finally {
         server.close();
     }
+
+    // ── A shared store that is down (Valkey unreachable) degrades to this process, never a 500 (decision 5) ──
+    let storeHits = 0;
+    const downApp = express();
+    downApp.use('/api/', createNetworkActorLimits({
+        env: { NETWORK_LIMITS_MINUTE: '2' }, publicKey: keys.publicKey, issuer: ISS, now: () => t,
+        store: { hit: async () => { storeHits++; throw new Error('valkey unreachable'); } },
+    }));
+    downApp.all('/api/*', (req, res) => res.json({ ok: true }));
+    const downServer = http.createServer(downApp);
+    await new Promise((r) => downServer.listen(0, '127.0.0.1', r));
+    const downBase = `http://127.0.0.1:${downServer.address().port}`;
+    try {
+        const dave = session(9, 'usr_01JAB2C3D4E5F6G7H8J9K0MNP9');
+        const hit = () => fetch(`${downBase}/api/v1/projects`, { method: 'POST', headers: { authorization: `Bearer ${dave}` } }).then((r) => r.status);
+        assert.strictEqual(await hit(), 200, 'a request with the store down is served, not a 500');
+        assert.strictEqual(await hit(), 200);
+        assert.strictEqual(await hit(), 429, 'the in-process counters still enforce the limit');
+        assert.ok(storeHits >= 3, 'the shared store was tried first, every time');
+    } finally {
+        downServer.close();
+    }
     console.log('actor limits: all checks passed');
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -37,10 +37,10 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config, 
     // Games and Media keep no analytics of their own. The shared navbar's anonymous page-view count
     // (frame_hits: day + host, nothing else) is the honest number for them; the summary says so.
     const BEACON_HOSTS = { games: 'openvibe.games', media: 'openvibe.media', tools: 'openvibe.tools' };
-    function beaconFallback(svc, days) {
+    async function beaconFallback(svc, days) {
         try {
             const host = BEACON_HOSTS[svc.name]; if (!host) return null;
-            const row = analytics.db.prepare("SELECT COALESCE(SUM(hits), 0) AS n FROM frame_hits WHERE day >= date('now', ?) AND (host = ? OR host LIKE ?)").get(`-${Math.min(days || 30, 365)} days`, host, '%.' + host);
+            const row = await analytics.db.prepare("SELECT COALESCE(SUM(hits), 0) AS n FROM frame_hits WHERE day >= substring(datetime('now', ?), 1, 10) AND (host = ? OR host LIKE ?)").get(`-${Math.min(days || 30, 365)} days`, host, '%.' + host);
             return { ok: true, analytics: { summary: { total_pageviews: row.n, source: 'navbar page-view count (no service analytics)' }, realtime: {} } };
         } catch { return null; }
     }
@@ -52,7 +52,7 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config, 
             const url = `${svc.url}${svc.path}${subPath}?${qs}`;
             const headers = { 'Content-Type': 'application/json' };
 
-            if (svc.auth === 'beacon') return subPath ? null : beaconFallback(svc, days);
+            if (svc.auth === 'beacon') return subPath ? null : await beaconFallback(svc, days);
             if (svc.auth === 'internal') {
                 const t = selfToken(`openvibe.${svc.name}`, [`${svc.name}.analytics.read`]);
                 if (!t) return null;
@@ -62,11 +62,11 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config, 
             }
 
             const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
-            if (!res.ok) return subPath ? null : beaconFallback(svc, days);
+            if (!res.ok) return subPath ? null : await beaconFallback(svc, days);
             return await res.json();
         } catch (err) {
             console.warn(`[Analytics] Failed to fetch from ${svc.name}:`, err.message);
-            return subPath ? null : beaconFallback(svc, days);
+            return subPath ? null : await beaconFallback(svc, days);
         }
     }
 
@@ -81,7 +81,7 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config, 
 
             // Fetch from all services in parallel
             const promises = [
-                Promise.resolve({ ok: true, analytics: analytics.getStats({ days, hours }), name: 'openvibe-network', label: 'OpenVibe.Network' }),
+                { ok: true, analytics: await analytics.getStats({ days, hours }), name: 'openvibe-network', label: 'OpenVibe.Network' },
                 ...REMOTE_SERVICES.map(svc =>
                     fetchRemoteAnalytics(svc, '', req.token, days, hours).then(result => ({
                         ...result, name: svc.name, label: svc.label,
@@ -231,7 +231,7 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config, 
             let data = null;
 
             if (name === 'openvibe-network') {
-                data = analytics.getStats({ days, hours });
+                data = await analytics.getStats({ days, hours });
             } else {
                 const svc = REMOTE_SERVICES.find(s => s.name === name);
                 if (svc) {
@@ -259,7 +259,7 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config, 
             const days = Math.min(parseInt(req.query.days) || 30, 365);
 
             const promises = [
-                Promise.resolve({ ok: true, bots: analytics.getBotAnalysis(days), name: 'openvibe-network' }),
+                { ok: true, bots: await analytics.getBotAnalysis(days), name: 'openvibe-network' },
                 ...REMOTE_SERVICES.map(svc =>
                     fetchRemoteAnalytics(svc, '/bots', req.token, days).then(result => ({
                         ...result, name: svc.name,
@@ -284,13 +284,13 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config, 
     // Real-time snapshot
     // ═══════════════════════════════════════════════════════════
 
-    router.get('/realtime', (req, res) => {
+    router.get('/realtime', async (req, res) => {
         try {
             const fiveMinAgo = new Date(Date.now() - 300000).toISOString().slice(0, 19).replace('T', ' ');
             const db = analytics.db;
 
             // ADR-021: raw events carry no IP; visitors are distinct rotating session ids.
-            const realtime = db.prepare(`
+            const realtime = await db.prepare(`
                 SELECT
                     COUNT(*) as requests,
                     COUNT(DISTINCT session_id) as visitors,
@@ -301,7 +301,7 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config, 
                 WHERE created_at >= ?
             `).get(fiveMinAgo);
 
-            const byPath = db.prepare(`
+            const byPath = await db.prepare(`
                 SELECT path, COUNT(*) as hits
                 FROM analytics_events
                 WHERE created_at >= ? AND is_bot = 0

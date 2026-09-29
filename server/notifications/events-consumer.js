@@ -31,7 +31,7 @@
  * Each event becomes one inbox notification for its person through NotificationService.create(),
  * which applies their preferences: a muted category ('service') creates nothing, and email follows
  * the same per-category choice (shouldEmail). Exactly once: the openvibe-sdk inbox claims
- * (consumer, event_id) in the same SQLite transaction as the notification, so a redelivery does
+ * (consumer, event_id) in the same PostgreSQL transaction as the notification, so a redelivery does
  * nothing and a failure rolls both back (Events retries).
  *
  * Signature: v2 only (openvibe-sdk parseDelivery with requireV2) — HMAC over "<t>.<raw body>" with t
@@ -46,7 +46,7 @@
  */
 const express = require('express');
 const { http, ids } = require('openvibe-contracts');
-const { parseDelivery, createInbox } = require('openvibe-sdk/events');
+const { parseDelivery, createPgInbox } = require('openvibe-sdk/events');
 const { siteForHost } = require('../frame/sites');
 const streamLive = require('./stream-live');
 const { LiveFollowersError } = require('./live-followers');
@@ -162,10 +162,9 @@ function liveStarted(event, { now, maxAgeMs }) {
  * @param {() => ({ sendLiveAlert(streamer: object, stream: object): Promise<object> }|null)} [o.discord]
  * @param {{ record(event: object): string }} [o.projectUsage]  ../developer/usage.js createProjectUsage()
  */
-function createEventsConsumer({ db, notifications, secrets, liveFollowers = null, followsAuthority = 'live', discord = () => null, moderationAudit = null, projectUsage = null, liveStartedMaxAgeMs = LIVE_STARTED_MAX_AGE_MS, now = () => Date.now(), log = console }) {
+async function createEventsConsumer({ db, notifications, secrets, liveFollowers = null, followsAuthority = 'live', discord = () => null, moderationAudit = null, projectUsage = null, liveStartedMaxAgeMs = LIVE_STARTED_MAX_AGE_MS, now = () => Date.now(), log = console }) {
     const keys = Array.isArray(secrets) ? secrets.filter((s) => typeof s === 'string' && s.length >= 32) : secretsFrom(secrets);
-    const inbox = createInbox(db, { table: INBOX_TABLE, now });
-    inbox.ensureSchema();
+    const inbox = createPgInbox(db, { table: INBOX_TABLE, now });
     const userBySubject = db.prepare('SELECT id FROM users WHERE subject_id = ?');
     const streamerBySubject = db.prepare('SELECT id, username, display_name, avatar_url FROM users WHERE subject_id = ?');
     const userById = db.prepare('SELECT id FROM users WHERE id = ?');
@@ -178,11 +177,11 @@ function createEventsConsumer({ db, notifications, secrets, liveFollowers = null
         async 'live.stream.started'(event) {
             const v = liveStarted(event, { now: now(), maxAgeMs: liveStartedMaxAgeMs });
             if (typeof v === 'string') return { skip: v };
-            if (!streamerBySubject.get(v.subject)) return { skip: 'ignored:channel' };   // not a Network account: nobody to announce
+            if (!await streamerBySubject.get(v.subject)) return { skip: 'ignored:channel' };   // not a Network account: nobody to announce
             // ADR-030 step 4: with FOLLOWS_AUTHORITY=network the followers come from Network's own graph
             // (server/identity/follows.js), not from Live. Rollback: unset it.
             if (followsAuthority === 'network') {
-                const rows = db.prepare("SELECT follower_subject FROM user_follows WHERE target_type = 'channel' AND target_id = ? AND active = 1").all(v.subject);
+                const rows = await db.prepare("SELECT follower_subject FROM user_follows WHERE target_type = 'channel' AND target_id = ? AND active = 1").all(v.subject);
                 return { channelSubject: v.subject, followers: rows.map((r) => ({ subject: r.follower_subject })) };
             }
             if (!liveFollowers) throw new LiveFollowersError('no Live followers client (RS256 signing key and OV_LIVE_INTERNAL_URL needed)');
@@ -191,32 +190,32 @@ function createEventsConsumer({ db, notifications, secrets, liveFollowers = null
     };
 
     /** live.stream.started inside the inbox transaction: the announcement window, then one notification per person. */
-    function liveStreamStarted(event, prep) {
+    async function liveStreamStarted(event, prep) {
         if (prep && prep.skip) return prep.skip;
         const v = liveStarted(event, { now: now(), maxAgeMs: liveStartedMaxAgeMs });
         if (typeof v === 'string') return v;
         if (!prep || prep.missing) return 'ignored:stream';
         if (prep.channelSubject !== v.subject) return 'ignored:channel-mismatch';   // that stream is not this channel's
-        const streamer = streamerBySubject.get(v.subject);
+        const streamer = await streamerBySubject.get(v.subject);
         if (!streamer) return 'ignored:channel';
-        const claim = streamLive.claimAnnouncement(db, { streamerKey: streamer.id, streamId: v.streamId, now: now() });
+        const claim = await streamLive.claimAnnouncement(db, { streamerKey: streamer.id, streamId: v.streamId, now: now() });
         if (claim.skipped) return { outcome: `skipped:${claim.reason}`, detail: { next_allowed_at: claim.next_allowed_at || null } };
         const targets = new Set();
         let unresolved = 0;
         for (const f of prep.followers || []) {
             let uid = null;
-            if (f.subject && ids.isSubjectId('user', f.subject)) { const u = userBySubject.get(f.subject); if (u) uid = u.id; }
-            if (uid == null && f.network_user_id) { const u = userById.get(f.network_user_id); if (u) uid = u.id; }
+            if (f.subject && ids.isSubjectId('user', f.subject)) { const u = await userBySubject.get(f.subject); if (u) uid = u.id; }
+            if (uid == null && f.network_user_id) { const u = await userById.get(f.network_user_id); if (u) uid = u.id; }
             if (uid == null) { unresolved++; continue; }
             targets.add(uid);
         }
-        for (const uid of streamLive.allLiveSubscribers(db)) targets.add(uid);
+        for (const uid of await streamLive.allLiveSubscribers(db)) targets.add(uid);
         targets.delete(streamer.id);   // never tell streamers about themselves
         const notification = streamLive.streamLiveNotification({
             username: v.username, displayName: v.displayName, avatarUrl: streamer.avatar_url, senderId: streamer.id,
             stream: { id: v.streamId, title: v.title, protocol: v.protocol, event_id: event.event_id }, url: v.url,
         });
-        const created = targets.size ? notifications.createBulk([...targets], notification) : [];
+        const created = targets.size ? await notifications.createBulk([...targets], notification) : [];
         const detail = { followers: (prep.followers || []).length, unresolved, targets: targets.size, notified: created.length, ...(prep.truncated ? { truncated: true } : {}) };
         const after = () => {
             const d = discord && discord();
@@ -229,9 +228,9 @@ function createEventsConsumer({ db, notifications, secrets, liveFollowers = null
     }
 
     /** Apply one envelope (with what PREPARE fetched for it). Returns { duplicate, outcome, detail }. Throws only on a storage failure. */
-    function apply(event, prep) {
+    async function apply(event, prep) {
         let after = null;
-        const r = inbox.once(CONSUMER, event.event_id, () => {
+        const r = await inbox.once(CONSUMER, event.event_id, async () => {
             // Staff actions go to the moderation audit log (ADR-022), never to anyone's inbox.
             if (AUDIT_TOPICS.includes(event.event_type)) return moderationAudit ? moderationAudit.record(event) : 'ignored:audit_off';
             // Developer projects' usage rollups go to their dashboards (WS-N task 4), never to an inbox.
@@ -239,7 +238,7 @@ function createEventsConsumer({ db, notifications, secrets, liveFollowers = null
             // Creator analytics (WS-E task 6): each ended stream's totals, counts only.
             if (event.event_type === 'live.stream.ended') return require('../analytics/creators').record(db, event);
             if (event.event_type === 'live.stream.started') {
-                const out = liveStreamStarted(event, prep);
+                const out = await liveStreamStarted(event, prep);
                 if (typeof out === 'string') return out;
                 after = out.after || null;
                 return { outcome: out.outcome, detail: out.detail };
@@ -249,10 +248,10 @@ function createEventsConsumer({ db, notifications, secrets, liveFollowers = null
             const out = handler(event);
             if (typeof out === 'string') return out;
             if (!ids.isSubjectId('user', out.subject)) return 'ignored:recipient';
-            const user = userBySubject.get(out.subject);
+            const user = await userBySubject.get(out.subject);
             if (!user) return 'ignored:recipient';
             // create() returns null when the person turned the category off.
-            return notifications.create({ ...out.notification, user_id: user.id }) ? 'notified' : 'suppressed:preference';
+            return await notifications.create({ ...out.notification, user_id: user.id }) ? 'notified' : 'suppressed:preference';
         });
         if (r.duplicate) return { duplicate: true, outcome: null };
         // Side effects outside the database run only after the commit, once per event.
@@ -275,7 +274,7 @@ function createEventsConsumer({ db, notifications, secrets, liveFollowers = null
         let prep;
         if (Object.prototype.hasOwnProperty.call(PREPARE, event.event_type)) {
             // Already handled: answer without asking anyone anything.
-            if (inbox.seen(CONSUMER, event.event_id)) return res.status(200).json({ event_id: event.event_id, duplicate: true, outcome: null });
+            if (await inbox.seen(CONSUMER, event.event_id)) return res.status(200).json({ event_id: event.event_id, duplicate: true, outcome: null });
             try {
                 prep = await PREPARE[event.event_type](event);
             } catch (err) {
@@ -286,7 +285,7 @@ function createEventsConsumer({ db, notifications, secrets, liveFollowers = null
         }
         let out;
         try {
-            out = apply(event, prep);
+            out = await apply(event, prep);
         } catch (err) {
             // Not acknowledged: the inbox claim rolled back with the notification, and Events retries.
             log.error(`[Events consumer] ${event.event_id} (${event.event_type}) failed:`, err.message);

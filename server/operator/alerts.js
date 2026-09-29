@@ -27,34 +27,13 @@ const FLAP_MS = 12 * 3600 * 1000;
 const KEEP_RESOLVED_MS = 30 * 24 * 3600 * 1000;
 const STATUS_URL = 'https://openvibe.network/status';
 
-function ensureTables(db) {
-    db.exec(`CREATE TABLE IF NOT EXISTS operator_alerts (
-        source       TEXT NOT NULL,
-        fingerprint  TEXT NOT NULL,
-        name         TEXT NOT NULL,
-        severity     TEXT NOT NULL,
-        summary      TEXT NOT NULL,
-        description  TEXT,
-        service      TEXT,
-        state        TEXT NOT NULL CHECK (state IN ('firing', 'resolved')),
-        started_at   TEXT NOT NULL,
-        opened_at    INTEGER NOT NULL,
-        last_seen_at INTEGER NOT NULL,
-        notified_at  INTEGER,
-        resolved_at  INTEGER,
-        PRIMARY KEY (source, fingerprint)
-    )`);
-    // The notifications of the current episode ([[userId, notificationId], …]) and how often it fired again.
-    for (const col of ['notices TEXT', 'reopened INTEGER NOT NULL DEFAULT 0']) {
-        try { db.exec(`ALTER TABLE operator_alerts ADD COLUMN ${col}`); } catch { /* already there */ }
-    }
-}
+function ensureTables(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
-function operatorUserIds(db, env = process.env) {
+async function operatorUserIds(db, env = process.env) {
     const names = new Set([(env.OWNER_USERNAME || 'goosely').toLowerCase()]);
     for (const n of String(env.OPERATOR_ALERT_USERNAMES || '').split(',')) if (n.trim()) names.add(n.trim().toLowerCase());
     const q = db.prepare('SELECT id FROM users WHERE lower(username) = ?');
-    return [...names].map((n) => q.get(n)).filter(Boolean).map((u) => u.id);
+    return (await Promise.all([...names].map(async (n) => await q.get(n)))).filter(Boolean).map((u) => u.id);
 }
 
 function message(a) {
@@ -68,11 +47,11 @@ const ago = (ms) => (ms < 3600e3 ? `${Math.max(1, Math.round(ms / 60e3))} min` :
  * notify(userId, notification) creates one notification (the notification service's create(); `silent` skips
  * web push); revise(userId, notificationId, fields) edits one in place (title, message, icon, is_read).
  */
-function receive(db, body, { notify, revise = null, now = Date.now(), env = process.env } = {}) {
+async function receive(db, body, { notify, revise = null, now = Date.now(), env = process.env } = {}) {
     ensureTables(db);
     const source = body.source;
     const current = new Map(body.alerts.map((a) => [a.fingerprint, a]));
-    const rows = db.prepare('SELECT * FROM operator_alerts WHERE source = ?').all(source);
+    const rows = await db.prepare('SELECT * FROM operator_alerts WHERE source = ?').all(source);
     const byFp = new Map(rows.map((r) => [r.fingerprint, r]));
     const work = [];
     const out = { ok: true, firing: current.size, opened: 0, reminded: 0, resolved: 0, notified: 0 };
@@ -85,7 +64,7 @@ function receive(db, body, { notify, revise = null, now = Date.now(), env = proc
             opened_at = CASE WHEN operator_alerts.state = 'resolved' AND @reopen = 0 THEN @now ELSE operator_alerts.opened_at END`);
     const resolve = db.prepare("UPDATE operator_alerts SET state = 'resolved', resolved_at = ? WHERE source = ? AND fingerprint = ?");
 
-    db.transaction(() => {
+    await db.tx(async () => {
         for (const a of current.values()) {
             const prev = byFp.get(a.fingerprint);
             let kind = null;
@@ -97,23 +76,23 @@ function receive(db, body, { notify, revise = null, now = Date.now(), env = proc
                 out.reminded += 1;
             }
             const paged = kind === 'opened' || kind === 'reminded';
-            upsert.run({ source, fingerprint: a.fingerprint, name: a.name, severity: a.severity, summary: a.summary, description: a.description || null,
+            await upsert.run({ source, fingerprint: a.fingerprint, name: a.name, severity: a.severity, summary: a.summary, description: a.description || null,
                 service: a.service || null, started_at: a.started_at, now, reopen: kind === 'reopened' ? 1 : 0,
                 notified_at: paged ? now : (prev && prev.notified_at) || null });
             if (kind) work.push({ kind, a, prev });
         }
         for (const r of rows) {
             if (r.state !== 'firing' || current.has(r.fingerprint)) continue;
-            resolve.run(now, source, r.fingerprint);
+            await resolve.run(now, source, r.fingerprint);
             out.resolved += 1;
             work.push({ kind: 'resolved', a: r, prev: r });
         }
-        db.prepare("DELETE FROM operator_alerts WHERE state = 'resolved' AND resolved_at < ?").run(now - KEEP_RESOLVED_MS);
-    })();
+        await db.prepare("DELETE FROM operator_alerts WHERE state = 'resolved' AND resolved_at < ?").run(now - KEEP_RESOLVED_MS);
+    });
 
     const notices = (row) => { try { return JSON.parse((row && row.notices) || '[]'); } catch { return []; } };
     const saveNotices = db.prepare('UPDATE operator_alerts SET notices = ? WHERE source = ? AND fingerprint = ?');
-    const users = work.length ? operatorUserIds(db, env) : [];
+    const users = work.length ? await operatorUserIds(db, env) : [];
     for (const { kind, a, prev } of work) {
         if (a.severity === 'info') continue;
         const critical = a.severity === 'critical';
@@ -133,7 +112,7 @@ function receive(db, body, { notify, revise = null, now = Date.now(), env = proc
                     if (created && created.id) kept.push([uid, created.id]);
                 } catch (e) { console.warn('[operator-alerts] notify failed:', e.message); }
             }
-            saveNotices.run(JSON.stringify(kept), source, a.fingerprint);
+            await saveNotices.run(JSON.stringify(kept), source, a.fingerprint);
             continue;
         }
         if (typeof revise !== 'function') continue;
@@ -148,9 +127,9 @@ function receive(db, body, { notify, revise = null, now = Date.now(), env = proc
 }
 
 /** Firing and recently resolved alerts, newest first (the admin view and /status). */
-function list(db, { limit = 100 } = {}) {
+async function list(db, { limit = 100 } = {}) {
     ensureTables(db);
-    return db.prepare("SELECT source, fingerprint, name, severity, summary, service, state, started_at, opened_at, last_seen_at, notified_at, resolved_at FROM operator_alerts ORDER BY state = 'firing' DESC, COALESCE(resolved_at, last_seen_at) DESC LIMIT ?").all(limit);
+    return await db.prepare("SELECT source, fingerprint, name, severity, summary, service, state, started_at, opened_at, last_seen_at, notified_at, resolved_at FROM operator_alerts ORDER BY state = 'firing' DESC, COALESCE(resolved_at, last_seen_at) DESC LIMIT ?").all(limit);
 }
 
 module.exports = { ensureTables, receive, list, operatorUserIds, REMIND_MS, FLAP_MS };

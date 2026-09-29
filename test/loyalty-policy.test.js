@@ -8,29 +8,30 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { modules } = require('openvibe-contracts');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-loyalty-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = await getDb();
 console.log = log;
 const principals = require('../server/identity/principals');
-db.prepare("INSERT OR IGNORE INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('live', 'x', 'live', '[]', 1)").run();
+await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('live', 'x', 'live', '[]', 1) ON CONFLICT DO NOTHING").run();
 const aud = principals.SELF_AUDIENCE;
-const grant = (cap) => principals.grantsFor(db, 'live', aud).find((g) => g.capability === cap);
+const grant = async (cap) => (await principals.grantsFor(db, 'live', aud)).find((g) => g.capability === cap);
 
 // A database as an older release left it: Live's module grants without live.loyalty, and a transfer grant.
-principals.ensureSchema(db);
-db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = 'live' AND capability IN ('network.modules.read', 'network.modules.write')").run(JSON.stringify(['live.profile', 'live.stats']));
-db.prepare("INSERT OR REPLACE INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES ('live', 'network.coins.transfer', ?, '[\"live\"]', 'default')").run(aud);
-assert.ok(grant('network.coins.transfer'), 'the old transfer grant is there before the boot');
+await principals.ensureSchema(db);
+await db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = 'live' AND capability IN ('network.modules.read', 'network.modules.write')").run(JSON.stringify(['live.profile', 'live.stats']));
+await db.prepare("INSERT INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES ('live', 'network.coins.transfer', ?, '[\"live\"]', 'default') ON CONFLICT (client_id, capability, audience) DO UPDATE SET namespaces = excluded.namespaces, granted_by = excluded.granted_by").run(aud);
+assert.ok(await grant('network.coins.transfer'), 'the old transfer grant is there before the boot');
 
-principals.ensureSchema(db); // the next boot
-assert.strictEqual(grant('network.coins.transfer'), undefined, 'the transfer grant is revoked at boot');
+await principals.ensureSchema(db); // the next boot
+assert.strictEqual(await grant('network.coins.transfer'), undefined, 'the transfer grant is revoked at boot');
 assert.ok(principals.REVOKED_GRANTS.some(([c, cap]) => c === 'live' && cap === 'network.coins.transfer'));
 assert.ok(!principals.DEFAULT_GRANTS.some(([, cap]) => cap === 'network.coins.transfer'), 'no default hands out the transfer grant');
 for (const cap of ['network.modules.read', 'network.modules.write']) {
-    assert.deepStrictEqual(grant(cap).namespaces, ['live.profile', 'live.stats', 'live.loyalty'], `${cap} gained live.loyalty`);
+    assert.deepStrictEqual((await grant(cap)).namespaces, ['live.profile', 'live.stats', 'live.loyalty'], `${cap} gained live.loyalty`);
 }
 
 // live.loyalty is private: nothing of it appears in a public view.
@@ -44,3 +45,4 @@ assert.ok(!modules.validateData('live.loyalty', { ...record, cashout_usd: 12 }).
 
 fs.rmSync(dir, { recursive: true, force: true });
 console.log('loyalty policy: all checks passed');
+})().catch(err => { console.error(err); process.exit(1); });

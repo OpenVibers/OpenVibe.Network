@@ -71,7 +71,7 @@ function createEventsOps({ db, eventsUrl, privateKey, issuer, fetchImpl = global
         try {
             const out = await call('POST', '/api/v1/deliveries/replay', ids ? { subscription_id: b.subscription_id, event_ids: ids } : { subscription_id: b.subscription_id, from_seq: fromSeq });
             if (out.status !== 200) return res.status(out.status === 404 ? 404 : 502).json({ ok: false, error: `Events answered ${out.status}`, detail: out.data && (out.data.detail || out.data.title) });
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'events_replay',
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'events_replay',
                 JSON.stringify({ subscription_id: b.subscription_id, event_ids: ids ? ids.slice(0, 50) : undefined, event_count: ids ? ids.length : undefined, from_seq: fromSeq ?? undefined, queued: out.data.queued }));
             res.json({ ok: true, queued: out.data.queued });
         } catch (err) {

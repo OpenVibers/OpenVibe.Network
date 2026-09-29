@@ -21,31 +21,7 @@ const SERVICE_LABELS = {
     vip: 'VIP', trade: 'Trade', host: 'Host', deals: 'Deals', coupons: 'Coupons', openre: 'OpenRe.Stream',
 };
 
-function ensureSchema(db) {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS user_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            service TEXT,
-            sub TEXT,
-            type TEXT NOT NULL DEFAULT 'page',
-            title TEXT NOT NULL,
-            url TEXT NOT NULL,
-            icon TEXT,
-            meta TEXT,
-            hits INTEGER NOT NULL DEFAULT 1,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        );
-        CREATE INDEX IF NOT EXISTS idx_user_history_user_time ON user_history(user_id, updated_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_user_history_user_url ON user_history(user_id, url);
-    `);
-    const cols = db.prepare('PRAGMA table_info(users)').all();
-    if (!cols.find(c => c.name === 'history_paused')) {
-        try { db.exec('ALTER TABLE users ADD COLUMN history_paused INTEGER DEFAULT 0'); } catch { /* exists */ }
-    }
-}
+async function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
 /** Only http(s) URLs on the network's own domains are recorded; everything else is dropped. */
 function allowedUrl(raw) {
@@ -78,8 +54,8 @@ function rowOut(r) {
     };
 }
 
-function createHistoryRoutes(db, requireAuth) {
-    ensureSchema(db);
+async function createHistoryRoutes(db, requireAuth) {
+    await ensureSchema(db);
     const router = express.Router();
     router.use(requireAuth);
 
@@ -89,24 +65,24 @@ function createHistoryRoutes(db, requireAuth) {
         next();
     });
 
-    router.get('/', (req, res) => {
+    router.get('/', async (req, res) => {
         const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
         const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
         const where = ['user_id = ?']; const params = [req.user.id];
         if (req.query.service) { where.push('service = ?'); params.push(String(req.query.service).slice(0, 32)); }
         if (req.query.type) { where.push('type = ?'); params.push(String(req.query.type).slice(0, 32)); }
         if (req.query.q) { where.push('(title LIKE ? OR url LIKE ?)'); const q = `%${String(req.query.q).slice(0, 80)}%`; params.push(q, q); }
-        const rows = db.prepare(`SELECT * FROM user_history WHERE ${where.join(' AND ')} ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?`).all(...params, limit, offset);
-        const total = db.prepare(`SELECT COUNT(*) AS c FROM user_history WHERE ${where.join(' AND ')}`).get(...params)?.c || 0;
-        const paused = !!db.prepare('SELECT history_paused FROM users WHERE id = ?').get(req.user.id)?.history_paused;
-        const services = db.prepare('SELECT service, COUNT(*) AS c FROM user_history WHERE user_id = ? GROUP BY service ORDER BY c DESC').all(req.user.id)
+        const rows = await db.prepare(`SELECT * FROM user_history WHERE ${where.join(' AND ')} ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?`).all(...params, limit, offset);
+        const total = (await db.prepare(`SELECT COUNT(*) AS c FROM user_history WHERE ${where.join(' AND ')}`).get(...params))?.c || 0;
+        const paused = !!(await db.prepare('SELECT history_paused FROM users WHERE id = ?').get(req.user.id))?.history_paused;
+        const services = (await db.prepare('SELECT service, COUNT(*) AS c FROM user_history WHERE user_id = ? GROUP BY service ORDER BY c DESC').all(req.user.id))
             .map(r => ({ service: r.service, label: SERVICE_LABELS[r.service] || r.service, count: r.c }));
         res.set('Cache-Control', 'no-store');
         res.json({ items: rows.map(rowOut), total, paused, services });
     });
 
-    router.post('/', (req, res) => {
-        const u = db.prepare('SELECT history_paused FROM users WHERE id = ?').get(req.user.id);
+    router.post('/', async (req, res) => {
+        const u = await db.prepare('SELECT history_paused FROM users WHERE id = ?').get(req.user.id);
         if (u?.history_paused) return res.json({ ok: true, paused: true });
         const url = allowedUrl(req.body?.url);
         if (!url) return res.status(400).json({ error: 'A URL on the OpenVibe network is required' });
@@ -122,31 +98,31 @@ function createHistoryRoutes(db, requireAuth) {
             const s = JSON.stringify(req.body.meta);
             if (s.length <= 1000) meta = s;
         }
-        const recent = db.prepare(`SELECT id FROM user_history WHERE user_id = ? AND url = ? AND updated_at > datetime('now', '-${DEDUPE_WINDOW_MIN} minutes')`).get(req.user.id, url);
+        const recent = await db.prepare(`SELECT id FROM user_history WHERE user_id = ? AND url = ? AND updated_at > datetime('now', '-${DEDUPE_WINDOW_MIN} minutes')`).get(req.user.id, url);
         if (recent) {
-            db.prepare('UPDATE user_history SET hits = hits + 1, title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(title, recent.id);
+            await db.prepare('UPDATE user_history SET hits = hits + 1, title = ?, updated_at = ov_now() WHERE id = ?').run(title, recent.id);
             return res.json({ ok: true, id: recent.id, merged: true });
         }
-        const r = db.prepare('INSERT INTO user_history (user_id, service, sub, type, title, url, icon, meta) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        const r = await db.prepare('INSERT INTO user_history (user_id, service, sub, type, title, url, icon, meta) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id')
             .run(req.user.id, service, sub, type, title, url, icon, meta);
         // Trim: keep the newest MAX_PER_USER rows.
-        db.prepare(`DELETE FROM user_history WHERE user_id = ? AND id NOT IN (SELECT id FROM user_history WHERE user_id = ? ORDER BY updated_at DESC LIMIT ${MAX_PER_USER})`).run(req.user.id, req.user.id);
+        await db.prepare(`DELETE FROM user_history WHERE user_id = ? AND id NOT IN (SELECT id FROM user_history WHERE user_id = ? ORDER BY updated_at DESC LIMIT ${MAX_PER_USER})`).run(req.user.id, req.user.id);
         res.status(201).json({ ok: true, id: r.lastInsertRowid });
     });
 
-    router.put('/settings', (req, res) => {
+    router.put('/settings', async (req, res) => {
         const paused = req.body?.paused ? 1 : 0;
-        db.prepare('UPDATE users SET history_paused = ? WHERE id = ?').run(paused, req.user.id);
+        await db.prepare('UPDATE users SET history_paused = ? WHERE id = ?').run(paused, req.user.id);
         res.json({ ok: true, paused: !!paused });
     });
 
-    router.delete('/', (req, res) => {
-        const r = db.prepare('DELETE FROM user_history WHERE user_id = ?').run(req.user.id);
+    router.delete('/', async (req, res) => {
+        const r = await db.prepare('DELETE FROM user_history WHERE user_id = ?').run(req.user.id);
         res.json({ ok: true, deleted: r.changes });
     });
 
-    router.delete('/:id', (req, res) => {
-        const r = db.prepare('DELETE FROM user_history WHERE id = ? AND user_id = ?').run(parseInt(req.params.id, 10) || 0, req.user.id);
+    router.delete('/:id', async (req, res) => {
+        const r = await db.prepare('DELETE FROM user_history WHERE id = ? AND user_id = ?').run(parseInt(req.params.id, 10) || 0, req.user.id);
         if (!r.changes) return res.status(404).json({ error: 'Not found' });
         res.json({ ok: true });
     });

@@ -12,18 +12,19 @@ const http = require('http');
 const express = require('express');
 const { ids } = require('openvibe-contracts');
 const { signDeliveryHeaders } = require('openvibe-sdk/events');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const { NotificationService } = require('../server/notifications/notification-service');
 const { createEventsConsumer } = require('../server/notifications/events-consumer');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-follow-auth-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
-require('../server/identity/principals').ensureSchema(db);
-for (const c of ['live', 'tools']) db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(`${c}-secret`, c);
+await require('../server/identity/principals').ensureSchema(db);
+for (const c of ['live', 'tools']) await db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(`${c}-secret`, c);
 const CAROL = ids.newId('user'), DAVE = ids.newId('user'), ERIN = ids.newId('user');
-db.prepare('INSERT INTO users (id, username, password_hash, subject_id, role) VALUES (20, ?, ?, ?, ?), (21, ?, ?, ?, ?), (22, ?, ?, ?, ?)')
+await db.prepare('INSERT INTO users (id, username, password_hash, subject_id, role) VALUES (20, ?, ?, ?, ?), (21, ?, ?, ?, ?), (22, ?, ?, ?, ?)')
     .run('carol', 'x', CAROL, 'streamer', 'dave', 'x', DAVE, 'user', 'erin', 'x', ERIN, 'user');
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
@@ -34,7 +35,7 @@ const follows = require('../server/identity/follows');
 const principals = require('../server/identity/principals');
 const SECRET = 's'.repeat(40);
 const notifications = new NotificationService(db);
-const consumer = createEventsConsumer({ db, notifications, secrets: SECRET, followsAuthority: 'network', log: { log() {}, warn() {}, error() {} } });
+const consumer = await createEventsConsumer({ db, notifications, secrets: SECRET, followsAuthority: 'network', log: { log() {}, warn() {}, error() {} } });
 const app = express();
 Object.assign(app.locals, { db, config, privateKey: keys.privateKey, publicKey: keys.publicKey });
 app.use(express.urlencoded({ extended: true }));
@@ -59,13 +60,13 @@ const server = http.createServer(app);
         assert.deepStrictEqual([r.status, r.body.followers, r.body.following, r.body.notify_push], [201, 1, true, false]);
         r = await call('PUT', `/internal/follows/channel/${CAROL}`, { body: { follower: ERIN }, token: live });
         assert.strictEqual(r.body.followers, 2);
-        assert.strictEqual(db.prepare('SELECT source FROM user_follows WHERE follower_subject = ?').get(ERIN).source, 'live', 'the writing service is recorded');
+        assert.strictEqual((await db.prepare('SELECT source FROM user_follows WHERE follower_subject = ?').get(ERIN)).source, 'live', 'the writing service is recorded');
         assert.strictEqual((await call('PUT', '/internal/follows/channel/carol', { body: { follower: 'usr_01JAB2C3D4E5F6G7H8J9K0MNPZ' }, token: live })).status, 404, 'the follower must be a Network account');
         assert.strictEqual((await call('PUT', '/internal/follows/channel/carol', { body: { follower: DAVE, extra: 1 }, token: live })).status, 400);
         r = await call('DELETE', `/internal/follows/channel/carol?follower=${ERIN}`, { token: live });
         assert.deepStrictEqual([r.status, r.body.following, r.body.followers], [200, false, 1]);
         await call('PUT', '/internal/follows/channel/carol', { body: { follower: ERIN }, token: live });
-        const evs = db.prepare('SELECT envelope FROM network_event_outbox ORDER BY id').all().map((x) => JSON.parse(x.envelope)).filter((e) => e.event_type.startsWith('network.follow.'));
+        const evs = (await db.prepare('SELECT envelope FROM network_event_outbox ORDER BY id').all()).map((x) => x.envelope).filter((e) => e.event_type.startsWith('network.follow.'));
         assert.deepStrictEqual(evs.map((e) => e.event_type), ['network.follow.created', 'network.follow.created', 'network.follow.deleted', 'network.follow.created']);
 
         // ── Go-live with FOLLOWS_AUTHORITY=network: Network's followers, no Live call ──
@@ -80,7 +81,7 @@ const server = http.createServer(app);
         const body = await res.json();
         assert.strictEqual(res.status, 200, JSON.stringify(body));
         assert.strictEqual(body.outcome, 'notified', JSON.stringify(body));
-        const told = db.prepare("SELECT user_id FROM notifications WHERE type = 'STREAM_LIVE' AND sender_id = 20 ORDER BY user_id").all().map((x) => x.user_id);
+        const told = (await db.prepare("SELECT user_id FROM notifications WHERE type = 'STREAM_LIVE' AND sender_id = 20 ORDER BY user_id").all()).map((x) => x.user_id);
         assert.deepStrictEqual(told, [21, 22], 'both followers, from Network\'s graph');
     } finally {
         server.close();
@@ -88,3 +89,4 @@ const server = http.createServer(app);
     }
     console.log('follows authority: all checks passed');
 })().catch((e) => { console.error(e); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

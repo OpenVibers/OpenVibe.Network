@@ -14,14 +14,23 @@ const http = require('http');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { bootServer } = require('./helpers/boot-server');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 
 const REQUIRED = ['issuer', 'authorization_endpoint', 'token_endpoint', 'jwks_uri', 'response_types_supported', 'subject_types_supported', 'id_token_signing_alg_values_supported'];
 
 (async () => {
     // ── The real server: discovery at the issuer's root ──
     const ISSUER = 'https://openvibe.network';
-    const srv = await bootServer({ env: { OV_NETWORK_URL: ISSUER, BASE_URL: ISSUER } });
+    // A real RSA key pair on disk: the server loads JWT_PRIVATE_KEY/JWT_PUBLIC_KEY from these paths and must
+    // publish exactly this key's kid and modulus at /api/.well-known/jwks (decision 2, plan T2: the key
+    // stays a file/env key, never in the database).
+    const jwksKeys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
+    const keyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-jwks-'));
+    const privPath = path.join(keyDir, 'private.pem');
+    const pubPath = path.join(keyDir, 'public.pem');
+    fs.writeFileSync(privPath, jwksKeys.privateKey, { mode: 0o600 });
+    fs.writeFileSync(pubPath, jwksKeys.publicKey);
+    const srv = await bootServer({ env: { OV_NETWORK_URL: ISSUER, BASE_URL: ISSUER, JWT_PRIVATE_KEY: privPath, JWT_PUBLIC_KEY: pubPath } });
     try {
         const get = (p) => fetch(srv.base + p).then(async r => ({ status: r.status, type: r.headers.get('content-type') || '', body: await r.json().catch(() => null) }));
         const root = await get('/.well-known/openid-configuration');
@@ -51,17 +60,28 @@ const REQUIRED = ['issuer', 'authorization_endpoint', 'token_endpoint', 'jwks_ur
             const r = await fetch(srv.base + new URL(root.body[k]).pathname, { redirect: 'manual' });
             assert.notStrictEqual(r.status, 404, `${k} is served (got ${r.status})`);
         }
+        // The published JWKS is the configured key: the same kid the id_token header carries, and the same
+        // modulus and exponent as JWT_PUBLIC_KEY (decision 2, plan T2).
+        const jwks = await get('/api/.well-known/jwks');
+        assert.strictEqual(jwks.status, 200);
+        assert.strictEqual(jwks.body.algorithm, 'RS256', 'a real key is served, never the HS256 fallback secret');
+        const jwk = (jwks.body.keys || []).find((k) => k.kid === 'ov-network-1');
+        assert.ok(jwk, 'the JWKS publishes kid ov-network-1');
+        const pub = crypto.createPublicKey(jwksKeys.publicKey).export({ format: 'jwk' });
+        assert.strictEqual(jwk.kty, 'RSA');
+        assert.strictEqual(jwk.n, pub.n, "the served modulus is the configured key's modulus");
+        assert.strictEqual(jwk.e, pub.e, 'and the exponent');
         // The platform descriptor points at the standard location.
         assert.strictEqual((await get('/.well-known/openvibe')).body.openid_configuration, `${ISSUER}/.well-known/openid-configuration`);
-    } catch (err) { console.error(srv.logs()); throw err; } finally { await srv.stop(); }
+    } catch (err) { console.error(srv.logs()); throw err; } finally { await srv.stop(); fs.rmSync(keyDir, { recursive: true, force: true }); }
 
     // ── What it advertises is true: id_token and userinfo ──
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-oidc-'));
     const log = console.log; console.log = () => {};
-    const db = initDb(path.join(dir, 'network.db'));
+    const db = await getDb();
     console.log = log;
-    db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
-    db.prepare("INSERT INTO users (id, username, password_hash, display_name) VALUES (7, 'viewer', 'x', 'Viewer')").run();
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
+    await db.prepare("INSERT INTO users (id, username, password_hash, display_name) VALUES (7, 'viewer', 'x', 'Viewer')").run();
     const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
     const app = express();
     app.use(express.json());
@@ -134,4 +154,4 @@ const REQUIRED = ['issuer', 'authorization_endpoint', 'token_endpoint', 'jwks_ur
 
     server.close();
     console.log('oidc discovery: all checks passed');
-})().catch((err) => { console.error(err); process.exit(1); });
+})().then(() => process.exit(0)).catch((err) => { console.error(err); process.exit(1); });

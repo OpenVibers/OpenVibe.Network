@@ -27,34 +27,8 @@ const dnsCheck = require('./dns-check');
 
 const NOTE_MAX = 500;
 
-function ensureSchema(db) {
-    // 'mirror' joined the roles after the table shipped; SQLite cannot alter a CHECK, so rebuild once.
-    try {
-        const row = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'tool_domains'").get();
-        if (row && /CHECK \(role IN/.test(row.sql) && !/'mirror'/.test(row.sql)) {
-            db.exec('BEGIN; ALTER TABLE tool_domains RENAME TO tool_domains_old;');
-            _createTable(db);
-            db.exec('INSERT INTO tool_domains SELECT * FROM tool_domains_old; DROP TABLE tool_domains_old; COMMIT;');
-        }
-    } catch (err) { try { db.exec('ROLLBACK'); } catch { /* */ } console.error('[Domains] role migration failed:', err.message); }
-    _createTable(db);
-}
-function _createTable(db) {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS tool_domains (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tool_id TEXT NOT NULL,
-            host TEXT NOT NULL UNIQUE,
-            role TEXT NOT NULL DEFAULT 'alias' CHECK (role IN ('canonical', 'short', 'alias', 'mirror')),
-            enabled INTEGER NOT NULL DEFAULT 1,
-            note TEXT,
-            created_by INTEGER,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE INDEX IF NOT EXISTS idx_tool_domains_tool ON tool_domains(tool_id, role, enabled);
-    `);
-}
+async function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
+function _createTable(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
 function iso(sqliteTime) {
     if (!sqliteTime) return null;
@@ -72,8 +46,8 @@ function catalogOwnerOf(host, catalog) {
     return null;
 }
 
-function createDomainRoutes(db, requireAuth, opts = {}) {
-    ensureSchema(db);
+async function createDomainRoutes(db, requireAuth, opts = {}) {
+    await ensureSchema(db);
     const catalogSource = opts.catalog || toolsCatalog;
     const checkDomain = opts.checkDomain || dnsCheck.checkDomain;
     const onChange = typeof opts.onChange === 'function' ? opts.onChange : () => {};
@@ -87,15 +61,15 @@ function createDomainRoutes(db, requireAuth, opts = {}) {
         byId: db.prepare('SELECT * FROM tool_domains WHERE id = ?'),
         byHost: db.prepare('SELECT * FROM tool_domains WHERE host = ?'),
         holders: db.prepare('SELECT * FROM tool_domains WHERE tool_id = ? AND role = ? AND enabled = 1 AND id != ?'),
-        demote: db.prepare("UPDATE tool_domains SET role = 'alias', updated_at = CURRENT_TIMESTAMP WHERE id = ?"),
-        insert: db.prepare('INSERT INTO tool_domains (tool_id, host, role, enabled, note, created_by) VALUES (?, ?, ?, ?, ?, ?)'),
-        update: db.prepare('UPDATE tool_domains SET tool_id = ?, host = ?, role = ?, enabled = ?, note = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
+        demote: db.prepare("UPDATE tool_domains SET role = 'alias', updated_at = ov_now() WHERE id = ?"),
+        insert: db.prepare('INSERT INTO tool_domains (tool_id, host, role, enabled, note, created_by) VALUES (?, ?, ?, ?, ?, ?) RETURNING id'),
+        update: db.prepare('UPDATE tool_domains SET tool_id = ?, host = ?, role = ?, enabled = ?, note = ?, updated_at = ov_now() WHERE id = ?'),
         remove: db.prepare('DELETE FROM tool_domains WHERE id = ?'),
     };
 
-    function audit(req, action, details) {
+    async function audit(req, action, details) {
         try {
-            db.prepare('INSERT INTO audit_log (user_id, action, details, ip) VALUES (?, ?, ?, ?)').run(req.user.id, action, JSON.stringify(details), req.ip || null);
+            await db.prepare('INSERT INTO audit_log (user_id, action, details, ip) VALUES (?, ?, ?, ?)').run(req.user.id, action, JSON.stringify(details), req.ip || null);
         } catch (err) {
             console.error('[Domains] Audit log error:', err.message);
         }
@@ -139,7 +113,7 @@ function createDomainRoutes(db, requireAuth, opts = {}) {
             if (owner && owner !== next.tool_id) return { status: 409, error: `${next.host} already belongs to the tool "${owner}" in the Tools catalog`, warnings };
         }
 
-        const taken = q.byHost.get(next.host);
+        const taken = await q.byHost.get(next.host);
         if (taken && (!current || taken.id !== current.id)) {
             return { status: 409, error: `${next.host} is already registered for the tool "${taken.tool_id}" — a host belongs to one tool`, warnings };
         }
@@ -147,18 +121,18 @@ function createDomainRoutes(db, requireAuth, opts = {}) {
     }
 
     /** Write inside one transaction; returns the row plus whatever was demoted to make room. */
-    const write = db.transaction((next, current, userId) => {
+    const write = db.txFn(async (next, current, userId) => {
         const demoted = [];
         if (next.enabled && (next.role === 'canonical' || next.role === 'short')) {   // one of each; aliases and mirrors can be many
-            for (const row of q.holders.all(next.tool_id, next.role, current ? current.id : 0)) {
-                q.demote.run(row.id);
+            for (const row of await q.holders.all(next.tool_id, next.role, current ? current.id : 0)) {
+                await q.demote.run(row.id);
                 demoted.push({ id: row.id, host: row.host, from: row.role });
             }
         }
         let id;
-        if (current) { q.update.run(next.tool_id, next.host, next.role, next.enabled, next.note, current.id); id = current.id; }
-        else id = q.insert.run(next.tool_id, next.host, next.role, next.enabled, next.note, userId).lastInsertRowid;
-        return { row: q.byId.get(id), demoted };
+        if (current) { await q.update.run(next.tool_id, next.host, next.role, next.enabled, next.note, current.id); id = current.id; }
+        else id = (await q.insert.run(next.tool_id, next.host, next.role, next.enabled, next.note, userId)).lastInsertRowid;
+        return { row: await q.byId.get(id), demoted };
     });
 
     // ── public ───────────────────────────────────────────────
@@ -173,11 +147,11 @@ function createDomainRoutes(db, requireAuth, opts = {}) {
         }
         next();
     });
-    publicRouter.get('/', (_req, res) => {
+    publicRouter.get('/', async (_req, res) => {
         try {
-            const domains = q.publicList.all();
+            const domains = await q.publicList.all();
             res.set('Cache-Control', 'public, max-age=60');
-            res.json({ updated: iso(q.lastChange.get().t) || new Date(0).toISOString(), domains });
+            res.json({ updated: iso((await q.lastChange.get()).t) || new Date(0).toISOString(), domains });
         } catch (err) {
             console.error('[Domains] public list:', err.message);
             res.status(500).json({ error: 'Could not read the domain registry' });
@@ -198,7 +172,7 @@ function createDomainRoutes(db, requireAuth, opts = {}) {
         try {
             const { catalog, source } = await catalogSource.getCatalog();
             const known = new Set([...catalog.tools.map(t => t.id), ...catalog.families.map(f => f.id)]);
-            const rows = q.all.all().map(r => ({ ...present(r), tool_known: source === 'fallback' ? null : known.has(r.tool_id) }));
+            const rows = (await q.all.all()).map(r => ({ ...present(r), tool_known: source === 'fallback' ? null : known.has(r.tool_id) }));
             res.json({ ok: true, domains: rows, catalog_source: source });
         } catch (err) { res.status(500).json({ ok: false, error: err.message }); }
     });
@@ -225,8 +199,8 @@ function createDomainRoutes(db, requireAuth, opts = {}) {
         try {
             const v = await validate(req.body || {}, null);
             if (v.error) return res.status(v.status).json({ ok: false, error: v.error, warnings: v.warnings });
-            const { row, demoted } = write(v.value, null, req.user.id);
-            audit(req, 'tool_domain_create', { id: row.id, tool_id: row.tool_id, host: row.host, role: row.role, enabled: !!row.enabled, demoted, tool_unverified: !v.toolVerified || undefined });
+            const { row, demoted } = await write(v.value, null, req.user.id);
+            await audit(req, 'tool_domain_create', { id: row.id, tool_id: row.tool_id, host: row.host, role: row.role, enabled: !!row.enabled, demoted, tool_unverified: !v.toolVerified || undefined });
             onChange();
             res.status(201).json({ ok: true, domain: present(row), demoted, tool_verified: v.toolVerified, warnings: v.warnings });
         } catch (err) {
@@ -237,14 +211,14 @@ function createDomainRoutes(db, requireAuth, opts = {}) {
 
     adminRouter.put('/:id', async (req, res) => {
         try {
-            const current = q.byId.get(Number(req.params.id));
+            const current = await q.byId.get(Number(req.params.id));
             if (!current) return res.status(404).json({ ok: false, error: 'Domain not found' });
             const v = await validate(req.body || {}, current);
             if (v.error) return res.status(v.status).json({ ok: false, error: v.error, warnings: v.warnings });
-            const { row, demoted } = write(v.value, current, req.user.id);
+            const { row, demoted } = await write(v.value, current, req.user.id);
             const changed = {};
             for (const k of ['tool_id', 'host', 'role', 'enabled', 'note']) if (String(current[k] ?? '') !== String(row[k] ?? '')) changed[k] = { from: current[k], to: row[k] };
-            audit(req, 'tool_domain_update', { id: row.id, host: row.host, tool_id: row.tool_id, changed, demoted, tool_unverified: !v.toolVerified || undefined });
+            await audit(req, 'tool_domain_update', { id: row.id, host: row.host, tool_id: row.tool_id, changed, demoted, tool_unverified: !v.toolVerified || undefined });
             onChange();
             res.json({ ok: true, domain: present(row), demoted, tool_verified: v.toolVerified, warnings: v.warnings });
         } catch (err) {
@@ -253,12 +227,12 @@ function createDomainRoutes(db, requireAuth, opts = {}) {
         }
     });
 
-    adminRouter.delete('/:id', (req, res) => {
+    adminRouter.delete('/:id', async (req, res) => {
         try {
-            const current = q.byId.get(Number(req.params.id));
+            const current = await q.byId.get(Number(req.params.id));
             if (!current) return res.status(404).json({ ok: false, error: 'Domain not found' });
-            q.remove.run(current.id);
-            audit(req, 'tool_domain_delete', { id: current.id, tool_id: current.tool_id, host: current.host, role: current.role });
+            await q.remove.run(current.id);
+            await audit(req, 'tool_domain_delete', { id: current.id, tool_id: current.tool_id, host: current.host, role: current.role });
             onChange();
             res.json({ ok: true });
         } catch (err) { res.status(500).json({ ok: false, error: err.message }); }

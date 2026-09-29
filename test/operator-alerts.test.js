@@ -11,18 +11,19 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const { validate } = require('openvibe-contracts');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const alerts = require('../server/operator/alerts');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-opalerts-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
 process.env.OWNER_USERNAME = 'Boss';
 process.env.OPERATOR_ALERT_USERNAMES = 'deputy, nobody-here';
-db.prepare("UPDATE oauth_clients SET client_secret = 'host-secret' WHERE client_id = 'host'").run();
-db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
-db.prepare("INSERT INTO users (id, username, password_hash) VALUES (1, 'boss', 'x'), (2, 'deputy', 'x'), (3, 'someone', 'x')").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'host-secret' WHERE client_id = 'host'").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
+await db.prepare("INSERT INTO users (id, username, password_hash) VALUES (1, 'boss', 'x'), (2, 'deputy', 'x'), (3, 'someone', 'x')").run();
 
 const sent = [];
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
@@ -102,17 +103,17 @@ const alert = (name, extra = {}) => ({ fingerprint: crypto.createHash('sha256').
         // A day later, a critical still firing: one reminder; then quiet again.
         sent.length = 0;
         const later = Date.now() + alerts.REMIND_MS + 1000;
-        let out = alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed')] }, { notify: (u, n) => { sent.push({ user_id: u, ...n }); return { id: `r${sent.length}` }; }, now: later });
+        let out = await alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed')] }, { notify: (u, n) => { sent.push({ user_id: u, ...n }); return { id: `r${sent.length}` }; }, now: later });
         assert.deepStrictEqual(out, { ok: true, firing: 1, opened: 0, reminded: 1, resolved: 0, notified: 2 });
         assert.strictEqual(sent[0].title, 'Still firing: OpenVibeBackupMissed');
-        out = alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed')] }, { notify: () => true, now: later + 60000 });
+        out = await alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed')] }, { notify: () => true, now: later + 60000 });
         assert.strictEqual(out.reminded, 0);
 
         // A warning is never reminded.
-        out = alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed'), alert('Warned', { severity: 'warning' })] }, { notify: () => ({ id: 'w' }), now: later + 120000 });
-        out = alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed'), alert('Warned', { severity: 'warning' })] }, { notify: () => ({ id: 'w' }), now: later + 2 * alerts.REMIND_MS });
+        out = await alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed'), alert('Warned', { severity: 'warning' })] }, { notify: () => ({ id: 'w' }), now: later + 120000 });
+        out = await alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed'), alert('Warned', { severity: 'warning' })] }, { notify: () => ({ id: 'w' }), now: later + 2 * alerts.REMIND_MS });
         assert.strictEqual(out.reminded, 1, 'only the critical one');
-        alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed')] }, { notify: () => null, now: later + 2 * alerts.REMIND_MS + 1 });
+        await alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed')] }, { notify: () => null, now: later + 2 * alerts.REMIND_MS + 1 });
 
         // Fires again within 12 h of resolving: the same notifications are revised; nothing is created or pushed.
         sent.length = 0; revised.length = 0;
@@ -129,21 +130,21 @@ const alert = (name, extra = {}) => ({ fingerprint: crypto.createHash('sha256').
         sent.length = 0;
         r = await post({ source: 'prometheus', alerts: [alert('OpenVibeBackupMissed'), alert('JustInfo', { severity: 'info' })] }, auth);
         assert.deepStrictEqual([r.body.opened, r.body.notified, sent.length], [1, 0, 0]);
-        assert.ok(alerts.list(db).some((x) => x.name === 'JustInfo' && x.state === 'firing'));
+        assert.ok((await alerts.list(db)).some((x) => x.name === 'JustInfo' && x.state === 'firing'));
 
         // After 12 h resolved, firing again is a new episode with new notifications.
-        alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed')] }, { notify: () => null });
+        await alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed')] }, { notify: () => null });
         const much = Date.now() + alerts.FLAP_MS + 60000;
         sent.length = 0;
-        out = alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed'), alert('OpenVibeBrowserCheckFailed', { severity: 'warning' })] }, { notify: (u, n) => { sent.push(n); return { id: `x${sent.length}` }; }, now: much });
+        out = await alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed'), alert('OpenVibeBrowserCheckFailed', { severity: 'warning' })] }, { notify: (u, n) => { sent.push(n); return { id: `x${sent.length}` }; }, now: much });
         assert.deepStrictEqual([out.opened, out.notified], [1, 2]);
         assert.ok(sent.every((n) => n.title === 'Alert: OpenVibeBrowserCheckFailed'));
-        alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed')] }, { notify: () => null, now: much + 1000 });
+        await alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed')] }, { notify: () => null, now: much + 1000 });
 
         // An empty set resolves everything from that source; the list keeps them.
         r = await post({ source: 'prometheus', alerts: [] }, auth);
         assert.deepStrictEqual([r.body.firing, r.body.resolved], [0, 1]);
-        const rows = alerts.list(db);
+        const rows = await alerts.list(db);
         assert.ok(rows.every((x) => x.state === 'resolved'), JSON.stringify(rows.map((x) => [x.name, x.state])));
         assert.ok(rows.every((x) => !('description' in x) || x.description === undefined));
 
@@ -153,8 +154,8 @@ const alert = (name, extra = {}) => ({ fingerprint: crypto.createHash('sha256').
         assert.deepStrictEqual([r.status, r.body.opened, r.body.notified], [200, 1, 0]);
     } finally {
         server.close();
-        db.close();
         fs.rmSync(dir, { recursive: true, force: true });
     }
     console.log('operator alerts: all checks passed');
 })().catch((e) => { console.error(e); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

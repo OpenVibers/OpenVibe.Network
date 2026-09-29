@@ -9,19 +9,20 @@ const os = require('os');
 const path = require('path');
 const http = require('http');
 const express = require('express');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const github = require('../server/integrations/github');
 const principals = require('../server/identity/principals');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-github-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
 delete process.env.GITHUB_TOKEN;
 process.env.OWNER_USERNAME = 'goosely';
-db.prepare("UPDATE oauth_clients SET client_secret = 'blog-secret' WHERE client_id = 'blog'").run();
-db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
-db.prepare("INSERT INTO users (id, username, password_hash) VALUES (1, 'goosely', 'x'), (2, 'anadmin', 'x')").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'blog-secret' WHERE client_id = 'blog'").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
+await db.prepare("INSERT INTO users (id, username, password_hash) VALUES (1, 'goosely', 'x'), (2, 'anadmin', 'x')").run();
 
 const TOKEN = 'github_pat_' + 'A1b2C3d4E5'.repeat(6);
 const seen = [];
@@ -39,7 +40,7 @@ app.locals.config = { internalKey: 'legacy-key', jwt: { issuer: 'https://openvib
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 app.use('/oauth', require('../server/auth/oauth-routes'));
-app.use((req, _res, next) => { const u = req.headers['x-user']; req.user = u ? db.prepare('SELECT id, username FROM users WHERE username = ?').get(u) : null; next(); });
+app.use(async (req, _res, next) => { const u = req.headers['x-user']; req.user = u ? await db.prepare('SELECT id, username FROM users WHERE username = ?').get(u) : null; next(); });
 app.use('/api/admin/integrations/github', github.adminRouter(db, { fetchImpl: fakeGithub }));
 app.get('/internal/integrations/github-token', principals.guard('network.integration.github.read', { legacy: false }), github.internalHandler(db));
 const server = http.createServer(app);
@@ -65,8 +66,8 @@ const server = http.createServer(app);
         assert.strictEqual(r.status, 200, r.text);
         assert.ok(!r.text.includes(TOKEN), 'the token is never sent back');
         assert.deepStrictEqual([r.body.github.set, r.body.github.source, r.body.github.last4], [true, 'database', TOKEN.slice(-4)]);
-        assert.strictEqual(github.tokenOf(db), TOKEN);
-        const audit = db.prepare("SELECT details FROM audit_log WHERE action = 'integration_update'").all();
+        assert.strictEqual(await github.tokenOf(db), TOKEN);
+        const audit = await db.prepare("SELECT details FROM audit_log WHERE action = 'integration_update'").all();
         assert.strictEqual(audit.length, 1);
         assert.ok(!audit[0].details.includes(TOKEN), 'the audit row keeps the last four only');
         assert.ok(!(await call('GET', A, { user: 'goosely' })).text.includes(TOKEN));
@@ -104,12 +105,12 @@ const server = http.createServer(app);
         assert.deepStrictEqual([r.body.github.source, r.body.github.last4], ['env', 'ZZZZ']);
         assert.strictEqual((await call('PUT', A, { user: 'goosely', body: { token: TOKEN } })).status, 409);
         assert.strictEqual((await call('DELETE', A, { user: 'goosely' })).status, 409);
-        assert.strictEqual(github.tokenOf(db), process.env.GITHUB_TOKEN);
+        assert.strictEqual(await github.tokenOf(db), process.env.GITHUB_TOKEN);
         delete process.env.GITHUB_TOKEN;
 
         // The registry's library tags read the token at call time.
         const src = fs.readFileSync(path.join(__dirname, '../server/index.js'), 'utf8');
-        assert.ok(/token: \(\) => require\('\.\/integrations\/github'\)\.tokenOf\(db\)/.test(src), 'library tags get the token lazily');
+        assert.ok(/token: (async )?\(\) => (await )?require\('\.\/integrations\/github'\)\.tokenOf\(db\)/.test(src), 'library tags get the token lazily');
         assert.ok(src.indexOf("app.get('/internal/integrations/github-token'") < src.indexOf("app.use('/internal', require('./internal/routes'))"), 'mounted before the /internal router');
     } finally {
         server.close();
@@ -117,3 +118,4 @@ const server = http.createServer(app);
     }
     console.log('github integration: all checks passed');
 })().catch((e) => { console.error(e); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

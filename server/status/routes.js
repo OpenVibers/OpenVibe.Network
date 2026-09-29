@@ -259,11 +259,11 @@ function createStatusRoutes({ ecosystem, now = () => new Date() }) {
     r.get('/api/v1/status/slo', (_req, res) => {
         res.set('Cache-Control', 'public, max-age=300').set('Access-Control-Allow-Origin', '*').json(loadSlo());
     });
-    r.get('/status', (_req, res) => {
+    r.get('/status', async (_req, res) => {
         const slo = { ...loadSlo(), pollSeconds: ecosystem.pollMs / 1000 };
         res.set('Content-Type', 'text/html; charset=utf-8').set('Cache-Control', 'no-cache, max-age=0').set('X-Robots-Tag', 'noindex, nofollow');
         let incidents = null;
-        try { incidents = require('./incidents').list(_req.app.locals.db); } catch { incidents = null; }
+        try { incidents = await require('./incidents').list(_req.app.locals.db); } catch { incidents = null; }
         res.send(renderPage(rows(ecosystem), slo, now().toISOString(), loadDevPath(), loadDevPath(TOOLSJOB_FILE), typeof ecosystem.releaseHealthSince === 'function' ? ecosystem.releaseHealthSince() : null, incidents));
     });
     return r;

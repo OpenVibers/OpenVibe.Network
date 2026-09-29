@@ -1,56 +1,39 @@
 'use strict';
-
-const path = require('path');
+// ═══════════════════════════════════════════════════════════════
+// reset-db — development/owner convenience: throw away the local database and let the next boot recreate
+// the schema. Under PostgreSQL there is no file to remove: in production (DATABASE_URL set) this refuses
+// and tells the operator what to run instead; without it (the embedded PGlite database of a dev/test
+// process) the PGlite directory is moved aside, so the next start migrates a fresh one.
+// ═══════════════════════════════════════════════════════════════
 const fs = require('fs');
-const dotenv = require('dotenv');
+const path = require('path');
+const config = require('./config');
 
-function loadEnv() {
-    const envPath = path.resolve(process.cwd(), '.env');
-    if (fs.existsSync(envPath)) {
-        const parsed = dotenv.config({ path: envPath });
-        if (parsed.error) {
-            throw parsed.error;
-        }
-        return parsed.parsed || {};
-    }
-    return {};
-}
-
-function resolveDatabasePath(env) {
-    if (env.DB_PATH) {
-        return path.resolve(process.cwd(), env.DB_PATH);
-    }
-    return path.resolve(__dirname, '..', 'data', 'network.db');
-}
-
-function main() {
-    const env = loadEnv();
-    const dbPath = resolveDatabasePath(env);
-
-    if (!fs.existsSync(dbPath)) {
-        console.log(`No database file found at ${dbPath}. Nothing to reset.`);
-        process.exit(0);
+async function main({ log = console, cfg = config } = {}) {
+    if (cfg.db.url) {
+        log.error('reset-db: the database is PostgreSQL (DATABASE_URL is set); there is no file to remove.');
+        log.error("Drop and recreate the schema as the owner instead, e.g. psql \"$DATABASE_DIRECT_URL\" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' — or point DATABASE_URL at a scratch database and re-run scripts/migrate-to-postgres.js.");
+        return 1;
     }
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupPath = `${dbPath}.backup.${timestamp}`;
+    const dir = path.resolve(process.cwd(), cfg.db.pgliteDir);
+    if (!fs.existsSync(dir)) {
+        log.log(`No embedded database at ${dir}. Nothing to reset.`);
+        return 0;
+    }
 
+    const backup = `${dir}.backup.${new Date().toISOString().replace(/[:.]/g, '-')}`;
     try {
-        fs.copyFileSync(dbPath, backupPath);
-        fs.unlinkSync(dbPath);
-        for (const suffix of ['-wal', '-shm']) {
-            const journal = `${dbPath}${suffix}`;
-            if (fs.existsSync(journal)) {
-                fs.unlinkSync(journal);
-            }
-        }
-        console.log(`Backed up existing database to ${backupPath}`);
-        console.log(`Database reset complete. Restart the openvibe-network service to recreate the schema.`);
-        process.exit(0);
+        fs.renameSync(dir, backup);
+        log.log(`Moved the embedded database to ${backup}`);
+        log.log('Reset complete. Restart the openvibe-network service to recreate the schema (migrations run at boot).');
+        return 0;
     } catch (err) {
-        console.error(`Failed to reset database: ${err.message}`);
-        process.exit(1);
+        log.error(`Failed to reset database: ${err.message}`);
+        return 1;
     }
 }
 
-main();
+if (require.main === module) main().then((code) => process.exit(code), (err) => { console.error(`Failed to reset database: ${err.message}`); process.exit(1); });
+
+module.exports = { main };

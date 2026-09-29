@@ -1,54 +1,67 @@
 #!/usr/bin/env node
 /**
- * Raw analytics retention and one-time scrub for Network's analytics tables (ADR-021). They live in
- * network.db, Network's identity database, next to users and sessions. The command itself is
- * openvibe-shared/analytics/prune-cli; this wrapper passes Network's better-sqlite3, database and path
- * rules (/avatar/<name>, /users/by-username/<name>, /api/auth/anon/<token>; server/analytics/network.js).
+ * ADR-021 raw analytics retention and the one-time scrub of pre-ADR rows, on Network's own PostgreSQL
+ * (plan T2, ADR-035). The analytics tables live in the service database next to users and sessions
+ * (migrations/0002_analytics.sql); the tracker itself schedules the prune at boot, this is the on-demand
+ * operator form.
  *
- *   node scripts/analytics-prune.js                          # dry run: counts only, changes nothing
- *   node scripts/analytics-prune.js --scrub                  # dry run including what the scrub would rewrite
- *   node scripts/analytics-prune.js --apply --backup <file>  # online backup to <file>, then prune
- *   node scripts/analytics-prune.js --apply --scrub --backup <file>
- *   node scripts/analytics-prune.js --apply --no-backup      # prune without a backup (explicit)
- *   node scripts/analytics-prune.js --help                   # every option
+ *   node scripts/analytics-prune.js                # dry run: how many raw events would go, nothing changes
+ *   node scripts/analytics-prune.js --apply        # delete raw events older than --days
  *
- * Default database: $DB_PATH, else data/network.db. Relative --db and --backup paths are from the repo
- * root. The backup is a full copy of network.db (accounts, sessions): mode 0600.
+ *   --days <n>   keep raw events newer than n days, 1..30 (default 30)
+ *   --apply      actually prune (default: dry run)
  *
- * VACUUM (after an --apply, unless --no-vacuum) rewrites all of network.db and holds its write lock
- * meanwhile: Network's own writes (sign-ins, sessions) wait 5 s and then fail. Vacuum with the service
- * stopped, or pass --no-vacuum while it is up. Run as the service user so no file changes owner.
+ * On SQLite this was openvibe-shared/analytics/prune-cli: it made an online copy of network.db, VACUUMed
+ * it and scrubbed legacy rows. None of that survives the port — there is no database file to copy or
+ * VACUUM, and openvibe-shared's PostgreSQL path (pruneRawEventsPg) covers retention. Run it where Network
+ * runs, or with DATABASE_URL/DATABASE_DIRECT_URL pointing at a copy; it needs no elevated privileges.
  */
 'use strict';
-const path = require('path');
-const Database = require('better-sqlite3');
-const cli = require('openvibe-shared/analytics/prune-cli');
-const networkAnalytics = require('../server/analytics/network');
+const { parseArgs } = require('./lib/db-ops');
+const { pruneRawEventsPg } = require('openvibe-shared/analytics/pg');
 
-const ROOT = path.join(__dirname, '..');
+const USAGE = `Raw analytics retention (ADR-021, PostgreSQL).
 
-const VACUUM_WARNING = `
-On Network, VACUUM rewrites all of network.db and holds its write lock meanwhile: Network's own writes
-(sign-ins, sessions) wait 5 s and then fail. Vacuum with the service stopped, or pass --no-vacuum while
-it is up. Default database: $DB_PATH, else data/network.db; relative paths are from the repo root. The
-backup is a full copy of network.db (mode 0600). Run as the service user so no file changes owner.`;
+  node scripts/analytics-prune.js                dry run: counts only, changes nothing
+  node scripts/analytics-prune.js --apply        delete raw events older than --days
 
-/** The database the server uses: --db, else $DB_PATH, else data/network.db (relative to the repo root). */
-function defaultDbPath(args, env = process.env) {
-    return path.resolve(ROOT, args.db || env.DB_PATH || path.join('data', 'network.db'));
+Options:
+  --days <n>   keep raw events newer than n days, 1..30 (default 30)
+  --apply      actually prune`;
+
+/** UTC 'YYYY-MM-DD HH:MM:SS', the tracker's own time shape (openvibe-shared/analytics/tracker.sqlTime). */
+function sqlTime(ms) {
+    const d = new Date(ms);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
 }
 
-function main(argv, log) {
-    return cli.main(argv, {
-        Database,
-        log,
-        root: ROOT,
-        defaultDb: defaultDbPath,
-        ...networkAnalytics.PATH_OPTS,
-        usage: cli.USAGE + '\n' + VACUUM_WARNING,
-    });
+/** Open the service database: the injected handle (tests), else DATABASE_URL as the service uses it. */
+async function openDb(injected) {
+    if (injected) return injected;
+    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set: the analytics tables live in the service database');
+    const { createDb } = require('openvibe-sdk/db');
+    return createDb({ url: process.env.DATABASE_URL, service: 'network-analytics-prune', max: 1 });
 }
 
-if (require.main === module) cli.run(main);
+async function main(argv = process.argv.slice(2), { db: injected, log = console } = {}) {
+    const args = parseArgs(argv, { flags: ['apply', 'help'], values: ['days'] });
+    if (args.help) { log.log(USAGE); return 0; }
+    const days = Number(args.days || 30);
+    if (!Number.isInteger(days) || days < 1 || days > 30) { log.error('--days must be an integer 1..30'); return 2; }
 
-module.exports = { main, defaultDbPath };
+    const db = await openDb(injected);
+    if (!args.apply) {
+        const n = (await db.prepare('SELECT COUNT(*) AS n FROM analytics_events WHERE created_at < ?').get(sqlTime(Date.now() - days * 86400000))).n;
+        log.log(`dry run: ${n} raw event(s) older than ${days} day(s) would go; rollups stay. Re-run with --apply to prune.`);
+        return 0;
+    }
+
+    const { removed, cutoff } = await pruneRawEventsPg(db, { days });
+    log.log(`pruned ${removed} raw event(s) older than ${cutoff} (${days} day(s)); rollups stay.`);
+    return 0;
+}
+
+if (require.main === module) main().then((code) => process.exit(code), (err) => { console.error(`error: ${err.message}`); process.exit(1); });
+
+module.exports = { main, sqlTime, USAGE };

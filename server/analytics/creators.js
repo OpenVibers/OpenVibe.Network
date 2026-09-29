@@ -23,29 +23,12 @@ const KEEP_DAYS = 400;
 const COLUMNS = ['stream_id', 'creator_subject', 'title', 'category', 'started_at', 'ended_at', 'duration_seconds',
     'peak_viewers', 'avg_viewers', 'unique_chatters', 'messages', 'watch_minutes', 'received_at'];
 
-function ensureSchema(db) {
-    db.exec(`CREATE TABLE IF NOT EXISTS creator_streams (
-        stream_id        INTEGER PRIMARY KEY,
-        creator_subject  TEXT NOT NULL,
-        title            TEXT,
-        category         TEXT,
-        started_at       TEXT NOT NULL,
-        ended_at         TEXT NOT NULL,
-        duration_seconds INTEGER NOT NULL DEFAULT 0,
-        peak_viewers     INTEGER,
-        avg_viewers      REAL,
-        unique_chatters  INTEGER,
-        messages         INTEGER,
-        watch_minutes    INTEGER,
-        received_at      TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_creator_streams_creator ON creator_streams(creator_subject, started_at);`);
-}
+function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
 const int = (v) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.round(Number(v)) : null);
 
 /** One live.stream.ended envelope → 'analytics:recorded' | 'ignored:<why>'. Inside the consumer's inbox claim. */
-function record(db, event, { now = new Date().toISOString() } = {}) {
+async function record(db, event, { now = new Date().toISOString() } = {}) {
     ensureSchema(db);
     if (event.source !== 'live') return 'ignored:source';
     const p = event.payload && typeof event.payload === 'object' ? event.payload : {};
@@ -55,7 +38,7 @@ function record(db, event, { now = new Date().toISOString() } = {}) {
     const started = Date.parse(p.started_at); const ended = Date.parse(p.ended_at);
     if (!Number.isFinite(started) || !Number.isFinite(ended) || ended < started) return 'ignored:times';
     const s = p.stats && typeof p.stats === 'object' ? p.stats : {};
-    db.prepare(`INSERT INTO creator_streams (stream_id, creator_subject, title, category, started_at, ended_at, duration_seconds, peak_viewers, avg_viewers, unique_chatters, messages, watch_minutes, received_at)
+    await db.prepare(`INSERT INTO creator_streams (stream_id, creator_subject, title, category, started_at, ended_at, duration_seconds, peak_viewers, avg_viewers, unique_chatters, messages, watch_minutes, received_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(stream_id) DO UPDATE SET creator_subject = excluded.creator_subject, title = excluded.title, category = excluded.category,
                     started_at = excluded.started_at, ended_at = excluded.ended_at, duration_seconds = excluded.duration_seconds,
@@ -65,16 +48,16 @@ function record(db, event, { now = new Date().toISOString() } = {}) {
             new Date(started).toISOString(), new Date(ended).toISOString(), int(p.duration_seconds) ?? Math.round((ended - started) / 1000),
             int(s.peak_viewers), Number.isFinite(Number(s.avg_viewers)) && Number(s.avg_viewers) >= 0 ? Math.round(Number(s.avg_viewers) * 10) / 10 : null,
             int(s.unique_chatters), int(s.messages), int(s.watch_minutes), now);
-    db.prepare('DELETE FROM creator_streams WHERE ended_at < ?').run(new Date(Date.parse(now) - KEEP_DAYS * 86400000).toISOString());
+    await db.prepare('DELETE FROM creator_streams WHERE ended_at < ?').run(new Date(Date.parse(now) - KEEP_DAYS * 86400000).toISOString());
     return 'analytics:recorded';
 }
 
 /** network.creator-analytics-result@1 for a creator over `days`; `full` adds the audience figures. */
-function query(db, creator, { days = 30, full = false, now = Date.now() } = {}) {
+async function query(db, creator, { days = 30, full = false, now = Date.now() } = {}) {
     ensureSchema(db);
     const d = Math.min(Math.max(parseInt(days, 10) || 30, 1), 365);
     const since = new Date(now - d * 86400000).toISOString();
-    const rows = db.prepare('SELECT * FROM creator_streams WHERE creator_subject = ? AND started_at >= ? ORDER BY started_at DESC').all(creator, since);
+    const rows = await db.prepare('SELECT * FROM creator_streams WHERE creator_subject = ? AND started_at >= ? ORDER BY started_at DESC').all(creator, since);
     const pick = (r) => {
         const o = { stream_id: r.stream_id, title: r.title, category: r.category, started_at: r.started_at, ended_at: r.ended_at, duration_seconds: r.duration_seconds };
         if (r.peak_viewers != null) o.peak_viewers = r.peak_viewers;
@@ -104,12 +87,12 @@ function query(db, creator, { days = 30, full = false, now = Date.now() } = {}) 
     return { creator, days: d, full: !!full, totals, daily, streams: rows.slice(0, 100).map(pick) };
 }
 
-function viewerOf(req) {
+async function viewerOf(req) {
     const h = req.headers.authorization || '';
     const token = h.startsWith('Bearer ') ? h.slice(7) : (req.cookies && req.cookies.ov_token);
     if (!token) return null;
     try {
-        const out = require('../auth/session').verifySession(token, { db: req.app.locals.db, publicKey: req.app.locals.publicKey, config: req.app.locals.config });
+        const out = await require('../auth/session').verifySession(token, { db: req.app.locals.db, publicKey: req.app.locals.publicKey, config: req.app.locals.config });
         return out && out.user ? out.user : null;
     } catch { return null; }
 }
@@ -118,18 +101,18 @@ function viewerOf(req) {
 function router({ fullGuard }) {
     const r = express.Router();
     r.use(http.middleware());
-    r.get('/:creator/analytics', (req, res) => {
+    r.get('/:creator/analytics', async (req, res) => {
         const db = req.app.locals.db;
         const key = String(req.params.creator || '');
-        const u = SUBJECT_RE.test(key) ? db.prepare('SELECT subject_id, is_anon FROM users WHERE subject_id = ?').get(key)
-            : NAME_RE.test(key) ? db.prepare('SELECT subject_id, is_anon FROM users WHERE username = ? COLLATE NOCASE').get(key) : null;
+        const u = SUBJECT_RE.test(key) ? await db.prepare('SELECT subject_id, is_anon FROM users WHERE subject_id = ?').get(key)
+            : NAME_RE.test(key) ? await db.prepare('SELECT subject_id, is_anon FROM users WHERE lower(username) = lower(?)').get(key) : null;
         if (!u || u.is_anon || !SUBJECT_RE.test(String(u.subject_id || ''))) return http.sendProblem(res, 404, 'analytics.unknown_creator', { detail: 'no such creator', ctx: req.ov });
-        const answer = (full) => res.set('Cache-Control', full ? 'private, no-store' : 'public, max-age=60').json(query(db, u.subject_id, { days: req.query.days, full }));
-        const viewer = viewerOf(req);
-        if (viewer) return answer(viewer.subject_id === u.subject_id);
+        const answer = async (full) => res.set('Cache-Control', full ? 'private, no-store' : 'public, max-age=60').json(await query(db, u.subject_id, { days: req.query.days, full }));
+        const viewer = await viewerOf(req);
+        if (viewer) return await answer(viewer.subject_id === u.subject_id);
         const h = String(req.headers.authorization || '');
-        if (h.startsWith('Bearer ')) return fullGuard(req, res, () => answer(true));   // a service token: full, or refused
-        return answer(false);
+        if (h.startsWith('Bearer ')) return fullGuard(req, res, async () => await answer(true));   // a service token: full, or refused
+        return await answer(false);
     });
     return r;
 }

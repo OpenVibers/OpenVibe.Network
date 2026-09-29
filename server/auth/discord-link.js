@@ -28,9 +28,9 @@ setInterval(() => {
  * GET /api/auth/discord/link — Start Discord OAuth2 flow
  * Requires authenticated user. Redirects to Discord authorization.
  */
-router.get('/link', (req, res) => {
+router.get('/link', async (req, res) => {
     const db = req.app.locals.db;
-    const clientId = db.getSetting('discord_oauth_client_id');
+    const clientId = await db.getSetting('discord_oauth_client_id');
     if (!clientId) {
         return res.status(503).json({ error: 'Discord linking is not configured' });
     }
@@ -77,8 +77,8 @@ router.get('/callback', async (req, res) => {
     }
 
     const db = req.app.locals.db;
-    const clientId = db.getSetting('discord_oauth_client_id');
-    const clientSecret = db.getSetting('discord_oauth_client_secret');
+    const clientId = await db.getSetting('discord_oauth_client_id');
+    const clientSecret = await db.getSetting('discord_oauth_client_secret');
     if (!clientId || !clientSecret) {
         return res.redirect(`${req.app.locals.config.baseUrl}/linked?discord=error&reason=not_configured`);
     }
@@ -115,7 +115,7 @@ router.get('/callback', async (req, res) => {
         const discordUser = await userRes.json();
 
         // Check if this Discord account is already linked to a different user
-        const existing = db.prepare(
+        const existing = await db.prepare(
             "SELECT user_id FROM linked_accounts WHERE service = 'discord' AND service_user_id = ?"
         ).get(discordUser.id);
 
@@ -124,13 +124,13 @@ router.get('/callback', async (req, res) => {
         }
 
         // Link the account
-        db.prepare(`
+        await db.prepare(`
             INSERT INTO linked_accounts (user_id, service, service_user_id, service_username, linked_at)
-            VALUES (?, 'discord', ?, ?, CURRENT_TIMESTAMP)
+            VALUES (?, 'discord', ?, ?, ov_now())
             ON CONFLICT(user_id, service) DO UPDATE SET
                 service_user_id = ?,
                 service_username = ?,
-                linked_at = CURRENT_TIMESTAMP
+                linked_at = ov_now()
         `).run(
             stateData.userId,
             discordUser.id,
@@ -140,7 +140,7 @@ router.get('/callback', async (req, res) => {
         );
 
         // Audit log
-        db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+        await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
             stateData.userId, 'discord_linked', `Discord: ${discordUser.username} (${discordUser.id})`
         );
 
@@ -155,16 +155,16 @@ router.get('/callback', async (req, res) => {
  * DELETE /api/auth/discord/link — Unlink Discord account
  * Requires authenticated user.
  */
-router.delete('/link', (req, res) => {
+router.delete('/link', async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'Authentication required' });
 
     const db = req.app.locals.db;
-    const result = db.prepare(
+    const result = await db.prepare(
         "DELETE FROM linked_accounts WHERE user_id = ? AND service = 'discord'"
     ).run(req.user.id);
 
     if (result.changes > 0) {
-        db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+        await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
             req.user.id, 'discord_unlinked', 'Discord account unlinked'
         );
     }
@@ -175,15 +175,15 @@ router.delete('/link', (req, res) => {
 /**
  * GET /api/auth/discord/status — Check if Discord is linked
  */
-router.get('/status', (req, res) => {
+router.get('/status', async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'Authentication required' });
 
     const db = req.app.locals.db;
-    const linked = db.prepare(
+    const linked = await db.prepare(
         "SELECT service_user_id, service_username, linked_at FROM linked_accounts WHERE user_id = ? AND service = 'discord'"
     ).get(req.user.id);
 
-    const configured = !!(db.getSetting('discord_oauth_client_id') && db.getSetting('discord_oauth_client_secret'));
+    const configured = !!(await db.getSetting('discord_oauth_client_id') && await db.getSetting('discord_oauth_client_secret'));
 
     res.json({ ok: true, configured, linked: linked || null });
 });

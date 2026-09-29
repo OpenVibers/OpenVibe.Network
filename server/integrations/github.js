@@ -20,14 +20,14 @@ const KEY = 'github_token';
 // Classic (ghp_/gho_/ghs_/ghu_/ghr_), fine-grained (github_pat_) and legacy 40-hex tokens.
 const TOKEN_RE = /^(gh[pousr]_[A-Za-z0-9]{30,255}|github_pat_[A-Za-z0-9_]{40,255}|[0-9a-f]{40})$/;
 
-function tokenOf(db) {
-    const v = db.getSetting ? db.getSetting(KEY) : null;
+async function tokenOf(db) {
+    const v = db.getSetting ? await db.getSetting(KEY) : null;
     return v && String(v).trim() ? String(v).trim() : null;
 }
 
-function status(db) {
-    const t = tokenOf(db);
-    return { source: secrets.source(db, KEY), env: secrets.envName(KEY), set: Boolean(t), last4: t ? t.slice(-4) : null,
+async function status(db) {
+    const t = await tokenOf(db);
+    return { source: await secrets.source(db, KEY), env: secrets.envName(KEY), set: Boolean(t), last4: t ? t.slice(-4) : null,
         used_by: ['the registry library versions (Network)', 'the network changelog and Patch notes (OpenVibe.Blog)'] };
 }
 
@@ -47,23 +47,23 @@ async function test(token, fetchImpl = globalThis.fetch) {
 function adminRouter(db, { fetchImpl = globalThis.fetch } = {}) {
     const r = express.Router();
     r.use(requireOwner);
-    r.get('/', (req, res) => res.json({ ok: true, github: status(db) }));
-    r.put('/', express.json({ limit: '4kb' }), (req, res) => {
-        if (secrets.source(db, KEY) === 'env') return res.status(409).json({ ok: false, error: `Set in the environment (${secrets.envName(KEY)}); change it there` });
+    r.get('/', async (req, res) => res.json({ ok: true, github: await status(db) }));
+    r.put('/', express.json({ limit: '4kb' }), async (req, res) => {
+        if (await secrets.source(db, KEY) === 'env') return res.status(409).json({ ok: false, error: `Set in the environment (${secrets.envName(KEY)}); change it there` });
         const token = String((req.body && req.body.token) || '').trim();
         if (!TOKEN_RE.test(token)) return res.status(400).json({ ok: false, error: 'That does not look like a GitHub token (ghp_…, github_pat_…)' });
-        db.prepare('INSERT OR REPLACE INTO site_settings (key, value, type) VALUES (?, ?, ?)').run(KEY, token, 'secret');
-        db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'integration_update', JSON.stringify({ integration: 'github', last4: token.slice(-4) }));
-        res.json({ ok: true, github: status(db) });
+        await db.prepare('INSERT INTO site_settings (key, value, type) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, type = excluded.type').run(KEY, token, 'secret');
+        await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'integration_update', JSON.stringify({ integration: 'github', last4: token.slice(-4) }));
+        res.json({ ok: true, github: await status(db) });
     });
-    r.delete('/', (req, res) => {
-        if (secrets.source(db, KEY) === 'env') return res.status(409).json({ ok: false, error: `Set in the environment (${secrets.envName(KEY)}); change it there` });
-        db.prepare("UPDATE site_settings SET value = '' WHERE key = ?").run(KEY);
-        db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'integration_update', JSON.stringify({ integration: 'github', cleared: true }));
-        res.json({ ok: true, github: status(db) });
+    r.delete('/', async (req, res) => {
+        if (await secrets.source(db, KEY) === 'env') return res.status(409).json({ ok: false, error: `Set in the environment (${secrets.envName(KEY)}); change it there` });
+        await db.prepare("UPDATE site_settings SET value = '' WHERE key = ?").run(KEY);
+        await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'integration_update', JSON.stringify({ integration: 'github', cleared: true }));
+        res.json({ ok: true, github: await status(db) });
     });
     r.post('/test', async (req, res) => {
-        try { res.json({ ok: true, test: await test(tokenOf(db), fetchImpl) }); }
+        try { res.json({ ok: true, test: await test(await tokenOf(db), fetchImpl) }); }
         catch (err) { res.status(502).json({ ok: false, error: `GitHub could not be reached: ${err.message}` }); }
     });
     return r;
@@ -71,11 +71,11 @@ function adminRouter(db, { fetchImpl = globalThis.fetch } = {}) {
 
 /** GET /internal/integrations/github-token for a service holding network.integration.github.read. */
 function internalHandler(db) {
-    return (req, res) => {
-        const t = tokenOf(db);
+    return async (req, res) => {
+        const t = await tokenOf(db);
         res.set('Cache-Control', 'no-store');
         if (!t) return res.status(404).json({ error: 'not_configured', detail: 'No GitHub token is set (admin → Settings → GitHub, or GITHUB_TOKEN)' });
-        res.json({ token: t, source: secrets.source(db, KEY) });
+        res.json({ token: t, source: await secrets.source(db, KEY) });
     };
 }
 

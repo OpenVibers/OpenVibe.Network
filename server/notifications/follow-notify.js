@@ -12,14 +12,14 @@
 const { channelUrl } = require('./stream-live');
 
 function followNotifier(notifications) {
-    return (db, { follower, type, target }) => {
+    return async (db, { follower, type, target }) => {
         if (type !== 'channel') return null;
         const who = db.prepare('SELECT id, username, display_name, avatar_url, is_anon FROM users WHERE subject_id = ?');
-        const f = who.get(follower);
-        const t = who.get(target);
+        const f = await who.get(follower);
+        const t = await who.get(target);
         if (!f || !t || t.is_anon) return null;
         const name = f.display_name || f.username || 'Someone';
-        return notifications.create({
+        return await notifications.create({
             user_id: t.id, type: 'FOLLOW', title: 'New Follower', message: `${name} followed you`,
             url: f.username ? channelUrl(f.username) : 'https://openvibe.live/', service: 'live',
             sender_id: f.id, sender_name: name, sender_avatar: f.avatar_url || null, actor_subject: follower,

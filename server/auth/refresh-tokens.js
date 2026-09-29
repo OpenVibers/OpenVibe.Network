@@ -31,46 +31,39 @@ const newFamily = () => `fam_${crypto.randomBytes(12).toString('hex')}`;
 const at = (v) => (v ? new Date(String(v).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(v)) ? '' : 'Z')).getTime() : NaN);
 
 /** Columns and index (boot, idempotent). No data is changed here. */
-function ensureSchema(db) {
-    const cols = new Set(db.prepare('PRAGMA table_info(oauth_tokens)').all().map(c => c.name));
-    if (!cols.has('family_id')) db.exec('ALTER TABLE oauth_tokens ADD COLUMN family_id TEXT');
-    if (!cols.has('generation')) db.exec('ALTER TABLE oauth_tokens ADD COLUMN generation INTEGER NOT NULL DEFAULT 0');
-    if (!cols.has('revoked_reason')) db.exec('ALTER TABLE oauth_tokens ADD COLUMN revoked_reason TEXT');
-    if (!cols.has('revoked_at')) db.exec('ALTER TABLE oauth_tokens ADD COLUMN revoked_at DATETIME');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_oauth_tokens_family ON oauth_tokens(family_id)');
-}
+async function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
 /** Store a new refresh token; returns the token (the only time it exists in clear). */
-function issue(db, { clientId, userId, scope = 'profile theme', familyId = null, generation = 0, now = Date.now() }) {
+async function issue(db, { clientId, userId, scope = 'profile theme', familyId = null, generation = 0, now = Date.now() }) {
     const token = crypto.randomBytes(48).toString('hex');
-    db.prepare(`INSERT INTO oauth_tokens (token, client_id, user_id, scope, expires_at, family_id, generation)
+    await db.prepare(`INSERT INTO oauth_tokens (token, client_id, user_id, scope, expires_at, family_id, generation)
         VALUES (?, ?, ?, ?, ?, ?, ?)`).run(hash(token), clientId, userId, scope, new Date(now + TTL_MS).toISOString(), familyId || newFamily(), generation);
     return token;
 }
 
 /** The stored row for a presented token, or null. Never matches a stored hash presented as a token. */
-function find(db, presented) {
+async function find(db, presented) {
     const raw = String(presented || '');
     if (!RAW_RE.test(raw)) return null;
-    const row = db.prepare('SELECT * FROM oauth_tokens WHERE token = ?').get(hash(raw));
+    const row = await db.prepare('SELECT * FROM oauth_tokens WHERE token = ?').get(hash(raw));
     if (row) return row;
     // A row still holding the raw token (written before this change, not hashed yet): hash it now,
     // then use it.
-    const legacy = db.prepare('SELECT * FROM oauth_tokens WHERE token = ?').get(raw);
+    const legacy = await db.prepare('SELECT * FROM oauth_tokens WHERE token = ?').get(raw);
     if (!legacy) return null;
-    db.prepare('UPDATE oauth_tokens SET token = ?, family_id = COALESCE(family_id, ?) WHERE id = ? AND token = ?').run(hash(raw), `fam_legacy_${legacy.id}`, legacy.id, raw);
-    return db.prepare('SELECT * FROM oauth_tokens WHERE id = ?').get(legacy.id);
+    await db.prepare('UPDATE oauth_tokens SET token = ?, family_id = COALESCE(family_id, ?) WHERE id = ? AND token = ?').run(hash(raw), `fam_legacy_${legacy.id}`, legacy.id, raw);
+    return await db.prepare('SELECT * FROM oauth_tokens WHERE id = ?').get(legacy.id);
 }
 
 /** Revoke every live token of a family; returns how many. */
-function revokeFamily(db, familyId, reason = 'reuse') {
+async function revokeFamily(db, familyId, reason = 'reuse') {
     if (!familyId) return 0;
-    return db.prepare("UPDATE oauth_tokens SET revoked = 1, revoked_reason = ?, revoked_at = CURRENT_TIMESTAMP WHERE family_id = ? AND revoked = 0").run(reason, familyId).changes;
+    return (await db.prepare("UPDATE oauth_tokens SET revoked = 1, revoked_reason = ?, revoked_at = ov_now() WHERE family_id = ? AND revoked = 0").run(reason, familyId)).changes;
 }
 
-function audit(db, row, details) {
+async function audit(db, row, details) {
     try {
-        db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(row.user_id, 'oauth_refresh_reuse', JSON.stringify({ client_id: row.client_id, family_id: row.family_id, ...details }));
+        await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(row.user_id, 'oauth_refresh_reuse', JSON.stringify({ client_id: row.client_id, family_id: row.family_id, ...details }));
     } catch { /* audit is best effort */ }
 }
 
@@ -80,20 +73,20 @@ function audit(db, row, details) {
  *   { ok: false, error: 'invalid_grant', description, reuse? }
  * The old token is revoked ('rotated') atomically: of two concurrent uses exactly one gets ok.
  */
-function rotate(db, presented, clientId, { now = Date.now() } = {}) {
-    const row = find(db, presented);
+async function rotate(db, presented, clientId, { now = Date.now() } = {}) {
+    const row = await find(db, presented);
     const bad = (description, extra = {}) => ({ ok: false, error: 'invalid_grant', description, ...extra });
     if (!row) return bad('Invalid refresh token');
     if (row.client_id !== clientId) return bad('Client mismatch');
     if (row.revoked) {
         if (row.revoked_reason === 'rotated' && now - at(row.revoked_at) <= REUSE_GRACE_S * 1000) return bad('Refresh token already used');
-        const current = db.prepare('SELECT MAX(generation) AS g FROM oauth_tokens WHERE family_id = ?').get(row.family_id).g;
-        const n = revokeFamily(db, row.family_id, 'reuse');
-        if (row.revoked_reason === 'rotated' || n) audit(db, row, { generation_presented: row.generation, generation_current: current, revoked: n });
+        const current = (await db.prepare('SELECT MAX(generation) AS g FROM oauth_tokens WHERE family_id = ?').get(row.family_id)).g;
+        const n = await revokeFamily(db, row.family_id, 'reuse');
+        if (row.revoked_reason === 'rotated' || n) await audit(db, row, { generation_presented: row.generation, generation_current: current, revoked: n });
         return bad('Refresh token revoked', { reuse: row.revoked_reason === 'rotated' });
     }
     if (now > at(row.expires_at)) return bad('Refresh token expired');
-    const won = db.prepare("UPDATE oauth_tokens SET revoked = 1, revoked_reason = 'rotated', revoked_at = CURRENT_TIMESTAMP WHERE id = ? AND revoked = 0").run(row.id).changes === 1;
+    const won = (await db.prepare("UPDATE oauth_tokens SET revoked = 1, revoked_reason = 'rotated', revoked_at = ov_now() WHERE id = ? AND revoked = 0").run(row.id)).changes === 1;
     if (!won) return bad('Refresh token already used');   // a concurrent use of the same token got it
     return { ok: true, row, familyId: row.family_id || `fam_legacy_${row.id}`, generation: (row.generation || 0) + 1 };
 }

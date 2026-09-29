@@ -15,29 +15,30 @@ const http = require('http');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { validate, serviceAuth } = require('openvibe-contracts');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const subjects = require('../server/identity/subjects');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-mod-principals-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
-for (const c of ['games']) db.prepare("INSERT OR IGNORE INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, 'x', ?, '[]', 1)").run(c, c);
+for (const c of ['games']) await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, 'x', ?, '[]', 1) ON CONFLICT DO NOTHING").run(c, c);
 const principals = require('../server/identity/principals');
-principals.ensureSchema(db);
+await principals.ensureSchema(db);
 const modPrincipals = require('../server/identity/mod-principals');
 const ISSUER = 'https://openvibe.network';
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs1', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
 const config = { jwt: { issuer: ISSUER, accessTokenExpiry: '1h' } };
 const svc = (name, cap = ['mods.grant.manage']) => serviceAuth.signServiceToken({ iss: ISSUER, sub: `svc:${name}`, actor_type: 'service', aud: ['openvibe.network'], cap,
     iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 300, jti: `tok_${crypto.randomBytes(6).toString('hex')}` }, keys.privateKey);
-const mk = (name, role) => {
-    const id = db.prepare("INSERT INTO users (username, password_hash, role) VALUES (?, 'x', ?)").run(name, role).lastInsertRowid;
-    subjects.ensureUserSubject(db, db.prepare('SELECT * FROM users WHERE id = ?').get(id));
-    return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+const mk = async (name, role) => {
+    const id = (await db.prepare("INSERT INTO users (username, password_hash, role) VALUES (?, 'x', ?) RETURNING id").run(name, role)).lastInsertRowid;
+    await subjects.ensureUserSubject(db, await db.prepare('SELECT * FROM users WHERE id = ?').get(id));
+    return await db.prepare('SELECT * FROM users WHERE id = ?').get(id);
 };
 const tok = (u) => jwt.sign({ sub: u.id, id: u.id, subject_id: u.subject_id, username: u.username, role: u.role, iat: Math.floor(Date.now() / 1000) - 10 }, keys.privateKey, { algorithm: 'RS256', issuer: ISSUER, expiresIn: '1h' });
-const events = () => db.prepare('SELECT envelope FROM network_event_outbox ORDER BY id').all().map((r) => JSON.parse(r.envelope)).filter((e) => e.event_type === 'network.mod.grants_changed');
+const events = async () => (await db.prepare('SELECT envelope FROM network_event_outbox ORDER BY id').all()).map((r) => r.envelope).filter((e) => e.event_type === 'network.mod.grants_changed');
 const manifest = JSON.parse(fs.readFileSync(require.resolve('openvibe-contracts/fixtures/mods.mod-manifest/valid/market-stall-1.1.json'), 'utf8'));
 
 const authRoutes = require('../server/auth/routes');
@@ -56,7 +57,7 @@ const server = http.createServer(app);
     const call = (method, p, token, body) => fetch(base + p, { method, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined })
         .then(async (x) => ({ status: x.status, body: await x.json().catch(() => ({})) }));
     try {
-        assert.ok(principals.grantsFor(db, 'games', 'openvibe.network').some((g) => g.capability === 'mods.grant.manage'), 'Games holds mods.grant.manage');
+        assert.ok((await principals.grantsFor(db, 'games', 'openvibe.network')).some((g) => g.capability === 'mods.grant.manage'), 'Games holds mods.grant.manage');
         const games = svc('games');
         const [a, b] = manifest.permissions.capabilities;
 
@@ -93,14 +94,14 @@ const server = http.createServer(app);
         assert.strictEqual(x.body.revision, 3);
 
         // ── Staff ──
-        const boss = mk('boss', 'admin'); const eve = mk('eve', 'user');
+        const boss = await mk('boss', 'admin'); const eve = await mk('eve', 'user');
         x = await call('GET', '/api/admin/mods', tok(eve));
         assert.strictEqual(x.status, 403);
         x = await call('POST', `/api/admin/mods/${manifest.id}/grants`, tok(boss), { capability: b, action: 'revoke', reason: 'no' });
         assert.deepStrictEqual([x.status, x.body.error], [400, 'mod.reason_required']);
         x = await call('POST', `/api/admin/mods/${manifest.id}/grants`, tok(boss), { capability: b, action: 'revoke', reason: 'placed props in the spawn area' });
         assert.deepStrictEqual([x.status, x.body.approved, x.body.revision], [200, [], 4]);
-        assert.ok(db.prepare("SELECT 1 FROM audit_log WHERE action = 'mod_grant_change'").get(), 'audited');
+        assert.ok(await db.prepare("SELECT 1 FROM audit_log WHERE action = 'mod_grant_change'").get(), 'audited');
 
         // ── Revoke the install ──
         x = await call('POST', `/internal/mods/${manifest.id}/revoke`, games, { actor: 'games', reason: 'the install ended' });
@@ -109,7 +110,7 @@ const server = http.createServer(app);
         assert.deepStrictEqual([x.status, x.body.error], [409, 'mod.revoked'], 'never granted again');
 
         // Every change announced once, with the complete approved set.
-        const ev = events();
+        const ev = await events();
         assert.deepStrictEqual(ev.map((e) => [e.payload.revision, e.payload.change.action, e.payload.by, e.payload.approved.length]),
             [[1, 'register', 'runtime', 1], [2, 'approve', 'runtime', 2], [3, 'revoke', 'runtime', 1], [4, 'revoke', 'staff', 0], [5, 'revoke_all', 'runtime', 0]]);
         for (const e of ev) assert.ok(validate('network.mod.grants_changed@1', e.payload).valid && e.visibility === 'internal' && e.subject.type === 'mod');
@@ -120,3 +121,4 @@ const server = http.createServer(app);
     }
     console.log('mod principals: all checks passed');
 })().catch((e) => { console.error(e); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

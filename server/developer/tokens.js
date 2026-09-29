@@ -33,10 +33,10 @@ const isAppClient = (clientId) => store.APP_ID_RE.test(String(clientId || ''));
 const oauthError = (status, error, description) => ({ status, body: { error, error_description: description } });
 
 /** The app plus its project, if both are usable for issuing tokens now. */
-function usableApp(db, clientId) {
-    const app = isAppClient(clientId) ? db.prepare('SELECT * FROM dev_apps WHERE oauth_client_id = ?').get(String(clientId)) : null;
+async function usableApp(db, clientId) {
+    const app = isAppClient(clientId) ? await db.prepare('SELECT * FROM dev_apps WHERE oauth_client_id = ?').get(String(clientId)) : null;
     if (!app || app.revoked_at) return { error: oauthError(401, 'invalid_client', 'unknown or revoked app') };
-    const project = db.prepare('SELECT * FROM dev_projects WHERE id = ?').get(app.project_id);
+    const project = await db.prepare('SELECT * FROM dev_projects WHERE id = ?').get(app.project_id);
     if (!project || project.archived_at) return { error: oauthError(401, 'invalid_client', 'project archived') };
     if (!policy.ENVIRONMENT_POLICIES[project.environment_policy].includes(app.environment)) {
         return { error: oauthError(400, 'unauthorized_client', `${app.environment} apps are not enabled for this project`) };
@@ -45,10 +45,10 @@ function usableApp(db, clientId) {
 }
 
 /** Capabilities the app holds for an audience right now (sandbox apps: allowance ∪ sandbox allowance). */
-function effectiveGrants(db, app, project, audience, settings) {
+async function effectiveGrants(db, app, project, audience, settings) {
     const allowance = policy.allowanceFor(project, app, settings);
-    return db.prepare("SELECT capability FROM dev_grants WHERE app_id = ? AND audience = ? AND status = 'approved' ORDER BY capability")
-        .all(app.id, audience).map(r => r.capability)
+    return (await db.prepare("SELECT capability FROM dev_grants WHERE app_id = ? AND audience = ? AND status = 'approved' ORDER BY capability")
+        .all(app.id, audience)).map(r => r.capability)
         .filter(c => allowance.has(c) && policy.isGrantable(c) && policy.audienceOf(c) === audience);
 }
 
@@ -57,13 +57,13 @@ function projectNamespaces(projectId) {
     return [projectId, `app.${projectId}.*`];
 }
 
-function mint({ app, project, audience, scope, limit, onBehalfOf, privateKey, issuer, settings, db }) {
+async function mint({ app, project, audience, scope, limit, onBehalfOf, privateKey, issuer, settings, db }) {
     const aud = String(audience || '').trim();
     if (!aud || !/^[a-z0-9.-]+$/.test(aud)) return oauthError(400, 'invalid_request', 'audience is required');
     if (app.environment === 'sandbox' && !settings.sandboxAudiences.has(aud)) {
         return oauthError(400, 'invalid_target', `${aud} does not accept sandbox tokens`);
     }
-    const held = effectiveGrants(db, app, project, aud, settings).filter(c => !limit || limit.includes(c));
+    const held = (await effectiveGrants(db, app, project, aud, settings)).filter(c => !limit || limit.includes(c));
     const wanted = scope ? String(scope).split(/\s+/).filter(Boolean) : null;
     const missing = wanted ? wanted.filter(w => !held.includes(w)) : [];
     if (missing.length) return oauthError(400, 'invalid_scope', `not granted: ${missing.join(' ')}`);
@@ -118,8 +118,8 @@ const exportSubject = (projectId) => `app:app_${String(projectId).replace(/^prj_
  * Every mint writes a dev_audit row (project.export_token_issued: audience, env, cap, jti, expiry);
  * the token itself is never stored or logged. Returns the token response; throws DevError.
  */
-function mintExportToken(db, actor, projectId, body, { privateKey, issuer, ctx }) {
-    const { project } = store.access(db, actor, projectId, { need: 'admin', staffOk: false, allowArchived: true });
+async function mintExportToken(db, actor, projectId, body, { privateKey, issuer, ctx }) {
+    const { project } = await store.access(db, actor, projectId, { need: 'admin', staffOk: false, allowArchived: true });
     const audience = String((body && body.audience) || '');
     const cap = EXPORT_CAPS[audience];
     if (!cap) throw new store.DevError(422, 'export.invalid_audience', `audience is one of ${Object.keys(EXPORT_CAPS).join(', ')}`);
@@ -134,7 +134,7 @@ function mintExportToken(db, actor, projectId, body, { privateKey, issuer, ctx }
     assertValid('identity.service-token-claims@1', claims);
     const token = serviceAuth.signServiceToken(claims, privateKey);
     const expiresAt = new Date(claims.exp * 1000).toISOString();
-    store.audit(db, {
+    await store.audit(db, {
         projectId: project.id, actor: actor.label, action: 'project.export_token_issued', target: claims.sub,
         detail: { audience, env, cap: claims.cap, jti: claims.jti, expires_at: expiresAt, purpose: EXPORT_PURPOSE }, ctx,
     });
@@ -145,47 +145,47 @@ function mintExportToken(db, actor, projectId, body, { privateKey, issuer, ctx }
 }
 
 /** Authenticate the client of a token request. Public apps present no secret. */
-function authenticate(db, app, clientSecret) {
+async function authenticate(db, app, clientSecret) {
     if (app.client_type === 'public') {
         if (clientSecret) return oauthError(401, 'invalid_client', 'public apps have no client secret');
         return null;
     }
-    if (!store.matchSecret(db, app.id, clientSecret)) return oauthError(401, 'invalid_client', 'Invalid client credentials');
+    if (!await store.matchSecret(db, app.id, clientSecret)) return oauthError(401, 'invalid_client', 'Invalid client credentials');
     return null;
 }
 
 /** /oauth/token for an app client id. Returns { status, body }. */
-function handleTokenRequest(db, body, { privateKey, issuer, config }) {
+async function handleTokenRequest(db, body, { privateKey, issuer, config }) {
     const settings = policy.settings(config);
-    const found = usableApp(db, body.client_id);
+    const found = await usableApp(db, body.client_id);
     if (found.error) return found.error;
     const { app, project } = found;
     if (body.grant_type === 'client_credentials') {
         if (app.client_type !== 'confidential') return oauthError(400, 'unauthorized_client', 'public apps use authorization_code with PKCE');
-        const bad = authenticate(db, app, body.client_secret);
+        const bad = await authenticate(db, app, body.client_secret);
         if (bad) return bad;
-        return mint({ app, project, audience: body.audience, scope: body.scope, privateKey, issuer, settings, db });
+        return await mint({ app, project, audience: body.audience, scope: body.scope, privateKey, issuer, settings, db });
     }
     if (body.grant_type === 'authorization_code') {
-        const bad = authenticate(db, app, body.client_secret);
+        const bad = await authenticate(db, app, body.client_secret);
         if (bad) return bad;
         const code = String(body.code || '');
         if (!code) return oauthError(400, 'invalid_request', 'Missing code');
         const hash = store.hashSecret(code);
-        const row = db.prepare('SELECT * FROM dev_auth_codes WHERE code_hash = ?').get(hash);
+        const row = await db.prepare('SELECT * FROM dev_auth_codes WHERE code_hash = ?').get(hash);
         if (!row || row.app_id !== app.id) return oauthError(400, 'invalid_grant', 'Invalid authorization code');
         // Single use, atomically; a failed verification below still burns the code.
-        if (db.prepare('UPDATE dev_auth_codes SET used = 1 WHERE code_hash = ? AND used = 0').run(hash).changes !== 1) return oauthError(400, 'invalid_grant', 'Code already used');
+        if ((await db.prepare('UPDATE dev_auth_codes SET used = 1 WHERE code_hash = ? AND used = 0').run(hash)).changes !== 1) return oauthError(400, 'invalid_grant', 'Code already used');
         if (Date.parse(row.expires_at) < Date.now()) return oauthError(400, 'invalid_grant', 'Authorization code expired');
         if (row.redirect_uri !== String(body.redirect_uri || '')) return oauthError(400, 'invalid_grant', 'Redirect URI mismatch');
         if (!verifierMatches(body.code_verifier, row.code_challenge)) return oauthError(400, 'invalid_grant', 'PKCE verification failed');
-        const user = db.prepare('SELECT subject_id, is_banned FROM users WHERE subject_id = ?').get(row.user_subject);
+        const user = await db.prepare('SELECT subject_id, is_banned FROM users WHERE subject_id = ?').get(row.user_subject);
         if (!user || user.is_banned) return oauthError(400, 'invalid_grant', 'User not found or banned');
         // The exchange may narrow what was authorized, never widen it.
         const authorized = row.scope ? row.scope.split(' ') : null;
         const asked = body.scope ? String(body.scope).split(/\s+/).filter(Boolean) : null;
         if (authorized && asked && asked.some(s => !authorized.includes(s))) return oauthError(400, 'invalid_scope', 'scope exceeds what the user authorized');
-        return mint({ app, project, audience: body.audience, scope: body.scope, limit: authorized, onBehalfOf: row.user_subject, privateKey, issuer, settings, db });
+        return await mint({ app, project, audience: body.audience, scope: body.scope, limit: authorized, onBehalfOf: row.user_subject, privateKey, issuer, settings, db });
     }
     return oauthError(400, 'unsupported_grant_type', 'apps use client_credentials or authorization_code');
 }
@@ -201,8 +201,8 @@ function verifierMatches(verifier, challenge) {
  * /oauth/authorize and /oauth/confirm checks for an app client id: registered redirect URI and a
  * PKCE S256 challenge (required for every app). Returns { app, project } or { error: message }.
  */
-function checkAuthorizeRequest(db, { client_id, redirect_uri, code_challenge, code_challenge_method }) {
-    const found = usableApp(db, client_id);
+async function checkAuthorizeRequest(db, { client_id, redirect_uri, code_challenge, code_challenge_method }) {
+    const found = await usableApp(db, client_id);
     if (found.error) return { error: 'Unknown client_id' };
     const uris = JSON.parse(found.app.redirect_uris || '[]');
     if (!redirect_uri || !uris.includes(String(redirect_uri))) return { error: 'Invalid redirect_uri' };
@@ -216,18 +216,18 @@ function checkAuthorizeRequest(db, { client_id, redirect_uri, code_challenge, co
  * Issue an authorization code to an app for a signed-in user. A sandbox app may only be authorized
  * by members of its project. Returns { code } or { status, error }.
  */
-function issueCode(db, { app, project, user, redirectUri, scope, challenge }) {
+async function issueCode(db, { app, project, user, redirectUri, scope, challenge }) {
     const subjects = require('../identity/subjects');
-    const subject = subjects.ensureUserSubject(db, user);
+    const subject = await subjects.ensureUserSubject(db, user);
     if (!subject) return { status: 403, error: 'account has no subject id' };
-    if (app.environment === 'sandbox' && !store.memberRole(db, project.id, subject)) {
+    if (app.environment === 'sandbox' && !await store.memberRole(db, project.id, subject)) {
         return { status: 403, error: 'sandbox apps can only be authorized by members of their project' };
     }
     const code = crypto.randomBytes(32).toString('hex');
-    db.prepare(`INSERT INTO dev_auth_codes (code_hash, app_id, user_subject, redirect_uri, scope, code_challenge, expires_at)
+    await db.prepare(`INSERT INTO dev_auth_codes (code_hash, app_id, user_subject, redirect_uri, scope, code_challenge, expires_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)`).run(store.hashSecret(code), app.id, subject, redirectUri,
         String(scope || '').split(/\s+/).filter(s => policy.isGrantable(s)).join(' '), challenge, new Date(Date.now() + CODE_TTL_MS).toISOString());
-    db.prepare('DELETE FROM dev_auth_codes WHERE expires_at < ?').run(new Date(Date.now() - 3600 * 1000).toISOString());
+    await db.prepare('DELETE FROM dev_auth_codes WHERE expires_at < ?').run(new Date(Date.now() - 3600 * 1000).toISOString());
     return { code };
 }
 

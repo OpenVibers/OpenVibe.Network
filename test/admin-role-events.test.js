@@ -10,25 +10,26 @@ const os = require('os');
 const path = require('path');
 const express = require('express');
 const { validate } = require('openvibe-contracts');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-admin-role-events-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
 const profile = require('../server/identity/profile-events');
-profile.ensureSchema(db);
-profile.drain(db);
-db.prepare('DELETE FROM network_event_outbox').run();
+await profile.ensureSchema(db);
+await profile.drain(db);
+await db.prepare('DELETE FROM network_event_outbox').run();
 
 delete process.env.OWNER_USERNAME;   // the default owner, 'goosely'
 const OWNER = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPA';
 const MIA = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPB';
-db.prepare("INSERT INTO users (id, username, password_hash, subject_id, role) VALUES (1, 'goosely', 'x', ?, 'admin')").run(OWNER);
-db.prepare("INSERT INTO users (id, username, password_hash, subject_id, role) VALUES (2, 'mia', 'x', ?, 'user')").run(MIA);
-profile.drain(db);
-db.prepare('DELETE FROM network_event_outbox').run();
-const events = () => db.prepare('SELECT envelope FROM network_event_outbox ORDER BY id').all().map((r) => JSON.parse(r.envelope))
+await db.prepare("INSERT INTO users (id, username, password_hash, subject_id, role) VALUES (1, 'goosely', 'x', ?, 'admin')").run(OWNER);
+await db.prepare("INSERT INTO users (id, username, password_hash, subject_id, role) VALUES (2, 'mia', 'x', ?, 'user')").run(MIA);
+await profile.drain(db);
+await db.prepare('DELETE FROM network_event_outbox').run();
+const events = async () => (await db.prepare('SELECT envelope FROM network_event_outbox ORDER BY id').all()).map((r) => r.envelope)
     .filter((e) => e.event_type === 'network.user.updated');
 
 // Any outbound call the admin routes make is recorded; none may go to Live's retired route.
@@ -37,7 +38,7 @@ const realFetch = global.fetch;
 global.fetch = (url, opts) => { outbound.push(String(url)); return Promise.resolve(new Response('{}', { status: 200 })); };
 
 const createAdminRoutes = require('../server/admin/routes');
-const owner = db.prepare('SELECT * FROM users WHERE id = 1').get();
+const owner = await db.prepare('SELECT * FROM users WHERE id = 1').get();
 const app = express();
 app.use(express.json());
 app.use('/api/admin', createAdminRoutes(db, {}, {}, (req, res, next) => { req.user = owner; next(); }));
@@ -48,9 +49,9 @@ const server = http.createServer(app);
     const base = `http://127.0.0.1:${server.address().port}/api/admin`;
     const call = (method, p, body) => realFetch(base + p, { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
         .then(async (r) => ({ status: r.status, body: await r.json().catch(() => ({})) }));
-    const roleEvent = (n, role) => {
-        assert.strictEqual(profile.drain(db), 1, 'one event for the change');
-        const ev = events();
+    const roleEvent = async (n, role) => {
+        assert.strictEqual(await profile.drain(db), 1, 'one event for the change');
+        const ev = await events();
         assert.strictEqual(ev.length, n);
         const e = ev[n - 1];
         assert.ok(validate('events.event-envelope@1', e).valid);
@@ -60,13 +61,13 @@ const server = http.createServer(app);
     try {
         let r = await call('PUT', '/users/2/role', { role: 'global_mod' });
         assert.strictEqual(r.status, 200, JSON.stringify(r.body));
-        roleEvent(1, 'global_mod');
+        await roleEvent(1, 'global_mod');
         r = await call('PUT', '/users/2/role', { role: 'user' });
         assert.strictEqual(r.status, 200);
-        roleEvent(2, 'user');   // a downgrade too: Live applies it from the event
+        await roleEvent(2, 'user');   // a downgrade too: Live applies it from the event
         r = await call('POST', '/users/grant-admin', { id: 2 });
         assert.strictEqual(r.status, 200, JSON.stringify(r.body));
-        roleEvent(3, 'admin');
+        await roleEvent(3, 'admin');
         assert.deepStrictEqual(outbound.filter((u) => /user-role/.test(u)), [], 'no push to Live\'s retired /internal/user-role');
         const src = fs.readFileSync(path.join(__dirname, '../server/admin/routes.js'), 'utf8');
         assert.ok(!/pushRoleToStreamer|fetch\([^)]*user-role/.test(src), 'the push is gone from the admin routes');
@@ -74,7 +75,7 @@ const server = http.createServer(app);
     } finally {
         global.fetch = realFetch;
         server.close();
-        db.close();
         fs.rmSync(dir, { recursive: true, force: true });
     }
 })().catch((e) => { console.error(e); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

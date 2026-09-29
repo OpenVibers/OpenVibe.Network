@@ -11,13 +11,14 @@ const os = require('os');
 const path = require('path');
 const http = require('http');
 const express = require('express');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-themes-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
-db.prepare("INSERT INTO users (id, username, password_hash, role) VALUES (1, 'ann', 'x', 'user'), (2, 'bob', 'x', 'user'), (3, 'boss', 'x', 'admin')").run();
+await db.prepare("INSERT INTO users (id, username, password_hash, role) VALUES (1, 'ann', 'x', 'user'), (2, 'bob', 'x', 'user'), (3, 'boss', 'x', 'admin')").run();
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
 const config = { internalKey: 'legacy-key', jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
 const { signToken } = require('../server/auth/routes');
@@ -30,14 +31,14 @@ Object.assign(app.locals, { db, config, privateKey: keys.privateKey, publicKey: 
 app.use('/api/themes', themes);
 app.use('/api/admin/themes', requireAuth, requireAdmin, themes.reviewRouter());
 const server = http.createServer(app);
-const token = (id) => signToken(db.prepare('SELECT * FROM users WHERE id = ?').get(id), keys.privateKey, config);
+const token = async (id) => signToken(await db.prepare('SELECT * FROM users WHERE id = ?').get(id), keys.privateKey, config);
 
 (async () => {
     await new Promise((r) => server.listen(0, '127.0.0.1', r));
     const base = `http://127.0.0.1:${server.address().port}`;
-    const call = (method, p, { body, as } = {}) => fetch(base + p, { method, headers: { 'content-type': 'application/json', ...(as ? { authorization: `Bearer ${token(as)}` } : {}) }, body: body ? JSON.stringify(body) : undefined })
+    const call = async (method, p, { body, as } = {}) => fetch(base + p, { method, headers: { 'content-type': 'application/json', ...(as ? { authorization: `Bearer ${await token(as)}` } : {}) }, body: body ? JSON.stringify(body) : undefined })
         .then(async (r) => ({ status: r.status, headers: r.headers, body: await r.json().catch(() => null) }));
-    db.prepare("INSERT OR IGNORE INTO themes (id, name, slug, mode, variables, is_builtin, is_public) VALUES ('vibe', 'Vibe', 'vibe', 'dark', '{\"--accent\":\"#5b7cfa\"}', 1, 1)").run();
+    await db.prepare("INSERT INTO themes (id, name, slug, mode, variables, is_builtin, is_public) VALUES ('vibe', 'Vibe', 'vibe', 'dark', '{\"--accent\":\"#5b7cfa\"}', 1, 1) ON CONFLICT DO NOTHING").run();
 
     // ── Values are allow-listed ──
     const good = { '--accent': '#ff6a3d', '--bg-primary': '#101010', '--accent-rgb': '255, 106, 61', '--shadow': '0 8px 24px rgba(0, 0, 0, .4)' };
@@ -96,3 +97,4 @@ const token = (id) => signToken(db.prepare('SELECT * FROM users WHERE id = ?').g
     console.log('themes review: all checks passed');
     process.exit(0);
 })().catch((err) => { console.error(err); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

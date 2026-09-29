@@ -52,27 +52,27 @@ const isManaged = (key) => BY_KEY.has(key);
 const isSecret = (key) => SECRETS.some(s => s.key === key);
 const envName = (key) => (BY_KEY.get(key) || {}).env || null;
 
-function dbValue(db, key) {
-    try { const r = db.prepare('SELECT value FROM site_settings WHERE key = ?').get(key); return r && r.value ? String(r.value) : ''; } catch { return ''; }
+async function dbValue(db, key) {
+    try { const r = await db.prepare('SELECT value FROM site_settings WHERE key = ?').get(key); return r && r.value ? String(r.value) : ''; } catch { return ''; }
 }
 
 /** 'env' | 'database' | 'unset' for a managed key. */
-function source(db, key, env = process.env) {
+async function source(db, key, env = process.env) {
     if (fromEnv(key, env) !== null) return 'env';
-    return dbValue(db, key) ? 'database' : 'unset';
+    return (await dbValue(db, key)) ? 'database' : 'unset';
 }
 
 /** Where each secret comes from, by name only: [{ key, env, source, database_copy, use }]. Never values. */
-function report(db, env = process.env) {
-    return [...SECRETS, ...COMPANIONS].map(s => ({
-        key: s.key, env: s.env, secret: isSecret(s.key), source: source(db, s.key, env),
-        database_copy: !!dbValue(db, s.key), use: s.use,
-    }));
+async function report(db, env = process.env) {
+    return await Promise.all([...SECRETS, ...COMPANIONS].map(async s => ({
+        key: s.key, env: s.env, secret: isSecret(s.key), source: await source(db, s.key, env),
+        database_copy: !!(await dbValue(db, s.key)), use: s.use,
+    })));
 }
 
 /** One boot line: "resend_api_key=env discord_bot_token=database ..." (names and sources only). */
-function summary(db, env = process.env) {
-    return report(db, env).filter(r => r.secret).map(r => `${r.key}=${r.source}`).join(' ');
+async function summary(db, env = process.env) {
+    return (await report(db, env)).filter(r => r.secret).map(r => `${r.key}=${r.source}`).join(' ');
 }
 
 module.exports = { SECRETS, COMPANIONS, UNUSED, fromEnv, isManaged, isSecret, envName, source, report, summary };

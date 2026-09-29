@@ -11,21 +11,22 @@ const http = require('http');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { serviceAuth, validate } = require('openvibe-contracts');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const subjects = require('../server/identity/subjects');
 const policy = require('../server/developer/policy');
 
 // Everything the server logs is captured, so the test can prove no secret was ever logged.
+(async () => {
 const logged = [];
 const orig = { log: console.log, warn: console.warn, error: console.error };
 for (const k of ['log', 'warn', 'error']) console[k] = (...a) => { logged.push(a.map(String).join(' ')); };
 const out = (...a) => orig.log(...a);
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-devprojects-'));
-const db = initDb(path.join(dir, 'network.db'));
-db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES
+const db = getDb();
+await db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES
     (10, 'owner', 'x', 'user'), (11, 'dev', 'x', 'user'), (12, 'viewer', 'x', 'user'), (13, 'stranger', 'x', 'user'), (14, 'staff', 'x', 'admin')`).run();
-const sid = (id) => subjects.ensureUserSubject(db, db.prepare('SELECT * FROM users WHERE id = ?').get(id));
+const sid = async (id) => await subjects.ensureUserSubject(db, await db.prepare('SELECT * FROM users WHERE id = ?').get(id));
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
 const ISSUER = 'https://openvibe.network';
@@ -83,7 +84,7 @@ const secretsSeen = [];
     const P = r.body.id;
     assert.match(P, /^prj_[0-9A-HJKMNP-TV-Z]{26}$/);
     assert.strictEqual(r.body.role, 'owner');
-    assert.deepStrictEqual(r.body.owner, { type: 'user', id: sid(10) });
+    assert.deepStrictEqual(r.body.owner, { type: 'user', id: await sid(10) });
     assert.deepStrictEqual(r.body.environments, ['sandbox'], 'new projects are sandbox-only');
     assert.deepStrictEqual(r.body.allowance, []);
 
@@ -102,7 +103,7 @@ const secretsSeen = [];
     // ── Members ──
     r = await api('owner', 'POST', `/${P}/members`, { username: 'dev', role: 'developer' });
     assert.strictEqual(r.status, 201, r.text);
-    r = await api('owner', 'POST', `/${P}/members`, { subject_id: sid(12), role: 'viewer' });
+    r = await api('owner', 'POST', `/${P}/members`, { subject_id: await sid(12), role: 'viewer' });
     assert.strictEqual(r.status, 201, r.text);
     r = await api('owner', 'POST', `/${P}/members`, { username: 'staff', role: 'owner' });
     assert.strictEqual(r.status, 403, 'ownership is not assignable');
@@ -200,7 +201,7 @@ const secretsSeen = [];
     const now = Math.floor(Date.now() / 1000);
     const forged = (env) => serviceAuth.signServiceToken({ iss: ISSUER, sub: `app:${A}`, actor_type: 'app', aud: ['openvibe.network'], cap: ['identity.subject.resolve'],
         project_id: P, env, iat: now, exp: now + 300, jti: `tok_${crypto.randomBytes(6).toString('hex')}` }, keys.privateKey);
-    const resolve = (tok) => fetch(`${base}/internal/identity/resolve?subject_id=${sid(10)}`, { headers: { authorization: `Bearer ${tok}` } }).then(async x => ({ status: x.status, body: await x.json() }));
+    const resolve = async (tok) => fetch(`${base}/internal/identity/resolve?subject_id=${await sid(10)}`, { headers: { authorization: `Bearer ${tok}` } }).then(async x => ({ status: x.status, body: await x.json() }));
     r = await resolve(forged('sandbox'));
     assert.strictEqual(r.status, 401); assert.strictEqual(r.body.code, 'token.sandbox_refused', 'Network (a production audience) refuses sandbox tokens');
     r = await resolve(forged('production'));
@@ -282,7 +283,7 @@ const secretsSeen = [];
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
     v = verify(t.body.access_token);
     assert.strictEqual(v.claims.sub, `app:${B}`);
-    assert.strictEqual(v.claims.on_behalf_of, sid(11));
+    assert.strictEqual(v.claims.on_behalf_of, await sid(11));
     assert.deepStrictEqual(v.claims.cap, ['media.object.upload']);
     t = await exchange(code, { code_verifier: verifier });
     assert.strictEqual(t.status, 400, 'codes are single-use');
@@ -339,13 +340,13 @@ const secretsSeen = [];
     assert.strictEqual(r.status, 200);
     const types = new Set(r.body.entries.map(e => e.event_type).filter(Boolean));
     for (const e of ['network.app.created', 'network.app.revoked', 'network.credential.rotated', 'network.credential.revoked', 'network.grant.changed']) assert.ok(types.has(e), `event ${e}`);
-    for (const row of db.prepare('SELECT event FROM dev_audit WHERE event IS NOT NULL').all()) {
+    for (const row of await db.prepare('SELECT event FROM dev_audit WHERE event IS NOT NULL').all()) {
         const env = JSON.parse(row.event);
         assert.ok(validate('events.event-envelope@1', env).valid, JSON.stringify(env));
         assert.strictEqual(env.source, 'network');
     }
-    assert.throws(() => db.prepare('UPDATE dev_audit SET action = ?').run('x'), /append-only/);
-    assert.throws(() => db.prepare('DELETE FROM dev_audit').run(), /append-only/);
+    await assert.rejects(async () => await db.prepare('UPDATE dev_audit SET action = ?').run('x'), /append-only/);
+    await assert.rejects(async () => await db.prepare('DELETE FROM dev_audit').run(), /append-only/);
 
     // ── Archive revokes every app ──
     r = await api('dev', 'POST', `/${P}/archive`);
@@ -358,10 +359,10 @@ const secretsSeen = [];
     assert.strictEqual(r.status, 409);
 
     // ── Secrets: never stored in plaintext, never logged ──
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map(x => x.name);
+    const tables = (await db.prepare("SELECT table_name AS name FROM information_schema.tables WHERE table_schema = current_schema()").all()).map(x => x.name);
     for (const s of secretsSeen) {
         for (const name of tables) {
-            const dump = JSON.stringify(db.prepare(`SELECT * FROM "${name}"`).all());
+            const dump = JSON.stringify(await db.prepare(`SELECT * FROM "${name}"`).all());
             assert.ok(!dump.includes(s), `secret stored in plaintext in ${name}`);
         }
         assert.ok(!logged.some(l => l.includes(s)), 'secret appeared in logs');
@@ -370,3 +371,4 @@ const secretsSeen = [];
     out('developer projects: all checks passed');
     server.close();
 })().catch(err => { orig.error(err); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

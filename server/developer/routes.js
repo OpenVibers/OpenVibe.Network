@@ -57,23 +57,23 @@ function router() {
 
     // Bearer user tokens only. An expired token is refused here even inside the session grace period:
     // this API hands out secrets, so it does not slide sessions.
-    r.use((req, res, next) => {
+    r.use(async (req, res, next) => {
         const h = String(req.headers.authorization || '');
         if (!h.startsWith('Bearer ')) return http.sendProblem(res, 401, 'auth.required', { detail: 'send Authorization: Bearer <Network access token>', ctx: req.ov });
         const { db, publicKey, config } = req.app.locals;
-        const out = verifySession(h.slice(7).trim(), { db, publicKey, config });
+        const out = await verifySession(h.slice(7).trim(), { db, publicKey, config });
         if (out.error) return http.sendProblem(res, out.status === 403 ? 403 : 401, out.status === 403 ? 'auth.banned' : 'auth.invalid', { detail: out.error, ctx: req.ov });
         if (out.decoded && typeof out.decoded.exp === 'number' && out.decoded.exp * 1000 < Date.now()) {
             return http.sendProblem(res, 401, 'auth.expired', { detail: 'access token expired; refresh it', ctx: req.ov });
         }
-        try { req.actor = store.actorOf(db, out.user); } catch (err) { return send(req, res, err); }
+        try { req.actor = await store.actorOf(db, out.user); } catch (err) { return send(req, res, err); }
         next();
     });
 
     const ctxOf = (req) => ({ ctx: req.ov, settings: policy.settings(req.app.locals.config) });
-    const handle = (fn, status = 200) => (req, res) => {
+    const handle = (fn, status = 200) => async (req, res) => {
         try {
-            const out = fn(req.app.locals.db, req.actor, req, ctxOf(req));
+            const out = await fn(req.app.locals.db, req.actor, req, ctxOf(req));
             if (out === undefined) return res.status(204).end();
             res.status(status).json(out);
         } catch (err) { send(req, res, err); }
@@ -85,55 +85,55 @@ function router() {
         rule: 'only active capabilities with visibility public (or partner, by staff allowance) are grantable to apps; sandbox apps may hold sandbox_allowance without staff, production apps only the staff-set project allowance',
     }));
 
-    r.post('/', handle((db, a, req, o) => store.createProject(db, a, req.body || {}, o), 201));
-    r.get('/', handle((db, a, req, o) => ({ projects: store.listProjects(db, a, { all: req.query.all === '1', settings: o.settings }) })));
-    r.get('/:project', handle((db, a, req, o) => {
-        const { project, role } = store.access(db, a, req.params.project, { allowArchived: true });
-        return store.projectView(db, project, role, o.settings);
+    r.post('/', handle(async (db, a, req, o) => await store.createProject(db, a, req.body || {}, o), 201));
+    r.get('/', handle(async (db, a, req, o) => ({ projects: await store.listProjects(db, a, { all: req.query.all === '1', settings: o.settings }) })));
+    r.get('/:project', handle(async (db, a, req, o) => {
+        const { project, role } = await store.access(db, a, req.params.project, { allowArchived: true });
+        return await store.projectView(db, project, role, o.settings);
     }));
-    r.patch('/:project', handle((db, a, req, o) => store.renameProject(db, a, req.params.project, req.body || {}, o)));
-    r.post('/:project/archive', handle((db, a, req, o) => store.archiveProject(db, a, req.params.project, o)));
-    r.put('/:project/allowance', handle((db, a, req, o) => store.setAllowance(db, a, req.params.project, req.body || {}, o)));
-    r.put('/:project/environment-policy', handle((db, a, req, o) => store.setEnvironmentPolicy(db, a, req.params.project, req.body || {}, o)));
+    r.patch('/:project', handle(async (db, a, req, o) => await store.renameProject(db, a, req.params.project, req.body || {}, o)));
+    r.post('/:project/archive', handle(async (db, a, req, o) => await store.archiveProject(db, a, req.params.project, o)));
+    r.put('/:project/allowance', handle(async (db, a, req, o) => await store.setAllowance(db, a, req.params.project, req.body || {}, o)));
+    r.put('/:project/environment-policy', handle(async (db, a, req, o) => await store.setEnvironmentPolicy(db, a, req.params.project, req.body || {}, o)));
 
-    r.get('/:project/members', handle((db, a, req) => ({ members: store.listMembers(db, a, req.params.project) })));
-    r.post('/:project/members', handle((db, a, req, o) => store.addMember(db, a, req.params.project, req.body || {}, o), 201));
-    r.patch('/:project/members/:subject', handle((db, a, req, o) => store.updateMember(db, a, req.params.project, req.params.subject, req.body || {}, o)));
-    r.delete('/:project/members/:subject', handle((db, a, req, o) => store.removeMember(db, a, req.params.project, req.params.subject, o)));
+    r.get('/:project/members', handle(async (db, a, req) => ({ members: await store.listMembers(db, a, req.params.project) })));
+    r.post('/:project/members', handle(async (db, a, req, o) => await store.addMember(db, a, req.params.project, req.body || {}, o), 201));
+    r.patch('/:project/members/:subject', handle(async (db, a, req, o) => await store.updateMember(db, a, req.params.project, req.params.subject, req.body || {}, o)));
+    r.delete('/:project/members/:subject', handle(async (db, a, req, o) => await store.removeMember(db, a, req.params.project, req.params.subject, o)));
 
-    r.get('/:project/apps', handle((db, a, req) => ({ apps: store.listApps(db, a, req.params.project) })));
-    r.post('/:project/apps', handle((db, a, req, o) => store.createApp(db, a, req.params.project, req.body || {}, o), 201));
-    r.get('/:project/apps/:app', handle((db, a, req) => store.getApp(db, a, req.params.project, req.params.app)));
-    r.patch('/:project/apps/:app', handle((db, a, req, o) => store.updateApp(db, a, req.params.project, req.params.app, req.body || {}, o)));
-    r.delete('/:project/apps/:app', handle((db, a, req, o) => store.revokeApp(db, a, req.params.project, req.params.app, o)));
+    r.get('/:project/apps', handle(async (db, a, req) => ({ apps: await store.listApps(db, a, req.params.project) })));
+    r.post('/:project/apps', handle(async (db, a, req, o) => await store.createApp(db, a, req.params.project, req.body || {}, o), 201));
+    r.get('/:project/apps/:app', handle(async (db, a, req) => await store.getApp(db, a, req.params.project, req.params.app)));
+    r.patch('/:project/apps/:app', handle(async (db, a, req, o) => await store.updateApp(db, a, req.params.project, req.params.app, req.body || {}, o)));
+    r.delete('/:project/apps/:app', handle(async (db, a, req, o) => await store.revokeApp(db, a, req.params.project, req.params.app, o)));
 
-    r.get('/:project/apps/:app/credentials', handle((db, a, req) => ({ credentials: store.listCredentials(db, a, req.params.project, req.params.app) })));
-    r.post('/:project/apps/:app/credentials/rotate', handle((db, a, req, o) => store.rotateCredential(db, a, req.params.project, req.params.app, req.body || {}, o), 201));
-    r.post('/:project/apps/:app/credentials/:credential/revoke', handle((db, a, req, o) => store.revokeCredential(db, a, req.params.project, req.params.app, req.params.credential, o)));
+    r.get('/:project/apps/:app/credentials', handle(async (db, a, req) => ({ credentials: await store.listCredentials(db, a, req.params.project, req.params.app) })));
+    r.post('/:project/apps/:app/credentials/rotate', handle(async (db, a, req, o) => await store.rotateCredential(db, a, req.params.project, req.params.app, req.body || {}, o), 201));
+    r.post('/:project/apps/:app/credentials/:credential/revoke', handle(async (db, a, req, o) => await store.revokeCredential(db, a, req.params.project, req.params.app, req.params.credential, o)));
 
-    r.get('/:project/apps/:app/grants', handle((db, a, req) => ({ grants: store.listGrants(db, a, req.params.project, req.params.app) })));
-    r.post('/:project/apps/:app/grants', handle((db, a, req, o) => store.requestGrant(db, a, req.params.project, req.params.app, req.body || {}, o), 201));
-    r.post('/:project/apps/:app/grants/:capability/approve', handle((db, a, req, o) => store.decideGrant(db, a, req.params.project, req.params.app, req.params.capability, 'approved', o)));
-    r.post('/:project/apps/:app/grants/:capability/deny', handle((db, a, req, o) => store.decideGrant(db, a, req.params.project, req.params.app, req.params.capability, 'denied', o)));
-    r.delete('/:project/apps/:app/grants/:capability', handle((db, a, req, o) => store.decideGrant(db, a, req.params.project, req.params.app, req.params.capability, 'revoked', o)));
+    r.get('/:project/apps/:app/grants', handle(async (db, a, req) => ({ grants: await store.listGrants(db, a, req.params.project, req.params.app) })));
+    r.post('/:project/apps/:app/grants', handle(async (db, a, req, o) => await store.requestGrant(db, a, req.params.project, req.params.app, req.body || {}, o), 201));
+    r.post('/:project/apps/:app/grants/:capability/approve', handle(async (db, a, req, o) => await store.decideGrant(db, a, req.params.project, req.params.app, req.params.capability, 'approved', o)));
+    r.post('/:project/apps/:app/grants/:capability/deny', handle(async (db, a, req, o) => await store.decideGrant(db, a, req.params.project, req.params.app, req.params.capability, 'denied', o)));
+    r.delete('/:project/apps/:app/grants/:capability', handle(async (db, a, req, o) => await store.decideGrant(db, a, req.params.project, req.params.app, req.params.capability, 'revoked', o)));
 
-    r.get('/:project/quotas', handle((db, a, req) => ({ quotas: store.listQuotas(db, a, req.params.project), note: 'quotas are enforced by the service that owns each capability; Network records and exposes them' })));
-    r.put('/:project/quotas/:capability', handle((db, a, req, o) => store.setQuota(db, a, req.params.project, req.params.capability, req.body || {}, o)));
-    r.delete('/:project/quotas/:capability', handle((db, a, req, o) => store.deleteQuota(db, a, req.params.project, req.params.capability, o)));
+    r.get('/:project/quotas', handle(async (db, a, req) => ({ quotas: await store.listQuotas(db, a, req.params.project), note: 'quotas are enforced by the service that owns each capability; Network records and exposes them' })));
+    r.put('/:project/quotas/:capability', handle(async (db, a, req, o) => await store.setQuota(db, a, req.params.project, req.params.capability, req.body || {}, o)));
+    r.delete('/:project/quotas/:capability', handle(async (db, a, req, o) => await store.deleteQuota(db, a, req.params.project, req.params.capability, o)));
 
     // Usage (WS-N task 4): network.project-usage-result@1, for the owner and admins (and staff).
-    r.get('/:project/usage', handle((db, a, req) => {
-        const { project } = store.access(db, a, req.params.project, { need: 'admin', allowArchived: true });
-        return usage.summary(db, project.id, usage.parseQuery(req.query));
+    r.get('/:project/usage', handle(async (db, a, req) => {
+        const { project } = await store.access(db, a, req.params.project, { need: 'admin', allowArchived: true });
+        return await usage.summary(db, project.id, usage.parseQuery(req.query));
     }));
 
-    r.get('/:project/audit', handle((db, a, req) => {
-        const { project } = store.access(db, a, req.params.project, { need: 'admin', allowArchived: true });
-        return store.listAudit(db, project.id, { before: req.query.before, limit: req.query.limit });
+    r.get('/:project/audit', handle(async (db, a, req) => {
+        const { project } = await store.access(db, a, req.params.project, { need: 'admin', allowArchived: true });
+        return await store.listAudit(db, project.id, { before: req.query.before, limit: req.query.limit });
     }));
 
     // Project export (WS-N task 9): Codes asks with the person's token, once per audience and env.
-    r.post('/:project/export-tokens', handle((db, a, req, o) => tokens.mintExportToken(db, a, req.params.project, req.body || {}, {
+    r.post('/:project/export-tokens', handle(async (db, a, req, o) => await tokens.mintExportToken(db, a, req.params.project, req.body || {}, {
         privateKey: req.app.locals.privateKey, issuer: req.app.locals.config.jwt.issuer, ctx: o.ctx,
     }), 201));
 

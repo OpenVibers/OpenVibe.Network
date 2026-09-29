@@ -1,6 +1,7 @@
 [Unit]
 Description=OpenVibe.Network — Identity, SSO & OpenCoins (port 4000)
-After=network.target
+After=network.target postgresql.service pgbouncer.service valkey-server.service
+Wants=postgresql.service pgbouncer.service valkey-server.service
 
 [Service]
 Type=simple

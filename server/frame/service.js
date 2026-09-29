@@ -58,24 +58,18 @@ function aiSiteCopy({ privateKey, issuer, aiUrl }) {
     };
 }
 
-function createFrameService(db, config, analytics, { privateKey = null, issuer = null, selfToken = () => null, aiUrl = process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700' } = {}) {
+async function createFrameService(db, config, analytics, { privateKey = null, issuer = null, selfToken = () => null, aiUrl = process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700' } = {}) {
     const fromAi = privateKey && issuer ? aiSiteCopy({ privateKey, issuer, aiUrl: String(aiUrl).replace(/\/+$/, '') }) : null;
-    // Renamed from chrome_cache/chrome_hits (2026-09-24): carry the old tables over once.
-    for (const [from, to] of [['chrome_cache', 'frame_cache'], ['chrome_hits', 'frame_hits']]) {
-        const has = (t) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t));
-        if (has(from) && !has(to)) db.exec(`ALTER TABLE ${from} RENAME TO ${to}`);
-    }
-    db.exec('CREATE TABLE IF NOT EXISTS frame_cache (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)');
-    // Anonymous page-view counts per host and day, sent by the shared navbar. No user, no IP, no path.
-    db.exec('CREATE TABLE IF NOT EXISTS frame_hits (day TEXT NOT NULL, host TEXT NOT NULL, hits INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, host))');
-    const bump = db.prepare("INSERT INTO frame_hits (day, host, hits) VALUES (date('now'), ?, 1) ON CONFLICT(day, host) DO UPDATE SET hits = hits + 1");
-    const load = (k) => { try { const r = db.prepare('SELECT value, updated_at FROM frame_cache WHERE key = ?').get(k); return r ? { value: JSON.parse(r.value), at: Date.parse(r.updated_at + 'Z') || 0 } : null; } catch { return null; } };
-    const save = (k, v) => db.prepare('INSERT INTO frame_cache (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP').run(k, JSON.stringify(v));
+    // frame_cache and frame_hits are migrations/NNNN_*.sql (plan T2). The old chrome_cache/chrome_hits
+    // rename was a SQLite-only step and is not repeated here.
+    const bump = db.prepare("INSERT INTO frame_hits (day, host, hits) VALUES (substring(ov_now(), 1, 10), ?, 1) ON CONFLICT(day, host) DO UPDATE SET hits = frame_hits.hits + 1");
+    const load = async (k) => { try { const r = await db.prepare('SELECT value, updated_at FROM frame_cache WHERE key = ?').get(k); return r ? { value: JSON.parse(r.value), at: Date.parse(r.updated_at + 'Z') || 0 } : null; } catch { return null; } };
+    const save = async (k, v) => await db.prepare('INSERT INTO frame_cache (key, value, updated_at) VALUES (?, ?, ov_now()) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = ov_now()').run(k, JSON.stringify(v));
 
-    const savedRank = load('rank') || {};
+    const savedRank = await load('rank') || {};
     let rank = savedRank.value || { scores: {}, tools: [] };
     let rankedAt = savedRank.value ? savedRank.at || null : null;
-    let copy = (load('copy') || {}).value || { sites: {} };
+    let copy = (await load('copy') || {}).value || { sites: {} };
     let version = Date.now();
 
     const svcUrl = (name, fallback) => (config.services && config.services[name] && config.services[name].internalUrl) || fallback;
@@ -92,7 +86,7 @@ function createFrameService(db, config, analytics, { privateKey = null, issuer =
         // Everything else: the navbar's page-view beacon, summed per site over 7 days.
         let tools = rank.tools || [];
         try {
-            const rows = db.prepare("SELECT host, SUM(hits) AS n FROM frame_hits WHERE day >= date('now', '-7 days') GROUP BY host").all();
+            const rows = await db.prepare("SELECT host, SUM(hits) AS n FROM frame_hits WHERE day >= substring(datetime('now', '-7 days'), 1, 10) GROUP BY host").all();
             const perSite = {}; const perTool = new Map();
             const { catalog } = toolsCatalog.peek();
             const toolOfHost = new Map();
@@ -108,11 +102,11 @@ function createFrameService(db, config, analytics, { privateKey = null, issuer =
         } catch { /* */ }
         // Signed-in history is a second opinion that also covers hosts without the shared navbar.
         try {
-            const bySvc = db.prepare("SELECT service, COUNT(*) AS n, COUNT(DISTINCT user_id) AS u FROM user_history WHERE created_at > datetime('now', '-14 days') GROUP BY service").all();
+            const bySvc = await db.prepare("SELECT service, COUNT(*) AS n, COUNT(DISTINCT user_id) AS u FROM user_history WHERE created_at > datetime('now', '-14 days') GROUP BY service").all();
             for (const r of bySvc) { const id = r.service === 'pastes' ? 'community' : r.service; if (!id) continue; scores[id + ':history'] = r.n + 5 * r.u; }
         } catch { /* table appears on first history write */ }
         rank = { scores, tools };
-        save('rank', rank); version = Date.now(); rankedAt = Date.now();
+        await save('rank', rank); version = Date.now(); rankedAt = Date.now();
     }
 
     const scoreOf = (id) => (rank.scores[id] || 0) + 3 * (rank.scores[id + ':history'] || 0);
@@ -155,7 +149,7 @@ function createFrameService(db, config, analytics, { privateKey = null, issuer =
             if (blurb.length < 20 || blurb.length > 170 || BANNED.test(blurb)) continue;      // screened out: the hand-written copy stays
             next[site.id] = { blurb, picks };
         }
-        if (Object.keys(next).length) { copy = { sites: next, model: String(j.model || '').slice(0, 60) }; save('copy', copy); version = Date.now(); }
+        if (Object.keys(next).length) { copy = { sites: next, model: String(j.model || '').slice(0, 60) }; await save('copy', copy); version = Date.now(); }
     }
 
     function payloadFor(hostname) {
@@ -189,7 +183,7 @@ function createFrameService(db, config, analytics, { privateKey = null, issuer =
     // POST /api/frame/hit — one anonymous count for the calling page's host. The host comes from the
     // browser-set Origin header (never the body) and must be one of ours or a registered tool domain.
     const recent = new Map();   // ip → [count, windowStart]: 40/min is plenty for a person, useless for stuffing
-    router.post('/hit', (req, res) => {
+    router.post('/hit', async (req, res) => {
         // sendBeacon is a no-cors request: without CORP cross-origin the browser logs every beacon's
         // (empty) answer as blocked on every page of every site (the count itself was never affected).
         res.set({ 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin', 'Cache-Control': 'no-store' });
@@ -200,14 +194,14 @@ function createFrameService(db, config, analytics, { privateKey = null, issuer =
             if (!w || now - w[1] > 60_000) recent.set(k, [1, now]); else w[0]++;
             if (recent.size > 5000) recent.clear();
             const known = host && (siteForHost(host) || toolsCatalog.peek().catalog.tools.some(t => t.hosts && (t.hosts.canonical === host || t.hosts.short === host)));
-            if (known && (recent.get(k) || [0])[0] <= 40 && !/bot|crawl|spider|slurp|headless|preview|monitor|curl|wget|python|node|go-http/i.test(ua)) bump.run(host);
+            if (known && (recent.get(k) || [0])[0] <= 40 && !/bot|crawl|spider|slurp|headless|preview|monitor|curl|wget|python|node|go-http/i.test(ua)) await bump.run(host);
         } catch { /* counting must never fail a page */ }
         res.status(204).end();
     });
 
     let timers = [];
-    function start() {
-        const rankAge = Date.now() - ((load('rank') || {}).at || 0), copyAge = Date.now() - ((load('copy') || {}).at || 0);
+    async function start() {
+        const rankAge = Date.now() - ((await load('rank') || {}).at || 0), copyAge = Date.now() - ((await load('copy') || {}).at || 0);
         const t1 = setTimeout(() => refreshRank().catch(() => {}), rankAge > RANK_MS ? 8000 : RANK_MS - rankAge); t1.unref();
         const i1 = setInterval(() => refreshRank().catch(() => {}), RANK_MS); i1.unref();
         const t2 = setTimeout(() => refreshCopy().catch(() => {}), copyAge > COPY_MS ? 60_000 : COPY_MS - copyAge); t2.unref();

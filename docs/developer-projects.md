@@ -14,7 +14,7 @@ What exists today: the data model, the `/api/v1/projects` API, app tokens from `
 | Credential | `crd_<ULID>` | A client secret (`ovsec_…`, 256 random bits). Only its SHA-256 hash and last four characters are stored. |
 | Grant | (app, capability) | `requested`, `approved`, `denied` or `revoked`. The audience is `openvibe.<capability owner>`. |
 | Quota | (project, capability) | A limit, a window (`minute`, `hour`, `day`, `month`, `total`) and a unit (`requests`, `bytes`, `tokens`, …). |
-| Audit | integer, append-only | SQLite triggers refuse UPDATE and DELETE. |
+| Audit | integer, append-only | PostgreSQL triggers refuse UPDATE and DELETE. |
 
 ### Roles
 

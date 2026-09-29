@@ -8,15 +8,16 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const { createEventsOps } = require('../server/admin/events-ops');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-eventsops-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
 const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
-db.prepare("INSERT INTO users (id, username, password_hash, role) VALUES (1, 'goosely', 'x', 'admin'), (2, 'adminb', 'x', 'admin')").run();
+await db.prepare("INSERT INTO users (id, username, password_hash, role) VALUES (1, 'goosely', 'x', 'admin'), (2, 'adminb', 'x', 'admin')").run();
 const SUB = 'sub_01M3D4CMQ6JX9ZR8SS34M1FTC4', EVT = 'evt_01M3D4GT16WXDXGZYRE97JRTKS';
 
 (async () => {
@@ -30,7 +31,7 @@ const SUB = 'sub_01M3D4CMQ6JX9ZR8SS34M1FTC4', EVT = 'evt_01M3D4GT16WXDXGZYRE97JR
 
     let as = 1;
     const app = express();
-    app.use((req, res, next) => { req.user = db.prepare('SELECT * FROM users WHERE id = ?').get(as); next(); });
+    app.use(async (req, res, next) => { req.user = await db.prepare('SELECT * FROM users WHERE id = ?').get(as); next(); });
     app.use('/api/admin/events', createEventsOps({ db, eventsUrl: `http://127.0.0.1:${ev.address().port}`, privateKey, issuer: 'https://openvibe.network' }));
     const srv = await new Promise((r) => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
     const base = `http://127.0.0.1:${srv.address().port}`;
@@ -51,7 +52,7 @@ const SUB = 'sub_01M3D4CMQ6JX9ZR8SS34M1FTC4', EVT = 'evt_01M3D4GT16WXDXGZYRE97JR
     r = await call('POST', '/api/admin/events/replay', { subscription_id: SUB, event_ids: [EVT] });
     assert.deepStrictEqual(r.body, { ok: true, queued: 1 });
     assert.deepStrictEqual(seen.at(-1).body, { subscription_id: SUB, event_ids: [EVT] });
-    const audit = db.prepare("SELECT user_id, details FROM audit_log WHERE action = 'events_replay'").all();
+    const audit = await db.prepare("SELECT user_id, details FROM audit_log WHERE action = 'events_replay'").all();
     assert.strictEqual(audit.length, 1); assert.strictEqual(audit[0].user_id, 1);
     assert.deepStrictEqual(JSON.parse(audit[0].details).event_ids, [EVT]);
 
@@ -64,3 +65,4 @@ const SUB = 'sub_01M3D4CMQ6JX9ZR8SS34M1FTC4', EVT = 'evt_01M3D4GT16WXDXGZYRE97JR
     fs.rmSync(dir, { recursive: true, force: true });
     console.log('events ops: all checks passed');
 })().catch((err) => { console.error(err); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

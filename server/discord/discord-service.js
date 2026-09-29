@@ -121,7 +121,7 @@ class DiscordService {
         const cooldownMin = parseInt(this._getSetting('discord_dedupe_minutes') || '15', 10);
         const cooldownMs = Math.max(cooldownMin, 1) * 60 * 1000;
         const key = streamer.username.toLowerCase();
-        const lastAlert = this._liveAlertCooldowns.get(key);
+        const lastAlert = await this._liveAlertCooldowns.get(key);
         if (lastAlert && (Date.now() - lastAlert) < cooldownMs) {
             return { sent: false, reason: 'cooldown', remaining_ms: cooldownMs - (Date.now() - lastAlert) };
         }
@@ -210,9 +210,9 @@ class DiscordService {
 
     // ─── Helpers ───────────────────────────────────────────
 
-    _getSetting(key) {
+    async _getSetting(key) {
         try {
-            return this._db.getSetting(key) || null;
+            return await this._db.getSetting(key) || null;
         } catch {
             return null;
         }

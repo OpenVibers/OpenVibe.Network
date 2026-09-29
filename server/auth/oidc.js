@@ -89,19 +89,19 @@ function idToken({ user, clientId, nonce, privateKey, issuer }) {
 }
 
 /** GET|POST /oauth/userinfo with `Authorization: Bearer <Network access token>`. */
-function userinfo(req, res) {
+async function userinfo(req, res) {
     res.set('Cache-Control', 'no-store');
     const ah = String(req.headers.authorization || '');
     const token = ah.startsWith('Bearer ') ? ah.slice(7).trim() : '';
     const fail = (status, error) => res.status(status).set('WWW-Authenticate', `Bearer error="${error}"`).json({ error });
     if (!token) return fail(401, 'invalid_token');
-    const out = require('./session').verifySession(token, { db: req.app.locals.db, publicKey: req.app.locals.publicKey, config: req.app.locals.config });
+    const out = await require('./session').verifySession(token, { db: req.app.locals.db, publicKey: req.app.locals.publicKey, config: req.app.locals.config });
     if (out.error) return fail(out.status === 403 ? 403 : 401, out.status === 403 ? 'insufficient_scope' : 'invalid_token');
     // verifySession renews a recently expired session; an expired bearer token is not accepted here.
     if (typeof out.decoded.exp !== 'number' || out.decoded.exp * 1000 < Date.now()) return fail(401, 'invalid_token');
     const user = out.user;
     let subjectId = user.subject_id || null;
-    try { subjectId = require('../identity/subjects').ensureUserSubject(req.app.locals.db, user) || subjectId; } catch { /* the claim is optional */ }
+    try { subjectId = await require('../identity/subjects').ensureUserSubject(req.app.locals.db, user) || subjectId; } catch { /* the claim is optional */ }
     res.json({ sub: String(user.id), ...profileClaims({ ...user, subject_id: subjectId }) });
 }
 

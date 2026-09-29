@@ -2,30 +2,14 @@
 
 const { URL_DEFINITIONS, normalizeValue, resolveRegistryValues } = require('openvibe-shared/url-resolver');
 
-function initializeUrlRegistry(db) {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS url_registry (
-            key TEXT PRIMARY KEY,
-            label TEXT NOT NULL,
-            category TEXT NOT NULL,
-            service TEXT NOT NULL,
-            scope TEXT NOT NULL,
-            type TEXT NOT NULL,
-            value TEXT,
-            description TEXT,
-            source TEXT NOT NULL DEFAULT 'admin',
-            updated_by INTEGER,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `);
+function initializeUrlRegistry(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
+
+async function getRegistryRows(db) {
+    return await db.prepare('SELECT key, label, category, service, scope, type, value, description, source, updated_by, updated_at FROM url_registry ORDER BY category, service, key').all();
 }
 
-function getRegistryRows(db) {
-    return db.prepare('SELECT key, label, category, service, scope, type, value, description, source, updated_by, updated_at FROM url_registry ORDER BY category, service, key').all();
-}
-
-function getRegistryRow(db, key) {
-    return db.prepare('SELECT key, label, category, service, scope, type, value, description, source, updated_by, updated_at FROM url_registry WHERE key = ?').get(key);
+async function getRegistryRow(db, key) {
+    return await db.prepare('SELECT key, label, category, service, scope, type, value, description, source, updated_by, updated_at FROM url_registry WHERE key = ?').get(key);
 }
 
 function encodeRegistryValue(value, type) {
@@ -58,14 +42,14 @@ function decodeRegistryValue(value, type) {
     }
 }
 
-function getAllRegistryEntries(db) {
-    const rows = db.prepare('SELECT key, value, source, updated_by, updated_at FROM url_registry').all();
+async function getAllRegistryEntries(db) {
+    const rows = await db.prepare('SELECT key, value, source, updated_by, updated_at FROM url_registry').all();
     const rowMap = rows.reduce((map, row) => {
         map[row.key] = row;
         return map;
     }, {});
 
-    const warnings = getRegistryWarnings(db);
+    const warnings = await getRegistryWarnings(db);
 
     return Object.values(URL_DEFINITIONS).map(def => {
         const row = rowMap[def.key];
@@ -88,9 +72,9 @@ function getAllRegistryEntries(db) {
     });
 }
 
-function getRegistryWarnings(db, env = process.env) {
+async function getRegistryWarnings(db, env = process.env) {
     const warnings = {};
-    const resolved = getResolvedRegistry(db, env);
+    const resolved = await getResolvedRegistry(db, env);
     try {
         const liveHost = resolved.OV_LIVE_URL.value ? new URL(resolved.OV_LIVE_URL.value).hostname : null;
         const whipHost = resolved.WHIP_PUBLIC_URL.value ? new URL(resolved.WHIP_PUBLIC_URL.value).hostname : null;
@@ -104,8 +88,8 @@ function getRegistryWarnings(db, env = process.env) {
     return warnings;
 }
 
-function loadRegistryValuesBySource(db, source) {
-    const rows = db.prepare("SELECT key, value FROM url_registry WHERE source = ? AND value IS NOT NULL AND value != ''").all(source);
+async function loadRegistryValuesBySource(db, source) {
+    const rows = await db.prepare("SELECT key, value FROM url_registry WHERE source = ? AND value IS NOT NULL AND value != ''").all(source);
     return rows.reduce((map, row) => {
         const def = URL_DEFINITIONS[row.key];
         map[row.key] = def ? decodeRegistryValue(row.value, def.type) : row.value;
@@ -113,12 +97,12 @@ function loadRegistryValuesBySource(db, source) {
     }, {});
 }
 
-function loadOverrides(db) {
-    return loadRegistryValuesBySource(db, 'admin');
+async function loadOverrides(db) {
+    return await loadRegistryValuesBySource(db, 'admin');
 }
 
-function loadBootstrapValues(db) {
-    return loadRegistryValuesBySource(db, 'bootstrap');
+async function loadBootstrapValues(db) {
+    return await loadRegistryValuesBySource(db, 'bootstrap');
 }
 
 function formatEntry(row) {
@@ -139,13 +123,13 @@ function formatEntry(row) {
     };
 }
 
-function getResolvedRegistry(db, env = process.env) {
-    const overrides = loadOverrides(db);
-    const bootstrap = loadBootstrapValues(db);
+async function getResolvedRegistry(db, env = process.env) {
+    const overrides = await loadOverrides(db);
+    const bootstrap = await loadBootstrapValues(db);
     return resolveRegistryValues(env, overrides, bootstrap, URL_DEFINITIONS);
 }
 
-function setRegistryEntry(db, key, value, updatedBy = null) {
+async function setRegistryEntry(db, key, value, updatedBy = null) {
     if (!URL_DEFINITIONS[key]) {
         throw new Error(`Unknown URL registry key: ${key}`);
     }
@@ -154,28 +138,28 @@ function setRegistryEntry(db, key, value, updatedBy = null) {
     if (encoded == null) {
         throw new Error(`Invalid value for ${key}`);
     }
-    db.prepare(`
+    await db.prepare(`
         INSERT INTO url_registry (key, label, category, service, scope, type, value, description, source, updated_by, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'admin', ?, CURRENT_TIMESTAMP)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'admin', ?, ov_now())
         ON CONFLICT(key) DO UPDATE SET
             value = excluded.value,
             source = 'admin',
             updated_by = excluded.updated_by,
             updated_at = excluded.updated_at
     `).run(entry.key, entry.label, entry.category, entry.service, entry.scope, entry.type, encoded, entry.description, updatedBy);
-    return formatEntry(getRegistryRow(db, key));
+    return formatEntry(await getRegistryRow(db, key));
 }
 
-function resetRegistryEntry(db, key) {
+async function resetRegistryEntry(db, key) {
     if (!URL_DEFINITIONS[key]) {
         throw new Error(`Unknown URL registry key: ${key}`);
     }
-    db.prepare('DELETE FROM url_registry WHERE key = ?').run(key);
+    await db.prepare('DELETE FROM url_registry WHERE key = ?').run(key);
     return URL_DEFINITIONS[key];
 }
 
-function isRegistrySeeded(db) {
-    const rowCount = db.prepare('SELECT COUNT(*) AS cnt FROM url_registry').get().cnt;
+async function isRegistrySeeded(db) {
+    const rowCount = (await db.prepare('SELECT COUNT(*) AS cnt FROM url_registry').get()).cnt;
     return rowCount > 0;
 }
 
@@ -195,24 +179,22 @@ function buildBootstrapOverrides(env = {}, profile = 'local-dev') {
     return bootstrap;
 }
 
-function seedBootstrapRegistry(db, env = process.env, profile = 'local-dev') {
+async function seedBootstrapRegistry(db, env = process.env, profile = 'local-dev') {
     const bootstrap = buildBootstrapOverrides(env, profile);
-    const insert = db.prepare(`
-        INSERT INTO url_registry (key, label, category, service, scope, type, value, description, source, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'bootstrap', CURRENT_TIMESTAMP)
-        ON CONFLICT(key) DO NOTHING
-    `);
-    const exists = db.prepare('SELECT 1 FROM url_registry WHERE key = ? LIMIT 1');
-
-    const tx = db.transaction(() => {
+    await db.tx(async (t) => {
+        const insert = t.prepare(`
+            INSERT INTO url_registry (key, label, category, service, scope, type, value, description, source, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'bootstrap', ov_now())
+            ON CONFLICT(key) DO NOTHING
+        `);
+        const exists = t.prepare('SELECT 1 FROM url_registry WHERE key = ? LIMIT 1');
         for (const [key, def] of Object.entries(URL_DEFINITIONS)) {
-            if (exists.get(def.key)) continue;
+            if (await exists.get(def.key)) continue;
             const encoded = encodeRegistryValue(bootstrap[key], def.type);
             if (encoded == null) continue;
-            insert.run(def.key, def.label, def.category, def.service, def.scope, def.type, encoded, def.description || '');
+            await insert.run(def.key, def.label, def.category, def.service, def.scope, def.type, encoded, def.description || '');
         }
     });
-    tx();
 }
 
 module.exports = {

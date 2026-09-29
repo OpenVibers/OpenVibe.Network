@@ -15,21 +15,21 @@ module.exports = function createDiscordRoutes(db, discordService, requireAuth, r
     router.use(requireAuth, requireAdmin);
 
     /** GET /api/admin/discord — bot status + current config */
-    router.get('/', (req, res) => {
+    router.get('/', async (req, res) => {
         const status = discordService.getStatus();
         const settings = {
-            discord_bot_token: db.getSetting('discord_bot_token') ? '••••••••' : '',
-            discord_guild_id: db.getSetting('discord_guild_id') || '',
-            discord_alerts_channel_id: db.getSetting('discord_alerts_channel_id') || '',
-            discord_system_channel_id: db.getSetting('discord_system_channel_id') || '',
-            discord_dedupe_minutes: db.getSetting('discord_dedupe_minutes') || '15',
-            discord_alert_message: db.getSetting('discord_alert_message') || '',
-            discord_oauth_client_id: db.getSetting('discord_oauth_client_id') || '',
-            discord_oauth_client_secret: db.getSetting('discord_oauth_client_secret') ? '••••••••' : '',
+            discord_bot_token: await db.getSetting('discord_bot_token') ? '••••••••' : '',
+            discord_guild_id: await db.getSetting('discord_guild_id') || '',
+            discord_alerts_channel_id: await db.getSetting('discord_alerts_channel_id') || '',
+            discord_system_channel_id: await db.getSetting('discord_system_channel_id') || '',
+            discord_dedupe_minutes: await db.getSetting('discord_dedupe_minutes') || '15',
+            discord_alert_message: await db.getSetting('discord_alert_message') || '',
+            discord_oauth_client_id: await db.getSetting('discord_oauth_client_id') || '',
+            discord_oauth_client_secret: await db.getSetting('discord_oauth_client_secret') ? '••••••••' : '',
         };
         // env: the variable provides it and the form cannot change it (server/secrets.js).
         const sources = {};
-        for (const k of ['discord_bot_token', 'discord_oauth_client_secret']) sources[k] = { source: secrets.source(db, k), env: secrets.envName(k) };
+        for (const k of ['discord_bot_token', 'discord_oauth_client_secret']) sources[k] = { source: await secrets.source(db, k), env: secrets.envName(k) };
         res.json({ ok: true, status, settings, sources });
     });
 
@@ -54,7 +54,7 @@ module.exports = function createDiscordRoutes(db, discordService, requireAuth, r
         for (const [key, value] of Object.entries(settings)) {
             if (!allowedKeys.includes(key)) continue;
             // Never save a secret into the database while its environment variable provides it.
-            if (secrets.isManaged(key) && secrets.source(db, key) === 'env') { if (String(value ?? '').trim() && String(value).trim() !== '••••••••') skipped.push(key); continue; }
+            if (secrets.isManaged(key) && await secrets.source(db, key) === 'env') { if (String(value ?? '').trim() && String(value).trim() !== '••••••••') skipped.push(key); continue; }
             // Bot token / OAuth secret are owner-only — silently skip for admins.
             if (isSensitiveSettingKey(key) && !owner) continue;
             const strVal = String(value ?? '').trim();
@@ -70,7 +70,7 @@ module.exports = function createDiscordRoutes(db, discordService, requireAuth, r
         if (Object.keys(changes.set).length) {
             const siteConfig = require('../admin/site-config');
             try {
-                await siteConfig.forDb(db).change(changes, { actor: siteConfig.actorOf(req.user), reason: 'Discord settings' });
+                await (await siteConfig.forDb(db)).change(changes, { actor: siteConfig.actorOf(req.user), reason: 'Discord settings' });
             } catch (err) {
                 return res.status(err.status || 500).json({ ok: false, error: err.message, code: err.code, errors: err.errors });
             }

@@ -81,7 +81,7 @@ async function refreshService(req, serviceName) {
         try {
             const db = req.app.locals.db;
             const config = req.app.locals.config;
-            const resolved = urlRegistry.getResolvedRegistry(db, process.env);
+            const resolved = await urlRegistry.getResolvedRegistry(db, process.env);
             req.app.locals.urlRegistry = resolved;
             applyResolvedRegistryToConfig(config, resolved);
             return {
@@ -166,27 +166,27 @@ async function refreshServiceByKey(req, key) {
     if (!serviceName) {
         return { ok: false, service: null, mode: 'unknown', error: `No service defined for key ${key}` };
     }
-    return refreshService(req, serviceName);
+    return await refreshService(req, serviceName);
 }
 
 function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     const siteConfig = require('./site-config');
 
-    function getEmailMetrics() {
+    async function getEmailMetrics() {
         const summary = {
-            total: db.prepare('SELECT COUNT(*) AS count FROM email_delivery_log').get().count,
-            sent: db.prepare("SELECT COUNT(*) AS count FROM email_delivery_log WHERE status = 'sent'").get().count,
-            failed: db.prepare("SELECT COUNT(*) AS count FROM email_delivery_log WHERE status = 'failed'").get().count,
-            sent_24h: db.prepare("SELECT COUNT(*) AS count FROM email_delivery_log WHERE status = 'sent' AND created_at >= datetime('now', '-1 day')").get().count,
-            failed_24h: db.prepare("SELECT COUNT(*) AS count FROM email_delivery_log WHERE status = 'failed' AND created_at >= datetime('now', '-1 day')").get().count,
-            password_resets_24h: db.prepare("SELECT COUNT(*) AS count FROM email_delivery_log WHERE email_type = 'password_reset' AND created_at >= datetime('now', '-1 day')").get().count,
-            notifications_24h: db.prepare("SELECT COUNT(*) AS count FROM email_delivery_log WHERE email_type LIKE 'notification:%' AND created_at >= datetime('now', '-1 day')").get().count,
-            tests_24h: db.prepare("SELECT COUNT(*) AS count FROM email_delivery_log WHERE email_type = 'test' AND created_at >= datetime('now', '-1 day')").get().count,
-            last_sent_at: db.prepare("SELECT created_at FROM email_delivery_log WHERE status = 'sent' ORDER BY created_at DESC LIMIT 1").get()?.created_at || null,
-            last_failed_at: db.prepare("SELECT created_at FROM email_delivery_log WHERE status = 'failed' ORDER BY created_at DESC LIMIT 1").get()?.created_at || null,
+            total: (await db.prepare('SELECT COUNT(*) AS count FROM email_delivery_log').get()).count,
+            sent: (await db.prepare("SELECT COUNT(*) AS count FROM email_delivery_log WHERE status = 'sent'").get()).count,
+            failed: (await db.prepare("SELECT COUNT(*) AS count FROM email_delivery_log WHERE status = 'failed'").get()).count,
+            sent_24h: (await db.prepare("SELECT COUNT(*) AS count FROM email_delivery_log WHERE status = 'sent' AND created_at >= datetime('now', '-1 day')").get()).count,
+            failed_24h: (await db.prepare("SELECT COUNT(*) AS count FROM email_delivery_log WHERE status = 'failed' AND created_at >= datetime('now', '-1 day')").get()).count,
+            password_resets_24h: (await db.prepare("SELECT COUNT(*) AS count FROM email_delivery_log WHERE email_type = 'password_reset' AND created_at >= datetime('now', '-1 day')").get()).count,
+            notifications_24h: (await db.prepare("SELECT COUNT(*) AS count FROM email_delivery_log WHERE email_type LIKE 'notification:%' AND created_at >= datetime('now', '-1 day')").get()).count,
+            tests_24h: (await db.prepare("SELECT COUNT(*) AS count FROM email_delivery_log WHERE email_type = 'test' AND created_at >= datetime('now', '-1 day')").get()).count,
+            last_sent_at: (await db.prepare("SELECT created_at FROM email_delivery_log WHERE status = 'sent' ORDER BY created_at DESC LIMIT 1").get())?.created_at || null,
+            last_failed_at: (await db.prepare("SELECT created_at FROM email_delivery_log WHERE status = 'failed' ORDER BY created_at DESC LIMIT 1").get())?.created_at || null,
         };
 
-        const byType = db.prepare(`
+        const byType = await db.prepare(`
             SELECT email_type, status, COUNT(*) AS count
             FROM email_delivery_log
             WHERE created_at >= datetime('now', '-30 day')
@@ -195,7 +195,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             LIMIT 20
         `).all();
 
-        const recent = db.prepare(`
+        const recent = await db.prepare(`
             SELECT id, email_type, recipient, subject, status, error_message, created_at
             FROM email_delivery_log
             ORDER BY created_at DESC
@@ -214,7 +214,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     }
 
     async function notifyServiceRefresh(req, key) {
-        return refreshServiceByKey(req, key);
+        return await refreshServiceByKey(req, key);
     }
 
     // A role change reaches Live (and every other consumer) as network.user.updated: the users trigger records
@@ -228,10 +228,10 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // ═══════════════════════════════════════════════════════
 
     // GET /api/admin/email — get current email config (owner-only: exposes key metadata)
-    router.get('/email', requireOwner, (req, res) => {
+    router.get('/email', requireOwner, async (req, res) => {
         try {
             const status = emailService.getStatus();
-            res.json({ ok: true, email: status, metrics: getEmailMetrics() });
+            res.json({ ok: true, email: status, metrics: await getEmailMetrics() });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
         }
@@ -247,12 +247,12 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             const setSetting = { run: (k, v, type) => { changes.set[k] = v; changes.types[k] = type; } };
             const skipped = [];
 
-            const collect = () => {
+            const collect = async () => {
                 if (enabled !== undefined) setSetting.run('email_enabled', String(enabled), 'boolean');
                 // Only update API key if it's not a masked placeholder, and never while RESEND_API_KEY
                 // provides it (server/secrets.js): the environment is the source then.
                 if (api_key && !/\u2022/.test(api_key)) {
-                    if (secrets.source(db, 'resend_api_key') === 'env') skipped.push('resend_api_key');
+                    if (await secrets.source(db, 'resend_api_key') === 'env') skipped.push('resend_api_key');
                     else setSetting.run('resend_api_key', api_key, 'string');
                 }
                 if (from_email) setSetting.run('email_from_address', from_email, 'string');
@@ -262,13 +262,13 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                 if (from_email_openvibegames !== undefined) setSetting.run('email_from_openvibegames', from_email_openvibegames, 'string');
                 if (from_email_openvibenetwork !== undefined) setSetting.run('email_from_openvibenetwork', from_email_openvibenetwork, 'string');
             };
-            collect();
-            if (Object.keys(changes.set).length) await siteConfig.forDb(db).change(changes, { actor: siteConfig.actorOf(req.user), reason: String(req.body.reason || 'email settings').slice(0, 300) });
+            await collect();
+            if (Object.keys(changes.set).length) await (await siteConfig.forDb(db)).change(changes, { actor: siteConfig.actorOf(req.user), reason: String(req.body.reason || 'email settings').slice(0, 300) });
 
             emailService.reload();
 
             // Audit
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'email_config_update', JSON.stringify({ from_email })
             );
 
@@ -297,15 +297,15 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // ═══════════════════════════════════════════════════════
 
     // Where each provider secret comes from (server/secrets.js): names and sources, never values.
-    router.get('/secrets', requireOwner, (req, res) => {
-        res.json({ ok: true, secrets: secrets.report(db) });
+    router.get('/secrets', requireOwner, async (req, res) => {
+        res.json({ ok: true, secrets: await secrets.report(db) });
     });
 
     // Core site settings are owner-only (off-limits to admins).
-    router.get('/settings', requireOwner, (req, res) => {
+    router.get('/settings', requireOwner, async (req, res) => {
         res.set('Cache-Control', 'private, no-store');   // the owner sees secrets in clear here
         try {
-            const rows = db.prepare('SELECT * FROM site_settings').all();
+            const rows = await db.prepare('SELECT * FROM site_settings').all();
             const settings = {};
             // Keys managed exclusively by the Email tab — hide from generic settings
             const EMAIL_MANAGED_KEYS = new Set([
@@ -321,7 +321,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                 // Provider secrets set in the environment (server/secrets.js): the database copy is not
                 // used, and the value is never shown; the UI says which variable provides it.
                 if (secrets.isManaged(r.key)) {
-                    const src = secrets.source(db, r.key);
+                    const src = await secrets.source(db, r.key);
                     if (src === 'env') { settings[r.key] = { value: '', type: r.type, source: 'env', env: secrets.envName(r.key), redacted: true }; continue; }
                     if (!owner) { settings[r.key] = { value: maskSecret(r.value), type: r.type, source: src, env: secrets.envName(r.key), redacted: true }; continue; }
                     settings[r.key] = { value: r.value, type: r.type, source: src, env: secrets.envName(r.key), secret: secrets.isSecret(r.key) };
@@ -353,16 +353,16 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                 return res.json({ ok: true, skipped: true });
             }
             // A provider secret the environment provides is never saved into the database.
-            if (secrets.isManaged(key) && secrets.source(db, key) === 'env') {
+            if (secrets.isManaged(key) && await secrets.source(db, key) === 'env') {
                 return res.json({ ok: true, skipped: true, source: 'env', env: secrets.envName(key), note: `set in the environment (${secrets.envName(key)}); not saved to the database` });
             }
             let revision = null;
             if (siteConfig.isConfigKey(key)) {
-                revision = (await siteConfig.forDb(db).change({ set: { [key]: String(value) }, types: { [key]: type || 'string' } }, { actor: siteConfig.actorOf(req.user), reason: String(req.body.reason || `setting ${key}`).slice(0, 300) })).revision;
+                revision = (await (await siteConfig.forDb(db)).change({ set: { [key]: String(value) }, types: { [key]: type || 'string' } }, { actor: siteConfig.actorOf(req.user), reason: String(req.body.reason || `setting ${key}`).slice(0, 300) })).revision;
             } else {
-                db.prepare('INSERT OR REPLACE INTO site_settings (key, value, type) VALUES (?, ?, ?)').run(key, String(value), type || 'string');
+                await db.prepare('INSERT INTO site_settings (key, value, type) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, type = excluded.type').run(key, String(value), type || 'string');
             }
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'setting_update', JSON.stringify({ key })
             );
             res.json({ ok: true, ...(revision ? { revision } : {}) });
@@ -376,18 +376,18 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // GET /config, /config/:namespace, /config/:namespace/history; POST /config/:namespace/rollback { to?, reason }
     // (the rollback first records rows changed outside the journal, so it only undoes configuration changes).
     let configRoutes = null;
-    const configHandlers = () => configRoutes || (configRoutes = require('openvibe-shared/config').adminRoutes([siteConfig.forDb(db).store], {
+    const configHandlers = async () => configRoutes || (configRoutes = require('openvibe-shared/config').adminRoutes([(await siteConfig.forDb(db)).store], {
         requireAdmin: (_q, _s, next) => next(), basePath: '/config', actor: (q) => siteConfig.actorOf(q.user),
     }));
-    router.get('/config', requireOwner, (req, res, next) => configHandlers().list(req, res, next));
-    router.get('/config/:namespace', requireOwner, (req, res, next) => configHandlers().get(req, res, next));
-    router.get('/config/:namespace/history', requireOwner, (req, res, next) => configHandlers().history(req, res, next));
+    router.get('/config', requireOwner, async (req, res, next) => (await configHandlers()).list(req, res, next));
+    router.get('/config/:namespace', requireOwner, async (req, res, next) => (await configHandlers()).get(req, res, next));
+    router.get('/config/:namespace/history', requireOwner, async (req, res, next) => (await configHandlers()).history(req, res, next));
     router.post('/config/:namespace/rollback', requireOwner, async (req, res) => {
         try {
             if (req.params.namespace !== 'network.site_settings') return res.status(404).json({ ok: false, error: 'No such configuration namespace' });
             const to = req.body && req.body.to != null ? Number(req.body.to) : undefined;
-            const snap = await siteConfig.forDb(db).rollback({ actor: siteConfig.actorOf(req.user), reason: String((req.body && req.body.reason) || 'rollback').slice(0, 300), to });
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'setting_rollback', JSON.stringify({ revision: snap.revision }));
+            const snap = await (await siteConfig.forDb(db)).rollback({ actor: siteConfig.actorOf(req.user), reason: String((req.body && req.body.reason) || 'rollback').slice(0, 300), to });
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'setting_rollback', JSON.stringify({ revision: snap.revision }));
             res.json(snap);
         } catch (err) {
             if (err && err.status && err.code) return res.status(err.status).json({ ok: false, error: err.message, code: err.code });
@@ -398,10 +398,10 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // ═══════════════════════════════════════════════════════════════════════
     // URL Registry
 
-    router.get('/url-registry', (req, res) => {
+    router.get('/url-registry', async (req, res) => {
         res.set('Cache-Control', 'private, no-store');   // the owner sees secret-typed values in clear here
         try {
-            let entries = urlRegistry.getAllRegistryEntries(db);
+            let entries = await urlRegistry.getAllRegistryEntries(db);
             // Mask secret-typed registry values (e.g. DEPLOY_CLOUDFLARE_TOKEN) for non-owners.
             if (!isOwner(req.user) && Array.isArray(entries)) {
                 entries = entries.map((e) => {
@@ -432,13 +432,13 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             if (!key) return res.status(400).json({ ok: false, error: 'Key required' });
             if (value === undefined || value === null) return res.status(400).json({ ok: false, error: 'Value required' });
             if (!guardRegistryKey(req, res, key)) return;
-            const entry = urlRegistry.setRegistryEntry(db, key, value, req.user.id);
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            const entry = await urlRegistry.setRegistryEntry(db, key, value, req.user.id);
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'url_registry_update', JSON.stringify({ key })
             );
 
             const refreshResult = await notifyServiceRefresh(req, key);
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'url_registry_refresh_request', JSON.stringify(refreshResult)
             );
             res.json({ ok: true, entry, refresh: refreshResult });
@@ -454,13 +454,13 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             if (!key) return res.status(400).json({ ok: false, error: 'Key required' });
             if (value === undefined || value === null) return res.status(400).json({ ok: false, error: 'Value required' });
             if (!guardRegistryKey(req, res, key)) return;
-            const entry = urlRegistry.setRegistryEntry(db, key, value, req.user.id);
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            const entry = await urlRegistry.setRegistryEntry(db, key, value, req.user.id);
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'url_registry_update', JSON.stringify({ key })
             );
 
             const refreshResult = await notifyServiceRefresh(req, key);
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'url_registry_refresh_request', JSON.stringify(refreshResult)
             );
             res.json({ ok: true, entry, refresh: refreshResult });
@@ -469,13 +469,13 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
         }
     });
 
-    router.delete('/url-registry/:key', (req, res) => {
+    router.delete('/url-registry/:key', async (req, res) => {
         try {
             const { key } = req.params;
             if (!key) return res.status(400).json({ ok: false, error: 'Key required' });
             if (!guardRegistryKey(req, res, key)) return;
-            urlRegistry.resetRegistryEntry(db, key);
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await urlRegistry.resetRegistryEntry(db, key);
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'url_registry_reset', JSON.stringify({ key })
             );
             res.json({ ok: true, key });
@@ -495,7 +495,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                 const result = await refreshService(req, serviceName);
                 refreshResults.push({ service: serviceName, results: [result] });
             }
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'url_registry_refresh_all', JSON.stringify(refreshResults)
             );
             res.json({ ok: true, refreshResults });
@@ -504,13 +504,13 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
         }
     });
 
-    router.post('/url-registry/:key/reset', (req, res) => {
+    router.post('/url-registry/:key/reset', async (req, res) => {
         try {
             const { key } = req.params;
             if (!key) return res.status(400).json({ ok: false, error: 'Key required' });
             if (!guardRegistryKey(req, res, key)) return;
-            urlRegistry.resetRegistryEntry(db, key);
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await urlRegistry.resetRegistryEntry(db, key);
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'url_registry_reset', JSON.stringify({ key })
             );
             res.json({ ok: true, key });
@@ -519,7 +519,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
         }
     });
 
-    router.post('/reset-db', requireOwner, (req, res) => {
+    router.post('/reset-db', requireOwner, async (req, res) => {
         try {
             const serviceRoot = path.resolve(__dirname, '..');
             const scriptPath = path.join(serviceRoot, 'server', 'reset-db.js');
@@ -536,7 +536,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             if (result.status !== 0) {
                 return res.status(500).json({ ok: false, error: result.stderr || result.stdout || `Exit code ${result.status}` });
             }
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)')
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)')
                 .run(req.user.id, 'reset_db', JSON.stringify({ output: result.stdout.trim() }));
             res.json({ ok: true, message: result.stdout.trim() });
         } catch (err) {
@@ -546,7 +546,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
 
     // Only the owner may grant admin — otherwise an admin could self-escalate here,
     // bypassing the owner gate on PUT /users/:id/role.
-    router.post('/users/grant-admin', requireOwner, (req, res) => {
+    router.post('/users/grant-admin', requireOwner, async (req, res) => {
         try {
             const { id, username, email } = req.body;
             if (!id && !username && !email) {
@@ -555,18 +555,18 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
 
             let user;
             if (id) {
-                user = db.prepare('SELECT id, username, email FROM users WHERE id = ?').get(id);
+                user = await db.prepare('SELECT id, username, email FROM users WHERE id = ?').get(id);
             } else if (username) {
-                user = db.prepare('SELECT id, username, email FROM users WHERE LOWER(username) = LOWER(?)').get(username);
+                user = await db.prepare('SELECT id, username, email FROM users WHERE LOWER(username) = LOWER(?)').get(username);
             } else {
-                user = db.prepare('SELECT id, username, email FROM users WHERE LOWER(email) = LOWER(?)').get(email);
+                user = await db.prepare('SELECT id, username, email FROM users WHERE LOWER(email) = LOWER(?)').get(email);
             }
             if (!user) {
                 return res.status(404).json({ ok: false, error: 'User not found' });
             }
 
-            db.prepare('UPDATE users SET role = ? WHERE id = ?').run('admin', user.id);
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await db.prepare('UPDATE users SET role = ? WHERE id = ?').run('admin', user.id);
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id,
                 'grant_admin',
                 JSON.stringify({ targetId: user.id, targetUsername: user.username, targetEmail: user.email }),
@@ -581,7 +581,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // User Management
     // ═══════════════════════════════════════════════════════
 
-    router.get('/users', (req, res) => {
+    router.get('/users', async (req, res) => {
         try {
             const limit = Math.min(parseInt(req.query.limit) || 50, 200);
             const offset = parseInt(req.query.offset) || 0;
@@ -589,19 +589,19 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
 
             let users;
             if (search) {
-                users = db.prepare(`
+                users = await db.prepare(`
                     SELECT id, username, display_name, email, role, is_banned, created_at, last_seen
                     FROM users WHERE username LIKE ? OR display_name LIKE ? OR email LIKE ?
                     ORDER BY created_at DESC LIMIT ? OFFSET ?
                 `).all(`%${search}%`, `%${search}%`, `%${search}%`, limit, offset);
             } else {
-                users = db.prepare(`
+                users = await db.prepare(`
                     SELECT id, username, display_name, email, role, is_banned, created_at, last_seen
                     FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?
                 `).all(limit, offset);
             }
 
-            const total = db.prepare('SELECT COUNT(*) as cnt FROM users').get().cnt;
+            const total = (await db.prepare('SELECT COUNT(*) as cnt FROM users').get()).cnt;
             res.json({ ok: true, users, total });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
@@ -613,7 +613,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // whoever controls the address controls the account. So both are requireOwner, not
     // requireAdmin, matching how the admin role itself is gated below.
 
-    router.put('/users/:id/email', requireOwner, (req, res) => {
+    router.put('/users/:id/email', requireOwner, async (req, res) => {
         try {
             const userId = parseInt(req.params.id, 10);
             if (!Number.isFinite(userId)) return res.status(400).json({ ok: false, error: 'Invalid user id' });
@@ -628,20 +628,20 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                 return res.status(400).json({ ok: false, error: 'Email address is too long' });
             }
 
-            const target = db.prepare('SELECT id, username, email FROM users WHERE id = ?').get(userId);
+            const target = await db.prepare('SELECT id, username, email FROM users WHERE id = ?').get(userId);
             if (!target) return res.status(404).json({ ok: false, error: 'User not found' });
 
             // users.email is UNIQUE, so a collision would throw a raw SQLite error —
             // check first and return something the admin can actually act on.
             if (email) {
-                const clash = db.prepare('SELECT id, username FROM users WHERE LOWER(email) = LOWER(?) AND id != ?').get(email, userId);
+                const clash = await db.prepare('SELECT id, username FROM users WHERE LOWER(email) = LOWER(?) AND id != ?').get(email, userId);
                 if (clash) {
                     return res.status(409).json({ ok: false, error: `That email is already used by @${clash.username}` });
                 }
             }
 
-            db.prepare('UPDATE users SET email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(email, userId);
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await db.prepare('UPDATE users SET email = ?, updated_at = ov_now() WHERE id = ?').run(email, userId);
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'user_email_change',
                 // Record both sides: this is the audit trail for a takeover-capable action.
                 JSON.stringify({ targetId: userId, targetUsername: target.username, from: target.email || null, to: email })
@@ -657,7 +657,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             const userId = parseInt(req.params.id, 10);
             if (!Number.isFinite(userId)) return res.status(400).json({ ok: false, error: 'Invalid user id' });
 
-            const target = db.prepare('SELECT id, username, display_name, email FROM users WHERE id = ?').get(userId);
+            const target = await db.prepare('SELECT id, username, display_name, email FROM users WHERE id = ?').get(userId);
             if (!target) return res.status(404).json({ ok: false, error: 'User not found' });
             if (!target.email) return res.status(400).json({ ok: false, error: 'That account has no email address set' });
 
@@ -668,7 +668,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
 
             // Same minting path as the self-service flow, so a link issued here behaves
             // identically — hashed at rest, one live token per user, same TTL.
-            const { resetUrl, expiresMinutes } = issueResetToken(db, req, userId);
+            const { resetUrl, expiresMinutes } = await issueResetToken(db, req, userId);
             const sent = await emailService.sendPasswordResetEmail({
                 to: target.email,
                 username: target.display_name || target.username,
@@ -686,7 +686,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                 // generic message gave no way to know that without reading server logs.
                 let reason = null;
                 try {
-                    const row = db.prepare(`
+                    const row = await db.prepare(`
                         SELECT error_message FROM email_delivery_log
                         WHERE recipient = ? AND status = 'failed'
                         ORDER BY id DESC LIMIT 1
@@ -699,7 +699,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                 });
             }
 
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'user_password_reset_sent',
                 JSON.stringify({ targetId: userId, targetUsername: target.username, to: target.email })
             );
@@ -711,7 +711,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
         }
     });
 
-    router.put('/users/:id/role', (req, res) => {
+    router.put('/users/:id/role', async (req, res) => {
         try {
             const { role } = req.body;
             const validRoles = ['user', 'streamer', 'global_mod', 'admin'];
@@ -720,12 +720,12 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             // still manage streamers / global mods / users, but not other admins.
             const OWNER = (process.env.OWNER_USERNAME || 'goosely').toLowerCase();
             const isOwner = req.user && String(req.user.username || '').toLowerCase() === OWNER;
-            const target = db.prepare('SELECT role FROM users WHERE id = ?').get(req.params.id);
+            const target = await db.prepare('SELECT role FROM users WHERE id = ?').get(req.params.id);
             if (!isOwner && (role === 'admin' || (target && target.role === 'admin'))) {
                 return res.status(403).json({ ok: false, error: 'Only the owner can grant or change the admin role' });
             }
-            db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, req.params.id);
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, req.params.id);
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'user_role_change', JSON.stringify({ targetId: req.params.id, role })
             );
             res.json({ ok: true });
@@ -734,19 +734,19 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
         }
     });
 
-    router.put('/users/:id/ban', (req, res) => {
+    router.put('/users/:id/ban', async (req, res) => {
         try {
             const { banned, reason } = req.body;
-            db.prepare('UPDATE users SET is_banned = ?, ban_reason = ? WHERE id = ?').run(banned ? 1 : 0, reason || null, req.params.id);
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await db.prepare('UPDATE users SET is_banned = ?, ban_reason = ? WHERE id = ?').run(banned ? 1 : 0, reason || null, req.params.id);
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, banned ? 'user_ban' : 'user_unban', JSON.stringify({ targetId: req.params.id, reason })
             );
             // A ban ends the person's tokens on every site at once (network.user.token_valid_after).
-            if (banned) { revocation.revokeTokens(db, Number(req.params.id), { reason: 'banned', actor: staffActor(req.user) }); revocation.kick(db); }
+            if (banned) { await revocation.revokeTokens(db, Number(req.params.id), { reason: 'banned', actor: staffActor(req.user) }); revocation.kick(db); }
 
             // Notify the user
             if (banned) {
-                notificationService.create({
+                await notificationService.create({
                     user_id: parseInt(req.params.id),
                     type: 'BAN',
                     title: 'Account Suspended',
@@ -763,13 +763,13 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     });
 
     // Rename someone (their old name redirects on Live and stays reserved; server/identity/usernames.js).
-    router.put('/users/:id/username', (req, res) => {
+    router.put('/users/:id/username', async (req, res) => {
         try {
-            const target = db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(req.params.id);
+            const target = await db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(req.params.id);
             if (!target) return res.status(404).json({ ok: false, error: 'No such user' });
             if (isOwner(target) && !isOwner(req.user)) return res.status(403).json({ ok: false, error: "Only the owner renames the owner" });
-            const out = require('../identity/usernames').rename(db, target.id, String((req.body && req.body.username) || ''), { actorId: req.user.id });
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'user_rename', JSON.stringify({ targetId: target.id, ...out }));
+            const out = await require('../identity/usernames').rename(db, target.id, String((req.body && req.body.username) || ''), { actorId: req.user.id });
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'user_rename', JSON.stringify({ targetId: target.id, ...out }));
             res.json({ ok: true, ...out });
         } catch (err) {
             res.status(err.status || 500).json({ ok: false, error: err.message });
@@ -777,14 +777,14 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     });
 
     // End someone's sessions on every device and site (a stolen token, a shared computer).
-    router.post('/users/:id/sign-out', (req, res) => {
+    router.post('/users/:id/sign-out', async (req, res) => {
         try {
-            const target = db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(req.params.id);
+            const target = await db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(req.params.id);
             if (!target) return res.status(404).json({ ok: false, error: 'No such user' });
             if (isOwner(target) && !isOwner(req.user)) return res.status(403).json({ ok: false, error: "Only the owner ends the owner's sessions" });
-            const { validAfter } = revocation.revokeTokens(db, target.id, { reason: 'staff_revoked', actor: staffActor(req.user) });
+            const { validAfter } = await revocation.revokeTokens(db, target.id, { reason: 'staff_revoked', actor: staffActor(req.user) });
             revocation.kick(db);
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'user_sign_out', JSON.stringify({ targetId: target.id, valid_after: validAfter }));
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'user_sign_out', JSON.stringify({ targetId: target.id, valid_after: validAfter }));
             res.json({ ok: true, valid_after: validAfter });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
@@ -795,13 +795,13 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // Broadcast Notifications
     // ═══════════════════════════════════════════════════════
 
-    router.post('/broadcast', (req, res) => {
+    router.post('/broadcast', async (req, res) => {
         try {
             const { title, message, icon, url, priority, category } = req.body;
             if (!title) return res.status(400).json({ ok: false, error: 'Title required' });
 
             // Abusable at volume — admins get one global notification per 6h; owners are exempt.
-            const limit = checkAdminLimit(db, req.user, 'broadcast');
+            const limit = await checkAdminLimit(db, req.user, 'broadcast');
             if (!limit.ok) {
                 return res.status(429).json({
                     ok: false,
@@ -811,8 +811,8 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             }
 
             // Get all non-banned user IDs
-            const userIds = db.prepare('SELECT id FROM users WHERE is_banned = 0').all().map(u => u.id);
-            const results = notificationService.createBulk(userIds, {
+            const userIds = (await db.prepare('SELECT id FROM users WHERE is_banned = 0').all()).map(u => u.id);
+            const results = await notificationService.createBulk(userIds, {
                 type: 'ADMIN_BROADCAST',
                 title,
                 message,
@@ -825,8 +825,8 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                 service: 'network',
             });
 
-            recordAdminAction(db, req.user, 'broadcast');
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await recordAdminAction(db, req.user, 'broadcast');
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'broadcast_notification', JSON.stringify({ title, recipients: results.length })
             );
 
@@ -840,13 +840,13 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // System Health
     // ═══════════════════════════════════════════════════════
 
-    router.get('/health', (req, res) => {
+    router.get('/health', async (req, res) => {
         try {
-            const userCount = db.prepare('SELECT COUNT(*) as cnt FROM users').get().cnt;
-            const notifCount = db.prepare('SELECT COUNT(*) as cnt FROM notifications').get().cnt;
-            const unreadCount = db.prepare('SELECT COUNT(*) as cnt FROM notifications WHERE is_read = 0').get().cnt;
-            const anonCount = db.prepare('SELECT COUNT(*) as cnt FROM anon_users').get().cnt;
-            const sessionCount = db.prepare('SELECT COUNT(*) as cnt FROM user_sessions WHERE is_active = 1').get().cnt;
+            const userCount = (await db.prepare('SELECT COUNT(*) as cnt FROM users').get()).cnt;
+            const notifCount = (await db.prepare('SELECT COUNT(*) as cnt FROM notifications').get()).cnt;
+            const unreadCount = (await db.prepare('SELECT COUNT(*) as cnt FROM notifications WHERE is_read = 0').get()).cnt;
+            const anonCount = (await db.prepare('SELECT COUNT(*) as cnt FROM anon_users').get()).cnt;
+            const sessionCount = (await db.prepare('SELECT COUNT(*) as cnt FROM user_sessions WHERE is_active = 1').get()).cnt;
             const emailStatus = emailService.getStatus();
 
             res.json({
@@ -871,11 +871,11 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // Audit Log
     // ═══════════════════════════════════════════════════════
 
-    router.get('/audit', (req, res) => {
+    router.get('/audit', async (req, res) => {
         try {
             const limit = Math.min(parseInt(req.query.limit) || 50, 500);
             const offset = parseInt(req.query.offset) || 0;
-            const rows = db.prepare(`
+            const rows = await db.prepare(`
                 SELECT a.*, u.username FROM audit_log a
                 LEFT JOIN users u ON u.id = a.user_id
                 ORDER BY a.created_at DESC LIMIT ? OFFSET ?
@@ -898,16 +898,16 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // Verification Keys (reserved username claims)
     // ═══════════════════════════════════════════════════════
 
-    router.get('/verification-keys', (req, res) => {
+    router.get('/verification-keys', async (req, res) => {
         try {
-            const keys = db.getAllVerificationKeys();
+            const keys = await db.getAllVerificationKeys();
             res.json({ ok: true, keys });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
         }
     });
 
-    router.post('/verification-keys', (req, res) => {
+    router.post('/verification-keys', async (req, res) => {
         try {
             const { target_username, note } = req.body;
             if (!target_username) {
@@ -918,13 +918,13 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             }
 
             // Check if username already taken
-            const existingUser = db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(target_username);
+            const existingUser = await db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(target_username);
             if (existingUser) {
                 return res.status(409).json({ ok: false, error: `Username "${target_username}" is already registered` });
             }
 
             // Check for duplicate active key
-            const existingKey = db.getVerificationKeyByUsername(target_username);
+            const existingKey = await db.getVerificationKeyByUsername(target_username);
             if (existingKey) {
                 return res.status(409).json({ ok: false, error: `Active key already exists for "${target_username}"` });
             }
@@ -935,16 +935,16 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                 crypto.randomBytes(2).toString('hex').toUpperCase()
             ).join('-');
 
-            db.createVerificationKey({
+            await db.createVerificationKey({
                 key,
                 target_username,
                 note: note || '',
                 created_by: req.user.id,
             });
 
-            const created = db.getVerificationKeyByKey(key);
+            const created = await db.getVerificationKeyByKey(key);
 
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'verification_key_create', JSON.stringify({ key, target_username })
             );
 
@@ -955,14 +955,14 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
         }
     });
 
-    router.delete('/verification-keys/:id', (req, res) => {
+    router.delete('/verification-keys/:id', async (req, res) => {
         try {
-            const result = db.revokeVerificationKey(req.params.id);
+            const result = await db.revokeVerificationKey(req.params.id);
             if (result.changes === 0) {
                 return res.status(404).json({ ok: false, error: 'Key not found or already used/revoked' });
             }
 
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'verification_key_revoke', JSON.stringify({ keyId: req.params.id })
             );
 
@@ -981,11 +981,11 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
         'net.globalping_token',      // Globalping API token (optional, 100 credits/hr free)
     ];
 
-    router.get('/net-config', requireOwner, (req, res) => {
+    router.get('/net-config', requireOwner, async (req, res) => {
         try {
             const config = {};
             for (const key of NET_SETTING_KEYS) {
-                const row = db.prepare('SELECT value FROM site_settings WHERE key = ?').get(key);
+                const row = await db.prepare('SELECT value FROM site_settings WHERE key = ?').get(key);
                 config[key] = row ? row.value : '';
             }
             // Mask tokens for display
@@ -1000,7 +1000,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
         }
     });
 
-    router.put('/net-config', requireOwner, (req, res) => {
+    router.put('/net-config', requireOwner, async (req, res) => {
         try {
             const { key, value } = req.body;
             if (!key || !NET_SETTING_KEYS.includes(key)) {
@@ -1008,8 +1008,8 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             }
             // Skip if masked
             if (value?.startsWith('••••')) return res.json({ ok: true, skipped: true });
-            db.prepare('INSERT OR REPLACE INTO site_settings (key, value, type) VALUES (?, ?, ?)').run(key, String(value), 'secret');
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await db.prepare('INSERT INTO site_settings (key, value, type) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, type = excluded.type').run(key, String(value), 'secret');
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'net_config_update', JSON.stringify({ key })
             );
             res.json({ ok: true });

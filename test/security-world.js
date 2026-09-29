@@ -18,7 +18,6 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const jwt = require('jsonwebtoken');
-const Database = require('better-sqlite3');
 const { bootServer } = require('./helpers/boot-server');
 const crawler = require('./security-crawl');
 
@@ -73,8 +72,8 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
         },
     });
     const routes = await crawler.readRoutes(dump.OV_ROUTE_DUMP);
-    const db = new Database(path.join(srv.dir, 'network.db'));
-    db.pragma('busy_timeout = 5000');
+    const { getDb } = require('../server/db/database');
+    const db = getDb();   // the same handle the in-process server booted on (test/helpers/pg-preload.mjs)
 
     // ── Secrets, by label ────────────────────────────────────────────
     const secrets = {};
@@ -89,22 +88,22 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
     // ── People ───────────────────────────────────────────────────────
     const subjects = require('../server/identity/subjects');
     const hash = '$2a$10$' + 'x'.repeat(53);
-    const addUser = (username, role = 'user', email = null) => {
-        db.prepare('INSERT INTO users (username, email, password_hash, display_name, role) VALUES (?, ?, ?, ?, ?)').run(username, email, hash, username, role);
-        const row = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
-        subjects.ensureUserSubject(db, row);
-        return db.prepare('SELECT * FROM users WHERE id = ?').get(row.id);
+    const addUser = async (username, role = 'user', email = null) => {
+        await db.prepare('INSERT INTO users (username, email, password_hash, display_name, role) VALUES (?, ?, ?, ?, ?)').run(username, email, hash, username, role);
+        const row = await db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+        await subjects.ensureUserSubject(db, row);
+        return await db.prepare('SELECT * FROM users WHERE id = ?').get(row.id);
     };
     const rows = {
-        alice: addUser('alice', 'user', 'alice-private@example.test'),
-        bob: addUser('bob', 'user', 'bob-private@example.test'),
-        carol: addUser('carol', 'user', 'carol-private@example.test'),
-        staff: addUser('staffer', 'admin', 'staff-private@example.test'),
+        alice: await addUser('alice', 'user', 'alice-private@example.test'),
+        bob: await addUser('bob', 'user', 'bob-private@example.test'),
+        carol: await addUser('carol', 'user', 'carol-private@example.test'),
+        staff: await addUser('staffer', 'admin', 'staff-private@example.test'),
     };
-    const ownerRow = db.prepare("SELECT * FROM users WHERE username = 'rootowner'").get();
+    const ownerRow = await db.prepare("SELECT * FROM users WHERE username = 'rootowner'").get();
     if (!ownerRow || ownerRow.role !== 'admin') throw new Error('the server did not create the ADMIN_USERNAME account');
-    subjects.ensureUserSubject(db, ownerRow);
-    rows.owner = db.prepare('SELECT * FROM users WHERE id = ?').get(ownerRow.id);
+    await subjects.ensureUserSubject(db, ownerRow);
+    rows.owner = await db.prepare('SELECT * FROM users WHERE id = ?').get(ownerRow.id);
     secrets['owner password hash'] = rows.owner.password_hash;
     const sign = (u) => jwt.sign({ sub: u.id, id: u.id, username: u.username, role: u.role }, keys.privateKey, { algorithm: 'RS256', issuer: ISSUER, expiresIn: '2h' });
     const users = {};
@@ -112,9 +111,9 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
 
     // First-party OAuth clients get unique secrets (stored in clear in oauth_clients).
     const clientSecrets = {};
-    for (const c of db.prepare('SELECT client_id FROM oauth_clients').all()) {
+    for (const c of await db.prepare('SELECT client_id FROM oauth_clients').all()) {
         clientSecrets[c.client_id] = `${S('client')}-${c.client_id}-${crypto.randomBytes(6).toString('hex')}`;
-        db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(clientSecrets[c.client_id], c.client_id);
+        await db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(clientSecrets[c.client_id], c.client_id);
         secrets[`oauth client secret ${c.client_id}`] = clientSecrets[c.client_id];
     }
 
@@ -159,7 +158,7 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
     const rot = once('credential rotation', must(await call('alice', 'POST', `/api/v1/projects/${dev.PA.id}/apps/${dev.PA.app}/credentials/rotate`, {}), 201, 'rotate'));
     dev.PA.secret2 = rot.body.credential.client_secret; dev.PA.credential2 = rot.body.credential.id;
     secrets['dev credential PA rotated'] = dev.PA.secret2;
-    for (const c of db.prepare('SELECT id, secret_hash FROM dev_credentials').all()) secrets[`dev credential hash ${c.id}`] = c.secret_hash;
+    for (const c of await db.prepare('SELECT id, secret_hash FROM dev_credentials').all()) secrets[`dev credential hash ${c.id}`] = c.secret_hash;
     // A grant request (pending) to have a grant row on each app.
     for (const P of ['PA', 'PB']) await call(dev[P].owner, 'POST', `/api/v1/projects/${dev[P].id}/apps/${dev[P].app}/grants`, { capability: 'media.object.upload' });
     const exp = once('export token', must(await call('alice', 'POST', `/api/v1/projects/${dev.PA.id}/export-tokens`, { audience: 'openvibe.media', env: 'sandbox' }), 201, 'export token'));
@@ -183,28 +182,28 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
     secrets['alice push endpoint'] = pushSub.endpoint;
     secrets['alice push auth'] = pushSub.keys.auth;
     // A refresh token through the OAuth code flow (client 'live').
-    const REDIRECT = (JSON.parse(db.prepare("SELECT redirect_uris FROM oauth_clients WHERE client_id = 'live'").get().redirect_uris) || [])[0];
+    const REDIRECT = (JSON.parse((await db.prepare("SELECT redirect_uris FROM oauth_clients WHERE client_id = 'live'").get()).redirect_uris) || [])[0];
     const conf = await call(null, 'POST', '/oauth/confirm', { token: users.alice.token, client_id: 'live', redirect_uri: REDIRECT });
     if (conf.status === 200 && conf.body && conf.body.redirect) {
         const code = new URL(conf.body.redirect).searchParams.get('code');
         const t = once('oauth code exchange', await call(null, 'POST', '/oauth/token', { grant_type: 'authorization_code', client_id: 'live', client_secret: clientSecrets.live, code, redirect_uri: REDIRECT }));
         if (t.body && t.body.refresh_token) secrets['alice refresh token'] = t.body.refresh_token;
     }
-    for (const r of db.prepare('SELECT token FROM oauth_tokens').all()) secrets[`refresh token hash ${r.token.slice(0, 6)}`] = r.token;
+    for (const r of await db.prepare('SELECT token FROM oauth_tokens').all()) secrets[`refresh token hash ${r.token.slice(0, 6)}`] = r.token;
     // An anonymous identity seen from another address.
     const anonToken = `anon-${crypto.randomBytes(12).toString('hex')}`;
-    db.prepare('INSERT INTO anon_users (anon_number, session_token, ip) VALUES (?, ?, ?)').run(900001, anonToken, '192.0.2.77');
+    await db.prepare('INSERT INTO anon_users (anon_number, session_token, ip) VALUES (?, ?, ?)').run(900001, anonToken, '192.0.2.77');
     secrets['anon session token'] = anonToken;
     // Provider-secret copies in the database (the environment wins, but the copies are secrets too).
     for (const k of ['resend_api_key', 'resend_webhook_secret', 'discord_bot_token', 'discord_oauth_client_secret', 'github_token', 'net.ipinfo_token', 'ses_secret_access_key']) {
         const v = S(`db-${k.replace(/[._]/g, '-')}`);
-        db.prepare("INSERT OR REPLACE INTO site_settings (key, value, type) VALUES (?, ?, 'secret')").run(k, v);
+        await db.prepare("INSERT INTO site_settings (key, value, type) VALUES (?, ?, 'secret') ON CONFLICT (key) DO UPDATE SET value = excluded.value, type = excluded.type").run(k, v);
         secrets[`db setting ${k}`] = v;
     }
     const vk = `VK-${crypto.randomBytes(8).toString('hex')}`;
-    db.prepare('INSERT INTO verification_keys (key, target_username, created_by) VALUES (?, ?, ?)').run(vk, 'carol', rows.staff.id);
+    await db.prepare('INSERT INTO verification_keys (key, target_username, created_by) VALUES (?, ?, ?)').run(vk, 'carol', rows.staff.id);
     // A per-user password hash is never shown to anyone.
-    for (const u of ['alice', 'bob', 'staff']) { db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(`$2a$10$${u}${crypto.randomBytes(20).toString('hex')}`, users[u].id); secrets[`${u} password hash`] = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(users[u].id).password_hash; }
+    for (const u of ['alice', 'bob', 'staff']) { await db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(`$2a$10$${u}${crypto.randomBytes(20).toString('hex')}`, users[u].id); secrets[`${u} password hash`] = (await db.prepare('SELECT password_hash FROM users WHERE id = ?').get(users[u].id)).password_hash; }
 
     const callers = {
         anonymous: {},
@@ -219,7 +218,7 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
         liveToken, appToken, anonToken, verificationKey: vk, pushSub, shownOnce, call, serviceToken, sign, S,
         // Every TCP connection the server made so far, as 'host port' lines (the preload logs them).
         connects: () => { try { return fs.readFileSync(dump.OV_CONNECT_LOG, 'utf8').split('\n').filter(Boolean); } catch { return []; } },
-        stop: async () => { try { db.close(); } catch { /* */ } await srv.stop(); try { fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(srv.dir, { recursive: true, force: true }); } catch { /* */ } },
+        stop: async () => { await srv.stop(); try { fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(srv.dir, { recursive: true, force: true }); } catch { /* */ } },
     };
 }
 

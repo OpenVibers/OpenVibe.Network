@@ -9,21 +9,22 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const { ids } = require('openvibe-contracts');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const { NotificationService } = require('../server/notifications/notification-service');
 const { createEventsConsumer } = require('../server/notifications/events-consumer');
 const { createModerationAudit, rowOf } = require('../server/admin/moderation-audit');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-modaudit-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
 const MOD = ids.newId('user'), TARGET = ids.newId('user');
 const ev = (type, payload, actor = { type: 'user', id: MOD }) => ({ event_id: ids.newId('event'), event_type: type, version: 1, source: type.split('.')[0], actor, occurred_at: new Date().toISOString(), payload });
 
 (async () => {
     const audit = createModerationAudit(db);
-    const consumer = createEventsConsumer({ db, notifications: new NotificationService(db), secrets: 'a'.repeat(40), moderationAudit: audit });
+    const consumer = await createEventsConsumer({ db, notifications: new NotificationService(db), secrets: 'a'.repeat(40), moderationAudit: audit });
 
     const chat = ev('chat.moderation.action', { action_id: 5, action_type: 'ban', scope_type: 'channel', scope_id: '327', actor_user_id: 1, actor_subject: MOD, target_user_id: 44, target_subject: TARGET, details: { reason: 'spam' } });
     const community = ev('community.moderation.action', { action: 'paste.deleted', target: { type: 'paste', id: 'k3f9Qa', owner_subject: TARGET }, actor_subject: MOD, reason: 'doxxing', details: {} });
@@ -31,17 +32,17 @@ const ev = (type, payload, actor = { type: 'user', id: MOD }) => ({ event_id: id
     const live = ev('live.moderation.action', { action_id: 9, action_type: 'site_ban', scope_type: 'site', scope_id: null, actor_user_id: 1, actor_subject: MOD, target_user_id: 44, target_subject: TARGET, details: { reason: '=HYPERLINK("x")' } });
     const billing = ev('billing.staff.action', { audit_id: 'sa_01JAB3C4D5E6F7G8H9J0K1MNPQ', action: 'cashout.approved', outcome: 'done', target: { type: 'cashout', id: 'co_1' }, reason: null, request_id: null, detail: { amount: 5 } });
 
-    for (const e of [chat, community, tips, billing, live]) assert.strictEqual(consumer.apply(e).outcome, 'recorded', e.event_type);
-    assert.strictEqual(consumer.apply(chat).duplicate, true, 'a redelivery records nothing twice');
-    assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM notifications').get().n, 0, 'audit events notify nobody');
+    for (const e of [chat, community, tips, billing, live]) assert.strictEqual((await consumer.apply(e)).outcome, 'recorded', e.event_type);
+    assert.strictEqual((await consumer.apply(chat)).duplicate, true, 'a redelivery records nothing twice');
+    assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM notifications').get()).n, 0, 'audit events notify nobody');
 
-    const all = audit.list({});
+    const all = await audit.list({});
     assert.strictEqual(all.items.length, 5);
     const liveRow = all.items.find((r) => r.service === 'live');
     assert.deepStrictEqual([liveRow.action, liveRow.scope, liveRow.target_subject], ['site_ban', 'site', TARGET]);
-    assert.strictEqual(audit.list({ action: 'site_ban' }).items.length, 1);
-    assert.strictEqual(audit.list({ since: '2000-01-01', until: '2001-01-01' }).items.length, 0);
-    assert.strictEqual(audit.list({ since: '2000-01-01' }).items.length, 5);
+    assert.strictEqual((await audit.list({ action: 'site_ban' })).items.length, 1);
+    assert.strictEqual((await audit.list({ since: '2000-01-01', until: '2001-01-01' })).items.length, 0);
+    assert.strictEqual((await audit.list({ since: '2000-01-01' })).items.length, 5);
     const csv = require('../server/admin/moderation-audit').toCsv(all.items);
     assert.ok(csv.startsWith('id,occurred_at,service,action,'));
     assert.ok(csv.includes(`"'=HYPERLINK(""x"")"`), 'a formula-looking cell is text');
@@ -51,12 +52,12 @@ const ev = (type, payload, actor = { type: 'user', id: MOD }) => ({ event_id: id
     assert.deepStrictEqual([byService.community.action, byService.community.target_type, byService.community.target_id, byService.community.reason], ['paste.deleted', 'paste', 'k3f9Qa', 'doxxing']);
     assert.strictEqual(byService.tips.action, 'interaction.hidden');
     assert.strictEqual(byService.billing.actor_subject, MOD);
-    assert.strictEqual(audit.list({ service: 'community' }).items.length, 1);
-    assert.strictEqual(audit.list({ actor: MOD }).items.length, 4, 'tips carries no moderator identity');
-    assert.strictEqual(audit.list({ target: TARGET }).items.length, 4);
-    const page = audit.list({ limit: 2 });
+    assert.strictEqual((await audit.list({ service: 'community' })).items.length, 1);
+    assert.strictEqual((await audit.list({ actor: MOD })).items.length, 4, 'tips carries no moderator identity');
+    assert.strictEqual((await audit.list({ target: TARGET })).items.length, 4);
+    const page = await audit.list({ limit: 2 });
     assert.strictEqual(page.items.length, 2);
-    assert.strictEqual(audit.list({ limit: 2, before: page.next }).items.length, 2, 'paged by id');
+    assert.strictEqual((await audit.list({ limit: 2, before: page.next })).items.length, 2, 'paged by id');
     assert.strictEqual(rowOf(ev('chat.message.deleted', {})), null);
 
     // The ten services on common.moderation-action@1 (Contracts 0.53.0): subscribed, one row each, the service from the prefix.
@@ -68,16 +69,16 @@ const ev = (type, payload, actor = { type: 'user', id: MOD }) => ({ event_id: id
         assert.ok(TOPICS.includes(type), `${type} is one of the consumer's subscriptions`);
         const payload = { action: 'item.hidden', target: { type: `${svc}_item`, id: `${svc}-1`, owner_subject: TARGET }, actor_subject: MOD, reason: `${svc} reason`, details: { previous: 'visible' } };
         assert.ok(contracts.validate(`${type}@1`, payload).valid, `${type}: a valid payload`);
-        assert.strictEqual(consumer.apply(ev(type, payload)).outcome, 'recorded', type);
+        assert.strictEqual((await consumer.apply(ev(type, payload))).outcome, 'recorded', type);
     }
     for (const svc of COMMON) {
-        const rows = audit.list({ service: svc }).items;
+        const rows = (await audit.list({ service: svc })).items;
         assert.strictEqual(rows.length, 1, svc);
         const r = rows[0];
         assert.deepStrictEqual([r.action, r.actor_subject, r.target_type, r.target_id, r.target_subject, r.scope, r.reason, r.details],
             ['item.hidden', MOD, `${svc}_item`, `${svc}-1`, TARGET, null, `${svc} reason`, { previous: 'visible' }], svc);
     }
-    assert.strictEqual(audit.list({ action: 'item.hidden' }).items.length, COMMON.length);
+    assert.strictEqual((await audit.list({ action: 'item.hidden' })).items.length, COMMON.length);
     // A service acting without a person names no actor; an unknown owner is no target subject.
     const bySvc = rowOf(ev('coupons.moderation.action', { action: 'merchant.disabled', target: { type: 'merchant', id: 'mer_1', owner_subject: null }, actor_subject: null, details: {} }, { type: 'service', id: 'coupons' }));
     assert.deepStrictEqual([bySvc.service, bySvc.action, bySvc.actor_subject, bySvc.target_subject, bySvc.reason], ['coupons', 'merchant.disabled', null, null, null]);
@@ -99,3 +100,4 @@ const ev = (type, payload, actor = { type: 'user', id: MOD }) => ({ event_id: id
     } finally { srv.close(); }
     console.log('moderation audit: all checks passed');
 })().catch((e) => { console.error(e); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

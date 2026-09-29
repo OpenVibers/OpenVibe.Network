@@ -26,14 +26,14 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         const { users, dev, db } = w;
         const PA = dev.PA.id; const AA = dev.PA.app; const PB = dev.PB.id; const AB = dev.PB.app;
         const DEV_TABLES = ['dev_projects', 'dev_project_members', 'dev_apps', 'dev_credentials', 'dev_grants', 'dev_quotas'];
-        const snap = (tables, where = {}) => JSON.stringify(tables.map((t) => db.prepare(`SELECT * FROM "${t}" ${where[t] || ''}`).all()));
+        const snap = async (tables, where = {}) => JSON.stringify((await Promise.all(tables.map(async (t) => await db.prepare(`SELECT * FROM "${t}" ${where[t] || ''}`).all()))));
         const secretNeedles = { ...w.secrets };
         const refused = [];
         const expectRefused = async (who, method, p, body, { tables, where, codes = [401, 403, 404] } = {}) => {
-            const before = tables ? snap(tables, where) : null;
+            const before = tables ? await snap(tables, where) : null;
             const r = await w.call(who, method, p, body);
             if (!codes.includes(r.status)) refused.push(`${method} ${p} as ${typeof who === 'string' ? who : 'token'} → ${r.status} ${r.text.slice(0, 160)}`);
-            if (tables && snap(tables, where) !== before) refused.push(`${method} ${p}: the database changed on a refusal`);
+            if (tables && await snap(tables, where) !== before) refused.push(`${method} ${p}: the database changed on a refusal`);
             for (const l of crawler.leaks(r, secretNeedles)) refused.push(`${method} ${p}: the refusal carries ${l.label}`);
             if (/"(client_secret|access_token|refresh_token)"/.test(r.text)) refused.push(`${method} ${p}: the refusal carries a token field`);
             return r;
@@ -106,13 +106,13 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         await ok('alice', 'POST', `/api/v1/projects/${PA}/apps/${AA}/credentials/${dev.PA.credential}/revoke`, {});
         await ok('bob', 'POST', `/api/v1/projects/${PB}/apps/${AB}/credentials/rotate`, {}, 201);
         await ok('alice', 'DELETE', `/api/v1/projects/${PA}/members/${users.carol.subject}`);
-        assert.strictEqual(db.prepare('SELECT name FROM dev_projects WHERE id = ?').get(PA).name, 'alice-private-project-renamed');
-        assert.ok(db.prepare('SELECT revoked_at FROM dev_credentials WHERE id = ?').get(dev.PA.credential).revoked_at, 'alice revoked her own credential');
+        assert.strictEqual((await db.prepare('SELECT name FROM dev_projects WHERE id = ?').get(PA)).name, 'alice-private-project-renamed');
+        assert.ok((await db.prepare('SELECT revoked_at FROM dev_credentials WHERE id = ?').get(dev.PA.credential)).revoked_at, 'alice revoked her own credential');
 
         // ── Personal data: bob against alice's ids ───────────────────────
-        const notif = db.prepare('SELECT id FROM notifications WHERE user_id = ? ORDER BY created_at DESC').get(users.alice.id);
-        const session = db.prepare('SELECT id FROM user_sessions WHERE user_id = ? AND is_active = 1').get(users.alice.id);
-        const hist = db.prepare('SELECT id FROM user_history WHERE user_id = ?').get(users.alice.id);
+        const notif = await db.prepare('SELECT id FROM notifications WHERE user_id = ? ORDER BY created_at DESC').get(users.alice.id);
+        const session = await db.prepare('SELECT id FROM user_sessions WHERE user_id = ? AND is_active = 1').get(users.alice.id);
+        const hist = await db.prepare('SELECT id FROM user_history WHERE user_id = ?').get(users.alice.id);
         assert.ok(notif && session && hist, 'alice has a notification, a session and a history entry');
         const ALICE = {
             tables: ['notifications', 'user_sessions', 'user_history', 'users', 'user_modules', 'user_follows', 'user_blocks', 'push_subscriptions', 'linked_accounts'],
@@ -123,8 +123,8 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
             },
         };
         // Column names differ between modules; fall back to the whole table when a guess is wrong.
-        for (const t of ALICE.tables) { try { db.prepare(`SELECT * FROM "${t}" ${ALICE.where[t]}`).all(); } catch { ALICE.where[t] = ''; } }
-        const aliceBefore = snap(ALICE.tables, ALICE.where);
+        for (const t of ALICE.tables) { try { await db.prepare(`SELECT * FROM "${t}" ${ALICE.where[t]}`).all(); } catch { ALICE.where[t] = ''; } }
+        const aliceBefore = await snap(ALICE.tables, ALICE.where);
         const personal = [
             ['POST', `/api/notifications/${notif.id}/read`, {}],
             ['POST', `/api/notifications/${notif.id}/dismiss`, {}],
@@ -143,16 +143,16 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         for (const [m, p, body] of personal) {
             const r = await w.call('bob', m, p, body, m === 'PUT' && p.startsWith('/api/modules') ? { 'if-match': '0' } : {});
             for (const l of crawler.leaks(r, secretNeedles)) refused.push(`${m} ${p}: carries ${l.label}`);
-            if (snap(ALICE.tables, ALICE.where) !== aliceBefore) { refused.push(`${m} ${p} as bob changed alice's data (${r.status})`); break; }
+            if (await snap(ALICE.tables, ALICE.where) !== aliceBefore) { refused.push(`${m} ${p} as bob changed alice's data (${r.status})`); break; }
         }
         // Positive controls: alice can do each of these to her own data.
         await ok('alice', 'POST', `/api/notifications/${notif.id}/read`, {});
-        assert.strictEqual(db.prepare('SELECT is_read FROM notifications WHERE id = ?').get(notif.id).is_read, 1);
+        assert.strictEqual((await db.prepare('SELECT is_read FROM notifications WHERE id = ?').get(notif.id)).is_read, 1);
         await ok('alice', 'DELETE', `/api/history/${hist.id}`);
-        assert.ok(!db.prepare('SELECT id FROM user_history WHERE id = ?').get(hist.id));
+        assert.ok(!await db.prepare('SELECT id FROM user_history WHERE id = ?').get(hist.id));
         await ok('alice', 'DELETE', `/api/auth/sessions/${session.id}`);
-        assert.strictEqual(db.prepare('SELECT is_active FROM user_sessions WHERE id = ?').get(session.id).is_active, 0);
-        assert.strictEqual(db.prepare('SELECT bio FROM users WHERE id = ?').get(users.bob.id).bio, 'bob-was-here', 'the ids in the body were ignored: bob edited his own profile');
+        assert.strictEqual((await db.prepare('SELECT is_active FROM user_sessions WHERE id = ?').get(session.id)).is_active, 0);
+        assert.strictEqual((await db.prepare('SELECT bio FROM users WHERE id = ?').get(users.bob.id)).bio, 'bob-was-here', 'the ids in the body were ignored: bob edited his own profile');
 
         // ── Service principals outside their own app ───────────────────
         const live = { authorization: `Bearer ${w.liveToken}` };
@@ -179,4 +179,4 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
     } finally {
         await w.stop();
     }
-})().catch((err) => { console.error(err); process.exit(1); });
+})().then(() => process.exit(0)).catch((err) => { console.error(err); process.exit(1); });

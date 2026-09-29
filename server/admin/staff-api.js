@@ -18,10 +18,10 @@ const { isOwner } = require('../auth/owner-guard');
 // Which staff capability moderates a service; anything else is general content moderation.
 const MODERATES = { chat: 'staff.moderation.chat', live: 'staff.moderation.channels', community: 'staff.moderation.discussions', pastes: 'staff.moderation.pastes', calls: 'staff.moderation.calls' };
 
-function staffList(db, { service = null } = {}) {
+async function staffList(db, { service = null } = {}) {
     const need = service ? (MODERATES[service] || 'staff.content.moderate') : null;
-    return db.prepare("SELECT id, username, display_name, role, subject_id FROM users WHERE role IN ('global_mod', 'admin') AND COALESCE(is_banned, 0) = 0 ORDER BY role DESC, username")
-        .all()
+    return (await db.prepare("SELECT id, username, display_name, role, subject_id FROM users WHERE role IN ('global_mod', 'admin') AND COALESCE(is_banned, 0) = 0 ORDER BY role DESC, username")
+        .all())
         .map((u) => {
             const owner = u.role === 'admin' && isOwner(u);
             return { subject: u.subject_id || null, username: u.username, display_name: u.display_name || u.username, role: owner ? 'owner' : u.role, is_owner: owner, capabilities: staff.capabilitiesOf({ role: u.role, is_owner: owner }) };
@@ -37,20 +37,20 @@ function createStaffApi({ db, requireAuth, guard }) {
         res.json({ role: claims.is_owner ? 'owner' : req.user.role || 'user', is_owner: !!claims.is_owner, staff_map: staff.map.version, capabilities: claims.staff_caps || [] });
     });
     const serviceGuard = guard('network.staff.read');
-    const list = (req, res) => {
+    const list = async (req, res) => {
         const service = typeof req.query.service === 'string' && /^[a-z][a-z0-9_-]{0,31}$/.test(req.query.service) ? req.query.service : null;
         res.set('Cache-Control', 'private, no-store');
-        res.json({ service, staff: staffList(db, { service }) });
+        res.json({ service, staff: await staffList(db, { service }) });
     };
     r.get('/moderators', (req, res, next) => {
         // A service token (sub svc:*) goes through the capability guard; a person must be staff.
         const bearer = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
         let sub = '';
         try { sub = JSON.parse(Buffer.from(bearer.split('.')[1] || '', 'base64url').toString('utf8')).sub || ''; } catch { /* not a JWT */ }
-        if (String(sub).startsWith('svc:')) return serviceGuard(req, res, () => list(req, res));
-        return requireAuth(req, res, () => {
+        if (String(sub).startsWith('svc:')) return serviceGuard(req, res, async () => await list(req, res));
+        return requireAuth(req, res, async () => {
             if (!staff.can(staffClaims(req.user), 'staff.moderation.logs')) return res.status(403).json({ error: 'forbidden', detail: 'staff.moderation.logs required' });
-            return list(req, res);
+            return await list(req, res);
         });
     });
     return r;

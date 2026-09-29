@@ -76,7 +76,7 @@ net.Socket.prototype.connect = function (...args) {
     return this;
 };
 
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const push = require('../server/push/push-service');
 const { normalizeAvatar } = require('../server/profile/avatar');
 const { buildWorld } = require('./security-world');
@@ -192,28 +192,28 @@ function inventory(root) {
     // ── 1. Web push ──────────────────────────────────────────────────
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-ssrf-'));
     const log = console.log; console.log = () => {};
-    const db = initDb(path.join(dir, 'network.db'));
-    push.initVapid(db);
+    const db = await getDb();
+    await push.initVapid(db);
     console.log = log;
-    db.prepare("INSERT INTO users (id, username, password_hash) VALUES (7, 'pushy', 'x')").run();
+    await db.prepare("INSERT INTO users (id, username, password_hash) VALUES (7, 'pushy', 'x')").run();
     const listener = await counter();
     const P = listener.port;
     const keys = { p256dh: 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM', auth: 'tBHItJI5svbpez7KI4CCXg' };
     const refusedAtSubscribe = [];
     for (const endpoint of internalUrls(P)) {
-        try { push.subscribe(7, { endpoint, keys }); refusedAtSubscribe.push(`accepted ${endpoint}`); } catch (e) { assert.match(e.message, /Invalid push subscription/); }
+        try { await push.subscribe(7, { endpoint, keys }); refusedAtSubscribe.push(`accepted ${endpoint}`); } catch (e) { assert.match(e.message, /Invalid push subscription/); }
     }
     assert.deepStrictEqual(refusedAtSubscribe, [], 'every internal endpoint is refused at subscribe');
-    push.subscribe(7, { endpoint: 'https://fcm.googleapis.com/fcm/send/abc', keys });   // a real push service is fine
-    push.subscribe(7, { endpoint: 'https://updates.push.services.mozilla.com/wpush/v2/abc', keys });
-    assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM push_subscriptions WHERE user_id = 7').get().n, 2);
-    db.prepare('DELETE FROM push_subscriptions').run();
+    await push.subscribe(7, { endpoint: 'https://fcm.googleapis.com/fcm/send/abc', keys });   // a real push service is fine
+    await push.subscribe(7, { endpoint: 'https://updates.push.services.mozilla.com/wpush/v2/abc', keys });
+    assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM push_subscriptions WHERE user_id = 7').get()).n, 2);
+    await db.prepare('DELETE FROM push_subscriptions').run();
     // Rows stored before the rule, and names that resolve inward at send time.
     const rows = [`https://127.0.0.1:${P}/x`, `https://[::ffff:127.0.0.1]:${P}/x`, `https://2130706433:${P}/x`, `https://localhost:${P}/x`,
         `https://loop.example.com:${P}/x`, `https://loop.example.com.:${P}/x`, `https://v6loop.example.com:${P}/x`, `https://meta.example.com:${P}/x`, `https://mixed.example.com:${P}/x`,
         `https://rebind.example.com:${P}/x`, `https://pub.example.com:${P}/x`];
     const ins = db.prepare('INSERT INTO push_subscriptions (user_id, endpoint, keys_p256dh, keys_auth) VALUES (7, ?, ?, ?)');
-    for (const e of rows) ins.run(e, keys.p256dh, keys.auth);
+    for (const e of rows) await ins.run(e, keys.p256dh, keys.auth);
     connects.length = 0;
     await push.sendPush(7, { title: 't', message: 'm' });
     await new Promise((r) => setTimeout(r, 300));
@@ -224,10 +224,9 @@ function inventory(root) {
     assert.ok(connects.includes(`rebind.example.com→${PUBLIC} ${P}`), 'a rebinding name: the socket connects to the address that was checked');
     assert.ok(connects.includes(`pub.example.com→${PUBLIC} ${P}`), 'public names are still pushed to (positive control)');
     assert.deepStrictEqual(connects.filter((c) => !c.endsWith(' denied') && !c.includes(`→${PUBLIC} `)), [], 'no connection to any internal address');
-    const left = db.prepare('SELECT endpoint FROM push_subscriptions').all().map((r) => r.endpoint);
+    const left = (await db.prepare('SELECT endpoint FROM push_subscriptions').all()).map((r) => r.endpoint);
     assert.ok(!left.some((e) => /127\.0\.0\.1|\[::ffff|2130706433|localhost/.test(e)), 'rows with an internal address are dropped');
     await listener.close();
-    db.close();
 
     // ── 2. Avatars: Network itself fetches openvibe.media only ─────────
     for (const u of [...internalUrls(8443, '/a.png'), 'https://openvibe.media@127.0.0.1/a.png', 'https://openvibe.media.evil.test/a.png', 'https://127.0.0.1/p/abc/screenshot', 'https://[::1]/p/abc']) {
@@ -267,8 +266,8 @@ function inventory(root) {
         assert.strictEqual(target.count(), 0, 'nothing connected to the address a person named');
         assert.deepStrictEqual(made.filter((c) => c.endsWith(` ${T}`)), [], 'no connection to the chosen port at all');
         const hosts = new Set(made.map((c) => c.split(' ')[0]));
-        for (const h of hosts) assert.ok(['127.0.0.1', 'discord.com', 'gateway.discord.gg'].includes(h), `unexpected destination ${h}`);
-        assert.match(gh.text, /no egress to api\.github\.com/, 'the GitHub integration test goes to api.github.com only');
+        for (const h of hosts) assert.ok(['127.0.0.1', 'discord.com', 'gateway.discord.gg', 'api.github.com'].includes(h), `unexpected destination ${h}`);
+        assert.match(gh.text, /no egress to api\.github\.com|could not be reached/, 'the GitHub integration test goes to api.github.com only (the egress guard refuses the socket; undici surfaces it as a fetch failure)');
         assert.ok(ingested.length >= 10 && ingested.every((x) => x.path === '/internal/avatar-ingest'), `avatar imports went to Media's ingest instead (${ingested.length})`);
         assert.ok(ingested.some((x) => x.url === `https://127.0.0.1:${T}/a.png`), 'Media was asked to import the URL; Network did not fetch it');
     } finally {
@@ -278,4 +277,4 @@ function inventory(root) {
         fs.rmSync(dir, { recursive: true, force: true });
     }
     out(`security ssrf: ${Object.keys(inv).length} reviewed call sites, all checks passed (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
-})().catch((err) => { console.error(err); process.exit(1); });
+})().then(() => process.exit(0)).catch((err) => { console.error(err); process.exit(1); });

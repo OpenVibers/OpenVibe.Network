@@ -90,11 +90,11 @@ function createAvatarService({ db, config, requireAuth, selfToken = () => null, 
     }
 
     /** The one place an avatar changes. `origin` names who asked ('network', 'live'), so we never echo a push back. */
-    function apply(userId, username, url, origin) {
-        const before = (getUrl.get(userId) || {}).avatar_url || null;
+    async function apply(userId, username, url, origin) {
+        const before = (await getUrl.get(userId) || {}).avatar_url || null;
         if (before === url) return false;
-        setUrl.run(url, userId);
-        try { db.prepare('INSERT INTO audit_log (user_id, action, details, ip) VALUES (?, ?, ?, ?)').run(userId, 'avatar_change', JSON.stringify({ from: before, to: url, origin }), null); } catch { /* audit is best effort */ }
+        await setUrl.run(url, userId);
+        try { await db.prepare('INSERT INTO audit_log (user_id, action, details, ip) VALUES (?, ?, ?, ?)').run(userId, 'avatar_change', JSON.stringify({ from: before, to: url, origin }), null); } catch { /* audit is best effort */ }
         if (origin !== 'live') pushToSites(userId, username, url);
         return true;
     }
@@ -108,15 +108,15 @@ function createAvatarService({ db, config, requireAuth, selfToken = () => null, 
             if (!got.ok) return res.status(got.status || 422).json({ error: got.error });
             n.url = got.url; n.paste = got.slug;
         } else if (n.url) { const v = await verifyImage(n.url); if (!v.ok) return res.status(422).json({ error: v.error }); }
-        apply(req.user.id, req.user.username, n.url, 'network');
+        await apply(req.user.id, req.user.username, n.url, 'network');
         res.json({ ok: true, avatar_url: n.url, paste: n.paste || null });
     });
-    api.delete('/', requireAuth, (req, res) => { apply(req.user.id, req.user.username, null, 'network'); res.json({ ok: true, avatar_url: null }); });
+    api.delete('/', requireAuth, async (req, res) => { await apply(req.user.id, req.user.username, null, 'network'); res.json({ ok: true, avatar_url: null }); });
 
     const pub = express.Router();
-    pub.get('/:username', (req, res) => {
+    pub.get('/:username', async (req, res) => {
         const name = String(req.params.username || '').replace(/\.(png|jpg|svg)$/i, '').slice(0, 64);
-        const row = byName.get(name);
+        const row = await byName.get(name);
         res.set({ 'Cache-Control': 'public, max-age=300, stale-while-revalidate=86400', 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin' });
         const ok = row && row.avatar_url && !!normalizeAvatar(row.avatar_url).url;
         if (ok) return res.redirect(302, row.avatar_url);
@@ -124,11 +124,11 @@ function createAvatarService({ db, config, requireAuth, selfToken = () => null, 
     });
 
     /** Live changed someone's picture: adopt it (same rules, no verification round trip for our own media host). */
-    function fromSite(body) {
+    async function fromSite(body) {
         const id = parseInt(body && body.user_id, 10); if (!id) return { status: 400, error: 'user_id required' };
         const n = normalizeAvatar(body.avatar_url); if (n.error || n.ingest) return { status: 422, error: n.error || 'Sites report openvibe.media pictures only' };
-        const u = db.prepare('SELECT username FROM users WHERE id = ?').get(id); if (!u) return { status: 404, error: 'user not found' };
-        return { status: 200, changed: apply(id, u.username, n.url, String(body.origin || 'live')) };
+        const u = await db.prepare('SELECT username FROM users WHERE id = ?').get(id); if (!u) return { status: 404, error: 'user not found' };
+        return { status: 200, changed: await apply(id, u.username, n.url, String(body.origin || 'live')) };
     }
 
     return { api, pub, fromSite, apply, log };

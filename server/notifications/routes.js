@@ -13,7 +13,7 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
 
     // ─── GET /api/notifications ────────────────────────────
     // Query params: limit, offset, category, unread_only
-    router.get('/', requireAuth, (req, res) => {
+    router.get('/', requireAuth, async (req, res) => {
         try {
             const userId = req.user.id;
             const limit = Math.min(parseInt(req.query.limit) || 50, 200);
@@ -25,7 +25,7 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
             const q = req.query.q ? String(req.query.q).trim() : null;
             const since = req.query.since ? String(req.query.since) : null;
 
-            const out = notificationService.getForUser(userId, { limit, offset, category, unreadOnly, q, since, type });
+            const out = await notificationService.getForUser(userId, { limit, offset, category, unreadOnly, q, since, type });
             res.json({ ok: true, ...out, limit, offset });
         } catch (err) {
             console.error('[Notifications] GET / error:', err);
@@ -34,9 +34,9 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     });
 
     // ─── GET /api/notifications/unread-count ───────────────
-    router.get('/unread-count', requireAuth, (req, res) => {
+    router.get('/unread-count', requireAuth, async (req, res) => {
         try {
-            const count = notificationService.getUnreadCount(req.user.id);
+            const count = await notificationService.getUnreadCount(req.user.id);
             res.json({ ok: true, count });
         } catch (err) {
             res.status(500).json({ ok: false, error: 'Failed to get count' });
@@ -44,9 +44,9 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     });
 
     // ─── GET /api/notifications/unread-by-category ─────────
-    router.get('/unread-by-category', requireAuth, (req, res) => {
+    router.get('/unread-by-category', requireAuth, async (req, res) => {
         try {
-            const categories = notificationService.getUnreadByCategory(req.user.id);
+            const categories = await notificationService.getUnreadByCategory(req.user.id);
             res.json({ ok: true, categories });
         } catch (err) {
             res.status(500).json({ ok: false, error: 'Failed to get counts' });
@@ -54,9 +54,9 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     });
 
     // ─── GET /api/notifications/newest ─────────────────────
-    router.get('/newest', requireAuth, (req, res) => {
+    router.get('/newest', requireAuth, async (req, res) => {
         try {
-            const newest = notificationService.getNewest(req.user.id);
+            const newest = await notificationService.getNewest(req.user.id);
             res.json({ ok: true, notification: newest || null });
         } catch (err) {
             res.status(500).json({ ok: false, error: 'Failed to get newest' });
@@ -64,10 +64,10 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     });
 
     // ─── POST /api/notifications/:id/read ──────────────────
-    router.post('/:id/read', requireAuth, (req, res) => {
+    router.post('/:id/read', requireAuth, async (req, res) => {
         try {
-            const ok = notificationService.markRead(req.params.id, req.user.id);
-            res.json({ ok, unread: notificationService.getUnreadCount(req.user.id) });
+            const ok = await notificationService.markRead(req.params.id, req.user.id);
+            res.json({ ok, unread: await notificationService.getUnreadCount(req.user.id) });
         } catch (err) {
             res.status(500).json({ ok: false, error: 'Failed to mark read' });
         }
@@ -75,21 +75,21 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
 
     // ─── POST /api/notifications/read-batch ────────────────
     // Body: { ids: [] } — the inbox marks everything it rendered as seen in one call.
-    router.post('/read-batch', requireAuth, (req, res) => {
+    router.post('/read-batch', requireAuth, async (req, res) => {
         try {
             const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
-            const changed = notificationService.markReadMany(ids, req.user.id);
-            res.json({ ok: true, changed, unread: notificationService.getUnreadCount(req.user.id) });
+            const changed = await notificationService.markReadMany(ids, req.user.id);
+            res.json({ ok: true, changed, unread: await notificationService.getUnreadCount(req.user.id) });
         } catch (err) {
             res.status(500).json({ ok: false, error: 'Failed to mark read' });
         }
     });
 
     // ─── POST /api/notifications/read-all ──────────────────
-    router.post('/read-all', requireAuth, (req, res) => {
+    router.post('/read-all', requireAuth, async (req, res) => {
         try {
             const { category } = req.body || {};
-            const changed = notificationService.markAllRead(req.user.id, category || null);
+            const changed = await notificationService.markAllRead(req.user.id, category || null);
             res.json({ ok: true, changed });
         } catch (err) {
             res.status(500).json({ ok: false, error: 'Failed to mark all read' });
@@ -97,9 +97,9 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     });
 
     // ─── POST /api/notifications/:id/dismiss ───────────────
-    router.post('/:id/dismiss', requireAuth, (req, res) => {
+    router.post('/:id/dismiss', requireAuth, async (req, res) => {
         try {
-            const ok = notificationService.dismiss(req.params.id, req.user.id);
+            const ok = await notificationService.dismiss(req.params.id, req.user.id);
             res.json({ ok });
         } catch (err) {
             res.status(500).json({ ok: false, error: 'Failed to dismiss' });
@@ -108,9 +108,9 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
 
     // ─── DELETE /api/notifications ─────────────────────────
     // Dismiss all
-    router.delete('/', requireAuth, (req, res) => {
+    router.delete('/', requireAuth, async (req, res) => {
         try {
-            const changed = notificationService.dismissAll(req.user.id);
+            const changed = await notificationService.dismissAll(req.user.id);
             res.json({ ok: true, changed });
         } catch (err) {
             res.status(500).json({ ok: false, error: 'Failed to dismiss all' });
@@ -118,9 +118,9 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     });
 
     // ─── GET /api/notifications/preferences ────────────────
-    router.get('/preferences', requireAuth, (req, res) => {
+    router.get('/preferences', requireAuth, async (req, res) => {
         try {
-            const prefs = notificationService.getPreferences(req.user.id);
+            const prefs = await notificationService.getPreferences(req.user.id);
             res.json({ ok: true, preferences: prefs });
         } catch (err) {
             res.status(500).json({ ok: false, error: 'Failed to get preferences' });
@@ -129,11 +129,11 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
 
     // ─── PUT /api/notifications/preferences ────────────────
     // Body: { category, enabled, sound, toasts, email }
-    router.put('/preferences', requireAuth, (req, res) => {
+    router.put('/preferences', requireAuth, async (req, res) => {
         try {
             const { category, enabled, sound, toasts, email } = req.body;
             if (!category) return res.status(400).json({ ok: false, error: 'Category required' });
-            notificationService.setPreference(req.user.id, category, {
+            await notificationService.setPreference(req.user.id, category, {
                 enabled,
                 sound,
                 toasts,
@@ -146,9 +146,9 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     });
 
     // ─── DELETE /api/notifications/preferences/:category ───
-    router.delete('/preferences/:category', requireAuth, (req, res) => {
+    router.delete('/preferences/:category', requireAuth, async (req, res) => {
         try {
-            notificationService.resetPreference(req.user.id, req.params.category);
+            await notificationService.resetPreference(req.user.id, req.params.category);
             res.json({ ok: true });
         } catch (err) {
             res.status(500).json({ ok: false, error: 'Failed to reset preference' });

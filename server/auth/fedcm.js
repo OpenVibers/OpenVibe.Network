@@ -88,9 +88,9 @@ function createFedcmRoutes(getCtx) {
     // Browser-initiated fetches from other origins: helmet's same-origin CORP must not apply.
     router.use((req, res, next) => { res.set('Cross-Origin-Resource-Policy', 'cross-origin'); next(); });
     const base = () => (getCtx().config.networkUrl || 'https://openvibe.network').replace(/\/$/, '');
-    const sessionUser = (req) => {
+    const sessionUser = async (req) => {
         const { verifySession, requestToken } = require('./session');
-        const out = verifySession(requestToken(req), getCtx(req));
+        const out = await verifySession(requestToken(req), getCtx(req));
         return out.error || !out.user || out.user.is_anon || out.user.is_banned ? null : out.user;
     };
 
@@ -108,10 +108,10 @@ function createFedcmRoutes(getCtx) {
         });
     });
 
-    router.get('/accounts', (req, res) => {
+    router.get('/accounts', async (req, res) => {
         res.set('Cache-Control', 'no-store');
         if (!isWebIdentity(req)) return res.status(400).json({ error: 'not a FedCM request' });
-        const user = sessionUser(req);
+        const user = await sessionUser(req);
         if (!user) { res.set('Set-Login', 'logged-out'); return res.status(401).json({ accounts: [] }); }
         res.set('Set-Login', 'logged-in');
         res.json({ accounts: [accountOf(user, base())] });
@@ -122,7 +122,7 @@ function createFedcmRoutes(getCtx) {
         res.json({ privacy_policy_url: 'https://openvibe.live/privacy', terms_of_service_url: 'https://openvibe.live/tos' });
     });
 
-    router.post('/assertion', express.urlencoded({ extended: false }), (req, res) => {
+    router.post('/assertion', express.urlencoded({ extended: false }), async (req, res) => {
         res.set('Cache-Control', 'no-store');
         const origin = rpOrigin(req.headers.origin);
         if (!isWebIdentity(req) || !origin) return res.status(400).json({ error: { code: 'invalid_request' } });
@@ -131,7 +131,7 @@ function createFedcmRoutes(getCtx) {
         res.set('Vary', 'Origin');
         const clientId = String(req.body?.client_id || '').replace(/\/$/, '');
         if (clientId !== origin) return res.status(403).json({ error: { code: 'unauthorized_client' } });
-        const user = sessionUser(req);
+        const user = await sessionUser(req);
         if (!user) return res.status(401).json({ error: { code: 'access_denied' } });
         if (String(req.body?.account_id || '') !== String(user.id)) return res.status(403).json({ error: { code: 'access_denied' } });
         let nonce = req.body?.nonce || null;
@@ -139,12 +139,12 @@ function createFedcmRoutes(getCtx) {
         res.json({ token: signAssertion(user, origin, nonce, getCtx(req)) });
     });
 
-    router.post('/disconnect', express.urlencoded({ extended: false }), (req, res) => {
+    router.post('/disconnect', express.urlencoded({ extended: false }), async (req, res) => {
         const origin = rpOrigin(req.headers.origin);
         if (!isWebIdentity(req) || !origin) return res.status(400).json({ error: 'invalid_request' });
         res.set('Access-Control-Allow-Origin', origin);
         res.set('Access-Control-Allow-Credentials', 'true');
-        const user = sessionUser(req);
+        const user = await sessionUser(req);
         // Nothing is stored per RP today (approval lives in the browser); answer with the account id.
         res.json({ account_id: user ? String(user.id) : String(req.body?.account_hint || '') });
     });

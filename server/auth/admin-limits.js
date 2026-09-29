@@ -19,16 +19,7 @@ const ADMIN_LIMITS = {
 };
 
 let _ensured = false;
-function ensureTable(db) {
-    if (_ensured) return;
-    db.exec(`CREATE TABLE IF NOT EXISTS admin_rate_limits (
-        user_id INTEGER NOT NULL,
-        action  TEXT    NOT NULL,
-        last_at INTEGER NOT NULL,
-        PRIMARY KEY (user_id, action)
-    )`);
-    _ensured = true;
-}
+function ensureTable(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
 function humanizeMs(ms) {
     const mins = Math.ceil(ms / 60000);
@@ -40,12 +31,12 @@ function humanizeMs(ms) {
 
 // Check (without consuming) whether `user` may perform `action` now.
 // Returns { ok:true } or { ok:false, retryMs, retryHuman }. Owners always ok.
-function checkAdminLimit(db, user, action) {
+async function checkAdminLimit(db, user, action) {
     if (isOwner(user)) return { ok: true };
     const windowMs = ADMIN_LIMITS[action];
     if (!windowMs) return { ok: true };
     ensureTable(db);
-    const row = db.prepare('SELECT last_at FROM admin_rate_limits WHERE user_id = ? AND action = ?').get(user.id, action);
+    const row = await db.prepare('SELECT last_at FROM admin_rate_limits WHERE user_id = ? AND action = ?').get(user.id, action);
     if (row && row.last_at) {
         const elapsed = Date.now() - row.last_at;
         if (elapsed < windowMs) {
@@ -57,11 +48,11 @@ function checkAdminLimit(db, user, action) {
 }
 
 // Start the cooldown after a successful action. No-op for owners / unlimited actions.
-function recordAdminAction(db, user, action) {
+async function recordAdminAction(db, user, action) {
     if (isOwner(user)) return;
     if (!ADMIN_LIMITS[action]) return;
     ensureTable(db);
-    db.prepare(`INSERT INTO admin_rate_limits (user_id, action, last_at) VALUES (?, ?, ?)
+    await db.prepare(`INSERT INTO admin_rate_limits (user_id, action, last_at) VALUES (?, ?, ?)
                 ON CONFLICT(user_id, action) DO UPDATE SET last_at = excluded.last_at`)
         .run(user.id, action, Date.now());
 }

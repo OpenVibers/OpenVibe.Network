@@ -45,8 +45,8 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 
 ## Depends on
 
-- `openvibe-contracts` v0.75.0 (registry manifests, capability checks), `openvibe-sdk` v0.12.0 (events,
-  per-actor limits), `openvibe-shared` v1.22.0, pinned by release tarball
+- `openvibe-contracts` v0.80.0 (registry manifests, capability checks), `openvibe-sdk` v0.25.1 (PostgreSQL
+  and Valkey adapters, events, per-actor limits), `openvibe-shared` v1.29.2, pinned by release tarball
 - OpenVibe.Events (Network's outbox relay; the events it consumes), OpenVibe.AI (the `network.site_copy`
   workflow), OpenVibe.Blog (the changelog feed it proxies)
 - email (Resend), Discord and GitHub when their secrets are set ([Provider secrets](#provider-secrets))
@@ -86,7 +86,7 @@ openvibe.network (port 4000)
 │   ├── internal/
 │   │   └── routes.js         # Server-to-server API (verify-token, user sync, notif push)
 │   └── db/
-│       └── database.js       # SQLite schema, migrations, seeding
+│       └── database.js       # PostgreSQL handle (openvibe-sdk/db), migrations/, boot seeding
 ├── public/
 │   ├── index.html            # Landing page (hero + service cards)
 │   ├── login.html            # Animated login/register page
@@ -113,7 +113,10 @@ openssl rsa -in data/keys/private.pem -pubout -out data/keys/public.pem
 
 # 3. Configure environment
 cp .env.example .env
-# Edit .env — set ADMIN_USERNAME, ADMIN_PASSWORD, and optionally SETUP_TOKEN and BOOTSTRAP_PROFILE
+# Edit .env — set ADMIN_USERNAME, ADMIN_PASSWORD, and optionally SETUP_TOKEN and BOOTSTRAP_PROFILE.
+# In production also set DATABASE_URL (the runtime role through PgBouncer), DATABASE_DIRECT_URL (the owner
+# role on a direct connection, for migrations) and VALKEY_URL (shared limit counters). Without
+# DATABASE_URL, development uses an embedded PGlite database in data/pglite; production refuses to boot.
 
 # 4. Run
 npm start
@@ -121,7 +124,7 @@ npm start
 After the first run the service will seed the URL registry with safe defaults and create an admin account from environment values. Visit `/api/setup/status` for setup health and use `/api/setup/bootstrap` to apply registry profiles manually.
 ```
 
-The server auto-creates the SQLite database and seeds OAuth2 clients on first run. Client secrets are logged to console once on creation — copy them to the consuming services' env files (`/etc/openvibe/<svc>.env`).
+The server applies `migrations/NNNN_*.sql` at boot (as the owner on `DATABASE_DIRECT_URL`) and seeds OAuth2 clients and site settings on first run into PostgreSQL. Client secrets are logged to console once on creation — copy them to the consuming services' env files (`/etc/openvibe/<svc>.env`). The tests run on PGlite (`npm test`) or the PostgreSQL + PgBouncer containers (`npm run test:pg`, after `eval "$(openvibe-sdk scripts/test-services.sh up)"`).
 
 ---
 
@@ -224,7 +227,7 @@ sudo apt install certbot python3-certbot-dns-cloudflare
 ### How it works
 
 1. **Any service** pushes notifications to openvibe.network via `POST /internal/notifications/push`
-2. **openvibe.network** stores them in SQLite with priority, category, and optional rich content
+2. **openvibe.network** stores them in PostgreSQL with priority, category, and optional rich content
 3. **Clients** poll `GET /api/notifications` every 15 seconds, rendering toasts and updating the bell badge (or, where a site turned realtime on, hear each new notification over OpenVibe.Events and poll every 2 minutes as a safety net: see *Realtime badge* below)
 4. **Critical notifications** are queued for email delivery via the built-in email service (Resend by default).
 
@@ -583,12 +586,12 @@ totals from the event's `stats`: counts only, never who watched or chatted, and 
 and services with `network.analytics.creator.read` (Live's dashboards), also get average viewers, chatters,
 messages and watch minutes.
 
-Network records one row per finished request in the `analytics_*` tables of `network.db` and rolls
+Network records one row per finished request in the `analytics_*` tables of its PostgreSQL database and rolls
 them up hourly and daily for the admin analytics pages (`/api/admin/analytics`, which also gathers
 Live, Tools, Games and Media). What a raw row may carry is bound by ADR-021 (OpenVibe.Contracts
-`docs/adr/ADR-021-analytics.md`). The module is `openvibe-shared/analytics` (openvibe-shared v1.4.0;
-the same one Live and Tools use). `server/analytics/network.js` holds only Network's wiring: its own
-connection, its path options (`paramPrefixes`, `pathRules`) and the prune job.
+`docs/adr/ADR-021-analytics.md`). The module is `openvibe-shared/analytics` (the same one Live and Tools
+use), on the service database through its PostgreSQL tracker (`AnalyticsTrackerPg`). `server/analytics/network.js`
+holds only Network's wiring: its path options (`paramPrefixes`, `pathRules`) and the prune job.
 
 - **Stored:** event type, service, **route template** (the matched Express route, else the path
   without its query and with ids, usernames and tokens replaced by `:id` / `:param`), method, status,
@@ -601,17 +604,14 @@ connection, its path options (`paramPrefixes`, `pathRules`) and the prune job.
 - **Opt-out:** a request with `Sec-GPC: 1` or `DNT: 1` is not recorded at all (no raw row, visitor
   hash, session id or rate counter), so it is also missing from the rollups.
 - **Admin panel:** the bot tables list user-agent classes and high-volume session ids, not IPs.
-- **Connection:** the tracker opens its own connection to `network.db`, so its settings
-  (`busy_timeout` 250, `secure_delete`) never apply to the identity connection.
+- **Connection:** the tracker buffers and flushes into the service's own PostgreSQL handle (the same
+  database the identity tables live in), so there is no second connection or file of its own.
 - **Retention:** raw events older than 30 days are deleted every night in batches of 5000 (the
   `analytics-prune` job: first run 5 minutes after boot, then every 24 h). Rollups are kept.
-- **Operator CLI:** `scripts/analytics-prune.js` (a wrapper over `openvibe-shared/analytics/prune-cli`
-  with Network's database and path rules) runs a dry run by default and changes nothing.
-  `--apply` needs `--backup <new file>` (a verified, owner-only copy of all of `network.db`) or an
-  explicit `--no-backup`. `--scrub` also rewrites the rows the old tracker wrote and the rollups'
-  top-path and referer lists. Rollup totals are compared before and after the run. VACUUM rewrites
-  all of `network.db`, so run it with the service stopped, or pass `--no-vacuum` while it is up. Run
-  the CLI as the service user.
+- **Operator CLI:** `scripts/analytics-prune.js` (over `openvibe-shared/analytics/pg`'s
+  `pruneRawEventsPg`) runs a dry run by default and changes nothing; `--apply` deletes raw events older
+  than `--days` (1..30, default 30). Run it where Network runs, with `DATABASE_URL` set. The SQLite
+  prune CLI (online backup, VACUUM, one-time scrub) is gone with the file.
 
 ## Shared Client Libraries
 

@@ -12,25 +12,26 @@ const http = require('http');
 const express = require('express');
 const { ids, validate } = require('openvibe-contracts');
 const { signDeliveryHeaders } = require('openvibe-sdk/events');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const { NotificationService } = require('../server/notifications/notification-service');
 const { createEventsConsumer } = require('../server/notifications/events-consumer');
 const creators = require('../server/analytics/creators');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-creator-analytics-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
-require('../server/identity/principals').ensureSchema(db);
-for (const c of ['live', 'tools']) db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(`${c}-secret`, c);
+await require('../server/identity/principals').ensureSchema(db);
+for (const c of ['live', 'tools']) await db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(`${c}-secret`, c);
 const CAROL = ids.newId('user'), DAVE = ids.newId('user');
-db.prepare('INSERT INTO users (id, username, password_hash, subject_id, role) VALUES (20, ?, ?, ?, ?), (21, ?, ?, ?, ?)').run('carol', 'x', CAROL, 'streamer', 'dave', 'x', DAVE, 'user');
+await db.prepare('INSERT INTO users (id, username, password_hash, subject_id, role) VALUES (20, ?, ?, ?, ?), (21, ?, ?, ?, ?)').run('carol', 'x', CAROL, 'streamer', 'dave', 'x', DAVE, 'user');
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
 const config = { internalKey: 'legacy-key', jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
 const { signToken } = require('../server/auth/routes');
 const SECRET = 's'.repeat(40);
-const consumer = createEventsConsumer({ db, notifications: new NotificationService(db), secrets: SECRET, log: { log() {}, warn() {}, error() {} } });
+const consumer = await createEventsConsumer({ db, notifications: new NotificationService(db), secrets: SECRET, log: { log() {}, warn() {}, error() {} } });
 const app = express();
 Object.assign(app.locals, { db, config, privateKey: keys.privateKey, publicKey: keys.publicKey });
 app.use(require('cookie-parser')());
@@ -61,7 +62,7 @@ const ended = (streamId, startedAt, minutes, stats) => ({
         assert.strictEqual((await deliver(ended(502, day(2), 30, { peak_viewers: 20, avg_viewers: 10, unique_chatters: 9, messages: 200, watch_minutes: 250 }))).outcome, 'analytics:recorded');
         assert.strictEqual((await deliver(ended(503, day(1), 15))).outcome, 'analytics:recorded', 'an ended stream without stats still counts');
         assert.strictEqual((await deliver({ ...ended(501, day(30), 60, { peak_viewers: 12, avg_viewers: 6.5, unique_chatters: 4, messages: 120, watch_minutes: 300 }) })).outcome, 'analytics:recorded', 'a new event for the same stream replaces it');
-        assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM creator_streams').get().n, 3);
+        assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM creator_streams').get()).n, 3);
         assert.strictEqual((await deliver({ ...ended(504, day(1), 5), source: 'media' })).outcome, 'ignored:source');
 
         // Public: streams, minutes, peak. No audience figures.
@@ -74,12 +75,12 @@ const ended = (streamId, startedAt, minutes, stats) => ({
         assert.strictEqual(r.body.daily.reduce((n, d) => n + d.streams, 0), 3);
 
         // The creator, and Live's service token: full figures. Another person: public only. A service without the grant: refused.
-        const creatorTok = { authorization: `Bearer ${signToken(db.prepare('SELECT * FROM users WHERE id = 20').get(), keys.privateKey, config)}` };
+        const creatorTok = { authorization: `Bearer ${signToken(await db.prepare('SELECT * FROM users WHERE id = 20').get(), keys.privateKey, config)}` };
         r = await call(`/api/v1/creators/${CAROL}/analytics`, creatorTok);
         assert.deepStrictEqual([r.body.full, r.body.totals.messages, r.body.totals.unique_chatters, r.body.totals.watch_minutes], [true, 320, 13, 550]);
         assert.strictEqual(r.body.totals.avg_viewers, Math.round(((6.5 * 3600 + 10 * 1800) / 6300) * 10) / 10, 'duration-weighted average');
         assert.match(r.cache, /private/);
-        r = await call('/api/v1/creators/carol/analytics', { authorization: `Bearer ${signToken(db.prepare('SELECT * FROM users WHERE id = 21').get(), keys.privateKey, config)}` });
+        r = await call('/api/v1/creators/carol/analytics', { authorization: `Bearer ${signToken(await db.prepare('SELECT * FROM users WHERE id = 21').get(), keys.privateKey, config)}` });
         assert.strictEqual(r.body.full, false);
         r = await call('/api/v1/creators/carol/analytics', { authorization: `Bearer ${await svc('live')}` });
         assert.strictEqual(r.body.full, true);
@@ -87,7 +88,7 @@ const ended = (streamId, startedAt, minutes, stats) => ({
         assert.strictEqual((await call('/api/v1/creators/nobody/analytics')).status, 404);
 
         // Privacy (ADR-021): the table holds counts and the creator's subject only.
-        const cols = db.prepare('PRAGMA table_info(creator_streams)').all().map((c) => c.name);
+        const cols = (await db.prepare("SELECT column_name AS name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = ?").all('creator_streams')).map((c) => c.name);
         assert.deepStrictEqual(cols, creators.COLUMNS);
         assert.ok(!cols.some((c) => /ip|viewer_id|chatter_id|user_id|follower/.test(c)), 'no viewer, chatter or IP column');
 
@@ -100,3 +101,4 @@ const ended = (streamId, startedAt, minutes, stats) => ({
     }
     console.log('creator analytics: all checks passed');
 })().catch((e) => { console.error(e); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });
