@@ -1,11 +1,11 @@
 'use strict';
 
 // ═══════════════════════════════════════════════════════════════
-// openvibe.network — Internal Server-to-Server API
-// Used by OpenVibe.Live (3000), OpenVibe.Tools (4001),
-// OpenVibe.Games (8000), and OpenVibe.Media (4100) to verify
-// tokens, sync users, move OpenCoins, and fetch shared data.
-// Protected by X-Internal-Key header.
+// openvibe.network — Internal Server-to-Server API (loopback only)
+// First-party services resolve identities, move OpenCoins, push notifications and read
+// shared data here. Every route checks the one capability it performs on a service token
+// (identity/principals.js guard); X-Internal-Key is being retired (plan T2) and is still
+// accepted only where a route's guard allows the legacy path.
 // ═══════════════════════════════════════════════════════════════
 
 const express = require('express');
@@ -59,6 +59,8 @@ const principals = require('../identity/principals');
 const TOKEN_ROUTES = new Set(['GET /identity/resolve', 'POST /identity/resolve-batch', 'POST /coins/credit', 'POST /coins/debit', 'POST /coins/transfer', 'POST /notifications/push', 'POST /notifications/push-bulk', 'POST /events/stream-live',
     // Internal-key retirement (register C-50/C-52): the routes Live still calls with the key also take a token.
     'GET /url-registry/resolved', 'GET /coins/stats', 'POST /resolve-anon', 'POST /identity/legacy-map', 'POST /link-account',
+    // The last two Live called with the key only (C-50): Live's avatar picker and its mark-read-by-type.
+    'POST /user-avatar', 'POST /notifications/mark-read',
     // Token only (legacy: false): Host's relay of the alerts firing on the production host (WS-H task 11).
     'POST /operator/alerts']);
 const TOKEN_ROUTE_PATTERNS = [/^(GET|PUT|DELETE) \/modules\/[a-z0-9_.]+\/[A-Za-z0-9_]+$/];
@@ -85,81 +87,6 @@ router.post('/identity/resolve-batch', principals.guard('identity.subject.resolv
 // identity.legacy-identity-map@1). TODO(contracts): a narrower identity.legacy_map.write capability.
 router.post('/identity/legacy-map', principals.guard('identity.subject.resolve'), ownSourceSystem);
 router.use('/identity', require('../identity/internal-routes'));
-
-// ── Verify Token ─────────────────────────────────────────────
-// Other services call this to validate an access token and get user data.
-// Avoids each service needing the public key locally (though they can — this is a convenience).
-const jwt = require('jsonwebtoken');
-
-router.post('/verify-token', (req, res) => {
-    const { token } = req.body;
-    if (!token) return res.status(400).json({ error: 'token required' });
-
-    const publicKey = req.app.locals.publicKey;
-    const config = getConfig(req);
-    const algorithm = publicKey.includes('BEGIN') ? 'RS256' : 'HS256';
-
-    try {
-        const decoded = jwt.verify(token, publicKey, {
-            algorithms: [algorithm],
-            issuer: config.jwt.issuer
-        });
-        // A FedCM assertion or a service/app token (same signing key) is not a user token.
-        if (!require('../auth/session').isUserSessionClaims(decoded)) return res.json({ valid: false, error: 'not a user token' });
-        const db = getDb(req);
-        const user = db.prepare('SELECT id, username, display_name, role, avatar_url, profile_color AS color FROM users WHERE id = ?').get(decoded.sub || decoded.id);
-        res.json({ valid: true, decoded, user: user || null });
-    } catch (err) {
-        res.json({ valid: false, error: err.message });
-    }
-});
-
-// ── Get User by ID ───────────────────────────────────────────
-router.get('/users/:id', (req, res) => {
-    const db = getDb(req);
-    const user = db.prepare(`
-        SELECT id, username, display_name, role, avatar_url, profile_color AS color, bio, created_at
-        FROM users WHERE id = ?
-    `).get(req.params.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({ user });
-});
-
-// ── Lookup User by Username ──────────────────────────────────
-router.get('/users/by-username/:username', (req, res) => {
-    const db = getDb(req);
-    const user = db.prepare(`
-        SELECT id, username, display_name, role, avatar_url, profile_color AS color, bio, created_at
-        FROM users WHERE username = ?
-    `).get(req.params.username.toLowerCase());
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({ user });
-});
-
-// ── Bulk User Lookup ─────────────────────────────────────────
-router.post('/users/bulk', (req, res) => {
-    const { ids } = req.body;
-    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids array required' });
-    if (ids.length > 200) return res.status(400).json({ error: 'Max 200 ids per request' });
-
-    const db = getDb(req);
-    const placeholders = ids.map(() => '?').join(',');
-    const users = db.prepare(`
-        SELECT id, username, display_name, role, avatar_url, profile_color AS color
-        FROM users WHERE id IN (${placeholders})
-    `).all(...ids);
-    res.json({ users });
-});
-
-// ── Get User Theme Preference ────────────────────────────────
-router.get('/users/:id/theme', (req, res) => {
-    const db = getDb(req);
-    const prefs = db.prepare('SELECT theme_id, custom_theme_variables FROM user_preferences WHERE user_id = ?').get(req.params.id);
-    if (!prefs) return res.json({ theme_id: 'vibe', custom_variables: null });
-    let custom = null;
-    try { custom = prefs.custom_theme_variables ? JSON.parse(prefs.custom_theme_variables) : null; } catch {}
-    res.json({ theme_id: prefs.theme_id, custom_variables: custom });
-});
 
 // ── Sync Linked Account ──────────────────────────────────────
 // When a user connects their OpenVibe.Live or OpenVibe.Games account,
@@ -208,37 +135,11 @@ router.post('/link-account', principals.guard('identity.subject.resolve', { ownA
 });
 
 // ── A site changed someone's avatar (Live's avatar picker) ───
-router.post('/user-avatar', (req, res) => {
+router.post('/user-avatar', principals.guard('network.avatar.write'), (req, res) => {
     const svc = req.app.locals.avatarService;
     if (!svc) return res.status(503).json({ error: 'avatar service unavailable' });
     const r = svc.fromSite(req.body || {});
     res.status(r.status).json(r.error ? { error: r.error } : { ok: true, changed: r.changed });
-});
-
-// ── Get Linked Accounts ──────────────────────────────────────
-router.get('/users/:id/linked-accounts', (req, res) => {
-    const db = getDb(req);
-    const accounts = db.prepare('SELECT service, service_user_id, service_username, linked_at FROM linked_accounts WHERE user_id = ?').all(req.params.id);
-    res.json({ accounts });
-});
-
-// ── Audit Log ────────────────────────────────────────────────
-router.post('/audit', (req, res) => {
-    const { user_id, action, details, ip } = req.body;
-    if (!action) return res.status(400).json({ error: 'action required' });
-    const db = getDb(req);
-    db.prepare('INSERT INTO audit_log (user_id, action, details, ip) VALUES (?, ?, ?, ?)').run(user_id || null, action, details || null, ip || null);
-    res.json({ success: true });
-});
-
-// ── Health / Stats ───────────────────────────────────────────
-router.get('/stats', (req, res) => {
-    const db = getDb(req);
-    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-    const themeCount = db.prepare('SELECT COUNT(*) as count FROM themes').get().count;
-    const linkedCount = db.prepare('SELECT COUNT(*) as count FROM linked_accounts').get().count;
-    const notifCount = db.prepare('SELECT COUNT(*) as count FROM notifications').get().count;
-    res.json({ users: userCount, themes: themeCount, linked_accounts: linkedCount, notifications: notifCount });
 });
 
 // Service URLs only (no secrets); any first-party service that resolves identities may read them.
@@ -517,24 +418,10 @@ router.post('/operator/alerts', principals.guard('network.operator.alert', { leg
     }
 });
 
-// ── Get Unread Count for User ────────────────────────────────
-// GET /internal/notifications/unread/:userId
-router.get('/notifications/unread/:userId', (req, res) => {
-    const notifService = req.app.locals.notificationService;
-    if (!notifService) return res.status(503).json({ error: 'Notification service unavailable' });
-
-    try {
-        const count = notifService.getUnreadCount(parseInt(req.params.userId));
-        res.json({ ok: true, count });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
 // ── Mark Notifications Read by Type ──────────────────────────
 // POST /internal/notifications/mark-read
 // Body: { user_id, type, url_pattern? }
-router.post('/notifications/mark-read', (req, res) => {
+router.post('/notifications/mark-read', principals.guard('network.notifications.push'), (req, res) => {
     const notifService = req.app.locals.notificationService;
     if (!notifService) return res.status(503).json({ error: 'Notification service unavailable' });
 
@@ -548,51 +435,6 @@ router.post('/notifications/mark-read', (req, res) => {
         console.error('[Internal] Mark read by type error:', err);
         res.status(500).json({ error: err.message });
     }
-});
-
-// ── Resolve User for Notification Context ────────────────────
-// POST /internal/notifications/resolve-users
-// Body: { usernames: [] }  → returns user IDs + display info
-router.post('/notifications/resolve-users', (req, res) => {
-    const { usernames } = req.body;
-    if (!Array.isArray(usernames) || usernames.length === 0) {
-        return res.status(400).json({ error: 'usernames array required' });
-    }
-    const db = getDb(req);
-    const placeholders = usernames.map(() => '?').join(',');
-    const users = db.prepare(`
-        SELECT id, username, display_name, avatar_url, name_effect, particle_effect
-        FROM users WHERE LOWER(username) IN (${placeholders})
-    `).all(...usernames.map(u => u.toLowerCase()));
-    res.json({ ok: true, users });
-});
-
-// ── Issue Token for Linked User ──────────────────────────────
-// POST /internal/issue-token
-// Body: { user_id }
-// Used by first-party services to get an openvibe.network JWT for
-// users who logged in via password but have a linked account.
-// This enables cross-service features (notifications, themes).
-router.post('/issue-token', (req, res) => {
-    const { user_id } = req.body;
-    if (!user_id) return res.status(400).json({ error: 'user_id required' });
-
-    const db = getDb(req);
-    const config = getConfig(req);
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(user_id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.is_banned) return res.status(403).json({ error: 'User is banned' });
-
-    const privateKey = req.app.locals.privateKey;
-    const algorithm = privateKey === req.app.locals.publicKey ? 'HS256' : 'RS256';
-
-    const token = jwt.sign(
-        { sub: user.id, username: user.username, role: user.role },
-        privateKey,
-        { algorithm, expiresIn: config.jwt.accessTokenExpiry, issuer: config.jwt.issuer }
-    );
-
-    res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, role: user.role, avatar_url: user.avatar_url } });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -676,84 +518,6 @@ router.post('/resolve-anon', principals.guard('identity.subject.resolve'), (req,
     } catch (err) {
         console.error('[Internal] resolve-anon error:', err);
         res.status(500).json({ error: 'Failed to resolve anon identity' });
-    }
-});
-
-// ── Admin: IP → Anon/Account Lookup ──────────────────────────
-// GET /internal/anon-admin?ip=X
-// Returns all anonymous identities AND registered accounts
-// associated with a given IP address.
-router.get('/anon-admin', (req, res) => {
-    const { ip } = req.query;
-    if (!ip) return res.status(400).json({ error: 'ip query param required' });
-
-    const db = getDb(req);
-
-    try {
-        // Get all anons seen from this IP
-        const anons = db.prepare(`
-            SELECT a.id, a.anon_number, a.display_name, a.ip AS creating_ip,
-                   a.total_messages, a.total_commands, a.first_seen, a.last_seen,
-                   l.first_seen AS ip_first_seen, l.last_seen AS ip_last_seen
-            FROM anon_users a
-            INNER JOIN anon_ip_log l ON l.anon_id = a.id
-            WHERE l.ip = ?
-            ORDER BY a.anon_number ASC
-        `).all(ip);
-
-        // Get all registered users who have logged in from this IP
-        const users = db.prepare(`
-            SELECT DISTINCT u.id, u.username, u.display_name, u.role, u.is_banned,
-                   u.anon_number, u.created_at
-            FROM users u
-            INNER JOIN ip_log il ON il.user_id = u.id
-            WHERE il.ip = ?
-            ORDER BY u.created_at ASC
-        `).all(ip);
-
-        // Get all IPs for each anon (cross-reference)
-        const anonIps = {};
-        for (const a of anons) {
-            const ips = db.prepare('SELECT ip, first_seen, last_seen FROM anon_ip_log WHERE anon_id = ?').all(a.id);
-            anonIps[a.anon_number] = ips;
-        }
-
-        res.json({
-            ip,
-            anonymous_identities: anons,
-            registered_accounts: users,
-            anon_ip_map: anonIps,
-        });
-    } catch (err) {
-        console.error('[Internal] anon-admin error:', err);
-        res.status(500).json({ error: 'Failed to lookup IP data' });
-    }
-});
-
-// ── Admin: List All Anon Identities ──────────────────────────
-// GET /internal/anon-list?limit=100&offset=0
-router.get('/anon-list', (req, res) => {
-    const db = getDb(req);
-    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
-    const offset = parseInt(req.query.offset) || 0;
-
-    try {
-        const total = db.prepare('SELECT COUNT(*) as cnt FROM anon_users').get().cnt;
-        const anons = db.prepare(`
-            SELECT a.id, a.anon_number, a.display_name, a.ip AS creating_ip,
-                   a.total_messages, a.total_commands, a.first_seen, a.last_seen
-            FROM anon_users a ORDER BY a.anon_number DESC LIMIT ? OFFSET ?
-        `).all(limit, offset);
-
-        // Attach IP list to each anon
-        for (const a of anons) {
-            a.ips = db.prepare('SELECT ip, last_seen FROM anon_ip_log WHERE anon_id = ?').all(a.id);
-        }
-
-        res.json({ total, anons, limit, offset });
-    } catch (err) {
-        console.error('[Internal] anon-list error:', err);
-        res.status(500).json({ error: 'Failed to list anons' });
     }
 });
 

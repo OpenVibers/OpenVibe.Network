@@ -36,13 +36,13 @@ const { createEcosystemRegistry } = require('../server/registry/ecosystem');
     assert.strictEqual(byId.network.runtime.status, 'up');
     assert.ok(byId.network.runtime.checked_at, 'every health value says when it was checked');
     assert.strictEqual(byId.live.runtime.status, 'down', 'unreachable is reported, not hidden');
-    assert.strictEqual(byId.realtime.runtime.status, 'not-running', 'placeholders are never shown as running');
+    assert.ok(!('realtime' in byId), 'openvibe-contracts 0.78.0 removed the realtime manifest (ADR-005 closed it, never built)');
     assert.ok(r.body.services.every(s => contracts.validate('registry.service-manifest@1', Object.fromEntries(Object.entries(s).filter(([k]) => !['runtime', 'exposure', 'observed'].includes(k)))).valid));
     r = await get('/api/v1/registry/services?status=placeholder');
     assert.ok(r.body.services.every(s => s.status === 'placeholder'), 'the status filter only returns that status');
-    // openvibe-contracts 0.34: realtime is retired (ADR-005 folded it into Events).
+    // openvibe-contracts 0.78.0: the realtime manifest is gone, so nothing is retired by it any more
     r = await get('/api/v1/registry/services?status=retired');
-    assert.ok(r.body.services.some(s => s.id === 'realtime') && r.body.services.every(s => s.status === 'retired'));
+    assert.ok(!r.body.services.some(s => s.id === 'realtime') && r.body.services.every(s => s.status === 'retired'));
 
     r = await get('/api/v1/registry/services/network');
     assert.ok(r.body.capability_details.some(c => c.id === 'network.coins.credit'));
@@ -76,7 +76,9 @@ const { createEcosystemRegistry } = require('../server/registry/ecosystem');
     assert.strictEqual(inCat('live'), 'site'); assert.strictEqual(inCat('network'), 'site'); assert.strictEqual(inCat('tips'), 'site', 'a site whose domain is still a placeholder is a site, not open yet');
     assert.strictEqual(inCat('events'), 'platform'); assert.strictEqual(inCat('ai'), 'platform'); assert.strictEqual(inCat('sources'), 'platform');
     assert.strictEqual(inCat('sdk'), 'library'); assert.strictEqual(inCat('contracts'), 'library');
-    assert.strictEqual(inCat('examples'), 'repository'); assert.strictEqual(inCat('realtime'), 'planned');
+    assert.strictEqual(inCat('examples'), 'repository');
+    // 'planned' = exposure placeholder, and no manifest has that state since realtime's was removed
+    assert.deepStrictEqual(cats.planned.services, []);
     const liveRow = cats.site.services.find(x => x.id === 'live');
     assert.strictEqual(liveRow.runtime, 'down'); assert.ok(liveRow.checked_at, 'rows carry the last check');
     r = await get('/api/v1/registry/categories/library');

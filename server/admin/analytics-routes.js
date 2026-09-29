@@ -11,18 +11,20 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function createAnalyticsRoutes(analytics, requireAuth, config) {
+module.exports = function createAnalyticsRoutes(analytics, requireAuth, config, { selfToken = () => null } = {}) {
 
-    // Service-to-service calls carry the deployment's INTERNAL_API_KEY. (This used to be a constant in
-    // the source, which any reader of the repository could replay against the public tool hosts.)
+    // Tools is asked with a Network service token (tools.analytics.read); the deployment's INTERNAL_API_KEY rides
+    // along only while Tools moves to tokens (plan T2), then goes.
     const INTERNAL_KEY = config.internalKey;
 
     // All remote services with their internal URLs and fetch strategy
     const REMOTE_SERVICES = [
         { name: 'live',  label: 'OpenVibe.Live',  url: config.services?.live?.internalUrl  || 'http://127.0.0.1:3000', path: '/api/admin/analytics',    auth: 'bearer' },
         { name: 'tools', label: 'OpenVibe.Tools', url: config.services?.tools?.internalUrl || 'http://127.0.0.1:4001', path: '/api/internal/analytics', auth: 'internal' },
-        { name: 'games', label: 'OpenVibe.Games', url: config.services?.games?.internalUrl || 'http://127.0.0.1:8000', path: '/api/internal/analytics', auth: 'internal' },
-        { name: 'media', label: 'OpenVibe.Media', url: config.services?.media?.internalUrl || 'http://127.0.0.1:4100', path: '/api/internal/analytics', auth: 'internal' },
+        // Games and Media keep no analytics of their own and never had this route: the navbar's page-view count is
+        // their number (beaconFallback), without asking them.
+        { name: 'games', label: 'OpenVibe.Games', url: config.services?.games?.internalUrl || 'http://127.0.0.1:8000', path: null, auth: 'beacon' },
+        { name: 'media', label: 'OpenVibe.Media', url: config.services?.media?.internalUrl || 'http://127.0.0.1:4100', path: null, auth: 'beacon' },
     ];
 
     function requireAdmin(req, res, next) {
@@ -52,9 +54,12 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config) 
             const url = `${svc.url}${svc.path}${subPath}?${qs}`;
             const headers = { 'Content-Type': 'application/json' };
 
+            if (svc.auth === 'beacon') return subPath ? null : beaconFallback(svc, days);
             if (svc.auth === 'internal') {
-                if (!INTERNAL_KEY || INTERNAL_KEY === 'change-me-in-production') return null;
-                headers['X-Internal-Key'] = INTERNAL_KEY;
+                const t = selfToken(`openvibe.${svc.name}`, [`${svc.name}.analytics.read`]);
+                if (t) headers['Authorization'] = `Bearer ${t}`;
+                if (INTERNAL_KEY && INTERNAL_KEY !== 'change-me-in-production') headers['X-Internal-Key'] = INTERNAL_KEY;
+                if (!headers['Authorization'] && !headers['X-Internal-Key']) return null;
             } else {
                 headers['Authorization'] = `Bearer ${token}`;
             }

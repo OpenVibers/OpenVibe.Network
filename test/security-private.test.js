@@ -92,7 +92,8 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         await mine('alice', '/api/history', 'alice-private-history');
         await mine('alice', `/api/v1/projects/${dev.PA.id}`, 'alice-private-project');
         await mine('alice', `/api/v1/projects/${dev.PA.id}/apps`, 'alice-private-app');
-        await mine({ 'x-internal-key': w.sentinels.INTERNAL_API_KEY }, `/internal/users/${users.alice.id}/linked-accounts`, 'alice-games-771');
+        // (The linked-account needle's positive control was GET /internal/users/:id/linked-accounts, deleted with the key
+        // in plan T2; the needle stays in the crawl so any route that exposes it to the wrong caller still fails.)
         const pub = await w.call(null, 'GET', '/api/v1/status/incidents');
         assert.strictEqual(pub.status, 200);
         assert.ok(!pub.text.includes('long-closed-incident-title'), 'an incident closed 40 days ago is not listed');
@@ -120,8 +121,10 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         }
         assert.deepStrictEqual(bad, [], `private reads answered:\n${bad.join('\n')}`);
         // A service principal reaches only the /internal routes its capabilities name.
-        for (const p of ['/internal/stats', `/internal/users/${users.alice.id}`, `/internal/users/${users.alice.id}/linked-accounts`, '/internal/anon-list', '/internal/integrations/github-token', `/internal/notifications/unread/${users.alice.id}`]) {
-            assert.strictEqual(st[`service GET ${p}`], 403, `${p} needs the legacy key or its own capability`);
+        assert.strictEqual(st['service GET /internal/integrations/github-token'], 403, 'github-token needs the legacy key or its own capability');
+        // Deleted with the X-Internal-Key retirement (plan T2, no caller left): no longer routes at all.
+        for (const p of ['/internal/stats', `/internal/users/${users.alice.id}`, `/internal/users/${users.alice.id}/linked-accounts`, '/internal/anon-list', `/internal/notifications/unread/${users.alice.id}`]) {
+            assert.strictEqual(st[`service GET ${p}`], undefined, `${p} is gone`);
         }
 
         // Lists and search: bob's view of projects never includes alice's, even asking for all.

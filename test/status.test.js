@@ -86,8 +86,7 @@ const rel = (release) => [200, { service: 'x', release, released_at: '2026-09-22
     assert.strictEqual(statusFromReady(okRes, { ready: true, status: 'ready', failed: [], degraded: [], checks: { a: skippedCheck } }).status, 'degraded', 'all skipped: not green');
     assert.strictEqual(statusFromReady(okRes, { ready: true, status: 'ready', failed: [], degraded: [], checks: {} }).status, 'degraded', 'no checks: not green');
     assert.strictEqual(statusFromReady({ ok: false }, { status: 'x' }).status, 'down');
-    assert.strictEqual(by.realtime.status, 'not-running');
-    assert.strictEqual(by.realtime.label, 'not running (placeholder)');
+    assert.ok(!('realtime' in by), 'openvibe-contracts 0.78.0 removed the realtime manifest');
     assert.strictEqual(by.contracts.status, 'not-running');
     assert.strictEqual(by.contracts.label, `not running (library, released v${require('openvibe-contracts/package.json').version})`);
     for (const s of r.body.services) assert.ok(s.checked_at, `${s.id} says when it was checked`);
@@ -121,7 +120,7 @@ const rel = (release) => [200, { service: 'x', release, released_at: '2026-09-22
     assert.ok(html.includes('<meta name="robots" content="noindex, nofollow">'));
     assert.ok(html.includes('id="svc-media"') && /id="svc-media"[\s\S]*?Degraded/.test(html));
     assert.ok(/id="svc-community"[\s\S]*?Down[\s\S]*?SQLITE_CANTOPEN/.test(html));
-    assert.ok(/id="svc-realtime"[\s\S]*?not running \(placeholder\)/.test(html));
+    assert.ok(!html.includes('id="svc-realtime"'), 'the page lists no realtime row, the manifest is gone');
     assert.ok(/id="svc-tools"[\s\S]*?liveness only/.test(html));
     assert.ok(html.includes('<noscript>'), 'navigation without JavaScript');
     assert.ok(html.includes('SLO categories (proposals)'));

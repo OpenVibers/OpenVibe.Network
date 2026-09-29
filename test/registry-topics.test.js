@@ -113,11 +113,12 @@ const rel = (contractsVersion, packages) => [200, { service: 'x', release: 'abcd
     assert.strictEqual(rel2.network.drift['openvibe-contracts'].state, 'current');
     assert.ok(r.body.behind.includes('live') && !r.body.behind.includes('network'));
     assert.strictEqual(rel2.media.release, null); assert.ok(rel2.media.error);
-    assert.strictEqual(rel2.realtime.release, null, 'a placeholder has no release');
+    assert.ok(!('realtime' in rel2), 'a removed manifest has no release row');
 
     r = await get('/api/v1/registry/health');
     const h = Object.fromEntries(r.body.services.map(s => [s.id, s]));
-    assert.strictEqual(h.network.status, 'up'); assert.strictEqual(h.media.status, 'down'); assert.strictEqual(h.realtime.status, 'not-running');
+    assert.strictEqual(h.network.status, 'up'); assert.strictEqual(h.media.status, 'down');
+    assert.ok(!('realtime' in h), 'health is per manifest, and realtime has none');
     assert.ok(h.network.checked_at);
     assert.strictEqual(Object.values(r.body.summary).reduce((a, b) => a + b, 0), contracts.services.manifests.length);
 

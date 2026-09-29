@@ -21,7 +21,6 @@ const PINNED = {
     tips: 'internal', vip: 'internal', openre: 'internal', search: 'live', sources: 'internal', chat: 'live', ai: 'internal',
     sdk: 'library', shared: 'library', contracts: 'library', publishing: 'library',
     examples: 'repository',
-    realtime: 'placeholder',
 };
 const PLACEHOLDER_DOMAINS = ['news', 'reviews', 'deals', 'coupons', 'trade', 'host', 'tips', 'vip', 'openre'];
 
@@ -86,7 +85,8 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     assert.strictEqual(by.sdk.runtime.status, 'not-running');
     assert.strictEqual(by.sdk.runtime.reason, `library, released v${require('openvibe-sdk/package.json').version}`);
     assert.strictEqual(by.examples.runtime.reason, 'repository, nothing to run');
-    assert.strictEqual(by.realtime.runtime.reason, 'placeholder');
+    // openvibe-contracts 0.78.0 removed the realtime manifest (ADR-005 closed OpenVibe.Realtime, never built)
+    assert.ok(!('realtime' in by), 'realtime is gone from the exposure map, not a stale row');
     assert.strictEqual(by.live.runtime.scope, 'public');
     r = await json('/api/v1/registry/services?state=internal');
     assert.deepStrictEqual(r.services.map(s => s.id).sort(), Object.keys(PINNED).filter(k => PINNED[k] === 'internal').sort());
@@ -101,7 +101,8 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     assert.strictEqual(sBy.live.label, 'up');
     assert.strictEqual(sBy.live.origin, 'https://openvibe.live');
     assert.strictEqual(sBy.shared.label, `not running (library, released v${require('openvibe-shared/package.json').version})`);
-    assert.deepStrictEqual(st.exposure_summary, { live: 14, internal: 11, library: 4, repository: 1, placeholder: 1, retired: 0 });
+    // no manifest has exposure 'placeholder' or 'retired' since realtime's was removed in 0.78.0
+    assert.deepStrictEqual(st.exposure_summary, { live: 14, internal: 11, library: 4, repository: 1, placeholder: 0, retired: 0 });
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());

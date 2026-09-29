@@ -54,7 +54,14 @@ const initialSvg = (name, size) => {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 96 96"><rect width="96" height="96" fill="hsl(${h} 45% 42%)"/><text x="48" y="50" font-family="system-ui,sans-serif" font-size="46" font-weight="700" fill="#fff" text-anchor="middle" dominant-baseline="middle">${ch}</text></svg>`;
 };
 
-function createAvatarService({ db, config, requireAuth, log = console }) {
+function createAvatarService({ db, config, requireAuth, selfToken = () => null, log = console }) {
+    // A service token for the call (live.avatar.write / media.avatar.ingest); X-Internal-Key rides along only while the
+    // receivers move to tokens (plan T2), then goes.
+    const legacyKey = () => (config.internalKey && config.internalKey !== 'change-me-in-production' ? { 'X-Internal-Key': config.internalKey } : {});
+    function authHeaders(audience, cap) {
+        const t = selfToken(audience, [cap]);
+        return { ...legacyKey(), ...(t ? { Authorization: `Bearer ${t}` } : {}) };
+    }
     const getUrl = db.prepare('SELECT avatar_url FROM users WHERE id = ?');
     const byName = db.prepare('SELECT username, avatar_url FROM users WHERE lower(username) = lower(?)');
     const setUrl = db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?');
@@ -62,17 +69,19 @@ function createAvatarService({ db, config, requireAuth, log = console }) {
     /** Tell the sites that keep their own copy. Fire and forget: they also pick it up at the next sign-in. */
     function pushToSites(userId, username, url) {
         const live = config.services && config.services.live && config.services.live.internalUrl || 'http://127.0.0.1:3000';
-        if (!config.internalKey || config.internalKey === 'change-me-in-production') return;
-        fetch(`${live.replace(/\/$/, '')}/internal/user-avatar`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Internal-Key': config.internalKey },
+        const auth = authHeaders('openvibe.live', 'live.avatar.write');
+        if (!Object.keys(auth).length) return;
+        fetch(`${live.replace(/\/$/, '')}/internal/user-avatar`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth },
             body: JSON.stringify({ openvibenetwork_id: userId, username, avatar_url: url }), signal: AbortSignal.timeout(5000) }).catch(() => {});
     }
 
     /** A picture from elsewhere on the web: openvibe.media fetches it safely, re-encodes it and keeps the copy. */
     async function ingest(url, user) {
         const media = (config.services && config.services.media && config.services.media.internalUrl) || 'http://127.0.0.1:4100';
-        if (!config.internalKey || config.internalKey === 'change-me-in-production') return { ok: false, status: 503, error: 'Picture import is not configured on this server' };
+        const auth = authHeaders('openvibe.media', 'media.avatar.ingest');
+        if (!Object.keys(auth).length) return { ok: false, status: 503, error: 'Picture import is not configured on this server' };
         try {
-            const r = await fetch(`${media.replace(/\/$/, '')}/internal/avatar-ingest`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Internal-Key': config.internalKey },
+            const r = await fetch(`${media.replace(/\/$/, '')}/internal/avatar-ingest`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth },
                 body: JSON.stringify({ url, user_id: user.id, username: user.username }), signal: AbortSignal.timeout(20000) });
             const j = await r.json().catch(() => ({}));
             if (!r.ok || !j.ok) return { ok: false, status: r.status === 404 ? 503 : 422, error: j.error || 'That picture could not be imported' };

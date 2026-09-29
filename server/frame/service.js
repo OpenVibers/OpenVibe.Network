@@ -58,7 +58,7 @@ function aiSiteCopy({ privateKey, issuer, aiUrl }) {
     };
 }
 
-function createFrameService(db, config, analytics, { privateKey = null, issuer = null, aiUrl = process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700' } = {}) {
+function createFrameService(db, config, analytics, { privateKey = null, issuer = null, selfToken = () => null, aiUrl = process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700' } = {}) {
     const fromAi = privateKey && issuer ? aiSiteCopy({ privateKey, issuer, aiUrl: String(aiUrl).replace(/\/+$/, '') }) : null;
     // Renamed from chrome_cache/chrome_hits (2026-09-24): carry the old tables over once.
     for (const [from, to] of [['chrome_cache', 'frame_cache'], ['chrome_hits', 'frame_hits']]) {
@@ -85,8 +85,13 @@ function createFrameService(db, config, analytics, { privateKey = null, issuer =
 
     async function refreshRank() {
         const scores = Object.assign({}, rank.scores);
-        // Live runs its own navbar and its own analytics: ask it for totals (internal key, totals only).
-        const live = await getJson(`${svcUrl('live', 'http://127.0.0.1:3000')}/internal/analytics-summary?days=7`, { 'X-Internal-Key': config.internalKey });
+        // Live runs its own navbar and its own analytics: ask it for totals (live.analytics.read, totals only). The key
+        // rides along only while Live moves to tokens (plan T2).
+        const liveToken = selfToken('openvibe.live', ['live.analytics.read']);
+        const live = await getJson(`${svcUrl('live', 'http://127.0.0.1:3000')}/internal/analytics-summary?days=7`, {
+            ...(config.internalKey && config.internalKey !== 'change-me-in-production' ? { 'X-Internal-Key': config.internalKey } : {}),
+            ...(liveToken ? { Authorization: `Bearer ${liveToken}` } : {}),
+        });
         if (live && live.summary) scores.live = Math.round(Number(live.summary.total_pageviews) || 0);
         // Everything else: the navbar's page-view beacon, summed per site over 7 days.
         let tools = rank.tools || [];

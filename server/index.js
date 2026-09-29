@@ -356,6 +356,9 @@ try {
 // Make keys available to route modules
 app.locals.db = db;
 app.locals.privateKey = privateKey;
+// Network's own service tokens for its calls to Live, Media and Tools (identity/self-token.js).
+const selfToken = require('./identity/self-token').createSelfTokens({ privateKey, issuer: config.jwt.issuer });
+app.locals.selfToken = selfToken;
 app.locals.publicKey = publicKey;
 app.locals.config = config;
 
@@ -605,14 +608,14 @@ app.get('/api/catalog.json', async (req, res) => {
 });
 
 // The avatar: one picture per account, hosted on openvibe.media, used by every site (server/profile/avatar.js).
-const avatarService = require('./profile/avatar').createAvatarService({ db, config, requireAuth });
+const avatarService = require('./profile/avatar').createAvatarService({ db, config, requireAuth, selfToken });
 app.use('/api/profile/avatar', rateLimit({ windowMs: 60_000, max: 20 }), avatarService.api);
 app.use('/avatar', rateLimit({ windowMs: 60_000, max: 600 }), avatarService.pub);
 app.locals.avatarService = avatarService;
 
 // The OpenVibe Frame: analytics-ranked navigation + footer copy for every site (server/frame).
 // /api/chrome is the old name, kept for copies of openvibe-shared older than 1.11.0.
-const frameService = require('./frame/service').createFrameService(db, config, analytics, { privateKey, issuer: config.jwt.issuer });
+const frameService = require('./frame/service').createFrameService(db, config, analytics, { privateKey, issuer: config.jwt.issuer, selfToken });
 const frameLimit = rateLimit({ windowMs: 60_000, max: 240 });
 app.use('/api/frame', frameLimit, frameService.router);
 app.use('/api/chrome', frameLimit, frameService.router);
@@ -660,7 +663,7 @@ app.use('/api/admin', createAdminRoutes(db, notificationService, emailService, r
 
 // Analytics admin API
 const createAnalyticsRoutes = require('./admin/analytics-routes');
-app.use('/api/admin/analytics', createAnalyticsRoutes(analytics, requireAuth, config));
+app.use('/api/admin/analytics', createAnalyticsRoutes(analytics, requireAuth, config, { selfToken }));
 
 // ── Admin Proxy to OpenVibe.Live ──────────────────────────────
 // Proxies /api/admin/streamer/* → openvibe.live /api/admin/*

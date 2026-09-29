@@ -23,11 +23,17 @@ for (const bad of ['http://openvibe.media/x.png', 'javascript:alert(1)', 'https:
 
     const db = new Database(':memory:');
     db.exec("CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT, avatar_url TEXT); CREATE TABLE audit_log(id INTEGER PRIMARY KEY, user_id INT, action TEXT, details TEXT, ip TEXT); INSERT INTO users VALUES (1,'Goosely',NULL),(2,'legacy','https://evil.example/old.png')");
-    const pushes = []; const realFetch = global.fetch; global.fetch = async (u, o) => { pushes.push(JSON.parse(o.body)); return { ok: true }; };
-    const svc = createAvatarService({ db, config: { internalKey: 'k'.repeat(24), services: {} }, requireAuth: (req, _res, next) => { req.user = { id: 1, username: 'Goosely' }; next(); } });
+    const pushes = []; const pushHeaders = []; const realFetch = global.fetch; global.fetch = async (u, o) => { pushes.push(JSON.parse(o.body)); pushHeaders.push(o.headers); return { ok: true }; };
+    // Network's own service token for the push (plan T2): live.avatar.write, audience openvibe.live.
+    const { privateKey, publicKey } = require('crypto').generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
+    const selfToken = require('../server/identity/self-token').createSelfTokens({ privateKey, issuer: 'https://openvibe.network' });
+    const svc = createAvatarService({ db, config: { internalKey: 'k'.repeat(24), services: {} }, selfToken, requireAuth: (req, _res, next) => { req.user = { id: 1, username: 'Goosely' }; next(); } });
     assert.equal(svc.fromSite({ user_id: 1, avatar_url: `${M}/f/a.png`, origin: 'live' }).changed, true);
     assert.equal(pushes.length, 0, 'a change that came from Live is not echoed back to Live');
     svc.apply(1, 'Goosely', `${M}/f/b.png`, 'network'); assert.equal(pushes.length, 1); assert.equal(pushes[0].avatar_url, `${M}/f/b.png`, 'a change made here is pushed to the sites');
+    const bearer = String(pushHeaders[0].Authorization || '').replace(/^Bearer /, '');
+    const v = require('openvibe-contracts').serviceAuth.verifyServiceToken(bearer, { publicKey, issuer: 'https://openvibe.network', audience: 'openvibe.live' });
+    assert.ok(v.ok && v.claims.sub === 'svc:network' && v.claims.cap.includes('live.avatar.write'), `the push carries Network's token for live.avatar.write: ${v.reason || ''}`);
     assert.equal(svc.fromSite({ user_id: 1, avatar_url: 'https://evil.example/x.png' }).status, 422);
     global.fetch = realFetch;
 

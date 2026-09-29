@@ -60,18 +60,16 @@ const sign = (sub, opts = {}) => jwt.sign({ sub, id: sub, username: 'u' }, keys.
     assert.strictEqual(r.status, 401, 'a FedCM assertion cannot sign in to another client through /oauth/confirm');
     r = await post('/api/auth/refresh', {}, { authorization: `Bearer ${assertion}` });
     assert.strictEqual(r.status, 401, 'a FedCM assertion cannot be refreshed into a full session');
-    r = await post('/internal/verify-token', { token: assertion }, { 'x-internal-key': config.internalKey });
-    assert.strictEqual(r.body.valid, false, 'internal verify-token does not call a FedCM assertion a user token');
+    // POST /internal/verify-token (key-only, no caller left) was deleted with the X-Internal-Key retirement (plan T2):
+    // services verify tokens offline against the JWKS.
     r = await post('/internal/verify-token', { token: sign(7) }, { 'x-internal-key': config.internalKey });
-    assert.strictEqual(r.body.valid, true);
+    assert.strictEqual(r.status, 404, 'internal verify-token is gone');
     // nginx only lets loopback reach `location /internal/` (case-sensitive); Express mounts are not,
     // so another spelling must not reach the internal router from outside.
-    r = await post('/INTERNAL/verify-token', { token: sign(7) }, { 'x-internal-key': config.internalKey });
-    assert.strictEqual(r.status, 404, '/INTERNAL/... is not the internal API');
-    r = await post('/Internal/verify-token', { token: sign(7) }, { 'x-internal-key': config.internalKey });
-    assert.strictEqual(r.status, 404);
-    r = await post('/internal/verify-token', { token: sign(7) }, { 'x-internal-key': 'k'.repeat(31) + 'x' });
-    assert.strictEqual(r.status, 403, 'wrong internal key');
+    const get = (p, headers) => fetch(base + p, { headers }).then((x) => x.status);
+    assert.strictEqual(await get('/INTERNAL/coins/stats', { 'x-internal-key': config.internalKey }), 404, '/INTERNAL/... is not the internal API');
+    assert.strictEqual(await get('/Internal/coins/stats', { 'x-internal-key': config.internalKey }), 404);
+    assert.strictEqual(await get('/internal/coins/stats', { 'x-internal-key': 'k'.repeat(31) + 'x' }), 403, 'wrong internal key');
 
     // ── Revoked tokens (password changed after iat) ──────────────────
     const old = sign(8, { expiresIn: '1h' });
