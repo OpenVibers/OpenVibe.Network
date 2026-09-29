@@ -35,7 +35,8 @@ app.locals.config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpi
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 const revised = [];
-app.locals.notificationService = { create: (n) => { sent.push(n); return { id: `n${sent.length}` }; }, revise: (id, uid, f) => { revised.push({ id, uid, ...f }); return true; } };
+// Async, like NotificationService.create/revise on PostgreSQL: the notification ids kept for the revisions come from the awaited result.
+app.locals.notificationService = { create: async (n) => { sent.push(n); return { id: `n${sent.length}` }; }, revise: async (id, uid, f) => { revised.push({ id, uid, ...f }); return true; } };
 app.use('/oauth', require('../server/auth/oauth-routes'));
 app.use('/internal', require('../server/internal/routes'));
 const server = http.createServer(app);

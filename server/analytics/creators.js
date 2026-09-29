@@ -101,7 +101,7 @@ async function viewerOf(req) {
 function router({ fullGuard }) {
     const r = express.Router();
     r.use(http.middleware());
-    r.get('/:creator/analytics', async (req, res) => {
+    r.get('/:creator/analytics', async (req, res, next) => {
         const db = req.app.locals.db;
         const key = String(req.params.creator || '');
         const u = SUBJECT_RE.test(key) ? await db.prepare('SELECT subject_id, is_anon FROM users WHERE subject_id = ?').get(key)
@@ -111,7 +111,8 @@ function router({ fullGuard }) {
         const viewer = await viewerOf(req);
         if (viewer) return await answer(viewer.subject_id === u.subject_id);
         const h = String(req.headers.authorization || '');
-        if (h.startsWith('Bearer ')) return fullGuard(req, res, async () => await answer(true));   // a service token: full, or refused
+        // The guard calls back after this handler returned: a failure there goes to next(err) (server/async-routes.js).
+        if (h.startsWith('Bearer ')) return fullGuard(req, res, () => answer(true).catch(next));   // a service token: full, or refused
         return await answer(false);
     });
     return r;

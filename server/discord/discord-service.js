@@ -15,7 +15,7 @@ try {
 
 class DiscordService {
     /**
-     * @param {object} db — better-sqlite3 Database instance (with getSetting helper)
+     * @param {object} db — the openvibe-sdk/db handle (with the async getSetting helper)
      */
     constructor(db) {
         this._db = db;
@@ -36,7 +36,7 @@ class DiscordService {
     async init() {
         if (!Discord) return;
 
-        const token = this._getSetting('discord_bot_token');
+        const token = await this._getSetting('discord_bot_token');
         if (!token) {
             console.log('[Discord] No bot token configured — bot disabled');
             return;
@@ -87,13 +87,13 @@ class DiscordService {
 
     // ─── Status ────────────────────────────────────────────
 
-    getStatus() {
+    async getStatus() {
         return {
             available: !!Discord,
             connected: this._ready,
             botTag: this._client?.user?.tag || null,
-            guildId: this._getSetting('discord_guild_id') || null,
-            alertsChannelId: this._getSetting('discord_alerts_channel_id') || null,
+            guildId: (await this._getSetting('discord_guild_id')) || null,
+            alertsChannelId: (await this._getSetting('discord_alerts_channel_id')) || null,
         };
     }
 
@@ -114,14 +114,14 @@ class DiscordService {
     async sendLiveAlert(streamer, stream) {
         if (!this.isReady()) return { sent: false, reason: 'bot_not_connected' };
 
-        const channelId = this._getSetting('discord_alerts_channel_id');
+        const channelId = await this._getSetting('discord_alerts_channel_id');
         if (!channelId) return { sent: false, reason: 'no_alerts_channel' };
 
         // Dedupe check — one alert per streamer per cooldown window
-        const cooldownMin = parseInt(this._getSetting('discord_dedupe_minutes') || '15', 10);
+        const cooldownMin = parseInt((await this._getSetting('discord_dedupe_minutes')) || '15', 10);
         const cooldownMs = Math.max(cooldownMin, 1) * 60 * 1000;
         const key = streamer.username.toLowerCase();
-        const lastAlert = await this._liveAlertCooldowns.get(key);
+        const lastAlert = this._liveAlertCooldowns.get(key);
         if (lastAlert && (Date.now() - lastAlert) < cooldownMs) {
             return { sent: false, reason: 'cooldown', remaining_ms: cooldownMs - (Date.now() - lastAlert) };
         }
@@ -153,7 +153,7 @@ class DiscordService {
             }
 
             // Custom message template support
-            const customTemplate = this._getSetting('discord_alert_message');
+            const customTemplate = await this._getSetting('discord_alert_message');
             let content = null;
             if (customTemplate) {
                 content = customTemplate
@@ -182,7 +182,7 @@ class DiscordService {
     async sendSystemAlert(alert) {
         if (!this.isReady()) return { sent: false, reason: 'bot_not_connected' };
 
-        const channelId = this._getSetting('discord_system_channel_id');
+        const channelId = await this._getSetting('discord_system_channel_id');
         if (!channelId) return { sent: false, reason: 'no_system_channel' };
 
         const colors = { info: 0x3b82f6, warning: 0xf59e0b, error: 0xef4444 };

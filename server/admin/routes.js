@@ -230,7 +230,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // GET /api/admin/email — get current email config (owner-only: exposes key metadata)
     router.get('/email', requireOwner, async (req, res) => {
         try {
-            const status = emailService.getStatus();
+            const status = await emailService.getStatus();
             res.json({ ok: true, email: status, metrics: await getEmailMetrics() });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
@@ -265,14 +265,14 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             await collect();
             if (Object.keys(changes.set).length) await (await siteConfig.forDb(db)).change(changes, { actor: siteConfig.actorOf(req.user), reason: String(req.body.reason || 'email settings').slice(0, 300) });
 
-            emailService.reload();
+            await emailService.reload();
 
             // Audit
             await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'email_config_update', JSON.stringify({ from_email })
             );
 
-            res.json({ ok: true, email: emailService.getStatus(), ...(skipped.length ? { skipped, note: 'set in the environment; not saved to the database' } : {}) });
+            res.json({ ok: true, email: await emailService.getStatus(), ...(skipped.length ? { skipped, note: 'set in the environment; not saved to the database' } : {}) });
         } catch (err) {
             if (err && err.status && err.code) return res.status(err.status).json({ ok: false, error: err.message, code: err.code, errors: err.errors });
             res.status(500).json({ ok: false, error: err.message });
@@ -591,7 +591,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             if (search) {
                 users = await db.prepare(`
                     SELECT id, username, display_name, email, role, is_banned, created_at, last_seen
-                    FROM users WHERE username LIKE ? OR display_name LIKE ? OR email LIKE ?
+                    FROM users WHERE username ILIKE ? OR display_name ILIKE ? OR email ILIKE ?
                     ORDER BY created_at DESC LIMIT ? OFFSET ?
                 `).all(`%${search}%`, `%${search}%`, `%${search}%`, limit, offset);
             } else {
@@ -847,7 +847,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             const unreadCount = (await db.prepare('SELECT COUNT(*) as cnt FROM notifications WHERE is_read = 0').get()).cnt;
             const anonCount = (await db.prepare('SELECT COUNT(*) as cnt FROM anon_users').get()).cnt;
             const sessionCount = (await db.prepare('SELECT COUNT(*) as cnt FROM user_sessions WHERE is_active = 1').get()).cnt;
-            const emailStatus = emailService.getStatus();
+            const emailStatus = await emailService.getStatus();
 
             res.json({
                 ok: true,

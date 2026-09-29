@@ -107,7 +107,7 @@ async function receive(db, body, { notify, revise = null, now = Date.now(), env 
             const kept = kind === 'reminded' ? notices(prev) : [];
             for (const uid of users) {
                 try {
-                    const created = notify(uid, n);
+                    const created = await notify(uid, n);
                     if (created) out.notified += 1;
                     if (created && created.id) kept.push([uid, created.id]);
                 } catch (e) { console.warn('[operator-alerts] notify failed:', e.message); }
@@ -120,7 +120,7 @@ async function receive(db, body, { notify, revise = null, now = Date.now(), env 
             ? { title: `Resolved: ${a.name}`.slice(0, 120), icon: '✅', is_read: 1, message: `${a.summary} (resolved after ${ago(now - (prev.opened_at || now))}${prev.reopened ? `; it fired ${prev.reopened + 1} times` : ''}).`.slice(0, 500) }
             : { title: `Alert: ${a.name}`.slice(0, 120), icon: critical ? '🚨' : '⚠️', is_read: critical ? 0 : 1, message: `${a.summary}. ${message(a)} Fired again ${(prev.reopened || 0) + 1} time(s) within 12 h of resolving.`.slice(0, 500) };
         for (const [uid, id] of notices(prev)) {
-            try { revise(uid, id, fields); } catch (e) { console.warn('[operator-alerts] revise failed:', e.message); }
+            try { await revise(uid, id, fields); } catch (e) { console.warn('[operator-alerts] revise failed:', e.message); }
         }
     }
     return out;

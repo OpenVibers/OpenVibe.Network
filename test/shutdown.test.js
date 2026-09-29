@@ -18,7 +18,7 @@ const freePort = () => new Promise((resolve) => { const s = net.createServer(); 
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-net-stop-'));
     const port = await freePort();
     const child = spawn(process.execPath, [path.join(__dirname, '..', 'server', 'index.js')], {
-        env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DB_PATH: path.join(dir, 'network.db'), NODE_ENV: 'test' },
+        env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', PGLITE_DIR: path.join(dir, 'pglite'), NODE_ENV: 'test' },
         stdio: ['ignore', 'pipe', 'pipe'],
     });
     let out = '';

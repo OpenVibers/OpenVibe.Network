@@ -87,9 +87,9 @@ function createNetworkReadiness({ db, getKeys, release, ecosystem = null, discor
     if (discordService && typeof discordService.isReady === 'function') {
         checks.push({
             name: 'discord_bot', required: false,
-            check: () => {
+            check: async () => {
                 let configured = false;
-                try { configured = !!discordService._getSetting('discord_bot_token'); } catch { configured = false; }
+                try { configured = !!(await discordService._getSetting('discord_bot_token')); } catch { configured = false; }
                 if (!configured) return skip('not configured');   // verified nothing: skipped, never ok (WS-Q task 7)
                 return discordService.isReady() || 'bot token configured but the bot is not connected';
             },

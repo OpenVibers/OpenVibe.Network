@@ -88,7 +88,7 @@ router.post('/link-account', principals.guard('identity.subject.resolve', { ownA
         const me = await db.prepare('SELECT avatar_url, display_name, username FROM users WHERE id = ?').get(user_id);
         if (me) {
             const svc = req.app.locals.avatarService;
-            if (svc && avatar_url && !me.avatar_url) svc.fromSite({ user_id, avatar_url, origin: service });
+            if (svc && avatar_url && !me.avatar_url) await svc.fromSite({ user_id, avatar_url, origin: service });
             const name = String(display_name || '').trim().slice(0, 60);
             // Same rule the profile form enforces: a display name only re-cases the username.
             if (name && name !== me.display_name && name.toLowerCase() === String(me.username || '').toLowerCase()) await db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(name, user_id);
@@ -384,7 +384,7 @@ router.post('/operator/alerts', principals.guard('network.operator.alert'), asyn
 // ── Mark Notifications Read by Type ──────────────────────────
 // POST /internal/notifications/mark-read
 // Body: { user_id, type, url_pattern? }
-router.post('/notifications/mark-read', principals.guard('network.notifications.push'), (req, res) => {
+router.post('/notifications/mark-read', principals.guard('network.notifications.push'), async (req, res) => {
     const notifService = req.app.locals.notificationService;
     if (!notifService) return res.status(503).json({ error: 'Notification service unavailable' });
 
@@ -392,7 +392,7 @@ router.post('/notifications/mark-read', principals.guard('network.notifications.
     if (!user_id || !type) return res.status(400).json({ error: 'user_id and type required' });
 
     try {
-        const changes = notifService.markReadByType(parseInt(user_id), type, url_pattern || null);
+        const changes = await notifService.markReadByType(parseInt(user_id), type, url_pattern || null);
         res.json({ ok: true, marked: changes });
     } catch (err) {
         console.error('[Internal] Mark read by type error:', err);

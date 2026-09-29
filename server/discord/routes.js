@@ -16,7 +16,7 @@ module.exports = function createDiscordRoutes(db, discordService, requireAuth, r
 
     /** GET /api/admin/discord — bot status + current config */
     router.get('/', async (req, res) => {
-        const status = discordService.getStatus();
+        const status = await discordService.getStatus();
         const settings = {
             discord_bot_token: await db.getSetting('discord_bot_token') ? '••••••••' : '',
             discord_guild_id: await db.getSetting('discord_guild_id') || '',
@@ -85,7 +85,7 @@ module.exports = function createDiscordRoutes(db, discordService, requireAuth, r
             }
         }
 
-        res.json({ ok: true, status: discordService.getStatus(), ...(skipped.length ? { skipped, note: 'set in the environment; not saved to the database' } : {}) });
+        res.json({ ok: true, status: await discordService.getStatus(), ...(skipped.length ? { skipped, note: 'set in the environment; not saved to the database' } : {}) });
     });
 
     /** POST /api/admin/discord/test — send a test alert to the configured channel */
@@ -111,7 +111,7 @@ module.exports = function createDiscordRoutes(db, discordService, requireAuth, r
     router.post('/reinit', async (req, res) => {
         try {
             await discordService.reinit();
-            res.json({ ok: true, status: discordService.getStatus() });
+            res.json({ ok: true, status: await discordService.getStatus() });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
         }

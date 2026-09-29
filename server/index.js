@@ -8,6 +8,8 @@
 // ═══════════════════════════════════════════════════════════════
 
 const express = require('express');
+// Async route handlers: a rejection reaches Express's error handling, as a throw did (server/async-routes.js, plan T2).
+require('./async-routes');
 const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
@@ -382,6 +384,7 @@ console.log(`[Secrets] ${await require('./secrets').summary(db)}`);
 // ── Initialize Services ──────────────────────────────────────
 const notificationService = new NotificationService(db);
 const emailService = new EmailService(db);
+await emailService.ready;   // its settings are read from the database before the first request
 app.locals.notificationService = notificationService;
 app.locals.emailService = emailService;
 // live.stream.started: the followers are read from Live (its follow graph) with Network's own service token.
@@ -579,7 +582,7 @@ app.use('/api/v1/projects', rateLimit({ windowMs: 60_000, max: 60 }), require('.
 await require('./developer/event-relay').startRelay(db, { eventsUrl: config.eventsInternalUrl, privateKey, issuer: config.jwt.issuer });
 // network.user.updated (WS-B task 2): profile, role and ban changes, recorded by triggers on users and relayed
 // through the same outbox (server/identity/profile-events.js).
-require('./identity/profile-events').start(db);
+await require('./identity/profile-events').start(db);
 require('./identity/grants-admin').start(db);
 
 // Notification API (authenticated users)
@@ -869,10 +872,10 @@ const server = app.listen(config.port, config.host, () => {
 
     // ── Periodic Maintenance ─────────────────────────────────
     // Clean expired notifications every hour
-    timers.push(setInterval(() => notificationService.maintenance(), 60 * 60 * 1000));
+    timers.push(setInterval(() => notificationService.maintenance().catch((e) => console.warn('[Notifications] maintenance failed:', e.message)), 60 * 60 * 1000));
 
     // Process email queue every 2 minutes
-    timers.push(setInterval(() => emailService.processQueue(notificationService), 2 * 60 * 1000));
+    timers.push(setInterval(() => emailService.processQueue(notificationService).catch((e) => console.warn('[Email] queue failed:', e.message)), 2 * 60 * 1000));
 
     // Raw analytics retention (ADR-021) is scheduled by the PostgreSQL tracker itself: events older
     // than 30 days go, in bounded batches; hourly/daily rollups stay.
@@ -900,8 +903,10 @@ const server = app.listen(config.port, config.host, () => {
 
     // Clean expired sessions daily
     timers.push(setInterval(async () => {
-        const cleaned = (await db.prepare("DELETE FROM user_sessions WHERE expires_at < datetime('now') OR is_active = 0").run()).changes;
-        if (cleaned > 0) console.log(`[Sessions] Cleaned ${cleaned} expired sessions`);
+        try {
+            const cleaned = (await db.prepare("DELETE FROM user_sessions WHERE expires_at < datetime('now') OR is_active = 0").run()).changes;
+            if (cleaned > 0) console.log(`[Sessions] Cleaned ${cleaned} expired sessions`);
+        } catch (e) { console.warn('[Sessions] cleanup failed:', e.message); }
     }, 24 * 60 * 60 * 1000));
 });
 

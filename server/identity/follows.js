@@ -295,7 +295,7 @@ function routers({ requireAuth, followsGuard }) {
         const viewer = await viewerOf(req);
         if (viewer && viewer.subject_id === t.subject_id) return await answer();
         if (viewer) return http.sendProblem(res, 403, 'follows.not_yours', { detail: 'only the channel owner sees who follows it', ctx: req.ov });
-        return followsGuard(req, res, answer);
+        return followsGuard(req, res, () => answer().catch(next));   // called back after this handler returned
     });
 
     // ADR-030 step 4: a first-party product (network.follows.write, checked by the mount) records a follow

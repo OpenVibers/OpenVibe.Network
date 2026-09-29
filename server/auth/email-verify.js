@@ -128,7 +128,7 @@ function routes(requireAuth) {
         const r = await consumeToken(db, String(req.body?.token || ''));
         if (!r.ok) return res.status(400).json({ ok: false, error: r.error });
         try {
-            req.app.locals.notificationService?.create({ user_id: r.user.id, type: 'EMAIL_VERIFIED', title: 'Email verified', message: `${r.user.email} is confirmed. Go-live alerts from streamers you follow will now reach your inbox.`, service: 'network', url: 'https://openvibe.network/notifications' });
+            await req.app.locals.notificationService?.create({ user_id: r.user.id, type: 'EMAIL_VERIFIED', title: 'Email verified', message: `${r.user.email} is confirmed. Go-live alerts from streamers you follow will now reach your inbox.`, service: 'network', url: 'https://openvibe.network/notifications' });
         } catch { /* */ }
         res.json({ ok: true, email: r.user.email });
     });

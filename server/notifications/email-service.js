@@ -61,8 +61,10 @@ class EmailService {
             INSERT INTO email_delivery_log (email_type, recipient, subject, status, error_message, user_id, notification_id, metadata)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `);
-        this._migrateFromSES();
-        this._loadConfig();
+        // Settings are read from the database (async): `ready` settles once they are loaded. Every send and
+        // getStatus() waits for it; the boot awaits it too. A rejection is kept for those awaiters, not left unhandled.
+        this.ready = (async () => { await this._migrateFromSES(); await this._loadConfig(); })();
+        this.ready.catch(() => {});
     }
 
     /**
@@ -102,9 +104,11 @@ class EmailService {
     }
 
     /** Reload config (call after admin changes settings). */
-    reload() {
+    async reload() {
         this._apiKey = null;
-        this._loadConfig();
+        this.ready = this._loadConfig();
+        this.ready.catch(() => {});
+        await this.ready;
     }
 
     get isEnabled() { return this._enabled && !!this._apiKey; }
@@ -138,10 +142,11 @@ class EmailService {
 
     async _sendEmail({ to, subject, htmlBody, textBody, emailType = 'generic', userId = null, notificationId = null, metadata = null, fromEmail = null }) {
         if (!to) return false;
+        await this.ready;
 
         if (!this.isEnabled) {
-            const reason = this.diagnose() || 'Email service is disabled or not configured';
-            this._recordDelivery({
+            const reason = (await this.diagnose()) || 'Email service is disabled or not configured';
+            await this._recordDelivery({
                 emailType,
                 recipient: to,
                 subject,
@@ -164,7 +169,7 @@ class EmailService {
                 html: htmlBody,
                 text: textBody,
             });
-            this._recordDelivery({
+            await this._recordDelivery({
                 emailType,
                 recipient: to,
                 subject,
@@ -175,7 +180,7 @@ class EmailService {
             });
             return true;
         } catch (err) {
-            this._recordDelivery({
+            await this._recordDelivery({
                 emailType,
                 recipient: to,
                 subject,
@@ -198,7 +203,7 @@ class EmailService {
     async sendNotificationEmail({ to, username, subject, notification }) {
         const htmlBody = this._buildEmailHtml({ username, notification });
         const textBody = this._buildEmailText({ username, notification });
-        const fromEmail = this.getFromEmail(notification.service);
+        const fromEmail = await this.getFromEmail(notification.service);
         const sent = await this._sendEmail({
             to,
             subject: subject || notification.title || 'Notification',
@@ -262,6 +267,7 @@ class EmailService {
      * @param {import('./notification-service').NotificationService} notifService
      */
     async processQueue(notifService) {
+        await this.ready;
         if (!this.isEnabled) return;
 
         const pending = await notifService.getPendingEmails();
@@ -271,11 +277,11 @@ class EmailService {
 
         let skipped = 0;
         for (const notif of pending) {
-            if (!notifService.shouldEmail(notif)) {
+            if (!(await notifService.shouldEmail(notif))) {
                 await notifService.markEmailed(notif.id);
                 continue;
             }
-            const why = notifService.emailGuard ? notifService.emailGuard(notif) : null;
+            const why = notifService.emailGuard ? await notifService.emailGuard(notif) : null;
             if (why) {
                 // Caps: leave the row un-emailed only if the cap may lift (it won't for stale/dup).
                 if (why === 'stale' || why === 'dup') await notifService.markEmailed(notif.id);
@@ -412,7 +418,7 @@ body { margin: 0; padding: 0; background: #1a1a24; font-family: -apple-system, B
         ].join('\n');
     }
 
-    async _escapeHtml(value) {
+    _escapeHtml(value) {
         return String(value ?? '')
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -425,8 +431,9 @@ body { margin: 0; padding: 0; background: #1a1a24; font-family: -apple-system, B
      * Get current email service configuration status (for admin panel).
      */
     async getStatus() {
+        await this.ready;
         const apiKey = await this.db.getSetting('resend_api_key') || '';
-        const issue = this.diagnose();
+        const issue = await this.diagnose();
         const secrets = require('../secrets');
         return {
             enabled: this._enabled,
@@ -452,7 +459,8 @@ body { margin: 0; padding: 0; background: #1a1a24; font-family: -apple-system, B
      * Throws with a descriptive error if email service is not ready.
      */
     async sendTestEmail(to) {
-        const issue = this.diagnose();
+        await this.ready;
+        const issue = await this.diagnose();
         if (issue) throw new Error(issue);
 
         const subject = '🔥 OpenVibe — Test Email';

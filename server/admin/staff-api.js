@@ -47,10 +47,11 @@ function createStaffApi({ db, requireAuth, guard }) {
         const bearer = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
         let sub = '';
         try { sub = JSON.parse(Buffer.from(bearer.split('.')[1] || '', 'base64url').toString('utf8')).sub || ''; } catch { /* not a JWT */ }
-        if (String(sub).startsWith('svc:')) return serviceGuard(req, res, async () => await list(req, res));
-        return requireAuth(req, res, async () => {
+        // The guards call back after this handler returned: a failure in list() goes to next(err).
+        if (String(sub).startsWith('svc:')) return serviceGuard(req, res, () => list(req, res).catch(next));
+        return requireAuth(req, res, () => {
             if (!staff.can(staffClaims(req.user), 'staff.moderation.logs')) return res.status(403).json({ error: 'forbidden', detail: 'staff.moderation.logs required' });
-            return await list(req, res);
+            return list(req, res).catch(next);
         });
     });
     return r;

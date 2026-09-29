@@ -133,7 +133,7 @@ async function write(db, subjectId, namespace, data, { writer, expectedRevision,
             .run(subjectId, namespace, ns.version, revision, JSON.stringify(data), by);
         const record = await read(db, subjectId, namespace);
         assertValid('modules.module-record@1', record);
-        moduleEvents.record(db, {
+        await moduleEvents.record(db, {
             subjectId, namespace, namespaceOwner: ownerOf(namespace), schemaVersion: ns.version, revision,
             change: cur ? 'updated' : 'created', reason: 'write', before: cur ? JSON.parse(cur.data) : {}, after: data,
             actor: actorOf(subjectId, writer), ctx,
@@ -153,7 +153,7 @@ async function removeRow(db, subjectId, namespace, { actor, reason, mergedInto, 
     if (!row) return 0;
     await db.prepare('DELETE FROM user_modules WHERE subject_id = ? AND namespace = ?').run(subjectId, namespace);
     const revision = await nextRevision(db, subjectId, namespace, row.revision);
-    moduleEvents.record(db, {
+    await moduleEvents.record(db, {
         subjectId, namespace, namespaceOwner: ownerOf(namespace) || 'network', schemaVersion: row.version, revision,
         change: 'deleted', reason, before: JSON.parse(row.data), after: {}, actor, mergedInto, ctx,
     });
@@ -218,7 +218,7 @@ async function onSubjectMerged(db, { from, into, ctx } = {}) {
                 const revision = await nextRevision(db, into, row.namespace, 0);
                 await db.prepare(`INSERT INTO user_modules (subject_id, namespace, version, revision, data, updated_at, updated_by)
                             VALUES (?, ?, ?, ?, ?, ov_now(), 'svc:network')`).run(into, row.namespace, row.version, revision, row.data);
-                moduleEvents.record(db, {
+                await moduleEvents.record(db, {
                     subjectId: into, namespace: row.namespace, namespaceOwner: ownerOf(row.namespace) || 'network', schemaVersion: row.version, revision,
                     change: 'created', reason: 'subject_merged', before: {}, after: JSON.parse(row.data), actor: system, mergedFrom: from, ctx,
                 });
@@ -236,7 +236,7 @@ async function onSubjectMerged(db, { from, into, ctx } = {}) {
                     const revision = await nextRevision(db, into, row.namespace, mine.revision);
                     await db.prepare("UPDATE user_modules SET data = ?, revision = ?, updated_at = ov_now(), updated_by = 'svc:network' WHERE subject_id = ? AND namespace = ?")
                         .run(JSON.stringify(next), revision, into, row.namespace);
-                    moduleEvents.record(db, {
+                    await moduleEvents.record(db, {
                         subjectId: into, namespace: row.namespace, namespaceOwner: ownerOf(row.namespace) || 'network', schemaVersion: mine.version, revision,
                         change: 'updated', reason: 'subject_merged', before: a, after: next, actor: system, mergedFrom: from, ctx,
                     });

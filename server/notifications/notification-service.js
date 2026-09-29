@@ -485,9 +485,9 @@ class NotificationService {
      * Run periodic maintenance (call from setInterval in main server).
      */
     async maintenance() {
-        const expired = this.cleanExpired();
+        const expired = await this.cleanExpired();
         const maxAge = await this.db.getSetting?.('notification_max_age_days') || 90;
-        const old = this.cleanOld(maxAge);
+        const old = await this.cleanOld(maxAge);
         if (expired + old > 0) {
             console.log(`[Notifications] Cleaned ${expired} expired + ${old} old notifications`);
         }
