@@ -18,7 +18,8 @@ const PINNED = {
     network: 'live', live: 'live', tools: 'live', media: 'live', games: 'live', community: 'live', events: 'live',
     billing: 'live', codes: 'live', blog: 'live', wiki: 'live', sites: 'live',
     news: 'internal', reviews: 'internal', deals: 'internal', coupons: 'internal', trade: 'internal', host: 'internal',
-    tips: 'internal', vip: 'internal', openre: 'internal', search: 'live', sources: 'internal', chat: 'live', ai: 'internal',
+    tips: 'internal', vip: 'internal', openre: 'internal', search: 'live', sources: 'internal', chat: 'live', 'media-hub': 'placeholder', space: 'placeholder',
+    ai: 'internal',
     sdk: 'library', shared: 'library', contracts: 'library', publishing: 'library',
     examples: 'repository',
 };
@@ -101,8 +102,8 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     assert.strictEqual(sBy.live.label, 'up');
     assert.strictEqual(sBy.live.origin, 'https://openvibe.live');
     assert.strictEqual(sBy.shared.label, `not running (library, released v${require('openvibe-shared/package.json').version})`);
-    // no manifest has exposure 'placeholder' or 'retired' since realtime's was removed in 0.78.0
-    assert.deepStrictEqual(st.exposure_summary, { live: 14, internal: 11, library: 4, repository: 1, placeholder: 0, retired: 0 });
+    // Contracts 0.83.0 added two placeholder services (media-hub, space); none is retired
+    assert.deepStrictEqual(st.exposure_summary, { live: 14, internal: 11, library: 4, repository: 1, placeholder: 2, retired: 0 });
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());
