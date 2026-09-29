@@ -186,7 +186,7 @@ function userRouter(requireAuth) {
     return router;
 }
 
-/** GET /internal/blocks?subject=usr_… (mounted behind principals.guard('network.blocks.read', { legacy: false })). */
+/** GET /internal/blocks?subject=usr_… (mounted behind principals.guard('network.blocks.read')). */
 function internalHandler(db) {
     return (req, res) => {
         res.set('Cache-Control', 'no-store');

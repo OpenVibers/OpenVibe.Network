@@ -59,9 +59,6 @@ function createSetupRoutes(db, config) {
             if (resolvedRegistry.MEDIASOUP_ANNOUNCED_IP?.value && ['127.0.0.1', 'localhost'].includes(resolvedRegistry.MEDIASOUP_ANNOUNCED_IP.value)) {
                 warnings.push('MEDIASOUP_ANNOUNCED_IP is set to a local address in production. External WebRTC clients may fail to connect.');
             }
-            if (!config.internalKey || config.internalKey === 'change-me-in-production') {
-                warnings.push('INTERNAL_API_KEY is not configured or using an insecure default. Internal service communication must be protected.');
-            }
         }
         return warnings;
     }

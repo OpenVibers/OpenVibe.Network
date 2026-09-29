@@ -40,7 +40,7 @@ db.prepare(`INSERT INTO anon_users (id, anon_number, session_token, subject_id) 
 
 const modulesLib = require('../server/identity/modules');
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
-const config = { internalKey: 'legacy-key', jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
+const config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
 const { signToken } = require('../server/auth/routes');
 const requireAuth = require('../server/auth/session').makeRequireAuth(() => ({ db, publicKey: keys.publicKey, config }), signToken);
 const app = express();
@@ -144,7 +144,10 @@ const valid = (e) => { const v = contracts.validate('events.event-envelope@1', e
     r = await call('DELETE', `/internal/modules/chat.preferences/${ANN}`, { headers: chat });
     assert.strictEqual(r.status, 404);
     r = await call('DELETE', `/internal/modules/chat.preferences/${ANN}`, { headers: { 'x-internal-key': 'legacy-key' } });
-    assert.strictEqual(r.status, 403, 'never the shared key');
+    assert.strictEqual(r.status, 401, 'never the retired key'); assert.strictEqual(r.body.code, 'token.missing');
+    r = await call('DELETE', `/internal/modules/chat.preferences/${ANN}`, { headers: { 'x-internal-key': 'legacy-key', ...live } });
+    assert.strictEqual(r.status, 403, 'and a bearer is still judged on the token alone');
+    assert.strictEqual(events(mark).length, 1, 'a refused delete emits no event');
 
     // ── Account removal: rows and revisions go, one event each; the trigger guards the account row ──
     modulesLib.write(db, BOB, 'chat.preferences', { timestamps: true }, { writer: { type: 'service', id: 'chat' } });

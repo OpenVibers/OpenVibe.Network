@@ -27,7 +27,7 @@ db.prepare("INSERT INTO users (id, username, password_hash) VALUES (8, 'changed'
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
 const ISSUER = 'https://openvibe.network';
-const config = { internalKey: 'k'.repeat(32), baseUrl: ISSUER, loginUrl: ISSUER, networkUrl: ISSUER, jwt: { issuer: ISSUER, accessTokenExpiry: '1h', refreshTokenExpiry: '30d' } };
+const config = { baseUrl: ISSUER, loginUrl: ISSUER, networkUrl: ISSUER, jwt: { issuer: ISSUER, accessTokenExpiry: '1h', refreshTokenExpiry: '30d' } };
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -61,15 +61,21 @@ const sign = (sub, opts = {}) => jwt.sign({ sub, id: sub, username: 'u' }, keys.
     r = await post('/api/auth/refresh', {}, { authorization: `Bearer ${assertion}` });
     assert.strictEqual(r.status, 401, 'a FedCM assertion cannot be refreshed into a full session');
     // POST /internal/verify-token (key-only, no caller left) was deleted with the X-Internal-Key retirement (plan T2):
-    // services verify tokens offline against the JWKS.
-    r = await post('/internal/verify-token', { token: sign(7) }, { 'x-internal-key': config.internalKey });
-    assert.strictEqual(r.status, 404, 'internal verify-token is gone');
+    // services verify tokens offline against the JWKS. The gate answers before routing, so the removed path
+    // is indistinguishable from every other unauthenticated internal call: 401, no route behind it.
+    r = await post('/internal/verify-token', { token: sign(7) }, {});
+    assert.strictEqual(r.status, 401); assert.strictEqual(r.body.code, 'token.missing');
+    r = await fetch(`${base}/internal/verify-token`, { headers: { 'x-internal-key': 'k'.repeat(32) } }).then((x) => x.status);
+    assert.strictEqual(r, 401, 'and the retired key does not resurrect it');
     // nginx only lets loopback reach `location /internal/` (case-sensitive); Express mounts are not,
     // so another spelling must not reach the internal router from outside.
     const get = (p, headers) => fetch(base + p, { headers }).then((x) => x.status);
-    assert.strictEqual(await get('/INTERNAL/coins/stats', { 'x-internal-key': config.internalKey }), 404, '/INTERNAL/... is not the internal API');
-    assert.strictEqual(await get('/Internal/coins/stats', { 'x-internal-key': config.internalKey }), 404);
-    assert.strictEqual(await get('/internal/coins/stats', { 'x-internal-key': 'k'.repeat(31) + 'x' }), 403, 'wrong internal key');
+    assert.strictEqual(await get('/INTERNAL/coins/stats', {}), 404, '/INTERNAL/... is not the internal API');
+    assert.strictEqual(await get('/Internal/coins/stats', {}), 404);
+    assert.strictEqual(await get('/internal/coins/stats', { 'x-internal-key': 'k'.repeat(32) }), 401, 'the retired internal key');
+    // The equivalent check for a wrong credential: a bearer that is not one of Network's own tokens.
+    assert.strictEqual(await get('/internal/coins/stats', { 'x-internal-key': 'k'.repeat(32), authorization: `Bearer ${sign(7)}` }), 401, 'a user session is not a service token');
+    assert.strictEqual(await get('/internal/coins/stats', {}), 401, 'no key, no token');
 
     // ── Revoked tokens (password changed after iat) ──────────────────
     const old = sign(8, { expiresIn: '1h' });

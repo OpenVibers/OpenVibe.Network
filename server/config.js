@@ -25,8 +25,6 @@ module.exports = {
         issuer: process.env.OV_NETWORK_URL || process.env.BASE_URL || 'https://openvibe.network',
     },
 
-    // Internal API key for server-to-server calls (X-Internal-Key)
-    internalKey: process.env.INTERNAL_API_KEY || 'change-me-in-production',
 
     // Developer projects (server/developer, ADR-014)
     developer: {

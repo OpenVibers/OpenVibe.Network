@@ -55,12 +55,10 @@ const initialSvg = (name, size) => {
 };
 
 function createAvatarService({ db, config, requireAuth, selfToken = () => null, log = console }) {
-    // A service token for the call (live.avatar.write / media.avatar.ingest); X-Internal-Key rides along only while the
-    // receivers move to tokens (plan T2), then goes.
-    const legacyKey = () => (config.internalKey && config.internalKey !== 'change-me-in-production' ? { 'X-Internal-Key': config.internalKey } : {});
+    // Network's own service token for the call (live.avatar.write / media.avatar.ingest).
     function authHeaders(audience, cap) {
         const t = selfToken(audience, [cap]);
-        return { ...legacyKey(), ...(t ? { Authorization: `Bearer ${t}` } : {}) };
+        return t ? { Authorization: `Bearer ${t}` } : {};
     }
     const getUrl = db.prepare('SELECT avatar_url FROM users WHERE id = ?');
     const byName = db.prepare('SELECT username, avatar_url FROM users WHERE lower(username) = lower(?)');

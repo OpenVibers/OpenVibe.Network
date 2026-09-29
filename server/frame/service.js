@@ -85,13 +85,9 @@ function createFrameService(db, config, analytics, { privateKey = null, issuer =
 
     async function refreshRank() {
         const scores = Object.assign({}, rank.scores);
-        // Live runs its own navbar and its own analytics: ask it for totals (live.analytics.read, totals only). The key
-        // rides along only while Live moves to tokens (plan T2).
+        // Live runs its own navbar and its own analytics: ask it for totals (live.analytics.read, totals only).
         const liveToken = selfToken('openvibe.live', ['live.analytics.read']);
-        const live = await getJson(`${svcUrl('live', 'http://127.0.0.1:3000')}/internal/analytics-summary?days=7`, {
-            ...(config.internalKey && config.internalKey !== 'change-me-in-production' ? { 'X-Internal-Key': config.internalKey } : {}),
-            ...(liveToken ? { Authorization: `Bearer ${liveToken}` } : {}),
-        });
+        const live = liveToken ? await getJson(`${svcUrl('live', 'http://127.0.0.1:3000')}/internal/analytics-summary?days=7`, { Authorization: `Bearer ${liveToken}` }) : null;
         if (live && live.summary) scores.live = Math.round(Number(live.summary.total_pageviews) || 0);
         // Everything else: the navbar's page-view beacon, summed per site over 7 days.
         let tools = rank.tools || [];

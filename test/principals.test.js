@@ -1,6 +1,6 @@
 'use strict';
 // Service principals (server/identity/principals.js): client_credentials tokens, capability guards on
-// /internal routes, the legacy-key compatibility path and the usage audit. Roadmap Wave 1, ADR-003.
+// /internal routes, the refusal of the retired X-Internal-Key and the usage audit. Roadmap Wave 1, ADR-003.
 //   node test/principals.test.js
 const assert = require('assert');
 const crypto = require('crypto');
@@ -30,7 +30,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.locals.db = db;
-app.locals.config = { internalKey: 'legacy-key', jwt: { issuer: ISSUER, accessTokenExpiry: '1h' } };
+app.locals.config = { jwt: { issuer: ISSUER, accessTokenExpiry: '1h' } };
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 app.use('/oauth', require('../server/auth/oauth-routes'));
@@ -116,7 +116,7 @@ const server = http.createServer(app);
     r = await post('/internal/coins/credit', credit(), { authorization: 'Bearer not-a-jwt' });
     assert.strictEqual(r.status, 401); assert.strictEqual(r.body.code, 'token.malformed');
     r = await post('/internal/coins/credit', credit(), { authorization: 'Bearer not-a-jwt', 'x-internal-key': 'legacy-key' });
-    assert.strictEqual(r.status, 401, 'a bad token is not rescued by the legacy key');
+    assert.strictEqual(r.status, 401, 'a bad token is not rescued by a header the server no longer reads');
     const forged = serviceAuth.signServiceToken({ ...claims.claims, jti: 'tok_forged000' }, crypto.generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey);
     r = await post('/internal/coins/credit', credit(), { authorization: `Bearer ${forged}` });
     assert.strictEqual(r.status, 401); assert.strictEqual(r.body.code, 'token.bad_signature');
@@ -129,9 +129,9 @@ const server = http.createServer(app);
     r = await post('/internal/notifications/push', { user_id: 7, service: 'games', title: 'x' }, { authorization: `Bearer ${full}` });
     assert.strictEqual(r.status, 403, 'notifications are sent only as the principal\'s own service');
     r = await fetch(`${base}/internal/stats`, { headers: { authorization: `Bearer ${full}` } }).then(x => ({ status: x.status }));
-    assert.strictEqual(r.status, 403, 'key-only internal routes still need the key');
-    r = await post('/internal/audit', { action: 'x' }, { authorization: `Bearer ${full}` });
-    assert.strictEqual(r.status, 403, 'token routes are an explicit list');
+    assert.strictEqual(r.status, 404, 'the key-only internal routes are gone, not merely locked');
+    r = await fetch(`${base}/internal/audit`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${full}` }, body: JSON.stringify({ action: 'x' }) }).then(x => x.status);
+    assert.strictEqual(r, 404, 'the key-only internal routes are gone');
 
     // Community resolves authors with its own token; Live's token lacks that grant.
     db.prepare("UPDATE oauth_clients SET client_secret = 'community-secret' WHERE client_id = 'community'").run();
@@ -165,16 +165,16 @@ const server = http.createServer(app);
     r = await post('/internal/events/stream-live', {}, { authorization: `Bearer ${creditOnly}` });
     assert.strictEqual(r.status, 403);
 
-    // ── The routes Live still called with the key (register C-50/C-52) take its token too ──
+    // ── The routes Live called with the key (register C-50/C-52) take its token, and only that ──
     const get = (p, headers) => fetch(base + p, { headers }).then(async x => ({ status: x.status, body: await x.json() }));
     const KEY = { 'x-internal-key': 'legacy-key' };
     const LIVE = { authorization: `Bearer ${full}` };
     r = await get('/internal/url-registry/resolved', LIVE);
     assert.strictEqual(r.status, 200, JSON.stringify(r.body)); assert.strictEqual(r.body.ok, true);
-    assert.strictEqual((await get('/internal/url-registry/resolved', { authorization: `Bearer ${creditOnly}` })).status, 403, 'needs identity.subject.resolve');
+    assert.strictEqual((await get('/internal/url-registry/resolved', { authorization: `Bearer ${creditOnly}` })).status, 403, 'needs network.registry.read');
     r = await get('/internal/coins/stats', LIVE);
     assert.strictEqual(r.status, 200, JSON.stringify(r.body)); assert.ok(Number.isFinite(r.body.earned) && r.body.recent);
-    assert.strictEqual((await get('/internal/coins/stats', { authorization: `Bearer ${mediaResolve}` })).status, 403, 'needs network.coins.credit');
+    assert.strictEqual((await get('/internal/coins/stats', { authorization: `Bearer ${mediaResolve}` })).status, 403, 'needs network.coins.read');
     r = await post('/internal/resolve-anon', { ip: '203.0.113.9' }, LIVE);
     assert.strictEqual(r.status, 200, JSON.stringify(r.body)); assert.ok(r.body.anon_number >= 1);
     assert.strictEqual((await post('/internal/resolve-anon', { ip: '203.0.113.9' }, { authorization: `Bearer ${creditOnly}` })).status, 403);
@@ -189,27 +189,44 @@ const server = http.createServer(app);
     assert.strictEqual(db.prepare("SELECT service_user_id FROM linked_accounts WHERE user_id = 7 AND service = 'live'").get().service_user_id, '4242');
     r = await post('/internal/link-account', { user_id: 7, service: 'games', service_user_id: '4242' }, LIVE);
     assert.strictEqual(r.status, 403); assert.strictEqual(r.body.code, 'capability.owner_denied', 'a token links accounts only for its own service');
-    // The key still works on all five (callers switch later), unchanged: no ownership rule for the key.
-    assert.strictEqual((await get('/internal/url-registry/resolved', KEY)).status, 200);
-    assert.strictEqual((await get('/internal/coins/stats', KEY)).status, 200);
-    assert.strictEqual((await post('/internal/resolve-anon', { ip: '203.0.113.10' }, KEY)).status, 200);
-    assert.strictEqual((await post('/internal/identity/legacy-map', { entries: [{ network_user_id: 8, source_system: 'games', source_id: '77' }] }, KEY)).status, 200);
-    assert.strictEqual((await post('/internal/link-account', { user_id: 8, service: 'games', service_user_id: '77' }, KEY)).status, 200);
-    for (const p of ['/internal/url-registry/resolved', '/internal/coins/stats']) assert.strictEqual((await get(p, {})).status, 403, `${p}: neither key nor token`);
+    // The key is refused on all five with token.missing: the gate asks for a Bearer and nothing else.
+    for (const p of ['/internal/url-registry/resolved', '/internal/coins/stats']) {
+        const k = await get(p, KEY);
+        assert.strictEqual(k.status, 401, `${p}: the retired key`); assert.strictEqual(k.body.code, 'token.missing');
+    }
+    for (const [p, body] of [['/internal/resolve-anon', { ip: '203.0.113.10' }], ['/internal/identity/legacy-map', { entries: [{ network_user_id: 8, source_system: 'games', source_id: '77' }] }], ['/internal/link-account', { user_id: 8, service: 'games', service_user_id: '77' }]]) {
+        const k = await post(p, body, KEY);
+        assert.strictEqual(k.status, 401, `${p}: the retired key`); assert.strictEqual(k.body.code, 'token.missing');
+    }
+    for (const p of ['/internal/url-registry/resolved', '/internal/coins/stats']) {
+        const none = await get(p, {});
+        assert.strictEqual(none.status, 401, `${p}: no key, no token`); assert.strictEqual(none.body.code, 'token.missing');
+    }
+    // What the key never had to answer for is now a matter of ownership: a Games token maps its own system's
+    // ids, and Live's token still may not (the token-based equivalent of the key's no-ownership-rule note).
+    db.prepare("UPDATE oauth_clients SET client_secret = 'games-secret' WHERE client_id = 'games'").run();
+    const GAMES = { authorization: `Bearer ${(await token({ client_id: 'games', client_secret: 'games-secret', audience: 'openvibe.network' })).body.access_token}` };
+    assert.strictEqual((await post('/internal/identity/legacy-map', { entries: [{ network_user_id: 8, source_system: 'games', source_id: '77' }] }, GAMES)).status, 200, 'a Games token maps its own ids');
+    assert.strictEqual((await post('/internal/link-account', { user_id: 8, service: 'games', service_user_id: '77' }, GAMES)).status, 200, 'and links its own accounts');
     const decided = db.prepare("SELECT route FROM principal_usage WHERE principal = 'svc:live' AND allowed = 1").all().map(x => x.route);
     for (const route of ['GET /internal/url-registry/resolved', 'GET /internal/coins/stats', 'POST /internal/resolve-anon', 'POST /internal/identity/legacy-map', 'POST /internal/link-account']) {
         assert.ok(decided.includes(route), `token use of ${route} is recorded`);
     }
 
-    // ── Legacy key keeps working ──
+    // ── The key is gone: refused at the gate, on every route, with and without a Bearer ──
+    // A syntactically valid service token from a stranger, signed with a key Network does not trust: the
+    // equivalent token-based check for the old "wrong internal key" assertion.
+    const notAKey = serviceAuth.signServiceToken({ iss: ISSUER, sub: 'svc:live', actor_type: 'service', aud: ['openvibe.network'], cap: ['network.coins.credit'], iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 300, jti: 'tok_stranger000' }, crypto.generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey);
     r = await post('/internal/coins/credit', credit(), { 'x-internal-key': 'legacy-key' });
-    assert.strictEqual(r.status, 200);
+    assert.strictEqual(r.status, 401); assert.strictEqual(r.body.code, 'token.missing');
     r = await post('/internal/coins/credit', credit(), {});
-    assert.strictEqual(r.status, 403);
-    // Every legacy-key call is counted per route (Wave 22 retirement telemetry).
+    assert.strictEqual(r.status, 401); assert.strictEqual(r.body.code, 'token.missing');
+    r = await post('/internal/coins/credit', credit(), { 'x-internal-key': 'legacy-key', authorization: `Bearer ${notAKey}` });
+    assert.strictEqual(r.status, 401, 'a header cannot lift a bearer that is not a service token');
+    assert.strictEqual(r.body.code, 'token.bad_signature');
+    // The retired key leaves no trace in the usage audit: only service principals are recorded there now.
     await new Promise((resolve) => setTimeout(resolve, 20));
-    const legacy = db.prepare("SELECT route, count FROM principal_usage WHERE principal = 'legacy-key' AND auth = 'internal-key-route' AND allowed = 1").all();
-    assert.ok(legacy.some(row => row.route === 'POST /internal/coins/credit' && row.count >= 1), JSON.stringify(legacy));
+    assert.deepStrictEqual(db.prepare("SELECT DISTINCT principal FROM principal_usage WHERE principal NOT LIKE 'svc:%' AND principal <> 'unknown'").all(), [], 'no principal outside the svc: namespace is audited (a refused stranger is "unknown")');
 
     // ── Revocation: new tokens stop carrying a revoked grant ──
     db.prepare("UPDATE principal_grants SET revoked_at = CURRENT_TIMESTAMP WHERE client_id = 'live' AND capability = 'network.coins.debit'").run();
@@ -219,7 +236,8 @@ const server = http.createServer(app);
     // ── Usage audit ──
     const usage = db.prepare('SELECT principal, route, auth, allowed, code, count FROM principal_usage ORDER BY principal, route, allowed').all();
     assert.ok(usage.some(u => u.principal === 'svc:live' && u.route === 'POST /internal/coins/credit' && u.allowed === 1 && u.count === 1));
-    assert.ok(usage.some(u => u.principal === 'legacy-key' && u.auth === 'internal-key' && u.allowed === 1));
+    assert.ok(usage.some(u => u.auth === 'service-token' && u.allowed === 1), 'every allow is a service token');
+    assert.ok(!usage.some(u => u.auth === 'internal-key' || u.principal === 'legacy-key'), 'the retired key is not an auth path any more');
     assert.ok(usage.some(u => u.code === 'capability.denied' && u.allowed === 0));
     assert.ok(usage.some(u => u.code === 'capability.owner_denied' && u.allowed === 0), 'ownership denials are audited as denials');
     assert.ok(usage.some(u => u.code === 'token.bad_signature'));

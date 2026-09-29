@@ -382,7 +382,7 @@ function serviceRoutes(router, principals) {
     const resolveSubject = (db, s) => (/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(s) && db.prepare('SELECT 1 FROM users WHERE subject_id = ?').get(s) ? s : null);
     const serviceOf = (req) => String(req.principal.sub).replace(/^svc:/, '');
 
-    router.get('/modules/:ns/:subject', principals.guard('network.modules.read', { namespace: nsOf, legacy: false }), (req, res) => {
+    router.get('/modules/:ns/:subject', principals.guard('network.modules.read', { namespace: nsOf }), (req, res) => {
         const db = req.app.locals.db;
         if (!modules.get(req.params.ns)) return problem(res, { status: 404, code: 'modules.unknown_namespace' }, req);
         const sid = resolveSubject(db, req.params.subject);
@@ -394,7 +394,7 @@ function serviceRoutes(router, principals) {
         withEtag(res, rec).json(rec);
     });
 
-    router.put('/modules/:ns/:subject', principals.guard('network.modules.write', { namespace: nsOf, legacy: false }), (req, res) => {
+    router.put('/modules/:ns/:subject', principals.guard('network.modules.write', { namespace: nsOf }), (req, res) => {
         const db = req.app.locals.db;
         const sid = resolveSubject(db, req.params.subject);
         if (!sid) return problem(res, { status: 404, code: 'identity.subject_not_found' }, req);
@@ -405,7 +405,7 @@ function serviceRoutes(router, principals) {
         withEtag(res, out.record).status(out.status).json(out.record);
     });
 
-    router.delete('/modules/:ns/:subject', principals.guard('network.modules.write', { namespace: nsOf, legacy: false }), (req, res) => {
+    router.delete('/modules/:ns/:subject', principals.guard('network.modules.write', { namespace: nsOf }), (req, res) => {
         const db = req.app.locals.db;
         const sid = resolveSubject(db, req.params.subject);
         if (!sid) return problem(res, { status: 404, code: 'identity.subject_not_found' }, req);

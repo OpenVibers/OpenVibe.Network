@@ -75,22 +75,27 @@ assert.deepStrictEqual(r.conflicts.map(c => c.index), [2], 'a mapped id is never
 assert.deepStrictEqual(r.rejected.map(c => c.index), [3, 4, 5, 6]);
 assert.strictEqual(subjects.resolve(db, { source_system: 'live', source_id: '88' }).subject.id, beth.subject_id);
 
-// ── HTTP: /internal/identity behind the internal key ──
+// ── HTTP: /internal/identity behind a service token (X-Internal-Key was retired in plan T2) ──
 const app = express();
+const { privateKey, publicKey } = require('crypto').generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs1', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
+const ISSUER = 'https://openvibe.network';
 app.locals.db = db;
-app.locals.config = { internalKey: 'k-test' };
+app.locals.config = { jwt: { issuer: ISSUER, accessTokenExpiry: '1h' } };
+app.locals.publicKey = publicKey;
 app.use(express.json());
 app.use('/internal', require('../server/internal/routes'));
 const server = http.createServer(app);
 
-// Tokens carry subject_id next to the integer sub.
-const { privateKey } = require('crypto').generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs1', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
+// Live's own token: sub svc:live, openvibe.network, identity.subject.resolve (what these routes perform).
+const { serviceAuth } = contracts;
+const t0 = Math.floor(Date.now() / 1000);
+const LIVE_TOKEN = serviceAuth.signServiceToken({ iss: ISSUER, sub: 'svc:live', actor_type: 'service', aud: ['openvibe.network'], cap: ['identity.subject.resolve'], iat: t0, exp: t0 + 300, jti: 'tok_identity_subjects' }, privateKey);
 const { signToken } = require('../server/auth/routes');
 
 (async () => {
     await new Promise(res => server.listen(0, '127.0.0.1', res));
     const base = `http://127.0.0.1:${server.address().port}/internal/identity`;
-    const call = (p, opts = {}) => fetch(base + p, { ...opts, headers: { 'x-internal-key': 'k-test', 'content-type': 'application/json', ...(opts.headers || {}) } })
+    const call = (p, opts = {}) => fetch(base + p, { ...opts, headers: { authorization: `Bearer ${LIVE_TOKEN}`, 'content-type': 'application/json', ...(opts.headers || {}) } })
         .then(async x => ({ status: x.status, type: x.headers.get('content-type'), body: await x.json() }));
 
     let h = await call('/resolve?system=live&id=77');
@@ -117,13 +122,16 @@ const { signToken } = require('../server/auth/routes');
     assert.strictEqual(h.status, 413);
     h = await call('/legacy-map', { method: 'POST', body: JSON.stringify({ entries: [{ network_user_id: 3, source_system: 'live', source_id: 99 }] }) });
     assert.strictEqual(h.status, 200); assert.strictEqual(h.body.inserted, 1);
-    h = await fetch(base.replace('/identity', '/link-account'), { method: 'POST', headers: { 'x-internal-key': 'k-test', 'content-type': 'application/json' }, body: JSON.stringify({ user_id: 3, service: 'live', service_user_id: '555' }) });
+    h = await fetch(base.replace('/identity', '/link-account'), { method: 'POST', headers: { authorization: `Bearer ${LIVE_TOKEN}`, 'content-type': 'application/json' }, body: JSON.stringify({ user_id: 3, service: 'live', service_user_id: '555' }) });
     assert.strictEqual(h.status, 200);
     assert.strictEqual(subjects.resolve(db, { source_system: 'live', source_id: '555' }).network_user_id, 3, '/internal/link-account also writes the legacy map');
     h = await call('/legacy-map', { method: 'POST', body: JSON.stringify({ entries: [] }) });
     assert.strictEqual(h.status, 400);
-    h = await fetch(base + '/resolve?system=live&id=77').then(x => ({ status: x.status }));
-    assert.strictEqual(h.status, 403, 'no internal key, no identity data');
+    h = await fetch(base + '/resolve?system=live&id=77').then(x => ({ status: x.status, code: x.headers.get('content-type') }));
+    assert.strictEqual(h.status, 401, 'no service token, no identity data');
+    h = await fetch(base + '/resolve?system=live&id=77', { headers: { 'x-internal-key': 'k-test' } }).then(async x => ({ status: x.status, body: await x.json() }));
+    assert.strictEqual(h.status, 401, 'the retired internal key opens nothing');
+    assert.strictEqual(h.body.code, 'token.missing');
 
     if (signToken) {
         const token = signToken(db.prepare('SELECT * FROM users WHERE id = 1').get(), privateKey, { jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } });

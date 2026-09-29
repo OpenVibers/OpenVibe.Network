@@ -13,9 +13,7 @@ const router = express.Router();
 
 module.exports = function createAnalyticsRoutes(analytics, requireAuth, config, { selfToken = () => null } = {}) {
 
-    // Tools is asked with a Network service token (tools.analytics.read); the deployment's INTERNAL_API_KEY rides
-    // along only while Tools moves to tokens (plan T2), then goes.
-    const INTERNAL_KEY = config.internalKey;
+    // Tools is asked with a Network service token (tools.analytics.read).
 
     // All remote services with their internal URLs and fetch strategy
     const REMOTE_SERVICES = [
@@ -57,9 +55,8 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config, 
             if (svc.auth === 'beacon') return subPath ? null : beaconFallback(svc, days);
             if (svc.auth === 'internal') {
                 const t = selfToken(`openvibe.${svc.name}`, [`${svc.name}.analytics.read`]);
-                if (t) headers['Authorization'] = `Bearer ${t}`;
-                if (INTERNAL_KEY && INTERNAL_KEY !== 'change-me-in-production') headers['X-Internal-Key'] = INTERNAL_KEY;
-                if (!headers['Authorization'] && !headers['X-Internal-Key']) return null;
+                if (!t) return null;
+                headers['Authorization'] = `Bearer ${t}`;
             } else {
                 headers['Authorization'] = `Bearer ${token}`;
             }

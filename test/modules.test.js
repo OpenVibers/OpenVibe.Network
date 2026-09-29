@@ -27,7 +27,7 @@ db.prepare("INSERT INTO users (id, username, password_hash, subject_id) VALUES (
 const ANN = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPA';
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
-const config = { internalKey: 'legacy-key', jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
+const config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
 const { signToken } = require('../server/auth/routes');
 const requireAuth = require('../server/auth/session').makeRequireAuth(() => ({ db, publicKey: keys.publicKey, config }), signToken);
 const app = express();
@@ -112,8 +112,12 @@ const server = http.createServer(app);
     r = await call('GET', '/internal/modules/chat.tts_defaults/usr_01JAB2C3D4E5F6G7H8J9K0MNPB', { headers: { authorization: `Bearer ${chat}` } });
     assert.strictEqual(r.body.version, 2); assert.deepStrictEqual(r.body.data, {}, 'v1 tts fields are dropped by the migration');
     r = await call('PUT', `/internal/modules/live.profile/${ANN}`, { headers: { 'x-internal-key': 'legacy-key' }, body: { data: { followers: 1 } } });
-    assert.strictEqual(r.status, 403, 'module routes never accept the shared key');
-    assert.ok(db.prepare("SELECT 1 FROM principal_usage WHERE principal = 'legacy-key' AND auth = 'internal-key' AND allowed = 0 AND route LIKE 'PUT /internal/modules%'").get(), 'a refused key is audited as the key');
+    assert.strictEqual(r.status, 401, 'module routes take a service token, not the retired key'); assert.strictEqual(r.body.code, 'token.missing');
+    r = await call('PUT', `/internal/modules/live.profile/${ANN}`, { headers: { 'x-internal-key': 'legacy-key', authorization: 'Bearer not-a-service-token' }, body: { data: { followers: 1 } } });
+    assert.strictEqual(r.status, 401, 'and a bearer is still judged on the token alone'); assert.strictEqual(r.body.code, 'token.malformed');
+    r = await call('PUT', `/internal/modules/live.profile/${ANN}`, { headers: { authorization: `Bearer ${tools}` }, body: { data: { followers: 1 } } });
+    assert.strictEqual(r.status, 403, 'a service without the network.modules.write grant is refused');
+    assert.ok(db.prepare("SELECT 1 FROM principal_usage WHERE auth = 'service-token' AND allowed = 0 AND route LIKE 'PUT /internal/modules%'").get(), 'a refused service token is audited');
     r = await call('PUT', `/internal/modules/live.profile/usr_01JAB2C3D4E5F6G7H8J9K0ZZZZ`, { headers: { authorization: `Bearer ${live}` }, body: { data: { followers: 1 } } });
     assert.strictEqual(r.status, 404, 'unknown subject');
     r = await call('PUT', `/internal/modules/live.profile/${ANN}`, { headers: { authorization: `Bearer ${live}`, 'if-match': '0' }, body: { data: { followers: 43 } } });

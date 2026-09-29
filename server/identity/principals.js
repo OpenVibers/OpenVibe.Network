@@ -7,8 +7,8 @@
  * exactly what principal_grants allows it for the requested audience. Receivers check the one
  * capability each route performs (openvibe-contracts serviceAuth.requireCapability).
  *
- * The shared X-Internal-Key keeps working in parallel. principal_usage counts, per caller and route,
- * how each request authenticated, so the key can be retired once legacy use reaches zero.
+ * X-Internal-Key was retired in plan T2 (2026-09-29): every internal route takes a service token and nothing
+ * else. principal_usage counts, per caller and route, each decision.
  */
 const crypto = require('crypto');
 const { serviceAuth, capabilities, assertValid, http } = require('openvibe-contracts');
@@ -341,18 +341,18 @@ function recordDecision(db) {
         ON CONFLICT(principal, route, auth, allowed, code) DO UPDATE SET count = count + 1, last_at = CURRENT_TIMESTAMP`);
     return ({ req, capability, principal, allowed, code }) => {
         const bearer = String(req.headers.authorization || '').startsWith('Bearer ');
-        const auth = bearer ? 'service-token' : req.internalKeyOk ? 'internal-key' : 'none';
-        const who = principal ? (principal.legacy ? 'legacy-key' : principal.sub) : (auth === 'internal-key' ? 'legacy-key' : 'unknown');
+        const auth = bearer ? 'service-token' : 'none';
+        const who = principal ? principal.sub : 'unknown';
         try { up.run(who, `${req.method} ${req.baseUrl || ''}${req.route ? req.route.path : req.path}`, capability, auth, allowed ? 1 : 0, code || ''); } catch { /* best effort */ }
     };
 }
 
 /**
- * Guard for a Network internal route. `ownApp(req)` returns the app id the request acts for; a
- * service token may only act for its own app (svc:live -> app_id 'live'). Legacy-key callers are
- * unchanged.
+ * Guard for a Network internal route: a service token holding `capability`, nothing else. `ownApp(req)`
+ * returns the app id the request acts for; a service token may only act for its own app (svc:live ->
+ * app_id 'live').
  */
-function guard(capability, { ownApp, namespace, legacy = true } = {}) {
+function guard(capability, { ownApp, namespace } = {}) {
     if (!capabilities.get(capability)) throw new Error(`unknown capability ${capability}`);
     let check = null;
     let record = null;
@@ -363,8 +363,6 @@ function guard(capability, { ownApp, namespace, legacy = true } = {}) {
                 getPublicKey: (r) => r.app.locals.publicKey,
                 issuer: req.app.locals.config.jwt && req.app.locals.config.jwt.issuer,
                 audience: SELF_AUDIENCE,
-                // New routes can refuse the shared key outright (legacy: false) so its use never grows.
-                legacy: legacy ? (r) => r.internalKeyOk === true : undefined,
                 namespace,
                 // Denials are final here; an allow is recorded below, after the ownership check.
                 onDecision: (d) => { if (!d.allowed) { record(d); require('../observability').principalDenied(d); } },
@@ -374,7 +372,7 @@ function guard(capability, { ownApp, namespace, legacy = true } = {}) {
             const principal = req.principal;
             // Developer sandbox tokens (env: sandbox) are refused unless Network opted in as an audience
             // (DEV_SANDBOX_AUDIENCES); the signature was verified by check() above.
-            if (principal && !principal.legacy) {
+            if (principal) {
                 const devPolicy = require('../developer/policy');
                 const claims = devPolicy.unverifiedClaims(String(req.headers.authorization || '').slice(7).trim());
                 const env = devPolicy.environmentDecision(claims, { acceptSandbox: devPolicy.settings(req.app.locals.config).sandboxAudiences.has(SELF_AUDIENCE) });
@@ -384,7 +382,7 @@ function guard(capability, { ownApp, namespace, legacy = true } = {}) {
                     return http.sendProblem(res, 401, env.code, { detail: env.reason, ctx: req.ov });
                 }
             }
-            if (ownApp && principal && !principal.legacy) {
+            if (ownApp && principal) {
                 const app = ownApp(req);
                 const self = String(principal.sub).replace(/^svc:/, '');
                 if (app !== undefined && app !== self) {

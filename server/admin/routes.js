@@ -118,13 +118,11 @@ async function refreshService(req, serviceName) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 3000);
     try {
-        // Live's refresh takes live.url_registry.refresh; the key rides along only while services move to tokens (T2).
-        const cap = `${serviceName}.url_registry.refresh`;
-        const t = serviceName === 'live' && req.app.locals.selfToken ? req.app.locals.selfToken('openvibe.live', [cap]) : null;
-        const key = req.app.locals.config?.internalKey;
+        // A service's refresh takes <service>.url_registry.refresh (Live's is the one that exists).
+        const t = req.app.locals.selfToken ? req.app.locals.selfToken(`openvibe.${serviceName}`, [`${serviceName}.url_registry.refresh`]) : null;
         const r = await fetch(info.target, {
             method: 'POST',
-            headers: { ...(key && key !== 'change-me-in-production' ? { 'X-Internal-Key': key } : {}), ...(t ? { Authorization: `Bearer ${t}` } : {}) },
+            headers: t ? { Authorization: `Bearer ${t}` } : {},
             signal: controller.signal,
         });
         const baseResult = {

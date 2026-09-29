@@ -8,7 +8,8 @@
 // Every GET route Express knows after boot (test/security-crawl.js walks the router, so a route added
 // later is crawled without anyone listing it) is requested with seeded and nonsense ids, with and
 // without a query string, plus probes for files that must never be served, as: anonymous, a user,
-// a staff admin, the owner, a service principal (live), a developer app and the legacy internal key.
+// a staff admin, the owner, a service principal (live), a developer app and a caller still sending the
+// retired X-Internal-Key (which the server must keep refusing and must never answer).
 // Then every write route is sent malformed JSON (and anonymous an empty body), and wrong credentials.
 // No body or header may carry any secret (as is, URL-encoded or base64); the responses that show a
 // secret once (token, credential and session creation) must be Cache-Control: no-store. The log, the
@@ -61,7 +62,7 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
             '/oauth/client-info?client_id=live', `/oauth/client-info?client_id=${dev.PA.app}`, '/api/auth/anon-identities', '/sso/check', '/fedcm/accounts'];
         const paths = crawler.pathsFor(w.routes, values, { method: 'get', query: 'limit=5&all=1&debug=1&include=secret', extra });
         const tokenOf = (h) => String((h && h.authorization) || '').replace(/^Bearer /, '');
-        const people = { ...w.callers, legacy: { 'x-internal-key': w.sentinels.INTERNAL_API_KEY } };
+        const people = { ...w.callers, key: { 'x-internal-key': w.sentinels.INTERNAL_API_KEY } };
         // What each caller must never see: every secret, plus every other caller's credential. Staff
         // admins and the owner list verification keys (they make them to hand out); nobody else sees one.
         const needlesFor = (who) => {
@@ -102,8 +103,8 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         assert.strictEqual(st('owner', '/api/admin/secrets'), 200);
         assert.strictEqual(st('owner', '/api/admin/settings'), 200);
         assert.strictEqual(st('service', '/internal/url-registry/resolved'), 200, 'live may read the resolved registry');
-        assert.strictEqual(st('legacy', '/internal/url-registry/resolved'), 200);
-        assert.strictEqual(st('anonymous', '/internal/url-registry/resolved'), 403);
+        assert.strictEqual(st('key', '/internal/url-registry/resolved'), 401, 'the retired X-Internal-Key opens nothing');
+        assert.strictEqual(st('anonymous', '/internal/url-registry/resolved'), 401, 'and nobody without a service token gets in');
 
         // JWKS and OIDC discovery: the public key, never a private part.
         const jwks = await w.call(null, 'GET', '/api/.well-known/jwks');
@@ -130,7 +131,7 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         }
         // Wrong credentials of every kind on the paths that take them.
         const wrong = {
-            'wrong internal key': { 'x-internal-key': w.sentinels.INTERNAL_API_KEY.slice(0, -1) + 'x' },
+            'retired internal key': { 'x-internal-key': w.sentinels.INTERNAL_API_KEY },
             'forged bearer': { authorization: `Bearer ${jwt.sign({ sub: users.owner.id, id: users.owner.id }, 'guess', { issuer: w.issuer })}` },
             'none alg bearer': { authorization: `Bearer ${jwt.sign({ sub: users.owner.id, id: users.owner.id }, null, { algorithm: 'none' })}` },
             'setup token guess': { 'x-setup-token': 'x', authorization: 'Bearer x' },

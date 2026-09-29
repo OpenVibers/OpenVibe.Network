@@ -412,7 +412,7 @@ app.get('/api/v1/users/names/:name', rateLimit({ windowMs: 60_000, max: 240 }), 
 });
 // The GitHub token (admin → Settings → GitHub, or GITHUB_TOKEN): owner-only admin, and Blog's changelog reads it.
 app.use('/api/admin/integrations/github', requireAuth, require('./integrations/github').adminRouter(db));
-app.get('/internal/integrations/github-token', require('./identity/principals').guard('network.integration.github.read', { legacy: false }), require('./integrations/github').internalHandler(db));
+app.get('/internal/integrations/github-token', require('./identity/principals').guard('network.integration.github.read'), require('./integrations/github').internalHandler(db));
 // Platform blocks (WS-E task 5): a person's own list, and who blocked whom for Chat and Community
 // (network.blocks.read, service token only). Every change is network.block.changed (server/identity/blocks.js).
 app.use('/api/v1/me/blocks', rateLimit({ windowMs: 60_000, max: 60 }), require('./identity/blocks').userRouter(requireAuth));
@@ -429,7 +429,7 @@ app.use('/api/v1/me/blocks', rateLimit({ windowMs: 60_000, max: 60 }), require('
 // its grants (mods.grant.manage, service token only); staff (staff.games.manage) from /api/admin/mods.
 {
     const modRouters = require('./identity/mod-principals').routers({
-        guard: require('./identity/principals').guard('mods.grant.manage', { legacy: false }), requireAuth, staffClaims: require('./auth/staff-claims').staffClaims,
+        guard: require('./identity/principals').guard('mods.grant.manage'), requireAuth, staffClaims: require('./auth/staff-claims').staffClaims,
     });
     require('./identity/mod-principals').ensureSchema(db);
     app.use('/internal/mods', modRouters.internal);
@@ -446,7 +446,7 @@ const notifyAccountData = (userId, n) => notificationService.create({ user_id: u
     const guard = require('./identity/principals').guard;
     const dataRouters = accountData.routers({
         requireAuth, staffClaims: require('./auth/staff-claims').staffClaims, dir: ACCOUNT_EXPORT_DIR, notify: notifyAccountData,
-        contributeGuard: guard('network.account.export.contribute', { legacy: false }), confirmGuard: guard('network.account.deletion.confirm', { legacy: false }),
+        contributeGuard: guard('network.account.export.contribute'), confirmGuard: guard('network.account.deletion.confirm'),
     });
     app.use('/api/v1/account', rateLimit({ windowMs: 60_000, max: 20 }), dataRouters.me);
     app.use('/internal', dataRouters.internal);
@@ -454,19 +454,19 @@ const notifyAccountData = (userId, n) => notificationService.create({ user_id: u
 }
 // The node registry (WS-X1, ADR-034 §12): public list for the geo API; Host reports its inventory's machines.
 {
-    const nodeRouters = require('./registry/nodes').routers({ guard: require('./identity/principals').guard('network.node.report', { legacy: false }) });
+    const nodeRouters = require('./registry/nodes').routers({ guard: require('./identity/principals').guard('network.node.report') });
     app.use('/api/v1/nodes', nodeRouters.pub);
     app.use('/internal/nodes', nodeRouters.internal);
 }
-app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read', { legacy: false }), require('./identity/blocks').internalHandler(db));
+app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read'), require('./identity/blocks').internalHandler(db));
 // The follow graph (WS-E task 4, ADR-030): public counts, a person's own follows, and who follows a target
 // (its owner, or network.follows.read, service token only). Every change is network.follow.* (server/identity/follows.js).
 {
-    const followRouters = require('./identity/follows').routers({ requireAuth, followsGuard: require('./identity/principals').guard('network.follows.read', { legacy: false }) });
+    const followRouters = require('./identity/follows').routers({ requireAuth, followsGuard: require('./identity/principals').guard('network.follows.read') });
     app.use('/api/v1/me/follows', rateLimit({ windowMs: 60_000, max: 120 }), followRouters.me);
     app.use('/api/v1/follows', rateLimit({ windowMs: 60_000, max: 300 }), followRouters.pub);
     // ADR-030 step 4: products record follows on a person's behalf (network.follows.write, service token only).
-    app.use('/internal/follows', require('./identity/principals').guard('network.follows.write', { legacy: false }), followRouters.internal);
+    app.use('/internal/follows', require('./identity/principals').guard('network.follows.write'), followRouters.internal);
     // A follow that starts notifies the followed person (FOLLOW), in the follow's transaction.
     require('./identity/follows').setNotifier(require('./notifications/follow-notify').followNotifier(notificationService));
 }
@@ -501,9 +501,9 @@ libraryTags.start();
 // Operator status: GET /status (server-rendered, noindex), /api/v1/status, /api/v1/status/slo.
 // Creator analytics (WS-E task 6): from live.stream.ended, counts only; the full figures for the creator or
 // network.analytics.creator.read (Live's dashboards).
-app.use('/api/v1/creators', rateLimit({ windowMs: 60_000, max: 300 }), require('./analytics/creators').router({ fullGuard: require('./identity/principals').guard('network.analytics.creator.read', { legacy: false }) }));
+app.use('/api/v1/creators', rateLimit({ windowMs: 60_000, max: 300 }), require('./analytics/creators').router({ fullGuard: require('./identity/principals').guard('network.analytics.creator.read') }));
 // Incidents and maintenance (WS-N task 12): public list; staff admins or network.status.incident (ovhost) write.
-app.use('/api/v1/status/incidents', rateLimit({ windowMs: 60_000, max: 120 }), require('./status/incidents').router({ requireAuth, incidentGuard: require('./identity/principals').guard('network.status.incident', { legacy: false }) }));
+app.use('/api/v1/status/incidents', rateLimit({ windowMs: 60_000, max: 120 }), require('./status/incidents').router({ requireAuth, incidentGuard: require('./identity/principals').guard('network.status.incident') }));
 app.use(require('./status/routes').createStatusRoutes({ ecosystem }));
 // What shipped network-wide: the changelog proxy every site's widget reads, and /updates.
 app.use(require('./updates/routes').createUpdatesRoutes({ blogUrl: process.env.OV_BLOG_INTERNAL_URL || 'http://127.0.0.1:4810' }).router);

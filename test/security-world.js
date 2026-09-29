@@ -144,6 +144,7 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
         return r.body.access_token;
     }
     const liveToken = await serviceToken('live');
+    const gamesToken = await serviceToken('games');
 
     // ── Developer projects ───────────────────────────────────────────
     const must = (r, status, what) => { if (r.status !== status) throw new Error(`${what}: ${r.status} ${r.text.slice(0, 300)}`); return r; };
@@ -175,7 +176,7 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
     await call({ authorization: `Bearer ${liveToken}` }, 'POST', '/internal/notifications/push', { user_id: users.alice.id, type: 'system', category: 'system', title: 'alice-private-notification', message: 'for alice only', service: 'live' });
     const sess = once('session creation', await call('alice', 'POST', '/api/auth/sessions', { device_name: 'alice-laptop' }));
     if (sess.body && sess.body.session_token) secrets['alice session token'] = sess.body.session_token;
-    await call({ 'x-internal-key': sentinels.INTERNAL_API_KEY }, 'POST', '/internal/link-account', { user_id: users.alice.id, service: 'games', service_user_id: 'alice-games-771' });
+    await call({ authorization: `Bearer ${gamesToken}` }, 'POST', '/internal/link-account', { user_id: users.alice.id, service: 'games', service_user_id: 'alice-games-771' });
     await call('alice', 'POST', '/api/history', { service: 'live', url: 'https://openvibe.live/@alice-private-history', title: 'alice-private-history' });
     const pushSub = { endpoint: 'https://push.services.mozilla.com/wpush/v2/alice-endpoint-capability-0001', keys: { p256dh: vapid.publicKey, auth: 'alice-push-auth-secret' } };
     await call('alice', 'POST', '/api/push/subscribe', { subscription: pushSub });

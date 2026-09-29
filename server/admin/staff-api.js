@@ -36,7 +36,7 @@ function createStaffApi({ db, requireAuth, guard }) {
         res.set('Cache-Control', 'private, no-store');
         res.json({ role: claims.is_owner ? 'owner' : req.user.role || 'user', is_owner: !!claims.is_owner, staff_map: staff.map.version, capabilities: claims.staff_caps || [] });
     });
-    const serviceGuard = guard('network.staff.read', { legacy: false });
+    const serviceGuard = guard('network.staff.read');
     const list = (req, res) => {
         const service = typeof req.query.service === 'string' && /^[a-z][a-z0-9_-]{0,31}$/.test(req.query.service) ? req.query.service : null;
         res.set('Cache-Control', 'private, no-store');

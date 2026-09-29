@@ -114,7 +114,7 @@ function viewerOf(req) {
     } catch { return null; }
 }
 
-/** Routes; fullGuard = principals.guard('network.analytics.creator.read', { legacy: false }). */
+/** Routes; fullGuard = principals.guard('network.analytics.creator.read'). */
 function router({ fullGuard }) {
     const r = express.Router();
     r.use(http.middleware());

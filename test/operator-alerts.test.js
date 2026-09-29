@@ -30,7 +30,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.locals.db = db;
-app.locals.config = { internalKey: 'legacy-key', jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
+app.locals.config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 const revised = [];
@@ -55,9 +55,12 @@ const alert = (name, extra = {}) => ({ fingerprint: crypto.createHash('sha256').
         assert.ok(host, 'Host gets a token for openvibe.network');
         const auth = { authorization: `Bearer ${host}` };
 
-        // Who may call it: Host's token; not the shared key, not another service, not nobody.
-        assert.strictEqual((await post({ source: 'prometheus', alerts: [] })).status, 403);
-        assert.ok([401, 403].includes((await post({ source: 'prometheus', alerts: [] }, { 'x-internal-key': 'legacy-key' })).status), 'the shared key is refused (legacy: false)');
+        // Who may call it: Host's token; not the retired key, not another service, not nobody.
+        const nobody = await post({ source: 'prometheus', alerts: [] });
+        assert.strictEqual(nobody.status, 401); assert.strictEqual(nobody.body.code, 'token.missing');
+        const withKey = await post({ source: 'prometheus', alerts: [] }, { 'x-internal-key': 'legacy-key' });
+        assert.strictEqual(withKey.status, 401, 'the shared key is refused (retired in plan T2)');
+        assert.strictEqual(withKey.body.code, 'token.missing');
         const live = await token('live', 'live-secret');
         assert.strictEqual((await post({ source: 'prometheus', alerts: [] }, { authorization: `Bearer ${live}` })).status, 403, 'Live lacks network.operator.alert');
 

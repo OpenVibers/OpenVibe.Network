@@ -4,8 +4,7 @@
 // openvibe.network — Internal Server-to-Server API (loopback only)
 // First-party services resolve identities, move OpenCoins, push notifications and read
 // shared data here. Every route checks the one capability it performs on a service token
-// (identity/principals.js guard); X-Internal-Key is being retired (plan T2) and is still
-// accepted only where a route's guard allows the legacy path.
+// (identity/principals.js guard), and nothing else is accepted.
 // ═══════════════════════════════════════════════════════════════
 
 const express = require('express');
@@ -16,61 +15,26 @@ const wallet = require('../coins/wallet');
 function getDb(req) { return req.app.locals.db; }
 function getConfig(req) { return req.app.locals.config; }
 
-// ── Internal Key Middleware ──────────────────────────────────
-let legacyStmt = null;
-function countLegacyKey(req, res) {
-    res.on('finish', () => {
-        try {
-            const db = getDb(req);
-            if (!legacyStmt) {
-                legacyStmt = db.prepare(`INSERT INTO principal_usage (principal, route, capability, auth, allowed, code, count) VALUES ('legacy-key', ?, '-', 'internal-key-route', ?, '', 1)
-                    ON CONFLICT(principal, route, auth, allowed, code) DO UPDATE SET count = count + 1, last_at = CURRENT_TIMESTAMP`);
-            }
-            const route = `${req.method} ${req.baseUrl || ''}${req.route ? req.route.path : req.path}`;
-            legacyStmt.run(route, res.statusCode < 400 ? 1 : 0);
-        } catch { /* telemetry is best effort */ }
-    });
-}
-function sameKey(a, b) {
-    const x = Buffer.from(String(a || ''));
-    const y = Buffer.from(String(b || ''));
-    return x.length === y.length && x.length > 0 && require('crypto').timingSafeEqual(x, y);
-}
-function requireInternalKey(req, res, next) {
+// ── The gate ────────────────────────────────────────────────
+// Every route below checks the one capability it performs on a service token (principals.guard); nothing
+// else gets in. X-Internal-Key was retired in plan T2 (2026-09-29).
+function requireServiceToken(req, res, next) {
     // Express mounts are case-insensitive, nginx locations are not: /INTERNAL/... would skip the
     // proxy's loopback-only `location /internal/` rule. Only the exact spelling is served.
     if (req.baseUrl !== '/internal') return res.status(404).json({ error: 'Not found' });
-    const key = req.headers['x-internal-key'];
-    const config = getConfig(req);
-    if (key && sameKey(key, config.internalKey)) {
-        req.internalKeyOk = true;
-        // Retirement telemetry (roadmap Wave 22): count every legacy-key call per route, so the key can
-        // be removed route by route once nothing uses it. Capability-guarded routes also record their
-        // decision; this covers the routes that only know the key.
-        countLegacyKey(req, res);
-        return next();
+    if (!String(req.headers.authorization || '').startsWith('Bearer ')) {
+        return require('openvibe-contracts').http.sendProblem(res, 401, 'token.missing', { detail: 'a service token is required' });
     }
-    // Routes guarded by a capability also accept a service-principal token instead of the key;
-    // principals.guard() on the route verifies it (and refuses anything it can't verify).
-    if (String(req.headers.authorization || '').startsWith('Bearer ') && (TOKEN_ROUTES.has(`${req.method} ${req.path}`) || TOKEN_ROUTE_PATTERNS.some(re => re.test(`${req.method} ${req.path}`)))) return next();
-    return res.status(403).json({ error: 'Invalid or missing internal key' });
+    return next();
 }
 const principals = require('../identity/principals');
-const TOKEN_ROUTES = new Set(['GET /identity/resolve', 'POST /identity/resolve-batch', 'POST /coins/credit', 'POST /coins/debit', 'POST /coins/transfer', 'POST /notifications/push', 'POST /notifications/push-bulk', 'POST /events/stream-live',
-    // Internal-key retirement (register C-50/C-52): the routes Live still calls with the key also take a token.
-    'GET /url-registry/resolved', 'GET /coins/stats', 'POST /resolve-anon', 'POST /identity/legacy-map', 'POST /link-account',
-    // The last two Live called with the key only (C-50): Live's avatar picker and its mark-read-by-type.
-    'POST /user-avatar', 'POST /notifications/mark-read',
-    // Token only (legacy: false): Host's relay of the alerts firing on the production host (WS-H task 11).
-    'POST /operator/alerts']);
-const TOKEN_ROUTE_PATTERNS = [/^(GET|PUT|DELETE) \/modules\/[a-z0-9_.]+\/[A-Za-z0-9_]+$/];
 const forApp = (req) => (req.body && req.body.app_id !== undefined ? String(req.body.app_id) : undefined);
 const forService = (req) => (req.body && req.body.service !== undefined ? String(req.body.service) : undefined);
 
-// A service token may only map ids of its own system (svc:live -> source_system 'live'); the key is unchanged.
+// A service token may only map ids of its own system (svc:live -> source_system 'live').
 function ownSourceSystem(req, res, next) {
     const p = req.principal;
-    if (!p || p.legacy) return next();
+    if (!p) return require('openvibe-contracts').http.sendProblem(res, 401, 'token.missing', { detail: 'a service token is required' });
     const self = String(p.sub).replace(/^svc:/, '');
     const entries = req.body && Array.isArray(req.body.entries) ? req.body.entries : [];
     if (entries.some(e => !e || String(e.source_system) !== self)) {
@@ -79,7 +43,7 @@ function ownSourceSystem(req, res, next) {
     next();
 }
 
-router.use(requireInternalKey);
+router.use(requireServiceToken);
 // Identity lookups accept a service token with identity.subject.resolve (or the key, as before).
 router.get('/identity/resolve', principals.guard('identity.subject.resolve'));
 router.post('/identity/resolve-batch', principals.guard('identity.subject.resolve'));
@@ -142,10 +106,9 @@ router.post('/user-avatar', principals.guard('network.avatar.write'), (req, res)
     res.status(r.status).json(r.error ? { error: r.error } : { ok: true, changed: r.changed });
 });
 
-// Service URLs only (no secrets); any first-party service that resolves identities may read them.
-// Secret-typed entries (DEPLOY_CLOUDFLARE_TOKEN) are left out: they are the owner's, not the services'.
-// TODO(contracts): a network.registry.read capability would say it more exactly.
-router.get('/url-registry/resolved', principals.guard('identity.subject.resolve'), (req, res) => {
+// Service URLs only (no secrets). Secret-typed entries (DEPLOY_CLOUDFLARE_TOKEN) are left out: they are the
+// owner's, not the services'.
+router.get('/url-registry/resolved', principals.guard('network.registry.read'), (req, res) => {
     try {
         const db = getDb(req);
         const { URL_DEFINITIONS } = require('openvibe-shared/url-resolver');
@@ -179,7 +142,7 @@ function handleWalletError(res, err) {
 // so the answer is held for a minute.
 let _coinStats = { at: 0, data: null };
 // Guarded by the ledger capability its caller (Live's home hero) holds. TODO(contracts): network.coins.read.
-router.get('/coins/stats', principals.guard('network.coins.credit'), (req, res) => {
+router.get('/coins/stats', principals.guard('network.coins.read'), (req, res) => {
     try {
         if (_coinStats.data && Date.now() - _coinStats.at < 60_000) return res.json(_coinStats.data);
         const db = getDb(req);
@@ -403,7 +366,7 @@ router.post('/notifications/push-bulk', principals.guard('network.notifications.
 // POST /internal/operator/alerts — network.operator-alerts-request@1 → network.operator-alerts-result@1.
 // Host's relay (ovhost alerts relay) sends the complete set of alerts firing now; server/operator/alerts.js
 // pages the owner when one opens, once a day while it stays open, and when it resolves. Token only.
-router.post('/operator/alerts', principals.guard('network.operator.alert', { legacy: false }), (req, res) => {
+router.post('/operator/alerts', principals.guard('network.operator.alert'), (req, res) => {
     const contracts = require('openvibe-contracts');
     const v = contracts.validate('network.operator-alerts-request@1', req.body);
     if (!v.valid) return res.status(400).json({ error: 'The body does not match network.operator-alerts-request@1', details: (v.errors || []).slice(0, 5) });
