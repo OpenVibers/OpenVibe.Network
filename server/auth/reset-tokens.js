@@ -27,12 +27,12 @@ function buildBaseUrl(req) {
  * Returns { rawToken, resetUrl, expiresMinutes } — rawToken is the only time the
  * plaintext exists, so it must go straight into the email and never be stored.
  */
-function issueResetToken(db, req, userId) {
+async function issueResetToken(db, req, userId) {
     const rawToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS).toISOString();
     // One live token per user: issuing a new link revokes the previous one.
-    db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(userId);
-    db.prepare(`
+    await db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(userId);
+    await db.prepare(`
         INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, requested_ip, requested_user_agent)
         VALUES (?, ?, ?, ?, ?)
     `).run(userId, hashResetToken(rawToken), expiresAt, req.ip || null, req.headers['user-agent'] || null);

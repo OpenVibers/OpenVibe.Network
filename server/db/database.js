@@ -1,14 +1,24 @@
 'use strict';
 
 // ═══════════════════════════════════════════════════════════════
-// openvibe.network — Central Database
-// Authoritative source for user accounts, OAuth2 clients,
-// themes, the OpenCoins wallet, and cross-platform preferences.
+// openvibe.network — Central Database (PostgreSQL through openvibe-sdk/db, ADR-035 / plan T2)
+//
+// The schema lives in migrations/NNNN_*.sql; this module opens the process-wide handle, runs the
+// migrations as the owner (DATABASE_DIRECT_URL) and seeds the boot data that is not schema
+// (OAuth clients, site settings, built-in themes). Every query is async; the handle is shaped like
+// better-sqlite3's (db.prepare(sql).get/all/run) but must be awaited.
 // ═══════════════════════════════════════════════════════════════
 
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const { createDb } = require('openvibe-sdk/db');
+const config = require('../config');
+
+const MIGRATIONS = path.join(__dirname, '..', '..', 'migrations');
+const DEV_PGLITE = path.join(__dirname, '..', '..', 'data', 'pglite');
+
+let database = null;
+let seeded = false;
 
 function previewFromVars(vars) {
     return JSON.stringify({
@@ -18,496 +28,66 @@ function previewFromVars(vars) {
     });
 }
 
-function initDb(dbPath) {
-    const dir = path.dirname(path.resolve(dbPath));
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-    const db = new Database(path.resolve(dbPath));
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-    db.pragma('busy_timeout = 5000');
-
-    // ── Schema ───────────────────────────────────────────────
-    db.exec(`
-        -- Users (canonical identity for the OpenVibe)
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE,
-            password_hash TEXT NOT NULL,
-            display_name TEXT,
-            avatar_url TEXT,
-            bio TEXT DEFAULT '',
-            role TEXT DEFAULT 'user' CHECK(role IN ('user','streamer','global_mod','admin')),
-            profile_color TEXT DEFAULT '#8b5cf6',
-            is_banned INTEGER DEFAULT 0,
-            ban_reason TEXT,
-            token_valid_after TEXT DEFAULT NULL,
-            legacy_source TEXT,          -- 'live' for migrated accounts
-            legacy_id INTEGER,           -- original user ID in source platform
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            last_seen DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- OAuth2 client registry
-        CREATE TABLE IF NOT EXISTS oauth_clients (
-            client_id TEXT PRIMARY KEY,
-            client_secret TEXT NOT NULL,
-            name TEXT NOT NULL,
-            redirect_uris TEXT NOT NULL,   -- JSON array of allowed redirect URIs
-            is_first_party INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- OAuth2 authorization codes (short-lived, single-use)
-        CREATE TABLE IF NOT EXISTS oauth_codes (
-            code TEXT PRIMARY KEY,
-            client_id TEXT NOT NULL,
-            user_id INTEGER NOT NULL,
-            redirect_uri TEXT NOT NULL,
-            scope TEXT DEFAULT 'profile theme',
-            expires_at DATETIME NOT NULL,
-            used INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (client_id) REFERENCES oauth_clients(client_id),
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        );
-
-        -- OAuth2 refresh tokens
-        CREATE TABLE IF NOT EXISTS oauth_tokens (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            token TEXT UNIQUE NOT NULL,
-            client_id TEXT NOT NULL,
-            user_id INTEGER NOT NULL,
-            scope TEXT DEFAULT 'profile theme',
-            expires_at DATETIME NOT NULL,
-            revoked INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (client_id) REFERENCES oauth_clients(client_id),
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        );
-
-        -- User preferences (theme, language, notification settings)
-        CREATE TABLE IF NOT EXISTS user_preferences (
-            user_id INTEGER PRIMARY KEY,
-            theme_id TEXT DEFAULT 'vibe',
-            custom_theme_variables TEXT,   -- JSON: custom CSS var overrides
-            language TEXT DEFAULT 'en',
-            notifications_enabled INTEGER DEFAULT 1,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        );
-
-        -- Theme catalog (built-in + community)
-        CREATE TABLE IF NOT EXISTS themes (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            slug TEXT UNIQUE NOT NULL,
-            author_id INTEGER,
-            description TEXT DEFAULT '',
-            mode TEXT DEFAULT 'dark' CHECK(mode IN ('dark','light')),
-            variables TEXT NOT NULL,       -- JSON: CSS variable map
-            preview_colors TEXT,           -- JSON: preview color swatches
-            is_builtin INTEGER DEFAULT 0,
-            is_public INTEGER DEFAULT 1,
-            downloads INTEGER DEFAULT 0,
-            rating_sum INTEGER DEFAULT 0,
-            rating_count INTEGER DEFAULT 0,
-            tags TEXT DEFAULT '[]',        -- JSON array
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (author_id) REFERENCES users(id)
-        );
-
-        -- Linked accounts (which OpenVibe user owns which service-specific account)
-        CREATE TABLE IF NOT EXISTS linked_accounts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            service TEXT NOT NULL,          -- 'live', 'games', etc.
-            service_user_id TEXT NOT NULL,
-            linked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            UNIQUE(service, service_user_id)
-        );
-
-        -- Audit log
-        CREATE TABLE IF NOT EXISTS audit_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            action TEXT NOT NULL,
-            details TEXT,                 -- JSON context
-            ip TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- IP log (cross-platform)
-        CREATE TABLE IF NOT EXISTS ip_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            ip TEXT NOT NULL,
-            action TEXT DEFAULT 'login',
-            country TEXT,
-            region TEXT,
-            city TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        );
-
-        -- Site settings (key-value)
-        CREATE TABLE IF NOT EXISTS site_settings (
-            key TEXT PRIMARY KEY,
-            value TEXT,
-            type TEXT DEFAULT 'string'
-        );
-
-        -- URL registry for admin-managed first-party and protocol URLs
-        CREATE TABLE IF NOT EXISTS url_registry (
-            key TEXT PRIMARY KEY,
-            label TEXT NOT NULL,
-            category TEXT NOT NULL,
-            service TEXT NOT NULL,
-            scope TEXT NOT NULL,
-            type TEXT NOT NULL,
-            value TEXT,
-            description TEXT,
-            updated_by INTEGER,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- ═══════════════════════════════════════════════════════
-        -- Notifications
-        -- ═══════════════════════════════════════════════════════
-
-        -- Central notification store
-        CREATE TABLE IF NOT EXISTS notifications (
-            id TEXT PRIMARY KEY,              -- UUID
-            user_id INTEGER NOT NULL,
-            type TEXT NOT NULL,               -- from TYPES enum (FOLLOW, MENTION, etc.)
-            category TEXT NOT NULL,           -- social, chat, game, stream, economy, etc.
-            priority TEXT NOT NULL DEFAULT 'normal',  -- low, normal, high, critical
-            title TEXT NOT NULL,
-            message TEXT,
-            icon TEXT,
-            sender_id INTEGER,               -- who triggered this (nullable)
-            sender_name TEXT,                 -- denormalized for display
-            sender_avatar TEXT,
-            service TEXT,                     -- originating service (openvibelive, etc.)
-            url TEXT,                         -- click-through destination
-            rich_content TEXT,                -- JSON: images, actions, embeds
-            is_read INTEGER DEFAULT 0,
-            is_dismissed INTEGER DEFAULT 0,
-            is_emailed INTEGER DEFAULT 0,
-            expires_at DATETIME,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-        CREATE INDEX IF NOT EXISTS idx_notif_user_read ON notifications(user_id, is_read, created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_notif_user_cat ON notifications(user_id, category);
-        CREATE INDEX IF NOT EXISTS idx_notif_expires ON notifications(expires_at) WHERE expires_at IS NOT NULL;
-
-        -- Per-user notification preferences (overrides per category)
-        CREATE TABLE IF NOT EXISTS notification_preferences (
-            user_id INTEGER NOT NULL,
-            category TEXT NOT NULL,           -- or '*' for global
-            enabled INTEGER DEFAULT 1,
-            sound INTEGER DEFAULT 1,
-            toasts INTEGER DEFAULT 1,
-            email INTEGER DEFAULT 0,
-            PRIMARY KEY (user_id, category),
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-
-        -- Email delivery log (email metrics / admin visibility)
-        CREATE TABLE IF NOT EXISTS email_delivery_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email_type TEXT NOT NULL,
-            recipient TEXT NOT NULL,
-            subject TEXT,
-            status TEXT NOT NULL CHECK(status IN ('sent', 'failed')),
-            error_message TEXT,
-            user_id INTEGER,
-            notification_id TEXT,
-            metadata TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-            FOREIGN KEY (notification_id) REFERENCES notifications(id) ON DELETE SET NULL
-        );
-        CREATE INDEX IF NOT EXISTS idx_email_delivery_created ON email_delivery_log(created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_email_delivery_status ON email_delivery_log(status, created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_email_delivery_type ON email_delivery_log(email_type, created_at DESC);
-
-        -- Password reset tokens
-        CREATE TABLE IF NOT EXISTS password_reset_tokens (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            token_hash TEXT UNIQUE NOT NULL,
-            expires_at DATETIME NOT NULL,
-            used_at DATETIME,
-            requested_ip TEXT,
-            requested_user_agent TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-        CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id, used_at, expires_at);
-        CREATE INDEX IF NOT EXISTS idx_password_reset_expires ON password_reset_tokens(expires_at);
-
-        -- ═══════════════════════════════════════════════════════
-        -- Anonymous Users & Multi-Account Sessions
-        -- ═══════════════════════════════════════════════════════
-
-        -- Anonymous user tracking
-        CREATE TABLE IF NOT EXISTS anon_users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            anon_number INTEGER UNIQUE NOT NULL,
-            fingerprint TEXT,                 -- browser fingerprint hash (optional)
-            session_token TEXT UNIQUE NOT NULL,
-            display_name TEXT,
-            preferences TEXT DEFAULT '{}',    -- JSON
-            total_messages INTEGER DEFAULT 0,
-            total_commands INTEGER DEFAULT 0,
-            first_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
-            last_seen DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- Multi-account session tracking (like Google multi-login)
-        CREATE TABLE IF NOT EXISTS user_sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            session_token TEXT UNIQUE NOT NULL,
-            device_name TEXT,
-            ip TEXT,
-            user_agent TEXT,
-            is_active INTEGER DEFAULT 1,
-            last_used DATETIME DEFAULT CURRENT_TIMESTAMP,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            expires_at DATETIME NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-        CREATE INDEX IF NOT EXISTS idx_sessions_user ON user_sessions(user_id, is_active);
-        CREATE INDEX IF NOT EXISTS idx_sessions_token ON user_sessions(session_token);
-
-        -- ═══════════════════════════════════════════════════════
-        -- User Profile Extras
-        -- ═══════════════════════════════════════════════════════
-
-        -- Name & particle effects ownership
-        CREATE TABLE IF NOT EXISTS user_effects (
-            user_id INTEGER NOT NULL,
-            effect_type TEXT NOT NULL,         -- 'name' or 'particle'
-            effect_id TEXT NOT NULL,           -- e.g. 'rainbow', 'fire', 'neon'
-            is_active INTEGER DEFAULT 0,
-            acquired_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (user_id, effect_type, effect_id),
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-
-        -- User followers
-        CREATE TABLE IF NOT EXISTS follows (
-            follower_id INTEGER NOT NULL,
-            followed_id INTEGER NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (follower_id, followed_id),
-            FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY (followed_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-
-        -- ═══════════════════════════════════════════════════════
-        -- OpenCoins Wallet (network-wide currency)
-        -- user_id is ALWAYS the Network (SSO) user id.
-        -- ═══════════════════════════════════════════════════════
-
-        CREATE TABLE IF NOT EXISTS wallets (
-            user_id INTEGER PRIMARY KEY,
-            balance INTEGER NOT NULL DEFAULT 0,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS coin_transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            app_id TEXT,
-            delta INTEGER NOT NULL,
-            reason TEXT,
-            ref TEXT,
-            idempotency_key TEXT UNIQUE,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-        CREATE INDEX IF NOT EXISTS idx_coin_tx_user ON coin_transactions(user_id, created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_coin_tx_app ON coin_transactions(app_id, created_at DESC);
-
-        -- Verification keys (reserved username claims)
-        CREATE TABLE IF NOT EXISTS verification_keys (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            key TEXT UNIQUE NOT NULL,
-            target_username TEXT NOT NULL,
-            note TEXT DEFAULT '',
-            created_by INTEGER NOT NULL,
-            used_by INTEGER,
-            status TEXT DEFAULT 'active' CHECK(status IN ('active', 'used', 'revoked')),
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            used_at DATETIME,
-            FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY (used_by) REFERENCES users(id) ON DELETE SET NULL
-        );
-        CREATE INDEX IF NOT EXISTS idx_vkeys_key ON verification_keys(key);
-        CREATE INDEX IF NOT EXISTS idx_vkeys_target ON verification_keys(target_username);
-        CREATE INDEX IF NOT EXISTS idx_vkeys_status ON verification_keys(status);
-    `);
-
-    // ── Anon IP tracking (unified cross-service anon resolution) ──
-    try {
-        db.exec(`
-            CREATE TABLE IF NOT EXISTS anon_ip_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                anon_id INTEGER NOT NULL,
-                ip TEXT NOT NULL,
-                first_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
-                last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (anon_id) REFERENCES anon_users(id) ON DELETE CASCADE,
-                UNIQUE(anon_id, ip)
-            );
-            CREATE INDEX IF NOT EXISTS idx_anon_ip_log_ip ON anon_ip_log(ip);
-            CREATE INDEX IF NOT EXISTS idx_anon_ip_log_anon ON anon_ip_log(anon_id);
-        `);
-    } catch (e) { /* already exists */ }
-
-    // ── Push Subscriptions (Web Push / VAPID) ──
-    try {
-        db.exec(`
-            CREATE TABLE IF NOT EXISTS push_subscriptions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                endpoint TEXT NOT NULL UNIQUE,
-                keys_p256dh TEXT NOT NULL,
-                keys_auth TEXT NOT NULL,
-                user_agent TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-            CREATE INDEX IF NOT EXISTS idx_push_sub_user ON push_subscriptions(user_id);
-            CREATE INDEX IF NOT EXISTS idx_push_sub_endpoint ON push_subscriptions(endpoint);
-        `);
-    } catch (e) { /* already exists */ }
-
-    // ── Migration: Add columns that may not exist ────────────
-    const migrations = [
-        { table: 'linked_accounts', column: 'service_username', sql: "ALTER TABLE linked_accounts ADD COLUMN service_username TEXT" },
-        { table: 'oauth_codes', column: 'code_challenge', sql: "ALTER TABLE oauth_codes ADD COLUMN code_challenge TEXT" },
-        { table: 'oauth_codes', column: 'code_challenge_method', sql: "ALTER TABLE oauth_codes ADD COLUMN code_challenge_method TEXT" },
-        // OpenID Connect: the nonce sent to /oauth/authorize, echoed in the id_token (server/auth/oidc.js).
-        { table: 'oauth_codes', column: 'nonce', sql: "ALTER TABLE oauth_codes ADD COLUMN nonce TEXT" },
-        { table: 'url_registry', column: 'source', sql: "ALTER TABLE url_registry ADD COLUMN source TEXT NOT NULL DEFAULT 'admin'" },
-        { table: 'users', column: 'is_anon', sql: "ALTER TABLE users ADD COLUMN is_anon INTEGER DEFAULT 0" },
-        { table: 'users', column: 'anon_number', sql: "ALTER TABLE users ADD COLUMN anon_number INTEGER" },
-        { table: 'users', column: 'name_effect', sql: "ALTER TABLE users ADD COLUMN name_effect TEXT" },
-        { table: 'users', column: 'particle_effect', sql: "ALTER TABLE users ADD COLUMN particle_effect TEXT" },
-        { table: 'anon_users', column: 'ip', sql: "ALTER TABLE anon_users ADD COLUMN ip TEXT" },
-        // Email deliverability state — verification gates opt-in mail, bounces suppress it.
-        { table: 'users', column: 'email_verified', sql: "ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0" },
-        { table: 'users', column: 'email_verified_at', sql: "ALTER TABLE users ADD COLUMN email_verified_at DATETIME" },
-        { table: 'users', column: 'email_bounced_at', sql: "ALTER TABLE users ADD COLUMN email_bounced_at DATETIME" },
-        { table: 'users', column: 'email_bounce_reason', sql: "ALTER TABLE users ADD COLUMN email_bounce_reason TEXT" },
-        // When the account was last used on a service (bumped on every OAuth exchange).
-        { table: 'linked_accounts', column: 'last_used_at', sql: "ALTER TABLE linked_accounts ADD COLUMN last_used_at DATETIME" },
-        // Cross-site history can be paused by the user (server/history/routes.js).
-        { table: 'user_preferences', column: 'display_prefs', sql: "ALTER TABLE user_preferences ADD COLUMN display_prefs TEXT" },
-        { table: 'users', column: 'history_paused', sql: "ALTER TABLE users ADD COLUMN history_paused INTEGER DEFAULT 0" },
-        // Canonical subject ids (roadmap Wave 1): usr_/gst_ ULIDs alongside the integer ids.
-        { table: 'users', column: 'subject_id', sql: "ALTER TABLE users ADD COLUMN subject_id TEXT" },
-        { table: 'anon_users', column: 'subject_id', sql: "ALTER TABLE anon_users ADD COLUMN subject_id TEXT" },
-    ];
-    for (const m of migrations) {
-        const cols = db.prepare(`PRAGMA table_info(${m.table})`).all();
-        if (!cols.find(c => c.name === m.column)) {
-            try { db.exec(m.sql); console.log(`[DB] Migrated: ${m.table}.${m.column}`); }
-            catch (e) { /* already exists — silently skip */ }
-        }
+/**
+ * The serving handle: DATABASE_URL through PgBouncer; in development without it, an embedded PGlite
+ * database in config.db.pgliteDir. Migrations run first, as the owner (DATABASE_DIRECT_URL), or on the
+ * embedded handle. Production without DATABASE_URL refuses to boot.
+ */
+async function openDb(cfg = config, { log = console, registry } = {}) {
+    if (!cfg.db.url) {
+        if (cfg.nodeEnv === 'production') throw new Error('DATABASE_URL is not set: production serves from PostgreSQL (OpenVibe.Host roles/data add-service.sh network)');
+        const dir = cfg.db.pgliteDir || DEV_PGLITE;
+        log.warn(`[DB] DATABASE_URL unset: embedded PGlite database in ${dir} (development only, one process)`);
+        fs.mkdirSync(dir, { recursive: true });
+        const db = createDb({ pglite: dir, service: 'network', registry, log });
+        await db.migrate({ dir: MIGRATIONS, log });
+        return db;
     }
+    if (!cfg.db.directUrl) throw new Error('DATABASE_DIRECT_URL is not set: migrations run with the owner role on a direct connection');
+    const owner = createDb({ url: cfg.db.directUrl, service: 'network-migrate', max: 1, log });
+    try { await owner.migrate({ dir: MIGRATIONS, log }); } finally { await owner.close(); }
+    return createDb({ url: cfg.db.url, service: 'network', registry, log });
+}
 
-    // ── Refresh tokens: hash-only storage, families, generations (server/auth/refresh-tokens.js) ──
-    // Columns only. Rows still holding a raw token work and are hashed on first use (the one-time
-    // hash-refresh-tokens.js was retired in plan T2).
-    require('../auth/refresh-tokens').ensureSchema(db);
+/** Open the process-wide database once, at boot (server/index.js, scripts). Seeds the boot data. */
+async function initDb(cfg = config, opts) {
+    if (!database && globalThis.__ovNetworkTestDb) database = globalThis.__ovNetworkTestDb;   // tests (test/helpers/pg-preload.mjs)
+    if (!database) database = await openDb(cfg, opts);
+    await attachHelpers(database);
+    if (!seeded) { seeded = true; await seedDb(database); }
+    return database;
+}
 
-    // ── Email verification tokens + preference default semantics ──
-    try {
-        db.exec(`
-            CREATE TABLE IF NOT EXISTS email_verification_tokens (
-                token_hash TEXT PRIMARY KEY,
-                user_id INTEGER NOT NULL,
-                email TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                expires_at DATETIME NOT NULL,
-                used_at DATETIME,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-            CREATE INDEX IF NOT EXISTS idx_email_verify_user ON email_verification_tokens(user_id, created_at DESC);
-        `);
-        // notification_preferences.email: 0 used to be the implicit default written whenever a
-        // user toggled anything else in the row. It now means an EXPLICIT "no email"; NULL is
-        // "no choice → defaults apply" (go-live alerts email by default). One-time reset.
-        const flagged = db.prepare("SELECT value FROM site_settings WHERE key = 'migr_pref_email_null'").get();
-        if (!flagged) {
-            const n = db.prepare('UPDATE notification_preferences SET email = NULL WHERE email = 0').run().changes;
-            db.prepare("INSERT OR REPLACE INTO site_settings (key, value, type) VALUES ('migr_pref_email_null', '1', 'boolean')").run();
-            if (n) console.log(`[DB] notification_preferences: ${n} email=0 rows reset to default (NULL)`);
-        }
-        const seed = db.prepare('INSERT OR IGNORE INTO site_settings (key, value, type) VALUES (?, ?, ?)');
-        seed.run('email_user_daily_cap', '30', 'number');
-        seed.run('email_daily_cap', '2000', 'number');
-        seed.run('email_verify_user_daily_cap', '6', 'number');
-        seed.run('resend_webhook_secret', '', 'string');
-        seed.run('stream_live_cooldown_min', '60', 'number');
-        seed.run('stream_live_daily_cap', '8', 'number');
-    } catch (e) { console.warn('[DB] email verification migration:', e.message); }
+/** The process-wide database initDb() opened. */
+function getDb() {
+    if (!database && globalThis.__ovNetworkTestDb) database = globalThis.__ovNetworkTestDb;
+    if (!database) throw new Error('the database is not open: await initDb() at boot');
+    return database;
+}
 
-    // ── Migration: one linked account per (user, service) ────────
-    // The link-account upsert uses ON CONFLICT(user_id, service), which needs a
-    // matching unique index (the table only declared UNIQUE(service, service_user_id)).
-    try {
-        // Drop any pre-existing duplicate (user_id, service) rows, keeping the newest.
-        db.exec(`
-            DELETE FROM linked_accounts WHERE id NOT IN (
-                SELECT MAX(id) FROM linked_accounts GROUP BY user_id, service
-            );
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_linked_user_service ON linked_accounts(user_id, service);
-        `);
-    } catch (e) { console.warn('[DB] linked_accounts unique index migration:', e.message); }
+/** Tests: use this handle as the process-wide database. */
+async function setDb(db) { database = db; await attachHelpers(db); }
 
-    // ── Seed OAuth2 Clients (per CONTRACTS) ──────────────────
-    // Each first-party client is created if missing, with a fresh UUID secret
-    // printed exactly once on creation.
+// ── Boot data (the schema is the migration; this is what is not) ─────────────
+
+/**
+ * Seed OAuth2 clients, site settings and the built-in theme catalogue, idempotently. Safe under
+ * concurrent writers: every write is an upsert, and the redirect-URI merge takes the row with
+ * SELECT … FOR UPDATE inside a transaction (decision 1).
+ */
+async function seedDb(db, { log = console } = {}) {
+    const warn = (m) => log.warn(`[DB] ${m}`);
+
+    // ── Seed OAuth2 clients (per CONTRACTS) ──────────────────
+    // Each first-party client is created if missing, with a fresh UUID secret printed exactly once.
     {
         const { v4: uuidv4 } = require('uuid');
         const contractClients = [
-            {
-                client_id: 'live',
-                name: 'OpenVibe.Live',
-                redirect_uris: ['https://openvibe.live/api/auth/callback'],
-            },
-            {
-                client_id: 'tools',
-                name: 'OpenVibe.Tools',
-                redirect_uris: ['https://openvibe.tools/auth/callback'],
-            },
-            {
-                client_id: 'games',
-                name: 'OpenVibe.Games',
-                redirect_uris: ['https://openvibe.games/auth/callback', 'https://play.openvibe.games/auth/callback'],
-            },
-            {
-                client_id: 'media',
-                name: 'OpenVibe.Media',
-                redirect_uris: ['https://openvibe.media/auth/callback'],
-            },
-            {
-                client_id: 'community',
-                name: 'OpenVibe.Community',
-                redirect_uris: ['https://openvibe.community/auth/callback'],
-            },
+            { client_id: 'live', name: 'OpenVibe.Live', redirect_uris: ['https://openvibe.live/api/auth/callback'] },
+            { client_id: 'tools', name: 'OpenVibe.Tools', redirect_uris: ['https://openvibe.tools/auth/callback'] },
+            { client_id: 'games', name: 'OpenVibe.Games', redirect_uris: ['https://openvibe.games/auth/callback', 'https://play.openvibe.games/auth/callback'] },
+            { client_id: 'media', name: 'OpenVibe.Media', redirect_uris: ['https://openvibe.media/auth/callback'] },
+            { client_id: 'community', name: 'OpenVibe.Community', redirect_uris: ['https://openvibe.community/auth/callback'] },
             // Waves 9-16 products with a signed-in UI. Create each with server/setup/service-principal.js
             // first (secret into its env file); this only adds the redirect URI to that client.
             { client_id: 'tips', name: 'OpenVibe.Tips', redirect_uris: ['https://openvibe.tips/auth/callback'] },
@@ -522,109 +102,80 @@ function initDb(dbPath) {
             { client_id: 'coupons', name: 'OpenVibe.Coupons', redirect_uris: ['https://openvibe.coupons/auth/callback'] },
             { client_id: 'host', name: 'OpenVibe.Host', redirect_uris: ['https://openvibe.host/auth/callback'] },
             { client_id: 'codes', name: 'OpenVibe.Codes', redirect_uris: ['https://openvibe.codes/auth/callback'] },
-            // Billing's staff console (Wave 8): Network admins listed in BILLING_STAFF_SUBJECTS.
             { client_id: 'billing', name: 'OpenVibe.Billing', redirect_uris: ['https://billing.openvibe.network/auth/callback'] },
-            // OpenVibe.AI's operator console (WS-O task 4): Network staff, capabilities from the staff role map.
             { client_id: 'ai', name: 'OpenVibe.AI', redirect_uris: ['https://ai.openvibe.network/auth/callback'] },
         ];
-        const insert = db.prepare(
-            'INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, ?, ?, ?, 1)'
-        );
         let seededAny = false;
         for (const c of contractClients) {
-            const existing = db.prepare('SELECT client_id, redirect_uris FROM oauth_clients WHERE client_id = ?').get(c.client_id);
+            const existing = await db.prepare('SELECT client_id, redirect_uris FROM oauth_clients WHERE client_id = ?').get(c.client_id);
             if (!existing) {
-                const secret = uuidv4();
-                insert.run(c.client_id, secret, c.name, JSON.stringify(c.redirect_uris));
-                console.log(`[DB] Seeded OAuth2 client: ${c.client_id} (secret stored in oauth_clients; read it with sqlite, never from logs)`);
+                await db.prepare('INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, ?, ?, ?, 1)')
+                    .run(c.client_id, uuidv4(), c.name, JSON.stringify(c.redirect_uris));
+                console.log(`[DB] Seeded OAuth2 client: ${c.client_id} (secret stored in oauth_clients; read it from the database, never from logs)`);
                 seededAny = true;
                 continue;
             }
-            // Ensure existing clients include the contract redirect URIs
-            try {
-                const uris = new Set(JSON.parse(existing.redirect_uris || '[]'));
-                let changed = false;
-                for (const uri of c.redirect_uris) {
-                    if (!uris.has(uri)) { uris.add(uri); changed = true; }
-                }
-                if (changed) {
-                    db.prepare('UPDATE oauth_clients SET redirect_uris = ? WHERE client_id = ?')
-                        .run(JSON.stringify([...uris]), c.client_id);
-                    console.log(`[DB] Updated ${c.client_id} redirect_uris to include contract URIs`);
-                }
-            } catch { /* malformed redirect_uris — leave untouched */ }
+            await mergeRedirectUris(db, c.client_id, c.redirect_uris, { log });
         }
         if (seededAny) console.log('[DB] New OAuth2 clients seeded; their secrets are in oauth_clients (they are never logged).');
     }
 
-    function ensureLocalOauthRedirects() {
-        if (process.env.NODE_ENV === 'production' && process.env.BOOTSTRAP_PROFILE !== 'local-dev') return;
-
+    // ── Local development redirect URIs ──────────────────────
+    if (!(process.env.NODE_ENV === 'production' && process.env.BOOTSTRAP_PROFILE !== 'local-dev')) {
         const localClients = [
-            {
-                clientId: 'live',
-                extraUris: ['http://localhost:3000/auth/callback', 'http://localhost:3000/api/auth/callback'],
-            },
-            {
-                clientId: 'tools',
-                extraUris: ['http://localhost:4001/auth/callback'],
-            },
-            {
-                clientId: 'games',
-                extraUris: ['http://localhost:8000/auth/callback', 'http://localhost:5173/auth/callback'],
-            },
-            {
-                clientId: 'media',
-                extraUris: ['http://localhost:4100/auth/callback'],
-            },
+            { clientId: 'live', extraUris: ['http://localhost:3000/auth/callback', 'http://localhost:3000/api/auth/callback'] },
+            { clientId: 'tools', extraUris: ['http://localhost:4001/auth/callback'] },
+            { clientId: 'games', extraUris: ['http://localhost:8000/auth/callback', 'http://localhost:5173/auth/callback'] },
+            { clientId: 'media', extraUris: ['http://localhost:4100/auth/callback'] },
         ];
-
         for (const { clientId, extraUris } of localClients) {
-            try {
-                const client = db.prepare('SELECT redirect_uris FROM oauth_clients WHERE client_id = ?').get(clientId);
-                if (!client) continue;
-                const uris = new Set(JSON.parse(client.redirect_uris || '[]'));
-                let changed = false;
-                for (const uri of extraUris) {
-                    if (!uris.has(uri)) {
-                        uris.add(uri);
-                        changed = true;
-                    }
-                }
-                if (changed) {
-                    db.prepare('UPDATE oauth_clients SET redirect_uris = ? WHERE client_id = ?')
-                        .run(JSON.stringify([...uris]), clientId);
-                    console.log(`[DB] Added local redirect_uris for ${clientId}: ${extraUris.join(', ')}`);
-                }
-            } catch (err) {
-                console.warn(`[DB] Failed to add local redirect_uris for ${clientId}:`, err.message);
-            }
+            try { await mergeRedirectUris(db, clientId, extraUris, { log, local: true }); }
+            catch (err) { warn(`Failed to add local redirect_uris for ${clientId}: ${err.message}`); }
         }
     }
-    ensureLocalOauthRedirects();
 
-    // ── Seed Default Settings ────────────────────────────────
-    const settingsCount = db.prepare('SELECT COUNT(*) as cnt FROM site_settings').get().cnt;
-    if (settingsCount === 0) {
-        const defaults = [
-            ['registration_open', 'true', 'boolean'],
-            ['platform_name', 'OpenVibe', 'string'],
-            ['default_theme', 'vibe', 'string'],
-            // Email provider defaults
-            ['email_enabled', 'false', 'boolean'],
-            ['resend_api_key', '', 'string'],
-            ['email_from_address', 'noreply@openvibe.network', 'string'],
-            ['email_from_name', 'OpenVibe', 'string'],
-            // Notification defaults
-            ['notifications_enabled', 'true', 'boolean'],
-            ['notification_max_age_days', '90', 'number'],
-            ['notification_email_critical_only', 'true', 'boolean'],
-        ];
-        const insertSetting = db.prepare('INSERT OR IGNORE INTO site_settings (key, value, type) VALUES (?, ?, ?)');
-        for (const [k, v, t] of defaults) insertSetting.run(k, v, t);
+    // ── Email verification preference reset + seeds ──────────
+    try {
+        const flagged = await db.prepare("SELECT value FROM site_settings WHERE key = 'migr_pref_email_null'").get();
+        if (!flagged) {
+            // notification_preferences.email: 0 used to be the implicit default written whenever a
+            // user toggled anything else in the row. It now means an EXPLICIT "no email"; NULL is
+            // "no choice → defaults apply". One-time reset.
+            const n = (await db.prepare('UPDATE notification_preferences SET email = NULL WHERE email = 0').run()).changes;
+            await db.prepare("INSERT INTO site_settings (key, value, type) VALUES ('migr_pref_email_null', '1', 'boolean') ON CONFLICT (key) DO UPDATE SET value = excluded.value, type = excluded.type").run();
+            if (n) console.log(`[DB] notification_preferences: ${n} email=0 rows reset to default (NULL)`);
+        }
+        const seed = db.prepare('INSERT INTO site_settings (key, value, type) VALUES (?, ?, ?) ON CONFLICT (key) DO NOTHING');
+        await seed.run('email_user_daily_cap', '30', 'number');
+        await seed.run('email_daily_cap', '2000', 'number');
+        await seed.run('email_verify_user_daily_cap', '6', 'number');
+        await seed.run('resend_webhook_secret', '', 'string');
+        await seed.run('stream_live_cooldown_min', '60', 'number');
+        await seed.run('stream_live_daily_cap', '8', 'number');
+    } catch (e) { warn(`email verification migration: ${e.message}`); }
+
+    // ── Seed default settings (only on a fresh settings table) ──
+    {
+        const settingsCount = (await db.prepare('SELECT COUNT(*) AS cnt FROM site_settings').get()).cnt;
+        if (Number(settingsCount) === 0) {
+            const defaults = [
+                ['registration_open', 'true', 'boolean'],
+                ['platform_name', 'OpenVibe', 'string'],
+                ['default_theme', 'vibe', 'string'],
+                ['email_enabled', 'false', 'boolean'],
+                ['resend_api_key', '', 'string'],
+                ['email_from_address', 'noreply@openvibe.network', 'string'],
+                ['email_from_name', 'OpenVibe', 'string'],
+                ['notifications_enabled', 'true', 'boolean'],
+                ['notification_max_age_days', '90', 'number'],
+                ['notification_email_critical_only', 'true', 'boolean'],
+            ];
+            const insertSetting = db.prepare('INSERT INTO site_settings (key, value, type) VALUES (?, ?, ?) ON CONFLICT (key) DO NOTHING');
+            for (const [k, v, t] of defaults) await insertSetting.run(k, v, t);
+        }
     }
 
-    // ── Always-Seed Discord + Integration Settings (idempotent) ──
+    // ── Always-seed Discord + integration settings (idempotent) ──
     {
         const alwaysSeed = [
             ['discord_bot_token', '', 'secret'],
@@ -635,18 +186,18 @@ function initDb(dbPath) {
             ['discord_alert_message', '', 'string'],
             ['discord_oauth_client_id', '', 'string'],
             ['discord_oauth_client_secret', '', 'secret'],
-            ['github_token', '', 'secret'],   // server/integrations/github.js (admin → Settings → GitHub)
+            ['github_token', '', 'secret'],
         ];
-        const insertSeed = db.prepare('INSERT OR IGNORE INTO site_settings (key, value, type) VALUES (?, ?, ?)');
-        for (const [k, v, t] of alwaysSeed) insertSeed.run(k, v, t);
+        const insertSeed = db.prepare('INSERT INTO site_settings (key, value, type) VALUES (?, ?, ?) ON CONFLICT (key) DO NOTHING');
+        for (const [k, v, t] of alwaysSeed) await insertSeed.run(k, v, t);
     }
 
-    // ── Sync Built-in Themes ─────────────────────────────────
+    // ── Sync built-in themes ─────────────────────────────────
     {
         const { BUILTIN_THEMES } = require('openvibe-shared/theme-sync');
         const upsertTheme = db.prepare(`
             INSERT INTO themes (id, name, slug, description, mode, variables, preview_colors, is_builtin, is_public, tags, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, ?, CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ov_now())
             ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
                 slug = excluded.slug,
@@ -657,62 +208,96 @@ function initDb(dbPath) {
                 is_builtin = 1,
                 is_public = 1,
                 tags = excluded.tags,
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = ov_now()
         `);
         for (const t of BUILTIN_THEMES) {
-            upsertTheme.run(
-                t.id,
-                t.name,
-                t.slug,
-                t.description,
-                t.mode,
-                JSON.stringify(t.variables || {}),
-                previewFromVars(t.variables || {}),
-                JSON.stringify(t.tags || [])
-            );
+            await upsertTheme.run(t.id, t.name, t.slug, t.description, t.mode,
+                JSON.stringify(t.variables || {}), previewFromVars(t.variables || {}), JSON.stringify(t.tags || []));
         }
         // A built-in that was renamed or removed must not linger as a stale catalog row.
         const ids = BUILTIN_THEMES.map((t) => t.id);
-        const gone = db.prepare(`DELETE FROM themes WHERE is_builtin = 1 AND id NOT IN (${ids.map(() => '?').join(',')})`).run(...ids).changes;
+        const gone = (await db.prepare(`DELETE FROM themes WHERE is_builtin = 1 AND id NOT IN (${ids.map(() => '?').join(',')})`).run(...ids)).changes;
         console.log(`[DB] Synced ${BUILTIN_THEMES.length} built-in themes${gone ? ` (removed ${gone} stale)` : ''}`);
     }
 
-    // Roles are Network's own data. Network never opens another service's database (ADR-007):
-    // role changes made here reach Live as network.user.updated (server/identity/profile-events.js;
-    // the key-only POST /internal/user-role push was retired, register C-54/C-55), and Live never
-    // downgrades from a stale SSO token. The boot-time read of Live's database that used to live
-    // here was removed (compatibility register C-58).
+    // ── Per-module boot work (the tables are migrations/NNNN_*.sql; this is the idempotent data work
+    //    each module did at boot on SQLite) ─────────────────────────────────────────────────────────
+    // Subject ids + identity_legacy_map (server/identity/subjects.js): backfill and seed.
+    await require('../identity/subjects').ensureSchema(db);
+    // Service principals: grants per OAuth client (server/identity/principals.js) — seeds the default
+    // grants and re-revokes the ones ADR-012 forbids.
+    await require('../identity/principals').ensureSchema(db);
+    // Versioned user modules (server/identity/modules.js).
+    await require('../identity/modules').ensureSchema(db);
+    // Developer projects, apps, credentials, grants, quotas and audit (server/developer/store.js).
+    await require('../developer/store').ensureSchema(db);
+    // Their usage, from the services' rollups (server/developer/usage.js).
+    await require('../developer/usage').ensure(db);
+    // Platform blocks, keyed by subjects (server/identity/blocks.js).
+    await require('../identity/blocks').ensureSchema(db);
+    // The follow graph, keyed by subjects (server/identity/follows.js; ADR-030).
+    await require('../identity/follows').ensureSchema(db);
+    // Incidents and maintenance on /status (server/status/incidents.js).
+    await require('../status/incidents').ensureSchema(db);
+    // Creator analytics from live.stream.ended (server/analytics/creators.js).
+    await require('../analytics/creators').ensureSchema(db);
+    // The platform's machines (server/registry/nodes.js; ADR-034 §12).
+    await require('../registry/nodes').ensureSchema(db);
+    // Refresh tokens: hash-only storage (server/auth/refresh-tokens.js).
+    await require('../auth/refresh-tokens').ensureSchema(db);
 
-    // ── Helper: getSetting ───────────────────────────────────
-    // Provider secrets (server/secrets.js) come from their environment variable when it is set.
+    console.log('[DB] Central database seeded');
+}
+
+/** Union `uris` into a client's redirect_uris under SELECT … FOR UPDATE (decision 1: many writers). */
+async function mergeRedirectUris(db, clientId, uris, { log = console, local = false } = {}) {
+    await db.tx(async (t) => {
+        const row = await t.prepare('SELECT redirect_uris FROM oauth_clients WHERE client_id = ? FOR UPDATE').get(clientId);
+        if (!row) return;
+        let current;
+        try { current = new Set(JSON.parse(row.redirect_uris || '[]')); } catch { return; }   // malformed: leave untouched
+        let changed = false;
+        for (const uri of uris) { if (!current.has(uri)) { current.add(uri); changed = true; } }
+        if (!changed) return;
+        await t.prepare('UPDATE oauth_clients SET redirect_uris = ? WHERE client_id = ?').run(JSON.stringify([...current]), clientId);
+        if (local) console.log(`[DB] Added local redirect_uris for ${clientId}: ${uris.join(', ')}`);
+        else console.log(`[DB] Updated ${clientId} redirect_uris to include contract URIs`);
+    });
+}
+
+// ── Handle helpers (attached to the database handle, async) ──────────────────
+
+function attachHelpers(db) {
+    if (db._ovHelpers) return db;
     const secrets = require('../secrets');
-    db.getSetting = function (key) {
+
+    // better-sqlite3's db.transaction(fn) returned a function; db.tx(fn) runs now. txFn keeps that
+    // shape (a runner the caller invokes, possibly more than once, e.g. a dry-run path).
+    db.txFn = (fn) => async (...args) => await db.tx(() => fn(...args));
+
+    // Provider secrets come from their environment variable when it is set.
+    db.getSetting = async function (key) {
         const fromEnv = secrets.fromEnv(key);
         if (fromEnv !== null) return fromEnv;
-        const row = this.prepare('SELECT value, type FROM site_settings WHERE key = ?').get(key);
+        const row = await db.prepare('SELECT value, type FROM site_settings WHERE key = ?').get(key);
         if (!row) return null;
         if (row.type === 'boolean') return row.value === 'true';
         if (row.type === 'number') return Number(row.value);
         return row.value;
     };
 
-    // ── Verification Key helpers ─────────────────────────────
-    db.createVerificationKey = function ({ key, target_username, note, created_by }) {
-        return this.prepare(
-            'INSERT INTO verification_keys (key, target_username, note, created_by) VALUES (?, ?, ?, ?)'
-        ).run(key, target_username, note || '', created_by);
+    db.createVerificationKey = async function ({ key, target_username, note, created_by }) {
+        return await db.prepare('INSERT INTO verification_keys (key, target_username, note, created_by) VALUES (?, ?, ?, ?)')
+            .run(key, target_username, note || '', created_by);
     };
-
-    db.getVerificationKeyByKey = function (key) {
-        return this.prepare('SELECT * FROM verification_keys WHERE key = ?').get(key);
+    db.getVerificationKeyByKey = async function (key) {
+        return await db.prepare('SELECT * FROM verification_keys WHERE key = ?').get(key);
     };
-
-    db.getVerificationKeyByUsername = function (username) {
-        return this.prepare("SELECT * FROM verification_keys WHERE target_username = ? COLLATE NOCASE AND status = 'active'").get(username);
+    db.getVerificationKeyByUsername = async function (username) {
+        return await db.prepare("SELECT * FROM verification_keys WHERE lower(target_username) = lower(?) AND status = 'active'").get(username);
     };
-
-    db.getAllVerificationKeys = function () {
-        return this.prepare(`
+    db.getAllVerificationKeys = async function () {
+        return await db.prepare(`
             SELECT vk.*, u1.username as created_by_name, u2.username as used_by_name
             FROM verification_keys vk
             LEFT JOIN users u1 ON vk.created_by = u1.id
@@ -720,45 +305,20 @@ function initDb(dbPath) {
             ORDER BY vk.created_at DESC
         `).all();
     };
-
-    db.redeemVerificationKey = function (key, userId) {
-        return this.prepare(
-            "UPDATE verification_keys SET status = 'used', used_by = ?, used_at = CURRENT_TIMESTAMP WHERE key = ? AND status = 'active'"
-        ).run(userId, key);
+    db.redeemVerificationKey = async function (key, userId) {
+        return await db.prepare("UPDATE verification_keys SET status = 'used', used_by = ?, used_at = ov_now() WHERE key = ? AND status = 'active'")
+            .run(userId, key);
     };
-
-    db.revokeVerificationKey = function (id) {
-        return this.prepare("UPDATE verification_keys SET status = 'revoked' WHERE id = ? AND status = 'active'").run(id);
+    db.revokeVerificationKey = async function (id) {
+        return await db.prepare("UPDATE verification_keys SET status = 'revoked' WHERE id = ? AND status = 'active'").run(id);
     };
-
-    db.isUsernameReserved = function (username) {
-        const vk = this.prepare("SELECT id FROM verification_keys WHERE target_username = ? COLLATE NOCASE AND status = 'active'").get(username);
+    db.isUsernameReserved = async function (username) {
+        const vk = await db.prepare("SELECT id FROM verification_keys WHERE lower(target_username) = lower(?) AND status = 'active'").get(username);
         return !!vk;
     };
 
-    // Subject ids + identity_legacy_map (server/identity/subjects.js): backfill and seed, idempotent.
-    require('../identity/subjects').ensureSchema(db);
-    // Service principals: grants per OAuth client + usage counters (server/identity/principals.js).
-    require('../identity/principals').ensureSchema(db);
-    // Versioned user modules (server/identity/modules.js).
-    require('../identity/modules').ensureSchema(db);
-    // Developer projects, apps, credentials, grants, quotas and audit (server/developer/store.js).
-    require('../developer/store').ensureSchema(db);
-    // Their usage, from the services' rollups (server/developer/usage.js).
-    require('../developer/usage').ensure(db);
-    // Platform blocks, keyed by subjects (server/identity/blocks.js).
-    require('../identity/blocks').ensureSchema(db);
-    // The follow graph, keyed by subjects (server/identity/follows.js; ADR-030).
-    require('../identity/follows').ensureSchema(db);
-    // Incidents and maintenance on /status (server/status/incidents.js).
-    require('../status/incidents').ensureSchema(db);
-    // Creator analytics from live.stream.ended (server/analytics/creators.js).
-    require('../analytics/creators').ensureSchema(db);
-    // The platform's machines (server/registry/nodes.js; ADR-034 §12).
-    require('../registry/nodes').ensureSchema(db);
-
-    console.log('[DB] Central database initialized');
+    Object.defineProperty(db, '_ovHelpers', { value: true, enumerable: false });
     return db;
 }
 
-module.exports = { initDb };
+module.exports = { openDb, initDb, getDb, setDb, seedDb, attachHelpers, MIGRATIONS, mergeRedirectUris };

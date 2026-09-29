@@ -61,15 +61,17 @@ class EmailService {
             INSERT INTO email_delivery_log (email_type, recipient, subject, status, error_message, user_id, notification_id, metadata)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `);
-        this._migrateFromSES();
-        this._loadConfig();
+        // Settings are read from the database (async): `ready` settles once they are loaded. Every send and
+        // getStatus() waits for it; the boot awaits it too. A rejection is kept for those awaiters, not left unhandled.
+        this.ready = (async () => { await this._migrateFromSES(); await this._loadConfig(); })();
+        this.ready.catch(() => {});
     }
 
     /**
      * One-time migration: copy legacy email settings to the new email_* keys if they exist
      * and the new keys haven't been set yet.
      */
-    _migrateFromSES() {
+    async _migrateFromSES() {
         const migrations = [
             ['ses_enabled', 'email_enabled', 'boolean'],
             ['ses_from_email', 'email_from_address', 'string'],
@@ -78,20 +80,20 @@ class EmailService {
             ['ses_from_email_openvibegames', 'email_from_openvibegames', 'string'],
             ['ses_from_email_openvibenetwork', 'email_from_openvibenetwork', 'string'],
         ];
-        const setSetting = this.db.prepare('INSERT OR IGNORE INTO site_settings (key, value, type) VALUES (?, ?, ?)');
+        const setSetting = this.db.prepare('INSERT INTO site_settings (key, value, type) VALUES (?, ?, ?) ON CONFLICT DO NOTHING');
         for (const [oldKey, newKey, type] of migrations) {
-            const oldVal = this.db.getSetting(oldKey);
+            const oldVal = await this.db.getSetting(oldKey);
             if (oldVal != null && oldVal !== '') {
-                setSetting.run(newKey, String(oldVal), type);
+                await setSetting.run(newKey, String(oldVal), type);
             }
         }
     }
 
-    _loadConfig() {
-        this._enabled = this.db.getSetting('email_enabled') === true;
-        this._apiKey = this.db.getSetting('resend_api_key') || null;
-        this._fromEmail = this.db.getSetting('email_from_address') || 'noreply@openvibe.network';
-        this._fromName = this.db.getSetting('email_from_name') || 'OpenVibe';
+    async _loadConfig() {
+        this._enabled = await this.db.getSetting('email_enabled') === true;
+        this._apiKey = await this.db.getSetting('resend_api_key') || null;
+        this._fromEmail = await this.db.getSetting('email_from_address') || 'noreply@openvibe.network';
+        this._fromName = await this.db.getSetting('email_from_name') || 'OpenVibe';
 
         if (this._enabled && this._apiKey) {
             console.log(`[Email] Resend initialized (from: ${this._fromName} <${this._fromEmail}>)`);
@@ -102,9 +104,11 @@ class EmailService {
     }
 
     /** Reload config (call after admin changes settings). */
-    reload() {
+    async reload() {
         this._apiKey = null;
-        this._loadConfig();
+        this.ready = this._loadConfig();
+        this.ready.catch(() => {});
+        await this.ready;
     }
 
     get isEnabled() { return this._enabled && !!this._apiKey; }
@@ -113,10 +117,10 @@ class EmailService {
      * Resolve the from-address for a given service.
      * Falls back to the global from-email if no per-service override.
      */
-    getFromEmail(service) {
+    async getFromEmail(service) {
         if (service) {
             const key = `email_from_${service.replace(/[^a-z0-9]/gi, '').toLowerCase()}`;
-            const override = this.db.getSetting(key);
+            const override = await this.db.getSetting(key);
             if (override) return override;
         }
         return this._fromEmail;
@@ -126,9 +130,9 @@ class EmailService {
      * Diagnose why the email service isn't ready.
      * Returns a user-friendly error string, or null if ready.
      */
-    diagnose() {
+    async diagnose() {
         if (!this._enabled) {
-            const dbEnabled = this.db.getSetting('email_enabled');
+            const dbEnabled = await this.db.getSetting('email_enabled');
             if (dbEnabled !== true) return 'Email is disabled — enable the toggle in admin panel and save';
             return 'Email service failed to initialize after being enabled — check server logs';
         }
@@ -138,10 +142,11 @@ class EmailService {
 
     async _sendEmail({ to, subject, htmlBody, textBody, emailType = 'generic', userId = null, notificationId = null, metadata = null, fromEmail = null }) {
         if (!to) return false;
+        await this.ready;
 
         if (!this.isEnabled) {
-            const reason = this.diagnose() || 'Email service is disabled or not configured';
-            this._recordDelivery({
+            const reason = (await this.diagnose()) || 'Email service is disabled or not configured';
+            await this._recordDelivery({
                 emailType,
                 recipient: to,
                 subject,
@@ -164,7 +169,7 @@ class EmailService {
                 html: htmlBody,
                 text: textBody,
             });
-            this._recordDelivery({
+            await this._recordDelivery({
                 emailType,
                 recipient: to,
                 subject,
@@ -175,7 +180,7 @@ class EmailService {
             });
             return true;
         } catch (err) {
-            this._recordDelivery({
+            await this._recordDelivery({
                 emailType,
                 recipient: to,
                 subject,
@@ -198,7 +203,7 @@ class EmailService {
     async sendNotificationEmail({ to, username, subject, notification }) {
         const htmlBody = this._buildEmailHtml({ username, notification });
         const textBody = this._buildEmailText({ username, notification });
-        const fromEmail = this.getFromEmail(notification.service);
+        const fromEmail = await this.getFromEmail(notification.service);
         const sent = await this._sendEmail({
             to,
             subject: subject || notification.title || 'Notification',
@@ -262,23 +267,24 @@ class EmailService {
      * @param {import('./notification-service').NotificationService} notifService
      */
     async processQueue(notifService) {
+        await this.ready;
         if (!this.isEnabled) return;
 
-        const pending = notifService.getPendingEmails();
+        const pending = await notifService.getPendingEmails();
         if (pending.length === 0) return;
 
         console.log(`[Email] Processing ${pending.length} pending email(s)...`);
 
         let skipped = 0;
         for (const notif of pending) {
-            if (!notifService.shouldEmail(notif)) {
-                notifService.markEmailed(notif.id);
+            if (!(await notifService.shouldEmail(notif))) {
+                await notifService.markEmailed(notif.id);
                 continue;
             }
-            const why = notifService.emailGuard ? notifService.emailGuard(notif) : null;
+            const why = notifService.emailGuard ? await notifService.emailGuard(notif) : null;
             if (why) {
                 // Caps: leave the row un-emailed only if the cap may lift (it won't for stale/dup).
-                if (why === 'stale' || why === 'dup') notifService.markEmailed(notif.id);
+                if (why === 'stale' || why === 'dup') await notifService.markEmailed(notif.id);
                 skipped++;
                 continue;
             }
@@ -291,7 +297,7 @@ class EmailService {
                 subject,
                 notification: notif,
             });
-            if (sent) notifService.markEmailed(notif.id);
+            if (sent) await notifService.markEmailed(notif.id);
         }
         if (skipped) console.log(`[Email] ${skipped} notification email(s) held back by guards (stale/dup/caps)`);
     }
@@ -424,9 +430,10 @@ body { margin: 0; padding: 0; background: #1a1a24; font-family: -apple-system, B
     /**
      * Get current email service configuration status (for admin panel).
      */
-    getStatus() {
-        const apiKey = this.db.getSetting('resend_api_key') || '';
-        const issue = this.diagnose();
+    async getStatus() {
+        await this.ready;
+        const apiKey = await this.db.getSetting('resend_api_key') || '';
+        const issue = await this.diagnose();
         const secrets = require('../secrets');
         return {
             enabled: this._enabled,
@@ -435,14 +442,14 @@ body { margin: 0; padding: 0; background: #1a1a24; font-family: -apple-system, B
             provider: 'resend',
             from_email: this._fromEmail,
             from_name: this._fromName,
-            from_email_openvibelive: this.db.getSetting('email_from_openvibelive') || '',
-            from_email_openvibegames: this.db.getSetting('email_from_openvibegames') || '',
-            from_email_openvibenetwork: this.db.getSetting('email_from_openvibenetwork') || '',
+            from_email_openvibelive: await this.db.getSetting('email_from_openvibelive') || '',
+            from_email_openvibegames: await this.db.getSetting('email_from_openvibegames') || '',
+            from_email_openvibenetwork: await this.db.getSetting('email_from_openvibenetwork') || '',
             hasApiKey: !!apiKey,
             // Masked API key for display (show first 6 chars + last 4)
             api_key: apiKey ? apiKey.slice(0, 6) + '••••' + apiKey.slice(-4) : '',
             // Where the key comes from: env (RESEND_API_KEY, the admin UI cannot change it), database, unset.
-            api_key_source: secrets.source(this.db, 'resend_api_key'),
+            api_key_source: await secrets.source(this.db, 'resend_api_key'),
             api_key_env: secrets.envName('resend_api_key'),
         };
     }
@@ -452,7 +459,8 @@ body { margin: 0; padding: 0; background: #1a1a24; font-family: -apple-system, B
      * Throws with a descriptive error if email service is not ready.
      */
     async sendTestEmail(to) {
-        const issue = this.diagnose();
+        await this.ready;
+        const issue = await this.diagnose();
         if (issue) throw new Error(issue);
 
         const subject = '🔥 OpenVibe — Test Email';
@@ -476,9 +484,9 @@ body { margin: 0; padding: 0; background: #1a1a24; font-family: -apple-system, B
         return true;
     }
 
-    _recordDelivery({ emailType, recipient, subject, status, errorMessage = null, userId = null, notificationId = null, metadata = null }) {
+    async _recordDelivery({ emailType, recipient, subject, status, errorMessage = null, userId = null, notificationId = null, metadata = null }) {
         try {
-            this._logDelivery.run(
+            await this._logDelivery.run(
                 emailType,
                 recipient,
                 subject || null,

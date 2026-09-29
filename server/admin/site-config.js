@@ -28,14 +28,14 @@ const byDb = new WeakMap();
 const isConfigKey = (key) => typeof key === 'string' && key.length > 0 && key.length <= 100 && !NOT_CONFIG.test(key);
 
 /** The journal for one database handle. */
-function forDb(db) {
+async function forDb(db) {
     if (byDb.has(db)) return byDb.get(db);
     const types = new Map();      // key → the row type last seen (a rollback that re-creates a row reuses it)
     const secretRows = new Set(); // keys stored with type 'secret'
 
-    function rowsNow() {
+    async function rowsNow() {
         const out = {};
-        for (const r of db.prepare('SELECT key, value, type FROM site_settings').all()) {
+        for (const r of await db.prepare('SELECT key, value, type FROM site_settings').all()) {
             if (!isConfigKey(r.key)) continue;
             out[r.key] = r.value == null ? '' : String(r.value);
             types.set(r.key, r.type || 'string');
@@ -46,34 +46,36 @@ function forDb(db) {
     const classify = (key) => (secretRows.has(key) || SECRET.test(key) ? 'secret' : PUBLIC_KEYS.has(key) ? 'public' : 'internal');
 
     let pendingTypes = {};        // the types the change being applied names for new rows
-    function writeRows(target) {
-        const now = rowsNow();
+    async function writeRows(target) {
+        const now = await rowsNow();
         const upd = db.prepare('UPDATE site_settings SET value = ? WHERE key = ?');
         const ins = db.prepare('INSERT INTO site_settings (key, value, type) VALUES (?, ?, ?)');
         const del = db.prepare('DELETE FROM site_settings WHERE key = ?');
-        db.transaction(() => {
+        await db.tx(async () => {
             for (const [k, v] of Object.entries(target)) {
                 if (!isConfigKey(k)) continue;
-                if (!(k in now)) ins.run(k, String(v), pendingTypes[k] || types.get(k) || 'string');
-                else if (now[k] !== String(v)) upd.run(String(v), k);
+                if (!(k in now)) await ins.run(k, String(v), pendingTypes[k] || types.get(k) || 'string');
+                else if (now[k] !== String(v)) await upd.run(String(v), k);
             }
-            for (const k of Object.keys(now)) if (!(k in target)) del.run(k);
-        })();
+            for (const k of Object.keys(now)) if (!(k in target)) await del.run(k);
+        });
     }
 
-    rowsNow();   // learn the types and secret rows before the store classifies anything
-    const store = config.createConfigStore({
+    const initial = await rowsNow();   // learn the types and secret rows before the store classifies anything
+    const store = await config.createConfigStore({
         db, service: 'network', namespace: 'network.site_settings',
         classify,
-        legacy: () => rowsNow(),
-        onActivate: async (values) => writeRows(values),
+        // The legacy source is snapshotted now (an object, not a callback): the revision it seeds is the rows
+        // as they are at boot.
+        legacy: initial,
+        onActivate: async (values) => await writeRows(values),
         log: { info: (m) => console.log(`[Config] ${m}`), warn: (m) => console.warn(`[Config] ${m}`), error: (m) => console.error(`[Config] ${m}`) },
     });
     const canonical = (o) => JSON.stringify(Object.keys(o).sort().map((k) => [k, o[k]]));
 
     /** Record rows written around the journal as a revision of their own. → the sync snapshot, or null */
     async function sync() {
-        const now = rowsNow();
+        const now = await rowsNow();
         if (canonical({ ...store.get() }) === canonical(now)) return null;
         return store.apply(now, { actor: SYSTEM, reason: 'sync: site_settings changed outside the configuration journal' });
     }

@@ -23,9 +23,9 @@ function verifySvix(secret, headers, rawBody) {
 
 module.exports = function resendWebhook() {
     const router = express.Router();
-    router.post('/resend', express.raw({ type: '*/*', limit: '256kb' }), (req, res) => {
+    router.post('/resend', express.raw({ type: '*/*', limit: '256kb' }), async (req, res) => {
         const db = req.app.locals.db;
-        const secret = db.getSetting('resend_webhook_secret');
+        const secret = await db.getSetting('resend_webhook_secret');
         const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body || '');
         if (!secret) { console.warn('[Resend webhook] received but resend_webhook_secret is not configured — ignored'); return res.status(503).json({ ok: false }); }
         if (!verifySvix(secret, req.headers, raw)) return res.status(401).json({ ok: false, error: 'bad signature' });
@@ -35,11 +35,11 @@ module.exports = function resendWebhook() {
         if (!to.length) return res.json({ ok: true });
         if (type === 'email.bounced' || type === 'email.complained') {
             const reason = type === 'email.complained' ? 'complaint' : (evt?.data?.bounce?.message || evt?.data?.bounce?.type || 'bounce');
-            const stmt = db.prepare("UPDATE users SET email_bounced_at = CURRENT_TIMESTAMP, email_bounce_reason = ?, email_verified = CASE WHEN ? = 'complaint' THEN email_verified ELSE 0 END WHERE LOWER(email) = ?");
+            const stmt = db.prepare("UPDATE users SET email_bounced_at = ov_now(), email_bounce_reason = ?, email_verified = CASE WHEN ? = 'complaint' THEN email_verified ELSE 0 END WHERE LOWER(email) = ?");
             let n = 0;
-            for (const addr of to) n += stmt.run(String(reason).slice(0, 200), type === 'email.complained' ? 'complaint' : 'bounce', addr).changes;
+            for (const addr of to) n += (await stmt.run(String(reason).slice(0, 200), type === 'email.complained' ? 'complaint' : 'bounce', addr)).changes;
             console.warn(`[Resend webhook] ${type} for ${to.join(',')} — ${n} account(s) suppressed`);
-            try { db.prepare("INSERT INTO email_delivery_log (email_type, recipient, subject, status, error_message, metadata) VALUES (?, ?, ?, 'failed', ?, ?)").run(`webhook:${type}`, to[0], null, String(reason).slice(0, 200), JSON.stringify({ event: type })); } catch { /* */ }
+            try { await db.prepare("INSERT INTO email_delivery_log (email_type, recipient, subject, status, error_message, metadata) VALUES (?, ?, ?, 'failed', ?, ?)").run(`webhook:${type}`, to[0], null, String(reason).slice(0, 200), JSON.stringify({ event: type })); } catch { /* */ }
         }
         res.json({ ok: true });
     });

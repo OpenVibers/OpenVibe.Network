@@ -19,3 +19,14 @@ for (const r of await t.db.prepare(`SELECT pg_get_serial_sequence(quote_ident(ta
 }
 globalThis.__ovNetworkTestDb = t.db;
 globalThis.__ovNetworkTestDbClose = t.close;
+// Owner-only DDL (a CREATE TRIGGER, say) for tests that must fail a write at the database, not in a mock: on the
+// containers the runtime role may not create in the schema, so this runs on the owner connection. PGlite has one role.
+globalThis.__ovNetworkDdl = async (sql) => {
+    if (!t.directUrl) return t.db.exec(sql);
+    const { createDb } = require('openvibe-sdk/db');
+    const owner = createDb({ url: t.directUrl, service: 'network-test-owner', max: 1 });
+    try { return await owner.exec(sql); } finally { await owner.close(); }
+};
+// initDb() adopts the handle above, attaches the handle helpers and seeds the boot data (OAuth clients, site
+// settings, built-in themes) once, exactly as the server does at boot. Every test file then reads it with getDb().
+await require(path.join(root, 'server', 'db', 'database.js')).initDb();

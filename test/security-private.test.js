@@ -27,8 +27,8 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         const closed = await w.call('staff', 'POST', `/api/v1/status/incidents/${inc.body.id}/updates`, { state: 'resolved', message: 'fixed' });
         assert.strictEqual(closed.status, 200, closed.text);
         const longAgo = new Date(Date.now() - 40 * 864e5).toISOString();
-        db.prepare('UPDATE status_incidents SET starts_at = ?, updated_at = ?, ends_at = ? WHERE id = ?').run(longAgo, longAgo, longAgo, inc.body.id);
-        db.prepare('UPDATE status_incident_updates SET at = ? WHERE incident_id = ?').run(longAgo, inc.body.id);
+        await db.prepare('UPDATE status_incidents SET starts_at = ?, updated_at = ?, ends_at = ? WHERE id = ?').run(longAgo, longAgo, longAgo, inc.body.id);
+        await db.prepare('UPDATE status_incident_updates SET at = ? WHERE incident_id = ?').run(longAgo, inc.body.id);
 
         const alice = {
             'alice email': users.alice.email,
@@ -158,4 +158,4 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
     } finally {
         await w.stop();
     }
-})().catch((err) => { console.error(err); process.exit(1); });
+})().then(() => process.exit(0)).catch((err) => { console.error(err); process.exit(1); });

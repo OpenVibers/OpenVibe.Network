@@ -9,7 +9,9 @@
  * Every write takes NETWORK_LIMITS_MINUTE / NETWORK_LIMITS_HOUR (120 and 3000) as `network.api.write`; the table
  * below gives sensitive writes their own, tighter numbers on top. Past a limit the request answers 429 problem+json
  * `rate_limited` with Retry-After before any route runs; the refusal is logged by subject (never a token) and counted
- * in network_rate_limited_total{limit,window}. Counters live in this process.
+ * in network_rate_limited_total{limit,window}. Counters live in this process unless a shared Valkey store is passed
+ * (server/index.js builds it from VALKEY_URL; ADR-035) — and if Valkey is unreachable the SDK degrades to the
+ * in-process counters, so a store outage slows nothing to a 500.
  *
  * Never counted: /api/auth/* (sign-in has its own limiter), /api/webhooks (providers), /api/v1/realtime tickets.
  * /internal, /oauth, /api/health, /api/ready, /metrics and the JWKS are outside what this sees or are reads.
@@ -39,7 +41,7 @@ const ROUTES = [
     ['network.block', /^(PUT|POST|DELETE)$/, /^\/v1\/me\/blocks(\/|$)/, { minute: 30, hour: 300 }],
 ];
 
-function createNetworkActorLimits({ env = process.env, publicKey, issuer, registry = null, now } = {}) {
+function createNetworkActorLimits({ env = process.env, publicKey, issuer, registry = null, now, store = null } = {}) {
     let refused = null;
     if (registry && typeof registry.counter === 'function') {
         refused = registry.counter({ name: 'network_rate_limited_total', help: 'API writes refused 429 by a per-actor limit, by limit name and window', labelNames: ['limit', 'window'] });
@@ -60,6 +62,7 @@ function createNetworkActorLimits({ env = process.env, publicKey, issuer, regist
         limits: { minute: num(env.NETWORK_LIMITS_MINUTE, 120), hour: num(env.NETWORK_LIMITS_HOUR, 3000) },
         actor,
         ...(now ? { now } : {}),
+        ...(store ? { store } : {}),
         onLimited(e) {
             console.warn(`[Limits] ${e.name}: ${e.actor} refused, over ${e.limit} per ${e.window}`);
             if (refused) refused.inc({ limit: e.name, window: e.window });

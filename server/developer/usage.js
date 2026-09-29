@@ -45,59 +45,7 @@ const dayOf = (ms) => iso(ms).slice(0, 10);
 const parse = (s, d) => { try { return JSON.parse(s); } catch { return d; } };
 const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
 
-function ensure(db) {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS dev_usage_windows (
-            project_id   TEXT NOT NULL,
-            env          TEXT NOT NULL CHECK (env IN ('sandbox', 'production')),
-            service      TEXT NOT NULL,
-            capability   TEXT NOT NULL,
-            dimension    TEXT NOT NULL DEFAULT '',
-            unit         TEXT NOT NULL,
-            window_start TEXT NOT NULL,
-            window_end   TEXT NOT NULL,
-            quantity     INTEGER NOT NULL,
-            errors       INTEGER NOT NULL,
-            error_codes  TEXT NOT NULL DEFAULT '{}',
-            revision     INTEGER NOT NULL DEFAULT 1,
-            event_id     TEXT NOT NULL,
-            recorded_at  TEXT NOT NULL,
-            PRIMARY KEY (project_id, env, service, capability, dimension, unit, window_start)
-        );
-        CREATE INDEX IF NOT EXISTS idx_dev_usage_windows_when ON dev_usage_windows(window_start);
-        CREATE INDEX IF NOT EXISTS idx_dev_usage_windows_project ON dev_usage_windows(project_id, recorded_at);
-        CREATE TABLE IF NOT EXISTS dev_usage_daily (
-            project_id  TEXT NOT NULL,
-            env         TEXT NOT NULL,
-            service     TEXT NOT NULL,
-            capability  TEXT NOT NULL,
-            dimension   TEXT NOT NULL DEFAULT '',
-            unit        TEXT NOT NULL,
-            day         TEXT NOT NULL,
-            quantity    INTEGER NOT NULL DEFAULT 0,
-            errors      INTEGER NOT NULL DEFAULT 0,
-            error_codes TEXT NOT NULL DEFAULT '{}',
-            updated_at  TEXT NOT NULL,
-            PRIMARY KEY (project_id, env, service, capability, dimension, unit, day)
-        );
-        CREATE INDEX IF NOT EXISTS idx_dev_usage_daily_day ON dev_usage_daily(project_id, day);
-        CREATE TABLE IF NOT EXISTS dev_usage_errors (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            project_id TEXT NOT NULL,
-            env        TEXT NOT NULL,
-            service    TEXT NOT NULL,
-            capability TEXT NOT NULL,
-            at         TEXT NOT NULL,
-            code       TEXT NOT NULL,
-            status     INTEGER,
-            trace_id   TEXT,
-            ref        TEXT NOT NULL DEFAULT '',
-            event_id   TEXT NOT NULL
-        );
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_dev_usage_errors_once ON dev_usage_errors(project_id, env, service, capability, at, code, ref);
-        CREATE INDEX IF NOT EXISTS idx_dev_usage_errors_recent ON dev_usage_errors(project_id, at);
-    `);
-}
+function ensure(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
 function mergeCodes(into, codes) {
     for (const [k, n] of Object.entries(obj(codes))) if (Number.isSafeInteger(n) && n > 0) into[k] = (into[k] || 0) + n;
@@ -126,15 +74,15 @@ function createProjectUsage(db, { now = () => Date.now(), log = console } = {}) 
             VALUES (@project_id, @env, @service, @capability, @dimension, @unit, @day, @quantity, @errors, @error_codes, @updated_at)
             ON CONFLICT(project_id, env, service, capability, dimension, unit, day) DO UPDATE SET
                 quantity = excluded.quantity, errors = excluded.errors, error_codes = excluded.error_codes, updated_at = excluded.updated_at`),
-        addError: db.prepare(`INSERT OR IGNORE INTO dev_usage_errors (project_id, env, service, capability, at, code, status, trace_id, ref, event_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+        addError: db.prepare(`INSERT INTO dev_usage_errors (project_id, env, service, capability, at, code, status, trace_id, ref, event_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`),
         capErrors: db.prepare(`DELETE FROM dev_usage_errors WHERE project_id = ? AND id NOT IN
             (SELECT id FROM dev_usage_errors WHERE project_id = ? ORDER BY at DESC, id DESC LIMIT ${ERRORS_PER_PROJECT})`),
     };
     let lastPrune = 0;
 
     /** Inside the consumer's inbox transaction: 'recorded' or an 'ignored:*' outcome. */
-    function record(event) {
+    async function record(event) {
         const type = String(event && event.event_type || '');
         if (!TOPICS.includes(type)) return 'ignored:type';
         const service = type.split('.')[0];
@@ -155,14 +103,14 @@ function createProjectUsage(db, { now = () => Date.now(), log = console } = {}) 
         const t = now();
         if (start > t + HOUR_MS) return 'ignored:future';
         if (start < t - WINDOW_DAYS * DAY_MS) return 'ignored:too_old';
-        if (!q.project.get(p.project_id)) return 'ignored:project';
+        if (!await q.project.get(p.project_id)) return 'ignored:project';
         const key = { project_id: p.project_id, env: p.env, service, capability: p.capability, dimension: p.dimension || '', unit: p.unit };
         const windowStart = iso(start);
         const revision = p.revision || 1;
-        const prev = q.window.get(key.project_id, key.env, key.service, key.capability, key.dimension, key.unit, windowStart);
+        const prev = await q.window.get(key.project_id, key.env, key.service, key.capability, key.dimension, key.unit, windowStart);
         if (prev && prev.revision > revision) return 'ignored:stale';
         const recordedAt = iso(t);
-        q.upsertWindow.run({
+        await q.upsertWindow.run({
             ...key, window_start: windowStart, window_end: iso(end), quantity: p.quantity, errors: p.errors,
             error_codes: JSON.stringify(obj(p.error_codes)), revision, event_id: event.event_id, recorded_at: recordedAt,
         });
@@ -171,25 +119,25 @@ function createProjectUsage(db, { now = () => Date.now(), log = console } = {}) 
         const from = `${day}T00:00:00.000Z`;
         const to = iso(Date.parse(from) + DAY_MS);
         const sum = { quantity: 0, errors: 0, codes: {} };
-        for (const w of q.dayWindows.all(key.project_id, key.env, key.service, key.capability, key.dimension, key.unit, from, to)) {
+        for (const w of await q.dayWindows.all(key.project_id, key.env, key.service, key.capability, key.dimension, key.unit, from, to)) {
             sum.quantity += w.quantity; sum.errors += w.errors; mergeCodes(sum.codes, parse(w.error_codes, {}));
         }
-        q.upsertDaily.run({ ...key, day, quantity: sum.quantity, errors: sum.errors, error_codes: JSON.stringify(sum.codes), updated_at: recordedAt });
+        await q.upsertDaily.run({ ...key, day, quantity: sum.quantity, errors: sum.errors, error_codes: JSON.stringify(sum.codes), updated_at: recordedAt });
         for (const s of Array.isArray(p.samples) ? p.samples : []) {
-            q.addError.run(key.project_id, key.env, service, key.capability, iso(Date.parse(s.at)), s.code, s.status || null, s.trace_id || null, s.ref || '', event.event_id);
+            await q.addError.run(key.project_id, key.env, service, key.capability, iso(Date.parse(s.at)), s.code, s.status || null, s.trace_id || null, s.ref || '', event.event_id);
         }
-        if (p.samples && p.samples.length) q.capErrors.run(key.project_id, key.project_id);
-        if (t - lastPrune > HOUR_MS) { lastPrune = t; prune(t); }
+        if (p.samples && p.samples.length) await q.capErrors.run(key.project_id, key.project_id);
+        if (t - lastPrune > HOUR_MS) { lastPrune = t; await prune(t); }
         return 'recorded';
     }
 
-    function prune(t = now()) {
-        db.prepare('DELETE FROM dev_usage_windows WHERE window_start < ?').run(iso(t - WINDOW_DAYS * DAY_MS));
-        db.prepare('DELETE FROM dev_usage_daily WHERE day < ?').run(dayOf(t - DAILY_DAYS * DAY_MS));
-        db.prepare('DELETE FROM dev_usage_errors WHERE at < ?').run(iso(t - ERROR_DAYS * DAY_MS));
+    async function prune(t = now()) {
+        await db.prepare('DELETE FROM dev_usage_windows WHERE window_start < ?').run(iso(t - WINDOW_DAYS * DAY_MS));
+        await db.prepare('DELETE FROM dev_usage_daily WHERE day < ?').run(dayOf(t - DAILY_DAYS * DAY_MS));
+        await db.prepare('DELETE FROM dev_usage_errors WHERE at < ?').run(iso(t - ERROR_DAYS * DAY_MS));
     }
 
-    return { record, prune, summary: (projectId, o) => summary(db, projectId, { now, ...o }) };
+    return { record, prune, summary: async (projectId, o) => await summary(db, projectId, { now, ...o }) };
 }
 
 class UsageQueryError extends Error {
@@ -206,13 +154,13 @@ function parseQuery(query = {}) {
 }
 
 /** network.project-usage-result@1 for one project (the caller checked access). */
-function summary(db, projectId, { days = 30, env = 'all', now = () => Date.now() } = {}) {
+async function summary(db, projectId, { days = 30, env = 'all', now = () => Date.now() } = {}) {
     const t = now();
     const to = dayOf(t);
     const from = dayOf(t - (days - 1) * DAY_MS);
     const envSql = env === 'all' ? '' : ' AND env = ?';
     const envArgs = env === 'all' ? [] : [env];
-    const rows = db.prepare(`SELECT * FROM dev_usage_daily WHERE project_id = ? AND day >= ?${envSql}
+    const rows = await db.prepare(`SELECT * FROM dev_usage_daily WHERE project_id = ? AND day >= ?${envSql}
         ORDER BY day DESC, service, capability, dimension, unit, env`).all(projectId, from, ...envArgs);
 
     const daily = rows.map((r) => ({ day: r.day, service: r.service, capability: r.capability, dimension: r.dimension || null, unit: r.unit, env: r.env, quantity: r.quantity, errors: r.errors }));
@@ -234,9 +182,9 @@ function summary(db, projectId, { days = 30, env = 'all', now = () => Date.now()
     }
 
     // Quotas (dev_quotas, staff-set): what their current window used, every environment together.
-    const seen = new Set(db.prepare('SELECT DISTINCT capability, unit FROM dev_usage_daily WHERE project_id = ?').all(projectId).map((r) => `${r.capability}|${r.unit}`));
-    const usedSince = db.prepare('SELECT COALESCE(SUM(quantity), 0) AS n FROM dev_usage_daily WHERE project_id = ? AND capability = ? AND unit = ? AND day >= ?');
-    const quotas = db.prepare('SELECT * FROM dev_quotas WHERE project_id = ? ORDER BY capability').all(projectId).map((qr) => {
+    const seen = new Set((await db.prepare('SELECT DISTINCT capability, unit FROM dev_usage_daily WHERE project_id = ?').all(projectId)).map((r) => `${r.capability}|${r.unit}`));
+    const usedSince = db.prepare('SELECT COALESCE(SUM(quantity), 0)::bigint AS n FROM dev_usage_daily WHERE project_id = ? AND capability = ? AND unit = ? AND day >= ?');
+    const quotas = (await Promise.all((await db.prepare('SELECT * FROM dev_quotas WHERE project_id = ? ORDER BY capability').all(projectId)).map(async (qr) => {
         const cap = capabilities.get(qr.capability);
         const out = { capability: qr.capability, limit: qr.limit_value, window: qr.quota_window, unit: qr.unit, enforced_by: cap ? `openvibe.${cap.owner}` : null, used: null, remaining: null, window_start: null, note: null };
         const measured = seen.has(`${qr.capability}|${qr.unit}`) || (REPORTED[qr.capability] || []).includes(qr.unit);
@@ -253,15 +201,15 @@ function summary(db, projectId, { days = 30, env = 'all', now = () => Date.now()
         if (qr.quota_window === 'day') { since = to; out.window_start = `${to}T00:00:00.000Z`; }
         else if (qr.quota_window === 'month') { since = `${to.slice(0, 7)}-01`; out.window_start = `${since}T00:00:00.000Z`; }
         else { since = '0000-00-00'; out.note = `total of the last ${DAILY_DAYS} days kept`; }
-        out.used = usedSince.get(projectId, qr.capability, qr.unit, since).n;
-        out.remaining = Math.max(0, qr.limit_value - out.used);
+        out.used = Number((await usedSince.get(projectId, qr.capability, qr.unit, since)).n);
+        out.remaining = Math.max(0, Number(qr.limit_value) - out.used);
         return out;
-    });
+    })));
 
-    const recent = db.prepare(`SELECT * FROM dev_usage_errors WHERE project_id = ? AND at >= ?${envSql} ORDER BY at DESC, id DESC LIMIT ${RECENT_ERRORS}`)
-        .all(projectId, `${from}T00:00:00.000Z`, ...envArgs)
+    const recent = (await db.prepare(`SELECT * FROM dev_usage_errors WHERE project_id = ? AND at >= ?${envSql} ORDER BY at DESC, id DESC LIMIT ${RECENT_ERRORS}`)
+        .all(projectId, `${from}T00:00:00.000Z`, ...envArgs))
         .map((e) => ({ at: e.at, env: e.env, service: e.service, capability: e.capability, code: e.code, status: e.status == null ? null : e.status, trace_id: e.trace_id || null, ref: e.ref || null }));
-    const last = db.prepare('SELECT MAX(recorded_at) AS at FROM dev_usage_windows WHERE project_id = ?').get(projectId).at || null;
+    const last = (await db.prepare('SELECT MAX(recorded_at) AS at FROM dev_usage_windows WHERE project_id = ?').get(projectId)).at || null;
 
     return {
         project_id: projectId, env, range: { days, from, to }, generated_at: iso(t), last_recorded_at: last,

@@ -56,14 +56,16 @@ module.exports = {
     // Database (ADR-035, plan T2): PostgreSQL through PgBouncer in production. `url` (DATABASE_URL) serves
     // requests; `directUrl` (DATABASE_DIRECT_URL, the owner role on a direct connection) runs migrations.
     // Without DATABASE_URL, development and tests run an embedded PGlite database in `pgliteDir`
-    // (PGLITE_DIR overrides it); production refuses to boot. `path` is the retired SQLite file: it is
-    // read only by the one-time import (scripts/migrate-to-postgres.js) and reset-db, never by serving code.
+    // (PGLITE_DIR overrides it); production refuses to boot. There is no SQLite file: DB_PATH is read only
+    // by the one-time import tools (scripts/migrate-to-postgres.js, scripts/pg-preflight-collisions.js).
     db: {
-        path: process.env.DB_PATH || './data/network.db',
         url: process.env.DATABASE_URL || '',
         directUrl: process.env.DATABASE_DIRECT_URL || '',
         pgliteDir: process.env.PGLITE_DIR || 'data/pglite',
     },
+
+    // Local data directory (account exports, and the avatar path's default parent). DATA_DIR overrides it.
+    dataDir: process.env.DATA_DIR || 'data',
 
     // Valkey (ADR-035, plan T2): the shared store behind the per-actor limits and any short-lived shared
     // state, so every process and host counts one actor together. Unset = this process's own counters
@@ -71,6 +73,7 @@ module.exports = {
     // the source of truth; nothing here is a cache of record.
     valkey: {
         url: process.env.VALKEY_URL || '',
+        prefix: process.env.VALKEY_PREFIX || 'ov:network:',
     },
 
     // Admin auto-creation

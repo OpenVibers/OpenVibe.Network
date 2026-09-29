@@ -68,48 +68,7 @@ function ownerRetired(namespace) {
     return !!(m && m.status === 'retired');
 }
 
-function ensureSchema(db) {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS user_modules (
-            subject_id TEXT NOT NULL,
-            namespace  TEXT NOT NULL,
-            version    INTEGER NOT NULL,
-            revision   INTEGER NOT NULL DEFAULT 0,
-            data       TEXT NOT NULL,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_by TEXT,
-            PRIMARY KEY (subject_id, namespace)
-        );
-        -- The last revision issued per (subject, namespace), kept across deletes.
-        CREATE TABLE IF NOT EXISTS user_module_revisions (
-            subject_id TEXT NOT NULL,
-            namespace  TEXT NOT NULL,
-            revision   INTEGER NOT NULL,
-            PRIMARY KEY (subject_id, namespace)
-        );
-        -- When Network first saw a namespace's owning service retired (onOwnerRemoved).
-        CREATE TABLE IF NOT EXISTS user_module_retirements (
-            namespace       TEXT PRIMARY KEY,
-            owner           TEXT NOT NULL,
-            retired_seen_at INTEGER NOT NULL
-        );
-    `);
-    moduleEvents.ensureSchema(db);
-    // An account cannot disappear, or change subject, while module rows remain: the code that deletes or
-    // merges it must call onSubjectRemoved/onSubjectMerged (same transaction), which also emit the events.
-    for (const table of ['users', 'anon_users']) {
-        if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table)) continue;
-        db.exec(`
-            CREATE TRIGGER IF NOT EXISTS user_modules_guard_${table}_delete BEFORE DELETE ON ${table}
-            WHEN OLD.subject_id IS NOT NULL AND EXISTS (SELECT 1 FROM user_modules WHERE subject_id = OLD.subject_id)
-            BEGIN SELECT RAISE(ABORT, 'user_modules rows remain for this subject: call modules.onSubjectRemoved or onSubjectMerged first'); END;
-            CREATE TRIGGER IF NOT EXISTS user_modules_guard_${table}_rekey BEFORE UPDATE OF subject_id ON ${table}
-            WHEN OLD.subject_id IS NOT NULL AND NEW.subject_id IS NOT OLD.subject_id
-                 AND EXISTS (SELECT 1 FROM user_modules WHERE subject_id = OLD.subject_id)
-            BEGIN SELECT RAISE(ABORT, 'user_modules rows remain for this subject: call modules.onSubjectMerged first'); END;
-        `);
-    }
-}
+async function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
 const subjectRef = (sid) => ({ type: sid.startsWith('gst_') ? 'guest' : 'user', id: sid });
 
@@ -125,16 +84,16 @@ function toRecord(row) {
         data, updated_at: row.updated_at, updated_by: row.updated_by || undefined };
 }
 
-function read(db, subjectId, namespace) {
-    const row = db.prepare('SELECT * FROM user_modules WHERE subject_id = ? AND namespace = ?').get(subjectId, namespace);
+async function read(db, subjectId, namespace) {
+    const row = await db.prepare('SELECT * FROM user_modules WHERE subject_id = ? AND namespace = ?').get(subjectId, namespace);
     return row ? toRecord(row) : null;
 }
 
 /** The next revision for (subject, namespace): one above both the current row and the last issued. */
-function nextRevision(db, subjectId, namespace, current) {
-    const hw = db.prepare('SELECT revision FROM user_module_revisions WHERE subject_id = ? AND namespace = ?').get(subjectId, namespace);
+async function nextRevision(db, subjectId, namespace, current) {
+    const hw = await db.prepare('SELECT revision FROM user_module_revisions WHERE subject_id = ? AND namespace = ?').get(subjectId, namespace);
     const next = Math.max(current || 0, hw ? hw.revision : 0) + 1;
-    db.prepare(`INSERT INTO user_module_revisions (subject_id, namespace, revision) VALUES (?, ?, ?)
+    await db.prepare(`INSERT INTO user_module_revisions (subject_id, namespace, revision) VALUES (?, ?, ?)
                 ON CONFLICT(subject_id, namespace) DO UPDATE SET revision = excluded.revision`).run(subjectId, namespace, next);
     return next;
 }
@@ -151,7 +110,7 @@ function actorOf(subjectId, writer) {
  * the writer read (0 = "I expect no record"); undefined = unconditional (allowed for the owner service only).
  * Returns { status, record } or { status, code, detail, errors? }.
  */
-function write(db, subjectId, namespace, data, { writer, expectedRevision, ctx } = {}) {
+async function write(db, subjectId, namespace, data, { writer, expectedRevision, ctx } = {}) {
     const ns = modules.get(namespace);
     if (!ns) return { status: 404, code: 'modules.unknown_namespace', detail: `no namespace ${namespace}` };
     if (!canWrite(namespace, writer)) return { status: 403, code: 'modules.write_denied', detail: `${writer && writer.type === 'user' ? 'users' : writer && writer.id} may not write ${namespace}` };
@@ -160,27 +119,27 @@ function write(db, subjectId, namespace, data, { writer, expectedRevision, ctx }
     const v = modules.validateData(namespace, data);
     if (!v.valid) return { status: 422, code: 'modules.invalid_data', detail: `does not match ${namespace} v${ns.version}`, errors: v.errors };
     const by = writer.type === 'user' ? `user:${subjectId}` : `svc:${writer.id}`;
-    const out = db.transaction(() => {
-        const cur = db.prepare('SELECT revision, data FROM user_modules WHERE subject_id = ? AND namespace = ?').get(subjectId, namespace);
+    const out = await db.tx(async () => {
+        const cur = await db.prepare('SELECT revision, data FROM user_modules WHERE subject_id = ? AND namespace = ?').get(subjectId, namespace);
         const have = cur ? cur.revision : 0;
         if (expectedRevision !== undefined && Number(expectedRevision) !== have) {
             return { status: 412, code: 'modules.revision_conflict', detail: `revision is ${have}, not ${expectedRevision}` };
         }
-        const revision = nextRevision(db, subjectId, namespace, have);
-        db.prepare(`INSERT INTO user_modules (subject_id, namespace, version, revision, data, updated_at, updated_by)
-                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+        const revision = await nextRevision(db, subjectId, namespace, have);
+        await db.prepare(`INSERT INTO user_modules (subject_id, namespace, version, revision, data, updated_at, updated_by)
+                    VALUES (?, ?, ?, ?, ?, ov_now(), ?)
                     ON CONFLICT(subject_id, namespace) DO UPDATE SET version = excluded.version, revision = excluded.revision,
-                        data = excluded.data, updated_at = CURRENT_TIMESTAMP, updated_by = excluded.updated_by`)
+                        data = excluded.data, updated_at = ov_now(), updated_by = excluded.updated_by`)
             .run(subjectId, namespace, ns.version, revision, JSON.stringify(data), by);
-        const record = read(db, subjectId, namespace);
+        const record = await read(db, subjectId, namespace);
         assertValid('modules.module-record@1', record);
-        moduleEvents.record(db, {
+        await moduleEvents.record(db, {
             subjectId, namespace, namespaceOwner: ownerOf(namespace), schemaVersion: ns.version, revision,
             change: cur ? 'updated' : 'created', reason: 'write', before: cur ? JSON.parse(cur.data) : {}, after: data,
             actor: actorOf(subjectId, writer), ctx,
         });
         return { status: cur ? 200 : 201, record };
-    })();
+    });
     if (out.record) moduleEvents.kick(db);
     return out;
 }
@@ -189,12 +148,12 @@ function write(db, subjectId, namespace, data, { writer, expectedRevision, ctx }
  * Delete one record inside the caller's transaction (or its own) and emit its event.
  * Returns the revision of the delete, or 0 when there was no record.
  */
-function removeRow(db, subjectId, namespace, { actor, reason, mergedInto, ctx }) {
-    const row = db.prepare('SELECT revision, version, data FROM user_modules WHERE subject_id = ? AND namespace = ?').get(subjectId, namespace);
+async function removeRow(db, subjectId, namespace, { actor, reason, mergedInto, ctx }) {
+    const row = await db.prepare('SELECT revision, version, data FROM user_modules WHERE subject_id = ? AND namespace = ?').get(subjectId, namespace);
     if (!row) return 0;
-    db.prepare('DELETE FROM user_modules WHERE subject_id = ? AND namespace = ?').run(subjectId, namespace);
-    const revision = nextRevision(db, subjectId, namespace, row.revision);
-    moduleEvents.record(db, {
+    await db.prepare('DELETE FROM user_modules WHERE subject_id = ? AND namespace = ?').run(subjectId, namespace);
+    const revision = await nextRevision(db, subjectId, namespace, row.revision);
+    await moduleEvents.record(db, {
         subjectId, namespace, namespaceOwner: ownerOf(namespace) || 'network', schemaVersion: row.version, revision,
         change: 'deleted', reason, before: JSON.parse(row.data), after: {}, actor, mergedInto, ctx,
     });
@@ -206,18 +165,18 @@ function removeRow(db, subjectId, namespace, { actor, reason, mergedInto, ctx })
  * only in the namespaces it owns. expectedRevision optional (412 if it moved).
  * Returns { status: 204, revision } | { status, code, detail }.
  */
-function remove(db, subjectId, namespace, { writer, expectedRevision, ctx } = {}) {
+async function remove(db, subjectId, namespace, { writer, expectedRevision, ctx } = {}) {
     if (!modules.get(namespace)) return { status: 404, code: 'modules.unknown_namespace', detail: `no namespace ${namespace}` };
     if (writer.type === 'service' && writer.id !== ownerOf(namespace)) return { status: 403, code: 'modules.write_denied', detail: `${writer.id} may not delete ${namespace}` };
-    const out = db.transaction(() => {
-        const cur = db.prepare('SELECT revision FROM user_modules WHERE subject_id = ? AND namespace = ?').get(subjectId, namespace);
+    const out = await db.tx(async () => {
+        const cur = await db.prepare('SELECT revision FROM user_modules WHERE subject_id = ? AND namespace = ?').get(subjectId, namespace);
         if (!cur) return { status: 404, code: 'modules.not_found' };
         if (expectedRevision !== undefined && Number(expectedRevision) !== cur.revision) {
             return { status: 412, code: 'modules.revision_conflict', detail: `revision is ${cur.revision}, not ${expectedRevision}` };
         }
-        const revision = removeRow(db, subjectId, namespace, { actor: actorOf(subjectId, writer), reason: writer.type === 'user' ? 'delete' : 'owner_delete', ctx });
+        const revision = await removeRow(db, subjectId, namespace, { actor: actorOf(subjectId, writer), reason: writer.type === 'user' ? 'delete' : 'owner_delete', ctx });
         return { status: 204, revision };
-    })();
+    });
     if (out.status === 204) moduleEvents.kick(db);
     return out;
 }
@@ -227,14 +186,14 @@ function remove(db, subjectId, namespace, { writer, expectedRevision, ctx } = {}
  * reason subject_removed) each, and forget its revisions. Call inside the transaction that deletes the
  * account (the users/anon_users triggers refuse the delete otherwise). Returns how many were deleted.
  */
-function onSubjectRemoved(db, subjectId, { ctx } = {}) {
+async function onSubjectRemoved(db, subjectId, { ctx } = {}) {
     if (!SUBJECT_RE.test(String(subjectId || ''))) throw new TypeError('onSubjectRemoved: a usr_/gst_ subject id is required');
-    const n = db.transaction(() => {
-        const rows = db.prepare('SELECT namespace FROM user_modules WHERE subject_id = ? ORDER BY namespace').all(subjectId);
-        for (const r of rows) removeRow(db, subjectId, r.namespace, { actor: { type: 'system', id: 'network' }, reason: 'subject_removed', ctx });
-        db.prepare('DELETE FROM user_module_revisions WHERE subject_id = ?').run(subjectId);
+    const n = await db.tx(async () => {
+        const rows = await db.prepare('SELECT namespace FROM user_modules WHERE subject_id = ? ORDER BY namespace').all(subjectId);
+        for (const r of rows) await removeRow(db, subjectId, r.namespace, { actor: { type: 'system', id: 'network' }, reason: 'subject_removed', ctx });
+        await db.prepare('DELETE FROM user_module_revisions WHERE subject_id = ?').run(subjectId);
         return rows.length;
-    })();
+    });
     if (n) moduleEvents.kick(db);
     return n;
 }
@@ -247,26 +206,26 @@ function onSubjectRemoved(db, subjectId, { ctx } = {}) {
  * (reason subject_merged, merged_into). Moved and filled records say updated_by svc:network.
  * Call inside the merge's transaction, before `from`'s row goes. Returns { moved, filled, dropped }.
  */
-function onSubjectMerged(db, { from, into, ctx } = {}) {
+async function onSubjectMerged(db, { from, into, ctx } = {}) {
     if (!SUBJECT_RE.test(String(from || '')) || !SUBJECT_RE.test(String(into || ''))) throw new TypeError('onSubjectMerged: from and into must be usr_/gst_ subject ids');
     if (from === into) throw new TypeError('onSubjectMerged: from and into are the same subject');
     const system = { type: 'system', id: 'network' };
-    const out = db.transaction(() => {
+    const out = await db.tx(async () => {
         const res = { moved: 0, filled: 0, dropped: 0 };
-        for (const row of db.prepare('SELECT * FROM user_modules WHERE subject_id = ? ORDER BY namespace').all(from)) {
-            const has = db.prepare('SELECT 1 FROM user_modules WHERE subject_id = ? AND namespace = ?').get(into, row.namespace);
+        for (const row of await db.prepare('SELECT * FROM user_modules WHERE subject_id = ? ORDER BY namespace').all(from)) {
+            const has = await db.prepare('SELECT 1 FROM user_modules WHERE subject_id = ? AND namespace = ?').get(into, row.namespace);
             if (!has) {
-                const revision = nextRevision(db, into, row.namespace, 0);
-                db.prepare(`INSERT INTO user_modules (subject_id, namespace, version, revision, data, updated_at, updated_by)
-                            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'svc:network')`).run(into, row.namespace, row.version, revision, row.data);
-                moduleEvents.record(db, {
+                const revision = await nextRevision(db, into, row.namespace, 0);
+                await db.prepare(`INSERT INTO user_modules (subject_id, namespace, version, revision, data, updated_at, updated_by)
+                            VALUES (?, ?, ?, ?, ?, ov_now(), 'svc:network')`).run(into, row.namespace, row.version, revision, row.data);
+                await moduleEvents.record(db, {
                     subjectId: into, namespace: row.namespace, namespaceOwner: ownerOf(row.namespace) || 'network', schemaVersion: row.version, revision,
                     change: 'created', reason: 'subject_merged', before: {}, after: JSON.parse(row.data), actor: system, mergedFrom: from, ctx,
                 });
                 res.moved++;
             } else {
                 // The survivor's fields win; the other record fills only what it lacks (objects only).
-                const mine = db.prepare('SELECT * FROM user_modules WHERE subject_id = ? AND namespace = ?').get(into, row.namespace);
+                const mine = await db.prepare('SELECT * FROM user_modules WHERE subject_id = ? AND namespace = ?').get(into, row.namespace);
                 let a = null; let b = null;
                 try { a = JSON.parse(mine.data); b = JSON.parse(row.data); } catch { /* unreadable: keep the survivor's */ }
                 const isObj = (x) => x && typeof x === 'object' && !Array.isArray(x);
@@ -274,21 +233,21 @@ function onSubjectMerged(db, { from, into, ctx } = {}) {
                 if (gaps.length) {
                     const next = { ...a };
                     for (const k of gaps) next[k] = b[k];
-                    const revision = nextRevision(db, into, row.namespace, mine.revision);
-                    db.prepare("UPDATE user_modules SET data = ?, revision = ?, updated_at = CURRENT_TIMESTAMP, updated_by = 'svc:network' WHERE subject_id = ? AND namespace = ?")
+                    const revision = await nextRevision(db, into, row.namespace, mine.revision);
+                    await db.prepare("UPDATE user_modules SET data = ?, revision = ?, updated_at = ov_now(), updated_by = 'svc:network' WHERE subject_id = ? AND namespace = ?")
                         .run(JSON.stringify(next), revision, into, row.namespace);
-                    moduleEvents.record(db, {
+                    await moduleEvents.record(db, {
                         subjectId: into, namespace: row.namespace, namespaceOwner: ownerOf(row.namespace) || 'network', schemaVersion: mine.version, revision,
                         change: 'updated', reason: 'subject_merged', before: a, after: next, actor: system, mergedFrom: from, ctx,
                     });
                     res.filled++;
                 } else res.dropped++;
             }
-            removeRow(db, from, row.namespace, { actor: system, reason: 'subject_merged', mergedInto: into, ctx });
+            await removeRow(db, from, row.namespace, { actor: system, reason: 'subject_merged', mergedInto: into, ctx });
         }
-        db.prepare('DELETE FROM user_module_revisions WHERE subject_id = ?').run(from);
+        await db.prepare('DELETE FROM user_module_revisions WHERE subject_id = ?').run(from);
         return res;
-    })();
+    });
     if (out.moved || out.filled || out.dropped) moduleEvents.kick(db);
     return out;
 }
@@ -298,23 +257,23 @@ function onSubjectMerged(db, { from, into, ctx } = {}) {
  * and once retentionDays have passed since, delete the namespace's records (reason owner_delete, actor
  * system:network). retain-readonly namespaces only become read-only (write()). Returns how many were deleted.
  */
-function sweepRetired(db, { now = Date.now(), ctx } = {}) {
+async function sweepRetired(db, { now = Date.now(), ctx } = {}) {
     let deleted = 0;
     for (const ns of modules.namespaces) {
         const owner = ownerOf(ns.namespace);
         if (!ownerRetired(ns.namespace)) {
-            db.prepare('DELETE FROM user_module_retirements WHERE namespace = ?').run(ns.namespace);   // un-retired
+            await db.prepare('DELETE FROM user_module_retirements WHERE namespace = ?').run(ns.namespace);   // un-retired
             continue;
         }
-        db.prepare('INSERT OR IGNORE INTO user_module_retirements (namespace, owner, retired_seen_at) VALUES (?, ?, ?)').run(ns.namespace, owner, now);
+        await db.prepare('INSERT INTO user_module_retirements (namespace, owner, retired_seen_at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING').run(ns.namespace, owner, now);
         if (ns.onOwnerRemoved !== 'delete-after-retention') continue;
-        const seen = db.prepare('SELECT retired_seen_at FROM user_module_retirements WHERE namespace = ?').get(ns.namespace).retired_seen_at;
+        const seen = (await db.prepare('SELECT retired_seen_at FROM user_module_retirements WHERE namespace = ?').get(ns.namespace)).retired_seen_at;
         if (now - seen < (ns.retentionDays || 0) * 86400000) continue;
-        deleted += db.transaction(() => {
-            const rows = db.prepare('SELECT subject_id FROM user_modules WHERE namespace = ?').all(ns.namespace);
-            for (const r of rows) removeRow(db, r.subject_id, ns.namespace, { actor: { type: 'system', id: 'network' }, reason: 'owner_delete', ctx });
+        deleted += await db.tx(async () => {
+            const rows = await db.prepare('SELECT subject_id FROM user_modules WHERE namespace = ?').all(ns.namespace);
+            for (const r of rows) await removeRow(db, r.subject_id, ns.namespace, { actor: { type: 'system', id: 'network' }, reason: 'owner_delete', ctx });
             return rows.length;
-        })();
+        });
     }
     if (deleted) moduleEvents.kick(db);
     return deleted;
@@ -334,42 +293,42 @@ function userRouter(requireAuth) {
     const router = express.Router();
     router.use(http.middleware());
 
-    router.get('/:ns/public/:subject', (req, res) => {
+    router.get('/:ns/public/:subject', async (req, res) => {
         if (!modules.get(req.params.ns)) return problem(res, { status: 404, code: 'modules.unknown_namespace' }, req);
         if (!/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(req.params.subject)) return problem(res, { status: 404, code: 'modules.not_found' }, req);
-        const rec = read(req.app.locals.db, req.params.subject, req.params.ns);
+        const rec = await read(req.app.locals.db, req.params.subject, req.params.ns);
         if (!rec) return problem(res, { status: 404, code: 'modules.not_found' }, req);
         res.set('Cache-Control', 'public, max-age=60').json({ subject: rec.subject, namespace: rec.namespace, version: rec.version, data: modules.publicView(rec.namespace, rec.data) });
     });
 
-    router.get('/', requireAuth, (req, res) => {
+    router.get('/', requireAuth, async (req, res) => {
         const db = req.app.locals.db;
-        const sid = subjects.ensureUserSubject(db, req.user);
-        const rows = db.prepare('SELECT * FROM user_modules WHERE subject_id = ? ORDER BY namespace').all(sid);
+        const sid = await subjects.ensureUserSubject(db, req.user);
+        const rows = await db.prepare('SELECT * FROM user_modules WHERE subject_id = ? ORDER BY namespace').all(sid);
         res.set('Cache-Control', 'private, no-store').json({ subject: subjectRef(sid), modules: rows.map(toRecord),
             namespaces: modules.namespaces.map(n => ({ namespace: n.namespace, owner: ownerOf(n.namespace), userWritable: n.writers.includes('user') && !ownerRetired(n.namespace), description: n.description })) });
     });
 
-    router.get('/:ns', requireAuth, (req, res) => {
+    router.get('/:ns', requireAuth, async (req, res) => {
         const db = req.app.locals.db;
         if (!modules.get(req.params.ns)) return problem(res, { status: 404, code: 'modules.unknown_namespace' }, req);
-        const rec = read(db, subjects.ensureUserSubject(db, req.user), req.params.ns);
+        const rec = await read(db, await subjects.ensureUserSubject(db, req.user), req.params.ns);
         if (!rec) return problem(res, { status: 404, code: 'modules.not_found', detail: 'no record yet (write with If-Match: 0)' }, req);
         withEtag(res, rec).json(rec);
     });
 
-    router.put('/:ns', requireAuth, (req, res) => {
+    router.put('/:ns', requireAuth, async (req, res) => {
         const db = req.app.locals.db;
         const rev = revisionHeader(req);
         if (Number.isNaN(rev)) return problem(res, { status: 400, code: 'modules.bad_revision', detail: 'If-Match must be a revision number' }, req);
-        const out = write(db, subjects.ensureUserSubject(db, req.user), req.params.ns, req.body && req.body.data, { writer: { type: 'user' }, expectedRevision: rev, ctx: req.ov });
+        const out = await write(db, await subjects.ensureUserSubject(db, req.user), req.params.ns, req.body && req.body.data, { writer: { type: 'user' }, expectedRevision: rev, ctx: req.ov });
         if (!out.record) return problem(res, out, req);
         withEtag(res, out.record).status(out.status).json(out.record);
     });
 
-    router.delete('/:ns', requireAuth, (req, res) => {
+    router.delete('/:ns', requireAuth, async (req, res) => {
         const db = req.app.locals.db;
-        const out = remove(db, subjects.ensureUserSubject(db, req.user), req.params.ns, { writer: { type: 'user' }, ctx: req.ov });
+        const out = await remove(db, await subjects.ensureUserSubject(db, req.user), req.params.ns, { writer: { type: 'user' }, ctx: req.ov });
         if (out.status === 404 && out.code === 'modules.unknown_namespace') return problem(res, out, req);
         res.status(out.status === 204 ? 204 : 404).end();
     });
@@ -379,14 +338,14 @@ function userRouter(requireAuth) {
 /** Service routes; mounted under /internal (after requireInternalKey) with principal guards. */
 function serviceRoutes(router, principals) {
     const nsOf = (req) => req.params.ns;
-    const resolveSubject = (db, s) => (/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(s) && db.prepare('SELECT 1 FROM users WHERE subject_id = ?').get(s) ? s : null);
+    const resolveSubject = async (db, s) => (/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(s) && await db.prepare('SELECT 1 FROM users WHERE subject_id = ?').get(s) ? s : null);
     const serviceOf = (req) => String(req.principal.sub).replace(/^svc:/, '');
 
-    router.get('/modules/:ns/:subject', principals.guard('network.modules.read', { namespace: nsOf }), (req, res) => {
+    router.get('/modules/:ns/:subject', principals.guard('network.modules.read', { namespace: nsOf }), async (req, res) => {
         const db = req.app.locals.db;
         if (!modules.get(req.params.ns)) return problem(res, { status: 404, code: 'modules.unknown_namespace' }, req);
-        const sid = resolveSubject(db, req.params.subject);
-        const rec = sid && read(db, sid, req.params.ns);
+        const sid = await resolveSubject(db, req.params.subject);
+        const rec = sid && await read(db, sid, req.params.ns);
         if (!rec) return problem(res, { status: 404, code: 'modules.not_found' }, req);
         // Field-level read rules: the owner reads everything, another service what `readers` lists for it.
         const svc = serviceOf(req);
@@ -394,24 +353,24 @@ function serviceRoutes(router, principals) {
         withEtag(res, rec).json(rec);
     });
 
-    router.put('/modules/:ns/:subject', principals.guard('network.modules.write', { namespace: nsOf }), (req, res) => {
+    router.put('/modules/:ns/:subject', principals.guard('network.modules.write', { namespace: nsOf }), async (req, res) => {
         const db = req.app.locals.db;
-        const sid = resolveSubject(db, req.params.subject);
+        const sid = await resolveSubject(db, req.params.subject);
         if (!sid) return problem(res, { status: 404, code: 'identity.subject_not_found' }, req);
         const rev = revisionHeader(req);
         if (Number.isNaN(rev)) return problem(res, { status: 400, code: 'modules.bad_revision' }, req);
-        const out = write(db, sid, req.params.ns, req.body && req.body.data, { writer: { type: 'service', id: serviceOf(req) }, expectedRevision: rev, ctx: req.ov });
+        const out = await write(db, sid, req.params.ns, req.body && req.body.data, { writer: { type: 'service', id: serviceOf(req) }, expectedRevision: rev, ctx: req.ov });
         if (!out.record) return problem(res, out, req);
         withEtag(res, out.record).status(out.status).json(out.record);
     });
 
-    router.delete('/modules/:ns/:subject', principals.guard('network.modules.write', { namespace: nsOf }), (req, res) => {
+    router.delete('/modules/:ns/:subject', principals.guard('network.modules.write', { namespace: nsOf }), async (req, res) => {
         const db = req.app.locals.db;
-        const sid = resolveSubject(db, req.params.subject);
+        const sid = await resolveSubject(db, req.params.subject);
         if (!sid) return problem(res, { status: 404, code: 'identity.subject_not_found' }, req);
         const rev = revisionHeader(req);
         if (Number.isNaN(rev)) return problem(res, { status: 400, code: 'modules.bad_revision' }, req);
-        const out = remove(db, sid, req.params.ns, { writer: { type: 'service', id: serviceOf(req) }, expectedRevision: rev, ctx: req.ov });
+        const out = await remove(db, sid, req.params.ns, { writer: { type: 'service', id: serviceOf(req) }, expectedRevision: rev, ctx: req.ov });
         if (out.status !== 204) return problem(res, out, req);
         res.set('Cache-Control', 'private, no-store').status(204).end();
     });

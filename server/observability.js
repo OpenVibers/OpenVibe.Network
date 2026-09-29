@@ -60,7 +60,7 @@ function principalDenied({ req, code }) {
  */
 function createNetworkReadiness({ db, getKeys, release, ecosystem = null, discordService = null, production = process.env.NODE_ENV === 'production', pollMs = 60000 }) {
     const checks = [
-        { name: 'db', required: true, check: () => { const r = db.prepare('SELECT COUNT(*) AS n FROM oauth_clients').get(); return { detail: { oauth_clients: r.n } }; } },
+        { name: 'db', required: true, check: async () => { const r = await db.prepare('SELECT COUNT(*) AS n FROM oauth_clients').get(); return { detail: { oauth_clients: r.n } }; } },
         {
             name: 'signing_key', required: production, cacheMs: 60000,
             check: () => {
@@ -87,9 +87,9 @@ function createNetworkReadiness({ db, getKeys, release, ecosystem = null, discor
     if (discordService && typeof discordService.isReady === 'function') {
         checks.push({
             name: 'discord_bot', required: false,
-            check: () => {
+            check: async () => {
                 let configured = false;
-                try { configured = !!discordService._getSetting('discord_bot_token'); } catch { configured = false; }
+                try { configured = !!(await discordService._getSetting('discord_bot_token')); } catch { configured = false; }
                 if (!configured) return skip('not configured');   // verified nothing: skipped, never ok (WS-Q task 7)
                 return discordService.isReady() || 'bot token configured but the bot is not connected';
             },

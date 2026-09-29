@@ -18,7 +18,7 @@ function isUserSessionClaims(decoded) {
     return !!decoded && typeof decoded === 'object' && decoded.typ === undefined && decoded.actor_type === undefined;
 }
 
-function verifySession(token, { db, publicKey, config }) {
+async function verifySession(token, { db, publicKey, config }) {
     if (!token) return { error: 'Authentication required', status: 401 };
     const algorithm = publicKey.includes('BEGIN') ? 'RS256' : 'HS256';
     let decoded, expired = false;
@@ -36,7 +36,7 @@ function verifySession(token, { db, publicKey, config }) {
     // Same signing key, different token kinds: a FedCM assertion (minted for one RP origin, to be
     // exchanged by that RP's server) and service/app tokens are never a person's session.
     if (!isUserSessionClaims(decoded)) return { error: 'Invalid token', status: 401 };
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.sub || decoded.id);
+    const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.sub || decoded.id);
     if (!user) return { error: 'User not found', status: 401 };
     if (user.is_banned) return { error: 'Account banned', status: 403, ban_reason: user.ban_reason };
     // An account merged into another (ADR-029) has no tokens of its own any more; signing in lands on the survivor.
@@ -81,14 +81,14 @@ function requestToken(req) {
 }
 /** Express guard factory: attaches req.user / req.token; slides the session when due. */
 function makeRequireAuth(getCtx, signToken) {
-    return function requireAuth(req, res, next) {
+    return async function requireAuth(req, res, next) {
         const authHeader = req.headers.authorization;
         // Never ov_sso here: it is SameSite=None, so a hostile page could make the browser send it
         // on a cross-site POST. Only the read-only /sso/check and the prompt=none authorize
         // (which yields a code bound to a registered redirect_uri) may consult it.
         const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : req.cookies?.ov_token;
-        const ctx = getCtx(req);
-        const out = verifySession(token, ctx);
+        const ctx = await getCtx(req);
+        const out = await verifySession(token, ctx);
         if (out.error) return res.status(out.status).json(out.status === 403 ? { error: out.error, ban_reason: out.ban_reason } : { error: out.error });
         req.user = out.user;
         req.token = token;

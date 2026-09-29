@@ -3,10 +3,10 @@
   "stage": "stable",
   "code": true,
   "plan": "OpenVibe End-to-End Realignment & Implementation Plan, revision 3 (20 Sep 2026)",
-  "runtime": "node 22, express, better-sqlite3",
+  "runtime": "node 22, express, PostgreSQL 18 (openvibe-sdk/db, async) + Valkey 9",
   "port": 4000,
   "domain": "openvibe.network (with auth., api., admin., my. and themes.openvibe.network in its manifest)",
-  "contracts": "openvibe-contracts v0.75.0",
+  "contracts": "openvibe-contracts v0.80.0",
   "capabilities": [
     "identity.subject.resolve",
     "mods.grant.manage",
@@ -44,5 +44,5 @@
     "serves /shared/* from its pinned openvibe-shared",
     "per-actor limits (openvibe-sdk/limits)"
   ],
-  "updated": "2026-09-28"
+  "updated": "2026-09-29"
 }

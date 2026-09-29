@@ -19,42 +19,43 @@ const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { validate, serviceAuth } = require('openvibe-contracts');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const subjects = require('../server/identity/subjects');
 const wallet = require('../server/coins/wallet');
 const accountMerge = require('../server/identity/account-merge');
 const accountData = require('../server/identity/account-data');
 const zip = require('../server/utils/zip');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-account-data-'));
 const exportDir = path.join(dir, 'account-exports');
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
 // The five services that keep data about people are registered clients (production has them all).
-for (const c of ['live', 'chat', 'community', 'media', 'games', 'tools']) db.prepare("INSERT OR IGNORE INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, 'x', ?, '[]', 1)").run(c, c);
+for (const c of ['live', 'chat', 'community', 'media', 'games', 'tools']) await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, 'x', ?, '[]', 1) ON CONFLICT DO NOTHING").run(c, c);
 const principals = require('../server/identity/principals');
-principals.ensureSchema(db);
+await principals.ensureSchema(db);
 require('../server/identity/follows').ensureSchema(db);
-accountMerge.ensureSchema(db);
-accountData.ensureSchema(db);
+await accountMerge.ensureSchema(db);
+await accountData.ensureSchema(db);
 const ISSUER = 'https://openvibe.network';
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs1', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
 const config = { jwt: { issuer: ISSUER, accessTokenExpiry: '1h' } };
 process.env.OWNER_USERNAME = 'boss';
 
 const hash = bcrypt.hashSync('secret12', 4);
-const mk = (name, role = 'user') => {
-    const id = db.prepare('INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)').run(name, `${name}@example.com`, hash, role).lastInsertRowid;
-    subjects.ensureUserSubject(db, db.prepare('SELECT * FROM users WHERE id = ?').get(id));
-    return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+const mk = async (name, role = 'user') => {
+    const id = (await db.prepare('INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?) RETURNING id').run(name, `${name}@example.com`, hash, role)).lastInsertRowid;
+    await subjects.ensureUserSubject(db, await db.prepare('SELECT * FROM users WHERE id = ?').get(id));
+    return await db.prepare('SELECT * FROM users WHERE id = ?').get(id);
 };
 const tok = (u, { authAgo = 10 } = {}) => jwt.sign({ sub: u.id, id: u.id, subject_id: u.subject_id, username: u.username, role: u.role || 'user',
     ...(authAgo == null ? {} : { auth_time: Math.floor(Date.now() / 1000) - authAgo }), iat: Math.floor(Date.now() / 1000) - 10 }, keys.privateKey, { algorithm: 'RS256', issuer: ISSUER, expiresIn: '1h' });
 // A service token as Network issues it: `cap` holds only what principal_grants gives that service.
 const svc = (name, cap = ['network.account.export.contribute', 'network.account.deletion.confirm']) => serviceAuth.signServiceToken({ iss: ISSUER, sub: `svc:${name}`, actor_type: 'service', aud: ['openvibe.network'],
     cap, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 300, jti: `tok_${crypto.randomBytes(6).toString('hex')}` }, keys.privateKey);
-const events = (type) => db.prepare('SELECT envelope FROM network_event_outbox ORDER BY id').all().map((r) => JSON.parse(r.envelope)).filter((e) => e.event_type === type);
+const events = async (type) => (await db.prepare('SELECT envelope FROM network_event_outbox ORDER BY id').all()).map((r) => r.envelope).filter((e) => e.event_type === type);
 
 const authRoutes = require('../server/auth/routes');
 const requireAuth = require('../server/auth/session').makeRequireAuth(() => ({ db, publicKey: keys.publicKey, config }), authRoutes.signToken);
@@ -79,26 +80,26 @@ const server = http.createServer(app);
         .then((r) => { try { r.body = JSON.parse(r.buf.toString('utf8')); } catch { r.body = {}; } return r; });
     const settle = () => new Promise((r) => setImmediate(r));
     try {
-        const dana = mk('dana'); const eve = mk('eve'); const x = mk('xavier'); const boss = mk('boss', 'admin');
-        db.prepare("INSERT INTO linked_accounts (user_id, service, service_user_id) VALUES (?, 'google', 'g-dana')").run(dana.id);
-        db.prepare("INSERT INTO user_sessions (user_id, session_token, device_name, is_active, expires_at) VALUES (?, 'sess-secret-dana', 'phone', 1, datetime('now', '+1 day'))").run(dana.id);
-        db.prepare("INSERT INTO oauth_tokens (token, client_id, user_id, scope, expires_at) VALUES ('rt-secret-dana', 'tools', ?, 'openid', datetime('now', '+1 day'))").run(dana.id);
-        wallet.credit(db, { user_id: dana.id, app_id: 'live', amount: 40, reason: 'chat', idempotency_key: 'd-1' });
-        require('../server/identity/modules').write(db, dana.subject_id, 'live.profile', { is_streamer: true, followers: 2 }, { writer: { type: 'service', id: 'live' } });
+        const dana = await mk('dana'); const eve = await mk('eve'); const x = await mk('xavier'); const boss = await mk('boss', 'admin');
+        await db.prepare("INSERT INTO linked_accounts (user_id, service, service_user_id) VALUES (?, 'google', 'g-dana')").run(dana.id);
+        await db.prepare("INSERT INTO user_sessions (user_id, session_token, device_name, is_active, expires_at) VALUES (?, 'sess-secret-dana', 'phone', 1, datetime('now', '+1 day'))").run(dana.id);
+        await db.prepare("INSERT INTO oauth_tokens (token, client_id, user_id, scope, expires_at) VALUES ('rt-secret-dana', 'tools', ?, 'openid', datetime('now', '+1 day'))").run(dana.id);
+        await wallet.credit(db, { user_id: dana.id, app_id: 'live', amount: 40, reason: 'chat', idempotency_key: 'd-1' });
+        await require('../server/identity/modules').write(db, dana.subject_id, 'live.profile', { is_streamer: true, followers: 2 }, { writer: { type: 'service', id: 'live' } });
         const follows = require('../server/identity/follows');
-        follows.setFollow(db, dana.subject_id, 'channel', x.subject_id, true, { emit: false });
-        follows.setFollow(db, x.subject_id, 'channel', dana.subject_id, true, { emit: false });
-        db.prepare("INSERT INTO user_preferences (user_id, language) VALUES (?, 'en')").run(dana.id);
+        await follows.setFollow(db, dana.subject_id, 'channel', x.subject_id, true, { emit: false });
+        await follows.setFollow(db, x.subject_id, 'channel', dana.subject_id, true, { emit: false });
+        await db.prepare("INSERT INTO user_preferences (user_id, language) VALUES (?, 'en')").run(dana.id);
 
         // ── Export ──
-        const expected = accountData.expectedServices(db, 'network.account.export.contribute');
+        const expected = await accountData.expectedServices(db, 'network.account.export.contribute');
         assert.deepStrictEqual(expected, ['chat', 'community', 'games', 'live', 'media'], 'the holders of the contribute grant');
         let r = await call('POST', '/api/v1/account/export', tok(dana));
         assert.strictEqual(r.status, 201, JSON.stringify(r.body));
         assert.ok(validate('network.account-export@1', r.body).valid, JSON.stringify(validate('network.account-export@1', r.body).errors));
         const exp = r.body.export_id;
         assert.deepStrictEqual(r.body.services.map((s) => `${s.service}:${s.status}`), expected.map((s) => `${s}:waiting`));
-        const req = events('network.account.export_requested');
+        const req = await events('network.account.export_requested');
         assert.strictEqual(req.length, 1);
         assert.deepStrictEqual([req[0].payload.export_id, req[0].payload.subject, req[0].visibility], [exp, dana.subject_id, 'internal']);
         r = await call('POST', '/api/v1/account/export', tok(dana));
@@ -122,13 +123,13 @@ const server = http.createServer(app);
         r = await call('POST', `/internal/account-exports/${exp}/parts`, svc('chat'), part([{ name: 'messages.json', content: [{ message: 'hello' }] }]));
         assert.strictEqual(r.status, 200);
         await settle();
-        assert.strictEqual(db.prepare('SELECT status FROM account_exports WHERE id = ?').get(exp).status, 'pending', 'still waiting for three services');
+        assert.strictEqual((await db.prepare('SELECT status FROM account_exports WHERE id = ?').get(exp)).status, 'pending', 'still waiting for three services');
         r = await call('GET', `/api/v1/account/export/${exp}/download`, tok(dana));
         assert.deepStrictEqual([r.status, r.body.error], [409, 'export.pending']);
 
         // The deadline passes: the archive is built without the silent services, and says so.
-        const deadline = Date.parse(db.prepare('SELECT deadline FROM account_exports WHERE id = ?').get(exp).deadline);
-        assert.deepStrictEqual(accountData.sweep(db, { dir: exportDir, now: deadline + 1000, notify: (u, n) => notified.push([u, n.title]) }), { built: 1, expired: 0, deleted: 0 });
+        const deadline = Date.parse((await db.prepare('SELECT deadline FROM account_exports WHERE id = ?').get(exp)).deadline);
+        assert.deepStrictEqual(await accountData.sweep(db, { dir: exportDir, now: deadline + 1000, notify: (u, n) => notified.push([u, n.title]) }), { built: 1, expired: 0, deleted: 0 });
         r = await call('GET', `/api/v1/account/export/${exp}`, tok(dana));
         assert.strictEqual(r.body.status, 'partial');
         assert.ok(validate('network.account-export@1', r.body).valid);
@@ -157,17 +158,17 @@ const server = http.createServer(app);
         assert.ok(Number(r.headers.get('retry-after')) > 0);
 
         // Every expected service answers: ready at once.
-        for (const s of ['community', 'games', 'media']) db.prepare("UPDATE principal_grants SET revoked_at = CURRENT_TIMESTAMP WHERE client_id = ? AND capability = 'network.account.export.contribute'").run(s);
+        for (const s of ['community', 'games', 'media']) await db.prepare("UPDATE principal_grants SET revoked_at = ov_now() WHERE client_id = ? AND capability = 'network.account.export.contribute'").run(s);
         r = await call('POST', '/api/v1/account/export', tok(eve));
         const exp2 = r.body.export_id;
         await call('POST', `/internal/account-exports/${exp2}/parts`, svc('live'), part([{ name: 'profile.json', content: {} }], eve.subject_id));
         await call('POST', `/internal/account-exports/${exp2}/parts`, svc('chat'), part([{ name: 'messages.json', content: [] }], eve.subject_id));
         await settle(); await settle();
-        assert.strictEqual(db.prepare('SELECT status FROM account_exports WHERE id = ?').get(exp2).status, 'ready');
+        assert.strictEqual((await db.prepare('SELECT status FROM account_exports WHERE id = ?').get(exp2)).status, 'ready');
 
         // After 7 days the archive is gone.
-        const expires = Date.parse(db.prepare('SELECT expires_at FROM account_exports WHERE id = ?').get(exp).expires_at);
-        assert.strictEqual(accountData.sweep(db, { dir: exportDir, now: expires + 1000 }).expired, 2);
+        const expires = Date.parse((await db.prepare('SELECT expires_at FROM account_exports WHERE id = ?').get(exp)).expires_at);
+        assert.strictEqual((await accountData.sweep(db, { dir: exportDir, now: expires + 1000 })).expired, 2);
         assert.ok(!fs.existsSync(path.join(exportDir, `${exp}.zip`)));
         r = await call('GET', `/api/v1/account/export/${exp}/download`, tok(dana));
         assert.deepStrictEqual([r.status, r.body.error], [410, 'export.expired']);
@@ -192,37 +193,37 @@ const server = http.createServer(app);
         r = await call('POST', '/api/v1/account/deletion', tok(dana), { confirm_username: 'dana' });
         const del = r.body.deletion_id;
         const due = Date.parse(r.body.delete_after);
-        assert.strictEqual(accountData.sweep(db, { dir: exportDir, now: due - 60000 }).deleted, 0, 'nothing before the date');
-        assert.strictEqual(db.prepare('SELECT username FROM users WHERE id = ?').get(dana.id).username, 'dana');
+        assert.strictEqual((await accountData.sweep(db, { dir: exportDir, now: due - 60000 })).deleted, 0, 'nothing before the date');
+        assert.strictEqual((await db.prepare('SELECT username FROM users WHERE id = ?').get(dana.id)).username, 'dana');
 
         // dana had folded an older account in (ADR-029): its subject goes with her.
-        const old = mk('dana_old');
-        accountMerge.merge(db, old, db.prepare('SELECT * FROM users WHERE id = ?').get(dana.id), { initiatedBy: 'person' });
+        const old = await mk('dana_old');
+        await accountMerge.merge(db, old, await db.prepare('SELECT * FROM users WHERE id = ?').get(dana.id), { initiatedBy: 'person' });
         const oldToken = tok(dana);
-        assert.strictEqual(accountData.sweep(db, { dir: exportDir, now: due + 1000 }).deleted, 1);
-        const gone = db.prepare('SELECT * FROM users WHERE id = ?').get(dana.id);
+        assert.strictEqual((await accountData.sweep(db, { dir: exportDir, now: due + 1000 })).deleted, 1);
+        const gone = await db.prepare('SELECT * FROM users WHERE id = ?').get(dana.id);
         assert.match(gone.username, /^deleted-/);
         assert.deepStrictEqual([gone.email, gone.display_name, gone.password_hash, !!gone.deleted_at], [null, null, '!deleted', true]);
-        assert.match(db.prepare('SELECT username FROM users WHERE id = ?').get(old.id).username, /^deleted-/, 'the merged-in account too');
+        assert.match((await db.prepare('SELECT username FROM users WHERE id = ?').get(old.id)).username, /^deleted-/, 'the merged-in account too');
         for (const [t, col] of [['linked_accounts', 'user_id'], ['user_sessions', 'user_id'], ['oauth_tokens', 'user_id'], ['user_preferences', 'user_id']]) {
-            assert.strictEqual(db.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE ${col} = ?`).get(dana.id).n, 0, `${t} erased`);
+            assert.strictEqual((await db.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE ${col} = ?`).get(dana.id)).n, 0, `${t} erased`);
         }
-        assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM user_modules WHERE subject_id = ?').get(dana.subject_id).n, 0);
-        assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM user_follows WHERE follower_subject = ? OR target_id = ?').get(dana.subject_id, dana.subject_id).n, 0, 'follows both ways');
-        assert.strictEqual(wallet.getBalance ? wallet.getBalance(db, dana.id) : db.prepare('SELECT balance FROM wallets WHERE user_id = ?').get(dana.id).balance, 0);
-        assert.strictEqual(db.prepare("SELECT COUNT(*) AS n FROM coin_transactions WHERE user_id = ? AND reason = 'account_deleted'").get(dana.id).n, 1, 'one closing entry; the ledger stays');
-        assert.ok(mk('dana'), 'the username is released');
-        const p = subjects.resolve(db, { subject_id: dana.subject_id });
+        assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM user_modules WHERE subject_id = ?').get(dana.subject_id)).n, 0);
+        assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM user_follows WHERE follower_subject = ? OR target_id = ?').get(dana.subject_id, dana.subject_id)).n, 0, 'follows both ways');
+        assert.strictEqual(wallet.getBalance ? await wallet.getBalance(db, dana.id) : (await db.prepare('SELECT balance FROM wallets WHERE user_id = ?').get(dana.id)).balance, 0);
+        assert.strictEqual((await db.prepare("SELECT COUNT(*) AS n FROM coin_transactions WHERE user_id = ? AND reason = 'account_deleted'").get(dana.id)).n, 1, 'one closing entry; the ledger stays');
+        assert.ok(await mk('dana'), 'the username is released');
+        const p = await subjects.resolve(db, { subject_id: dana.subject_id });
         assert.deepStrictEqual([p.deleted, p.display_name], [true, 'Deleted account']);
-        assert.strictEqual(subjects.resolve(db, { subject_id: old.subject_id }).deleted, true, 'the alias resolves as deleted too');
+        assert.strictEqual((await subjects.resolve(db, { subject_id: old.subject_id })).deleted, true, 'the alias resolves as deleted too');
         r = await call('GET', '/api/v1/account/deletion', oldToken);
         assert.strictEqual(r.status, 401, 'old tokens are refused');
-        const ev = events('network.account.deleted');
+        const ev = await events('network.account.deleted');
         assert.strictEqual(ev.length, 1);
         assert.ok(validate('network.account.deleted@1', ev[0].payload).valid);
         assert.deepStrictEqual([ev[0].payload.deletion_id, ev[0].payload.subject, ev[0].payload.aliases], [del, dana.subject_id, [old.subject_id]]);
-        assert.ok(events('network.user.token_valid_after').some((e) => e.payload.reason === 'account_deleted'));
-        assert.strictEqual(accountData.sweep(db, { dir: exportDir, now: due + 5000 }).deleted, 0, 'once');
+        assert.ok((await events('network.user.token_valid_after')).some((e) => e.payload.reason === 'account_deleted'));
+        assert.strictEqual((await accountData.sweep(db, { dir: exportDir, now: due + 5000 })).deleted, 0, 'once');
 
         // Services confirm; staff see what is outstanding.
         const confirm = { subject: dana.subject_id, completed_at: new Date().toISOString(), erased: { messages: 3 }, retained: { moderation_actions: 1 } };
@@ -241,15 +242,31 @@ const server = http.createServer(app);
 
         // Staff cancel a scheduled deletion only with a reason.
         await call('POST', '/api/v1/account/deletion', tok(eve), { confirm_username: 'eve' });
-        const eveDel = db.prepare("SELECT id FROM account_deletions WHERE user_id = ? AND status = 'scheduled'").get(eve.id).id;
+        const eveDel = (await db.prepare("SELECT id FROM account_deletions WHERE user_id = ? AND status = 'scheduled'").get(eve.id)).id;
         r = await call('POST', `/api/admin/account-deletions/${eveDel}/cancel`, tok(boss), { reason: 'no' });
         assert.deepStrictEqual([r.status, r.body.error], [400, 'deletion.reason_required']);
         r = await call('POST', `/api/admin/account-deletions/${eveDel}/cancel`, tok(boss), { reason: 'the person wrote to support and changed their mind' });
         assert.strictEqual(r.body.status, 'cancelled');
-        assert.ok(db.prepare("SELECT 1 FROM audit_log WHERE action = 'account_deletion_cancelled'").get());
+        assert.ok(await db.prepare("SELECT 1 FROM audit_log WHERE action = 'account_deletion_cancelled'").get());
+
+        // ── Concurrent double-spend of one wallet: exactly one debit wins (decision 1, plan T2) ──
+        // On PostgreSQL under READ COMMITTED the balance check moves into the conditional UPDATE, so two
+        // spends of one wallet race safely; on SQLite the single writer hid this.
+        const spender = await mk('spender');
+        await wallet.credit(db, { user_id: spender.id, app_id: 'live', amount: 50, reason: 'chat', idempotency_key: 'sp-1' });
+        const spends = await Promise.allSettled([
+            wallet.debit(db, { user_id: spender.id, app_id: 'live', amount: 50, reason: 'chat', idempotency_key: 'sp-2' }),
+            wallet.debit(db, { user_id: spender.id, app_id: 'live', amount: 50, reason: 'chat', idempotency_key: 'sp-3' }),
+        ]);
+        assert.strictEqual(spends.filter((s) => s.status === 'fulfilled').length, 1, 'one of two concurrent spends of one wallet wins');
+        assert.strictEqual(await wallet.getBalance(db, spender.id), 0, 'the wallet was spent once, never twice');
+        const losers = spends.filter((s) => s.status === 'rejected');
+        assert.strictEqual(losers.length, 1);
+        assert.strictEqual(losers[0].reason.status, 409, 'the loser is insufficient_funds, not a crash');
     } finally {
         server.close();
         fs.rmSync(dir, { recursive: true, force: true });
     }
     console.log('account export and deletion: all checks passed');
 })().catch((e) => { console.error(e); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

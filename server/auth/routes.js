@@ -26,14 +26,14 @@ function getConfig(req) { return req.app.locals.config; }
 
 const { hashResetToken, issueResetToken } = require('./reset-tokens');
 
-function findValidResetToken(db, token) {
-    return db.prepare(`
-        SELECT prt.id, prt.user_id, prt.expires_at, u.username, u.display_name, u.email
+async function findValidResetToken(db, token) {
+    return await db.prepare(`
+        SELECT prt.id, prt.token_hash, prt.user_id, prt.expires_at, u.username, u.display_name, u.email
         FROM password_reset_tokens prt
         JOIN users u ON u.id = prt.user_id
         WHERE prt.token_hash = ?
           AND prt.used_at IS NULL
-          AND prt.expires_at > CURRENT_TIMESTAMP
+          AND prt.expires_at > ov_now()
         LIMIT 1
     `).get(hashResetToken(token));
 }
@@ -96,14 +96,14 @@ function sanitizeUser(user) {
 
 const { makeRequireAuth, GRACE_MS: SESSION_GRACE_MS } = require('./session');
 // Sliding session guard: expired-but-renewable tokens are accepted and renewed (cookie + X-OV-Token).
-const requireAuth = makeRequireAuth((req) => ({ db: getDb(req), publicKey: req.app.locals.publicKey, config: getConfig(req) }), signToken);
+const requireAuth = makeRequireAuth(async (req) => ({ db: await getDb(req), publicKey: req.app.locals.publicKey, config: getConfig(req) }), signToken);
 
 // ── Register ─────────────────────────────────────────────────
-router.post('/register', (req, res) => {
-    const db = getDb(req);
+router.post('/register', async (req, res) => {
+    const db = await getDb(req);
     const config = getConfig(req);
 
-    if (!db.getSetting('registration_open')) {
+    if (!await db.getSetting('registration_open')) {
         return res.status(403).json({ error: 'Registration is currently closed' });
     }
 
@@ -127,13 +127,13 @@ router.post('/register', (req, res) => {
         return res.status(400).json({ error: 'This username is reserved by the system and cannot be registered.' });
     }
 
-    const existing = db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(username);
+    const existing = await db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(username);
     if (existing) return res.status(409).json({ error: 'Username already taken' });
     // A name someone was renamed away from stays theirs for a while (links, mentions, reputation).
-    if (require('../identity/usernames').isReserved(db, username)) return res.status(409).json({ error: 'Username already taken' });
+    if (await require('../identity/usernames').isReserved(db, username)) return res.status(409).json({ error: 'Username already taken' });
 
     // Check if username is reserved (has an active verification key)
-    const reserved = db.isUsernameReserved(username);
+    const reserved = await db.isUsernameReserved(username);
     if (reserved) {
         if (!verification_key) {
             return res.status(403).json({
@@ -141,7 +141,7 @@ router.post('/register', (req, res) => {
                 reserved: true,
             });
         }
-        const vk = db.getVerificationKeyByKey(verification_key);
+        const vk = await db.getVerificationKeyByKey(verification_key);
         if (!vk || vk.status !== 'active') {
             return res.status(403).json({ error: 'Invalid or expired verification key' });
         }
@@ -151,25 +151,25 @@ router.post('/register', (req, res) => {
     }
 
     if (email) {
-        const emailExists = db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').get(email);
+        const emailExists = await db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').get(email);
         if (emailExists) return res.status(409).json({ error: 'Email already in use' });
     }
 
     const passwordHash = bcrypt.hashSync(password, 10);
-    const result = db.prepare(`
+    const result = await db.prepare(`
         INSERT INTO users (username, email, password_hash, display_name, profile_color, subject_id)
-        VALUES (?, ?, ?, ?, '#8b5cf6', ?)
+        VALUES (?, ?, ?, ?, '#8b5cf6', ?) RETURNING id
     `).run(username, email || null, passwordHash, username, subjects.newUserSubjectId());
 
     // Create default preferences
-    db.prepare('INSERT OR IGNORE INTO user_preferences (user_id) VALUES (?)').run(result.lastInsertRowid);
+    await db.prepare('INSERT INTO user_preferences (user_id) VALUES (?) ON CONFLICT DO NOTHING').run(result.lastInsertRowid);
 
     // Redeem verification key if used
     if (verification_key && reserved) {
-        db.redeemVerificationKey(verification_key, result.lastInsertRowid);
+        await db.redeemVerificationKey(verification_key, result.lastInsertRowid);
     }
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+    const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
     const token = signToken(user, req.app.locals.privateKey, config);
 
     console.log(`[Auth] New user registered: ${username} (id: ${user.id})${reserved ? ' [verification key redeemed]' : ''}`);
@@ -181,7 +181,7 @@ router.post('/register', (req, res) => {
     try {
         const notifService = req.app.locals.notificationService;
         if (notifService) {
-            notifService.create({
+            await notifService.create({
                 user_id: user.id,
                 type: 'WELCOME',
                 title: 'Welcome to OpenVibe',
@@ -196,24 +196,24 @@ router.post('/register', (req, res) => {
 });
 
 // ── Login ────────────────────────────────────────────────────
-router.post('/login', (req, res) => {
-    const db = getDb(req);
+router.post('/login', async (req, res) => {
+    const db = await getDb(req);
     const config = getConfig(req);
 
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
 
-    const user = db.prepare('SELECT * FROM users WHERE LOWER(username) = LOWER(?)').get(username);
+    const user = await db.prepare('SELECT * FROM users WHERE LOWER(username) = LOWER(?)').get(username);
     if (!user) return res.status(401).json({ error: 'Invalid username or password' });
     if (user.is_banned) return res.status(403).json({ error: 'Account banned', ban_reason: user.ban_reason });
     if (!bcrypt.compareSync(password, user.password_hash)) {
         return res.status(401).json({ error: 'Invalid username or password' });
     }
     // An account merged into another (ADR-029) signs in to the survivor.
-    const signedIn = require('../identity/account-merge').effectiveUser(db, user);
+    const signedIn = await require('../identity/account-merge').effectiveUser(db, user);
     if (signedIn.is_banned) return res.status(403).json({ error: 'Account banned', ban_reason: signedIn.ban_reason });
 
-    db.prepare('UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?').run(signedIn.id);
+    await db.prepare('UPDATE users SET last_seen = ov_now() WHERE id = ?').run(signedIn.id);
     const token = signToken(signedIn, req.app.locals.privateKey, config);
 
     console.log(`[Auth] Login: ${user.username}${signedIn.id !== user.id ? ` (merged into ${signedIn.username})` : ''}`);
@@ -223,7 +223,7 @@ router.post('/login', (req, res) => {
 
 // ── Forgot Password ─────────────────────────────────────────
 router.post('/forgot-password', async (req, res) => {
-    const db = getDb(req);
+    const db = await getDb(req);
     const emailService = req.app.locals.emailService;
     const genericResponse = {
         ok: true,
@@ -235,14 +235,14 @@ router.post('/forgot-password', async (req, res) => {
         return res.status(400).json({ error: 'Email required' });
     }
 
-    const user = db.prepare('SELECT id, username, display_name, email FROM users WHERE LOWER(email) = LOWER(?)').get(email);
+    const user = await db.prepare('SELECT id, username, display_name, email FROM users WHERE LOWER(email) = LOWER(?)').get(email);
 
     if (!user || !user.email || !emailService?.isEnabled) {
         return res.json(genericResponse);
     }
 
     // Shared with the owner-initiated admin flow so both mint tokens identically.
-    const { resetUrl, expiresMinutes } = issueResetToken(db, req, user.id);
+    const { resetUrl, expiresMinutes } = await issueResetToken(db, req, user.id);
     await emailService.sendPasswordResetEmail({
         to: user.email,
         username: user.display_name || user.username,
@@ -254,12 +254,12 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // ── Validate Reset Token ────────────────────────────────────
-router.get('/reset-password/validate', (req, res) => {
-    const db = getDb(req);
+router.get('/reset-password/validate', async (req, res) => {
+    const db = await getDb(req);
     const token = String(req.query.token || '').trim();
     if (!token) return res.status(400).json({ error: 'Reset token required' });
 
-    const reset = findValidResetToken(db, token);
+    const reset = await findValidResetToken(db, token);
     if (!reset) return res.status(400).json({ valid: false, error: 'Invalid or expired reset link' });
 
     res.json({
@@ -270,8 +270,8 @@ router.get('/reset-password/validate', (req, res) => {
 });
 
 // ── Complete Password Reset ────────────────────────────────
-router.post('/reset-password', (req, res) => {
-    const db = getDb(req);
+router.post('/reset-password', async (req, res) => {
+    const db = await getDb(req);
     const notifService = req.app.locals.notificationService;
     const token = String(req.body?.token || '').trim();
     const newPassword = String(req.body?.new_password || '');
@@ -279,21 +279,25 @@ router.post('/reset-password', (req, res) => {
     if (!token || !newPassword) return res.status(400).json({ error: 'Reset token and new password required' });
     if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
 
-    const reset = findValidResetToken(db, token);
+    const reset = await findValidResetToken(db, token);
     if (!reset) return res.status(400).json({ error: 'Invalid or expired reset link' });
 
     const hash = bcrypt.hashSync(newPassword, 10);
-    const tx = db.transaction(() => {
-        db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(hash, reset.user_id);
+    // Claim the token first: of two concurrent uses of one reset link exactly one succeeds (decision 1).
+    const won = await db.tx(async (t) => {
+        const n = (await t.prepare('UPDATE password_reset_tokens SET used_at = ov_now() WHERE token_hash = ? AND used_at IS NULL').run(reset.token_hash)).changes;
+        if (!n) return false;
+        await t.prepare('UPDATE users SET password_hash = ?, updated_at = ov_now() WHERE id = ?').run(hash, reset.user_id);
         // Every token and session from before the reset ends, on every site (network.user.token_valid_after).
-        revocation.revokeTokens(db, reset.user_id, { reason: 'password_reset', ctx: req.ov });
-        db.prepare('UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL').run(reset.user_id);
+        await revocation.revokeTokens(t, reset.user_id, { reason: 'password_reset', ctx: req.ov });
+        await t.prepare('UPDATE password_reset_tokens SET used_at = ov_now() WHERE user_id = ? AND used_at IS NULL').run(reset.user_id);
+        return true;
     });
-    tx();
+    if (!won) return res.status(400).json({ error: 'Invalid or expired reset link' });
     revocation.kick(db);
 
     if (notifService) {
-        notifService.create({
+        await notifService.create({
             user_id: reset.user_id,
             type: 'PASSWORD_CHANGED',
             title: 'Password Reset Complete',
@@ -314,7 +318,7 @@ router.post('/reset-password', (req, res) => {
 // requiring a full OAuth2 refresh_token flow.
 // Also accepts tokens expired within the last 7 days (grace period), so
 // users who return after a day away can still get a fresh token.
-router.post('/refresh', (req, res) => {
+router.post('/refresh', async (req, res) => {
     const config = getConfig(req);
     const publicKey = req.app.locals.publicKey;
     const algorithm = publicKey.includes('BEGIN') ? 'RS256' : 'HS256';
@@ -353,8 +357,8 @@ router.post('/refresh', (req, res) => {
     if (!require('./session').isUserSessionClaims(decoded)) return res.status(401).json({ error: 'Invalid token' });
 
     // Verify user still exists and is valid
-    const db = getDb(req);
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.sub || decoded.id);
+    const db = await getDb(req);
+    const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.sub || decoded.id);
     if (!user) return res.status(401).json({ error: 'User not found' });
     if (user.is_banned) return res.status(403).json({ error: 'Account banned' });
 
@@ -379,10 +383,10 @@ router.post('/refresh', (req, res) => {
 });
 
 // ── Get Current User ─────────────────────────────────────────
-router.get('/me', requireAuth, (req, res) => {
-    const db = getDb(req);
-    const prefs = db.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(req.user.id);
-    subjects.ensureUserSubject(db, req.user);
+router.get('/me', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const prefs = await db.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(req.user.id);
+    await subjects.ensureUserSubject(db, req.user);
     res.json({
         user: sanitizeUser(req.user),
         preferences: prefs || { theme_id: 'vibe' },
@@ -390,8 +394,8 @@ router.get('/me', requireAuth, (req, res) => {
 });
 
 // ── Update Profile ───────────────────────────────────────────
-router.put('/profile', requireAuth, (req, res) => {
-    const db = getDb(req);
+router.put('/profile', requireAuth, async (req, res) => {
+    const db = await getDb(req);
     const { display_name, bio, avatar_url, email, profile_color } = req.body;
     const updates = [];
     const params = [];
@@ -424,24 +428,24 @@ router.put('/profile', requireAuth, (req, res) => {
 
     if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
 
-    updates.push('updated_at = CURRENT_TIMESTAMP');
+    updates.push('updated_at = ov_now()');
     params.push(req.user.id);
     try {
-        db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+        await db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
     } catch (e) {
         if (/UNIQUE/.test(e.message)) return res.status(409).json({ error: 'That email address is already used by another account' });
         throw e;
     }
     // A new address is unverified until confirmed; kick off the confirmation email.
-    if (emailChanged) { try { require('./email-verify').onEmailChanged(req, req.user.id); } catch { /* */ } }
+    if (emailChanged) { try { await require('./email-verify').onEmailChanged(req, req.user.id); } catch { /* */ } }
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
     res.json({ user: sanitizeUser(user) });
 });
 
 // ── Change Password ──────────────────────────────────────────
-router.post('/change-password', requireAuth, (req, res) => {
-    const db = getDb(req);
+router.post('/change-password', requireAuth, async (req, res) => {
+    const db = await getDb(req);
     const config = getConfig(req);
     const { current_password, new_password } = req.body;
 
@@ -452,22 +456,22 @@ router.post('/change-password', requireAuth, (req, res) => {
     }
 
     const hash = bcrypt.hashSync(new_password, 10);
-    db.transaction(() => {
-        db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, req.user.id);
+    await db.tx(async () => {
+        await db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, req.user.id);
         // Every other token and session ends, on every site; this one gets a fresh token below.
-        revocation.revokeTokens(db, req.user.id, { reason: 'password_changed', ctx: req.ov });
-        db.prepare('UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL').run(req.user.id);
-    })();
+        await revocation.revokeTokens(db, req.user.id, { reason: 'password_changed', ctx: req.ov });
+        await db.prepare('UPDATE password_reset_tokens SET used_at = ov_now() WHERE user_id = ? AND used_at IS NULL').run(req.user.id);
+    });
     revocation.kick(db);
 
     // Issue fresh token
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
     const token = signToken(user, req.app.locals.privateKey, config);
 
     // Notify about password change
     const notifService = req.app.locals.notificationService;
     if (notifService) {
-        notifService.create({
+        await notifService.create({
             user_id: user.id,
             type: 'PASSWORD_CHANGED',
             title: 'Password Changed',
@@ -509,14 +513,14 @@ function formatAnonUser(anon) {
 }
 
 /** Log an IP association for an anon user (upsert) */
-function logAnonIp(db, anonId, ip) {
+async function logAnonIp(db, anonId, ip) {
     if (!ip || ip === 'unknown') return;
     try {
-        const existing = db.prepare('SELECT id FROM anon_ip_log WHERE anon_id = ? AND ip = ?').get(anonId, ip);
+        const existing = await db.prepare('SELECT id FROM anon_ip_log WHERE anon_id = ? AND ip = ?').get(anonId, ip);
         if (existing) {
-            db.prepare('UPDATE anon_ip_log SET last_seen = CURRENT_TIMESTAMP WHERE id = ?').run(existing.id);
+            await db.prepare('UPDATE anon_ip_log SET last_seen = ov_now() WHERE id = ?').run(existing.id);
         } else {
-            db.prepare('INSERT INTO anon_ip_log (anon_id, ip) VALUES (?, ?)').run(anonId, ip);
+            await db.prepare('INSERT INTO anon_ip_log (anon_id, ip) VALUES (?, ?)').run(anonId, ip);
         }
     } catch { /* non-critical */ }
 }
@@ -529,11 +533,11 @@ function logAnonIp(db, anonId, ip) {
 // POST /api/auth/sign-out-everywhere: every token and session this person holds ends, here and (via
 // network.user.token_valid_after) on every OpenVibe site; open chat and game sockets close. The page
 // then runs the sign-out fanout so this browser's site sessions are cleared too.
-router.post('/sign-out-everywhere', requireAuth, (req, res) => {
-    const db = getDb(req);
-    const { validAfter } = revocation.revokeTokens(db, req.user.id, { reason: 'signed_out_everywhere', ctx: req.ov });
+router.post('/sign-out-everywhere', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const { validAfter } = await revocation.revokeTokens(db, req.user.id, { reason: 'signed_out_everywhere', ctx: req.ov });
     revocation.kick(db);
-    try { db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'sign_out_everywhere', JSON.stringify({ valid_after: validAfter })); } catch { /* audit is best effort */ }
+    try { await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'sign_out_everywhere', JSON.stringify({ valid_after: validAfter })); } catch { /* audit is best effort */ }
     require('./session').clearSessionCookies(res);
     res.set('Cache-Control', 'no-store');
     res.json({ ok: true, valid_after: validAfter });
@@ -547,8 +551,8 @@ router.post('/logout', (req, res) => {
     res.json({ ok: true });
 });
 
-router.post('/anon-session', (req, res) => {
-    const db = getDb(req);
+router.post('/anon-session', async (req, res) => {
+    const db = await getDb(req);
     const config = getConfig(req);
     const ip = getRequestIp(req);
 
@@ -559,12 +563,12 @@ router.post('/anon-session', (req, res) => {
 
         // Check if this fingerprint already has an anon user (unless forcing new)
         if (fingerprint && !forceNew) {
-            const existing = db.prepare('SELECT * FROM anon_users WHERE fingerprint = ?').get(fingerprint);
+            const existing = await db.prepare('SELECT * FROM anon_users WHERE fingerprint = ?').get(fingerprint);
             if (existing) {
                 // Return existing anon user with a fresh session token
-                db.prepare('UPDATE anon_users SET session_token = ?, last_seen = CURRENT_TIMESTAMP WHERE id = ?')
+                await db.prepare('UPDATE anon_users SET session_token = ?, last_seen = ov_now() WHERE id = ?')
                     .run(sessionToken, existing.id);
-                logAnonIp(db, existing.id, ip);
+                await logAnonIp(db, existing.id, ip);
                 return res.json({
                     token: sessionToken,
                     user: formatAnonUser({ ...existing, last_seen: new Date().toISOString() }),
@@ -574,11 +578,11 @@ router.post('/anon-session', (req, res) => {
 
         // Check if this IP already has a default anon (unless forcing new)
         if (!forceNew) {
-            const byIp = db.prepare('SELECT * FROM anon_users WHERE ip = ? ORDER BY id ASC LIMIT 1').get(ip);
+            const byIp = await db.prepare('SELECT * FROM anon_users WHERE ip = ? ORDER BY id ASC LIMIT 1').get(ip);
             if (byIp) {
-                db.prepare('UPDATE anon_users SET session_token = ?, last_seen = CURRENT_TIMESTAMP WHERE id = ?')
+                await db.prepare('UPDATE anon_users SET session_token = ?, last_seen = ov_now() WHERE id = ?')
                     .run(sessionToken, byIp.id);
-                logAnonIp(db, byIp.id, ip);
+                await logAnonIp(db, byIp.id, ip);
                 return res.json({
                     token: sessionToken,
                     user: formatAnonUser({ ...byIp, last_seen: new Date().toISOString() }),
@@ -587,14 +591,14 @@ router.post('/anon-session', (req, res) => {
         }
 
         // Generate next anon number
-        const maxNum = db.prepare('SELECT MAX(anon_number) as max FROM anon_users').get().max || 0;
+        const maxNum = (await db.prepare('SELECT MAX(anon_number) as max FROM anon_users').get()).max || 0;
         const anonNumber = maxNum + 1;
 
-        const result = db.prepare(
-            'INSERT INTO anon_users (anon_number, fingerprint, session_token, ip, subject_id) VALUES (?, ?, ?, ?, ?)'
+        const result = await db.prepare(
+            'INSERT INTO anon_users (anon_number, fingerprint, session_token, ip, subject_id) VALUES (?, ?, ?, ?, ?) RETURNING id'
         ).run(anonNumber, fingerprint, sessionToken, ip, subjects.newGuestSubjectId());
 
-        logAnonIp(db, result.lastInsertRowid, ip);
+        await logAnonIp(db, result.lastInsertRowid, ip);
 
         console.log(`[Auth] New anonymous user: #${anonNumber} (IP: ${ip})`);
         res.json({
@@ -617,23 +621,23 @@ router.post('/anon-session', (req, res) => {
 
 // ── Get Anonymous User Info ──────────────────────────────────
 // GET /api/auth/anon/:token
-router.get('/anon/:token', (req, res) => {
-    const db = getDb(req);
-    const anon = db.prepare('SELECT * FROM anon_users WHERE session_token = ?').get(req.params.token);
+router.get('/anon/:token', async (req, res) => {
+    const db = await getDb(req);
+    const anon = await db.prepare('SELECT * FROM anon_users WHERE session_token = ?').get(req.params.token);
     if (!anon) return res.status(404).json({ error: 'Anonymous session not found' });
 
-    db.prepare('UPDATE anon_users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?').run(anon.id);
+    await db.prepare('UPDATE anon_users SET last_seen = ov_now() WHERE id = ?').run(anon.id);
     const ip = getRequestIp(req);
-    logAnonIp(db, anon.id, ip);
+    await logAnonIp(db, anon.id, ip);
 
     res.json({ user: formatAnonUser(anon) });
 });
 
 // ── Update Anonymous User Preferences ────────────────────────
 // PUT /api/auth/anon/:token/preferences
-router.put('/anon/:token/preferences', (req, res) => {
-    const db = getDb(req);
-    const anon = db.prepare('SELECT * FROM anon_users WHERE session_token = ?').get(req.params.token);
+router.put('/anon/:token/preferences', async (req, res) => {
+    const db = await getDb(req);
+    const anon = await db.prepare('SELECT * FROM anon_users WHERE session_token = ?').get(req.params.token);
     if (!anon) return res.status(404).json({ error: 'Anonymous session not found' });
 
     const current = JSON.parse(anon.preferences || '{}');
@@ -645,7 +649,7 @@ router.put('/anon/:token/preferences', (req, res) => {
         if (updated[key] !== undefined) safe[key] = updated[key];
     }
 
-    db.prepare('UPDATE anon_users SET preferences = ?, display_name = ? WHERE id = ?')
+    await db.prepare('UPDATE anon_users SET preferences = ?, display_name = ? WHERE id = ?')
         .run(JSON.stringify(safe), safe.display_name || anon.display_name, anon.id);
 
     res.json({ ok: true, preferences: safe });
@@ -654,20 +658,20 @@ router.put('/anon/:token/preferences', (req, res) => {
 // ── Link Anonymous to Registered Account ─────────────────────
 // POST /api/auth/anon/:token/link
 // Merges anon stats into the authenticated user's account.
-router.post('/anon/:token/link', requireAuth, (req, res) => {
-    const db = getDb(req);
-    const anon = db.prepare('SELECT * FROM anon_users WHERE session_token = ?').get(req.params.token);
+router.post('/anon/:token/link', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const anon = await db.prepare('SELECT * FROM anon_users WHERE session_token = ?').get(req.params.token);
     if (!anon) return res.status(404).json({ error: 'Anonymous session not found' });
 
-    const userSubject = subjects.ensureUserSubject(db, req.user);
-    db.transaction(() => {
+    const userSubject = await subjects.ensureUserSubject(db, req.user);
+    await db.tx(async () => {
         // Store anon number on the user for reference
-        db.prepare('UPDATE users SET anon_number = ? WHERE id = ? AND anon_number IS NULL')
+        await db.prepare('UPDATE users SET anon_number = ? WHERE id = ? AND anon_number IS NULL')
             .run(anon.anon_number, req.user.id);
         // The guest's user modules (portable preferences) move to the account; where the account already
         // has a record in a namespace, the account's is kept (server/identity/modules.js onSubjectMerged).
-        if (anon.subject_id && userSubject) require('../identity/modules').onSubjectMerged(db, { from: anon.subject_id, into: userSubject });
-    })();
+        if (anon.subject_id && userSubject) await require('../identity/modules').onSubjectMerged(db, { from: anon.subject_id, into: userSubject });
+    });
 
     console.log(`[Auth] Linked anon #${anon.anon_number} → user ${req.user.username}`);
     res.json({ ok: true, anon_number: anon.anon_number });
@@ -676,13 +680,13 @@ router.post('/anon/:token/link', requireAuth, (req, res) => {
 // ── List All Anon Identities for Current IP ──────────────────
 // GET /api/auth/anon-identities
 // Returns all anon identities associated with the caller's IP.
-router.get('/anon-identities', (req, res) => {
-    const db = getDb(req);
+router.get('/anon-identities', async (req, res) => {
+    const db = await getDb(req);
     const ip = getRequestIp(req);
 
     try {
         // Find all anon IDs that have been seen from this IP
-        const anons = db.prepare(`
+        const anons = await db.prepare(`
             SELECT DISTINCT a.* FROM anon_users a
             INNER JOIN anon_ip_log l ON l.anon_id = a.id
             WHERE l.ip = ?
@@ -690,7 +694,7 @@ router.get('/anon-identities', (req, res) => {
         `).all(ip);
 
         // Also include any anon whose creating IP matches
-        const byCreatingIp = db.prepare('SELECT * FROM anon_users WHERE ip = ?').all(ip);
+        const byCreatingIp = await db.prepare('SELECT * FROM anon_users WHERE ip = ?').all(ip);
         const seen = new Set(anons.map(a => a.id));
         for (const a of byCreatingIp) {
             if (!seen.has(a.id)) anons.push(a);
@@ -714,9 +718,9 @@ router.get('/anon-identities', (req, res) => {
 
 // ── List Active Sessions ─────────────────────────────────────
 // GET /api/auth/sessions
-router.get('/sessions', requireAuth, (req, res) => {
-    const db = getDb(req);
-    const sessions = db.prepare(`
+router.get('/sessions', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const sessions = await db.prepare(`
         SELECT id, device_name, ip, last_used, created_at FROM user_sessions
         WHERE user_id = ? AND is_active = 1
         ORDER BY last_used DESC
@@ -727,8 +731,8 @@ router.get('/sessions', requireAuth, (req, res) => {
 // ── Create Session (for multi-account) ───────────────────────
 // POST /api/auth/sessions
 // Called when logging in with "add account" — stores session token.
-router.post('/sessions', requireAuth, (req, res) => {
-    const db = getDb(req);
+router.post('/sessions', requireAuth, async (req, res) => {
+    const db = await getDb(req);
     const config = getConfig(req);
 
     const sessionToken = uuidv4();
@@ -736,7 +740,7 @@ router.post('/sessions', requireAuth, (req, res) => {
     const ip = req.ip;
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
 
-    db.prepare(`
+    await db.prepare(`
         INSERT INTO user_sessions (user_id, session_token, device_name, ip, user_agent, expires_at)
         VALUES (?, ?, ?, ?, ?, ?)
     `).run(req.user.id, sessionToken, deviceName, ip, req.headers['user-agent'] || '', expiresAt);
@@ -749,9 +753,9 @@ router.post('/sessions', requireAuth, (req, res) => {
 
 // ── Revoke Session ───────────────────────────────────────────
 // DELETE /api/auth/sessions/:id
-router.delete('/sessions/:id', requireAuth, (req, res) => {
-    const db = getDb(req);
-    const result = db.prepare('UPDATE user_sessions SET is_active = 0 WHERE id = ? AND user_id = ?')
+router.delete('/sessions/:id', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const result = await db.prepare('UPDATE user_sessions SET is_active = 0 WHERE id = ? AND user_id = ?')
         .run(req.params.id, req.user.id);
     res.json({ ok: true, revoked: result.changes > 0 });
 });
@@ -759,12 +763,12 @@ router.delete('/sessions/:id', requireAuth, (req, res) => {
 // ── Sign out other devices ───────────────────────────────────
 // DELETE /api/auth/sessions: every token and session ends on every site (network.user.token_valid_after),
 // and this browser gets a fresh token so it stays signed in (same as a password change).
-router.delete('/sessions', requireAuth, (req, res) => {
-    const db = getDb(req);
-    const active = db.prepare('SELECT COUNT(*) AS n FROM user_sessions WHERE user_id = ? AND is_active = 1').get(req.user.id).n;
-    revocation.revokeTokens(db, req.user.id, { reason: 'signed_out_everywhere', ctx: req.ov });
+router.delete('/sessions', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const active = (await db.prepare('SELECT COUNT(*) AS n FROM user_sessions WHERE user_id = ? AND is_active = 1').get(req.user.id)).n;
+    await revocation.revokeTokens(db, req.user.id, { reason: 'signed_out_everywhere', ctx: req.ov });
     revocation.kick(db);
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
     res.set('Cache-Control', 'no-store');
     res.json({ ok: true, revoked: active, token: signToken(user, req.app.locals.privateKey, getConfig(req), { renew: req.tokenClaims || {} }) });
 });
@@ -774,11 +778,11 @@ router.delete('/sessions', requireAuth, (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 
 // GET /api/users/:id/card — public user card data for context menus
-router.get('/users/:id/card', (req, res) => {
-    const db = getDb(req);
+router.get('/users/:id/card', async (req, res) => {
+    const db = await getDb(req);
     const userId = req.params.id;
 
-    const user = db.prepare(`
+    const user = await db.prepare(`
         SELECT id, username, display_name, avatar_url, bio, role, profile_color,
                name_effect, particle_effect, is_anon, anon_number, created_at
         FROM users WHERE id = ?
@@ -786,11 +790,11 @@ router.get('/users/:id/card', (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     // Linked services
-    const linked = db.prepare('SELECT service, service_username FROM linked_accounts WHERE user_id = ?').all(userId);
+    const linked = await db.prepare('SELECT service, service_username FROM linked_accounts WHERE user_id = ?').all(userId);
 
     // Follower count
-    const followers = db.prepare('SELECT COUNT(*) as cnt FROM follows WHERE followed_id = ?').get(userId)?.cnt || 0;
-    const following = db.prepare('SELECT COUNT(*) as cnt FROM follows WHERE follower_id = ?').get(userId)?.cnt || 0;
+    const followers = (await db.prepare('SELECT COUNT(*) as cnt FROM follows WHERE followed_id = ?').get(userId))?.cnt || 0;
+    const following = (await db.prepare('SELECT COUNT(*) as cnt FROM follows WHERE follower_id = ?').get(userId))?.cnt || 0;
 
     // Is current user following this user?
     let isFollowing = false;
@@ -801,13 +805,13 @@ router.get('/users/:id/card', (req, res) => {
             const algorithm = publicKey.includes('BEGIN') ? 'RS256' : 'HS256';
             const token = req.headers.authorization.replace('Bearer ', '');
             const decoded = jwt.verify(token, publicKey, { algorithms: [algorithm], issuer: config.jwt.issuer });
-            const follow = db.prepare('SELECT 1 FROM follows WHERE follower_id = ? AND followed_id = ?').get(decoded.sub || decoded.id, userId);
+            const follow = await db.prepare('SELECT 1 FROM follows WHERE follower_id = ? AND followed_id = ?').get(decoded.sub || decoded.id, userId);
             isFollowing = !!follow;
         } catch { /* not logged in, fine */ }
     }
 
     // Active effects
-    const effects = db.prepare(`
+    const effects = await db.prepare(`
         SELECT effect_type, effect_id FROM user_effects
         WHERE user_id = ? AND is_active = 1
     `).all(userId);
@@ -826,18 +830,18 @@ router.get('/users/:id/card', (req, res) => {
 });
 
 // POST /api/users/:id/follow
-router.post('/users/:id/follow', requireAuth, (req, res) => {
-    const db = getDb(req);
+router.post('/users/:id/follow', requireAuth, async (req, res) => {
+    const db = await getDb(req);
     const targetId = parseInt(req.params.id);
     if (targetId === req.user.id) return res.status(400).json({ error: 'Cannot follow yourself' });
 
     try {
-        db.prepare('INSERT OR IGNORE INTO follows (follower_id, followed_id) VALUES (?, ?)').run(req.user.id, targetId);
+        await db.prepare('INSERT INTO follows (follower_id, followed_id) VALUES(?, ?) ON CONFLICT DO NOTHING').run(req.user.id, targetId);
 
         // Notify target
         const notifService = req.app.locals.notificationService;
         if (notifService) {
-            notifService.create({
+            await notifService.create({
                 user_id: targetId,
                 type: 'FOLLOW',
                 title: 'New Follower',
@@ -857,10 +861,10 @@ router.post('/users/:id/follow', requireAuth, (req, res) => {
 });
 
 // DELETE /api/users/:id/follow
-router.delete('/users/:id/follow', requireAuth, (req, res) => {
-    const db = getDb(req);
+router.delete('/users/:id/follow', requireAuth, async (req, res) => {
+    const db = await getDb(req);
     const targetId = parseInt(req.params.id);
-    db.prepare('DELETE FROM follows WHERE follower_id = ? AND followed_id = ?').run(req.user.id, targetId);
+    await db.prepare('DELETE FROM follows WHERE follower_id = ? AND followed_id = ?').run(req.user.id, targetId);
     res.json({ ok: true });
 });
 

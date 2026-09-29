@@ -156,7 +156,8 @@ class NotificationService {
      * Create a notification. Returns the created notification object.
      * @param {Object} data - { user_id, type, title, message, sender_id, sender_name, sender_avatar, service, url, rich_content, expires_at }
      */
-    create(data) {
+    async create(data) {
+        const db = this.db;
         const typeDef = TYPES[data.type] || {};
         const id = uuidv4();
         const category = data.category || typeDef.category || 'system';
@@ -165,15 +166,15 @@ class NotificationService {
         const title = data.title || typeDef.title || 'Notification';
 
         // Check user's preferences — skip if disabled
-        const pref = this._getPrefByCategory.get(data.user_id, category);
+        const pref = await this._getPrefByCategory.get(data.user_id, category);
         if (pref && !pref.enabled) return null;
         // Nothing from a person the recipient blocked (platform blocks, WS-E task 5). A block never hides a
         // staff action: moderation, system and admin notices are always created.
-        if (!BLOCK_EXEMPT_CATEGORIES.has(category) && this.fromBlockedActor(data)) return null;
+        if (!BLOCK_EXEMPT_CATEGORIES.has(category) && await this.fromBlockedActor(data)) return null;
         // Go-live and follow dedupe (see _recentFromSender): one an hour per sender, so following again after an
         // unfollow does not notify again.
         if ((data.type === 'STREAM_LIVE' || data.type === 'FOLLOW') && data.sender_id != null) {
-            try { if (this._recentFromSender.get(data.user_id, data.type, data.sender_id)) return null; } catch { /* */ }
+            try { if (await this._recentFromSender.get(data.user_id, data.type, data.sender_id)) return null; } catch { /* */ }
         }
 
         const richContent = data.rich_content ? JSON.stringify(data.rich_content) : null;
@@ -181,17 +182,17 @@ class NotificationService {
 
         // The notification and its network.notification.created event: one transaction.
         let announced = false;
-        this.db.transaction(() => {
-            this._insertNotif.run(
+        await db.tx(async () => {
+            await this._insertNotif.run(
                 id, data.user_id, data.type || 'GENERIC', category, priority,
                 title, data.message || null, icon,
                 data.sender_id || null, data.sender_name || null, data.sender_avatar || null,
                 data.service || null, data.url || null, richContent,
                 data.expires_at || null,
             );
-            announced = this._announce({ id, userId: data.user_id, type: data.type, category, priority, service: data.service, createdAt });
-        })();
-        // Wake the relay (it reads after the outermost transaction commits: better-sqlite3 is synchronous).
+            announced = await this._announce({ id, userId: data.user_id, type: data.type, category, priority, service: data.service, createdAt });
+        });
+        // Wake the relay after the commit (the outbox row committed with the notification).
         if (announced) { const live = eventRelay.outboxFor(this.db); if (live) live.kick(); }
 
         // Fire browser push notification (async, non-blocking); `silent` keeps it to the bell.
@@ -215,8 +216,8 @@ class NotificationService {
      * given one) gets none; an envelope that would not match its contract is skipped with a warning rather
      * than losing the notification (the badge's polling still finds it).
      */
-    _announce({ id, userId, type, category, priority, service, createdAt }) {
-        const r = this._recipient.get(userId);
+    async _announce({ id, userId, type, category, priority, service, createdAt }) {
+        const r = await this._recipient.get(userId);
         if (!r || r.is_anon || !SUBJECT_RE.test(String(r.subject_id || ''))) return false;
         const payload = {
             notification_id: String(id),
@@ -225,7 +226,7 @@ class NotificationService {
             priority: PRIORITIES.has(priority) ? priority : 'normal',
             service: /^[a-z][a-z0-9-]{1,39}$/.test(String(service || '')) ? String(service) : null,
             created_at: createdAt,
-            unread_count: this._unreadCount.get(userId)?.count || 0,
+            unread_count: (await this._unreadCount.get(userId))?.count || 0,
         };
         const ms = Date.parse(createdAt) || Date.now();
         const env = {
@@ -239,7 +240,7 @@ class NotificationService {
             console.warn(`[Notifications] ${NOTIFICATION_EVENT} not queued for notification ${id}: ${JSON.stringify((v.errors || []).concat(pv.errors || [])).slice(0, 200)}`);
             return false;
         }
-        eventRelay.writerFor(this.db).enqueue(env);
+        await eventRelay.writerFor(this.db).enqueue(this.db, env);
         return true;
     }
 
@@ -247,35 +248,35 @@ class NotificationService {
      * Whether the recipient (data.user_id) blocked the notification's actor: data.actor_subject (a usr_
      * subject; null = no known person) when given, else data.sender_id as a Network user id.
      */
-    fromBlockedActor(data) {
+    async fromBlockedActor(data) {
         try {
             if (Object.prototype.hasOwnProperty.call(data, 'actor_subject')) {
-                return /^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(String(data.actor_subject || '')) && !!this._blockedActorSubject.get(data.user_id, data.actor_subject);
+                return /^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(String(data.actor_subject || '')) && !!await this._blockedActorSubject.get(data.user_id, data.actor_subject);
             }
             const sender = Number(data.sender_id);
-            return Number.isInteger(sender) && sender > 0 && Number(data.user_id) !== sender && !!this._blockedActorId.get(data.user_id, sender);
+            return Number.isInteger(sender) && sender > 0 && Number(data.user_id) !== sender && !!await this._blockedActorId.get(data.user_id, sender);
         } catch { return false; }
     }
 
     /**
      * Bulk-create notifications for multiple users (e.g., broadcast).
      */
-    createBulk(userIds, data) {
+    async createBulk(userIds, data) {
+        const db = this.db;
         const results = [];
-        const tx = this.db.transaction(() => {
+        await db.tx(async () => {
             for (const uid of userIds) {
-                const notif = this.create({ ...data, user_id: uid });
+                const notif = await this.create({ ...data, user_id: uid });
                 if (notif) results.push(notif);
             }
         });
-        tx();
         return results;
     }
 
     // ─── Read ──────────────────────────────────────────────────
 
-    getById(id) {
-        const n = this._getById.get(id);
+    async getById(id) {
+        const n = await this._getById.get(id);
         if (n && n.rich_content) n.rich_content = JSON.parse(n.rich_content);
         return n;
     }
@@ -287,7 +288,7 @@ class NotificationService {
      *  - since: ISO timestamp, only rows created after it (toasts)
      * Fetches limit+1 so the client knows whether another page exists.
      */
-    getForUser(userId, { limit = 50, offset = 0, category = null, unreadOnly = false, q = null, since = null, type = null } = {}) {
+    async getForUser(userId, { limit = 50, offset = 0, category = null, unreadOnly = false, q = null, since = null, type = null } = {}) {
         const where = ['user_id = ?', 'is_dismissed = 0'];
         const params = [userId];
         if (category) { where.push('category = ?'); params.push(category); }
@@ -299,11 +300,11 @@ class NotificationService {
             where.push("(title LIKE ? ESCAPE '\\' OR message LIKE ? ESCAPE '\\' OR sender_name LIKE ? ESCAPE '\\')");
             params.push(like, like, like);
         }
-        const sql = `SELECT * FROM notifications WHERE ${where.join(' AND ')} ORDER BY created_at DESC, rowid DESC LIMIT ? OFFSET ?`;
-        const rows = this.db.prepare(sql).all(...params, limit + 1, offset);
+        const sql = `SELECT * FROM notifications WHERE ${where.join(' AND ')} ORDER BY created_at DESC, seq DESC LIMIT ? OFFSET ?`;
+        const rows = await this.db.prepare(sql).all(...params, limit + 1, offset);
         const has_more = rows.length > limit;
         if (has_more) rows.length = limit;
-        const total = this.db.prepare(`SELECT COUNT(*) AS c FROM notifications WHERE ${where.join(' AND ')}`).get(...params)?.c || 0;
+        const total = (await this.db.prepare(`SELECT COUNT(*) AS c FROM notifications WHERE ${where.join(' AND ')}`).get(...params))?.c || 0;
         const notifications = rows.map(n => {
             // Defensive: a single corrupt row must never 500 the whole dropdown.
             if (n.rich_content) {
@@ -315,25 +316,26 @@ class NotificationService {
         return { notifications, has_more, total };
     }
 
-    markReadMany(ids, userId) {
+    async markReadMany(ids, userId) {
+        const db = this.db;
         if (!Array.isArray(ids) || !ids.length) return 0;
         const stmt = this.db.prepare('UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ? AND is_read = 0');
         let n = 0;
-        const tx = this.db.transaction(() => { for (const id of ids.slice(0, 500)) n += stmt.run(String(id), userId).changes; });
-        tx();
+        const tx = db.txFn(async () => { for (const id of ids.slice(0, 500)) n += (await stmt.run(String(id), userId)).changes; });
+        await tx();
         return n;
     }
 
-    getUnreadCount(userId) {
-        return this._unreadCount.get(userId)?.count || 0;
+    async getUnreadCount(userId) {
+        return (await this._unreadCount.get(userId))?.count || 0;
     }
 
-    getUnreadByCategory(userId) {
-        return this._unreadCountByCategory.all(userId);
+    async getUnreadByCategory(userId) {
+        return await this._unreadCountByCategory.all(userId);
     }
 
-    getNewest(userId) {
-        const n = this._newestForUser.get(userId);
+    async getNewest(userId) {
+        const n = await this._newestForUser.get(userId);
         if (n && n.rich_content) n.rich_content = JSON.parse(n.rich_content);
         return n;
     }
@@ -341,51 +343,51 @@ class NotificationService {
     // ─── Update ────────────────────────────────────────────────
 
     /** Edit one of a user's notifications in place (an operator alert that resolves or fires again). */
-    revise(id, userId, { title, message, icon, is_read: isRead } = {}) {
+    async revise(id, userId, { title, message, icon, is_read: isRead } = {}) {
         const sets = []; const args = [];
         if (title != null) { sets.push('title = ?'); args.push(String(title).slice(0, 200)); }
         if (message != null) { sets.push('message = ?'); args.push(String(message)); }
         if (icon != null) { sets.push('icon = ?'); args.push(String(icon)); }
         if (isRead != null) { sets.push('is_read = ?'); args.push(isRead ? 1 : 0); }
         if (!sets.length) return false;
-        const r = this.db.prepare(`UPDATE notifications SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`).run(...args, id, userId);
+        const r = await this.db.prepare(`UPDATE notifications SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`).run(...args, id, userId);
         return r.changes > 0;
     }
 
-    markRead(id, userId) {
-        return this._markRead.run(id, userId).changes > 0;
+    async markRead(id, userId) {
+        return (await this._markRead.run(id, userId)).changes > 0;
     }
 
-    markAllRead(userId, category = null) {
-        if (category) return this._markReadByCategory.run(userId, category).changes;
-        return this._markAllRead.run(userId).changes;
+    async markAllRead(userId, category = null) {
+        if (category) return (await this._markReadByCategory.run(userId, category)).changes;
+        return (await this._markAllRead.run(userId)).changes;
     }
 
-    dismiss(id, userId) {
-        return this._dismiss.run(id, userId).changes > 0;
+    async dismiss(id, userId) {
+        return (await this._dismiss.run(id, userId)).changes > 0;
     }
 
-    dismissAll(userId) {
-        return this._dismissAll.run(userId).changes;
+    async dismissAll(userId) {
+        return (await this._dismissAll.run(userId)).changes;
     }
 
-    markReadByType(userId, type, urlPattern = null) {
-        if (urlPattern) return this._markReadByTypeAndUrl.run(userId, type, urlPattern).changes;
-        return this._markReadByType.run(userId, type).changes;
+    async markReadByType(userId, type, urlPattern = null) {
+        if (urlPattern) return (await this._markReadByTypeAndUrl.run(userId, type, urlPattern)).changes;
+        return (await this._markReadByType.run(userId, type)).changes;
     }
 
-    markEmailed(id) {
-        return this._markEmailed.run(id).changes > 0;
+    async markEmailed(id) {
+        return (await this._markEmailed.run(id)).changes > 0;
     }
 
     // ─── Preferences ──────────────────────────────────────────
 
-    getPreferences(userId) {
-        return this._getPrefs.all(userId);
+    async getPreferences(userId) {
+        return await this._getPrefs.all(userId);
     }
 
-    setPreference(userId, category, updates = {}) {
-        const current = this._getPrefByCategory.get(userId, category) || {
+    async setPreference(userId, category, updates = {}) {
+        const current = await this._getPrefByCategory.get(userId, category) || {
             enabled: 1,
             sound: 1,
             toasts: 1,
@@ -397,7 +399,7 @@ class NotificationService {
             toasts: updates.toasts !== undefined ? (updates.toasts ? 1 : 0) : current.toasts,
             email: updates.email !== undefined ? (updates.email === null ? null : (updates.email ? 1 : 0)) : current.email,
         };
-        this._upsertPref.run(
+        await this._upsertPref.run(
             userId,
             category,
             next.enabled,
@@ -411,15 +413,15 @@ class NotificationService {
         );
     }
 
-    resetPreference(userId, category) {
-        this._deletePrefs.run(userId, category);
+    async resetPreference(userId, category) {
+        await this._deletePrefs.run(userId, category);
     }
 
     // ─── Email Queue ──────────────────────────────────────────
 
     /**\n     * Get notifications that should be emailed.\n     * Now checks ALL un-emailed notifications (not just critical),\n     * because shouldEmail() will filter by user preference.\n     */
-    getPendingEmails() {
-        return this._getPendingEmails.all();
+    async getPendingEmails() {
+        return await this._getPendingEmails.all();
     }
 
     /**
@@ -428,8 +430,8 @@ class NotificationService {
      * Built-in: CRITICAL + system/moderation/admin always email.
      * User opt-in: any category the user explicitly enabled email for.
      */
-    shouldEmail(notification) {
-        const pref = this._getPrefByCategory.get(notification.user_id, notification.category);
+    async shouldEmail(notification) {
+        const pref = await this._getPrefByCategory.get(notification.user_id, notification.category);
         // If user disabled the whole category, no email
         if (pref && !pref.enabled) return false;
         // LOW priority never emails
@@ -454,38 +456,38 @@ class NotificationService {
      *  - user cap / global cap: site_settings email_user_daily_cap (default 30),
      *    email_daily_cap (default 2000)
      */
-    emailGuard(notification) {
+    async emailGuard(notification) {
         try {
             if (notification.type === 'STREAM_LIVE') {
                 const ageMs = Date.now() - new Date(String(notification.created_at).replace(' ', 'T') + 'Z').getTime();
                 if (ageMs > 2 * 3600 * 1000) return 'stale';
-                if (notification.sender_id != null && this._recentEmailFromSender.get(notification.user_id, 'STREAM_LIVE', notification.sender_id)) return 'dup';
+                if (notification.sender_id != null && await this._recentEmailFromSender.get(notification.user_id, 'STREAM_LIVE', notification.sender_id)) return 'dup';
             }
-            const userCap = parseInt(this.db.getSetting?.('email_user_daily_cap'), 10) || 30;
-            if ((this._emailsSentToUserToday.get(notification.user_id)?.c || 0) >= userCap) return 'user-cap';
-            const globalCap = parseInt(this.db.getSetting?.('email_daily_cap'), 10) || 2000;
-            if ((this._emailsSentToday.get()?.c || 0) >= globalCap) return 'global-cap';
+            const userCap = parseInt(await this.db.getSetting?.('email_user_daily_cap'), 10) || 30;
+            if (((await this._emailsSentToUserToday.get(notification.user_id))?.c || 0) >= userCap) return 'user-cap';
+            const globalCap = parseInt(await this.db.getSetting?.('email_daily_cap'), 10) || 2000;
+            if (((await this._emailsSentToday.get())?.c || 0) >= globalCap) return 'global-cap';
         } catch { /* guards are best-effort */ }
         return null;
     }
 
     // ─── Cleanup ──────────────────────────────────────────────
 
-    cleanExpired() {
-        return this._deleteExpired.run().changes;
+    async cleanExpired() {
+        return (await this._deleteExpired.run()).changes;
     }
 
-    cleanOld(days = 90) {
-        return this._deleteOld.run(`-${days} days`).changes;
+    async cleanOld(days = 90) {
+        return (await this._deleteOld.run(`-${days} days`)).changes;
     }
 
     /**
      * Run periodic maintenance (call from setInterval in main server).
      */
-    maintenance() {
-        const expired = this.cleanExpired();
-        const maxAge = this.db.getSetting?.('notification_max_age_days') || 90;
-        const old = this.cleanOld(maxAge);
+    async maintenance() {
+        const expired = await this.cleanExpired();
+        const maxAge = await this.db.getSetting?.('notification_max_age_days') || 90;
+        const old = await this.cleanOld(maxAge);
         if (expired + old > 0) {
             console.log(`[Notifications] Cleaned ${expired} expired + ${old} old notifications`);
         }

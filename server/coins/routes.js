@@ -15,16 +15,16 @@ module.exports = function createCoinsRoutes(db, requireAuth) {
 
     // ── GET /api/coins/me ────────────────────────────────────
     // → { balance }
-    router.get('/me', requireAuth, (req, res) => {
-        res.json({ balance: wallet.getBalance(db, req.user.id) });
+    router.get('/me', requireAuth, async (req, res) => {
+        res.json({ balance: await wallet.getBalance(db, req.user.id) });
     });
 
     // ── GET /api/coins/me/history?limit=50&offset=0 ──────────
     // → { transactions: [{ id, app_id, delta, reason, created_at }] }
-    router.get('/me/history', requireAuth, (req, res) => {
+    router.get('/me/history', requireAuth, async (req, res) => {
         const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
         const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
-        const transactions = db.prepare(`
+        const transactions = await db.prepare(`
             SELECT id, app_id, delta, reason, created_at
             FROM coin_transactions
             WHERE user_id = ?

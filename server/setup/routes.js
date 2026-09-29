@@ -26,8 +26,8 @@ function redactResolvedRegistry(resolved) {
 function createSetupRoutes(db, config) {
     const router = express.Router();
 
-    function hasAdminUser() {
-        return !!db.prepare("SELECT 1 FROM users WHERE role = 'admin' LIMIT 1").get();
+    async function hasAdminUser() {
+        return !!await db.prepare("SELECT 1 FROM users WHERE role = 'admin' LIMIT 1").get();
     }
 
     function isValidSetupToken(req) {
@@ -35,8 +35,8 @@ function createSetupRoutes(db, config) {
         return config.setupToken && token && token === config.setupToken;
     }
 
-    function requireSetupMode(req, res, next) {
-        if (!hasAdminUser()) return next();
+    async function requireSetupMode(req, res, next) {
+        if (!await hasAdminUser()) return next();
         if (isValidSetupToken(req)) return next();
         return res.status(403).json({ ok: false, error: 'Setup locked. Provide a valid setup token or log in as an admin.' });
     }
@@ -72,12 +72,12 @@ function createSetupRoutes(db, config) {
         return required.filter(key => !resolvedRegistry[key]?.value).map(key => `${key} is missing or invalid.`);
     }
 
-    function buildSetupStatus() {
-        const resolvedRegistry = urlRegistry.getResolvedRegistry(db, process.env);
+    async function buildSetupStatus() {
+        const resolvedRegistry = await urlRegistry.getResolvedRegistry(db, process.env);
         return {
-            adminExists: hasAdminUser(),
+            adminExists: await hasAdminUser(),
             setupTokenConfigured: Boolean(config.setupToken),
-            registrySeeded: urlRegistry.isRegistrySeeded(db),
+            registrySeeded: await urlRegistry.isRegistrySeeded(db),
             bootstrapProfile: config.bootstrapProfile,
             warnings: getSetupWarnings(resolvedRegistry),
             issues: getSetupIssues(resolvedRegistry),
@@ -85,39 +85,39 @@ function createSetupRoutes(db, config) {
         };
     }
 
-    router.get('/status', (req, res) => {
+    router.get('/status', async (req, res) => {
         try {
-            res.json({ ok: true, status: buildSetupStatus() });
+            res.json({ ok: true, status: await buildSetupStatus() });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
         }
     });
 
-    router.post('/bootstrap', requireSetupMode, (req, res) => {
+    router.post('/bootstrap', requireSetupMode, async (req, res) => {
         try {
             const profile = String(req.body.profile || config.bootstrapProfile || 'local-dev');
             const validProfiles = ['local-dev', 'single-node-prod'];
             if (!validProfiles.includes(profile)) {
                 return res.status(400).json({ ok: false, error: 'Invalid bootstrap profile' });
             }
-            urlRegistry.seedBootstrapRegistry(db, process.env, profile);
-            const status = buildSetupStatus();
+            await urlRegistry.seedBootstrapRegistry(db, process.env, profile);
+            const status = await buildSetupStatus();
             return res.json({ ok: true, message: 'Bootstrap completed', status });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
         }
     });
 
-    router.post('/admin', requireSetupMode, (req, res) => {
+    router.post('/admin', requireSetupMode, async (req, res) => {
         try {
             const { username, password } = req.body;
             if (!username || !password) return res.status(400).json({ ok: false, error: 'username and password are required' });
-            if (hasAdminUser() && !isValidSetupToken(req)) {
+            if (await hasAdminUser() && !isValidSetupToken(req)) {
                 return res.status(403).json({ ok: false, error: 'Admin account already exists' });
             }
             const normalizedUsername = String(username).trim().toLowerCase();
             const passwordHash = bcrypt.hashSync(String(password), 10);
-            db.prepare(`
+            await db.prepare(`
                 INSERT INTO users (username, email, password_hash, display_name, role, profile_color, subject_id)
                 VALUES (?, ?, ?, ?, 'admin', '#8b5cf6', ?)
                 ON CONFLICT(username) DO UPDATE SET
@@ -146,7 +146,7 @@ function createSetupRoutes(db, config) {
         tools_subdomain_base: 'TOOLS_SUBDOMAIN_BASE',
         extra_origins: 'ALLOWED_EXTRA_ORIGINS',
     };
-    router.post('/identity', requireSetupMode, (req, res) => {
+    router.post('/identity', requireSetupMode, async (req, res) => {
         try {
             const updated = {};
             for (const [bodyKey, registryKey] of Object.entries(IDENTITY_FIELD_MAP)) {
@@ -174,7 +174,7 @@ function createSetupRoutes(db, config) {
                 if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
                     continue;
                 }
-                const entry = urlRegistry.setRegistryEntry(db, registryKey, value, null);
+                const entry = await urlRegistry.setRegistryEntry(db, registryKey, value, null);
                 updated[registryKey] = entry.value;
             }
             return res.json({ ok: true, updated, message: 'Identity config saved' });
@@ -187,7 +187,7 @@ function createSetupRoutes(db, config) {
     // POST /api/setup/urls — configure network URLs during first-time setup.
     // Writes the provided values into the url_registry with source='admin'.
     // Only keys that exist in URL_DEFINITIONS are accepted.
-    router.post('/urls', requireSetupMode, (req, res) => {
+    router.post('/urls', requireSetupMode, async (req, res) => {
         try {
             const allowedKeys = new Set(Object.keys(URL_DEFINITIONS));
             const updated = {};
@@ -198,13 +198,13 @@ function createSetupRoutes(db, config) {
                     continue;
                 }
                 try {
-                    const entry = urlRegistry.setRegistryEntry(db, key, value, null);
+                    const entry = await urlRegistry.setRegistryEntry(db, key, value, null);
                     updated[key] = entry.value;
                 } catch (err) {
                     rejected[key] = err.message;
                 }
             }
-            const status = buildSetupStatus();
+            const status = await buildSetupStatus();
             return res.json({ ok: true, updated, rejected, status });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
@@ -233,7 +233,7 @@ function createSetupRoutes(db, config) {
         service_map: 'DEPLOY_SERVICE_MAP',
     };
 
-    router.post('/deploy', requireSetupMode, (req, res) => {
+    router.post('/deploy', requireSetupMode, async (req, res) => {
         try {
             const updated = {};
             const errors = {};
@@ -280,7 +280,7 @@ function createSetupRoutes(db, config) {
                 if (value === undefined || value === null) continue;
 
                 try {
-                    const entry = urlRegistry.setRegistryEntry(db, registryKey, value, null);
+                    const entry = await urlRegistry.setRegistryEntry(db, registryKey, value, null);
                     updated[registryKey] = registryKey === 'DEPLOY_CLOUDFLARE_TOKEN' ? '(saved)' : entry.value;
                 } catch (err) {
                     errors[bodyKey] = err.message;
@@ -303,9 +303,9 @@ function createSetupRoutes(db, config) {
     });
 
     // GET /api/setup/deploy-status — check deploy prerequisites and current config
-    router.get('/deploy-status', (req, res) => {
+    router.get('/deploy-status', async (req, res) => {
         try {
-            const resolved = urlRegistry.getResolvedRegistry(db, process.env);
+            const resolved = await urlRegistry.getResolvedRegistry(db, process.env);
             const prereqs = certManager.checkPrerequisites();
 
             res.json({

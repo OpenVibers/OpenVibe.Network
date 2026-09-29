@@ -77,8 +77,8 @@ const { createEcosystemRegistry } = require('../server/registry/ecosystem');
     assert.strictEqual(inCat('events'), 'platform'); assert.strictEqual(inCat('ai'), 'platform'); assert.strictEqual(inCat('sources'), 'platform');
     assert.strictEqual(inCat('sdk'), 'library'); assert.strictEqual(inCat('contracts'), 'library');
     assert.strictEqual(inCat('examples'), 'repository');
-    // 'planned' = exposure placeholder, and no manifest has that state since realtime's was removed
-    assert.deepStrictEqual(cats.planned.services, []);
+    // 'planned' = exposure placeholder: Contracts 0.83.0's media-hub and space (charter only, nothing runs)
+    assert.deepStrictEqual(cats.planned.services.map(x => x.id).sort(), ['media-hub', 'space']);
     const liveRow = cats.site.services.find(x => x.id === 'live');
     assert.strictEqual(liveRow.runtime, 'down'); assert.ok(liveRow.checked_at, 'rows carry the last check');
     r = await get('/api/v1/registry/categories/library');

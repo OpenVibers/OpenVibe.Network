@@ -16,15 +16,16 @@ const http = require('http');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const contracts = require('openvibe-contracts');
+(async () => {
 const { serviceAuth, validate } = contracts;
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const policy = require('../server/developer/policy');
 const relay = require('../server/developer/event-relay');
 
 const quiet = { log() {}, warn() {}, error() {} };
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-devdefaults-'));
-const db = initDb(path.join(dir, 'network.db'));
-db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES (10, 'owner', 'x', 'user'), (11, 'dev', 'x', 'user'), (14, 'staff', 'x', 'admin')`).run();
+const db = getDb();
+await db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES (10, 'owner', 'x', 'user'), (11, 'dev', 'x', 'user'), (14, 'staff', 'x', 'admin')`).run();
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
 const ISSUER = 'https://openvibe.network';
@@ -91,7 +92,7 @@ async function withoutCatalog(hidden, fn) {
     // contracts define them as public and active; until then they are left out like any unknown id.
     assert.ok(['media.object.list', 'media.object.delete'].every(id => policy.DEFAULT_SANDBOX_ALLOWANCE.includes(id)));
     const MEDIA_VERBS = ['media.object.list', 'media.object.delete'].map(id => ({ id, version: '1.0', owner: 'media', status: 'active', visibility: 'public', description: 'test', permissions: [], resourceConstraints: ['namespace'], events: [], implementedBy: [] }));
-    await withoutCatalog(MEDIA_VERBS.map(c => c.id), () => withCatalog(MEDIA_VERBS, () => {
+    await withoutCatalog(MEDIA_VERBS.map(c => c.id), async () => await withCatalog(MEDIA_VERBS, () => {
         const media = policy.settings({}).sandboxAllowance.filter(id => id.startsWith('media.'));
         assert.deepStrictEqual(media, ['media.object.delete', 'media.object.list', 'media.object.read', 'media.object.upload'], 'with the verbs in the catalog, sandbox apps may hold them');
     }));
@@ -212,10 +213,10 @@ async function withoutCatalog(hidden, fn) {
     });
 
     // ── Relay off: nothing is sent ──
-    assert.strictEqual(relay.startRelay(db, { eventsUrl: '', privateKey: keys.privateKey, issuer: ISSUER, fetch: () => { throw new Error('no fetch when off'); } }), null);
+    assert.strictEqual(await relay.startRelay(db, { eventsUrl: '', privateKey: keys.privateKey, issuer: ISSUER, fetch: () => { throw new Error('no fetch when off'); } }), null);
     assert.strictEqual(relay.outboxFor(db), null);
     // (The table itself exists from boot: user modules write their events into it whether or not a relay runs.)
-    assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM network_event_outbox').get().n, 0, 'nothing queued while the relay is off');
+    assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM network_event_outbox').get()).n, 0, 'nothing queued while the relay is off');
 
     // ── Relay on: a fake Events receives every envelope once, in order, with a Network service token ──
     const received = [];
@@ -240,18 +241,18 @@ async function withoutCatalog(hidden, fn) {
     });
     await new Promise(res => events.listen(0, '127.0.0.1', res));
     const eventsUrl = `http://127.0.0.1:${events.address().port}`;
-    const before = db.prepare('SELECT event FROM dev_audit WHERE event IS NOT NULL ORDER BY id').all().map(x => JSON.parse(x.event).event_id);
+    const before = (await db.prepare('SELECT event FROM dev_audit WHERE event IS NOT NULL ORDER BY id').all()).map(x => JSON.parse(x.event).event_id);
     assert.ok(before.length >= 5, 'the walkthrough produced events');
-    let outbox = relay.startRelay(db, { eventsUrl, privateKey: keys.privateKey, issuer: ISSUER, autoStart: false, log: quiet });
+    let outbox = await relay.startRelay(db, { eventsUrl, privateKey: keys.privateKey, issuer: ISSUER, autoStart: false, log: quiet });
     assert.ok(outbox);
-    assert.strictEqual(outbox.pending(), before.length, 'events written while the relay was off are backfilled');
+    assert.strictEqual(await outbox.pending(), before.length, 'events written while the relay was off are backfilled');
     // A new event now goes into the outbox in the same transaction as its audit row.
     r = await api('owner', 'POST', `/${P}/apps`, { name: 'later', environment: 'sandbox', type: 'confidential' });
     assert.strictEqual(r.status, 201);
-    assert.strictEqual(outbox.pending(), before.length + 1);
+    assert.strictEqual(await outbox.pending(), before.length + 1);
     let flushed = await outbox.flush();
     assert.strictEqual(flushed.sent, before.length + 1, JSON.stringify(flushed));
-    const all = db.prepare('SELECT event FROM dev_audit WHERE event IS NOT NULL ORDER BY id').all().map(x => JSON.parse(x.event));
+    const all = (await db.prepare('SELECT event FROM dev_audit WHERE event IS NOT NULL ORDER BY id').all()).map(x => JSON.parse(x.event));
     assert.deepStrictEqual(received.map(e => e.event_id), all.map(e => e.event_id), 'published in dev_audit id order');
     for (const e of received) {
         assert.ok(validate('events.event-envelope@1', e).valid, JSON.stringify(e));
@@ -267,27 +268,28 @@ async function withoutCatalog(hidden, fn) {
         assert.ok(validate('identity.service-token-claims@1', tv.claims).valid);
     }
     // Duplicates are harmless: a republished row is answered as a duplicate and stored once.
-    db.prepare(`UPDATE ${relay.TABLE} SET sent_at = NULL WHERE id = (SELECT MAX(id) FROM ${relay.TABLE})`).run();
+    await db.prepare(`UPDATE ${relay.TABLE} SET sent_at = NULL, next_attempt_at = 0 WHERE id = (SELECT MAX(id) FROM ${relay.TABLE})`).run();
     flushed = await outbox.flush();
     assert.strictEqual(flushed.sent, 1);
     assert.strictEqual(stored.size, all.length, 'Events stored each event once');
     // A restart backfills nothing new and sends nothing twice.
     await relay.stopRelay(db);
-    outbox = relay.startRelay(db, { eventsUrl, privateKey: keys.privateKey, issuer: ISSUER, autoStart: false, log: quiet });
-    assert.strictEqual(outbox.pending(), 0);
+    outbox = await relay.startRelay(db, { eventsUrl, privateKey: keys.privateKey, issuer: ISSUER, autoStart: false, log: quiet });
+    assert.strictEqual(await outbox.pending(), 0);
     const n = received.length;
     await outbox.flush();
     assert.strictEqual(received.length, n);
     // The audit and the outbox row are one transaction: a failing enqueue leaves no audit row.
-    const auditCount = db.prepare('SELECT COUNT(*) AS n FROM dev_audit').get().n;
+    const auditCount = (await db.prepare('SELECT COUNT(*) AS n FROM dev_audit').get()).n;
     const origEnqueue = outbox.enqueue;
     outbox.enqueue = () => { throw new Error('boom'); };
     r = await api('owner', 'POST', `/${P}/apps`, { name: 'atomic', environment: 'sandbox', type: 'confidential' });
     assert.strictEqual(r.status, 500);
-    assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM dev_audit').get().n, auditCount, 'no audit row without its outbox row');
+    assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM dev_audit').get()).n, auditCount, 'no audit row without its outbox row');
     outbox.enqueue = origEnqueue;
     await relay.stopRelay(db);
 
     server.close(); events.close();
     console.log('developer defaults and events relay: all checks passed');
+})().catch(err => { console.error(err); process.exit(1); });
 })().catch(err => { console.error(err); process.exit(1); });

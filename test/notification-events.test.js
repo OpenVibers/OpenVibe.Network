@@ -18,9 +18,10 @@ const crypto = require('crypto');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const contracts = require('openvibe-contracts');
+(async () => {
 const { ids, serviceAuth } = contracts;
 const { signDeliveryHeaders } = require('openvibe-sdk/events');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const { NotificationService, NOTIFICATION_EVENT } = require('../server/notifications/notification-service');
 const { createEventsConsumer } = require('../server/notifications/events-consumer');
 const { createLiveFollowers } = require('../server/notifications/live-followers');
@@ -34,14 +35,14 @@ const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLen
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-notification-events-'));
 const DB_PATH = path.join(dir, 'network.db');
 const quietly = (f) => { const l = console.log; console.log = () => {}; try { return f(); } finally { console.log = l; } };
-let db = quietly(() => initDb(DB_PATH));
+let db = getDb();
 
 const ALICE = ids.newId('user'), BOB = ids.newId('user'), CAROL = ids.newId('user'), DAVE = ids.newId('user'), ERIN = ids.newId('user');
-db.prepare(`INSERT INTO users (id, username, password_hash, subject_id, is_anon) VALUES
+await db.prepare(`INSERT INTO users (id, username, password_hash, subject_id, is_anon) VALUES
     (1, 'alice', 'x', ?, 0), (2, 'bob', 'x', ?, 0), (3, 'guest_1', 'x', NULL, 1), (4, 'nosubject', 'x', NULL, 0),
     (20, 'carol', 'x', ?, 0), (21, 'dave', 'x', ?, 0), (22, 'erin', 'x', ?, 0)`).run(ALICE, BOB, CAROL, DAVE, ERIN);
 
-const outbox = (d = db) => d.prepare(`SELECT envelope FROM ${eventRelay.TABLE} ORDER BY id`).all().map((r) => JSON.parse(r.envelope)).filter((e) => e.event_type === NOTIFICATION_EVENT);
+const outbox = async (d = db) => (await d.prepare(`SELECT envelope FROM ${eventRelay.TABLE} ORDER BY id`).all()).map((r) => r.envelope).filter((e) => e.event_type === NOTIFICATION_EVENT);
 const PAYLOAD_KEYS = ['category', 'created_at', 'notification_id', 'priority', 'service', 'type', 'unread_count'];
 const checkEnvelope = (env, subject) => {
     const v = contracts.validate('events.event-envelope@1', env);
@@ -57,48 +58,49 @@ const checkEnvelope = (env, subject) => {
 (async () => {
     // ── 1. network.notification.created, in the notification's transaction ────────────────────────
     let notifications = new NotificationService(db);
-    const n1 = notifications.create({ user_id: 1, type: 'CONTENT_REPLY', category: 'social', title: 'New reply to your comment', message: 'bob replied: secret words', sender_id: 2, sender_name: 'bob', url: 'https://openvibe.live/vod/5#comments', service: 'live' });
+    const n1 = await notifications.create({ user_id: 1, type: 'CONTENT_REPLY', category: 'social', title: 'New reply to your comment', message: 'bob replied: secret words', sender_id: 2, sender_name: 'bob', url: 'https://openvibe.live/vod/5#comments', service: 'live' });
     assert.ok(n1);
-    let evs = outbox();
+    let evs = await outbox();
     assert.strictEqual(evs.length, 1);
     checkEnvelope(evs[0], ALICE);
     assert.deepStrictEqual({ ...evs[0].payload, created_at: null }, { notification_id: n1.id, type: 'CONTENT_REPLY', category: 'social', priority: 'normal', service: 'live', created_at: null, unread_count: 1 });
     assert.ok(!JSON.stringify(evs[0]).includes('secret words') && !JSON.stringify(evs[0]).includes('bob') && !JSON.stringify(evs[0]).includes(BOB), 'no text, no sender, anywhere in the envelope');
-    notifications.create({ user_id: 1, type: 'STREAM_LIVE', title: 'carol is live!', sender_id: 20, service: 'live' });
-    evs = outbox();
+    await notifications.create({ user_id: 1, type: 'STREAM_LIVE', title: 'carol is live!', sender_id: 20, service: 'live' });
+    evs = await outbox();
     assert.strictEqual(evs.length, 2);
     assert.strictEqual(evs[1].payload.unread_count, 2, 'the unread count after the insert');
     assert.strictEqual(evs[1].payload.category, 'stream');
     assert.notStrictEqual(evs[0].event_id, evs[1].event_id);
 
     // Nothing stored, nothing announced: a muted category; a blocked sender is the same rule (create() returns null).
-    notifications.setPreference(2, 'social', { enabled: false });
-    assert.strictEqual(notifications.create({ user_id: 2, type: 'FOLLOW', category: 'social', title: 'x' }), null);
+    await notifications.setPreference(2, 'social', { enabled: false });
+    assert.strictEqual(await notifications.create({ user_id: 2, type: 'FOLLOW', category: 'social', title: 'x' }), null);
     // Stored but never announced: a guest, an account without a usr_ subject.
-    assert.ok(notifications.create({ user_id: 3, type: 'WELCOME', title: 'hi' }));
-    assert.ok(notifications.create({ user_id: 4, type: 'WELCOME', title: 'hi' }));
-    assert.strictEqual(outbox().length, 2);
+    assert.ok(await notifications.create({ user_id: 3, type: 'WELCOME', title: 'hi' }));
+    assert.ok(await notifications.create({ user_id: 4, type: 'WELCOME', title: 'hi' }));
+    assert.strictEqual((await outbox()).length, 2);
     // Odd stored shapes are normalised in the event, never dropped with the notification.
-    notifications.create({ user_id: 2, type: 'arena_hot', category: 'Game Stuff', priority: 'urgent', title: 'x', service: 'Live!' });
-    evs = outbox();
+    await notifications.create({ user_id: 2, type: 'arena_hot', category: 'Game Stuff', priority: 'urgent', title: 'x', service: 'Live!' });
+    evs = await outbox();
     assert.strictEqual(evs.length, 3);
     checkEnvelope(evs[2], BOB);
     assert.deepStrictEqual([evs[2].payload.type, evs[2].payload.category, evs[2].payload.priority, evs[2].payload.service], ['GENERIC', 'system', 'normal', null]);
 
     // Both or neither: when the event cannot be queued, the notification is not stored either.
-    db.exec(`CREATE TRIGGER outbox_down BEFORE INSERT ON ${eventRelay.TABLE} BEGIN SELECT RAISE(ABORT, 'outbox down'); END`);
-    const before = db.prepare('SELECT COUNT(*) AS c FROM notifications WHERE user_id = 1').get().c;
-    assert.throws(() => notifications.create({ user_id: 1, type: 'WELCOME', title: 'hi' }), /outbox down/);
-    assert.strictEqual(db.prepare('SELECT COUNT(*) AS c FROM notifications WHERE user_id = 1').get().c, before, 'no notification without its event');
-    db.exec('DROP TRIGGER outbox_down');
+    await globalThis.__ovNetworkDdl(`CREATE OR REPLACE FUNCTION ov_test_outbox_down() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'outbox down'; END $$;
+        CREATE TRIGGER outbox_down BEFORE INSERT ON ${eventRelay.TABLE} FOR EACH ROW EXECUTE FUNCTION ov_test_outbox_down()`);
+    const before = (await db.prepare('SELECT COUNT(*) AS c FROM notifications WHERE user_id = 1').get()).c;
+    await assert.rejects(async () => await notifications.create({ user_id: 1, type: 'WELCOME', title: 'hi' }), /outbox down/);
+    assert.strictEqual((await db.prepare('SELECT COUNT(*) AS c FROM notifications WHERE user_id = 1').get()).c, before, 'no notification without its event');
+    await globalThis.__ovNetworkDdl(`DROP TRIGGER IF EXISTS outbox_down ON ${eventRelay.TABLE}; DROP FUNCTION IF EXISTS ov_test_outbox_down()`);
     // A bulk fan-out is one transaction with one event per recipient.
-    const bulk = notifications.createBulk([1, 2, 21], { type: 'SERVICE_ANNOUNCEMENT', category: 'admin', title: 'Maintenance tonight' });
+    const bulk = await notifications.createBulk([1, 2, 21], { type: 'SERVICE_ANNOUNCEMENT', category: 'admin', title: 'Maintenance tonight' });
     assert.strictEqual(bulk.length, 3);
-    assert.deepStrictEqual(outbox().slice(-3).map((e) => e.subject.id), [ALICE, BOB, DAVE]);
+    assert.deepStrictEqual((await outbox()).slice(-3).map((e) => e.subject.id), [ALICE, BOB, DAVE]);
 
     // The relay publishes it to Events like every other Network event.
     const published = [];
-    const relay = eventRelay.startRelay(db, {
+    const relay = await eventRelay.startRelay(db, {
         eventsUrl: 'http://events.test', privateKey, issuer: ISSUER, autoStart: false, log: { log() {}, warn() {} },
         fetch: async (url, init) => {
             const body = JSON.parse(init.body);
@@ -108,7 +110,7 @@ const checkEnvelope = (env, subject) => {
         },
     });
     notifications = new NotificationService(db);
-    notifications.create({ user_id: 1, type: 'WELCOME', title: 'hi' });
+    await notifications.create({ user_id: 1, type: 'WELCOME', title: 'hi' });
     await relay.flush();
     assert.ok(published.some((e) => e.event_type === NOTIFICATION_EVENT && e.subject.id === ALICE), 'relayed to Events');
     await eventRelay.stopRelay(db);
@@ -127,7 +129,7 @@ const checkEnvelope = (env, subject) => {
         const r = await fetch(`${base}/api/v1/realtime/ticket`, { method: 'POST', headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...headers } });
         return { status: r.status, body: await r.json().catch(() => null), headers: r.headers };
     };
-    const aliceSession = signToken(db.prepare('SELECT * FROM users WHERE id = 1').get(), privateKey, config);
+    const aliceSession = signToken(await db.prepare('SELECT * FROM users WHERE id = 1').get(), privateKey, config);
     let r = await mint(aliceSession);
     assert.strictEqual(r.status, 200, JSON.stringify(r.body));
     assert.strictEqual(r.headers.get('cache-control'), 'no-store');
@@ -145,13 +147,13 @@ const checkEnvelope = (env, subject) => {
     assert.notStrictEqual(jwt.decode(again.body.ticket).jti, claims.jti, 'every ticket is its own');
 
     // A ticket is never a session: not here, not with the session issuer anyone checks.
-    assert.ok(session.verifySession(r.body.ticket, { db, publicKey, config }).error, 'Network\'s session guard refuses it');
+    assert.ok((await session.verifySession(r.body.ticket, { db, publicKey, config })).error, 'Network\'s session guard refuses it');
     assert.strictEqual((await mint(r.body.ticket)).status, 401, 'no ticket for a ticket');
     assert.throws(() => jwt.verify(r.body.ticket, publicKey, { algorithms: ['RS256'], issuer: ISSUER }), /issuer/, 'services checking the session issuer refuse it');
     assert.throws(() => jwt.verify(r.body.ticket, publicKey, { algorithms: ['RS256'], issuer: `${ISSUER}/realtime`, audience: 'openvibe.live' }), /audience/);
     // Refused: signed out, a guest, a service token, and everyone while the operator has it off.
     assert.strictEqual((await mint(null)).status, 401);
-    r = await mint(signToken(db.prepare('SELECT * FROM users WHERE id = 3').get(), privateKey, config));
+    r = await mint(signToken(await db.prepare('SELECT * FROM users WHERE id = 3').get(), privateKey, config));
     assert.deepStrictEqual([r.status, r.body.code], [403, 'realtime.guest']);
     const svc = serviceAuth.signServiceToken({ iss: ISSUER, sub: 'svc:live', actor_type: 'service', aud: ['openvibe.network'], cap: [], iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 300, jti: 'tok_x' }, privateKey);
     assert.strictEqual((await mint(svc)).status, 401, 'services get no ticket');
@@ -160,10 +162,10 @@ const checkEnvelope = (env, subject) => {
     assert.deepStrictEqual([r.status, r.body.code], [503, 'realtime.disabled']);
     enabled = true;
     // An account that has no subject yet is given one.
-    r = await mint(signToken(db.prepare('SELECT * FROM users WHERE id = 4').get(), privateKey, config));
+    r = await mint(signToken(await db.prepare('SELECT * FROM users WHERE id = 4').get(), privateKey, config));
     assert.strictEqual(r.status, 200);
     assert.match(r.body.subject, /^usr_/);
-    assert.strictEqual(db.prepare('SELECT subject_id FROM users WHERE id = 4').get().subject_id, r.body.subject);
+    assert.strictEqual((await db.prepare('SELECT subject_id FROM users WHERE id = 4').get()).subject_id, r.body.subject);
     // The stream URL: the default, an operator's origin, or the default for anything odd.
     assert.strictEqual(ticketMod.streamUrlFrom(''), 'https://events.openvibe.network/realtime/stream');
     assert.strictEqual(ticketMod.streamUrlFrom('https://events.example.test/'), 'https://events.example.test/realtime/stream');
@@ -186,11 +188,11 @@ const checkEnvelope = (env, subject) => {
     await new Promise((r2) => live.listen(0, '127.0.0.1', r2));
     const SECRET = 's'.repeat(40);
     const logged = []; const discord = [];
-    function boot() {
+    async function boot() {
         // A fresh process: a new connection to the same file, new services, nothing in memory.
-        const d = quietly(() => initDb(DB_PATH));
+        const d = getDb();
         const n = new NotificationService(d);
-        const c = createEventsConsumer({
+        const c = await createEventsConsumer({
             db: d, notifications: n, secrets: SECRET,
             liveFollowers: createLiveFollowers({ privateKey, issuer: ISSUER, liveUrl: `http://127.0.0.1:${live.address().port}` }),
             discord: () => ({ sendLiveAlert: async (s) => { discord.push(s.username); return { sent: true }; } }),
@@ -206,16 +208,17 @@ const checkEnvelope = (env, subject) => {
         const res = await fetch(proc.url, { method: 'POST', headers: { 'content-type': 'application/json', ...signDeliveryHeaders(raw, SECRET) }, body: raw });
         return { status: res.status, body: await res.json() };
     };
-    const stop = (proc) => new Promise((r2) => { proc.server.close(() => { proc.db.close(); r2(); }); });
+    // The database handle is the process's shared one (test/helpers/pg-preload.mjs): a "restart" closes the
+    // server, not the database.
+    const stop = (proc) => new Promise((r2) => proc.server.close(r2));
     const started = {
         event_id: ids.newId('event'), event_type: 'live.stream.started', version: 1, source: 'live',
         actor: { type: 'user', id: CAROL }, subject: { type: 'stream', id: '701', revision: 1 }, visibility: 'public', priority: 'important',
         occurred_at: new Date().toISOString(),
         payload: { stream_id: 701, channel: { username: 'carol', display_name: 'Carol', url: 'https://openvibe.live/@carol', subject: { type: 'user', id: CAROL } }, title: 'Go', category: null, protocol: 'whip', is_nsfw: false, started_at: new Date().toISOString() },
     };
-    db.close();
-    const goLives = (d) => d.prepare("SELECT user_id, COUNT(*) AS c FROM notifications WHERE type = 'STREAM_LIVE' AND sender_id = 20 AND user_id IN (21, 22) GROUP BY user_id ORDER BY user_id").all().map((x) => [x.user_id, x.c]);
-    const goLiveEvents = (d) => outbox(d).filter((e) => [DAVE, ERIN].includes(e.subject.id) && e.payload.type === 'STREAM_LIVE').length;
+    const goLives = async (d) => (await d.prepare("SELECT user_id, COUNT(*) AS c FROM notifications WHERE type = 'STREAM_LIVE' AND sender_id = 20 AND user_id IN (21, 22) GROUP BY user_id ORDER BY user_id").all()).map((x) => [x.user_id, x.c]);
+    const goLiveEvents = async (d) => (await outbox(d)).filter((e) => [DAVE, ERIN].includes(e.subject.id) && e.payload.type === 'STREAM_LIVE').length;
 
     // The process dies in the middle of the fan-out (Dave's notification written, Erin's not): nothing
     // of it survives, not the notification, its event, the announcement window or the inbox claim.
@@ -225,11 +228,11 @@ const checkEnvelope = (env, subject) => {
     proc.notifications.create = (data) => { if (++calls === 2) throw new Error('SIGKILL'); return create(data); };
     let r3 = await deliver(proc, started);
     assert.deepStrictEqual([r3.status, r3.body.code], [500, 'network.event_failed']);
-    assert.deepStrictEqual(goLives(proc.db), [], 'the half-done fan-out rolled back');
-    assert.strictEqual(goLiveEvents(proc.db), 0);
-    assert.ok(!proc.db.prepare('SELECT 1 FROM network_event_inbox WHERE event_id = ?').get(started.event_id));
-    const claimed = proc.db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'stream_live_announcements'").get()
-        ? proc.db.prepare("SELECT COUNT(*) AS c FROM stream_live_announcements WHERE stream_id = '701'").get().c : 0;
+    assert.deepStrictEqual(await goLives(proc.db), [], 'the half-done fan-out rolled back');
+    assert.strictEqual(await goLiveEvents(proc.db), 0);
+    assert.ok(!await proc.db.prepare('SELECT 1 FROM network_event_inbox WHERE event_id = ?').get(started.event_id));
+    const claimed = await proc.db.prepare("SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'stream_live_announcements'").get()
+        ? (await proc.db.prepare("SELECT COUNT(*) AS c FROM stream_live_announcements WHERE stream_id = '701'").get()).c : 0;
     assert.strictEqual(claimed, 0, 'the announcement window is not spent');
     await stop(proc);
 
@@ -238,8 +241,8 @@ const checkEnvelope = (env, subject) => {
     r3 = await deliver(proc, started);
     assert.strictEqual(r3.status, 200, JSON.stringify(r3.body));
     assert.deepStrictEqual([r3.body.duplicate, r3.body.outcome], [false, 'notified']);
-    assert.deepStrictEqual(goLives(proc.db), [[21, 1], [22, 1]]);
-    assert.strictEqual(goLiveEvents(proc.db), 2, 'one network.notification.created per follower');
+    assert.deepStrictEqual(await goLives(proc.db), [[21, 1], [22, 1]]);
+    assert.strictEqual(await goLiveEvents(proc.db), 2, 'one network.notification.created per follower');
     await new Promise((r2) => setImmediate(r2));
     assert.deepStrictEqual(discord, ['carol'], 'the Discord alert once, after the commit');
     assert.ok(logged.some((m) => m.includes(`live.stream.started ${started.event_id}: notified`)), 'the outcome is in the log (C-85 evidence)');
@@ -250,14 +253,15 @@ const checkEnvelope = (env, subject) => {
     liveCalls.length = 0;
     r3 = await deliver(proc, started);
     assert.deepStrictEqual([r3.status, r3.body.duplicate, r3.body.outcome], [200, true, null]);
-    assert.deepStrictEqual(goLives(proc.db), [[21, 1], [22, 1]], 'nobody is told twice');
-    assert.strictEqual(goLiveEvents(proc.db), 2);
+    assert.deepStrictEqual(await goLives(proc.db), [[21, 1], [22, 1]], 'nobody is told twice');
+    assert.strictEqual(await goLiveEvents(proc.db), 2);
     assert.strictEqual(liveCalls.length, 0, 'Live is not asked again');
     await new Promise((r2) => setImmediate(r2));
     assert.deepStrictEqual(discord, ['carol']);
     await stop(proc);
-    live.close();
 
+    live.close();
     fs.rmSync(dir, { recursive: true, force: true });
     console.log('notification events: all checks passed');
 })().catch((err) => { console.error(err); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

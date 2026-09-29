@@ -73,14 +73,12 @@ function buildEnvelope({ subjectId, namespace, namespaceOwner, schemaVersion, re
 }
 
 /** Create network_event_outbox if no relay has yet (boot), so a module write never has to. */
-function ensureSchema(db) {
-    eventRelay.writerFor(db);
-}
+function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
 /** Build and enqueue; call INSIDE the transaction that makes the change. Returns the envelope. */
-function record(db, change) {
+async function record(db, change) {
     const env = buildEnvelope(change);
-    eventRelay.writerFor(db).enqueue(env, { traceparent: change.ctx && change.ctx.traceparent });
+    await eventRelay.writerFor(db).enqueue(db, env, { traceparent: change.ctx && change.ctx.traceparent });
     return env;
 }
 

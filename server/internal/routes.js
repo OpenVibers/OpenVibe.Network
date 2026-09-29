@@ -56,27 +56,27 @@ router.use('/identity', require('../identity/internal-routes'));
 // When a user connects their OpenVibe.Live or OpenVibe.Games account,
 // the service reports the link here.
 // A service token may only report links for its own service (svc:live -> service 'live').
-router.post('/link-account', principals.guard('identity.subject.resolve', { ownApp: forService }), (req, res) => {
+router.post('/link-account', principals.guard('identity.subject.resolve', { ownApp: forService }), async (req, res) => {
     const { user_id, service, service_user_id, service_username, avatar_url, display_name } = req.body;
     if (!user_id || !service || !service_user_id) {
         return res.status(400).json({ error: 'user_id, service, and service_user_id required' });
     }
 
-    const db = getDb(req);
-    db.prepare(`
+    const db = await getDb(req);
+    await db.prepare(`
         INSERT INTO linked_accounts (user_id, service, service_user_id, service_username, linked_at)
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        VALUES (?, ?, ?, ?, ov_now())
         ON CONFLICT(user_id, service) DO UPDATE SET
             service_user_id = ?,
             service_username = ?,
-            linked_at = CURRENT_TIMESTAMP
+            linked_at = ov_now()
     `).run(user_id, service, service_user_id, service_username || null, service_user_id, service_username || null);
 
     // The site told us its own id for this account: record it against the canonical subject too, so
     // other services can resolve "<service> user N" without asking that site (Wave 1 legacy map).
     if (!String(service_user_id).startsWith('network:')) {
         try {
-            const r = require('../identity/subjects').upsertLegacy(db, [{ network_user_id: user_id, source_system: String(service), source_type: 'user', source_id: String(service_user_id), verified: true }]);
+            const r = await require('../identity/subjects').upsertLegacy(db, [{ network_user_id: user_id, source_system: String(service), source_type: 'user', source_id: String(service_user_id), verified: true }]);
             if (r.conflicts.length) console.warn(`[Identity] ${service} user ${service_user_id} is already mapped to another subject; not repointed`);
         } catch (err) { console.warn('[Identity] legacy map from link-account failed:', err.message); }
     }
@@ -85,13 +85,13 @@ router.post('/link-account', principals.guard('identity.subject.resolve', { ownA
     // so every other site shows the same face. Never overwrites a picture or name the user set here, and only
     // accepts https URLs on our own sites.
     try {
-        const me = db.prepare('SELECT avatar_url, display_name, username FROM users WHERE id = ?').get(user_id);
+        const me = await db.prepare('SELECT avatar_url, display_name, username FROM users WHERE id = ?').get(user_id);
         if (me) {
             const svc = req.app.locals.avatarService;
-            if (svc && avatar_url && !me.avatar_url) svc.fromSite({ user_id, avatar_url, origin: service });
+            if (svc && avatar_url && !me.avatar_url) await svc.fromSite({ user_id, avatar_url, origin: service });
             const name = String(display_name || '').trim().slice(0, 60);
             // Same rule the profile form enforces: a display name only re-cases the username.
-            if (name && name !== me.display_name && name.toLowerCase() === String(me.username || '').toLowerCase()) db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(name, user_id);
+            if (name && name !== me.display_name && name.toLowerCase() === String(me.username || '').toLowerCase()) await db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(name, user_id);
         }
     } catch (err) { console.warn('[Internal] profile adopt failed:', err.message); }
 
@@ -99,21 +99,21 @@ router.post('/link-account', principals.guard('identity.subject.resolve', { ownA
 });
 
 // ── A site changed someone's avatar (Live's avatar picker) ───
-router.post('/user-avatar', principals.guard('network.avatar.write'), (req, res) => {
+router.post('/user-avatar', principals.guard('network.avatar.write'), async (req, res) => {
     const svc = req.app.locals.avatarService;
     if (!svc) return res.status(503).json({ error: 'avatar service unavailable' });
-    const r = svc.fromSite(req.body || {});
+    const r = await svc.fromSite(req.body || {});
     res.status(r.status).json(r.error ? { error: r.error } : { ok: true, changed: r.changed });
 });
 
 // Service URLs only (no secrets). Secret-typed entries (DEPLOY_CLOUDFLARE_TOKEN) are left out: they are the
 // owner's, not the services'.
-router.get('/url-registry/resolved', principals.guard('network.registry.read'), (req, res) => {
+router.get('/url-registry/resolved', principals.guard('network.registry.read'), async (req, res) => {
     try {
-        const db = getDb(req);
+        const db = await getDb(req);
         const { URL_DEFINITIONS } = require('openvibe-shared/url-resolver');
         const { isSensitiveSettingKey } = require('../auth/owner-guard');
-        const resolved = Object.fromEntries(Object.entries(urlRegistry.getResolvedRegistry(db, process.env))
+        const resolved = Object.fromEntries(Object.entries(await urlRegistry.getResolvedRegistry(db, process.env))
             .filter(([key]) => !((URL_DEFINITIONS[key] || {}).type === 'secret' || isSensitiveSettingKey(key))));
         res.json({ ok: true, registry: resolved });
     } catch (err) {
@@ -142,31 +142,31 @@ function handleWalletError(res, err) {
 // so the answer is held for a minute.
 let _coinStats = { at: 0, data: null };
 // Guarded by the ledger capability its caller (Live's home hero) holds. TODO(contracts): network.coins.read.
-router.get('/coins/stats', principals.guard('network.coins.read'), (req, res) => {
+router.get('/coins/stats', principals.guard('network.coins.read'), async (req, res) => {
     try {
         if (_coinStats.data && Date.now() - _coinStats.at < 60_000) return res.json(_coinStats.data);
-        const db = getDb(req);
-        const one = (sql) => { try { return db.prepare(sql).get()?.n || 0; } catch { return 0; } };
+        const db = await getDb(req);
+        const one = async (sql) => { try { const row = await db.prepare(sql).get(); return Number(row?.n ?? 0); } catch { return 0; } };
         const data = {
-            earned: one('SELECT COALESCE(SUM(delta), 0) AS n FROM coin_transactions WHERE delta > 0'),
-            spent: one('SELECT COALESCE(-SUM(delta), 0) AS n FROM coin_transactions WHERE delta < 0'),
-            circulating: one('SELECT COALESCE(SUM(balance), 0) AS n FROM wallets'),
-            holders: one('SELECT COUNT(*) AS n FROM wallets WHERE balance > 0'),
-            transactions: one('SELECT COUNT(*) AS n FROM coin_transactions'),
+            earned: await one('SELECT COALESCE(SUM(delta), 0) AS n FROM coin_transactions WHERE delta > 0'),
+            spent: await one('SELECT COALESCE(-SUM(delta), 0) AS n FROM coin_transactions WHERE delta < 0'),
+            circulating: await one('SELECT COALESCE(SUM(balance), 0) AS n FROM wallets'),
+            holders: await one('SELECT COUNT(*) AS n FROM wallets WHERE balance > 0'),
+            transactions: await one('SELECT COUNT(*) AS n FROM coin_transactions'),
             // Rolling windows so the display can say whether the economy is speeding up. Same
             // shape the Live stats use: this seven days, and the seven before it.
             recent: {
                 earned: {
-                    w: one("SELECT COALESCE(SUM(delta), 0) AS n FROM coin_transactions WHERE delta > 0 AND created_at >= datetime('now','-7 days')"),
-                    pw: one("SELECT COALESCE(SUM(delta), 0) AS n FROM coin_transactions WHERE delta > 0 AND created_at >= datetime('now','-14 days') AND created_at < datetime('now','-7 days')"),
+                    w: await one("SELECT COALESCE(SUM(delta), 0) AS n FROM coin_transactions WHERE delta > 0 AND created_at >= datetime('now','-7 days')"),
+                    pw: await one("SELECT COALESCE(SUM(delta), 0) AS n FROM coin_transactions WHERE delta > 0 AND created_at >= datetime('now','-14 days') AND created_at < datetime('now','-7 days')"),
                 },
                 spent: {
-                    w: one("SELECT COALESCE(-SUM(delta), 0) AS n FROM coin_transactions WHERE delta < 0 AND created_at >= datetime('now','-7 days')"),
-                    pw: one("SELECT COALESCE(-SUM(delta), 0) AS n FROM coin_transactions WHERE delta < 0 AND created_at >= datetime('now','-14 days') AND created_at < datetime('now','-7 days')"),
+                    w: await one("SELECT COALESCE(-SUM(delta), 0) AS n FROM coin_transactions WHERE delta < 0 AND created_at >= datetime('now','-7 days')"),
+                    pw: await one("SELECT COALESCE(-SUM(delta), 0) AS n FROM coin_transactions WHERE delta < 0 AND created_at >= datetime('now','-14 days') AND created_at < datetime('now','-7 days')"),
                 },
                 holders: {
-                    w: one("SELECT COUNT(DISTINCT user_id) AS n FROM coin_transactions WHERE created_at >= datetime('now','-7 days')"),
-                    pw: one("SELECT COUNT(DISTINCT user_id) AS n FROM coin_transactions WHERE created_at >= datetime('now','-14 days') AND created_at < datetime('now','-7 days')"),
+                    w: await one("SELECT COUNT(DISTINCT user_id) AS n FROM coin_transactions WHERE created_at >= datetime('now','-7 days')"),
+                    pw: await one("SELECT COUNT(DISTINCT user_id) AS n FROM coin_transactions WHERE created_at >= datetime('now','-14 days') AND created_at < datetime('now','-7 days')"),
                 },
             },
         };
@@ -183,10 +183,10 @@ router.get('/coins/stats', principals.guard('network.coins.read'), (req, res) =>
 // User modules for services (token only; server/identity/modules.js).
 require('../identity/modules').serviceRoutes(router, principals);
 
-router.post('/coins/credit', principals.guard('network.coins.credit', { ownApp: forApp }), (req, res) => {
+router.post('/coins/credit', principals.guard('network.coins.credit', { ownApp: forApp }), async (req, res) => {
     try {
         const { user_id, app_id, amount, reason, ref, idempotency_key } = req.body || {};
-        const result = wallet.credit(getDb(req), { user_id, app_id, amount, reason, ref, idempotency_key });
+        const result = await wallet.credit(await getDb(req), { user_id, app_id, amount, reason, ref, idempotency_key });
         res.json({ balance: result.balance });
     } catch (err) {
         handleWalletError(res, err);
@@ -195,10 +195,10 @@ router.post('/coins/credit', principals.guard('network.coins.credit', { ownApp: 
 
 // ── POST /internal/coins/debit ───────────────────────────────
 // Same body → { balance }; insufficient funds → 409 { error: 'insufficient_funds', balance }
-router.post('/coins/debit', principals.guard('network.coins.debit', { ownApp: forApp }), (req, res) => {
+router.post('/coins/debit', principals.guard('network.coins.debit', { ownApp: forApp }), async (req, res) => {
     try {
         const { user_id, app_id, amount, reason, ref, idempotency_key } = req.body || {};
-        const result = wallet.debit(getDb(req), { user_id, app_id, amount, reason, ref, idempotency_key });
+        const result = await wallet.debit(await getDb(req), { user_id, app_id, amount, reason, ref, idempotency_key });
         res.json({ balance: result.balance });
     } catch (err) {
         handleWalletError(res, err);
@@ -208,10 +208,10 @@ router.post('/coins/debit', principals.guard('network.coins.debit', { ownApp: fo
 // ── POST /internal/coins/transfer ────────────────────────────
 // Body: { from_user_id, to_user_id, app_id, amount, reason, ref?, idempotency_key }
 // → { from_balance, to_balance } (atomic)
-router.post('/coins/transfer', principals.guard('network.coins.transfer', { ownApp: forApp }), (req, res) => {
+router.post('/coins/transfer', principals.guard('network.coins.transfer', { ownApp: forApp }), async (req, res) => {
     try {
         const { from_user_id, to_user_id, app_id, amount, reason, ref, idempotency_key } = req.body || {};
-        const result = wallet.transfer(getDb(req), { from_user_id, to_user_id, app_id, amount, reason, ref, idempotency_key });
+        const result = await wallet.transfer(await getDb(req), { from_user_id, to_user_id, app_id, amount, reason, ref, idempotency_key });
         res.json({ from_balance: result.from_balance, to_balance: result.to_balance });
     } catch (err) {
         handleWalletError(res, err);
@@ -241,7 +241,7 @@ router.post('/events/stream-live', principals.guard('network.notifications.push'
     // email AND Discord. `force:true` (admin/manual) bypasses the cooldown, not the cap.
     // The same window is claimed by the live.stream.started consumer (../notifications/stream-live.js).
     {
-        const claim = streamLive.claimAnnouncement(getDb(req), { streamerKey: streamer.network_id || streamer.id || streamer.username, streamId: stream.id, force: !!req.body.force });
+        const claim = await streamLive.claimAnnouncement(await getDb(req), { streamerKey: streamer.network_id || streamer.id || streamer.username, streamId: stream.id, force: !!req.body.force });
         if (claim.skipped && claim.reason === 'daily-cap') {
             console.log(`[StreamLive] ${streamer.username}: daily cap (${claim.cap}) reached — not announcing`);
             return res.json({ ok: true, ...claim });
@@ -265,7 +265,7 @@ router.post('/events/stream-live', principals.guard('network.notifications.push'
     // ── Push Notifications to Followers ──────────────────────
     const notifService = req.app.locals.notificationService;
     if (notifService) {
-        const db = getDb(req);
+        const db = await getDb(req);
         const notifData = streamLive.streamLiveNotification({
             username: streamer.username, displayName: streamer.display_name, avatarUrl: streamer.avatar_url,
             senderId: streamer.id || null, stream, url: streamLive.channelUrl(streamer.username),
@@ -280,26 +280,26 @@ router.post('/events/stream-live', principals.guard('network.notifications.push'
             : [];
         if (!Array.isArray(follower_network_ids)) {
             // Legacy caller: fall back to Network's graph, resolving the streamer's NETWORK id first.
-            const link = streamer.id ? db.prepare("SELECT user_id FROM linked_accounts WHERE service = 'live' AND service_user_id = ?").get(String(streamer.id)) : null;
-            if (link) followerIds = db.prepare('SELECT follower_id FROM follows WHERE followed_id = ?').all(link.user_id).map(r => r.follower_id);
+            const link = streamer.id ? await db.prepare("SELECT user_id FROM linked_accounts WHERE service = 'live' AND service_user_id = ?").get(String(streamer.id)) : null;
+            if (link) followerIds = (await db.prepare('SELECT follower_id FROM follows WHERE followed_id = ?').all(link.user_id)).map(r => r.follower_id);
         }
         // sender_id must be the streamer's NETWORK id for dedupe + "who is this" lookups.
         try {
-            const link = streamer.id ? db.prepare("SELECT user_id FROM linked_accounts WHERE service = 'live' AND service_user_id = ?").get(String(streamer.id)) : null;
+            const link = streamer.id ? await db.prepare("SELECT user_id FROM linked_accounts WHERE service = 'live' AND service_user_id = ?").get(String(streamer.id)) : null;
             if (link) notifData.sender_id = link.user_id;
             // A Live id is not a Network person: no block check against whoever has that Network id.
             else notifData.actor_subject = null;
         } catch { notifData.actor_subject = null; /* keep Live id */ }
 
         // Find users who opted into "all live" notifications
-        const allLiveUserIds = streamLive.allLiveSubscribers(db);
+        const allLiveUserIds = await streamLive.allLiveSubscribers(db);
 
         // Merge and deduplicate
         const targetIds = [...new Set([...followerIds, ...allLiveUserIds])];
 
         if (targetIds.length > 0) {
             try {
-                const created = notifService.createBulk(targetIds, notifData);
+                const created = await notifService.createBulk(targetIds, notifData);
                 results.notifications = { sent: created.length, total: targetIds.length };
             } catch (err) {
                 results.notifications = { error: err.message };
@@ -321,7 +321,7 @@ router.post('/events/stream-live', principals.guard('network.notifications.push'
 // ── Push Single Notification ─────────────────────────────────
 // POST /internal/notifications/push
 // Body: { user_id, type, title, message, icon, sender_id, sender_name, sender_avatar, service, url, priority, category, rich_content, expires_at }
-router.post('/notifications/push', principals.guard('network.notifications.push', { ownApp: forService }), (req, res) => {
+router.post('/notifications/push', principals.guard('network.notifications.push', { ownApp: forService }), async (req, res) => {
     const notifService = req.app.locals.notificationService;
     if (!notifService) return res.status(503).json({ error: 'Notification service unavailable' });
 
@@ -329,7 +329,7 @@ router.post('/notifications/push', principals.guard('network.notifications.push'
     if (!user_id) return res.status(400).json({ error: 'user_id required' });
 
     try {
-        const notification = notifService.create({ user_id, ...data });
+        const notification = await notifService.create({ user_id, ...data });
         if (!notification) return res.json({ ok: true, skipped: true, reason: 'User has category disabled' });
         res.json({ ok: true, notification });
     } catch (err) {
@@ -341,7 +341,7 @@ router.post('/notifications/push', principals.guard('network.notifications.push'
 // ── Push Bulk Notifications ──────────────────────────────────
 // POST /internal/notifications/push-bulk
 // Body: { user_ids: [], type, title, message, ... }
-router.post('/notifications/push-bulk', principals.guard('network.notifications.push', { ownApp: forService }), (req, res) => {
+router.post('/notifications/push-bulk', principals.guard('network.notifications.push', { ownApp: forService }), async (req, res) => {
     const notifService = req.app.locals.notificationService;
     if (!notifService) return res.status(503).json({ error: 'Notification service unavailable' });
 
@@ -354,7 +354,7 @@ router.post('/notifications/push-bulk', principals.guard('network.notifications.
     }
 
     try {
-        const results = notifService.createBulk(user_ids, data);
+        const results = await notifService.createBulk(user_ids, data);
         res.json({ ok: true, sent: results.length, total: user_ids.length });
     } catch (err) {
         console.error('[Internal] Bulk notification push error:', err);
@@ -366,7 +366,7 @@ router.post('/notifications/push-bulk', principals.guard('network.notifications.
 // POST /internal/operator/alerts — network.operator-alerts-request@1 → network.operator-alerts-result@1.
 // Host's relay (ovhost alerts relay) sends the complete set of alerts firing now; server/operator/alerts.js
 // pages the owner when one opens, once a day while it stays open, and when it resolves. Token only.
-router.post('/operator/alerts', principals.guard('network.operator.alert'), (req, res) => {
+router.post('/operator/alerts', principals.guard('network.operator.alert'), async (req, res) => {
     const contracts = require('openvibe-contracts');
     const v = contracts.validate('network.operator-alerts-request@1', req.body);
     if (!v.valid) return res.status(400).json({ error: 'The body does not match network.operator-alerts-request@1', details: (v.errors || []).slice(0, 5) });
@@ -374,7 +374,7 @@ router.post('/operator/alerts', principals.guard('network.operator.alert'), (req
     const notify = notifService ? (userId, n) => notifService.create({ user_id: userId, ...n }) : null;
     const revise = notifService ? (userId, id, fields) => notifService.revise(id, userId, fields) : null;
     try {
-        res.json(require('../operator/alerts').receive(getDb(req), req.body, { notify, revise }));
+        res.json(await require('../operator/alerts').receive(await getDb(req), req.body, { notify, revise }));
     } catch (err) {
         console.error('[Internal] Operator alerts error:', err.message);
         res.status(500).json({ error: 'Operator alerts failed' });
@@ -384,7 +384,7 @@ router.post('/operator/alerts', principals.guard('network.operator.alert'), (req
 // ── Mark Notifications Read by Type ──────────────────────────
 // POST /internal/notifications/mark-read
 // Body: { user_id, type, url_pattern? }
-router.post('/notifications/mark-read', principals.guard('network.notifications.push'), (req, res) => {
+router.post('/notifications/mark-read', principals.guard('network.notifications.push'), async (req, res) => {
     const notifService = req.app.locals.notificationService;
     if (!notifService) return res.status(503).json({ error: 'Notification service unavailable' });
 
@@ -392,7 +392,7 @@ router.post('/notifications/mark-read', principals.guard('network.notifications.
     if (!user_id || !type) return res.status(400).json({ error: 'user_id and type required' });
 
     try {
-        const changes = notifService.markReadByType(parseInt(user_id), type, url_pattern || null);
+        const changes = await notifService.markReadByType(parseInt(user_id), type, url_pattern || null);
         res.json({ ok: true, marked: changes });
     } catch (err) {
         console.error('[Internal] Mark read by type error:', err);
@@ -409,25 +409,25 @@ router.post('/notifications/mark-read', principals.guard('network.notifications.
 // Body: { ip }
 // Called by first-party services to get or create a unified
 // anon identity for a given IP address. Single source of truth.
-router.post('/resolve-anon', principals.guard('identity.subject.resolve'), (req, res) => {
+router.post('/resolve-anon', principals.guard('identity.subject.resolve'), async (req, res) => {
     const { ip } = req.body;
     if (!ip) return res.status(400).json({ error: 'ip required' });
 
-    const db = getDb(req);
+    const db = await getDb(req);
     const { v4: uuidv4 } = require('uuid');
 
     try {
         // Check if this IP already has an anon
-        const byIpLog = db.prepare(`
+        const byIpLog = await db.prepare(`
             SELECT a.* FROM anon_users a
             INNER JOIN anon_ip_log l ON l.anon_id = a.id
             WHERE l.ip = ?
             ORDER BY a.id ASC LIMIT 1
         `).get(ip);
         if (byIpLog) {
-            db.prepare('UPDATE anon_users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?').run(byIpLog.id);
-            db.prepare(`
-                UPDATE anon_ip_log SET last_seen = CURRENT_TIMESTAMP
+            await db.prepare('UPDATE anon_users SET last_seen = ov_now() WHERE id = ?').run(byIpLog.id);
+            await db.prepare(`
+                UPDATE anon_ip_log SET last_seen = ov_now()
                 WHERE anon_id = ? AND ip = ?
             `).run(byIpLog.id, ip);
             return res.json({
@@ -440,12 +440,12 @@ router.post('/resolve-anon', principals.guard('identity.subject.resolve'), (req,
         }
 
         // Check by creating IP
-        const byCreatingIp = db.prepare('SELECT * FROM anon_users WHERE ip = ? ORDER BY id ASC LIMIT 1').get(ip);
+        const byCreatingIp = await db.prepare('SELECT * FROM anon_users WHERE ip = ? ORDER BY id ASC LIMIT 1').get(ip);
         if (byCreatingIp) {
-            db.prepare('UPDATE anon_users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?').run(byCreatingIp.id);
+            await db.prepare('UPDATE anon_users SET last_seen = ov_now() WHERE id = ?').run(byCreatingIp.id);
             // Ensure IP log entry exists
             try {
-                db.prepare('INSERT OR IGNORE INTO anon_ip_log (anon_id, ip) VALUES (?, ?)').run(byCreatingIp.id, ip);
+                await db.prepare('INSERT INTO anon_ip_log (anon_id, ip) VALUES(?, ?) ON CONFLICT DO NOTHING').run(byCreatingIp.id, ip);
             } catch { /* ok */ }
             return res.json({
                 anon_number: byCreatingIp.anon_number,
@@ -457,17 +457,17 @@ router.post('/resolve-anon', principals.guard('identity.subject.resolve'), (req,
         }
 
         // Create new anon
-        const maxNum = db.prepare('SELECT MAX(anon_number) as max FROM anon_users').get().max || 0;
+        const maxNum = (await db.prepare('SELECT MAX(anon_number) as max FROM anon_users').get()).max || 0;
         const anonNumber = maxNum + 1;
         const sessionToken = uuidv4();
 
-        const result = db.prepare(
-            'INSERT INTO anon_users (anon_number, session_token, ip, subject_id) VALUES (?, ?, ?, ?)'
+        const result = await db.prepare(
+            'INSERT INTO anon_users (anon_number, session_token, ip, subject_id) VALUES (?, ?, ?, ?) RETURNING id'
         ).run(anonNumber, sessionToken, ip, require('../identity/subjects').newGuestSubjectId());
 
         // Log IP
         try {
-            db.prepare('INSERT INTO anon_ip_log (anon_id, ip) VALUES (?, ?)').run(result.lastInsertRowid, ip);
+            await db.prepare('INSERT INTO anon_ip_log (anon_id, ip) VALUES (?, ?)').run(result.lastInsertRowid, ip);
         } catch { /* ok */ }
 
         console.log(`[Internal] New unified anon #${anonNumber} for IP ${ip}`);

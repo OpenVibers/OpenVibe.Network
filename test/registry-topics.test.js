@@ -163,7 +163,7 @@ const rel = (contractsVersion, packages) => [200, { service: 'x', release: 'abcd
     assert.strictEqual(code, 1, '--strict fails on a warning');
     assert.ok(!lines.some(l => l.startsWith('::warning')), 'annotations only under GitHub Actions');
     lines.length = 0;
-    code = await drift.main(['--registry', base], { fetchImpl: (u, o) => (String(u).startsWith(base) ? fetch(u, o) : fakeGithub(u, o)), env: {}, out });
+    code = await drift.main(['--registry', base], { fetchImpl: async (u, o) => (String(u).startsWith(base) ? fetch(u, o) : await fakeGithub(u, o)), env: {}, out });
     assert.strictEqual(code, 0);
     assert.ok(lines.some(l => l.startsWith(`WARN openvibe-contracts live: pins v0.28.0, latest is ${LATEST}`)), lines.join('\n'));
     assert.ok(lines.some(l => l.includes(`network: pins ${LATEST} (latest)`)), lines.join('\n'));

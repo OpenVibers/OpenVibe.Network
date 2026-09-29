@@ -1,46 +1,47 @@
 #!/usr/bin/env node
 /**
- * Provider secrets out of network.db (roadmap §18.2(12); server/secrets.js). Network reads each secret
+ * Provider secrets out of site_settings (roadmap §18.2(12); server/secrets.js). Network reads each secret
  * from its environment variable first and from site_settings only as a fallback; this script is how the
  * operator empties the database copies once the environment has them. It prints setting and variable
  * NAMES, never a value (values are compared by SHA-256 only).
  *
- *   sudo node scripts/secrets-out-of-db.js
- *       dry run: every secret setting by name, whether network.db holds a value, its variable, whether
+ *   node scripts/secrets-out-of-db.js
+ *       dry run: every secret setting by name, whether the database holds a value, its variable, whether
  *       the env file sets it (and to the same value), and whether the running service has it
- *   sudo node scripts/secrets-out-of-db.js --copy-to-env [--apply]
+ *   node scripts/secrets-out-of-db.js --copy-to-env [--apply]
  *       for each secret the database holds and the env file does not set, append VAR=value to the env
  *       file (after copying it to <env file>.bak-<time>, same mode), so the values move without anyone
- *       seeing them: the database is read by a child process running as its owner and the values go to
- *       the file through a pipe, never to the terminal. Dry run without --apply. Restart the service after.
- *   sudo node scripts/secrets-out-of-db.js --apply --backup <new file> [--allow-different]
- *       takes an online backup (0600, verified), then blanks the database copy of
+ *       seeing them: the values go to the file through this process, never to the terminal. Dry run
+ *       without --apply. Restart the service after.
+ *   node scripts/secrets-out-of-db.js --apply --backup <new file> [--allow-different]
+ *       writes the secret settings to a new owner-only (0600) JSON backup, then blanks the database copy of
  *         - each secret whose variable the env file sets to the same value (a different value only with
  *           --allow-different) AND the running service already has (restart it after editing the file)
  *         - each secret setting Network never reads (Net tools tokens, old SES keys)
  *       and leaves every other one as it is, saying why
- *   sudo node scripts/secrets-out-of-db.js --restore-from <backup> [--apply]
+ *   node scripts/secrets-out-of-db.js --restore-from <backup> [--apply]
  *       rollback: puts the backed-up value back into each secret setting that is blank now
  *
+ * On PostgreSQL (plan T2, ADR-035) the settings live in the service database: the script reads and writes
+ * them through DATABASE_URL, exactly as the service does. There is no separate owner process and no
+ * sqlite online backup; --backup writes a JSON file (0600) holding the values being blanked.
+ *
  *   --env-file <path>     default /etc/openvibe/network.env
- *   --db <path>           default $DB_PATH, else data/network.db (relative to the repo root)
  *   --unit <name>         systemd unit whose running process must already have the variables
  *                         (default openvibe-network); --no-service-check skips that check
  *
- * Run with sudo: the env file and the service's environment are root-only. The script reads them, then
- * becomes the database's owner before opening network.db, so no file changes owner.
+ * Run with sudo: the env file and the service's environment are root-only.
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
-const Database = require('better-sqlite3');
-const ops = require('./lib/db-ops');
+const { parseArgs } = require('./lib/db-ops');
 const secrets = require('../server/secrets');
 const { isSensitiveSettingKey } = require('../server/auth/owner-guard');
 
-const USAGE = `usage: sudo node scripts/secrets-out-of-db.js [--env-file <path>] [--db <path>] [--unit <name> | --no-service-check]
+const USAGE = `usage: sudo node scripts/secrets-out-of-db.js [--env-file <path>] [--unit <name> | --no-service-check]
        sudo node scripts/secrets-out-of-db.js --copy-to-env [--apply]
        sudo node scripts/secrets-out-of-db.js --apply --backup <new file> [--allow-different]
        sudo node scripts/secrets-out-of-db.js --restore-from <backup> [--apply]`;
@@ -49,6 +50,14 @@ const USAGE = `usage: sudo node scripts/secrets-out-of-db.js [--env-file <path>]
 const NOT_SECRET = new Set(['discord_oauth_client_id', 'vapid_public_key', 'vapid_contact_email']);
 
 const digest = (v) => crypto.createHash('sha256').update(String(v)).digest('hex');
+
+/** Open the service database: the injected handle (tests), else DATABASE_URL as the service uses it. */
+async function openDb(injected) {
+    if (injected) return injected;
+    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set: the settings live in the service database');
+    const { createDb } = require('openvibe-sdk/db');
+    return createDb({ url: process.env.DATABASE_URL, service: 'network-secrets', max: 1 });
+}
 
 function parseEnvText(text) {
     const util = require('util');
@@ -81,8 +90,8 @@ function serviceEnv(unit) {
 }
 
 /** Every secret-looking setting, classified. */
-function classify(db) {
-    const rows = db.prepare('SELECT key, value, type FROM site_settings').all();
+async function classify(db) {
+    const rows = await db.prepare('SELECT key, value, type FROM site_settings').all();
     const byKey = new Map(rows.map(r => [r.key, r]));
     const out = [];
     for (const s of secrets.SECRETS) out.push({ key: s.key, kind: 'provider', env: s.env, value: (byKey.get(s.key) || {}).value || '' });
@@ -97,31 +106,17 @@ function classify(db) {
 // A value systemd's EnvironmentFile and util.parseEnv read back unchanged without quoting.
 const PLAIN_VALUE = /^[A-Za-z0-9._\-+/=:~]+$/;
 
-/** Child side of --copy-to-env: the provider values as JSON on stdout (a pipe to the parent only). */
-function emitValues(file) {
-    const db = new Database(file, { readonly: true, fileMustExist: true });
-    try {
-        const get = db.prepare('SELECT value FROM site_settings WHERE key = ?');
-        const out = {};
-        for (const s of secrets.SECRETS) { const r = get.get(s.key); if (r && r.value) out[s.env] = String(r.value); }
-        process.stdout.write(JSON.stringify(out));
-    } finally { db.close(); }
+/** The database's provider values: { ENV_NAME: value }. */
+async function readValues(db) {
+    const get = db.prepare('SELECT value FROM site_settings WHERE key = ?');
+    const out = {};
+    for (const s of secrets.SECRETS) { const r = await get.get(s.key); if (r && r.value) out[s.env] = String(r.value); }
+    return out;
 }
 
-/** The database's provider values, read by a child process running as the database owner. */
-function readValuesAsOwner(file) {
-    const st = fs.statSync(file);
-    const asOwner = typeof process.getuid === 'function' && process.getuid() === 0 && st.uid !== 0 ? { uid: st.uid, gid: st.gid } : {};
-    const res = require('child_process').spawnSync(process.execPath, [__filename, '--db', file], {
-        ...asOwner, env: { PATH: process.env.PATH, OV_SECRETS_EMIT: '1' }, stdio: ['ignore', 'pipe', 'pipe'], timeout: 30000, maxBuffer: 1 << 20,
-    });
-    if (res.status !== 0) throw new Error(`reading the database failed: ${String(res.stderr || '').trim().split('\n').pop()}`);
-    return JSON.parse(String(res.stdout));
-}
-
-function copyToEnv(file, envFile, envf, apply, log, now = new Date()) {
+async function copyToEnv(db, envFile, envf, apply, log, now = new Date()) {
     if (envf.error) { log(`error: the env file ${envFile} is unreadable (${envf.error}); run with sudo`); return 2; }
-    const values = readValuesAsOwner(file);
+    const values = await readValues(db);
     const add = [];
     for (const s of secrets.SECRETS) {
         const v = values[s.env];
@@ -139,52 +134,60 @@ function copyToEnv(file, envFile, envf, apply, log, now = new Date()) {
     fs.copyFileSync(envFile, bak, fs.constants.COPYFILE_EXCL);
     fs.chmodSync(bak, fs.statSync(envFile).mode & 0o777);
     const text = fs.readFileSync(envFile, 'utf8');
-    fs.appendFileSync(envFile, `${text.endsWith('\n') || !text ? '' : '\n'}# Provider secrets moved from network.db site_settings (scripts/secrets-out-of-db.js, ${now.toISOString()})\n${add.map(([k, v]) => `${k}=${v}`).join('\n')}\n`);
+    fs.appendFileSync(envFile, `${text.endsWith('\n') || !text ? '' : '\n'}# Provider secrets moved from site_settings (scripts/secrets-out-of-db.js, ${now.toISOString()})\n${add.map(([k, v]) => `${k}=${v}`).join('\n')}\n`);
     log(`env file   ${envFile}: appended ${add.map(([k]) => k).join(', ')} (previous version: ${bak}). Restart openvibe-network, then run --apply --backup <new file>.`);
     return 0;
 }
 
-async function main(argv, log = console.log, { readService = serviceEnv } = {}) {
+/** Write the site_settings rows to a NEW owner-only JSON backup; refuses an existing target. */
+function writeBackup(target, rows, log) {
+    const file = path.resolve(target);
+    if (fs.existsSync(file)) throw new Error(`backup target ${file} already exists; choose a new path`);
+    const umask = process.umask(0o077);
+    try { fs.writeFileSync(file, JSON.stringify({ taken_at: new Date().toISOString(), settings: rows }, null, 2)); } finally { process.umask(umask); }
+    fs.chmodSync(file, 0o600);
+    log(`backup     ${file} (0600). It holds the site_settings rows (owner-only): delete it once the rollback window is over.`);
+    return file;
+}
+
+async function main(argv, log = console.log, { readService = serviceEnv, db: injected } = {}) {
     let args;
-    try { args = ops.parseArgs(argv, { flags: ['apply', 'allow-different', 'no-service-check', 'copy-to-env'], values: ['db', 'backup', 'env-file', 'unit', 'restore-from'] }); } catch (e) { log(`${e.message}\n${USAGE}`); return 2; }
+    try { args = parseArgs(argv, { flags: ['apply', 'allow-different', 'no-service-check', 'copy-to-env'], values: ['backup', 'env-file', 'unit', 'restore-from'] }); } catch (e) { log(`${e.message}\n${USAGE}`); return 2; }
     if (args.help) { log(USAGE); return 0; }
-    const file = ops.dbPath(args);
-    if (!fs.existsSync(file)) { log(`error: no database at ${file}`); return 2; }
     const envFile = args['env-file'] || '/etc/openvibe/network.env';
-    if (args['copy-to-env']) {
-        if (args.backup || args['restore-from']) { log('--copy-to-env takes only --apply, --db and --env-file'); return 2; }
-        log(`database   ${file}\nenv file   ${envFile}`);
-        return copyToEnv(file, envFile, readEnvFile(envFile), !!args.apply, log);
-    }
 
-    // Root-only reads first, then drop to the database owner.
-    const envf = args['restore-from'] ? { vars: {} } : readEnvFile(envFile);
-    const svc = args['restore-from'] || args['no-service-check'] ? null : readService(args.unit || 'openvibe-network');
-    ops.dropToOwnerOf(file, log);
-
-    const db = new Database(file);
-    db.pragma('busy_timeout = 5000');
+    let db;
+    try { db = await openDb(injected); } catch (e) { log(`error: ${e.message}`); return 2; }
     try {
-        log(`database   ${file}`);
+        if (args['copy-to-env']) {
+            if (args.backup || args['restore-from']) { log('--copy-to-env takes only --apply and --env-file'); return 2; }
+            log(`env file   ${envFile}`);
+            return await copyToEnv(db, envFile, readEnvFile(envFile), !!args.apply, log);
+        }
+
+        const envf = args['restore-from'] ? { vars: {} } : readEnvFile(envFile);
+        const svc = args['restore-from'] || args['no-service-check'] ? null : readService(args.unit || 'openvibe-network');
+
+        log('database   DATABASE_URL');
         if (args['restore-from']) {
-            const backup = new Database(path.resolve(ops.ROOT, args['restore-from']), { readonly: true, fileMustExist: true });
-            const saved = new Map(backup.prepare('SELECT key, value FROM site_settings').all().map(r => [r.key, r.value]));
-            backup.close();
-            const todo = classify(db).filter(c => c.kind !== 'unclassified' && !c.value && saved.get(c.key));
+            const backup = JSON.parse(fs.readFileSync(path.resolve(args['restore-from']), 'utf8'));
+            const saved = new Map((backup.settings || []).map(r => [r.key, r.value]));
+            const todo = (await classify(db)).filter(c => c.kind !== 'unclassified' && !c.value && saved.get(c.key));
             for (const c of todo) log(`  restore  ${c.key}`);
             log(`${todo.length} setting(s) to restore from ${args['restore-from']}`);
             if (!args.apply) { log('dry run: nothing changed. Re-run with --apply.'); return 0; }
-            const up = db.prepare("UPDATE site_settings SET value = ? WHERE key = ? AND (value IS NULL OR value = '')");
-            let n = 0;
-            db.transaction(() => { for (const c of todo) n += up.run(saved.get(c.key), c.key).changes; })();
-            log(`restored   ${n} setting(s). Restart openvibe-network if it should read them again (the environment still wins where set).`);
+            await db.tx(async (t) => {
+                let n = 0;
+                for (const c of todo) { n += (await t.prepare("UPDATE site_settings SET value = ? WHERE key = ? AND (value IS NULL OR value = '')").run(saved.get(c.key), c.key)).changes; }
+                log(`restored   ${n} setting(s). Restart openvibe-network if it should read them again (the environment still wins where set).`);
+            });
             return 0;
         }
 
         log(`env file   ${envFile}${envf.error ? ` (unreadable: ${envf.error}; run with sudo)` : ''}`);
         if (svc) log(`service    ${svc.error ? `unknown (${svc.error})` : `pid ${svc.pid}`}`);
         const plan = [];
-        for (const c of classify(db)) {
+        for (const c of await classify(db)) {
             const row = { key: c.key, kind: c.kind, db: c.value ? 'value' : 'empty' };
             if (c.kind === 'provider') {
                 row.env = c.env;
@@ -213,25 +216,22 @@ async function main(argv, log = console.log, { readService = serviceEnv } = {}) 
         const blank = plan.filter(p => p.action.startsWith('BLANK'));
         log(`${blank.length} setting(s) would be blanked; ${plan.filter(p => p.action.startsWith('keep')).length} kept.`);
         if (!args.apply) { log('dry run: nothing changed. Re-run with --apply --backup <new file>.'); return 0; }
-        if (!args.backup) { log('refusing --apply without --backup <new file> (sqlite online backup, 0600)'); return 2; }
+        if (!args.backup) { log('refusing --apply without --backup <new file> (owner-only JSON, 0600)'); return 2; }
         if (envf.error) { log(`refusing --apply: the env file ${envFile} is unreadable`); return 2; }
         if (!blank.length) { log('nothing to blank; no backup taken.'); return 0; }
-        const total = db.prepare('SELECT COUNT(*) AS n FROM site_settings').get().n;
-        const target = await ops.backupTo(db, args.backup, { expect: { table: 'site_settings', rows: total } });
-        log(`backup     ${target} (0600, quick_check ok). It holds the secrets (owner-only, like network.db): delete it once the rollback window is over.`);
-        const up = db.prepare("UPDATE site_settings SET value = '' WHERE key = ?");
-        let n = 0;
-        db.transaction(() => { for (const p of blank) n += up.run(p.key).changes; })();
-        log(`blanked    ${n} setting(s): ${blank.map(p => p.key).join(', ')}`);
+        const rows = await db.prepare('SELECT key, value FROM site_settings').all();
+        writeBackup(args.backup, rows, log);
+        await db.tx(async (t) => {
+            const up = t.prepare("UPDATE site_settings SET value = '' WHERE key = ?");
+            let n = 0;
+            for (const p of blank) n += (await up.run(p.key)).changes;
+            log(`blanked    ${n} setting(s): ${blank.map(p => p.key).join(', ')}`);
+        });
         return 0;
-    } finally { db.close(); }
+    } finally { if (!injected) await db.close().catch(() => {}); }
 }
 
 if (require.main === module) {
-    // The --copy-to-env child: values go to the parent through a pipe, never to a terminal.
-    if (process.env.OV_SECRETS_EMIT === '1' && !process.stdout.isTTY) {
-        try { emitValues(ops.dbPath(ops.parseArgs(process.argv.slice(2), { values: ['db'] }))); process.exit(0); } catch (err) { console.error(err.message); process.exit(1); }
-    }
     main(process.argv.slice(2)).then((code) => process.exit(code), (err) => { console.error(`error: ${err.message}`); process.exit(1); });
 }
 

@@ -45,41 +45,17 @@ class FollowError extends Error {
     constructor(status, code, detail) { super(detail); this.status = status; this.code = code; }
 }
 
-function ensureSchema(db) {
-    db.exec(`CREATE TABLE IF NOT EXISTS user_follows (
-        follower_subject TEXT NOT NULL,
-        target_type      TEXT NOT NULL CHECK (target_type IN ('channel')),
-        target_id        TEXT NOT NULL,
-        active           INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
-        notify_email     INTEGER NOT NULL DEFAULT 1 CHECK (notify_email IN (0, 1)),
-        notify_push      INTEGER NOT NULL DEFAULT 1 CHECK (notify_push IN (0, 1)),
-        revision         INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1),
-        source           TEXT NOT NULL DEFAULT 'network',
-        created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-        updated_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-        PRIMARY KEY (follower_subject, target_type, target_id),
-        CHECK (follower_subject <> target_id)
-    );
-    CREATE INDEX IF NOT EXISTS idx_user_follows_target ON user_follows(target_type, target_id, active, created_at);
-    CREATE TABLE IF NOT EXISTS follow_import_holds (
-        source        TEXT NOT NULL,
-        follower_ref  TEXT NOT NULL,
-        target_ref    TEXT NOT NULL,
-        reason        TEXT NOT NULL,
-        seen_at       TEXT NOT NULL,
-        PRIMARY KEY (source, follower_ref, target_ref)
-    );`);
-}
+function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
-const personRow = (db, where, value) => db.prepare(`SELECT id, subject_id, username, display_name, avatar_url, is_anon FROM users WHERE ${where}`).get(value);
+const personRow = async (db, where, value) => await db.prepare(`SELECT id, subject_id, username, display_name, avatar_url, is_anon FROM users WHERE ${where}`).get(value);
 
 /** The target a path names: a usr_ subject or a current username (any case) → the person row, or null. */
-function findTarget(db, type, key) {
+async function findTarget(db, type, key) {
     if (!TYPES.includes(type)) throw new FollowError(404, 'follows.unknown_type', `target type must be one of ${TYPES.join(', ')}`);
     const k = String(key || '').trim();
-    if (SUBJECT_RE.test(k)) return personRow(db, 'subject_id = ?', k) || null;
+    if (SUBJECT_RE.test(k)) return await personRow(db, 'subject_id = ?', k) || null;
     if (!NAME_RE.test(k)) return null;
-    return personRow(db, 'username = ? COLLATE NOCASE', k) || null;
+    return await personRow(db, 'lower(username) = lower(?)', k) || null;
 }
 
 function buildEnvelope({ follower, type, target, active, notifyEmail, notifyPush, revision, at, reason = null, actor = null }) {
@@ -105,19 +81,19 @@ function buildEnvelope({ follower, type, target, active, notifyEmail, notifyPush
  * opts: notifyEmail/notifyPush (undefined keeps the stored value, else true), reason and actor (deletes),
  * emit (false for an import: no event), source, at.
  */
-function setFollow(db, follower, type, target, active, { notifyEmail, notifyPush, reason = null, actor = null, emit = true, source = 'network', at: atIn = null } = {}) {
+async function setFollow(db, follower, type, target, active, { notifyEmail, notifyPush, reason = null, actor = null, emit = true, source = 'network', at: atIn = null } = {}) {
     if (!SUBJECT_RE.test(String(follower)) || !SUBJECT_RE.test(String(target))) throw new FollowError(400, 'follows.bad_subject', 'follows are between usr_ subjects');
     if (!TYPES.includes(type)) throw new FollowError(404, 'follows.unknown_type', `target type must be one of ${TYPES.join(', ')}`);
     if (follower === target) throw new FollowError(400, 'follows.self', 'you cannot follow yourself');
-    return db.transaction(() => {
-        const prev = db.prepare('SELECT * FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ?').get(follower, type, target);
+    return await db.tx(async () => {
+        const prev = await db.prepare('SELECT * FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ?').get(follower, type, target);
         const email = notifyEmail === undefined ? (prev ? !!prev.notify_email : true) : !!notifyEmail;
         const push = notifyPush === undefined ? (prev ? !!prev.notify_push : true) : !!notifyPush;
         const same = prev && !!prev.active === !!active && (!active || (!!prev.notify_email === email && !!prev.notify_push === push));
         if (same) return { changed: false, active: !!active, notify_email: email, notify_push: push, revision: prev.revision, created_at: prev.created_at, at: prev.updated_at };
         if (!prev && !active) return { changed: false, active: false, notify_email: email, notify_push: push, revision: 0, created_at: null, at: null };
         if (active && !(prev && prev.active)) {
-            const n = db.prepare('SELECT COUNT(*) AS n FROM user_follows WHERE follower_subject = ? AND active = 1').get(follower).n;
+            const n = (await db.prepare('SELECT COUNT(*) AS n FROM user_follows WHERE follower_subject = ? AND active = 1').get(follower)).n;
             if (n >= MAX_FOLLOWING) throw new FollowError(409, 'follows.limit', `at most ${MAX_FOLLOWING} follows`);
         }
         const at = atIn || new Date().toISOString();
@@ -125,32 +101,32 @@ function setFollow(db, follower, type, target, active, { notifyEmail, notifyPush
         // A follow that starts again starts its "since" again; flag changes keep it.
         const createdAt = prev && prev.active && active ? prev.created_at : at;
         if (prev) {
-            db.prepare(`UPDATE user_follows SET active = ?, notify_email = ?, notify_push = ?, revision = ?, source = ?, created_at = ?, updated_at = ?
+            await db.prepare(`UPDATE user_follows SET active = ?, notify_email = ?, notify_push = ?, revision = ?, source = ?, created_at = ?, updated_at = ?
                         WHERE follower_subject = ? AND target_type = ? AND target_id = ?`)
                 .run(active ? 1 : 0, email ? 1 : 0, push ? 1 : 0, revision, source, createdAt, at, follower, type, target);
         } else {
-            db.prepare(`INSERT INTO user_follows (follower_subject, target_type, target_id, active, notify_email, notify_push, revision, source, created_at, updated_at)
+            await db.prepare(`INSERT INTO user_follows (follower_subject, target_type, target_id, active, notify_email, notify_push, revision, source, created_at, updated_at)
                         VALUES (?, ?, ?, 1, ?, ?, 1, ?, ?, ?)`).run(follower, type, target, email ? 1 : 0, push ? 1 : 0, source, at, at);
         }
-        if (emit) eventRelay.writerFor(db).enqueue(buildEnvelope({ follower, type, target, active, notifyEmail: email, notifyPush: push, revision, at, reason, actor }));
+        if (emit) await eventRelay.writerFor(db).enqueue(buildEnvelope({ follower, type, target, active, notifyEmail: email, notifyPush: push, revision, at, reason, actor }));
         if (emit && active && !(prev && prev.active) && notifier) {
-            try { notifier(db, { follower, type, target, at }); } catch (err) { console.warn('[Follows] follow notification not created:', err.message); }
+            try { await notifier(db, { follower, type, target, at }); } catch (err) { console.warn('[Follows] follow notification not created:', err.message); }
         }
         return { changed: true, active: !!active, notify_email: email, notify_push: push, revision, created_at: active ? createdAt : null, at };
-    })();
+    });
 }
 
 function kick(db) { const o = eventRelay.outboxFor(db); if (o) o.kick(); }
 
-function count(db, type, target) {
-    return db.prepare('SELECT COUNT(*) AS n FROM user_follows WHERE target_type = ? AND target_id = ? AND active = 1').get(type, target).n;
+async function count(db, type, target) {
+    return (await db.prepare('SELECT COUNT(*) AS n FROM user_follows WHERE target_type = ? AND target_id = ? AND active = 1').get(type, target)).n;
 }
 
 /** network.follow-status-result@1 for (type, target), with the viewer's own follow when given. */
-function status(db, type, target, viewer = null) {
-    const out = { target_type: type, target_id: target, followers: count(db, type, target) };
+async function status(db, type, target, viewer = null) {
+    const out = { target_type: type, target_id: target, followers: await count(db, type, target) };
     if (viewer && SUBJECT_RE.test(viewer)) {
-        const r = db.prepare('SELECT * FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ? AND active = 1').get(viewer, type, target);
+        const r = await db.prepare('SELECT * FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ? AND active = 1').get(viewer, type, target);
         out.following = !!r;
         if (r) Object.assign(out, { notify_email: !!r.notify_email, notify_push: !!r.notify_push, since: r.created_at });
     }
@@ -167,7 +143,7 @@ function decodeCursor(c) {
 const item = (r) => ({ follower: r.follower_subject, target_type: r.target_type, target_id: r.target_id, notify_email: !!r.notify_email, notify_push: !!r.notify_push, created_at: r.created_at });
 
 /** A page of follows (newest first): by follower (what they follow) or by target (who follows it). */
-function list(db, { follower = null, type = null, target = null, cursor = null, limit = 50 } = {}) {
+async function list(db, { follower = null, type = null, target = null, cursor = null, limit = 50 } = {}) {
     const n = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
     const c = decodeCursor(cursor);
     const where = ['active = 1'];
@@ -176,7 +152,7 @@ function list(db, { follower = null, type = null, target = null, cursor = null, 
     if (type) { where.push('target_type = ?'); args.push(type); }
     if (target) { where.push('target_id = ?'); args.push(target); }
     if (c) { where.push('(created_at < ? OR (created_at = ? AND (follower_subject, target_id) < (?, ?)))'); args.push(c.at, c.at, c.a, c.b); }
-    const rows = db.prepare(`SELECT * FROM user_follows WHERE ${where.join(' AND ')} ORDER BY created_at DESC, follower_subject DESC, target_id DESC LIMIT ?`).all(...args, n + 1);
+    const rows = await db.prepare(`SELECT * FROM user_follows WHERE ${where.join(' AND ')} ORDER BY created_at DESC, follower_subject DESC, target_id DESC LIMIT ?`).all(...args, n + 1);
     const more = rows.length > n;
     if (more) rows.pop();
     return { items: rows.map(item), next_cursor: more ? encodeCursor(rows[rows.length - 1]) : null };
@@ -186,10 +162,10 @@ function list(db, { follower = null, type = null, target = null, cursor = null, 
  * An account's follows go with it (both directions), each announced as a delete. Call inside the
  * transaction that removes the account (account deletion, WS-B task 7). → the pairs removed
  */
-function onSubjectRemoved(db, subject) {
-    const rows = db.prepare('SELECT * FROM user_follows WHERE active = 1 AND (follower_subject = ? OR target_id = ?)').all(subject, subject);
+async function onSubjectRemoved(db, subject) {
+    const rows = await db.prepare('SELECT * FROM user_follows WHERE active = 1 AND (follower_subject = ? OR target_id = ?)').all(subject, subject);
     for (const r of rows) {
-        setFollow(db, r.follower_subject, r.target_type, r.target_id, false, {
+        await setFollow(db, r.follower_subject, r.target_type, r.target_id, false, {
             reason: r.follower_subject === subject ? 'account_removed' : 'target_removed', actor: { type: 'system', id: 'network' },
         });
     }
@@ -203,9 +179,9 @@ function onSubjectRemoved(db, subject) {
  * No events (the source system already has these follows); dryRun changes nothing.
  * → { imported, unchanged, held: [{ follower_ref, target_ref, reason }] }
  */
-function importFollows(db, source, rows, subjectOf, { dryRun = false, now = new Date().toISOString() } = {}) {
+async function importFollows(db, source, rows, subjectOf, { dryRun = false, now = new Date().toISOString() } = {}) {
     const out = { imported: 0, unchanged: 0, held: [] };
-    const run = () => {
+    const run = async () => {
         for (const r of rows) {
             const follower = subjectOf(r.follower_ref);
             const target = subjectOf(r.target_ref);
@@ -215,13 +191,13 @@ function importFollows(db, source, rows, subjectOf, { dryRun = false, now = new 
             else if (follower === target) reason = 'self_follow';
             if (reason) {
                 out.held.push({ follower_ref: String(r.follower_ref), target_ref: String(r.target_ref), reason });
-                if (!dryRun) db.prepare('INSERT OR REPLACE INTO follow_import_holds (source, follower_ref, target_ref, reason, seen_at) VALUES (?, ?, ?, ?, ?)').run(source, String(r.follower_ref), String(r.target_ref), reason, now);
+                if (!dryRun) await db.prepare('INSERT INTO follow_import_holds (source, follower_ref, target_ref, reason, seen_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (source, follower_ref, target_ref) DO UPDATE SET reason = excluded.reason, seen_at = excluded.seen_at').run(source, String(r.follower_ref), String(r.target_ref), reason, now);
                 continue;
             }
-            const prev = db.prepare('SELECT active FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ?').get(follower, 'channel', target);
+            const prev = await db.prepare('SELECT active FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ?').get(follower, 'channel', target);
             if (prev && prev.active) { out.unchanged++; continue; }
             if (!dryRun) {
-                setFollow(db, follower, 'channel', target, true, {
+                await setFollow(db, follower, 'channel', target, true, {
                     notifyEmail: r.notify_email == null ? true : !!r.notify_email, notifyPush: r.notify_push == null ? true : !!r.notify_push,
                     emit: false, source, at: r.created_at ? new Date(r.created_at).toISOString() : now,
                 });
@@ -229,81 +205,81 @@ function importFollows(db, source, rows, subjectOf, { dryRun = false, now = new 
             out.imported++;
         }
     };
-    if (dryRun) run(); else db.transaction(run)();
+    if (dryRun) await run(); else await db.tx(run);
     return out;
 }
 
 /** The signed-in person as a follower, or a FollowError. */
-function meOf(db, user) {
+async function meOf(db, user) {
     if (!user || user.is_anon) throw new FollowError(403, 'follows.guest', 'sign in with an account to follow');
-    const sid = require('./subjects').ensureUserSubject(db, user);
+    const sid = await require('./subjects').ensureUserSubject(db, user);
     if (!SUBJECT_RE.test(String(sid || ''))) throw new FollowError(403, 'follows.guest', 'sign in with an account to follow');
     return sid;
 }
 
 /** The session user of a request, or null (never refuses: for public reads). */
-function viewerOf(req) {
+async function viewerOf(req) {
     const h = req.headers.authorization || '';
     const token = h.startsWith('Bearer ') ? h.slice(7) : (req.cookies && req.cookies.ov_token);
     if (!token) return null;
     try {
-        const out = require('../auth/session').verifySession(token, { db: req.app.locals.db, publicKey: req.app.locals.publicKey, config: req.app.locals.config });
+        const out = await require('../auth/session').verifySession(token, { db: req.app.locals.db, publicKey: req.app.locals.publicKey, config: req.app.locals.config });
         return out && out.user ? out.user : null;
     } catch { return null; }
 }
 
 function routers({ requireAuth, followsGuard }) {
-    const send = (req, res, fn) => {
+    const send = async (req, res, fn) => {
         res.set('Cache-Control', 'private, no-store');
-        try { return fn(req.app.locals.db); } catch (err) {
+        try { return await fn(req.app.locals.db); } catch (err) {
             if (err instanceof FollowError) return http.sendProblem(res, err.status, err.code, { detail: err.message, ctx: req.ov });
             console.error('[Follows]', err.message);
             return http.sendProblem(res, 500, 'follows.failed', { detail: 'the follow could not be changed', ctx: req.ov });
         }
     };
-    const targetOrFail = (db, type, key) => {
-        const u = findTarget(db, type, key);
+    const targetOrFail = async (db, type, key) => {
+        const u = await findTarget(db, type, key);
         if (!u || u.is_anon || !SUBJECT_RE.test(String(u.subject_id || ''))) throw new FollowError(404, 'follows.unknown_target', 'no such channel');
         return u;
     };
 
     const me = express.Router();
     me.use(http.middleware());
-    me.get('/', requireAuth, (req, res) => send(req, res, (db) => {
-        const sid = meOf(db, req.user);
+    me.get('/', requireAuth, async (req, res) => await send(req, res, async (db) => {
+        const sid = await meOf(db, req.user);
         const type = req.query.type ? String(req.query.type) : null;
         if (type && !TYPES.includes(type)) throw new FollowError(404, 'follows.unknown_type', `target type must be one of ${TYPES.join(', ')}`);
-        res.json(list(db, { follower: sid, type, cursor: req.query.cursor, limit: req.query.limit }));
+        res.json(await list(db, { follower: sid, type, cursor: req.query.cursor, limit: req.query.limit }));
     }));
-    me.put('/:type/:target', requireAuth, express.json({ limit: '4kb' }), (req, res) => send(req, res, (db) => {
-        const sid = meOf(db, req.user);
-        const t = targetOrFail(db, req.params.type, req.params.target);
+    me.put('/:type/:target', requireAuth, express.json({ limit: '4kb' }), async (req, res) => await send(req, res, async (db) => {
+        const sid = await meOf(db, req.user);
+        const t = await targetOrFail(db, req.params.type, req.params.target);
         const b = req.body && typeof req.body === 'object' ? req.body : {};
-        const out = setFollow(db, sid, req.params.type, t.subject_id, true, {
+        const out = await setFollow(db, sid, req.params.type, t.subject_id, true, {
             notifyEmail: typeof b.notify_email === 'boolean' ? b.notify_email : undefined, notifyPush: typeof b.notify_push === 'boolean' ? b.notify_push : undefined,
         });
         if (out.changed) kick(db);
-        res.status(out.changed && out.revision === 1 ? 201 : 200).json(status(db, req.params.type, t.subject_id, sid));
+        res.status(out.changed && out.revision === 1 ? 201 : 200).json(await status(db, req.params.type, t.subject_id, sid));
     }));
-    me.delete('/:type/:target', requireAuth, (req, res) => send(req, res, (db) => {
-        const sid = meOf(db, req.user);
+    me.delete('/:type/:target', requireAuth, async (req, res) => await send(req, res, async (db) => {
+        const sid = await meOf(db, req.user);
         const key = String(req.params.target || '');
         // A subject can be unfollowed even if its account is gone since.
-        const t = findTarget(db, req.params.type, key) || (SUBJECT_RE.test(key) ? { subject_id: key } : null);
+        const t = await findTarget(db, req.params.type, key) || (SUBJECT_RE.test(key) ? { subject_id: key } : null);
         if (!t || !t.subject_id) throw new FollowError(404, 'follows.unknown_target', 'no such channel');
-        const out = setFollow(db, sid, req.params.type, t.subject_id, false);
+        const out = await setFollow(db, sid, req.params.type, t.subject_id, false);
         if (out.changed) kick(db);
-        res.json(status(db, req.params.type, t.subject_id, sid));
+        res.json(await status(db, req.params.type, t.subject_id, sid));
     }));
 
     const pub = express.Router();
     pub.use(http.middleware());
-    pub.get('/:type/:target', (req, res) => {
+    pub.get('/:type/:target', async (req, res) => {
         try {
             const db = req.app.locals.db;
-            const t = targetOrFail(db, req.params.type, req.params.target);
-            const viewer = viewerOf(req);
-            const body = status(db, req.params.type, t.subject_id, viewer && !viewer.is_anon ? viewer.subject_id : null);
+            const t = await targetOrFail(db, req.params.type, req.params.target);
+            const viewer = await viewerOf(req);
+            const body = await status(db, req.params.type, t.subject_id, viewer && !viewer.is_anon ? viewer.subject_id : null);
             res.set('Cache-Control', viewer ? 'private, no-store' : 'public, max-age=30').set('Vary', 'Authorization, Cookie').json(body);
         } catch (err) {
             if (err instanceof FollowError) return http.sendProblem(res, err.status, err.code, { detail: err.message, ctx: req.ov });
@@ -311,47 +287,47 @@ function routers({ requireAuth, followsGuard }) {
         }
     });
     // Who follows a target: its owner (signed in), or a service holding network.follows.read.
-    pub.get('/:type/:target/followers', (req, res, next) => {
+    pub.get('/:type/:target/followers', async (req, res, next) => {
         const db = req.app.locals.db;
         let t;
-        try { t = targetOrFail(db, req.params.type, req.params.target); } catch (err) { return http.sendProblem(res, err.status, err.code, { detail: err.message, ctx: req.ov }); }
-        const answer = () => send(req, res, () => res.json(list(db, { type: req.params.type, target: t.subject_id, cursor: req.query.cursor, limit: req.query.limit })));
-        const viewer = viewerOf(req);
-        if (viewer && viewer.subject_id === t.subject_id) return answer();
+        try { t = await targetOrFail(db, req.params.type, req.params.target); } catch (err) { return http.sendProblem(res, err.status, err.code, { detail: err.message, ctx: req.ov }); }
+        const answer = async () => await send(req, res, async () => res.json(await list(db, { type: req.params.type, target: t.subject_id, cursor: req.query.cursor, limit: req.query.limit })));
+        const viewer = await viewerOf(req);
+        if (viewer && viewer.subject_id === t.subject_id) return await answer();
         if (viewer) return http.sendProblem(res, 403, 'follows.not_yours', { detail: 'only the channel owner sees who follows it', ctx: req.ov });
-        return followsGuard(req, res, answer);
+        return followsGuard(req, res, () => answer().catch(next));   // called back after this handler returned
     });
 
     // ADR-030 step 4: a first-party product (network.follows.write, checked by the mount) records a follow
     // on a person's behalf (network.follow-write-request@1). The follower must be a Network account.
     const internal = express.Router();
     internal.use(http.middleware());
-    const followerOrFail = (db, subject) => {
-        const u = SUBJECT_RE.test(String(subject || '')) ? personRow(db, 'subject_id = ?', subject) : null;
+    const followerOrFail = async (db, subject) => {
+        const u = SUBJECT_RE.test(String(subject || '')) ? await personRow(db, 'subject_id = ?', subject) : null;
         if (!u || u.is_anon) throw new FollowError(404, 'follows.unknown_follower', 'the follower is not a Network account');
         return u.subject_id;
     };
-    internal.put('/:type/:target', express.json({ limit: '4kb' }), (req, res) => send(req, res, (db) => {
+    internal.put('/:type/:target', express.json({ limit: '4kb' }), async (req, res) => await send(req, res, async (db) => {
         const b = req.body && typeof req.body === 'object' ? req.body : {};
         const v = validate('network.follow-write-request@1', b);
         if (!v.valid) throw new FollowError(400, 'follows.invalid_request', 'the body does not match network.follow-write-request@1');
-        const follower = followerOrFail(db, b.follower);
-        const t = targetOrFail(db, req.params.type, req.params.target);
-        const out = setFollow(db, follower, req.params.type, t.subject_id, true, {
+        const follower = await followerOrFail(db, b.follower);
+        const t = await targetOrFail(db, req.params.type, req.params.target);
+        const out = await setFollow(db, follower, req.params.type, t.subject_id, true, {
             notifyEmail: typeof b.notify_email === 'boolean' ? b.notify_email : undefined, notifyPush: typeof b.notify_push === 'boolean' ? b.notify_push : undefined,
             source: req.principal ? String(req.principal.sub).replace(/^svc:/, '') : 'network',
         });
         if (out.changed) kick(db);
-        res.status(out.changed && out.revision === 1 ? 201 : 200).json(status(db, req.params.type, t.subject_id, follower));
+        res.status(out.changed && out.revision === 1 ? 201 : 200).json(await status(db, req.params.type, t.subject_id, follower));
     }));
-    internal.delete('/:type/:target', (req, res) => send(req, res, (db) => {
-        const follower = followerOrFail(db, req.query.follower);
+    internal.delete('/:type/:target', async (req, res) => await send(req, res, async (db) => {
+        const follower = await followerOrFail(db, req.query.follower);
         const key = String(req.params.target || '');
-        const t = findTarget(db, req.params.type, key) || (SUBJECT_RE.test(key) ? { subject_id: key } : null);
+        const t = await findTarget(db, req.params.type, key) || (SUBJECT_RE.test(key) ? { subject_id: key } : null);
         if (!t || !t.subject_id) throw new FollowError(404, 'follows.unknown_target', 'no such channel');
-        const out = setFollow(db, follower, req.params.type, t.subject_id, false, { source: req.principal ? String(req.principal.sub).replace(/^svc:/, '') : 'network' });
+        const out = await setFollow(db, follower, req.params.type, t.subject_id, false, { source: req.principal ? String(req.principal.sub).replace(/^svc:/, '') : 'network' });
         if (out.changed) kick(db);
-        res.json(status(db, req.params.type, t.subject_id, follower));
+        res.json(await status(db, req.params.type, t.subject_id, follower));
     }));
 
     return { me, pub, internal };
@@ -363,20 +339,20 @@ function routers({ requireAuth, followsGuard }) {
  * is dropped. No follow events: services repoint on network.subject.merged. Inside the merge's transaction.
  * → { moved, dropped }
  */
-function onSubjectMerged(db, { from, into }) {
+async function onSubjectMerged(db, { from, into }) {
     ensureSchema(db);
     const out = { moved: 0, dropped: 0 };
-    const rows = db.prepare('SELECT * FROM user_follows WHERE follower_subject = ? OR target_id = ?').all(from, from);
+    const rows = await db.prepare('SELECT * FROM user_follows WHERE follower_subject = ? OR target_id = ?').all(from, from);
     for (const r of rows) {
         const follower = r.follower_subject === from ? into : r.follower_subject;
         const target = r.target_id === from ? into : r.target_id;
         const clash = follower === target
-            || db.prepare('SELECT 1 FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ?').get(follower, r.target_type, target);
+            || await db.prepare('SELECT 1 FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ?').get(follower, r.target_type, target);
         if (clash) {
-            db.prepare('DELETE FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ?').run(r.follower_subject, r.target_type, r.target_id);
+            await db.prepare('DELETE FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ?').run(r.follower_subject, r.target_type, r.target_id);
             out.dropped++;
         } else {
-            db.prepare('UPDATE user_follows SET follower_subject = ?, target_id = ?, updated_at = CURRENT_TIMESTAMP WHERE follower_subject = ? AND target_type = ? AND target_id = ?')
+            await db.prepare('UPDATE user_follows SET follower_subject = ?, target_id = ?, updated_at = ov_now() WHERE follower_subject = ? AND target_type = ? AND target_id = ?')
                 .run(follower, target, r.follower_subject, r.target_type, r.target_id);
             out.moved++;
         }

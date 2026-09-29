@@ -37,34 +37,22 @@ class BlockError extends Error {
     constructor(status, code, detail) { super(detail); this.status = status; this.code = code; }
 }
 
-function ensureSchema(db) {
-    db.exec(`CREATE TABLE IF NOT EXISTS user_blocks (
-        blocker_subject TEXT NOT NULL,
-        blocked_subject TEXT NOT NULL,
-        active          INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
-        revision        INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1),
-        created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-        updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-        PRIMARY KEY (blocker_subject, blocked_subject),
-        CHECK (blocker_subject <> blocked_subject)
-    );
-    CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked_subject, active);`);
-}
+function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
 /** A person who can block or be blocked: a users row with a usr_ subject that is not a guest. */
-const personRow = (db, where, value) => db.prepare(`SELECT id, subject_id, username, display_name, avatar_url, is_anon FROM users WHERE ${where}`).get(value);
+const personRow = async (db, where, value) => await db.prepare(`SELECT id, subject_id, username, display_name, avatar_url, is_anon FROM users WHERE ${where}`).get(value);
 
 /** The person a path segment names: a usr_ subject, or a current username (any case). */
-function findTarget(db, key) {
+async function findTarget(db, key) {
     const k = String(key || '').trim();
-    if (SUBJECT_RE.test(k)) return personRow(db, 'subject_id = ?', k) || null;
+    if (SUBJECT_RE.test(k)) return await personRow(db, 'subject_id = ?', k) || null;
     if (/^gst_/.test(k)) throw new BlockError(400, 'blocks.guest', 'guests cannot be blocked');
     if (!NAME_RE.test(k)) return null;
-    return personRow(db, 'username = ? COLLATE NOCASE', k) || null;
+    return await personRow(db, 'lower(username) = lower(?)', k) || null;
 }
 
-function isBlocked(db, blockerSubject, blockedSubject) {
-    return !!db.prepare('SELECT 1 FROM user_blocks WHERE blocker_subject = ? AND blocked_subject = ? AND active = 1').get(String(blockerSubject), String(blockedSubject));
+async function isBlocked(db, blockerSubject, blockedSubject) {
+    return !!await db.prepare('SELECT 1 FROM user_blocks WHERE blocker_subject = ? AND blocked_subject = ? AND active = 1').get(String(blockerSubject), String(blockedSubject));
 }
 
 /** The envelope for one change; throws if it would not match the contract (a bug, never input). */
@@ -86,38 +74,38 @@ function buildEnvelope({ blocker, blocked, active, revision, at }) {
  * Set (blocker, blocked) to `active`, in one transaction with its event. Both must be usr_ subjects
  * (the caller checked who they are). → { changed, active, revision, at }
  */
-function setBlock(db, blocker, blocked, active) {
+async function setBlock(db, blocker, blocked, active) {
     if (!SUBJECT_RE.test(String(blocker)) || !SUBJECT_RE.test(String(blocked))) throw new BlockError(400, 'blocks.bad_subject', 'blocks are between usr_ subjects');
     if (blocker === blocked) throw new BlockError(400, 'blocks.self', 'you cannot block yourself');
-    return db.transaction(() => {
-        const prev = db.prepare('SELECT active, revision, updated_at FROM user_blocks WHERE blocker_subject = ? AND blocked_subject = ?').get(blocker, blocked);
+    return await db.tx(async () => {
+        const prev = await db.prepare('SELECT active, revision, updated_at FROM user_blocks WHERE blocker_subject = ? AND blocked_subject = ?').get(blocker, blocked);
         if (prev && !!prev.active === !!active) return { changed: false, active: !!active, revision: prev.revision, at: prev.updated_at };
         if (!prev && !active) return { changed: false, active: false, revision: 0, at: null };
         if (active) {
-            const n = db.prepare('SELECT COUNT(*) AS n FROM user_blocks WHERE blocker_subject = ? AND active = 1').get(blocker).n;
+            const n = (await db.prepare('SELECT COUNT(*) AS n FROM user_blocks WHERE blocker_subject = ? AND active = 1').get(blocker)).n;
             if (n >= MAX_ACTIVE) throw new BlockError(409, 'blocks.limit', `at most ${MAX_ACTIVE} people can be blocked`);
         }
         const at = new Date().toISOString();
         const revision = prev ? prev.revision + 1 : 1;
         if (prev) {
-            db.prepare('UPDATE user_blocks SET active = ?, revision = ?, updated_at = ? WHERE blocker_subject = ? AND blocked_subject = ?')
+            await db.prepare('UPDATE user_blocks SET active = ?, revision = ?, updated_at = ? WHERE blocker_subject = ? AND blocked_subject = ?')
                 .run(active ? 1 : 0, revision, at, blocker, blocked);
         } else {
-            db.prepare('INSERT INTO user_blocks (blocker_subject, blocked_subject, active, revision, created_at, updated_at) VALUES (?, ?, 1, 1, ?, ?)')
+            await db.prepare('INSERT INTO user_blocks (blocker_subject, blocked_subject, active, revision, created_at, updated_at) VALUES (?, ?, 1, 1, ?, ?)')
                 .run(blocker, blocked, at, at);
         }
-        eventRelay.writerFor(db).enqueue(buildEnvelope({ blocker, blocked, active, revision, at }));
+        await eventRelay.writerFor(db).enqueue(buildEnvelope({ blocker, blocked, active, revision, at }));
         return { changed: true, active: !!active, revision, at };
-    })();
+    });
 }
 
 function kick(db) { const o = eventRelay.outboxFor(db); if (o) o.kick(); }
 
 /** Who `subject` blocked (with names, newest first), for the person's own list. */
-function listFor(db, subject) {
-    return db.prepare(`SELECT b.blocked_subject, b.revision, b.updated_at, u.username, u.display_name, u.avatar_url
+async function listFor(db, subject) {
+    return (await db.prepare(`SELECT b.blocked_subject, b.revision, b.updated_at, u.username, u.display_name, u.avatar_url
         FROM user_blocks b LEFT JOIN users u ON u.subject_id = b.blocked_subject
-        WHERE b.blocker_subject = ? AND b.active = 1 ORDER BY b.updated_at DESC, b.blocked_subject`).all(String(subject))
+        WHERE b.blocker_subject = ? AND b.active = 1 ORDER BY b.updated_at DESC, b.blocked_subject`).all(String(subject)))
         .map((r) => ({
             subject: r.blocked_subject, username: r.username || null, display_name: r.username ? (r.display_name || r.username) : null,
             avatar_url: r.avatar_url || null, blocked_at: r.updated_at, revision: r.revision,
@@ -125,19 +113,19 @@ function listFor(db, subject) {
 }
 
 /** What a service needs: who `subject` blocked and who blocked them (active blocks only). */
-function edgesOf(db, subject) {
+async function edgesOf(db, subject) {
     const s = String(subject);
     return {
         subject: s,
-        blocks: db.prepare('SELECT blocked_subject AS s FROM user_blocks WHERE blocker_subject = ? AND active = 1 ORDER BY blocked_subject').all(s).map((r) => r.s),
-        blocked_by: db.prepare('SELECT blocker_subject AS s FROM user_blocks WHERE blocked_subject = ? AND active = 1 ORDER BY blocker_subject').all(s).map((r) => r.s),
+        blocks: (await db.prepare('SELECT blocked_subject AS s FROM user_blocks WHERE blocker_subject = ? AND active = 1 ORDER BY blocked_subject').all(s)).map((r) => r.s),
+        blocked_by: (await db.prepare('SELECT blocker_subject AS s FROM user_blocks WHERE blocked_subject = ? AND active = 1 ORDER BY blocker_subject').all(s)).map((r) => r.s),
     };
 }
 
 /** The signed-in person as a blocker, or a BlockError. */
-function meOf(db, user) {
+async function meOf(db, user) {
     if (!user || user.is_anon) throw new BlockError(403, 'blocks.guest', 'sign in with an account to block people');
-    const sid = require('./subjects').ensureUserSubject(db, user);
+    const sid = await require('./subjects').ensureUserSubject(db, user);
     if (!SUBJECT_RE.test(String(sid || ''))) throw new BlockError(403, 'blocks.guest', 'sign in with an account to block people');
     return sid;
 }
@@ -147,38 +135,38 @@ const view = (u, out) => ({ subject: u.subject_id, username: u.username, display
 function userRouter(requireAuth) {
     const router = express.Router();
     router.use(http.middleware());
-    const send = (req, res, fn) => {
+    const send = async (req, res, fn) => {
         res.set('Cache-Control', 'private, no-store');
-        try { return fn(req.app.locals.db); } catch (err) {
+        try { return await fn(req.app.locals.db); } catch (err) {
             if (err instanceof BlockError) return http.sendProblem(res, err.status, err.code, { detail: err.message, ctx: req.ov });
             console.error('[Blocks]', err.message);
             return http.sendProblem(res, 500, 'blocks.failed', { detail: 'the block could not be changed', ctx: req.ov });
         }
     };
 
-    router.get('/', requireAuth, (req, res) => send(req, res, (db) => {
-        const me = meOf(db, req.user);
-        res.json({ subject: me, blocks: listFor(db, me) });
+    router.get('/', requireAuth, async (req, res) => await send(req, res, async (db) => {
+        const me = await meOf(db, req.user);
+        res.json({ subject: me, blocks: await listFor(db, me) });
     }));
 
-    router.put('/:target', requireAuth, (req, res) => send(req, res, (db) => {
-        const me = meOf(db, req.user);
-        const u = findTarget(db, req.params.target);
+    router.put('/:target', requireAuth, async (req, res) => await send(req, res, async (db) => {
+        const me = await meOf(db, req.user);
+        const u = await findTarget(db, req.params.target);
         if (!u) throw new BlockError(404, 'blocks.unknown_person', 'no such person');
         if (u.is_anon) throw new BlockError(400, 'blocks.guest', 'guests cannot be blocked');
         if (u.subject_id === me) throw new BlockError(400, 'blocks.self', 'you cannot block yourself');
-        const out = setBlock(db, me, u.subject_id, true);
+        const out = await setBlock(db, me, u.subject_id, true);
         if (out.changed) kick(db);
         res.status(out.changed ? 201 : 200).json({ changed: out.changed, block: view(u, out) });
     }));
 
-    router.delete('/:target', requireAuth, (req, res) => send(req, res, (db) => {
-        const me = meOf(db, req.user);
+    router.delete('/:target', requireAuth, async (req, res) => await send(req, res, async (db) => {
+        const me = await meOf(db, req.user);
         const key = String(req.params.target || '');
         // A subject can be unblocked even if its account is gone since.
-        const u = findTarget(db, key) || (SUBJECT_RE.test(key) ? { subject_id: key, username: null, display_name: null, avatar_url: null } : null);
-        if (!u || !u.subject_id || !isBlocked(db, me, u.subject_id)) throw new BlockError(404, 'blocks.not_blocked', 'that person is not blocked');
-        const out = setBlock(db, me, u.subject_id, false);
+        const u = await findTarget(db, key) || (SUBJECT_RE.test(key) ? { subject_id: key, username: null, display_name: null, avatar_url: null } : null);
+        if (!u || !u.subject_id || !await isBlocked(db, me, u.subject_id)) throw new BlockError(404, 'blocks.not_blocked', 'that person is not blocked');
+        const out = await setBlock(db, me, u.subject_id, false);
         if (out.changed) kick(db);
         res.json({ changed: out.changed, block: view(u, out) });
     }));
@@ -188,11 +176,11 @@ function userRouter(requireAuth) {
 
 /** GET /internal/blocks?subject=usr_… (mounted behind principals.guard('network.blocks.read')). */
 function internalHandler(db) {
-    return (req, res) => {
+    return async (req, res) => {
         res.set('Cache-Control', 'no-store');
         const subject = String(req.query.subject || '');
         if (!SUBJECT_RE.test(subject)) return http.sendProblem(res, 400, 'blocks.bad_subject', { detail: 'subject must be a usr_ subject id' });
-        res.json(edgesOf(db, subject));
+        res.json(await edgesOf(db, subject));
     };
 }
 

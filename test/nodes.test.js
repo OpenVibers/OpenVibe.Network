@@ -11,16 +11,17 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const { validate } = require('openvibe-contracts');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const principals = require('../server/identity/principals');
 const nodes = require('../server/registry/nodes');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-nodes-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
-db.prepare("UPDATE oauth_clients SET client_secret = 'host-secret' WHERE client_id = 'host'").run();
-db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'host-secret' WHERE client_id = 'host'").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
 const app = express();
@@ -80,3 +81,4 @@ const node = (id, extra = {}) => ({ id, name: id, roles: ['web', 'app'], locatio
         fs.rmSync(dir, { recursive: true, force: true });
     }
 })().catch((err) => { console.error(err); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

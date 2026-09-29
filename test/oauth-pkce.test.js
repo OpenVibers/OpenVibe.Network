@@ -9,14 +9,15 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-pkce-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
-db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
-db.prepare("INSERT INTO users (id, username, password_hash) VALUES (7, 'viewer', 'x')").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
+await db.prepare("INSERT INTO users (id, username, password_hash) VALUES (7, 'viewer', 'x')").run();
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
 const ISSUER = 'https://openvibe.network';
@@ -95,4 +96,5 @@ const userToken = jwt.sign({ sub: 7, id: 7, username: 'viewer' }, keys.privateKe
 
     console.log('oauth pkce: all checks passed');
     server.close();
+})().catch(err => { console.error(err); process.exit(1); });
 })().catch(err => { console.error(err); process.exit(1); });

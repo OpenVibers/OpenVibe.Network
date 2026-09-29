@@ -13,21 +13,22 @@ const http = require('http');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { serviceAuth, validate, capabilities } = require('openvibe-contracts');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const subjects = require('../server/identity/subjects');
 const tokens = require('../server/developer/tokens');
 
+(async () => {
 const logged = [];
 const orig = { log: console.log, warn: console.warn, error: console.error };
 for (const k of ['log', 'warn', 'error']) console[k] = (...a) => { logged.push(a.map(String).join(' ')); };
 const out = (...a) => orig.log(...a);
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-exporttokens-'));
-const db = initDb(path.join(dir, 'network.db'));
-db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES
+const db = getDb();
+await db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES
     (10, 'owner', 'x', 'user'), (11, 'admin', 'x', 'user'), (12, 'dev', 'x', 'user'), (13, 'viewer', 'x', 'user'),
     (14, 'stranger', 'x', 'user'), (15, 'staff', 'x', 'admin')`).run();
-const sid = (id) => subjects.ensureUserSubject(db, db.prepare('SELECT * FROM users WHERE id = ?').get(id));
+const sid = async (id) => await subjects.ensureUserSubject(db, await db.prepare('SELECT * FROM users WHERE id = ?').get(id));
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
 const ISSUER = 'https://openvibe.network';
@@ -59,9 +60,9 @@ const minted = [];
         const text = await r.text();
         return { status: r.status, cache: r.headers.get('cache-control'), text, body: text ? JSON.parse(text) : null };
     };
-    const mint = (who, project, body) => api(who, 'POST', `/${project}/export-tokens`, body);
+    const mint = async (who, project, body) => await api(who, 'POST', `/${project}/export-tokens`, body);
     const verify = (t, audience, o = {}) => serviceAuth.verifyServiceToken(t, { publicKey: keys.publicKey, issuer: ISSUER, audience, acceptSandbox: true, ...o });
-    const exportRows = () => db.prepare("SELECT * FROM dev_audit WHERE action = 'project.export_token_issued' ORDER BY id").all();
+    const exportRows = async () => await db.prepare("SELECT * FROM dev_audit WHERE action = 'project.export_token_issued' ORDER BY id").all();
 
     // A project with one member of each role, and a project the owner is not in.
     let r = await api('owner', 'POST', '', { name: 'Exported' });
@@ -95,7 +96,7 @@ const minted = [];
     assert.deepStrictEqual(v.claims.ns, [P, `app.${P}.*`], 'the project\'s namespaces, both environments');
     assert.strictEqual(v.claims.project_id, P);
     assert.strictEqual(v.claims.env, 'production');
-    assert.strictEqual(v.claims.on_behalf_of, sid(10), 'the person exporting');
+    assert.strictEqual(v.claims.on_behalf_of, await sid(10), 'the person exporting');
     assert.strictEqual(v.claims.purpose, 'export');
     assert.strictEqual(v.claims.exp - v.claims.iat, 300, 'five minutes');
     assert.ok(Math.abs(v.claims.iat - Date.now() / 1000) < 5);
@@ -121,12 +122,12 @@ const minted = [];
     assert.ok(v.ok, v.reason);
     assert.deepStrictEqual(v.claims.cap, ['events.app.read']);
     assert.strictEqual(v.claims.env, 'sandbox');
-    assert.strictEqual(v.claims.on_behalf_of, sid(11));
+    assert.strictEqual(v.claims.on_behalf_of, await sid(11));
     assert.strictEqual(verify(r.body.access_token, 'openvibe.events', { acceptSandbox: false }).code, 'token.sandbox_refused',
         'a receiver that did not opt in to sandbox tokens still refuses it');
 
     // ── Everyone else is refused, and nothing is minted or audited for them ──
-    const before = exportRows().length;
+    const before = (await exportRows()).length;
     r = await mint('dev', P, { audience: 'openvibe.media', env: 'sandbox' });
     assert.strictEqual(r.status, 403); assert.strictEqual(r.body.code, 'project.forbidden', 'a developer may not export');
     r = await mint('viewer', P, { audience: 'openvibe.media', env: 'sandbox' });
@@ -154,7 +155,7 @@ const minted = [];
         assert.strictEqual(r.status, 422, JSON.stringify(body));
         assert.strictEqual(r.body.code, code, JSON.stringify(body));
     }
-    assert.strictEqual(exportRows().length, before, 'refusals write no export audit row');
+    assert.strictEqual((await exportRows()).length, before, 'refusals write no export audit row');
 
     // ── The export principal opens nothing else ──
     r = await api(minted[0], 'GET', `/${P}`);
@@ -166,10 +167,10 @@ const minted = [];
     assert.deepStrictEqual(r.body.apps.map(a => a.id), [realApp], 'it is not listed as an app');
 
     // ── The audit: one row per token, with who, what and until when; never the token ──
-    let rows = exportRows();
+    let rows = await exportRows();
     assert.strictEqual(rows.length, 2);
     assert.deepStrictEqual(rows.map(x => [x.project_id, x.actor, x.target]),
-        [[P, `user:${sid(10)}`, tokens.exportSubject(P)], [P, `user:${sid(11)}`, tokens.exportSubject(P)]]);
+        [[P, `user:${await sid(10)}`, tokens.exportSubject(P)], [P, `user:${await sid(11)}`, tokens.exportSubject(P)]]);
     const d0 = JSON.parse(rows[0].detail);
     const c0 = verify(minted[0], 'openvibe.media').claims;
     assert.deepStrictEqual(d0, { audience: 'openvibe.media', env: 'production', cap: ['media.object.list', 'media.object.read'], jti: c0.jti,
@@ -184,16 +185,17 @@ const minted = [];
     r = await mint('owner', P, { audience: 'openvibe.events', env: 'production' });
     assert.strictEqual(r.status, 201, r.text);
     minted.push(r.body.access_token);
-    assert.strictEqual(exportRows().length, 3);
+    assert.strictEqual((await exportRows()).length, 3);
 
     // ── Tokens are never stored or logged ──
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map(x => x.name);
+    const tables = (await db.prepare("SELECT table_name AS name FROM information_schema.tables WHERE table_schema = current_schema()").all()).map(x => x.name);
     for (const t of minted) {
         const sig = t.split('.')[2];
-        for (const name of tables) assert.ok(!JSON.stringify(db.prepare(`SELECT * FROM "${name}"`).all()).includes(sig), `a token in ${name}`);
+        for (const name of tables) assert.ok(!JSON.stringify(await db.prepare(`SELECT * FROM "${name}"`).all()).includes(sig), `a token in ${name}`);
         assert.ok(!logged.some(l => l.includes(sig)), 'a token in the logs');
     }
 
     out('export tokens: all checks passed');
     server.close();
 })().catch(err => { orig.error(err); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

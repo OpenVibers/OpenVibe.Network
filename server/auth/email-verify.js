@@ -29,19 +29,19 @@ async function sendVerification(req, user, { force = false } = {}) {
     if (!emailService?.isEnabled) return { ok: false, reason: 'email-disabled' };
 
     // Per-user: 1 per 3 minutes, N per day (site_settings email_verify_user_daily_cap, default 6).
-    const recent = db.prepare("SELECT COUNT(*) AS c FROM email_verification_tokens WHERE user_id = ? AND created_at > datetime('now','-3 minutes')").get(user.id)?.c || 0;
+    const recent = (await db.prepare("SELECT COUNT(*) AS c FROM email_verification_tokens WHERE user_id = ? AND created_at > datetime('now','-3 minutes')").get(user.id))?.c || 0;
     if (recent > 0) return { ok: false, reason: 'rate-limited' };
-    const dayCap = parseInt(db.getSetting('email_verify_user_daily_cap'), 10) || 6;
-    const today = db.prepare("SELECT COUNT(*) AS c FROM email_verification_tokens WHERE user_id = ? AND created_at > datetime('now','-1 day')").get(user.id)?.c || 0;
+    const dayCap = parseInt(await db.getSetting('email_verify_user_daily_cap'), 10) || 6;
+    const today = (await db.prepare("SELECT COUNT(*) AS c FROM email_verification_tokens WHERE user_id = ? AND created_at > datetime('now','-1 day')").get(user.id))?.c || 0;
     if (today >= dayCap) return { ok: false, reason: 'cap' };
     // Same address hammered from many accounts (abuse) — 5/day per address.
-    const perAddr = db.prepare("SELECT COUNT(*) AS c FROM email_verification_tokens WHERE LOWER(email) = LOWER(?) AND created_at > datetime('now','-1 day')").get(user.email)?.c || 0;
+    const perAddr = (await db.prepare("SELECT COUNT(*) AS c FROM email_verification_tokens WHERE LOWER(email) = LOWER(?) AND created_at > datetime('now','-1 day')").get(user.email))?.c || 0;
     if (perAddr >= 5) return { ok: false, reason: 'cap' };
     // A bouncing address gets no more mail until the user changes it.
     if (user.email_bounced_at) return { ok: false, reason: 'bounced' };
 
     const raw = crypto.randomBytes(32).toString('base64url');
-    db.prepare(`INSERT INTO email_verification_tokens (token_hash, user_id, email, expires_at) VALUES (?, ?, ?, datetime('now', '+${TOKEN_TTL_MIN} minutes'))`)
+    await db.prepare(`INSERT INTO email_verification_tokens (token_hash, user_id, email, expires_at) VALUES (?, ?, ?, datetime('now', '+${TOKEN_TTL_MIN} minutes'))`)
         .run(hashToken(raw), user.id, user.email);
     const verifyUrl = `${baseUrl(req)}/verify-email?token=${encodeURIComponent(raw)}`;
     const sent = await emailService.sendVerificationEmail({ to: user.email, username: user.display_name || user.username, verifyUrl, expiresMinutes: TOKEN_TTL_MIN });
@@ -49,30 +49,34 @@ async function sendVerification(req, user, { force = false } = {}) {
 }
 
 /** Consume a token. Returns { ok, error? , user? }. */
-function consumeToken(db, raw) {
+async function consumeToken(db, raw) {
     if (!raw) return { ok: false, error: 'Missing token' };
-    const row = db.prepare("SELECT * FROM email_verification_tokens WHERE token_hash = ?").get(hashToken(raw));
+    const row = await db.prepare("SELECT * FROM email_verification_tokens WHERE token_hash = ?").get(hashToken(raw));
     if (!row) return { ok: false, error: 'This verification link is invalid.' };
     if (row.used_at) return { ok: false, error: 'This verification link was already used.' };
     if (new Date(String(row.expires_at).replace(' ', 'T') + 'Z').getTime() < Date.now()) return { ok: false, error: 'This verification link has expired — request a new one from your account page.' };
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id);
+    const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id);
     if (!user) return { ok: false, error: 'Account not found.' };
     if (!user.email || user.email.toLowerCase() !== String(row.email).toLowerCase()) {
         return { ok: false, error: 'Your email address changed since this link was sent — request a new one.' };
     }
-    const tx = db.transaction(() => {
-        db.prepare("UPDATE email_verification_tokens SET used_at = CURRENT_TIMESTAMP WHERE token_hash = ?").run(row.token_hash);
-        db.prepare("UPDATE users SET email_verified = 1, email_verified_at = CURRENT_TIMESTAMP, email_bounced_at = NULL, email_bounce_reason = NULL WHERE id = ?").run(user.id);
+    // Claim the token and verify the account in one transaction: the conditional UPDATE means of two
+    // concurrent uses of one link exactly one succeeds (decision 1, plan T2).
+    const claimed = await db.tx(async (t) => {
+        const n = (await t.prepare("UPDATE email_verification_tokens SET used_at = ov_now() WHERE token_hash = ? AND used_at IS NULL").run(row.token_hash)).changes;
+        if (!n) return false;
+        await t.prepare("UPDATE users SET email_verified = 1, email_verified_at = ov_now(), email_bounced_at = NULL, email_bounce_reason = NULL WHERE id = ?").run(user.id);
+        return true;
     });
-    tx();
+    if (!claimed) return { ok: false, error: 'This verification link was already used.' };
     return { ok: true, user };
 }
 
 /** Called when a user sets/changes their address: unverify + (best-effort) send a new link. */
-function onEmailChanged(req, userId) {
+async function onEmailChanged(req, userId) {
     const db = req.app.locals.db;
-    db.prepare('UPDATE users SET email_verified = 0, email_verified_at = NULL, email_bounced_at = NULL, email_bounce_reason = NULL WHERE id = ?').run(userId);
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    await db.prepare('UPDATE users SET email_verified = 0, email_verified_at = NULL, email_bounced_at = NULL, email_bounce_reason = NULL WHERE id = ?').run(userId);
+    const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
     if (user?.email) sendVerification(req, user).catch(() => {});
 }
 
@@ -80,10 +84,10 @@ function routes(requireAuth) {
     const router = express.Router();
 
     // Status for the account page: { email, verified, bounced, can_resend }
-    router.get('/email/status', requireAuth, (req, res) => {
+    router.get('/email/status', requireAuth, async (req, res) => {
         const db = req.app.locals.db;
-        const u = db.prepare('SELECT email, email_verified, email_verified_at, email_bounced_at, email_bounce_reason FROM users WHERE id = ?').get(req.user.id) || {};
-        const recent = db.prepare("SELECT MAX(created_at) AS t FROM email_verification_tokens WHERE user_id = ? AND created_at > datetime('now','-3 minutes')").get(req.user.id)?.t || null;
+        const u = await db.prepare('SELECT email, email_verified, email_verified_at, email_bounced_at, email_bounce_reason FROM users WHERE id = ?').get(req.user.id) || {};
+        const recent = (await db.prepare("SELECT MAX(created_at) AS t FROM email_verification_tokens WHERE user_id = ? AND created_at > datetime('now','-3 minutes')").get(req.user.id))?.t || null;
         res.json({
             ok: true,
             email: u.email || null,
@@ -99,7 +103,7 @@ function routes(requireAuth) {
     router.post('/email/send-verification', requireAuth, async (req, res) => {
         try {
             const db = req.app.locals.db;
-            const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+            const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
             const r = await sendVerification(req, user);
             if (r.ok) return res.json({ ok: true, message: `Verification email sent to ${user.email}. Check your inbox (and spam).` });
             const msg = {
@@ -119,12 +123,12 @@ function routes(requireAuth) {
     });
 
     // JSON verify (used by the /verify-email page)
-    router.post('/email/verify', (req, res) => {
+    router.post('/email/verify', async (req, res) => {
         const db = req.app.locals.db;
-        const r = consumeToken(db, String(req.body?.token || ''));
+        const r = await consumeToken(db, String(req.body?.token || ''));
         if (!r.ok) return res.status(400).json({ ok: false, error: r.error });
         try {
-            req.app.locals.notificationService?.create({ user_id: r.user.id, type: 'EMAIL_VERIFIED', title: 'Email verified', message: `${r.user.email} is confirmed. Go-live alerts from streamers you follow will now reach your inbox.`, service: 'network', url: 'https://openvibe.network/notifications' });
+            await req.app.locals.notificationService?.create({ user_id: r.user.id, type: 'EMAIL_VERIFIED', title: 'Email verified', message: `${r.user.email} is confirmed. Go-live alerts from streamers you follow will now reach your inbox.`, service: 'network', url: 'https://openvibe.network/notifications' });
         } catch { /* */ }
         res.json({ ok: true, email: r.user.email });
     });

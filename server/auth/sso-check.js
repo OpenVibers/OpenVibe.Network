@@ -35,13 +35,13 @@ function renderCheck(origin, state) {
 }
 
 function createSsoCheckRoute(getCtx) {
-    return function ssoCheck(req, res) {
+    return async function ssoCheck(req, res) {
         const origin = allowedOrigin(req.query.origin);
         if (!origin) return res.status(400).type('text').send('origin must be an OpenVibe origin');
         const { verifySession, requestToken } = require('./session');
         let signedIn = false, username = null;
         try {
-            const out = verifySession(requestToken(req), getCtx(req));
+            const out = await verifySession(requestToken(req), getCtx(req));
             if (!out.error && out.user && !out.user.is_anon) { signedIn = true; username = out.user.username || null; }
         } catch { /* not signed in */ }
         res.removeHeader('X-Frame-Options');

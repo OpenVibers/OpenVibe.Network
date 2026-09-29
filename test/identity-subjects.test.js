@@ -9,27 +9,27 @@ const http = require('http');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const contracts = require('openvibe-contracts');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const subjects = require('../server/identity/subjects');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-subjects-'));
 const dbPath = path.join(dir, 'network.db');
-let db = initDb(dbPath);
+let db = getDb();
 const quiet = console.log; console.log = () => {};
 
 // ── An existing database: rows without subject ids, a Live-migrated account ──
-db.prepare("INSERT INTO users (id, username, password_hash, created_at, legacy_source, legacy_id) VALUES (1, 'alex', 'x', '2026-01-02 03:04:05', 'live', 77)").run();
-db.prepare("INSERT INTO users (id, username, password_hash, created_at) VALUES (2, 'beth', 'x', '2026-05-01 00:00:00')").run();
-db.prepare("INSERT INTO anon_users (id, anon_number, session_token) VALUES (5, 9, 'tok')").run();
-db.prepare("INSERT INTO linked_accounts (user_id, service, service_user_id) VALUES (2, 'live', '321'), (1, 'tools', 'network:1')").run();
-db.exec("UPDATE users SET subject_id = NULL; UPDATE anon_users SET subject_id = NULL; DROP TABLE identity_legacy_map;");
-db.close();
-db = initDb(dbPath);                               // boot again: backfill + seed
+await db.prepare("INSERT INTO users (id, username, password_hash, created_at, legacy_source, legacy_id) VALUES (1, 'alex', 'x', '2026-01-02 03:04:05', 'live', 77)").run();
+await db.prepare("INSERT INTO users (id, username, password_hash, created_at) VALUES (2, 'beth', 'x', '2026-05-01 00:00:00')").run();
+await db.prepare("INSERT INTO anon_users (id, anon_number, session_token) VALUES (5, 9, 'tok')").run();
+await db.prepare("INSERT INTO linked_accounts (user_id, service, service_user_id) VALUES (2, 'live', '321'), (1, 'tools', 'network:1')").run();
+await db.exec("UPDATE users SET subject_id = NULL; UPDATE anon_users SET subject_id = NULL; DELETE FROM identity_legacy_map");
+await subjects.ensureSchema(db);                         // the boot's backfill + seed (server/db/database.js seedDb)
 console.log = quiet;
 
-const alex = db.prepare('SELECT * FROM users WHERE id = 1').get();
-const beth = db.prepare('SELECT * FROM users WHERE id = 2').get();
-const guest = db.prepare('SELECT * FROM anon_users WHERE id = 5').get();
+const alex = await db.prepare('SELECT * FROM users WHERE id = 1').get();
+const beth = await db.prepare('SELECT * FROM users WHERE id = 2').get();
+const guest = await db.prepare('SELECT * FROM anon_users WHERE id = 5').get();
 assert.ok(contracts.validate('identity.subject-ref', { type: 'user', id: alex.subject_id }).valid, 'backfilled user subject is a valid SubjectRef');
 assert.ok(contracts.validate('identity.subject-ref', { type: 'guest', id: guest.subject_id }).valid, 'backfilled guest subject is gst_');
 assert.ok(alex.subject_id < beth.subject_id, 'backfilled ids sort by account age');
@@ -37,30 +37,30 @@ assert.strictEqual(alex.subject_id.slice(4, 14), contracts.ids.ulid(Date.parse('
 
 // Rebooting changes nothing.
 const before = alex.subject_id;
-console.log = () => {}; db.close(); db = initDb(dbPath); console.log = quiet;
-assert.strictEqual(db.prepare('SELECT subject_id FROM users WHERE id = 1').get().subject_id, before, 'subject ids are stable across boots');
+console.log = () => {}; await subjects.ensureSchema(db); console.log = quiet;   // boot again: nothing changes
+assert.strictEqual((await db.prepare('SELECT subject_id FROM users WHERE id = 1').get()).subject_id, before, 'subject ids are stable across boots');
 
 // Seeded map: network self ids and the Live legacy id.
-assert.strictEqual(subjects.resolve(db, { source_system: 'network', source_type: 'user', source_id: 1 }).subject.id, before);
-const viaLive = subjects.resolve(db, { source_system: 'live', source_type: 'user', source_id: '77' });
+assert.strictEqual((await subjects.resolve(db, { source_system: 'network', source_type: 'user', source_id: 1 })).subject.id, before);
+const viaLive = await subjects.resolve(db, { source_system: 'live', source_type: 'user', source_id: '77' });
 assert.strictEqual(viaLive.subject.id, before, 'Live-migrated account resolves by its Live id');
 assert.strictEqual(viaLive.username, 'alex');
 assert.ok(!('email' in viaLive) && !('password_hash' in viaLive), 'projection carries no private fields');
-assert.strictEqual(subjects.resolve(db, { subject_id: guest.subject_id }).subject.type, 'guest');
-assert.strictEqual(subjects.resolve(db, { source_system: 'live', source_id: '321' }).subject.id, beth.subject_id, 'seeded from a reported Live link');
-assert.strictEqual(db.prepare("SELECT COUNT(*) n FROM identity_legacy_map WHERE source_system = 'tools'").get().n, 0, "OAuth 'network:<id>' links say nothing about site ids");
-assert.strictEqual(subjects.resolve(db, { source_system: 'live', source_id: '999' }), null);
+assert.strictEqual((await subjects.resolve(db, { subject_id: guest.subject_id })).subject.type, 'guest');
+assert.strictEqual((await subjects.resolve(db, { source_system: 'live', source_id: '321' })).subject.id, beth.subject_id, 'seeded from a reported Live link');
+assert.strictEqual((await db.prepare("SELECT COUNT(*) n FROM identity_legacy_map WHERE source_system = 'tools'").get()).n, 0, "OAuth 'network:<id>' links say nothing about site ids");
+assert.strictEqual(await subjects.resolve(db, { source_system: 'live', source_id: '999' }), null);
 
 // A row inserted by a path that forgot subject_id is fixed lazily.
-db.prepare("INSERT INTO users (id, username, password_hash) VALUES (3, 'cat', 'x')").run();
-db.prepare('UPDATE users SET subject_id = NULL WHERE id = 3').run();
-const cat = db.prepare('SELECT * FROM users WHERE id = 3').get();
-const catSid = subjects.ensureUserSubject(db, cat);
+await db.prepare("INSERT INTO users (id, username, password_hash) VALUES (3, 'cat', 'x')").run();
+await db.prepare('UPDATE users SET subject_id = NULL WHERE id = 3').run();
+const cat = await db.prepare('SELECT * FROM users WHERE id = 3').get();
+const catSid = await subjects.ensureUserSubject(db, cat);
 assert.ok(/^usr_/.test(catSid) && cat.subject_id === catSid);
-assert.strictEqual(subjects.ensureUserSubject(db, cat), catSid, 'idempotent');
+assert.strictEqual(await subjects.ensureUserSubject(db, cat), catSid, 'idempotent');
 
 // ── Legacy map writes ──
-let r = subjects.upsertLegacy(db, [
+let r = await subjects.upsertLegacy(db, [
     { network_user_id: 2, source_system: 'live', source_type: 'user', source_id: 88, verified: true },
     { network_user_id: 2, source_system: 'live', source_type: 'user', source_id: 88 },                 // repeat
     { network_user_id: 1, source_system: 'live', source_type: 'user', source_id: 88 },                 // someone else's id
@@ -73,7 +73,7 @@ assert.strictEqual(r.inserted, 1);
 assert.strictEqual(r.unchanged, 1);
 assert.deepStrictEqual(r.conflicts.map(c => c.index), [2], 'a mapped id is never repointed');
 assert.deepStrictEqual(r.rejected.map(c => c.index), [3, 4, 5, 6]);
-assert.strictEqual(subjects.resolve(db, { source_system: 'live', source_id: '88' }).subject.id, beth.subject_id);
+assert.strictEqual((await subjects.resolve(db, { source_system: 'live', source_id: '88' })).subject.id, beth.subject_id);
 
 // ── HTTP: /internal/identity behind a service token (X-Internal-Key was retired in plan T2) ──
 const app = express();
@@ -124,7 +124,7 @@ const { signToken } = require('../server/auth/routes');
     assert.strictEqual(h.status, 200); assert.strictEqual(h.body.inserted, 1);
     h = await fetch(base.replace('/identity', '/link-account'), { method: 'POST', headers: { authorization: `Bearer ${LIVE_TOKEN}`, 'content-type': 'application/json' }, body: JSON.stringify({ user_id: 3, service: 'live', service_user_id: '555' }) });
     assert.strictEqual(h.status, 200);
-    assert.strictEqual(subjects.resolve(db, { source_system: 'live', source_id: '555' }).network_user_id, 3, '/internal/link-account also writes the legacy map');
+    assert.strictEqual((await subjects.resolve(db, { source_system: 'live', source_id: '555' })).network_user_id, 3, '/internal/link-account also writes the legacy map');
     h = await call('/legacy-map', { method: 'POST', body: JSON.stringify({ entries: [] }) });
     assert.strictEqual(h.status, 400);
     h = await fetch(base + '/resolve?system=live&id=77').then(x => ({ status: x.status, code: x.headers.get('content-type') }));
@@ -134,14 +134,14 @@ const { signToken } = require('../server/auth/routes');
     assert.strictEqual(h.body.code, 'token.missing');
 
     if (signToken) {
-        const token = signToken(db.prepare('SELECT * FROM users WHERE id = 1').get(), privateKey, { jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } });
+        const token = signToken(await db.prepare('SELECT * FROM users WHERE id = 1').get(), privateKey, { jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } });
         const claims = jwt.decode(token);
         assert.strictEqual(claims.sub, 1, 'sub stays the integer id');
         assert.strictEqual(claims.subject_id, before, 'token carries the subject id');
     }
 
     server.close();
-    db.close();
     fs.rmSync(dir, { recursive: true, force: true });
     console.log('identity subjects: all checks passed');
+})().catch(err => { console.error(err); process.exit(1); });
 })().catch(err => { console.error(err); process.exit(1); });

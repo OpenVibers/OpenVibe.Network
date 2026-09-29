@@ -24,9 +24,9 @@ module.exports = function createDeployRoutes(db, requireAuth) {
         next();
     }
 
-    function auditLog(req, action, details) {
+    async function auditLog(req, action, details) {
         try {
-            db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, action, JSON.stringify(details)
             );
         } catch (err) {
@@ -34,8 +34,8 @@ module.exports = function createDeployRoutes(db, requireAuth) {
         }
     }
 
-    function getDeployConfig() {
-        const resolved = urlRegistry.getResolvedRegistry(db, process.env);
+    async function getDeployConfig() {
+        const resolved = await urlRegistry.getResolvedRegistry(db, process.env);
         return {
             acmeEmail: resolved.DEPLOY_ACME_EMAIL?.value || '',
             certMode: resolved.DEPLOY_CERT_MODE?.value || 'manual',
@@ -54,10 +54,10 @@ module.exports = function createDeployRoutes(db, requireAuth) {
     // System Prerequisites
     // ═══════════════════════════════════════════════════════
 
-    router.get('/prerequisites', (req, res) => {
+    router.get('/prerequisites', async (req, res) => {
         try {
             const prereqs = certManager.checkPrerequisites();
-            const config = getDeployConfig();
+            const config = await getDeployConfig();
             res.json({
                 ok: true,
                 prerequisites: prereqs,
@@ -78,9 +78,9 @@ module.exports = function createDeployRoutes(db, requireAuth) {
     // Deploy Configuration
     // ═══════════════════════════════════════════════════════
 
-    router.get('/config', (req, res) => {
+    router.get('/config', async (req, res) => {
         try {
-            const config = getDeployConfig();
+            const config = await getDeployConfig();
             // Mask the Cloudflare token
             const masked = { ...config };
             if (masked.cloudflareToken && masked.cloudflareToken.length > 4) {
@@ -92,7 +92,7 @@ module.exports = function createDeployRoutes(db, requireAuth) {
         }
     });
 
-    router.put('/config', (req, res) => {
+    router.put('/config', async (req, res) => {
         try {
             const allowedKeys = {
                 acmeEmail: 'DEPLOY_ACME_EMAIL',
@@ -121,11 +121,11 @@ module.exports = function createDeployRoutes(db, requireAuth) {
                 if (registryKey === 'DEPLOY_NGINX_MODE' && !['preview', 'apply', 'disabled'].includes(value)) {
                     return res.status(400).json({ ok: false, error: 'nginxMode must be "preview", "apply", or "disabled"' });
                 }
-                const entry = urlRegistry.setRegistryEntry(db, registryKey, value, req.user.id);
+                const entry = await urlRegistry.setRegistryEntry(db, registryKey, value, req.user.id);
                 updated[bodyKey] = registryKey === 'DEPLOY_CLOUDFLARE_TOKEN' ? '(saved)' : entry.value;
             }
 
-            auditLog(req, 'deploy_config_update', { keys: Object.keys(updated) });
+            await auditLog(req, 'deploy_config_update', { keys: Object.keys(updated) });
             res.json({ ok: true, updated });
         } catch (err) {
             res.status(400).json({ ok: false, error: err.message });
@@ -139,7 +139,7 @@ module.exports = function createDeployRoutes(db, requireAuth) {
     router.get('/certs', async (req, res) => {
         try {
             const status = await certManager.getCertificateStatus();
-            const config = getDeployConfig();
+            const config = await getDeployConfig();
 
             // Annotate certs with domain config
             for (const cert of status.certs) {
@@ -166,7 +166,7 @@ module.exports = function createDeployRoutes(db, requireAuth) {
             const { domain } = req.body;
             if (!domain) return res.status(400).json({ ok: false, error: 'domain is required' });
 
-            const config = getDeployConfig();
+            const config = await getDeployConfig();
             if (!config.acmeEmail) {
                 return res.status(400).json({ ok: false, error: 'ACME email not configured. Set it in Deploy Config.' });
             }
@@ -174,7 +174,7 @@ module.exports = function createDeployRoutes(db, requireAuth) {
                 return res.status(400).json({ ok: false, error: 'Cloudflare token not configured. Set it in Deploy Config.' });
             }
 
-            auditLog(req, 'cert_issue_cloudflare_start', { domain });
+            await auditLog(req, 'cert_issue_cloudflare_start', { domain });
 
             const result = await certManager.issueWildcardCloudflare({
                 domain,
@@ -182,7 +182,7 @@ module.exports = function createDeployRoutes(db, requireAuth) {
                 cloudflareToken: config.cloudflareToken,
             });
 
-            auditLog(req, 'cert_issue_cloudflare_result', {
+            await auditLog(req, 'cert_issue_cloudflare_result', {
                 domain,
                 ok: result.ok,
                 certName: result.certName,
@@ -199,7 +199,7 @@ module.exports = function createDeployRoutes(db, requireAuth) {
                 if (!domains.find(d => d.domain === domain)) {
                     domains.push({ domain, wildcard: true, certName: result.certName, services: [] });
                 }
-                urlRegistry.setRegistryEntry(db, 'DEPLOY_DOMAINS', domains, req.user.id);
+                await urlRegistry.setRegistryEntry(db, 'DEPLOY_DOMAINS', domains, req.user.id);
             }
 
             res.json({ ok: result.ok, ...result });
@@ -217,7 +217,7 @@ module.exports = function createDeployRoutes(db, requireAuth) {
             const { domain } = req.body;
             if (!domain) return res.status(400).json({ ok: false, error: 'domain is required' });
 
-            const config = getDeployConfig();
+            const config = await getDeployConfig();
             if (!config.acmeEmail) {
                 return res.status(400).json({ ok: false, error: 'ACME email not configured' });
             }
@@ -238,19 +238,19 @@ module.exports = function createDeployRoutes(db, requireAuth) {
             const { domain } = req.body;
             if (!domain) return res.status(400).json({ ok: false, error: 'domain is required' });
 
-            const config = getDeployConfig();
+            const config = await getDeployConfig();
             if (!config.acmeEmail) {
                 return res.status(400).json({ ok: false, error: 'ACME email not configured' });
             }
 
-            auditLog(req, 'cert_issue_manual_start', { domain });
+            await auditLog(req, 'cert_issue_manual_start', { domain });
 
             const result = await certManager.issueWildcardManual({
                 domain,
                 email: config.acmeEmail,
             });
 
-            auditLog(req, 'cert_issue_manual_result', {
+            await auditLog(req, 'cert_issue_manual_result', {
                 domain,
                 ok: result.ok,
                 certName: result.certName,
@@ -265,7 +265,7 @@ module.exports = function createDeployRoutes(db, requireAuth) {
                 if (!domains.find(d => d.domain === domain)) {
                     domains.push({ domain, wildcard: true, certName: result.certName, services: [] });
                 }
-                urlRegistry.setRegistryEntry(db, 'DEPLOY_DOMAINS', domains, req.user.id);
+                await urlRegistry.setRegistryEntry(db, 'DEPLOY_DOMAINS', domains, req.user.id);
             }
 
             res.json({ ok: result.ok, ...result });
@@ -280,9 +280,9 @@ module.exports = function createDeployRoutes(db, requireAuth) {
 
     router.post('/certs/renew', async (req, res) => {
         try {
-            auditLog(req, 'cert_renew_start', {});
+            await auditLog(req, 'cert_renew_start', {});
             const result = await certManager.renewCertificates();
-            auditLog(req, 'cert_renew_result', { ok: result.ok, error: result.error });
+            await auditLog(req, 'cert_renew_result', { ok: result.ok, error: result.error });
             res.json({ ok: result.ok, ...result });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
@@ -293,9 +293,9 @@ module.exports = function createDeployRoutes(db, requireAuth) {
     // Nginx Config Preview
     // ═══════════════════════════════════════════════════════
 
-    router.get('/nginx/preview', (req, res) => {
+    router.get('/nginx/preview', async (req, res) => {
         try {
-            const resolved = urlRegistry.getResolvedRegistry(db, process.env);
+            const resolved = await urlRegistry.getResolvedRegistry(db, process.env);
             const configs = nginxGenerator.generateAllConfigs(resolved);
             res.json({
                 ok: true,
@@ -311,9 +311,9 @@ module.exports = function createDeployRoutes(db, requireAuth) {
         }
     });
 
-    router.get('/nginx/preview/:serviceId', (req, res) => {
+    router.get('/nginx/preview/:serviceId', async (req, res) => {
         try {
-            const resolved = urlRegistry.getResolvedRegistry(db, process.env);
+            const resolved = await urlRegistry.getResolvedRegistry(db, process.env);
             const configs = nginxGenerator.generateAllConfigs(resolved);
             const cfg = configs.find(c => c.serviceId === req.params.serviceId);
             if (!cfg) return res.status(404).json({ ok: false, error: 'Service not found' });
@@ -342,7 +342,7 @@ module.exports = function createDeployRoutes(db, requireAuth) {
 
     router.post('/nginx/apply', async (req, res) => {
         try {
-            const config = getDeployConfig();
+            const config = await getDeployConfig();
             if (config.nginxMode === 'disabled') {
                 return res.status(400).json({ ok: false, error: 'Nginx management is disabled' });
             }
@@ -350,9 +350,9 @@ module.exports = function createDeployRoutes(db, requireAuth) {
             const dryRun = config.nginxMode === 'preview' || req.body.dryRun === true;
             const reload = req.body.reload !== false && !dryRun;
 
-            auditLog(req, 'nginx_apply_start', { dryRun, reload });
+            await auditLog(req, 'nginx_apply_start', { dryRun, reload });
 
-            const resolved = urlRegistry.getResolvedRegistry(db, process.env);
+            const resolved = await urlRegistry.getResolvedRegistry(db, process.env);
             const configs = nginxGenerator.generateAllConfigs(resolved);
 
             const result = await nginxGenerator.applyConfigs(configs, {
@@ -362,7 +362,7 @@ module.exports = function createDeployRoutes(db, requireAuth) {
                 dryRun,
             });
 
-            auditLog(req, 'nginx_apply_result', {
+            await auditLog(req, 'nginx_apply_result', {
                 ok: result.ok,
                 dryRun: result.dryRun,
                 applied: result.applied,
@@ -391,7 +391,7 @@ module.exports = function createDeployRoutes(db, requireAuth) {
                 });
             }
 
-            auditLog(req, 'nginx_reload', {});
+            await auditLog(req, 'nginx_reload', {});
             const result = await nginxGenerator.reloadNginx();
             res.json({ ok: result.ok, ...result, validation });
         } catch (err) {
@@ -403,9 +403,9 @@ module.exports = function createDeployRoutes(db, requireAuth) {
     // Managed Domains CRUD
     // ═══════════════════════════════════════════════════════
 
-    router.get('/domains', (req, res) => {
+    router.get('/domains', async (req, res) => {
         try {
-            const config = getDeployConfig();
+            const config = await getDeployConfig();
             // Annotate each domain with cert status
             const domains = (config.domains || []).map(d => {
                 const cert = certManager.findBestCert(d.certName || d.domain);
@@ -423,7 +423,7 @@ module.exports = function createDeployRoutes(db, requireAuth) {
         }
     });
 
-    router.put('/domains', (req, res) => {
+    router.put('/domains', async (req, res) => {
         try {
             const { domains } = req.body;
             if (!Array.isArray(domains)) {
@@ -438,8 +438,8 @@ module.exports = function createDeployRoutes(db, requireAuth) {
                     return res.status(400).json({ ok: false, error: `Invalid domain: ${d.domain}` });
                 }
             }
-            const entry = urlRegistry.setRegistryEntry(db, 'DEPLOY_DOMAINS', domains, req.user.id);
-            auditLog(req, 'deploy_domains_update', { count: domains.length });
+            const entry = await urlRegistry.setRegistryEntry(db, 'DEPLOY_DOMAINS', domains, req.user.id);
+            await auditLog(req, 'deploy_domains_update', { count: domains.length });
             res.json({ ok: true, domains: entry.value });
         } catch (err) {
             res.status(400).json({ ok: false, error: err.message });

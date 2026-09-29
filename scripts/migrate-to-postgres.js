@@ -10,7 +10,7 @@
  *   --pglite   a dry run: an in-memory PostgreSQL, migrations applied, every table imported with truncate
  *              and verified, and the per-table count + checksum report printed. Nothing to set up, nothing
  *              left behind. Use it to prove the schema is importable before touching a real target.
- *   --sqlite   the source file (default config.db.path). It is opened read-only; nothing in it changes.
+ *   --sqlite   the source file (default $DB_PATH or data/network.db). It is opened read-only; nothing in it changes.
  *   --json     the report as JSON.
  *
  * Without --pglite it applies migrations/ as the owner on DATABASE_DIRECT_URL (the serving DATABASE_URL goes
@@ -34,9 +34,12 @@ const TABLES = {};
 // (unsent events keep their place in the PostgreSQL outbox).
 const SKIP_SOURCE = [];
 
+// The retired SQLite file: --sqlite, else DB_PATH, else data/network.db (relative to the repo root).
+const DEFAULT_SQLITE = path.resolve(__dirname, '..', process.env.DB_PATH || path.join('data', 'network.db'));
+
 if (require.main === module) {
-    runSqliteMigration({ service: 'network', sqlite: config.db.path, directUrl: config.db.directUrl, migrations: MIGRATIONS, tables: TABLES, skipSource: SKIP_SOURCE })
+    runSqliteMigration({ service: 'network', sqlite: DEFAULT_SQLITE, directUrl: config.db.directUrl, migrations: MIGRATIONS, tables: TABLES, skipSource: SKIP_SOURCE })
         .then((code) => process.exit(code), (err) => { console.error(`migrate-to-postgres failed: ${err.message}`); process.exit(1); });
 }
 
-module.exports = { TABLES, SKIP_SOURCE, MIGRATIONS };
+module.exports = { TABLES, SKIP_SOURCE, MIGRATIONS, DEFAULT_SQLITE };

@@ -60,13 +60,13 @@ function mintTicket({ subject, privateKey, issuer, now = Date.now(), ttlS = TTL_
 function router({ db, requireAuth, privateKey, issuer, streamUrl, isEnabled = () => process.env.REALTIME_TICKETS !== 'off', now = () => Date.now() }) {
     const r = express.Router();
     const url = streamUrlFrom(streamUrl);
-    r.post('/ticket', requireAuth, (req, res) => {
+    r.post('/ticket', requireAuth, async (req, res) => {
         res.set('Cache-Control', 'no-store');
         if (!isEnabled()) return res.status(503).json({ code: 'realtime.disabled', error: 'browser realtime is off; poll instead' });
         const user = req.user;
         if (!user || user.is_anon) return res.status(403).json({ code: 'realtime.guest', error: 'sign in with an account to get a realtime ticket' });
         let subject = user.subject_id;
-        try { subject = require('../identity/subjects').ensureUserSubject(db, user) || subject; } catch { /* keep what the row has */ }
+        try { subject = await require('../identity/subjects').ensureUserSubject(db, user) || subject; } catch { /* keep what the row has */ }
         if (!/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(String(subject || ''))) return res.status(503).json({ code: 'realtime.no_subject', error: 'this account has no subject id yet' });
         if (!String(privateKey || '').includes('BEGIN')) return res.status(503).json({ code: 'realtime.disabled', error: 'no RS256 signing key' });
         const { ticket, claims } = mintTicket({ subject, privateKey, issuer, now: now() });

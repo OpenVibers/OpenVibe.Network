@@ -16,20 +16,21 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { ids, validate } = require('openvibe-contracts');
 const { signDeliveryHeaders } = require('openvibe-sdk/events');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const subjects = require('../server/identity/subjects');
 const { NotificationService } = require('../server/notifications/notification-service');
 const { createEventsConsumer, TOPICS } = require('../server/notifications/events-consumer');
 const { createProjectUsage, parseQuery } = require('../server/developer/usage');
 const { topicsFrom } = require('../scripts/subscribe-events');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-project-usage-'));
 const quiet = { log: console.log, warn: console.warn };
 console.log = () => {}; console.warn = () => {};
-const db = initDb(path.join(dir, 'network.db'));
-db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES
+const db = getDb();
+await db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES
     (10, 'owner', 'x', 'user'), (11, 'admin', 'x', 'user'), (12, 'dev', 'x', 'user'), (13, 'viewer', 'x', 'user'), (14, 'stranger', 'x', 'user'), (15, 'staff', 'x', 'admin')`).run();
-const sid = (id) => subjects.ensureUserSubject(db, db.prepare('SELECT * FROM users WHERE id = ?').get(id));
+const sid = async (id) => await subjects.ensureUserSubject(db, await db.prepare('SELECT * FROM users WHERE id = ?').get(id));
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
 const ISSUER = 'https://openvibe.network';
@@ -40,7 +41,7 @@ app.locals.config = { baseUrl: ISSUER, jwt: { issuer: ISSUER, accessTokenExpiry:
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 const projectUsage = createProjectUsage(db, { log: { warn() {} } });
-const consumer = createEventsConsumer({ db, notifications: new NotificationService(db), secrets: SECRET, projectUsage });
+const consumer = await createEventsConsumer({ db, notifications: new NotificationService(db), secrets: SECRET, projectUsage });
 app.use('/internal/events', consumer.router);
 app.use('/api/v1/projects', require('../server/developer/routes').router());
 const server = http.createServer(app);
@@ -96,31 +97,31 @@ const JOB = 'job_01JAB2C3D4E5F6G7H8J9K0MNPR';
         const raw = JSON.stringify({ event: jobs, seq: 1 });
         const res = await fetch(`${base}/internal/events`, { method: 'POST', headers: { 'content-type': 'application/json', ...signDeliveryHeaders(raw, SECRET) }, body: raw });
         assert.deepStrictEqual([res.status, (await res.json()).outcome], [200, 'recorded']);
-        assert.strictEqual(consumer.apply(jobs).duplicate, true, 'a redelivery records nothing twice');
+        assert.strictEqual((await consumer.apply(jobs)).duplicate, true, 'a redelivery records nothing twice');
         // The same hour re-sent with new totals replaces it; an older revision never does.
         const resent = rollup('tools', { ...jobs.payload, quantity: 42, errors: 3, error_codes: { 'tools.job.failed': 2, 'tools.job.timeout': 1 }, revision: 2 });
-        assert.strictEqual(consumer.apply(resent).outcome, 'recorded');
-        assert.strictEqual(consumer.apply(rollup('tools', { ...jobs.payload, quantity: 1, revision: 1 })).outcome, 'ignored:stale');
-        assert.strictEqual(consumer.apply(rollup('tools', hour(yesterday, { capability: 'tools.tool.run', dimension: 'image-resize', quantity: 5, errors: 0 }))).outcome, 'recorded');
-        assert.strictEqual(consumer.apply(rollup('tools', hour(thisHour - HOUR, { capability: 'tools.job.create', dimension: 'img.process', env: 'sandbox', quantity: 7, errors: 0 }))).outcome, 'recorded');
+        assert.strictEqual((await consumer.apply(resent)).outcome, 'recorded');
+        assert.strictEqual((await consumer.apply(rollup('tools', { ...jobs.payload, quantity: 1, revision: 1 }))).outcome, 'ignored:stale');
+        assert.strictEqual((await consumer.apply(rollup('tools', hour(yesterday, { capability: 'tools.tool.run', dimension: 'image-resize', quantity: 5, errors: 0 })))).outcome, 'recorded');
+        assert.strictEqual((await consumer.apply(rollup('tools', hour(thisHour - HOUR, { capability: 'tools.job.create', dimension: 'img.process', env: 'sandbox', quantity: 7, errors: 0 })))).outcome, 'recorded');
         const published = rollup('events', hour(thisHour, {
             capability: 'events.app.publish', unit: 'events', env: 'sandbox', quantity: 1800, errors: 61, error_codes: { 'events.quota_exceeded': 60, 'events.type_not_allowed': 1 },
             samples: [{ at: new Date(thisHour + 120000).toISOString(), code: 'events.quota_exceeded', status: 429, trace_id: TRACE }],
         }));
-        assert.strictEqual(consumer.apply(published).outcome, 'recorded');
+        assert.strictEqual((await consumer.apply(published)).outcome, 'recorded');
 
         // What is not a project's rollup is ignored.
         const other = await api('stranger', 'POST', '', { name: 'Someone else' });
         const ignored = [
             [rollup('tools', { ...jobs.payload, project_id: `prj_${ids.ulid()}` }), 'ignored:project'],
             [rollup('events', jobs.payload, { source: 'tools' }), 'ignored:source'],
-            [rollup('tools', { ...jobs.payload, owner: { type: 'user', id: sid(10) } }), 'ignored:payload'],
+            [rollup('tools', { ...jobs.payload, owner: { type: 'user', id: await sid(10) } }), 'ignored:payload'],
             [rollup('tools', { ...jobs.payload, window_end: new Date(thisHour + 2 * HOUR).toISOString() }), 'ignored:window'],
             [rollup('tools', jobs.payload, { subject: { type: 'project', id: other.body.id } }), 'ignored:subject'],
             [rollup('tools', { ...jobs.payload, window_start: new Date(thisHour + 3 * HOUR).toISOString(), window_end: new Date(thisHour + 4 * HOUR).toISOString() }), 'ignored:future'],
         ];
-        for (const [e, outcome] of ignored) assert.strictEqual(consumer.apply(e).outcome, outcome, outcome);
-        assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM notifications').get().n, 0, 'usage notifies nobody');
+        for (const [e, outcome] of ignored) assert.strictEqual((await consumer.apply(e)).outcome, outcome, outcome);
+        assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM notifications').get()).n, 0, 'usage notifies nobody');
 
         // ── The dashboard's answer ──
         r = await api('owner', 'GET', `/${P}/usage?days=7`);
@@ -151,7 +152,7 @@ const JOB = 'job_01JAB2C3D4E5F6G7H8J9K0MNPR';
             ['events', 'events.quota_exceeded', 429, TRACE, null],
             ['tools', 'tools.job.timeout', 504, TRACE, JOB],
         ], 'newest first; the re-sent hour did not duplicate its sample');
-        for (const who of [10, 11, 12]) assert.ok(!r.text.includes(sid(who)), 'no subject id in the answer');
+        for (const who of [10, 11, 12]) assert.ok(!r.text.includes(await sid(who)), 'no subject id in the answer');
 
         // Filters.
         r = await api('owner', 'GET', `/${P}/usage?env=sandbox`);
@@ -172,10 +173,10 @@ const JOB = 'job_01JAB2C3D4E5F6G7H8J9K0MNPR';
 
         // ── Retention: windows and samples of the past go; the daily numbers stay ──
         const later = createProjectUsage(db, { now: () => Date.now() + 40 * 24 * HOUR });
-        later.prune();
-        assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM dev_usage_windows').get().n, 0);
-        assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM dev_usage_errors').get().n, 0);
-        assert.ok(db.prepare('SELECT COUNT(*) AS n FROM dev_usage_daily').get().n > 0);
+        await later.prune();
+        assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM dev_usage_windows').get()).n, 0);
+        assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM dev_usage_errors').get()).n, 0);
+        assert.ok((await db.prepare('SELECT COUNT(*) AS n FROM dev_usage_daily').get()).n > 0);
     } finally {
         server.close();
         fs.rmSync(dir, { recursive: true, force: true });
@@ -183,3 +184,4 @@ const JOB = 'job_01JAB2C3D4E5F6G7H8J9K0MNPR';
     }
     console.log('project usage: all checks passed');
 })().catch((e) => { console.log = quiet.log; console.error(e); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });

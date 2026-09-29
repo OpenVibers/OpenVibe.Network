@@ -10,20 +10,21 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const { validate } = require('openvibe-contracts');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-modules-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
 // chat is registered on the host, not seeded (ai is seeded since its console, WS-O task 4): add a missing one as a copy of tools, then seed the grants again.
 for (const c of ['chat', 'ai']) {
-    const cols = db.prepare('PRAGMA table_info(oauth_clients)').all().map(x => x.name).filter(n => n !== 'client_id' && n !== 'id');
-    db.prepare(`INSERT OR IGNORE INTO oauth_clients (client_id, ${cols.join(', ')}) SELECT ?, ${cols.join(', ')} FROM oauth_clients WHERE client_id = 'tools'`).run(c);
+    const cols = (await db.prepare("SELECT column_name AS name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = ?").all('oauth_clients')).map(x => x.name).filter(n => n !== 'client_id' && n !== 'id');
+    await db.prepare(`INSERT INTO oauth_clients (client_id, ${cols.join(', ')}) SELECT ?, ${cols.join(', ')} FROM oauth_clients WHERE client_id = 'tools' ON CONFLICT DO NOTHING`).run(c);
 }
-require('../server/identity/principals').ensureSchema(db);
-for (const [c, s] of [['live', 'live-secret'], ['tools', 'tools-secret'], ['games', 'games-secret'], ['chat', 'chat-secret'], ['ai', 'ai-secret']]) db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(s, c);
-db.prepare("INSERT INTO users (id, username, password_hash, subject_id) VALUES (1, 'ann', 'x', 'usr_01JAB2C3D4E5F6G7H8J9K0MNPA'), (2, 'bob', 'x', 'usr_01JAB2C3D4E5F6G7H8J9K0MNPB')").run();
+await require('../server/identity/principals').ensureSchema(db);
+for (const [c, s] of [['live', 'live-secret'], ['tools', 'tools-secret'], ['games', 'games-secret'], ['chat', 'chat-secret'], ['ai', 'ai-secret']]) await db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(s, c);
+await db.prepare("INSERT INTO users (id, username, password_hash, subject_id) VALUES (1, 'ann', 'x', 'usr_01JAB2C3D4E5F6G7H8J9K0MNPA'), (2, 'bob', 'x', 'usr_01JAB2C3D4E5F6G7H8J9K0MNPB')").run();
 const ANN = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPA';
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
@@ -42,7 +43,7 @@ const server = http.createServer(app);
 (async () => {
     await new Promise(r => server.listen(0, '127.0.0.1', r));
     const base = `http://127.0.0.1:${server.address().port}`;
-    const annTok = signToken(db.prepare('SELECT * FROM users WHERE id = 1').get(), keys.privateKey, config);
+    const annTok = signToken(await db.prepare('SELECT * FROM users WHERE id = 1').get(), keys.privateKey, config);
     const call = (method, p, { body, headers = {} } = {}) => fetch(base + p, { method, headers: { 'content-type': 'application/json', ...headers }, body: body ? JSON.stringify(body) : undefined })
         .then(async r => ({ status: r.status, etag: r.headers.get('etag'), cache: r.headers.get('cache-control'), body: r.status === 204 ? null : await r.json().catch(() => null) }));
     const me = { authorization: `Bearer ${annTok}` };
@@ -94,7 +95,7 @@ const server = http.createServer(app);
     assert.deepStrictEqual(r.body.data, { style: 'casual', history: false }, 'ai is a listed reader of ai.preferences');
     r = await call('PUT', `/internal/modules/live.stats/${ANN}`, { headers: { authorization: `Bearer ${live}` }, body: { data: { streams_30d: 3, peak_viewers_30d: 12, new_followers_30d: 7 } } });
     assert.strictEqual(r.status, 201, JSON.stringify(r.body));
-    db.prepare("UPDATE principal_grants SET namespaces = '[\"tools.usage\",\"live.stats\"]' WHERE client_id = 'tools' AND capability = 'network.modules.read'").run();
+    await db.prepare("UPDATE principal_grants SET namespaces = '[\"tools.usage\",\"live.stats\"]' WHERE client_id = 'tools' AND capability = 'network.modules.read'").run();
     const tools2 = await svc('tools');
     r = await call('GET', `/internal/modules/live.stats/${ANN}`, { headers: { authorization: `Bearer ${tools2}` } });
     assert.deepStrictEqual(r.body.data, { streams_30d: 3, peak_viewers_30d: 12 }, 'a granted service that is not a listed reader sees public fields only');
@@ -102,13 +103,13 @@ const server = http.createServer(app);
     assert.strictEqual(r.body.data.new_followers_30d, 7, 'the owner reads the whole record');
 
     // ── Version migration: a stored v1 record reads as the current version ──
-    db.prepare("INSERT INTO user_modules (subject_id, namespace, version, revision, data) VALUES (?, 'tools.usage', 1, 1, ?)").run(ANN, JSON.stringify({ recent: [{ tool: 'img' }] }));
+    await db.prepare("INSERT INTO user_modules (subject_id, namespace, version, revision, data) VALUES (?, 'tools.usage', 1, 1, ?)").run(ANN, JSON.stringify({ recent: [{ tool: 'img' }] }));
     r = await call('GET', '/api/modules/tools.usage', { headers: me });
     assert.strictEqual(r.body.version, 2); assert.deepStrictEqual(r.body.data, { recent: [{ tool: 'img' }] });
     r = await call('PUT', '/api/modules/tools.usage', { headers: { ...me, 'if-match': '1' }, body: { data: { ...r.body.data, favorites: ['img'] } } });
     assert.strictEqual(r.status, 200, 'the person may star tools (tools.usage v2)');
-    assert.strictEqual(db.prepare("SELECT version FROM user_modules WHERE subject_id = ? AND namespace = 'tools.usage'").get(ANN).version, 2, 'the next write stores the current version');
-    db.prepare("INSERT INTO user_modules (subject_id, namespace, version, revision, data) VALUES ('usr_01JAB2C3D4E5F6G7H8J9K0MNPB', 'chat.tts_defaults', 1, 1, ?)").run(JSON.stringify({ voice: 'en-1', rate: 1.2, muted: true }));
+    assert.strictEqual((await db.prepare("SELECT version FROM user_modules WHERE subject_id = ? AND namespace = 'tools.usage'").get(ANN)).version, 2, 'the next write stores the current version');
+    await db.prepare("INSERT INTO user_modules (subject_id, namespace, version, revision, data) VALUES ('usr_01JAB2C3D4E5F6G7H8J9K0MNPB', 'chat.tts_defaults', 1, 1, ?)").run(JSON.stringify({ voice: 'en-1', rate: 1.2, muted: true }));
     r = await call('GET', '/internal/modules/chat.tts_defaults/usr_01JAB2C3D4E5F6G7H8J9K0MNPB', { headers: { authorization: `Bearer ${chat}` } });
     assert.strictEqual(r.body.version, 2); assert.deepStrictEqual(r.body.data, {}, 'v1 tts fields are dropped by the migration');
     r = await call('PUT', `/internal/modules/live.profile/${ANN}`, { headers: { 'x-internal-key': 'legacy-key' }, body: { data: { followers: 1 } } });
@@ -117,7 +118,7 @@ const server = http.createServer(app);
     assert.strictEqual(r.status, 401, 'and a bearer is still judged on the token alone'); assert.strictEqual(r.body.code, 'token.malformed');
     r = await call('PUT', `/internal/modules/live.profile/${ANN}`, { headers: { authorization: `Bearer ${tools}` }, body: { data: { followers: 1 } } });
     assert.strictEqual(r.status, 403, 'a service without the network.modules.write grant is refused');
-    assert.ok(db.prepare("SELECT 1 FROM principal_usage WHERE auth = 'service-token' AND allowed = 0 AND route LIKE 'PUT /internal/modules%'").get(), 'a refused service token is audited');
+    assert.ok(await db.prepare("SELECT 1 FROM principal_usage WHERE auth = 'service-token' AND allowed = 0 AND route LIKE 'PUT /internal/modules%'").get(), 'a refused service token is audited');
     r = await call('PUT', `/internal/modules/live.profile/usr_01JAB2C3D4E5F6G7H8J9K0ZZZZ`, { headers: { authorization: `Bearer ${live}` }, body: { data: { followers: 1 } } });
     assert.strictEqual(r.status, 404, 'unknown subject');
     r = await call('PUT', `/internal/modules/live.profile/${ANN}`, { headers: { authorization: `Bearer ${live}`, 'if-match': '0' }, body: { data: { followers: 43 } } });
@@ -145,4 +146,5 @@ const server = http.createServer(app);
     server.close(); db.close();
     fs.rmSync(dir, { recursive: true, force: true });
     console.log('modules: all checks passed');
+})().catch(err => { console.error(err); process.exit(1); });
 })().catch(err => { console.error(err); process.exit(1); });

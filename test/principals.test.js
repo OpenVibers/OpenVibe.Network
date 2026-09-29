@@ -10,19 +10,20 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const { serviceAuth, validate } = require('openvibe-contracts');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-principals-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
 
-db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
-db.prepare("UPDATE oauth_clients SET client_secret = 'media-secret' WHERE client_id = 'media'").run();
-db.prepare("INSERT INTO users (id, username, password_hash) VALUES (7, 'payee', 'x'), (8, 'payer', 'x')").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'media-secret' WHERE client_id = 'media'").run();
+await db.prepare("INSERT INTO users (id, username, password_hash) VALUES (7, 'payee', 'x'), (8, 'payer', 'x')").run();
 // A database seeded before media.analyze (Live's AI grants as the old default) is moved at the next boot.
-db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = 'live' AND audience = 'openvibe.ai'").run(JSON.stringify(['live.*', 'network.site_copy']));
-require('../server/identity/principals').ensureSchema(db);
+await db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = 'live' AND audience = 'openvibe.ai'").run(JSON.stringify(['live.*', 'network.site_copy']));
+await require('../server/identity/principals').ensureSchema(db);
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
 const ISSUER = 'https://openvibe.network';
@@ -72,11 +73,11 @@ const server = http.createServer(app);
     const creditOnly = t.body.access_token;
     t = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.network', scope: 'network.coins.credit network.coins.mint' });
     assert.strictEqual(t.status, 400); assert.strictEqual(t.body.error, 'invalid_scope', 'asking for an ungranted capability fails');
-    db.prepare("UPDATE oauth_clients SET client_secret = 'openre-secret' WHERE client_id = 'openre'").run();
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'openre-secret' WHERE client_id = 'openre'").run();
     t = await token({ client_id: 'openre', client_secret: 'openre-secret', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 400); assert.strictEqual(t.body.error, 'invalid_scope', 'a client with no grants gets no token');
     // The canonical channel/owner resolver on Live (D20-R1): OpenRe, Media and Community hold it, nobody else.
-    db.prepare("UPDATE oauth_clients SET client_secret = 'community-secret' WHERE client_id = 'community'").run();
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'community-secret' WHERE client_id = 'community'").run();
     for (const [client, secret] of [['openre', 'openre-secret'], ['media', 'media-secret'], ['community', 'community-secret']]) {
         t = await token({ client_id: client, client_secret: secret, audience: 'openvibe.live' });
         assert.strictEqual(t.status, 200, `${client}: ${JSON.stringify(t.body)}`);
@@ -86,7 +87,7 @@ const server = http.createServer(app);
     }
     t = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.live', scope: 'live.lineage.resolve' });
     assert.strictEqual(t.status, 400, 'Live does not grant itself its own resolver');
-    const holders = db.prepare("SELECT client_id FROM principal_grants WHERE capability = 'live.lineage.resolve' AND audience = 'openvibe.live' AND revoked_at IS NULL ORDER BY client_id").all().map(x => x.client_id);
+    const holders = (await db.prepare("SELECT client_id FROM principal_grants WHERE capability = 'live.lineage.resolve' AND audience = 'openvibe.live' AND revoked_at IS NULL ORDER BY client_id").all()).map(x => x.client_id);
     assert.deepStrictEqual(holders, ['community', 'media', 'openre']);
     t = await token({ client_id: 'media', client_secret: 'media-secret', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
@@ -137,7 +138,7 @@ const server = http.createServer(app);
     assert.strictEqual(r, 404, 'the key-only internal routes are gone');
 
     // Community resolves authors with its own token; Live's token lacks that grant.
-    db.prepare("UPDATE oauth_clients SET client_secret = 'community-secret' WHERE client_id = 'community'").run();
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'community-secret' WHERE client_id = 'community'").run();
     const com = await token({ client_id: 'community', client_secret: 'community-secret', audience: 'openvibe.network' });
     assert.strictEqual(com.status, 200, JSON.stringify(com.body));
     assert.deepStrictEqual(com.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.blocks.read', 'network.modules.read', 'network.modules.write'], 'resolve, account export and deletion, platform blocks, plus its community.profile module');
@@ -146,7 +147,7 @@ const server = http.createServer(app);
     r = await post('/internal/identity/resolve-batch', { system: 'network', ids: ['7'] }, { authorization: `Bearer ${creditOnly}` });
     assert.strictEqual(r.status, 403, 'a token narrowed to coins cannot resolve identities');
     // Media's owner_subject backfill: Live user ids -> subjects, an unknown id answers null.
-    db.prepare("INSERT OR IGNORE INTO identity_legacy_map (source_system, source_type, source_id, subject_id) SELECT 'live', 'user', '42', subject_id FROM users WHERE id = 7").run();
+    await db.prepare("INSERT INTO identity_legacy_map (source_system, source_type, source_id, subject_id) SELECT 'live', 'user', '42', subject_id FROM users WHERE id = 7 ON CONFLICT DO NOTHING").run();
     r = await post('/internal/identity/resolve-batch', { system: 'live', type: 'user', ids: ['42', '43'] }, { authorization: `Bearer ${mediaResolve}` });
     assert.strictEqual(r.status, 200, JSON.stringify(r.body));
     assert.match(r.body.results['42'].subject.id, /^usr_/); assert.strictEqual(r.body.results['43'], null);
@@ -158,7 +159,7 @@ const server = http.createServer(app);
     assert.deepStrictEqual(cm.body.scope.split(' '), ['community.comment.moderate', 'community.comment.write', 'community.paste.create', 'community.paste.moderate', 'community.paste.write', 'community.pulse.write']);
     const tl = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.tools' });
     assert.deepStrictEqual(tl.body.scope.split(' '), ['tools.job.read', 'tools.tool.run'], 'Live runs Tools on the service tier, never probes');
-    db.prepare("UPDATE oauth_clients SET client_secret = 'tools-secret' WHERE client_id = 'tools'").run();
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'tools-secret' WHERE client_id = 'tools'").run();
     const ts = await token({ client_id: 'tools', client_secret: 'tools-secret', audience: 'openvibe.search' });
     assert.strictEqual(ts.body.scope, 'search.document.write', 'Tools indexes its tools in Search');
 
@@ -189,7 +190,7 @@ const server = http.createServer(app);
     assert.strictEqual(r.status, 403);
     r = await post('/internal/link-account', { user_id: 7, service: 'live', service_user_id: '4242' }, LIVE);
     assert.strictEqual(r.status, 200, JSON.stringify(r.body));
-    assert.strictEqual(db.prepare("SELECT service_user_id FROM linked_accounts WHERE user_id = 7 AND service = 'live'").get().service_user_id, '4242');
+    assert.strictEqual((await db.prepare("SELECT service_user_id FROM linked_accounts WHERE user_id = 7 AND service = 'live'").get()).service_user_id, '4242');
     r = await post('/internal/link-account', { user_id: 7, service: 'games', service_user_id: '4242' }, LIVE);
     assert.strictEqual(r.status, 403); assert.strictEqual(r.body.code, 'capability.owner_denied', 'a token links accounts only for its own service');
     // The key is refused on all five with token.missing: the gate asks for a Bearer and nothing else.
@@ -207,11 +208,11 @@ const server = http.createServer(app);
     }
     // What the key never had to answer for is now a matter of ownership: a Games token maps its own system's
     // ids, and Live's token still may not (the token-based equivalent of the key's no-ownership-rule note).
-    db.prepare("UPDATE oauth_clients SET client_secret = 'games-secret' WHERE client_id = 'games'").run();
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'games-secret' WHERE client_id = 'games'").run();
     const GAMES = { authorization: `Bearer ${(await token({ client_id: 'games', client_secret: 'games-secret', audience: 'openvibe.network' })).body.access_token}` };
     assert.strictEqual((await post('/internal/identity/legacy-map', { entries: [{ network_user_id: 8, source_system: 'games', source_id: '77' }] }, GAMES)).status, 200, 'a Games token maps its own ids');
     assert.strictEqual((await post('/internal/link-account', { user_id: 8, service: 'games', service_user_id: '77' }, GAMES)).status, 200, 'and links its own accounts');
-    const decided = db.prepare("SELECT route FROM principal_usage WHERE principal = 'svc:live' AND allowed = 1").all().map(x => x.route);
+    const decided = (await db.prepare("SELECT route FROM principal_usage WHERE principal = 'svc:live' AND allowed = 1").all()).map(x => x.route);
     for (const route of ['GET /internal/url-registry/resolved', 'GET /internal/coins/stats', 'POST /internal/resolve-anon', 'POST /internal/identity/legacy-map', 'POST /internal/link-account']) {
         assert.ok(decided.includes(route), `token use of ${route} is recorded`);
     }
@@ -229,15 +230,15 @@ const server = http.createServer(app);
     assert.strictEqual(r.body.code, 'token.bad_signature');
     // The retired key leaves no trace in the usage audit: only service principals are recorded there now.
     await new Promise((resolve) => setTimeout(resolve, 20));
-    assert.deepStrictEqual(db.prepare("SELECT DISTINCT principal FROM principal_usage WHERE principal NOT LIKE 'svc:%' AND principal <> 'unknown'").all(), [], 'no principal outside the svc: namespace is audited (a refused stranger is "unknown")');
+    assert.deepStrictEqual(await db.prepare("SELECT DISTINCT principal FROM principal_usage WHERE principal NOT LIKE 'svc:%' AND principal <> 'unknown'").all(), [], 'no principal outside the svc: namespace is audited (a refused stranger is "unknown")');
 
     // ── Revocation: new tokens stop carrying a revoked grant ──
-    db.prepare("UPDATE principal_grants SET revoked_at = CURRENT_TIMESTAMP WHERE client_id = 'live' AND capability = 'network.coins.debit'").run();
+    await db.prepare("UPDATE principal_grants SET revoked_at = ov_now() WHERE client_id = 'live' AND capability = 'network.coins.debit'").run();
     t = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.network' });
     assert.ok(!t.body.scope.split(' ').includes('network.coins.debit'));
 
     // ── Usage audit ──
-    const usage = db.prepare('SELECT principal, route, auth, allowed, code, count FROM principal_usage ORDER BY principal, route, allowed').all();
+    const usage = await db.prepare('SELECT principal, route, auth, allowed, code, count FROM principal_usage ORDER BY principal, route, allowed').all();
     assert.ok(usage.some(u => u.principal === 'svc:live' && u.route === 'POST /internal/coins/credit' && u.allowed === 1 && u.count === 1));
     assert.ok(usage.some(u => u.auth === 'service-token' && u.allowed === 1), 'every allow is a service token');
     assert.ok(!usage.some(u => u.auth === 'internal-key' || u.principal === 'legacy-key'), 'the retired key is not an auth path any more');
@@ -248,4 +249,5 @@ const server = http.createServer(app);
     server.close(); db.close();
     fs.rmSync(dir, { recursive: true, force: true });
     console.log('principals: all checks passed');
+})().catch(err => { console.error(err); process.exit(1); });
 })().catch(err => { console.error(err); process.exit(1); });

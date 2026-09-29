@@ -13,20 +13,21 @@ const express = require('express');
 const crypto = require('crypto');
 const { ids, serviceAuth } = require('openvibe-contracts');
 const { signDeliveryHeaders } = require('openvibe-sdk/events');
-const { initDb } = require('../server/db/database');
+const { getDb } = require('../server/db/database');
 const { NotificationService } = require('../server/notifications/notification-service');
 const { createEventsConsumer, TOPICS } = require('../server/notifications/events-consumer');
 const { createLiveFollowers } = require('../server/notifications/live-followers');
 const streamLive = require('../server/notifications/stream-live');
 const { topicsFrom } = require('../scripts/subscribe-events');
 
+(async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-events-consumer-'));
 const log = console.log; console.log = () => {};
-const db = initDb(path.join(dir, 'network.db'));
+const db = getDb();
 console.log = log;
 
 const ALICE = ids.newId('user'), BOB = ids.newId('user'), NOBODY = ids.newId('user');
-db.prepare("INSERT INTO users (id, username, password_hash, subject_id, email, email_verified) VALUES (7, 'alice', 'x', ?, 'alice@example.test', 1), (8, 'bob', 'x', ?, NULL, 0)").run(ALICE, BOB);
+await db.prepare("INSERT INTO users (id, username, password_hash, subject_id, email, email_verified) VALUES (7, 'alice', 'x', ?, 'alice@example.test', 1), (8, 'bob', 'x', ?, NULL, 0)").run(ALICE, BOB);
 const notifications = new NotificationService(db);
 const SECRET = 'a'.repeat(40), NEXT = 'b'.repeat(40);
 
@@ -54,7 +55,7 @@ const tradeEvent = (over = {}) => ({
     },
     ...over,
 });
-const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at, rowid').all(userId);
+const rows = async (userId) => await db.prepare('SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at, seq').all(userId);
 
 (async () => {
     // The subscriptions this consumer is meant for, and nothing else.
@@ -65,7 +66,7 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
     assert.deepStrictEqual(topicsFrom(['--topic', 'live.stream.started']), ['live.stream.started']);
     assert.throws(() => topicsFrom(['--topic', 'live.*']));
 
-    let consumer = createEventsConsumer({ db, notifications, secrets: '' });
+    let consumer = await createEventsConsumer({ db, notifications, secrets: '' });
     const app = express();
     app.use('/internal/events', (req, res, next) => consumer.router(req, res, next));
     app.use(express.json());   // as in server/index.js: the consumer runs before the JSON parser
@@ -84,9 +85,9 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
     let r = await post(dealsEvent());
     assert.strictEqual(r.status, 503);
     assert.strictEqual(r.body.code, 'network.webhook_disabled');
-    assert.strictEqual(rows(7).length, 0);
+    assert.strictEqual((await rows(7)).length, 0);
 
-    consumer = createEventsConsumer({ db, notifications, secrets: `${SECRET},${NEXT}` });
+    consumer = await createEventsConsumer({ db, notifications, secrets: `${SECRET},${NEXT}` });
     assert.strictEqual(consumer.enabled, true);
 
     // A signed v2 Deals watch match becomes one notification for the watcher.
@@ -94,7 +95,7 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
     r = await post(e1);
     assert.strictEqual(r.status, 200);
     assert.deepStrictEqual(r.body, { event_id: e1.event_id, duplicate: false, outcome: 'notified' });
-    let mine = rows(7);
+    let mine = await rows(7);
     assert.strictEqual(mine.length, 1);
     assert.strictEqual(mine[0].type, 'DEAL_WATCH_MATCH');
     assert.strictEqual(mine[0].category, 'service');
@@ -109,7 +110,7 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
     assert.strictEqual(r.status, 200);
     assert.strictEqual(r.body.duplicate, true);
     assert.strictEqual(r.body.outcome, null);
-    assert.strictEqual(rows(7).length, 1);
+    assert.strictEqual((await rows(7)).length, 1);
 
     // v1-only (the v2 headers stripped), stale v2, wrong secret, unsigned: refused, nothing stored.
     for (const [label, opts] of [
@@ -122,14 +123,14 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
         r = await post(e, opts);
         assert.strictEqual(r.status, 401, label);
         assert.strictEqual(r.body.code, 'network.bad_signature', label);
-        assert.ok(!db.prepare('SELECT 1 FROM network_event_inbox WHERE event_id = ?').get(e.event_id), `${label}: not even recorded`);
+        assert.ok(!await db.prepare('SELECT 1 FROM network_event_inbox WHERE event_id = ?').get(e.event_id), `${label}: not even recorded`);
     }
-    assert.strictEqual(rows(7).length, 1);
+    assert.strictEqual((await rows(7)).length, 1);
 
     // The rotated-in secret verifies too.
     r = await post(dealsEvent({ payload: { ...dealsEvent().payload, kind: 'keyword', query: 'headphones', offer_id: 'dof_2' } }), { secret: NEXT });
     assert.strictEqual(r.body.outcome, 'notified');
-    assert.match(rows(7)[1].message, /\(matches "headphones"\)$/);
+    assert.match((await rows(7))[1].message, /\(matches "headphones"\)$/);
 
     // Unknown types are acknowledged and ignored (and recorded, so a redelivery is a duplicate).
     const other = dealsEvent({ event_type: 'deals.offer.created' });
@@ -139,7 +140,7 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
     assert.strictEqual(r.body.duplicate, true);
     r = await post(dealsEvent({ event_type: 'constructor' }));
     assert.strictEqual(r.body.outcome, 'ignored:type', 'no prototype lookups');
-    assert.strictEqual(rows(7).length, 2);
+    assert.strictEqual((await rows(7)).length, 2);
 
     // A publisher may not speak for another service; an unknown person gets nothing.
     r = await post(dealsEvent({ source: 'trade' }));
@@ -152,7 +153,7 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
     // A Trade alert reaches the rule's owner.
     r = await post(tradeEvent());
     assert.strictEqual(r.body.outcome, 'notified');
-    let bobs = rows(8);
+    let bobs = await rows(8);
     assert.strictEqual(bobs.length, 1);
     assert.strictEqual(bobs[0].type, 'TRADE_ALERT');
     assert.strictEqual(bobs[0].title, 'Trade alert: AAPL');
@@ -161,31 +162,31 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
     assert.strictEqual(bobs[0].url, null);
     r = await post(tradeEvent({ payload: { ...tradeEvent().payload, trigger: { kind: 'document', id: 'doc_1', form_type: '8-K', title: 'Current report' } } }));
     assert.strictEqual(r.body.outcome, 'notified');
-    assert.match(rows(8)[1].message, /New 8-K: Current report\./);
+    assert.match((await rows(8))[1].message, /New 8-K: Current report\./);
     r = await post(tradeEvent({ subject: { type: 'watch', id: 'x' } }));
     assert.strictEqual(r.body.outcome, 'ignored:payload');
 
     // A link to a site whose domain serves the service is kept; a foreign host never is.
     r = await post(tradeEvent({ payload: { ...tradeEvent().payload, instrument: { symbol: 'X', url: 'https://openvibe.live/x' } } }));
-    assert.strictEqual(rows(8).pop().url, 'https://openvibe.live/x');
+    assert.strictEqual((await rows(8)).pop().url, 'https://openvibe.live/x');
     r = await post(tradeEvent({ payload: { ...tradeEvent().payload, instrument: { symbol: 'Y', url: 'https://evil.example/y' } } }));
-    const last = rows(8).pop();
+    const last = (await rows(8)).pop();
     assert.strictEqual(last.url, null);
     assert.strictEqual(JSON.parse(last.rich_content).context.planned_url, null);
 
     // Preferences: with the 'service' category turned off, nothing is created (and it stays handled).
-    const before = rows(8).length;
-    notifications.setPreference(8, 'service', { enabled: false });
+    const before = (await rows(8)).length;
+    await notifications.setPreference(8, 'service', { enabled: false });
     const muted = tradeEvent();
     r = await post(muted);
     assert.strictEqual(r.body.outcome, 'suppressed:preference');
-    assert.strictEqual(rows(8).length, before);
+    assert.strictEqual((await rows(8)).length, before);
     assert.strictEqual((await post(muted)).body.duplicate, true);
     // Email follows the same per-category choice: none by default, yes once opted in (verified address).
-    const n = { ...rows(7)[0], email_verified: 1, email_bounced_at: null };
-    assert.strictEqual(notifications.shouldEmail(n), false);
-    notifications.setPreference(7, 'service', { email: true });
-    assert.strictEqual(notifications.shouldEmail(n), true);
+    const n = { ...(await rows(7))[0], email_verified: 1, email_bounced_at: null };
+    assert.strictEqual(await notifications.shouldEmail(n), false);
+    await notifications.setPreference(7, 'service', { email: true });
+    assert.strictEqual(await notifications.shouldEmail(n), true);
 
     // Malformed envelopes are refused.
     r = await post({ event_id: 'nope', event_type: 'deals.watch.matched' });
@@ -194,11 +195,11 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
     // ── live.stream.started: every follower of the channel, once ──────────────────────────────
     const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
     const CAROL = ids.newId('user'), DAVE = ids.newId('user'), FRANK = ids.newId('user'), GINA = ids.newId('user'), HANK = ids.newId('user'), STRANGER = ids.newId('user');
-    db.prepare(`INSERT INTO users (id, username, password_hash, subject_id, avatar_url) VALUES
+    await db.prepare(`INSERT INTO users (id, username, password_hash, subject_id, avatar_url) VALUES
         (20, 'carol', 'x', ?, 'https://openvibe.media/avatar/carol'), (21, 'dave', 'x', ?, NULL), (22, 'erin', 'x', NULL, NULL),
         (23, 'frank', 'x', ?, NULL), (24, 'gina', 'x', ?, NULL), (25, 'hank', 'x', ?, NULL)`).run(CAROL, DAVE, FRANK, GINA, HANK);
-    notifications.setPreference(23, 'stream', { enabled: false });          // Frank muted go-lives
-    notifications.setPreference(24, 'stream_live_all', { enabled: true });  // Gina wants every go-live
+    await notifications.setPreference(23, 'stream', { enabled: false });          // Frank muted go-lives
+    await notifications.setPreference(24, 'stream_live_all', { enabled: true });  // Gina wants every go-live
     // Live's GET /internal/followers, as the Live-side change specifies. Streams: 501 carol, 502 hank.
     let liveMode = 'ok'; const liveCalls = []; const liveAuth = [];
     const FOLLOWERS = {
@@ -224,7 +225,7 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
     await new Promise(r => live.listen(0, '127.0.0.1', r));
     const discordCalls = [];
     let clock = Date.now();
-    consumer = createEventsConsumer({
+    consumer = await createEventsConsumer({
         db, notifications, secrets: SECRET, now: () => clock,
         liveFollowers: createLiveFollowers({ privateKey, issuer: 'https://openvibe.network', liveUrl: `http://127.0.0.1:${live.address().port}` }),
         discord: () => ({ sendLiveAlert: async (streamer, stream) => { discordCalls.push([streamer, stream]); return { sent: true }; } }),
@@ -239,7 +240,7 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
         },
         ...over,
     });
-    const goLives = (uid) => db.prepare("SELECT * FROM notifications WHERE user_id = ? AND type = 'STREAM_LIVE' ORDER BY rowid").all(uid);
+    const goLives = async (uid) => await db.prepare("SELECT * FROM notifications WHERE user_id = ? AND type = 'STREAM_LIVE' ORDER BY seq").all(uid);
 
     // One delivery: Dave (by subject), Erin (by network id, no subject yet) and Gina (all go-lives) are
     // notified once each; Frank muted the category, Carol is the streamer, the stranger has no account.
@@ -248,10 +249,10 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
     assert.strictEqual(r.status, 200, JSON.stringify(r.body));
     assert.strictEqual(r.body.outcome, 'notified');
     assert.deepStrictEqual(r.body.detail, { followers: 5, unresolved: 1, targets: 4, notified: 3 });
-    for (const uid of [21, 22, 24]) assert.strictEqual(goLives(uid).length, 1, `user ${uid} is told once`);
-    assert.strictEqual(goLives(23).length, 0, 'the stream category is muted: preferences apply');
-    assert.strictEqual(goLives(20).length, 0, 'the streamer is not told about themself');
-    const n1 = goLives(21)[0];
+    for (const uid of [21, 22, 24]) assert.strictEqual((await goLives(uid)).length, 1, `user ${uid} is told once`);
+    assert.strictEqual((await goLives(23)).length, 0, 'the stream category is muted: preferences apply');
+    assert.strictEqual((await goLives(20)).length, 0, 'the streamer is not told about themself');
+    const n1 = (await goLives(21))[0];
     assert.strictEqual(n1.title, 'Carol 3 is live!');
     assert.strictEqual(n1.message, 'Building a b robot /b', 'no markup reaches the inbox');
     assert.strictEqual(n1.category, 'stream');
@@ -279,41 +280,41 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
     r = await post(s1);
     assert.deepStrictEqual([r.status, r.body.duplicate, r.body.outcome], [200, true, null]);
     assert.strictEqual(liveCalls.length, 0);
-    for (const uid of [21, 22, 24]) assert.strictEqual(goLives(uid).length, 1);
+    for (const uid of [21, 22, 24]) assert.strictEqual((await goLives(uid)).length, 1);
     assert.strictEqual(discordCalls.length, 1);
 
     // A new stream row from the same channel within the hour (a reconnect): the announcement window holds.
     r = await post(liveEvent({}, { stream_id: 501 }));
     assert.strictEqual(r.body.outcome, 'skipped:cooldown');
-    assert.strictEqual(goLives(21).length, 1);
+    assert.strictEqual((await goLives(21)).length, 1);
     // ...and it is the same window Live's direct POST /internal/events/stream-live claims (keyed by the Network id),
     // so during the switch the two paths never both announce.
-    assert.strictEqual(streamLive.claimAnnouncement(db, { streamerKey: 20, streamId: 501 }).reason, 'cooldown');
+    assert.strictEqual((await streamLive.claimAnnouncement(db, { streamerKey: 20, streamId: 501 })).reason, 'cooldown');
 
     // v1-only (and any unverifiable) live delivery: refused, not recorded, Live never asked.
     liveCalls.length = 0;
     const v1 = liveEvent({ subject: { type: 'stream', id: '502', revision: 1 }, actor: { type: 'user', id: HANK } }, { stream_id: 502, channel: { username: 'hank', subject: { type: 'user', id: HANK } } });
     r = await post(v1, { strip: ['X-OpenVibe-Signature-V2', 'X-OpenVibe-Timestamp'] });
     assert.deepStrictEqual([r.status, r.body.code], [401, 'network.bad_signature']);
-    assert.ok(!db.prepare('SELECT 1 FROM network_event_inbox WHERE event_id = ?').get(v1.event_id));
+    assert.ok(!await db.prepare('SELECT 1 FROM network_event_inbox WHERE event_id = ?').get(v1.event_id));
     assert.strictEqual(liveCalls.length, 0);
 
     // Live down: 503, nothing recorded, so Events' retry does the work once Live answers.
     liveMode = 'down';
     r = await post(v1);
     assert.deepStrictEqual([r.status, r.body.code], [503, 'network.dependency_unavailable']);
-    assert.ok(!db.prepare('SELECT 1 FROM network_event_inbox WHERE event_id = ?').get(v1.event_id));
-    assert.strictEqual(goLives(21).length, 1);
+    assert.ok(!await db.prepare('SELECT 1 FROM network_event_inbox WHERE event_id = ?').get(v1.event_id));
+    assert.strictEqual((await goLives(21)).length, 1);
     liveMode = 'ok';
     r = await post(v1);
     assert.strictEqual(r.body.outcome, 'notified');
-    assert.strictEqual(goLives(21).length, 2, 'Dave follows Hank too');
-    assert.strictEqual(goLives(24).length, 2, 'Gina gets every go-live');
+    assert.strictEqual((await goLives(21)).length, 2, 'Dave follows Hank too');
+    assert.strictEqual((await goLives(24)).length, 2, 'Gina gets every go-live');
 
     // Refused or ignored without notifying anyone.
     liveCalls.length = 0;
-    const count = () => db.prepare("SELECT COUNT(*) AS c FROM notifications WHERE type = 'STREAM_LIVE'").get().c;
-    const total = count();
+    const count = async () => (await db.prepare("SELECT COUNT(*) AS c FROM notifications WHERE type = 'STREAM_LIVE'").get()).c;
+    const total = await count();
     r = await post(liveEvent({ source: 'tips' }));
     assert.strictEqual(r.body.outcome, 'ignored:source', 'only Live speaks for Live channels');
     // The signatures are made at the consumer's clock (it moves forward below).
@@ -330,10 +331,11 @@ const rows = (userId) => db.prepare('SELECT * FROM notifications WHERE user_id =
     assert.strictEqual(r.body.outcome, 'ignored:channel-mismatch', 'stream 502 is Hank\'s, not Carol\'s');
     r = await post(liveEvent({}, { stream_id: 999 }), { now: clock });
     assert.strictEqual(r.body.outcome, 'ignored:stream');
-    assert.strictEqual(count(), total);
+    assert.strictEqual(await count(), total);
     assert.strictEqual(discordCalls.length, 2);
 
     live.close();
     srv.close();
     console.log('events consumer: all checks passed');
 })().catch((err) => { console.error(err); process.exit(1); });
+})().catch(err => { console.error(err); process.exit(1); });
