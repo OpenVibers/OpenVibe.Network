@@ -93,6 +93,9 @@ const server = http.createServer(app);
     assert.strictEqual(t.body.scope, 'identity.subject.resolve network.account.deletion.confirm network.account.export.contribute', 'Media resolves object owners to subjects and takes part in account export and deletion (ADR-033), nothing else here');
     const mediaResolve = t.body.access_token;
     t = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.media' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    assert.deepStrictEqual(t.body.scope.split(' ').sort(), ['media.object.delete', 'media.object.list', 'media.object.read', 'media.object.upload'], 'plan T4: Live reaches Media with its own token, nothing more');
+    t = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.games' });
     assert.strictEqual(t.status, 400, 'no grants for that audience');
 
     // ── Guarded routes ──

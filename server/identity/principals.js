@@ -49,6 +49,17 @@ const DEFAULT_GRANTS = [
     ['tools', 'media.object.upload', 'openvibe.media', ['tools', 'tools.*']],
     ['tools', 'media.object.read', 'openvibe.media', ['tools', 'tools.*']],
     ['games', 'media.object.upload', 'openvibe.media', ['games']],
+    // Plan T4 (Media cleanup): Live and OpenRe reach Media with their own tokens instead of API keys. Live keeps
+    // its objects under the live namespace (VOD/clip/thumbnail uploads, reads, lists, deletes); OpenRe uploads the
+    // recordings and thumbnails it produces there too.
+    ...['media.object.read', 'media.object.list', 'media.object.upload', 'media.object.delete'].map(cap => ['live', cap, 'openvibe.media', ['live']]),
+    ['openre', 'media.object.upload', 'openvibe.media', ['live']],
+    // Plan T3: Chat owns the six chat tables. Emote images go to Media under the chat namespace, and
+    // the chat-AI summaries run in Chat with its own token.
+    ['chat', 'media.object.upload', 'openvibe.media', ['chat']],
+    ['chat', 'media.object.delete', 'openvibe.media', ['chat']],
+    ['chat', 'ai.run.create', 'openvibe.ai', ['chat.*']],
+    ['chat', 'ai.run.read', 'openvibe.ai', ['chat.*']],
     ['games', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Games subscribes to network.user.token_valid_after (sign-out everywhere closes game sessions).
     ['games', 'events.subscription.manage', 'openvibe.events', []],
@@ -214,6 +225,8 @@ const DEFAULT_GRANTS = [
     ['community', 'network.blocks.read', SELF_AUDIENCE, []],
     ['live', 'chat.live_bridge.write', 'openvibe.chat', []],
     ['live', 'chat.presence.read', 'openvibe.chat', []],
+    // Plan T3: Live reads a channel's moderation settings, its moderators and emote count from Chat.
+    ['live', 'chat.moderation.read', 'openvibe.chat', []],
     ['live', 'chat.message.send', 'openvibe.chat', []],
     // Wave 8: Live as a Billing client (used only with BILLING_AUTHORITY=billing). Never cashout.manage
     // or ledger.admin: approving payouts is a separately controlled capability (ADR-012 rule 10).
