@@ -28,6 +28,7 @@ app.locals.config = { baseUrl: ISSUER, loginUrl: ISSUER, jwt: { issuer: ISSUER, 
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 app.use('/oauth', require('../server/auth/oauth-routes'));
+require('../server/auth/oidc').mount(app);      // the root discovery documents (the alias is gone, plan T2)
 const server = http.createServer(app);
 
 const REDIRECT = 'https://openvibe.live/api/auth/callback';
@@ -89,7 +90,7 @@ const userToken = jwt.sign({ sub: 7, id: 7, username: 'viewer' }, keys.privateKe
     assert.strictEqual(racing.filter(x => x.status === 200).length, 1);
 
     // discovery advertises S256
-    const disc = await fetch(`${base}/oauth/.well-known/openid-configuration`).then(x => x.json());
+    const disc = await fetch(`${base}/.well-known/openid-configuration`).then(x => x.json());
     assert.deepStrictEqual(disc.code_challenge_methods_supported, ['S256']);
 
     console.log('oauth pkce: all checks passed');

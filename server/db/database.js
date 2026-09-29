@@ -428,8 +428,8 @@ function initDb(dbPath) {
     }
 
     // ── Refresh tokens: hash-only storage, families, generations (server/auth/refresh-tokens.js) ──
-    // Columns only. Rows still holding a raw token work and are hashed on use; the rest are hashed in
-    // place by scripts/hash-refresh-tokens.js (the operator runs it, with a backup).
+    // Columns only. Rows still holding a raw token work and are hashed on first use (the one-time
+    // hash-refresh-tokens.js was retired in plan T2).
     require('../auth/refresh-tokens').ensureSchema(db);
 
     // ── Email verification tokens + preference default semantics ──

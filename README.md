@@ -11,15 +11,15 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 ## What it does
 
 - **SSO Identity Provider** — "One Account. All of OpenVibe." Central registration and login, OAuth2 Authorization Code flow for OpenVibe.Live, OpenVibe.Tools, OpenVibe.Games, and OpenVibe.Media.
-- **Refresh tokens** — stored only as a SHA-256, rotated on every use as the next `generation` of the sign-in's `family_id`; presenting an already rotated token again (after a 10-second grace for two tabs refreshing at once) revokes the whole family and is audited (`oauth_refresh_reuse`). Rows from before this change still work and are hashed on first use; `scripts/hash-refresh-tokens.js` hashes the rest in place (dry run by default, `--apply --backup <new file>`, rollback with `--restore-from <backup> --apply`). `server/auth/refresh-tokens.js`.
-- **OpenID Connect** — discovery at the issuer's root, `/.well-known/openid-configuration` (also `/.well-known/oauth-authorization-server`, and the older `/oauth/.well-known/openid-configuration`). With scope `openid` the code grant adds an RS256 `id_token` (aud = client, the authorize `nonce` echoed, `sub` = the Network id as a string, `subject_id` = the canonical usr_ id); `/oauth/userinfo` returns the same claims for an access token (`server/auth/oidc.js`).
+- **Refresh tokens** — stored only as a SHA-256, rotated on every use as the next `generation` of the sign-in's `family_id`; presenting an already rotated token again (after a 10-second grace for two tabs refreshing at once) revokes the whole family and is audited (`oauth_refresh_reuse`). Rows from before this change still work: a raw row is hashed the first time it is presented. `server/auth/refresh-tokens.js`.
+- **OpenID Connect** — discovery at the issuer's root, `/.well-known/openid-configuration` (also RFC 8414's `/.well-known/oauth-authorization-server`; the older `/oauth/...` alias was retired in plan T2). With scope `openid` the code grant adds an RS256 `id_token` (aud = client, the authorize `nonce` echoed, `sub` = the Network id as a string, `subject_id` = the canonical usr_ id); `/oauth/userinfo` returns the same claims for an access token (`server/auth/oidc.js`).
 - **Unified Notification System** — Cross-service notifications with priority levels, category filtering, toast popups, bell badge, sounds, and rich content (buttons, inputs, media). All services push notifications to the central API; clients poll every 15 seconds.
 - **Email Alerts** — Critical notifications (moderation actions, system alerts) can be delivered by the built-in email service. Configuration is managed through the admin panel.
 - **Anonymous Users** — Browse and interact without an account. Anon users receive a unique number, can accumulate stats, and optionally link to a registered account later.
 - **Multi-Account Switching** — Google-style account management. Users can add multiple accounts and switch instantly, including an anonymous mode.
 - **Theme Catalog** — Shared theme system with ~30 built-in themes and community submissions. Theme preferences sync across all services.
 - **Admin Panel** — email configuration, user management (role changes, bans), broadcast notifications, system health dashboard, and audit log.
-- **Internal API** — Server-to-server endpoints for token verification, user lookup, notification push, account linking, and audit logging. Protected by `X-Internal-Key`; the routes listed in [docs/retirement.md](docs/retirement.md#routes-that-take-a-token-network-side-of-step-2) also take a capability-scoped service token, and the key is retired route by route.
+- **Internal API** — Server-to-server endpoints for token verification, user lookup, notification push, account linking, and audit logging. Every route takes a capability-scoped service token; the deployment-wide key they used to accept was retired on 2026-09-29 (plan T2, [docs/retirement.md](docs/retirement.md)) and opens nothing.
 - **Developer projects (foundation)** — projects, members, apps (OAuth clients with `app_` subjects), hashed client secrets with rotation and revocation, capability grants within a staff-set allowance (sandbox apps also get a default sandbox allowance of public Media, Events-app and Tools-job capabilities, so a new project works without staff), recorded quotas, per-project usage from the services' hourly rollups (`GET /api/v1/projects/:project/usage`) and an append-only audit at `/api/v1/projects`. Its events can be relayed to OpenVibe.Events through an outbox when `OV_EVENTS_INTERNAL_URL` is set. Bearer user tokens only; no portal UI yet (that is OpenVibe.Codes). See [docs/developer-projects.md](docs/developer-projects.md).
 - **Public discovery** — `/.well-known/openvibe`, `/api/v1/registry/*` and `/contracts/*.json` (services, capabilities, contract schemas) answer any origin with `Access-Control-Allow-Origin: *`, preflight included, so a browser app can discover the platform directly. Every other route keeps the first-party CORS allow-list (`server/public-cors.js`).
 - **OpenCoins Wallet** — Network-wide currency. User balance/history at `/api/coins/*`; atomic credit/debit/transfer for services at `/internal/coins/*` with idempotency-key dedupe.
@@ -113,7 +113,7 @@ openssl rsa -in data/keys/private.pem -pubout -out data/keys/public.pem
 
 # 3. Configure environment
 cp .env.example .env
-# Edit .env — set INTERNAL_API_KEY, ADMIN_USERNAME, ADMIN_PASSWORD, and optionally SETUP_TOKEN and BOOTSTRAP_PROFILE
+# Edit .env — set ADMIN_USERNAME, ADMIN_PASSWORD, and optionally SETUP_TOKEN and BOOTSTRAP_PROFILE
 
 # 4. Run
 npm start
@@ -249,7 +249,7 @@ Other services push notifications to openvibe.network via the internal API:
 
 ```bash
 curl -X POST http://127.0.0.1:4000/internal/notifications/push \
-  -H "X-Internal-Key: $INTERNAL_API_KEY" \
+  -H "Authorization: Bearer <service token with network.notifications.push>" \
   -H "Content-Type: application/json" \
   -d '{"userId": 42, "type": "new_follower", "data": {"actorName": "someone"}}'
 ```
@@ -487,9 +487,6 @@ A target is a Live channel today (`channel`, named by its owner's subject), and 
   buttons use it.
 - **Go-live source:** with `FOLLOWS_AUTHORITY=network`, go-live notifications read the followers here
   instead of asking Live. Unset it to roll back.
-- **Migration:** `scripts/follows-backfill.js --live-db <live.db>` does a dry run by default. `--apply --backup <file>`
-  imports Live's follows without events: a pair whose side has no subject goes to `follow_import_holds`, and
-  nothing is dropped. `--reconcile` compares per-channel counts and pair sets.
 
 ## Multi-Account Switching
 
@@ -576,8 +573,6 @@ Google-style account management supporting up to 5 accounts:
   It exits 0 unless `--strict`; CI runs it as a warning-only step.
 - `GET /api/v1/status/slo` returns the proposed SLO categories, as does
   [docs/slo.md](docs/slo.md) / [docs/slo.json](docs/slo.json).
-- [docs/patches/live-observability.diff](docs/patches/live-observability.diff) is the same change for
-  OpenVibe.Live, to be applied there.
 
 ## Analytics (ADR-021)
 
@@ -728,12 +723,12 @@ Reporting a vulnerability: [SECURITY.md](SECURITY.md). The rules the code keeps:
   URLs or leave for a host OpenVibe does not own (`test/security-redirects.test.js`); OAuth redirects
   must be one of the client's registered URIs.
 - **Private data.** Analytics keep no personal data beyond a day's salted hash; account export and
-  deletion follow ADR-033; the internal routes take a capability-scoped service token or, while it is
-  retired route by route, `X-Internal-Key`.
+  deletion follow ADR-033; the internal routes take a capability-scoped service token only (the shared
+  internal key was retired in plan T2).
 - **CORS.** Only discovery and the registry are open to any origin; every other route uses the
   first-party allow-list.
-- **Secrets.** Provider secrets come from the environment first, never printed; `INTERNAL_API_KEY`,
-  `SETUP_TOKEN`, `ADMIN_PASSWORD`, `NETWORK_EVENTS_SECRET`, the webhook secrets and `GITHUB_TOKEN` live in
+- **Secrets.** Provider secrets come from the environment first, never printed; `SETUP_TOKEN`,
+  `ADMIN_PASSWORD`, `NETWORK_EVENTS_SECRET`, the webhook secrets and `GITHUB_TOKEN` live in
   `/etc/openvibe/network.env` (0600), by name only.
 
 ## License

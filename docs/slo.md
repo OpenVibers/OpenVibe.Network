@@ -24,8 +24,8 @@ converges afterwards.
 
 ## Where the numbers come from
 
-Every service (Network, Community, Media, Events, the Tools gateway and satellites, and Live once
-`docs/patches/live-observability.diff` is applied) uses `openvibe-shared/metrics` ≥ 1.3.0:
+Every service (Network, Community, Media, Events, the Tools gateway and satellites, and Live) uses
+`openvibe-shared/metrics` ≥ 1.3.0:
 
 - `GET /metrics` returns Prometheus text to a direct loopback caller only. Through nginx it is a 404,
   both in the app (any `X-Forwarded-For`/`X-Real-IP`/`Forwarded` header) and in the nginx config.

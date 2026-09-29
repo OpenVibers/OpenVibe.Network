@@ -715,7 +715,7 @@ app.use('/api/admin/streamer-pastes', requireAuth, (req, res, next) => {
     return proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/pastes${req.url}`, 'Pastes proxy error');
 });
 
-// Internal API (server-to-server, X-Internal-Key)
+// Internal API (server-to-server, capability-scoped service tokens only)
 app.use('/internal', require('./internal/routes'));
 
 // ── Host Canonicalization ────────────────────────────────────

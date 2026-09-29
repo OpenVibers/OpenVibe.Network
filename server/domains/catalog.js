@@ -1,8 +1,12 @@
 'use strict';
 // Server-side client for the Tools catalog (docs/shared-contracts.md §1).
 // One cached copy per process: refreshed every 5 minutes, the last good copy kept when Tools is
-// unreachable, and a built-in family list when there has never been a good copy.
-const FALLBACK = require('./fallback-catalog');
+// unreachable, and an empty catalog when there has never been a good copy.
+//
+// The empty catalog is the last resort only: a process that never reached Tools has nothing to show,
+// and an empty list is honest about that (the home page renders it as "0 tools"). The live catalog is
+// openvibe.tools/api/catalog.json.
+const EMPTY = { updated: '1970-01-01T00:00:00.000Z', families: [], tools: [] };
 
 const TTL_MS = 5 * 60_000;
 const RETRY_MS = 30_000;          // after a failure, do not hammer Tools on every request
@@ -76,7 +80,7 @@ function peek() {
         const live = !state.failedAt && Date.now() - state.fetchedAt < TTL_MS * 2;
         return { catalog: state.catalog, source: live ? 'live' : 'stale', error: state.error };
     }
-    return { catalog: FALLBACK, source: 'fallback', error: state.error };
+    return { catalog: EMPTY, source: 'fallback', error: state.error };
 }
 
 /** fn(catalog) runs whenever a refresh brings a different catalog. Returns an unsubscribe. */
@@ -86,4 +90,4 @@ function onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 function _setFetch(fn) { fetchImpl = fn || ((...a) => fetch(...a)); }
 function _reset() { state = { catalog: null, fetchedAt: 0, failedAt: 0, error: null }; inflight = null; }
 
-module.exports = { getCatalog, peek, refresh, onChange, catalogUrl, normalise, FALLBACK, _setFetch, _reset };
+module.exports = { getCatalog, peek, refresh, onChange, catalogUrl, normalise, EMPTY, _setFetch, _reset };

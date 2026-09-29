@@ -1,7 +1,7 @@
 'use strict';
 // OpenID Connect discovery at the issuer (roadmap §4.1, §15.4): <issuer>/.well-known/openid-configuration
-// answers with correct metadata (and so do RFC 8414's /.well-known/oauth-authorization-server and the older
-// /oauth/.well-known/openid-configuration), and what it advertises is true: scope openid adds an id_token
+// answers with correct metadata (and so does RFC 8414's /.well-known/oauth-authorization-server; the older
+// /oauth/.well-known/openid-configuration alias is gone, plan T2), and what it advertises is true: scope openid adds an id_token
 // (RS256, kid from the JWKS, aud = client, the authorize nonce echoed), and /oauth/userinfo answers with
 // the same sub for the access token.
 //   node test/oidc-discovery.test.js
@@ -39,12 +39,13 @@ const REQUIRED = ['issuer', 'authorization_endpoint', 'token_endpoint', 'jwks_ur
         assert.ok(root.body.scopes_supported.includes('email') && root.body.claims_supported.includes('email_verified'));
         assert.ok(root.body.grant_types_supported.includes('authorization_code') && root.body.grant_types_supported.includes('refresh_token'));
         assert.deepStrictEqual(root.body.id_token_signing_alg_values_supported, ['RS256']);
-        // The same document at RFC 8414's name and at the older path.
-        for (const p of ['/.well-known/oauth-authorization-server', '/oauth/.well-known/openid-configuration']) {
-            const r = await get(p);
-            assert.strictEqual(r.status, 200, `${p} answers`);
-            assert.deepStrictEqual(r.body, root.body, `${p} is the same document`);
-        }
+        // The same document at RFC 8414's name; the older /oauth/.well-known/openid-configuration alias
+        // was deleted in plan T2 (no client in the estate asks for it) and nothing answers there.
+        const rfc8414 = await get('/.well-known/oauth-authorization-server');
+        assert.strictEqual(rfc8414.status, 200, 'RFC 8414\'s name answers');
+        assert.deepStrictEqual(rfc8414.body, root.body, 'RFC 8414\'s name is the same document');
+        const alias = await get('/oauth/.well-known/openid-configuration');
+        assert.strictEqual(alias.status, 404, 'the retired discovery alias is gone');
         // Every endpoint it names is served here (paths relative to this server).
         for (const k of ['jwks_uri', 'authorization_endpoint', 'userinfo_endpoint']) {
             const r = await fetch(srv.base + new URL(root.body[k]).pathname, { redirect: 'manual' });

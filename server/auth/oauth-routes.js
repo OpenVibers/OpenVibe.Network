@@ -416,11 +416,6 @@ function issueTokenPair(db, config, req, user, client, family = {}) {
     return { accessToken, refreshToken: refreshTokenValue };
 }
 
-// ── GET /oauth/.well-known/openid-configuration ──────────────
-// The older discovery location; the standard one is the issuer's root (server/auth/oidc.js mounts
-// /.well-known/openid-configuration and /.well-known/oauth-authorization-server). Same document.
-router.get('/.well-known/openid-configuration', oidc.sendMetadata);
-
 // ── GET|POST /oauth/userinfo ─────────────────────────────────
 // OpenID Connect UserInfo: standard claims for a Network access token (Bearer).
 router.get('/userinfo', oidc.userinfo);

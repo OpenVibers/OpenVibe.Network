@@ -1,7 +1,7 @@
 'use strict';
 /**
- * Shared by the operator scripts that change network.db (scripts/hash-refresh-tokens.js,
- * scripts/secrets-out-of-db.js):
+ * Shared by the operator scripts that change network.db (scripts/secrets-out-of-db.js,
+ * scripts/import-blocks.js):
  *
  *   dbPath(args)          --db, else $DB_PATH, else data/network.db (relative to the repo root)
  *   dropToOwnerOf(file)   when run as root: become the file's owner (uid/gid) so nothing the script

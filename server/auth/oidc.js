@@ -5,7 +5,6 @@
 //   GET /.well-known/openid-configuration         OIDC Discovery 1.0, at the issuer's root (the
 //                                                 standard location: <issuer>/.well-known/...)
 //   GET /.well-known/oauth-authorization-server   RFC 8414, the same metadata
-//   GET /oauth/.well-known/openid-configuration   the older location, kept (server/auth/oauth-routes.js)
 //   GET|POST /oauth/userinfo                      standard claims for a Network access token
 //
 // The authorization-code grant adds an id_token when the code's scope includes `openid` (idToken

@@ -62,9 +62,9 @@ function body(catalog) {
     return `<style>${CSS}</style>
 <section class="home-sec" id="network" aria-labelledby="h-sites"><h2 id="h-sites">${esc(sitesHeading())}</h2><p class="lede">Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.</p>
 <div class="home-grid">${OPEN.map((site) => `<a class="home-card" href="https://${esc(site.host)}/">${icon(site.icon, 48)}<span><b>${esc(siteName(site))}</b><em>${esc(site.tagline)}</em><small>${esc(site.what)}</small></span></a>`).join('')}</div></section>
-<section class="home-sec" id="tools" aria-labelledby="h-tools"><h2 id="h-tools">${catalog.tools.length} tools that just open</h2><p class="lede">No installs and no sign-up wall. Every tool has its own short address, so <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> or <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a> takes you straight there. Browse them all at <a href="https://openvibe.tools/">openvibe.tools</a>.</p>
-<div class="home-fams">${fams.map(f => `<a class="home-fam" href="${esc(f.path ? 'https://openvibe.tools' + f.path : f.url)}">${icon(f.icon, 38)}<span><b>${esc(f.name)}</b><small>${count(f)} tools · ${esc(f.tagline || '')}</small></span></a>`).join('')}</div>
-<ul class="home-chips">${popular.map(t => `<li><a href="${esc(t.url)}" title="${esc(t.tagline || '')}">${icon(t.icon, 22)}${esc(t.name)}</a></li>`).join('')}</ul></section>
+<section class="home-sec" id="tools" aria-labelledby="h-tools"><h2 id="h-tools">${catalog.tools.length ? `${catalog.tools.length} tools` : 'Tools'} that just open</h2><p class="lede">No installs and no sign-up wall. Every tool has its own short address, so <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> or <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a> takes you straight there. Browse them all at <a href="https://openvibe.tools/">openvibe.tools</a>.</p>
+${fams.length ? `<div class="home-fams">${fams.map(f => `<a class="home-fam" href="${esc(f.path ? 'https://openvibe.tools' + f.path : f.url)}">${icon(f.icon, 38)}<span><b>${esc(f.name)}</b><small>${count(f)} tools · ${esc(f.tagline || '')}</small></span></a>`).join('')}</div>` : ''}
+${popular.length ? `<ul class="home-chips">${popular.map(t => `<li><a href="${esc(t.url)}" title="${esc(t.tagline || '')}">${icon(t.icon, 22)}${esc(t.name)}</a></li>`).join('')}</ul>` : ''}</section>
 <section class="home-sec" aria-labelledby="h-acct"><h2 id="h-acct">What signing in adds</h2><p class="lede">You can use almost everything as a guest. An account is for the things that need to remember you, and it works on every OpenVibe site the moment you arrive.</p>
 <div class="home-grid">${ACCOUNT.map(([ic, n, d, u]) => `<a class="home-card" href="${u}">${icon(ic, 44)}<span><b>${n}</b><small>${d}</small></span></a>`).join('')}</div></section>
 ${SOON.length ? `<section class="home-sec" aria-labelledby="h-soon"><h2 id="h-soon">Opening next</h2><p class="lede">${inWords(SOON.length)} more addresses are staked out. Each one opens when it is good enough to use daily, and your account will already work there.</p>
@@ -82,7 +82,7 @@ function render() {
     const key = `${stat.mtimeMs}:${catalog.updated}:${catalog.tools.length}`;
     if (cache.key === key) return cache;
     const ld = seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what }))));
-    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog)).replace('<!--OV:COUNT-->', String(catalog.tools.length)).replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', `${ld}\n</head>`);
+    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog)).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', `${ld}\n</head>`);
     cache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
     return cache;
 }
@@ -102,7 +102,7 @@ function llmsTxt() {
     return seo.llmsTxt({ name: 'OpenVibe Network', summary: `OpenVibe is an open source, community-run network of sites that share one account: ${OPEN.map((site) => site.name.toLowerCase()).join(', ')}.`,
         sections: [{ title: 'Sites', links: OPEN.map((site) => ({ title: siteName(site), url: `https://${site.host}/`, note: site.what })) },
             { title: 'Tool families', links: catalog.families.filter(f => f.url).map(f => ({ title: f.name, url: f.path ? 'https://openvibe.tools' + f.path : f.url, note: f.tagline })) },
-            { title: 'Machine-readable', links: [{ title: 'Tool catalog (JSON)', url: 'https://openvibe.tools/api/catalog.json' }, { title: 'Tools llms.txt', url: 'https://openvibe.tools/llms.txt' }, { title: 'Tool domains (JSON)', url: 'https://openvibe.network/api/domains' }] }] });
+            { title: 'Machine-readable', links: [{ title: 'Tool catalog (JSON)', url: 'https://openvibe.tools/api/catalog.json' }, { title: 'Tools llms.txt', url: 'https://openvibe.tools/llms.txt' }, { title: 'Tool domains (JSON)', url: 'https://openvibe.network/api/domains' }] }].filter((section) => section.links.length) });
 }
 
 module.exports = { sendHome, render, llmsTxt };

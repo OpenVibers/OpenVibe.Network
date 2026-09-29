@@ -18,7 +18,7 @@ const SELF_AUDIENCE = 'openvibe.network';
 
 const CHAT_NAMESPACES = ['chat.preferences', 'chat.tts_defaults', 'chat.dm_settings', 'chat.presence_prefs'];
 
-// Initial grants: what each service does against Network today (docs/roadmap-baseline/04-cross-service.md).
+// Initial grants: what each service does against Network today.
 const DEFAULT_GRANTS = [
     ['live', 'network.coins.credit', SELF_AUDIENCE, ['live']],
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],

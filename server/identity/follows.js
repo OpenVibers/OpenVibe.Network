@@ -23,7 +23,8 @@
  *
  * :target is a usr_ subject or a current username. Nobody follows themselves; guests do not follow.
  * Lists are never public (counts are). ADR-030's migration: importFollows() backfills Live's follows
- * (scripts/follows-backfill.js), holding any pair whose side has no subject in follow_import_holds.
+ * (the one-time scripts/follows-backfill.js was retired in plan T2), holding any pair whose side has no
+ * subject in follow_import_holds.
  */
 const express = require('express');
 const { ids, validate, http } = require('openvibe-contracts');

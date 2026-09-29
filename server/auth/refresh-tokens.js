@@ -16,9 +16,8 @@
 // that is two tabs of one browser refreshing at once through Live's cookie, not a replay.
 //
 // Rows written before this module existed hold the raw token. They keep working: find() matches a raw
-// row too and hashes it on first use. scripts/hash-refresh-tokens.js hashes the rest in place (one-way,
-// batched, with a backup), so no raw token has to wait for its next use. ensureSchema() at boot only adds
-// columns; it changes no data.
+// row too and hashes it on first use (the one-time scripts/hash-refresh-tokens.js was retired in plan T2,
+// so a raw row waits for its next use). ensureSchema() at boot only adds columns; it changes no data.
 // ═══════════════════════════════════════════════════════════════
 const crypto = require('crypto');
 
@@ -41,29 +40,6 @@ function ensureSchema(db) {
     db.exec('CREATE INDEX IF NOT EXISTS idx_oauth_tokens_family ON oauth_tokens(family_id)');
 }
 
-const LEGACY_WHERE = `substr(token, 1, ${PREFIX.length}) <> '${PREFIX}'`;
-
-/** How many rows still hold a raw token. */
-function countLegacy(db) {
-    return db.prepare(`SELECT COUNT(*) AS n FROM oauth_tokens WHERE ${LEGACY_WHERE}`).get().n;
-}
-
-/**
- * Replace every raw token by its SHA-256, in place (same row), one-way; a row without a family becomes
- * its own. Batched transactions; idempotent. Returns the number of rows hashed.
- */
-function hashLegacy(db, { batch = 5000 } = {}) {
-    const pick = db.prepare(`SELECT id, token FROM oauth_tokens WHERE ${LEGACY_WHERE} LIMIT ?`);
-    const up = db.prepare('UPDATE oauth_tokens SET token = ?, family_id = COALESCE(family_id, ?) WHERE id = ? AND token = ?');
-    let n = 0;
-    for (;;) {
-        const rows = pick.all(batch);
-        if (!rows.length) break;
-        db.transaction(() => { for (const r of rows) n += up.run(hash(r.token), `fam_legacy_${r.id}`, r.id, r.token).changes; })();
-    }
-    return n;
-}
-
 /** Store a new refresh token; returns the token (the only time it exists in clear). */
 function issue(db, { clientId, userId, scope = 'profile theme', familyId = null, generation = 0, now = Date.now() }) {
     const token = crypto.randomBytes(48).toString('hex');
@@ -78,8 +54,8 @@ function find(db, presented) {
     if (!RAW_RE.test(raw)) return null;
     const row = db.prepare('SELECT * FROM oauth_tokens WHERE token = ?').get(hash(raw));
     if (row) return row;
-    // A row still holding the raw token (written before this change, not yet hashed by
-    // scripts/hash-refresh-tokens.js): hash it now, then use it.
+    // A row still holding the raw token (written before this change, not hashed yet): hash it now,
+    // then use it.
     const legacy = db.prepare('SELECT * FROM oauth_tokens WHERE token = ?').get(raw);
     if (!legacy) return null;
     db.prepare('UPDATE oauth_tokens SET token = ?, family_id = COALESCE(family_id, ?) WHERE id = ? AND token = ?').run(hash(raw), `fam_legacy_${legacy.id}`, legacy.id, raw);
@@ -122,4 +98,4 @@ function rotate(db, presented, clientId, { now = Date.now() } = {}) {
     return { ok: true, row, familyId: row.family_id || `fam_legacy_${row.id}`, generation: (row.generation || 0) + 1 };
 }
 
-module.exports = { ensureSchema, countLegacy, hashLegacy, issue, find, rotate, revokeFamily, hash, PREFIX, REUSE_GRACE_S, TTL_MS };
+module.exports = { ensureSchema, issue, find, rotate, revokeFamily, hash, PREFIX, REUSE_GRACE_S, TTL_MS };

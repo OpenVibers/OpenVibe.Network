@@ -170,9 +170,10 @@ choices (card density, chat width, units) stay local to the site that owns them.
 
 ## 11. Internal routes
 
-Service-to-service routes need `X-Internal-Key` = the deployment's `INTERNAL_API_KEY` **and** a
-loopback caller with no proxy headers (Tools: `apps/_shared/internal-auth.js`; Live:
-`server/internal/routes.js`). No secret is ever a constant in a repository. Tools' gateway sums its
+Service-to-service routes need a Network-issued service token with the capability the route performs
+**and** a loopback caller with no proxy headers (Tools: `apps/_shared/internal-auth.js`; Live:
+`server/internal/routes.js`). The deployment-wide shared key those services used is retired (plan T2).
+No secret is ever a constant in a repository. Tools' gateway sums its
 satellites at `GET /api/internal/analytics`; Games and Media have no analytics, so the admin panel
 shows their navbar page-view count, labelled as such.
 

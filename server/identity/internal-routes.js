@@ -1,6 +1,6 @@
 'use strict';
 /**
- * /internal/identity/* — subject resolution for first-party services (behind X-Internal-Key,
+ * /internal/identity/* — subject resolution for first-party services (behind a service token,
  * mounted by server/internal/routes.js). Errors are RFC 9457 problems (errors.problem@1).
  *
  *   GET  /internal/identity/resolve?subject_id=usr_...

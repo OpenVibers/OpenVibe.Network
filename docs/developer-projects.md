@@ -156,7 +156,7 @@ Operator steps: subscribe Network to the two topics once (`node --env-file=/etc/
 Base: `/api/v1/projects`. Every call needs `Authorization: Bearer <Network user access token>`.
 
 - Cookies are not read, so this API has no CSRF surface.
-- `X-Internal-Key` is never accepted.
+- The shared internal key Network retired (plan T2) is never accepted.
 - Service and app tokens are not users and get `401`.
 - Tokens past `exp` are refused, even inside the normal 60-day session grace period.
 - Errors are RFC 9457 `application/problem+json`, with a stable `code`.

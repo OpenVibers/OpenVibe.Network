@@ -1,8 +1,8 @@
 'use strict';
 // Refresh tokens (roadmap §18.2(2), server/auth/refresh-tokens.js): only a hash is stored, each rotation
 // is the next generation of the sign-in's family, a reused (already rotated) token revokes the whole
-// family, and rows written with the raw token before this change keep working (hashed on first use)
-// until scripts/hash-refresh-tokens.js hashes the rest in place, one-way (with a backup and a rollback).
+// family, and rows written with the raw token before this change keep working (hashed on first use; the
+// one-time scripts/hash-refresh-tokens.js was retired in plan T2, so a raw row waits for its next use).
 //   node test/refresh-tokens.test.js
 const assert = require('assert');
 const crypto = require('crypto');
@@ -47,42 +47,9 @@ const quiet = (fn) => { const log = console.log; console.log = () => {}; try { r
     assert.ok('family_id' in rows[0] && 'generation' in rows[0] && 'revoked_reason' in rows[0], 'boot adds the columns');
     assert.strictEqual(rows[0].token, RAW_LIVE, 'boot changes no data');
 
-    // ── The operator script: dry run, --apply needs a backup, one-way hashing in place, rollback ──
-    const script = require('../scripts/hash-refresh-tokens');
-    const out = [];
-    const run = (...argv) => script.main(['--db', dbPath, ...argv], (m) => out.push(m));
-    const EXTRA = crypto.randomBytes(48).toString('hex');
-    db.prepare('INSERT INTO oauth_tokens (token, client_id, user_id, expires_at) VALUES (?, ?, ?, ?)').run(EXTRA, 'live', 7, new Date(Date.now() + 86400e3).toISOString());
-    assert.strictEqual(await run(), 0);
-    assert.ok(out.join('\n').includes('still stored raw 3'), out.join('\n'));
-    assert.strictEqual(refreshTokens.countLegacy(db), 3, 'the dry run changes nothing');
-    assert.strictEqual(await run('--apply'), 2, '--apply refuses without --backup');
-    const backup = path.join(dir, 'pre-hash.db');
-    assert.strictEqual(await run('--apply', '--backup', backup), 0, out.join('\n'));
-    assert.strictEqual(fs.statSync(backup).mode & 0o777, 0o600, 'the backup is owner-only');
-    assert.strictEqual(await run('--apply', '--backup', backup), 0, 'nothing left to hash: no backup needed');
-    rows = db.prepare('SELECT * FROM oauth_tokens ORDER BY id').all();
-    for (const r of rows) {
-        assert.ok(r.token.startsWith('sha256:') && r.token.length === 'sha256:'.length + 64, 'every stored token is a SHA-256');
-        assert.ok(r.family_id && r.generation === 0, 'legacy rows get a family and generation 0');
-    }
-    assert.strictEqual(rows[0].id, 1);
-    assert.strictEqual(rows[0].token, refreshTokens.hash(RAW_LIVE), 'hashed in place (same row, same id)');
-    const dump = JSON.stringify(db.prepare('SELECT * FROM oauth_tokens').all());
-    assert.ok(!dump.includes(RAW_LIVE) && !dump.includes(RAW_ROTATED) && !dump.includes(EXTRA), 'no raw token is left: one-way');
-    assert.ok(!out.join('\n').includes(RAW_LIVE), 'the script never prints a token');
-    // Rollback (for a return to the pre-hashing release): dry run, then the raw values come back.
-    out.length = 0;
-    assert.strictEqual(await run('--restore-from', backup), 0);
-    assert.ok(out.join('\n').includes('3 row(s) here still hold their hash'), out.join('\n'));
-    assert.strictEqual(refreshTokens.countLegacy(db), 0, 'the rollback dry run changes nothing');
-    assert.strictEqual(await run('--restore-from', backup, '--apply'), 0);
-    assert.strictEqual(db.prepare('SELECT token FROM oauth_tokens WHERE id = 1').get().token, RAW_LIVE, 'rolled back');
-    assert.strictEqual(await run('--apply', '--backup', path.join(dir, 'pre-hash-2.db')), 0, 'and forward again');
-    assert.strictEqual(refreshTokens.countLegacy(db), 0);
-    db.prepare('DELETE FROM oauth_tokens WHERE token = ?').run(refreshTokens.hash(EXTRA));
-    // Put one raw row back as the old code would have left it, to show the server still takes it.
-    db.prepare('UPDATE oauth_tokens SET token = ? WHERE id = 1').run(RAW_LIVE);
+    // Raw rows are left exactly as they are (the one-time hash-refresh-tokens.js was retired in plan T2):
+    // the server hashes one on its first use, below.
+    assert.strictEqual(rows[1].token, RAW_ROTATED, 'a raw row stays raw until it is used');
 
     db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
     db.prepare("UPDATE oauth_clients SET client_secret = 'tools-secret' WHERE client_id = 'tools'").run();
