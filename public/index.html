@@ -60,7 +60,7 @@ a{color:inherit}
 }
 
 /* Hero */
-.hero{max-width:1080px;margin:0 auto;padding:96px 24px 64px;text-align:center}
+.hero{max-width:1080px;margin:0 auto;padding:80px 24px 40px;text-align:center}
 .hero-badge{
     display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;
     border:1px solid var(--border-light);background:var(--bg-secondary);
@@ -69,7 +69,6 @@ a{color:inherit}
 .hero h1{font-size:clamp(34px,6vw,58px);font-weight:800;letter-spacing:-1.5px;line-height:1.1}
 .hero h1 .grad{background:linear-gradient(120deg,var(--accent-light),var(--accent),var(--secondary));-webkit-background-clip:text;background-clip:text;color:transparent}
 .hero p.sub{margin:20px auto 0;max-width:620px;font-size:17px;line-height:1.6;color:var(--text-secondary)}
-.hero-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:36px}
 .btn{
     display:inline-flex;align-items:center;gap:9px;padding:13px 26px;border-radius:12px;
     font-size:15px;font-weight:700;text-decoration:none;border:1px solid transparent;
@@ -80,6 +79,45 @@ a{color:inherit}
 .btn-ghost{background:transparent;color:var(--text-primary);border-color:var(--border-light)}
 .btn-ghost:hover{background:var(--bg-hover);border-color:var(--accent)}
 #hero-account-cta{display:none}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:28px;align-items:center;text-align:left}
+.hero-grid .hero-badge{margin-bottom:22px}
+.hero-grid h1{font-size:clamp(34px,4.3vw,52px)}
+.hero-grid p.sub{margin:18px 0 0}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.intent-bar{display:flex;align-items:center;gap:10px;margin-top:28px;padding:6px 6px 6px 16px;border-radius:14px;border:1px solid var(--border-light);background:var(--bg-secondary);box-shadow:0 10px 30px rgba(0,0,0,.25);transition:border-color .15s,box-shadow .15s}
+.intent-bar:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent),0 10px 30px rgba(0,0,0,.25)}
+.intent-bar>i{color:var(--text-muted)}
+.intent-bar input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text-primary);font:inherit;font-size:16px;padding:10px 0}
+.intent-bar input::placeholder{color:var(--text-muted)}
+.intent-bar button{border:0;border-radius:10px;padding:11px 20px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;color:var(--on-accent,#fff);background:linear-gradient(135deg,var(--accent),var(--accent-dark))}
+.intent-bar button:hover{filter:brightness(1.08)}
+.intents{list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}
+.intent{display:flex;gap:12px;align-items:flex-start;padding:11px 12px;border-radius:12px;border:1px solid var(--border);background:color-mix(in srgb,var(--bg-secondary) 80%,transparent);text-decoration:none;color:inherit;transition:border-color .15s,background .15s,opacity .15s,transform .15s;height:100%}
+.intent>i{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:10px;font-size:15px;color:var(--accent-light);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.intent b{display:block;font-size:14.5px;letter-spacing:-.1px}.intent small{display:block;color:var(--text-secondary);font-size:12.5px;line-height:1.4;margin-top:1px}
+.intent:hover,.intent:focus-visible{border-color:var(--accent);background:var(--bg-hover);outline:0;transform:translateY(-1px)}
+.intent.match{border-color:var(--accent);background:var(--bg-hover)}
+.intent.dim{opacity:.38}
+.hero-account{margin-top:16px;font-size:13.5px;color:var(--text-secondary)}
+.hero-account a{color:var(--accent-light);font-weight:600;text-decoration:none}.hero-account a:hover{text-decoration:underline}
+.hero-sky{position:relative}
+.constellation{width:100%;height:auto;display:block;overflow:visible}
+.constellation .cs-orbit{fill:none;stroke:var(--border-light);stroke-dasharray:2 6;opacity:.7}.constellation .cs-far{opacity:.4}
+.constellation .cs-spoke{stroke:var(--accent);stroke-opacity:.18;stroke-width:1}
+.constellation .cs-arc{stroke:var(--secondary);stroke-opacity:.14;stroke-width:1}
+.constellation .cs-core{fill:var(--bg-secondary);stroke:var(--accent-light);stroke-width:1.5}
+.constellation .cs-core-t{fill:var(--accent-light);font-size:12px;font-weight:800;letter-spacing:.5px}
+.constellation text{fill:var(--text-secondary);font-size:12px;font-weight:600}
+.constellation .cs-node{cursor:pointer}
+.constellation .cs-star{fill:var(--accent-light)}
+.constellation .cs-halo{fill:var(--accent);opacity:.16;transform-box:fill-box;transform-origin:center;animation:cs-twinkle 4.2s ease-in-out infinite;animation-delay:var(--d,0s)}
+.constellation .cs-node:hover .cs-halo,.constellation .cs-node:focus .cs-halo{opacity:.45}
+.constellation .cs-node:hover text,.constellation .cs-node:focus text{fill:var(--text-primary)}
+.constellation .cs-soon .cs-star{fill:var(--text-muted)}.constellation .cs-soon text{fill:var(--text-muted);font-size:10.5px;font-weight:500}
+@keyframes cs-twinkle{0%,100%{transform:scale(1);opacity:.16}50%{transform:scale(1.35);opacity:.3}}
+@media (prefers-reduced-motion:reduce){.constellation .cs-halo{animation:none}.intent{transition:none}}
+@media (max-width:900px){.hero-grid{grid-template-columns:1fr;text-align:center}.hero-grid p.sub{margin:18px auto 0}.hero-sky{display:none}.intent{text-align:left}}
+@media (max-width:520px){.intents{grid-template-columns:1fr 1fr;gap:6px}.intent small{display:none}.intent{align-items:center;gap:9px;padding:9px 10px}.intent>i{width:30px;height:30px;font-size:14px}.intent b{font-size:13.5px}.intent-bar button{padding:11px 14px}}
 
 /* Services */
 .services{max-width:1080px;margin:0 auto;padding:24px 24px 80px}
@@ -140,7 +178,6 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 
 @media (max-width:600px){
     .hero{padding-top:64px}
-    .hero-ctas .btn{width:100%;justify-content:center}
 }
 </style>
 <script src="/shared/theme-loader.js"></script>
@@ -154,17 +191,24 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 
 <div class="page">
 
-    <!-- Hero -->
+    <!-- Hero: the front door (plan T11, D93) — what you came to do, one line to start it -->
     <section class="hero">
-        <div class="hero-badge"><span class="ov-mark" data-size="20" data-variant="network"></span> The OpenVibe Network — open source, community run</div>
-        <h1>The open network<br><span class="grad">for what you do online.</span></h1>
-        <p class="sub">Live streaming, <!--OV:COUNT--> online tools, chat, games, community pastes, a wiki, a blog and a shared media library. Open source, run by the people who use it, and open to everyone without an account. Sign in once and every site already knows you.</p>
-        <div class="hero-ctas" id="hero-guest-ctas">
-            <a class="btn btn-primary" href="/login"><i class="fa-solid fa-right-to-bracket"></i> Sign In</a>
-            <a class="btn btn-ghost" href="/login?tab=register"><i class="fa-solid fa-user-plus"></i> Create Account</a>
-        </div>
-        <div class="hero-ctas" id="hero-account-cta">
-            <a class="btn btn-primary" href="/my"><i class="fa-solid fa-user"></i> Go to My Account</a>
+        <div class="hero-grid">
+            <div class="hero-main">
+                <div class="hero-badge"><span class="ov-mark" data-size="20" data-variant="network"></span> The OpenVibe Network — open source, community run</div>
+                <h1>The open network<br><span class="grad">for what you do online.</span></h1>
+                <p class="sub">Live streaming, <!--OV:COUNT--> online tools, chat, games, community pastes, a wiki, a blog and a shared media library. Open source, run by the people who use it, and open to everyone without an account. Sign in once and every site already knows you.</p>
+                <form class="intent-bar" action="https://openvibe.tools/search" method="get" role="search">
+                    <label for="intent-q" class="sr-only">What do you want to do?</label>
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <input id="intent-q" name="q" type="search" placeholder="What do you want to do?" title="Try “go live”, “merge pdf” or “chat”" autocomplete="off" enterkeyhint="go">
+                    <button type="submit">Start</button>
+                </form>
+                <!--OV:INTENTS-->
+                <p class="hero-account" id="hero-guest-ctas">Everything here works without an account. <a href="/login">Sign in</a> or <a href="/login?tab=register">create one</a> to keep your history, themes and VODs.</p>
+                <p class="hero-account" id="hero-account-cta">You are signed in on every OpenVibe site. <a href="/my">Go to My Account</a></p>
+            </div>
+            <div class="hero-sky"><!--OV:CONSTELLATION--></div>
         </div>
     </section>
 
@@ -210,7 +254,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
         }
         if (user) {
             document.getElementById('hero-guest-ctas').style.display = 'none';
-            document.getElementById('hero-account-cta').style.display = 'flex';
+            document.getElementById('hero-account-cta').style.display = 'block';
         }
     }
 
@@ -220,6 +264,30 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (data) { initNavbar(data && (data.user || data)); })
         .catch(function () { initNavbar(null); });
+})();
+</script>
+<script>
+// The hero's search: typing lights the intents it names; Enter opens the one it names clearly, and anything else is a
+// tool search on openvibe.tools (the form's own action, so it works without this script too).
+(function () {
+    var form = document.querySelector('.intent-bar'), q = document.getElementById('intent-q');
+    if (!form || !q) return;
+    var items = [].slice.call(document.querySelectorAll('.intent'));
+    function words(v) { return v.toLowerCase().split(/[^a-z0-9]+/).filter(function (w) { return w.length > 1; }); }
+    function score(el, ws) {
+        var keys = (el.getAttribute('data-k') || '').split(' '), s = 0;
+        ws.forEach(function (w) { if (keys.indexOf(w) >= 0) s += 2; else if (w.length > 2 && keys.some(function (k) { return k.indexOf(w) === 0; })) s += 1; });
+        return s;
+    }
+    function best(ws) { var top = null, ts = 0; items.forEach(function (el) { var s = score(el, ws); if (s > ts) { ts = s; top = el; } }); return { el: top, s: ts }; }
+    q.addEventListener('input', function () {
+        var ws = words(q.value), b = best(ws);
+        items.forEach(function (el) { var s = ws.length ? score(el, ws) : 1; el.classList.toggle('dim', ws.length > 0 && s === 0 && !!b.el); el.classList.toggle('match', !!b.el && el === b.el && b.s > 0); });
+    });
+    form.addEventListener('submit', function (e) {
+        var b = best(words(q.value));
+        if (b.el && b.s >= 2 && b.el.getAttribute('data-id') !== 'tools') { e.preventDefault(); location.href = b.el.href; }
+    });
 })();
 </script>
 </body>

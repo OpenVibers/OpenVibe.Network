@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const seo = require('openvibe-shared/seo');
 const icons = require('openvibe-shared/icons');
 const toolsCatalog = require('../domains/catalog');
+const activity = require('./activity');
 
 const SHELL = path.join(__dirname, '..', '..', 'public', 'index.html');
 const esc = seo.esc;
@@ -32,6 +33,59 @@ const ACCOUNT = [
 ];
 const POPULAR = ['yt', 'convert', 'mergepdf', 'jsonfmt', 'mp3', 'dns', 'whois', 'compress', 'fancy', 'ssl', 'logo', 'regex'];
 
+// The front door (plan T11, D93): what people come to do, each a real link to where it starts. `k` holds the words
+// the hero's search box matches (public/index.html); a query that names no intent strongly goes to the tool search.
+const INTENTS = [
+    ['live', 'fa-tower-broadcast', 'Go live', 'From a browser tab. No OBS, no follower minimum.', 'https://openvibe.live/broadcast', 'go live stream streaming broadcast camera webcam screen obs whip rtmp twitch'],
+    ['tools', 'fa-screwdriver-wrench', 'Get something done', '', 'https://openvibe.tools/', 'tool tools convert pdf mp3 mp4 video audio image compress resize dns whois json regex download youtube'],
+    ['chat', 'fa-comments', 'Chat', 'One room for the whole network, plus rooms and messages.', 'https://openvibe.chat/', 'chat talk message messages dm room rooms friends'],
+    ['paste', 'fa-paste', 'Share a paste', 'Text, code or a screenshot behind one short link.', 'https://openvibe.community/new', 'paste share code snippet text link screenshot pastebin gist'],
+    ['games', 'fa-gamepad', 'Play', 'Browser games that already know you.', 'https://openvibe.games/', 'play game games gaming multiplayer'],
+    ['blog', 'fa-pen-nib', 'Write', 'A blog of your own, with drafts, scheduling and feeds.', 'https://openvibe.blog/write', 'write blog post posts article publish newsletter'],
+    ['wiki', 'fa-book-open', 'Look it up', 'Wiki pages with sources and history.', 'https://openvibe.wiki/', 'wiki learn read knowledge research look'],
+    ['codes', 'fa-code', 'Build on OpenVibe', 'API, SDK, OAuth and webhooks for your app.', 'https://openvibe.codes/', 'build api sdk developer developers oauth webhook webhooks app integrate'],
+];
+
+function intents(catalog) {
+    const toolsLine = catalog.tools.length ? `Convert, compress, look up or download: ${catalog.tools.length} tools that just open.` : 'Convert, compress, look up or download: free tools that just open.';
+    return `<ul class="intents" aria-label="What you can do here">${INTENTS.map(([id, fa, verb, line, href, k]) => `<li><a class="intent" href="${esc(href)}" data-id="${esc(id)}" data-k="${esc(k)}"><i class="fa-solid ${esc(fa)}" aria-hidden="true"></i><span><b>${esc(verb)}</b><small>${esc(line || toolsLine)}</small></span></a></li>`).join('')}</ul>`;
+}
+
+// The network as a constellation: open sites on the inner ring, the ones opening next faint on the outer ring.
+const SHORT = (site) => (/^OpenRe\./.test(site.name) ? 'OpenRe' : site.name.replace(/^OpenVibe\./, ''));
+function constellation() {
+    const ring = (list, r, start) => list.map((site, i) => {
+        const a = start + (i / list.length) * Math.PI * 2;
+        return { site, x: Math.round(Math.cos(a) * r), y: Math.round(Math.sin(a) * r) };
+    });
+    const inner = ring(OPEN, 118, -Math.PI / 2);
+    const outer = ring(SOON, 176, -Math.PI / 2 + Math.PI / SOON.length);
+    const lines = inner.map((n, i) => {
+        const m = inner[(i + 1) % inner.length];
+        return `<line class="cs-spoke" x1="0" y1="0" x2="${n.x}" y2="${n.y}"/><line class="cs-arc" x1="${n.x}" y1="${n.y}" x2="${m.x}" y2="${m.y}"/>`;
+    }).join('');
+    const label = (n, r) => { const dx = n.x / (Math.hypot(n.x, n.y) || 1), dy = n.y / (Math.hypot(n.x, n.y) || 1); return { x: Math.round(n.x + dx * r), y: Math.round(n.y + dy * r) + 4, anchor: Math.abs(dx) < 0.25 ? 'middle' : (dx > 0 ? 'start' : 'end') }; };
+    const openNodes = inner.map((n, i) => { const l = label(n, 17); return `<a href="https://${esc(n.site.host)}/" class="cs-node" style="--d:${(i * 0.37).toFixed(2)}s"><title>${esc(siteName(n.site))}: ${esc(n.site.tagline)}</title><circle class="cs-halo" cx="${n.x}" cy="${n.y}" r="11"/><circle class="cs-star" cx="${n.x}" cy="${n.y}" r="5"/><text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}">${esc(SHORT(n.site))}</text></a>`; }).join('');
+    const soonNodes = outer.map((n) => { const l = label(n, 9); return `<a href="https://${esc(n.site.host)}/" class="cs-node cs-soon"><title>${esc(siteName(n.site))} — opening next</title><circle class="cs-star" cx="${n.x}" cy="${n.y}" r="2.6"/><text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}">${esc(SHORT(n.site))}</text></a>`; }).join('');
+    return `<svg class="constellation" viewBox="-230 -215 460 430" role="img" aria-labelledby="cs-t"><title id="cs-t">The OpenVibe network: ${OPEN.length} open sites around one account, ${SOON.length} more opening next</title>
+<defs><radialGradient id="cs-core"><stop offset="0" stop-color="var(--accent-light,#60a5fa)"/><stop offset="1" stop-color="var(--accent,#3b82f6)" stop-opacity="0"/></radialGradient></defs>
+<circle class="cs-orbit" r="118"/><circle class="cs-orbit cs-far" r="176"/>${lines}
+<circle r="46" fill="url(#cs-core)" opacity=".35"/><circle class="cs-core" r="24"/><text class="cs-core-t" y="4" text-anchor="middle">you</text>
+${openNodes}${soonNodes}</svg>`;
+}
+
+const fmtViewers = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
+function rightNow(a) {
+    const live = a.live.length
+        ? a.live.map((s) => `<a class="now-stream" href="${esc(s.url)}">${s.thumb || s.avatar ? `<img src="${esc(s.thumb || s.avatar)}" alt="" loading="lazy" decoding="async" width="320" height="180"${s.thumb && s.avatar ? ` data-fallback="${esc(s.avatar)}" onerror="this.onerror=null;this.src=this.dataset.fallback"` : ''}>` : '<span class="now-noimg"></span>'}<span class="now-badge"><i></i>LIVE${s.viewers ? ` · ${esc(fmtViewers(s.viewers))}` : ''}</span><b>${esc(s.title)}</b><small>${esc(s.name)}${s.category ? ` · ${esc(s.category)}` : ''}</small></a>`).join('')
+        : `<a class="now-stream now-empty" href="https://openvibe.live/broadcast"><span class="now-noimg"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i></span><b>Nobody is live right now</b><small>Be the first: go live from your browser, no OBS and no follower minimum.</small></a>`;
+    const list = (items, render, empty) => (items.length ? `<ul class="now-list">${items.map(render).join('')}</ul>` : `<p class="now-quiet">${empty}</p>`);
+    return `<section class="home-sec now" aria-labelledby="h-now"><h2 id="h-now"><span class="now-dot" aria-hidden="true"></span>Right now on OpenVibe</h2>
+<div class="now-grid"><div class="now-col now-live"><h3>Live</h3><div class="now-streams">${live}</div><a class="now-more" href="https://openvibe.live/">All channels →</a></div>
+<div class="now-col"><h3>New pastes</h3>${list(a.pastes, (p) => `<li><a href="${esc(p.url)}"><b>${esc(p.title)}</b><small>${esc(p.kind)}${p.summary ? ` · ${esc(p.summary)}` : ''}</small></a></li>`, 'Nothing new in the last while. <a href="https://openvibe.community/new">Share one</a>.')}<a class="now-more" href="https://openvibe.community/">OpenVibe.Community →</a></div>
+<div class="now-col"><h3>From the blog</h3>${list(a.posts, (p) => `<li><a href="${esc(p.url)}"><b>${esc(p.title)}</b>${p.summary ? `<small>${esc(p.summary)}</small>` : ''}</a></li>`, 'No posts yet.')}<a class="now-more" href="https://openvibe.blog/">OpenVibe.Blog →</a></div></div></section>`;
+}
+
 const CSS = `
 .home-sec{max-width:1080px;margin:56px auto 0;padding:0 24px}.home-sec>h2{font-size:clamp(22px,2.6vw,30px);letter-spacing:-.02em;margin:0 0 6px}.home-sec>p.lede{color:var(--text-secondary,#a8b3c4);margin:0 0 18px;max-width:760px}
 .home-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
@@ -47,19 +101,39 @@ const CSS = `
 .home-chips>li>a:hover{border-color:var(--accent,#3b82f6)}
 .home-dev{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
 .home-dev div{padding:16px;border-radius:16px;border:1px dashed var(--border,rgba(255,255,255,.14))}.home-dev b{display:block;margin-bottom:4px}.home-dev p{margin:0;color:var(--text-secondary,#a8b3c4);font-size:13.5px}.home-dev code{font-size:12.5px}
-@media (prefers-reduced-motion:reduce){.home-card{transition:none}}
+.now>h2{display:flex;align-items:center;gap:10px}.now-dot{width:10px;height:10px;border-radius:50%;background:var(--live-red,#ef4444);box-shadow:0 0 0 0 rgba(239,68,68,.6);animation:now-pulse 2s infinite}
+@keyframes now-pulse{70%{box-shadow:0 0 0 10px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
+.now-grid{display:grid;gap:16px;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:14px}
+.now-col{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:16px;border:1px solid var(--border,rgba(255,255,255,.08));background:var(--bg-secondary,#111826);min-width:0}
+.now-col h3{font-size:12px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--text-muted,#7d8aa0);margin:0}
+.now-streams{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.now-stream{position:relative;display:flex;flex-direction:column;gap:3px;color:inherit;text-decoration:none;min-width:0}
+.now-stream img,.now-noimg{width:100%;aspect-ratio:16/9;height:auto;object-fit:cover;border-radius:10px;background:var(--bg-hover,#1c2a44);display:grid;place-items:center;font-size:26px;color:var(--accent-light,#60a5fa)}
+.now-stream b{font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.now-stream small{color:var(--text-secondary,#a8b3c4);font-size:12.5px}
+.now-stream:hover b,.now-list a:hover b{color:var(--accent-light,#60a5fa)}
+.now-badge{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:6px;background:var(--live-red,#ef4444);color:#fff;font-size:11px;font-weight:800;letter-spacing:.4px}
+.now-badge i{width:6px;height:6px;border-radius:50%;background:#fff}
+.now-empty .now-noimg{border:1px dashed var(--border-light,#2c3d5c);background:transparent}
+.now-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.now-list a{display:block;color:inherit;text-decoration:none}.now-list b{display:block;font-size:14px;line-height:1.35}
+.now-list small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--text-secondary,#a8b3c4);font-size:12.5px;line-height:1.4;margin-top:2px}
+.now-quiet{color:var(--text-muted,#7d8aa0);font-size:13.5px;margin:0}.now-quiet a{color:var(--accent-light,#60a5fa)}
+.now-more{margin-top:auto;font-size:13px;font-weight:600;color:var(--accent-light,#60a5fa);text-decoration:none}
+@media (max-width:860px){.now-grid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.home-card{transition:none}.now-dot{animation:none}}
 ${icons.CSS}`;
 
 // The sites section's heading; the JSON-LD ItemList of the same sites carries it as its name, so the
 // structured data names something a visitor can see (browser check, WS-Q task 3).
 const sitesHeading = () => `${inWords(OPEN.length)} sites, one front door`;
 
-function body(catalog) {
+function body(catalog, act) {
     const byId = new Map(catalog.tools.map(t => [t.id, t]));
     const popular = POPULAR.map(id => byId.get(id)).filter(Boolean);
     const fams = catalog.families.filter(f => f.url);
     const count = (f) => f.count || catalog.tools.filter(t => t.family === f.id).length;
     return `<style>${CSS}</style>
+${rightNow(act)}
 <section class="home-sec" id="network" aria-labelledby="h-sites"><h2 id="h-sites">${esc(sitesHeading())}</h2><p class="lede">Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.</p>
 <div class="home-grid">${OPEN.map((site) => `<a class="home-card" href="https://${esc(site.host)}/">${icon(site.icon, 48)}<span><b>${esc(siteName(site))}</b><em>${esc(site.tagline)}</em><small>${esc(site.what)}</small></span></a>`).join('')}</div></section>
 <section class="home-sec" id="tools" aria-labelledby="h-tools"><h2 id="h-tools">${catalog.tools.length ? `${catalog.tools.length} tools` : 'Tools'} that just open</h2><p class="lede">No installs and no sign-up wall. Every tool has its own short address, so <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> or <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a> takes you straight there. Browse them all at <a href="https://openvibe.tools/">openvibe.tools</a>.</p>
@@ -78,11 +152,12 @@ ${SOON.length ? `<section class="home-sec" aria-labelledby="h-soon"><h2 id="h-so
 let cache = { key: '', html: '', etag: '' };
 function render() {
     const { catalog } = toolsCatalog.peek();
+    const act = activity.peek();
     const stat = fs.statSync(SHELL);
-    const key = `${stat.mtimeMs}:${catalog.updated}:${catalog.tools.length}`;
+    const key = `${stat.mtimeMs}:${catalog.updated}:${catalog.tools.length}:${act.version}`;
     if (cache.key === key) return cache;
     const ld = seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what }))));
-    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog)).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', `${ld}\n</head>`);
+    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog)).replace('<!--OV:CONSTELLATION-->', constellation()).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', `${ld}\n</head>`);
     cache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
     return cache;
 }
@@ -105,4 +180,4 @@ function llmsTxt() {
             { title: 'Machine-readable', links: [{ title: 'Tool catalog (JSON)', url: 'https://openvibe.tools/api/catalog.json' }, { title: 'Tools llms.txt', url: 'https://openvibe.tools/llms.txt' }, { title: 'Tool domains (JSON)', url: 'https://openvibe.network/api/domains' }] }].filter((section) => section.links.length) });
 }
 
-module.exports = { sendHome, render, llmsTxt };
+module.exports = { sendHome, render, llmsTxt, INTENTS };

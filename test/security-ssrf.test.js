@@ -110,6 +110,7 @@ const PATTERNS = {
 };
 // The reviewed list: where each goes, and why a stranger cannot choose it (or how it is guarded).
 const REVIEWED = {
+    'server/home/activity.js fetch': [1, 'front door activity: fixed first-party loopback URLs (OV_LIVE/COMMUNITY/BLOG_INTERNAL_URL, operator config) for public lists, never a request value'],
     'server/admin/analytics-routes.js fetch': [1, 'staff analytics: the services\' internal URLs from the registry (owner/admin set), never a request value'],
     'server/admin/events-ops.js fetch': [1, 'OV_EVENTS_INTERNAL_URL (operator config) for staff DLQ views'],
     'server/admin/routes.js fetch': [1, 'registry refresh: POSTs to the service refresh targets resolved from the registry (admin-set service URLs, staff only)'],
