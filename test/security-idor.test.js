@@ -26,7 +26,9 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         const { users, dev, db } = w;
         const PA = dev.PA.id; const AA = dev.PA.app; const PB = dev.PB.id; const AB = dev.PB.app;
         const DEV_TABLES = ['dev_projects', 'dev_project_members', 'dev_apps', 'dev_credentials', 'dev_grants', 'dev_quotas'];
-        const snap = async (tables, where = {}) => JSON.stringify((await Promise.all(tables.map(async (t) => await db.prepare(`SELECT * FROM "${t}" ${where[t] || ''}`).all()))));
+        // is_emailed is the email queue's (every 2 minutes, server/index.js), not any request's: a run that outlasts
+        // 2 minutes under load would otherwise blame whichever call was in flight when the queue marked a row.
+        const snap = async (tables, where = {}) => JSON.stringify((await Promise.all(tables.map(async (t) => (await db.prepare(`SELECT * FROM "${t}" ${where[t] || ''}`).all()).map(({ is_emailed, ...row }) => row)))));
         const secretNeedles = { ...w.secrets };
         const refused = [];
         const expectRefused = async (who, method, p, body, { tables, where, codes = [401, 403, 404] } = {}) => {
