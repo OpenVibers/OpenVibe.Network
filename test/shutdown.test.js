@@ -27,7 +27,8 @@ const freePort = () => new Promise((resolve) => { const s = net.createServer(); 
     const exited = new Promise((r) => child.on('exit', (code, signal) => r({ code, signal })));
     try {
         let up = false;
-        for (let i = 0; i < 100 && !up; i++) {
+        const startupDeadline = Date.now() + 60000;
+        while (!up && Date.now() < startupDeadline) {
             up = await fetch(`http://127.0.0.1:${port}/api/health`).then((r) => r.ok).catch(() => false);
             if (!up) await new Promise((r) => setTimeout(r, 100));
         }

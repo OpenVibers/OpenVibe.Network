@@ -152,6 +152,7 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         assert.ok(!await db.prepare('SELECT id FROM user_history WHERE id = ?').get(hist.id));
         await ok('alice', 'DELETE', `/api/auth/sessions/${session.id}`);
         assert.strictEqual((await db.prepare('SELECT is_active FROM user_sessions WHERE id = ?').get(session.id)).is_active, 0);
+        await ok('bob', 'PUT', '/api/auth/profile', { id: users.alice.id, user_id: users.alice.id, username: 'alice', bio: 'bob-was-here' });
         assert.strictEqual((await db.prepare('SELECT bio FROM users WHERE id = ?').get(users.bob.id)).bio, 'bob-was-here', 'the ids in the body were ignored: bob edited his own profile');
 
         // ── Service principals outside their own app ───────────────────
