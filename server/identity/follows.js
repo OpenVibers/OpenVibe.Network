@@ -179,11 +179,14 @@ async function onSubjectRemoved(db, subject) {
  * A pair Network already has, followed or unfollowed since, is Network's decision and is left alone, so a
  * re-run never brings back an unfollow. No events (the source system already has these follows); dryRun
  * changes nothing.
- * → { imported, unchanged, held: [{ follower_ref, target_ref, reason }] }
+ * Reconciliation is an explicit, final cutover step while Live follow writes are paused: deactivate
+ * Live-sourced active pairs absent from its snapshot, leaving Network-sourced pairs and tombstones alone.
+ * → { imported, unchanged, deactivated, held: [{ follower_ref, target_ref, reason }] }
  */
-async function importFollows(db, source, rows, subjectOf, { dryRun = false, now = new Date().toISOString() } = {}) {
-    const out = { imported: 0, unchanged: 0, held: [] };
+async function importFollows(db, source, rows, subjectOf, { dryRun = false, reconcile = false, now = new Date().toISOString() } = {}) {
+    const out = { imported: 0, unchanged: 0, deactivated: 0, held: [] };
     const run = async () => {
+        const present = new Set();
         for (const r of rows) {
             const follower = subjectOf(r.follower_ref);
             const target = subjectOf(r.target_ref);
@@ -196,6 +199,7 @@ async function importFollows(db, source, rows, subjectOf, { dryRun = false, now 
                 if (!dryRun) await db.prepare('INSERT INTO follow_import_holds (source, follower_ref, target_ref, reason, seen_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (source, follower_ref, target_ref) DO UPDATE SET reason = excluded.reason, seen_at = excluded.seen_at').run(source, String(r.follower_ref), String(r.target_ref), reason, now);
                 continue;
             }
+            present.add(`${follower}:${target}`);
             // Both sides have subjects now: any earlier hold of this pair is resolved.
             if (!dryRun) await db.prepare('DELETE FROM follow_import_holds WHERE source = ? AND follower_ref = ? AND target_ref = ?').run(source, String(r.follower_ref), String(r.target_ref));
             const prev = await db.prepare('SELECT active FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ?').get(follower, 'channel', target);
@@ -207,6 +211,14 @@ async function importFollows(db, source, rows, subjectOf, { dryRun = false, now 
                 });
             }
             out.imported++;
+        }
+        if (reconcile) {
+            const active = await db.prepare("SELECT follower_subject, target_id FROM user_follows WHERE target_type = 'channel' AND source = ? AND active = 1").all(source);
+            for (const row of active) {
+                if (present.has(`${row.follower_subject}:${row.target_id}`)) continue;
+                if (!dryRun) await setFollow(db, row.follower_subject, 'channel', row.target_id, false, { emit: false, source, at: now });
+                out.deactivated++;
+            }
         }
     };
     if (dryRun) await run(); else await db.tx(run);

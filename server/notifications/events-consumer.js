@@ -160,7 +160,7 @@ function liveStarted(event, { now, maxAgeMs }) {
  * @param {() => ({ sendLiveAlert(streamer: object, stream: object): Promise<object> }|null)} [o.discord]
  * @param {{ record(event: object): string }} [o.projectUsage]  ../developer/usage.js createProjectUsage()
  */
-async function createEventsConsumer({ db, notifications, secrets, discord = () => null, moderationAudit = null, projectUsage = null, liveStartedMaxAgeMs = LIVE_STARTED_MAX_AGE_MS, now = () => Date.now(), log = console }) {
+async function createEventsConsumer({ db, notifications, secrets, discord = () => null, moderationAudit = null, projectUsage = null, liveStartedMaxAgeMs = LIVE_STARTED_MAX_AGE_MS, goLiveFollowersReady = process.env.NETWORK_GO_LIVE_FOLLOWS_READY === '1', now = () => Date.now(), log = console }) {
     const keys = Array.isArray(secrets) ? secrets.filter((s) => typeof s === 'string' && s.length >= 32) : secretsFrom(secrets);
     const inbox = createPgInbox(db, { table: INBOX_TABLE, now });
     const userBySubject = db.prepare('SELECT id FROM users WHERE subject_id = ?');
@@ -169,6 +169,8 @@ async function createEventsConsumer({ db, notifications, secrets, discord = () =
 
     /** live.stream.started inside the inbox transaction: the announcement window, then one notification per person. */
     async function liveStreamStarted(event) {
+        // Live's direct POST remains the delivery path until its Network writes and the final reconciliation are complete.
+        if (!goLiveFollowersReady) return 'ignored:follows_cutover_pending';
         const v = liveStarted(event, { now: now(), maxAgeMs: liveStartedMaxAgeMs });
         if (typeof v === 'string') return v;
         const streamer = await streamerBySubject.get(v.subject);

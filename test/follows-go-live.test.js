@@ -35,7 +35,7 @@ const follows = require('../server/identity/follows');
 const principals = require('../server/identity/principals');
 const SECRET = 's'.repeat(40);
 const notifications = new NotificationService(db);
-const consumer = await createEventsConsumer({ db, notifications, secrets: SECRET, log: { log() {}, warn() {}, error() {} } });
+const consumer = await createEventsConsumer({ db, notifications, secrets: SECRET, goLiveFollowersReady: true, log: { log() {}, warn() {}, error() {} } });
 const app = express();
 Object.assign(app.locals, { db, config, privateKey: keys.privateKey, publicKey: keys.publicKey });
 app.use(express.urlencoded({ extended: true }));

@@ -183,7 +183,7 @@ const checkEnvelope = (env, subject) => {
         const d = getDb();
         const n = new NotificationService(d);
         const c = await createEventsConsumer({
-            db: d, notifications: n, secrets: SECRET,
+            db: d, notifications: n, secrets: SECRET, goLiveFollowersReady: true,
             discord: () => ({ sendLiveAlert: async (s) => { discord.push(s.username); return { sent: true }; } }),
             log: { log: (m) => logged.push(m), warn() {}, error() {} },
         });

@@ -49,7 +49,7 @@ try {
     // Dry run: counts, nothing changed.
     let r = await run(importer, ['--live-db', liveFile]);
     assert.strictEqual(r.code, 0, r.out);
-    assert.match(r.out, /live rows {2}5; to import 2; already on Network 2; held: follower_has_no_subject 1/);
+    assert.match(r.out, /live rows {2}5; to import 2; already on Network 2; to deactivate 0; held: follower_has_no_subject 1/);
     assert.match(r.out, /dry run: nothing changed/);
     assert.strictEqual((await active()).length, 1);
     assert.strictEqual((await db.prepare('SELECT COUNT(*) AS c FROM follow_import_holds').get()).c, 0);
@@ -61,7 +61,7 @@ try {
 
     // Applied: bob and cat now follow ann (Live's flags and time kept, source live), dan's unfollow stands.
     r = await run(importer, ['--live-db', liveFile, '--apply']);
-    assert.match(r.out, /imported 2; already on Network 2; held: follower_has_no_subject 1/);
+    assert.match(r.out, /imported 2; already on Network 2; deactivated 0; held: follower_has_no_subject 1/);
     const rows = await active();
     assert.deepStrictEqual(rows.filter((x) => x.t === ANN).map((x) => [x.f, x.e, x.source]).sort(), [[BOB, 1, 'live'], [CAT, 0, 'live']].sort());
     assert.ok(!rows.some((x) => x.f === DAN), 'an unfollow made on Network is never brought back');
@@ -77,7 +77,7 @@ try {
 
     // Idempotent: a second run imports nothing.
     r = await run(importer, ['--live-db', liveFile, '--apply']);
-    assert.match(r.out, /imported 0; already on Network 4; held: follower_has_no_subject 1/);
+    assert.match(r.out, /imported 0; already on Network 4; deactivated 0; held: follower_has_no_subject 1/);
     assert.strictEqual((await active()).length, 3);
 
     // Live user 15 gets a Network account: the next run imports the pair and clears its hold.
@@ -87,9 +87,28 @@ try {
     live2.prepare("INSERT INTO linked_accounts (user_id, service, service_user_id, subject_id) VALUES (15, 'network', '5', ?)").run(EVE);
     live2.close();
     r = await run(importer, ['--live-db', liveFile, '--apply']);
-    assert.match(r.out, /imported 1; already on Network 4; held: none/);
+    assert.match(r.out, /imported 1; already on Network 4; deactivated 0; held: none/);
     r = await run(preflight, []);
     assert.match(r.out, /unresolved holds {3}0$/);
+    // Live unfollowed cat after the import. Ordinary import preserves Network state;
+    // final reconciliation removes the stale Live-sourced follow but keeps Network's own pair.
+    const live3 = importer.openSqlite(liveFile, { readonly: false });
+    live3.prepare('DELETE FROM follows WHERE follower_id = 13 AND streamer_id = 11').run();
+    live3.close();
+    await db.prepare("INSERT INTO user_follows (follower_subject, target_type, target_id, active, source) VALUES (?, 'channel', ?, 1, 'network')").run(BOB, DAN);
+    r = await run(importer, ['--live-db', liveFile, '--apply']);
+    assert.match(r.out, /deactivated 0/);
+    assert.strictEqual((await db.prepare('SELECT active FROM user_follows WHERE follower_subject = ? AND target_id = ?').get(CAT, ANN)).active, 1);
+    r = await run(importer, ['--live-db', liveFile, '--reconcile']);
+    assert.match(r.out, /to deactivate 1/);
+    assert.strictEqual((await db.prepare('SELECT active FROM user_follows WHERE follower_subject = ? AND target_id = ?').get(CAT, ANN)).active, 1, 'preview changes nothing');
+    r = await run(importer, ['--live-db', liveFile, '--reconcile', '--apply']);
+    assert.match(r.out, /deactivated 1/);
+    assert.strictEqual((await db.prepare('SELECT active FROM user_follows WHERE follower_subject = ? AND target_id = ?').get(CAT, ANN)).active, 0);
+    assert.strictEqual((await db.prepare('SELECT active FROM user_follows WHERE follower_subject = ? AND target_id = ?').get(BOB, DAN)).active, 1);
+    assert.strictEqual((await db.prepare("SELECT COUNT(*) AS c FROM network_event_outbox WHERE envelope->>'event_type' LIKE 'network.follow.%'").get()).c, 0, 'reconciliation emits no follow events');
+    r = await run(importer, ['--live-db', liveFile, '--reconcile', '--apply']);
+    assert.match(r.out, /deactivated 0/, 'reconciliation is idempotent');
     assert.strictEqual((await run(preflight, ['--apply'])).code, 2, 'the preflight takes no options');
 } finally {
     fs.rmSync(dir, { recursive: true, force: true });

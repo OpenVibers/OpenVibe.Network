@@ -206,7 +206,7 @@ const rows = async (userId) => await db.prepare('SELECT * FROM notifications WHE
     const discordCalls = [];
     let clock = Date.now();
     consumer = await createEventsConsumer({
-        db, notifications, secrets: SECRET, now: () => clock,
+        db, notifications, secrets: SECRET, now: () => clock, goLiveFollowersReady: true,
         discord: () => ({ sendLiveAlert: async (streamer, stream) => { discordCalls.push([streamer, stream]); return { sent: true }; } }),
     });
     const liveEvent = (over = {}, payload = {}) => ({
@@ -220,6 +220,10 @@ const rows = async (userId) => await db.prepare('SELECT * FROM notifications WHE
         ...over,
     });
     const goLives = async (uid) => await db.prepare("SELECT * FROM notifications WHERE user_id = ? AND type = 'STREAM_LIVE' ORDER BY seq").all(uid);
+
+    const pending = await createEventsConsumer({ db, notifications, secrets: SECRET, goLiveFollowersReady: false });
+    assert.strictEqual((await pending.apply(liveEvent())).outcome, 'ignored:follows_cutover_pending');
+    assert.strictEqual((await goLives(21)).length, 0, 'Network does not announce before Live follow writes are cut over');
 
     // One delivery: Dave, Erin and Gina (all go-lives) are notified once each; Frank muted the category, Carol
     // is the streamer, the stranger has no account, Hank unfollowed.

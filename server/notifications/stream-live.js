@@ -5,7 +5,7 @@
  *   POST /internal/events/stream-live   Live's direct call (server/internal/routes.js), with the
  *                                       follower list in the body (follower_network_ids)
  *   live.stream.started via Events      server/notifications/events-consumer.js; the followers are
- *                                       read from Live with a service token (./live-followers.js)
+ *                                       read from Network's active user_follows rows
  *
  * Both claim the same persisted per-streamer announcement window (stream_live_announcements, keyed
  * by the streamer's NETWORK user id), so while Live still makes the direct call and Network also

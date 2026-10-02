@@ -2,25 +2,27 @@
 /**
  * ADR-030 backfill (plan T2 "Follows"): Live's follows into Network's user_follows, the graph go-live
  * notifications read (server/notifications/events-consumer.js). Follows made on Live while Live's own
- * FOLLOWS_AUTHORITY was unset never reached Network, so run this before (and, to be sure, after) the
- * release that stops asking Live for followers.
+ * FOLLOWS_AUTHORITY was unset never reached Network. Keep Live's direct go-live delivery active,
+ * pause Live follow writes, then do the final reconciliation before enabling Network delivery.
  *
  *   npm run follows-import -- --live-db /opt/openvibe.live/data/live.db            # dry run: counts only
  *   npm run follows-import -- --live-db /opt/openvibe.live/data/live.db --apply    # import, one transaction
+ *   npm run follows-import -- --live-db /opt/openvibe.live/data/live.db --reconcile --apply
  *
  * Live's side is read only (a readonly SQLite connection). Live user ids map to subjects through Live's
  * linked_accounts (service 'network', subject_id), the mapping Live's own reads use. The database written is
  * the service's own PostgreSQL (DATABASE_URL), opened without migrating or seeding. Each pair goes through importFollows()
  * (server/identity/follows.js): no events and no notifications (Live already has these follows); a pair whose
  * side has no subject is kept in follow_import_holds, never dropped; a pair Network already has, followed or
- * unfollowed since, is left alone. Safe to run again: a second run imports nothing. Prints counts only.
+ * unfollowed since, is left alone. --reconcile also deactivates Live-sourced active pairs missing from
+ * Live's snapshot; use it only with Live follow writes paused. Prints counts only.
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const follows = require('../server/identity/follows');
 
-const USAGE = 'usage: npm run follows-import -- --live-db <live.db> [--apply]';
+const USAGE = 'usage: npm run follows-import -- --live-db <live.db> [--reconcile] [--apply]';
 const SUBJECT_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 
 function parseArgs(argv) {
@@ -28,6 +30,7 @@ function parseArgs(argv) {
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--apply') out.apply = true;
+        else if (a === '--reconcile') out.reconcile = true;
         else if (a === '--help' || a === '-h') out.help = true;
         else if (a === '--live-db') {
             const v = argv[++i];
@@ -90,12 +93,12 @@ async function main(argv, { db: injected, log = console.log } = {}) {
     let live;
     try { live = readLive(file); } catch (e) { log(`error: cannot read Live's follows: ${e.message}`); return 2; }
     const db = await openDb(injected);
-    const out = await follows.importFollows(db, 'live', live.rows, live.subjectOf, { dryRun: !args.apply });
+    const out = await follows.importFollows(db, 'live', live.rows, live.subjectOf, { dryRun: !args.apply, reconcile: !!args.reconcile });
     const held = {};
     for (const h of out.held) held[h.reason] = (held[h.reason] || 0) + 1;
     const why = Object.entries(held).map(([k, n]) => `${k} ${n}`).join(', ') || 'none';
-    log(`live rows  ${live.rows.length}; ${args.apply ? 'imported' : 'to import'} ${out.imported}; already on Network ${out.unchanged}; held: ${why}`);
-    if (!args.apply) log(out.imported || out.held.length ? 'dry run: nothing changed. Re-run with --apply to import.' : 'nothing to import.');
+    log(`live rows  ${live.rows.length}; ${args.apply ? 'imported' : 'to import'} ${out.imported}; already on Network ${out.unchanged}; ${args.apply ? 'deactivated' : 'to deactivate'} ${out.deactivated}; held: ${why}`);
+    if (!args.apply) log(out.imported || out.deactivated || out.held.length ? 'dry run: nothing changed. Re-run with --apply to make these changes.' : 'nothing to import or deactivate.');
     return 0;
 }
 

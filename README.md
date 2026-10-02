@@ -279,6 +279,8 @@ than 30 minutes old (a replay, or Events catching up) announces nothing. The per
 announcement an hour, eight a day; `stream_live_cooldown_min`, `stream_live_daily_cap`) is shared with
 Live's direct `POST /internal/events/stream-live` (`server/notifications/stream-live.js`), so while Live
 still makes that call, whichever arrives first announces and the other is skipped.
+Until `NETWORK_GO_LIVE_FOLLOWS_READY=1` is set on Network, Events go-lives are acknowledged as
+`ignored:follows_cutover_pending` and Live's direct POST remains the delivery path.
 
 **Project usage.** `tools.usage.recorded` and `events.usage.recorded` (hourly rollups of a developer
 project's use, `common.usage-recorded@1`) are kept per project and day (`server/developer/usage.js`,
@@ -494,6 +496,16 @@ A target is a Live channel today (`channel`, named by its owner's subject), and 
   `follow_import_holds`; a pair Network already has, followed or unfollowed, is left alone. Safe to re-run;
   a later run imports newly mapped pairs and clears their holds. Both scripts use `DATABASE_URL` and never
   migrate or seed.
+- **Cutover order:** Keep Live's direct `POST /internal/events/stream-live` enabled and leave
+  `NETWORK_GO_LIVE_FOLLOWS_READY` unset. Pause Live follow writes, then run
+  `npm run follows-import -- --live-db /opt/openvibe.live/data/live.db --reconcile` to preview the
+  final Live snapshot and rerun with `--reconcile --apply`. Reconciliation deactivates Live-sourced
+  active Network pairs missing from the snapshot, without emitting follow events or notifications;
+  it preserves Network-sourced pairs and earlier Network unfollows. Check `npm run follows-preflight`
+  and resolve holds before proceeding. Set Live's `FOLLOWS_AUTHORITY=network` and restart Live while
+  writes are paused; verify a follow and unfollow reach Network, then resume Live writes. Only then
+  set `NETWORK_GO_LIVE_FOLLOWS_READY=1` in Network's environment and restart Network. Keep Live's
+  direct call enabled until Network's `live.stream.started` outcome logs show delivery.
 - **Preflight:** `npm run follows-preflight` prints, read-only and counts only, the active follows (with
   their channels and followers), the unfollowed rows and the unresolved `follow_import_holds` by reason.
 
