@@ -376,7 +376,7 @@ secrets set, tokens via `POST /oauth/token`), run with `node test/<file>.test.js
 
 Bot (T15) and Node (T14) follow, each step keeping Bot working (§9.2, §9.3). Owner steps: none for the Network
 slices (main is not deployed and the PostgreSQL cutover waits on the owner); at Bot's deploy the owner provisions Bot's
-client secret (`sudo node server/setup/service-principal.js rotate bot --env-file /etc/openvibe/bot.env`) and later
+client secret (`sudo node --env-file=/etc/openvibe/network.env server/setup/service-principal.js rotate bot --write-env /etc/openvibe/bot.env`) and later
 flips `BOT_PAIRING_AUTHORITY=network`.
 
 ## 9. Follow-up job briefs
