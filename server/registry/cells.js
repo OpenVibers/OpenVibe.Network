@@ -98,7 +98,7 @@ async function topology(db, id) {
         trust: p.trust, status: p.status, health: health.get(p.node_id) || 'unknown',
     }));
     const instances = (await db.prepare('SELECT * FROM platform_service_instances WHERE cell = ? ORDER BY service, id').all(cell.id)).map((r) => ({
-        id: r.id, service: r.service, version: r.version, node: r.node_id, endpoints: JSON.parse(r.endpoints), state: r.state,
+        id: r.id, service: r.service, version: r.version, cell: r.cell, region: cell.region, node: r.node_id, endpoints: JSON.parse(r.endpoints), state: r.state,
         route_weight: Number(r.route_weight), started_at: r.started_at, reported_at: r.reported_at,
     }));
     const offers = (await db.prepare('SELECT doc FROM platform_resource_offers WHERE cell = ? ORDER BY id').all(cell.id)).map((r) => {

@@ -476,6 +476,12 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/api/v1/resources', offerRouters.pub);
     app.use('/internal/resources', offerRouters.internal);
 }
+// Service instances (plan T2, docs/t2-cells-and-node-principal.md section 4.1): Host reports what runs on its machines
+// with network.node.report. Mounted before /internal/registry so the cells read does not swallow the report path.
+{
+    const instanceRouters = require('./registry/instances').routers({ guard: require('./identity/principals').guard('network.node.report') });
+    app.use('/internal/registry/instances', instanceRouters.internal);
+}
 // Cells and node principals (plan T2, docs/t2-resource-registry.md section 9): the public cell list; a cell's nodes,
 // instances and offers for services holding network.registry.read.
 {
