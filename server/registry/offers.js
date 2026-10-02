@@ -4,7 +4,9 @@
  * network can place on — every node and provider offer, with capabilities, capacity, health and pricing. The owner
  * reports the complete set of its offers (POST /internal/resources/report, network.node.report until Contracts
  * publishes network.resource.report); an offer absent from a later report of the same source is marked down, never
- * deleted. This module stores; it does not plan, price or settle. Slice 1 is the write path only.
+ * deleted. This module stores; it does not plan, price or settle. Reads (slice 2): GET /api/v1/resources is public and
+ * cacheable but leaves each offer's capacity out (the contract is first-party: it carries the capacity network.node@1
+ * deliberately does not publish); GET /internal/resources, behind the report's guard, returns the docs whole.
  */
 const express = require('express');
 
@@ -73,8 +75,68 @@ async function report(db, { source, offers }, now = new Date().toISOString()) {
     return { offers: offers.length, marked_down: marked };
 }
 
+/** The query keys list() filters on; each matches its column exactly, but max_price_usd (price_usd <= it). */
+const FILTERS = ['kind', 'region', 'trust', 'status', 'cell', 'max_price_usd'];
+
+/** Read the filters from a query string: a key given once as a string, max_price_usd a finite number >= 0; others are ignored. */
+function filtersOf(query) {
+    const f = {};
+    for (const k of FILTERS) {
+        const v = query[k];
+        if (typeof v !== 'string' || v === '') continue;
+        if (k !== 'max_price_usd') f[k] = v;
+        else if (Number.isFinite(Number(v)) && Number(v) >= 0) f[k] = Number(v);
+    }
+    return f;
+}
+
+/** The offers matching the filters, in id order, as stored contract docs. Filtered in SQL; without status, down offers are left out. */
+async function list(db, filters = {}) {
+    ensureSchema(db);
+    const where = [];
+    const args = [];
+    for (const k of ['kind', 'region', 'trust', 'cell']) if (filters[k] != null) { where.push(`${k} = ?`); args.push(filters[k]); }
+    if (filters.status != null) { where.push('status = ?'); args.push(filters.status); } else { where.push('status <> ?'); args.push('down'); }
+    if (filters.max_price_usd != null) { where.push('price_usd <= ?'); args.push(filters.max_price_usd); }
+    return (await db.prepare(`SELECT doc FROM platform_resource_offers WHERE ${where.join(' AND ')} ORDER BY id`).all(...args)).map((r) => JSON.parse(r.doc));
+}
+
+/** One offer's stored contract doc, whatever its status, or null. */
+async function get(db, id) {
+    ensureSchema(db);
+    const row = await db.prepare('SELECT doc FROM platform_resource_offers WHERE id = ?').get(id);
+    return row ? JSON.parse(row.doc) : null;
+}
+
+/** The public form of an offer: the contract doc verbatim without capacity (design section 4). */
+const publicDoc = ({ capacity, ...doc }) => doc;
+
 function routers({ guard }) {
+    const listed = async (req, shape) => {
+        const filters = filtersOf(req.query);
+        const docs = (await list(req.app.locals.db, filters)).map(shape);
+        return { offers: docs, generated_at: new Date().toISOString(), filters, count: docs.length };
+    };
+    const unknown = (res, id) => require('openvibe-contracts').http.sendProblem(res, 404, 'registry.unknown_offer', { detail: `no offer ${id}` });
+    const pub = express.Router();
+    const open = (res, maxAge) => res.set('Cache-Control', maxAge ? `public, max-age=${maxAge}` : 'no-store')
+        .set('Access-Control-Allow-Origin', '*').set('Timing-Allow-Origin', '*');
+    pub.get('/', async (req, res) => open(res, 60).json(await listed(req, publicDoc)));
+    pub.get('/:offer_id', async (req, res) => {
+        const doc = await get(req.app.locals.db, req.params.offer_id);
+        if (!doc) return unknown(open(res, 0), req.params.offer_id);
+        open(res, 60).json(publicDoc(doc));
+    });
+    // A beacon a browser times to estimate its distance from an offer (openvibe-sdk/geo), as nodes.js answers one.
+    pub.get('/:offer_id/beacon', (req, res) => open(res, 0).status(204).end());
     const internal = express.Router();
+    // The full docs, capacity included, for placement.plan() consumers: the same guard as the report.
+    internal.get('/', guard, async (req, res) => res.set('Cache-Control', 'no-store').json(await listed(req, (d) => d)));
+    internal.get('/:offer_id', guard, async (req, res) => {
+        const doc = await get(req.app.locals.db, req.params.offer_id);
+        if (!doc) return unknown(res.set('Cache-Control', 'no-store'), req.params.offer_id);
+        res.set('Cache-Control', 'no-store').json(doc);
+    });
     internal.post('/report', guard, express.json({ limit: '256kb' }), async (req, res) => {
         const bad = check(req.body);
         if (bad) return res.status(400).json(bad);
@@ -88,7 +150,7 @@ function routers({ guard }) {
         res.set('Cache-Control', 'no-store').set('X-Offers-Marked-Down', String(out.marked_down))
             .json({ source: req.body.source, ...out, generated_at: new Date().toISOString() });
     });
-    return { internal };
+    return { internal, pub };
 }
 
-module.exports = { CONTRACT, DEFAULT_CELL, ensureSchema, columns, check, report, routers };
+module.exports = { CONTRACT, DEFAULT_CELL, ensureSchema, columns, check, report, list, get, publicDoc, routers };

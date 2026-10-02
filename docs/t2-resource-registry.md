@@ -146,14 +146,27 @@ the nodes call, purely as documentation.
 
 | Route | Behaviour | Cache |
 |---|---|---|
-| `GET /api/v1/resources` | `{offers: [<platform.resource-offer@1>…], generated_at, filters, count}`; filters `?kind=&region=&trust=&status=&cell=&max_price_usd=`; **default excludes `status='down'`** | `public, max-age=60`, `ACAO: *`, `Timing-Allow-Origin: *` |
-| `GET /api/v1/resources/:offer_id` | the single offer, or 404 `problem+json` `registry.unknown_offer` via `contracts.http.sendProblem` | `public, max-age=60` |
+| `GET /api/v1/resources` | `{offers: [<platform.resource-offer@1> minus capacity…], generated_at, filters, count}`; filters `?kind=&region=&trust=&status=&cell=&max_price_usd=`; **default excludes `status='down'`** | `public, max-age=60`, `ACAO: *`, `Timing-Allow-Origin: *` |
+| `GET /api/v1/resources/:offer_id` | the single offer minus capacity (any status), or 404 `problem+json` `registry.unknown_offer` via `contracts.http.sendProblem` | `public, max-age=60` |
 | `GET /api/v1/resources/:offer_id/beacon` | 204 — the same idiom as `nodes.js:52`, for `openvibe-sdk/geo` | `no-store` |
-| `GET /internal/resources` (slice 4, optional) | service-token read for consumers that cannot use the public list; `network.registry.read` **does** exist at v0.83.0 | `no-store` |
+| `GET /internal/resources` | the same list and filters, docs **whole** (capacity included); the report's guard, `network.node.report` | `no-store` |
+| `GET /internal/resources/:offer_id` | the single offer whole, or 404 `registry.unknown_offer`; the same guard | `no-store` |
+
+**Exposure (decided, slice 2).** `platform.resource-offer@1` describes itself as *first-party only: it carries capacity
+the public node registry (`network.node@1`) deliberately leaves out*. So the unauthenticated `/api/v1/resources` list and
+single read return each contract document verbatim **except the `capacity` object**, which is omitted (`capacity` is
+optional in the contract, so the public doc still validates). Everything else — capabilities, region, cell, trust,
+health, pricing, latency — is what `openvibe-sdk/geo` and a planner's trust/price filter need, and is no more than the
+public node list already says. The full documents, capacity included, are read from `GET /internal/resources[/:id]`,
+behind exactly the guard of `POST /internal/resources/report` (`network.node.report` today, the one-line switch in
+slice 5): that is the read `placement.plan()` consumers use, since capacity is what it places on. No capability is added
+to Contracts for this; a dedicated read capability, if one is wanted, arrives with T1 like `network.resource.report`.
 
 - Filters are applied in **SQL**, not JS. A `kind` the pinned contract does not define yields an empty list with 200,
   never a 500. Unknown query keys are ignored. `?status=down` is how a caller sees the hidden-down rows.
-- `offers[]` elements are the contract documents **verbatim** — no envelope fields are added inside them, so a client can
+- Query values are taken once, as strings; `max_price_usd` must be a finite number ≥ 0, else it is ignored. `filters`
+  echoes only the filters that were applied.
+- `offers[]` elements are the contract documents **verbatim** (the public list minus `capacity`) — no envelope fields are added inside them, so a client can
   pass the array straight into `plan()`. `filters` and `count` live beside `offers`, never inside it. The convenience
   columns (`cell`, `price_usd`) are therefore *not* re-added to each doc: a doc that omitted `cell` is returned without
   one, exactly as reported.
@@ -164,7 +177,8 @@ the nodes call, purely as documentation.
 platform.placement-result@1`. Network is the registry, not the planner, and imports nothing from the SDK in production
 code. The contract between the two is therefore exact:
 
-- **`offers[]` is `platform.resource-offer@1` verbatim**, so `plan()` consumes the HTTP response unchanged.
+- **`offers[]` is `platform.resource-offer@1` verbatim**, so `plan()` consumes the HTTP response unchanged. A planner
+  that weighs capacity reads `GET /internal/resources`; the public list has no `capacity` (§4).
 - `trust` and `health.status` must use the enums the planner knows — `first-party|partner|community|external`
   (`TRUST_ORDER`) and `up|degraded|down|draining` (`HEALTH_OK`). `down` and `draining` are excluded by the planner, so the
   registry stores them faithfully and lets the default list hide only `down`.
@@ -193,9 +207,10 @@ mounted, a service token minted through `POST /oauth/token` `client_credentials`
 4. **Mark-down** — source A's offer missing from A's next report → `status='down'`, `doc.health.status='down'`,
    `checked_at` set, still listed under `?status=down`, header `X-Offers-Marked-Down: 1`; source B untouched.
 5. **Filters** — `?kind=provider`, `?region=`, `?trust=community`, `?max_price_usd=0.05`, `?cell=wnam-1`; the default list
-   excludes `down`; an unknown `kind` returns `{offers: []}` with 200.
-6. **Single read** — `GET /api/v1/resources/:id` matches `platform.resource-offer@1`; an unknown id → 404
-   `registry.unknown_offer`.
+   excludes `down`; an unknown `kind` returns `{offers: []}` with 200. The public list never contains `capacity`; the
+   internal list returns the stored docs whole and refuses a call without the guard's token.
+6. **Single read** — `GET /internal/resources/:id` is the stored doc, `GET /api/v1/resources/:id` the same minus
+   `capacity`, both matching `platform.resource-offer@1`; an unknown id → 404 `registry.unknown_offer` on both.
 7. **Headers** — `cache-control: public, max-age=60` and `access-control-allow-origin: *` on list and single; beacon 204
    with `no-store` and `timing-allow-origin: *`.
 8. **Schema lockstep** — after a report, every row is compared against the **mapping table in §2**, not against a
@@ -217,7 +232,8 @@ filter path — PGlite and a real PostgreSQL must agree on it — and `npm test`
    no-op + `report`), the `ensureSchema` call in `server/db/database.js`, `app.use('/internal/resources', internal)` in
    `server/index.js`, `test/resource-registry.test.js` tests 1-4. Guard reuses `network.node.report`.
 2. **Public read + filters.** `list()`, `get()`, `routers().pub` in `server/registry/offers.js`,
-   `app.use('/api/v1/resources', pub)`, tests 5-7.
+   `app.use('/api/v1/resources', pub)`, tests 5-7. Also the full internal read (`GET /internal/resources[/:id]`, the
+   report's guard), because the public read leaves capacity out (§4).
 3. **Discovery entry.** Add `resources: '/api/v1/resources'` to the `/api/v1/registry` index in
    `server/registry/ecosystem.js`. Nothing else.
 4. **Placement consumption proof.** §5 gains a worked example; test 9 added. No production-code change — this slice
