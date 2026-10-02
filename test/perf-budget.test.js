@@ -41,7 +41,19 @@ const freePort = () => new Promise((resolve) => { const s = net.createServer(); 
             if (!up) await new Promise((r) => setTimeout(r, 100));
         }
         assert.ok(up, `the server did not start:\n${stderr}`);
-        const m = await measure({ base });
+        // Node's fetch pools keep-alive sockets; the server closes an idle one after its default
+        // 5 s keepAliveTimeout, and a slow asset walk under load can hit that window and fail with
+        // UND_ERR_SOCKET ("other side closed"). This test measures sizes, not connection reuse.
+        const retryFetch = async (url, init) => {
+            for (let attempt = 0; ; attempt++) {
+                try { return await fetch(url, init); }
+                catch (e) {
+                    if (attempt >= 2 || e?.cause?.code !== 'UND_ERR_SOCKET') throw e;
+                    await new Promise((r) => setTimeout(r, 250));
+                }
+            }
+        };
+        const m = await measure({ base, fetch: retryFetch });
         const over = check(m, BUDGETS);
         assert.deepStrictEqual(over, [], format(m, over));
         console.log(format(m));
