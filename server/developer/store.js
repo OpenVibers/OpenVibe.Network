@@ -33,6 +33,7 @@ const PROJECT_ID_RE = /^prj_[0-9A-HJKMNP-TV-Z]{26}$/;
 const CRED_ID_RE = /^crd_[0-9A-HJKMNP-TV-Z]{26}$/;
 const USER_SUBJECT_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 const SECRET_PREFIX = 'ovsec_';
+const MAX_PREFERRED_REGIONS = 5; // docs/t2-cells-and-node-principal.md section 3.1
 
 class DevError extends Error {
     constructor(status, code, detail) { super(detail || code); this.status = status; this.code = code; this.detail = detail; }
@@ -125,10 +126,16 @@ const cleanName = (v, field = 'name') => {
 };
 
 async function projectView(db, p, role, settings) {
+    const cell = await db.prepare('SELECT residency FROM platform_cells WHERE id = ?').get(p.home_cell);
     return {
         id: p.id, name: p.name, owner: { type: 'user', id: p.owner_subject }, role: role || null,
         environment_policy: p.environment_policy, environments: policy.ENVIRONMENT_POLICIES[p.environment_policy],
         allowance: JSON.parse(p.allowance || '[]'),
+        // Placement (N3): home_cell is where the project's machines and resources live (0008); a project's
+        // residency is its home cell's, derived here and never stored (decision A). preferred_regions is stored.
+        home_cell: p.home_cell || null,
+        residency: cell ? cell.residency : null,
+        preferred_regions: JSON.parse(p.preferred_regions || '[]'),
         // Held by sandbox apps without a staff decision (DEV_SANDBOX_ALLOWANCE); production apps use `allowance` only.
         sandbox_allowance: (settings || policy.settings()).sandboxAllowance,
         created_at: p.created_at, archived_at: p.archived_at || null,
@@ -220,6 +227,35 @@ async function setEnvironmentPolicy(db, actor, projectId, { environment_policy: 
         await audit(db, { projectId: project.id, actor: actor.label, action: 'project.environment_policy_set', target: project.id, detail: { from: project.environment_policy, to: value }, ctx });
     });
     return { environment_policy: value, environments: policy.ENVIRONMENT_POLICIES[value] };
+}
+
+/**
+ * Placement (N3, docs/t2-cells-and-node-principal.md section 3.1): set a project's preferred regions, in
+ * preference order. An array cannot carry a foreign key, so every id is checked against platform_regions in the
+ * same transaction as the write. `residency` is the home cell's and is never stored: a caller may state it, and it
+ * is refused unless it agrees with the home cell (a project cannot move itself; changing home_cell is not designed).
+ * Admin+ membership (not staff as such), like renameProject.
+ */
+async function setPlacement(db, actor, projectId, { preferred_regions: regions, residency } = {}, { ctx, settings }) {
+    const { project, role } = await access(db, actor, projectId, { need: 'admin', staffOk: false });
+    if (!Array.isArray(regions)) fail(400, 'project.invalid', 'preferred_regions must be an array of region ids');
+    if (regions.length > MAX_PREFERRED_REGIONS) fail(400, 'registry.too_many_regions', `at most ${MAX_PREFERRED_REGIONS} preferred regions`);
+    const wanted = regions.map(String);
+    if (new Set(wanted).size !== wanted.length) fail(400, 'registry.duplicate_region', 'preferred regions must be unique');
+    await db.tx(async () => {
+        for (const id of wanted) {
+            if (!(await db.prepare('SELECT id FROM platform_regions WHERE id = ?').get(id))) fail(400, 'registry.unknown_region', `no such region: ${id}`);
+        }
+        if (residency !== undefined) {
+            const cell = await db.prepare('SELECT residency FROM platform_cells WHERE id = ?').get(project.home_cell);
+            const home = cell && cell.residency;
+            if (String(residency) !== home) fail(400, 'registry.unknown_residency', `residency must be the home cell's (${home})`);
+        }
+        await db.prepare('UPDATE dev_projects SET preferred_regions = ? WHERE id = ?').run(JSON.stringify(wanted), project.id);
+        await audit(db, { projectId: project.id, actor: actor.label, action: 'project.placement_changed', target: project.id,
+            detail: { from: JSON.parse(project.preferred_regions || '[]'), to: wanted }, ctx });
+    });
+    return await projectView(db, await db.prepare('SELECT * FROM dev_projects WHERE id = ?').get(project.id), role, settings);
 }
 
 // ── Members ────────────────────────────────────────────────────
@@ -615,7 +651,7 @@ async function deleteQuota(db, actor, projectId, capability, { ctx }) {
 module.exports = {
     ensureSchema, DevError, ROLES, APP_ID_RE, PROJECT_ID_RE, SECRET_PREFIX,
     audit, listAudit, actorOf, access, memberRole,
-    createProject, listProjects, renameProject, archiveProject, setAllowance, setEnvironmentPolicy, projectView,
+    createProject, listProjects, renameProject, archiveProject, setAllowance, setEnvironmentPolicy, setPlacement, projectView,
     listMembers, addMember, updateMember, removeMember,
     listApps, getApp, createApp, updateApp, revokeApp,
     listCredentials, rotateCredential, revokeCredential, matchSecret, hashSecret,
