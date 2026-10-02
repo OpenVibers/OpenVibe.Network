@@ -228,6 +228,14 @@ router.post('/token', async (req, res) => {
     // Service principals (Wave 1): a first-party service trades its client credentials for a
     // short-lived, capability-scoped token. Checked before the user-grant path below.
     if (grant_type === 'client_credentials') {
+        // A paired machine (node principal, docs/t2-cells-and-node-principal.md section 4.3): its own credential store.
+        if (/^nod_/.test(client_id)) {
+            const out = await require('../registry/node-principals').issueNodeToken(db, {
+                clientId: client_id, clientSecret: client_secret, audience: req.body.audience,
+                privateKey: req.app.locals.privateKey, issuer: config.jwt.issuer,
+            });
+            return res.status(out.status).json(out.body);
+        }
         const out = await principals.issueToken(db, {
             clientId: client_id, clientSecret: client_secret, audience: req.body.audience, scope: req.body.scope,
             privateKey: req.app.locals.privateKey, issuer: config.jwt.issuer,

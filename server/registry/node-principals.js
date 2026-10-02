@@ -15,14 +15,24 @@
  *   POST /internal/node-principals/:id/revoke    network.node.manage   → the principal, revoked (idempotent)
  *   GET  /api/v1/me/nodes                        session               → the person's own machines, newest first
  *   POST /api/v1/me/nodes/:id/revoke             session               → their principal, revoked (idempotent)
+ *
+ * The paired machine itself (section 4.3, slice N4c): its credential buys a node token (sub node:nod_…) at
+ * POST /oauth/token, and with it the machine manages only its own row. The routes resolve the node from the verified
+ * token, never from the body or the path.
+ *   POST /oauth/token  client_id=nod_…            the credential        → 200 node token (oauth-routes.js)
+ *   PUT  /api/v1/node/self/capabilities          network.node.self.manage → 200 {node_id, reported_at}
+ *   POST /api/v1/node/self/credential            network.node.self.manage → 200 {principal, node_id, credential, …}
  */
 const crypto = require('crypto');
 const express = require('express');
-const { ids, http } = require('openvibe-contracts');
+const { ids, http, serviceAuth, validate, assertValid } = require('openvibe-contracts');
 const { BOOTSTRAP_CELL, RegistryError } = require('./cells');
+const { TOKEN_TTL_S, SELF_AUDIENCE } = require('../identity/principals');
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_TRIES = 5;
+const PREV_GRACE_MS = 60 * 1000;   // a rotated-out credential still works this long (Bot's grace window)
+const SEEN_EVERY_MS = 60 * 1000;   // last_seen_at is written at most this often
 const SUBJECT = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 const PAIRING_ID = /^pair_[0-9A-HJKMNP-TV-Z]{26}$/;
 const PRINCIPAL_ID = /^nod_[0-9A-HJKMNP-TV-Z]{26}$/;
@@ -233,6 +243,115 @@ function userRouter(requireAuth, now = () => Date.now()) {
     return router;
 }
 
+/** Every refusal of a node's credential, whatever the reason: one status, one body. */
+const INVALID_CLIENT = Object.freeze({ status: 401, body: Object.freeze({ error: 'invalid_client', error_description: 'Invalid client credentials' }) });
+
+/**
+ * grant_type=client_credentials for a node principal (client_id nod_…): its current credential, or the previous one
+ * while prev_valid_until is in the future, buys a 300 s token for openvibe.network (network.node.self.manage) or for
+ * the service that paired it (no capability: that service authorises the node by its own binding). The secret is only
+ * ever hashed and compared in constant time; it is never logged or returned. → { status, body } (OAuth shapes).
+ */
+async function issueNodeToken(db, { clientId, clientSecret, audience, privateKey, issuer, now = Date.now() }) {
+    if (typeof clientId !== 'string' || !PRINCIPAL_ID.test(clientId) || typeof clientSecret !== 'string' || !clientSecret) return INVALID_CLIENT;
+    const p = await db.prepare('SELECT * FROM platform_node_principals WHERE id = ?').get(clientId);
+    const hash = sha256(clientSecret);
+    // Both comparisons always run, so the answer's timing does not tell which secret (if any) matched.
+    const current = sameHash(p && p.credential_hash, hash);
+    const previous = sameHash(p && p.credential_prev_hash, hash);
+    const prevLive = !!(p && p.prev_valid_until && Date.parse(p.prev_valid_until) > now);
+    if (!p || p.status !== 'active' || !p.credential_hash || !(current || (previous && prevLive))) return INVALID_CLIENT;
+    const aud = typeof audience === 'string' ? audience.trim() : '';
+    if (aud !== SELF_AUDIENCE && !(p.paired_by_service && aud === `openvibe.${p.paired_by_service}`)) {
+        return { status: 400, body: { error: 'invalid_scope', error_description: `a node token is for ${SELF_AUDIENCE}${p.paired_by_service ? ` or openvibe.${p.paired_by_service}` : ''}` } };
+    }
+    const iat = Math.floor(now / 1000);
+    const claims = {
+        iss: issuer, sub: `node:${p.id}`, actor_type: 'node', aud: [aud],
+        cap: aud === SELF_AUDIENCE ? ['network.node.self.manage'] : [],
+        ...(p.owner_kind === 'project' && p.project_id ? { project_id: p.project_id } : {}),
+        iat, exp: iat + TOKEN_TTL_S, jti: `tok_${crypto.randomBytes(12).toString('hex')}`,
+    };
+    assertValid('identity.service-token-claims@1', claims);
+    const access = serviceAuth.signServiceToken(claims, privateKey);
+    // The health of a paired machine: written at most once a minute, so a busy machine is not a write per token.
+    await db.prepare('UPDATE platform_node_principals SET last_seen_at = ? WHERE id = ? AND (last_seen_at IS NULL OR last_seen_at < ?)')
+        .run(iso(now), p.id, iso(now - SEEN_EVERY_MS));
+    return { status: 200, body: { access_token: access, token_type: 'Bearer', expires_in: TOKEN_TTL_S, scope: claims.cap.join(' ') } };
+}
+
+const NODE_SUB = /^node:(nod_[0-9A-HJKMNP-TV-Z]{26})$/;
+
+/**
+ * The node principal a verified token speaks for, live. A token of any other actor (svc:, app:) is 403
+ * capability.owner_denied whatever it holds; a node revoked since its token was issued (≤ 300 s ago) is 401.
+ */
+async function selfOf(db, req) {
+    const m = NODE_SUB.exec(String(req.principal && req.principal.sub || ''));
+    if (!m) throw new RegistryError(403, 'capability.owner_denied', 'only a node principal manages itself');
+    const p = await db.prepare('SELECT * FROM platform_node_principals WHERE id = ?').get(m[1]);
+    if (!p || p.status !== 'active') throw new RegistryError(401, 'registry.node_revoked', 'this node principal is revoked');
+    return p;
+}
+
+/**
+ * Store the capabilities the machine presents (platform.node-capabilities@1, verbatim). Its node_id must be the
+ * machine's own. Throws RegistryError. → { node_id, reported_at }
+ */
+async function putCapabilities(db, p, body, now = Date.now()) {
+    const v = validate('platform.node-capabilities@1', body);
+    if (!v.valid) throw new RegistryError(400, 'registry.invalid_capabilities', v.errors.map((e) => `${e.path} ${e.message}`).join('; ').slice(0, 500));
+    if (body.node_id !== p.node_id) throw new RegistryError(409, 'registry.node_mismatch', `this token is node ${p.node_id}, not ${String(body.node_id).slice(0, 80)}`);
+    const at = iso(now);
+    await db.prepare(`INSERT INTO platform_node_capabilities (node_id, doc, reported_at) VALUES (?, ?, ?)
+        ON CONFLICT (node_id) DO UPDATE SET doc = excluded.doc, reported_at = excluded.reported_at`).run(p.node_id, JSON.stringify(body), at);
+    return { node_id: p.node_id, reported_at: at };
+}
+
+/**
+ * The machine rotates its own credential: a new one (returned this once), the old one valid PREV_GRACE_MS more so a
+ * machine that crashes mid-rotation can still sign in. Throws RegistryError. → { principal, node_id, credential, prev_valid_until }
+ */
+async function rotateCredential(db, id, now = Date.now()) {
+    const credential = crypto.randomBytes(32).toString('base64url');
+    const at = iso(now);
+    const until = iso(now + PREV_GRACE_MS);
+    const row = await db.tx(async (t) => {
+        const p = await t.prepare('SELECT * FROM platform_node_principals WHERE id = ? FOR UPDATE').get(id);
+        if (!p || p.status !== 'active') return null;
+        await t.prepare(`UPDATE platform_node_principals SET credential_prev_hash = credential_hash,
+            prev_valid_until = CASE WHEN credential_hash IS NULL THEN NULL ELSE ? END, credential_hash = ?, updated_at = ?
+            WHERE id = ? AND status = 'active'`).run(until, sha256(credential), at, id);
+        return p;
+    });
+    if (!row) throw new RegistryError(401, 'registry.node_revoked', 'this node principal is revoked');
+    return { principal: row.id, node_id: row.node_id, credential, prev_valid_until: row.credential_hash ? until : null };
+}
+
+// Mounted at /api/v1/node/self behind principals.guard('network.node.self.manage') (server/index.js). The guard checks
+// the token's signature, audience and capability; ownership is selfOf's, before any write.
+function selfRouter(now = () => Date.now()) {
+    const router = express.Router();
+    router.use(http.middleware());
+    const send = async (res, fn) => {
+        res.set('Cache-Control', 'no-store');
+        try { return await fn(); } catch (e) {
+            if (e instanceof RegistryError) return http.sendProblem(res, e.status, e.code, { detail: e.message });
+            console.error('[Node self]', e.message);
+            return http.sendProblem(res, 500, 'registry.failed', { detail: 'the node could not be changed' });
+        }
+    };
+    router.put('/capabilities', express.json({ limit: '64kb' }), async (req, res) => await send(res, async () => {
+        const db = req.app.locals.db;
+        res.json(await putCapabilities(db, await selfOf(db, req), req.body, now()));
+    }));
+    router.post('/credential', async (req, res) => await send(res, async () => {
+        const db = req.app.locals.db;
+        res.json(await rotateCredential(db, (await selfOf(db, req)).id, now()));
+    }));
+    return router;
+}
+
 function routers({ guard, now = () => Date.now() }) {
     const problem = (res, e) => http.sendProblem(res, e.status, e.code, { detail: e.message });
     const internal = express.Router();
@@ -279,4 +398,4 @@ function routers({ guard, now = () => Date.now() }) {
     return { internal, pairing };
 }
 
-module.exports = { CODE_TTL_MS, MAX_TRIES, createPairing, redeem, revoke, principalView, routers, userRouter };
+module.exports = { CODE_TTL_MS, MAX_TRIES, PREV_GRACE_MS, createPairing, redeem, revoke, principalView, routers, userRouter, issueNodeToken, selfRouter };
