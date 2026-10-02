@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 /**
  * Account export and deletion (roadmap WS-B task 7, ADR-033; Contracts 0.71.0).
  *
@@ -436,7 +437,7 @@ function sendError(res, e) {
 function routers({ requireAuth, staffClaims, contributeGuard, confirmGuard, dir, notify }) {
     const me = express.Router();
     me.use(express.json({ limit: '8kb' }));
-    const noStore = (res) => res.set('Cache-Control', 'private, no-store');
+    const noStore = (res) => res.set('Cache-Control', cache.htmlHeaders({ private: true }));
     me.post('/export', requireAuth, async (req, res) => {
         const db = req.app.locals.db;
         try {

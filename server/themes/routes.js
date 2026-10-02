@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 
 // ═══════════════════════════════════════════════════════════════
 // openvibe.network — Theme API Routes
@@ -129,7 +130,7 @@ router.get('/me/submissions', requireAuth, async (req, res) => {
     ensureReview(db);
     const userId = req.user.sub || req.user.id;
     const themes = (await db.prepare('SELECT id, name, slug, description, mode, variables, tags, review_status, review_note, reviewed_at, created_at FROM themes WHERE author_id = ? AND is_builtin = 0 ORDER BY created_at DESC LIMIT 50').all(userId)).map(parseTheme);
-    res.set('Cache-Control', 'private, no-store').json({ themes });
+    res.set('Cache-Control', cache.htmlHeaders({ private: true })).json({ themes });
 });
 
 // ── Get Theme by ID or Slug (approved themes; your own at any status) ──
@@ -230,7 +231,7 @@ function reviewRouter() {
         const status = ['pending', 'approved', 'rejected'].includes(req.query.status) ? req.query.status : 'pending';
         const themes = (await db.prepare(`SELECT t.id, t.name, t.slug, t.description, t.mode, t.variables, t.tags, t.review_status, t.review_note, t.reviewed_at, t.created_at, u.username AS author
             FROM themes t LEFT JOIN users u ON u.id = t.author_id WHERE t.is_builtin = 0 AND t.review_status = ? ORDER BY t.created_at ASC LIMIT 200`).all(status)).map(parseTheme);
-        res.set('Cache-Control', 'private, no-store').json({ status, themes });
+        res.set('Cache-Control', cache.htmlHeaders({ private: true })).json({ status, themes });
     });
     r.post('/:id/review', async (req, res) => {
         const db = await getDb(req);

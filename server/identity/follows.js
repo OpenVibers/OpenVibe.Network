@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 /**
  * The follow graph (roadmap WS-E task 4, ADR-030; Contracts 0.65.0 network.follow.created / .deleted,
  * network.follow-status-result@1, network.follow-list-result@1, network.follows.read).
@@ -246,7 +247,7 @@ async function viewerOf(req) {
 
 function routers({ requireAuth, followsGuard }) {
     const send = async (req, res, fn) => {
-        res.set('Cache-Control', 'private, no-store');
+        res.set('Cache-Control', cache.htmlHeaders({ private: true }));
         try { return await fn(req.app.locals.db); } catch (err) {
             if (err instanceof FollowError) return http.sendProblem(res, err.status, err.code, { detail: err.message, ctx: req.ov });
             console.error('[Follows]', err.message);
@@ -296,7 +297,7 @@ function routers({ requireAuth, followsGuard }) {
             const t = await targetOrFail(db, req.params.type, req.params.target);
             const viewer = await viewerOf(req);
             const body = await status(db, req.params.type, t.subject_id, viewer && !viewer.is_anon ? viewer.subject_id : null);
-            res.set('Cache-Control', viewer ? 'private, no-store' : 'public, max-age=30').set('Vary', 'Authorization, Cookie').json(body);
+            res.set('Cache-Control', viewer ? cache.htmlHeaders({ private: true }) : 'public, max-age=30').set('Vary', 'Authorization, Cookie').json(body);
         } catch (err) {
             if (err instanceof FollowError) return http.sendProblem(res, err.status, err.code, { detail: err.message, ctx: req.ov });
             throw err;

@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 /**
  * The network's moderation audit log (ADR-022): every staff action any service reports as an event,
  * in one place staff can read. Enforcement stays with each owner; this only records.
@@ -118,7 +119,7 @@ function createModerationAudit(db) {
         const r = express.Router();
         r.get('/', async (req, res) => {
             if (!req.user || !staff.can(staffClaims(req.user), 'staff.moderation.logs')) return res.status(403).json({ error: 'forbidden', detail: 'staff.moderation.logs required' });
-            res.set('Cache-Control', 'private, no-store');
+            res.set('Cache-Control', cache.htmlHeaders({ private: true }));
             const filters = { service: req.query.service, action: req.query.action, actor: req.query.actor, target: req.query.target, since: req.query.since, until: req.query.until };
             if (req.query.format === 'csv') {
                 const { items } = await list({ ...filters, limit: CSV_MAX, max: CSV_MAX });

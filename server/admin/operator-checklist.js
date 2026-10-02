@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 /**
  * Operator parity checklist (roadmap WS-D task 5): every operator job the old single-site admin did,
  * and where it is done now. Each item names its places, one of:
@@ -70,7 +71,7 @@ function router({ statusRows = () => [] } = {}) {
     r.get('/', (req, res) => {
         let rows = [];
         try { rows = statusRows() || []; } catch { rows = []; }
-        res.set('Cache-Control', 'private, no-store').json({ areas: checklist(rows) });
+        res.set('Cache-Control', cache.htmlHeaders({ private: true })).json({ areas: checklist(rows) });
     });
     return r;
 }

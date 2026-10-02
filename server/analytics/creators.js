@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 /**
  * Creator analytics (roadmap WS-E task 6; Contracts 0.68.0 live.stream.ended `stats`,
  * network.creator-analytics-result@1, network.analytics.creator.read).
@@ -107,7 +108,7 @@ function router({ fullGuard }) {
         const u = SUBJECT_RE.test(key) ? await db.prepare('SELECT subject_id, is_anon FROM users WHERE subject_id = ?').get(key)
             : NAME_RE.test(key) ? await db.prepare('SELECT subject_id, is_anon FROM users WHERE lower(username) = lower(?)').get(key) : null;
         if (!u || u.is_anon || !SUBJECT_RE.test(String(u.subject_id || ''))) return http.sendProblem(res, 404, 'analytics.unknown_creator', { detail: 'no such creator', ctx: req.ov });
-        const answer = async (full) => res.set('Cache-Control', full ? 'private, no-store' : 'public, max-age=60').json(await query(db, u.subject_id, { days: req.query.days, full }));
+        const answer = async (full) => res.set('Cache-Control', full ? cache.htmlHeaders({ private: true }) : 'public, max-age=60').json(await query(db, u.subject_id, { days: req.query.days, full }));
         const viewer = await viewerOf(req);
         if (viewer) return await answer(viewer.subject_id === u.subject_id);
         const h = String(req.headers.authorization || '');

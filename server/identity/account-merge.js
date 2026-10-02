@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 /**
  * Account merge (roadmap WS-B task 5, ADR-029; Contracts 0.69.0 network.subject.merged@1,
  * network.account-merge-result@1, staff.identity.merge).
@@ -261,7 +262,7 @@ function routers({ requireAuth, staffClaims }) {
     me.get('/merges', requireAuth, async (req, res) => {
         const db = req.app.locals.db; await ensureSchema(db);
         const rows = await db.prepare('SELECT * FROM account_merges WHERE into_user_id = ? ORDER BY merged_at DESC LIMIT 50').all(req.user.id);
-        res.set('Cache-Control', 'private, no-store').json({ merges: rows.map((r) => resultOf(r, false)) });
+        res.set('Cache-Control', cache.htmlHeaders({ private: true })).json({ merges: rows.map((r) => resultOf(r, false)) });
     });
 
     const admin = express.Router();
@@ -282,7 +283,7 @@ function routers({ requireAuth, staffClaims }) {
         const db = req.app.locals.db; await ensureSchema(db);
         if (!staff.can(staffClaims(req.user), 'staff.identity.merge')) return res.status(403).json({ error: 'forbidden', detail: 'staff.identity.merge required' });
         const rows = await db.prepare('SELECT id, from_subject, into_subject, initiated_by, actor_subject, reason, moved, merged_at, split_until, reduced_at FROM account_merges ORDER BY merged_at DESC LIMIT 200').all();
-        res.set('Cache-Control', 'private, no-store').json({ merges: rows });
+        res.set('Cache-Control', cache.htmlHeaders({ private: true })).json({ merges: rows });
     });
     return { me, admin };
 }

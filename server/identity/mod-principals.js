@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 /**
  * Mod principals (roadmap WS-M task 3, ADR-013; Contracts 0.72.0 mods.grant.manage, network.mod-principal@1,
  * network.mod.grants_changed@1).
@@ -169,7 +170,7 @@ function routers({ guard, requireAuth, staffClaims }) {
     const audit = async (req, action, detail) => await req.app.locals.db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, action, JSON.stringify(detail));
     admin.get('/', requireAuth, staffOnly, async (req, res) => {
         const db = req.app.locals.db; ensureSchema(db);
-        res.set('Cache-Control', 'private, no-store').json({ mods: (await Promise.all((await db.prepare('SELECT mod_id FROM mod_principals ORDER BY updated_at DESC LIMIT 500').all()).map(async (r) => await view(db, r.mod_id)))) });
+        res.set('Cache-Control', cache.htmlHeaders({ private: true })).json({ mods: (await Promise.all((await db.prepare('SELECT mod_id FROM mod_principals ORDER BY updated_at DESC LIMIT 500').all()).map(async (r) => await view(db, r.mod_id)))) });
     });
     admin.post('/:id/grants', requireAuth, staffOnly, async (req, res) => {
         const reason = reasoned(req, res); if (!reason) return;
