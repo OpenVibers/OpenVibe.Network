@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 // The openvibe.network home page: the static shell (public/index.html) with the network and the
 // tool catalog rendered into it on the server, so the page is complete without JavaScript and
 // always matches what openvibe.tools actually offers (catalog via server/domains/catalog.js).
@@ -149,24 +150,24 @@ ${SOON.length ? `<section class="home-sec" aria-labelledby="h-soon"><h2 id="h-so
 <div><b>Sign in with OpenVibe</b><p>OAuth 2.0 and FedCM for sites on the network. Source on <a href="https://github.com/OpenVibers" rel="noopener">GitHub</a>.</p></div></div></section>`;
 }
 
-let cache = { key: '', html: '', etag: '' };
+let pageCache = { key: '', html: '', etag: '' };
 function render() {
     const { catalog } = toolsCatalog.peek();
     const act = activity.peek();
     const stat = fs.statSync(SHELL);
     const key = `${stat.mtimeMs}:${catalog.updated}:${catalog.tools.length}:${act.version}`;
-    if (cache.key === key) return cache;
+    if (pageCache.key === key) return pageCache;
     const ld = seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what }))));
     const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog)).replace('<!--OV:CONSTELLATION-->', constellation()).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', `${ld}\n</head>`);
-    cache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
-    return cache;
+    pageCache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
+    return pageCache;
 }
 
 function sendHome(req, res) {
     toolsCatalog.getCatalog().catch(() => {});     // refresh in the background; this response uses what is known now
     const page = render();
     res.set('Content-Type', 'text/html; charset=utf-8');
-    res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=3600');
+    res.set('Cache-Control', cache.htmlHeaders({ maxAge: 120 }));
     res.set('ETag', page.etag);
     if (req.headers['if-none-match'] === page.etag) return res.status(304).end();
     res.send(page.html);

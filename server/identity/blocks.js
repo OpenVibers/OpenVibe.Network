@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 /**
  * Platform blocks (roadmap WS-E task 5; Contracts 0.49.0 network.block.changed, network.blocks.read).
  *
@@ -136,7 +137,7 @@ function userRouter(requireAuth) {
     const router = express.Router();
     router.use(http.middleware());
     const send = async (req, res, fn) => {
-        res.set('Cache-Control', 'private, no-store');
+        res.set('Cache-Control', cache.htmlHeaders({ private: true }));
         try { return await fn(req.app.locals.db); } catch (err) {
             if (err instanceof BlockError) return http.sendProblem(res, err.status, err.code, { detail: err.message, ctx: req.ov });
             console.error('[Blocks]', err.message);

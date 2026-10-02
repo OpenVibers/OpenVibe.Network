@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 /**
  * What shipped, network-wide (roadmap WS-A):
  *
@@ -19,7 +20,7 @@ const CURSOR_RE = /^[A-Za-z0-9_-]{1,120}$/;
 
 function createUpdatesRoutes({ blogUrl = 'http://127.0.0.1:4810', fetchImpl = globalThis.fetch, now = () => Date.now(), log = console } = {}) {
     const base = String(blogUrl).replace(/\/+$/, '');
-    const cache = new Map();   // key -> { at, body }
+    const feedCache = new Map();   // key -> { at, body }
 
     function queryOf(q) {
         const out = new URLSearchParams();
@@ -32,14 +33,14 @@ function createUpdatesRoutes({ blogUrl = 'http://127.0.0.1:4810', fetchImpl = gl
 
     /** The feed for a normalised query string: fresh from cache, else Blog, else stale, else null. */
     async function feed(qs) {
-        const hit = cache.get(qs);
+        const hit = feedCache.get(qs);
         if (hit && now() - hit.at < TTL_MS) return hit.body;
         try {
             const res = await fetchImpl(`${base}/api/v1/changelog?${qs}`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
             if (!res.ok) throw new Error(`blog answered ${res.status}`);
             const body = await res.json();
-            if (cache.size >= MAX_KEYS) cache.delete(cache.keys().next().value);
-            cache.set(qs, { at: now(), body });
+            if (feedCache.size >= MAX_KEYS) feedCache.delete(feedCache.keys().next().value);
+            feedCache.set(qs, { at: now(), body });
             return body;
         } catch (err) {
             if (log && log.warn) log.warn(`[updates] changelog unavailable: ${err.message}`);
@@ -60,7 +61,7 @@ function createUpdatesRoutes({ blogUrl = 'http://127.0.0.1:4810', fetchImpl = gl
         const asked = String(req.query.site || '').toLowerCase().trim();
         const site = serviceFor(asked);
         const body = await feed(queryOf({ service: site, limit: 50 }));
-        res.set('Content-Type', 'text/html; charset=utf-8').set('Cache-Control', 'public, max-age=60');
+        res.set('Content-Type', 'text/html; charset=utf-8').set('Cache-Control', cache.htmlHeaders({ maxAge: 60 }));
         // The unfiltered log is the page; a per-site view is a filter of it (followed, not indexed).
         if (asked) res.set('X-Robots-Tag', 'noindex, follow');
         res.send(renderPage({ site, filtered: Boolean(asked), body }));

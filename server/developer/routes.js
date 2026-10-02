@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 /**
  * /api/v1/projects — developer projects for signed-in people (roadmap Wave 20 foundation, ADR-014).
  * The API Codes (the developer portal) calls with the user's Network access token.
@@ -53,7 +54,7 @@ function router() {
     const r = express.Router();
     r.use(http.middleware());
     r.use(express.json({ limit: '64kb' }));
-    r.use((req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
+    r.use((req, res, next) => { res.set('Cache-Control', cache.htmlHeaders({ private: true })); next(); });
 
     // Bearer user tokens only. An expired token is refused here even inside the session grace period:
     // this API hands out secrets, so it does not slide sessions.

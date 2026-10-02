@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 /**
  * Versioned user modules (roadmap Wave 1 item 13, sections 4.3-4.5).
  *
@@ -286,7 +287,7 @@ const revisionHeader = (req) => {
     const n = Number(String(h).replace(/^W\//, '').replace(/"/g, ''));
     return Number.isInteger(n) && n >= 0 ? n : NaN;
 };
-const withEtag = (res, record) => res.set('ETag', `"${record.revision}"`).set('Cache-Control', 'private, no-store');
+const withEtag = (res, record) => res.set('ETag', `"${record.revision}"`).set('Cache-Control', cache.htmlHeaders({ private: true }));
 
 /** User + public routes, mounted at /api/modules. */
 function userRouter(requireAuth) {
@@ -305,7 +306,7 @@ function userRouter(requireAuth) {
         const db = req.app.locals.db;
         const sid = await subjects.ensureUserSubject(db, req.user);
         const rows = await db.prepare('SELECT * FROM user_modules WHERE subject_id = ? ORDER BY namespace').all(sid);
-        res.set('Cache-Control', 'private, no-store').json({ subject: subjectRef(sid), modules: rows.map(toRecord),
+        res.set('Cache-Control', cache.htmlHeaders({ private: true })).json({ subject: subjectRef(sid), modules: rows.map(toRecord),
             namespaces: modules.namespaces.map(n => ({ namespace: n.namespace, owner: ownerOf(n.namespace), userWritable: n.writers.includes('user') && !ownerRetired(n.namespace), description: n.description })) });
     });
 
@@ -372,7 +373,7 @@ function serviceRoutes(router, principals) {
         if (Number.isNaN(rev)) return problem(res, { status: 400, code: 'modules.bad_revision' }, req);
         const out = await remove(db, sid, req.params.ns, { writer: { type: 'service', id: serviceOf(req) }, expectedRevision: rev, ctx: req.ov });
         if (out.status !== 204) return problem(res, out, req);
-        res.set('Cache-Control', 'private, no-store').status(204).end();
+        res.set('Cache-Control', cache.htmlHeaders({ private: true })).status(204).end();
     });
 }
 

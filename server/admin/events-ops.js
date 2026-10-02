@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 /**
  * The Events delivery operator view (roadmap WS-F task 3): Network's admin reads OpenVibe.Events'
  * dead-letter queue and replays deliveries through Events' own operator API, with a self-signed
@@ -55,7 +56,7 @@ function createEventsOps({ db, eventsUrl, privateKey, issuer, fetchImpl = global
         q.set('limit', String(Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500)));
         try {
             const out = await call('GET', `/api/v1/deliveries?${q}`);
-            res.set('Cache-Control', 'private, no-store');
+            res.set('Cache-Control', cache.htmlHeaders({ private: true }));
             res.status(out.status === 200 ? 200 : 502).json(out.status === 200 ? { ok: true, ...out.data } : { ok: false, error: `Events answered ${out.status}`, detail: out.data && (out.data.detail || out.data.title) });
         } catch (err) {
             res.status(502).json({ ok: false, error: `Events did not answer: ${err.message}` });

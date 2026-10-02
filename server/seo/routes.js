@@ -1,5 +1,6 @@
 'use strict';
 // Crawl files for the public front door, mounted before express.static.
+const cache = require('openvibe-shared/cache-policy');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -34,10 +35,10 @@ function createSeoRoutes({ release = null } = {}) {
     const robots = robotsTxt();
     const sitemap = sitemapXml({ release });
     r.get('/robots.txt', (_req, res) => {
-        res.set('Content-Type', 'text/plain; charset=utf-8').set('Cache-Control', 'public, max-age=3600').send(robots);
+        res.set('Content-Type', 'text/plain; charset=utf-8').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(robots);
     });
     r.get('/sitemap.xml', (_req, res) => {
-        res.set('Content-Type', 'application/xml; charset=utf-8').set('Cache-Control', 'public, max-age=3600').send(sitemap);
+        res.set('Content-Type', 'application/xml; charset=utf-8').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(sitemap);
     });
     return r;
 }

@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 /**
  * Audited service grants (roadmap WS-D task 3; Contracts 0.48.0 network.principal_grant.changed; a
  * developer app's grant is network.grant.changed, from server/developer/store.js).
@@ -168,8 +169,8 @@ function router(db) {
         }
     };
     const actorOf = (req) => (/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(String(req.user.subject_id || '')) ? req.user.subject_id : null);
-    r.get('/', async (req, res) => { res.set('Cache-Control', 'private, no-store'); await send(res, async () => ({ grants: await list(db, { client: req.query.client }) })); });
-    r.get('/changes', async (req, res) => { res.set('Cache-Control', 'private, no-store'); await send(res, async () => ({ changes: await changes(db, { client: req.query.client, limit: req.query.limit }) })); });
+    r.get('/', async (req, res) => { res.set('Cache-Control', cache.htmlHeaders({ private: true })); await send(res, async () => ({ grants: await list(db, { client: req.query.client }) })); });
+    r.get('/changes', async (req, res) => { res.set('Cache-Control', cache.htmlHeaders({ private: true })); await send(res, async () => ({ changes: await changes(db, { client: req.query.client, limit: req.query.limit }) })); });
     r.post('/', async (req, res) => await send(res, async () => { const out = await grant(db, req.body || {}, actorOf(req)); kick(db); return { grant: out }; }));
     r.post('/revoke', async (req, res) => await send(res, async () => { const out = await revoke(db, req.body || {}, actorOf(req)); kick(db); return { grant: out }; }));
     return r;

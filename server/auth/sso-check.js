@@ -1,4 +1,5 @@
 'use strict';
+const cache = require('openvibe-shared/cache-policy');
 // ═══════════════════════════════════════════════════════════════
 // GET /sso/check?origin=https://openvibe.tools — the silent, invisible session check.
 //
@@ -46,7 +47,7 @@ function createSsoCheckRoute(getCtx) {
         } catch { /* not signed in */ }
         res.removeHeader('X-Frame-Options');
         res.setHeader('Content-Security-Policy', `frame-ancestors ${origin}; default-src 'none'; script-src 'unsafe-inline'`);
-        res.setHeader('Cache-Control', 'no-store, private');
+        res.setHeader('Cache-Control', cache.htmlHeaders({ private: true }));
         res.setHeader('Vary', 'Cookie');
         res.setHeader('X-Robots-Tag', 'noindex');
         res.type('html').send(renderCheck(origin, { signedIn, username }));

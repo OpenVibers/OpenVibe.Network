@@ -1,5 +1,7 @@
 'use strict';
 
+const cache = require('openvibe-shared/cache-policy');
+
 // ═══════════════════════════════════════════════════════════════
 // openvibe.network — Main Server Entry Point
 // Pure identity/account service for the OpenVibe network:
@@ -764,7 +766,7 @@ app.get(['/', '/index.html'], (req, res) => {
     if (req.path === '/index.html') return redirectWithoutHtml(req, res, '/');
     return require('./home/render').sendHome(req, res);
 });
-app.get('/llms.txt', (_req, res) => res.type('text/plain').set('Cache-Control', 'public, max-age=3600').send(require('./home/render').llmsTxt()));
+app.get('/llms.txt', (_req, res) => res.type('text/plain').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(require('./home/render').llmsTxt()));
 // The crawl files the front door owes crawlers, built from openvibe-shared/seo (plan T11 lane D), ahead
 // of express.static below so they answer the generated copy rather than public/.
 app.use(require('./seo/routes').createSeoRoutes({ release }));
@@ -833,7 +835,7 @@ function serveShared(req, res, next) {
     // Override helmet's same-origin policies so other domains can load these scripts
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
-    res.setHeader('Cache-Control', req.query.v === sharedRev.get(name) ? 'public, max-age=31536000, immutable' : 'public, max-age=300, stale-while-revalidate=60');
+    res.setHeader('Cache-Control', cache.assetHeaders(name, { hashed: req.query.v === sharedRev.get(name) }));
     res.sendFile(sharedFiles.path(name));
 }
 app.use('/shared/v1', serveShared);
