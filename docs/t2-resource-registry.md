@@ -275,6 +275,7 @@ filter path — PGlite and a real PostgreSQL must agree on it — and `npm test`
    validation (`validate(KIND_CONTRACT[kind], offer)` when the map has an entry, else the base offer contract), and a
    test per new kind. Nothing waits on this slice; it is only startable once T1 publishes the tags, and
    `scripts/contracts-drift.js` is what flags the pin in the meantime.
+   **Re-planned** in `docs/t2-cells-and-node-principal.md` §6 (per-kind offer as `detail`, slice N6); it supersedes this item.
 
 ## 8. Unresolved
 
