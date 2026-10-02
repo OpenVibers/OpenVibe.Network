@@ -270,17 +270,17 @@ their per-category email choice.
 | `trade.alert.triggered` | Trade (`source: trade`) | `subject.id` (`subject.type: user`) | `TRADE_ALERT`, `service`, high |
 | `live.stream.started` | Live (`source: live`) | every follower of `payload.channel.subject`, plus everyone with `stream_live_all` on | `STREAM_LIVE`, `stream`, high; the Discord live alert after commit |
 
-**Go-lives.** Live owns the follow graph, so Network reads it when the event arrives:
-`GET <OV_LIVE_INTERNAL_URL>/internal/followers?stream_id=<id>&limit=5000[&after=<cursor>]` with a
-self-signed service token (`sub svc:network`, `aud openvibe.live`, `cap live.follower.read`), answered
-with `{ channel: { subject }, followers: [{ subject, network_user_id }], next }`
-(`server/notifications/live-followers.js`). Followers resolve by `usr_` subject first, then by Network
-user id; the streamer never hears about themself; the `stream` category's mute and email choice apply.
-If Live cannot answer, the delivery gets 503 and nothing is recorded, so Events retries. A start more
+**Go-lives.** The followers are Network's own follow graph (see "Follow graph"): the active
+`user_follows` rows for `('channel', payload.channel.subject)`, read in the same transaction as the
+notifications. Live is never asked. A channel whose subject has no Network account is `ignored:channel`;
+a follower whose subject has no account is counted as `unresolved`; the streamer never hears about
+themself; the `stream` category's mute and email choice apply. A start more
 than 30 minutes old (a replay, or Events catching up) announces nothing. The per-streamer window (one
 announcement an hour, eight a day; `stream_live_cooldown_min`, `stream_live_daily_cap`) is shared with
 Live's direct `POST /internal/events/stream-live` (`server/notifications/stream-live.js`), so while Live
 still makes that call, whichever arrives first announces and the other is skipped.
+Until `NETWORK_GO_LIVE_FOLLOWS_READY=1` is set on Network, Events go-lives are acknowledged as
+`ignored:follows_cutover_pending` and Live's direct POST remains the delivery path.
 
 **Project usage.** `tools.usage.recorded` and `events.usage.recorded` (hourly rollups of a developer
 project's use, `common.usage-recorded@1`) are kept per project and day (`server/developer/usage.js`,
@@ -304,8 +304,7 @@ The route is inert until the operator does both of these:
 2. Create the subscriptions in Events (consumer `network`, which Events takes from the token's
    `svc:network`; endpoint `http://127.0.0.1:4000/internal/events`; topic patterns
    `deals.watch.matched`, `trade.alert.triggered` and `live.stream.started`; secret = the first
-   `NETWORK_EVENTS_SECRET`). Subscribe `live.stream.started` only once Live serves
-   `GET /internal/followers`; on a host that already has the other two, add it alone with
+   `NETWORK_EVENTS_SECRET`). On a host that already has the other two, add `live.stream.started` alone with
    `--topic live.stream.started` (and the project usage rollups with
    `--topic tools.usage.recorded --topic events.usage.recorded`):
 
@@ -488,8 +487,27 @@ A target is a Live channel today (`channel`, named by its owner's subject), and 
 - **Products writing for a person** (ADR-030 step 4): `PUT|DELETE /internal/follows/:type/:target` needs
   `network.follows.write`, a service token and `network.follow-write-request@1`. It is granted to Live, whose
   buttons use it.
-- **Go-live source:** with `FOLLOWS_AUTHORITY=network`, go-live notifications read the followers here
-  instead of asking Live. Unset it to roll back.
+- **Go-live source:** go-live notifications read the followers here, and only here (plan T2); there is no
+  switch back to Live.
+- **Backfill from Live:** follows made on Live while Live's own `FOLLOWS_AUTHORITY` was unset never reached
+  Network. `npm run follows-import -- --live-db /opt/openvibe.live/data/live.db` reads Live's `follows` and
+  `linked_accounts` read-only and prints what it would import (dry run); add `--apply` to import in one
+  transaction (no events, no notifications). A pair whose side has no subject is held in
+  `follow_import_holds`; a pair Network already has, followed or unfollowed, is left alone. Safe to re-run;
+  a later run imports newly mapped pairs and clears their holds. Both scripts use `DATABASE_URL` and never
+  migrate or seed.
+- **Cutover order:** Keep Live's direct `POST /internal/events/stream-live` enabled and leave
+  `NETWORK_GO_LIVE_FOLLOWS_READY` unset. Pause Live follow writes, then run
+  `npm run follows-import -- --live-db /opt/openvibe.live/data/live.db --reconcile` to preview the
+  final Live snapshot and rerun with `--reconcile --apply`. Reconciliation deactivates Live-sourced
+  active Network pairs missing from the snapshot, without emitting follow events or notifications;
+  it preserves Network-sourced pairs and earlier Network unfollows. Check `npm run follows-preflight`
+  and resolve holds before proceeding. Set Live's `FOLLOWS_AUTHORITY=network` and restart Live while
+  writes are paused; verify a follow and unfollow reach Network, then resume Live writes. Only then
+  set `NETWORK_GO_LIVE_FOLLOWS_READY=1` in Network's environment and restart Network. Keep Live's
+  direct call enabled until Network's `live.stream.started` outcome logs show delivery.
+- **Preflight:** `npm run follows-preflight` prints, read-only and counts only, the active follows (with
+  their channels and followers), the unfollowed rows and the unresolved `follow_import_holds` by reason.
 
 ## Multi-Account Switching
 

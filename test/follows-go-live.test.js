@@ -1,8 +1,8 @@
 'use strict';
-// ADR-030 step 4: products write follows through /internal/follows (network.follows.write, service token only),
-// and with FOLLOWS_AUTHORITY=network the go-live notifications take the followers from Network's own graph
-// (no call to Live).
-//   node test/follows-authority.test.js
+// ADR-030 step 4, plan T2 "Follows": products write follows through /internal/follows (network.follows.write,
+// service token only), and go-live notifications take the followers from Network's own graph only (no call to
+// Live, whatever the environment says); a channel with no Network account announces nothing.
+//   node test/follows-go-live.test.js
 const assert = require('assert');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -35,7 +35,7 @@ const follows = require('../server/identity/follows');
 const principals = require('../server/identity/principals');
 const SECRET = 's'.repeat(40);
 const notifications = new NotificationService(db);
-const consumer = await createEventsConsumer({ db, notifications, secrets: SECRET, followsAuthority: 'network', log: { log() {}, warn() {}, error() {} } });
+const consumer = await createEventsConsumer({ db, notifications, secrets: SECRET, goLiveFollowersReady: true, log: { log() {}, warn() {}, error() {} } });
 const app = express();
 Object.assign(app.locals, { db, config, privateKey: keys.privateKey, publicKey: keys.publicKey });
 app.use(express.urlencoded({ extended: true }));
@@ -48,6 +48,10 @@ const server = http.createServer(app);
 (async () => {
     await new Promise((r) => server.listen(0, '127.0.0.1', r));
     const base = `http://127.0.0.1:${server.address().port}`;
+    // Every request this process makes, to prove nothing but this test's own server is called.
+    const fetched = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (url, ...rest) => { fetched.push(String(url)); return realFetch(url, ...rest); };
     const svc = async (client) => (await (await fetch(`${base}/oauth/token`, { method: 'POST', body: new URLSearchParams({ grant_type: 'client_credentials', client_id: client, client_secret: `${client}-secret`, audience: 'openvibe.network' }) })).json()).access_token;
     const call = (method, p, { body, token } = {}) => fetch(base + p, { method, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined })
         .then(async (r) => ({ status: r.status, body: await r.json().catch(() => null) }));
@@ -69,7 +73,8 @@ const server = http.createServer(app);
         const evs = (await db.prepare('SELECT envelope FROM network_event_outbox ORDER BY id').all()).map((x) => x.envelope).filter((e) => e.event_type.startsWith('network.follow.'));
         assert.deepStrictEqual(evs.map((e) => e.event_type), ['network.follow.created', 'network.follow.created', 'network.follow.deleted', 'network.follow.created']);
 
-        // ── Go-live with FOLLOWS_AUTHORITY=network: Network's followers, no Live call ──
+        // ── Go-live: Network's followers, no Live call (even with Live's old switch set) ──
+        process.env.FOLLOWS_AUTHORITY = 'live';
         const started = {
             event_id: ids.newId('event'), event_type: 'live.stream.started', version: 1, source: 'live',
             actor: { type: 'user', id: CAROL }, subject: { type: 'stream', id: '801', revision: 1 }, visibility: 'public', priority: 'important',
@@ -83,10 +88,20 @@ const server = http.createServer(app);
         assert.strictEqual(body.outcome, 'notified', JSON.stringify(body));
         const told = (await db.prepare("SELECT user_id FROM notifications WHERE type = 'STREAM_LIVE' AND sender_id = 20 ORDER BY user_id").all()).map((x) => x.user_id);
         assert.deepStrictEqual(told, [21, 22], 'both followers, from Network\'s graph');
+        assert.deepStrictEqual(body.detail, { followers: 2, unresolved: 0, targets: 2, notified: 2 });
+
+        // A channel whose subject Network does not know: ignored, nobody told.
+        const ghost = { ...started, event_id: ids.newId('event'), payload: { ...started.payload, stream_id: 802, channel: { ...started.payload.channel, username: 'ghost', subject: { type: 'user', id: ids.newId('user') } } } };
+        const raw2 = JSON.stringify({ event: ghost, seq: 2 });
+        const res2 = await fetch(`${base}/internal/events`, { method: 'POST', headers: { 'content-type': 'application/json', ...signDeliveryHeaders(raw2, SECRET) }, body: raw2 });
+        assert.deepStrictEqual([res2.status, (await res2.json()).outcome], [200, 'ignored:channel']);
+        assert.strictEqual((await db.prepare("SELECT COUNT(*) AS c FROM notifications WHERE type = 'STREAM_LIVE'").get()).c, 2);
+        assert.ok(fetched.length && fetched.every((u) => u.startsWith(base)), `only this test's server was called: ${fetched.filter((u) => !u.startsWith(base))}`);
+        globalThis.fetch = realFetch;
     } finally {
         server.close();
         fs.rmSync(dir, { recursive: true, force: true });
     }
-    console.log('follows authority: all checks passed');
+    console.log('follows go-live: all checks passed');
 })().catch((e) => { console.error(e); process.exit(1); });
 })().catch(err => { console.error(err); process.exit(1); });

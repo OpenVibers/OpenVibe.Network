@@ -24,7 +24,6 @@ const { signDeliveryHeaders } = require('openvibe-sdk/events');
 const { getDb } = require('../server/db/database');
 const { NotificationService, NOTIFICATION_EVENT } = require('../server/notifications/notification-service');
 const { createEventsConsumer } = require('../server/notifications/events-consumer');
-const { createLiveFollowers } = require('../server/notifications/live-followers');
 const eventRelay = require('../server/developer/event-relay');
 const ticketMod = require('../server/auth/realtime-ticket');
 const session = require('../server/auth/session');
@@ -175,17 +174,8 @@ const checkEnvelope = (env, subject) => {
     srv.close();
 
     // ── 3. A restart during a go-live ───────────────────────────────────────────────────────
-    // Live's GET /internal/followers: stream 701 is Carol's; Dave and Erin follow her.
-    const liveCalls = [];
-    const live = http.createServer((req, res) => {
-        const u = new URL(req.url, 'http://x');
-        liveCalls.push(u.pathname);
-        const v = serviceAuth.verifyServiceToken(String(req.headers.authorization || '').slice(7), { publicKey, issuer: ISSUER, audience: 'openvibe.live' });
-        res.setHeader('content-type', 'application/json');
-        if (!v.ok) { res.statusCode = 401; return res.end('{}'); }
-        res.end(JSON.stringify({ stream_id: 701, channel: { subject: CAROL }, followers: [{ subject: DAVE, network_user_id: 21 }, { subject: ERIN, network_user_id: 22 }], next: null }));
-    });
-    await new Promise((r2) => live.listen(0, '127.0.0.1', r2));
+    // Network's follow graph: Dave and Erin follow Carol.
+    for (const f of [DAVE, ERIN]) await db.prepare("INSERT INTO user_follows (follower_subject, target_type, target_id) VALUES (?, 'channel', ?)").run(f, CAROL);
     const SECRET = 's'.repeat(40);
     const logged = []; const discord = [];
     async function boot() {
@@ -193,8 +183,7 @@ const checkEnvelope = (env, subject) => {
         const d = getDb();
         const n = new NotificationService(d);
         const c = await createEventsConsumer({
-            db: d, notifications: n, secrets: SECRET,
-            liveFollowers: createLiveFollowers({ privateKey, issuer: ISSUER, liveUrl: `http://127.0.0.1:${live.address().port}` }),
+            db: d, notifications: n, secrets: SECRET, goLiveFollowersReady: true,
             discord: () => ({ sendLiveAlert: async (s) => { discord.push(s.username); return { sent: true }; } }),
             log: { log: (m) => logged.push(m), warn() {}, error() {} },
         });
@@ -250,17 +239,14 @@ const checkEnvelope = (env, subject) => {
     // Restarted again after the commit but before Events saw the 200: the redelivery is a duplicate.
     await stop(proc);
     proc = await boot();
-    liveCalls.length = 0;
     r3 = await deliver(proc, started);
     assert.deepStrictEqual([r3.status, r3.body.duplicate, r3.body.outcome], [200, true, null]);
     assert.deepStrictEqual(await goLives(proc.db), [[21, 1], [22, 1]], 'nobody is told twice');
     assert.strictEqual(await goLiveEvents(proc.db), 2);
-    assert.strictEqual(liveCalls.length, 0, 'Live is not asked again');
     await new Promise((r2) => setImmediate(r2));
     assert.deepStrictEqual(discord, ['carol']);
     await stop(proc);
 
-    live.close();
     fs.rmSync(dir, { recursive: true, force: true });
     console.log('notification events: all checks passed');
 })().catch((err) => { console.error(err); process.exit(1); });
