@@ -1,0 +1,20 @@
+{
+  "id": "storage-1",
+  "class": "warm",
+  "capacity_gb": 1000,
+  "price_per_gb_month_usd": 0.02,
+  "price_per_operation_usd": 1e-05,
+  "region": "us-west",
+  "node": "node-1",
+  "durability": {
+    "replicas": 3,
+    "target_nines": 9
+  },
+  "lifecycle_rules": [
+    {
+      "after_days": 90,
+      "action": "transition",
+      "target_class": "cold"
+    }
+  ]
+}

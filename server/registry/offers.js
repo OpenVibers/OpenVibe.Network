@@ -1,9 +1,9 @@
 'use strict';
 /**
- * The resource registry (plan T2, docs/t2-resource-registry.md; Contracts 0.83.0 platform.resource-offer@1): what the
- * network can place on — every node and provider offer, with capabilities, capacity, health and pricing. The owner
- * reports the complete set of its offers (POST /internal/resources/report, network.node.report until Contracts
- * publishes network.resource.report); an offer absent from a later report of the same source is marked down, never
+ * The resource registry (plan T2, docs/t2-resource-registry.md; Contracts platform.resource-offer@1): what the
+ * network can place on — resource offers with capabilities, capacity, health and pricing. The owner
+ * reports the complete set of its offers (POST /internal/resources/report, network.resource.report); an offer absent
+ * from a later report of the same source is marked down, never
  * deleted. This module stores; it does not plan, price or settle. Reads (slice 2): GET /api/v1/resources is public and
  * cacheable but leaves each offer's capacity out (the contract is first-party: it carries the capacity network.node@1
  * deliberately does not publish); GET /internal/resources, behind the report's guard, returns the docs whole.
@@ -42,8 +42,19 @@ function check(body) {
         return { error: `The body must be {source, offers}: source matching ${SOURCE}, at most ${MAX_OFFERS} offers` };
     }
     for (let i = 0; i < body.offers.length; i++) {
-        const v = validate(CONTRACT, body.offers[i]);
+        const offer = body.offers[i];
+        const v = validate(CONTRACT, offer);
         if (!v.valid) return { error: `offer ${i} does not match ${CONTRACT}`, details: (v.errors || []).slice(0, 5) };
+        const detail = offer.detail;
+        if (!detail) continue;
+        if (detail.id !== offer.offer_id) return { error: 'registry.detail_id_mismatch' };
+        if (detail.node != null && offer.node_id != null && detail.node !== offer.node_id) {
+            return { error: 'registry.detail_node_mismatch' };
+        }
+        if ((detail.region != null && detail.region !== offer.region)
+            || (detail.regions != null && !detail.regions.includes(offer.region))) {
+            return { error: 'registry.detail_region_mismatch' };
+        }
     }
     return null;
 }
@@ -108,8 +119,12 @@ async function get(db, id) {
     return row ? JSON.parse(row.doc) : null;
 }
 
-/** The public form of an offer: the contract doc verbatim without capacity (design section 4). */
-const publicDoc = ({ capacity, ...doc }) => doc;
+/** The public form of an offer: capacity and harness connection address are private. */
+function publicDoc({ capacity, ...doc }) {
+    if (doc.kind !== 'harness' || !doc.detail) return doc;
+    const { address, ...detail } = doc.detail;
+    return { ...doc, detail };
+}
 
 function routers({ guard }) {
     const listed = async (req, shape) => {

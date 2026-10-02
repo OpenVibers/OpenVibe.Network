@@ -1,0 +1,19 @@
+{
+  "id": "delivery-1",
+  "transports": [
+    "http",
+    "hls"
+  ],
+  "regions": [
+    "us-west"
+  ],
+  "edge": true,
+  "node": "node-1",
+  "price_per_gb_usd": 0.02,
+  "price_per_request_usd": 1e-05,
+  "cache_rules": {
+    "enabled": true,
+    "ttl_seconds": 300,
+    "max_object_mb": 100
+  }
+}
