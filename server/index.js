@@ -472,10 +472,11 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/api/v1/nodes', nodeRouters.pub);
     app.use('/internal/nodes', nodeRouters.internal);
 }
-// The resource registry (plan T2, docs/t2-resource-registry.md): node and provider offers. Slice 1 is the report;
-// network.node.report until Contracts publishes network.resource.report.
+// The resource registry (plan T2, docs/t2-resource-registry.md): node and provider offers. The public list leaves
+// capacity out; the report and the full internal read take network.node.report until Contracts publishes network.resource.report.
 {
     const offerRouters = require('./registry/offers').routers({ guard: require('./identity/principals').guard('network.node.report') });
+    app.use('/api/v1/resources', offerRouters.pub);
     app.use('/internal/resources', offerRouters.internal);
 }
 // Cells and node principals (plan T2, docs/t2-resource-registry.md section 9): the public cell list; a cell's nodes,

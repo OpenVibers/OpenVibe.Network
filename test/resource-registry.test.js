@@ -1,8 +1,9 @@
 'use strict';
-// The resource registry, slice 1 (plan T2, docs/t2-resource-registry.md; Contracts platform.resource-offer@1):
+// The resource registry, slices 1-2 (plan T2, docs/t2-resource-registry.md; Contracts platform.resource-offer@1):
 // POST /internal/resources/report takes Host's token only; the whole batch is validated before anything is written;
 // an offer missing from the same source's next report is marked down, not deleted; the filter columns always equal
-// the stored doc through the one mapping offers.columns().
+// the stored doc through the one mapping offers.columns(). GET /api/v1/resources filters in SQL, hides down offers by
+// default and never shows capacity; GET /internal/resources, behind the report's guard, returns the docs whole.
 //   node test/resource-registry.test.js
 const assert = require('assert');
 const crypto = require('crypto');
@@ -33,6 +34,7 @@ app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 app.use('/oauth', require('../server/auth/oauth-routes'));
 const r = offers.routers({ guard: principals.guard('network.node.report', { legacy: false }) });
+app.use('/api/v1/resources', r.pub);
 app.use('/internal/resources', r.internal);
 const server = http.createServer(app);
 
@@ -145,6 +147,93 @@ const assertLockstep = async () => {
         await post({ source: 'oregon', offers: [offer('o-2', { kind: 'provider', node_id: 'o-2' })] }, auth);
         assert.strictEqual((await rows()).find((o) => o.id === 'o-2').status, 'up');
         await assertLockstep();
+
+        // 5. Filters. A third source adds the trust classes, a second region, a free and a dear offer, degraded and draining.
+        x = await post({ source: 'lab', offers: [
+            offer('l-1', { trust: 'community' }),
+            offer('l-2', { kind: 'provider', node_id: undefined, adapter: 'nats-v1', trust: 'partner', region: 'us-east', cell: undefined, pricing: { model: 'free-allowance' }, health: { status: 'degraded', checked_at: '2026-10-01T12:00:00Z' } }),
+            offer('l-3', { trust: 'external', pricing: { model: 'per-request', marginal_usd_per_unit: 0.2, unit: 'request' }, health: { status: 'draining', checked_at: '2026-10-01T12:00:00Z' } }),
+        ] }, auth);
+        assert.strictEqual(x.status, 200, JSON.stringify(x.body));
+        const get = (url, headers) => fetch(`${base}${url}`, { headers }).then(async (y) => ({ status: y.status, headers: y.headers, body: y.status === 204 ? null : await y.json() }));
+        const ids = async (q, prefix = '/api/v1/resources', headers) => {
+            const y = await get(`${prefix}${q}`, headers);
+            assert.strictEqual(y.status, 200, `${prefix}${q}`);
+            assert.strictEqual(y.body.count, y.body.offers.length, `${q}: count`);
+            assert.ok(!Number.isNaN(Date.parse(y.body.generated_at)));
+            return y.body.offers.map((o) => o.offer_id);
+        };
+        for (const [q, want] of [
+            ['', ['f-1', 'l-1', 'l-2', 'l-3', 'o-2']],
+            ['?status=down', ['o-1', 'o-3']],
+            ['?status=draining', ['l-3']],
+            ['?kind=provider', ['l-2', 'o-2']],
+            ['?region=us-east', ['l-2']],
+            ['?trust=community', ['l-1']],
+            ['?max_price_usd=0.05', ['f-1', 'l-1', 'l-2', 'o-2']],
+            ['?max_price_usd=0', ['l-2']],
+            ['?cell=weur-1', ['f-1']],
+            ['?cell=wnam-1', ['l-1', 'l-2', 'l-3', 'o-2']],
+            ['?kind=node&cell=wnam-1&max_price_usd=0.05', ['l-1']],
+            ['?kind=storage', []],
+            ['?max_price_usd=cheap&colour=blue', ['f-1', 'l-1', 'l-2', 'l-3', 'o-2']],
+        ]) assert.deepStrictEqual(await ids(q), want, q || 'the default hides down offers');
+        x = await get('/api/v1/resources?kind=storage&max_price_usd=0.05&trust=partner&colour=blue');
+        assert.deepStrictEqual(x.body, { offers: [], generated_at: x.body.generated_at, filters: { kind: 'storage', trust: 'partner', max_price_usd: 0.05 }, count: 0 }, 'an unknown kind is an empty 200');
+        const stored = new Map((await rows()).map((o) => [o.id, JSON.parse(o.doc)]));
+        // The public list never carries capacity; every element is still a contract document, otherwise verbatim.
+        for (const q of ['', '?status=down', '?kind=provider']) {
+            for (const o of (await get(`/api/v1/resources${q}`)).body.offers) {
+                assert.ok(!('capacity' in o), `${o.offer_id}: no capacity in public`);
+                assert.ok(validate(offers.CONTRACT, o).valid, `${o.offer_id}: public doc matches the contract`);
+                assert.deepStrictEqual(o, offers.publicDoc(stored.get(o.offer_id)));
+            }
+        }
+        // The internal list: the report's guard, the same filters, the docs whole.
+        assert.strictEqual((await get('/internal/resources')).status, 403, 'nobody');
+        assert.ok([401, 403].includes((await get('/internal/resources', { 'x-internal-key': 'legacy-key' })).status), 'not the retired shared key');
+        assert.strictEqual((await get('/internal/resources', { authorization: `Bearer ${await token('live', 'live-secret')}` })).status, 403, 'Live lacks network.node.report');
+        x = await get('/internal/resources', auth);
+        assert.strictEqual(x.status, 200);
+        assert.strictEqual(x.headers.get('cache-control'), 'no-store');
+        assert.deepStrictEqual(x.body.offers, ['f-1', 'l-1', 'l-2', 'l-3', 'o-2'].map((id) => stored.get(id)), 'verbatim, capacity included');
+        assert.ok(x.body.offers.every((o) => o.capacity), 'every internal offer has its capacity');
+        assert.deepStrictEqual(await ids('?kind=provider&status=degraded', '/internal/resources', auth), ['l-2']);
+        assert.deepStrictEqual(await ids('?status=down', '/internal/resources', auth), ['o-1', 'o-3']);
+
+        // 6. Single read: internal whole, public minus capacity, both platform.resource-offer@1; a down offer is readable.
+        for (const id of ['l-1', 'o-1']) {
+            x = await get(`/internal/resources/${id}`, auth);
+            assert.strictEqual(x.status, 200);
+            assert.ok(validate(offers.CONTRACT, x.body).valid);
+            assert.deepStrictEqual(x.body, stored.get(id));
+            assert.ok(x.body.capacity);
+            x = await get(`/api/v1/resources/${id}`);
+            assert.strictEqual(x.status, 200);
+            assert.ok(validate(offers.CONTRACT, x.body).valid);
+            assert.deepStrictEqual(x.body, offers.publicDoc(stored.get(id)));
+            assert.ok(!('capacity' in x.body));
+        }
+        assert.strictEqual((await get('/internal/resources/l-1')).status, 403, 'the internal single read takes the guard too');
+        for (const [url, headers] of [['/api/v1/resources/nope'], ['/internal/resources/nope', auth]]) {
+            x = await get(url, headers);
+            assert.strictEqual(x.status, 404, url);
+            assert.strictEqual(x.headers.get('content-type'), 'application/problem+json', url);
+            assert.strictEqual(x.body.code, 'registry.unknown_offer', url);
+        }
+
+        // 7. Headers: list and single cacheable for a minute and open to any origin; the beacon 204 and never cached.
+        for (const url of ['/api/v1/resources', '/api/v1/resources?kind=provider', '/api/v1/resources/l-1']) {
+            x = await get(url);
+            assert.strictEqual(x.headers.get('cache-control'), 'public, max-age=60', url);
+            assert.strictEqual(x.headers.get('access-control-allow-origin'), '*', url);
+            assert.strictEqual(x.headers.get('timing-allow-origin'), '*', url);
+        }
+        x = await get('/api/v1/resources/l-1/beacon');
+        assert.strictEqual(x.status, 204);
+        assert.strictEqual(x.headers.get('cache-control'), 'no-store');
+        assert.strictEqual(x.headers.get('access-control-allow-origin'), '*');
+        assert.strictEqual(x.headers.get('timing-allow-origin'), '*');
         console.log('resource-registry: all tests passed');
     } finally {
         server.close();
