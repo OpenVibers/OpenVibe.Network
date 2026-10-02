@@ -78,6 +78,12 @@ function routers({ guard }) {
     internal.post('/report', guard, express.json({ limit: '256kb' }), async (req, res) => {
         const bad = check(req.body);
         if (bad) return res.status(400).json(bad);
+        // Where the offers say they run must agree with the cells and node principals Network holds (cells.js).
+        const misplaced = await require('./cells').checkPlacement(req.app.locals.db, req.body.offers.map((o) => {
+            const c = columns(o);
+            return { cell: c.cell, node_id: o.node_id, trust: c.trust };
+        }));
+        if (misplaced) return require('openvibe-contracts').http.sendProblem(res, misplaced.status, misplaced.code, { detail: misplaced.detail });
         const out = await report(req.app.locals.db, req.body);
         res.set('Cache-Control', 'no-store').set('X-Offers-Marked-Down', String(out.marked_down))
             .json({ source: req.body.source, ...out, generated_at: new Date().toISOString() });

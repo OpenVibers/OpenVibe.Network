@@ -11,13 +11,21 @@ const express = require('express');
 const ensured = new WeakSet();
 function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
-/** Apply a report: upsert every node; mark this source's other nodes down. → { nodes, marked_down } */
+/**
+ * Apply a report: upsert every node; mark this source's other nodes down; give a machine named for the first time its
+ * platform principal (server/registry/cells.js). A machine a project owns, or one that was revoked, refuses the whole
+ * report (RegistryError) before anything is written. → { nodes, marked_down, adopted }
+ */
 async function report(db, { source, nodes }, now = new Date().toISOString()) {
     ensureSchema(db);
+    const cells = require('./cells');
     const upsert = db.prepare(`INSERT INTO platform_nodes (id, source, doc, status, reported_at) VALUES (?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET source = excluded.source, doc = excluded.doc, status = excluded.status, reported_at = excluded.reported_at`);
     let marked = 0;
+    let adopted = 0;
     await db.tx(async () => {
+        await cells.checkPlatformNodes(db, nodes.map((n) => n.id));
+        adopted = await cells.adoptPlatformNodes(db, nodes, `report:${source}`, now);
         for (const n of nodes) await upsert.run(n.id, source, JSON.stringify(n), n.health.status, now);
         const ids = new Set(nodes.map((n) => n.id));
         for (const row of await db.prepare('SELECT id, doc FROM platform_nodes WHERE source = ? AND status <> ?').all(source, 'down')) {
@@ -29,7 +37,7 @@ async function report(db, { source, nodes }, now = new Date().toISOString()) {
             marked++;
         }
     });
-    return { nodes: nodes.length, marked_down: marked };
+    return { nodes: nodes.length, marked_down: marked, adopted };
 }
 
 async function list(db, { role = null, region = null } = {}) {
@@ -55,7 +63,11 @@ function routers({ guard }) {
         const { validate } = require('openvibe-contracts');
         const v = validate('network.node-report-request@1', req.body);
         if (!v.valid) return res.status(400).json({ error: 'The body does not match network.node-report-request@1', details: (v.errors || []).slice(0, 5) });
-        const out = await report(req.app.locals.db, req.body);
+        let out;
+        try { out = await report(req.app.locals.db, req.body); } catch (e) {
+            if (e instanceof require('./cells').RegistryError) return require('openvibe-contracts').http.sendProblem(res, e.status, e.code, { detail: e.message });
+            throw e;
+        }
         res.set('X-Nodes-Marked-Down', String(out.marked_down))
             .json({ nodes: await list(req.app.locals.db), generated_at: new Date().toISOString() });
     });

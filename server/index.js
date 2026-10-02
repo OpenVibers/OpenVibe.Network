@@ -478,6 +478,13 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     const offerRouters = require('./registry/offers').routers({ guard: require('./identity/principals').guard('network.node.report') });
     app.use('/internal/resources', offerRouters.internal);
 }
+// Cells and node principals (plan T2, docs/t2-resource-registry.md section 9): the public cell list; a cell's nodes,
+// instances and offers for services holding network.registry.read.
+{
+    const cellRouters = require('./registry/cells').routers({ readGuard: require('./identity/principals').guard('network.registry.read') });
+    app.use('/api/v1/cells', cellRouters.pub);
+    app.use('/internal/registry', cellRouters.internal);
+}
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read'), require('./identity/blocks').internalHandler(db));
 // The follow graph (WS-E task 4, ADR-030): public counts, a person's own follows, and who follows a target
 // (its owner, or network.follows.read, service token only). Every change is network.follow.* (server/identity/follows.js).

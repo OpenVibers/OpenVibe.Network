@@ -117,6 +117,9 @@ const assertLockstep = async () => {
         await assertLockstep();
 
         // 4. Mark-down: o-2 leaves oregon's report; frankfurt's offers are untouched; nothing is deleted.
+        // An offer names a cell Network knows (migrations/0008), so frankfurt's cell is registered first.
+        await db.prepare("INSERT INTO platform_regions (id, country) VALUES ('eu-central', 'DE')").run();
+        await db.prepare("INSERT INTO platform_cells (id, region, residency, status) VALUES ('weur-1', 'eu-central', 'DE', 'planned')").run();
         x = await post({ source: 'frankfurt', offers: [offer('f-1', { region: 'eu-central', cell: 'weur-1' })] }, auth);
         assert.strictEqual(x.headers.get('x-offers-marked-down'), '0', 'a new source marks nothing of another source down');
         const now = Date.now();
