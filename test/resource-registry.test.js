@@ -189,13 +189,13 @@ const assertLockstep = async () => {
             ['?max_price_usd=cheap&colour=blue', ['f-1', 'l-1', 'l-2', 'l-3', 'o-2']],
         ]) assert.deepStrictEqual(await ids(q), want, q || 'the default hides down offers');
         x = await get('/api/v1/resources?kind=storage&max_price_usd=0.05&trust=partner&colour=blue');
-        assert.deepStrictEqual(x.body, { offers: [], generated_at: x.body.generated_at, filters: { kind: 'storage', trust: 'partner', max_price_usd: 0.05 }, count: 0 }, 'an unknown kind is an empty 200');
+        assert.deepStrictEqual(x.body, { offers: [], generated_at: x.body.generated_at, filters: { kind: 'storage', trust: 'partner', max_price_usd: 0.05 }, count: 0 }, 'no storage has been reported yet');
         const stored = new Map((await rows()).map((o) => [o.id, JSON.parse(o.doc)]));
-        // The public list never carries capacity; every element is still a contract document, otherwise verbatim.
+        // The public list matches Network's redacted contract; stored docs remain canonical.
         for (const q of ['', '?status=down', '?kind=provider']) {
             for (const o of (await get(`/api/v1/resources${q}`)).body.offers) {
                 assert.ok(!('capacity' in o), `${o.offer_id}: no capacity in public`);
-                assert.ok(validate(offers.CONTRACT, o).valid, `${o.offer_id}: public doc matches the contract`);
+                assert.ok(offers.validatePublicDoc(o).valid, `${o.offer_id}: public doc matches ${offers.PUBLIC_CONTRACT}`);
                 assert.deepStrictEqual(o, offers.publicDoc(stored.get(o.offer_id)));
             }
         }
@@ -213,7 +213,7 @@ const assertLockstep = async () => {
         assert.deepStrictEqual(await ids('?kind=provider&status=degraded', '/internal/resources', auth), ['l-2']);
         assert.deepStrictEqual(await ids('?status=down', '/internal/resources', auth), ['o-1', 'o-3']);
 
-        // 6. Single read: internal whole, public minus capacity, both platform.resource-offer@1; a down offer is readable.
+        // 6. Single read: internal whole, public projection; a down offer is readable.
         for (const id of ['l-1', 'o-1']) {
             x = await get(`/internal/resources/${id}`, auth);
             assert.strictEqual(x.status, 200);
@@ -222,7 +222,7 @@ const assertLockstep = async () => {
             assert.ok(x.body.capacity);
             x = await get(`/api/v1/resources/${id}`);
             assert.strictEqual(x.status, 200);
-            assert.ok(validate(offers.CONTRACT, x.body).valid);
+            assert.ok(offers.validatePublicDoc(x.body).valid);
             assert.deepStrictEqual(x.body, offers.publicDoc(stored.get(id)));
             assert.ok(!('capacity' in x.body));
         }
@@ -302,12 +302,20 @@ const assertLockstep = async () => {
         const harnessInternal = await get(`/internal/resources/${harnessId}`, resourceOnly);
         assert.strictEqual(harnessPublic.status, 200);
         assert.strictEqual(harnessInternal.status, 200);
+        assert.ok(offers.validatePublicDoc(harnessPublic.body).valid, 'public single read matches the redacted contract');
+        assert.ok(validate(offers.CONTRACT, harnessInternal.body).valid, 'internal single read matches the canonical contract');
+        assert.ok(!validate(offers.CONTRACT, harnessPublic.body).valid, 'the canonical contract requires harness detail.address');
         assert.ok(!('address' in harnessPublic.body.detail), 'public single read omits the harness address');
         assert.deepStrictEqual(harnessInternal.body.detail.address, detailOf('harness').address, 'internal single read keeps the address');
         const publicHarnessList = await get('/api/v1/resources?kind=harness');
         const internalHarnessList = await get('/internal/resources?kind=harness', resourceOnly);
+        assert.ok(offers.validatePublicDoc(publicHarnessList.body.offers[0]).valid, 'public list matches the redacted contract');
+        assert.ok(validate(offers.CONTRACT, internalHarnessList.body.offers[0]).valid, 'internal list matches the canonical contract');
         assert.ok(!('address' in publicHarnessList.body.offers[0].detail), 'public list omits the harness address');
         assert.deepStrictEqual(internalHarnessList.body.offers[0].detail.address, detailOf('harness').address, 'internal list keeps the address');
+        assert.ok(!offers.validatePublicDoc({ ...harnessPublic.body, capacity: {} }).valid, 'public contract rejects capacity');
+        assert.ok(!offers.validatePublicDoc({ ...harnessPublic.body, detail: harnessInternal.body.detail }).valid, 'public contract rejects harness address');
+        assert.ok(!offers.validatePublicDoc({ ...harnessPublic.body, detail: { id: harnessId } }).valid, 'public contract checks required harness detail fields');
         console.log('resource-registry: all tests passed');
     } finally {
         server.close();

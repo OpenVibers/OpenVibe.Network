@@ -1,12 +1,12 @@
 # T2 — the resource registry (design)
 
-Status: **slice 1 built** (`migrations/0007_resource_registry.sql`, `server/registry/offers.js` write path,
-`test/resource-registry.test.js`); **cells and node principals built** (section 9, `migrations/0008`); slices 2-5 are design.
-Pinned versions at time of writing: `openvibe-contracts` **v0.83.0** (`package.json:30`), `openvibe-sdk` v0.25.2,
-`openvibe-shared` v2.3.1. Every claim below was checked against that pin.
+Status: **resource registry and N6 built** (`migrations/0007_resource_registry.sql`,
+`migrations/0009_resource_offer_kinds.sql`, `server/registry/offers.js`); **cells and node principals built**
+(section 9, `migrations/0008`). The original slice plan in §7 is historical.
+Current pin: `openvibe-contracts` **v0.85.0** (`package.json`); the v0.83.0 observations below describe the original design.
 
-Scope: one table and one module that store **what the network can sell or place on** — every compute node and every
-provider — reported by the components that own them, listed publicly so that `openvibe-sdk/placement` can plan against
+Scope: one table and one module that store **what the network can sell or place on** — node, provider, storage, delivery,
+runtime, agent and harness offers — reported by the components that own them, listed publicly so that `openvibe-sdk/placement` can plan against
 the network's real inventory. It follows the existing node registry (`server/registry/nodes.js`) exactly. It does not
 plan, does not price, does not settle, and does not create cells or service instances.
 
@@ -69,7 +69,7 @@ mapping is used in the SQL upsert (as bind values) and in test 8 — one definit
 | Column | Written from the validated `platform.resource-offer@1` doc | Why it is not a plain copy |
 |---|---|---|
 | `id` | `doc.offer_id` | required by the contract |
-| `kind` | `doc.kind` | required; enum `node\|provider` at v0.83.0 |
+| `kind` | `doc.kind` | required; enum `node\|provider\|storage\|delivery\|runtime\|agent\|harness` at v0.85.0 |
 | `region` | `doc.region` | required |
 | `trust` | `doc.trust` | required |
 | `cell` | `doc.cell ?? 'wnam-1'` | `cell` is **optional** — it is not in the contract's `required` list, so an offer may omit it. The stored `doc` stays **verbatim** (no `cell` is synthesised into it), so when the field is absent the column legitimately holds the default. |
@@ -88,34 +88,21 @@ Invariants that follow from the table:
 
 ### The `kind` CHECK — reconciled with the pinned contract
 
-`platform.resource-offer@1` at v0.83.0 defines `kind` as the enum `["node","provider"]` and
-`additionalProperties: false`. The roadmap's *other* offer kinds (`storage`, `delivery`, `runtime`, `agent`,
-`harness`) have **no contract at v0.83.0** — verified against `node_modules/openvibe-contracts/contracts/platform/`,
-which ships 8 files, and `validate('platform.storage-offer@1', …)` throws `unknown contract`.
-
-Therefore:
-
-1. **`0007` permits only `node` and `provider`.** Nothing wider is written to the migration. A wider list would admit
-   rows that the pinned contract cannot validate, so every read would be able to return a document that no writer could
-   have produced.
-2. The other five kinds are **reserved and documented, not implemented**. They appear in no migration, no `CHECK`,
-   no constant, no test and no runtime code. Naming them in code — even inside a map — would reference contracts that
-   do not exist, and `validate()` would throw inside the route and turn a 400 into a 500.
-3. The `CHECK` is widened **only** by slice 5, after T1 publishes the tags and Network bumps the pin
-   (`migrations/0009_resource_offer_kinds.sql`: `ALTER TABLE … DROP CONSTRAINT … ADD CONSTRAINT`).
+`0007` originally permitted only `node` and `provider`, matching the v0.83.0 contract at that point. With the
+v0.85.0 pin, `0009_resource_offer_kinds.sql` widens the CHECK to all seven kinds. Every stored document validates as
+`platform.resource-offer@1`; the five new kinds carry their per-kind contract inside `detail` (Decision C in
+`docs/t2-cells-and-node-principal.md` §6). The filter columns retain the mapping above.
 
 ## 3. Module — `server/registry/offers.js`
 
-A copy of `nodes.js` with four deltas.
+The module follows `nodes.js`, with registry-specific validation, filters and public projection.
 
 **Report** — `report(db, {source, offers}, now)` → `{offers, marked_down}`; same upsert shape and same mark-down of the
 same source's absent ids as `nodes.js`, with the six duplicated columns taken from the validated doc through the mapping
 in §2. The response header is `X-Offers-Marked-Down`.
 
-**Guard** — `principals.guard('network.node.report')` for the first slice. `network.resource.report` **does not exist
-at v0.83.0**, and `principals.js` throws at boot on an unknown capability, so inventing the string breaks the service.
-`network.node.report` is already held by Host, which is the component that reports. Slice 5 switches the constant to
-`network.resource.report` in one line when T1 publishes it. Do not invent a capability string.
+**Guard** — `principals.guard('network.resource.report')` protects the report and full internal reads. Host receives
+that capability by default. A token holding only `network.node.report` cannot access these routes.
 
 **Validation — one pass over the whole batch, then one transaction for the writes.** The report has exactly two phases,
 in this order:
@@ -146,27 +133,25 @@ the nodes call, purely as documentation.
 
 | Route | Behaviour | Cache |
 |---|---|---|
-| `GET /api/v1/resources` | `{offers: [<platform.resource-offer@1> minus capacity…], generated_at, filters, count}`; filters `?kind=&region=&trust=&status=&cell=&max_price_usd=`; **default excludes `status='down'`** | `public, max-age=60`, `ACAO: *`, `Timing-Allow-Origin: *` |
-| `GET /api/v1/resources/:offer_id` | the single offer minus capacity (any status), or 404 `problem+json` `registry.unknown_offer` via `contracts.http.sendProblem` | `public, max-age=60` |
+| `GET /api/v1/resources` | `{offers: [<platform.resource-offer-public@1>], generated_at, filters, count}`; filters `?kind=&region=&trust=&status=&cell=&max_price_usd=`; **default excludes `status='down'`** | `public, max-age=60`, `ACAO: *`, `Timing-Allow-Origin: *` |
+| `GET /api/v1/resources/:offer_id` | one public offer (any status), or 404 `problem+json` `registry.unknown_offer` via `contracts.http.sendProblem` | `public, max-age=60` |
 | `GET /api/v1/resources/:offer_id/beacon` | 204 — the same idiom as `nodes.js:52`, for `openvibe-sdk/geo` | `no-store` |
-| `GET /internal/resources` | the same list and filters, docs **whole** (capacity included); the report's guard, `network.node.report` | `no-store` |
+| `GET /internal/resources` | the same list and filters, docs **whole** (capacity and harness address included); `network.resource.report` guard | `no-store` |
 | `GET /internal/resources/:offer_id` | the single offer whole, or 404 `registry.unknown_offer`; the same guard | `no-store` |
 
-**Exposure (decided, slice 2).** `platform.resource-offer@1` describes itself as *first-party only: it carries capacity
-the public node registry (`network.node@1`) deliberately leaves out*. So the unauthenticated `/api/v1/resources` list and
-single read return each contract document verbatim **except the `capacity` object**, which is omitted (`capacity` is
-optional in the contract, so the public doc still validates). Everything else — capabilities, region, cell, trust,
-health, pricing, latency — is what `openvibe-sdk/geo` and a planner's trust/price filter need, and is no more than the
-public node list already says. The full documents, capacity included, are read from `GET /internal/resources[/:id]`,
-behind exactly the guard of `POST /internal/resources/report` (`network.node.report` today, the one-line switch in
-slice 5): that is the read `placement.plan()` consumers use, since capacity is what it places on. No capability is added
-to Contracts for this; a dedicated read capability, if one is wanted, arrives with T1 like `network.resource.report`.
+**Public contract (Network-local `platform.resource-offer-public@1`).** A public offer has the same fields and
+validation as `platform.resource-offer@1`, except `capacity` is absent for every kind and `detail.address` is absent
+for `kind: harness`. `server/registry/offers.js` defines this projection as `publicDoc()` and validates it with
+`validatePublicDoc()`. The canonical v0.85.0 harness detail **requires** `address`, so a redacted public harness offer
+does **not** validate directly as `platform.resource-offer@1`; clients should use the public contract. Other public
+offers still validate as the canonical contract. The full stored documents, including capacity and harness address,
+are available through `GET /internal/resources[/:id]` with `network.resource.report`.
 
 - Filters are applied in **SQL**, not JS. A `kind` the pinned contract does not define yields an empty list with 200,
   never a 500. Unknown query keys are ignored. `?status=down` is how a caller sees the hidden-down rows.
 - Query values are taken once, as strings; `max_price_usd` must be a finite number ≥ 0, else it is ignored. `filters`
   echoes only the filters that were applied.
-- `offers[]` elements are the contract documents **verbatim** (the public list minus `capacity`) — no envelope fields are added inside them, so a client can
+- `offers[]` elements are the public contract projection (capacity omitted, plus harness address omitted) — no envelope fields are added inside them, so a client can
   pass the array straight into `plan()`. `filters` and `count` live beside `offers`, never inside it. The convenience
   columns (`cell`, `price_usd`) are therefore *not* re-added to each doc: a doc that omitted `cell` is returned without
   one, exactly as reported.
@@ -240,8 +225,9 @@ mounted, a service token minted through `POST /oauth/token` `client_credentials`
 5. **Filters** — `?kind=provider`, `?region=`, `?trust=community`, `?max_price_usd=0.05`, `?cell=wnam-1`; the default list
    excludes `down`; an unknown `kind` returns `{offers: []}` with 200. The public list never contains `capacity`; the
    internal list returns the stored docs whole and refuses a call without the guard's token.
-6. **Single read** — `GET /internal/resources/:id` is the stored doc, `GET /api/v1/resources/:id` the same minus
-   `capacity`, both matching `platform.resource-offer@1`; an unknown id → 404 `registry.unknown_offer` on both.
+6. **Single read** — `GET /internal/resources/:id` is the stored `platform.resource-offer@1` doc;
+   `GET /api/v1/resources/:id` matches the Network-local public contract above; an unknown id → 404
+   `registry.unknown_offer` on both.
 7. **Headers** — `cache-control: public, max-age=60` and `access-control-allow-origin: *` on list and single; beacon 204
    with `no-store` and `timing-allow-origin: *`.
 8. **Schema lockstep** — after a report, every row is compared against the **mapping table in §2**, not against a
@@ -257,11 +243,11 @@ mounted, a service token minted through `POST /oauth/token` `client_credentials`
 Run `node test/resource-registry.test.js` while iterating, `npm run test:pg` (`NETWORK_TEST_STORE=pg`) for the SQL
 filter path — PGlite and a real PostgreSQL must agree on it — and `npm test` once at the end.
 
-## 7. Slices — five, each independently mergeable
+## 7. Original slice plan (historical)
 
 1. **Table + report (write path).** `migrations/0007_resource_registry.sql`, `server/registry/offers.js` (`ensureSchema`
    no-op + `report`), the `ensureSchema` call in `server/db/database.js`, `app.use('/internal/resources', internal)` in
-   `server/index.js`, `test/resource-registry.test.js` tests 1-4. Guard reuses `network.node.report`.
+   `server/index.js`, `test/resource-registry.test.js` tests 1-4. The original guard reused `network.node.report`.
 2. **Public read + filters.** `list()`, `get()`, `routers().pub` in `server/registry/offers.js`,
    `app.use('/api/v1/resources', pub)`, tests 5-7. Also the full internal read (`GET /internal/resources[/:id]`, the
    report's guard), because the public read leaves capacity out (§4).
@@ -269,23 +255,14 @@ filter path — PGlite and a real PostgreSQL must agree on it — and `npm test`
    `server/registry/ecosystem.js`. Nothing else.
 4. **Placement consumption proof.** (done) §5 gains a worked example; test 9 added. No production-code change — this
    slice exists to fail loudly if the response shape drifts from what `plan()` accepts.
-5. **Contracts bump + kind widening.** *Blocked on T1.* `package.json:30` pin bump, a
-   `node -e "validate('platform.storage-offer@1', …)"` smoke check, `migrations/0009_resource_offer_kinds.sql` widening
-   the `kind` CHECK to the published kinds, the one-line capability switch, a `KIND → CONTRACT` map used for per-kind
-   validation (`validate(KIND_CONTRACT[kind], offer)` when the map has an entry, else the base offer contract), and a
-   test per new kind. Nothing waits on this slice; it is only startable once T1 publishes the tags, and
-   `scripts/contracts-drift.js` is what flags the pin in the meantime.
-   **Re-planned** in `docs/t2-cells-and-node-principal.md` §6 (per-kind offer as `detail`, slice N6); it supersedes this item.
+5. **Contracts bump + kind widening.** This item was re-planned as N6 in
+   `docs/t2-cells-and-node-principal.md` §6: five per-kind contracts inside `detail`, v0.85.0 pin,
+   `0009_resource_offer_kinds.sql`, and the `network.resource.report` guard. N6 is built.
 
-## 8. Unresolved
+## 8. Separate concerns
 
-- **T1's contract release** blocks slice 5 and nothing else. Until it lands, five roadmap offer kinds are documented and
-  unreachable, and the registry accepts `node` and `provider` only.
-- **Route weight and `service_instance`** are first-class in the roadmap but absent from `platform.resource-offer@1`
-  (it has no route-weight field and no service-instance reference). They belong to `platform.placement-plan@1` /
-  `platform.service-instance@1`, neither of which is at v0.83.0, so they cannot be modelled here now.
-- **`network.resource.report`** does not exist at v0.83.0; `network.node.report` is reused for slice 1. The semantic
-  mismatch (nodes reporting offers) is deliberate and temporary, and it is the only reason slice 1 does not need T1.
+Route weight and service instances are outside `platform.resource-offer@1`; their contracts and registry paths are
+separate from resource offers. `network.node.report` remains the guard for node reports.
 
 ## 9. Cells and node principals (lane B, first slice)
 

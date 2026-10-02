@@ -11,6 +11,9 @@
 const express = require('express');
 
 const CONTRACT = 'platform.resource-offer@1';
+// Network's public projection of CONTRACT: capacity is absent, and harness detail.address is absent.
+// The latter is required by the internal contract, so public harness docs need their own validator.
+const PUBLIC_CONTRACT = 'platform.resource-offer-public@1';
 const SOURCE = /^[a-z][a-z0-9-]{1,39}$/; // the same rule as network.node-report-request@1's source
 const MAX_OFFERS = 500;
 const DEFAULT_CELL = 'wnam-1';
@@ -126,6 +129,23 @@ function publicDoc({ capacity, ...doc }) {
     return { ...doc, detail };
 }
 
+/** Validate the public projection against CONTRACT with only its two documented redactions. */
+function validatePublicDoc(doc) {
+    const { validate } = require('openvibe-contracts');
+    if (!doc || typeof doc !== 'object' || Array.isArray(doc)) {
+        return { valid: false, errors: [{ path: '/', message: 'must be an offer object' }] };
+    }
+    if (Object.hasOwn(doc, 'capacity')) {
+        return { valid: false, errors: [{ path: '/capacity', message: 'must be absent from the public contract' }] };
+    }
+    if (doc.kind !== 'harness') return validate(CONTRACT, doc);
+    if (!doc.detail || typeof doc.detail !== 'object' || Array.isArray(doc.detail) || Object.hasOwn(doc.detail, 'address')) {
+        return { valid: false, errors: [{ path: '/detail/address', message: 'must be absent from the public contract' }] };
+    }
+    // Supply a schema-valid sentinel solely for validation; it is never stored or returned.
+    return validate(CONTRACT, { ...doc, detail: { ...doc.detail, address: { kind: 'cli', target: 'redacted' } } });
+}
+
 function routers({ guard }) {
     const listed = async (req, shape) => {
         const filters = filtersOf(req.query);
@@ -168,4 +188,4 @@ function routers({ guard }) {
     return { internal, pub };
 }
 
-module.exports = { CONTRACT, DEFAULT_CELL, ensureSchema, columns, check, report, list, get, publicDoc, routers };
+module.exports = { CONTRACT, PUBLIC_CONTRACT, DEFAULT_CELL, ensureSchema, columns, check, report, list, get, publicDoc, validatePublicDoc, routers };
