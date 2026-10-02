@@ -1,0 +1,19 @@
+{
+  "id": "runtime-1",
+  "kind": "container",
+  "region": "us-west",
+  "node": "node-1",
+  "limits": {
+    "cpu_cores": 2,
+    "memory_mb": 4096,
+    "duration_seconds": 3600
+  },
+  "price": {
+    "amount_usd": 0.05,
+    "unit": "hour"
+  },
+  "availability": "available",
+  "constraints": [
+    "first-party"
+  ]
+}

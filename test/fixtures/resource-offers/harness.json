@@ -1,0 +1,24 @@
+{
+  "id": "harness-1",
+  "name": "Example Agent",
+  "provider": "example-ai",
+  "capabilities": {
+    "host_access": true,
+    "mcp": true,
+    "long_autonomy": true,
+    "resume": true
+  },
+  "address": {
+    "kind": "cli",
+    "target": "example-agent"
+  },
+  "price": {
+    "amount_usd": 0.1,
+    "unit": "hour"
+  },
+  "limits": {
+    "max_duration_seconds": 7200,
+    "max_concurrent_runs": 4,
+    "max_context_tokens": 128000
+  }
+}

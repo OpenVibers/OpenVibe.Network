@@ -1,0 +1,17 @@
+{
+  "id": "agent-1",
+  "harness": "harness-1",
+  "provider": "example-ai",
+  "model": "model-1",
+  "context_limits": {
+    "input_tokens": 128000,
+    "output_tokens": 8192
+  },
+  "concurrency": 4,
+  "price_per_1k_tokens": {
+    "fresh_usd": 0.003,
+    "cached_usd": 0.001,
+    "output_usd": 0.01
+  },
+  "availability_windows": []
+}

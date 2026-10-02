@@ -1,6 +1,6 @@
 'use strict';
-// The resource registry, slices 1-2 (plan T2, docs/t2-resource-registry.md; Contracts platform.resource-offer@1):
-// POST /internal/resources/report takes Host's token only; the whole batch is validated before anything is written;
+// The resource registry (plan T2, docs/t2-cells-and-node-principal.md section 6):
+// POST /internal/resources/report takes network.resource.report; the whole batch is validated before anything is written;
 // an offer missing from the same source's next report is marked down, not deleted; the filter columns always equal
 // the stored doc through the one mapping offers.columns(). GET /api/v1/resources filters in SQL, hides down offers by
 // default and never shows capacity; GET /internal/resources, behind the report's guard, returns the docs whole.
@@ -33,7 +33,7 @@ app.locals.config = { internalKey: 'legacy-key', jwt: { issuer: 'https://openvib
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 app.use('/oauth', require('../server/auth/oauth-routes'));
-const r = offers.routers({ guard: principals.guard('network.node.report', { legacy: false }) });
+const r = offers.routers({ guard: principals.guard('network.resource.report', { legacy: false }) });
 app.use('/api/v1/resources', r.pub);
 app.use('/internal/resources', r.internal);
 app.use(require('../server/registry/ecosystem').createEcosystemRegistry().router());
@@ -54,28 +54,37 @@ const assertLockstep = async () => {
 (async () => {
     await new Promise((ok) => server.listen(0, '127.0.0.1', ok));
     const base = `http://127.0.0.1:${server.address().port}`;
-    const token = async (id, secret) => (await (await fetch(`${base}/oauth/token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: secret, audience: 'openvibe.network' }) })).json()).access_token;
+    const token = async (id, secret, scope) => (await (await fetch(`${base}/oauth/token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: secret, audience: 'openvibe.network', ...(scope ? { scope } : {}) }) })).json()).access_token;
     const post = (body, headers) => fetch(`${base}/internal/resources/report`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) })
         .then(async (x) => ({ status: x.status, headers: x.headers, body: await x.json().catch(() => null) }));
     try {
-        // The migration: the table exists, kind is exactly the pinned contract's enum, status the planner's.
+        // The kind constraint is widened, remains strict, and can be applied twice.
+        const migration = fs.readFileSync(path.join(__dirname, '../migrations/0009_resource_offer_kinds.sql'), 'utf8');
+        await globalThis.__ovNetworkDdl(migration);
+        await globalThis.__ovNetworkDdl(migration);
         const insert = (kind, status) => db.prepare("INSERT INTO platform_resource_offers (id, source, kind, region, trust, status, doc, reported_at) VALUES ('x', 'x', ?, 'us-west', 'partner', ?, '{}', 'now')").run(kind, status);
-        await assert.rejects(insert('storage', 'up'), 'kind storage has no contract at 0.83.0');
+        await insert('storage', 'up');
+        await db.prepare("DELETE FROM platform_resource_offers WHERE id = 'x'").run();
+        await assert.rejects(insert('unknown', 'up'), 'kind outside the seven-kind enum');
         await assert.rejects(insert('node', 'gone'), 'status outside up|degraded|down|draining');
         assert.deepStrictEqual(await rows(), []);
 
         // 1. Auth matrix.
         const auth = { authorization: `Bearer ${await token('host', 'host-secret')}` };
+        const resourceOnly = { authorization: `Bearer ${await token('host', 'host-secret', 'network.resource.report')}` };
+        const nodeOnly = { authorization: `Bearer ${await token('host', 'host-secret', 'network.node.report')}` };
         assert.strictEqual((await post({ source: 'oregon', offers: [] })).status, 403, 'nobody');
         assert.ok([401, 403].includes((await post({ source: 'oregon', offers: [] }, { 'x-internal-key': 'legacy-key' })).status), 'not the retired shared key');
-        assert.strictEqual((await post({ source: 'oregon', offers: [] }, { authorization: `Bearer ${await token('live', 'live-secret')}` })).status, 403, 'Live lacks network.node.report');
+        assert.strictEqual((await post({ source: 'oregon', offers: [] }, { authorization: `Bearer ${await token('live', 'live-secret')}` })).status, 403, 'Live lacks network.resource.report');
+        assert.strictEqual((await post({ source: 'oregon', offers: [] }, nodeOnly)).status, 403, 'network.node.report alone cannot report resources');
+        assert.strictEqual((await post({ source: 'oregon', offers: [] }, resourceOnly)).status, 200, 'network.resource.report can report resources');
 
         // 2. Validation writes nothing: bad offers, a bad envelope, and a bad offer last in an otherwise good batch.
         for (const [why, body] of [
             ['trust outside the enum', { source: 'oregon', offers: [offer('o-1', { trust: 'random' })] }],
             ['region missing', { source: 'oregon', offers: [(({ region, ...o }) => o)(offer('o-1'))] }],
             ['additionalProperties: false', { source: 'oregon', offers: [offer('o-1', { address: '10.0.0.1' })] }],
-            ['kind without a contract', { source: 'oregon', offers: [offer('o-1', { kind: 'storage' })] }],
+            ['new kind without detail', { source: 'oregon', offers: [offer('o-1', { kind: 'storage' })] }],
             ['source pattern', { source: 'Oregon!', offers: [offer('o-1')] }],
             ['extra envelope key', { source: 'oregon', offers: [offer('o-1')], cell: 'wnam-1' }],
             ['offers not an array', { source: 'oregon', offers: offer('o-1') }],
@@ -180,20 +189,22 @@ const assertLockstep = async () => {
             ['?max_price_usd=cheap&colour=blue', ['f-1', 'l-1', 'l-2', 'l-3', 'o-2']],
         ]) assert.deepStrictEqual(await ids(q), want, q || 'the default hides down offers');
         x = await get('/api/v1/resources?kind=storage&max_price_usd=0.05&trust=partner&colour=blue');
-        assert.deepStrictEqual(x.body, { offers: [], generated_at: x.body.generated_at, filters: { kind: 'storage', trust: 'partner', max_price_usd: 0.05 }, count: 0 }, 'an unknown kind is an empty 200');
+        assert.deepStrictEqual(x.body, { offers: [], generated_at: x.body.generated_at, filters: { kind: 'storage', trust: 'partner', max_price_usd: 0.05 }, count: 0 }, 'no storage has been reported yet');
         const stored = new Map((await rows()).map((o) => [o.id, JSON.parse(o.doc)]));
-        // The public list never carries capacity; every element is still a contract document, otherwise verbatim.
+        // The public list matches Network's redacted contract; stored docs remain canonical.
         for (const q of ['', '?status=down', '?kind=provider']) {
             for (const o of (await get(`/api/v1/resources${q}`)).body.offers) {
                 assert.ok(!('capacity' in o), `${o.offer_id}: no capacity in public`);
-                assert.ok(validate(offers.CONTRACT, o).valid, `${o.offer_id}: public doc matches the contract`);
+                assert.ok(offers.validatePublicDoc(o).valid, `${o.offer_id}: public doc matches ${offers.PUBLIC_CONTRACT}`);
                 assert.deepStrictEqual(o, offers.publicDoc(stored.get(o.offer_id)));
             }
         }
         // The internal list: the report's guard, the same filters, the docs whole.
         assert.strictEqual((await get('/internal/resources')).status, 403, 'nobody');
         assert.ok([401, 403].includes((await get('/internal/resources', { 'x-internal-key': 'legacy-key' })).status), 'not the retired shared key');
-        assert.strictEqual((await get('/internal/resources', { authorization: `Bearer ${await token('live', 'live-secret')}` })).status, 403, 'Live lacks network.node.report');
+        assert.strictEqual((await get('/internal/resources', { authorization: `Bearer ${await token('live', 'live-secret')}` })).status, 403, 'Live lacks network.resource.report');
+        assert.strictEqual((await get('/internal/resources', nodeOnly)).status, 403, 'node reporting cannot read full resources');
+        assert.strictEqual((await get('/internal/resources', resourceOnly)).status, 200, 'resource reporting can read full resources');
         x = await get('/internal/resources', auth);
         assert.strictEqual(x.status, 200);
         assert.strictEqual(x.headers.get('cache-control'), 'no-store');
@@ -202,7 +213,7 @@ const assertLockstep = async () => {
         assert.deepStrictEqual(await ids('?kind=provider&status=degraded', '/internal/resources', auth), ['l-2']);
         assert.deepStrictEqual(await ids('?status=down', '/internal/resources', auth), ['o-1', 'o-3']);
 
-        // 6. Single read: internal whole, public minus capacity, both platform.resource-offer@1; a down offer is readable.
+        // 6. Single read: internal whole, public projection; a down offer is readable.
         for (const id of ['l-1', 'o-1']) {
             x = await get(`/internal/resources/${id}`, auth);
             assert.strictEqual(x.status, 200);
@@ -211,7 +222,7 @@ const assertLockstep = async () => {
             assert.ok(x.body.capacity);
             x = await get(`/api/v1/resources/${id}`);
             assert.strictEqual(x.status, 200);
-            assert.ok(validate(offers.CONTRACT, x.body).valid);
+            assert.ok(offers.validatePublicDoc(x.body).valid);
             assert.deepStrictEqual(x.body, offers.publicDoc(stored.get(id)));
             assert.ok(!('capacity' in x.body));
         }
@@ -255,6 +266,56 @@ const assertLockstep = async () => {
         assert.ok(check.valid, JSON.stringify(check.errors));
         assert.strictEqual(result.selected, 'p-provider', 'the cheaper eligible offer wins');
         assert.deepStrictEqual(result.candidates.filter((c) => c.eligible).map((c) => c.id).sort(), ['p-node', 'p-provider', 'p-provider-b']);
+
+        // 10. v0.85.0 detail contracts: all five new kinds report and filter independently.
+        const kinds = ['storage', 'delivery', 'runtime', 'agent', 'harness'];
+        const detailOf = (kind) => JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/resource-offers', `${kind}.json`), 'utf8'));
+        const kindOffer = (kind, detail = detailOf(kind), extra = {}) => offer(detail.id, { kind, node_id: undefined, detail, ...extra });
+        for (const kind of kinds) {
+            const doc = kindOffer(kind);
+            assert.ok(validate(offers.CONTRACT, doc).valid, `${kind} fixture matches the pinned envelope contract`);
+            x = await post({ source: `kind-${kind}`, offers: [doc] }, resourceOnly);
+            assert.strictEqual(x.status, 200, `${kind}: ${JSON.stringify(x.body)}`);
+            assert.deepStrictEqual(await ids(`?kind=${kind}`), [doc.offer_id], `${kind} filter`);
+        }
+        await assertLockstep();
+
+        // Contract rejection and Network-local cross-checks reject the entire report before a write.
+        for (const [why, bad, error] of [
+            ['storage without detail', offer('bad-storage', { kind: 'storage', node_id: undefined, detail: undefined }), 'offer 0 does not match platform.resource-offer@1'],
+            ['node with detail', offer('bad-node', { detail: detailOf('storage') }), 'offer 0 does not match platform.resource-offer@1'],
+            ['detail id mismatch', kindOffer('storage', detailOf('storage'), { offer_id: 'another-id' }), 'registry.detail_id_mismatch'],
+            ['detail node mismatch', kindOffer('storage', detailOf('storage'), { node_id: 'another-node' }), 'registry.detail_node_mismatch'],
+            ['detail region mismatch', kindOffer('storage', { ...detailOf('storage'), region: 'us-east' }), 'registry.detail_region_mismatch'],
+            ['detail regions mismatch', kindOffer('delivery', { ...detailOf('delivery'), regions: ['us-east'] }), 'registry.detail_region_mismatch'],
+        ]) {
+            const unchanged = await rows();
+            const batch = why === 'detail id mismatch' ? [kindOffer('agent'), bad] : [bad];
+            x = await post({ source: `bad-${why.replaceAll(' ', '-')}`, offers: batch }, resourceOnly);
+            assert.strictEqual(x.status, 400, why);
+            assert.strictEqual(x.body.error, error, why);
+            assert.deepStrictEqual(await rows(), unchanged, `${why}: nothing written`);
+        }
+
+        const harnessId = detailOf('harness').id;
+        const harnessPublic = await get(`/api/v1/resources/${harnessId}`);
+        const harnessInternal = await get(`/internal/resources/${harnessId}`, resourceOnly);
+        assert.strictEqual(harnessPublic.status, 200);
+        assert.strictEqual(harnessInternal.status, 200);
+        assert.ok(offers.validatePublicDoc(harnessPublic.body).valid, 'public single read matches the redacted contract');
+        assert.ok(validate(offers.CONTRACT, harnessInternal.body).valid, 'internal single read matches the canonical contract');
+        assert.ok(!validate(offers.CONTRACT, harnessPublic.body).valid, 'the canonical contract requires harness detail.address');
+        assert.ok(!('address' in harnessPublic.body.detail), 'public single read omits the harness address');
+        assert.deepStrictEqual(harnessInternal.body.detail.address, detailOf('harness').address, 'internal single read keeps the address');
+        const publicHarnessList = await get('/api/v1/resources?kind=harness');
+        const internalHarnessList = await get('/internal/resources?kind=harness', resourceOnly);
+        assert.ok(offers.validatePublicDoc(publicHarnessList.body.offers[0]).valid, 'public list matches the redacted contract');
+        assert.ok(validate(offers.CONTRACT, internalHarnessList.body.offers[0]).valid, 'internal list matches the canonical contract');
+        assert.ok(!('address' in publicHarnessList.body.offers[0].detail), 'public list omits the harness address');
+        assert.deepStrictEqual(internalHarnessList.body.offers[0].detail.address, detailOf('harness').address, 'internal list keeps the address');
+        assert.ok(!offers.validatePublicDoc({ ...harnessPublic.body, capacity: {} }).valid, 'public contract rejects capacity');
+        assert.ok(!offers.validatePublicDoc({ ...harnessPublic.body, detail: harnessInternal.body.detail }).valid, 'public contract rejects harness address');
+        assert.ok(!offers.validatePublicDoc({ ...harnessPublic.body, detail: { id: harnessId } }).valid, 'public contract checks required harness detail fields');
         console.log('resource-registry: all tests passed');
     } finally {
         server.close();
