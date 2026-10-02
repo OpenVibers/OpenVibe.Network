@@ -35,7 +35,8 @@ const freePort = () => new Promise((resolve) => { const s = net.createServer(); 
     const base = `http://127.0.0.1:${port}`;
     try {
         let up = false;
-        for (let i = 0; i < 100 && !up; i++) {
+        const startupDeadline = Date.now() + 60000;   // a fresh PGlite database takes well over 10 s to migrate and seed
+        while (!up && Date.now() < startupDeadline) {
             up = await fetch(`${base}/api/health`).then((r) => r.ok).catch(() => false);
             if (!up) await new Promise((r) => setTimeout(r, 100));
         }

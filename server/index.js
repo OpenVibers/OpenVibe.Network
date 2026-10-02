@@ -472,6 +472,12 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/api/v1/nodes', nodeRouters.pub);
     app.use('/internal/nodes', nodeRouters.internal);
 }
+// The resource registry (plan T2, docs/t2-resource-registry.md): node and provider offers. Slice 1 is the report;
+// network.node.report until Contracts publishes network.resource.report.
+{
+    const offerRouters = require('./registry/offers').routers({ guard: require('./identity/principals').guard('network.node.report') });
+    app.use('/internal/resources', offerRouters.internal);
+}
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read'), require('./identity/blocks').internalHandler(db));
 // The follow graph (WS-E task 4, ADR-030): public counts, a person's own follows, and who follows a target
 // (its owner, or network.follows.read, service token only). Every change is network.follow.* (server/identity/follows.js).
