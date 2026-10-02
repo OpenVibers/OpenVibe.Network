@@ -26,6 +26,11 @@ const { ACCOUNT_HUB_PATHS } = require('../server/not-found');
             assert.strictEqual(r.status, 200, `${p} is a real page: 200 (got ${r.status})`);
         }
         assert.strictEqual((await get('/sso/check')).status, 400, '/sso/check is a route (400 without its parameters), not a 404');
+        // The crawl files are generated routes (server/seo/routes.js), not the static files in public/.
+        const robots = await get('/robots.txt');
+        assert.ok(robots.type.startsWith('text/plain') && robots.text.includes('Sitemap: https://openvibe.network/sitemap.xml'), '/robots.txt is the generated text/plain copy');
+        const sitemap = await get('/sitemap.xml');
+        assert.ok(sitemap.type.startsWith('application/xml') && sitemap.text.includes('<loc>https://openvibe.network/</loc>'), '/sitemap.xml is the generated XML copy');
         const hub = await get('/themes');
         assert.ok(hub.text.includes('<html') && !hub.text.includes('Page not found'), 'an account hub section is the account hub');
         // Redirects stay redirects.
