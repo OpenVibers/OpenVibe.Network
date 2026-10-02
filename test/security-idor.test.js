@@ -26,9 +26,14 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         const { users, dev, db } = w;
         const PA = dev.PA.id; const AA = dev.PA.app; const PB = dev.PB.id; const AB = dev.PB.app;
         const DEV_TABLES = ['dev_projects', 'dev_project_members', 'dev_apps', 'dev_credentials', 'dev_grants', 'dev_quotas'];
-        // is_emailed is the email queue's (every 2 minutes, server/index.js), not any request's: a run that outlasts
-        // 2 minutes under load would otherwise blame whichever call was in flight when the queue marked a row.
-        const snap = async (tables, where = {}) => JSON.stringify((await Promise.all(tables.map(async (t) => (await db.prepare(`SELECT * FROM "${t}" ${where[t] || ''}`).all()).map(({ is_emailed, ...row }) => row)))));
+        // Two columns are written by background jobs, not by any request, so they are left out of every snapshot:
+        //   is_emailed — the email queue's (every 2 minutes, server/index.js). A run that outlasts 2 minutes under
+        //     load would otherwise blame whichever call was in flight when the queue marked a row.
+        //   profile_revision — the profile-events drain's (every 3 seconds, server/index.js:591 →
+        //     server/identity/profile-events.js, which raises it from 0 to 1 on the first tick). It is a monotonic
+        //     counter raised only by that drain; a refused write that really changed alice's row changes some other
+        //     column too, so leaving this one out cannot hide an IDOR.
+        const snap = async (tables, where = {}) => JSON.stringify((await Promise.all(tables.map(async (t) => (await db.prepare(`SELECT * FROM "${t}" ${where[t] || ''}`).all()).map(({ is_emailed, profile_revision, ...row }) => row)))));
         const secretNeedles = { ...w.secrets };
         const refused = [];
         const expectRefused = async (who, method, p, body, { tables, where, codes = [401, 403, 404] } = {}) => {
