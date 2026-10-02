@@ -1,6 +1,7 @@
 # T2 — the resource registry (design)
 
-Status: **design, ready to implement**. Nothing in this document is built yet.
+Status: **slice 1 built** (`migrations/0007_resource_registry.sql`, `server/registry/offers.js` write path,
+`test/resource-registry.test.js`); slices 2-5 are design.
 Pinned versions at time of writing: `openvibe-contracts` **v0.83.0** (`package.json:30`), `openvibe-sdk` v0.25.2,
 `openvibe-shared` v2.3.1. Every claim below was checked against that pin.
 
