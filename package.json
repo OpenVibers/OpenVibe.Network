@@ -13,7 +13,8 @@
     "migrate-to-postgres": "node scripts/migrate-to-postgres.js",
     "pg-preflight": "node scripts/pg-preflight-collisions.js",
     "follows-import": "node scripts/follows-import.js",
-    "follows-preflight": "node scripts/follows-preflight.js"
+    "follows-preflight": "node scripts/follows-preflight.js",
+    "rehearse-pg-cutover": "node scripts/rehearse-pg-cutover.js"
   },
   "license": "MIT",
   "dependencies": {
