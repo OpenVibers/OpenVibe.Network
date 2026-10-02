@@ -95,9 +95,10 @@ try {
     await assert.rejects(insertPaired({ node_id: 'pair-cred-b', home_cell: 'weu-1', owner_kind: 'platform', trust: 'first-party', credential_hash: hash('d') }), 'one live principal per credential');
     await assert.rejects(db.prepare(`INSERT INTO platform_node_pairings (id, code_hash, owner_kind, project_id, owner_subject, service, ref, created_by, expires_at)
         VALUES (?, ?, 'user', ?, ?, 'bot', 'rob-1', 'usr_owner', '2026-10-02T00:00:00Z')`).run(`pair_${ids.ulid()}`, hash('e'), project, `usr_${ids.ulid()}`), 'a pairing row has one owner');
-    // The migration applied a second time is a no-op: the runner records it by number, and every statement is IF NOT EXISTS / DROP ... IF EXISTS.
-    assert.deepStrictEqual((await db.migrate({ dir: MIGRATIONS })).applied, []);
-    await db.exec(require('fs').readFileSync(require('path').join(MIGRATIONS, '0014_node_pairing.sql'), 'utf8'));
+    // The migration applied a second time is a no-op: the runner records it by number, and every statement is IF NOT EXISTS / DROP ... IF EXISTS
+    // (both as the owner: on the containers the runtime role may not create in the schema).
+    assert.deepStrictEqual((await globalThis.__ovNetworkMigrate({ dir: MIGRATIONS })).applied, []);
+    await globalThis.__ovNetworkDdl(require('fs').readFileSync(require('path').join(MIGRATIONS, '0014_node_pairing.sql'), 'utf8'));
 
     // ── A node principal is not a service principal: it can hold no client-credentials token.
     const nodClient = nod();
