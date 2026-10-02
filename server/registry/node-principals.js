@@ -13,6 +13,8 @@
  *   POST /api/v1/node-pairing                    none (the code)       → 201 {principal, node_id, home_cell, credential, …}
  *   GET  /internal/node-principals/:id           network.node.manage   → the principal, if the caller paired it
  *   POST /internal/node-principals/:id/revoke    network.node.manage   → the principal, revoked (idempotent)
+ *   GET  /api/v1/me/nodes                        session               → the person's own machines, newest first
+ *   POST /api/v1/me/nodes/:id/revoke             session               → their principal, revoked (idempotent)
  */
 const crypto = require('crypto');
 const express = require('express');
@@ -159,19 +161,76 @@ async function redeem(db, body, now = Date.now()) {
     return result;
 }
 
-/** A principal `service` paired, or null (another service's principal is indistinguishable from none). */
-async function pairedBy(db, id, service) {
+/**
+ * The principal `id` matching a caller-owned scope (`where` + `params`, literals only), or null. A principal
+ * another caller owns is indistinguishable from none: the routes answer 404, never 403, so nobody can probe
+ * whose machine an id is.
+ */
+async function byScope(db, id, scope) {
     if (!PRINCIPAL_ID.test(String(id))) return null;
-    return await db.prepare('SELECT * FROM platform_node_principals WHERE id = ? AND paired_by_service = ?').get(String(id), service) || null;
+    return await db.prepare(`SELECT * FROM platform_node_principals WHERE id = ? AND ${scope.where}`).get(String(id), ...scope.params) || null;
 }
 
-/** Revoke a principal `service` paired; a second revoke changes nothing. → the row, or null. */
-async function revoke(db, id, service, now = Date.now()) {
-    if (!await pairedBy(db, id, service)) return null;
+/** A principal `service` paired, or null (another service's principal is indistinguishable from none). */
+const pairedBy = (db, id, service) => byScope(db, id, { where: 'paired_by_service = ?', params: [service] });
+
+/**
+ * Revoke a principal matching a caller-owned scope; a second revoke changes nothing. → the row, or null.
+ * The previous credential and its grace window are cleared. `credential_hash` stays: migrations/0014's
+ * platform_node_principals_credential CHECK requires one for a user-owned principal, and a revoked row cannot
+ * authenticate because every reader requires status = 'active'. One function, so the service route and the
+ * person's own route revoke identically.
+ */
+async function revokeScoped(db, id, scope, revokedBy, now = Date.now()) {
+    if (!await byScope(db, id, scope)) return null;
     const at = iso(now);
     await db.prepare(`UPDATE platform_node_principals SET status = 'revoked', revoked_at = ?, revoked_by = ?, credential_prev_hash = NULL,
-        prev_valid_until = NULL, updated_at = ? WHERE id = ? AND paired_by_service = ? AND status <> 'revoked'`).run(at, `svc:${service}`, at, String(id), service);
-    return pairedBy(db, id, service);
+        prev_valid_until = NULL, updated_at = ? WHERE id = ? AND ${scope.where} AND status <> 'revoked'`).run(at, revokedBy, at, String(id), ...scope.params);
+    return byScope(db, id, scope);
+}
+
+/** Revoke a principal `service` paired; revoked_by is svc:<service>. → the row, or null. */
+const revoke = (db, id, service, now = Date.now()) => revokeScoped(db, id, { where: 'paired_by_service = ?', params: [service] }, `svc:${service}`, now);
+
+/** Scope for a person's own machines: the principals they own, and no others. */
+const ownScope = (me) => ({ where: "owner_kind = 'user' AND owner_subject = ?", params: [me] });
+
+/** The signed-in person's subject id, or a RegistryError for a guest (never manages machines). */
+async function meOf(db, user) {
+    if (!user || user.is_anon) throw new RegistryError(403, 'registry.guest', 'sign in with an account to manage your machines');
+    const sid = await require('../identity/subjects').ensureUserSubject(db, user);
+    if (!SUBJECT.test(String(sid || ''))) throw new RegistryError(403, 'registry.guest', 'sign in with an account to manage your machines');
+    return sid;
+}
+
+// Mounted at /api/v1/me/nodes behind requireAuth (server/index.js): a person's own machines, and nothing else.
+function userRouter(requireAuth, now = () => Date.now()) {
+    const router = express.Router();
+    router.use(http.middleware());
+    const send = async (res, fn) => {
+        try { return await fn(); } catch (e) {
+            if (e instanceof RegistryError) return http.sendProblem(res, e.status, e.code, { detail: e.message });
+            console.error('[Node principals]', e.message);
+            return http.sendProblem(res, 500, 'registry.failed', { detail: 'the machines could not be read or changed' });
+        }
+    };
+    router.get('/', requireAuth, async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const db = req.app.locals.db;
+        const me = await meOf(db, req.user);
+        const rows = await db.prepare(`SELECT * FROM platform_node_principals WHERE owner_kind = 'user' AND owner_subject = ?
+            ORDER BY created_at DESC, id DESC`).all(me);
+        res.json({ nodes: rows.map(principalView) });
+    }));
+    router.post('/:principal/revoke', requireAuth, async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const db = req.app.locals.db;
+        const me = await meOf(db, req.user);
+        const p = await revokeScoped(db, req.params.principal, ownScope(me), me, now());
+        if (!p) return http.sendProblem(res, 404, 'registry.unknown_node', { detail: `no node principal ${req.params.principal}` });
+        res.json(principalView(p));
+    }));
+    return router;
 }
 
 function routers({ guard, now = () => Date.now() }) {
@@ -220,4 +279,4 @@ function routers({ guard, now = () => Date.now() }) {
     return { internal, pairing };
 }
 
-module.exports = { CODE_TTL_MS, MAX_TRIES, createPairing, redeem, revoke, principalView, routers };
+module.exports = { CODE_TTL_MS, MAX_TRIES, createPairing, redeem, revoke, principalView, routers, userRouter };
