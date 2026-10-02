@@ -189,6 +189,37 @@ code. The contract between the two is therefore exact:
 - `capabilities[]` items are `namespace:name` strings (`node:http`, `events:gateway`, `object:r2`, …) — the contract's
   own pattern; they are stored, not interpreted.
 
+### Worked example — `GET /api/v1/resources?kind=provider` → `plan()`
+
+Two provider offers in one region, both `health.status: 'up'` and priced per request at `$0.02` and `$0.03`:
+
+```json
+GET /api/v1/resources?kind=provider
+{ "offers": [
+    { "offer_id": "p-provider",   "kind": "provider", "region": "us-central", "trust": "community",
+      "health": { "status": "up" }, "pricing": { "model": "per-request", "marginal_usd_per_unit": 0.02 } },
+    { "offer_id": "p-provider-b", "kind": "provider", "region": "us-central", "trust": "community",
+      "health": { "status": "up" }, "pricing": { "model": "per-request", "marginal_usd_per_unit": 0.03 } }
+  ] }
+```
+
+That `offers` array goes to `plan()` unchanged:
+
+```js
+const req = { kind: 'request', mobility: 'request', latency_class: 'interactive',
+              objective: 'cheapest', region: 'us-central', capabilities: [], units: 1 };
+const result = require('openvibe-sdk/placement').plan(req, response.offers, { now });
+// → { selected: 'p-provider', objective: 'cheapest',
+//     reasons: ['objective cheapest'], candidates: [ … ], decided_at: '<now as ISO>' }
+```
+
+The fields that matter: `selected` is the cheaper eligible offer (`p-provider`, `$0.02` < `$0.03`); every offer is
+listed in `candidates` with `eligible: true` and its `estimated_cost_usd` (from `pricing.marginal_usd_per_unit`,
+since the public list has no `capacity` to price prepaid capacity from); and the whole result validates as
+`platform.placement-result@1`. `test/resource-registry.test.js` test 9 does exactly this — reporting a node offer
+at `$0.05` alongside the two providers and feeding the **unfiltered** list, with `region: 'us-central'` narrowing
+eligibility to the three — and asserts both the contract validity and the same winner.
+
 ## 6. Tests — `test/resource-registry.test.js`
 
 Modelled on `test/nodes.test.js`: temp dir + `getDb()`, `oauth_clients.client_secret` set for `host` and `live`, a
@@ -234,10 +265,10 @@ filter path — PGlite and a real PostgreSQL must agree on it — and `npm test`
 2. **Public read + filters.** `list()`, `get()`, `routers().pub` in `server/registry/offers.js`,
    `app.use('/api/v1/resources', pub)`, tests 5-7. Also the full internal read (`GET /internal/resources[/:id]`, the
    report's guard), because the public read leaves capacity out (§4).
-3. **Discovery entry.** Add `resources: '/api/v1/resources'` to the `/api/v1/registry` index in
+3. **Discovery entry.** (done) Add `resources: '/api/v1/resources'` to the `/api/v1/registry` index in
    `server/registry/ecosystem.js`. Nothing else.
-4. **Placement consumption proof.** §5 gains a worked example; test 9 added. No production-code change — this slice
-   exists to fail loudly if the response shape drifts from what `plan()` accepts.
+4. **Placement consumption proof.** (done) §5 gains a worked example; test 9 added. No production-code change — this
+   slice exists to fail loudly if the response shape drifts from what `plan()` accepts.
 5. **Contracts bump + kind widening.** *Blocked on T1.* `package.json:30` pin bump, a
    `node -e "validate('platform.storage-offer@1', …)"` smoke check, `migrations/0009_resource_offer_kinds.sql` widening
    the `kind` CHECK to the published kinds, the one-line capability switch, a `KIND → CONTRACT` map used for per-kind

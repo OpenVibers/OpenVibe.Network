@@ -28,6 +28,8 @@
  *                                                   library, repository, planned), each rule stated
  *   GET /api/v1/registry/featured                   public sites that are up, most used first (the navbar's
  *                                                   usage ranking), with when that use was counted
+ *   GET /api/v1/resources[?kind=&region=&trust=&status=&cell=&max_price_usd=]
+ *                                                   resource offers (server/registry/offers.js)
  *   GET /contracts/<domain>/<name>.v<N>.json        the schema at its $id URL
  */
 const express = require('express');
@@ -324,7 +326,7 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         const notFound = (res, code, detail) => contracts.http.sendProblem(res, 404, code, { detail });
 
         r.get('/.well-known/openvibe', (_req, res) => cache(res, 300).json(descriptor()));
-        r.get('/api/v1/registry', (_req, res) => cache(res).json({ services: '/api/v1/registry/services', capabilities: '/api/v1/registry/capabilities', namespaces: '/api/v1/registry/namespaces', contracts: '/api/v1/registry/contracts', topics: '/api/v1/registry/topics', releases: '/api/v1/registry/releases', health: '/api/v1/registry/health', search: '/api/v1/registry/search?q=', domains: '/api/v1/registry/domains/:domain', categories: '/api/v1/registry/categories', featured: '/api/v1/registry/featured' }));
+        r.get('/api/v1/registry', (_req, res) => cache(res).json({ services: '/api/v1/registry/services', capabilities: '/api/v1/registry/capabilities', namespaces: '/api/v1/registry/namespaces', contracts: '/api/v1/registry/contracts', topics: '/api/v1/registry/topics', releases: '/api/v1/registry/releases', health: '/api/v1/registry/health', search: '/api/v1/registry/search?q=', domains: '/api/v1/registry/domains/:domain', categories: '/api/v1/registry/categories', featured: '/api/v1/registry/featured', resources: '/api/v1/resources' }));
         r.get('/api/v1/registry/categories', (_req, res) => cache(res, 30).json({ categories: categories(), checked_at: lastPollAt ? new Date(lastPollAt).toISOString() : null }));
         r.get('/api/v1/registry/categories/:id', (req, res) => {
             const c = categories().find(x => x.id === String(req.params.id));

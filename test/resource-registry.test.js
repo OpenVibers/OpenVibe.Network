@@ -36,6 +36,7 @@ app.use('/oauth', require('../server/auth/oauth-routes'));
 const r = offers.routers({ guard: principals.guard('network.node.report', { legacy: false }) });
 app.use('/api/v1/resources', r.pub);
 app.use('/internal/resources', r.internal);
+app.use(require('../server/registry/ecosystem').createEcosystemRegistry().router());
 const server = http.createServer(app);
 
 const offer = (id, extra = {}) => ({ offer_id: id, kind: 'node', node_id: id, provider: 'ovh', region: 'us-west', cell: 'wnam-1', trust: 'first-party', capabilities: ['node:http', 'events:gateway'], capacity: { cpu: { utilization: 0.2, available_cores: 6 } }, health: { status: 'up', checked_at: '2026-10-01T12:00:00Z' }, pricing: { model: 'prepaid', marginal_usd_per_unit: 0.01, unit: 'request' }, updated_at: '2026-10-01T12:00:00Z', ...extra });
@@ -234,6 +235,26 @@ const assertLockstep = async () => {
         assert.strictEqual(x.headers.get('cache-control'), 'no-store');
         assert.strictEqual(x.headers.get('access-control-allow-origin'), '*');
         assert.strictEqual(x.headers.get('timing-allow-origin'), '*');
+
+        // 9. Placement proof (slice 4): the public list feeds openvibe-sdk/placement unchanged. Three up offers in
+        // their own region — two providers and a node, different marginal prices; `cheapest` must pick the cheapest
+        // eligible one from a result that matches platform.placement-result@1.
+        x = await post({ source: 'proof', offers: [
+            offer('p-node', { region: 'us-central', trust: 'community', pricing: { model: 'per-request', marginal_usd_per_unit: 0.05, unit: 'request' } }),
+            offer('p-provider', { kind: 'provider', node_id: undefined, adapter: 'nats-v1', region: 'us-central', trust: 'community', pricing: { model: 'per-request', marginal_usd_per_unit: 0.02, unit: 'request' } }),
+            offer('p-provider-b', { kind: 'provider', node_id: undefined, adapter: 'http-v1', region: 'us-central', trust: 'community', pricing: { model: 'per-request', marginal_usd_per_unit: 0.03, unit: 'request' } }),
+        ] }, auth);
+        assert.strictEqual(x.status, 200, JSON.stringify(x.body));
+        const idx = await get('/api/v1/registry');
+        assert.strictEqual(idx.body.resources, '/api/v1/resources', 'the registry index advertises the resource list');
+        const pub = await get('/api/v1/resources');
+        assert.strictEqual(pub.status, 200);
+        const req = { kind: 'request', mobility: 'request', latency_class: 'interactive', objective: 'cheapest', region: 'us-central', capabilities: [], units: 1 };
+        const result = require('openvibe-sdk/placement').plan(req, pub.body.offers, { now });
+        const check = validate('platform.placement-result@1', result);
+        assert.ok(check.valid, JSON.stringify(check.errors));
+        assert.strictEqual(result.selected, 'p-provider', 'the cheaper eligible offer wins');
+        assert.deepStrictEqual(result.candidates.filter((c) => c.eligible).map((c) => c.id).sort(), ['p-node', 'p-provider', 'p-provider-b']);
         console.log('resource-registry: all tests passed');
     } finally {
         server.close();
