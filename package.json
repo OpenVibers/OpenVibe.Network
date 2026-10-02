@@ -11,7 +11,9 @@
     "grant-admin": "node server/grant-admin.js",
     "test:pg": "NETWORK_TEST_STORE=pg node test/run.js",
     "migrate-to-postgres": "node scripts/migrate-to-postgres.js",
-    "pg-preflight": "node scripts/pg-preflight-collisions.js"
+    "pg-preflight": "node scripts/pg-preflight-collisions.js",
+    "follows-import": "node scripts/follows-import.js",
+    "follows-preflight": "node scripts/follows-preflight.js"
   },
   "license": "MIT",
   "dependencies": {

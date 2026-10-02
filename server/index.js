@@ -387,18 +387,13 @@ const emailService = new EmailService(db);
 await emailService.ready;   // its settings are read from the database before the first request
 app.locals.notificationService = notificationService;
 app.locals.emailService = emailService;
-// live.stream.started: the followers are read from Live (its follow graph) with Network's own service token.
-const liveFollowers = privateKey.includes('BEGIN')
-    ? require('./notifications/live-followers').createLiveFollowers({ privateKey, issuer: config.jwt.issuer, liveUrl: config.services.live.internalUrl })
-    : null;
 // The moderation audit log (ADR-022): staff actions every service reports, readable by staff.
 const moderationAudit = require('./admin/moderation-audit').createModerationAudit(db);
 // Developer projects' usage (WS-N task 4): the services' hourly rollups, per project and day.
 const projectUsage = require('./developer/usage').createProjectUsage(db);
 eventsConsumer = await require('./notifications/events-consumer').createEventsConsumer({
     db, notifications: notificationService, secrets: config.eventsWebhookSecrets,
-    liveFollowers, discord: () => app.locals.discordService || null, moderationAudit, projectUsage,
-    followsAuthority: process.env.FOLLOWS_AUTHORITY === 'network' ? 'network' : 'live',   // ADR-030 step 4
+    discord: () => app.locals.discordService || null, moderationAudit, projectUsage,
 });
 console.log(`[Events consumer] ${eventsConsumer.enabled ? 'on' : 'off (NETWORK_EVENTS_SECRET unset)'}: POST /internal/events`);
 

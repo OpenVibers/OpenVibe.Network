@@ -4,7 +4,7 @@
  * starts, made on any site, through the API or by Live's write-through (network.follows.write), tells the
  * followed person once: setFollow calls this inside its transaction (server/identity/follows.js setNotifier).
  * Live stopped pushing its own FOLLOW notification for follows Network took; it still pushes one for a follow
- * that stays Live-only (FOLLOWS_AUTHORITY unset, or a side with no Network subject).
+ * that stays Live-only (Live's FOLLOWS_AUTHORITY unset, or a side with no Network subject).
  *
  * The notification service applies the recipient's social preference, their blocks (actor_subject) and the
  * one-an-hour dedupe per sender. The link is the follower's channel, as Live's was.

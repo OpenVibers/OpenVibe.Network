@@ -12,9 +12,8 @@
  *
  * --topic limits the run to one of TOPICS (repeatable), e.g. to add live.stream.started to a host that
  * already has the other two, or `--topic tools.usage.recorded --topic events.usage.recorded` for the
- * project dashboards (WS-N task 4). live.stream.started needs Live's GET /internal/followers first (the
- * consumer answers 503 until Live serves it, and Events retries), and the token Network signs for it
- * carries live.follower.read for audience openvibe.live.
+ * project dashboards (WS-N task 4). live.stream.started reads the followers from Network's own user_follows
+ * (run npm run follows-import first on a host whose Live follows were never imported).
  *
  * Reads the environment: OV_EVENTS_INTERNAL_URL (Events, e.g. http://127.0.0.1:4300), OV_NETWORK_URL
  * (the token issuer), JWT_PRIVATE_KEY (default data/keys/private.pem) and NETWORK_EVENTS_SECRET — the

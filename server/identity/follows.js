@@ -23,8 +23,8 @@
  *
  * :target is a usr_ subject or a current username. Nobody follows themselves; guests do not follow.
  * Lists are never public (counts are). ADR-030's migration: importFollows() backfills Live's follows
- * (the one-time scripts/follows-backfill.js was retired in plan T2), holding any pair whose side has no
- * subject in follow_import_holds.
+ * (scripts/follows-import.js, npm run follows-import), holding any pair whose side has no subject in
+ * follow_import_holds.
  */
 const express = require('express');
 const { ids, validate, http } = require('openvibe-contracts');
@@ -176,7 +176,9 @@ async function onSubjectRemoved(db, subject) {
  * ADR-030 step 2: import follows from another system's rows, mapped to subjects by `subjectOf`.
  * rows: [{ follower_ref, target_ref, notify_email, notify_push, created_at }] (the refs are that system's ids).
  * A pair whose side has no subject (or is the same person) is held in follow_import_holds, never dropped.
- * No events (the source system already has these follows); dryRun changes nothing.
+ * A pair Network already has, followed or unfollowed since, is Network's decision and is left alone, so a
+ * re-run never brings back an unfollow. No events (the source system already has these follows); dryRun
+ * changes nothing.
  * → { imported, unchanged, held: [{ follower_ref, target_ref, reason }] }
  */
 async function importFollows(db, source, rows, subjectOf, { dryRun = false, now = new Date().toISOString() } = {}) {
@@ -194,8 +196,10 @@ async function importFollows(db, source, rows, subjectOf, { dryRun = false, now 
                 if (!dryRun) await db.prepare('INSERT INTO follow_import_holds (source, follower_ref, target_ref, reason, seen_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (source, follower_ref, target_ref) DO UPDATE SET reason = excluded.reason, seen_at = excluded.seen_at').run(source, String(r.follower_ref), String(r.target_ref), reason, now);
                 continue;
             }
+            // Both sides have subjects now: any earlier hold of this pair is resolved.
+            if (!dryRun) await db.prepare('DELETE FROM follow_import_holds WHERE source = ? AND follower_ref = ? AND target_ref = ?').run(source, String(r.follower_ref), String(r.target_ref));
             const prev = await db.prepare('SELECT active FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ?').get(follower, 'channel', target);
-            if (prev && prev.active) { out.unchanged++; continue; }
+            if (prev) { out.unchanged++; continue; }
             if (!dryRun) {
                 await setFollow(db, follower, 'channel', target, true, {
                     notifyEmail: r.notify_email == null ? true : !!r.notify_email, notifyPush: r.notify_push == null ? true : !!r.notify_push,
