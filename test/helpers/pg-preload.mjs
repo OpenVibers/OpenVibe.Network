@@ -27,6 +27,13 @@ globalThis.__ovNetworkDdl = async (sql) => {
     const owner = createDb({ url: t.directUrl, service: 'network-test-owner', max: 1 });
     try { return await owner.exec(sql); } finally { await owner.close(); }
 };
+// The migration runner, on the same owner connection (a test that re-applies the migrations to prove them idempotent).
+globalThis.__ovNetworkMigrate = async (opts) => {
+    if (!t.directUrl) return t.db.migrate(opts);
+    const { createDb } = require('openvibe-sdk/db');
+    const owner = createDb({ url: t.directUrl, service: 'network-test-owner', max: 1 });
+    try { return await owner.migrate(opts); } finally { await owner.close(); }
+};
 // initDb() adopts the handle above, attaches the handle helpers and seeds the boot data (OAuth clients, site
 // settings, built-in themes) once, exactly as the server does at boot. Every test file then reads it with getDb().
 await require(path.join(root, 'server', 'db', 'database.js')).initDb();

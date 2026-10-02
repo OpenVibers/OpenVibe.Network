@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const http = require('http');
 const express = require('express');
 const { ids } = require('openvibe-contracts');
-const { getDb } = require('../server/db/database');
+const { getDb, MIGRATIONS } = require('../server/db/database');
 const principals = require('../server/identity/principals');
 const cells = require('../server/registry/cells');
 
@@ -39,6 +39,10 @@ const project = `prj_${ids.ulid()}`;
 const principal = (nodeId) => db.prepare('SELECT * FROM platform_node_principals WHERE node_id = ?').get(nodeId);
 const insertPrincipal = (p) => db.prepare(`INSERT INTO platform_node_principals (id, node_id, home_cell, owner_kind, project_id, trust, status, created_by, revoked_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, 'test', ?)`).run(p.id || nod(), p.node_id, p.home_cell || 'wnam-1', p.owner_kind, p.project_id ?? null, p.trust, p.status || 'active', p.revoked_at ?? null);
+// The pairing columns of 0014, on the same insert path (never a real credential: a fake 64-hex hash).
+const hash = (c) => c.repeat(64);
+const insertPaired = (p) => db.prepare(`INSERT INTO platform_node_principals (id, node_id, home_cell, owner_kind, project_id, owner_subject, trust, status, created_by, revoked_at, credential_hash, credential_prev_hash, prev_valid_until)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'test', ?, ?, ?, ?)`).run(p.id || nod(), p.node_id, p.home_cell || 'wnam-1', p.owner_kind, p.project_id ?? null, p.owner_subject ?? null, p.trust, p.status || 'active', p.revoked_at ?? null, p.credential_hash ?? null, p.credential_prev_hash ?? null, p.prev_valid_until ?? null);
 const insertInstance = (i) => db.prepare(`INSERT INTO platform_service_instances (id, service, version, cell, node_id, endpoints, state, source, started_at, reported_at)
     VALUES (?, ?, '1.0.0', ?, ?, '["https://media.internal.example"]', ?, 'test', '2026-10-01T00:00:00Z', '2026-10-01T00:00:00Z')`).run(i.id, i.service || 'media', i.cell || 'wnam-1', i.node_id, i.state || 'ready');
 const node = (id, region = 'us-west') => ({ id, roles: ['web', 'app'], location: { region, country: 'US' }, health: { status: 'up', checked_at: '2026-10-01T12:00:00Z' }, updated_at: '2026-10-01T12:00:00Z' });
@@ -77,9 +81,24 @@ try {
     ];
     for (const [row, why] of refused) await assert.rejects(insertPrincipal(row), why);
     assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM platform_node_principals').get()).n, 0, 'nothing was written by a refused insert');
-    await insertPrincipal({ node_id: 'pi-1', owner_kind: 'project', project_id: project, trust: 'community' });
-    await assert.rejects(insertPrincipal({ node_id: 'pi-1', owner_kind: 'project', project_id: project, trust: 'community' }), 'one principal per machine');
+    await insertPaired({ node_id: 'pi-1', owner_kind: 'project', project_id: project, trust: 'community', credential_hash: hash('1') });
+    await assert.rejects(insertPaired({ node_id: 'pi-1', owner_kind: 'project', project_id: project, trust: 'community', credential_hash: hash('2') }), 'one principal per machine');
     await insertPrincipal({ node_id: 'old-1', owner_kind: 'platform', trust: 'first-party', status: 'revoked', revoked_at: '2026-10-01T00:00:00Z' });
+
+    // ── N4a: a paired machine's owner, credential and pairing record (migrations/0014, section 3.2).
+    await insertPaired({ node_id: 'pair-user', home_cell: 'weu-1', owner_kind: 'user', owner_subject: `usr_${ids.ulid()}`, trust: 'community', credential_hash: hash('a') });
+    await assert.rejects(insertPaired({ node_id: 'pair-user-1p', home_cell: 'weu-1', owner_kind: 'user', owner_subject: `usr_${ids.ulid()}`, trust: 'first-party', credential_hash: hash('b') }), 'a user machine is never first-party');
+    await assert.rejects(insertPaired({ node_id: 'pair-user-nocred', home_cell: 'weu-1', owner_kind: 'user', owner_subject: `usr_${ids.ulid()}`, trust: 'community' }), 'a user machine holds a credential');
+    await insertPaired({ node_id: 'pair-platform', home_cell: 'weu-1', owner_kind: 'platform', trust: 'first-party' });
+    await assert.rejects(insertPaired({ node_id: 'pair-prev', home_cell: 'weu-1', owner_kind: 'platform', trust: 'first-party', credential_prev_hash: hash('c') }), 'a previous credential always has a grace window');
+    await insertPaired({ node_id: 'pair-cred-a', home_cell: 'weu-1', owner_kind: 'platform', trust: 'first-party', credential_hash: hash('d') });
+    await assert.rejects(insertPaired({ node_id: 'pair-cred-b', home_cell: 'weu-1', owner_kind: 'platform', trust: 'first-party', credential_hash: hash('d') }), 'one live principal per credential');
+    await assert.rejects(db.prepare(`INSERT INTO platform_node_pairings (id, code_hash, owner_kind, project_id, owner_subject, service, ref, created_by, expires_at)
+        VALUES (?, ?, 'user', ?, ?, 'bot', 'rob-1', 'usr_owner', '2026-10-02T00:00:00Z')`).run(`pair_${ids.ulid()}`, hash('e'), project, `usr_${ids.ulid()}`), 'a pairing row has one owner');
+    // The migration applied a second time is a no-op: the runner records it by number, and every statement is IF NOT EXISTS / DROP ... IF EXISTS
+    // (both as the owner: on the containers the runtime role may not create in the schema).
+    assert.deepStrictEqual((await globalThis.__ovNetworkMigrate({ dir: MIGRATIONS })).applied, []);
+    await globalThis.__ovNetworkDdl(require('fs').readFileSync(require('path').join(MIGRATIONS, '0014_node_pairing.sql'), 'utf8'));
 
     // ── A node principal is not a service principal: it can hold no client-credentials token.
     const nodClient = nod();
