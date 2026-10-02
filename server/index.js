@@ -765,6 +765,9 @@ app.get(['/', '/index.html'], (req, res) => {
     return require('./home/render').sendHome(req, res);
 });
 app.get('/llms.txt', (_req, res) => res.type('text/plain').set('Cache-Control', 'public, max-age=3600').send(require('./home/render').llmsTxt()));
+// The crawl files the front door owes crawlers, built from openvibe-shared/seo (plan T11 lane D), ahead
+// of express.static below so they answer the generated copy rather than public/.
+app.use(require('./seo/routes').createSeoRoutes({ release }));
 
 // Account hub (my.html) — the apex hosts the account hub under /my
 // plus its client-routed sections.
