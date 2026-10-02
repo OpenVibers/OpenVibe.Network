@@ -100,12 +100,13 @@ try {
     assert.deepStrictEqual((await globalThis.__ovNetworkMigrate({ dir: MIGRATIONS })).applied, []);
     await globalThis.__ovNetworkDdl(require('fs').readFileSync(require('path').join(MIGRATIONS, '0014_node_pairing.sql'), 'utf8'));
 
-    // ── A node principal is not a service principal: it can hold no client-credentials token.
+    // ── A node principal is not a service principal: an oauth_clients secret under a nod_ id buys nothing. Every nod_
+    // client goes to the node branch (slice N4c), which knows only node credentials: 401 invalid_client.
     const nodClient = nod();
     await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris) VALUES (?, 'node-secret', 'node', '[]')").run(nodClient);
     const t = await fetch(`${base}/oauth/token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'client_credentials', client_id: nodClient, client_secret: 'node-secret', audience: 'openvibe.network' }) });
-    assert.strictEqual(t.status, 400);
-    assert.strictEqual((await t.json()).error, 'unauthorized_client');
+    assert.strictEqual(t.status, 401);
+    assert.strictEqual((await t.json()).error, 'invalid_client');
 
     // ── Host's node report: first-named machines become platform principals; a project's or a revoked machine refuses the report.
     const host = { authorization: `Bearer ${await token('host', 'host-secret')}` };

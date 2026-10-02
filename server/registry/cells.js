@@ -88,14 +88,25 @@ async function getCell(db, id) {
     return r ? cellView(r) : null;
 }
 
-/** Everything registered in one cell: its nodes (owner, trust, health), service instances and offers. Internal only. */
-async function topology(db, id) {
+/** A live paired machine with no platform_nodes row is 'up' while it signed in within this window. */
+const SEEN_UP_MS = 10 * 60 * 1000;
+
+/**
+ * Everything registered in one cell: its nodes (owner, trust, health, last seen, the capabilities they presented),
+ * service instances and offers. Internal only.
+ */
+async function topology(db, id, now = Date.now()) {
     const cell = await getCell(db, id);
     if (!cell) return null;
     const health = new Map((await db.prepare('SELECT id, status FROM platform_nodes').all()).map((r) => [r.id, r.status]));
+    const caps = new Map((await db.prepare(`SELECT c.node_id, c.doc FROM platform_node_capabilities c
+        JOIN platform_node_principals p ON p.node_id = c.node_id WHERE p.home_cell = ?`).all(cell.id)).map((r) => [r.node_id, JSON.parse(r.doc)]));
+    const seenUp = (p) => (p.status === 'active' && p.last_seen_at && now - Date.parse(p.last_seen_at) <= SEEN_UP_MS ? 'up' : 'unknown');
     const nodes = (await db.prepare('SELECT * FROM platform_node_principals WHERE home_cell = ? ORDER BY node_id').all(cell.id)).map((p) => ({
-        principal_id: p.id, node_id: p.node_id, owner: { kind: p.owner_kind, project_id: p.project_id || null },
-        trust: p.trust, status: p.status, health: health.get(p.node_id) || 'unknown',
+        principal_id: p.id, node_id: p.node_id, name: p.name || null, owner: { kind: p.owner_kind, project_id: p.project_id || null },
+        trust: p.trust, status: p.status, health: health.get(p.node_id) || seenUp(p), last_seen_at: p.last_seen_at || null,
+        paired_for: p.paired_by_service ? { service: p.paired_by_service, ref: p.pairing_ref } : null,
+        capabilities: caps.get(p.node_id) || null,
     }));
     const instances = (await db.prepare('SELECT * FROM platform_service_instances WHERE cell = ? ORDER BY service, id').all(cell.id)).map((r) => ({
         id: r.id, service: r.service, version: r.version, cell: r.cell, region: cell.region, node: r.node_id, endpoints: JSON.parse(r.endpoints), state: r.state,
