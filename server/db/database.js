@@ -245,6 +245,8 @@ async function seedDb(db, { log = console } = {}) {
     await require('../registry/nodes').ensureSchema(db);
     // What the network can place on: node and provider offers (server/registry/offers.js; plan T2).
     await require('../registry/offers').ensureSchema(db);
+    // Cells and node principals (plan T2): every machine already in the node registry gets its platform principal.
+    await require('../registry/cells').ensureSchema(db);
     // Refresh tokens: hash-only storage (server/auth/refresh-tokens.js).
     await require('../auth/refresh-tokens').ensureSchema(db);
 

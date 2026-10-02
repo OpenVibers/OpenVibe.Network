@@ -1,7 +1,7 @@
 # T2 — the resource registry (design)
 
 Status: **slice 1 built** (`migrations/0007_resource_registry.sql`, `server/registry/offers.js` write path,
-`test/resource-registry.test.js`); slices 2-5 are design.
+`test/resource-registry.test.js`); **cells and node principals built** (section 9, `migrations/0008`); slices 2-5 are design.
 Pinned versions at time of writing: `openvibe-contracts` **v0.83.0** (`package.json:30`), `openvibe-sdk` v0.25.2,
 `openvibe-shared` v2.3.1. Every claim below was checked against that pin.
 
@@ -102,7 +102,7 @@ Therefore:
    no constant, no test and no runtime code. Naming them in code — even inside a map — would reference contracts that
    do not exist, and `validate()` would throw inside the route and turn a 400 into a 500.
 3. The `CHECK` is widened **only** by slice 5, after T1 publishes the tags and Network bumps the pin
-   (`migrations/0008_resource_offer_kinds.sql`: `ALTER TABLE … DROP CONSTRAINT … ADD CONSTRAINT`).
+   (`migrations/0009_resource_offer_kinds.sql`: `ALTER TABLE … DROP CONSTRAINT … ADD CONSTRAINT`).
 
 ## 3. Module — `server/registry/offers.js`
 
@@ -223,7 +223,7 @@ filter path — PGlite and a real PostgreSQL must agree on it — and `npm test`
 4. **Placement consumption proof.** §5 gains a worked example; test 9 added. No production-code change — this slice
    exists to fail loudly if the response shape drifts from what `plan()` accepts.
 5. **Contracts bump + kind widening.** *Blocked on T1.* `package.json:30` pin bump, a
-   `node -e "validate('platform.storage-offer@1', …)"` smoke check, `migrations/0008_resource_offer_kinds.sql` widening
+   `node -e "validate('platform.storage-offer@1', …)"` smoke check, `migrations/0009_resource_offer_kinds.sql` widening
    the `kind` CHECK to the published kinds, the one-line capability switch, a `KIND → CONTRACT` map used for per-kind
    validation (`validate(KIND_CONTRACT[kind], offer)` when the map has an entry, else the base offer contract), and a
    test per new kind. Nothing waits on this slice; it is only startable once T1 publishes the tags, and
@@ -238,3 +238,46 @@ filter path — PGlite and a real PostgreSQL must agree on it — and `npm test`
   `platform.service-instance@1`, neither of which is at v0.83.0, so they cannot be modelled here now.
 - **`network.resource.report`** does not exist at v0.83.0; `network.node.report` is reused for slice 1. The semantic
   mismatch (nodes reporting offers) is deliberate and temporary, and it is the only reason slice 1 does not need T1.
+
+## 9. Cells and node principals (lane B, first slice)
+
+Built: `migrations/0008_cells_and_node_principals.sql`, `server/registry/cells.js`, `test/cells-registry.test.js`.
+Plan T2: "cells now, hardware later" and "node identity is a Network principal", on today's single host.
+
+**Schema.**
+
+| Table | What it is | Constraints that carry the rule |
+|---|---|---|
+| `platform_regions` | `us-west`, … (`network.node@1`'s region pattern) + country | id pattern |
+| `platform_cells` | `wnam-1`, … with region, residency, `status` (`planned\|active\|draining\|retired`), `route_weight` | region FK; the migration seeds `us-west` and `wnam-1` (`active`) |
+| `platform_node_principals` | one per machine: `nod_<ULID>`, `node_id` (unique), `home_cell`, owner, `trust`, `status` (`active\|draining\|revoked`) | `owner_kind = 'platform'` ⇔ no project and `first-party`; `owner_kind = 'project'` ⇔ a `dev_projects` row and never `first-party`; `revoked` ⇔ `revoked_at`; home cell FK |
+| `platform_service_instances` | `platform.service-instance@1`'s columns (`state` is its enum) + `route_weight`, `source` | `(node_id, cell)` FK to the principal's `(node_id, home_cell)`: an instance runs on a registered node, in its home cell |
+| `dev_projects.home_cell` | `project.home_cell` | FK to cells; existing rows take `wnam-1` |
+| `platform_resource_offers.cell` | (0007) | FK to cells, `NOT VALID`: new writes are checked, rows written before 0008 are not |
+
+Ownership reuses `dev_projects` (the project is the ownership boundary) and the trust classes of
+`platform.resource-offer@1`; no second identity store, no new capability string.
+
+**The node-principal boundary.** A report never assigns identity, owner, trust class or home cell:
+
+- Host's node report (`POST /internal/nodes/report`, `network.node.report`) creates a platform-owned, first-party
+  principal for a machine it is the first to name, in the first active cell of the machine's region, else `wnam-1`.
+  It is refused whole (`409 registry.node_not_platform` / `registry.node_revoked`, nothing written, nothing marked down)
+  when it names a machine a project owns or one that was revoked.
+- At boot, every machine already in `platform_nodes` without a principal gets its platform principal (the backfill;
+  `created_by = 'bootstrap'`).
+- An offer (`POST /internal/resources/report`) must name a known, non-retired cell (`400 registry.unknown_cell`,
+  `409 registry.cell_retired`); an offer for a registered node must carry that node's home cell and trust class
+  (`409 registry.node_cell_mismatch`, `registry.trust_mismatch`, `registry.node_revoked`). Checked before anything is
+  written, like the contract validation.
+- A node principal holds no token yet: `identity.service-token-claims@1` has no node actor, and a `nod_` id is refused
+  as a client-credentials client (`unauthorized_client`).
+
+**Read API.** `GET /api/v1/cells` and `/api/v1/cells/:id` (public, `max-age=60`, `ACAO: *`; 404
+`registry.unknown_cell`): id, region, residency, status, route weight. `GET /internal/registry/cells/:id`
+(`network.registry.read`, `no-store`): the cell's nodes (principal id, owner, trust, status, health from the node
+registry), service instances and offers (capabilities, capacity). Project machines are never public.
+
+**Not in this slice.** A writer for service instances and for project-owned principals (pairing credentials) — both
+wait for the contracts pin bump to v0.84.0, which publishes `platform.service-instance@1` and
+`platform.node-capabilities@1`; the node actor in service-token claims; a second physical cell, WireGuard, geo routing.
