@@ -496,6 +496,8 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     const pairingRouters = require('./registry/node-principals').routers({ guard: require('./identity/principals').guard('network.node.manage') });
     app.use('/api/v1/node-pairing', rateLimit({ windowMs: 60_000, max: 10 }), pairingRouters.pairing);
     app.use('/internal', pairingRouters.internal);
+    // The person's own machines (slice N5): list and revoke, session only, same limit as /api/v1/me/blocks.
+    app.use('/api/v1/me/nodes', rateLimit({ windowMs: 60_000, max: 60 }), require('./registry/node-principals').userRouter(requireAuth));
 }
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read'), require('./identity/blocks').internalHandler(db));
 // The follow graph (WS-E task 4, ADR-030): public counts, a person's own follows, and who follows a target
