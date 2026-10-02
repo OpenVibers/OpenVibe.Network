@@ -489,6 +489,14 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/api/v1/cells', cellRouters.pub);
     app.use('/internal/registry', cellRouters.internal);
 }
+// Pairing a person's machine (plan T2, docs/t2-cells-and-node-principal.md section 4.2): a service holding
+// network.node.manage mints one-time codes and reads or revokes the principals it paired; the machine redeems its code
+// with no other credential, so the redeem route has its own tight rate limit.
+{
+    const pairingRouters = require('./registry/node-principals').routers({ guard: require('./identity/principals').guard('network.node.manage') });
+    app.use('/api/v1/node-pairing', rateLimit({ windowMs: 60_000, max: 10 }), pairingRouters.pairing);
+    app.use('/internal', pairingRouters.internal);
+}
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read'), require('./identity/blocks').internalHandler(db));
 // The follow graph (WS-E task 4, ADR-030): public counts, a person's own follows, and who follows a target
 // (its owner, or network.follows.read, service token only). Every change is network.follow.* (server/identity/follows.js).

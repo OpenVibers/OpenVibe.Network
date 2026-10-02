@@ -150,6 +150,8 @@ const DEFAULT_GRANTS = [
     // WS-X1: Host reports the platform's machines to the node registry (ovhost nodes report).
     ['host', 'network.node.report', SELF_AUDIENCE, []],
     ['host', 'network.resource.report', SELF_AUDIENCE, []],
+    // Plan T2 N4b: Bot pairs its users' machines with Network and reads or revokes only the principals it paired.
+    ['bot', 'network.node.manage', SELF_AUDIENCE, []],
     // WS-N task 12: ovhost incident / maintenance post to the status page.
     ['host', 'network.status.incident', SELF_AUDIENCE, []],
     // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples

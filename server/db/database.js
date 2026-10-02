@@ -104,6 +104,7 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'codes', name: 'OpenVibe.Codes', redirect_uris: ['https://openvibe.codes/auth/callback'] },
             { client_id: 'billing', name: 'OpenVibe.Billing', redirect_uris: ['https://billing.openvibe.network/auth/callback'] },
             { client_id: 'ai', name: 'OpenVibe.AI', redirect_uris: ['https://ai.openvibe.network/auth/callback'] },
+            { client_id: 'bot', name: 'OpenVibe.Bot', redirect_uris: ['https://openvibe.bot/auth/callback'] },
         ];
         let seededAny = false;
         for (const c of contractClients) {
