@@ -16,6 +16,7 @@ const cache = require('openvibe-shared/cache-policy');
  *   POST   /:project/archive                                owner or staff; revokes every app
  *   PUT    /:project/allowance    { capabilities: [] }     staff
  *   PUT    /:project/environment-policy { environment_policy }  staff (sandbox | sandbox+production)
+ *   PUT    /:project/placement   { preferred_regions, residency? }  admin+ (home_cell/residency are derived)
  *   GET    /:project/members                                viewer+
  *   POST   /:project/members      { username | subject_id, role }  admin+ (owner for admins)
  *   PATCH  /:project/members/:subject { role }             admin+ (owner for admins)
@@ -96,6 +97,7 @@ function router() {
     r.post('/:project/archive', handle(async (db, a, req, o) => await store.archiveProject(db, a, req.params.project, o)));
     r.put('/:project/allowance', handle(async (db, a, req, o) => await store.setAllowance(db, a, req.params.project, req.body || {}, o)));
     r.put('/:project/environment-policy', handle(async (db, a, req, o) => await store.setEnvironmentPolicy(db, a, req.params.project, req.body || {}, o)));
+    r.put('/:project/placement', handle(async (db, a, req, o) => await store.setPlacement(db, a, req.params.project, req.body || {}, o)));
 
     r.get('/:project/members', handle(async (db, a, req) => ({ members: await store.listMembers(db, a, req.params.project) })));
     r.post('/:project/members', handle(async (db, a, req, o) => await store.addMember(db, a, req.params.project, req.body || {}, o), 201));
