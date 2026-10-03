@@ -258,6 +258,8 @@ async function setAllowance(db, actor, projectId, { capabilities: list }, { ctx,
             await grantEvent(db, actor, project.id, g.app_id, g.capability, g.audience, g.status, next, ctx, 'outside allowance');
             trimmed.push({ app_id: g.app_id, capability: g.capability, status: next });
         }
+        // Then the delegated grants of this project's app-hosted agents that the smaller ceiling no longer covers (WS-Z2).
+        await require('./agents').revokeBeyondHost(db, "project_id = ? AND host_kind = 'app'", [project.id], { actor: actor.label, ctx, settings });
     });
     return { allowance: wanted, trimmed };
 }
@@ -651,8 +653,12 @@ async function decideGrant(db, actor, projectId, appId, capability, decision, { 
         if (g.status !== 'approved') fail(409, 'grant.not_active', `grant is ${g.status}`);
     }
     await db.tx(async () => {
+        // A revoke takes the project's lock first, as a delegated grant's PUT does, so neither misses the other.
+        if (decision === 'revoked') await lockProject(db, project.id);
         await db.prepare('UPDATE dev_grants SET status = ?, decided_by = ?, decided_at = ? WHERE app_id = ? AND capability = ?').run(decision, actor.label, nowIso(), app.id, g.capability);
         await grantEvent(db, actor, project.id, app.id, g.capability, g.audience, g.status, decision, ctx);
+        // The app's agents lose the delegated grants it no longer covers (WS-Z2).
+        if (decision === 'revoked') await require('./agents').revokeBeyondHost(db, 'host_app_id = ?', [app.id], { actor: actor.label, ctx, settings });
     });
     return grantView(await db.prepare('SELECT * FROM dev_grants WHERE app_id = ? AND capability = ?').get(app.id, g.capability));
 }

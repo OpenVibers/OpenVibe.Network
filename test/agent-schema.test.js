@@ -1,7 +1,7 @@
 'use strict';
-// The agents migration (plan T2 WS-Z2 slice 2, migrations/0016_agents.sql) reaches a database that production
-// already migrated: a database at 0015 without it gains it from the normal runner, once, and the file is safe to
-// run twice. It also pins why it is 0016 and not the design's 0010: the openvibe-sdk/db runner tracks applied
+// The agents migrations (plan T2 WS-Z2 slices 2-3, migrations/0016_agents.sql and 0017_agent_grants.sql) reach a
+// database that production already migrated: a database at 0015 without them gains them from the normal runner,
+// once, and each file is safe to run twice. It also pins why it is 0016 and not the design's 0010: the openvibe-sdk/db runner tracks applied
 // migrations by id but refuses a pending file numbered below one already applied.
 //   node test/agent-schema.test.js
 const assert = require('assert');
@@ -43,11 +43,11 @@ const quiet = { log() {}, warn() {}, error() {} };
 
         // The real directory: 0016 applies on top of 0015, once.
         const first = await asOwner((db) => db.migrate({ dir: MIGRATIONS, log: quiet }));
-        assert.deepStrictEqual(first.applied.map((m) => [m.id, m.name, m.phase]), [['0016', 'agents', 'expand']]);
+        assert.deepStrictEqual(first.applied.map((m) => [m.id, m.name, m.phase]), [['0016', 'agents', 'expand'], ['0017', 'agent_grants', 'expand']]);
         assert.ok(await hasAgents());
         assert.deepStrictEqual((await asOwner((db) => db.migrate({ dir: MIGRATIONS, log: quiet }))).applied, [], 'already applied');
         // Expand only, IF NOT EXISTS throughout: running the file again changes nothing and fails nothing.
-        await asOwner((db) => db.exec(fs.readFileSync(path.join(MIGRATIONS, '0016_agents.sql'), 'utf8')));
+        for (const f of ['0016_agents.sql', '0017_agent_grants.sql']) await asOwner((db) => db.exec(fs.readFileSync(path.join(MIGRATIONS, f), 'utf8')));
 
         // The table works on the migrated database: ISO defaults like every other text timestamp, and the app host
         // must be an app of the agent's own project and environment.
@@ -64,6 +64,25 @@ const quiet = { log() {}, warn() {}, error() {} };
         assert.deepStrictEqual([r.updated_at.length, r.status], [24, 'active']);
         await assert.rejects(agent(`agt_${'6'.repeat(26)}`, other, 'sandbox'), /foreign key/i, 'an app of another project');
         await assert.rejects(agent(`agt_${'7'.repeat(26)}`, prj, 'production'), /foreign key/i, 'an app of the other environment');
+
+        // Delegated grants (0017): one row per (agent, capability), of an existing agent, with a known mode and status,
+        // and a revoked row always says when.
+        const now = new Date().toISOString();
+        const grant = (g) => t.db.prepare(`INSERT INTO dev_agent_grants (agent_id, capability, audience, mode, status, granted_at, granted_by, updated_at, revoked_at)
+                    VALUES (?, ?, ?, ?, ?, ?, 'test', ?, ?)`).run(g.agent || `agt_${'5'.repeat(26)}`, g.capability || 'media.object.read', g.audience || 'openvibe.media',
+            g.mode || 'confirm', g.status || 'active', now, now, g.revoked_at === undefined ? null : g.revoked_at);
+        await grant({});
+        await assert.rejects(grant({}), /duplicate key|unique/i, 'one row per agent and capability');
+        await grant({ capability: 'media.object.upload', mode: 'auto', status: 'revoked', revoked_at: now });
+        await assert.rejects(grant({ agent: `agt_${'8'.repeat(26)}`, capability: 'media.object.list' }), /foreign key/i, 'an unknown agent');
+        await assert.rejects(grant({ capability: 'media.object.list', mode: 'always' }), /check constraint/i, 'an unknown mode');
+        await assert.rejects(grant({ capability: 'media.object.list', status: 'paused' }), /check constraint/i, 'an unknown status');
+        await assert.rejects(grant({ capability: 'media.object.list', status: 'revoked' }), /check constraint/i, 'revoked without revoked_at');
+        await assert.rejects(grant({ capability: 'media.object.list', revoked_at: now }), /check constraint/i, 'active with revoked_at');
+        await assert.rejects(grant({ capability: 'media.object.list', audience: 'media' }), /check constraint/i, 'an audience that is not openvibe.<service>');
+        const idx = (await t.db.prepare("SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'dev_agent_grants' ORDER BY indexname").all());
+        assert.deepStrictEqual(idx.map((i) => i.indexname), ['dev_agent_grants_active_idx', 'dev_agent_grants_cap_idx', 'dev_agent_grants_pkey']);
+        assert.match(idx[0].indexdef, /WHERE \(?status = 'active'/);
         console.log('agent schema: all tests passed');
     } finally {
         await t.close();
