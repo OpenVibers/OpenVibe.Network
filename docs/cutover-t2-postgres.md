@@ -1,14 +1,32 @@
 # T2 cutover: Network from SQLite to PostgreSQL
 
-The production move of OpenVibe.Network from its SQLite file to PostgreSQL (plan T2, ADR-035). Production
-(`openvibe-ovh`) runs **20dd7ff**, the last SQLite release. Every later commit serves from PostgreSQL only:
-`DATABASE_URL` is required in production (there is no SQLite path), migrations run as the owner on
-`DATABASE_DIRECT_URL`, and the limit counters live on Valkey (`VALKEY_URL`). Two manual deploys of that range
-failed readiness and ovhost rolled them back. The most likely cause is that the server refused to boot without
-`DATABASE_URL` (`server/db/database.js`), but this is unconfirmed. This runbook covers the data move those
-deploys skipped. It was rehearsed with `npm run rehearse-pg-cutover` (`scripts/rehearse-pg-cutover.js`) on
-20dd7ff's full schema: the 51 tables `initDb()` makes plus the 26 its modules create at boot. That rehearsal
-found two import blockers, fixed in `scripts/migrate-to-postgres.js` with it:
+The production move of OpenVibe.Network from its SQLite file to PostgreSQL (plan T2, ADR-035). Every commit
+after **20dd7ff** serves from PostgreSQL only: `DATABASE_URL` is required in production (there is no SQLite
+path), migrations run as the owner on `DATABASE_DIRECT_URL`, and the limit counters live on Valkey
+(`VALKEY_URL`).
+
+**Observed state (read-only `ov access run openvibe-ovh`, 2026-10-03 UTC).** Production (`openvibe-ovh`) now
+runs **bad7b106fda0**, a PostgreSQL-only release: `health` reports it `ready` with `openvibe-network=active`
+and `validate` reports the checkout clean at that SHA. The serving code still refuses to boot in production
+without `DATABASE_URL` (`server/db/database.js`), so an active, ready release is one serving from PostgreSQL.
+`DATABASE_URL`, `DATABASE_DIRECT_URL` and `VALKEY_URL` are present and non-empty in
+`/etc/openvibe/network.env` (mode `600`). The per-check detail, and what could not be checked, is in
+[cutover-evidence-t2.md](cutover-evidence-t2.md).
+
+**First-attempt history, kept.** Production ran **20dd7ff**, the last SQLite release, until 2026-10-02. The
+deployments of the PostgreSQL-only range did not all come up: `ovhost releases network` records
+`failed-rolled-back` for **5781a6b9daf5** (2026-10-01T18:56Z), **427e196f6276** (2026-10-02T01:10Z) and
+**2c6b8b5eae59** (2026-10-02T14:49Z), each followed by a rollback to 20dd7ff. (This runbook first recorded two
+failed attempts; the release log kept by ovhost shows three.) The first release in that range that stayed up
+was **757dc98b1b67** (2026-10-02T16:56Z), then **cbaacc48bd07**, **4e7b56b2046f** and the current
+**bad7b106fda0**. The leading explanation for the rollbacks — the server refused to boot without
+`DATABASE_URL` (`server/db/database.js`) — was never confirmed and still is not: the journal no longer reaches
+those windows, and `ovhost` records `failed-rolled-back` with no reason.
+
+This runbook covers the data move those first deploys skipped. It was rehearsed with
+`npm run rehearse-pg-cutover` (`scripts/rehearse-pg-cutover.js`) on 20dd7ff's full schema: the 51 tables
+`initDb()` makes plus the 26 its modules create at boot. That rehearsal found two import blockers, fixed in
+`scripts/migrate-to-postgres.js` with it:
 
 - `analytics_rate_tracking` (openvibe-shared's old per-IP counters) has no PostgreSQL table, so the import refused
   to start. It is now in `SKIP_SOURCE`, so IPs are never carried over.
@@ -16,9 +34,11 @@ found two import blockers, fixed in `scripts/migrate-to-postgres.js` with it:
   `user_profile_changes` rows, and would have published one profile event per account. The import now turns
   that trigger off while it copies (`QUIET_TRIGGERS`).
 
-Every step ends with a **go / no-go** check. A no-go before step 8 (deploy) leaves production on SQLite with no
-data change: restart the old release (`sudo systemctl start openvibe-network`), reopen, and reschedule. A no-go
-from step 8 on means [rollback](#rollback).
+Every step ends with a **go / no-go** check. The steps are kept as the record of how the move was rehearsed and
+run; a re-run (a rebuild, or a second environment) starts from the Prerequisites with the then-current target
+SHA. At the time of the move, a no-go before step 8 (deploy) left production on SQLite with no data change:
+restart the old release (`sudo systemctl start openvibe-network`), reopen, and reschedule. A no-go from step 8
+on meant [rollback](#rollback).
 
 Conventions:
 
@@ -89,8 +109,8 @@ These are done by the owner and never by an agent. Each must be true before the 
 
 ## Step 1: stage the target release (T-1 day, no downtime)
 
-The running checkout `/opt/openvibe.network` stays on 20dd7ff until step 8. The import tools and migrations
-come from a separate checkout of the target commit. It is never served from.
+At the time of the move, the running checkout `/opt/openvibe.network` stayed on 20dd7ff until step 8. The import
+tools and migrations come from a separate checkout of the target commit. It is never served from.
 
 ```bash
 TARGET=<merge sha>
@@ -270,7 +290,8 @@ At boot, the migrations find everything applied, and the seed adds only the boot
 
 **Go:** the deploy exits 0, and its release is `$TARGET`.
 **No-go:**
-- **ovhost rolled back (exit 3).** Production is on 20dd7ff and SQLite again, and no write reached PostgreSQL.
+- **ovhost rolled back (exit 3).** At the time of the move, production was on 20dd7ff and SQLite again, and no
+  write had reached PostgreSQL.
   Read `ovhost releases network` and the boot log
   (`sudo journalctl -u openvibe-network --since "$T0" | tail -50`). The log names its failure without printing
   URLs. Then close the window.
@@ -324,13 +345,15 @@ rollback and the audit trail. `$STAGE` may be deleted.
 ov access run openvibe-ovh rollback network
 ```
 
-This brings back the previous release, **20dd7ff**, which serves from `data/network.db` again. Nothing in this
-runbook writes to that file: the import read `$COPY`, and the PostgreSQL release never opens `DB_PATH`. The file
-is exactly as it was at T0. The old release ignores `DATABASE_URL`, `DATABASE_DIRECT_URL` and `VALKEY_URL`, so
-they stay in `network.env`.
+At the time of the move, this brought back the previous release, **20dd7ff**, which served from
+`data/network.db` again. Nothing in this runbook writes to that file: the import read `$COPY`, and the
+PostgreSQL release never opens `DB_PATH`. The file was exactly as it was at T0. The old release ignores
+`DATABASE_URL`, `DATABASE_DIRECT_URL` and `VALKEY_URL`, so they stay in `network.env`. After the move
+succeeded, the previous release is a PostgreSQL-only one, so a rollback is a code rollback only — it does not
+by itself return serving to SQLite.
 
-**Go (rollback worked):** `ov access run openvibe-ovh health network` is healthy on 20dd7ff, and `/api/ready`
-answers 200. Sign-in works.
+**Go (rollback worked):** at the time of the move, `ov access run openvibe-ovh health network` was healthy on
+20dd7ff, and `/api/ready` answered 200. Sign-in worked.
 
 **What is lost:** every write that reached PostgreSQL between T1 and the rollback. That includes:
 - new accounts, and profile, username and password changes;

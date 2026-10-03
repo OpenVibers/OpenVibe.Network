@@ -63,7 +63,7 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
             '/oauth/client-info?client_id=live', `/oauth/client-info?client_id=${dev.PA.app}`, '/api/auth/anon-identities', '/sso/check', '/fedcm/accounts'];
         const paths = crawler.pathsFor(w.routes, values, { method: 'get', query: 'limit=5&all=1&debug=1&include=secret', extra });
         const tokenOf = (h) => String((h && h.authorization) || '').replace(/^Bearer /, '');
-        const people = { ...w.callers, key: { 'x-internal-key': w.sentinels.INTERNAL_API_KEY } };
+        const people = { ...w.callers, key: { 'x-internal-key': 'retired-key' } };
         // What each caller must never see: every secret, plus every other caller's credential. Staff
         // admins and the owner list verification keys (they make them to hand out); nobody else sees one.
         const needlesFor = (who) => {
@@ -137,7 +137,7 @@ const out = (...a) => process.stdout.write(a.join(' ') + '\n');
         }
         // Wrong credentials of every kind on the paths that take them.
         const wrong = {
-            'retired internal key': { 'x-internal-key': w.sentinels.INTERNAL_API_KEY },
+            'retired internal key': { 'x-internal-key': 'retired-key' },
             'forged bearer': { authorization: `Bearer ${jwt.sign({ sub: users.owner.id, id: users.owner.id }, 'guess', { issuer: w.issuer })}` },
             'none alg bearer': { authorization: `Bearer ${jwt.sign({ sub: users.owner.id, id: users.owner.id }, null, { algorithm: 'none' })}` },
             'setup token guess': { 'x-setup-token': 'x', authorization: 'Bearer x' },

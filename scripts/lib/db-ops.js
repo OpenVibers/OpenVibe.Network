@@ -2,7 +2,7 @@
 /**
  * Shared by the operator scripts: `parseArgs(argv, { flags, values })`, the `--flag` / `--key value`
  * parsing they all use. On PostgreSQL (plan T2, ADR-035) the scripts open the service database through
- * DATABASE_URL themselves (scripts/secrets-out-of-db.js, scripts/import-blocks.js); the old
+ * DATABASE_URL themselves (for example, scripts/secrets-out-of-db.js); the old
  * better-sqlite3 helpers (dbPath, dropToOwnerOf, the sqlite online backup) are gone with the file.
  */
 const path = require('path');

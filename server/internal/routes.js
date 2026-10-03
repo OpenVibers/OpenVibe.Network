@@ -484,4 +484,18 @@ router.post('/resolve-anon', principals.guard('identity.subject.resolve'), async
     }
 });
 
+// ── Read a developer project ─────────────────────────────────
+// Owning services key tenancy by project_id and enforce the quotas Network records (docs/developer-projects.md, ADR-014).
+// The capability is first-party and never grantable to apps; the view carries no secrets and no members but the owner.
+router.get('/projects/:project_id', principals.guard('network.project.read'), async (req, res) => {
+    try {
+        const out = await require('../developer/store').internalProjectView(getDb(req), req.params.project_id);
+        if (!out) return require('openvibe-contracts').http.sendProblem(res, 404, 'project.not_found', { detail: 'no such project' });
+        res.set('Cache-Control', 'no-store').json(out);
+    } catch (err) {
+        console.error('[Internal] project read error:', err.message);
+        require('openvibe-contracts').http.sendProblem(res, 500, 'internal.error', { detail: 'project read failed' });
+    }
+});
+
 module.exports = router;

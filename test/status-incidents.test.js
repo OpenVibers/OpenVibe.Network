@@ -23,7 +23,7 @@ for (const c of ['host', 'live']) await db.prepare('UPDATE oauth_clients SET cli
 await db.prepare("INSERT INTO users (id, username, password_hash, subject_id, role) VALUES (1, 'boss', 'x', 'usr_01JAB2C3D4E5F6G7H8J9K0MNPA', 'admin'), (2, 'pat', 'x', 'usr_01JAB2C3D4E5F6G7H8J9K0MNPB', 'user')").run();
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
-const config = { internalKey: 'legacy-key', jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
+const config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
 const { signToken } = require('../server/auth/routes');
 const requireAuth = require('../server/auth/session').makeRequireAuth(() => ({ db, publicKey: keys.publicKey, config }), signToken);
 const app = express();

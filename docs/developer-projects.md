@@ -2,7 +2,7 @@
 
 Roadmap Wave 20 foundation. The binding decision is ADR-014 in OpenVibe.Contracts. Network owns developer projects: who may build on OpenVibe, which apps they run, what those apps may do, and how much they may use. OpenVibe.Codes (the portal, the next step) is a client of this API. It never enforces grants or quotas itself.
 
-What exists today: the data model, the `/api/v1/projects` API, app tokens from `/oauth/token`, the sandbox check in Network's own capability guard, defaults that let a new project's sandbox apps work without staff (sandbox audiences and a sandbox allowance), the audit, and a relay of the audit's events to OpenVibe.Events (off until `OV_EVENTS_INTERNAL_URL` is set). What does not exist yet: a UI (Codes), a consent screen that lists capabilities, refresh tokens for apps, and service-side reads of projects (`network.project.read`, proposed). Quotas are enforced by the owning services, not here.
+What exists today: the data model, the `/api/v1/projects` API, app tokens from `/oauth/token`, the sandbox check in Network's own capability guard, defaults that let a new project's sandbox apps work without staff (sandbox audiences and a sandbox allowance), the audit, and a relay of the audit's events to OpenVibe.Events (off until `OV_EVENTS_INTERNAL_URL` is set). What does not exist yet: a UI (Codes), a consent screen that lists capabilities, and refresh tokens for apps. Owning services read a project through `GET /internal/projects/:project_id` ([Service-side project reads](#service-side-project-reads)). Quotas are enforced by the owning services, not here.
 
 ## Model
 
@@ -133,7 +133,7 @@ This is ADR-014's acceptance rule: "a revoked credential fails everywhere within
 
 ## Quotas
 
-A quota says how much of one capability a project may use: for example, `media.object.upload` with limit 1073741824, window `total`, unit `bytes`. Network records quotas and shows them to members. **Network does not enforce them.** The service that owns the capability does (`enforced_by` in the response is that audience). Until an owning service reads project quotas (proposed capability `network.project.read`), a quota is a recorded limit and not a guarantee. What a quota's current window has used is measured from the services' usage rollups ([Usage](#usage)).
+A quota says how much of one capability a project may use: for example, `media.object.upload` with limit 1073741824, window `total`, unit `bytes`. Network records quotas and shows them to members. **Network does not enforce them.** The service that owns the capability does (`enforced_by` in the response is that audience). An owning service reads a project's quotas through `GET /internal/projects/:project_id` ([Service-side project reads](#service-side-project-reads)). Until that service enforces what it reads, a quota is a recorded limit and not a guarantee. What a quota's current window has used is measured from the services' usage rollups ([Usage](#usage)).
 
 ## Usage
 
@@ -195,6 +195,21 @@ Base: `/api/v1/projects`. Every call needs `Authorization: Bearer <Network user 
 | `GET /:project/audit[?before=&limit=]` | admin+, staff | newest first, paged by `next_before` |
 | `POST /:project/export-tokens` | owner, admin (not staff as such) | `{ audience, env }` → a 5-minute read-only export token ([Export tokens](#export-tokens)) |
 
+### Service-side project reads
+
+`GET /internal/projects/:project_id` (loopback only, like all of `/internal`) needs a service token holding `network.project.read` for `openvibe.network`. Owning services use it to key tenancy by `project_id` and to enforce the quotas Network records (ADR-014).
+
+- **Who.** By default only Host holds it (`DEFAULT_GRANTS`), because Host places and runs workloads per project. Another service gets a row only when it ships a caller. The capability is `first-party` and is never granted to apps: staff cannot add it to an allowance, and a person's session or an app token gets `401`/`403`.
+- **Result** (`Cache-Control: no-store`): `{ project, allowance, quotas, apps, grants }`.
+  - `project`: `id`, `name`, `owner` (`{ type: 'user', id: usr_… }`), `environment_policy`, `home_cell`, `residency` (the home cell's), `preferred_regions`, `created_at`, `archived_at`.
+  - `quotas[]`: `capability`, `limit`, `window`, `unit`, `enforced_by`.
+  - `apps[]`: `id`, `name`, `environment`, `status` (`active` or `revoked`), `created_at`, `revoked_at`. Revoked apps are listed too.
+  - `grants[]`: `app_id`, `capability`, `audience`, `status` (`requested`, `approved`, `denied` or `revoked`), `decided_at`. These are every app's grants, including those of revoked apps: a revoked app's grant that was not denied reads `revoked`, with `decided_at` the app's revocation time (revoking an app or archiving its project leaves the grant rows themselves unchanged).
+- **Never in it:** secrets or their hashes, client ids, redirect URIs, credentials, members other than the owner, or who requested or decided a grant.
+- **Archived projects** still read, with `archived_at` set and every app revoked.
+- **Errors:** an unknown or malformed id is `404 project.not_found`; no token is `401 token.missing`; a token without the capability is `403`.
+- **Catalog.** `network.project.read` is `planned` in openvibe-contracts until Contracts makes it `active`. The guard accepts `planned` and refuses only `retired`.
+
 Redirect URIs must be https. `http://localhost`, `127.0.0.1` and `[::1]` are allowed for sandbox apps only. Fragments and embedded credentials are refused. At most 10 per app. A public app needs at least one. A project has at most `DEV_MAX_APPS_PER_PROJECT` active apps.
 
 ## Events
@@ -241,7 +256,7 @@ Until the relay is turned on in an environment, nobody else receives these event
 ## Known gaps (next steps)
 
 - **Consent screen.** The account chooser shows the app's name, not the capabilities it asks for. Codes and Network need a consent step before third-party production apps go live.
-- **Service-side project reads.** `network.project.read` (proposed) and `GET /internal/projects/:id` let owning services enforce quotas and check tenancy.
+- **Service-side project reads.** The route is built, but no service calls it yet. Host holds the grant. Contracts still has to make `network.project.read` `active`.
 - **PowerChat as the first project** (ADR-014 migration). This is not done. PowerChat's existing OAuth client is unchanged.
 - **Receivers.** Every default sandbox audience must refuse `env: sandbox` except on routes that keep sandbox data apart, and must key tenancy by `project_id`. Media and Events do this in Wave 20. Tools does not yet (see [Sandbox tokens](#sandbox-tokens)).
 - **Revocation fan-out.** The relayed `network.app.revoked` event is the signal receivers can use to disable an app's subscriptions or tenants early. OpenVibe.Events acts on it (and on `network.grant.changed` withdrawing `events.app.subscribe`): it disables the app's subscriptions and refuses its tokens issued before the revocation. That needs this relay switched on. A receiver that does not act on it only stops the app when its issued tokens expire (within 5 minutes); state the app created there (for example a Media object) is untouched by Network.

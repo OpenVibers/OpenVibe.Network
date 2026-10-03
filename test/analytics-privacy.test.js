@@ -69,7 +69,7 @@ async function dumpAnalytics(db) {
     const ISSUER = 'https://openvibe.network';
     const closed = 'http://127.0.0.1:9'; // remote dashboards: refused at once, never a local dev server
     const config = {
-        internalKey: 'k'.repeat(32), baseUrl: ISSUER, loginUrl: ISSUER, networkUrl: ISSUER,
+        baseUrl: ISSUER, loginUrl: ISSUER, networkUrl: ISSUER,
         jwt: { issuer: ISSUER, accessTokenExpiry: '1h', refreshTokenExpiry: '30d' },
         services: { live: { internalUrl: closed }, tools: { internalUrl: closed }, games: { internalUrl: closed }, media: { internalUrl: closed } },
     };

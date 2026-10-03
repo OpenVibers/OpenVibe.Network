@@ -32,7 +32,7 @@ async function bootServer({ env = {}, child = false, timeoutMs = 60000 } = {}) {
         NODE_ENV: 'test', PORT: String(port), HOST: '127.0.0.1', PGLITE_DIR: path.join(dir, 'pglite'),
         AVATAR_PATH: path.join(dir, 'avatars'),
         JWT_PRIVATE_KEY: path.join(dir, 'none.pem'), JWT_PUBLIC_KEY: path.join(dir, 'none.pub.pem'),
-        BOOTSTRAP_PROFILE: 'local-dev', INTERNAL_API_KEY: 'k'.repeat(40),
+        BOOTSTRAP_PROFILE: 'local-dev',
         OV_NETWORK_INTERNAL_URL: `http://127.0.0.1:${port}`,
         OV_LIVE_INTERNAL_URL: 'http://127.0.0.1:9', OV_TOOLS_INTERNAL_URL: 'http://127.0.0.1:9',
         OV_GAMES_INTERNAL_URL: 'http://127.0.0.1:9', OV_MEDIA_INTERNAL_URL: 'http://127.0.0.1:9',
