@@ -126,6 +126,14 @@ After the first run the service will seed the URL registry with safe defaults an
 
 The server applies `migrations/NNNN_*.sql` at boot (as the owner on `DATABASE_DIRECT_URL`) and seeds OAuth2 clients and site settings on first run into PostgreSQL. Client secrets are logged to console once on creation — copy them to the consuming services' env files (`/etc/openvibe/<svc>.env`). The tests run on PGlite (`npm test`) or the PostgreSQL + PgBouncer containers (`npm run test:pg`, after `eval "$(openvibe-sdk scripts/test-services.sh up)"`).
 
+To rotate a service principal, load **Network's** environment before the script name and pass the target service's file with `--write-env`:
+
+```bash
+sudo node --env-file=/etc/openvibe/network.env server/setup/service-principal.js rotate <id> --write-env /etc/openvibe/<id>.env
+```
+
+The script requires the database named `ov_network` (or an explicit `--database-name <name>` override). Do not use `--env-file` after the script name: Node loads it as environment and can select the target service's database.
+
 ---
 
 ## Deploying
