@@ -1,9 +1,10 @@
 # T2 WS-Z2 — projects, agents and delegated grants (design)
 
-Status: **design, nothing built.** Plan T2, "Projects and grants: projects as the ownership boundary for every resource;
+Status: **slices 1–2 built** (proposals, and agents: `migrations/0016_agents.sql`, `server/developer/agents.js`);
+slices 3–9 are design. Plan T2, "Projects and grants: projects as the ownership boundary for every resource;
 `agt_` principals, delegated grants with modes, sensitive capabilities, confirmation requests, budgets (WS-Z2)".
-Pinned versions at time of writing: `openvibe-contracts` **v0.83.0** (`package.json:30`); every contract claim below was
-checked against the `v0.83.0` tag of OpenVibe.Contracts, and the gaps were re-checked against `v0.84.0`.
+Pinned version: `openvibe-contracts` **v0.85.0** (`package.json:33`); every contract claim below was re-checked against
+the `v0.85.0` tag of OpenVibe.Contracts when slices 1–2 were built (it was written against v0.83.0).
 
 Scope: an **agent** is a principal (`agt_<ULID>`) that acts for one person, inside one developer project, run by one
 host (a developer app or a first-party service such as OpenVibe.Actor). Its owner **delegates** part of the host's
@@ -13,21 +14,21 @@ authority to it, capability by capability, each in a **mode**. A **sensitive** c
 for quotas (`docs/developer-projects.md`, "Quotas"). Nothing about apps, service principals, the grantability rule or the
 allowances changes.
 
-## 1. What exists (origin/main `1ea05ff`)
+## 1. What exists (origin/main `4e7b56b`, before slices 1–2)
 
 | Piece | Where | State |
 |---|---|---|
-| Projects, members, roles, apps, app grants, quotas, audit | `migrations/0001_initial.sql:436-530`, `server/developer/store.js`, `/api/v1/projects` (`server/index.js:592`) | built; the ownership boundary already used by node principals (`0008`) |
-| App grant ceiling | `store.js:518` `withinAllowance`, `:550` `decideGrant` (`403 grant.beyond_allowance`), `:187` `setAllowance` (shrink revokes), `server/developer/tokens.js:48` `effectiveGrants` (issuance intersects again) | built |
-| Grantability | `server/developer/policy.js:16-30` (`public` and `partner`, `active` only), `:97` `allowanceFor` (sandbox allowance for sandbox apps) | built |
-| Service-principal grants | `principal_grants` + `principal_grant_changes`, `server/identity/grants-admin.js` (owner-only, reason, expiry, `network.principal_grant.changed`), `server/identity/principals.js:287` `grantsFor` | built |
-| Subjects | `server/identity/subjects.js:95,103` resolve `usr_` and `gst_` only | no `agt_` |
-| Capability guard | `principals.js:344` `guard(capability)` throws at boot on an id the catalog does not have | built |
-| Delegated client capability | `docs/capabilities-proposal/network.project.manage.json` (in the catalog at v0.83.0 as `public`, `planned`) | proposed, unused |
+| Projects, members, roles, apps, app grants, quotas, audit | `migrations/0001_initial.sql:436-530`, `server/developer/store.js`, `/api/v1/projects` (`server/index.js:608`) | built; the ownership boundary already used by node principals (`0008`) |
+| App grant ceiling | `store.js:559` `withinAllowance`, `:591` `decideGrant` (`403 grant.beyond_allowance`), `:196` `setAllowance` (shrink revokes), `server/developer/tokens.js:48` `effectiveGrants` (issuance intersects again) | built |
+| Grantability | `server/developer/policy.js:16-30` (`public` and `partner`, `active` only), `:100` `allowanceFor` (sandbox allowance for sandbox apps) | built |
+| Service-principal grants | `principal_grants` + `principal_grant_changes`, `server/identity/grants-admin.js` (owner-only, reason, expiry, `network.principal_grant.changed`), `server/identity/principals.js:290` `grantsFor` | built |
+| Subjects | `server/identity/subjects.js` resolves `usr_` and `gst_` only | no `agt_` |
+| Capability guard | `principals.js:347` `guard(capability)` throws at boot on an id the catalog does not have | built |
+| Delegated client capability | `docs/capabilities-proposal/network.project.manage.json` (in the catalog at v0.85.0 as `public`, `planned`) | proposed, unused |
 | Service-side project read | `network.project.read` (catalog: `first-party`, `planned`); `GET /internal/projects/:project_id`, granted to Host only | built (lane B step 3); no caller yet; Contracts still has to make it `active` |
-| Sensitive capabilities, confirmations, budgets, agents | — | missing |
+| Sensitive capabilities, confirmations, budgets, agents | — | missing (agents: built by slice 2) |
 
-## 2. Contract vocabulary (v0.83.0, used verbatim)
+## 2. Contract vocabulary (v0.85.0, used verbatim)
 
 - **`identity.subject-ref@1`** has the agent form `{ "type": "agent", "id": "agt_<ULID>" }` ("an agent (OpenVibe.Actor, or
   a developer app's agent) acting under grants its owner delegated"). `ids.PREFIX` has `agent: 'agt'` and
@@ -35,7 +36,7 @@ allowances changes.
 - **`events.event-envelope@1`** has an optional `on_behalf_of` (a SubjectRef): the person an agent acted for.
 - **`capabilities.capability@1`** has an optional boolean **`sensitive`**: "the action has an external side effect (money,
   sending as the person, publishing, applying, deleting, physical control): an agent needs its owner's confirmation unless
-  a standing rule covers it". 23 capabilities carry `sensitive: true` at v0.83.0. Two of them are grantable to apps
+  a standing rule covers it". 23 capabilities carry `sensitive: true` at v0.85.0. Two of them are grantable to apps
   today (`public` + `active`): `media.object.delete` (in the default sandbox allowance) and `space.post.write`. The other
   sensitive ones are `first-party` (e.g. `chat.message.send`, `blog.post.publish`, `tips.superchat.create`), `internal`
   (`billing.*`, `network.coins.transfer`) or `public` but `planned`/`deprecated`.
@@ -43,15 +44,16 @@ allowances changes.
   `requested_by` (SubjectRefs), `capability`, `summary` (≤ 500), `state` (`pending | approved | denied | expired |
   cancelled`), `expires_at`, `created_at`; optional `details` (object), `resources` (`common.entity-ref@1[]`),
   `standing_rule` (`once | session | until | always`), `decided_at`.
-- The capability `visibility` enum at v0.83.0 is **`public | partner | first-party | internal`**. `docs/developer-projects.md`
+- The capability `visibility` enum (since v0.83.0) is **`public | partner | first-party | internal`**. `docs/developer-projects.md`
   ("`partner` is not in the enum yet") and the comment at `policy.js:8` predate that; slice 1 corrects both. The rule
   itself does not change.
 
-**Gaps — not in v0.83.0 nor v0.84.0, so the slices that need them are blocked (section 8):**
+**Gaps — not in v0.85.0, so the slices that need them are blocked (section 8):**
 
-1. `identity.service-token-claims@1`: `sub` allows only `svc:` / `app:` / `mod:` and `actor_type` only `service | app |
-   mod`. An agent token cannot validate. (Same shape of gap as the node actor in `docs/t2-resource-registry.md` §9.)
-2. No capability for a service to create or consume a confirmation (`network.*` at v0.83.0 has none; inventing one makes
+1. `identity.service-token-claims@1`: `sub` allows only `svc:` / `app:` / `mod:` / `node:` and `actor_type` only
+   `service | app | mod | node`. An agent token cannot validate. (v0.85.0 closed the same gap for the node actor of
+   `docs/t2-resource-registry.md` §9.)
+2. No capability for a service to create or consume a confirmation (`network.*` at v0.85.0 has none; inventing one makes
    `principals.guard` throw at boot).
 3. No event payload for a confirmation decision or an agent/delegated-grant change, so these changes are audit rows
    without `event` (the export-token precedent: "The row is not a platform event").
@@ -59,38 +61,22 @@ allowances changes.
 
 ## 3. Data model
 
-Migrations `0010`–`0013` (`0008` is the highest on main; `0009` is reserved for registry slice 5). Header convention of
-`0007`/`0008`: `-- phase: expand`, `-- plan T2 WS-Z2. <why>`, then DDL with `IF NOT EXISTS`. The runtime creates nothing
-(`ensureSchema()` stays a no-op with a comment).
+Agents are `0016` (built); delegated grants, confirmations and budgets take the next free numbers when their slices
+land (`0017`–`0019` if nothing else lands first). The design first reserved `0010`–`0013`, but the `openvibe-sdk/db`
+runner tracks applied migrations by id and **refuses** a pending file numbered below one already applied (`migrate:
+0010_agents.sql is older than applied migration 0014`), and main already ships `0014` and `0015`; `test/agent-schema.test.js` pins
+this. `0010`–`0013` stay unused. Header convention of the existing migrations: `-- phase: expand`, `-- plan T2 WS-Z2.
+<why>`, then DDL with `IF NOT EXISTS`. The runtime creates nothing (`ensureSchema()` stays a no-op with a comment).
 
-**Stores.** Network runs on PostgreSQL in production and on embedded PGlite in development and in `npm test`;
-`npm run test:pg` runs the same suite on real PostgreSQL. The migration runner applies the files below, in the dialect of
-`0007`/`0008`: `text COLLATE "C"` (compares like the old SQLite text), timestamps as ISO `text` (`ov_now_iso()`), `~`
-regex CHECKs, JSON as `text` parsed in JS (never `jsonb`, as `platform_nodes.doc`), `bigint GENERATED ALWAYS AS
-IDENTITY`, partial indexes, no triggers.
+**Stores.** Network runs on PostgreSQL only (the 2026-10-02 cutover): production on PostgreSQL, development and
+`npm test` on embedded PGlite, `npm run test:pg` on real PostgreSQL. The migration runner applies the files below, in the
+dialect of `0007`/`0008`: `text COLLATE "C"`, timestamps as ISO `text` (`ov_now_iso()`), `~` regex CHECKs, JSON as `text`
+parsed in JS (never `jsonb`, as `platform_nodes.doc`), `bigint GENERATED ALWAYS AS IDENTITY`, partial indexes, no
+triggers. There are no SQLite forms: nothing reads a SQLite copy of these tables, and they did not exist before the
+cutover. The accept/reject cases live in `test/agents.test.js` (and the later slices' tests) against the migrated
+database.
 
-**SQLite.** The serving SQLite store is retired (ADR-035; `server/db/database.js`), but SQLite is still read by
-`scripts/migrate-to-postgres.js` and `scripts/pg-preflight-collisions.js`, and the schema must stay expressible there.
-Every table below therefore has a **SQLite form**, written mechanically from the PostgreSQL file and kept next to the
-test that checks it (`test/fixtures/sqlite/00NN_*.sql`, section 7). Nothing at runtime applies it. The rules:
-
-| PostgreSQL (`migrations/00NN_*.sql`) | SQLite form |
-|---|---|
-| `text COLLATE "C"` | `text` (SQLite's default `BINARY` collation compares like `"C"`) |
-| `DEFAULT ov_now_iso()` | `DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))` (the same `…T07:53:27.720Z` shape) |
-| `bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY` / `bigint` | `INTEGER PRIMARY KEY AUTOINCREMENT` / `INTEGER` |
-| `c ~ '^agt_[0-9A-HJKMNP-TV-Z]{26}$'` (also `usr_`, `cnf_`) | `substr(c, 1, 4) = 'agt_' AND length(c) = 30 AND substr(c, 5) NOT GLOB '*[^0-9A-HJKMNP-TV-Z]*'` |
-| `audience ~ '^openvibe\.[a-z][a-z0-9-]{0,63}$'` | `length(audience) BETWEEN 10 AND 73 AND substr(audience, 1, 9) = 'openvibe.' AND substr(audience, 10, 1) GLOB '[a-z]' AND substr(audience, 11) NOT GLOB '*[^a-z0-9-]*'` |
-| `session_id ~ '^[A-Za-z0-9._:-]{8,128}$'` | `length(session_id) BETWEEN 8 AND 128 AND session_id NOT GLOB '*[^A-Za-z0-9._:-]*'` |
-| `request_digest ~ '^[0-9a-f]{64}$'` | `length(request_digest) = 64 AND request_digest NOT GLOB '*[^0-9a-f]*'` |
-| composite and partial indexes, `IF NOT EXISTS`, multi-column `FOREIGN KEY` | unchanged (SQLite enforces the foreign keys with `PRAGMA foreign_keys = ON`) |
-
-Both forms were applied while writing this doc (PGlite, and `node:sqlite` in memory, each twice to prove `IF NOT
-EXISTS`) and agreed on 17 accept/reject cases: wrong prefix or a non-Crockford character, a cross-project or
-cross-environment app host, a service host in sandbox, `revoked` without `revoked_at`, a bad audience, session id or
-digest, `always` with `until_at`, `used_at` on a pending confirmation, a negative budget, and the ISO default.
-
-### 0010 — `0010_agents.sql`
+### 0016 — `0016_agents.sql` (built)
 
 ```sql
 CREATE UNIQUE INDEX IF NOT EXISTS dev_apps_project_env_key ON dev_apps (id, project_id, environment);
@@ -133,7 +119,7 @@ CREATE INDEX IF NOT EXISTS dev_agents_service_idx ON dev_agents (host_service) W
   service-hosted agent is `production`: the code that runs it is first-party, not the project's.
 - `revoked` is final, like an app. `paused` is the owner's kill switch and is reversible.
 
-### 0011 — `0011_agent_grants.sql`
+### Next — `00NN_agent_grants.sql` (slice 3)
 
 ```sql
 CREATE TABLE IF NOT EXISTS dev_agent_grants (
@@ -160,7 +146,7 @@ CREATE INDEX IF NOT EXISTS dev_agent_grants_cap_idx    ON dev_agent_grants (capa
 capability Contracts marks sensitive later is treated as sensitive on the next token with no data migration. The stored
 `mode` is what the owner chose; `effective_mode` (section 5) is computed.
 
-### 0012 — `0012_confirmations.sql`
+### Next — `00NN_confirmations.sql` (slice 4)
 
 ```sql
 CREATE TABLE IF NOT EXISTS dev_standing_rules (
@@ -223,7 +209,7 @@ CREATE INDEX IF NOT EXISTS dev_confirmations_spendable_idx ON dev_confirmations 
   `approved`, unused row may be cancelled too (its `decided_at` stays); the spendable index finds those rows for the
   cascades.
 
-### 0013 — `0013_agent_budgets.sql`
+### Next — `00NN_agent_budgets.sql` (slice 5)
 
 ```sql
 CREATE TABLE IF NOT EXISTS dev_agent_budgets (
@@ -254,7 +240,7 @@ Public routes follow the projects API exactly (`docs/developer-projects.md`, "AP
 |---|---|
 | `GET /agents[?owner=me]` | `{ agents: [agent] }` |
 | `POST /agents` | `{ name, host: {type:'app', id:'app_…'} \| {type:'service', id:'actor'} }` → `201 agent`; an app host must be a non-revoked app **of `:project`** (otherwise `404 app.not_found`, the same answer as an unknown id, so other projects' app ids are not probed) |
-| `GET /agents/:agent` | `agent` with `grants`, `budgets`, `rules` |
+| `GET /agents/:agent` | `agent` with `grants`, `budgets`, `rules` (each added by its slice; slice 2 returns the `agent` alone) |
 | `PATCH /agents/:agent` | `{ name }` → `agent` |
 | `POST /agents/:agent/pause`, `/resume` | → `agent` |
 | `DELETE /agents/:agent` | revoke (final) → `agent` |
@@ -318,7 +304,7 @@ service through `principals.issueToken`), and adds `agent=agt_…` plus `audienc
 **Host binding, checked on every issuance** (`400 invalid_grant` for all of them, one message, so a host cannot learn
 whether someone else's agent exists): the authenticated client **is** the agent's host (`app.id = agent.host_app_id`,
 or `client_id = agent.host_service`); for an app host, `app.project_id = agent.project_id`, `app.environment =
-agent.environment` and the app is not revoked (the foreign key of `0010` already makes the first two true for every
+agent.environment` and the app is not revoked (the foreign key of `0016` already makes the first two true for every
 stored row; issuance re-reads them so a future change to that key cannot widen tokens); the project is not archived;
 the agent is `active`; the owner is still a member and not banned or deleted.
 
@@ -417,7 +403,7 @@ the digest. An agent cannot describe its own request to its owner.
 4. **Use once.** The agent retries with the header. The service calls `consume` with its digest of *this* request. An
    approval is only as good as the authority behind it **now**, so consume re-checks everything that let it be created,
    in one transaction (`db.tx`) that first locks the agent row (`SELECT … FROM dev_agents WHERE id = ? FOR UPDATE` on
-   PostgreSQL; SQLite serialises writers anyway) so a revocation cannot interleave:
+   PostgreSQL) so a revocation cannot interleave:
    - the agent is `active`, its project is not archived, and its owner is still a member, not banned and not deleted;
    - for an app host, the app is not revoked and still belongs to the agent's project and environment;
    - the delegated grant (agent, capability) is `active`, unexpired, and its `effective_mode` is still `confirm`;
@@ -465,10 +451,15 @@ the capability's audience. Owning services read budgets from `GET /internal/agen
 
 - **App grants (`dev_grants`, `store.js`).** Untouched: same table, statuses, roles, approval, `grant.beyond_allowance`,
   `network.grant.changed`. Three existing transactions gain one cascade each, **after** their current work and in the
-  same transaction: `setAllowance` (`:187`) and `decideGrant`/the grant revoke (`:550`) revoke the delegated grants of
-  the app's agents that fall outside `effectiveGrants`; `revokeAppTx` (`:397`) and `archiveProject` (`:176`) revoke the
-  agents themselves (`revoked_by = 'app_revoked'` / `'project_archived'`). `removeMember` (`:281`) revokes the leaving
-  person's agents in that project. Each of these cascades also cancels the affected pending and approved-unused
+  same transaction: `setAllowance` (`:196`) and `decideGrant`/the grant revoke (`:591`) revoke the delegated grants of
+  the app's agents that fall outside `effectiveGrants`; `revokeAppTx` (`:436`) and `archiveProject` (`:183`) revoke the
+  agents themselves (`revoked_by = 'app_revoked'` / `'project_archived'`; built, slice 2 — the archive revokes its agents
+  before its apps, so each records the archive as the cause). `removeMember` (`:319`) revokes the leaving person's
+  agents in that project (`'member_removed'`). Each of these transactions, and an account erasure, first takes the
+  project row's lock (`store.lockProject`, `FOR NO KEY UPDATE`); agent creation takes it too and re-checks the project,
+  the membership and the host under it, so no agent is created against a state a cascade is ending. A pause, resume or
+  revoke re-reads the agent `FOR UPDATE` and updates only from that status, so a resume never undoes a concurrent revoke
+  (`test/agents-concurrency.test.js`). Each of these cascades also cancels the affected pending and approved-unused
   confirmations and revokes the standing rules (section 5, step 6). A sandbox agent's grant still inside the sandbox allowance survives a staff change,
   for the same reason the app's grant does.
 - **App tokens (`tokens.js`).** Unchanged byte for byte when no `agent` parameter is sent; the new branch is taken only
@@ -481,11 +472,12 @@ the capability's audience. Owning services read budgets from `GET /internal/agen
 - **Sensitive app grants.** `media.object.delete` and `space.post.write` keep working for apps exactly as today:
   `capability@1` defines confirmation for **agents**. Apps acting with `on_behalf_of` are listed as unresolved.
 - **Mod principals, node principals, export tokens.** Untouched.
-- **Account deletion (`account-data.js:315` `erase`)** revokes the subject's agents, cancels their pending and approved-unused
-  confirmations and revokes their rules; the account export (`:160` `networkPart`) lists the person's agents, grants, rules and
+- **Account deletion (`account-data.js:319` `erase`)** revokes the subject's agents (`revoked_by = 'account_deleted'`,
+  then `'project_archived'` for the rest of a project it archives; built, slice 2), cancels their pending and approved-unused
+  confirmations and revokes their rules; the account export (`:162` `networkPart`) lists the person's agents (built: `developer_projects.json` `agents`, without `revoked_by`), grants, rules and
   confirmations (without other people's data).
 - **Migration of existing rows.** None needed: the four tables start empty, no existing column changes, no backfill,
-  `0010`–`0013` are `expand` only. Rolling back a slice means its routes disappear; its empty or orphaned rows are inert
+  `0016` and its successors are `expand` only. Rolling back a slice means its routes disappear; its empty or orphaned rows are inert
   because issuance and the routes are the only readers.
 
 ## 7. Test plan
@@ -499,10 +491,10 @@ keypair, a bare express app, user tokens, service tokens through `POST /oauth/to
   `host_app_id`, service host in sandbox, revoked without `revoked_at`); **an app of another project as host**: the route
   answers `404 app.not_found`, and a direct insert of such a row (or of an app of the other environment) fails on the
   composite foreign key; cascades: revoke app, archive project, remove member, account erase.
-- `test/agent-schema.test.js` — applies `0010`–`0013` and their SQLite forms (`test/fixtures/sqlite/00NN_*.sql`, to a
-  `node:sqlite` in-memory database with `PRAGMA foreign_keys = ON`; `node:sqlite` because the native `better-sqlite3`
-  build need not match the running Node), each twice, and runs one table of accept/reject rows against both, asserting
-  the same outcome (the 17 cases of section 3, grown with each slice). A drift between the two forms fails here.
+- `test/agent-schema.test.js` — through the normal runner only: a database migrated to `0015` without the agents
+  migration gains `0016` (once; re-running the file changes nothing), a file numbered below an applied one is refused
+  (why the design's `0010` became `0016`), and the composite foreign key holds on the migrated database. Each later
+  slice adds its migration to it.
 - `test/agent-grants.test.js` — ceiling: an app-hosted agent cannot get a capability the app lacks, outside the
   allowance, or `first-party`; a sandbox agent gets a sandbox-allowance capability; a service-hosted agent never gets an
   `internal` one; `auto` on `media.object.delete` → `422`; `effective_mode` follows the catalog; only the owner may PUT;
@@ -533,33 +525,33 @@ Regression runs each slice: `test/developer-projects.test.js`, `test/developer-d
 `test/developer-export-tokens.test.js`, `test/grants-admin.test.js`, `test/principals.test.js`,
 `test/service-principal.test.js`, `test/account-data.test.js`, `test/security-idor.test.js`. Every slice: the new file
 alone while iterating, then `npm test` and `npm run test:pg` (PGlite and real PostgreSQL must both apply the migration
-and agree; `test/agent-schema.test.js` adds the SQLite form to that agreement).
+and agree).
 
 ## 8. Slices — each one PR
 
-1. **Docs and proposals.** `docs/developer-projects.md` and the `policy.js:8` comment: `partner` is in the v0.83.0 enum.
+1. **Docs and proposals** (built). `docs/developer-projects.md` and the `policy.js:8` comment: `partner` is in the enum.
    `docs/capabilities-proposal/network.confirmation.manage.json` (first-party, `implementedBy` the four
    `/internal/confirmations` routes). `docs/contracts-proposal/`: `identity.service-token-claims@1` gains `actor_type
    agent`, `sub agent:agt_…`, `cap_confirm`, `act`, and requires `project_id`, `env`, `on_behalf_of` for agents; a
    `network.confirmation.changed@1` payload. No migration. Checks: `npm test` (docs-only, sanity).
-2. **Agents.** `migrations/0010_agents.sql`, `server/developer/agents.js` (store + `ensureSchema` no-op), routes in
+2. **Agents** (built). `migrations/0016_agents.sql`, `server/developer/agents.js` (store + `ensureSchema` no-op), routes in
    `server/developer/routes.js`, cascades in `store.js` (`revokeAppTx`, `archiveProject`, `removeMember`) and
    `account-data.js` (`erase`, `networkPart`), `AGENT_HOST_SERVICES` in `.env.example` and the config table of
-   `docs/developer-projects.md`, `test/fixtures/sqlite/0010_agents.sql`, `test/agents.test.js`,
+   `docs/developer-projects.md`, `test/agents.test.js`,
    `test/agent-schema.test.js`. Checks: `npm test`, `npm run test:pg`.
-3. **Delegated grants and modes.** `migrations/0011_agent_grants.sql`, grant routes, the ceiling (reusing
+3. **Delegated grants and modes.** `migrations/00NN_agent_grants.sql`, grant routes, the ceiling (reusing
    `tokens.effectiveGrants` and `principals.grantsFor`), cascades in `setAllowance`, `decideGrant`/grant revoke and
-   `grants-admin.js` revoke + `expireDue`, `test/fixtures/sqlite/0011_agent_grants.sql`, `test/agent-grants.test.js`,
+   `grants-admin.js` revoke + `expireDue`, `test/agent-grants.test.js`,
    cases added to `test/agent-schema.test.js`. Checks: `npm test`, `npm run test:pg`.
-4. **Confirmations, owner side.** `migrations/0012_confirmations.sql`, `server/developer/confirmations.js` (store,
+4. **Confirmations, owner side.** `migrations/00NN_confirmations.sql`, `server/developer/confirmations.js` (store,
    lifecycle, expiry sweep started next to `grants-admin` `start`), `/api/v1/confirmations` mounted in `server/index.js`,
    rule routes, the store's `consume` with the step-4 re-checks, the confirmation cancel step added to every cascade of
    slices 2–3 (pause, revoke, grant revoke and expiry, ceiling cascades, member removal, erase, app revoke, archive),
-   `test/fixtures/sqlite/0012_confirmations.sql`, `test/confirmations.test.js` creating and consuming rows through the
+   `test/confirmations.test.js` creating and consuming rows through the
    store functions (the internal routes wait for slice 7), cases added to `test/agent-schema.test.js`. Checks: `npm test`,
    `npm run test:pg`.
-5. **Budgets.** `migrations/0013_agent_budgets.sql`, budget routes, `budget.beyond_quota`,
-   `test/fixtures/sqlite/0013_agent_budgets.sql`, `test/agent-budgets.test.js` (without the internal read), cases added to
+5. **Budgets.** `migrations/00NN_agent_budgets.sql`, budget routes, `budget.beyond_quota`,
+   `test/agent-budgets.test.js` (without the internal read), cases added to
    `test/agent-schema.test.js`. Checks: `npm test`, `npm run test:pg`.
 6. **Internal agent read.** `GET /internal/agents/:agent` under `network.project.read` (already in the catalog), in
    `server/developer/agents.js`, wired in `server/index.js`; tests added to `test/agent-budgets.test.js`. Checks:

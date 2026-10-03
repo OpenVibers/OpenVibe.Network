@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openvibe.network/contracts/identity/service-token-claims.v1.json",
   "title": "ServiceTokenClaims",
-  "description": "Claims of a short-lived RS256 client-credentials token issued by OpenVibe.Network to a service or app principal. Replaces X-Internal-Key. App tokens (actor_type app) also carry project_id and env; receivers refuse env=sandbox unless they opted in.",
+  "description": "Claims of a short-lived RS256 client-credentials token issued by OpenVibe.Network to a service, app, mod, node or agent principal. Replaces X-Internal-Key. App tokens (actor_type app) also carry project_id and env; receivers refuse env=sandbox unless they opted in. Agent tokens (actor_type agent; roadmap WS-Z2, docs/t2-projects-and-grants.md) are minted for an agent by its host and also carry project_id, env and on_behalf_of (the owner), and act (the host).",
   "type": "object",
   "required": [
     "iss",
@@ -23,13 +23,15 @@
     },
     "sub": {
       "type": "string",
-      "pattern": "^(svc:[a-z][a-z0-9-]{1,39}|app:app_[0-9A-HJKMNP-TV-Z]{26}|mod:mod_[0-9A-HJKMNP-TV-Z]{26})$"
+      "pattern": "^(svc:[a-z][a-z0-9-]{1,39}|app:app_[0-9A-HJKMNP-TV-Z]{26}|mod:mod_[0-9A-HJKMNP-TV-Z]{26}|node:nod_[0-9A-HJKMNP-TV-Z]{26}|agent:agt_[0-9A-HJKMNP-TV-Z]{26})$"
     },
     "actor_type": {
       "enum": [
         "service",
         "app",
-        "mod"
+        "mod",
+        "node",
+        "agent"
       ]
     },
     "aud": {
@@ -46,14 +48,14 @@
         "type": "string",
         "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_*]+)+$"
       },
-      "description": "Granted capability ids; a trailing .* grants a family."
+      "description": "Granted capability ids; a trailing .* grants a family. For an agent: only the delegated grants whose effective mode is auto."
     },
     "ns": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "Namespace constraints, e.g. live.* or mod.example.*"
+      "description": "Namespace constraints, e.g. live.* or mod.example.*. A developer app token carries its project_id (the whole project, as issued before namespaces were rows) and app.<project_id>.*: on Media, app.<project_id> and app.<project_id>.sandbox are the project's production and sandbox namespaces, with children below them."
     },
     "iat": {
       "type": "integer"
@@ -80,7 +82,30 @@
     "on_behalf_of": {
       "type": "string",
       "pattern": "^usr_[0-9A-HJKMNP-TV-Z]{26}$",
-      "description": "The person who authorized an app through the authorization-code flow. Absent on client_credentials tokens."
+      "description": "The person an app or agent acts for: on an app token, the person who authorized it through the authorization-code flow (absent on client_credentials tokens); on an agent token, the agent's owner (always present)."
+    },
+    "cap_confirm": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$"
+      },
+      "description": "Agent tokens only: delegated capabilities whose every use needs an approved confirmation request (network.confirmation-request@1) or a standing rule. Exact ids, never a family. Disjoint from cap. A receiver answers 403 confirmation.required without a usable OpenVibe-Confirmation header."
+    },
+    "act": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sub"
+      ],
+      "properties": {
+        "sub": {
+          "type": "string",
+          "pattern": "^(svc:[a-z][a-z0-9-]{1,39}|app:app_[0-9A-HJKMNP-TV-Z]{26})$",
+          "description": "The host that minted the token for the agent: a developer app of the agent's project and environment, or a first-party service."
+        }
+      },
+      "description": "Agent tokens only (RFC 8693 actor claim): the host acting for the agent."
     }
   },
   "allOf": [
@@ -99,6 +124,25 @@
         "required": [
           "project_id",
           "env"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actor_type": {
+            "const": "agent"
+          }
+        },
+        "required": [
+          "actor_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "project_id",
+          "env",
+          "on_behalf_of"
         ]
       }
     }
