@@ -104,6 +104,16 @@ async function memberRole(db, projectId, subject) {
 }
 
 /**
+ * Take the project row's lock for the rest of the caller's transaction. Every transaction that revokes agents as a
+ * cascade (an app's revocation, a member's removal, the project's archive, an account erasure) takes it first, and
+ * agent creation takes it before re-checking the project, the membership and the host: so an agent is never
+ * created against a state one of them is about to end. NO KEY UPDATE, so inserts referencing the row still pass.
+ */
+async function lockProject(db, projectId) {
+    return await db.prepare('SELECT * FROM dev_projects WHERE id = ? FOR NO KEY UPDATE').get(projectId);
+}
+
+/**
  * Load a project the actor may see. Non-members get 404 (existence is not disclosed); staff see all.
  * `need` is the minimum member role; `staffOk` lets staff through regardless of membership.
  */
@@ -179,10 +189,13 @@ async function renameProject(db, actor, projectId, { name }, { ctx, settings }) 
     return await projectView(db, await db.prepare('SELECT * FROM dev_projects WHERE id = ?').get(project.id), role, settings);
 }
 
-/** Archive: irreversible. Every app of the project is revoked (credentials included). */
+/** Archive: irreversible. Every agent and app of the project is revoked (credentials included). */
 async function archiveProject(db, actor, projectId, { ctx, settings }) {
     const { project, role } = await access(db, actor, projectId, { need: 'owner', staffOk: true });
     await db.tx(async () => {
+        await lockProject(db, project.id);
+        // Agents first, so each records the archive as its cause rather than its app's revocation.
+        await require('./agents').revokeWhere(db, 'project_id = ?', [project.id], { actor: actor.label, reason: 'project_archived', ctx });
         for (const app of await db.prepare('SELECT * FROM dev_apps WHERE project_id = ? AND revoked_at IS NULL').all(project.id)) await revokeAppTx(db, actor, project, app, ctx, 'project archived');
         await db.prepare('UPDATE dev_projects SET archived_at = ?, archived_by = ? WHERE id = ?').run(nowIso(), actor.label, project.id);
         await audit(db, { projectId: project.id, actor: actor.label, action: 'project.archived', target: project.id, ctx });
@@ -322,8 +335,10 @@ async function removeMember(db, actor, projectId, subject, { ctx }) {
     if (current === 'owner') fail(403, 'member.forbidden', 'the owner cannot be removed');
     if (!self && !canAssign(role, current)) fail(403, 'member.forbidden', `a ${role} cannot remove a ${current}`);
     await db.tx(async () => {
+        await lockProject(db, project.id);
         await db.prepare('DELETE FROM dev_project_members WHERE project_id = ? AND subject_id = ?').run(project.id, subject);
         await audit(db, { projectId: project.id, actor: actor.label, action: self ? 'member.left' : 'member.removed', target: `user:${subject}`, detail: { role: current }, ctx });
+        await require('./agents').revokeWhere(db, 'project_id = ? AND owner_subject = ?', [project.id, subject], { actor: actor.label, reason: 'member_removed', ctx });
     });
 }
 
@@ -431,12 +446,15 @@ async function updateApp(db, actor, projectId, appId, body, { ctx }) {
 }
 
 async function revokeAppTx(db, actor, project, app, ctx, reason) {
+    await lockProject(db, project.id);
     const t = nowIso();
     await db.prepare('UPDATE dev_apps SET revoked_at = ?, revoked_by = ? WHERE id = ?').run(t, actor.label, app.id);
     await db.prepare('UPDATE dev_credentials SET revoked_at = ?, revoked_by = ? WHERE app_id = ? AND revoked_at IS NULL').run(t, actor.label, app.id);
     await db.prepare('UPDATE dev_auth_codes SET used = 1 WHERE app_id = ?').run(app.id);
     await audit(db, { projectId: project.id, actor: actor.label, action: 'app.revoked', target: `app:${app.id}`, detail: { reason: reason || null }, ctx,
         event: { type: 'network.app.revoked', subject: { type: 'app', id: app.id }, payload: { project_id: project.id, environment: app.environment, reason: reason || null } } });
+    // Its agents go with it (WS-Z2). Required here, not at the top: agents.js requires this module.
+    await require('./agents').revokeWhere(db, 'host_app_id = ?', [app.id], { actor: actor.label, reason: 'app_revoked', ctx });
 }
 
 /** Revoke an app: immediate for new tokens; issued tokens expire within their 5-minute lifetime. */
@@ -650,7 +668,7 @@ async function deleteQuota(db, actor, projectId, capability, { ctx }) {
 
 module.exports = {
     ensureSchema, DevError, ROLES, APP_ID_RE, PROJECT_ID_RE, SECRET_PREFIX,
-    audit, listAudit, actorOf, access, memberRole,
+    audit, listAudit, actorOf, access, memberRole, lockProject,
     createProject, listProjects, renameProject, archiveProject, setAllowance, setEnvironmentPolicy, setPlacement, projectView,
     listMembers, addMember, updateMember, removeMember,
     listApps, getApp, createApp, updateApp, revokeApp,

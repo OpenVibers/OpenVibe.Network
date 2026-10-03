@@ -1,0 +1,23 @@
+{
+  "id": "network.confirmation.manage",
+  "version": "1.0",
+  "owner": "network",
+  "status": "planned",
+  "visibility": "first-party",
+  "description": "Create, read, consume and cancel the confirmation requests (network.confirmation-request@1) of the agents that use this service's sensitive capabilities (roadmap WS-Z2, docs/t2-projects-and-grants.md section 5). The owning service writes the summary and the request digest; Network derives the owner from the agent and re-checks the agent, its grant and its host's authority on consume. A service only ever sees confirmations whose audience is its own. Never grantable to apps or agents.",
+  "permissions": [
+    "confirmations:write",
+    "confirmations:read"
+  ],
+  "resourceConstraints": [
+    "confirmation"
+  ],
+  "quotaClass": "confirmations",
+  "events": [],
+  "implementedBy": [
+    "POST /internal/confirmations (planned)",
+    "GET /internal/confirmations/:id (planned)",
+    "POST /internal/confirmations/:id/consume (planned)",
+    "POST /internal/confirmations/:id/cancel (planned)"
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openvibe.network/contracts/events/payloads/network.confirmation.changed.v1.json",
+  "title": "NetworkConfirmationChangedPayload",
+  "description": "network.confirmation.changed v1 (OpenVibe.Network; roadmap WS-Z2, docs/t2-projects-and-grants.md section 5). A confirmation request (network.confirmation-request@1) an agent raised for a sensitive capability was created, approved, denied, expired, cancelled or used. Written to Network's outbox in the transaction that changes it, beside an audit row. Never carries the summary or details, which may hold message text: a reader that needs them asks Network with its own authority. Envelope: subject { type: confirmation, id: cnf_… }, visibility internal, on_behalf_of the owner, actor the owner who decided (or the system for an expiry, a cascade or a standing rule).",
+  "type": "object",
+  "required": [
+    "confirmation_id",
+    "agent_id",
+    "project_id",
+    "capability",
+    "audience",
+    "state",
+    "change"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "confirmation_id": {
+      "type": "string",
+      "pattern": "^cnf_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "agent_id": {
+      "type": "string",
+      "pattern": "^agt_[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "The agent that asked."
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "The agent's developer project."
+    },
+    "capability": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*\\.[a-z0-9-]+\\.[a-z0-9-]+$"
+    },
+    "audience": {
+      "type": "string",
+      "pattern": "^openvibe\\.[a-z][a-z0-9-]{0,63}$",
+      "description": "The owning service of the capability: the only one that may consume or cancel the confirmation."
+    },
+    "state": {
+      "type": "string",
+      "enum": ["pending", "approved", "denied", "expired", "cancelled"],
+      "description": "The state after the change. A use leaves it approved and sets used_at."
+    },
+    "change": {
+      "type": "string",
+      "enum": ["created", "approved", "denied", "expired", "cancelled", "used"]
+    },
+    "standing_rule": {
+      "type": "string",
+      "enum": ["once", "session", "until", "always"],
+      "description": "On approved: the rule the owner chose (once creates none)."
+    },
+    "rule_id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "On created through a standing rule, or on approved with a session, until or always rule: that rule."
+    },
+    "cancel_reason": {
+      "type": "string",
+      "enum": ["service", "agent_paused", "agent_revoked", "grant_revoked", "grant_expired", "beyond_host", "member_removed", "account_erased", "app_revoked", "project_archived"],
+      "description": "On cancelled: what took the authority away."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "changed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

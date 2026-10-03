@@ -5,8 +5,8 @@
  *
  * Grantability comes from the capability's `visibility` in openvibe-contracts:
  *   public       grantable to apps (may appear in a project's allowance, including a default one)
- *   partner      (proposed; not in the contracts enum yet) grantable only when staff put it in one
- *                project's allowance by hand, never through the default allowance
+ *   partner      grantable only when staff put it in one project's allowance by hand, never through
+ *                the default or the sandbox allowance
  *   first-party  never grantable to apps: only first-party service principals hold these
  *   internal     never grantable to apps
  * A capability must also be `active` (not planned, deprecated or retired) to be granted.
@@ -16,6 +16,7 @@ const { capabilities } = require('openvibe-contracts');
 const GRANTABLE_VISIBILITIES = new Set(['public', 'partner']);
 const DEFAULT_ALLOWANCE_VISIBILITIES = new Set(['public']);
 const ENVIRONMENTS = ['sandbox', 'production'];
+const DEFAULT_AGENT_HOST_SERVICES = ['actor'];
 const ENVIRONMENT_POLICIES = { sandbox: ['sandbox'], 'sandbox+production': ['sandbox', 'production'] };
 
 /** { grantable, code, reason } for one capability id. */
@@ -87,6 +88,8 @@ function settings(config) {
         defaultAllowance: publicOnly(list(d.defaultAllowance)),
         maxProjectsPerOwner: num(d.maxProjectsPerOwner, 10, 1, 1000),
         maxAppsPerProject: num(d.maxAppsPerProject, 20, 1, 1000),
+        // First-party services that may host agents (OAuth client ids, AGENT_HOST_SERVICES). Unset = actor; empty = none.
+        agentHostServices: new Set(list(orDefault(d.agentHostServices, DEFAULT_AGENT_HOST_SERVICES))),
     };
 }
 

@@ -42,6 +42,9 @@ module.exports = {
         defaultAllowance: process.env.DEV_DEFAULT_ALLOWANCE || '',
         maxProjectsPerOwner: process.env.DEV_MAX_PROJECTS_PER_OWNER || 10,
         maxAppsPerProject: process.env.DEV_MAX_APPS_PER_PROJECT || 20,
+        // First-party services (OAuth client ids) that may host a project member's agents (comma list).
+        // Unset = the code default (actor: server/developer/policy.js); set to an empty value = none.
+        agentHostServices: process.env.AGENT_HOST_SERVICES,
     },
 
     // OpenVibe.Events base URL for Network's own events (developer projects). Unset = no relay:
