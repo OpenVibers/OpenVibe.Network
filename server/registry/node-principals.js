@@ -202,6 +202,39 @@ async function revokeScoped(db, id, scope, revokedBy, now = Date.now()) {
 /** Revoke a principal `service` paired; revoked_by is svc:<service>. → the row, or null. */
 const revoke = (db, id, service, now = Date.now()) => revokeScoped(db, id, { where: 'paired_by_service = ?', params: [service] }, `svc:${service}`, now);
 
+/** The query filters of the operator and service principal lists; anything but a string is ignored. */
+const principalFilter = (q = {}) => Object.fromEntries(['cell', 'owner_kind', 'status'].map((k) => [k, typeof q[k] === 'string' ? q[k] : null]));
+
+/** Every node principal for operators and services holding network.registry.read, newest first, at most 500. */
+async function listPrincipals(db, { cell = null, owner_kind: ownerKind = null, status = null } = {}) {
+    const where = []; const params = [];
+    if (cell) { where.push('home_cell = ?'); params.push(cell); }
+    if (ownerKind) { where.push('owner_kind = ?'); params.push(ownerKind); }
+    if (status) { where.push('status = ?'); params.push(status); }
+    const rows = await db.prepare(`SELECT * FROM platform_node_principals ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        ORDER BY created_at DESC, id DESC LIMIT 500`).all(...params);
+    return rows.map((p) => ({ ...principalView(p), trust: p.trust }));
+}
+
+/** What an operator may set a principal to: revoked has its own routes (revokeScoped), and is never undone. */
+const OPERATOR_STATUS = ['active', 'draining'];
+
+/**
+ * Operator write (plan T2): drain a node principal, or make it active again, from a staff session
+ * (server/registry/registry-admin.js). Throws RegistryError. → the principal (with trust)
+ */
+async function setPrincipalStatus(db, id, status, now = Date.now()) {
+    if (!OPERATOR_STATUS.includes(status)) throw new RegistryError(422, 'registry.invalid_status', 'status must be active or draining (revoking has its own route)');
+    const get = db.prepare('SELECT * FROM platform_node_principals WHERE id = ?');
+    const p = PRINCIPAL_ID.test(String(id)) ? await get.get(String(id)) : null;
+    if (!p) throw new RegistryError(404, 'registry.unknown_node', `no node principal ${id}`);
+    const at = iso(now);
+    const changed = (await db.prepare("UPDATE platform_node_principals SET status = ?, updated_at = ? WHERE id = ? AND status <> 'revoked'").run(status, at, p.id)).changes;
+    if (!changed) throw new RegistryError(409, 'registry.node_revoked', `node principal ${id} was revoked`);
+    const row = await get.get(p.id);
+    return { ...principalView(row), trust: row.trust };
+}
+
 /** Scope for a person's own machines: the principals they own, and no others. */
 const ownScope = (me) => ({ where: "owner_kind = 'user' AND owner_subject = ?", params: [me] });
 
@@ -398,4 +431,4 @@ function routers({ guard, now = () => Date.now() }) {
     return { internal, pairing };
 }
 
-module.exports = { CODE_TTL_MS, MAX_TRIES, PREV_GRACE_MS, createPairing, redeem, revoke, principalView, routers, userRouter, issueNodeToken, selfRouter };
+module.exports = { CODE_TTL_MS, MAX_TRIES, PREV_GRACE_MS, OPERATOR_STATUS, createPairing, redeem, revoke, principalView, principalFilter, listPrincipals, setPrincipalStatus, routers, userRouter, issueNodeToken, selfRouter };

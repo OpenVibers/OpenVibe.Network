@@ -31,7 +31,7 @@ await db.prepare(`INSERT INTO users (id, username, display_name, password_hash, 
 await db.prepare("INSERT INTO users (id, username, password_hash, is_anon) VALUES (5, 'anon1234', 'x', 1)").run();
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
-const config = { internalKey: 'legacy-key', jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
+const config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
 const { signToken } = require('../server/auth/routes');
 const requireAuth = require('../server/auth/session').makeRequireAuth(() => ({ db, publicKey: keys.publicKey, config }), signToken);
 const follows = require('../server/identity/follows');

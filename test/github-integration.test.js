@@ -36,7 +36,7 @@ const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyE
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.locals.db = db;
-app.locals.config = { internalKey: 'legacy-key', jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
+app.locals.config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 app.use('/oauth', require('../server/auth/oauth-routes'));

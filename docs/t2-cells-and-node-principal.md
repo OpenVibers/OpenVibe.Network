@@ -79,14 +79,15 @@ Rules that keep one source of truth:
 4. **Instance region** is derived from its cell: the table has no `region` column; the writer refuses an instance whose
    `region` ≠ its cell's region (`400 registry.region_mismatch`) and reads re-add it from `platform_cells.region`.
 
-Contract gaps at v0.84.0 (each is item of the T1 brief, §9.1):
+Contract gaps opened at v0.84.0 and **all closed by the v0.85.0 pin** (`package.json:33`); each was an item of the T1
+brief, §9.1:
 
-| Contract | Has | Lacks (Network needs) |
+| Contract | Has | Closed at v0.85.0 |
 |---|---|---|
-| `platform.service-instance@1` (required `id service version cell node region endpoints state started_at`, `additionalProperties:false`) | the row's fields | optional `route_weight` (0–1000) so a read that carries the stored weight still validates |
+| `platform.service-instance@1` (required `id service version cell node region endpoints state started_at`, `additionalProperties:false`) | the row's fields | optional `route_weight` (0–1000), so a read that carries the stored weight still validates |
 | `platform.node-capabilities@1` (required `node_id cpu arch memory_mb storage network regions tags costs`; `costs.per_hour_usd` required) | hardware, regions, costs | optional `capabilities[]` (the resource-offer pattern `^[a-z][a-z0-9-]*:[a-z0-9.-]+$`, e.g. `robot:drive`, `video:whip`) so Bot binds to presented capabilities; optional `agent_version`; optional `updated_at` |
 | `network.node@1` (required `id roles location health updated_at`, `additionalProperties:false`) | public platform machine | optional `cell` (Network fills it on read from the principal; a report carrying a different one is refused `409 registry.node_cell_mismatch`) |
-| `identity.service-token-claims@1` (`sub` pattern `svc:\|app:\|mod:`, `actor_type` `service\|app\|mod`, lines 24-33) | — | a node actor (§4.3) |
+| `identity.service-token-claims@1` (`sub` pattern `svc:\|app:\|mod:`, `actor_type` `service\|app\|mod`, lines 24-33) | — | node actor: `sub` gains `node:nod_<ULID>`, `actor_type` gains `node` (§4.3) |
 | `lib/ids.js` (`PREFIX` line 9, `SUBJECT_TYPES` line 13, `principalSub` lines 54-57) | — | `node: 'nod'`, `principalSub({type:'node'})` → `node:nod_…` (not a SubjectRef type: a node never authors content) |
 
 ## 3. Migrations (exact columns)
@@ -363,16 +364,17 @@ secrets set, tokens via `POST /oauth/token`), run with `node test/<file>.test.js
 
 ## 8. Slices — ordered, each independently mergeable
 
-| # | Slice | Files | Blocked by | Model |
-|---|---|---|---|---|
-| N1 | Contracts pin → v0.84.0 | `package.json:32`, `package-lock.json`; a smoke `node -e "require('openvibe-contracts').validate('platform.service-instance@1', …)"` in the PR body | nothing (v0.84.0 published); full `npm test` + `npm run test:pg` | basic |
-| N2 | Service-instance writer | `server/registry/instances.js` (new), `server/index.js` (mount), `test/registry-instances.test.js` | N1 | basic |
-| N3 | Project placement | `migrations/00NN_project_regions.sql`, `server/developer/store.js` (`setPlacement`, `projectView` + `home_cell`, `residency`, `preferred_regions`), `server/developer/routes.js` (`PUT /:project/placement`, audit `project.placement_changed`), test above | nothing | basic |
-| N4a | Pairing schema | `migrations/00NN_node_pairing.sql`, `test/cells-registry.test.js` | nothing | basic |
-| N4b | Pairing + scoped read/revoke | `server/registry/node-principals.js` (new), `server/index.js`, `server/identity/principals.js` (`DEFAULT_GRANTS` bot), `server/db/database.js` (seed `bot`), `test/node-pairing.test.js` | N4a; **Contracts T1 release** (`network.node.manage`) + Network pin bump to it | **Opus** (security boundary) |
-| N4c | Node tokens + self routes + topology | `server/registry/node-principals.js`, `server/auth/oauth-routes.js:230`, `server/registry/cells.js` (topology), `test/node-tokens.test.js` | N4b; **T1** (node actor, `network.node.self.manage`) | **Opus** (token issuance) |
-| N5 | Owner API for own machines | `server/registry/node-principals.js` (`userRouter`), `server/index.js` (`/api/v1/me/nodes`, `rateLimit` as `/api/v1/me/blocks` `:427`), `test/node-principals-me.test.js` | N4b | basic (page: For Opus) |
-| N6 | Registry slice 5 (offer kinds as `detail`) | `package.json` pin, `migrations/0009_resource_offer_kinds.sql`, `server/registry/offers.js`, `server/index.js:473`, `principals.js` grant, `test/resource-registry.test.js` | **T1 release** (§9.1 items 4-5) | basic |
+| # | Slice | Files | Blocked by | Model | State |
+|---|---|---|---|---|---|
+| N1 | Contracts pin → v0.84.0 | `package.json:32`, `package-lock.json`; a smoke `node -e "require('openvibe-contracts').validate('platform.service-instance@1', …)"` in the PR body | nothing (v0.84.0 published); full `npm test` + `npm run test:pg` | basic | **merged** at main `4e7b56b` (pin since N6 is `v0.85.0`) |
+| N2 | Service-instance writer | `server/registry/instances.js` (new), `server/index.js` (mount), `test/registry-instances.test.js` | N1 | basic | **merged** |
+| N3 | Project placement | `migrations/00NN_project_regions.sql`, `server/developer/store.js` (`setPlacement`, `projectView` + `home_cell`, `residency`, `preferred_regions`), `server/developer/routes.js` (`PUT /:project/placement`, audit `project.placement_changed`), test above | nothing | basic | **merged** (`0015_project_regions.sql`) |
+| N4a | Pairing schema | `migrations/00NN_node_pairing.sql`, `test/cells-registry.test.js` | nothing | basic | **merged** (`0014_node_pairing.sql`) |
+| N4b | Pairing + scoped read/revoke | `server/registry/node-principals.js` (new), `server/index.js`, `server/identity/principals.js` (`DEFAULT_GRANTS` bot), `server/db/database.js` (seed `bot`), `test/node-pairing.test.js` | N4a; **Contracts T1 release** (`network.node.manage`) + Network pin bump to it | **Opus** (security boundary) | **merged** |
+| N4c | Node tokens + self routes + topology | `server/registry/node-principals.js`, `server/auth/oauth-routes.js:230`, `server/registry/cells.js` (topology), `test/node-tokens.test.js` | N4b; **T1** (node actor, `network.node.self.manage`) | **Opus** (token issuance) | **merged** (main `4e7b56b`, PR #19) |
+| N5 | Owner API for own machines | `server/registry/node-principals.js` (`userRouter`), `server/index.js` (`/api/v1/me/nodes`, `rateLimit` as `/api/v1/me/blocks` `:427`), `test/node-principals-me.test.js` | N4b | basic (page: For Opus) | **merged** (PR #18) |
+| N6 | Registry slice 5 (offer kinds as `detail`) | `package.json` pin, `migrations/0009_resource_offer_kinds.sql`, `server/registry/offers.js`, `server/index.js:473`, `principals.js` grant, `test/resource-registry.test.js` | **T1 release** (§9.1 items 4-5) | basic | **merged** (pin is v0.85.0) |
+| N7 | Registry writers & operator reads | `server/registry/cells.js` (`cellView`, `setCell`, `listPrincipals`, internal node-principals read), `server/registry/instances.js` (`instanceView`, `setInstance`), `server/registry/nodes.js` (`GET /internal/nodes`), `server/index.js` (staff `/api/admin/registry`), tests | nothing (staff session; no new capability) | basic | **open — the only lane-B gap** |
 
 Bot (T15) and Node (T14) follow, each step keeping Bot working (§9.2, §9.3). Owner steps: none for the Network
 slices (main is not deployed and the PostgreSQL cutover waits on the owner); at Bot's deploy the owner provisions Bot's

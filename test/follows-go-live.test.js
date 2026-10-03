@@ -1,4 +1,5 @@
 'use strict';
+process.env.FOLLOWS_AUTHORITY = 'live';
 // ADR-030 step 4, plan T2 "Follows": products write follows through /internal/follows (network.follows.write,
 // service token only), and go-live notifications take the followers from Network's own graph only (no call to
 // Live, whatever the environment says); a channel with no Network account announces nothing.
@@ -28,7 +29,7 @@ await db.prepare('INSERT INTO users (id, username, password_hash, subject_id, ro
     .run('carol', 'x', CAROL, 'streamer', 'dave', 'x', DAVE, 'user', 'erin', 'x', ERIN, 'user');
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
-const config = { internalKey: 'legacy-key', jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
+const config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
 const { signToken } = require('../server/auth/routes');
 const requireAuth = require('../server/auth/session').makeRequireAuth(() => ({ db, publicKey: keys.publicKey, config }), signToken);
 const follows = require('../server/identity/follows');
@@ -74,7 +75,6 @@ const server = http.createServer(app);
         assert.deepStrictEqual(evs.map((e) => e.event_type), ['network.follow.created', 'network.follow.created', 'network.follow.deleted', 'network.follow.created']);
 
         // ── Go-live: Network's followers, no Live call (even with Live's old switch set) ──
-        process.env.FOLLOWS_AUTHORITY = 'live';
         const started = {
             event_id: ids.newId('event'), event_type: 'live.stream.started', version: 1, source: 'live',
             actor: { type: 'user', id: CAROL }, subject: { type: 'stream', id: '801', revision: 1 }, visibility: 'public', priority: 'important',
