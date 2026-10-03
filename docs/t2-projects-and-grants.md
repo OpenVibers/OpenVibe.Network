@@ -25,7 +25,7 @@ allowances changes.
 | Subjects | `server/identity/subjects.js` resolves `usr_` and `gst_` only | no `agt_` |
 | Capability guard | `principals.js:347` `guard(capability)` throws at boot on an id the catalog does not have | built |
 | Delegated client capability | `docs/capabilities-proposal/network.project.manage.json` (in the catalog at v0.85.0 as `public`, `planned`) | proposed, unused |
-| Service-side project read | `network.project.read` (catalog: `first-party`, `planned`; route "GET /internal/projects/:project_id (planned)") | unused |
+| Service-side project read | `network.project.read` (catalog: `first-party`, `planned`); `GET /internal/projects/:project_id`, granted to Host only | built (lane B step 3); no caller yet; Contracts still has to make it `active` |
 | Sensitive capabilities, confirmations, budgets, agents | — | missing (agents: built by slice 2) |
 
 ## 2. Contract vocabulary (v0.85.0, used verbatim)

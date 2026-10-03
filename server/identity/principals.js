@@ -152,6 +152,9 @@ const DEFAULT_GRANTS = [
     ['host', 'network.resource.report', SELF_AUDIENCE, []],
     // Plan T2 N4b: Bot pairs its users' machines with Network and reads or revokes only the principals it paired.
     ['bot', 'network.node.manage', SELF_AUDIENCE, []],
+    // Plan T2 lane B step 3: Host places and runs per project, so it reads a project's tenancy, placement and quotas.
+    // Other services get this row only when they ship a caller of GET /internal/projects/:project_id.
+    ['host', 'network.project.read', SELF_AUDIENCE, []],
     // WS-N task 12: ovhost incident / maintenance post to the status page.
     ['host', 'network.status.incident', SELF_AUDIENCE, []],
     // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples

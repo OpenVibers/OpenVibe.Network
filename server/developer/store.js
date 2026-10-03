@@ -156,6 +156,37 @@ async function projectView(db, p, role, settings) {
     };
 }
 
+/**
+ * The service-facing view of a project (network.project.read, GET /internal/projects/:project_id): tenancy (id, owner,
+ * home cell, residency), the allowance, the quotas, and every app with its grants (dev_grants has no project_id, so
+ * through dev_apps). No secrets, no client ids, no members other than the owner, no actor labels. Archived projects
+ * still return (archived_at set). -> null when the id is not a project.
+ */
+async function internalProjectView(db, projectId) {
+    const p = PROJECT_ID_RE.test(String(projectId)) ? await db.prepare('SELECT * FROM dev_projects WHERE id = ?').get(String(projectId)) : null;
+    if (!p) return null;
+    const cell = await db.prepare('SELECT residency FROM platform_cells WHERE id = ?').get(p.home_cell);
+    const quotas = await db.prepare('SELECT * FROM dev_quotas WHERE project_id = ? ORDER BY capability').all(p.id);
+    const apps = await db.prepare('SELECT id, name, environment, created_at, revoked_at FROM dev_apps WHERE project_id = ? ORDER BY id').all(p.id);
+    const grants = await db.prepare(`SELECT g.app_id, g.capability, g.audience, g.status, g.decided_at, a.revoked_at AS app_revoked_at FROM dev_grants g
+        JOIN dev_apps a ON a.id = g.app_id WHERE a.project_id = ? ORDER BY g.app_id, g.capability`).all(p.id);
+    // Revoking an app (or archiving its project) leaves its grant rows as they were; the effective status is
+    // 'revoked' (as of the app's revocation) for every grant of a revoked app that was not denied.
+    const effective = g => (g.app_revoked_at && g.status !== 'denied' && g.status !== 'revoked'
+        ? { status: 'revoked', decided_at: g.app_revoked_at } : { status: g.status, decided_at: g.decided_at || null });
+    return {
+        project: {
+            id: p.id, name: p.name, owner: { type: 'user', id: p.owner_subject }, environment_policy: p.environment_policy,
+            home_cell: p.home_cell || null, residency: cell ? cell.residency : null, preferred_regions: JSON.parse(p.preferred_regions || '[]'),
+            created_at: p.created_at, archived_at: p.archived_at || null,
+        },
+        allowance: JSON.parse(p.allowance || '[]'),
+        quotas: quotas.map(q => ({ capability: q.capability, limit: Number(q.limit_value), window: q.quota_window, unit: q.unit, enforced_by: policy.audienceOf(q.capability) })),
+        apps: apps.map(a => ({ id: a.id, name: a.name, environment: a.environment, status: a.revoked_at ? 'revoked' : 'active', created_at: a.created_at, revoked_at: a.revoked_at || null })),
+        grants: grants.map(g => ({ app_id: g.app_id, capability: g.capability, audience: g.audience, ...effective(g) })),
+    };
+}
+
 async function createProject(db, actor, { name }, { settings, ctx }) {
     const n = cleanName(name);
     const owned = (await db.prepare('SELECT COUNT(*) AS n FROM dev_projects WHERE owner_subject = ? AND archived_at IS NULL').get(actor.subject)).n;
@@ -669,7 +700,7 @@ async function deleteQuota(db, actor, projectId, capability, { ctx }) {
 module.exports = {
     ensureSchema, DevError, ROLES, APP_ID_RE, PROJECT_ID_RE, SECRET_PREFIX,
     audit, listAudit, actorOf, access, memberRole, lockProject,
-    createProject, listProjects, renameProject, archiveProject, setAllowance, setEnvironmentPolicy, setPlacement, projectView,
+    createProject, listProjects, renameProject, archiveProject, setAllowance, setEnvironmentPolicy, setPlacement, projectView, internalProjectView,
     listMembers, addMember, updateMember, removeMember,
     listApps, getApp, createApp, updateApp, revokeApp,
     listCredentials, rotateCredential, revokeCredential, matchSecret, hashSecret,
