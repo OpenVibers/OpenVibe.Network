@@ -28,7 +28,7 @@ for (const bad of ['http://openvibe.media/x.png', 'javascript:alert(1)', 'https:
     // Network's own service token for the push (plan T2): live.avatar.write, audience openvibe.live.
     const { privateKey, publicKey } = require('crypto').generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
     const selfToken = require('../server/identity/self-token').createSelfTokens({ privateKey, issuer: 'https://openvibe.network' });
-    const svc = createAvatarService({ db, config: { internalKey: 'k'.repeat(24), services: {} }, selfToken, requireAuth: (req, _res, next) => { req.user = { id: 1, username: 'Goosely' }; next(); } });
+    const svc = createAvatarService({ db, config: { services: {} }, selfToken, requireAuth: (req, _res, next) => { req.user = { id: 1, username: 'Goosely' }; next(); } });
     assert.equal((await svc.fromSite({ user_id: 1, avatar_url: `${M}/f/a.png`, origin: 'live' })).changed, true);
     assert.equal(pushes.length, 0, 'a change that came from Live is not echoed back to Live');
     await svc.apply(1, 'Goosely', `${M}/f/b.png`, 'network'); assert.equal(pushes.length, 1); assert.equal(pushes[0].avatar_url, `${M}/f/b.png`, 'a change made here is pushed to the sites');

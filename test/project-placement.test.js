@@ -23,7 +23,7 @@ const app = express();
 app.use(express.json());
 app.locals.db = db;
 app.locals.config = {
-    baseUrl: ISSUER, loginUrl: ISSUER, internalKey: 'legacy-key',
+    baseUrl: ISSUER, loginUrl: ISSUER,
     jwt: { issuer: ISSUER, accessTokenExpiry: '1h' },
     developer: { sandboxAudiences: 'openvibe.media', sandboxAllowance: '', credentialOverlapS: 60 },
 };

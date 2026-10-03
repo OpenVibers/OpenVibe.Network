@@ -37,7 +37,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.locals.db = db;
 app.locals.config = {
-    baseUrl: ISSUER, loginUrl: ISSUER, internalKey: 'legacy-key',
+    baseUrl: ISSUER, loginUrl: ISSUER,
     jwt: { issuer: ISSUER, accessTokenExpiry: '1h' },
     developer: { credentialOverlapS: 60 },
 };

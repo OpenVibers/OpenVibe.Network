@@ -336,7 +336,7 @@ function userRouter(requireAuth) {
     return router;
 }
 
-/** Service routes; mounted under /internal (after requireInternalKey) with principal guards. */
+/** Service routes; mounted under /internal after the requireServiceToken gate, with principal guards. */
 function serviceRoutes(router, principals) {
     const nsOf = (req) => req.params.ns;
     const resolveSubject = async (db, s) => (/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(s) && await db.prepare('SELECT 1 FROM users WHERE subject_id = ?').get(s) ? s : null);

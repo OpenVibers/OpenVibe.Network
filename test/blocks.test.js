@@ -17,7 +17,6 @@ const { getDb } = require('../server/db/database');
 
 (async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-blocks-'));
-const dbFile = path.join(dir, 'network.db');
 const log = console.log; console.log = () => {};
 const db = getDb();
 console.log = log;
@@ -39,7 +38,7 @@ await db.prepare("INSERT INTO users (id, username, password_hash, is_anon) VALUE
 const GUEST_SUBJECT = (await db.prepare('SELECT subject_id FROM users WHERE id = 5').get()).subject_id;
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
-const config = { internalKey: 'legacy-key', jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
+const config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
 const { signToken } = require('../server/auth/routes');
 const requireAuth = require('../server/auth/session').makeRequireAuth(() => ({ db, publicKey: keys.publicKey, config }), signToken);
 const blocks = require('../server/identity/blocks');
