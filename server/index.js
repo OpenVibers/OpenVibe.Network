@@ -753,6 +753,15 @@ app.use('/api/admin/streamer-funds', requireAuth, (req, res, next) => {
     return await proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/funds${req.url}`, 'Funds proxy error');
 });
 
+// Pastes (retiring) — this proxy is a surviving caller of OpenVibe.Media's read-only paste API, so
+// Media cannot retire that API's router and GET handlers while it exists. The chain reads
+// Network → Live → Media: /api/admin/streamer-pastes/:rest → openvibe.live /api/pastes/:rest, whose
+// GETs forward 1:1 to openvibe.media /api/v1/live/pastes/:rest. The admin panel's Pastes tab
+// (public/admin.html) is the consumer: it still reads GET /config (the last live-called paste GET)
+// and /admin/stats (whose Media route is already gone), and its DELETE /admin/forks answers Media's
+// 410 pastes.moved. Retiring Media's paste GETs is conditional on this proxy being retired or
+// repointed first — Live moves the whole chain to Community with PASTES_AUTHORITY=community, and
+// this proxy should follow that move (or go with the tab) rather than keep reading the retired API.
 app.use('/api/admin/streamer-pastes', requireAuth, (req, res, next) => {
     if (!req.user || req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Admin access required' });
