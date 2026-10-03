@@ -80,7 +80,7 @@ const quiet = { log() {}, warn() {}, error() {} };
         await assert.rejects(grant({ capability: 'media.object.list', status: 'revoked' }), /check constraint/i, 'revoked without revoked_at');
         await assert.rejects(grant({ capability: 'media.object.list', revoked_at: now }), /check constraint/i, 'active with revoked_at');
         await assert.rejects(grant({ capability: 'media.object.list', audience: 'media' }), /check constraint/i, 'an audience that is not openvibe.<service>');
-        const idx = (await t.db.prepare("SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'dev_agent_grants' ORDER BY indexname").all());
+        const idx = (await t.db.prepare("SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = current_schema() AND tablename = 'dev_agent_grants' ORDER BY indexname").all());
         assert.deepStrictEqual(idx.map((i) => i.indexname), ['dev_agent_grants_active_idx', 'dev_agent_grants_cap_idx', 'dev_agent_grants_pkey']);
         assert.match(idx[0].indexdef, /WHERE \(?status = 'active'/);
         console.log('agent schema: all tests passed');
