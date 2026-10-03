@@ -34,6 +34,14 @@ const cache = require('openvibe-shared/cache-policy');
  *   POST   /:project/apps/:app/grants/:capability/approve   owner/admin, inside the allowance only
  *   POST   /:project/apps/:app/grants/:capability/deny      owner/admin
  *   DELETE /:project/apps/:app/grants/:capability           owner/admin or staff
+ *   GET    /:project/agents[?owner=me]                      viewer+ (agents.js, plan T2 WS-Z2)
+ *   POST   /:project/agents       { name, host }            for yourself: developer+ (admin+ production app host);
+ *                                                           host { type: app, id } of this project or { type: service, id }
+ *   GET    /:project/agents/:agent                          viewer+
+ *   PATCH  /:project/agents/:agent { name }                 its owner or admin+
+ *   POST   /:project/agents/:agent/pause                    its owner, admin+ or staff
+ *   POST   /:project/agents/:agent/resume                   its owner or admin+ (not staff)
+ *   DELETE /:project/agents/:agent                          revoke, final: its owner, admin+ or staff
  *   GET    /:project/quotas                                 viewer+
  *   PUT    /:project/quotas/:capability { limit, window, unit }  staff
  *   DELETE /:project/quotas/:capability                     staff
@@ -47,6 +55,7 @@ const express = require('express');
 const { http } = require('openvibe-contracts');
 const { verifySession } = require('../auth/session');
 const store = require('./store');
+const agents = require('./agents');
 const policy = require('./policy');
 const tokens = require('./tokens');
 const usage = require('./usage');
@@ -119,6 +128,14 @@ function router() {
     r.post('/:project/apps/:app/grants/:capability/approve', handle(async (db, a, req, o) => await store.decideGrant(db, a, req.params.project, req.params.app, req.params.capability, 'approved', o)));
     r.post('/:project/apps/:app/grants/:capability/deny', handle(async (db, a, req, o) => await store.decideGrant(db, a, req.params.project, req.params.app, req.params.capability, 'denied', o)));
     r.delete('/:project/apps/:app/grants/:capability', handle(async (db, a, req, o) => await store.decideGrant(db, a, req.params.project, req.params.app, req.params.capability, 'revoked', o)));
+
+    r.get('/:project/agents', handle(async (db, a, req) => ({ agents: await agents.listAgents(db, a, req.params.project, { owner: req.query.owner }) })));
+    r.post('/:project/agents', handle(async (db, a, req, o) => await agents.createAgent(db, a, req.params.project, req.body || {}, o), 201));
+    r.get('/:project/agents/:agent', handle(async (db, a, req) => await agents.getAgent(db, a, req.params.project, req.params.agent)));
+    r.patch('/:project/agents/:agent', handle(async (db, a, req, o) => await agents.renameAgent(db, a, req.params.project, req.params.agent, req.body || {}, o)));
+    r.post('/:project/agents/:agent/pause', handle(async (db, a, req, o) => await agents.changeStatus(db, a, req.params.project, req.params.agent, 'pause', o)));
+    r.post('/:project/agents/:agent/resume', handle(async (db, a, req, o) => await agents.changeStatus(db, a, req.params.project, req.params.agent, 'resume', o)));
+    r.delete('/:project/agents/:agent', handle(async (db, a, req, o) => await agents.changeStatus(db, a, req.params.project, req.params.agent, 'revoke', o)));
 
     r.get('/:project/quotas', handle(async (db, a, req) => ({ quotas: await store.listQuotas(db, a, req.params.project), note: 'quotas are enforced by the service that owns each capability; Network records and exposes them' })));
     r.put('/:project/quotas/:capability', handle(async (db, a, req, o) => await store.setQuota(db, a, req.params.project, req.params.capability, req.body || {}, o)));

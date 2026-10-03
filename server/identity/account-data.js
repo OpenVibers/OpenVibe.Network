@@ -28,6 +28,7 @@ const fs = require('fs');
 const path = require('path');
 const { ids, validate, staff } = require('openvibe-contracts');
 const eventRelay = require('../developer/event-relay');
+const agents = require('../developer/agents');
 const wallet = require('../coins/wallet');
 const revocation = require('../auth/revocation');
 const zip = require('../utils/zip');
@@ -197,6 +198,8 @@ async function networkPart(db, userId) {
     add('developer_projects.json', {
         owned: (await rowsOf(db, 'dev_projects', 'owner_subject = ?', [u.subject_id])).rows,
         memberships: (await rowsOf(db, 'dev_project_members', 'subject_id = ?', [u.subject_id], { omit: ['added_by'] })).rows,
+        // The agents that act for this person (WS-Z2); who revoked one may be someone else, so revoked_by stays out.
+        agents: (await rowsOf(db, 'dev_agents', 'owner_subject = ?', [u.subject_id], { omit: ['revoked_by'] })).rows,
     });
     add('account_merges.json', await tableExists(db, 'account_merges')
         ? await db.prepare('SELECT id, from_subject, into_subject, initiated_by, reason, moved, merged_at FROM account_merges WHERE into_user_id = ? ORDER BY merged_at').all(u.id) : []);
@@ -339,6 +342,12 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         await del('user_modules', `subject_id IN ${inS}`, subjects, 'modules');
         await del('user_follows', `follower_subject IN ${inS} OR target_id IN ${inS}`, [...subjects, ...subjects], 'follows');
         await del('user_blocks', `blocker_subject IN ${inS} OR blocked_subject IN ${inS}`, [...subjects, ...subjects], 'blocks');
+        // The person's agents first (WS-Z2), then the agents of the projects archived below.
+        // Their projects' locks first, as agent creation takes them (developer/store.lockProject): no agent of theirs is created after this.
+        if (await tableExists(db, 'dev_projects')) {
+            await db.prepare(`SELECT p.id FROM dev_projects p JOIN dev_project_members m ON m.project_id = p.id WHERE m.subject_id IN ${inS} ORDER BY p.id FOR NO KEY UPDATE OF p`).all(...subjects);
+        }
+        if (await tableExists(db, 'dev_agents')) count('agents_revoked', await agents.revokeWhere(db, `owner_subject IN ${inS}`, subjects, { actor: 'system:network', reason: 'account_deleted' }));
         if (await tableExists(db, 'dev_projects')) {
             for (const p of await db.prepare(`SELECT id FROM dev_projects WHERE owner_subject IN ${inS} AND archived_at IS NULL`).all(...subjects)) {
                 const heir = await db.prepare(`SELECT subject_id FROM dev_project_members WHERE project_id = ? AND subject_id NOT IN ${inS} AND role IN ('owner', 'admin')
@@ -348,6 +357,7 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
                     await db.prepare("UPDATE dev_apps SET revoked_at = ?, revoked_by = 'account_deleted' WHERE id = ?").run(at, a.id);
                     await db.prepare("UPDATE dev_credentials SET revoked_at = ?, revoked_by = 'account_deleted' WHERE app_id = ? AND revoked_at IS NULL").run(at, a.id);
                 }
+                if (await tableExists(db, 'dev_agents')) count('agents_revoked', await agents.revokeWhere(db, 'project_id = ?', [p.id], { actor: 'system:network', reason: 'project_archived' }));
                 await db.prepare("UPDATE dev_projects SET archived_at = ?, archived_by = 'account_deleted' WHERE id = ?").run(at, p.id);
                 count('projects_archived', 1);
             }
