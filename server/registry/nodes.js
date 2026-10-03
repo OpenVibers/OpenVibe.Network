@@ -21,10 +21,18 @@ async function report(db, { source, nodes }, now = new Date().toISOString()) {
     const cells = require('./cells');
     const upsert = db.prepare(`INSERT INTO platform_nodes (id, source, doc, status, reported_at) VALUES (?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET source = excluded.source, doc = excluded.doc, status = excluded.status, reported_at = excluded.reported_at`);
+    const principal = db.prepare('SELECT home_cell FROM platform_node_principals WHERE node_id = ?');
     let marked = 0;
     let adopted = 0;
     await db.tx(async () => {
         await cells.checkPlatformNodes(db, nodes.map((n) => n.id));
+        for (const n of nodes) {
+            if (n.cell === undefined) continue;
+            const p = await principal.get(n.id);
+            if (p && p.home_cell !== null && p.home_cell !== n.cell) {
+                throw new cells.RegistryError(409, 'registry.node_cell_mismatch', `node ${n.id} lives in ${p.home_cell}, not ${n.cell}`);
+            }
+        }
         adopted = await cells.adoptPlatformNodes(db, nodes, `report:${source}`, now);
         for (const n of nodes) await upsert.run(n.id, source, JSON.stringify(n), n.health.status, now);
         const ids = new Set(nodes.map((n) => n.id));
@@ -42,7 +50,12 @@ async function report(db, { source, nodes }, now = new Date().toISOString()) {
 
 async function list(db, { role = null, region = null } = {}) {
     ensureSchema(db);
-    return (await db.prepare('SELECT doc FROM platform_nodes ORDER BY id').all()).map((r) => JSON.parse(r.doc))
+    return (await db.prepare(`SELECT n.doc, p.home_cell AS cell FROM platform_nodes n
+        LEFT JOIN platform_node_principals p ON p.node_id = n.id ORDER BY n.id`).all()).map((r) => {
+        const { cell: reportedCell, ...doc } = JSON.parse(r.doc);
+        if (r.cell !== null && r.cell !== undefined) doc.cell = r.cell;
+        return doc;
+    })
         .filter((n) => (!role || n.roles.includes(role)) && (!region || n.location.region === region));
 }
 
