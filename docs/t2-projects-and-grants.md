@@ -1,7 +1,9 @@
 # T2 WS-Z2 — projects, agents and delegated grants (design)
 
-Status: **slices 1–2 built** (proposals, and agents: `migrations/0016_agents.sql`, `server/developer/agents.js`);
-slices 3–9 are design. Plan T2, "Projects and grants: projects as the ownership boundary for every resource;
+Status: **slices 1–2 built** (proposals, and agents: `migrations/0016_agents.sql`, `server/developer/agents.js`; PR #25,
+merge `4ec36e1`) and **lane B step 3 built** (`GET /internal/projects/:project_id` under `network.project.read`, Host
+only: `server/internal/routes.js:490`; PR #28, merge `e422342`); slices 3–9 are still unbuilt (design, §8).
+Plan T2, "Projects and grants: projects as the ownership boundary for every resource;
 `agt_` principals, delegated grants with modes, sensitive capabilities, confirmation requests, budgets (WS-Z2)".
 Pinned version: `openvibe-contracts` **v0.85.0** (`package.json:33`); every contract claim below was re-checked against
 the `v0.85.0` tag of OpenVibe.Contracts when slices 1–2 were built (it was written against v0.83.0).

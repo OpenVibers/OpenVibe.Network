@@ -1,10 +1,11 @@
 # T2 lane B — cells, the node principal and registry slice 5 (design)
 
-Status: **design, nothing built by this document.** The cells layer of `docs/t2-resource-registry.md` §9 is already on
+Status: **N1–N7 merged** on `origin/main` `011355a` (registry slice 5, the node principal, node tokens and the registry
+operator writers; each slice's state is in §8). The cells layer of `docs/t2-resource-registry.md` §9 was already on
 `origin/main` (`d6ed8c4`, PR #5: `migrations/0008_cells_and_node_principals.sql`, `server/registry/cells.js`,
-`test/cells-registry.test.js`); this document designs the rest of lane B on top of it and re-plans registry slice 5.
-Pinned at time of writing: Network `openvibe-contracts` **v0.83.0** (`package.json:32`); every contract claim below was
-checked against the **v0.84.0** tag of OpenVibe.Contracts (`git show v0.84.0:…`), the newest published tag. OpenVibe.Bot
+`test/cells-registry.test.js`); this document designed the rest of lane B on top of it and re-planned registry slice 5.
+Pinned: Network `openvibe-contracts` **v0.85.0** (`package.json:33`), which closes every contract gap in §2 and the §9.1
+T1 brief (the doc was written against v0.83.0, checked then against v0.84.0). OpenVibe.Bot
 `origin/main` `17ce069` (pins Contracts v0.79.0, `package.json:29`), OpenVibe.Node `origin/main` `4d2b8e1`. Bot is not
 deployed (`ov access run openvibe-ovh releases bot` → `unknown service "bot"`), so no production device exists.
 
@@ -59,10 +60,10 @@ Every plan field and the one place it lives:
 | `service_instance_id` | `platform_service_instances.id` | built; writer in slice N2 |
 | `project.home_cell` | `dev_projects.home_cell` | built; shown in the project view (N3) |
 | `resource.home_cell` | `platform_resource_offers.cell` | built |
-| `preferred_regions` | **new** `dev_projects.preferred_regions` (N3) | design |
+| `preferred_regions` | `dev_projects.preferred_regions` (`0015_project_regions.sql`, N3) | built |
 | `residency` | `platform_cells.residency`; a project's residency **is** its home cell's (no project column) | built |
-| `capacity` | per offer: `platform_resource_offers.doc.capacity` (built); per machine: **new** `platform_node_capabilities.doc` (`platform.node-capabilities@1`, N4c) | design |
-| `health` | platform machine: `platform_nodes.status`; paired machine: **new** `platform_node_principals.last_seen_at`; instance: `state`; offer: `status`; cell: `status` | design (last_seen) |
+| `capacity` | per offer: `platform_resource_offers.doc.capacity` (built); per machine: `platform_node_capabilities.doc` (`platform.node-capabilities@1`, `0014_node_pairing.sql`, N4c) | built |
+| `health` | platform machine: `platform_nodes.status`; paired machine: `platform_node_principals.last_seen_at` (`0014_node_pairing.sql`); instance: `state`; offer: `status`; cell: `status` | built |
 | `route_weight` | `platform_cells.route_weight`, `platform_service_instances.route_weight` | built; **never taken from a report** |
 | `draining` | `platform_cells.status`, `platform_node_principals.status`, instance `state`, offer `status` | built |
 
