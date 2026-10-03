@@ -14,6 +14,9 @@ const cache = require('openvibe-shared/cache-policy');
  *   POST /api/admin/grants                  { client_id, capability, audience?, namespaces?, expires_at?, reason }
  *   POST /api/admin/grants/revoke           { client_id, capability, audience?, reason }
  *
+ * A revoke and a recorded expiry also revoke, in the same transaction, the delegated grants of agents this service
+ * hosts that its remaining grants no longer cover (plan T2 WS-Z2, server/developer/agents.js revokeBeyondHost).
+ *
  * The audience defaults to, and must be, the capability owner's (openvibe.<owner>). Expired grants stop
  * counting at once (grantsFor filters them); expireDue(), every 10 minutes, records each expiry once.
  */
@@ -140,8 +143,17 @@ async function revoke(db, body, actor) {
             .run(actor || 'owner', reason, t.client_id, t.capability, t.audience);
         const namespaces = JSON.parse(prev.namespaces || '[]');
         await record(db, { ...t, change: 'revoked', namespaces, expires_at: fromSql(prev.expires_at), reason, actor });
+        await revokeDelegated(db, t.client_id, actor);
         return { ...t, change: 'revoked' };
     });
+}
+
+/**
+ * The agents this service hosts lose the delegated grants its remaining grants no longer cover (plan T2 WS-Z2), in the
+ * caller's transaction. Required lazily: agents.js reaches principals.js, which requires this module.
+ */
+async function revokeDelegated(db, clientId, actor) {
+    await require('../developer/agents').revokeBeyondHost(db, "host_kind = 'service' AND host_service = ?", [clientId], { actor: actor ? `user:${actor}` : 'system:network' });
 }
 
 /** Record every grant whose expiry has passed, once. → how many */
@@ -152,6 +164,7 @@ async function expireDue(db) {
             const n = (await db.prepare("UPDATE principal_grants SET revoked_at = expires_at, revoked_by = 'expiry' WHERE client_id = ? AND capability = ? AND audience = ? AND revoked_at IS NULL")
                 .run(g.client_id, g.capability, g.audience)).changes;
             if (n) await record(db, { client_id: g.client_id, capability: g.capability, audience: g.audience, change: 'expired', namespaces: JSON.parse(g.namespaces || '[]'), expires_at: fromSql(g.expires_at), reason: g.reason || null, actor: null });
+            if (n) await revokeDelegated(db, g.client_id, null);
         });
     }
     if (due.length) kick(db);

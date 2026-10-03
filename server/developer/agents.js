@@ -11,9 +11,15 @@
  * - Losing the host or the project takes the agents with it, in the transaction that causes it: revoking the app,
  *   archiving the project, the owner leaving it, and the owner's account erasure (revokeWhere).
  * - Every change is a dev_audit row without an event: Contracts has no payload for it yet.
- *   Delegated grants, budgets, standing rules, confirmations and agent tokens come in later slices (section 8).
+ * - Delegated grants (slice 3, migrations/0017_agent_grants.sql): the owner alone sets one, for a capability the
+ *   host may use for this project (the delegation ceiling, `ceiling` below); the owner, an admin+ or staff revoke it.
+ *   A capability the installed catalog marks sensitive is always `confirm`, whatever mode is stored. A change that
+ *   shrinks the ceiling (an allowance, an app grant, a service's principal_grants row) revokes the delegated grants
+ *   outside it in its own transaction (revokeBeyondHost).
+ *   Budgets, standing rules, confirmations and agent tokens come in later slices (section 8).
  */
-const { ids } = require('openvibe-contracts');
+const { ids, capabilities } = require('openvibe-contracts');
+const policy = require('./policy');
 const store = require('./store');
 
 const AGENT_ID_RE = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
@@ -161,4 +167,172 @@ async function changeStatus(db, actor, projectId, agentId, action, { ctx }) {
     return agentView(await db.prepare('SELECT * FROM dev_agents WHERE id = ?').get(a.id));
 }
 
-module.exports = { ensureSchema, AGENT_ID_RE, agentView, listAgents, getAgent, createAgent, renameAgent, changeStatus, revokeWhere };
+// ── Delegated grants ───────────────────────────────────────────
+
+const GRANT_MODES = ['auto', 'confirm'];
+
+/** Sensitive per the installed catalog, read on every call (never stored), so a capability marked later counts at once. */
+const isSensitive = (capability) => { const c = capabilities.get(String(capability)); return !!(c && c.sensitive); };
+/** What a grant means now: a sensitive capability is always confirmed, whatever mode the owner stored. */
+const effectiveMode = (grant) => (isSensitive(grant.capability) ? 'confirm' : grant.mode);
+
+/**
+ * The delegation ceiling: the capabilities the agent's host may use for this project at `audience`, now.
+ * App host: the app's effectiveGrants (approved ∩ allowance, ∪ the sandbox allowance for a sandbox app, ∩ grantable).
+ * Service host: its unexpired principal_grants, never an `internal` capability. Either way only `active` ones, and
+ * nothing for a revoked agent, a revoked host app or an archived project.
+ */
+async function ceiling(db, agent, audience, settings) {
+    if (agent.status === 'revoked') return new Set();
+    let held = [];
+    if (agent.host_kind === 'app') {
+        const app = await db.prepare('SELECT * FROM dev_apps WHERE id = ? AND revoked_at IS NULL').get(agent.host_app_id);
+        const project = app && await db.prepare('SELECT * FROM dev_projects WHERE id = ? AND archived_at IS NULL').get(app.project_id);
+        // Required here: tokens.js requires store.js, which requires this module lazily.
+        if (project) held = await require('./tokens').effectiveGrants(db, app, project, audience, settings || policy.settings());
+    } else {
+        held = (await require('../identity/principals').grantsFor(db, agent.host_service, audience)).map((g) => g.capability)
+            .filter((c) => { const m = capabilities.get(c); return m && m.visibility !== 'internal'; });
+    }
+    return new Set(held.filter((c) => { const m = capabilities.get(c); return m && m.status === 'active'; }));
+}
+
+async function withinHost(db, agent, capability, settings) {
+    const audience = policy.audienceOf(capability);
+    return !!audience && (await ceiling(db, agent, audience, settings)).has(capability);
+}
+
+function grantView(g, within) {
+    return {
+        capability: g.capability, audience: g.audience, mode: g.mode, effective_mode: effectiveMode(g), sensitive: isSensitive(g.capability),
+        status: g.status, within_host: within, expires_at: g.expires_at || null, granted_at: g.granted_at, granted_by: g.granted_by,
+    };
+}
+
+/** Views of an agent's grant rows, each ceiling computed once per audience. */
+async function grantViews(db, agent, rows, settings) {
+    const ceilings = new Map();
+    const out = [];
+    for (const g of rows) {
+        if (!ceilings.has(g.audience)) ceilings.set(g.audience, await ceiling(db, agent, g.audience, settings));
+        out.push(grantView(g, ceilings.get(g.audience).has(g.capability)));
+    }
+    return out;
+}
+
+/** The audit row of a delegated-grant change: no event, Contracts has no payload for it yet (section 2). */
+async function grantAudit(db, agent, g, { actor, from, to, mode, reason, ctx }) {
+    await store.audit(db, { projectId: agent.project_id, actor, action: 'grant.changed', target: `agent:${agent.id}`,
+        detail: { capability: g.capability, audience: g.audience, from, to, mode, reason: reason || undefined }, ctx });
+}
+
+async function revokeGrantRow(db, agent, g, { actor, reason, ctx }) {
+    const t = nowIso();
+    const r = await db.prepare("UPDATE dev_agent_grants SET status = 'revoked', revoked_at = ?, revoked_by = ?, revoke_reason = ?, updated_at = ? WHERE agent_id = ? AND capability = ? AND status = 'active'")
+        .run(t, actor, reason || null, t, agent.id, g.capability);
+    if (r.changes) await grantAudit(db, agent, g, { actor, from: 'active', to: 'revoked', mode: g.mode, reason, ctx });
+    return r.changes > 0;
+}
+
+function expiryOf(v) {
+    if (v == null || v === '') return null;
+    const d = new Date(String(v));
+    if (Number.isNaN(d.getTime())) fail(422, 'grant.invalid', 'expires_at is not a date');
+    if (d.getTime() <= Date.now()) fail(422, 'grant.invalid', 'expires_at is in the past');
+    return d.toISOString();
+}
+
+async function listGrants(db, actor, projectId, agentId, { settings } = {}) {
+    const { project } = await store.access(db, actor, projectId, { allowArchived: true });
+    const a = await loadAgent(db, project.id, agentId);
+    return await grantViews(db, a, await db.prepare('SELECT * FROM dev_agent_grants WHERE agent_id = ? ORDER BY capability').all(a.id), settings);
+}
+
+async function readGrant(db, agent, capability, settings) {
+    return (await grantViews(db, agent, [await db.prepare('SELECT * FROM dev_agent_grants WHERE agent_id = ? AND capability = ?').get(agent.id, capability)], settings))[0];
+}
+
+/**
+ * Set a delegated grant: { mode: 'auto'|'confirm' (default confirm), expires_at? }. The agent's owner only: a person
+ * delegates their own authority. Refused: an unknown capability (404 grant.unknown_capability), one that is not
+ * active (404 grant.not_grantable), `auto` on a sensitive one (422 grant.sensitive_requires_confirm), one outside the
+ * host's ceiling (403 grant.beyond_host). Setting a revoked grant again makes it active with a new granted_at.
+ */
+async function putGrant(db, actor, projectId, agentId, capability, body, { ctx, settings }) {
+    const { project, role } = await store.access(db, actor, projectId, { staffOk: false });
+    const a = await loadAgent(db, project.id, agentId);
+    if (!(role && a.owner_subject === actor.subject)) fail(403, 'agent.forbidden', "only the agent's owner delegates to it");
+    const cap = capabilities.get(String(capability));
+    if (!cap) fail(404, 'grant.unknown_capability', `no capability ${String(capability).slice(0, 80)} in the catalog`);
+    if (cap.status !== 'active') fail(404, 'grant.not_grantable', `${cap.id} is ${cap.status}`);
+    const mode = body.mode === undefined || body.mode === null ? 'confirm' : body.mode;
+    if (!GRANT_MODES.includes(mode)) fail(422, 'grant.invalid', "mode is 'auto' or 'confirm'");
+    const expiresAt = expiryOf(body.expires_at);
+    if (mode === 'auto' && isSensitive(cap.id)) fail(422, 'grant.sensitive_requires_confirm', `${cap.id} is sensitive: every use is confirmed`);
+    const audience = policy.audienceOf(cap.id);
+    await db.tx(async () => {
+        // Under the project's lock, which an allowance change (its UPDATE), an app grant revoke, an app revocation, an
+        // archive and a member's removal hold while they cascade: the ceiling read here is the one they leave behind.
+        await store.lockProject(db, project.id);
+        await store.access(db, actor, projectId, { staffOk: false });
+        const cur = await db.prepare('SELECT * FROM dev_agents WHERE id = ? FOR UPDATE').get(a.id);
+        if (cur.status === 'revoked') fail(409, 'agent.revoked', 'agent is revoked');
+        // A service's grant row is held until commit, so a concurrent /api/admin/grants/revoke cascades after this.
+        if (cur.host_kind === 'service') await db.prepare('SELECT 1 AS held FROM principal_grants WHERE client_id = ? AND capability = ? AND audience = ? FOR SHARE').get(cur.host_service, cap.id, audience);
+        if (!await withinHost(db, cur, cap.id, settings)) fail(403, 'grant.beyond_host', `${cap.id} is not something this agent's host may do for the project`);
+        const prev = await db.prepare('SELECT * FROM dev_agent_grants WHERE agent_id = ? AND capability = ? FOR UPDATE').get(a.id, cap.id);
+        const active = prev && prev.status === 'active';
+        if (active && prev.mode === mode && (prev.expires_at || null) === expiresAt) return;
+        const t = nowIso();
+        if (active) {
+            await db.prepare('UPDATE dev_agent_grants SET mode = ?, expires_at = ?, updated_at = ? WHERE agent_id = ? AND capability = ?').run(mode, expiresAt, t, a.id, cap.id);
+        } else {
+            await db.prepare(`INSERT INTO dev_agent_grants (agent_id, capability, audience, mode, status, granted_at, granted_by, updated_at, expires_at)
+                        VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)
+                        ON CONFLICT (agent_id, capability) DO UPDATE SET audience = excluded.audience, mode = excluded.mode, status = 'active',
+                            granted_at = excluded.granted_at, granted_by = excluded.granted_by, updated_at = excluded.updated_at, expires_at = excluded.expires_at,
+                            revoked_at = NULL, revoked_by = NULL, revoke_reason = NULL`)
+                .run(a.id, cap.id, audience, mode, t, actor.label, t, expiresAt);
+        }
+        await grantAudit(db, cur, { capability: cap.id, audience }, { actor: actor.label, from: prev ? prev.status : 'none', to: 'active', mode, ctx });
+    });
+    return await readGrant(db, await loadAgent(db, project.id, a.id), cap.id, settings);
+}
+
+/** Revoke a delegated grant: the agent's owner, an admin+ or staff. */
+async function deleteGrant(db, actor, projectId, agentId, capability, { ctx, settings }) {
+    const { project, role } = await store.access(db, actor, projectId, { allowArchived: true });
+    const a = await loadAgent(db, project.id, agentId);
+    if (!(role && a.owner_subject === actor.subject) && !atLeast(role, 'admin') && !actor.staff) {
+        fail(403, 'agent.forbidden', "only the agent's owner, an admin or staff revoke its grants");
+    }
+    await db.tx(async () => {
+        const g = await db.prepare('SELECT * FROM dev_agent_grants WHERE agent_id = ? AND capability = ? FOR UPDATE').get(a.id, String(capability));
+        if (!g) fail(404, 'grant.not_found', 'no such grant');
+        if (g.status !== 'active') fail(409, 'grant.not_active', `grant is ${g.status}`);
+        await revokeGrantRow(db, a, g, { actor: actor.label, reason: null, ctx });
+    });
+    return await readGrant(db, a, String(capability), settings);
+}
+
+/**
+ * The ceiling cascade, in the caller's transaction: revoke every active delegated grant of the (not revoked) agents
+ * matching `where` that their host's ceiling no longer covers, one audit row each (reason beyond_host). `actor` is the
+ * subject label of whoever shrank it. Returns how many were revoked.
+ */
+async function revokeBeyondHost(db, where, params, { actor, ctx, settings }) {
+    let n = 0;
+    for (const a of await db.prepare(`SELECT * FROM dev_agents WHERE (${where}) AND status <> 'revoked' ORDER BY id`).all(...params)) {
+        const ceilings = new Map();
+        for (const g of await db.prepare("SELECT * FROM dev_agent_grants WHERE agent_id = ? AND status = 'active' ORDER BY capability").all(a.id)) {
+            if (!ceilings.has(g.audience)) ceilings.set(g.audience, await ceiling(db, a, g.audience, settings));
+            if (!ceilings.get(g.audience).has(g.capability) && await revokeGrantRow(db, a, g, { actor, reason: 'beyond_host', ctx })) n++;
+        }
+    }
+    return n;
+}
+
+module.exports = {
+    ensureSchema, AGENT_ID_RE, agentView, listAgents, getAgent, createAgent, renameAgent, changeStatus, revokeWhere,
+    effectiveMode, withinHost, listGrants, putGrant, deleteGrant, revokeBeyondHost,
+};
