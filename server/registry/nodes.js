@@ -46,7 +46,7 @@ async function list(db, { role = null, region = null } = {}) {
         .filter((n) => (!role || n.roles.includes(role)) && (!region || n.location.region === region));
 }
 
-function routers({ guard }) {
+function routers({ guard, readGuard = null }) {
     const pub = express.Router();
     const open = (res, maxAge) => res.set('Cache-Control', maxAge ? `public, max-age=${maxAge}` : 'no-store')
         .set('Access-Control-Allow-Origin', '*').set('Timing-Allow-Origin', '*');
@@ -59,6 +59,12 @@ function routers({ guard }) {
     // serves it; a report names another URL for nodes whose traffic does not come through here.
     pub.get('/:id/beacon', (req, res) => open(res, 0).status(204).end());
     const internal = express.Router();
+    // The same list for services holding network.registry.read (GET /internal/nodes), never cached.
+    if (readGuard) internal.get('/', readGuard, async (req, res) => {
+        const role = typeof req.query.role === 'string' ? req.query.role : null;
+        const region = typeof req.query.region === 'string' ? req.query.region : null;
+        res.set('Cache-Control', 'no-store').json({ nodes: await list(req.app.locals.db, { role, region }), generated_at: new Date().toISOString() });
+    });
     internal.post('/report', guard, express.json({ limit: '256kb' }), async (req, res) => {
         const { validate } = require('openvibe-contracts');
         const v = validate('network.node-report-request@1', req.body);

@@ -179,6 +179,26 @@ try {
     assert.deepStrictEqual(x.body.offers.map((o) => [o.offer_id, o.node_id, o.trust]), [['ovh-1', 'ovh-1', 'first-party'], ['ovh-1-gpu', null, 'external'], ['pi-1', 'pi-1', 'community']]);
     assert.deepStrictEqual(x.body.offers[0].capacity, { cpu: { utilization: 0.2, available_cores: 6 } });
     assert.strictEqual((await call('GET', '/internal/registry/cells/nope-1', null, live)).status, 404);
+
+    // ── Every node principal for network.registry.read (T2 step 1), newest first, filtered by cell, owner and status.
+    assert.strictEqual((await call('GET', '/internal/registry/node-principals')).status, 403, 'nobody');
+    assert.strictEqual((await call('GET', '/internal/registry/node-principals', null, host)).status, 403, 'Host lacks network.registry.read');
+    x = await call('GET', '/internal/registry/node-principals', null, live);
+    assert.strictEqual(x.status, 200, JSON.stringify(x.body));
+    assert.strictEqual(x.headers.get('cache-control'), 'no-store');
+    const stored = await db.prepare('SELECT id FROM platform_node_principals ORDER BY created_at DESC, id DESC').all();
+    assert.deepStrictEqual(x.body.node_principals.map((p) => p.principal), stored.map((p) => p.id), 'all of them, newest first');
+    assert.ok(!/hash|credential/.test(JSON.stringify(x.body)), 'never a hash or a credential');
+    const byId = Object.fromEntries(x.body.node_principals.map((p) => [p.node_id, p]));
+    assert.deepStrictEqual([byId['pi-1'].owner, byId['pi-1'].trust, byId['pi-1'].home_cell], [{ kind: 'project', project_id: project }, 'community', 'wnam-1']);
+    assert.deepStrictEqual([byId['ovh-1'].owner, byId['ovh-1'].trust], [{ kind: 'platform' }, 'first-party']);
+    assert.strictEqual(byId['pair-user'].owner.kind, 'user');
+    const nodesOf = async (q) => (await call('GET', `/internal/registry/node-principals${q}`, null, live)).body.node_principals.map((p) => p.node_id).sort();
+    assert.deepStrictEqual(await nodesOf('?cell=weu-1'), ['pair-cred-a', 'pair-platform', 'pair-user']);
+    assert.deepStrictEqual(await nodesOf('?owner_kind=user'), ['pair-user']);
+    assert.deepStrictEqual(await nodesOf('?status=revoked'), ['old-1']);
+    assert.deepStrictEqual(await nodesOf('?cell=weu-1&owner_kind=platform'), ['pair-cred-a', 'pair-platform']);
+    assert.deepStrictEqual(await nodesOf('?status=bogus'), [], 'an unknown value matches nothing');
     console.log('cells-registry: all tests passed');
 } finally {
     server.close();

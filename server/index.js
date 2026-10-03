@@ -463,9 +463,11 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/internal', dataRouters.internal);
     app.use('/api/admin/account-deletions', dataRouters.admin);
 }
-// The node registry (WS-X1, ADR-034 §12): public list for the geo API; Host reports its inventory's machines.
+// The node registry (WS-X1, ADR-034 §12): public list for the geo API; Host reports its inventory's machines; services
+// holding network.registry.read read the same list uncached at GET /internal/nodes.
 {
-    const nodeRouters = require('./registry/nodes').routers({ guard: require('./identity/principals').guard('network.node.report') });
+    const { guard } = require('./identity/principals');
+    const nodeRouters = require('./registry/nodes').routers({ guard: guard('network.node.report'), readGuard: guard('network.registry.read') });
     app.use('/api/v1/nodes', nodeRouters.pub);
     app.use('/internal/nodes', nodeRouters.internal);
 }
@@ -674,6 +676,8 @@ app.use('/api/admin/discord', createDiscordRoutes(db, discordService, requireAut
 
 // Deploy (TLS / Nginx / Infrastructure) admin API
 app.use('/api/admin/deploy', createDeployRoutes(db, requireAuth));
+// Registry operators (plan T2): cell and instance route weights, draining, node principal status; staff session only.
+app.use('/api/admin/registry', require('./registry/registry-admin').createRegistryAdmin(db, requireAuth, requireAdmin));
 
 // SSH access provisioning info — powers the admin "SSH" tab.
 // Returns non-secret connection context (host, project roots, services). The
