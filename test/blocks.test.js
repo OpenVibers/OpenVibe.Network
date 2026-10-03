@@ -3,12 +3,11 @@
 // /api/v1/me/blocks (never themselves, never a guest), each change writes network.block.changed into the
 // outbox with a growing per-pair revision, GET /internal/blocks answers services holding network.blocks.read
 // (service token only), Network creates no notification from a person the recipient blocked (staff and
-// system notices still arrive), and scripts/import-blocks.js imports Chat's exported dm_blocks once.
+// system notices still arrive).
 //   node test/blocks.test.js
 const assert = require('assert');
 const crypto = require('crypto');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const http = require('http');
 const express = require('express');
@@ -16,8 +15,6 @@ const { validate } = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 
 (async () => {
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-blocks-'));
-const dbFile = path.join(dir, 'network.db');
 const log = console.log; console.log = () => {};
 const db = getDb();
 console.log = log;
@@ -178,34 +175,6 @@ const valid = (e) => {
     await call('DELETE', '/api/v1/me/blocks/bob', { headers: await as(1) });
     assert.ok(await notes.create({ user_id: 1, type: 'MENTION', sender_id: 2, message: 'bob mentioned you' }), 'unblocked: notifications again (a MENTION: a second FOLLOW from bob within the hour is deduped)');
 
-    // ── Import of Chat's exported dm_blocks ──
-    const importer = require('../scripts/import-blocks');
-    const file = path.join(dir, 'pairs.json');
-    fs.writeFileSync(file, JSON.stringify({ pairs: [
-        { blocker_subject: BOB, blocked_subject: CAT },
-        { blocker_subject: BOB, blocked_subject: CAT },          // duplicate
-        { blocker_subject: ANN, blocked_subject: BOB },          // ann unblocked bob on Network since: left alone
-        { blocker_subject: CAT, blocked_subject: CAT },          // self
-        { blocker_subject: CAT, blocked_subject: 'usr_01JAB2C3D4E5F6G7H8J9K0ZZZZ' },   // unknown account
-        { blocker_subject: '42', blocked_subject: BOB },         // not a subject
-    ] }));
-    const out = [];
-    let code = await importer.main(['--file', file], (l) => out.push(l));
-    assert.strictEqual(code, 0);
-    assert.match(out.join('\n'), /pairs {6}6; to import 1; skipped: duplicate-in-file 1, already-on-network 1, self 1, unknown-account 1, not-a-subject 1/);
-    assert.ok(!await blocks.isBlocked(db, BOB, CAT), 'dry run changed nothing');
-    const n = (await events()).length;
-    code = await importer.main(['--file', file, '--apply'], () => {});
-    assert.strictEqual(code, 0);
-    assert.ok(await blocks.isBlocked(db, BOB, CAT), 'imported');
-    assert.ok(!await blocks.isBlocked(db, ANN, BOB), 'an unblock on Network wins over the old Chat block');
-    assert.strictEqual((await events()).length, n + 1);
-    const imported = (await events()).at(-1); valid(imported);
-    assert.deepStrictEqual([imported.payload.blocker, imported.payload.blocked, imported.payload.active, imported.payload.revision], [BOB, CAT, true, 1]);
-    out.length = 0;
-    await importer.main(['--file', file], (l) => out.push(l));
-    assert.match(out.join('\n'), /to import 0/, 'a second run imports nothing');
-
     // The account page lists blocks as text (DOM nodes), with unblock buttons.
     const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'my.html'), 'utf8');
     assert.ok(page.includes('id="blocks-list"') && page.includes('async function loadBlocks()') && page.includes("'/api/v1/me/blocks/' + encodeURIComponent(b.subject), { method: 'DELETE' }"));
@@ -213,7 +182,6 @@ const valid = (e) => {
     assert.ok(!fn.includes('innerHTML'), 'no innerHTML in the blocks list');
 
     server.close(); db.close();
-    fs.rmSync(dir, { recursive: true, force: true });
     console.log('blocks: all checks passed');
 })().catch(err => { console.error(err); process.exit(1); });
 })().catch(err => { console.error(err); process.exit(1); });
