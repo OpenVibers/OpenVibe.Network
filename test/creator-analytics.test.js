@@ -28,7 +28,7 @@ const CAROL = ids.newId('user'), DAVE = ids.newId('user');
 await db.prepare('INSERT INTO users (id, username, password_hash, subject_id, role) VALUES (20, ?, ?, ?, ?), (21, ?, ?, ?, ?)').run('carol', 'x', CAROL, 'streamer', 'dave', 'x', DAVE, 'user');
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
-const config = { internalKey: 'legacy-key', jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
+const config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
 const { signToken } = require('../server/auth/routes');
 const SECRET = 's'.repeat(40);
 const consumer = await createEventsConsumer({ db, notifications: new NotificationService(db), secrets: SECRET, log: { log() {}, warn() {}, error() {} } });

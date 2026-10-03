@@ -329,7 +329,7 @@ async function bootAndCheck(target, dir, { timeoutMs = 120000 } = {}) {
         PATH: process.env.PATH, HOME: dir, PORT: String(port), HOST: '127.0.0.1',
         NODE_ENV: target.store === 'pglite' ? 'test' : 'production',
         JWT_PRIVATE_KEY: path.join(dir, 'keys', 'private.pem'), JWT_PUBLIC_KEY: path.join(dir, 'keys', 'public.pem'),
-        AVATAR_PATH: path.join(dir, 'avatars'), INTERNAL_API_KEY: crypto.randomBytes(24).toString('hex'),
+        AVATAR_PATH: path.join(dir, 'avatars'),
         OV_NETWORK_INTERNAL_URL: `http://127.0.0.1:${port}`,
         OV_LIVE_INTERNAL_URL: 'http://127.0.0.1:9', OV_TOOLS_INTERNAL_URL: 'http://127.0.0.1:9', OV_GAMES_INTERNAL_URL: 'http://127.0.0.1:9',
         OV_MEDIA_INTERNAL_URL: 'http://127.0.0.1:9', OV_AI_INTERNAL_URL: 'http://127.0.0.1:9',

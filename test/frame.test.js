@@ -8,7 +8,7 @@ const { siteForHost } = require('../server/frame/sites');
 
 (async () => {
 const db = getDb();
-const svc = await createFrameService(db, { internalKey: 'change-me-in-production', services: {} }, null);
+const svc = await createFrameService(db, { services: {} }, null);
 
 assert.equal(siteForHost('yt.openvibe.tools').id, 'tools');
 assert.equal(siteForHost('evil.example'), null);
@@ -49,7 +49,7 @@ for (let i = 0; i < 6; i++) await ins.run(1, 'tools', 'dns');
     });
     await Promise.all([live, ai].map(s => new Promise(r => s.listen(0, '127.0.0.1', r))));
     const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
-    const cfg = { internalKey: 'a-real-internal-key', services: { live: { internalUrl: `http://127.0.0.1:${live.address().port}` } } };
+    const cfg = { services: { live: { internalUrl: `http://127.0.0.1:${live.address().port}` } } };
     const aiUrl = `http://127.0.0.1:${ai.address().port}`;
     const db2 = db;   // the process's database (test/helpers/pg-preload.mjs); the copy cache lives here
     const copySvc = async (d) => await createFrameService(d, cfg, null, { privateKey, issuer: 'https://openvibe.network', aiUrl });

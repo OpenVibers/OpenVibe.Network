@@ -28,7 +28,7 @@ metrics.instrument(app, { service: 'network', release: 'abc123def456', registry:
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.locals.db = db;
-app.locals.config = { internalKey: 'legacy-key', jwt: { issuer: ISSUER, accessTokenExpiry: '1h' } };
+app.locals.config = { jwt: { issuer: ISSUER, accessTokenExpiry: '1h' } };
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 app.use('/oauth/token', observability.tokenEndpointMetrics);

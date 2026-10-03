@@ -26,7 +26,6 @@ const S = (name) => `sentinel-not-a-secret-${name}`;
 /** Every secret-typed environment variable Network (or a module it loads) reads, with its sentinel. */
 function sentinelEnv() {
     return {
-        INTERNAL_API_KEY: S('internal-api-key'),
         SETUP_TOKEN: S('setup-token'),
         NETWORK_EVENTS_SECRET: S('network-events-secret'),
         OV_LIVE_WEBHOOK_SECRET: S('live-webhook-secret'),
@@ -136,7 +135,7 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
     const shownOnce = [];   // responses that legitimately carry a secret once (checked for no-store by the suites)
     const once = (what, r) => { shownOnce.push({ what, status: r.status, cache: r.headers.get('cache-control') || '' }); return r; };
 
-    // Service principal tokens (client_credentials) and the legacy key.
+    // Service principal tokens (client_credentials).
     async function serviceToken(clientId, audience = 'openvibe.network') {
         const r = once(`service token ${clientId}`, await call(null, 'POST', '/oauth/token', new URLSearchParams({ grant_type: 'client_credentials', client_id: clientId, client_secret: clientSecrets[clientId], audience })));
         if (r.status !== 200) throw new Error(`service token for ${clientId}: ${r.status} ${r.text}`);

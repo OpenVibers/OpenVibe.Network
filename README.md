@@ -465,8 +465,6 @@ Contracts 0.49.0; `server/identity/blocks.js`). `user_blocks` is keyed by subjec
   (DMs, mentions) and Community (replies) keep projections from their own Events subscriptions.
 - Network's notifications: nothing is created from a person the recipient blocked (`sender_id` as a Network
   id, or `actor_subject`); moderation, system and admin notices always are.
-- Import (once, from Chat's `dm_blocks` export): `node scripts/import-blocks.js --file <json>` (dry run),
-  then `--apply`. Pairs Network already knows are left alone.
 
 ---
 
