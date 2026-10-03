@@ -946,7 +946,7 @@ const server = app.listen(config.port, config.host, () => {
     }, 24 * 60 * 60 * 1000));
 });
 
-// ── Stop (roadmap WS-P lifecycle; server/graceful.js) ─────────
+// ── Stop (roadmap WS-P lifecycle; openvibe-sdk/service) ───────
 // systemd sends SIGTERM on a restart or deploy. The maintenance timers, the registry, drift and library
 // pollers, the frame refreshes, the profile-event and grant-expiry timers stop (nothing new starts); the
 // server stops taking connections, closes idle keep-alive ones and lets requests in flight finish (8 s at
@@ -954,9 +954,9 @@ const server = app.listen(config.port, config.host, () => {
 // (unsent rows stay in the outbox), analytics flush and close, the database and the Valkey connection
 // close, and the process exits 0, within 10 s (well inside the unit's stop timeout). The email queue
 // resumes on the next start.
-const { within } = require('./graceful');
-require('./graceful').gracefulStop({
-    name: 'Network', server, drainMs: 8000, deadlineMs: 10000,
+const { gracefulStop, within } = require('openvibe-sdk/service');
+gracefulStop({
+    name: 'Network', server, drainMs: 8000, deadlineMs: 10000, deadlineExitCode: 1,
     stop: [
         () => { for (const t of timers) { clearTimeout(t); clearInterval(t); } },
         () => ecosystem.stop(),

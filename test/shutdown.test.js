@@ -1,5 +1,5 @@
 'use strict';
-// A restart drains instead of cutting (roadmap WS-P lifecycle; server/graceful.js): on SIGTERM the server
+// A restart drains instead of cutting (roadmap WS-P lifecycle; openvibe-sdk/service): on SIGTERM the server
 // stops taking connections, closes idle keep-alive ones, answers the request in flight (Connection: close),
 // stops its timers, pollers and relay, closes the databases and exits 0 within the manifest's 10 s, promptly,
 // even with a keep-alive client connected.
