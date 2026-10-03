@@ -88,6 +88,25 @@ async function getCell(db, id) {
     return r ? cellView(r) : null;
 }
 
+/** A cell's lifecycle (0008 CHECK) and the routing weight of a cell or an instance: an integer 0-1000 (0008 CHECK). */
+const CELL_STATUS = ['planned', 'active', 'draining', 'retired'];
+const isWeight = (v) => Number.isInteger(v) && v >= 0 && v <= 1000;
+
+/**
+ * Operator write (plan T2): a cell's routing weight and lifecycle status, from a staff session
+ * (server/registry/registry-admin.js); no report carries either. Nothing routes on them until a scheduler exists.
+ * Throws RegistryError. → the cell
+ */
+async function setCell(db, id, { route_weight: weight, status } = {}, now = new Date().toISOString()) {
+    if (weight !== undefined && !isWeight(weight)) throw new RegistryError(422, 'registry.invalid_weight', 'route_weight must be an integer from 0 to 1000');
+    if (status !== undefined && !CELL_STATUS.includes(status)) throw new RegistryError(422, 'registry.invalid_status', `status must be one of ${CELL_STATUS.join(', ')}`);
+    const r = await db.prepare('SELECT * FROM platform_cells WHERE id = ?').get(String(id));
+    if (!r) throw new RegistryError(404, 'registry.unknown_cell', `no cell ${id}`);
+    await db.prepare('UPDATE platform_cells SET route_weight = ?, status = ?, updated_at = ? WHERE id = ?')
+        .run(weight === undefined ? Number(r.route_weight) : weight, status === undefined ? r.status : status, now, r.id);
+    return getCell(db, r.id);
+}
+
 /** A live paired machine with no platform_nodes row is 'up' while it signed in within this window. */
 const SEEN_UP_MS = 10 * 60 * 1000;
 
@@ -137,7 +156,13 @@ function routers({ readGuard }) {
         if (!t) return http.sendProblem(res, 404, 'registry.unknown_cell', { detail: `no cell ${req.params.id}` });
         res.json({ ...t, generated_at: new Date().toISOString() });
     });
+    // Every node principal (platform, project and person-owned), newest first; ?cell=&owner_kind=&status= narrow it.
+    internal.get('/node-principals', readGuard, async (req, res) => {
+        res.set('Cache-Control', 'no-store');
+        const nodePrincipals = await require('./node-principals').listPrincipals(req.app.locals.db, require('./node-principals').principalFilter(req.query));
+        res.json({ node_principals: nodePrincipals, generated_at: new Date().toISOString() });
+    });
     return { pub, internal };
 }
 
-module.exports = { BOOTSTRAP_CELL, RegistryError, ensureSchema, checkPlatformNodes, adoptPlatformNodes, checkPlacement, listCells, getCell, topology, routers };
+module.exports = { BOOTSTRAP_CELL, CELL_STATUS, RegistryError, isWeight, ensureSchema, checkPlatformNodes, adoptPlatformNodes, checkPlacement, cellView, listCells, getCell, setCell, topology, routers };

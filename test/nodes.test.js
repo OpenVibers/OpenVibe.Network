@@ -31,7 +31,7 @@ app.locals.config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpi
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 app.use('/oauth', require('../server/auth/oauth-routes'));
-const r = nodes.routers({ guard: principals.guard('network.node.report', { legacy: false }) });
+const r = nodes.routers({ guard: principals.guard('network.node.report', { legacy: false }), readGuard: principals.guard('network.registry.read') });
 app.use('/api/v1/nodes', r.pub);
 app.use('/internal/nodes', r.internal);
 const server = http.createServer(app);
@@ -72,6 +72,19 @@ const node = (id, extra = {}) => ({ id, name: id, roles: ['web', 'app'], locatio
         const all = (await get()).body.nodes;
         assert.deepStrictEqual(all.map((n) => [n.id, n.health.status]), [['fra-1', 'up'], ['oregon-1', 'up'], ['oregon-2', 'down']]);
         assert.ok(validate('network.node-list-result@1', { nodes: all, generated_at: new Date().toISOString() }).valid, 'a down node still matches the contract');
+
+        // GET /internal/nodes: the same list, uncached, for network.registry.read only (Live holds it, Host does not).
+        const internal = (q, headers = {}) => fetch(`${base}/internal/nodes${q}`, { headers }).then(async (y) => ({ status: y.status, headers: y.headers, body: await y.json().catch(() => null) }));
+        assert.strictEqual((await internal('')).status, 403, 'nobody');
+        assert.strictEqual((await internal('', auth)).status, 403, 'Host lacks network.registry.read');
+        const reader = { authorization: `Bearer ${await token('live', 'live-secret')}` };
+        x = await internal('', reader);
+        assert.strictEqual(x.status, 200, JSON.stringify(x.body));
+        assert.strictEqual(x.headers.get('cache-control'), 'no-store');
+        assert.ok(validate('network.node-list-result@1', x.body).valid);
+        assert.deepStrictEqual(x.body.nodes, all, 'the same nodes as the public list');
+        assert.deepStrictEqual((await internal('?region=eu-central', reader)).body.nodes.map((n) => n.id), ['fra-1']);
+        assert.deepStrictEqual((await internal('?role=edge-probe', reader)).body.nodes.map((n) => n.id), ['oregon-2']);
 
         const b = await fetch(`${base}/api/v1/nodes/oregon-1/beacon`);
         assert.deepStrictEqual([b.status, b.headers.get('cache-control'), b.headers.get('timing-allow-origin')], [204, 'no-store', '*']);

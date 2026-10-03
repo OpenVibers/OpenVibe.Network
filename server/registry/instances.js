@@ -90,6 +90,31 @@ async function report(db, { source, instances } = {}, now = new Date().toISOStri
     return { instances: instances.length, stopped };
 }
 
+/** An instance's lifecycle (0008 CHECK, platform.service-instance@1). */
+const INSTANCE_STATE = ['starting', 'ready', 'degraded', 'draining', 'stopped'];
+
+const instanceView = (r) => ({
+    id: r.id, service: r.service, version: r.version, cell: r.cell, node: r.node_id, endpoints: JSON.parse(r.endpoints), state: r.state,
+    route_weight: Number(r.route_weight), source: r.source, started_at: r.started_at, reported_at: r.reported_at,
+});
+
+/**
+ * Operator write (plan T2): an instance's routing weight and state, from a staff session
+ * (server/registry/registry-admin.js). This is the only writer of route_weight; Host's next report of the instance
+ * sets its state again (report() above), so an operator's state lasts until then. Throws RegistryError. → the instance
+ */
+async function setInstance(db, id, { route_weight: weight, state } = {}) {
+    const { RegistryError, isWeight } = require('./cells');
+    if (weight !== undefined && !isWeight(weight)) throw new RegistryError(422, 'registry.invalid_weight', 'route_weight must be an integer from 0 to 1000');
+    if (state !== undefined && !INSTANCE_STATE.includes(state)) throw new RegistryError(422, 'registry.invalid_state', `state must be one of ${INSTANCE_STATE.join(', ')}`);
+    const get = db.prepare('SELECT * FROM platform_service_instances WHERE id = ?');
+    const r = await get.get(String(id));
+    if (!r) throw new RegistryError(404, 'registry.unknown_instance', `no service instance ${id}`);
+    await db.prepare('UPDATE platform_service_instances SET route_weight = ?, state = ? WHERE id = ?')
+        .run(weight === undefined ? Number(r.route_weight) : weight, state === undefined ? r.state : state, r.id);
+    return instanceView(await get.get(r.id));
+}
+
 function routers({ guard }) {
     const { http } = require('openvibe-contracts');
     const internal = express.Router();
@@ -107,4 +132,4 @@ function routers({ guard }) {
     return { internal };
 }
 
-module.exports = { CONTRACT, ensureSchema, check, checkPlacement, report, routers };
+module.exports = { CONTRACT, INSTANCE_STATE, ensureSchema, check, checkPlacement, report, instanceView, setInstance, routers };

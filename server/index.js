@@ -463,9 +463,11 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/internal', dataRouters.internal);
     app.use('/api/admin/account-deletions', dataRouters.admin);
 }
-// The node registry (WS-X1, ADR-034 §12): public list for the geo API; Host reports its inventory's machines.
+// The node registry (WS-X1, ADR-034 §12): public list for the geo API; Host reports its inventory's machines; services
+// holding network.registry.read read the same list uncached at GET /internal/nodes.
 {
-    const nodeRouters = require('./registry/nodes').routers({ guard: require('./identity/principals').guard('network.node.report') });
+    const { guard } = require('./identity/principals');
+    const nodeRouters = require('./registry/nodes').routers({ guard: guard('network.node.report'), readGuard: guard('network.registry.read') });
     app.use('/api/v1/nodes', nodeRouters.pub);
     app.use('/internal/nodes', nodeRouters.internal);
 }
@@ -674,6 +676,8 @@ app.use('/api/admin/discord', createDiscordRoutes(db, discordService, requireAut
 
 // Deploy (TLS / Nginx / Infrastructure) admin API
 app.use('/api/admin/deploy', createDeployRoutes(db, requireAuth));
+// Registry operators (plan T2): cell and instance route weights, draining, node principal status; staff session only.
+app.use('/api/admin/registry', require('./registry/registry-admin').createRegistryAdmin(db, requireAuth, requireAdmin));
 
 // SSH access provisioning info — powers the admin "SSH" tab.
 // Returns non-secret connection context (host, project roots, services). The
@@ -942,7 +946,7 @@ const server = app.listen(config.port, config.host, () => {
     }, 24 * 60 * 60 * 1000));
 });
 
-// ── Stop (roadmap WS-P lifecycle; server/graceful.js) ─────────
+// ── Stop (roadmap WS-P lifecycle; openvibe-sdk/service) ───────
 // systemd sends SIGTERM on a restart or deploy. The maintenance timers, the registry, drift and library
 // pollers, the frame refreshes, the profile-event and grant-expiry timers stop (nothing new starts); the
 // server stops taking connections, closes idle keep-alive ones and lets requests in flight finish (8 s at
@@ -950,9 +954,9 @@ const server = app.listen(config.port, config.host, () => {
 // (unsent rows stay in the outbox), analytics flush and close, the database and the Valkey connection
 // close, and the process exits 0, within 10 s (well inside the unit's stop timeout). The email queue
 // resumes on the next start.
-const { within } = require('./graceful');
-require('./graceful').gracefulStop({
-    name: 'Network', server, drainMs: 8000, deadlineMs: 10000,
+const { gracefulStop, within } = require('openvibe-sdk/service');
+gracefulStop({
+    name: 'Network', server, drainMs: 8000, deadlineMs: 10000, deadlineExitCode: 1,
     stop: [
         () => { for (const t of timers) { clearTimeout(t); clearInterval(t); } },
         () => ecosystem.stop(),

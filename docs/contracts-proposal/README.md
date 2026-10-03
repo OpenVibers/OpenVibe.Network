@@ -54,3 +54,27 @@ File: `network.service-manifest.json`. It adds the two capabilities, and it adds
 - `network.grant.changed`
 
 Payloads are in `../developer-projects.md#events`. They are recorded in Network's audit as envelopes but not relayed to Events yet.
+
+# Agents and confirmations (plan T2 WS-Z2)
+
+Changes the agents of `../t2-projects-and-grants.md` need beyond the pinned openvibe-contracts **v0.85.0**. Sections 1–4 above are published (v0.85.0 has the app claims, `prj`, `partner` and the two project capabilities). Everything below is additive. Until it is released, Network builds agents, delegated grants and the owner side of confirmations, but mints no agent token and serves no `/internal/confirmations` route.
+
+## 7. `identity.service-token-claims@1`: agent claims
+
+File: `identity.service-token-claims.v1.json`, the full proposed schema (the v0.85.0 schema plus these).
+
+- `sub` gains `agent:agt_<ULID>` (as `ids.principalSub({ type: 'agent', id })` already returns), `actor_type` gains `agent`.
+- New optional `cap_confirm`: exact capability ids the agent may use only with an approved confirmation (or a standing rule). `cap` holds only the delegated grants whose effective mode is `auto`; the two lists never overlap.
+- New optional `act` (`{ sub }`, RFC 8693): the host that minted the token, `app:app_…` or `svc:<name>`.
+- `on_behalf_of` also describes the agent's owner.
+- New `allOf` rule: when `actor_type` is `agent`, `project_id`, `env` and `on_behalf_of` are required.
+
+Add fixtures: a valid agent token with `cap_confirm`, and an invalid one without `on_behalf_of`. `serviceAuth` should treat a `cap_confirm` capability as not granted by `requireCapability` (the receiver checks the confirmation instead).
+
+## 8. Event payload `network.confirmation.changed@1`
+
+File: `network.confirmation.changed.v1.json`. One payload for every transition of a confirmation request (`created`, `approved`, `denied`, `expired`, `cancelled`, `used`), with the agent, project, capability, audience and new state. It never carries `summary` or `details`. Add `network.confirmation.changed` to the Network manifest's `eventsProduced` with it.
+
+## 9. Capability `network.confirmation.manage`
+
+In `../capabilities-proposal/network.confirmation.manage.json`: first-party, planned. What an owning service holds to create, read, consume and cancel the confirmations of its own sensitive capabilities (`POST /internal/confirmations`, `GET /internal/confirmations/:id`, `POST …/:id/consume`, `POST …/:id/cancel`).
