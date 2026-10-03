@@ -56,6 +56,23 @@ const node = (id, extra = {}) => ({ id, name: id, roles: ['web', 'app'], locatio
         assert.strictEqual(x.status, 200, JSON.stringify(x.body));
         assert.ok(validate('network.node-list-result@1', x.body).valid);
         assert.strictEqual(x.body.nodes.length, 2);
+        assert.deepStrictEqual(x.body.nodes.map((n) => n.cell), ['wnam-1', 'wnam-1'], 'list fills cell from each principal');
+
+        // A matching cell is accepted. A different cell rejects the whole report before any node is stored.
+        x = await post({ source: 'oregon', nodes: [node('oregon-1', { cell: 'wnam-1' }), node('oregon-2', { cell: 'wnam-1', roles: ['edge-probe'], location: { region: 'us-east', country: 'US' } })] }, auth);
+        assert.strictEqual(x.status, 200, 'matching cell report');
+        assert.deepStrictEqual(x.body.nodes.map((n) => n.cell), ['wnam-1', 'wnam-1']);
+        const beforeMismatch = await db.prepare('SELECT doc, reported_at FROM platform_nodes WHERE id = ?').get('oregon-1');
+        x = await post({ source: 'oregon', nodes: [node('oregon-1', { cell: 'weu-1' }), node('never-stored')] }, auth);
+        assert.deepStrictEqual([x.status, x.body.code], [409, 'registry.node_cell_mismatch'], 'mismatched cell report');
+        assert.deepStrictEqual(await db.prepare('SELECT doc, reported_at FROM platform_nodes WHERE id = ?').get('oregon-1'), beforeMismatch, 'existing node unchanged');
+        assert.strictEqual(await db.prepare('SELECT id FROM platform_nodes WHERE id = ?').get('never-stored'), undefined, 'new node not stored');
+        assert.strictEqual(await db.prepare('SELECT node_id FROM platform_node_principals WHERE node_id = ?').get('never-stored'), undefined, 'new principal not stored');
+
+        x = await post({ source: 'oregon', nodes: [node('oregon-1'), node('oregon-2', { roles: ['edge-probe'], location: { region: 'us-east', country: 'US' } })] }, auth);
+        assert.strictEqual(x.status, 200, 'report without cell remains accepted');
+        assert.strictEqual(JSON.parse((await db.prepare('SELECT doc FROM platform_nodes WHERE id = ?').get('oregon-1')).doc).cell, undefined, 'stored report has no cell');
+        assert.strictEqual(x.body.nodes.find((n) => n.id === 'oregon-1').cell, 'wnam-1', 'list still joins the principal cell');
 
         x = await get();
         assert.strictEqual(x.status, 200);
@@ -85,6 +102,14 @@ const node = (id, extra = {}) => ({ id, name: id, roles: ['web', 'app'], locatio
         assert.deepStrictEqual(x.body.nodes, all, 'the same nodes as the public list');
         assert.deepStrictEqual((await internal('?region=eu-central', reader)).body.nodes.map((n) => n.id), ['fra-1']);
         assert.deepStrictEqual((await internal('?role=edge-probe', reader)).body.nodes.map((n) => n.id), ['oregon-2']);
+
+        await db.prepare('DELETE FROM platform_node_principals WHERE node_id = ?').run('fra-1');
+        assert.strictEqual((await get()).body.nodes.find((n) => n.id === 'fra-1').cell, undefined, 'list omits cell without a principal');
+
+        x = await post({ source: 'fresh', nodes: [node('fresh-1', { cell: 'weu-1' })] }, auth);
+        assert.strictEqual(x.status, 200, 'a node with no principal accepts a reported cell');
+        assert.strictEqual(JSON.parse((await db.prepare('SELECT doc FROM platform_nodes WHERE id = ?').get('fresh-1')).doc).cell, 'weu-1', 'report stored unchanged');
+        assert.strictEqual(x.body.nodes.find((n) => n.id === 'fresh-1').cell, 'wnam-1', 'read uses the adopted principal cell');
 
         const b = await fetch(`${base}/api/v1/nodes/oregon-1/beacon`);
         assert.deepStrictEqual([b.status, b.headers.get('cache-control'), b.headers.get('timing-allow-origin')], [204, 'no-store', '*']);
