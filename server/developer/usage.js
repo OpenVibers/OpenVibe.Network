@@ -14,6 +14,9 @@
  * twice. The failures a rollup samples (time, code, status, trace id, job or event id) are kept for
  * the dashboard's recent errors. Nothing here names who did the work.
  *
+ * Rollups are counts for quotas and dashboards, never money. Network never ingests the
+ * platform.usage-sample readings and stores no subject with a count; money lives only in Billing.
+ *
  *   dev_usage_windows   one row per rollup key (WINDOW_DAYS, 35 days)
  *   dev_usage_daily     per project, env, service, capability, dimension, unit and UTC day (DAILY_DAYS, 400 days)
  *   dev_usage_errors    sampled failures (ERROR_DAYS, 30 days; the newest ERRORS_PER_PROJECT per project)

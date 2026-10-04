@@ -83,6 +83,9 @@ const JOB = 'job_01JAB2C3D4E5F6G7H8J9K0MNPR';
 
         // ── The consumer subscribes to both rollups, and records them ──
         assert.ok(TOPICS.includes('tools.usage.recorded') && TOPICS.includes('events.usage.recorded'));
+        // Rollups are counts, never money: the consumer takes no billing topic and no raw usage sample.
+        // billing.staff.action is the one exception: a staff audit record (server/admin/moderation-audit.js), no amounts.
+        assert.deepStrictEqual(TOPICS.filter((t) => (t.startsWith('billing.') && t !== 'billing.staff.action') || t.includes('usage-sample')), []);
         assert.deepStrictEqual(topicsFrom(['--topic', 'tools.usage.recorded', '--topic', 'events.usage.recorded']), ['tools.usage.recorded', 'events.usage.recorded']);
         const rollup = (svc, payload, over = {}) => ({
             event_id: ids.newId('event'), event_type: `${svc}.usage.recorded`, version: 1, source: svc, actor: { type: 'service', id: svc },
