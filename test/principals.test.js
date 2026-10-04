@@ -20,6 +20,8 @@ console.log = log;
 
 await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'media-secret' WHERE client_id = 'media'").run();
+// The `search` client is created with server/setup/service-principal.js, not seeded with the signed-in products.
+await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('search', 'search-secret', 'OpenVibe.Search', '[]', 1) ON CONFLICT DO NOTHING").run();
 await db.prepare("INSERT INTO users (id, username, password_hash) VALUES (7, 'payee', 'x'), (8, 'payer', 'x')").run();
 // A database seeded before media.analyze (Live's AI grants as the old default) is moved at the next boot.
 await db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = 'live' AND audience = 'openvibe.ai'").run(JSON.stringify(['live.*', 'network.site_copy']));
@@ -63,6 +65,13 @@ const server = http.createServer(app);
     const aiClaims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.ai' });
     assert.ok(aiClaims.ok, aiClaims.reason);
     assert.deepStrictEqual([aiClaims.claims.cap, aiClaims.claims.ns], [['ai.credential.manage', 'ai.quota.attribution.manage', 'ai.run.create', 'ai.run.read'], ['live.*', 'network.site_copy', 'media.analyze']]);
+
+    // Plan T9: Search's saved-search notifier resolves the saved search's owner and pushes one notification
+    // per new match through Network, and holds nothing else there.
+    t = await token({ client_id: 'search', client_secret: 'search-secret', audience: 'openvibe.network' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    assert.deepStrictEqual(t.body.scope.split(' '), ['identity.subject.resolve', 'network.notifications.push']);
+    const searchToken = t.body.access_token;
 
     t = await token({ client_id: 'live', client_secret: 'wrong', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 401); assert.strictEqual(t.body.error, 'invalid_client');
@@ -115,6 +124,11 @@ const server = http.createServer(app);
     assert.notStrictEqual(r.status, 401);
     r = await post('/internal/notifications/mark-read', { user_id: 7, type: 'follow' }, { authorization: `Bearer ${full}` });
     assert.notStrictEqual(r.status, 403, `network.notifications.push opens mark-read: ${JSON.stringify(r.body)}`);
+    // Search pushes for its own app only (plan T9).
+    r = await post('/internal/notifications/push', { user_id: 7, type: 'SEARCH_SAVED_MATCH', category: 'service', priority: 'normal', title: 'New results', service: 'search' }, { authorization: `Bearer ${searchToken}` });
+    assert.notStrictEqual(r.status, 403, `network.notifications.push opens push for app search: ${JSON.stringify(r.body)}`);
+    r = await post('/internal/notifications/push', { user_id: 7, title: 'x', service: 'live' }, { authorization: `Bearer ${searchToken}` });
+    assert.strictEqual(r.status, 403, 'search may only push for its own app'); assert.strictEqual(r.body.code, 'capability.owner_denied');
     r = await post('/internal/user-avatar', { user_id: 7, avatar_url: null }, { authorization: `Bearer ${creditOnly}` });
     assert.strictEqual(r.status, 403, 'a token without network.avatar.write');
     r = await post('/internal/coins/credit', credit(), { authorization: 'Bearer not-a-jwt' });
