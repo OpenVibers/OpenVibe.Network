@@ -16,10 +16,14 @@
  * - Every change that takes authority away calls `cancelFor` in its own transaction: the pending and approved-unused
  *   rows it affects become `cancelled` with the cause, and the matching standing rules are revoked. Resuming an agent
  *   revives nothing.
- * - Every transition is a dev_audit row without an event (Contracts has no payload yet, slice 9). Audit rows never
- *   carry `summary` or `details`, which may hold message text.
+ * - Every transition is a dev_audit row carrying a network.confirmation.changed@1 event (slice 9), written with the
+ *   state change in one transaction, so the Events outbox (store.audit) relays it exactly when the change commits.
+ *   Each transition is a conditional UPDATE that only one writer wins, so a confirmation emits each change once:
+ *   a second sweep, a repeated cancel or a lost race writes nothing. A standing-rule approval is one `created`
+ *   event in state `approved` with its `rule_id`. Neither the audit row nor the event carries `summary`, `details`,
+ *   the request digest or a label; the event names the owner only as the envelope's `on_behalf_of`.
  */
-const { ids, validate, capabilities } = require('openvibe-contracts');
+const { ids, validate, assertValid, capabilities } = require('openvibe-contracts');
 const policy = require('./policy');
 const store = require('./store');
 const agents = require('./agents');
@@ -64,9 +68,28 @@ function ruleView(r) {
 
 const agentContext = (a) => (a ? { name: a.name, project_id: a.project_id, host: agents.agentView(a).host } : null);
 
-async function audit(db, c, action, { actor, detail, ctx } = {}) {
+async function audit(db, c, action, { actor, detail, ctx, event } = {}) {
     await store.audit(db, { projectId: c.project_id, actor: actor || 'system:network', action, target: `confirmation:${c.id}`,
-        detail: { agent: c.agent_id, capability: c.capability, ...detail }, ctx });
+        detail: { agent: c.agent_id, capability: c.capability, ...detail }, ctx, event });
+}
+
+const SYSTEM = { type: 'system', id: 'network' };
+
+/**
+ * The network.confirmation.changed@1 event of one transition of row `c`: `change` is what happened, `state` the state
+ * after it. The envelope's actor is the deciding owner for approve/deny (the audit row's user) and the system for
+ * everything else; on_behalf_of is the owner. expires_at rides on `created` and `approved`, as the contract's fixtures.
+ */
+function changed(c, change, state, { standingRule, ruleId, cancelReason, at = nowIso(), byOwner = false } = {}) {
+    const payload = {
+        confirmation_id: c.id, agent_id: c.agent_id, project_id: c.project_id, capability: c.capability, audience: c.audience, state, change,
+        ...(standingRule ? { standing_rule: standingRule } : {}), ...(ruleId != null ? { rule_id: Number(ruleId) } : {}),
+        ...(cancelReason ? { cancel_reason: cancelReason } : {}), ...(change === 'created' || change === 'approved' ? { expires_at: c.expires_at } : {}),
+        changed_at: at,
+    };
+    assertValid('network.confirmation.changed@1', payload);
+    return { type: 'network.confirmation.changed', subject: { type: 'confirmation', id: c.id }, payload,
+        ...(byOwner ? {} : { actor: SYSTEM }), on_behalf_of: { type: 'user', id: c.owner_subject } };
 }
 
 // ── Authority, as at creation and again at consume ─────────────
@@ -127,7 +150,7 @@ async function create(db, { agentId, capability, audience, summary, details, res
                     AND (rule = 'always' OR (rule = 'until' AND until_at > ?) OR (rule = 'session' AND session_id = ? AND until_at > ?)) ORDER BY id LIMIT 1`)
             .get(agent.id, capability, now, sessionId == null ? null : String(sessionId), now);
         const row = {
-            id, project_id: agent.project_id, agent_id: agent.id, owner_subject: agent.owner_subject, capability, summary, details: detailsJson,
+            id, project_id: agent.project_id, agent_id: agent.id, owner_subject: agent.owner_subject, capability, audience, summary, details: detailsJson,
             resources: JSON.stringify(resources || []), state: rule ? 'approved' : 'pending', standing_rule: rule ? rule.rule : null, expires_at: new Date(Date.now() + ttl * 1000).toISOString(),
             created_at: now, decided_at: rule ? now : null,
         };
@@ -138,7 +161,8 @@ async function create(db, { agentId, capability, audience, summary, details, res
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
             .run(id, row.project_id, row.agent_id, row.owner_subject, capability, audience, summary, row.details, row.resources, row.state, row.standing_rule,
                 sessionId == null ? null : String(sessionId), requestDigest, rule ? rule.id : null, row.expires_at, now, row.decided_at, rule ? `rule:${rule.id}` : null);
-        await audit(db, row, 'confirmation.created', { actor: `service:${audience}`, detail: { state: row.state }, ctx });
+        await audit(db, row, 'confirmation.created', { actor: `service:${audience}`, detail: { state: row.state }, ctx,
+            event: changed(row, 'created', row.state, { ruleId: rule ? rule.id : null, at: now }) });
         if (rule) await audit(db, row, 'confirmation.approved', { actor: `rule:${rule.id}`, detail: { rule_id: Number(rule.id), standing_rule: rule.rule }, ctx });
     });
     return confirmationView(await db.prepare('SELECT * FROM dev_confirmations WHERE id = ?').get(id));
@@ -167,7 +191,7 @@ async function consume(db, { id, audience, requestDigest }, { ctx, settings } = 
         const r = await db.prepare("UPDATE dev_confirmations SET used_at = ? WHERE id = ? AND audience = ? AND state = 'approved' AND used_at IS NULL AND expires_at > ? AND request_digest = ?")
             .run(now, c.id, audience, now, String(requestDigest));
         if (r.changes !== 1) fail(409, 'confirmation.used', 'the confirmation was already used');
-        await audit(db, c, 'confirmation.used', { actor: `service:${audience}`, ctx });
+        await audit(db, c, 'confirmation.used', { actor: `service:${audience}`, ctx, event: changed(c, 'used', 'approved', { at: now }) });
         return { confirmation: confirmationView({ ...c, used_at: now }), used_at: now };
     });
 }
@@ -196,26 +220,31 @@ async function cancel(db, { id, audience }, { ctx } = {}) {
         const state = c.used_at ? 'used' : stateOf(c);
         if (state === 'cancelled') return;
         if (state !== 'pending' && state !== 'approved') fail(409, 'confirmation.not_pending', `confirmation is ${state}`);
-        await db.prepare(`UPDATE dev_confirmations SET state = 'cancelled', cancel_reason = 'service' WHERE id = ? AND ${LIVE}`).run(c.id);
-        await audit(db, c, 'confirmation.cancelled', { actor: `service:${audience}`, detail: { from: c.state, reason: 'service' }, ctx });
+        const r = await db.prepare(`UPDATE dev_confirmations SET state = 'cancelled', cancel_reason = 'service' WHERE id = ? AND ${LIVE}`).run(c.id);
+        if (!r.changes) return;
+        await audit(db, c, 'confirmation.cancelled', { actor: `service:${audience}`, detail: { from: c.state, reason: 'service' }, ctx,
+            event: changed(c, 'cancelled', 'cancelled', { cancelReason: 'service' }) });
     });
     return { confirmation: confirmationView(await serviceRow(db, id, audience)) };
 }
 
 /**
- * The cascade, in the caller's transaction: cancel the pending and approved-unused confirmations of `agentId` (only
- * those for `capability` when given) with `reason`, one audit row each, and revoke the matching live standing rules.
+ * The cascade, in the caller's transaction: cancel the pending and approved-unused confirmations of `agentId` still
+ * inside their ttl (only those for `capability` when given) with `reason`, one audit row and event each, and revoke the
+ * matching live standing rules.
  * → how many confirmations were cancelled.
  */
 async function cancelFor(db, { agentId, capability = null, reason, actor = 'system:network' }, { ctx } = {}) {
     const capSql = capability ? ' AND capability = ?' : '';
     const params = capability ? [agentId, capability] : [agentId];
     let n = 0;
-    for (const c of await db.prepare(`SELECT * FROM dev_confirmations WHERE agent_id = ?${capSql} AND ${LIVE} ORDER BY id`).all(...params)) {
-        const r = await db.prepare(`UPDATE dev_confirmations SET state = 'cancelled', cancel_reason = ? WHERE id = ? AND ${LIVE}`).run(reason, c.id);
+    // A row past expires_at is already expired (stateOf): the sweep records a pending one, an approved one stays spent-proof.
+    const at = nowIso();
+    for (const c of await db.prepare(`SELECT * FROM dev_confirmations WHERE agent_id = ?${capSql} AND ${LIVE} AND expires_at > ? ORDER BY id`).all(...params, at)) {
+        const r = await db.prepare(`UPDATE dev_confirmations SET state = 'cancelled', cancel_reason = ? WHERE id = ? AND ${LIVE} AND expires_at > ?`).run(reason, c.id, at);
         if (!r.changes) continue;
         n++;
-        await audit(db, c, 'confirmation.cancelled', { actor, detail: { from: c.state, reason }, ctx });
+        await audit(db, c, 'confirmation.cancelled', { actor, detail: { from: c.state, reason }, ctx, event: changed(c, 'cancelled', 'cancelled', { cancelReason: reason }) });
     }
     const t = nowIso();
     for (const rule of await db.prepare(`SELECT * FROM dev_standing_rules WHERE agent_id = ?${capSql} AND revoked_at IS NULL ORDER BY id`).all(...params)) {
@@ -242,7 +271,7 @@ async function expireDue(db) {
             const r = await db.prepare("UPDATE dev_confirmations SET state = 'expired' WHERE id = ? AND state = 'pending' AND expires_at <= ?").run(c.id, nowIso());
             if (!r.changes) return;
             n++;
-            await audit(db, c, 'confirmation.expired');
+            await audit(db, c, 'confirmation.expired', { event: changed(c, 'expired', 'expired') });
         });
     }
     return n;
@@ -302,8 +331,8 @@ async function decide(db, actor, id, action, body = {}, { ctx } = {}) {
         const c = await ownRow(db, actor, id, { lock: true });
         const now = nowIso();
         if (c.state === 'pending' && c.expires_at <= now) {
-            await db.prepare("UPDATE dev_confirmations SET state = 'expired' WHERE id = ? AND state = 'pending'").run(c.id);
-            await audit(db, c, 'confirmation.expired', { ctx });
+            const r = await db.prepare("UPDATE dev_confirmations SET state = 'expired' WHERE id = ? AND state = 'pending'").run(c.id);
+            if (r.changes) await audit(db, c, 'confirmation.expired', { ctx, event: changed(c, 'expired', 'expired', { at: now }) });
             return true;
         }
         if (c.state !== 'pending') fail(409, 'confirmation.not_pending', `confirmation is ${stateOf(c, now)}`);
@@ -319,7 +348,8 @@ async function decide(db, actor, id, action, body = {}, { ctx } = {}) {
         const to = action === 'approve' ? 'approved' : 'denied';
         await db.prepare("UPDATE dev_confirmations SET state = ?, standing_rule = ?, decided_at = ?, decided_by = ? WHERE id = ? AND state = 'pending'")
             .run(to, standing, now, actor.label, c.id);
-        await audit(db, c, `confirmation.${to}`, { actor: actor.label, detail: standing ? { standing_rule: standing, rule_id: ruleId == null ? undefined : Number(ruleId) } : {}, ctx });
+        await audit(db, c, `confirmation.${to}`, { actor: actor.label, detail: standing ? { standing_rule: standing, rule_id: ruleId == null ? undefined : Number(ruleId) } : {}, ctx,
+            event: changed(c, to, to, { standingRule: standing, ruleId, at: now, byOwner: true }) });
         return false;
     });
     if (expired) fail(409, 'confirmation.expired', 'the confirmation has expired');

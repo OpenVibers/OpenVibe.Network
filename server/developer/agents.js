@@ -23,7 +23,7 @@
  * - Budgets (slice 5, migrations/0019_agent_budgets.sql): the owner or an admin+ caps a capability the agent holds,
  *   never above the project's quota for it; revoking the grant deletes its budget. The owning service meters.
  * - The owning service reads what it enforces at GET /internal/agents/:agent (slice 6, internalAgentView): its own
- *   audience's grants and their budgets, never another service's. Agent tokens come in a later slice (section 8).
+ *   audience's grants and their budgets, never another service's. Its host mints its tokens (slice 8, ./agent-tokens.js).
  */
 const { ids, capabilities } = require('openvibe-contracts');
 const policy = require('./policy');
@@ -453,6 +453,6 @@ async function internalAgentView(db, agentId, audience) {
 
 module.exports = {
     ensureSchema, AGENT_ID_RE, agentView, loadAgent, atLeast, listAgents, getAgent, createAgent, renameAgent, changeStatus, revokeWhere,
-    effectiveMode, withinHost, listGrants, putGrant, deleteGrant, revokeBeyondHost,
+    effectiveMode, ceiling, withinHost, listGrants, putGrant, deleteGrant, revokeBeyondHost,
     budgetView, listBudgets, setBudget, deleteBudget, internalAgentView,
 };
