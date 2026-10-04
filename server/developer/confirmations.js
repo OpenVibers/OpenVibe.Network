@@ -40,8 +40,8 @@ const LIVE = "(state = 'pending' OR (state = 'approved' AND used_at IS NULL))";
 const fail = (status, code, detail) => { throw new store.DevError(status, code, detail); };
 const nowIso = () => new Date().toISOString();
 
-/** The state a read reports: a pending row past expires_at is expired before the sweep records it. */
-const stateOf = (c, now = nowIso()) => (c.state === 'pending' && c.expires_at <= now ? 'expired' : c.state);
+/** The state a read reports: a live row past expires_at (pending, or approved and unused) is expired before the sweep records it. */
+const stateOf = (c, now = nowIso()) => ((c.state === 'pending' || (c.state === 'approved' && !c.used_at)) && c.expires_at <= now ? 'expired' : c.state);
 
 /** network.confirmation-request@1: owner and requested_by rebuilt as SubjectRefs, details/resources parsed. */
 function confirmationView(c) {
@@ -186,9 +186,9 @@ async function read(db, { id, audience }) {
 }
 
 /**
- * The owning service withdraws one it created: a pending or approved-unused row becomes cancelled (reason `service`);
- * one already cancelled is returned as it is; a used, denied or expired one is 409 confirmation.not_pending. The
- * owner's standing rules are left alone. → { confirmation }
+ * The owning service withdraws one it created: a pending or approved-unused row still inside its ttl becomes cancelled
+ * (reason `service`); one already cancelled is returned as it is; a used, denied or expired (past `expires_at`) one is
+ * 409 confirmation.not_pending. The owner's standing rules are left alone. → { confirmation }
  */
 async function cancel(db, { id, audience }, { ctx } = {}) {
     await db.tx(async () => {

@@ -399,6 +399,7 @@ for (const [id, name] of PEOPLE) T[name] = jwt.sign({ sub: id, id }, keys.privat
         await approve(i2);
         await db.prepare("UPDATE dev_confirmations SET expires_at = '2001-01-01T00:00:00.000Z' WHERE id = ?").run(i2.id);
         refused(await internal('media', 'POST', `/${i2.id}/consume`, { request_digest: D }), 409, 'confirmation.expired');
+        refused(await internal('media', 'POST', `/${i2.id}/cancel`, {}), 409, 'confirmation.not_pending');
         const i3 = ok(await internal('media', 'POST', '', askBody()), 201).confirmation;
         await db.prepare("UPDATE dev_confirmations SET expires_at = '2001-01-01T00:00:00.000Z' WHERE id = ?").run(i3.id);
         refused(await internal('media', 'POST', `/${i3.id}/cancel`, {}), 409, 'confirmation.not_pending');
