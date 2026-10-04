@@ -498,4 +498,26 @@ router.get('/projects/:project_id', principals.guard('network.project.read'), as
     }
 });
 
+// ── Read an agent ────────────────────────────────────────────
+// Set before the guard so its refusals are not cached either.
+const noStore = (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); };
+// The owning service enforces an agent's delegated grants and budgets (plan T2 WS-Z2 slice 6,
+// docs/t2-projects-and-grants.md section 4): only the grants at the caller's own audience, never another's.
+router.get('/agents/:agent', noStore, principals.guard('network.project.read'), async (req, res) => {
+    try {
+        const audience = `openvibe.${String(req.principal.sub).replace(/^svc:/, '')}`;
+        const out = await require('../developer/agents').internalAgentView(getDb(req), req.params.agent, audience);
+        if (!out) return require('openvibe-contracts').http.sendProblem(res, 404, 'agent.not_found', { detail: 'no such agent' });
+        res.json(out);
+    } catch (err) {
+        console.error('[Internal] agent read error:', err.message);
+        require('openvibe-contracts').http.sendProblem(res, 500, 'internal.error', { detail: 'agent read failed' });
+    }
+});
+
+// ── Confirmations, the owning service's side ─────────────────
+// Ask an agent's owner to confirm one sensitive action and spend the approval once (slice 7,
+// server/developer/confirmations.js). Each service sees only the confirmations it created.
+router.use('/confirmations', noStore, principals.guard('network.confirmation.manage'), require('../developer/confirmations').internalRouter());
+
 module.exports = router;

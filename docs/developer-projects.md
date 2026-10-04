@@ -43,7 +43,7 @@ A new project is `sandbox` only. Staff switch it to `sandbox+production`, which 
 ## Grants, the allowance and the capability catalog
 
 - The only grants that exist are capabilities in the openvibe-contracts catalog, at the version Network has installed.
-- **The grantability rule.** The contracts `visibility` enum is `public | partner | first-party | internal` (`partner` since the v0.83.0 release; Network pins v0.85.0). Only `active` capabilities with visibility `public` or `partner` may be granted to apps. Staff may put a `partner` capability in one project's allowance by hand, but it never comes from the default or the sandbox allowance. `first-party` and `internal` capabilities are never grantable: staff cannot add them to an allowance, members cannot request them, and token issuance filters them out again.
+- **The grantability rule.** The contracts `visibility` enum is `public | partner | first-party | internal` (`partner` since the v0.83.0 release; Network pins v0.90.0). Only `active` capabilities with visibility `public` or `partner` may be granted to apps. Staff may put a `partner` capability in one project's allowance by hand, but it never comes from the default or the sandbox allowance. `first-party` and `internal` capabilities are never grantable: staff cannot add them to an allowance, members cannot request them, and token issuance filters them out again.
 - **The allowance** is the set of grantable capabilities one project's apps may hold. Only staff set it. `DEV_DEFAULT_ALLOWANCE` seeds new projects, with public capabilities only. It is empty by default, so staff decide each project's **production** apps.
 - **The sandbox allowance** is added to the allowance for **sandbox apps only**, in every project, without a staff decision. It comes from `DEV_SANDBOX_ALLOWANCE`. When that is unset, the code default is `media.object.upload`, `media.object.read`, `media.object.list`, `media.object.delete`, `events.app.publish`, `events.app.read`, `events.app.subscribe`, `tools.job.create`, `tools.job.read` and `tools.job.cancel`. Only `public` + `active` capabilities of the installed openvibe-contracts catalog count. `partner`, `first-party`, `internal` and unknown ids are dropped. The three `events.app.*` ids are defined from openvibe-contracts v0.28.0 (Network pins v0.30.1); with an older release they would be left out. `media.object.list` and `media.object.delete` (Media's list and delete verbs, WS-G task 2) are left out the same way until the pinned release defines them; until then a sandbox app's upload and read grants cover them at Media. The project view and `GET /catalog` show it as `sandbox_allowance`. Production apps never use it.
 - **A grant never exceeds the allowance** (for a sandbox app: allowance ∪ sandbox allowance). It is checked in three places. Approval refuses with `403 grant.beyond_allowance`. Shrinking the allowance revokes approved grants, and denies requested ones, that fall outside it. A sandbox app's grant that is still inside the sandbox allowance is kept. Token issuance intersects approved grants with the current allowance and with the current grantability.
@@ -225,7 +225,8 @@ A decision on anything but a pending row is `409 confirmation.not_pending`; a pe
 minute. Pausing or revoking the agent, revoking or expiring its grant, shrinking its host's ceiling, the owner leaving
 the project or being erased, revoking the host app and archiving the project cancel the affected pending and
 approved-unused confirmations (`cancel_reason` names the cause) and revoke the matching standing rules. The owning
-services' side (`/internal/confirmations`) and agent tokens come in later slices.
+services create, read, consume and cancel them at `/internal/confirmations` ([Service-side agent reads and
+confirmations](#service-side-agent-reads-and-confirmations)); agent tokens come in a later slice.
 
 ### Service-side project reads
 
@@ -243,6 +244,20 @@ services' side (`/internal/confirmations`) and agent tokens come in later slices
 - **Catalog.** `network.project.read` is `planned` in openvibe-contracts until Contracts makes it `active`. The guard accepts `planned` and refuses only `retired`.
 
 Redirect URIs must be https. `http://localhost`, `127.0.0.1` and `[::1]` are allowed for sandbox apps only. Fragments and embedded credentials are refused. At most 10 per app. A public app needs at least one. A project has at most `DEV_MAX_APPS_PER_PROJECT` active apps.
+
+### Service-side agent reads and confirmations
+
+Loopback only, service tokens for `openvibe.network`, `Cache-Control: no-store`. The caller's audience is `openvibe.<service>` from its token (`svc:media` → `openvibe.media`); it only ever sees its own audience's grants and its own confirmations (`docs/t2-projects-and-grants.md` §4–5).
+
+| Route | Capability | Result |
+|---|---|---|
+| `GET /internal/agents/:agent` | `network.project.read` | `{ agent, grants, budgets }`: the agent's active, unexpired grants at the caller's audience (`capability`, `audience`, `mode`, `effective_mode`, `sensitive`, `expires_at`) and those grants' budgets; `grants: []` when the caller's audience has none or the agent is not `active`. `project_id`, `owner` and `host` only for a service the agent concerns (an active grant at its audience, or its service host); any other caller gets `agent: { id, subject }`; `404 agent.not_found` |
+| `POST /internal/confirmations` | `network.confirmation.manage` | `{ requested_by: { type: 'agent', id }, capability, summary, details?, resources?, request_digest, session_id?, ttl_s? }` → `201 { confirmation }` pending, or `200` when a standing rule approved it. The owner is the agent's, never the body's; the capability must be the caller's own (`403 confirmation.wrong_audience`) |
+| `GET /internal/confirmations/:id` | `network.confirmation.manage` | `{ confirmation, used_at }` |
+| `POST /internal/confirmations/:id/consume` | `network.confirmation.manage` | `{ request_digest }` → `{ confirmation, used_at }`, once, after re-checking the agent, its owner, host, grant and budget; `409 confirmation.used`, `.mismatch`, `.expired`, `.cancelled`, `.not_pending`, `.agent_inactive`, or `403 grant.not_delegated` |
+| `POST /internal/confirmations/:id/cancel` | `network.confirmation.manage` | `{ confirmation }`; a pending or approved-unused one becomes `cancelled`, again is a no-op, a used, denied or expired one is `409 confirmation.not_pending` |
+
+Another service's confirmation is `404 confirmation.not_found`. No token is `401 token.missing`; a token without the capability is `403`. Host holds `network.project.read`; no service holds `network.confirmation.manage` by default until one ships a receiver.
 
 ## Events
 

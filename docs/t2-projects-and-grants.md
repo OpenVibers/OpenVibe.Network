@@ -3,11 +3,16 @@
 Status: **slices 1–2 built** (proposals, and agents: `migrations/0016_agents.sql`, `server/developer/agents.js`; PR #25,
 merge `4ec36e1`) and **lane B step 3 built** (`GET /internal/projects/:project_id` under `network.project.read`, Host
 only: `server/internal/routes.js:490`; PR #28, merge `e422342`) and **slice 3 built** (delegated grants and modes:
-`migrations/0017_agent_grants.sql`, the ceiling in `server/developer/agents.js`); slices 4–9 are still unbuilt (design, §8).
+`migrations/0017_agent_grants.sql`, the ceiling in `server/developer/agents.js`), **slices 4–5 built** (confirmations,
+owner side, and budgets: `0018`, `0019`) and **slices 6–7 built** (`GET /internal/agents/:agent` and the four
+`/internal/confirmations` routes, `server/internal/routes.js`, with the pin at `openvibe-contracts` v0.90.0); slices 8–9
+are still unbuilt (design, §8).
 Plan T2, "Projects and grants: projects as the ownership boundary for every resource;
 `agt_` principals, delegated grants with modes, sensitive capabilities, confirmation requests, budgets (WS-Z2)".
-Pinned version: `openvibe-contracts` **v0.85.0** (`package.json:33`); every contract claim below was re-checked against
-the `v0.85.0` tag of OpenVibe.Contracts when slices 1–2 were built (it was written against v0.83.0).
+Pinned version: `openvibe-contracts` **v0.90.0** (`package.json:33`, since slice 7); every contract claim below was
+re-checked against the `v0.85.0` tag of OpenVibe.Contracts when slices 1–2 were built (it was written against v0.83.0).
+v0.89.0 published `network.confirmation.manage` (`planned`, `implementedBy` the four `/internal/confirmations` routes),
+the `agent` actor in `identity.service-token-claims@1` and `network.confirmation.changed@1`; v0.86–v0.90 are additive.
 
 Scope: an **agent** is a principal (`agt_<ULID>`) that acts for one person, inside one developer project, run by one
 host (a developer app or a first-party service such as OpenVibe.Actor). Its owner **delegates** part of the host's
@@ -297,14 +302,24 @@ inside (the `docs/t2-resource-registry.md` §4 rule).
 
 | Method and path | Capability | Body → result |
 |---|---|---|
-| `GET /internal/agents/:agent` | `network.project.read` (exists, first-party) | `{ agent, grants, budgets }`, grants and budgets filtered to the caller's own audience (`openvibe.<caller>`) |
-| `POST /internal/confirmations` | **`network.confirmation.manage`** (proposed, slice 1) | `{ requested_by: {type:'agent', id}, capability, summary, details?, resources?, request_digest, session_id?, ttl_s? }` → `201 { confirmation }` (pending) or `200 { confirmation }` (approved by a standing rule) |
+| `GET /internal/agents/:agent` (built, slice 6) | `network.project.read` (exists, first-party) | `{ agent, grants, budgets }`, grants and budgets filtered to the caller's own audience (`openvibe.<caller>`) |
+| `POST /internal/confirmations` (built, slice 7) | **`network.confirmation.manage`** (published in v0.89.0, `status: planned`) | `{ requested_by: {type:'agent', id}, capability, summary, details?, resources?, request_digest, session_id?, ttl_s? }` → `201 { confirmation }` (pending) or `200 { confirmation }` (approved by a standing rule) |
 | `GET /internal/confirmations/:id` | same | `{ confirmation, used_at }` |
 | `POST /internal/confirmations/:id/consume` | same | `{ request_digest }` → `200 { confirmation, used_at }` |
 | `POST /internal/confirmations/:id/cancel` | same | → `{ confirmation }` |
 
 `ttl_s` is 60–86400, default 900. All `/internal/confirmations` routes answer only the audience that created the
-confirmation (others: `404`).
+confirmation (others: `404`), with `Cache-Control: no-store`. The owner is always the agent's: a body's `owner` is never
+read. Cancel takes a `pending` or `approved` but unused one (`cancel_reason = 'service'`; again is a no-op), refuses a
+used, denied or expired one (`409 confirmation.not_pending`) and leaves the owner's standing rules alone. No service holds
+`network.confirmation.manage` by default yet: a service gets its `DEFAULT_GRANTS` row when it ships a receiver.
+
+`GET /internal/agents/:agent` lists only the agent's `active`, unexpired grants at the caller's audience, each `{
+capability, audience, mode, effective_mode, sensitive, expires_at }`, and the budgets of those grants alone; another
+audience gets `grants: []` (never a `404`) and `agent: { id, subject }` alone: `project_id`, `owner` and `host` go only
+to a service the agent concerns (an active, unexpired grant at its audience, or its service host). An agent that is
+not `active` lists no grants. It never carries a label
+(`granted_by`, `updated_by`), a request digest or a secret; an unknown or malformed id is `404 agent.not_found`.
 
 ### Agent tokens — `POST /oauth/token`
 
@@ -564,13 +579,14 @@ and agree).
 5. **Budgets** (built). `migrations/0019_agent_budgets.sql`, budget routes, `budget.beyond_quota`,
    `test/agent-budgets.test.js` (without the internal read), cases added to
    `test/agent-schema.test.js`. Checks: `npm test`, `npm run test:pg`.
-6. **Internal agent read.** `GET /internal/agents/:agent` under `network.project.read` (already in the catalog), in
-   `server/developer/agents.js`, wired in `server/index.js`; tests added to `test/agent-budgets.test.js`. Checks:
-   `npm test`, `npm run test:pg`.
-7. **Internal confirmations** — *blocked on Contracts publishing `network.confirmation.manage` and the pin bump.*
-   `package.json` pin, the four `/internal/confirmations` routes, `DEFAULT_GRANTS` for the services that ask first (none
-   until a receiver ships), internal cases in `test/confirmations.test.js`. Checks: `npm test`, `npm run test:pg`,
-   `node scripts/contracts-drift.js`.
+6. **Internal agent read** (built). `GET /internal/agents/:agent` under `network.project.read` (already in the catalog),
+   `internalAgentView` in `server/developer/agents.js`, the route in `server/internal/routes.js`;
+   `test/internal-agents.test.js`. Checks: `npm test`, `npm run test:pg`.
+7. **Internal confirmations** (built). The pin moved to `openvibe-contracts` v0.90.0 (v0.89.0 published
+   `network.confirmation.manage`), the four `/internal/confirmations` routes (`internalRouter`, `read` and `cancel` in
+   `server/developer/confirmations.js`, mounted under the guard in `server/internal/routes.js`), no `DEFAULT_GRANTS`
+   row yet (none until a receiver ships), internal cases in `test/confirmations.test.js`. Checks: `npm test`,
+   `npm run test:pg`, `node scripts/contracts-drift.js`.
 8. **Agent tokens** — *blocked on Contracts publishing the agent claims (gap 1).* The `agent` branch in
    `server/developer/tokens.js` and `principals.issueToken`, `cap`/`cap_confirm` split, `test/agent-tokens.test.js`.
    Network's own guard keeps refusing agent tokens on its routes until a route needs them. Checks: `npm test`,
@@ -579,7 +595,7 @@ and agree).
    openvibe-shared notification type.* Audit rows gain `event`; `notification-service.js` notifies the owner on create
    (payload rules of `docs/notification-digest.md`: never the summary). Checks: `npm test`, `npm run test:pg`.
 
-Slices 2–6 ship now, in this order (each adds the next migration number); 7–9 wait only on releases outside Network and are flagged by `scripts/contracts-drift.js`.
+Slices 2–7 are built, in this order (2–5 each added the next migration number; 6–7 need none); 8–9 wait only on releases outside Network and are flagged by `scripts/contracts-drift.js`.
 
 ## 9. Unresolved
 

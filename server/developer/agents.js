@@ -22,7 +22,8 @@
  *   store.js and grants-admin.js cascades, which all go through revokeWhere and revokeBeyondHost.
  * - Budgets (slice 5, migrations/0019_agent_budgets.sql): the owner or an admin+ caps a capability the agent holds,
  *   never above the project's quota for it; revoking the grant deletes its budget. The owning service meters.
- *   Agent tokens come in a later slice (section 8).
+ * - The owning service reads what it enforces at GET /internal/agents/:agent (slice 6, internalAgentView): its own
+ *   audience's grants and their budgets, never another service's. Agent tokens come in a later slice (section 8).
  */
 const { ids, capabilities } = require('openvibe-contracts');
 const policy = require('./policy');
@@ -424,8 +425,34 @@ async function deleteBudget(db, actor, projectId, agentId, capability, { ctx }) 
     });
 }
 
+// ── The owning service's read (slice 6) ───────────────────────
+
+/**
+ * GET /internal/agents/:agent: the agent, its active, unexpired delegated grants at `audience` (the caller's own) and
+ * the budgets of those grants. A grant of another audience is never shown; an agent that is not active lists none, as
+ * it may use none. Only a service the agent concerns — one holding such a grant at its audience (whatever the agent's
+ * status) or the agent's service host — sees its project, owner and host; any other caller gets the id alone.
+ * null for an unknown id. Never a label (granted_by, updated_by) and nothing secret.
+ */
+async function internalAgentView(db, agentId, audience) {
+    const a = AGENT_ID_RE.test(String(agentId)) ? await db.prepare('SELECT * FROM dev_agents WHERE id = ?').get(agentId) : null;
+    if (!a) return null;
+    const now = nowIso();
+    const held = (await db.prepare("SELECT * FROM dev_agent_grants WHERE agent_id = ? AND audience = ? AND status = 'active' ORDER BY capability").all(a.id, String(audience)))
+        .filter((g) => !g.expires_at || g.expires_at > now);
+    const concerned = held.length > 0 || (a.host_kind === 'service' && `openvibe.${a.host_service}` === String(audience));
+    const grants = a.status !== 'active' ? [] : held;
+    const caps = new Set(grants.map((g) => g.capability));
+    const budgets = grants.length ? (await db.prepare('SELECT * FROM dev_agent_budgets WHERE agent_id = ? ORDER BY capability').all(a.id)).filter((b) => caps.has(b.capability)) : [];
+    return {
+        agent: concerned ? agentView(a) : { id: a.id, subject: { type: 'agent', id: a.id } },
+        grants: grants.map((g) => ({ capability: g.capability, audience: g.audience, mode: g.mode, effective_mode: effectiveMode(g), sensitive: isSensitive(g.capability), expires_at: g.expires_at || null })),
+        budgets: budgets.map(budgetView),
+    };
+}
+
 module.exports = {
     ensureSchema, AGENT_ID_RE, agentView, loadAgent, atLeast, listAgents, getAgent, createAgent, renameAgent, changeStatus, revokeWhere,
     effectiveMode, withinHost, listGrants, putGrant, deleteGrant, revokeBeyondHost,
-    budgetView, listBudgets, setBudget, deleteBudget,
+    budgetView, listBudgets, setBudget, deleteBudget, internalAgentView,
 };

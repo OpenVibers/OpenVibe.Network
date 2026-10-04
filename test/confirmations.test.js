@@ -4,7 +4,8 @@
 // digest mismatch, deny, expiry (lazy and swept), the service's cancel, standing rules once/session/until/always and
 // their revocation; only the owner sees one; 20 pending per agent; the wrong audience; audits without summary/details;
 // one revoke-after-approval case per cause; authority that lapses without a write; two concurrent consumes.
-// Rows are created and consumed through the store (the /internal routes wait for slice 7).
+// Most rows are created and consumed through the store; the /internal/confirmations routes (slice 7) are checked with
+// service tokens: the gate, one service never seeing another's, consume once with the digest, expiry and cancel.
 //   node test/confirmations.test.js
 const assert = require('assert');
 const crypto = require('crypto');
@@ -26,6 +27,9 @@ const PEOPLE = [[10, 'owner'], [11, 'admin'], [12, 'dev'], [13, 'stranger'], [14
 await db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES
     (10, 'owner', 'x', 'user'), (11, 'admin', 'x', 'user'), (12, 'dev', 'x', 'user'), (13, 'stranger', 'x', 'user'), (14, 'staff', 'x', 'admin'), (17, 'erased', 'x', 'user')`).run();
 await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('actor', 'x', 'OpenVibe.Actor', '[]', 1)").run();
+// No service holds network.confirmation.manage by default (no receiver ships yet): Media and Tools get it here, Live does not.
+for (const c of ['media', 'tools', 'live']) await db.prepare(`UPDATE oauth_clients SET client_secret = '${c}-secret' WHERE client_id = ?`).run(c);
+for (const c of ['media', 'tools']) await db.prepare("INSERT INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES (?, 'network.confirmation.manage', 'openvibe.network', '[]', 'test')").run(c);
 const S = {};
 for (const [id, name] of PEOPLE) S[name] = await subjects.ensureUserSubject(db, await db.prepare('SELECT * FROM users WHERE id = ?').get(id));
 
@@ -36,6 +40,10 @@ app.locals.db = db;
 app.locals.config = { baseUrl: ISSUER, jwt: { issuer: ISSUER, accessTokenExpiry: '1h' }, developer: { sandboxAllowance: 'media.object.read', agentHostServices: 'actor' } };
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use('/oauth', require('../server/auth/oauth-routes'));
+app.use('/internal', require('../server/internal/routes'));
 app.use('/api/v1/projects', require('../server/developer/routes').router());
 app.use('/api/v1/confirmations', confirmations.router());
 const server = http.createServer(app);
@@ -68,6 +76,15 @@ for (const [id, name] of PEOPLE) T[name] = jwt.sign({ sub: id, id }, keys.privat
     });
     const spend = (c, extra = {}) => confirmations.consume(db, { id: c.id, audience: audOf(c.capability), requestDigest: D, ...extra });
     const approve = async (c, who = 'owner', body = {}) => ok(await inbox(who, 'POST', `/${c.id}/approve`, body));
+    const svcToken = async (id) => (await (await fetch(`${base}/oauth/token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: `${id}-secret`, audience: 'openvibe.network' }) })).json()).access_token;
+    const SVC = {};
+    for (const c of ['media', 'tools', 'live']) SVC[c] = await svcToken(c);
+    const internal = async (who, method, p, body) => {
+        const r = await fetch(`${base}/internal/confirmations${p}`, { method, headers: { ...(who ? { authorization: `Bearer ${SVC[who]}` } : {}), ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
+        const text = await r.text();
+        return { status: r.status, type: r.headers.get('content-type') || '', cache: r.headers.get('cache-control') || '', text, body: text ? JSON.parse(text) : null };
+    };
     for (const c of ['chat.message.send']) await grantsAdmin.grant(db, { client_id: 'actor', capability: c, reason: 'agent host test' }, null);
 
     // A project with a production app holding media.object.delete and .upload, an admin and a developer member.
@@ -342,6 +359,63 @@ for (const [id, name] of PEOPLE) T[name] = jwt.sign({ sub: id, id }, keys.privat
         await db.prepare('INSERT INTO account_deletions (id, user_id, subject, requested_at, delete_after) VALUES (?, 17, ?, ?, ?)').run(delId, S.erased, new Date().toISOString(), new Date().toISOString());
         await accountData.erase(db, await db.prepare('SELECT * FROM account_deletions WHERE id = ?').get(delId));
         await cancelledBy(e1, 'account_erased');
+
+        // ── /internal/confirmations: the owning service's routes (slice 7) ──
+        const routed = await appAgent(await project());
+        const askBody = (extra = {}) => ({ requested_by: { type: 'agent', id: routed }, capability: 'media.object.delete', summary: SUMMARY, details: DETAILS,
+            resources: [{ service: 'media', type: 'object', id: 'obj_1' }], request_digest: D, ...extra });
+        refused(await internal(null, 'POST', '', askBody()), 401, 'token.missing');
+        refused(await internal('live', 'POST', '', askBody()), 403, 'capability.denied');
+        refused(await internal('live', 'GET', '/cnf_nope'), 403, 'capability.denied');
+        // The owner is the agent's: a body naming another person is ignored.
+        const made = await internal('media', 'POST', '', askBody({ owner: { type: 'user', id: S.stranger } }));
+        assert.strictEqual(made.status, 201, made.text);
+        assert.strictEqual(made.cache, 'no-store');
+        const i1 = valid(made.body.confirmation);
+        assert.deepStrictEqual([i1.state, i1.owner, i1.requested_by], ['pending', { type: 'user', id: S.owner }, { type: 'agent', id: routed }]);
+        assert.ok(!made.text.includes(D) && !made.text.includes('openvibe.media'), 'never the digest or the audience');
+        refused(await internal('media', 'POST', '', askBody({ requested_by: routed })), 422, 'confirmation.invalid');
+        refused(await internal('media', 'POST', '', askBody({ requested_by: { type: 'agent', id: `agt_${'9'.repeat(26)}` } })), 404, 'agent.not_found');
+        refused(await internal('tools', 'POST', '', askBody()), 403, 'confirmation.wrong_audience');
+        // Each service sees only its own: Tools cannot read, consume or cancel Media's.
+        assert.deepStrictEqual(ok(await internal('media', 'GET', `/${i1.id}`)), { confirmation: i1, used_at: null });
+        refused(await internal('tools', 'GET', `/${i1.id}`), 404, 'confirmation.not_found');
+        refused(await internal('tools', 'POST', `/${i1.id}/consume`, { request_digest: D }), 404, 'confirmation.not_found');
+        refused(await internal('tools', 'POST', `/${i1.id}/cancel`, {}), 404, 'confirmation.not_found');
+        refused(await internal('media', 'GET', '/cnf_nope'), 404, 'confirmation.not_found');
+        // Consume once, with the action's digest.
+        refused(await internal('media', 'POST', `/${i1.id}/consume`, { request_digest: D }), 409, 'confirmation.not_pending');
+        await approve(i1);
+        refused(await internal('media', 'POST', `/${i1.id}/consume`, { request_digest: digest('DELETE /v1/objects/obj_2') }), 409, 'confirmation.mismatch');
+        refused(await internal('media', 'POST', `/${i1.id}/consume`, {}), 409, 'confirmation.mismatch');
+        const spent = ok(await internal('media', 'POST', `/${i1.id}/consume`, { request_digest: D }));
+        valid(spent.confirmation);
+        assert.match(spent.used_at, /^\d{4}-/);
+        assert.strictEqual(ok(await internal('media', 'GET', `/${i1.id}`)).used_at, spent.used_at);
+        refused(await internal('media', 'POST', `/${i1.id}/consume`, { request_digest: D }), 409, 'confirmation.used');
+        refused(await internal('media', 'POST', `/${i1.id}/cancel`, {}), 409, 'confirmation.not_pending');
+        // Expired: an approved one past expires_at is refused, and so is cancelling a pending one past it.
+        const i2 = ok(await internal('media', 'POST', '', askBody({ ttl_s: 60 })), 201).confirmation;
+        await approve(i2);
+        await db.prepare("UPDATE dev_confirmations SET expires_at = '2001-01-01T00:00:00.000Z' WHERE id = ?").run(i2.id);
+        refused(await internal('media', 'POST', `/${i2.id}/consume`, { request_digest: D }), 409, 'confirmation.expired');
+        const i3 = ok(await internal('media', 'POST', '', askBody()), 201).confirmation;
+        await db.prepare("UPDATE dev_confirmations SET expires_at = '2001-01-01T00:00:00.000Z' WHERE id = ?").run(i3.id);
+        refused(await internal('media', 'POST', `/${i3.id}/cancel`, {}), 409, 'confirmation.not_pending');
+        // Cancelled: pending or approved-unused, again is a no-op; the owner can no longer decide, the service no longer spend.
+        const i4 = ok(await internal('media', 'POST', '', askBody()), 201).confirmation;
+        assert.strictEqual(valid(ok(await internal('media', 'POST', `/${i4.id}/cancel`, {})).confirmation).state, 'cancelled');
+        assert.strictEqual(ok(await internal('media', 'POST', `/${i4.id}/cancel`, {})).confirmation.state, 'cancelled');
+        assert.strictEqual((await row(i4.id)).cancel_reason, 'service');
+        refused(await inbox('owner', 'POST', `/${i4.id}/approve`, {}), 409, 'confirmation.not_pending');
+        const i5 = ok(await internal('media', 'POST', '', askBody()), 201).confirmation;
+        await approve(i5, 'owner', { standing_rule: 'always' });
+        ok(await internal('media', 'POST', `/${i5.id}/cancel`, {}));
+        refused(await internal('media', 'POST', `/${i5.id}/consume`, { request_digest: D }), 409, 'confirmation.cancelled');
+        // The owner's standing rule outlives the service's cancel: the next request is approved at once (200, not 201).
+        const i6 = await internal('media', 'POST', '', askBody());
+        assert.deepStrictEqual([i6.status, i6.body.confirmation.state, i6.body.confirmation.standing_rule], [200, 'approved', 'always']);
+        ok(await internal('media', 'POST', `/${i6.body.confirmation.id}/consume`, { request_digest: D }));
 
         // ── Audits: every transition, never the summary or the details ──
         const audits = await db.prepare("SELECT action, actor, detail, event FROM dev_audit WHERE action LIKE 'confirmation.%' ORDER BY id").all();
