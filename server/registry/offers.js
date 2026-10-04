@@ -46,6 +46,7 @@ function check(body) {
     }
     for (let i = 0; i < body.offers.length; i++) {
         const offer = body.offers[i];
+        // trust may be user-owned (a person's own Node, ADR-046) since Contracts 0.90.0; migrations/0020 stores it.
         const v = validate(CONTRACT, offer);
         if (!v.valid) return { error: `offer ${i} does not match ${CONTRACT}`, details: (v.errors || []).slice(0, 5) };
         const detail = offer.detail;
