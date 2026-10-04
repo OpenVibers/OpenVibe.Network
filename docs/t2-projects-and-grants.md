@@ -10,7 +10,8 @@ owner side, and budgets: `0018`, `0019`) and **slices 6–7 built** (`GET /inter
 `server/developer/confirmations.js`); the owner notification of slice 9 still waits on an openvibe-shared type (§8).
 Plan T2, "Projects and grants: projects as the ownership boundary for every resource;
 `agt_` principals, delegated grants with modes, sensitive capabilities, confirmation requests, budgets (WS-Z2)".
-Pinned version: `openvibe-contracts` **v0.90.0** (`package.json:33`, since slice 7); every contract claim below was
+Pinned version: `openvibe-contracts` **v0.90.0** (`package.json:33`, since slice 7; still the pin at `origin/main` `fb34f33`,
+the latest Contracts tag v0.94.0 is additive and not pinned yet); every contract claim below was
 re-checked against the `v0.85.0` tag of OpenVibe.Contracts when slices 1–2 were built (it was written against v0.83.0).
 v0.89.0 published `network.confirmation.manage` (`planned`, `implementedBy` the four `/internal/confirmations` routes),
 the `agent` actor in `identity.service-token-claims@1` and `network.confirmation.changed@1`; v0.86–v0.90 are additive.

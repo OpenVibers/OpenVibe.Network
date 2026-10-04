@@ -4,8 +4,9 @@ Status: **N1–N7 merged** on `origin/main` `011355a` (registry slice 5, the nod
 operator writers; each slice's state is in §8). The cells layer of `docs/t2-resource-registry.md` §9 was already on
 `origin/main` (`d6ed8c4`, PR #5: `migrations/0008_cells_and_node_principals.sql`, `server/registry/cells.js`,
 `test/cells-registry.test.js`); this document designed the rest of lane B on top of it and re-planned registry slice 5.
-Pinned: Network `openvibe-contracts` **v0.85.0** (`package.json:33`), which closes every contract gap in §2 and the §9.1
-T1 brief (the doc was written against v0.83.0, checked then against v0.84.0). OpenVibe.Bot
+Pinned: Network `openvibe-contracts` **v0.90.0** (`package.json:33`, `origin/main` `fb34f33`; the latest Contracts tag,
+v0.94.0, is additive and not pinned yet). v0.85.0 closed every contract gap in §2 and the §9.1 T1 brief (the doc was
+written against v0.83.0, checked then against v0.84.0). OpenVibe.Bot
 `origin/main` `17ce069` (pins Contracts v0.79.0, `package.json:29`), OpenVibe.Node `origin/main` `4d2b8e1`. Bot is not
 deployed (`ov access run openvibe-ovh releases bot` → `unknown service "bot"`), so no production device exists.
 

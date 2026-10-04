@@ -3,7 +3,7 @@
 Status: **resource registry and N6 built** (`migrations/0007_resource_registry.sql`,
 `migrations/0009_resource_offer_kinds.sql`, `server/registry/offers.js`); **cells and node principals built**
 (section 9, `migrations/0008`). The original slice plan in §7 is historical.
-Current pin: `openvibe-contracts` **v0.90.0** (`package.json`; the kinds below are as of v0.85.0); the v0.83.0 observations below describe the original design.
+Current pin: `openvibe-contracts` **v0.90.0** (`package.json` at `origin/main` `fb34f33`; the latest tag, v0.94.0, is additive and not pinned yet; the kinds below are as of v0.85.0); the v0.83.0 observations below describe the original design.
 
 Scope: one table and one module that store **what the network can sell or place on** — node, provider, storage, delivery,
 runtime, agent and harness offers — reported by the components that own them, listed publicly so that `openvibe-sdk/placement` can plan against
