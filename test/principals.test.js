@@ -162,6 +162,11 @@ const server = http.createServer(app);
     await db.prepare("UPDATE oauth_clients SET client_secret = 'tools-secret' WHERE client_id = 'tools'").run();
     const ts = await token({ client_id: 'tools', client_secret: 'tools-secret', audience: 'openvibe.search' });
     assert.strictEqual(ts.body.scope, 'search.document.write', 'Tools indexes its tools in Search');
+    // Coupons subscribes to its Events sources with its own token (OpenVibe.Coupons scripts/subscribe.js).
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'coupons-secret' WHERE client_id = 'coupons'").run();
+    const cps = await token({ client_id: 'coupons', client_secret: 'coupons-secret', audience: 'openvibe.events', scope: 'events.subscription.manage' });
+    assert.strictEqual(cps.status, 200, JSON.stringify(cps.body));
+    assert.strictEqual(cps.body.scope, 'events.subscription.manage', 'Coupons manages its Events subscriptions');
 
     // Go-live fan-out accepts Live's token (network.notifications.push); a narrower token is refused.
     r = await post('/internal/events/stream-live', {}, { authorization: `Bearer ${full}` });
