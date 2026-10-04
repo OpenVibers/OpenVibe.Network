@@ -1,5 +1,6 @@
 'use strict';
-// The agents migrations (plan T2 WS-Z2 slices 2-3, migrations/0016_agents.sql and 0017_agent_grants.sql) reach a
+// The agents migrations (plan T2 WS-Z2 slices 2-5, migrations/0016_agents.sql, 0017_agent_grants.sql,
+// 0018_confirmations.sql and 0019_agent_budgets.sql) reach a
 // database that production already migrated: a database at 0015 without them gains them from the normal runner,
 // once, and each file is safe to run twice. It also pins why it is 0016 and not the design's 0010: the openvibe-sdk/db runner tracks applied
 // migrations by id but refuses a pending file numbered below one already applied.
@@ -43,11 +44,11 @@ const quiet = { log() {}, warn() {}, error() {} };
 
         // The real directory: 0016 applies on top of 0015, once.
         const first = await asOwner((db) => db.migrate({ dir: MIGRATIONS, log: quiet }));
-        assert.deepStrictEqual(first.applied.map((m) => [m.id, m.name, m.phase]), [['0016', 'agents', 'expand'], ['0017', 'agent_grants', 'expand']]);
+        assert.deepStrictEqual(first.applied.map((m) => [m.id, m.name, m.phase]), [['0016', 'agents', 'expand'], ['0017', 'agent_grants', 'expand'], ['0018', 'confirmations', 'expand'], ['0019', 'agent_budgets', 'expand']]);
         assert.ok(await hasAgents());
         assert.deepStrictEqual((await asOwner((db) => db.migrate({ dir: MIGRATIONS, log: quiet }))).applied, [], 'already applied');
         // Expand only, IF NOT EXISTS throughout: running the file again changes nothing and fails nothing.
-        for (const f of ['0016_agents.sql', '0017_agent_grants.sql']) await asOwner((db) => db.exec(fs.readFileSync(path.join(MIGRATIONS, f), 'utf8')));
+        for (const f of ['0016_agents.sql', '0017_agent_grants.sql', '0018_confirmations.sql', '0019_agent_budgets.sql']) await asOwner((db) => db.exec(fs.readFileSync(path.join(MIGRATIONS, f), 'utf8')));
 
         // The table works on the migrated database: ISO defaults like every other text timestamp, and the app host
         // must be an app of the agent's own project and environment.
@@ -83,6 +84,64 @@ const quiet = { log() {}, warn() {}, error() {} };
         const idx = (await t.db.prepare("SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = current_schema() AND tablename = 'dev_agent_grants' ORDER BY indexname").all());
         assert.deepStrictEqual(idx.map((i) => i.indexname), ['dev_agent_grants_active_idx', 'dev_agent_grants_cap_idx', 'dev_agent_grants_pkey']);
         assert.match(idx[0].indexdef, /WHERE \(?status = 'active'/);
+
+        // Confirmations (0018): an id, owner and digest of the right shape, a known state, the decision columns
+        // consistent with it, used only once approved; standing rules whose session/until columns match their kind.
+        const cnf = (c) => `cnf_${c.repeat(26)}`;
+        const ins = (c) => t.db.prepare(`INSERT INTO dev_confirmations (id, project_id, agent_id, owner_subject, capability, audience, summary, state, request_digest,
+                    expires_at, created_at, decided_at, used_at, rule_id) VALUES (?, ?, ?, ?, 'media.object.delete', 'openvibe.media', ?, ?, ?, ?, ?, ?, ?, ?)`)
+            .run(c.id || cnf('A'), prj, c.agent || `agt_${'5'.repeat(26)}`, c.owner || usr, c.summary === undefined ? 'Delete a photo' : c.summary, c.state || 'pending',
+                c.digest || 'f'.repeat(64), now, now, c.decided_at === undefined ? null : c.decided_at, c.used_at === undefined ? null : c.used_at, c.rule_id === undefined ? null : c.rule_id);
+        await ins({});
+        const d = await t.db.prepare('SELECT details, resources, standing_rule FROM dev_confirmations').get();
+        assert.deepStrictEqual([d.details, d.resources, d.standing_rule], ['{}', '[]', null]);
+        await assert.rejects(ins({}), /duplicate key|unique/i, 'one row per id');
+        await assert.rejects(ins({ id: 'cnf_short' }), /check constraint/i, 'a malformed id');
+        await assert.rejects(ins({ id: cnf('B'), owner: 'agt_x' }), /check constraint/i, 'an owner that is not a user');
+        await assert.rejects(ins({ id: cnf('B'), summary: '' }), /check constraint/i, 'an empty summary');
+        await assert.rejects(ins({ id: cnf('B'), summary: 'x'.repeat(501) }), /check constraint/i, 'a summary over 500');
+        await assert.rejects(ins({ id: cnf('B'), digest: 'F'.repeat(64) }), /check constraint/i, 'a digest that is not lowercase hex');
+        await assert.rejects(ins({ id: cnf('B'), state: 'used' }), /check constraint/i, 'an unknown state');
+        await assert.rejects(ins({ id: cnf('B'), decided_at: now }), /check constraint/i, 'pending with decided_at');
+        await assert.rejects(ins({ id: cnf('B'), state: 'approved' }), /check constraint/i, 'approved without decided_at');
+        await assert.rejects(ins({ id: cnf('B'), state: 'denied' }), /check constraint/i, 'denied without decided_at');
+        await assert.rejects(ins({ id: cnf('B'), state: 'cancelled', used_at: now }), /check constraint/i, 'used but not approved');
+        await assert.rejects(ins({ id: cnf('B'), agent: `agt_${'8'.repeat(26)}` }), /foreign key/i, 'an unknown agent');
+        await assert.rejects(ins({ id: cnf('B'), rule_id: 999 }), /foreign key/i, 'an unknown rule');
+        await ins({ id: cnf('C'), state: 'approved', decided_at: now, used_at: now });
+        await ins({ id: cnf('D'), state: 'cancelled' });
+        const rule = (r) => t.db.prepare('INSERT INTO dev_standing_rules (agent_id, capability, rule, session_id, until_at, source, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id')
+            .get(`agt_${'5'.repeat(26)}`, 'media.object.delete', r.rule, r.session_id === undefined ? null : r.session_id, r.until_at === undefined ? null : r.until_at, r.source || cnf('A'), now, 'test');
+        const ids = [];
+        ids.push((await rule({ rule: 'always' })).id, (await rule({ rule: 'until', until_at: now })).id, (await rule({ rule: 'session', session_id: 'session-1', until_at: now })).id);
+        assert.deepStrictEqual(ids.map(Number), [1, 2, 3], 'identity ids');
+        await assert.rejects(rule({ rule: 'once' }), /check constraint/i, 'once is never a standing rule');
+        await assert.rejects(rule({ rule: 'session', until_at: now }), /check constraint/i, 'session without session_id');
+        await assert.rejects(rule({ rule: 'session', session_id: 'short', until_at: now }), /check constraint/i, 'a malformed session_id');
+        await assert.rejects(rule({ rule: 'until', session_id: 'session-1', until_at: now }), /check constraint/i, 'session_id on another kind');
+        await assert.rejects(rule({ rule: 'until' }), /check constraint/i, 'until without until_at');
+        await assert.rejects(rule({ rule: 'always', until_at: now }), /check constraint/i, 'always with until_at');
+        await assert.rejects(rule({ rule: 'always', source: 'cnf_x' }), /check constraint/i, 'a source that is not a confirmation id');
+        await ins({ id: cnf('E'), state: 'approved', decided_at: now, rule_id: ids[0] });
+        const cIdx = await t.db.prepare("SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = current_schema() AND tablename = 'dev_confirmations' ORDER BY indexname").all();
+        assert.deepStrictEqual(cIdx.map((i) => i.indexname), ['dev_confirmations_agent_idx', 'dev_confirmations_due_idx', 'dev_confirmations_inbox_idx', 'dev_confirmations_pkey', 'dev_confirmations_spendable_idx']);
+        assert.match(cIdx[1].indexdef, /WHERE \(?state = 'pending'/);
+        assert.match(cIdx[4].indexdef, /WHERE \(?\(?state = 'approved'.*used_at IS NULL/);
+        const rIdx = await t.db.prepare("SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = current_schema() AND tablename = 'dev_standing_rules' ORDER BY indexname").all();
+        assert.deepStrictEqual(rIdx.map((i) => i.indexname), ['dev_standing_rules_live_idx', 'dev_standing_rules_pkey']);
+        assert.match(rIdx[0].indexdef, /WHERE \(?revoked_at IS NULL/);
+
+        // Budgets (0019): one per (agent, capability), of an existing agent, a non-negative limit, a known window,
+        // unit requests by default.
+        const budget = (b) => t.db.prepare('INSERT INTO dev_agent_budgets (agent_id, capability, limit_value, budget_window, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?)')
+            .run(b.agent || `agt_${'5'.repeat(26)}`, b.capability || 'media.object.upload', b.limit === undefined ? 10 : b.limit, b.window || 'day', now, 'test');
+        await budget({});
+        assert.strictEqual((await t.db.prepare('SELECT unit FROM dev_agent_budgets').get()).unit, 'requests');
+        await assert.rejects(budget({}), /duplicate key|unique/i, 'one budget per agent and capability');
+        await budget({ capability: 'media.object.delete', limit: 0 });
+        await assert.rejects(budget({ capability: 'media.object.list', limit: -1 }), /check constraint/i, 'a negative limit');
+        await assert.rejects(budget({ capability: 'media.object.list', window: 'week' }), /check constraint/i, 'an unknown window');
+        await assert.rejects(budget({ agent: `agt_${'8'.repeat(26)}`, capability: 'media.object.list' }), /foreign key/i, 'an unknown agent');
         console.log('agent schema: all tests passed');
     } finally {
         await t.close();

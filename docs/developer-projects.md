@@ -189,11 +189,43 @@ Base: `/api/v1/projects`. Every call needs `Authorization: Bearer <Network user 
 | `POST /:project/apps/:app/grants` | developer+ | `{ capability }` |
 | `POST /:project/apps/:app/grants/:capability/approve` / `deny` | admin+ | |
 | `DELETE /:project/apps/:app/grants/:capability` | admin+, staff | revoke |
+| `GET /:project/agents[?owner=me]`, `GET /:project/agents/:agent` | viewer+, staff | agents acting for a member through an app or service host (`docs/t2-projects-and-grants.md`) |
+| `POST /:project/agents` | developer+ for yourself (admin+ for a production app host) | `{ name, host: { type: 'app' \| 'service', id } }` |
+| `PATCH /:project/agents/:agent` | its owner, admin+ | `{ name }` |
+| `POST /:project/agents/:agent/pause` / `resume`, `DELETE /:project/agents/:agent` | its owner, admin+ (staff may pause and revoke) | pausing or revoking cancels its pending and approved-unused confirmations |
+| `GET /:project/agents/:agent/grants` | viewer+, staff | delegated grants with `effective_mode` and `within_host` |
+| `PUT /:project/agents/:agent/grants/:capability` | its owner only | `{ mode: 'auto' \| 'confirm', expires_at? }`, inside the host's ceiling |
+| `DELETE /:project/agents/:agent/grants/:capability` | its owner, admin+, staff | revoke; deletes its budget, cancels its confirmations and standing rules |
+| `GET /:project/agents/:agent/budgets` | viewer+, staff | `{ budgets: [{ capability, limit, window, unit, enforced_by }] }` |
+| `PUT /:project/agents/:agent/budgets/:capability` / `DELETE` | its owner, admin+ (not staff) | `{ limit, window, unit? }`; needs an active grant (`404 grant.not_found`), never above the project's quota for it, same window and unit (`422 budget.beyond_quota`); `0` is allowed |
+| `GET /:project/agents/:agent/rules` | viewer+, staff | the live standing rules left by approvals |
+| `DELETE /:project/agents/:agent/rules/:rule` | its owner, admin+, staff | revoke a standing rule |
 | `GET /:project/quotas` | viewer+ | |
 | `PUT /:project/quotas/:capability` / `DELETE` | staff | `{ limit, window, unit }` |
 | `GET /:project/usage[?days=&env=]` | admin+, staff | usage per day, totals, quotas with their use, errors ([Usage](#usage)) |
 | `GET /:project/audit[?before=&limit=]` | admin+, staff | newest first, paged by `next_before` |
 | `POST /:project/export-tokens` | owner, admin (not staff as such) | `{ audience, env }` → a 5-minute read-only export token ([Export tokens](#export-tokens)) |
+
+### The confirmation inbox
+
+Base: `/api/v1/confirmations`, with the same rules as above (Bearer user tokens only, problems, request ids, private
+no-store, 60 requests per minute). A confirmation is a sensitive use of a delegated grant waiting for the agent's owner
+(`network.confirmation-request@1`, `server/developer/confirmations.js`); only that owner sees it, so anyone else,
+admins and staff included, gets `404 confirmation.not_found`.
+
+| Method and path | Body / result |
+|---|---|
+| `GET /[?state=pending&before=&limit=]` | `{ confirmations: [<network.confirmation-request@1>], agents: { "agt_…": { name, project_id, host } }, next_before }`; `state` is `pending` (default), `approved`, `denied`, `expired` or `cancelled`; newest first |
+| `GET /:id` | `{ confirmation, agent }` |
+| `POST /:id/approve` | `{ standing_rule?: 'once' \| 'session' \| 'until' \| 'always', until? }` → `{ confirmation, rule? }`; `session` needs the request's `session_id` (`422 confirmation.no_session`) and lasts at most 24 hours, `until` is required for `until` and at most 30 days away |
+| `POST /:id/deny` | `{}` → `{ confirmation }` |
+
+A decision on anything but a pending row is `409 confirmation.not_pending`; a pending row past `expires_at` is
+`409 confirmation.expired`. Pending rows past `expires_at` read as `expired` at once and are recorded so by a sweep every
+minute. Pausing or revoking the agent, revoking or expiring its grant, shrinking its host's ceiling, the owner leaving
+the project or being erased, revoking the host app and archiving the project cancel the affected pending and
+approved-unused confirmations (`cancel_reason` names the cause) and revoke the matching standing rules. The owning
+services' side (`/internal/confirmations`) and agent tokens come in later slices.
 
 ### Service-side project reads
 
