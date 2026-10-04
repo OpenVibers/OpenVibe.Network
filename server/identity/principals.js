@@ -138,6 +138,8 @@ const DEFAULT_GRANTS = [
     ['deals', 'community.comment.write', 'openvibe.community', []],
     ['deals', 'community.comment.moderate', 'openvibe.community', []],
     ['coupons', 'events.event.publish', 'openvibe.events', []],
+    // Coupons subscribes to the sources it watches (OpenVibe.Coupons scripts/subscribe.js), as Deals does.
+    ['coupons', 'events.subscription.manage', 'openvibe.events', []],
     ['coupons', 'sources.item.read', 'openvibe.sources', []],
     ['host', 'events.event.publish', 'openvibe.events', []],
     // ADR-030 (WS-E task 4): Live rebuilds its follows projection from Network's graph.
