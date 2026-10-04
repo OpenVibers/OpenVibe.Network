@@ -2,7 +2,8 @@
 
 Status: **slices 1–2 built** (proposals, and agents: `migrations/0016_agents.sql`, `server/developer/agents.js`; PR #25,
 merge `4ec36e1`) and **lane B step 3 built** (`GET /internal/projects/:project_id` under `network.project.read`, Host
-only: `server/internal/routes.js:490`; PR #28, merge `e422342`); slices 3–9 are still unbuilt (design, §8).
+only: `server/internal/routes.js:490`; PR #28, merge `e422342`) and **slice 3 built** (delegated grants and modes:
+`migrations/0017_agent_grants.sql`, the ceiling in `server/developer/agents.js`); slices 4–9 are still unbuilt (design, §8).
 Plan T2, "Projects and grants: projects as the ownership boundary for every resource;
 `agt_` principals, delegated grants with modes, sensitive capabilities, confirmation requests, budgets (WS-Z2)".
 Pinned version: `openvibe-contracts` **v0.85.0** (`package.json:33`); every contract claim below was re-checked against
@@ -63,8 +64,8 @@ allowances changes.
 
 ## 3. Data model
 
-Agents are `0016` (built); delegated grants, confirmations and budgets take the next free numbers when their slices
-land (`0017`–`0019` if nothing else lands first). The design first reserved `0010`–`0013`, but the `openvibe-sdk/db`
+Agents are `0016` and delegated grants `0017` (built); confirmations and budgets take the next free numbers when their
+slices land (`0018`–`0019` if nothing else lands first). The design first reserved `0010`–`0013`, but the `openvibe-sdk/db`
 runner tracks applied migrations by id and **refuses** a pending file numbered below one already applied (`migrate:
 0010_agents.sql is older than applied migration 0014`), and main already ships `0014` and `0015`; `test/agent-schema.test.js` pins
 this. `0010`–`0013` stay unused. Header convention of the existing migrations: `-- phase: expand`, `-- plan T2 WS-Z2.
@@ -121,7 +122,7 @@ CREATE INDEX IF NOT EXISTS dev_agents_service_idx ON dev_agents (host_service) W
   service-hosted agent is `production`: the code that runs it is first-party, not the project's.
 - `revoked` is final, like an app. `paused` is the owner's kill switch and is reversible.
 
-### Next — `00NN_agent_grants.sql` (slice 3)
+### 0017 — `0017_agent_grants.sql` (built, slice 3)
 
 ```sql
 CREATE TABLE IF NOT EXISTS dev_agent_grants (
@@ -147,6 +148,13 @@ CREATE INDEX IF NOT EXISTS dev_agent_grants_cap_idx    ON dev_agent_grants (capa
 `sensitive` is **not a column**: it is read from the installed catalog every time (`capabilities.get(id).sensitive`), so a
 capability Contracts marks sensitive later is treated as sensitive on the next token with no data migration. The stored
 `mode` is what the owner chose; `effective_mode` (section 5) is computed.
+
+As built: `PUT` takes the project row's lock (as the cascades do) and, for a service host, holds the host's
+`principal_grants` row `FOR SHARE`, so a ceiling change and a `PUT` never miss each other. A ceiling cascade sets
+`revoked_by` to the subject label of whoever shrank the ceiling (`system:network` for the expiry sweep) and
+`revoke_reason = 'beyond_host'`; a person's revoke leaves `revoke_reason` empty. Each change is one `dev_audit` row,
+action `grant.changed`, target `agent:agt_…`, detail `{ capability, audience, from, to, mode, reason? }`, without an
+event (section 2, gap 3). A revoked agent's grants stay as they are and read back `within_host: false`.
 
 ### Next — `00NN_confirmations.sql` (slice 4)
 
@@ -541,10 +549,11 @@ and agree).
    `account-data.js` (`erase`, `networkPart`), `AGENT_HOST_SERVICES` in `.env.example` and the config table of
    `docs/developer-projects.md`, `test/agents.test.js`,
    `test/agent-schema.test.js`. Checks: `npm test`, `npm run test:pg`.
-3. **Delegated grants and modes.** `migrations/00NN_agent_grants.sql`, grant routes, the ceiling (reusing
+3. **Delegated grants and modes** (built). `migrations/0017_agent_grants.sql`, grant routes, the ceiling (reusing
    `tokens.effectiveGrants` and `principals.grantsFor`), cascades in `setAllowance`, `decideGrant`/grant revoke and
    `grants-admin.js` revoke + `expireDue`, `test/agent-grants.test.js`,
-   cases added to `test/agent-schema.test.js`. Checks: `npm test`, `npm run test:pg`.
+   cases added to `test/agent-schema.test.js`. Checks: `npm test`, `npm run test:pg`. `GET /agents/:agent` still returns
+   the `agent` alone; its grants are `GET /agents/:agent/grants`.
 4. **Confirmations, owner side.** `migrations/00NN_confirmations.sql`, `server/developer/confirmations.js` (store,
    lifecycle, expiry sweep started next to `grants-admin` `start`), `/api/v1/confirmations` mounted in `server/index.js`,
    rule routes, the store's `consume` with the step-4 re-checks, the confirmation cancel step added to every cascade of
