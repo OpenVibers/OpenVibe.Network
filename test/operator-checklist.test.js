@@ -11,7 +11,8 @@ const { AREAS, checklist } = require('../server/admin/operator-checklist');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin.html'), 'utf8');
 const buttons = new Set([...html.matchAll(/showTab\('([a-z-]+)'/g)].map((m) => m[1]));
-const block = html.slice(html.indexOf('const tabLoaders = {'), html.indexOf('};', html.indexOf('const tabLoaders = {')));
+const boot = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'admin', 'boot.js'), 'utf8');
+const block = boot.slice(boot.indexOf('const tabLoaders = {'), boot.indexOf('};', boot.indexOf('const tabLoaders = {')));
 const loaders = new Set([...block.matchAll(/^\s{4}'?([a-z-]+)'?:/gm)].map((m) => m[1]));
 const ids = new Set(services.manifests.map((m) => m.id));
 const plan = ['users', 'search', 'roles', 'bans', 'settings', 'email', 'announcements', 'health', 'storage', 'media', 'queues', 'moderation', 'billing', 'loyalty', 'migration', 'compatibility', 'deploy', 'certificates'];

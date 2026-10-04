@@ -207,8 +207,10 @@ const valid = (e) => {
 
     // The account page lists blocks as text (DOM nodes), with unblock buttons.
     const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'my.html'), 'utf8');
-    assert.ok(page.includes('id="blocks-list"') && page.includes('async function loadBlocks()') && page.includes("'/api/v1/me/blocks/' + encodeURIComponent(b.subject), { method: 'DELETE' }"));
-    const fn = page.slice(page.indexOf('async function loadBlocks()'), page.indexOf('async function revokeSession('));
+    assert.ok(page.includes('id="blocks-list"'));
+    const js = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'my', 'security.js'), 'utf8');
+    assert.ok(js.includes('async function loadBlocks()') && js.includes("'/api/v1/me/blocks/' + encodeURIComponent(b.subject), { method: 'DELETE' }"));
+    const fn = js.slice(js.indexOf('async function loadBlocks()'), js.indexOf('async function revokeSession('));
     assert.ok(!fn.includes('innerHTML'), 'no innerHTML in the blocks list');
 
     server.close(); db.close();
