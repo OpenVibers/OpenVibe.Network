@@ -73,12 +73,44 @@ cd "$STAGE" && sudo -u ubuntu NETWORK_TEST_STORE=pglite node test/run.js agent-s
 **No-go:** read the failure. A migration syntax error or a constraint mismatch means the PR is not ready; do not
 deploy.
 
+The harness rehearses the PR's head by itself (`ov rehearse OpenVibe.Network 37`) on a scratch PostgreSQL: it applies
+`origin/main`'s migrations, the repository's fixtures and then this PR's migrations, and finally the commands
+declared in this fenced block. They assert that the rehearsal database carries both migrations and all three tables:
+
+```rehearse
+migrations: migrations
+node -e 'const{Client}=require("pg");(async()=>{const c=new Client({connectionString:process.env.REHEARSAL_DATABASE_URL});await c.connect();const t=await c.query("SELECT table_name FROM information_schema.tables WHERE table_schema=current_schema() AND table_name=ANY($1) ORDER BY table_name",[["dev_standing_rules","dev_confirmations","dev_agent_budgets"]]);const m=await c.query("SELECT id FROM ov_migrations WHERE id=ANY($1) ORDER BY id",[["0018","0019"]]);await c.end();const tables=t.rows.map(r=>r.table_name),ids=m.rows.map(r=>r.id);if(tables.length!==3||ids.length!==2){console.error("FAIL tables="+tables+" migrations="+ids);process.exit(1);}console.log("rehearse: tables "+tables.join(",")+", migrations "+ids.join(","));})().catch(e=>{console.error("FAIL",e.code||e.message);process.exit(1)})'
+```
+
+**Go:** the rehearsal job's last line is `rehearse: tables dev_agent_budgets,dev_confirmations,dev_standing_rules,
+migrations 0018,0019` (exit 0).
+**No-go:** a held migration or a missing table means the migration does not apply on top of production's schema; fix
+it and push (the new head is rehearsed again).
+
 For an extra check against the real production schema (optional, recommended), point the test at a scratch
 PostgreSQL database restored from a production dump (`NETWORK_TEST_STORE=pg` with `OV_TEST_PG_URL` /
 `OV_TEST_PG_DIRECT_URL`) and run the same test. The scratch database must never be the production URLs.
 
 The owner writes `~/openvibe/agents/ds/deploy/rehearsals/pr-<number>-confirmations-budgets.json` with
 `{"ok": true}` only after the rehearsal passes.
+
+---
+
+## The backup
+
+Before the deploy, take the pre-deploy restore point into the broker's backup area:
+
+```bash
+ov access run openvibe-ovh db-backup
+```
+
+It writes outside the release and outside the repository; keep it. The migrations are additive and the three tables
+are empty until a service creates a confirmation or an owner sets a budget, so a code rollback ([below](#rollback))
+is usually enough and does not need this backup. But it is the only restore point that knows the schema state
+before `0018` and `0019`, and it costs one command in a pipeline that already holds the host lock. A restore of this
+backup overwrites every write made after it (accounts, sessions, notifications, coin transactions, follows, blocks,
+preferences, and any confirmation, standing rule or budget created on this PR's routes); restores are an owner
+decision, coordinate with the database owner separately.
 
 ---
 
