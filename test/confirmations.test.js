@@ -419,6 +419,35 @@ for (const [id, name] of PEOPLE) T[name] = jwt.sign({ sub: id, id }, keys.privat
         assert.deepStrictEqual([i6.status, i6.body.confirmation.state, i6.body.confirmation.standing_rule], [200, 'approved', 'always']);
         ok(await internal('media', 'POST', `/${i6.body.confirmation.id}/consume`, { request_digest: D }));
 
+        // ── The owner is told once a confirmation waits (CONFIRMATION_REQUESTED), best-effort, never for a rule's approval ──
+        const calls = [];
+        confirmations.setNotifier({ create: async (n) => { calls.push(n); return { id: 'n1' }; } });
+        try {
+            const told = await appAgent(W);
+            const n1 = await ask(told);
+            assert.strictEqual(n1.state, 'pending');
+            assert.strictEqual(calls.length, 1);
+            const { message, ...rest } = calls[0];
+            assert.deepStrictEqual(rest, { user_id: 10, type: 'CONFIRMATION_REQUESTED', title: 'Approval needed', url: 'https://openvibe.network/my', service: 'network' });
+            assert.strictEqual(message, `Bot: ${SUMMARY}`);
+            assert.ok(!message.includes('private-detail-text'));
+            await approve(n1, 'owner', { standing_rule: 'always' });
+            assert.strictEqual((await ask(told)).state, 'approved');
+            assert.strictEqual(calls.length, 1, 'a standing rule\'s approval notifies nobody');
+            const xss = await ask(await appAgent(W), 'media.object.delete', { summary: '<b>x</b> & y' });
+            assert.strictEqual(calls[1].message, 'Bot: &lt;b&gt;x&lt;/b&gt; &amp; y');
+            assert.strictEqual(xss.summary, '<b>x</b> & y');
+            confirmations.setNotifier({ create: async () => { throw new Error('notify down'); } });
+            const warn = console.warn; const warned = []; console.warn = (...a) => warned.push(a.join(' '));
+            let n3;
+            try { n3 = await ask(await appAgent(W)); } finally { console.warn = warn; }
+            assert.strictEqual(n3.state, 'pending');
+            assert.strictEqual((await row(n3.id)).state, 'pending');
+            assert.ok(warned.some((w) => w.includes('owner notify failed') && w.includes('notify down')), warned.join('\n'));
+        } finally {
+            confirmations.setNotifier(null);
+        }
+
         // ── Audits: every transition, never the summary or the details; each carries its network.confirmation.changed@1
         //    event (slice 9) except a standing rule's approval, which the `created` event already reports ──
         const audits = await db.prepare("SELECT action, actor, detail, event FROM dev_audit WHERE action LIKE 'confirmation.%' ORDER BY id").all();
