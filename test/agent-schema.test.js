@@ -44,7 +44,7 @@ const quiet = { log() {}, warn() {}, error() {} };
 
         // The real directory: 0016 applies on top of 0015, once.
         const first = await asOwner((db) => db.migrate({ dir: MIGRATIONS, log: quiet }));
-        assert.deepStrictEqual(first.applied.map((m) => [m.id, m.name, m.phase]), [['0016', 'agents', 'expand'], ['0017', 'agent_grants', 'expand'], ['0018', 'confirmations', 'expand'], ['0019', 'agent_budgets', 'expand']]);
+        assert.deepStrictEqual(first.applied.map((m) => [m.id, m.name, m.phase]), [['0016', 'agents', 'expand'], ['0017', 'agent_grants', 'expand'], ['0018', 'confirmations', 'expand'], ['0019', 'agent_budgets', 'expand'], ['0020', 'user_owned_trust', 'expand']]);
         assert.ok(await hasAgents());
         assert.deepStrictEqual((await asOwner((db) => db.migrate({ dir: MIGRATIONS, log: quiet }))).applied, [], 'already applied');
         // Expand only, IF NOT EXISTS throughout: running the file again changes nothing and fails nothing.
