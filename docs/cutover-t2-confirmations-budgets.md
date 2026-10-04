@@ -29,7 +29,8 @@ No existing table, index, view or function is modified. The code that reads and 
 (`server/developer/confirmations.js`, `server/developer/agents.js`, `server/developer/routes.js`,
 `server/identity/grants-admin.js`, `server/index.js`) adds `/api/v1/confirmations`, the budget and rule routes under
 `/api/v1/projects/:project/agents/:agent`, and a one-minute expiry sweep. Until an owning service creates a
-confirmation (the `/internal/confirmations` routes come in slice 7) and an owner sets a budget, the tables stay empty;
+confirmation (through `/internal/confirmations`, built in slice 7; no service holds `network.confirmation.manage` by
+default yet) and an owner sets a budget, the tables stay empty;
 the cascades that now also cancel confirmations find nothing to cancel.
 
 ---
@@ -188,5 +189,6 @@ Restart the service after either rollback and confirm `health network` says `rea
 
 - **Data move.** None; the tables start empty.
 - **Freeze window.** None; three `CREATE TABLE` and six `CREATE INDEX` on empty tables take milliseconds.
-- **Contracts.** No pin bump: `network.confirmation-request@1` is in the pinned v0.85.0. The internal routes, agent
-  tokens and decision events (slices 7-9) wait on Contracts releases.
+- **Contracts.** No pin bump: `network.confirmation-request@1` is in the pinned v0.85.0. The internal routes (slice 7)
+  were built after this cutover, with the pin at v0.90.0 and no migration; agent tokens and decision events (slices
+  8-9) still wait on Network work.

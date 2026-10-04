@@ -3,8 +3,9 @@
  * Confirmations, owner side (plan T2 WS-Z2 slice 4, docs/t2-projects-and-grants.md sections 3-5): a sensitive use of a
  * delegated grant waits for its owner's approval. The schema is migrations/0018_confirmations.sql.
  *
- * - The owning service of the capability creates, consumes and cancels them (`create`, `consume`; its
- *   /internal/confirmations routes wait for slice 7). The owner reads, approves and denies them at
+ * - The owning service of the capability creates, reads, consumes and cancels them (`create`, `read`, `consume`,
+ *   `cancel`) at /internal/confirmations with network.confirmation.manage (slice 7, `internalRouter`); each service
+ *   sees only the ones it created (others: 404). The owner reads, approves and denies them at
  *   /api/v1/confirmations (`router`); nobody else sees one (not admins, not staff: 404 confirmation.not_found).
  * - Views are network.confirmation-request@1 documents; audience, session_id, request_digest, rule_id, used_at,
  *   decided_by, cancel_reason and project_id stay Network-local, never inside the document.
@@ -39,8 +40,8 @@ const LIVE = "(state = 'pending' OR (state = 'approved' AND used_at IS NULL))";
 const fail = (status, code, detail) => { throw new store.DevError(status, code, detail); };
 const nowIso = () => new Date().toISOString();
 
-/** The state a read reports: a pending row past expires_at is expired before the sweep records it. */
-const stateOf = (c, now = nowIso()) => (c.state === 'pending' && c.expires_at <= now ? 'expired' : c.state);
+/** The state a read reports: a live row past expires_at (pending, or approved and unused) is expired before the sweep records it. */
+const stateOf = (c, now = nowIso()) => ((c.state === 'pending' || (c.state === 'approved' && !c.used_at)) && c.expires_at <= now ? 'expired' : c.state);
 
 /** network.confirmation-request@1: owner and requested_by rebuilt as SubjectRefs, details/resources parsed. */
 function confirmationView(c) {
@@ -94,7 +95,7 @@ async function checkAuthority(db, agent, capability, settings) {
     if (b && Number(b.limit_value) === 0) notDelegated('the budget for that capability is 0');
 }
 
-// ── The owning service's side (routes in slice 7) ──────────────
+// ── The owning service's side (/internal/confirmations) ────────
 
 /**
  * Create a confirmation for an agent's sensitive use of `capability`, asked by `audience` (the owning service). The
@@ -169,6 +170,36 @@ async function consume(db, { id, audience, requestDigest }, { ctx, settings } = 
         await audit(db, c, 'confirmation.used', { actor: `service:${audience}`, ctx });
         return { confirmation: confirmationView({ ...c, used_at: now }), used_at: now };
     });
+}
+
+/** The audience's own row, else 404: another service's confirmation is not found, never refused. */
+async function serviceRow(db, id, audience, { lock = false } = {}) {
+    const c = CNF_ID_RE.test(String(id)) ? await db.prepare(`SELECT * FROM dev_confirmations WHERE id = ? AND audience = ?${lock ? ' FOR UPDATE' : ''}`).get(id, audience) : null;
+    if (!c) fail(404, 'confirmation.not_found', 'no such confirmation');
+    return c;
+}
+
+/** The owning service reads one it created. → { confirmation, used_at } */
+async function read(db, { id, audience }) {
+    const c = await serviceRow(db, id, audience);
+    return { confirmation: confirmationView(c), used_at: c.used_at || null };
+}
+
+/**
+ * The owning service withdraws one it created: a pending or approved-unused row still inside its ttl becomes cancelled
+ * (reason `service`); one already cancelled is returned as it is; a used, denied or expired (past `expires_at`) one is
+ * 409 confirmation.not_pending. The owner's standing rules are left alone. → { confirmation }
+ */
+async function cancel(db, { id, audience }, { ctx } = {}) {
+    await db.tx(async () => {
+        const c = await serviceRow(db, id, audience, { lock: true });
+        const state = c.used_at ? 'used' : stateOf(c);
+        if (state === 'cancelled') return;
+        if (state !== 'pending' && state !== 'approved') fail(409, 'confirmation.not_pending', `confirmation is ${state}`);
+        await db.prepare(`UPDATE dev_confirmations SET state = 'cancelled', cancel_reason = 'service' WHERE id = ? AND ${LIVE}`).run(c.id);
+        await audit(db, c, 'confirmation.cancelled', { actor: `service:${audience}`, detail: { from: c.state, reason: 'service' }, ctx });
+    });
+    return { confirmation: confirmationView(await serviceRow(db, id, audience)) };
 }
 
 /**
@@ -341,6 +372,39 @@ function router() {
     return finish(r);
 }
 
+/**
+ * /internal/confirmations — the owning service's side (service tokens with network.confirmation.manage; the guard is
+ * the mount's, server/internal/routes.js). The caller's audience is openvibe.<service> from its token's sub.
+ *   POST /             { requested_by: { type: 'agent', id }, capability, summary, details?, resources?, request_digest,
+ *                        session_id?, ttl_s? }   201 { confirmation } pending, 200 { confirmation } approved by a rule
+ *   GET  /:id          { confirmation, used_at }
+ *   POST /:id/consume  { request_digest }   { confirmation, used_at }
+ *   POST /:id/cancel   { confirmation }
+ * The owner is the agent's: a body's `owner` is never read.
+ */
+function internalRouter() {
+    const { handler, finish, send } = require('./routes');
+    const r = require('express').Router();
+    const handle = handler();
+    const aud = (req) => `openvibe.${String(req.principal.sub).replace(/^svc:/, '')}`;
+    const body = (req) => (req.body && typeof req.body === 'object' ? req.body : {});
+    r.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+    r.post('/', async (req, res) => {
+        try {
+            const b = body(req);
+            const by = b.requested_by && typeof b.requested_by === 'object' ? b.requested_by : {};
+            if (by.type !== 'agent') fail(422, 'confirmation.invalid', "requested_by is { type: 'agent', id: 'agt_…' }");
+            const c = await create(req.app.locals.db, { agentId: by.id, capability: b.capability, audience: aud(req), summary: b.summary, details: b.details,
+                resources: b.resources, requestDigest: b.request_digest, sessionId: b.session_id, ttlS: b.ttl_s }, { ctx: req.ov, settings: policy.settings(req.app.locals.config) });
+            res.status(c.state === 'pending' ? 201 : 200).json({ confirmation: c });
+        } catch (err) { send(req, res, err); }
+    });
+    r.get('/:id', handle(async (db, _a, req) => await read(db, { id: req.params.id, audience: aud(req) })));
+    r.post('/:id/consume', handle(async (db, _a, req, o) => await consume(db, { id: req.params.id, audience: aud(req), requestDigest: body(req).request_digest }, o)));
+    r.post('/:id/cancel', handle(async (db, _a, req, o) => await cancel(db, { id: req.params.id, audience: aud(req) }, o)));
+    return finish(r);
+}
+
 let timer = null;
 function start(db, { intervalMs = 60_000 } = {}) {
     if (timer) return;
@@ -351,6 +415,6 @@ function start(db, { intervalMs = 60_000 } = {}) {
 function stop() { if (timer) clearInterval(timer); timer = null; }
 
 module.exports = {
-    create, list, get, decide, consume, cancelFor, expireDue, confirmationView, ruleView, listRules, revokeRule, router, start, stop,
+    create, read, consume, cancel, internalRouter, list, get, decide, cancelFor, expireDue, confirmationView, ruleView, listRules, revokeRule, router, start, stop,
     MAX_PENDING,
 };

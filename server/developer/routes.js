@@ -206,4 +206,4 @@ function send(req, res, err) {
     return http.sendProblem(res, 500, 'internal.error', { detail: 'unexpected error', ctx: req.ov });
 }
 
-module.exports = { router, userApi, handler, finish };
+module.exports = { router, userApi, handler, finish, send };
