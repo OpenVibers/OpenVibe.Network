@@ -139,6 +139,8 @@ A quota says how much of one capability a project may use: for example, `media.o
 
 The services that own developer capabilities count each project's use per environment and UTC hour, and send one rollup per closed hour through OpenVibe.Events (roadmap WS-N task 4): `tools.usage.recorded` from each Tools satellite (jobs, per `tools.job.create` or `tools.tool.run` and job type or tool) and `events.usage.recorded` from Events (`events.app.publish` in `events`, `events.app.subscribe` in `deliveries`). The payload is `common.usage-recorded@1` (openvibe-contracts 0.63.0): project, environment, capability, dimension, unit, window, quantity, errors, errors by code and up to ten sampled failures (time, code, status, trace id, job or event id). A rollup never names who did the work.
 
+Rollups are counts for quotas and dashboards, never money. Network never ingests the `platform.usage-sample` readings and stores no subject with a count. Money lives only in Billing.
+
 The Events consumer (`POST /internal/events`, [server/developer/usage.js](../server/developer/usage.js)) records each one inside its inbox transaction:
 
 - `dev_usage_windows`: one row per rollup key (service, project, environment, capability, dimension, unit, window start). A later rollup for the same key replaces it (the higher `revision` wins), so a re-sent hour is never counted twice. Kept 35 days.
