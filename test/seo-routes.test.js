@@ -7,6 +7,8 @@ const assert = require('assert');
 const { bootServer } = require('./helpers/boot-server');
 const seo = require('openvibe-shared/seo');
 const seoRoutes = require('../server/seo/routes');
+const render = require('../server/home/render');
+const cache = require('openvibe-shared/cache-policy');
 
 (async () => {
     const srv = await bootServer();
@@ -54,6 +56,25 @@ const seoRoutes = require('../server/seo/routes');
         const shipped = seoRoutes.sitemapXml({ release: { full: () => ({ released_at: '2026-01-02T03:04:05Z' }) } });
         assert.ok(shipped.includes('<lastmod>2026-01-02</lastmod>'), 'lastmod follows the release manifest');
 
+        // ── /llms-full.txt: the public pages only, within maxBytes ──
+        const full = await fetch(srv.base + '/llms-full.txt');
+        const fullBody = await full.text();
+        assert.strictEqual(full.status, 200, '/llms-full.txt is 200');
+        assert.ok((full.headers.get('content-type') || '').startsWith('text/plain'), '/llms-full.txt is text/plain');
+        assert.strictEqual(full.headers.get('cache-control'), cache.htmlHeaders({ maxAge: 3600 }), '/llms-full.txt is cached like /llms.txt');
+        assert.ok(fullBody.startsWith('# OpenVibe Network\n'), 'llms-full.txt opens with the llms.txt header');
+        const llms = await get('/llms.txt');
+        assert.ok(fullBody.includes(llms.body.split('\n').find(l => l.startsWith('> '))), 'llms-full.txt carries the llms.txt summary');
+        const fullUrls = [...fullBody.matchAll(/^URL: (\S+)$/gm)].map(m => m[1]);
+        assert.deepStrictEqual(fullUrls, seoRoutes.PAGES.map(p => `${seoRoutes.HOST}${p.path}`), 'llms-full.txt lists exactly the sitemap pages');
+        assert.ok(!/\/(admin|my|login|developer|internal|account|settings)\b/.test(fullUrls.join(' ')), 'no private page is listed');
+        assert.ok(Buffer.byteLength(fullBody) <= render.LLMS_FULL_MAX_BYTES, 'llms-full.txt stays within maxBytes');
+        assert.strictEqual(render.LLMS_FULL_MAX_BYTES, 512 * 1024);
+
+        // ── IndexNow: no INDEXNOW_KEY → no key file ──
+        const KEY = require('crypto').randomBytes(16).toString('hex');
+        assert.strictEqual((await get(`/${KEY}.txt`)).status, 404, 'no key file is served without INDEXNOW_KEY');
+
         console.log('seo routes: all checks passed');
     } catch (err) {
         console.error(srv.logs());
@@ -61,4 +82,22 @@ const seoRoutes = require('../server/seo/routes');
     } finally {
         await srv.stop();
     }
+
+    // ── IndexNow: INDEXNOW_KEY set → /<key>.txt answers with the key ──
+    const KEY = require('crypto').randomBytes(16).toString('hex');
+    const keyed = await bootServer({ child: true, env: { INDEXNOW_KEY: KEY } });
+    try {
+        const r = await fetch(`${keyed.base}/${KEY}.txt`);
+        assert.strictEqual(r.status, 200, 'the IndexNow key file is served');
+        assert.ok((r.headers.get('content-type') || '').startsWith('text/plain'), 'the key file is text/plain');
+        assert.strictEqual(await r.text(), KEY, 'the key file holds the key');
+        assert.strictEqual((await fetch(`${keyed.base}/0000000000000000.txt`)).status, 404, 'another key is not served');
+        assert.strictEqual((await fetch(`${keyed.base}/robots.txt`)).status, 200, 'robots.txt still answers');
+    } catch (err) {
+        console.error(keyed.logs());
+        throw err;
+    } finally {
+        await keyed.stop();
+    }
+    console.log('seo routes: indexnow key file checks passed');
 })().then(() => process.exit(0)).catch((err) => { console.error(err); process.exit(1); });

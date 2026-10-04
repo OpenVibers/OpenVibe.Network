@@ -56,6 +56,10 @@ module.exports = {
     // scripts/subscribe-events.js.
     eventsWebhookSecrets: process.env.NETWORK_EVENTS_SECRET || '',
 
+    // IndexNow (openvibe-shared/indexnow): when INDEXNOW_KEY is set the key file is served at /<key>.txt.
+    // Network publishes no content stream, so nothing pings yet. Unset: off — nothing is mounted.
+    indexnow: { key: process.env.INDEXNOW_KEY || '' },
+
     // Database (ADR-035, plan T2): PostgreSQL through PgBouncer in production. `url` (DATABASE_URL) serves
     // requests; `directUrl` (DATABASE_DIRECT_URL, the owner role on a direct connection) runs migrations.
     // Without DATABASE_URL, development and tests run an embedded PGlite database in `pgliteDir`
