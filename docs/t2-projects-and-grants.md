@@ -156,7 +156,7 @@ As built: `PUT` takes the project row's lock (as the cascades do) and, for a ser
 action `grant.changed`, target `agent:agt_…`, detail `{ capability, audience, from, to, mode, reason? }`, without an
 event (section 2, gap 3). A revoked agent's grants stay as they are and read back `within_host: false`.
 
-### Next — `00NN_confirmations.sql` (slice 4)
+### 0018 — `0018_confirmations.sql` (built, slice 4)
 
 ```sql
 CREATE TABLE IF NOT EXISTS dev_standing_rules (
@@ -219,7 +219,7 @@ CREATE INDEX IF NOT EXISTS dev_confirmations_spendable_idx ON dev_confirmations 
   `approved`, unused row may be cancelled too (its `decided_at` stays); the spendable index finds those rows for the
   cascades.
 
-### Next — `00NN_agent_budgets.sql` (slice 5)
+### 0019 — `0019_agent_budgets.sql` (built, slice 5)
 
 ```sql
 CREATE TABLE IF NOT EXISTS dev_agent_budgets (
@@ -554,14 +554,14 @@ and agree).
    `grants-admin.js` revoke + `expireDue`, `test/agent-grants.test.js`,
    cases added to `test/agent-schema.test.js`. Checks: `npm test`, `npm run test:pg`. `GET /agents/:agent` still returns
    the `agent` alone; its grants are `GET /agents/:agent/grants`.
-4. **Confirmations, owner side.** `migrations/00NN_confirmations.sql`, `server/developer/confirmations.js` (store,
+4. **Confirmations, owner side** (built). `migrations/0018_confirmations.sql`, `server/developer/confirmations.js` (store,
    lifecycle, expiry sweep started next to `grants-admin` `start`), `/api/v1/confirmations` mounted in `server/index.js`,
    rule routes, the store's `consume` with the step-4 re-checks, the confirmation cancel step added to every cascade of
    slices 2–3 (pause, revoke, grant revoke and expiry, ceiling cascades, member removal, erase, app revoke, archive),
    `test/confirmations.test.js` creating and consuming rows through the
    store functions (the internal routes wait for slice 7), cases added to `test/agent-schema.test.js`. Checks: `npm test`,
    `npm run test:pg`.
-5. **Budgets.** `migrations/00NN_agent_budgets.sql`, budget routes, `budget.beyond_quota`,
+5. **Budgets** (built). `migrations/0019_agent_budgets.sql`, budget routes, `budget.beyond_quota`,
    `test/agent-budgets.test.js` (without the internal read), cases added to
    `test/agent-schema.test.js`. Checks: `npm test`, `npm run test:pg`.
 6. **Internal agent read.** `GET /internal/agents/:agent` under `network.project.read` (already in the catalog), in

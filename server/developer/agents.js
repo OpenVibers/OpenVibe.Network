@@ -16,7 +16,13 @@
  *   A capability the installed catalog marks sensitive is always `confirm`, whatever mode is stored. A change that
  *   shrinks the ceiling (an allowance, an app grant, a service's principal_grants row) revokes the delegated grants
  *   outside it in its own transaction (revokeBeyondHost).
- *   Budgets, standing rules, confirmations and agent tokens come in later slices (section 8).
+ * - Confirmations (slice 4, ./confirmations.js): every change here that takes authority away — a pause, a revoke, a
+ *   revokeWhere cascade, a delegated grant's revocation — cancels the affected pending and approved-unused
+ *   confirmations and revokes the matching standing rules in the same transaction (cancel below). So do the
+ *   store.js and grants-admin.js cascades, which all go through revokeWhere and revokeBeyondHost.
+ * - Budgets (slice 5, migrations/0019_agent_budgets.sql): the owner or an admin+ caps a capability the agent holds,
+ *   never above the project's quota for it; revoking the grant deletes its budget. The owning service meters.
+ *   Agent tokens come in a later slice (section 8).
  */
 const { ids, capabilities } = require('openvibe-contracts');
 const policy = require('./policy');
@@ -28,6 +34,13 @@ const nowIso = () => new Date().toISOString();
 const atLeast = (role, need) => !!role && store.ROLES.indexOf(role) >= store.ROLES.indexOf(need);
 
 function ensureSchema(db) { /* the schema is migrations/0016_agents.sql (plan T2); nothing is created at runtime */ }
+
+// revokeWhere's revoked_by for an erased account; a confirmation names the cause as section 5 step 6 does.
+const CANCEL_REASON = { account_deleted: 'account_erased' };
+/** Cancel the agent's live confirmations (of one capability when given) and revoke its matching rules, in the caller's tx. */
+const cancel = (db, agentId, capability, reason, actor, ctx) =>
+    // Required here: confirmations.js requires this module.
+    require('./confirmations').cancelFor(db, { agentId, capability, reason: CANCEL_REASON[reason] || reason, actor }, { ctx });
 
 function agentView(a) {
     return {
@@ -136,6 +149,7 @@ async function revokeWhere(db, where, params, { actor, reason, ctx }) {
         if (!r.changes) continue;
         n++;
         await store.audit(db, { projectId: a.project_id, actor, action: 'agent.revoked', target: `agent:${a.id}`, detail: { reason }, ctx });
+        await cancel(db, a.id, null, reason, actor, ctx);
     }
     return n;
 }
@@ -163,6 +177,7 @@ async function changeStatus(db, actor, projectId, agentId, action, { ctx }) {
         if (!r.changes) fail(409, 'agent.revoked', 'agent is revoked');
         await store.audit(db, { projectId: project.id, actor: actor.label, action: `agent.${to === 'active' ? 'resumed' : to}`, target: `agent:${a.id}`,
             detail: { from: cur.status, staff: actor.staff && !role ? true : undefined }, ctx });
+        if (to !== 'active') await cancel(db, a.id, null, `agent_${to}`, actor.label, ctx);
     });
     return agentView(await db.prepare('SELECT * FROM dev_agents WHERE id = ?').get(a.id));
 }
@@ -226,12 +241,21 @@ async function grantAudit(db, agent, g, { actor, from, to, mode, reason, ctx }) 
         detail: { capability: g.capability, audience: g.audience, from, to, mode, reason: reason || undefined }, ctx });
 }
 
-async function revokeGrantRow(db, agent, g, { actor, reason, ctx }) {
+/**
+ * Revoke one active delegated grant, in the caller's transaction: its budget goes with it, and its live confirmations
+ * and standing rules are cancelled with `cancelReason` (default: beyond_host for a ceiling cascade, grant_revoked else).
+ */
+async function revokeGrantRow(db, agent, g, { actor, reason, cancelReason, ctx }) {
     const t = nowIso();
     const r = await db.prepare("UPDATE dev_agent_grants SET status = 'revoked', revoked_at = ?, revoked_by = ?, revoke_reason = ?, updated_at = ? WHERE agent_id = ? AND capability = ? AND status = 'active'")
         .run(t, actor, reason || null, t, agent.id, g.capability);
-    if (r.changes) await grantAudit(db, agent, g, { actor, from: 'active', to: 'revoked', mode: g.mode, reason, ctx });
-    return r.changes > 0;
+    if (!r.changes) return false;
+    await grantAudit(db, agent, g, { actor, from: 'active', to: 'revoked', mode: g.mode, reason, ctx });
+    if ((await db.prepare('DELETE FROM dev_agent_budgets WHERE agent_id = ? AND capability = ?').run(agent.id, g.capability)).changes) {
+        await store.audit(db, { projectId: agent.project_id, actor, action: 'agent.budget_removed', target: `agent:${agent.id}`, detail: { capability: g.capability, reason: 'grant_revoked' }, ctx });
+    }
+    await cancel(db, agent.id, g.capability, cancelReason || reason || 'grant_revoked', actor, ctx);
+    return true;
 }
 
 function expiryOf(v) {
@@ -320,19 +344,88 @@ async function deleteGrant(db, actor, projectId, agentId, capability, { ctx, set
  * matching `where` that their host's ceiling no longer covers, one audit row each (reason beyond_host). `actor` is the
  * subject label of whoever shrank it. Returns how many were revoked.
  */
-async function revokeBeyondHost(db, where, params, { actor, ctx, settings }) {
+async function revokeBeyondHost(db, where, params, { actor, ctx, settings, cancelReason }) {
     let n = 0;
     for (const a of await db.prepare(`SELECT * FROM dev_agents WHERE (${where}) AND status <> 'revoked' ORDER BY id`).all(...params)) {
         const ceilings = new Map();
         for (const g of await db.prepare("SELECT * FROM dev_agent_grants WHERE agent_id = ? AND status = 'active' ORDER BY capability").all(a.id)) {
             if (!ceilings.has(g.audience)) ceilings.set(g.audience, await ceiling(db, a, g.audience, settings));
-            if (!ceilings.get(g.audience).has(g.capability) && await revokeGrantRow(db, a, g, { actor, reason: 'beyond_host', ctx })) n++;
+            if (!ceilings.get(g.audience).has(g.capability) && await revokeGrantRow(db, a, g, { actor, reason: 'beyond_host', cancelReason, ctx })) n++;
         }
     }
     return n;
 }
 
+// ── Budgets ────────────────────────────────────────────────────
+
+const BUDGET_WINDOWS = ['minute', 'hour', 'day', 'month', 'total'];
+
+/** enforced_by is the capability's audience: the owning service meters, Network never does. */
+function budgetView(b) {
+    return { capability: b.capability, limit: Number(b.limit_value), window: b.budget_window, unit: b.unit, enforced_by: policy.audienceOf(b.capability) };
+}
+
+async function listBudgets(db, actor, projectId, agentId) {
+    const { project } = await store.access(db, actor, projectId, { allowArchived: true });
+    const a = await loadAgent(db, project.id, agentId);
+    return (await db.prepare('SELECT * FROM dev_agent_budgets WHERE agent_id = ? ORDER BY capability').all(a.id)).map(budgetView);
+}
+
+/** The agent's owner or an admin+ (staff as such never: a budget is the project's own decision). */
+async function budgetAccess(db, actor, projectId, agentId) {
+    const { project, role } = await store.access(db, actor, projectId, { staffOk: false });
+    const a = await loadAgent(db, project.id, agentId);
+    if (!(role && a.owner_subject === actor.subject) && !atLeast(role, 'admin')) fail(403, 'agent.forbidden', "only the agent's owner or an admin sets its budgets");
+    return { project, agent: a };
+}
+
+/**
+ * Set a budget: { limit, window, unit? } for a capability the agent holds (an active delegated grant, else 404
+ * grant.not_found). When the project has a quota for the capability, the budget has its window and unit and a limit
+ * no higher (else 422 budget.beyond_quota: a different window or unit does not compare). A limit of 0 is legal.
+ */
+async function setBudget(db, actor, projectId, agentId, capability, body, { ctx }) {
+    const { project, agent } = await budgetAccess(db, actor, projectId, agentId);
+    const limit = body.limit;
+    if (typeof limit !== 'number' || !Number.isSafeInteger(limit) || limit < 0) fail(422, 'budget.invalid', 'limit is a non-negative integer');
+    const window = String(body.window || '');
+    if (!BUDGET_WINDOWS.includes(window)) fail(422, 'budget.invalid', `window is one of ${BUDGET_WINDOWS.join(', ')}`);
+    const unit = body.unit == null ? 'requests' : String(body.unit);
+    if (!/^[a-z][a-z0-9_]{0,31}$/.test(unit)) fail(422, 'budget.invalid', 'unit is a short lowercase word (requests, bytes, tokens, ...)');
+    const cap = String(capability);
+    await db.tx(async () => {
+        const cur = await db.prepare('SELECT * FROM dev_agents WHERE id = ? FOR UPDATE').get(agent.id);
+        if (cur.status === 'revoked') fail(409, 'agent.revoked', 'agent is revoked');
+        if (!await db.prepare("SELECT 1 AS ok FROM dev_agent_grants WHERE agent_id = ? AND capability = ? AND status = 'active' FOR SHARE").get(agent.id, cap)) {
+            fail(404, 'grant.not_found', 'the agent holds no active grant for that capability');
+        }
+        const q = await db.prepare('SELECT * FROM dev_quotas WHERE project_id = ? AND capability = ?').get(project.id, cap);
+        if (q && (q.quota_window !== window || q.unit !== unit || limit > Number(q.limit_value))) {
+            fail(422, 'budget.beyond_quota', `the project's quota for ${cap} is ${q.limit_value} ${q.unit} per ${q.quota_window}`);
+        }
+        await db.prepare(`INSERT INTO dev_agent_budgets (agent_id, capability, limit_value, budget_window, unit, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (agent_id, capability) DO UPDATE SET limit_value = excluded.limit_value, budget_window = excluded.budget_window, unit = excluded.unit,
+                        updated_at = excluded.updated_at, updated_by = excluded.updated_by`)
+            .run(agent.id, cap, limit, window, unit, nowIso(), actor.label);
+        await store.audit(db, { projectId: project.id, actor: actor.label, action: 'agent.budget_set', target: `agent:${agent.id}`, detail: { capability: cap, limit, window, unit }, ctx });
+    });
+    return budgetView(await db.prepare('SELECT * FROM dev_agent_budgets WHERE agent_id = ? AND capability = ?').get(agent.id, cap));
+}
+
+async function deleteBudget(db, actor, projectId, agentId, capability, { ctx }) {
+    const { project, agent } = await budgetAccess(db, actor, projectId, agentId);
+    const cap = String(capability);
+    return await db.tx(async () => {
+        const b = await db.prepare('SELECT * FROM dev_agent_budgets WHERE agent_id = ? AND capability = ? FOR UPDATE').get(agent.id, cap);
+        if (!b) fail(404, 'budget.not_found', 'no budget for that capability');
+        await db.prepare('DELETE FROM dev_agent_budgets WHERE agent_id = ? AND capability = ?').run(agent.id, cap);
+        await store.audit(db, { projectId: project.id, actor: actor.label, action: 'agent.budget_removed', target: `agent:${agent.id}`, detail: { capability: cap }, ctx });
+        return budgetView(b);
+    });
+}
+
 module.exports = {
-    ensureSchema, AGENT_ID_RE, agentView, listAgents, getAgent, createAgent, renameAgent, changeStatus, revokeWhere,
+    ensureSchema, AGENT_ID_RE, agentView, loadAgent, atLeast, listAgents, getAgent, createAgent, renameAgent, changeStatus, revokeWhere,
     effectiveMode, withinHost, listGrants, putGrant, deleteGrant, revokeBeyondHost,
+    budgetView, listBudgets, setBudget, deleteBudget,
 };

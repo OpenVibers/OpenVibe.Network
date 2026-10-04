@@ -608,6 +608,8 @@ app.use('/api/modules', require('./identity/modules').userRouter(requireAuth));
 // Developer projects, apps, credentials, grants and quotas (server/developer, ADR-014). Bearer user
 // tokens only; never X-Internal-Key.
 app.use('/api/v1/projects', rateLimit({ windowMs: 60_000, max: 60 }), require('./developer/routes').router());
+// The owner's confirmation inbox (plan T2 WS-Z2 slice 4, server/developer/confirmations.js): the same Bearer-only rules.
+app.use('/api/v1/confirmations', rateLimit({ windowMs: 60_000, max: 60 }), require('./developer/confirmations').router());
 // Their network.app.* / credential / grant events go to OpenVibe.Events through an outbox when
 // OV_EVENTS_INTERNAL_URL is set (server/developer/event-relay.js); off otherwise.
 await require('./developer/event-relay').startRelay(db, { eventsUrl: config.eventsInternalUrl, privateKey, issuer: config.jwt.issuer });
@@ -615,6 +617,8 @@ await require('./developer/event-relay').startRelay(db, { eventsUrl: config.even
 // through the same outbox (server/identity/profile-events.js).
 await require('./identity/profile-events').start(db);
 require('./identity/grants-admin').start(db);
+// Pending confirmations past expires_at are recorded expired every minute (reads report them expired before that).
+require('./developer/confirmations').start(db);
 
 // Notification API (authenticated users)
 app.use('/api/notifications', createNotificationRoutes(db, notificationService, requireAuth));
@@ -974,6 +978,7 @@ gracefulStop({
         () => frameService.stop(),
         () => require('./identity/profile-events').stop(),
         () => require('./identity/grants-admin').stop(),
+        () => require('./developer/confirmations').stop(),
     ],
     close: [
         () => within(1500, require('./developer/event-relay').stopRelay(db)),

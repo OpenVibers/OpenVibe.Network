@@ -45,6 +45,12 @@ const cache = require('openvibe-shared/cache-policy');
  *   GET    /:project/agents/:agent/grants                   viewer+: delegated grants with effective_mode and within_host
  *   PUT    /:project/agents/:agent/grants/:capability { mode, expires_at? }  its owner only, inside the host's ceiling
  *   DELETE /:project/agents/:agent/grants/:capability      revoke: its owner, admin+ or staff
+ *   GET    /:project/agents/:agent/budgets                  viewer+: { capability, limit, window, unit, enforced_by }
+ *   PUT    /:project/agents/:agent/budgets/:capability { limit, window, unit? }  its owner or admin+ (not staff); needs
+ *                                                           an active grant, never beyond the project's quota
+ *   DELETE /:project/agents/:agent/budgets/:capability     its owner or admin+ (not staff)
+ *   GET    /:project/agents/:agent/rules                    viewer+: the live standing rules (confirmations.js)
+ *   DELETE /:project/agents/:agent/rules/:rule             revoke: its owner, admin+ or staff
  *   GET    /:project/quotas                                 viewer+
  *   PUT    /:project/quotas/:capability { limit, window, unit }  staff
  *   DELETE /:project/quotas/:capability                     staff
@@ -59,11 +65,16 @@ const { http } = require('openvibe-contracts');
 const { verifySession } = require('../auth/session');
 const store = require('./store');
 const agents = require('./agents');
+const confirmations = require('./confirmations');
 const policy = require('./policy');
 const tokens = require('./tokens');
 const usage = require('./usage');
 
-function router() {
+/**
+ * The base of a user API: problems with request ids, JSON bodies, private no-store, and Bearer Network user tokens
+ * only (req.actor). Shared with /api/v1/confirmations (confirmations.js).
+ */
+function userApi() {
     const r = express.Router();
     r.use(http.middleware());
     r.use(express.json({ limit: '64kb' }));
@@ -83,15 +94,30 @@ function router() {
         try { req.actor = await store.actorOf(db, out.user); } catch (err) { return send(req, res, err); }
         next();
     });
+    return r;
+}
 
+/** handle(fn, status): fn(db, actor, req, { ctx, settings }) → JSON body, or 204 for undefined; errors as problems. */
+function handler() {
     const ctxOf = (req) => ({ ctx: req.ov, settings: policy.settings(req.app.locals.config) });
-    const handle = (fn, status = 200) => async (req, res) => {
+    return (fn, status = 200) => async (req, res) => {
         try {
             const out = await fn(req.app.locals.db, req.actor, req, ctxOf(req));
             if (out === undefined) return res.status(204).end();
             res.status(status).json(out);
         } catch (err) { send(req, res, err); }
     };
+}
+
+/** Malformed JSON and other body errors as problems too. */
+function finish(r) {
+    r.use((err, req, res, _next) => send(req, res, err));
+    return r;
+}
+
+function router() {
+    const r = userApi();
+    const handle = handler();
 
     r.get('/catalog', (req, res) => res.json({
         capabilities: policy.grantableCatalog(),
@@ -142,6 +168,11 @@ function router() {
     r.get('/:project/agents/:agent/grants', handle(async (db, a, req, o) => ({ grants: await agents.listGrants(db, a, req.params.project, req.params.agent, o) })));
     r.put('/:project/agents/:agent/grants/:capability', handle(async (db, a, req, o) => await agents.putGrant(db, a, req.params.project, req.params.agent, req.params.capability, req.body || {}, o)));
     r.delete('/:project/agents/:agent/grants/:capability', handle(async (db, a, req, o) => await agents.deleteGrant(db, a, req.params.project, req.params.agent, req.params.capability, o)));
+    r.get('/:project/agents/:agent/budgets', handle(async (db, a, req) => ({ budgets: await agents.listBudgets(db, a, req.params.project, req.params.agent) })));
+    r.put('/:project/agents/:agent/budgets/:capability', handle(async (db, a, req, o) => await agents.setBudget(db, a, req.params.project, req.params.agent, req.params.capability, req.body || {}, o)));
+    r.delete('/:project/agents/:agent/budgets/:capability', handle(async (db, a, req, o) => await agents.deleteBudget(db, a, req.params.project, req.params.agent, req.params.capability, o)));
+    r.get('/:project/agents/:agent/rules', handle(async (db, a, req) => ({ rules: await confirmations.listRules(db, a, req.params.project, req.params.agent) })));
+    r.delete('/:project/agents/:agent/rules/:rule', handle(async (db, a, req, o) => await confirmations.revokeRule(db, a, req.params.project, req.params.agent, req.params.rule, o)));
 
     r.get('/:project/quotas', handle(async (db, a, req) => ({ quotas: await store.listQuotas(db, a, req.params.project), note: 'quotas are enforced by the service that owns each capability; Network records and exposes them' })));
     r.put('/:project/quotas/:capability', handle(async (db, a, req, o) => await store.setQuota(db, a, req.params.project, req.params.capability, req.body || {}, o)));
@@ -163,9 +194,7 @@ function router() {
         privateKey: req.app.locals.privateKey, issuer: req.app.locals.config.jwt.issuer, ctx: o.ctx,
     }), 201));
 
-    // Malformed JSON and other body errors as problems too.
-    r.use((err, req, res, _next) => send(req, res, err));
-    return r;
+    return finish(r);
 }
 
 function send(req, res, err) {
@@ -177,4 +206,4 @@ function send(req, res, err) {
     return http.sendProblem(res, 500, 'internal.error', { detail: 'unexpected error', ctx: req.ov });
 }
 
-module.exports = { router };
+module.exports = { router, userApi, handler, finish };
