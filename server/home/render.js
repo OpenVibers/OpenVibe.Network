@@ -173,12 +173,32 @@ function sendHome(req, res) {
     res.send(page.html);
 }
 
+const llmsSummary = () => `OpenVibe is an open source, community-run network of sites that share one account: ${OPEN.map((site) => site.name.toLowerCase()).join(', ')}.`;
+
 function llmsTxt() {
     const { catalog } = toolsCatalog.peek();
-    return seo.llmsTxt({ name: 'OpenVibe Network', summary: `OpenVibe is an open source, community-run network of sites that share one account: ${OPEN.map((site) => site.name.toLowerCase()).join(', ')}.`,
+    return seo.llmsTxt({ name: 'OpenVibe Network', summary: llmsSummary(),
         sections: [{ title: 'Sites', links: OPEN.map((site) => ({ title: siteName(site), url: `https://${site.host}/`, note: site.what })) },
             { title: 'Tool families', links: catalog.families.filter(f => f.url).map(f => ({ title: f.name, url: f.path ? 'https://openvibe.tools' + f.path : f.url, note: f.tagline })) },
             { title: 'Machine-readable', links: [{ title: 'Tool catalog (JSON)', url: 'https://openvibe.tools/api/catalog.json' }, { title: 'Tools llms.txt', url: 'https://openvibe.tools/llms.txt' }, { title: 'Tool domains (JSON)', url: 'https://openvibe.network/api/domains' }] }].filter((section) => section.links.length) });
 }
 
-module.exports = { sendHome, render, llmsTxt, INTENTS };
+// /llms-full.txt: the public pages the sitemap lists (server/seo/routes.js PAGES), each with its text.
+const LLMS_PAGE_TEXT = {
+    '/': () => ['One OpenVibe account signs you in on every site:', ...OPEN.map((site) => `- ${siteName(site)} (https://${site.host}/): ${site.what}`)].join('\n'),
+    '/status': () => 'Observed status of each OpenVibe service: readiness, release and when it was last checked.',
+    '/updates': () => "Every change deployed to the OpenVibe network, newest first: each site's commits as they ship, and the Patch notes posts that gather them.",
+    '/terms': () => 'The rules for using OpenVibe.Network, in plain language.',
+    '/privacy': () => 'What OpenVibe.Network collects, why, and the choices you have.',
+    '/dmca': () => 'How to report copyright infringement on OpenVibe.Network, and how to respond to a report.',
+};
+const LLMS_PAGE_TITLE = { '/': 'OpenVibe.Network', '/status': 'Status', '/updates': 'Updates', '/terms': 'Terms of Service', '/privacy': 'Privacy Policy', '/dmca': 'DMCA' };
+const LLMS_FULL_MAX_BYTES = 512 * 1024;
+
+function llmsFullTxt({ baseUrl = 'https://openvibe.network' } = {}) {
+    const pages = require('../seo/routes').PAGES.filter((page) => LLMS_PAGE_TEXT[page.path])
+        .map((page) => ({ title: LLMS_PAGE_TITLE[page.path], url: page.path, text: LLMS_PAGE_TEXT[page.path]() }));
+    return seo.llmsFull({ site: 'OpenVibe Network', summary: llmsSummary(), base: baseUrl, maxBytes: LLMS_FULL_MAX_BYTES, sections: [{ title: 'Pages', pages }] });
+}
+
+module.exports = { sendHome, render, llmsTxt, llmsFullTxt, LLMS_FULL_MAX_BYTES, INTENTS };
