@@ -190,7 +190,8 @@ for (const [id, name] of PEOPLE) T[name] = jwt.sign({ sub: id, id }, keys.privat
 
         // ── The service cancels a pending one ──
         const c6 = await ask(bot);
-        assert.strictEqual(await confirmations.cancelFor(db, { agentId: bot, capability: 'media.object.delete', reason: 'service', actor: 'service:openvibe.media' }), 2, 'c6 and the approved-unused c4');
+        assert.strictEqual(await confirmations.cancelFor(db, { agentId: bot, capability: 'media.object.delete', reason: 'service', actor: 'service:openvibe.media' }), 1, 'c6 only: the approved-unused c4 is past expiry, so already expired');
+        assert.deepStrictEqual([(await row(c4.id)).state, (await row(c4.id)).cancel_reason], ['approved', null]);
         assert.strictEqual(valid(ok(await inbox('owner', 'GET', `/${c6.id}`)).confirmation).state, 'cancelled');
         await rejects(spend(c6), 409, 'confirmation.cancelled');
         refused(await inbox('owner', 'POST', `/${c6.id}/approve`, {}), 409, 'confirmation.not_pending');
@@ -418,13 +419,16 @@ for (const [id, name] of PEOPLE) T[name] = jwt.sign({ sub: id, id }, keys.privat
         assert.deepStrictEqual([i6.status, i6.body.confirmation.state, i6.body.confirmation.standing_rule], [200, 'approved', 'always']);
         ok(await internal('media', 'POST', `/${i6.body.confirmation.id}/consume`, { request_digest: D }));
 
-        // ── Audits: every transition, never the summary or the details ──
+        // ── Audits: every transition, never the summary or the details; each carries its network.confirmation.changed@1
+        //    event (slice 9) except a standing rule's approval, which the `created` event already reports ──
         const audits = await db.prepare("SELECT action, actor, detail, event FROM dev_audit WHERE action LIKE 'confirmation.%' ORDER BY id").all();
         assert.deepStrictEqual([...new Set(audits.map((a) => a.action))].sort(),
             ['confirmation.approved', 'confirmation.cancelled', 'confirmation.created', 'confirmation.denied', 'confirmation.expired', 'confirmation.used']);
         for (const a of audits) {
-            assert.strictEqual(a.event, null);
+            if (/^rule:/.test(a.actor)) assert.strictEqual(a.event, null);
+            else assert.ok(validate('network.confirmation.changed@1', JSON.parse(a.event).payload).valid, a.event);
             assert.ok(!a.detail.includes('beach-secret') && !a.detail.includes('private-detail-text'), a.detail);
+            assert.ok(!String(a.event).includes('beach-secret') && !String(a.event).includes('private-detail-text'), a.event);
             const d = JSON.parse(a.detail);
             assert.ok(d.agent && d.capability && !('summary' in d) && !('details' in d));
         }

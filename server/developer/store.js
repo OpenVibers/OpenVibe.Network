@@ -47,7 +47,8 @@ function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T2); no
 
 /**
  * Append one audit row. `actor` is a subject string ('user:usr_…', 'system:network').
- * With `event` = { type, subject: { type, id }, payload }, the row also carries an event envelope.
+ * With `event` = { type, subject: { type, id }, payload, actor?, on_behalf_of? }, the row also carries an event
+ * envelope; its actor is the row's user, else the system, unless `event.actor` (a SubjectRef) says otherwise.
  * `detail` must never contain secret material (callers pass ids, hints and names only).
  */
 async function audit(db, { projectId, actor, action, target, detail, ctx, event }) {
@@ -57,7 +58,8 @@ async function audit(db, { projectId, actor, action, target, detail, ctx, event 
         envelope = {
             event_id: ids.newId('event'),
             event_type: event.type, version: 1, source: 'network',
-            actor: atype === 'user' ? { type: 'user', id: aid } : { type: 'system', id: 'network' },
+            actor: event.actor || (atype === 'user' ? { type: 'user', id: aid } : { type: 'system', id: 'network' }),
+            ...(event.on_behalf_of ? { on_behalf_of: event.on_behalf_of } : {}),
             timestamp: nowIso(), visibility: 'internal', subject: event.subject, payload: event.payload || {},
         };
         if (ctx && /^[0-9a-f]{32}$/.test(ctx.traceId || '')) envelope.trace_id = ctx.traceId;

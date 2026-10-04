@@ -308,10 +308,15 @@ function sameSecret(a, b) {
  * grant_type=client_credentials. Returns { status, body } (OAuth error shapes on failure).
  * `scope` (space-separated capability ids) narrows the token; omitted = every grant for the audience.
  */
-async function issueToken(db, { clientId, clientSecret, audience, scope, privateKey, issuer }) {
+async function issueToken(db, { clientId, clientSecret, audience, scope, privateKey, issuer, agent, settings, ctx }) {
     const client = await db.prepare('SELECT client_id, client_secret FROM oauth_clients WHERE client_id = ?').get(String(clientId || ''));
     if (!client || !sameSecret(client.client_secret, clientSecret)) return { status: 401, body: { error: 'invalid_client', error_description: 'Invalid client credentials' } };
     if (!/^[a-z][a-z0-9-]{1,39}$/.test(client.client_id)) return { status: 400, body: { error: 'unauthorized_client', error_description: 'client id is not a service principal' } };
+    // The service hosts an agent (plan T2 WS-Z2 slice 8): the agent's token, bounded by this service's own grants.
+    if (agent !== undefined) {
+        return await require('../developer/agent-tokens').mint(db, { agentId: agent, host: { kind: 'service', clientId: client.client_id }, audience, scope, privateKey, issuer,
+            settings: settings || require('../developer/policy').settings(), ctx });
+    }
     const aud = String(audience || '').trim();
     if (!aud) return { status: 400, body: { error: 'invalid_request', error_description: 'audience is required' } };
     const grants = await grantsFor(db, client.client_id, aud);
@@ -384,6 +389,12 @@ function guard(capability, { ownApp, namespace } = {}) {
         }
         check(req, res, () => {
             const principal = req.principal;
+            // Agent tokens (plan T2 WS-Z2 slice 8) act at the owning services; no Network route takes one yet.
+            if (principal && /^agent:/.test(String(principal.sub))) {
+                audits.push(record({ req, capability, principal, allowed: false, code: 'capability.denied' }));
+                require('../observability').principalDenied({ req, code: 'capability.denied' });
+                return http.sendProblem(res, 403, 'capability.denied', { detail: 'agent tokens are not accepted here', ctx: req.ov });
+            }
             // Developer sandbox tokens (env: sandbox) are refused unless Network opted in as an audience
             // (DEV_SANDBOX_AUDIENCES); the signature was verified by check() above.
             if (principal) {

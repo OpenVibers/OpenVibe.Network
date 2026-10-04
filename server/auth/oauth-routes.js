@@ -12,6 +12,7 @@ const subjects = require('../identity/subjects');
 const { staffClaims } = require('./staff-claims');
 const principals = require('../identity/principals');
 const devTokens = require('../developer/tokens');
+const devPolicy = require('../developer/policy');
 const oidc = require('./oidc');
 const refreshTokens = require('./refresh-tokens');
 const router = express.Router();
@@ -220,7 +221,7 @@ router.post('/token', async (req, res) => {
 
     // Developer apps (app_<ULID>): client_credentials or authorization_code + PKCE, own credential store.
     if (devTokens.isAppClient(client_id)) {
-        const out = await devTokens.handleTokenRequest(db, req.body, { privateKey: req.app.locals.privateKey, issuer: config.jwt.issuer, config });
+        const out = await devTokens.handleTokenRequest(db, req.body, { privateKey: req.app.locals.privateKey, issuer: config.jwt.issuer, config, ctx: req.ov });
         res.set('Cache-Control', 'no-store');
         return res.status(out.status).json(out.body);
     }
@@ -230,6 +231,7 @@ router.post('/token', async (req, res) => {
     if (grant_type === 'client_credentials') {
         // A paired machine (node principal, docs/t2-cells-and-node-principal.md section 4.3): its own credential store.
         if (/^nod_/.test(client_id)) {
+            if (req.body.agent !== undefined) return res.status(400).json({ error: 'invalid_grant', error_description: 'nodes host no agents' });
             const out = await require('../registry/node-principals').issueNodeToken(db, {
                 clientId: client_id, clientSecret: client_secret, audience: req.body.audience,
                 privateKey: req.app.locals.privateKey, issuer: config.jwt.issuer,
@@ -239,6 +241,7 @@ router.post('/token', async (req, res) => {
         const out = await principals.issueToken(db, {
             clientId: client_id, clientSecret: client_secret, audience: req.body.audience, scope: req.body.scope,
             privateKey: req.app.locals.privateKey, issuer: config.jwt.issuer,
+            agent: req.body.agent, settings: devPolicy.settings(config), ctx: req.ov,
         });
         res.set('Cache-Control', 'no-store');
         return res.status(out.status).json(out.body);

@@ -5,8 +5,9 @@ merge `4ec36e1`) and **lane B step 3 built** (`GET /internal/projects/:project_i
 only: `server/internal/routes.js:490`; PR #28, merge `e422342`) and **slice 3 built** (delegated grants and modes:
 `migrations/0017_agent_grants.sql`, the ceiling in `server/developer/agents.js`), **slices 4–5 built** (confirmations,
 owner side, and budgets: `0018`, `0019`) and **slices 6–7 built** (`GET /internal/agents/:agent` and the four
-`/internal/confirmations` routes, `server/internal/routes.js`, with the pin at `openvibe-contracts` v0.90.0); slices 8–9
-are still unbuilt (design, §8).
+`/internal/confirmations` routes, `server/internal/routes.js`, with the pin at `openvibe-contracts` v0.90.0) and **slices
+8–9 built** (agent tokens, `server/developer/agent-tokens.js`; `network.confirmation.changed@1` decision events from
+`server/developer/confirmations.js`); the owner notification of slice 9 still waits on an openvibe-shared type (§8).
 Plan T2, "Projects and grants: projects as the ownership boundary for every resource;
 `agt_` principals, delegated grants with modes, sensitive capabilities, confirmation requests, budgets (WS-Z2)".
 Pinned version: `openvibe-contracts` **v0.90.0** (`package.json:33`, since slice 7); every contract claim below was
@@ -348,7 +349,18 @@ An agent token never carries a namespace its host's own token for that audience 
 namespaces as well as capabilities.
 
 **Fail closed by construction:** a confirm-mode capability is never in `cap`. A receiver that does not know agents sees
-only `cap`, so it can never perform a sensitive action without a confirmation; it simply refuses it.
+only `cap`, so it can never perform a sensitive action without a confirmation; it simply refuses it. Issuance consumes no
+confirmation: `cap_confirm` says the agent may *ask*, and each use is one approval the owning service spends once
+(`consume`, §5 step 4, under the agent row's `FOR UPDATE`).
+
+**Refusals** (built, slice 8; OAuth errors, after the host's own credentials passed): `400 invalid_grant` (the host
+binding above, one message, also an unknown or malformed `agt_` id), `400 invalid_request` (no `audience`), `400
+invalid_target` (a sandbox agent at an audience not in `DEV_SANDBOX_AUDIENCES`), `400 invalid_scope` (a `scope` naming a
+capability the agent does not hold now — no grant, revoked or expired, outside the ceiling, budget `0` — or nothing held
+at the audience), `400 unsupported_grant_type` (`agent` with anything but `client_credentials`); a node client id never
+hosts an agent (`invalid_grant`). Every issuance and refusal is a `dev_audit` row (`agent.token_issued` with audience,
+`cap`, `cap_confirm`, `jti`, expiry; `agent.token_refused` with the error and its internal reason), never a secret or the
+token. Network's own guard (`principals.guard`) answers `403 capability.denied` to an agent token on every route.
 
 ## 5. Auth rules
 
@@ -420,7 +432,7 @@ the digest. An agent cannot describe its own request to its owner.
 2. **Standing rule shortcut.** If a live rule covers (agent, capability) — `always`; `until` with `until_at` in the
    future; `session` with the same `session_id` and `until_at` in the future — the confirmation is created already
    `approved` (`decided_by = 'rule:<id>'`, `rule_id` set, `200`). Every sensitive use still leaves a row.
-3. **Decide.** The owner sees it in the inbox (and, once slice 9 lands, a notification). `approve` / `deny` move
+3. **Decide.** The owner sees it in the inbox (and, once openvibe-shared has its type, a notification). `approve` / `deny` move
    `pending` → `approved` / `denied` and set `decided_at`. Anything else is `409 confirmation.not_pending`; a pending row
    past `expires_at` is `409 confirmation.expired` (and is marked expired). Approving with `session`, `until` (`until`
    required, at most 30 days) or `always` also inserts a `dev_standing_rules` row; `session` lasts at most 24 hours and
@@ -455,7 +467,15 @@ the digest. An agent cannot describe its own request to its owner.
    or delegated-grant `expires_at` passing before its sweep, a capability leaving the catalog on upgrade).
 
 Every transition writes a `dev_audit` row (`confirmation.created|approved|denied|expired|cancelled|used`, project id,
-agent id, capability; never `summary` or `details`, which may hold message text).
+agent id, capability; never `summary` or `details`, which may hold message text) carrying a
+`network.confirmation.changed@1` event (built, slice 9) in the same transaction, so the outbox relays it exactly when the
+change commits. Each transition is a conditional `UPDATE` that one writer wins, so each (confirmation, change) is emitted
+once: a second sweep, a repeated cancel or a lost race writes nothing. The payload is the contract's (ids, capability,
+audience, state, change, `standing_rule`/`rule_id`, `cancel_reason`, `expires_at` on created and approved,
+`changed_at`), never the summary, details, request digest or a label; the envelope's actor is the deciding owner for
+approve/deny and the system otherwise, `on_behalf_of` the owner. A cascade skips rows already past `expires_at`, and
+`cancel` refuses them (`409 confirmation.not_pending`): an approved but expired confirmation is reported `expired` and
+stays as it is.
 
 ### Budgets: who checks what
 
@@ -587,15 +607,18 @@ and agree).
    `server/developer/confirmations.js`, mounted under the guard in `server/internal/routes.js`), no `DEFAULT_GRANTS`
    row yet (none until a receiver ships), internal cases in `test/confirmations.test.js`. Checks: `npm test`,
    `npm run test:pg`, `node scripts/contracts-drift.js`.
-8. **Agent tokens** — *blocked on Contracts publishing the agent claims (gap 1).* The `agent` branch in
+8. **Agent tokens** (built). `server/developer/agent-tokens.js` (`mint`), the `agent` branch in
    `server/developer/tokens.js` and `principals.issueToken`, `cap`/`cap_confirm` split, `test/agent-tokens.test.js`.
-   Network's own guard keeps refusing agent tokens on its routes until a route needs them. Checks: `npm test`,
+   Network's own guard refuses agent tokens on its routes until a route needs them. No migration. Checks: `npm test`,
    `npm run test:pg`.
-9. **Decision events and the owner notification** — *blocked on the `network.confirmation.changed@1` payload and an
-   openvibe-shared notification type.* Audit rows gain `event`; `notification-service.js` notifies the owner on create
-   (payload rules of `docs/notification-digest.md`: never the summary). Checks: `npm test`, `npm run test:pg`.
+9. **Decision events** (built) **and the owner notification** (*still blocked on an openvibe-shared notification
+   type*). Audit rows carry `network.confirmation.changed@1` (`store.audit` takes the envelope's `actor` and
+   `on_behalf_of`), `test/confirmation-events.test.js`. Still to do: `notification-service.js` notifies the owner on
+   create (payload rules of `docs/notification-digest.md`: never the summary). No migration. Checks: `npm test`,
+   `npm run test:pg`.
 
-Slices 2–7 are built, in this order (2–5 each added the next migration number; 6–7 need none); 8–9 wait only on releases outside Network and are flagged by `scripts/contracts-drift.js`.
+Slices 2–9 are built, in this order (2–5 each added the next migration number; 6–9 need none); only the slice-9 owner
+notification waits on a release outside Network.
 
 ## 9. Unresolved
 

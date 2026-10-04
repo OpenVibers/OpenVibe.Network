@@ -19,6 +19,8 @@
  * (DEV_SANDBOX_AUDIENCES); receivers also refuse env=sandbox unless they opted in.
  * No refresh tokens: a revoked credential or app stops new tokens at once, and issued tokens end
  * within their 5-minute lifetime.
+ * With `agent=agt_…` (client_credentials only) the app asks for a token of an agent it hosts instead
+ * (./agent-tokens.js, plan T2 WS-Z2 slice 8); without it, app tokens are unchanged.
  */
 const crypto = require('crypto');
 const { serviceAuth, assertValid } = require('openvibe-contracts');
@@ -155,15 +157,20 @@ async function authenticate(db, app, clientSecret) {
 }
 
 /** /oauth/token for an app client id. Returns { status, body }. */
-async function handleTokenRequest(db, body, { privateKey, issuer, config }) {
+async function handleTokenRequest(db, body, { privateKey, issuer, config, ctx }) {
     const settings = policy.settings(config);
     const found = await usableApp(db, body.client_id);
     if (found.error) return found.error;
     const { app, project } = found;
+    if (body.agent !== undefined && body.grant_type !== 'client_credentials') return oauthError(400, 'unsupported_grant_type', 'agent tokens use client_credentials');
     if (body.grant_type === 'client_credentials') {
         if (app.client_type !== 'confidential') return oauthError(400, 'unauthorized_client', 'public apps use authorization_code with PKCE');
         const bad = await authenticate(db, app, body.client_secret);
         if (bad) return bad;
+        // The app hosts an agent (slice 8): its token, not the app's.
+        if (body.agent !== undefined) {
+            return await require('./agent-tokens').mint(db, { agentId: body.agent, host: { kind: 'app', app }, audience: body.audience, scope: body.scope, privateKey, issuer, settings, ctx });
+        }
         return await mint({ app, project, audience: body.audience, scope: body.scope, privateKey, issuer, settings, db });
     }
     if (body.grant_type === 'authorization_code') {
