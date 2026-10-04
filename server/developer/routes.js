@@ -42,6 +42,9 @@ const cache = require('openvibe-shared/cache-policy');
  *   POST   /:project/agents/:agent/pause                    its owner, admin+ or staff
  *   POST   /:project/agents/:agent/resume                   its owner or admin+ (not staff)
  *   DELETE /:project/agents/:agent                          revoke, final: its owner, admin+ or staff
+ *   GET    /:project/agents/:agent/grants                   viewer+: delegated grants with effective_mode and within_host
+ *   PUT    /:project/agents/:agent/grants/:capability { mode, expires_at? }  its owner only, inside the host's ceiling
+ *   DELETE /:project/agents/:agent/grants/:capability      revoke: its owner, admin+ or staff
  *   GET    /:project/quotas                                 viewer+
  *   PUT    /:project/quotas/:capability { limit, window, unit }  staff
  *   DELETE /:project/quotas/:capability                     staff
@@ -136,6 +139,9 @@ function router() {
     r.post('/:project/agents/:agent/pause', handle(async (db, a, req, o) => await agents.changeStatus(db, a, req.params.project, req.params.agent, 'pause', o)));
     r.post('/:project/agents/:agent/resume', handle(async (db, a, req, o) => await agents.changeStatus(db, a, req.params.project, req.params.agent, 'resume', o)));
     r.delete('/:project/agents/:agent', handle(async (db, a, req, o) => await agents.changeStatus(db, a, req.params.project, req.params.agent, 'revoke', o)));
+    r.get('/:project/agents/:agent/grants', handle(async (db, a, req, o) => ({ grants: await agents.listGrants(db, a, req.params.project, req.params.agent, o) })));
+    r.put('/:project/agents/:agent/grants/:capability', handle(async (db, a, req, o) => await agents.putGrant(db, a, req.params.project, req.params.agent, req.params.capability, req.body || {}, o)));
+    r.delete('/:project/agents/:agent/grants/:capability', handle(async (db, a, req, o) => await agents.deleteGrant(db, a, req.params.project, req.params.agent, req.params.capability, o)));
 
     r.get('/:project/quotas', handle(async (db, a, req) => ({ quotas: await store.listQuotas(db, a, req.params.project), note: 'quotas are enforced by the service that owns each capability; Network records and exposes them' })));
     r.put('/:project/quotas/:capability', handle(async (db, a, req, o) => await store.setQuota(db, a, req.params.project, req.params.capability, req.body || {}, o)));
