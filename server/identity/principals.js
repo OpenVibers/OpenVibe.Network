@@ -183,6 +183,11 @@ const DEFAULT_GRANTS = [
     ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
     // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
     ['search', 'events.subscription.manage', 'openvibe.events', []],
+    // Plan T9: Search's saved-search notifier pushes one notification per new match through Network
+    // (server/network-push.js). It resolves the saved search's owner (a usr_ subject) to Network's user id
+    // first, then pushes as app 'search'.
+    ['search', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['search', 'network.notifications.push', SELF_AUDIENCE, ['search']],
     ['live', 'events.subscription.manage', 'openvibe.events', []],
     ['live', 'events.event.read', 'openvibe.events', []],
     // VIP gates in products: Chat's subscriber badge, Community's and Blog's members-only content, Live's own checks.
