@@ -38,7 +38,7 @@ const GOOD = [
     ['https://openvibe.host/dashboard', 'https://openvibe.host/dashboard'],
 ];
 
-for (const [file, name] of [['login.html', 'safeReturnUrl'], ['sso-fanout.html', 'safeNext']]) {
+for (const [file, name] of [['js/login.js', 'safeReturnUrl'], ['sso-fanout.html', 'safeNext']]) {
     const { fn, zones, userZones } = pageGuard(file, name, 'https://openvibe.network');
     assert.deepStrictEqual([...zones].sort(), [...OWNED_ZONES].sort(), `${file}: owned zones match server/auth/sso-owned.js`);
     assert.deepStrictEqual([...userZones].sort(), [...USER_CONTENT_ZONES].sort(), `${file}: user-content zones match server/auth/sso-owned.js`);
