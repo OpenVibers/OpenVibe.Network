@@ -184,7 +184,7 @@ async function notifyOwner(db, { owner, name }, summary) {
         const u = await db.prepare('SELECT id FROM users WHERE subject_id = ?').get(owner);
         if (!u) return;
         const message = `${String(name || 'An agent').slice(0, 80)}: ${summary}`.slice(0, 200);
-        await notifier.create({ user_id: u.id, type: 'CONFIRMATION_REQUESTED', title: 'Approval needed', message, url: 'https://openvibe.network/my', service: 'network' });
+        await notifier.create({ user_id: u.id, type: 'CONFIRMATION_REQUESTED', title: 'Approval needed', message, url: 'https://openvibe.network/my#approvals', service: 'network' });
     } catch (err) {
         console.warn('[Confirmations] owner notify failed:', err.message);
     }
