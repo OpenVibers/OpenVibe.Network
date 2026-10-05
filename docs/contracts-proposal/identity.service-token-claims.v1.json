@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openvibe.network/contracts/identity/service-token-claims.v1.json",
+  "_note": "shipped in openvibe-contracts v0.89.0",
   "title": "ServiceTokenClaims",
   "description": "Claims of a short-lived RS256 client-credentials token issued by OpenVibe.Network to a service, app, mod, node or agent principal. Replaces X-Internal-Key. App tokens (actor_type app) also carry project_id and env; receivers refuse env=sandbox unless they opted in. Agent tokens (actor_type agent; roadmap WS-Z2, docs/t2-projects-and-grants.md) are minted for an agent by its host and also carry project_id, env and on_behalf_of (the owner), and act (the host).",
   "type": "object",
