@@ -88,10 +88,9 @@ function rightNow(a) {
 <div class="now-col"><h3>From the blog</h3>${list(a.posts, (p) => `<li><a href="${esc(p.url)}"><b>${esc(p.title)}</b>${p.summary ? `<small>${esc(p.summary)}</small>` : ''}</a></li>`, 'No posts yet.')}<a class="now-more" href="https://openvibe.blog/">OpenVibe.Blog →</a></div></div></section>`;
 }
 
-// The kit (openvibe-shared/showcase, /shared/showcase.css) owns the sections and cards; this is only what it does not
-// draw: the "Right now" columns, the tool and "Opening next" chips, and the shared icon styles.
+// The kit (openvibe-shared/showcase, /shared/showcase.css) owns the sections, cards and icon styles; this is only what
+// it does not draw: the "Right now" columns and the tool and "Opening next" chips.
 const CSS = `
-.sc-ic:has(.sc-ovi){background:none}.sc-ic .sc-ovi{--ovi-size:40px!important}
 #developers{margin-bottom:56px}#developers .sc-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 .home-chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;padding:0;list-style:none}
 .home-chips>li>a{display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 7px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));font-size:13.5px;font-weight:600;color:inherit;text-decoration:none}
