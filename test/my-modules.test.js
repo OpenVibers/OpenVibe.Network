@@ -39,5 +39,15 @@ const approvals = fs.readFileSync(path.join(pub, 'js', 'my', 'approvals.js'), 'u
 assert.ok(!/innerHTML|insertAdjacentHTML/.test(approvals), 'approvals.js never parses agent text as HTML');
 for (const name of ['loadApprovals', 'decideApproval', 'refreshApprovalsBadge']) assert.strictEqual(owner.get(name), 'approvals.js', `${name} lives in approvals.js`);
 assert.ok(fs.readFileSync(path.join(pub, 'js', 'my', 'boot.js'), 'utf8').includes('refreshApprovalsBadge()'), 'boot.js shows the waiting count on the tab');
+// The host is a SubjectRef object: the row names its id, never "[object Object]"; an anonymous session calls no API.
+{
+    const vm = require('vm');
+    const sandbox = { document: { createElement: () => ({}) }, console };
+    vm.createContext(sandbox); vm.runInContext(approvals, sandbox);
+    assert.strictEqual(sandbox.approvalsHost({ host: { type: 'app', id: 'app_01' } }), 'app_01');
+    assert.strictEqual(sandbox.approvalsHost({ host: 'node-1' }), 'node-1');
+    assert.strictEqual(sandbox.approvalsHost({}), '');
+    assert.ok(/isAnonSession\(\)/.test(approvals.slice(approvals.indexOf('async function loadApprovals'))), 'loadApprovals checks for an anonymous session first');
+}
 
 console.log('my-modules: all checks passed');

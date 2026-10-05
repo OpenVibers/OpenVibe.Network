@@ -27,6 +27,13 @@ function approvalsLeft(iso) {
     return m < 60 ? `${m} min left` : `${Math.floor(m / 60)} h ${m % 60} min left`;
 }
 
+// The agent's host is a SubjectRef ({ type: 'app', id: 'app_…' }) from agentContext; a string is taken as is.
+function approvalsHost(agent) {
+    const h = agent && agent.host;
+    if (!h) return '';
+    return typeof h === 'string' ? h : String(h.id || h.type || '');
+}
+
 function setApprovalsBadge(n) {
     const btn = [...document.querySelectorAll('.section-tabs button')].find((b) => b.getAttribute('onclick')?.includes("'approvals'"));
     if (!btn) return;
@@ -61,7 +68,7 @@ function approvalRow(c) {
     const row = approvalsEl('div', { class: 'approval', 'data-id': c.id });
     const meta = approvalsEl('div', { class: 'approval-meta' },
         approvalsEl('span', { class: 'approval-who', text: who }),
-        agent && agent.host ? approvalsEl('span', { class: 'approval-host', text: ` on ${agent.host}` }) : null,
+        approvalsHost(agent) ? approvalsEl('span', { class: 'approval-host', text: ` on ${approvalsHost(agent)}` }) : null,
         approvalsEl('span', { class: 'approval-sep', text: ' · ' }),
         approvalsEl('code', { class: 'approval-cap', text: c.capability }),
         approvalsEl('span', { class: 'approval-sep', text: ' · ' }),
@@ -96,6 +103,11 @@ async function decideApproval(id, action, row) {
 
 async function loadApprovals() {
     if (approvalsState.loading) return;
+    // An anonymous session has no confirmations to read (the API needs a full account): say so, call nothing.
+    if (typeof isAnonSession === 'function' && isAnonSession()) {
+        document.getElementById('approvals-list')?.replaceChildren(approvalsEl('p', { class: 'approvals-empty', text: 'Approvals are only available once you sign in with a full OpenVibe account.' }));
+        return;
+    }
     approvalsState.loading = true;
     const list = document.getElementById('approvals-list');
     if (list && !approvalsState.items.length) list.replaceChildren(approvalsEl('p', { class: 'approvals-empty', text: 'Loading…' }));
