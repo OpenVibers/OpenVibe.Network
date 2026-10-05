@@ -21,7 +21,9 @@ const t = await createTestDb({ migrations: store === 'pg' ? null : MIGRATIONS, s
 if (t.directUrl) {
     const { createDb } = require('openvibe-sdk/db');
     const owner = createDb({ url: t.directUrl, service: 'network-test-owner', max: 1, queryTimeoutMs: 120000 });
-    try { await owner.migrate({ dir: MIGRATIONS }); } finally { await owner.close(); }
+    // A failed migration drops this process's schema and roles, as createTestDb does when its own migrate fails.
+    try { await owner.migrate({ dir: MIGRATIONS }); } catch (e) { await owner.close(); await t.close(); throw e; }
+    await owner.close();
 }
 // Tests insert rows with small explicit ids. A PostgreSQL identity would continue after them, so generated ids
 // are set to start at 100000 here, clear of every id a test names.
