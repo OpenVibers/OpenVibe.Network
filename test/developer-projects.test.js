@@ -269,7 +269,7 @@ const secretsSeen = [];
     assert.strictEqual(c.status, 400, 'confirm without PKCE refused');
     c = await confirm('stranger', { code_challenge: challenge, code_challenge_method: 'S256' });
     assert.strictEqual(c.status, 403, 'sandbox apps are authorized only by project members');
-    const codeFor = async () => new URL((await confirm('dev', { code_challenge: challenge, code_challenge_method: 'S256' })).body.redirect).searchParams.get('code');
+    const codeFor = async (scope = 'media.object.upload') => new URL((await confirm('dev', { code_challenge: challenge, code_challenge_method: 'S256', scope })).body.redirect).searchParams.get('code');
     const exchange = (code, extra = {}) => token({ grant_type: 'authorization_code', client_id: B, code, redirect_uri: REDIRECT, audience: 'openvibe.media', ...extra });
     t = await cc(B, '');
     assert.strictEqual(t.body.error, 'unauthorized_client', 'public apps cannot use client_credentials');

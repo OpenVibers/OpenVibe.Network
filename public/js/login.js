@@ -12,15 +12,56 @@ let clientName = '';
 let clientHost = '';
 if (isOAuth) {
     fetch(`${API_BASE}/oauth/client-info?${new URLSearchParams({ client_id: params.get('client_id'), redirect_uri: params.get('redirect_uri'),
-        code_challenge: params.get('code_challenge') || '', code_challenge_method: params.get('code_challenge_method') || '' })}`, { credentials: 'omit' })
+        code_challenge: params.get('code_challenge') || '', code_challenge_method: params.get('code_challenge_method') || '',
+        scope: params.get('scope') || '' })}`, { credentials: 'omit' })
         .then(r => (r.ok ? r.json() : null))
         .then((info) => {
             if (!info || !info.name) return;
             clientName = info.third_party ? `${info.name} (third-party app)` : info.name;
             clientHost = info.third_party ? info.redirect_host || '' : '';
             renderChooserSubtitle();
+            renderConsent(info);
         })
         .catch(() => {});
+}
+
+/**
+ * The consent screen (plan T2, docs/t2-projects-and-grants.md §9): what a third-party app may do if you continue,
+ * from the Network's own answer (the capability catalog's names and descriptions, sensitive ones marked), never from
+ * this page's URL. A request that names nothing gets nothing: the app only learns which account you are. Built from
+ * DOM nodes: names and descriptions come from the catalog, the app's name from its developer.
+ */
+function renderConsent(info) {
+    const box = document.getElementById('oauth-consent');
+    if (!box || !info || !info.third_party) return;
+    const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+    box.replaceChildren();
+    const head = el('p', 'consent-head');
+    head.append(el('b', null, info.name), ' ');
+    if (info.redirect_host) head.append(el('span', 'consent-host', `(${info.redirect_host})`), ' ');
+    const caps = Array.isArray(info.capabilities) ? info.capabilities : [];
+    head.append(caps.length ? 'is a third-party app. If you continue, it can:' : 'is a third-party app.');
+    box.append(head);
+    if (caps.length) {
+        const list = el('ul');
+        for (const c of caps) {
+            const li = el('li', c.sensitive ? 'sensitive' : null);
+            li.append(el('span', 'consent-name', c.name || c.id));
+            if (c.sensitive) li.append(el('span', 'consent-badge', 'Sensitive'));
+            if (c.description) li.append(el('small', null, c.description));
+            list.append(li);
+        }
+        box.append(list);
+    } else {
+        box.append(el('p', 'consent-none', 'It asks for nothing else: it will only learn which OpenVibe account you are.'));
+    }
+    const refused = Array.isArray(info.refused) ? info.refused : [];
+    if (refused.length) {
+        const p = el('p', 'consent-refused', 'It also asked for what it cannot be given, so it will not get: ');
+        refused.forEach((id, i) => { if (i) p.append(', '); p.append(el('code', null, id)); });
+        box.append(p);
+    }
+    box.hidden = false;
 }
 let oauthConfirmInFlight = false;
 

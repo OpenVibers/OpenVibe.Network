@@ -647,7 +647,14 @@ notification shipped with `openvibe-shared` v2.7.0 (`TYPES.CONFIRMATION_REQUESTE
   and revocation exist for, and if it proves too loose for the two app-grantable sensitive capabilities the narrower fix
   is to leave sensitive capabilities out of refreshed tokens (the person consents again), not the agent inbox. No
   contract delta: `cap_confirm` and the confirmation flow stay
-  agent-only in `identity.service-token-claims@1`, and Network builds nothing for apps here.
+  agent-only in `identity.service-token-claims@1`, and Network builds nothing for apps here. **The consent screen's
+  backend half is now built** (2026-10-04): `GET /oauth/client-info` with the authorize request's `scope` returns the
+  requested app-grantable ids with `capability@1`'s `description`/`sensitive` (`name` is the catalog id, `capability@1` having no display name) and the `refused` ids, and
+  `tokens.issueCode` stores an explicit consented set so an absent or empty `scope` consents to nothing — the code
+  carries an empty set and `handleTokenRequest` mints a token with `cap: []` (the person stays identified via
+  `on_behalf_of`); asking the token endpoint for an id outside the set is `invalid_scope`, and an app has no refresh
+  token to widen it. The sign-in page renders that list above every way of signing in (`public/js/login.js` renderConsent; `docs/developer-projects.md`, "Consent screen";
+  `test/consent-screen.test.js`).
 - **Tips' Chat delivery is a service grant, not an agent grant** (plan T5, 2026-10-04; Wave 9).
   `DEFAULT_GRANTS` gives `tips` `chat.message.send` and `chat.event.publish` on `openvibe.chat`, beside Live's
   own `chat.message.send` row, because Tips' chat adapter

@@ -59,7 +59,41 @@ function projectNamespaces(projectId) {
     return [projectId, `app.${projectId}.*`];
 }
 
-async function mint({ app, project, audience, scope, limit, onBehalfOf, privateKey, issuer, settings, db }) {
+/**
+ * The capability ids a requested `scope` consents to: the app-grantable ids, in the order requested,
+ * duplicates dropped. This is the explicit set `issueCode` stores on the code — an absent or empty
+ * scope consents to nothing — and the ceiling every token exchange narrows from.
+ */
+function consentedCapabilities(scope) {
+    const seen = new Set(); const out = [];
+    for (const id of String(scope || '').split(/\s+/).filter(Boolean)) {
+        if (seen.has(id)) continue;
+        seen.add(id);
+        if (policy.isGrantable(id)) out.push(id);
+    }
+    return out;
+}
+
+/**
+ * The consent screen's view of a requested scope. `capabilities` are the app-grantable ids with the
+ * catalog's metadata, in the order requested; `name` is the catalog id (capability@1 has no display
+ * name of its own). `refused` are the requested ids the screen cannot name because they are unknown
+ * or not grantable to apps — the same filter `issueCode` applies, so the screen lists exactly what a
+ * code from this request can carry. Nothing here reveals another app or a secret.
+ */
+function consentView(scope) {
+    const capabilities = []; const refused = []; const seen = new Set();
+    for (const id of String(scope || '').split(/\s+/).filter(Boolean)) {
+        if (seen.has(id)) continue;
+        seen.add(id);
+        const g = policy.grantability(id);
+        if (g.grantable) capabilities.push({ id, name: g.capability.id, description: g.capability.description || '', sensitive: !!g.capability.sensitive });
+        else refused.push(id);
+    }
+    return { capabilities, refused };
+}
+
+async function mint({ app, project, audience, scope, limit, onBehalfOf, privateKey, issuer, settings, db, allowEmpty }) {
     const aud = String(audience || '').trim();
     if (!aud || !/^[a-z0-9.-]+$/.test(aud)) return oauthError(400, 'invalid_request', 'audience is required');
     if (app.environment === 'sandbox' && !settings.sandboxAudiences.has(aud)) {
@@ -70,7 +104,10 @@ async function mint({ app, project, audience, scope, limit, onBehalfOf, privateK
     const missing = wanted ? wanted.filter(w => !held.includes(w)) : [];
     if (missing.length) return oauthError(400, 'invalid_scope', `not granted: ${missing.join(' ')}`);
     const cap = wanted || held;
-    if (!cap.length) return oauthError(400, 'invalid_scope', `no grants for audience ${aud}`);
+    // An authorization code that consented to nothing still mints an identifying token, with `cap: []`:
+    // the person is named (on_behalf_of) and the app can do nothing until it consents to a scope. Other
+    // grants (client_credentials) still refuse an empty set.
+    if (!cap.length && !allowEmpty) return oauthError(400, 'invalid_scope', `no grants for audience ${aud}`);
     const now = Math.floor(Date.now() / 1000);
     const claims = {
         iss: issuer, sub: `app:${app.id}`, actor_type: 'app', aud: [aud], cap, ns: projectNamespaces(project.id),
@@ -188,11 +225,13 @@ async function handleTokenRequest(db, body, { privateKey, issuer, config, ctx })
         if (!verifierMatches(body.code_verifier, row.code_challenge)) return oauthError(400, 'invalid_grant', 'PKCE verification failed');
         const user = await db.prepare('SELECT subject_id, is_banned FROM users WHERE subject_id = ?').get(row.user_subject);
         if (!user || user.is_banned) return oauthError(400, 'invalid_grant', 'User not found or banned');
-        // The exchange may narrow what was authorized, never widen it.
-        const authorized = row.scope ? row.scope.split(' ') : null;
+        // The consent the code carries is explicit: `row.scope` is exactly the grantable ids the
+        // authorize requested, and an empty set means the person consented to nothing. The exchange
+        // may narrow it, never widen it, and a no-consent code still yields an identifying token.
+        const consented = String(row.scope || '').split(/\s+/).filter(Boolean);
         const asked = body.scope ? String(body.scope).split(/\s+/).filter(Boolean) : null;
-        if (authorized && asked && asked.some(s => !authorized.includes(s))) return oauthError(400, 'invalid_scope', 'scope exceeds what the user authorized');
-        return await mint({ app, project, audience: body.audience, scope: body.scope, limit: authorized, onBehalfOf: row.user_subject, privateKey, issuer, settings, db });
+        if (asked && asked.some(s => !consented.includes(s))) return oauthError(400, 'invalid_scope', 'scope exceeds what the user authorized');
+        return await mint({ app, project, audience: body.audience, scope: body.scope, limit: consented, allowEmpty: consented.length === 0, onBehalfOf: row.user_subject, privateKey, issuer, settings, db });
     }
     return oauthError(400, 'unsupported_grant_type', 'apps use client_credentials or authorization_code');
 }
@@ -233,12 +272,13 @@ async function issueCode(db, { app, project, user, redirectUri, scope, challenge
     const code = crypto.randomBytes(32).toString('hex');
     await db.prepare(`INSERT INTO dev_auth_codes (code_hash, app_id, user_subject, redirect_uri, scope, code_challenge, expires_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)`).run(store.hashSecret(code), app.id, subject, redirectUri,
-        String(scope || '').split(/\s+/).filter(s => policy.isGrantable(s)).join(' '), challenge, new Date(Date.now() + CODE_TTL_MS).toISOString());
+        consentedCapabilities(scope).join(' '), challenge, new Date(Date.now() + CODE_TTL_MS).toISOString());
     await db.prepare('DELETE FROM dev_auth_codes WHERE expires_at < ?').run(new Date(Date.now() - 3600 * 1000).toISOString());
     return { code };
 }
 
 module.exports = {
     isAppClient, handleTokenRequest, checkAuthorizeRequest, issueCode, effectiveGrants, projectNamespaces, TOKEN_TTL_S,
+    consentedCapabilities, consentView,
     mintExportToken, exportSubject, EXPORT_CAPS, EXPORT_PURPOSE,
 };
