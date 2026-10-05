@@ -653,8 +653,16 @@ notification shipped with `openvibe-shared` v2.7.0 (`TYPES.CONFIRMATION_REQUESTE
   `tokens.issueCode` stores an explicit consented set so an absent or empty `scope` consents to nothing — the code
   carries an empty set and `handleTokenRequest` mints a token with `cap: []` (the person stays identified via
   `on_behalf_of`); asking the token endpoint for an id outside the set is `invalid_scope`, and an app has no refresh
-  token to widen it. The account-chooser page renders that list next (`docs/developer-projects.md`, "Consent screen";
+  token to widen it. The sign-in page renders that list above every way of signing in (`public/js/login.js` renderConsent; `docs/developer-projects.md`, "Consent screen";
   `test/consent-screen.test.js`).
+- **Tips' Chat delivery is a service grant, not an agent grant** (plan T5, 2026-10-04; Wave 9).
+  `DEFAULT_GRANTS` gives `tips` `chat.message.send` and `chat.event.publish` on `openvibe.chat`, beside Live's
+  own `chat.message.send` row, because Tips' chat adapter
+  (`OpenVibe.Tips server/delivery/chat.js`) mints a first-party service token for exactly that scope
+  (`TIPS_CHAT_ADAPTER=chat`) and cannot deliver a paid effect without both rows. Both capabilities are `first-party`
+  and `sensitive`, but `sensitive` and confirmations are properties of **agent** grants (section 5): a service
+  principal holds them directly, with no confirmation, and the rows do not touch the agent ceiling or the
+  grantability rule.
 
 ### Unresolved
 

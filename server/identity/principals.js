@@ -75,12 +75,16 @@ const DEFAULT_GRANTS = [
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
     // Wave 9: Tips starts purchases and transfers in Billing, follows settlement through Events, and
-    // announces delivered tips in the creator's Live chat.
+    // announces delivered tips in the creator's Live chat. Since plan T5 the announcement itself goes
+    // through OpenVibe.Chat's typed ingress, with Tips' own service token (TIPS_CHAT_ADAPTER=chat;
+    // OpenVibe.Tips server/delivery/chat.js asks for exactly these two capabilities).
     ['tips', 'billing.intent.create', 'openvibe.billing', []],
     ['tips', 'billing.transfer.create', 'openvibe.billing', []],
     ['tips', 'events.subscription.manage', 'openvibe.events', []],
     ['tips', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['tips', 'live.tips_delivery.write', 'openvibe.live', []],
+    ['tips', 'chat.message.send', 'openvibe.chat', []],
+    ['tips', 'chat.event.publish', 'openvibe.chat', []],
     ['live', 'tips.interaction.record', 'openvibe.tips', []],
     // Wave 7: Live manages its slots' streams, keys and sessions on OpenRe.Stream; OpenRe publishes
     // session/output events (Live consumes openre.session.* by webhook).
@@ -156,6 +160,8 @@ const DEFAULT_GRANTS = [
     ['host', 'network.resource.report', SELF_AUDIENCE, []],
     // Plan T2 N4b: Bot pairs its users' machines with Network and reads or revokes only the principals it paired.
     ['bot', 'network.node.manage', SELF_AUDIENCE, []],
+    // Plan T15: an owner adds an operator by @username on the robot's panel; Bot resolves it to the subject here.
+    ['bot', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Plan T15: Bot runs each robot's OpenRe stream for its owner (find/create/archive, key rotation), plays the live
     // session in the panel (session.read), restreams out (output.*) and sets the owner's streaming and recording
     // toggles on the stream, minting its own token with its Network client instead of a hand-set BOT_OPENRE_TOKEN.
