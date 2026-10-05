@@ -236,11 +236,10 @@ const DEFAULT_GRANTS = [
     ['live', 'community.comment.write', 'openvibe.community', []],
     ['live', 'community.comment.moderate', 'openvibe.community', []],
     ['live', 'community.pulse.write', 'openvibe.community', []],
-    // Wave 6: OpenVibe.Chat reads Live's chat context, asks Live for effects and mirrors chat rows
-    // back; Live bridges its remaining chat writers to Chat and reads presence.
+    // Wave 6: OpenVibe.Chat reads Live's chat context and asks Live for effects; Live bridges its remaining
+    // chat writers to Chat and reads presence. (The read mirror back to Live was retired 2026-10-05: see REVOKED_GRANTS.)
     ['chat', 'live.chat_context.read', 'openvibe.live', []],
     ['chat', 'live.chat_effects.write', 'openvibe.live', []],
-    ['chat', 'live.chat_mirror.write', 'openvibe.live', []],
     // Chat consumes live.release.deployed (the deploy card, register C-84) and network.module.updated
     // (its chat.preferences cache) through its own Events subscriptions, created at Chat's boot.
     ['chat', 'events.subscription.manage', 'openvibe.events', []],
@@ -285,7 +284,11 @@ const DEFAULT_GRANTS = [
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
-const REVOKED_GRANTS = [['live', 'network.coins.transfer', SELF_AUDIENCE]];
+const REVOKED_GRANTS = [
+    ['live', 'network.coins.transfer', SELF_AUDIENCE],
+    // The Live read mirror is retired (2026-10-05): Chat #25 removed the sender, Live the receiver.
+    ['chat', 'live.chat_mirror.write', 'openvibe.live'],
+];
 
 // Default grants whose namespaces changed: a row still exactly as the old default seeded it is moved to
 // the new list at boot, in this order (a row someone edited is left alone). Live's write grant lost
