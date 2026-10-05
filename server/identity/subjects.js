@@ -133,6 +133,20 @@ async function resolve(db, { subject_id, source_system, source_type, source_id }
 }
 
 /**
+ * Resolve a person by their current username, any case (a leading @ is ignored): the same projection as resolve().
+ * A banned or deleted account, or a name nobody holds, answers null, so a service cannot add one as a member.
+ */
+async function resolveUsername(db, name) {
+    const n = String(name || '').trim().replace(/^@/, '');
+    if (!/^[A-Za-z0-9_.-]{1,40}$/.test(n)) return null;
+    const u = await db.prepare('SELECT id, subject_id, created_at FROM users WHERE LOWER(username) = LOWER(?) AND COALESCE(is_banned, 0) = 0 AND deleted_at IS NULL').get(n);
+    if (!u) return null;
+    // A name folded into another account (ADR-029) resolves to the survivor: judge the survivor, not the alias row.
+    const p = await resolve(db, { subject_id: u.subject_id || await ensureUserSubject(db, u) });
+    return p && !p.banned && !p.deleted ? p : null;
+}
+
+/**
  * Record service-local ids for existing subjects. Each entry names the Network account either by
  * `subject_id` or `network_user_id` (what services store today). Rows for source_system 'network'
  * are refused: Network is the authority for its own ids.
@@ -170,4 +184,4 @@ async function upsertLegacy(db, entries) {
     return out;
 }
 
-module.exports = { ensureSchema, backfill, seedLegacyMap, ensureUserSubject, newUserSubjectId, newGuestSubjectId, projection, resolve, upsertLegacy, createdMs };
+module.exports = { ensureSchema, backfill, seedLegacyMap, ensureUserSubject, newUserSubjectId, newGuestSubjectId, projection, resolve, upsertLegacy, createdMs, resolveUsername };

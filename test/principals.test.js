@@ -163,6 +163,14 @@ const server = http.createServer(app);
     assert.deepStrictEqual(com.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.blocks.read', 'network.modules.read', 'network.modules.write'], 'resolve, account export and deletion, platform blocks, plus its community.profile module');
     r = await post('/internal/identity/resolve-batch', { system: 'network', ids: ['7'] }, { authorization: `Bearer ${com.body.access_token}` });
     assert.strictEqual(r.status, 200); assert.strictEqual(r.body.results['7'].username, 'payee');
+    // Bot adds an operator by @username: the same projection, any case, a leading @ ignored; an unknown name is a 404.
+    for (const name of ['payee', 'PAYEE', '@payee']) {
+        const byName = await fetch(`${base}/internal/identity/resolve?username=${encodeURIComponent(name)}`, { headers: { authorization: `Bearer ${com.body.access_token}` } });
+        assert.strictEqual(byName.status, 200, name);
+        assert.strictEqual((await byName.json()).username, 'payee', name);
+    }
+    const nobody = await fetch(`${base}/internal/identity/resolve?username=nobody-here`, { headers: { authorization: `Bearer ${com.body.access_token}` } });
+    assert.strictEqual(nobody.status, 404, 'an unknown name resolves to nothing');
     r = await post('/internal/identity/resolve-batch', { system: 'network', ids: ['7'] }, { authorization: `Bearer ${creditOnly}` });
     assert.strictEqual(r.status, 403, 'a token narrowed to coins cannot resolve identities');
     // Media's owner_subject backfill: Live user ids -> subjects, an unknown id answers null.

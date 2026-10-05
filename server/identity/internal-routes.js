@@ -5,6 +5,7 @@
  *
  *   GET  /internal/identity/resolve?subject_id=usr_...
  *   GET  /internal/identity/resolve?system=live&type=user&id=123
+ *   GET  /internal/identity/resolve?username=alex      (a person's current name, any case: an owner adding @alex)
  *   POST /internal/identity/legacy-map   { entries: [{ network_user_id | subject_id, source_system, source_type, source_id, verified? }] }
  */
 const express = require('express');
@@ -18,10 +19,12 @@ const MAX_ENTRIES = 1000;
 router.get('/resolve', async (req, res) => {
     const db = req.app.locals.db;
     const q = req.query;
-    if (!q.subject_id && !(q.system && q.id)) {
-        return http.sendProblem(res, 400, 'identity.bad_request', { detail: 'pass subject_id, or system + id (+ type, default user)', ctx: req.ov });
+    if (!q.subject_id && !(q.system && q.id) && !q.username) {
+        return http.sendProblem(res, 400, 'identity.bad_request', { detail: 'pass subject_id, username, or system + id (+ type, default user)', ctx: req.ov });
     }
-    const out = await subjects.resolve(db, { subject_id: q.subject_id, source_system: q.system, source_type: q.type || 'user', source_id: q.id });
+    const out = q.username
+        ? await subjects.resolveUsername(db, String(q.username))
+        : await subjects.resolve(db, { subject_id: q.subject_id, source_system: q.system, source_type: q.type || 'user', source_id: q.id });
     if (!out) return http.sendProblem(res, 404, 'identity.subject_not_found', { detail: 'no subject for that id', ctx: req.ov });
     res.json(out);
 });
