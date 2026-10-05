@@ -36,7 +36,7 @@ allowances changes.
 | Subjects | `server/identity/subjects.js` resolves `usr_` and `gst_` only | no `agt_` |
 | Capability guard | `principals.js:347` `guard(capability)` throws at boot on an id the catalog does not have | built |
 | Delegated client capability | `docs/capabilities-proposal/network.project.manage.json` (in the catalog at v0.85.0 as `public`, `planned`) | proposed, unused |
-| Service-side project read | `network.project.read` (catalog: `first-party`, `planned`); `GET /internal/projects/:project_id`, granted to Host only | built (lane B step 3); no caller yet; Contracts still has to make it `active` |
+| Service-side project read | `network.project.read` (catalog: `first-party`, `active` since v0.88.0); `GET /internal/projects/:project_id`, granted to Host only | built (lane B step 3); no caller yet |
 | Sensitive capabilities, confirmations, budgets, agents | — | missing (agents: built by slice 2) |
 
 ## 2. Contract vocabulary (v0.85.0, used verbatim)
@@ -305,7 +305,7 @@ inside (the `docs/t2-resource-registry.md` §4 rule).
 
 | Method and path | Capability | Body → result |
 |---|---|---|
-| `GET /internal/agents/:agent` (built, slice 6) | `network.project.read` (exists, first-party) | `{ agent, grants, budgets }`, grants and budgets filtered to the caller's own audience (`openvibe.<caller>`) |
+| `GET /internal/agents/:agent` (built, slice 6) | `network.project.read` (`active`, first-party since v0.88.0) | `{ agent, grants, budgets }`, grants and budgets filtered to the caller's own audience (`openvibe.<caller>`) |
 | `POST /internal/confirmations` (built, slice 7) | **`network.confirmation.manage`** (published in v0.89.0, `status: planned`) | `{ requested_by: {type:'agent', id}, capability, summary, details?, resources?, request_digest, session_id?, ttl_s? }` → `201 { confirmation }` (pending) or `200 { confirmation }` (approved by a standing rule) |
 | `GET /internal/confirmations/:id` | same | `{ confirmation, used_at }` |
 | `POST /internal/confirmations/:id/consume` | same | `{ request_digest }` → `200 { confirmation, used_at }` |

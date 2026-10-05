@@ -17,6 +17,7 @@ const { ACCOUNT_HUB_PATHS } = require('../server/not-found');
             '/', '/login', '/forgot-password', '/reset-password', '/admin', '/admin/settings', '/admin/analytics/overview',
             '/verify-email', '/status', '/sso/fanout', '/terms', '/privacy', '/dmca', '/llms.txt',
             '/robots.txt', '/sitemap.xml', '/manifest.webmanifest', '/assets/logo.svg', '/js/login.js', '/shared/navbar.js', '/shared/v1/navbar.js',
+            '/css/login.css', '/css/my.css', '/css/admin.css',
             '/openvibe-sw.js', '/release.json', '/.well-known/openvibe', '/.well-known/web-identity', '/api/health', '/api/brand',
             '/api/v1/registry/services', '/api/v1/registry/categories', '/api/v1/registry/featured', '/api/.well-known/jwks',
             ...ACCOUNT_HUB_PATHS.filter(p => p !== '/my.html'),
