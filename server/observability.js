@@ -9,9 +9,11 @@
  * and service-token (principal) failures at Network's capability-guarded internal routes.
  * Labels are fixed vocabularies; a client id, subject or token never becomes a label.
  */
+const path = require('path');
 const jwt = require('jsonwebtoken');
 const metrics = require('openvibe-shared/metrics');
 const { createReadiness, skip } = require('openvibe-shared/ready');
+const telemetry = require('./telemetry');
 
 const registry = metrics.createRegistry();
 
@@ -48,6 +50,79 @@ function principalDenied({ req, code }) {
     if (!String((req && req.headers && req.headers.authorization) || '').startsWith('Bearer ')) return;
     const c = /^[a-z0-9_.-]{1,64}$/i.test(String(code || '')) ? String(code) : 'other';
     principalFailures.inc({ code: c });
+}
+
+// ── Universal telemetry (plan T1, §15.19): aggregated platform.telemetry-sample@1 + autoscaling ──
+// A request is not a row: the middleware hands each finished request to server/telemetry.js, which
+// aggregates per route|method|status_class and emits one http.request sample per key per flush (plus the
+// HTTP autoscaling gauges once per flush). A sample carries the route template, method and status class —
+// never a raw URL, client id or token. Health, readiness, metrics, chrome and static/shared assets carry
+// no product signal and are skipped before anything is counted.
+
+// The event-loop monitor: created and enabled by startEventLoopMonitor (called from telemetry.init), and
+// disabled by stopEventLoopMonitor (telemetry.stop). Nothing runs at module load.
+let loopMonitor = null;
+function startEventLoopMonitor() {
+    if (loopMonitor) return;
+    try {
+        loopMonitor = require('perf_hooks').monitorEventLoopDelay({ resolution: 20 });
+        loopMonitor.enable();
+    } catch { loopMonitor = null; }
+}
+function stopEventLoopMonitor() {
+    if (!loopMonitor) return;
+    try { loopMonitor.disable(); } catch { /* already gone */ }
+    loopMonitor = null;
+}
+/** Whether the monitor is running (tests assert requiring the module starts nothing). */
+function eventLoopMonitorEnabled() { return loopMonitor != null; }
+
+/** The event-loop lag since the last flush, ms (mean includes the sampling interval: subtracted); null
+ *  before the monitor has a sample. The monitor resets per read, so each gauge covers one flush interval. */
+function eventLoopLagMs() {
+    if (!loopMonitor || !(loopMonitor.count > 0 || loopMonitor.max > 0)) return null;
+    const lag = Math.max(0, loopMonitor.mean / 1e6 - 20);
+    loopMonitor.reset();
+    return lag;
+}
+
+// server/telemetry.js owns the aggregation; it pulls the lag and calls these lifecycle hooks.
+telemetry.registerSignals({ start: startEventLoopMonitor, stop: stopEventLoopMonitor, lag: eventLoopLagMs });
+
+const SKIP_EXACT = new Set(['/api/health', '/ready', '/api/ready', '/metrics']);
+const SKIP_PREFIXES = ['/shared', '/api/chrome'];
+// Anything express.static serves: public/ files and /data/avatars images. JSON is deliberately not here
+// (routes such as /release.json and /contracts/*.json are product/observability API, not static assets).
+const STATIC_EXTENSIONS = new Set([
+    '.js', '.mjs', '.cjs', '.css', '.map', '.html', '.htm', '.txt', '.xml', '.webmanifest', '.wasm',
+    '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.avif', '.ico', '.bmp',
+    '.woff', '.woff2', '.ttf', '.otf', '.eot', '.mp3', '.mp4', '.webm', '.ogg', '.pdf',
+]);
+function telemetrySkipped(req) {
+    const p = req.path || '';
+    if (SKIP_EXACT.has(p)) return true;
+    if (SKIP_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`))) return true;
+    return STATIC_EXTENSIONS.has(path.extname(p).toLowerCase());
+}
+
+/** Express middleware: hand the finished request to the aggregator; the in-flight peak is sampled at start. */
+function telemetryMiddleware(req, res, next) {
+    if (telemetrySkipped(req)) return next();
+    telemetry.requestStarted();
+    const t0 = process.hrtime.bigint();
+    let done = false;
+    const finish = () => {
+        if (done) return;
+        done = true;
+        try {
+            const latencyMs = Number(process.hrtime.bigint() - t0) / 1e6;
+            const httpStatus = res.writableFinished || res.finished ? (res.statusCode || 0) : 0;
+            telemetry.requestFinished({ route: metrics.routeLabel(req), method: req.method, httpStatus, latencyMs });
+        } catch { /* telemetry never breaks a request */ }
+    };
+    res.once('finish', finish);
+    res.once('close', finish);
+    next();
 }
 
 /**
@@ -98,4 +173,4 @@ function createNetworkReadiness({ db, getKeys, release, ecosystem = null, discor
     return createReadiness({ service: 'network', release, checks });
 }
 
-module.exports = { registry, tokenEndpointMetrics, principalDenied, createNetworkReadiness, grantLabel };
+module.exports = { registry, tokenEndpointMetrics, principalDenied, telemetryMiddleware, telemetrySkipped, createNetworkReadiness, grantLabel, eventLoopMonitorEnabled };

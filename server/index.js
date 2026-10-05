@@ -335,6 +335,12 @@ config._registry = resolvedRegistry;
 const analytics = networkAnalytics.openAnalytics(db);
 app.locals.analytics = analytics;
 app.use(analytics.middleware());
+// Universal telemetry (plan T1, server/telemetry.js): one platform.telemetry-sample@1 per request plus
+// the HTTP autoscaling signals, into the same analytics store. Wired before any route runs; flushed once
+// by gracefulStop's stop array below.
+const telemetry = require('./telemetry');
+telemetry.init({ analytics });
+app.use(observability.telemetryMiddleware);
 
 // ── Extract bearer token (available as req.token for optional-auth proxies) ─
 app.use((req, _res, next) => {
@@ -985,6 +991,7 @@ gracefulStop({
         () => require('./identity/profile-events').stop(),
         () => require('./identity/grants-admin').stop(),
         () => require('./developer/confirmations').stop(),
+        () => telemetry.stop(),
     ],
     close: [
         () => within(1500, require('./developer/event-relay').stopRelay(db)),

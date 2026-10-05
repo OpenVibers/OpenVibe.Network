@@ -42,7 +42,8 @@
     "service registry, public discovery and the status page with incidents",
     "operator alerts relay target and admin panel",
     "serves /shared/* from its pinned openvibe-shared",
-    "per-actor limits (openvibe-sdk/limits)"
+    "per-actor limits (openvibe-sdk/limits)",
+    "universal telemetry: per-route aggregated platform.telemetry-sample@1 plus per-flush HTTP autoscaling gauges (openvibe-sdk/telemetry)"
   ],
-  "updated": "2026-09-29"
+  "updated": "2026-10-04"
 }

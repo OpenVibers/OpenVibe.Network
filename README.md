@@ -45,8 +45,8 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 
 ## Depends on
 
-- `openvibe-contracts` v0.80.0 (registry manifests, capability checks), `openvibe-sdk` v0.25.1 (PostgreSQL
-  and Valkey adapters, events, per-actor limits), `openvibe-shared` v1.29.2, pinned by release tarball
+- `openvibe-contracts` v0.80.0 (registry manifests, capability checks), `openvibe-sdk` v0.28.0 (PostgreSQL
+  and Valkey adapters, events, per-actor limits, universal telemetry), `openvibe-shared` v1.29.2, pinned by release tarball
 - OpenVibe.Events (Network's outbox relay; the events it consumes), OpenVibe.AI (the `network.site_copy`
   workflow), OpenVibe.Blog (the changelog feed it proxies)
 - email (Resend), Discord and GitHub when their secrets are set ([Provider secrets](#provider-secrets))
@@ -560,6 +560,12 @@ Google-style account management supporting up to 5 accounts:
   open tabs report to `POST /release-metrics`). Network's own counters are
   `network_tokens_issued_total{grant_type}`, `network_token_failures_total{grant_type,error}` and
   `network_principal_token_failures_total{code}`.
+- Universal telemetry: requests are aggregated per `route|method|status_class` into a single
+  `platform.telemetry-sample@1` per key per flush (count, sum, max and p95 in `extra`, mean in
+  `latency_ms`), plus the HTTP autoscaling gauges (active requests, p95, event-loop lag) once per flush;
+  health, readiness, metrics, chrome and static/shared assets are skipped. Buffered by
+  `openvibe-sdk/telemetry` and written into the analytics store (`server/telemetry.js`,
+  `server/observability.js`); `gracefulStop` flushes it once at shutdown.
 - `GET /release.json` is Network's release manifest (ADR-016, `registry.release-manifest@1`, from
   `openvibe-shared/release`'s `release.mount`): the deployed commit, the library versions and, since
   openvibe-contracts 0.32.0, the 1.1.0 fields. No components are declared, so every release still

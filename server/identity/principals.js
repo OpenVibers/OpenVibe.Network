@@ -156,6 +156,10 @@ const DEFAULT_GRANTS = [
     ['host', 'network.resource.report', SELF_AUDIENCE, []],
     // Plan T2 N4b: Bot pairs its users' machines with Network and reads or revokes only the principals it paired.
     ['bot', 'network.node.manage', SELF_AUDIENCE, []],
+    // Plan T15: Bot runs each robot's OpenRe stream for its owner (find/create/archive, key rotation), plays the live
+    // session in the panel (session.read), restreams out (output.*) and sets the owner's streaming and recording
+    // toggles on the stream, minting its own token with its Network client instead of a hand-set BOT_OPENRE_TOKEN.
+    ...['openre.stream.read', 'openre.stream.write', 'openre.key.rotate', 'openre.session.read', 'openre.output.read', 'openre.output.write'].map(c => ['bot', c, 'openvibe.openre', []]),
     // Plan T2 lane B step 3: Host places and runs per project, so it reads a project's tenancy, placement and quotas.
     // Other services get this row only when they ship a caller of GET /internal/projects/:project_id.
     ['host', 'network.project.read', SELF_AUDIENCE, []],
@@ -254,6 +258,13 @@ const DEFAULT_GRANTS = [
     ['tools', 'search.document.write', 'openvibe.search', []],
     // Plan T5 step 7: Tools posts one usage reading per ended tool job to Billing (POST /api/v1/usage).
     ['tools', 'billing.usage.record', 'openvibe.billing', []],
+    // Plan T5 step 14: Network's own usage producers — AI (per model run), Events (per delivered event)
+    // and Media (per stored object) post their platform.usage-sample@1 readings to Billing
+    // (POST /api/v1/usage) with their own token. Recording usage only: none of them holds a money
+    // capability (billing.ledger.admin / billing.cashout.manage).
+    ['ai', 'billing.usage.record', 'openvibe.billing', []],
+    ['events', 'billing.usage.record', 'openvibe.billing', []],
+    ['media', 'billing.usage.record', 'openvibe.billing', []],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
