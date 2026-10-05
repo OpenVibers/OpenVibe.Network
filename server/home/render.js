@@ -92,7 +92,7 @@ function rightNow(a) {
 // draw: the "Right now" columns, the tool and "Opening next" chips, and the shared icon styles.
 const CSS = `
 .sc-ic:has(.sc-ovi){background:none}.sc-ic .sc-ovi{--ovi-size:40px!important}
-#developers{margin-bottom:56px}
+#developers{margin-bottom:56px}#developers .sc-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 .home-chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;padding:0;list-style:none}
 .home-chips>li>a{display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 7px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));font-size:13.5px;font-weight:600;color:inherit;text-decoration:none}
 .home-chips>li>a:hover,.home-chips>li>a:focus-visible{border-color:var(--accent,#3b82f6);outline:0}
@@ -125,7 +125,7 @@ ${icons.CSS}`;
 const sitesHeading = () => `${inWords(OPEN.length)} sites, one front door`;
 
 // Markup inside a kit section after its grid (the kit closes the section itself); an empty section stays empty.
-const inside = (section, extra) => (section && extra ? section.replace(/<\/section>$/, `${extra}</section>`) : section);
+const inside = (section, extra) => (section && extra ? section.replace(/<\/section>$/, () => `${extra}</section>`) : section);
 const chips = (list, cls = '') => (list.length ? `<ul class="home-chips${cls ? ` ${cls}` : ''}">${list.map(([href, title, ic, name]) => `<li><a href="${esc(href)}" title="${esc(title)}">${icon(ic, 22)}${esc(name)}</a></li>`).join('')}</ul>` : '');
 
 // Below the static hero (public/index.html: the intent picker and the constellation), every section is the shared
@@ -138,14 +138,14 @@ function body(catalog, act) {
     const sites = showcase.features({
         id: 'network', title: sitesHeading(),
         lede: 'Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.',
-        items: OPEN.map((site) => ({ icon: `ov:${site.icon}`, title: siteName(site), text: site.what, href: `https://${site.host}/` })),
+        items: OPEN.map((site) => ({ icon: `ov:${site.icon}`, title: siteName(site), text: site.tagline ? `${site.tagline}. ${site.what}` : site.what, href: `https://${site.host}/` })),
     });
     const tools = inside(showcase.features({
         id: 'tools', title: catalog.tools.length ? `${catalog.tools.length} tools that just open` : 'Tools that just open',
         lede: 'No installs and no sign-up wall. Every tool has its own short address, so yt.openvibe.tools or dns.openvibe.tools takes you straight there.',
         items: fams.length ? fams.map((f) => ({ icon: `ov:${f.icon}`, title: f.name, text: `${count(f)} tools · ${f.tagline || ''}`, href: f.path ? `https://openvibe.tools${f.path}` : f.url }))
             : [{ icon: 'ov:tools', title: 'OpenVibe.Tools', text: 'Converters, downloaders, PDF and image tools, developer utilities and network diagnostics.', href: 'https://openvibe.tools/' }],
-    }), `${chips(popular.map((t) => [t.url, t.tagline || '', t.icon, t.name]))}<p class="home-more"><a href="https://openvibe.tools/">Browse every tool at openvibe.tools →</a></p>`);
+    }), `${chips(popular.map((t) => [t.url, t.tagline || '', t.icon, t.name]))}<p class="home-more"><a href="https://openvibe.tools/">Browse every tool at openvibe.tools →</a> · <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> · <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a></p>`);
     const account = showcase.features({
         id: 'account', title: 'What signing in adds',
         lede: 'You can use almost everything as a guest. An account is for the things that need to remember you, and it works on every OpenVibe site the moment you arrive.',
@@ -154,15 +154,16 @@ function body(catalog, act) {
     // The sites still to open stay a quiet row of chips, not cards: they are addresses, not places to go yet.
     const soon = SOON.length ? `<section class="sc-sec" id="soon" aria-labelledby="h-soon"><h2 id="h-soon">Opening next</h2><p class="sc-lede">${esc(inWords(SOON.length))} more addresses are staked out. Each one opens when it is good enough to use daily, and your account will already work there.</p>
 ${chips(SOON.map((site) => [`https://${site.host}/`, site.tagline, site.icon, siteName(site)]), 'soon')}</section>` : '';
-    const dev = showcase.features({
+    const dev = inside(showcase.features({
         id: 'developers', title: 'For developers and crawlers',
         lede: 'OpenVibe is open source and community-run. Everything public is meant to be read by machines too.',
         items: [
             { icon: 'ov:codes', title: 'Build on OpenVibe', text: 'Sign in with OpenVibe (OAuth 2.0 and FedCM), the API, SDK and webhooks: all on OpenVibe.Codes.', href: 'https://openvibe.codes/' },
-            { icon: 'ov:blog', title: 'llms.txt and the tool catalog', text: 'A plain-text map of the network for AI assistants (/llms.txt, /llms-full.txt) and every tool as JSON at openvibe.tools/api/catalog.json.', href: '/llms.txt' },
+            { icon: 'ov:tools', title: 'Tool catalog', text: 'Every tool with its description, keywords and addresses as JSON.', href: 'https://openvibe.tools/api/catalog.json' },
+            { icon: 'ov:blog', title: 'llms.txt', text: 'A plain-text map of the network for AI assistants, with the full text beside it.', href: '/llms.txt' },
             { icon: 'fa-code-branch', title: 'Source on GitHub', text: 'Every OpenVibe service is open source under the OpenVibers organization.', href: 'https://github.com/OpenVibers' },
         ],
-    });
+    }), '<p class="home-more">Machine-readable: <a href="/llms.txt">/llms.txt</a> · <a href="/llms-full.txt">/llms-full.txt</a> · <a href="https://openvibe.tools/llms.txt">openvibe.tools/llms.txt</a></p>');
     return `<style>${CSS}</style>
 ${rightNow(act)}
 ${sites}

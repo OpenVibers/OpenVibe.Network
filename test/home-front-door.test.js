@@ -56,6 +56,8 @@ assert.strictEqual((html.match(/<h1[\s>]/g) || []).length, 1, 'one h1: the hero'
 assert.match(html, /<meta name="ai-summary" content="One account for \d+ open sites \(live, /);
 assert.ok(/"@type":"WebPage"/.test(html), 'the summary has its WebPage JSON-LD');
 for (const s of open) assert.ok(html.includes(`<a class="sc-card" href="https://${s.host}/">`), `the sites section links ${s.host}`);
+for (const href of ['https://openvibe.tools/api/catalog.json', '/llms.txt', 'https://openvibe.tools/llms.txt', 'https://github.com/OpenVibers', 'https://openvibe.codes/', 'https://yt.openvibe.tools/', 'https://dns.openvibe.tools/']) assert.ok(html.includes(`href="${href}"`), `the page still links ${href}`);
+assert.strictEqual((html.match(/<section[\s>]/g) || []).length, (html.match(/<\/section>/g) || []).length, 'every section is closed once');
 
 // With activity: the items render, escaped.
 activity._set({ live: [{ name: 'Al<b>ice', title: 'Hi & bye', url: 'https://openvibe.live/@alice', thumb: 'https://openvibe.live/t.jpg', avatar: 'https://openvibe.media/a', viewers: 1500, category: '' }], pastes, posts });
