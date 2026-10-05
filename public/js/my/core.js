@@ -158,13 +158,14 @@ function showSection(id, btn) {
     history.replaceState(null, '', id === 'profile' ? window.location.pathname : `${window.location.pathname}#${id}`);
     if (id === 'history' && typeof loadHistory === 'function') loadHistory();
     if (id === 'data') loadDataSection();
+    if (id === 'approvals' && typeof loadApprovals === 'function') loadApprovals();
 }
 
 function openInitialSection() {
     const pathSection = { '/themes': 'themes', '/notifications': 'notifications', '/verify-email': 'notifications', '/linked': 'linked', '/security': 'security', '/profile': 'profile', '/history': 'history' }[window.location.pathname];
     const routeSection = pathSection || window.location.hash.replace(/^#/, '') || 'profile';
     if (window.location.pathname === '/verify-email') setTimeout(handleVerifyEmailToken, 50);
-    if (isAnonSession() && ['notifications','linked','security','data'].includes(routeSection)) {
+    if (isAnonSession() && ['notifications','linked','security','data','approvals'].includes(routeSection)) {
         return showSection('anon');
     }
     if (document.getElementById('sec-' + routeSection)) {
