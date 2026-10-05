@@ -48,6 +48,14 @@ const open = sites.filter((s) => s.status === 'open' && s.id !== 'network');
 assert.ok(html.includes('<svg class="constellation"'), 'the constellation is drawn');
 for (const s of open) assert.ok(html.includes(`<a href="https://${s.host}/" class="cs-node"`), `the constellation links ${s.host}`);
 assert.ok(!html.includes('<!--OV:'), 'no placeholder left behind');
+// Below the hero every section is the shared showcase kit (plan T11), with its stylesheet, one h1 and an AI summary.
+assert.ok(html.includes('<link rel="stylesheet" href="/shared/showcase.css">'), 'the kit stylesheet is linked');
+for (const id of ['network', 'tools', 'account', 'soon', 'developers']) assert.ok(html.includes(`<section class="sc-sec" id="${id}"`), `the ${id} section is a kit section`);
+assert.ok(!/class="home-(sec|card|grid|fams|fam|dev)\b/.test(html), 'no hand-built section markup is left');
+assert.strictEqual((html.match(/<h1[\s>]/g) || []).length, 1, 'one h1: the hero');
+assert.match(html, /<meta name="ai-summary" content="One account for \d+ open sites \(live, /);
+assert.ok(/"@type":"WebPage"/.test(html), 'the summary has its WebPage JSON-LD');
+for (const s of open) assert.ok(html.includes(`<a class="sc-card" href="https://${s.host}/">`), `the sites section links ${s.host}`);
 
 // With activity: the items render, escaped.
 activity._set({ live: [{ name: 'Al<b>ice', title: 'Hi & bye', url: 'https://openvibe.live/@alice', thumb: 'https://openvibe.live/t.jpg', avatar: 'https://openvibe.media/a', viewers: 1500, category: '' }], pastes, posts });

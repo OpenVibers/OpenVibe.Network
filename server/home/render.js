@@ -8,6 +8,7 @@ const path = require('path');
 const crypto = require('crypto');
 const seo = require('openvibe-shared/seo');
 const icons = require('openvibe-shared/icons');
+const showcase = require('openvibe-shared/showcase');
 const toolsCatalog = require('../domains/catalog');
 const activity = require('./activity');
 
@@ -81,27 +82,22 @@ function rightNow(a) {
         ? a.live.map((s) => `<a class="now-stream" href="${esc(s.url)}">${s.thumb || s.avatar ? `<img src="${esc(s.thumb || s.avatar)}" alt="" loading="lazy" decoding="async" width="320" height="180"${s.thumb && s.avatar ? ` data-fallback="${esc(s.avatar)}" onerror="this.onerror=null;this.src=this.dataset.fallback"` : ''}>` : '<span class="now-noimg"></span>'}<span class="now-badge"><i></i>LIVE${s.viewers ? ` · ${esc(fmtViewers(s.viewers))}` : ''}</span><b>${esc(s.title)}</b><small>${esc(s.name)}${s.category ? ` · ${esc(s.category)}` : ''}</small></a>`).join('')
         : `<a class="now-stream now-empty" href="https://openvibe.live/broadcast"><span class="now-noimg"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i></span><b>Nobody is live right now</b><small>Be the first: go live from your browser, no OBS and no follower minimum.</small></a>`;
     const list = (items, render, empty) => (items.length ? `<ul class="now-list">${items.map(render).join('')}</ul>` : `<p class="now-quiet">${empty}</p>`);
-    return `<section class="home-sec now" aria-labelledby="h-now"><h2 id="h-now"><span class="now-dot" aria-hidden="true"></span>Right now on OpenVibe</h2>
+    return `<section class="sc-sec now" aria-labelledby="h-now"><h2 id="h-now"><span class="now-dot" aria-hidden="true"></span>Right now on OpenVibe</h2>
 <div class="now-grid"><div class="now-col now-live"><h3>Live</h3><div class="now-streams">${live}</div><a class="now-more" href="https://openvibe.live/">All channels →</a></div>
 <div class="now-col"><h3>New pastes</h3>${list(a.pastes, (p) => `<li><a href="${esc(p.url)}"><b>${esc(p.title)}</b><small>${esc(p.kind)}${p.summary ? ` · ${esc(p.summary)}` : ''}</small></a></li>`, 'Nothing new in the last while. <a href="https://openvibe.community/new">Share one</a>.')}<a class="now-more" href="https://openvibe.community/">OpenVibe.Community →</a></div>
 <div class="now-col"><h3>From the blog</h3>${list(a.posts, (p) => `<li><a href="${esc(p.url)}"><b>${esc(p.title)}</b>${p.summary ? `<small>${esc(p.summary)}</small>` : ''}</a></li>`, 'No posts yet.')}<a class="now-more" href="https://openvibe.blog/">OpenVibe.Blog →</a></div></div></section>`;
 }
 
+// The kit (openvibe-shared/showcase, /shared/showcase.css) owns the sections and cards; this is only what it does not
+// draw: the "Right now" columns, the tool and "Opening next" chips, and the shared icon styles.
 const CSS = `
-.home-sec{max-width:1080px;margin:56px auto 0;padding:0 24px}.home-sec>h2{font-size:clamp(22px,2.6vw,30px);letter-spacing:-.02em;margin:0 0 6px}.home-sec>p.lede{color:var(--text-secondary,#a8b3c4);margin:0 0 18px;max-width:760px}
-.home-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
-.home-card{display:flex;gap:14px;align-items:flex-start;padding:16px;border-radius:16px;border:1px solid var(--border,rgba(255,255,255,.08));background:var(--bg-secondary,#111826);color:inherit;text-decoration:none;transition:border-color .15s,transform .15s}
-.home-card:hover,.home-card:focus-visible{border-color:var(--accent,#3b82f6);transform:translateY(-2px);outline:0}
-.home-card b{display:block;font-size:16px}.home-card em{display:block;font-style:normal;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--accent-light,var(--accent,#60a5fa));margin:1px 0 4px}
-.home-card small{display:block;color:var(--text-secondary,#a8b3c4);font-size:13.5px;line-height:1.45}
-.home-fams{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
-.home-fam{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.08));color:inherit;text-decoration:none}
-.home-fam:hover{border-color:var(--accent,#3b82f6)}.home-fam b{display:block;font-size:14.5px}.home-fam small{color:var(--text-muted,#7d8aa0);font-size:12.5px}
-.home-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;padding:0;list-style:none}
+.sc-ic:has(.sc-ovi){background:none}.sc-ic .sc-ovi{--ovi-size:40px!important}
+#developers{margin-bottom:56px}
+.home-chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;padding:0;list-style:none}
 .home-chips>li>a{display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 7px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));font-size:13.5px;font-weight:600;color:inherit;text-decoration:none}
-.home-chips>li>a:hover{border-color:var(--accent,#3b82f6)}
-.home-dev{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
-.home-dev div{padding:16px;border-radius:16px;border:1px dashed var(--border,rgba(255,255,255,.14))}.home-dev b{display:block;margin-bottom:4px}.home-dev p{margin:0;color:var(--text-secondary,#a8b3c4);font-size:13.5px}.home-dev code{font-size:12.5px}
+.home-chips>li>a:hover,.home-chips>li>a:focus-visible{border-color:var(--accent,#3b82f6);outline:0}
+.home-chips.soon>li>a{color:var(--text-secondary,#a8b3c4);border-style:dashed}
+.home-more{margin:14px 0 0;font-size:13.5px}.home-more a{font-weight:600;color:var(--accent-light,#60a5fa);text-decoration:none}
 .now>h2{display:flex;align-items:center;gap:10px}.now-dot{width:10px;height:10px;border-radius:50%;background:var(--live-red,#ef4444);box-shadow:0 0 0 0 rgba(239,68,68,.6);animation:now-pulse 2s infinite}
 @keyframes now-pulse{70%{box-shadow:0 0 0 10px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
 .now-grid{display:grid;gap:16px;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:14px}
@@ -121,33 +117,71 @@ const CSS = `
 .now-quiet{color:var(--text-muted,#7d8aa0);font-size:13.5px;margin:0}.now-quiet a{color:var(--accent-light,#60a5fa)}
 .now-more{margin-top:auto;font-size:13px;font-weight:600;color:var(--accent-light,#60a5fa);text-decoration:none}
 @media (max-width:860px){.now-grid{grid-template-columns:1fr}}
-@media (prefers-reduced-motion:reduce){.home-card{transition:none}.now-dot{animation:none}}
+@media (prefers-reduced-motion:reduce){.now-dot{animation:none}}
 ${icons.CSS}`;
 
 // The sites section's heading; the JSON-LD ItemList of the same sites carries it as its name, so the
 // structured data names something a visitor can see (browser check, WS-Q task 3).
 const sitesHeading = () => `${inWords(OPEN.length)} sites, one front door`;
 
+// Markup inside a kit section after its grid (the kit closes the section itself); an empty section stays empty.
+const inside = (section, extra) => (section && extra ? section.replace(/<\/section>$/, `${extra}</section>`) : section);
+const chips = (list, cls = '') => (list.length ? `<ul class="home-chips${cls ? ` ${cls}` : ''}">${list.map(([href, title, ic, name]) => `<li><a href="${esc(href)}" title="${esc(title)}">${icon(ic, 22)}${esc(name)}</a></li>`).join('')}</ul>` : '');
+
+// Below the static hero (public/index.html: the intent picker and the constellation), every section is the shared
+// showcase kit, as on the other flagship homes (plan T11, D93); the data and every link are the ones this page had.
 function body(catalog, act) {
-    const byId = new Map(catalog.tools.map(t => [t.id, t]));
-    const popular = POPULAR.map(id => byId.get(id)).filter(Boolean);
-    const fams = catalog.families.filter(f => f.url);
-    const count = (f) => f.count || catalog.tools.filter(t => t.family === f.id).length;
+    const byId = new Map(catalog.tools.map((t) => [t.id, t]));
+    const popular = POPULAR.map((id) => byId.get(id)).filter(Boolean);
+    const fams = catalog.families.filter((f) => f.url);
+    const count = (f) => f.count || catalog.tools.filter((t) => t.family === f.id).length;
+    const sites = showcase.features({
+        id: 'network', title: sitesHeading(),
+        lede: 'Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.',
+        items: OPEN.map((site) => ({ icon: `ov:${site.icon}`, title: siteName(site), text: site.what, href: `https://${site.host}/` })),
+    });
+    const tools = inside(showcase.features({
+        id: 'tools', title: catalog.tools.length ? `${catalog.tools.length} tools that just open` : 'Tools that just open',
+        lede: 'No installs and no sign-up wall. Every tool has its own short address, so yt.openvibe.tools or dns.openvibe.tools takes you straight there.',
+        items: fams.length ? fams.map((f) => ({ icon: `ov:${f.icon}`, title: f.name, text: `${count(f)} tools · ${f.tagline || ''}`, href: f.path ? `https://openvibe.tools${f.path}` : f.url }))
+            : [{ icon: 'ov:tools', title: 'OpenVibe.Tools', text: 'Converters, downloaders, PDF and image tools, developer utilities and network diagnostics.', href: 'https://openvibe.tools/' }],
+    }), `${chips(popular.map((t) => [t.url, t.tagline || '', t.icon, t.name]))}<p class="home-more"><a href="https://openvibe.tools/">Browse every tool at openvibe.tools →</a></p>`);
+    const account = showcase.features({
+        id: 'account', title: 'What signing in adds',
+        lede: 'You can use almost everything as a guest. An account is for the things that need to remember you, and it works on every OpenVibe site the moment you arrive.',
+        items: ACCOUNT.map(([ic, title, text, href]) => ({ icon: `ov:${ic}`, title, text, href })),
+    });
+    // The sites still to open stay a quiet row of chips, not cards: they are addresses, not places to go yet.
+    const soon = SOON.length ? `<section class="sc-sec" id="soon" aria-labelledby="h-soon"><h2 id="h-soon">Opening next</h2><p class="sc-lede">${esc(inWords(SOON.length))} more addresses are staked out. Each one opens when it is good enough to use daily, and your account will already work there.</p>
+${chips(SOON.map((site) => [`https://${site.host}/`, site.tagline, site.icon, siteName(site)]), 'soon')}</section>` : '';
+    const dev = showcase.features({
+        id: 'developers', title: 'For developers and crawlers',
+        lede: 'OpenVibe is open source and community-run. Everything public is meant to be read by machines too.',
+        items: [
+            { icon: 'ov:codes', title: 'Build on OpenVibe', text: 'Sign in with OpenVibe (OAuth 2.0 and FedCM), the API, SDK and webhooks: all on OpenVibe.Codes.', href: 'https://openvibe.codes/' },
+            { icon: 'ov:blog', title: 'llms.txt and the tool catalog', text: 'A plain-text map of the network for AI assistants (/llms.txt, /llms-full.txt) and every tool as JSON at openvibe.tools/api/catalog.json.', href: '/llms.txt' },
+            { icon: 'fa-code-branch', title: 'Source on GitHub', text: 'Every OpenVibe service is open source under the OpenVibers organization.', href: 'https://github.com/OpenVibers' },
+        ],
+    });
     return `<style>${CSS}</style>
 ${rightNow(act)}
-<section class="home-sec" id="network" aria-labelledby="h-sites"><h2 id="h-sites">${esc(sitesHeading())}</h2><p class="lede">Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.</p>
-<div class="home-grid">${OPEN.map((site) => `<a class="home-card" href="https://${esc(site.host)}/">${icon(site.icon, 48)}<span><b>${esc(siteName(site))}</b><em>${esc(site.tagline)}</em><small>${esc(site.what)}</small></span></a>`).join('')}</div></section>
-<section class="home-sec" id="tools" aria-labelledby="h-tools"><h2 id="h-tools">${catalog.tools.length ? `${catalog.tools.length} tools` : 'Tools'} that just open</h2><p class="lede">No installs and no sign-up wall. Every tool has its own short address, so <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> or <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a> takes you straight there. Browse them all at <a href="https://openvibe.tools/">openvibe.tools</a>.</p>
-${fams.length ? `<div class="home-fams">${fams.map(f => `<a class="home-fam" href="${esc(f.path ? 'https://openvibe.tools' + f.path : f.url)}">${icon(f.icon, 38)}<span><b>${esc(f.name)}</b><small>${count(f)} tools · ${esc(f.tagline || '')}</small></span></a>`).join('')}</div>` : ''}
-${popular.length ? `<ul class="home-chips">${popular.map(t => `<li><a href="${esc(t.url)}" title="${esc(t.tagline || '')}">${icon(t.icon, 22)}${esc(t.name)}</a></li>`).join('')}</ul>` : ''}</section>
-<section class="home-sec" aria-labelledby="h-acct"><h2 id="h-acct">What signing in adds</h2><p class="lede">You can use almost everything as a guest. An account is for the things that need to remember you, and it works on every OpenVibe site the moment you arrive.</p>
-<div class="home-grid">${ACCOUNT.map(([ic, n, d, u]) => `<a class="home-card" href="${u}">${icon(ic, 44)}<span><b>${n}</b><small>${d}</small></span></a>`).join('')}</div></section>
-${SOON.length ? `<section class="home-sec" aria-labelledby="h-soon"><h2 id="h-soon">Opening next</h2><p class="lede">${inWords(SOON.length)} more addresses are staked out. Each one opens when it is good enough to use daily, and your account will already work there.</p>
-<ul class="home-chips">${SOON.map((site) => `<li><a href="https://${esc(site.host)}/" title="${esc(site.tagline)}">${icon(site.icon, 22)}${esc(siteName(site))}</a></li>`).join('')}</ul></section>` : ''}
-<section class="home-sec" aria-labelledby="h-dev"><h2 id="h-dev">For developers and crawlers</h2><p class="lede">OpenVibe is open source and community-run. Everything public is meant to be read by machines too.</p>
-<div class="home-dev"><div><b>Tool catalog</b><p>Every tool with its description, keywords and addresses as JSON: <a href="https://openvibe.tools/api/catalog.json"><code>openvibe.tools/api/catalog.json</code></a></p></div>
-<div><b>llms.txt</b><p>A plain-text map of the network for AI assistants: <a href="/llms.txt"><code>/llms.txt</code></a> here and on <a href="https://openvibe.tools/llms.txt">openvibe.tools</a>.</p></div>
-<div><b>Sign in with OpenVibe</b><p>OAuth 2.0 and FedCM for sites on the network. Source on <a href="https://github.com/OpenVibers" rel="noopener">GitHub</a>.</p></div></div></section>`;
+${sites}
+${tools}
+${account}
+${soon}
+${dev}`;
+}
+
+// What an AI reader is told the page is (openvibe-shared/seo pageSummary): the meta, a WebPage JSON-LD tag and a
+// noscript facts block. Only what is true right now: the open sites and the catalog's own count and date.
+function summaryOf(catalog) {
+    return seo.pageSummary({
+        title: 'OpenVibe.Network',
+        summary: `One account for ${OPEN.length} open sites (${OPEN.map((site) => SHORT(site).toLowerCase()).join(', ')}), free, open source and community run.`,
+        url: 'https://openvibe.network/',
+        facts: [['Open sites', OPEN.length], ['Opening next', SOON.length], ...(catalog.tools.length ? [['Online tools', catalog.tools.length]] : [])],
+        updated: catalog.tools.length ? String(catalog.updated).slice(0, 10) : undefined,
+    });
 }
 
 let pageCache = { key: '', html: '', etag: '' };
@@ -158,7 +192,8 @@ function render() {
     const key = `${stat.mtimeMs}:${catalog.updated}:${catalog.tools.length}:${act.version}`;
     if (pageCache.key === key) return pageCache;
     const ld = seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what }))));
-    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog)).replace('<!--OV:CONSTELLATION-->', constellation()).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', `${ld}\n</head>`);
+    const summary = summaryOf(catalog);
+    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog)).replace('<!--OV:CONSTELLATION-->', constellation()).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', `${ld}\n${summary.head}\n</head>`);
     pageCache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
     return pageCache;
 }
