@@ -12,7 +12,7 @@ for (const [, body] of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) as
 
 const files = fs.readdirSync(path.join(pub, 'js', 'my')).filter((f) => f.endsWith('.js')).sort();
 // The module map, in load order (public/js/my/…).
-const modules = ['core.js', 'tools.js', 'themes.js', 'profile.js', 'security.js', 'boot.js'];
+const modules = ['core.js', 'tools.js', 'themes.js', 'profile.js', 'security.js', 'approvals.js', 'boot.js'];
 assert.deepStrictEqual(files, [...modules].sort(), 'each module file exists and there is no other');
 const tags = [...html.matchAll(/<script\b([^>]*)\bsrc="\/js\/my\/([^"]+)"([^>]*)><\/script>/g)];
 const loaded = tags.map((m) => m[2]);
@@ -31,5 +31,23 @@ for (const f of files) {
 assert.ok(owner.size > 70, 'the modules declare the hub functions');
 // Every section calls these, so they load first.
 for (const name of ['_bootstrapFromCookie', 'getAuthToken', 'apiFetch', 'showSection']) assert.strictEqual(owner.get(name), 'core.js', `${name} lives in core.js`);
+
+// The Approvals section (T2 WS-Z2): its tab, its section and its list, and the module builds rows from DOM nodes, never
+// innerHTML (summaries, names and resources come from agents).
+assert.ok(html.includes('id="sec-approvals"') && html.includes('id="approvals-list"') && html.includes("showSection('approvals',this)"), 'the Approvals tab and section are in my.html');
+const approvals = fs.readFileSync(path.join(pub, 'js', 'my', 'approvals.js'), 'utf8');
+assert.ok(!/innerHTML|insertAdjacentHTML/.test(approvals), 'approvals.js never parses agent text as HTML');
+for (const name of ['loadApprovals', 'decideApproval', 'refreshApprovalsBadge']) assert.strictEqual(owner.get(name), 'approvals.js', `${name} lives in approvals.js`);
+assert.ok(fs.readFileSync(path.join(pub, 'js', 'my', 'boot.js'), 'utf8').includes('refreshApprovalsBadge()'), 'boot.js shows the waiting count on the tab');
+// The host is a SubjectRef object: the row names its id, never "[object Object]"; an anonymous session calls no API.
+{
+    const vm = require('vm');
+    const sandbox = { document: { createElement: () => ({}) }, console };
+    vm.createContext(sandbox); vm.runInContext(approvals, sandbox);
+    assert.strictEqual(sandbox.approvalsHost({ host: { type: 'app', id: 'app_01' } }), 'app_01');
+    assert.strictEqual(sandbox.approvalsHost({ host: 'node-1' }), 'node-1');
+    assert.strictEqual(sandbox.approvalsHost({}), '');
+    assert.ok(/isAnonSession\(\)/.test(approvals.slice(approvals.indexOf('async function loadApprovals'))), 'loadApprovals checks for an anonymous session first');
+}
 
 console.log('my-modules: all checks passed');

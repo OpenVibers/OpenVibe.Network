@@ -158,13 +158,14 @@ function showSection(id, btn) {
     history.replaceState(null, '', id === 'profile' ? window.location.pathname : `${window.location.pathname}#${id}`);
     if (id === 'history' && typeof loadHistory === 'function') loadHistory();
     if (id === 'data') loadDataSection();
+    if (id === 'approvals' && typeof loadApprovals === 'function') loadApprovals();
 }
 
 function openInitialSection() {
     const pathSection = { '/themes': 'themes', '/notifications': 'notifications', '/verify-email': 'notifications', '/linked': 'linked', '/security': 'security', '/profile': 'profile', '/history': 'history' }[window.location.pathname];
     const routeSection = pathSection || window.location.hash.replace(/^#/, '') || 'profile';
     if (window.location.pathname === '/verify-email') setTimeout(handleVerifyEmailToken, 50);
-    if (isAnonSession() && ['notifications','linked','security','data'].includes(routeSection)) {
+    if (isAnonSession() && ['notifications','linked','security','data','approvals'].includes(routeSection)) {
         return showSection('anon');
     }
     if (document.getElementById('sec-' + routeSection)) {
@@ -199,7 +200,8 @@ function applyAnonModeUI(user) {
     const notifTab = [...document.querySelectorAll('.section-tabs button')].find((button) => button.getAttribute('onclick')?.includes("'notifications'"));
     const linkedTab = [...document.querySelectorAll('.section-tabs button')].find((button) => button.getAttribute('onclick')?.includes("'linked'"));
     const securityTab = [...document.querySelectorAll('.section-tabs button')].find((button) => button.getAttribute('onclick')?.includes("'security'"));
-    [notifTab, linkedTab, securityTab].forEach((button) => {
+    const approvalsTab = [...document.querySelectorAll('.section-tabs button')].find((button) => button.getAttribute('onclick')?.includes("'approvals'"));
+    [notifTab, linkedTab, securityTab, approvalsTab].forEach((button) => {
         if (!button) return;
         button.style.opacity = '.45';
         button.title = 'Unavailable in anonymous mode';
@@ -208,6 +210,7 @@ function applyAnonModeUI(user) {
     setSectionDisabled('notifications', 'Notification inbox, email preferences, and alert delivery are only available for full accounts.');
     setSectionDisabled('linked', 'Linked services are only available once you sign in with a full OpenVibe account.');
     setSectionDisabled('security', 'Anonymous identities do not have passwords or device sessions to manage.');
+    setSectionDisabled('approvals', 'Approvals for your agents are only available for full accounts.');
 
     const themeGrid = document.getElementById('theme-grid');
     if (themeGrid) {

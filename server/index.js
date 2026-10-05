@@ -618,6 +618,7 @@ await require('./developer/event-relay').startRelay(db, { eventsUrl: config.even
 await require('./identity/profile-events').start(db);
 require('./identity/grants-admin').start(db);
 // Pending confirmations past expires_at are recorded expired every minute (reads report them expired before that).
+require('./developer/confirmations').setNotifier(notificationService);
 require('./developer/confirmations').start(db);
 
 // Notification API (authenticated users)
