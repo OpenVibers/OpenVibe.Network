@@ -16,6 +16,11 @@
  *   GET  /api/v1/me/nodes                        session               → the person's own machines, newest first
  *   POST /api/v1/me/nodes/:id/revoke             session               → their principal, revoked (idempotent)
  *
+ * Every revoke — the service route, the owner's route, or an account deletion — writes network.node.revoked@1 into
+ * the outbox in the same transaction (Contracts 0.98.0; docs/t2-cells-and-node-principal.md section 10): a service
+ * holding the machine's session stops it at once, not at its next reauth (≤ 330 s). A second revoke emits nothing;
+ * the payload carries the ids, the owner and the reason, never the credential or its hash.
+ *
  * The paired machine itself (section 4.3, slice N4c): its credential buys a node token (sub node:nod_…) at
  * POST /oauth/token, and with it the machine manages only its own row. The routes resolve the node from the verified
  * token, never from the body or the path.
@@ -28,6 +33,7 @@ const express = require('express');
 const { ids, http, serviceAuth, validate, assertValid } = require('openvibe-contracts');
 const { BOOTSTRAP_CELL, RegistryError } = require('./cells');
 const { TOKEN_TTL_S, SELF_AUDIENCE } = require('../identity/principals');
+const eventRelay = require('../developer/event-relay');
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_TRIES = 5;
@@ -184,23 +190,87 @@ async function byScope(db, id, scope) {
 /** A principal `service` paired, or null (another service's principal is indistinguishable from none). */
 const pairedBy = (db, id, service) => byScope(db, id, { where: 'paired_by_service = ?', params: [service] });
 
+/** The payload's `owner` (network.node.revoked@1's oneOf), from the principal row. */
+const ownerOf = (p) => p.owner_kind === 'user' ? { kind: 'user', subject: p.owner_subject }
+    : p.owner_kind === 'project' ? { kind: 'project', project_id: p.project_id }
+    : { kind: 'platform' };
+
 /**
- * Revoke a principal matching a caller-owned scope; a second revoke changes nothing. → the row, or null.
- * The previous credential and its grace window are cleared. `credential_hash` stays: migrations/0014's
+ * The network.node.revoked@1 envelope for a principal row just revoked (Contracts 0.98.0; docs/t2-cells-and-node-
+ * principal.md section 10). Only the ids, who owns the machine, why and when: never the credential or its hash.
+ * Validates payload and envelope (a bug if either is off, never user input).
+ */
+function revokedEnvelope(p, { actor, reason, at }) {
+    const payload = { node_id: p.node_id, principal_id: p.id, owner: ownerOf(p), at };
+    if (reason) payload.reason = reason;
+    const env = {
+        event_id: ids.newId('event', Date.parse(at)), event_type: 'network.node.revoked', version: 1, source: 'network',
+        actor, timestamp: at, visibility: 'internal', subject: { type: 'node_principal', id: p.id }, payload,
+    };
+    const ev = validate('events.event-envelope@1', env);
+    const pv = validate('network.node.revoked@1', payload);
+    if (!ev.valid || !pv.valid) throw new Error(`node-principals: bad event ${JSON.stringify((ev.errors || []).concat(pv.errors || [])).slice(0, 300)}`);
+    return env;
+}
+
+/** The caller's reason text (1-500 chars, no control characters), or null; anything else is a 400. */
+function reasonOf(raw) {
+    if (raw === undefined || raw === null) return null;
+    const r = text(raw, 500);
+    if (!r) throw new RegistryError(400, 'registry.invalid_reason', 'reason must be 1-500 characters');
+    return r;
+}
+
+/**
+ * Revoke one active principal row and enqueue its network.node.revoked@1 on the ambient transaction, so the change
+ * and the event share it. → changes (0 or 1): a row already revoked changes nothing and emits nothing.
+ */
+async function revokeRow(db, p, { revokedBy, actor, reason, at }) {
+    const changed = (await db.prepare(`UPDATE platform_node_principals SET status = 'revoked', revoked_at = ?, revoked_by = ?, credential_prev_hash = NULL,
+        prev_valid_until = NULL, updated_at = ? WHERE id = ? AND status <> 'revoked'`).run(at, revokedBy, at, p.id)).changes;
+    if (!changed) return 0;
+    await eventRelay.writerFor(db).enqueue(db, revokedEnvelope(p, { actor, reason, at }));
+    return 1;
+}
+
+/**
+ * Revoke a principal matching a caller-owned scope; a second revoke changes nothing (and emits nothing). → the row,
+ * or null. The previous credential and its grace window are cleared. `credential_hash` stays: migrations/0014's
  * platform_node_principals_credential CHECK requires one for a user-owned principal, and a revoked row cannot
  * authenticate because every reader requires status = 'active'. One function, so the service route and the
- * person's own route revoke identically.
+ * person's own route revoke identically, both writing the event in the same transaction as the revoke.
  */
-async function revokeScoped(db, id, scope, revokedBy, now = Date.now()) {
-    if (!await byScope(db, id, scope)) return null;
+async function revokeScoped(db, id, scope, revokedBy, now = Date.now(), reason = null) {
     const at = iso(now);
-    await db.prepare(`UPDATE platform_node_principals SET status = 'revoked', revoked_at = ?, revoked_by = ?, credential_prev_hash = NULL,
-        prev_valid_until = NULL, updated_at = ? WHERE id = ? AND ${scope.where} AND status <> 'revoked'`).run(at, revokedBy, at, String(id), ...scope.params);
-    return byScope(db, id, scope);
+    const actor = String(revokedBy).startsWith('svc:')
+        ? { type: 'service', id: String(revokedBy).slice(4) }
+        : { type: 'user', id: String(revokedBy) };
+    return await db.tx(async () => {
+        const p = await db.prepare(`SELECT * FROM platform_node_principals WHERE id = ? AND ${scope.where}`).get(String(id), ...scope.params);
+        if (!p) return null;
+        await revokeRow(db, p, { revokedBy, actor, reason, at });
+        return await db.prepare(`SELECT * FROM platform_node_principals WHERE id = ? AND ${scope.where}`).get(String(id), ...scope.params);
+    });
 }
 
 /** Revoke a principal `service` paired; revoked_by is svc:<service>. → the row, or null. */
-const revoke = (db, id, service, now = Date.now()) => revokeScoped(db, id, { where: 'paired_by_service = ?', params: [service] }, `svc:${service}`, now);
+const revoke = (db, id, service, now = Date.now(), reason = null) => revokeScoped(db, id, { where: 'paired_by_service = ?', params: [service] }, `svc:${service}`, now, reason);
+
+/**
+ * Revoke every active principal owned by any of `subjects` and enqueue its event, on the caller's ambient
+ * transaction (an account deletion: the person's machines go with the account, and each revoke is announced so a
+ * consumer stops the machine at once). Returns how many changed; a row already revoked emits nothing.
+ */
+async function revokeOwnedBy(db, subjects, { revokedBy = 'account_deleted', actor, reason = 'account_deleted', now = Date.now() } = {}) {
+    const at = iso(now);
+    let revoked = 0;
+    for (const sid of subjects || []) {
+        if (!SUBJECT.test(String(sid))) continue;
+        const rows = await db.prepare("SELECT * FROM platform_node_principals WHERE owner_kind = 'user' AND owner_subject = ? AND status <> 'revoked'").all(String(sid));
+        for (const p of rows) revoked += await revokeRow(db, p, { revokedBy, actor: actor || { type: 'user', id: String(sid) }, reason, at });
+    }
+    return revoked;
+}
 
 /** The query filters of the operator and service principal lists; anything but a string is ignored. */
 const principalFilter = (q = {}) => Object.fromEntries(['cell', 'owner_kind', 'status'].map((k) => [k, typeof q[k] === 'string' ? q[k] : null]));
@@ -269,7 +339,7 @@ function userRouter(requireAuth, now = () => Date.now()) {
         res.set('Cache-Control', 'private, no-store');
         const db = req.app.locals.db;
         const me = await meOf(db, req.user);
-        const p = await revokeScoped(db, req.params.principal, ownScope(me), me, now());
+        const p = await revokeScoped(db, req.params.principal, ownScope(me), me, now(), reasonOf((req.body || {}).reason));
         if (!p) return http.sendProblem(res, 404, 'registry.unknown_node', { detail: `no node principal ${req.params.principal}` });
         res.json(principalView(p));
     }));
@@ -405,7 +475,9 @@ function routers({ guard, now = () => Date.now() }) {
     });
     internal.post('/node-principals/:id/revoke', guard, async (req, res) => {
         res.set('Cache-Control', 'no-store');
-        const p = await revoke(req.app.locals.db, req.params.id, serviceOf(req), now());
+        let reason;
+        try { reason = reasonOf((req.body || {}).reason); } catch (e) { return problem(res, e); }
+        const p = await revoke(req.app.locals.db, req.params.id, serviceOf(req), now(), reason);
         if (!p) return http.sendProblem(res, 404, 'registry.unknown_node', { detail: `no node principal ${req.params.id}` });
         res.json(principalView(p));
     });
@@ -431,4 +503,4 @@ function routers({ guard, now = () => Date.now() }) {
     return { internal, pairing };
 }
 
-module.exports = { CODE_TTL_MS, MAX_TRIES, PREV_GRACE_MS, OPERATOR_STATUS, createPairing, redeem, revoke, principalView, principalFilter, listPrincipals, setPrincipalStatus, routers, userRouter, issueNodeToken, selfRouter };
+module.exports = { CODE_TTL_MS, MAX_TRIES, PREV_GRACE_MS, OPERATOR_STATUS, createPairing, redeem, revoke, revokeOwnedBy, principalView, principalFilter, listPrincipals, setPrincipalStatus, routers, userRouter, issueNodeToken, selfRouter };

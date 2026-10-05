@@ -4,8 +4,9 @@ Status: **N1–N7 merged** on `origin/main` `fbd6312` (registry slice 5, the nod
 operator writers; each slice's state is in §8). The cells layer of `docs/t2-resource-registry.md` §9 was already on
 `origin/main` (`d6ed8c4`, PR #5: `migrations/0008_cells_and_node_principals.sql`, `server/registry/cells.js`,
 `test/cells-registry.test.js`); this document designed the rest of lane B on top of it and re-planned registry slice 5.
-Pinned: Network `openvibe-contracts` **v0.97.0** (`package.json:33`, `origin/main` `fbd6312`; the latest Contracts
-release, to which Network's pin moves in a separate PR). v0.85.0 closed every contract gap in §2 and the §9.1 T1 brief (the doc was
+Pinned: Network `openvibe-contracts` **v0.99.0** (`package.json:33`). v0.98.0 added `network.node.revoked@1`, the event
+Network now emits on every node-principal revoke (§10), so a connected machine is stopped at once rather than at its next
+reauth. v0.85.0 closed every contract gap in §2 and the §9.1 T1 brief (the doc was
 written against v0.83.0, checked then against v0.84.0). OpenVibe.Bot
 `origin/main` `17ce069` (pins Contracts v0.79.0, `package.json:29`), OpenVibe.Node `origin/main` `4d2b8e1`. Bot is not
 deployed (`ov access run openvibe-ovh releases bot` → `unknown service "bot"`), so no production device exists.
@@ -226,8 +227,8 @@ instances carry endpoints.
 | `POST /internal/node-pairings` | service token, `network.node.manage` | body `{owner: {kind:'user', subject:'usr_…'}, ref, home_cell?}`; the requesting service is the token's `svc:<id>`. Refuses an unknown, banned or deleted user (`404 registry.unknown_owner`) and a `home_cell` that is not `active`. Deletes that service's unused codes for the same `ref` (Bot's rule, `domain/index.js:164`), inserts one, → `201 {pairing_id, code: 'XXXX-XXXX', expires_at}`; the code is shown once, only its sha256 stored. TTL 10 min. `owner.kind:'project'` → `501 registry.not_yet` in this slice (§8). |
 | `POST /api/v1/node-pairing` | none: the code is the credential; `rateLimit({windowMs: 60_000, max: 10})` on the route | body `{pairing?: 'pair_…', code, name?, region?}`. Same outcomes as Bot's redeem (`domain/index.js:180-205`): `422 registry.invalid_pairing_code` (shape), `403 registry.pairing_code_invalid\|_used\|_expired\|_locked`; with `pairing` a wrong code counts a try against that row, 5 kills it. In one `db.tx`: mark used, create the principal (`nod_<ULID>`; `node_id = 'n-' + ulid.toLowerCase()`, 28 chars, matches `network.node@1`'s id pattern; owner from the code; `trust` `community` for a user; `home_cell` = the code's, else `cellForRegion(region)` `cells.js:32`; `paired_by_service`/`pairing_ref` from the code; `created_by = 'pairing:<pair_id>'`), set `principal_id` on the code. → `201 {principal, node_id, home_cell, credential, token_endpoint: '<issuer>/oauth/token', paired_for: {service, ref}}`; `credential` shown once, `Cache-Control: no-store`, never logged. |
 | `GET /internal/node-principals/:id` | `network.node.manage` | only a principal whose `paired_by_service` is the caller (else `404 registry.unknown_node`, never 403, so a service cannot probe others) → `{principal, node_id, name, owner, home_cell, status, paired_for, last_seen_at, created_at, revoked_at}`. No hash ever. |
-| `POST /internal/node-principals/:id/revoke` | `network.node.manage`, same scoping | `status = 'revoked'`, `revoked_at`, `revoked_by = 'svc:<id>'`, previous hash cleared; idempotent. |
-| `GET /api/v1/me/nodes`, `POST /api/v1/me/nodes/:principal/revoke` | session (`requireAuth`), the owner only (slice N5) | the person's own machines (`owner_subject = me`): the same view; revoke as above with `revoked_by = usr_…`. |
+| `POST /internal/node-principals/:id/revoke` | `network.node.manage`, same scoping | `status = 'revoked'`, `revoked_at`, `revoked_by = 'svc:<id>'`, previous hash cleared; idempotent. In the same transaction writes `network.node.revoked@1` to the outbox (actor the service; `reason` from the body when given). A second revoke changes nothing and emits nothing. |
+| `GET /api/v1/me/nodes`, `POST /api/v1/me/nodes/:principal/revoke` | session (`requireAuth`), the owner only (slice N5) | the person's own machines (`owner_subject = me`): the same view; revoke as above (same event, actor the owner) with `revoked_by = usr_…`. |
 
 ### 4.3 Node tokens and self routes (slice N4c)
 
@@ -377,6 +378,7 @@ secrets set, tokens via `POST /oauth/token`), run with `node test/<file>.test.js
 | N5 | Owner API for own machines | `server/registry/node-principals.js` (`userRouter`), `server/index.js` (`/api/v1/me/nodes`, `rateLimit` as `/api/v1/me/blocks` `:427`), `test/node-principals-me.test.js` | N4b | basic (page: For Opus) | **merged** (PR #18) |
 | N6 | Registry slice 5 (offer kinds as `detail`) | `package.json` pin, `migrations/0009_resource_offer_kinds.sql`, `server/registry/offers.js`, `server/index.js:473`, `principals.js` grant, `test/resource-registry.test.js` | **T1 release** (§9.1 items 4-5) | basic | **merged** (pin is v0.85.0) |
 | N7 | Registry writers & operator reads | `server/registry/cells.js` (`cellView`, `setCell`, internal node-principals read), `server/registry/instances.js` (`setInstance`), `server/registry/nodes.js` (`GET /internal/nodes`), `server/index.js` (staff `/api/admin/registry`), tests | nothing (staff session; no new capability) | basic | **merged** (PR #27) |
+| N8 | Node-revoked event | `server/registry/node-principals.js` (emit in `revokeScoped`/`revokeRow`, `revokeOwnedBy`), `server/identity/account-data.js` (account deletion), tests | Contracts v0.98.0 (`network.node.revoked@1`) | basic | **in review (this PR)** |
 
 Bot (T15) and Node (T14) follow, each step keeping Bot working (§9.2, §9.3). Owner steps: none for the Network
 slices (main is not deployed and the PostgreSQL cutover waits on the owner); at Bot's deploy the owner provisions Bot's
@@ -512,15 +514,18 @@ on the v2 path; Bot's `device_id` and publish key come over HTTP instead (B1's `
   connect; restart with `device_id` empty re-binds; `reauth` sent before expiry; `401` from the token endpoint
   backs off.
 
-## 10. Unresolved
+## 10. Unresolved, and resolved since
 
+- ~~**Revocation latency outside Bot**~~ — **resolved (N8)**: a revoke made on Network (the service route, the owner's
+  route, or an account deletion) now writes `network.node.revoked@1` to the outbox in the same transaction as the
+  revoke (Contracts v0.98.0), so a service holding the machine's session stops it at once instead of at its next
+  `reauth` (≤ 330 s). A second revoke emits nothing; the payload carries the ids, the owner and the reason, never the
+  credential or its hash.
 - **Project-owned machines** (`owner.kind: 'project'`): the schema carries them; the pairing route answers `501`
   until Services (T13) or Run (T14) is the requesting service and the member/role rule for "who may pair a machine
   into a project" is decided.
 - **Route-weight writes** (cells and instances): no writer until the scheduler exists; weights stay at the default.
 - **A second cell** (O24): `INSERT` into `platform_regions`/`platform_cells` by migration, then staff moves
   `home_cell`; no programming-model change. Changing a project's home cell is staff-only and not designed here.
-- **Revocation latency outside Bot**: a revoke made on Network (N5) reaches a connected device at its next `reauth`
-  (≤ 330 s). An event (`network.node.revoked`) would make it instant; deferred, it needs an event contract.
 - **Bot's own capabilities** (`bot.robot.control`, `bot.device.connect`, …) are not in the Contracts catalog at
   v0.84.0 and there is no `manifests/services/bot.json`; that is a separate T1/T15 job, not a blocker here.

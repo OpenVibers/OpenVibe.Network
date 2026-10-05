@@ -16,7 +16,8 @@ const cache = require('openvibe-shared/cache-policy');
  *   - modules, follows and blocks both ways, notifications, preferences, push subscriptions, effects;
  *   - history, username history, the sign-in IP log and email log;
  *   - project memberships; a project the person owns passes to another owner or admin, else it is archived and
- *     its apps revoked.
+ *     its apps revoked;
+ *   - the person's paired node principals, revoked and announced as network.node.revoked@1.
  * The OpenCoins balance is closed with one ledger entry (account_deleted); ledger rows stay. The user row becomes
  * a tombstone (username released, email, password and profile cleared, deleted_at), as do accounts merged into it;
  * the subject is never reused and resolves as deleted. Its tokens are revoked strictly, and network.account.deleted
@@ -363,6 +364,10 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
             }
             await del('dev_project_members', `subject_id IN ${inS}`, subjects, 'project_memberships');
         }
+        // The person's paired machines (plan T2): each is revoked with the account and announced as
+        // network.node.revoked@1 in this same transaction, so a service holding a machine's session stops it at once.
+        const nodePrincipals = require('../registry/node-principals');
+        count('nodes_revoked', await nodePrincipals.revokeOwnedBy(db, subjects, { actor: { type: 'user', id: subject }, now }));
         if (await tableExists(db, 'account_merges')) await db.prepare(`UPDATE account_merges SET pre_state = NULL, reduced_at = COALESCE(reduced_at, ?) WHERE into_user_id IN ${inU} OR from_user_id IN ${inU}`).run(at, ...userIds, ...userIds);
         // OpenCoins: loyalty (ADR-012). The balance closes with one ledger entry; the ledger stays.
         for (const id of userIds) {

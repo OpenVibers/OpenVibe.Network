@@ -7,7 +7,7 @@ const assert = require('assert');
 const crypto = require('crypto');
 const http = require('http');
 const express = require('express');
-const { ids } = require('openvibe-contracts');
+const { ids, validate } = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 const principals = require('../server/identity/principals');
 const nodePrincipals = require('../server/registry/node-principals');
@@ -32,6 +32,7 @@ await db.prepare("INSERT INTO platform_cells (id, region, residency, status) VAL
 const clock = { offset: 0 };
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
 const app = express();
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.locals.db = db;
 app.locals.config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
@@ -59,6 +60,8 @@ const token = async (id, secret) => (await (await fetch(`${base}/oauth/token`, {
 const call = (method, p, body, headers = {}) => fetch(`${base}${p}`, { method, headers: { 'content-type': 'application/json', ...headers }, body: body ? JSON.stringify(body) : undefined })
     .then(async (x) => { const text = await x.text(); let json = null; try { json = JSON.parse(text); } catch { /* not JSON */ } return { status: x.status, headers: x.headers, text, body: json }; });
 const bearer = (t) => ({ authorization: `Bearer ${t}` });
+const revokedEvents = async () => (await db.prepare('SELECT envelope FROM network_event_outbox ORDER BY id').all()).map((r) => r.envelope)
+    .filter((e) => e.event_type === 'network.node.revoked');
 let passed = 0;
 const check = async (name, fn) => { await fn(); passed++; log(`  ok ${name}`); };
 try {
@@ -193,11 +196,36 @@ try {
         assert.ok(r.body.revoked_at);
         const row = await db.prepare('SELECT * FROM platform_node_principals WHERE id = ?').get(paired.principal);
         assert.deepStrictEqual([row.status, row.revoked_by, row.credential_prev_hash, row.prev_valid_until], ['revoked', 'svc:bot', null, null]);
+        // The revoke is announced once (network.node.revoked@1), valid, owned by Alex, actor the service, no secret.
+        const announced = (await revokedEvents()).filter((e) => e.subject.id === paired.principal);
+        assert.strictEqual(announced.length, 1, 'one event for one revoke');
+        const e = announced[0];
+        assert.ok(validate('events.event-envelope@1', e).valid, JSON.stringify(validate('events.event-envelope@1', e).errors));
+        assert.ok(validate('network.node.revoked@1', e.payload).valid, JSON.stringify(validate('network.node.revoked@1', e.payload).errors));
+        assert.deepStrictEqual(Object.keys(e.payload).sort(), ['at', 'node_id', 'owner', 'principal_id'], 'no reason given, none carried');
+        assert.deepStrictEqual([e.payload.node_id, e.payload.principal_id, e.payload.owner], [paired.node_id, paired.principal, { kind: 'user', subject: alex }]);
+        assert.deepStrictEqual([e.actor, e.visibility, e.source, e.subject.type], [{ type: 'service', id: 'bot' }, 'internal', 'network', 'node_principal']);
+        assert.ok(!/hash|credential|secret/i.test(JSON.stringify(e.payload)), 'the payload carries no secret field');
         clock.offset += 5000;
         const again = await call('POST', `/internal/node-principals/${paired.principal}/revoke`, null, bot);
         clock.offset -= 5000;
         assert.deepStrictEqual([again.status, again.body.revoked_at], [200, r.body.revoked_at], 'a second revoke changes nothing');
+        assert.strictEqual((await revokedEvents()).filter((x) => x.subject.id === paired.principal).length, 1, 'a second revoke emits nothing new');
         assert.strictEqual((await call('GET', `/internal/node-principals/${paired.principal}`, null, bot)).body.status, 'revoked');
+    });
+
+    await check('a revoke may carry the caller\'s reason; an invalid one is refused before anything changes', async () => {
+        const { body: pairing } = await mint('robot-reason');
+        const { body: paired } = await redeem({ pairing: pairing.pairing_id, code: pairing.code });
+        const bad = await call('POST', `/internal/node-principals/${paired.principal}/revoke`, { reason: '' }, bot);
+        assert.deepStrictEqual([bad.status, bad.body.code], [400, 'registry.invalid_reason']);
+        assert.strictEqual((await db.prepare('SELECT status FROM platform_node_principals WHERE id = ?').get(paired.principal)).status, 'active', 'a refused reason revokes nothing');
+        assert.strictEqual((await revokedEvents()).filter((x) => x.subject.id === paired.principal).length, 0, 'a refused revoke emits nothing');
+        const ok = await call('POST', `/internal/node-principals/${paired.principal}/revoke`, { reason: 'the machine was sold' }, bot);
+        assert.strictEqual(ok.status, 200, ok.text);
+        const e = (await revokedEvents()).find((x) => x.subject.id === paired.principal);
+        assert.deepStrictEqual([e.payload.principal_id, e.payload.reason], [paired.principal, 'the machine was sold']);
+        assert.ok(validate('network.node.revoked@1', e.payload).valid);
     });
 
     await check('pairing creates no platform machine; Host cannot report a paired node', async () => {

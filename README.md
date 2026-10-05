@@ -34,6 +34,9 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
   developer projects, apps, credentials, grants and quotas (ADR-014), mod principals
 - notifications and email, themes and theme preferences, user modules, platform blocks, the follow
   graph (ADR-030), creator analytics (ADR-021), the OpenCoins wallet
+- node principals: a person's paired machine (`nod_…`) with a one-time pairing code, a scoped credential and a
+  token; a revoke — by the pairing service, its owner, or an account deletion — stops the machine and is announced
+  as `network.node.revoked@1`
 - the service registry (`/api/v1/registry/*`, `/.well-known/openvibe`), the status page, the network
   changelog proxy, and the files at `/shared/*` (the pinned openvibe-shared release)
 
@@ -45,7 +48,7 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 
 ## Depends on
 
-- `openvibe-contracts` v0.97.0 (registry manifests, capability checks), `openvibe-sdk` v0.28.0 (PostgreSQL
+- `openvibe-contracts` v0.99.0 (registry manifests, capability checks), `openvibe-sdk` v0.28.0 (PostgreSQL
   and Valkey adapters, events, per-actor limits, universal telemetry), `openvibe-shared` v2.9.0, pinned by release tarball
 - OpenVibe.Events (Network's outbox relay; the events it consumes), OpenVibe.AI (the `network.site_copy`
   workflow), OpenVibe.Blog (the changelog feed it proxies)
