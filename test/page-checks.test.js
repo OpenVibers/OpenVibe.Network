@@ -20,9 +20,11 @@ assert.ok(toggles.length >= 3 && toggles.every((b) => /aria-label="Show password
 const loginJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'login.js'), 'utf8');
 assert.match(loginJs, /btn\.setAttribute\('aria-label', input\.type === 'password' \? 'Show password' : 'Hide password'\)/);
 for (const [, body] of login.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) assert.ok(body.length <= 200, 'login.html keeps no inline script body over 200 characters');
-const token = (name) => login.match(new RegExp(`--${name}:(#[0-9a-f]{6})`, 'i'))[1];
+// The sign-in page's CSS was extracted to /css/login.css (plan T2 step 1); the tokens and rules live there now.
+const loginCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'css', 'login.css'), 'utf8');
+const token = (name) => loginCss.match(new RegExp(`--${name}:(#[0-9a-f]{6})`, 'i'))[1];
 for (const bg of ['bg', 'bg-card', 'bg-input']) assert.ok(ratio(token('text-muted'), token(bg)) >= 4.5, `muted text on --${bg} reads at 4.5:1`);
-assert.match(login, /\.tab-bar button\.active\{background:var\(--accent-dark\);color:#fff;/);
+assert.match(loginCss, /\.tab-bar button\.active\{background:var\(--accent-dark\);color:#fff;/);
 assert.ok(ratio(token('accent-dark'), '#ffffff') >= 4.5, 'the active tab reads at 4.5:1');
 
 const updates = fs.readFileSync(path.join(__dirname, '..', 'server', 'updates', 'routes.js'), 'utf8');
