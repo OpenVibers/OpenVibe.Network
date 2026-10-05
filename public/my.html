@@ -68,6 +68,18 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 .section-tabs button.active{background:var(--bg-card);color:var(--accent-light)}
 .section-tabs button:hover:not(.active){color:var(--text)}
 
+/* Approvals (my/approvals.js): one row per waiting request, and the count on its tab */
+.section-tabs .tab-badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:9px;background:var(--accent);color:#fff;font-size:11px;line-height:18px;text-align:center}
+.approval{border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;background:var(--bg-secondary)}
+.approval-summary{font-weight:600;color:var(--text);margin-bottom:6px;overflow-wrap:anywhere}
+.approval-meta{font-size:12px;color:var(--text-secondary);margin-bottom:10px;overflow-wrap:anywhere}
+.approval-who{color:var(--text);font-weight:600}
+.approval-cap{font-size:11px;padding:1px 6px;border-radius:5px;background:var(--bg-input);border:1px solid var(--border)}
+.approval-resources{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;padding:0}
+.approval-resources li{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--bg-input);color:var(--text-secondary);overflow-wrap:anywhere}
+.approval .btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.approvals-empty{color:var(--text-secondary);font-size:13px}
+
 /* Section */
 .section{display:none;animation:sec-in .2s ease}
 .section.active{display:block}
@@ -304,6 +316,7 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
         <button onclick="showSection('notifications',this)"><i class="fa-solid fa-bell"></i> Notifications</button>
         <button onclick="showSection('history',this)"><i class="fa-solid fa-clock-rotate-left"></i> History</button>
         <button onclick="showSection('data',this)"><i class="fa-solid fa-database"></i> AI &amp; Data</button>
+        <button onclick="showSection('approvals',this)"><i class="fa-solid fa-user-check"></i> Approvals</button>
         <button onclick="showSection('linked',this)"><i class="fa-solid fa-link"></i> Linked Services</button>
         <button onclick="showSection('security',this)"><i class="fa-solid fa-lock"></i> Security</button>
         <button onclick="showSection('anon',this)"><i class="fa-solid fa-user-secret"></i> Anon Info</button>
@@ -501,6 +514,16 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
     </div>
 
     <!-- Linked Services Section -->
+    <div class="section" id="sec-approvals">
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-user-check"></i></span> Approvals</h3>
+            <p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">Agents you run ask here before they use a sensitive permission on your behalf. Approve lets it go ahead once; Deny tells it no. A request you leave alone expires by itself.</p>
+            <div id="approvals-list" aria-live="polite">
+                <!-- Populated by JS (my/approvals.js) -->
+            </div>
+        </div>
+    </div>
+
     <div class="section" id="sec-linked">
         <div class="card">
             <h3><span class="icon"><i class="fa-solid fa-link"></i></span> Linked Services</h3>
@@ -586,6 +609,7 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
 <script src="/js/my/themes.js" defer></script>
 <script src="/js/my/profile.js" defer></script>
 <script src="/js/my/security.js" defer></script>
+<script src="/js/my/approvals.js" defer></script>
 <script src="/js/my/boot.js" defer></script>
   <script src="https://openvibe.live/live-notify.js" async></script>
 </body>

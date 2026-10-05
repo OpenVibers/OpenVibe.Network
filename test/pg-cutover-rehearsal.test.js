@@ -144,7 +144,10 @@ function rehearse(args, extraEnv = {}) {
             const p = await pollReady(`http://127.0.0.1:${stalled.address().port}`, { timeoutMs: 3000, requestMs: 1000 });
             const took = Date.now() - t;
             assert.strictEqual(p.body, null, 'no answer read');
-            assert.ok(took >= 2500 && took < 6000, `returned in ${took} ms (deadline 3000)`);
+            // It must wait for the deadline (>= 2500), and must give up near it rather than hang. The upper bound is loose:
+            // with other test files in parallel this process can be descheduled past the timer, so wall-clock can stretch
+            // well beyond the 3 s deadline even though the poll itself honoured it.
+            assert.ok(took >= 2500 && took < 30000, `returned in ${took} ms (deadline 3000)`);
         } finally { stalled.closeAllConnections(); await new Promise((r) => stalled.close(r)); }
     }
 

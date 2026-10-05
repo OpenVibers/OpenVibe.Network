@@ -15,6 +15,9 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 
+/** Transient connection errors worth one more try on an idempotent request (a pooled socket the server closed). */
+const NET_RETRY = new Set(['UND_ERR_SOCKET', 'ECONNRESET', 'EPIPE', 'UND_ERR_CONNECT_TIMEOUT']);
+
 /** The path an Express 4 layer is mounted at ('' for app-level middleware), or null when it is a pattern. */
 function mountPath(layer) {
     if (!layer.regexp || layer.regexp.fast_slash) return '';
@@ -171,14 +174,25 @@ async function crawl(base, paths, people, needlesFor, { method = 'GET', body, co
         await Promise.all(Array.from({ length: concurrency }, async () => {
             while (queue.length) {
                 const p = queue.shift();
+                const h = { 'x-forwarded-for': nextIp(), ...headers };
+                let b;
+                if (body !== undefined) { if (typeof body === 'string') b = body; else { b = JSON.stringify(body); h['content-type'] = 'application/json'; } }
+                // The server closes a pooled connection after its 5 s keep-alive. With test files in parallel a crawl can
+                // outrun that between requests, and undici then hands back a socket the server just closed ("fetch failed",
+                // status 0), which used to fail `answered` spuriously. Retry that race on a GET (no side effects); a write
+                // stays single-shot so a retry can never duplicate it.
+                const retriable = method === 'GET';
                 let r;
-                try {
-                    const h = { 'x-forwarded-for': nextIp(), ...headers };
-                    let b;
-                    if (body !== undefined) { if (typeof body === 'string') b = body; else { b = JSON.stringify(body); h['content-type'] = 'application/json'; } }
-                    const res = await fetch(base + p, { method, headers: h, body: b, redirect: 'manual' });
-                    r = { status: res.status, headers: res.headers, text: await res.text() };
-                } catch { r = { status: 0, text: '', headers: {} }; }
+                for (let attempt = 0; ; attempt++) {
+                    try {
+                        const res = await fetch(base + p, { method, headers: h, body: b, redirect: 'manual' });
+                        r = { status: res.status, headers: res.headers, text: await res.text() };
+                        break;
+                    } catch (e) {
+                        if (!retriable || attempt >= 2 || !NET_RETRY.has(e?.cause?.code)) { r = { status: 0, text: '', headers: {} }; break; }
+                        await new Promise((res) => setTimeout(res, 250));
+                    }
+                }
                 if (r.status) answered++;
                 const cls = r.status ? `${String(r.status)[0]}xx` : 'none';
                 statuses[cls] = (statuses[cls] || 0) + 1;

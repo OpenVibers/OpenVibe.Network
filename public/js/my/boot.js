@@ -9,3 +9,4 @@ OpenVibeAccountSwitcher.init({ apiBase: API });
 loadUser();
 buildDashboardShowcase();
 openInitialSection();
+refreshApprovalsBadge();

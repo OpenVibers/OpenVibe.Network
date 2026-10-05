@@ -5,16 +5,17 @@ merge `4ec36e1`) and **lane B step 3 built** (`GET /internal/projects/:project_i
 only: `server/internal/routes.js:490`; PR #28, merge `e422342`) and **slice 3 built** (delegated grants and modes:
 `migrations/0017_agent_grants.sql`, the ceiling in `server/developer/agents.js`), **slices 4–5 built** (confirmations,
 owner side, and budgets: `0018`, `0019`) and **slices 6–7 built** (`GET /internal/agents/:agent` and the four
-`/internal/confirmations` routes, `server/internal/routes.js`, with the pin at `openvibe-contracts` v0.90.0) and **slices
+`/internal/confirmations` routes, `server/internal/routes.js`, with the pin at `openvibe-contracts` v0.97.0) and **slices
 8–9 built** (agent tokens, `server/developer/agent-tokens.js`; `network.confirmation.changed@1` decision events from
-`server/developer/confirmations.js`); the owner notification of slice 9 still waits on an openvibe-shared type (§8).
+`server/developer/confirmations.js`; and the owner notification, `confirmations.notifyOwner` sending `openvibe-shared`
+`TYPES.CONFIRMATION_REQUESTED`, PR #47, merge `fbd6312`).
 Plan T2, "Projects and grants: projects as the ownership boundary for every resource;
 `agt_` principals, delegated grants with modes, sensitive capabilities, confirmation requests, budgets (WS-Z2)".
-Pinned version: `openvibe-contracts` **v0.90.0** (`package.json:33`, since slice 7; still the pin at `origin/main` `fb34f33`,
-the latest Contracts tag v0.94.0 is additive and not pinned yet); every contract claim below was
+Pinned version: `openvibe-contracts` **v0.97.0** (`package.json:33`; the latest Contracts release, to which Network's pin
+moves in a separate PR; `origin/main` `fbd6312`); every contract claim below was
 re-checked against the `v0.85.0` tag of OpenVibe.Contracts when slices 1–2 were built (it was written against v0.83.0).
 v0.89.0 published `network.confirmation.manage` (`planned`, `implementedBy` the four `/internal/confirmations` routes),
-the `agent` actor in `identity.service-token-claims@1` and `network.confirmation.changed@1`; v0.86–v0.90 are additive.
+the `agent` actor in `identity.service-token-claims@1` and `network.confirmation.changed@1`; v0.86–v0.97 are additive.
 
 Scope: an **agent** is a principal (`agt_<ULID>`) that acts for one person, inside one developer project, run by one
 host (a developer app or a first-party service such as OpenVibe.Actor). Its owner **delegates** part of the host's
@@ -58,7 +59,7 @@ allowances changes.
   ("`partner` is not in the enum yet") and the comment at `policy.js:8` predate that; slice 1 corrects both. The rule
   itself does not change.
 
-**Gaps — not in v0.85.0, so the slices that need them are blocked (section 8):**
+**Gaps — not in v0.85.0, so the slices that needed them were blocked at that tag (section 8):**
 
 1. `identity.service-token-claims@1`: `sub` allows only `svc:` / `app:` / `mod:` / `node:` and `actor_type` only
    `service | app | mod | node`. An agent token cannot validate. (v0.85.0 closed the same gap for the node actor of
@@ -516,7 +517,8 @@ the capability's audience. Owning services read budgets from `GET /internal/agen
 - **The grantability rule and the allowances.** Not reimplemented: the ceiling *is* `effectiveGrants` for app hosts. The
   one new rule (service-hosted agents never get `internal`) only narrows.
 - **Sensitive app grants.** `media.object.delete` and `space.post.write` keep working for apps exactly as today:
-  `capability@1` defines confirmation for **agents**. Apps acting with `on_behalf_of` are listed as unresolved.
+  `capability@1` defines confirmation for **agents**, and apps acting with `on_behalf_of` are decided not to use it
+  (section 9, Decided): per-capability consent, the consent screen and revocation cover the app path.
 - **Mod principals, node principals, export tokens.** Untouched.
 - **Account deletion (`account-data.js:319` `erase`)** revokes the subject's agents (`revoked_by = 'account_deleted'`,
   then `'project_archived'` for the rest of a project it archives; built, slice 2), cancels their pending and approved-unused
@@ -603,7 +605,7 @@ and agree).
 6. **Internal agent read** (built). `GET /internal/agents/:agent` under `network.project.read` (already in the catalog),
    `internalAgentView` in `server/developer/agents.js`, the route in `server/internal/routes.js`;
    `test/internal-agents.test.js`. Checks: `npm test`, `npm run test:pg`.
-7. **Internal confirmations** (built). The pin moved to `openvibe-contracts` v0.90.0 (v0.89.0 published
+7. **Internal confirmations** (built). The pin moved to the Contracts release then current (v0.89.0 published
    `network.confirmation.manage`), the four `/internal/confirmations` routes (`internalRouter`, `read` and `cancel` in
    `server/developer/confirmations.js`, mounted under the guard in `server/internal/routes.js`), no `DEFAULT_GRANTS`
    row yet (none until a receiver ships), internal cases in `test/confirmations.test.js`. Checks: `npm test`,
@@ -612,20 +614,43 @@ and agree).
    `server/developer/tokens.js` and `principals.issueToken`, `cap`/`cap_confirm` split, `test/agent-tokens.test.js`.
    Network's own guard refuses agent tokens on its routes until a route needs them. No migration. Checks: `npm test`,
    `npm run test:pg`.
-9. **Decision events** (built) **and the owner notification** (*still blocked on an openvibe-shared notification
-   type*). Audit rows carry `network.confirmation.changed@1` (`store.audit` takes the envelope's `actor` and
-   `on_behalf_of`), `test/confirmation-events.test.js`. Still to do: `notification-service.js` notifies the owner on
-   create (payload rules of `docs/notification-digest.md`: never the summary). No migration. Checks: `npm test`,
-   `npm run test:pg`.
+9. **Decision events and the owner notification** (built). Audit rows carry `network.confirmation.changed@1`
+   (`store.audit` takes the envelope's `actor` and `on_behalf_of`), `test/confirmation-events.test.js`; on create
+   `confirmations.notifyOwner` notifies the owner through `notification-service.js` with `openvibe-shared`
+   `TYPES.CONFIRMATION_REQUESTED` (payload rules of `docs/notification-digest.md`: never the summary), wired in
+   `server/index.js:621`; PR #47, merge `fbd6312`. No migration. Checks: `npm test`, `npm run test:pg`.
 
-Slices 2–9 are built, in this order (2–5 each added the next migration number; 6–9 need none); only the slice-9 owner
-notification waits on a release outside Network.
+Slices 2–9 are built, in this order (2–5 each added the next migration number; 6–9 need none); the slice-9 owner
+notification shipped with `openvibe-shared` v2.7.0 (`TYPES.CONFIRMATION_REQUESTED`, PR #47).
 
-## 9. Unresolved
+## 9. Decided and unresolved
 
-- **Apps acting `on_behalf_of` a person** (authorization-code tokens) are not agents, and `capability@1` asks confirmation
-  of agents. Whether a third-party app's sensitive actions should also be confirmed is a separate decision (the consent
-  screen gap in `docs/developer-projects.md`).
+### Decided
+
+- **Apps acting `on_behalf_of` a person do not use the confirmation path** (decided 2026-10-04 by the build plan,
+  revisable by the owner). An authorization-code token is issued to a person who is at the consent screen and, in the
+  interactive flow, driving the app when the action happens; an agent token is minted by its host (section 4, "Agent
+  tokens") and used unattended, which is why `capability@1`'s `sensitive` rule — "an agent needs its owner's
+  confirmation unless a standing rule covers it" — stays specific to agents. What an app may do is already agreed
+  capability by capability: `/oauth/authorize` takes `scope` (capability ids), `tokens.issueCode` keeps the grantable
+  subset, and `tokens.mint` intersects it with the app's grants again and can only narrow it, never widen it. Sensitive
+  capabilities are almost all `first-party` or `internal` and never grantable to apps; today exactly two are
+  app-grantable (public, active), `media.object.delete` and `space.post.write`, and they are not carved out as a named
+  subset either: the person authorizes each at consent, and the residual risk is bounded by revocation (grant revoke,
+  app revoke, `setAllowance` shrink, project archive), the 300-second token, and a receiver's refusal of `env: sandbox`.
+  The agent path defends an autonomous, prompt-injectable principal whose future actions the owner cannot enumerate when
+  delegating; an app runs the developer's own code and is authorized per capability. The compensating control on the app
+  side is therefore the consent screen, not an inbox: it must list the capability ids the app asks for and mark the
+  sensitive ones, and a request without a `scope` must not consent to capabilities the screen did not name
+  (`docs/developer-projects.md`, "Consent screen"). An app holding a refresh token (`/oauth/token`
+  `grant_type=refresh_token`) can still act after the person has left it; that is the case the per-capability consent
+  and revocation exist for, and if it proves too loose for the two app-grantable sensitive capabilities the narrower fix
+  is to leave sensitive capabilities out of refreshed tokens (the person consents again), not the agent inbox. No
+  contract delta: `cap_confirm` and the confirmation flow stay
+  agent-only in `identity.service-token-claims@1`, and Network builds nothing for apps here.
+
+### Unresolved
+
 - **Per-agent usage display.** Owners cannot see an agent's `used` until `common.usage-recorded@1` gains an agent
   dimension; whether an agent id may appear in a rollup is a privacy decision for Contracts.
 - **Money budgets across services** belong to Billing (T5); Network records nothing for them yet.

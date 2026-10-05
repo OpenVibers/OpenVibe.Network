@@ -15,4 +15,4 @@
 const { pathToFileURL } = require('url');
 // Every test process starts with a migrated database of its own (test/helpers/pg-preload.mjs; plan T2, ADR-035).
 const preload = pathToFileURL(require('path').join(__dirname, 'helpers', 'pg-preload.mjs')).href;
-require('openvibe-shared/test-runner').main({ dir: __dirname, timeoutMs: 300000, pad: 40, parallel: process.env.NETWORK_TEST_STORE === 'pg' ? 2 : 1, hide: /^\[DB\] /, nodeArgs: ['--import', preload] });
+require('openvibe-shared/test-runner').main({ dir: __dirname, timeoutMs: 300000, pad: 40, parallel: 'auto', hide: /^\[DB\] /, nodeArgs: ['--import', preload] });

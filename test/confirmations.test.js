@@ -428,7 +428,7 @@ for (const [id, name] of PEOPLE) T[name] = jwt.sign({ sub: id, id }, keys.privat
             assert.strictEqual(n1.state, 'pending');
             assert.strictEqual(calls.length, 1);
             const { message, ...rest } = calls[0];
-            assert.deepStrictEqual(rest, { user_id: 10, type: 'CONFIRMATION_REQUESTED', title: 'Approval needed', url: 'https://openvibe.network/my', service: 'network' });
+            assert.deepStrictEqual(rest, { user_id: 10, type: 'CONFIRMATION_REQUESTED', title: 'Approval needed', url: 'https://openvibe.network/my#approvals', service: 'network' });
             assert.strictEqual(message, `Bot: ${SUMMARY}`);
             assert.ok(!message.includes('private-detail-text'));
             await approve(n1, 'owner', { standing_rule: 'always' });
