@@ -126,16 +126,22 @@ Body `express.json({limit: '256kb'})`; array capped at 500, matching `network.no
 `maxItems`.
 
 **Routing** — mounted in `server/index.js` beside the node routers: `app.use('/internal/resources', internal)` and
-`app.use('/api/v1/resources', pub)`. `ensureSchema(db)` is added to the boot work in `server/db/database.js` next to
+`app.use('/api/v1/offers', pub)`. `ensureSchema(db)` is added to the boot work in `server/db/database.js` next to
 the nodes call, purely as documentation.
+
+**Release note (amended ADR-048).** The public offer routes moved: `GET /api/v1/resources` →
+`GET /api/v1/offers`, `GET /api/v1/resources/:offer_id` → `GET /api/v1/offers/:offer_id`, and
+`GET /api/v1/resources/:offer_id/beacon` → `GET /api/v1/offers/:offer_id/beacon`. The `/api/v1/resources` path
+itself now serves Network's resource index (server/registry/resource-index.js); `POST /internal/resources/report`
+and the `/internal/resources` reads are unchanged.
 
 ## 4. Public read API
 
 | Route | Behaviour | Cache |
 |---|---|---|
-| `GET /api/v1/resources` | `{offers: [<platform.resource-offer-public@1>], generated_at, filters, count}`; filters `?kind=&region=&trust=&status=&cell=&max_price_usd=`; **default excludes `status='down'`** | `public, max-age=60`, `ACAO: *`, `Timing-Allow-Origin: *` |
-| `GET /api/v1/resources/:offer_id` | one public offer (any status), or 404 `problem+json` `registry.unknown_offer` via `contracts.http.sendProblem` | `public, max-age=60` |
-| `GET /api/v1/resources/:offer_id/beacon` | 204 — the same idiom as `nodes.js:52`, for `openvibe-sdk/geo` | `no-store` |
+| `GET /api/v1/offers` | `{offers: [<platform.resource-offer-public@1>], generated_at, filters, count}`; filters `?kind=&region=&trust=&status=&cell=&max_price_usd=`; **default excludes `status='down'`** | `public, max-age=60`, `ACAO: *`, `Timing-Allow-Origin: *` |
+| `GET /api/v1/offers/:offer_id` | one public offer (any status), or 404 `problem+json` `registry.unknown_offer` via `contracts.http.sendProblem` | `public, max-age=60` |
+| `GET /api/v1/offers/:offer_id/beacon` | 204 — the same idiom as `nodes.js:52`, for `openvibe-sdk/geo` | `no-store` |
 | `GET /internal/resources` | the same list and filters, docs **whole** (capacity and harness address included); `network.resource.report` guard | `no-store` |
 | `GET /internal/resources/:offer_id` | the single offer whole, or 404 `registry.unknown_offer`; the same guard | `no-store` |
 
@@ -174,12 +180,12 @@ code. The contract between the two is therefore exact:
 - `capabilities[]` items are `namespace:name` strings (`node:http`, `events:gateway`, `object:r2`, …) — the contract's
   own pattern; they are stored, not interpreted.
 
-### Worked example — `GET /api/v1/resources?kind=provider` → `plan()`
+### Worked example — `GET /api/v1/offers?kind=provider` → `plan()`
 
 Two provider offers in one region, both `health.status: 'up'` and priced per request at `$0.02` and `$0.03`:
 
 ```json
-GET /api/v1/resources?kind=provider
+GET /api/v1/offers?kind=provider
 { "offers": [
     { "offer_id": "p-provider",   "kind": "provider", "region": "us-central", "trust": "community",
       "health": { "status": "up" }, "pricing": { "model": "per-request", "marginal_usd_per_unit": 0.02 } },
@@ -226,7 +232,7 @@ mounted, a service token minted through `POST /oauth/token` `client_credentials`
    excludes `down`; an unknown `kind` returns `{offers: []}` with 200. The public list never contains `capacity`; the
    internal list returns the stored docs whole and refuses a call without the guard's token.
 6. **Single read** — `GET /internal/resources/:id` is the stored `platform.resource-offer@1` doc;
-   `GET /api/v1/resources/:id` matches the Network-local public contract above; an unknown id → 404
+   `GET /api/v1/offers/:id` matches the Network-local public contract above; an unknown id → 404
    `registry.unknown_offer` on both.
 7. **Headers** — `cache-control: public, max-age=60` and `access-control-allow-origin: *` on list and single; beacon 204
    with `no-store` and `timing-allow-origin: *`.
@@ -237,7 +243,7 @@ mounted, a service token minted through `POST /oauth/token` `client_credentials`
    `pricing.marginal_usd_per_unit`, so the two defaulted columns are covered rather than assumed. The assert helper is
    written once against the mapping and reused by the upsert test and the mark-down test, so SQL and the test cannot
    drift apart. This is the invariant a later migration or a partial write breaks.
-9. **Placement proof** (slice 4) — feed a live `GET /api/v1/resources` response into
+9. **Placement proof** (slice 4) — feed a live `GET /api/v1/offers` response into
    `require('openvibe-sdk/placement').plan()` and assert the result matches `platform.placement-result@1`.
 
 Run `node test/resource-registry.test.js` while iterating, `npm run test:pg` (`NETWORK_TEST_STORE=pg`) for the SQL
@@ -249,10 +255,11 @@ filter path — PGlite and a real PostgreSQL must agree on it — and `npm test`
    no-op + `report`), the `ensureSchema` call in `server/db/database.js`, `app.use('/internal/resources', internal)` in
    `server/index.js`, `test/resource-registry.test.js` tests 1-4. The original guard reused `network.node.report`.
 2. **Public read + filters.** `list()`, `get()`, `routers().pub` in `server/registry/offers.js`,
-   `app.use('/api/v1/resources', pub)`, tests 5-7. Also the full internal read (`GET /internal/resources[/:id]`, the
+   `app.use('/api/v1/offers', pub)`, tests 5-7. Also the full internal read (`GET /internal/resources[/:id]`, the
    report's guard), because the public read leaves capacity out (§4).
-3. **Discovery entry.** (done) Add `resources: '/api/v1/resources'` to the `/api/v1/registry` index in
-   `server/registry/ecosystem.js`. Nothing else.
+3. **Discovery entry.** (done, amended) `server/registry/ecosystem.js` advertises
+   `offers: '/api/v1/offers'` and, since the amended ADR-048 moved the offers and gave Network a resource
+   index, `resources: '/api/v1/resources'` for that index. Nothing else.
 4. **Placement consumption proof.** (done) §5 gains a worked example; test 9 added. No production-code change — this
    slice exists to fail loudly if the response shape drifts from what `plan()` accepts.
 5. **Contracts bump + kind widening.** This item was re-planned as N6 in

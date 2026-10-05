@@ -155,7 +155,7 @@ sudo node --env-file=/etc/openvibe/network.env -e '
   })().catch((e) => { console.error("FAIL", e.message.replace(/\/\/[^@]*@/, "//***@")); process.exit(1); });'
 ```
 
-Expected: three lines ending `names user-owned`, and `migration: 0020`. `GET https://openvibe.network/api/v1/resources`
+Expected: three lines ending `names user-owned`, and `migration: 0020`. `GET https://openvibe.network/api/v1/offers`
 answers as before. It lists no `user-owned` offer until a Node holding that class reports one.
 
 ---
