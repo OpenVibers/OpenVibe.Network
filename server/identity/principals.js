@@ -254,7 +254,7 @@ const DEFAULT_GRANTS = [
     ['live', 'chat.moderation.read', 'openvibe.chat', []],
     ['live', 'chat.message.send', 'openvibe.chat', []],
     // Plan T3 J2/J4b: Live writes through Chat's typed internal ingress (events, moderation, cache hints)
-    // and reads Chat's tables directly, in place of its mirrored copy (Chat docs/chat-ingress.md).
+    // and reads them through Chat's internal read API, in place of its mirrored copy (Chat docs/chat-ingress.md).
     ['live', 'chat.event.publish', 'openvibe.chat', []],
     ['live', 'chat.moderation.write', 'openvibe.chat', []],
     ['live', 'chat.cache.invalidate', 'openvibe.chat', []],
