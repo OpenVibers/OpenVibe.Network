@@ -141,7 +141,9 @@ async function resolveUsername(db, name) {
     if (!/^[A-Za-z0-9_.-]{1,40}$/.test(n)) return null;
     const u = await db.prepare('SELECT id, subject_id, created_at FROM users WHERE LOWER(username) = LOWER(?) AND COALESCE(is_banned, 0) = 0 AND deleted_at IS NULL').get(n);
     if (!u) return null;
-    return resolve(db, { subject_id: u.subject_id || await ensureUserSubject(db, u) });
+    // A name folded into another account (ADR-029) resolves to the survivor: judge the survivor, not the alias row.
+    const p = await resolve(db, { subject_id: u.subject_id || await ensureUserSubject(db, u) });
+    return p && !p.banned && !p.deleted ? p : null;
 }
 
 /**
