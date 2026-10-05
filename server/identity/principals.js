@@ -75,12 +75,16 @@ const DEFAULT_GRANTS = [
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
     // Wave 9: Tips starts purchases and transfers in Billing, follows settlement through Events, and
-    // announces delivered tips in the creator's Live chat.
+    // announces delivered tips in the creator's Live chat. Since plan T5 the announcement itself goes
+    // through OpenVibe.Chat's typed ingress, with Tips' own service token (TIPS_CHAT_ADAPTER=chat;
+    // OpenVibe.Tips server/delivery/chat.js asks for exactly these two capabilities).
     ['tips', 'billing.intent.create', 'openvibe.billing', []],
     ['tips', 'billing.transfer.create', 'openvibe.billing', []],
     ['tips', 'events.subscription.manage', 'openvibe.events', []],
     ['tips', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['tips', 'live.tips_delivery.write', 'openvibe.live', []],
+    ['tips', 'chat.message.send', 'openvibe.chat', []],
+    ['tips', 'chat.event.publish', 'openvibe.chat', []],
     ['live', 'tips.interaction.record', 'openvibe.tips', []],
     // Wave 7: Live manages its slots' streams, keys and sessions on OpenRe.Stream; OpenRe publishes
     // session/output events (Live consumes openre.session.* by webhook).

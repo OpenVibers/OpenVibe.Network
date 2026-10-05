@@ -26,6 +26,7 @@ await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, red
 await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('events', 'events-secret', 'OpenVibe.Events', '[]', 1) ON CONFLICT DO NOTHING").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'ai-secret' WHERE client_id = 'ai'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'bot-secret' WHERE client_id = 'bot'").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'tips-secret' WHERE client_id = 'tips'").run();
 await db.prepare("INSERT INTO users (id, username, password_hash) VALUES (7, 'payee', 'x'), (8, 'payer', 'x')").run();
 // A database seeded before media.analyze (Live's AI grants as the old default) is moved at the next boot.
 await db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = 'live' AND audience = 'openvibe.ai'").run(JSON.stringify(['live.*', 'network.site_copy']));
@@ -199,6 +200,16 @@ const server = http.createServer(app);
     const cps = await token({ client_id: 'coupons', client_secret: 'coupons-secret', audience: 'openvibe.events', scope: 'events.subscription.manage' });
     assert.strictEqual(cps.status, 200, JSON.stringify(cps.body));
     assert.strictEqual(cps.body.scope, 'events.subscription.manage', 'Coupons manages its Events subscriptions');
+    // Plan T5 (Wave 9): Tips' chat adapter mints a token for 'chat.message.send chat.event.publish' on
+    // openvibe.chat with its own service token (OpenVibe.Tips server/delivery/chat.js); without both rows
+    // TIPS_CHAT_ADAPTER=chat can never deliver a paid effect.
+    const tc = await token({ client_id: 'tips', client_secret: 'tips-secret', audience: 'openvibe.chat' });
+    assert.strictEqual(tc.status, 200, JSON.stringify(tc.body));
+    assert.deepStrictEqual(tc.body.scope.split(' '), ['chat.event.publish', 'chat.message.send'], "Tips delivers paid chat effects through Chat's ingress");
+    const tipsClaims = serviceAuth.verifyServiceToken(tc.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.chat' });
+    assert.ok(tipsClaims.ok, tipsClaims.reason);
+    assert.strictEqual(tipsClaims.claims.sub, 'svc:tips');
+    assert.deepStrictEqual(tipsClaims.claims.cap, ['chat.event.publish', 'chat.message.send']);
 
     // Go-live fan-out accepts Live's token (network.notifications.push); a narrower token is refused.
     r = await post('/internal/events/stream-live', {}, { authorization: `Bearer ${full}` });
