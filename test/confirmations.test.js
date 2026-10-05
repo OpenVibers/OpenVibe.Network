@@ -435,7 +435,7 @@ for (const [id, name] of PEOPLE) T[name] = jwt.sign({ sub: id, id }, keys.privat
             assert.strictEqual((await ask(told)).state, 'approved');
             assert.strictEqual(calls.length, 1, 'a standing rule\'s approval notifies nobody');
             const xss = await ask(await appAgent(W), 'media.object.delete', { summary: '<b>x</b> & y' });
-            assert.strictEqual(calls[1].message, 'Bot: &lt;b&gt;x&lt;/b&gt; &amp; y');
+            assert.strictEqual(calls[1].message, 'Bot: <b>x</b> & y', 'raw text: every consumer escapes it');
             assert.strictEqual(xss.summary, '<b>x</b> & y');
             confirmations.setNotifier({ create: async () => { throw new Error('notify down'); } });
             const warn = console.warn; const warned = []; console.warn = (...a) => warned.push(a.join(' '));

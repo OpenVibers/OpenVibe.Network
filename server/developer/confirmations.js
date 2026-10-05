@@ -173,7 +173,6 @@ async function create(db, { agentId, capability, audience, summary, details, res
 
 let notifier = null;
 function setNotifier(s) { notifier = s && typeof s.create === 'function' ? s : null; }
-const escText = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /**
  * Tell the owner a confirmation waits for them (CONFIRMATION_REQUESTED), after the create committed. Best-effort: a
@@ -184,7 +183,7 @@ async function notifyOwner(db, { owner, name }, summary) {
     try {
         const u = await db.prepare('SELECT id FROM users WHERE subject_id = ?').get(owner);
         if (!u) return;
-        const message = escText(`${String(name || 'An agent').slice(0, 80)}: ${summary}`.slice(0, 200));
+        const message = `${String(name || 'An agent').slice(0, 80)}: ${summary}`.slice(0, 200);
         await notifier.create({ user_id: u.id, type: 'CONFIRMATION_REQUESTED', title: 'Approval needed', message, url: 'https://openvibe.network/my', service: 'network' });
     } catch (err) {
         console.warn('[Confirmations] owner notify failed:', err.message);
