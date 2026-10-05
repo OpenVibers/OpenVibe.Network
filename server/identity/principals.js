@@ -253,6 +253,17 @@ const DEFAULT_GRANTS = [
     // Plan T3: Live reads a channel's moderation settings, its moderators and emote count from Chat.
     ['live', 'chat.moderation.read', 'openvibe.chat', []],
     ['live', 'chat.message.send', 'openvibe.chat', []],
+    // Plan T3 J2/J4b: Live writes through Chat's typed internal ingress (events, moderation, cache hints)
+    // and reads them through Chat's internal read API, in place of its mirrored copy (Chat docs/chat-ingress.md).
+    ['live', 'chat.event.publish', 'openvibe.chat', []],
+    ['live', 'chat.moderation.write', 'openvibe.chat', []],
+    ['live', 'chat.cache.invalidate', 'openvibe.chat', []],
+    ['live', 'chat.stats.read', 'openvibe.chat', []],
+    ['live', 'chat.messages.read', 'openvibe.chat', []],
+    ['live', 'chat.analysis.read', 'openvibe.chat', []],
+    ['live', 'chat.moderation.queue.read', 'openvibe.chat', []],
+    ['live', 'chat.sounds.read', 'openvibe.chat', []],
+    ['live', 'chat.sounds.write', 'openvibe.chat', []],
     // Wave 8: Live as a Billing client (used only with BILLING_AUTHORITY=billing). Never cashout.manage
     // or ledger.admin: approving payouts is a separately controlled capability (ADR-012 rule 10).
     ...['billing.intent.create', 'billing.transfer.create', 'billing.balance.read', 'billing.cashout.request',
