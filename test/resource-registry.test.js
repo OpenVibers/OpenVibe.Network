@@ -2,7 +2,7 @@
 // The resource registry (plan T2, docs/t2-cells-and-node-principal.md section 6):
 // POST /internal/resources/report takes network.resource.report; the whole batch is validated before anything is written;
 // an offer missing from the same source's next report is marked down, not deleted; the filter columns always equal
-// the stored doc through the one mapping offers.columns(). GET /api/v1/resources filters in SQL, hides down offers by
+// the stored doc through the one mapping offers.columns(). GET /api/v1/offers filters in SQL, hides down offers by
 // default and never shows capacity; GET /internal/resources, behind the report's guard, returns the docs whole.
 //   node test/resource-registry.test.js
 const assert = require('assert');
@@ -34,7 +34,7 @@ app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 app.use('/oauth', require('../server/auth/oauth-routes'));
 const r = offers.routers({ guard: principals.guard('network.resource.report', { legacy: false }) });
-app.use('/api/v1/resources', r.pub);
+app.use('/api/v1/offers', r.pub);
 app.use('/internal/resources', r.internal);
 app.use(require('../server/registry/ecosystem').createEcosystemRegistry().router());
 const server = http.createServer(app);
@@ -166,7 +166,7 @@ const assertLockstep = async () => {
         ] }, auth);
         assert.strictEqual(x.status, 200, JSON.stringify(x.body));
         const get = (url, headers) => fetch(`${base}${url}`, { headers }).then(async (y) => ({ status: y.status, headers: y.headers, body: y.status === 204 ? null : await y.json() }));
-        const ids = async (q, prefix = '/api/v1/resources', headers) => {
+        const ids = async (q, prefix = '/api/v1/offers', headers) => {
             const y = await get(`${prefix}${q}`, headers);
             assert.strictEqual(y.status, 200, `${prefix}${q}`);
             assert.strictEqual(y.body.count, y.body.offers.length, `${q}: count`);
@@ -188,12 +188,12 @@ const assertLockstep = async () => {
             ['?kind=storage', []],
             ['?max_price_usd=cheap&colour=blue', ['f-1', 'l-1', 'l-2', 'l-3', 'o-2']],
         ]) assert.deepStrictEqual(await ids(q), want, q || 'the default hides down offers');
-        x = await get('/api/v1/resources?kind=storage&max_price_usd=0.05&trust=partner&colour=blue');
+        x = await get('/api/v1/offers?kind=storage&max_price_usd=0.05&trust=partner&colour=blue');
         assert.deepStrictEqual(x.body, { offers: [], generated_at: x.body.generated_at, filters: { kind: 'storage', trust: 'partner', max_price_usd: 0.05 }, count: 0 }, 'no storage has been reported yet');
         const stored = new Map((await rows()).map((o) => [o.id, JSON.parse(o.doc)]));
         // The public list matches Network's redacted contract; stored docs remain canonical.
         for (const q of ['', '?status=down', '?kind=provider']) {
-            for (const o of (await get(`/api/v1/resources${q}`)).body.offers) {
+            for (const o of (await get(`/api/v1/offers${q}`)).body.offers) {
                 assert.ok(!('capacity' in o), `${o.offer_id}: no capacity in public`);
                 assert.ok(offers.validatePublicDoc(o).valid, `${o.offer_id}: public doc matches ${offers.PUBLIC_CONTRACT}`);
                 assert.deepStrictEqual(o, offers.publicDoc(stored.get(o.offer_id)));
@@ -220,14 +220,14 @@ const assertLockstep = async () => {
             assert.ok(validate(offers.CONTRACT, x.body).valid);
             assert.deepStrictEqual(x.body, stored.get(id));
             assert.ok(x.body.capacity);
-            x = await get(`/api/v1/resources/${id}`);
+            x = await get(`/api/v1/offers/${id}`);
             assert.strictEqual(x.status, 200);
             assert.ok(offers.validatePublicDoc(x.body).valid);
             assert.deepStrictEqual(x.body, offers.publicDoc(stored.get(id)));
             assert.ok(!('capacity' in x.body));
         }
         assert.strictEqual((await get('/internal/resources/l-1')).status, 403, 'the internal single read takes the guard too');
-        for (const [url, headers] of [['/api/v1/resources/nope'], ['/internal/resources/nope', auth]]) {
+        for (const [url, headers] of [['/api/v1/offers/nope'], ['/internal/resources/nope', auth]]) {
             x = await get(url, headers);
             assert.strictEqual(x.status, 404, url);
             assert.strictEqual(x.headers.get('content-type'), 'application/problem+json', url);
@@ -235,13 +235,13 @@ const assertLockstep = async () => {
         }
 
         // 7. Headers: list and single cacheable for a minute and open to any origin; the beacon 204 and never cached.
-        for (const url of ['/api/v1/resources', '/api/v1/resources?kind=provider', '/api/v1/resources/l-1']) {
+        for (const url of ['/api/v1/offers', '/api/v1/offers?kind=provider', '/api/v1/offers/l-1']) {
             x = await get(url);
             assert.strictEqual(x.headers.get('cache-control'), 'public, max-age=60', url);
             assert.strictEqual(x.headers.get('access-control-allow-origin'), '*', url);
             assert.strictEqual(x.headers.get('timing-allow-origin'), '*', url);
         }
-        x = await get('/api/v1/resources/l-1/beacon');
+        x = await get('/api/v1/offers/l-1/beacon');
         assert.strictEqual(x.status, 204);
         assert.strictEqual(x.headers.get('cache-control'), 'no-store');
         assert.strictEqual(x.headers.get('access-control-allow-origin'), '*');
@@ -257,8 +257,9 @@ const assertLockstep = async () => {
         ] }, auth);
         assert.strictEqual(x.status, 200, JSON.stringify(x.body));
         const idx = await get('/api/v1/registry');
-        assert.strictEqual(idx.body.resources, '/api/v1/resources', 'the registry index advertises the resource list');
-        const pub = await get('/api/v1/resources');
+        assert.strictEqual(idx.body.resources, '/api/v1/resources', 'the registry index advertises the resource index path');
+        assert.strictEqual(idx.body.offers, '/api/v1/offers', 'and the offers at their new path');
+        const pub = await get('/api/v1/offers');
         assert.strictEqual(pub.status, 200);
         const req = { kind: 'request', mobility: 'request', latency_class: 'interactive', objective: 'cheapest', region: 'us-central', capabilities: [], units: 1 };
         const result = require('openvibe-sdk/placement').plan(req, pub.body.offers, { now });
@@ -298,7 +299,7 @@ const assertLockstep = async () => {
         }
 
         const harnessId = detailOf('harness').id;
-        const harnessPublic = await get(`/api/v1/resources/${harnessId}`);
+        const harnessPublic = await get(`/api/v1/offers/${harnessId}`);
         const harnessInternal = await get(`/internal/resources/${harnessId}`, resourceOnly);
         assert.strictEqual(harnessPublic.status, 200);
         assert.strictEqual(harnessInternal.status, 200);
@@ -307,7 +308,7 @@ const assertLockstep = async () => {
         assert.ok(!validate(offers.CONTRACT, harnessPublic.body).valid, 'the canonical contract requires harness detail.address');
         assert.ok(!('address' in harnessPublic.body.detail), 'public single read omits the harness address');
         assert.deepStrictEqual(harnessInternal.body.detail.address, detailOf('harness').address, 'internal single read keeps the address');
-        const publicHarnessList = await get('/api/v1/resources?kind=harness');
+        const publicHarnessList = await get('/api/v1/offers?kind=harness');
         const internalHarnessList = await get('/internal/resources?kind=harness', resourceOnly);
         assert.ok(offers.validatePublicDoc(publicHarnessList.body.offers[0]).valid, 'public list matches the redacted contract');
         assert.ok(validate(offers.CONTRACT, internalHarnessList.body.offers[0]).valid, 'internal list matches the canonical contract');

@@ -4,7 +4,7 @@
  * network can place on — resource offers with capabilities, capacity, health and pricing. The owner
  * reports the complete set of its offers (POST /internal/resources/report, network.resource.report); an offer absent
  * from a later report of the same source is marked down, never
- * deleted. This module stores; it does not plan, price or settle. Reads (slice 2): GET /api/v1/resources is public and
+ * deleted. This module stores; it does not plan, price or settle. Reads (slice 2): GET /api/v1/offers is public and
  * cacheable but leaves each offer's capacity out (the contract is first-party: it carries the capacity network.node@1
  * deliberately does not publish); GET /internal/resources, behind the report's guard, returns the docs whole.
  */

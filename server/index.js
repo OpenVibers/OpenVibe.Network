@@ -478,11 +478,17 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/internal/nodes', nodeRouters.internal);
 }
 // The resource registry (plan T2, docs/t2-resource-registry.md): node and provider offers. The public list leaves
-// capacity out; the report and the full internal read take network.resource.report.
+// capacity out; the report and the full internal read take network.resource.report. The amended ADR-048 moved the
+// public routes off /api/v1/resources (now Network's resource index, below) to /api/v1/offers.
 {
     const offerRouters = require('./registry/offers').routers({ guard: require('./identity/principals').guard('network.resource.report') });
-    app.use('/api/v1/resources', offerRouters.pub);
+    app.use('/api/v1/offers', offerRouters.pub);
     app.use('/internal/resources', offerRouters.internal);
+}
+// Network's authority resource index (ADR-048 section 3, capability network.resource.read): common.resource-summary@1
+// pages of the resources Network owns (projects, apps, node principals) for OpenVibe.Services' fan-out.
+{
+    app.use('/api/v1/resources', require('./registry/resource-index').router({ guard: require('./identity/principals').guard('network.resource.read') }));
 }
 // Service instances (plan T2, docs/t2-cells-and-node-principal.md section 4.1): Host reports what runs on its machines
 // with network.node.report. Mounted before /internal/registry so the cells read does not swallow the report path.

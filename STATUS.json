@@ -6,7 +6,7 @@
   "runtime": "node 22, express, PostgreSQL 18 (openvibe-sdk/db, async) + Valkey 9",
   "port": 4000,
   "domain": "openvibe.network (with auth., api., admin., my. and themes.openvibe.network in its manifest)",
-  "contracts": "openvibe-contracts v0.99.0",
+  "contracts": "openvibe-contracts v0.103.0",
   "capabilities": [
     "identity.subject.resolve",
     "mods.grant.manage",
