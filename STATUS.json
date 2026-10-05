@@ -6,7 +6,7 @@
   "runtime": "node 22, express, PostgreSQL 18 (openvibe-sdk/db, async) + Valkey 9",
   "port": 4000,
   "domain": "openvibe.network (with auth., api., admin., my. and themes.openvibe.network in its manifest)",
-  "contracts": "openvibe-contracts v0.97.0",
+  "contracts": "openvibe-contracts v0.99.0",
   "capabilities": [
     "identity.subject.resolve",
     "mods.grant.manage",
@@ -40,6 +40,7 @@
     "themes and preferences, user modules, platform blocks, follow graph, creator analytics",
     "OpenCoins wallet",
     "service registry, public discovery and the status page with incidents",
+    "node principals: pairing a person's machine, scoped service and owner revoke, and network.node.revoked@1 for instant revocation",
     "operator alerts relay target and admin panel",
     "serves /shared/* from its pinned openvibe-shared",
     "per-actor limits (openvibe-sdk/limits)",

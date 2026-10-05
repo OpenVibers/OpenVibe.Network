@@ -9,7 +9,7 @@ const assert = require('assert');
 const crypto = require('crypto');
 const http = require('http');
 const express = require('express');
-const { ids } = require('openvibe-contracts');
+const { ids, validate } = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 const principals = require('../server/identity/principals');
 const nodePrincipals = require('../server/registry/node-principals');
@@ -56,6 +56,8 @@ const call = (method, p, body, headers = {}) => fetch(`${base}${p}`, { method, h
 const bearer = (t) => ({ authorization: `Bearer ${t}` });
 const serviceToken = async (id, secret) => (await (await fetch(`${base}/oauth/token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: secret, audience: 'openvibe.network' }) })).json()).access_token;
 const session = async (id) => bearer(signToken(await db.prepare('SELECT * FROM users WHERE id = ?').get(id), keys.privateKey, config));
+const revokedEvents = async () => (await db.prepare('SELECT envelope FROM network_event_outbox ORDER BY id').all()).map((r) => r.envelope)
+    .filter((e) => e.event_type === 'network.node.revoked');
 let passed = 0;
 const check = async (name, fn) => { await fn(); passed++; log(`  ok ${name}`); };
 const VIEW_KEYS = ['created_at', 'home_cell', 'last_seen_at', 'name', 'node_id', 'owner', 'paired_for', 'principal', 'revoked_at', 'status'];
@@ -114,7 +116,7 @@ try {
 
     await check('revoking your own machine clears the previous credential and is idempotent', async () => {
         await db.prepare("UPDATE platform_node_principals SET credential_prev_hash = ?, prev_valid_until = ? WHERE id = ?").run('c'.repeat(64), '2026-10-02T00:01:00Z', a1.principal);
-        const r = await call('POST', `/api/v1/me/nodes/${a1.principal}/revoke`, null, asAlex);
+        const r = await call('POST', `/api/v1/me/nodes/${a1.principal}/revoke`, { reason: 'stolen laptop' }, asAlex);
         assert.strictEqual(r.status, 200, r.text);
         assert.strictEqual(r.headers.get('cache-control'), 'private, no-store');
         assert.deepStrictEqual([r.body.principal, r.body.status], [a1.principal, 'revoked']);
@@ -122,10 +124,22 @@ try {
         const row = await db.prepare('SELECT * FROM platform_node_principals WHERE id = ?').get(a1.principal);
         assert.deepStrictEqual([row.revoked_at, row.revoked_by, row.credential_prev_hash, row.prev_valid_until, row.updated_at], [r.body.revoked_at, alex, null, null, r.body.revoked_at]);
         assert.strictEqual(row.credential_hash, crypto.createHash('sha256').update(a1.credential).digest('hex'), 'the row still holds its credential: migrations/0014 requires one for a user-owned principal');
+        // The owner's revoke is announced once, valid, with the owner as actor and the owner's text as reason.
+        const announced = (await revokedEvents()).filter((e) => e.subject.id === a1.principal);
+        assert.strictEqual(announced.length, 1, 'one event for one revoke');
+        const e = announced[0];
+        assert.ok(validate('events.event-envelope@1', e).valid, JSON.stringify(validate('events.event-envelope@1', e).errors));
+        assert.ok(validate('network.node.revoked@1', e.payload).valid, JSON.stringify(validate('network.node.revoked@1', e.payload).errors));
+        assert.deepStrictEqual([e.payload.node_id, e.payload.principal_id, e.payload.owner, e.payload.reason], [a1.node_id, a1.principal, { kind: 'user', subject: alex }, 'stolen laptop']);
+        assert.deepStrictEqual([e.actor, e.visibility, e.source], [{ type: 'user', id: alex }, 'internal', 'network']);
+        assert.ok(!/hash|credential|secret/i.test(JSON.stringify(e.payload)), 'the payload carries no secret field');
+        const bad = await call('POST', `/api/v1/me/nodes/${a2.principal}/revoke`, { reason: 'x'.repeat(501) }, asAlex);
+        assert.deepStrictEqual([bad.status, bad.body.code], [400, 'registry.invalid_reason'], 'an over-long reason is refused');
         clock.offset += 5000;
         const again = await call('POST', `/api/v1/me/nodes/${a1.principal}/revoke`, null, asAlex);
         clock.offset -= 5000;
         assert.deepStrictEqual([again.status, again.body], [200, r.body], 'a second revoke answers the same view');
+        assert.strictEqual((await revokedEvents()).filter((x) => x.subject.id === a1.principal).length, 1, 'a second revoke emits nothing new');
     });
 
     await check('no answer ever carries a hash, credential or secret', async () => {

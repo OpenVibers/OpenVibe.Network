@@ -5,14 +5,13 @@ merge `4ec36e1`) and **lane B step 3 built** (`GET /internal/projects/:project_i
 only: `server/internal/routes.js:490`; PR #28, merge `e422342`) and **slice 3 built** (delegated grants and modes:
 `migrations/0017_agent_grants.sql`, the ceiling in `server/developer/agents.js`), **slices 4–5 built** (confirmations,
 owner side, and budgets: `0018`, `0019`) and **slices 6–7 built** (`GET /internal/agents/:agent` and the four
-`/internal/confirmations` routes, `server/internal/routes.js`, with the pin at `openvibe-contracts` v0.97.0) and **slices
+`/internal/confirmations` routes, `server/internal/routes.js`, with the pin at `openvibe-contracts` v0.99.0) and **slices
 8–9 built** (agent tokens, `server/developer/agent-tokens.js`; `network.confirmation.changed@1` decision events from
 `server/developer/confirmations.js`; and the owner notification, `confirmations.notifyOwner` sending `openvibe-shared`
 `TYPES.CONFIRMATION_REQUESTED`, PR #47, merge `fbd6312`).
 Plan T2, "Projects and grants: projects as the ownership boundary for every resource;
 `agt_` principals, delegated grants with modes, sensitive capabilities, confirmation requests, budgets (WS-Z2)".
-Pinned version: `openvibe-contracts` **v0.97.0** (`package.json:33`; the latest Contracts release, to which Network's pin
-moves in a separate PR; `origin/main` `fbd6312`); every contract claim below was
+Pinned version: `openvibe-contracts` **v0.99.0** (`package.json`); every contract claim below was
 re-checked against the `v0.85.0` tag of OpenVibe.Contracts when slices 1–2 were built (it was written against v0.83.0).
 v0.89.0 published `network.confirmation.manage` (`planned`, `implementedBy` the four `/internal/confirmations` routes),
 the `agent` actor in `identity.service-token-claims@1` and `network.confirmation.changed@1`; v0.86–v0.97 are additive.
