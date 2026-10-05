@@ -192,6 +192,9 @@ const server = http.createServer(app);
     }
     // Plan T15: Bot mints its own OpenRe token for the robots' streams, sessions, outputs and toggles; nothing beyond OpenRe's
     // stream, key, session-read and output capabilities (never openre.session.end).
+    const bn = await token({ client_id: 'bot', client_secret: 'bot-secret', audience: 'openvibe.network', scope: 'identity.subject.resolve' });
+    assert.strictEqual(bn.status, 200, JSON.stringify(bn.body));
+    assert.strictEqual(bn.body.scope, 'identity.subject.resolve', 'Bot resolves an operator\'s @username');
     const bo = await token({ client_id: 'bot', client_secret: 'bot-secret', audience: 'openvibe.openre' });
     assert.strictEqual(bo.status, 200, JSON.stringify(bo.body));
     assert.deepStrictEqual(bo.body.scope.split(' ').sort(), ['openre.key.rotate', 'openre.output.read', 'openre.output.write', 'openre.session.read', 'openre.stream.read', 'openre.stream.write'], "Bot runs its robots' OpenRe streams");

@@ -160,6 +160,8 @@ const DEFAULT_GRANTS = [
     ['host', 'network.resource.report', SELF_AUDIENCE, []],
     // Plan T2 N4b: Bot pairs its users' machines with Network and reads or revokes only the principals it paired.
     ['bot', 'network.node.manage', SELF_AUDIENCE, []],
+    // Plan T15: an owner adds an operator by @username on the robot's panel; Bot resolves it to the subject here.
+    ['bot', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Plan T15: Bot runs each robot's OpenRe stream for its owner (find/create/archive, key rotation), plays the live
     // session in the panel (session.read), restreams out (output.*) and sets the owner's streaming and recording
     // toggles on the stream, minting its own token with its Network client instead of a hand-set BOT_OPENRE_TOKEN.
