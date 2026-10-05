@@ -39,6 +39,12 @@ const publicCors = require('../server/public-cors');
     assert.ok(page.includes('Fix &lt;script&gt;x&lt;/script&gt; in pages') && !page.includes('<script>x</script>'), 'commit text escaped in the SSR log');
     assert.ok(page.includes('https://openvibe.blog/@openvibe/x'), 'patch notes listed');
     assert.ok(page.includes('<link rel="canonical" href="https://openvibe.network/updates">'));
+    // One filter row: the no-JS site links sit inside the shipped mount, which shipped.js empties and refills with its own bar.
+    const mount = page.indexOf('data-ov-shipped="log"'), nav = page.indexOf('<nav class="up-sites"');
+    assert.ok(nav > mount && page.indexOf('</div>', mount) > nav, 'the site links are inside the shipped mount');
+    assert.strictEqual(page.split('class="up-sites"').length - 1, 1, 'one site filter');
+    assert.ok(page.includes('<a href="/updates?site=bot">Bot</a>'), 'Bot is a site');
+    assert.strictEqual(serviceFor('bot'), 'bot');
     const one = await fetch(`${base}/updates?site=openvibe.wiki`);
     assert.strictEqual(one.headers.get('x-robots-tag'), 'noindex, follow');
     assert.ok((await one.text()).includes('What shipped on OpenVibe.Wiki'));

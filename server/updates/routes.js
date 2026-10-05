@@ -69,7 +69,7 @@ function createUpdatesRoutes({ blogUrl = 'http://127.0.0.1:4810', fetchImpl = gl
     return { router: r, feed, queryOf };
 }
 
-const SITES = ['live', 'network', 'tools', 'media', 'community', 'chat', 'games', 'blog', 'wiki', 'news', 'reviews', 'deals', 'coupons', 'trade', 'codes', 'host', 'ai', 'search', 'sources', 'events', 'billing', 'tips', 'vip', 'openre', 'sites'];
+const SITES = ['live', 'network', 'tools', 'media', 'community', 'chat', 'games', 'blog', 'wiki', 'news', 'reviews', 'deals', 'coupons', 'trade', 'codes', 'host', 'ai', 'search', 'sources', 'events', 'billing', 'tips', 'vip', 'openre', 'bot', 'sites'];
 const NAMES = { ai: 'AI', vip: 'VIP', openre: 'OpenRe' };
 const nameOf = (id) => NAMES[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : '');
 
@@ -97,6 +97,8 @@ function renderPage({ site, filtered, body }) {
     }
     const dayHtml = days.map((g) => `<section class="ov-shipped-day"><h3>${esc(g.day)}</h3><div class="ov-shipped-entries">${g.list.map((e) => `<div class="ov-shipped-entry">${/^https:\/\//.test(e.url || '') ? `<a class="ov-shipped-hash" href="${esc(e.url)}" rel="noopener">${esc(e.short || String(e.sha || '').slice(0, 7))}</a>` : ''}${site ? '' : `<span class="ov-shipped-site">${esc(nameOf(e.service))}</span>`}<span class="ov-shipped-text">${esc(e.subject)}</span><span class="ov-shipped-meta">${esc(e.author ? `${e.author} · ` : '')}${esc(String(e.deployed_at || '').slice(11, 16))} UTC</span></div>`).join('')}</div></section>`).join('\n');
     const postsHtml = posts.length ? `<aside class="ov-shipped-posts"><h3>Patch notes</h3><ul>${posts.map((p) => `<li><a href="${esc(p.url)}">${esc(p.title || 'Patch notes')}</a>${p.published_at ? ` <small>${esc(String(p.published_at).slice(0, 10))}</small>` : ''}</li>`).join('')}</ul></aside>` : '';
+    // The no-JS site filter (links): inside the shipped mount, so shipped.js's own filter bar replaces it rather than
+    // adding a second row.
     const chips = `<nav class="up-sites" aria-label="Sites"><a href="/updates"${site ? '' : ' aria-current="page"'}>Everything</a>${SITES.filter((s) => s !== 'sites').map((s) => `<a href="/updates?site=${s}"${site === s ? ' aria-current="page"' : ''}>${esc(nameOf(s))}</a>`).join('')}</nav>`;
     return `<!DOCTYPE html>
 <html lang="en">
@@ -132,8 +134,8 @@ ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links
 <main class="up" id="main">
 <h1>${esc(title)}</h1>
 <p class="lede">Every change deployed to OpenVibe, newest first. Each line is a commit from the OpenVibers repositories, linked to the change itself. When enough have gathered, or a large feature lands, they are written up as <a href="https://openvibe.blog/@openvibe">Patch notes on openvibe.blog</a>. JSON: <a href="/api/v1/changelog"><code>/api/v1/changelog</code></a>.</p>
-${chips}
 <div data-ov-shipped="log" data-service="${esc(site || '')}" data-limit="50">
+${chips}
 ${postsHtml}
 ${dayHtml || '<p class="ov-shipped-empty">The update history could not be loaded just now.</p>'}
 </div>
