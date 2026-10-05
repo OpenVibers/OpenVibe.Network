@@ -1,6 +1,7 @@
 {
   "id": "network.confirmation.manage",
   "version": "1.0",
+  "_note": "shipped in openvibe-contracts v0.89.0",
   "owner": "network",
   "status": "planned",
   "visibility": "first-party",
