@@ -88,6 +88,9 @@ function named(summary) {
 const order = (x, y) => (x.kind < y.kind ? -1 : x.kind > y.kind ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0);
 
 /** The summaries matching the filters: `project` scopes tenancy, `kind` picks one kind. Sorted by (kind, id). */
+// Scope: network.resource.read is first-party (resourceConstraints none), so its holder sees every project and
+// ?project= only narrows. If it is ever granted to a non-first-party principal, derive the scope from that
+// principal's grants here instead of trusting the query.
 async function collect(db, { project = null, kind = null } = {}) {
     const out = [];
     if (!kind || kind === PROJECT_KIND) {
