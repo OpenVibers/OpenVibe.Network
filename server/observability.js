@@ -12,6 +12,7 @@
 const jwt = require('jsonwebtoken');
 const metrics = require('openvibe-shared/metrics');
 const { createReadiness, skip } = require('openvibe-shared/ready');
+const telemetry = require('./telemetry');
 
 const registry = metrics.createRegistry();
 
@@ -48,6 +49,72 @@ function principalDenied({ req, code }) {
     if (!String((req && req.headers && req.headers.authorization) || '').startsWith('Bearer ')) return;
     const c = /^[a-z0-9_.-]{1,64}$/i.test(String(code || '')) ? String(code) : 'other';
     principalFailures.inc({ code: c });
+}
+
+// ── Universal telemetry (plan T1, §15.19): one platform.telemetry-sample@1 per request + autoscaling ──
+// The HTTP autoscaling signals are active requests, p95 and event-loop lag (CPU alone is never the metric).
+// A sample carries the route template, method and status class — never a raw URL, client id or token.
+const LATENCY_WINDOW = 512;
+const loopMonitor = (() => {
+    try {
+        const m = require('perf_hooks').monitorEventLoopDelay({ resolution: 20 });
+        m.enable();
+        return m;
+    } catch { return null; }
+})();
+const recentLatencies = [];   // the last LATENCY_WINDOW request latencies, ms
+let active = 0;
+let loopResetAt = 0;          // the lag's sampling window: reset at most once per LAG_WINDOW_MS
+const LAG_WINDOW_MS = 10000;
+
+const HTTP_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
+const statusClass = (code) => (code ? `${Math.floor(code / 100)}xx` : 'aborted');
+
+/** The event-loop lag over the current ~10 s window, ms (mean includes the sampling interval: subtracted). */
+function eventLoopLagMs() {
+    if (!loopMonitor || !(loopMonitor.count > 0 || loopMonitor.max > 0)) return null;
+    const lag = Math.max(0, loopMonitor.mean / 1e6 - 20);
+    const now = Date.now();
+    if (now - loopResetAt >= LAG_WINDOW_MS) { loopMonitor.reset(); loopResetAt = now; }
+    return lag;
+}
+
+/** The p95 of the recent request latencies, ms; null before any request. */
+function latencyP95() {
+    if (!recentLatencies.length) return null;
+    const sorted = [...recentLatencies].sort((a, b) => a - b);
+    return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))];
+}
+
+/** Express middleware: the request's own sample plus the HTTP autoscaling signals, emitted as samples. */
+function telemetryMiddleware(req, res, next) {
+    const t0 = process.hrtime.bigint();
+    active += 1;
+    let done = false;
+    const finish = () => {
+        if (done) return;
+        done = true;
+        active -= 1;
+        const latencyMs = Number(process.hrtime.bigint() - t0) / 1e6;
+        const httpStatus = res.writableFinished || res.finished ? (res.statusCode || 0) : 0;
+        recentLatencies.push(latencyMs);
+        if (recentLatencies.length > LATENCY_WINDOW) recentLatencies.shift();
+        try {
+            telemetry.record('http.request', latencyMs, {
+                status: statusClass(httpStatus),
+                resource: metrics.routeLabel(req),
+                extra: { method: HTTP_METHODS.has(req.method) ? req.method : 'OTHER', http_status: httpStatus },
+            });
+            telemetry.gauge('http.active_requests', active);
+            const p95 = latencyP95();
+            if (p95 != null) telemetry.gauge('http.latency_p95_ms', p95);
+            const lag = eventLoopLagMs();
+            if (lag != null) telemetry.gauge('http.eventloop_lag_ms', lag);
+        } catch { /* telemetry never breaks a request */ }
+    };
+    res.once('finish', finish);
+    res.once('close', finish);
+    next();
 }
 
 /**
@@ -98,4 +165,4 @@ function createNetworkReadiness({ db, getKeys, release, ecosystem = null, discor
     return createReadiness({ service: 'network', release, checks });
 }
 
-module.exports = { registry, tokenEndpointMetrics, principalDenied, createNetworkReadiness, grantLabel };
+module.exports = { registry, tokenEndpointMetrics, principalDenied, telemetryMiddleware, createNetworkReadiness, grantLabel };

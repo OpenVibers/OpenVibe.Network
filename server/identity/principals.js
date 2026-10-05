@@ -254,6 +254,13 @@ const DEFAULT_GRANTS = [
     ['tools', 'search.document.write', 'openvibe.search', []],
     // Plan T5 step 7: Tools posts one usage reading per ended tool job to Billing (POST /api/v1/usage).
     ['tools', 'billing.usage.record', 'openvibe.billing', []],
+    // Plan T5 step 14: Network's own usage producers — AI (per model run) and Events (per delivered
+    // event) post their platform.usage-sample@1 readings to Billing (POST /api/v1/usage) with their own
+    // token; Media is the next producer. Recording usage only: none of them holds a money capability
+    // (billing.ledger.admin / billing.cashout.manage).
+    ['ai', 'billing.usage.record', 'openvibe.billing', []],
+    ['events', 'billing.usage.record', 'openvibe.billing', []],
+    ['media', 'billing.usage.record', 'openvibe.billing', []],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.

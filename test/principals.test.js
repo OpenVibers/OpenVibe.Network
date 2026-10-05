@@ -22,6 +22,9 @@ await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE c
 await db.prepare("UPDATE oauth_clients SET client_secret = 'media-secret' WHERE client_id = 'media'").run();
 // The `search` client is created with server/setup/service-principal.js, not seeded with the signed-in products.
 await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('search', 'search-secret', 'OpenVibe.Search', '[]', 1) ON CONFLICT DO NOTHING").run();
+// Events is created the same way (setup/service-principal.js); it is a usage producer with its own token.
+await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('events', 'events-secret', 'OpenVibe.Events', '[]', 1) ON CONFLICT DO NOTHING").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'ai-secret' WHERE client_id = 'ai'").run();
 await db.prepare("INSERT INTO users (id, username, password_hash) VALUES (7, 'payee', 'x'), (8, 'payer', 'x')").run();
 // A database seeded before media.analyze (Live's AI grants as the old default) is moved at the next boot.
 await db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = 'live' AND audience = 'openvibe.ai'").run(JSON.stringify(['live.*', 'network.site_copy']));
@@ -178,6 +181,13 @@ const server = http.createServer(app);
     assert.strictEqual(ts.body.scope, 'search.document.write', 'Tools indexes its tools in Search');
     const tb = await token({ client_id: 'tools', client_secret: 'tools-secret', audience: 'openvibe.billing' });
     assert.strictEqual(tb.body.scope, 'billing.usage.record', 'Tools posts usage readings to Billing and holds no money capability');
+    // Plan T5 step 14: Network's own usage producers post platform.usage-sample@1 to Billing with their
+    // own token; usage recording only, never a money capability.
+    for (const [client, secret] of [['ai', 'ai-secret'], ['events', 'events-secret']]) {
+        const ub = await token({ client_id: client, client_secret: secret, audience: 'openvibe.billing' });
+        assert.strictEqual(ub.status, 200, `${client}: ${JSON.stringify(ub.body)}`);
+        assert.strictEqual(ub.body.scope, 'billing.usage.record', `${client} records usage on Billing and holds no money capability`);
+    }
     // Coupons subscribes to its Events sources with its own token (OpenVibe.Coupons scripts/subscribe.js).
     await db.prepare("UPDATE oauth_clients SET client_secret = 'coupons-secret' WHERE client_id = 'coupons'").run();
     const cps = await token({ client_id: 'coupons', client_secret: 'coupons-secret', audience: 'openvibe.events', scope: 'events.subscription.manage' });
