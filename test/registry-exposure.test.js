@@ -24,6 +24,8 @@ const PINNED = {
     bot: 'live', zone: 'placeholder', run: 'placeholder',
     // openvibe-contracts v0.95.0: OpenVibe.Services is a charter only (the T13 control plane).
     services: 'placeholder',
+    // openvibe-contracts v0.102.0: OpenVibe.Watch is a charter only (plan T18).
+    watch: 'placeholder',
     sdk: 'library', shared: 'library', contracts: 'library', publishing: 'library',
     examples: 'repository',
 };
