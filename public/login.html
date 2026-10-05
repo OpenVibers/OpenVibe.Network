@@ -176,6 +176,19 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
 /* ── Account Chooser ───────────────────────────────────── */
 .chooser-subtitle{font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:20px;line-height:1.5}
 .chooser-subtitle .app-name{color:var(--accent);font-weight:700}
+.oauth-consent{margin:0 0 20px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--bg-input);font-size:13px;line-height:1.5;text-align:left}
+.oauth-consent .consent-head{margin:0 0 10px;color:var(--text)}
+.oauth-consent .consent-head b{color:var(--accent)}
+.oauth-consent .consent-host{color:var(--text-muted)}
+.oauth-consent ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.oauth-consent li{padding:8px 10px;border-left:3px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.02)}
+.oauth-consent li.sensitive{border-left-color:#f59e0b}
+.oauth-consent .consent-name{font-weight:600;color:var(--text)}
+.oauth-consent .consent-badge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;color:#1a1204;background:#f59e0b;vertical-align:1px}
+.oauth-consent small{display:block;margin-top:2px;color:var(--text-muted);font-size:12px}
+.oauth-consent .consent-none,.oauth-consent .consent-refused{margin:0;color:var(--text-muted)}
+.oauth-consent .consent-refused{margin-top:10px;font-size:12px}
+.oauth-consent code{font-size:11.5px}
 
 .account-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
 .account-item{
@@ -253,6 +266,9 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
             <h1>OpenVibe</h1>
             <p>One account. All of OpenVibe.</p>
         </div>
+
+        <!-- What a third-party app asks for (GET /oauth/client-info), above every way of signing in -->
+        <section class="oauth-consent" id="oauth-consent" aria-label="What this app asks for" hidden></section>
 
         <!-- Tab bar (hidden when chooser is shown) -->
         <noscript><p class="panel-note">Signing in and creating an account need JavaScript: turn it on for openvibe.network and reload this page. You can use almost everything on OpenVibe as a guest without signing in.</p></noscript>
