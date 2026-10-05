@@ -128,10 +128,13 @@ router.get('/authorize', async (req, res) => {
 // The name the account chooser shows ("continue to <name>"), looked up by client_id and only for a
 // registered redirect_uri. The chooser used to print client_name from its own URL, so a crafted
 // link could claim to be any app. redirect_host is shown beside it: where the code will go.
+// With the authorize request's `scope`, a third-party app also gets the consent screen's capability
+// list: the requested ids the app can be granted (catalog metadata, `sensitive` marked) and the
+// refused ids the screen must not name. Never another app, never a secret.
 router.get('/client-info', async (req, res) => {
     const db = await getDb(req);
     res.set('Cache-Control', 'no-store');
-    const { client_id, redirect_uri } = req.query;
+    const { client_id, redirect_uri, scope } = req.query;
     if (!client_id || !redirect_uri) return res.status(400).json({ error: 'client_id and redirect_uri are required' });
     let host = '';
     try { host = new URL(String(redirect_uri)).host; } catch { return res.status(400).json({ error: 'Invalid redirect_uri' }); }
@@ -140,13 +143,14 @@ router.get('/client-info', async (req, res) => {
         if (found.error && !found.pkce) return res.status(404).json({ error: found.error });
         const app = found.app || null;
         if (!app) return res.status(404).json({ error: 'Unknown client_id' });
-        return res.json({ name: app.name, third_party: true, redirect_host: host });
+        const { capabilities, refused } = devTokens.consentView(scope);
+        return res.json({ name: app.name, third_party: true, redirect_host: host, capabilities, refused });
     }
     const client = await db.prepare('SELECT name, redirect_uris FROM oauth_clients WHERE client_id = ?').get(String(client_id));
     if (!client) return res.status(404).json({ error: 'Unknown client_id' });
     const allowed = JSON.parse(client.redirect_uris || '[]').map(u => String(u).toLowerCase());
     if (!allowed.includes(String(redirect_uri).toLowerCase())) return res.status(404).json({ error: 'Invalid redirect_uri' });
-    res.json({ name: client.name || String(client_id), third_party: false, redirect_host: host });
+    res.json({ name: client.name || String(client_id), third_party: false, redirect_host: host, capabilities: [], refused: [] });
 });
 
 // ── POST /oauth/confirm ─────────────────────────────────────
