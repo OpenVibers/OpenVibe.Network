@@ -228,7 +228,9 @@ minute. Pausing or revoking the agent, revoking or expiring its grant, shrinking
 the project or being erased, revoking the host app and archiving the project cancel the affected pending and
 approved-unused confirmations (`cancel_reason` names the cause) and revoke the matching standing rules. The owning
 services create, read, consume and cancel them at `/internal/confirmations` ([Service-side agent reads and
-confirmations](#service-side-agent-reads-and-confirmations)); agent tokens come in a later slice.
+confirmations](#service-side-agent-reads-and-confirmations)); agent tokens come in a later slice. When a new
+confirmation is left pending, the owner gets a `CONFIRMATION_REQUESTED` notification (best-effort) whose message is the
+agent's name and the summary as plain text, never the details; a standing rule's approval notifies nobody.
 
 ### Service-side project reads
 

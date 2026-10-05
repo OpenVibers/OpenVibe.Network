@@ -139,6 +139,7 @@ async function create(db, { agentId, capability, audience, summary, details, res
     const ttl = ttlS == null ? TTL.default : Number(ttlS);
     if (!Number.isInteger(ttl) || ttl < TTL.min || ttl > TTL.max) invalid(`ttl_s is ${TTL.min}-${TTL.max}`);
     const id = ids.newId('confirmation');
+    let created = null;
     await db.tx(async () => {
         const agent = await db.prepare('SELECT * FROM dev_agents WHERE id = ? FOR UPDATE').get(agentId);
         if (!agent) fail(404, 'agent.not_found', 'no such agent');
@@ -164,8 +165,29 @@ async function create(db, { agentId, capability, audience, summary, details, res
         await audit(db, row, 'confirmation.created', { actor: `service:${audience}`, detail: { state: row.state }, ctx,
             event: changed(row, 'created', row.state, { ruleId: rule ? rule.id : null, at: now }) });
         if (rule) await audit(db, row, 'confirmation.approved', { actor: `rule:${rule.id}`, detail: { rule_id: Number(rule.id), standing_rule: rule.rule }, ctx });
+        created = { state: row.state, owner: agent.owner_subject, name: agent.name };
     });
+    if (created.state === 'pending') await notifyOwner(db, created, summary);
     return confirmationView(await db.prepare('SELECT * FROM dev_confirmations WHERE id = ?').get(id));
+}
+
+let notifier = null;
+function setNotifier(s) { notifier = s && typeof s.create === 'function' ? s : null; }
+
+/**
+ * Tell the owner a confirmation waits for them (CONFIRMATION_REQUESTED), after the create committed. Best-effort: a
+ * failure is logged and never undoes the confirmation. The message is the agent's name and the summary, never details.
+ */
+async function notifyOwner(db, { owner, name }, summary) {
+    if (!notifier) return;
+    try {
+        const u = await db.prepare('SELECT id FROM users WHERE subject_id = ?').get(owner);
+        if (!u) return;
+        const message = `${String(name || 'An agent').slice(0, 80)}: ${summary}`.slice(0, 200);
+        await notifier.create({ user_id: u.id, type: 'CONFIRMATION_REQUESTED', title: 'Approval needed', message, url: 'https://openvibe.network/my', service: 'network' });
+    } catch (err) {
+        console.warn('[Confirmations] owner notify failed:', err.message);
+    }
 }
 
 /**
@@ -445,6 +467,6 @@ function start(db, { intervalMs = 60_000 } = {}) {
 function stop() { if (timer) clearInterval(timer); timer = null; }
 
 module.exports = {
-    create, read, consume, cancel, internalRouter, list, get, decide, cancelFor, expireDue, confirmationView, ruleView, listRules, revokeRule, router, start, stop,
+    create, read, consume, cancel, internalRouter, list, get, decide, cancelFor, expireDue, confirmationView, ruleView, listRules, revokeRule, router, start, stop, setNotifier,
     MAX_PENDING,
 };
