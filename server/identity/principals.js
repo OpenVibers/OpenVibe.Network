@@ -49,6 +49,12 @@ const DEFAULT_GRANTS = [
     ['tools', 'media.object.upload', 'openvibe.media', ['tools', 'tools.*']],
     ['tools', 'media.object.read', 'openvibe.media', ['tools', 'tools.*']],
     ['games', 'media.object.upload', 'openvibe.media', ['games']],
+    // Plan T12: Host keeps tenant deploy files in Media (Host#24, HOST_OBJECT_STORE=media), its own namespace only:
+    // write-through on deploy, re-fetch on a cache miss, list and delete when its GC finds a blob unreferenced.
+    ['host', 'media.object.upload', 'openvibe.media', ['host', 'host.*']],
+    ['host', 'media.object.read', 'openvibe.media', ['host', 'host.*']],
+    ['host', 'media.object.list', 'openvibe.media', ['host', 'host.*']],
+    ['host', 'media.object.delete', 'openvibe.media', ['host', 'host.*']],
     // Plan T4 (Media cleanup): Live and OpenRe reach Media with their own tokens instead of API keys. Live keeps
     // its objects under the live namespace (VOD/clip/thumbnail uploads, reads, lists, deletes); OpenRe uploads the
     // recordings and thumbnails it produces there too.
