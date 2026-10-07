@@ -17,7 +17,7 @@ function getConfig(req) { return req.app.locals.config; }
 
 // ── The gate ────────────────────────────────────────────────
 // Every route below checks the one capability it performs on a service token (principals.guard); nothing
-// else gets in. X-Internal-Key was retired in plan T2 (2026-09-29).
+// else gets in.
 function requireServiceToken(req, res, next) {
     // Express mounts are case-insensitive, nginx locations are not: /INTERNAL/... would skip the
     // proxy's loopback-only `location /internal/` rule. Only the exact spelling is served.

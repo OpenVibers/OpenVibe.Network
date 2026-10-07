@@ -5,7 +5,7 @@ const cache = require('openvibe-shared/cache-policy');
  * The API Codes (the developer portal) calls with the user's Network access token.
  *
  * Authentication: `Authorization: Bearer <Network user access token>` only. Cookies are not read
- * (no CSRF surface), X-Internal-Key is never accepted, and service or app tokens are not users.
+ * (no CSRF surface), and service or app tokens are not users.
  * Errors are RFC 9457 problems; every response carries X-OpenVibe-Request-Id.
  *
  *   GET    /catalog                                        capabilities apps may ever be granted

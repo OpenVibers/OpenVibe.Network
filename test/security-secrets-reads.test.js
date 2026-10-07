@@ -36,7 +36,7 @@ withWorld('secrets-reads', async (w) => {
     assert.strictEqual(st('owner', '/api/admin/secrets'), 200);
     assert.strictEqual(st('owner', '/api/admin/settings'), 200);
     assert.strictEqual(st('service', '/internal/url-registry/resolved'), 200, 'live may read the resolved registry');
-    assert.strictEqual(st('key', '/internal/url-registry/resolved'), 401, 'the retired X-Internal-Key opens nothing');
+    assert.strictEqual(st('key', '/internal/url-registry/resolved'), 401, 'the retired shared key opens nothing');
     assert.strictEqual(st('anonymous', '/internal/url-registry/resolved'), 401, 'and nobody without a service token gets in');
 
     const jwks = await w.call(null, 'GET', '/api/.well-known/jwks');

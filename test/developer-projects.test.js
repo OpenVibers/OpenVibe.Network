@@ -67,9 +67,9 @@ const secretsSeen = [];
     // Inspects token contents, so it opts in to sandbox tokens (contracts v0.26.0 refuses them by default).
     const verify = (t, audience = 'openvibe.media') => serviceAuth.verifyServiceToken(t, { publicKey: keys.publicKey, issuer: ISSUER, audience, acceptSandbox: true });
 
-    // ── Authentication: Bearer user tokens only; never X-Internal-Key ──
+    // ── Authentication: Bearer user tokens only; the retired shared key is not accepted ──
     let r = await api(null, 'GET', '', null, { 'x-internal-key': 'legacy-key' });
-    assert.strictEqual(r.status, 401, 'the internal key opens nothing here');
+    assert.strictEqual(r.status, 401, 'the retired shared key opens nothing here');
     assert.match(r.type, /application\/problem\+json/);
     assert.strictEqual(r.body.code, 'auth.required');
     assert.ok(r.rid, 'request id on every response');

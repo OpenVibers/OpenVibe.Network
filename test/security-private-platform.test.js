@@ -10,7 +10,7 @@ withWorld('private-platform', async (w) => {
     const st = res.byPath;
     // A service principal reaches only the /internal routes its capabilities name.
     assert.strictEqual(st['service GET /internal/integrations/github-token'], 403, 'github-token needs its own capability');
-    // Deleted with the X-Internal-Key retirement (plan T2, no caller left): no longer routes at all.
+    // Deleted when the shared key was retired (plan T2, no caller left): no longer routes at all.
     for (const p of ['/internal/stats', `/internal/users/${users.alice.id}`, `/internal/users/${users.alice.id}/linked-accounts`, '/internal/anon-list', `/internal/notifications/unread/${users.alice.id}`]) {
         assert.strictEqual(st[`service GET ${p}`], undefined, `${p} is gone`);
     }
