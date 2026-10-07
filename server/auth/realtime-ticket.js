@@ -7,7 +7,7 @@
  *
  * The notification badge on every OpenVibe site listens for the signed-in person's
  * network.notification.created events on OpenVibe.Events' /realtime/stream. An EventSource cannot send
- * a header, and events.openvibe.network's cookies are third-party on every other site, so the badge asks
+ * a header, and openvibe.events's cookies are third-party on every other site, so the badge asks
  * here (Bearer Network JWT, or the ov_token cookie on openvibe.network) for a ticket and opens
  * `${stream_url}?topics=network.notification.*&ticket=…`. A ticket opens one stream: every reconnect
  * asks for a new one and resumes with last_event_id.
@@ -29,9 +29,9 @@ const jwt = require('jsonwebtoken');
 
 const TTL_S = 120;
 const TOPICS = Object.freeze(['network.notification.*']);
-const DEFAULT_STREAM_URL = 'https://events.openvibe.network/realtime/stream';
+const DEFAULT_STREAM_URL = 'https://openvibe.events/realtime/stream';
 
-/** The stream URL browsers use: OV_EVENTS_PUBLIC_URL (an origin, or the stream URL itself) or events.openvibe.network. */
+/** The stream URL browsers use: OV_EVENTS_PUBLIC_URL (an origin, or the stream URL itself) or openvibe.events. */
 function streamUrlFrom(value) {
     const v = String(value || '').trim().replace(/\/+$/, '');
     if (!v) return DEFAULT_STREAM_URL;

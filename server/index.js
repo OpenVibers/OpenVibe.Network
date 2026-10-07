@@ -152,7 +152,7 @@ app.use(helmet({
                 "https://openvibe.blog",
                 "https://cloudflareinsights.com", // Cloudflare Web Analytics reports here (see script-src)
                 // Release notifications: release-watch's EventSource on the Events realtime stream (openvibe-shared 1.17)
-                "https://events.openvibe.network",
+                "https://openvibe.events",
             ],
             frameSrc: ["'none'"],
             scriptSrcAttr: ["'unsafe-inline'"],

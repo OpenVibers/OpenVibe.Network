@@ -133,7 +133,7 @@ const checkEnvelope = (env, subject) => {
     assert.strictEqual(r.status, 200, JSON.stringify(r.body));
     assert.strictEqual(r.headers.get('cache-control'), 'no-store');
     assert.deepStrictEqual(Object.keys(r.body).sort(), ['expires_at', 'expires_in', 'stream_url', 'subject', 'ticket', 'topics']);
-    assert.deepStrictEqual([r.body.expires_in, r.body.stream_url, r.body.topics, r.body.subject], [120, 'https://events.openvibe.network/realtime/stream', ['network.notification.*'], ALICE]);
+    assert.deepStrictEqual([r.body.expires_in, r.body.stream_url, r.body.topics, r.body.subject], [120, 'https://openvibe.events/realtime/stream', ['network.notification.*'], ALICE]);
     try { const v = contracts.validate('network.realtime-ticket-result@1', r.body); assert.ok(v.valid, JSON.stringify(v.errors)); } catch (err) { if (!/unknown contract/.test(err.message)) throw err; }
     // What Events checks (OpenVibe.Events server/auth.js verifyRealtimeTicket).
     const claims = jwt.verify(r.body.ticket, publicKey, { algorithms: ['RS256'], issuer: `${ISSUER}/realtime`, audience: 'openvibe.events' });
@@ -166,7 +166,7 @@ const checkEnvelope = (env, subject) => {
     assert.match(r.body.subject, /^usr_/);
     assert.strictEqual((await db.prepare('SELECT subject_id FROM users WHERE id = 4').get()).subject_id, r.body.subject);
     // The stream URL: the default, an operator's origin, or the default for anything odd.
-    assert.strictEqual(ticketMod.streamUrlFrom(''), 'https://events.openvibe.network/realtime/stream');
+    assert.strictEqual(ticketMod.streamUrlFrom(''), 'https://openvibe.events/realtime/stream');
     assert.strictEqual(ticketMod.streamUrlFrom('https://events.example.test/'), 'https://events.example.test/realtime/stream');
     assert.strictEqual(ticketMod.streamUrlFrom('https://events.example.test/realtime/stream'), 'https://events.example.test/realtime/stream');
     for (const bad of ['javascript:alert(1)', 'https://x.test/?a=1', 'not a url', 'https://u:p@x.test']) assert.strictEqual(ticketMod.streamUrlFrom(bad), ticketMod.DEFAULT_STREAM_URL, bad);
