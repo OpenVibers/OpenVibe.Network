@@ -172,6 +172,16 @@ const DEFAULT_GRANTS = [
     // session in the panel (session.read), restreams out (output.*) and sets the owner's streaming and recording
     // toggles on the stream, minting its own token with its Network client instead of a hand-set BOT_OPENRE_TOKEN.
     ...['openre.stream.read', 'openre.stream.write', 'openre.key.rotate', 'openre.session.read', 'openre.output.read', 'openre.output.write'].map(c => ['bot', c, 'openvibe.openre', []]),
+    // Bot's outbox relays bot.robot.*, bot.estop.*, bot.command.* and its job metering posts run:<job>:<n> readings
+    // (server/events/outbox.js, server/jobs/metering.js); both relays stayed off without these rows (2026-10-07).
+    ['bot', 'events.event.publish', 'openvibe.events', []],
+    ['bot', 'billing.usage.record', 'openvibe.billing', []],
+    // Plan T18: OpenVibe.Watch relays watch.observation.recorded / watch.watch.triggered / watch.check.failed.
+    ['watch', 'events.event.publish', 'openvibe.events', []],
+    // Plan T14: OpenVibe.Run publishes run.job.* and hands each job to a paired Node through Bot's internal jobs API
+    // (POST /api/v1/jobs, /jobs/:id/cancel, GET /jobs/:id, capability bot.job.dispatch, service-to-service only).
+    ['run', 'events.event.publish', 'openvibe.events', []],
+    ['run', 'bot.job.dispatch', 'openvibe.bot', []],
     // Plan T2 lane B step 3: Host places and runs per project, so it reads a project's tenancy, placement and quotas.
     // Other services get this row only when they ship a caller of GET /internal/projects/:project_id.
     ['host', 'network.project.read', SELF_AUDIENCE, []],
