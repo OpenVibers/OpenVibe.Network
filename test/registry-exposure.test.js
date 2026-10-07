@@ -25,7 +25,7 @@ const PINNED = {
     // openvibe-contracts v0.95.0: OpenVibe.Services is a charter only (the T13 control plane).
     services: 'placeholder',
     // openvibe-contracts v0.102.0: OpenVibe.Watch is a charter only (plan T18).
-    watch: 'placeholder',
+    watch: 'internal',   // OpenVibe.Watch runs on loopback since 2026-10-07 (contracts 0.108.0)
     sdk: 'library', shared: 'library', contracts: 'library', publishing: 'library',
     examples: 'repository',
 };
@@ -110,7 +110,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     assert.strictEqual(sBy.shared.label, `not running (library, released v${require('openvibe-shared/package.json').version})`);
     // Contracts 0.83.0 added two placeholder services (media-hub, space), v0.86-v0.90 Bot (live) and two more (zone, run),
     // v0.95.0 Services; none is retired
-    assert.deepStrictEqual(st.exposure_summary, { live: 16, internal: 10, library: 4, repository: 1, placeholder: 6, retired: 0 });
+    assert.deepStrictEqual(st.exposure_summary, { live: 16, internal: 11, library: 4, repository: 1, placeholder: 5, retired: 0 });
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());
