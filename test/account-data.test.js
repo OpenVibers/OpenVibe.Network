@@ -32,8 +32,8 @@ const exportDir = path.join(dir, 'account-exports');
 const log = console.log; console.log = () => {};
 const db = getDb();
 console.log = log;
-// The five services that keep data about people are registered clients (production has them all).
-for (const c of ['live', 'chat', 'community', 'media', 'games', 'tools']) await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, 'x', ?, '[]', 1) ON CONFLICT DO NOTHING").run(c, c);
+// The services that keep data about people are registered clients (production has them all).
+for (const c of ['live', 'chat', 'community', 'space', 'media', 'games', 'tools']) await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, 'x', ?, '[]', 1) ON CONFLICT DO NOTHING").run(c, c);
 const principals = require('../server/identity/principals');
 await principals.ensureSchema(db);
 require('../server/identity/follows').ensureSchema(db);
@@ -93,7 +93,7 @@ const server = http.createServer(app);
 
         // ── Export ──
         const expected = await accountData.expectedServices(db, 'network.account.export.contribute');
-        assert.deepStrictEqual(expected, ['chat', 'community', 'games', 'live', 'media'], 'the holders of the contribute grant');
+        assert.deepStrictEqual(expected, ['chat', 'community', 'games', 'live', 'media', 'space'], 'the holders of the contribute grant');
         let r = await call('POST', '/api/v1/account/export', tok(dana));
         assert.strictEqual(r.status, 201, JSON.stringify(r.body));
         assert.ok(validate('network.account-export@1', r.body).valid, JSON.stringify(validate('network.account-export@1', r.body).errors));
@@ -133,7 +133,7 @@ const server = http.createServer(app);
         r = await call('GET', `/api/v1/account/export/${exp}`, tok(dana));
         assert.strictEqual(r.body.status, 'partial');
         assert.ok(validate('network.account-export@1', r.body).valid);
-        assert.deepStrictEqual(r.body.services.map((s) => `${s.service}:${s.status}`), ['network:received', 'chat:received', 'live:received', 'community:missing', 'games:missing', 'media:missing']);
+        assert.deepStrictEqual(r.body.services.map((s) => `${s.service}:${s.status}`), ['network:received', 'chat:received', 'live:received', 'community:missing', 'games:missing', 'media:missing', 'space:missing']);
         assert.deepStrictEqual(notified.map((n) => n[0]), [dana.id], 'the person is told');
         r = await call('GET', `/api/v1/account/export/${exp}/download`, tok(dana));
         assert.strictEqual(r.status, 200);
@@ -141,6 +141,7 @@ const server = http.createServer(app);
         assert.match(r.headers.get('content-disposition'), /attachment; filename="openvibe-dana-\d{4}-\d\d-\d\d\.zip"/);
         const files = zip.read(r.buf);
         assert.ok(files['README.txt'].toString().includes('community: MISSING'));
+        assert.ok(files['README.txt'].toString().includes('space: MISSING'));
         assert.deepStrictEqual(JSON.parse(files['live/follows.json']).map((f) => f.channel), ['xavier', 'yolanda'], 'the replacing part');
         const account = JSON.parse(files['network/account.json']);
         assert.deepStrictEqual([account.username, account.email, account.subject_id], ['dana', 'dana@example.com', dana.subject_id]);
@@ -158,7 +159,7 @@ const server = http.createServer(app);
         assert.ok(Number(r.headers.get('retry-after')) > 0);
 
         // Every expected service answers: ready at once.
-        for (const s of ['community', 'games', 'media']) await db.prepare("UPDATE principal_grants SET revoked_at = ov_now() WHERE client_id = ? AND capability = 'network.account.export.contribute'").run(s);
+        for (const s of ['community', 'games', 'media', 'space']) await db.prepare("UPDATE principal_grants SET revoked_at = ov_now() WHERE client_id = ? AND capability = 'network.account.export.contribute'").run(s);
         r = await call('POST', '/api/v1/account/export', tok(eve));
         const exp2 = r.body.export_id;
         await call('POST', `/internal/account-exports/${exp2}/parts`, svc('live'), part([{ name: 'profile.json', content: {} }], eve.subject_id));
@@ -263,7 +264,7 @@ const server = http.createServer(app);
         assert.strictEqual(r.status, 403);
         r = await call('GET', '/api/admin/account-deletions', tok(boss));
         const row = r.body.deletions.find((d) => d.deletion_id === del);
-        assert.deepStrictEqual([row.confirmed, row.outstanding], [['chat'], ['community', 'games', 'live', 'media']]);
+        assert.deepStrictEqual([row.confirmed, row.outstanding], [['chat'], ['community', 'games', 'live', 'media', 'space']]);
 
         // Staff cancel a scheduled deletion only with a reason.
         await call('POST', '/api/v1/account/deletion', tok(eve), { confirm_username: 'eve' });

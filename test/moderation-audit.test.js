@@ -28,33 +28,36 @@ const ev = (type, payload, actor = { type: 'user', id: MOD }) => ({ event_id: id
 
     const chat = ev('chat.moderation.action', { action_id: 5, action_type: 'ban', scope_type: 'channel', scope_id: '327', actor_user_id: 1, actor_subject: MOD, target_user_id: 44, target_subject: TARGET, details: { reason: 'spam' } });
     const community = ev('community.moderation.action', { action: 'paste.deleted', target: { type: 'paste', id: 'k3f9Qa', owner_subject: TARGET }, actor_subject: MOD, reason: 'doxxing', details: {} });
+    const space = ev('space.moderation.action', { action: 'thread.hidden', target: { type: 'thread', id: 'welcome', owner_subject: TARGET }, actor_subject: MOD, reason: 'spam', details: {} });
     const tips = ev('tips.interaction.moderated', { interaction_id: 'tint_01JAB3C4D5E6F7G8H9J0K1MNPQ', creator: { type: 'user', id: TARGET }, action: 'hidden', by: 'moderator', moderation_state: 'hidden', cancelled_effects: ['tts'] }, { type: 'service', id: 'tips' });
     const live = ev('live.moderation.action', { action_id: 9, action_type: 'site_ban', scope_type: 'site', scope_id: null, actor_user_id: 1, actor_subject: MOD, target_user_id: 44, target_subject: TARGET, details: { reason: '=HYPERLINK("x")' } });
     const billing = ev('billing.staff.action', { audit_id: 'sa_01JAB3C4D5E6F7G8H9J0K1MNPQ', action: 'cashout.approved', outcome: 'done', target: { type: 'cashout', id: 'co_1' }, reason: null, request_id: null, detail: { amount: 5 } });
 
-    for (const e of [chat, community, tips, billing, live]) assert.strictEqual((await consumer.apply(e)).outcome, 'recorded', e.event_type);
+    for (const e of [chat, community, space, tips, billing, live]) assert.strictEqual((await consumer.apply(e)).outcome, 'recorded', e.event_type);
     assert.strictEqual((await consumer.apply(chat)).duplicate, true, 'a redelivery records nothing twice');
     assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM notifications').get()).n, 0, 'audit events notify nobody');
 
     const all = await audit.list({});
-    assert.strictEqual(all.items.length, 5);
+    assert.strictEqual(all.items.length, 6);
     const liveRow = all.items.find((r) => r.service === 'live');
     assert.deepStrictEqual([liveRow.action, liveRow.scope, liveRow.target_subject], ['site_ban', 'site', TARGET]);
     assert.strictEqual((await audit.list({ action: 'site_ban' })).items.length, 1);
     assert.strictEqual((await audit.list({ since: '2000-01-01', until: '2001-01-01' })).items.length, 0);
-    assert.strictEqual((await audit.list({ since: '2000-01-01' })).items.length, 5);
+    assert.strictEqual((await audit.list({ since: '2000-01-01' })).items.length, 6);
     const csv = require('../server/admin/moderation-audit').toCsv(all.items);
     assert.ok(csv.startsWith('id,occurred_at,service,action,'));
     assert.ok(csv.includes(`"'=HYPERLINK(""x"")"`), 'a formula-looking cell is text');
-    assert.strictEqual(csv.trim().split('\r\n').length, 6);
+    assert.strictEqual(csv.trim().split('\r\n').length, 7);
     const byService = Object.fromEntries(all.items.map((r) => [r.service, r]));
     assert.deepStrictEqual([byService.chat.action, byService.chat.scope, byService.chat.target_subject, byService.chat.reason], ['ban', 'channel:327', TARGET, 'spam']);
     assert.deepStrictEqual([byService.community.action, byService.community.target_type, byService.community.target_id, byService.community.reason], ['paste.deleted', 'paste', 'k3f9Qa', 'doxxing']);
+    assert.deepStrictEqual([byService.space.action, byService.space.target_type, byService.space.target_id, byService.space.reason], ['thread.hidden', 'thread', 'welcome', 'spam']);
     assert.strictEqual(byService.tips.action, 'interaction.hidden');
     assert.strictEqual(byService.billing.actor_subject, MOD);
     assert.strictEqual((await audit.list({ service: 'community' })).items.length, 1);
-    assert.strictEqual((await audit.list({ actor: MOD })).items.length, 4, 'tips carries no moderator identity');
-    assert.strictEqual((await audit.list({ target: TARGET })).items.length, 4);
+    assert.strictEqual((await audit.list({ service: 'space' })).items.length, 1);
+    assert.strictEqual((await audit.list({ actor: MOD })).items.length, 5, 'tips carries no moderator identity');
+    assert.strictEqual((await audit.list({ target: TARGET })).items.length, 5);
     const page = await audit.list({ limit: 2 });
     assert.strictEqual(page.items.length, 2);
     assert.strictEqual((await audit.list({ limit: 2, before: page.next })).items.length, 2, 'paged by id');

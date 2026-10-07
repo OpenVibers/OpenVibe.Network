@@ -29,6 +29,9 @@ const DEFAULT_TARGETS = [
     { id: 'community', name: 'OpenVibe.Community', origin: 'https://openvibe.community',
       login: 'https://openvibe.community/auth/login?silent=1&next={next}',
       logout: 'https://openvibe.community/auth/logout?next={next}' },
+    { id: 'space', name: 'OpenVibe.Space', origin: 'https://openvibe.space',
+      login: 'https://openvibe.space/auth/login?silent=1&next={next}',
+      logout: 'https://openvibe.space/auth/logout?next={next}' },
 ];
 
 /**

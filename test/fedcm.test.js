@@ -25,6 +25,8 @@ const tools = clientOriginMatcher({ client_id: 'tools', redirect_uris: '["https:
 assert.ok(tools('https://yt.openvibe.tools') && tools('https://openvibe.tools') && !tools('https://openvibe.live'), 'tools may exchange for any *.openvibe.tools origin only');
 const live = clientOriginMatcher({ client_id: 'live', redirect_uris: '["https://openvibe.live/api/auth/callback"]' });
 assert.ok(live('https://openvibe.live') && !live('https://openvibe.tools'));
+const space = clientOriginMatcher({ client_id: 'space', redirect_uris: '["https://openvibe.space/auth/callback"]' });
+assert.ok(space('https://openvibe.space') && !space('https://openvibe.community'));
 const a = fedcm.accountOf(users[7], 'https://openvibe.network');
 assert.deepStrictEqual(Object.keys(a).sort(), ['email', 'given_name', 'id', 'name', 'picture', 'username']);
 assert.strictEqual(a.picture, 'https://openvibe.network/data/avatars/7.png');

@@ -44,6 +44,9 @@ const DEFAULT_GRANTS = [
     // pastes into Community on behalf of its users and its AI jobs.
     ['community', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['community', 'media.object.upload', 'openvibe.media', ['community']],
+    // Plan T10: Space owns the forums and stores their attachments in its own Media namespace.
+    ['space', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['space', 'media.object.upload', 'openvibe.media', ['space']],
     // Wave 11: Tools job results as Media objects; Wave 12: Games map-editor assets.
     // tools.* : developer projects' results go to tools.app.<project_id>[.sandbox] (WS-L task 5).
     ['tools', 'media.object.upload', 'openvibe.media', ['tools', 'tools.*']],
@@ -76,7 +79,7 @@ const DEFAULT_GRANTS = [
     ['games', 'mods.grant.manage', SELF_AUDIENCE, []],
     // Account export and deletion (ADR-033): the services that keep data about people push their export part and
     // confirm a deletion; the holders of each grant are the services Network waits for.
-    ...['live', 'chat', 'community', 'media', 'games'].flatMap((svc) => [
+    ...['live', 'chat', 'community', 'space', 'media', 'games'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
@@ -212,7 +215,7 @@ const DEFAULT_GRANTS = [
     // A streamer's daily AI-viewer budget is an AI quota on their attribution (live:user:<id>), which Live sets.
     ['live', 'ai.quota.attribution.manage', 'openvibe.ai', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
-    ...['live', 'media', 'network', 'community', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
+    ...['live', 'media', 'network', 'community', 'space', 'billing', 'chat', 'tools', 'games', 'search', 'sources', 'tips'].map(c => [c, 'events.event.publish', 'openvibe.events', []]),
     // Wave 14: Search subscribes to <owner>.index_document.* deliveries.
     ['search', 'events.subscription.manage', 'openvibe.events', []],
     // Plan T9: Search's saved-search notifier pushes one notification per new match through Network
@@ -225,6 +228,7 @@ const DEFAULT_GRANTS = [
     // VIP gates in products: Chat's subscriber badge, Community's and Blog's members-only content, Live's own checks.
     ['chat', 'vip.entitlement.check', 'openvibe.vip', []],
     ['community', 'vip.resource.policy.evaluate', 'openvibe.vip', []],
+    ['space', 'vip.resource.policy.evaluate', 'openvibe.vip', []],
     ['blog', 'vip.resource.policy.evaluate', 'openvibe.vip', []],
     // WS-K task 8: Wiki's VIP spaces and pages (Wiki server/integrations/vip.js).
     ['wiki', 'vip.resource.policy.evaluate', 'openvibe.vip', []],
@@ -232,6 +236,8 @@ const DEFAULT_GRANTS = [
     ['community', 'events.subscription.manage', 'openvibe.events', []],
     ['community', 'events.event.read', 'openvibe.events', []],
     ['community', 'events.event.publish', 'openvibe.events', []],   // community.* events (Community server/events.js, 2026-09-24)
+    ['space', 'events.subscription.manage', 'openvibe.events', []],
+    ['space', 'events.event.read', 'openvibe.events', []],
     ['billing', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['chat', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['live', 'identity.subject.resolve', SELF_AUDIENCE, []],
@@ -267,6 +273,7 @@ const DEFAULT_GRANTS = [
     // both also follow network.block.changed through their own Events subscriptions.
     ['chat', 'network.blocks.read', SELF_AUDIENCE, []],
     ['community', 'network.blocks.read', SELF_AUDIENCE, []],
+    ['space', 'network.blocks.read', SELF_AUDIENCE, []],
     ['live', 'chat.live_bridge.write', 'openvibe.chat', []],
     ['live', 'chat.presence.read', 'openvibe.chat', []],
     // Plan T3: Live reads a channel's moderation settings, its moderators and emote count from Chat.

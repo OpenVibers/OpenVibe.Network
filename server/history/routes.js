@@ -16,7 +16,7 @@ const MAX_PER_USER = 2000;          // oldest rows beyond this are trimmed on wr
 const DEDUPE_WINDOW_MIN = 10;       // same URL within this window bumps the entry instead of adding one
 const TYPES = new Set(['tool', 'stream', 'vod', 'clip', 'paste', 'game', 'page', 'post', 'account', 'theme', 'download', 'chat']);
 const SERVICE_LABELS = {
-    live: 'Live', tools: 'Tools', games: 'Games', media: 'Media', network: 'Network', community: 'Community',
+    live: 'Live', tools: 'Tools', games: 'Games', media: 'Media', network: 'Network', community: 'Community', space: 'Space',
     chat: 'Chat', codes: 'Codes', blog: 'Blog', wiki: 'Wiki', news: 'News', reviews: 'Reviews', tips: 'Tips',
     vip: 'VIP', trade: 'Trade', host: 'Host', deals: 'Deals', coupons: 'Coupons', openre: 'OpenRe.Stream',
 };
