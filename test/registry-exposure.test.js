@@ -17,7 +17,7 @@ const { SITES } = require('../server/frame/sites');
 const PINNED = {
     network: 'live', live: 'live', tools: 'live', media: 'live', games: 'live', community: 'live', events: 'live',
     billing: 'live', codes: 'live', blog: 'live', wiki: 'live', sites: 'live',
-    news: 'internal', reviews: 'internal', deals: 'internal', coupons: 'internal', trade: 'internal', host: 'internal',
+    news: 'internal', reviews: 'internal', deals: 'internal', coupons: 'internal', trade: 'internal', host: 'live',
     tips: 'internal', vip: 'internal', openre: 'internal', search: 'live', sources: 'internal', chat: 'live', 'media-hub': 'placeholder', space: 'placeholder',
     ai: 'internal',
     // openvibe-contracts v0.86-v0.90: Bot runs (its own exposure row); Zone and Run are charters only.
@@ -29,7 +29,7 @@ const PINNED = {
     sdk: 'library', shared: 'library', contracts: 'library', publishing: 'library',
     examples: 'repository',
 };
-const PLACEHOLDER_DOMAINS = ['news', 'reviews', 'deals', 'coupons', 'trade', 'host', 'tips', 'vip', 'openre'];
+const PLACEHOLDER_DOMAINS = ['news', 'reviews', 'deals', 'coupons', 'trade', 'tips', 'vip', 'openre'];
 
 function fakeService(routes) {
     const srv = http.createServer((req, res) => {
@@ -110,7 +110,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     assert.strictEqual(sBy.shared.label, `not running (library, released v${require('openvibe-shared/package.json').version})`);
     // Contracts 0.83.0 added two placeholder services (media-hub, space), v0.86-v0.90 Bot (live) and two more (zone, run),
     // v0.95.0 Services; none is retired
-    assert.deepStrictEqual(st.exposure_summary, { live: 15, internal: 11, library: 4, repository: 1, placeholder: 6, retired: 0 });
+    assert.deepStrictEqual(st.exposure_summary, { live: 16, internal: 10, library: 4, repository: 1, placeholder: 6, retired: 0 });
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());
@@ -125,12 +125,12 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
 
     // 3. The Frame: the nav lists only sites whose domain serves the service; the rest are soon with a reason.
     const open = SITES.filter(s => s.status === 'open').map(s => s.id);
-    assert.deepStrictEqual(open, ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'codes', 'blog', 'wiki', 'bot']);   // bot: a site since openvibe-contracts 0.106.0 (live since 2026-10-02)
+    assert.deepStrictEqual(open, ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'codes', 'blog', 'wiki', 'host', 'bot']);   // bot: a site since openvibe-contracts 0.106.0; host: live since 0.107.0 (Stage B launched 2026-10-07)
     for (const s of SITES) {
         assert.ok(s.service && PINNED[s.service], `${s.id} names its service`);
         assert.strictEqual(s.status === 'open', PINNED[s.service] === 'live', `${s.id} nav status follows exposure`);
     }
-    for (const id of ['news', 'reviews', 'deals', 'coupons', 'trade', 'host', 'tips', 'vip', 'stream']) {
+    for (const id of ['news', 'reviews', 'deals', 'coupons', 'trade', 'tips', 'vip', 'stream']) {
         const s = SITES.find(x => x.id === id);
         assert.strictEqual(s.status, 'soon'); assert.strictEqual(s.state, 'internal');
     }
