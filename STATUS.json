@@ -6,7 +6,7 @@
   "runtime": "node 22, express, PostgreSQL 18 (openvibe-sdk/db, async) + Valkey 9",
   "port": 4000,
   "domain": "openvibe.network (with auth., api., admin., my. and themes.openvibe.network in its manifest)",
-  "contracts": "openvibe-contracts v0.103.0",
+  "contracts": "openvibe-contracts v0.106.0",
   "capabilities": [
     "identity.subject.resolve",
     "mods.grant.manage",
@@ -46,5 +46,5 @@
     "per-actor limits (openvibe-sdk/limits)",
     "universal telemetry: per-route aggregated platform.telemetry-sample@1 plus per-flush HTTP autoscaling gauges (openvibe-sdk/telemetry)"
   ],
-  "updated": "2026-10-04"
+  "updated": "2026-10-07"
 }

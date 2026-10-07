@@ -125,7 +125,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
 
     // 3. The Frame: the nav lists only sites whose domain serves the service; the rest are soon with a reason.
     const open = SITES.filter(s => s.status === 'open').map(s => s.id);
-    assert.deepStrictEqual(open, ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'codes', 'blog', 'wiki']);
+    assert.deepStrictEqual(open, ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'codes', 'blog', 'wiki', 'bot']);   // bot: a site since openvibe-contracts 0.106.0 (live since 2026-10-02)
     for (const s of SITES) {
         assert.ok(s.service && PINNED[s.service], `${s.id} names its service`);
         assert.strictEqual(s.status === 'open', PINNED[s.service] === 'live', `${s.id} nav status follows exposure`);
