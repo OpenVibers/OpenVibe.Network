@@ -33,7 +33,7 @@ const AREAS = [
         { item: 'Media operations (jobs, tiers, repairs)', where: [{ kind: 'api', api: 'OpenVibe.Media /api/v1/jobs, /internal/*', note: 'no console yet' }, { kind: 'cli', cli: 'node scripts/h15-repair.js, object-drift-report.js (Media)' }], service: 'media' },
     ] },
     { area: 'Queues', items: [
-        { item: 'Events: subscriptions, dead letters, replay', where: [{ kind: 'tab', tab: 'eventsops' }, { kind: 'url', url: 'https://events.openvibe.network/' }], service: 'events' },
+        { item: 'Events: subscriptions, dead letters, replay', where: [{ kind: 'tab', tab: 'eventsops' }, { kind: 'url', url: 'https://openvibe.events/' }], service: 'events' },
         { item: 'AI runs, providers and routes', where: [{ kind: 'url', url: 'https://ai.openvibe.services/' }, { kind: 'tab', tab: 'ai' }], service: 'ai' },
     ] },
     { area: 'Moderation, money and loyalty', items: [

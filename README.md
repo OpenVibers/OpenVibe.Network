@@ -48,8 +48,8 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 
 ## Depends on
 
-- `openvibe-contracts` v0.110.0 (registry manifests, capability checks), `openvibe-sdk` v0.28.0 (PostgreSQL
-  and Valkey adapters, events, per-actor limits, universal telemetry), `openvibe-shared` v2.10.1, pinned by release tarball
+- `openvibe-contracts` v0.111.0 (registry manifests, capability checks), `openvibe-sdk` v0.28.0 (PostgreSQL
+  and Valkey adapters, events, per-actor limits, universal telemetry), `openvibe-shared` v2.13.0, pinned by release tarball
 - OpenVibe.Events (Network's outbox relay; the events it consumes), OpenVibe.AI (the `network.site_copy`
   workflow), OpenVibe.Blog (the changelog feed it proxies)
 - email (Resend), Discord and GitHub when their secrets are set ([Provider secrets](#provider-secrets))
@@ -345,7 +345,7 @@ Every notification `NotificationService.create()` stores is announced as **`netw
 - **Payload:** `notification_id`, `type`, `category`, `priority`, `service`, `created_at` and the recipient's `unread_count`. Never the title, message, link or sender.
 - **Nothing announced:** a muted category, a blocked sender or a go-live dedupe stores nothing, so it announces nothing. Guests and accounts without a `usr_` subject get no event.
 
-The badge on other sites cannot use a cookie of events.openvibe.network, so it asks here for a **realtime ticket**:
+The badge on other sites cannot use a cookie of openvibe.events, so it asks here for a **realtime ticket**:
 
 ```
 POST /api/v1/realtime/ticket          (Bearer Network JWT, or the ov_token cookie here; 60/min per IP)
@@ -356,7 +356,7 @@ It then opens `${stream_url}?topics=network.notification.*&ticket=…[&last_even
 - **The ticket** (`server/auth/realtime-ticket.js`, `identity.realtime-ticket-claims@1`) is an RS256 JWT: `iss <issuer>/realtime`, `sub <usr_>`, `aud [openvibe.events]`, `typ` and `purpose` `realtime`, 120 s, `jti rtk_…`. Events accepts each one once.
 - **Never a session:** its issuer, `typ` and audience each rule that out, and this session guard refuses it too.
 - **Not stored, logged or audited:** it grants the person only their own stream.
-- **Refusals:** a guest gets 403 `realtime.guest`. `REALTIME_TICKETS=off` in `/etc/openvibe/network.env` answers 503 `realtime.disabled`, and every badge stays on polling. `OV_EVENTS_PUBLIC_URL` overrides the stream origin (default `https://events.openvibe.network`).
+- **Refusals:** a guest gets 403 `realtime.guest`. `REALTIME_TICKETS=off` in `/etc/openvibe/network.env` answers 503 `realtime.disabled`, and every badge stays on polling. `OV_EVENTS_PUBLIC_URL` overrides the stream origin (default `https://openvibe.events`).
 - **Client:** openvibe-shared `notification-live.js`, on where a site sets `notificationsRealtime: true`.
 
 A digest (a daily or weekly summary instead of one alert per notification) is designed in [docs/notification-digest.md](docs/notification-digest.md) for a later release.
