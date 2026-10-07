@@ -34,7 +34,7 @@ const AREAS = [
     ] },
     { area: 'Queues', items: [
         { item: 'Events: subscriptions, dead letters, replay', where: [{ kind: 'tab', tab: 'eventsops' }, { kind: 'url', url: 'https://events.openvibe.network/' }], service: 'events' },
-        { item: 'AI runs, providers and routes', where: [{ kind: 'url', url: 'https://ai.openvibe.network/' }, { kind: 'tab', tab: 'ai' }], service: 'ai' },
+        { item: 'AI runs, providers and routes', where: [{ kind: 'url', url: 'https://ai.openvibe.services/' }, { kind: 'tab', tab: 'ai' }], service: 'ai' },
     ] },
     { area: 'Moderation, money and loyalty', items: [
         { item: 'Moderation audit across services', where: [{ kind: 'tab', tab: 'modlog' }], service: 'network' },

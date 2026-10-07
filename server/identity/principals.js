@@ -7,7 +7,7 @@
  * exactly what principal_grants allows it for the requested audience. Receivers check the one
  * capability each route performs (openvibe-contracts serviceAuth.requireCapability).
  *
- * X-Internal-Key was retired in plan T2 (2026-09-29): every internal route takes a service token and nothing
+ * Every internal route takes a service token and nothing
  * else. principal_usage counts, per caller and route, each decision.
  */
 const crypto = require('crypto');
@@ -231,7 +231,7 @@ const DEFAULT_GRANTS = [
     ['billing', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['chat', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['live', 'identity.subject.resolve', SELF_AUDIENCE, []],
-    // X-Internal-Key retirement (plan T2): Live's avatar picker reports to Network, and Live reads the URL registry and
+    // Live's avatar picker reports to Network, and Live reads the URL registry and
     // the OpenCoins totals with capabilities of their own (the registry read used identity.subject.resolve, the coin
     // totals network.coins.credit).
     ['live', 'network.avatar.write', SELF_AUDIENCE, []],

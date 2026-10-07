@@ -618,7 +618,7 @@ app.use('/api/coins', createCoinsRoutes(db, requireAuth));
 app.use('/api/modules', require('./identity/modules').userRouter(requireAuth));
 
 // Developer projects, apps, credentials, grants and quotas (server/developer, ADR-014). Bearer user
-// tokens only; never X-Internal-Key.
+// tokens only.
 app.use('/api/v1/projects', rateLimit({ windowMs: 60_000, max: 60 }), require('./developer/routes').router());
 // The owner's confirmation inbox (plan T2 WS-Z2 slice 4, server/developer/confirmations.js): the same Bearer-only rules.
 app.use('/api/v1/confirmations', rateLimit({ windowMs: 60_000, max: 60 }), require('./developer/confirmations').router());

@@ -75,7 +75,7 @@ assert.deepStrictEqual(r.conflicts.map(c => c.index), [2], 'a mapped id is never
 assert.deepStrictEqual(r.rejected.map(c => c.index), [3, 4, 5, 6]);
 assert.strictEqual((await subjects.resolve(db, { source_system: 'live', source_id: '88' })).subject.id, beth.subject_id);
 
-// ── HTTP: /internal/identity behind a service token (X-Internal-Key was retired in plan T2) ──
+// ── HTTP: /internal/identity behind a service token (the retired shared key is not accepted) ──
 const app = express();
 const { privateKey, publicKey } = require('crypto').generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs1', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
 const ISSUER = 'https://openvibe.network';

@@ -4,7 +4,7 @@ Status: **N1–N7 merged** on `origin/main` `fbd6312` (registry slice 5, the nod
 operator writers; each slice's state is in §8). The cells layer of `docs/t2-resource-registry.md` §9 was already on
 `origin/main` (`d6ed8c4`, PR #5: `migrations/0008_cells_and_node_principals.sql`, `server/registry/cells.js`,
 `test/cells-registry.test.js`); this document designed the rest of lane B on top of it and re-planned registry slice 5.
-Pinned: Network `openvibe-contracts` **v0.99.0** (`package.json:33`). v0.98.0 added `network.node.revoked@1`, the event
+Pinned: Network `openvibe-contracts` **v0.107.0** (`package.json:33`). v0.98.0 added `network.node.revoked@1`, the event
 Network now emits on every node-principal revoke (§10), so a connected machine is stopped at once rather than at its next
 reauth. v0.85.0 closed every contract gap in §2 and the §9.1 T1 brief (the doc was
 written against v0.83.0, checked then against v0.84.0). OpenVibe.Bot

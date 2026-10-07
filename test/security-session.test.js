@@ -61,7 +61,7 @@ const sign = (sub, opts = {}) => jwt.sign({ sub, id: sub, username: 'u' }, keys.
     assert.strictEqual(r.status, 401, 'a FedCM assertion cannot sign in to another client through /oauth/confirm');
     r = await post('/api/auth/refresh', {}, { authorization: `Bearer ${assertion}` });
     assert.strictEqual(r.status, 401, 'a FedCM assertion cannot be refreshed into a full session');
-    // POST /internal/verify-token (key-only, no caller left) was deleted with the X-Internal-Key retirement (plan T2):
+    // POST /internal/verify-token (key-only, no caller left) was deleted when the shared key was retired (plan T2):
     // services verify tokens offline against the JWKS. The gate answers before routing, so the removed path
     // is indistinguishable from every other unauthenticated internal call: 401, no route behind it.
     r = await post('/internal/verify-token', { token: sign(7) }, {});

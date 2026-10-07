@@ -1,6 +1,6 @@
 'use strict';
 // Service principals (server/identity/principals.js): client_credentials tokens, capability guards on
-// /internal routes, the refusal of the retired X-Internal-Key and the usage audit. Roadmap Wave 1, ADR-003.
+// /internal routes, the refusal of the retired shared key and the usage audit. Roadmap Wave 1, ADR-003.
 //   node test/principals.test.js
 const assert = require('assert');
 const crypto = require('crypto');
