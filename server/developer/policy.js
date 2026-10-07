@@ -48,10 +48,11 @@ function grantableCatalog() {
 /**
  * Audiences that accept sandbox app tokens when DEV_SANDBOX_AUDIENCES is unset. Each of these keeps
  * sandbox traffic apart from real data: Media in a sandbox tenant, Events with env-marked events,
- * Tools with sandbox jobs, Codes with sandbox releases (an app managing its own, WS-N task 5). openvibe.network
- * is deliberately not one of them.
+ * Tools with sandbox jobs, Codes with sandbox releases (an app managing its own, WS-N task 5), AI with
+ * sandbox runs on free and local capacity only (ai.app.run, plan T6). openvibe.network is deliberately
+ * not one of them.
  */
-const DEFAULT_SANDBOX_AUDIENCES = Object.freeze(['openvibe.media', 'openvibe.events', 'openvibe.tools', 'openvibe.codes']);
+const DEFAULT_SANDBOX_AUDIENCES = Object.freeze(['openvibe.media', 'openvibe.events', 'openvibe.tools', 'openvibe.codes', 'openvibe.ai']);
 
 /**
  * Capabilities every project's SANDBOX apps may hold without a staff decision when
@@ -66,6 +67,7 @@ const DEFAULT_SANDBOX_ALLOWANCE = Object.freeze([
     'events.app.publish', 'events.app.read', 'events.app.subscribe',
     'tools.job.create', 'tools.job.read', 'tools.job.cancel', 'tools.tool.read', 'tools.tool.run',
     'codes.release.manage',
+    'ai.app.run',
 ]);
 
 /** Public + grantable only (the rule for every allowance that is not set by staff by hand). */
