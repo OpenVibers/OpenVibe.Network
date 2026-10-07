@@ -9,6 +9,7 @@ const cookieParser = require('cookie-parser');
 const { allowedOrigin, renderCheck, createSsoCheckRoute } = require('../server/auth/sso-check');
 
 assert.strictEqual(allowedOrigin('https://openvibe.tools'), 'https://openvibe.tools');
+assert.strictEqual(allowedOrigin('https://openvibe.space'), 'https://openvibe.space');
 assert.strictEqual(allowedOrigin('https://json.openvibe.tools/'), 'https://json.openvibe.tools');
 assert.strictEqual(allowedOrigin('https://play.openvibe.games'), 'https://play.openvibe.games');
 assert.strictEqual(allowedOrigin('https://ingest.openre.stream'), 'https://ingest.openre.stream');

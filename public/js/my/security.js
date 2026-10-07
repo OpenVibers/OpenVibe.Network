@@ -102,6 +102,7 @@ async function loadLinked() {
         games: { name: 'OpenVibe.Games', icon: 'fa-gamepad', url: 'https://openvibe.games', color: '#22c55e' },
         media: { name: 'OpenVibe.Media', icon: 'fa-photo-film', url: 'https://openvibe.media', color: '#22d3ee' },
         community: { name: 'OpenVibe.Community', icon: 'fa-people-group', url: 'https://openvibe.community', color: '#f59e0b' },
+        space: { name: 'OpenVibe.Space', icon: 'fa-comments', url: 'https://openvibe.space', color: '#818cf8' },
         discord: { name: 'Discord', icon: 'fa-brands fa-discord', url: 'https://discord.gg/M6MuRUaeJj', color: '#5865f2' },
         network: { name: 'OpenVibe.Network', icon: 'fa-circle-nodes', url: '/', color: '#3b82f6' },
     };

@@ -32,6 +32,7 @@ const BAD = [
 const GOOD = [
     ['/', '/'], ['/my#linked', '/my#linked'], ['/admin?tab=users', '/admin?tab=users'],
     ['https://openvibe.live/@x?y=1', 'https://openvibe.live/@x?y=1'],
+    ['https://openvibe.space/s/general', 'https://openvibe.space/s/general'],
     ['https://json.openvibe.tools/', 'https://json.openvibe.tools/'],
     ['https://openvibe.network/admin', 'https://openvibe.network/admin'],
     ['https://ingest.openre.stream/', 'https://ingest.openre.stream/'],

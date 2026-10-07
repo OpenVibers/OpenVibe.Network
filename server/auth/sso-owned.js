@@ -2,7 +2,7 @@
 // The zones OpenVibe owns. Cross-site trust (sso/check framing, FedCM relying parties, sign-in
 // handoff targets) is limited to these — never to openvibe.<anything>, which anyone can register.
 const OWNED_ZONES = [
-    'openvibe.network', 'openvibe.live', 'openvibe.tools', 'openvibe.media', 'openvibe.games', 'openvibe.community',
+    'openvibe.network', 'openvibe.live', 'openvibe.tools', 'openvibe.media', 'openvibe.games', 'openvibe.community', 'openvibe.space',
     'openvibe.chat', 'openvibe.codes', 'openvibe.blog', 'openvibe.wiki', 'openvibe.news', 'openvibe.reviews',
     'openvibe.tips', 'openvibe.vip', 'openvibe.trade', 'openvibe.host', 'openvibe.deals', 'openvibe.coupons',
     'openre.stream',
@@ -21,7 +21,7 @@ function isTrustedHost(hostname) {
 /** Which RP origins an OAuth client may exchange FedCM assertions for. */
 function clientOriginMatcher(client) {
     const id = String(client?.client_id || '');
-    const zoneOf = { live: 'openvibe.live', tools: 'openvibe.tools', games: 'openvibe.games', media: 'openvibe.media', community: 'openvibe.community', network: 'openvibe.network' }[id];
+    const zoneOf = { live: 'openvibe.live', tools: 'openvibe.tools', games: 'openvibe.games', media: 'openvibe.media', community: 'openvibe.community', space: 'openvibe.space', network: 'openvibe.network' }[id];
     let uris = [];
     try { uris = JSON.parse(client?.redirect_uris || '[]'); } catch { /* */ }
     const registered = new Set(uris.map(u => { try { return new URL(u).origin; } catch { return null; } }).filter(Boolean));

@@ -15,12 +15,15 @@ assert.strictEqual(allowedUrl('https://evil.example.com/'), null, 'off-network U
 assert.strictEqual(allowedUrl('javascript:alert(1)'), null);
 assert.deepStrictEqual(serviceFromUrl('https://pastes.openvibe.tools/p/x'), { service: 'tools', sub: 'pastes' });
 assert.deepStrictEqual(serviceFromUrl('https://openvibe.live/@someone'), { service: 'live', sub: null });
+assert.deepStrictEqual(serviceFromUrl('https://openvibe.space/s/general'), { service: 'space', sub: null });
 assert.deepStrictEqual(serviceFromUrl('https://ingest.openre.stream/'), { service: 'openre', sub: 'ingest' });
 
 const t = ssoTargets({});
-assert.ok(t.find(x => x.id === 'live') && t.find(x => x.id === 'tools') && t.find(x => x.id === 'community'), 'default targets');
+assert.ok(t.find(x => x.id === 'live') && t.find(x => x.id === 'tools') && t.find(x => x.id === 'community') && t.find(x => x.id === 'space'), 'default targets');
+assert.strictEqual(t.find(x => x.id === 'space').login, 'https://openvibe.space/auth/login?silent=1&next={next}');
 assert.ok(t.every(x => x.login.includes('{next}')), 'every login hop carries the continuation');
-assert.deepStrictEqual(ssoTargets({ OV_SSO_TARGETS_DISABLED: 'games, community' }).map(x => x.id), ['live', 'tools'], 'disabled targets are dropped');
+assert.deepStrictEqual(ssoTargets({ OV_SSO_TARGETS_DISABLED: 'games, community' }).map(x => x.id), ['live', 'tools', 'space'], 'disabled targets are dropped');
+assert.strictEqual(safeNext('https://openvibe.space/s/general'), 'https://openvibe.space/s/general');
 assert.strictEqual(safeNext('https://openvibe.live/@x?y=1'), 'https://openvibe.live/@x?y=1');
 assert.strictEqual(safeNext('https://phish.example/'), '/', 'foreign hosts fall back to /');
 assert.strictEqual(safeNext('//evil'), '/');

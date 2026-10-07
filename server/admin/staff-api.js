@@ -5,7 +5,7 @@ const cache = require('openvibe-shared/cache-policy');
  *
  *   GET /api/v1/staff/capabilities   the signed-in person's role, owner flag and staff capabilities
  *   GET /api/v1/staff/moderators     the network's staff (global moderators, admins, the owner) with
- *                                    their capabilities; ?service=chat|live|community|pastes|calls keeps
+ *                                    their capabilities; ?service=chat|live|community|space|pastes|calls keeps
  *                                    those who moderate it. For staff holding staff.moderation.logs, or a
  *                                    service token with network.staff.read (Contracts 0.47.0).
  *
@@ -17,7 +17,7 @@ const { staffClaims } = require('../auth/staff-claims');
 const { isOwner } = require('../auth/owner-guard');
 
 // Which staff capability moderates a service; anything else is general content moderation.
-const MODERATES = { chat: 'staff.moderation.chat', live: 'staff.moderation.channels', community: 'staff.moderation.discussions', pastes: 'staff.moderation.pastes', calls: 'staff.moderation.calls' };
+const MODERATES = { chat: 'staff.moderation.chat', live: 'staff.moderation.channels', community: 'staff.moderation.discussions', space: 'staff.moderation.discussions', pastes: 'staff.moderation.pastes', calls: 'staff.moderation.calls' };
 
 async function staffList(db, { service = null } = {}) {
     const need = service ? (MODERATES[service] || 'staff.content.moderate') : null;

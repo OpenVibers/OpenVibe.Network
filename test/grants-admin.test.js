@@ -20,6 +20,7 @@ const db = getDb();
 console.log = log;
 const principals = require('../server/identity/principals');
 const grants = require('../server/identity/grants-admin');
+assert.strictEqual(require('../server/admin/staff-api').MODERATES.space, 'staff.moderation.discussions');
 for (const c of ['live', 'media']) await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, 'x', ?, '[]', 1) ON CONFLICT DO NOTHING").run(c, c);
 await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('thirdparty', 'x', 'x', '[]', 0) ON CONFLICT DO NOTHING").run();
 await principals.ensureSchema(db);

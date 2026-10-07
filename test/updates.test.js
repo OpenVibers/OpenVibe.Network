@@ -45,6 +45,8 @@ const publicCors = require('../server/public-cors');
     assert.strictEqual(page.split('class="up-sites"').length - 1, 1, 'one site filter');
     assert.ok(page.includes('<a href="/updates?site=bot">Bot</a>'), 'Bot is a site');
     assert.strictEqual(serviceFor('bot'), 'bot');
+    assert.strictEqual(serviceFor('openvibe.space'), 'space');
+    assert.ok(page.includes('<a href="/updates?site=space">Space</a>'));
     const one = await fetch(`${base}/updates?site=openvibe.wiki`);
     assert.strictEqual(one.headers.get('x-robots-tag'), 'noindex, follow');
     assert.ok((await one.text()).includes('What shipped on OpenVibe.Wiki'));

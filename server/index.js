@@ -148,6 +148,7 @@ app.use(helmet({
                 "https://openvibe.games", "https://play.openvibe.games",
                 "https://openvibe.media",
                 "https://openvibe.community",
+                "https://openvibe.space",
                 "https://openvibe.blog",
                 "https://cloudflareinsights.com", // Cloudflare Web Analytics reports here (see script-src)
                 // Release notifications: release-watch's EventSource on the Events realtime stream (openvibe-shared 1.17)
@@ -241,6 +242,7 @@ function buildAllowedOriginsSet() {
         'https://openvibe.games', 'https://www.openvibe.games', 'https://play.openvibe.games',
         'https://openvibe.media',
         'https://openvibe.community',
+        'https://openvibe.space',
     ]) {
         origins.add(o);
     }
@@ -251,6 +253,8 @@ function buildAllowedOriginsSet() {
             'http://localhost:4000', 'http://127.0.0.1:4000', // network
             'http://localhost:4001',            // tools gateway
             'http://localhost:4100',            // media
+            'http://localhost:4200',            // community
+            'http://localhost:4940',            // space
             'http://localhost:8000',            // games
             'http://localhost:5173',            // games vite dev
         ]) {

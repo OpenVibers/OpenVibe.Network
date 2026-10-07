@@ -36,4 +36,6 @@ const pay = out.flatMap((a) => a.items).find((i) => /Payments/.test(i.item));
 assert.deepStrictEqual([pay.status, pay.console], ['ready', true]);
 const community = out.flatMap((a) => a.items).find((i) => /Community moderation/.test(i.item));
 assert.deepStrictEqual([community.status, community.console], ['unknown', false], 'a gap is shown as a gap');
+const space = out.flatMap((a) => a.items).find((i) => /Space forum moderation/.test(i.item));
+assert.deepStrictEqual([space.service, space.status, space.console], ['space', 'unknown', false]);
 console.log(`operator checklist: all checks passed (${items} items)`);

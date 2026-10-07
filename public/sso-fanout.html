@@ -66,7 +66,7 @@ li.now .dot i{animation:spin 1s linear infinite}
   // safe-redirect:begin
   // Where a sign-in may send the browser: a path on this site, this origin, or https on a zone
   // OpenVibe owns (server/auth/sso-owned.js). Never javascript:/data:, never another host.
-  const OV_OWNED_ZONES = ['openvibe.network', 'openvibe.live', 'openvibe.tools', 'openvibe.media', 'openvibe.games', 'openvibe.community', 'openvibe.chat', 'openvibe.codes', 'openvibe.blog', 'openvibe.wiki', 'openvibe.news', 'openvibe.reviews', 'openvibe.tips', 'openvibe.vip', 'openvibe.trade', 'openvibe.host', 'openvibe.deals', 'openvibe.coupons', 'openre.stream'];
+  const OV_OWNED_ZONES = ['openvibe.network', 'openvibe.live', 'openvibe.tools', 'openvibe.media', 'openvibe.games', 'openvibe.community', 'openvibe.space', 'openvibe.chat', 'openvibe.codes', 'openvibe.blog', 'openvibe.wiki', 'openvibe.news', 'openvibe.reviews', 'openvibe.tips', 'openvibe.vip', 'openvibe.trade', 'openvibe.host', 'openvibe.deals', 'openvibe.coupons', 'openre.stream'];
   const OV_USER_CONTENT_ZONES = ['openvibe.host']; // tenant sites: only the apex is ours
   function safeNext(raw) {
       const s = String(raw == null ? '' : raw);

@@ -17,6 +17,11 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-principals-'));
 const log = console.log; console.log = () => {};
 const db = getDb();
 console.log = log;
+const spaceClient = await db.prepare("SELECT name, redirect_uris, is_first_party FROM oauth_clients WHERE client_id = 'space'").get();
+assert.strictEqual(spaceClient.name, 'OpenVibe.Space');
+assert.strictEqual(spaceClient.is_first_party, 1);
+assert.ok(JSON.parse(spaceClient.redirect_uris).includes('https://openvibe.space/auth/callback'));
+assert.ok(JSON.parse(spaceClient.redirect_uris).includes('http://localhost:4940/auth/callback'));
 
 await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'media-secret' WHERE client_id = 'media'").run();
@@ -161,6 +166,10 @@ const server = http.createServer(app);
     const com = await token({ client_id: 'community', client_secret: 'community-secret', audience: 'openvibe.network' });
     assert.strictEqual(com.status, 200, JSON.stringify(com.body));
     assert.deepStrictEqual(com.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.blocks.read', 'network.modules.read', 'network.modules.write'], 'resolve, account export and deletion, platform blocks, plus its community.profile module');
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'space-secret' WHERE client_id = 'space'").run();
+    const spaceNetwork = await token({ client_id: 'space', client_secret: 'space-secret', audience: 'openvibe.network' });
+    assert.strictEqual(spaceNetwork.status, 200, JSON.stringify(spaceNetwork.body));
+    assert.deepStrictEqual(spaceNetwork.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.blocks.read'], 'Space has forum identity, account data and block grants, with no Community profile module');
     r = await post('/internal/identity/resolve-batch', { system: 'network', ids: ['7'] }, { authorization: `Bearer ${com.body.access_token}` });
     assert.strictEqual(r.status, 200); assert.strictEqual(r.body.results['7'].username, 'payee');
     // Bot adds an operator by @username: the same projection, any case, a leading @ ignored; an unknown name is a 404.
@@ -182,6 +191,13 @@ const server = http.createServer(app);
     assert.strictEqual(r.status, 403, 'Media holds no coin capability');
     const media = await token({ client_id: 'community', client_secret: 'community-secret', audience: 'openvibe.media' });
     assert.strictEqual(media.body.scope, 'media.object.upload', 'community may upload screenshot bytes to Media');
+    for (const [audience, scope] of [['openvibe.media', 'media.object.upload'], ['openvibe.vip', 'vip.resource.policy.evaluate'], ['openvibe.events', 'events.event.publish events.event.read events.subscription.manage']]) {
+        const response = await token({ client_id: 'space', client_secret: 'space-secret', audience });
+        assert.strictEqual(response.status, 200, JSON.stringify(response.body));
+        assert.strictEqual(response.body.scope, scope, `Space's ${audience} grants`);
+    }
+    const spaceUpload = await require('../server/identity/principals').grantsFor(db, 'space', 'openvibe.media');
+    assert.deepStrictEqual(spaceUpload.find(g => g.capability === 'media.object.upload').namespaces, ['space']);
     const cm = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.community' });
     assert.deepStrictEqual(cm.body.scope.split(' '), ['community.comment.moderate', 'community.comment.write', 'community.paste.create', 'community.paste.moderate', 'community.paste.write', 'community.pulse.write']);
     const tl = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.tools' });

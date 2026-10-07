@@ -22,7 +22,7 @@ const toolsCatalog = require('../domains/catalog');
 
 const RANK_MS = 30 * 60_000, COPY_MS = 24 * 60 * 60_000;
 const BANNED = /\b(free|\$0|no ads|ad[- ]free|no cost|gratis)\b|https?:|www\.|[<>{}]/i;
-const BASE_WEIGHT = { live: 6, tools: 5, community: 4, games: 3, media: 2, network: 1 };   // cold-start order only
+const BASE_WEIGHT = { live: 7, tools: 6, space: 5, community: 4, games: 3, media: 2, network: 1 };   // cold-start order only
 
 /**
  * Footer copy comes from OpenVibe.AI's network.site_copy workflow (roadmap Wave 13, ADR-015), called with a

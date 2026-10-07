@@ -7,6 +7,7 @@ const cache = require('openvibe-shared/cache-policy');
  *   chat.moderation.action       chat moderation (Chat, and Live's chat bridge)
  *   live.moderation.action       Live's staff actions outside chat: bans, force-ended streams, admin deletions
  *   community.moderation.action  staff actions on other people's content in Community
+ *   space.moderation.action      staff actions on forum threads and posts in Space
  *   tips.interaction.moderated   a paid message filtered, held, hidden or restored
  *   billing.staff.action         a staff money action in the Billing console
  *   <service>.moderation.action  common.moderation-action@1 (Contracts 0.53.0) from tools, games, wiki,
@@ -26,7 +27,7 @@ const { staffClaims } = require('../auth/staff-claims');
 
 // Producers whose event is common.moderation-action@1 (action, target { type, id, owner_subject }, actor_subject, reason, details).
 const COMMON_SERVICES = Object.freeze(['media', 'tools', 'games', 'wiki', 'blog', 'news', 'reviews', 'deals', 'coupons', 'trade', 'codes']);
-const TOPICS = Object.freeze(['chat.moderation.action', 'live.moderation.action', 'community.moderation.action', 'tips.interaction.moderated', 'billing.staff.action',
+const TOPICS = Object.freeze(['chat.moderation.action', 'live.moderation.action', 'community.moderation.action', 'space.moderation.action', 'tips.interaction.moderated', 'billing.staff.action',
     ...COMMON_SERVICES.map((svc) => `${svc}.moderation.action`)]);
 const str = (v, n) => (v == null || v === '' ? null : String(v).replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, n));
 const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
@@ -48,9 +49,10 @@ function rowOf(event) {
                 target_type: p.target_subject || p.target_user_id ? 'user' : null, target_id: str(p.target_subject || p.target_user_id, 128), target_subject: str(p.target_subject, 64),
                 scope: str(`${p.scope_type || 'site'}${p.scope_id != null ? `:${p.scope_id}` : ''}`, 128), reason: str(d.reason, 500), details: json(d) };
         }
-        case 'community.moderation.action': {
+        case 'community.moderation.action':
+        case 'space.moderation.action': {
             const t = obj(p.target);
-            return { ...base, service: 'community', action: str(p.action, 64) || 'unknown', actor_subject: str(p.actor_subject || actorId, 64),
+            return { ...base, service: event.event_type.split('.')[0], action: str(p.action, 64) || 'unknown', actor_subject: str(p.actor_subject || actorId, 64),
                 target_type: str(t.type, 32), target_id: str(t.id, 200), target_subject: str(t.owner_subject, 64), scope: null, reason: str(p.reason, 500), details: json(p.details) };
         }
         case 'tips.interaction.moderated': {

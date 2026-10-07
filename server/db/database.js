@@ -88,6 +88,7 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'games', name: 'OpenVibe.Games', redirect_uris: ['https://openvibe.games/auth/callback', 'https://play.openvibe.games/auth/callback'] },
             { client_id: 'media', name: 'OpenVibe.Media', redirect_uris: ['https://openvibe.media/auth/callback'] },
             { client_id: 'community', name: 'OpenVibe.Community', redirect_uris: ['https://openvibe.community/auth/callback'] },
+            { client_id: 'space', name: 'OpenVibe.Space', redirect_uris: ['https://openvibe.space/auth/callback'] },
             // Waves 9-16 products with a signed-in UI. Create each with server/setup/service-principal.js
             // first (secret into its env file); this only adds the redirect URI to that client.
             { client_id: 'tips', name: 'OpenVibe.Tips', redirect_uris: ['https://openvibe.tips/auth/callback'] },
@@ -128,6 +129,8 @@ async function seedDb(db, { log = console } = {}) {
             { clientId: 'tools', extraUris: ['http://localhost:4001/auth/callback'] },
             { clientId: 'games', extraUris: ['http://localhost:8000/auth/callback', 'http://localhost:5173/auth/callback'] },
             { clientId: 'media', extraUris: ['http://localhost:4100/auth/callback'] },
+            { clientId: 'community', extraUris: ['http://localhost:4200/auth/callback'] },
+            { clientId: 'space', extraUris: ['http://localhost:4940/auth/callback'] },
         ];
         for (const { clientId, extraUris } of localClients) {
             try { await mergeRedirectUris(db, clientId, extraUris, { log, local: true }); }

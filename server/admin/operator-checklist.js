@@ -40,6 +40,7 @@ const AREAS = [
         { item: 'Moderation audit across services', where: [{ kind: 'tab', tab: 'modlog' }], service: 'network' },
         { item: 'Chat logs and chat moderation', where: [{ kind: 'tab', tab: 'chat-logs' }], service: 'chat' },
         { item: 'Community moderation', where: [{ kind: 'api', api: 'OpenVibe.Community staff routes', note: 'no console yet' }], service: 'community' },
+        { item: 'Space forum moderation', where: [{ kind: 'api', api: 'OpenVibe.Space forum moderator routes', note: 'no console yet' }], service: 'space' },
         { item: 'Payments, cashouts and the money freeze', where: [{ kind: 'url', url: 'https://billing.openvibe.network/', note: 'Billing console' }, { kind: 'tab', tab: 'cashouts' }, { kind: 'tab', tab: 'payments' }], service: 'billing' },
         { item: 'Loyalty (OpenCoins, channel points)', where: [{ kind: 'api', api: 'live.loyalty user module; Network /internal/coins/*', note: 'summaries only; loyalty is never money' }], service: 'network' },
         { item: 'Developer apps and trust (Codes)', where: [{ kind: 'url', url: 'https://openvibe.codes/staff' }], service: 'codes' },
