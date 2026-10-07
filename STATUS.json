@@ -46,5 +46,5 @@
     "per-actor limits (openvibe-sdk/limits)",
     "universal telemetry: per-route aggregated platform.telemetry-sample@1 plus per-flush HTTP autoscaling gauges (openvibe-sdk/telemetry)"
   ],
-  "updated": "2026-10-04"
+  "updated": "2026-10-07"
 }
