@@ -77,8 +77,9 @@ const { createEcosystemRegistry } = require('../server/registry/ecosystem');
     assert.strictEqual(inCat('events'), 'platform'); assert.strictEqual(inCat('ai'), 'platform'); assert.strictEqual(inCat('sources'), 'platform');
     assert.strictEqual(inCat('sdk'), 'library'); assert.strictEqual(inCat('contracts'), 'library');
     assert.strictEqual(inCat('examples'), 'repository');
-    // 'planned' = exposure placeholder: Contracts 0.83.0's media-hub and space, v0.87-v0.90's zone and run, v0.95.0's services (charter only, nothing runs). Watch left it in v0.108.0 (it runs, internal).
-    assert.deepStrictEqual(cats.planned.services.map(x => x.id).sort(), ['media-hub', 'run', 'services', 'space', 'zone']);
+    // 'planned' = exposure placeholder: Contracts 0.83.0's media-hub and space, v0.87-v0.90's zone (charter only, nothing runs).
+    // Watch left it in v0.108.0, Run and Services in v0.109.0 (they run, internal).
+    assert.deepStrictEqual(cats.planned.services.map(x => x.id).sort(), ['media-hub', 'space', 'zone']);
     const liveRow = cats.site.services.find(x => x.id === 'live');
     assert.strictEqual(liveRow.runtime, 'down'); assert.ok(liveRow.checked_at, 'rows carry the last check');
     r = await get('/api/v1/registry/categories/library');
