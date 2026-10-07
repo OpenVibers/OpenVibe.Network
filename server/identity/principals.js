@@ -178,6 +178,10 @@ const DEFAULT_GRANTS = [
     ['bot', 'billing.usage.record', 'openvibe.billing', []],
     // Plan T18: OpenVibe.Watch relays watch.observation.recorded / watch.watch.triggered / watch.check.failed.
     ['watch', 'events.event.publish', 'openvibe.events', []],
+    // Plan T13: OpenVibe.Services merges every authority's resource index (ADR-048 section 3): it reads each one's
+    // GET /api/v1/resources under that authority's <id>.resource.read, with a token for that authority's audience.
+    ['services', 'network.resource.read', SELF_AUDIENCE, []],
+    ...['media', 'events', 'codes', 'host'].map(id => ['services', `${id}.resource.read`, `openvibe.${id}`, []]),
     // Plan T14: OpenVibe.Run publishes run.job.* and hands each job to a paired Node through Bot's internal jobs API
     // (POST /api/v1/jobs, /jobs/:id/cancel, GET /jobs/:id, capability bot.job.dispatch, service-to-service only).
     ['run', 'events.event.publish', 'openvibe.events', []],
