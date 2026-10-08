@@ -24,7 +24,8 @@ const confirmations = require('../server/developer/confirmations');
 const log = console.log; console.log = () => {};
 const db = getDb();
 console.log = log;
-await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('actor', 'actor-secret', 'OpenVibe.Actor', '[]', 1)").run();
+// The seed creates Actor's client (server/db/database.js); this file sets the fields it relies on.
+await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('actor', 'actor-secret', 'OpenVibe.Actor', '[]', 1) ON CONFLICT (client_id) DO UPDATE SET client_secret = EXCLUDED.client_secret, name = EXCLUDED.name, redirect_uris = EXCLUDED.redirect_uris, is_first_party = EXCLUDED.is_first_party").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
 await db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES (10, 'owner', 'x', 'user'), (14, 'staff', 'x', 'admin')`).run();
 const owner = await subjects.ensureUserSubject(db, await db.prepare('SELECT * FROM users WHERE id = 10').get());

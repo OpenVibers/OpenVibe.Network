@@ -26,7 +26,8 @@ console.log = log;
 const PEOPLE = [[10, 'owner'], [11, 'admin'], [12, 'dev'], [13, 'stranger'], [14, 'staff'], [17, 'erased']];
 await db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES
     (10, 'owner', 'x', 'user'), (11, 'admin', 'x', 'user'), (12, 'dev', 'x', 'user'), (13, 'stranger', 'x', 'user'), (14, 'staff', 'x', 'admin'), (17, 'erased', 'x', 'user')`).run();
-await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('actor', 'x', 'OpenVibe.Actor', '[]', 1)").run();
+// The seed creates Actor's client (server/db/database.js); this file sets the fields it relies on.
+await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('actor', 'x', 'OpenVibe.Actor', '[]', 1) ON CONFLICT (client_id) DO UPDATE SET client_secret = EXCLUDED.client_secret, name = EXCLUDED.name, redirect_uris = EXCLUDED.redirect_uris, is_first_party = EXCLUDED.is_first_party").run();
 // No service holds network.confirmation.manage by default (no receiver ships yet): Media and Tools get it here, Live does not.
 for (const c of ['media', 'tools', 'live']) await db.prepare(`UPDATE oauth_clients SET client_secret = '${c}-secret' WHERE client_id = ?`).run(c);
 for (const c of ['media', 'tools']) await db.prepare("INSERT INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES (?, 'network.confirmation.manage', 'openvibe.network', '[]', 'test')").run(c);

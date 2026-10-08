@@ -14,7 +14,7 @@ assert.equal(siteForHost('yt.openvibe.tools').id, 'tools');
 assert.equal(siteForHost('evil.example'), null);
 assert.strictEqual(svc.ranking().at, null, 'cold start: no use counted yet (the registry\'s featured list says so)');
 let p = svc.payloadFor('openvibe.media');
-assert.deepEqual(p.nav.map(n => n.id), ['live', 'tools', 'space', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'host', 'bot', 'codes'], 'cold start follows the base order');
+assert.deepEqual(p.nav.map(n => n.id), ['live', 'tools', 'space', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'host', 'bot', 'codes', 'actor'], 'cold start follows the base order');
 assert.strictEqual(p.nav.find(n => n.id === 'space').url, 'https://openvibe.space/', 'the forum goes to Space');
 assert.strictEqual(p.nav.find(n => n.id === 'community').url, 'https://openvibe.community/', 'Community remains for pastes and Pulse');
 assert.equal(p.footer.legal.dmca, 'https://openvibe.media/dmca', 'legal links stay on the site\'s own domain');

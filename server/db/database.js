@@ -108,6 +108,8 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'billing', name: 'OpenVibe.Billing', redirect_uris: ['https://billing.openvibe.network/auth/callback'] },
             { client_id: 'ai', name: 'OpenVibe.AI', redirect_uris: ['https://ai.openvibe.services/auth/callback'] },
             { client_id: 'bot', name: 'OpenVibe.Bot', redirect_uris: ['https://openvibe.bot/auth/callback'] },
+            // OpenVibe's own agent and the router for agent work (plan T17); the client is created first as Actor's principal.
+            { client_id: 'actor', name: 'OpenVibe.Actor', redirect_uris: ['https://openvibe.actor/auth/callback'] },
         ];
         let seededAny = false;
         for (const c of contractClients) {
@@ -133,6 +135,7 @@ async function seedDb(db, { log = console } = {}) {
             { clientId: 'media', extraUris: ['http://localhost:4100/auth/callback'] },
             { clientId: 'community', extraUris: ['http://localhost:4200/auth/callback'] },
             { clientId: 'space', extraUris: ['http://localhost:4940/auth/callback'] },
+            { clientId: 'actor', extraUris: ['http://localhost:4950/auth/callback'] },
         ];
         for (const { clientId, extraUris } of localClients) {
             try { await mergeRedirectUris(db, clientId, extraUris, { log, local: true }); }
