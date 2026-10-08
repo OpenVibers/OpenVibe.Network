@@ -43,11 +43,11 @@ const AREAS = [
         { item: 'Space forum moderation', where: [{ kind: 'api', api: 'OpenVibe.Space forum moderator routes', note: 'no console yet' }], service: 'space' },
         { item: 'Payments, cashouts and the money freeze', where: [{ kind: 'url', url: 'https://billing.openvibe.network/', note: 'Billing console' }, { kind: 'tab', tab: 'cashouts' }, { kind: 'tab', tab: 'payments' }], service: 'billing' },
         { item: 'Loyalty (OpenCoins, channel points)', where: [{ kind: 'api', api: 'live.loyalty user module; Network /internal/coins/*', note: 'summaries only; loyalty is never money' }], service: 'network' },
-        { item: 'Developer apps and trust (Codes)', where: [{ kind: 'url', url: 'https://openvibe.codes/staff' }], service: 'codes' },
+        { item: 'Developer apps and trust (Services)', where: [{ kind: 'url', url: 'https://openvibe.services/staff' }], service: 'services' },
     ] },
     { area: 'Releases and readiness', items: [
         { item: 'Migration and readiness', where: [{ kind: 'url', url: 'https://openvibe.network/status' }, { kind: 'cli', cli: 'ovhost status, ovhost validate <service>' }], service: 'host' },
-        { item: 'Compatibility status (contracts, pins, the register)', where: [{ kind: 'url', url: 'https://openvibe.codes/docs' }, { kind: 'cli', cli: 'ovhost validate <service> (contracts range)' }], service: 'codes' },
+        { item: 'Compatibility status (contracts, pins, the register)', where: [{ kind: 'url', url: 'https://openvibe.services/docs' }, { kind: 'cli', cli: 'ovhost validate <service> (contracts range)' }], service: 'codes' },
         { item: 'Deploys', where: [{ kind: 'tab', tab: 'deploy' }, { kind: 'cli', cli: 'ovhost deploy <service>' }], service: 'host' },
         { item: 'Domains and certificates', where: [{ kind: 'tab', tab: 'domains' }, { kind: 'cli', cli: 'ovhost certs' }], service: 'host' },
     ] },
