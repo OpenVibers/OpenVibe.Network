@@ -23,6 +23,7 @@ const PINNED = {
     // openvibe-contracts v0.86-v0.90: Bot runs (its own exposure row); Zone is a charter only.
     bot: 'live', zone: 'placeholder',
     actor: 'live',   // OpenVibe's own agent and the router for agent work at openvibe.actor since 2026-10-08 (contracts 0.115.0)
+    food: 'live', help: 'live', work: 'live',   // services since contracts 0.116.0 (plan T19, 2026-10-08)
     run: 'internal',        // OpenVibe.Run runs on loopback since 2026-10-07 (contracts 0.109.0)
     services: 'live',   // OpenVibe.Services: the developer platform at openvibe.services since 2026-10-08 (contracts 0.113.0; the portal moved from Codes)
     // openvibe-contracts v0.102.0: OpenVibe.Watch is a charter only (plan T18).
@@ -110,8 +111,8 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     assert.strictEqual(sBy.live.origin, 'https://openvibe.live');
     assert.strictEqual(sBy.shared.label, `not running (library, released v${require('openvibe-shared/package.json').version})`);
     // Contracts 0.83.0 added two placeholder services (media-hub, space), v0.86-v0.90 Bot (live) and two more (zone, run),
-    // v0.95.0 Services; Space and AI went live in v0.110.0; none is retired
-    assert.deepStrictEqual(st.exposure_summary, { live: 20, internal: 11, library: 4, repository: 1, placeholder: 2, retired: 0 });
+    // v0.95.0 Services; Space and AI went live in v0.110.0; Food, Help and Work in v0.116.0; none is retired
+    assert.deepStrictEqual(st.exposure_summary, { live: 23, internal: 11, library: 4, repository: 1, placeholder: 2, retired: 0 });
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());
@@ -127,7 +128,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
 
     // 3. The Frame: the nav lists only sites whose domain serves the service; the rest are soon with a reason.
     const open = SITES.filter(s => s.status === 'open').map(s => s.id);
-    assert.deepStrictEqual(open, ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'host', 'space', 'bot', 'codes', 'actor']);   // by site position; bot: a site since openvibe-contracts 0.106.0; host: live since 0.107.0; space: live since 0.110.0 (the forum, 2026-10-07)
+    assert.deepStrictEqual(open, ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'host', 'space', 'bot', 'codes', 'actor', 'food', 'help', 'work']);   // by site position; bot: a site since openvibe-contracts 0.106.0; host: live since 0.107.0; space: live since 0.110.0 (the forum, 2026-10-07)
     for (const s of SITES) {
         assert.ok(s.service && PINNED[s.service], `${s.id} names its service`);
         assert.strictEqual(s.status === 'open', PINNED[s.service] === 'live', `${s.id} nav status follows exposure`);
