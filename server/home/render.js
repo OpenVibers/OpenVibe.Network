@@ -158,7 +158,7 @@ ${chips(SOON.map((site) => [`https://${site.host}/`, site.tagline, site.icon, si
         id: 'developers', title: 'For developers and crawlers',
         lede: 'OpenVibe is open source and community-run. Everything public is meant to be read by machines too.',
         items: [
-            { icon: 'ov:codes', title: 'Build on OpenVibe', text: 'Sign in with OpenVibe (OAuth 2.0 and FedCM), the API, SDK and webhooks: all on OpenVibe.Codes.', href: 'https://openvibe.codes/' },
+            { icon: 'ov:code', title: 'Build on OpenVibe', text: 'Sign in with OpenVibe (OAuth 2.0 and FedCM), the API, SDK and webhooks: all on OpenVibe.Services.', href: 'https://openvibe.services/' },
             { icon: 'ov:tools', title: 'Tool catalog', text: 'Every tool with its description, keywords and addresses as JSON.', href: 'https://openvibe.tools/api/catalog.json' },
             { icon: 'ov:blog', title: 'llms.txt', text: 'A plain-text map of the network for AI assistants, with the full text beside it.', href: '/llms.txt' },
             { icon: 'fa-code-branch', title: 'Source on GitHub', text: 'Every OpenVibe service is open source under the OpenVibers organization.', href: 'https://github.com/OpenVibers' },
