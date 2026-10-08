@@ -114,6 +114,10 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'food', name: 'OpenVibe.Food', redirect_uris: ['https://openvibe.food/auth/callback'] },
             { client_id: 'help', name: 'OpenVibe.Help', redirect_uris: ['https://openvibe.help/auth/callback'] },
             { client_id: 'work', name: 'OpenVibe.Work', redirect_uris: ['https://openvibe.work/auth/callback'] },
+            // The shared quest log, listings people post, and Watch's public site (plan T18 step 8, T19).
+            { client_id: 'quest', name: 'OpenVibe.Quest', redirect_uris: ['https://openvibe.quest/auth/callback'] },
+            { client_id: 'rent', name: 'OpenVibe.Rent', redirect_uris: ['https://openvibe.rent/auth/callback'] },
+            { client_id: 'watch', name: 'OpenVibe.Watch', redirect_uris: ['https://openvibe.watch/auth/callback'] },
         ];
         let seededAny = false;
         for (const c of contractClients) {
@@ -150,6 +154,9 @@ async function seedDb(db, { log = console } = {}) {
             { clientId: 'work', extraUris: ['http://localhost:4960/auth/callback'] },
             { clientId: 'food', extraUris: ['http://localhost:4970/auth/callback'] },
             { clientId: 'help', extraUris: ['http://localhost:5020/auth/callback'] },
+            { clientId: 'quest', extraUris: ['http://localhost:4980/auth/callback'] },
+            { clientId: 'rent', extraUris: ['http://localhost:5010/auth/callback'] },
+            { clientId: 'watch', extraUris: ['http://localhost:4730/auth/callback'] },
         ];
         for (const { clientId, extraUris } of localClients) {
             try { await mergeRedirectUris(db, clientId, extraUris, { log, local: true }); }

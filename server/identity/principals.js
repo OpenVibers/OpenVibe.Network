@@ -21,6 +21,11 @@ const CHAT_NAMESPACES = ['chat.preferences', 'chat.tts_defaults', 'chat.dm_setti
 // Initial grants: what each service does against Network today.
 const DEFAULT_GRANTS = [
     ['live', 'network.coins.credit', SELF_AUDIENCE, ['live']],
+    // OpenVibe.Quest pays a completed quest's OpenCoins (app_id quest, idempotency_key = the completion id), resolving
+    // the person's subject to the wallet first, and subscribes to the events it counts (plan T19).
+    ['quest', 'network.coins.credit', SELF_AUDIENCE, ['quest']],
+    ['quest', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['quest', 'events.subscription.manage', 'openvibe.events', []],
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],
     ['live', 'network.notifications.push', SELF_AUDIENCE, ['live']],
     // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
