@@ -11,7 +11,7 @@ const cache = require('openvibe-shared/cache-policy');
  *   tips.interaction.moderated   a paid message filtered, held, hidden or restored
  *   billing.staff.action         a staff money action in the Billing console
  *   <service>.moderation.action  common.moderation-action@1 (Contracts 0.53.0) from tools, games, wiki,
- *                                blog, news, reviews, deals, coupons, trade and codes: a staff or
+ *                                blog, news, reviews, deals, coupons, trade and services: a staff or
  *                                moderator action on someone else's content there; the service is the
  *                                event's prefix
  *
@@ -26,7 +26,7 @@ const { staff } = require('openvibe-contracts');
 const { staffClaims } = require('../auth/staff-claims');
 
 // Producers whose event is common.moderation-action@1 (action, target { type, id, owner_subject }, actor_subject, reason, details).
-const COMMON_SERVICES = Object.freeze(['media', 'tools', 'games', 'wiki', 'blog', 'news', 'reviews', 'deals', 'coupons', 'trade', 'codes']);
+const COMMON_SERVICES = Object.freeze(['media', 'tools', 'games', 'wiki', 'blog', 'news', 'reviews', 'deals', 'coupons', 'trade', 'services']);
 const TOPICS = Object.freeze(['chat.moderation.action', 'live.moderation.action', 'community.moderation.action', 'space.moderation.action', 'tips.interaction.moderated', 'billing.staff.action',
     ...COMMON_SERVICES.map((svc) => `${svc}.moderation.action`)]);
 const str = (v, n) => (v == null || v === '' ? null : String(v).replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, n));
@@ -71,7 +71,7 @@ function rowOf(event) {
         case 'deals.moderation.action':
         case 'coupons.moderation.action':
         case 'trade.moderation.action':
-        case 'codes.moderation.action': {
+        case 'services.moderation.action': {
             const t = obj(p.target);
             return { ...base, service: event.event_type.split('.')[0], action: str(p.action, 64) || 'unknown', actor_subject: str(p.actor_subject || actorId, 64),
                 target_type: str(t.type, 40), target_id: str(t.id, 200), target_subject: str(t.owner_subject, 64), scope: null, reason: str(p.reason, 500), details: json(p.details) };

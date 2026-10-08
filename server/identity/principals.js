@@ -184,7 +184,7 @@ const DEFAULT_GRANTS = [
     // Plan T13: OpenVibe.Services merges every authority's resource index (ADR-048 section 3): it reads each one's
     // GET /api/v1/resources under that authority's <id>.resource.read, with a token for that authority's audience.
     ['services', 'network.resource.read', SELF_AUDIENCE, []],
-    ...['media', 'events', 'codes', 'host'].map(id => ['services', `${id}.resource.read`, `openvibe.${id}`, []]),
+    ...['media', 'events', 'host'].map(id => ['services', `${id}.resource.read`, `openvibe.${id}`, []]),
     // Plan T14: OpenVibe.Run publishes run.job.* and hands each job to a paired Node through Bot's internal jobs API
     // (POST /api/v1/jobs, /jobs/:id/cancel, GET /jobs/:id, capability bot.job.dispatch, service-to-service only).
     ['run', 'events.event.publish', 'openvibe.events', []],
@@ -203,7 +203,7 @@ const DEFAULT_GRANTS = [
     // use and revoke a proof mod through Games' staff API.
     ['probe', 'games.mod.manage', 'openvibe.games', []],
     // Wave 20: the Codes portal relays its release events.
-    ['codes', 'events.event.publish', 'openvibe.events', []],
+    ['services', 'events.event.publish', 'openvibe.events', []],
     ['ai', 'events.event.publish', 'openvibe.events', []],          // ai.run.* (AI server/events.js, 2026-09-24)
     // Wave 13: Live's AI features run as OpenVibe.AI workflows (AI_SERVICE=remote in live.env).
     // Live runs its own live.* workflows, network.site_copy as the footer-copy fallback, and media.analyze
@@ -315,6 +315,10 @@ const REVOKED_GRANTS = [
     ['live', 'network.coins.transfer', SELF_AUDIENCE],
     // The Live read mirror is retired (2026-10-05): Chat #25 removed the sender, Live the receiver.
     ['chat', 'live.chat_mirror.write', 'openvibe.live'],
+    // The developer portal moved from Codes to Services (contracts 0.113.0): Codes owns no resources and publishes no
+    // event any more; Services publishes the services.* events and reads its own resources in process.
+    ['services', 'codes.resource.read', 'openvibe.codes'],
+    ['codes', 'events.event.publish', 'openvibe.events'],
 ];
 
 // Default grants whose namespaces changed: a row still exactly as the old default seeded it is moved to

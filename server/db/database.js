@@ -103,6 +103,8 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'coupons', name: 'OpenVibe.Coupons', redirect_uris: ['https://openvibe.coupons/auth/callback'] },
             { client_id: 'host', name: 'OpenVibe.Host', redirect_uris: ['https://openvibe.host/auth/callback'] },
             { client_id: 'codes', name: 'OpenVibe.Codes', redirect_uris: ['https://openvibe.codes/auth/callback'] },
+            // The developer console (moved from openvibe.codes on 2026-10-08); the client already exists as Services' principal.
+            { client_id: 'services', name: 'OpenVibe.Services', redirect_uris: ['https://openvibe.services/auth/callback'] },
             { client_id: 'billing', name: 'OpenVibe.Billing', redirect_uris: ['https://billing.openvibe.network/auth/callback'] },
             { client_id: 'ai', name: 'OpenVibe.AI', redirect_uris: ['https://ai.openvibe.services/auth/callback'] },
             { client_id: 'bot', name: 'OpenVibe.Bot', redirect_uris: ['https://openvibe.bot/auth/callback'] },
