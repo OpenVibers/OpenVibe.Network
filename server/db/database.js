@@ -110,6 +110,10 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'bot', name: 'OpenVibe.Bot', redirect_uris: ['https://openvibe.bot/auth/callback'] },
             // OpenVibe's own agent and the router for agent work (plan T17); the client is created first as Actor's principal.
             { client_id: 'actor', name: 'OpenVibe.Actor', redirect_uris: ['https://openvibe.actor/auth/callback'] },
+            // Food near you, meal plans and a pantry; the help centre and its tickets; job listings and saved searches (plan T19).
+            { client_id: 'food', name: 'OpenVibe.Food', redirect_uris: ['https://openvibe.food/auth/callback'] },
+            { client_id: 'help', name: 'OpenVibe.Help', redirect_uris: ['https://openvibe.help/auth/callback'] },
+            { client_id: 'work', name: 'OpenVibe.Work', redirect_uris: ['https://openvibe.work/auth/callback'] },
         ];
         let seededAny = false;
         for (const c of contractClients) {
@@ -136,6 +140,9 @@ async function seedDb(db, { log = console } = {}) {
             { clientId: 'community', extraUris: ['http://localhost:4200/auth/callback'] },
             { clientId: 'space', extraUris: ['http://localhost:4940/auth/callback'] },
             { clientId: 'actor', extraUris: ['http://localhost:4950/auth/callback'] },
+            { clientId: 'work', extraUris: ['http://localhost:4960/auth/callback'] },
+            { clientId: 'food', extraUris: ['http://localhost:4970/auth/callback'] },
+            { clientId: 'help', extraUris: ['http://localhost:5020/auth/callback'] },
         ];
         for (const { clientId, extraUris } of localClients) {
             try { await mergeRedirectUris(db, clientId, extraUris, { log, local: true }); }

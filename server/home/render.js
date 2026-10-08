@@ -48,6 +48,9 @@ const INTENTS = [
     ['services', 'fa-server', 'Build on OpenVibe', 'One console for projects, keys, grants and the API docs of every service.', 'https://openvibe.services/', 'build api sdk developer developers oauth webhook webhooks app integrate console platform'],
     ['codes', 'fa-code', 'Code with any agent', 'Claude Code, Codex, OpenCode or your own model on one task, with hand-offs.', 'https://openvibe.codes/', 'code coding agent agents ai claude codex opencode deepseek harness contribute'],
     ['actor', 'fa-user-astronaut', 'Give a task to an agent', 'Actor picks the best agent for it, checks the answer and shows the cost and why.', 'https://openvibe.actor/', 'agent agents ai assistant task tasks automate research router openrouter do it for me'],
+    ['work', 'fa-briefcase', 'Find work', 'Jobs from open boards in one search, each linked to where you apply.', 'https://openvibe.work/', 'job jobs work career hiring remote employment apply listings'],
+    ['food', 'fa-utensils', 'Eat well for less', 'Food banks and budget grocers near you, meal plans for your budget.', 'https://openvibe.food/', 'food eat meal meals plan grocery groceries cheap budget recipes food bank pantry'],
+    ['help', 'fa-life-ring', 'Get help', 'Every OpenVibe site\'s questions answered, and a person when they are not.', 'https://openvibe.help/', 'help support faq question questions ticket contact problem how'],
 ];
 
 function intents(catalog) {
