@@ -50,6 +50,9 @@ const INTENTS = [
     ['actor', 'fa-user-astronaut', 'Give a task to an agent', 'Actor picks the best agent for it, checks the answer and shows the cost and why.', 'https://openvibe.actor/', 'agent agents ai assistant task tasks automate research router openrouter do it for me'],
     ['work', 'fa-briefcase', 'Find work', 'Jobs from open boards in one search, each linked to where you apply.', 'https://openvibe.work/', 'job jobs work career hiring remote employment apply listings'],
     ['food', 'fa-utensils', 'Eat well for less', 'Food banks and budget grocers near you, meal plans for your budget.', 'https://openvibe.food/', 'food eat meal meals plan grocery groceries cheap budget recipes food bank pantry'],
+    ['quest', 'fa-medal', 'Earn badges', 'Quests across the network for the things you already do there.', 'https://openvibe.quest/', 'quest quests badge badges achievement achievements rewards opencoins earn'],
+    ['rent', 'fa-house', 'Rent a place', 'Rooms, homes, workspace, parking and gear, posted by people.', 'https://openvibe.rent/', 'rent rental rentals apartment room house flat lease parking storage equipment'],
+    ['watch', 'fa-bell', 'Get told when it changes', 'Watch a page, a feed or an API and hear when your value moves.', 'https://openvibe.watch/', 'watch monitor alert alerts notify change changes price drop feed rss tracker uptime'],
     ['help', 'fa-life-ring', 'Get help', 'Every OpenVibe site\'s questions answered, and a person when they are not.', 'https://openvibe.help/', 'help support faq question questions ticket contact problem how'],
 ];
 
