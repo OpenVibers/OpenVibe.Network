@@ -100,7 +100,7 @@ const rows = async (userId) => await db.prepare('SELECT * FROM notifications WHE
     assert.strictEqual(mine[0].service, 'deals');
     assert.strictEqual(mine[0].title, 'Deal watch matched');
     assert.strictEqual(mine[0].message, 'Cheap b headphones /b at 199.00 USD (below your 250.00 USD)', 'no markup reaches the inbox');
-    assert.strictEqual(mine[0].url, null, 'openvibe.deals serves a placeholder: no click-through yet');
+    assert.strictEqual(mine[0].url, 'https://openvibe.deals/d/dof_1-cheap-headphones', 'openvibe.deals is live (contracts 0.118.0): the notification opens the deal');
     assert.strictEqual(JSON.parse(mine[0].rich_content).context.planned_url, 'https://openvibe.deals/d/dof_1-cheap-headphones');
 
     // The same event again (Events retries, or replays): a duplicate, nothing new.
