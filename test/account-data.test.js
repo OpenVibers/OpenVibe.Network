@@ -92,8 +92,18 @@ const server = http.createServer(app);
         await db.prepare("INSERT INTO user_preferences (user_id, language) VALUES (?, 'en')").run(dana.id);
 
         // ── Export ──
+        const seeded = await accountData.expectedServices(db, 'network.account.export.contribute');
+        assert.deepStrictEqual(seeded, ['actor', 'chat', 'community', 'food', 'games', 'help', 'live', 'media', 'quest', 'rent', 'work'],
+            'the holders of the contribute grant: the skeleton services answer too since 2026-10-08 (openvibe-sdk/account-data); Space left with the forum');
+        // The scenarios below follow five services; the six newer ones are set aside here, exactly as an operator would
+        // revoke a service's grant (the same rows, the same revoked_at).
+        for (const svc of ['actor', 'food', 'help', 'quest', 'rent', 'work']) {
+            for (const cap of ['network.account.export.contribute', 'network.account.deletion.confirm']) {
+                await db.prepare('UPDATE principal_grants SET revoked_at = ov_now() WHERE client_id = ? AND capability = ? AND revoked_at IS NULL').run(svc, cap);
+            }
+        }
         const expected = await accountData.expectedServices(db, 'network.account.export.contribute');
-        assert.deepStrictEqual(expected, ['chat', 'community', 'games', 'live', 'media'], 'the holders of the contribute grant (Space left with the forum, contracts 0.118.0)');
+        assert.deepStrictEqual(expected, ['chat', 'community', 'games', 'live', 'media'], 'the five this scenario follows');
         let r = await call('POST', '/api/v1/account/export', tok(dana));
         assert.strictEqual(r.status, 201, JSON.stringify(r.body));
         assert.ok(validate('network.account-export@1', r.body).valid, JSON.stringify(validate('network.account-export@1', r.body).errors));

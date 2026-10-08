@@ -26,6 +26,8 @@ const DEFAULT_GRANTS = [
     ['quest', 'network.coins.credit', SELF_AUDIENCE, ['quest']],
     ['quest', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['quest', 'events.subscription.manage', 'openvibe.events', []],
+    // They subscribe to network.account.export_requested and network.account.deleted at boot (ADR-033).
+    ...['actor', 'food', 'help', 'work', 'rent'].map((svc) => [svc, 'events.subscription.manage', 'openvibe.events', []]),
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],
     ['live', 'network.notifications.push', SELF_AUDIENCE, ['live']],
     // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
@@ -81,7 +83,8 @@ const DEFAULT_GRANTS = [
     ['games', 'mods.grant.manage', SELF_AUDIENCE, []],
     // Account export and deletion (ADR-033): the services that keep data about people push their export part and
     // confirm a deletion; the holders of each grant are the services Network waits for.
-    ...['live', 'chat', 'community', 'media', 'games'].flatMap((svc) => [
+    // Since 2026-10-08 the services built from the skeleton answer too, through openvibe-sdk/account-data (SDK 0.36.0).
+    ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
