@@ -22,7 +22,8 @@ console.log = log;
 const PEOPLE = [[10, 'owner'], [11, 'dev'], [12, 'viewer'], [13, 'stranger'], [14, 'staff'], [15, 'admin']];
 await db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES
     (10, 'owner', 'x', 'user'), (11, 'dev', 'x', 'user'), (12, 'viewer', 'x', 'user'), (13, 'stranger', 'x', 'user'), (14, 'staff', 'x', 'admin'), (15, 'admin', 'x', 'user')`).run();
-await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('actor', 'x', 'OpenVibe.Actor', '[]', 1)").run();
+// The seed creates Actor's client (server/db/database.js); this file sets the fields it relies on.
+await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('actor', 'x', 'OpenVibe.Actor', '[]', 1) ON CONFLICT (client_id) DO UPDATE SET client_secret = EXCLUDED.client_secret, name = EXCLUDED.name, redirect_uris = EXCLUDED.redirect_uris, is_first_party = EXCLUDED.is_first_party").run();
 const S = {};
 for (const [id, name] of PEOPLE) S[name] = await subjects.ensureUserSubject(db, await db.prepare('SELECT * FROM users WHERE id = ?').get(id));
 

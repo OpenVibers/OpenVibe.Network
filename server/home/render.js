@@ -47,6 +47,7 @@ const INTENTS = [
     ['wiki', 'fa-book-open', 'Look it up', 'Wiki pages with sources and history.', 'https://openvibe.wiki/', 'wiki learn read knowledge research look'],
     ['services', 'fa-server', 'Build on OpenVibe', 'One console for projects, keys, grants and the API docs of every service.', 'https://openvibe.services/', 'build api sdk developer developers oauth webhook webhooks app integrate console platform'],
     ['codes', 'fa-code', 'Code with any agent', 'Claude Code, Codex, OpenCode or your own model on one task, with hand-offs.', 'https://openvibe.codes/', 'code coding agent agents ai claude codex opencode deepseek harness contribute'],
+    ['actor', 'fa-user-astronaut', 'Give a task to an agent', 'Actor picks the best agent for it, checks the answer and shows the cost and why.', 'https://openvibe.actor/', 'agent agents ai assistant task tasks automate research router openrouter do it for me'],
 ];
 
 function intents(catalog) {
