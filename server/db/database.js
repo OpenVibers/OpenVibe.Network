@@ -117,7 +117,7 @@ async function seedDb(db, { log = console } = {}) {
         ];
         let seededAny = false;
         for (const c of contractClients) {
-            const existing = await db.prepare('SELECT client_id, redirect_uris FROM oauth_clients WHERE client_id = ?').get(c.client_id);
+            const existing = await db.prepare('SELECT client_id, name, redirect_uris FROM oauth_clients WHERE client_id = ?').get(c.client_id);
             if (!existing) {
                 await db.prepare('INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, ?, ?, ?, 1)')
                     .run(c.client_id, uuidv4(), c.name, JSON.stringify(c.redirect_uris));
@@ -126,6 +126,13 @@ async function seedDb(db, { log = console } = {}) {
                 continue;
             }
             await mergeRedirectUris(db, c.client_id, c.redirect_uris, { log });
+            // A client created first as a service principal carries the placeholder name "OpenVibe.<id> (service)",
+            // which the sign-in page shows people ("Sign in to OpenVibe.food (service)"). Give it the site's name; a
+            // name someone chose stays.
+            if (existing.name === `OpenVibe.${c.client_id} (service)`) {
+                await db.prepare('UPDATE oauth_clients SET name = ? WHERE client_id = ?').run(c.name, c.client_id);
+                log.log(`[DB] OAuth2 client ${c.client_id} renamed to ${c.name}`);
+            }
         }
         if (seededAny) console.log('[DB] New OAuth2 clients seeded; their secrets are in oauth_clients (they are never logged).');
     }
