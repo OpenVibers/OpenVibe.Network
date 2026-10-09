@@ -8,6 +8,7 @@
 // Items come from OpenVibe.Inventory's public reads (GET /api/v1/kinds, /people/:subject/items and /equipped) with the
 // Network's own service token (svc:network, audience openvibe.inventory), kept 60 s per person, so a busy profile costs
 // Inventory one read a minute. Inventory down: the profile still answers, with its items marked unavailable.
+// Badges come the same way from OpenVibe.Quest (GET /api/v1/profiles/:subject/badges, audience openvibe.quest).
 //
 // Who has one: a real account (not anonymous, banned, merged into another or deleted); anyone else is a 404. An old
 // username answers 301 to the current one. A person can hide theirs (users.profile_public = 0, the account hub's Edit
@@ -21,6 +22,7 @@ const usernames = require('../identity/usernames');
 const esc = seo.esc;
 const SITE = 'https://openvibe.network';
 const INVENTORY_SITE = 'https://inventory.openvibe.network';
+const QUEST_SITE = 'https://openvibe.quest';
 const AUDIENCE = 'openvibe.inventory';
 const ITEMS_TTL_MS = 60_000;
 const KINDS_TTL_MS = 10 * 60_000;
@@ -45,9 +47,10 @@ function monthOf(ts) {
     return m && MONTHS[Number(m[2]) - 1] ? `${MONTHS[Number(m[2]) - 1]} ${m[1]}` : null;
 }
 
-function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http://127.0.0.1:5030', fetchImpl = (...a) => fetch(...a), now = () => Date.now(), log = console } = {}) {
+function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http://127.0.0.1:5030', questUrl = 'http://127.0.0.1:4980', fetchImpl = (...a) => fetch(...a), now = () => Date.now(), log = console } = {}) {
     const base = String(inventoryUrl).replace(/\/+$/, '');
     const itemsCache = new Map();   // subject → { at, value }
+    const badgesCache = new Map();  // subject → { at, value }
     let kindsHit = null;
     let lastWarn = '';
 
@@ -67,6 +70,41 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
         const value = new Map((out.kinds || []).map((k) => [k.id, k]));
         kindsHit = { at: now(), value };
         return value;
+    }
+
+    /** A person's Quest badges, newest first: [{ id, name, awarded_at }], or { unavailable: true } while Quest cannot answer. */
+    async function badgesOf(subject) {
+        if (!SUBJECT_RE.test(String(subject || ''))) return { badges: [] };
+        const hit = badgesCache.get(subject);
+        if (hit && now() - hit.at < ITEMS_TTL_MS) return hit.value;
+        let value;
+        try {
+            const token = selfToken('openvibe.quest', ['quest.badge.read']);
+            const r = await fetchImpl(`${String(questUrl).replace(/\/+$/, '')}/api/v1/profiles/${subject}/badges`, {
+                headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                signal: AbortSignal.timeout(TIMEOUT_MS),
+            });
+            if (!r.ok) throw new Error(`answered ${r.status}`);
+            const body = await r.json();
+            const badges = (Array.isArray(body.badges) ? body.badges : [])
+                .filter((b) => b && typeof b.id === 'string' && typeof b.name === 'string')
+                .map((b) => ({ id: b.id.slice(0, 64), name: b.name.slice(0, 60), awarded_at: typeof b.awarded_at === 'string' ? b.awarded_at : null }))
+                .sort((a, b) => String(b.awarded_at || '').localeCompare(String(a.awarded_at || '')));
+            value = { badges };
+        } catch (err) {
+            const m = `OpenVibe.Quest: ${err.message}`;
+            if (m !== lastWarn) { lastWarn = m; log.warn(`[Profiles] ${m}`); }
+            return { badges: [], unavailable: true };
+        }
+        badgesCache.set(subject, { at: now(), value });
+        if (badgesCache.size > 2000) badgesCache.delete(badgesCache.keys().next().value);
+        return value;
+    }
+
+    /** What a public profile shows from other services: its items (Inventory) and its badges (Quest), read together. */
+    async function wearsOf(subject) {
+        const [inv, quest] = await Promise.all([itemsOf(subject), badgesOf(subject)]);
+        return { ...inv, badges: quest.badges, badgesUnavailable: !!quest.unavailable };
     }
 
     /** A person's items and what they wear, or { unavailable: true } while Inventory cannot answer. */
@@ -134,7 +172,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             private: !Number(u.profile_public),
         };
         if (out.private) return out;
-        const inv = await itemsOf(u.subject_id);
+        const inv = await wearsOf(u.subject_id);
         const counts = new Map();
         for (const i of inv.items) counts.set(i.kind, { kind: i.kind, name: i.kind_name, count: ((counts.get(i.kind) || {}).count || 0) + 1 });
         return Object.assign(out, {
@@ -144,6 +182,8 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             showcase: inv.showcase.map((i) => ({ slot: i.slot, kind: i.kind, kind_name: i.kind_name, definition_id: i.definition_id, name: i.name, rarity: i.rarity, art: i.art, url: i.url })),
             items: { count: inv.total, more: inv.more, by_kind: [...counts.values()], unavailable: !!inv.unavailable },
             inventory_url: SUBJECT_RE.test(String(u.subject_id || '')) ? `${INVENTORY_SITE}/u/${u.subject_id}` : null,
+            badges: inv.badges,
+            ...(inv.badgesUnavailable ? { badges_unavailable: true } : {}),
         });
     }
 
@@ -154,7 +194,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             if (!found) return next();   // the shared 404 page
             if (found.moved) return res.redirect(301, `/@${encodeURIComponent(found.moved)}`);
             const u = found.user;
-            const inv = Number(u.profile_public) ? await itemsOf(u.subject_id) : null;
+            const inv = Number(u.profile_public) ? await wearsOf(u.subject_id) : null;
             res.set('Content-Type', 'text/html; charset=utf-8');
             res.set('Cache-Control', cache.htmlHeaders({ maxAge: 60 }));
             res.send(renderPage(u, inv));
@@ -172,7 +212,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
         } catch (err) { next(err); }
     });
 
-    return { pageHandler, api, find, profileOf, itemsOf };
+    return { pageHandler, api, find, profileOf, itemsOf, badgesOf };
 }
 
 // ── The page ───────────────────────────────────────────────────
@@ -192,6 +232,13 @@ function showcaseHtml(inv, name) {
     return `<section class="pf-section" aria-labelledby="pf-wearing"><h2 id="pf-wearing">Wearing</h2>
 <ul class="pf-showcase">${inv.showcase.map((i) => `<li class="pf-worn r-${esc(i.rarity)}"><a href="${esc(i.url)}">${art(i, 'lg')}<span class="pf-worn-body"><span class="pf-kind">${esc(i.kind_name)}</span><span class="pf-name">${esc(i.name)}</span>${rarityBadge(i.rarity)}</span></a></li>`).join('')}</ul>
 <p class="pf-note">What ${esc(name)} shows in chat, on stream overlays and here.</p></section>`;
+}
+
+/** Quest badges: one chip each, newest first, linking to the quests that award them. */
+function badgesHtml(inv) {
+    if (!inv.badges || !inv.badges.length) return '';
+    return `<section class="pf-section" aria-labelledby="pf-badges"><h2 id="pf-badges">Badges <span class="pf-count">${inv.badges.length}</span></h2>
+<ul class="pf-badges">${inv.badges.map((b) => `<li><a class="pf-badge" href="${QUEST_SITE}/" title="${esc(b.awarded_at ? `Earned ${monthOf(b.awarded_at) || ''} on OpenVibe.Quest` : 'Earned on OpenVibe.Quest')}"><span class="pf-badge-ic" aria-hidden="true">🏅</span><span>${esc(b.name)}</span>${b.awarded_at && monthOf(b.awarded_at) ? `<small>${esc(monthOf(b.awarded_at))}</small>` : ''}</a></li>`).join('')}</ul></section>`;
 }
 
 function itemsHtml(inv, u) {
@@ -233,6 +280,7 @@ function renderPage(u, inv) {
         : (bio ? bio.slice(0, 155) : `${name}'s profile on OpenVibe${inv.total ? `: ${plural(inv.total, 'item', 'items')}` : ''}${inv.showcase.length ? `, wearing ${inv.showcase.slice(0, 3).map((i) => i.name).join(', ')}` : ''}.`);
     const stats = isPublic ? [
         since ? `<li><span class="pf-stat-k">Member since</span><span class="pf-stat-v">${esc(since)}</span></li>` : '',
+        inv.badges && inv.badges.length ? `<li><span class="pf-stat-k">Badges</span><span class="pf-stat-v">${inv.badges.length}</span></li>` : '',
         inv.unavailable ? '' : `<li><span class="pf-stat-k">Items</span><span class="pf-stat-v">${inv.more ? `${inv.total}+` : inv.total}</span></li>`,
         inv.items.length ? `<li><span class="pf-stat-k">Rarest</span><span class="pf-stat-v">${esc(RARITY_LABEL[inv.items.reduce((best, i) => (rarityRank(i.rarity) > rarityRank(best) ? i.rarity : best), 'common')])}</span></li>` : '',
     ].join('') : '';
@@ -303,6 +351,11 @@ a{color:var(--accent)}
 .pf-art img{width:100%;height:100%;object-fit:cover}
 .pf-rarity{font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:color-mix(in srgb,var(--rc) 70%,var(--text-primary))}
 .r-common{--rc:var(--r-common)}.r-uncommon{--rc:var(--r-uncommon)}.r-rare{--rc:var(--r-rare)}.r-epic{--rc:var(--r-epic)}.r-legendary{--rc:var(--r-legendary)}
+.pf-badges{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.pf-badge{display:inline-flex;align-items:center;gap:8px;padding:7px 14px 7px 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--r-legendary) 40%,var(--border));background:color-mix(in srgb,var(--r-legendary) 10%,var(--bg-secondary));color:var(--text-primary);text-decoration:none;font-weight:600;font-size:.88rem}
+.pf-badge:hover,.pf-badge:focus-visible{border-color:var(--r-legendary)}
+.pf-badge small{font-weight:500;color:var(--text-muted);font-size:.75rem}
+.pf-badge-ic{font-size:1.05rem}
 .pf-empty{color:var(--text-secondary);padding:18px;border:1px dashed var(--border);border-radius:12px;margin:0}
 .pf-note{color:var(--text-secondary);font-size:.85rem;margin:12px 0 0}
 @media (max-width:560px){.pf-head{padding:0 16px 16px;gap:14px}.pf-avatar{width:92px;height:92px}.pf-hat{font-size:32px;top:-18px}.pf-who{padding-top:0;min-width:100%}.pf-bio,.pf-stats,.pf-private{padding-left:16px;padding-right:16px}.pf-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}}
@@ -321,7 +374,7 @@ ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links
 ${bio ? `<p class="pf-bio">${esc(bio)}</p>` : ''}
 ${isPublic ? `<ul class="pf-stats">${stats}</ul>` : '<p class="pf-private">This profile is private.</p>'}
 </section>
-${isPublic ? showcaseHtml(inv, name) + itemsHtml(inv, u) : ''}
+${isPublic ? showcaseHtml(inv, name) + badgesHtml(inv) + itemsHtml(inv, u) : ''}
 </main>
 ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact' })}
 <script src="/shared/navbar.js" defer></script>

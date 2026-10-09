@@ -61,12 +61,13 @@ const INSTANCES = [
         if (u.pathname === '/api/v1/kinds') return json(200, { kinds: KINDS });
         if (u.pathname === `/api/v1/people/${A}/equipped`) return json(200, { subject: A, slots: { 'live.hat:hat': { instance_id: INSTANCES[0].id, definition_id: INSTANCES[0].definition_id }, 'live.name_effect:name_effect': { instance_id: INSTANCES[1].id, definition_id: INSTANCES[1].definition_id, token: 'name-fx-rainbow' } } });
         if (u.pathname === `/api/v1/people/${A}/items`) return json(200, { subject: A, instances: INSTANCES, definitions: DEFS, next_cursor: null });
+        if (u.pathname === `/api/v1/profiles/${A}/badges`) return json(200, { subject: A, badges: [{ id: 'first-follow', name: 'First Follow', awarded_at: '2026-10-02T10:00:00Z' }, { id: 'thread-starter', name: 'Thread <Starter>', awarded_at: '2026-10-05T10:00:00Z' }] });
         return json(404, { code: 'inventory.unknown_subject' });
     });
     await new Promise((r) => inv.listen(0, '127.0.0.1', r));
     let clock = Date.now();
     const selfToken = (aud, caps) => `tok:${aud}:${caps.join(',')}`;
-    const profiles = createPublicProfiles({ db, selfToken, inventoryUrl: `http://127.0.0.1:${inv.address().port}`, now: () => clock, log: { warn() {} } });
+    const profiles = createPublicProfiles({ db, selfToken, inventoryUrl: `http://127.0.0.1:${inv.address().port}`, questUrl: `http://127.0.0.1:${inv.address().port}`, now: () => clock, log: { warn() {} } });
 
     const app = express();
     app.get('/@:username', profiles.pageHandler);
@@ -93,7 +94,10 @@ const INSTANCES = [
         assert.ok(r.text.includes('--pf-color:#ff0066'));
         assert.ok(r.text.includes('https://inventory.openvibe.network/items/itd_01JZ00000000000000000001R1'), 'items link to their Inventory page');
         assert.ok(!/name="robots" content="noindex"/.test(r.text));
-        assert.ok(calls.length > 0 && calls.every((c) => c.auth === 'Bearer tok:openvibe.inventory:inventory.item.read'), 'Network\'s own token for Inventory');
+        assert.ok(calls.filter((c) => !c.path.includes('/badges')).every((c) => c.auth === 'Bearer tok:openvibe.inventory:inventory.item.read'), 'Network\'s own token for Inventory');
+        assert.strictEqual(calls.find((c) => c.path.endsWith('/badges')).auth, 'Bearer tok:openvibe.quest:quest.badge.read', 'and for Quest');
+        assert.ok(r.text.includes('id="pf-badges"') && /Thread &lt;Starter&gt;[\s\S]*First Follow/.test(r.text), 'badges, newest first, escaped');
+        assert.ok(/<span class="pf-stat-k">Badges<\/span><span class="pf-stat-v">2<\/span>/.test(r.text));
 
         // Cached for a minute: a second view reads nothing.
         const n = calls.length;
@@ -108,6 +112,7 @@ const INSTANCES = [
         assert.strictEqual(p.avatar_url, 'https://openvibe.network/avatar/Ana?s=160');
         assert.strictEqual(p.inventory_url, `https://inventory.openvibe.network/u/${A}`);
         assert.deepStrictEqual(p.items.by_kind.map((k) => k.kind).sort(), ['live.hat', 'live.name_effect', 'live.particle']);
+        assert.deepStrictEqual(p.badges.map((b) => b.id), ['thread-starter', 'first-follow']);
 
         // A hidden profile: name and picture, nothing else, not indexed.
         r = await get('/@hidden');
@@ -137,6 +142,7 @@ const INSTANCES = [
         assert.ok(r.text.includes('The items could not be loaded just now'));
         r = await get('/api/v1/profiles/Ana');
         assert.strictEqual(JSON.parse(r.text).profile.items.unavailable, true);
+        assert.strictEqual(JSON.parse(r.text).profile.badges_unavailable, true, 'Quest down too: said, not hidden');
         console.log('public profiles: all checks passed');
     } finally {
         srv.close();
