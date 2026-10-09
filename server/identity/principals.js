@@ -88,8 +88,10 @@ const DEFAULT_GRANTS = [
     ['games', 'mods.grant.manage', SELF_AUDIENCE, []],
     // Account export and deletion (ADR-033): the services that keep data about people push their export part and
     // confirm a deletion; the holders of each grant are the services Network waits for.
-    // Since 2026-10-08 the services built from the skeleton answer too, through openvibe-sdk/account-data (SDK 0.36.0).
-    ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub'].flatMap((svc) => [
+    // Since 2026-10-08 the services built from the skeleton answer too, through openvibe-sdk/account-data (SDK 0.36.0),
+    // and since 2026-10-09 the older services that hold personal rows (SDK 0.37.0; each subscribed before this grant).
+    ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub',
+        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
