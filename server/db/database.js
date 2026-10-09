@@ -118,6 +118,8 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'quest', name: 'OpenVibe.Quest', redirect_uris: ['https://openvibe.quest/auth/callback'] },
             { client_id: 'rent', name: 'OpenVibe.Rent', redirect_uris: ['https://openvibe.rent/auth/callback'] },
             { client_id: 'watch', name: 'OpenVibe.Watch', redirect_uris: ['https://openvibe.watch/auth/callback'] },
+            // openvibe.download (a private drive) and its sibling brands openvibe.pics and openvibe.video (plan T10 D4).
+            { client_id: 'media-hub', name: 'OpenVibe.Download', redirect_uris: ['https://openvibe.download/auth/callback'] },
         ];
         let seededAny = false;
         for (const c of contractClients) {
@@ -157,6 +159,7 @@ async function seedDb(db, { log = console } = {}) {
             { clientId: 'quest', extraUris: ['http://localhost:4980/auth/callback'] },
             { clientId: 'rent', extraUris: ['http://localhost:5010/auth/callback'] },
             { clientId: 'watch', extraUris: ['http://localhost:4730/auth/callback'] },
+            { clientId: 'media-hub', extraUris: ['http://localhost:4990/auth/callback'] },
         ];
         for (const { clientId, extraUris } of localClients) {
             try { await mergeRedirectUris(db, clientId, extraUris, { log, local: true }); }

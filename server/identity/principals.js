@@ -27,7 +27,9 @@ const DEFAULT_GRANTS = [
     ['quest', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['quest', 'events.subscription.manage', 'openvibe.events', []],
     // They subscribe to network.account.export_requested and network.account.deleted at boot (ADR-033).
-    ...['actor', 'food', 'help', 'work', 'rent'].map((svc) => [svc, 'events.subscription.manage', 'openvibe.events', []]),
+    ...['actor', 'food', 'help', 'work', 'rent', 'media-hub'].map((svc) => [svc, 'events.subscription.manage', 'openvibe.events', []]),
+    // MediaHub resolves the usernames an owner names on a share link to subjects (only subjects are matched).
+    ['media-hub', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],
     ['live', 'network.notifications.push', SELF_AUDIENCE, ['live']],
     // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
@@ -84,7 +86,7 @@ const DEFAULT_GRANTS = [
     // Account export and deletion (ADR-033): the services that keep data about people push their export part and
     // confirm a deletion; the holders of each grant are the services Network waits for.
     // Since 2026-10-08 the services built from the skeleton answer too, through openvibe-sdk/account-data (SDK 0.36.0).
-    ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent'].flatMap((svc) => [
+    ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
