@@ -96,7 +96,7 @@ openvibe.network (port 4000)
 │   ├── login.html            # Animated login/register page
 │   └── my.html               # Account management (profile, sessions, notifications)
 ├── deploy/
-│   ├── nginx/                # openvibe.network.conf
+│   ├── nginx/                # openvibe.network.conf; network-subdomains.conf (status/themes/admin/auth/api. redirects); parked-domains.conf
 │   ├── scripts/              # deploy.sh (runs `ovhost deploy network`), deploy-legacy.sh (its fallback)
 │   └── systemd/              # openvibe-network.service (EnvironmentFile=/etc/openvibe/network.env)
 └── .env.example
