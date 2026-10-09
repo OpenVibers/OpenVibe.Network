@@ -28,6 +28,7 @@ const TIMEOUT_MS = 4000;
 const MAX_ITEMS = 400;   // two pages of Inventory's 200; the rest is one link away on OpenVibe.Inventory
 const SUBJECT_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+const NAME_FX_RE = /^name-fx-[a-z]{2,24}$/;   // live.name_effect.css@1 tokens (openvibe-shared items.css)
 const RARITY = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 const RARITY_LABEL = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare', epic: 'Epic', legendary: 'Legendary' };
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -217,6 +218,12 @@ ${sorted.map((g) => {
 function renderPage(u, inv) {
     const name = u.display_name || u.username;
     const isPublic = !!inv;
+    // What they wear shows on the profile itself: the name effect on their name (items.css), the hat on the picture.
+    const worn = (kind) => (isPublic ? inv.showcase.find((i) => i.kind === kind) : null);
+    const fx = worn('live.name_effect');
+    const fxClass = fx && NAME_FX_RE.test(String((fx.art || {}).token || '')) ? fx.art.token : null;
+    const hat = worn('live.hat');
+    const hatGlyph = hat && (hat.art || {}).emoji ? String(hat.art.emoji).slice(0, 8) : null;
     const color = COLOR_RE.test(String(u.profile_color || '')) ? u.profile_color : '#3b82f6';
     const since = monthOf(u.created_at);
     const bio = isPublic ? String(u.bio || '').trim().slice(0, 500) : '';
@@ -253,6 +260,7 @@ ${isPublic ? '' : '<meta name="robots" content="noindex">'}
 ${require('openvibe-shared/app-icon').headTags({ site: 'network', iconBase: '/assets' })}
 <meta name="color-scheme" content="dark light">
 <script src="/shared/theme-loader.js" defer></script>
+${fxClass ? '<link rel="stylesheet" href="/shared/items.css">' : ''}
 ${ld}
 <style>
 *,*::before,*::after{box-sizing:border-box}
@@ -264,6 +272,7 @@ a{color:var(--accent)}
 .pf-hero{position:relative;border:1px solid var(--border);border-radius:18px;overflow:hidden;background:var(--bg-secondary)}
 .pf-banner{height:96px;background:linear-gradient(120deg,color-mix(in srgb,var(--pf-color) 70%,transparent),color-mix(in srgb,var(--pf-color) 18%,transparent) 60%,transparent),var(--bg-card)}
 .pf-head{display:flex;gap:20px;align-items:flex-end;padding:0 24px 20px;margin-top:-52px;flex-wrap:wrap}
+.pf-pic{position:relative;flex:none}.pf-hat{position:absolute;top:-22px;left:50%;transform:translateX(-50%) rotate(-12deg);font-size:40px;line-height:1;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45));pointer-events:none}
 .pf-avatar{width:112px;height:112px;border-radius:50%;object-fit:cover;border:4px solid var(--bg-secondary);box-shadow:0 0 0 2px var(--pf-color);background:var(--bg-card);flex:none}
 .pf-who{flex:1;min-width:200px;padding-top:56px}
 .pf-who h1{margin:0;font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.15;overflow-wrap:anywhere}
@@ -296,7 +305,7 @@ a{color:var(--accent)}
 .r-common{--rc:var(--r-common)}.r-uncommon{--rc:var(--r-uncommon)}.r-rare{--rc:var(--r-rare)}.r-epic{--rc:var(--r-epic)}.r-legendary{--rc:var(--r-legendary)}
 .pf-empty{color:var(--text-secondary);padding:18px;border:1px dashed var(--border);border-radius:12px;margin:0}
 .pf-note{color:var(--text-secondary);font-size:.85rem;margin:12px 0 0}
-@media (max-width:560px){.pf-head{padding:0 16px 16px;gap:14px}.pf-avatar{width:92px;height:92px}.pf-who{padding-top:0;min-width:100%}.pf-bio,.pf-stats,.pf-private{padding-left:16px;padding-right:16px}.pf-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}}
+@media (max-width:560px){.pf-head{padding:0 16px 16px;gap:14px}.pf-avatar{width:92px;height:92px}.pf-hat{font-size:32px;top:-18px}.pf-who{padding-top:0;min-width:100%}.pf-bio,.pf-stats,.pf-private{padding-left:16px;padding-right:16px}.pf-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}}
 </style>
 </head>
 <body>
@@ -306,8 +315,8 @@ ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links
 <section class="pf-hero" aria-label="Profile">
 <div class="pf-banner" aria-hidden="true"></div>
 <div class="pf-head">
-<img class="pf-avatar" src="${esc(avatarUrl(u.username))}" alt="" width="112" height="112">
-<div class="pf-who"><h1>${esc(name)}</h1><p class="pf-handle">@${esc(u.username)}</p></div>
+<div class="pf-pic"><img class="pf-avatar" src="${esc(avatarUrl(u.username))}" alt="" width="112" height="112">${hatGlyph ? `<span class="pf-hat" title="${esc(hat.name)}" aria-hidden="true">${esc(hatGlyph)}</span>` : ''}</div>
+<div class="pf-who"><h1>${fxClass ? `<span class="ov-fx ${fxClass}" title="${esc(fx.name)}">${esc(name)}</span>` : esc(name)}</h1><p class="pf-handle">@${esc(u.username)}</p></div>
 </div>
 ${bio ? `<p class="pf-bio">${esc(bio)}</p>` : ''}
 ${isPublic ? `<ul class="pf-stats">${stats}</ul>` : '<p class="pf-private">This profile is private.</p>'}

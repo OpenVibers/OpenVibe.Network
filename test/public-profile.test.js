@@ -20,7 +20,7 @@ const KINDS = [
 ];
 const DEFS = {
     itd_01JZ00000000000000000001R1: { id: 'itd_01JZ00000000000000000001R1', kind: 'live.hat', name: 'Royal Crown', rarity: 'legendary', art: { emoji: '👑' } },
-    itd_01JZ00000000000000000001R2: { id: 'itd_01JZ00000000000000000001R2', kind: 'live.name_effect', name: 'Rainbow', rarity: 'epic', art: { emoji: '🌈' } },
+    itd_01JZ00000000000000000001R2: { id: 'itd_01JZ00000000000000000001R2', kind: 'live.name_effect', name: 'Rainbow', rarity: 'epic', art: { emoji: '🌈', token: 'name-fx-rainbow' } },
     itd_01JZ00000000000000000001R3: { id: 'itd_01JZ00000000000000000001R3', kind: 'live.particle', name: 'Sparkles <b>', rarity: 'common', art: { emoji: '✨' } },
 };
 const INSTANCES = [
@@ -59,7 +59,7 @@ const INSTANCES = [
         const json = (s, o) => { res.writeHead(s, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
         if (down) return json(503, { code: 'down' });
         if (u.pathname === '/api/v1/kinds') return json(200, { kinds: KINDS });
-        if (u.pathname === `/api/v1/people/${A}/equipped`) return json(200, { subject: A, slots: { 'live.hat:hat': { instance_id: INSTANCES[0].id, definition_id: INSTANCES[0].definition_id } } });
+        if (u.pathname === `/api/v1/people/${A}/equipped`) return json(200, { subject: A, slots: { 'live.hat:hat': { instance_id: INSTANCES[0].id, definition_id: INSTANCES[0].definition_id }, 'live.name_effect:name_effect': { instance_id: INSTANCES[1].id, definition_id: INSTANCES[1].definition_id, token: 'name-fx-rainbow' } } });
         if (u.pathname === `/api/v1/people/${A}/items`) return json(200, { subject: A, instances: INSTANCES, definitions: DEFS, next_cursor: null });
         return json(404, { code: 'inventory.unknown_subject' });
     });
@@ -80,7 +80,9 @@ const INSTANCES = [
         // A public profile.
         let r = await get('/@ana');
         assert.strictEqual(r.status, 200);
-        assert.ok(r.text.includes('<h1>Ana</h1>') && r.text.includes('@Ana'));
+        assert.ok(r.text.includes('<h1><span class="ov-fx name-fx-rainbow" title="Rainbow">Ana</span></h1>') && r.text.includes('@Ana'), 'her name wears its effect');
+        assert.ok(r.text.includes('<link rel="stylesheet" href="/shared/items.css">'), 'with the shared effects stylesheet');
+        assert.ok(/<span class="pf-hat" title="Royal Crown" aria-hidden="true">👑<\/span>/.test(r.text), 'her hat sits on her picture');
         assert.ok(!r.text.includes('<script>alert(1)</script>') && r.text.includes('I stream &lt;script&gt;alert(1)&lt;/script&gt; &amp; paint'), 'the bio is escaped');
         assert.ok(r.text.includes('Sparkles &lt;b&gt;') && !r.text.includes('Sparkles <b>'), 'item names are escaped');
         assert.ok(r.text.includes('id="pf-wearing"') && /pf-worn r-legendary[\s\S]*Royal Crown/.test(r.text), 'the crown is in the showcase');
@@ -102,7 +104,7 @@ const INSTANCES = [
         r = await get('/api/v1/profiles/Ana');
         assert.strictEqual(r.status, 200);
         const p = JSON.parse(r.text).profile;
-        assert.deepStrictEqual([p.username, p.private, p.color, p.member_since, p.items.count, p.showcase.map((s) => s.name)], ['Ana', false, '#ff0066', '2026-10-01', 3, ['Royal Crown']]);
+        assert.deepStrictEqual([p.username, p.private, p.color, p.member_since, p.items.count, p.showcase.map((s) => s.name)], ['Ana', false, '#ff0066', '2026-10-01', 3, ['Rainbow', 'Royal Crown']]);
         assert.strictEqual(p.avatar_url, 'https://openvibe.network/avatar/Ana?s=160');
         assert.strictEqual(p.inventory_url, `https://inventory.openvibe.network/u/${A}`);
         assert.deepStrictEqual(p.items.by_kind.map((k) => k.kind).sort(), ['live.hat', 'live.name_effect', 'live.particle']);
@@ -112,6 +114,7 @@ const INSTANCES = [
         assert.strictEqual(r.status, 200);
         assert.ok(r.text.includes('This profile is private.') && r.text.includes('name="robots" content="noindex"'));
         assert.ok(!r.text.includes('secret bio') && !r.text.includes('Member since') && !r.text.includes('class="pf-grid"'));
+        assert.ok(r.text.includes('<h1>Hidden</h1>') && !r.text.includes('class="pf-hat"') && !r.text.includes('/shared/items.css'), 'a hidden profile wears nothing');
         r = await get('/api/v1/profiles/hidden');
         assert.deepStrictEqual(JSON.parse(r.text).profile, { username: 'hidden', display_name: 'Hidden', avatar_url: 'https://openvibe.network/avatar/hidden?s=160', profile_url: 'https://openvibe.network/@hidden', private: true });
 
