@@ -16,17 +16,19 @@ const publicCors = require('../server/public-cors');
 
 const A = 'usr_01JZ0000000000000000000AAA';
 const KINDS = [
-    { id: 'live.name_effect', name: 'Name effect' }, { id: 'live.hat', name: 'Hat' }, { id: 'live.particle', name: 'Particle' },
+    { id: 'live.name_effect', name: 'Name effect' }, { id: 'live.hat', name: 'Hat' }, { id: 'live.particle', name: 'Particle' }, { id: 'network.badge', name: 'Badge' },
 ];
 const DEFS = {
     itd_01JZ00000000000000000001R1: { id: 'itd_01JZ00000000000000000001R1', kind: 'live.hat', name: 'Royal Crown', rarity: 'legendary', art: { emoji: '👑' } },
     itd_01JZ00000000000000000001R2: { id: 'itd_01JZ00000000000000000001R2', kind: 'live.name_effect', name: 'Rainbow', rarity: 'epic', art: { emoji: '🌈', token: 'name-fx-rainbow' } },
+    itd_01JZ00000000000000000001B1: { id: 'itd_01JZ00000000000000000001B1', kind: 'network.badge', name: 'OG Viewer', rarity: 'uncommon', art: { media_id: 'med_01JZ00000000000000000000B1' } },
     itd_01JZ00000000000000000001R3: { id: 'itd_01JZ00000000000000000001R3', kind: 'live.particle', name: 'Sparkles <b>', rarity: 'common', art: { emoji: '✨' } },
 };
 const INSTANCES = [
     { id: 'inv_01JZ0000000000000000000001', definition_id: 'itd_01JZ00000000000000000001R1', state: 'owned', acquired_at: '2026-10-02T00:00:00Z' },
     { id: 'inv_01JZ0000000000000000000002', definition_id: 'itd_01JZ00000000000000000001R2', state: 'owned', acquired_at: '2026-10-03T00:00:00Z' },
     { id: 'inv_01JZ0000000000000000000003', definition_id: 'itd_01JZ00000000000000000001R3', state: 'owned', acquired_at: '2026-10-04T00:00:00Z' },
+    { id: 'inv_01JZ0000000000000000000004', definition_id: 'itd_01JZ00000000000000000001B1', state: 'owned', acquired_at: '2026-10-05T00:00:00Z' },
 ];
 
 (async () => {
@@ -59,7 +61,7 @@ const INSTANCES = [
         const json = (s, o) => { res.writeHead(s, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
         if (down) return json(503, { code: 'down' });
         if (u.pathname === '/api/v1/kinds') return json(200, { kinds: KINDS });
-        if (u.pathname === `/api/v1/people/${A}/equipped`) return json(200, { subject: A, slots: { 'live.hat:hat': { instance_id: INSTANCES[0].id, definition_id: INSTANCES[0].definition_id }, 'live.name_effect:name_effect': { instance_id: INSTANCES[1].id, definition_id: INSTANCES[1].definition_id, token: 'name-fx-rainbow' } } });
+        if (u.pathname === `/api/v1/people/${A}/equipped`) return json(200, { subject: A, slots: { 'live.hat:hat': { instance_id: INSTANCES[0].id, definition_id: INSTANCES[0].definition_id }, 'live.name_effect:name_effect': { instance_id: INSTANCES[1].id, definition_id: INSTANCES[1].definition_id, token: 'name-fx-rainbow' }, 'network.badge:badge': { instance_id: INSTANCES[3].id, definition_id: INSTANCES[3].definition_id, media_id: 'med_01JZ00000000000000000000B1' } } });
         if (u.pathname === `/api/v1/people/${A}/items`) return json(200, { subject: A, instances: INSTANCES, definitions: DEFS, next_cursor: null });
         if (u.pathname === `/api/v1/profiles/${A}/badges`) return json(200, { subject: A, badges: [{ id: 'first-follow', name: 'First Follow', awarded_at: '2026-10-02T10:00:00Z' }, { id: 'thread-starter', name: 'Thread <Starter>', awarded_at: '2026-10-05T10:00:00Z' }] });
         return json(404, { code: 'inventory.unknown_subject' });
@@ -81,7 +83,7 @@ const INSTANCES = [
         // A public profile.
         let r = await get('/@ana');
         assert.strictEqual(r.status, 200);
-        assert.ok(r.text.includes('<h1><span class="ov-fx name-fx-rainbow" title="Rainbow">Ana</span></h1>') && r.text.includes('@Ana'), 'her name wears its effect');
+        assert.ok(r.text.includes('<h1><img class="pf-badge" src="https://openvibe.media/o/med_01JZ00000000000000000000B1" alt="" title="OG Viewer" width="32" height="32"><span class="ov-fx name-fx-rainbow" title="Rainbow">Ana</span></h1>') && r.text.includes('@Ana'), 'her community badge, then her name in its effect');
         assert.ok(r.text.includes('<link rel="stylesheet" href="/shared/items.css">'), 'with the shared effects stylesheet');
         assert.ok(/<span class="pf-hat" title="Royal Crown" aria-hidden="true">👑<\/span>/.test(r.text), 'her hat sits on her picture');
         assert.ok(!r.text.includes('<script>alert(1)</script>') && r.text.includes('I stream &lt;script&gt;alert(1)&lt;/script&gt; &amp; paint'), 'the bio is escaped');
@@ -89,7 +91,7 @@ const INSTANCES = [
         assert.ok(r.text.includes('id="pf-wearing"') && /pf-worn r-legendary[\s\S]*Royal Crown/.test(r.text), 'the crown is in the showcase');
         assert.ok(r.text.includes('Member since') && r.text.includes('October 2026'));
         assert.ok(/<span class="pf-stat-k">Rarest<\/span><span class="pf-stat-v">Legendary<\/span>/.test(r.text));
-        assert.ok(r.text.includes('<span class="pf-count">3</span>'), 'three items');
+        assert.ok(r.text.includes('<span class="pf-count">4</span>'), 'four items');
         assert.ok(r.text.includes('"@type":"ProfilePage"') && r.text.includes('<link rel="canonical" href="https://openvibe.network/@Ana">'));
         assert.ok(r.text.includes('--pf-color:#ff0066'));
         assert.ok(r.text.includes('https://inventory.openvibe.network/items/itd_01JZ00000000000000000001R1'), 'items link to their Inventory page');
@@ -108,10 +110,10 @@ const INSTANCES = [
         r = await get('/api/v1/profiles/Ana');
         assert.strictEqual(r.status, 200);
         const p = JSON.parse(r.text).profile;
-        assert.deepStrictEqual([p.username, p.private, p.color, p.member_since, p.items.count, p.showcase.map((s) => s.name)], ['Ana', false, '#ff0066', '2026-10-01', 3, ['Rainbow', 'Royal Crown']]);
+        assert.deepStrictEqual([p.username, p.private, p.color, p.member_since, p.items.count, p.showcase.map((s) => s.name)], ['Ana', false, '#ff0066', '2026-10-01', 4, ['Rainbow', 'Royal Crown', 'OG Viewer']]);
         assert.strictEqual(p.avatar_url, 'https://openvibe.network/avatar/Ana?s=160');
         assert.strictEqual(p.inventory_url, `https://inventory.openvibe.network/u/${A}`);
-        assert.deepStrictEqual(p.items.by_kind.map((k) => k.kind).sort(), ['live.hat', 'live.name_effect', 'live.particle']);
+        assert.deepStrictEqual(p.items.by_kind.map((k) => k.kind).sort(), ['live.hat', 'live.name_effect', 'live.particle', 'network.badge']);
         assert.deepStrictEqual(p.badges.map((b) => b.id), ['thread-starter', 'first-follow']);
 
         // A hidden profile: name and picture, nothing else, not indexed.

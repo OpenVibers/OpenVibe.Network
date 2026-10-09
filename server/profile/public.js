@@ -271,6 +271,9 @@ function renderPage(u, inv) {
     const fxClass = fx && NAME_FX_RE.test(String((fx.art || {}).token || '')) ? fx.art.token : null;
     const hat = worn('live.hat');
     const hatGlyph = hat && (hat.art || {}).emoji ? String(hat.art.emoji).slice(0, 8) : null;
+    // A community badge they wear (the Workshop, network.badge): its reviewed image before their name.
+    const badge = worn('network.badge');
+    const badgeId = badge && /^med_[0-9A-HJKMNP-TV-Z]{26}$/.test(String((badge.art || {}).media_id || '')) ? badge.art.media_id : null;
     const color = COLOR_RE.test(String(u.profile_color || '')) ? u.profile_color : '#3b82f6';
     const since = monthOf(u.created_at);
     const bio = isPublic ? String(u.bio || '').trim().slice(0, 500) : '';
@@ -324,6 +327,7 @@ a{color:var(--accent)}
 .pf-avatar{width:112px;height:112px;border-radius:50%;object-fit:cover;border:4px solid var(--bg-secondary);box-shadow:0 0 0 2px var(--pf-color);background:var(--bg-card);flex:none}
 .pf-who{flex:1;min-width:200px;padding-top:56px}
 .pf-who h1{margin:0;font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.15;overflow-wrap:anywhere}
+.pf-badge{width:.85em;height:.85em;margin-right:.25em;vertical-align:-.08em;border-radius:6px;object-fit:contain}
 .pf-handle{margin:.2em 0 0;color:var(--text-secondary)}
 .pf-bio{margin:0;padding:0 24px 18px;color:var(--text-primary);line-height:1.6;white-space:pre-line;overflow-wrap:anywhere;max-width:72ch}
 .pf-stats{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0 24px 22px}
@@ -369,7 +373,7 @@ ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links
 <div class="pf-banner" aria-hidden="true"></div>
 <div class="pf-head">
 <div class="pf-pic"><img class="pf-avatar" src="${esc(avatarUrl(u.username))}" alt="" width="112" height="112">${hatGlyph ? `<span class="pf-hat" title="${esc(hat.name)}" aria-hidden="true">${esc(hatGlyph)}</span>` : ''}</div>
-<div class="pf-who"><h1>${fxClass ? `<span class="ov-fx ${fxClass}" title="${esc(fx.name)}">${esc(name)}</span>` : esc(name)}</h1><p class="pf-handle">@${esc(u.username)}</p></div>
+<div class="pf-who"><h1>${badgeId ? `<img class="pf-badge" src="https://openvibe.media/o/${badgeId}" alt="" title="${esc(badge.name)}" width="32" height="32">` : ''}${fxClass ? `<span class="ov-fx ${fxClass}" title="${esc(fx.name)}">${esc(name)}</span>` : esc(name)}</h1><p class="pf-handle">@${esc(u.username)}</p></div>
 </div>
 ${bio ? `<p class="pf-bio">${esc(bio)}</p>` : ''}
 ${isPublic ? `<ul class="pf-stats">${stats}</ul>` : '<p class="pf-private">This profile is private.</p>'}
