@@ -7,6 +7,7 @@
  *   GET /.well-known/openvibe
  *   GET /api/v1/registry and /api/v1/registry/<...>
  *   GET /contracts/<domain>/<name>.v<N>.json (and /contracts/events/payloads/<event_type>.v<N>.json)
+ *   GET /api/v1/profiles/<username>   a person's public profile (server/profile/public.js)
  *
  * These answer every origin, preflight included, with `Access-Control-Allow-Origin: *` and no
  * credentials (cookies are never needed and never sent). Every other route keeps the first-party
@@ -26,6 +27,7 @@ function isPublicDiscoveryPath(p) {
     const path = String(p || '');
     if (path === '/.well-known/openvibe') return true;
     if (path === '/api/v1/changelog') return true;   // the network changelog every site's "shipped" widget reads
+    if (/^\/api\/v1\/profiles\/[A-Za-z0-9_]{1,40}$/.test(path)) return true;   // public profiles, for every site
     if (CONTRACT_RE.test(path)) return true;
     if (path === '/api/v1/registry' || path === '/api/v1/registry/') return true;
     if (!path.startsWith('/api/v1/registry/')) return false;

@@ -123,6 +123,7 @@ const REVIEWED = {
     'server/index.js fetch': [1, 'the admin streamer proxy: Live\'s internal URL from config, fixed path prefixes'],
     'server/integrations/github.js fetch': [1, 'fixed host api.github.com (asserted below)'],
     'server/notifications/email-service.js http.request': [1, 'fixed host api.resend.com'],
+    'server/profile/public.js fetch': [2, 'OpenVibe.Inventory at OV_INVENTORY_INTERNAL_URL (loopback 5030) only; the paths are fixed, the subject is a checked usr_ id'],
     'server/profile/avatar.js fetch': [3, 'Live and Media internal URLs from config; verifyImage only for https://openvibe.media/ addresses (normalizeAvatar, asserted below)'],
     'server/push/push-service.js web-push': [1, 'a person\'s push endpoint: endpointAllowed() at subscribe and send, connections through safeLookup (asserted below)'],
     'server/registry/deploy-drift.js fetch': [1, 'fixed host api.github.com'],

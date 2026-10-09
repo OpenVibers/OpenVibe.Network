@@ -396,7 +396,7 @@ router.get('/me', requireAuth, async (req, res) => {
 // ── Update Profile ───────────────────────────────────────────
 router.put('/profile', requireAuth, async (req, res) => {
     const db = await getDb(req);
-    const { display_name, bio, avatar_url, email, profile_color } = req.body;
+    const { display_name, bio, avatar_url, email, profile_color, profile_public } = req.body;
     const updates = [];
     const params = [];
 
@@ -425,6 +425,8 @@ router.put('/profile', requireAuth, async (req, res) => {
         updates.push('email = ?'); params.push(next);
     }
     if (profile_color !== undefined) { updates.push('profile_color = ?'); params.push(profile_color); }
+    // openvibe.network/@you (server/profile/public.js): shown to everyone, or only your name and picture.
+    if (profile_public !== undefined) { updates.push('profile_public = ?'); params.push(profile_public ? 1 : 0); }
 
     if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
 
