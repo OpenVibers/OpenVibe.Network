@@ -108,6 +108,9 @@ const server = http.createServer(app);
     assert.strictEqual(t.status, 400, 'Live does not grant itself its own resolver');
     const holders = (await db.prepare("SELECT client_id FROM principal_grants WHERE capability = 'live.lineage.resolve' AND audience = 'openvibe.live' AND revoked_at IS NULL ORDER BY client_id").all()).map(x => x.client_id);
     assert.deepStrictEqual(holders, ['community', 'media', 'openre']);
+    // OpenVibe Live on by default (contracts 0.126.0): only OpenRestream binds Live slots to its streams.
+    const binders = (await db.prepare("SELECT client_id FROM principal_grants WHERE capability = 'live.openre.slot.bind' AND audience = 'openvibe.live' AND revoked_at IS NULL ORDER BY client_id").all()).map(x => x.client_id);
+    assert.deepStrictEqual(binders, ['openre']);
     t = await token({ client_id: 'media', client_secret: 'media-secret', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
     assert.strictEqual(t.body.scope, 'identity.subject.resolve network.account.deletion.confirm network.account.export.contribute', 'Media resolves object owners to subjects and takes part in account export and deletion (ADR-033), nothing else here');
