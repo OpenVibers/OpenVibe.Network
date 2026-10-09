@@ -18,7 +18,7 @@ const TYPES = new Set(['tool', 'stream', 'vod', 'clip', 'paste', 'game', 'page',
 const SERVICE_LABELS = {
     live: 'Live', tools: 'Tools', games: 'Games', media: 'Media', network: 'Network', community: 'Community', space: 'Space',
     chat: 'Chat', codes: 'Codes', blog: 'Blog', wiki: 'Wiki', news: 'News', reviews: 'Reviews', tips: 'Tips',
-    vip: 'VIP', trade: 'Trade', host: 'Host', deals: 'Deals', coupons: 'Coupons', openre: 'OpenRe.Stream',
+    vip: 'VIP', trade: 'Trade', host: 'Host', deals: 'Deals', coupons: 'Coupons', openre: 'OpenRestream',
 };
 
 async function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }

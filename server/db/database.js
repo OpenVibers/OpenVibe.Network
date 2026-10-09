@@ -75,6 +75,10 @@ async function setDb(db) { database = db; await attachHelpers(db); }
  * concurrent writers: every write is an upsert, and the redirect-URI merge takes the row with
  * SELECT … FOR UPDATE inside a transaction (decision 1).
  */
+// A site's former display names: the seed renames a client still carrying one. The product at openre.stream is
+// OpenRestream (owner, 2026-10-09), never "OpenRe.Stream".
+const FORMER_NAMES = { openre: ['OpenRe.Stream', 'OpenRe'] };
+
 async function seedDb(db, { log = console } = {}) {
     const warn = (m) => log.warn(`[DB] ${m}`);
 
@@ -95,7 +99,7 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'vip', name: 'OpenVibe.VIP', redirect_uris: ['https://openvibe.vip/auth/callback'] },
             { client_id: 'wiki', name: 'OpenVibe.Wiki', redirect_uris: ['https://openvibe.wiki/auth/callback'] },
             { client_id: 'blog', name: 'OpenVibe.Blog', redirect_uris: ['https://openvibe.blog/auth/callback'] },
-            { client_id: 'openre', name: 'OpenRe.Stream', redirect_uris: ['https://openre.stream/auth/callback'] },
+            { client_id: 'openre', name: 'OpenRestream', redirect_uris: ['https://openre.stream/auth/callback'] },
             { client_id: 'reviews', name: 'OpenVibe.Reviews', redirect_uris: ['https://openvibe.reviews/auth/callback'] },
             { client_id: 'news', name: 'OpenVibe.News', redirect_uris: ['https://openvibe.news/auth/callback'] },
             { client_id: 'trade', name: 'OpenVibe.Trade', redirect_uris: ['https://openvibe.trade/auth/callback'] },
@@ -136,8 +140,8 @@ async function seedDb(db, { log = console } = {}) {
             await mergeRedirectUris(db, c.client_id, c.redirect_uris, { log });
             // A client created first as a service principal carries the placeholder name "OpenVibe.<id> (service)",
             // which the sign-in page shows people ("Sign in to OpenVibe.food (service)"). Give it the site's name; a
-            // name someone chose stays.
-            if (existing.name === `OpenVibe.${c.client_id} (service)`) {
+            // name someone chose stays. A site's own former name is renamed too (FORMER_NAMES).
+            if (existing.name === `OpenVibe.${c.client_id} (service)` || (FORMER_NAMES[c.client_id] || []).includes(existing.name)) {
                 await db.prepare('UPDATE oauth_clients SET name = ? WHERE client_id = ?').run(c.name, c.client_id);
                 log.log(`[DB] OAuth2 client ${c.client_id} renamed to ${c.name}`);
             }

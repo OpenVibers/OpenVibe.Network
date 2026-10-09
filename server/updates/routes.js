@@ -70,7 +70,7 @@ function createUpdatesRoutes({ blogUrl = 'http://127.0.0.1:4810', fetchImpl = gl
 }
 
 const SITES = ['live', 'network', 'tools', 'media', 'community', 'space', 'chat', 'games', 'blog', 'wiki', 'news', 'reviews', 'deals', 'coupons', 'trade', 'codes', 'services', 'host', 'ai', 'search', 'sources', 'events', 'billing', 'tips', 'vip', 'openre', 'bot', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'media-hub', 'inventory', 'sites'];
-const NAMES = { ai: 'AI', vip: 'VIP', openre: 'OpenRe' };
+const NAMES = { ai: 'AI', vip: 'VIP', openre: 'OpenRestream' };
 const nameOf = (id) => NAMES[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : '');
 
 /** A registry id from an id or a hostname (openvibe.wiki → wiki, pdf.openvibe.tools → tools). */

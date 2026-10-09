@@ -78,8 +78,8 @@ const DEFAULT_GRANTS = [
     ['host', 'media.object.read', 'openvibe.media', ['host', 'host.*']],
     ['host', 'media.object.list', 'openvibe.media', ['host', 'host.*']],
     ['host', 'media.object.delete', 'openvibe.media', ['host', 'host.*']],
-    // Plan T4 (Media cleanup): Live and OpenRe reach Media with their own tokens instead of API keys. Live keeps
-    // its objects under the live namespace (VOD/clip/thumbnail uploads, reads, lists, deletes); OpenRe uploads the
+    // Plan T4 (Media cleanup): Live and OpenRestream reach Media with their own tokens instead of API keys. Live keeps
+    // its objects under the live namespace (VOD/clip/thumbnail uploads, reads, lists, deletes); OpenRestream uploads the
     // recordings and thumbnails it produces there too.
     ...['media.object.read', 'media.object.list', 'media.object.upload', 'media.object.delete'].map(cap => ['live', cap, 'openvibe.media', ['live']]),
     ['openre', 'media.object.upload', 'openvibe.media', ['live']],
@@ -118,7 +118,7 @@ const DEFAULT_GRANTS = [
     ['tips', 'chat.message.send', 'openvibe.chat', []],
     ['tips', 'chat.event.publish', 'openvibe.chat', []],
     ['live', 'tips.interaction.record', 'openvibe.tips', []],
-    // Wave 7: Live manages its slots' streams, keys and sessions on OpenRe.Stream; OpenRe publishes
+    // Wave 7: Live manages its slots' streams, keys and sessions on OpenRestream; OpenRestream publishes
     // session/output events (Live consumes openre.session.* by webhook).
     ...['openre.stream.read', 'openre.stream.write', 'openre.key.rotate', 'openre.session.read'].map(c => ['live', c, 'openvibe.openre', []]),
     ['openre', 'events.event.publish', 'openvibe.events', []],
@@ -194,7 +194,7 @@ const DEFAULT_GRANTS = [
     ['bot', 'network.node.manage', SELF_AUDIENCE, []],
     // Plan T15: an owner adds an operator by @username on the robot's panel; Bot resolves it to the subject here.
     ['bot', 'identity.subject.resolve', SELF_AUDIENCE, []],
-    // Plan T15: Bot runs each robot's OpenRe stream for its owner (find/create/archive, key rotation), plays the live
+    // Plan T15: Bot runs each robot's OpenRestream stream for its owner (find/create/archive, key rotation), plays the live
     // session in the panel (session.read), restreams out (output.*) and sets the owner's streaming and recording
     // toggles on the stream, minting its own token with its Network client instead of a hand-set BOT_OPENRE_TOKEN.
     ...['openre.stream.read', 'openre.stream.write', 'openre.key.rotate', 'openre.session.read', 'openre.output.read', 'openre.output.write'].map(c => ['bot', c, 'openvibe.openre', []]),
@@ -273,7 +273,7 @@ const DEFAULT_GRANTS = [
     ['live', 'community.paste.create', 'openvibe.community', []],
     ['live', 'community.paste.write', 'openvibe.community', []],
     ['live', 'community.paste.moderate', 'openvibe.community', []],
-    // One canonical channel/owner resolver (roadmap §10.5/§15.10, D20-R1): OpenRe, Media and Community (Pulse)
+    // One canonical channel/owner resolver (roadmap §10.5/§15.10, D20-R1): OpenRestream, Media and Community (Pulse)
     // resolve channels, streams, VODs and clips through Live's /internal/lineage/resolve instead of their own
     // channel mappings.
     ...['openre', 'media', 'community'].map(c => [c, 'live.lineage.resolve', 'openvibe.live', []]),

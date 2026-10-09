@@ -66,7 +66,7 @@ helpers.
 ## 4. What the two old plans got right, and what changed
 
 Kept from the *domain map*: the split between identity (network) and rooms; one job per domain;
-Community as the home of pastes/posts/comments; OpenRe.Stream as the ingest/restream layer
+Community as the home of pastes/posts/comments; OpenRestream as the ingest/restream layer
 behind Live; Chat as the communication layer; content rooms (news/reviews/deals/coupons/trade)
 being source-backed and honest. Kept from the *runtime prompt*: capability-style shared
 contracts, real tests over route-existence, readiness that says yellow when it is yellow.
@@ -83,7 +83,7 @@ cookies and CORS and buys nothing at this size. `my.openvibe.network` already re
 1. **Community phase 2** — spaces, threads, posts, comments as reusable primitives
    (`/api/comments?target=live:vod:123`) used by Live VOD/clip pages, Media, Blog and Wiki.
    Discord relay tagging. Moderation shared with Live's tools.
-2. **OpenRe.Stream** — move the restream engine's *config UI and status API* to the domain
+2. **OpenRestream** — move the restream engine's *config UI and status API* to the domain
    (Live keeps the ingest processes); a public "what's live where" status page.
 3. **Chat** — `openvibe.chat` embeds Live's chat server with rooms not bound to a stream
    (global rooms, DMs) and the voice channels; Live embeds it back. One `/ws/chat`, one moderation.
