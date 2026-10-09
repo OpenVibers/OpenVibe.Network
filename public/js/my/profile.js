@@ -117,6 +117,11 @@ function renderProfile(user) {
     document.getElementById('pf-bio').value = user.bio || '';
     document.getElementById('pf-email').value = user.email || '';
     document.getElementById('pf-color').value = user.profile_color || '#8b5cf6';
+    const pub = document.getElementById('pf-public');
+    pub.checked = user.profile_public === undefined || Number(user.profile_public) !== 0;
+    pub.disabled = !!user.is_anon;
+    const link = document.getElementById('pf-public-link');
+    if (user.username && !user.is_anon) { link.href = '/@' + encodeURIComponent(user.username); link.textContent = 'openvibe.network/@' + user.username; }
     if (!user.is_anon) {
         document.getElementById('pf-bio').disabled = false;
         document.getElementById('pf-email').disabled = false;
@@ -194,6 +199,7 @@ document.getElementById('profile-form').addEventListener('submit', async (e) => 
             bio: document.getElementById('pf-bio').value,
             email: document.getElementById('pf-email').value || undefined,
             profile_color: document.getElementById('pf-color').value,
+            profile_public: document.getElementById('pf-public').checked,
         })});
         currentUser = data.user;
         renderHeader(data.user);

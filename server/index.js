@@ -678,6 +678,11 @@ const avatarService = require('./profile/avatar').createAvatarService({ db, conf
 app.use('/api/profile/avatar', rateLimit({ windowMs: 60_000, max: 20 }), avatarService.api);
 app.use('/avatar', rateLimit({ windowMs: 60_000, max: 600 }), avatarService.pub);
 app.locals.avatarService = avatarService;
+// Public profiles (plan T21 step 3): openvibe.network/@<username> and GET /api/v1/profiles/:username (CORS-open,
+// server/public-cors.js), with the items from OpenVibe.Inventory (server/profile/public.js).
+const publicProfiles = require('./profile/public').createPublicProfiles({ db, selfToken, inventoryUrl: process.env.OV_INVENTORY_INTERNAL_URL || 'http://127.0.0.1:5030' });
+app.use('/api/v1/profiles', rateLimit({ windowMs: 60_000, max: 240 }), publicProfiles.api);
+app.get('/@:username', rateLimit({ windowMs: 60_000, max: 120 }), publicProfiles.pageHandler);
 
 // The OpenVibe Frame: analytics-ranked navigation + footer copy for every site (server/frame).
 // /api/chrome is the old name, kept for copies of openvibe-shared older than 1.11.0.

@@ -52,7 +52,7 @@ const quiet = { log() {}, warn() {}, error() {} };
 
         // ── 0020 applies on top of 0019, once, and rewrites nothing.
         const first = await asOwner((o) => o.migrate({ dir: MIGRATIONS, log: quiet }));
-        assert.deepStrictEqual(first.applied.map((m) => [m.id, m.name, m.phase]), [['0020', 'user_owned_trust', 'expand'], ['0021', 'services_portal', 'migrate']]);
+        assert.deepStrictEqual(first.applied.map((m) => [m.id, m.name, m.phase]), [['0020', 'user_owned_trust', 'expand'], ['0021', 'services_portal', 'migrate'], ['0022', 'public_profiles', 'expand']]);
         assert.deepStrictEqual((await asOwner((o) => o.migrate({ dir: MIGRATIONS, log: quiet }))).applied, [], 'already applied');
         await asOwner((o) => o.exec(fs.readFileSync(path.join(MIGRATIONS, '0020_user_owned_trust.sql'), 'utf8'))); // safe to run twice
         assert.deepStrictEqual(await rows(), seeded, 'no existing row changes');
