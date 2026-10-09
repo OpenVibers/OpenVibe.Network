@@ -82,7 +82,7 @@ assert.strictEqual(require('../server/registry/ecosystem').INTERNAL.space, 'http
     // 'planned' = exposure placeholder: Contracts 0.83.0's media-hub, v0.87-v0.90's zone (charter only, nothing runs).
     // Watch left it in v0.108.0, Run and Services in v0.109.0 (they run, internal); Space in v0.110.0 (live, a site).
     assert.strictEqual(inCat('space'), 'site');
-    assert.deepStrictEqual(cats.planned.services.map(x => x.id).sort(), ['media-hub', 'zone']);
+    assert.deepStrictEqual(cats.planned.services.map(x => x.id).sort(), ['zone']);   // media-hub is live since contracts 0.119.0 (openvibe.download)
     const liveRow = cats.site.services.find(x => x.id === 'live');
     assert.strictEqual(liveRow.runtime, 'down'); assert.ok(liveRow.checked_at, 'rows carry the last check');
     r = await get('/api/v1/registry/categories/library');
