@@ -37,6 +37,8 @@ const DEFAULT_GRANTS = [
     // Live is the issuer of the live.* kinds (its cosmetics), reads and equips for the people it serves.
     ['inventory', 'events.event.publish', 'openvibe.events', []],
     ['inventory', 'events.subscription.manage', 'openvibe.events', []],
+    // The Workshop (ADR-054 §6): a creator gives a badge to "@name"; Inventory resolves the name to a subject.
+    ['inventory', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ...['inventory.item.read', 'inventory.item.list', 'inventory.equip.manage', 'inventory.item.grant', 'inventory.item.consume', 'inventory.definition.manage']
         .map((cap) => ['live', cap, 'openvibe.inventory', []]),
     // OpenVibe.Quest gives six of Live's items as quest rewards: Live names Quest a grantor of them (ADR-054 §3), so
