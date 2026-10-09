@@ -122,6 +122,9 @@ const DEFAULT_GRANTS = [
     // session/output events (Live consumes openre.session.* by webhook).
     ...['openre.stream.read', 'openre.stream.write', 'openre.key.rotate', 'openre.session.read'].map(c => ['live', c, 'openvibe.openre', []]),
     ['openre', 'events.event.publish', 'openvibe.events', []],
+    // OpenVibe Live on by default (contracts 0.126.0): OpenRestream asks Live for a slot on the person's channel bound to
+    // their OpenRestream stream, so its sessions show on openvibe.live through Live's mirror.
+    ['openre', 'live.openre.slot.bind', 'openvibe.live', []],
     // Wave 16: Wiki publishes events, attaches Community discussion, cites Sources items, reads its Media.
     ['wiki', 'events.event.publish', 'openvibe.events', []],
     ['wiki', 'community.comment.write', 'openvibe.community', []],
