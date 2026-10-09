@@ -28,6 +28,9 @@ const DEFAULT_GRANTS = [
     ['quest', 'events.subscription.manage', 'openvibe.events', []],
     // They subscribe to network.account.export_requested and network.account.deleted at boot (ADR-033).
     ...['actor', 'food', 'help', 'work', 'rent', 'media-hub'].map((svc) => [svc, 'events.subscription.manage', 'openvibe.events', []]),
+    // The same two subscriptions for the services that gained an account-event route on 2026-10-09 (SDK 0.37.0
+    // startSubscriptions); deals, trade, tips and vip already hold the grant for their other subscriptions.
+    ...['watch', 'services', 'wiki', 'blog', 'bot'].map((svc) => [svc, 'events.subscription.manage', 'openvibe.events', []]),
     // MediaHub resolves the usernames an owner names on a share link to subjects (only subjects are matched).
     ['media-hub', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],
