@@ -12,7 +12,7 @@ const { exposureOf } = require('../registry/exposure');
 // (state: internal = runs on loopback only, placeholder = planned). The two lists cannot disagree.
 // Since openvibe-contracts 0.42.0 (WS-C task 1) the list is the manifests' `site` blocks, in `position` order:
 // name, icon, tagline, what, the legal profile, and a host only while the manifest has no publicOrigin. A
-// site's id is its icon name (live, tools, …, stream for OpenRe.Stream).
+// site's id is its icon name (live, tools, …, stream for OpenRestream).
 const RAW_SITES = contracts.services.manifests.filter((m) => m.site).sort((a, b) => (a.site.position ?? 999) - (b.site.position ?? 999)).map((m) => ({
     id: m.site.icon, name: m.site.name, icon: m.site.icon, service: m.id, profile: m.site.legalProfile, tagline: m.site.tagline, what: m.site.what,
     ...(m.site.host ? { host: m.site.host } : {}),

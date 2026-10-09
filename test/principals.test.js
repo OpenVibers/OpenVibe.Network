@@ -95,7 +95,7 @@ const server = http.createServer(app);
     await db.prepare("UPDATE oauth_clients SET client_secret = 'openre-secret' WHERE client_id = 'openre'").run();
     t = await token({ client_id: 'openre', client_secret: 'openre-secret', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 400); assert.strictEqual(t.body.error, 'invalid_scope', 'a client with no grants gets no token');
-    // The canonical channel/owner resolver on Live (D20-R1): OpenRe, Media and Community hold it, nobody else.
+    // The canonical channel/owner resolver on Live (D20-R1): OpenRestream, Media and Community hold it, nobody else.
     await db.prepare("UPDATE oauth_clients SET client_secret = 'community-secret' WHERE client_id = 'community'").run();
     for (const [client, secret] of [['openre', 'openre-secret'], ['media', 'media-secret'], ['community', 'community-secret']]) {
         t = await token({ client_id: client, client_secret: secret, audience: 'openvibe.live' });
@@ -212,14 +212,14 @@ const server = http.createServer(app);
         assert.strictEqual(ub.status, 200, `${client}: ${JSON.stringify(ub.body)}`);
         assert.strictEqual(ub.body.scope, 'billing.usage.record', `${client} records usage on Billing and holds no money capability`);
     }
-    // Plan T15: Bot mints its own OpenRe token for the robots' streams, sessions, outputs and toggles; nothing beyond OpenRe's
+    // Plan T15: Bot mints its own OpenRestream token for the robots' streams, sessions, outputs and toggles; nothing beyond OpenRestream's
     // stream, key, session-read and output capabilities (never openre.session.end).
     const bn = await token({ client_id: 'bot', client_secret: 'bot-secret', audience: 'openvibe.network', scope: 'identity.subject.resolve' });
     assert.strictEqual(bn.status, 200, JSON.stringify(bn.body));
     assert.strictEqual(bn.body.scope, 'identity.subject.resolve', 'Bot resolves an operator\'s @username');
     const bo = await token({ client_id: 'bot', client_secret: 'bot-secret', audience: 'openvibe.openre' });
     assert.strictEqual(bo.status, 200, JSON.stringify(bo.body));
-    assert.deepStrictEqual(bo.body.scope.split(' ').sort(), ['openre.key.rotate', 'openre.output.read', 'openre.output.write', 'openre.session.read', 'openre.stream.read', 'openre.stream.write'], "Bot runs its robots' OpenRe streams");
+    assert.deepStrictEqual(bo.body.scope.split(' ').sort(), ['openre.key.rotate', 'openre.output.read', 'openre.output.write', 'openre.session.read', 'openre.stream.read', 'openre.stream.write'], "Bot runs its robots' OpenRestream streams");
     // Coupons subscribes to its Events sources with its own token (OpenVibe.Coupons scripts/subscribe.js).
     await db.prepare("UPDATE oauth_clients SET client_secret = 'coupons-secret' WHERE client_id = 'coupons'").run();
     const cps = await token({ client_id: 'coupons', client_secret: 'coupons-secret', audience: 'openvibe.events', scope: 'events.subscription.manage' });

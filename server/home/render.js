@@ -64,7 +64,7 @@ function intents(catalog) {
 }
 
 // The network as a constellation: open sites on the inner ring, the ones opening next faint on the outer ring.
-const SHORT = (site) => (/^OpenRe\./.test(site.name) ? 'OpenRe' : site.name.replace(/^OpenVibe\./, ''));
+const SHORT = (site) => site.name.replace(/^OpenVibe\./, '');
 function constellation() {
     const ring = (list, r, start) => list.map((site, i) => {
         const a = start + (i / list.length) * Math.PI * 2;
