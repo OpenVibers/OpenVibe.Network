@@ -93,11 +93,11 @@ const server = http.createServer(app);
 
         // ── Export ──
         const seeded = await accountData.expectedServices(db, 'network.account.export.contribute');
-        assert.deepStrictEqual(seeded, ['actor', 'chat', 'community', 'food', 'games', 'help', 'live', 'media', 'quest', 'rent', 'work'],
+        assert.deepStrictEqual(seeded, ['actor', 'chat', 'community', 'food', 'games', 'help', 'live', 'media', 'media-hub', 'quest', 'rent', 'work'],
             'the holders of the contribute grant: the skeleton services answer too since 2026-10-08 (openvibe-sdk/account-data); Space left with the forum');
         // The scenarios below follow five services; the six newer ones are set aside here, exactly as an operator would
         // revoke a service's grant (the same rows, the same revoked_at).
-        for (const svc of ['actor', 'food', 'help', 'quest', 'rent', 'work']) {
+        for (const svc of ['actor', 'food', 'help', 'media-hub', 'quest', 'rent', 'work']) {
             for (const cap of ['network.account.export.contribute', 'network.account.deletion.confirm']) {
                 await db.prepare('UPDATE principal_grants SET revoked_at = ov_now() WHERE client_id = ? AND capability = ? AND revoked_at IS NULL').run(svc, cap);
             }

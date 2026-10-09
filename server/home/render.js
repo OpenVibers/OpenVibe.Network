@@ -52,6 +52,7 @@ const INTENTS = [
     ['food', 'fa-utensils', 'Eat well for less', 'Food banks and budget grocers near you, meal plans for your budget.', 'https://openvibe.food/', 'food eat meal meals plan grocery groceries cheap budget recipes food bank pantry'],
     ['quest', 'fa-medal', 'Earn badges', 'Quests across the network for the things you already do there.', 'https://openvibe.quest/', 'quest quests badge badges achievement achievements rewards opencoins earn'],
     ['rent', 'fa-house', 'Rent a place', 'Rooms, homes, workspace, parking and gear, posted by people.', 'https://openvibe.rent/', 'rent rental rentals apartment room house flat lease parking storage equipment'],
+    ['media-hub', 'fa-cloud-arrow-up', 'Keep and share files', 'A private drive with share links people sign in to open.', 'https://openvibe.download/', 'download files drive upload share link storage backup cloud send'],
     ['watch', 'fa-bell', 'Get told when it changes', 'Watch a page, a feed or an API and hear when your value moves.', 'https://openvibe.watch/', 'watch monitor alert alerts notify change changes price drop feed rss tracker uptime'],
     ['help', 'fa-life-ring', 'Get help', 'Every OpenVibe site\'s questions answered, and a person when they are not.', 'https://openvibe.help/', 'help support faq question questions ticket contact problem how'],
 ];
