@@ -157,7 +157,7 @@ const rows = async (userId) => await db.prepare('SELECT * FROM notifications WHE
     assert.strictEqual(bobs[0].title, 'Trade alert: AAPL');
     assert.strictEqual(bobs[0].priority, 'high');
     assert.strictEqual(bobs[0].message, 'Apple Inc. — close is 201.50 USD (above 200). Information only — not investment advice; no trading here.');
-    assert.strictEqual(bobs[0].url, null);
+    assert.strictEqual(bobs[0].url, 'https://openvibe.trade/i/AAPL', 'Trade serves openvibe.trade since contracts 0.125.0, so the alert links the instrument');
     r = await post(tradeEvent({ payload: { ...tradeEvent().payload, trigger: { kind: 'document', id: 'doc_1', form_type: '8-K', title: 'Current report' } } }));
     assert.strictEqual(r.body.outcome, 'notified');
     assert.match((await rows(8))[1].message, /New 8-K: Current report\./);
