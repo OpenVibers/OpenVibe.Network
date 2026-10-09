@@ -39,6 +39,9 @@ const DEFAULT_GRANTS = [
     ['inventory', 'events.subscription.manage', 'openvibe.events', []],
     ...['inventory.item.read', 'inventory.item.list', 'inventory.equip.manage', 'inventory.item.grant', 'inventory.item.consume', 'inventory.definition.manage']
         .map((cap) => ['live', cap, 'openvibe.inventory', []]),
+    // OpenVibe.Quest gives six of Live's items as quest rewards: Live names Quest a grantor of them (ADR-054 §3), so
+    // Quest grants them itself (origin earned, the completion id as the key) and nothing else.
+    ['quest', 'inventory.item.grant', 'openvibe.inventory', []],
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],
     ['live', 'network.notifications.push', SELF_AUDIENCE, ['live']],
     // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
