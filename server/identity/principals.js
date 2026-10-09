@@ -33,6 +33,12 @@ const DEFAULT_GRANTS = [
     ...['watch', 'services', 'wiki', 'blog', 'bot'].map((svc) => [svc, 'events.subscription.manage', 'openvibe.events', []]),
     // MediaHub resolves the usernames an owner names on a share link to subjects (only subjects are matched).
     ['media-hub', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    // OpenVibe.Inventory (ADR-054) publishes inventory.* through its outbox and subscribes to the account events at boot;
+    // Live is the issuer of the live.* kinds (its cosmetics), reads and equips for the people it serves.
+    ['inventory', 'events.event.publish', 'openvibe.events', []],
+    ['inventory', 'events.subscription.manage', 'openvibe.events', []],
+    ...['inventory.item.read', 'inventory.item.list', 'inventory.equip.manage', 'inventory.item.grant', 'inventory.item.consume', 'inventory.definition.manage']
+        .map((cap) => ['live', cap, 'openvibe.inventory', []]),
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],
     ['live', 'network.notifications.push', SELF_AUDIENCE, ['live']],
     // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
