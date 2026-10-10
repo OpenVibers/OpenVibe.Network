@@ -214,6 +214,9 @@ const DEFAULT_GRANTS = [
     // (a usr_ subject) to Network's user id, then pushes as app 'watch' (openvibe-sdk/notifications).
     ['watch', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['watch', 'network.notifications.push', SELF_AUDIENCE, ['watch']],
+    // Plan T18 step 6: a watch's actor-task action gives Actor a task for the watch's owner. Watch names the owner in
+    // X-OV-Subject, so the task is the person's (their allowance and list) and Actor records Watch as `via`.
+    ['watch', 'actor.task.create', 'openvibe.actor', []],
     // Plan T13: OpenVibe.Services merges every authority's resource index (ADR-048 section 3): it reads each one's
     // GET /api/v1/resources under that authority's <id>.resource.read, with a token for that authority's audience.
     ['services', 'network.resource.read', SELF_AUDIENCE, []],
