@@ -2,7 +2,7 @@
 /**
  * Network's authority resource index (ADR-048 section 3; capability network.resource.read):
  *
- *   GET /api/v1/resources[?project=&kind=&cursor=&limit=]  → common.resource-list-result@1
+ *   GET /api/v1/resources[?project=&owner=&kind=&cursor=&limit=]  → common.resource-list-result@1
  *   GET /api/v1/resources/:ovrn                            → common.resource-summary@1
  *
  * It pages the resources OpenVibe.Network owns — its developer projects (prj_), their apps (app_) and
@@ -33,6 +33,7 @@ const NODE_KIND = 'network.node';
 const KINDS = [PROJECT_KIND, APP_KIND, NODE_KIND];
 const PROJECT_ID_RE = /^prj_[0-9A-HJKMNP-TV-Z]{26}$/;
 const USER_SUBJECT_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
+const OWNER_ID_RE = /^(usr|agt)_[0-9A-HJKMNP-TV-Z]{26}$/;
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 1000;
 
@@ -87,28 +88,37 @@ function named(summary) {
 /** A stable (kind, id) ordering, so a cursor can be a position in it. */
 const order = (x, y) => (x.kind < y.kind ? -1 : x.kind > y.kind ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0);
 
-/** The summaries matching the filters: `project` scopes tenancy, `kind` picks one kind. Sorted by (kind, id). */
+/** The summaries matching the project, owner and kind filters, sorted by (kind, id). */
 // Scope: network.resource.read is first-party (resourceConstraints none), so its holder sees every project and
 // ?project= only narrows. If it is ever granted to a non-first-party principal, derive the scope from that
 // principal's grants here instead of trusting the query.
-async function collect(db, { project = null, kind = null } = {}) {
+async function collect(db, { project = null, owner = null, kind = null } = {}) {
     const out = [];
+    if (owner && !USER_SUBJECT_RE.test(owner)) return out;
     if (!kind || kind === PROJECT_KIND) {
-        const rows = project
-            ? await db.prepare('SELECT * FROM dev_projects WHERE id = ?').all(project)
-            : await db.prepare('SELECT * FROM dev_projects ORDER BY id').all();
+        const rows = project && owner
+            ? await db.prepare('SELECT * FROM dev_projects WHERE id = ? AND owner_subject = ? ORDER BY id').all(project, owner)
+            : project
+                ? await db.prepare('SELECT * FROM dev_projects WHERE id = ? ORDER BY id').all(project)
+                : owner
+                    ? await db.prepare('SELECT * FROM dev_projects WHERE owner_subject = ? ORDER BY id').all(owner)
+                    : await db.prepare('SELECT * FROM dev_projects ORDER BY id').all();
         for (const p of rows) out.push(named(projectSummary(p)));
     }
-    if (!kind || kind === APP_KIND) {
+    if (!owner && (!kind || kind === APP_KIND)) {
         const rows = project
             ? await db.prepare('SELECT * FROM dev_apps WHERE project_id = ? ORDER BY id').all(project)
             : await db.prepare('SELECT * FROM dev_apps ORDER BY id').all();
         for (const a of rows) out.push(named(appSummary(a)));
     }
     if (!kind || kind === NODE_KIND) {
-        const rows = project
-            ? await db.prepare('SELECT * FROM platform_node_principals WHERE project_id = ? ORDER BY id').all(project)
-            : await db.prepare('SELECT * FROM platform_node_principals ORDER BY id').all();
+        const rows = project && owner
+            ? await db.prepare('SELECT * FROM platform_node_principals WHERE project_id = ? AND owner_subject = ? ORDER BY id').all(project, owner)
+            : project
+                ? await db.prepare('SELECT * FROM platform_node_principals WHERE project_id = ? ORDER BY id').all(project)
+                : owner
+                    ? await db.prepare('SELECT * FROM platform_node_principals WHERE owner_subject = ? ORDER BY id').all(owner)
+                    : await db.prepare('SELECT * FROM platform_node_principals ORDER BY id').all();
         for (const n of rows) out.push(named(nodeSummary(n)));
     }
     return out.sort(order);
@@ -127,6 +137,8 @@ const afterCursor = (s, [kind, id]) => s.kind > kind || (s.kind === kind && s.id
 function filtersOf(query) {
     const project = typeof query.project === 'string' && query.project !== '' ? query.project : null;
     if (project && !PROJECT_ID_RE.test(project)) return { error: 'project must be a prj_ id' };
+    const owner = query.owner === undefined || query.owner === '' ? null : query.owner;
+    if (owner !== null && (typeof owner !== 'string' || !OWNER_ID_RE.test(owner))) return { error: 'owner must be a usr_ or agt_ id' };
     const kind = typeof query.kind === 'string' && query.kind !== '' ? query.kind : null;
     let limit = DEFAULT_LIMIT;
     if (typeof query.limit === 'string' && query.limit !== '') {
@@ -138,7 +150,7 @@ function filtersOf(query) {
         cursor = decodeCursor(query.cursor);
         if (!cursor) return { error: 'cursor is not one this index issued' };
     }
-    return { project, kind, limit, cursor };
+    return { project, owner, kind, limit, cursor };
 }
 
 function router({ guard }) {
