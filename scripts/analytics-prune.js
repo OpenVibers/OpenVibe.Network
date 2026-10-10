@@ -27,7 +27,7 @@ Options:
   --days <n>   keep raw events newer than n days, 1..30 (default 30)
   --apply      actually prune`;
 
-/** UTC 'YYYY-MM-DD HH:MM:SS', the tracker's own time shape (openvibe-shared/analytics/tracker.sqlTime). */
+/** UTC 'YYYY-MM-DD HH:MM:SS', the analytics rows' time shape. */
 function sqlTime(ms) {
     const d = new Date(ms);
     const pad = (n) => String(n).padStart(2, '0');

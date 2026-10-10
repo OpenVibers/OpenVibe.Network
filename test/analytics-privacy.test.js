@@ -21,7 +21,8 @@ const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const { getDb } = require('../server/db/database');
 const { privacy, event } = require('openvibe-shared/analytics');
-const { sqlTime } = require('openvibe-shared/analytics/tracker');
+// UTC 'YYYY-MM-DD HH:MM:SS', the analytics rows' time shape (openvibe-shared 3.0 keeps its helper private).
+const sqlTime = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
 const networkAnalytics = require('../server/analytics/network');
 
 let failures = 0;
