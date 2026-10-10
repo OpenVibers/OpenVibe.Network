@@ -12,7 +12,7 @@ const config = require('./config');
 async function main({ log = console, cfg = config } = {}) {
     if (cfg.db.url) {
         log.error('reset-db: the database is PostgreSQL (DATABASE_URL is set); there is no file to remove.');
-        log.error("Drop and recreate the schema as the owner instead, e.g. psql \"$DATABASE_DIRECT_URL\" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' — or point DATABASE_URL at a scratch database and re-run scripts/migrate-to-postgres.js.");
+        log.error("Drop and recreate the schema as the owner instead, e.g. psql \"$DATABASE_DIRECT_URL\" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' — or point DATABASE_URL at a scratch database.");
         return 1;
     }
 

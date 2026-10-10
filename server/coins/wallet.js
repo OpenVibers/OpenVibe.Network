@@ -2,7 +2,7 @@
 
 // ═══════════════════════════════════════════════════════════════
 // openvibe.network — OpenCoins Wallet Core
-// Atomic wallet operations backed by better-sqlite3 transactions.
+// Atomic wallet operations backed by database transactions.
 // user_id here is ALWAYS the Network (SSO) user id.
 //
 // Idempotency: every mutation carries an idempotency_key stored on

@@ -632,7 +632,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             const target = await db.prepare('SELECT id, username, email FROM users WHERE id = ?').get(userId);
             if (!target) return res.status(404).json({ ok: false, error: 'User not found' });
 
-            // users.email is UNIQUE, so a collision would throw a raw SQLite error —
+            // users.email is UNIQUE, so a collision would throw a raw database error —
             // check first and return something the admin can actually act on.
             if (email) {
                 const clash = await db.prepare('SELECT id, username FROM users WHERE LOWER(email) = LOWER(?) AND id != ?').get(email, userId);

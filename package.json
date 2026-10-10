@@ -9,17 +9,11 @@
     "test": "node test/run.js",
     "reset-db": "node server/reset-db.js",
     "grant-admin": "node server/grant-admin.js",
-    "test:pg": "NETWORK_TEST_STORE=pg node test/run.js",
-    "migrate-to-postgres": "node scripts/migrate-to-postgres.js",
-    "pg-preflight": "node scripts/pg-preflight-collisions.js",
-    "follows-import": "node scripts/follows-import.js",
-    "follows-preflight": "node scripts/follows-preflight.js",
-    "rehearse-pg-cutover": "node scripts/rehearse-pg-cutover.js"
+    "test:pg": "NETWORK_TEST_STORE=pg node test/run.js"
   },
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "discord.js": "^14.26.3",

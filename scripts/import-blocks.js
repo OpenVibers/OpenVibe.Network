@@ -26,7 +26,7 @@ const blocks = require('../server/identity/blocks');
 const USAGE = 'usage: node scripts/import-blocks.js --file <json> [--apply]';
 const SUBJECT_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 
-/** --flag / --key value parsing (scripts/lib/db-ops.js keeps the shared one; this stays standalone). */
+/** --flag / --key value parsing (this script stays standalone). */
 function parseArgs(argv, { flags = [], values = [] } = {}) {
     const out = { _: [] };
     for (let i = 0; i < argv.length; i++) {

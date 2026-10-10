@@ -7,9 +7,8 @@ The data change is `migrations/0020_user_owned_trust.sql`. It drops and re-adds 
 wider than before. No column is added, renamed or dropped, and no row is rewritten. The migration is `phase: expand`
 and every drop is `IF EXISTS`, so it is safe to run on a live production database and safe to run twice.
 
-Like [cutover-t2-confirmations-budgets.md](cutover-t2-confirmations-budgets.md), this is much smaller than the SQLite →
-PostgreSQL cutover ([cutover-t2-postgres.md](cutover-t2-postgres.md)): no data move, no freeze window, no snapshot
-import. The migration runs as part of the normal boot of the new release.
+Like [cutover-t2-confirmations-budgets.md](cutover-t2-confirmations-budgets.md), this has no data move,
+freeze window or snapshot import. The migration runs as part of the normal boot of the new release.
 
 ---
 

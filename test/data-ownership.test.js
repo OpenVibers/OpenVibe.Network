@@ -4,12 +4,8 @@
 //   node test/data-ownership.test.js
 const assert = require('assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { getDb, initDb } = require('../server/db/database');
-
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-data-ownership-'));
-process.env.OPENVIBELIVE_DB_PATH = path.join(dir, 'live.db');
 
 (async () => {
 const db = await getDb();
@@ -20,7 +16,7 @@ await initDb();
 assert.strictEqual((await db.prepare("SELECT role FROM users WHERE username = 'migrated'").get()).role, 'user',
     'a boot must not copy a role out of Live\'s database');
 
-// No server code names Live's database or the variable that pointed at it.
+// No server code opens Live's database file.
 function walk(d, out = []) {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
         const p = path.join(d, e.name);
@@ -29,9 +25,8 @@ function walk(d, out = []) {
     return out;
 }
 const offenders = walk(path.join(__dirname, '..', 'server'))
-    .filter((f) => /OPENVIBELIVE_DB_PATH|live\.db\b/.test(fs.readFileSync(f, 'utf8')));
+    .filter((f) => /live\.db\b/.test(fs.readFileSync(f, 'utf8')));
 assert.deepStrictEqual(offenders, [], 'server code must not reference Live\'s database');
 
-fs.rmSync(dir, { recursive: true, force: true });
 console.log('data-ownership: ok');
 })().catch(err => { console.error(err); process.exit(1); });

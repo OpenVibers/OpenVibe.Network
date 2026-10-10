@@ -11,10 +11,8 @@
  *   --days <n>   keep raw events newer than n days, 1..30 (default 30)
  *   --apply      actually prune (default: dry run)
  *
- * On SQLite this was openvibe-shared/analytics/prune-cli: it made an online copy of network.db, VACUUMed
- * it and scrubbed legacy rows. None of that survives the port — there is no database file to copy or
- * VACUUM, and openvibe-shared's PostgreSQL path (pruneRawEventsPg) covers retention. Run it where Network
- * runs, or with DATABASE_URL/DATABASE_DIRECT_URL pointing at a copy; it needs no elevated privileges.
+ * openvibe-shared's pruneRawEventsPg handles retention. Run it where Network runs, or with
+ * DATABASE_URL/DATABASE_DIRECT_URL pointing at a copy; it needs no elevated privileges.
  */
 'use strict';
 const { parseArgs } = require('./lib/db-ops');

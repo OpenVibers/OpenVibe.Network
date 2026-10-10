@@ -5,8 +5,7 @@
 //
 // The schema lives in migrations/NNNN_*.sql; this module opens the process-wide handle, runs the
 // migrations as the owner (DATABASE_DIRECT_URL) and seeds the boot data that is not schema
-// (OAuth clients, site settings, built-in themes). Every query is async; the handle is shaped like
-// better-sqlite3's (db.prepare(sql).get/all/run) but must be awaited.
+// (OAuth clients, site settings, built-in themes). Every query is async.
 // ═══════════════════════════════════════════════════════════════
 
 const path = require('path');
@@ -315,7 +314,7 @@ function attachHelpers(db) {
     if (db._ovHelpers) return db;
     const secrets = require('../secrets');
 
-    // better-sqlite3's db.transaction(fn) returned a function; db.tx(fn) runs now. txFn keeps that
+    // db.tx(fn) runs a transaction now. txFn keeps that
     // shape (a runner the caller invokes, possibly more than once, e.g. a dry-run path).
     db.txFn = (fn) => async (...args) => await db.tx(() => fn(...args));
 

@@ -97,7 +97,7 @@ openvibe.network (port 4000)
 │   └── my.html               # Account management (profile, sessions, notifications)
 ├── deploy/
 │   ├── nginx/                # openvibe.network.conf; network-subdomains.conf (status/themes/admin/auth/api. redirects); parked-domains.conf
-│   ├── scripts/              # deploy.sh (runs `ovhost deploy network`), deploy-legacy.sh (its fallback)
+│   ├── scripts/              # deploy.sh (runs `ovhost deploy network`)
 │   └── systemd/              # openvibe-network.service (EnvironmentFile=/etc/openvibe/network.env)
 └── .env.example
 ```
@@ -148,8 +148,7 @@ The script requires the database named `ov_network` (or an explicit `--database-
 anything restarts, `deploy/systemd/openvibe-network.service` installed when it differs (daemon-reload), the
 restart, `/api/ready` polled, an automatic rollback if it does not come up, and the release announced.
 `--restart`, `--wait-idle`, `--force` and `--rollback` (`ovhost rollback network`) are passed on; `DRY_RUN=1`
-prints `ovhost plan network`. When ovhost is missing, too old or does not manage Network, the wrapper runs
-`deploy/scripts/deploy-legacy.sh`, the previous script, unchanged (`OVHOST_LEGACY=1` forces it).
+prints `ovhost plan network`. If ovhost is missing, the wrapper exits with an error.
 
 The unit is `openvibe-network.service` (runs as `ubuntu` from `/opt/openvibe.network`) on
 `127.0.0.1:4000`, the env file `/etc/openvibe/network.env`. Rollback: automatic when `/api/ready` does not
@@ -501,25 +500,6 @@ A target is a Live channel today (`channel`, named by its owner's subject), and 
   buttons use it.
 - **Go-live source:** go-live notifications read the followers here, and only here (plan T2); there is no
   switch back to Live.
-- **Backfill from Live:** follows made on Live while Live's own `FOLLOWS_AUTHORITY` was unset never reached
-  Network. `npm run follows-import -- --live-db /opt/openvibe.live/data/live.db` reads Live's `follows` and
-  `linked_accounts` read-only and prints what it would import (dry run); add `--apply` to import in one
-  transaction (no events, no notifications). A pair whose side has no subject is held in
-  `follow_import_holds`; a pair Network already has, followed or unfollowed, is left alone. Safe to re-run;
-  a later run imports newly mapped pairs and clears their holds. Both scripts use `DATABASE_URL` and never
-  migrate or seed.
-- **Cutover order:** Keep Live's direct `POST /internal/events/stream-live` enabled and leave
-  `NETWORK_GO_LIVE_FOLLOWS_READY` unset. Pause Live follow writes, then run
-  `npm run follows-import -- --live-db /opt/openvibe.live/data/live.db --reconcile` to preview the
-  final Live snapshot and rerun with `--reconcile --apply`. Reconciliation deactivates Live-sourced
-  active Network pairs missing from the snapshot, without emitting follow events or notifications;
-  it preserves Network-sourced pairs and earlier Network unfollows. Check `npm run follows-preflight`
-  and resolve holds before proceeding. Set Live's `FOLLOWS_AUTHORITY=network` and restart Live while
-  writes are paused; verify a follow and unfollow reach Network, then resume Live writes. Only then
-  set `NETWORK_GO_LIVE_FOLLOWS_READY=1` in Network's environment and restart Network. Keep Live's
-  direct call enabled until Network's `live.stream.started` outcome logs show delivery.
-- **Preflight:** `npm run follows-preflight` prints, read-only and counts only, the active follows (with
-  their channels and followers), the unfollowed rows and the unresolved `follow_import_holds` by reason.
 
 ## Multi-Account Switching
 
@@ -646,8 +626,7 @@ holds only Network's wiring: its path options (`paramPrefixes`, `pathRules`) and
   `analytics-prune` job: first run 5 minutes after boot, then every 24 h). Rollups are kept.
 - **Operator CLI:** `scripts/analytics-prune.js` (over `openvibe-shared/analytics/pg`'s
   `pruneRawEventsPg`) runs a dry run by default and changes nothing; `--apply` deletes raw events older
-  than `--days` (1..30, default 30). Run it where Network runs, with `DATABASE_URL` set. The SQLite
-  prune CLI (online backup, VACUUM, one-time scrub) is gone with the file.
+  than `--days` (1..30, default 30). Run it where Network runs, with `DATABASE_URL` set.
 
 ## Shared Client Libraries
 
@@ -733,7 +712,6 @@ Accessible to users with `role = 'admin'`. All endpoints under `/api/admin/`.
 | `network_event_outbox` | Network's events on their way to OpenVibe.Events (developer projects, user modules, blocks) |
 | `user_blocks` | Platform blocks by subject (blocker, blocked, active, per-pair revision) |
 | `user_follows` | The follow graph by subject (follower, target type and id, active, notify flags, per-pair revision, source) |
-| `follow_import_holds` | Imported follows held because a side had no subject (ADR-030 step 2) |
 | `analytics_visitor_days`, `analytics_day_salts` | The current day's salted visitor hashes and salt, deleted after the day's final rollup |
 
 ---

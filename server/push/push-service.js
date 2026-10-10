@@ -33,7 +33,7 @@ try {
 
 /**
  * Initialize VAPID keys. Generates a new keypair on first run and stores in site_settings.
- * @param {object} db - better-sqlite3 Database instance
+ * @param {object} db - service database handle
  */
 function publicFromPrivate(privateKey) {
     const ecdh = require('crypto').createECDH('prime256v1');
