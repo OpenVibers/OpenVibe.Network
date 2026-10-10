@@ -1,17 +1,16 @@
 'use strict';
 // ═══════════════════════════════════════════════════════════════
-// Provider secrets: environment first, the database only as a fallback (roadmap §18.2(12): secrets are
-// environment references, never plaintext reusable provider keys in a database).
+// Provider secrets: the environment only (roadmap §18.2(12): secrets are environment references, never
+// plaintext reusable provider keys in a database).
 //
-// Each secret Network uses has a named environment variable (set in /etc/openvibe/network.env). When
-// it is set, that value is used and the site_settings row is ignored; the admin UI shows the secret as
-// "set in the environment" and never saves one into the database while the environment provides it.
-// When it is not set, the site_settings value is used as before, so nothing changes until the operator
-// moves a value. scripts/secrets-out-of-db.js lists the names (never values) and, once the environment
-// has them, blanks the database copies (with a backup).
+// Each secret Network uses has a named environment variable (set in /etc/openvibe/network.env). That is the
+// only place it is read from: a site_settings row of the same key is ignored, the admin UI shows the secret
+// as "set in the environment" or "not set" and never stores one. (The database fallback and its copy-out
+// script were retired on 2026-10-10, once production held no database copy of any secret.) The companions
+// below are not secret: they are read environment-first with the database as a fallback.
 //
-// db.getSetting() (server/db/database.js) goes through fromEnv() for these keys, so every reader (email,
-// Resend webhook, Discord bot and account linking, web push) is environment-first without its own code.
+// db.getSetting() (server/db/database.js) goes through value() for these keys, so every reader (email,
+// Resend webhook, Discord bot and account linking, web push) gets this without its own code.
 // ═══════════════════════════════════════════════════════════════
 
 const SECRETS = [
@@ -56,9 +55,10 @@ async function dbValue(db, key) {
     try { const r = await db.prepare('SELECT value FROM site_settings WHERE key = ?').get(key); return r && r.value ? String(r.value) : ''; } catch { return ''; }
 }
 
-/** 'env' | 'database' | 'unset' for a managed key. */
+/** 'env' | 'database' | 'unset' for a managed key; a secret is never 'database' (environment-only). */
 async function source(db, key, env = process.env) {
     if (fromEnv(key, env) !== null) return 'env';
+    if (isSecret(key)) return 'unset';
     return (await dbValue(db, key)) ? 'database' : 'unset';
 }
 
@@ -70,7 +70,7 @@ async function report(db, env = process.env) {
     })));
 }
 
-/** One boot line: "resend_api_key=env discord_bot_token=database ..." (names and sources only). */
+/** One boot line: "resend_api_key=env discord_bot_token=unset ..." (names and sources only). */
 async function summary(db, env = process.env) {
     return (await report(db, env)).filter(r => r.secret).map(r => `${r.key}=${r.source}`).join(' ');
 }

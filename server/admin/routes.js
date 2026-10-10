@@ -250,12 +250,8 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
 
             const collect = async () => {
                 if (enabled !== undefined) setSetting.run('email_enabled', String(enabled), 'boolean');
-                // Only update API key if it's not a masked placeholder, and never while RESEND_API_KEY
-                // provides it (server/secrets.js): the environment is the source then.
-                if (api_key && !/\u2022/.test(api_key)) {
-                    if (await secrets.source(db, 'resend_api_key') === 'env') skipped.push('resend_api_key');
-                    else setSetting.run('resend_api_key', api_key, 'string');
-                }
+                // The Resend API key is environment-only (RESEND_API_KEY, server/secrets.js): never stored here.
+                if (api_key && !/\u2022/.test(api_key)) skipped.push('resend_api_key');
                 if (from_email) setSetting.run('email_from_address', from_email, 'string');
                 if (from_name !== undefined) setSetting.run('email_from_name', from_name || 'OpenVibe', 'string');
                 // Per-service from addresses
@@ -319,8 +315,12 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             const owner = isOwner(req.user);
             for (const r of rows) {
                 if (EMAIL_MANAGED_KEYS.has(r.key)) continue;
-                // Provider secrets set in the environment (server/secrets.js): the database copy is not
-                // used, and the value is never shown; the UI says which variable provides it.
+                // Provider secrets are environment-only (server/secrets.js): a database row is never used or
+                // shown; the UI says which variable provides it, or that it is not set.
+                if (secrets.isSecret(r.key)) {
+                    settings[r.key] = { value: '', type: r.type, source: await secrets.source(db, r.key), env: secrets.envName(r.key), redacted: true, secret: true };
+                    continue;
+                }
                 if (secrets.isManaged(r.key)) {
                     const src = await secrets.source(db, r.key);
                     if (src === 'env') { settings[r.key] = { value: '', type: r.type, source: 'env', env: secrets.envName(r.key), redacted: true }; continue; }
@@ -353,7 +353,11 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             if (typeof value === 'string' && /^••••/.test(value)) {
                 return res.json({ ok: true, skipped: true });
             }
-            // A provider secret the environment provides is never saved into the database.
+            // A provider secret is environment-only: never saved into the database.
+            if (secrets.isSecret(key)) {
+                return res.status(400).json({ ok: false, code: 'settings.secret_env_only', env: secrets.envName(key), error: `${key} is read from the environment only: set ${secrets.envName(key)} in /etc/openvibe/network.env and restart Network` });
+            }
+            // A companion the environment provides is not saved either.
             if (secrets.isManaged(key) && await secrets.source(db, key) === 'env') {
                 return res.json({ ok: true, skipped: true, source: 'env', env: secrets.envName(key), note: `set in the environment (${secrets.envName(key)}); not saved to the database` });
             }

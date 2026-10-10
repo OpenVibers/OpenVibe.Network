@@ -399,24 +399,9 @@ secret as "set in the environment" and never saves one into the database. `GET /
 `net.ipinfo_token`, `net.globalping_token` and the old `ses_*` keys are never read by Network (the Tools
 gateway reads `NET_IPINFO_TOKEN` / `NET_GLOBALPING_TOKEN` from its own env file).
 
-Moving them out of the database (operator):
-
-```bash
-cd /opt/openvibe.network
-sudo node scripts/secrets-out-of-db.js                 # dry run: names, env file and running service, per secret
-sudo node scripts/secrets-out-of-db.js --copy-to-env   # dry run of the copy into /etc/openvibe/network.env
-sudo node scripts/secrets-out-of-db.js --copy-to-env --apply   # appends VAR=value lines (backup: network.env.bak-<time>)
-sudo systemctl restart openvibe-network                # the boot line shows <key>=env
-sudo node scripts/secrets-out-of-db.js --apply --backup data/network-pre-secrets-$(date +%F).db
-# rollback: sudo node scripts/secrets-out-of-db.js --restore-from data/network-pre-secrets-<date>.db --apply
-```
-
-`--apply` blanks a database copy only when the env file sets the variable to the same value (a
-different one only with `--allow-different`) and the running service already has it, plus the secrets
-Network never reads; everything else is kept and the dry run says why. The script reads the env file
-and the service's environment as root, then becomes the database owner. It never prints a value:
-`--copy-to-env` reads the database in a child process running as its owner and hands the values to the
-env file through a pipe (a value that would need quoting is left for the operator to add by hand).
+Provider secrets are read from the environment only (`/etc/openvibe/network.env`): a `site_settings` row of the same
+key is ignored and no admin form stores one. The database fallback and its copy-out script were retired on 2026-10-10,
+once production held no database copy of any secret.
 
 ---
 
@@ -476,8 +461,6 @@ Contracts 0.49.0; `server/identity/blocks.js`). `user_blocks` is keyed by subjec
   (DMs, mentions) and Community (replies) keep projections from their own Events subscriptions.
 - Network's notifications: nothing is created from a person the recipient blocked (`sender_id` as a Network
   id, or `actor_subject`); moderation, system and admin notices always are.
-- Import (once, from Chat's `dm_blocks` export): `node scripts/import-blocks.js --file <json>` (dry run),
-  then `--apply`. Pairs Network already knows are left alone.
 
 ---
 

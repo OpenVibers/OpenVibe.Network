@@ -1,6 +1,6 @@
 'use strict';
-// The network's GitHub token (server/integrations/github.js): env first, else what the owner saves in admin;
-// admin never sees the value; only the owner changes it; Blog (network.integration.github.read) reads it
+// The network's GitHub token (server/integrations/github.js): environment-only (GITHUB_TOKEN); admin cannot store
+// or clear it and never sees the value; a database row is ignored; Blog (network.integration.github.read) reads it
 // over /internal with its service token and no other service can; the registry's library tags use it.
 const assert = require('assert');
 const crypto = require('crypto');
@@ -42,7 +42,7 @@ app.locals.publicKey = keys.publicKey;
 app.use('/oauth', require('../server/auth/oauth-routes'));
 app.use(async (req, _res, next) => { const u = req.headers['x-user']; req.user = u ? await db.prepare('SELECT id, username FROM users WHERE username = ?').get(u) : null; next(); });
 app.use('/api/admin/integrations/github', github.adminRouter(db, { fetchImpl: fakeGithub }));
-app.get('/internal/integrations/github-token', principals.guard('network.integration.github.read', { legacy: false }), github.internalHandler(db));
+app.get('/internal/integrations/github-token', principals.guard('network.integration.github.read'), github.internalHandler(db));
 const server = http.createServer(app);
 
 (async () => {
@@ -60,52 +60,44 @@ const server = http.createServer(app);
         assert.strictEqual(r.status, 200);
         assert.deepStrictEqual([r.body.github.set, r.body.github.source, r.body.github.env], [false, 'unset', 'GITHUB_TOKEN']);
 
-        // Validation, save, never echoed.
-        assert.strictEqual((await call('PUT', A, { user: 'goosely', body: { token: 'hunter2' } })).status, 400);
+        // Environment-only: admin cannot store or clear it, and a database row of the same key is ignored.
         r = await call('PUT', A, { user: 'goosely', body: { token: TOKEN } });
-        assert.strictEqual(r.status, 200, r.text);
-        assert.ok(!r.text.includes(TOKEN), 'the token is never sent back');
-        assert.deepStrictEqual([r.body.github.set, r.body.github.source, r.body.github.last4], [true, 'database', TOKEN.slice(-4)]);
-        assert.strictEqual(await github.tokenOf(db), TOKEN);
-        const audit = await db.prepare("SELECT details FROM audit_log WHERE action = 'integration_update'").all();
-        assert.strictEqual(audit.length, 1);
-        assert.ok(!audit[0].details.includes(TOKEN), 'the audit row keeps the last four only');
-        assert.ok(!(await call('GET', A, { user: 'goosely' })).text.includes(TOKEN));
-
-        // Test asks GitHub with the token.
-        r = await call('POST', A + '/test', { user: 'goosely' });
-        assert.deepStrictEqual([r.body.test.authenticated, r.body.test.limit, r.body.test.remaining], [true, 5000, 4999]);
-        assert.strictEqual(seen.pop(), `Bearer ${TOKEN}`);
-
-        // Blog reads it with its service token; another service and the legacy key cannot.
+        assert.strictEqual(r.status, 409);
+        assert.strictEqual(r.body.code, 'integration.secret_env_only');
+        assert.strictEqual(r.body.env, 'GITHUB_TOKEN');
+        assert.strictEqual((await call('DELETE', A, { user: 'goosely' })).status, 409);
+        await db.prepare("INSERT INTO site_settings (key, value, type) VALUES ('github_token', ?, 'secret') ON CONFLICT (key) DO UPDATE SET value = excluded.value").run(TOKEN);
+        assert.strictEqual(await github.tokenOf(db), null, 'a database copy is never used');
+        r = await call('GET', A, { user: 'goosely' });
+        assert.deepStrictEqual([r.body.github.set, r.body.github.source], [false, 'unset']);
         const blog = await svcToken('blog', 'blog-secret');
         assert.ok(blog.access_token, JSON.stringify(blog));
         assert.ok(blog.scope.split(' ').includes('network.integration.github.read'));
         r = await call('GET', '/internal/integrations/github-token', { headers: { authorization: `Bearer ${blog.access_token}` } });
+        assert.deepStrictEqual([r.status, r.body.error], [404, 'not_configured'], 'nothing configured: the database row does not count');
+        r = await call('POST', A + '/test', { user: 'goosely' });
+        assert.deepStrictEqual([r.body.test.authenticated, r.body.test.limit], [false, 60]);
+        assert.strictEqual(seen.pop(), null);
+
+        // From the environment: admin sees its source and last four, the test uses it, Blog reads it.
+        const ENV_TOKEN = 'ghp_' + 'Z'.repeat(36);
+        process.env.GITHUB_TOKEN = ENV_TOKEN;
+        r = await call('GET', A, { user: 'goosely' });
+        assert.deepStrictEqual([r.body.github.set, r.body.github.source, r.body.github.last4], [true, 'env', 'ZZZZ']);
+        assert.ok(!r.text.includes(ENV_TOKEN), 'the token is never sent to admin');
+        r = await call('POST', A + '/test', { user: 'goosely' });
+        assert.deepStrictEqual([r.body.test.authenticated, r.body.test.limit, r.body.test.remaining], [true, 5000, 4999]);
+        assert.strictEqual(seen.pop(), `Bearer ${ENV_TOKEN}`);
+        r = await call('GET', '/internal/integrations/github-token', { headers: { authorization: `Bearer ${blog.access_token}` } });
         assert.strictEqual(r.status, 200, r.text);
-        assert.deepStrictEqual(r.body, { token: TOKEN, source: 'database' });
+        assert.deepStrictEqual(r.body, { token: ENV_TOKEN, source: 'env' });
         assert.strictEqual(r.cache, 'no-store');
         const live = await svcToken('live', 'live-secret');
         assert.strictEqual((await call('GET', '/internal/integrations/github-token', { headers: { authorization: `Bearer ${live.access_token}` } })).status, 403, 'only blog holds the capability');
         assert.ok([401, 403].includes((await call('GET', '/internal/integrations/github-token', { headers: { 'x-internal-key': 'legacy-key' } })).status), 'no legacy key');
         assert.ok([401, 403].includes((await call('GET', '/internal/integrations/github-token')).status), 'no credential');
-
-        // Clear → 404 not_configured; the test falls back to anonymous.
-        r = await call('DELETE', A, { user: 'goosely' });
-        assert.deepStrictEqual([r.status, r.body.github.set], [200, false]);
-        r = await call('GET', '/internal/integrations/github-token', { headers: { authorization: `Bearer ${blog.access_token}` } });
-        assert.deepStrictEqual([r.status, r.body.error], [404, 'not_configured']);
-        r = await call('POST', A + '/test', { user: 'goosely' });
-        assert.deepStrictEqual([r.body.test.authenticated, r.body.test.limit], [false, 60]);
-        assert.strictEqual(seen.pop(), null);
-
-        // The environment wins and cannot be changed from admin.
-        process.env.GITHUB_TOKEN = 'ghp_' + 'Z'.repeat(36);
-        r = await call('GET', A, { user: 'goosely' });
-        assert.deepStrictEqual([r.body.github.source, r.body.github.last4], ['env', 'ZZZZ']);
-        assert.strictEqual((await call('PUT', A, { user: 'goosely', body: { token: TOKEN } })).status, 409);
-        assert.strictEqual((await call('DELETE', A, { user: 'goosely' })).status, 409);
-        assert.strictEqual(await github.tokenOf(db), process.env.GITHUB_TOKEN);
+        assert.strictEqual((await call('PUT', A, { user: 'goosely', body: { token: TOKEN } })).status, 409, 'still not changeable from admin');
+        assert.strictEqual(await github.tokenOf(db), ENV_TOKEN);
         delete process.env.GITHUB_TOKEN;
 
         // The registry's library tags read the token at call time.

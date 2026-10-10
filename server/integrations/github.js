@@ -3,9 +3,9 @@
  * The network's GitHub API token (read-only, public repositories). GitHub allows 60 anonymous
  * requests an hour per address, shared by everything on the host; with a token it is 5,000.
  *
- * Where it comes from (server/secrets.js, key github_token): GITHUB_TOKEN in network.env first, else
- * the value the owner saves in admin (Settings → GitHub). The value is never shown or logged: admin
- * sees its source and last four characters, and a test that asks GitHub for the token's rate limit.
+ * Where it comes from (server/secrets.js, key github_token): GITHUB_TOKEN in network.env, nowhere else
+ * (provider secrets are environment-only). The value is never shown or logged: admin sees whether it is
+ * set, its last four characters, and a test that asks GitHub for the token's rate limit.
  *
  * Who reads it:
  *   Network itself         the registry's library tags (server/registry/library-tags.js)
@@ -48,20 +48,10 @@ function adminRouter(db, { fetchImpl = globalThis.fetch } = {}) {
     const r = express.Router();
     r.use(requireOwner);
     r.get('/', async (req, res) => res.json({ ok: true, github: await status(db) }));
-    r.put('/', express.json({ limit: '4kb' }), async (req, res) => {
-        if (await secrets.source(db, KEY) === 'env') return res.status(409).json({ ok: false, error: `Set in the environment (${secrets.envName(KEY)}); change it there` });
-        const token = String((req.body && req.body.token) || '').trim();
-        if (!TOKEN_RE.test(token)) return res.status(400).json({ ok: false, error: 'That does not look like a GitHub token (ghp_…, github_pat_…)' });
-        await db.prepare('INSERT INTO site_settings (key, value, type) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, type = excluded.type').run(KEY, token, 'secret');
-        await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'integration_update', JSON.stringify({ integration: 'github', last4: token.slice(-4) }));
-        res.json({ ok: true, github: await status(db) });
-    });
-    r.delete('/', async (req, res) => {
-        if (await secrets.source(db, KEY) === 'env') return res.status(409).json({ ok: false, error: `Set in the environment (${secrets.envName(KEY)}); change it there` });
-        await db.prepare("UPDATE site_settings SET value = '' WHERE key = ?").run(KEY);
-        await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'integration_update', JSON.stringify({ integration: 'github', cleared: true }));
-        res.json({ ok: true, github: await status(db) });
-    });
+    // The token is environment-only: admin cannot store or clear it (set or remove GITHUB_TOKEN in network.env).
+    const envOnly = (req, res) => res.status(409).json({ ok: false, code: 'integration.secret_env_only', env: secrets.envName(KEY), error: `The GitHub token is read from the environment only: set ${secrets.envName(KEY)} in /etc/openvibe/network.env and restart Network` });
+    r.put('/', envOnly);
+    r.delete('/', envOnly);
     r.post('/test', async (req, res) => {
         try { res.json({ ok: true, test: await test(await tokenOf(db), fetchImpl) }); }
         catch (err) { res.status(502).json({ ok: false, error: `GitHub could not be reached: ${err.message}` }); }
