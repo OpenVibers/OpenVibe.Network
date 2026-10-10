@@ -68,7 +68,8 @@ const quiet = async (fn) => { const l = console.log, w = console.warn; console.l
     r = await quiet(() => call('PUT', '/api/admin/discord', { settings: { discord_dedupe_minutes: '15', discord_bot_token: 'example-new-bot-token' } }));
     assert.strictEqual(r.status, 200, JSON.stringify(r.body));
     assert.deepStrictEqual(await row('discord_dedupe_minutes'), { value: '15', type: 'number' });
-    assert.deepStrictEqual(await row('discord_bot_token'), { value: 'example-new-bot-token', type: 'secret' }, 'a secret row stays a secret row');
+    assert.deepStrictEqual(r.body.skipped, ['discord_bot_token'], 'a provider secret is environment-only: never stored');
+    assert.deepStrictEqual(await row('discord_bot_token'), { value: 'example-bot-token-not-real', type: 'secret' }, 'the row is left as it was');
 
     // ── Written around the journal: recorded first, never reverted ──
     await set.run('email_daily_cap', '777', 'number');
@@ -90,7 +91,7 @@ const quiet = async (fn) => { const l = console.log, w = console.warn; console.l
     // ── Rollback undoes the last change only; the secret and the outside row stay ──
     r = await quiet(() => call('POST', '/api/admin/config/network.site_settings/rollback', { reason: 'too many' }));
     assert.strictEqual(r.status, 200, JSON.stringify(r.body));
-    assert.deepStrictEqual([(await row('stream_live_daily_cap')).value, (await row('email_daily_cap')).value, (await row('discord_bot_token')).value], ['9', '777', 'example-new-bot-token']);
+    assert.deepStrictEqual([(await row('stream_live_daily_cap')).value, (await row('email_daily_cap')).value, (await row('discord_bot_token')).value], ['9', '777', 'example-bot-token-not-real']);
     assert.strictEqual((await call('POST', '/api/admin/config/other.namespace/rollback', {})).status, 404);
 
     // Only the owner reads or rolls back the configuration.

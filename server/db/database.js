@@ -318,10 +318,11 @@ function attachHelpers(db) {
     // shape (a runner the caller invokes, possibly more than once, e.g. a dry-run path).
     db.txFn = (fn) => async (...args) => await db.tx(() => fn(...args));
 
-    // Provider secrets come from their environment variable when it is set.
+    // Provider secrets come from their environment variable only; companions environment-first.
     db.getSetting = async function (key) {
         const fromEnv = secrets.fromEnv(key);
         if (fromEnv !== null) return fromEnv;
+        if (secrets.isSecret(key)) return null;
         const row = await db.prepare('SELECT value, type FROM site_settings WHERE key = ?').get(key);
         if (!row) return null;
         if (row.type === 'boolean') return row.value === 'true';

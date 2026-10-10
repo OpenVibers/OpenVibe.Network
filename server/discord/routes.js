@@ -53,8 +53,8 @@ module.exports = function createDiscordRoutes(db, discordService, requireAuth, r
         const skipped = [];
         for (const [key, value] of Object.entries(settings)) {
             if (!allowedKeys.includes(key)) continue;
-            // Never save a secret into the database while its environment variable provides it.
-            if (secrets.isManaged(key) && await secrets.source(db, key) === 'env') { if (String(value ?? '').trim() && String(value).trim() !== '••••••••') skipped.push(key); continue; }
+            // Provider secrets are environment-only (server/secrets.js): never saved into the database.
+            if (secrets.isSecret(key)) { if (String(value ?? '').trim() && String(value).trim() !== '••••••••') skipped.push(key); continue; }
             // Bot token / OAuth secret are owner-only — silently skip for admins.
             if (isSensitiveSettingKey(key) && !owner) continue;
             const strVal = String(value ?? '').trim();

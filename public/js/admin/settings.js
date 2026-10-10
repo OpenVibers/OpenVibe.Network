@@ -363,10 +363,11 @@ async function saveStreamerSettings() {
 // ═══════════════════════════════════════════════════════════════
 // A secret input for a provider secret: disabled when its environment variable provides it (server/secrets.js).
 function envSecretInput(sources, key, value, placeholder, style) {
+    // Provider secrets are environment-only (server/secrets.js): the field shows where it comes from and never edits it.
     const src = (sources || {})[key] || {};
-    if (src.source === 'env') return `<input type="password" data-key="${esc(key)}" value="" placeholder="Set in the environment (${esc(src.env || '')})" disabled style="${style}">`;
-    return `<input type="password" data-key="${esc(key)}" value="${esc(value || '')}" placeholder="${esc(placeholder)}" style="${style}">`
-        + (src.source === 'database' && src.env ? `<div class="muted" style="font-size:12px;margin-top:4px">Stored in the database; prefer <code>${esc(src.env)}</code> in the server's environment file.</div>` : '');
+    const env = esc(src.env || '');
+    const label = src.source === 'env' ? `Set in the environment (${env})` : `Not set: add ${env} to /etc/openvibe/network.env and restart Network`;
+    return `<input type="password" data-key="${esc(key)}" value="" placeholder="${label}" disabled style="${style}">`;
 }
 
 async function loadDiscordSettings() {
@@ -441,35 +442,19 @@ async function loadGithubSettings() {
     c.innerHTML = '<p class="muted">Loading…</p>';
     try {
         const g = (await api('/api/admin/integrations/github')).github || {};
-        const where = g.source === 'env' ? `set in the environment (<code>${esc(g.env)}</code>)` : g.source === 'database' ? 'saved here' : 'not set';
-        const badge = g.set ? `<span class="badge" style="background:var(--success-bg,#166534);color:var(--success-text,#4ade80)">● Token …${esc(g.last4 || '')} (${where})</span>` : `<span class="badge badge-warning">● No token: anonymous, 60 requests an hour for the whole host</span>`;
+        const env = esc(g.env || 'GITHUB_TOKEN');
+        const badge = g.set ? `<span class="badge" style="background:var(--success-bg,#166534);color:var(--success-text,#4ade80)">● Token …${esc(g.last4 || '')} (set in the environment)</span>` : `<span class="badge badge-warning">● No token: anonymous, 60 requests an hour for the whole host</span>`;
         c.innerHTML = `
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
                 <h3 style="margin:0"><i class="fa-brands fa-github"></i> GitHub</h3>${badge}
             </div>
-            <p class="muted" style="max-width:720px">A read-only token for public repositories. With it, GitHub allows 5,000 requests an hour instead of the 60 an hour this host shares without one. Used by: ${(g.used_by || []).map(esc).join('; ')}. Create a fine-grained token with <b>public repositories, read-only</b> access and no other permissions. The token is never shown again after saving.</p>
-            ${g.source === 'env' ? `<p class="muted">It comes from <code>${esc(g.env)}</code> in the server's environment file; change it there.</p>` : `
-            <div class="setting-row"><label for="github-token-input">Token</label>
-                <input type="password" id="github-token-input" autocomplete="off" placeholder="${g.set ? 'Replace the saved token' : 'github_pat_… or ghp_…'}" style="width:100%;max-width:520px"></div>`}
+            <p class="muted" style="max-width:720px">A read-only token for public repositories. With it, GitHub allows 5,000 requests an hour instead of the 60 an hour this host shares without one. Used by: ${(g.used_by || []).map(esc).join('; ')}.</p>
+            <p class="muted" style="max-width:720px">Provider secrets live in the server's environment only, never in the database. ${g.set ? `This one comes from <code>${env}</code>; change it there.` : `To add one, create a fine-grained token with <b>public repositories, read-only</b> access and no other permissions, set <code>${env}</code> in <code>/etc/openvibe/network.env</code>, and restart Network.`}</p>
             <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-                ${g.source === 'env' ? '' : '<button type="button" class="btn btn-primary" onclick="saveGithubToken()"><i class="fa-solid fa-save"></i> Save token</button>'}
                 <button type="button" class="btn btn-outline" onclick="testGithubToken()"><i class="fa-solid fa-plug"></i> Test</button>
-                ${g.source === 'database' ? '<button type="button" class="btn btn-outline" onclick="clearGithubToken()"><i class="fa-solid fa-trash"></i> Remove</button>' : ''}
             </div>
             <div id="github-test-result" class="muted" style="margin-top:10px"></div>`;
     } catch (e) { c.innerHTML = `<p class="muted">GitHub settings could not be loaded: ${esc(e.message)}</p>`; }
-}
-async function saveGithubToken() {
-    const el = document.getElementById('github-token-input');
-    const token = (el && el.value || '').trim();
-    if (!token) return toast('Paste a token first', 'error');
-    try { await api('/api/admin/integrations/github', { method: 'PUT', body: { token } }); el.value = ''; toast('GitHub token saved'); await loadGithubSettings(); testGithubToken(); }
-    catch (e) { toast(e.message, 'error'); }
-}
-async function clearGithubToken() {
-    if (!confirm('Remove the saved GitHub token? GitHub calls go back to the shared anonymous limit.')) return;
-    try { await api('/api/admin/integrations/github', { method: 'DELETE' }); toast('GitHub token removed'); loadGithubSettings(); }
-    catch (e) { toast(e.message, 'error'); }
 }
 async function testGithubToken() {
     const out = document.getElementById('github-test-result');

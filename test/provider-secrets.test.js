@@ -1,9 +1,7 @@
 'use strict';
-// Provider secrets (roadmap §18.2(12), server/secrets.js): read from the environment first, the database
-// only as a fallback, and the source is reported by name; the admin UI never saves a secret into the
-// database while the environment provides it; scripts/secrets-out-of-db.js lists names only and blanks
-// the database copies (with a backup, and a rollback) once the environment and the running service
-// have them.
+// Provider secrets (roadmap §18.2(12), server/secrets.js): read from the environment only. A site_settings row of
+// the same key is never used, the source is reported by name ('env' or 'unset'), and no admin path stores a secret
+// in the database. The companions (VAPID public key) stay environment-first with a database fallback.
 //   node test/provider-secrets.test.js
 const assert = require('assert');
 const fs = require('fs');
@@ -34,21 +32,22 @@ const quiet = async (fn) => { const l = console.log, w = console.warn; console.l
     await set.run('ses_secret_access_key', 'ses-666', 'string');
     await set.run('some_new_api_key', 'unknown-777', 'string');
 
-    // ── Environment first, database fallback ──
-    assert.strictEqual(await db.getSetting('resend_api_key'), 're_db_key_111', 'no variable: the database value');
-    assert.strictEqual(await secrets.source(db, 'resend_api_key'), 'database');
+    // ── Environment only ──
+    assert.strictEqual(await db.getSetting('resend_api_key'), null, 'a database copy is never used');
+    assert.strictEqual(await secrets.source(db, 'resend_api_key'), 'unset');
     process.env.RESEND_API_KEY = 're_env_key_999';
-    assert.strictEqual(await db.getSetting('resend_api_key'), 're_env_key_999', 'the variable wins');
+    assert.strictEqual(await db.getSetting('resend_api_key'), 're_env_key_999', 'the variable is the source');
     assert.strictEqual(await secrets.source(db, 'resend_api_key'), 'env');
     process.env.RESEND_API_KEY = '   ';
-    assert.strictEqual(await db.getSetting('resend_api_key'), 're_db_key_111', 'a blank variable is unset');
+    assert.strictEqual(await db.getSetting('resend_api_key'), null, 'a blank variable is unset, and the database copy still does not count');
     process.env.RESEND_API_KEY = 're_env_key_999';
-    assert.strictEqual(await secrets.source(db, 'resend_webhook_secret'), 'database');
+    assert.strictEqual(await secrets.source(db, 'resend_webhook_secret'), 'unset');
     assert.strictEqual(await db.getSetting('email_user_daily_cap'), 30, 'other settings are untouched');
     const rep = await secrets.report(db);
     assert.deepStrictEqual(rep.filter(r => r.secret).map(r => r.key), ['resend_api_key', 'resend_webhook_secret', 'discord_bot_token', 'discord_oauth_client_secret', 'vapid_private_key', 'github_token']);
     assert.ok(!JSON.stringify(rep).includes('re_env_key_999') && !JSON.stringify(rep).includes('re_db_key_111'), 'the report carries no value');
-    assert.match(await secrets.summary(db), /resend_api_key=env resend_webhook_secret=database discord_bot_token=database/);
+    assert.ok(rep.find(r => r.key === 'discord_bot_token').database_copy, 'the report still says a stray database copy exists (for clean-up)');
+    assert.match(await secrets.summary(db), /resend_api_key=env resend_webhook_secret=unset discord_bot_token=unset/);
 
     // The email service reads it through db.getSetting, and says where it came from.
     const { EmailService } = require('../server/notifications/email-service');
@@ -89,122 +88,40 @@ const quiet = async (fn) => { const l = console.log, w = console.warn; console.l
     const byKey = Object.fromEntries(r.body.secrets.map(s => [s.key, s]));
     assert.strictEqual(byKey.resend_api_key.source, 'env');
     assert.strictEqual(byKey.resend_api_key.env, 'RESEND_API_KEY');
-    assert.strictEqual(byKey.discord_bot_token.source, 'database');
+    assert.strictEqual(byKey.discord_bot_token.source, 'unset');
     assert.strictEqual(byKey.vapid_private_key.source, 'env');
     assert.ok(!JSON.stringify(r.body).match(/re_env_key_999|re_db_key_111|db\.bot\.token|whsec_db/), 'names and sources only');
 
-    // Email: the key from the environment is not saved over.
+    // Email: a key typed in the UI is never stored.
     r = await call('PUT', '/api/admin/email', { api_key: 're_typed_in_ui', from_name: 'OpenVibe' });
     assert.strictEqual(r.status, 200);
     assert.deepStrictEqual(r.body.skipped, ['resend_api_key']);
-    assert.strictEqual(await dbVal('resend_api_key'), 're_db_key_111', 'the database copy is not overwritten');
+    assert.strictEqual(await dbVal('resend_api_key'), 're_db_key_111', 'the database row is left as it was, and unused');
 
-    // Generic settings: an env-provided secret shows no value and cannot be saved; a database one can.
+    // Generic settings: a secret shows no value (env or not) and can never be saved.
     process.env.RESEND_WEBHOOK_SECRET = 'whsec_env_888';
     r = await call('GET', '/api/admin/settings');
-    assert.deepStrictEqual(r.body.settings.resend_webhook_secret, { value: '', type: 'string', source: 'env', env: 'RESEND_WEBHOOK_SECRET', redacted: true });
-    assert.strictEqual(r.body.settings.discord_bot_token.source, 'database');
-    r = await call('PUT', '/api/admin/settings', { key: 'resend_webhook_secret', value: 'whsec_from_ui', type: 'string' });
-    assert.strictEqual(r.body.skipped, true);
-    assert.strictEqual(r.body.env, 'RESEND_WEBHOOK_SECRET');
-    assert.strictEqual(await dbVal('resend_webhook_secret'), 'whsec_db_222', 'not saved while the environment provides it');
+    assert.deepStrictEqual(r.body.settings.resend_webhook_secret, { value: '', type: 'string', source: 'env', env: 'RESEND_WEBHOOK_SECRET', redacted: true, secret: true });
+    assert.deepStrictEqual(r.body.settings.discord_bot_token, { value: '', type: 'secret', source: 'unset', env: 'DISCORD_BOT_TOKEN', redacted: true, secret: true }, 'a database value is never shown');
     delete process.env.RESEND_WEBHOOK_SECRET;
     r = await call('PUT', '/api/admin/settings', { key: 'resend_webhook_secret', value: 'whsec_from_ui', type: 'string' });
-    assert.ok(!r.body.skipped);
-    assert.strictEqual(await dbVal('resend_webhook_secret'), 'whsec_from_ui', 'saved when the environment does not provide it');
-    await set.run('resend_webhook_secret', 'whsec_db_222', 'string');
+    assert.strictEqual(r.status, 400);
+    assert.strictEqual(r.body.code, 'settings.secret_env_only');
+    assert.strictEqual(r.body.env, 'RESEND_WEBHOOK_SECRET');
+    assert.strictEqual(await dbVal('resend_webhook_secret'), 'whsec_db_222', 'not saved, even with the variable unset');
 
     // Discord: the same rule.
     process.env.DISCORD_BOT_TOKEN = 'env.bot.token';
     r = await call('GET', '/api/admin/discord');
     assert.strictEqual(r.body.sources.discord_bot_token.source, 'env');
-    assert.strictEqual(r.body.sources.discord_oauth_client_secret.source, 'database');
-    r = await call('PUT', '/api/admin/discord', { settings: { discord_bot_token: 'typed.token', discord_guild_id: '42' } });
-    assert.deepStrictEqual(r.body.skipped, ['discord_bot_token']);
+    assert.strictEqual(r.body.sources.discord_oauth_client_secret.source, 'unset');
+    r = await call('PUT', '/api/admin/discord', { settings: { discord_bot_token: 'typed.token', discord_oauth_client_secret: 'typed-secret', discord_guild_id: '42' } });
+    assert.deepStrictEqual(r.body.skipped, ['discord_bot_token', 'discord_oauth_client_secret']);
     assert.strictEqual(await dbVal('discord_bot_token'), 'db.bot.token.333');
+    assert.strictEqual(await dbVal('discord_oauth_client_secret'), 'db-oauth-secret-444');
     assert.strictEqual(await dbVal('discord_guild_id'), '42', 'other Discord settings still save');
+    delete process.env.DISCORD_BOT_TOKEN;
     server.close();
-
-    // ── scripts/secrets-out-of-db.js ──
-    const script = require('../scripts/secrets-out-of-db');
-    const envFile = path.join(dir, 'network.env');
-    // The env file before the move: one rotated value already there, one variable present but empty.
-    fs.writeFileSync(envFile, ['NODE_ENV=production', 'DISCORD_OAUTH_CLIENT_SECRET=rotated-secret', 'RESEND_WEBHOOK_SECRET=', ''].join('\n'), { mode: 0o600 });
-    const out = [];
-    const running = { vars: { RESEND_API_KEY: 're_db_key_111', DISCORD_BOT_TOKEN: 'db.bot.token.333', DISCORD_OAUTH_CLIENT_SECRET: 'rotated-secret' }, pid: 4242 };
-    const run = (argv, service = running) => script.main(['--env-file', envFile, ...argv], (m) => out.push(m), { readService: () => service, db });
-    const values = ['re_db_key_111', 'whsec_db_222', 'db.bot.token.333', 'db-oauth-secret-444', 'ipinfo-555', 'ses-666', 'unknown-777', 'rotated-secret'];
-    const noValues = () => { const text = out.join('\n'); for (const v of values) assert.ok(!text.includes(v), `the script never prints a value (${v.slice(0, 3)}…)`); };
-
-    // --copy-to-env: the values move from the database into the env file without being shown.
-    assert.strictEqual(await run(['--copy-to-env']), 0);
-    let text = out.join('\n');
-    assert.match(text, /RESEND_API_KEY: would be appended/);
-    assert.match(text, /RESEND_WEBHOOK_SECRET: would be appended/, 'an empty variable counts as unset');
-    assert.match(text, /DISCORD_BOT_TOKEN: would be appended/);
-    assert.match(text, /DISCORD_OAUTH_CLIENT_SECRET: already in the env file \(DIFFERENT value, left as it is\)/);
-    assert.match(text, /VAPID_PRIVATE_KEY: the database holds no vapid_private_key/);
-    assert.ok(!fs.readFileSync(envFile, 'utf8').includes('RESEND_API_KEY'), 'the dry run writes nothing');
-    assert.strictEqual(await run(['--copy-to-env', '--apply']), 0);
-    const envText = fs.readFileSync(envFile, 'utf8');
-    assert.ok(envText.includes('\nRESEND_API_KEY=re_db_key_111\n') && envText.includes('\nDISCORD_BOT_TOKEN=db.bot.token.333\n') && envText.includes('\nRESEND_WEBHOOK_SECRET=whsec_db_222\n'), 'appended');
-    assert.ok(envText.startsWith('NODE_ENV=production\nDISCORD_OAUTH_CLIENT_SECRET=rotated-secret\n'), 'the existing lines are untouched');
-    assert.strictEqual(fs.statSync(envFile).mode & 0o777, 0o600, 'the env file keeps its mode');
-    const baks = fs.readdirSync(dir).filter(f => f.startsWith('network.env.bak-'));
-    assert.strictEqual(baks.length, 1, 'the previous env file is kept');
-    assert.ok(!fs.readFileSync(path.join(dir, baks[0]), 'utf8').includes('RESEND_API_KEY'));
-    assert.strictEqual(require('util').parseEnv(envText).RESEND_WEBHOOK_SECRET, 'whsec_db_222', 'the later assignment wins');
-    noValues();
-
-    out.length = 0;
-    assert.strictEqual(await run([]), 0);
-    noValues();
-    text = out.join('\n');
-    for (const k of ['resend_api_key', 'resend_webhook_secret', 'discord_bot_token', 'discord_oauth_client_secret', 'vapid_private_key', 'net.ipinfo_token', 'ses_secret_access_key', 'some_new_api_key']) assert.ok(text.includes(`  ${k}\n`), `lists ${k}`);
-    assert.ok(!text.includes('  discord_oauth_client_id\n') && !text.includes('  vapid_public_key\n'), 'non-secrets are not listed');
-    assert.match(text, /resend_api_key\n.*env file: set, same value · service: has it\n\s+--apply: BLANK/);
-    assert.match(text, /resend_webhook_secret\n.*env file: set, same value · service: not set \(restart it\)\n\s+--apply: keep: the running service does not have this RESEND_WEBHOOK_SECRET yet/);
-    assert.match(text, /discord_oauth_client_secret\n.*DIFFERENT value.*\n\s+--apply: keep: the env file value differs/);
-    assert.match(text, /net\.ipinfo_token\n.*\n\s+--apply: BLANK \(Network never reads it/);
-    assert.match(text, /some_new_api_key\n.*\n\s+--apply: keep: not classified/);
-    assert.strictEqual(await dbVal('resend_api_key'), 're_db_key_111', 'the dry run changes nothing');
-
-    out.length = 0;
-    assert.strictEqual(await run(['--apply']), 2, '--apply refuses without --backup');
-    // A service that was not restarted after the env file changed keeps its database copy.
-    out.length = 0;
-    const backup = path.join(dir, 'pre-secrets.json');
-    assert.strictEqual(await run(['--apply', '--backup', backup], { vars: { RESEND_API_KEY: 're_db_key_111' }, pid: 1 }), 0);
-    assert.strictEqual(await dbVal('resend_api_key'), '', 'blanked: env file and running service have it');
-    assert.strictEqual(await dbVal('discord_bot_token'), 'db.bot.token.333', 'kept: the running service does not have DISCORD_BOT_TOKEN yet');
-    assert.strictEqual(await dbVal('discord_oauth_client_secret'), 'db-oauth-secret-444', 'kept: different value');
-    assert.strictEqual(await dbVal('resend_webhook_secret'), 'whsec_db_222', 'kept: the running service does not have it');
-    assert.strictEqual(await dbVal('net.ipinfo_token'), '', 'unused secret blanked');
-    assert.strictEqual(await dbVal('ses_secret_access_key'), '', 'unused secret blanked');
-    assert.strictEqual(await dbVal('some_new_api_key'), 'unknown-777', 'unclassified left alone');
-    assert.strictEqual(fs.statSync(backup).mode & 0o777, 0o600, 'the backup is owner-only');
-    noValues();
-    // After the restart, and with --allow-different for the rotated one.
-    out.length = 0;
-    assert.strictEqual(await run(['--apply', '--backup', path.join(dir, 'pre-secrets-2.json'), '--allow-different']), 0);
-    assert.strictEqual(await dbVal('discord_bot_token'), '');
-    assert.strictEqual(await dbVal('discord_oauth_client_secret'), '', '--allow-different blanks a differing copy');
-    assert.strictEqual(await dbVal('resend_webhook_secret'), 'whsec_db_222', 'still kept until the service has it');
-    noValues();
-    // An unreadable env file refuses --apply.
-    out.length = 0;
-    assert.strictEqual(await script.main(['--env-file', path.join(dir, 'missing.env'), '--apply', '--backup', path.join(dir, 'x.json')], (m) => out.push(m), { readService: () => running, db }), 2);
-
-    // Rollback from the first backup: every blanked value comes back; nothing printed.
-    out.length = 0;
-    assert.strictEqual(await script.main(['--restore-from', backup], (m) => out.push(m), { db }), 0);
-    assert.strictEqual(await dbVal('discord_bot_token'), '', 'the rollback dry run changes nothing');
-    assert.strictEqual(await script.main(['--restore-from', backup, '--apply'], (m) => out.push(m), { db }), 0);
-    assert.strictEqual(await dbVal('resend_api_key'), 're_db_key_111');
-    assert.strictEqual(await dbVal('discord_bot_token'), 'db.bot.token.333');
-    assert.strictEqual(await dbVal('net.ipinfo_token'), 'ipinfo-555');
-    assert.strictEqual(await dbVal('discord_oauth_client_secret'), 'db-oauth-secret-444', 'restored from the backup taken before it was blanked');
-    noValues();
 
     for (const n of ENV_NAMES) delete process.env[n];
     console.log('provider secrets: all checks passed');
