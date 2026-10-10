@@ -80,7 +80,8 @@ function createAvatarService({ db, config, requireAuth, selfToken = () => null, 
         if (!Object.keys(auth).length) return { ok: false, status: 503, error: 'Picture import is not configured on this server' };
         try {
             const r = await fetch(`${media.replace(/\/$/, '')}/internal/avatar-ingest`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth },
-                body: JSON.stringify({ url, user_id: user.id, username: user.username }), signal: AbortSignal.timeout(20000) });
+                // subject: the picture's owner on Media's object, in the network-wide id space (user_id is Network's own).
+                body: JSON.stringify({ url, user_id: user.id, username: user.username, subject: user.subject_id || null }), signal: AbortSignal.timeout(20000) });
             const j = await r.json().catch(() => ({}));
             if (!r.ok || !j.ok) return { ok: false, status: r.status === 404 ? 503 : 422, error: j.error || 'That picture could not be imported' };
             const back = normalizeAvatar(j.url);            // trust nothing: the answer must itself be an openvibe.media address

@@ -240,7 +240,7 @@ function inventory(root) {
     const ingested = [];
     const media = http.createServer((req, res) => {
         let b = ''; req.on('data', (d) => { b += d; });
-        req.on('end', () => { try { ingested.push({ path: req.url, url: JSON.parse(b).url }); } catch { /* */ } res.writeHead(422, { 'content-type': 'application/json' }).end('{"ok":false,"error":"refused"}'); });
+        req.on('end', () => { try { const j = JSON.parse(b); ingested.push({ path: req.url, url: j.url, subject: j.subject }); } catch { /* */ } res.writeHead(422, { 'content-type': 'application/json' }).end('{"ok":false,"error":"refused"}'); });
     });
     await new Promise((r) => media.listen(0, '127.0.0.1', r));
     const w = await buildWorld({ label: 'ssrf', env: { OV_MEDIA_INTERNAL_URL: `http://127.0.0.1:${media.address().port}` } });
@@ -270,6 +270,7 @@ function inventory(root) {
         assert.match(gh.text, /no egress to api\.github\.com|could not be reached/, 'the GitHub integration test goes to api.github.com only (the egress guard refuses the socket; undici surfaces it as a fetch failure)');
         assert.ok(ingested.length >= 10 && ingested.every((x) => x.path === '/internal/avatar-ingest'), `avatar imports went to Media's ingest instead (${ingested.length})`);
         assert.ok(ingested.some((x) => x.url === `https://127.0.0.1:${T}/a.png`), 'Media was asked to import the URL; Network did not fetch it');
+        assert.ok(ingested.every((x) => x.subject === w.users.alice.subject), 'the import names its owner by subject, so Media records it on the object');
     } finally {
         await target.close();
         await new Promise((r) => media.close(r));
