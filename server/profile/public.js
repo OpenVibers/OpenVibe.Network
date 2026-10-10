@@ -349,7 +349,7 @@ a{color:var(--accent)}
 .pf-card a{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 10px;border-radius:12px;border:1px solid var(--border);border-bottom:3px solid var(--rc);background:var(--bg-secondary);text-decoration:none;color:inherit;text-align:center;height:100%}
 .pf-card a:hover,.pf-card a:focus-visible{border-color:var(--rc);background:color-mix(in srgb,var(--rc) 8%,var(--bg-secondary))}
 .pf-card-name{font-size:.85rem;font-weight:600;overflow-wrap:anywhere}
-.pf-worn-tag{position:absolute;top:6px;right:6px;font-size:.62rem;font-weight:700;padding:.05rem .4rem;border-radius:999px;background:var(--accent);color:var(--on-accent,#fff)}
+.pf-worn-tag{position:absolute;top:6px;right:6px;font-size:.62rem;font-weight:700;padding:.05rem .4rem;border-radius:999px;background:var(--accent-strong, var(--accent, #3472d8));color:var(--on-accent-strong, var(--on-accent,#fff))}
 .pf-art{display:inline-flex;align-items:center;justify-content:center;border-radius:12px;background:radial-gradient(circle at 50% 35%,color-mix(in srgb,var(--rc) 30%,transparent),color-mix(in srgb,var(--rc) 8%,var(--bg-card)));flex:none;overflow:hidden}
 .pf-art-md{width:56px;height:56px;font-size:28px}.pf-art-lg{width:68px;height:68px;font-size:34px}
 .pf-art img{width:100%;height:100%;object-fit:cover}

@@ -37,7 +37,7 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 .section-tabs button:hover:not(.active){color:var(--text)}
 
 /* Approvals (my/approvals.js): one row per waiting request, and the count on its tab */
-.section-tabs .tab-badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:9px;background:var(--accent);color:#fff;font-size:11px;line-height:18px;text-align:center}
+.section-tabs .tab-badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:9px;background:var(--accent-strong, var(--accent, #3472d8));color:var(--on-accent-strong, var(--on-accent, #fff));font-size:11px;line-height:18px;text-align:center}
 .approval{border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;background:var(--bg-secondary)}
 .approval-summary{font-weight:600;color:var(--text);margin-bottom:6px;overflow-wrap:anywhere}
 .approval-meta{font-size:12px;color:var(--text-secondary);margin-bottom:10px;overflow-wrap:anywhere}
@@ -86,7 +86,7 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 .btn{
     padding:8px 20px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;
 }
-.btn-primary{background:var(--accent);color:var(--on-accent,#fff)}
+.btn-primary{background:var(--accent-strong, var(--accent, #3472d8));color:var(--on-accent-strong, var(--on-accent,#fff))}
 .btn-primary:hover{background:var(--accent-dark)}
 .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
 .btn-outline:hover{border-color:var(--accent-dark);color:var(--accent-light)}
