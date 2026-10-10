@@ -122,9 +122,6 @@ const valid = (e) => {
         assert.strictEqual(await db.tx(async () => await follows.onSubjectRemoved(db, CAT)), 1);
         assert.deepStrictEqual((await events()).pop().payload.reason, 'account_removed');
 
-        // The Live backfill and its reconciliation used to be exercised here through the one-time
-        // scripts/follows-backfill.js (retired in plan T2); importFollows() itself is covered by
-        // test/follow-notify.test.js.
     } finally {
         server.close();
         fs.rmSync(dir, { recursive: true, force: true });

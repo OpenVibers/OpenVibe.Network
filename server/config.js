@@ -63,8 +63,7 @@ module.exports = {
     // Database (ADR-035, plan T2): PostgreSQL through PgBouncer in production. `url` (DATABASE_URL) serves
     // requests; `directUrl` (DATABASE_DIRECT_URL, the owner role on a direct connection) runs migrations.
     // Without DATABASE_URL, development and tests run an embedded PGlite database in `pgliteDir`
-    // (PGLITE_DIR overrides it); production refuses to boot. There is no SQLite file: DB_PATH is read only
-    // by the one-time import tools (scripts/migrate-to-postgres.js, scripts/pg-preflight-collisions.js).
+    // (PGLITE_DIR overrides it); production refuses to boot.
     db: {
         url: process.env.DATABASE_URL || '',
         directUrl: process.env.DATABASE_DIRECT_URL || '',

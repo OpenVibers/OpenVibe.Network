@@ -3,7 +3,7 @@
 *2026-09-18. Supersedes the two earlier drafts (the "kernel / product domains" map and the
 "finish the monorepo runtime" prompt). Both were written for a monorepo that was never built;
 this plan is written for the codebase as it actually exists: one repo per property, the shared
-`openvibe-shared` package published from the Network, one host, nginx, SQLite, no Redis.*
+`openvibe-shared` package published from the Network, one host, nginx, PostgreSQL and Valkey.*
 
 ## 1. The idea, in one paragraph
 
@@ -71,8 +71,7 @@ behind Live; Chat as the communication layer; content rooms (news/reviews/deals/
 being source-backed and honest. Kept from the *runtime prompt*: capability-style shared
 contracts, real tests over route-existence, readiness that says yellow when it is yellow.
 
-Changed: no monorepo, no Postgres/Redis/MinIO/Socket.IO gateway until a room needs it — the
-current SQLite + one host stack is fast and it is what is deployed. Sub-domains of the network
+Changed: no monorepo or shared Socket.IO gateway. The current PostgreSQL + Valkey stack serves the network. Sub-domains of the network
 (`auth.`, `api.`, `events.`, `billing.`, `ai.`, `themes.`, `admin.`) stay **paths on
 openvibe.network** (`/oauth`, `/api`, `/admin`, `/themes`) — splitting them into hosts adds
 cookies and CORS and buys nothing at this size. `my.openvibe.network` already redirects to `/my`.

@@ -123,7 +123,7 @@ router.get('/url-registry/resolved', principals.guard('network.registry.read'), 
 
 // ═══════════════════════════════════════════════════════════════
 // OpenCoins Wallet (server-to-server)
-// Atomic better-sqlite3 transactions with idempotency_key dedupe.
+// Atomic database transactions with idempotency_key dedupe.
 // Repeating a key returns the original result (no double-apply).
 // user_id is ALWAYS the Network (SSO) user id.
 // ═══════════════════════════════════════════════════════════════

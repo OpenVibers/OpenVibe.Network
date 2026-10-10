@@ -6,8 +6,7 @@ grants. The data change is one new table, `dev_agent_grants`, and two indexes on
 touched. The migration is `phase: expand` and every statement is `IF NOT EXISTS`, so it is safe to run on a
 live production database and safe to run twice.
 
-This runbook covers the deploy of that migration. It is much smaller than the SQLite → PostgreSQL cutover
-([cutover-t2-postgres.md](cutover-t2-postgres.md)): there is no data move, no freeze window, no snapshot
+This runbook covers the deploy of that migration. There is no data move, freeze window or snapshot
 import. The migration runs as part of the normal boot of the new release.
 
 ---
@@ -155,4 +154,3 @@ In either case, restart the service after the rollback and confirm `health netwo
 - **Data move.** There is none. The table starts empty.
 - **Freeze window.** There is none. The migration is a fast `CREATE TABLE` + two `CREATE INDEX` on an empty
   table; it takes milliseconds.
-- **SQLite path.** Production is PostgreSQL-only; the SQLite runner is not exercised here.

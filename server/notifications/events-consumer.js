@@ -154,7 +154,7 @@ function liveStarted(event, { now, maxAgeMs }) {
 
 /**
  * @param {object} o
- * @param {import('better-sqlite3').Database} o.db
+ * @param {object} o.db service database handle
  * @param {{ create(data: object): object|null }} o.notifications  NotificationService
  * @param {string|string[]} o.secrets  NETWORK_EVENTS_SECRET (comma list) or an array
  * @param {() => ({ sendLiveAlert(streamer: object, stream: object): Promise<object> }|null)} [o.discord]

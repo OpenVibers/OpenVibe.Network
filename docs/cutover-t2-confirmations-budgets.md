@@ -6,9 +6,8 @@ This PR adds plan T2 WS-Z2 slices 4 and 5: the owner side of confirmations and a
 renamed or dropped, no row is touched. Both migrations are `phase: expand` and every statement is `IF NOT EXISTS`, so
 they are safe to run on a live production database and safe to run twice.
 
-Like [cutover-pr-openvibe-network-34.md](cutover-pr-openvibe-network-34.md) (migration 0017), this is much smaller than
-the SQLite → PostgreSQL cutover ([cutover-t2-postgres.md](cutover-t2-postgres.md)): no data move, no freeze window, no
-snapshot import. The migrations run as part of the normal boot of the new release.
+Like [cutover-pr-openvibe-network-34.md](cutover-pr-openvibe-network-34.md) (migration 0017), this has no data move,
+freeze window or snapshot import. The migrations run as part of the normal boot of the new release.
 
 ---
 

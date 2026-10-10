@@ -38,7 +38,7 @@ function buildEnvelope({ subjectId, validAfter, reason, actor, ctx }) {
 }
 
 /**
- * @param {object} db      better-sqlite3 database
+ * @param {object} db      service database
  * @param {number} userId  users.id
  * @param {{ reason: string, actor?: object, ctx?: object }} opts  actor defaults to the person themself
  * @returns {{ validAfter: string, event: object|null }}  event is null for an account with no subject

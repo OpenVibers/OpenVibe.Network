@@ -23,8 +23,8 @@
  *       rollback: puts the backed-up value back into each secret setting that is blank now
  *
  * On PostgreSQL (plan T2, ADR-035) the settings live in the service database: the script reads and writes
- * them through DATABASE_URL, exactly as the service does. There is no separate owner process and no
- * sqlite online backup; --backup writes a JSON file (0600) holding the values being blanked.
+ * them through DATABASE_URL, exactly as the service does. --backup writes a JSON file (0600)
+ * holding the values being blanked.
  *
  *   --env-file <path>     default /etc/openvibe/network.env
  *   --unit <name>         systemd unit whose running process must already have the variables

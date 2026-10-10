@@ -3,7 +3,7 @@
  * network.user.updated (Contracts 0.43.0; roadmap WS-B task 2): a person's whole current profile after every
  * change other services may know about: username, display name, picture, colour, role or ban.
  *
- * No write path has to remember it. SQLite triggers on `users` record each change in user_profile_changes
+ * No write path has to remember it. PostgreSQL triggers on `users` record each change in user_profile_changes
  * within the change's own transaction, so a rename, a role grant, a ban or a profile edit from anywhere
  * (admin routes, the API, an import, a hand-run SQL) is never missed. drain() turns those rows into events:
  * per person, it raises users.profile_revision by one, builds the payload from the row as it is now, puts

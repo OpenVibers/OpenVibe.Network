@@ -23,9 +23,7 @@ const cache = require('openvibe-shared/cache-policy');
  *   DELETE /api/v1/me/follows/:type/:target              unfollow (200, idempotent)
  *
  * :target is a usr_ subject or a current username. Nobody follows themselves; guests do not follow.
- * Lists are never public (counts are). ADR-030's migration: importFollows() backfills Live's follows
- * (scripts/follows-import.js, npm run follows-import), holding any pair whose side has no subject in
- * follow_import_holds.
+ * Lists are never public (counts are).
  */
 const express = require('express');
 const { ids, validate, http } = require('openvibe-contracts');
@@ -38,7 +36,7 @@ const MAX_FOLLOWING = 5000;
 
 // A follow that starts tells the followed person (a FOLLOW notification, server/notifications/follow-notify.js),
 // set at boot. It runs inside setFollow's transaction, so the follow, its event and the notification commit
-// together; a notifier that throws never fails the follow. Imports (emit: false) and flag changes notify nobody.
+// together; a notifier that throws never fails the follow. Flag changes notify nobody.
 let notifier = null;
 function setNotifier(fn) { notifier = typeof fn === 'function' ? fn : null; }
 
@@ -171,59 +169,6 @@ async function onSubjectRemoved(db, subject) {
         });
     }
     return rows.length;
-}
-
-/**
- * ADR-030 step 2: import follows from another system's rows, mapped to subjects by `subjectOf`.
- * rows: [{ follower_ref, target_ref, notify_email, notify_push, created_at }] (the refs are that system's ids).
- * A pair whose side has no subject (or is the same person) is held in follow_import_holds, never dropped.
- * A pair Network already has, followed or unfollowed since, is Network's decision and is left alone, so a
- * re-run never brings back an unfollow. No events (the source system already has these follows); dryRun
- * changes nothing.
- * Reconciliation is an explicit, final cutover step while Live follow writes are paused: deactivate
- * Live-sourced active pairs absent from its snapshot, leaving Network-sourced pairs and tombstones alone.
- * → { imported, unchanged, deactivated, held: [{ follower_ref, target_ref, reason }] }
- */
-async function importFollows(db, source, rows, subjectOf, { dryRun = false, reconcile = false, now = new Date().toISOString() } = {}) {
-    const out = { imported: 0, unchanged: 0, deactivated: 0, held: [] };
-    const run = async () => {
-        const present = new Set();
-        for (const r of rows) {
-            const follower = subjectOf(r.follower_ref);
-            const target = subjectOf(r.target_ref);
-            let reason = null;
-            if (!follower) reason = 'follower_has_no_subject';
-            else if (!target) reason = 'target_has_no_subject';
-            else if (follower === target) reason = 'self_follow';
-            if (reason) {
-                out.held.push({ follower_ref: String(r.follower_ref), target_ref: String(r.target_ref), reason });
-                if (!dryRun) await db.prepare('INSERT INTO follow_import_holds (source, follower_ref, target_ref, reason, seen_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (source, follower_ref, target_ref) DO UPDATE SET reason = excluded.reason, seen_at = excluded.seen_at').run(source, String(r.follower_ref), String(r.target_ref), reason, now);
-                continue;
-            }
-            present.add(`${follower}:${target}`);
-            // Both sides have subjects now: any earlier hold of this pair is resolved.
-            if (!dryRun) await db.prepare('DELETE FROM follow_import_holds WHERE source = ? AND follower_ref = ? AND target_ref = ?').run(source, String(r.follower_ref), String(r.target_ref));
-            const prev = await db.prepare('SELECT active FROM user_follows WHERE follower_subject = ? AND target_type = ? AND target_id = ?').get(follower, 'channel', target);
-            if (prev) { out.unchanged++; continue; }
-            if (!dryRun) {
-                await setFollow(db, follower, 'channel', target, true, {
-                    notifyEmail: r.notify_email == null ? true : !!r.notify_email, notifyPush: r.notify_push == null ? true : !!r.notify_push,
-                    emit: false, source, at: r.created_at ? new Date(r.created_at).toISOString() : now,
-                });
-            }
-            out.imported++;
-        }
-        if (reconcile) {
-            const active = await db.prepare("SELECT follower_subject, target_id FROM user_follows WHERE target_type = 'channel' AND source = ? AND active = 1").all(source);
-            for (const row of active) {
-                if (present.has(`${row.follower_subject}:${row.target_id}`)) continue;
-                if (!dryRun) await setFollow(db, row.follower_subject, 'channel', row.target_id, false, { emit: false, source, at: now });
-                out.deactivated++;
-            }
-        }
-    };
-    if (dryRun) await run(); else await db.tx(run);
-    return out;
 }
 
 /** The signed-in person as a follower, or a FollowError. */
@@ -377,4 +322,4 @@ async function onSubjectMerged(db, { from, into }) {
     return out;
 }
 
-module.exports = { setNotifier, onSubjectMerged, TYPES, FollowError, ensureSchema, setFollow, status, list, count, findTarget, buildEnvelope, onSubjectRemoved, importFollows, routers, kick };
+module.exports = { setNotifier, onSubjectMerged, TYPES, FollowError, ensureSchema, setFollow, status, list, count, findTarget, buildEnvelope, onSubjectRemoved, routers, kick };

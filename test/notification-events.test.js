@@ -10,9 +10,6 @@
 //      notifies nobody again.
 //   node test/notification-events.test.js
 const assert = require('assert');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
 const http = require('http');
 const crypto = require('crypto');
 const express = require('express');
@@ -31,8 +28,6 @@ const { signToken } = require('../server/auth/routes');
 
 const ISSUER = 'https://openvibe.network';
 const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-notification-events-'));
-const DB_PATH = path.join(dir, 'network.db');
 const quietly = (f) => { const l = console.log; console.log = () => {}; try { return f(); } finally { console.log = l; } };
 let db = getDb();
 
@@ -247,7 +242,6 @@ const checkEnvelope = (env, subject) => {
     assert.deepStrictEqual(discord, ['carol']);
     await stop(proc);
 
-    fs.rmSync(dir, { recursive: true, force: true });
     console.log('notification events: all checks passed');
 })().catch((err) => { console.error(err); process.exit(1); });
 })().catch(err => { console.error(err); process.exit(1); });

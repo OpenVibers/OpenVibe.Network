@@ -63,9 +63,9 @@ n = await followsOf(2);
 assert.strictEqual(n.length, 2);
 assert.strictEqual(n[1].message, 'cat followed you');
 
-// An import (Live's backfill) announces nothing and notifies nobody.
-await follows.importFollows(db, 'live', [{ follower_ref: 4, target_ref: 1 }], (ref) => ({ 4: DAN, 1: ANN })[ref]);
-assert.ok((await follows.status(db, 'channel', ANN, DAN)).following, 'imported');
+// A follow written without event emission also creates no notification.
+await follows.setFollow(db, DAN, 'channel', ANN, true, { emit: false });
+assert.ok((await follows.status(db, 'channel', ANN, DAN)).following);
 assert.strictEqual((await followsOf(1)).length, 0);
 
 // The followed person's social preference off: the follow is made, no notification.

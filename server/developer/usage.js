@@ -56,7 +56,7 @@ function mergeCodes(into, codes) {
 }
 
 /**
- * @param {import('better-sqlite3').Database} db
+ * @param {object} db service database handle
  * @param {{ now?: () => number, log?: object }} [o]
  */
 function createProjectUsage(db, { now = () => Date.now(), log = console } = {}) {
