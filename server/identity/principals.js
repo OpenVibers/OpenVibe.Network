@@ -28,6 +28,9 @@ const DEFAULT_GRANTS = [
     ['quest', 'events.subscription.manage', 'openvibe.events', []],
     // They subscribe to network.account.export_requested and network.account.deleted at boot (ADR-033).
     ...['actor', 'food', 'help', 'work', 'rent', 'media-hub'].map((svc) => [svc, 'events.subscription.manage', 'openvibe.events', []]),
+    // Their pages go into OpenVibe.Search: <svc>.index_document.* through each one's outbox (openvibe-publishing/search-feed,
+    // contracts 0.128.0). Inventory publishes already (below).
+    ...['work', 'rent', 'help', 'quest'].map((svc) => [svc, 'events.event.publish', 'openvibe.events', []]),
     // The same two subscriptions for the services that gained an account-event route on 2026-10-09 (SDK 0.37.0
     // startSubscriptions); deals, trade, tips and vip already hold the grant for their other subscriptions.
     ...['watch', 'services', 'wiki', 'blog', 'bot'].map((svc) => [svc, 'events.subscription.manage', 'openvibe.events', []]),
