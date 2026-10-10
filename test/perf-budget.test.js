@@ -12,8 +12,8 @@ const { spawn } = require('child_process');
 const { measure, check, format } = require('openvibe-shared/perf-budget');
 
 const BUDGETS = {
-    htmlRawKB: 120,       // measured 110.6 with 33 live sites (contracts 0.119.0); the home page lists every site, so it grows with the network
-    htmlBrotliKB: 23,     // 20.5 (contracts 0.116.0)
+    htmlRawKB: 125,       // measured 122.3 (shared 2.21.0: a real glyph for every product card, where ten drew the 'V'); was 110.6 with 33 live sites (contracts 0.119.0). The home page lists every site, so it grows with the network
+    htmlBrotliKB: 25,     // 24.1 (shared 2.21.0, the same glyphs); 20.5 (contracts 0.116.0)
     jsFiles: 7,           // 6
     jsRawKB: 260,         // 228.3
     jsBrotliKB: 62,       // 53.9
