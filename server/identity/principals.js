@@ -210,6 +210,10 @@ const DEFAULT_GRANTS = [
     ['bot', 'billing.usage.record', 'openvibe.billing', []],
     // Plan T18: OpenVibe.Watch relays watch.observation.recorded / watch.watch.triggered / watch.check.failed.
     ['watch', 'events.event.publish', 'openvibe.events', []],
+    // Plan T18 step 4: a watch's notification action tells its owner when the condition fires. Watch resolves the owner
+    // (a usr_ subject) to Network's user id, then pushes as app 'watch' (openvibe-sdk/notifications).
+    ['watch', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['watch', 'network.notifications.push', SELF_AUDIENCE, ['watch']],
     // Plan T13: OpenVibe.Services merges every authority's resource index (ADR-048 section 3): it reads each one's
     // GET /api/v1/resources under that authority's <id>.resource.read, with a token for that authority's audience.
     ['services', 'network.resource.read', SELF_AUDIENCE, []],
