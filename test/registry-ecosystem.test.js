@@ -76,7 +76,8 @@ assert.strictEqual(require('../server/registry/ecosystem').INTERNAL.space, 'http
     assert.deepStrictEqual(listed, contracts.services.manifests.map(m => m.id).sort(), 'every service in exactly one category');
     const inCat = (id) => r.body.categories.find(c => c.services.some(x => x.id === id)).id;
     assert.strictEqual(inCat('live'), 'site'); assert.strictEqual(inCat('network'), 'site'); assert.strictEqual(inCat('tips'), 'site', 'a site whose domain is still a placeholder is a site, not open yet');
-    assert.strictEqual(inCat('events'), 'platform'); assert.strictEqual(inCat('ai'), 'platform'); assert.strictEqual(inCat('sources'), 'platform');
+    // Events, AI and Search have public homes in the navigation since contracts 0.135.0 (site blocks): sites people visit.
+    assert.strictEqual(inCat('events'), 'site'); assert.strictEqual(inCat('ai'), 'site'); assert.strictEqual(inCat('search'), 'site'); assert.strictEqual(inCat('sources'), 'platform');
     assert.strictEqual(inCat('sdk'), 'library'); assert.strictEqual(inCat('contracts'), 'library');
     assert.strictEqual(inCat('examples'), 'repository');
     // 'planned' = exposure placeholder: Contracts 0.83.0's media-hub, v0.87-v0.90's zone (charter only, nothing runs).
