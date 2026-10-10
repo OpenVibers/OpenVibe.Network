@@ -2,7 +2,7 @@
 // Network's authority resource index (ADR-048 section 3; capability network.resource.read):
 // GET /api/v1/resources pages common.resource-summary@1 for the resources Network owns - its developer
 // projects (prj_), their apps (app_) and its node principals (nod_) - and GET /api/v1/resources/:ovrn
-// reads one by its computed ovrn. ?project=&kind=&cursor=&limit= are honoured; ?project= is the tenancy
+// reads one by its computed ovrn. ?project=&owner=&kind=&cursor=&limit= are honoured; ?project= is the tenancy
 // boundary, so a resource of another project is never returned. An ovrn is present exactly when
 // openvibe-contracts' contracts.resources.nameOf composes one: never for a project (ADR-048: a project
 // is addressed by its bare prj_ id), never for an app (app_ is excluded from the OVRN id pattern), and
@@ -103,6 +103,31 @@ const resourceIndex = require('../server/registry/resource-index');
             assert.deepStrictEqual(await aIds('?kind=network.project'), [prjA, prjB].sort(), 'kind = project lists the projects');
             assert.deepStrictEqual(await aIds('?kind=network.unknown'), [], 'an unknown kind is an empty page, not an error');
             assert.deepStrictEqual(await aIds(`?project=${ids.newId('project')}`), [], 'an unknown project has no resources');
+            assert.deepStrictEqual(await aIds('?owner='), expected.map((r) => r.id), 'an empty owner leaves the index unfiltered');
+            assert.deepStrictEqual(await aIds(`?owner=${usrA}`), [nodU, prjA], 'an owner sees only its project and user-owned node');
+            assert.deepStrictEqual(await aIds(`?owner=${usrB}`), [prjB], 'another owner sees only its own rows');
+            assert.deepStrictEqual(await aIds(`?owner=${usrA}&kind=network.node`), [nodU], 'owner combines with kind');
+            assert.deepStrictEqual(await aIds(`?owner=${usrA}&kind=network.app`), [], 'apps have no summary owner');
+            assert.deepStrictEqual(await aIds(`?owner=${usrA}&project=${prjA}`), [prjA], 'owner combines with project');
+            assert.deepStrictEqual(await aIds(`?owner=${usrA}&project=${prjB}`), [], 'another project is excluded');
+            assert.deepStrictEqual(await aIds(`?owner=agt_${'0'.repeat(26)}`), [], 'a valid agent id has no matching rows');
+
+            const ownerSeen = [];
+            let ownerCursor = null;
+            for (;;) {
+                const y = await get(`/api/v1/resources?owner=${usrA}&limit=1${ownerCursor ? `&cursor=${encodeURIComponent(ownerCursor)}` : ''}`, auth);
+                assert.strictEqual(y.status, 200);
+                assert.ok(validate('common.resource-list-result@1', y.body).valid);
+                y.body.resources.forEach((s) => {
+                    assert.ok(validate('common.resource-summary@1', s).valid, s.id);
+                    assert.strictEqual(s.owner.id, usrA);
+                    ownerSeen.push(s.id);
+                });
+                if (y.body.next_cursor === null) break;
+                ownerCursor = y.body.next_cursor;
+                if (ownerSeen.length > 2) assert.fail('the owner cursor chain never ended');
+            }
+            assert.deepStrictEqual(ownerSeen, [nodU, prjA], 'owner paging visits each row exactly once in (kind, id) order');
 
             const seen = [];
             let cursor = null;
@@ -141,7 +166,7 @@ const resourceIndex = require('../server/registry/resource-index');
                 assert.strictEqual(y.body.code, 'resources.unknown_resource', why);
             }
 
-            const bad = [['?project=nope', 'project not a prj_ id'], ['?limit=0', 'limit below one'], ['?limit=abc', 'limit not a number'], ['?limit=99999', 'limit over the cap'], ['?cursor=***', 'cursor not one this index issued']];
+            const bad = [['?project=nope', 'project not a prj_ id'], ['?owner=svc:live', 'owner not a subject id'], ['?owner=usr_short', 'owner too short'], ['?limit=0', 'limit below one'], ['?limit=abc', 'limit not a number'], ['?limit=99999', 'limit over the cap'], ['?cursor=***', 'cursor not one this index issued']];
             for (const [q, why] of bad) {
                 const y = await get(`/api/v1/resources${q}`, auth);
                 assert.strictEqual(y.status, 400, why);
