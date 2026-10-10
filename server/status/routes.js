@@ -107,10 +107,10 @@ function releaseHealthSection(list, since) {
 <td>${esc(c.prompted)} · ${esc(c.applied)} · ${esc(c.reloaded)}</td><td>${esc(c.deferred)}${c.deferred ? `<small>${esc(reasons(h.deferred))}</small>` : ''}</td><td>${esc(c.failed)}${c.failed ? `<small>${esc(reasons(h.failed))}</small>` : ''}</td></tr>`;
     }).join('\n');
     return `<p class="lede">What open tabs report through release-watch: tabs heard from in the last 12 minutes on the release each service serves and on older ones, and since that release started, how many were prompted, updated in place or reloaded, deferred (and why) or failed. Drain is how long after a release went live the last older tab left; tabs report every 5 minutes, so it reads true only 6 minutes after a start. Watched since ${esc(since)}.</p>
-<table><thead><tr><th>Service</th><th>Tabs current / older</th><th>Drain</th><th>Prompted · applied · reloaded</th><th>Deferred</th><th>Failed</th></tr></thead>
+<div class="st-table"><table><thead><tr><th>Service</th><th>Tabs current / older</th><th>Drain</th><th>Prompted · applied · reloaded</th><th>Deferred</th><th>Failed</th></tr></thead>
 <tbody>
 ${tr}
-</tbody></table>`;
+</tbody></table></div>`;
 }
 
 function summary(list) {
@@ -136,10 +136,10 @@ const CSS = `
 .st{max-width:1080px;margin:32px auto 64px;padding:0 20px}.st h1{font-size:clamp(24px,3vw,32px);letter-spacing:-.02em;margin:0 0 6px}
 .st p.lede{color:var(--text-secondary,#96a7c2);margin:0 0 18px;max-width:780px;line-height:1.5}
 .st-incidents{margin:0 0 20px}.st-incident{border:1px solid var(--border,#1f2d47);border-left:4px solid var(--warning,#f59e0b);border-radius:10px;padding:10px 14px;margin:0 0 10px}.st-incident h3{margin:0 0 4px;font-size:16px}.st-incident p{margin:4px 0}.st-maintenance{border-left-color:var(--info,#38bdf8)}.st-sev-critical,.st-sev-major{border-left-color:var(--danger,#ef4444)}.st-quiet{color:var(--text-muted,#8b93ad);margin:0 0 14px}.st-sum{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;padding:0;list-style:none}.st-sum li{padding:6px 12px;border-radius:999px;border:1px solid var(--border,#1f2d47);font-size:13.5px}
-.st table{width:100%;border-collapse:collapse;font-size:14px}.st th,.st td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--border,#1f2d47);vertical-align:top}
+.st-table{overflow-x:auto;margin:0 0 8px}.st table{width:100%;border-collapse:collapse;font-size:14px}.st th,.st td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--border,#1f2d47);vertical-align:top}
 .st th{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted,#7386a3)}
 .st td small{display:block;color:var(--text-muted,#7386a3);font-size:12.5px;margin-top:2px}
-.st code{font-size:12.5px}.st-b{display:inline-block;padding:2px 9px;border-radius:999px;font-weight:700;font-size:12.5px;border:1px solid currentColor}
+.st code{font-size:12.5px;overflow-wrap:anywhere}.st-b{display:inline-block;padding:2px 9px;border-radius:999px;font-weight:700;font-size:12.5px;border:1px solid currentColor}
 .st-up{color:var(--success,#22c55e)}.st-degraded{color:#f59e0b}.st-down{color:var(--live-red,#ef4444)}.st-not-running,.st-unknown{color:var(--text-muted,#7386a3)}
 .st ul.chk{margin:4px 0 0;padding:0;list-style:none;font-size:12.5px}.st ul.chk li{margin:1px 0}
 .st section{margin-top:40px}.st dl{display:grid;grid-template-columns:minmax(160px,240px) 1fr;gap:6px 16px;font-size:14px}.st dt{font-weight:600}.st dd{margin:0;color:var(--text-secondary,#96a7c2)}
@@ -207,12 +207,12 @@ ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links
 ${incidentsSection(incidents)}
 <p class="lede">What Network observed when it last checked each service: its readiness endpoint (named checks, required or optional), its deployed release, and when. A service that has not been checked, or whose last check is out of date, shows as <b>unknown</b>. Placeholders, libraries and repositories show as not running. <b>Where</b> says whether the public domain serves the service itself (live), or the service runs on this host's loopback only while its domain still serves a placeholder page (internal). Page generated <time datetime="${esc(generatedAt)}">${esc(generatedAt)}</time>; checks run about every ${esc(Math.round(slo.pollSeconds || 60))} seconds. JSON: <a href="/api/v1/status"><code>/api/v1/status</code></a>.</p>
 <ul class="st-sum">${STATES.map((s) => `<li class="st-${s}">${esc(LABEL[s])}: ${counts[s]}</li>`).join('')}</ul>
-<table>
+<div class="st-table"><table>
 <thead><tr><th>Service</th><th>Where</th><th>Status</th><th>Release</th><th>Checked</th></tr></thead>
 <tbody>
 ${tr}
 </tbody>
-</table>
+</table></div>
 <section aria-labelledby="h-release-health"><h2 id="h-release-health">Release health</h2>
 ${releaseHealthSection(list, healthSince || generatedAt)}
 </section>
