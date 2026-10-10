@@ -220,8 +220,9 @@ const DEFAULT_GRANTS = [
     // Plan T13: OpenVibe.Services merges every authority's resource index (ADR-048 section 3): it reads each one's
     // GET /api/v1/resources under that authority's <id>.resource.read, with a token for that authority's audience.
     ['services', 'network.resource.read', SELF_AUDIENCE, []],
-    // Phase 2 (contracts 0.129.0-0.131.0): watches, Actor tasks, robots, rooms and OpenRestream's streams.
-    ...['media', 'events', 'host', 'watch', 'actor', 'bot', 'chat', 'openre'].map(id => ['services', `${id}.resource.read`, `openvibe.${id}`, []]),
+    // Phase 2 (contracts 0.129.0-0.134.0): watches, Actor tasks, robots, rooms, OpenRestream's streams and Community's
+    // pastes and spaces.
+    ...['media', 'events', 'host', 'watch', 'actor', 'bot', 'chat', 'openre', 'community'].map(id => ['services', `${id}.resource.read`, `openvibe.${id}`, []]),
     // Plan T14: OpenVibe.Run publishes run.job.* and hands each job to a paired Node through Bot's internal jobs API
     // (POST /api/v1/jobs, /jobs/:id/cancel, GET /jobs/:id, capability bot.job.dispatch, service-to-service only).
     ['run', 'events.event.publish', 'openvibe.events', []],
