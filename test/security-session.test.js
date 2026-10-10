@@ -68,8 +68,8 @@ const sign = (sub, opts = {}) => jwt.sign({ sub, id: sub, username: 'u' }, keys.
     assert.strictEqual(r.status, 401); assert.strictEqual(r.body.code, 'token.missing');
     r = await fetch(`${base}/internal/verify-token`, { headers: { 'x-internal-key': 'k'.repeat(32) } }).then((x) => x.status);
     assert.strictEqual(r, 401, 'and the retired key does not resurrect it');
-    // nginx only lets loopback reach `location /internal/` (case-sensitive); Express mounts are not,
-    // so another spelling must not reach the internal router from outside.
+    // nginx lets only loopback reach `location ~* ^/internal(/|$)` (every spelling); the app also keeps
+    // the internal router to the lowercase path, so another spelling never reaches it either way.
     const get = (p, headers) => fetch(base + p, { headers }).then((x) => x.status);
     assert.strictEqual(await get('/INTERNAL/coins/stats', {}), 404, '/INTERNAL/... is not the internal API');
     assert.strictEqual(await get('/Internal/coins/stats', {}), 404);
