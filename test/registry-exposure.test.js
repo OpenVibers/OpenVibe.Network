@@ -133,7 +133,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
 
     // 3. The Frame: the nav lists only sites whose domain serves the service; the rest are soon with a reason.
     const open = SITES.filter(s => s.status === 'open').map(s => s.id);
-    assert.deepStrictEqual(open, ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'trade', 'host', 'deals', 'coupons', 'stream', 'space', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory']);   // news, reviews, trade, coupons and stream (OpenRestream): open since 0.125.0;   // by site position; bot: a site since openvibe-contracts 0.106.0; host: live since 0.107.0; space: live since 0.110.0 (the forum, 2026-10-07)
+    assert.deepStrictEqual(open, ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'trade', 'host', 'deals', 'coupons', 'stream', 'space', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'ai', 'search']);   // events, ai and search: sites since 0.135.0; news, reviews, trade, coupons and stream (OpenRestream): open since 0.125.0;   // by site position; bot: a site since openvibe-contracts 0.106.0; host: live since 0.107.0; space: live since 0.110.0 (the forum, 2026-10-07)
     for (const s of SITES) {
         assert.ok(s.service && PINNED[s.service], `${s.id} names its service`);
         assert.strictEqual(s.status === 'open', PINNED[s.service] === 'live', `${s.id} nav status follows exposure`);
