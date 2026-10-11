@@ -244,7 +244,7 @@ async function createEventsConsumer({ db, notifications, secrets, discord = () =
         if (!delivery) return http.sendProblem(res, 401, 'network.bad_signature', { detail: 'X-OpenVibe-Signature-V2 does not verify or is outside the replay window' });
         const event = delivery.event;
         if (!event || typeof event !== 'object' || typeof event.event_id !== 'string' || !EVENT_ID_RE.test(event.event_id) || typeof event.event_type !== 'string') {
-            return http.sendProblem(res, 400, 'network.bad_delivery', { detail: 'body must be { event: <envelope>, seq }' });
+            return http.sendProblem(res, 400, 'network.bad_delivery', { detail: 'body must be { event: <envelope> }' });
         }
         let out;
         try {
