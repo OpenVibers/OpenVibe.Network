@@ -264,8 +264,7 @@ const rows = async (userId) => await db.prepare('SELECT * FROM notifications WHE
     r = await post(liveEvent({}, { stream_id: 501 }));
     assert.strictEqual(r.body.outcome, 'skipped:cooldown');
     assert.strictEqual((await goLives(21)).length, 1);
-    // ...and it is the same window Live's direct POST /internal/events/stream-live claims (keyed by the Network id),
-    // so during the switch the two paths never both announce.
+    // ...and the window is the per-streamer claim itself (keyed by the Network id).
     assert.strictEqual((await streamLive.claimAnnouncement(db, { streamerKey: 20, streamId: 501 })).reason, 'cooldown');
 
     // v1-only (and any unverifiable) live delivery: refused, not recorded.

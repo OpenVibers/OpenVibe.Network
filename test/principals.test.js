@@ -239,11 +239,9 @@ const server = http.createServer(app);
     assert.strictEqual(tipsClaims.claims.sub, 'svc:tips');
     assert.deepStrictEqual(tipsClaims.claims.cap, ['chat.event.publish', 'chat.message.send']);
 
-    // Go-live fan-out accepts Live's token (network.notifications.push); a narrower token is refused.
-    r = await post('/internal/events/stream-live', {}, { authorization: `Bearer ${full}` });
-    assert.strictEqual(r.status, 400, 'guard passed, handler validated the body');
-    r = await post('/internal/events/stream-live', {}, { authorization: `Bearer ${creditOnly}` });
-    assert.strictEqual(r.status, 403);
+    // The direct go-live fan-out is gone (C-85): go-lives arrive as live.stream.started through Events.
+    const gone = await fetch(base + '/internal/events/stream-live', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${full}` }, body: '{}' });
+    assert.strictEqual(gone.status, 404);
 
     // ── The routes Live called with the key (register C-50/C-52) take its token, and only that ──
     const get = (p, headers) => fetch(base + p, { headers }).then(async x => ({ status: x.status, body: await x.json() }));

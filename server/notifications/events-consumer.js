@@ -15,8 +15,8 @@
  * The followers are Network's own graph (user_follows, server/identity/follows.js; ADR-030, plan T2):
  * the active ('channel', <streamer subject>) rows, read in the inbox transaction. Live is never asked.
  * The announcement window (one per
- * streamer per hour, eight a day) is the same one Live's direct POST /internal/events/stream-live
- * claims (./stream-live.js), so both paths can run during the switch without double notifications.
+ * streamer per hour, eight a day) is kept by ./stream-live.js. This consumer is the only go-live path (compatibility
+ * register C-85): Live makes no direct call, and POST /internal/events/stream-live is gone.
  * A started event older than LIVE_STARTED_MAX_AGE (30 min; a replay, or Events catching up after an
  * outage) announces nothing: the stream may be long over.
  *

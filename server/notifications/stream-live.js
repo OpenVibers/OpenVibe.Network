@@ -1,15 +1,9 @@
 'use strict';
 /**
- * "X is live" fan-out, shared by the two ways a go-live reaches Network:
- *
- *   POST /internal/events/stream-live   Live's direct call (server/internal/routes.js), with the
- *                                       follower list in the body (follower_network_ids)
- *   live.stream.started via Events      server/notifications/events-consumer.js; the followers are
- *                                       read from Network's own active user_follows rows
- *
- * Both claim the same persisted per-streamer announcement window (stream_live_announcements, keyed
- * by the streamer's NETWORK user id), so while Live still makes the direct call and Network also
- * consumes the event, whichever arrives first announces and the other is skipped as `cooldown`.
+ * "X is live" fan-out for live.stream.started (server/notifications/events-consumer.js), the only way a go-live
+ * reaches Network (compatibility register C-85: Live's direct POST /internal/events/stream-live is gone). The
+ * followers are Network's own active user_follows rows; the persisted per-streamer announcement window
+ * (stream_live_announcements, keyed by the streamer's NETWORK user id) keeps reconnects from re-announcing.
  */
 
 /**
