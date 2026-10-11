@@ -193,6 +193,9 @@ const DEFAULT_GRANTS = [
     ['host', 'events.event.publish', 'openvibe.events', []],
     // The hosting catalog (plan T20 step 3) reads OpenVibe.Sources items in category hosting (Host#69).
     ['host', 'sources.item.read', 'openvibe.sources', []],
+    // The hosting catalog's provider and plan discussion threads on OpenVibe.Community (Host#74).
+    ['host', 'community.comment.write', 'openvibe.community', []],
+    ['host', 'community.comment.moderate', 'openvibe.community', []],
     // ADR-030 (WS-E task 4): Live rebuilds its follows projection from Network's graph.
     ['live', 'network.follows.read', SELF_AUDIENCE, []],
     ['live', 'network.follows.write', SELF_AUDIENCE, []],
