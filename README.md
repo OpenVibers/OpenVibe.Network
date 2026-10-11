@@ -335,7 +335,7 @@ Each go-live's outcome is logged, with counts only:
 [Events consumer] live.stream.started evt_…: notified {"followers":3,"unresolved":0,"targets":3,"notified":3}
 ```
 
-This is the evidence compatibility register row C-85 waits for. A `notified` line for a real go-live means the consumer, not Live's direct call, told the followers. While Live still makes the direct `POST /internal/events/stream-live`, that call usually claims the per-streamer window first, and the consumer logs `skipped:cooldown`.
+The consumer is the only go-live path (compatibility register C-85, closed 2026-10-11): Live publishes `live.stream.started` and makes no direct call, and `POST /internal/events/stream-live` is gone. A reconnect inside the per-streamer window logs `skipped:cooldown`.
 
 ### Realtime badge (network.notification.created)
 
