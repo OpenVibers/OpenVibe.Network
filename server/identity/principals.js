@@ -224,6 +224,8 @@ const DEFAULT_GRANTS = [
     // Plan T18 step 6: a watch's actor-task action gives Actor a task for the watch's owner. Watch names the owner in
     // X-OV-Subject, so the task is the person's (their allowance and list) and Actor records Watch as `via`.
     ['watch', 'actor.task.create', 'openvibe.actor', []],
+    // A watch's actor-agent action runs the owner's personal agent (contracts 0.143.0, Actor's actor.agent.run).
+    ['watch', 'actor.agent.run', 'openvibe.actor', []],
     // Plan T13: OpenVibe.Services merges every authority's resource index (ADR-048 section 3): it reads each one's
     // GET /api/v1/resources under that authority's <id>.resource.read, with a token for that authority's audience.
     ['services', 'network.resource.read', SELF_AUDIENCE, []],
