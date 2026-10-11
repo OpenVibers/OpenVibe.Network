@@ -86,6 +86,11 @@ const DEFAULT_GRANTS = [
     // recordings and thumbnails it produces there too.
     ...['media.object.read', 'media.object.list', 'media.object.upload', 'media.object.delete'].map(cap => ['live', cap, 'openvibe.media', ['live']]),
     ['openre', 'media.object.upload', 'openvibe.media', ['live']],
+    // Compatibility register C-71: Inventory (Workshop badge images) and MediaHub (its library) reach Media with their
+    // own tokens on their own tenants, not with app keys. Upload also covers the delete of an object.
+    ['inventory', 'media.object.upload', 'openvibe.media', ['inventory']],
+    ['media-hub', 'media.object.upload', 'openvibe.media', ['media-hub']],
+    ['media-hub', 'media.object.read', 'openvibe.media', ['media-hub']],
     // Plan T3: Chat owns the six chat tables. Emote images go to Media under the chat namespace, and
     // the chat-AI summaries run in Chat with its own token.
     ['chat', 'media.object.upload', 'openvibe.media', ['chat']],
