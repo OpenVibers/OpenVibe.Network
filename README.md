@@ -287,11 +287,10 @@ notifications. Live is never asked. A channel whose subject has no Network accou
 a follower whose subject has no account is counted as `unresolved`; the streamer never hears about
 themself; the `stream` category's mute and email choice apply. A start more
 than 30 minutes old (a replay, or Events catching up) announces nothing. The per-streamer window (one
-announcement an hour, eight a day; `stream_live_cooldown_min`, `stream_live_daily_cap`) is shared with
-Live's direct `POST /internal/events/stream-live` (`server/notifications/stream-live.js`), so while Live
-still makes that call, whichever arrives first announces and the other is skipped.
-Until `NETWORK_GO_LIVE_FOLLOWS_READY=1` is set on Network, Events go-lives are acknowledged as
-`ignored:follows_cutover_pending` and Live's direct POST remains the delivery path.
+announcement an hour, eight a day; `stream_live_cooldown_min`, `stream_live_daily_cap`) is kept by
+`server/notifications/stream-live.js`. This consumer is the only go-live path (compatibility register C-85): Live
+publishes `live.stream.started` and makes no direct call. Follows have been Network's since 2026-09-26, and the
+cutover flag that held the consumer back is gone.
 
 **Project usage.** `tools.usage.recorded` and `events.usage.recorded` (hourly rollups of a developer
 project's use, `common.usage-recorded@1`) are kept per project and day (`server/developer/usage.js`,
