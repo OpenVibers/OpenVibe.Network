@@ -393,6 +393,14 @@ const REVOKED_GRANTS = [
 // Default grants whose namespaces changed: a row still exactly as the old default seeded it is moved to
 // the new list at boot, in this order (a row someone edited is left alone). Live's write grant lost
 // chat.preferences when the namespace moved to Chat (Wave 6), then chat.tts_defaults (contracts 0.41.0).
+// Default grants that REVOKED_GRANTS once revoked and that are defaults again. The seed below inserts with ON CONFLICT
+// DO NOTHING, so a revoked row would otherwise stay revoked; only these named rows are restored (a grant a person revoked
+// through grants-admin is never touched). Each entry must also be in DEFAULT_GRANTS and no longer in REVOKED_GRANTS.
+const RESTORED_GRANTS = [
+    // T20 step 2 (2026-10-12): Space publishes its static hosting events again (revoked when the forum left, 10-08).
+    ['space', 'events.event.publish', 'openvibe.events'],
+];
+
 const CHANGED_DEFAULT_NAMESPACES = [
     ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile'], ['chat.tts_defaults', 'live.profile']],
     ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.tts_defaults', 'live.profile'], ['live.profile', 'live.stats']],
@@ -414,6 +422,9 @@ async function ensureSchema(db) {
     // adr-012 rule 5: loyalty is not transferable between people, so nobody holds the transfer grant.
     for (const [client, cap, aud] of REVOKED_GRANTS) {
         await db.prepare("UPDATE principal_grants SET revoked_at = ov_now() WHERE client_id = ? AND capability = ? AND audience = ? AND revoked_at IS NULL").run(client, cap, aud);
+    }
+    for (const [client, cap, aud] of RESTORED_GRANTS) {
+        await db.prepare("UPDATE principal_grants SET revoked_at = NULL WHERE client_id = ? AND capability = ? AND audience = ? AND granted_by = 'default' AND revoked_at IS NOT NULL").run(client, cap, aud);
     }
     for (const [client, cap, aud, was, now] of CHANGED_DEFAULT_NAMESPACES) {
         await db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = ? AND capability = ? AND audience = ? AND granted_by = 'default' AND namespaces = ?")
@@ -562,4 +573,4 @@ function guard(capability, { ownApp, namespace } = {}) {
     };
 }
 
-module.exports = { ensureSchema, issueToken, guard, grantsFor, recordDecision, DEFAULT_GRANTS, REVOKED_GRANTS, TOKEN_TTL_S, SELF_AUDIENCE };
+module.exports = { ensureSchema, issueToken, guard, grantsFor, recordDecision, DEFAULT_GRANTS, REVOKED_GRANTS, RESTORED_GRANTS, TOKEN_TTL_S, SELF_AUDIENCE };
