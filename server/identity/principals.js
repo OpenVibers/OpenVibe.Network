@@ -47,6 +47,9 @@ const DEFAULT_GRANTS = [
     // OpenVibe.Quest gives six of Live's items as quest rewards: Live names Quest a grantor of them (ADR-054 §3), so
     // Quest grants them itself (origin earned, the completion id as the key) and nothing else.
     ['quest', 'inventory.item.grant', 'openvibe.inventory', []],
+    // OpenVibe.Games gives six of Live's items for achievements (Inventory's live-grantors.json names Games on them),
+    // granted to signed-in players once each (origin earned, games:<game>:<achievement>:<subject> as the key).
+    ['games', 'inventory.item.grant', 'openvibe.inventory', []],
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],
     ['live', 'network.notifications.push', SELF_AUDIENCE, ['live']],
     // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
