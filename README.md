@@ -529,7 +529,7 @@ Google-style account management supporting up to 5 accounts:
 - Universal telemetry: requests are aggregated per `route|method|status_class` into a single
   `platform.telemetry-sample@1` per key per flush (count, sum, max and p95 in `extra`, mean in
   `latency_ms`), plus the HTTP autoscaling gauges (active requests, p95, event-loop lag) once per flush;
-  health, readiness, metrics, chrome and static/shared assets are skipped. Buffered by
+  health, readiness, metrics, the OpenVibe Frame and static/shared assets are skipped. Buffered by
   `openvibe-sdk/telemetry` and written into the analytics store (`server/telemetry.js`,
   `server/observability.js`); `gracefulStop` flushes it once at shutdown.
 - `GET /release.json` is Network's release manifest (ADR-016, `registry.release-manifest@1`, from
