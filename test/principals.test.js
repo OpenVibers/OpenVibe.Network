@@ -170,8 +170,8 @@ const server = http.createServer(app);
     assert.strictEqual(com.status, 200, JSON.stringify(com.body));
     assert.deepStrictEqual(com.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.blocks.read', 'network.modules.read', 'network.modules.write'], 'resolve, account export and deletion, platform blocks, plus its community.profile module');
     await db.prepare("UPDATE oauth_clients SET client_secret = 'space-secret' WHERE client_id = 'space'").run();
-    // The forum returned to Community (contracts 0.118.0): Space keeps only its sign-in client, so its service token
-    // gets no grant on any audience.
+    // The forum returned to Community (contracts 0.118.0) and its grants went; since the static hosting engine moved to
+    // Space (T20 step 2, contracts 0.149.0) Space publishes its hosting events, and nothing else.
     const spaceNetwork = await token({ client_id: 'space', client_secret: 'space-secret', audience: 'openvibe.network' });
     assert.strictEqual(spaceNetwork.status, 400, 'Space holds no Network grant');
     r = await post('/internal/identity/resolve-batch', { system: 'network', ids: ['7'] }, { authorization: `Bearer ${com.body.access_token}` });
@@ -195,10 +195,13 @@ const server = http.createServer(app);
     assert.strictEqual(r.status, 403, 'Media holds no coin capability');
     const media = await token({ client_id: 'community', client_secret: 'community-secret', audience: 'openvibe.media' });
     assert.strictEqual(media.body.scope, 'media.object.upload', 'community may upload screenshot bytes to Media');
-    for (const audience of ['openvibe.media', 'openvibe.vip', 'openvibe.events']) {
+    for (const audience of ['openvibe.media', 'openvibe.vip']) {
         const response = await token({ client_id: 'space', client_secret: 'space-secret', audience });
         assert.strictEqual(response.status, 400, `Space holds no ${audience} grant`);
     }
+    const spaceEvents = await token({ client_id: 'space', client_secret: 'space-secret', audience: 'openvibe.events' });
+    assert.strictEqual(spaceEvents.status, 200, JSON.stringify(spaceEvents.body));
+    assert.strictEqual(spaceEvents.body.scope, 'events.event.publish', 'Space publishes its hosting events and nothing more');
     const cm = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.community' });
     assert.deepStrictEqual(cm.body.scope.split(' '), ['community.comment.moderate', 'community.comment.write', 'community.paste.create', 'community.paste.moderate', 'community.paste.write', 'community.pulse.write']);
     const tl = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.tools' });

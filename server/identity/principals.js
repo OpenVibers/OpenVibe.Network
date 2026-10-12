@@ -77,10 +77,6 @@ const DEFAULT_GRANTS = [
     ['games', 'media.object.upload', 'openvibe.media', ['games']],
     // Plan T12: Host keeps tenant deploy files in Media (Host#24, HOST_OBJECT_STORE=media), its own namespace only:
     // write-through on deploy, re-fetch on a cache miss, list and delete when its GC finds a blob unreferenced.
-    ['host', 'media.object.upload', 'openvibe.media', ['host', 'host.*']],
-    ['host', 'media.object.read', 'openvibe.media', ['host', 'host.*']],
-    ['host', 'media.object.list', 'openvibe.media', ['host', 'host.*']],
-    ['host', 'media.object.delete', 'openvibe.media', ['host', 'host.*']],
     // Plan T4 (Media cleanup): Live and OpenRestream reach Media with their own tokens instead of API keys. Live keeps
     // its objects under the live namespace (VOD/clip/thumbnail uploads, reads, lists, deletes); OpenRestream uploads the
     // recordings and thumbnails it produces there too.
@@ -191,6 +187,9 @@ const DEFAULT_GRANTS = [
     ['coupons', 'events.subscription.manage', 'openvibe.events', []],
     ['coupons', 'sources.item.read', 'openvibe.sources', []],
     ['host', 'events.event.publish', 'openvibe.events', []],
+    // T20 step 2 (2026-10-12, Space#36): the static hosting engine moved to Space, which publishes space.deploy.* and
+    // space.domain.verified through its outbox. (Its forum-era grants stay revoked below.)
+    ['space', 'events.event.publish', 'openvibe.events', []],
     // The hosting catalog (plan T20 step 3) reads OpenVibe.Sources items in category hosting (Host#69).
     ['host', 'sources.item.read', 'openvibe.sources', []],
     // The hosting catalog's provider and plan discussion threads on OpenVibe.Community (Host#74).
@@ -239,7 +238,8 @@ const DEFAULT_GRANTS = [
     ['services', 'network.resource.read', SELF_AUDIENCE, []],
     // Phase 2 (contracts 0.129.0-0.134.0): watches, Actor tasks, robots, rooms, OpenRestream's streams and Community's
     // pastes and spaces.
-    ...['media', 'events', 'host', 'watch', 'actor', 'bot', 'chat', 'openre', 'community'].map(id => ['services', `${id}.resource.read`, `openvibe.${id}`, []]),
+    // Since contracts 0.150.0 the static hosting index is Space's (space.resource.read); Host's is retired.
+    ...['media', 'events', 'space', 'watch', 'actor', 'bot', 'chat', 'openre', 'community'].map(id => ['services', `${id}.resource.read`, `openvibe.${id}`, []]),
     // Plan T14: OpenVibe.Run publishes run.job.* and hands each job to a paired Node through Bot's internal jobs API
     // (POST /api/v1/jobs, /jobs/:id/cancel, GET /jobs/:id, capability bot.job.dispatch, service-to-service only).
     ['run', 'events.event.publish', 'openvibe.events', []],
@@ -378,10 +378,16 @@ const REVOKED_GRANTS = [
     ['space', 'vip.resource.policy.evaluate', 'openvibe.vip'],
     ['space', 'events.subscription.manage', 'openvibe.events'],
     ['space', 'events.event.read', 'openvibe.events'],
-    ['space', 'events.event.publish', 'openvibe.events'],
     ['space', 'network.blocks.read', SELF_AUDIENCE],
     ['space', 'network.account.export.contribute', SELF_AUDIENCE],
     ['space', 'network.account.deletion.confirm', SELF_AUDIENCE],
+    // The static hosting engine left Host (T20, Host#84, contracts 0.150.0): its Media objects and Services' fan-out to
+    // its resource index go. Space serves the engine.
+    ['host', 'media.object.upload', 'openvibe.media'],
+    ['host', 'media.object.read', 'openvibe.media'],
+    ['host', 'media.object.list', 'openvibe.media'],
+    ['host', 'media.object.delete', 'openvibe.media'],
+    ['services', 'host.resource.read', 'openvibe.host'],
 ];
 
 // Default grants whose namespaces changed: a row still exactly as the old default seeded it is moved to
