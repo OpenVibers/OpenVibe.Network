@@ -20,6 +20,7 @@ const db = getDb();
 console.log = log;
 await db.prepare("UPDATE oauth_clients SET client_secret = 'host-secret' WHERE client_id = 'host'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'watch-secret' WHERE client_id = 'watch'").run();
 await db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES
     (10, 'owner', 'x', 'user'), (11, 'dev', 'x', 'user'), (14, 'staff', 'x', 'admin')`).run();
 const sid = async (id) => await subjects.ensureUserSubject(db, await db.prepare('SELECT * FROM users WHERE id = ?').get(id));
@@ -141,6 +142,43 @@ const U = { owner: userToken(10), dev: userToken(11), staff: userToken(14) };
             assert.match(x.type, /application\/problem\+json/);
         }
 
+        // 6. One person's membership (project delegation, ADR-003 amendment 2026-10-12): network.project.member.read,
+        //    Run and Watch only, never grantable; members only, and a non-member reads exactly like an unknown project.
+        assert.deepStrictEqual(principals.DEFAULT_GRANTS.filter(g => g[1] === 'network.project.member.read').map(g => [g[0], g[2]]).sort(),
+            [['run', principals.SELF_AUDIENCE], ['watch', principals.SELF_AUDIENCE]], 'Run and Watch hold network.project.member.read');
+        assert.strictEqual(policy.grantability('network.project.member.read').grantable, false, 'never grantable to apps');
+        assert.ok(principals.DEFAULT_GRANTS.some(g => g[0] === 'watch' && g[1] === 'run.job.submit' && g[2] === 'openvibe.run'), 'Watch may submit Run jobs');
+        const memberRead = async (project, subject, headers = {}) => {
+            const x = await fetch(`${base}/internal/projects/${encodeURIComponent(project)}/members/${encodeURIComponent(subject)}`, { headers });
+            const text = await x.text();
+            return { status: x.status, cache: x.headers.get('cache-control'), text, body: text ? JSON.parse(text) : null };
+        };
+        // Watch's own client (Run has no sign-in client to seed here; both hold the same grant).
+        const run = { authorization: `Bearer ${await token('watch', 'watch-secret')}` };
+        assert.strictEqual((await memberRead(P, owner)).status, 401, 'no token');
+        assert.strictEqual((await memberRead(P, owner, host)).status, 403, 'Host lacks network.project.member.read');
+        assert.strictEqual((await memberRead(P, owner, { authorization: `Bearer ${await token('live', 'live-secret')}` })).status, 403, 'Live lacks it');
+        assert.ok([401, 403].includes((await memberRead(P, owner, { authorization: `Bearer ${U.owner}` })).status), 'a person\'s session never reads it');
+        r = await memberRead(P, owner, run);
+        assert.strictEqual(r.status, 200, r.text);
+        assert.strictEqual(r.cache, 'no-store');
+        assert.deepStrictEqual({ ...r.body, added_at: null }, { project_id: P, subject: owner, role: 'owner', archived: false, added_at: null });
+        assert.ok(r.body.added_at, 'when they were added');
+        const contractCheck = require('openvibe-contracts').validate('network.project-member-result@1', r.body);
+        assert.ok(contractCheck.valid, `fits network.project-member-result@1: ${JSON.stringify(contractCheck.errors)}`);
+        r = await memberRead(P, dev, run);
+        assert.strictEqual(r.status, 200, r.text);
+        assert.strictEqual(r.body.role, 'developer', 'the member\'s own role, for the receiver to judge');
+        const staffSid = await sid(14);
+        const notMember = await memberRead(P, staffSid, run);
+        const unknownProject = await memberRead('prj_00000000000000000000000000', owner, run);
+        for (const x of [notMember, unknownProject]) { assert.strictEqual(x.status, 404); assert.strictEqual(x.body.code, 'project.member_not_found'); }
+        assert.strictEqual(notMember.text, unknownProject.text, 'a non-member and an unknown project answer the same');
+        for (const [pid, subj] of [[P, 'usr_nope'], [P, owner.toLowerCase()], ['nope', owner], [`${P}'--`, owner]]) {
+            const x = await memberRead(pid, subj, run);
+            assert.strictEqual(x.status, 404, `${pid} ${subj}`); assert.strictEqual(x.body.code, 'project.member_not_found');
+        }
+
         // 5. An archived project still reads, with archived_at set and every app revoked.
         r = await api('owner', 'POST', `/${P}/archive`);
         assert.strictEqual(r.status, 200, r.text);
@@ -150,6 +188,9 @@ const U = { owner: userToken(10), dev: userToken(11), staff: userToken(14) };
         assert.ok(r.body.apps.every(a => a.status === 'revoked'), 'archiving revoked every app');
         assert.ok(r.body.grants.length && r.body.grants.every(g => g.status === 'revoked'), 'and every grant of its apps reads revoked');
         assert.deepStrictEqual(r.body.quotas.map(q => q.capability), ['media.object.upload'], 'quotas outlive the archive');
+        r = await memberRead(P, owner, run);
+        assert.strictEqual(r.status, 200, r.text);
+        assert.strictEqual(r.body.archived, true, 'membership of an archived project says so (the receiver refuses it)');
 
         log('internal-projects: all assertions passed');
     } finally {
