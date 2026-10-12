@@ -33,5 +33,5 @@ for (const [id] of granted) {
     assert.ok(cap && cap.status !== 'retired', `services holds ${id}, which the contracts do not offer`);
     assert.ok(!revoked.has(id), `${id} is both granted and revoked`);
 }
-assert.ok(checked >= 4, `at least Network, Media, Events and Host are active authorities (${checked})`);
+assert.ok(checked >= 4, `at least Network, Media, Events and Space are active authorities (${checked})`);
 console.log(`services resource grants: ${checked} active authorities granted, ${granted.size} grants in all`);
