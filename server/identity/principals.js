@@ -229,6 +229,11 @@ const DEFAULT_GRANTS = [
     ['watch', 'actor.task.create', 'openvibe.actor', []],
     // A watch's actor-agent action runs the owner's personal agent (contracts 0.143.0, Actor's actor.agent.run).
     ['watch', 'actor.agent.run', 'openvibe.actor', []],
+    // Work's agent pillar: "Ask my Actor agent" on a tracked application gives Actor a task for that person (X-OV-Subject).
+    ['work', 'actor.task.create', 'openvibe.actor', []],
+    // Food's recipes pillar: food.suggest_recipes on OpenVibe.AI for the signed-in person (AI#57).
+    ['food', 'ai.run.create', 'openvibe.ai', ['food.*']],
+    ['food', 'ai.run.read', 'openvibe.ai', ['food.*']],
     // Plan T13: OpenVibe.Services merges every authority's resource index (ADR-048 section 3): it reads each one's
     // GET /api/v1/resources under that authority's <id>.resource.read, with a token for that authority's audience.
     ['services', 'network.resource.read', SELF_AUDIENCE, []],
