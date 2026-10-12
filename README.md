@@ -732,7 +732,7 @@ Reporting a vulnerability: [SECURITY.md](SECURITY.md). The rules the code keeps:
 Same as the parent [OpenVibe](../LICENSE) project.
 
 <!-- versions:start -->
-- openvibe-contracts: v0.142.0
+- openvibe-contracts: v0.143.0
 - openvibe-sdk: v0.44.0
 - openvibe-shared: v4.0.0
 <!-- versions:end -->
