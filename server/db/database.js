@@ -122,7 +122,8 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'rent', name: 'OpenVibe.Rent', redirect_uris: ['https://openvibe.rent/auth/callback'] },
             { client_id: 'watch', name: 'OpenVibe.Watch', redirect_uris: ['https://openvibe.watch/auth/callback'] },
             // openvibe.download (a private drive) and its sibling brands openvibe.pics and openvibe.video (plan T10 D4).
-            { client_id: 'media-hub', name: 'OpenVibe.Download', redirect_uris: ['https://openvibe.download/auth/callback'] },
+            // openvibe.video signs people in on its own host for playlists (OpenVibe.Video, 2026-10-12).
+            { client_id: 'media-hub', name: 'OpenVibe.Download', redirect_uris: ['https://openvibe.download/auth/callback', 'https://openvibe.video/auth/callback'] },
             // The network-wide inventory (ADR-054, plan T21).
             { client_id: 'inventory', name: 'OpenVibe.Inventory', redirect_uris: ['https://inventory.openvibe.network/auth/callback'] },
         ];
