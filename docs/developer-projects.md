@@ -247,6 +247,22 @@ agent's name and the summary as plain text, never the details; a standing rule's
 - **Errors:** an unknown or malformed id is `404 project.not_found`; no token is `401 token.missing`; a token without the capability is `403`.
 - **Catalog.** `network.project.read` has been `active` in openvibe-contracts since v0.88.0 (first-party). The guard accepts `active` and `planned` and refuses only `retired`.
 
+### Project delegation: one person's membership
+
+A first-party service acting for a person (`X-OV-Subject`) may name one project with `X-OV-Project` (ADR-003 amendment
+2026-10-12, openvibe-contracts v0.153.0). The receiver checks the membership here before it does the project's work.
+
+- **Route.** `GET /internal/projects/:project_id/members/:subject` with a service token holding
+  `network.project.member.read` for `openvibe.network` (first-party, never granted to apps). Run and Watch hold it by
+  default: Run checks before every delegated job, and Watch checks when a watch names a project.
+- **Result** (`Cache-Control: no-store`, `network.project-member-result@1`): `{ project_id, subject, role, archived,
+  added_at }`. No other member, app or secret.
+- **The decision is the receiver's:** delegation accepts only an `admin` or `owner` of a project that is not archived,
+  and may cache a yes for at most 60 seconds.
+- **Errors:** a non-member, an unknown project and a malformed id are the same `404 project.member_not_found`, so a
+  membership check never tells a service that a project exists. No token is `401`; a token without the capability is
+  `403`.
+
 Redirect URIs must be https. `http://localhost`, `127.0.0.1` and `[::1]` are allowed for sandbox apps only. Fragments and embedded credentials are refused. At most 10 per app. A public app needs at least one. A project has at most `DEV_MAX_APPS_PER_PROJECT` active apps.
 
 ### Service-side agent reads and confirmations

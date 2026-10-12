@@ -404,6 +404,21 @@ router.get('/projects/:project_id', principals.guard('network.project.read'), as
     }
 });
 
+// ── One person's membership of a project ─────────────────────
+// Project delegation (ADR-003 amendment 2026-10-12): before doing a project's work for a person a first-party service
+// names (X-OV-Subject + X-OV-Project), the receiver checks here that they are an admin or owner of the unarchived
+// project. First-party only; a non-member and an unknown project are the same 404.
+router.get('/projects/:project_id/members/:subject', principals.guard('network.project.member.read'), async (req, res) => {
+    try {
+        const out = await require('../developer/store').internalMemberView(getDb(req), req.params.project_id, req.params.subject);
+        if (!out) return require('openvibe-contracts').http.sendProblem(res, 404, 'project.member_not_found', { detail: 'no such member' });
+        res.set('Cache-Control', 'no-store').json(out);
+    } catch (err) {
+        console.error('[Internal] project member read error:', err.message);
+        require('openvibe-contracts').http.sendProblem(res, 500, 'internal.error', { detail: 'project member read failed' });
+    }
+});
+
 // ── Read an agent ────────────────────────────────────────────
 // Set before the guard so its refusals are not cached either.
 const noStore = (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); };

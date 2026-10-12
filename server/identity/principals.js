@@ -231,6 +231,12 @@ const DEFAULT_GRANTS = [
     ['watch', 'actor.task.create', 'openvibe.actor', []],
     // A watch's actor-agent action runs the owner's personal agent (contracts 0.143.0, Actor's actor.agent.run).
     ['watch', 'actor.agent.run', 'openvibe.actor', []],
+    // Project delegation (ADR-003 amendment 2026-10-12, contracts 0.153.0): a watch that names a project has its
+    // run-job actions start Run jobs for the owner in that project (X-OV-Subject + X-OV-Project). Watch checks the
+    // owner's membership when the watch is saved; Run checks it again before every delegated job.
+    ['watch', 'run.job.submit', 'openvibe.run', []],
+    ['watch', 'network.project.member.read', SELF_AUDIENCE, []],
+    ['run', 'network.project.member.read', SELF_AUDIENCE, []],
     // Work's agent pillar: "Ask my Actor agent" on a tracked application gives Actor a task for that person (X-OV-Subject).
     ['work', 'actor.task.create', 'openvibe.actor', []],
     // Food's recipes pillar: food.suggest_recipes on OpenVibe.AI for the signed-in person (AI#57).

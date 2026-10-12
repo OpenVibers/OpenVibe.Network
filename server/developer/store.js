@@ -164,6 +164,21 @@ async function projectView(db, p, role, settings) {
  * through dev_apps). No secrets, no client ids, no members other than the owner, no actor labels. Archived projects
  * still return (archived_at set). -> null when the id is not a project.
  */
+/**
+ * One person's membership of a project, as a receiving service sees it (network.project.member.read, GET
+ * /internal/projects/:project_id/members/:subject): the role, when they were added, and whether the project is
+ * archived. Project delegation (ADR-003 amendment 2026-10-12) accepts only an admin or owner of an unarchived project;
+ * that decision is the receiver's. -> null for a non-member and for an unknown project alike, so the answer never
+ * tells a service that a project exists.
+ */
+async function internalMemberView(db, projectId, subject) {
+    if (!PROJECT_ID_RE.test(String(projectId)) || !/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(String(subject))) return null;
+    const r = await db.prepare(`SELECT m.role, m.added_at, p.archived_at FROM dev_project_members m JOIN dev_projects p ON p.id = m.project_id
+        WHERE m.project_id = ? AND m.subject_id = ?`).get(String(projectId), String(subject));
+    if (!r) return null;
+    return { project_id: String(projectId), subject: String(subject), role: r.role, archived: !!r.archived_at, added_at: r.added_at || null };
+}
+
 async function internalProjectView(db, projectId) {
     const p = PROJECT_ID_RE.test(String(projectId)) ? await db.prepare('SELECT * FROM dev_projects WHERE id = ?').get(String(projectId)) : null;
     if (!p) return null;
@@ -708,7 +723,7 @@ async function deleteQuota(db, actor, projectId, capability, { ctx }) {
 module.exports = {
     ensureSchema, DevError, ROLES, APP_ID_RE, PROJECT_ID_RE, SECRET_PREFIX,
     audit, listAudit, actorOf, access, memberRole, lockProject,
-    createProject, listProjects, renameProject, archiveProject, setAllowance, setEnvironmentPolicy, setPlacement, projectView, internalProjectView,
+    createProject, listProjects, renameProject, archiveProject, setAllowance, setEnvironmentPolicy, setPlacement, projectView, internalProjectView, internalMemberView,
     listMembers, addMember, updateMember, removeMember,
     listApps, getApp, createApp, updateApp, revokeApp,
     listCredentials, rotateCredential, revokeCredential, matchSecret, hashSecret,
