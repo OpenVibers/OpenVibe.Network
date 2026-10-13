@@ -2,6 +2,8 @@
   "id": "network.confirmation.manage",
   "version": "1.0",
   "_note": "shipped in openvibe-contracts v0.89.0",
+  "shipped_in": "openvibe-contracts v0.89.0",
+  "shipped_note": "v0.89.0 published network.confirmation.manage; this file stays as the slice-1 proposal, cited by docs/t2-projects-and-grants.md section 8.",
   "owner": "network",
   "status": "planned",
   "visibility": "first-party",
