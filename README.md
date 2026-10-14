@@ -530,8 +530,8 @@ Google-style account management supporting up to 5 accounts:
   `platform.telemetry-sample@1` per key per flush (count, sum, max and p95 in `extra`, mean in
   `latency_ms`), plus the HTTP autoscaling gauges (active requests, p95, event-loop lag) once per flush;
   health, readiness, metrics, the OpenVibe Frame and static/shared assets are skipped. Buffered by
-  `openvibe-sdk/telemetry` and written into the analytics store (`server/telemetry.js`,
-  `server/observability.js`); `gracefulStop` flushes it once at shutdown.
+  `openvibe-sdk/service`'s telemetry kit and written into the analytics store as `telemetry.*` events
+  (`server/telemetry-sink.js`); `gracefulStop` flushes it once at shutdown.
 - `GET /release.json` is Network's release manifest (ADR-016, `registry.release-manifest@1`, from
   `openvibe-shared/release`'s `release.mount`): the deployed commit, the library versions and, since
   openvibe-contracts 0.32.0, the 1.1.0 fields. No components are declared, so every release still

@@ -14,7 +14,7 @@ const root = path.join(__dirname, '..');
 const index = fs.readFileSync(path.join(root, 'server', 'index.js'), 'utf8');
 
 // Static: the wiring is the SDK's, with today's Network values.
-assert.ok(/const \{ gracefulStop, within \} = require\('openvibe-sdk\/service'\)/.test(index), "server/index.js imports gracefulStop and within from openvibe-sdk/service");
+assert.ok(/const svc = require\('openvibe-sdk\/service'\)/.test(index) && /const \{ gracefulStop, within \} = svc;/.test(index), "server/index.js imports gracefulStop and within from openvibe-sdk/service");
 assert.ok(!/require\(['"]\.\/graceful['"]\)/.test(index), 'server/index.js no longer requires ./graceful');
 assert.ok(!fs.existsSync(path.join(root, 'server', 'graceful' + '.js')), 'the local shutdown copy is deleted');
 assert.ok(/name: 'Network', server, drainMs: 8000, deadlineMs: 10000, deadlineExitCode: 1/.test(index), 'drainMs 8000, deadlineMs 10000, deadlineExitCode 1');
@@ -22,7 +22,7 @@ assert.ok(/name: 'Network', server, drainMs: 8000, deadlineMs: 10000, deadlineEx
 const stopAt = index.indexOf('stop: [');
 const closeAt = index.indexOf('close: [');
 assert.ok(stopAt > 0 && closeAt > stopAt, 'the stop list precedes the close list');
-for (const marker of ['ecosystem.stop()', 'deployDrift.stop()', 'libraryTags.stop()', 'frameService.stop()']) {
+for (const marker of ['ecosystem.stop()', 'deployDrift.stop()', 'libraryTags.stop()', 'frameService.stop()', 'svc.telemetry.stop()']) {
     assert.ok(index.indexOf(marker) > stopAt && index.indexOf(marker) < closeAt, `stop step ${marker} is in the stop list`);
 }
 for (const marker of ["require('./developer/event-relay').stopRelay(db)", 'analytics.destroy()', 'db.close()', 'valkey && valkey.close()']) {
