@@ -93,11 +93,11 @@ const server = http.createServer(app);
 
         // ── Export ──
         const seeded = await accountData.expectedServices(db, 'network.account.export.contribute');
-        assert.deepStrictEqual(seeded, ['actor', 'blog', 'bot', 'chat', 'codes', 'community', 'deals', 'food', 'games', 'help', 'inventory', 'live', 'media', 'media-hub', 'quest', 'rent', 'services', 'tips', 'trade', 'vip', 'watch', 'wiki', 'work'],
-            'the holders of the contribute grant: the skeleton services answer too since 2026-10-08 and the older ones since 2026-10-09 (openvibe-sdk/account-data); Space left with the forum; Codes since 2026-10-14 (its run tasks)');
+        assert.deepStrictEqual(seeded, ['actor', 'blog', 'bot', 'chat', 'codes', 'community', 'deals', 'food', 'games', 'help', 'inventory', 'live', 'media', 'media-hub', 'play', 'quest', 'rent', 'services', 'tips', 'trade', 'vip', 'watch', 'wiki', 'work'],
+            'the holders of the contribute grant: the skeleton services answer too since 2026-10-08 and the older ones since 2026-10-09 (openvibe-sdk/account-data); Space left with the forum; Codes and Play since 2026-10-14 (run tasks; scores and unlocks)');
         // The scenarios below follow five services; the newer ones are set aside here, exactly as an operator would
         // revoke a service's grant (the same rows, the same revoked_at).
-        for (const svc of ['actor', 'blog', 'bot', 'codes', 'deals', 'food', 'help', 'inventory', 'media-hub', 'quest', 'rent', 'services', 'tips', 'trade', 'vip', 'watch', 'wiki', 'work']) {
+        for (const svc of ['actor', 'blog', 'bot', 'codes', 'deals', 'food', 'help', 'inventory', 'media-hub', 'play', 'quest', 'rent', 'services', 'tips', 'trade', 'vip', 'watch', 'wiki', 'work']) {
             for (const cap of ['network.account.export.contribute', 'network.account.deletion.confirm']) {
                 await db.prepare('UPDATE principal_grants SET revoked_at = ov_now() WHERE client_id = ? AND capability = ? AND revoked_at IS NULL').run(svc, cap);
             }
