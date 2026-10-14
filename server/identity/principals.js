@@ -253,6 +253,9 @@ const DEFAULT_GRANTS = [
     // pastes and spaces.
     // Since contracts 0.150.0 the static hosting index is Space's (space.resource.read); Host's is retired.
     ...['media', 'events', 'space', 'watch', 'actor', 'bot', 'chat', 'openre', 'community'].map(id => ['services', `${id}.resource.read`, `openvibe.${id}`, []]),
+    // ADR-048 control (plan T13 step 10): Services sends a person's control requests to the authority that owns the
+    // resource. Watch is the first to take them (watch.resource.control, contracts 0.165.0; Watch#57).
+    ['services', 'watch.resource.control', 'openvibe.watch', []],
     // Plan T14: OpenVibe.Run publishes run.job.* and hands each job to a paired Node through Bot's internal jobs API
     // (POST /api/v1/jobs, /jobs/:id/cancel, GET /jobs/:id, capability bot.job.dispatch, service-to-service only).
     ['run', 'events.event.publish', 'openvibe.events', []],
