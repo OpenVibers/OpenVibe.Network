@@ -54,8 +54,8 @@ const DEFAULT_GRANTS = [
     // granted to signed-in players once each (origin earned, games:<game>:<achievement>:<subject> as the key).
     ['games', 'inventory.item.grant', 'openvibe.inventory', []],
     // OpenVibe.Play (contracts 0.172.0, Games ADR-0007 decision 10): Games registers Scraplandia and Salvage Rush as Play
-    // titles and posts their scores and unlocks there. Play subscribes to the account events at boot; its account grants
-    // (export.contribute, deletion.confirm) follow once it is subscribed, as Codes' did.
+    // titles and posts their scores and unlocks there. Play subscribes to the account events at boot (its account grants
+    // are with the other services' above).
     ...['play.title.manage', 'play.result.write', 'play.player.read'].map((cap) => ['games', cap, 'openvibe.play', []]),
     ['play', 'events.subscription.manage', 'openvibe.events', []],
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],
@@ -116,9 +116,10 @@ const DEFAULT_GRANTS = [
     // confirm a deletion; the holders of each grant are the services Network waits for.
     // Since 2026-10-08 the services built from the skeleton answer too, through openvibe-sdk/account-data (SDK 0.36.0),
     // and since 2026-10-09 the older services that hold personal rows (SDK 0.37.0; each subscribed before this grant).
-    // Codes since 2026-10-14 (its run_tasks, plan T16; subscribed first through Network#178).
+    // Codes since 2026-10-14 (its run_tasks, plan T16; subscribed first through Network#178). Play since 2026-10-14 (its
+    // scores and unlocks; subscribed at its first boot, Network#189).
     ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub',
-        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes'].flatMap((svc) => [
+        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
