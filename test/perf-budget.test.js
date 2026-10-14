@@ -14,7 +14,7 @@ const { measure, check, format } = require('openvibe-shared/perf-budget');
 const BUDGETS = {
     htmlRawKB: 132,       // measured 128.3 with Events, AI and Search added (31 sites, contracts 0.135.0); 122.3 (shared 2.21.0: a real glyph for every product card, where ten drew the 'V'); was 110.6 with 33 live sites (contracts 0.119.0). The home page lists every site, so it grows with the network
     htmlBrotliKB: 26,     // 25.1 (31 sites, contracts 0.135.0); 24.1 (shared 2.21.0, the same glyphs); 20.5 (contracts 0.116.0)
-    jsFiles: 8,           // 6 with boost.js (2026-10-13, plan T11 step 3: one more script on every boosted page; it loads route-transition.js on the first move only)
+    jsFiles: 8,           // 7 with boost.js, was 6 (2026-10-13, plan T11 step 3: one more script on every boosted page; it loads route-transition.js on the first move only)
     jsRawKB: 266,         // 249.8 with boost.js (13.1); 228.3
     jsBrotliKB: 64,       // 60.3 with boost.js (3.8); 53.9
     cssFiles: 2,          // 1 (Font Awesome, cross-origin)

@@ -3,6 +3,8 @@
 // the script, and wraps what changes in <main id="main">. The marker is the served release id (release.release, the id
 // /release.json and the ov-release meta carry), so a page from another deploy is a normal page load. Pages without
 // the marker (/my, /login, /admin/*, /verify-email, /@:username, the legal pages) are always a normal load.
+// boost.js also needs the same external scripts on both pages: only the /updates filter views share theirs, so a
+// move between /, /status and /updates is a normal load until their script sets match.
 const esc = require('openvibe-shared/seo').esc;
 
 const meta = (releaseId) => `<meta name="ov-boost" content="network@${esc(releaseId || 'dev')}">`;

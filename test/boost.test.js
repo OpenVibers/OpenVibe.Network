@@ -1,7 +1,8 @@
 'use strict';
 // openvibe-shared/boost.js on Network's pages (plan T11 step 3): /, /status and /updates carry the release marker
 // (network@<served release id>), wrap what changes in <main id="main"> and load boost.js; the front door's static hero
-// stays outside #main, a new release changes the / ETag, and the hero's intent picker still works.
+// stays outside #main, a new release changes the / ETag, and the hero's intent picker still works. boost.js swaps
+// only between pages with the same external scripts: the /updates views share theirs; /, /status and /updates differ.
 //   node test/boost.test.js
 const assert = require('assert');
 const http = require('http');
@@ -87,13 +88,18 @@ function boosted(html, page, releaseId) {
         const status = await (await fetch(`${base}/status`)).text();
         boosted(status, '/status', 'cccccccccccc');
         assert.ok(status.indexOf('<h1>Service status</h1>') > status.indexOf('id="main"'), '/status: its body is inside #main');
+        const scriptSet = (html) => [...html.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1]).sort().join(' ');
+        const sets = {};
         for (const url of ['/updates', '/updates?site=wiki']) {
             const up = await (await fetch(base + url)).text();
+            sets[url] = scriptSet(up);
             boosted(up, url, 'cccccccccccc');
             const m = up.indexOf('id="main"'), shipped = up.indexOf('data-ov-shipped="log"');
             assert.ok(shipped > m && shipped < up.indexOf('</main>'), `${url}: the log (and its loading line) is inside #main`);
             assert.ok(/addEventListener\('ov:boost:load',function\(\)\{if\(window\.OpenVibeShipped\)OpenVibeShipped\.scan\(document\.getElementById\('main'\)\)/.test(up), `${url}: the log re-mounts after a swap`);
         }
+        assert.strictEqual(sets['/updates?site=wiki'], sets['/updates'], 'the /updates filter links swap: same external scripts');
+        assert.notStrictEqual(scriptSet(status), sets['/updates'], '/status <-> /updates is a normal page load: other external scripts');
     } finally {
         srv.close();
     }
