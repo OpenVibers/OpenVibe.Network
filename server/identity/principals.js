@@ -269,6 +269,10 @@ const DEFAULT_GRANTS = [
     // (robots.agent_control); its gate, limits and e-stop still judge every step.
     ['actor', 'bot.robot.read', 'openvibe.bot', []],
     ['actor', 'bot.robot.control', 'openvibe.bot', []],
+    // Plan T14/T17 (contracts 0.166.0): the agent uses a person's own computer (OpenVibe.Node's computer plugin) through
+    // Bot, only as that machine's owner (X-OV-Subject) and only where the owner turned on "Let my agent use this
+    // computer"; the level the owner set on the machine decides what may happen there.
+    ['actor', 'bot.computer.control', 'openvibe.bot', []],
     // Plan T14/T16 (contracts 0.161.0): a person's own machine runs jobs for them. Bot reports the worker offers of the
     // machines connected to it (each user-owned offer names its owner); Run reads them, owner included, to place a
     // person's job only on that person's own machines; Codes starts, follows and cancels a coding job for the signed-in
