@@ -273,6 +273,10 @@ const DEFAULT_GRANTS = [
     // Bot, only as that machine's owner (X-OV-Subject) and only where the owner turned on "Let my agent use this
     // computer"; the level the owner set on the machine decides what may happen there.
     ['actor', 'bot.computer.control', 'openvibe.bot', []],
+    // Plan T18 step 7 (contracts 0.167.0): a watch's node source checks something on its owner's own network from their
+    // machine. Bot lets Watch send only the read-only probe, as the owner, where they turned on "Let my watches check
+    // things from this computer".
+    ['watch', 'bot.computer.control', 'openvibe.bot', []],
     // Plan T14/T16 (contracts 0.161.0): a person's own machine runs jobs for them. Bot reports the worker offers of the
     // machines connected to it (each user-owned offer names its owner); Run reads them, owner included, to place a
     // person's job only on that person's own machines; Codes starts, follows and cancels a coding job for the signed-in
