@@ -11,6 +11,7 @@ const icons = require('openvibe-shared/icons');
 const showcase = require('openvibe-shared/showcase');
 const toolsCatalog = require('../domains/catalog');
 const activity = require('./activity');
+const boost = require('../boost');
 
 const SHELL = path.join(__dirname, '..', '..', 'public', 'index.html');
 const esc = seo.esc;
@@ -196,22 +197,23 @@ function summaryOf(catalog) {
 }
 
 let pageCache = { key: '', html: '', etag: '' };
-function render() {
+// releaseId: the served release (server/index.js release.release), the boost marker; it keys the cache so a deploy changes the ETag.
+function render({ releaseId = '' } = {}) {
     const { catalog } = toolsCatalog.peek();
     const act = activity.peek();
     const stat = fs.statSync(SHELL);
-    const key = `${stat.mtimeMs}:${catalog.updated}:${catalog.tools.length}:${act.version}`;
+    const key = `${stat.mtimeMs}:${catalog.updated}:${catalog.tools.length}:${act.version}:${releaseId}`;
     if (pageCache.key === key) return pageCache;
     const ld = seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what }))));
     const summary = summaryOf(catalog);
-    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog)).replace('<!--OV:CONSTELLATION-->', constellation()).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', `${ld}\n${summary.head}\n</head>`);
+    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog)).replace('<!--OV:CONSTELLATION-->', constellation()).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
     pageCache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
     return pageCache;
 }
 
-function sendHome(req, res) {
+function sendHome(req, res, { releaseId = '' } = {}) {
     toolsCatalog.getCatalog().catch(() => {});     // refresh in the background; this response uses what is known now
-    const page = render();
+    const page = render({ releaseId });
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.set('Cache-Control', cache.htmlHeaders({ maxAge: 120 }));
     res.set('ETag', page.etag);
