@@ -393,6 +393,10 @@ const DEFAULT_GRANTS = [
     ['ai', 'billing.usage.record', 'openvibe.billing', []],
     ['events', 'billing.usage.record', 'openvibe.billing', []],
     ['media', 'billing.usage.record', 'openvibe.billing', []],
+    // The same for Space (gb-month of a Network project's deploy bytes, Space#43) and Watch (one reading per completed
+    // check, Watch#54). Recording usage only.
+    ['space', 'billing.usage.record', 'openvibe.billing', []],
+    ['watch', 'billing.usage.record', 'openvibe.billing', []],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
