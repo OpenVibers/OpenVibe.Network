@@ -253,6 +253,10 @@ const DEFAULT_GRANTS = [
     // (POST /api/v1/jobs, /jobs/:id/cancel, GET /jobs/:id, capability bot.job.dispatch, service-to-service only).
     ['run', 'events.event.publish', 'openvibe.events', []],
     ['run', 'bot.job.dispatch', 'openvibe.bot', []],
+    // Plan T15: a channel bound to an OpenVibe.Bot robot lets its chat drive it. Live forwards !forward, !say … to Bot's
+    // POST /api/v1/robots/:id/commands with X-OV-Subject naming the viewer, so Bot's roles, queue, cooldowns and e-stop
+    // judge each one as that person (Live has no robot code of its own since Live's controls were deleted).
+    ['live', 'bot.robot.control', 'openvibe.bot', []],
     // Plan T2 lane B step 3: Host places and runs per project, so it reads a project's tenancy, placement and quotas.
     // Other services get this row only when they ship a caller of GET /internal/projects/:project_id.
     ['host', 'network.project.read', SELF_AUDIENCE, []],
