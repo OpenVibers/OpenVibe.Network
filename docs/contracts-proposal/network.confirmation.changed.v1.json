@@ -1,6 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openvibe.network/contracts/events/payloads/network.confirmation.changed.v1.json",
+  "shipped_in": "openvibe-contracts v0.89.0",
+  "shipped_note": "v0.89.0 published network.confirmation.changed@1; this file stays as the slice-1 proposal, cited by docs/t2-projects-and-grants.md section 8.",
   "title": "NetworkConfirmationChangedPayload",
   "description": "network.confirmation.changed v1 (OpenVibe.Network; roadmap WS-Z2, docs/t2-projects-and-grants.md section 5). A confirmation request (network.confirmation-request@1) an agent raised for a sensitive capability was created, approved, denied, expired, cancelled or used. Written to Network's outbox in the transaction that changes it, beside an audit row. Never carries the summary or details, which may hold message text: a reader that needs them asks Network with its own authority. Envelope: subject { type: confirmation, id: cnf_… }, visibility internal, on_behalf_of the owner, actor the owner who decided (or the system for an expiry, a cascade or a standing rule).",
   "type": "object",
