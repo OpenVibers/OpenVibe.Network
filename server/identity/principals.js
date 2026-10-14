@@ -53,6 +53,11 @@ const DEFAULT_GRANTS = [
     // OpenVibe.Games gives six of Live's items for achievements (Inventory's live-grantors.json names Games on them),
     // granted to signed-in players once each (origin earned, games:<game>:<achievement>:<subject> as the key).
     ['games', 'inventory.item.grant', 'openvibe.inventory', []],
+    // OpenVibe.Play (contracts 0.172.0, Games ADR-0007 decision 10): Games registers Scraplandia and Salvage Rush as Play
+    // titles and posts their scores and unlocks there. Play subscribes to the account events at boot; its account grants
+    // (export.contribute, deletion.confirm) follow once it is subscribed, as Codes' did.
+    ...['play.title.manage', 'play.result.write', 'play.player.read'].map((cap) => ['games', cap, 'openvibe.play', []]),
+    ['play', 'events.subscription.manage', 'openvibe.events', []],
     ['live', 'network.coins.debit', SELF_AUDIENCE, ['live']],
     ['live', 'network.notifications.push', SELF_AUDIENCE, ['live']],
     // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
