@@ -493,7 +493,11 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
 // capacity out; the report and the full internal read take network.resource.report. The amended ADR-048 moved the
 // public routes off /api/v1/resources (now Network's resource index, below) to /api/v1/offers.
 {
-    const offerRouters = require('./registry/offers').routers({ guard: require('./identity/principals').guard('network.resource.report') });
+    const { guard: capGuard, guardAny } = require('./identity/principals');
+    const offerRouters = require('./registry/offers').routers({
+        guard: capGuard('network.resource.report'),
+        readGuard: guardAny(['network.resource.report', 'network.registry.read']),
+    });
     app.use('/api/v1/offers', offerRouters.pub);
     app.use('/internal/resources', offerRouters.internal);
 }

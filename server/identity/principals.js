@@ -262,6 +262,13 @@ const DEFAULT_GRANTS = [
     // (robots.agent_control); its gate, limits and e-stop still judge every step.
     ['actor', 'bot.robot.read', 'openvibe.bot', []],
     ['actor', 'bot.robot.control', 'openvibe.bot', []],
+    // Plan T14/T16 (contracts 0.161.0): a person's own machine runs jobs for them. Bot reports the worker offers of the
+    // machines connected to it (each user-owned offer names its owner); Run reads them, owner included, to place a
+    // person's job only on that person's own machines; Codes starts, follows and cancels a coding job for the signed-in
+    // person in their project (X-OV-Subject + X-OV-Project), which Run checks before every job.
+    ['bot', 'network.resource.report', SELF_AUDIENCE, []],
+    ['run', 'network.registry.read', SELF_AUDIENCE, []],
+    ...['run.job.submit', 'run.job.read', 'run.job.stream', 'run.job.cancel'].map((c) => ['codes', c, 'openvibe.run', []]),
     // Plan T2 lane B step 3: Host places and runs per project, so it reads a project's tenancy, placement and quotas.
     // Other services get this row only when they ship a caller of GET /internal/projects/:project_id.
     ['host', 'network.project.read', SELF_AUDIENCE, []],
@@ -591,4 +598,18 @@ function guard(capability, { ownApp, namespace } = {}) {
     };
 }
 
-module.exports = { ensureSchema, issueToken, guard, grantsFor, recordDecision, DEFAULT_GRANTS, REVOKED_GRANTS, RESTORED_GRANTS, TOKEN_TTL_S, SELF_AUDIENCE };
+/**
+ * A guard that accepts any one of `caps`. The bearer's (unverified) claims only pick which capability's guard runs;
+ * that guard then verifies the token and the capability in full, exactly as guard() alone does, and audits it.
+ */
+function guardAny(caps, opts) {
+    const guards = caps.map((c) => [c, guard(c, opts)]);
+    return function anyGuard(req, res, next) {
+        const claims = require('../developer/policy').unverifiedClaims(String(req.headers.authorization || '').slice(7).trim());
+        const held = claims && Array.isArray(claims.cap) ? claims.cap : [];
+        const pick = guards.find(([c]) => capabilities.grants(held, c)) || guards[0];
+        return pick[1](req, res, next);
+    };
+}
+
+module.exports = { ensureSchema, issueToken, guard, guardAny, grantsFor, recordDecision, DEFAULT_GRANTS, REVOKED_GRANTS, RESTORED_GRANTS, TOKEN_TTL_S, SELF_AUDIENCE };

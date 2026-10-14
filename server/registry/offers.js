@@ -123,6 +123,12 @@ async function get(db, id) {
     return row ? JSON.parse(row.doc) : null;
 }
 
+/**
+ * A person's own machine is never public (contracts 0.161.0): user-owned offers, and their owner, are left out of the
+ * public list and answer 404 there; placement reads them from the internal list.
+ */
+const isPublic = (doc) => doc.trust !== 'user-owned';
+
 /** The public form of an offer: capacity and harness connection address are private. */
 function publicDoc({ capacity, ...doc }) {
     if (doc.kind !== 'harness' || !doc.detail) return doc;
@@ -147,28 +153,29 @@ function validatePublicDoc(doc) {
     return validate(CONTRACT, { ...doc, detail: { ...doc.detail, address: { kind: 'cli', target: 'redacted' } } });
 }
 
-function routers({ guard }) {
-    const listed = async (req, shape) => {
+function routers({ guard, readGuard = guard }) {
+    const listed = async (req, shape, keep = () => true) => {
         const filters = filtersOf(req.query);
-        const docs = (await list(req.app.locals.db, filters)).map(shape);
+        const docs = (await list(req.app.locals.db, filters)).filter(keep).map(shape);
         return { offers: docs, generated_at: new Date().toISOString(), filters, count: docs.length };
     };
     const unknown = (res, id) => require('openvibe-contracts').http.sendProblem(res, 404, 'registry.unknown_offer', { detail: `no offer ${id}` });
     const pub = express.Router();
     const open = (res, maxAge) => res.set('Cache-Control', maxAge ? `public, max-age=${maxAge}` : 'no-store')
         .set('Access-Control-Allow-Origin', '*').set('Timing-Allow-Origin', '*');
-    pub.get('/', async (req, res) => open(res, 60).json(await listed(req, publicDoc)));
+    pub.get('/', async (req, res) => open(res, 60).json(await listed(req, publicDoc, isPublic)));
     pub.get('/:offer_id', async (req, res) => {
         const doc = await get(req.app.locals.db, req.params.offer_id);
-        if (!doc) return unknown(open(res, 0), req.params.offer_id);
+        if (!doc || !isPublic(doc)) return unknown(open(res, 0), req.params.offer_id);
         open(res, 60).json(publicDoc(doc));
     });
     // A beacon a browser times to estimate its distance from an offer (openvibe-sdk/geo), as nodes.js answers one.
     pub.get('/:offer_id/beacon', (req, res) => open(res, 0).status(204).end());
     const internal = express.Router();
-    // The full docs, capacity included, for placement.plan() consumers: the same guard as the report.
-    internal.get('/', guard, async (req, res) => res.set('Cache-Control', 'no-store').json(await listed(req, (d) => d)));
-    internal.get('/:offer_id', guard, async (req, res) => {
+    // The full docs, capacity and user-owned offers included, for placement.plan() consumers: the report's guard, or
+    // network.registry.read for a placer that reads and never reports (Run).
+    internal.get('/', readGuard, async (req, res) => res.set('Cache-Control', 'no-store').json(await listed(req, (d) => d)));
+    internal.get('/:offer_id', readGuard, async (req, res) => {
         const doc = await get(req.app.locals.db, req.params.offer_id);
         if (!doc) return unknown(res.set('Cache-Control', 'no-store'), req.params.offer_id);
         res.set('Cache-Control', 'no-store').json(doc);
