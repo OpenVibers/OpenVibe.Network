@@ -573,9 +573,9 @@ libraryTags.start();
 app.use('/api/v1/creators', rateLimit({ windowMs: 60_000, max: 300 }), require('./analytics/creators').router({ fullGuard: require('./identity/principals').guard('network.analytics.creator.read') }));
 // Incidents and maintenance (WS-N task 12): public list; staff admins or network.status.incident (ovhost) write.
 app.use('/api/v1/status/incidents', rateLimit({ windowMs: 60_000, max: 120 }), require('./status/incidents').router({ requireAuth, incidentGuard: require('./identity/principals').guard('network.status.incident') }));
-app.use(require('./status/routes').createStatusRoutes({ ecosystem }));
+app.use(require('./status/routes').createStatusRoutes({ ecosystem, release }));
 // What shipped network-wide: the changelog proxy every site's widget reads, and /updates.
-app.use(require('./updates/routes').createUpdatesRoutes({ blogUrl: process.env.OV_BLOG_INTERNAL_URL || 'http://127.0.0.1:4810' }).router);
+app.use(require('./updates/routes').createUpdatesRoutes({ blogUrl: process.env.OV_BLOG_INTERNAL_URL || 'http://127.0.0.1:4810', release }).router);
 
 app.get('/api/.well-known/jwks', (_req, res) => {
     // Without key files the ephemeral HS256 "key pair" is one shared secret: publishing it would let
@@ -824,7 +824,7 @@ app.get(['/login.html', '/admin.html'], (req, res) => {
 // Landing page at the apex root
 app.get(['/', '/index.html'], (req, res) => {
     if (req.path === '/index.html') return redirectWithoutHtml(req, res, '/');
-    return require('./home/render').sendHome(req, res);
+    return require('./home/render').sendHome(req, res, { releaseId: release.release });
 });
 app.get('/llms.txt', (_req, res) => res.type('text/plain').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(require('./home/render').llmsTxt()));
 app.get('/llms-full.txt', (_req, res) => res.type('text/plain').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(require('./home/render').llmsFullTxt({ baseUrl: config.baseUrl })));

@@ -213,6 +213,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
         </div>
     </section>
 
+    <main id="main">
     <!--OV:HOME-->
 
     <!-- What shipped across the network (the changelog on openvibe.blog; openvibe-shared shipped.js) -->
@@ -229,6 +230,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
             <p>openvibe.network is the identity behind it all: sign in once and every OpenVibe site signs you in too, your themes and notifications follow you, your history across the network lives in one place, and the OpenCoins wallet works everywhere.</p>
         </div>
     </section>
+    </main>
 
 </div>
 
@@ -238,7 +240,8 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 <script src="/shared/navbar.js"></script>
 <script src="/shared/footer.js"></script>
 <script src="/shared/shipped.js" defer></script>
-<script>document.addEventListener('DOMContentLoaded', function () { if (window.OpenVibeShipped) OpenVibeShipped.mount('#ov-shipped', { limit: 8, title: 'Recently shipped across OpenVibe', more: '/updates' }); });</script>
+<script src="/shared/boost.js" data-main="#main" defer></script>
+<script>(function () { function shipped() { if (window.OpenVibeShipped && document.getElementById('ov-shipped')) OpenVibeShipped.mount('#ov-shipped', { limit: 8, title: 'Recently shipped across OpenVibe', more: '/updates' }); } document.addEventListener('DOMContentLoaded', shipped); document.addEventListener('ov:boost:load', shipped); })();</script>
 <script>
 (function () {
     if (window.OpenVibeFooter) { try { OpenVibeFooter.init({ service: 'network', variant: 'full', links: [{ heading: 'OpenVibe.Network', items: [{ name: 'My account', url: '/my' }, { name: 'History', url: '/my#history' }, { name: 'Themes', url: '/themes' }, { name: 'Linked services', url: '/my#linked' }, { name: 'Sign in', url: '/login' }] }] }); } catch (e) { /* */ } }

@@ -26,6 +26,7 @@ const express = require('express');
 const contracts = require('openvibe-contracts');
 const seo = require('openvibe-shared/seo');
 const exposure = require('../registry/exposure');
+const boost = require('../boost');
 
 const SLO_FILE = path.join(__dirname, '..', '..', 'docs', 'slo.json');
 // The daily developer path against production (OpenVibe.Host openvibe-devpath.timer, WS-N task 1): step
@@ -170,7 +171,7 @@ function incidentsSection(incidents) {
     }).join('')}<p><a href="/api/v1/status/incidents">History (JSON)</a></p></section>`;
 }
 
-function renderPage(list, slo, generatedAt, devPath = null, toolsJob = null, healthSince = null, incidents = null) {
+function renderPage(list, slo, generatedAt, devPath = null, toolsJob = null, healthSince = null, incidents = null, releaseId = '') {
     const counts = summary(list);
     const tr = list.map((r) => `<tr id="svc-${esc(r.id)}">
 <td><b>${esc(r.name)}</b><small>${esc(r.id)} · manifest: ${esc(r.manifest_status)}</small></td>
@@ -188,6 +189,7 @@ function renderPage(list, slo, generatedAt, devPath = null, toolsJob = null, hea
 <title>Status · OpenVibe.Network</title>
 <meta name="description" content="Observed status of each OpenVibe service: readiness, release and when it was last checked.">
 <meta name="robots" content="noindex, nofollow">
+${boost.meta(releaseId)}
 ${require('openvibe-shared/app-icon').headTags({ site: 'network', iconBase: '/assets' })}
 <meta name="color-scheme" content="dark light">
 <script src="/shared/theme-loader.js" defer></script>
@@ -232,12 +234,13 @@ ${sloRows}
 </main>
 ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact' })}
 <script src="/shared/navbar.js" defer></script>
+${boost.SCRIPT}
 <script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin});}catch(e){}});</script>
 </body>
 </html>`;
 }
 
-function createStatusRoutes({ ecosystem, now = () => new Date() }) {
+function createStatusRoutes({ ecosystem, release = null, now = () => new Date() }) {
     const r = express.Router();
     r.get('/api/v1/status', (_req, res) => {
         const list = rows(ecosystem);
@@ -264,7 +267,7 @@ function createStatusRoutes({ ecosystem, now = () => new Date() }) {
         res.set('Content-Type', 'text/html; charset=utf-8').set('Cache-Control', 'no-cache, max-age=0').set('X-Robots-Tag', 'noindex, nofollow');
         let incidents = null;
         try { incidents = await require('./incidents').list(_req.app.locals.db); } catch { incidents = null; }
-        res.send(renderPage(rows(ecosystem), slo, now().toISOString(), loadDevPath(), loadDevPath(TOOLSJOB_FILE), typeof ecosystem.releaseHealthSince === 'function' ? ecosystem.releaseHealthSince() : null, incidents));
+        res.send(renderPage(rows(ecosystem), slo, now().toISOString(), loadDevPath(), loadDevPath(TOOLSJOB_FILE), typeof ecosystem.releaseHealthSince === 'function' ? ecosystem.releaseHealthSince() : null, incidents, release && release.release));
     });
     return r;
 }

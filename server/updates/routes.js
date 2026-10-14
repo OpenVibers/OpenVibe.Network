@@ -11,6 +11,7 @@ const cache = require('openvibe-shared/cache-policy');
  *       "Load more", a filter per site, the Patch notes posts).
  */
 const express = require('express');
+const boost = require('../boost');
 
 const TTL_MS = 60 * 1000;
 const MAX_KEYS = 300;
@@ -18,7 +19,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':
 const SERVICE_RE = /^[a-z][a-z0-9-]{1,39}$/;
 const CURSOR_RE = /^[A-Za-z0-9_-]{1,120}$/;
 
-function createUpdatesRoutes({ blogUrl = 'http://127.0.0.1:4810', fetchImpl = globalThis.fetch, now = () => Date.now(), log = console } = {}) {
+function createUpdatesRoutes({ blogUrl = 'http://127.0.0.1:4810', release = null, fetchImpl = globalThis.fetch, now = () => Date.now(), log = console } = {}) {
     const base = String(blogUrl).replace(/\/+$/, '');
     const feedCache = new Map();   // key -> { at, body }
 
@@ -64,7 +65,7 @@ function createUpdatesRoutes({ blogUrl = 'http://127.0.0.1:4810', fetchImpl = gl
         res.set('Content-Type', 'text/html; charset=utf-8').set('Cache-Control', cache.htmlHeaders({ maxAge: 60 }));
         // The unfiltered log is the page; a per-site view is a filter of it (followed, not indexed).
         if (asked) res.set('X-Robots-Tag', 'noindex, follow');
-        res.send(renderPage({ site, filtered: Boolean(asked), body }));
+        res.send(renderPage({ site, filtered: Boolean(asked), body, releaseId: release && release.release }));
     });
     return { router: r, feed, queryOf };
 }
@@ -85,7 +86,7 @@ function serviceFor(v) {
     return m && SITES.includes(m[1]) ? m[1] : null;
 }
 
-function renderPage({ site, filtered, body }) {
+function renderPage({ site, filtered, body, releaseId = '' }) {
     const entries = (body && Array.isArray(body.entries)) ? body.entries : [];
     const posts = (body && Array.isArray(body.posts)) ? body.posts.filter((p) => /^https:\/\//.test(p.url || '')) : [];
     const title = site ? `What shipped on OpenVibe.${nameOf(site)}` : 'What shipped across OpenVibe';
@@ -110,6 +111,7 @@ function renderPage({ site, filtered, body }) {
 <link rel="canonical" href="https://openvibe.network/updates${filtered && site ? `?site=${esc(site)}` : ''}">
 ${filtered ? '<meta name="robots" content="noindex, follow">' : ''}
 <link rel="alternate" type="application/json" href="/api/v1/changelog${site ? `?service=${esc(site)}` : ''}">
+${boost.meta(releaseId)}
 ${require('openvibe-shared/app-icon').headTags({ site: 'network', iconBase: '/assets' })}
 <meta name="color-scheme" content="dark light">
 <script src="/shared/theme-loader.js" defer></script>
@@ -143,6 +145,8 @@ ${dayHtml || '<p class="ov-shipped-empty">The update history could not be loaded
 ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact', updates: '/updates' })}
 <script src="/shared/navbar.js" defer></script>
 <script src="/shared/shipped.js" defer></script>
+${boost.SCRIPT}
+<script>document.addEventListener('ov:boost:load',function(){if(window.OpenVibeShipped)OpenVibeShipped.scan(document.getElementById('main'));});</script>
 <script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin});}catch(e){}});</script>
 </body>
 </html>`;
