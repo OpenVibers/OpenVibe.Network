@@ -273,6 +273,13 @@ const DEFAULT_GRANTS = [
     ['services', 'media.resource.control', 'openvibe.media', []],
     // Space (contracts 0.170.0): delete a site, deploy or domain; Space decides by its own project roles.
     ['services', 'space.resource.control', 'openvibe.space', []],
+    // OpenVibe.Zone (contracts 0.173.0, ADR-031 amendment): Services lists its zones and deletes one for a project admin.
+    ['services', 'zone.resource.read', 'openvibe.zone', []],
+    ['services', 'zone.resource.control', 'openvibe.zone', []],
+    // Zone provisions each zone in Media and manages S3 access keys there for a project admin; it reads project roles here.
+    ['zone', 'media.zone.provision', 'openvibe.media', []],
+    ['zone', 'media.access_key.manage', 'openvibe.media', []],
+    ['zone', 'network.project.member.read', SELF_AUDIENCE, []],
     // Plan T14: OpenVibe.Run publishes run.job.* and hands each job to a paired Node through Bot's internal jobs API
     // (POST /api/v1/jobs, /jobs/:id/cancel, GET /jobs/:id, capability bot.job.dispatch, service-to-service only).
     ['run', 'events.event.publish', 'openvibe.events', []],

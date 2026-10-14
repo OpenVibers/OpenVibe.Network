@@ -128,6 +128,8 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'inventory', name: 'OpenVibe.Inventory', redirect_uris: ['https://inventory.openvibe.network/auth/callback'] },
             // Achievements and leaderboards for every game (Games ADR-0007 decision 10).
             { client_id: 'play', name: 'OpenVibe.Play', redirect_uris: ['https://play.openvibe.network/auth/callback'] },
+            // Private S3-compatible storage zones (ADR-031 amendment; contracts 0.173.0).
+            { client_id: 'zone', name: 'OpenVibe.Zone', redirect_uris: ['https://openvibe.zone/auth/callback'] },
         ];
         let seededAny = false;
         for (const c of contractClients) {
@@ -170,6 +172,7 @@ async function seedDb(db, { log = console } = {}) {
             { clientId: 'media-hub', extraUris: ['http://localhost:4990/auth/callback'] },
             { clientId: 'inventory', extraUris: ['http://localhost:5030/auth/callback'] },
             { clientId: 'play', extraUris: ['http://localhost:5040/auth/callback'] },
+            { clientId: 'zone', extraUris: ['http://localhost:5050/auth/callback'] },
         ];
         for (const { clientId, extraUris } of localClients) {
             try { await mergeRedirectUris(db, clientId, extraUris, { log, local: true }); }
