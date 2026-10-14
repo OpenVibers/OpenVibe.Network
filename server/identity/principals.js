@@ -241,6 +241,9 @@ const DEFAULT_GRANTS = [
     ['watch', 'run.job.submit', 'openvibe.run', []],
     ['watch', 'network.project.member.read', SELF_AUDIENCE, []],
     ['run', 'network.project.member.read', SELF_AUDIENCE, []],
+    // Actor and Media read a person's project role before a project admin's control request (contracts 0.169.0).
+    ['actor', 'network.project.member.read', SELF_AUDIENCE, []],
+    ['media', 'network.project.member.read', SELF_AUDIENCE, []],
     // Work's agent pillar: "Ask my Actor agent" on a tracked application gives Actor a task for that person (X-OV-Subject).
     ['work', 'actor.task.create', 'openvibe.actor', []],
     // Food's recipes pillar: food.suggest_recipes on OpenVibe.AI for the signed-in person (AI#57).
@@ -258,6 +261,10 @@ const DEFAULT_GRANTS = [
     ['services', 'watch.resource.control', 'openvibe.watch', []],
     // Events is the second (events.resource.control, contracts 0.168.0): suspend and resume a person's subscription.
     ['services', 'events.resource.control', 'openvibe.events', []],
+    // Actor and Media (contracts 0.169.0): stop a task; delete an object (the soft delete). Each acts for the resource's
+    // own person or an admin of its project.
+    ['services', 'actor.resource.control', 'openvibe.actor', []],
+    ['services', 'media.resource.control', 'openvibe.media', []],
     // Plan T14: OpenVibe.Run publishes run.job.* and hands each job to a paired Node through Bot's internal jobs API
     // (POST /api/v1/jobs, /jobs/:id/cancel, GET /jobs/:id, capability bot.job.dispatch, service-to-service only).
     ['run', 'events.event.publish', 'openvibe.events', []],

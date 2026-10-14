@@ -143,9 +143,11 @@ const U = { owner: userToken(10), dev: userToken(11), staff: userToken(14) };
         }
 
         // 6. One person's membership (project delegation, ADR-003 amendment 2026-10-12): network.project.member.read,
-        //    Run and Watch only, never grantable; members only, and a non-member reads exactly like an unknown project.
+        //    Run, Watch, and (contracts 0.169.0) Actor and Media for a project admin's control request; never grantable;
+        //    members only, and a non-member reads exactly like an unknown project.
         assert.deepStrictEqual(principals.DEFAULT_GRANTS.filter(g => g[1] === 'network.project.member.read').map(g => [g[0], g[2]]).sort(),
-            [['run', principals.SELF_AUDIENCE], ['watch', principals.SELF_AUDIENCE]], 'Run and Watch hold network.project.member.read');
+            [['actor', principals.SELF_AUDIENCE], ['media', principals.SELF_AUDIENCE], ['run', principals.SELF_AUDIENCE], ['watch', principals.SELF_AUDIENCE]],
+            'Run, Watch, Actor and Media hold network.project.member.read');
         assert.strictEqual(policy.grantability('network.project.member.read').grantable, false, 'never grantable to apps');
         assert.ok(principals.DEFAULT_GRANTS.some(g => g[0] === 'watch' && g[1] === 'run.job.submit' && g[2] === 'openvibe.run'), 'Watch may submit Run jobs');
         const memberRead = async (project, subject, headers = {}) => {

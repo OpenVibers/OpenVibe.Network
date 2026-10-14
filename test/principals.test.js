@@ -113,7 +113,7 @@ const server = http.createServer(app);
     assert.deepStrictEqual(binders, ['openre']);
     t = await token({ client_id: 'media', client_secret: 'media-secret', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
-    assert.strictEqual(t.body.scope, 'identity.subject.resolve network.account.deletion.confirm network.account.export.contribute', 'Media resolves object owners to subjects and takes part in account export and deletion (ADR-033), nothing else here');
+    assert.strictEqual(t.body.scope, 'identity.subject.resolve network.account.deletion.confirm network.account.export.contribute network.project.member.read', 'Media resolves object owners to subjects, takes part in account export and deletion (ADR-033) and reads a person\'s project role before a control request (contracts 0.169.0), nothing else here');
     const mediaResolve = t.body.access_token;
     t = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.media' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
