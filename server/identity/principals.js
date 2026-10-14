@@ -40,6 +40,9 @@ const DEFAULT_GRANTS = [
     // Live is the issuer of the live.* kinds (its cosmetics), reads and equips for the people it serves.
     ['inventory', 'events.event.publish', 'openvibe.events', []],
     ['inventory', 'events.subscription.manage', 'openvibe.events', []],
+    // Plan T16: Codes keeps the coding tasks people start on their own machines (run_tasks), so it answers account
+    // export and deletion (ADR-033) and subscribes to them first; its account grants follow once it is subscribed.
+    ['codes', 'events.subscription.manage', 'openvibe.events', []],
     // The Workshop (ADR-054 §6): a creator gives a badge to "@name"; Inventory resolves the name to a subject.
     ['inventory', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ...['inventory.item.read', 'inventory.item.list', 'inventory.equip.manage', 'inventory.item.grant', 'inventory.item.consume', 'inventory.definition.manage']
