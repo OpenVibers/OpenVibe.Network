@@ -339,12 +339,20 @@ config._registry = resolvedRegistry;
 const analytics = networkAnalytics.openAnalytics(db);
 app.locals.analytics = analytics;
 app.use(analytics.middleware());
-// Universal telemetry (plan T1, server/telemetry.js): one platform.telemetry-sample@1 per request plus
-// the HTTP autoscaling signals, into the same analytics store. Wired before any route runs; flushed once
-// by gracefulStop's stop array below.
-const telemetry = require('./telemetry');
-telemetry.init({ analytics });
-app.use(observability.telemetryMiddleware);
+// Universal telemetry (plan T1, openvibe-sdk/service): requests aggregated into
+// platform.telemetry-sample@1 plus the HTTP autoscaling signals, written into the same analytics store by
+// server/telemetry-sink.js. Wired before any route runs; flushed once by gracefulStop's stop array below.
+const svc = require('openvibe-sdk/service');
+const { analyticsSink } = require('./telemetry-sink');
+svc.telemetry.init({
+    service: 'network',
+    sink: analyticsSink(analytics),
+    skipPrefixes: ['/shared', '/api/chrome'],
+    // svc.telemetryMiddleware (sdk 0.44.0) reads only `skipped`, not skipPrefixes: pass the same rule explicitly.
+    skipped: (req) => svc.telemetrySkipped(req, { prefixes: ['/shared', '/api/chrome'] }),
+    routeLabel: require('openvibe-shared/metrics').routeLabel,   // the route template, as /metrics labels it
+});
+app.use(svc.telemetryMiddleware);
 
 // ── Extract bearer token (available as req.token for optional-auth proxies) ─
 app.use((req, _res, next) => {
@@ -989,7 +997,7 @@ const server = app.listen(config.port, config.host, () => {
 // (unsent rows stay in the outbox), analytics flush and close, the database and the Valkey connection
 // close, and the process exits 0, within 10 s (well inside the unit's stop timeout). The email queue
 // resumes on the next start.
-const { gracefulStop, within } = require('openvibe-sdk/service');
+const { gracefulStop, within } = svc;
 gracefulStop({
     name: 'Network', server, drainMs: 8000, deadlineMs: 10000, deadlineExitCode: 1,
     stop: [
@@ -1001,7 +1009,7 @@ gracefulStop({
         () => require('./identity/profile-events').stop(),
         () => require('./identity/grants-admin').stop(),
         () => require('./developer/confirmations').stop(),
-        () => telemetry.stop(),
+        () => svc.telemetry.stop(),
     ],
     close: [
         () => within(1500, require('./developer/event-relay').stopRelay(db)),
