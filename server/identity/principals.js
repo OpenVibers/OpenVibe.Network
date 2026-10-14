@@ -257,6 +257,11 @@ const DEFAULT_GRANTS = [
     // POST /api/v1/robots/:id/commands with X-OV-Subject naming the viewer, so Bot's roles, queue, cooldowns and e-stop
     // judge each one as that person (Live has no robot code of its own since Live's controls were deleted).
     ['live', 'bot.robot.control', 'openvibe.bot', []],
+    // Plan T15/T17: a person's OpenVibe.Actor agent pilots their robot. Bot answers it only for the robot's owner
+    // (X-OV-Subject) and only where that owner turned on "Let my OpenVibe.Actor agent drive this robot"
+    // (robots.agent_control); its gate, limits and e-stop still judge every step.
+    ['actor', 'bot.robot.read', 'openvibe.bot', []],
+    ['actor', 'bot.robot.control', 'openvibe.bot', []],
     // Plan T2 lane B step 3: Host places and runs per project, so it reads a project's tenancy, placement and quotas.
     // Other services get this row only when they ship a caller of GET /internal/projects/:project_id.
     ['host', 'network.project.read', SELF_AUDIENCE, []],
