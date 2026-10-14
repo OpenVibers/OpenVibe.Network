@@ -265,6 +265,8 @@ const DEFAULT_GRANTS = [
     // own person or an admin of its project.
     ['services', 'actor.resource.control', 'openvibe.actor', []],
     ['services', 'media.resource.control', 'openvibe.media', []],
+    // Space (contracts 0.170.0): delete a site, deploy or domain; Space decides by its own project roles.
+    ['services', 'space.resource.control', 'openvibe.space', []],
     // Plan T14: OpenVibe.Run publishes run.job.* and hands each job to a paired Node through Bot's internal jobs API
     // (POST /api/v1/jobs, /jobs/:id/cancel, GET /jobs/:id, capability bot.job.dispatch, service-to-service only).
     ['run', 'events.event.publish', 'openvibe.events', []],
