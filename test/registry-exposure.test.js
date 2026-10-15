@@ -16,7 +16,7 @@ const { SITES } = require('../server/frame/sites');
 // stops answering "this page is a placeholder" (or a library ships a new release).
 const PINNED = {
     network: 'live', live: 'live', tools: 'live', media: 'live', games: 'live', community: 'live', events: 'live',
-    billing: 'live', codes: 'live', blog: 'live', wiki: 'live', sites: 'live',
+    billing: 'live', codes: 'live', blog: 'live', wiki: 'live', sites: 'retired',   // Sites retired 2026-10-14 (contracts 0.181.0)
     news: 'live', reviews: 'live', deals: 'live', coupons: 'live', trade: 'live', host: 'live',   // News, Reviews, Coupons, Trade live since contracts 0.125.0
     tips: 'internal', vip: 'internal', openre: 'live', search: 'live', sources: 'internal', chat: 'live', 'media-hub': 'live', space: 'live',   // a home and redirects since the forum returned to Community (contracts 0.118.0)
     ai: 'live',   // the public home and developer-app API at ai.openvibe.services since 2026-10-07 (contracts 0.110.0)
@@ -118,7 +118,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     // v0.95.0 Services; Space and AI went live in v0.110.0; Food, Help and Work in v0.116.0; Quest, Rent and Watch in v0.117.0;
     // Inventory in v0.122.0; none is retired
     // News, Reviews, Coupons, Trade and OpenRestream in v0.125.0; Run in v0.141.0
-    assert.deepStrictEqual(st.exposure_summary, { live: 37, internal: 3, library: 4, repository: 1, placeholder: 0, retired: 0 });
+    assert.deepStrictEqual(st.exposure_summary, { live: 36, internal: 3, library: 4, repository: 1, placeholder: 0, retired: 1 });   // Sites retired (contracts 0.181.0)
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());
