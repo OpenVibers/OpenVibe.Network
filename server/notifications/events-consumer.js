@@ -5,6 +5,8 @@
  *
  *   deals.watch.matched     a Deals watch (keyword, product, price below) matched a fresh observation;
  *                           payload.recipient is the watcher's usr_ subject
+ *   coupons.watch.matched   a code for a shop someone watches on Coupons was publicly listed (created
+ *                           published, or approved); payload.recipient is the watcher, never the submitter
  *   trade.alert.triggered   a Trade alert rule fired (threshold crossed, filing/document seen);
  *                           event.subject { type: 'user', id } is the rule's owner
  *   live.stream.started     a Live channel went live (OpenVibe.Live server/events/stream-events.js);
@@ -24,9 +26,8 @@
  *                           (common.usage-recorded@1): kept per project and day for its dashboard
  *                           (server/developer/usage.js), never anyone's notification.
  *
- * Coupons publishes no watch event: its merchant watches never leave Coupons (server/domain/watches.js
- * there: "Delivery is not built yet"), and its coupons.* events name no person, so there is nothing
- * of Coupons' to consume yet. README "Notifications from Events" has the operator steps.
+ * Coupons' merchant watches arrive as coupons.watch.matched (Coupons server/domain/coupons.js
+ * notifyWatchers, Contracts 0.188.0). README "Notifications from Events" has the operator steps.
  *
  * Each event becomes one inbox notification for its person through NotificationService.create(),
  * which applies their preferences: a muted category ('service') creates nothing, and email follows
@@ -54,7 +55,7 @@ const CONSUMER = 'network-notifications';
 const INBOX_TABLE = 'network_event_inbox';
 const AUDIT_TOPICS = require('../admin/moderation-audit').TOPICS;
 const USAGE_TOPICS = require('../developer/usage').TOPICS;
-const TOPICS = Object.freeze(['deals.watch.matched', 'trade.alert.triggered', 'live.stream.started', 'live.stream.ended', ...AUDIT_TOPICS, ...USAGE_TOPICS]);
+const TOPICS = Object.freeze(['deals.watch.matched', 'coupons.watch.matched', 'trade.alert.triggered', 'live.stream.started', 'live.stream.ended', ...AUDIT_TOPICS, ...USAGE_TOPICS]);
 const LIVE_STARTED_MAX_AGE_MS = 30 * 60 * 1000;
 const EVENT_ID_RE = /^evt_[0-9A-HJKMNP-TV-Z]{26}$/;
 
@@ -97,6 +98,23 @@ const HANDLERS = {
                 message: clean(`${title}${price ? ' at ' + price : ''}${why}`, 300),
                 service: 'deals', url: publicLink(p.offer_url),
                 rich_content: { service: 'deals', context: { event_id: event.event_id, watch_id: clean(p.watch_id, 64), offer_id: clean(p.offer_id, 64), kind: clean(p.kind, 20), planned_url: ownLink(p.offer_url) } },
+            },
+        };
+    },
+    'coupons.watch.matched'(event) {
+        if (event.source !== 'coupons') return 'ignored:source';
+        const p = event.payload && typeof event.payload === 'object' ? event.payload : {};
+        const merchant = clean(p.merchant_name, 120);
+        const title = clean(p.title, 200);
+        if (!merchant || !title || !p.coupon_id) return 'ignored:payload';
+        const until = p.expires_at ? ` · until ${clean(p.expires_at, 10)}` : '';
+        return {
+            subject: p.recipient,
+            notification: {
+                type: 'COUPON_WATCH_MATCH', category: 'service', priority: 'normal', icon: '🎟️', title: clean(`New code for ${merchant}`, 60),
+                message: clean(`${title}${until}`, 300),
+                service: 'coupons', url: publicLink(p.coupon_url),
+                rich_content: { service: 'coupons', context: { event_id: event.event_id, merchant_id: clean(p.merchant_id, 64), coupon_id: clean(p.coupon_id, 64), planned_url: ownLink(p.coupon_url) } },
             },
         };
     },
