@@ -186,6 +186,8 @@ const DEFAULT_GRANTS = [
     // Blog's "Draft with AI" (blog.draft_post; Blog server/domain/ai-drafts.js, 2026-09-24).
     ['blog', 'ai.run.create', 'openvibe.ai', ['blog.*']],
     ['blog', 'ai.run.read', 'openvibe.ai', ['blog.*']],
+    // Blog's AI desks (server/desks.js): digests written from the items Sources has fetched.
+    ['blog', 'sources.item.read', 'openvibe.sources', []],
     // Wave 19: Trade (informational) reads Sources filings and publishes events.
     ['trade', 'events.event.publish', 'openvibe.events', []],
     ['trade', 'sources.item.read', 'openvibe.sources', []],
