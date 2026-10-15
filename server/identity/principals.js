@@ -305,6 +305,9 @@ const DEFAULT_GRANTS = [
     // Bot, only as that machine's owner (X-OV-Subject) and only where the owner turned on "Let my agent use this
     // computer"; the level the owner set on the machine decides what may happen there.
     ['actor', 'bot.computer.control', 'openvibe.bot', []],
+    // Plan T17 (contracts 0.183.0): ask Actor from chat. Actor answers a person's "@actor …" in the room they asked in,
+    // through Chat's service API (POST /internal/chat/messages), as "OpenVibe Actor".
+    ['actor', 'chat.message.send', 'openvibe.chat', []],
     // Plan T18 step 7 (contracts 0.167.0): a watch's node source checks something on its owner's own network from their
     // machine. Bot lets Watch send only the read-only probe, as the owner, where they turned on "Let my watches check
     // things from this computer".
