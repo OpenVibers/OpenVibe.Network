@@ -246,7 +246,9 @@ async function archiveProject(db, actor, projectId, { ctx, settings }) {
         await require('./agents').revokeWhere(db, 'project_id = ?', [project.id], { actor: actor.label, reason: 'project_archived', ctx });
         for (const app of await db.prepare('SELECT * FROM dev_apps WHERE project_id = ? AND revoked_at IS NULL').all(project.id)) await revokeAppTx(db, actor, project, app, ctx, 'project archived');
         await db.prepare('UPDATE dev_projects SET archived_at = ?, archived_by = ? WHERE id = ?').run(nowIso(), actor.label, project.id);
-        await audit(db, { projectId: project.id, actor: actor.label, action: 'project.archived', target: project.id, ctx });
+        // ADR-056: an archived project's secrets are shredded (the ciphertexts go; names and versions stay in the audit).
+        const shredded = await require('./secrets').shredProject(db, project.id);
+        await audit(db, { projectId: project.id, actor: actor.label, action: 'project.archived', target: project.id, detail: shredded ? { secrets_shredded: shredded } : undefined, ctx });
     });
     return await projectView(db, await db.prepare('SELECT * FROM dev_projects WHERE id = ?').get(project.id), role, settings);
 }

@@ -440,6 +440,9 @@ const DEFAULT_GRANTS = [
     // check, Watch#54). Recording usage only.
     ['space', 'billing.usage.record', 'openvibe.billing', []],
     ['watch', 'billing.usage.record', 'openvibe.billing', []],
+    // Project secrets (ADR-056): Actor signs a task's webhook deliveries with the project secret its secret_ref names,
+    // when the project granted that secret to actor for sign. The capability is the door; each secret's grant decides.
+    ['actor', 'network.secret.use', SELF_AUDIENCE, []],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.

@@ -52,6 +52,22 @@ router.post('/identity/resolve-batch', principals.guard('identity.subject.resolv
 router.post('/identity/legacy-map', principals.guard('identity.subject.resolve'), ownSourceSystem);
 router.use('/identity', require('../identity/internal-routes'));
 
+// ── Project secrets (ADR-056) ────────────────────────────────
+// A service the project granted a secret to signs with it (the value never leaves) or receives it for an origin the
+// grant lists. network.secret.use is the door; the secret's own grant decides, and anything refused is 404.
+router.post('/secrets/use', principals.guard('network.secret.use'), express.json({ limit: '1100kb' }), async (req, res) => {
+    const { http } = require('openvibe-contracts');
+    const secrets = require('../developer/secrets');
+    res.set('Cache-Control', 'no-store');
+    try {
+        res.json(await secrets.use(getDb(req), req.principal, req.body || {}, { ctx: req.ov, config: getConfig(req) }));
+    } catch (err) {
+        if (err && err.status && err.code) return http.sendProblem(res, err.status, err.code, { detail: err.detail, ctx: req.ov });
+        console.error('[secrets] use failed:', err && err.message ? err.message.slice(0, 200) : err);
+        return http.sendProblem(res, 500, 'internal.error', { detail: 'unexpected error', ctx: req.ov });
+    }
+});
+
 // ── Sync Linked Account ──────────────────────────────────────
 // When a user connects their OpenVibe.Live or OpenVibe.Games account,
 // the service reports the link here.
