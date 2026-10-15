@@ -190,6 +190,8 @@ const DEFAULT_GRANTS = [
     ['trade', 'sources.source.read', 'openvibe.sources', []],
     // Trade's scripts/subscribe.js (Trade #9) manages its own Events subscriptions.
     ['trade', 'events.subscription.manage', 'openvibe.events', []],
+    // Trade's AI briefs (trade.summarize_market_context over SEC's filed numbers; Trade server/domain/briefs.js, 2026-10-15).
+    ['trade', 'ai.run.create', 'openvibe.ai', ['trade.*']],
     // Wave 18: Deals and Coupons; Wave 21 Stage B: the Host API publishes deploy/domain events.
     ['deals', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['deals', 'events.event.publish', 'openvibe.events', []],
