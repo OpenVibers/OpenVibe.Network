@@ -8,7 +8,7 @@
   "domain": "openvibe.network (with auth., api., admin., my. and themes.openvibe.network in its manifest)",
   "contracts": "openvibe-contracts v0.177.0",
   "sdk": "openvibe-sdk v0.44.0",
-  "shared": "openvibe-shared v4.1.8",
+  "shared": "openvibe-shared v4.1.9",
   "capabilities": [
     "identity.subject.resolve",
     "mods.grant.manage",
