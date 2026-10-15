@@ -52,7 +52,7 @@ function grantableCatalog() {
  * sandbox runs on free and local capacity only (ai.app.run, plan T6). openvibe.network is deliberately
  * not one of them.
  */
-const DEFAULT_SANDBOX_AUDIENCES = Object.freeze(['openvibe.media', 'openvibe.events', 'openvibe.tools', 'openvibe.services', 'openvibe.ai']);
+const DEFAULT_SANDBOX_AUDIENCES = Object.freeze(['openvibe.media', 'openvibe.events', 'openvibe.tools', 'openvibe.services', 'openvibe.ai', 'openvibe.quest']);
 
 /**
  * Capabilities every project's SANDBOX apps may hold without a staff decision when
@@ -68,6 +68,8 @@ const DEFAULT_SANDBOX_ALLOWANCE = Object.freeze([
     'tools.job.create', 'tools.job.read', 'tools.job.cancel', 'tools.tool.read', 'tools.tool.run',
     'services.release.manage',
     'ai.app.run',
+    // App quests (contracts 0.193.0): a sandbox app may define its quests; Quest counts production events only.
+    'quest.app_quest.manage',
 ]);
 
 /** Public + grantable only (the rule for every allowance that is not set by staff by hand). */
