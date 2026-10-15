@@ -40,6 +40,17 @@ const dealsEvent = (over = {}) => ({
     },
     ...over,
 });
+const couponsEvent = (over = {}) => ({
+    event_id: ids.newId('event'), event_type: 'coupons.watch.matched', version: 1, source: 'coupons',
+    actor: { type: 'service', id: 'coupons' }, subject: { type: 'coupon', id: 'cpn_01JAB2C3D4E5F6G7H8J9K0MNPT' }, visibility: 'internal',
+    occurred_at: new Date().toISOString(),
+    payload: {
+        recipient: ALICE, merchant_id: 'mer_01JAB2C3D4E5F6G7H8J9K0MNPS', merchant_name: 'Trail <i>Supply</i>',
+        merchant_url: 'https://openvibe.coupons/m/trail-supply', coupon_id: 'cpn_01JAB2C3D4E5F6G7H8J9K0MNPT',
+        coupon_url: 'https://openvibe.coupons/c/cpn_01JAB2C3D4E5F6G7H8J9K0MNPT', title: '20% off tents', expires_at: '2026-11-30',
+    },
+    ...over,
+});
 const tradeEvent = (over = {}) => ({
     event_id: ids.newId('event'), event_type: 'trade.alert.triggered', version: 1, source: 'trade',
     actor: { type: 'service', id: 'trade' }, subject: { type: 'user', id: BOB }, visibility: 'subject', priority: 'important',
@@ -57,7 +68,7 @@ const rows = async (userId) => await db.prepare('SELECT * FROM notifications WHE
 
 (async () => {
     // The subscriptions this consumer is meant for, and nothing else.
-    assert.deepStrictEqual(TOPICS, ['deals.watch.matched', 'trade.alert.triggered', 'live.stream.started', 'live.stream.ended', 'chat.moderation.action', 'live.moderation.action', 'community.moderation.action', 'space.moderation.action', 'tips.interaction.moderated', 'billing.staff.action',
+    assert.deepStrictEqual(TOPICS, ['deals.watch.matched', 'coupons.watch.matched', 'trade.alert.triggered', 'live.stream.started', 'live.stream.ended', 'chat.moderation.action', 'live.moderation.action', 'community.moderation.action', 'space.moderation.action', 'tips.interaction.moderated', 'billing.staff.action',
         ...['media', 'tools', 'games', 'wiki', 'blog', 'news', 'reviews', 'deals', 'coupons', 'trade', 'services'].map((svc) => `${svc}.moderation.action`),
         'tools.usage.recorded', 'events.usage.recorded', 'media.usage.recorded']);
     assert.deepStrictEqual(topicsFrom([]), TOPICS, 'scripts/subscribe-events.js subscribes every topic');
@@ -293,6 +304,25 @@ const rows = async (userId) => await db.prepare('SELECT * FROM notifications WHE
     assert.strictEqual(r.body.outcome, 'ignored:channel', 'a channel with no Network account');
     assert.strictEqual(await count(), total);
     assert.strictEqual(discordCalls.length, 2);
+
+    // A Coupons watch match becomes one notification for the watcher, linking the coupon page; a wrong source is ignored.
+    {
+        const before = (await rows(7)).length;
+        const c1 = couponsEvent();
+        const cr = await post(c1, { now: clock });
+        assert.deepStrictEqual(cr.body, { event_id: c1.event_id, duplicate: false, outcome: 'notified' });
+        const theirs = (await rows(7)).slice(before);
+        assert.strictEqual(theirs.length, 1);
+        assert.strictEqual(theirs[0].type, 'COUPON_WATCH_MATCH');
+        assert.strictEqual(theirs[0].service, 'coupons');
+        assert.match(theirs[0].title, /^New code for Trail/);
+        assert.ok(!/[<>]/.test(theirs[0].title), 'markup is stripped');
+        assert.strictEqual(theirs[0].message, '20% off tents · until 2026-11-30');
+        assert.strictEqual((await post(c1, { now: clock })).body.duplicate, true, 'a redelivery notifies nobody again');
+        const spoof = await post(couponsEvent({ source: 'deals' }), { now: clock });
+        assert.strictEqual(spoof.body.outcome, 'ignored:source');
+        assert.strictEqual((await rows(7)).length, before + 1);
+    }
 
     srv.close();
     console.log('events consumer: all checks passed');
