@@ -121,7 +121,7 @@ const CSS = `
 .now-stream img,.now-noimg{width:100%;aspect-ratio:16/9;height:auto;object-fit:cover;border-radius:10px;background:var(--bg-hover,#1c2a44);display:grid;place-items:center;font-size:26px;color:var(--accent-light,#60a5fa)}
 .now-stream b{font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.now-stream small{color:var(--text-secondary,#a8b3c4);font-size:12.5px}
 .now-stream:hover b,.now-list a:hover b{color:var(--accent-light,#60a5fa)}
-.now-badge{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:6px;background:var(--live-red,#ef4444);color:#fff;font-size:11px;font-weight:800;letter-spacing:.4px}
+.now-badge{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:6px;background:#dc2626;color:#fff;font-size:11px;font-weight:800;letter-spacing:.4px}
 .now-badge i{width:6px;height:6px;border-radius:50%;background:#fff}
 .now-empty .now-noimg{border:1px dashed var(--border-light,#2c3d5c);background:transparent}
 .now-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
