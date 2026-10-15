@@ -9,7 +9,9 @@
 //   PUT    /api/profile/avatar   { source }   a paste link, a paste slug, or an https://openvibe.media/… image
 //   DELETE /api/profile/avatar                back to the generated initial
 //   GET    /avatar/:username[?s=96]           public, cacheable: 302 to the picture, or an SVG initial.
-//                                             Works in any <img> on any site with no API call.
+//                                             Works in any <img> on any site with no API call. With ?s, a media
+//                                             object picture is asked of openvibe.media at about that width as WebP
+//                                             (Media's /o/:id?w=&fmt=, Fabric F4): a 32 px avatar is under 1 KB.
 // Sync: every change is pushed to the sites that keep their own user row (Live), and Live pushes changes
 // made there to POST /internal/user-avatar — so the last change wins everywhere.
 // ═══════════════════════════════════════════════════════════════
@@ -33,6 +35,21 @@ function normalizeAvatar(input) {
     if (host === MEDIA_HOST) { u.hash = ''; return { url: u.toString() }; }
     // Anywhere else on the web: never stored, never served. openvibe.media fetches it once and keeps its own copy.
     return { ingest: u.toString() };
+}
+
+/**
+ * The picture's address for a requested size: an openvibe.media object (/o/med_…, no query of its own) gets
+ * ?w=<2 × s>&fmt=webp (s is the size it is shown at; twice that stays sharp on a 2x screen), and Media answers a WebP
+ * of about that width (it snaps to its ladder and never enlarges). Any other address, or a size outside 16–1024, is
+ * the picture as stored.
+ */
+function sizedAvatar(url, s) {
+    const n = Number(s);
+    if (!Number.isInteger(n) || n < 16 || n > 1024) return url;
+    let u; try { u = new URL(url); } catch { return url; }
+    if (u.hostname !== MEDIA_HOST || !/^\/o\/med_[0-9A-Za-z]{10,40}$/.test(u.pathname) || u.search) return url;
+    u.search = `?w=${n * 2}&fmt=webp`;
+    return u.toString();
 }
 
 /** The address must answer with an image (redirects to object storage are followed). */
@@ -120,7 +137,7 @@ function createAvatarService({ db, config, requireAuth, selfToken = () => null, 
         const row = await byName.get(name);
         res.set({ 'Cache-Control': 'public, max-age=300, stale-while-revalidate=86400', 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin' });
         const ok = row && row.avatar_url && !!normalizeAvatar(row.avatar_url).url;
-        if (ok) return res.redirect(302, row.avatar_url);
+        if (ok) return res.redirect(302, sizedAvatar(row.avatar_url, req.query.s));
         res.type('image/svg+xml').send(initialSvg(row ? row.username : name, req.query.s));
     });
 
