@@ -280,6 +280,8 @@ const DEFAULT_GRANTS = [
     ['zone', 'media.zone.provision', 'openvibe.media', []],
     ['zone', 'media.access_key.manage', 'openvibe.media', []],
     ['zone', 'network.project.member.read', SELF_AUDIENCE, []],
+    // Zone sums Media's per-zone rollups (media.usage.recorded) in its usage view: its own Events subscription.
+    ['zone', 'events.subscription.manage', 'openvibe.events', []],
     // Plan T14: OpenVibe.Run publishes run.job.* and hands each job to a paired Node through Bot's internal jobs API
     // (POST /api/v1/jobs, /jobs/:id/cancel, GET /jobs/:id, capability bot.job.dispatch, service-to-service only).
     ['run', 'events.event.publish', 'openvibe.events', []],
