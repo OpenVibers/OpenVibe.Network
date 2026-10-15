@@ -82,7 +82,7 @@ const JOB = 'job_01JAB2C3D4E5F6G7H8J9K0MNPR';
         assert.match(r.body.freshness, /No usage/);
 
         // ── The consumer subscribes to both rollups, and records them ──
-        assert.ok(TOPICS.includes('tools.usage.recorded') && TOPICS.includes('events.usage.recorded'));
+        assert.ok(['tools', 'events', 'media'].every((svc) => TOPICS.includes(`${svc}.usage.recorded`)));
         // Rollups are counts, never money: the consumer takes no billing topic and no raw usage sample.
         // billing.staff.action is the one exception: a staff audit record (server/admin/moderation-audit.js), no amounts.
         assert.deepStrictEqual(TOPICS.filter((t) => (t.startsWith('billing.') && t !== 'billing.staff.action') || t.includes('usage-sample')), []);
@@ -112,6 +112,13 @@ const JOB = 'job_01JAB2C3D4E5F6G7H8J9K0MNPR';
             samples: [{ at: new Date(thisHour + 120000).toISOString(), code: 'events.quota_exceeded', status: 429, trace_id: TRACE }],
         }));
         assert.strictEqual((await consumer.apply(published)).outcome, 'recorded');
+        // Media's per-zone rollups (ADR-031 section 8): the zone is the dimension, its OVRN the resource.
+        const ZONE = `zon_${ids.ulid()}`;
+        const zoneHour = (extra) => hour(thisHour, { resource: `ovrn:zone:${P}:object-zone/${ZONE}`, dimension: ZONE.toLowerCase(), errors: 0, ...extra });
+        assert.strictEqual((await consumer.apply(rollup('media', zoneHour({ capability: 'media.object.upload', unit: 'byte_hours', quantity: 3600000 })))).outcome, 'recorded');
+        assert.strictEqual((await consumer.apply(rollup('media', zoneHour({ capability: 'media.object.read', unit: 'egress_bytes', quantity: 52428800 })))).outcome, 'recorded');
+        assert.strictEqual((await consumer.apply(rollup('media', zoneHour({ capability: 'media.object.read', unit: 'requests', quantity: 12, errors: 1, error_codes: { 'media.s3.no_such_key': 1 } })))).outcome, 'recorded');
+        assert.strictEqual((await consumer.apply(rollup('media', zoneHour({ capability: 'media.object.read', unit: 'requests', quantity: 12 }), { source: 'tools' }))).outcome, 'ignored:source', 'only Media sends media rollups');
 
         // What is not a project's rollup is ignored.
         const other = await api('stranger', 'POST', '', { name: 'Someone else' });
@@ -147,9 +154,11 @@ const JOB = 'job_01JAB2C3D4E5F6G7H8J9K0MNPR';
         assert.strictEqual(quota('tools.job.create').window_start, `${today}T00:00:00.000Z`);
         assert.deepStrictEqual([quota('events.app.publish').used, quota('events.app.publish').remaining], [null, null]);
         assert.match(quota('events.app.publish').note, /minute window/);
-        assert.strictEqual(quota('media.object.upload').used, null);
-        assert.match(quota('media.object.upload').note, /no service reports/);
-        assert.strictEqual(u.errors.total, 64);
+        assert.strictEqual(quota('media.object.upload').used, null, 'a quota in bytes is not what Media reports (byte_hours, requests)');
+        const zoneRow = (unit) => u.daily.find((d) => d.capability === 'media.object.read' && d.unit === unit && d.day === today && d.dimension === ZONE.toLowerCase());
+        assert.deepStrictEqual([zoneRow('egress_bytes').quantity, zoneRow('requests').quantity, zoneRow('requests').errors], [52428800, 12, 1], 'Media\'s rollups add up per zone');
+        assert.match(quota('media.object.upload').note, /the service reports byte_hours, requests for this capability, not bytes/);
+        assert.strictEqual(u.errors.total, 65, 'the tools, events and media errors');
         assert.deepStrictEqual(u.errors.by_code[0], { service: 'events', capability: 'events.app.publish', code: 'events.quota_exceeded', count: 60 });
         assert.deepStrictEqual(u.errors.recent.map((e) => [e.service, e.code, e.status, e.trace_id, e.ref]), [
             ['events', 'events.quota_exceeded', 429, TRACE, null],
