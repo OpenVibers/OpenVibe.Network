@@ -276,6 +276,12 @@ const DEFAULT_GRANTS = [
     // OpenVibe.Zone (contracts 0.173.0, ADR-031 amendment): Services lists its zones and deletes one for a project admin.
     ['services', 'zone.resource.read', 'openvibe.zone', []],
     ['services', 'zone.resource.control', 'openvibe.zone', []],
+    // Person-owned resources (contracts 0.176.0, ADR-048 amendment 2026-10-15): Services acts on a person's own robot,
+    // room, restream definition or paste for them; each authority checks the owner it holds.
+    ['services', 'bot.resource.control', 'openvibe.bot', []],
+    ['services', 'chat.resource.control', 'openvibe.chat', []],
+    ['services', 'openre.resource.control', 'openvibe.openre', []],
+    ['services', 'community.resource.control', 'openvibe.community', []],
     // Zone provisions each zone in Media and manages S3 access keys there for a project admin; it reads project roles here.
     ['zone', 'media.zone.provision', 'openvibe.media', []],
     ['zone', 'media.access_key.manage', 'openvibe.media', []],
