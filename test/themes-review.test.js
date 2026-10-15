@@ -92,6 +92,15 @@ const token = async (id) => signToken(await db.prepare('SELECT * FROM users WHER
     for (let i = 0; i < 5; i++) await call('POST', '/api/themes', { as: 2, body: { name: `Try ${i}`, slug: `try-${i}`, variables: good } });
     assert.strictEqual((await call('POST', '/api/themes', { as: 2, body: { name: 'One more', slug: 'one-more', variables: good } })).status, 429, 'at most five waiting');
 
+    // A retired theme name (Live's imported 'campfire', never a Network theme) answers with the built-in it became, not a
+    // 404 on every page of the people whose preferences still name it.
+    await db.prepare("INSERT INTO themes (id, name, slug, mode, variables, is_builtin, is_public) VALUES ('ember', 'Ember', 'ember', 'dark', '{\"--accent\":\"#f97316\"}', 1, 1) ON CONFLICT DO NOTHING").run();
+    const old = await fetch(`${base}/api/themes/campfire`, { redirect: 'manual' });
+    assert.deepStrictEqual([old.status, old.headers.get('location')], [301, '/api/themes/ember']);
+    r = await call('GET', '/api/themes/campfire');
+    assert.deepStrictEqual([r.status, r.body.theme.slug], [200, 'ember'], 'followed, it is the ember theme');
+    assert.strictEqual((await call('GET', '/api/themes/no-such-theme')).status, 404, 'an unknown name is still a 404');
+
     server.close();
     fs.rmSync(dir, { recursive: true, force: true });
     console.log('themes review: all checks passed');

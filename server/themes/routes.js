@@ -133,10 +133,16 @@ router.get('/me/submissions', requireAuth, async (req, res) => {
     res.set('Cache-Control', cache.htmlHeaders({ private: true })).json({ themes });
 });
 
+// Themes that no longer exist but are still named in old preferences or cached pages, and the built-in each became.
+// 'campfire' came from the August import of Live's theme system and was never a Network theme (59 people had it,
+// 2026-10-15; migrations/0024 moves their preferences): a request for it lands on 'ember' instead of a 404 on every page.
+const RETIRED_THEMES = Object.freeze({ campfire: 'ember' });
+
 // ── Get Theme by ID or Slug (approved themes; your own at any status) ──
 router.get('/:idOrSlug', optionalAuth, async (req, res) => {
     const db = await getDb(req);
     ensureReview(db);
+    if (Object.hasOwn(RETIRED_THEMES, req.params.idOrSlug)) return res.redirect(301, `${req.baseUrl}/${RETIRED_THEMES[req.params.idOrSlug]}`);
     const theme = await db.prepare('SELECT * FROM themes WHERE id = ? OR slug = ?').get(req.params.idOrSlug, req.params.idOrSlug);
     if (!visibleTo(theme, req.user && (req.user.sub || req.user.id))) return res.status(404).json({ error: 'Theme not found' });
     res.json({ theme: parseTheme(theme) });
