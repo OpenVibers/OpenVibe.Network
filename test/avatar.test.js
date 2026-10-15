@@ -45,6 +45,12 @@ for (const bad of ['http://openvibe.media/x.png', 'javascript:alert(1)', 'https:
         assert.equal(r.headers.get('cross-origin-resource-policy'), 'cross-origin', 'usable in an <img> on any site');
         r = await fetch(b + '/avatar/nobody'); assert.equal(r.status, 200); assert.ok(/svg/.test(r.headers.get('content-type')) && /<text/.test(await r.text()), 'unknown names get an initial');
         r = await fetch(b + '/avatar/legacy', { redirect: 'manual' }); assert.equal(r.status, 200, 'a stored off-network picture is never redirected to');
+        // A size asks openvibe.media for a WebP of about that width, for a media object only.
+        r = await fetch(b + '/avatar/goosely?s=96', { redirect: 'manual' }); assert.equal(r.headers.get('location'), `${M}/f/b.png`, 'a file picture is not resized');
+        await svc.apply(1, 'Goosely', `${M}/o/med_01KZK5GRQ088Y3CW1TMEF4Z4RN`, 'network');
+        r = await fetch(b + '/avatar/goosely?s=96', { redirect: 'manual' }); assert.equal(r.headers.get('location'), `${M}/o/med_01KZK5GRQ088Y3CW1TMEF4Z4RN?w=192&fmt=webp`, 'an object picture at twice the size it is shown');
+        r = await fetch(b + '/avatar/goosely', { redirect: 'manual' }); assert.equal(r.headers.get('location'), `${M}/o/med_01KZK5GRQ088Y3CW1TMEF4Z4RN`, 'no size, the picture as stored');
+        r = await fetch(b + '/avatar/goosely?s=9000', { redirect: 'manual' }); assert.equal(r.headers.get('location'), `${M}/o/med_01KZK5GRQ088Y3CW1TMEF4Z4RN`, 'a size out of range is ignored');
         console.log('avatar: all checks passed'); srv.close();
     });
 })().catch(e => { console.error(e); process.exit(1); });
