@@ -40,9 +40,9 @@
  * operator sets it and creates the subscriptions.
  *
  * Links: a notification links to the event's URL only when that host is one of our sites whose
- * public domain serves the service (server/frame/sites.js, via the exposure overlay). Today Deals
- * and Trade are loopback-only and their domains show placeholder pages, so the link is kept in
- * rich_content.context.planned_url and the notification has no click-through yet.
+ * public domain serves the service (server/frame/sites.js, via the exposure overlay; openvibe.deals
+ * and openvibe.trade are open since contracts 0.125.0). The URL is also kept in
+ * rich_content.context.planned_url, so a site that closes keeps the record of where it pointed.
  */
 const express = require('express');
 const { http, ids } = require('openvibe-contracts');
