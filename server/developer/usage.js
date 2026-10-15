@@ -6,6 +6,8 @@
  *
  *   tools.usage.recorded    a Tools satellite's hour of a project's jobs (unit jobs)
  *   events.usage.recorded   OpenVibe.Events: published events (events) and webhook deliveries (deliveries)
+ *   media.usage.recorded    OpenVibe.Media's S3 surface, per zone (dimension: the zone id; resource: its OVRN):
+ *                           stored bytes (byte_hours), requests by capability, read egress (egress_bytes)
  *
  * The Events consumer (server/notifications/events-consumer.js) calls record() inside its inbox
  * transaction, so a redelivery changes nothing. A rollup is the totals of its key (service, project,
@@ -27,7 +29,7 @@
  */
 const { validate, capabilities } = require('openvibe-contracts');
 
-const SERVICES = Object.freeze(['tools', 'events']);
+const SERVICES = Object.freeze(['tools', 'events', 'media']);
 const TOPICS = Object.freeze(SERVICES.map((s) => `${s}.usage.recorded`));
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -41,6 +43,8 @@ const RECENT_ERRORS = 50;
 const REPORTED = Object.freeze({
     'tools.job.create': ['jobs'], 'tools.tool.run': ['jobs'],
     'events.app.publish': ['events'], 'events.app.subscribe': ['deliveries'],
+    'media.object.upload': ['byte_hours', 'requests'], 'media.object.read': ['requests', 'egress_bytes'],
+    'media.object.list': ['requests'], 'media.object.delete': ['requests'],
 });
 
 const iso = (ms) => new Date(ms).toISOString();

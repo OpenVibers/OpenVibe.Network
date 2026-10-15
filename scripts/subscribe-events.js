@@ -4,7 +4,7 @@
  * Create Network's OpenVibe.Events subscriptions for the notification consumer
  * (server/notifications/events-consumer.js): one per topic in TOPICS (deals.watch.matched,
  * trade.alert.triggered, live.stream.started, the moderation audit topics and the project usage
- * rollups tools.usage.recorded and events.usage.recorded), all delivering to POST /internal/events.
+ * rollups tools.usage.recorded, events.usage.recorded and media.usage.recorded), all delivering to POST /internal/events.
  * Events names the consumer after the calling service: `network`.
  *
  *   sudo node --env-file=/etc/openvibe/network.env scripts/subscribe-events.js \

@@ -20,7 +20,7 @@
  * A started event older than LIVE_STARTED_MAX_AGE (30 min; a replay, or Events catching up after an
  * outage) announces nothing: the stream may be long over.
  *
- *   <service>.usage.recorded  a developer project's hourly usage rollup from Tools or Events
+ *   <service>.usage.recorded  a developer project's hourly usage rollup from Tools, Events or Media
  *                           (common.usage-recorded@1): kept per project and day for its dashboard
  *                           (server/developer/usage.js), never anyone's notification.
  *
