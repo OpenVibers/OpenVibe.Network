@@ -67,11 +67,11 @@ async function withoutCatalog(hidden, fn) {
 (async () => {
     // ── Settings: defaults, env overrides, and the public-only rule ──
     let s = policy.settings({});
-    assert.deepStrictEqual([...s.sandboxAudiences].sort(), ['openvibe.ai', 'openvibe.events', 'openvibe.media', 'openvibe.services', 'openvibe.tools']);
+    assert.deepStrictEqual([...s.sandboxAudiences].sort(), ['openvibe.ai', 'openvibe.events', 'openvibe.media', 'openvibe.quest', 'openvibe.services', 'openvibe.tools']);
     assert.ok(!s.sandboxAudiences.has('openvibe.network'), 'Network itself never defaults to accepting sandbox tokens');
     assert.deepStrictEqual(s.sandboxAllowance, ['ai.app.run', 'events.app.publish', 'events.app.read', 'events.app.subscribe',
-        'media.object.delete', 'media.object.list', 'media.object.read', 'media.object.upload', 'services.release.manage', 'tools.job.cancel', 'tools.job.create', 'tools.job.read', 'tools.tool.read', 'tools.tool.run'],
-        'the default sandbox allowance (openvibe-contracts 0.59.0 defines media.object.list and .delete, 0.109.0 ai.app.run, 0.113.0 services.release.manage)');
+        'media.object.delete', 'media.object.list', 'media.object.read', 'media.object.upload', 'quest.app_quest.manage', 'services.release.manage', 'tools.job.cancel', 'tools.job.create', 'tools.job.read', 'tools.tool.read', 'tools.tool.run'],
+        'the default sandbox allowance (openvibe-contracts 0.59.0 defines media.object.list and .delete, 0.109.0 ai.app.run, 0.113.0 services.release.manage, 0.193.0 quest.app_quest.manage)');
     assert.deepStrictEqual(policy.DEFAULT_SANDBOX_ALLOWANCE.filter(id => id.startsWith('events.')), ['events.app.publish', 'events.app.read', 'events.app.subscribe']);
     s = policy.settings({ developer: { sandboxAudiences: '', sandboxAllowance: '' } });
     assert.strictEqual(s.sandboxAudiences.size, 0, 'set-but-empty means none');
