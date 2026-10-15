@@ -255,6 +255,9 @@ const DEFAULT_GRANTS = [
     // Food's recipes pillar: food.suggest_recipes on OpenVibe.AI for the signed-in person (AI#57).
     ['food', 'ai.run.create', 'openvibe.ai', ['food.*']],
     ['food', 'ai.run.read', 'openvibe.ai', ['food.*']],
+    // Rent's AI pillar: rent.screen_listing screens each posted listing for scam signs for Rent's staff (AI#87).
+    ['rent', 'ai.run.create', 'openvibe.ai', ['rent.*']],
+    ['rent', 'ai.run.read', 'openvibe.ai', ['rent.*']],
     // Plan T13: OpenVibe.Services merges every authority's resource index (ADR-048 section 3): it reads each one's
     // GET /api/v1/resources under that authority's <id>.resource.read, with a token for that authority's audience.
     ['services', 'network.resource.read', SELF_AUDIENCE, []],
