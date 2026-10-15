@@ -104,6 +104,8 @@ const DEFAULT_GRANTS = [
     ['chat', 'media.object.delete', 'openvibe.media', ['chat']],
     ['chat', 'ai.run.create', 'openvibe.ai', ['chat.*']],
     ['chat', 'ai.run.read', 'openvibe.ai', ['chat.*']],
+    // Chat's AI members linked to a Food household read its pantry and plan (food.household.read; Contracts 0.189.0).
+    ['chat', 'food.household.read', 'openvibe.food', []],
     ['games', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Games subscribes to network.user.token_valid_after (sign-out everywhere closes game sessions).
     ['games', 'events.subscription.manage', 'openvibe.events', []],
