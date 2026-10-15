@@ -98,6 +98,8 @@ const DEFAULT_GRANTS = [
     ['inventory', 'media.object.upload', 'openvibe.media', ['inventory']],
     ['media-hub', 'media.object.upload', 'openvibe.media', ['media-hub']],
     ['media-hub', 'media.object.read', 'openvibe.media', ['media-hub']],
+    // OpenVibe.Video's AI edit (MediaHub server/video/ai-edit.js): media.analyze on finished uploads, local and unpaid.
+    ['media-hub', 'ai.run.create', 'openvibe.ai', ['media.analyze']],
     // Plan T3: Chat owns the six chat tables. Emote images go to Media under the chat namespace, and
     // the chat-AI summaries run in Chat with its own token.
     ['chat', 'media.object.upload', 'openvibe.media', ['chat']],
