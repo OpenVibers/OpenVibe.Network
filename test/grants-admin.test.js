@@ -36,6 +36,8 @@ for (const [client, cap, aud] of principals.DEFAULT_GRANTS) {
     assert.strictEqual(aud, `openvibe.${c.owner}`, `default grant ${client} ${cap} → ${aud}`);
 }
 // Trade's scripts/subscribe.js (Trade #9) manages its Events subscriptions like the other publishers.
+assert.deepStrictEqual(principals.DEFAULT_GRANTS.filter(([, cap]) => cap === 'network.secret.use').map(([client, , aud]) => [client, aud]).sort(),
+    [['actor', principals.SELF_AUDIENCE], ['ai', principals.SELF_AUDIENCE], ['watch', principals.SELF_AUDIENCE]], 'project secrets: Actor signs, Watch and AI (an app\'s own provider, AI#74) use them');
 assert.ok(principals.DEFAULT_GRANTS.some(([client, cap, aud, scopes]) => client === 'trade' && cap === 'events.subscription.manage' && aud === 'openvibe.events' && Array.isArray(scopes) && !scopes.length), 'Trade holds events.subscription.manage on openvibe.events');
 assert.strictEqual((await events()).length, 0, 'the seed is not announced');
 
