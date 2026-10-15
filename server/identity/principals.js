@@ -446,6 +446,9 @@ const DEFAULT_GRANTS = [
     // Watch reveals a source credential to its source's origin, and signs a webhook action, with a project secret its
     // watch names (Contracts 0.179.0); each secret's project grant decides.
     ['watch', 'network.secret.use', SELF_AUDIENCE, []],
+    // AI reveals a project's own provider key to that provider's origin for one run of an app that names it on
+    // /v1/chat/completions (x_openvibe.provider, AI#74); each secret's project grant decides.
+    ['ai', 'network.secret.use', SELF_AUDIENCE, []],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
