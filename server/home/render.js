@@ -136,6 +136,8 @@ ${icons.CSS}`;
 // The sites section's heading; the JSON-LD ItemList of the same sites carries it as its name, so the
 // structured data names something a visitor can see (browser check, WS-Q task 3).
 const sitesHeading = () => `${inWords(OPEN.length)} sites, one front door`;
+/** A tagline as the start of a sentence: a period only when it does not already end one ("What should we eat?"). */
+const asSentence = (t) => (/[.!?…]$/.test(String(t).trim()) ? String(t).trim() : `${String(t).trim()}.`);
 
 // Markup inside a kit section after its grid (the kit closes the section itself); an empty section stays empty.
 const inside = (section, extra) => (section && extra ? section.replace(/<\/section>$/, () => `${extra}</section>`) : section);
@@ -151,12 +153,12 @@ function body(catalog, act) {
     const sites = showcase.features({
         id: 'network', title: sitesHeading(),
         lede: 'Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.',
-        items: OPEN.map((site) => ({ icon: `ov:${site.icon}`, title: siteName(site), text: site.tagline ? `${site.tagline}. ${site.what}` : site.what, href: `https://${site.host}/` })),
+        items: OPEN.map((site) => ({ icon: `ov:${site.icon}`, title: siteName(site), text: site.tagline ? `${asSentence(site.tagline)} ${site.what}` : site.what, href: `https://${site.host}/` })),
     });
     const tools = inside(showcase.features({
         id: 'tools', title: catalog.tools.length ? `${catalog.tools.length} tools that just open` : 'Tools that just open',
         lede: 'No installs and no sign-up wall. Every tool has its own short address, so yt.openvibe.tools or dns.openvibe.tools takes you straight there.',
-        items: fams.length ? fams.map((f) => ({ icon: `ov:${f.icon}`, title: f.name, text: `${count(f)} tools · ${f.tagline || ''}`, href: f.path ? `https://openvibe.tools${f.path}` : f.url }))
+        items: fams.length ? fams.map((f) => ({ icon: `ov:${f.icon}`, title: f.name, text: `${count(f)} ${count(f) === 1 ? 'tool' : 'tools'} · ${f.tagline || ''}`, href: f.path ? `https://openvibe.tools${f.path}` : f.url }))
             : [{ icon: 'ov:tools', title: 'OpenVibe.Tools', text: 'Converters, downloaders, PDF and image tools, developer utilities and network diagnostics.', href: 'https://openvibe.tools/' }],
     }), `${chips(popular.map((t) => [t.url, t.tagline || '', t.icon, t.name]))}<p class="home-more"><a href="https://openvibe.tools/">Browse every tool at openvibe.tools →</a> · <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> · <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a></p>`);
     const account = showcase.features({
