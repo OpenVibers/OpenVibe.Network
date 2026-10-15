@@ -360,6 +360,7 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
                 }
                 if (await tableExists(db, 'dev_agents')) count('agents_revoked', await agents.revokeWhere(db, 'project_id = ?', [p.id], { actor: 'system:network', reason: 'project_archived' }));
                 await db.prepare("UPDATE dev_projects SET archived_at = ?, archived_by = 'account_deleted' WHERE id = ?").run(at, p.id);
+                if (await tableExists(db, 'dev_project_secrets')) count('secrets_shredded', await require('../developer/secrets').shredProject(db, p.id));
                 count('projects_archived', 1);
             }
             await del('dev_project_members', `subject_id IN ${inS}`, subjects, 'project_memberships');

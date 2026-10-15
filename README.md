@@ -57,12 +57,12 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 
 ## Capabilities
 
-Implemented here (the service manifest's 20 `capabilities`, audience `openvibe.network`):
+Implemented here (the service manifest's `capabilities`, audience `openvibe.network`):
 `identity.subject.resolve`, `mods.grant.manage`, `network.account.deletion.confirm`,
 `network.account.export.contribute`, `network.analytics.creator.read`, `network.blocks.read`,
 `network.coins.credit|debit|transfer`, `network.follows.read|write`, `network.integration.github.read`,
 `network.modules.read|write`, `network.notifications.push`, `network.operator.alert`,
-`network.project.manage|read`, `network.staff.read` and `network.status.incident`. The grants other
+`network.project.manage|read`, `network.secret.use`, `network.staff.read` and `network.status.incident`. The grants other
 services hold are seeded in [server/identity/principals.js](server/identity/principals.js).
 
 Called elsewhere: Network is the issuer, so it signs its own `svc:network` tokens: `events.event.publish`
@@ -401,6 +401,26 @@ gateway reads `NET_IPINFO_TOKEN` / `NET_GLOBALPING_TOKEN` from its own env file)
 Provider secrets are read from the environment only (`/etc/openvibe/network.env`): a `site_settings` row of the same
 key is ignored and no admin form stores one. The database fallback and its copy-out script were retired on 2026-10-10,
 once production held no database copy of any secret.
+
+## Project secrets (ADR-056)
+
+A project keeps its own secrets here, per environment, written once and used by name (`server/developer/secrets.js`).
+These are the project's, not Network's provider secrets above.
+
+- **People** (Bearer user tokens on `/api/v1/projects/:project/secrets`):
+  - admins and owners set a value (`PUT …/:env/:name { value }`; setting it again adds one to its version), delete it,
+    and grant it to a service (`PUT …/:name/grants/:service { purposes, origins }`);
+  - members and staff read metadata only (`network.project-secret@1`): name, version, a keyed fingerprint and grants.
+    No route answers a value to a person.
+- **Services** (`POST /internal/secrets/use`, `network.secret.use`): a service the secret is granted to either signs a
+  message with it (`sign`: HMAC-SHA256, the value never leaves Network) or receives it for an https origin the grant
+  lists (`reveal`). A missing secret, grant, purpose or origin, and an archived project, all answer 404
+  `secret.not_found`. Actor holds the capability by default, to sign webhook deliveries with a task's `secret_ref`.
+- **Storage:** AES-256-GCM under a key derived from `NETWORK_SECRETS_KEY`, with the row's identity as authenticated data,
+  so a ciphertext moved onto another row does not open. Without the key the feature is off (503), never plaintext.
+  Archiving a project, or deleting its owner's account with no heir, shreds its secrets.
+- **Audit (`dev_audit`):** sets, deletions, grant changes, and the first use per secret, service, purpose and day.
+  Values and messages are never logged.
 
 ---
 

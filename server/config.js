@@ -26,6 +26,12 @@ module.exports = {
     },
 
 
+    // Project secrets (ADR-056, server/developer/secrets.js): 32 random bytes, base64 or hex. Unset = the feature is off
+    // (503 secrets.unavailable); values are only ever stored encrypted under keys derived from it.
+    secrets: {
+        key: process.env.NETWORK_SECRETS_KEY || '',
+    },
+
     // Developer projects (server/developer, ADR-014)
     developer: {
         // Audiences that accept sandbox app tokens (comma list). Unset = the code default

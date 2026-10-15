@@ -56,6 +56,11 @@ const cache = require('openvibe-shared/cache-policy');
  *   DELETE /:project/quotas/:capability                     staff
  *   GET    /:project/usage[?days=30&env=all]               owner/admin or staff: usage per day, quotas and
  *                                                           errors from the services' rollups (usage.js)
+ *   GET    /:project/secrets[?environment=]                 viewer+ and staff: metadata only, never a value (secrets.js, ADR-056)
+ *   PUT    /:project/secrets/:env/:name { value }           admin+ (not staff): set or replace; answers the metadata
+ *   DELETE /:project/secrets/:env/:name                     admin+
+ *   PUT    /:project/secrets/:env/:name/grants/:service { purposes, origins }  admin+: let a service sign or reveal
+ *   DELETE /:project/secrets/:env/:name/grants/:service     admin+
  *   GET    /:project/audit[?before=&limit=]                 admin+ or staff
  *   POST   /:project/export-tokens { audience, env }         owner or admin member (not staff as such):
  *                                                           a 5-minute read-only export token (tokens.js)
@@ -69,6 +74,7 @@ const confirmations = require('./confirmations');
 const policy = require('./policy');
 const tokens = require('./tokens');
 const usage = require('./usage');
+const secrets = require('./secrets');
 
 /**
  * The base of a user API: problems with request ids, JSON bodies, private no-store, and Bearer Network user tokens
@@ -183,6 +189,13 @@ function router() {
         const { project } = await store.access(db, a, req.params.project, { need: 'admin', allowArchived: true });
         return await usage.summary(db, project.id, usage.parseQuery(req.query));
     }));
+
+    // Project secrets (ADR-056): metadata for members, values written by admins and never read back.
+    r.get('/:project/secrets', handle(async (db, a, req) => ({ secrets: await secrets.list(db, a, req.params.project, { environment: req.query.environment }) })));
+    r.put('/:project/secrets/:env/:name', handle(async (db, a, req, o) => await secrets.put(db, a, req.params.project, req.params.env, req.params.name, req.body || {}, { ctx: o.ctx, config: req.app.locals.config })));
+    r.delete('/:project/secrets/:env/:name', handle(async (db, a, req, o) => { await secrets.remove(db, a, req.params.project, req.params.env, req.params.name, o); }));
+    r.put('/:project/secrets/:env/:name/grants/:service', handle(async (db, a, req, o) => await secrets.putGrant(db, a, req.params.project, req.params.env, req.params.name, req.params.service, req.body || {}, o)));
+    r.delete('/:project/secrets/:env/:name/grants/:service', handle(async (db, a, req, o) => { await secrets.removeGrant(db, a, req.params.project, req.params.env, req.params.name, req.params.service, o); }));
 
     r.get('/:project/audit', handle(async (db, a, req) => {
         const { project } = await store.access(db, a, req.params.project, { need: 'admin', allowArchived: true });
