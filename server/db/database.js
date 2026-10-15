@@ -131,6 +131,9 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'play', name: 'OpenVibe.Play', redirect_uris: ['https://play.openvibe.network/auth/callback'] },
             // Private S3-compatible storage zones (ADR-031 amendment; contracts 0.173.0).
             { client_id: 'zone', name: 'OpenVibe.Zone', redirect_uris: ['https://openvibe.zone/auth/callback'] },
+            // OpenVibe Git: Forgejo at openvibe.codes/git (OpenVibe.Codes deploy/forgejo, WS-X12), signing in through OpenID
+            // Connect; its callback is Forgejo's /user/oauth2/<source name>/callback. git.openvibe.codes once that name exists.
+            { client_id: 'forgejo', name: 'OpenVibe Git', redirect_uris: ['https://openvibe.codes/git/user/oauth2/OpenVibe/callback', 'https://git.openvibe.codes/user/oauth2/OpenVibe/callback'] },
         ];
         let seededAny = false;
         for (const c of contractClients) {
