@@ -215,6 +215,10 @@ const DEFAULT_GRANTS = [
     // T20 step 2 (2026-10-12, Space#36): the static hosting engine moved to Space, which publishes space.deploy.* and
     // space.domain.verified through its outbox. (Its forum-era grants stay revoked below.)
     ['space', 'events.event.publish', 'openvibe.events', []],
+    // T20 step 2, spaces: Space's AI builder (space.app.build, on behalf of the person building) and a space's own AI
+    // (space.app.ask, on behalf of the visitor) on OpenVibe.AI (AI#108).
+    ['space', 'ai.run.create', 'openvibe.ai', ['space.*']],
+    ['space', 'ai.run.read', 'openvibe.ai', ['space.*']],
     // The hosting catalog (plan T20 step 3) reads OpenVibe.Sources items in category hosting (Host#69).
     ['host', 'sources.item.read', 'openvibe.sources', []],
     // The hosting catalog's provider and plan discussion threads on OpenVibe.Community (Host#74).
