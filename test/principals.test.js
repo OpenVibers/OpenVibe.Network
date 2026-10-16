@@ -201,7 +201,7 @@ const server = http.createServer(app);
     }
     const spaceEvents = await token({ client_id: 'space', client_secret: 'space-secret', audience: 'openvibe.events' });
     assert.strictEqual(spaceEvents.status, 200, JSON.stringify(spaceEvents.body));
-    assert.strictEqual(spaceEvents.body.scope, 'events.event.publish', 'Space publishes its hosting events and nothing more');
+    assert.strictEqual(spaceEvents.body.scope, 'events.event.publish events.subscription.manage', 'Space publishes its hosting events and subscribes to the account events (spaces hold personal data), nothing more');
     const cm = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.community' });
     assert.deepStrictEqual(cm.body.scope.split(' '), ['community.comment.moderate', 'community.comment.write', 'community.paste.create', 'community.paste.moderate', 'community.paste.write', 'community.pulse.write']);
     const tl = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.tools' });
