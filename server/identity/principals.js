@@ -362,6 +362,9 @@ const DEFAULT_GRANTS = [
     ['live', 'ai.run.read', 'openvibe.ai', ['live.*', 'network.site_copy', 'media.analyze']],
     // A streamer's own provider key for their AI viewers lives in OpenVibe.AI (WS-O task 2): Live stores it there.
     ['live', 'ai.credential.manage', 'openvibe.ai', []],
+    // A person's own provider key for the AI members they set up in Chat rooms (OpenVibe.Chat, a model of their own per
+    // AI member: OpenAI, Anthropic or any OpenAI-compatible endpoint), stored in OpenVibe.AI with Chat as its owner.
+    ['chat', 'ai.credential.manage', 'openvibe.ai', []],
     // A streamer's daily AI-viewer budget is an AI quota on their attribution (live:user:<id>), which Live sets.
     ['live', 'ai.quota.attribution.manage', 'openvibe.ai', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
