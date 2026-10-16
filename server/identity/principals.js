@@ -441,6 +441,8 @@ const DEFAULT_GRANTS = [
     ...['live', 'chat', 'community'].flatMap(c => ['tools.tool.run', 'tools.job.read'].map(cap => [c, cap, 'openvibe.tools', []])),
     // Tools indexes its own tool pages in Search through the owner API (owner tools only).
     ['tools', 'search.document.write', 'openvibe.search', []],
+    // OpenVibe.Video's public uploads in Search through the owner API (owner media-hub; Events cannot carry a hyphen).
+    ['media-hub', 'search.document.write', 'openvibe.search', []],
     // Plan T5 step 7: Tools posts one usage reading per ended tool job to Billing (POST /api/v1/usage).
     ['tools', 'billing.usage.record', 'openvibe.billing', []],
     // Plan T5 step 14: Network's own usage producers — AI (per model run), Events (per delivered event)
