@@ -219,6 +219,9 @@ const DEFAULT_GRANTS = [
     // (space.app.ask, on behalf of the visitor) on OpenVibe.AI (AI#108).
     ['space', 'ai.run.create', 'openvibe.ai', ['space.*']],
     ['space', 'ai.run.read', 'openvibe.ai', ['space.*']],
+    // Account export and deletion again (Space#59): spaces hold personal data, so Space subscribes to the two account
+    // events (its export part and deletion confirmation grants follow once its subscriptions answer).
+    ['space', 'events.subscription.manage', 'openvibe.events', []],
     // The hosting catalog (plan T20 step 3) reads OpenVibe.Sources items in category hosting (Host#69).
     ['host', 'sources.item.read', 'openvibe.sources', []],
     // The hosting catalog's provider and plan discussion threads on OpenVibe.Community (Host#74).
@@ -497,7 +500,6 @@ const REVOKED_GRANTS = [
     ['space', 'identity.subject.resolve', SELF_AUDIENCE],
     ['space', 'media.object.upload', 'openvibe.media'],
     ['space', 'vip.resource.policy.evaluate', 'openvibe.vip'],
-    ['space', 'events.subscription.manage', 'openvibe.events'],
     ['space', 'events.event.read', 'openvibe.events'],
     ['space', 'network.blocks.read', SELF_AUDIENCE],
     ['space', 'network.account.export.contribute', SELF_AUDIENCE],
@@ -520,6 +522,8 @@ const REVOKED_GRANTS = [
 const RESTORED_GRANTS = [
     // T20 step 2 (2026-10-12): Space publishes its static hosting events again (revoked when the forum left, 10-08).
     ['space', 'events.event.publish', 'openvibe.events'],
+    // Spaces (Space#58, #59): Space subscribes to the account events again (revoked with the forum, 10-08).
+    ['space', 'events.subscription.manage', 'openvibe.events'],
 ];
 
 const CHANGED_DEFAULT_NAMESPACES = [
