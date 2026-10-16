@@ -45,7 +45,7 @@ const INTENTS = [
     ['paste', 'fa-paste', 'Share a paste', 'Text, code or a screenshot behind one short link.', 'https://openvibe.community/new', 'paste share code snippet text link screenshot pastebin gist'],
     ['games', 'fa-gamepad', 'Play', 'Browser games that already know you.', 'https://openvibe.games/', 'play game games gaming multiplayer'],
     ['blog', 'fa-pen-nib', 'Write', 'A blog of your own, with drafts, scheduling and feeds.', 'https://openvibe.blog/write', 'write blog post posts article publish newsletter'],
-    ['space', 'fa-wand-magic-sparkles', 'Make an app', 'Describe it and OpenVibe AI builds it on your account, with sign-in, shared data, AI and its own server code.', 'https://openvibe.space/spaces/new', 'app apps make build builder space spaces website site page no-code gpt gpts chatgpt custom quiz poll guestbook game'],
+    ['space', 'fa-wand-magic-sparkles', 'Make an app', 'Describe it and OpenVibe AI builds it on your account, with its own data, AI and server code.', 'https://openvibe.space/spaces/new', 'app apps make build builder space spaces website site page no-code gpt gpts chatgpt custom quiz poll guestbook game'],
     ['wiki', 'fa-book-open', 'Look it up', 'Wiki pages with sources and history.', 'https://openvibe.wiki/', 'wiki learn read knowledge research look'],
     ['services', 'fa-server', 'Build on OpenVibe', 'One console for projects, keys, grants and the API docs of every service.', 'https://openvibe.services/', 'build api sdk developer developers oauth webhook webhooks app integrate console platform'],
     ['codes', 'fa-code', 'Code with any agent', 'Claude Code, Codex, OpenCode or your own model on one task, with hand-offs.', 'https://openvibe.codes/', 'code coding agent agents ai claude codex opencode deepseek harness contribute'],
@@ -83,8 +83,11 @@ function constellation() {
         const m = inner[(i + 1) % inner.length];
         return `<line class="cs-spoke" x1="0" y1="0" x2="${n.x}" y2="${n.y}"/><line class="cs-arc" x1="${n.x}" y1="${n.y}" x2="${m.x}" y2="${m.y}"/>`;
     }).join('');
+    // Near the top and bottom the labels sit centred side by side and collide ("ZoneLiveTools"): every other one there
+    // sits further out.
+    const stagger = (n, i) => (Math.abs(n.x) / (Math.hypot(n.x, n.y) || 1) < 0.5 && i % 2 ? 14 : 0);
     const label = (n, r) => { const dx = n.x / (Math.hypot(n.x, n.y) || 1), dy = n.y / (Math.hypot(n.x, n.y) || 1); return { x: Math.round(n.x + dx * r), y: Math.round(n.y + dy * r) + 4, anchor: Math.abs(dx) < 0.25 ? 'middle' : (dx > 0 ? 'start' : 'end') }; };
-    const openNodes = inner.map((n, i) => { const l = label(n, 17); return `<a href="https://${esc(n.site.host)}/" class="cs-node" style="--d:${(i * 0.37).toFixed(2)}s"><title>${esc(siteName(n.site))}: ${esc(n.site.tagline)}</title><circle class="cs-halo" cx="${n.x}" cy="${n.y}" r="11"/><circle class="cs-star" cx="${n.x}" cy="${n.y}" r="5"/><text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}">${esc(SHORT(n.site))}</text></a>`; }).join('');
+    const openNodes = inner.map((n, i) => { const l = label(n, 17 + stagger(n, i)); return `<a href="https://${esc(n.site.host)}/" class="cs-node" style="--d:${(i * 0.37).toFixed(2)}s"><title>${esc(siteName(n.site))}: ${esc(n.site.tagline)}</title><circle class="cs-halo" cx="${n.x}" cy="${n.y}" r="11"/><circle class="cs-star" cx="${n.x}" cy="${n.y}" r="5"/><text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}">${esc(SHORT(n.site))}</text></a>`; }).join('');
     const soonNodes = outer.map((n) => { const l = label(n, 9); return `<a href="https://${esc(n.site.host)}/" class="cs-node cs-soon"><title>${esc(siteName(n.site))} — opening next</title><circle class="cs-star" cx="${n.x}" cy="${n.y}" r="2.6"/><text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}">${esc(SHORT(n.site))}</text></a>`; }).join('');
     return `<svg class="constellation" viewBox="-230 -215 460 430" role="group" aria-labelledby="cs-t"><title id="cs-t">The OpenVibe network: ${OPEN.length} open sites around one account, ${SOON.length} more opening next</title>
 <defs><radialGradient id="cs-core"><stop offset="0" stop-color="var(--accent-light,#60a5fa)"/><stop offset="1" stop-color="var(--accent,#3b82f6)" stop-opacity="0"/></radialGradient></defs>
