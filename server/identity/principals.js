@@ -98,8 +98,9 @@ const DEFAULT_GRANTS = [
     ['inventory', 'media.object.upload', 'openvibe.media', ['inventory']],
     ['media-hub', 'media.object.upload', 'openvibe.media', ['media-hub']],
     ['media-hub', 'media.object.read', 'openvibe.media', ['media-hub']],
-    // OpenVibe.Video's AI edit (MediaHub server/video/ai-edit.js): media.analyze on finished uploads, local and unpaid.
-    ['media-hub', 'ai.run.create', 'openvibe.ai', ['media.analyze']],
+    // OpenVibe.Video's AI edit (MediaHub server/video/ai-edit.js): media.analyze on finished uploads, local and unpaid;
+    // OpenVibe.Pics alt text (server/pics/describe.js): pics.describe_image on new pictures.
+    ['media-hub', 'ai.run.create', 'openvibe.ai', ['media.analyze', 'pics.describe_image']],
     // Plan T3: Chat owns the six chat tables. Emote images go to Media under the chat namespace, and
     // the chat-AI summaries run in Chat with its own token.
     ['chat', 'media.object.upload', 'openvibe.media', ['chat']],
@@ -526,6 +527,8 @@ const CHANGED_DEFAULT_NAMESPACES = [
     // Live runs media.analyze on OpenVibe.AI (WS-O task 5).
     ['live', 'ai.run.create', 'openvibe.ai', ['live.*', 'network.site_copy'], ['live.*', 'network.site_copy', 'media.analyze']],
     ['live', 'ai.run.read', 'openvibe.ai', ['live.*', 'network.site_copy'], ['live.*', 'network.site_copy', 'media.analyze']],
+    // OpenVibe.Pics alt text: MediaHub runs pics.describe_image on new pictures (AI workflow, local model first).
+    ['media-hub', 'ai.run.create', 'openvibe.ai', ['media.analyze'], ['media.analyze', 'pics.describe_image']],
 ];
 
 async function ensureSchema(db) {
