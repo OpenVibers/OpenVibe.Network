@@ -31,6 +31,9 @@ const DEFAULT_GRANTS = [
     // Their pages go into OpenVibe.Search: <svc>.index_document.* through each one's outbox (openvibe-publishing/search-feed,
     // contracts 0.128.0). Inventory publishes already (below).
     ...['work', 'rent', 'help', 'quest'].map((svc) => [svc, 'events.event.publish', 'openvibe.events', []]),
+    // MediaHub publishes mediahub.video.published and mediahub.picture.uploaded (contracts 0.196.0; Events#91 gives a
+    // hyphenated service its namespace without the hyphen).
+    ['media-hub', 'events.event.publish', 'openvibe.events', []],
     // The same two subscriptions for the services that gained an account-event route on 2026-10-09 (SDK 0.37.0
     // startSubscriptions); deals, trade, tips and vip already hold the grant for their other subscriptions.
     ...['watch', 'services', 'wiki', 'blog', 'bot'].map((svc) => [svc, 'events.subscription.manage', 'openvibe.events', []]),
