@@ -171,9 +171,11 @@ const server = http.createServer(app);
     assert.deepStrictEqual(com.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.blocks.read', 'network.modules.read', 'network.modules.write'], 'resolve, account export and deletion, platform blocks, plus its community.profile module');
     await db.prepare("UPDATE oauth_clients SET client_secret = 'space-secret' WHERE client_id = 'space'").run();
     // The forum returned to Community (contracts 0.118.0) and its grants went; since the static hosting engine moved to
-    // Space (T20 step 2, contracts 0.149.0) Space publishes its hosting events, and nothing else.
+    // Space (T20 step 2, contracts 0.149.0) Space publishes its hosting events; since spaces (2026-10-16) it answers account
+    // export and deletion again, and holds nothing else on Network.
     const spaceNetwork = await token({ client_id: 'space', client_secret: 'space-secret', audience: 'openvibe.network' });
-    assert.strictEqual(spaceNetwork.status, 400, 'Space holds no Network grant');
+    assert.strictEqual(spaceNetwork.status, 200, JSON.stringify(spaceNetwork.body));
+    assert.deepStrictEqual(String(spaceNetwork.body.scope).split(' ').sort(), ['network.account.deletion.confirm', 'network.account.export.contribute'], 'Space\'s only Network grants are the account ones');
     r = await post('/internal/identity/resolve-batch', { system: 'network', ids: ['7'] }, { authorization: `Bearer ${com.body.access_token}` });
     assert.strictEqual(r.status, 200); assert.strictEqual(r.body.results['7'].username, 'payee');
     // Bot adds an operator by @username: the same projection, any case, a leading @ ignored; an unknown name is a 404.

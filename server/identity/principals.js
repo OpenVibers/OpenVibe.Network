@@ -125,9 +125,10 @@ const DEFAULT_GRANTS = [
     // Since 2026-10-08 the services built from the skeleton answer too, through openvibe-sdk/account-data (SDK 0.36.0),
     // and since 2026-10-09 the older services that hold personal rows (SDK 0.37.0; each subscribed before this grant).
     // Codes since 2026-10-14 (its run_tasks, plan T16; subscribed first through Network#178). Play since 2026-10-14 (its
-    // scores and unlocks; subscribed at its first boot, Network#189).
+    // scores and unlocks; subscribed at its first boot, Network#189). Space again since 2026-10-16 (its spaces, Space#59;
+    // subscribed first through Network#250).
     ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub',
-        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play'].flatMap((svc) => [
+        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
@@ -495,15 +496,13 @@ const REVOKED_GRANTS = [
     ['services', 'codes.resource.read', 'openvibe.codes'],
     ['codes', 'events.event.publish', 'openvibe.events'],
     // The forum returned to Community (owner decision 2026-10-08, contracts 0.118.0): Space keeps only its sign-in
-    // client. Its forum grants go, and Network stops waiting for its account export part and deletion confirmation
-    // (the forum's account data is Community's).
+    // client. Its forum grants go (the forum's account data is Community's). Its account and subscription grants came
+    // back with spaces (RESTORED_GRANTS, 2026-10-16).
     ['space', 'identity.subject.resolve', SELF_AUDIENCE],
     ['space', 'media.object.upload', 'openvibe.media'],
     ['space', 'vip.resource.policy.evaluate', 'openvibe.vip'],
     ['space', 'events.event.read', 'openvibe.events'],
     ['space', 'network.blocks.read', SELF_AUDIENCE],
-    ['space', 'network.account.export.contribute', SELF_AUDIENCE],
-    ['space', 'network.account.deletion.confirm', SELF_AUDIENCE],
     // The static hosting engine left Host (T20, Host#84, contracts 0.150.0): its Media objects and Services' fan-out to
     // its resource index go. Space serves the engine.
     ['host', 'media.object.upload', 'openvibe.media'],
@@ -524,6 +523,9 @@ const RESTORED_GRANTS = [
     ['space', 'events.event.publish', 'openvibe.events'],
     // Spaces (Space#58, #59): Space subscribes to the account events again (revoked with the forum, 10-08).
     ['space', 'events.subscription.manage', 'openvibe.events'],
+    // ...and answers account export and deletion for them again (Space#59, subscriptions verified 2026-10-16 20:20 UTC).
+    ['space', 'network.account.export.contribute', SELF_AUDIENCE],
+    ['space', 'network.account.deletion.confirm', SELF_AUDIENCE],
 ];
 
 const CHANGED_DEFAULT_NAMESPACES = [
