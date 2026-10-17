@@ -83,7 +83,7 @@ const INSTANCES = [
         // A public profile.
         let r = await get('/@ana');
         assert.strictEqual(r.status, 200);
-        assert.ok(r.text.includes('<h1><img class="pf-badge" src="https://openvibe.media/o/med_01JZ00000000000000000000B1" alt="" title="OG Viewer" width="32" height="32"><span class="ov-fx name-fx-rainbow" title="Rainbow">Ana</span></h1>') && r.text.includes('@Ana'), 'her community badge, then her name in its effect');
+        assert.ok(r.text.includes('<h1><img class="pf-name-badge" src="https://openvibe.media/o/med_01JZ00000000000000000000B1" alt="" title="OG Viewer" width="32" height="32"><span class="ov-fx name-fx-rainbow" title="Rainbow">Ana</span></h1>') && r.text.includes('@Ana'), 'her community badge, then her name in its effect');
         assert.ok(r.text.includes('<link rel="stylesheet" href="/shared/items.css">'), 'with the shared effects stylesheet');
         assert.ok(/<span class="pf-hat" title="Royal Crown" aria-hidden="true">👑<\/span>/.test(r.text), 'her hat sits on her picture');
         assert.ok(!r.text.includes('<script>alert(1)</script>') && r.text.includes('I stream &lt;script&gt;alert(1)&lt;/script&gt; &amp; paint'), 'the bio is escaped');
@@ -99,6 +99,10 @@ const INSTANCES = [
         assert.ok(calls.filter((c) => !c.path.includes('/badges')).every((c) => c.auth === 'Bearer tok:openvibe.inventory:inventory.item.read'), 'Network\'s own token for Inventory');
         assert.strictEqual(calls.find((c) => c.path.endsWith('/badges')).auth, 'Bearer tok:openvibe.quest:quest.badge.read', 'and for Quest');
         assert.ok(r.text.includes('id="pf-badges"') && /Thread &lt;Starter&gt;[\s\S]*First Follow/.test(r.text), 'badges, newest first, escaped');
+        // The worn badge's image rule (.85em square) once shared the chips' class and squeezed every chip into it.
+        const css = (sel) => (r.text.match(new RegExp(`\\n${sel.replace('.', '\\.')}\\{([^}]*)\\}`)) || [])[1] || '';
+        assert.ok(/padding:7px 14px/.test(css('.pf-badge')) && !/width/.test(css('.pf-badge')), 'a badge chip sizes to its name');
+        assert.ok(/width:\.85em/.test(css('.pf-name-badge')), 'the badge image beside the name has its own rule');
         assert.ok(/<span class="pf-stat-k">Badges<\/span><span class="pf-stat-v">2<\/span>/.test(r.text));
 
         // Cached for a minute: a second view reads nothing.
