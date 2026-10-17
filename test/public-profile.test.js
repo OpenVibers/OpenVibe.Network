@@ -103,6 +103,7 @@ const INSTANCES = [
         const css = (sel) => (r.text.match(new RegExp(`\\n${sel.replace('.', '\\.')}\\{([^}]*)\\}`)) || [])[1] || '';
         assert.ok(/padding:7px 14px/.test(css('.pf-badge')) && !/width/.test(css('.pf-badge')), 'a badge chip sizes to its name');
         assert.ok(/width:\.85em/.test(css('.pf-name-badge')), 'the badge image beside the name has its own rule');
+        assert.ok(/@media \(max-width:560px\)\{[^\n]*\.pf-badge small\{display:none\}/.test(r.text), 'on phones a chip drops its month (still in its title), so two fit a row');
         assert.ok(/<span class="pf-stat-k">Badges<\/span><span class="pf-stat-v">2<\/span>/.test(r.text));
 
         // Cached for a minute: a second view reads nothing.
