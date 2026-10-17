@@ -88,4 +88,13 @@ function originGuard(isAllowed, { log = console, everyMs = 60 * 60 * 1000 } = {}
     return { origin, denied };
 }
 
-module.exports = { gate, publicCors, isPublicDiscoveryPath, originGuard, ALLOW_HEADERS, EXPOSE_HEADERS };
+// The allow-list's cors() middleware: credentials, and a first-party preflight good for 10 minutes. Every site polls
+// /api/notifications/unread-count and /newest with credentials, and with no Access-Control-Max-Age Chrome asked again
+// after 5 s: 2,508 of ~11,400 requests in three hours were preflights (2026-10-17). Ten minutes keeps a change to the
+// allow-list quick to take effect.
+const RESTRICTED_MAX_AGE_S = 600;
+function restrictedCors(origin) {
+    return require('cors')({ origin, credentials: true, maxAge: RESTRICTED_MAX_AGE_S });
+}
+
+module.exports = { gate, publicCors, restrictedCors, isPublicDiscoveryPath, originGuard, ALLOW_HEADERS, EXPOSE_HEADERS, RESTRICTED_MAX_AGE_S };

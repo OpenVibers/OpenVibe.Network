@@ -5,7 +5,6 @@
 const assert = require('assert');
 const http = require('http');
 const express = require('express');
-const cors = require('cors');
 const publicCors = require('../server/public-cors');
 const { createEcosystemRegistry } = require('../server/registry/ecosystem');
 
@@ -27,7 +26,7 @@ const { createEcosystemRegistry } = require('../server/registry/ecosystem');
     const app = express();
     const warned = [];
     const guard = publicCors.originGuard((o) => allowed.has(o), { log: { warn: (m) => warned.push(m) } });
-    app.use(publicCors.gate(cors({ origin: guard.origin, credentials: true })));
+    app.use(publicCors.gate(publicCors.restrictedCors(guard.origin)));
     app.use(guard.denied);
     app.use(eco.router());
     app.post('/api/auth/login', (_req, res) => res.json({ ok: true }));
@@ -82,6 +81,10 @@ const { createEcosystemRegistry } = require('../server/registry/ecosystem');
     assert.strictEqual(r.status, 200);
     assert.strictEqual(r.headers.get('access-control-allow-origin'), 'https://openvibe.live');
     assert.strictEqual(r.headers.get('access-control-allow-credentials'), 'true');
+    // A first-party preflight is cached for 10 minutes (the notification polls preflighted every 5 s without it).
+    r = await req('OPTIONS', '/api/v1/projects', { origin: 'https://openvibe.live', 'access-control-request-method': 'GET', 'access-control-request-headers': 'authorization' });
+    assert.strictEqual(r.status, 204);
+    assert.strictEqual(r.headers.get('access-control-max-age'), String(publicCors.RESTRICTED_MAX_AGE_S));
 
     eco.stop(); srv.close();
     console.log('public discovery CORS: all checks passed');

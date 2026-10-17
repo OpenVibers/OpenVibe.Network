@@ -12,7 +12,6 @@ const cache = require('openvibe-shared/cache-policy');
 const express = require('express');
 // Async route handlers: a rejection reaches Express's error handling, as a throw did (server/async-routes.js, plan T2).
 require('./async-routes');
-const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
@@ -295,7 +294,7 @@ function isAllowedOrigin(origin) {
 // Public discovery (/.well-known/openvibe, /api/v1/registry/*, /contracts/*.json) answers any
 // origin, preflight included; every other route keeps this allow-list (server/public-cors.js).
 const corsGuard = require('./public-cors').originGuard(isAllowedOrigin);
-app.use(require('./public-cors').gate(cors({ origin: corsGuard.origin, credentials: true })));
+app.use(require('./public-cors').gate(require('./public-cors').restrictedCors(corsGuard.origin)));
 app.use(corsGuard.denied);
 
 // ── Rate Limiting ────────────────────────────────────────────
