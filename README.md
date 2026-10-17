@@ -759,5 +759,5 @@ Same as the parent [OpenVibe](../LICENSE) project.
 <!-- versions:start -->
 - openvibe-contracts: v0.203.0
 - openvibe-sdk: v0.50.1
-- openvibe-shared: v4.3.0
+- openvibe-shared: v4.4.0
 <!-- versions:end -->
