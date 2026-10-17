@@ -14,7 +14,16 @@ assert.equal(siteForHost('yt.openvibe.tools').id, 'tools');
 assert.equal(siteForHost('evil.example'), null);
 assert.strictEqual(svc.ranking().at, null, 'cold start: no use counted yet (the registry\'s featured list says so)');
 let p = svc.payloadFor('openvibe.media');
-assert.deepEqual(p.nav.map(n => n.id), ['live', 'tools', 'space', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'ai', 'search', 'run', 'play', 'zone'], 'cold start follows the base order');
+assert.deepEqual(p.nav.filter(n => !n.of).map(n => n.id), ['live', 'tools', 'space', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'ai', 'search', 'run', 'play', 'zone'], 'cold start follows the base order');
+// The launcher: every open site in one of the groups, and the products other services serve on their own domains
+// right after their site (Pics and Download after Video, Homes after Rent).
+assert.deepStrictEqual(p.groups.map(g => g.id), ['watch', 'create', 'talk', 'everyday', 'build', 'you']);
+assert.ok(p.nav.every(n => p.groups.some(g => g.id === n.group)), 'every entry has a group');
+assert.deepStrictEqual(p.nav.filter(n => n.of).map(n => [n.id, n.of, n.url]), [['pics', 'media-hub', 'https://openvibe.pics/'], ['download', 'media-hub', 'https://openvibe.download/'], ['homes', 'rent', 'https://openvibe.homes/']]);
+const at = (id) => p.nav.findIndex(n => n.id === id);
+assert.ok(at('pics') === at('media-hub') + 1 && at('homes') === at('rent') + 1, 'a product follows its site');
+assert.deepStrictEqual([p.nav[at('media-hub')].icon, p.nav[at('media-hub')].group, p.nav[at('homes')].group, p.nav[at('tools')].group], ['video', 'watch', 'everyday', 'build'], 'Video draws the video icon (there is no media-hub icon)');
+assert.strictEqual(p.nav.length, 40);
 assert.strictEqual(p.nav.find(n => n.id === 'space').url, 'https://openvibe.space/', 'Space keeps its own home (the forum returned to Community, 0.118.0)');
 assert.strictEqual(p.nav.find(n => n.id === 'community').url, 'https://openvibe.community/', 'Community: the forum, pastes and Pulse');
 assert.equal(p.footer.legal.dmca, 'https://openvibe.media/dmca', 'legal links stay on the site\'s own domain');
@@ -33,7 +42,7 @@ for (let i = 0; i < 6; i++) await ins.run(1, 'tools', 'dns');
     await svc.refreshRank(); global.fetch = realFetch;
     p = svc.payloadFor('openvibe.network');
     assert.equal(p.nav[0].id, 'games', 'most viewed site comes first');
-    assert.deepEqual(svc.ranking().order, p.nav.map(n => n.id), 'ranking() is the navigation order (the registry features by it)');
+    assert.deepEqual(svc.ranking().order, p.nav.filter(n => !n.of).map(n => n.id), 'ranking() is the navigation order (the registry features by it)');
     assert.ok(Date.now() - svc.ranking().at < 5000, 'and says when it was counted');
     assert.ok(p.nav.findIndex(n => n.id === 'network') > 0, 'the Network is never first on shared-service traffic alone');
     assert.ok(BANNED.test('Totally free tools') && BANNED.test('see https://x.y') && BANNED.test('<b>hi</b>') && !BANNED.test('Go live from a browser in seconds.'), 'AI copy screen');
