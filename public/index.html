@@ -117,8 +117,8 @@ a{color:inherit}
 .constellation .cs-soon .cs-star{fill:var(--text-muted)}.constellation .cs-soon text{fill:var(--text-muted);font-size:10.5px;font-weight:500}
 @keyframes cs-twinkle{0%,100%{transform:scale(1);opacity:.16}50%{transform:scale(1.35);opacity:.3}}
 @media (prefers-reduced-motion:reduce){.constellation .cs-halo{animation:none}.intent{transition:none}}
-@media (max-width:900px){.hero-grid{grid-template-columns:1fr;text-align:center}.hero-grid p.sub{margin:18px auto 0}.hero-sky{display:none}.intent{text-align:left}}
-@media (max-width:520px){.intents{grid-template-columns:1fr 1fr;gap:6px}.intent small{display:none}.intent{align-items:center;gap:9px;padding:9px 10px}.intent>i{width:30px;height:30px;font-size:14px}.intent b{font-size:13.5px}.intent-bar button{padding:11px 14px}}
+@media (max-width:900px){.hero-grid{grid-template-columns:minmax(0,1fr);text-align:center}.hero-grid p.sub{margin:18px auto 0}.hero-sky{display:none}.intent{text-align:left}}
+@media (max-width:520px){.intents{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.intent small{display:none}.intent{align-items:center;gap:9px;padding:9px 10px}.intent>i{width:30px;height:30px;font-size:14px}.intent b{font-size:13.5px}.intent-bar button{padding:11px 14px}}
 
 /* Services */
 .services{max-width:1080px;margin:0 auto;padding:24px 24px 80px}
