@@ -144,6 +144,9 @@ const DEFAULT_GRANTS = [
     ['tips', 'chat.message.send', 'openvibe.chat', []],
     ['tips', 'chat.event.publish', 'openvibe.chat', []],
     ['live', 'tips.interaction.record', 'openvibe.tips', []],
+    // Live reads a settled tip's shown view (public name, hidden amounts) for the channel's goal and tip history
+    // (Live server/tips/tips-events.js; Tips posts its own chat lines to OpenVibe.Chat since the Billing cutover).
+    ['live', 'tips.interaction.get', 'openvibe.tips', []],
     // Wave 7: Live manages its slots' streams, keys and sessions on OpenRestream; OpenRestream publishes
     // session/output events (Live consumes openre.session.* by webhook).
     ...['openre.stream.read', 'openre.stream.write', 'openre.key.rotate', 'openre.session.read'].map(c => ['live', c, 'openvibe.openre', []]),
