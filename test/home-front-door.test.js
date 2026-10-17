@@ -50,7 +50,8 @@ for (const s of open) assert.ok(html.includes(`<a href="https://${s.host}/" clas
 assert.ok(!html.includes('<!--OV:'), 'no placeholder left behind');
 // Below the hero every section is the shared showcase kit (plan T11), with its stylesheet, one h1 and an AI summary.
 assert.ok(html.includes('<link rel="stylesheet" href="/shared/showcase.css">'), 'the kit stylesheet is linked');
-for (const id of ['network', 'tools', 'account', 'soon', 'developers']) assert.ok(html.includes(`<section class="sc-sec" id="${id}"`), `the ${id} section is a kit section`);
+for (const id of ['network', 'tools', 'account', 'developers']) assert.ok(html.includes(`<section class="sc-sec" id="${id}"`), `the ${id} section is a kit section`);
+assert.strictEqual(html.includes('<section class="sc-sec" id="soon"'), sites.some((s) => s.status === 'soon'), 'an "Opening next" section only while a site is still to open (none since Tips and VIP, contracts 0.200.0)');
 assert.ok(!/class="home-(sec|card|grid|fams|fam|dev)\b/.test(html), 'no hand-built section markup is left');
 assert.strictEqual((html.match(/<h1[\s>]/g) || []).length, 1, 'one h1: the hero');
 assert.match(html, /<meta name="ai-summary" content="One account for \d+ open sites \(live, /);

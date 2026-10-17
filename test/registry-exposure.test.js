@@ -18,7 +18,8 @@ const PINNED = {
     network: 'live', live: 'live', tools: 'live', media: 'live', games: 'live', community: 'live', events: 'live',
     billing: 'live', codes: 'live', blog: 'live', wiki: 'live', sites: 'retired',   // Sites retired 2026-10-14 (contracts 0.181.0)
     news: 'live', reviews: 'live', deals: 'live', coupons: 'live', trade: 'live', host: 'live',   // News, Reviews, Coupons, Trade live since contracts 0.125.0
-    tips: 'internal', vip: 'internal', openre: 'live', search: 'live', sources: 'internal', chat: 'live', 'media-hub': 'live', space: 'live',   // a home and redirects since the forum returned to Community (contracts 0.118.0)
+    tips: 'live', vip: 'live', openre: 'live', search: 'live', sources: 'internal', chat: 'live', 'media-hub': 'live', space: 'live',   // a home and redirects since the forum returned to Community (contracts 0.118.0)
+    // tips, vip: their own sites at openvibe.tips and openvibe.vip since contracts 0.200.0 (2026-10-17)
     ai: 'live',   // the public home and developer-app API at ai.openvibe.services since 2026-10-07 (contracts 0.110.0)
     // openvibe-contracts v0.86-v0.90: Bot runs (its own exposure row). Zone: storage zones at openvibe.zone since 0.173.0.
     bot: 'live', zone: 'live',
@@ -34,7 +35,7 @@ const PINNED = {
     sdk: 'library', shared: 'library', contracts: 'library', publishing: 'library',
     examples: 'repository',
 };
-const PLACEHOLDER_DOMAINS = ['tips', 'vip'];   // deals: live since contracts 0.118.0; news, reviews, coupons, trade, openre since 0.125.0
+const PLACEHOLDER_DOMAINS = [];   // none left: tips and vip live since contracts 0.200.0; deals since 0.118.0; news, reviews, coupons, trade, openre since 0.125.0
 
 function fakeService(routes) {
     const srv = http.createServer((req, res) => {
@@ -78,20 +79,22 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
 
     const d = await json('/.well-known/openvibe');
     const dBy = Object.fromEntries(d.services.map(s => [s.id, s]));
-    assert.strictEqual(dBy.tips.state, 'internal');
-    assert.strictEqual(dBy.tips.origin, null, 'clients never route to a placeholder page');
-    assert.strictEqual(dBy.tips.planned_origin, 'https://openvibe.tips');
+    assert.strictEqual(dBy.sources.state, 'internal');
+    assert.strictEqual(dBy.sources.origin, null, 'clients never route to a service that is loopback only');
+    assert.strictEqual(dBy.tips.state, 'live', 'Tips serves openvibe.tips since contracts 0.200.0');
+    assert.strictEqual(dBy.tips.origin, 'https://openvibe.tips');
     assert.strictEqual(dBy.live.origin, 'https://openvibe.live');
     assert.strictEqual(dBy.live.state, 'live');
     for (const s of d.services) assert.strictEqual(s.state, PINNED[s.id]);
 
     let r = await json('/api/v1/registry/services');
     const by = Object.fromEntries(r.services.map(s => [s.id, s]));
-    assert.strictEqual(by.tips.exposure.state, 'internal');
-    assert.strictEqual(by.tips.exposure.public_site, 'placeholder');
-    assert.strictEqual(by.tips.runtime.status, 'up');
-    assert.strictEqual(by.tips.runtime.scope, 'loopback');
-    assert.match(by.tips.runtime.reason, /loopback only/);
+    assert.strictEqual(by.sources.exposure.state, 'internal');
+    assert.strictEqual(by.sources.runtime.status, 'up');
+    assert.strictEqual(by.sources.runtime.scope, 'loopback');
+    assert.match(by.sources.runtime.reason, /loopback only/);
+    assert.strictEqual(by.tips.exposure.public_site, 'service');
+    assert.strictEqual(by.tips.runtime.scope, 'public');
     assert.strictEqual(by.deals.exposure.state, 'live', 'Deals serves openvibe.deals since contracts 0.118.0');
     assert.strictEqual(by.ai.runtime.status, 'up', 'AI is polled on loopback although its pinned manifest says placeholder');
     assert.strictEqual(by.ai.runtime.basis, 'ready');
@@ -104,13 +107,13 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     r = await json('/api/v1/registry/services?state=internal');
     assert.deepStrictEqual(r.services.map(s => s.id).sort(), Object.keys(PINNED).filter(k => PINNED[k] === 'internal').sort());
     r = await json('/api/v1/registry/domains/openvibe.tips');
-    assert.strictEqual(r.service.exposure.state, 'internal');
+    assert.strictEqual(r.service.exposure.state, 'live');
 
     const st = await json('/api/v1/status');
     const sBy = Object.fromEntries(st.services.map(s => [s.id, s]));
-    assert.strictEqual(sBy.tips.label, 'up (loopback only)');
-    assert.strictEqual(sBy.tips.origin, null);
-    assert.strictEqual(sBy.tips.planned_origin, 'https://openvibe.tips');
+    assert.strictEqual(sBy.sources.label, 'up (loopback only)');
+    assert.strictEqual(sBy.sources.origin, null);
+    assert.strictEqual(sBy.tips.origin, 'https://openvibe.tips');
     assert.strictEqual(sBy.live.label, 'up');
     assert.strictEqual(sBy.live.origin, 'https://openvibe.live');
     assert.strictEqual(sBy.shared.label, `not running (library, released v${require('openvibe-shared/package.json').version})`);
@@ -118,7 +121,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     // v0.95.0 Services; Space and AI went live in v0.110.0; Food, Help and Work in v0.116.0; Quest, Rent and Watch in v0.117.0;
     // Inventory in v0.122.0; none is retired
     // News, Reviews, Coupons, Trade and OpenRestream in v0.125.0; Run in v0.141.0
-    assert.deepStrictEqual(st.exposure_summary, { live: 36, internal: 3, library: 4, repository: 1, placeholder: 0, retired: 1 });   // Sites retired (contracts 0.181.0)
+    assert.deepStrictEqual(st.exposure_summary, { live: 38, internal: 1, library: 4, repository: 1, placeholder: 0, retired: 1 });   // Sites retired (contracts 0.181.0); Tips and VIP live (0.200.0)
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());
@@ -128,20 +131,20 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
         assert.ok(row.includes('Up · loopback only'), `${id} row says loopback only`);
         assert.ok(row.includes('internal (loopback only, no public site yet)'), `${id} row names its exposure`);
     }
-    assert.ok(/<tr id="svc-tips">[\s\S]*?openvibe\.tips: not this service yet/.test(html));
+    assert.ok(/<tr id="svc-tips">[\s\S]*?>Up<\/span>/.test(html), 'Tips serves openvibe.tips since contracts 0.200.0');
     assert.ok(/<tr id="svc-live">[\s\S]*?>Up<\/span>/.test(html), 'a public service still reads Up');
     assert.ok(/<tr id="svc-ai">[\s\S]*?>Up<\/span>/.test(html), 'AI serves its own public origin since contracts 0.110.0');
 
     // 3. The Frame: the nav lists only sites whose domain serves the service; the rest are soon with a reason.
     const open = SITES.filter(s => s.status === 'open').map(s => s.id);
-    assert.deepStrictEqual(open, ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'trade', 'host', 'deals', 'coupons', 'stream', 'space', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'ai', 'search', 'run', 'play', 'zone']);   // zone: a site since 0.173.0; play: a site since 0.172.0; run: a site since 0.141.0; events, ai and search: sites since 0.135.0; news, reviews, trade, coupons and stream (OpenRestream): open since 0.125.0;   // by site position; bot: a site since openvibe-contracts 0.106.0; host: live since 0.107.0; space: live since 0.110.0 (the forum, 2026-10-07)
+    assert.deepStrictEqual(open, ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'space', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'ai', 'search', 'run', 'play', 'zone']);   // tips, vip: open since 0.200.0; zone: a site since 0.173.0; play: a site since 0.172.0; run: a site since 0.141.0; events, ai and search: sites since 0.135.0; news, reviews, trade, coupons and stream (OpenRestream): open since 0.125.0;   // by site position; bot: a site since openvibe-contracts 0.106.0; host: live since 0.107.0; space: live since 0.110.0 (the forum, 2026-10-07)
     for (const s of SITES) {
         assert.ok(s.service && PINNED[s.service], `${s.id} names its service`);
         assert.strictEqual(s.status === 'open', PINNED[s.service] === 'live', `${s.id} nav status follows exposure`);
     }
     for (const id of ['tips', 'vip']) {
         const s = SITES.find(x => x.id === id);
-        assert.strictEqual(s.status, 'soon'); assert.strictEqual(s.state, 'internal');
+        assert.strictEqual(s.status, 'open', `${id} is open since contracts 0.200.0`);
     }
 
     eco.stop(); srv.close(); up.srv.close(); ai.srv.close();

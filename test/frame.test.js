@@ -14,12 +14,12 @@ assert.equal(siteForHost('yt.openvibe.tools').id, 'tools');
 assert.equal(siteForHost('evil.example'), null);
 assert.strictEqual(svc.ranking().at, null, 'cold start: no use counted yet (the registry\'s featured list says so)');
 let p = svc.payloadFor('openvibe.media');
-assert.deepEqual(p.nav.map(n => n.id), ['live', 'tools', 'space', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'trade', 'host', 'deals', 'coupons', 'stream', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'ai', 'search', 'run', 'play', 'zone'], 'cold start follows the base order');
+assert.deepEqual(p.nav.map(n => n.id), ['live', 'tools', 'space', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'ai', 'search', 'run', 'play', 'zone'], 'cold start follows the base order');
 assert.strictEqual(p.nav.find(n => n.id === 'space').url, 'https://openvibe.space/', 'Space keeps its own home (the forum returned to Community, 0.118.0)');
 assert.strictEqual(p.nav.find(n => n.id === 'community').url, 'https://openvibe.community/', 'Community: the forum, pastes and Pulse');
 assert.equal(p.footer.legal.dmca, 'https://openvibe.media/dmca', 'legal links stay on the site\'s own domain');
 assert.ok(!p.footer.discover.some(l => l.url === 'https://openvibe.media/'), 'a site never recommends itself');
-assert.deepStrictEqual(p.soon.map(n => n.id || n), ['tips', 'vip'], 'Tips and VIP are the planned sites left (news, reviews, trade, coupons and stream launched 2026-10-09)');
+assert.deepStrictEqual(p.soon.map(n => n.id || n), [], 'no planned site left: Tips and VIP opened 2026-10-17 (contracts 0.200.0; news, reviews, trade, coupons and stream 2026-10-09)');
 
 // Real use reorders: community gets the history, so it rises above the cold-start order.
 // user_history's foreign key needs its users (PostgreSQL enforces the constraint SQLite only declared).
