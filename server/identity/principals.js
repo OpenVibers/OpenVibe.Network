@@ -455,10 +455,11 @@ const DEFAULT_GRANTS = [
     ['live', 'chat.moderation.queue.read', 'openvibe.chat', []],
     ['live', 'chat.sounds.read', 'openvibe.chat', []],
     ['live', 'chat.sounds.write', 'openvibe.chat', []],
-    // Wave 8: Live as a Billing client (used only with BILLING_AUTHORITY=billing). Never cashout.manage
-    // or ledger.admin: approving payouts is a separately controlled capability (ADR-012 rule 10).
+    // Live as a Billing client (Billing is the money ledger since 2026-10-17). Never cashout.manage or ledger.admin:
+    // approving payouts is a separately controlled capability (ADR-012 rule 10). stats.read: the home's network-wide
+    // Vibes bought and subscriptions, which name nobody (contracts 0.203.0).
     ...['billing.intent.create', 'billing.transfer.create', 'billing.balance.read', 'billing.cashout.request',
-        'billing.subscription.manage', 'billing.entitlement.check'].map(c => ['live', c, 'openvibe.billing', []]),
+        'billing.subscription.manage', 'billing.entitlement.check', 'billing.stats.read'].map(c => ['live', c, 'openvibe.billing', []]),
     // Tools platform S9: products call the Tools run API (the kiosk's page titles, Chat's audio conversion,
     // Community's save-as-paste) with their own token, on the service tier instead of the anonymous one.
     ...['live', 'chat', 'community'].flatMap(c => ['tools.tool.run', 'tools.job.read'].map(cap => [c, cap, 'openvibe.tools', []])),
