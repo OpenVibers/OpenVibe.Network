@@ -80,6 +80,10 @@ const FORMER_NAMES = { openre: ['OpenRe.Stream', 'OpenRe'] };
 
 async function seedDb(db, { log = console } = {}) {
     const warn = (m) => log.warn(`[DB] ${m}`);
+    // Boot steps that take 250 ms or more are logged by name: the requests a restart queues (systemd holds the
+    // socket) wait for this whole function, ~5.7 s of a 7 s boot on 2026-10-17.
+    let markAt = Date.now();
+    const mark = (name) => { const now = Date.now(); if (now - markAt >= 250) log.log(`[DB] boot step ${name}: ${now - markAt} ms`); markAt = now; };
 
     // ── Seed OAuth2 clients (per CONTRACTS) ──────────────────
     // Each first-party client is created if missing, with a fresh UUID secret printed exactly once.
@@ -156,6 +160,7 @@ async function seedDb(db, { log = console } = {}) {
         }
         if (seededAny) console.log('[DB] New OAuth2 clients seeded; their secrets are in oauth_clients (they are never logged).');
     }
+    mark('oauth clients');
 
     // ── Local development redirect URIs ──────────────────────
     if (!(process.env.NODE_ENV === 'production' && process.env.BOOTSTRAP_PROFILE !== 'local-dev')) {
@@ -183,6 +188,7 @@ async function seedDb(db, { log = console } = {}) {
             catch (err) { warn(`Failed to add local redirect_uris for ${clientId}: ${err.message}`); }
         }
     }
+    mark('local redirect uris');
 
     // ── Email verification preference reset + seeds ──────────
     try {
@@ -203,6 +209,7 @@ async function seedDb(db, { log = console } = {}) {
         await seed.run('stream_live_cooldown_min', '60', 'number');
         await seed.run('stream_live_daily_cap', '8', 'number');
     } catch (e) { warn(`email verification migration: ${e.message}`); }
+    mark('email settings');
 
     // ── Seed default settings (only on a fresh settings table) ──
     {
@@ -241,6 +248,7 @@ async function seedDb(db, { log = console } = {}) {
         const insertSeed = db.prepare('INSERT INTO site_settings (key, value, type) VALUES (?, ?, ?) ON CONFLICT (key) DO NOTHING');
         for (const [k, v, t] of alwaysSeed) await insertSeed.run(k, v, t);
     }
+    mark('settings');
 
     // ── Sync built-in themes ─────────────────────────────────
     {
@@ -269,36 +277,50 @@ async function seedDb(db, { log = console } = {}) {
         const gone = (await db.prepare(`DELETE FROM themes WHERE is_builtin = 1 AND id NOT IN (${ids.map(() => '?').join(',')})`).run(...ids)).changes;
         console.log(`[DB] Synced ${BUILTIN_THEMES.length} built-in themes${gone ? ` (removed ${gone} stale)` : ''}`);
     }
+    mark('themes');
 
     // ── Per-module boot work (the tables are migrations/NNNN_*.sql; this is the idempotent data work
     //    each module did at boot on SQLite) ─────────────────────────────────────────────────────────
     // Subject ids + identity_legacy_map (server/identity/subjects.js): backfill and seed.
     await require('../identity/subjects').ensureSchema(db);
+    mark('subjects');
     // Service principals: grants per OAuth client (server/identity/principals.js) — seeds the default
     // grants and re-revokes the ones ADR-012 forbids.
     await require('../identity/principals').ensureSchema(db);
+    mark('principals');
     // Versioned user modules (server/identity/modules.js).
     await require('../identity/modules').ensureSchema(db);
+    mark('modules');
     // Developer projects, apps, credentials, grants, quotas and audit (server/developer/store.js).
     await require('../developer/store').ensureSchema(db);
+    mark('store');
     // Their usage, from the services' rollups (server/developer/usage.js).
     await require('../developer/usage').ensure(db);
+    mark('usage');
     // Platform blocks, keyed by subjects (server/identity/blocks.js).
     await require('../identity/blocks').ensureSchema(db);
+    mark('blocks');
     // The follow graph, keyed by subjects (server/identity/follows.js; ADR-030).
     await require('../identity/follows').ensureSchema(db);
+    mark('follows');
     // Incidents and maintenance on /status (server/status/incidents.js).
     await require('../status/incidents').ensureSchema(db);
+    mark('incidents');
     // Creator analytics from live.stream.ended (server/analytics/creators.js).
     await require('../analytics/creators').ensureSchema(db);
+    mark('creators');
     // The platform's machines (server/registry/nodes.js; ADR-034 §12).
     await require('../registry/nodes').ensureSchema(db);
+    mark('nodes');
     // What the network can place on: node and provider offers (server/registry/offers.js; plan T2).
     await require('../registry/offers').ensureSchema(db);
+    mark('offers');
     // Cells and node principals (plan T2): every machine already in the node registry gets its platform principal.
     await require('../registry/cells').ensureSchema(db);
+    mark('cells');
     // Refresh tokens: hash-only storage (server/auth/refresh-tokens.js).
     await require('../auth/refresh-tokens').ensureSchema(db);
+    mark('refresh-tokens');
 
     console.log('[DB] Central database seeded');
 }
