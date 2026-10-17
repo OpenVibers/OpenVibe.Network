@@ -29,6 +29,28 @@ const SITES = RAW_SITES.map((s) => {
 });
 const byHost = new Map(SITES.map(s => [s.host, s]));
 
+// The launcher (openvibe-shared navbar) lists every open site under one of these groups, most used first within
+// each. A site missing here lands in the last group, so a new manifest is never left out of the menu.
+const GROUPS = [
+    { id: 'watch', name: 'Watch & stream', sites: ['live', 'media-hub', 'pics', 'stream', 'tips', 'vip'] },
+    { id: 'create', name: 'Create & play', sites: ['games', 'play', 'space', 'blog'] },
+    { id: 'talk', name: 'Talk & learn', sites: ['chat', 'community', 'wiki', 'news'] },
+    { id: 'everyday', name: 'Shop & everyday', sites: ['deals', 'coupons', 'reviews', 'food', 'rent', 'homes', 'trade', 'work', 'host'] },
+    { id: 'build', name: 'Build & automate', sites: ['tools', 'codes', 'run', 'actor', 'ai', 'bot', 'services', 'events', 'watch', 'zone', 'media', 'download'] },
+    { id: 'you', name: 'Your OpenVibe', sites: ['network', 'search', 'help', 'quest', 'inventory'] },
+];
+const groupOf = (id) => (GROUPS.find(g => g.sites.includes(id)) || GROUPS[GROUPS.length - 1]).id;
+
+// Products with a domain of their own that another service serves (its manifest lists the domain): in the menu
+// while that service's site is open, right after it. They are not sites of their own (no ranking, no legal profile).
+const PRODUCTS = [
+    { id: 'pics', name: 'Pics', host: 'openvibe.pics', icon: 'pics', of: 'media-hub', tagline: 'Share pictures, fast and open' },
+    { id: 'download', name: 'Download', host: 'openvibe.download', icon: 'download', of: 'media-hub', tagline: 'Your files, shared on your terms' },
+    { id: 'homes', name: 'Homes', host: 'openvibe.homes', icon: 'homes', of: 'rent', tagline: 'Every home-for-sale site, one search' },
+].filter((p) => { const s = SITES.find(x => x.id === p.of); const m = s && contracts.services.get(s.service); return m && (m.domains || []).includes(p.host); });
+// Manifest icon names the shared icon set draws differently.
+const ICON_ALIAS = { 'media-hub': 'video' };
+
 /** The site a hostname belongs to (subdomains included), or null. */
 function siteForHost(hostname) {
     const h = String(hostname || '').toLowerCase().replace(/:\d+$/, '').replace(/^www\./, '');
@@ -37,4 +59,4 @@ function siteForHost(hostname) {
     return null;
 }
 
-module.exports = { SITES, siteForHost };
+module.exports = { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS };
