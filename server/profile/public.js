@@ -362,7 +362,7 @@ a{color:var(--accent)}
 .pf-badge-ic{font-size:1.05rem}
 .pf-empty{color:var(--text-secondary);padding:18px;border:1px dashed var(--border);border-radius:12px;margin:0}
 .pf-note{color:var(--text-secondary);font-size:.85rem;margin:12px 0 0}
-@media (max-width:560px){.pf-head{padding:0 16px 16px;gap:14px}.pf-avatar{width:92px;height:92px}.pf-hat{font-size:32px;top:-18px}.pf-who{padding-top:0;min-width:100%}.pf-bio,.pf-stats,.pf-private{padding-left:16px;padding-right:16px}.pf-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}}
+@media (max-width:560px){.pf-head{padding:0 16px 16px;gap:14px}.pf-avatar{width:92px;height:92px}.pf-hat{font-size:32px;top:-18px}.pf-who{padding-top:0;min-width:100%}.pf-bio,.pf-stats,.pf-private{padding-left:16px;padding-right:16px}.pf-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}.pf-badge small{display:none}.pf-badge{padding:6px 12px 6px 9px}}
 </style>
 </head>
 <body>
