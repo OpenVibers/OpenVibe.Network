@@ -298,7 +298,11 @@ app.use(require('./public-cors').gate(require('./public-cors').restrictedCors(co
 app.use(corsGuard.denied);
 
 // ── Rate Limiting ────────────────────────────────────────────
-app.use('/api/', rateLimit({ windowMs: 60_000, max: 120 }));
+// 600 a minute per address, nginx's own rate for /api/ (openvibenetwork_api, 10 r/s). One account page asks ~20 things at
+// once, and every open OpenVibe tab's navbar (frame, session, unread count) and everyone behind the same home connection
+// spend this budget: at 120 the fifth account page within 20 s got 429s and "Couldn't load your account" (2026-10-17).
+// Sign-in, account actions, pairing and the other sensitive routes keep their own, stricter limits below.
+app.use('/api/', rateLimit({ windowMs: 60_000, max: 600 }));
 app.use('/api/auth/', rateLimit({ windowMs: 15 * 60_000, max: 30, skipSuccessfulRequests: true }));
 
 // ── Database ─────────────────────────────────────────────────
