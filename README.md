@@ -98,7 +98,7 @@ openvibe.network (port 4000)
 ├── deploy/
 │   ├── nginx/                # openvibe.network.conf; network-subdomains.conf (status/themes/admin/auth/api. redirects); parked-domains.conf
 │   ├── scripts/              # deploy.sh (runs `ovhost deploy network`)
-│   └── systemd/              # openvibe-network.service (EnvironmentFile=/etc/openvibe/network.env)
+│   └── systemd/              # openvibe-network.service (EnvironmentFile=/etc/openvibe/network.env), .socket + socket.conf drop-in
 └── .env.example
 ```
 
@@ -151,7 +151,10 @@ restart, `/api/ready` polled, an automatic rollback if it does not come up, and 
 prints `ovhost plan network`. If ovhost is missing, the wrapper exits with an error.
 
 The unit is `openvibe-network.service` (runs as `ubuntu` from `/opt/openvibe.network`) on
-`127.0.0.1:4000`, the env file `/etc/openvibe/network.env`. Rollback: automatic when `/api/ready` does not
+`127.0.0.1:4000`, the env file `/etc/openvibe/network.env`. The listener belongs to `openvibe-network.socket`
+(with the `openvibe-network.service.d/socket.conf` drop-in), so connections that arrive during a restart wait
+for the new process instead of getting 502s; ovhost restarts the service, never the socket. Check that systemd
+holds it with `sudo ss -ltnp | grep :4000` (systemd listed, the process on fd 3). Rollback: automatic when `/api/ready` does not
 come up; afterwards `sudo ovhost rollback network --to <sha>`. Two blockers: `chrome_cache`/`chrome_hits`
 became `frame_cache`/`frame_hits` on 2026-09-24 (an older release starts with empty caches), and
 `tool_domains` was rebuilt once for the mirror role (an older release does not know mirror rows).
