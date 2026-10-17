@@ -75,7 +75,7 @@ assert.strictEqual(require('../server/registry/ecosystem').INTERNAL.space, 'http
     const listed = r.body.categories.flatMap(c => c.services.map(x => x.id)).sort();
     assert.deepStrictEqual(listed, contracts.services.manifests.map(m => m.id).sort(), 'every service in exactly one category');
     const inCat = (id) => r.body.categories.find(c => c.services.some(x => x.id === id)).id;
-    assert.strictEqual(inCat('live'), 'site'); assert.strictEqual(inCat('network'), 'site'); assert.strictEqual(inCat('tips'), 'site', 'a site whose domain is still a placeholder is a site, not open yet');
+    assert.strictEqual(inCat('live'), 'site'); assert.strictEqual(inCat('network'), 'site'); assert.strictEqual(inCat('tips'), 'site', 'Tips: a site (open since contracts 0.200.0)');
     // Events, AI and Search have public homes in the navigation since contracts 0.135.0 (site blocks): sites people visit.
     assert.strictEqual(inCat('events'), 'site'); assert.strictEqual(inCat('ai'), 'site'); assert.strictEqual(inCat('search'), 'site'); assert.strictEqual(inCat('sources'), 'platform');
     assert.strictEqual(inCat('sdk'), 'library'); assert.strictEqual(inCat('contracts'), 'library');
@@ -105,10 +105,11 @@ assert.strictEqual(require('../server/registry/ecosystem').INTERNAL.space, 'http
     eco.health.set('live', { status: 'degraded', checked_at: new Date().toISOString() });
     eco.health.set('tools', { status: 'up', checked_at: new Date().toISOString() });
     eco.health.set('tips', { status: 'up', checked_at: new Date().toISOString() });
-    eco.setRanking(() => ({ at: Date.now() - 60_000, order: ['tools', 'network', 'media', 'live', 'tips'], everyMs: 30 * 60_000 }));
+    eco.health.set('sources', { status: 'up', checked_at: new Date().toISOString() });
+    eco.setRanking(() => ({ at: Date.now() - 60_000, order: ['tools', 'network', 'media', 'live', 'sources', 'tips'], everyMs: 30 * 60_000 }));
     r = await get('/api/v1/registry/featured');
-    assert.deepStrictEqual(r.body.featured.map(f => f.id), ['tools', 'media', 'live'], 'usage order; a site that is not open (tips) is never featured');
-    assert.deepStrictEqual(r.body.featured.map(f => f.rank), [1, 2, 3]);
+    assert.deepStrictEqual(r.body.featured.map(f => f.id), ['tools', 'media', 'live', 'tips'], 'usage order; a service that is not a site (sources) is never featured');
+    assert.deepStrictEqual(r.body.featured.map(f => f.rank), [1, 2, 3, 4]);
     assert.strictEqual(r.body.ordered_by, 'usage'); assert.strictEqual(r.body.stale, false); assert.ok(r.body.ranked_at);
     eco.setRanking(() => ({ at: Date.now() - 3 * 3600_000, order: ['tools'], everyMs: 30 * 60_000 }));
     assert.strictEqual((await get('/api/v1/registry/featured')).body.stale, true, 'a ranking four refreshes old is stale');
