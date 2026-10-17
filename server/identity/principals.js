@@ -129,9 +129,10 @@ const DEFAULT_GRANTS = [
     // and since 2026-10-09 the older services that hold personal rows (SDK 0.37.0; each subscribed before this grant).
     // Codes since 2026-10-14 (its run_tasks, plan T16; subscribed first through Network#178). Play since 2026-10-14 (its
     // scores and unlocks; subscribed at its first boot, Network#189). Space again since 2026-10-16 (its spaces, Space#59;
-    // subscribed first through Network#250).
+    // subscribed first through Network#250). Billing since 2026-10-17 (the money ledger: balances and money records;
+    // Billing#77, subscribed first through Network#263).
     ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub',
-        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space'].flatMap((svc) => [
+        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
