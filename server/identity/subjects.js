@@ -47,23 +47,20 @@ async function backfill(db) {
  * reported through /internal/link-account.
  */
 async function seedLegacyMap(db) {
-    const ins = db.prepare(`INSERT INTO identity_legacy_map (source_system, source_type, source_id, subject_id, verified_at)
-                            VALUES (?, ?, ?, ?, ov_now()) ON CONFLICT DO NOTHING`);
+    // One INSERT … SELECT per source, not one INSERT per row: with 28k anonymous sessions the per-row loop was 6.4 s of
+    // every boot (2026-10-17), and a restart's queued requests wait for the boot.
+    const into = `INSERT INTO identity_legacy_map (source_system, source_type, source_id, subject_id, verified_at)`;
     let n = 0;
     await db.tx(async () => {
-        for (const u of await db.prepare('SELECT id, subject_id, legacy_source, legacy_id FROM users WHERE subject_id IS NOT NULL').all()) {
-            n += (await ins.run(SELF, 'user', String(u.id), u.subject_id)).changes;
-            if (u.legacy_source && u.legacy_id != null) n += (await ins.run(String(u.legacy_source), 'user', String(u.legacy_id), u.subject_id)).changes;
-        }
-        for (const g of await db.prepare('SELECT id, subject_id FROM anon_users WHERE subject_id IS NOT NULL').all()) {
-            n += (await ins.run(SELF, 'anon_user', String(g.id), g.subject_id)).changes;
-        }
+        const run = async (select) => { n += (await db.prepare(`${into} ${select} ON CONFLICT DO NOTHING`).run()).changes; };
+        await run(`SELECT '${SELF}', 'user', CAST(id AS TEXT), subject_id, ov_now() FROM users WHERE subject_id IS NOT NULL`);
+        await run(`SELECT CAST(legacy_source AS TEXT), 'user', CAST(legacy_id AS TEXT), subject_id, ov_now() FROM users
+                   WHERE subject_id IS NOT NULL AND legacy_source IS NOT NULL AND legacy_source <> '' AND legacy_id IS NOT NULL`);
+        await run(`SELECT '${SELF}', 'anon_user', CAST(id AS TEXT), subject_id, ov_now() FROM anon_users WHERE subject_id IS NOT NULL`);
         // Sites that report their own local id through /internal/link-account (Live does). Rows written by
         // the OAuth exchange hold 'network:<id>' instead and say nothing about the site's ids.
-        for (const l of await db.prepare(`SELECT la.service, la.service_user_id, u.subject_id FROM linked_accounts la JOIN users u ON u.id = la.user_id
-                                    WHERE u.subject_id IS NOT NULL AND la.service_user_id NOT LIKE 'network:%'`).all()) {
-            if (/^[a-z][a-z0-9-]{1,39}$/.test(l.service)) n += (await ins.run(l.service, 'user', String(l.service_user_id), l.subject_id)).changes;
-        }
+        await run(`SELECT la.service, 'user', CAST(la.service_user_id AS TEXT), u.subject_id, ov_now() FROM linked_accounts la JOIN users u ON u.id = la.user_id
+                   WHERE u.subject_id IS NOT NULL AND la.service_user_id NOT LIKE 'network:%' AND la.service ~ '^[a-z][a-z0-9-]{1,39}$'`);
     });
     return n;
 }

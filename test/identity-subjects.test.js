@@ -39,6 +39,11 @@ assert.strictEqual(alex.subject_id.slice(4, 14), contracts.ids.ulid(Date.parse('
 const before = alex.subject_id;
 console.log = () => {}; await subjects.ensureSchema(db); console.log = quiet;   // boot again: nothing changes
 assert.strictEqual((await db.prepare('SELECT subject_id FROM users WHERE id = 1').get()).subject_id, before, 'subject ids are stable across boots');
+// The set-based seed: network users 1 and 2, Live's legacy 77, guest 5 and Live's reported 321; the OAuth exchange's
+// 'network:1' says nothing about Tools' ids. A second boot adds nothing.
+const mapRows = await db.prepare('SELECT source_system, source_type, source_id FROM identity_legacy_map ORDER BY 1, 2, 3').all();
+assert.deepStrictEqual(mapRows.map((r) => `${r.source_system}:${r.source_type}:${r.source_id}`),
+    ['live:user:321', 'live:user:77', 'network:anon_user:5', 'network:user:1', 'network:user:2']);
 
 // Seeded map: network self ids and the Live legacy id.
 assert.strictEqual((await subjects.resolve(db, { source_system: 'network', source_type: 'user', source_id: 1 })).subject.id, before);
