@@ -172,6 +172,7 @@ const DEFAULT_GRANTS = [
     ['vip', 'billing.intent.create', 'openvibe.billing', []],
     ['vip', 'billing.subscription.manage', 'openvibe.billing', []],
     ['vip', 'billing.entitlement.check', 'openvibe.billing', []],
+    ['vip', 'billing.tier.manage', 'openvibe.billing', []],   // a creator's tier prices, kept by Billing (contracts 0.201.0)
     ['vip', 'events.event.publish', 'openvibe.events', []],
     ['vip', 'events.subscription.manage', 'openvibe.events', []],
     ['vip', 'identity.subject.resolve', SELF_AUDIENCE, []],
