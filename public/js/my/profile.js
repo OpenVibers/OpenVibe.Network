@@ -86,7 +86,10 @@ function showAccountLoadError(err) {
     if (nameEl) nameEl.textContent = "Couldn't load your account";
     if (subEl) {
         const offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
-        subEl.textContent = (offline ? "You appear to be offline" : (err && err.message) ? err.message : 'Something went wrong') + ' · ';
+        const why = offline ? 'You appear to be offline'
+            : err && err.status === 429 ? 'Too many requests from this connection; try again in a minute'
+            : (err && err.message) || 'Something went wrong';
+        subEl.textContent = why + ' · ';
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'acct-retry-btn';
