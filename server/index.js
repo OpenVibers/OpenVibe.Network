@@ -942,7 +942,13 @@ app.use(require('./not-found').notFound);
 
 // ── Start ────────────────────────────────────────────────────
 const timers = [];   // the periodic maintenance below, cleared on stop
-const server = app.listen(config.port, config.host, () => {
+// Zero-downtime restarts (as OpenVibe.Live): when systemd owns the listener (deploy/systemd/openvibe-network.socket)
+// it hands it over as file descriptor 3, and connections that arrive during a restart wait in the kernel's accept
+// queue instead of being refused (each restart was ~7 s of 502s for every site's sign-in and navbar, 2026-10-17).
+// Without the socket unit this is the usual listen on the configured port.
+const socketActivated = process.env.LISTEN_FDS === '1' && Number(process.env.LISTEN_PID) === process.pid;
+if (socketActivated) console.log('[Server] socket-activated: listening on the socket systemd handed over (fd 3)');
+const server = app.listen(...(socketActivated ? [{ fd: 3 }] : [config.port, config.host]), () => {
     // The home page renders the Tools catalog it already holds: fetch it now, not on the first visit.
     require('./domains/catalog').refresh().catch(() => {});
     console.log(`\n╔═══════════════════════════════════════╗`);
