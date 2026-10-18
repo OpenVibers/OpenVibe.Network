@@ -234,6 +234,9 @@ const DEFAULT_GRANTS = [
     ['space', 'events.subscription.manage', 'openvibe.events', []],
     // The hosting catalog (plan T20 step 3) reads OpenVibe.Sources items in category hosting (Host#69).
     ['host', 'sources.item.read', 'openvibe.sources', []],
+    // The Steam section of openvibe.games (the owner's valve.openvibe.games) reads OpenVibe.Sources items in category
+    // games: Steam's featured lists (contracts 0.205.0).
+    ['games', 'sources.item.read', 'openvibe.sources', []],
     // The hosting catalog's provider and plan discussion threads on OpenVibe.Community (Host#74).
     ['host', 'community.comment.write', 'openvibe.community', []],
     ['host', 'community.comment.moderate', 'openvibe.community', []],
