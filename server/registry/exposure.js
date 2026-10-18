@@ -15,7 +15,7 @@
  * Every manifest id has exactly one state here (test/registry-exposure.test.js pins them):
  *
  *   live         live (public)          its public domain serves the service itself
- *   internal     internal               runs on loopback only; no public site yet (the domain, if any,
+ *   internal     internal               runs on loopback only, by design or for now (the domain, if any,
  *                                       still serves a placeholder page)
  *   library      library (released)     a package other code installs; nothing to run
  *   repository   repository             code with CI, neither released nor run (examples)
@@ -33,7 +33,7 @@ const contracts = require('openvibe-contracts');
 const STATES = ['live', 'internal', 'library', 'repository', 'placeholder', 'retired'];
 const LABEL = {
     live: 'live (public)',
-    internal: 'internal (loopback only, no public site yet)',
+    internal: 'internal (loopback only)',
     library: 'library (released)',
     repository: 'repository (code with CI, nothing released or running)',
     placeholder: 'placeholder (planned)',

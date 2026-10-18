@@ -129,7 +129,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
         const row = html.match(new RegExp(`<tr id="svc-${id}">[\\s\\S]*?</tr>`))[0];
         assert.ok(!/>Up<\/span>/.test(row), `${id} row must not read a bare Up`);
         assert.ok(row.includes('Up · loopback only'), `${id} row says loopback only`);
-        assert.ok(row.includes('internal (loopback only, no public site yet)'), `${id} row names its exposure`);
+        assert.ok(row.includes('internal (loopback only)'), `${id} row names its exposure`);
     }
     assert.ok(/<tr id="svc-tips">[\s\S]*?>Up<\/span>/.test(html), 'Tips serves openvibe.tips since contracts 0.200.0');
     assert.ok(/<tr id="svc-live">[\s\S]*?>Up<\/span>/.test(html), 'a public service still reads Up');

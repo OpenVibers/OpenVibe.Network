@@ -129,7 +129,7 @@ function exposureSummary(list) {
 function exposureCell(r) {
     const e = r.exposure;
     const where = r.origin ? `<small><a href="${esc(r.origin)}" rel="noopener">${esc(r.origin.replace(/^https:\/\//, ''))}</a></small>`
-        : r.planned_origin ? `<small>${esc(r.planned_origin.replace(/^https:\/\//, ''))}: not this service yet</small>` : '';
+        : r.planned_origin ? `<small>${esc(r.planned_origin.replace(/^https:\/\//, ''))} reserved</small>` : '';
     return `${esc(e.label)}${e.release ? ` <code>${esc(e.release)}</code>` : ''}${where}${e.note ? `<small>${esc(e.note)}</small>` : ''}`;
 }
 
