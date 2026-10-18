@@ -198,7 +198,7 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         }
         // Polled on loopback: a running internal service is up there, not at its public domain.
         entry.scope = exp.state === 'live' ? 'public' : 'loopback';
-        if (exp.state === 'internal') entry.reason = ['loopback only, no public site yet', entry.reason].filter(Boolean).join('; ');
+        if (exp.state === 'internal') entry.reason = ['loopback only', entry.reason].filter(Boolean).join('; ');
         entry.release = await releaseP;
         entry.checked_at = at();
         health.set(m.id, entry);
