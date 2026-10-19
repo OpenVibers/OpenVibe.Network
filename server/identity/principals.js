@@ -131,9 +131,10 @@ const DEFAULT_GRANTS = [
     // scores and unlocks; subscribed at its first boot, Network#189). Space again since 2026-10-16 (its spaces, Space#59;
     // subscribed first through Network#250). Billing since 2026-10-17 (the money ledger: balances and money records;
     // Billing#77, subscribed first through Network#263). Reviews since 2026-10-17 (members' reviews, Reviews#76; its
-    // account-data consumer and subscriptions shipped first in Reviews#77).
+    // account-data consumer and subscriptions shipped first in Reviews#77). Host since 2026-10-19 (the console's sealed hosting
+    // tokens and actions, benchmarks' submissions; Host#120, subscribed first through Network#284).
     ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub',
-        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews'].flatMap((svc) => [
+        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
