@@ -222,6 +222,9 @@ const DEFAULT_GRANTS = [
     ['coupons', 'events.subscription.manage', 'openvibe.events', []],
     ['coupons', 'sources.item.read', 'openvibe.sources', []],
     ['host', 'events.event.publish', 'openvibe.events', []],
+    // The console (Host#120, 2026-10-19) keeps people's sealed hosting tokens and their actions, and benchmarks (Host#117)
+    // their submissions: Host subscribes to the two account events first (its export part and deletion grants follow).
+    ['host', 'events.subscription.manage', 'openvibe.events', []],
     // T20 step 2 (2026-10-12, Space#36): the static hosting engine moved to Space, which publishes space.deploy.* and
     // space.domain.verified through its outbox. (Its forum-era grants stay revoked below.)
     ['space', 'events.event.publish', 'openvibe.events', []],

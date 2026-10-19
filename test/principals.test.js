@@ -233,6 +233,11 @@ const server = http.createServer(app);
     const cps = await token({ client_id: 'coupons', client_secret: 'coupons-secret', audience: 'openvibe.events', scope: 'events.subscription.manage' });
     assert.strictEqual(cps.status, 200, JSON.stringify(cps.body));
     assert.strictEqual(cps.body.scope, 'events.subscription.manage', 'Coupons manages its Events subscriptions');
+    // Host subscribes to the account events (Host#120: the console's sealed tokens, benchmarks' submissions).
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'host-secret' WHERE client_id = 'host'").run();
+    const hs = await token({ client_id: 'host', client_secret: 'host-secret', audience: 'openvibe.events', scope: 'events.subscription.manage' });
+    assert.strictEqual(hs.status, 200, JSON.stringify(hs.body));
+    assert.strictEqual(hs.body.scope, 'events.subscription.manage');
     // Plan T5 (Wave 9): Tips' chat adapter mints a token for 'chat.message.send chat.event.publish' on
     // openvibe.chat with its own service token (OpenVibe.Tips server/delivery/chat.js); without both rows
     // TIPS_CHAT_ADAPTER=chat can never deliver a paid effect.
