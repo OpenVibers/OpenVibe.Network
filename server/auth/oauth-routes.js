@@ -124,6 +124,19 @@ router.get('/authorize', async (req, res) => {
     res.redirect(`${getConfig(req).loginUrl}/login?${loginParams.toString()}`);
 });
 
+/**
+ * The name a first-party sign-in names, from where it returns to: one OAuth client can serve several sites (media-hub is
+ * openvibe.video, openvibe.download and openvibe.pics), and the chooser said "continue to OpenVibe.Download" to someone
+ * signing in on openvibe.video. A product on its own domain, else the site that owns the host; null when neither.
+ */
+function siteNameForHost(host) {
+    const { PRODUCTS, siteForHost } = require('../frame/sites');
+    const h = String(host || '').toLowerCase();
+    const site = PRODUCTS.find((p) => p.host === h) || siteForHost(h);
+    if (!site || !site.name) return null;
+    return /^Open|\./.test(site.name) ? site.name : `OpenVibe.${site.name}`;
+}
+
 // ── GET /oauth/client-info ──────────────────────────────────
 // The name the account chooser shows ("continue to <name>"), looked up by client_id and only for a
 // registered redirect_uri. The chooser used to print client_name from its own URL, so a crafted
@@ -150,7 +163,7 @@ router.get('/client-info', async (req, res) => {
     if (!client) return res.status(404).json({ error: 'Unknown client_id' });
     const allowed = JSON.parse(client.redirect_uris || '[]').map(u => String(u).toLowerCase());
     if (!allowed.includes(String(redirect_uri).toLowerCase())) return res.status(404).json({ error: 'Invalid redirect_uri' });
-    res.json({ name: client.name || String(client_id), third_party: false, redirect_host: host, capabilities: [], refused: [] });
+    res.json({ name: siteNameForHost(host) || client.name || String(client_id), third_party: false, redirect_host: host, capabilities: [], refused: [] });
 });
 
 // ── POST /oauth/confirm ─────────────────────────────────────
@@ -437,3 +450,4 @@ router.get('/userinfo', oidc.userinfo);
 router.post('/userinfo', oidc.userinfo);
 
 module.exports = router;
+module.exports.siteNameForHost = siteNameForHost;

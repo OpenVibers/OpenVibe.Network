@@ -23,15 +23,14 @@
 const express = require('express');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const { OWNED_ZONES, isTrustedHost } = require('./sso-owned');
+const { isTrustedOrigin } = require('./sso-owned');
 
 const ASSERTION_TTL_S = 300;
-const ORIGIN_RE = new RegExp(`^https://(?:[a-z0-9-]+\\.)*(?:${OWNED_ZONES.map(d => d.replace(/\./g, '\\.')).join('|')})$`, 'i');
 const LOCAL_RE = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/;
 
 function rpOrigin(raw, env = process.env) {
     const o = String(raw || '').trim().replace(/\/$/, '');
-    if (ORIGIN_RE.test(o) && isTrustedHost(new URL(o).hostname)) return o;
+    if (isTrustedOrigin(o)) return o;
     if (env.NODE_ENV !== 'production' && LOCAL_RE.test(o)) return o;
     return null;
 }

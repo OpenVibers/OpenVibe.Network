@@ -190,6 +190,7 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
     flex-shrink:0;overflow:hidden;
 }
 .account-item .avatar img{width:100%;height:100%;object-fit:cover}
+.account-item .avatar-initial{font-weight:700;color:var(--text,#e6edf7)}
 .account-item .info{flex:1;min-width:0}
 .account-item .info .name{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .account-item .info .detail{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
