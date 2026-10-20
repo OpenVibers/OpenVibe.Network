@@ -44,7 +44,7 @@ const cache = require('openvibe-shared/cache-policy');
         assert.ok(sitemap.body.includes('<lastmod>'), 'every entry carries a lastmod');
         const locs = [...sitemap.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]);
         assert.deepStrictEqual(locs, seoRoutes.PAGES.map(p => `${seoRoutes.HOST}${p.path}`), 'the sitemap lists exactly the public HTML pages');
-        assert.ok(locs.includes('https://openvibe.network/status'), 'the sitemap lists the status page');
+        assert.ok(!locs.includes('https://openvibe.network/status'), 'not the status page: live, and noindex');
         assert.ok(!locs.some(l => /\/admin|\/login/.test(l)), 'private pages are not in the sitemap');
         const lastmods = new Set([...sitemap.body.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map(m => m[1]));
         assert.strictEqual(lastmods.size, 1, 'one lastmod for the whole sitemap');
