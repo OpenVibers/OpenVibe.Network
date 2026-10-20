@@ -1,7 +1,7 @@
 'use strict';
 // Hostname rules for the tool-domain registry (docs/shared-contracts.md §1).
 const net = require('net');
-const { OWNED_ZONES } = require('../auth/sso-owned');
+const { OWNED_ZONES, MANIFEST_HOSTS } = require('../auth/sso-owned');
 
 const ROLES = ['canonical', 'short', 'alias', 'mirror'];
 const TOOLS_ZONE = 'openvibe.tools';
@@ -41,6 +41,8 @@ function validateHost(raw) {
 
 /** Why a host is one of the network's own, or null when it is free to be a tool host. */
 function coreHostReason(host) {
+    // A network site's own host (any manifest's domain, e.g. openvibe.video) is never a tool's.
+    if (MANIFEST_HOSTS.has(host) || MANIFEST_HOSTS.has(host.replace(/^www\./, ''))) return `${host} is one of the network's own sites and cannot be a tool domain`;
     for (const zone of OWNED_ZONES) {
         if (host === zone || host === 'www.' + zone) return `${host} is one of the network's own sites and cannot be a tool domain`;
         if (host.endsWith('.' + zone)) {

@@ -251,8 +251,12 @@ function renderChooser() {
     accounts.forEach(account => {
         const item = document.createElement('div');
         item.className = 'account-item' + (String(account.id) === String(activeId) ? ' active-account' : '');
-        const avatarContent = account.avatar_url
-            ? `<img src="${escapeHtml(account.avatar_url)}" alt="" onerror="this.parentElement.innerHTML='<i class=\'fa-solid fa-circle-nodes\'></i>'">`
+        // The picture by username (/avatar/<name> answers the current one): a remembered avatar_url goes stale when the
+        // person changes it, and showed as a broken image. If none loads, the initial.
+        const avatarSrc = account.username ? `${API_BASE}/avatar/${encodeURIComponent(account.username)}` : account.avatar_url;
+        const initial = escapeHtml(String(account.display_name || account.username || '?').trim().charAt(0).toUpperCase() || '?');
+        const avatarContent = avatarSrc
+            ? `<img src="${escapeHtml(avatarSrc)}" alt="">`
             : '<span class="ov-mark" data-size="28" data-static="1"></span>';
         item.innerHTML = `
             <div class="avatar">${avatarContent}</div>
@@ -263,6 +267,8 @@ function renderChooser() {
             <span class="arrow">→</span>
             <button class="remove-btn" title="Remove this saved account" onclick="event.stopPropagation(); removeAccount(${account.id})"><i class="fa-solid fa-xmark"></i></button>
         `;
+        const img = item.querySelector('.avatar img');
+        if (img) img.addEventListener('error', () => { img.parentElement.innerHTML = `<span class="avatar-initial">${initial}</span>`; }, { once: true });
         item.addEventListener('click', () => selectAccount(account));
         list.appendChild(item);
     });

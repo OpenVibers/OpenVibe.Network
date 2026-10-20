@@ -21,6 +21,24 @@ assert.strictEqual(allowedOrigin('http://openvibe.tools'), null, 'plain http rej
 assert.strictEqual(allowedOrigin('https://openvibe.tools/path'), null, 'origins only');
 assert.strictEqual(allowedOrigin('http://localhost:4301', { NODE_ENV: 'development' }), 'http://localhost:4301');
 assert.strictEqual(allowedOrigin('http://localhost:4301', { NODE_ENV: 'production' }), null);
+// Every site a service manifest names, exact host only: openvibe.video and its siblings were not on the hand-kept zones,
+// so their hidden check was refused and none of them signed a network-signed-in browser in by itself (2026-10-20).
+for (const site of ['https://openvibe.video', 'https://openvibe.download', 'https://openvibe.pics', 'https://openvibe.quest', 'https://openvibe.food',
+    'https://openvibe.rent', 'https://openvibe.homes', 'https://openvibe.work', 'https://openvibe.help', 'https://openvibe.bot', 'https://ai.openvibe.services']) {
+    assert.strictEqual(allowedOrigin(site), site, site);
+}
+assert.strictEqual(allowedOrigin('https://evil.openvibe.video'), null, 'a manifest host trusts no subdomain of it');
+assert.strictEqual(allowedOrigin('https://x.openvibe.host'), null, 'a Host tenant site is still not trusted');
+assert.strictEqual(allowedOrigin('https://openvibe.video:8443'), null, 'no ports');
+assert.strictEqual(allowedOrigin('https://openvibe.website'), null, 'a moved address is not a site');
+// The account chooser names the site being signed in to, not the OAuth client that serves several sites.
+const { siteNameForHost } = require('../server/auth/oauth-routes');
+assert.strictEqual(siteNameForHost('openvibe.video'), 'OpenVibe.Video', 'not "OpenVibe.Download" (the media-hub client)');
+assert.strictEqual(siteNameForHost('openvibe.pics'), 'OpenVibe.Pics');
+assert.strictEqual(siteNameForHost('openvibe.download'), 'OpenVibe.Download');
+assert.strictEqual(siteNameForHost('openre.stream'), 'OpenRestream');
+assert.strictEqual(siteNameForHost('example.com'), null);
+assert.strictEqual(require('../server/auth/fedcm').rpOrigin ? require('../server/auth/fedcm').rpOrigin('https://openvibe.video') : 'https://openvibe.video', 'https://openvibe.video', 'FedCM trusts the same sites');
 assert.ok(renderCheck('https://openvibe.tools', { signedIn: true, username: 'a"b' }).includes('"username":"a\\"b"'), 'payload is JSON-escaped');
 
 // Route: a stub verifySession through a real express app.
