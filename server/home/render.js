@@ -246,13 +246,12 @@ function llmsTxt() {
 // /llms-full.txt: the public pages the sitemap lists (server/seo/routes.js PAGES), each with its text.
 const LLMS_PAGE_TEXT = {
     '/': () => ['One OpenVibe account signs you in on every site:', ...OPEN.map((site) => `- ${siteName(site)} (https://${site.host}/): ${site.what}`)].join('\n'),
-    '/status': () => 'Observed status of each OpenVibe service: readiness, release and when it was last checked.',
     '/updates': () => "Every change deployed to the OpenVibe network, newest first: each site's commits as they ship, and the Patch notes posts that gather them.",
     '/terms': () => 'The rules for using OpenVibe.Network, in plain language.',
     '/privacy': () => 'What OpenVibe.Network collects, why, and the choices you have.',
     '/dmca': () => 'How to report copyright infringement on OpenVibe.Network, and how to respond to a report.',
 };
-const LLMS_PAGE_TITLE = { '/': 'OpenVibe.Network', '/status': 'Status', '/updates': 'Updates', '/terms': 'Terms of Service', '/privacy': 'Privacy Policy', '/dmca': 'DMCA' };
+const LLMS_PAGE_TITLE = { '/': 'OpenVibe.Network', '/updates': 'Updates', '/terms': 'Terms of Service', '/privacy': 'Privacy Policy', '/dmca': 'DMCA' };
 const LLMS_FULL_MAX_BYTES = 512 * 1024;
 
 function llmsFullTxt({ baseUrl = 'https://openvibe.network' } = {}) {

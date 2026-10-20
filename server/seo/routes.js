@@ -10,10 +10,10 @@ const HOST = 'https://openvibe.network';
 // This is read once at boot if there is no release manifest.
 const FALLBACK_LASTMOD = fs.statSync(path.join(__dirname, '../home/render.js')).mtime.toISOString();
 
-// Public HTML routes; sign-in, account and admin pages are omitted.
+// Public HTML routes; sign-in, account and admin pages are omitted, and so is /status: a live page that changes every
+// poll and says noindex, nofollow (status/routes.js), so listing it only spent crawl on a page engines skip.
 const PAGES = [
     { path: '/', changefreq: 'daily', priority: 1.0 },
-    { path: '/status', changefreq: 'daily', priority: 0.8 },
     { path: '/updates', changefreq: 'daily', priority: 0.8 },
     { path: '/terms', changefreq: 'yearly', priority: 0.3 },
     { path: '/privacy', changefreq: 'yearly', priority: 0.3 },
