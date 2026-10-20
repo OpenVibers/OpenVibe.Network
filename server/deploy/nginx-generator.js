@@ -23,10 +23,17 @@ const DEFAULT_SERVICE_MAP = {
         rateZones: [
             { name: 'openvibenetwork_api', rate: '10r/s' },
             { name: 'openvibenetwork_auth', rate: '5r/m' },
+            { name: 'openvibenetwork_authorize', rate: '60r/m' },
         ],
         locations: [
             {
-                match: '~ ^/(api/auth/(register|login|anon-session)|oauth/(token|authorize))',
+                // Every site's sign-in and silent check: no password here, so not the password endpoints' 5 a minute.
+                match: '= /oauth/authorize',
+                rateZone: 'openvibenetwork_authorize',
+                rateBurst: 60,
+            },
+            {
+                match: '~ ^/(api/auth/(register|login|anon-session)|oauth/token)',
                 rateZone: 'openvibenetwork_auth',
                 rateBurst: 5,
             },
