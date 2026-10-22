@@ -739,7 +739,17 @@ app.get(['/login.html', '/admin.html'], (req, res) => {
     return res.status(404).end();
 });
 
-// Landing page at the apex root
+// Landing page at the apex root. Its numbers are Network's own, read with the rest of its activity once a minute:
+// accounts (people, not guests or banned ones) and how many public services answered their last health check (a
+// count is left out until at least half of them have been checked once).
+require('./home/activity').configure({
+    accounts: async () => (await db.prepare('SELECT COUNT(*) AS cnt FROM users WHERE COALESCE(is_anon, 0) = 0 AND COALESCE(is_banned, 0) = 0').get()).cnt,
+    services: () => {
+        const live = require('./status/routes').rows(ecosystem).filter((r) => r.exposure && r.exposure.state === 'live');
+        const known = live.filter((r) => r.status !== 'unknown');
+        return known.length && known.length * 2 >= live.length ? { up: known.filter((r) => r.status === 'up').length, live: known.length } : null;
+    },
+});
 app.get(['/', '/index.html'], (req, res) => {
     if (req.path === '/index.html') return redirectWithoutHtml(req, res, '/');
     return require('./home/render').sendHome(req, res, { releaseId: release.release });
@@ -812,6 +822,14 @@ app.get('/openvibe-sw.js', (req, res) => {
 const sharedRev = new Map();
 function serveShared(req, res, next) {
     const name = req.path.slice(1);
+    // The share cards (openvibe-shared/social, social/<service>.jpg): the home page's og:image is Network's own card.
+    const social = require('openvibe-shared/social');
+    if (social.isCard(name)) {
+        const hashed = social.url(name.slice(7, -4), '').endsWith(`?v=${req.query.v}`);
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Cache-Control', cache.assetHeaders(name, { hashed }));
+        return res.sendFile(social.path(name));
+    }
     if (!sharedFiles.isBrowserFile(name)) return next();
     if (!sharedRev.has(name)) sharedRev.set(name, require('crypto').createHash('sha256').update(fs.readFileSync(sharedFiles.path(name))).digest('hex').slice(0, 12));
     res.setHeader('Access-Control-Allow-Origin', '*');
