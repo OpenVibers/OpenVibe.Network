@@ -4,7 +4,7 @@
 
 Identity and account service for the OpenVibe network. Manages user accounts, OAuth2 authorization, theme preferences, notifications, email alerts, anonymous identities, the network-wide OpenCoins wallet, and internal APIs that connect all OpenVibe services together.
 
-**Part of the [OpenVibe](../ARCHITECTURE.md)** — `https://openvibe.network`
+**Part of the [OpenVibe network](https://openvibe.network)** — `https://openvibe.network`
 
 ---
 
@@ -754,7 +754,7 @@ Reporting a vulnerability: [SECURITY.md](SECURITY.md). The rules the code keeps:
 
 ## License
 
-Same as the parent [OpenVibe](../LICENSE) project.
+MIT (`license` in [package.json](package.json)).
 
 <!-- versions:start -->
 - openvibe-contracts: v0.209.3
