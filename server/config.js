@@ -117,5 +117,9 @@ module.exports = {
         media: {
             internalUrl: process.env.OV_MEDIA_INTERNAL_URL || 'http://127.0.0.1:4100',
         },
+        // OpenVibe.Chat: the admin panel's TTS settings (server/admin/service-proxies.js).
+        chat: {
+            internalUrl: process.env.OV_CHAT_INTERNAL_URL || 'http://127.0.0.1:4400',
+        },
     },
 };

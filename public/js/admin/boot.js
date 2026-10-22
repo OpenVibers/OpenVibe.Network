@@ -14,10 +14,9 @@ const tabLoaders = {
     moderators: loadModerators,
     settings: loadSettings,
     tts: loadTTS,
-    cashouts: loadCashouts,
+    cashouts: () => {}, // a pointer to OpenVibe.Billing's console
     payments: loadPayments,
     ai: loadAi,
-    vpn: loadVPNQueue,
     pastes: loadPastesAdmin,
     storage: loadStorage,
     notifications: () => {},

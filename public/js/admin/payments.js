@@ -1,23 +1,49 @@
 /* ═══════════════════════════════════════════════════════════════
-   OpenVibe.Network — admin panel (/admin): payments, cashouts and verification keys.
+   OpenVibe.Network — admin panel (/admin): payment settings, the Billing pointer and verification keys.
    Split out of admin.html. Classic scripts, global scope: they rely on
    admin/core.js's helpers (api, esc, toast, API, token) and on the
    tabLoaders map in admin/boot.js (loaded last). No ES modules.
    ═══════════════════════════════════════════════════════════════ */
-// ── Payments: configure PayPal / Stripe / CCBill / crypto + subscriptions ──
+// ── Payments: the switches and prices OpenVibe.Live reads ──
+// OpenVibe.Billing runs every checkout, webhook, subscription and cashout since the cutover of 2026-10-17. Live
+// still reads these site settings to decide which ways to pay it offers and at what price (Live's
+// server/monetization/payments.js). Provider credentials are Billing's environment variables, never settings here.
 const PAYMENT_GROUPS = [
-    { title: 'General', keys: ['payments_enabled', 'bucks_per_usd', 'bucks_min_purchase_usd', 'sub_price_usd', 'sub_streamer_share_pct'] },
-    { title: 'PayPal', keys: ['paypal_enabled', 'paypal_mode', 'paypal_client_id', 'paypal_client_secret', 'paypal_webhook_id'] },
-    { title: 'Stripe', keys: ['stripe_enabled', 'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret'] },
-    { title: 'CCBill', keys: ['ccbill_enabled', 'ccbill_client_account', 'ccbill_subaccount', 'ccbill_flexform_id', 'ccbill_salt', 'ccbill_webhook_secret'] },
-    { title: 'Crypto (NOWPayments)', keys: ['crypto_enabled', 'crypto_provider', 'crypto_api_key', 'crypto_ipn_secret'] },
+    { title: 'General', keys: ['payments_enabled', 'bucks_per_usd', 'bucks_min_purchase_bucks', 'sub_price_usd', 'sub_streamer_share_pct', 'sub_site_route_fee_pct'] },
+    { title: 'PayPal', keys: ['paypal_enabled', 'paypal_client_id'] },
+    { title: 'Stripe', keys: ['stripe_enabled', 'stripe_secret_key', 'stripe_publishable_key'] },
+    { title: 'CCBill', keys: ['ccbill_enabled', 'ccbill_flexform_id'] },
+    { title: 'Crypto (NOWPayments)', keys: ['crypto_enabled', 'crypto_api_key'] },
 ];
-const PAYMENT_WEBHOOKS = {
-    Stripe: 'https://openvibe.live/api/payments/webhook/stripe',
-    PayPal: 'https://openvibe.live/api/payments/webhook/paypal',
-    CCBill: 'https://openvibe.live/api/payments/webhook/ccbill?secret=YOUR_ccbill_webhook_secret',
-    'Crypto (NOWPayments)': 'https://openvibe.live/api/payments/webhook/crypto',
-};
+// Where providers send payments (OpenVibe.Billing server/api/webhooks.js) and the variables Billing reads
+// (its server/config.js), set in /etc/openvibe/billing.env on the host.
+const BILLING_URL = 'https://billing.openvibe.network';
+const BILLING_PROVIDERS = [
+    { name: 'Stripe', webhook: '/webhooks/stripe', env: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'] },
+    { name: 'PayPal', webhook: '/webhooks/paypal', env: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_WEBHOOK_ID', 'PAYPAL_MODE'] },
+    { name: 'CCBill', webhook: '/webhooks/ccbill?secret=<CCBILL_WEBHOOK_SECRET>', env: ['CCBILL_WEBHOOK_SECRET', 'CCBILL_CLIENT_ACCOUNT', 'CCBILL_SUBACCOUNT', 'CCBILL_FLEXFORM_ID', 'CCBILL_SALT'] },
+    { name: 'Crypto (NOWPayments)', webhook: '/webhooks/nowpayments', env: ['NOWPAYMENTS_API_KEY', 'NOWPAYMENTS_IPN_SECRET'] },
+    { name: 'PowerChat', webhook: '/webhooks/powerchat', env: ['POWERCHAT_WEBHOOK_SECRET', 'POWERCHAT_SITE_USERNAME'] },
+];
+
+function billingProvidersCard() {
+    const label = (t) => `<span class="muted" style="font-size:11px;display:block">${esc(t)}</span>`;
+    const rows = BILLING_PROVIDERS.map(p => `
+        <div class="setting-row" style="flex-wrap:wrap;align-items:flex-start;gap:6px 16px">
+            <strong style="font-size:13px;flex:0 0 150px">${esc(p.name)}</strong>
+            <div style="flex:1 1 300px;min-width:0;display:grid;gap:8px">
+                <div>${label('Webhook URL')}<code>${esc(BILLING_URL + p.webhook)}</code></div>
+                <div>${label('Billing environment variables')}${p.env.map(v => `<code>${esc(v)}</code>`).join(' ')}</div>
+            </div>
+        </div>`).join('');
+    return `
+        <div class="card">
+            <h3><i class="fa-solid fa-link" aria-hidden="true"></i> Provider webhooks and credentials</h3>
+            <p class="muted" style="margin-bottom:4px">Providers send payments to OpenVibe.Billing: set each provider's webhook to the URL below. Their keys and secrets go in Billing's environment file on the host, <code>/etc/openvibe/billing.env</code>, under these variable names; nothing on this page holds them.</p>
+            ${rows}
+            <p style="margin-top:14px"><a class="btn btn-outline" href="${BILLING_URL}/" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> Open the Billing console</a></p>
+        </div>`;
+}
 
 async function loadPayments() {
     const c = document.getElementById('payments-content');
@@ -27,17 +53,18 @@ async function loadPayments() {
         const byKey = {}; (data.settings || []).forEach(s => { byKey[s.key] = s; });
         const field = (s) => {
             if (!s) return '';
-            const sensitive = /(secret|salt|api[_-]?key|client_secret|ipn)/i.test(s.key);
+            const sensitive = /(secret|api[_-]?key)/i.test(s.key);
+            const id = `pay-${s.key}`;
             if (s.type === 'boolean') return `
                 <div class="setting-row">
-                    <label><strong>${esc(s.key)}</strong><br><small>${esc(s.description||'')}</small></label>
-                    <input type="checkbox" data-key="${esc(s.key)}" data-type="boolean" ${s.value==='true'?'checked':''} style="width:18px;height:18px;cursor:pointer">
+                    <label for="${esc(id)}"><strong>${esc(s.key)}</strong><br><small>${esc(s.description||'')}</small></label>
+                    <input type="checkbox" id="${esc(id)}" data-key="${esc(s.key)}" data-type="boolean" ${s.value==='true'?'checked':''} style="width:18px;height:18px;cursor:pointer">
                 </div>`;
             const type = s.type === 'number' ? 'number' : (sensitive ? 'password' : 'text');
             return `
                 <div class="setting-row" style="flex-direction:column;align-items:stretch">
-                    <label><strong>${esc(s.key)}</strong><br><small>${esc(s.description||'')}</small></label>
-                    <input type="${type}" data-key="${esc(s.key)}" data-type="${esc(s.type||'string')}" value="${esc(s.value)}"
+                    <label for="${esc(id)}"><strong>${esc(s.key)}</strong><br><small>${esc(s.description||'')}</small></label>
+                    <input type="${type}" id="${esc(id)}" data-key="${esc(s.key)}" data-type="${esc(s.type||'string')}" value="${esc(s.value)}" ${sensitive ? 'autocomplete="off"' : ''}
                         style="margin-top:4px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">
                 </div>`;
         };
@@ -45,14 +72,14 @@ async function loadPayments() {
             <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px">
                 <legend style="padding:0 8px;font-weight:700">${esc(g.title)}</legend>
                 ${g.keys.map(k => field(byKey[k])).join('')}
-                ${PAYMENT_WEBHOOKS[g.title] ? `<p class="muted" style="font-size:12px;margin-top:8px"><i class="fa-solid fa-link"></i> Webhook URL: <code>${esc(PAYMENT_WEBHOOKS[g.title])}</code></p>` : ''}
             </fieldset>`).join('');
         c.innerHTML = `
-            <div style="max-width:760px">
-                <p class="muted" style="margin-bottom:12px">Configure real-money payments for Vibes &amp; channel subscriptions. Nothing goes live until <strong>payments_enabled</strong> is on and the provider is enabled with valid keys. Set each provider's webhook to the URL shown, and add the redirect/return URLs from OpenVibe.Live.</p>
+            <div style="max-width:860px">
+                <p class="muted" style="margin-bottom:12px">OpenVibe.Billing runs every checkout, subscription and cashout. These are the switches and prices OpenVibe.Live reads to decide which ways to pay it offers: nothing is offered until <strong>payments_enabled</strong> and the provider are on. Live also checks that <strong>stripe_secret_key</strong> and <strong>crypto_api_key</strong> are filled in before it offers Stripe or crypto; the keys Billing charges with are in its environment (below).</p>
                 <form id="payments-form">${groups}
-                    <button type="button" class="btn btn-primary" onclick="savePayments()"><i class="fa-solid fa-floppy-disk"></i> Save Payment Settings</button>
+                    <button type="button" class="btn btn-primary" onclick="savePayments()"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save payment settings</button>
                 </form>
+                <div style="margin-top:20px">${billingProvidersCard()}</div>
             </div>`;
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
 }
@@ -69,53 +96,8 @@ async function savePayments() {
     } catch (e) { toast(e.message, 'error'); }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Cashouts (via funds proxy)
-// ═══════════════════════════════════════════════════════════════
-async function loadCashouts() {
-    const c = document.getElementById('cashouts-content');
-    c.innerHTML = '<div class="loading">Loading...</div>';
-    try {
-        const data = await api('/api/admin/streamer-funds/cashouts/pending');
-        const cashouts = data.cashouts || [];
-        if (!cashouts.length) { c.innerHTML = '<p class="muted">No pending cashouts</p>'; return; }
-        c.innerHTML = `
-            <table class="admin-table">
-                <thead><tr><th>User</th><th>Amount</th><th>USD</th><th>PayPal</th><th>Requested</th><th>Actions</th></tr></thead>
-                <tbody>${cashouts.map(co => `
-                    <tr>
-                        <td><strong>${esc(co.username || '-')}</strong></td>
-                        <td>${Number(co.amount || 0).toLocaleString()} CF</td>
-                        <td>$${((Number(co.amount) || 0) * 0.01).toFixed(2)}</td>
-                        <td>${esc(co.paypal_email || '-')}</td>
-                        <td>${co.created_at ? timeAgo(co.created_at) : '-'}</td>
-                        <td style="display:flex;gap:6px">
-                            <button class="btn btn-sm btn-success" onclick="approveCashout('${co.id}')"><i class="fa-solid fa-check"></i> Approve</button>
-                            <button class="btn btn-sm btn-danger" onclick="denyCashout('${co.id}')"><i class="fa-solid fa-xmark"></i> Deny</button>
-                        </td>
-                    </tr>
-                `).join('')}</tbody>
-            </table>`;
-    } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
-}
-
-async function approveCashout(id) {
-    try {
-        await api(`/api/admin/streamer-funds/cashout/${id}/approve`, { method: 'POST' });
-        toast('Cashout approved', 'success');
-        loadCashouts();
-    } catch (e) { toast(e.message, 'error'); }
-}
-
-async function denyCashout(id) {
-    const reason = prompt('Denial reason:');
-    if (reason === null) return;
-    try {
-        await api(`/api/admin/streamer-funds/cashout/${id}/deny`, { method: 'POST', body: { reason } });
-        toast('Cashout denied', 'info');
-        loadCashouts();
-    } catch (e) { toast(e.message, 'error'); }
-}
+// Cashouts: the tab is a pointer to OpenVibe.Billing's console (admin.html #sec-cashouts); Live's old cashout queue
+// (/api/funds) answers 409 since the Billing cutover.
 
 // ═══════════════════════════════════════════════════════════════
 // Verification Keys
