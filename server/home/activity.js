@@ -31,7 +31,9 @@ let enabled = process.env.HOME_ACTIVITY !== 'off' && process.env.NODE_ENV !== 't
 let readers = {};
 
 const clip = (s, n) => { const t = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t; };
-const abs = (base, u) => { try { const x = new URL(String(u || ''), base); return /^https:$/.test(x.protocol) ? x.href : null; } catch { return null; } };
+// An empty value is no URL (new URL('', base) is the base itself: a stream with no thumbnail drew openvibe.live's home
+// page as its picture, a blank box, instead of falling back to the streamer's avatar).
+const abs = (base, u) => { if (u == null || String(u).trim() === '') return null; try { const x = new URL(String(u), base); return /^https:$/.test(x.protocol) ? x.href : null; } catch { return null; } };
 const onHost = (u, host) => { try { const x = new URL(String(u || '')); return x.protocol === 'https:' && x.hostname === host ? x.href : null; } catch { return null; } };
 
 // The front door is the network's most public page, so it is stricter than the services it quotes: an item whose words
