@@ -294,6 +294,10 @@ const DEFAULT_GRANTS = [
     // Rent's AI pillar: rent.screen_listing screens each posted listing for scam signs for Rent's staff (AI#87).
     ['rent', 'ai.run.create', 'openvibe.ai', ['rent.*']],
     ['rent', 'ai.run.read', 'openvibe.ai', ['rent.*']],
+    // Sources is the one ingestion registry (plan F, contracts 0.210.0 categories): Food shows the FDA's food recall
+    // reports (category food) and Rent HUD's Fair Market Rents (category housing) from it instead of fetching them.
+    ['food', 'sources.item.read', 'openvibe.sources', []],
+    ['rent', 'sources.item.read', 'openvibe.sources', []],
     // Plan T13: OpenVibe.Services merges every authority's resource index (ADR-048 section 3): it reads each one's
     // GET /api/v1/resources under that authority's <id>.resource.read, with a token for that authority's audience.
     ['services', 'network.resource.read', SELF_AUDIENCE, []],
