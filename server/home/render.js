@@ -20,7 +20,9 @@ const icon = (name, size) => `<span class="ov-icon" data-icon="${esc(name)}" dat
 // The sites come from the frame's list (server/frame/sites.js): a site is open only when its service's
 // public domain serves the service itself (Network's exposure overlay), so the home page, the navbar and
 // "Opening next" always agree with what is actually running.
-const frameSites = require('../frame/sites').SITES;
+const { SITES: frameSites, GROUPS, groupOf, PRODUCTS } = require('../frame/sites');
+const contracts = require('openvibe-contracts');
+const social = require('openvibe-shared/social');
 const siteName = (site) => (site.name.includes('.') ? site.name : `OpenVibe.${site.name}`);
 const OPEN = frameSites.filter((site) => site.status === 'open' && site.id !== 'network');
 const SOON = frameSites.filter((site) => site.status !== 'open');
@@ -99,21 +101,49 @@ ${openNodes}${soonNodes}</svg>`;
 }
 
 const fmtViewers = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
+const fmtCount = (n) => Number(n).toLocaleString('en-US');
+// A picture that fails to load (a stream's first thumbnail is written a few seconds after it goes live) falls back to
+// the avatar when there is one, else to an empty tile, never the browser's broken-image icon.
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+const img = (src, fallback, w, h) => `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" width="${w}" height="${h}" data-fallback="${esc(fallback || BLANK)}" onerror="this.onerror=null;this.src=this.dataset.fallback">`;
 function rightNow(a) {
     const live = a.live.length
-        ? a.live.map((s) => `<a class="now-stream" href="${esc(s.url)}">${s.thumb || s.avatar ? `<img src="${esc(s.thumb || s.avatar)}" alt="" loading="lazy" decoding="async" width="320" height="180"${s.thumb && s.avatar ? ` data-fallback="${esc(s.avatar)}" onerror="this.onerror=null;this.src=this.dataset.fallback"` : ''}>` : '<span class="now-noimg"></span>'}<span class="now-badge"><i></i>LIVE${s.viewers ? ` · ${esc(fmtViewers(s.viewers))}` : ''}</span><b>${esc(s.title)}</b><small>${esc(s.name)}${s.category ? ` · ${esc(s.category)}` : ''}</small></a>`).join('')
+        ? a.live.map((s) => `<a class="now-stream" href="${esc(s.url)}">${s.thumb || s.avatar ? img(s.thumb || s.avatar, s.thumb ? s.avatar : null, 320, 180) : '<span class="now-noimg"></span>'}<span class="now-badge"><i></i>LIVE${s.viewers ? ` · ${esc(fmtViewers(s.viewers))}` : ''}</span><b>${esc(s.title)}</b><small>${esc(s.name)}${s.category ? ` · ${esc(s.category)}` : ''}</small></a>`).join('')
         : `<a class="now-stream now-empty" href="https://openvibe.live/broadcast"><span class="now-noimg"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i></span><b>Nobody is live right now</b><small>Be the first: go live from your browser, no OBS and no follower minimum.</small></a>`;
-    const list = (items, render, empty) => (items.length ? `<ul class="now-list">${items.map(render).join('')}</ul>` : `<p class="now-quiet">${empty}</p>`);
+    const list = (items, render) => `<ul class="now-list">${items.map(render).join('')}</ul>`;
+    // A column with nothing to show is left out; only Live always shows, since "nobody is live" is an invitation.
+    const col = (items, title, render, href, more) => (items.length ? `<div class="now-col"><h3>${title}</h3>${list(items, render)}<a class="now-more" href="${href}">${more} →</a></div>` : '');
+    const cols = [
+        `<div class="now-col now-live"><h3>Live now</h3><div class="now-streams">${live}</div><a class="now-more" href="https://openvibe.live/">All channels on OpenVibe.Live →</a></div>`,
+        col(a.recordings || [], 'Latest recordings', (r) => `<li><a class="now-rec" href="${esc(r.url)}">${r.thumb ? img(r.thumb, null, 112, 63) : '<span class="now-noimg"></span>'}<span><b>${esc(r.title)}</b><small>${esc(r.channel)} · ${esc(r.length)}</small></span></a></li>`, 'https://openvibe.video/', 'Watch on OpenVibe.Video'),
+        col(a.pastes, 'New pastes', (p) => `<li><a href="${esc(p.url)}"><b>${esc(p.title)}</b><small>${esc(p.kind)}${p.summary ? ` · ${esc(p.summary)}` : ''}</small></a></li>`, 'https://openvibe.community/', 'OpenVibe.Community'),
+        col(a.posts, 'From the blog', (p) => `<li><a href="${esc(p.url)}"><b>${esc(p.title)}</b>${p.summary ? `<small>${esc(p.summary)}</small>` : ''}</a></li>`, 'https://openvibe.blog/', 'OpenVibe.Blog'),
+        col(a.jobs || [], 'New jobs', (j) => `<li><a href="${esc(j.url)}"><b>${esc(j.title)}</b><small>${[j.where, j.board ? `via ${j.board}` : ''].filter(Boolean).map(esc).join(' · ')}</small></a></li>`, 'https://openvibe.work/', 'Every job on OpenVibe.Work'),
+        col(a.codes || [], 'Fresh coupon codes', (c) => `<li><a href="${esc(c.url)}">${c.code ? `<code class="now-code">${esc(c.code)}</code>` : ''}<b>${esc(c.title)}</b></a></li>`, 'https://openvibe.coupons/', 'OpenVibe.Coupons'),
+    ].filter(Boolean);
     return `<section class="sc-sec now" aria-labelledby="h-now"><h2 id="h-now"><span class="now-dot" aria-hidden="true"></span>Right now on OpenVibe</h2>
-<div class="now-grid"><div class="now-col now-live"><h3>Live</h3><div class="now-streams">${live}</div><a class="now-more" href="https://openvibe.live/">All channels →</a></div>
-<div class="now-col"><h3>New pastes</h3>${list(a.pastes, (p) => `<li><a href="${esc(p.url)}"><b>${esc(p.title)}</b><small>${esc(p.kind)}${p.summary ? ` · ${esc(p.summary)}` : ''}</small></a></li>`, 'Nothing new in the last while. <a href="https://openvibe.community/new">Share one</a>.')}<a class="now-more" href="https://openvibe.community/">OpenVibe.Community →</a></div>
-<div class="now-col"><h3>From the blog</h3>${list(a.posts, (p) => `<li><a href="${esc(p.url)}"><b>${esc(p.title)}</b>${p.summary ? `<small>${esc(p.summary)}</small>` : ''}</a></li>`, 'No posts yet.')}<a class="now-more" href="https://openvibe.blog/">OpenVibe.Blog →</a></div></div></section>`;
+<p class="sc-lede">What people are streaming, sharing and posting across the network, read from each site within the last minute.</p>
+<div class="now-grid">${cols.join('\n')}</div></section>`;
+}
+
+// The hero's numbers: only what Network read itself within the last minute (server/home/activity.js); a number it
+// could not read is left out rather than guessed.
+function numbers(catalog, a) {
+    const c = a.counts || {};
+    const items = [
+        c.services ? [fmtCount(c.services.up), 'services up', `of ${c.services.live} checked`, '/status'] : null,
+        [String(OPEN.length + 1), 'sites, one account', '', '#network'],
+        catalog.tools.length ? [fmtCount(catalog.tools.length), 'online tools', '', 'https://openvibe.tools/'] : null,
+        c.accounts ? [fmtCount(c.accounts), 'accounts', '', '/login?tab=register'] : null,
+        [fmtCount(a.liveCount || 0), a.liveCount === 1 ? 'stream live now' : 'streams live now', '', 'https://openvibe.live/'],
+    ].filter(Boolean);
+    return `<section class="net-num" aria-labelledby="h-num"><h2 id="h-num">OpenVibe in numbers</h2><ul>${items.map(([n, label, note, href]) => `<li><a href="${esc(href)}"><b>${esc(n)}</b><span>${esc(label)}${note ? ` <small>${esc(note)}</small>` : ''}</span></a></li>`).join('')}</ul></section>`;
 }
 
 // The kit (openvibe-shared/showcase, /shared/showcase.css) owns the sections, cards and icon styles; this is only what
 // it does not draw: the "Right now" columns and the tool and "Opening next" chips.
 const CSS = `
-#developers{margin-bottom:56px}#developers .sc-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+#faq{margin-bottom:56px}#developers .sc-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 .home-chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;padding:0;list-style:none}
 .home-chips>li>a{display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 7px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));font-size:13.5px;font-weight:600;color:inherit;text-decoration:none}
 .home-chips>li>a:hover,.home-chips>li>a:focus-visible{border-color:var(--accent,#3b82f6);outline:0}
@@ -121,7 +151,7 @@ const CSS = `
 .home-more{margin:14px 0 0;font-size:13.5px}.home-more a{font-weight:600;color:var(--accent-light,#60a5fa);text-decoration:none}
 .now>h2{display:flex;align-items:center;gap:10px}.now-dot{width:10px;height:10px;border-radius:50%;background:var(--live-red,#ef4444);box-shadow:0 0 0 0 rgba(239,68,68,.6);animation:now-pulse 2s infinite}
 @keyframes now-pulse{70%{box-shadow:0 0 0 10px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
-.now-grid{display:grid;gap:16px;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:14px}
+.now-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));margin-top:14px}
 .now-col{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:16px;border:1px solid var(--border,rgba(255,255,255,.08));background:var(--bg-secondary,#111826);min-width:0}
 .now-col h3{font-size:12px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--text-muted,#7d8aa0);margin:0}
 .now-streams{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
@@ -135,9 +165,23 @@ const CSS = `
 .now-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .now-list a{display:block;color:inherit;text-decoration:none}.now-list b{display:block;font-size:14px;line-height:1.35}
 .now-list small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--text-secondary,#a8b3c4);font-size:12.5px;line-height:1.4;margin-top:2px}
-.now-quiet{color:var(--text-muted,#7d8aa0);font-size:13.5px;margin:0}.now-quiet a{color:var(--accent-light,#60a5fa)}
 .now-more{margin-top:auto;font-size:13px;font-weight:600;color:var(--accent-light,#60a5fa);text-decoration:none}
-@media (max-width:860px){.now-grid{grid-template-columns:1fr}}
+.now-rec{display:flex!important;gap:10px;align-items:flex-start}.now-rec img,.now-rec .now-noimg{flex:none;width:112px;height:63px;object-fit:cover;border-radius:8px;background:var(--bg-hover,#1c2a44);display:block}
+.now-rec>span{min-width:0}.now-rec b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.now-code{display:inline-block;margin:0 0 3px;padding:1px 7px;border-radius:6px;border:1px dashed var(--accent,#3b82f6);color:var(--accent-light,#60a5fa);font:700 12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px}
+.now-list b{overflow-wrap:anywhere}
+.net-num{margin-top:18px;padding:16px 18px;border-radius:16px;border:1px solid var(--border,rgba(255,255,255,.08));background:color-mix(in srgb,var(--bg-secondary,#101828) 85%,transparent)}
+.net-num h2{font-size:12px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--text-muted,#7d8aa0);margin:0 0 10px}
+.net-num ul{list-style:none;margin:0;padding:0;display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr))}
+.net-num a{display:flex;flex-direction:column;gap:1px;padding:10px 12px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.08));background:var(--bg-primary,#0a0f1c);color:inherit;text-decoration:none;height:100%}
+.net-num a:hover,.net-num a:focus-visible{border-color:var(--accent,#3b82f6);outline:0}
+.net-num b{font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1.15;color:var(--text-primary,#e6edf7)}
+.net-num span{font-size:12.5px;color:var(--text-secondary,#a8b3c4);line-height:1.35}.net-num small{display:block;color:var(--text-muted,#7d8aa0);font-size:11.5px}
+.home-group{margin:26px 0 10px;font-size:13px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--text-muted,#7d8aa0)}
+.home-also{margin:10px 0 0;font-size:13.5px;color:var(--text-secondary,#a8b3c4)}.home-also a{color:var(--accent-light,#60a5fa);font-weight:600;text-decoration:none}.home-also a:hover{text-decoration:underline}
+.faq-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));margin-top:4px}
+.faq-item{padding:16px 18px;border-radius:16px;border:1px solid var(--border,rgba(255,255,255,.08));background:var(--bg-secondary,#101828)}
+.faq-item h3{font-size:15.5px;margin:0 0 6px;line-height:1.35}.faq-item p{margin:0;color:var(--text-secondary,#a8b3c4);font-size:14px;line-height:1.55}
 @media (prefers-reduced-motion:reduce){.now-dot{animation:none}}
 ${icons.CSS}`;
 
@@ -151,6 +195,20 @@ const asSentence = (t) => (/[.!?…]$/.test(String(t).trim()) ? String(t).trim()
 const inside = (section, extra) => (section && extra ? section.replace(/<\/section>$/, () => `${extra}</section>`) : section);
 const chips = (list, cls = '') => (list.length ? `<ul class="home-chips${cls ? ` ${cls}` : ''}">${list.map(([href, title, ic, name]) => `<li><a href="${esc(href)}" title="${esc(title)}">${icon(ic, 22)}${esc(name)}</a></li>`).join('')}</ul>` : '');
 
+// The questions on the page, which its FAQPage JSON-LD repeats word for word: the network's own (its Contracts site
+// block, the same answers OpenVibe.Help shows) after the few that only the front door answers.
+const FRONT_FAQ = [
+    { q: 'Do I need an account to use OpenVibe?', a: 'No. Watching streams, the tools, pastes, the wiki and the blog all work as a guest. An account keeps what should last: your history, themes, VODs and notifications.' },
+    { q: 'Is OpenVibe open source?', a: 'Yes. Every OpenVibe service is open source under the OpenVibers organization on GitHub, and the network is run by the people who use it.' },
+    { q: 'Can I build an app on OpenVibe?', a: 'Yes. OpenVibe.Services gives you projects, apps, keys and the API docs of every service, and your users sign in with their OpenVibe account through OAuth 2.0 or FedCM.' },
+];
+function faqPairs() {
+    const m = contracts.services.get('network');
+    const own = ((m && m.site && m.site.faq) || []).filter((f) => f && f.question && f.answer).map((f) => ({ q: f.question, a: f.answer }));
+    const seen = new Set();
+    return [FRONT_FAQ[0], ...own, ...FRONT_FAQ.slice(1)].filter((p) => !seen.has(p.q) && seen.add(p.q));
+}
+
 // Below the static hero (public/index.html: the intent picker and the constellation), every section is the shared
 // showcase kit, as on the other flagship homes (plan T11, D93); the data and every link are the ones this page had.
 function body(catalog, act) {
@@ -158,11 +216,14 @@ function body(catalog, act) {
     const popular = POPULAR.map((id) => byId.get(id)).filter(Boolean);
     const fams = catalog.families.filter((f) => f.url);
     const count = (f) => f.count || catalog.tools.filter((t) => t.family === f.id).length;
-    const sites = showcase.features({
-        id: 'network', title: sitesHeading(),
-        lede: 'Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.',
-        items: OPEN.map((site) => ({ icon: `ov:${site.icon}`, title: siteName(site), text: site.tagline ? `${asSentence(site.tagline)} ${site.what}` : site.what, href: `https://${site.host}/` })),
-    });
+    // The service map: every open site under the launcher's groups (server/frame/sites.js GROUPS), so the 36 cards read
+    // as six neighbourhoods, each with the products that live on another site's domain (openvibe.pics, …) beside it.
+    const grid = (items) => showcase.features({ items }).replace(/^<section class="sc-sec">/, '').replace(/<\/section>$/, '');
+    const groups = GROUPS.map((g) => ({ g, sites: OPEN.filter((site) => groupOf(site.id) === g.id), also: PRODUCTS.filter((p) => groupOf(p.id) === g.id) }))
+        .filter((x) => x.sites.length)
+        .map(({ g, sites: list, also }) => `<h3 class="home-group">${esc(g.name)}</h3>${grid(list.map((site) => ({ icon: `ov:${site.icon}`, title: siteName(site), text: site.tagline ? `${asSentence(site.tagline)} ${site.what}` : site.what, href: `https://${site.host}/` })))}${also.length ? `<p class="home-also">Also here: ${also.map((p) => `<a href="https://${esc(p.host)}/">${esc(p.host)}</a> (${esc(p.tagline.toLowerCase())})`).join(', ')}</p>` : ''}`).join('\n');
+    const sites = `<section class="sc-sec" id="network" aria-labelledby="h-sites"><h2 id="h-sites">${esc(sitesHeading())}</h2><p class="sc-lede">Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.</p>
+${groups}</section>`;
     const tools = inside(showcase.features({
         id: 'tools', title: catalog.tools.length ? `${catalog.tools.length} tools that just open` : 'Tools that just open',
         lede: 'No installs and no sign-up wall. Every tool has its own short address, so yt.openvibe.tools or dns.openvibe.tools takes you straight there.',
@@ -187,13 +248,16 @@ ${chips(SOON.map((site) => [`https://${site.host}/`, site.tagline, site.icon, si
             { icon: 'fa-code-branch', title: 'Source on GitHub', text: 'Every OpenVibe service is open source under the OpenVibers organization.', href: 'https://github.com/OpenVibers' },
         ],
     }), '<p class="home-more">Machine-readable: <a href="/llms.txt">/llms.txt</a> · <a href="/llms-full.txt">/llms-full.txt</a> · <a href="https://openvibe.tools/llms.txt">openvibe.tools/llms.txt</a></p>');
+    const faq = `<section class="sc-sec" id="faq" aria-labelledby="h-faq"><h2 id="h-faq">Questions people ask</h2><p class="sc-lede">The short answers. Every OpenVibe site has its own page of answers on OpenVibe.Help.</p>
+<div class="faq-grid">${faqPairs().map((p) => `<div class="faq-item"><h3>${esc(p.q)}</h3><p>${esc(p.a)}</p></div>`).join('')}</div><p class="home-more"><a href="https://openvibe.help/sites/openvibe.network">More answers about your account on OpenVibe.Help →</a></p></section>`;
     return `<style>${CSS}</style>
 ${rightNow(act)}
 ${sites}
 ${tools}
 ${account}
 ${soon}
-${dev}`;
+${dev}
+${faq}`;
 }
 
 // What an AI reader is told the page is (openvibe-shared/seo pageSummary): the meta, a WebPage JSON-LD tag and a
@@ -216,9 +280,10 @@ function render({ releaseId = '' } = {}) {
     const stat = fs.statSync(SHELL);
     const key = `${stat.mtimeMs}:${catalog.updated}:${catalog.tools.length}:${act.version}:${releaseId}`;
     if (pageCache.key === key) return pageCache;
-    const ld = seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what }))));
+    const ld = seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what })))) + seo.jsonLdTag(seo.jsonLd.faq(faqPairs()));
+    const card = social.url('network', 'https://openvibe.network/shared') || 'https://openvibe.network/assets/logo-512.png';
     const summary = summaryOf(catalog);
-    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog)).replace('<!--OV:CONSTELLATION-->', constellation()).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
+    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog)).replace('<!--OV:CONSTELLATION-->', () => constellation() + numbers(catalog, act)).replaceAll('__OV_CARD__', card).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
     pageCache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
     return pageCache;
 }
