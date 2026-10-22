@@ -39,9 +39,11 @@ const AREAS = [
     { area: 'Moderation, money and loyalty', items: [
         { item: 'Moderation audit across services', where: [{ kind: 'tab', tab: 'modlog' }], service: 'network' },
         { item: 'Chat logs and chat moderation', where: [{ kind: 'tab', tab: 'chat-logs' }], service: 'chat' },
+        { item: 'Messages held for IP approval (was the VPN queue)', where: [{ kind: 'url', url: 'https://openvibe.live/dashboard/moderation', note: 'per channel: the streamer and channel mods review them' }], service: 'chat' },
+        { item: 'Text-to-speech settings', where: [{ kind: 'tab', tab: 'tts' }], service: 'chat' },
         { item: 'Community moderation', where: [{ kind: 'api', api: 'OpenVibe.Community staff routes', note: 'no console yet' }], service: 'community' },
         { item: 'Space forum moderation', where: [{ kind: 'api', api: 'OpenVibe.Space forum moderator routes', note: 'no console yet' }], service: 'space' },
-        { item: 'Payments, cashouts and the money freeze', where: [{ kind: 'url', url: 'https://billing.openvibe.network/', note: 'Billing console' }, { kind: 'tab', tab: 'cashouts' }, { kind: 'tab', tab: 'payments' }], service: 'billing' },
+        { item: 'Payments, cashouts and the money freeze', where: [{ kind: 'url', url: 'https://billing.openvibe.network/', note: 'Billing console: cashouts, receipts, the freeze' }, { kind: 'tab', tab: 'payments', note: 'what Live offers and its prices; provider webhooks' }], service: 'billing' },
         { item: 'Loyalty (OpenCoins, channel points)', where: [{ kind: 'api', api: 'live.loyalty user module; Network /internal/coins/*', note: 'summaries only; loyalty is never money' }], service: 'network' },
         { item: 'Developer apps and trust (Services)', where: [{ kind: 'url', url: 'https://openvibe.services/staff' }], service: 'services' },
     ] },

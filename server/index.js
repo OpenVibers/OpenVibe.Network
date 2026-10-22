@@ -87,45 +87,6 @@ function sendLandingPage(res) {
     return res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 }
 
-async function proxyJsonRequest(req, res, targetUrl, errorLabel) {
-    try {
-        // Re-mint a fresh token from the user's CURRENT server-side record so that
-        // a just-granted role (e.g. admin) propagates to upstream services
-        // immediately, instead of relying on the client's possibly-stale token.
-        let upstreamToken = req.token;
-        try {
-            if (req.user && req.app.locals.privateKey) {
-                upstreamToken = signToken(req.user, req.app.locals.privateKey, req.app.locals.config, { renew: req.tokenClaims || {} });
-            }
-        } catch (e) {
-            console.error('[AdminProxy] token re-mint failed, forwarding original:', e.message);
-        }
-        const fetchOpts = {
-            method: req.method,
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${upstreamToken}`,
-            },
-        };
-        if (req.method !== 'GET' && req.method !== 'HEAD' && req.body) {
-            fetchOpts.body = JSON.stringify(req.body);
-        }
-
-        const upstream = await fetch(targetUrl, fetchOpts);
-        const contentType = upstream.headers.get('content-type') || '';
-        const raw = await upstream.text();
-
-        res.status(upstream.status);
-        if (contentType.includes('application/json')) {
-            return res.json(raw ? JSON.parse(raw) : {});
-        }
-        return res.send(raw);
-    } catch (err) {
-        console.error(`[AdminProxy] ${errorLabel}:`, err.message);
-        return res.status(502).json({ error: 'Could not reach OpenVibe.Live service' });
-    }
-}
-
 // ── Security ─────────────────────────────────────────────────
 app.set('trust proxy', 2); // Cloudflare → Nginx → Node
 
@@ -753,59 +714,9 @@ app.use('/api/admin', createAdminRoutes(db, notificationService, emailService, r
 const createAnalyticsRoutes = require('./admin/analytics-routes');
 app.use('/api/admin/analytics', createAnalyticsRoutes(analytics, requireAuth, config, { selfToken }));
 
-// ── Admin Proxy to OpenVibe.Live ──────────────────────────────
-// Proxies /api/admin/streamer/* → openvibe.live /api/admin/*
-// This lets the unified admin panel on openvibe.network manage OpenVibe.Live features.
-const OPENVIBELIVE_INTERNAL = config.services.live.internalUrl;
-app.use('/api/admin/streamer', requireAuth, (req, res, next) => {
-    if (!req.user || req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Admin access required' });
-    }
-    next();
-}, async (req, res) => {
-    return await proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/admin${req.url}`, 'Streamer proxy error');
-});
-
-// Proxy /api/mod/* for moderator routes
-app.use('/api/admin/streamer-mod', requireAuth, (req, res, next) => {
-    if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'global_mod')) {
-        return res.status(403).json({ error: 'Staff access required' });
-    }
-    next();
-}, async (req, res) => {
-    return await proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/mod${req.url}`, 'Mod proxy error');
-});
-
-app.use('/api/admin/streamer-tts', requireAuth, (req, res, next) => {
-    if (!req.user || req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Admin access required' });
-    }
-    next();
-}, async (req, res) => {
-    return await proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/tts${req.url}`, 'TTS proxy error');
-});
-
-app.use('/api/admin/streamer-funds', requireAuth, (req, res, next) => {
-    if (!req.user || req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Admin access required' });
-    }
-    next();
-}, async (req, res) => {
-    return await proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/funds${req.url}`, 'Funds proxy error');
-});
-
-// Pastes — the admin panel's Pastes tab (public/js/admin/content.js) reads GET /config and /admin/stats
-// and calls DELETE /admin/forks through this proxy. The chain is Network → Live → Community:
-// /api/admin/streamer-pastes/:rest → openvibe.live /api/pastes/:rest, which checks Live's admin role and
-// forwards to OpenVibe.Community's /api/pastes/:rest as Live's service (Community owns pastes).
-app.use('/api/admin/streamer-pastes', requireAuth, (req, res, next) => {
-    if (!req.user || req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Admin access required' });
-    }
-    next();
-}, async (req, res) => {
-    return await proxyJsonRequest(req, res, `${OPENVIBELIVE_INTERNAL}/api/pastes${req.url}`, 'Pastes proxy error');
-});
+// ── Admin panel proxies to the services that own each job (server/admin/service-proxies.js) ──
+// /api/admin/streamer(-mod|-pastes)/* → Live, /api/admin/streamer-tts/* → Chat, /api/admin/streamer-funds/* 410 (Billing).
+app.use('/api/admin', require('./admin/service-proxies').createServiceProxies({ requireAuth, signToken, services: config.services }));
 
 // Internal API (server-to-server, capability-scoped service tokens only)
 app.use('/internal', require('./internal/routes'));

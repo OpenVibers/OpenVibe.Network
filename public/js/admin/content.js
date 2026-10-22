@@ -1,50 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════
-   OpenVibe.Network — admin panel (/admin): VPN queue, pastes, storage, VODs, notifications broadcast and email.
+   OpenVibe.Network — admin panel (/admin): pastes, storage, VODs, notifications broadcast and email.
    Split out of admin.html. Classic scripts, global scope: they rely on
    admin/core.js's helpers (api, esc, toast, API, token) and on the
    tabLoaders map in admin/boot.js (loaded last). No ES modules.
    ═══════════════════════════════════════════════════════════════ */
-// ═══════════════════════════════════════════════════════════════
-// VPN queue (via admin proxy)
-// ═══════════════════════════════════════════════════════════════
-async function loadVPNQueue() {
-    const c = document.getElementById('vpn-content');
-    c.innerHTML = '<div class="loading">Loading...</div>';
-    try {
-        const data = await api('/api/admin/streamer/vpn-queue');
-        const queue = data.queue || [];
-        if (!queue.length) { c.innerHTML = '<p class="muted">VPN approval queue empty</p>'; return; }
-        c.innerHTML = `
-            <table class="admin-table">
-                <thead><tr><th>User</th><th>IP</th><th>Reason</th><th>Status</th><th>Actions</th></tr></thead>
-                <tbody>${queue.map(item => `
-                    <tr>
-                        <td><strong>${esc(item.username || item.user_id || '-')}</strong></td>
-                        <td>${esc(item.ip_address || '-')}</td>
-                        <td>${esc(item.reason || '-')}</td>
-                        <td><span class="badge badge-${item.status === 'approved' ? 'success' : item.status === 'denied' ? 'danger' : 'warning'}">${esc(item.status || 'pending')}</span></td>
-                        <td>${item.status === 'pending' ? `
-                            <div style="display:flex;gap:6px">
-                                <button class="btn btn-sm btn-success" onclick="updateVPNStatus('${item.id}','approved')"><i class="fa-solid fa-check"></i> Approve</button>
-                                <button class="btn btn-sm btn-danger" onclick="updateVPNStatus('${item.id}','denied')"><i class="fa-solid fa-xmark"></i> Deny</button>
-                            </div>` : '<span class="muted">Handled</span>'}
-                        </td>
-                    </tr>
-                `).join('')}</tbody>
-            </table>`;
-    } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
-}
-
-async function updateVPNStatus(id, status) {
-    try {
-        await api(`/api/admin/streamer/vpn-queue/${id}`, { method: 'PUT', body: { status } });
-        toast(`VPN request ${status}`, status === 'approved' ? 'success' : 'info');
-        loadVPNQueue();
-    } catch (e) { toast(e.message, 'error'); }
-}
+// The VPN queue tab is gone: nothing writes Live's vpn_approvals since IP approval moved to OpenVibe.Chat. Held
+// messages are reviewed per channel by the streamer and channel mods (openvibe.live/dashboard/moderation); the
+// operator checklist points there.
 
 // ═══════════════════════════════════════════════════════════════
-// Pastes (via pastes proxy + streamer settings)
+// Pastes (OpenVibe.Community, through the pastes proxy: Network → Live → Community)
 // ═══════════════════════════════════════════════════════════════
 async function loadPastesAdmin() {
     const c = document.getElementById('pastes-content');
@@ -56,48 +21,33 @@ async function loadPastesAdmin() {
         ]);
         const s = statsData.stats || {};
         const cfg = configData || {};
+        const n = (v) => (Number.isFinite(Number(v)) ? Number(v).toLocaleString() : '—');
+        const limit = (name, value) => `
+            <div class="setting-row">
+                <span style="flex:1"><strong style="font-size:13px">${esc(name)}</strong></span>
+                <span style="font-size:13px">${esc(value)}</span>
+            </div>`;
         c.innerHTML = `
             <div class="stats-grid">
-                <div class="stat-card"><div class="value">${Number(s.total || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-paste"></i> Total Pastes</div></div>
-                <div class="stat-card"><div class="value">${Number(s.textPastes || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-code"></i> Text Pastes</div></div>
-                <div class="stat-card"><div class="value">${Number(s.screenshots || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-image"></i> Screenshots</div></div>
-                <div class="stat-card"><div class="value">${Number(s.forks || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-code-fork"></i> Forks</div></div>
+                <div class="stat-card"><div class="value">${n(s.total || 0)}</div><div class="label"><i class="fa-solid fa-paste" aria-hidden="true"></i> Total Pastes</div></div>
+                <div class="stat-card"><div class="value">${n(s.textPastes || 0)}</div><div class="label"><i class="fa-solid fa-code" aria-hidden="true"></i> Text Pastes</div></div>
+                <div class="stat-card"><div class="value">${n(s.screenshots || 0)}</div><div class="label"><i class="fa-solid fa-image" aria-hidden="true"></i> Screenshots</div></div>
+                <div class="stat-card"><div class="value">${n(s.forks || 0)}</div><div class="label"><i class="fa-solid fa-code-fork" aria-hidden="true"></i> Forks</div></div>
             </div>
             <div class="card">
-                <h3><i class="fa-solid fa-sliders"></i> Paste Limits</h3>
-                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
-                    <div class="form-field"><label>Max Paste Size (KB)</label><input type="number" id="paste-max-size-kb" value="${esc(cfg.maxSizeKb || 512)}"></div>
-                    <div class="form-field"><label>Max Image Size (MB)</label><input type="number" id="paste-screenshot-max-mb" value="${esc(cfg.screenshotMaxSizeMb || 8)}"></div>
-                    <div class="form-field"><label>Cooldown (seconds)</label><input type="number" id="paste-cooldown" value="${esc(cfg.cooldownSeconds || 30)}"></div>
-                    <div class="form-field"><label>Max / User / Day</label><input type="number" id="paste-max-per-day" value="${esc(cfg.maxPerUserPerDay || 50)}"></div>
-                </div>
-                <div class="setting-row"><label><strong>Allow anonymous pastes</strong></label><input type="checkbox" id="paste-anon" ${cfg.anonAllowed !== false ? 'checked' : ''} style="width:18px;height:18px"></div>
-                <div class="setting-row"><label><strong>Allow image uploads</strong></label><input type="checkbox" id="paste-image-upload" ${cfg.imageUploadEnabled !== false ? 'checked' : ''} style="width:18px;height:18px"></div>
-                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
-                    <button class="btn btn-primary" onclick="savePasteAdminConfig()"><i class="fa-solid fa-floppy-disk"></i> Save Paste Settings</button>
-                    <button class="btn btn-danger" onclick="deleteAllPasteForks()"><i class="fa-solid fa-trash-can"></i> Delete All Forks (${Number(s.forks || 0).toLocaleString()})</button>
-                </div>
+                <h3><i class="fa-solid fa-sliders" aria-hidden="true"></i> Paste limits</h3>
+                <p class="muted" style="margin-bottom:8px">OpenVibe.Community owns pastes and sets these limits itself; they cannot be changed from here.</p>
+                ${limit('Largest text paste', `${n(cfg.maxSizeKb)} KB`)}
+                ${limit('Largest image', `${n(cfg.screenshotMaxSizeMb)} MB`)}
+                ${limit('Wait between pastes', `${n(cfg.cooldownSeconds)} seconds`)}
+                ${limit('Pastes per person per day', Number(cfg.maxPerUserPerDay) === 0 ? 'No limit' : n(cfg.maxPerUserPerDay))}
+            </div>
+            <div class="card">
+                <h3><i class="fa-solid fa-code-fork" aria-hidden="true"></i> Forks</h3>
+                <p class="muted" style="margin-bottom:12px">Copies people made of other pastes. Deleting them cannot be undone.</p>
+                <button class="btn btn-danger" onclick="deleteAllPasteForks()"${Number(s.forks || 0) ? '' : ' disabled'}><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Delete all forks (${n(s.forks || 0)})</button>
             </div>`;
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
-}
-
-async function savePasteAdminConfig() {
-    try {
-        await api('/api/admin/streamer/settings', {
-            method: 'PUT',
-            body: {
-                settings: {
-                    paste_max_size_kb: document.getElementById('paste-max-size-kb').value,
-                    paste_screenshot_max_size_mb: document.getElementById('paste-screenshot-max-mb').value,
-                    paste_cooldown_seconds: document.getElementById('paste-cooldown').value,
-                    paste_max_per_user_per_day: document.getElementById('paste-max-per-day').value,
-                    paste_anon_allowed: document.getElementById('paste-anon').checked ? 'true' : 'false',
-                    paste_image_upload_enabled: document.getElementById('paste-image-upload').checked ? 'true' : 'false',
-                },
-            },
-        });
-        toast('Paste settings saved', 'success');
-    } catch (e) { toast(e.message, 'error'); }
 }
 
 async function deleteAllPasteForks() {

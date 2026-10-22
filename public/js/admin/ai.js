@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   OpenVibe.Network — admin panel (/admin): AI, AI viewers, streamer media tools and TTS.
+   OpenVibe.Network — admin panel (/admin): AI, AI viewers, streamer media tools and TTS (OpenVibe.Chat).
    Split out of admin.html. Classic scripts, global scope: they rely on
    admin/core.js's helpers (api, esc, toast, API, token) and on the
    tabLoaders map in admin/boot.js (loaded last). No ES modules.
@@ -404,7 +404,9 @@ async function testStreamerMediaExtraction() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// TTS (via openvibelive TTS proxy)
+// TTS: OpenVibe.Chat's /api/tts admin routes, through the admin proxy (/api/admin/streamer-tts → Chat). Chat checks
+// the admin role again and keeps the provider credentials owner-only (it masks them for other admins and ignores
+// them in their saves); the settings themselves are stored with Live's site settings.
 // ═══════════════════════════════════════════════════════════════
 async function loadTTS() {
     const c = document.getElementById('tts-content');
@@ -415,87 +417,103 @@ async function loadTTS() {
             api('/api/admin/streamer-tts/voices'),
         ]);
         const s = settingsRes.settings || {};
+        const locked = !!s._secretsRedacted;   // not the owner: credentials are shown masked and cannot be changed
         const voices = voicesRes.voices || [];
         const byEngine = (engine) => voices.filter(v => v.engine === engine);
         const voiceOptions = (list) => list.map(v => `<option value="${esc(v.id)}" ${v.id === s.defaultVoice ? 'selected' : ''}>${esc(v.name)} (${esc(v.rarity || 'standard')})${v.available ? '' : ' ⚠ unavailable'}</option>`).join('');
+        const secret = (id, label, value) => `<div class="form-field"><label for="${id}">${label}</label><input type="password" id="${id}" value="${esc(value || '')}" autocomplete="off"${locked ? ' disabled' : ''}></div>`;
+        const ownerNote = locked ? '<p class="muted" style="margin-bottom:12px"><i class="fa-solid fa-lock" aria-hidden="true"></i> Only the owner can see or change provider credentials.</p>' : '';
 
         c.innerHTML = `
             <form id="tts-form" style="display:grid;gap:16px;max-width:760px">
+                <p class="muted">Text-to-speech in chat runs in OpenVibe.Chat. These settings apply to every channel.</p>
                 <div class="card">
-                    <h3><i class="fa-solid fa-sliders"></i> TTS Configuration</h3>
-                    <div class="setting-row"><label><strong>Enabled</strong><br><small>Allow TTS requests on OpenVibe.Live.</small></label><input type="checkbox" id="tts-enabled" ${s.enabled ? 'checked' : ''} style="width:18px;height:18px"></div>
-                    <div class="form-field"><label>Provider</label><select id="tts-provider"><option value="espeak-ng" ${s.provider === 'espeak-ng' ? 'selected' : ''}>espeak-ng</option><option value="google-cloud" ${s.provider === 'google-cloud' ? 'selected' : ''}>Google Cloud</option><option value="amazon-polly" ${s.provider === 'amazon-polly' ? 'selected' : ''}>Amazon Polly</option></select></div>
-                    <div class="form-field"><label>Default Voice</label><select id="tts-default-voice"><optgroup label="espeak-ng">${voiceOptions(byEngine('espeak-ng'))}</optgroup><optgroup label="Google Cloud">${voiceOptions(byEngine('google-cloud'))}</optgroup><optgroup label="Amazon Polly">${voiceOptions(byEngine('amazon-polly'))}</optgroup></select></div>
-                    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
-                        <div class="form-field"><label>Max Message Length</label><input type="number" id="tts-max-length" value="${esc(s.maxLength || 200)}"></div>
-                        <div class="form-field"><label>Max Queue / User</label><input type="number" id="tts-max-per-user" value="${esc(s.maxQueuePerUser || 3)}"></div>
-                        <div class="form-field"><label>Max Global Queue</label><input type="number" id="tts-max-global" value="${esc(s.maxQueueGlobal || 20)}"></div>
+                    <h3><i class="fa-solid fa-sliders" aria-hidden="true"></i> TTS Configuration</h3>
+                    <div class="setting-row"><label for="tts-enabled"><strong>Enabled</strong><br><small>Allow text-to-speech messages in chat.</small></label><input type="checkbox" id="tts-enabled" ${s.enabled ? 'checked' : ''} style="width:18px;height:18px"></div>
+                    <div class="form-field"><label for="tts-provider">Provider</label><select id="tts-provider"><option value="espeak-ng" ${s.provider === 'espeak-ng' ? 'selected' : ''}>espeak-ng</option><option value="google-cloud" ${s.provider === 'google-cloud' ? 'selected' : ''}>Google Cloud</option><option value="amazon-polly" ${s.provider === 'amazon-polly' ? 'selected' : ''}>Amazon Polly</option></select></div>
+                    <div class="form-field"><label for="tts-default-voice">Default Voice</label><select id="tts-default-voice"><optgroup label="espeak-ng">${voiceOptions(byEngine('espeak-ng'))}</optgroup><optgroup label="Google Cloud">${voiceOptions(byEngine('google-cloud'))}</optgroup><optgroup label="Amazon Polly">${voiceOptions(byEngine('amazon-polly'))}</optgroup></select></div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+                        <div class="form-field"><label for="tts-max-length">Max Message Length</label><input type="number" id="tts-max-length" value="${esc(s.maxLength || 200)}"></div>
+                        <div class="form-field"><label for="tts-max-per-user">Max Queue / User</label><input type="number" id="tts-max-per-user" value="${esc(s.maxQueuePerUser || 3)}"></div>
+                        <div class="form-field"><label for="tts-max-global">Max Global Queue</label><input type="number" id="tts-max-global" value="${esc(s.maxQueueGlobal || 20)}"></div>
                     </div>
                 </div>
 
                 <div class="card">
-                    <h3><i class="fa-brands fa-google"></i> Google Cloud</h3>
-                    <div class="form-field"><label>API Key</label><input type="password" id="tts-google-api-key" value="${esc(s.googleApiKey || '')}" autocomplete="off"></div>
-                    <div class="form-field"><label>Service Account JSON</label><textarea id="tts-google-sa" rows="4" style="resize:vertical">${esc(s.googleServiceAccount || '')}</textarea></div>
+                    <h3><i class="fa-brands fa-google" aria-hidden="true"></i> Google Cloud</h3>
+                    ${ownerNote}
+                    ${secret('tts-google-api-key', 'API Key', s.googleApiKey)}
+                    <div class="form-field"><label for="tts-google-sa">Service Account JSON</label><textarea id="tts-google-sa" rows="4" style="resize:vertical"${locked ? ' disabled' : ''}>${esc(s.googleServiceAccount || '')}</textarea></div>
                 </div>
 
                 <div class="card">
-                    <h3><i class="fa-brands fa-aws"></i> Amazon Polly</h3>
-                    <div class="form-field"><label>AWS Access Key ID</label><input type="password" id="tts-aws-key" value="${esc(s.awsAccessKeyId || '')}" autocomplete="off"></div>
-                    <div class="form-field"><label>AWS Secret Access Key</label><input type="password" id="tts-aws-secret" value="${esc(s.awsSecretAccessKey || '')}" autocomplete="off"></div>
-                    <div class="form-field"><label>AWS Region</label><input type="text" id="tts-aws-region" value="${esc(s.awsRegion || 'us-east-1')}"></div>
+                    <h3><i class="fa-brands fa-aws" aria-hidden="true"></i> Amazon Polly</h3>
+                    ${ownerNote}
+                    ${secret('tts-aws-key', 'AWS Access Key ID', s.awsAccessKeyId)}
+                    ${secret('tts-aws-secret', 'AWS Secret Access Key', s.awsSecretAccessKey)}
+                    <div class="form-field"><label for="tts-aws-region">AWS Region</label><input type="text" id="tts-aws-region" value="${esc(s.awsRegion || 'us-east-1')}"></div>
                 </div>
 
                 <div style="display:flex;gap:10px;flex-wrap:wrap">
-                    <button type="button" class="btn btn-primary" onclick="saveTTS()"><i class="fa-solid fa-floppy-disk"></i> Save TTS Settings</button>
-                    <button type="button" class="btn btn-outline" onclick="testTTSVoice()"><i class="fa-solid fa-volume-high"></i> Test Voice</button>
+                    <button type="button" class="btn btn-primary" onclick="saveTTS()"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save TTS Settings</button>
+                    <button type="button" class="btn btn-outline" onclick="testTTSVoice()"><i class="fa-solid fa-volume-high" aria-hidden="true"></i> Test Voice</button>
                 </div>
             </form>`;
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
 }
 
 async function saveTTS() {
-    try {
-        await api('/api/admin/streamer-tts/admin/settings', {
-            method: 'PUT',
-            body: {
-                settings: {
-                    tts_enabled: document.getElementById('tts-enabled').checked,
-                    tts_provider: document.getElementById('tts-provider').value,
-                    tts_default_voice: document.getElementById('tts-default-voice').value,
-                    tts_max_length: parseInt(document.getElementById('tts-max-length').value, 10) || 200,
-                    tts_max_queue_per_user: parseInt(document.getElementById('tts-max-per-user').value, 10) || 3,
-                    tts_max_queue_global: parseInt(document.getElementById('tts-max-global').value, 10) || 20,
-                    tts_google_api_key: document.getElementById('tts-google-api-key').value,
-                    tts_google_service_account: document.getElementById('tts-google-sa').value,
-                    tts_aws_access_key_id: document.getElementById('tts-aws-key').value,
-                    tts_aws_secret_access_key: document.getElementById('tts-aws-secret').value,
-                    tts_aws_region: document.getElementById('tts-aws-region').value || 'us-east-1',
-                },
-            },
+    const val = (id) => document.getElementById(id).value;
+    const settings = {
+        tts_enabled: document.getElementById('tts-enabled').checked,
+        tts_provider: val('tts-provider'),
+        tts_default_voice: val('tts-default-voice'),
+        tts_max_length: parseInt(val('tts-max-length'), 10) || 200,
+        tts_max_queue_per_user: parseInt(val('tts-max-per-user'), 10) || 3,
+        tts_max_queue_global: parseInt(val('tts-max-global'), 10) || 20,
+        tts_aws_region: val('tts-aws-region') || 'us-east-1',
+    };
+    // Credentials go only from the owner's form (Chat ignores them from anyone else, and never stores a masked value).
+    if (!document.getElementById('tts-aws-secret').disabled) {
+        Object.assign(settings, {
+            tts_google_api_key: val('tts-google-api-key'),
+            tts_google_service_account: val('tts-google-sa'),
+            tts_aws_access_key_id: val('tts-aws-key'),
+            tts_aws_secret_access_key: val('tts-aws-secret'),
         });
+    }
+    try {
+        await api('/api/admin/streamer-tts/admin/settings', { method: 'PUT', body: { settings } });
         toast('TTS settings saved', 'success');
     } catch (e) { toast(e.message, 'error'); }
 }
 
+// The test clip plays through Web Audio: this page's Content-Security-Policy (media-src 'self') refuses blob:
+// and data: audio, and the clip URL Chat returns is on Live's origin.
+let _ttsAudioCtx = null;
 async function testTTSVoice() {
     try {
         const voiceId = document.getElementById('tts-default-voice').value;
         const result = await api('/api/admin/streamer-tts/admin/test', {
             method: 'POST',
-            body: { voiceId, text: 'Hello, this is a OpenVibe.Live voice test from the unified admin panel.' },
+            body: { voiceId, text: 'Hello, this is a voice test from the OpenVibe admin panel.' },
         });
-        if (!result.audio || !result.mimeType) {
+        if (!result.audio) {
             toast('No audio returned from the provider', 'warning');
             return;
         }
         const binary = atob(result.audio);
         const bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        const url = URL.createObjectURL(new Blob([bytes], { type: result.mimeType }));
-        const audio = new Audio(url);
-        audio.onended = () => URL.revokeObjectURL(url);
-        await audio.play();
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) { toast('This browser cannot play the test clip', 'warning'); return; }
+        _ttsAudioCtx = _ttsAudioCtx || new Ctx();
+        if (_ttsAudioCtx.state === 'suspended') await _ttsAudioCtx.resume();
+        const buffer = await _ttsAudioCtx.decodeAudioData(bytes.buffer);
+        const src = _ttsAudioCtx.createBufferSource();
+        src.buffer = buffer;
+        src.connect(_ttsAudioCtx.destination);
+        src.start();
         toast(`Testing ${result.voiceName || voiceId}`, 'info');
-    } catch (e) { toast(e.message, 'error'); }
+    } catch (e) { toast(e.message || 'Could not play the test clip', 'error'); }
 }

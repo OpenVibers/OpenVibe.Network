@@ -120,7 +120,7 @@ const REVIEWED = {
     'server/discord/discord-service.js discord.js': [1, 'discord.js login: Discord gateway only'],
     'server/domains/catalog.js fetch': [3, 'the tools catalog URL from operator config'],
     'server/frame/service.js fetch': [2, 'Live and AI internal URLs from config (navbar ranking copy)'],
-    'server/index.js fetch': [1, 'the admin streamer proxy: Live\'s internal URL from config, fixed path prefixes'],
+    'server/admin/service-proxies.js fetch': [1, 'the admin panel proxies: Live\'s and Chat\'s internal URLs from config, fixed path prefixes, staff only'],
     'server/integrations/github.js fetch': [1, 'fixed host api.github.com (asserted below)'],
     'server/notifications/email-service.js http.request': [1, 'fixed host api.resend.com'],
     'server/profile/public.js fetch': [3, 'OpenVibe.Inventory (OV_INVENTORY_INTERNAL_URL, loopback 5030) and OpenVibe.Quest (OV_QUEST_INTERNAL_URL, loopback 4980) only; the paths are fixed, the subject is a checked usr_ id'],

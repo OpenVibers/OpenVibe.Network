@@ -48,7 +48,6 @@
                 <button class="admin-tab-btn owner-only" onclick="showTab('cashouts',this)"><i class="fa-solid fa-money-bill-transfer"></i> Cashouts</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('payments',this)"><i class="fa-solid fa-credit-card"></i> Payments</button>
                 <button class="admin-tab-btn" onclick="showTab('ai',this)"><i class="fa-solid fa-robot"></i> AI</button>
-                <button class="admin-tab-btn" onclick="showTab('vpn',this)"><i class="fa-solid fa-user-shield"></i> VPN Queue</button>
                 <button class="admin-tab-btn" onclick="showTab('pastes',this)"><i class="fa-solid fa-paste"></i> Pastes</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('storage',this)"><i class="fa-solid fa-hard-drive"></i> Storage</button>
                 <button class="admin-tab-btn" onclick="showTab('notifications',this)"><i class="fa-solid fa-bell"></i> Notifications</button>
@@ -150,12 +149,20 @@
         <div id="tts-content"><div class="loading">Loading...</div></div>
     </div>
 
-    <!-- Cashouts -->
+    <!-- Cashouts: decided in OpenVibe.Billing's staff console (Billing is the only money ledger since 2026-10-17) -->
     <div class="section" id="sec-cashouts">
-        <div id="cashouts-content"><div class="loading">Loading...</div></div>
+        <div class="card" style="max-width:760px">
+            <h3><i class="fa-solid fa-money-bill-transfer" aria-hidden="true"></i> Cashouts are decided in OpenVibe.Billing</h3>
+            <p class="muted" style="margin-bottom:8px">Billing holds every creator's balance. Its staff console lists cashouts still in escrow, ready to pay, paid and denied. Approving one records the payout reference; denying one puts the amount back in the creator's balance. The money freeze is there too.</p>
+            <p class="muted">Sign in with your OpenVibe account. Billing lets in the admins listed in its <code>BILLING_STAFF_SUBJECTS</code> setting.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+                <a class="btn btn-primary" href="https://billing.openvibe.network/cashouts" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> Open cashouts in Billing</a>
+                <a class="btn btn-outline" href="https://billing.openvibe.network/freeze" target="_blank" rel="noopener"><i class="fa-solid fa-snowflake" aria-hidden="true"></i> Money freeze</a>
+            </div>
+        </div>
     </div>
 
-    <!-- Payments: configure PayPal / Stripe / CCBill / crypto + subscription pricing -->
+    <!-- Payments: the switches and prices Live reads; provider webhooks and credentials are OpenVibe.Billing's -->
     <div class="section" id="sec-payments">
         <div id="payments-content"><div class="loading">Loading...</div></div>
     </div>
@@ -163,11 +170,6 @@
     <!-- AI: configure the vision/text provider + usage cost breakdown -->
     <div class="section" id="sec-ai">
         <div id="ai-content"><div class="loading">Loading...</div></div>
-    </div>
-
-    <!-- VPN Queue -->
-    <div class="section" id="sec-vpn">
-        <div id="vpn-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Pastes -->
