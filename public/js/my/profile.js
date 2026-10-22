@@ -223,7 +223,7 @@ function loadAccounts() {
                 <div class="meta">${a.is_anon ? 'Anonymous #' + (a.anon_number || '?') : '@' + a.username}</div>
             </div>
             <div class="actions">
-                ${String(a.id) !== String(activeId) ? `<button class="btn btn-outline" onclick="switchAccount('${a.id}')">Switch</button>` : '<span style="font-size:11px;color:var(--success);font-weight:600">Active</span>'}
+                ${String(a.id) !== String(activeId) ? `<button class="btn btn-outline" onclick="switchAccount('${a.id}')">Switch</button>` : '<span style="font-size:11px;color:var(--success-text, var(--success));font-weight:600">Active</span>'}
                 ${String(a.id) !== String(activeId) ? `<button class="btn btn-danger" onclick="removeAccount('${a.id}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
             </div>
         </div>

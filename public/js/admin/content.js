@@ -154,8 +154,8 @@ function buildStreamerTierHtml(tierData) {
         if (!p) return '<span style="color:var(--text-muted)">—</span>';
         if (!p.configured) return '<span style="color:var(--text-muted)">not configured</span>';
         return p.healthy
-            ? '<span style="color:var(--success,#22c55e)"><i class="fa-solid fa-circle-check"></i> healthy</span>' + (p.bucket ? ' <span style="color:var(--text-muted);font-size:11px">· ' + esc(p.bucket) + '</span>' : '')
-            : '<span style="color:var(--danger,#ef4444)"><i class="fa-solid fa-circle-xmark"></i> error</span>';
+            ? '<span style="color:var(--success-text, var(--success,#22c55e))"><i class="fa-solid fa-circle-check"></i> healthy</span>' + (p.bucket ? ' <span style="color:var(--text-muted);font-size:11px">· ' + esc(p.bucket) + '</span>' : '')
+            : '<span style="color:var(--danger-text, var(--danger,#ef4444))"><i class="fa-solid fa-circle-xmark"></i> error</span>';
     };
     const rows = [
         { label: 'Local (SSD)', icon: 'fa-hard-drive', color: '#f59e0b', v: L, clips: (ct.local && ct.local.count) || 0, status: '<span style="color:var(--text-muted)">primary disk</span>' },
@@ -212,7 +212,7 @@ async function loadStreamerCloudStorage(force) {
             const u = usage[key];
             const cc = costs[key];
             if (!u || u.configured === false) return '<div class="card" style="flex:1;min-width:260px"><strong style="color:' + color + '"><i class="fa-solid fa-cloud"></i> ' + label + '</strong><div style="color:var(--text-muted);margin-top:8px">Not configured</div></div>';
-            if (u.error) return '<div class="card" style="flex:1;min-width:260px"><strong style="color:' + color + '"><i class="fa-solid fa-cloud"></i> ' + label + '</strong><div style="color:var(--danger,#ef4444);margin-top:8px">Scan error: ' + esc(u.error) + '</div></div>';
+            if (u.error) return '<div class="card" style="flex:1;min-width:260px"><strong style="color:' + color + '"><i class="fa-solid fa-cloud"></i> ' + label + '</strong><div style="color:var(--danger-text, var(--danger,#ef4444));margin-top:8px">Scan error: ' + esc(u.error) + '</div></div>';
             const tops = Object.entries(u.prefixes || {}).sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 8);
             const prefixRows = tops.map(([p, v]) => '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);padding:2px 0"><span>' + esc(p) + '</span><span>' + fmtBytes(v.bytes) + ' · ' + v.objects.toLocaleString() + '</span></div>').join('');
             return '<div class="card" style="flex:1;min-width:260px">'
@@ -226,7 +226,7 @@ async function loadStreamerCloudStorage(force) {
             + '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">' + card('b2', 'Backblaze B2', '#e21e2b') + card('r2', 'Cloudflare R2', '#f6821f') + '</div>'
             + '<div class="card" style="display:flex;align-items:center;justify-content:space-between"><span><i class="fa-solid fa-file-invoice-dollar" style="color:var(--accent)"></i> <strong>Estimated cloud storage cost</strong> <span style="color:var(--text-muted);font-size:12px">(list prices; excludes egress/operations)</span></span><span style="font-size:22px;font-weight:800;color:var(--accent)">' + money(costs.totalStorageMonthly) + '<span style="font-size:13px;font-weight:400;color:var(--text-muted)">/mo</span></span></div>';
     } catch (e) {
-        el.innerHTML = header + '<div style="color:var(--danger,#ef4444)">Failed to scan buckets: ' + esc(e.message) + '</div>';
+        el.innerHTML = header + '<div style="color:var(--danger-text, var(--danger,#ef4444))">Failed to scan buckets: ' + esc(e.message) + '</div>';
     }
 }
 

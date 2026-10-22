@@ -61,7 +61,7 @@ async function _bootAdmin() {
     const data = await api('/api/auth/me');
     currentUser = data.user || data;
     if (currentUser.role !== 'admin') {
-        document.querySelector('.page').innerHTML = '<div class="card" style="text-align:center;padding:60px"><h3 style="color:var(--live-red)"><i class="fa-solid fa-lock"></i> Access Denied</h3><p class="muted" style="margin-top:8px">Admin privileges required.</p></div>';
+        document.querySelector('.page').innerHTML = '<div class="card" style="text-align:center;padding:60px"><h3 style="color:var(--live-red-text, var(--live-red))"><i class="fa-solid fa-lock"></i> Access Denied</h3><p class="muted" style="margin-top:8px">Admin privileges required.</p></div>';
         return;
     }
     // Owner-only UI (Deploy tab, etc.) — hide for plain admins.

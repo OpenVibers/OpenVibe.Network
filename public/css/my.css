@@ -90,7 +90,7 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 .btn-primary:hover{background:var(--accent-dark)}
 .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
 .btn-outline:hover{border-color:var(--accent-dark);color:var(--accent-light)}
-.btn-danger{background:rgba(231,76,60,0.1);color:var(--live-red);border:1px solid rgba(231,76,60,0.2)}
+.btn-danger{background:rgba(231,76,60,0.1);color:var(--live-red-text, var(--live-red));border:1px solid rgba(231,76,60,0.2)}
 .btn-danger:hover{background:rgba(231,76,60,0.2)}
 .btn-row{display:flex;gap:8px;margin-top:12px}
 .data-check{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--text-secondary);line-height:1.5}
@@ -147,12 +147,12 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
 .hist-item .hx{margin-left:auto;display:flex;align-items:center;gap:10px;flex:none;font-size:11px;color:var(--text-muted)}
 .hist-item .hx button{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;opacity:0;transition:opacity .15s}
 .hist-item:hover .hx button{opacity:1}
-.hist-item .hx button:hover{color:var(--danger,#ef4444)}
+.hist-item .hx button:hover{color:var(--danger-text, var(--danger,#ef4444))}
 .hist-empty{padding:26px;text-align:center;color:var(--text-muted);font-size:13px}
 .linked-item .svc-icon{font-size:20px;width:32px;text-align:center}
 .linked-item .svc-name{font-size:13px;font-weight:600}
 .linked-item .svc-user{font-size:11px;color:var(--text-muted)}
-.linked-item .svc-status{margin-left:auto;font-size:11px;font-weight:600;color:var(--success)}
+.linked-item .svc-status{margin-left:auto;font-size:11px;font-weight:600;color:var(--success-text, var(--success))}
 
 /* Themes */
 .theme-hero{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px}

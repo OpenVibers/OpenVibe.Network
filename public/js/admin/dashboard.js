@@ -49,7 +49,7 @@ async function loadDashboard() {
                 <div><strong>Heap Used:</strong> ${fmtBytes(mem?.heapUsed)}</div>
                 <div><strong>Heap Total:</strong> ${fmtBytes(mem?.heapTotal)}</div>
                 <div><strong>RSS:</strong> ${fmtBytes(mem?.rss)}</div>
-                <div><strong>Email:</strong> ${th.ses_enabled ? '<span style="color:var(--success)">Enabled</span>' : '<span style="color:var(--text-muted)">Disabled</span>'}</div>
+                <div><strong>Email:</strong> ${th.ses_enabled ? '<span style="color:var(--success-text, var(--success))">Enabled</span>' : '<span style="color:var(--text-muted)">Disabled</span>'}</div>
             </div>
         `;
     } else {

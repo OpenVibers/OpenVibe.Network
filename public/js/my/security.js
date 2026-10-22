@@ -15,9 +15,9 @@ async function loadEmailStatus() {
         if (!st.email) {
             body.innerHTML = `<p>No email address on your account, so you can't receive go-live emails. Add one in <a href="#" onclick="showSection('profile');return false">Profile</a> — we'll send a confirmation link.</p>`;
         } else if (st.bounced) {
-            body.innerHTML = `<p><span style="color:var(--danger,#ef4444)"><i class="fa-solid fa-triangle-exclamation"></i> Mail to <strong>${esc(st.email)}</strong> is bouncing</span>${st.bounce_reason ? ` (${esc(st.bounce_reason)})` : ''}. Emails are paused until you update the address in <a href="#" onclick="showSection('profile');return false">Profile</a> and confirm it.</p>`;
+            body.innerHTML = `<p><span style="color:var(--danger-text, var(--danger,#ef4444))"><i class="fa-solid fa-triangle-exclamation"></i> Mail to <strong>${esc(st.email)}</strong> is bouncing</span>${st.bounce_reason ? ` (${esc(st.bounce_reason)})` : ''}. Emails are paused until you update the address in <a href="#" onclick="showSection('profile');return false">Profile</a> and confirm it.</p>`;
         } else if (st.verified) {
-            body.innerHTML = `<p><span style="color:var(--success,#22c55e)"><i class="fa-solid fa-circle-check"></i> <strong>${esc(st.email)}</strong> is verified.</span> You'll get an email when a streamer you follow goes live (turn this off under Streams → Email below).</p>`;
+            body.innerHTML = `<p><span style="color:var(--success-text, var(--success,#22c55e))"><i class="fa-solid fa-circle-check"></i> <strong>${esc(st.email)}</strong> is verified.</span> You'll get an email when a streamer you follow goes live (turn this off under Streams → Email below).</p>`;
         } else {
             body.innerHTML = `<p><i class="fa-solid fa-envelope"></i> <strong>${esc(st.email)}</strong> isn't confirmed yet — go-live and other opt-in emails stay off until it is.</p>
                 <button class="btn btn-primary" id="notif-verify-btn" onclick="resendVerification(this)" ${st.can_resend && st.email_enabled ? '' : 'disabled'}><i class="fa-solid fa-paper-plane"></i> ${st.email_enabled ? 'Send verification email' : 'Email delivery not configured'}</button>
@@ -116,7 +116,7 @@ async function loadLinked() {
             const who = l.service_username && !String(l.service_user_id || '').startsWith('network:') ? '@' + l.service_username : (l.service_username ? '@' + l.service_username : 'this account');
             const inner = `<span class="svc-icon" style="color:${site.color || 'var(--accent-light)'}"><i class="fa-solid ${site.icon}"></i></span>
                     <div><div class="svc-name">${esc(site.name)}</div><div class="svc-user">${esc(who)}</div></div>
-                    <div class="svc-meta">${l.last_used_at ? 'used ' + ago(l.last_used_at) : (l.linked_at ? 'linked ' + ago(l.linked_at) : '')}<br><span class="svc-status" style="color:var(--success)"><i class="fa-solid fa-check"></i> Linked</span></div>`;
+                    <div class="svc-meta">${l.last_used_at ? 'used ' + ago(l.last_used_at) : (l.linked_at ? 'linked ' + ago(l.linked_at) : '')}<br><span class="svc-status" style="color:var(--success-text, var(--success))"><i class="fa-solid fa-check"></i> Linked</span></div>`;
             return site.url ? `<a class="linked-item" href="${site.url}" target="_blank" rel="noopener">${inner}</a>` : `<div class="linked-item">${inner}</div>`;
         }).join('');
         const rest = Object.entries(SITES).filter(([id]) => !known.has(id) && id !== 'network' && id !== 'discord');

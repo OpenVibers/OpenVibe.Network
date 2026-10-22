@@ -69,9 +69,9 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 .btn-primary:hover{background:var(--accent-dark)}
 .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
 .btn-outline:hover{border-color:var(--accent-dark);color:var(--accent-light)}
-.btn-danger{background:rgba(231,76,60,0.1);color:var(--live-red);border:1px solid rgba(231,76,60,0.2)}
+.btn-danger{background:rgba(231,76,60,0.1);color:var(--live-red-text, var(--live-red));border:1px solid rgba(231,76,60,0.2)}
 .btn-danger:hover{background:rgba(231,76,60,0.2)}
-.btn-success{background:rgba(46,204,113,0.1);color:var(--success);border:1px solid rgba(46,204,113,0.2)}
+.btn-success{background:rgba(46,204,113,0.1);color:var(--success-text, var(--success));border:1px solid rgba(46,204,113,0.2)}
 .btn-success:hover{background:rgba(46,204,113,0.2)}
 .btn-sm{padding:5px 10px;font-size:11px}
 a.btn{text-decoration:none}
@@ -156,5 +156,5 @@ a.btn{text-decoration:none}
 }
 .ssh-prompt{background:var(--bg-elev,#111);border:1px solid var(--border,#2a2a2a);border-radius:8px;padding:14px;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.8rem;line-height:1.55;color:var(--text,#ddd);max-height:520px;overflow:auto;margin:0}
 #sec-ssh code,#sec-payments code,#sec-cashouts code{background:var(--bg-elev,#111);border:1px solid var(--border,#2a2a2a);border-radius:5px;padding:2px 7px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.8rem;display:inline-block;margin-top:3px;word-break:break-all}
-#sec-ssh .staff-pill{font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;border-radius:999px;vertical-align:middle;margin-left:8px;color:var(--warning,#f0b74a);background:color-mix(in srgb,var(--warning,#f0b74a) 18%,transparent);border:1px solid color-mix(in srgb,var(--warning,#f0b74a) 40%,transparent)}
+#sec-ssh .staff-pill{font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;border-radius:999px;vertical-align:middle;margin-left:8px;color:var(--warning-text, var(--warning,#f0b74a));background:color-mix(in srgb,var(--warning,#f0b74a) 18%,transparent);border:1px solid color-mix(in srgb,var(--warning,#f0b74a) 40%,transparent)}
 #sec-ssh .staff-pill.user-pill{color:var(--accent,#6ea8ff);background:color-mix(in srgb,var(--accent,#6ea8ff) 18%,transparent);border-color:color-mix(in srgb,var(--accent,#6ea8ff) 40%,transparent)}
