@@ -20,6 +20,9 @@ assert.deepStrictEqual(live.map((s) => s.name), ['bob', 'Alice'], 'live and SFW 
 assert.strictEqual(live[1].thumb, 'https://openvibe.live/api/thumbnails/a.jpg', 'a relative thumbnail becomes the public https URL');
 assert.strictEqual(live[0].thumb, null, 'a non-https thumbnail is dropped');
 assert.strictEqual(live[1].url, 'https://openvibe.live/@alice');
+// No thumbnail is no picture (it was openvibe.live's home page, drawn as a blank box): the card falls back to the avatar.
+const bare = activity.liveStreams({ streams: [{ is_live: 1, username: 'cara', title: 't', thumbnail_url: null, avatar_url: 'https://openvibe.media/o/med_1' }, { is_live: 1, username: 'dee', title: 't', thumbnail_url: '', avatar_url: '' }] });
+assert.deepStrictEqual(bare.map((s) => [s.thumb, s.avatar]), [[null, 'https://openvibe.media/o/med_1'], [null, null]]);
 
 const pastes = activity.publicPastes({ pastes: [
     { slug: 'one', title: 'Public one', visibility: 'public', type: 'code', language: 'js' },
