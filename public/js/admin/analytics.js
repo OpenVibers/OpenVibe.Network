@@ -125,8 +125,8 @@ async function loadAnalyticsOverview() {
             document.getElementById('analytics-realtime').innerHTML = `
                 <div style="display:flex;gap:24px;font-size:14px">
                     <span><strong style="color:var(--accent-light)">${fmtNum(rt.requests)}</strong> requests</span>
-                    <span><strong style="color:var(--success)">${fmtNum(rt.visitors)}</strong> visitors</span>
-                    <span><strong style="color:var(--danger)">${fmtNum(rt.bots)}</strong> bots</span>
+                    <span><strong style="color:var(--success-text, var(--success))">${fmtNum(rt.visitors)}</strong> visitors</span>
+                    <span><strong style="color:var(--danger-text, var(--danger))">${fmtNum(rt.bots)}</strong> bots</span>
                 </div>`;
         } else {
             rtCard.style.display = 'none';
@@ -309,10 +309,10 @@ async function loadAnalyticsOverview() {
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
                 <div><strong style="color:var(--accent-light)">${fmtNum(bw.total_requests)}</strong><br><span class="muted">Total Requests</span></div>
                 <div><strong style="color:var(--accent-light)">${fmtBytes(bw.estimated_bytes)}</strong><br><span class="muted">Est. Transfer</span></div>
-                <div><strong style="color:var(--info)">${fmtNum(bw.page_requests)}</strong><br><span class="muted">Page Loads</span></div>
-                <div><strong style="color:var(--info)">${fmtNum(bw.api_requests)}</strong><br><span class="muted">API Requests</span></div>
-                <div><strong style="color:var(--success)">${fmtNum(ov.sessionCount || 0)}</strong><br><span class="muted">Unique Sessions</span></div>
-                <div><strong style="color:var(--success)">${fmtNum(t.total_unique_users || 0)}</strong><br><span class="muted">Logged-in Users</span></div>
+                <div><strong style="color:var(--info-text, var(--info))">${fmtNum(bw.page_requests)}</strong><br><span class="muted">Page Loads</span></div>
+                <div><strong style="color:var(--info-text, var(--info))">${fmtNum(bw.api_requests)}</strong><br><span class="muted">API Requests</span></div>
+                <div><strong style="color:var(--success-text, var(--success))">${fmtNum(ov.sessionCount || 0)}</strong><br><span class="muted">Unique Sessions</span></div>
+                <div><strong style="color:var(--success-text, var(--success))">${fmtNum(t.total_unique_users || 0)}</strong><br><span class="muted">Logged-in Users</span></div>
             </div>`;
 
     } catch (e) {
@@ -478,11 +478,11 @@ async function loadServiceAnalytics(serviceName) {
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
                 <div><strong style="color:var(--accent-light)">${fmtBytes(bw.estimated_bytes)}</strong><br><span class="muted">Est. Transfer</span></div>
                 <div><strong style="color:var(--accent-light)">${fmtNum(bw.total_requests)}</strong><br><span class="muted">Total Requests</span></div>
-                <div><strong style="color:var(--info)">${fmtNum(bw.page_requests)}</strong><br><span class="muted">Page Loads</span></div>
-                <div><strong style="color:var(--info)">${fmtNum(bw.api_requests)}</strong><br><span class="muted">API Requests</span></div>
-                <div><strong style="color:var(--success)">${fmtNum(a.sessionCount || 0)}</strong><br><span class="muted">Sessions</span></div>
+                <div><strong style="color:var(--info-text, var(--info))">${fmtNum(bw.page_requests)}</strong><br><span class="muted">Page Loads</span></div>
+                <div><strong style="color:var(--info-text, var(--info))">${fmtNum(bw.api_requests)}</strong><br><span class="muted">API Requests</span></div>
+                <div><strong style="color:var(--success-text, var(--success))">${fmtNum(a.sessionCount || 0)}</strong><br><span class="muted">Sessions</span></div>
                 ${vis.new_visitors != null
-                    ? `<div><strong style="color:var(--success)">${fmtNum(vis.new_visitors)}</strong> new / <strong>${fmtNum(vis.returning_visitors)}</strong> returning<br><span class="muted">Visitors</span></div>`
+                    ? `<div><strong style="color:var(--success-text, var(--success))">${fmtNum(vis.new_visitors)}</strong> new / <strong>${fmtNum(vis.returning_visitors)}</strong> returning<br><span class="muted">Visitors</span></div>`
                     : '<div><strong class="muted">Not measured</strong><br><span class="muted" title="ADR-021: no visitor identity outlives a day">New / returning</span></div>'}
             </div>`;
 
@@ -546,7 +546,7 @@ async function loadServiceAnalytics(serviceName) {
                         <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.path)}">${esc(e.path)}</td>
                         <td><span class="badge badge-warning">${esc(e.method)}</span></td>
                         <td style="color:${e.avg_ms > 500 ? 'var(--danger)' : e.avg_ms > 200 ? 'var(--warning)' : 'inherit'}">${e.avg_ms || 0}ms</td>
-                        <td style="color:var(--danger)">${e.max_ms || 0}ms</td>
+                        <td style="color:var(--danger-text, var(--danger))">${e.max_ms || 0}ms</td>
                         <td>${fmtNum(e.hits)}</td>
                     </tr>
                 `).join('')}</tbody>
@@ -624,7 +624,7 @@ async function loadBotAnalysis() {
                     <table class="admin-table"><thead><tr><th>Session</th><th>Total Hits</th><th>Errors</th><th>Unique Paths</th><th>Period</th></tr></thead>
                     <tbody>${suspicious.map(s => `
                         <tr><td style="font-family:monospace;font-size:11px">${esc(s.session_id || '-')}</td><td>${fmtNum(s.total_hits)}</td>
-                        <td style="color:var(--danger)">${fmtNum(s.error_hits)}</td><td>${fmtNum(s.unique_paths)}</td>
+                        <td style="color:var(--danger-text, var(--danger))">${fmtNum(s.error_hits)}</td><td>${fmtNum(s.unique_paths)}</td>
                         <td style="font-size:11px">${s.first_seen ? timeAgo(s.first_seen) : '-'} — ${s.last_seen ? timeAgo(s.last_seen) : '-'}</td></tr>
                     `).join('')}</tbody></table>`;
             }

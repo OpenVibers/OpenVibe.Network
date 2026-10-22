@@ -228,14 +228,14 @@ function _streamerSettingField(s) {
         return `<div class="setting-row" style="flex-direction:column;align-items:stretch">${label}
         <textarea id="ss-${esc(s.key)}" data-key="${esc(s.key)}" data-type="${kind}" rows="${rows}" spellcheck="false"
             style="${base};font-family:ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;white-space:pre;overflow:auto">${esc(shown)}</textarea>
-        <div class="setting-err muted" data-err-for="${esc(s.key)}" style="display:none;color:var(--danger,#f87171);font-size:12px;margin-top:4px"></div></div>`;
+        <div class="setting-err muted" data-err-for="${esc(s.key)}" style="display:none;color:var(--danger-text, var(--danger,#f87171));font-size:12px;margin-top:4px"></div></div>`;
     }
     const type = s.type === 'number' ? 'number' : (isSensitive ? 'password' : 'text');
     const width = s.type === 'number' ? 'width:200px;' : '';
     return `<div class="setting-row" style="flex-direction:column;align-items:stretch">${label}
         <input type="${type}" id="ss-${esc(s.key)}" data-key="${esc(s.key)}" data-type="${esc(s.type||'string')}" value="${esc(s.value)}" ${type === 'number' ? 'step="any"' : ''}
             style="${base};${width}">
-        <div class="setting-err muted" data-err-for="${esc(s.key)}" style="display:none;color:var(--danger,#f87171);font-size:12px;margin-top:4px"></div></div>`;
+        <div class="setting-err muted" data-err-for="${esc(s.key)}" style="display:none;color:var(--danger-text, var(--danger,#f87171));font-size:12px;margin-top:4px"></div></div>`;
 }
 
 // Snapshot of what the server sent (keyed by setting key) so Save only submits real changes.

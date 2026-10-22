@@ -92,7 +92,7 @@ function sshCopy(id, btn) {
 // ── Owner view ──────────────────────────────────────────────
 function renderSSHOwner(el) {
     const hostWarn = sshInfo.host ? '' :
-        `<div class="card" style="border-color:var(--warning)"><p style="color:var(--warning);margin:0"><i class="fa-solid fa-triangle-exclamation"></i> No server host is configured yet. Set <code>SSH_SERVER_HOST</code> in the openvibe-network environment so the connection details fill in automatically.</p></div>`;
+        `<div class="card" style="border-color:var(--warning)"><p style="color:var(--warning-text, var(--warning));margin:0"><i class="fa-solid fa-triangle-exclamation"></i> No server host is configured yet. Set <code>SSH_SERVER_HOST</code> in the openvibe-network environment so the connection details fill in automatically.</p></div>`;
     el.innerHTML = `
     <div class="card">
         <h3><i class="fa-solid fa-user-lock"></i> Provision an SSH dev account <span class="staff-pill">Owner</span></h3>
@@ -116,7 +116,7 @@ function renderSSHOwner(el) {
                 <option value="web">Full web + nginx — build &amp; run their own sites (high trust)</option>
             </select>
         </div>
-        <div id="ssh-o-webwarn" style="display:none;margin-top:12px;padding:10px 12px;border:1px solid var(--warning);border-radius:8px;background:color-mix(in srgb,var(--warning) 10%,transparent);color:var(--warning);font-size:0.84rem;line-height:1.5">
+        <div id="ssh-o-webwarn" style="display:none;margin-top:12px;padding:10px 12px;border:1px solid var(--warning);border-radius:8px;background:color-mix(in srgb,var(--warning) 10%,transparent);color:var(--warning-text, var(--warning));font-size:0.84rem;line-height:1.5">
             <i class="fa-solid fa-triangle-exclamation"></i> <b>High trust:</b> web + nginx access lets this admin edit any nginx site config and reload the web server — they can serve anything and a bad config can take <em>all</em> the sites down. It still stops short of root (no package installs or arbitrary sudo), but only grant it to admins you fully trust to run the web layer with you.
         </div>
     </div>
@@ -330,12 +330,12 @@ async function loadDeployOverview() {
         items.push(prereqLine('ACME email configured', !!c.acmeEmail, c.acmeEmail || 'Not set'));
         prereqsEl.innerHTML = items.join('');
     } catch (e) {
-        document.getElementById('deploy-stats').innerHTML = `<div class="muted" style="color:var(--danger)">${esc(e.message)}</div>`;
+        document.getElementById('deploy-stats').innerHTML = `<div class="muted" style="color:var(--danger-text, var(--danger))">${esc(e.message)}</div>`;
     }
 }
 
 function prereqLine(label, ok, detail) {
-    const icon = ok ? '<i class="fa-solid fa-circle-check" style="color:var(--success)"></i>' : '<i class="fa-solid fa-circle-xmark" style="color:var(--danger)"></i>';
+    const icon = ok ? '<i class="fa-solid fa-circle-check" style="color:var(--success-text, var(--success))"></i>' : '<i class="fa-solid fa-circle-xmark" style="color:var(--danger-text, var(--danger))"></i>';
     const detailHtml = detail ? ` <span class="muted" style="font-size:11px">— ${esc(detail)}</span>` : '';
     return `<div style="padding:6px 0;display:flex;align-items:center;gap:8px">${icon} ${esc(label)}${detailHtml}</div>`;
 }
@@ -368,7 +368,7 @@ async function loadDeployCerts() {
             </div>`;
         }).join('');
     } catch (e) {
-        el.innerHTML = `<div class="muted" style="color:var(--danger)">${esc(e.message)}</div>`;
+        el.innerHTML = `<div class="muted" style="color:var(--danger-text, var(--danger))">${esc(e.message)}</div>`;
     }
 }
 
@@ -384,15 +384,15 @@ async function issueCertCloudflare() {
         });
         const d = await r.json();
         if (d.ok) {
-            out.innerHTML = `<div style="color:var(--success);padding:8px"><i class="fa-solid fa-check-circle"></i> Certificate issued: ${esc(d.certName || domain)}</div>
+            out.innerHTML = `<div style="color:var(--success-text, var(--success));padding:8px"><i class="fa-solid fa-check-circle"></i> Certificate issued: ${esc(d.certName || domain)}</div>
                 <pre style="background:var(--bg-input);padding:8px;border-radius:6px;font-size:11px;max-height:200px;overflow:auto;margin-top:8px">${esc(d.output || '')}</pre>`;
             loadDeployCerts();
         } else {
-            out.innerHTML = `<div style="color:var(--danger);padding:8px"><i class="fa-solid fa-xmark"></i> ${esc(d.error || 'Failed')}</div>
+            out.innerHTML = `<div style="color:var(--danger-text, var(--danger));padding:8px"><i class="fa-solid fa-xmark"></i> ${esc(d.error || 'Failed')}</div>
                 <pre style="background:var(--bg-input);padding:8px;border-radius:6px;font-size:11px;max-height:200px;overflow:auto;margin-top:8px">${esc(d.output || '')}</pre>`;
         }
     } catch (e) {
-        out.innerHTML = `<div style="color:var(--danger)">${esc(e.message)}</div>`;
+        out.innerHTML = `<div style="color:var(--danger-text, var(--danger))">${esc(e.message)}</div>`;
     }
 }
 
@@ -419,7 +419,7 @@ async function showManualDnsInfo() {
             </div>
         </div>`;
     } catch (e) {
-        out.innerHTML = `<div style="color:var(--danger)">${esc(e.message)}</div>`;
+        out.innerHTML = `<div style="color:var(--danger-text, var(--danger))">${esc(e.message)}</div>`;
     }
 }
 
@@ -433,15 +433,15 @@ async function issueManualCert(domain) {
         });
         const d = await r.json();
         if (d.ok) {
-            out.innerHTML = `<div style="color:var(--success);padding:8px"><i class="fa-solid fa-check-circle"></i> Certificate issued: ${esc(d.certName || domain)}</div>
+            out.innerHTML = `<div style="color:var(--success-text, var(--success));padding:8px"><i class="fa-solid fa-check-circle"></i> Certificate issued: ${esc(d.certName || domain)}</div>
                 <pre style="background:var(--bg-input);padding:8px;border-radius:6px;font-size:11px;max-height:200px;overflow:auto;margin-top:8px">${esc(d.output || '')}</pre>`;
             loadDeployCerts();
         } else {
-            out.innerHTML = `<div style="color:var(--danger);padding:8px"><i class="fa-solid fa-xmark"></i> ${esc(d.error || 'Failed')}</div>
+            out.innerHTML = `<div style="color:var(--danger-text, var(--danger));padding:8px"><i class="fa-solid fa-xmark"></i> ${esc(d.error || 'Failed')}</div>
                 <pre style="background:var(--bg-input);padding:8px;border-radius:6px;font-size:11px;max-height:200px;overflow:auto;margin-top:8px">${esc(d.output || '')}</pre>`;
         }
     } catch (e) {
-        out.innerHTML = `<div style="color:var(--danger)">${esc(e.message)}</div>`;
+        out.innerHTML = `<div style="color:var(--danger-text, var(--danger))">${esc(e.message)}</div>`;
     }
 }
 
@@ -459,7 +459,7 @@ async function renewAllCerts() {
         <pre style="background:var(--bg-input);padding:8px;border-radius:6px;font-size:11px;max-height:200px;overflow:auto;margin-top:8px">${esc(d.output || '')}</pre>`;
         if (d.ok) loadDeployCerts();
     } catch (e) {
-        out.innerHTML = `<div style="color:var(--danger)">${esc(e.message)}</div>`;
+        out.innerHTML = `<div style="color:var(--danger-text, var(--danger))">${esc(e.message)}</div>`;
     }
 }
 
@@ -480,7 +480,7 @@ async function previewNginxConfigs() {
             </div>
         `).join('');
     } catch (e) {
-        out.innerHTML = `<div style="color:var(--danger)">${esc(e.message)}</div>`;
+        out.innerHTML = `<div style="color:var(--danger-text, var(--danger))">${esc(e.message)}</div>`;
     }
 }
 
@@ -500,7 +500,7 @@ async function validateNginx() {
             <pre style="background:var(--bg-input);padding:8px;border-radius:6px;font-size:11px;margin-top:8px;max-height:200px;overflow:auto">${esc(d.output || '')}</pre>
         </div>`;
     } catch (e) {
-        out.innerHTML = `<div style="color:var(--danger)">${esc(e.message)}</div>`;
+        out.innerHTML = `<div style="color:var(--danger-text, var(--danger))">${esc(e.message)}</div>`;
     }
 }
 
@@ -521,10 +521,10 @@ async function applyNginxConfigs() {
         if (d.backed_up?.length) lines.push(`<div class="muted">Backed up: ${d.backed_up.length} files</div>`);
         if (d.validation) lines.push(`<div>Validation: ${d.validation.ok ? '✓ passed' : '✗ failed'}</div>`);
         if (d.reload) lines.push(`<div>Reload: ${d.reload.ok ? '✓ success' : '✗ failed'}</div>`);
-        if (d.errors?.length) lines.push(`<div style="color:var(--danger)">Errors: ${d.errors.map(e => esc(e)).join('; ')}</div>`);
+        if (d.errors?.length) lines.push(`<div style="color:var(--danger-text, var(--danger))">Errors: ${d.errors.map(e => esc(e)).join('; ')}</div>`);
         out.innerHTML = `<div class="card" style="padding:16px">${lines.join('')}</div>`;
     } catch (e) {
-        out.innerHTML = `<div style="color:var(--danger)">${esc(e.message)}</div>`;
+        out.innerHTML = `<div style="color:var(--danger-text, var(--danger))">${esc(e.message)}</div>`;
     }
 }
 
@@ -555,7 +555,7 @@ async function loadDeployDomains() {
             </div>
         `).join('');
     } catch (e) {
-        el.innerHTML = `<div class="muted" style="color:var(--danger)">${esc(e.message)}</div>`;
+        el.innerHTML = `<div class="muted" style="color:var(--danger-text, var(--danger))">${esc(e.message)}</div>`;
     }
 }
 
@@ -601,7 +601,7 @@ async function loadDeployConfig() {
         document.getElementById('deploy-nginx-mode').value = d.config.nginxMode || 'preview';
         document.getElementById('deploy-nginx-path').value = d.config.nginxSitesPath || '/etc/nginx/sites-enabled';
     } catch (e) {
-        document.getElementById('deploy-config-status').innerHTML = `<span style="color:var(--danger)">${esc(e.message)}</span>`;
+        document.getElementById('deploy-config-status').innerHTML = `<span style="color:var(--danger-text, var(--danger))">${esc(e.message)}</span>`;
     }
 }
 
@@ -621,9 +621,9 @@ async function saveDeployConfig() {
         });
         const d = await r.json();
         if (!d.ok) throw new Error(d.error);
-        status.innerHTML = '<span style="color:var(--success)"><i class="fa-solid fa-check"></i> Saved</span>';
+        status.innerHTML = '<span style="color:var(--success-text, var(--success))"><i class="fa-solid fa-check"></i> Saved</span>';
         setTimeout(() => status.innerHTML = '', 3000);
     } catch (e) {
-        status.innerHTML = `<span style="color:var(--danger)">${esc(e.message)}</span>`;
+        status.innerHTML = `<span style="color:var(--danger-text, var(--danger))">${esc(e.message)}</span>`;
     }
 }

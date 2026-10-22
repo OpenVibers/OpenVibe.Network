@@ -232,12 +232,12 @@ async function loadStreamerMediaTools() {
                 <h3><i class="fa-solid fa-wrench"></i> OpenVibe.Live yt-dlp Status</h3>
                 <div style="display:grid;gap:8px;font-size:0.95rem">
                     <div><strong>yt-dlp available:</strong> ${status.ytdlp_available
-                        ? '<span style="color:var(--success,#22c55e)"><i class="fa-solid fa-check-circle"></i> Yes</span>'
-                        : '<span style="color:var(--danger,#ef4444)"><i class="fa-solid fa-xmark-circle"></i> No</span>'
+                        ? '<span style="color:var(--success-text, var(--success,#22c55e))"><i class="fa-solid fa-check-circle"></i> Yes</span>'
+                        : '<span style="color:var(--danger-text, var(--danger,#ef4444))"><i class="fa-solid fa-xmark-circle"></i> No</span>'
                     }</div>
                     <div><strong>Path:</strong> <span style="font-family:monospace;font-size:0.88rem">${esc(status.ytdlp_path || '')}</span></div>
                     <div><strong>YouTube cookies:</strong> ${status.cookies_configured
-                        ? `<span style="color:var(--success,#22c55e)"><i class="fa-solid fa-cookie"></i> Configured (${esc(String(status.cookies_size || 0))} bytes)</span>`
+                        ? `<span style="color:var(--success-text, var(--success,#22c55e))"><i class="fa-solid fa-cookie"></i> Configured (${esc(String(status.cookies_size || 0))} bytes)</span>`
                         : '<span class="muted"><i class="fa-solid fa-cookie-bite"></i> Not configured</span>'
                     }</div>
                     ${!status.cookies_configured ? '<div style="color:var(--warn,#f59e0b);font-size:0.88rem"><i class="fa-solid fa-triangle-exclamation"></i> YouTube server-side downloads will fail until cookies.txt is added.</div>' : ''}
@@ -317,8 +317,8 @@ function renderCookieVerdict(data) {
     const c = data.check || {};
     const t = data.test || {};
     const ok = (v) => v
-        ? '<span style="color:var(--success,#22c55e)"><i class="fa-solid fa-circle-check"></i> '
-        : '<span style="color:var(--danger,#ef4444)"><i class="fa-solid fa-circle-xmark"></i> ';
+        ? '<span style="color:var(--success-text, var(--success,#22c55e))"><i class="fa-solid fa-circle-check"></i> '
+        : '<span style="color:var(--danger-text, var(--danger,#ef4444))"><i class="fa-solid fa-circle-xmark"></i> ';
 
     const rows = [];
     rows.push(`<div>${ok(c.ok)}Signed-in cookies${c.ok ? '' : ' — missing'}</span></div>`);
@@ -338,7 +338,7 @@ function renderCookieVerdict(data) {
         rows.push(`<div style="margin-top:6px">${ok(t.ok)}Live extraction${t.ok ? `: ${esc(t.title || 'ok')}` : ' failed'}</span></div>`);
         if (!t.ok && t.error) rows.push(`<div class="muted" style="font-size:.82rem;word-break:break-word">${esc(String(t.error).slice(0, 300))}</div>`);
     }
-    (c.errors || []).forEach(e => rows.push(`<div style="color:var(--danger,#ef4444);font-size:.86rem;margin-top:6px">${esc(e)}</div>`));
+    (c.errors || []).forEach(e => rows.push(`<div style="color:var(--danger-text, var(--danger,#ef4444));font-size:.86rem;margin-top:6px">${esc(e)}</div>`));
     (c.warnings || []).forEach(w => rows.push(`<div style="color:var(--warn,#f59e0b);font-size:.86rem">${esc(w)}</div>`));
 
     el.innerHTML = `<div style="margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input)">${rows.join('')}</div>`;
@@ -351,7 +351,7 @@ async function checkStreamerMediaCookies() {
         const data = await api('/api/admin/streamer/media-tools/cookies/check', { method: 'POST', body: {} });
         renderCookieVerdict(data);
     } catch (e) {
-        if (el) el.innerHTML = `<div style="color:var(--danger,#ef4444);margin-top:10px">${esc(e.message)}</div>`;
+        if (el) el.innerHTML = `<div style="color:var(--danger-text, var(--danger,#ef4444));margin-top:10px">${esc(e.message)}</div>`;
     }
 }
 
@@ -369,7 +369,7 @@ async function saveStreamerMediaCookies() {
         // The server refuses a jar it can already tell is unusable and returns the reason.
         toast(e.message, 'error');
         if (e.body) renderCookieVerdict(e.body);
-        else if (el) el.innerHTML = `<div style="color:var(--danger,#ef4444);margin-top:10px">${esc(e.message)}</div>`;
+        else if (el) el.innerHTML = `<div style="color:var(--danger-text, var(--danger,#ef4444));margin-top:10px">${esc(e.message)}</div>`;
     }
 }
 
@@ -391,15 +391,15 @@ async function testStreamerMediaExtraction() {
         const data = await api('/api/admin/streamer/media-tools/test', { method: 'POST', body: { url } });
         results.innerHTML = `<div style="display:grid;gap:8px;font-size:0.9rem">${(data.steps || []).map(step => {
             const icon = step.ok
-                ? '<i class="fa-solid fa-check-circle" style="color:var(--success,#22c55e)"></i>'
-                : '<i class="fa-solid fa-xmark-circle" style="color:var(--danger,#ef4444)"></i>';
+                ? '<i class="fa-solid fa-check-circle" style="color:var(--success-text, var(--success,#22c55e))"></i>'
+                : '<i class="fa-solid fa-xmark-circle" style="color:var(--danger-text, var(--danger,#ef4444))"></i>';
             const detail = step.error
-                ? `<span style="color:var(--danger,#ef4444)"> — ${esc(step.error)}</span>`
+                ? `<span style="color:var(--danger-text, var(--danger,#ef4444))"> — ${esc(step.error)}</span>`
                 : step.data ? ` — ${esc(JSON.stringify(step.data))}` : '';
             return `<div>${icon} <strong>${esc(step.name)}</strong>${detail}</div>`;
         }).join('')}</div>`;
     } catch (e) {
-        results.innerHTML = `<p style="color:var(--danger,#ef4444)">${esc(e.message)}</p>`;
+        results.innerHTML = `<p style="color:var(--danger-text, var(--danger,#ef4444))">${esc(e.message)}</p>`;
     }
 }
 

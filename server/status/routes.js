@@ -141,7 +141,7 @@ const CSS = `
 .st th{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted,#7386a3)}
 .st td small{display:block;color:var(--text-muted,#7386a3);font-size:12.5px;margin-top:2px}
 .st code{font-size:12.5px;overflow-wrap:anywhere}.st-b{display:inline-block;padding:2px 9px;border-radius:999px;font-weight:700;font-size:12.5px;border:1px solid currentColor}
-.st-up{color:var(--success,#22c55e)}.st-degraded{color:#f59e0b}.st-down{color:var(--live-red,#ef4444)}.st-not-running,.st-unknown{color:var(--text-muted,#7386a3)}
+.st-up{color:var(--success-text, var(--success,#22c55e))}.st-degraded{color:#f59e0b}.st-down{color:var(--live-red-text, var(--live-red,#ef4444))}.st-not-running,.st-unknown{color:var(--text-muted,#7386a3)}
 .st ul.chk{margin:4px 0 0;padding:0;list-style:none;font-size:12.5px}.st ul.chk li{margin:1px 0}
 .st section{margin-top:40px}.st dl{display:grid;grid-template-columns:minmax(160px,240px) 1fr;gap:6px 16px;font-size:14px}.st dt{font-weight:600}.st dd{margin:0;color:var(--text-secondary,#96a7c2)}
 @media (max-width:720px){.st table,.st tbody,.st tr,.st td{display:block}.st thead{display:none}.st tr{border-bottom:1px solid var(--border,#1f2d47);padding:8px 0}.st td{border:0;padding:4px 0}.st dl{grid-template-columns:1fr}}`;
