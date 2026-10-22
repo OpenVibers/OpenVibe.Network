@@ -6,14 +6,13 @@
    ═══════════════════════════════════════════════════════════════ */
 // ── Payments: the switches and prices OpenVibe.Live reads ──
 // OpenVibe.Billing runs every checkout, webhook, subscription and cashout since the cutover of 2026-10-17. Live
-// still reads these site settings to decide which ways to pay it offers and at what price (Live's
-// server/monetization/payments.js). Provider credentials are Billing's environment variables, never settings here.
+// reads these site settings to decide which ways to pay it offers and at what price (Live's
+// server/monetization/payments.js): a provider is offered when payments_enabled and its own switch are on and Billing
+// reports it enabled (Billing holds its keys). Provider credentials are Billing's environment variables, never
+// settings here (Live#303 removed the old credential settings).
 const PAYMENT_GROUPS = [
     { title: 'General', keys: ['payments_enabled', 'bucks_per_usd', 'bucks_min_purchase_bucks', 'sub_price_usd', 'sub_streamer_share_pct', 'sub_site_route_fee_pct'] },
-    { title: 'PayPal', keys: ['paypal_enabled', 'paypal_client_id'] },
-    { title: 'Stripe', keys: ['stripe_enabled', 'stripe_secret_key', 'stripe_publishable_key'] },
-    { title: 'CCBill', keys: ['ccbill_enabled', 'ccbill_flexform_id'] },
-    { title: 'Crypto (NOWPayments)', keys: ['crypto_enabled', 'crypto_api_key'] },
+    { title: 'Ways to pay', keys: ['stripe_enabled', 'paypal_enabled', 'ccbill_enabled', 'crypto_enabled'] },
 ];
 // Where providers send payments (OpenVibe.Billing server/api/webhooks.js) and the variables Billing reads
 // (its server/config.js), set in /etc/openvibe/billing.env on the host.
@@ -75,7 +74,7 @@ async function loadPayments() {
             </fieldset>`).join('');
         c.innerHTML = `
             <div style="max-width:860px">
-                <p class="muted" style="margin-bottom:12px">OpenVibe.Billing runs every checkout, subscription and cashout. These are the switches and prices OpenVibe.Live reads to decide which ways to pay it offers: nothing is offered until <strong>payments_enabled</strong> and the provider are on. Live also checks that <strong>stripe_secret_key</strong> and <strong>crypto_api_key</strong> are filled in before it offers Stripe or crypto; the keys Billing charges with are in its environment (below).</p>
+                <p class="muted" style="margin-bottom:12px">OpenVibe.Billing runs every checkout, subscription and cashout. These are the switches and prices OpenVibe.Live reads to decide which ways to pay it offers. A way to pay is offered when <strong>payments_enabled</strong> and its own switch are on and Billing has that provider's keys in its environment (below); with no keys there, the switch has no effect.</p>
                 <form id="payments-form">${groups}
                     <button type="button" class="btn btn-primary" onclick="savePayments()"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save payment settings</button>
                 </form>

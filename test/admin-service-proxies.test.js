@@ -132,7 +132,8 @@ function upstream(name) {
         assert.ok(!panel.includes(gone), `the admin panel no longer uses ${gone}`);
     }
     const payments = read('js/admin/payments.js');
-    for (const key of ['paypal_client_secret', 'paypal_webhook_id', 'stripe_webhook_secret', 'ccbill_salt', 'ccbill_webhook_secret', 'crypto_ipn_secret']) {
+    for (const key of ['paypal_client_secret', 'paypal_webhook_id', 'stripe_webhook_secret', 'ccbill_salt', 'ccbill_webhook_secret', 'crypto_ipn_secret',
+        'paypal_client_id', 'stripe_secret_key', 'stripe_publishable_key', 'ccbill_flexform_id', 'crypto_api_key']) {
         assert.ok(!payments.includes(`'${key}'`), `the Payments form no longer saves ${key} into Live's settings (Billing reads its environment)`);
     }
     for (const hook of ['stripe', 'paypal', 'ccbill', 'nowpayments', 'powerchat']) assert.ok(payments.includes(`'/webhooks/${hook}`), `Billing's ${hook} webhook is shown`);
