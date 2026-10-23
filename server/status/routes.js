@@ -219,7 +219,7 @@ ${tr}
 ${releaseHealthSection(list, healthSince || generatedAt)}
 </section>
 <section aria-labelledby="h-devpath"><h2 id="h-devpath">Developer path</h2>
-${devPath ? `<p class="lede">Once a day a test developer account goes from sign-in to a sandbox project, a Media upload, an Events publish and pull, a credential rotation and revocation, and cleanup, through the public API and the SDK. ${lastRun(devPath)}</p>
+${devPath ? `<p class="lede">Once a day a test developer account goes from sign-in to a sandbox project and app, a Media upload, an Events publish and pull, an AI answer, the project export, a Services release, a credential rotation and revocation, and cleanup, through the public API and the SDK. ${lastRun(devPath)}</p>
 ${proofSteps(devPath)}` : '<p class="lede">The daily developer path has not reported here yet.</p>'}
 </section>
 <section aria-labelledby="h-toolsjob"><h2 id="h-toolsjob">Tools job proof</h2>
