@@ -189,9 +189,14 @@ async function dumpAnalytics(db) {
         await db.prepare("INSERT INTO analytics_daily (service, date, pageviews, api_calls, unique_visitors) VALUES ('openvibe-network', '2026-07-01', 9, 3, 4) ON CONFLICT (service, date) DO UPDATE SET pageviews = excluded.pageviews, api_calls = excluded.api_calls, unique_visitors = excluded.unique_visitors").run();
         const daily = JSON.stringify(await db.prepare('SELECT * FROM analytics_daily ORDER BY date').all());
         const before = await db.prepare('SELECT COUNT(*) FROM analytics_events').pluck().get();
+        // Rows the earlier checks wrote on fixed dates (2026-09-23) age past 30 days too, so what goes is every row
+        // older than the cutoff (the five above among them), not exactly five.
+        const old = await db.prepare('SELECT COUNT(*) FROM analytics_events WHERE created_at < ?').pluck().get(sqlTime(Date.now() - 30 * 86400000));
+        assert.ok(old >= 5, `old rows: ${old}`);
         const out = await networkAnalytics.schedulePrune(analytics, { days: 30 });
-        assert.strictEqual(out.removed, 5);
-        assert.strictEqual(await db.prepare('SELECT COUNT(*) FROM analytics_events').pluck().get(), before - 5);
+        assert.strictEqual(out.removed, old);
+        assert.strictEqual(await db.prepare('SELECT COUNT(*) FROM analytics_events').pluck().get(), before - old);
+        assert.strictEqual(await db.prepare("SELECT COUNT(*) FROM analytics_events WHERE path = '/@old'").pluck().get(), 1, 'the 29-day-old row stays');
         assert.strictEqual(JSON.stringify(await db.prepare('SELECT * FROM analytics_daily ORDER BY date').all()), daily);
         assert.strictEqual(await db.prepare('SELECT COUNT(*) FROM users').pluck().get(), 1);
     });
