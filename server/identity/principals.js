@@ -298,6 +298,8 @@ const DEFAULT_GRANTS = [
     // reports (category food) and Rent HUD's Fair Market Rents (category housing) from it instead of fetching them.
     ['food', 'sources.item.read', 'openvibe.sources', []],
     ['rent', 'sources.item.read', 'openvibe.sources', []],
+    // Work follows Arbeitnow through Sources (category jobs; plan F2, contracts 0.211.0 retire_after_sec retires closed jobs).
+    ['work', 'sources.item.read', 'openvibe.sources', []],
     // Plan T13: OpenVibe.Services merges every authority's resource index (ADR-048 section 3): it reads each one's
     // GET /api/v1/resources under that authority's <id>.resource.read, with a token for that authority's audience.
     ['services', 'network.resource.read', SELF_AUDIENCE, []],
