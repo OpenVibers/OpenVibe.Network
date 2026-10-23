@@ -42,14 +42,17 @@ function driftSeconds(now = Date.now()) {
  * services(): [{ id, release, repository }] for what runs now (the registry's releases view).
  */
 function createDeployDrift({ services, fetchImpl = globalThis.fetch, token = () => process.env.GITHUB_TOKEN || '', intervalMs = 3600e3, now = () => Date.now(), log = console } = {}) {
-    const tokenNow = () => (typeof token === 'function' ? token() : token) || '';
+    // The token may come from an async source (server/index.js reads the integration's): awaited, or every call sent
+    // "Bearer [object Promise]" and GitHub answered 401 (from 2026-09-25 until 10-23).
+    const tokenNow = async () => String((await (typeof token === 'function' ? token() : token)) || '');
     async function checkOne({ id, release, repository }) {
         const at = new Date(now()).toISOString();
         if (!SHA_RE.test(String(release || '')) || !REPO_RE.test(String(repository || ''))) { state.delete(id); return null; }
         const prev = state.get(id);
         try {
+            const auth = await tokenNow();
             const res = await fetchImpl(`https://api.github.com/repos/${repository}/compare/${release}...main`, {
-                headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenVibe.Network registry', ...(tokenNow() ? { Authorization: `Bearer ${tokenNow()}` } : {}) },
+                headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenVibe.Network registry', ...(auth ? { Authorization: `Bearer ${auth}` } : {}) },
                 signal: AbortSignal.timeout(10000),
             });
             if (res.status === 404) { state.set(id, { repo: repository, deployed: release, state: 'unknown', error: 'commit not on GitHub', checked_at: at }); return state.get(id); }

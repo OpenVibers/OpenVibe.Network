@@ -21,5 +21,9 @@ assert.strictEqual(latestOf([]), null);
     assert.strictEqual(libs['openvibe-sdk'].distribution, 'https://codeload.github.com/OpenVibers/OpenVibe.SDK/tar.gz/refs/tags/v0.8.0');
     assert.strictEqual(libs['openvibe-shared'].release, 'v1.11.1');
     assert.strictEqual(libs['openvibe-contracts'].release, `v${require('openvibe-contracts/package.json').version}`, 'a refused lookup keeps the installed version');
+    // An async token (server/index.js) is awaited, never sent as "[object Promise]".
+    const auths = [];
+    await createLibraryTags({ fetchImpl: async (url, opts) => { auths.push(opts.headers.Authorization); return fetchImpl(url); }, token: async () => 'ghp_async', log: null }).refresh();
+    assert.ok(auths.length && auths.every((a) => a === 'Bearer ghp_async'), auths.join(','));
     console.log('library tags: all checks passed');
 })().catch((e) => { console.error(e); process.exit(1); });
