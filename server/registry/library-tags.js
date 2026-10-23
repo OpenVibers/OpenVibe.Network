@@ -21,14 +21,17 @@ function latestOf(names) {
 }
 
 function createLibraryTags({ fetchImpl = globalThis.fetch, token = () => process.env.GITHUB_TOKEN || '', intervalMs = 3600e3, onUpdate = null, log = console } = {}) {
-    const tokenNow = () => (typeof token === 'function' ? token() : token) || '';
+    // Awaited: server/index.js passes an async token function, and unawaited it went out as "Bearer [object Promise]"
+    // (GitHub's 401, so the registry kept the installed versions until 2026-10-23).
+    const tokenNow = async () => String((await (typeof token === 'function' ? token() : token)) || '');
     const latest = new Map();   // package -> 'vX.Y.Z'
     let timer = null;
     async function refresh() {
+        const auth = await tokenNow().catch(() => '');
         for (const [pkg, repo] of Object.entries(REPOS)) {
             try {
                 const res = await fetchImpl(`https://api.github.com/repos/OpenVibers/${repo}/tags?per_page=100`, {
-                    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenVibe.Network registry', ...(tokenNow() ? { Authorization: `Bearer ${tokenNow()}` } : {}) },
+                    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenVibe.Network registry', ...(auth ? { Authorization: `Bearer ${auth}` } : {}) },
                     signal: AbortSignal.timeout(10000),
                 });
                 if (!res.ok) continue;

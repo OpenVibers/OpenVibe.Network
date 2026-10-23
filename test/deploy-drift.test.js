@@ -2,7 +2,7 @@
 // Production drift (WS-S task 7): the deployed commit against main through GitHub's compare API —
 // current, behind (how many commits and since the oldest undeployed one), diverged, unknown; a failed
 // lookup keeps the last answer; the gauge gives seconds behind (0 when current); services that stop
-// running are dropped; a non-commit release is skipped.
+// running are dropped; a non-commit release is skipped; an async token is awaited.
 const assert = require('assert');
 const drift = require('../server/registry/deploy-drift');
 
@@ -67,6 +67,14 @@ const fetchImpl = async (url, opts) => {
     running = running.filter((r) => r.id !== 'media');
     await d.refresh();
     assert.strictEqual(drift.current('media'), null, 'a service that stopped running is dropped');
+    drift._reset();
+    // server/index.js passes an async token function: it is awaited, never sent as "[object Promise]" (GitHub's 401).
+    // No token at all: no Authorization header (anonymous, 60 an hour).
+    asked.length = 0;
+    await drift.createDeployDrift({ services: () => running.slice(0, 1), fetchImpl, token: async () => 'ghp_async', now: () => NOW, log: null }).refresh();
+    assert.strictEqual(asked[0].auth, 'Bearer ghp_async');
+    await drift.createDeployDrift({ services: () => running.slice(0, 1), fetchImpl, token: async () => null, now: () => NOW, log: null }).refresh();
+    assert.strictEqual(asked[1].auth, undefined);
     drift._reset();
     // server/index.js feeds the checks from the registry's releases view.
     const eco = require('../server/registry/ecosystem').createEcosystemRegistry({ issuer: 'https://openvibe.network', fetchImpl: async () => { throw new Error('offline'); } });
