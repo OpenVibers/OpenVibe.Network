@@ -98,7 +98,8 @@ const DEFAULT_GRANTS = [
     // its objects under the live namespace (VOD/clip/thumbnail uploads, reads, lists, deletes); OpenRestream uploads the
     // recordings and thumbnails it produces there too.
     ...['media.object.read', 'media.object.list', 'media.object.upload', 'media.object.delete'].map(cap => ['live', cap, 'openvibe.media', ['live']]),
-    ['openre', 'media.object.upload', 'openvibe.media', ['live']],
+    // media-hub: a record-only stream records into OpenVibe.Video's tenant as its owner's private video (plan 2026-10-22 §3 D1).
+    ['openre', 'media.object.upload', 'openvibe.media', ['live', 'media-hub']],
     // Compatibility register C-71: Inventory (Workshop badge images) and MediaHub (its library) reach Media with their
     // own tokens on their own tenants, not with app keys. Upload also covers the delete of an object.
     ['inventory', 'media.object.upload', 'openvibe.media', ['inventory']],
@@ -563,6 +564,8 @@ const CHANGED_DEFAULT_NAMESPACES = [
     // Tools' job results under each developer project's child namespace (WS-L task 5, Media namespaces WS-G task 2).
     ['tools', 'media.object.upload', 'openvibe.media', ['tools'], ['tools', 'tools.*']],
     ['tools', 'media.object.read', 'openvibe.media', ['tools'], ['tools', 'tools.*']],
+    // OpenRestream's record-only streams record into OpenVibe.Video's tenant (plan 2026-10-22 §3 D1, OpenRestream#96).
+    ['openre', 'media.object.upload', 'openvibe.media', ['live'], ['live', 'media-hub']],
     // Live runs media.analyze on OpenVibe.AI (WS-O task 5).
     ['live', 'ai.run.create', 'openvibe.ai', ['live.*', 'network.site_copy'], ['live.*', 'network.site_copy', 'media.analyze']],
     ['live', 'ai.run.read', 'openvibe.ai', ['live.*', 'network.site_copy'], ['live.*', 'network.site_copy', 'media.analyze']],
