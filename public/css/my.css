@@ -164,6 +164,11 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
 .theme-current .label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em}
 .theme-current .name{font-size:13px;font-weight:700;margin-top:2px}
 .theme-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+/* Seasonal themes (themes.js renderSeason): the season's switch above the grid. */
+.theme-season{display:flex;align-items:center;justify-content:space-between;gap:12px 16px;flex-wrap:wrap;margin:0 0 14px;padding:14px 16px;border-radius:14px;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--border));background:color-mix(in srgb,var(--accent) 9%,var(--bg-card))}
+.theme-season[hidden]{display:none}
+.theme-season strong{display:block;font-size:1rem}
+.theme-season p{margin:4px 0 0;color:var(--text-secondary);font-size:.9rem;max-width:60ch}
 .theme-custom-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .theme-custom-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:8px 10px;cursor:pointer}
 .theme-custom-row input[type=color]{width:34px;height:34px;border:none;border-radius:8px;background:none;cursor:pointer;padding:0}

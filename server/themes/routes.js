@@ -108,7 +108,9 @@ router.get('/me/active', (req, res, next) => {
 });
 
 // ── Display preferences (motion, text size) — follow the account to every site ──
-const DISPLAY = { motion: ['auto', 'reduced'], text: ['100', '112', '125'] };
+// seasonal: the season's theme (openvibe-shared theme-loader Seasons: Pumpkin Night in October, Frost in December) in place
+// of the default theme, unless 'off' (the owner, 2026-10-24: "users can opt out … and just want their normal default").
+const DISPLAY = { motion: ['auto', 'reduced'], text: ['100', '112', '125'], seasonal: ['on', 'off'] };
 function cleanDisplay(d) {
     if (!d || typeof d !== 'object') return null;
     const out = {};
