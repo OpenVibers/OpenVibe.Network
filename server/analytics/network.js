@@ -35,13 +35,17 @@ const PATH_RULES = [[/\/by-username\/[^/?#]+/gi, '/by-username/:username']];
 
 const PATH_OPTS = { paramPrefixes: PARAM_PREFIXES, pathRules: PATH_RULES };
 
+// Raw events are kept 30 days (ADR-021); bot hits only 7, since their daily counts are in the rollups once the day
+// closes: on 2026-10-23, 1.22M of the 2.46M raw rows were bots (openvibe-shared 4.10.0's botDays).
+const RETENTION = { days: 30, botDays: 7 };
+
 function openAnalytics(db, opts = {}) {
-    return new AnalyticsTrackerPg(db, SERVICE, { paramPrefixes: PARAM_PREFIXES, pathRules: PATH_RULES, ...opts });
+    return new AnalyticsTrackerPg(db, SERVICE, { paramPrefixes: PARAM_PREFIXES, pathRules: PATH_RULES, retention: RETENTION, ...opts });
 }
 
 /** ADR-021 raw-event retention on demand (the tracker also schedules it at boot, after 5 minutes). */
 function schedulePrune(tracker, opts = {}) {
-    return pruneRawEventsPg(tracker.db, opts);
+    return pruneRawEventsPg(tracker.db, { ...RETENTION, ...opts });
 }
 
-module.exports = { SERVICE, PARAM_PREFIXES, PATH_RULES, PATH_OPTS, analyticsSchema, openAnalytics, schedulePrune };
+module.exports = { SERVICE, PARAM_PREFIXES, PATH_RULES, PATH_OPTS, RETENTION, analyticsSchema, openAnalytics, schedulePrune };

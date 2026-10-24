@@ -200,6 +200,15 @@ async function dumpAnalytics(db) {
         assert.strictEqual(JSON.stringify(await db.prepare('SELECT * FROM analytics_daily ORDER BY date').all()), daily);
         assert.strictEqual(await db.prepare('SELECT COUNT(*) FROM users').pluck().get(), 1);
     });
+    await check('analytics-prune: bot rows go after 7 days (RETENTION.botDays), visitors after 30', async () => {
+        const at = sqlTime(Date.now() - 10 * 86400000);
+        await db.prepare(`INSERT INTO analytics_events (service, event_type, path, is_bot, created_at) VALUES ('openvibe-network', 'api_call', '/bot-10d', 1, ?)`).run(at);
+        await db.prepare(`INSERT INTO analytics_events (service, event_type, path, is_bot, created_at) VALUES ('openvibe-network', 'pageview', '/human-10d', 0, ?)`).run(at);
+        assert.deepStrictEqual(networkAnalytics.RETENTION, { days: 30, botDays: 7 });
+        await networkAnalytics.schedulePrune(analytics);
+        assert.strictEqual(await db.prepare("SELECT COUNT(*) FROM analytics_events WHERE path = '/bot-10d'").pluck().get(), 0, 'a 10-day-old bot row goes');
+        assert.strictEqual(await db.prepare("SELECT COUNT(*) FROM analytics_events WHERE path = '/human-10d'").pluck().get(), 1, 'a 10-day-old visitor row stays');
+    });
     analytics.destroy();
 
     if (failures) { console.log(`\n${failures} failed`); process.exit(1); }
