@@ -2,7 +2,8 @@
 // Community themes (roadmap WS-E task 2): a submission is pending and private to its author until an
 // admin approves it; the catalog shows approved themes only; theme values are allow-listed (only the
 // shared token names, only colours, numbers, lengths and shadows); a theme exports as an
-// openvibe-theme@1 file and imports as a new submission; custom overrides are cleaned the same way.
+// openvibe-theme@1 file and imports as a new submission; custom overrides are cleaned the same way; display preferences
+// (text size, motion, seasonal themes) are allow-listed too.
 //   node test/themes-review.test.js
 const assert = require('assert');
 const crypto = require('crypto');
@@ -100,6 +101,13 @@ const token = async (id) => signToken(await db.prepare('SELECT * FROM users WHER
     r = await call('GET', '/api/themes/campfire');
     assert.deepStrictEqual([r.status, r.body.theme.slug], [200, 'ember'], 'followed, it is the ember theme');
     assert.strictEqual((await call('GET', '/api/themes/no-such-theme')).status, 404, 'an unknown name is still a 404');
+
+    // ── Display preferences follow the account: text size, motion and seasonal themes (on|off), nothing else ──
+    r = await call('PUT', '/api/themes/me/display', { as: 2, body: { text: '112', motion: 'reduced', seasonal: 'off', colour: 'red' } });
+    assert.deepStrictEqual(r.body.display, { motion: 'reduced', text: '112', seasonal: 'off' }, 'seasonal is kept, an unknown key is not');
+    assert.deepStrictEqual((await call('GET', '/api/themes/me/active', { as: 2 })).body.display, { motion: 'reduced', text: '112', seasonal: 'off' });
+    r = await call('PUT', '/api/themes/me/display', { as: 2, body: { seasonal: 'maybe' } });
+    assert.ok(!('seasonal' in (r.body.display || {})), 'only on or off');
 
     server.close();
     fs.rmSync(dir, { recursive: true, force: true });

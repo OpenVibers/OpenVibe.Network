@@ -45,7 +45,42 @@ function updateThemeSummary(theme) {
     });
 }
 
+// ── Seasonal themes (openvibe-shared theme-loader Seasons) ──────────────────────
+// During a season its theme (Pumpkin Night in October, Frost in December) stands in for the default theme unless the
+// person turns seasonal themes off; the switch is the `seasonal` display preference, saved to the account.
+const SEASON_MONTHS = { halloween: 'October', winter: 'December' };
+function seasonLoader() { return (typeof OpenVibeThemeLoader !== 'undefined' && OpenVibeThemeLoader.seasons && OpenVibeThemeLoader.display) ? OpenVibeThemeLoader : null; }
+function renderSeason() {
+    const box = document.getElementById('theme-season');
+    const L = seasonLoader();
+    const now = L && L.seasons.now();
+    if (!box) return;
+    if (!now) { box.hidden = true; return; }
+    const on = L.display.get().seasonal !== 'off';
+    const showing = !!L.seasons.showing();
+    const theme = availableThemes.find((t) => t.id === now.theme);
+    box.hidden = false;
+    box.innerHTML = '';
+    const text = document.createElement('div');
+    const h = document.createElement('strong');
+    h.textContent = `${now.name}: ${theme ? theme.name : 'a seasonal theme'} is ${showing ? 'on' : on ? 'on for the default theme' : 'off'}`;
+    const p = document.createElement('p');
+    p.textContent = showing
+        ? `Through ${SEASON_MONTHS[now.id] || 'the season'}, every OpenVibe site wears it in place of the default theme. Turn it off for your normal theme.`
+        : on ? 'It shows when your theme is the default (Vibe). Your own theme stays as you picked it.'
+            : 'You see your normal theme. Turn seasonal themes back on to see the season\'s theme on the default.';
+    text.append(h, p);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `btn ${on ? 'btn-outline' : 'btn-primary'}`;
+    btn.textContent = on ? 'Turn seasonal themes off' : 'Turn seasonal themes on';
+    btn.addEventListener('click', () => { L.display.set({ seasonal: on ? 'off' : 'on' }); renderSeason(); });
+    box.append(text, btn);
+}
+window.addEventListener('ov:season', () => renderSeason());
+
 function renderThemes() {
+    renderSeason();
     const grid = document.getElementById('theme-grid');
     if (!grid) return;
     if (!availableThemes.length) {
@@ -71,6 +106,7 @@ function renderThemes() {
                 <div class="theme-card-footer">
                     <div class="theme-badges">
                         ${theme.is_builtin ? '<span class="theme-badge">Built-in</span>' : '<span class="theme-badge">Community</span>'}
+                        ${(theme.tags || []).includes('seasonal') ? '<span class="theme-badge">Seasonal</span>' : ''}
                     </div>
                     <button class="btn ${isActive ? 'btn-outline' : 'btn-primary'}" onclick="setTheme('${theme.id}')">${isActive ? 'Active' : 'Use theme'}</button>
                 </div>
@@ -93,7 +129,8 @@ async function loadThemes() {
         activeCustomVars = (activeData.custom_variables && typeof activeData.custom_variables === 'object') ? activeData.custom_variables : {};
         const activeTheme = availableThemes.find((theme) => String(theme.id) === String(activeThemeId) || String(theme.slug) === String(activeThemeId));
         activeThemeVars = (activeTheme && activeTheme.variables) || {};
-        if (activeTheme) applyThemeToPage(activeTheme);
+        const seasonShowing = seasonLoader() && seasonLoader().seasons.showing() && String(activeThemeId) === 'vibe';
+        if (activeTheme && !seasonShowing) applyThemeToPage(activeTheme);
         if (Object.keys(activeCustomVars).length) applyThemeToPage({ variables: Object.assign({}, activeThemeVars, activeCustomVars) });
         renderThemes();
         renderThemeCustomizer();
