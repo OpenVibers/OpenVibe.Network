@@ -116,6 +116,11 @@ const DEFAULT_GRANTS = [
     ['chat', 'ai.run.read', 'openvibe.ai', ['chat.*']],
     // Chat's AI members linked to a Food household read its pantry and plan (food.household.read; Contracts 0.189.0).
     ['chat', 'food.household.read', 'openvibe.food', []],
+    // Vibe on openvibe.chat (Chat#139) searches the open web through Actor for the person it is talking with: Chat
+    // names them in X-OV-Subject, so the task is theirs (their allowance and list, Chat recorded as `via`), and reads the
+    // task it started for its answer (a delegated caller sees only the tasks it started).
+    ['chat', 'actor.task.create', 'openvibe.actor', []],
+    ['chat', 'actor.task.read', 'openvibe.actor', []],
     ['games', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Games subscribes to network.user.token_valid_after (sign-out everywhere closes game sessions).
     ['games', 'events.subscription.manage', 'openvibe.events', []],
