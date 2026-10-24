@@ -31,13 +31,16 @@ const byHost = new Map(SITES.map(s => [s.host, s]));
 
 // The launcher (openvibe-shared navbar) lists every open site under one of these groups, most used first within
 // each. A site missing here lands in the last group, so a new manifest is never left out of the menu.
+// Plan track K (the owner, 2026-10-24: consumer-friendly products, the developer side on Services): what people use
+// first, agents and robots as their own group, and the building blocks last under "For developers".
 const GROUPS = [
+    { id: 'talk', name: 'Chat & community', sites: ['chat', 'community', 'wiki', 'news', 'blog'] },
     { id: 'watch', name: 'Watch & stream', sites: ['live', 'media-hub', 'pics', 'stream', 'tips', 'vip'] },
-    { id: 'create', name: 'Create & play', sites: ['games', 'play', 'space', 'blog'] },
-    { id: 'talk', name: 'Talk & learn', sites: ['chat', 'community', 'wiki', 'news'] },
-    { id: 'everyday', name: 'Shop & everyday', sites: ['deals', 'coupons', 'reviews', 'food', 'rent', 'homes', 'trade', 'work', 'host'] },
-    { id: 'build', name: 'Build & automate', sites: ['tools', 'codes', 'run', 'actor', 'ai', 'bot', 'services', 'events', 'watch', 'zone', 'media', 'download'] },
-    { id: 'you', name: 'Your OpenVibe', sites: ['network', 'search', 'help', 'quest', 'inventory'] },
+    { id: 'agents', name: 'Agents & robots', sites: ['actor', 'bot', 'codes', 'watch'] },
+    { id: 'everyday', name: 'Shop & everyday', sites: ['deals', 'coupons', 'reviews', 'food', 'rent', 'homes', 'work', 'trade', 'host'] },
+    { id: 'create', name: 'Create & play', sites: ['games', 'space', 'tools', 'download', 'quest'] },
+    { id: 'you', name: 'Your OpenVibe', sites: ['network', 'search', 'help', 'inventory'] },
+    { id: 'build', name: 'For developers', sites: ['services', 'ai', 'run', 'zone', 'events', 'media', 'play'] },
 ];
 const groupOf = (id) => (GROUPS.find(g => g.sites.includes(id)) || GROUPS[GROUPS.length - 1]).id;
 
