@@ -38,7 +38,10 @@ assert.ok(html.includes('id="sec-approvals"') && html.includes('id="approvals-li
 const approvals = fs.readFileSync(path.join(pub, 'js', 'my', 'approvals.js'), 'utf8');
 assert.ok(!/innerHTML|insertAdjacentHTML/.test(approvals), 'approvals.js never parses agent text as HTML');
 for (const name of ['loadApprovals', 'decideApproval', 'refreshApprovalsBadge']) assert.strictEqual(owner.get(name), 'approvals.js', `${name} lives in approvals.js`);
-assert.ok(fs.readFileSync(path.join(pub, 'js', 'my', 'boot.js'), 'utf8').includes('refreshApprovalsBadge()'), 'boot.js shows the waiting count on the tab');
+const bootSrc = fs.readFileSync(path.join(pub, 'js', 'my', 'boot.js'), 'utf8');
+assert.ok(bootSrc.includes('refreshApprovalsBadge()'), 'boot.js shows the waiting count on the tab');
+// Signed out (loadUser() redirects to /login), no section loads and no badge is asked for: each would answer 401.
+assert.match(bootSrc, /if \(_signedIn\) \{\s*openInitialSection\(\);\s*refreshApprovalsBadge\(\);\s*\}/, 'signed out, boot.js asks no API');
 // The host is a SubjectRef object: the row names its id, never "[object Object]"; an anonymous session calls no API.
 {
     const vm = require('vm');
