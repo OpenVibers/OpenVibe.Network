@@ -108,6 +108,9 @@ const token = async (id) => signToken(await db.prepare('SELECT * FROM users WHER
     assert.deepStrictEqual((await call('GET', '/api/themes/me/active', { as: 2 })).body.display, { motion: 'reduced', text: '112', seasonal: 'off' });
     r = await call('PUT', '/api/themes/me/display', { as: 2, body: { seasonal: 'maybe' } });
     assert.ok(!('seasonal' in (r.body.display || {})), 'only on or off');
+    r = await call('PUT', '/api/themes/me/display', { as: 2, body: { scheme: 'auto' } });
+    assert.strictEqual(r.body.display.scheme, 'auto', 'Auto (light or dark by the device) follows the account');
+    assert.strictEqual((await call('PUT', '/api/themes/me/display', { as: 2, body: { scheme: 'sepia' } })).body.display.scheme, undefined, 'only manual or auto');
 
     // ── Seasons: what stands in for the default theme when, for apps and the SDK ──
     r = await call('GET', '/api/themes/seasons?date=2026-10-25');

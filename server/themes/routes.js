@@ -91,18 +91,19 @@ router.get('/', async (req, res) => {
 });
 
 // ── Seasons: which theme stands in for the default theme when (openvibe-shared builtin-themes SEASONS) ──
-// GET /api/themes/seasons[?date=YYYY-MM-DD] → { seasons: [{ id, name, theme, from, to }], now: { id, name, theme } | null }
+// GET /api/themes/seasons[?date=YYYY-MM-DD] → { seasons: [{ id, name, theme, light?, from, to }], now: { id, name, theme, light? } | null }
+// (theme: the dark half; light: its light half, from openvibe-shared 4.12)
 // from/to are MM-DD, both days included, in the visitor's own calendar (the browser decides; `now` here is for the date
 // given, else today in UTC). Anyone on the default theme who has not turned seasonal themes off (display `seasonal`) sees
 // the season's theme, and every OpenVibe mark wears the season (theme-loader.js, ov-mark.js).
-function seasonList() { return (require('openvibe-shared/builtin-themes').SEASONS || []).map((s) => ({ id: s.id, name: s.name, theme: s.theme, from: s.from, to: s.to })); }
+function seasonList() { return (require('openvibe-shared/builtin-themes').SEASONS || []).map((s) => ({ id: s.id, name: s.name, theme: s.theme, ...(s.light ? { light: s.light } : {}), from: s.from, to: s.to })); }
 function seasonOn(md, list) { return list.find((s) => (s.from <= s.to ? md >= s.from && md <= s.to : md >= s.from || md <= s.to)) || null; }
 router.get('/seasons', (req, res) => {
     const list = seasonList();
     const asked = /^\d{4}-(\d{2})-(\d{2})$/.exec(String(req.query.date || ''));
     const md = asked ? `${asked[1]}-${asked[2]}` : new Date().toISOString().slice(5, 10);
     const now = seasonOn(md, list);
-    res.set('Cache-Control', 'public, max-age=3600').json({ seasons: list, now: now ? { id: now.id, name: now.name, theme: now.theme } : null });
+    res.set('Cache-Control', 'public, max-age=3600').json({ seasons: list, now: now ? { id: now.id, name: now.name, theme: now.theme, ...(now.light ? { light: now.light } : {}) } : null });
 });
 
 // ── Get User's Active Theme ──────────────────────────────────
@@ -128,7 +129,9 @@ router.get('/me/active', (req, res, next) => {
 // ── Display preferences (motion, text size) — follow the account to every site ──
 // seasonal: the season's theme (openvibe-shared theme-loader Seasons: Pumpkin Night in October, Frost in December) in place
 // of the default theme, unless 'off' (the owner, 2026-10-24: "users can opt out … and just want their normal default").
-const DISPLAY = { motion: ['auto', 'reduced'], text: ['100', '112', '125'], seasonal: ['on', 'off'] };
+// scheme: 'manual' (the picked theme as it is) or 'auto' (its light or dark half, as the device is set; openvibe-shared
+// theme-loader Light / Dark / Auto, 2026-10-25).
+const DISPLAY = { motion: ['auto', 'reduced'], text: ['100', '112', '125'], seasonal: ['on', 'off'], scheme: ['manual', 'auto'] };
 function cleanDisplay(d) {
     if (!d || typeof d !== 'object') return null;
     const out = {};
