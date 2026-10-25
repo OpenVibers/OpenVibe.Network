@@ -110,6 +110,7 @@ app.use(helmet({
                 "https://openvibe.community",
                 "https://openvibe.space",
                 "https://openvibe.blog",
+                "https://openvibe.chat",   // the admin AI tab's staff room queue (OpenVibe.Chat's /api/chat/rooms/staff/tasks)
                 "https://cloudflareinsights.com", // Cloudflare Web Analytics reports here (see script-src)
                 // Release notifications: release-watch's EventSource on the Events realtime stream (openvibe-shared 1.17)
                 "https://openvibe.events",

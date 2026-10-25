@@ -11,7 +11,45 @@ const AI_KEYS = ['ai_enabled',
     'ai_max_cost_usd_per_day',
     'ai_viewers_enabled', 'ai_viewers_max_roster', 'ai_viewers_max_lines_per_min', 'ai_viewers_global_cap_usd_per_day', 'ai_viewers_default_settings_json'];
 
+// ── The staff room (OpenVibe.Chat /r/staff): one room for all of staff, with Vibe and a shared work queue ──
+const CHAT_ORIGIN = 'https://openvibe.chat';
+const TASK_STATE = { queued: 'Waiting', running: 'Working', succeeded: 'Done', failed: 'Stuck', cancelled: 'Cancelled' };
+let staffRoomTimer = null;
+async function chatApi(path, opts = {}) {
+    const res = await fetch(CHAT_ORIGIN + '/api/chat/rooms/staff' + path, { ...opts, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) } });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || ('OpenVibe.Chat answered ' + res.status));
+    return body;
+}
+async function loadStaffRoom() {
+    const el = document.getElementById('ai-staff-room'); if (!el) return;
+    let tasks = null, err = null;
+    try { tasks = (await chatApi('/tasks?limit=12')).tasks || []; } catch (e) { err = e.message; }
+    const row = (t) => `<li style="padding:6px 0;border-bottom:1px solid var(--border)"><a href="${CHAT_ORIGIN}${esc(t.url)}" target="_blank" rel="noopener"><strong>${esc(TASK_STATE[t.status] || t.status)}</strong> · ${esc(t.title)}</a><br><small class="muted">${esc(t.kind)} · ${esc((t.requested_by && t.requested_by.name) || 'someone')}${t.via === 'vibe' ? ' via Vibe' : ''}${t.runner ? ' · ' + esc(t.runner === 'actor' ? 'OpenVibe.Actor' : t.runner) : ''}${t.error ? ' · ' + esc(t.error) : ''}</small></li>`;
+    const open = (tasks || []).filter((t) => t.status === 'queued' || t.status === 'running').length;
+    el.innerHTML = `<fieldset style="max-width:760px;border:1px solid var(--accent);border-radius:10px;padding:14px 16px;margin-bottom:16px">
+        <legend style="padding:0 8px;font-weight:700">Staff room ${open ? `<span class="muted" style="font-weight:500">· ${open} open</span>` : ''}</legend>
+        <p class="muted" style="margin:0 0 10px">One room for all of staff on OpenVibe.Chat: talk, ask <code>@vibe</code> to look into or do something, and see the shared work queue. Research and web answers run at once on OpenVibe.Actor; code and computer work waits for a worker (a person or a coding agent) to take it. Results come back into the room.</p>
+        <p style="margin:0 0 12px"><a class="btn btn-primary" href="${CHAT_ORIGIN}/r/staff" target="_blank" rel="noopener"><i class="fa-solid fa-people-group"></i> Open the staff room</a></p>
+        <form id="staff-task-form" style="display:grid;gap:6px;margin-bottom:10px">
+            <input name="title" required minlength="3" maxlength="200" placeholder="Add work: what to do" style="padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+            <div style="display:flex;gap:6px;flex-wrap:wrap"><select name="kind" style="padding:6px 8px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text)"><option value="research">research (runs now)</option><option value="web">web answer (runs now)</option><option value="code">code (a worker takes it)</option><option value="computer">computer (a worker takes it)</option><option value="other">other</option></select>
+            <button class="btn btn-secondary" type="submit">Add to the queue</button></div>
+        </form>
+        ${err ? `<p class="muted">The queue could not be read: ${esc(err)}</p>` : (tasks.length ? `<ol style="list-style:none;margin:0;padding:0">${tasks.map(row).join('')}</ol>` : '<p class="muted">Nothing queued yet.</p>')}
+    </fieldset>`;
+    const form = document.getElementById('staff-task-form');
+    if (form) form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const fd = new FormData(form);
+        try { await chatApi('/tasks', { method: 'POST', body: JSON.stringify({ title: fd.get('title'), kind: fd.get('kind') }) }); toast('Added to the staff room queue'); loadStaffRoom(); } catch (e) { toast(e.message, 'error'); }
+    });
+    clearTimeout(staffRoomTimer);
+    staffRoomTimer = setTimeout(() => { if (document.getElementById('sec-ai') && document.getElementById('sec-ai').classList.contains('active') && !document.hidden) loadStaffRoom(); }, 15000);
+}
+
 async function loadAi() {
+    loadStaffRoom();
     const c = document.getElementById('ai-content');
     c.innerHTML = '<div class="loading">Loading...</div>';
     try {
