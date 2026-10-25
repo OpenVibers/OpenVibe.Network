@@ -16,7 +16,7 @@ const BUDGETS = {
     htmlBrotliKB: 30,     // 28.5 with the FAQ, numbers and groups (2026-10-22); 26.1 with Play; 25.1 (31 sites, contracts 0.135.0); 24.1 (shared 2.21.0, the same glyphs); 20.5 (contracts 0.116.0)
     jsFiles: 8,           // 7 with boost.js, was 6 (2026-10-13, plan T11 step 3: one more script on every boosted page; it loads route-transition.js on the first move only)
     jsRawKB: 274,         // 269.3 with shared 4.11.0's seasonal navbar (Pumpkin Night and the season badge, +2.6); 249.8 with boost.js (13.1); 228.3
-    jsBrotliKB: 66,       // 64.5 with shared 4.11.0's navbar; 60.3 with boost.js (3.8); 53.9
+    jsBrotliKB: 70,       // 68.0 with shared 4.12.0 (light/dark switch, seasonal mark, theme pairs); 64.5 with shared 4.11.0's navbar; 60.3 with boost.js (3.8); 53.9
     cssFiles: 2,          // 1 (Font Awesome, cross-origin)
     externalFiles: 3,     // 1 locally; production adds Cloudflare's beacon
 };
