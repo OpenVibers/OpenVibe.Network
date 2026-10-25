@@ -63,13 +63,14 @@ const INSTANCES = [
         if (u.pathname === '/api/v1/kinds') return json(200, { kinds: KINDS });
         if (u.pathname === `/api/v1/people/${A}/equipped`) return json(200, { subject: A, slots: { 'live.hat:hat': { instance_id: INSTANCES[0].id, definition_id: INSTANCES[0].definition_id }, 'live.name_effect:name_effect': { instance_id: INSTANCES[1].id, definition_id: INSTANCES[1].definition_id, token: 'name-fx-rainbow' }, 'network.badge:badge': { instance_id: INSTANCES[3].id, definition_id: INSTANCES[3].definition_id, media_id: 'med_01JZ00000000000000000000B1' } } });
         if (u.pathname === `/api/v1/people/${A}/items`) return json(200, { subject: A, instances: INSTANCES, definitions: DEFS, next_cursor: null });
+        if (u.pathname === `/api/v1/people/${A}/achievements`) return json(200, { subject: A, total: 3, titles: [{ title: 'salvage-rush', name: 'Salvage <Rush>', achievements: [{ id: 'big-haul', name: 'Big Haul', description: 'Bring back 50 parts', unlocked_at: '2026-10-20T10:00:00Z' }, { id: 'first-haul', name: 'First Haul', description: '', unlocked_at: '2026-10-19T10:00:00Z' }] }, { title: 'vibe-heroes', name: 'Vibe Heroes', achievements: [{ id: 'hello', name: 'Hello', unlocked_at: '2026-10-01T10:00:00Z' }] }] });
         if (u.pathname === `/api/v1/profiles/${A}/badges`) return json(200, { subject: A, badges: [{ id: 'first-follow', name: 'First Follow', awarded_at: '2026-10-02T10:00:00Z' }, { id: 'thread-starter', name: 'Thread <Starter>', awarded_at: '2026-10-05T10:00:00Z' }] });
         return json(404, { code: 'inventory.unknown_subject' });
     });
     await new Promise((r) => inv.listen(0, '127.0.0.1', r));
     let clock = Date.now();
     const selfToken = (aud, caps) => `tok:${aud}:${caps.join(',')}`;
-    const profiles = createPublicProfiles({ db, selfToken, inventoryUrl: `http://127.0.0.1:${inv.address().port}`, questUrl: `http://127.0.0.1:${inv.address().port}`, now: () => clock, log: { warn() {} } });
+    const profiles = createPublicProfiles({ db, selfToken, inventoryUrl: `http://127.0.0.1:${inv.address().port}`, questUrl: `http://127.0.0.1:${inv.address().port}`, playUrl: `http://127.0.0.1:${inv.address().port}`, now: () => clock, log: { warn() {} } });
 
     const app = express();
     app.get('/@:username', profiles.pageHandler);
@@ -96,7 +97,12 @@ const INSTANCES = [
         assert.ok(r.text.includes('--pf-color:#ff0066'));
         assert.ok(r.text.includes('https://inventory.openvibe.network/items/itd_01JZ00000000000000000001R1'), 'items link to their Inventory page');
         assert.ok(!/name="robots" content="noindex"/.test(r.text));
-        assert.ok(calls.filter((c) => !c.path.includes('/badges')).every((c) => c.auth === 'Bearer tok:openvibe.inventory:inventory.item.read'), 'Network\'s own token for Inventory');
+        assert.ok(calls.filter((c) => !c.path.includes('/badges') && !c.path.endsWith('/achievements')).every((c) => c.auth === 'Bearer tok:openvibe.inventory:inventory.item.read'), 'Network\'s own token for Inventory');
+        assert.strictEqual(calls.find((c) => c.path.endsWith('/achievements')).auth, '', 'Play\'s read is public: no token');
+        assert.ok(r.text.includes('id="pf-games"') && r.text.includes('Salvage &lt;Rush&gt;') && !r.text.includes('Salvage <Rush>'), 'games, escaped');
+        assert.ok(/pf-game-n">2 achievements<[\s\S]*Big Haul[\s\S]*First Haul[\s\S]*Vibe Heroes[\s\S]*1 achievement</.test(r.text), 'each game with its achievements, newest first');
+        assert.ok(r.text.includes('href="https://play.openvibe.network/t/salvage-rush"'), 'a game links to its page on Play');
+        assert.ok(/<span class="pf-stat-k">Achievements<\/span><span class="pf-stat-v">3<\/span>/.test(r.text));
         assert.strictEqual(calls.find((c) => c.path.endsWith('/badges')).auth, 'Bearer tok:openvibe.quest:quest.badge.read', 'and for Quest');
         assert.ok(r.text.includes('id="pf-badges"') && /Thread &lt;Starter&gt;[\s\S]*First Follow/.test(r.text), 'badges, newest first, escaped');
         // The worn badge's image rule (.85em square) once shared the chips' class and squeezed every chip into it.
@@ -120,6 +126,7 @@ const INSTANCES = [
         assert.strictEqual(p.inventory_url, `https://inventory.openvibe.network/u/${A}`);
         assert.deepStrictEqual(p.items.by_kind.map((k) => k.kind).sort(), ['live.hat', 'live.name_effect', 'live.particle', 'network.badge']);
         assert.deepStrictEqual(p.badges.map((b) => b.id), ['thread-starter', 'first-follow']);
+        assert.deepStrictEqual([p.achievements.total, p.achievements.games.map((g) => [g.title, g.count])], [3, [['salvage-rush', 2], ['vibe-heroes', 1]]], 'achievements in the JSON every site reads');
 
         // A hidden profile: name and picture, nothing else, not indexed.
         r = await get('/@hidden');
@@ -150,6 +157,7 @@ const INSTANCES = [
         r = await get('/api/v1/profiles/Ana');
         assert.strictEqual(JSON.parse(r.text).profile.items.unavailable, true);
         assert.strictEqual(JSON.parse(r.text).profile.badges_unavailable, true, 'Quest down too: said, not hidden');
+        assert.strictEqual(JSON.parse(r.text).profile.achievements.unavailable, true, 'and Play');
         console.log('public profiles: all checks passed');
     } finally {
         srv.close();
