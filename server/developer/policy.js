@@ -49,10 +49,10 @@ function grantableCatalog() {
  * Audiences that accept sandbox app tokens when DEV_SANDBOX_AUDIENCES is unset. Each of these keeps
  * sandbox traffic apart from real data: Media in a sandbox tenant, Events with env-marked events,
  * Tools with sandbox jobs, Codes with sandbox releases (an app managing its own, WS-N task 5), AI with
- * sandbox runs on free and local capacity only (ai.app.run, plan T6). openvibe.network is deliberately
- * not one of them.
+ * sandbox runs on free and local capacity only (ai.app.run, plan T6), Play with sandbox- titles of guests only,
+ * never listed or counted (OpenVibe.Play's store). openvibe.network is deliberately not one of them.
  */
-const DEFAULT_SANDBOX_AUDIENCES = Object.freeze(['openvibe.media', 'openvibe.events', 'openvibe.tools', 'openvibe.services', 'openvibe.ai', 'openvibe.quest']);
+const DEFAULT_SANDBOX_AUDIENCES = Object.freeze(['openvibe.media', 'openvibe.events', 'openvibe.tools', 'openvibe.services', 'openvibe.ai', 'openvibe.quest', 'openvibe.play']);
 
 /**
  * Capabilities every project's SANDBOX apps may hold without a staff decision when
@@ -70,6 +70,8 @@ const DEFAULT_SANDBOX_ALLOWANCE = Object.freeze([
     'ai.app.run',
     // App quests (contracts 0.193.0): a sandbox app may define its quests; Quest counts production events only.
     'quest.app_quest.manage',
+    // Game services: any developer tries Play on sandbox- titles of its own (guests only, unlisted, at most 3).
+    'play.title.manage', 'play.result.write', 'play.player.read',
 ]);
 
 /** Public + grantable only (the rule for every allowance that is not set by staff by hand). */
