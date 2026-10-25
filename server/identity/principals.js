@@ -412,6 +412,10 @@ const DEFAULT_GRANTS = [
     // first, then pushes as app 'search'.
     ['search', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['search', 'network.notifications.push', SELF_AUDIENCE, ['search']],
+    // Support inboxes (Chat's server/inbox/, 2026-10-24): a visitor who asks for a person, or writes while waiting,
+    // notifies the inbox's people through Network as service 'chat' (the push route checks that by the token's own
+    // name; no namespace, so Chat's module namespaces stay the chat.* ones). Chat already resolves subjects.
+    ['chat', 'network.notifications.push', SELF_AUDIENCE, []],
     ['live', 'events.subscription.manage', 'openvibe.events', []],
     ['live', 'events.event.read', 'openvibe.events', []],
     // VIP gates in products: Chat's subscriber badge, Community's and Blog's members-only content, Live's own checks.
