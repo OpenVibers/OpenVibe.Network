@@ -121,6 +121,9 @@ const DEFAULT_GRANTS = [
     // task it started for its answer (a delegated caller sees only the tasks it started).
     ['chat', 'actor.task.create', 'openvibe.actor', []],
     ['chat', 'actor.task.read', 'openvibe.actor', []],
+    // Vibe sets up recurring work for the person it is talking with, in their own chat and after they agreed (Chat's
+    // set_up_agent and my_agents tools): one of their OpenVibe Agents, made and listed as them (X-OV-Subject).
+    ['chat', 'actor.agent.manage', 'openvibe.actor', []],
     ['games', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Games subscribes to network.user.token_valid_after (sign-out everywhere closes game sessions).
     ['games', 'events.subscription.manage', 'openvibe.events', []],
