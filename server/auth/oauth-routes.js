@@ -121,6 +121,8 @@ router.get('/authorize', async (req, res) => {
     });
     if (pkce.challenge) { loginParams.set('code_challenge', pkce.challenge); loginParams.set('code_challenge_method', pkce.method); }
     if (nonce) loginParams.set('nonce', nonce);
+    // The site asked for the chooser ("use another account"): the page shows it even with one account saved.
+    if (['select_account', 'login'].includes(String(req.query.prompt || ''))) loginParams.set('prompt', String(req.query.prompt));
     res.redirect(`${getConfig(req).loginUrl}/login?${loginParams.toString()}`);
 });
 
