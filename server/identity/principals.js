@@ -172,6 +172,11 @@ const DEFAULT_GRANTS = [
     ['wiki', 'community.comment.moderate', 'openvibe.community', []],
     ['wiki', 'sources.item.read', 'openvibe.sources', []],
     ['wiki', 'media.object.read', 'openvibe.media', ['wiki']],
+    // "Vibe a wiki" (OpenVibe.Wiki server/wiki/vibe.js): research and writing through OpenVibe.AI, and the pictures a
+    // generated page uses, stored in Media for the person who asked.
+    ['wiki', 'ai.run.create', 'openvibe.ai', ['wiki.*', 'research.*']],
+    ['wiki', 'ai.run.read', 'openvibe.ai', ['wiki.*', 'research.*']],
+    ['wiki', 'media.object.upload', 'openvibe.media', ['wiki']],
     // Wave 16: Blog (same shape as Wiki; it may hide the thread of a post that stopped being public).
     ['blog', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // The network changelog reads the GitHub token the owner configures (server/integrations/github.js).
