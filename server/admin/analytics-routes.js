@@ -71,6 +71,54 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config, 
     }
 
     // ═══════════════════════════════════════════════════════════
+    // Insights — sign-ups (this database) and how every service is used and fails (Prometheus on the host, which
+    // scrapes each service's /metrics: requests by route template and status class, latency histograms)
+    // ═══════════════════════════════════════════════════════════
+    // Routes that are plumbing, not something a person uses: left out of "most used".
+    const PLUMBING = /^(\/metrics|\/api\/(ready|health)|static|\/release\.json|\/robots\.txt|\/favicon\.ico|\/internal\/|\/api\/frame\/hit|\/oauth\/token|\/\.well-known\/)/;
+    router.get('/insights', async (req, res) => {
+        const prom = String(config.prometheusUrl || process.env.PROMETHEUS_URL || 'http://127.0.0.1:9090').replace(/\/+$/, '');
+        const query = async (q) => {
+            const r = await fetch(`${prom}/api/v1/query?query=${encodeURIComponent(q)}`, { signal: AbortSignal.timeout(6000) });
+            const j = await r.json().catch(() => null);
+            if (!r.ok || !j || j.status !== 'success') throw new Error(`Prometheus answered ${r.status}`);
+            return j.data.result.map((x) => ({ ...x.metric, value: Number(x.value[1]) }));
+        };
+        const out = { generated_at: new Date().toISOString(), window: '24h' };
+        try {
+            const db = analytics.db;
+            const n = async (sql, ...a) => Number(((await db.prepare(sql).get(...a)) || {}).n) || 0;
+            out.users = {
+                total: await n('SELECT COUNT(*)::bigint AS n FROM users'),
+                new_1d: await n("SELECT COUNT(*)::bigint AS n FROM users WHERE created_at >= to_char(now() AT TIME ZONE 'UTC' - interval '1 day', 'YYYY-MM-DD HH24:MI:SS')"),
+                new_7d: await n("SELECT COUNT(*)::bigint AS n FROM users WHERE created_at >= to_char(now() AT TIME ZONE 'UTC' - interval '7 days', 'YYYY-MM-DD HH24:MI:SS')"),
+                new_30d: await n("SELECT COUNT(*)::bigint AS n FROM users WHERE created_at >= to_char(now() AT TIME ZONE 'UTC' - interval '30 days', 'YYYY-MM-DD HH24:MI:SS')"),
+                daily: (await db.prepare("SELECT substr(created_at, 1, 10) AS day, COUNT(*)::bigint AS n FROM users WHERE created_at >= to_char(now() AT TIME ZONE 'UTC' - interval '14 days', 'YYYY-MM-DD') GROUP BY 1 ORDER BY 1").all()).map((r) => ({ day: r.day, n: Number(r.n) })),
+            };
+        } catch (err) { out.users = { error: err.message }; }
+        try {
+            const [reqs, c4, c5, p95, routes, errs] = await Promise.all([
+                query('sum by (job) (increase(http_requests_total[24h]))'),
+                query('sum by (job) (increase(http_requests_total{status_class="4xx"}[24h]))'),
+                query('sum by (job) (increase(http_requests_total{status_class="5xx"}[24h]))'),
+                query('histogram_quantile(0.95, sum by (job, le) (rate(http_request_duration_seconds_bucket[24h])))'),
+                query('topk(80, sum by (job, route) (increase(http_requests_total{status_class=~"2xx|3xx"}[24h])))'),
+                query('topk(20, sum by (job, route) (increase(http_requests_total{status_class="5xx"}[24h])) > 0)'),
+            ]);
+            const by = (list) => new Map(list.map((x) => [x.job, x.value]));
+            const m4 = by(c4), m5 = by(c5), mp = by(p95);
+            out.services = reqs.filter((x) => x.value >= 1).map((x) => ({
+                service: x.job, requests: Math.round(x.value), client_errors: Math.round(m4.get(x.job) || 0), server_errors: Math.round(m5.get(x.job) || 0),
+                p95_ms: Number.isFinite(mp.get(x.job)) ? Math.round(mp.get(x.job) * 1000) : null,
+            })).sort((a, b) => b.requests - a.requests);
+            out.top_routes = routes.filter((x) => x.route && !PLUMBING.test(x.route)).sort((a, b) => b.value - a.value).slice(0, 25).map((x) => ({ service: x.job, route: x.route, requests: Math.round(x.value) }));
+            out.error_routes = errs.filter((x) => x.value >= 1).sort((a, b) => b.value - a.value).map((x) => ({ service: x.job, route: x.route, errors: Math.round(x.value) }));
+            out.totals = { requests: out.services.reduce((a, s) => a + s.requests, 0), server_errors: out.services.reduce((a, s) => a + s.server_errors, 0) };
+        } catch (err) { out.metrics_error = `Metrics are unavailable: ${err.message}`; }
+        res.set('Cache-Control', 'private, no-store').json({ ok: true, insights: out });
+    });
+
+    // ═══════════════════════════════════════════════════════════
     // Overview — Cross-Service Summary
     // ═══════════════════════════════════════════════════════════
 

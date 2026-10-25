@@ -96,7 +96,61 @@ function createChart(canvasId, config) {
 
 function fmtNum(n) { return (n || 0).toLocaleString(); }
 
+// ── Insights: sign-ups, how each service is used and where it fails (last 24 h), and a way to ask Vibe what to fix ──
+const INSIGHTS_CHAT = 'https://openvibe.chat';
+let lastInsights = null;
+async function loadInsights() {
+    const el = document.getElementById('analytics-insights'); if (!el) return;
+    el.innerHTML = '<div class="loading">Loading insights...</div>';
+    let ins;
+    try { ins = (await api('/api/admin/analytics/insights')).insights; } catch (e) { el.innerHTML = `<p class="muted">Insights could not be loaded: ${esc(e.message)}</p>`; return; }
+    lastInsights = ins;
+    const u = ins.users || {};
+    const tot = ins.totals || { requests: 0, server_errors: 0 };
+    const rate = tot.requests ? (tot.server_errors / tot.requests * 100) : 0;
+    const max = Math.max(1, ...(u.daily || []).map((d) => d.n));
+    const tile = (label, value, sub = '') => `<div class="stat-card"><div class="stat-value">${value}</div><div class="stat-label">${esc(label)}</div>${sub ? `<div class="muted" style="font-size:12px">${sub}</div>` : ''}</div>`;
+    const svcRows = (ins.services || []).slice(0, 20).map((s) => {
+        const pct = s.requests ? (s.server_errors / s.requests * 100) : 0;
+        return `<tr><td>${esc(s.service)}</td><td style="text-align:right">${fmtNum(s.requests)}</td><td style="text-align:right">${fmtNum(s.client_errors)}</td><td style="text-align:right;${pct >= 1 ? 'color:var(--danger-text, var(--danger))' : ''}">${fmtNum(s.server_errors)}${s.server_errors ? ` <small class="muted">(${pct.toFixed(2)}%)</small>` : ''}</td><td style="text-align:right;${(s.p95_ms || 0) > 1500 ? 'color:var(--warning-text, var(--warning))' : ''}">${s.p95_ms != null ? fmtNum(s.p95_ms) + ' ms' : '—'}</td></tr>`;
+    }).join('');
+    el.innerHTML = `<div class="card" style="margin-bottom:16px">
+        <h3 style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between"><span><i class="fa-solid fa-lightbulb"></i> Insights <small class="muted">last 24 hours · ${esc(new Date(ins.generated_at).toLocaleTimeString())}</small></span>
+            <button class="btn btn-primary" id="insights-ask" type="button"><i class="fa-solid fa-wand-magic-sparkles"></i> Ask Vibe what to fix</button></h3>
+        <div class="stats-grid">${tile('New sign-ups today', fmtNum(u.new_1d))}${tile('New this week', fmtNum(u.new_7d), `${fmtNum(u.new_30d)} in 30 days · ${fmtNum(u.total)} accounts`)}${tile('Requests', fmtNum(tot.requests), `${(ins.services || []).length} services`)}${tile('Server errors', fmtNum(tot.server_errors), `${rate.toFixed(3)}% of requests`)}</div>
+        ${(u.daily || []).length ? `<div style="margin:10px 0 4px" class="muted">Sign-ups per day (14 days)</div><div style="display:flex;align-items:flex-end;gap:4px;height:70px" role="img" aria-label="Sign-ups per day">${u.daily.map((d) => `<div title="${esc(d.day)}: ${d.n}" style="flex:1;background:var(--accent);opacity:.85;border-radius:3px 3px 0 0;height:${Math.max(4, Math.round(d.n / max * 100))}%"></div>`).join('')}</div>` : ''}
+        ${ins.metrics_error ? `<p class="muted">${esc(ins.metrics_error)}</p>` : `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;margin-top:12px">
+            <div><h4 style="margin:4px 0">Services</h4><table class="data-table" style="width:100%;font-size:13px"><tr><th style="text-align:left">Service</th><th style="text-align:right">Requests</th><th style="text-align:right">4xx</th><th style="text-align:right">5xx</th><th style="text-align:right">p95</th></tr>${svcRows}</table></div>
+            <div><h4 style="margin:4px 0">Most used</h4><table class="data-table" style="width:100%;font-size:13px"><tr><th style="text-align:left">Where</th><th style="text-align:right">Requests</th></tr>${(ins.top_routes || []).map((r) => `<tr><td><code>${esc(r.service)}</code> ${esc(r.route)}</td><td style="text-align:right">${fmtNum(r.requests)}</td></tr>`).join('')}</table>
+            <h4 style="margin:12px 0 4px">Where errors happen</h4>${(ins.error_routes || []).length ? `<table class="data-table" style="width:100%;font-size:13px"><tr><th style="text-align:left">Where</th><th style="text-align:right">5xx</th></tr>${ins.error_routes.map((r) => `<tr><td><code>${esc(r.service)}</code> ${esc(r.route)}</td><td style="text-align:right">${fmtNum(r.errors)}</td></tr>`).join('')}</table>` : '<p class="muted">No server errors in the last 24 hours.</p>'}</div>
+        </div>`}
+    </div>`;
+    const ask = document.getElementById('insights-ask');
+    if (ask) ask.addEventListener('click', askVibeToImprove);
+}
+/** The day's numbers go to the staff room's queue as a task for Vibe (OpenVibe.Actor, as the admin who asked). */
+async function askVibeToImprove() {
+    const ins = lastInsights; if (!ins) return;
+    const lines = [
+        `Platform numbers for the last 24 hours (${ins.generated_at}):`,
+        `Sign-ups: ${ins.users && ins.users.new_1d} today, ${ins.users && ins.users.new_7d} this week, ${ins.users && ins.users.total} accounts.`,
+        `Requests ${ins.totals ? ins.totals.requests : '?'}, server errors ${ins.totals ? ins.totals.server_errors : '?'}.`,
+        'Services (requests / 4xx / 5xx / p95 ms):', ...(ins.services || []).slice(0, 15).map((s) => `- ${s.service}: ${s.requests} / ${s.client_errors} / ${s.server_errors} / ${s.p95_ms == null ? '?' : s.p95_ms}`),
+        'Most used:', ...(ins.top_routes || []).slice(0, 12).map((r) => `- ${r.service} ${r.route}: ${r.requests}`),
+        'Server errors by place:', ...((ins.error_routes || []).length ? ins.error_routes.slice(0, 12).map((r) => `- ${r.service} ${r.route}: ${r.errors}`) : ['- none']),
+    ];
+    try {
+        const res = await fetch(INSIGHTS_CHAT + '/api/chat/rooms/staff/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+            body: JSON.stringify({ kind: 'answer', title: 'From today\'s numbers: the three fixes or improvements worth doing first, and why', details: lines.join('\n').slice(0, 5800) }) });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || ('OpenVibe.Chat answered ' + res.status));
+        toast('Asked Vibe in the staff room: the answer comes back there in a minute or two');
+    } catch (e) { toast(e.message, 'error'); }
+}
+
 async function loadAnalyticsOverview() {
+    loadInsights();
     const period = getAnalyticsPeriod();
     const statsEl = document.getElementById('analytics-stats');
     statsEl.innerHTML = '<div class="loading">Loading analytics...</div>';
