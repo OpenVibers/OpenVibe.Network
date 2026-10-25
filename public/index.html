@@ -205,7 +205,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
                 <form class="intent-bar" action="https://openvibe.tools/search" method="get" role="search">
                     <label for="intent-q" class="sr-only">What do you want to do?</label>
                     <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-                    <input id="intent-q" name="q" type="search" placeholder="What do you want to do?" title="Try “go live”, “merge pdf” or “chat”" autocomplete="off" enterkeyhint="go">
+                    <input id="intent-q" name="q" type="search" placeholder="What do you want to do?" title="Try “go live”, “merge pdf”, or ask anything" autocomplete="off" enterkeyhint="go">
                     <button type="submit">Start</button>
                 </form>
                 <!--OV:INTENTS-->
@@ -274,26 +274,41 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 })();
 </script>
 <script>
-// The hero's search: typing lights the intents it names; Enter opens the one it names clearly, and anything else is a
-// tool search on openvibe.tools (the form's own action, so it works without this script too).
+// The hero's search: typing lights the intents it names; Enter opens the one it names clearly, a tool query searches
+// openvibe.tools, and anything else (a question, a task in plain words) opens Vibe with the text filled in, never sent
+// (plan track K, the owner 10-24). Without this script the form's own action is the tool search.
 (function () {
     var form = document.querySelector('.intent-bar'), q = document.getElementById('intent-q');
     if (!form || !q) return;
     var items = [].slice.call(document.querySelectorAll('.intent'));
-    function words(v) { return v.toLowerCase().split(/[^a-z0-9]+/).filter(function (w) { return w.length > 1; }); }
+    // Filler words never pick an app ("find me a flat" is about the flat, not about "me").
+    var FILLER = ' a an and are can could do does for from have how i in is it me my of on or our please should so the their to want what when where which who why will with would you your ';
+    function words(v) { return v.toLowerCase().split(/[^a-z0-9]+/).filter(function (w) { return w.length > 1 && FILLER.indexOf(' ' + w + ' ') < 0; }); }
     function score(el, ws) {
         var keys = (el.getAttribute('data-k') || '').split(' '), s = 0;
         ws.forEach(function (w) { if (keys.indexOf(w) >= 0) s += 2; else if (w.length > 2 && keys.some(function (k) { return k.indexOf(w) === 0; })) s += 1; });
         return s;
     }
-    function best(ws) { var top = null, ts = 0; items.forEach(function (el) { var s = score(el, ws); if (s > ts) { ts = s; top = el; } }); return { el: top, s: ts }; }
+    // The intent the words name most; two naming it equally is a tie (nobody wins, and the sentence goes to Vibe).
+    function best(ws) { var top = null, ts = 0, tie = false; items.forEach(function (el) { var s = score(el, ws); if (s > ts) { ts = s; top = el; tie = false; } else if (s && s === ts) tie = true; }); return { el: top, s: ts, tie: tie }; }
     q.addEventListener('input', function () {
         var ws = words(q.value), b = best(ws);
         items.forEach(function (el) { var s = ws.length ? score(el, ws) : 1; el.classList.toggle('dim', ws.length > 0 && s === 0 && !!b.el); el.classList.toggle('match', !!b.el && el === b.el && b.s > 0); });
     });
+    var VIBE = 'https://openvibe.chat/vibe';
     form.addEventListener('submit', function (e) {
-        var b = best(words(q.value));
-        if (b.el && b.s >= 2 && b.el.getAttribute('data-id') !== 'tools') { e.preventDefault(); location.href = b.el.href; }
+        var text = q.value.trim(), ws = words(text), b = best(ws), id = b.el && b.el.getAttribute('data-id');
+        if (!text) return;
+        var site = b.el && !b.tie && id !== 'tools' && id !== 'vibe';
+        var go = function (href) { e.preventDefault(); location.href = href; };
+        var vibe = function () { go(VIBE + '?ask=' + encodeURIComponent(text.slice(0, 2000)) + '&from=' + encodeURIComponent('https://openvibe.network/')); };
+        // An app named clearly wins, even in a question ("how do I go live?"); then a question or a request in a
+        // sentence goes to Vibe; then an app named once; a tool query stays a tool search; nothing else: Vibe.
+        if (site && b.s >= 4) return go(b.el.href);
+        if (id === 'vibe' || /\?\s*$/.test(text) || ws.length >= 5) return vibe();
+        if (site && b.s >= 2) return go(b.el.href);
+        if (id === 'tools' && b.s > 0) return undefined;
+        return vibe();
     });
 })();
 </script>
