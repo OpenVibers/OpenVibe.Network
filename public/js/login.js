@@ -21,6 +21,7 @@ if (isOAuth) {
             clientHost = info.third_party ? info.redirect_host || '' : '';
             renderChooserSubtitle();
             renderConsent(info);
+            maybeContinue(info);
         })
         .catch(() => {});
 }
@@ -226,6 +227,23 @@ function returnFromRecovery() {
 function showResetForm(token) {
     document.getElementById('reset-token').value = token || '';
     setActivePanel('panel-reset', { showTabs: false, showExtras: false });
+}
+
+// ── Straight through ────────────────────────────────────────
+// A first-party site's sign-in with one account saved in this browser (the one signed in) continues as it: nothing to
+// click, the same as the silent sign-in sites try first. The chooser stays for a third-party app (its consent), for
+// several saved accounts, and when the site asks for it (prompt=select_account or login: "use another account").
+let autoContinued = false;
+function maybeContinue(info) {
+    if (autoContinued || !isOAuth || !info || info.third_party) return;
+    if (['select_account', 'login'].includes(params.get('prompt') || '')) return;
+    const accounts = getSavedAccounts();
+    const activeId = localStorage.getItem('openvibe_active_account');
+    if (accounts.length !== 1 || accounts[0].is_anon || (activeId && String(accounts[0].id) !== String(activeId))) return;
+    autoContinued = true;
+    const subtitle = document.getElementById('chooser-subtitle');
+    if (subtitle) subtitle.textContent = `Continuing to ${info.name} as ${accounts[0].display_name || accounts[0].username}…`;
+    selectAccount(accounts[0]);
 }
 
 // ── Render Account Chooser ──────────────────────────────────
