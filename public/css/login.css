@@ -166,7 +166,7 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
 .oauth-consent .consent-head{margin:0 0 10px;color:var(--text)}
 .oauth-consent .consent-head b{color:var(--accent)}
 .oauth-consent .consent-host{color:var(--text-muted)}
-.oauth-consent ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.oauth-consent ul{list-style:none;margin:0;padding:0;display:grid; grid-template-columns: minmax(0, 1fr);gap:8px}
 .oauth-consent li{padding:8px 10px;border-left:3px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.02)}
 .oauth-consent li.sensitive{border-left-color:#f59e0b}
 .oauth-consent .consent-name{font-weight:600;color:var(--text)}
