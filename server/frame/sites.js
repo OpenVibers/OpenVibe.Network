@@ -31,17 +31,36 @@ const byHost = new Map(SITES.map(s => [s.host, s]));
 
 // The launcher (openvibe-shared navbar) lists every open site under one of these groups, most used first within
 // each. A site missing here lands in the last group, so a new manifest is never left out of the menu.
-// Plan track K (the owner, 2026-10-24: consumer-friendly products, the developer side on Services): what people use
-// first, agents and robots as their own group, and the building blocks last under "For developers".
+// Grouped by what a person came to do (the owner, 2026-10-25: "reorganize this whole menu and make it more clean and
+// clear and organized and easier to understand"): watching first (Live is the flagship), then talking, playing,
+// building with AI, everyday errands, their own account and items, and the building blocks last "For developers"
+// (plan track K). Alerts (watch) is an everyday tool; Download sits with Video and Pics; Inventory with the account,
+// so a person's items are one tap away on every site.
 const GROUPS = [
-    { id: 'talk', name: 'Chat & community', sites: ['chat', 'community', 'wiki', 'news', 'blog'] },
-    { id: 'watch', name: 'Watch & stream', sites: ['live', 'media-hub', 'pics', 'stream', 'tips', 'vip'] },
-    { id: 'agents', name: 'Agents & robots', sites: ['actor', 'bot', 'codes', 'watch'] },
-    { id: 'everyday', name: 'Shop & everyday', sites: ['deals', 'coupons', 'reviews', 'food', 'rent', 'homes', 'work', 'trade', 'host'] },
-    { id: 'create', name: 'Create & play', sites: ['games', 'space', 'tools', 'download', 'quest'] },
-    { id: 'you', name: 'Your OpenVibe', sites: ['network', 'search', 'help', 'inventory'] },
+    { id: 'watch', name: 'Watch & stream', sites: ['live', 'media-hub', 'stream', 'pics', 'download', 'tips', 'vip'] },
+    { id: 'talk', name: 'Chat & community', sites: ['chat', 'community', 'blog', 'news', 'wiki'] },
+    { id: 'play', name: 'Games', sites: ['games', 'quest'] },
+    { id: 'make', name: 'Build with AI', sites: ['codes', 'actor', 'space', 'tools', 'bot'] },
+    { id: 'everyday', name: 'Everyday', sites: ['deals', 'coupons', 'reviews', 'work', 'rent', 'homes', 'food', 'help', 'trade', 'watch', 'search', 'host'] },
+    { id: 'you', name: 'Your account', sites: ['network', 'inventory'] },
     { id: 'build', name: 'For developers', sites: ['services', 'ai', 'run', 'zone', 'events', 'media', 'play'] },
 ];
+// What each site is, in a few words, for the menus (the launcher's rows are two to a line on a phone: about 22
+// characters fit). The manifests' taglines stay the sites' own sentences everywhere else; a site missing here shows
+// its tagline.
+const MENU_LINE = {
+    live: 'Go live, watch streams', 'media-hub': 'Clips and past streams', stream: 'Stream everywhere', pics: 'Share pictures',
+    download: 'Your files', tips: 'Support streamers', vip: 'Back your creators',
+    chat: 'Chat with anyone', community: 'Posts and pastes', blog: 'Write long-form', news: 'Sourced, not spun', wiki: 'Facts with sources',
+    games: 'Play in your browser', quest: 'Earn badges',
+    codes: 'Build apps with AI', actor: 'Agents do it for you', space: 'Host a site or app', tools: 'Every online tool', bot: 'Drive a robot',
+    deals: 'Deals people share', coupons: 'Codes that work', reviews: 'Honest reviews', work: 'Find a job', rent: 'Places to rent',
+    homes: 'Homes for sale', food: 'Food near you', help: 'Help nearby', trade: 'Watch the markets', watch: 'Know when it changes',
+    search: 'Search everything', host: 'Compare hosting',
+    network: 'Your account', inventory: 'Your items',
+    services: 'APIs and SDK', ai: 'AI models API', run: 'Run jobs anywhere', zone: 'S3 storage', events: 'Event streams', media: 'Media API', play: 'Game services',
+};
+
 const groupOf = (id) => (GROUPS.find(g => g.sites.includes(id)) || GROUPS[GROUPS.length - 1]).id;
 
 // Products with a domain of their own that another service serves (its manifest lists the domain): in the menu
@@ -62,4 +81,4 @@ function siteForHost(hostname) {
     return null;
 }
 
-module.exports = { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS };
+module.exports = { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE };
