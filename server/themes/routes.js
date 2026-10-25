@@ -79,12 +79,30 @@ router.get('/', async (req, res) => {
     params.push(Math.min(parseInt(limit, 10) || 100, 500));
 
     const themes = await db.prepare(sql).all(...params);
+    const seasonOf = new Map(seasonList().map((s) => [s.theme, s]));
     for (const t of themes) {
         try { t.variables = JSON.parse(t.variables); } catch { t.variables = {}; }
         try { t.preview_colors = JSON.parse(t.preview_colors); } catch { t.preview_colors = null; }
         try { t.tags = JSON.parse(t.tags); } catch { t.tags = []; }
+        const s = seasonOf.get(t.id) || seasonOf.get(t.slug);
+        if (s) t.season = { id: s.id, name: s.name, from: s.from, to: s.to };
     }
     res.json({ themes });
+});
+
+// ── Seasons: which theme stands in for the default theme when (openvibe-shared builtin-themes SEASONS) ──
+// GET /api/themes/seasons[?date=YYYY-MM-DD] → { seasons: [{ id, name, theme, from, to }], now: { id, name, theme } | null }
+// from/to are MM-DD, both days included, in the visitor's own calendar (the browser decides; `now` here is for the date
+// given, else today in UTC). Anyone on the default theme who has not turned seasonal themes off (display `seasonal`) sees
+// the season's theme, and every OpenVibe mark wears the season (theme-loader.js, ov-mark.js).
+function seasonList() { return (require('openvibe-shared/builtin-themes').SEASONS || []).map((s) => ({ id: s.id, name: s.name, theme: s.theme, from: s.from, to: s.to })); }
+function seasonOn(md, list) { return list.find((s) => (s.from <= s.to ? md >= s.from && md <= s.to : md >= s.from || md <= s.to)) || null; }
+router.get('/seasons', (req, res) => {
+    const list = seasonList();
+    const asked = /^\d{4}-(\d{2})-(\d{2})$/.exec(String(req.query.date || ''));
+    const md = asked ? `${asked[1]}-${asked[2]}` : new Date().toISOString().slice(5, 10);
+    const now = seasonOn(md, list);
+    res.set('Cache-Control', 'public, max-age=3600').json({ seasons: list, now: now ? { id: now.id, name: now.name, theme: now.theme } : null });
 });
 
 // ── Get User's Active Theme ──────────────────────────────────

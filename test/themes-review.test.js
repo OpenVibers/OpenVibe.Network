@@ -109,6 +109,17 @@ const token = async (id) => signToken(await db.prepare('SELECT * FROM users WHER
     r = await call('PUT', '/api/themes/me/display', { as: 2, body: { seasonal: 'maybe' } });
     assert.ok(!('seasonal' in (r.body.display || {})), 'only on or off');
 
+    // ── Seasons: what stands in for the default theme when, for apps and the SDK ──
+    r = await call('GET', '/api/themes/seasons?date=2026-10-25');
+    assert.deepStrictEqual(r.body.seasons.map((x) => [x.id, x.theme, x.from, x.to]), [['halloween', 'halloween', '10-01', '10-31'], ['winter', 'frost', '12-01', '12-31']]);
+    assert.deepStrictEqual(r.body.now, { id: 'halloween', name: 'Halloween', theme: 'halloween' });
+    assert.strictEqual((await call('GET', '/api/themes/seasons?date=2026-11-05')).body.now, null);
+    assert.strictEqual((await call('GET', '/api/themes/seasons?date=2026-12-24')).body.now.id, 'winter');
+    const cat = (await call('GET', '/api/themes')).body.themes;
+    const pumpkin = cat.find((t) => t.id === 'halloween');
+    assert.ok(!pumpkin || (pumpkin.season && pumpkin.season.id === 'halloween'), 'a seasonal theme in the catalog says its season');
+    assert.ok(cat.filter((t) => t.season).every((t) => ['halloween', 'frost'].includes(t.id)), 'and only those');
+
     server.close();
     fs.rmSync(dir, { recursive: true, force: true });
     console.log('themes review: all checks passed');
