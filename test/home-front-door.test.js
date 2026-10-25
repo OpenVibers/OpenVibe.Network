@@ -107,7 +107,7 @@ assert.ok(faqLd.mainEntity.length >= 5, 'the FAQ has its questions');
 faqLd.mainEntity.forEach((q) => assert.ok(html.includes(`<h3>${q.name.replace(/'/g, '&#39;')}</h3>`), `the FAQ shows "${q.name}"`));
 assert.ok(faqLd.mainEntity.some((q) => /separate account/.test(q.name)), "Contracts' network FAQ is included");
 // The service map groups the sites the way the launcher does; numbers say only what was read.
-assert.ok(/<h3 class="home-group">Watch &amp; stream<\/h3>/.test(html) && /<h3 class="home-group">For developers<\/h3>/.test(html) && /<h3 class="home-group">Agents &amp; robots<\/h3>/.test(html), 'the sites are grouped');
+assert.ok(/<h3 class="home-group">Watch &amp; stream<\/h3>/.test(html) && /<h3 class="home-group">For developers<\/h3>/.test(html) && /<h3 class="home-group">Build with AI<\/h3>/.test(html), 'the sites are grouped');
 assert.ok(/<section class="net-num"/.test(html) && /sites, one account/.test(html), 'the numbers panel renders');
 assert.ok(!/services up/.test(html) && !/accounts<\/span>/.test(html), 'numbers nobody read are left out');
 assert.ok(!/Latest recordings|New jobs|Fresh coupon codes/.test(html), 'an empty column is left out');
