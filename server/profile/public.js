@@ -8,7 +8,9 @@
 // Items come from OpenVibe.Inventory's public reads (GET /api/v1/kinds, /people/:subject/items and /equipped) with the
 // Network's own service token (svc:network, audience openvibe.inventory), kept 60 s per person, so a busy profile costs
 // Inventory one read a minute. Inventory down: the profile still answers, with its items marked unavailable.
-// Badges come the same way from OpenVibe.Quest (GET /api/v1/profiles/:subject/badges, audience openvibe.quest).
+// Badges come the same way from OpenVibe.Quest (GET /api/v1/profiles/:subject/badges, audience openvibe.quest), and
+// achievements from OpenVibe.Play's public read (GET /api/v1/people/:subject/achievements): every game's unlocks, so a
+// profile is the person's Steam-style page wherever they play.
 //
 // Who has one: a real account (not anonymous, banned, merged into another or deleted); anyone else is a 404. An old
 // username answers 301 to the current one. A person can hide theirs (users.profile_public = 0, the account hub's Edit
@@ -23,6 +25,8 @@ const esc = seo.esc;
 const SITE = 'https://openvibe.network';
 const INVENTORY_SITE = 'https://inventory.openvibe.network';
 const QUEST_SITE = 'https://openvibe.quest';
+const PLAY_SITE = 'https://play.openvibe.network';
+const RECENT_ACHIEVEMENTS = 6;   // per game on the page; the rest is on the game's page on OpenVibe.Play
 const AUDIENCE = 'openvibe.inventory';
 const ITEMS_TTL_MS = 60_000;
 const KINDS_TTL_MS = 10 * 60_000;
@@ -47,10 +51,11 @@ function monthOf(ts) {
     return m && MONTHS[Number(m[2]) - 1] ? `${MONTHS[Number(m[2]) - 1]} ${m[1]}` : null;
 }
 
-function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http://127.0.0.1:5030', questUrl = 'http://127.0.0.1:4980', fetchImpl = (...a) => fetch(...a), now = () => Date.now(), log = console } = {}) {
+function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http://127.0.0.1:5030', questUrl = 'http://127.0.0.1:4980', playUrl = 'http://127.0.0.1:5040', fetchImpl = (...a) => fetch(...a), now = () => Date.now(), log = console } = {}) {
     const base = String(inventoryUrl).replace(/\/+$/, '');
     const itemsCache = new Map();   // subject → { at, value }
     const badgesCache = new Map();  // subject → { at, value }
+    const achievementsCache = new Map();  // subject → { at, value }
     let kindsHit = null;
     let lastWarn = '';
 
@@ -101,10 +106,39 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
         return value;
     }
 
-    /** What a public profile shows from other services: its items (Inventory) and its badges (Quest), read together. */
+    /** A person's achievements in every game (Play), newest game first: { total, games: [{ title, name, count, recent }] }. */
+    async function achievementsOf(subject) {
+        if (!SUBJECT_RE.test(String(subject || ''))) return { total: 0, games: [] };
+        const hit = achievementsCache.get(subject);
+        if (hit && now() - hit.at < ITEMS_TTL_MS) return hit.value;
+        let value;
+        try {
+            const r = await fetchImpl(`${String(playUrl).replace(/\/+$/, '')}/api/v1/people/${subject}/achievements`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+            if (r.status === 404) value = { total: 0, games: [] };
+            else {
+                if (!r.ok) throw new Error(`answered ${r.status}`);
+                const body = await r.json();
+                const games = (Array.isArray(body.titles) ? body.titles : []).filter((t) => t && typeof t.title === 'string' && Array.isArray(t.achievements)).map((t) => ({
+                    title: t.title.slice(0, 64), name: String(t.name || t.title).slice(0, 80), count: t.achievements.length,
+                    url: `${PLAY_SITE}/t/${encodeURIComponent(t.title.slice(0, 64))}`,
+                    recent: t.achievements.slice(0, RECENT_ACHIEVEMENTS).filter((a) => a && typeof a.name === 'string').map((a) => ({ name: a.name.slice(0, 80), description: String(a.description || '').slice(0, 200), unlocked_at: typeof a.unlocked_at === 'string' ? a.unlocked_at : null })),
+                }));
+                value = { total: games.reduce((n, g) => n + g.count, 0), games };
+            }
+        } catch (err) {
+            const m = `OpenVibe.Play: ${err.message}`;
+            if (m !== lastWarn) { lastWarn = m; log.warn(`[Profiles] ${m}`); }
+            return { total: 0, games: [], unavailable: true };
+        }
+        achievementsCache.set(subject, { at: now(), value });
+        if (achievementsCache.size > 2000) achievementsCache.delete(achievementsCache.keys().next().value);
+        return value;
+    }
+
+    /** What a public profile shows from other services: items (Inventory), badges (Quest), achievements (Play), together. */
     async function wearsOf(subject) {
-        const [inv, quest] = await Promise.all([itemsOf(subject), badgesOf(subject)]);
-        return { ...inv, badges: quest.badges, badgesUnavailable: !!quest.unavailable };
+        const [inv, quest, play] = await Promise.all([itemsOf(subject), badgesOf(subject), achievementsOf(subject)]);
+        return { ...inv, badges: quest.badges, badgesUnavailable: !!quest.unavailable, achievements: play };
     }
 
     /** A person's items and what they wear, or { unavailable: true } while Inventory cannot answer. */
@@ -184,6 +218,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             inventory_url: SUBJECT_RE.test(String(u.subject_id || '')) ? `${INVENTORY_SITE}/u/${u.subject_id}` : null,
             badges: inv.badges,
             ...(inv.badgesUnavailable ? { badges_unavailable: true } : {}),
+            achievements: { total: inv.achievements.total, games: inv.achievements.games, ...(inv.achievements.unavailable ? { unavailable: true } : {}) },
         });
     }
 
@@ -212,7 +247,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
         } catch (err) { next(err); }
     });
 
-    return { pageHandler, api, find, profileOf, itemsOf, badgesOf };
+    return { pageHandler, api, find, profileOf, itemsOf, badgesOf, achievementsOf };
 }
 
 // ── The page ───────────────────────────────────────────────────
@@ -239,6 +274,15 @@ function badgesHtml(inv) {
     if (!inv.badges || !inv.badges.length) return '';
     return `<section class="pf-section" aria-labelledby="pf-badges"><h2 id="pf-badges">Badges <span class="pf-count">${inv.badges.length}</span></h2>
 <ul class="pf-badges">${inv.badges.map((b) => `<li><a class="pf-badge" href="${QUEST_SITE}/" title="${esc(b.awarded_at ? `Earned ${monthOf(b.awarded_at) || ''} on OpenVibe.Quest` : 'Earned on OpenVibe.Quest')}"><span class="pf-badge-ic" aria-hidden="true">🏅</span><span>${esc(b.name)}</span>${b.awarded_at && monthOf(b.awarded_at) ? `<small>${esc(monthOf(b.awarded_at))}</small>` : ''}</a></li>`).join('')}</ul></section>`;
+}
+
+/** Games: each game the person played with its achievements (newest first), Steam-style; links to the game on OpenVibe.Play. */
+function gamesHtml(inv) {
+    const a = inv.achievements;
+    if (!a || !a.games.length) return '';
+    return `<section class="pf-section" aria-labelledby="pf-games"><h2 id="pf-games">Games <span class="pf-count">${a.games.length}</span></h2>
+<ul class="pf-games">${a.games.map((g) => `<li class="pf-game"><a class="pf-game-head" href="${esc(g.url)}"><span class="pf-game-name">${esc(g.name)}</span><span class="pf-game-n">${esc(plural(g.count, 'achievement', 'achievements'))}</span></a>
+<ul class="pf-ach">${g.recent.map((x) => `<li title="${esc(x.description || x.name)}"><span aria-hidden="true">🏆</span> ${esc(x.name)}${x.unlocked_at && monthOf(x.unlocked_at) ? ` <small>${esc(monthOf(x.unlocked_at))}</small>` : ''}</li>`).join('')}</ul></li>`).join('')}</ul></section>`;
 }
 
 function itemsHtml(inv, u) {
@@ -284,6 +328,7 @@ function renderPage(u, inv) {
     const stats = isPublic ? [
         since ? `<li><span class="pf-stat-k">Member since</span><span class="pf-stat-v">${esc(since)}</span></li>` : '',
         inv.badges && inv.badges.length ? `<li><span class="pf-stat-k">Badges</span><span class="pf-stat-v">${inv.badges.length}</span></li>` : '',
+        inv.achievements && inv.achievements.total ? `<li><span class="pf-stat-k">Achievements</span><span class="pf-stat-v">${inv.achievements.total}</span></li>` : '',
         inv.unavailable ? '' : `<li><span class="pf-stat-k">Items</span><span class="pf-stat-v">${inv.more ? `${inv.total}+` : inv.total}</span></li>`,
         inv.items.length ? `<li><span class="pf-stat-k">Rarest</span><span class="pf-stat-v">${esc(RARITY_LABEL[inv.items.reduce((best, i) => (rarityRank(i.rarity) > rarityRank(best) ? i.rarity : best), 'common')])}</span></li>` : '',
     ].join('') : '';
@@ -360,6 +405,12 @@ a{color:var(--accent)}
 .pf-badge:hover,.pf-badge:focus-visible{border-color:var(--r-legendary)}
 .pf-badge small{font-weight:500;color:var(--text-muted);font-size:.75rem}
 .pf-badge-ic{font-size:1.05rem}
+.pf-games{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:12px}
+.pf-game{border:1px solid var(--border);border-radius:14px;background:var(--bg-secondary);padding:12px 14px;min-width:0}
+.pf-game-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;text-decoration:none;color:inherit;margin-bottom:8px}
+.pf-game-name{font-weight:700;overflow-wrap:anywhere}.pf-game-n{font-size:.8rem;color:var(--text-muted);flex:none}
+.pf-ach{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:4px;font-size:.88rem}
+.pf-ach li{overflow-wrap:anywhere}.pf-ach small{color:var(--text-muted);font-size:.75rem}
 .pf-empty{color:var(--text-secondary);padding:18px;border:1px dashed var(--border);border-radius:12px;margin:0}
 .pf-note{color:var(--text-secondary);font-size:.85rem;margin:12px 0 0}
 @media (max-width:560px){.pf-head{padding:0 16px 16px;gap:14px}.pf-avatar{width:92px;height:92px}.pf-hat{font-size:32px;top:-18px}.pf-who{padding-top:0;min-width:100%}.pf-bio,.pf-stats,.pf-private{padding-left:16px;padding-right:16px}.pf-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}.pf-badge small{display:none}.pf-badge{padding:6px 12px 6px 9px}}
@@ -378,7 +429,7 @@ ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links
 ${bio ? `<p class="pf-bio">${esc(bio)}</p>` : ''}
 ${isPublic ? `<ul class="pf-stats">${stats}</ul>` : '<p class="pf-private">This profile is private.</p>'}
 </section>
-${isPublic ? showcaseHtml(inv, name) + badgesHtml(inv) + itemsHtml(inv, u) : ''}
+${isPublic ? showcaseHtml(inv, name) + badgesHtml(inv) + gamesHtml(inv) + itemsHtml(inv, u) : ''}
 </main>
 ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact' })}
 <script src="/shared/navbar.js" defer></script>
