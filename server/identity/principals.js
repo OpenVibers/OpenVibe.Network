@@ -280,6 +280,12 @@ const DEFAULT_GRANTS = [
     // (server/events/outbox.js, server/jobs/metering.js); both relays stayed off without these rows (2026-10-07).
     ['bot', 'events.event.publish', 'openvibe.events', []],
     ['bot', 'billing.usage.record', 'openvibe.billing', []],
+    // Vibe by voice (contracts 0.214.0): a machine whose owner turned voice on sends voice_ask; Bot asks Vibe as that
+    // owner through Chat (POST /internal/chat/vibe/ask), which keeps it in their "Voice on <machine>" chat.
+    ['bot', 'chat.vibe.ask', 'openvibe.chat', []],
+    // Each run is a chat you can open (consumer plan §4): Actor posts each passed run of a person's agent into their own
+    // Vibe chat named after it (POST /internal/chat/vibe/deliver), while the agent's send_to_vibe is on.
+    ['actor', 'chat.vibe.deliver', 'openvibe.chat', []],
     // Plan T18: OpenVibe.Watch relays watch.observation.recorded / watch.watch.triggered / watch.check.failed.
     ['watch', 'events.event.publish', 'openvibe.events', []],
     // Plan T18 step 4: a watch's notification action tells its owner when the condition fires. Watch resolves the owner
