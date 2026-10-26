@@ -859,6 +859,14 @@ app.get(['/register', '/signup', '/sign-up'], (req, res) => {
     q.set('tab', 'register');
     res.redirect(302, `/login?${q}`);
 });
+// The sites the sign-in page may send people back to after a sign-in that is not an app's (?return=, a site menu's
+// "switch account" or "add another account"): every https origin of the CORS allow-list (the service manifests'
+// domains, the admin list, the defaults). Public: the manifests are.
+app.get('/api/auth/return-origins', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ origins: [...buildAllowedOriginsSet()].filter((o) => o.startsWith('https://')).sort() });
+});
+
 app.get(['/login', '/forgot-password', '/reset-password'], (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
 });

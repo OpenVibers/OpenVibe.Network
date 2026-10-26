@@ -229,21 +229,51 @@ function showResetForm(token) {
     setActivePanel('panel-reset', { showTabs: false, showExtras: false });
 }
 
-// ── Straight through ────────────────────────────────────────
-// A first-party site's sign-in with one account saved in this browser (the one signed in) continues as it: nothing to
-// click, the same as the silent sign-in sites try first. The chooser stays for a third-party app (its consent), for
-// several saved accounts, and when the site asks for it (prompt=select_account or login: "use another account").
+// ── Continue as the account just chosen ─────────────────────
+// An app's sign-in shows the chooser, the way Google's does (the owner, 2026-10-26: signing out and back in "immediately
+// logs you in and doesn't allow you to choose"). Seamless sign-in across sites is the sites' silent one (prompt=none,
+// answered by /oauth/authorize without this page). The chooser continues by itself only for an account the person chose
+// a moment ago in this tab (a site menu's switch or "add another account": rememberChoice before going back through the
+// site's sign-in) or one the site names (login_hint, OpenID Connect). Never for a third-party app (its consent), never
+// when the site asks for the chooser (prompt=select_account | login), never as an anonymous account.
+const CONTINUE_KEY = 'ov_continue_as';
+const CONTINUE_MS = 2 * 60 * 1000;
+function rememberChoice(id) {
+    try { sessionStorage.setItem(CONTINUE_KEY, JSON.stringify({ id: String(id), at: Date.now() })); } catch { /* this tab only */ }
+}
+function takeChoice() {
+    try {
+        const raw = sessionStorage.getItem(CONTINUE_KEY);
+        sessionStorage.removeItem(CONTINUE_KEY);
+        const c = raw ? JSON.parse(raw) : null;
+        return c && c.id && Date.now() - Number(c.at) < CONTINUE_MS ? String(c.id) : null;
+    } catch { return null; }
+}
 let autoContinued = false;
 function maybeContinue(info) {
-    if (autoContinued || !isOAuth || !info || info.third_party) return;
+    if (autoContinued || !isOAuth || !info) return;
+    const chosen = takeChoice();
+    if (info.third_party) return;
     if (['select_account', 'login'].includes(params.get('prompt') || '')) return;
-    const accounts = getSavedAccounts();
-    const activeId = localStorage.getItem('openvibe_active_account');
-    if (accounts.length !== 1 || accounts[0].is_anon || (activeId && String(accounts[0].id) !== String(activeId))) return;
+    const hint = String(params.get('login_hint') || '').trim().replace(/^@/, '').toLowerCase();
+    const accounts = getSavedAccounts().filter(a => !a.is_anon);
+    const account = (chosen && accounts.find(a => String(a.id) === chosen))
+        || (hint && accounts.find(a => String(a.username || '').toLowerCase() === hint || String(a.id) === hint));
+    if (!account) return;
     autoContinued = true;
     const subtitle = document.getElementById('chooser-subtitle');
-    if (subtitle) subtitle.textContent = `Continuing to ${info.name} as ${accounts[0].display_name || accounts[0].username}…`;
-    selectAccount(accounts[0]);
+    if (subtitle) subtitle.textContent = `Continuing to ${info.name} as ${account.display_name || account.username}…`;
+    selectAccount(account);
+}
+
+/** The sign-in form with a username filled in (login_hint, or a saved account that needs its password again). */
+function prefillUsername(name) {
+    const v = String(name || '').trim().replace(/^@/, '');
+    const u = document.querySelector('#login-form input[name="username"]');
+    if (!v || !u || u.value) return;
+    u.value = v;
+    const pw = document.querySelector('#login-form input[name="password"]');
+    if (pw) pw.focus();
 }
 
 // ── Render Account Chooser ──────────────────────────────────
@@ -379,9 +409,11 @@ async function selectAccount(account) {
             oauthConfirmInFlight = false;
         }
     } else {
-        // Not OAuth — just switch the active account and go home
-        toast('Welcome back, ' + (account.display_name || account.username) + '! <span class="ov-mark" data-size="16" data-static="1"></span>', 'success');
-        setTimeout(() => window.location.href = viaFanout(getReturnUrl()), 600);
+        // Not an app sign-in: this account is the active one now. Back where the person came from: a site's sign-in
+        // (its account menu) continues as it there (rememberChoice).
+        rememberChoice(account.id);
+        toast('Switched to ' + escapeHtml(account.display_name || account.username), 'success');
+        goBack(300);
     }
 }
 
@@ -452,9 +484,29 @@ function safeReturnUrl(raw) {
 }
 // safe-redirect:end
 
+// The first-party sites this page may send people back to (?return=): the manifests' and the admin list's origins
+// (GET /api/auth/return-origins). The owned zones above stay the floor when that cannot be read.
+let returnOrigins = new Set();
+const returnOriginsReady = fetch(`${API_BASE}/api/auth/return-origins`, { credentials: 'omit' })
+    .then(r => (r.ok ? r.json() : null))
+    .then((d) => { if (d && Array.isArray(d.origins)) returnOrigins = new Set(d.origins.map(String)); })
+    .catch(() => {});
+
 // Get return URL (non-OAuth)
 function getReturnUrl() {
-    return safeReturnUrl(params.get('return'));
+    const raw = params.get('return');
+    const safe = safeReturnUrl(raw);
+    if (safe !== '/' || !raw || /[\\\u0000-\u001f\u007f]/.test(String(raw))) return safe;
+    try {
+        const u = new URL(String(raw));
+        if (u.protocol === 'https:' && !u.username && !u.password && returnOrigins.has(u.origin)) return u.toString();
+    } catch { /* not a URL */ }
+    return '/';
+}
+/** Leave for the return URL once the list of sites is known (at most a short wait). */
+function goBack(delayMs) {
+    const wait = new Promise(r => setTimeout(r, 1500));
+    Promise.race([returnOriginsReady, wait]).then(() => setTimeout(() => { window.location.href = viaFanout(getReturnUrl()); }, delayMs || 0));
 }
 
 // After any successful sign-in the browser runs the sign-in-everywhere chain (/sso/fanout):
@@ -527,8 +579,9 @@ async function handleLogin(e) {
             toast('Welcome back, ' + (data.user.display_name || data.user.username) + '! <span class="ov-mark" data-size="16" data-static="1"></span>');
             setTimeout(() => window.location.href = viaFanout(confirmData.redirect, oauthClientId()), 800);
         } else {
-            toast('Welcome back, ' + (data.user.display_name || data.user.username) + '! <span class="ov-mark" data-size="16" data-static="1"></span>');
-            setTimeout(() => window.location.href = viaFanout(getReturnUrl()), 800);
+            rememberChoice(data.user.id);
+            toast('Welcome back, ' + escapeHtml(data.user.display_name || data.user.username) + '! <span class="ov-mark" data-size="16" data-static="1"></span>');
+            goBack(800);
         }
     } catch (err) {
         showMsg('login-msg', err.message, 'error');
@@ -753,6 +806,30 @@ async function continueAnonymous() {
         return;
     }
 
+    // A site's account menu (the shared navbar): switch to one of this browser's accounts, then back through the site's
+    // sign-in, which continues as it. An account not saved here (or signed out) gets its sign-in, the name filled in.
+    const switchTo = params.get('switch_to');
+    if (switchTo && !isOAuth) {
+        const account = accounts.find(a => String(a.id) === String(switchTo));
+        if (account) {
+            renderChooser();
+            showChooser();
+            const subtitle = document.getElementById('chooser-subtitle');
+            if (subtitle) subtitle.textContent = `Switching to ${account.display_name || account.username}…`;
+            selectAccount(account);
+            return;
+        }
+        showAuthForm('login');
+        prefillUsername(params.get('login_hint'));
+        return;
+    }
+    // "Add another account" (a site's menu) and "use another account" (an app's prompt=login): the sign-in form.
+    if (params.get('add_account') === '1' || params.get('prompt') === 'login') {
+        showAuthForm('login');
+        prefillUsername(params.get('login_hint'));
+        return;
+    }
+
     if (hasAccounts) {
         // Show account chooser
         renderChooser();
@@ -762,5 +839,6 @@ async function continueAnonymous() {
         document.getElementById('panel-chooser').classList.remove('active');
         document.getElementById('auth-tabs').style.display = '';
         document.getElementById('panel-login').classList.add('active');
+        prefillUsername(params.get('login_hint'));
     }
 })();
