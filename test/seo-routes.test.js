@@ -24,7 +24,8 @@ const cache = require('openvibe-shared/cache-policy');
         assert.ok(!robots.body.includes('Disallow:'), 'robots.txt allows all paths and crawlers');
         for (const bot of seo.AI_AND_SEARCH_BOTS) assert.ok(robots.body.includes(`User-agent: ${bot}`), `robots.txt names ${bot}`);
         assert.ok(robots.body.includes('Sitemap: https://openvibe.network/sitemap.xml'), 'robots.txt points at the sitemap');
-        for (const line of robots.body.split('\n')) if (line) assert.ok(/^[A-Za-z-]+: /.test(line), `every robots.txt line is a directive (got "${line}")`);
+        // A directive, or a comment (Shared 4.13's content-signals note says what the site allows in words).
+        for (const line of robots.body.split('\n')) if (line) assert.ok(/^[A-Za-z-]+: /.test(line) || line.startsWith('#'), `every robots.txt line is a directive or a comment (got "${line}")`);
 
         // ── /sitemap.xml ──
         const sitemap = await get('/sitemap.xml');
