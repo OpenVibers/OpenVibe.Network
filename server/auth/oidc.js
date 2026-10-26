@@ -38,6 +38,9 @@ function metadata(config) {
         // 'none' is for public developer apps, which always use PKCE.
         token_endpoint_auth_methods_supported: ['client_secret_post', 'none'],
         code_challenge_methods_supported: ['S256'],
+        // none: an answer without a page (login_required when nobody is signed in); select_account: the chooser even with
+        // one account; login: the sign-in form ("use another account"). login_hint names the account to continue as.
+        prompt_values_supported: ['none', 'login', 'select_account'],
         claims_supported: ['iss', 'sub', 'aud', 'exp', 'iat', 'nonce', 'name', 'preferred_username', 'picture', 'subject_id', 'email', 'email_verified'],
         request_parameter_supported: false,
         request_uri_parameter_supported: false,

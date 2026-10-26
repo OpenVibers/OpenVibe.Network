@@ -47,6 +47,14 @@ async function issueCode(db, { clientId, userId, redirectUri, scope, pkce, nonce
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(code, clientId, userId, redirectUri, scope || 'profile theme', expiresAt, pkce.challenge, pkce.method, nonce || null);
     return code;
 }
+/**
+ * OpenID Connect's login_hint: which account the site expects (a username, @ allowed, or an account id). The chooser
+ * continues as it when this browser has it saved, and fills in the sign-in form otherwise. Anything else is dropped.
+ */
+function cleanLoginHint(raw) {
+    const v = String(raw == null ? '' : raw).trim();
+    return v && v.length <= 64 && /^@?[A-Za-z0-9_.-]+$/.test(v) ? v : '';
+}
 const withCode = (redirectUri, code, state) => `${redirectUri}${redirectUri.includes('?') ? '&' : '?'}code=${code}&state=${encodeURIComponent(state || '')}`;
 function getConfig(req) { return req.app.locals.config; }
 
@@ -75,6 +83,8 @@ router.get('/authorize', async (req, res) => {
         }
         const params = new URLSearchParams({ client_id, client_name: `${found.app.name} (third-party app)`, redirect_uri, response_type, scope: scope || '', state: state || '',
             code_challenge: String(req.query.code_challenge), code_challenge_method: 'S256' });
+        const appHint = cleanLoginHint(req.query.login_hint);   // fills in the sign-in form; a third-party app never continues by itself
+        if (appHint) params.set('login_hint', appHint);
         return res.redirect(`${getConfig(req).loginUrl}/login?${params.toString()}`);
     }
 
@@ -123,6 +133,8 @@ router.get('/authorize', async (req, res) => {
     if (nonce) loginParams.set('nonce', nonce);
     // The site asked for the chooser ("use another account"): the page shows it even with one account saved.
     if (['select_account', 'login'].includes(String(req.query.prompt || ''))) loginParams.set('prompt', String(req.query.prompt));
+    const hint = cleanLoginHint(req.query.login_hint);
+    if (hint) loginParams.set('login_hint', hint);
     res.redirect(`${getConfig(req).loginUrl}/login?${loginParams.toString()}`);
 });
 
@@ -452,4 +464,5 @@ router.get('/userinfo', oidc.userinfo);
 router.post('/userinfo', oidc.userinfo);
 
 module.exports = router;
+module.exports.cleanLoginHint = cleanLoginHint;
 module.exports.siteNameForHost = siteNameForHost;
