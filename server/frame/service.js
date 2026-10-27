@@ -3,6 +3,7 @@
 // OpenVibe Frame data: what the navbar and footer of every site show.
 //
 //   GET /api/frame?host=<hostname>     public, CORS *, max-age=600, ETag
+//   GET /api/frame/pulse               public, CORS *, max-age=30: { live_now, watching, sites, views_7d, updated }
 //   → { updated, nav: [{ id, name, url, icon, tagline, group, of? }], open sites, most used first (of: a product
 //                                                                      on its own domain, served by that site)
 //       groups: [{ id, name }],                                       the launcher's sections, in order
@@ -182,6 +183,34 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=600, stale-while-revalidate=86400', ETag: e.etag, 'Content-Type': 'application/json; charset=utf-8' });
         if (req.headers['if-none-match'] === e.etag) return res.status(304).end();
         res.send(e.body);
+    });
+
+    // GET /api/frame/pulse — the network right now, for the footer's live line (openvibe-shared footer.js; owner,
+    // 2026-10-27: "update and improve the footer so it feels more alive and has some stats"): streams live on
+    // OpenVibe.Live and the people watching them (Live's public list), the open sites, and last week's page views across
+    // them (the ranking's totals). Numbers only; public, CORS *, cached 30 s. A part Live does not answer is null.
+    let pulse = null;
+    let pulseAt = 0;
+    let pulseInflight = null;
+    async function readPulse() {
+        const d = await getJson(`${svcUrl('live', 'http://127.0.0.1:3000')}/api/streams`);
+        const streams = d && Array.isArray(d.streams) ? d.streams : null;
+        const views = Object.entries(rank.scores || {}).filter(([k]) => !k.includes(':')).reduce((a, [, n]) => a + (Number(n) || 0), 0);
+        return {
+            live_now: streams ? streams.length : null,
+            watching: streams ? streams.reduce((a, st) => a + Math.max(0, Number(st.total_viewer_count != null ? st.total_viewer_count : st.viewer_count) || 0), 0) : null,
+            sites: orderedOpen().length,
+            views_7d: views > 0 ? Math.round(views) : null,
+            updated: new Date().toISOString(),
+        };
+    }
+    router.get('/pulse', async (req, res) => {
+        if (!pulse || Date.now() - pulseAt > 30_000) {
+            pulseInflight = pulseInflight || readPulse().then((p) => { pulse = p; pulseAt = Date.now(); }).catch(() => {}).finally(() => { pulseInflight = null; });
+            await pulseInflight;
+        }
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin', 'Cache-Control': 'public, max-age=30, stale-while-revalidate=120', 'Content-Type': 'application/json; charset=utf-8' });
+        res.send(JSON.stringify(pulse || { live_now: null, watching: null, sites: orderedOpen().length, views_7d: null, updated: null }));
     });
 
     // POST /api/frame/hit — one anonymous count for the calling page's host. The host comes from the
