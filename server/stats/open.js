@@ -378,7 +378,7 @@ const CSS = `
 .os-lede{margin:0 0 14px;max-width:760px;color:var(--text-secondary);line-height:1.55}
 .os-tabs{display:inline-flex;gap:4px;padding:4px;border-radius:999px;background:var(--bg-secondary);border:1px solid var(--border)}
 .os-tabs a{padding:7px 14px;border-radius:999px;color:var(--text-secondary);text-decoration:none;font-size:.86rem;font-weight:700}
-.os-tabs a[aria-current]{background:var(--accent);color:#fff}
+.os-tabs a[aria-current]{background:var(--accent-strong,var(--accent));color:var(--on-accent-strong,#fff)}
 .os-data{margin:12px 0 0;font-size:.84rem;color:var(--text-muted)}
 .os-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:22px 0 8px}
 .os-tile{position:relative;display:flex;flex-direction:column;gap:4px;padding:16px 16px 14px;border-radius:16px;background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 10%,transparent),transparent 70%),var(--bg-card);border:1px solid var(--border);min-height:112px}
