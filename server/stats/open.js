@@ -241,7 +241,7 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
         try { data = await collect(days); } catch { data = null; }
         res.set('Cache-Control', 'public, max-age=60').type('html').send(render(data, days, { releaseId: release && release.release }));
     });
-    return { router, collect };
+    return { router, collect, ttlMs: TTL_MS };
 }
 
 // ── Charts: server-drawn SVG (no script, crisp at any size), each with its numbers in a <title> and a text summary ──
@@ -349,7 +349,7 @@ ${d.pageviews_daily ? `<section class="os-sec" aria-labelledby="h-pv"><h2 id="h-
 ${L ? `<section class="os-sec" aria-labelledby="h-live"><h2 id="h-live">${mark('live', 28, 'os-h-icon')}OpenVibe.Live</h2><div class="os-minis">${liveTiles}</div><p class="os-fine"><a href="https://openvibe.live/">openvibe.live</a> has these over time on its home page: tap any number there.</p></section>` : ''}
 ${A ? `<section class="os-sec" aria-labelledby="h-acc"><h2 id="h-acc">New accounts a day</h2>${bars(A.daily, 'New accounts')}</section>` : ''}
 ${C ? `<section class="os-sec" aria-labelledby="h-coins"><h2 id="h-coins">OpenCoins</h2><p class="os-fine">The coin people earn across every OpenVibe site, for watching, chatting and using the tools.</p><div class="os-minis">${[['Earned', fmt(C.earned)], ['Spent', fmt(C.spent)], ['Wallets holding coins', fmt(C.holders)], ['Transactions', fmt(C.transactions)]].map(([l, v]) => `<div class="os-mini"><b>${v}</b><span>${esc(l)}</span></div>`).join('')}</div>${bars(C.daily, 'OpenCoins earned')}</section>` : ''}
-${busy ? `<section class="os-sec" aria-labelledby="h-busy"><h2 id="h-busy">Busiest pages, 24 hours</h2><div class="os-scroll"><table class="os-busy"><thead><tr><th>Page</th><th>Service</th><th>Requests</th></tr></thead><tbody>${busy}</tbody></table></div></section>` : ''}
+${busy ? `<section class="os-sec" aria-labelledby="h-busy"><h2 id="h-busy">Busiest routes, 24 hours</h2><p class="os-fine">Pages and API routes, by their template (never a real address), with plumbing left out.</p><div class="os-scroll"><table class="os-busy"><thead><tr><th>Route</th><th>Service</th><th>Requests</th></tr></thead><tbody>${busy}</tbody></table></div></section>` : ''}
 <section class="os-sec os-how" aria-labelledby="h-how"><h2 id="h-how">How these are counted</h2><p class="os-fine">${esc(d.note || '')} Accounts leave out guests and banned accounts. Nothing here names or follows anyone. Reuse anything: <a href="/api/v1/stats?days=${days}"><code>/api/v1/stats</code></a> answers the same numbers as JSON, open to every site and agent.</p></section>
 </main>
 ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact' })}

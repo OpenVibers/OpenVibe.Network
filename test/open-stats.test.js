@@ -75,6 +75,7 @@ const { createOpenStats, render } = require('../server/stats/open');
         assert.ok(html.includes('aria-current="page">7 days</a>'), 'the window is chosen in the address, without script');
         assert.ok(/class="os-site".*<span class="os-pre">OpenVibe.<\/span>Tools<\/b>/s.test(html) && html.includes('openvibe.tools'), 'a card per site');
         assert.ok(html.includes('"@type":"Dataset"'), 'described as a dataset for search engines');
+        assert.ok(stats.ttlMs === 5 * 60 * 1000, 'held five minutes (server/index.js keeps the 30-day window warm)');
         assert.ok(html.includes('<a href="/api/v1/stats?days=7">JSON</a>'));
         assert.ok(/<svg class="os-spark"/.test(html) && /<figure class="os-chart"><svg [^>]*role="img" aria-label="Page views, /.test(html) && html.includes('<div class="os-axis">'), 'charts drawn on the server, each with its numbers in words');
         const api = await fetch(`${base}/api/v1/stats?days=7`);
