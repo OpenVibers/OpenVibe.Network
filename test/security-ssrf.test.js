@@ -120,6 +120,7 @@ const REVIEWED = {
     'server/discord/discord-service.js discord.js': [1, 'discord.js login: Discord gateway only'],
     'server/domains/catalog.js fetch': [3, 'the tools catalog URL from operator config'],
     'server/frame/service.js fetch': [2, 'Live and AI internal URLs from config (navbar ranking copy)'],
+    'server/stats/open.js fetch': [1, 'open stats (/stats): fixed first-party loopback URLs only — Live (OV_LIVE_INTERNAL_URL, its public home numbers and service-token analytics totals) and Prometheus (PROMETHEUS_URL, loopback by default) with fixed queries; the request only picks 7, 30 or 90 days'],
     'server/admin/service-proxies.js fetch': [1, 'the admin panel proxies: Live\'s and Chat\'s internal URLs from config, fixed path prefixes, staff only'],
     'server/integrations/github.js fetch': [1, 'fixed host api.github.com (asserted below)'],
     'server/notifications/email-service.js http.request': [1, 'fixed host api.resend.com'],
