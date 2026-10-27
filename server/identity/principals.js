@@ -286,6 +286,11 @@ const DEFAULT_GRANTS = [
     // Each run is a chat you can open (consumer plan §4): Actor posts each passed run of a person's agent into their own
     // Vibe chat named after it (POST /internal/chat/vibe/deliver), while the agent's send_to_vibe is on.
     ['actor', 'chat.vibe.deliver', 'openvibe.chat', []],
+    // Desks plan D4, "hand it to me": when an agent needs its person for a step on its desk (a sign-in, a code, a
+    // CAPTCHA), Actor tells them wherever they are, with the link to take the desk over. Actor resolves the task's
+    // owner (a usr_ subject) to Network's user id, then pushes as app 'actor'.
+    ['actor', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['actor', 'network.notifications.push', SELF_AUDIENCE, ['actor']],
     // Plan T18: OpenVibe.Watch relays watch.observation.recorded / watch.watch.triggered / watch.check.failed.
     ['watch', 'events.event.publish', 'openvibe.events', []],
     // Plan T18 step 4: a watch's notification action tells its owner when the condition fires. Watch resolves the owner
