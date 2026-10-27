@@ -139,7 +139,7 @@ function numbers(catalog, a) {
         c.accounts ? [fmtCount(c.accounts), 'accounts', '', '/login?tab=register'] : null,
         [fmtCount(a.liveCount || 0), a.liveCount === 1 ? 'stream live now' : 'streams live now', '', 'https://openvibe.live/'],
     ].filter(Boolean);
-    return `<section class="net-num" aria-labelledby="h-num"><h2 id="h-num">OpenVibe in numbers</h2><ul>${items.map(([n, label, note, href]) => `<li><a href="${esc(href)}"><b>${esc(n)}</b><span>${esc(label)}${note ? ` <small>${esc(note)}</small>` : ''}</span></a></li>`).join('')}</ul></section>`;
+    return `<section class="net-num" aria-labelledby="h-num"><h2 id="h-num">OpenVibe in numbers</h2><ul>${items.map(([n, label, note, href]) => `<li><a href="${esc(href)}"><b>${esc(n)}</b><span>${esc(label)}${note ? ` <small>${esc(note)}</small>` : ''}</span></a></li>`).join('')}</ul><p class="net-num-more"><a href="/stats">Every site's numbers, open to everyone →</a></p></section>`;
 }
 
 // The kit (openvibe-shared/showcase, /shared/showcase.css) owns the sections, cards and icon styles; this is only what
@@ -175,6 +175,7 @@ const CSS = `
 .net-num{margin-top:18px;padding:16px 18px;border-radius:16px;border:1px solid var(--border,rgba(255,255,255,.08));background:color-mix(in srgb,var(--bg-secondary,#101828) 85%,transparent)}
 .net-num h2{font-size:12px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--text-muted,#7d8aa0);margin:0 0 10px}
 .net-num ul{list-style:none;margin:0;padding:0;display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr))}
+.net-num-more{margin:12px 0 0;font-size:13.5px;font-weight:700}.net-num-more a{text-decoration:none}.net-num-more a:hover{text-decoration:underline}
 .net-num a{display:flex;flex-direction:column;gap:1px;padding:10px 12px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.08));background:var(--bg-primary,#0a0f1c);color:inherit;text-decoration:none;height:100%}
 .net-num a:hover,.net-num a:focus-visible{border-color:var(--accent,#3b82f6);outline:0}
 .net-num b{font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1.15;color:var(--text-primary,#e6edf7)}
@@ -307,18 +308,19 @@ function llmsTxt() {
     return seo.llmsTxt({ name: 'OpenVibe Network', summary: llmsSummary(),
         sections: [{ title: 'Sites', links: OPEN.map((site) => ({ title: siteName(site), url: `https://${site.host}/`, note: site.what })) },
             { title: 'Tool families', links: catalog.families.filter(f => f.url).map(f => ({ title: f.name, url: f.path ? 'https://openvibe.tools' + f.path : f.url, note: f.tagline })) },
-            { title: 'Machine-readable', links: [{ title: 'Tool catalog (JSON)', url: 'https://openvibe.tools/api/catalog.json' }, { title: 'Tools llms.txt', url: 'https://openvibe.tools/llms.txt' }, { title: 'Tool domains (JSON)', url: 'https://openvibe.network/api/domains' }] }].filter((section) => section.links.length) });
+            { title: 'Machine-readable', links: [{ title: 'Open stats (JSON): every site\'s numbers', url: 'https://openvibe.network/api/v1/stats' }, { title: 'Tool catalog (JSON)', url: 'https://openvibe.tools/api/catalog.json' }, { title: 'Tools llms.txt', url: 'https://openvibe.tools/llms.txt' }, { title: 'Tool domains (JSON)', url: 'https://openvibe.network/api/domains' }] }].filter((section) => section.links.length) });
 }
 
 // /llms-full.txt: the public pages the sitemap lists (server/seo/routes.js PAGES), each with its text.
 const LLMS_PAGE_TEXT = {
     '/': () => ['One OpenVibe account signs you in on every site:', ...OPEN.map((site) => `- ${siteName(site)} (https://${site.host}/): ${site.what}`)].join('\n'),
     '/updates': () => "Every change deployed to the OpenVibe network, newest first: each site's commits as they ship, and the Patch notes posts that gather them.",
+    '/stats': () => "Open stats: page views, people, streams, OpenCoins and how fast each service answers, for every OpenVibe site, public and reusable as JSON (https://openvibe.network/api/v1/stats) or CSV. Counts only, never about a person.",
     '/terms': () => 'The rules for using OpenVibe.Network, in plain language.',
     '/privacy': () => 'What OpenVibe.Network collects, why, and the choices you have.',
     '/dmca': () => 'How to report copyright infringement on OpenVibe.Network, and how to respond to a report.',
 };
-const LLMS_PAGE_TITLE = { '/': 'OpenVibe.Network', '/updates': 'Updates', '/terms': 'Terms of Service', '/privacy': 'Privacy Policy', '/dmca': 'DMCA' };
+const LLMS_PAGE_TITLE = { '/': 'OpenVibe.Network', '/updates': 'Updates', '/stats': 'Open stats', '/terms': 'Terms of Service', '/privacy': 'Privacy Policy', '/dmca': 'DMCA' };
 const LLMS_FULL_MAX_BYTES = 512 * 1024;
 
 function llmsFullTxt({ baseUrl = 'https://openvibe.network' } = {}) {

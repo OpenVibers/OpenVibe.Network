@@ -543,6 +543,11 @@ app.use('/api/v1/creators', rateLimit({ windowMs: 60_000, max: 300 }), require('
 // Incidents and maintenance (WS-N task 12): public list; staff admins or network.status.incident (ovhost) write.
 app.use('/api/v1/status/incidents', rateLimit({ windowMs: 60_000, max: 120 }), require('./status/incidents').router({ requireAuth, incidentGuard: require('./identity/principals').guard('network.status.incident') }));
 app.use(require('./status/routes').createStatusRoutes({ ecosystem, release }));
+// Open stats (owner, 2026-10-27): every OpenVibe site's numbers, public — /stats, /api/v1/stats, /api/v1/stats/pageviews.csv.
+app.use(require('./stats/open').createOpenStats({
+    db, selfToken, release, statusRows: () => require('./status/routes').rows(ecosystem),
+    prometheusUrl: config.prometheusUrl || process.env.PROMETHEUS_URL, liveUrl: process.env.OV_LIVE_INTERNAL_URL,
+}).router);
 // What shipped network-wide: the changelog proxy every site's widget reads, and /updates.
 app.use(require('./updates/routes').createUpdatesRoutes({ blogUrl: process.env.OV_BLOG_INTERNAL_URL || 'http://127.0.0.1:4810', release }).router);
 
