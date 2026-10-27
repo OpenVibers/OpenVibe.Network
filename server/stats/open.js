@@ -211,12 +211,22 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
             sites,
         };
     }
-    function collect(days) {
+    /** The numbers for a window, held TTL_MS; one computation at a time. `refresh` (the boot warm-up, just before the
+     *  numbers expire) computes them again while readers keep the current ones, and swaps the new ones in when ready. */
+    function collect(days, { refresh = false } = {}) {
         const e = cache.get(days);
-        if (e && now() - e.at < TTL_MS) return e.promise;
-        const promise = compute(days).catch((err) => { cache.delete(days); throw err; });
-        cache.set(days, { at: now(), promise });
-        return promise;
+        const fresh = !!e && now() - e.at < TTL_MS;
+        if (fresh && !refresh) return e.promise;
+        if (fresh && e.next) return e.next;
+        const next = compute(days);
+        if (fresh) {
+            e.next = next;
+            next.then(() => cache.set(days, { at: now(), promise: next }), () => { e.next = null; });
+            return next;
+        }
+        cache.set(days, { at: now(), promise: next });
+        next.catch(() => cache.delete(days));
+        return next;
     }
 
     const router = express.Router();

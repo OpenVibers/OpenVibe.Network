@@ -86,6 +86,21 @@ const { createOpenStats, render } = require('../server/stats/open');
         assert.strictEqual((await (await fetch(`${base}/api/v1/stats?days=12`)).json()).window_days, 30, 'an unknown window is 30 days');
     } finally { server.close(); }
 
+    // One computation at a time, and the warm-up's refresh keeps readers on the current numbers until the new ones are in.
+    {
+        let t = 0, calls = 0;
+        const counting = { prepare: () => ({ all: async () => { calls++; return []; }, get: async () => ({ n: 1 }) }) };
+        const s = createOpenStats({ db: counting, now: () => t, fetchImpl: async () => ({ ok: false }) });
+        await Promise.all([s.collect(7), s.collect(7), s.collect(7)]);
+        const once = calls;
+        t = s.ttlMs - 15000;
+        await s.collect(7, { refresh: true });
+        assert.ok(calls > once, 'the refresh computes again before the numbers expire');
+        const after = calls;
+        t = s.ttlMs + 1000;
+        await s.collect(7);
+        assert.strictEqual(calls, after, 'a reader after the old numbers would have expired gets the refreshed ones, no wait');
+    }
     // Nothing answered yet: the page still renders, saying so.
     assert.ok(render(null, 30).includes('The numbers are being gathered'));
     console.log('open stats: all checks passed');

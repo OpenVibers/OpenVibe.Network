@@ -907,7 +907,7 @@ const server = app.listen(...(socketActivated ? [{ fd: 3 }] : [config.port, conf
     console.log(`╚═══════════════════════════════════════╝\n`);
 
     // Open stats (/stats): the default window computed soon after boot and kept warm, so no reader waits ~2 s for it.
-    timers.push(setTimeout(() => openStats.collect(30).catch(() => {}), 15 * 1000), setInterval(() => openStats.collect(30).catch(() => {}), openStats.ttlMs - 15 * 1000));
+    timers.push(setTimeout(() => openStats.collect(30).catch(() => {}), 15 * 1000), setInterval(() => openStats.collect(30, { refresh: true }).catch(() => {}), openStats.ttlMs - 15 * 1000));
 
     // ── Periodic Maintenance ─────────────────────────────────
     // Clean expired notifications every hour
