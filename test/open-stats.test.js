@@ -75,6 +75,7 @@ const { createOpenStats, render } = require('../server/stats/open');
         assert.ok(html.includes('aria-current="page">7 days</a>'), 'the window is chosen in the address, without script');
         assert.ok(/class="os-site".*<span class="os-pre">OpenVibe.<\/span>Tools<\/b>/s.test(html) && html.includes('openvibe.tools'), 'a card per site');
         assert.ok(html.includes('"@type":"Dataset"'), 'described as a dataset for search engines');
+        assert.ok(stats.ttlMs === 5 * 60 * 1000, 'held five minutes (server/index.js keeps the 30-day window warm)');
         assert.ok(html.includes('<a href="/api/v1/stats?days=7">JSON</a>'));
         assert.ok(/<svg class="os-spark"/.test(html) && /<figure class="os-chart"><svg [^>]*role="img" aria-label="Page views, /.test(html) && html.includes('<div class="os-axis">'), 'charts drawn on the server, each with its numbers in words');
         const api = await fetch(`${base}/api/v1/stats?days=7`);
@@ -85,6 +86,21 @@ const { createOpenStats, render } = require('../server/stats/open');
         assert.strictEqual((await (await fetch(`${base}/api/v1/stats?days=12`)).json()).window_days, 30, 'an unknown window is 30 days');
     } finally { server.close(); }
 
+    // One computation at a time, and the warm-up's refresh keeps readers on the current numbers until the new ones are in.
+    {
+        let t = 0, calls = 0;
+        const counting = { prepare: () => ({ all: async () => { calls++; return []; }, get: async () => ({ n: 1 }) }) };
+        const s = createOpenStats({ db: counting, now: () => t, fetchImpl: async () => ({ ok: false }) });
+        await Promise.all([s.collect(7), s.collect(7), s.collect(7)]);
+        const once = calls;
+        t = s.ttlMs - 15000;
+        await s.collect(7, { refresh: true });
+        assert.ok(calls > once, 'the refresh computes again before the numbers expire');
+        const after = calls;
+        t = s.ttlMs + 1000;
+        await s.collect(7);
+        assert.strictEqual(calls, after, 'a reader after the old numbers would have expired gets the refreshed ones, no wait');
+    }
     // Nothing answered yet: the page still renders, saying so.
     assert.ok(render(null, 30).includes('The numbers are being gathered'));
     console.log('open stats: all checks passed');
