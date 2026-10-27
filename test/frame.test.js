@@ -108,6 +108,29 @@ for (let i = 0; i < 6; i++) await ins.run(1, 'tools', 'dns');
         assert.equal(r.headers.get('access-control-allow-origin'), '*');
         srv.close();
     }
+    // The footer's live line: streams live and people watching (Live's public list), open sites, last week's views.
+    {
+        const liveList = http.createServer((req, res) => {
+            res.setHeader('content-type', 'application/json');
+            res.end(JSON.stringify(req.url === '/api/streams' ? { streams: [{ id: 1, viewer_count: 3, total_viewer_count: 5 }, { id: 2, viewer_count: 2 }] } : {}));
+        });
+        await new Promise(r => liveList.listen(0, '127.0.0.1', r));
+        const pulseSvc = await createFrameService(db, { services: { live: { internalUrl: `http://127.0.0.1:${liveList.address().port}` } } }, null);
+        const express = require('express');
+        const app = express(); app.use('/api/frame', pulseSvc.router);
+        const srv = await new Promise(r => { const s2 = app.listen(0, '127.0.0.1', () => r(s2)); });
+        const r = await fetch(`http://127.0.0.1:${srv.address().port}/api/frame/pulse`);
+        assert.equal(r.status, 200);
+        assert.equal(r.headers.get('access-control-allow-origin'), '*');
+        assert.match(r.headers.get('cache-control'), /max-age=30/);
+        const j = await r.json();
+        assert.deepStrictEqual([j.live_now, j.watching, j.sites], [2, 7, pulseSvc.ranking().order.length]);
+        assert.ok(j.views_7d > 0 && j.updated, 'last week\'s views from the ranking');
+        liveList.close();
+        const down = await (await fetch(`http://127.0.0.1:${srv.address().port}/api/frame/pulse`)).json();
+        assert.equal(down.live_now, 2, 'answered from the last read for 30 s');
+        srv.close();
+    }
     live.close(); ai.close();
     console.log('frame service: all checks passed');
 })().catch(e => { console.error(e); process.exit(1); });
