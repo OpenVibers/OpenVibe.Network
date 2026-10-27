@@ -37,6 +37,8 @@ const cases = [
     ['help me plan a birthday party for ten kids', vibe('help me plan a birthday party for ten kids')],
     ['ask vibe', vibe('ask vibe')],
     ['sourdough starter', vibe('sourdough starter')],
+    ['use my ollama models', 'https://openvibe.bot/machines'],
+    ['my old laptop as a desk host', 'https://openvibe.bot/machines'],
 ];
 cases.forEach(([q, want]) => assert.strictEqual(route(q), want, `"${q}"`));
 assert.strictEqual(route('   '), 'tool search', 'an empty box does nothing new');
