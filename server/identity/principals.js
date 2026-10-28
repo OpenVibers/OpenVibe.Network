@@ -27,7 +27,7 @@ const DEFAULT_GRANTS = [
     ['quest', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['quest', 'events.subscription.manage', 'openvibe.events', []],
     // They subscribe to network.account.export_requested and network.account.deleted at boot (ADR-033).
-    ...['actor', 'food', 'help', 'work', 'rent', 'media-hub'].map((svc) => [svc, 'events.subscription.manage', 'openvibe.events', []]),
+    ...['actor', 'food', 'help', 'work', 'rent', 'media-hub', 'today'].map((svc) => [svc, 'events.subscription.manage', 'openvibe.events', []]),
     // Their pages go into OpenVibe.Search: <svc>.index_document.* through each one's outbox (openvibe-publishing/search-feed,
     // contracts 0.128.0). Inventory publishes already (below).
     ...['work', 'rent', 'help', 'quest'].map((svc) => [svc, 'events.event.publish', 'openvibe.events', []]),
@@ -446,6 +446,11 @@ const DEFAULT_GRANTS = [
     // Actor's agents search through the fabric (SF-4): search_web asks the web scope as Actor, naming the task's person
     // in X-OV-Subject, so the paid steps count against that person's daily allowance.
     ['actor', 'search.query.delegate', 'openvibe.search', []],
+    // OpenVibe.Today (plan 2026-10-28 §5.3): today.event.* from its outbox, reminders as notifications to the person
+    // who set them (resolved from their usr_ subject), and its live.stream.* and account subscriptions.
+    ['today', 'events.event.publish', 'openvibe.events', []],
+    ['today', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['today', 'network.notifications.push', SELF_AUDIENCE, ['today']],
     // Support inboxes (Chat's server/inbox/, 2026-10-24): a visitor who asks for a person, or writes while waiting,
     // notifies the inbox's people through Network as service 'chat' (the push route checks that by the token's own
     // name; no namespace, so Chat's module namespaces stay the chat.* ones). Chat already resolves subjects.
