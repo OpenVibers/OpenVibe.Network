@@ -438,6 +438,11 @@ const DEFAULT_GRANTS = [
     // first, then pushes as app 'search'.
     ['search', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['search', 'network.notifications.push', SELF_AUDIENCE, ['search']],
+    // The Search Fabric (plan 2026-10-28 §4.5, Contracts 0.225.0 search.fabric.query): the web scope's ladder reads the
+    // web through AI's MegaSource (research.gather: DeepSeek search for signed-in callers, Wikipedia for everyone), within
+    // Search's own daily cap and AI's. Research only: no other AI workflow.
+    ['search', 'ai.run.create', 'openvibe.ai', ['research.*']],
+    ['search', 'ai.run.read', 'openvibe.ai', ['research.*']],
     // Support inboxes (Chat's server/inbox/, 2026-10-24): a visitor who asks for a person, or writes while waiting,
     // notifies the inbox's people through Network as service 'chat' (the push route checks that by the token's own
     // name; no namespace, so Chat's module namespaces stay the chat.* ones). Chat already resolves subjects.
