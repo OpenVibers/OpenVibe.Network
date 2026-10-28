@@ -78,12 +78,14 @@ const alert = (name, extra = {}) => ({ fingerprint: crypto.createHash('sha256').
         assert.ok(validate('network.operator-alerts-result@1', r.body).valid);
         assert.deepStrictEqual(r.body, { ok: true, firing: 2, opened: 2, reminded: 0, resolved: 0, notified: 4 });
         assert.deepStrictEqual(sent.map((n) => n.user_id).sort(), [1, 1, 2, 2]);
-        const backup = sent.find((n) => n.title === 'Alert: OpenVibeBackupMissed' && n.user_id === 1);
+        const backup = sent.find((n) => n.title === 'Backup missed' && n.user_id === 1);
         assert.deepStrictEqual([backup.type, backup.category, backup.priority, backup.url], ['OPERATOR_ALERT', 'admin', 'critical', 'https://openvibe.network/status']);
-        assert.match(backup.message, /No successful backup in 26 hours\. Service: host\. Firing since 2026-09-26T05:00:00Z\./);
-        assert.strictEqual(sent.find((n) => n.title === 'Alert: OpenVibeBrowserCheckFailed').priority, 'high', 'a warning pages at high');
-        assert.deepStrictEqual([backup.silent, sent.find((n) => n.title === 'Alert: OpenVibeBrowserCheckFailed').silent], [false, true], 'only a critical alert is pushed');
-        const warnIds = sent.filter((n) => n.title === 'Alert: OpenVibeBrowserCheckFailed').map((n, i) => n).length;
+        assert.strictEqual(backup.message, 'host · OpenVibeBackupMissed summary · No successful backup in 26 hours.');
+        assert.strictEqual(backup.rich_content.kind, 'ops_alert');
+        assert.strictEqual(backup.rich_content.state, 'firing');
+        assert.strictEqual(sent.find((n) => n.title === 'Browser check failed').priority, 'high', 'a warning pages at high');
+        assert.deepStrictEqual([backup.silent, sent.find((n) => n.title === 'Browser check failed').silent], [false, true], 'only a critical alert is pushed');
+        const warnIds = sent.filter((n) => n.title === 'Browser check failed').map((n, i) => n).length;
         assert.strictEqual(warnIds, 2);
 
         // The same set again: nothing new.
@@ -97,7 +99,7 @@ const alert = (name, extra = {}) => ({ fingerprint: crypto.createHash('sha256').
         assert.deepStrictEqual(r.body, { ok: true, firing: 1, opened: 0, reminded: 0, resolved: 1, notified: 0 });
         assert.strictEqual(sent.length, 0, 'no Resolved entry piles up');
         assert.strictEqual(revised.length, 2, 'one revision per operator');
-        assert.ok(revised.every((x) => x.title === 'Resolved: OpenVibeBrowserCheckFailed' && x.icon === '✅' && x.is_read === 1), JSON.stringify(revised));
+        assert.ok(revised.every((x) => x.title === 'Resolved: Browser check failed' && x.icon === '✅' && x.is_read === 1), JSON.stringify(revised));
         assert.match(revised[0].message, /\(resolved after \d+ min\)\./);
         const warnNotices = revised.map((x) => x.id).sort();
 
@@ -106,7 +108,7 @@ const alert = (name, extra = {}) => ({ fingerprint: crypto.createHash('sha256').
         const later = Date.now() + alerts.REMIND_MS + 1000;
         let out = await alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed')] }, { notify: (u, n) => { sent.push({ user_id: u, ...n }); return { id: `r${sent.length}` }; }, now: later });
         assert.deepStrictEqual(out, { ok: true, firing: 1, opened: 0, reminded: 1, resolved: 0, notified: 2 });
-        assert.strictEqual(sent[0].title, 'Still firing: OpenVibeBackupMissed');
+        assert.strictEqual(sent[0].title, 'Still failing: Backup missed');
         out = await alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed')] }, { notify: () => true, now: later + 60000 });
         assert.strictEqual(out.reminded, 0);
 
@@ -122,7 +124,7 @@ const alert = (name, extra = {}) => ({ fingerprint: crypto.createHash('sha256').
         assert.deepStrictEqual([r.body.opened, r.body.notified], [1, 0]);
         assert.strictEqual(sent.length, 0);
         assert.deepStrictEqual(revised.map((x) => x.id).sort(), warnNotices, 'the episode keeps its notifications');
-        assert.ok(revised.every((x) => x.title === 'Alert: OpenVibeBrowserCheckFailed' && /Fired again 1 time\(s\) within 12 h/.test(x.message)));
+        assert.ok(revised.every((x) => x.title === 'Browser check failed' && /Fired again 1 time\(s\) within 12 h/.test(x.message)));
         revised.length = 0;
         await post({ source: 'prometheus', alerts: [alert('OpenVibeBackupMissed')] }, auth);
         assert.match(revised[0].message, /it fired 2 times/);
@@ -139,7 +141,7 @@ const alert = (name, extra = {}) => ({ fingerprint: crypto.createHash('sha256').
         sent.length = 0;
         out = await alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed'), alert('OpenVibeBrowserCheckFailed', { severity: 'warning' })] }, { notify: (u, n) => { sent.push(n); return { id: `x${sent.length}` }; }, now: much });
         assert.deepStrictEqual([out.opened, out.notified], [1, 2]);
-        assert.ok(sent.every((n) => n.title === 'Alert: OpenVibeBrowserCheckFailed'));
+        assert.ok(sent.every((n) => n.title === 'Browser check failed'));
         await alerts.receive(db, { source: 'prometheus', alerts: [alert('OpenVibeBackupMissed')] }, { notify: () => null, now: much + 1000 });
 
         // An empty set resolves everything from that source; the list keeps them.
