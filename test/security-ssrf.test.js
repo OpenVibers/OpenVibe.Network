@@ -119,6 +119,7 @@ const REVIEWED = {
     'server/discord/discord-service.js fetch': [2, 'discord.js channels.fetch: Discord API only'],
     'server/discord/discord-service.js discord.js': [1, 'discord.js login: Discord gateway only'],
     'server/domains/catalog.js fetch': [3, 'the tools catalog URL from operator config'],
+    'server/coins/routes.js fetch': [1, 'Billing internal URL from config (the person\'s Vibes with their own token, 2 s timeout)'],
     'server/frame/service.js fetch': [2, 'Live and AI internal URLs from config (navbar ranking copy)'],
     'server/stats/open.js fetch': [1, 'open stats (/stats): fixed first-party loopback URLs only — Live (OV_LIVE_INTERNAL_URL, its public home numbers and service-token analytics totals) and Prometheus (PROMETHEUS_URL, loopback by default) with fixed queries; the request only picks 7, 30 or 90 days'],
     'server/admin/service-proxies.js fetch': [1, 'the admin panel proxies: Live\'s and Chat\'s internal URLs from config, fixed path prefixes, staff only'],

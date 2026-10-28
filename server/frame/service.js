@@ -20,7 +20,7 @@
 // ═══════════════════════════════════════════════════════════════
 const express = require('express');
 const crypto = require('crypto');
-const { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME } = require('./sites');
+const { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName } = require('./sites');
 const toolsCatalog = require('../domains/catalog');
 
 const RANK_MS = 30 * 60_000, COPY_MS = 24 * 60 * 60_000;
@@ -123,7 +123,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     function linkPool() {
         const { catalog } = toolsCatalog.peek();
         const pool = new Map();
-        for (const s of SITES.filter(x => x.status === 'open')) pool.set('site:' + s.id, { name: 'OpenVibe.' + s.name, url: `https://${s.host}/`, about: s.tagline });
+        for (const s of SITES.filter(x => x.status === 'open')) pool.set('site:' + s.id, { name: fullName(s), url: `https://${s.host}/`, about: s.tagline });
         for (const f of catalog.families) if (f.path) pool.set('family:' + f.id, { name: f.name, url: 'https://openvibe.tools' + f.path, about: f.tagline });
         for (const t of catalog.tools) pool.set('tool:' + t.id, { name: t.name, url: t.url, about: t.tagline });
         return pool;
@@ -140,7 +140,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const pool = linkPool();
         const popular = new Set(popularTools(12).map(t => t.url));
         const links = [...pool.entries()].filter(([id, l]) => !id.startsWith('tool:') || popular.has(l.url)).map(([id, l]) => ({ id, name: l.name, about: l.about }));
-        const body = { sites: SITES.filter(s => s.status === 'open').map(s => ({ id: s.id, name: 'OpenVibe.' + s.name, what: s.what, popular: s.id === 'tools' ? popularTools(6).map(t => t.name) : [] })), links };
+        const body = { sites: SITES.filter(s => s.status === 'open').map(s => ({ id: s.id, name: fullName(s), what: s.what, popular: s.id === 'tools' ? popularTools(6).map(t => t.name) : [] })), links };
         let j = null;
         try { j = await fromAi(body); } catch { j = null; }
         if (!j || !Array.isArray(j.sites)) return;   // keep the last good copy
