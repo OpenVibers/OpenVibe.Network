@@ -138,6 +138,10 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'fun', name: 'OpenVibe.Fun', redirect_uris: ['https://openvibe.fun/auth/callback'] },
             // The camera app, a private wall for cameras people own, and the still Live's cam button takes.
             { client_id: 'cam', name: 'OpenVibe.Cam', redirect_uris: ['https://openvibe.cam/auth/callback'] },
+            // The shared AI benchmark and comparison engine; a developer service at bench.openvibe.services.
+            { client_id: 'bench', name: 'OpenVibe.Bench', redirect_uris: ['https://bench.openvibe.services/auth/callback'] },
+            // Sources' merchant opt-in pages sign a source owner in (scope profile, no site of their own).
+            { client_id: 'sources', name: 'OpenVibe.Sources', redirect_uris: ['https://sources.openvibe.network/merchant/callback'] },
             { client_id: 'work', name: 'OpenVibe.Work', redirect_uris: ['https://openvibe.work/auth/callback'] },
             // The shared quest log, listings people post, and Watch's public site (plan T18 step 8, T19).
             { client_id: 'quest', name: 'OpenVibe.Quest', redirect_uris: ['https://openvibe.quest/auth/callback'] },

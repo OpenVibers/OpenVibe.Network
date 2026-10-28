@@ -143,7 +143,7 @@ const DEFAULT_GRANTS = [
     // account-data consumer and subscriptions shipped first in Reviews#77). Host since 2026-10-19 (the console's sealed hosting
     // tokens and actions, benchmarks' submissions; Host#120, subscribed first through Network#284).
     ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub',
-        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host', 'domains', 'meme', 'vision', 'exchange', 'fun', 'cam'].flatMap((svc) => [
+        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host', 'domains', 'meme', 'vision', 'exchange', 'fun', 'cam', 'bench'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
@@ -448,6 +448,10 @@ const DEFAULT_GRANTS = [
     // Actor's agents search through the fabric (SF-4): search_web asks the web scope as Actor, naming the task's person
     // in X-OV-Subject, so the paid steps count against that person's daily allowance.
     ['actor', 'search.query.delegate', 'openvibe.search', []],
+    // AI researches on the fabric (sf4-research): the fabric's query and the delegated subject query, so its web scope
+    // counts against the person's own Search allowance and never reaches a provider with an account identifier.
+    ['ai', 'search.query.delegate', 'openvibe.search', []],
+    ['ai', 'search.fabric.query', 'openvibe.search', []],
     // OpenVibe.Today (plan 2026-10-28 §5.3): today.event.* from its outbox, reminders as notifications to the person
     // who set them (resolved from their usr_ subject), and its live.stream.* and account subscriptions.
     ['today', 'events.event.publish', 'openvibe.events', []],
@@ -597,6 +601,18 @@ const DEFAULT_GRANTS = [
     // source still labels the route's guard vision.ui_check; its service must use the contract id before Arena calls it.
     ['design', 'vision.ui.check', 'openvibe.vision', []],
     ['design', 'ai.run.create', 'openvibe.ai', ['ai.generate']],
+    // OpenVibe.Bench (contracts 0.238.0): the shared benchmark engine calls AI's generate route (namespace ai.generate)
+    // to run its pinned rounds, and subscribes to the account events at boot; its export/deletion pair is with the
+    // other services' above. It publishes bench.* events and answers no other service today, so no Search grant.
+    ['bench', 'ai.run.create', 'openvibe.ai', ['ai.generate']],
+    ['bench', 'events.subscription.manage', 'openvibe.events', []],
+    // OpenVibe.Design's Arena moves onto Bench (contracts 0.238.0): it creates tasks and rounds, reads rounds and boards,
+    // and casts the Arena's judgements on openvibe.bench. The earlier vision.ui.check grant stays for its UI check.
+    ['design', 'bench.task.create', 'openvibe.bench', []],
+    ['design', 'bench.round.create', 'openvibe.bench', []],
+    ['design', 'bench.round.read', 'openvibe.bench', []],
+    ['design', 'bench.judgement.cast', 'openvibe.bench', []],
+    ['design', 'bench.board.read', 'openvibe.bench', []],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
