@@ -22,6 +22,13 @@
  * A started event older than LIVE_STARTED_MAX_AGE (30 min; a replay, or Events catching up after an
  * outage) announces nothing: the stream may be long over.
  *
+ *   today.event.scheduled   a streamer scheduled a stream on OpenVibe.Today (event.subject is the streamer;
+ *                           payload.event_id the tev_ id). Their followers get one STREAM_SCHEDULED notice
+ *                           each (low priority: the bell, no toast), for a public or followers-only stream
+ *                           starting 15 minutes to 14 days ahead, at most SCHEDULED_PER_DAY announced events
+ *                           per streamer in 24 hours.
+ *   today.event.cancelled   the stream was cancelled: those notices are cleared (dismissed), so the bell never
+ *                           points at a stream that is not happening.
  *   <service>.usage.recorded  a developer project's hourly usage rollup from Tools, Events or Media
  *                           (common.usage-recorded@1): kept per project and day for its dashboard
  *                           (server/developer/usage.js), never anyone's notification.
@@ -55,8 +62,12 @@ const CONSUMER = 'network-notifications';
 const INBOX_TABLE = 'network_event_inbox';
 const AUDIT_TOPICS = require('../admin/moderation-audit').TOPICS;
 const USAGE_TOPICS = require('../developer/usage').TOPICS;
-const TOPICS = Object.freeze(['deals.watch.matched', 'coupons.watch.matched', 'trade.alert.triggered', 'live.stream.started', 'live.stream.ended', ...AUDIT_TOPICS, ...USAGE_TOPICS]);
+const TOPICS = Object.freeze(['deals.watch.matched', 'coupons.watch.matched', 'trade.alert.triggered', 'live.stream.started', 'live.stream.ended', 'today.event.scheduled', 'today.event.cancelled', ...AUDIT_TOPICS, ...USAGE_TOPICS]);
 const LIVE_STARTED_MAX_AGE_MS = 30 * 60 * 1000;
+const SCHEDULED_PER_DAY = 3;
+const SCHEDULE_AHEAD_MIN_MS = 15 * 60 * 1000;
+const SCHEDULE_AHEAD_MAX_MS = 14 * 24 * 60 * 60 * 1000;
+const TODAY_EVENT_RE = /^tev_[0-9A-Za-z]{10,40}$/;
 const EVENT_ID_RE = /^evt_[0-9A-HJKMNP-TV-Z]{26}$/;
 
 /** Plain, single-line, length-capped text: no markup or control characters reach the inbox. */
@@ -149,6 +160,34 @@ const HANDLERS = {
     },
 };
 
+/** "Fri, Oct 30, 8:00 PM PDT" in the event's own zone (UTC when the zone is unknown). */
+function whenText(iso, tz) {
+    const d = new Date(iso);
+    const fmt = (zone) => new Intl.DateTimeFormat('en-US', { timeZone: zone, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(d);
+    try { return fmt(tz || 'UTC'); } catch { return fmt('UTC'); }
+}
+
+/** The facts of a today.event.scheduled envelope, or an 'ignored:*' outcome. No I/O. */
+function todayScheduled(event, { now }) {
+    if (event.source !== 'today') return 'ignored:source';
+    const p = event.payload && typeof event.payload === 'object' ? event.payload : {};
+    const subject = event.subject && event.subject.type === 'user' ? event.subject.id : null;
+    if (!ids.isSubjectId('user', subject)) return 'ignored:subject';
+    if (!TODAY_EVENT_RE.test(String(p.event_id || ''))) return 'ignored:payload';
+    if (p.kind !== 'stream') return 'ignored:kind';
+    if (p.status !== 'scheduled') return 'ignored:status';
+    if (!['public', 'followers'].includes(p.visibility)) return 'ignored:visibility';
+    const starts = Date.parse(p.starts_at || '');
+    if (!Number.isFinite(starts)) return 'ignored:payload';
+    if (starts - now < SCHEDULE_AHEAD_MIN_MS) return 'ignored:too_soon';
+    if (starts - now > SCHEDULE_AHEAD_MAX_MS) return 'ignored:too_far';
+    return {
+        subject, eventId: String(p.event_id), title: clean(p.title, 120) || 'A stream', channel: clean(p.channel, 40) || null,
+        startsAt: new Date(starts).toISOString(), when: whenText(starts, clean(p.tz, 64)),
+        url: ownLink(`https://openvibe.today/e/${p.event_id}`) || null,
+    };
+}
+
 /** The facts of a live.stream.started envelope, or an 'ignored:*' outcome. No I/O. */
 function liveStarted(event, { now, maxAgeMs }) {
     if (event.source !== 'live') return 'ignored:source';
@@ -184,6 +223,47 @@ async function createEventsConsumer({ db, notifications, secrets, discord = () =
     const userBySubject = db.prepare('SELECT id FROM users WHERE subject_id = ?');
     const streamerBySubject = db.prepare('SELECT id, username, display_name, avatar_url FROM users WHERE subject_id = ?');
     const followersOf = db.prepare("SELECT follower_subject FROM user_follows WHERE target_type = 'channel' AND target_id = ? AND active = 1");
+    // Announced schedules per streamer in the last 24 hours (one notice per follower each, so distinct events).
+    const scheduledToday = db.prepare(`SELECT COUNT(DISTINCT (rich_content::jsonb -> 'context' ->> 'today_event_id')) AS n FROM notifications
+        WHERE type = 'STREAM_SCHEDULED' AND sender_id = ? AND created_at > ?`);
+    const clearScheduled = db.prepare(`UPDATE notifications SET is_dismissed = 1
+        WHERE type = 'STREAM_SCHEDULED' AND is_dismissed = 0 AND rich_content::jsonb -> 'context' ->> 'today_event_id' = ?`);
+
+    /** today.event.scheduled inside the inbox transaction: the daily window, then one notice per follower. */
+    async function todayEventScheduled(event) {
+        const v = todayScheduled(event, { now: now() });
+        if (typeof v === 'string') return v;
+        const streamer = await streamerBySubject.get(v.subject);
+        if (!streamer) return 'ignored:channel';
+        const since = new Date(now() - 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
+        const n = Number((await scheduledToday.get(streamer.id, since))?.n) || 0;
+        if (n >= SCHEDULED_PER_DAY) return { outcome: 'skipped:daily_limit', detail: { announced_today: n } };
+        const followers = await followersOf.all(v.subject);
+        const targets = new Set();
+        let unresolved = 0;
+        for (const f of followers) {
+            const u = await userBySubject.get(f.follower_subject);
+            if (u) targets.add(u.id); else unresolved++;
+        }
+        targets.delete(streamer.id);
+        const name = streamer.display_name || streamer.username;
+        const created = targets.size ? await notifications.createBulk([...targets], {
+            type: 'STREAM_SCHEDULED', category: 'stream', priority: 'low', service: 'today',
+            title: `${name} scheduled a stream`, message: `${v.title} · ${v.when}`,
+            sender_id: streamer.id, sender_name: name, sender_avatar: streamer.avatar_url || null, url: v.url,
+            rich_content: { service: 'today', chips: [v.when], context: { event_id: event.event_id, today_event_id: v.eventId, starts_at: v.startsAt, channel: v.channel } },
+        }) : [];
+        return { outcome: created.length ? 'notified' : targets.size ? 'suppressed:preference' : 'no-recipients', detail: { followers: followers.length, unresolved, targets: targets.size, notified: created.length } };
+    }
+
+    /** today.event.cancelled: the stream's schedule notices leave every bell. */
+    async function todayEventCancelled(event) {
+        if (event.source !== 'today') return 'ignored:source';
+        const id = event.payload && event.payload.event_id;
+        if (!TODAY_EVENT_RE.test(String(id || ''))) return 'ignored:payload';
+        const r = await clearScheduled.run(String(id));
+        return { outcome: 'cleared', detail: { notices: r.changes || 0 } };
+    }
 
     /** live.stream.started inside the inbox transaction: the announcement window, then one notification per person. */
     async function liveStreamStarted(event) {
@@ -228,6 +308,10 @@ async function createEventsConsumer({ db, notifications, secrets, discord = () =
             if (USAGE_TOPICS.includes(event.event_type)) return projectUsage ? projectUsage.record(event) : 'ignored:usage_off';
             // Creator analytics (WS-E task 6): each ended stream's totals, counts only.
             if (event.event_type === 'live.stream.ended') return require('../analytics/creators').record(db, event);
+            if (event.event_type === 'today.event.scheduled' || event.event_type === 'today.event.cancelled') {
+                const out = event.event_type === 'today.event.scheduled' ? await todayEventScheduled(event) : await todayEventCancelled(event);
+                return typeof out === 'string' ? out : { outcome: out.outcome, detail: out.detail };
+            }
             if (event.event_type === 'live.stream.started') {
                 const out = await liveStreamStarted(event);
                 if (typeof out === 'string') return out;
