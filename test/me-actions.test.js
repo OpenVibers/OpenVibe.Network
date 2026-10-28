@@ -48,6 +48,9 @@ const svc = http.createServer((req, res) => {
         if (u.pathname === '/ai/api/v1/actions') return setTimeout(() => json(200, { items: [item({ service: 'ai', id: 'run_1', kind: 'ai_run', bucket: 'done', state: 'succeeded', href: 'https://ai.openvibe.services/runs/run_1', actions: ['open'] })] }), aiDelay);
         if (u.pathname === '/actor/api/v1/approvals/apr_1/decide') return json(200, item({ id: 'apr_1', kind: 'approval', bucket: 'done', state: 'approved', actions: ['open'] }));
         if (u.pathname === '/actor/api/v1/approvals/apr_404/decide') return json(404, { code: 'not_found' });
+        if (u.pathname === '/domains/api/v1/actions') return json(200, { items: [item({ service: 'domains', id: 'dpr_1', kind: 'approval', title: 'Add a TXT record to example.com', bucket: 'waiting', state: 'pending', actions: ['approve', 'decline', 'open'], updated_at: iso(20), href: 'https://openvibe.domains/panel/p/dpr_1' })] });
+        if (u.pathname === '/domains/api/v1/proposals/dpr_1/decide') return json(200, item({ service: 'domains', id: 'dpr_1', kind: 'approval', bucket: 'done', state: 'applied', actions: ['open'], href: 'https://openvibe.domains/panel/p/dpr_1' }));
+        if (u.pathname === '/domains/api/v1/proposals/dpr_2/decide') return json(409, { code: 'proposal.decided', detail: 'This proposal is applied already.' });
         json(404, { code: 'not_found' });
     });
 });
@@ -63,7 +66,7 @@ const fakeConfirmations = {
 };
 let clock = T0;
 const actions = actionsMod.createActions({
-    db, urls: { actor: `${base}/actor`, codes: `${base}/codes`, ai: `${base}/ai` }, timeoutMs: 150, now: () => clock,
+    db, urls: { actor: `${base}/actor`, codes: `${base}/codes`, ai: `${base}/ai`, domains: `${base}/domains` }, timeoutMs: 150, now: () => clock,
     selfToken: (aud, caps) => `tok:${aud}:${caps.join(',')}`, confirmationsImpl: fakeConfirmations, log: { warn() {} },
 });
 
@@ -88,10 +91,10 @@ try {
     assert.strictEqual(r.status, 200);
     const doc = r.body;
     assert.ok(validate('network.me-actions-result@1', doc).valid, JSON.stringify(validate('network.me-actions-result@1', doc).errors));
-    assert.deepStrictEqual(doc.sources, { network: 'ok', actor: 'ok', codes: 'not_connected', ai: 'timeout' });
+    assert.deepStrictEqual(doc.sources, { network: 'ok', actor: 'ok', codes: 'not_connected', ai: 'timeout', domains: 'ok' });
     assert.strictEqual(doc.partial, true, 'a timeout makes the answer partial');
-    assert.deepStrictEqual(doc.counts, { running: 1, waiting: 2, scheduled: 1, done: 0, failed: 1 });
-    assert.deepStrictEqual(doc.buckets.waiting.map((x) => x.id), ['cnf_01JAB2C3D4E5F6G7H8J9K0MNPQ', 'apr_1'], 'newest first');
+    assert.deepStrictEqual(doc.counts, { running: 1, waiting: 3, scheduled: 1, done: 0, failed: 1 });
+    assert.deepStrictEqual(doc.buckets.waiting.map((x) => x.id), ['cnf_01JAB2C3D4E5F6G7H8J9K0MNPQ', 'apr_1', 'dpr_1'], 'newest first');
     const cnf = doc.buckets.waiting[0];
     assert.deepStrictEqual([cnf.service, cnf.kind, cnf.title, cnf.summary, cnf.href, cnf.actions], ['network', 'approval', 'Send one email to the venue', 'Trip planner asks to use mail.send', 'https://openvibe.network/my#approvals', ['approve', 'decline', 'open']]);
     const all = Object.values(doc.buckets).flat().map((x) => x.id);
@@ -124,6 +127,12 @@ try {
     const d = calls.find((c) => c.path === '/actor/api/v1/approvals/apr_1/decide');
     assert.deepStrictEqual([d.method, d.auth, d.body.decision, d.subject.startsWith('usr_')], ['POST', 'Bearer tok:openvibe.actor:actor.approval.decide', 'decline', true]);
     assert.strictEqual((await call('POST', '/actor/apr_404/approve')).status, 404);
+    // A Domains proposal is approved through Domains' decide route, with domains.proposal.decide, for this person.
+    r = await call('POST', '/domains/dpr_1/approve');
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    const dd = calls.find((c) => c.path === '/domains/api/v1/proposals/dpr_1/decide');
+    assert.deepStrictEqual([dd.method, dd.auth, dd.body.decision, dd.subject.startsWith('usr_')], ['POST', 'Bearer tok:openvibe.domains:domains.proposal.decide', 'approve', true]);
+    assert.strictEqual((await call('POST', '/domains/dpr_2/approve')).status, 409, 'decided already, in words');
     assert.deepStrictEqual([(await call('POST', '/codes/tsk_1/approve')).body.code, (await call('POST', '/actor/tsk_1/cancel')).body.code], ['actions.unsupported', 'actions.unsupported']);
     assert.strictEqual((await call('POST', '/actor/..%2Fx/approve')).status, 404, 'ids are plain');
 } finally {
