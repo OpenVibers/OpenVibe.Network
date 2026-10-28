@@ -213,6 +213,34 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         res.send(JSON.stringify(pulse || { live_now: null, watching: null, sites: orderedOpen().length, views_7d: null, updated: null }));
     });
 
+    // GET /api/frame/suggest?q=&owner=&limit= — the navbar's magnifier (openvibe-shared search.js): OpenVibe.Search's
+    // suggestions, asked through Network because every site's connect-src already lets the navbar reach
+    // openvibe.network, and 33 of them refused search.openvibe.network (2026-10-28). Anonymous, as the browser's own call
+    // would be (public, published documents only); the person's address goes along so Search's per-person limit stays
+    // per person. Answers are kept 30 s; Search not answering is an empty list, never an error.
+    const suggested = new Map();
+    router.get('/suggest', async (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=30', 'Content-Type': 'application/json; charset=utf-8' });
+        const q = String(req.query.q || '').trim().slice(0, 100);
+        const owner = /^[a-z0-9-]{1,40}$/.test(String(req.query.owner || '')) ? String(req.query.owner) : '';
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 20);
+        if (!q) return res.send('{"suggestions":[]}');
+        const key = `${owner}|${limit}|${q.toLowerCase()}`;
+        const kept = suggested.get(key);
+        if (kept && Date.now() - kept.at < 30_000) return res.send(kept.body);
+        const u = new URL('/api/v1/suggest', svcUrl('search', 'http://127.0.0.1:4710'));
+        u.searchParams.set('q', q);
+        u.searchParams.set('limit', String(limit));
+        if (owner) u.searchParams.set('owner', owner);
+        const d = await getJson(u.href, req.ip ? { 'X-Forwarded-For': req.ip } : undefined);
+        const body = JSON.stringify({ suggestions: d && Array.isArray(d.suggestions) ? d.suggestions : [] });
+        if (d) {
+            if (suggested.size >= 2000) suggested.clear();
+            suggested.set(key, { at: Date.now(), body });
+        }
+        res.send(body);
+    });
+
     // POST /api/frame/hit — one anonymous count for the calling page's host. The host comes from the
     // browser-set Origin header (never the body) and must be one of ours or a registered tool domain.
     const recent = new Map();   // ip → [count, windowStart]: 40/min is plenty for a person, useless for stuffing
