@@ -29,6 +29,10 @@ const SITES = RAW_SITES.map((s) => {
 });
 const byHost = new Map(SITES.map(s => [s.host, s]));
 
+/** A site's full name: its own when it is a brand already (OpenRestream), otherwise OpenVibe.<name> (OpenVibe.Live).
+ *  "OpenVibe.OpenRestream" read wrong on the home page's cards (the owner, 2026-10-28). */
+const fullName = (s) => (/^Open[A-Z]/.test(String(s && s.name)) ? s.name : `OpenVibe.${s && s.name}`);
+
 // The launcher (openvibe-shared navbar) lists every open site under one of these groups, most used first within
 // each. A site missing here lands in the last group, so a new manifest is never left out of the menu.
 // Grouped by what a person came to do (the owner, 2026-10-25: "reorganize this whole menu and make it more clean and
@@ -86,4 +90,4 @@ function siteForHost(hostname) {
     return null;
 }
 
-module.exports = { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME };
+module.exports = { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName };

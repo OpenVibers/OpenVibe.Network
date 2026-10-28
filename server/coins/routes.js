@@ -9,14 +9,35 @@
 
 const express = require('express');
 const wallet = require('./wallet');
+const config = require('../config');
 
-module.exports = function createCoinsRoutes(db, requireAuth) {
+const VIBES_TIMEOUT_MS = 2000;
+
+module.exports = function createCoinsRoutes(db, requireAuth, opts = {}) {
     const router = express.Router();
+    const billingUrl = String(opts.billingUrl || (config.services && config.services.billing && config.services.billing.internalUrl) || '').replace(/\/+$/, '');
 
-    // ── GET /api/coins/me ────────────────────────────────────
-    // → { balance }
+    /** The person's Vibes (OpenVibe.Billing's spendable balance), asked with their own token; null when Billing can't say. */
+    async function vibesOf(req) {
+        const auth = req.headers.authorization;
+        if (!billingUrl || !auth || !/^Bearer /i.test(auth)) return null;
+        try {
+            const r = await fetch(`${billingUrl}/api/me/vibes`, { headers: { Authorization: auth }, signal: AbortSignal.timeout(VIBES_TIMEOUT_MS) });
+            if (!r.ok) return null;
+            const v = Number((await r.json()).credit);
+            return Number.isFinite(v) ? v : null;
+        } catch { return null; }
+    }
+
+    // ── GET /api/coins/me[?with=vibes] ───────────────────────
+    // → { balance }, or with=vibes { balance, vibes }: the navbar's two balances in one request on every site, since
+    // every site's connect-src allows openvibe.network and none allowed billing.openvibe.network (2026-10-28: Vibes
+    // never showed beside OpenCoins). vibes is null when Billing can't answer within two seconds.
     router.get('/me', requireAuth, async (req, res) => {
-        res.json({ balance: await wallet.getBalance(db, req.user.id) });
+        const balance = await wallet.getBalance(db, req.user.id);
+        if (req.query.with !== 'vibes') return res.json({ balance });
+        res.set('Cache-Control', 'private, no-store');
+        res.json({ balance, vibes: await vibesOf(req) });
     });
 
     // ── GET /api/coins/me/history?limit=50&offset=0 ──────────

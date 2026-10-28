@@ -125,5 +125,9 @@ module.exports = {
         search: {
             internalUrl: process.env.OV_SEARCH_INTERNAL_URL || 'http://127.0.0.1:4710',
         },
+        // OpenVibe.Billing: the person's Vibes beside their OpenCoins (GET /api/coins/me?with=vibes, server/coins/routes.js).
+        billing: {
+            internalUrl: process.env.OV_BILLING_INTERNAL_URL || 'http://127.0.0.1:4600',
+        },
     },
 };

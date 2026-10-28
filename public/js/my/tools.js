@@ -141,7 +141,7 @@ async function loadModules() {
             const title = document.createElement('strong'); title.textContent = m.namespace;
             const info = document.createElement('small');
             const n = about.get(m.namespace);
-            const keeper = n && n.owner ? 'OpenVibe.' + n.owner.charAt(0).toUpperCase() + n.owner.slice(1) : 'OpenVibe';
+            const keeper = n && n.owner ? (n.owner === 'openre' ? 'OpenRestream' : 'OpenVibe.' + n.owner.charAt(0).toUpperCase() + n.owner.slice(1)) : 'OpenVibe';
             info.textContent = `${n && n.description ? n.description + ' ' : ''}Kept by ${keeper}; updated ${m.updated_at ? new Date(String(m.updated_at).replace(' ', 'T') + (String(m.updated_at).includes('Z') ? '' : 'Z')).toLocaleString() : 'recently'}.`;
             const code = document.createElement('code'); code.textContent = JSON.stringify(m.data);
             main.append(title, info, code);
