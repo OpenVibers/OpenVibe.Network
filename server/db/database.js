@@ -120,6 +120,8 @@ async function seedDb(db, { log = console } = {}) {
             // Food near you, meal plans and a pantry; the help centre and its tickets; job listings and saved searches (plan T19).
             { client_id: 'food', name: 'OpenVibe.Food', redirect_uris: ['https://openvibe.food/auth/callback'] },
             { client_id: 'help', name: 'OpenVibe.Help', redirect_uris: ['https://openvibe.help/auth/callback'] },
+            // The theme studio (plan 2026-10-28 §5.2); the client is created first as Design's principal.
+            { client_id: 'design', name: 'OpenVibe.Design', redirect_uris: ['https://openvibe.design/auth/callback'] },
             { client_id: 'work', name: 'OpenVibe.Work', redirect_uris: ['https://openvibe.work/auth/callback'] },
             // The shared quest log, listings people post, and Watch's public site (plan T18 step 8, T19).
             { client_id: 'quest', name: 'OpenVibe.Quest', redirect_uris: ['https://openvibe.quest/auth/callback'] },
