@@ -46,7 +46,7 @@ const GROUPS = [
     { id: 'make', name: 'Make & build', sites: ['website', 'design', 'domains', 'codes', 'space', 'tools', 'host', 'actor', 'bot'] },
     { id: 'shop', name: 'Shop & swap', sites: ['deals', 'coupons', 'shoes', 'exchange', 'rent', 'homes', 'work', 'food', 'trade'] },
     { id: 'people', name: 'People & you', sites: ['chat', 'community', 'tips', 'vip', 'help', 'network', 'inventory'] },
-    { id: 'build', name: 'For developers', sites: ['services', 'ai', 'run', 'zone', 'events', 'media', 'watch', 'play'] },
+    { id: 'build', name: 'For developers', sites: ['services', 'ai', 'bench', 'run', 'zone', 'events', 'media', 'watch', 'play'] },
 ];
 // What each site is, in a few words, for the menus (the launcher's rows are two to a line on a phone: about 22
 // characters fit). The manifests' taglines stay the sites' own sentences everywhere else; a site missing here shows

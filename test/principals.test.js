@@ -162,6 +162,30 @@ const server = http.createServer(app);
     t = await token({ client_id: 'design', client_secret: 'design-secret', audience: 'openvibe.vision' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
     assert.strictEqual(t.body.scope, 'vision.ui.check', "Design's Arena runs Vision's UI check");
+    // OpenVibe.Design's Arena moves onto Bench (contracts 0.238.0): the five bench capabilities above, on openvibe.bench.
+    t = await token({ client_id: 'design', client_secret: 'design-secret', audience: 'openvibe.bench' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    assert.deepStrictEqual(t.body.scope.split(' '), ['bench.board.read', 'bench.judgement.cast', 'bench.round.create', 'bench.round.read', 'bench.task.create'], "Design creates and reads Bench tasks and rounds, reads boards and casts judgements");
+
+    // OpenVibe.Bench (contracts 0.238.0): the account export/deletion pair, its account-event subscriptions, and
+    // ai.run.create (namespace ai.generate) to run its pinned rounds; it publishes bench.* events and indexes nothing.
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'bench-secret' WHERE client_id = 'bench'").run();
+    t = await token({ client_id: 'bench', client_secret: 'bench-secret', audience: 'openvibe.network' });
+    assert.deepStrictEqual(t.body.scope.split(' '), ['network.account.deletion.confirm', 'network.account.export.contribute'], 'Bench answers account export and deletion');
+    t = await token({ client_id: 'bench', client_secret: 'bench-secret', audience: 'openvibe.events' });
+    assert.strictEqual(t.body.scope, 'events.subscription.manage', 'Bench subscribes to the account events at boot');
+    t = await token({ client_id: 'bench', client_secret: 'bench-secret', audience: 'openvibe.ai' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    const benchAiClaims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.ai' });
+    assert.ok(benchAiClaims.ok, benchAiClaims.reason);
+    assert.deepStrictEqual([benchAiClaims.claims.cap, benchAiClaims.claims.ns], [['ai.run.create'], ['ai.generate']], 'Bench runs AI workflow ai.generate');
+    t = await token({ client_id: 'bench', client_secret: 'bench-secret', audience: 'openvibe.search' });
+    assert.strictEqual(t.status, 400, 'Bench indexes nothing public in v1, so no Search grant');
+
+    // OpenVibe.AI researches on the Search fabric (sf4-research): delegated subject queries and the fabric query.
+    t = await token({ client_id: 'ai', client_secret: 'ai-secret', audience: 'openvibe.search' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    assert.deepStrictEqual(t.body.scope.split(' '), ['search.fabric.query', 'search.query.delegate'], 'AI queries the Search fabric on a person\'s behalf');
 
     t = await token({ client_id: 'live', client_secret: 'wrong', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 401); assert.strictEqual(t.body.error, 'invalid_client');
