@@ -549,6 +549,8 @@ const openStats = require('./stats/open').createOpenStats({
     prometheusUrl: config.prometheusUrl || process.env.PROMETHEUS_URL, liveUrl: process.env.OV_LIVE_INTERNAL_URL,
 });
 app.use(openStats.router);
+// OpenVibeBot (Sources' crawler, ADR 0007): the page its user agent links to, and the same facts as /bot.json.
+app.use(require('./bot/page').createBotPage({ release }));
 // What shipped network-wide: the changelog proxy every site's widget reads, and /updates.
 app.use(require('./updates/routes').createUpdatesRoutes({ blogUrl: process.env.OV_BLOG_INTERNAL_URL || 'http://127.0.0.1:4810', release }).router);
 
