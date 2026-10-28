@@ -225,6 +225,28 @@ class EmailService {
         return sent;
     }
 
+    /**
+     * Send one digest email (hourly/daily/weekly summary).
+     * @param {Object} opts - { to, username, userId, period, items, total }
+     * @returns {Promise<boolean>} true on success
+     */
+    async sendDigestEmail({ to, username, userId = null, period = 'daily', items = [], total = items.length }) {
+        const subject = `Your OpenVibe digest: ${total} new`;
+        const htmlBody = this._buildDigestHtml({ username, items, total });
+        const textBody = this._buildDigestText({ username, items, total });
+        const sent = await this._sendEmail({
+            to,
+            subject,
+            htmlBody,
+            textBody,
+            emailType: `notification_digest:${period}`,
+            userId,
+            metadata: { period, count: total },
+        });
+        if (sent) console.log(`[Email] Sent ${period} digest to ${to}: ${total} new`);
+        return sent;
+    }
+
     /** Email-address verification link. */
     async sendVerificationEmail({ to, username, verifyUrl, expiresMinutes = 60 }) {
         const u = this._escapeHtml(username || 'there');
@@ -277,8 +299,15 @@ class EmailService {
 
         let skipped = 0;
         for (const notif of pending) {
+            const digest = notifService.isDigest ? await notifService.isDigest(notif) : false;
             if (!(await notifService.shouldEmail(notif))) {
-                await notifService.markEmailed(notif.id);
+                // A digested notification stays pending for runDigests(); anything else will never email.
+                if (!digest) await notifService.markEmailed(notif.id);
+                continue;
+            }
+            // Quiet hours hold a normal email until the window ends; a critical one breaks through.
+            if (notif.priority !== 'critical' && notifService.inQuietHours && await notifService.inQuietHours(notif.user_id)) {
+                skipped++;
                 continue;
             }
             const why = notifService.emailGuard ? await notifService.emailGuard(notif) : null;
@@ -299,7 +328,7 @@ class EmailService {
             });
             if (sent) await notifService.markEmailed(notif.id);
         }
-        if (skipped) console.log(`[Email] ${skipped} notification email(s) held back by guards (stale/dup/caps)`);
+        if (skipped) console.log(`[Email] ${skipped} notification email(s) held back (quiet hours/stale/dup/caps)`);
     }
 
     // ─── Email Templates ───────────────────────────────────────
@@ -363,6 +392,29 @@ ${notification.url ? `<a class="cta" href="${this._escapeHtml(notification.url)}
             'Manage preferences: https://openvibe.network/notifications',
             'OpenVibe · https://openvibe.network',
         ].join('\n');
+    }
+
+    _buildDigestHtml({ username, items, total }) {
+        const more = Math.max(0, Number(total) - items.length);
+        const list = items.map((n) => `<li><strong>${this._escapeHtml(n.title)}</strong>`
+            + `${n.service ? ` · ${this._escapeHtml(n.service)}` : ''}`
+            + `${n.url ? ` · <a href="${this._escapeHtml(n.url)}">Open</a>` : ''}</li>`).join('');
+        return `<p>Hey ${this._escapeHtml(username || 'there')},</p>
+<p>Your OpenVibe digest: ${Number(total)} new</p>
+<ul>${list}</ul>
+${more ? `<p>and ${more} more</p>` : ''}
+<p><a href="https://openvibe.network/notifications">Manage notification preferences</a></p>`;
+    }
+
+    _buildDigestText({ username, items, total }) {
+        const more = Math.max(0, Number(total) - items.length);
+        const lines = [`Hey ${username || 'there'},`, '', `Your OpenVibe digest: ${Number(total)} new`, ''];
+        for (const n of items) {
+            lines.push(`${n.title}${n.service ? ` · ${n.service}` : ''}${n.url ? ` · ${n.url}` : ''}`);
+        }
+        if (more) lines.push('', `and ${more} more`);
+        lines.push('', '---', 'Manage preferences: https://openvibe.network/notifications', 'OpenVibe · https://openvibe.network');
+        return lines.join('\n');
     }
 
     _buildPasswordResetHtml({ username, resetUrl, expiresMinutes }) {

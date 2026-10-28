@@ -117,6 +117,34 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
         }
     });
 
+    // ─── GET /api/notifications/quiet-hours ────────────────
+    // The person's do-not-disturb window (default 22:00–07:00 UTC, off) and whether it is now.
+    router.get('/quiet-hours', requireAuth, async (req, res) => {
+        try {
+            const quiet = await notificationService.getQuietHours(req.user.id);
+            const in_quiet = await notificationService.inQuietHours(req.user.id);
+            res.json({ ok: true, ...quiet, in_quiet });
+        } catch (err) {
+            console.error('[Notifications] GET /quiet-hours error:', err);
+            res.status(500).json({ ok: false, error: 'Failed to get quiet hours' });
+        }
+    });
+
+    // ─── PUT /api/notifications/quiet-hours ────────────────
+    // Body: { enabled, start: 'HH:MM', end: 'HH:MM', tz }
+    router.put('/quiet-hours', requireAuth, async (req, res) => {
+        try {
+            const { enabled, start, end, tz } = req.body || {};
+            const quiet = await notificationService.setQuietHours(req.user.id, { enabled, start, end, tz });
+            const in_quiet = await notificationService.inQuietHours(req.user.id);
+            res.json({ ok: true, ...quiet, in_quiet });
+        } catch (err) {
+            if (err.status === 400) return res.status(400).json({ ok: false, error: err.message });
+            console.error('[Notifications] PUT /quiet-hours error:', err);
+            res.status(500).json({ ok: false, error: 'Failed to save quiet hours' });
+        }
+    });
+
     // ─── GET /api/notifications/preferences ────────────────
     router.get('/preferences', requireAuth, async (req, res) => {
         try {
@@ -128,19 +156,21 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     });
 
     // ─── PUT /api/notifications/preferences ────────────────
-    // Body: { category, enabled, sound, toasts, email }
+    // Body: { category, enabled, sound, toasts, email, digest }
     router.put('/preferences', requireAuth, async (req, res) => {
         try {
-            const { category, enabled, sound, toasts, email } = req.body;
+            const { category, enabled, sound, toasts, email, digest } = req.body;
             if (!category) return res.status(400).json({ ok: false, error: 'Category required' });
             await notificationService.setPreference(req.user.id, category, {
                 enabled,
                 sound,
                 toasts,
                 email,
+                digest,
             });
             res.json({ ok: true });
         } catch (err) {
+            if (err.status === 400) return res.status(400).json({ ok: false, error: err.message });
             res.status(500).json({ ok: false, error: 'Failed to update preferences' });
         }
     });

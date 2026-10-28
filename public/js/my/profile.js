@@ -40,7 +40,7 @@ async function loadUser() {
             renderMerge();
             renderExport(); renderDeletion();
             if (pendingMerge() && String(pendingMerge().into_id) !== String(currentUser.id)) showSection('accounts');
-            loadNotifPrefs();
+            loadNotifPrefs(); loadQuietHours();
             loadLinked();
             loadSessions();
             loadBlocks();

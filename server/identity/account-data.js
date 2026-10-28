@@ -180,6 +180,7 @@ async function networkPart(db, userId) {
     add('preferences.json', {
         display: (await rowsOf(db, 'user_preferences', 'user_id = ?', [u.id])).rows[0] || null,
         notifications: (await rowsOf(db, 'notification_preferences', 'user_id = ?', [u.id])).rows,
+        quiet_hours: (await rowsOf(db, 'notification_quiet_hours', 'user_id = ?', [u.id])).rows[0] || null,
         effects: (await rowsOf(db, 'user_effects', 'user_id = ?', [u.id])).rows,
         push_devices: (await rowsOf(db, 'push_subscriptions', 'user_id = ?', [u.id], { omit: ['endpoint'] })).rows,
         theme_history: (await rowsOf(db, 'user_theme_history', 'user_id = ?', [u.id])).rows,
@@ -335,7 +336,7 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         const del = async (table, where, params, key = table) => { if (await tableExists(db, table)) count(key, (await db.prepare(`DELETE FROM ${table} WHERE ${where}`).run(...params)).changes); };
 
         for (const t of ['linked_accounts', 'user_sessions', 'oauth_tokens', 'oauth_codes', 'email_verification_tokens', 'password_reset_tokens', 'notifications',
-            'notification_preferences', 'user_preferences', 'user_effects', 'push_subscriptions', 'user_history', 'username_history', 'user_profile_changes',
+            'notification_preferences', 'notification_quiet_hours', 'notification_digest_runs', 'user_preferences', 'user_effects', 'push_subscriptions', 'user_history', 'username_history', 'user_profile_changes',
             'ip_log', 'email_delivery_log', 'user_theme_history']) await del(t, `user_id IN ${inU}`, userIds);
         if (await tableExists(db, 'account_merge_intents')) await del('account_merge_intents', `into_user_id IN ${inU}`, userIds);
         // Notifications this person sent others stay, without their name or picture.

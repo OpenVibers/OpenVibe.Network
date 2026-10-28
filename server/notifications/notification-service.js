@@ -10,9 +10,19 @@ const { v4: uuidv4 } = require('uuid');
 const { TYPES, PRIORITY, EMAIL_ELIGIBLE_CATEGORIES, EMAIL_DEFAULT_TYPES } = require('openvibe-shared/notifications');
 const contracts = require('openvibe-contracts');
 const eventRelay = require('../developer/event-relay');
+const { inQuiet, parseTime, validTimeZone, rowToConfig, configToView } = require('./quiet-hours');
+const { DIGEST_PERIODS } = require('./digest');
 
 // Staff and platform notices: never hidden by a block.
 const BLOCK_EXEMPT_CATEGORIES = new Set(['moderation', 'system', 'admin']);
+
+/** A validation failure the routes answer 400 to. */
+function badRequest(message) {
+    const err = new Error(message);
+    err.status = 400;
+    err.code = 'notification.invalid';
+    return err;
+}
 
 /**
  * network.notification.created (Contracts 0.61.0; ADR-005 amendment 2, roadmap WS-E task 3): every stored
@@ -93,17 +103,30 @@ class NotificationService {
         this._getPrefs = db.prepare('SELECT * FROM notification_preferences WHERE user_id = ?');
         this._getPrefByCategory = db.prepare('SELECT * FROM notification_preferences WHERE user_id = ? AND category = ?');
         this._upsertPref = db.prepare(`
-            INSERT INTO notification_preferences (user_id, category, enabled, sound, toasts, email)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(user_id, category) DO UPDATE SET enabled = ?, sound = ?, toasts = ?, email = ?
+            INSERT INTO notification_preferences (user_id, category, enabled, sound, toasts, email, digest)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id, category) DO UPDATE SET enabled = ?, sound = ?, toasts = ?, email = ?, digest = ?
         `);
         this._deletePrefs = db.prepare('DELETE FROM notification_preferences WHERE user_id = ? AND category = ?');
+
+        this._getQuietHours = db.prepare('SELECT * FROM notification_quiet_hours WHERE user_id = ?');
+        this._upsertQuietHours = db.prepare(`
+            INSERT INTO notification_quiet_hours (user_id, enabled, start_min, end_min, tz, updated_at)
+            VALUES (?, ?, ?, ?, ?, ov_now())
+            ON CONFLICT(user_id) DO UPDATE SET enabled = excluded.enabled, start_min = excluded.start_min,
+                end_min = excluded.end_min, tz = excluded.tz, updated_at = ov_now()
+        `);
 
         this._getPendingEmails = db.prepare(`
             SELECT n.*, u.email, u.username, u.display_name, u.email_verified, u.email_bounced_at FROM notifications n
             JOIN users u ON u.id = n.user_id
             WHERE n.is_emailed = 0 AND n.is_dismissed = 0
             AND u.email IS NOT NULL AND u.email != ''
+            -- Notifications waiting for a digest are the digest job's (runDigests): left in this queue they would fill
+            -- its 200 slots and starve everyone else's emails.
+            AND (n.priority = 'critical' OR NOT EXISTS (
+                SELECT 1 FROM notification_preferences p
+                WHERE p.user_id = n.user_id AND p.category = n.category AND p.digest IN ('hourly', 'daily', 'weekly')))
             ORDER BY n.created_at ASC
             LIMIT 200
         `);
@@ -195,17 +218,24 @@ class NotificationService {
         // Wake the relay after the commit (the outbox row committed with the notification).
         if (announced) { const live = eventRelay.outboxFor(this.db); if (live) live.kick(); }
 
-        // Fire browser push notification (async, non-blocking); `silent` keeps it to the bell.
-        if (!data.silent) try {
-            const pushService = require('../push/push-service');
-            pushService.sendPush(data.user_id, {
-                title,
-                message: data.message,
-                icon,
-                url: data.url,
-                type: data.type,
-            }).catch(() => {});
-        } catch (_) { /* push module not available */ }
+        // Fire browser push notification (async, non-blocking); `silent` keeps it to the bell. Quiet hours
+        // hold it back like email, except for critical priority, which always breaks through.
+        if (!data.silent) {
+            let held = false;
+            if (priority !== PRIORITY.CRITICAL) {
+                try { held = await this.inQuietHours(data.user_id); } catch { /* no quiet window */ }
+            }
+            if (!held) try {
+                const pushService = require('../push/push-service');
+                pushService.sendPush(data.user_id, {
+                    title,
+                    message: data.message,
+                    icon,
+                    url: data.url,
+                    type: data.type,
+                }).catch(() => {});
+            } catch (_) { /* push module not available */ }
+        }
 
         return { id, user_id: data.user_id, type: data.type, category, priority, title, message: data.message, icon, service: data.service, url: data.url, rich_content: data.rich_content, is_read: 0, created_at: createdAt };
     }
@@ -384,7 +414,7 @@ class NotificationService {
     // ─── Preferences ──────────────────────────────────────────
 
     async getPreferences(userId) {
-        return await this._getPrefs.all(userId);
+        return (await this._getPrefs.all(userId)).map((pref) => ({ ...pref, digest: pref.digest || 'off' }));
     }
 
     async setPreference(userId, category, updates = {}) {
@@ -393,12 +423,20 @@ class NotificationService {
             sound: 1,
             toasts: 1,
             email: null,   // NULL = no explicit choice → shouldEmail() applies the defaults
+            digest: null,  // NULL = off
         };
+        let digest = current.digest || null;
+        if (updates.digest !== undefined) {
+            if (updates.digest === null || updates.digest === 'off') digest = null;
+            else if (DIGEST_PERIODS.has(updates.digest)) digest = updates.digest;
+            else throw badRequest("digest must be 'off', 'hourly', 'daily' or 'weekly'");
+        }
         const next = {
             enabled: updates.enabled !== undefined ? (updates.enabled ? 1 : 0) : current.enabled,
             sound: updates.sound !== undefined ? (updates.sound ? 1 : 0) : current.sound,
             toasts: updates.toasts !== undefined ? (updates.toasts ? 1 : 0) : current.toasts,
             email: updates.email !== undefined ? (updates.email === null ? null : (updates.email ? 1 : 0)) : current.email,
+            digest,
         };
         await this._upsertPref.run(
             userId,
@@ -407,15 +445,47 @@ class NotificationService {
             next.sound,
             next.toasts,
             next.email,
+            next.digest,
             next.enabled,
             next.sound,
             next.toasts,
             next.email,
+            next.digest,
         );
     }
 
     async resetPreference(userId, category) {
         await this._deletePrefs.run(userId, category);
+    }
+
+    // ─── Quiet Hours ─────────────────────────────────────────
+
+    /** The API shape { enabled, start: 'HH:MM', end: 'HH:MM', tz }, with the 22:00–07:00 UTC default. */
+    async getQuietHours(userId) {
+        return configToView(rowToConfig(await this._getQuietHours.get(userId)));
+    }
+
+    /** The numeric config inQuiet() reads (also gives the digest its zone when quiet hours are off). */
+    async getQuietHoursConfig(userId) {
+        return rowToConfig(await this._getQuietHours.get(userId));
+    }
+
+    async inQuietHours(userId, at = Date.now()) {
+        return inQuiet(await this.getQuietHoursConfig(userId), at);
+    }
+
+    async setQuietHours(userId, { enabled, start, end, tz } = {}) {
+        const row = await this._getQuietHours.get(userId);
+        const current = rowToConfig(row);
+        const startMin = start === undefined ? current.start_min : parseTime(start);
+        const endMin = end === undefined ? current.end_min : parseTime(end);
+        if (startMin === null) throw badRequest("start must be a time 'HH:MM'");
+        if (endMin === null) throw badRequest("end must be a time 'HH:MM'");
+        const zone = tz === undefined ? current.tz : tz;
+        if (!validTimeZone(zone)) throw badRequest("tz must be an IANA time zone");
+        const on = enabled === undefined ? (row ? current.enabled : true) : !(enabled === false || Number(enabled) === 0);
+        await this._upsertQuietHours.run(userId, on ? 1 : 0, startMin, endMin, zone);
+        return await this.getQuietHours(userId);
     }
 
     // ─── Email Queue ──────────────────────────────────────────
@@ -435,6 +505,8 @@ class NotificationService {
         const pref = await this._getPrefByCategory.get(notification.user_id, notification.category);
         // If user disabled the whole category, no email
         if (pref && !pref.enabled) return false;
+        // A digested category waits for its summary; critical still emails at once.
+        if (pref && DIGEST_PERIODS.has(pref.digest) && notification.priority !== PRIORITY.CRITICAL) return false;
         // LOW priority never emails
         if (notification.priority === PRIORITY.LOW) return false;
         const critical = notification.priority === PRIORITY.CRITICAL && EMAIL_ELIGIBLE_CATEGORIES.has(notification.category);
@@ -450,12 +522,33 @@ class NotificationService {
         return critical;
     }
 
+    /** Whether this notification belongs to a digest category (critical never waits for the digest). */
+    async isDigest(notification) {
+        if (notification.priority === PRIORITY.CRITICAL) return false;
+        const pref = await this._getPrefByCategory.get(notification.user_id, notification.category);
+        return !!(pref && Number(pref.enabled) !== 0 && DIGEST_PERIODS.has(pref.digest));
+    }
+
+    /**
+     * The daily caps, shared by the queue and the digest: 'user-cap', 'global-cap' or null.
+     *  - user cap: site_settings email_user_daily_cap (default 30)
+     *  - global cap: site_settings email_daily_cap (default 2000)
+     */
+    async emailCaps(userId) {
+        try {
+            const userCap = parseInt(await this.db.getSetting?.('email_user_daily_cap'), 10) || 30;
+            if (((await this._emailsSentToUserToday.get(userId))?.c || 0) >= userCap) return 'user-cap';
+            const globalCap = parseInt(await this.db.getSetting?.('email_daily_cap'), 10) || 2000;
+            if (((await this._emailsSentToday.get())?.c || 0) >= globalCap) return 'global-cap';
+        } catch { /* guards are best-effort */ }
+        return null;
+    }
+
     /**
      * Abuse/cost guards evaluated right before a send. Returns a reason string to skip, or null.
      *  - stale: a go-live alert older than 2h is useless in an inbox
      *  - dup: same streamer already emailed this user within the hour
-     *  - user cap / global cap: site_settings email_user_daily_cap (default 30),
-     *    email_daily_cap (default 2000)
+     *  - user cap / global cap (see emailCaps)
      */
     async emailGuard(notification) {
         try {
@@ -464,10 +557,7 @@ class NotificationService {
                 if (ageMs > 2 * 3600 * 1000) return 'stale';
                 if (notification.sender_id != null && await this._recentEmailFromSender.get(notification.user_id, 'STREAM_LIVE', notification.sender_id)) return 'dup';
             }
-            const userCap = parseInt(await this.db.getSetting?.('email_user_daily_cap'), 10) || 30;
-            if (((await this._emailsSentToUserToday.get(notification.user_id))?.c || 0) >= userCap) return 'user-cap';
-            const globalCap = parseInt(await this.db.getSetting?.('email_daily_cap'), 10) || 2000;
-            if (((await this._emailsSentToday.get())?.c || 0) >= globalCap) return 'global-cap';
+            return await this.emailCaps(notification.user_id);
         } catch { /* guards are best-effort */ }
         return null;
     }
