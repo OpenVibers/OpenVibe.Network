@@ -413,6 +413,10 @@ const DEFAULT_GRANTS = [
     // AI on your own machines (contracts 0.219.0): a person's own model, on their own machine through its OpenVibe Node,
     // for that person's runs only (Bot checks the owner and their switch, "Let my AI use this computer's models").
     ['ai', 'bot.machine.ai', 'openvibe.bot', []],          // ai.run.* (AI server/events.js, 2026-09-24)
+    // Run sessions (contracts 0.223.0, the Desks plan's D6): Run leases one desk per session on OpenVibe.Bot, acting for
+    // the session's person; OpenVibe.Actor opens, uses and ends a browser session on Run for the person it works for.
+    ['run', 'bot.desk.session', 'openvibe.bot', []],
+    ...['run.session.create', 'run.session.read', 'run.session.control'].map((c) => ['actor', c, 'openvibe.run', []]),
     // Wave 13: Live's AI features run as OpenVibe.AI workflows (AI_SERVICE=remote in live.env).
     // Live runs its own live.* workflows, network.site_copy as the footer-copy fallback, and media.analyze
     // (local-first VOD/clip analysis, roadmap WS-O task 5) (OpenVibe.AI fails closed on a token with no ns).
