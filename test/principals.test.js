@@ -101,6 +101,31 @@ const server = http.createServer(app);
     t = await token({ client_id: 'meme', client_secret: 'meme-secret', audience: 'openvibe.network' });
     assert.deepStrictEqual(t.body.scope.split(' '), ['network.account.deletion.confirm', 'network.account.export.contribute'], 'Meme answers account export and deletion, and holds no identity.subject.resolve');
 
+    // OpenVibe.Vision and OpenVibe.Exchange (contracts 0.235.0): both answer account export and deletion and create
+    // their two account-event subscriptions at boot; Vision runs AI workflow ai.complete, Exchange feeds Search.
+    for (const [client, secret] of [['vision', 'vision-secret'], ['exchange', 'exchange-secret']]) {
+        await db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(secret, client);
+        t = await token({ client_id: client, client_secret: secret, audience: 'openvibe.network' });
+        assert.deepStrictEqual(t.body.scope.split(' '), ['network.account.deletion.confirm', 'network.account.export.contribute'], `${client} answers account export and deletion, and holds no identity.subject.resolve`);
+        t = await token({ client_id: client, client_secret: secret, audience: 'openvibe.events' });
+        assert.strictEqual(t.body.scope, 'events.subscription.manage', `${client} subscribes to the account events at boot`);
+    }
+    t = await token({ client_id: 'vision', client_secret: 'vision-secret', audience: 'openvibe.ai' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    const visionAiClaims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.ai' });
+    assert.ok(visionAiClaims.ok, visionAiClaims.reason);
+    assert.deepStrictEqual([visionAiClaims.claims.cap, visionAiClaims.claims.ns], [['ai.run.create'], ['ai.complete']], 'Vision runs AI workflow ai.complete through the OpenAI-compatible endpoint');
+    t = await token({ client_id: 'vision', client_secret: 'vision-secret', audience: 'openvibe.search' });
+    assert.strictEqual(t.status, 400, 'Vision has no public records, so no Search grant');
+    t = await token({ client_id: 'exchange', client_secret: 'exchange-secret', audience: 'openvibe.search' });
+    assert.strictEqual(t.body.scope, 'search.document.write', 'Exchange indexes its public listings in Search');
+    t = await token({ client_id: 'exchange', client_secret: 'exchange-secret', audience: 'openvibe.ai' });
+    assert.strictEqual(t.status, 400, 'Exchange holds no AI capability in v1');
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'design-secret' WHERE client_id = 'design'").run();
+    t = await token({ client_id: 'design', client_secret: 'design-secret', audience: 'openvibe.vision' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    assert.strictEqual(t.body.scope, 'vision.ui.check', "Design's Arena runs Vision's UI check");
+
     t = await token({ client_id: 'live', client_secret: 'wrong', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 401); assert.strictEqual(t.body.error, 'invalid_client');
     t = await token({ client_id: 'live', client_secret: 'live-secret' });

@@ -93,11 +93,11 @@ const server = http.createServer(app);
 
         // ── Export ──
         const seeded = await accountData.expectedServices(db, 'network.account.export.contribute');
-        assert.deepStrictEqual(seeded, ['actor', 'billing', 'blog', 'bot', 'chat', 'codes', 'community', 'deals', 'domains', 'food', 'games', 'help', 'host', 'inventory', 'live', 'media', 'media-hub', 'meme', 'play', 'quest', 'rent', 'reviews', 'services', 'space', 'tips', 'trade', 'vip', 'watch', 'wiki', 'work'],
-            'the holders of the contribute grant: the skeleton services answer too since 2026-10-08 and the older ones since 2026-10-09 (openvibe-sdk/account-data); Codes and Play since 2026-10-14 (run tasks; scores and unlocks); Space again since 2026-10-16 (its spaces); Billing since 2026-10-17 (money records); Reviews since 2026-10-17 (members\' reviews); Host since 2026-10-19 (the console and benchmarks); Meme since 2026-10-28 (votes, captions and reports)');
+        assert.deepStrictEqual(seeded, ['actor', 'billing', 'blog', 'bot', 'chat', 'codes', 'community', 'deals', 'domains', 'exchange', 'food', 'games', 'help', 'host', 'inventory', 'live', 'media', 'media-hub', 'meme', 'play', 'quest', 'rent', 'reviews', 'services', 'space', 'tips', 'trade', 'vip', 'vision', 'watch', 'wiki', 'work'],
+            'the holders of the contribute grant: the skeleton services answer too since 2026-10-08 and the older ones since 2026-10-09 (openvibe-sdk/account-data); Codes and Play since 2026-10-14 (run tasks; scores and unlocks); Space again since 2026-10-16 (its spaces); Billing since 2026-10-17 (money records); Reviews since 2026-10-17 (members\' reviews); Host since 2026-10-19 (the console and benchmarks); Meme since 2026-10-28 (votes, captions and reports), Vision and Exchange since 2026-10-28 (answers and checks; listings, installs and offers)');
         // The scenarios below follow five services; the newer ones are set aside here, exactly as an operator would
         // revoke a service's grant (the same rows, the same revoked_at).
-        for (const svc of ['actor', 'billing', 'blog', 'bot', 'codes', 'deals', 'domains', 'food', 'help', 'host', 'inventory', 'media-hub', 'meme', 'play', 'quest', 'rent', 'reviews', 'services', 'space', 'tips', 'trade', 'vip', 'watch', 'wiki', 'work']) {
+        for (const svc of ['actor', 'billing', 'blog', 'bot', 'codes', 'deals', 'domains', 'exchange', 'food', 'help', 'host', 'inventory', 'media-hub', 'meme', 'play', 'quest', 'rent', 'reviews', 'services', 'space', 'tips', 'trade', 'vip', 'vision', 'watch', 'wiki', 'work']) {
             for (const cap of ['network.account.export.contribute', 'network.account.deletion.confirm']) {
                 await db.prepare('UPDATE principal_grants SET revoked_at = ov_now() WHERE client_id = ? AND capability = ? AND revoked_at IS NULL').run(svc, cap);
             }
