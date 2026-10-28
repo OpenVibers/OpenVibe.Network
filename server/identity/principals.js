@@ -451,6 +451,8 @@ const DEFAULT_GRANTS = [
     // AI researches on the fabric (sf4-research): the fabric's query and the delegated subject query, so its web scope
     // counts against the person's own Search allowance and never reaches a provider with an account identifier.
     ['ai', 'search.query.delegate', 'openvibe.search', []],
+    ['ai', 'events.subscription.manage', 'openvibe.events', []],
+    ['chat', 'search.query.delegate', 'openvibe.search', []],
     ['ai', 'search.fabric.query', 'openvibe.search', []],
     // OpenVibe.Today (plan 2026-10-28 §5.3): today.event.* from its outbox, reminders as notifications to the person
     // who set them (resolved from their usr_ subject), and its live.stream.* and account subscriptions.
@@ -613,6 +615,7 @@ const DEFAULT_GRANTS = [
     ['design', 'bench.round.read', 'openvibe.bench', []],
     ['design', 'bench.judgement.cast', 'openvibe.bench', []],
     ['design', 'bench.board.read', 'openvibe.bench', []],
+    ['design', 'bench.entry.create', 'openvibe.bench', []],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.

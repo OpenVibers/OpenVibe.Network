@@ -162,10 +162,10 @@ const server = http.createServer(app);
     t = await token({ client_id: 'design', client_secret: 'design-secret', audience: 'openvibe.vision' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
     assert.strictEqual(t.body.scope, 'vision.ui.check', "Design's Arena runs Vision's UI check");
-    // OpenVibe.Design's Arena moves onto Bench (contracts 0.238.0): the five bench capabilities above, on openvibe.bench.
+    // OpenVibe.Design's Arena runs on Bench: the six bench capabilities above (entry.create for its importer), on openvibe.bench.
     t = await token({ client_id: 'design', client_secret: 'design-secret', audience: 'openvibe.bench' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
-    assert.deepStrictEqual(t.body.scope.split(' '), ['bench.board.read', 'bench.judgement.cast', 'bench.round.create', 'bench.round.read', 'bench.task.create'], "Design creates and reads Bench tasks and rounds, reads boards and casts judgements");
+    assert.deepStrictEqual(t.body.scope.split(' '), ['bench.board.read', 'bench.entry.create', 'bench.judgement.cast', 'bench.round.create', 'bench.round.read', 'bench.task.create'], "Design creates and reads Bench tasks and rounds, reads boards and casts judgements");
 
     // OpenVibe.Bench (contracts 0.238.0): the account export/deletion pair, its account-event subscriptions, and
     // ai.run.create (namespace ai.generate) to run its pinned rounds; it publishes bench.* events and indexes nothing.
