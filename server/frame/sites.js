@@ -35,19 +35,18 @@ const fullName = (s) => (/^Open[A-Z]/.test(String(s && s.name)) ? s.name : `Open
 
 // The launcher (openvibe-shared navbar) lists every open site under one of these groups, most used first within
 // each. A site missing here lands in the last group, so a new manifest is never left out of the menu.
-// Grouped by what a person came to do (the owner, 2026-10-25: "reorganize this whole menu and make it more clean and
-// clear and organized and easier to understand"): watching first (Live is the flagship), then talking, playing,
-// building with AI, everyday errands, their own account and items, and the building blocks last "For developers"
-// (plan track K). Alerts (watch) is an everyday tool; Download sits with Video and Pics; Inventory with the account,
-// so a person's items are one tap away on every site.
+// The six neighbourhoods of the 2026-10-28 plan (§3.1): each label is two words, so it never collides with a site's own
+// name, and they follow what a person came to do. Rooms not open yet (Cam, Tours, Surf, Fun, Meme, Casino, Today, Report,
+// Vision, Website, Design, Domains, open.shoes, Exchange) are named here so they land in their neighbourhood the day
+// their manifest opens. The building blocks stay last, "For developers" (the tail of Make & build).
 const GROUPS = [
-    { id: 'watch', name: 'Watch & stream', sites: ['live', 'media-hub', 'stream', 'pics', 'download', 'tips', 'vip'] },
-    { id: 'talk', name: 'Chat & community', sites: ['chat', 'community', 'blog', 'news', 'wiki'] },
-    { id: 'play', name: 'Games', sites: ['games', 'quest'] },
-    { id: 'make', name: 'Build with AI', sites: ['codes', 'actor', 'space', 'tools', 'bot'] },
-    { id: 'everyday', name: 'Everyday', sites: ['deals', 'coupons', 'reviews', 'work', 'rent', 'homes', 'food', 'help', 'trade', 'watch', 'search', 'host'] },
-    { id: 'you', name: 'Your account', sites: ['network', 'inventory'] },
-    { id: 'build', name: 'For developers', sites: ['services', 'ai', 'run', 'zone', 'events', 'media', 'play'] },
+    { id: 'streams', name: 'Streams & places', sites: ['live', 'media-hub', 'stream', 'pics', 'download', 'cam', 'tours'] },
+    { id: 'games', name: 'Games & laughs', sites: ['games', 'surf', 'fun', 'meme', 'casino', 'quest'] },
+    { id: 'answers', name: 'News & answers', sites: ['today', 'report', 'news', 'search', 'wiki', 'blog', 'reviews', 'vision'] },
+    { id: 'make', name: 'Make & build', sites: ['website', 'design', 'domains', 'codes', 'space', 'tools', 'host', 'actor', 'bot'] },
+    { id: 'shop', name: 'Shop & swap', sites: ['deals', 'coupons', 'shoes', 'exchange', 'rent', 'homes', 'work', 'food', 'trade'] },
+    { id: 'people', name: 'People & you', sites: ['chat', 'community', 'tips', 'vip', 'help', 'network', 'inventory'] },
+    { id: 'build', name: 'For developers', sites: ['services', 'ai', 'run', 'zone', 'events', 'media', 'watch', 'play'] },
 ];
 // What each site is, in a few words, for the menus (the launcher's rows are two to a line on a phone: about 22
 // characters fit). The manifests' taglines stay the sites' own sentences everywhere else; a site missing here shows

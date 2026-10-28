@@ -17,16 +17,16 @@ let p = svc.payloadFor('openvibe.media');
 assert.deepEqual(p.nav.filter(n => !n.of).map(n => n.id), ['live', 'tools', 'space', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'ai', 'search', 'run', 'play', 'zone'], 'cold start follows the base order');
 // The launcher: every open site in one of the groups, and the products other services serve on their own domains
 // right after their site (Pics and Download after Video, Homes after Rent).
-assert.deepStrictEqual(p.groups.map(g => g.name), ['Watch & stream', 'Chat & community', 'Games', 'Build with AI', 'Everyday', 'Your account', 'For developers'], 'by what a person came to do, the building blocks last (the owner, 2026-10-25)');
+assert.deepStrictEqual(p.groups.map(g => g.name), ['Streams & places', 'Games & laughs', 'News & answers', 'Make & build', 'Shop & swap', 'People & you', 'For developers'], 'the six neighbourhoods (plan 2026-10-28 §3.1), the building blocks last');
 assert.strictEqual(p.groups.find(g => g.id === 'build').name, 'For developers');
 assert.ok(p.nav.every(n => p.groups.some(g => g.id === n.group)), 'every entry has a group');
 assert.deepStrictEqual(p.nav.filter(n => n.of).map(n => [n.id, n.of, n.url]), [['pics', 'media-hub', 'https://openvibe.pics/'], ['download', 'media-hub', 'https://openvibe.download/'], ['homes', 'rent', 'https://openvibe.homes/']]);
 const at = (id) => p.nav.findIndex(n => n.id === id);
 assert.ok(at('pics') === at('media-hub') + 1 && at('homes') === at('rent') + 1, 'a product follows its site');
-assert.deepStrictEqual([p.nav[at('media-hub')].icon, p.nav[at('media-hub')].group, p.nav[at('homes')].group, p.nav[at('tools')].group], ['video', 'watch', 'everyday', 'make'], 'Video draws the video icon (there is no media-hub icon)');
+assert.deepStrictEqual([p.nav[at('media-hub')].icon, p.nav[at('media-hub')].group, p.nav[at('homes')].group, p.nav[at('tools')].group], ['video', 'streams', 'shop', 'make'], 'Video draws the video icon (there is no media-hub icon)');
 assert.deepStrictEqual(['actor', 'bot', 'run', 'zone'].map((id) => p.nav[at(id)].group), ['make', 'make', 'build', 'build'], 'agents and robots for people, compute and storage for developers');
-// Games together, items with the account, Alerts as an everyday tool, files beside Video (each when its site is open).
-[['games', 'play'], ['quest', 'play'], ['inventory', 'you'], ['watch', 'everyday'], ['download', 'watch']]
+// Games together, items with the account, Alerts with the building blocks, files beside Video (each when its site is open).
+[['games', 'games'], ['quest', 'games'], ['inventory', 'people'], ['watch', 'build'], ['download', 'streams'], ['search', 'answers'], ['chat', 'people']]
     .filter(([id]) => at(id) >= 0).forEach(([id, group]) => assert.strictEqual(p.nav[at(id)].group, group, `${id} is in ${group}`));
 assert.strictEqual(p.nav.length, 40);
 assert.deepStrictEqual([p.nav[at('stream')].name, p.nav[at('pics')].name], ['Restream', 'Pics'], 'OpenRestream is "Restream" among the menu\'s short names (owner, 2026-10-28)');
