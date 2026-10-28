@@ -280,6 +280,20 @@ curl -X POST http://127.0.0.1:4000/internal/notifications/push \
   -d '{"userId": 42, "type": "new_follower", "data": {"actorName": "someone"}}'
 ```
 
+### The Action Center
+
+`GET /api/v1/me/actions` (`server/actions/`, capability `network.actions.read`, contracts 0.229.0) is the ✦ beside the bell:
+the signed-in person's agent work in five buckets (`running`, `waiting`, `scheduled`, `done`, `failed`) as
+`network.me-actions-result@1`. It merges their pending confirmations (`server/developer/confirmations.js`) with
+Actor's, Codes' and AI's `GET /api/v1/actions?subject=usr_…` (`actor.actions.read`, `codes.actions.read`,
+`ai.actions.read`; Network signs its own token for each, `server/identity/self-token.js`; `OV_ACTOR_INTERNAL_URL`,
+`OV_CODES_INTERNAL_URL`, `OV_AI_INTERNAL_URL`). Each source has 2.5 s; a slow or failing one is named in `sources`
+and the answer is `partial`, and a service that has not deployed the route is `not_connected`. Items that are not
+`common.action-item@1`, or claim another service, are dropped. The answer is cached 10 s per person.
+`POST /api/v1/me/actions/:service/:id/approve|decline` decides a Network confirmation, or an Actor approval through
+Actor's `POST /api/v1/approvals/:id/decide` (`actor.approval.decide`, `X-OV-Subject`); anything else is opened on its
+own page.
+
 ### Notifications from Events
 
 `POST /internal/events` (`server/notifications/events-consumer.js`) turns OpenVibe.Events deliveries
