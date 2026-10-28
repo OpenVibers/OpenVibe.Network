@@ -323,7 +323,7 @@ ${require('../boost').meta(releaseId)}
 ${require('openvibe-shared/app-icon').headTags({ site: 'network', iconBase: '/assets' })}
 <meta name="color-scheme" content="dark light">
 <script src="/shared/theme-loader.js" defer></script>
-<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'Dataset', name: title, description: desc, url: 'https://openvibe.network/stats', isAccessibleForFree: true, creator: { '@type': 'Organization', name: 'OpenVibe' }, distribution: [{ '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: 'https://openvibe.network/api/v1/stats' }, { '@type': 'DataDownload', encodingFormat: 'text/csv', contentUrl: 'https://openvibe.network/api/v1/stats/pageviews.csv' }] }).replace(/</g, '\\u003c')}</script>
+<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'Dataset', name: title, description: desc, url: 'https://openvibe.network/stats', isAccessibleForFree: true, creator: { '@type': 'Organization', '@id': 'https://openvibe.network/#org', name: 'OpenVibe' }, distribution: [{ '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: 'https://openvibe.network/api/v1/stats' }, { '@type': 'DataDownload', encodingFormat: 'text/csv', contentUrl: 'https://openvibe.network/api/v1/stats/pageviews.csv' }] }).replace(/</g, '\\u003c')}</script>
 <style>
 *,*::before,*::after{box-sizing:border-box}
 :root{--bg-primary:#0a0f1c;--bg-secondary:#101828;--bg-card:#0f1729;--border:#1f2d47;--accent:#3b82f6;--text-primary:#e6edf7;--text-secondary:#96a7c2;--text-muted:#7386a3;--up:#22c55e;--down:#f87171}
