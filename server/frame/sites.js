@@ -61,6 +61,11 @@ const MENU_LINE = {
     services: 'APIs and SDK', ai: 'AI models API', run: 'Run jobs anywhere', zone: 'S3 storage', events: 'Event streams', media: 'Media API', play: 'Game services',
 };
 
+// A site's name in the menus, where the rows are short words (Pics, Download, VIP, Tips): the product keeps its full name
+// everywhere else (its own site, page titles, sign-in). The owner, 2026-10-28: "label it simply Restream… it does look
+// a little weird" next to the others.
+const MENU_NAME = { stream: 'Restream' };
+
 const groupOf = (id) => (GROUPS.find(g => g.sites.includes(id)) || GROUPS[GROUPS.length - 1]).id;
 
 // Products with a domain of their own that another service serves (its manifest lists the domain): in the menu
@@ -81,4 +86,4 @@ function siteForHost(hostname) {
     return null;
 }
 
-module.exports = { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE };
+module.exports = { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME };

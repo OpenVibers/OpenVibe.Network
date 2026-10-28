@@ -29,6 +29,7 @@ assert.deepStrictEqual(['actor', 'bot', 'run', 'zone'].map((id) => p.nav[at(id)]
 [['games', 'play'], ['quest', 'play'], ['inventory', 'you'], ['watch', 'everyday'], ['download', 'watch']]
     .filter(([id]) => at(id) >= 0).forEach(([id, group]) => assert.strictEqual(p.nav[at(id)].group, group, `${id} is in ${group}`));
 assert.strictEqual(p.nav.length, 40);
+assert.deepStrictEqual([p.nav[at('stream')].name, p.nav[at('pics')].name], ['Restream', 'Pics'], 'OpenRestream is "Restream" among the menu\'s short names (owner, 2026-10-28)');
 assert.strictEqual(p.nav.find(n => n.id === 'space').url, 'https://openvibe.space/', 'Space keeps its own home (the forum returned to Community, 0.118.0)');
 assert.strictEqual(p.nav.find(n => n.id === 'community').url, 'https://openvibe.community/', 'Community: the forum, pastes and Pulse');
 assert.equal(p.footer.legal.dmca, 'https://openvibe.media/dmca', 'legal links stay on the site\'s own domain');
