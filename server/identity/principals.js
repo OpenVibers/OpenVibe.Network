@@ -143,7 +143,7 @@ const DEFAULT_GRANTS = [
     // account-data consumer and subscriptions shipped first in Reviews#77). Host since 2026-10-19 (the console's sealed hosting
     // tokens and actions, benchmarks' submissions; Host#120, subscribed first through Network#284).
     ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub',
-        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host', 'domains', 'meme', 'vision', 'exchange', 'fun'].flatMap((svc) => [
+        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host', 'domains', 'meme', 'vision', 'exchange', 'fun', 'cam'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
@@ -580,6 +580,19 @@ const DEFAULT_GRANTS = [
     // (identity.subject.resolve, network.coins.credit) are not seeded while FUN_COINS is off.
     ['fun', 'search.document.write', 'openvibe.search', []],
     ['fun', 'events.subscription.manage', 'openvibe.events', []],
+    // OpenVibe.Cam (contracts 0.237.0): it resolves the @username a camera grant names to a canonical subject
+    // (a subject id works without it), and it subscribes to the two account Events topics at boot; its
+    // export/deletion pair is with the other services' above. Media's live frame and Live's stream read are public
+    // GETs, Pics takes the viewer's own token, and Live's cam button calls POST /api/v1/stills with the viewer's own
+    // token, so it holds no Media, Live or Pics grant. v1 makes nothing public, so no Search grant.
+    ['cam', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['cam', 'events.subscription.manage', 'openvibe.events', []],
+    // OpenVibe.Report (contracts 0.237.0): it quotes Billing's read API and never computes money, so it holds the
+    // stats read and the per-subject balance read; it subscribes to live.stream.ended and the frame beacon at boot.
+    // It keeps nothing about people (no database and no account-data route), so it holds neither export nor deletion.
+    ['report', 'billing.stats.read', 'openvibe.billing', []],
+    ['report', 'billing.balance.read', 'openvibe.billing', []],
+    ['report', 'events.subscription.manage', 'openvibe.events', []],
     // OpenVibe.Design's Arena runs Vision's UI check (contracts 0.235.0 vision.ui.check, first-party). Vision 0.1.0's
     // source still labels the route's guard vision.ui_check; its service must use the contract id before Arena calls it.
     ['design', 'vision.ui.check', 'openvibe.vision', []],
