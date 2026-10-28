@@ -29,6 +29,8 @@ await db.prepare("UPDATE oauth_clients SET client_secret = 'media-secret' WHERE 
 await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('search', 'search-secret', 'OpenVibe.Search', '[]', 1) ON CONFLICT DO NOTHING").run();
 // Events is created the same way (setup/service-principal.js); it is a usage producer with its own token.
 await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('events', 'events-secret', 'OpenVibe.Events', '[]', 1) ON CONFLICT DO NOTHING").run();
+// Report is a service principal too (it signs people in nowhere): its client comes from setup/service-principal.js.
+await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('report', 'report-secret', 'OpenVibe.Report', '[]', 1) ON CONFLICT DO NOTHING").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'ai-secret' WHERE client_id = 'ai'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'bot-secret' WHERE client_id = 'bot'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'tips-secret' WHERE client_id = 'tips'").run();
@@ -134,6 +136,28 @@ const server = http.createServer(app);
     assert.strictEqual(t.status, 400, 'Fun reads Live publicly and holds no Live capability');
     t = await token({ client_id: 'fun', client_secret: 'fun-secret', audience: 'openvibe.ai' });
     assert.strictEqual(t.status, 400, 'Fun holds no AI capability in v1');
+    // OpenVibe.Cam (contracts 0.237.0): the export/deletion pair, identity.subject.resolve for a grant's @username,
+    // and its account-event subscriptions. Media's frame, Live's stream read and Pics take the viewer's own token,
+    // and Live calls Cam's POST /api/v1/stills with it, so Cam holds no such grant and registers no capability.
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'cam-secret' WHERE client_id = 'cam'").run();
+    t = await token({ client_id: 'cam', client_secret: 'cam-secret', audience: 'openvibe.network' });
+    assert.deepStrictEqual(t.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute'], 'Cam answers account export and deletion and resolves a grant\'s @username');
+    t = await token({ client_id: 'cam', client_secret: 'cam-secret', audience: 'openvibe.events' });
+    assert.strictEqual(t.body.scope, 'events.subscription.manage', 'Cam subscribes to the account events at boot');
+    t = await token({ client_id: 'cam', client_secret: 'cam-secret', audience: 'openvibe.live' });
+    assert.strictEqual(t.status, 400, 'Cam reads Live publicly and holds no Live capability');
+    t = await token({ client_id: 'cam', client_secret: 'cam-secret', audience: 'openvibe.media' });
+    assert.strictEqual(t.status, 400, 'Cam reads the live frame publicly and holds no Media capability');
+    t = await token({ client_id: 'cam', client_secret: 'cam-secret', audience: 'openvibe.search' });
+    assert.strictEqual(t.status, 400, 'Cam makes nothing public in v1, so no Search grant');
+    // OpenVibe.Report (contracts 0.237.0): it quotes Billing and subscribes to live.stream.ended and the frame
+    // beacon. It keeps nothing about people, so it holds neither account export nor deletion.
+    t = await token({ client_id: 'report', client_secret: 'report-secret', audience: 'openvibe.billing' });
+    assert.deepStrictEqual(t.body.scope.split(' '), ['billing.balance.read', 'billing.stats.read'], 'Report reads Billing\'s stats and per-subject balance');
+    t = await token({ client_id: 'report', client_secret: 'report-secret', audience: 'openvibe.events' });
+    assert.strictEqual(t.body.scope, 'events.subscription.manage', 'Report subscribes to stream-ended and frame beacons');
+    t = await token({ client_id: 'report', client_secret: 'report-secret', audience: 'openvibe.network' });
+    assert.strictEqual(t.status, 400, 'Report keeps nothing about people, so no account export or deletion grant');
     await db.prepare("UPDATE oauth_clients SET client_secret = 'design-secret' WHERE client_id = 'design'").run();
     t = await token({ client_id: 'design', client_secret: 'design-secret', audience: 'openvibe.vision' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
