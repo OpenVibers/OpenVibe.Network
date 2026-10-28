@@ -199,6 +199,9 @@ router.put('/me', requireAuth, async (req, res) => {
         req.body.custom_variables = v.variables;
     }
 
+    // Keep what this change replaces, so the person can go back to it (the Design studio's history and rollback).
+    await keepHistory(db, userId, req.body && req.body.source, { theme_id: theme_id || null, custom: req.body.custom_variables ? JSON.stringify(req.body.custom_variables) : null });
+
     await db.prepare(`
         INSERT INTO user_preferences (user_id, theme_id, custom_theme_variables, updated_at)
         VALUES (?, ?, ?, ov_now())
@@ -215,6 +218,53 @@ router.put('/me', requireAuth, async (req, res) => {
     );
 
     res.json({ success: true, theme_id, custom_variables: req.body.custom_variables || null });
+});
+
+// ── History and rollback (plan 2026-10-28 §5.2) ───────────────
+// Every change through PUT /me keeps the setting it replaced (the last 50 per person); a restore is itself a change, so
+// it can be undone the same way. Nothing here is public: a person reads only their own history.
+const HISTORY_KEEP = 50;
+/** Keep the current setting before `next` replaces it ({ theme_id (null: unchanged), custom }); nothing when nothing changes. */
+async function keepHistory(db, userId, source, next) {
+    const cur = await db.prepare('SELECT theme_id, custom_theme_variables FROM user_preferences WHERE user_id = ?').get(userId);
+    if (!cur || !cur.theme_id) return;
+    if ((next.theme_id || cur.theme_id) === cur.theme_id && (next.custom || null) === (cur.custom_theme_variables || null)) return;
+    const src = typeof source === 'string' && /^[a-z][a-z0-9-]{0,23}$/.test(source) ? source : null;
+    await db.prepare('INSERT INTO user_theme_history (user_id, theme_id, custom_theme_variables, source) VALUES (?, ?, ?, ?)').run(userId, cur.theme_id, cur.custom_theme_variables || null, src);
+    await db.prepare(`DELETE FROM user_theme_history WHERE user_id = ? AND id NOT IN (
+        SELECT id FROM user_theme_history WHERE user_id = ? ORDER BY id DESC LIMIT ${HISTORY_KEEP})`).run(userId, userId);
+}
+const historyRow = (r, names) => {
+    let vars = null;
+    try { vars = r.custom_theme_variables ? JSON.parse(r.custom_theme_variables) : null; } catch { vars = null; }
+    return { id: Number(r.id), theme_id: r.theme_id, theme_name: names.get(r.theme_id) || null, custom_variables: vars, source: r.source || null, created_at: r.created_at };
+};
+
+router.get('/me/history', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const userId = req.user.sub || req.user.id;
+    const rows = await db.prepare(`SELECT id, theme_id, custom_theme_variables, source, created_at FROM user_theme_history WHERE user_id = ? ORDER BY id DESC LIMIT ${HISTORY_KEEP}`).all(userId);
+    const ids = [...new Set(rows.map((r) => r.theme_id))];
+    const names = new Map();
+    for (const id of ids) { const t = await db.prepare('SELECT name FROM themes WHERE id = ?').get(id); if (t) names.set(id, t.name); }
+    res.set('Cache-Control', 'private, no-store').json({ history: rows.map((r) => historyRow(r, names)) });
+});
+
+router.post('/me/history/:id/restore', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const userId = req.user.sub || req.user.id;
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ error: 'Bad history id', code: 'theme.bad_history' });
+    const row = await db.prepare('SELECT theme_id, custom_theme_variables FROM user_theme_history WHERE id = ? AND user_id = ?').get(id, userId);
+    if (!row) return res.status(404).json({ error: 'No such change in your history', code: 'theme.history_not_found' });
+    const theme = await db.prepare('SELECT id, author_id, is_public, review_status FROM themes WHERE id = ?').get(row.theme_id);
+    if (!visibleTo(theme, userId)) return res.status(409).json({ error: 'That theme is no longer available', code: 'theme.gone' });
+    await keepHistory(db, userId, 'restore', { theme_id: row.theme_id, custom: row.custom_theme_variables || null });
+    await db.prepare(`INSERT INTO user_preferences (user_id, theme_id, custom_theme_variables, updated_at) VALUES (?, ?, ?, ov_now())
+        ON CONFLICT(user_id) DO UPDATE SET theme_id = ?, custom_theme_variables = ?, updated_at = ov_now()`)
+        .run(userId, row.theme_id, row.custom_theme_variables || null, row.theme_id, row.custom_theme_variables || null);
+    let vars = null; try { vars = row.custom_theme_variables ? JSON.parse(row.custom_theme_variables) : null; } catch { vars = null; }
+    res.json({ success: true, theme_id: row.theme_id, custom_variables: vars });
 });
 
 // ── Submit a community theme (pending review) ─────────────────
