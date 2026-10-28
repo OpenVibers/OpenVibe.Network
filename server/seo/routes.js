@@ -16,6 +16,7 @@ const PAGES = [
     { path: '/', changefreq: 'daily', priority: 1.0 },
     { path: '/updates', changefreq: 'daily', priority: 0.8 },
     { path: '/stats', changefreq: 'daily', priority: 0.7 },
+    { path: '/bot', changefreq: 'monthly', priority: 0.4 },
     { path: '/terms', changefreq: 'yearly', priority: 0.3 },
     { path: '/privacy', changefreq: 'yearly', priority: 0.3 },
     { path: '/dmca', changefreq: 'yearly', priority: 0.2 },

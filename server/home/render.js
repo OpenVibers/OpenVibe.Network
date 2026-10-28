@@ -354,11 +354,12 @@ const LLMS_PAGE_TEXT = {
     '/': () => ['One OpenVibe account signs you in on every site:', ...OPEN.map((site) => `- ${siteName(site)} (https://${site.host}/): ${site.what}`)].join('\n'),
     '/updates': () => "Every change deployed to the OpenVibe network, newest first: each site's commits as they ship, and the Patch notes posts that gather them.",
     '/stats': () => "Open stats: page views, people, streams, OpenCoins and how fast each service answers, for every OpenVibe site, public and reusable as JSON (https://openvibe.network/api/v1/stats) or CSV. Counts only, never about a person.",
+    '/bot': () => 'OpenVibeBot, OpenVibe\'s crawler: its user agent, what it reads (sitemaps, feeds, schema.org JSON-LD), what it obeys (robots.txt for OpenVibeBot or OpenVibeSources, Crawl-delay, noindex, Retry-After), and how to block it, slow it or offer a feed instead. As JSON: https://openvibe.network/bot.json',
     '/terms': () => 'The rules for using OpenVibe.Network, in plain language.',
     '/privacy': () => 'What OpenVibe.Network collects, why, and the choices you have.',
     '/dmca': () => 'How to report copyright infringement on OpenVibe.Network, and how to respond to a report.',
 };
-const LLMS_PAGE_TITLE = { '/': 'OpenVibe.Network', '/updates': 'Updates', '/stats': 'Open stats', '/terms': 'Terms of Service', '/privacy': 'Privacy Policy', '/dmca': 'DMCA' };
+const LLMS_PAGE_TITLE = { '/': 'OpenVibe.Network', '/updates': 'Updates', '/stats': 'Open stats', '/bot': 'OpenVibeBot', '/terms': 'Terms of Service', '/privacy': 'Privacy Policy', '/dmca': 'DMCA' };
 const LLMS_FULL_MAX_BYTES = 512 * 1024;
 
 function llmsFullTxt({ baseUrl = 'https://openvibe.network' } = {}) {
