@@ -443,6 +443,9 @@ const DEFAULT_GRANTS = [
     // Search's own daily cap and AI's. Research only: no other AI workflow.
     ['search', 'ai.run.create', 'openvibe.ai', ['research.*']],
     ['search', 'ai.run.read', 'openvibe.ai', ['research.*']],
+    // Actor's agents search through the fabric (SF-4): search_web asks the web scope as Actor, naming the task's person
+    // in X-OV-Subject, so the paid steps count against that person's daily allowance.
+    ['actor', 'search.query.delegate', 'openvibe.search', []],
     // Support inboxes (Chat's server/inbox/, 2026-10-24): a visitor who asks for a person, or writes while waiting,
     // notifies the inbox's people through Network as service 'chat' (the push route checks that by the token's own
     // name; no namespace, so Chat's module namespaces stay the chat.* ones). Chat already resolves subjects.
