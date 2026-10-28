@@ -622,6 +622,16 @@ require('./identity/grants-admin').start(db);
 // Pending confirmations past expires_at are recorded expired every minute (reads report them expired before that).
 require('./developer/confirmations').setNotifier(notificationService);
 require('./developer/confirmations').start(db);
+// The Action Center (plan 2026-10-28 §3.10, server/actions): the person's agent work from Actor, Codes and AI and their
+// pending confirmations, in five buckets, for the ✦ beside the bell on every site.
+{
+    const actions = require('./actions').createActions({ db, selfToken, urls: {
+        actor: process.env.OV_ACTOR_INTERNAL_URL || 'http://127.0.0.1:4950',
+        codes: process.env.OV_CODES_INTERNAL_URL || 'http://127.0.0.1:4900',
+        ai: process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700',
+    } });
+    app.use('/api/v1/me/actions', rateLimit({ windowMs: 60_000, max: 120 }), require('./actions').router({ actions, requireAuth }));
+}
 
 // Notification API (authenticated users)
 app.use('/api/notifications', createNotificationRoutes(db, notificationService, requireAuth));
