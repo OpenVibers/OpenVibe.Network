@@ -247,7 +247,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 <script>(function () { function shipped() { if (window.OpenVibeShipped && document.getElementById('ov-shipped')) OpenVibeShipped.mount('#ov-shipped', { limit: 8, title: 'Recently shipped across OpenVibe', more: '/updates' }); } document.addEventListener('DOMContentLoaded', shipped); document.addEventListener('ov:boost:load', shipped); })();</script>
 <script>
 (function () {
-    if (window.OpenVibeFooter) { try { OpenVibeFooter.init({ service: 'network', variant: 'full', links: [{ heading: 'OpenVibe.Network', items: [{ name: 'My account', url: '/my' }, { name: 'History', url: '/my#history' }, { name: 'Themes', url: '/themes' }, { name: 'Linked services', url: '/my#linked' }, { name: 'Sign in', url: '/login' }] }] }); } catch (e) { /* */ } }
+    if (window.OpenVibeFooter) { try { OpenVibeFooter.init({ service: 'network', variant: 'auto', links: [{ heading: 'OpenVibe.Network', items: [{ name: 'My account', url: '/my' }, { name: 'History', url: '/my#history' }, { name: 'Themes', url: '/themes' }, { name: 'Linked services', url: '/my#linked' }, { name: 'Sign in', url: '/login' }] }] }); } catch (e) { /* */ } }
     function getCookie(name) {
         const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
         return m ? decodeURIComponent(m[1]) : null;
