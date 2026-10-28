@@ -343,11 +343,12 @@ class NotificationService {
     // ─── Update ────────────────────────────────────────────────
 
     /** Edit one of a user's notifications in place (an operator alert that resolves or fires again). */
-    async revise(id, userId, { title, message, icon, is_read: isRead } = {}) {
+    async revise(id, userId, { title, message, icon, is_read: isRead, rich_content: richContent } = {}) {
         const sets = []; const args = [];
         if (title != null) { sets.push('title = ?'); args.push(String(title).slice(0, 200)); }
         if (message != null) { sets.push('message = ?'); args.push(String(message)); }
         if (icon != null) { sets.push('icon = ?'); args.push(String(icon)); }
+        if (richContent != null) { sets.push('rich_content = ?'); args.push(JSON.stringify(richContent)); }
         if (isRead != null) { sets.push('is_read = ?'); args.push(isRead ? 1 : 0); }
         if (!sets.length) return false;
         const r = await this.db.prepare(`UPDATE notifications SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`).run(...args, id, userId);

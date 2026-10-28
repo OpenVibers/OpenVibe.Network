@@ -42,6 +42,35 @@ function message(a) {
 
 const ago = (ms) => (ms < 3600e3 ? `${Math.max(1, Math.round(ms / 60e3))} min` : `${Math.round(ms / 3600e3)} h`);
 
+/** OpenVibeBrowserCheckFailed → "Browser check failed": how an alert's name reads in a notification. */
+function humanize(name) {
+    const s = String(name || '').replace(/^OpenVibe(?=[A-Z])/, '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim();
+    return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : 'Alert';
+}
+
+/**
+ * The parts of an alert a person reads, kept apart from the shell command its rule may carry (owner 10-28: raw
+ * "run: sudo ovhost …" text in the notification body). `rich_content` gives Shared's notification UI the name,
+ * state, severity, sites, release and the command for a copy button; the message stays plain words.
+ */
+function readable(a) {
+    const text = [a.summary, a.description].filter(Boolean).join('. ');
+    const command = (/run:\s*(sudo [^;]+?)(?:\.\s|;|\.$|$)/.exec(text) || [])[1] || null;
+    const sites = [...new Set((text.match(/(?:^|\.\s+)([a-z0-9][a-z0-9.-]{1,30}):\s/g) || []).map((s) => s.replace(/^\.\s+/, '').replace(/:\s$/, '')))].slice(0, 6);
+    const release = (/release ([0-9a-f]{7,40})/i.exec(text) || [])[1] || null;
+    const failing = (/\((\d+) failing check/i.exec(text) || [])[1] || null;
+    let summary = String(a.summary || '').replace(/run:\s*sudo [^;]+?(?:\.\s|;|\.$|$)/g, '').replace(/^[a-z0-9][a-z0-9.-]{1,30}:\s/, '').trim();
+    if (release || failing) summary = [release ? `Release ${release.slice(0, 7)}` : null, failing ? `${failing} failing check${failing === '1' ? '' : 's'}` : null].filter(Boolean).join(' · ');
+    const detail = String(a.description || '').replace(/run:\s*sudo [^;]+?(?:\.\s|;|\.$|$)/g, '').trim();
+    const message = [sites.length ? sites.join(', ') : (a.service || null), summary || null, detail && detail !== summary ? detail : null].filter(Boolean).join(' · ');
+    return { command, sites, release, summary, message: message.slice(0, 500) };
+}
+
+function opsContent(a, state, r = readable(a)) {
+    return { kind: 'ops_alert', name: a.name, state, severity: a.severity, sites: r.sites, release: r.release, summary: r.summary,
+        command: r.command, service: a.service || null, since: a.started_at || null, runbook_url: STATUS_URL };
+}
+
 /**
  * Apply one report. `body` has passed the request contract. Answers the result document.
  * notify(userId, notification) creates one notification (the notification service's create(); `silent` skips
@@ -98,11 +127,13 @@ async function receive(db, body, { notify, revise = null, now = Date.now(), env 
         const critical = a.severity === 'critical';
         if (kind === 'opened' || kind === 'reminded') {
             if (typeof notify !== 'function') continue;
+            const r = readable(a);
             const n = {
                 type: 'OPERATOR_ALERT', category: 'admin', service: 'host', url: STATUS_URL,
                 priority: critical ? 'critical' : 'high', icon: critical ? '🚨' : '⚠️', silent: !critical,
-                title: `${kind === 'reminded' ? 'Still firing' : 'Alert'}: ${a.name}`.slice(0, 120),
-                message: `${a.summary}. ${message(a)}`.slice(0, 500),
+                title: `${kind === 'reminded' ? 'Still failing: ' : ''}${humanize(a.name)}`.slice(0, 120),
+                message: r.message || `${a.summary}. ${message(a)}`.slice(0, 500),
+                rich_content: opsContent(a, kind === 'reminded' ? 'reminded' : 'firing', r),
             };
             const kept = kind === 'reminded' ? notices(prev) : [];
             for (const uid of users) {
@@ -116,9 +147,12 @@ async function receive(db, body, { notify, revise = null, now = Date.now(), env 
             continue;
         }
         if (typeof revise !== 'function') continue;
+        const r = readable(a);
         const fields = kind === 'resolved'
-            ? { title: `Resolved: ${a.name}`.slice(0, 120), icon: '✅', is_read: 1, message: `${a.summary} (resolved after ${ago(now - (prev.opened_at || now))}${prev.reopened ? `; it fired ${prev.reopened + 1} times` : ''}).`.slice(0, 500) }
-            : { title: `Alert: ${a.name}`.slice(0, 120), icon: critical ? '🚨' : '⚠️', is_read: critical ? 0 : 1, message: `${a.summary}. ${message(a)} Fired again ${(prev.reopened || 0) + 1} time(s) within 12 h of resolving.`.slice(0, 500) };
+            ? { title: `Resolved: ${humanize(a.name)}`.slice(0, 120), icon: '✅', is_read: 1, rich_content: opsContent(a, 'resolved', r),
+                message: `${r.message || a.summary} (resolved after ${ago(now - (prev.opened_at || now))}${prev.reopened ? `; it fired ${prev.reopened + 1} times` : ''}).`.slice(0, 500) }
+            : { title: humanize(a.name).slice(0, 120), icon: critical ? '🚨' : '⚠️', is_read: critical ? 0 : 1, rich_content: opsContent(a, 'firing', r),
+                message: `${r.message || a.summary}. Fired again ${(prev.reopened || 0) + 1} time(s) within 12 h of resolving.`.slice(0, 500) };
         for (const [uid, id] of notices(prev)) {
             try { await revise(uid, id, fields); } catch (e) { console.warn('[operator-alerts] revise failed:', e.message); }
         }
@@ -132,4 +166,4 @@ async function list(db, { limit = 100 } = {}) {
     return await db.prepare("SELECT source, fingerprint, name, severity, summary, service, state, started_at, opened_at, last_seen_at, notified_at, resolved_at FROM operator_alerts ORDER BY state = 'firing' DESC, COALESCE(resolved_at, last_seen_at) DESC LIMIT ?").all(limit);
 }
 
-module.exports = { ensureTables, receive, list, operatorUserIds, REMIND_MS, FLAP_MS };
+module.exports = { ensureTables, receive, list, operatorUserIds, humanize, readable, REMIND_MS, FLAP_MS };
