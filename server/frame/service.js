@@ -20,7 +20,7 @@
 // ═══════════════════════════════════════════════════════════════
 const express = require('express');
 const crypto = require('crypto');
-const { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE } = require('./sites');
+const { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME } = require('./sites');
 const toolsCatalog = require('../domains/catalog');
 
 const RANK_MS = 30 * 60_000, COPY_MS = 24 * 60 * 60_000;
@@ -165,7 +165,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         return {
             updated: new Date(version).toISOString(), site: { id: site.id, name: site.name, host: site.host, status: site.status, state: site.state },
             // Every open site, most used first, each followed by the products it serves on their own domains (`of`).
-            nav: open.flatMap(s => [s, ...PRODUCTS.filter(p => p.of === s.id)]).map(s => ({ id: s.id, name: s.name, url: `https://${s.host}/`, icon: ICON_ALIAS[s.icon] || s.icon, tagline: MENU_LINE[s.id] || s.tagline, group: groupOf(s.id), ...(s.of ? { of: s.of } : {}) })),
+            nav: open.flatMap(s => [s, ...PRODUCTS.filter(p => p.of === s.id)]).map(s => ({ id: s.id, name: MENU_NAME[s.id] || s.name, url: `https://${s.host}/`, icon: ICON_ALIAS[s.icon] || s.icon, tagline: MENU_LINE[s.id] || s.tagline, group: groupOf(s.id), ...(s.of ? { of: s.of } : {}) })),
             groups: GROUPS.map(g => ({ id: g.id, name: g.name })),
             // state: 'internal' (runs on loopback, the domain still shows a placeholder) or 'placeholder' (planned).
             soon: SITES.filter(s => s.status === 'soon').map(s => ({ id: s.id, name: s.name, url: `https://${s.host}/`, icon: s.icon, state: s.state })),
