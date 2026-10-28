@@ -76,8 +76,8 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     let version = Date.now();
 
     const svcUrl = (name, fallback) => (config.services && config.services[name] && config.services[name].internalUrl) || fallback;
-    async function getJson(url, headers) {
-        try { const r = await fetch(url, { headers, signal: AbortSignal.timeout(6000) }); return r.ok ? await r.json() : null; } catch { return null; }
+    async function getJson(url, headers, timeoutMs = 6000) {
+        try { const r = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) }); return r.ok ? await r.json() : null; } catch { return null; }
     }
 
     async function refreshRank() {
@@ -237,6 +237,46 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         if (d) {
             if (suggested.size >= 2000) suggested.clear();
             suggested.set(key, { at: Date.now(), body });
+        }
+        res.send(body);
+    });
+
+    // GET /api/frame/query?q=&scopes=&freshness=&depth=&limit=&owner=&type= — the navbar's full results (openvibe-shared
+    // search.js, Enter): OpenVibe.Search's fabric (Contracts 0.225.0 search.fabric.query), asked through Network for the same
+    // connect-src reason as /suggest. The restricted CORS above lets only OpenVibe's own sites send a person's token: with
+    // one, Search answers as that person (their own scope, paid web providers within the daily caps) and nothing is kept;
+    // without, it answers as anyone and the answer is kept 60 s. Search not answering is an empty answer, never an error.
+    const SCOPES = new Set(['network', 'mine', 'web', 'news', 'images', 'video', 'products', 'people', 'places', 'code']);
+    const queried = new Map();
+    router.get('/query', async (req, res) => {
+        res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin' });
+        const q = String(req.query.q || '').trim().slice(0, 200);
+        const empty = '{"results":[],"groups":{},"answer":null,"citations":[],"route":{"explain":[],"cost_usd":0},"next_cursor":null}';
+        if (!q) { res.set('Cache-Control', 'no-store'); return res.send(empty); }
+        const scopes = String(req.query.scopes || 'network').split(',').map((x) => x.trim()).filter((x) => SCOPES.has(x)).slice(0, 10);
+        const u = new URL('/api/v1/query', svcUrl('search', 'http://127.0.0.1:4710'));
+        u.searchParams.set('q', q);
+        u.searchParams.set('scopes', (scopes.length ? scopes : ['network']).join(','));
+        for (const k of ['freshness', 'depth', 'limit', 'owner', 'type', 'cursor']) {
+            const v = String(req.query[k] || '');
+            if (v && /^[A-Za-z0-9_=-]{1,512}$/.test(v)) u.searchParams.set(k, v);
+        }
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
+        const headers = { ...(req.ip ? { 'X-Forwarded-For': req.ip } : {}), ...(auth ? { Authorization: auth } : {}) };
+        if (auth) {
+            res.set('Cache-Control', 'private, no-store');
+            const d = await getJson(u.href, headers, 25000);
+            return res.send(d ? JSON.stringify(d) : empty);
+        }
+        res.set('Cache-Control', 'public, max-age=60');
+        const key = u.search.toLowerCase();
+        const kept = queried.get(key);
+        if (kept && Date.now() - kept.at < 60_000) return res.send(kept.body);
+        const d = await getJson(u.href, headers, 25000);
+        const body = d ? JSON.stringify(d) : empty;
+        if (d) {
+            if (queried.size >= 1000) queried.clear();
+            queried.set(key, { at: Date.now(), body });
         }
         res.send(body);
     });
