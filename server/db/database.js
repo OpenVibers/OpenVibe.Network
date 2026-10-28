@@ -134,6 +134,8 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'vision', name: 'OpenVibe.Vision', redirect_uris: ['https://openvibe.vision/auth/callback'] },
             // Free and swap listings with a permission passport, a sandbox and one-tap revoke (the Exchange room).
             { client_id: 'exchange', name: 'OpenVibe.Exchange', redirect_uris: ['https://openvibe.exchange/auth/callback'] },
+            // IRL quest boards on a public Live channel, a local guide and group plans (the Fun room).
+            { client_id: 'fun', name: 'OpenVibe.Fun', redirect_uris: ['https://openvibe.fun/auth/callback'] },
             { client_id: 'work', name: 'OpenVibe.Work', redirect_uris: ['https://openvibe.work/auth/callback'] },
             // The shared quest log, listings people post, and Watch's public site (plan T18 step 8, T19).
             { client_id: 'quest', name: 'OpenVibe.Quest', redirect_uris: ['https://openvibe.quest/auth/callback'] },

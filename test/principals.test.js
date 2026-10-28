@@ -121,6 +121,19 @@ const server = http.createServer(app);
     assert.strictEqual(t.body.scope, 'search.document.write', 'Exchange indexes its public listings in Search');
     t = await token({ client_id: 'exchange', client_secret: 'exchange-secret', audience: 'openvibe.ai' });
     assert.strictEqual(t.status, 400, 'Exchange holds no AI capability in v1');
+    // OpenVibe.Fun (contracts 0.236.0): its public quests and plans in Search, its account-event subscriptions and the
+    // export/deletion pair. Live and Chat are public reads and Today uses the viewer's token, so it holds no such grant.
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'fun-secret' WHERE client_id = 'fun'").run();
+    t = await token({ client_id: 'fun', client_secret: 'fun-secret', audience: 'openvibe.network' });
+    assert.deepStrictEqual(t.body.scope.split(' '), ['network.account.deletion.confirm', 'network.account.export.contribute'], 'Fun answers account export and deletion, and holds no identity.subject.resolve');
+    t = await token({ client_id: 'fun', client_secret: 'fun-secret', audience: 'openvibe.events' });
+    assert.strictEqual(t.body.scope, 'events.subscription.manage', 'Fun subscribes to the account events at boot');
+    t = await token({ client_id: 'fun', client_secret: 'fun-secret', audience: 'openvibe.search' });
+    assert.strictEqual(t.body.scope, 'search.document.write', 'Fun indexes its public quests and plans in Search');
+    t = await token({ client_id: 'fun', client_secret: 'fun-secret', audience: 'openvibe.live' });
+    assert.strictEqual(t.status, 400, 'Fun reads Live publicly and holds no Live capability');
+    t = await token({ client_id: 'fun', client_secret: 'fun-secret', audience: 'openvibe.ai' });
+    assert.strictEqual(t.status, 400, 'Fun holds no AI capability in v1');
     await db.prepare("UPDATE oauth_clients SET client_secret = 'design-secret' WHERE client_id = 'design'").run();
     t = await token({ client_id: 'design', client_secret: 'design-secret', audience: 'openvibe.vision' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
