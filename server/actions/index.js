@@ -10,7 +10,8 @@
  *   network  their pending confirmations (server/developer/confirmations.js): waiting, approve or decline here;
  *   actor    GET <actor>/api/v1/actions?subject=   (actor.actions.read)   agent tasks, approvals, scheduled agents;
  *   codes    GET <codes>/api/v1/actions?subject=   (codes.actions.read)   coding tasks;
- *   ai       GET <ai>/api/v1/actions?subject=      (ai.actions.read)      AI runs on their behalf.
+ *   ai       GET <ai>/api/v1/actions?subject=      (ai.actions.read)      AI runs on their behalf;
+ *   domains  GET <domains>/api/v1/actions?subject= (domains.actions.read) DNS change proposals, approved or declined here.
  * Network signs its own short tokens for each (server/identity/self-token.js). Each source has ACTIONS_TIMEOUT_MS; a
  * slow, failing or not-yet-deployed one is left out and named in `sources` (partial: true), never failing the answer.
  * Every item is validated against common.action-item@1; one that is not valid is dropped, never shown half-formed.
@@ -22,7 +23,12 @@ const confirmations = require('../developer/confirmations');
 const store = require('../developer/store');
 
 const BUCKETS = ['running', 'waiting', 'scheduled', 'done', 'failed'];
-const REMOTE = ['actor', 'codes', 'ai'];
+const REMOTE = ['actor', 'codes', 'ai', 'domains'];
+// Who can approve or decline from the Action Center, and how: the capability Network signs for, and the route.
+const DECIDE = {
+    actor: { cap: 'actor.approval.decide', path: (id) => `/api/v1/approvals/${encodeURIComponent(id)}/decide`, name: 'OpenVibe.Actor', what: 'approval' },
+    domains: { cap: 'domains.proposal.decide', path: (id) => `/api/v1/proposals/${encodeURIComponent(id)}/decide`, name: 'OpenVibe.Domains', what: 'proposal' },
+};
 const ACTIONS_TIMEOUT_MS = 2500;
 const CACHE_MS = 10_000;
 const CACHE_MAX = 500;
@@ -116,16 +122,18 @@ function createActions({ db, selfToken = () => null, urls = {}, fetchImpl = (...
             const out = await confirmationsImpl.decide(db, actor, id, action === 'approve' ? 'approve' : 'deny', {}, { ctx });
             return { ...confirmationItem(out.confirmation, null), bucket: 'done', actions: ['open'], updated_at: new Date(now()).toISOString() };
         }
-        if (service !== 'actor') throw Object.assign(new Error('this item cannot do that here: open it instead'), { status: 422, code: 'actions.unsupported' });
-        const token = urls.actor ? selfToken('openvibe.actor', ['actor.approval.decide']) : null;
-        if (!token) throw Object.assign(new Error('OpenVibe.Actor is not connected'), { status: 503, code: 'actions.not_connected' });
-        const res = await fetchImpl(`${String(urls.actor).replace(/\/+$/, '')}/api/v1/approvals/${encodeURIComponent(id)}/decide`, {
+        const d = DECIDE[service];
+        if (!d) throw Object.assign(new Error('this item cannot do that here: open it instead'), { status: 422, code: 'actions.unsupported' });
+        const token = urls[service] ? selfToken(`openvibe.${service}`, [d.cap]) : null;
+        if (!token) throw Object.assign(new Error(`${d.name} is not connected`), { status: 503, code: 'actions.not_connected' });
+        const res = await fetchImpl(`${String(urls[service]).replace(/\/+$/, '')}${d.path(id)}`, {
             method: 'POST', headers: { accept: 'application/json', 'content-type': 'application/json', authorization: `Bearer ${token}`, 'x-ov-subject': actor.subject },
             body: JSON.stringify({ decision: action }), signal: AbortSignal.timeout(timeoutMs * 2),
         });
         const body = await res.json().catch(() => ({}));
-        if (res.status === 404) throw Object.assign(new Error('no such approval'), { status: 404, code: 'actions.not_found' });
-        if (!res.ok) throw Object.assign(new Error((body && (body.detail || body.title)) || `OpenVibe.Actor answered ${res.status}`), { status: 502, code: 'actions.upstream' });
+        if (res.status === 404) throw Object.assign(new Error(`no such ${d.what}`), { status: 404, code: 'actions.not_found' });
+        if (res.status === 409) throw Object.assign(new Error((body && body.detail) || `this ${d.what} was decided already`), { status: 409, code: 'actions.decided' });
+        if (!res.ok) throw Object.assign(new Error((body && (body.detail || body.title)) || `${d.name} answered ${res.status}`), { status: 502, code: 'actions.upstream' });
         return body;
     }
 

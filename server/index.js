@@ -629,6 +629,7 @@ require('./developer/confirmations').start(db);
         actor: process.env.OV_ACTOR_INTERNAL_URL || 'http://127.0.0.1:4950',
         codes: process.env.OV_CODES_INTERNAL_URL || 'http://127.0.0.1:4900',
         ai: process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700',
+        domains: process.env.OV_DOMAINS_INTERNAL_URL || 'http://127.0.0.1:5070',
     } });
     app.use('/api/v1/me/actions', rateLimit({ windowMs: 60_000, max: 120 }), require('./actions').router({ actions, requireAuth }));
 }

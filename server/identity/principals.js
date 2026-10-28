@@ -143,7 +143,7 @@ const DEFAULT_GRANTS = [
     // account-data consumer and subscriptions shipped first in Reviews#77). Host since 2026-10-19 (the console's sealed hosting
     // tokens and actions, benchmarks' submissions; Host#120, subscribed first through Network#284).
     ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub',
-        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host'].flatMap((svc) => [
+        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host', 'domains'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
@@ -558,6 +558,10 @@ const DEFAULT_GRANTS = [
     // AI reveals a project's own provider key to that provider's origin for one run of an app that names it on
     // /v1/chat/completions (x_openvibe.provider, AI#74); each secret's project grant decides.
     ['ai', 'network.secret.use', SELF_AUDIENCE, []],
+    // Domains reveals a person's provider token (their own project's secret, granted to domains for that provider's
+    // origin) for one call to the provider's API (plan 2026-10-28 §5.1, DOM-2).
+    ['domains', 'network.secret.use', SELF_AUDIENCE, []],
+    ['domains', 'events.subscription.manage', 'openvibe.events', []],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
