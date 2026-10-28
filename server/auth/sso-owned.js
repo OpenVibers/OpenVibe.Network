@@ -6,6 +6,7 @@ const OWNED_ZONES = [
     'openvibe.chat', 'openvibe.codes', 'openvibe.blog', 'openvibe.wiki', 'openvibe.news', 'openvibe.reviews',
     'openvibe.tips', 'openvibe.vip', 'openvibe.trade', 'openvibe.host', 'openvibe.deals', 'openvibe.coupons',
     'openre.stream',
+    'open.shoes', 'openvibe.today', 'openvibe.vision', 'openvibe.domains', 'openvibe.report', 'openvibe.meme', 'openvibe.casino', 'openvibe.surf', 'openvibe.fun', 'openvibe.tours', 'openvibe.exchange', 'openvibe.cam', 'openvibe.design',
 ];
 // Zones whose subdomains are people's own content (OpenVibe.Host tenant sites, <site>.openvibe.host,
 // which run the tenant's JS): only the apex is OpenVibe's. Domain validation still refuses them as
