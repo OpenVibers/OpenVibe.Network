@@ -68,7 +68,7 @@ const rows = async (userId) => await db.prepare('SELECT * FROM notifications WHE
 
 (async () => {
     // The subscriptions this consumer is meant for, and nothing else.
-    assert.deepStrictEqual(TOPICS, ['deals.watch.matched', 'coupons.watch.matched', 'trade.alert.triggered', 'live.stream.started', 'live.stream.ended', 'chat.moderation.action', 'live.moderation.action', 'community.moderation.action', 'space.moderation.action', 'tips.interaction.moderated', 'billing.staff.action',
+    assert.deepStrictEqual(TOPICS, ['deals.watch.matched', 'coupons.watch.matched', 'trade.alert.triggered', 'live.stream.started', 'live.stream.ended', 'today.event.scheduled', 'today.event.cancelled', 'chat.moderation.action', 'live.moderation.action', 'community.moderation.action', 'space.moderation.action', 'tips.interaction.moderated', 'billing.staff.action',
         ...['media', 'tools', 'games', 'wiki', 'blog', 'news', 'reviews', 'deals', 'coupons', 'trade', 'services'].map((svc) => `${svc}.moderation.action`),
         'tools.usage.recorded', 'events.usage.recorded', 'media.usage.recorded']);
     assert.deepStrictEqual(topicsFrom([]), TOPICS, 'scripts/subscribe-events.js subscribes every topic');
@@ -322,6 +322,56 @@ const rows = async (userId) => await db.prepare('SELECT * FROM notifications WHE
         const spoof = await post(couponsEvent({ source: 'deals' }), { now: clock });
         assert.strictEqual(spoof.body.outcome, 'ignored:source');
         assert.strictEqual((await rows(7)).length, before + 1);
+    }
+
+    // ── today.event.scheduled: the streamer's followers, once, three schedules a day; cancelled clears them ──
+    {
+        let n = 0;
+        const tev = () => `tev_01JTODAYTEST${String(++n).padStart(8, '0')}`;
+        const todayEvent = (type, payload = {}, over = {}) => ({
+            event_id: ids.newId('event'), event_type: type, version: 1, source: 'today',
+            actor: { type: 'user', id: CAROL }, subject: { type: 'user', id: CAROL }, visibility: 'public', priority: 'normal',
+            occurred_at: new Date(clock).toISOString(),
+            payload: { event_id: tev(), kind: 'stream', channel: 'carol', title: 'Robot <b>build</b> part 2', starts_at: new Date(clock + 2 * 86400000).toISOString(),
+                ends_at: null, tz: 'America/Los_Angeles', status: 'scheduled', visibility: 'public', url: null, seq: 0, ...payload },
+            ...over,
+        });
+        const sched = async (uid) => await db.prepare("SELECT * FROM notifications WHERE user_id = ? AND type = 'STREAM_SCHEDULED' AND is_dismissed = 0 ORDER BY seq").all(uid);
+        const e1 = todayEvent('today.event.scheduled');
+        r = await post(e1, { now: clock });
+        assert.strictEqual(r.body.outcome, 'notified', JSON.stringify(r.body));
+        assert.deepStrictEqual(r.body.detail, { followers: 4, unresolved: 1, targets: 3, notified: 2 }, 'Dave and Erin; Frank muted streams; the stranger has no account');
+        const [d1] = await sched(21);
+        assert.strictEqual(d1.title, 'carol scheduled a stream');
+        assert.match(d1.message, /^Robot .*build.* part 2 · \w{3}, \w{3} \d{1,2}, \d{1,2}:\d{2} [AP]M P[DS]T$/, 'the time in the stream\'s own zone');
+        assert.ok(!/[<>]/.test(d1.message), 'no markup');
+        assert.deepStrictEqual([d1.priority, d1.category, d1.service, d1.sender_id], ['low', 'stream', 'today', 20], 'the bell, no toast');
+        assert.ok(d1.url === null || d1.url === `https://openvibe.today/e/${e1.payload.event_id}`, 'a link only once openvibe.today is open');
+        assert.strictEqual(JSON.parse(d1.rich_content).context.today_event_id, e1.payload.event_id);
+        assert.strictEqual((await sched(23)).length, 0, 'preferences apply');
+        assert.strictEqual((await post(e1, { now: clock })).body.duplicate, true, 'a redelivery tells nobody again');
+
+        // Ignored: another source, a plain event, a stream too soon or too far, a cancelled status, a private one.
+        assert.strictEqual((await post(todayEvent('today.event.scheduled', {}, { source: 'live' }), { now: clock })).body.outcome, 'ignored:source');
+        assert.strictEqual((await post(todayEvent('today.event.scheduled', { kind: 'event' }), { now: clock })).body.outcome, 'ignored:kind');
+        assert.strictEqual((await post(todayEvent('today.event.scheduled', { starts_at: new Date(clock + 5 * 60000).toISOString() }), { now: clock })).body.outcome, 'ignored:too_soon');
+        assert.strictEqual((await post(todayEvent('today.event.scheduled', { starts_at: new Date(clock + 30 * 86400000).toISOString() }), { now: clock })).body.outcome, 'ignored:too_far');
+        assert.strictEqual((await post(todayEvent('today.event.scheduled', { visibility: 'private' }), { now: clock })).body.outcome, 'ignored:visibility');
+        assert.strictEqual((await post(todayEvent('today.event.scheduled', { event_id: 'evt_x' }), { now: clock })).body.outcome, 'ignored:payload');
+
+        // Three announced schedules a day per streamer; the fourth tells nobody.
+        assert.strictEqual((await post(todayEvent('today.event.scheduled'), { now: clock })).body.outcome, 'notified');
+        assert.strictEqual((await post(todayEvent('today.event.scheduled'), { now: clock })).body.outcome, 'notified');
+        const fourth = await post(todayEvent('today.event.scheduled'), { now: clock });
+        assert.deepStrictEqual([fourth.body.outcome, fourth.body.detail], ['skipped:daily_limit', { announced_today: 3 }]);
+        assert.strictEqual((await sched(21)).length, 3);
+
+        // Cancelled: the stream's notices leave every bell; the others stay.
+        const c = await post(todayEvent('today.event.cancelled', { event_id: e1.payload.event_id, status: 'cancelled' }), { now: clock });
+        assert.deepStrictEqual([c.body.outcome, c.body.detail], ['cleared', { notices: 2 }]);
+        assert.ok(!(await sched(21)).some((x) => JSON.parse(x.rich_content).context.today_event_id === e1.payload.event_id));
+        assert.strictEqual((await sched(21)).length, 2);
+        assert.strictEqual((await post(todayEvent('today.event.cancelled', { event_id: e1.payload.event_id }, { source: 'tips' }), { now: clock })).body.outcome, 'ignored:source');
     }
 
     srv.close();

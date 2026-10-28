@@ -292,6 +292,8 @@ their per-category email choice.
 | `deals.watch.matched` | Deals (`source: deals`) | `payload.recipient` (`usr_…`) | `DEAL_WATCH_MATCH`, `service`, normal |
 | `trade.alert.triggered` | Trade (`source: trade`) | `subject.id` (`subject.type: user`) | `TRADE_ALERT`, `service`, high |
 | `live.stream.started` | Live (`source: live`) | every follower of `payload.channel.subject`, plus everyone with `stream_live_all` on | `STREAM_LIVE`, `stream`, high; the Discord live alert after commit |
+| `today.event.scheduled` | Today (`source: today`) | every follower of `subject.id`, for a public or followers-only stream 15 min to 14 days ahead; at most 3 announced schedules per streamer a day | `STREAM_SCHEDULED`, `stream`, low (the bell, no toast); the time in the stream's own zone |
+| `today.event.cancelled` | Today | everyone told by the matching `today.event.scheduled` | those notices are dismissed |
 
 **Go-lives.** The followers are Network's own follow graph (see "Follow graph"): the active
 `user_follows` rows for `('channel', payload.channel.subject)`, read in the same transaction as the
