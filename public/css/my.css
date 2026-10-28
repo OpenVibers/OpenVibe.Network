@@ -1,14 +1,18 @@
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-    --bg:#0d0d14;--bg-secondary:#151520;--bg-card:#1a1a26;--bg-input:#1c1c28;
-    --border:#2a2a3a;--border-focus:#8b5cf6;
+    --bg-primary:#0d0d14;--bg-secondary:#151520;--bg-card:#1a1a26;--bg-input:#1c1c28;
+    --border:#2a2a3a;--border-focus:var(--accent);
     --accent:#3b82f6;--accent-glow:rgba(139,92,246,0.4);--accent-dark:#1d4ed8;--accent-light:#60a5fa;
-    --text:#e0e0e0;--text-secondary:#b0b0b8;--text-muted:#707080;
+    --text-primary:#e0e0e0;--text-secondary:#b0b0b8;--text-muted:#707080;
+    /* This page's short names follow the theme's (theme-loader sets --bg-primary/--text-primary on <html>): a light
+       theme left --text at #e0e0e0 on light cards and painted the quick links #0d0d14. */
+    --bg:var(--bg-primary);--text:var(--text-primary);
     --live-red:#ef4444;--success:#22c55e;
     --shadow:0 4px 20px rgba(0,0,0,0.3);
 }
 html{height:100%;background:var(--bg)}
+a{color:var(--accent)}
 body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding-bottom:40px}
 
 /* Layout */
@@ -93,8 +97,9 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 .btn-danger{background:rgba(231,76,60,0.1);color:var(--live-red-text, var(--live-red));border:1px solid rgba(231,76,60,0.2)}
 .btn-danger:hover{background:rgba(231,76,60,0.2)}
 .btn-row{display:flex;gap:8px;margin-top:12px}
-.data-check{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--text-secondary);line-height:1.5}
-.data-check input{margin-top:3px}
+/* .form-field label (uppercase field names) must not restyle a checkbox's sentence, nor stretch its box full width */
+.data-check,.form-field label.data-check{display:flex;gap:8px;align-items:flex-start;font-size:13px;font-weight:400;color:var(--text-secondary);line-height:1.5;text-transform:none;letter-spacing:normal;margin-bottom:0}
+.data-check input,.form-field .data-check input{flex:none;width:auto;min-height:0;margin-top:3px;accent-color:var(--accent)}
 .data-status{align-self:center;font-size:12px;color:var(--text-secondary)}
 .module-row{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--border)}
 .module-row:first-child{border-top:0}
@@ -226,7 +231,7 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
 .showcase-card:nth-child(2) { animation-delay: 0.15s; animation-duration: 3.3s; }
 .showcase-card:nth-child(3) { animation-delay: 0.3s; animation-duration: 3.6s; }
 .showcase-card:nth-child(4) { animation-delay: 0.45s; animation-duration: 3.2s; }
-.showcase-card:hover { transform: translateY(-4px); border-color: var(--accent); background: rgba(139,92,246,0.08); }
+.showcase-card:hover { transform: translateY(-4px); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .showcase-card-icon { font-size: 1.4rem; color: var(--accent-light); }
 .showcase-card-label { font-size: 11px; font-weight: 700; text-align: center; }
 .quick-access { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
@@ -238,7 +243,7 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
 .quick-link:nth-child(4) { animation-delay: 0.25s; }
 .quick-link:nth-child(5) { animation-delay: 0.3s; }
 .quick-link:nth-child(6) { animation-delay: 0.35s; }
-.quick-link:hover { border-color: var(--accent); color: var(--accent-light); background: rgba(139,92,246,0.08); }
+.quick-link:hover { border-color: var(--accent); color: var(--accent-light); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 @media(max-width:600px){ .showcase-grid { grid-template-columns: repeat(2, 1fr); } .quick-access { grid-template-columns: repeat(3, 1fr); } }
 .recent-tools { margin-top: 14px; }
 .recent-tools h3 { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin: 0 0 8px; display: flex; gap: 6px; align-items: center; }
