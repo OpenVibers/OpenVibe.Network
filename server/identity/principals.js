@@ -143,7 +143,7 @@ const DEFAULT_GRANTS = [
     // account-data consumer and subscriptions shipped first in Reviews#77). Host since 2026-10-19 (the console's sealed hosting
     // tokens and actions, benchmarks' submissions; Host#120, subscribed first through Network#284).
     ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub',
-        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host', 'domains', 'meme', 'vision', 'exchange'].flatMap((svc) => [
+        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host', 'domains', 'meme', 'vision', 'exchange', 'fun'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
@@ -574,9 +574,16 @@ const DEFAULT_GRANTS = [
     // its account-event subscriptions; its export/deletion pair is above. v1 writes no grant and runs no sandbox code.
     ['exchange', 'search.document.write', 'openvibe.search', []],
     ['exchange', 'events.subscription.manage', 'openvibe.events', []],
+    // OpenVibe.Fun (contracts 0.236.0): its public quests and plans in Search through the owner API (owner fun), and
+    // its account-event subscriptions; its export/deletion pair is above. Live and Chat are public reads and Today
+    // uses the viewer's own token, so it holds no Live, Chat or Today grant. The optional OpenCoin grants
+    // (identity.subject.resolve, network.coins.credit) are not seeded while FUN_COINS is off.
+    ['fun', 'search.document.write', 'openvibe.search', []],
+    ['fun', 'events.subscription.manage', 'openvibe.events', []],
     // OpenVibe.Design's Arena runs Vision's UI check (contracts 0.235.0 vision.ui.check, first-party). Vision 0.1.0's
     // source still labels the route's guard vision.ui_check; its service must use the contract id before Arena calls it.
     ['design', 'vision.ui.check', 'openvibe.vision', []],
+    ['design', 'ai.run.create', 'openvibe.ai', ['ai.generate']],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
