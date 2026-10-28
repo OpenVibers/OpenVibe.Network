@@ -389,6 +389,8 @@ const DEFAULT_GRANTS = [
     ['bot', 'network.resource.report', SELF_AUDIENCE, []],
     ['run', 'network.registry.read', SELF_AUDIENCE, []],
     ...['run.job.submit', 'run.job.read', 'run.job.stream', 'run.job.cancel'].map((c) => ['codes', c, 'openvibe.run', []]),
+    // Plan 2026-10-28 §6: Codes announces its coding tasks' state changes (codes.task.*, contracts 0.232.0).
+    ['codes', 'events.event.publish', 'openvibe.events', []],
     // Plan T16/T17 (contracts 0.162.0): a person's OpenVibe.Actor agent routes coding work to OpenVibe.Codes, which runs
     // it on that person's own machine (X-OV-Subject); Codes shows Actor only the tasks Actor started for that person.
     ...['codes.task.start', 'codes.task.read', 'codes.task.cancel'].map((c) => ['actor', c, 'openvibe.codes', []]),
@@ -563,10 +565,9 @@ const REVOKED_GRANTS = [
     ['live', 'network.coins.transfer', SELF_AUDIENCE],
     // The Live read mirror is retired (2026-10-05): Chat #25 removed the sender, Live the receiver.
     ['chat', 'live.chat_mirror.write', 'openvibe.live'],
-    // The developer portal moved from Codes to Services (contracts 0.113.0): Codes owns no resources and publishes no
-    // event any more; Services publishes the services.* events and reads its own resources in process.
+    // The developer portal moved from Codes to Services (contracts 0.113.0): Codes owns no resources; Services
+    // publishes the services.* events and reads its own resources in process. (Codes publishes again since 0.232.0.)
     ['services', 'codes.resource.read', 'openvibe.codes'],
-    ['codes', 'events.event.publish', 'openvibe.events'],
     // The forum returned to Community (owner decision 2026-10-08, contracts 0.118.0): Space keeps only its sign-in
     // client. Its forum grants go (the forum's account data is Community's). Its account and subscription grants came
     // back with spaces (RESTORED_GRANTS, 2026-10-16).
@@ -598,6 +599,8 @@ const RESTORED_GRANTS = [
     // ...and answers account export and deletion for them again (Space#59, subscriptions verified 2026-10-16 20:20 UTC).
     ['space', 'network.account.export.contribute', SELF_AUDIENCE],
     ['space', 'network.account.deletion.confirm', SELF_AUDIENCE],
+    // Codes publishes codes.task.* (contracts 0.232.0); revoked when the developer portal left it (0.113.0).
+    ['codes', 'events.event.publish', 'openvibe.events'],
 ];
 
 const CHANGED_DEFAULT_NAMESPACES = [

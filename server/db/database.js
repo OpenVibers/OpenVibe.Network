@@ -124,6 +124,8 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'design', name: 'OpenVibe.Design', redirect_uris: ['https://openvibe.design/auth/callback'] },
             // Schedules, reminders, calendar feeds and the brief (plan 2026-10-28 §5.3); created first as Today's principal.
             { client_id: 'today', name: 'OpenVibe.Today', redirect_uris: ['https://openvibe.today/auth/callback'] },
+            // Ride maps, surf the web, surf what's on (plan 2026-10-28 §5.6); a stateless front that signs people in for Web.
+            { client_id: 'surf', name: 'OpenVibe.Surf', redirect_uris: ['https://openvibe.surf/auth/callback'] },
             { client_id: 'work', name: 'OpenVibe.Work', redirect_uris: ['https://openvibe.work/auth/callback'] },
             // The shared quest log, listings people post, and Watch's public site (plan T18 step 8, T19).
             { client_id: 'quest', name: 'OpenVibe.Quest', redirect_uris: ['https://openvibe.quest/auth/callback'] },
