@@ -263,6 +263,8 @@ Users can toggle each category's enabled/sound/toast/email preferences at `openv
 
 ### Quiet hours and digests
 
+The bell's tabs (All · Mentions · Live · Deals & alerts · System · Agents) are defined once in `server/notifications/tabs.js`: `GET /api/notifications?tab=mentions|live|alerts|system|agents` lists a tab (it combines with `unread_only`, `q` and paging; an unknown tab is All), and `GET /api/notifications/unread-by-tab` answers `{ tabs: { all, mentions, live, alerts, system, agents } }` for the counts on the tabs.
+
 A person can set a do-not-disturb window with `GET`/`PUT /api/notifications/quiet-hours` — `{ enabled, start: 'HH:MM', end: 'HH:MM', tz }`, default off at 22:00–07:00 UTC; the GET also reports `in_quiet`. Normal notification email and browser push wait until the window ends; `critical` notifications still go at once. The notification itself is always stored and appears in the bell.
 
 Each category can choose `digest`: `off` (the default, NULL), `hourly`, `daily` or `weekly`, through `PUT /api/notifications/preferences`. A digested category is not emailed one by one: `runDigests()` sends one summary email after the period is due (daily and weekly at 08:00 or later in the person's quiet-hours zone, never during quiet hours), lists up to 20 items and says "and N more", then marks them emailed. It runs every 15 minutes in `server/index.js` and uses the same daily caps and verified/bounced-address checks as the email queue.

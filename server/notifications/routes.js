@@ -12,7 +12,7 @@ const router = express.Router();
 module.exports = function createNotificationRoutes(db, notificationService, requireAuth) {
 
     // ─── GET /api/notifications ────────────────────────────
-    // Query params: limit, offset, category, unread_only
+    // Query params: limit, offset, category, type, tab (the bell's tabs, ./tabs.js), unread_only, q, since
     router.get('/', requireAuth, async (req, res) => {
         try {
             const userId = req.user.id;
@@ -24,8 +24,9 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
             const unreadOnly = ['1', 'true'].includes(String(req.query.unread_only ?? req.query.unread ?? ''));
             const q = req.query.q ? String(req.query.q).trim() : null;
             const since = req.query.since ? String(req.query.since) : null;
+            const tab = typeof req.query.tab === 'string' ? req.query.tab : null;
 
-            const out = await notificationService.getForUser(userId, { limit, offset, category, unreadOnly, q, since, type });
+            const out = await notificationService.getForUser(userId, { limit, offset, category, unreadOnly, q, since, type, tab });
             res.json({ ok: true, ...out, limit, offset });
         } catch (err) {
             console.error('[Notifications] GET / error:', err);
@@ -40,6 +41,16 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
             res.json({ ok: true, count });
         } catch (err) {
             res.status(500).json({ ok: false, error: 'Failed to get count' });
+        }
+    });
+
+    // ─── GET /api/notifications/unread-by-tab ──────────────
+    // The counts on the bell's tabs: { tabs: { all, mentions, live, alerts, system, agents } }.
+    router.get('/unread-by-tab', requireAuth, async (req, res) => {
+        try {
+            res.json({ ok: true, tabs: await notificationService.getUnreadByTab(req.user.id) });
+        } catch (err) {
+            res.status(500).json({ ok: false, error: 'Failed to get counts' });
         }
     });
 
