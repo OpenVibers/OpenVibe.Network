@@ -89,12 +89,19 @@ function recordings(body) {
         const title = clip(v.title || '', 80);
         if (!title || ADULT.test(title)) continue;
         seen.add(v.username);
+        // What happens in it (Live's AI overview), one line, only when it names nobody's looks (public AI text).
+        const about = clip(String(v.ai_overview || '').split(/(?<=[.!?])\s/)[0] || '', 120);
         out.push({
             title,
             url: `${PUBLIC.video}/v/${encodeURIComponent(v.id)}`,
             thumb: onHost(v.thumbnail_url, 'openvibe.media'),
             channel: clip(v.display_name || v.username, 40),
             length: runtime(v.duration_seconds ?? v.duration),
+            seconds: Math.round(Number(v.duration_seconds ?? v.duration) || 0),
+            avatar: onHost(v.avatar_url, 'openvibe.media'),
+            views: Math.max(0, Number(v.view_count) || 0),
+            at: Date.parse(v.created_at) || null,
+            about: about && !LOOKS.test(about) && !ADULT.test(about) ? about : '',
         });
         if (out.length === 4) break;
     }
@@ -116,6 +123,12 @@ function publicPastes(body) {
                 url: `${PUBLIC.community}/p/${encodeURIComponent(p.slug)}`,
                 kind: shot ? 'Screenshot' : (p.language && p.language !== 'text' ? p.language : 'Text'),
                 summary,
+                shot: shot ? onHost(p.screenshot_url, 'openvibe.media') : null,
+                by: clip(p.display_name || p.username || '', 40),
+                avatar: onHost(p.avatar_url, 'openvibe.media'),
+                views: Math.max(0, Number(p.views ?? p.unique_views) || 0),
+                likes: Math.max(0, Number(p.likes) || 0),
+                at: Date.parse(p.created_at) || null,
             };
         })
         .slice(0, 4);

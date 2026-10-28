@@ -20,10 +20,11 @@ const icon = (name, size) => `<span class="ov-icon" data-icon="${esc(name)}" dat
 // The sites come from the frame's list (server/frame/sites.js): a site is open only when its service's
 // public domain serves the service itself (Network's exposure overlay), so the home page, the navbar and
 // "Opening next" always agree with what is actually running.
-const { SITES: frameSites, GROUPS, groupOf, PRODUCTS } = require('../frame/sites');
+const { SITES: frameSites, GROUPS, groupOf, PRODUCTS, fullName } = require('../frame/sites');
 const contracts = require('openvibe-contracts');
 const social = require('openvibe-shared/social');
-const siteName = (site) => (site.name.includes('.') ? site.name : `OpenVibe.${site.name}`);
+// OpenRestream is its own name, never "OpenVibe.OpenRestream" (the owner, 2026-10-28).
+const siteName = (site) => (site.name.includes('.') ? site.name : fullName(site));
 const OPEN = frameSites.filter((site) => site.status === 'open' && site.id !== 'network');
 const SOON = frameSites.filter((site) => site.status !== 'open');
 const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen', 'Twenty'];
@@ -76,30 +77,20 @@ function intents(catalog) {
     return `<ul class="intents" aria-label="What you can do here">${INTENTS.map(([id, fa, verb, line, href, k]) => `<li><a class="intent" href="${esc(href)}" data-id="${esc(id)}" data-k="${esc(k)}"><i class="fa-solid ${esc(fa)}" aria-hidden="true"></i><span><b>${esc(verb)}</b><small>${esc(line || toolsLine)}</small></span></a></li>`).join('')}</ul>`;
 }
 
-// The network as a constellation: open sites on the inner ring, the ones opening next faint on the outer ring.
+// The network as an orbit (the owner, 2026-10-28: the hero was "ugly af, boring… not easy to understand… nice animated
+// visuals"): the mark in the middle, the six most used sites on the inner ring and ten more on the outer, the rings
+// turning slowly in opposite directions while each site's icon stays upright. Pure CSS transforms (cheap to draw), and
+// still under reduced motion. Every open site is in the sites section below; this shows the shape of the network.
 const SHORT = (site) => site.name.replace(/^OpenVibe\./, '');
-function constellation() {
-    const ring = (list, r, start) => list.map((site, i) => {
-        const a = start + (i / list.length) * Math.PI * 2;
-        return { site, x: Math.round(Math.cos(a) * r), y: Math.round(Math.sin(a) * r) };
-    });
-    const inner = ring(OPEN, 118, -Math.PI / 2);
-    const outer = ring(SOON, 176, -Math.PI / 2 + Math.PI / SOON.length);
-    const lines = inner.map((n, i) => {
-        const m = inner[(i + 1) % inner.length];
-        return `<line class="cs-spoke" x1="0" y1="0" x2="${n.x}" y2="${n.y}"/><line class="cs-arc" x1="${n.x}" y1="${n.y}" x2="${m.x}" y2="${m.y}"/>`;
-    }).join('');
-    // Near the top and bottom the labels sit centred side by side and collide ("ZoneLiveTools"): every other one there
-    // sits further out.
-    const stagger = (n, i) => (Math.abs(n.x) / (Math.hypot(n.x, n.y) || 1) < 0.5 && i % 2 ? 14 : 0);
-    const label = (n, r) => { const dx = n.x / (Math.hypot(n.x, n.y) || 1), dy = n.y / (Math.hypot(n.x, n.y) || 1); return { x: Math.round(n.x + dx * r), y: Math.round(n.y + dy * r) + 4, anchor: Math.abs(dx) < 0.25 ? 'middle' : (dx > 0 ? 'start' : 'end') }; };
-    const openNodes = inner.map((n, i) => { const l = label(n, 17 + stagger(n, i)); return `<a href="https://${esc(n.site.host)}/" class="cs-node" style="--d:${(i * 0.37).toFixed(2)}s"><title>${esc(siteName(n.site))}: ${esc(n.site.tagline)}</title><circle class="cs-halo" cx="${n.x}" cy="${n.y}" r="11"/><circle class="cs-star" cx="${n.x}" cy="${n.y}" r="5"/><text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}">${esc(SHORT(n.site))}</text></a>`; }).join('');
-    const soonNodes = outer.map((n) => { const l = label(n, 9); return `<a href="https://${esc(n.site.host)}/" class="cs-node cs-soon"><title>${esc(siteName(n.site))} — opening next</title><circle class="cs-star" cx="${n.x}" cy="${n.y}" r="2.6"/><text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}">${esc(SHORT(n.site))}</text></a>`; }).join('');
-    return `<svg class="constellation" viewBox="-230 -215 460 430" role="group" aria-labelledby="cs-t"><title id="cs-t">The OpenVibe network: ${OPEN.length} open sites around one account, ${SOON.length} more opening next</title>
-<defs><radialGradient id="cs-core"><stop offset="0" stop-color="var(--accent-light,#60a5fa)"/><stop offset="1" stop-color="var(--accent,#3b82f6)" stop-opacity="0"/></radialGradient></defs>
-<circle class="cs-orbit" r="118"/><circle class="cs-orbit cs-far" r="176"/>${lines}
-<circle r="46" fill="url(#cs-core)" opacity=".35"/><circle class="cs-core" r="24"/><text class="cs-core-t" y="4" text-anchor="middle">you</text>
-${openNodes}${soonNodes}</svg>`;
+function orbit() {
+    const inner = OPEN.slice(0, 6), outer = OPEN.slice(6, 16);
+    const node = (site, i, n, big) => `<a class="orb-node${big ? ' is-big' : ''}" href="https://${esc(site.host)}/" style="--i:${i};--n:${n}" title="${esc(siteName(site))}: ${esc(site.tagline || '')}" aria-label="${esc(siteName(site))}"><span class="orb-face">${icon(site.icon, big ? 26 : 20)}${big ? `<span class="orb-name">${esc(SHORT(site))}</span>` : ''}</span></a>`;
+    return `<div class="orbit" role="group" aria-label="The OpenVibe network: ${OPEN.length + 1} sites around one account">
+<div class="orb-glow" aria-hidden="true"></div>
+<div class="orb-ring r2">${outer.map((s, i) => node(s, i, outer.length, false)).join('')}</div>
+<div class="orb-ring r1">${inner.map((s, i) => node(s, i, inner.length, true)).join('')}</div>
+<a class="orb-core" href="#network"><span class="ov-mark" data-size="64" data-variant="network" style="width:64px;height:64px"></span><b>${OPEN.length + 1} sites</b><small>one account</small></a>
+</div>`;
 }
 
 const fmtViewers = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
@@ -109,23 +100,45 @@ const fmtCount = (n) => Number(n).toLocaleString('en-US');
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 const img = (src, fallback, w, h) => `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" width="${w}" height="${h}" data-fallback="${esc(fallback || BLANK)}" onerror="this.onerror=null;this.src=this.dataset.fallback">`;
 function rightNow(a) {
+    // Rich cards (the owner, 2026-10-28: "more compact, bigger, like YouTube… a preview… view count… the uploader and
+    // avatar… rich content"): a 16:9 picture with its length or LIVE badge, a play button and what happens in it on hover,
+    // then the channel's picture, the title, and views and when. Four across on a computer, two on a tablet, a row to swipe
+    // on a phone.
+    const ago = (ms) => {
+        if (!ms) return '';
+        const s = Math.max(0, (Date.now() - ms) / 1000);
+        const [n, u] = s < 3600 ? [Math.max(1, Math.round(s / 60)), 'minute'] : s < 86400 ? [Math.round(s / 3600), 'hour'] : s < 86400 * 30 ? [Math.round(s / 86400), 'day'] : [Math.round(s / (86400 * 30)), 'month'];
+        return `${n} ${u}${n === 1 ? '' : 's'} ago`;
+    };
+    const views = (n) => (n ? `${fmtViewers(n)} view${n === 1 ? '' : 's'}` : '');
+    const face = (src) => (src ? img(src, null, 36, 36) : '<span class="vc-noface"></span>');
+    const card = ({ url, thumb, badge, len, about, avatar, title, who, line, cls = '' }) => `<li><a class="vcard${cls}" href="${esc(url)}">
+<span class="vc-thumb">${thumb ? img(thumb, avatar, 320, 180) : '<span class="now-noimg"></span>'}${badge || ''}${len ? `<span class="vc-len">${esc(len)}</span>` : ''}<span class="vc-play" aria-hidden="true"><i class="fa-solid fa-play"></i></span>${about ? `<span class="vc-about">${esc(about)}</span>` : ''}</span>
+<span class="vc-meta">${face(avatar)}<span class="vc-text"><b>${esc(title)}</b>${who ? `<small>${esc(who)}</small>` : ''}${line ? `<small>${esc(line)}</small>` : ''}</span></span></a></li>`;
+    const rail = (title, href, more, cards) => (cards.length ? `<div class="now-block"><div class="now-head"><h3>${title}</h3><a class="now-more" href="${href}">${more} →</a></div><ul class="now-rail">${cards.join('')}</ul></div>` : '');
+
     const live = a.live.length
-        ? a.live.map((s) => `<a class="now-stream" href="${esc(s.url)}">${s.thumb || s.avatar ? img(s.thumb || s.avatar, s.thumb ? s.avatar : null, 320, 180) : '<span class="now-noimg"></span>'}<span class="now-badge"><i></i>LIVE${s.viewers ? ` · ${esc(fmtViewers(s.viewers))}` : ''}</span><b>${esc(s.title)}</b><small>${esc(s.name)}${s.category ? ` · ${esc(s.category)}` : ''}</small></a>`).join('')
-        : `<a class="now-stream now-empty" href="https://openvibe.live/broadcast"><span class="now-noimg"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i></span><b>Nobody is live right now</b><small>Be the first: go live from your browser, no OBS and no follower minimum.</small></a>`;
+        ? a.live.map((s) => card({ url: s.url, thumb: s.thumb || s.avatar, badge: `<span class="now-badge"><i></i>LIVE${s.viewers ? ` · ${esc(fmtViewers(s.viewers))}` : ''}</span>`, avatar: s.avatar, title: s.title, who: s.name, line: s.category }))
+        : [`<li><a class="vcard now-empty" href="https://openvibe.live/broadcast"><span class="vc-thumb"><span class="now-noimg"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i></span></span><span class="vc-meta"><span class="vc-text"><b>Nobody is live right now</b><small>Be the first: go live from your browser, no OBS and no follower minimum.</small></span></span></a></li>`];
+    const recs = (a.recordings || []).map((r) => card({ url: r.url, thumb: r.thumb, len: r.length, about: r.about, avatar: r.avatar, title: r.title, who: r.channel, line: [views(r.views), ago(r.at)].filter(Boolean).join(' · ') }));
+    const shots = (a.pastes || []).filter((p) => p.shot).slice(0, 4).map((p) => card({ url: p.url, thumb: p.shot, avatar: p.avatar, title: p.title, who: p.by || 'Screenshot', line: [views(p.views), p.likes ? `${p.likes} like${p.likes === 1 ? '' : 's'}` : '', ago(p.at)].filter(Boolean).join(' · '), cls: ' is-shot' }));
+    const texts = (a.pastes || []).filter((p) => !p.shot);
+
     const list = (items, render) => `<ul class="now-list">${items.map(render).join('')}</ul>`;
-    // A column with nothing to show is left out; only Live always shows, since "nobody is live" is an invitation.
+    // A column with nothing to show is left out.
     const col = (items, title, render, href, more) => (items.length ? `<div class="now-col"><h3>${title}</h3>${list(items, render)}<a class="now-more" href="${href}">${more} →</a></div>` : '');
     const cols = [
-        `<div class="now-col now-live"><h3>Live now</h3><div class="now-streams">${live}</div><a class="now-more" href="https://openvibe.live/">All channels on OpenVibe.Live →</a></div>`,
-        col(a.recordings || [], 'Latest recordings', (r) => `<li><a class="now-rec" href="${esc(r.url)}">${r.thumb ? img(r.thumb, null, 112, 63) : '<span class="now-noimg"></span>'}<span><b>${esc(r.title)}</b><small>${esc(r.channel)} · ${esc(r.length)}</small></span></a></li>`, 'https://openvibe.video/', 'Watch on OpenVibe.Video'),
-        col(a.pastes, 'New pastes', (p) => `<li><a href="${esc(p.url)}"><b>${esc(p.title)}</b><small>${esc(p.kind)}${p.summary ? ` · ${esc(p.summary)}` : ''}</small></a></li>`, 'https://openvibe.community/', 'OpenVibe.Community'),
+        col(texts, 'New pastes', (p) => `<li><a href="${esc(p.url)}"><b>${esc(p.title)}</b><small>${esc(p.kind)}${p.summary ? ` · ${esc(p.summary)}` : ''}</small></a></li>`, 'https://openvibe.community/', 'OpenVibe.Community'),
         col(a.posts, 'From the blog', (p) => `<li><a href="${esc(p.url)}"><b>${esc(p.title)}</b>${p.summary ? `<small>${esc(p.summary)}</small>` : ''}</a></li>`, 'https://openvibe.blog/', 'OpenVibe.Blog'),
         col(a.jobs || [], 'New jobs', (j) => `<li><a href="${esc(j.url)}"><b>${esc(j.title)}</b><small>${[j.where, j.board ? `via ${j.board}` : ''].filter(Boolean).map(esc).join(' · ')}</small></a></li>`, 'https://openvibe.work/', 'Every job on OpenVibe.Work'),
         col(a.codes || [], 'Fresh coupon codes', (c) => `<li><a href="${esc(c.url)}">${c.code ? `<code class="now-code">${esc(c.code)}</code>` : ''}<b>${esc(c.title)}</b></a></li>`, 'https://openvibe.coupons/', 'OpenVibe.Coupons'),
     ].filter(Boolean);
     return `<section class="sc-sec now" aria-labelledby="h-now"><h2 id="h-now"><span class="now-dot" aria-hidden="true"></span>Right now on OpenVibe</h2>
 <p class="sc-lede">What people are streaming, sharing and posting across the network, read from each site within the last minute.</p>
-<div class="now-grid">${cols.join('\n')}</div></section>`;
+${rail('Live now', 'https://openvibe.live/', 'All channels on OpenVibe.Live', live)}
+${rail('Latest recordings', 'https://openvibe.video/', 'Watch on OpenVibe.Video', recs)}
+${rail('New screenshots', 'https://openvibe.community/', 'OpenVibe.Community', shots)}
+${cols.length ? `<div class="now-grid">${cols.join('\n')}</div>` : ''}</section>`;
 }
 
 // The hero's numbers: only what Network read itself within the last minute (server/home/activity.js); a number it
@@ -137,7 +150,7 @@ function numbers(catalog, a) {
         [String(OPEN.length + 1), 'sites, one account', '', '#network'],
         catalog.tools.length ? [fmtCount(catalog.tools.length), 'online tools', '', 'https://openvibe.tools/'] : null,
         c.accounts ? [fmtCount(c.accounts), 'accounts', '', '/login?tab=register'] : null,
-        [fmtCount(a.liveCount || 0), a.liveCount === 1 ? 'stream live now' : 'streams live now', '', 'https://openvibe.live/'],
+        a.liveCount ? [fmtCount(a.liveCount), a.liveCount === 1 ? 'stream live now' : 'streams live now', '', 'https://openvibe.live/'] : null,
     ].filter(Boolean);
     return `<section class="net-num" aria-labelledby="h-num"><h2 id="h-num">OpenVibe in numbers</h2><ul>${items.map(([n, label, note, href]) => `<li><a href="${esc(href)}"><b>${esc(n)}</b><span>${esc(label)}${note ? ` <small>${esc(note)}</small>` : ''}</span></a></li>`).join('')}</ul><p class="net-num-more"><a href="/stats">Every site's numbers, open to everyone →</a></p></section>`;
 }
@@ -170,6 +183,29 @@ const CSS = `
 .now-more{margin-top:auto;font-size:13px;font-weight:600;color:var(--accent-light,#60a5fa);text-decoration:none}
 .now-rec{display:flex!important;gap:10px;align-items:flex-start}.now-rec img,.now-rec .now-noimg{flex:none;width:112px;height:63px;object-fit:cover;border-radius:8px;background:var(--bg-hover,#1c2a44);display:block}
 .now-rec>span{min-width:0}.now-rec b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.now-block{margin-top:22px}.now-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+.now-head h3{font-size:12px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--text-muted,#7d8aa0);margin:0}.now-head .now-more{margin:0}
+.now-rail{list-style:none;margin:0;padding:0;display:grid;gap:18px;grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:980px){.now-rail{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.now-rail{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;margin:0 -16px;padding:2px 16px 8px;scrollbar-width:none;overscroll-behavior-x:contain}.now-rail::-webkit-scrollbar{display:none}.now-rail>li{flex:0 0 min(80%,320px);scroll-snap-align:start}}
+.vcard{display:flex;flex-direction:column;gap:10px;color:inherit;text-decoration:none;min-width:0;border-radius:16px;outline-offset:4px}
+.vc-thumb{position:relative;display:block;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:var(--bg-hover,#1c2a44);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
+.vc-thumb img,.vc-thumb .now-noimg{display:block;width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.2,.7,.2,1);border-radius:0}
+.vcard.is-shot .vc-thumb img{object-fit:cover;object-position:top}
+.vc-len{position:absolute;right:8px;bottom:8px;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.78);color:#fff;font:700 12px/1.4 Inter,system-ui,sans-serif;transition:opacity .25s}
+.vc-play{position:absolute;inset:0;display:grid;place-items:center;opacity:0;transition:opacity .25s;pointer-events:none}
+.vc-play i{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;font-size:18px;padding-left:3px;box-sizing:border-box;transform:scale(.75);transition:transform .35s cubic-bezier(.2,1.4,.3,1)}
+.vc-about{position:absolute;left:0;right:0;bottom:0;padding:34px 12px 10px;background:linear-gradient(transparent,rgba(0,0,0,.88));color:#fff;font-size:12.5px;line-height:1.4;opacity:0;transform:translateY(10px);transition:opacity .3s,transform .35s cubic-bezier(.2,.7,.2,1);pointer-events:none}
+@media (hover:hover){.vcard:hover .vc-thumb img,.vcard:focus-visible .vc-thumb img{transform:scale(1.06)}.vcard:hover .vc-play,.vcard:focus-visible .vc-play{opacity:1}.vcard:hover .vc-play i,.vcard:focus-visible .vc-play i{transform:none}.vcard:hover .vc-about,.vcard:focus-visible .vc-about{opacity:1;transform:none}.vcard:hover .vc-about~.vc-len,.vcard:hover .vc-len:has(~.vc-about){opacity:0}.vcard:hover b{color:var(--accent-light,#60a5fa)}}
+.vc-meta{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.vc-meta img,.vc-noface{flex:none;width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--bg-hover,#1c2a44)}
+.vc-text{display:flex;flex-direction:column;min-width:0;gap:1px}
+.vc-text b{font-size:15px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;transition:color .2s}
+.vc-text small{color:var(--text-secondary,#a8b3c4);font-size:13px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vcard .now-badge{z-index:1}
+.vcard.now-empty .vc-thumb{border:1px dashed var(--border-light,#2c3d5c);background:transparent}.vcard.now-empty .now-noimg{display:grid;place-items:center;font-size:28px;color:var(--accent-light,#60a5fa);background:transparent}
+.now .now-grid{margin-top:26px}
+@media (prefers-reduced-motion:reduce){.vc-thumb img,.vc-play,.vc-play i,.vc-about{transition:none}}
 .now-code{display:inline-block;margin:0 0 3px;padding:1px 7px;border-radius:6px;border:1px dashed var(--accent,#3b82f6);color:var(--accent-light,#60a5fa);font:700 12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px}
 .now-list b{overflow-wrap:anywhere}
 .net-num{margin-top:18px;padding:16px 18px;border-radius:16px;border:1px solid var(--border,rgba(255,255,255,.08));background:color-mix(in srgb,var(--bg-secondary,#101828) 85%,transparent)}
@@ -286,7 +322,7 @@ function render({ releaseId = '' } = {}) {
     const ld = seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what })))) + seo.jsonLdTag(seo.jsonLd.faq(faqPairs()));
     const card = social.url('network', 'https://openvibe.network/shared') || 'https://openvibe.network/assets/logo-512.png';
     const summary = summaryOf(catalog);
-    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog)).replace('<!--OV:CONSTELLATION-->', () => constellation() + numbers(catalog, act)).replaceAll('__OV_CARD__', card).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
+    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog)).replace('<!--OV:CONSTELLATION-->', () => orbit() + numbers(catalog, act)).replaceAll('__OV_CARD__', card).replace('<!--OV:SITES-->', String(OPEN.length + 1)).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
     pageCache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
     return pageCache;
 }

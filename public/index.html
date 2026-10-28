@@ -120,7 +120,31 @@ a{color:inherit}
 .constellation .cs-soon .cs-star{fill:var(--text-muted)}.constellation .cs-soon text{fill:var(--text-muted);font-size:10.5px;font-weight:500}
 @keyframes cs-twinkle{0%,100%{transform:scale(1);opacity:.16}50%{transform:scale(1.35);opacity:.3}}
 @media (prefers-reduced-motion:reduce){.constellation .cs-halo{animation:none}.intent{transition:none}}
-@media (max-width:900px){.hero-grid{grid-template-columns:minmax(0,1fr);text-align:center}.hero-grid p.sub{margin:18px auto 0}.hero-sky{position:static;padding-top:0;text-align:left}.hero-sky .constellation{display:none}.intent{text-align:left}}
+@media (max-width:900px){.hero-grid{grid-template-columns:minmax(0,1fr);text-align:center}.hero-grid p.sub{margin:14px auto 0}.hero-sky{position:static;padding-top:0}.intent{text-align:left}}
+/* The orbit (server/home/render.js orbit()): rings turning in opposite directions, every icon upright. */
+.orbit{position:relative;width:min(100%,460px);aspect-ratio:1;margin:0 auto;container-type:inline-size}
+.orb-glow{position:absolute;inset:22%;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 34%,transparent),transparent);filter:blur(6px);animation:orb-breathe 6s ease-in-out infinite}
+.orb-ring{position:absolute;inset:0;border-radius:50%;animation:orb-spin 90s linear infinite}
+.orb-ring::before{content:"";position:absolute;border-radius:50%;border:1px dashed color-mix(in srgb,var(--accent-light) 30%,transparent)}
+.orb-ring.r1{--R:31cqw}.orb-ring.r1::before{inset:19%}
+.orb-ring.r2{--R:45cqw;animation-duration:140s;animation-direction:reverse}.orb-ring.r2::before{inset:5%;opacity:.55}
+.orb-node{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;transform:rotate(calc(360deg / var(--n) * var(--i))) translateY(calc(-1 * var(--R))) rotate(calc(-360deg / var(--n) * var(--i)));text-decoration:none;color:var(--text-primary)}
+.orb-node.is-big{width:58px;height:58px;margin:-29px}
+.orb-face{display:flex;flex-direction:column;align-items:center;gap:5px;width:100%;height:100%;animation:orb-spin 90s linear infinite reverse}
+.r2 .orb-face{animation-duration:140s;animation-direction:normal}
+.orb-face .ov-icon{display:grid;place-items:center;width:100%;height:100%;flex:none;border-radius:50%;background:color-mix(in srgb,var(--bg-secondary) 88%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent-light) 30%,transparent),0 8px 22px rgba(0,0,0,.35);transition:transform .3s cubic-bezier(.2,1.4,.3,1),box-shadow .3s}
+.orb-name{font-size:11.5px;font-weight:700;color:var(--text-secondary);white-space:nowrap;padding:1px 7px;border-radius:999px;background:color-mix(in srgb,var(--bg-primary) 78%,transparent);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.orb-ring.r1{z-index:2}.orb-core{z-index:3}
+.orb-node:hover .ov-icon,.orb-node:focus-visible .ov-icon{transform:scale(1.15);box-shadow:0 0 0 2px var(--accent-light),0 10px 28px rgba(0,0,0,.45)}
+.orb-node:hover .orb-name,.orb-node:focus-visible .orb-name{color:var(--text-primary)}
+.orb-core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:var(--text-primary);text-align:center}
+.orb-core b{font-size:15px;font-weight:800;margin-top:6px}.orb-core small{font-size:12px;color:var(--text-muted)}
+@keyframes orb-spin{to{transform:rotate(360deg)}}
+@keyframes orb-breathe{0%,100%{opacity:.7;transform:scale(.95)}50%{opacity:1;transform:scale(1.05)}}
+@media (prefers-reduced-motion:reduce){.orb-ring,.orb-face,.orb-glow{animation:none}}
+html[data-ov-motion=reduced] .orb-ring,html[data-ov-motion=reduced] .orb-face,html[data-ov-motion=reduced] .orb-glow{animation:none}
+@media (max-width:900px){.hero-sky{order:-1;margin:-8px auto 4px}.hero-sky .orbit{width:min(72vw,270px)}.hero-sky .net-num{display:none}.orb-node.is-big{width:46px;height:46px;margin:-23px}.orb-node{width:34px;height:34px;margin:-17px}.orb-name{font-size:10.5px}.orb-core b{font-size:13px}}
+
 @media (max-width:520px){.intents{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.intent small{display:none}.intent{align-items:center;gap:9px;padding:9px 10px}.intent>i{width:30px;height:30px;font-size:14px}.intent b{font-size:13.5px}.intent-bar button{padding:11px 14px}}
 
 /* Services */
@@ -181,7 +205,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 .foot-note{width:100%;font-size:12px;color:var(--text-muted)}
 
 @media (max-width:600px){
-    .hero{padding-top:64px}
+    .hero{padding-top:20px}
 }
 </style>
 <script src="/shared/theme-loader.js"></script>
@@ -199,9 +223,8 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
     <section class="hero">
         <div class="hero-grid">
             <div class="hero-main">
-                <div class="hero-badge"><span class="ov-mark" data-size="20" data-variant="network"></span> The OpenVibe Network — open source, community run</div>
-                <h1>The open network<br><span class="grad">for what you do online.</span></h1>
-                <p class="sub">Live streaming from a browser tab, <!--OV:COUNT--> online tools, chat, games, a wiki and a blog; agents that do tasks for you; jobs, food help and places to rent; and the platform underneath, for anyone to build on. Open source, run by the people who use it, and open to everyone without an account. Sign in once and every site already knows you.</p>
+                <h1>Go live, chat, play<br><span class="grad">and get things done.</span></h1>
+                <p class="sub">Stream from a browser tab, no OBS. Chat, play and use <b><!--OV:COUNT--> online tools</b> with one free account across <b><!--OV:SITES--> sites</b>. Open source and community run.</p>
                 <form class="intent-bar" action="https://openvibe.tools/search" method="get" role="search">
                     <label for="intent-q" class="sr-only">What do you want to do?</label>
                     <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>

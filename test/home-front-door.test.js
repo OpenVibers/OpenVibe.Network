@@ -82,8 +82,13 @@ for (const [id, , verb, , href] of home.INTENTS) {
 assert.ok(/Go live<\/b><small>From a browser tab\. No OBS, no follower minimum\./.test(html), 'browser go-live stays the headline promise');
 assert.ok(/Nobody is live right now/.test(html) && /go live from your browser/.test(html), 'an honest empty state');
 const open = sites.filter((s) => s.status === 'open' && s.id !== 'network');
-assert.ok(html.includes('<svg class="constellation"'), 'the constellation is drawn');
-for (const s of open) assert.ok(html.includes(`<a href="https://${s.host}/" class="cs-node"`), `the constellation links ${s.host}`);
+// The hero's orbit (2026-10-28): the most used sites around the mark, the count of every site in its middle.
+assert.ok(html.includes('<div class="orbit" role="group"'), 'the orbit is drawn');
+for (const s of open.slice(0, 16)) assert.ok(html.includes(`href="https://${s.host}/" style="--i:`), `the orbit links ${s.host}`);
+assert.ok(html.includes(`<b>${open.length + 1} sites</b><small>one account</small>`), 'the orbit says how many sites');
+assert.ok(!/OpenVibe\.OpenRestream/.test(html), 'OpenRestream is its own name');
+assert.ok(!/class="hero-badge"/.test(html), 'no pill above the headline (wasted space on a phone)');
+assert.ok(!/streams live now/.test(html), 'a number that reads zero is left out');
 assert.ok(!html.includes('<!--OV:'), 'no placeholder left behind');
 // Below the hero every section is the shared showcase kit (plan T11), with its stylesheet, one h1 and an AI summary.
 assert.ok(html.includes('<link rel="stylesheet" href="/shared/showcase.css">'), 'the kit stylesheet is linked');
@@ -96,7 +101,7 @@ assert.ok(/"@type":"WebPage"/.test(html), 'the summary has its WebPage JSON-LD')
 // A tagline that already ends a sentence ("What should we eat?") gets no second period; a family of one is "1 tool".
 assert.ok(!/[.?!]\. /.test(html.replace(/<[^>]+>/g, ' ')), 'no doubled sentence end after a site tagline');
 assert.ok(!/\b1 tools\b/.test(html), 'one tool is "1 tool"');
-assert.ok(/Live streaming from a browser tab, /.test(html), 'the hero line still leads with going live from a browser');
+assert.ok(/<h1>Go live, chat, play<br>/.test(html) && /Stream from a browser tab, no OBS\./.test(html), 'the hero still leads with going live from a browser');
 for (const s of open) assert.ok(html.includes(`<a class="sc-card" href="https://${s.host}/">`), `the sites section links ${s.host}`);
 for (const href of ['https://openvibe.tools/api/catalog.json', '/llms.txt', 'https://openvibe.tools/llms.txt', 'https://github.com/OpenVibers', 'https://openvibe.codes/', 'https://yt.openvibe.tools/', 'https://dns.openvibe.tools/']) assert.ok(html.includes(`href="${href}"`), `the page still links ${href}`);
 assert.strictEqual((html.match(/<section[\s>]/g) || []).length, (html.match(/<\/section>/g) || []).length, 'every section is closed once');
