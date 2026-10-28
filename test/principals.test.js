@@ -83,6 +83,24 @@ const server = http.createServer(app);
     assert.deepStrictEqual(t.body.scope.split(' '), ['identity.subject.resolve', 'network.notifications.push']);
     const searchToken = t.body.access_token;
 
+    // The Search Fabric's embedder (OpenVibe.Search server/fabric/embed.js, contracts 0.234.0) runs AI workflow
+    // ai.embed for hybrid ranking: its ai.run.create grant keeps research.* and gains ai.embed; ai.run.read is unchanged.
+    t = await token({ client_id: 'search', client_secret: 'search-secret', audience: 'openvibe.ai' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    const searchAiClaims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.ai' });
+    assert.ok(searchAiClaims.ok, searchAiClaims.reason);
+    assert.deepStrictEqual([searchAiClaims.claims.cap, searchAiClaims.claims.ns], [['ai.run.create', 'ai.run.read'], ['research.*', 'ai.embed']]);
+
+    // OpenVibe.Meme (contracts 0.234.0): its public entries in Search, its Events subscriptions at boot, and the
+    // account export/deletion pair; it does not resolve subjects on Network.
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'meme-secret' WHERE client_id = 'meme'").run();
+    t = await token({ client_id: 'meme', client_secret: 'meme-secret', audience: 'openvibe.search' });
+    assert.strictEqual(t.body.scope, 'search.document.write', 'Meme indexes its public entries in Search');
+    t = await token({ client_id: 'meme', client_secret: 'meme-secret', audience: 'openvibe.events' });
+    assert.strictEqual(t.body.scope, 'events.subscription.manage', 'Meme subscribes to the account events at boot');
+    t = await token({ client_id: 'meme', client_secret: 'meme-secret', audience: 'openvibe.network' });
+    assert.deepStrictEqual(t.body.scope.split(' '), ['network.account.deletion.confirm', 'network.account.export.contribute'], 'Meme answers account export and deletion, and holds no identity.subject.resolve');
+
     t = await token({ client_id: 'live', client_secret: 'wrong', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 401); assert.strictEqual(t.body.error, 'invalid_client');
     t = await token({ client_id: 'live', client_secret: 'live-secret' });

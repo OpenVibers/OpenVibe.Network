@@ -143,7 +143,7 @@ const DEFAULT_GRANTS = [
     // account-data consumer and subscriptions shipped first in Reviews#77). Host since 2026-10-19 (the console's sealed hosting
     // tokens and actions, benchmarks' submissions; Host#120, subscribed first through Network#284).
     ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub',
-        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host', 'domains'].flatMap((svc) => [
+        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host', 'domains', 'meme'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
@@ -442,8 +442,8 @@ const DEFAULT_GRANTS = [
     ['search', 'network.notifications.push', SELF_AUDIENCE, ['search']],
     // The Search Fabric (plan 2026-10-28 §4.5, Contracts 0.225.0 search.fabric.query): the web scope's ladder reads the
     // web through AI's MegaSource (research.gather: DeepSeek search for signed-in callers, Wikipedia for everyone), within
-    // Search's own daily cap and AI's. Research only: no other AI workflow.
-    ['search', 'ai.run.create', 'openvibe.ai', ['research.*']],
+    // Search's own daily cap and AI's. Research and the embedder's ai.embed (hybrid ranking); no other AI workflow.
+    ['search', 'ai.run.create', 'openvibe.ai', ['research.*', 'ai.embed']],
     ['search', 'ai.run.read', 'openvibe.ai', ['research.*']],
     // Actor's agents search through the fabric (SF-4): search_web asks the web scope as Actor, naming the task's person
     // in X-OV-Subject, so the paid steps count against that person's daily allowance.
@@ -562,6 +562,10 @@ const DEFAULT_GRANTS = [
     // origin) for one call to the provider's API (plan 2026-10-28 §5.1, DOM-2).
     ['domains', 'network.secret.use', SELF_AUDIENCE, []],
     ['domains', 'events.subscription.manage', 'openvibe.events', []],
+    // OpenVibe.Meme (contracts 0.234.0): its public entries in Search through the owner API (owner meme), and its
+    // account-event subscriptions at boot; its export and deletion grants are with the other services' above.
+    ['meme', 'search.document.write', 'openvibe.search', []],
+    ['meme', 'events.subscription.manage', 'openvibe.events', []],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
@@ -626,6 +630,8 @@ const CHANGED_DEFAULT_NAMESPACES = [
     ['live', 'ai.run.read', 'openvibe.ai', ['live.*', 'network.site_copy'], ['live.*', 'network.site_copy', 'media.analyze']],
     // OpenVibe.Pics alt text: MediaHub runs pics.describe_image on new pictures (AI workflow, local model first).
     ['media-hub', 'ai.run.create', 'openvibe.ai', ['media.analyze'], ['media.analyze', 'pics.describe_image']],
+    // Search's embedder runs AI workflow ai.embed (contracts 0.234.0; POST /api/v1/embed for hybrid ranking).
+    ['search', 'ai.run.create', 'openvibe.ai', ['research.*'], ['research.*', 'ai.embed']],
 ];
 
 async function ensureSchema(db) {
