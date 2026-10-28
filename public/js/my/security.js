@@ -69,16 +69,67 @@ async function loadNotifPrefs() {
             const emailOn = (p.email === null || p.email === undefined) ? cat === 'stream' : !!p.email;
             p.email = emailOn ? 1 : 0;
             const label = { social: 'Social', chat: 'Chat', game: 'Game', stream: 'Streams (go-live)', economy: 'Economy', achievement: 'Achievements', moderation: 'Moderation', system: 'System', service: 'Services', admin: 'Announcements' }[cat] || cat;
+            const digest = ['hourly', 'daily', 'weekly'].includes(p.digest) ? p.digest : 'off';
+            const opt = (v, l) => `<option value="${v}"${digest === v ? ' selected' : ''}>${l}</option>`;
             const html = `
                 <div class="cat pref-row" title="${cat}">${label}</div>
                 <button class="toggle pref-row ${p.enabled ? 'on' : 'off'}" data-cat="${cat}" data-field="enabled" onclick="togglePref(this)"></button>
                 <button class="toggle pref-row ${p.sound ? 'on' : 'off'}" data-cat="${cat}" data-field="sound" onclick="togglePref(this)"></button>
                 <button class="toggle pref-row col-toast ${p.toasts ? 'on' : 'off'}" data-cat="${cat}" data-field="toasts" onclick="togglePref(this)"></button>
                 <button class="toggle pref-row col-email ${p.email ? 'on' : 'off'}" data-cat="${cat}" data-field="email" onclick="togglePref(this)"></button>
+                <select class="digest pref-row col-digest" data-cat="${cat}" data-was="${digest}" aria-label="${label}: how emails come" onchange="setDigest(this)">${opt('off', 'Each one')}${opt('hourly', 'Hourly')}${opt('daily', 'Daily')}${opt('weekly', 'Weekly')}</select>
             `;
             grid.insertAdjacentHTML('beforeend', html);
         }
     } catch (err) { console.error('Failed to load notif prefs:', err); }
+}
+
+async function setDigest(sel) {
+    const before = sel.dataset.was || 'off';
+    try {
+        await apiFetch('/api/notifications/preferences', { method: 'PUT', body: JSON.stringify({ category: sel.dataset.cat, digest: sel.value }) });
+        sel.dataset.was = sel.value;
+    } catch (err) { sel.value = before; }
+}
+
+// Quiet hours: the person's window in their own time zone (Network keeps it; the bell and email follow it).
+async function loadQuietHours() {
+    if (isAnonSession()) return;
+    const form = document.getElementById('quiet-form');
+    if (!form || form.dataset.ready) return;
+    const tzSel = document.getElementById('quiet-tz');
+    const device = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) { return 'UTC'; } })();
+    let zones = [];
+    try { zones = Intl.supportedValuesOf('timeZone'); } catch (e) { zones = [device, 'UTC']; }
+    if (!zones.includes('UTC')) zones.unshift('UTC');
+    let q = null;
+    try { q = await apiFetch('/api/notifications/quiet-hours'); } catch (e) { q = null; }
+    const tz = q && q.enabled ? q.tz : device;
+    if (!zones.includes(tz)) zones.unshift(tz);
+    tzSel.textContent = '';
+    for (const z of zones) { const o = document.createElement('option'); o.value = z; o.textContent = z.replace(/_/g, ' '); if (z === tz) o.selected = true; tzSel.appendChild(o); }
+    document.getElementById('quiet-on').checked = !!(q && q.enabled);
+    if (q && q.start) document.getElementById('quiet-start').value = q.start;
+    if (q && q.end) document.getElementById('quiet-end').value = q.end;
+    showQuietStatus(q);
+    form.dataset.ready = '1';
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const status = document.getElementById('quiet-status');
+        status.textContent = 'Saving…';
+        try {
+            const saved = await apiFetch('/api/notifications/quiet-hours', { method: 'PUT', body: JSON.stringify({
+                enabled: document.getElementById('quiet-on').checked, start: document.getElementById('quiet-start').value,
+                end: document.getElementById('quiet-end').value, tz: tzSel.value }) });
+            showQuietStatus(saved, 'Saved. ');
+        } catch (err) { status.textContent = 'Not saved: ' + (err && err.message ? err.message : 'try again'); }
+    });
+}
+function showQuietStatus(q, prefix = '') {
+    const status = document.getElementById('quiet-status');
+    if (!status) return;
+    if (!q || !q.enabled) { status.textContent = prefix + 'Off: notices pop up whenever they arrive.'; return; }
+    status.textContent = prefix + (q.in_quiet ? `Quiet now, until ${q.end} (${q.tz.replace(/_/g, ' ')}).` : `Quiet from ${q.start} to ${q.end} (${q.tz.replace(/_/g, ' ')}).`);
 }
 
 async function togglePref(btn) {

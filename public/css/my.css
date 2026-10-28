@@ -121,7 +121,15 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 .account-item .actions{margin-left:auto;display:flex;gap:6px}
 
 /* Notification pref grid */
-.notif-grid{display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;align-items:center;font-size:12px}
+.notif-grid{display:grid;grid-template-columns:1fr auto auto auto auto auto;gap:8px;align-items:center;font-size:12px}
+.notif-grid select.digest{min-height:30px;padding:2px 6px;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font:inherit;font-size:12px}
+.quiet-form{display:grid;gap:14px}
+.quiet-times{display:flex;flex-wrap:wrap;gap:10px 16px}
+.quiet-times label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--text-muted)}
+.quiet-times input,.quiet-times select{min-height:40px;padding:6px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font:inherit;font-size:14px}
+.quiet-times .quiet-tz{flex:1 1 220px}
+.quiet-times .quiet-tz select{width:100%}
+.quiet-form .btn-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
 .notif-grid .cat{font-weight:600;text-transform:capitalize}
 .notif-grid .toggle{width:36px;height:20px;border-radius:10px;border:none;cursor:pointer;position:relative;transition:background .2s}
 .notif-grid .toggle::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;transition:transform .2s}
@@ -215,7 +223,7 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
     .page-header{flex-direction:column;text-align:center}
     .page-header .info .badges{justify-content:center}
     .notif-grid{grid-template-columns:1fr auto auto}
-    .notif-grid .col-email,.notif-grid .col-toast{display:none}
+    .notif-grid .col-email,.notif-grid .col-toast,.notif-grid .col-digest{display:none}
 }
 
 /* Dashboard Showcase */

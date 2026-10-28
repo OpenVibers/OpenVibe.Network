@@ -1,6 +1,8 @@
-# Notification digests: design (later release)
+# Notification digests: design
 
-Roadmap WS-E task 3 asks for a digest design now and the digest itself in a later release. Network owns digests (ADR-020: Network keeps addressing, preferences, digests, read state and the store). Nothing here is built yet.
+> Built: migration `0027_notification_quiet_digest.sql`, `server/notifications/quiet-hours.js` and `server/notifications/digest.js` implement the per-category `digest` column, quiet hours and the 15-minute runner. This note records the original design; the `delivery` column, `digest_pending` and the `DIGEST` inbox notification below were not part of this slice.
+
+Roadmap WS-E task 3 asks for a digest design now and the digest itself in a later release. Network owns digests (ADR-020: Network keeps addressing, preferences, digests, read state and the store).
 
 ## Problem
 

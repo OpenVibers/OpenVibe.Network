@@ -25,6 +25,7 @@ const urlRegistry = require('./url-registry');
 const { BRAND } = require('openvibe-shared/brand');
 const { NotificationService } = require('./notifications/notification-service');
 const { EmailService } = require('./notifications/email-service');
+const { runDigests } = require('./notifications/digest');
 const createNotificationRoutes = require('./notifications/routes');
 const createAdminRoutes = require('./admin/routes');
 const createSetupRoutes = require('./setup/routes');
@@ -917,6 +918,9 @@ const server = app.listen(...(socketActivated ? [{ fd: 3 }] : [config.port, conf
 
     // Process email queue every 2 minutes
     timers.push(setInterval(() => emailService.processQueue(notificationService).catch((e) => console.warn('[Email] queue failed:', e.message)), 2 * 60 * 1000));
+
+    // Send due notification digests every 15 minutes (hourly/daily/weekly, never during quiet hours)
+    timers.push(setInterval(() => runDigests(Date.now(), { db, notificationService, emailService }).catch((e) => console.warn('[Digest] run failed:', e.message)), 15 * 60 * 1000));
 
     // Raw analytics retention (ADR-021) is scheduled by the PostgreSQL tracker itself: events older
     // than 30 days go, in bounded batches; hourly/daily rollups stay.

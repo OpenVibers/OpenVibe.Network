@@ -244,6 +244,7 @@ sudo apt install certbot python3-certbot-dns-cloudflare
 2. **openvibe.network** stores them in PostgreSQL with priority, category, and optional rich content
 3. **Clients** poll `GET /api/notifications` every 15 seconds, rendering toasts and updating the bell badge (or, where a site turned realtime on, hear each new notification over OpenVibe.Events and poll every 2 minutes as a safety net: see *Realtime badge* below)
 4. **Critical notifications** are queued for email delivery via the built-in email service (Resend by default).
+5. **Quiet hours and digests** can hold normal email and browser push until a window ends, or replace per-alert email with an hourly/daily/weekly summary; critical notifications always break through.
 
 ### Priorities
 
@@ -259,6 +260,12 @@ sudo apt install certbot python3-certbot-dns-cloudflare
 `social`, `chat`, `game`, `stream`, `economy`, `achievement`, `moderation`, `system`, `service`, `admin`
 
 Users can toggle each category's enabled/sound/toast/email preferences at `openvibe.network/my` → Notifications tab.
+
+### Quiet hours and digests
+
+A person can set a do-not-disturb window with `GET`/`PUT /api/notifications/quiet-hours` — `{ enabled, start: 'HH:MM', end: 'HH:MM', tz }`, default off at 22:00–07:00 UTC; the GET also reports `in_quiet`. Normal notification email and browser push wait until the window ends; `critical` notifications still go at once. The notification itself is always stored and appears in the bell.
+
+Each category can choose `digest`: `off` (the default, NULL), `hourly`, `daily` or `weekly`, through `PUT /api/notifications/preferences`. A digested category is not emailed one by one: `runDigests()` sends one summary email after the period is due (daily and weekly at 08:00 or later in the person's quiet-hours zone, never during quiet hours), lists up to 20 items and says "and N more", then marks them emailed. It runs every 15 minutes in `server/index.js` and uses the same daily caps and verified/bounced-address checks as the email queue.
 
 ### Cross-Service Push
 
@@ -361,7 +368,7 @@ It then opens `${stream_url}?topics=network.notification.*&ticket=…[&last_even
 - **Refusals:** a guest gets 403 `realtime.guest`. `REALTIME_TICKETS=off` in `/etc/openvibe/network.env` answers 503 `realtime.disabled`, and every badge stays on polling. `OV_EVENTS_PUBLIC_URL` overrides the stream origin (default `https://openvibe.events`).
 - **Client:** openvibe-shared `notification-live.js`, on where a site sets `notificationsRealtime: true`.
 
-A digest (a daily or weekly summary instead of one alert per notification) is designed in [docs/notification-digest.md](docs/notification-digest.md) for a later release.
+Quiet hours and per-category digests are built (migration `0027_notification_quiet_digest.sql`, `server/notifications/quiet-hours.js` and `digest.js`); the design note is [docs/notification-digest.md](docs/notification-digest.md).
 
 ---
 
