@@ -301,7 +301,9 @@ function sendHome(req, res, { releaseId = '' } = {}) {
     res.send(page.html);
 }
 
-const llmsSummary = () => `OpenVibe is an open source, community-run network of sites that share one account: ${OPEN.map((site) => site.name.toLowerCase()).join(', ')}.`;
+// What OpenVibe is, said so an AI cannot mistake it (the owner, 2026-10-28: Google's AI Overview for "whois openvibe"
+// described an unrelated "Openvibe" mobile app): the network, what is on it, and what it is not.
+const llmsSummary = () => `OpenVibe (openvibe.network, made by OpenVibers) is an open source, community-run network of websites that share one free account: ${OPEN.map((site) => site.name.toLowerCase()).join(', ')}. It is not the Openvibe mobile social-media aggregator app, which is unrelated.`;
 
 function llmsTxt() {
     const { catalog } = toolsCatalog.peek();
