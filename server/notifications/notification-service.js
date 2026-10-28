@@ -8,6 +8,7 @@
 
 const { v4: uuidv4 } = require('uuid');
 const { TYPES, PRIORITY, EMAIL_ELIGIBLE_CATEGORIES, EMAIL_DEFAULT_TYPES } = require('openvibe-shared/notifications');
+const tabs = require('./tabs');
 const contracts = require('openvibe-contracts');
 const eventRelay = require('../developer/event-relay');
 const { inQuiet, parseTime, validTimeZone, rowToConfig, configToView } = require('./quiet-hours');
@@ -80,6 +81,12 @@ class NotificationService {
         this._unreadCount = db.prepare(`
             SELECT COUNT(*) as count FROM notifications
             WHERE user_id = ? AND is_read = 0 AND is_dismissed = 0
+        `);
+
+        this._unreadCountByKind = db.prepare(`
+            SELECT category, type, COUNT(*) as count FROM notifications
+            WHERE user_id = ? AND is_read = 0 AND is_dismissed = 0
+            GROUP BY category, type
         `);
 
         this._unreadCountByCategory = db.prepare(`
@@ -318,9 +325,11 @@ class NotificationService {
      *  - since: ISO timestamp, only rows created after it (toasts)
      * Fetches limit+1 so the client knows whether another page exists.
      */
-    async getForUser(userId, { limit = 50, offset = 0, category = null, unreadOnly = false, q = null, since = null, type = null } = {}) {
+    async getForUser(userId, { limit = 50, offset = 0, category = null, unreadOnly = false, q = null, since = null, type = null, tab = null } = {}) {
         const where = ['user_id = ?', 'is_dismissed = 0'];
         const params = [userId];
+        const inTab = tabs.tabWhere(tab);
+        if (inTab) { where.push(inTab.sql); params.push(...inTab.params); }
         if (category) { where.push('category = ?'); params.push(category); }
         if (type) { where.push('type = ?'); params.push(type); }
         if (unreadOnly) where.push('is_read = 0');
@@ -358,6 +367,11 @@ class NotificationService {
 
     async getUnreadCount(userId) {
         return (await this._unreadCount.get(userId))?.count || 0;
+    }
+
+    /** Unread counts for the bell's tabs: { all, mentions, live, alerts, system, agents }. */
+    async getUnreadByTab(userId) {
+        return tabs.countsByTab(await this._unreadCountByKind.all(userId));
     }
 
     async getUnreadByCategory(userId) {
