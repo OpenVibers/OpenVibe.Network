@@ -166,6 +166,10 @@ const server = http.createServer(app);
     t = await token({ client_id: 'design', client_secret: 'design-secret', audience: 'openvibe.bench' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
     assert.deepStrictEqual(t.body.scope.split(' '), ['bench.board.read', 'bench.entry.create', 'bench.judgement.cast', 'bench.round.create', 'bench.round.read', 'bench.task.create'], "Design creates and reads Bench tasks and rounds, reads boards and casts judgements");
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'games-secret' WHERE client_id = 'games'").run();
+    t = await token({ client_id: 'games', client_secret: 'games-secret', audience: 'openvibe.bench' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    assert.deepStrictEqual(t.body.scope.split(' '), ['bench.entry.create', 'bench.judgement.cast', 'bench.round.create', 'bench.task.create'], 'Games submits priced matches and automatic outcomes');
 
     // OpenVibe.Bench (contracts 0.238.0): the account export/deletion pair, its account-event subscriptions, and
     // ai.run.create (namespace ai.generate) to run its pinned rounds; it publishes bench.* events and indexes nothing.

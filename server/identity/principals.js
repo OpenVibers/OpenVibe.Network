@@ -616,6 +616,9 @@ const DEFAULT_GRANTS = [
     ['design', 'bench.judgement.cast', 'openvibe.bench', []],
     ['design', 'bench.board.read', 'openvibe.bench', []],
     ['design', 'bench.entry.create', 'openvibe.bench', []],
+    // Games submits each AI duel as a Bench task, two priced seat entries, and one automatic outcome.
+    ...['bench.task.create', 'bench.round.create', 'bench.entry.create', 'bench.judgement.cast']
+        .map((cap) => ['games', cap, 'openvibe.bench', []]),
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
