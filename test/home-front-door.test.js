@@ -103,6 +103,8 @@ assert.ok(!/[.?!]\. /.test(html.replace(/<[^>]+>/g, ' ')), 'no doubled sentence 
 assert.ok(!/\b1 tools\b/.test(html), 'one tool is "1 tool"');
 assert.ok(/<h1>Go live, chat, play<br>/.test(html) && /Stream from a browser tab, no OBS\./.test(html), 'the hero still leads with going live from a browser');
 for (const s of open) assert.ok(html.includes(`<a class="sc-card" href="https://${s.host}/">`), `the sites section links ${s.host}`);
+// One plain link to the hub of every site (SEO-9), in the sites section the home already has, with the real count.
+assert.ok(html.includes(`<p class="home-more"><a href="/sites">All ${open.length + 1} sites, grouped by what you came to do →</a></p>`), 'the home links /sites with the real count');
 for (const href of ['https://openvibe.tools/api/catalog.json', '/llms.txt', 'https://openvibe.tools/llms.txt', 'https://github.com/OpenVibers', 'https://openvibe.codes/', 'https://yt.openvibe.tools/', 'https://dns.openvibe.tools/']) assert.ok(html.includes(`href="${href}"`), `the page still links ${href}`);
 assert.strictEqual((html.match(/<section[\s>]/g) || []).length, (html.match(/<\/section>/g) || []).length, 'every section is closed once');
 
