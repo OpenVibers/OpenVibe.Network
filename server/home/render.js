@@ -158,6 +158,26 @@ function numbers(catalog, a) {
 // The kit (openvibe-shared/showcase, /shared/showcase.css) owns the sections, cards and icon styles; this is only what
 // it does not draw: the "Right now" columns and the tool and "Opening next" chips.
 const CSS = `
+.home-fold{margin:14px 0 0;border:1px solid var(--border,#1f2d47);border-radius:14px;background:var(--bg-card,#131c2e)}
+.home-fold>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:0 16px;cursor:pointer;font-weight:700;list-style:none}
+.home-fold>summary::-webkit-details-marker{display:none}
+.home-fold>summary span{color:var(--text-muted,#7386a3);font-weight:600;font-size:.86rem}
+.home-fold>summary::after{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin-left:8px;flex:none}
+.home-fold[open]>summary::after{transform:rotate(-135deg)}
+.home-fold>div,.home-fold>section{padding:0 16px 14px}
+.home-fold .sc-sec{margin:0;padding:0}
+.home-dev{padding-top:0}
+.home-rows{list-style:none;margin:14px 0 0;padding:0;border:1px solid var(--border,#1f2d47);border-radius:14px;background:var(--bg-card,#131c2e)}
+.home-rows li+li{border-top:1px solid var(--border,#1f2d47)}
+.home-rows a{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;color:inherit;text-decoration:none}
+.home-rows a:hover b{color:var(--accent-light,#60a5fa)}
+.home-rows b{display:block;font-size:.98rem}
+.home-rows small{display:block;color:var(--text-secondary,#96a7c2);font-size:.86rem;line-height:1.45}
+.faq-item>summary{list-style:none;cursor:pointer;min-height:44px;display:flex;align-items:center}
+.faq-item>summary::-webkit-details-marker{display:none}
+.faq-item>summary h3{margin:0}
+@media (max-width:599px){#network .sc-apps{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
 #faq{margin-bottom:56px}#developers .sc-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 .home-chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;padding:0;list-style:none}
 .home-chips>li>a{display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 7px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));font-size:13.5px;font-weight:600;color:inherit;text-decoration:none}
@@ -271,21 +291,28 @@ function body(catalog, act) {
         lede: 'Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.',
         groups, more: { href: '/sites', label: `All ${OPEN.length + 1} sites, grouped by what you came to do` },
     });
-    const tools = inside(showcase.features({
-        id: 'tools', title: catalog.tools.length ? `${catalog.tools.length} tools that just open` : 'Tools that just open',
+    // The first two neighbourhoods show; the rest fold (a phone saw 48 tiles in eight groups, two screens of the front door).
+    const foldSites = (html) => {
+        const heads = [...html.matchAll(/<h3 class="sc-apps-group">/g)].map((m) => m.index);
+        const end = html.indexOf('<p class="sc-apps-more">');
+        if (heads.length < 3 || end < heads[2]) return html;
+        return `${html.slice(0, heads[2])}<details class="home-fold home-fold-sites"><summary>Every other neighbourhood<span>${heads.length - 2} more</span></summary><div>${html.slice(heads[2], end)}</div></details>${html.slice(end)}`;
+    };
+    const families = inside(showcase.features({
+        id: 'tools-families', title: catalog.tools.length ? `${catalog.tools.length} tools that just open` : 'Tools that just open',
         lede: 'No installs and no sign-up wall. Every tool has its own short address, so yt.openvibe.tools or dns.openvibe.tools takes you straight there.',
         items: fams.length ? fams.map((f) => ({ icon: `ov:${f.icon}`, title: f.name, text: `${count(f)} ${count(f) === 1 ? 'tool' : 'tools'} · ${f.tagline || ''}`, href: f.path ? `https://openvibe.tools${f.path}` : f.url }))
             : [{ icon: 'ov:tools', title: 'OpenVibe.Tools', text: 'Converters, downloaders, PDF and image tools, developer utilities and network diagnostics.', href: 'https://openvibe.tools/' }],
-    }), `${chips(popular.map((t) => [t.url, t.tagline || '', t.icon, t.name]))}<p class="home-more"><a href="https://openvibe.tools/">Browse every tool at openvibe.tools →</a> · <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> · <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a></p>`);
-    const account = showcase.features({
-        id: 'account', title: 'What signing in adds',
-        lede: 'You can use almost everything as a guest. An account is for the things that need to remember you, and it works on every OpenVibe site the moment you arrive.',
-        items: ACCOUNT.map(([ic, title, text, href]) => ({ icon: `ov:${ic}`, title, text, href })),
-    });
+    }), '');
+    const tools = `<section class="sc-sec" id="tools" aria-labelledby="h-tools"><h2 id="h-tools">${esc(catalog.tools.length ? `${catalog.tools.length} tools that just open` : 'Tools that just open')}</h2><p class="sc-lede">No installs and no sign-up wall. Every tool has its own short address, so yt.openvibe.tools or dns.openvibe.tools takes you straight there.</p>${chips(popular.map((t) => [t.url, t.tagline || '', t.icon, t.name]))}
+${fams.length ? `<details class="home-fold"><summary>Every kind of tool<span>${esc(fams.length)} families</span></summary>${families.replace(/<h2[^>]*>[\s\S]*?<\/h2>/, '').replace(/<p class="sc-lede">[\s\S]*?<\/p>/, '')}</details>` : ''}<p class="home-more"><a href="https://openvibe.tools/">Browse every tool at openvibe.tools →</a> · <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> · <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a></p></section>`;
+    // What signing in adds: one list, a line each (cards made it two screens on a phone).
+    const account = `<section class="sc-sec" id="account" aria-labelledby="h-account"><h2 id="h-account">What signing in adds</h2><p class="sc-lede">You can use almost everything as a guest. An account is for the things that need to remember you, and it works on every OpenVibe site the moment you arrive.</p>
+<ul class="home-rows">${ACCOUNT.map(([ic, title, text, href]) => `<li><a href="${esc(href)}">${icon(`ov:${ic}`, 22)}<span><b>${esc(title)}</b><small>${esc(text)}</small></span></a></li>`).join('')}</ul></section>`;
     // The sites still to open stay a quiet row of chips, not cards: they are addresses, not places to go yet.
     const soon = SOON.length ? `<section class="sc-sec" id="soon" aria-labelledby="h-soon"><h2 id="h-soon">Opening next</h2><p class="sc-lede">${esc(inWords(SOON.length))} more addresses are staked out. Each one opens when it is good enough to use daily, and your account will already work there.</p>
 ${chips(SOON.map((site) => [`https://${site.host}/`, site.tagline, site.icon, siteName(site)]), 'soon')}</section>` : '';
-    const dev = inside(showcase.features({
+    const devCards = inside(showcase.features({
         id: 'developers', title: 'For developers and crawlers',
         lede: 'OpenVibe is open source and community-run. Everything public is meant to be read by machines too.',
         items: [
@@ -295,11 +322,12 @@ ${chips(SOON.map((site) => [`https://${site.host}/`, site.tagline, site.icon, si
             { icon: 'fa-code-branch', title: 'Source on GitHub', text: 'Every OpenVibe service is open source under the OpenVibers organization.', href: 'https://github.com/OpenVibers' },
         ],
     }), '<p class="home-more">Machine-readable: <a href="/llms.txt">/llms.txt</a> · <a href="/llms-full.txt">/llms-full.txt</a> · <a href="https://openvibe.tools/llms.txt">openvibe.tools/llms.txt</a></p>');
+    const dev = `<section class="sc-sec home-dev" id="developers" aria-label="For developers"><details class="home-fold"><summary>For developers and crawlers<span>API, SDK, llms.txt, source</span></summary>${devCards.replace(/^<section[^>]*>/, '<div>').replace(/<\/section>$/, '</div>')}</details></section>`;
     const faq = `<section class="sc-sec" id="faq" aria-labelledby="h-faq"><h2 id="h-faq">Questions people ask</h2><p class="sc-lede">The short answers. Every OpenVibe site has its own page of answers on OpenVibe.Help.</p>
-<div class="faq-grid">${faqPairs().map((p) => `<div class="faq-item"><h3>${esc(p.q)}</h3><p>${esc(p.a)}</p></div>`).join('')}</div><p class="home-more"><a href="https://openvibe.help/sites/openvibe.network">More answers about your account on OpenVibe.Help →</a></p></section>`;
+<div class="faq-grid">${faqPairs().map((p, i) => `<details class="faq-item"${i === 0 ? ' open' : ''}><summary><h3>${esc(p.q)}</h3></summary><p>${esc(p.a)}</p></details>`).join('')}</div><p class="home-more"><a href="https://openvibe.help/sites/openvibe.network">More answers about your account on OpenVibe.Help →</a></p></section>`;
     return `<style>${CSS}</style>
 ${rightNow(act)}
-${sites}
+${foldSites(sites)}
 ${tools}
 ${account}
 ${soon}
