@@ -781,6 +781,12 @@ app.get(['/', '/index.html'], (req, res) => {
     if (req.path === '/index.html') return redirectWithoutHtml(req, res, '/');
     return require('./home/render').sendHome(req, res, { releaseId: release.release });
 });
+// The hub of the whole network (SEO-9): every open site, from the same registry the home reads, so the two cannot
+// disagree. Built at boot from the site list, so a deploy is the only thing that changes it.
+app.get('/sites', (_req, res) => {
+    res.set('Content-Type', 'text/html; charset=utf-8').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 }));
+    res.send(require('./sites/page').render({ releaseId: release.release }));
+});
 app.get('/llms.txt', (_req, res) => res.type('text/plain').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(require('./home/render').llmsTxt()));
 app.get('/llms-full.txt', (_req, res) => res.type('text/plain').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(require('./home/render').llmsFullTxt({ baseUrl: config.baseUrl })));
 // The crawl files the front door owes crawlers, built from openvibe-shared/seo (plan T11 lane D), ahead

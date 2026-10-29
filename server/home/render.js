@@ -262,7 +262,8 @@ function body(catalog, act) {
         .filter((x) => x.sites.length)
         .map(({ g, sites: list, also }) => `<h3 class="home-group">${esc(g.name)}</h3>${grid(list.map((site) => ({ icon: `ov:${site.icon}`, title: siteName(site), text: site.tagline ? `${asSentence(site.tagline)} ${site.what}` : site.what, href: `https://${site.host}/` })))}${also.length ? `<p class="home-also">Also here: ${also.map((p) => `<a href="https://${esc(p.host)}/">${esc(p.host)}</a> (${esc(p.tagline.toLowerCase())})`).join(', ')}</p>` : ''}`).join('\n');
     const sites = `<section class="sc-sec" id="network" aria-labelledby="h-sites"><h2 id="h-sites">${esc(sitesHeading())}</h2><p class="sc-lede">Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.</p>
-${groups}</section>`;
+${groups}
+<p class="home-more"><a href="/sites">All ${OPEN.length + 1} sites, grouped by what you came to do →</a></p></section>`;
     const tools = inside(showcase.features({
         id: 'tools', title: catalog.tools.length ? `${catalog.tools.length} tools that just open` : 'Tools that just open',
         lede: 'No installs and no sign-up wall. Every tool has its own short address, so yt.openvibe.tools or dns.openvibe.tools takes you straight there.',
@@ -354,12 +355,13 @@ const LLMS_PAGE_TEXT = {
     '/': () => ['One OpenVibe account signs you in on every site:', ...OPEN.map((site) => `- ${siteName(site)} (https://${site.host}/): ${site.what}`)].join('\n'),
     '/updates': () => "Every change deployed to the OpenVibe network, newest first: each site's commits as they ship, and the Patch notes posts that gather them.",
     '/stats': () => "Open stats: page views, people, streams, OpenCoins and how fast each service answers, for every OpenVibe site, public and reusable as JSON (https://openvibe.network/api/v1/stats) or CSV. Counts only, never about a person.",
+    '/sites': () => require('../sites/page').llmsText(),
     '/bot': () => 'OpenVibeBot, OpenVibe\'s crawler: its user agent, what it reads (sitemaps, feeds, schema.org JSON-LD), what it obeys (robots.txt for OpenVibeBot or OpenVibeSources, Crawl-delay, noindex, Retry-After), and how to block it, slow it or offer a feed instead. As JSON: https://openvibe.network/bot.json',
     '/terms': () => 'The rules for using OpenVibe.Network, in plain language.',
     '/privacy': () => 'What OpenVibe.Network collects, why, and the choices you have.',
     '/dmca': () => 'How to report copyright infringement on OpenVibe.Network, and how to respond to a report.',
 };
-const LLMS_PAGE_TITLE = { '/': 'OpenVibe.Network', '/updates': 'Updates', '/stats': 'Open stats', '/bot': 'OpenVibeBot', '/terms': 'Terms of Service', '/privacy': 'Privacy Policy', '/dmca': 'DMCA' };
+const LLMS_PAGE_TITLE = { '/': 'OpenVibe.Network', '/updates': 'Updates', '/stats': 'Open stats', '/sites': 'All the sites', '/bot': 'OpenVibeBot', '/terms': 'Terms of Service', '/privacy': 'Privacy Policy', '/dmca': 'DMCA' };
 const LLMS_FULL_MAX_BYTES = 512 * 1024;
 
 function llmsFullTxt({ baseUrl = 'https://openvibe.network' } = {}) {

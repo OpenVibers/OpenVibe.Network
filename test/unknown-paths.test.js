@@ -15,7 +15,7 @@ const { ACCOUNT_HUB_PATHS } = require('../server/not-found');
         // ── Real pages keep 200 ──
         const real = [
             '/', '/login', '/forgot-password', '/reset-password', '/admin', '/admin/settings', '/admin/analytics/overview',
-            '/verify-email', '/status', '/sso/fanout', '/terms', '/privacy', '/dmca', '/llms.txt',
+            '/verify-email', '/status', '/sso/fanout', '/terms', '/privacy', '/dmca', '/llms.txt', '/sites',
             '/robots.txt', '/sitemap.xml', '/manifest.webmanifest', '/assets/logo.svg', '/js/login.js', '/shared/navbar.js', '/shared/v1/navbar.js',
             '/css/login.css', '/css/my.css', '/css/admin.css',
             '/openvibe-sw.js', '/release.json', '/.well-known/openvibe', '/.well-known/web-identity', '/api/health', '/api/brand',

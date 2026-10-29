@@ -80,6 +80,51 @@ const cache = require('openvibe-shared/cache-policy');
             assert.ok(/<meta name="robots" content="index,\s*follow">/.test(head), `${p} says index, follow instead of relying on the crawler's default`);
         }
 
+        // ── /sites: the hub of the whole network (SEO-9) ──
+        const sitesPage = require('../server/sites/page');
+        const { SITES } = require('../server/frame/sites');
+        const openSites = SITES.filter((site) => site.status === 'open');
+        const hub = await get('/sites');
+        assert.strictEqual(hub.status, 200, '/sites answers 200 (it was a 404 before SEO-9)');
+        assert.ok(hub.type.startsWith('text/html'), '/sites is HTML');
+        const hubHead = hub.body.slice(0, hub.body.indexOf('</head>'));
+        assert.strictEqual((hub.body.match(/<h1[ >]/g) || []).length, 1, '/sites has exactly one <h1>');
+        assert.ok(/<link rel="canonical" href="https:\/\/openvibe\.network\/sites">/.test(hubHead), '/sites is its own canonical');
+        assert.ok(/<meta name="robots" content="index,\s*follow">/.test(hubHead), '/sites says index, follow');
+        assert.ok(hubHead.includes(`<title>All ${openSites.length} OpenVibe sites · OpenVibe.Network</title>`), 'the title carries the real count');
+        assert.ok(/<meta name="description" content="[^"]{50,170}">/.test(hubHead), '/sites has a real description');
+        const hubLd = JSON.parse(hub.body.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+        assert.strictEqual(hubLd['@type'], 'CollectionPage', 'the JSON-LD is a CollectionPage');
+        assert.strictEqual(hubLd.mainEntity['@type'], 'ItemList', 'with an ItemList');
+        assert.strictEqual(hubLd.mainEntity.numberOfItems, openSites.length, 'the ItemList holds every open site');
+        const ids = new Set(openSites.map((site) => `https://${site.host}/`));
+        for (const item of hubLd.mainEntity.itemListElement) {
+            assert.ok(ids.has(item.url), `${item.url} is an open site`);
+            assert.ok(item.name && item.description, `${item.url} carries its name and its one-line purpose`);
+        }
+        assert.deepStrictEqual(hubLd.mainEntity.itemListElement.map((i) => i.url).sort(), [...ids].sort(), 'every open site is in the ItemList, and nothing else');
+        // The home's ids: each site is anchored at the registry id the home groups it by, and links to its own home.
+        for (const site of openSites) {
+            assert.ok(hub.body.includes(`class="sc-card" id="${site.id}" href="https://${site.host}/"`), `/sites#${site.id} links to https://${site.host}/`);
+        }
+        // The groups are the home's six neighbourhoods, in the home's order, with a jump list to each.
+        const { GROUPS, groupOf } = require('../server/frame/sites');
+        const groupIds = GROUPS.map((g) => g.id).filter((id) => openSites.some((site) => groupOf(site.id) === id));
+        assert.deepStrictEqual([...hub.body.matchAll(/<section class="sc-sec" id="(group-[a-z]+)" aria-labelledby=/g)].map((m) => m[1]), groupIds.map((id) => `group-${id}`), 'the groups appear once each, in the home order');
+        for (const id of groupIds) assert.ok(hub.body.includes(`<a href="#group-${id}">`), `the jump list reaches #group-${id}`);
+        // One page, one id: the site anchors and the group anchors never collide (a group "games" is a site "games").
+        const pageIds = [...hub.body.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]);
+        assert.deepStrictEqual(pageIds.filter((id, i) => pageIds.indexOf(id) !== i), [], 'no id repeats on the page');
+        // Only `open`: an entry that is not open never reaches the page or its ItemList.
+        const one = openSites[0];
+        const closed = sitesPage.render({ sites: SITES.map((site) => (site.id === one.id ? { ...site, status: 'soon' } : site)) });
+        assert.ok(!closed.includes(`id="${one.id}"`), 'a site that is not open is not anchored on the page');
+        assert.strictEqual(JSON.parse(closed.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]).mainEntity.numberOfItems, openSites.length - 1, 'and not in the ItemList');
+        // Findable: the sitemap lists it, and llms-full.txt carries its list.
+        assert.ok(locs.includes('https://openvibe.network/sites'), 'the sitemap lists /sites');
+        assert.ok(fullBody.includes('URL: https://openvibe.network/sites'), 'llms-full.txt lists /sites');
+        assert.ok(fullBody.includes(`${one.name} (https://${one.host}/)`) || fullBody.includes(`OpenVibe.${one.name} (https://${one.host}/)`), 'llms-full.txt carries the site list under /sites');
+
         // ── IndexNow: no INDEXNOW_KEY → no key file ──
         const KEY = require('crypto').randomBytes(16).toString('hex');
         assert.strictEqual((await get(`/${KEY}.txt`)).status, 404, 'no key file is served without INDEXNOW_KEY');
