@@ -92,7 +92,7 @@ assert.ok(!/streams live now/.test(html), 'a number that reads zero is left out'
 assert.ok(!html.includes('<!--OV:'), 'no placeholder left behind');
 // Below the hero every section is the shared showcase kit (plan T11), with its stylesheet, one h1 and an AI summary.
 assert.ok(html.includes('<link rel="stylesheet" href="/shared/showcase.css">'), 'the kit stylesheet is linked');
-for (const id of ['network', 'tools', 'account', 'developers']) assert.ok(html.includes(`<section class="sc-sec" id="${id}"`), `the ${id} section is a kit section`);
+for (const id of ['network', 'tools', 'account', 'developers']) assert.ok(new RegExp(`<section class="sc-sec[^"]*" id="${id}"`).test(html), `the ${id} section is a showcase section`);
 assert.strictEqual(html.includes('<section class="sc-sec" id="soon"'), sites.some((s) => s.status === 'soon'), 'an "Opening next" section only while a site is still to open (none since Tips and VIP, contracts 0.200.0)');
 assert.ok(!/class="home-(sec|card|grid|fams|fam|dev)\b/.test(html), 'no hand-built section markup is left');
 assert.strictEqual((html.match(/<h1[\s>]/g) || []).length, 1, 'one h1: the hero');
@@ -107,9 +107,10 @@ assert.strictEqual(siteLd.potentialAction['query-input'], 'required name=search_
 assert.ok(!/[.?!]\. /.test(html.replace(/<[^>]+>/g, ' ')), 'no doubled sentence end after a site tagline');
 assert.ok(!/\b1 tools\b/.test(html), 'one tool is "1 tool"');
 assert.ok(/<h1>Go live, chat, play<br>/.test(html) && /Stream from a browser tab, no OBS\./.test(html), 'the hero still leads with going live from a browser');
-for (const s of open) assert.ok(html.includes(`<a class="sc-card" href="https://${s.host}/">`), `the sites section links ${s.host}`);
+const launcher = (/<section class="sc-sec sc-apps-sec" id="network"[\s\S]*?<\/section>/.exec(html) || [''])[0];
+for (const s of open) assert.ok(launcher.includes(`<a href="https://${s.host}/">`), `the sites launcher links ${s.host}`);
 // One plain link to the hub of every site (SEO-9), in the sites section the home already has, with the real count.
-assert.ok(html.includes(`<p class="home-more"><a href="/sites">All ${open.length + 1} sites, grouped by what you came to do →</a></p>`), 'the home links /sites with the real count');
+assert.ok(html.includes(`<p class="sc-apps-more"><a href="/sites">All ${open.length + 1} sites, grouped by what you came to do →</a></p>`), 'the home links /sites with the real count');
 for (const href of ['https://openvibe.tools/api/catalog.json', '/llms.txt', 'https://openvibe.tools/llms.txt', 'https://github.com/OpenVibers', 'https://openvibe.codes/', 'https://yt.openvibe.tools/', 'https://dns.openvibe.tools/']) assert.ok(html.includes(`href="${href}"`), `the page still links ${href}`);
 assert.strictEqual((html.match(/<section[\s>]/g) || []).length, (html.match(/<\/section>/g) || []).length, 'every section is closed once');
 
@@ -119,7 +120,7 @@ assert.ok(faqLd.mainEntity.length >= 5, 'the FAQ has its questions');
 faqLd.mainEntity.forEach((q) => assert.ok(html.includes(`<h3>${q.name.replace(/'/g, '&#39;')}</h3>`), `the FAQ shows "${q.name}"`));
 assert.ok(faqLd.mainEntity.some((q) => /separate account/.test(q.name)), "Contracts' network FAQ is included");
 // The service map groups the sites the way the launcher does; numbers say only what was read.
-assert.ok(/<h3 class="home-group">Streams &amp; places<\/h3>/.test(html) && /<h3 class="home-group">For developers<\/h3>/.test(html) && /<h3 class="home-group">Make &amp; build<\/h3>/.test(html), 'the sites are grouped');
+assert.ok(/<h3 class="sc-apps-group">Streams &amp; places<\/h3>/.test(html) && /<h3 class="sc-apps-group">For developers<\/h3>/.test(html) && /<h3 class="sc-apps-group">Make &amp; build<\/h3>/.test(html) && html.includes('<ul class="sc-apps">'), 'the sites are grouped, as a launcher');
 assert.ok(/<section class="net-num"/.test(html) && /sites, one account/.test(html), 'the numbers panel renders');
 assert.ok(!/services up/.test(html) && !/accounts<\/span>/.test(html), 'numbers nobody read are left out');
 assert.ok(!/Latest recordings|New jobs|Fresh coupon codes/.test(html), 'an empty column is left out');
