@@ -320,7 +320,14 @@ function render({ releaseId = '' } = {}) {
     const stat = fs.statSync(SHELL);
     const key = `${stat.mtimeMs}:${catalog.updated}:${catalog.tools.length}:${act.version}:${releaseId}`;
     if (pageCache.key === key) return pageCache;
-    const ld = seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what })))) + seo.jsonLdTag(seo.jsonLd.faq(faqPairs()));
+    // The network as one entity (SEO-31): a WebSite whose sitelinks search is the network's own search service, so a
+    // search box in a Google result searches OpenVibe rather than the wider web. The description is true of today.
+    const ld = seo.jsonLdTag(seo.jsonLd.website({
+        name: 'OpenVibe.Network',
+        url: 'https://openvibe.network/',
+        description: `The front door to the OpenVibe network: one free account across ${OPEN.length} open sites — live streaming, tools, chat, games, a wiki, news, deals and an open developer platform.`,
+        searchUrl: 'https://search.openvibe.network/?q={q}',
+    })) + seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what })))) + seo.jsonLdTag(seo.jsonLd.faq(faqPairs()));
     const card = social.url('network', 'https://openvibe.network/shared') || 'https://openvibe.network/assets/logo-512.png';
     const summary = summaryOf(catalog);
     const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog)).replace('<!--OV:CONSTELLATION-->', () => orbit() + numbers(catalog, act)).replaceAll('__OV_CARD__', card).replace('<!--OV:SITES-->', String(OPEN.length + 1)).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
