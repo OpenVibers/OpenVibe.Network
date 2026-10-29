@@ -106,6 +106,25 @@ router.get('/seasons', (req, res) => {
     res.set('Cache-Control', 'public, max-age=3600').json({ seasons: list, now: now ? { id: now.id, name: now.name, theme: now.theme, ...(now.light ? { light: now.light } : {}) } : null });
 });
 
+// ── Per-site theme overrides (the design overhaul, pillar A) ──
+// One theme follows a person to every site; an override is their exception for one service ("Games in Neon Tokyo",
+// "Live in Daylight"). The service id is the one the sites use: lower case, digits and hyphens.
+const SERVICE_ID = /^[a-z][a-z0-9-]{1,31}$/;
+const MAX_OVERRIDES = 50;
+const serviceId = (s) => (typeof s === 'string' && SERVICE_ID.test(s) ? s : null);
+/** A theme's custom variables as they are stored: jsonb in the overrides, text everywhere else. */
+const varsOf = (v) => {
+    if (v == null) return null;
+    if (typeof v === 'string') { try { return JSON.parse(v); } catch { return null; } }
+    return v;
+};
+/** The person's override for one service, or null. */
+async function overrideOf(db, userId, service) {
+    try {
+        return await db.prepare('SELECT theme_id, custom_variables FROM user_theme_site_overrides WHERE user_id = ? AND service = ?').get(userId, service) || null;
+    } catch { return null; /* the table arrives with migration 0028 */ }
+}
+
 // ── Get User's Active Theme ──────────────────────────────────
 // A request with no credentials at all is a guest asking "do I have a theme?": answer "no" with
 // a 200 so every page view by a guest does not log a failed request in the console.
@@ -116,14 +135,20 @@ router.get('/me/active', (req, res, next) => {
 }, requireAuth, async (req, res) => {
     const db = await getDb(req);
     const userId = req.user.sub || req.user.id;
+    // A site asks for its own look ("Games in Neon Tokyo"): the person's override for that service, when they have one.
+    // A missing or unknown service answers exactly as it always did.
+    const service = serviceId(req.query.service);
+    const override = service ? await overrideOf(db, userId, service) : null;
+
     const prefs = await db.prepare('SELECT theme_id, custom_theme_variables FROM user_preferences WHERE user_id = ?').get(userId);
-    if (!prefs) return res.json({ theme_id: 'vibe', custom_variables: null });
+    let display = null;
+    try { const d = await db.prepare('SELECT display_prefs FROM user_preferences WHERE user_id = ?').get(userId); display = cleanDisplay(d && d.display_prefs ? JSON.parse(d.display_prefs) : null); } catch { /* column arrives with the migration */ }
+    if (override) return res.json({ theme_id: override.theme_id, custom_variables: varsOf(override.custom_variables), display, override: true, service });
+    if (!prefs) return res.json({ theme_id: 'vibe', custom_variables: null, override: false });
 
     let custom = null;
     try { custom = prefs.custom_theme_variables ? JSON.parse(prefs.custom_theme_variables) : null; } catch {}
-    let display = null;
-    try { const d = await db.prepare('SELECT display_prefs FROM user_preferences WHERE user_id = ?').get(userId); display = cleanDisplay(d && d.display_prefs ? JSON.parse(d.display_prefs) : null); } catch { /* column arrives with the migration */ }
-    res.json({ theme_id: prefs.theme_id, custom_variables: custom, display });
+    res.json({ theme_id: prefs.theme_id, custom_variables: custom, display, override: false });
 });
 
 // ── Display preferences (motion, text size) — follow the account to every site ──
@@ -220,10 +245,80 @@ router.put('/me', requireAuth, async (req, res) => {
     res.json({ success: true, theme_id, custom_variables: req.body.custom_variables || null });
 });
 
+// ── Per-site theme overrides ─────────────────────────────────
+// The person's own list, one theme per service. A site asks for its service id (GET /me/active?service=games) and
+// gets that theme; every other site, and every service without an override, keeps the person's global theme.
+router.get('/me/overrides', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const userId = req.user.sub || req.user.id;
+    const rows = await db.prepare('SELECT service, theme_id, custom_variables, updated_at FROM user_theme_site_overrides WHERE user_id = ? ORDER BY service').all(userId);
+    const names = new Map();
+    for (const id of [...new Set(rows.map((r) => r.theme_id))]) { const t = await db.prepare('SELECT name FROM themes WHERE id = ?').get(id); if (t) names.set(id, t.name); }
+    res.set('Cache-Control', 'private, no-store').json({
+        overrides: rows.map((r) => ({ service: r.service, theme_id: r.theme_id, theme_name: names.get(r.theme_id) || null, custom_variables: varsOf(r.custom_variables), updated_at: r.updated_at })),
+    });
+});
+
+// Set one site's theme. The theme is validated exactly as PUT /me does it: a theme the person may not see is a 404,
+// and custom colours are the same allow-list.
+router.put('/me/overrides/:service', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const userId = req.user.sub || req.user.id;
+    const service = serviceId(req.params.service);
+    if (!service) return res.status(400).json({ error: 'service must be a service id like live or games', code: 'theme.bad_service' });
+    const { theme_id, custom_variables } = req.body || {};
+    if (!theme_id) return res.status(400).json({ error: 'theme_id is required', code: 'theme.missing_theme' });
+
+    ensureReview(db);
+    const theme = await db.prepare('SELECT id, author_id, is_public, review_status FROM themes WHERE id = ? OR slug = ?').get(theme_id, theme_id);
+    if (!visibleTo(theme, userId)) return res.status(404).json({ error: 'Theme not found' });
+    let vars = null;
+    if (custom_variables) {
+        const v = cleanVariables(custom_variables);
+        if (!v.ok) return res.status(422).json({ error: 'Custom colours rejected', code: 'theme.invalid_variables', errors: v.errors });
+        vars = v.variables;
+    }
+
+    const existing = await db.prepare('SELECT theme_id, custom_variables FROM user_theme_site_overrides WHERE user_id = ? AND service = ?').get(userId, service);
+    if (!existing) {
+        const n = (await db.prepare('SELECT COUNT(*) AS n FROM user_theme_site_overrides WHERE user_id = ?').get(userId)).n;
+        if (n >= MAX_OVERRIDES) return res.status(429).json({ error: `You have ${n} site overrides; at most ${MAX_OVERRIDES} are kept`, code: 'theme.too_many_overrides' });
+    }
+
+    // Keep what this change replaces for that site, as every other theme change does, with the service recorded.
+    const replaced = existing || (await db.prepare('SELECT theme_id, custom_theme_variables FROM user_preferences WHERE user_id = ?').get(userId));
+    if (replaced && replaced.theme_id) await recordHistory(db, userId, { theme_id: replaced.theme_id, custom: existing ? existing.custom_variables : replaced.custom_theme_variables }, service);
+
+    await db.prepare(`INSERT INTO user_theme_site_overrides (user_id, service, theme_id, custom_variables, updated_at)
+        VALUES (?, ?, ?, ?::jsonb, ov_now())
+        ON CONFLICT(user_id, service) DO UPDATE SET theme_id = excluded.theme_id, custom_variables = excluded.custom_variables, updated_at = ov_now()`)
+        .run(userId, service, theme_id, vars ? JSON.stringify(vars) : null);
+    res.json({ success: true, service, theme_id, custom_variables: vars, override: true });
+});
+
+// Remove one site's override: that site falls back to the person's global theme again.
+router.delete('/me/overrides/:service', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const userId = req.user.sub || req.user.id;
+    const service = serviceId(req.params.service);
+    if (!service) return res.status(400).json({ error: 'service must be a service id like live or games', code: 'theme.bad_service' });
+    const existing = await db.prepare('SELECT theme_id, custom_variables FROM user_theme_site_overrides WHERE user_id = ? AND service = ?').get(userId, service);
+    if (!existing) return res.status(404).json({ error: 'No override for that service', code: 'theme.override_not_found' });
+    // The override that is gone is kept in the history, with the service recorded, like any other theme change.
+    await recordHistory(db, userId, { theme_id: existing.theme_id, custom: existing.custom_variables }, service);
+    await db.prepare('DELETE FROM user_theme_site_overrides WHERE user_id = ? AND service = ?').run(userId, service);
+    res.json({ success: true, service, deleted: true });
+});
+
 // ── History and rollback (plan 2026-10-28 §5.2) ───────────────
 // Every change through PUT /me keeps the setting it replaced (the last 50 per person); a restore is itself a change, so
 // it can be undone the same way. Nothing here is public: a person reads only their own history.
 const HISTORY_KEEP = 50;
+/** Keep the last HISTORY_KEEP changes of one person. */
+async function trimHistory(db, userId) {
+    await db.prepare(`DELETE FROM user_theme_history WHERE user_id = ? AND id NOT IN (
+        SELECT id FROM user_theme_history WHERE user_id = ? ORDER BY id DESC LIMIT ${HISTORY_KEEP})`).run(userId, userId);
+}
 /** Keep the current setting before `next` replaces it ({ theme_id (null: unchanged), custom }); nothing when nothing changes. */
 async function keepHistory(db, userId, source, next) {
     const cur = await db.prepare('SELECT theme_id, custom_theme_variables FROM user_preferences WHERE user_id = ?').get(userId);
@@ -231,8 +326,14 @@ async function keepHistory(db, userId, source, next) {
     if ((next.theme_id || cur.theme_id) === cur.theme_id && (next.custom || null) === (cur.custom_theme_variables || null)) return;
     const src = typeof source === 'string' && /^[a-z][a-z0-9-]{0,23}$/.test(source) ? source : null;
     await db.prepare('INSERT INTO user_theme_history (user_id, theme_id, custom_theme_variables, source) VALUES (?, ?, ?, ?)').run(userId, cur.theme_id, cur.custom_theme_variables || null, src);
-    await db.prepare(`DELETE FROM user_theme_history WHERE user_id = ? AND id NOT IN (
-        SELECT id FROM user_theme_history WHERE user_id = ? ORDER BY id DESC LIMIT ${HISTORY_KEEP})`).run(userId, userId);
+    await trimHistory(db, userId);
+}
+/** Keep what a change replaces in the history, with the service it applies to as the source (a site override). */
+async function recordHistory(db, userId, { theme_id, custom }, source) {
+    if (!theme_id) return;
+    const vars = custom == null ? null : (typeof custom === 'string' ? custom : JSON.stringify(custom));
+    await db.prepare('INSERT INTO user_theme_history (user_id, theme_id, custom_theme_variables, source) VALUES (?, ?, ?, ?)').run(userId, theme_id, vars, source);
+    await trimHistory(db, userId);
 }
 const historyRow = (r, names) => {
     let vars = null;

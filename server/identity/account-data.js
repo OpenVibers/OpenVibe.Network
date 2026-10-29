@@ -184,6 +184,7 @@ async function networkPart(db, userId) {
         effects: (await rowsOf(db, 'user_effects', 'user_id = ?', [u.id])).rows,
         push_devices: (await rowsOf(db, 'push_subscriptions', 'user_id = ?', [u.id], { omit: ['endpoint'] })).rows,
         theme_history: (await rowsOf(db, 'user_theme_history', 'user_id = ?', [u.id])).rows,
+        theme_site_overrides: (await rowsOf(db, 'user_theme_site_overrides', 'user_id = ?', [u.id])).rows,
     });
     await byUser('history.json', 'user_history');
     add('username_history.json', (await rowsOf(db, 'username_history', 'user_id = ?', [u.id], { omit: ['changed_by'] })).rows);
@@ -337,7 +338,7 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
 
         for (const t of ['linked_accounts', 'user_sessions', 'oauth_tokens', 'oauth_codes', 'email_verification_tokens', 'password_reset_tokens', 'notifications',
             'notification_preferences', 'notification_quiet_hours', 'notification_digest_runs', 'user_preferences', 'user_effects', 'push_subscriptions', 'user_history', 'username_history', 'user_profile_changes',
-            'ip_log', 'email_delivery_log', 'user_theme_history']) await del(t, `user_id IN ${inU}`, userIds);
+            'ip_log', 'email_delivery_log', 'user_theme_history', 'user_theme_site_overrides']) await del(t, `user_id IN ${inU}`, userIds);
         if (await tableExists(db, 'account_merge_intents')) await del('account_merge_intents', `into_user_id IN ${inU}`, userIds);
         // Notifications this person sent others stay, without their name or picture.
         if (await tableExists(db, 'notifications')) await db.prepare(`UPDATE notifications SET sender_id = NULL, sender_name = 'Deleted account', sender_avatar = NULL WHERE sender_id IN ${inU}`).run(...userIds);
