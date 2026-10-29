@@ -216,8 +216,6 @@ const CSS = `
 .net-num a:hover,.net-num a:focus-visible{border-color:var(--accent,#3b82f6);outline:0}
 .net-num b{font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1.15;color:var(--text-primary,#e6edf7)}
 .net-num span{font-size:12.5px;color:var(--text-secondary,#a8b3c4);line-height:1.35}.net-num small{display:block;color:var(--text-muted,#7d8aa0);font-size:11.5px}
-.home-group{margin:26px 0 10px;font-size:13px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--text-muted,#7d8aa0)}
-.home-also{margin:10px 0 0;font-size:13.5px;color:var(--text-secondary,#a8b3c4)}.home-also a{color:var(--accent-light,#60a5fa);font-weight:600;text-decoration:none}.home-also a:hover{text-decoration:underline}
 .faq-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));margin-top:4px}
 .faq-item{padding:16px 18px;border-radius:16px;border:1px solid var(--border,rgba(255,255,255,.08));background:var(--bg-secondary,#101828)}
 .faq-item h3{font-size:15.5px;margin:0 0 6px;line-height:1.35}.faq-item p{margin:0;color:var(--text-secondary,#a8b3c4);font-size:14px;line-height:1.55}
@@ -257,13 +255,22 @@ function body(catalog, act) {
     const count = (f) => f.count || catalog.tools.filter((t) => t.family === f.id).length;
     // The service map: every open site under the launcher's groups (server/frame/sites.js GROUPS), so the 36 cards read
     // as six neighbourhoods, each with the products that live on another site's domain (openvibe.pics, …) beside it.
-    const grid = (items) => showcase.features({ items }).replace(/^<section class="sc-sec">/, '').replace(/<\/section>$/, '');
-    const groups = GROUPS.map((g) => ({ g, sites: OPEN.filter((site) => groupOf(site.id) === g.id), also: PRODUCTS.filter((p) => groupOf(p.id) === g.id) }))
-        .filter((x) => x.sites.length)
-        .map(({ g, sites: list, also }) => `<h3 class="home-group">${esc(g.name)}</h3>${grid(list.map((site) => ({ icon: `ov:${site.icon}`, title: siteName(site), text: site.tagline ? `${asSentence(site.tagline)} ${site.what}` : site.what, href: `https://${site.host}/` })))}${also.length ? `<p class="home-also">Also here: ${also.map((p) => `<a href="https://${esc(p.host)}/">${esc(p.host)}</a> (${esc(p.tagline.toLowerCase())})`).join(', ')}</p>` : ''}`).join('\n');
-    const sites = `<section class="sc-sec" id="network" aria-labelledby="h-sites"><h2 id="h-sites">${esc(sitesHeading())}</h2><p class="sc-lede">Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.</p>
-${groups}
-<p class="home-more"><a href="/sites">All ${OPEN.length + 1} sites, grouped by what you came to do →</a></p></section>`;
+    // Every open site in its neighbourhood (server/frame/sites.js GROUPS), as a launcher under its short name (the domain
+    // word: "Live", "Reviews"; the full name leads its one line): a phone shows the icons three or
+    // four to a row, the way its home screen does; wider screens add each site's one line. The products that live on
+    // another site's domain (openvibe.pics, …) are tiles of their neighbourhood too. /sites has the long descriptions.
+    const groups = GROUPS.map((g) => ({
+        name: g.name,
+        items: [
+            ...OPEN.filter((site) => groupOf(site.id) === g.id).map((site) => ({ icon: `ov:${site.icon}`, name: site.name, text: `${siteName(site)}: ${site.tagline || site.what}`, href: `https://${site.host}/` })),
+            ...PRODUCTS.filter((x) => groupOf(x.id) === g.id).map((x) => ({ icon: `ov:${x.icon}`, name: x.name, text: x.tagline, href: `https://${x.host}/` })),
+        ],
+    })).filter((g) => g.items.length);
+    const sites = showcase.apps({
+        id: 'network', title: sitesHeading(),
+        lede: 'Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.',
+        groups, more: { href: '/sites', label: `All ${OPEN.length + 1} sites, grouped by what you came to do` },
+    });
     const tools = inside(showcase.features({
         id: 'tools', title: catalog.tools.length ? `${catalog.tools.length} tools that just open` : 'Tools that just open',
         lede: 'No installs and no sign-up wall. Every tool has its own short address, so yt.openvibe.tools or dns.openvibe.tools takes you straight there.',
