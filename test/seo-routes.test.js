@@ -93,6 +93,8 @@ const cache = require('openvibe-shared/cache-policy');
         assert.ok(/<meta name="robots" content="index,\s*follow">/.test(hubHead), '/sites says index, follow');
         assert.ok(hubHead.includes(`<title>All ${openSites.length} OpenVibe sites · OpenVibe.Network</title>`), 'the title carries the real count');
         assert.ok(/<meta name="description" content="[^"]{50,170}">/.test(hubHead), '/sites has a real description');
+        assert.ok(/<meta property="og:image" content="https:\/\/openvibe\.network\/shared\/social\/network\.jpg\?v=/.test(hubHead), '/sites carries the network share card (an indexable page without og:image is an audit finding)');
+        assert.ok(/<meta name="twitter:card" content="summary_large_image">/.test(hubHead), '/sites has a large share card');
         const hubLd = JSON.parse(hub.body.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
         assert.strictEqual(hubLd['@type'], 'CollectionPage', 'the JSON-LD is a CollectionPage');
         assert.strictEqual(hubLd.mainEntity['@type'], 'ItemList', 'with an ItemList');
