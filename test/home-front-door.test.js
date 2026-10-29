@@ -98,6 +98,11 @@ assert.ok(!/class="home-(sec|card|grid|fams|fam|dev)\b/.test(html), 'no hand-bui
 assert.strictEqual((html.match(/<h1[\s>]/g) || []).length, 1, 'one h1: the hero');
 assert.match(html, /<meta name="ai-summary" content="One account for \d+ open sites \(live, /);
 assert.ok(/"@type":"WebPage"/.test(html), 'the summary has its WebPage JSON-LD');
+// SEO-31: the network is one WebSite entity, and its sitelinks search is the network's own search service.
+const siteLd = JSON.parse(/<script type="application\/ld\+json">(\{"@context":"https:\/\/schema.org","@type":"WebSite"[\s\S]*?)<\/script>/.exec(html)[1]);
+assert.strictEqual(siteLd.url, 'https://openvibe.network/', 'the WebSite is the network itself');
+assert.strictEqual(siteLd.potentialAction.target.urlTemplate, 'https://search.openvibe.network/?q={search_term_string}', 'the sitelinks search is OpenVibe.Search');
+assert.strictEqual(siteLd.potentialAction['query-input'], 'required name=search_term_string');
 // A tagline that already ends a sentence ("What should we eat?") gets no second period; a family of one is "1 tool".
 assert.ok(!/[.?!]\. /.test(html.replace(/<[^>]+>/g, ' ')), 'no doubled sentence end after a site tagline');
 assert.ok(!/\b1 tools\b/.test(html), 'one tool is "1 tool"');
