@@ -72,6 +72,14 @@ const cache = require('openvibe-shared/cache-policy');
         assert.ok(Buffer.byteLength(fullBody) <= render.LLMS_FULL_MAX_BYTES, 'llms-full.txt stays within maxBytes');
         assert.strictEqual(render.LLMS_FULL_MAX_BYTES, 512 * 1024);
 
+        // ── the front door and /stats state they may be indexed (SEO-8) ──
+        for (const p of ['/', '/stats']) {
+            const page = await get(p);
+            assert.strictEqual(page.status, 200, `${p} answers`);
+            const head = page.body.slice(0, page.body.indexOf('</head>'));
+            assert.ok(/<meta name="robots" content="index,\s*follow">/.test(head), `${p} says index, follow instead of relying on the crawler's default`);
+        }
+
         // ── IndexNow: no INDEXNOW_KEY → no key file ──
         const KEY = require('crypto').randomBytes(16).toString('hex');
         assert.strictEqual((await get(`/${KEY}.txt`)).status, 404, 'no key file is served without INDEXNOW_KEY');
