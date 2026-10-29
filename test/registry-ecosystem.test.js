@@ -18,7 +18,7 @@ assert.strictEqual(require('../server/registry/ecosystem').INTERNAL.space, 'http
     });
     await new Promise(r => up.listen(0, '127.0.0.1', r));
     const upUrl = `http://127.0.0.1:${up.address().port}`;
-    const eco = createEcosystemRegistry({ issuer: 'https://openvibe.network', internalOverrides: { network: upUrl, live: 'http://127.0.0.1:1', media: upUrl } });
+    const eco = createEcosystemRegistry({ issuer: 'https://openvibe.network', internalOverrides: { network: upUrl, live: 'http://127.0.0.1:1', media: upUrl, 'media-hub': 'http://127.0.0.1:1' } });
     await eco.pollAll();
     const app = express();
     app.use(eco.router());
