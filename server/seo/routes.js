@@ -23,7 +23,7 @@ const PAGES = [
 ];
 
 function robotsTxt() {
-    return seo.robotsTxt({ sitemaps: [`${HOST}/sitemap.xml`] });
+    return seo.robotsTxt({ sitemaps: [`${HOST}/sitemap.xml`] }) + `# Agent manifest: ${HOST}/.well-known/agent.json\n`;
 }
 
 function sitemapXml({ release = null } = {}) {
