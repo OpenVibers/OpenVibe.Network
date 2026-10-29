@@ -151,12 +151,16 @@ router.get('/me/active', (req, res, next) => {
     res.json({ theme_id: prefs.theme_id, custom_variables: custom, display, override: false });
 });
 
-// ── Display preferences (motion, text size) — follow the account to every site ──
+// ── Display preferences — follow the account to every site ──
 // seasonal: the season's theme (openvibe-shared theme-loader Seasons: Pumpkin Night in October, Frost in December) in place
 // of the default theme, unless 'off' (the owner, 2026-10-24: "users can opt out … and just want their normal default").
 // scheme: 'manual' (the picked theme as it is) or 'auto' (its light or dark half, as the device is set; openvibe-shared
 // theme-loader Light / Dark / Auto, 2026-10-25).
-const DISPLAY = { motion: ['auto', 'reduced'], text: ['100', '112', '125'], seasonal: ['on', 'off'], scheme: ['manual', 'auto'] };
+// contrast: increase contrast for easier reading.
+// font: use the readable typeface across sites.
+// colors: choose colors designed to be safe for color blindness.
+// oled: use pure black backgrounds on OLED displays.
+const DISPLAY = { motion: ['auto', 'reduced'], text: ['100', '112', '125'], seasonal: ['on', 'off'], scheme: ['manual', 'auto'], contrast: ['normal', 'more'], font: ['default', 'readable'], colors: ['default', 'cb-safe'], oled: ['off', 'on'] };
 function cleanDisplay(d) {
     if (!d || typeof d !== 'object') return null;
     const out = {};
