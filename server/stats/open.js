@@ -316,6 +316,7 @@ ${s.daily ? sparkline(s.daily) : '<span class="os-site-own">counts its own visit
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)} · OpenVibe.Network</title>
 <meta name="description" content="${esc(desc)}">
+<meta name="robots" content="index, follow">
 <link rel="canonical" href="https://openvibe.network/stats${days === 30 ? '' : `?days=${days}`}">
 <link rel="alternate" type="application/json" href="/api/v1/stats?days=${days}" title="These numbers as JSON">
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:type" content="website">
