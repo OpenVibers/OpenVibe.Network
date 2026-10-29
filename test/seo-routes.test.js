@@ -108,5 +108,30 @@ const cache = require('openvibe-shared/cache-policy');
     } finally {
         await keyed.stop();
     }
-    console.log('seo routes: indexnow key file checks passed');
+    // ── /.well-known/security.txt (RFC 9116, SEO-30) ──
+    const sec = await bootServer();
+    try {
+        const r = await fetch(`${sec.base}/.well-known/security.txt`);
+        const body = await r.text();
+        assert.strictEqual(r.status, 200, 'security.txt is 200');
+        assert.strictEqual(r.headers.get('content-type'), 'text/plain; charset=utf-8', 'security.txt is text/plain; charset=utf-8');
+        assert.strictEqual(r.headers.get('cache-control'), 'public, max-age=86400', 'security.txt is cached for a day');
+        const fields = new Map();
+        for (const line of body.split('\n')) if (line.trim()) {
+            const m = line.match(/^([A-Za-z-]+): (.+)$/);
+            assert.ok(m, `every security.txt line is "Name: value" (got "${line}")`);
+            fields.set(m[1], m[2]);
+        }
+        for (const key of ['Contact', 'Expires', 'Preferred-Languages', 'Canonical', 'Policy']) assert.ok(fields.has(key), `security.txt names ${key}`);
+        assert.strictEqual(fields.get('Contact'), 'mailto:security@openvibe.network', 'Contact is the security mailbox');
+        assert.ok(Date.parse(fields.get('Expires')) > Date.now(), 'Expires is in the future');
+        assert.strictEqual(new URL(fields.get('Canonical')).host, 'openvibe.network', 'Canonical is this site');
+        assert.ok(fields.get('Canonical').endsWith('/.well-known/security.txt'), 'Canonical is the file itself');
+    } catch (err) {
+        console.error(sec.logs());
+        throw err;
+    } finally {
+        await sec.stop();
+    }
+    console.log('seo routes: security.txt checks passed');
 })().then(() => process.exit(0)).catch((err) => { console.error(err); process.exit(1); });

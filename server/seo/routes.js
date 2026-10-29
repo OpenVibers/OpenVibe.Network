@@ -32,17 +32,40 @@ function sitemapXml({ release = null } = {}) {
     return seo.sitemapXml(PAGES.map((page) => ({ loc: `${HOST}${page.path}`, lastmod: day, changefreq: page.changefreq, priority: page.priority })));
 }
 
-function createSeoRoutes({ release = null } = {}) {
+// RFC 9116. Contact, Expires and Canonical are required. Policy is listed only while
+// https://openvibe.network/security answers 200 (checked 2026-10-29); it is this site's own policy page.
+// Expires is the date the file must be refreshed by: one year on, a person re-reads and re-commits it.
+const SECURITY_EXPIRES = '2027-10-29T00:00:00.000Z';
+const SECURITY_CONTACT = 'mailto:security@openvibe.network';
+const SECURITY_POLICY = 'https://openvibe.network/security';
+
+function securityTxt(baseUrl = HOST) {
+    const origin = String(baseUrl).replace(/\/+$/, '');
+    return [
+        `Contact: ${SECURITY_CONTACT}`,
+        `Expires: ${SECURITY_EXPIRES}`,
+        'Preferred-Languages: en',
+        `Canonical: ${origin}/.well-known/security.txt`,
+        `Policy: ${SECURITY_POLICY}`,
+        '',
+    ].join('\n');
+}
+
+function createSeoRoutes({ release = null, baseUrl = HOST } = {}) {
     const r = express.Router();
     const robots = robotsTxt();
     const sitemap = sitemapXml({ release });
+    const security = securityTxt(baseUrl);
     r.get('/robots.txt', (_req, res) => {
         res.set('Content-Type', 'text/plain; charset=utf-8').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(robots);
     });
     r.get('/sitemap.xml', (_req, res) => {
         res.set('Content-Type', 'application/xml; charset=utf-8').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(sitemap);
     });
+    r.get('/.well-known/security.txt', (_req, res) => {
+        res.set('Content-Type', 'text/plain; charset=utf-8').set('Cache-Control', 'public, max-age=86400').send(security);
+    });
     return r;
 }
 
-module.exports = { createSeoRoutes, robotsTxt, sitemapXml, PAGES, HOST };
+module.exports = { createSeoRoutes, robotsTxt, sitemapXml, securityTxt, PAGES, HOST, SECURITY_EXPIRES };
