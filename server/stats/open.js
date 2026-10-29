@@ -28,6 +28,8 @@ const esc = seo.esc;
 const DAY = 86400000;
 const WINDOWS = [7, 30, 90];
 const TTL_MS = 5 * 60 * 1000;
+// The network's own share card, the one the home page and /sites carry (served at /shared/social/network.jpg).
+const shareCard = require('openvibe-shared/social').url('network', 'https://openvibe.network/shared');
 // Routes that are plumbing, not something a person uses (as the admin insights): left out of the busiest pages.
 const PLUMBING = /^(\/metrics|\/api\/(ready|health)|static|\/release\.json|\/robots\.txt|\/favicon\.ico|\/internal\/|\/api\/frame\/hit|\/oauth\/token|\/\.well-known\/|\/api\/admin)/;
 
@@ -319,7 +321,7 @@ ${s.daily ? sparkline(s.daily) : '<span class="os-site-own">counts its own visit
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://openvibe.network/stats${days === 30 ? '' : `?days=${days}`}">
 <link rel="alternate" type="application/json" href="/api/v1/stats?days=${days}" title="These numbers as JSON">
-<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:type" content="website">
+<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:type" content="website"><meta property="og:image" content="${esc(shareCard)}"><meta property="og:image:alt" content="OpenVibe.Network: one account for every OpenVibe site">
 ${require('../boost').meta(releaseId)}
 ${require('openvibe-shared/app-icon').headTags({ site: 'network', iconBase: '/assets' })}
 <meta name="color-scheme" content="dark light">
