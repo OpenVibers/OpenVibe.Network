@@ -117,16 +117,16 @@ function rightNow(a) {
 <span class="vc-meta">${face(avatar)}<span class="vc-text"><b>${esc(title)}</b>${who ? `<small>${esc(who)}</small>` : ''}${line ? `<small>${esc(line)}</small>` : ''}</span></span></a></li>`;
     const rail = (title, href, more, cards) => (cards.length ? `<div class="now-block"><div class="now-head"><h3>${title}</h3><a class="now-more" href="${href}">${more} →</a></div><ul class="now-rail">${cards.join('')}</ul></div>` : '');
 
-    const live = a.live.length
-        ? a.live.map((s) => card({ url: s.url, thumb: s.thumb || s.avatar, badge: `<span class="now-badge"><i></i>LIVE${s.viewers ? ` · ${esc(fmtViewers(s.viewers))}` : ''}</span>`, avatar: s.avatar, title: s.title, who: s.name, line: s.category }))
-        : [`<li><a class="vcard now-empty" href="https://openvibe.live/broadcast"><span class="vc-thumb"><span class="now-noimg"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i></span></span><span class="vc-meta"><span class="vc-text"><b>Nobody is live right now</b><small>Be the first: go live from your browser, no OBS and no follower minimum.</small></span></span></a></li>`];
+    const live = a.live.map((s) => card({ url: s.url, thumb: s.thumb || s.avatar, badge: `<span class="now-badge"><i></i>LIVE${s.viewers ? ` · ${esc(fmtViewers(s.viewers))}` : ''}</span>`, avatar: s.avatar, title: s.title, who: s.name, line: s.category }));
+    // Nobody live: one honest line and the way to start, not an empty 16:9 player (a phone saw a blank screen of it).
+    const quiet = a.live.length ? '' : '<p class="now-quiet"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i><span><b>Nobody is live right now.</b> Be the first: <a href="https://openvibe.live/broadcast">go live from your browser</a>, no OBS and no follower minimum.</span></p>';
     const recs = (a.recordings || []).map((r) => card({ url: r.url, thumb: r.thumb, len: r.length, about: r.about, avatar: r.avatar, title: r.title, who: r.channel, line: [views(r.views), ago(r.at)].filter(Boolean).join(' · ') }));
     const shots = (a.pastes || []).filter((p) => p.shot).slice(0, 4).map((p) => card({ url: p.url, thumb: p.shot, avatar: p.avatar, title: p.title, who: p.by || 'Screenshot', line: [views(p.views), p.likes ? `${p.likes} like${p.likes === 1 ? '' : 's'}` : '', ago(p.at)].filter(Boolean).join(' · '), cls: ' is-shot' }));
     const texts = (a.pastes || []).filter((p) => !p.shot);
 
     const list = (items, render) => `<ul class="now-list">${items.map(render).join('')}</ul>`;
     // A column with nothing to show is left out.
-    const col = (items, title, render, href, more) => (items.length ? `<div class="now-col"><h3>${title}</h3>${list(items, render)}<a class="now-more" href="${href}">${more} →</a></div>` : '');
+    const col = (items, title, render, href, more) => (items.length ? `<div class="now-col"><h3>${title}</h3>${list(items.slice(0, 3), render)}<a class="now-more" href="${href}">${more} →</a></div>` : '');
     const cols = [
         col(texts, 'New pastes', (p) => `<li><a href="${esc(p.url)}"><b>${esc(p.title)}</b><small>${esc(p.kind)}${p.summary ? ` · ${esc(p.summary)}` : ''}</small></a></li>`, 'https://openvibe.community/', 'OpenVibe.Community'),
         col(a.posts, 'From the blog', (p) => `<li><a href="${esc(p.url)}"><b>${esc(p.title)}</b>${p.summary ? `<small>${esc(p.summary)}</small>` : ''}</a></li>`, 'https://openvibe.blog/', 'OpenVibe.Blog'),
@@ -135,7 +135,7 @@ function rightNow(a) {
     ].filter(Boolean);
     return `<section class="sc-sec now" aria-labelledby="h-now"><h2 id="h-now"><span class="now-dot" aria-hidden="true"></span>Right now on OpenVibe</h2>
 <p class="sc-lede">What people are streaming, sharing and posting across the network, read from each site within the last minute.</p>
-${rail('Live now', 'https://openvibe.live/', 'All channels on OpenVibe.Live', live)}
+${live.length ? rail('Live now', 'https://openvibe.live/', 'All channels on OpenVibe.Live', live) : quiet}
 ${rail('Latest recordings', 'https://openvibe.video/', 'Watch on OpenVibe.Video', recs)}
 ${rail('New screenshots', 'https://openvibe.community/', 'OpenVibe.Community', shots)}
 ${cols.length ? `<div class="now-grid">${cols.join('\n')}</div>` : ''}</section>`;
@@ -158,6 +158,10 @@ function numbers(catalog, a) {
 // The kit (openvibe-shared/showcase, /shared/showcase.css) owns the sections, cards and icon styles; this is only what
 // it does not draw: the "Right now" columns and the tool and "Opening next" chips.
 const CSS = `
+.now-quiet{display:flex;gap:12px;align-items:flex-start;margin:14px 0 0;padding:14px 16px;border:1px dashed var(--border,#1f2d47);border-radius:14px;color:var(--text-secondary,#96a7c2)}
+.now-quiet i{color:var(--live-red,#ef4444);margin-top:3px}
+.now-quiet b{color:var(--text-primary,#e6edf7)}
+
 .home-fold{margin:14px 0 0;border:1px solid var(--border,#1f2d47);border-radius:14px;background:var(--bg-card,#131c2e)}
 .home-fold>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:0 16px;cursor:pointer;font-weight:700;list-style:none}
 .home-fold>summary::-webkit-details-marker{display:none}
