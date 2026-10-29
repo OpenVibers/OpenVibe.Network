@@ -665,8 +665,22 @@ function requireAdmin(req, res, next) {
     }
     next();
 }
-// Terms, Privacy and DMCA for this domain (openvibe-shared/legal; every site serves its own).
-{ const legal = require('openvibe-shared/legal'); app.get(legal.PATHS, legal.handler({ id: 'network', service: 'network', host: 'openvibe.network', name: 'OpenVibe.Network', profile: 'account' })); app.get('/tos', (_req, res) => res.redirect(301, '/terms')); }
+// Terms, Privacy and DMCA for this domain (openvibe-shared/legal; every site serves its own). The shared pages carry
+// og:title/og:description and no share image (Shared cannot know which card a site serves), so the network's own card
+// is added to the head here, and the small Twitter card they declare becomes the large one that image needs.
+{
+    const legal = require('openvibe-shared/legal');
+    const card = require('openvibe-shared/social').url('network', 'https://openvibe.network/shared');
+    const tags = `<meta property="og:image" content="${card}"><meta property="og:image:alt" content="OpenVibe.Network: one account for every OpenVibe site"><meta name="twitter:image" content="${card}">`;
+    app.get(legal.PATHS, (req, res, next) => {
+        const send = res.send.bind(res);
+        res.send = (body) => send(String(body)
+            .replace('<meta name="twitter:card" content="summary">', '<meta name="twitter:card" content="summary_large_image">')
+            .replace('</head>', `${tags}</head>`));
+        next();
+    }, legal.handler({ id: 'network', service: 'network', host: 'openvibe.network', name: 'OpenVibe.Network', profile: 'account' }));
+    app.get('/tos', (_req, res) => res.redirect(301, '/terms'));
+}
 
 // The tool catalog, re-served from here: every OpenVibe site's content-security policy already allows
 // openvibe.network, so the navbar's search works on hosts that may not call openvibe.tools directly.

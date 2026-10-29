@@ -127,6 +127,35 @@ const cache = require('openvibe-shared/cache-policy');
         assert.ok(fullBody.includes('URL: https://openvibe.network/sites'), 'llms-full.txt lists /sites');
         assert.ok(fullBody.includes(`${one.name} (https://${one.host}/)`) || fullBody.includes(`OpenVibe.${one.name} (https://${one.host}/)`), 'llms-full.txt carries the site list under /sites');
 
+        // ── og:image on every public page that carries social meta (SEO-21) ──
+        // Every page in the sitemap that says og:title also names a card a crawler can fetch, and each card is an
+        // image the site really serves (200, image/*). /updates carries no social meta at all yet, so it has nothing
+        // to claim; the five pages fixed here are listed below so the set cannot quietly shrink.
+        const heads = new Map();
+        const cards = new Map();
+        for (const { path } of seoRoutes.PAGES) {
+            const page = await get(path);
+            assert.strictEqual(page.status, 200, `${path} answers`);
+            const head = page.body.slice(0, page.body.indexOf('</head>'));
+            heads.set(path, head);
+            if (!/property="og:title"/.test(head)) { assert.strictEqual(path, '/updates', `${path} carries social meta`); continue; }
+            const card = /<meta property="og:image" content="([^"]+)"/.exec(head);
+            assert.ok(card, `${path} has og:image`);
+            cards.set(path, card[1]);
+            if (/<meta name="twitter:card"/.test(head)) assert.ok(/<meta name="twitter:image" content="[^"]+">/.test(head), `${path} has twitter:image`);
+        }
+        for (const p of ['/stats', '/bot', '/terms', '/privacy', '/dmca']) {
+            assert.ok(/<meta property="og:image" content="https:\/\/openvibe\.network\/shared\/social\/network\.jpg\?v=/.test(heads.get(p)), `${p} carries the network share card`);
+        }
+        for (const [path, card] of cards) {
+            // The absolute URL names the live host; the test reads the same path from the booted server (no egress).
+            const at = new URL(card);
+            const img = await fetch(srv.base + at.pathname + at.search);
+            assert.strictEqual(img.status, 200, `${path}: ${card} answers`);
+            assert.ok((img.headers.get('content-type') || '').startsWith('image/'), `${path}: ${card} is an image (got ${img.headers.get('content-type')})`);
+            await img.arrayBuffer();
+        }
+
         // ── IndexNow: no INDEXNOW_KEY → no key file ──
         const KEY = require('crypto').randomBytes(16).toString('hex');
         assert.strictEqual((await get(`/${KEY}.txt`)).status, 404, 'no key file is served without INDEXNOW_KEY');

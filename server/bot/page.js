@@ -23,6 +23,8 @@ const FACTS = {
 };
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+// The network's own share card, the one the home page and /sites carry (served at /shared/social/network.jpg).
+const shareCard = require('openvibe-shared/social').url('network', 'https://openvibe.network/shared');
 
 function snippet(id, label, code) {
     return `<figure class="bp-code"><figcaption><span>${esc(label)}</span><button type="button" class="bp-copy" data-copy="${id}" aria-label="Copy: ${esc(label)}">Copy</button></figcaption><pre id="${id}"><code>${esc(code)}</code></pre></figure>`;
@@ -42,7 +44,7 @@ function render({ releaseId } = {}) {
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="https://openvibe.network/bot">
 <link rel="alternate" type="application/json" href="/bot.json" title="OpenVibeBot as JSON">
-<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:type" content="website">
+<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:type" content="website"><meta property="og:image" content="${esc(shareCard)}"><meta property="og:image:alt" content="OpenVibe.Network: one account for every OpenVibe site">
 ${require('../boost').meta(releaseId)}
 ${require('openvibe-shared/app-icon').headTags({ site: 'network', iconBase: '/assets' })}
 <meta name="color-scheme" content="dark light">
