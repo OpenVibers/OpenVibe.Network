@@ -102,10 +102,13 @@ const token = async (id) => signToken(await db.prepare('SELECT * FROM users WHER
     assert.deepStrictEqual([r.status, r.body.theme.slug], [200, 'ember'], 'followed, it is the ember theme');
     assert.strictEqual((await call('GET', '/api/themes/no-such-theme')).status, 404, 'an unknown name is still a 404');
 
-    // ── Display preferences follow the account: text size, motion and seasonal themes (on|off), nothing else ──
-    r = await call('PUT', '/api/themes/me/display', { as: 2, body: { text: '112', motion: 'reduced', seasonal: 'off', colour: 'red' } });
-    assert.deepStrictEqual(r.body.display, { motion: 'reduced', text: '112', seasonal: 'off' }, 'seasonal is kept, an unknown key is not');
-    assert.deepStrictEqual((await call('GET', '/api/themes/me/active', { as: 2 })).body.display, { motion: 'reduced', text: '112', seasonal: 'off' });
+    // ── Display preferences follow the account; only known keys and values are kept ──
+    r = await call('PUT', '/api/themes/me/display', { as: 2, body: { text: '112', motion: 'reduced', seasonal: 'off', contrast: 'more', font: 'readable', colors: 'cb-safe', oled: 'on', colour: 'red' } });
+    const display = { motion: 'reduced', text: '112', seasonal: 'off', contrast: 'more', font: 'readable', colors: 'cb-safe', oled: 'on' };
+    assert.deepStrictEqual(r.body.display, display, 'comfort settings are kept, an unknown key is not');
+    assert.deepStrictEqual((await call('GET', '/api/themes/me/active', { as: 2 })).body.display, display, 'saved comfort settings follow the account');
+    r = await call('PUT', '/api/themes/me/display', { as: 2, body: { contrast: 'more', font: 'comic-sans' } });
+    assert.deepStrictEqual(r.body.display, { contrast: 'more' }, 'an invalid font is dropped');
     r = await call('PUT', '/api/themes/me/display', { as: 2, body: { seasonal: 'maybe' } });
     assert.ok(!('seasonal' in (r.body.display || {})), 'only on or off');
     r = await call('PUT', '/api/themes/me/display', { as: 2, body: { scheme: 'auto' } });
