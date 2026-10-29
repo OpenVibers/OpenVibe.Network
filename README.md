@@ -18,6 +18,7 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 - **Anonymous Users** — Browse and interact without an account. Anon users receive a unique number, can accumulate stats, and optionally link to a registered account later.
 - **Multi-Account Switching** — Google-style account management. Users can add multiple accounts and switch instantly, including an anonymous mode.
 - **Theme Catalog** — Shared theme system with ~30 built-in themes and community submissions. Theme preferences sync across all services.
+- **Per-site theme overrides** — one theme follows a person to every site, and an override is their exception for one service ("Games in Neon Tokyo", "Live in Daylight"). `GET /api/themes/me/active?service=<id>` answers that service's theme (`override: true`, with the `service` named) or the person's global theme (`override: false`); a missing or unknown service answers exactly as before. The person owns their own list at `GET /api/themes/me/overrides`, `PUT /api/themes/me/overrides/:service` and `DELETE /api/themes/me/overrides/:service` (the theme and the custom colours are validated as `PUT /api/themes/me` does), at most 50 per person, and every change is kept in the theme history with the service recorded.
 - **Admin Panel** — email configuration, user management (role changes, bans), broadcast notifications, system health dashboard, and audit log.
 - **Internal API** — Server-to-server endpoints for token verification, user lookup, notification push, account linking, and audit logging. Every route takes a capability-scoped service token; the deployment-wide key they used to accept was retired on 2026-09-29 (plan T2, [docs/retirement.md](docs/retirement.md)) and opens nothing.
 - **Developer projects (foundation)** — projects, members, apps (OAuth clients with `app_` subjects), hashed client secrets with rotation and revocation, capability grants within a staff-set allowance (sandbox apps also get a default sandbox allowance of public Media, Events-app and Tools-job capabilities, so a new project works without staff), recorded quotas, per-project usage from the services' hourly rollups (`GET /api/v1/projects/:project/usage`) and an append-only audit at `/api/v1/projects`. Its events can be relayed to OpenVibe.Events through an outbox when `OV_EVENTS_INTERNAL_URL` is set. Bearer user tokens only; the console over this API is OpenVibe.Services at openvibe.services (it moved there from OpenVibe.Codes on 2026-10-08). See [docs/developer-projects.md](docs/developer-projects.md).
@@ -782,7 +783,7 @@ Reporting a vulnerability: [SECURITY.md](SECURITY.md). The rules the code keeps:
 MIT (`license` in [package.json](package.json)).
 
 <!-- versions:start -->
-- openvibe-contracts: v0.238.0
+- openvibe-contracts: v0.232.0
 - openvibe-sdk: v0.67.0
-- openvibe-shared: v4.39.0
+- openvibe-shared: v4.33.0
 <!-- versions:end -->
