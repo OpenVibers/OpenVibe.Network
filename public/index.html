@@ -146,7 +146,7 @@ a{color:inherit}
 html[data-ov-motion=reduced] .orb-ring,html[data-ov-motion=reduced] .orb-face,html[data-ov-motion=reduced] .orb-glow{animation:none}
 @media (max-width:900px){.hero-sky{order:-1;margin:-8px auto 4px}.hero-sky .orbit{width:min(72vw,270px)}.hero-sky .net-num{display:none}.orb-node.is-big{width:46px;height:46px;margin:-23px}.orb-node{width:34px;height:34px;margin:-17px}.orb-name{font-size:10.5px}.orb-core b{font-size:13px}}
 
-@media (max-width:520px){.intents{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.intent small{display:none}.intent{align-items:center;gap:9px;padding:9px 10px}.intent>i{width:30px;height:30px;font-size:14px}.intent b{font-size:13.5px}.intent-bar button{padding:11px 14px}}
+@media (max-width:520px){.intents{grid-template-columns:none;grid-auto-flow:column;grid-template-rows:repeat(2,auto);grid-auto-columns:minmax(150px,46%);overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;margin-left:-16px;margin-right:-16px;padding:0 16px 4px;gap:6px}.intents::-webkit-scrollbar{display:none}.intents>li{scroll-snap-align:start}.intent small{display:none}.intent{align-items:center;gap:9px;padding:9px 10px}.intent>i{width:30px;height:30px;font-size:14px}.intent b{font-size:13.5px}.intent-bar button{padding:11px 14px}}
 
 /* Services */
 .services{max-width:1080px;margin:0 auto;padding:24px 24px 80px}
@@ -249,14 +249,6 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
         <noscript><p class="shipped-inner"><a href="https://openvibe.blog/@openvibe/series/patch-notes">Patch notes on openvibe.blog</a></p></noscript>
     </section>
 
-    <!-- SSO strip -->
-    <section class="sso-strip">
-        <div class="sso-inner">
-            <span class="ov-mark" data-size="44" style="margin-bottom:12px"></span>
-            <h3>Your identity, everywhere</h3>
-            <p>openvibe.network is the identity behind it all: sign in once and every OpenVibe site signs you in too, your themes and notifications follow you, your history across the network lives in one place, and the OpenCoins wallet works everywhere.</p>
-        </div>
-    </section>
     </main>
 
 </div>
