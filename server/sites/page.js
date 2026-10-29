@@ -17,6 +17,9 @@ const openSites = (list = SITES) => list.filter((site) => site.status === 'open'
 // account and themes behind every other one).
 const groupsOf = (sites) => GROUPS.map((group) => ({ group, sites: sites.filter((site) => groupOf(site.id) === group.id), also: PRODUCTS.filter((p) => groupOf(p.id) === group.id) })).filter((x) => x.sites.length);
 
+// The network's own share card, the same one the home pages carry (an indexable page without og:image is the one
+// thing the SEO audit still finds on this page).
+const shareCard = require('openvibe-shared/social').url('network', 'https://openvibe.network/shared') || 'https://openvibe.network/assets/logo-512.png';
 const card = (site) => `<a class="sc-card" id="${esc(site.id)}" href="https://${esc(site.host)}/"><span class="sc-ic sc-ic-ov"><span class="ov-icon sc-ovi" data-icon="${esc(site.icon)}" style="--ovi-size:40px" aria-hidden="true">${icons.svg(site.icon)}</span></span><span><b>${esc(siteName(site))}</b><small>${esc(siteLine(site))}</small></span></a>`;
 
 function render({ releaseId = '', sites = SITES } = {}) {
@@ -47,6 +50,8 @@ function render({ releaseId = '', sites = SITES } = {}) {
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://openvibe.network/sites">
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:type" content="website"><meta property="og:url" content="https://openvibe.network/sites">
+<meta property="og:site_name" content="OpenVibe.Network"><meta property="og:image" content="${esc(shareCard)}">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(desc)}"><meta name="twitter:image" content="${esc(shareCard)}">
 ${require('../boost').meta(releaseId)}
 ${require('openvibe-shared/app-icon').headTags({ site: 'network', iconBase: '/assets' })}
 <meta name="color-scheme" content="dark light">
