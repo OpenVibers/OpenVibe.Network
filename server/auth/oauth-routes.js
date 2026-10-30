@@ -273,6 +273,8 @@ router.post('/token', async (req, res) => {
             clientId: client_id, clientSecret: client_secret, audience: req.body.audience, scope: req.body.scope,
             privateKey: req.app.locals.privateKey, issuer: config.jwt.issuer,
             agent: req.body.agent, settings: devPolicy.settings(config), ctx: req.ov,
+            // A run token (Codes C3): the person it acts for, and how long it may live.
+            onBehalfOf: req.body.on_behalf_of, ttl: req.body.ttl,
         });
         res.set('Cache-Control', 'no-store');
         return res.status(out.status).json(out.body);

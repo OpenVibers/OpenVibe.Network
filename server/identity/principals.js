@@ -9,12 +9,20 @@
  *
  * Every internal route takes a service token and nothing
  * else. principal_usage counts, per caller and route, each decision.
+ *
+ * A run token (Codes C3): a client_credentials token that names the person it acts for (`on_behalf_of`, a usr_
+ * subject) and may live up to two hours (`ttl`). Only a service that holds the consent grant for that audience
+ * (ai.credential.manage — the grant that lets it store that person's own key in OpenVibe.AI) may mint one.
  */
 const crypto = require('crypto');
 const { serviceAuth, capabilities, assertValid, http } = require('openvibe-contracts');
 
 const TOKEN_TTL_S = 300;
 const SELF_AUDIENCE = 'openvibe.network';
+/** A run token (Codes C3) may live up to two hours: a coding attempt with a harness on the person's own machine. */
+const MAX_RUN_TOKEN_TTL_S = 7200;
+const MIN_RUN_TOKEN_TTL_S = 60;
+const USER_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 
 const CHAT_NAMESPACES = ['chat.preferences', 'chat.tts_defaults', 'chat.dm_settings', 'chat.presence_prefs'];
 
@@ -429,6 +437,12 @@ const DEFAULT_GRANTS = [
     // A person's own provider key for the AI members they set up in Chat rooms (OpenVibe.Chat, a model of their own per
     // AI member: OpenAI, Anthropic or any OpenAI-compatible endpoint), stored in OpenVibe.AI with Chat as its owner.
     ['chat', 'ai.credential.manage', 'openvibe.ai', []],
+    // Codes (Codes C3): it holds the consent of the people it builds for, so it stores their own provider key in
+    // OpenVibe.AI (the grant above's twin for Codes), and their harnesses run through AI with a short-lived run token
+    // that names them (ai.run.create for AI's own workflows: ai.messages for Claude Code, ai.complete for the
+    // OpenAI-compatible harnesses). Nothing else of AI's.
+    ['codes', 'ai.credential.manage', 'openvibe.ai', []],
+    ['codes', 'ai.run.create', 'openvibe.ai', ['ai.messages', 'ai.complete']],
     // A streamer's daily AI-viewer budget is an AI quota on their attribution (live:user:<id>), which Live sets.
     ['live', 'ai.quota.attribution.manage', 'openvibe.ai', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
@@ -727,8 +741,13 @@ function sameSecret(a, b) {
 /**
  * grant_type=client_credentials. Returns { status, body } (OAuth error shapes on failure).
  * `scope` (space-separated capability ids) narrows the token; omitted = every grant for the audience.
+ *
+ * A run token (Codes C3): with `on_behalf_of` (a usr_ subject) the token names the person it acts for, and may live
+ * up to two hours (`ttl`, at most MAX_RUN_TOKEN_TTL_S). Only a service that holds the consent grant for that audience
+ * (ai.credential.manage — the grant that lets it store that person's key in OpenVibe.AI) may mint one: the token says
+ * whose key and whose budget the run is, so the receiver can charge the person and no one else.
  */
-async function issueToken(db, { clientId, clientSecret, audience, scope, privateKey, issuer, agent, settings, ctx }) {
+async function issueToken(db, { clientId, clientSecret, audience, scope, privateKey, issuer, agent, settings, ctx, onBehalfOf = null, ttl = null }) {
     const client = await db.prepare('SELECT client_id, client_secret FROM oauth_clients WHERE client_id = ?').get(String(clientId || ''));
     if (!client || !sameSecret(client.client_secret, clientSecret)) return { status: 401, body: { error: 'invalid_client', error_description: 'Invalid client credentials' } };
     if (!/^[a-z][a-z0-9-]{1,39}$/.test(client.client_id)) return { status: 400, body: { error: 'unauthorized_client', error_description: 'client id is not a service principal' } };
@@ -746,15 +765,34 @@ async function issueToken(db, { clientId, clientSecret, audience, scope, private
         return { status: 400, body: { error: 'invalid_scope', error_description: `not granted: ${wanted.filter(w => !chosen.find(g => g.capability === w)).join(' ')}` } };
     }
     if (!chosen.length) return { status: 400, body: { error: 'invalid_scope', error_description: `no grants for audience ${aud}` } };
+    // A run token: the person it acts for, and how long it may live.
+    let person = null;
+    let ttlS = TOKEN_TTL_S;
+    if (onBehalfOf !== null && onBehalfOf !== undefined && onBehalfOf !== '') {
+        person = String(onBehalfOf).trim();
+        if (!USER_RE.test(person)) return { status: 400, body: { error: 'invalid_request', error_description: 'on_behalf_of must be a usr_ subject' } };
+        // The consent grant, at this audience: the same one that lets the service store that person's key.
+        if (!grants.find((g) => g.capability === 'ai.credential.manage')) {
+            return { status: 403, body: { error: 'invalid_scope', error_description: 'not consented to act for a person' } };
+        }
+        const asked = ttl === null || ttl === undefined || ttl === '' ? TOKEN_TTL_S : Number(ttl);
+        if (!Number.isFinite(asked) || asked < MIN_RUN_TOKEN_TTL_S || asked > MAX_RUN_TOKEN_TTL_S) {
+            return { status: 400, body: { error: 'invalid_request', error_description: `ttl must be ${MIN_RUN_TOKEN_TTL_S}-${MAX_RUN_TOKEN_TTL_S} seconds` } };
+        }
+        ttlS = Math.floor(asked);
+    } else if (ttl !== null && ttl !== undefined && ttl !== '') {
+        return { status: 400, body: { error: 'invalid_request', error_description: 'ttl is for a token that acts for a person (on_behalf_of)' } };
+    }
     const now = Math.floor(Date.now() / 1000);
     const claims = {
         iss: issuer, sub: `svc:${client.client_id}`, actor_type: 'service', aud: [aud],
         cap: chosen.map(g => g.capability),
         ns: [...new Set(chosen.flatMap(g => g.namespaces))],
-        iat: now, exp: now + TOKEN_TTL_S, jti: `tok_${crypto.randomBytes(12).toString('hex')}`,
+        ...(person ? { on_behalf_of: person } : {}),
+        iat: now, exp: now + ttlS, jti: `tok_${crypto.randomBytes(12).toString('hex')}`,
     };
     assertValid('identity.service-token-claims@1', claims);
-    return { status: 200, body: { access_token: serviceAuth.signServiceToken(claims, privateKey), token_type: 'Bearer', expires_in: TOKEN_TTL_S, scope: claims.cap.join(' ') } };
+    return { status: 200, body: { access_token: serviceAuth.signServiceToken(claims, privateKey), token_type: 'Bearer', expires_in: ttlS, scope: claims.cap.join(' ') } };
 }
 
 /** Audit hook for requireCapability: one counter row per (principal, route, auth, outcome). */
