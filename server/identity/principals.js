@@ -112,6 +112,11 @@ const DEFAULT_GRANTS = [
     // Compatibility register C-71: Inventory (Workshop badge images) and MediaHub (its library) reach Media with their
     // own tokens on their own tenants, not with app keys. Upload also covers the delete of an object.
     ['inventory', 'media.object.upload', 'openvibe.media', ['inventory']],
+    // Codes (C8 proof screenshots, the rich embeds of a task) keeps a person's pictures in Media as private objects on
+    // its own tenant, reached with its own token (10-30). Actor is not granted Media yet: Actor hosts people's agents,
+    // and a hosted agent may hold what its host holds (agent-grants.test.js), so a Media grant on Actor would let every
+    // agent read Actor's tenant. Actor's artifacts wait for a host rule that keeps media.* out of what agents inherit.
+    ...['media.object.upload', 'media.object.read'].map((cap) => ['codes', cap, 'openvibe.media', ['codes']]),
     ['media-hub', 'media.object.upload', 'openvibe.media', ['media-hub']],
     ['media-hub', 'media.object.read', 'openvibe.media', ['media-hub']],
     // OpenVibe.Video's AI edit (MediaHub server/video/ai-edit.js): media.analyze on finished uploads, local and unpaid;
