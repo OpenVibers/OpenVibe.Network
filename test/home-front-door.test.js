@@ -140,7 +140,16 @@ assert.ok(html.includes('href="https://openvibe.video/v/9"') && html.includes('<
     assert.ok(html.includes('<div class="now-pick" role="radiogroup" aria-label="New on OpenVibe">') && chips.length >= 2, 'the chips render when there is more than one part');
     assert.deepStrictEqual(chips.filter((m) => m[2]).map((m) => m[1]), [chips[0][1]], 'the first part is picked');
     for (const [, id] of chips) assert.match(html, new RegExp(`<div class="now-(block|grid)" data-now-part id="now-${id}"`), `${id} is marked as a part`);
-    assert.match(html, /\.now-pick\{display:none\}\n@supports selector\(:has\(\*\)\)\{@media \(max-width:600px\)\{/, 'chips only on a phone, and only with :has()');
+    assert.match(html, /\.now-pick,\.more-pick,\.more-pick-h\{display:none\}\n@supports selector\(:has\(\*\)\)\{@media \(max-width:600px\)\{/, 'chips only on a phone, and only with :has()');
+}
+// The lower half is one block on a phone: chips for tools, the account, the questions and the developers' links, the
+// first picked; every section stays in the page, and a link to #faq still opens it (:target).
+{
+    const more = [...html.matchAll(/<input type="radio" name="more-pick" id="mp-([a-z]+)" value="\1"( checked)?>/g)];
+    assert.ok(html.includes('<div class="more"><h2 class="more-pick-h">More about OpenVibe</h2>') && more.length >= 4, 'the More block and its chips');
+    assert.deepStrictEqual(more.filter((m) => m[2]).map((m) => m[1]), ['tools'], 'Tools is picked first');
+    for (const [, id] of more) assert.match(html, new RegExp(`<section class="sc-sec[^"]*" id="${id}" data-more-part`), `${id} is a part`);
+    assert.ok(html.includes('.more [data-more-part]:target{display:block}'), 'a link to a section opens it');
 }
 assert.ok(/<b>1,234<\/b><span>accounts/.test(html) && /<b>37<\/b><span>services up <small>of 38 checked/.test(html) && /<b>1<\/b><span>stream live now/.test(html), 'the numbers read render');
 console.log('home front door: all checks passed');
