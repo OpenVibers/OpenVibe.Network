@@ -172,11 +172,12 @@ const server = http.createServer(app);
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
     assert.deepStrictEqual(t.body.scope.split(' '), ['bench.entry.create', 'bench.judgement.cast', 'bench.round.create', 'bench.task.create'], 'Games submits priced matches and automatic outcomes');
 
-    // OpenVibe.Bench (contracts 0.238.0): the account export/deletion pair, its account-event subscriptions, and
-    // ai.run.create (namespace ai.generate) to run its pinned rounds; it publishes bench.* events and indexes nothing.
+    // OpenVibe.Bench (contracts 0.238.0): the account export/deletion pair, its account-event subscriptions,
+    // ai.run.create (namespace ai.generate) to run its pinned rounds, and (B10) the model watch's one notification
+    // push under its own name; it publishes bench.* events and indexes nothing.
     await db.prepare("UPDATE oauth_clients SET client_secret = 'bench-secret' WHERE client_id = 'bench'").run();
     t = await token({ client_id: 'bench', client_secret: 'bench-secret', audience: 'openvibe.network' });
-    assert.deepStrictEqual(t.body.scope.split(' '), ['network.account.deletion.confirm', 'network.account.export.contribute'], 'Bench answers account export and deletion');
+    assert.deepStrictEqual(t.body.scope.split(' '), ['network.account.deletion.confirm', 'network.account.export.contribute', 'network.notifications.push'], 'Bench answers account export and deletion, and pushes its watch notices');
     t = await token({ client_id: 'bench', client_secret: 'bench-secret', audience: 'openvibe.events' });
     assert.strictEqual(t.body.scope, 'events.subscription.manage', 'Bench subscribes to the account events at boot');
     t = await token({ client_id: 'bench', client_secret: 'bench-secret', audience: 'openvibe.ai' });
