@@ -26,6 +26,7 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 - **Public profiles** — `/@<username>`: one page per person with their picture, bio, when they joined, what they wear and the items they own in [OpenVibe.Inventory](https://inventory.openvibe.network) (plan T21). The same data is at `GET /api/v1/profiles/:username`, open to every origin. An old username answers 301 to the current one. A person can hide their profile from Edit Profile (`users.profile_public`); a hidden one shows only the name and picture and is not indexed. Items are read with the Network's own service token and kept 60 s per person (`server/profile/public.js`).
 - **OpenCoins Wallet** — Network-wide currency. User balance/history at `/api/coins/*`; atomic credit/debit/transfer for services at `/internal/coins/*` with idempotency-key dedupe.
 - **User modules** — versioned per-person preferences and summaries in namespaces owned by services (openvibe-contracts `manifests/namespaces`); see [User modules](#user-modules).
+- **The Dock's state** — the little floating surface every OpenVibe site draws (your agent, your chats, your activity) follows the person across every domain, because `localStorage` is per site and the state lives here instead. `GET /api/v1/me/dock` and `PUT /api/v1/me/dock` (`network.dock-state@1`, `network.dock-result@1`, contracts 0.251.0; `server/dock/`). See [docs/dock.md](docs/dock.md).
 
 ---
 
@@ -388,6 +389,31 @@ It then opens `${stream_url}?topics=network.notification.*&ticket=…[&last_even
 - **Client:** openvibe-shared `notification-live.js`, on where a site sets `notificationsRealtime: true`.
 
 Quiet hours and per-category digests are built (migration `0027_notification_quiet_digest.sql`, `server/notifications/quiet-hours.js` and `digest.js`); the design note is [docs/notification-digest.md](docs/notification-digest.md).
+
+---
+
+## The Dock's state
+
+The Dock (plan 2026-10-30, K-D1) is one small floating surface on every OpenVibe site: your agent, your chats and
+your activity. It is drawn on many domains and `localStorage` is per site, so the state it follows you with lives in
+the Network (`server/dock/`, migration `0031_dock_states.sql`, contracts 0.251.0).
+
+- `GET /api/v1/me/dock` answers `network.dock-result@1`: the person's `network.dock-state@1` (the stored one, or the
+  default — closed, on the activity tab, not pinned, bottom-right, the site's own size), the `counts` the pill's
+  status dot is drawn from (`running` and `waiting` from the Action Center's aggregator, `unread` from the
+  notification service) and `sources_partial`, true when an authority behind those counts did not answer.
+- `PUT /api/v1/me/dock` takes a partial body — any subset of the state's fields — merges it into the stored state,
+  validates the result against `network.dock-state@1` (an invalid body is `422` with the contract's problem shape)
+  and answers the new `network.dock-result@1`. `place` merges per device class, so a body naming only `place.phone`
+  leaves the desktop where it was.
+- The subject comes from the caller's token and from nowhere else, so one person never reads or writes another's
+  state. The caller's own session only: the `ov_token` cookie on openvibe.network, a Bearer user token elsewhere,
+  with the CORS allow-list and the CSRF rules the other `/api/v1/me/*` routes use.
+- A write is limited to 60 a minute per person (`429 dock.rate_limited` past that); the page debounces anyway.
+- The row is the person's own: it goes into their account export and is erased with them (ADR-033), and a merge
+  (ADR-029) leaves it with the surviving account.
+
+The full reference is [docs/dock.md](docs/dock.md).
 
 ---
 
@@ -783,7 +809,7 @@ Reporting a vulnerability: [SECURITY.md](SECURITY.md). The rules the code keeps:
 MIT (`license` in [package.json](package.json)).
 
 <!-- versions:start -->
-- openvibe-contracts: v0.238.0
+- openvibe-contracts: v0.251.0
 - openvibe-sdk: v0.74.0
 - openvibe-shared: v4.47.2
 <!-- versions:end -->

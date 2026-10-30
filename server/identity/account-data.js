@@ -187,6 +187,9 @@ async function networkPart(db, userId) {
         theme_site_overrides: (await rowsOf(db, 'user_theme_site_overrides', 'user_id = ?', [u.id])).rows,
     });
     await byUser('history.json', 'user_history');
+    // The Dock's state (the Dock plan 2026-10-30, K-D1): the little floating surface every OpenVibe site draws.
+    add('dock.json', await tableExists(db, 'dock_states')
+        ? await db.prepare('SELECT subject, state, updated_at FROM dock_states WHERE subject = ?').all(u.subject_id) : []);
     add('username_history.json', (await rowsOf(db, 'username_history', 'user_id = ?', [u.id], { omit: ['changed_by'] })).rows);
     await byUser('profile_changes.json', 'user_profile_changes');
     await byUser('sign_in_log.json', 'ip_log');
@@ -344,6 +347,8 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         if (await tableExists(db, 'notifications')) await db.prepare(`UPDATE notifications SET sender_id = NULL, sender_name = 'Deleted account', sender_avatar = NULL WHERE sender_id IN ${inU}`).run(...userIds);
         if (await tableExists(db, 'analytics_events')) await db.prepare(`UPDATE analytics_events SET user_id = NULL WHERE user_id IN ${inU}`).run(...userIds);
         await del('user_modules', `subject_id IN ${inS}`, subjects, 'modules');
+        // The Dock's state (the Dock plan 2026-10-30, K-D1): the person's own row, gone with them.
+        await del('dock_states', `subject IN ${inS}`, subjects, 'dock_states');
         await del('user_follows', `follower_subject IN ${inS} OR target_id IN ${inS}`, [...subjects, ...subjects], 'follows');
         await del('user_blocks', `blocker_subject IN ${inS} OR blocked_subject IN ${inS}`, [...subjects, ...subjects], 'blocks');
         // The person's agents first (WS-Z2), then the agents of the projects archived below.

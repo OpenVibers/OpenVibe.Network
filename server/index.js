@@ -638,6 +638,11 @@ require('./developer/confirmations').start(db);
         domains: process.env.OV_DOMAINS_INTERNAL_URL || 'http://127.0.0.1:5070',
     } });
     app.use('/api/v1/me/actions', rateLimit({ windowMs: 60_000, max: 120 }), require('./actions').router({ actions, requireAuth }));
+    // The Dock's state (the Dock plan 2026-10-30, K-D1, server/dock): one row per person, so the little floating
+    // surface every OpenVibe site draws follows them across every domain (localStorage is per site). Its counts are
+    // the Action Center's own, so a page view never fans out further than the aggregator's 10 s cache already does.
+    const dock = require('./dock').createDock({ db, actions, notifications: notificationService });
+    app.use('/api/v1/me/dock', require('./dock').router({ dock, requireAuth }));
 }
 
 // Notification API (authenticated users)

@@ -174,6 +174,13 @@ async function merge(db, fromUser, intoUser, { initiatedBy = 'person', actorSubj
                 }
             }
         }
+        // The Dock's state (the Dock plan 2026-10-30, K-D1): the survivor's row wins. A folded-in row moves over
+        // only when the survivor has none; when both have one, the survivor's is the one that stays.
+        if (await tableExists(db, 'dock_states')) {
+            const mine = await db.prepare('SELECT 1 FROM dock_states WHERE subject = ?').get(into);
+            if (mine) await db.prepare('DELETE FROM dock_states WHERE subject = ?').run(from);
+            else await db.prepare('UPDATE dock_states SET subject = ? WHERE subject = ?').run(into, from);
+        }
         await moveByUserId(db, 'notifications', 'user_id', fromUser.id, intoUser.id);
         await moveByUserId(db, 'push_subscriptions', 'user_id', fromUser.id, intoUser.id);
         note('preferences', await moveByUserId(db, 'notification_preferences', 'user_id', fromUser.id, intoUser.id, ['category']));
