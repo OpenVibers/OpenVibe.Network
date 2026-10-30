@@ -208,6 +208,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 @media (max-width:600px){
     .hero{padding-top:20px}
 }
+
+/* Touch targets on phones (fleet audit, 2026-10-29): touch pointers only. */
+@media (pointer: coarse) {
+  .intent-bar input, .intent-bar button { min-height: 44px; }
+  .home-chips>li>a { min-height: 44px; }
+}
 </style>
 <script src="/shared/theme-loader.js"></script>
 <script src="/assets/ov-mark.js"></script>

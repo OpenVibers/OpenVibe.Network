@@ -247,7 +247,18 @@ const CSS = `
 .faq-item{padding:16px 18px;border-radius:16px;border:1px solid var(--border,rgba(255,255,255,.08));background:var(--bg-secondary,#101828)}
 .faq-item h3{font-size:15.5px;margin:0 0 6px;line-height:1.35}.faq-item p{margin:0;color:var(--text-secondary,#a8b3c4);font-size:14px;line-height:1.55}
 @media (prefers-reduced-motion:reduce){.now-dot{animation:none}}
-${icons.CSS}`;
+${icons.CSS}
+/* Touch targets on phones (fleet audit, 2026-10-29): touch pointers only. */
+@media (pointer: coarse) {
+  .home-chips>li>a { min-height: 44px; }
+  .orb-node { position: relative; }
+  .orb-node::after { content: ''; position: absolute; left: 0; right: 0; top: -2px; bottom: -2px; }
+  .now-more { position: relative; }
+  .now-more::after { content: ''; position: absolute; left: 0; right: 0; top: -14px; bottom: -14px; }
+  .home-more a:only-child { position: relative; display: inline-block; }
+  .home-more a:only-child::after { content: ''; position: absolute; left: 0; right: 0; top: -14px; bottom: -14px; }
+}
+`;
 
 // The sites section's heading; the JSON-LD ItemList of the same sites carries it as its name, so the
 // structured data names something a visitor can see (browser check, WS-Q task 3).
