@@ -5,7 +5,8 @@
  *
  * The three that subscribe to the two account topics themselves, through openvibe-sdk/account-data (startSubscriptions
  * creates the subscription on the bus), also hold events.subscription.manage on openvibe.events: Run (its jobs and
- * runs), Sources (its items and feeds) and Events (the bus itself keeps the events a person caused).
+ * runs), Sources (its items and feeds) and Events (the bus itself keeps the events a person caused). Zone (its
+ * telemetry) subscribes that way too, and Tools already subscribed for the sign-out cutoffs.
  *
  *   node test/adr033-sweep-grants.test.js
  */
@@ -15,7 +16,7 @@ const principals = require('../server/identity/principals');
 
 const holds = (svc, cap, aud) => principals.DEFAULT_GRANTS.some((g) => g[0] === svc && g[1] === cap && g[2] === aud);
 
-for (const svc of ['ai', 'coupons', 'news', 'run', 'search', 'sources', 'events']) {
+for (const svc of ['ai', 'coupons', 'news', 'run', 'search', 'sources', 'events', 'zone', 'tools']) {
     assert.ok(holds(svc, 'network.account.export.contribute', principals.SELF_AUDIENCE), `${svc} answers the account export`);
     assert.ok(holds(svc, 'network.account.deletion.confirm', principals.SELF_AUDIENCE), `${svc} confirms the account deletion`);
 }

@@ -160,7 +160,11 @@ const DEFAULT_GRANTS = [
     // (its readers' lists; News#147), Run since 2026-10-30 (its jobs and runs; Run#115), Search since 2026-10-30 (its saved
     // searches and documents; Search#145), Sources since 2026-10-30 (its items and feeds; Sources#146) and Events since
     // 2026-10-30 (the bus itself keeps the events a person caused; Events#163). Each subscribed before this grant.
-    ...['ai', 'coupons', 'news', 'run', 'search', 'sources', 'events'].flatMap((svc) => [
+    // Zone since 2026-10-30 (the telemetry samples that name a person; Zone#87) and Tools since 2026-10-30 (the
+    // tool jobs a person owns; Tools#TBD): the two services the sweep found still holding a person's rows without
+    // a way to ask for them. Zone subscribes to the account topics at its next boot; Tools already subscribes
+    // for the sign-out cutoffs.
+    ...['ai', 'coupons', 'news', 'run', 'search', 'sources', 'events', 'zone', 'tools'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
