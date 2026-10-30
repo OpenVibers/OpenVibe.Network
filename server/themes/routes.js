@@ -176,6 +176,45 @@ router.put('/me/display', requireAuth, async (req, res) => {
     res.json({ ok: true, display });
 });
 
+// ── Your sites in the site switcher (openvibe-shared switcher.js, 2026-10-30) ──
+// The sites a person pinned and the ones they visited last, so the switcher behind the OpenVibe icon shows the same
+// "Recent" and "Pinned" on every OpenVibe site. Ids only (the frame's site ids), at most 12 pinned and 8 recent. A visit
+// is recorded by the navbar on page load for a signed-in person, and never under Global Privacy Control or Do Not Track
+// (the navbar's own check, like its page-view beacon).
+const SITE_ID = /^[a-z][a-z0-9-]{1,31}$/;
+const siteIds = (a, n) => [...new Set((Array.isArray(a) ? a : []).map(String).filter((x) => SITE_ID.test(x)))].slice(0, n);
+const cleanSites = (d) => ({ pinned: siteIds(d && d.pinned, 12), recent: siteIds(d && d.recent, 8) });
+async function readSites(db, userId) {
+    try { const row = await db.prepare('SELECT site_prefs FROM user_preferences WHERE user_id = ?').get(userId); return cleanSites(row && row.site_prefs ? JSON.parse(row.site_prefs) : null); }
+    catch { return cleanSites(null); }   // the column arrives with migration 0029
+}
+async function writeSites(db, userId, sites) {
+    await db.prepare(`INSERT INTO user_preferences (user_id, site_prefs, updated_at) VALUES (?, ?, ov_now())
+        ON CONFLICT(user_id) DO UPDATE SET site_prefs = excluded.site_prefs, updated_at = ov_now()`).run(userId, JSON.stringify(sites));
+    return sites;
+}
+router.get('/me/sites', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    res.set('Cache-Control', 'private, no-store').json(await readSites(db, req.user.sub || req.user.id));
+});
+// Replace the pinned list (the switcher's hold-to-pin); recent is kept.
+router.put('/me/sites', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const userId = req.user.sub || req.user.id;
+    const cur = await readSites(db, userId);
+    res.set('Cache-Control', 'private, no-store').json(await writeSites(db, userId, { pinned: siteIds(req.body && req.body.pinned, 12), recent: cur.recent }));
+});
+// One visit: the site moves to the front of recent.
+router.post('/me/sites/visit', requireAuth, async (req, res) => {
+    const site = String((req.body && req.body.site) || '');
+    if (!SITE_ID.test(site)) return res.status(400).json({ error: 'site must be a site id' });
+    const db = await getDb(req);
+    const userId = req.user.sub || req.user.id;
+    const cur = await readSites(db, userId);
+    if (cur.recent[0] === site) return res.set('Cache-Control', 'private, no-store').json(cur);
+    res.set('Cache-Control', 'private, no-store').json(await writeSites(db, userId, { pinned: cur.pinned, recent: siteIds([site, ...cur.recent], 8) }));
+});
+
 // ── Your submissions, with their review status ────────────────
 router.get('/me/submissions', requireAuth, async (req, res) => {
     const db = await getDb(req);
