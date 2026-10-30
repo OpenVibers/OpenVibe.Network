@@ -79,10 +79,11 @@ const server = http.createServer(app);
     assert.deepStrictEqual([aiClaims.claims.cap, aiClaims.claims.ns], [['ai.credential.manage', 'ai.quota.attribution.manage', 'ai.run.create', 'ai.run.read'], ['live.*', 'network.site_copy', 'media.analyze']]);
 
     // Plan T9: Search's saved-search notifier resolves the saved search's owner and pushes one notification
-    // per new match through Network, and holds nothing else there.
+    // per new match through Network. Since 2026-10-30 (the ADR-033 sweep, Search#145) Search also answers the
+    // account export and confirms the deletion.
     t = await token({ client_id: 'search', client_secret: 'search-secret', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
-    assert.deepStrictEqual(t.body.scope.split(' '), ['identity.subject.resolve', 'network.notifications.push']);
+    assert.deepStrictEqual(t.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.notifications.push']);
     const searchToken = t.body.access_token;
 
     // The Search Fabric's embedder (OpenVibe.Search server/fabric/embed.js, contracts 0.234.0) runs AI workflow
