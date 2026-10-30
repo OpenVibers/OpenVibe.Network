@@ -115,6 +115,19 @@ const token = async (id) => signToken(await db.prepare('SELECT * FROM users WHER
     assert.strictEqual(r.body.display.scheme, 'auto', 'Auto (light or dark by the device) follows the account');
     assert.strictEqual((await call('PUT', '/api/themes/me/display', { as: 2, body: { scheme: 'sepia' } })).body.display.scheme, undefined, 'only manual or auto');
 
+    // ── The site switcher's pinned and recent sites follow the account (migration 0029) ──
+    r = await call('GET', '/api/themes/me/sites', { as: 2 });
+    assert.deepStrictEqual(r.body, { pinned: [], recent: [] }, 'nothing yet');
+    for (const site of ['live', 'chat', 'live', 'tools']) r = await call('POST', '/api/themes/me/sites/visit', { as: 2, body: { site } });
+    assert.deepStrictEqual(r.body.recent, ['tools', 'live', 'chat'], 'newest first, each site once');
+    r = await call('PUT', '/api/themes/me/sites', { as: 2, body: { pinned: ['design', 'design', 'Bad Id', 'games'] } });
+    assert.deepStrictEqual(r.body, { pinned: ['design', 'games'], recent: ['tools', 'live', 'chat'] }, 'pins are clean ids; recent is kept');
+    assert.deepStrictEqual((await call('GET', '/api/themes/me/sites', { as: 2 })).body.pinned, ['design', 'games'], 'pins follow the account');
+    assert.strictEqual((await call('POST', '/api/themes/me/sites/visit', { as: 2, body: { site: '../x' } })).status, 400, 'only a site id');
+    assert.strictEqual((await call('GET', '/api/themes/me/sites')).status, 401, 'yours only, signed in');
+    for (let i = 0; i < 12; i++) r = await call('POST', '/api/themes/me/sites/visit', { as: 2, body: { site: `site${i}` } });
+    assert.strictEqual(r.body.recent.length, 8, 'at most eight recent');
+
     // ── Seasons: what stands in for the default theme when, for apps and the SDK ──
     r = await call('GET', '/api/themes/seasons?date=2026-10-25');
     assert.deepStrictEqual(r.body.seasons.map((x) => [x.id, x.theme, x.from, x.to]), [['halloween', 'halloween', '10-01', '10-31'], ['winter', 'frost', '12-01', '12-31']]);
