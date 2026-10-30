@@ -646,8 +646,8 @@ const DEFAULT_GRANTS = [
     ['bench', 'events.subscription.manage', 'openvibe.events', []],
     // Bench's model watch (Bench B10): when a followed score moves beyond its interval, or a model overtakes the one
     // someone follows, Bench pushes that person one notification through Network as app 'bench' (Bench's
-    // server/watch/watch.js resolves the watch's user id, then pushes with openvibe-sdk/notifications). No namespace:
-    // the push route checks the token's own name, and Bench holds nothing else of Network's notifications.
+    // server/watch/watch.js resolves the watch's user id, then pushes with openvibe-sdk/notifications). Its own name
+    // only, as Live's, Actor's and Today's: Bench holds nothing else of Network's notifications.
     ['bench', 'network.notifications.push', SELF_AUDIENCE, ['bench']],
     // OpenVibe.Design's Arena moves onto Bench (contracts 0.238.0): it creates tasks and rounds, reads rounds and boards,
     // and casts the Arena's judgements on openvibe.bench. The earlier vision.ui.check grant stays for its UI check.
