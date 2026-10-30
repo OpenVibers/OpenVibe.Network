@@ -82,6 +82,10 @@ async function recordMint(db, { clientId, subject, userId = null, jti = null, tt
             .run(String(clientId || ''), String(subject || ''), userId, jti, Math.floor(now));
         await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)')
             .run(userId, RUN_TOKEN_AUDIT_ACTION, JSON.stringify({ client_id: clientId, subject, ttl_seconds: ttl, jti }));
+        // The ledger is the limit's memory, not the trail (the audit row is): what leaves the window is no longer
+        // counted, so it is dropped. The audit row keeps it.
+        await db.prepare('DELETE FROM run_token_mints WHERE client_id = ? AND subject = ? AND minted_at <= ?')
+            .run(String(clientId || ''), String(subject || ''), Math.floor(now) - RUN_TOKEN_WINDOW_MS);
     });
 }
 

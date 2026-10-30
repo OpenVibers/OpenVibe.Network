@@ -138,6 +138,14 @@ const runTokens = require('../server/identity/run-tokens');
         const mints = await db.prepare('SELECT * FROM run_token_mints WHERE client_id = ? AND subject = ?').all('codes', OWNER);
         assert.strictEqual(mints.length, 1, 'the ledger has one row for the mint');
         assert.strictEqual(mints[0].jti, details.jti);
+        // The ledger is the limit's memory, not the trail: what leaves the window is dropped.
+        await db.prepare('INSERT INTO run_token_mints (client_id, subject, user_id, jti, minted_at) VALUES (?, ?, ?, ?, ?)')
+            .run('codes', OWNER, people.owner.id, 'tok_old', Math.floor(Date.now() / 1000) - 7200);
+        await runToken(OWNER);
+        const kept = await db.prepare('SELECT * FROM run_token_mints WHERE client_id = ? AND subject = ?').all('codes', OWNER);
+        assert.ok(!kept.find((r) => r.jti === 'tok_old'), 'a mint outside the window is dropped from the ledger');
+        const trail = await db.prepare('SELECT COUNT(*) AS n FROM audit_log WHERE action = ? AND details LIKE ?').get(runTokens.RUN_TOKEN_AUDIT_ACTION, `%${OWNER}%`);
+        assert.ok(Number(trail.n) >= 2, 'the audit trail keeps every mint, dropped or not');
 
         // ── At most 120 run tokens an hour for one (service, person) ──
         for (let i = 0; i < runTokens.RUN_TOKEN_LIMIT_PER_HOUR; i++) {
