@@ -811,5 +811,5 @@ MIT (`license` in [package.json](package.json)).
 <!-- versions:start -->
 - openvibe-contracts: v0.251.0
 - openvibe-sdk: v0.74.0
-- openvibe-shared: v4.47.2
+- openvibe-shared: v4.52.0
 <!-- versions:end -->
