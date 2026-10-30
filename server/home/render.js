@@ -212,6 +212,9 @@ const CSS = `
 .now-rail{list-style:none;margin:0;padding:0;display:grid;gap:18px;grid-template-columns:repeat(4,minmax(0,1fr))}
 @media (max-width:980px){.now-rail{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:600px){.now-rail{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;margin:0 -16px;padding:2px 16px 8px;scrollbar-width:none;overscroll-behavior-x:contain}.now-rail::-webkit-scrollbar{display:none}.now-rail>li{flex:0 0 min(80%,320px);scroll-snap-align:start}}
+/* Phones (2026-10-29): the blog, jobs and code columns are one row that scrolls sideways like the rails above them, and
+   what signing in adds is a line each (the sentences are on the wider screens and on Help). */
+@media (max-width:600px){.now-grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;margin:14px -16px 0;padding:2px 16px 8px;scrollbar-width:none;overscroll-behavior-x:contain}.now-grid::-webkit-scrollbar{display:none}.now-grid>.now-col{flex:0 0 min(84%,340px);scroll-snap-align:start}#account .home-rows small{display:none}#account .home-rows a{min-height:48px;align-items:center}}
 .vcard{display:flex;flex-direction:column;gap:10px;color:inherit;text-decoration:none;min-width:0;border-radius:16px;outline-offset:4px}
 .vc-thumb{position:relative;display:block;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:var(--bg-hover,#1c2a44);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
 .vc-thumb img,.vc-thumb .now-noimg{display:block;width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.2,.7,.2,1);border-radius:0}
