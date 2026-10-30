@@ -16,6 +16,7 @@
  */
 const crypto = require('crypto');
 const { serviceAuth, capabilities, assertValid, http } = require('openvibe-contracts');
+const runTokens = require('./run-tokens');
 
 const TOKEN_TTL_S = 300;
 const SELF_AUDIENCE = 'openvibe.network';
@@ -746,6 +747,10 @@ function sameSecret(a, b) {
  * up to two hours (`ttl`, at most MAX_RUN_TOKEN_TTL_S). Only a service that holds the consent grant for that audience
  * (ai.credential.manage — the grant that lets it store that person's key in OpenVibe.AI) may mint one: the token says
  * whose key and whose budget the run is, so the receiver can charge the person and no one else.
+ *
+ * The grant alone is not enough: the person must have signed in to THAT service (server/identity/run-tokens.js), and
+ * the service must be within its limit for that person. A service that is compromised, or a bug in one, cannot speak
+ * for a person who never signed in to it.
  */
 async function issueToken(db, { clientId, clientSecret, audience, scope, privateKey, issuer, agent, settings, ctx, onBehalfOf = null, ttl = null }) {
     const client = await db.prepare('SELECT client_id, client_secret FROM oauth_clients WHERE client_id = ?').get(String(clientId || ''));
@@ -767,6 +772,7 @@ async function issueToken(db, { clientId, clientSecret, audience, scope, private
     if (!chosen.length) return { status: 400, body: { error: 'invalid_scope', error_description: `no grants for audience ${aud}` } };
     // A run token: the person it acts for, and how long it may live.
     let person = null;
+    let personUserId = null;
     let ttlS = TOKEN_TTL_S;
     if (onBehalfOf !== null && onBehalfOf !== undefined && onBehalfOf !== '') {
         person = String(onBehalfOf).trim();
@@ -774,6 +780,19 @@ async function issueToken(db, { clientId, clientSecret, audience, scope, private
         // The consent grant, at this audience: the same one that lets the service store that person's key.
         if (!grants.find((g) => g.capability === 'ai.credential.manage')) {
             return { status: 403, body: { error: 'invalid_scope', error_description: 'not consented to act for a person' } };
+        }
+        // The person must have signed in to THIS service: a live refresh-token family of theirs for this client.
+        // Without one the service may not speak for them (a compromised service could otherwise spend every
+        // person's quota and run their stored keys).
+        const consent = await runTokens.consentFor(db, client.client_id, person);
+        if (!consent.ok) {
+            return { status: 403, body: { error: 'consent_required', error_description: 'that person has not signed in to this service' } };
+        }
+        personUserId = consent.userId;
+        // At most 120 run tokens an hour for one (service, person); past that the request is refused.
+        const limit = await runTokens.mintLimit(db, { clientId: client.client_id, subject: person });
+        if (!limit.ok) {
+            return { status: 429, body: { error: 'rate_limited', error_description: 'too many run tokens for this person', retry_after: limit.retryAfter } };
         }
         const asked = ttl === null || ttl === undefined || ttl === '' ? TOKEN_TTL_S : Number(ttl);
         if (!Number.isFinite(asked) || asked < MIN_RUN_TOKEN_TTL_S || asked > MAX_RUN_TOKEN_TTL_S) {
@@ -792,7 +811,17 @@ async function issueToken(db, { clientId, clientSecret, audience, scope, private
         iat: now, exp: now + ttlS, jti: `tok_${crypto.randomBytes(12).toString('hex')}`,
     };
     assertValid('identity.service-token-claims@1', claims);
-    return { status: 200, body: { access_token: serviceAuth.signServiceToken(claims, privateKey), token_type: 'Bearer', expires_in: ttlS, scope: claims.cap.join(' ') } };
+    const token = serviceAuth.signServiceToken(claims, privateKey);
+    if (person) {
+        // The trace of the mint: the audit row (never the token) and the ledger the limit counts. A mint that
+        // cannot be traced is not handed out.
+        try {
+            await runTokens.recordMint(db, { clientId: client.client_id, subject: person, userId: personUserId, jti: claims.jti, ttl: ttlS });
+        } catch (e) {
+            return { status: 503, body: { error: 'server_error', error_description: 'the run token could not be recorded' } };
+        }
+    }
+    return { status: 200, body: { access_token: token, token_type: 'Bearer', expires_in: ttlS, scope: claims.cap.join(' ') } };
 }
 
 /** Audit hook for requireCapability: one counter row per (principal, route, auth, outcome). */

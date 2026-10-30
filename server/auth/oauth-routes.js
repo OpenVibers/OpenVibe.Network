@@ -277,6 +277,8 @@ router.post('/token', async (req, res) => {
             onBehalfOf: req.body.on_behalf_of, ttl: req.body.ttl,
         });
         res.set('Cache-Control', 'no-store');
+        // A refused rate limit says when to come back (the seconds until the window has room).
+        if (out.body && out.body.retry_after) res.set('Retry-After', String(out.body.retry_after));
         return res.status(out.status).json(out.body);
     }
 
