@@ -154,6 +154,17 @@ function nowParts(parts) {
     return `<div class="now-pick" role="radiogroup" aria-label="New on OpenVibe">${chips}</div>\n${shown.map(([, , html]) => html.replace(/^<div class="(now-block|now-grid)"/, '<div class="$1" data-now-part')).join('\n')}`;
 }
 
+// The lower half (tools, what an account adds, what opens next, the questions, the developers' links): on a phone each
+// one is a full section and together they were about 2,000 px. Chips show one at a time under "More about OpenVibe"
+// (the short-pages rule, 2026-10-30); a link to #faq or #account still opens its section (:target). Radio inputs and
+// :has(), no script; a wider screen, or a browser without :has(), shows every section as before.
+function moreParts(parts) {
+    const shown = parts.filter(([, , html]) => html);
+    if (shown.length < 2) return shown.map(([, , html]) => html).join('\n');
+    const chips = shown.map(([id, label], i) => `<input type="radio" name="more-pick" id="mp-${id}" value="${id}"${i === 0 ? ' checked' : ''}><label for="mp-${id}">${esc(label)}</label>`).join('');
+    return `<div class="more"><h2 class="more-pick-h">More about OpenVibe</h2><div class="more-pick" role="radiogroup" aria-label="More about OpenVibe">${chips}</div>\n${shown.map(([, , html]) => html.replace(/^<section class="([^"]*)" id="([^"]*)"/, '<section class="$1" id="$2" data-more-part')).join('\n')}</div>`;
+}
+
 // The hero's numbers: only what Network read itself within the last minute (server/home/activity.js); a number it
 // could not read is left out rather than guessed.
 function numbers(catalog, a) {
@@ -245,16 +256,19 @@ const CSS = `
 .vcard .now-badge{z-index:1}
 .vcard.now-empty .vc-thumb{border:1px dashed var(--border-light,#2c3d5c);background:transparent}.vcard.now-empty .now-noimg{display:grid;place-items:center;font-size:28px;color:var(--accent-light,#60a5fa);background:transparent}
 .now .now-grid{margin-top:26px}
-.now-pick{display:none}
+.now-pick,.more-pick,.more-pick-h{display:none}
 @supports selector(:has(*)){@media (max-width:600px){
-.now-pick{display:flex;gap:8px;overflow-x:auto;margin:22px -16px 0;padding:2px 16px 4px;scrollbar-width:none;overscroll-behavior-x:contain}.now-pick::-webkit-scrollbar{display:none}
-.now-pick input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
-.now-pick label{display:inline-flex;align-items:center;flex:none;min-height:44px;padding:0 15px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));color:var(--text-secondary,#a8b3c4);font-size:13.5px;font-weight:650;white-space:nowrap;cursor:pointer}
-.now-pick input:checked+label{color:var(--text-primary,#e6edf7);border-color:var(--accent,#3b82f6);background:color-mix(in srgb,var(--accent,#3b82f6) 12%,transparent)}
-.now-pick input:focus-visible+label{outline:2px solid var(--accent,#3b82f6);outline-offset:2px}
+.now-pick,.more-pick{display:flex;gap:8px;overflow-x:auto;margin:22px -16px 0;padding:2px 16px 4px;scrollbar-width:none;overscroll-behavior-x:contain}.now-pick::-webkit-scrollbar,.more-pick::-webkit-scrollbar{display:none}
+.now-pick input,.more-pick input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.now-pick label,.more-pick label{display:inline-flex;align-items:center;flex:none;min-height:44px;padding:0 15px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));color:var(--text-secondary,#a8b3c4);font-size:13.5px;font-weight:650;white-space:nowrap;cursor:pointer}
+.now-pick input:checked+label,.more-pick input:checked+label{color:var(--text-primary,#e6edf7);border-color:var(--accent,#3b82f6);background:color-mix(in srgb,var(--accent,#3b82f6) 12%,transparent)}
+.now-pick input:focus-visible+label,.more-pick input:focus-visible+label{outline:2px solid var(--accent,#3b82f6);outline-offset:2px}
 .now [data-now-part]{display:none}.now .now-block[data-now-part],.now .now-grid[data-now-part]{margin-top:12px}
 .now:has(#np-recs:checked) #now-recs,.now:has(#np-shots:checked) #now-shots{display:block}.now:has(#np-posts:checked) #now-posts{display:flex}
 .now [data-now-part] .now-head{justify-content:flex-end}.now [data-now-part] .now-head h3{display:none}
+.more-pick-h{display:block;margin:40px 0 0;padding:0 16px;font-size:clamp(1.25rem,5vw,1.5rem);font-weight:800;letter-spacing:-.02em}.more-pick{margin:10px 0 0;padding:2px 16px 4px}
+.more [data-more-part]{display:none;margin-top:0;padding-top:12px}.more [data-more-part]>h2{display:none}
+.more:has(#mp-tools:checked) #tools,.more:has(#mp-account:checked) #account,.more:has(#mp-soon:checked) #soon,.more:has(#mp-developers:checked) #developers,.more:has(#mp-faq:checked) #faq,.more [data-more-part]:target{display:block}
 }}
 @media (prefers-reduced-motion:reduce){.vc-thumb img,.vc-play,.vc-play i,.vc-about{transition:none}}
 .now-code{display:inline-block;margin:0 0 3px;padding:1px 7px;border-radius:6px;border:1px dashed var(--accent,#3b82f6);color:var(--accent-light,#60a5fa);font:700 12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px}
@@ -371,11 +385,7 @@ ${chips(SOON.map((site) => [`https://${site.host}/`, site.tagline, site.icon, si
     return `<style>${CSS}</style>
 ${rightNow(act)}
 ${foldSites(sites)}
-${tools}
-${account}
-${soon}
-${dev}
-${faq}`;
+${moreParts([['tools', 'Tools', tools], ['account', 'Your account', account], ['soon', 'Opening next', soon], ['faq', 'Questions', faq], ['developers', 'Developers', dev]])}`;
 }
 
 // What an AI reader is told the page is (openvibe-shared/seo pageSummary): the meta, a WebPage JSON-LD tag and a
