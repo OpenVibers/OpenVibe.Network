@@ -12,6 +12,7 @@ const cache = require('openvibe-shared/cache-policy');
  */
 const express = require('express');
 const boost = require('../boost');
+const shipped = require('openvibe-shared/shipped');
 
 const TTL_MS = 60 * 1000;
 const MAX_KEYS = 300;
@@ -96,7 +97,19 @@ function renderPage({ site, filtered, body, releaseId = '' }) {
         if (!days.length || days[days.length - 1].day !== d) days.push({ day: d, list: [] });
         days[days.length - 1].list.push(e);
     }
-    const dayHtml = days.map((g) => `<section class="ov-shipped-day"><h3>${esc(g.day)}</h3><div class="ov-shipped-entries">${g.list.map((e) => `<div class="ov-shipped-entry">${/^https:\/\//.test(e.url || '') ? `<a class="ov-shipped-hash" href="${esc(e.url)}" rel="noopener">${esc(e.short || String(e.sha || '').slice(0, 7))}</a>` : ''}${site ? '' : `<span class="ov-shipped-site">${esc(nameOf(e.service))}</span>`}<span class="ov-shipped-text">${esc(e.subject)}</span><span class="ov-shipped-meta">${esc(e.author ? `${e.author} · ` : '')}${esc(String(e.deployed_at || '').slice(11, 16))} UTC</span></div>`).join('')}</div></section>`).join('\n');
+    // One commit; the OpenVibers account every commit shares is not named on each row.
+    const hhmm = (e) => String(e.deployed_at || '').slice(11, 16);
+    const row = (e, showSite) => `<div class="ov-shipped-entry">${/^https:\/\//.test(e.url || '') ? `<a class="ov-shipped-hash" href="${esc(e.url)}" rel="noopener">${esc(e.short || String(e.sha || '').slice(0, 7))}</a>` : ''}${showSite ? `<span class="ov-shipped-site">${esc(nameOf(e.service))}</span>` : ''}<span class="ov-shipped-text">${esc(e.subject)}</span><span class="ov-shipped-meta">${esc(e.author && e.author !== 'OpenVibers' ? `${e.author} · ` : '')}${esc(hhmm(e))} UTC</span></div>`;
+    // The same change on many sites is one row (a pin round was thirty identical lines), grouped exactly as
+    // openvibe-shared/shipped.js groups the page once its script runs.
+    const groupHtml = (g) => {
+        if (g.entries.length === 1) return row(g.entries[0], !site);
+        const names = [...new Set(g.entries.map((e) => e.service))].map(nameOf);
+        const notes = shipped.groupNotes(g);
+        const first = hhmm(g.entries[g.entries.length - 1]), last = hhmm(g.entries[0]);
+        return `<div class="ov-shipped-entry ov-shipped-group"><span class="ov-shipped-count">${names.length}</span><span class="ov-shipped-text">${esc(shipped.groupTitle(g))}${notes ? ` <a class="ov-shipped-notes" href="${esc(notes)}" rel="noopener">What's in it</a>` : ''}</span><span class="ov-shipped-meta">${esc(first === last ? last : `${first}–${last}`)} UTC</span><details class="ov-shipped-fold"><summary>${esc(names.length > 7 ? `${names.slice(0, 6).join(', ')} and ${names.length - 6} more` : names.join(', '))}</summary><div class="ov-shipped-entries">${g.entries.map((e) => row(e, true)).join('')}</div></details></div>`;
+    };
+    const dayHtml = days.map((g) => `<section class="ov-shipped-day"><h3>${esc(g.day)}</h3><div class="ov-shipped-entries">${shipped.groupEntries(g.list).map(groupHtml).join('')}</div></section>`).join('\n');
     const postsHtml = posts.length ? `<aside class="ov-shipped-posts"><h3>Patch notes</h3><ul>${posts.map((p) => `<li><a href="${esc(p.url)}">${esc(p.title || 'Patch notes')}</a>${p.published_at ? ` <small>${esc(String(p.published_at).slice(0, 10))}</small>` : ''}</li>`).join('')}</ul></aside>` : '';
     // The no-JS site filter (links): inside the shipped mount, so shipped.js's own filter bar replaces it rather than
     // adding a second row.
@@ -128,6 +141,10 @@ a{color:var(--accent)}
 .ov-shipped-entry{display:flex;gap:10px;align-items:baseline;padding:8px 12px;flex-wrap:wrap}.ov-shipped-text{flex:1;min-width:0;overflow-wrap:anywhere}
 .ov-shipped-meta{font-size:.75rem;color:var(--text-secondary)}.ov-shipped-hash{font-family:ui-monospace,monospace;font-size:.8rem}
 .ov-shipped-site{font-size:.72rem;font-weight:700;padding:.05rem .45rem;border-radius:999px;background:rgba(59,130,246,.16)}
+.ov-shipped-count{flex:none;min-width:2em;text-align:center;font-size:.72rem;font-weight:800;padding:.12rem .45rem;border-radius:999px;background:rgba(59,130,246,.22)}
+.ov-shipped-notes{font-size:.82rem;font-weight:600;text-decoration:none;white-space:nowrap}
+.ov-shipped-fold{flex-basis:100%;min-width:0;font-size:.82rem;color:var(--text-secondary)}.ov-shipped-fold summary{cursor:pointer;padding:3px 0}
+.ov-shipped-fold .ov-shipped-entries{margin:4px 0 2px;padding-left:10px;border-left:2px solid var(--border)}
 </style>
 </head>
 <body>
