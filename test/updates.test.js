@@ -5,7 +5,7 @@
 const assert = require('assert');
 const http = require('http');
 const express = require('express');
-const { createUpdatesRoutes, serviceFor } = require('../server/updates/routes');
+const { createUpdatesRoutes, serviceFor, renderPage } = require('../server/updates/routes');
 const publicCors = require('../server/public-cors');
 
 (async () => {
@@ -55,6 +55,15 @@ const publicCors = require('../server/public-cors');
     assert.strictEqual(serviceFor('search.openvibe.network'), 'search');
     assert.strictEqual(serviceFor('evil.example'), null);
     assert.ok(publicCors.isPublicDiscoveryPath('/api/v1/changelog'), 'readable from any origin');
+
+    // The first page groups the same change across sites, as openvibe-shared/shipped.js (4.47.2) does once it runs.
+    const at = '2026-10-29T17:40:00.000Z';
+    const pin = (svc, n) => ({ service: svc, sha: String(n).repeat(40).slice(0, 40), subject: `openvibe-shared v4.45.0 (was v4.43.0) (#${n})`, author: 'OpenVibers', deployed_at: at, url: `https://github.com/OpenVibers/x/commit/${n}` });
+    const grouped = renderPage({ site: null, filtered: false, body: { entries: [pin('fun', 9), pin('chat', 252), pin('cam', 7), { service: 'trade', sha: 'c'.repeat(40), subject: 'Touch targets on phones (fleet audit) (#141)', author: 'OpenVibers', deployed_at: at, url: 'https://github.com/OpenVibers/x/commit/c' }] } });
+    assert.ok(grouped.includes('<span class="ov-shipped-count">3</span><span class="ov-shipped-text">Shared 4.45.0 reached 3 sites'), 'one row for a pin round');
+    assert.ok(grouped.includes('https://github.com/OpenVibers/OpenVibe.Shared/blob/v4.45.0/CHANGELOG.md'), "what's in that release");
+    assert.strictEqual(grouped.split('class="ov-shipped-entry"').length - 1, 4, 'every commit still listed in its fold, plus the single one');
+    assert.ok(!grouped.includes('OpenVibers · '), 'the shared account is not named on each row');
     srv.close();
     console.log('updates: all checks passed');
 })().catch((e) => { console.error(e); process.exit(1); });
