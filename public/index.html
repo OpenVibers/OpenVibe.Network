@@ -144,7 +144,14 @@ a{color:inherit}
 @keyframes orb-breathe{0%,100%{opacity:.7;transform:scale(.95)}50%{opacity:1;transform:scale(1.05)}}
 @media (prefers-reduced-motion:reduce){.orb-ring,.orb-face,.orb-glow{animation:none}}
 html[data-ov-motion=reduced] .orb-ring,html[data-ov-motion=reduced] .orb-face,html[data-ov-motion=reduced] .orb-glow{animation:none}
-@media (max-width:900px){.hero-sky{order:-1;margin:-8px auto 4px}.hero-sky .orbit{width:min(72vw,270px)}.hero-sky .net-num{display:none}.orb-node.is-big{width:46px;height:46px;margin:-23px}.orb-node{width:34px;height:34px;margin:-17px}.orb-name{font-size:10.5px}.orb-core b{font-size:13px}}
+/* Phones: the rings far enough apart that a label under an inner site never crosses the core or an outer site at any
+   turn (inner reach R1 + 42 px < R2 - 13 px; top label above the core's 45 px half height). The turning ring boxes reach past the screen's
+   edge at their corners, so the hero clips sideways overflow (nothing visible is there). */
+@media (max-width:900px){.hero{overflow-x:clip}.hero-sky{order:-1;margin:-8px auto 4px}.hero-sky .orbit{width:min(90vw,340px)}.hero-sky .net-num{display:none}
+.orb-ring.r1{--R:27.5cqw}.orb-ring.r1::before{inset:22.5%}.orb-ring.r2{--R:46.5cqw}.orb-ring.r2::before{inset:3.5%}
+.orb-node.is-big{width:44px;height:44px;margin:-22px}.orb-node{width:26px;height:26px;margin:-13px}.orb-node:not(.is-big) .ov-icon{--ovi-size:14px!important}
+.orb-name{font-size:10.5px}.orb-core .ov-mark{width:52px!important;height:52px!important}.orb-core b{font-size:13px;margin-top:4px}.orb-core small{font-size:11px}}
+@media (max-width:359px){.orb-core small{display:none}}
 
 @media (max-width:520px){.intents{grid-template-columns:none;grid-auto-flow:column;grid-template-rows:repeat(2,auto);grid-auto-columns:minmax(150px,46%);overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;margin-left:-16px;margin-right:-16px;padding:0 16px 4px;gap:6px}.intents::-webkit-scrollbar{display:none}.intents>li{scroll-snap-align:start}.intent small{display:none}.intent{align-items:center;gap:9px;padding:9px 10px}.intent>i{width:30px;height:30px;font-size:14px}.intent b{font-size:13.5px}.intent-bar button{padding:11px 14px}}
 
