@@ -155,7 +155,15 @@ const DEFAULT_GRANTS = [
     // subscribed first through Network#250). Billing since 2026-10-17 (the money ledger: balances and money records;
     // Billing#77, subscribed first through Network#263). Reviews since 2026-10-17 (members' reviews, Reviews#76; its
     // account-data consumer and subscriptions shipped first in Reviews#77). Host since 2026-10-19 (the console's sealed hosting
-    // tokens and actions, benchmarks' submissions; Host#120, subscribed first through Network#284).
+    // tokens and actions, benchmarks' submissions; Host#120, subscribed first through Network#284). AI since 2026-10-30 (its
+    // conversations and runs; AI#206), Coupons since 2026-10-30 (its claims and coupons; Coupons#148), News since 2026-10-30
+    // (its readers' lists; News#147), Run since 2026-10-30 (its jobs and runs; Run#115), Search since 2026-10-30 (its saved
+    // searches and documents; Search#145), Sources since 2026-10-30 (its items and feeds; Sources#146) and Events since
+    // 2026-10-30 (the bus itself keeps the events a person caused; Events#163). Each subscribed before this grant.
+    ...['ai', 'coupons', 'news', 'run', 'search', 'sources', 'events'].flatMap((svc) => [
+        [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
+        [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
+    ]),
     ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub',
         'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host', 'domains', 'meme', 'vision', 'exchange', 'fun', 'cam', 'bench'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
@@ -250,6 +258,10 @@ const DEFAULT_GRANTS = [
     // Coupons subscribes to the sources it watches (OpenVibe.Coupons scripts/subscribe.js), as Deals does.
     ['coupons', 'events.subscription.manage', 'openvibe.events', []],
     ['coupons', 'sources.item.read', 'openvibe.sources', []],
+    // The ADR-033 sweep (2026-10-30): Run, Sources and Events subscribe to the two account topics themselves, through
+    // openvibe-sdk/account-data (startSubscriptions creates the subscription on the bus), so they need the scope that
+    // creates it. Events subscribes to its own bus: the account events it stores are the ones it has to answer for.
+    ...['run', 'sources', 'events'].map((svc) => [svc, 'events.subscription.manage', 'openvibe.events', []]),
     ['host', 'events.event.publish', 'openvibe.events', []],
     // The console (Host#120, 2026-10-19) keeps people's sealed hosting tokens and their actions, and benchmarks (Host#117)
     // their submissions: Host subscribes to the two account events first (its export part and deletion grants follow).

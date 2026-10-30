@@ -7,7 +7,7 @@
   "port": 4000,
   "domain": "openvibe.network (with auth., api., admin., my. and themes.openvibe.network in its manifest)",
   "contracts": "openvibe-contracts v0.238.0",
-  "sdk": "openvibe-sdk v0.67.0",
+  "sdk": "openvibe-sdk v0.74.0",
   "shared": "openvibe-shared v4.47.2",
   "capabilities": [
     "identity.subject.resolve",

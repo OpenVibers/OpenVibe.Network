@@ -50,7 +50,7 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 
 ## Depends on
 
-- `openvibe-contracts` v0.222.0 (registry manifests, capability checks), `openvibe-sdk` v0.67.0 (PostgreSQL
+- `openvibe-contracts` v0.222.0 (registry manifests, capability checks), `openvibe-sdk` v0.74.0 (PostgreSQL
   and Valkey adapters, events, per-actor limits, universal telemetry), `openvibe-shared` v4.30.0, pinned by release tarball
 - OpenVibe.Events (Network's outbox relay; the events it consumes), OpenVibe.AI (the `network.site_copy`
   workflow), OpenVibe.Blog (the changelog feed it proxies)
@@ -784,6 +784,6 @@ MIT (`license` in [package.json](package.json)).
 
 <!-- versions:start -->
 - openvibe-contracts: v0.238.0
-- openvibe-sdk: v0.67.0
+- openvibe-sdk: v0.74.0
 - openvibe-shared: v4.47.2
 <!-- versions:end -->
