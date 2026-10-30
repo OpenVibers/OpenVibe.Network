@@ -133,5 +133,14 @@ assert.ok(html.includes('LIVE · 1.5k') && html.includes('Al&lt;b&gt;ice') && ht
 assert.ok(html.includes('data-fallback="https://openvibe.media/a"'), 'a broken thumbnail falls back to the avatar');
 assert.ok(html.includes('href="https://openvibe.community/p/one"') && html.includes('href="https://openvibe.blog/@a/b"'));
 assert.ok(html.includes('href="https://openvibe.video/v/9"') && html.includes('<code class="now-code">FALL10</code>') && html.includes('Remote · Berlin · via Arbeitnow'), 'recordings, codes and jobs render');
+// A phone shows one of what is new at a time (the short-pages rule, 2026-10-30): radio chips and :has(), no script, every
+// part still in the page; the first part present is picked, and a wider screen or a browser without :has() shows them all.
+{
+    const chips = [...html.matchAll(/<input type="radio" name="now-pick" id="np-([a-z]+)" value="\1"( checked)?><label for="np-\1">([^<]+)<\/label>/g)];
+    assert.ok(html.includes('<div class="now-pick" role="radiogroup" aria-label="New on OpenVibe">') && chips.length >= 2, 'the chips render when there is more than one part');
+    assert.deepStrictEqual(chips.filter((m) => m[2]).map((m) => m[1]), [chips[0][1]], 'the first part is picked');
+    for (const [, id] of chips) assert.match(html, new RegExp(`<div class="now-(block|grid)" data-now-part id="now-${id}"`), `${id} is marked as a part`);
+    assert.match(html, /\.now-pick\{display:none\}\n@supports selector\(:has\(\*\)\)\{@media \(max-width:600px\)\{/, 'chips only on a phone, and only with :has()');
+}
 assert.ok(/<b>1,234<\/b><span>accounts/.test(html) && /<b>37<\/b><span>services up <small>of 38 checked/.test(html) && /<b>1<\/b><span>stream live now/.test(html), 'the numbers read render');
 console.log('home front door: all checks passed');

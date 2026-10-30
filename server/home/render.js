@@ -115,7 +115,7 @@ function rightNow(a) {
     const card = ({ url, thumb, badge, len, about, avatar, title, who, line, cls = '' }) => `<li><a class="vcard${cls}" href="${esc(url)}">
 <span class="vc-thumb">${thumb ? img(thumb, avatar, 320, 180) : '<span class="now-noimg"></span>'}${badge || ''}${len ? `<span class="vc-len">${esc(len)}</span>` : ''}<span class="vc-play" aria-hidden="true"><i class="fa-solid fa-play"></i></span>${about ? `<span class="vc-about">${esc(about)}</span>` : ''}</span>
 <span class="vc-meta">${face(avatar)}<span class="vc-text"><b>${esc(title)}</b>${who ? `<small>${esc(who)}</small>` : ''}${line ? `<small>${esc(line)}</small>` : ''}</span></span></a></li>`;
-    const rail = (title, href, more, cards) => (cards.length ? `<div class="now-block"><div class="now-head"><h3>${title}</h3><a class="now-more" href="${href}">${more} →</a></div><ul class="now-rail">${cards.join('')}</ul></div>` : '');
+    const rail = (title, href, more, cards, id = '') => (cards.length ? `<div class="now-block"${id ? ` id="${id}"` : ''}><div class="now-head"><h3>${title}</h3><a class="now-more" href="${href}">${more} →</a></div><ul class="now-rail">${cards.join('')}</ul></div>` : '');
 
     const live = a.live.map((s) => card({ url: s.url, thumb: s.thumb || s.avatar, badge: `<span class="now-badge"><i></i>LIVE${s.viewers ? ` · ${esc(fmtViewers(s.viewers))}` : ''}</span>`, avatar: s.avatar, title: s.title, who: s.name, line: s.category }));
     // Nobody live: one honest line and the way to start, not an empty 16:9 player (a phone saw a blank screen of it).
@@ -136,9 +136,22 @@ function rightNow(a) {
     return `<section class="sc-sec now" aria-labelledby="h-now"><h2 id="h-now"><span class="now-dot" aria-hidden="true"></span>Right now on OpenVibe</h2>
 <p class="sc-lede">What people are streaming, sharing and posting across the network, read from each site within the last minute.</p>
 ${live.length ? rail('Live now', 'https://openvibe.live/', 'All channels on OpenVibe.Live', live) : quiet}
-${rail('Latest recordings', 'https://openvibe.video/', 'Watch on OpenVibe.Video', recs)}
-${rail('New screenshots', 'https://openvibe.community/', 'OpenVibe.Community', shots)}
-${cols.length ? `<div class="now-grid">${cols.join('\n')}</div>` : ''}</section>`;
+${nowParts([
+        ['recs', 'Recordings', rail('Latest recordings', 'https://openvibe.video/', 'Watch on OpenVibe.Video', recs, 'now-recs')],
+        ['shots', 'Screenshots', rail('New screenshots', 'https://openvibe.community/', 'OpenVibe.Community', shots, 'now-shots')],
+        ['posts', 'Posts and jobs', cols.length ? `<div class="now-grid" id="now-posts">${cols.join('\n')}</div>` : ''],
+    ])}</section>`;
+}
+
+// What is new, under what is live. On a phone (600 px and under) the rails and the columns each scroll sideways, and
+// stacked they were about a screen and a half; chips show one at a time (the owner's short-pages rule, 2026-10-30).
+// Radio inputs and :has(), no script, every part still in the page; a wider screen, or a browser without :has(), shows
+// them all and no chips. With one part there is nothing to pick.
+function nowParts(parts) {
+    const shown = parts.filter(([, , html]) => html);
+    if (shown.length < 2) return shown.map(([, , html]) => html).join('\n');
+    const chips = shown.map(([id, label], i) => `<input type="radio" name="now-pick" id="np-${id}" value="${id}"${i === 0 ? ' checked' : ''}><label for="np-${id}">${esc(label)}</label>`).join('');
+    return `<div class="now-pick" role="radiogroup" aria-label="New on OpenVibe">${chips}</div>\n${shown.map(([, , html]) => html.replace(/^<div class="(now-block|now-grid)"/, '<div class="$1" data-now-part')).join('\n')}`;
 }
 
 // The hero's numbers: only what Network read itself within the last minute (server/home/activity.js); a number it
@@ -232,6 +245,17 @@ const CSS = `
 .vcard .now-badge{z-index:1}
 .vcard.now-empty .vc-thumb{border:1px dashed var(--border-light,#2c3d5c);background:transparent}.vcard.now-empty .now-noimg{display:grid;place-items:center;font-size:28px;color:var(--accent-light,#60a5fa);background:transparent}
 .now .now-grid{margin-top:26px}
+.now-pick{display:none}
+@supports selector(:has(*)){@media (max-width:600px){
+.now-pick{display:flex;gap:8px;overflow-x:auto;margin:22px -16px 0;padding:2px 16px 4px;scrollbar-width:none;overscroll-behavior-x:contain}.now-pick::-webkit-scrollbar{display:none}
+.now-pick input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.now-pick label{display:inline-flex;align-items:center;flex:none;min-height:44px;padding:0 15px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));color:var(--text-secondary,#a8b3c4);font-size:13.5px;font-weight:650;white-space:nowrap;cursor:pointer}
+.now-pick input:checked+label{color:var(--text-primary,#e6edf7);border-color:var(--accent,#3b82f6);background:color-mix(in srgb,var(--accent,#3b82f6) 12%,transparent)}
+.now-pick input:focus-visible+label{outline:2px solid var(--accent,#3b82f6);outline-offset:2px}
+.now [data-now-part]{display:none}.now .now-block[data-now-part],.now .now-grid[data-now-part]{margin-top:12px}
+.now:has(#np-recs:checked) #now-recs,.now:has(#np-shots:checked) #now-shots{display:block}.now:has(#np-posts:checked) #now-posts{display:flex}
+.now [data-now-part] .now-head{justify-content:flex-end}.now [data-now-part] .now-head h3{display:none}
+}}
 @media (prefers-reduced-motion:reduce){.vc-thumb img,.vc-play,.vc-play i,.vc-about{transition:none}}
 .now-code{display:inline-block;margin:0 0 3px;padding:1px 7px;border-radius:6px;border:1px dashed var(--accent,#3b82f6);color:var(--accent-light,#60a5fa);font:700 12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px}
 .now-list b{overflow-wrap:anywhere}
