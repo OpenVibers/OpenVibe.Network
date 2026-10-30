@@ -113,9 +113,9 @@ const DEFAULT_GRANTS = [
     // own tokens on their own tenants, not with app keys. Upload also covers the delete of an object.
     ['inventory', 'media.object.upload', 'openvibe.media', ['inventory']],
     // Codes (C8 proof screenshots, the rich embeds of a task) keeps a person's pictures in Media as private objects on
-    // its own tenant, reached with its own token (10-30). Actor is not granted Media yet: Actor hosts people's agents,
-    // and a hosted agent may hold what its host holds (agent-grants.test.js), so a Media grant on Actor would let every
-    // agent read Actor's tenant. Actor's artifacts wait for a host rule that keeps media.* out of what agents inherit.
+    // its own tenant, reached with its own token (10-30). A grant on a host's own tenant never reaches the agents it
+    // hosts: an agent's token names only its project's namespaces (agent-tokens.test.js), so it gets no `actor`.
+    // Actor holds no Media grant for now all the same: its artifacts are in its own database, owner-only (Actor V2-4).
     ...['media.object.upload', 'media.object.read'].map((cap) => ['codes', cap, 'openvibe.media', ['codes']]),
     ['media-hub', 'media.object.upload', 'openvibe.media', ['media-hub']],
     ['media-hub', 'media.object.read', 'openvibe.media', ['media-hub']],

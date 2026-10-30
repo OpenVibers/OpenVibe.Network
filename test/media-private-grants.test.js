@@ -1,8 +1,8 @@
 /**
  * OpenVibe.Codes keeps a person's pictures in Media as private objects (task screenshots, 10-30). Media takes no app
  * keys (C-71), so Codes reaches it with its own Network service token: upload and read, on its own tenant only, and
- * nothing else of Media's. Actor holds no Media grant: it hosts people's agents, and an agent may hold what its host
- * holds, so a Media grant there would open Actor's whole tenant to every agent.
+ * nothing else of Media's. Actor holds no Media grant: its artifacts live in its own database, owner-only (Actor V2-4).
+ * Were it granted one, the agents it hosts would still not reach its tenant (agent-tokens.test.js).
  *
  *   node test/media-private-grants.test.js
  */

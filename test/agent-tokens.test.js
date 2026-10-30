@@ -197,6 +197,8 @@ const U = { owner: jwt.sign({ sub: 10, id: 10 }, keys.privateKey, { algorithm: '
         assert.ok(validate('identity.service-token-claims@1', sc).valid);
         assert.deepStrictEqual([sc.sub, sc.cap, sc.cap_confirm, sc.ns, sc.env, sc.act], [`agent:${S}`, ['media.object.read'], ['media.object.delete'], [P, `app.${P}.*`], 'production', { sub: 'svc:actor' }]);
         assert.deepStrictEqual((await mint('actor', S, { scope: 'media.object.read' })).ns, [P], 'only what the read row names');
+        await db.prepare("UPDATE principal_grants SET namespaces = '[\"actor\"]' WHERE client_id = 'actor'").run();
+        assert.deepStrictEqual((await mint('actor', S)).ns, [], "the host's own tenant never reaches the agents it hosts");
         await db.prepare("UPDATE principal_grants SET namespaces = '[]' WHERE client_id = 'actor'").run();
         assert.deepStrictEqual((await mint('actor', S)).ns, [], 'rows that name no namespace give none');
         await refusedGrant('actor', A, 'invalid_grant');
