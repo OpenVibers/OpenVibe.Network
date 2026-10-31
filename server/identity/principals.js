@@ -660,6 +660,12 @@ const DEFAULT_GRANTS = [
     // Games submits each AI duel as a Bench task, two priced seat entries, and one automatic outcome.
     ...['bench.task.create', 'bench.round.create', 'bench.entry.create', 'bench.judgement.cast']
         .map((cap) => ['games', cap, 'openvibe.bench', []]),
+    // The consent registry (L24, 2026-10-31; contracts 0.256.0): a service asks before it uses a person's content or
+    // likeness for AI or data, through POST /internal/consent/check. These are the first-party services that use
+    // content today; the answer is cached at most 60 s and dropped on network.consent.changed, and a service that
+    // cannot ask treats every purpose as off. None of these rows was ever granted or revoked before, so none needs a
+    // RESTORED_GRANTS entry (that list is only for a default that was once revoked).
+    ...['live', 'vision', 'ai', 'media-hub', 'cam', 'chat', 'actor'].map((svc) => [svc, 'network.consent.read', SELF_AUDIENCE, []]),
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.

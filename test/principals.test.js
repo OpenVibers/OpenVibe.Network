@@ -68,7 +68,7 @@ const server = http.createServer(app);
     const claims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.network' });
     assert.ok(claims.ok, claims.reason);
     assert.strictEqual(claims.claims.sub, 'svc:live');
-    assert.deepStrictEqual(claims.claims.cap, ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.analytics.creator.read', 'network.avatar.write', 'network.coins.credit', 'network.coins.debit', 'network.coins.read', 'network.follows.read', 'network.follows.write', 'network.modules.read', 'network.modules.write', 'network.notifications.push', 'network.registry.read']);
+    assert.deepStrictEqual(claims.claims.cap, ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.analytics.creator.read', 'network.avatar.write', 'network.coins.credit', 'network.coins.debit', 'network.coins.read', 'network.consent.read', 'network.follows.read', 'network.follows.write', 'network.modules.read', 'network.modules.write', 'network.notifications.push', 'network.registry.read']);
     assert.ok(validate('identity.service-token-claims@1', claims.claims).valid);
     assert.ok(claims.claims.exp - claims.claims.iat <= 300, 'short-lived');
     const full = t.body.access_token;
@@ -109,7 +109,9 @@ const server = http.createServer(app);
     for (const [client, secret] of [['vision', 'vision-secret'], ['exchange', 'exchange-secret']]) {
         await db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(secret, client);
         t = await token({ client_id: client, client_secret: secret, audience: 'openvibe.network' });
-        assert.deepStrictEqual(t.body.scope.split(' '), ['network.account.deletion.confirm', 'network.account.export.contribute'], `${client} answers account export and deletion, and holds no identity.subject.resolve`);
+        // Vision also asks the consent check (L24): it may recognise only people who turned it on.
+        const networkCaps = ['network.account.deletion.confirm', 'network.account.export.contribute', ...(client === 'vision' ? ['network.consent.read'] : [])];
+        assert.deepStrictEqual(t.body.scope.split(' '), networkCaps, `${client} answers account export and deletion, and holds no identity.subject.resolve`);
         t = await token({ client_id: client, client_secret: secret, audience: 'openvibe.events' });
         assert.strictEqual(t.body.scope, 'events.subscription.manage', `${client} subscribes to the account events at boot`);
     }
@@ -142,7 +144,7 @@ const server = http.createServer(app);
     // and Live calls Cam's POST /api/v1/stills with it, so Cam holds no such grant and registers no capability.
     await db.prepare("UPDATE oauth_clients SET client_secret = 'cam-secret' WHERE client_id = 'cam'").run();
     t = await token({ client_id: 'cam', client_secret: 'cam-secret', audience: 'openvibe.network' });
-    assert.deepStrictEqual(t.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute'], 'Cam answers account export and deletion and resolves a grant\'s @username');
+    assert.deepStrictEqual(t.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.consent.read'], 'Cam answers account export and deletion, resolves a grant\'s @username, and asks the consent check before recognising a face (L24)');
     t = await token({ client_id: 'cam', client_secret: 'cam-secret', audience: 'openvibe.events' });
     assert.strictEqual(t.body.scope, 'events.subscription.manage', 'Cam subscribes to the account events at boot');
     t = await token({ client_id: 'cam', client_secret: 'cam-secret', audience: 'openvibe.live' });
