@@ -650,6 +650,14 @@ require('./developer/confirmations').start(db);
     app.use('/api/v1/me/dock', require('./dock').router({ dock, requireAuth: requireDock('dock') }));
 }
 
+// The consent registry (L24, 2026-10-31; contracts 0.256.0): every use of a person's content or likeness for AI or
+// data is off until that person turns it on. The person's choices sit behind the session (like the Dock's) and are
+// never cached; services ask the check with a service token holding network.consent.read.
+const consent = require('./consent').createConsent({ db });
+app.use('/api/v1/me/consent', require('./consent').router({ consent, requireAuth }));
+app.use('/internal/consent', require('./identity/principals').guard('network.consent.read'), require('./consent').internalRouter({ consent }));
+
+
 // Notification API (authenticated users)
 app.use('/api/notifications', createNotificationRoutes(db, notificationService, requireAuth, requireDock));
 
@@ -992,6 +1000,12 @@ const server = app.listen(...(socketActivated ? [{ fd: 3 }] : [config.port, conf
         } catch (e) { console.warn('[AccountData] sweep failed:', e.message); }
     };
     timers.push(setTimeout(sweepAccountData, 60 * 1000), setInterval(sweepAccountData, 2 * 60 * 1000));
+    // Consents past their expires_at are marked and emitted (L24). Bookkeeping only: every check already computes
+    // expiry from the row, so a late sweep never changes an answer.
+    const sweepConsent = async () => {
+        try { const n = await consent.sweep(); if (n) console.log(`[Consent] expired ${n} choice(s)`); } catch (e) { console.warn('[Consent] expiry sweep failed:', e.message); }
+    };
+    timers.push(setTimeout(sweepConsent, 30 * 1000), setInterval(sweepConsent, 15 * 60 * 1000));
 
     // Clean expired sessions daily
     timers.push(setInterval(async () => {

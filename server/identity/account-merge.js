@@ -129,6 +129,7 @@ async function merge(db, fromUser, intoUser, { initiatedBy = 'person', actorSubj
     const mergedAt = iso(now);
     const splitUntil = iso(now + SPLIT_DAYS * 86400000);
     const actor = actorSubject || into;
+    let consentEvents = [];
     const run = db.txFn(async () => {
         const pre = {
             user: { ...fromUser, password_hash: undefined },
@@ -162,6 +163,9 @@ async function merge(db, fromUser, intoUser, { initiatedBy = 'person', actorSubj
         }
         const mods = await modules.onSubjectMerged(db, { from, into });
         moved.modules = mods.moved + (mods.filled || 0);
+        // Consent is the person's own and is never assumed: the folded-in account's active choices are revoked
+        // (events by 'merge'), never carried over. The survivor keeps its own choices. Published after this commit.
+        consentEvents = await require('../consent').revokeForMerge(db, from, { at: mergedAt });
         // Follows (Network's since ADR-030), both directions, and blocks: the survivor's pair wins.
         if (await tableExists(db, 'user_follows')) dropped.follows = follows.onSubjectMerged ? (await follows.onSubjectMerged(db, { from, into })).dropped : 0;
         if (await tableExists(db, 'user_blocks')) {
@@ -205,6 +209,8 @@ async function merge(db, fromUser, intoUser, { initiatedBy = 'person', actorSubj
         return await db.prepare('SELECT * FROM account_merges WHERE id = ?').get(mergeId);
     });
     const row = await run();
+    // Never inside the transaction (L24): the revocations and their events are visible together once it commits.
+    await require('../consent').publish(db, consentEvents);
     try { const live = eventRelay.outboxFor(db); if (live) live.kick(); } catch { /* the relay polls anyway */ }
     return resultOf(row, false);
 }

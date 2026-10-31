@@ -190,6 +190,8 @@ async function networkPart(db, userId) {
     // The Dock's state (the Dock plan 2026-10-30, K-D1): the little floating surface every OpenVibe site draws.
     add('dock.json', await tableExists(db, 'dock_states')
         ? await db.prepare('SELECT subject, state, updated_at FROM dock_states WHERE subject = ?').all(u.subject_id) : []);
+    // The consent registry (L24): every choice and every change, the person's own rows (revoked ones included).
+    add('consents.json', await require('../consent').exportOf(db, u.subject_id));
     add('username_history.json', (await rowsOf(db, 'username_history', 'user_id = ?', [u.id], { omit: ['changed_by'] })).rows);
     await byUser('profile_changes.json', 'user_profile_changes');
     await byUser('sign_in_log.json', 'ip_log');
@@ -327,6 +329,7 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
     const at = iso(now);
     const erased = {};
     const count = (k, n) => { if (n) erased[k] = (erased[k] || 0) + n; };
+    let consentEvents = [];
     const run = db.txFn(async () => {
         const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(deletion.user_id);
         if (!user) throw new Error(`account-data: no user ${deletion.user_id}`);
@@ -347,6 +350,9 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         if (await tableExists(db, 'notifications')) await db.prepare(`UPDATE notifications SET sender_id = NULL, sender_name = 'Deleted account', sender_avatar = NULL WHERE sender_id IN ${inU}`).run(...userIds);
         if (await tableExists(db, 'analytics_events')) await db.prepare(`UPDATE analytics_events SET user_id = NULL WHERE user_id IN ${inU}`).run(...userIds);
         await del('user_modules', `subject_id IN ${inS}`, subjects, 'modules');
+        // The consent registry (L24): the account's active choices are revoked (and its aliases' too), but the rows
+        // stay as proof of what was allowed and when; they hold no content. The events go out after this commit.
+        consentEvents = await require('../consent').revokeForDeletion(db, subjects, { at });
         // The Dock's state (the Dock plan 2026-10-30, K-D1): the person's own row, gone with them.
         await del('dock_states', `subject IN ${inS}`, subjects, 'dock_states');
         await del('user_follows', `follower_subject IN ${inS} OR target_id IN ${inS}`, [...subjects, ...subjects], 'follows');
@@ -407,6 +413,8 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         await eventRelay.writerFor(db).enqueue(envelope('network.account.deleted', payload, subject, at));
     });
     await run();
+    // Never inside the transaction: a service that reads the event and asks again must see the revoked rows.
+    await require('../consent').publish(db, consentEvents);
     kick(db);
     return erased;
 }

@@ -264,3 +264,33 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
 .recent-tool-star { border: 0; background: none; color: var(--text-secondary); cursor: pointer; padding: 6px; font-size: 12px; border-radius: 999px; }
 .recent-tool-star[aria-pressed="true"] { color: var(--accent-light); }
 .recent-tool-star:hover, .recent-tool-star:focus-visible { color: var(--accent-light); }
+
+/* Your data choices (L24): kit fold rows, one per purpose. Phone first: one column of equal-weight buttons, never
+   sideways. The kit's own /shared/kit.css draws the fold; these rules only lay out the choice inside it. */
+.consent-fold { margin: 0 0 10px; }
+.consent-fold .ovk-fold-body p { margin: 0 0 8px; }
+.consent-fold .consent-off { color: var(--text-secondary); }
+.consent-label { display: block; margin: 12px 0 6px; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+.consent-kind-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; }
+.consent-kind { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+.consent-kind input, .consent-adult input { width: 18px; height: 18px; flex: none; accent-color: var(--accent); }
+.consent-hint { margin: 4px 0 0; font-size: 12px; }
+.consent-note { margin: 10px 0; font-size: 12px; }
+.consent-licence-field { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 0; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+.consent-licence-field select { min-height: 40px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text); font: inherit; font-weight: 500; }
+.consent-adult { display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 12px 0 0; font-size: 13px; font-weight: 650; color: var(--text); cursor: pointer; }
+.consent-actions { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 14px 0 10px; }
+.consent-actions .btn { width: 100%; min-height: 44px; justify-content: center; margin: 0; }
+.consent-history { list-style: none; margin: 10px 0 0; padding: 0; font-size: 12px; color: var(--text-secondary); }
+.consent-history li { padding: 5px 0; border-top: 1px solid var(--border); }
+.consent-history li:first-child { border-top: 0; }
+.consent-empty { margin: 10px 0 0; font-size: 12px; }
+.consent-status { min-height: 1.2em; margin: 8px 0 0; font-size: 12px; }
+.consent-status.consent-error { color: #ef4444; }
+@media (min-width: 600px) {
+    .consent-kind-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .consent-actions { grid-template-columns: 1fr 1fr; }
+    .consent-licence-field { flex-direction: row; align-items: center; }
+    .consent-licence-field select { flex: 1; min-width: 0; }
+}
+

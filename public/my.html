@@ -31,6 +31,8 @@
 </script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="/css/my.css">
+<!-- The OpenVibe Kit's fold rows on "Your data choices" (L24): /shared/kit.css is the shared kit, nothing global. -->
+<link rel="stylesheet" href="/shared/kit.css">
 </head>
 <body>
 
@@ -266,6 +268,15 @@
 
     <!-- AI & Data Section: the ai.preferences module and every module record kept with this account -->
     <div class="section" id="sec-data">
+        <!-- Your data choices (L24, 2026-10-31): every purpose is off until the person turns it on. One kit fold row
+             per purpose, the wording, the kinds, the 18+ confirmation inside the row, the history, and equal On/Off
+             buttons. Nothing is pre-ticked; the rows are drawn from GET /api/v1/me/consent. -->
+        <div class="card" id="consent-card">
+            <h3><span class="icon"><i class="fa-solid fa-toggle-on"></i></span> Your data choices</h3>
+            <p>AI training, the open dataset, face recognition and apps that use your content are <b>off until you turn them on</b>. Each choice is yours, and you can turn it off again at any time. Nothing here is on by default.</p>
+            <div id="consent-choices"><div class="loading-spinner">Loading your choices…</div></div>
+            <p class="muted consent-status" id="consent-status" role="status"></p>
+        </div>
         <div class="card">
             <h3><span class="icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span> AI preferences</h3>
             <p style="margin-bottom:12px">How OpenVibe AI writes for you when you ask it for something, such as a blog draft. Saved to your account and used on every OpenVibe site.</p>
@@ -385,6 +396,7 @@
 <script src="/js/my/tools.js" defer></script>
 <script src="/js/my/themes.js" defer></script>
 <script src="/js/my/profile.js" defer></script>
+<script src="/js/my/consent.js" defer></script>
 <script src="/js/my/security.js" defer></script>
 <script src="/js/my/approvals.js" defer></script>
 <script src="/js/my/boot.js" defer></script>
