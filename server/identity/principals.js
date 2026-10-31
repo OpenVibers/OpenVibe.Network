@@ -612,6 +612,8 @@ const DEFAULT_GRANTS = [
     // its account-event subscriptions, and the export/deletion pair above. It has no public records, so no Search grant.
     ['vision', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
     ['vision', 'events.subscription.manage', 'openvibe.events', []],
+    // F1: Vision asks the consent check and sends a consent request to a named person who has an account.
+    ['vision', 'network.notifications.push', SELF_AUDIENCE, ['vision']],
     // OpenVibe.Exchange (contracts 0.235.0): its public listings in Search through the owner API (owner exchange), and
     // its account-event subscriptions; its export/deletion pair is above. v1 writes no grant and runs no sandbox code.
     ['exchange', 'search.document.write', 'openvibe.search', []],
@@ -629,6 +631,8 @@ const DEFAULT_GRANTS = [
     // token, so it holds no Media, Live or Pics grant. v1 makes nothing public, so no Search grant.
     ['cam', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['cam', 'events.subscription.manage', 'openvibe.events', []],
+    // F1: Cam pushes one notification per familiar-face event (name, unknown person, package, door).
+    ['cam', 'network.notifications.push', SELF_AUDIENCE, ['cam']],
     // OpenVibe.Report (contracts 0.237.0): it quotes Billing's read API and never computes money, so it holds the
     // stats read and the per-subject balance read; it subscribes to live.stream.ended and the frame beacon at boot.
     // It keeps nothing about people (no database and no account-data route), so it holds neither export nor deletion.
