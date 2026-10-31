@@ -62,6 +62,9 @@ assert.ok(HTML.indexOf('id="today"') < HTML.indexOf('id="settings"') && HTML.ind
 assert.ok(!/user\.email \? ' · '/.test(PROFILE), 'the email is not beside your name (this page may be on a stream)');
 assert.match(BOOT, /loadToday\(\)/, 'boot starts it');
 assert.match(HTML, /id="coins"/, 'the navbar\'s OpenCoins chip (/my#coins) lands on Your money');
+const CSS = fs.readFileSync(path.join(__dirname, '..', 'public/css/my.css'), 'utf8');
+assert.ok(HTML.indexOf('<div class="settings">') < HTML.indexOf('class="section-tabs"') && HTML.indexOf('class="section-tabs"') < HTML.indexOf('id="sec-anon"'), 'the settings are one block: the tabs, then every section');
+assert.match(CSS, /@media \(min-width:1000px\)\{[\s\S]*\.settings\{display:grid;grid-template-columns:208px minmax\(0,1fr\)/, 'on a computer the tabs are a sidebar beside the open section (L43)');
 
 (async () => {
     // ── Everything at once ──
