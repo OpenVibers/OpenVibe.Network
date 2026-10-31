@@ -169,7 +169,7 @@ const DEFAULT_GRANTS = [
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
     ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub',
-        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host', 'domains', 'meme', 'vision', 'exchange', 'fun', 'cam', 'bench'].flatMap((svc) => [
+        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host', 'domains', 'meme', 'vision', 'exchange', 'fun', 'cam', 'bench', 'casino'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
@@ -629,6 +629,8 @@ const DEFAULT_GRANTS = [
     // token, so it holds no Media, Live or Pics grant. v1 makes nothing public, so no Search grant.
     ['cam', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['cam', 'events.subscription.manage', 'openvibe.events', []],
+    // OpenVibe.Casino (contracts 0.264.0): its account-event subscriptions at boot; export and deletion are above.
+    ['casino', 'events.subscription.manage', 'openvibe.events', []],
     // OpenVibe.Report (contracts 0.237.0): it quotes Billing's read API and never computes money, so it holds the
     // stats read and the per-subject balance read; it subscribes to live.stream.ended and the frame beacon at boot.
     // It keeps nothing about people (no database and no account-data route), so it holds neither export nor deletion.
