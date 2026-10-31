@@ -171,7 +171,11 @@ async function redeem(db, body, now = Date.now()) {
             VALUES (?, ?, ?, 'user', ?, ?, 'community', 'active', ?, ?, ?, ?, ?, ?)`)
             .run(principalId, `n-${ulid.toLowerCase()}`, homeCell, row.owner_subject, name, sha256(credential), row.service, row.ref, at, `pairing:${row.id}`, at);
         await t.prepare('UPDATE platform_node_pairings SET principal_id = ? WHERE id = ?').run(principalId, row.id);
-        return { principal: await t.prepare('SELECT * FROM platform_node_principals WHERE id = ?').get(principalId), credential };
+        const principal = await t.prepare('SELECT * FROM platform_node_principals WHERE id = ?').get(principalId);
+        // The machine paired with the person's account (plan L34): the hub's network.machine.paired event, in the
+        // same transaction as the principal it names.
+        await eventRelay.writerFor(db).enqueue(db, pairedEnvelope(principal, { at }));
+        return { principal, credential };
     });
     if (result.error) throw new RegistryError(...result.error);
     return result;
@@ -219,6 +223,23 @@ function reasonOf(raw) {
     const r = text(raw, 500);
     if (!r) throw new RegistryError(400, 'registry.invalid_reason', 'reason must be 1-500 characters');
     return r;
+}
+
+/**
+ * The network.machine.paired@1 envelope for a machine that just redeemed its code (plan L34): the machine paired
+ * with the person's account. Only the ids, the owner and when: never the credential or its hash. The payload
+ * contract is Contracts 0.257.0, so the envelope is checked here and the payload by the tests until the pin moves.
+ */
+function pairedEnvelope(p, { at }) {
+    const payload = { principal_id: p.id, node_id: p.node_id, owner: p.owner_subject, at };
+    const env = {
+        event_id: ids.newId('event', Date.parse(at)), event_type: 'network.machine.paired', version: 1, source: 'network',
+        actor: { type: 'service', id: 'network' }, timestamp: at, visibility: 'internal',
+        subject: { type: 'machine', id: p.id }, payload,
+    };
+    const ev = validate('events.event-envelope@1', env);
+    if (!ev.valid) throw new Error(`node-principals: bad event ${JSON.stringify((ev.errors || []).slice(0, 3))}`);
+    return env;
 }
 
 /**

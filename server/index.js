@@ -500,6 +500,17 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     // The machine itself (slice N4c): its own capabilities and credential, resolved from its node token alone.
     app.use('/api/v1/node/self', require('./identity/principals').guard('network.node.self.manage'), require('./registry/node-principals').selfRouter());
 }
+// The machines hub (plan L34, step M2): a person's machines on openvibe.network/machines. Bot stays the registry
+// underneath; Network fronts it and calls it as the person, so Bot checks the machine is that person's own.
+// The internal route is Bot's report of a machine's state (network.node.manage, the capability it already holds).
+{
+    const machines = require('./registry/machines');
+    const bot = machines.createBotClient({ baseUrl: config.services.bot.internalUrl, privateKey, issuer: config.jwt.issuer });
+    const machineRouters = machines.routers({ bot, requireAuth, publicKey, issuer: config.jwt.issuer });
+    app.use('/api/v1/machines', rateLimit({ windowMs: 60_000, max: 60 }), machineRouters.hub);
+    const machineInternal = machines.internalRouters({ guard: require('./identity/principals').guard('network.node.manage') });
+    app.use('/internal', machineInternal.internal);
+}
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read'), require('./identity/blocks').internalHandler(db));
 // The follow graph (WS-E task 4, ADR-030): public counts, a person's own follows, and who follows a target
 // (its owner, or network.follows.read, service token only). Every change is network.follow.* (server/identity/follows.js).
