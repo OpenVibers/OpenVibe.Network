@@ -208,6 +208,9 @@ const outbox = async (subjectId) => (await db.prepare('SELECT envelope FROM netw
         assert.deepStrictEqual(r.body.allowed, { [faceUser.subject_id]: false }, 'another feature is false');
         r = await call('POST', '/internal/consent/check', { user: null, headers: { authorization: `Bearer ${await serviceToken('live')}` }, body: { purpose: 'face.recognize', feature: 'verify', subjects: [faceUser.subject_id] } });
         assert.deepStrictEqual(r.body.allowed, { [faceUser.subject_id]: true }, 'the chosen feature is true');
+        r = await call('POST', '/internal/consent/check', { user: null, headers: { authorization: `Bearer ${await serviceToken('live')}` }, body: { purpose: 'face.recognize', subjects: [faceUser.subject_id] } });
+        assert.strictEqual(r.status, 422, 'a recognition names its feature');
+        assert.strictEqual(r.body.code, 'consent.feature_required');
 
         // data.public carries the licence of each allowed subject.
         const pubUser = await mk('conspub');

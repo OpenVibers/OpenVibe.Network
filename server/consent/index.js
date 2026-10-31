@@ -374,6 +374,8 @@ function createConsent({ db, emit, now = () => Date.now(), log = console } = {})
         if (!subjects.length) fail(422, 'consent.invalid', 'subjects must name at least one person');
         if (subjects.length > MAX_SUBJECTS) fail(422, 'consent.too_many_subjects', `at most ${MAX_SUBJECTS} subjects a call`);
         if (purpose.id === 'app.data' && !query.client) fail(422, 'consent.client_required', 'app.data needs the app asking (client)');
+        // A recognition always names its feature: a face choice whose features are still empty allows none of them.
+        if (purpose.id === 'face.recognize' && !query.feature) fail(422, 'consent.feature_required', 'face.recognize needs the feature about to run (verify, find, cast or library)');
         const kind = query.kind ? String(query.kind) : null;
         if (kind && !KINDS.includes(kind)) fail(422, 'consent.invalid', 'unknown kind');
         const feature = purpose.id === 'face.recognize' && query.feature ? String(query.feature) : null;
