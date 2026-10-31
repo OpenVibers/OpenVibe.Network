@@ -24,7 +24,7 @@ assert.deepStrictEqual(p.nav.filter(n => n.of).map(n => [n.id, n.of, n.url]), [[
 const at = (id) => p.nav.findIndex(n => n.id === id);
 assert.ok(at('pics') === at('media-hub') + 1 && at('homes') === at('rent') + 1, 'a product follows its site');
 assert.deepStrictEqual([p.nav[at('media-hub')].icon, p.nav[at('media-hub')].group, p.nav[at('homes')].group, p.nav[at('tools')].group], ['video', 'streams', 'shop', 'make'], 'Video draws the video icon (there is no media-hub icon)');
-assert.deepStrictEqual(['actor', 'bot', 'run', 'zone'].map((id) => p.nav[at(id)].group), ['make', 'make', 'build', 'build'], 'agents and robots for people, compute and storage for developers');
+assert.deepStrictEqual(['actor', 'bot', 'run', 'zone', 'codes'].map((id) => p.nav[at(id)].group), ['build', 'make', 'build', 'build', 'make'], 'robots and coding agents for people; the agent engine, compute and storage for developers (plan L39: Actor is the engine Codes, Vibe and the Dock call)');
 // Games together, items with the account, Alerts with the building blocks, files beside Video (each when its site is open).
 [['games', 'games'], ['quest', 'games'], ['inventory', 'people'], ['watch', 'build'], ['download', 'streams'], ['search', 'answers'], ['chat', 'people'], ['domains', 'make'], ['report', 'answers'], ['design', 'make'], ['today', 'answers'], ['surf', 'games'], ['meme', 'games'], ['vision', 'answers'], ['exchange', 'shop'], ['fun', 'games'], ['cam', 'streams'], ['bench', 'build']]
     .filter(([id]) => at(id) >= 0).forEach(([id, group]) => assert.strictEqual(p.nav[at(id)].group, group, `${id} is in ${group}`));
