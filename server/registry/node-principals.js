@@ -228,7 +228,7 @@ function reasonOf(raw) {
 /**
  * The network.machine.paired@1 envelope for a machine that just redeemed its code (plan L34): the machine paired
  * with the person's account. Only the ids, the owner and when: never the credential or its hash. The payload
- * contract is Contracts 0.258.0, so the envelope is checked here and the payload by the tests until the pin moves.
+ * contract is Contracts 0.261.0, so the envelope is checked here and the payload by the tests.
  */
 function pairedEnvelope(p, { at }) {
     const payload = { principal_id: p.id, node_id: p.node_id, owner: p.owner_subject, at };

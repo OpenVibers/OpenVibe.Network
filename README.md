@@ -73,9 +73,9 @@ Implemented here (the service manifest's `capabilities`, audience `openvibe.netw
 `network.project.manage|read`, `network.secret.use`, `network.staff.read` and `network.status.incident`. The grants other
 services hold are seeded in [server/identity/principals.js](server/identity/principals.js).
 
-The hub's own two, `network.machines.read` and `network.machines.manage` (Contracts 0.258.0), are new here and are
-checked by name until this checkout pins that release: the pinned contracts do not know them yet, and the pin round
-that follows brings them in (see [server/registry/machines.js](server/registry/machines.js)).
+The hub's own two, `network.machines.read` and `network.machines.manage` (Contracts 0.261.0), are checked by name
+here, next to the token and the consent: the check is the same one the contracts' own guard makes, and this one also
+holds the app's consent and the person's own session (see [server/registry/machines.js](server/registry/machines.js)).
 
 Called elsewhere: Network is the issuer, so it signs its own `svc:network` tokens: `events.event.publish`
 (and `events.delivery.admin` for the admin Events views) at OpenVibe.Events, `ai.run.create` /

@@ -41,9 +41,10 @@ const KINDS = new Set(['onboard', 'bridge', 'server']);
 const TOKEN_TTL_S = 300;
 
 /**
- * The catalogue of machine roles while the pinned contracts are older than 0.258.0. Keep it in step with the
- * products' manifests (registry.service-manifest@1's machineRoles), which is where the catalogue lives from
- * that release on: each product declares the roles it installs, and the hub shows the union.
+ * The catalogue of machine roles, for a pin that does not carry the products' manifests. This checkout pins
+ * Contracts 0.261.0, where the catalogue lives: each product declares the roles it installs
+ * (registry.service-manifest@1's machineRoles) and the hub shows the union. The copy below is the fallback for
+ * an older pin; keep it in step with the manifests.
  */
 const LOCAL_ROLES = [
     { id: 'codes.worker', name: 'Codes worker', installs: 'the Codes job runner (the coding agent and the job sandbox)', shows: 'Runs your coding jobs, such as a task you start on openvibe.codes.' },
@@ -52,7 +53,7 @@ const LOCAL_ROLES = [
     { id: 'bot.robot', name: 'Robot', installs: 'the robot drivers the profile asks for', shows: 'Drives a robot, and takes its commands.' },
 ];
 
-/** The roles the products declare (Contracts 0.258.0), or the local copy while the pin is older. */
+/** The roles the products declare (Contracts 0.261.0), or the local copy when the pin does not carry them. */
 function catalogue() {
     let declared = [];
     try {
@@ -172,8 +173,8 @@ function envelope(type, { actor, subject, payload, at }) {
 }
 
 /**
- * Publish a machine event into the outbox (OpenVibe.Events). The payload contracts are Contracts 0.258.0; while
- * the pin is older they are written by hand and checked by the tests, and the contract check turns on with the pin.
+ * Publish a machine event into the outbox (OpenVibe.Events). The payload contracts are Contracts 0.261.0: the
+ * envelope is checked against its contract here, the payload by the tests.
  */
 async function publish(db, type, { actor, subject, payload, at }) {
     const env = envelope(type, { actor, subject, payload, at });
@@ -186,10 +187,10 @@ async function publish(db, type, { actor, subject, payload, at }) {
 /**
  * The guard for a hub route: the person's own session, or a token that names a person and holds the capability.
  *
- * The capabilities network.machines.read and network.machines.manage are new in Contracts 0.258.0, which this
- * checkout does not pin yet, so the capability is checked by name (capabilities.grants is a plain string check)
- * and the token is verified here. When the pin moves, the contracts' own guard (principals.guard) takes over and
- * this one goes with it.
+ * The capabilities network.machines.read and network.machines.manage are in Contracts 0.261.0, which this checkout
+ * pins, so the capability is checked by name (capabilities.grants is a plain string check, the same one the
+ * contracts' own guard makes) and the token is verified here: this guard also holds the app's consent and the
+ * person's own session, which the contracts' guard does not.
  */
 function hubGuard(capability, { db, publicKey, issuer, requireAuth }) {
     return async function hubGuardMiddleware(req, res, next) {

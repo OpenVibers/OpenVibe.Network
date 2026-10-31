@@ -175,7 +175,8 @@ try {
     // ── The catalogue: the four roles the products declare. ──
     const cat = await call('GET', '/api/v1/machines/roles', { user: ana });
     assert.strictEqual(cat.status, 200);
-    assert.deepStrictEqual(cat.body.roles.map((r) => r.id), ['codes.worker', 'desks.host', 'ai.host', 'bot.robot']);
+    // The four roles the products declare; the order is the manifests' own, so the set is what matters.
+    assert.deepStrictEqual(cat.body.roles.map((r) => r.id).sort(), ['ai.host', 'bot.robot', 'codes.worker', 'desks.host']);
     for (const r of cat.body.roles) {
         assert.ok(r.name && r.installs && r.shows, `the role ${r.id} says what it is`);
     }
