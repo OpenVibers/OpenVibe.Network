@@ -142,6 +142,14 @@ const server = http.createServer(app);
     // OpenVibe.Cam (contracts 0.237.0): the export/deletion pair, identity.subject.resolve for a grant's @username,
     // and its account-event subscriptions. Media's frame, Live's stream read and Pics take the viewer's own token,
     // and Live calls Cam's POST /api/v1/stills with it, so Cam holds no such grant and registers no capability.
+    // OpenVibe.Casino (contracts 0.264.0): its Events subscriptions at boot and the account export/deletion pair; it
+    // resolves no subjects and writes nothing to Search.
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'casino-secret' WHERE client_id = 'casino'").run();
+    t = await token({ client_id: 'casino', client_secret: 'casino-secret', audience: 'openvibe.events' });
+    assert.strictEqual(t.body.scope, 'events.subscription.manage', 'Casino subscribes to the account events at boot');
+    t = await token({ client_id: 'casino', client_secret: 'casino-secret', audience: 'openvibe.network' });
+    assert.deepStrictEqual(t.body.scope.split(' '), ['network.account.deletion.confirm', 'network.account.export.contribute'], 'Casino answers account export and deletion, and holds no identity.subject.resolve');
+
     await db.prepare("UPDATE oauth_clients SET client_secret = 'cam-secret' WHERE client_id = 'cam'").run();
     t = await token({ client_id: 'cam', client_secret: 'cam-secret', audience: 'openvibe.network' });
     assert.deepStrictEqual(t.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.consent.read'], 'Cam answers account export and deletion, resolves a grant\'s @username, and asks the consent check before recognising a face (L24)');

@@ -140,6 +140,8 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'fun', name: 'OpenVibe.Fun', redirect_uris: ['https://openvibe.fun/auth/callback'] },
             // The camera app, a private wall for cameras people own, and the still Live's cam button takes.
             { client_id: 'cam', name: 'OpenVibe.Cam', redirect_uris: ['https://openvibe.cam/auth/callback'] },
+            // Learn it, play it, never pay it (plan 5.14): sign-in only; no money and nothing personal is kept.
+            { client_id: 'casino', name: 'OpenVibe.Casino', redirect_uris: ['https://openvibe.casino/auth/callback'] },
             // The shared AI benchmark and comparison engine; a developer service at bench.openvibe.services.
             { client_id: 'bench', name: 'OpenVibe.Bench', redirect_uris: ['https://bench.openvibe.services/auth/callback'] },
             // Sources' merchant opt-in pages sign a source owner in (scope profile, no site of their own).
