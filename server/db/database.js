@@ -128,6 +128,8 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'surf', name: 'OpenVibe.Surf', redirect_uris: ['https://openvibe.surf/auth/callback'] },
             // The Domains control panel (plan 2026-10-28 §5.1, DOM-2): a person's connections and proposals.
             { client_id: 'domains', name: 'OpenVibe.Domains', redirect_uris: ['https://openvibe.domains/auth/callback'] },
+            // Every number on OpenVibe, and your own (plan L41): the client exists as Report's principal (its Billing reads).
+            { client_id: 'report', name: 'OpenVibe.Report', redirect_uris: ['https://openvibe.report/auth/callback'] },
             // The open meme database: a signed-in front for votes, captions and reports.
             { client_id: 'meme', name: 'OpenVibe.Meme', redirect_uris: ['https://openvibe.meme/auth/callback'] },
             // Ask a picture, compare models and check a page's UI (plan 2026-10-28 §5.8); Design's Arena calls its UI check.

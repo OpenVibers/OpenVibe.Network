@@ -22,12 +22,22 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-<!-- Critical theme bootstrap (ov-theme-boot) — MUST stay inline and above the stylesheets.
-     Paints the cached theme synchronously so the default palette never flashes. Reads
-     localStorage only: no network, nothing to block on. theme-loader.js still runs after
-     and reconciles with the account. -->
+<!-- The look before first paint (ov-theme-boot): MUST stay ABOVE the stylesheets. server/look-boot.js puts
+     openvibe-shared's look-boot here: it paints the look this browser last painted here (ov_paint), or the one a
+     link from another OpenVibe page carried (?ov_look=), with the display settings (the season switch among them).
+     theme-loader.js loads with defer, so without it the default palette (or an old season) showed first. -->
+<!--ov:look-boot-->
 <script>
-(function(){try{var raw=localStorage.getItem('ov_theme');if(!raw)return;var t=JSON.parse(raw),v=t&&t.variables;if(!v)return;var el=document.documentElement;for(var k in v)if(k.charAt(0)==='-')el.style.setProperty(k,v[k]);if(t.id)el.setAttribute('data-theme',t.id);}catch(_){}})();
+// A browser from before look-boot has only its theme (ov_theme), not yet a painted look (ov_paint): paint that once.
+(function () {
+    try {
+        if (localStorage.getItem('ov_paint')) return;
+        var t = JSON.parse(localStorage.getItem('ov_theme') || 'null'), v = t && t.variables, el = document.documentElement;
+        if (!v) return;
+        for (var k in v) if (k.charAt(0) === '-' && /^[#0-9a-z(),.%\s-]{1,80}$/i.test(String(v[k])) && !/url|expression/i.test(String(v[k]))) el.style.setProperty(k, v[k]);
+        if (t.id && /^[a-z0-9-]{1,40}$/.test(t.id)) el.setAttribute('data-theme', t.id);
+    } catch (_) { /* nothing kept: theme-loader.js paints shortly */ }
+})();
 </script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="/css/my.css">
@@ -43,25 +53,52 @@
     <div class="page-header" id="page-header">
         <img class="avatar" id="user-avatar" src="" alt="">
         <div class="info">
+            <div class="greeting" id="user-greeting"></div>
             <h1 id="user-name">Loading...</h1>
             <div class="subtitle" id="user-subtitle"></div>
             <div class="badges" id="user-badges"></div>
         </div>
+        <a class="btn btn-outline td-settings-btn" href="#settings"><i class="fa-solid fa-gear" aria-hidden="true"></i> Settings</a>
     </div>
 
-    <div class="dashboard-showcase">
-        <div class="showcase-header">
-            <h2>Quick Access</h2>
-            <p>Your favorite services at a glance</p>
+    <!-- You, today (plan L43): what is happening for you now, what you were doing, your money, your sites and your
+         numbers. my/today.js fills each block from its own API; a block with nothing in it stays out. -->
+    <div class="td" id="today">
+        <section class="td-sec" id="td-now" hidden aria-labelledby="td-now-h">
+            <div class="td-h"><h2 id="td-now-h"><span class="td-pulse" aria-hidden="true"></span>Live now</h2><span class="td-sub" id="td-now-sub"></span></div>
+            <div class="td-rail" id="td-live"></div>
+        </section>
+        <div class="td-chips" id="td-chips" hidden></div>
+        <section class="td-sec" id="td-continue" hidden aria-labelledby="td-continue-h">
+            <div class="td-h"><h2 id="td-continue-h">Pick up where you left off</h2><a class="td-more" href="#history" onclick="showSection('history');document.getElementById('settings').scrollIntoView({behavior:'smooth'});return false">History</a></div>
+            <div class="td-rail" id="td-continue-list"></div>
+        </section>
+        <div class="td-grid">
+            <section class="td-box" id="td-sites" hidden aria-labelledby="td-sites-h">
+                <div class="td-h"><h2 id="td-sites-h">Your sites</h2><a class="td-more" href="/sites">All sites</a></div>
+                <div class="td-sites" id="td-sites-grid"></div>
+                <div class="td-tries" id="td-try" hidden></div>
+            </section>
+            <section class="td-box td-money" id="coins" hidden aria-labelledby="td-money-h">
+                <div class="td-h"><h2 id="td-money-h">Your money</h2><a class="td-more" href="https://openvibe.live/#vibes">Add Vibes</a></div>
+                <div class="td-bal"><span class="td-coin" aria-hidden="true"></span><b id="td-coins">0</b><span>OpenCoins</span></div>
+                <div class="td-bal" id="td-vibes-row" hidden><span class="td-coin td-coin-v" aria-hidden="true"></span><b id="td-vibes">0</b><span>Vibes</span></div>
+                <p class="td-sub" id="td-money-last" hidden></p>
+                <div class="td-money-acts"><a class="td-chip" href="https://openvibe.tips"><i class="fa-solid fa-hand-holding-heart" aria-hidden="true"></i> Tip a creator</a></div>
+            </section>
         </div>
-        <div class="showcase-grid" id="my-showcase-grid"></div>
-        <div class="quick-access" id="my-quick-access"></div>
         <div class="recent-tools" id="my-recent-tools" hidden>
             <h3><i class="fa-solid fa-screwdriver-wrench"></i> Your tools</h3>
             <div class="recent-tools-list" id="my-recent-tools-list"></div>
             <p class="recent-tools-status" id="my-recent-tools-status" role="status"></p>
         </div>
+        <div class="td-stuff">
+            <div class="td-stats" id="td-stuff-row"></div>
+            <a class="td-more" href="https://openvibe.report/you">Your numbers on openvibe.report <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        </div>
     </div>
+
+    <h2 class="settings-h" id="settings">Settings</h2>
 
     <div class="section-tabs">
         <button class="active" onclick="showSection('profile',this)"><i class="fa-solid fa-user"></i> Profile</button>
@@ -394,6 +431,7 @@
 
 <script src="/js/my/core.js" defer></script>
 <script src="/js/my/tools.js" defer></script>
+<script src="/js/my/today.js" defer></script>
 <script src="/js/my/themes.js" defer></script>
 <script src="/js/my/profile.js" defer></script>
 <script src="/js/my/consent.js" defer></script>
