@@ -125,6 +125,22 @@ async function overrideOf(db, userId, service) {
     } catch { return null; /* the table arrives with migration 0028 */ }
 }
 
+// ── When the account's look was chosen (plan L42, Shared 4.64.0) ──
+// Each site keeps its own copy of the look, so every copy is dated and the newest wins: a write older than the account's
+// copy is refused (the answer says so and carries the newer copy), and /me/active hands out both dates. Dates are ms
+// since the epoch; a date ahead of this server's clock (a fast device clock) counts as at most a minute ahead.
+const lookAt = (v) => { const n = Math.floor(Number(v)); const now = Date.now(); return Number.isFinite(n) && n > 0 ? Math.min(n, now + 60000) : now; };
+async function lookDates(db, userId) {
+    try {
+        const row = await db.prepare('SELECT display_at, theme_at FROM user_preferences WHERE user_id = ?').get(userId);
+        return { display_at: Number(row && row.display_at) || 0, theme_at: Number(row && row.theme_at) || 0 };
+    } catch { return { display_at: 0, theme_at: 0 }; /* the columns arrive with migration 0034 */ }
+}
+async function setLookDate(db, userId, column, at) {
+    if (column !== 'display_at' && column !== 'theme_at') throw new Error('not a look date');
+    try { await db.prepare(`UPDATE user_preferences SET ${column} = ? WHERE user_id = ?`).run(at, userId); } catch { /* migration 0034 */ }
+}
+
 // ── Get User's Active Theme ──────────────────────────────────
 // A request with no credentials at all is a guest asking "do I have a theme?": answer "no" with
 // a 200 so every page view by a guest does not log a failed request in the console.
@@ -143,12 +159,14 @@ router.get('/me/active', (req, res, next) => {
     const prefs = await db.prepare('SELECT theme_id, custom_theme_variables FROM user_preferences WHERE user_id = ?').get(userId);
     let display = null;
     try { const d = await db.prepare('SELECT display_prefs FROM user_preferences WHERE user_id = ?').get(userId); display = cleanDisplay(d && d.display_prefs ? JSON.parse(d.display_prefs) : null); } catch { /* column arrives with the migration */ }
-    if (override) return res.json({ theme_id: override.theme_id, custom_variables: varsOf(override.custom_variables), display, override: true, service });
+    const { display_at, theme_at } = await lookDates(db, userId);
+    const dated = { ...(display_at ? { display_at } : {}) };
+    if (override) return res.json({ theme_id: override.theme_id, custom_variables: varsOf(override.custom_variables), display, ...dated, override: true, service });
     if (!prefs) return res.json({ theme_id: 'vibe', custom_variables: null, override: false });
 
     let custom = null;
     try { custom = prefs.custom_theme_variables ? JSON.parse(prefs.custom_theme_variables) : null; } catch {}
-    res.json({ theme_id: prefs.theme_id, custom_variables: custom, display, override: false });
+    res.json({ theme_id: prefs.theme_id, custom_variables: custom, display, ...dated, ...(theme_at ? { theme_at } : {}), override: false });
 });
 
 // ── Display preferences — follow the account to every site ──
@@ -171,9 +189,18 @@ router.put('/me/display', requireAuth, async (req, res) => {
     const db = await getDb(req);
     const userId = req.user.sub || req.user.id;
     const display = cleanDisplay(req.body) || {};
+    const at = lookAt(req.body && req.body.at);
+    const { display_at } = await lookDates(db, userId);
+    if (display_at && display_at > at) {
+        // A stale tab or a slow request: the account already holds a newer choice, which stays (and is the answer).
+        const d = await db.prepare('SELECT display_prefs FROM user_preferences WHERE user_id = ?').get(userId);
+        let kept = null; try { kept = cleanDisplay(d && d.display_prefs ? JSON.parse(d.display_prefs) : null); } catch { /* */ }
+        return res.json({ ok: true, stale: true, display: kept || {}, display_at });
+    }
     await db.prepare(`INSERT INTO user_preferences (user_id, display_prefs, updated_at) VALUES (?, ?, ov_now())
         ON CONFLICT(user_id) DO UPDATE SET display_prefs = excluded.display_prefs, updated_at = ov_now()`).run(userId, JSON.stringify(display));
-    res.json({ ok: true, display });
+    await setLookDate(db, userId, 'display_at', at);
+    res.json({ ok: true, display, display_at: at });
 });
 
 // ── Your sites in the site switcher (openvibe-shared switcher.js, 2026-10-30) ──
@@ -255,6 +282,12 @@ router.put('/me', requireAuth, async (req, res) => {
     const db = await getDb(req);
     const userId = req.user.sub || req.user.id;
     const { theme_id, custom_variables } = req.body;
+    const at = lookAt(req.body && req.body.at);
+    const { theme_at } = await lookDates(db, userId);
+    if (theme_at && theme_at > at) {
+        const kept = await db.prepare('SELECT theme_id, custom_theme_variables FROM user_preferences WHERE user_id = ?').get(userId);
+        return res.json({ success: true, stale: true, theme_id: kept && kept.theme_id, custom_variables: varsOf(kept && kept.custom_theme_variables), theme_at });
+    }
 
     ensureReview(db);
     if (theme_id) {
@@ -285,7 +318,8 @@ router.put('/me', requireAuth, async (req, res) => {
         req.body.custom_variables ? JSON.stringify(req.body.custom_variables) : null
     );
 
-    res.json({ success: true, theme_id, custom_variables: req.body.custom_variables || null });
+    await setLookDate(db, userId, 'theme_at', at);
+    res.json({ success: true, theme_id, custom_variables: req.body.custom_variables || null, theme_at: at });
 });
 
 // ── Per-site theme overrides ─────────────────────────────────
