@@ -20,6 +20,9 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
 const config = require('./config');
+// The look before first paint (openvibe-shared look-boot, plan L42): the public pages carry a marker and this
+// puts openvibe-shared's script there, so a page paints the kept or carried look before its first frame.
+const lookBoot = require('./look-boot');
 const { initDb } = require('./db/database');
 const urlRegistry = require('./url-registry');
 const { BRAND } = require('openvibe-shared/brand');
@@ -81,11 +84,11 @@ function redirectWithoutHtml(req, res, targetPath) {
 }
 
 function sendMyAccountApp(res) {
-    return res.sendFile(path.join(__dirname, '..', 'public', 'my.html'));
+    return lookBoot.send(res, 'my.html');
 }
 
 function sendLandingPage(res) {
-    return res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+    return lookBoot.send(res, 'index.html');
 }
 
 // ── Security ─────────────────────────────────────────────────
@@ -518,6 +521,8 @@ app.get('/internal/blocks', require('./identity/principals').guard('network.bloc
     const followRouters = require('./identity/follows').routers({ requireAuth, followsGuard: require('./identity/principals').guard('network.follows.read') });
     app.use('/api/v1/me/follows', rateLimit({ windowMs: 60_000, max: 120 }), followRouters.me);
     app.use('/api/v1/follows', rateLimit({ windowMs: 60_000, max: 300 }), followRouters.pub);
+    // Your account home's "Now" (L43): the people you follow who are live, from Live's public list (held 10 s).
+    app.use('/api/v1/me/live-follows', rateLimit({ windowMs: 60_000, max: 60 }), require('./today/live-follows').router({ requireAuth, liveUrl: config.services.live.internalUrl }));
     // ADR-030 step 4: products record follows on a person's behalf (network.follows.write, service token only).
     app.use('/internal/follows', require('./identity/principals').guard('network.follows.write'), followRouters.internal);
     // A follow that starts notifies the followed person (FOLLOW), in the follow's transaction.
@@ -853,7 +858,7 @@ app.get(require('./not-found').ACCOUNT_HUB_PATHS, (req, res) => {
 app.get('/verify-email', (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Robots-Tag', 'noindex');
-    res.sendFile(path.join(__dirname, '..', 'public', 'verify-email.html'));
+    lookBoot.send(res, 'verify-email.html');
 });
 
 // FedCM identity provider (browser-native sign-in for the other OpenVibe sites) — server/auth/fedcm.js
@@ -873,9 +878,12 @@ app.get('/sso/check', require('./auth/sso-check').createSsoCheckRoute(() => ({ d
 app.get(['/sso/fanout', '/sso/fanout.html'], (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Robots-Tag', 'noindex');
-    res.sendFile(path.join(__dirname, '..', 'public', 'sso-fanout.html'));
+    lookBoot.send(res, 'sso-fanout.html');
 });
 
+// The public pages carry the look before first paint; the ones the static file server would answer by their own
+// file name (public/*.html) get it here, ahead of express.static below (plan L42).
+app.use(lookBoot.middleware());
 app.use(express.static(path.join(__dirname, '..', 'public'), { setHeaders: require('./static-headers').publicStaticHeaders }));
 
 // openvibe-shared: the OpenVibe.Shared release package.json pins, from node_modules.
@@ -949,7 +957,7 @@ app.get(['/login', '/forgot-password', '/reset-password'], (req, res) => {
 // Admin panel — serve the SPA for /admin and any client-routed sub-path
 // (e.g. /admin/settings, /admin/analytics/overview). Auth is checked client-side.
 app.get(['/admin', '/admin/*'], (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'public', 'admin.html'));
+    lookBoot.send(res, 'admin.html');
 });
 
 // Anything no route above answered is a 404: JSON under /api, /internal and /oauth, otherwise a small

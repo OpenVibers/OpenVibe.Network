@@ -109,11 +109,11 @@ function renderHeader(user) {
     document.getElementById('user-name').textContent = user.display_name || user.username;
     document.getElementById('user-subtitle').textContent = user.is_anon
         ? `Anonymous identity${user.anon_number ? ' · #' + user.anon_number : ''}`
-        : '@' + user.username + (user.email ? ' · ' + user.email : '');
+        : '@' + user.username;   // never the email: this page may be on a stream (it is in Profile below)
     const badges = document.getElementById('user-badges');
     badges.innerHTML = user.is_anon
         ? `<span class="badge badge-anon">anonymous</span>`
-        : `<span class="badge badge-${user.role}">${user.role}</span>`;
+        : (user.role && user.role !== 'user' ? `<span class="badge badge-${user.role}">${user.role.replace(/_/g, ' ')}</span>` : '');
     if (user.anon_number) badges.innerHTML += `<span class="badge badge-anon">Anon #${user.anon_number}</span>`;
 }
 

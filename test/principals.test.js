@@ -30,7 +30,7 @@ await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, red
 // Events is created the same way (setup/service-principal.js); it is a usage producer with its own token.
 await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('events', 'events-secret', 'OpenVibe.Events', '[]', 1) ON CONFLICT DO NOTHING").run();
 // Report is a service principal too (it signs people in nowhere): its client comes from setup/service-principal.js.
-await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('report', 'report-secret', 'OpenVibe.Report', '[]', 1) ON CONFLICT DO NOTHING").run();
+await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('report', 'report-secret', 'OpenVibe.Report', '[]', 1) ON CONFLICT (client_id) DO UPDATE SET client_secret = excluded.client_secret").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'ai-secret' WHERE client_id = 'ai'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'bot-secret' WHERE client_id = 'bot'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'tips-secret' WHERE client_id = 'tips'").run();
