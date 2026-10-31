@@ -9,7 +9,7 @@ const os = require('os');
 const path = require('path');
 const http = require('http');
 const express = require('express');
-const { serviceAuth, validate } = require('openvibe-contracts');
+const { serviceAuth, validate, ids } = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 
 (async () => {
@@ -45,6 +45,10 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.locals.db = db;
+app.locals.notificationService = {
+    create: async (data) => ({ id: 'ntf_principals', user_id: data.user_id, type: data.type, title: data.title }),
+    createBulk: async (ids, data) => ids.map((id) => ({ id: `ntf_${id}`, user_id: id, type: data.type })),
+};
 app.locals.config = { jwt: { issuer: ISSUER, accessTokenExpiry: '1h' } };
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
@@ -110,7 +114,7 @@ const server = http.createServer(app);
         await db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(secret, client);
         t = await token({ client_id: client, client_secret: secret, audience: 'openvibe.network' });
         // Vision also asks the consent check (L24): it may recognise only people who turned it on.
-        const networkCaps = ['network.account.deletion.confirm', 'network.account.export.contribute', ...(client === 'vision' ? ['network.consent.read'] : [])];
+        const networkCaps = ['network.account.deletion.confirm', 'network.account.export.contribute', ...(client === 'vision' ? ['network.consent.read', 'network.notifications.push'] : [])];
         assert.deepStrictEqual(t.body.scope.split(' '), networkCaps, `${client} answers account export and deletion, and holds no identity.subject.resolve`);
         t = await token({ client_id: client, client_secret: secret, audience: 'openvibe.events' });
         assert.strictEqual(t.body.scope, 'events.subscription.manage', `${client} subscribes to the account events at boot`);
@@ -144,7 +148,7 @@ const server = http.createServer(app);
     // and Live calls Cam's POST /api/v1/stills with it, so Cam holds no such grant and registers no capability.
     await db.prepare("UPDATE oauth_clients SET client_secret = 'cam-secret' WHERE client_id = 'cam'").run();
     t = await token({ client_id: 'cam', client_secret: 'cam-secret', audience: 'openvibe.network' });
-    assert.deepStrictEqual(t.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.consent.read'], 'Cam answers account export and deletion, resolves a grant\'s @username, and asks the consent check before recognising a face (L24)');
+    assert.deepStrictEqual(t.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.consent.read', 'network.notifications.push'], 'Cam answers account export and deletion, resolves a grant\'s @username, and asks the consent check before recognising a face (L24)');
     t = await token({ client_id: 'cam', client_secret: 'cam-secret', audience: 'openvibe.events' });
     assert.strictEqual(t.body.scope, 'events.subscription.manage', 'Cam subscribes to the account events at boot');
     t = await token({ client_id: 'cam', client_secret: 'cam-secret', audience: 'openvibe.live' });
@@ -254,6 +258,16 @@ const server = http.createServer(app);
     assert.notStrictEqual(r.status, 403, `network.notifications.push opens push for app search: ${JSON.stringify(r.body)}`);
     r = await post('/internal/notifications/push', { user_id: 7, title: 'x', service: 'live' }, { authorization: `Bearer ${searchToken}` });
     assert.strictEqual(r.status, 403, 'search may only push for its own app'); assert.strictEqual(r.body.code, 'capability.owner_denied');
+    // F1: a service that knows the canonical subject (Vision's consent request, Cam's event alert) can name it
+    // instead of the numeric id; the notification still belongs to that account.
+    const subject = ids.newId('user');
+    await db.prepare('UPDATE users SET subject_id = ? WHERE id = 7').run(subject);
+    const camToken = (await token({ client_id: 'cam', client_secret: 'cam-secret', audience: 'openvibe.network' })).body.access_token;
+    r = await post('/internal/notifications/push', { subject, type: 'CAM_EVENT', category: 'cam', title: 'Package left', service: 'cam' }, { authorization: `Bearer ${camToken}` });
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    assert.strictEqual(r.body.notification.user_id, 7);
+    r = await post('/internal/notifications/push', { subject: ids.newId('user'), title: 'x', service: 'cam' }, { authorization: `Bearer ${camToken}` });
+    assert.strictEqual(r.status, 404, 'an unknown subject is not turned into a notification');
     r = await post('/internal/user-avatar', { user_id: 7, avatar_url: null }, { authorization: `Bearer ${creditOnly}` });
     assert.strictEqual(r.status, 403, 'a token without network.avatar.write');
     r = await post('/internal/coins/credit', credit(), { authorization: 'Bearer not-a-jwt' });
