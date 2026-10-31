@@ -606,8 +606,11 @@ const DEFAULT_GRANTS = [
     ['domains', 'events.subscription.manage', 'openvibe.events', []],
     // OpenVibe.Meme (contracts 0.234.0): its public entries in Search through the owner API (owner meme), and its
     // account-event subscriptions at boot; its export and deletion grants are with the other services' above.
+    // It also runs OpenVibe.AI's generate operation (the judge that scores a candidate from its own citations and
+    // writes the entry, and the writing pass for the encyclopedia), the same way Design and Bench do.
     ['meme', 'search.document.write', 'openvibe.search', []],
     ['meme', 'events.subscription.manage', 'openvibe.events', []],
+    ['meme', 'ai.run.create', 'openvibe.ai', ['ai.generate']],
     // OpenVibe.Vision (contracts 0.235.0): model calls through AI's OpenAI-compatible endpoint (workflow ai.complete),
     // its account-event subscriptions, and the export/deletion pair above. It has no public records, so no Search grant.
     ['vision', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
