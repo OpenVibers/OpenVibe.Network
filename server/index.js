@@ -507,6 +507,8 @@ app.get('/internal/blocks', require('./identity/principals').guard('network.bloc
     const followRouters = require('./identity/follows').routers({ requireAuth, followsGuard: require('./identity/principals').guard('network.follows.read') });
     app.use('/api/v1/me/follows', rateLimit({ windowMs: 60_000, max: 120 }), followRouters.me);
     app.use('/api/v1/follows', rateLimit({ windowMs: 60_000, max: 300 }), followRouters.pub);
+    // Your account home's "Now" (L43): the people you follow who are live, from Live's public list (held 10 s).
+    app.use('/api/v1/me/live-follows', rateLimit({ windowMs: 60_000, max: 60 }), require('./today/live-follows').router({ requireAuth, liveUrl: config.services.live.internalUrl }));
     // ADR-030 step 4: products record follows on a person's behalf (network.follows.write, service token only).
     app.use('/internal/follows', require('./identity/principals').guard('network.follows.write'), followRouters.internal);
     // A follow that starts notifies the followed person (FOLLOW), in the follow's transaction.
