@@ -7,8 +7,8 @@
 let consentDoc = null;
 
 const CONSENT_KIND_LABEL = {
-    streams: 'streams', vods: 'VODs', clips: 'clips', voice: 'voice', chat: 'chat',
-    posts: 'posts', pictures: 'pictures', code: 'code',
+    streams: 'Streams', vods: 'VODs', clips: 'Clips', voice: 'Voice', chat: 'Chat',
+    posts: 'Posts', pictures: 'Pictures', code: 'Code',
 };
 const CONSENT_BY_LABEL = {
     person: 'you', app_revoked: 'the app revoked', merge: 'an account merge', deletion: 'account deletion', import: 'an import',
@@ -71,8 +71,8 @@ function consentRow(purpose) {
             ${purpose.cannot_undo ? `<p class="ovk-muted"><b>What turning it off cannot undo:</b> ${consentEsc(purpose.cannot_undo)}</p>` : ''}
             ${kinds}${licence}${vision}${appNote}${adult}
             <div class="consent-actions">
-                <button type="button" class="btn consent-on" data-consent-on${onDisabled}>On</button>
-                <button type="button" class="btn consent-off-btn" data-consent-off>Off</button>
+                <button type="button" class="btn consent-on" data-consent-on aria-pressed="${active.length ? 'true' : 'false'}"${onDisabled}>On</button>
+                <button type="button" class="btn consent-off-btn" data-consent-off aria-pressed="${active.length ? 'false' : 'true'}">Off</button>
             </div>
             ${consentHistoryList(purpose.id)}
         </div>
