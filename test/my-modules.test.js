@@ -12,7 +12,7 @@ for (const [, body] of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) as
 
 const files = fs.readdirSync(path.join(pub, 'js', 'my')).filter((f) => f.endsWith('.js')).sort();
 // The module map, in load order (public/js/my/…).
-const modules = ['core.js', 'tools.js', 'themes.js', 'profile.js', 'security.js', 'approvals.js', 'boot.js'];
+const modules = ['core.js', 'tools.js', 'themes.js', 'profile.js', 'consent.js', 'security.js', 'approvals.js', 'boot.js'];
 assert.deepStrictEqual(files, [...modules].sort(), 'each module file exists and there is no other');
 const tags = [...html.matchAll(/<script\b([^>]*)\bsrc="\/js\/my\/([^"]+)"([^>]*)><\/script>/g)];
 const loaded = tags.map((m) => m[2]);
