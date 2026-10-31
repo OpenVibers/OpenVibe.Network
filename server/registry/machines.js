@@ -41,7 +41,7 @@ const KINDS = new Set(['onboard', 'bridge', 'server']);
 const TOKEN_TTL_S = 300;
 
 /**
- * The catalogue of machine roles while the pinned contracts are older than 0.257.0. Keep it in step with the
+ * The catalogue of machine roles while the pinned contracts are older than 0.258.0. Keep it in step with the
  * products' manifests (registry.service-manifest@1's machineRoles), which is where the catalogue lives from
  * that release on: each product declares the roles it installs, and the hub shows the union.
  */
@@ -52,7 +52,7 @@ const LOCAL_ROLES = [
     { id: 'bot.robot', name: 'Robot', installs: 'the robot drivers the profile asks for', shows: 'Drives a robot, and takes its commands.' },
 ];
 
-/** The roles the products declare (Contracts 0.257.0), or the local copy while the pin is older. */
+/** The roles the products declare (Contracts 0.258.0), or the local copy while the pin is older. */
 function catalogue() {
     let declared = [];
     try {
@@ -172,7 +172,7 @@ function envelope(type, { actor, subject, payload, at }) {
 }
 
 /**
- * Publish a machine event into the outbox (OpenVibe.Events). The payload contracts are Contracts 0.257.0; while
+ * Publish a machine event into the outbox (OpenVibe.Events). The payload contracts are Contracts 0.258.0; while
  * the pin is older they are written by hand and checked by the tests, and the contract check turns on with the pin.
  */
 async function publish(db, type, { actor, subject, payload, at }) {
@@ -186,7 +186,7 @@ async function publish(db, type, { actor, subject, payload, at }) {
 /**
  * The guard for a hub route: the person's own session, or a token that names a person and holds the capability.
  *
- * The capabilities network.machines.read and network.machines.manage are new in Contracts 0.257.0, which this
+ * The capabilities network.machines.read and network.machines.manage are new in Contracts 0.258.0, which this
  * checkout does not pin yet, so the capability is checked by name (capabilities.grants is a plain string check)
  * and the token is verified here. When the pin moves, the contracts' own guard (principals.guard) takes over and
  * this one goes with it.

@@ -71,7 +71,7 @@ Implemented here (the service manifest's `capabilities`, audience `openvibe.netw
 `network.project.manage|read`, `network.secret.use`, `network.staff.read` and `network.status.incident`. The grants other
 services hold are seeded in [server/identity/principals.js](server/identity/principals.js).
 
-The hub's own two, `network.machines.read` and `network.machines.manage` (Contracts 0.257.0), are new here and are
+The hub's own two, `network.machines.read` and `network.machines.manage` (Contracts 0.258.0), are new here and are
 checked by name until this checkout pins that release: the pinned contracts do not know them yet, and the pin round
 that follows brings them in (see [server/registry/machines.js](server/registry/machines.js)).
 
