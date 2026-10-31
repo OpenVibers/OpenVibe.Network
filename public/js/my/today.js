@@ -162,7 +162,7 @@ function renderStuff(live, hist, nodes) {
         cells.push(b);
     };
     add(live && live.following, 'following');
-    add(nodes && nodes.nodes && nodes.nodes.filter((n) => !n.revoked_at).length, 'machines');
+    add(nodes && nodes.nodes && nodes.nodes.filter((n) => !n.revoked_at).length, 'machines', () => { showSection('machines'); document.getElementById('settings').scrollIntoView({ behavior: 'smooth' }); });
     add(hist && hist.total, 'pages in your history', () => { showSection('history'); document.getElementById('settings').scrollIntoView({ behavior: 'smooth' }); });
     row.replaceChildren(...cells);
 }

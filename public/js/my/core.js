@@ -159,13 +159,14 @@ function showSection(id, btn) {
     if (id === 'history' && typeof loadHistory === 'function') loadHistory();
     if (id === 'data') loadDataSection();
     if (id === 'approvals' && typeof loadApprovals === 'function') loadApprovals();
+    if (id === 'machines' && typeof loadMachines === 'function') loadMachines();
 }
 
 function openInitialSection() {
-    const pathSection = { '/themes': 'themes', '/notifications': 'notifications', '/verify-email': 'notifications', '/linked': 'linked', '/security': 'security', '/profile': 'profile', '/history': 'history' }[window.location.pathname];
+    const pathSection = { '/themes': 'themes', '/notifications': 'notifications', '/verify-email': 'notifications', '/linked': 'linked', '/security': 'security', '/machines': 'machines', '/profile': 'profile', '/history': 'history' }[window.location.pathname];
     const routeSection = pathSection || window.location.hash.replace(/^#/, '') || 'profile';
     if (window.location.pathname === '/verify-email') setTimeout(handleVerifyEmailToken, 50);
-    if (isAnonSession() && ['notifications','linked','security','data','approvals'].includes(routeSection)) {
+    if (isAnonSession() && ['notifications','linked','security','data','approvals','machines'].includes(routeSection)) {
         return showSection('anon');
     }
     if (document.getElementById('sec-' + routeSection)) {
