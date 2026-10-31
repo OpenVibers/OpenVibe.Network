@@ -657,6 +657,11 @@ const consent = require('./consent').createConsent({ db });
 app.use('/api/v1/me/consent', require('./consent').router({ consent, requireAuth }));
 app.use('/internal/consent', require('./identity/principals').guard('network.consent.read'), require('./consent').internalRouter({ consent }));
 
+// Label preferences (L1, 2026-10-31; contracts 0.257.0 network.label-prefs@1): show, blur or hide for each of
+// the six labels, stored in the person's site prefs so one choice covers every OpenVibe site. Session only.
+const labelPrefs = require('./labels').createLabelPrefs({ db });
+app.use('/api/v1/me/label-prefs', require('./labels').router({ labelPrefs, requireAuth }));
+
 
 // Notification API (authenticated users)
 app.use('/api/notifications', createNotificationRoutes(db, notificationService, requireAuth, requireDock));

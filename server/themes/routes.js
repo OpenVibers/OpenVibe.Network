@@ -189,8 +189,12 @@ async function readSites(db, userId) {
     catch { return cleanSites(null); }   // the column arrives with migration 0029
 }
 async function writeSites(db, userId, sites) {
+    // site_prefs holds more than the switcher (the label choices, L1): keep every key this route does not own.
+    let current = {};
+    try { const row = await db.prepare('SELECT site_prefs FROM user_preferences WHERE user_id = ?').get(userId); current = row && row.site_prefs ? JSON.parse(row.site_prefs) : {}; } catch { current = {}; }
+    const next = { ...(current && typeof current === 'object' && !Array.isArray(current) ? current : {}), pinned: sites.pinned, recent: sites.recent };
     await db.prepare(`INSERT INTO user_preferences (user_id, site_prefs, updated_at) VALUES (?, ?, ov_now())
-        ON CONFLICT(user_id) DO UPDATE SET site_prefs = excluded.site_prefs, updated_at = ov_now()`).run(userId, JSON.stringify(sites));
+        ON CONFLICT(user_id) DO UPDATE SET site_prefs = excluded.site_prefs, updated_at = ov_now()`).run(userId, JSON.stringify(next));
     return sites;
 }
 router.get('/me/sites', requireAuth, async (req, res) => {
