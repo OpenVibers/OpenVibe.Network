@@ -4,7 +4,7 @@
  * by the ✦ beside the bell on every OpenVibe site with the person's Network token.
  *
  *   GET  /api/v1/me/actions                          network.me-actions-result@1
- *   POST /api/v1/me/actions/:service/:id/:action     approve | decline → { item } (common.action-item@1), or a problem
+ *   POST /api/v1/me/actions/:service/:id/:action     approve | decline | cancel → { item } (common.action-item@1), or a problem
  *
  * Sources, asked in parallel for the person's subject:
  *   network  their pending confirmations (server/developer/confirmations.js): waiting, approve or decline here;
@@ -28,6 +28,11 @@ const REMOTE = ['actor', 'codes', 'ai', 'domains'];
 const DECIDE = {
     actor: { cap: 'actor.approval.decide', path: (id) => `/api/v1/approvals/${encodeURIComponent(id)}/decide`, name: 'OpenVibe.Actor', what: 'approval' },
     domains: { cap: 'domains.proposal.decide', path: (id) => `/api/v1/proposals/${encodeURIComponent(id)}/decide`, name: 'OpenVibe.Domains', what: 'proposal' },
+};
+// Who can cancel from the Action Center, and how: the capability Network signs for, and the route. The Dock's
+// Cancel button was dead before this: the item offered it (common.action-item@1) and the rail refused it.
+const CANCEL = {
+    actor: { cap: 'actor.task.create', path: (id) => '/api/v1/tasks/' + encodeURIComponent(id) + '/cancel', name: 'OpenVibe.Actor', what: 'task' },
 };
 const ACTIONS_TIMEOUT_MS = 2500;
 const CACHE_MS = 10_000;
@@ -113,10 +118,11 @@ function createActions({ db, selfToken = () => null, urls = {}, fetchImpl = (...
         return doc;
     }
 
-    /** Approve or decline one waiting item through its authority. → common.action-item@1 */
+    /** Approve, decline or cancel one item through its authority. → common.action-item@1 */
     async function act(actor, service, id, action, ctx) {
         if (!ID_RE.test(String(id))) throw Object.assign(new Error('no such item'), { status: 404, code: 'actions.not_found' });
-        if (action !== 'approve' && action !== 'decline') throw Object.assign(new Error('this item cannot do that here: open it instead'), { status: 422, code: 'actions.unsupported' });
+        if (action !== 'approve' && action !== 'decline' && action !== 'cancel') throw Object.assign(new Error('this item cannot do that here: open it instead'), { status: 422, code: 'actions.unsupported' });
+        if (action === 'cancel') return await cancel(actor, service, id, ctx);
         cache.delete(actor.subject);
         if (service === 'network') {
             const out = await confirmationsImpl.decide(db, actor, id, action === 'approve' ? 'approve' : 'deny', {}, { ctx });
@@ -135,6 +141,32 @@ function createActions({ db, selfToken = () => null, urls = {}, fetchImpl = (...
         if (res.status === 409) throw Object.assign(new Error((body && body.detail) || `this ${d.what} was decided already`), { status: 409, code: 'actions.decided' });
         if (!res.ok) throw Object.assign(new Error((body && (body.detail || body.title)) || `${d.name} answered ${res.status}`), { status: 502, code: 'actions.upstream' });
         return body;
+    }
+
+    /**
+     * Cancel one running item through its authority. The item leaves the running bucket and the person gets the
+     * item as it is now, so the Dock can redraw it without a second read.
+     */
+    async function cancel(actor, service, id, ctx) {
+        const c = CANCEL[service];
+        if (!c) throw Object.assign(new Error('this item cannot do that here: open it instead'), { status: 422, code: 'actions.unsupported' });
+        const token = urls[service] ? selfToken('openvibe.' + service, [c.cap]) : null;
+        if (!token) throw Object.assign(new Error(c.name + ' is not connected'), { status: 503, code: 'actions.not_connected' });
+        const res = await fetchImpl(String(urls[service]).replace(/\/+$/, '') + c.path(id), {
+            method: 'POST', headers: { accept: 'application/json', 'content-type': 'application/json', authorization: 'Bearer ' + token, 'x-ov-subject': actor.subject },
+            body: JSON.stringify({}), signal: AbortSignal.timeout(timeoutMs * 2),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (res.status === 404) throw Object.assign(new Error('no such ' + c.what), { status: 404, code: 'actions.not_found' });
+        if (!res.ok && res.status !== 202) throw Object.assign(new Error((body && (body.detail || body.title)) || (c.name + ' answered ' + res.status)), { status: 502, code: 'actions.upstream' });
+        const doc = await forPerson(actor);
+        const item = Object.values(doc.buckets || {}).flat().find((it) => it.service === service && it.id === id);
+        return item || {
+            service, id, kind: 'agent_task', title: '', summary: null, bucket: 'failed', state: 'cancelled',
+            agent: null, cost_usd: null, steps: null, error: null,
+            created_at: new Date(now()).toISOString(), updated_at: new Date(now()).toISOString(),
+            next_run_at: null, href: null, actions: ['open'],
+        };
     }
 
     return { forPerson, act, _cache: cache };
@@ -168,4 +200,4 @@ function router({ actions, requireAuth, requireDock = () => requireAuth }) {
     return r;
 }
 
-module.exports = { createActions, router, confirmationItem, BUCKETS, ACTIONS_TIMEOUT_MS, CACHE_MS };
+module.exports = { createActions, router, confirmationItem, BUCKETS, ACTIONS_TIMEOUT_MS, CACHE_MS, CANCEL };
