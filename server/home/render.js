@@ -148,21 +148,15 @@ ${nowParts([
 // Radio inputs and :has(), no script, every part still in the page; a wider screen, or a browser without :has(), shows
 // them all and no chips. With one part there is nothing to pick.
 function nowParts(parts) {
-    const shown = parts.filter(([, , html]) => html);
-    if (shown.length < 2) return shown.map(([, , html]) => html).join('\n');
-    const chips = shown.map(([id, label], i) => `<input type="radio" name="now-pick" id="np-${id}" value="${id}"${i === 0 ? ' checked' : ''}><label for="np-${id}">${esc(label)}</label>`).join('');
-    return `<div class="now-pick" role="radiogroup" aria-label="New on OpenVibe">${chips}</div>\n${shown.map(([, , html]) => html.replace(/^<div class="(now-block|now-grid)"/, '<div class="$1" data-now-part')).join('\n')}`;
+    // Every part is on the page on every screen (the owner's rule, 2026-10-31); a chip row picked one at a time on a
+    // phone and hid the rest, so it is gone.
+    return parts.map(([, , html]) => html).join('\n');
 }
 
-// The lower half (tools, what an account adds, what opens next, the questions, the developers' links): on a phone each
-// one is a full section and together they were about 2,000 px. Chips show one at a time under "More about OpenVibe"
-// (the short-pages rule, 2026-10-30); a link to #faq or #account still opens its section (:target). Radio inputs and
-// :has(), no script; a wider screen, or a browser without :has(), shows every section as before.
+// The lower half (tools, what an account adds, what opens next, the questions, the developers' links): every section
+// is a full section on every screen. The chip row that showed one at a time on a phone hid the rest, so it is gone.
 function moreParts(parts) {
-    const shown = parts.filter(([, , html]) => html);
-    if (shown.length < 2) return shown.map(([, , html]) => html).join('\n');
-    const chips = shown.map(([id, label], i) => `<input type="radio" name="more-pick" id="mp-${id}" value="${id}"${i === 0 ? ' checked' : ''}><label for="mp-${id}">${esc(label)}</label>`).join('');
-    return `<div class="more"><h2 class="more-pick-h">More about OpenVibe</h2><div class="more-pick" role="radiogroup" aria-label="More about OpenVibe">${chips}</div>\n${shown.map(([, , html]) => html.replace(/^<section class="([^"]*)" id="([^"]*)"/, '<section class="$1" id="$2" data-more-part')).join('\n')}</div>`;
+    return '<div class="more"><h2>More about OpenVibe</h2>\n' + parts.map(([, , html]) => html).join('\n') + '</div>';
 }
 
 // The hero's numbers: only what Network read itself within the last minute (server/home/activity.js); a number it
@@ -256,20 +250,6 @@ const CSS = `
 .vcard .now-badge{z-index:1}
 .vcard.now-empty .vc-thumb{border:1px dashed var(--border-light,#2c3d5c);background:transparent}.vcard.now-empty .now-noimg{display:grid;place-items:center;font-size:28px;color:var(--accent-light,#60a5fa);background:transparent}
 .now .now-grid{margin-top:26px}
-.now-pick,.more-pick,.more-pick-h{display:none}
-@supports selector(:has(*)){@media (max-width:600px){
-.now-pick,.more-pick{display:flex;gap:8px;overflow-x:auto;margin:22px -16px 0;padding:2px 16px 4px;scrollbar-width:none;overscroll-behavior-x:contain}.now-pick::-webkit-scrollbar,.more-pick::-webkit-scrollbar{display:none}
-.now-pick input,.more-pick input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
-.now-pick label,.more-pick label{display:inline-flex;align-items:center;flex:none;min-height:44px;padding:0 15px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));color:var(--text-secondary,#a8b3c4);font-size:13.5px;font-weight:650;white-space:nowrap;cursor:pointer}
-.now-pick input:checked+label,.more-pick input:checked+label{color:var(--text-primary,#e6edf7);border-color:var(--accent,#3b82f6);background:color-mix(in srgb,var(--accent,#3b82f6) 12%,transparent)}
-.now-pick input:focus-visible+label,.more-pick input:focus-visible+label{outline:2px solid var(--accent,#3b82f6);outline-offset:2px}
-.now [data-now-part]{display:none}.now .now-block[data-now-part],.now .now-grid[data-now-part]{margin-top:12px}
-.now:has(#np-recs:checked) #now-recs,.now:has(#np-shots:checked) #now-shots{display:block}.now:has(#np-posts:checked) #now-posts{display:flex}
-.now [data-now-part] .now-head{justify-content:flex-end}.now [data-now-part] .now-head h3{display:none}
-.more-pick-h{display:block;margin:40px 0 0;padding:0 16px;font-size:clamp(1.25rem,5vw,1.5rem);font-weight:800;letter-spacing:-.02em}.more-pick{margin:10px 0 0;padding:2px 16px 4px}
-.more [data-more-part]{display:none;margin-top:0;padding-top:12px}.more [data-more-part]>h2{display:none}
-.more:has(#mp-tools:checked) #tools,.more:has(#mp-account:checked) #account,.more:has(#mp-soon:checked) #soon,.more:has(#mp-developers:checked) #developers,.more:has(#mp-faq:checked) #faq,.more [data-more-part]:target{display:block}
-}}
 @media (prefers-reduced-motion:reduce){.vc-thumb img,.vc-play,.vc-play i,.vc-about{transition:none}}
 .now-code{display:inline-block;margin:0 0 3px;padding:1px 7px;border-radius:6px;border:1px dashed var(--accent,#3b82f6);color:var(--accent-light,#60a5fa);font:700 12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px}
 .now-list b{overflow-wrap:anywhere}
@@ -353,7 +333,7 @@ function body(catalog, act) {
         const heads = [...html.matchAll(/<h3 class="sc-apps-group">/g)].map((m) => m.index);
         const end = html.indexOf('<p class="sc-apps-more">');
         if (heads.length < 3 || end < heads[2]) return html;
-        return `${html.slice(0, heads[2])}<details class="home-fold home-fold-sites"><summary>Every other neighbourhood<span>${heads.length - 2} more</span></summary><div>${html.slice(heads[2], end)}</div></details>${html.slice(end)}`;
+        return `${html.slice(0, heads[2])}<details class="home-fold home-fold-sites" open><summary>Every other neighbourhood<span>${heads.length - 2} more</span></summary><div>${html.slice(heads[2], end)}</div></details>${html.slice(end)}`;
     };
     const families = inside(showcase.features({
         id: 'tools-families', title: catalog.tools.length ? `${catalog.tools.length} tools that just open` : 'Tools that just open',
@@ -362,7 +342,7 @@ function body(catalog, act) {
             : [{ icon: 'ov:tools', title: 'OpenVibe.Tools', text: 'Converters, downloaders, PDF and image tools, developer utilities and network diagnostics.', href: 'https://openvibe.tools/' }],
     }), '');
     const tools = `<section class="sc-sec" id="tools" aria-labelledby="h-tools"><h2 id="h-tools">${esc(catalog.tools.length ? `${catalog.tools.length} tools that just open` : 'Tools that just open')}</h2><p class="sc-lede">No installs and no sign-up wall. Every tool has its own short address, so yt.openvibe.tools or dns.openvibe.tools takes you straight there.</p>${chips(popular.map((t) => [t.url, t.tagline || '', t.icon, t.name]))}
-${fams.length ? `<details class="home-fold"><summary>Every kind of tool<span>${esc(fams.length)} families</span></summary>${families.replace(/<h2[^>]*>[\s\S]*?<\/h2>/, '').replace(/<p class="sc-lede">[\s\S]*?<\/p>/, '')}</details>` : ''}<p class="home-more"><a href="https://openvibe.tools/">Browse every tool at openvibe.tools →</a> · <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> · <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a></p></section>`;
+${fams.length ? `<details class="home-fold" open><summary>Every kind of tool<span>${esc(fams.length)} families</span></summary>${families.replace(/<h2[^>]*>[\s\S]*?<\/h2>/, '').replace(/<p class="sc-lede">[\s\S]*?<\/p>/, '')}</details>` : ''}<p class="home-more"><a href="https://openvibe.tools/">Browse every tool at openvibe.tools →</a> · <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> · <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a></p></section>`;
     // What signing in adds: one list, a line each (cards made it two screens on a phone).
     const account = `<section class="sc-sec" id="account" aria-labelledby="h-account"><h2 id="h-account">What signing in adds</h2><p class="sc-lede">You can use almost everything as a guest. An account is for the things that need to remember you, and it works on every OpenVibe site the moment you arrive.</p>
 <ul class="home-rows">${ACCOUNT.map(([ic, title, text, href]) => `<li><a href="${esc(href)}">${icon(`ov:${ic}`, 22)}<span><b>${esc(title)}</b><small>${esc(text)}</small></span></a></li>`).join('')}</ul></section>`;
@@ -379,9 +359,9 @@ ${chips(SOON.map((site) => [`https://${site.host}/`, site.tagline, site.icon, si
             { icon: 'fa-code-branch', title: 'Source on GitHub', text: 'Every OpenVibe service is open source under the OpenVibers organization.', href: 'https://github.com/OpenVibers' },
         ],
     }), '<p class="home-more">Machine-readable: <a href="/llms.txt">/llms.txt</a> · <a href="/llms-full.txt">/llms-full.txt</a> · <a href="https://openvibe.tools/llms.txt">openvibe.tools/llms.txt</a></p>');
-    const dev = `<section class="sc-sec home-dev" id="developers" aria-label="For developers"><details class="home-fold"><summary>For developers and crawlers<span>API, SDK, llms.txt, source</span></summary>${devCards.replace(/^<section[^>]*>/, '<div>').replace(/<\/section>$/, '</div>')}</details></section>`;
+    const dev = `<section class="sc-sec home-dev" id="developers" aria-label="For developers"><details class="home-fold" open><summary>For developers and crawlers<span>API, SDK, llms.txt, source</span></summary>${devCards.replace(/^<section[^>]*>/, '<div>').replace(/<\/section>$/, '</div>')}</details></section>`;
     const faq = `<section class="sc-sec" id="faq" aria-labelledby="h-faq"><h2 id="h-faq">Questions people ask</h2><p class="sc-lede">The short answers. Every OpenVibe site has its own page of answers on OpenVibe.Help.</p>
-<div class="faq-grid">${faqPairs().map((p, i) => `<details class="faq-item"${i === 0 ? ' open' : ''}><summary><h3>${esc(p.q)}</h3></summary><p>${esc(p.a)}</p></details>`).join('')}</div><p class="home-more"><a href="https://openvibe.help/sites/openvibe.network">More answers about your account on OpenVibe.Help →</a></p></section>`;
+<div class="faq-grid">${faqPairs().map((p, i) => `<details class="faq-item" open><summary><h3>${esc(p.q)}</h3></summary><p>${esc(p.a)}</p></details>`).join('')}</div><p class="home-more"><a href="https://openvibe.help/sites/openvibe.network">More answers about your account on OpenVibe.Help →</a></p></section>`;
     return `<style>${CSS}</style>
 ${rightNow(act)}
 ${foldSites(sites)}
