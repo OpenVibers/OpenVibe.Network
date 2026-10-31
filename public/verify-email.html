@@ -43,8 +43,8 @@ body{background:var(--bg-primary);color:var(--text-primary);font-family:'Inter',
 @keyframes rise{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
 .glyph{position:relative;width:96px;height:96px;margin:0 auto 22px}
 .ring{position:absolute;inset:0;border-radius:50%;border:3px solid rgba(var(--accent-rgb),.18)}
-.ring.spin{border-top-color:var(--accent);animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+.ring.spin{border-color:var(--accent);animation:ring-pulse 1.4s ease-out infinite}
+@keyframes ring-pulse{from{box-shadow:0 0 0 0 rgba(var(--accent-rgb),.45)}to{box-shadow:0 0 0 14px transparent}}
 .glyph .ico{position:absolute;inset:0;display:grid;place-items:center;font-size:38px;color:var(--accent-light);transition:transform .35s cubic-bezier(.2,1.4,.3,1),color .3s}
 .card[data-state="ok"] .ico{color:var(--success-text, var(--success));transform:scale(1.12)}
 .card[data-state="bad"] .ico{color:var(--danger-text, var(--danger))}
