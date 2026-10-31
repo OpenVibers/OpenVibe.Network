@@ -325,6 +325,50 @@ button.td-stat:hover span { color: var(--accent-light); }
 .recent-tool-star[aria-pressed="true"] { color: var(--accent-light); }
 .recent-tool-star:hover, .recent-tool-star:focus-visible { color: var(--accent-light); }
 
+/* Machines (plan L34, my/machines.js): pair one, then each machine with its state, what it runs and its roles. */
+.mc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; }
+.mc-top > div { flex: 1 1 320px; min-width: 0; }
+.mc-pair { margin: 16px 0 4px; padding: 16px; border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--accent) 50%, var(--border)); background: color-mix(in srgb, var(--accent) 6%, transparent); display: grid; gap: 10px; }
+.mc-pair h4 { font-size: 15px; }
+.mc-code { font: 800 clamp(28px, 6vw, 40px)/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .14em; color: var(--text); }
+.mc-cmd { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); overflow-x: auto; font-size: 12.5px; }
+.mc-pair-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.mc-until { font-size: 12px; color: var(--text-muted); }
+.mc-wait { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+.mc-wait-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: mcBreathe 1.6s ease-in-out infinite; }
+@keyframes mcBreathe { 50% { opacity: .25; transform: scale(.7); } }
+.mc-status { min-height: 1.3em; margin: 10px 0 0; font-size: 13px; color: var(--text-secondary); }
+.mc-status.is-bad { color: #ef4444; }
+.mc-list { display: grid; gap: 12px; margin-top: 8px; }
+.mc-card { display: grid; gap: 12px; padding: 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg-secondary); min-width: 0; }
+.mc-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; align-items: center; }
+.mc-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted); box-shadow: 0 0 0 4px color-mix(in srgb, var(--text-muted) 18%, transparent); }
+.mc-dot.is-on { background: var(--success); box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 22%, transparent); }
+.mc-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-width: 0; }
+.mc-name { font-size: 15.5px; font-weight: 750; overflow-wrap: anywhere; }
+.mc-state { font-size: 12.5px; color: var(--text-muted); }
+.mc-meta { grid-column: 2; font-size: 12.5px; color: var(--text-muted); }
+.mc-meta:empty { display: none; }
+.mc-rename { font: inherit; font-size: 15px; font-weight: 700; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--accent); background: var(--bg-input); color: var(--text); max-width: 100%; }
+.mc-running { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.mc-running li { padding: 3px 10px; border-radius: 999px; font-size: 12px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent-light); }
+.mc-roles { border: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 8px; }
+.mc-roles legend { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+.mc-role { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 10px; align-items: center; min-height: 52px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-card); cursor: pointer; }
+.mc-role:has(input:checked) { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); background: color-mix(in srgb, var(--accent) 8%, var(--bg-card)); }
+.mc-role input { width: 18px; height: 18px; accent-color: var(--accent); }
+.mc-role-ic { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-light); }
+.mc-role-t { display: grid; gap: 1px; min-width: 0; }
+.mc-role-t b { font-size: 13.5px; }
+.mc-role-t small { font-size: 12px; color: var(--text-muted); line-height: 1.35; }
+.mc-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mc-revoke { background: transparent; border: 1px solid color-mix(in srgb, #ef4444 45%, var(--border)); color: #ef4444; }
+.mc-revoke.is-sure { background: #ef4444; color: #fff; border-color: #ef4444; }
+.mc-confirm { flex-basis: 100%; font-size: 12.5px; color: var(--text-secondary); }
+.mc-empty { display: flex; gap: 14px; align-items: center; padding: 18px; border-radius: 14px; border: 1px dashed var(--border); color: var(--text-secondary); }
+.mc-empty > i { font-size: 26px; color: var(--accent-light); }
+@media (prefers-reduced-motion: reduce) { .mc-wait-dot { animation: none; } }
+
 /* Your data choices (L24): kit fold rows, one per purpose. Phone first: one column of equal-weight buttons, never
    sideways. The kit's own /shared/kit.css draws the fold; these rules only lay out the choice inside it. */
 .consent-fold { margin: 0 0 10px; }

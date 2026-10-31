@@ -111,6 +111,7 @@
         <button onclick="showSection('data',this)"><i class="fa-solid fa-database"></i> AI &amp; Data</button>
         <button onclick="showSection('approvals',this)"><i class="fa-solid fa-user-check"></i> Approvals</button>
         <button onclick="showSection('linked',this)"><i class="fa-solid fa-link"></i> Linked Services</button>
+        <button onclick="showSection('machines',this)"><i class="fa-solid fa-laptop-code"></i> Machines</button>
         <button onclick="showSection('security',this)"><i class="fa-solid fa-lock"></i> Security</button>
         <button onclick="showSection('anon',this)"><i class="fa-solid fa-user-secret"></i> Anon Info</button>
     </div>
@@ -361,6 +362,22 @@
     </div>
 
     <!-- Security Section -->
+    <!-- Machines (plan L34): the machines you paired, their roles, pairing a new one (my/machines.js). -->
+    <div class="section" id="sec-machines">
+        <div class="card">
+            <div class="mc-top">
+                <div>
+                    <h3><span class="icon"><i class="fa-solid fa-laptop-code"></i></span> Your machines</h3>
+                    <p class="muted">Computers and servers paired with your account. They run your Codes jobs, host your desks and serve your own models. Only you can pair one or change what it does.</p>
+                </div>
+                <button class="btn btn-primary" id="mc-pair-btn" type="button" onclick="mcPair()"><i class="fa-solid fa-plus"></i> Pair a machine</button>
+            </div>
+            <div class="mc-pair" id="mc-pair" hidden></div>
+            <p class="mc-status" id="mc-status" role="status"></p>
+            <div class="mc-list" id="mc-list"><p class="muted">Loading your machines…</p></div>
+        </div>
+    </div>
+
     <div class="section" id="sec-security">
         <div class="card">
             <h3><span class="icon"><i class="fa-solid fa-lock"></i></span> Change Password</h3>
@@ -435,6 +452,7 @@
 <script src="/js/my/core.js" defer></script>
 <script src="/js/my/tools.js" defer></script>
 <script src="/js/my/today.js" defer></script>
+<script src="/js/my/machines.js" defer></script>
 <script src="/js/my/themes.js" defer></script>
 <script src="/js/my/profile.js" defer></script>
 <script src="/js/my/consent.js" defer></script>
