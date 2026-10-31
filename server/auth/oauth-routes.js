@@ -15,6 +15,8 @@ const devTokens = require('../developer/tokens');
 const devPolicy = require('../developer/policy');
 const oidc = require('./oidc');
 const refreshTokens = require('./refresh-tokens');
+const dock = require('./dock-tokens');
+const { isExtensionOrigin } = require('./extension-origin');
 const router = express.Router();
 
 function getDb(req) { return req.app.locals.db; }
@@ -39,6 +41,27 @@ function sameSecret(a, b) {
     const x = Buffer.from(String(a || ''));
     const y = Buffer.from(String(b || ''));
     return x.length === y.length && x.length > 0 && crypto.timingSafeEqual(x, y);
+}
+
+/**
+ * The authorize/confirm parameters a public client must send: a bounded state, a PKCE S256
+ * challenge, and a scope inside the client's allowed_scopes. Confidential first-party clients keep
+ * their existing behaviour (optional PKCE, raw scope, no state requirement).
+ */
+function publicAuthorizeParams(client, src) {
+    if (!dock.isPublicClient(client)) {
+        const pkce = readChallenge(src);
+        if (pkce.error) return { error: pkce.error };
+        return { pkce, scope: src.scope || null, state: String(src.state == null ? '' : src.state) };
+    }
+    const state = dock.readState(src.state);
+    if (!state) return { error: 'state is required' };
+    const pkce = readChallenge(src);
+    if (pkce.error) return { error: pkce.error };
+    if (!pkce.challenge) return { error: 'code_challenge is required (S256)' };
+    const scoped = dock.readScopeForClient(client, src.scope);
+    if (scoped.error) return { error: scoped.error };
+    return { pkce, scope: scoped.scope, state };
 }
 async function issueCode(db, { clientId, userId, redirectUri, scope, pkce, nonce }) {
     const code = crypto.randomBytes(32).toString('hex');
@@ -97,28 +120,33 @@ router.get('/authorize', async (req, res) => {
     if (!allowedUris.some(u => u.toLowerCase() === uriLower)) {
         return res.status(400).json({ error: 'Invalid redirect_uri' });
     }
-    const pkce = readChallenge(req.query);
-    if (pkce.error) return res.status(400).json({ error: 'invalid_request', error_description: pkce.error });
+    const allowed = publicAuthorizeParams(client, req.query);
+    if (allowed.error) return res.status(400).json({ error: 'invalid_request', error_description: allowed.error });
+    const { pkce } = allowed;
+    const requestScope = allowed.scope;
+    const requestState = allowed.state;
     const nonce = oidc.cleanNonce(req.query.nonce);
     if (nonce === undefined) return res.status(400).json({ error: 'invalid_request', error_description: 'malformed nonce' });
 
     // prompt=none (silent SSO from an app whose own session lapsed): if this browser still has a
     // live/renewable openvibe.network session, continue as that account with no chooser. With no
-    // session, bounce straight back with error=login_required so the app can stay quiet.
+    // session, bounce straight back with error=login_required so the app can stay quiet. From an
+    // extension origin a cookie never counts (server/auth/session.js): only a Bearer would, and an
+    // authorize navigation does not carry one.
     if (String(req.query.prompt || '') === 'none') {
         const sep = redirect_uri.includes('?') ? '&' : '?';
         try {
             const { verifySession, setSessionCookies } = require('./session');
-            const have = req.cookies?.ov_token || req.cookies?.ov_sso;
+            const have = isExtensionOrigin(req.headers.origin) ? null : (req.cookies?.ov_token || req.cookies?.ov_sso);
             const out = await verifySession(have, { db, publicKey: req.app.locals.publicKey, config: getConfig(req) });
             if (!out.error) {
                 const token = out.renew ? require('./routes').signToken(out.user, req.app.locals.privateKey, getConfig(req), { renew: out.decoded }) : have;
-                setSessionCookies(res, token);
-                const code = await issueCode(db, { clientId: client_id, userId: out.user.id, redirectUri: redirect_uri, scope, pkce, nonce });
-                return res.redirect(withCode(redirect_uri, code, state));
+                if (!isExtensionOrigin(req.headers.origin)) setSessionCookies(res, token);
+                const code = await issueCode(db, { clientId: client_id, userId: out.user.id, redirectUri: redirect_uri, scope: requestScope, pkce, nonce });
+                return res.redirect(withCode(redirect_uri, code, requestState));
             }
         } catch { /* fall through */ }
-        return res.redirect(`${redirect_uri}${sep}error=login_required&state=${encodeURIComponent(state || '')}`);
+        return res.redirect(`${redirect_uri}${sep}error=login_required&state=${encodeURIComponent(requestState || '')}`);
     }
     // Otherwise the account chooser — the user picks which account to continue with
     const loginParams = new URLSearchParams({
@@ -126,8 +154,8 @@ router.get('/authorize', async (req, res) => {
         client_name: client.name || client_id,
         redirect_uri,
         response_type,
-        scope: scope || 'profile theme',
-        state: state || '',
+        scope: requestScope || 'profile theme',
+        state: requestState || '',
     });
     if (pkce.challenge) { loginParams.set('code_challenge', pkce.challenge); loginParams.set('code_challenge_method', pkce.method); }
     if (nonce) loginParams.set('nonce', nonce);
@@ -196,6 +224,8 @@ router.post('/confirm', async (req, res) => {
     const devApp = devTokens.isAppClient(client_id) ? await devTokens.checkAuthorizeRequest(db, req.body) : null;
     if (devApp && devApp.error) return res.status(400).json({ error: devApp.pkce ? 'invalid_request' : devApp.error, error_description: devApp.error });
     let pkce = null;
+    let requestScope;
+    let requestState;
     if (!devApp) {
         // Validate client
         const client = await db.prepare('SELECT * FROM oauth_clients WHERE client_id = ?').get(client_id);
@@ -206,8 +236,11 @@ router.post('/confirm', async (req, res) => {
         if (!allowedUris.some(u => u.toLowerCase() === uriLower)) {
             return res.status(400).json({ error: 'Invalid redirect_uri' });
         }
-        pkce = readChallenge(req.body);
-        if (pkce.error) return res.status(400).json({ error: 'invalid_request', error_description: pkce.error });
+        const allowed = publicAuthorizeParams(client, req.body);
+        if (allowed.error) return res.status(400).json({ error: 'invalid_request', error_description: allowed.error });
+        pkce = allowed.pkce;
+        requestScope = allowed.scope;
+        requestState = allowed.state;
     }
     const nonce = oidc.cleanNonce(req.body.nonce);
     if (nonce === undefined) return res.status(400).json({ error: 'invalid_request', error_description: 'malformed nonce' });
@@ -232,13 +265,13 @@ router.post('/confirm', async (req, res) => {
     }
 
     // Issue authorization code (bound to the PKCE challenge when the client sent one)
-    const code = await issueCode(db, { clientId: client_id, userId: user.id, redirectUri: redirect_uri, scope, pkce, nonce });
+    const code = await issueCode(db, { clientId: client_id, userId: user.id, redirectUri: redirect_uri, scope: requestScope !== undefined ? requestScope : scope, pkce, nonce });
 
     // Also set cookie to this account so openvibe.network itself knows the active session.
     // Host-only (NO Domain attribute) — the ov_token cookie belongs to openvibe.network alone.
     require('./session').setSessionCookies(res, token);
 
-    res.json({ redirect: withCode(redirect_uri, code, state) });
+    res.json({ redirect: withCode(redirect_uri, code, requestState !== undefined ? requestState : state) });
 });
 
 // ── POST /token ──────────────────────────────────────────────
@@ -249,6 +282,13 @@ router.post('/token', async (req, res) => {
     const config = getConfig(req);
     const { grant_type, client_id, client_secret, code, redirect_uri, refresh_token } = req.body;
     res.set('Cache-Control', 'no-store');   // every grant answers with tokens (RFC 6749 §5.1)
+
+    // A public first-party client has no secret and only the two user grants. Resolve it before the
+    // service-principal branch so client_credentials can never mint a service token for it.
+    const client = await db.prepare('SELECT * FROM oauth_clients WHERE client_id = ?').get(client_id);
+    if (client && dock.isPublicClient(client) && !['authorization_code', 'refresh_token'].includes(grant_type)) {
+        return res.status(400).json({ error: 'unauthorized_client', error_description: 'a public client uses authorization_code or refresh_token' });
+    }
 
     // Developer apps (app_<ULID>): client_credentials or authorization_code + PKCE, own credential store.
     if (devTokens.isAppClient(client_id)) {
@@ -282,9 +322,12 @@ router.post('/token', async (req, res) => {
         return res.status(out.status).json(out.body);
     }
 
-    // Validate client credentials
-    const client = await db.prepare('SELECT * FROM oauth_clients WHERE client_id = ?').get(client_id);
-    if (!client || !sameSecret(client.client_secret, client_secret)) {
+    // Validate client credentials. A public client sends none; every confidential client keeps the
+    // required secret and the old code path exactly.
+    if (!client) return res.status(401).json({ error: 'invalid_client', error_description: 'Invalid client credentials' });
+    if (dock.isPublicClient(client)) {
+        if (client_secret) return res.status(400).json({ error: 'invalid_request', error_description: 'public clients do not send a client_secret' });
+    } else if (!sameSecret(client.client_secret, client_secret)) {
         return res.status(401).json({ error: 'invalid_client', error_description: 'Invalid client credentials' });
     }
 
@@ -307,7 +350,7 @@ router.post('/token', async (req, res) => {
  * owns service_user_id; the exchange never overwrites it, only bumps last_used_at.
  */
 async function recordLinkedService(db, user, client) {
-    if (!client?.client_id || !user?.id || user.is_anon) return;
+    if (!client?.client_id || !user?.id || user.is_anon || dock.isPublicClient(client)) return;
     try {
         await db.prepare(`
             INSERT INTO linked_accounts (user_id, service, service_user_id, service_username, linked_at, last_used_at)
@@ -332,8 +375,15 @@ async function handleAuthCodeGrant(db, config, req, res, client, code, redirectU
     const expiresAt = new Date(authCode.expires_at + (authCode.expires_at.includes('Z') ? '' : 'Z'));
     if (now > expiresAt) return res.status(400).json({ error: 'invalid_grant', error_description: 'Authorization code expired' });
 
-    // A code bound to a PKCE challenge is only redeemable with the matching verifier.
-    if (authCode.code_challenge && !verifierMatches(codeVerifier, authCode.code_challenge)) {
+    // A public client's code must have been issued with a PKCE S256 challenge and be redeemed with
+    // the matching verifier; a confidential client keeps today's optional-PKCE behaviour. A failed
+    // check burns the code.
+    const publicClient = dock.isPublicClient(client);
+    if (publicClient && (!authCode.code_challenge || !verifierMatches(codeVerifier, authCode.code_challenge))) {
+        await db.prepare('UPDATE oauth_codes SET used = 1 WHERE code = ?').run(code);
+        return res.status(400).json({ error: 'invalid_grant', error_description: 'PKCE verification failed' });
+    }
+    if (!publicClient && authCode.code_challenge && !verifierMatches(codeVerifier, authCode.code_challenge)) {
         await db.prepare('UPDATE oauth_codes SET used = 1 WHERE code = ?').run(code);
         return res.status(400).json({ error: 'invalid_grant', error_description: 'PKCE verification failed' });
     }
@@ -348,7 +398,8 @@ async function handleAuthCodeGrant(db, config, req, res, client, code, redirectU
     if (!user || user.is_banned) return res.status(400).json({ error: 'invalid_grant', error_description: 'User not found or banned' });
 
     // Issue tokens
-    const { accessToken, refreshToken } = await issueTokenPair(db, config, req, user, client);
+    const issued = await issueTokenPair(db, config, req, user, client, {}, authCode.scope);
+    const { accessToken, refreshToken } = issued;
     await recordLinkedService(db, user, client);
 
     // Get preferences for theme sync
@@ -363,11 +414,12 @@ async function handleAuthCodeGrant(db, config, req, res, client, code, redirectU
         access_token: accessToken,
         refresh_token: refreshToken,
         token_type: 'Bearer',
-        expires_in: 86400, // 24h
+        expires_in: issued.expiresIn,
         scope: authCode.scope,
         ...(idToken ? { id_token: idToken } : {}),
-        user: safeUser,
-        preferences: prefs || { theme_id: 'vibe' },
+        ...(publicClient
+            ? { user: { id: user.id, username: user.username, display_name: user.display_name, avatar_url: user.avatar_url } }
+            : { user: safeUser, preferences: prefs || { theme_id: 'vibe' } }),
     });
 }
 
@@ -389,11 +441,11 @@ async function handleFedcmAssertionGrant(db, config, req, res, client, assertion
     }
     const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.sub || decoded.id);
     if (!user || user.is_banned) return res.status(400).json({ error: 'invalid_grant', error_description: 'User not found or banned' });
-    const { accessToken, refreshToken } = await issueTokenPair(db, config, req, user, client);
+    const issued = await issueTokenPair(db, config, req, user, client);
     await recordLinkedService(db, user, client);
     const prefs = await db.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(user.id);
     const { password_hash, token_valid_after, ...safeUser } = user;
-    res.json({ access_token: accessToken, refresh_token: refreshToken, token_type: 'Bearer', expires_in: 86400, scope: 'profile theme', user: safeUser, preferences: prefs || { theme_id: 'vibe' } });
+    res.json({ access_token: issued.accessToken, refresh_token: issued.refreshToken, token_type: 'Bearer', expires_in: issued.expiresIn, scope: 'profile theme', user: safeUser, preferences: prefs || { theme_id: 'vibe' } });
 }
 
 async function handleRefreshGrant(db, config, req, res, client, refreshToken) {
@@ -419,48 +471,85 @@ async function handleRefreshGrant(db, config, req, res, client, refreshToken) {
     }
 
     // Issue new token pair: the next generation of the same family
-    const { accessToken, refreshToken: newRefresh } = await issueTokenPair(db, config, req, user, client, { familyId: r.familyId, generation: r.generation });
+    const issued = await issueTokenPair(db, config, req, user, client, { familyId: r.familyId, generation: r.generation }, stored.scope);
     await recordLinkedService(db, user, client);
 
     res.json({
-        access_token: accessToken,
-        refresh_token: newRefresh,
+        access_token: issued.accessToken,
+        refresh_token: issued.refreshToken,
         token_type: 'Bearer',
-        expires_in: 86400,
+        expires_in: issued.expiresIn,
         scope: stored.scope,
     });
 }
 
-async function issueTokenPair(db, config, req, user, client, family = {}) {
+async function issueTokenPair(db, config, req, user, client, family = {}, scope = null) {
     const privateKey = req.app.locals.privateKey;
     const algorithm = privateKey.includes('BEGIN') ? 'RS256' : 'HS256';
+    const publicClient = dock.isPublicClient(client);
+    const ttl = publicClient ? Math.max(60, Math.min(86400, Number(client.access_token_ttl_s) || 3600)) : null;
+    const familyId = family.familyId || refreshTokens.newFamily();
+    const subjectId = await subjects.ensureUserSubject(db, user) || undefined;
 
-    const accessToken = jwt.sign(
-        {
-            sub: user.id,
-            id: user.id,
-            subject_id: await subjects.ensureUserSubject(db, user) || undefined,
-            username: user.username,
-            display_name: user.display_name || user.username,
-            role: user.role,
-            avatar_url: user.avatar_url,
-            profile_color: user.profile_color,
-            ...staffClaims(user),
-        },
-        privateKey,
-        {
-            algorithm,
-            issuer: config.jwt.issuer,
-            audience: ['openvibe.live', 'openvibe.tools', 'openvibe.games', 'openvibe.media', 'openvibe.network'],
-            expiresIn: config.jwt.accessTokenExpiry,
-        }
-    );
+    const base = {
+        sub: user.id,
+        id: user.id,
+        subject_id: subjectId,
+        username: user.username,
+        display_name: user.display_name || user.username,
+        avatar_url: user.avatar_url,
+        profile_color: user.profile_color,
+    };
+    // A Dock token is a read credential: no role and no staff caps, and a private issuer so no other
+    // service's normal user-token check accepts it. The family id lets Network end it on revoke.
+    const claims = publicClient
+        ? { ...base, client_id: client.client_id, scope: String(scope || ''), fam: familyId }
+        : { ...base, role: user.role, ...staffClaims(user) };
+
+    const accessToken = jwt.sign(claims, privateKey, {
+        algorithm,
+        issuer: publicClient ? dock.dockIssuer(config) : config.jwt.issuer,
+        audience: publicClient ? [...dock.AUDIENCES] : ['openvibe.live', 'openvibe.tools', 'openvibe.games', 'openvibe.media', 'openvibe.network'],
+        expiresIn: publicClient ? ttl : config.jwt.accessTokenExpiry,
+    });
 
     // 30 days; only its SHA-256 is stored. A sign-in starts a family; a refresh continues it.
-    const refreshTokenValue = await refreshTokens.issue(db, { clientId: client.client_id, userId: user.id, familyId: family.familyId, generation: family.generation || 0 });
+    const issued = await refreshTokens.issue(db, {
+        clientId: client.client_id, userId: user.id, scope: publicClient ? String(scope || '') : 'profile theme',
+        familyId, generation: family.generation || 0,
+    });
 
-    return { accessToken, refreshToken: refreshTokenValue };
+    return { accessToken, refreshToken: issued.token, expiresIn: publicClient ? ttl : 86400, familyId: issued.familyId };
 }
+
+/**
+ * RFC 7009 revoke. The extension sends its refresh token here on Sign out; the account page revokes a
+ * family directly. A public client authenticates with possession of the token alone (no secret); a
+ * confidential client still authenticates with its secret. Unknown, expired and already-revoked tokens
+ * answer 200 {} so the endpoint is not an oracle.
+ */
+router.post('/revoke', async (req, res) => {
+    const db = await getDb(req);
+    res.set('Cache-Control', 'no-store');
+    const token = String(req.body?.token || '');
+    const clientId = String(req.body?.client_id || '');
+    if (!clientId) return res.status(400).json({ error: 'invalid_request', error_description: 'client_id is required' });
+    const client = await db.prepare('SELECT * FROM oauth_clients WHERE client_id = ?').get(clientId);
+    if (!client) return res.json({});
+    if (!dock.isPublicClient(client) && !sameSecret(client.client_secret, req.body?.client_secret)) {
+        return res.status(401).json({ error: 'invalid_client', error_description: 'Invalid client credentials' });
+    }
+    const row = await refreshTokens.find(db, token);
+    if (row && row.client_id === clientId) {
+        const familyId = row.family_id || `fam_legacy_${row.id}`;
+        await refreshTokens.revokeFamily(db, familyId, 'signed_out');
+        try {
+            await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)')
+                .run(row.user_id, 'oauth_refresh_revoked', JSON.stringify({ client_id: clientId, family_id: familyId }));
+        } catch { /* audit is best effort */ }
+    }
+    return res.json({});
+});
 
 // ── GET|POST /oauth/userinfo ─────────────────────────────────
 // OpenID Connect UserInfo: standard claims for a Network access token (Bearer).

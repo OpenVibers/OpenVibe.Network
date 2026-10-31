@@ -54,6 +54,25 @@ can build the same links:
 `return` must be an https origin of a first-party site (`GET /api/auth/return-origins` lists them: every domain in the
 service manifests). Anything else goes to the Network's home.
 
+## The browser extension (public client)
+
+The OpenVibe Companion's Dock signs in as `companion`, a **public** first-party client with no secret:
+authorization code + PKCE S256 only, exact redirect URIs
+`https://<chrome-id>.chromiumapp.org/` and
+`https://<sha1-of-addon-id>.extensions.allizom.org/`. Its access token is issued with the private
+issuer `<network issuer>/dock`, the audiences `openvibe.network` and `openvibe.chat`, no `role` or
+`staff_caps`, and only these scopes:
+
+| Scope | The Dock may |
+|---|---|
+| `dock` | read and write the person's Dock state |
+| `activity` | read the action list and notifications, mark them read, get a realtime ticket |
+| `chat.read` | list and read DMs, mark a conversation read |
+
+It may not approve an action, send a message, change the account, spend, or call another service with
+that token. The refresh token lives 30 days, rotates on every use and is revoked by the extension's
+Sign out, by the account page's **Signed-in apps** section (`/my`), or by signing out everywhere.
+
 ## Signing out
 
 A site's **Sign out** ends that site's session and keeps the browser from signing back in quietly (`ov_sso_hint=guest`).

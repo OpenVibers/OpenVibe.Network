@@ -322,8 +322,7 @@ app.use(svc.telemetryMiddleware);
 
 // ── Extract bearer token (available as req.token for optional-auth proxies) ─
 app.use((req, _res, next) => {
-    const ah = req.headers.authorization;
-    req.token = ah?.startsWith('Bearer ') ? ah.slice(7) : req.cookies?.ov_token || null;
+    req.token = require('./auth/session').sessionToken(req);
     next();
 });
 
@@ -392,7 +391,11 @@ discordService.init().catch(err => console.error('[Discord] Init error:', err.me
 const authRoutes = require('./auth/routes');
 const jwt = require('jsonwebtoken');
 // Sliding session guard (server/auth/session.js): renewable tokens are accepted and renewed.
-const requireAuth = require('./auth/session').makeRequireAuth(() => ({ db, publicKey, config }), authRoutes.signToken);
+const authCtx = () => ({ db, publicKey, config });
+const requireAuth = require('./auth/session').makeRequireAuth(authCtx, authRoutes.signToken);
+// The extension's private-issuer Dock token, accepted only on the mounts that name a scope. Every
+// other route keeps `requireAuth`, which refuses the different issuer.
+const requireDock = (scope) => require('./auth/session').makeRequireAuth(authCtx, authRoutes.signToken, { dockScope: scope });
 // The moderation audit log for staff (staff.moderation.logs): server/admin/moderation-audit.js.
 app.use('/api/v1/staff/moderation-audit', requireAuth, moderationAudit.router());
 // Staff capabilities and the staff list (WS-D task 4; services need network.staff.read).
@@ -513,7 +516,7 @@ app.get('/internal/blocks', require('./identity/principals').guard('network.bloc
 // OpenVibe.Events' /realtime/stream as the signed-in person with a two-minute, single-use ticket
 // (server/auth/realtime-ticket.js). REALTIME_TICKETS=off answers 503 and every badge stays on polling.
 app.use('/api/v1/realtime', rateLimit({ windowMs: 60_000, max: 60 }), require('./auth/realtime-ticket').router({
-    db, requireAuth, privateKey, issuer: config.jwt.issuer, streamUrl: process.env.OV_EVENTS_PUBLIC_URL,
+    db, requireAuth: requireDock('activity'), privateKey, issuer: config.jwt.issuer, streamUrl: process.env.OV_EVENTS_PUBLIC_URL,
 }));
 
 // ── Routes ───────────────────────────────────────────────────
@@ -601,7 +604,9 @@ app.use('/api/auth', require('./auth/email-verify').routes(requireAuth));
 // Discord account linking (OAuth2 flow)
 app.use('/api/auth/discord', requireAuth, require('./auth/discord-link'));
 
-// OAuth2 authorization endpoints (token issuance counted by grant type: server/observability.js)
+// OAuth2 authorization endpoints (token issuance counted by grant type: server/observability.js).
+// The app limit is per address AND client (server/auth/oauth-limit.js); nginx keeps its own per-address zone.
+app.use(['/oauth/authorize', '/oauth/token', '/oauth/revoke'], require('./auth/oauth-limit').createOAuthLimiter());
 app.use('/oauth/token', observability.tokenEndpointMetrics);
 app.use('/oauth', require('./auth/oauth-routes'));
 
@@ -637,16 +642,16 @@ require('./developer/confirmations').start(db);
         ai: process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700',
         domains: process.env.OV_DOMAINS_INTERNAL_URL || 'http://127.0.0.1:5070',
     } });
-    app.use('/api/v1/me/actions', rateLimit({ windowMs: 60_000, max: 120 }), require('./actions').router({ actions, requireAuth }));
+    app.use('/api/v1/me/actions', rateLimit({ windowMs: 60_000, max: 120 }), require('./actions').router({ actions, requireAuth, requireDock }));
     // The Dock's state (the Dock plan 2026-10-30, K-D1, server/dock): one row per person, so the little floating
     // surface every OpenVibe site draws follows them across every domain (localStorage is per site). Its counts are
     // the Action Center's own, so a page view never fans out further than the aggregator's 10 s cache already does.
     const dock = require('./dock').createDock({ db, actions, notifications: notificationService });
-    app.use('/api/v1/me/dock', require('./dock').router({ dock, requireAuth }));
+    app.use('/api/v1/me/dock', require('./dock').router({ dock, requireAuth: requireDock('dock') }));
 }
 
 // Notification API (authenticated users)
-app.use('/api/notifications', createNotificationRoutes(db, notificationService, requireAuth));
+app.use('/api/notifications', createNotificationRoutes(db, notificationService, requireAuth, requireDock));
 
 // Push Notifications API
 const pushService = require('./push/push-service');

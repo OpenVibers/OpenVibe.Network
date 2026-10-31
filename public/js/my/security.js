@@ -325,6 +325,53 @@ async function revokeAllSessions() {
     } catch (err) { alert('Error: ' + err.message); }
 }
 
+// Signed-in apps (public OAuth clients; the extension's Dock sign-in)
+async function loadApps() {
+    const list = document.getElementById('apps-list');
+    if (!list) return;
+    if (isAnonSession()) { list.textContent = 'Anonymous mode has no app sign-ins.'; return; }
+    try {
+        const data = await apiFetch('/api/auth/apps');
+        list.replaceChildren();
+        const apps = data.apps || [];
+        if (!apps.length) {
+            const p = document.createElement('p');
+            p.style.cssText = 'color:var(--text-muted);font-size:13px';
+            p.textContent = 'No apps are signed in.';
+            list.appendChild(p);
+            return;
+        }
+        const fmt = (v) => {
+            if (!v) return '';
+            const t = new Date(String(v).replace(' ', 'T') + (String(v).endsWith('Z') ? '' : 'Z'));
+            return Number.isFinite(t.getTime()) ? t.toLocaleDateString() : '';
+        };
+        for (const app of apps) {
+            const row = document.createElement('div'); row.className = 'linked-item';
+            const icon = document.createElement('span'); icon.className = 'svc-icon';
+            const i = document.createElement('i'); i.className = 'fa-solid fa-puzzle-piece'; icon.appendChild(i);
+            const main = document.createElement('div');
+            const name = document.createElement('div'); name.className = 'svc-name'; name.textContent = app.name || app.client_id;
+            const meta = document.createElement('div'); meta.className = 'svc-user';
+            const scopes = String(app.scope || '').split(/\s+/).filter(Boolean).join(', ');
+            meta.textContent = `Signed in ${fmt(app.first_seen) || 'recently'} · last used ${fmt(app.last_refresh) || 'recently'}${scopes ? ' · ' + scopes : ''}`;
+            main.append(name, meta);
+            const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn btn-danger';
+            btn.textContent = 'Revoke'; btn.setAttribute('aria-label', `Revoke ${app.name || app.client_id}`);
+            btn.addEventListener('click', async () => {
+                btn.disabled = true;
+                try { await apiFetch('/api/auth/apps/' + encodeURIComponent(app.family_id), { method: 'DELETE' }); }
+                catch { /* the list reload says what is left */ }
+                loadApps();
+            });
+            row.append(icon, main, btn);
+            list.appendChild(row);
+        }
+    } catch {
+        list.textContent = 'Unable to load signed-in apps.';
+    }
+}
+
 async function signOutEverywhere() {
     if (!confirm('Sign out on every device and every OpenVibe site, this one included?')) return;
     try { await apiFetch('/api/auth/sign-out-everywhere', { method: 'POST' }); }

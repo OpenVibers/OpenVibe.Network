@@ -33,12 +33,17 @@ const at = (v) => (v ? new Date(String(v).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\
 /** Columns and index (boot, idempotent). No data is changed here. */
 async function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
-/** Store a new refresh token; returns the token (the only time it exists in clear). */
+/**
+ * Store a new refresh token; returns `{ token, familyId }` (the token is the only time it exists in
+ * clear). The family id is also signed into a Dock access token, so the caller must know it before
+ * the pair is minted.
+ */
 async function issue(db, { clientId, userId, scope = 'profile theme', familyId = null, generation = 0, now = Date.now() }) {
     const token = crypto.randomBytes(48).toString('hex');
+    const fam = familyId || newFamily();
     await db.prepare(`INSERT INTO oauth_tokens (token, client_id, user_id, scope, expires_at, family_id, generation)
-        VALUES (?, ?, ?, ?, ?, ?, ?)`).run(hash(token), clientId, userId, scope, new Date(now + TTL_MS).toISOString(), familyId || newFamily(), generation);
-    return token;
+        VALUES (?, ?, ?, ?, ?, ?, ?)`).run(hash(token), clientId, userId, scope, new Date(now + TTL_MS).toISOString(), fam, generation);
+    return { token, familyId: fam };
 }
 
 /** The stored row for a presented token, or null. Never matches a stored hash presented as a token. */
@@ -91,4 +96,4 @@ async function rotate(db, presented, clientId, { now = Date.now() } = {}) {
     return { ok: true, row, familyId: row.family_id || `fam_legacy_${row.id}`, generation: (row.generation || 0) + 1 };
 }
 
-module.exports = { ensureSchema, issue, find, rotate, revokeFamily, hash, PREFIX, REUSE_GRACE_S, TTL_MS };
+module.exports = { ensureSchema, issue, find, rotate, revokeFamily, newFamily, hash, PREFIX, REUSE_GRACE_S, TTL_MS };

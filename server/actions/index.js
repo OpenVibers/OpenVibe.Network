@@ -141,11 +141,11 @@ function createActions({ db, selfToken = () => null, urls = {}, fetchImpl = (...
 }
 
 /** The routes, behind Network's session check (cookie on openvibe.network, Bearer elsewhere), like the bell's. */
-function router({ actions, requireAuth }) {
+function router({ actions, requireAuth, requireDock = () => requireAuth }) {
     const r = express.Router();
     r.use(express.json({ limit: '4kb' }));
     r.use((req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
-    r.get('/', requireAuth, async (req, res) => {
+    r.get('/', requireDock('activity'), async (req, res) => {
         try {
             const actor = await store.actorOf(req.app.locals.db, req.user);
             res.json(await actions.forPerson(actor));

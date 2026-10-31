@@ -341,6 +341,11 @@
                 <button class="btn" onclick="signOutEverywhere()"><i class="fa-solid fa-right-from-bracket"></i> Sign out everywhere, this device too</button>
             </div>
         </div>
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-puzzle-piece"></i></span> Signed-in apps</h3>
+            <p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">Extensions and apps that hold their own sign-in. Revoking one ends its refresh token; the next request asks you to sign in again.</p>
+            <div id="apps-list"><div class="loading-spinner">Loading apps...</div></div>
+        </div>
         <div class="card" id="blocks-card">
             <h3><span class="icon"><i class="fa-solid fa-user-slash"></i></span> Blocked people</h3>
             <p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">People you block cannot message you, mention you or reply to what you post on OpenVibe sites, and you get no notifications from them. Moderators' actions still reach you.</p>

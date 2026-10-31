@@ -17,6 +17,7 @@
 const ALLOW_HEADERS = 'traceparent, X-OpenVibe-Request-Id, Authorization, Content-Type';
 const EXPOSE_HEADERS = 'X-OpenVibe-Request-Id, traceparent';
 const MAX_AGE_S = 86400;
+const { isExtensionOrigin } = require('./auth/extension-origin');
 
 // A registry segment: URL-safe characters, never '.' or '..' and never an encoded dot or slash.
 const SEGMENT_RE = /^[A-Za-z0-9_~:@!$&'()*+,;=.-]+$/;
@@ -52,9 +53,26 @@ function publicCors(req, res, next) {
     return next();
 }
 
-/** One CORS middleware for the app: public discovery paths open, everything else `restricted`. */
+/**
+ * Extension pages carry a chrome-extension:// or moz-extension:// Origin whose UUID changes per
+ * install. They are never refused for the origin alone, but they get no CORS grant: no echoed
+ * Origin and no Access-Control-Allow-Credentials. An extension page with its host permissions does
+ * not need CORS; and a cookie session is refused separately (auth/session.js) because only a Bearer
+ * token may act from such an origin.
+ */
+function extensionCors(req, res, next) {
+    if (req.method === 'OPTIONS') {
+        res.statusCode = 204;
+        res.setHeader('Content-Length', '0');
+        return res.end();
+    }
+    return next();
+}
+
+/** One CORS middleware for the app: extension origins get no grant, discovery is open, the rest restricted. */
 function gate(restricted) {
     return function corsGate(req, res, next) {
+        if (isExtensionOrigin(req.headers.origin)) return extensionCors(req, res, next);
         if (isPublicDiscoveryPath(req.path)) return publicCors(req, res, next);
         return restricted(req, res, next);
     };
@@ -97,4 +115,4 @@ function restrictedCors(origin) {
     return require('cors')({ origin, credentials: true, maxAge: RESTRICTED_MAX_AGE_S });
 }
 
-module.exports = { gate, publicCors, restrictedCors, isPublicDiscoveryPath, originGuard, ALLOW_HEADERS, EXPOSE_HEADERS, RESTRICTED_MAX_AGE_S };
+module.exports = { gate, publicCors, extensionCors, restrictedCors, isPublicDiscoveryPath, originGuard, ALLOW_HEADERS, EXPOSE_HEADERS, RESTRICTED_MAX_AGE_S };

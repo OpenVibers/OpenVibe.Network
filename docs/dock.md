@@ -13,7 +13,8 @@ Both are the person's own: the subject comes from the caller's token and from no
 reads or writes another's state. They take the person's own session — the `ov_token` cookie on openvibe.network, a
 Bearer user token anywhere else — and the CORS allow-list and the CSRF rules are exactly the ones the other
 `/api/v1/me/*` routes use (the first-party origin allow-list in `server/index.js`; a foreign origin is refused
-server-side).
+server-side). The browser extension's Dock token is the one scoped exception (`dock`; see `docs/sign-in.md`): it is
+accepted only here and only with that scope, and it is never a cookie session.
 
 | Route | Answer | Notes |
 |---|---|---|
