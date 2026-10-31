@@ -133,6 +133,7 @@ const REVIEWED = {
     'server/registry/deploy-drift.js fetch': [1, 'fixed host api.github.com'],
     'server/registry/ecosystem.js fetch': [2, 'service URLs from openvibe-contracts manifests and operator env overrides'],
     'server/registry/library-tags.js fetch': [1, 'fixed host api.github.com'],
+    'server/registry/machines.js fetch': [1, 'the machines hub calls Bot: the internal URL from operator config (OV_BOT_INTERNAL_URL, loopback by default), the paths are fixed, the machine id is a checked dev_ id (percent-encoded) and the person is named in a header, never in the URL'],
     'server/updates/routes.js fetch': [1, 'OV_BLOG_INTERNAL_URL (operator config)'],
 };
 

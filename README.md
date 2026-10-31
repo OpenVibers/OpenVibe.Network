@@ -40,6 +40,12 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 - node principals: a person's paired machine (`nod_…`) with a one-time pairing code, a scoped credential and a
   token; a revoke — by the pairing service, its owner, or an account deletion — stops the machine and is announced
   as `network.node.revoked@1`
+- the machines hub (`/api/v1/machines`, plan L34): a person's machines, their roles and what they do right now.
+  Bot stays the registry underneath — Network calls it as the person, so Bot checks the machine is that person's
+  own — and Network publishes what changes (`network.machine.online`, `.offline`, `.paired`, `.roles_changed`,
+  `.revoked`). A token that acts for the person (an app's, or a run's) may read the machines, rename one and
+  revoke one; pairing a machine and choosing its roles come from the person's own session only, because a
+  machine paired that way would carry the person's jobs and their desks.
 - the service registry (`/api/v1/registry/*`, `/.well-known/openvibe`), the status page, the network
   changelog proxy, and the files at `/shared/*` (the pinned openvibe-shared release)
 
@@ -67,9 +73,14 @@ Implemented here (the service manifest's `capabilities`, audience `openvibe.netw
 `network.project.manage|read`, `network.secret.use`, `network.staff.read` and `network.status.incident`. The grants other
 services hold are seeded in [server/identity/principals.js](server/identity/principals.js).
 
+The hub's own two, `network.machines.read` and `network.machines.manage` (Contracts 0.261.0), are checked by name
+here, next to the token and the consent: the check is the same one the contracts' own guard makes, and this one also
+holds the app's consent and the person's own session (see [server/registry/machines.js](server/registry/machines.js)).
+
 Called elsewhere: Network is the issuer, so it signs its own `svc:network` tokens: `events.event.publish`
-(and `events.delivery.admin` for the admin Events views) at OpenVibe.Events, and `ai.run.create` /
-`ai.run.read` at OpenVibe.AI for the footer's site copy.
+(and `events.delivery.admin` for the admin Events views) at OpenVibe.Events, `ai.run.create` /
+`ai.run.read` at OpenVibe.AI for the footer's site copy, and `bot.machine.manage` at OpenVibe.Bot for the
+machines hub.
 
 ## Architecture
 
@@ -809,7 +820,7 @@ Reporting a vulnerability: [SECURITY.md](SECURITY.md). The rules the code keeps:
 MIT (`license` in [package.json](package.json)).
 
 <!-- versions:start -->
-- openvibe-contracts: v0.256.0
+- openvibe-contracts: v0.261.0
 - openvibe-sdk: v0.74.0
 - openvibe-shared: v4.66.0
 <!-- versions:end -->
