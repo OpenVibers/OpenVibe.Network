@@ -103,6 +103,12 @@ const server = http.createServer(app);
     assert.strictEqual(t.body.scope, 'events.subscription.manage', 'Meme subscribes to the account events at boot');
     t = await token({ client_id: 'meme', client_secret: 'meme-secret', audience: 'openvibe.network' });
     assert.deepStrictEqual(t.body.scope.split(' '), ['network.account.deletion.confirm', 'network.account.export.contribute'], 'Meme answers account export and deletion, and holds no identity.subject.resolve');
+    // Meme's judge and the encyclopedia's writing pass run OpenVibe.AI's generate operation, like Design and Bench.
+    t = await token({ client_id: 'meme', client_secret: 'meme-secret', audience: 'openvibe.ai' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    const memeAiClaims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.ai' });
+    assert.ok(memeAiClaims.ok, memeAiClaims.reason);
+    assert.deepStrictEqual([memeAiClaims.claims.cap, memeAiClaims.claims.ns], [['ai.run.create'], ['ai.generate']], 'Meme runs AI workflow ai.generate for its judge');
 
     // OpenVibe.Vision and OpenVibe.Exchange (contracts 0.235.0): both answer account export and deletion and create
     // their two account-event subscriptions at boot; Vision runs AI workflow ai.complete, Exchange feeds Search.
