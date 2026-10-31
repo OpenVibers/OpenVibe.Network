@@ -257,6 +257,16 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
     /** Who changed it: the person, or the app that acts with their consent. */
     const actorOf = (req, subject) => (req.hub && req.hub.actor ? req.hub.actor : { type: 'user', id: subject });
 
+    /**
+     * The machine the route names. A machine's id is Bot's own (dev_ and 26 characters), so anything else never
+     * reaches Bot: the hub answers as it answers for a machine that is not there.
+     */
+    const machineId = (req) => {
+        const id = String((req.params && req.params.id) || '');
+        if (!MACHINE.test(id)) throw new MachineError(404, 'registry.machine_not_found', 'there is no such machine');
+        return id;
+    };
+
     const send = async (res, fn) => {
         try { return await fn(); } catch (e) {
             if (e instanceof MachineError) return http.sendProblem(res, e.status, e.code, { detail: e.message });
@@ -284,7 +294,7 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
     hub.get('/:id', read, async (req, res) => await send(res, async () => {
         res.set('Cache-Control', 'private, no-store');
         const subject = await subjectOf(req);
-        const out = await bot.get(subject, String(req.params.id || ''));
+        const out = await bot.get(subject, machineId(req));
         res.json({ machine: machineOf(out && out.machine) });
     }));
 
@@ -307,7 +317,7 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
         const subject = await subjectOf(req);
         const name = typeof (req.body || {}).name === 'string' ? (req.body.name).trim().slice(0, 80) : '';
         if (!name) throw new MachineError(422, 'registry.invalid_machine_name', 'a name is 1 to 80 characters');
-        const out = await bot.rename(subject, String(req.params.id || ''), name);
+        const out = await bot.rename(subject, machineId(req), name);
         res.json({ machine: machineOf(out && out.machine) });
     }));
 
@@ -317,7 +327,7 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
         const subject = await subjectOf(req);
         const roles = normaliseRoles((req.body || {}).roles);
         if (!roles) throw new MachineError(422, 'registry.unknown_role', 'that is not a machine role');
-        const id = String(req.params.id || '');
+        const id = machineId(req);
         const out = await bot.roles(subject, id, roles);
         const machine = machineOf(out && out.machine);
         await publish(req.app.locals.db, 'network.machine.roles_changed', {
@@ -333,7 +343,7 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
     hub.post('/:id/revoke', manage, express.json({ limit: '8kb' }), async (req, res) => await send(res, async () => {
         res.set('Cache-Control', 'private, no-store');
         const subject = await subjectOf(req);
-        const id = String(req.params.id || '');
+        const id = machineId(req);
         const out = await bot.revoke(subject, id);
         const machine = machineOf(out && out.machine);
         const at = new Date(now()).toISOString();
