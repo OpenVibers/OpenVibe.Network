@@ -117,6 +117,12 @@ const appToken = (capability, person = ana.subject_id) => serviceAuth.signServic
     project_id: projectId, env: 'production', on_behalf_of: person,
     iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 300, jti: `tok_${ids.ulid()}`,
 }, keys.privateKey);
+// A run token: a service token that acts for a person (Codes C3), holding the capability and naming them.
+const runToken = (capability, person = ana.subject_id) => serviceAuth.signServiceToken({
+    iss: config.jwt.issuer, sub: 'svc:codes', actor_type: 'service', aud: ['openvibe.network'], cap: [capability],
+    on_behalf_of: person,
+    iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 300, jti: `tok_${ids.ulid()}`,
+}, keys.privateKey);
 
 try {
     // ── A person sees their own machines, and the hub calls Bot as them. ──
@@ -184,6 +190,30 @@ try {
     assert.strictEqual(revoked.length, 1, 'the revoke is published once');
     assert.strictEqual(revoked[0].payload.machine_id, anaMachine);
     assert.strictEqual(revoked[0].payload.owner, ana.subject_id);
+
+    // ── Pairing a machine and choosing its roles are the person's own session, and nothing else. ──
+    // A token that acts for the person (an app's, or a run's) may read, rename and revoke; it may never add a
+    // machine or a role: a machine paired that way would carry the person's jobs and their desks.
+    const OWN_SESSION = 'pair a machine and choose its roles from your own session on openvibe.network';
+    const beforeDelegated = calls.length;
+    for (const [name, token] of [['an app', appToken('network.machines.manage')], ['a run', runToken('network.machines.manage')]]) {
+        const pairing = await call('POST', '/api/v1/machines/pairings', { token, body: {} });
+        assert.strictEqual(pairing.status, 403, `${name} may not pair a machine: ${JSON.stringify(pairing.body)}`);
+        assert.strictEqual(pairing.body.code, 'capability.owner_denied');
+        assert.strictEqual(pairing.body.detail, OWN_SESSION);
+        const roles = await call('PUT', `/api/v1/machines/${anaMachine}/roles`, { token, body: { roles: ['codes.worker'] } });
+        assert.strictEqual(roles.status, 403, `${name} may not choose the roles: ${JSON.stringify(roles.body)}`);
+        assert.strictEqual(roles.body.code, 'capability.owner_denied');
+        assert.strictEqual(roles.body.detail, OWN_SESSION);
+    }
+    assert.strictEqual(calls.length, beforeDelegated, 'Bot was not called for any of them');
+    // The person, in their own session, may do both.
+    const ownPairing = await call('POST', '/api/v1/machines/pairings', { user: ana, body: {} });
+    assert.strictEqual(ownPairing.status, 201, JSON.stringify(ownPairing.body));
+    assert.ok(ownPairing.body.pairing && ownPairing.body.pairing.code, 'the code is theirs');
+    const ownRoles = await call('PUT', `/api/v1/machines/${anaMachine}/roles`, { user: ana, body: { roles: ['codes.worker'] } });
+    assert.strictEqual(ownRoles.status, 200, JSON.stringify(ownRoles.body));
+    assert.deepStrictEqual(ownRoles.body.machine.roles, ['codes.worker']);
 
     // ── Bot's report of a machine's state: one event per change. ──
     const serviceToken = await (async () => {

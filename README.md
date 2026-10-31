@@ -43,7 +43,9 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 - the machines hub (`/api/v1/machines`, plan L34): a person's machines, their roles and what they do right now.
   Bot stays the registry underneath — Network calls it as the person, so Bot checks the machine is that person's
   own — and Network publishes what changes (`network.machine.online`, `.offline`, `.paired`, `.roles_changed`,
-  `.revoked`)
+  `.revoked`). A token that acts for the person (an app's, or a run's) may read the machines, rename one and
+  revoke one; pairing a machine and choosing its roles come from the person's own session only, because a
+  machine paired that way would carry the person's jobs and their desks.
 - the service registry (`/api/v1/registry/*`, `/.well-known/openvibe`), the status page, the network
   changelog proxy, and the files at `/shared/*` (the pinned openvibe-shared release)
 

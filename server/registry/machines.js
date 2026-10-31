@@ -267,6 +267,23 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
         return id;
     };
 
+    /**
+     * The person's own session, and nothing else, may add a machine or a role.
+     *
+     * A token that acts for the person (an app's, or a run's) may read the machines, rename one and revoke one:
+     * none of those can give the person a new machine or a new capability. Pairing a machine and choosing what it
+     * does are different: a machine paired that way, or a role given that way, would carry the person's jobs and
+     * their desks, so only the person in their own session decides that.
+     */
+    const ownSession = (req, res, next) => {
+        if (req.hub) {
+            return http.sendProblem(res, 403, 'capability.owner_denied', {
+                detail: 'pair a machine and choose its roles from your own session on openvibe.network',
+            });
+        }
+        return next();
+    };
+
     const send = async (res, fn) => {
         try { return await fn(); } catch (e) {
             if (e instanceof MachineError) return http.sendProblem(res, e.status, e.code, { detail: e.message });
@@ -300,7 +317,7 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
 
     // A one-time code to pair a machine with the person's account, and the command to run on it. The code is
     // shown once here and never again.
-    hub.post('/pairings', manage, express.json({ limit: '8kb' }), async (req, res) => await send(res, async () => {
+    hub.post('/pairings', manage, ownSession, express.json({ limit: '8kb' }), async (req, res) => await send(res, async () => {
         res.set('Cache-Control', 'private, no-store');
         const subject = await subjectOf(req);
         const out = await bot.pairing(subject);
@@ -322,7 +339,7 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
     }));
 
     // The machine's roles for the network: the whole set, not a change. A role outside the catalogue is refused.
-    hub.put('/:id/roles', manage, express.json({ limit: '8kb' }), async (req, res) => await send(res, async () => {
+    hub.put('/:id/roles', manage, ownSession, express.json({ limit: '8kb' }), async (req, res) => await send(res, async () => {
         res.set('Cache-Control', 'private, no-store');
         const subject = await subjectOf(req);
         const roles = normaliseRoles((req.body || {}).roles);
