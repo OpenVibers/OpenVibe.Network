@@ -18,6 +18,9 @@ assert.ok(/zone=openvibenetwork_api:10m rate=10r\/s/.test(conf), "nginx's /api/ 
 assert.ok(/zone=openvibenetwork_authorize:10m rate=60r\/m;/.test(conf), 'authorize: 60 a minute per address');
 const block = (re) => { const m = re.exec(conf); assert.ok(m, String(re)); return conf.slice(m.index, conf.indexOf('}', m.index)); };
 assert.match(block(/location = \/oauth\/authorize \{/), /limit_req zone=openvibenetwork_authorize burst=60 nodelay;/);
+assert.match(block(/location = \/oauth\/revoke \{/), /limit_req zone=openvibenetwork_token burst=30 nodelay;/, 'revoke uses the token zone');
+const idx = fs.readFileSync(path.join(__dirname, '../server/index.js'), 'utf8');
+assert.match(idx, /\['\/oauth\/authorize', '\/oauth\/token', '\/oauth\/revoke'\], require\('\.\/auth\/oauth-limit'\)\.createOAuthLimiter\(\)/, 'the app limits OAuth per address and client');
 const strict = /location ~ (\S+) \{\s*limit_req zone=openvibenetwork_auth burst=5 nodelay;/.exec(conf);
 assert.ok(strict && /register\|login/.test(strict[1]) && !/authorize/.test(strict[1]), 'the strict zone covers sign-in and registration, not authorize');
 assert.ok(/zone=openvibenetwork_auth:10m rate=5r\/m;/.test(conf));

@@ -43,6 +43,7 @@ async function loadUser() {
             loadNotifPrefs(); loadQuietHours();
             loadLinked();
             loadSessions();
+            loadApps();
             loadBlocks();
             loadAnonInfo();
             loadEmailStatus();

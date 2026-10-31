@@ -775,6 +775,59 @@ router.delete('/sessions', requireAuth, async (req, res) => {
     res.json({ ok: true, revoked: active, token: signToken(user, req.app.locals.privateKey, getConfig(req), { renew: req.tokenClaims || {} }) });
 });
 
+// ── Signed-in apps (public OAuth clients) ────────────────────
+// The extension's refresh family appears here once per sign-in (one per browser). Only public clients
+// are listed: the first-party site sessions stay in Linked Services / Active Sessions. Revoking a
+// family ends the refresh token; Network's Dock guard also refuses its access token at once.
+const APP_FAMILY_RE = /^fam_(?:[0-9a-f]{24}|legacy_\d+)$/;
+
+router.get('/apps', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const rows = await db.prepare(`
+        SELECT t.family_id, t.client_id, t.scope, t.created_at, t.expires_at, c.name
+        FROM oauth_tokens t
+        JOIN oauth_clients c ON c.client_id = t.client_id
+        WHERE t.user_id = ? AND t.revoked = 0 AND c.is_public = 1
+        ORDER BY t.created_at DESC
+    `).all(req.user.id);
+    const byFamily = new Map();
+    for (const row of rows) {
+        if (!row.family_id || !APP_FAMILY_RE.test(String(row.family_id))) continue;
+        const expires = new Date(String(row.expires_at).replace(' ', 'T') + (/[zZ]$/.test(String(row.expires_at)) ? '' : 'Z')).getTime();
+        if (!(expires > Date.now())) continue;
+        const current = byFamily.get(row.family_id);
+        if (!current) {
+            byFamily.set(row.family_id, {
+                family_id: row.family_id, client_id: row.client_id, name: row.name || row.client_id,
+                scope: row.scope || '', first_seen: row.created_at, last_refresh: row.created_at, expires_at: row.expires_at,
+            });
+        } else {
+            if (String(row.created_at) < String(current.first_seen)) current.first_seen = row.created_at;
+            if (String(row.created_at) > String(current.last_refresh)) {
+                current.last_refresh = row.created_at;
+                current.scope = row.scope || current.scope;
+                current.expires_at = row.expires_at;
+            }
+        }
+    }
+    res.json({ ok: true, apps: [...byFamily.values()].sort((a, b) => String(b.last_refresh).localeCompare(String(a.last_refresh))) });
+});
+
+router.delete('/apps/:family', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const family = String(req.params.family || '');
+    if (!APP_FAMILY_RE.test(family)) return res.json({ ok: true, revoked: 0 });
+    const row = await db.prepare('SELECT client_id FROM oauth_tokens WHERE family_id = ? AND user_id = ? LIMIT 1').get(family, req.user.id);
+    if (!row) return res.json({ ok: true, revoked: 0 });
+    const changed = await db.prepare("UPDATE oauth_tokens SET revoked = 1, revoked_reason = 'revoked_by_user', revoked_at = ov_now() WHERE family_id = ? AND user_id = ? AND revoked = 0")
+        .run(family, req.user.id);
+    try {
+        await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)')
+            .run(req.user.id, 'oauth_app_revoked', JSON.stringify({ client_id: row.client_id, family_id: family }));
+    } catch { /* audit is best effort */ }
+    res.json({ ok: true, revoked: changed.changes });
+});
+
 // ═══════════════════════════════════════════════════════════════
 // User Card / Public Profile
 // ═══════════════════════════════════════════════════════════════

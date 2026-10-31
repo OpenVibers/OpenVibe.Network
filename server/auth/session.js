@@ -10,6 +10,8 @@
  */
 'use strict';
 const jwt = require('jsonwebtoken');
+const { isExtensionOrigin } = require('./extension-origin');
+const { verifyDockSession, hasScope } = require('./dock-tokens');
 
 const GRACE_MS = 60 * 24 * 60 * 60 * 1000;      // renewable for 60 days after the token's exp
 
@@ -73,37 +75,69 @@ function clearSessionCookies(res) {
 /**
  * The session token a request carries: Bearer header, then the page cookie, then the cross-site
  * one. Only for endpoints that change nothing (/sso/check) — see makeRequireAuth for why.
+ * From an extension origin only the Bearer counts: a cookie the browser happens to hold must never
+ * act for an extension page.
  */
 function requestToken(req) {
     const h = req.headers?.authorization;
     if (h && h.startsWith('Bearer ')) return h.slice(7);
+    if (isExtensionOrigin(req.headers?.origin)) return null;
     return req.cookies?.ov_token || req.cookies?.ov_sso || null;
 }
-/** Express guard factory: attaches req.user / req.token; slides the session when due. */
-function makeRequireAuth(getCtx, signToken) {
+
+/** The token `requireAuth` reads: Bearer, else the page cookie (never ov_sso); none from an extension origin without Bearer. */
+function sessionToken(req) {
+    const h = req.headers?.authorization;
+    if (h && h.startsWith('Bearer ')) return h.slice(7);
+    if (isExtensionOrigin(req.headers?.origin)) return null;
+    return req.cookies?.ov_token || null;
+}
+
+/**
+ * Express guard factory: attaches req.user / req.token; slides the session when due.
+ *
+ * `dockScope` opens the guard to the extension's private-issuer Dock token as well, for that one
+ * scope only. Routes that do not pass it (every account/password/money route) keep refusing the Dock
+ * token because its issuer is not the Network's.
+ */
+function makeRequireAuth(getCtx, signToken, { dockScope = null } = {}) {
     return async function requireAuth(req, res, next) {
-        const authHeader = req.headers.authorization;
-        // Never ov_sso here: it is SameSite=None, so a hostile page could make the browser send it
-        // on a cross-site POST. Only the read-only /sso/check and the prompt=none authorize
-        // (which yields a code bound to a registered redirect_uri) may consult it.
-        const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : req.cookies?.ov_token;
+        const token = sessionToken(req);
         const ctx = await getCtx(req);
-        const out = await verifySession(token, ctx);
+        let out = await verifySession(token, ctx);
+        let dock = false;
+        if (out.error && dockScope) {
+            const dockOut = await verifyDockSession(token, ctx);
+            if (!dockOut.error) {
+                if (!hasScope(dockOut.decoded, dockScope)) {
+                    return res.status(403).json({ error: 'insufficient_scope', error_description: `This sign-in can read ${String(dockOut.decoded.scope || '').split(/\s+/).filter(Boolean).join(', ')}, not ${dockScope}.` });
+                }
+                out = dockOut;
+                dock = true;
+            } else if (dockOut.status && dockOut.status !== 401) {
+                out = dockOut;
+            }
+        }
         if (out.error) return res.status(out.status).json(out.status === 403 ? { error: out.error, ban_reason: out.ban_reason } : { error: out.error });
         req.user = out.user;
         req.token = token;
         req.tokenClaims = out.decoded;   // auth_time: account merge needs a recent real sign-in
-        if (out.renew && typeof signToken === 'function') {
+        req.dockScope = dock ? (out.scopes || []) : null;
+        if (out.renew && !dock && typeof signToken === 'function') {
             try {
                 const fresh = signToken(out.user, req.app.locals.privateKey, ctx.config, { renew: out.decoded });
                 req.token = fresh;
-                setSessionCookies(res, fresh);
-                res.set('X-OV-Token', fresh);                 // JS clients swap their stored token
-                res.set('Access-Control-Expose-Headers', 'X-OV-Token');
+                if (isExtensionOrigin(req.headers.origin)) {
+                    res.set('X-OV-Token', fresh);                 // an extension swaps its Bearer; never a cookie
+                } else {
+                    setSessionCookies(res, fresh);
+                    res.set('X-OV-Token', fresh);                 // JS clients swap their stored token
+                    res.set('Access-Control-Expose-Headers', 'X-OV-Token');
+                }
             } catch { /* renewal is best-effort */ }
         }
         next();
     };
 }
 
-module.exports = { verifySession, isUserSessionClaims, makeRequireAuth, GRACE_MS, COOKIE, SSO_COOKIE, setSessionCookies, clearSessionCookies, requestToken };
+module.exports = { verifySession, isUserSessionClaims, makeRequireAuth, sessionToken, GRACE_MS, COOKIE, SSO_COOKIE, setSessionCookies, clearSessionCookies, requestToken };

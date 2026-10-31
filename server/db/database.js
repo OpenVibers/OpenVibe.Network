@@ -160,18 +160,38 @@ async function seedDb(db, { log = console } = {}) {
             // OpenVibe Git: Forgejo at openvibe.codes/git (OpenVibe.Codes deploy/forgejo, WS-X12), signing in through OpenID
             // Connect; its callback is Forgejo's /user/oauth2/<source name>/callback. git.openvibe.codes once that name exists.
             { client_id: 'forgejo', name: 'OpenVibe Git', redirect_uris: ['https://openvibe.codes/git/user/oauth2/OpenVibe/callback', 'https://git.openvibe.codes/user/oauth2/OpenVibe/callback'] },
+            // The Dock in the browser extension (2026-10-30): a public first-party client with no secret,
+            // PKCE S256 required, the Chrome/Firefox extension redirect URIs exactly, and a read-only scope
+            // ceiling. The Chrome id is fixed by browser/manifest.json's key; the Firefox hash is SHA-1 of
+            // the add-on id (extension id -> getRedirectURL). Both are public values.
+            { client_id: 'companion', name: 'OpenVibe extension', public: true,
+                allowed_scopes: 'dock activity chat.read', access_token_ttl_s: 3600,
+                redirect_uris: [
+                    'https://bjcjcfcecpkkmfndegkjekoipdmbgakd.chromiumapp.org/',
+                    'https://bb6593a68b1dcfbb7acd9650f04a169f4c5b57a0.extensions.allizom.org/',
+                ] },
         ];
         let seededAny = false;
         for (const c of contractClients) {
             const existing = await db.prepare('SELECT client_id, name, redirect_uris FROM oauth_clients WHERE client_id = ?').get(c.client_id);
             if (!existing) {
-                await db.prepare('INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, ?, ?, ?, 1)')
-                    .run(c.client_id, uuidv4(), c.name, JSON.stringify(c.redirect_uris));
-                console.log(`[DB] Seeded OAuth2 client: ${c.client_id} (secret stored in oauth_clients; read it from the database, never from logs)`);
+                if (c.public) {
+                    await db.prepare('INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party, is_public, allowed_scopes, access_token_ttl_s) VALUES (?, NULL, ?, ?, 1, 1, ?, ?)')
+                        .run(c.client_id, c.name, JSON.stringify(c.redirect_uris), c.allowed_scopes, c.access_token_ttl_s);
+                    console.log(`[DB] Seeded public OAuth2 client: ${c.client_id} (no secret)`);
+                } else {
+                    await db.prepare('INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, ?, ?, ?, 1)')
+                        .run(c.client_id, uuidv4(), c.name, JSON.stringify(c.redirect_uris));
+                    console.log(`[DB] Seeded OAuth2 client: ${c.client_id} (secret stored in oauth_clients; read it from the database, never from logs)`);
+                }
                 seededAny = true;
                 continue;
             }
             await mergeRedirectUris(db, c.client_id, c.redirect_uris, { log });
+            if (c.public) {
+                await db.prepare('UPDATE oauth_clients SET name = ?, is_public = 1, allowed_scopes = ?, access_token_ttl_s = ?, client_secret = NULL, redirect_uris = ? WHERE client_id = ?')
+                    .run(c.name, c.allowed_scopes, c.access_token_ttl_s, JSON.stringify(c.redirect_uris), c.client_id);
+            }
             // A client created first as a service principal carries the placeholder name "OpenVibe.<id> (service)",
             // which the sign-in page shows people ("Sign in to OpenVibe.food (service)"). Give it the site's name; a
             // name someone chose stays. A site's own former name is renamed too (FORMER_NAMES).

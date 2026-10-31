@@ -9,11 +9,11 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function createNotificationRoutes(db, notificationService, requireAuth) {
+module.exports = function createNotificationRoutes(db, notificationService, requireAuth, requireDock = () => requireAuth) {
 
     // ─── GET /api/notifications ────────────────────────────
     // Query params: limit, offset, category, type, tab (the bell's tabs, ./tabs.js), unread_only, q, since
-    router.get('/', requireAuth, async (req, res) => {
+    router.get('/', requireDock('activity'), async (req, res) => {
         try {
             const userId = req.user.id;
             const limit = Math.min(parseInt(req.query.limit) || 50, 200);
@@ -35,7 +35,7 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     });
 
     // ─── GET /api/notifications/unread-count ───────────────
-    router.get('/unread-count', requireAuth, async (req, res) => {
+    router.get('/unread-count', requireDock('activity'), async (req, res) => {
         try {
             const count = await notificationService.getUnreadCount(req.user.id);
             res.json({ ok: true, count });
@@ -46,7 +46,7 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
 
     // ─── GET /api/notifications/unread-by-tab ──────────────
     // The counts on the bell's tabs: { tabs: { all, mentions, live, alerts, system, agents } }.
-    router.get('/unread-by-tab', requireAuth, async (req, res) => {
+    router.get('/unread-by-tab', requireDock('activity'), async (req, res) => {
         try {
             res.json({ ok: true, tabs: await notificationService.getUnreadByTab(req.user.id) });
         } catch (err) {
@@ -55,7 +55,7 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     });
 
     // ─── GET /api/notifications/unread-by-category ─────────
-    router.get('/unread-by-category', requireAuth, async (req, res) => {
+    router.get('/unread-by-category', requireDock('activity'), async (req, res) => {
         try {
             const categories = await notificationService.getUnreadByCategory(req.user.id);
             res.json({ ok: true, categories });
@@ -65,7 +65,7 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     });
 
     // ─── GET /api/notifications/newest ─────────────────────
-    router.get('/newest', requireAuth, async (req, res) => {
+    router.get('/newest', requireDock('activity'), async (req, res) => {
         try {
             const newest = await notificationService.getNewest(req.user.id);
             res.json({ ok: true, notification: newest || null });
@@ -75,7 +75,7 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     });
 
     // ─── POST /api/notifications/:id/read ──────────────────
-    router.post('/:id/read', requireAuth, async (req, res) => {
+    router.post('/:id/read', requireDock('activity'), async (req, res) => {
         try {
             const ok = await notificationService.markRead(req.params.id, req.user.id);
             res.json({ ok, unread: await notificationService.getUnreadCount(req.user.id) });
@@ -86,7 +86,7 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
 
     // ─── POST /api/notifications/read-batch ────────────────
     // Body: { ids: [] } — the inbox marks everything it rendered as seen in one call.
-    router.post('/read-batch', requireAuth, async (req, res) => {
+    router.post('/read-batch', requireDock('activity'), async (req, res) => {
         try {
             const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
             const changed = await notificationService.markReadMany(ids, req.user.id);
@@ -97,7 +97,7 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     });
 
     // ─── POST /api/notifications/read-all ──────────────────
-    router.post('/read-all', requireAuth, async (req, res) => {
+    router.post('/read-all', requireDock('activity'), async (req, res) => {
         try {
             const { category } = req.body || {};
             const changed = await notificationService.markAllRead(req.user.id, category || null);
@@ -108,7 +108,7 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
     });
 
     // ─── POST /api/notifications/:id/dismiss ───────────────
-    router.post('/:id/dismiss', requireAuth, async (req, res) => {
+    router.post('/:id/dismiss', requireDock('activity'), async (req, res) => {
         try {
             const ok = await notificationService.dismiss(req.params.id, req.user.id);
             res.json({ ok });
@@ -130,7 +130,7 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
 
     // ─── GET /api/notifications/quiet-hours ────────────────
     // The person's do-not-disturb window (default 22:00–07:00 UTC, off) and whether it is now.
-    router.get('/quiet-hours', requireAuth, async (req, res) => {
+    router.get('/quiet-hours', requireDock('activity'), async (req, res) => {
         try {
             const quiet = await notificationService.getQuietHours(req.user.id);
             const in_quiet = await notificationService.inQuietHours(req.user.id);
