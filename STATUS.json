@@ -8,7 +8,7 @@
   "domain": "openvibe.network (with auth., api., admin., my. and themes.openvibe.network in its manifest)",
   "contracts": "openvibe-contracts v0.251.0",
   "sdk": "openvibe-sdk v0.74.0",
-  "shared": "openvibe-shared v4.55.0",
+  "shared": "openvibe-shared v4.57.1",
   "capabilities": [
     "identity.subject.resolve",
     "mods.grant.manage",
@@ -49,5 +49,5 @@
     "universal telemetry: per-route aggregated platform.telemetry-sample@1 plus per-flush HTTP autoscaling gauges (openvibe-sdk/telemetry)",
     "the Dock's state per person: GET and PUT /api/v1/me/dock (network.dock-state@1, network.dock-result@1)"
   ],
-  "updated": "2026-10-30"
+  "updated": "2026-10-31"
 }
