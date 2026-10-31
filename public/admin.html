@@ -9,12 +9,22 @@
 <meta name="color-scheme" content="dark light">
 <link rel="apple-touch-icon" href="/assets/logo-192.png">
 <link rel="manifest" href="/manifest.webmanifest">
-<!-- Critical theme bootstrap (ov-theme-boot) — MUST stay inline and above the stylesheets.
-     Paints the cached theme synchronously so the default palette never flashes. Reads
-     localStorage only: no network, nothing to block on. theme-loader.js still runs after
-     and reconciles with the account. -->
+<!-- The look before first paint (ov-theme-boot): MUST stay ABOVE the stylesheets. server/look-boot.js puts
+     openvibe-shared's look-boot here: it paints the look this browser last painted here (ov_paint), or the one a
+     link from another OpenVibe page carried (?ov_look=), with the display settings (the season switch among them).
+     theme-loader.js loads with defer, so without it the default palette (or an old season) showed first. -->
+<!--ov:look-boot-->
 <script>
-(function(){try{var raw=localStorage.getItem('ov_theme');if(!raw)return;var t=JSON.parse(raw),v=t&&t.variables;if(!v)return;var el=document.documentElement;for(var k in v)if(k.charAt(0)==='-')el.style.setProperty(k,v[k]);if(t.id)el.setAttribute('data-theme',t.id);}catch(_){}})();
+// A browser from before look-boot has only its theme (ov_theme), not yet a painted look (ov_paint): paint that once.
+(function () {
+    try {
+        if (localStorage.getItem('ov_paint')) return;
+        var t = JSON.parse(localStorage.getItem('ov_theme') || 'null'), v = t && t.variables, el = document.documentElement;
+        if (!v) return;
+        for (var k in v) if (k.charAt(0) === '-' && /^[#0-9a-z(),.%\s-]{1,80}$/i.test(String(v[k])) && !/url|expression/i.test(String(v[k]))) el.style.setProperty(k, v[k]);
+        if (t.id && /^[a-z0-9-]{1,40}$/.test(t.id)) el.setAttribute('data-theme', t.id);
+    } catch (_) { /* nothing kept: theme-loader.js paints shortly */ }
+})();
 </script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="/css/admin.css">
