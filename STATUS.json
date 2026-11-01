@@ -6,9 +6,9 @@
   "runtime": "node 22, express, PostgreSQL 18 (openvibe-sdk/db, async) + Valkey 9",
   "port": 4000,
   "domain": "openvibe.network (with auth., api., admin., my. and themes.openvibe.network in its manifest)",
-  "contracts": "openvibe-contracts v0.265.0",
+  "contracts": "openvibe-contracts v0.267.0",
   "sdk": "openvibe-sdk v0.74.0",
-  "shared": "openvibe-shared v4.67.0",
+  "shared": "openvibe-shared v4.70.0",
   "capabilities": [
     "identity.subject.resolve",
     "mods.grant.manage",
@@ -52,5 +52,5 @@
     "the Dock's state per person: GET and PUT /api/v1/me/dock (network.dock-state@1, network.dock-result@1)",
     "the machines hub (/api/v1/machines, plan L34): a person's machines, their roles and what they do right now, with Bot as the registry underneath (Network calls it as the person) and network.machine.online/offline/paired/roles_changed/revoked published through OpenVibe.Events"
   ],
-  "updated": "2026-10-31"
+  "updated": "2026-11-01"
 }
