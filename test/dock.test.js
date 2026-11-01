@@ -108,6 +108,14 @@ try {
     assert.strictEqual(r.body.state.tab, 'vibe');
     r = await call('PUT', { tab: 'chats' });
     assert.strictEqual((await call('PUT', { tab: 'nope' })).status, 422, 'a tab the contract does not know is refused');
+    // A timer (contracts 0.271.0, plan L48 R2): kept whole, cleared with null.
+    const timer = { kind: 'focus', label: 'Write', started_at: '2026-11-01T09:00:00.000Z', ends_at: '2026-11-01T09:25:00.000Z', round: 1, rounds: 4, focus_min: 25, break_min: 5 };
+    r = await call('PUT', { timer });
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    assert.deepStrictEqual(r.body.state.timer, timer);
+    assert.strictEqual((await call('PUT', { timer: { kind: 'nap', started_at: timer.started_at, ends_at: timer.ends_at } })).status, 422, 'a kind the contract does not know');
+    r = await call('PUT', { timer: null });
+    assert.strictEqual(r.body.state.timer, null, 'stopped');
 
     // place merges per device class, and inside a class per field.
     r = await call('PUT', { place: { desktop: { width: 500 } } });
