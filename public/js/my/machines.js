@@ -168,7 +168,7 @@ async function loadMachines() {
         const machines = (out && out.machines) || [];
         machines.sort((a, b) => (b.online === true) - (a.online === true));
         if (!machines.length) {
-            list.replaceChildren(mcEl('div', 'mc-empty', [mcIcon('fa-laptop-code'), mcEl('p', '', [mcEl('b', '', ['No machines yet.']), ' Pair your computer and it can run your Codes jobs, host your desks and serve your own models, under your account.'])]));
+            list.replaceChildren(mcEl('div', 'mc-empty', [mcIcon('fa-laptop'), mcEl('p', '', [mcEl('b', '', ['No machines yet.']), ' Pair your computer and it can run your Codes jobs, host your desks and serve your own models, under your account.'])]));
             return;
         }
         list.replaceChildren(...machines.map(mcCard));

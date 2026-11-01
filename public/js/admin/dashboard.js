@@ -27,7 +27,7 @@ async function loadDashboard() {
         { label: 'Total Streams', value: ss?.streams?.total || ss?.totalStreams || 0, icon: 'fa-video' },
         { label: 'Active Bans', value: ss?.users?.banned || ss?.activeBans || 0, icon: 'fa-ban' },
         { label: 'Notifications', value: th?.total_notifications || 0, icon: 'fa-bell' },
-        { label: 'Unread Notifs', value: th?.unread_notifications || 0, icon: 'fa-bell-slash' },
+        { label: 'Unread Notifs', value: th?.unread_notifications || 0, icon: 'fa-bell' },
         { label: 'Anon Users', value: th?.anon_users || 0, icon: 'fa-ghost' },
     ];
 
