@@ -10,7 +10,9 @@ async function loadUser() {
     await _bootstrapFromCookie();
     const authToken = getAuthToken();
     const anonToken = getAnonToken();
-    if (!authToken && !anonToken) { window.location.href = '/login'; return; }
+    // A replace, not a new history entry: Back should not land on a page that bounces again, and a replace navigation
+    // skips the cross-document view transition the sign-in page cannot finish (openvibe-shared 4.88.1).
+    if (!authToken && !anonToken) { window.location.replace('/login'); return; }
     try {
         if (isAnonSession()) {
             const data = await anonFetch('/api/auth/anon/' + encodeURIComponent(anonToken));
@@ -74,7 +76,7 @@ async function loadUser() {
                     if (r.ok) { const d = await r.json(); if (d.token) { localStorage.setItem('ov_token', d.token); document.cookie = `ov_token=${d.token};path=/;max-age=${60*60*24*90};SameSite=Lax${location.protocol === 'https:' ? ';Secure' : ''}`; location.reload(); return; } }
                 } catch { /* fall through */ }
             }
-            window.location.href = '/login?return=' + encodeURIComponent(window.location.pathname);
+            window.location.replace('/login?return=' + encodeURIComponent(window.location.pathname));
             return;
         }
         showAccountLoadError(err);
