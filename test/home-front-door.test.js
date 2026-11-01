@@ -133,6 +133,18 @@ assert.ok(html.includes('LIVE · 1.5k') && html.includes('Al&lt;b&gt;ice') && ht
 assert.ok(html.includes('data-fallback="https://openvibe.media/a"'), 'a broken thumbnail falls back to the avatar');
 assert.ok(html.includes('href="https://openvibe.community/p/one"') && html.includes('href="https://openvibe.blog/@a/b"'));
 assert.ok(html.includes('href="https://openvibe.video/v/9"') && html.includes('<code class="now-code">FALL10</code>') && html.includes('Remote · Berlin · via Arbeitnow'), 'recordings, codes and jobs render');
+// A Media object is asked for the width drawn (a 36 px face: 96; a 320 px card picture: 640), keeps the full-size
+// address and retries it once before the existing fallback. Other picture hosts are used unchanged.
+{
+    const faceObj = 'https://openvibe.media/o/med_01M644DY8BFX4H7MTRKPGG052R';
+    const shotObj = 'https://openvibe.media/o/med_01M6ACHAZPBW24T4624DD7MVFJ';
+    activity._set({ live: [{ name: 'Alice', title: 'Hi', url: 'https://openvibe.live/@alice', thumb: 'https://openvibe.live/t.jpg', avatar: faceObj, viewers: 1 }], pastes: [{ title: 'Shot', url: 'https://openvibe.community/p/one', kind: 'Screenshot', shot: shotObj, avatar: '', at: null }], posts: [] });
+    const page = home.render().html;
+    assert.ok(page.includes(`src="${faceObj}?w=96"`) && page.includes(`data-full="${faceObj}"`), 'a 36 px face asks for 96 and keeps the original');
+    assert.ok(page.includes(`src="${shotObj}?w=640"`) && page.includes(`data-full="${shotObj}"`), 'a 320 px card picture asks for 640 and keeps the original');
+    assert.ok(page.includes('onerror="if(this.dataset.full&&this.src!==this.dataset.full){this.src=this.dataset.full;return}this.src=this.dataset.fallback"'), 'the original is retried once, then the fallback');
+    assert.ok(page.includes('src="https://openvibe.live/t.jpg"') && !page.includes('https://openvibe.live/t.jpg?w='), 'a Live thumbnail is not a Media object and is used unchanged');
+}
 // A phone shows one of what is new at a time (the short-pages rule, 2026-10-30): radio chips and :has(), no script, every
 // part still in the page; the first part present is picked, and a wider screen or a browser without :has() shows them all.
 {
