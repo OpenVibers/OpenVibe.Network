@@ -99,7 +99,7 @@ a.btn{text-decoration:none}
 .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase}
 .badge-success{background:rgba(46,204,113,0.15);color:#2ecc71}
 .badge-danger{background:rgba(231,76,60,0.15);color:#e74c3c}
-.badge-warning{background:rgba(245,158,11,0.15);color:#f59e0b}
+.badge-warning{background:rgba(245,158,11,0.15);color:var(--warning-text, #f59e0b)}
 .badge-info{background:rgba(52,152,219,0.15);color:#3498db}
 .badge-admin{background:rgba(231,76,60,0.15);color:#e74c3c}
 .badge-global_mod{background:rgba(155,89,182,0.15);color:#9b59b6}

@@ -167,7 +167,7 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
 .oauth-consent .consent-head b{color:var(--accent)}
 .oauth-consent .consent-host{color:var(--text-muted)}
 .oauth-consent ul{list-style:none;margin:0;padding:0;display:grid; grid-template-columns: minmax(0, 1fr);gap:8px}
-.oauth-consent li{padding:8px 10px;border-left:3px solid var(--border);border-radius:6px;background:rgba(255,255,255,0.02)}
+.oauth-consent li{padding:8px 10px;border-left:3px solid var(--border);border-radius:6px;background:color-mix(in srgb, var(--text-primary, #fff) 2%, transparent)}
 .oauth-consent li.sensitive{border-left-color:#f59e0b}
 .oauth-consent .consent-name{font-weight:600;color:var(--text)}
 .oauth-consent .consent-badge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;color:#1a1204;background:#f59e0b;vertical-align:1px}
