@@ -102,6 +102,12 @@ try {
     assert.deepStrictEqual([r.body.state.open, r.body.state.tab, r.body.state.pinned], [true, 'chats', false], 'pinned was not in the body and stayed');
     r = await call('GET');
     assert.deepStrictEqual([r.body.state.open, r.body.state.tab], [true, 'chats'], 'the state is stored');
+    // The Dock's Vibe tab (contracts 0.270.0, openvibe-shared 4.74.0): kept like the others.
+    r = await call('PUT', { tab: 'vibe' });
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    assert.strictEqual(r.body.state.tab, 'vibe');
+    r = await call('PUT', { tab: 'chats' });
+    assert.strictEqual((await call('PUT', { tab: 'nope' })).status, 422, 'a tab the contract does not know is refused');
 
     // place merges per device class, and inside a class per field.
     r = await call('PUT', { place: { desktop: { width: 500 } } });
