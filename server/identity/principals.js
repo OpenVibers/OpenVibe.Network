@@ -134,6 +134,8 @@ const DEFAULT_GRANTS = [
     // names them in X-OV-Subject, so the task is theirs (their allowance and list, Chat recorded as `via`), and reads the
     // task it started for its answer (a delegated caller sees only the tasks it started).
     ['chat', 'actor.task.create', 'openvibe.actor', []],
+    // Vibe's "remind me…" (plan L48): Chat sets a person's own reminder on Today, naming them with X-OV-Subject.
+    ['chat', 'today.reminder.write', 'openvibe.today', []],
     ['chat', 'actor.task.read', 'openvibe.actor', []],
     // Vibe sets up recurring work for the person it is talking with, in their own chat and after they agreed (Chat's
     // set_up_agent and my_agents tools): one of their OpenVibe Agents, made and listed as them (X-OV-Subject).
