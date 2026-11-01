@@ -27,7 +27,6 @@
     } catch (_) { /* nothing kept: theme-loader.js paints shortly */ }
 })();
 </script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg-primary:#0a0f1c;--bg-secondary:#101828;--bg-card:#131c2e;--border:#1f2d47;--text-primary:#e8ecf5;--text-secondary:#a9b3c9;--text-muted:#6b7590;--accent:#3b82f6;--accent-light:#60a5fa;--accent-rgb:59,130,246;--on-accent:#fff;--success:#22c55e}
@@ -59,6 +58,8 @@ li.now .dot i{animation:breathe 1.2s ease-in-out infinite}
 .ov-mark{width:38px;height:38px;flex:none}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
+<!-- The OpenVibe glyphs draw every fa- icon here (no Font Awesome since 2026-11-01). -->
+<script src="/shared/ov-glyphs.js" defer></script>
 </head>
 <body>
 <section class="card" aria-live="polite">

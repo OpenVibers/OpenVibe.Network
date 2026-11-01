@@ -100,9 +100,9 @@ app.use(helmet({
             defaultSrc: ["'self'"],
             // Cloudflare Web Analytics: Cloudflare injects its beacon at the edge and the privacy text says it may
             // measure performance; script-src loads the beacon, connect-src is where it reports.
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://openvibe.network", "https://openvibe.live", "cdnjs.cloudflare.com", "cdn.jsdelivr.net", "fonts.googleapis.com", "https://static.cloudflareinsights.com"],
-            styleSrc: ["'self'", "'unsafe-inline'", "cdnjs.cloudflare.com", "fonts.googleapis.com", "fonts.gstatic.com"],
-            fontSrc: ["'self'", "fonts.gstatic.com", "cdnjs.cloudflare.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://openvibe.network", "https://openvibe.live", "cdn.jsdelivr.net", "fonts.googleapis.com", "https://static.cloudflareinsights.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com", "fonts.gstatic.com"],
+            fontSrc: ["'self'", "fonts.gstatic.com"],
             imgSrc: ["'self'", "data:", "blob:", "https://openvibe.media", "https://openvibe.live"],   // avatars and media live on openvibe.media; live-stream thumbnails on the home page come from openvibe.live
             connectSrc: [
                 "'self'",

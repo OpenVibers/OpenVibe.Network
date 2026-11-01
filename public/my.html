@@ -21,7 +21,6 @@
 <link rel="canonical" href="https://openvibe.network/my">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 <!-- The look before first paint (ov-theme-boot): MUST stay ABOVE the stylesheets. server/look-boot.js puts
      openvibe-shared's look-boot here: it paints the look this browser last painted here (ov_paint), or the one a
      link from another OpenVibe page carried (?ov_look=), with the display settings (the season switch among them).
@@ -39,7 +38,6 @@
     } catch (_) { /* nothing kept: theme-loader.js paints shortly */ }
 })();
 </script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="/css/my.css">
 <!-- The OpenVibe Kit's fold rows on "Your data choices" (L24): /shared/kit.css is the shared kit, nothing global. -->
 <link rel="stylesheet" href="/shared/kit.css">
@@ -111,7 +109,7 @@
         <button onclick="showSection('data',this)"><i class="fa-solid fa-database"></i> AI &amp; Data</button>
         <button onclick="showSection('approvals',this)"><i class="fa-solid fa-user-check"></i> Approvals</button>
         <button onclick="showSection('linked',this)"><i class="fa-solid fa-link"></i> Linked Services</button>
-        <button onclick="showSection('machines',this)"><i class="fa-solid fa-laptop-code"></i> Machines</button>
+        <button onclick="showSection('machines',this)"><i class="fa-solid fa-laptop"></i> Machines</button>
         <button onclick="showSection('security',this)"><i class="fa-solid fa-lock"></i> Security</button>
         <button onclick="showSection('anon',this)"><i class="fa-solid fa-user-secret"></i> Anon Info</button>
     </div>
@@ -119,7 +117,7 @@
     <!-- Profile Section -->
     <div class="section active" id="sec-profile">
         <div class="card" id="avatar-card">
-            <h3><span class="icon"><i class="fa-solid fa-image-portrait"></i></span> Avatar</h3>
+            <h3><span class="icon"><i class="fa-solid fa-user-circle"></i></span> Avatar</h3>
             <p class="muted" style="margin-top:0">One picture for every OpenVibe site. It always lives on <b>openvibe.media</b>. Paste the link to one of your image pastes (from <a href="https://openvibe.community/my" target="_blank" rel="noopener">your pastes</a>), or any picture link: we fetch it once, clean it, and keep our own copy.</p>
             <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
                 <img id="avatar-preview" alt="" width="64" height="64" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)">
@@ -206,8 +204,8 @@
             <h3 style="margin:0"><span class="icon"><i class="fa-solid fa-share-nodes"></i></span> Share a theme</h3>
             <p style="margin:6px 0 12px;color:var(--text-secondary);font-size:0.9rem">Export your active theme as a file, import one, or submit your colours as a community theme. Submissions are reviewed before anyone else sees them; you can use yours right away.</p>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-                <button class="btn btn-outline" onclick="exportActiveTheme(this)"><i class="fa-solid fa-file-export"></i> Export active theme</button>
-                <label class="btn btn-outline" style="cursor:pointer"><i class="fa-solid fa-file-import"></i> Import a theme file<input type="file" accept=".json,application/json" onchange="importThemeFile(this)" style="display:none"></label>
+                <button class="btn btn-outline" onclick="exportActiveTheme(this)"><i class="fa-solid fa-download"></i> Export active theme</button>
+                <label class="btn btn-outline" style="cursor:pointer"><i class="fa-solid fa-upload"></i> Import a theme file<input type="file" accept=".json,application/json" onchange="importThemeFile(this)" style="display:none"></label>
             </div>
             <form class="theme-submit" onsubmit="submitMyTheme(event)">
                 <div class="form-field"><label for="theme-submit-name">Name</label><input id="theme-submit-name" required minlength="2" maxlength="60" placeholder="Midnight Arcade" autocomplete="off"></div>
@@ -233,18 +231,18 @@
         </div>
         <!-- Account merge (ADR-029): fold a second account this person owns into this one. -->
         <div class="card" id="merge-card" style="margin-top:16px">
-            <h3><span class="icon"><i class="fa-solid fa-code-merge"></i></span> Merge two accounts</h3>
+            <h3><span class="icon"><i class="fa-solid fa-code-fork"></i></span> Merge two accounts</h3>
             <p>Own two accounts? Fold one into the other. Its follows, OpenCoins, linked sign-ins, sessions and settings move to the account you keep, which keeps its name and profile. The other account can't be used on its own afterwards: signing in to it signs you in to the one you kept. If it was a mistake, support can split it by hand within 30 days.</p>
             <div id="merge-body" style="margin-top:12px"></div>
         </div>
         <!-- Your data (ADR-033): a copy of everything, and deleting the account after 30 days. -->
         <div class="card" id="export-card" style="margin-top:16px">
-            <h3><span class="icon"><i class="fa-solid fa-file-zipper"></i></span> Download your data</h3>
+            <h3><span class="icon"><i class="fa-solid fa-box-archive"></i></span> Download your data</h3>
             <p>Get a copy of what OpenVibe keeps about you: your account here, and your part of Live, Chat, Community, Media and Games, as JSON files in one .zip. Each service adds its own files, so it takes up to half an hour. You can download it for 7 days, and ask for one a day.</p>
             <div id="export-body" style="margin-top:12px"></div>
         </div>
         <div class="card" id="delete-card" style="margin-top:16px">
-            <h3><span class="icon"><i class="fa-solid fa-user-xmark"></i></span> Delete your account</h3>
+            <h3><span class="icon"><i class="fa-solid fa-user-slash"></i></span> Delete your account</h3>
             <p>Your account is deleted 30 days after you ask, and you can cancel any time before then; until that date everything works as usual. On the day, your account here is erased and every service erases what it keeps about you: messages, posts, follows, media and settings. Replies other people wrote under your posts stay, without your name. Payment records are kept without your name, as the law requires. After that it cannot be undone, and your username becomes free for someone else.</p>
             <div id="delete-body" style="margin-top:12px"></div>
         </div>
@@ -253,7 +251,7 @@
     <!-- Notifications Section -->
     <div class="section" id="sec-notifications">
         <div class="card" id="notif-verify-card" style="display:none">
-            <h3><span class="icon"><i class="fa-solid fa-envelope-circle-check"></i></span> Email alerts</h3>
+            <h3><span class="icon"><i class="fa-solid fa-envelope"></i></span> Email alerts</h3>
             <div id="notif-verify-body" style="font-size:13px;line-height:1.5"></div>
         </div>
         <div class="card">
@@ -312,7 +310,7 @@
              per purpose, the wording, the kinds, the 18+ confirmation inside the row, the history, and equal On/Off
              buttons. Nothing is pre-ticked; the rows are drawn from GET /api/v1/me/consent. -->
         <div class="card" id="consent-card">
-            <h3><span class="icon"><i class="fa-solid fa-toggle-on"></i></span> Your data choices</h3>
+            <h3><span class="icon"><i class="fa-solid fa-circle-check"></i></span> Your data choices</h3>
             <p>AI training, the open dataset, face recognition and apps that use your content are <b>off until you turn them on</b>. Each choice is yours, and you can turn it off again at any time. Nothing here is on by default. We never sell your data.</p>
             <div id="consent-choices"><div class="loading-spinner">Loading your choices…</div></div>
             <p class="muted consent-status" id="consent-status" role="status"></p>
@@ -367,7 +365,7 @@
         <div class="card">
             <div class="mc-top">
                 <div>
-                    <h3><span class="icon"><i class="fa-solid fa-laptop-code"></i></span> Your machines</h3>
+                    <h3><span class="icon"><i class="fa-solid fa-laptop"></i></span> Your machines</h3>
                     <p class="muted">Computers and servers paired with your account. They run your Codes jobs, host your desks and serve your own models. Only you can pair one or change what it does.</p>
                 </div>
                 <button class="btn btn-primary" id="mc-pair-btn" type="button" onclick="mcPair()"><i class="fa-solid fa-plus"></i> Pair a machine</button>
@@ -409,7 +407,7 @@
             </div>
         </div>
         <div class="card">
-            <h3><span class="icon"><i class="fa-solid fa-puzzle-piece"></i></span> Signed-in apps</h3>
+            <h3><span class="icon"><i class="fa-solid fa-plug"></i></span> Signed-in apps</h3>
             <p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">Extensions and apps that hold their own sign-in. Revoking one ends its refresh token; the next request asks you to sign in again.</p>
             <div id="apps-list"><div class="loading-spinner">Loading apps...</div></div>
         </div>

@@ -413,7 +413,7 @@ async function showManualDnsInfo() {
             <div style="font-size:13px;line-height:1.6">${instructions}</div>
             <div style="margin-top:16px">
                 <button class="btn btn-primary" onclick="issueManualCert('${esc(domain)}')">
-                    <i class="fa-solid fa-certificate"></i> DNS Records Created — Issue Certificate
+                    <i class="fa-solid fa-ranking-star"></i> DNS Records Created — Issue Certificate
                 </button>
                 <div class="muted" style="font-size:11px;margin-top:4px">Only click after creating the required DNS TXT records</div>
             </div>

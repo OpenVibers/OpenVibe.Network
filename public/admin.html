@@ -26,7 +26,6 @@
     } catch (_) { /* nothing kept: theme-loader.js paints shortly */ }
 })();
 </script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="/css/admin.css">
 </head>
 <body>
@@ -69,7 +68,7 @@
                 <button class="admin-tab-btn" onclick="showTab('themes',this)"><i class="fa-solid fa-palette"></i> Theme review</button>
                 <button class="admin-tab-btn" onclick="showTab('checklist',this)"><i class="fa-solid fa-list-check"></i> Operator checklist</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('eventsops',this)"><i class="fa-solid fa-route"></i> Event deliveries</button>
-                <button class="admin-tab-btn" onclick="showTab('analytics',this)"><i class="fa-solid fa-chart-pie"></i> Analytics</button>
+                <button class="admin-tab-btn" onclick="showTab('analytics',this)"><i class="fa-solid fa-chart-column"></i> Analytics</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('domains',this)"><i class="fa-solid fa-globe"></i> Domains</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('deploy',this)"><i class="fa-solid fa-server"></i> Deploy</button>
                 <button class="admin-tab-btn" onclick="showTab('ssh',this)"><i class="fa-solid fa-terminal"></i> SSH</button>
@@ -374,11 +373,11 @@
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-chart-pie"></i> Per-Service Traffic Share</h3>
+                    <h3><i class="fa-solid fa-chart-column"></i> Per-Service Traffic Share</h3>
                     <canvas id="chart-service-share" height="260"></canvas>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-chart-pie"></i> Per-Service Visitors</h3>
+                    <h3><i class="fa-solid fa-chart-column"></i> Per-Service Visitors</h3>
                     <canvas id="chart-service-visitors" height="260"></canvas>
                 </div>
             </div>
@@ -469,7 +468,7 @@
                     <div id="svc-top-referers"></div>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-snail"></i> Slowest Endpoints</h3>
+                    <h3><i class="fa-solid fa-gauge"></i> Slowest Endpoints</h3>
                     <div id="svc-slowest"></div>
                 </div>
             </div>
@@ -582,7 +581,7 @@
         <!-- Deploy: Config -->
         <div id="deploy-config-panel" style="display:none">
             <div class="card">
-                <h3><i class="fa-solid fa-cog"></i> Deploy Configuration</h3>
+                <h3><i class="fa-solid fa-gear"></i> Deploy Configuration</h3>
                 <div class="form-group" style="margin:12px 0">
                     <label>ACME / Let's Encrypt Email</label>
                     <input type="email" id="deploy-acme-email" placeholder="admin@example.com" style="width:350px">

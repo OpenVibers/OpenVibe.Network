@@ -30,7 +30,8 @@ const PAGES = [
             assert.ok(!html.includes(MARK), `${path}: the marker never reaches the page`);
             assert.strictEqual(html.split(BOOT).length, 2, `${path}: look-boot once`);
             const at = html.indexOf(BOOT);
-            const firstSheet = html.search(/<link[^>]+rel="stylesheet"/);
+            // A linked sheet or an inline <style>: /verify-email has only its own (its one link was Font Awesome's, L54 K4).
+            const firstSheet = html.search(/<link[^>]+rel="stylesheet"|<style\b/);
             assert.ok(at > 0 && firstSheet > 0 && at < firstSheet, `${path}: it paints before any stylesheet`);
             // The one-time fallback for a browser from before look-boot: its theme only, colours only.
             const legacy = html.slice(at, firstSheet);

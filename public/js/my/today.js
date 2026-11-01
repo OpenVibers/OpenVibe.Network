@@ -16,8 +16,8 @@ const TD_SITES = {
     reviews: ['Reviews', 'fa-star', 'https://openvibe.reviews'], tips: ['Tips', 'fa-hand-holding-heart', 'https://openvibe.tips'],
     vip: ['VIP', 'fa-crown', 'https://openvibe.vip'], trade: ['Trade', 'fa-chart-line', 'https://openvibe.trade'],
     host: ['Host', 'fa-server', 'https://openvibe.host'], deals: ['Deals', 'fa-tags', 'https://openvibe.deals'],
-    coupons: ['Coupons', 'fa-ticket', 'https://openvibe.coupons'], openre: ['Restream', 'fa-arrows-split-up-and-left', 'https://openre.stream'],
-    design: ['Design', 'fa-palette', 'https://openvibe.design'], report: ['Report', 'fa-chart-pie', 'https://openvibe.report'],
+    coupons: ['Coupons', 'fa-ticket', 'https://openvibe.coupons'], openre: ['Restream', 'fa-share-nodes', 'https://openre.stream'],
+    design: ['Design', 'fa-palette', 'https://openvibe.design'], report: ['Report', 'fa-chart-column', 'https://openvibe.report'],
 };
 // What to try next, most used across the network first, each with the reason it is worth a look.
 const TD_TRY = [
