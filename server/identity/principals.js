@@ -407,6 +407,10 @@ const DEFAULT_GRANTS = [
     // Bot, only as that machine's owner (X-OV-Subject) and only where the owner turned on "Let my agent use this
     // computer"; the level the owner set on the machine decides what may happen there.
     ['actor', 'bot.computer.control', 'openvibe.bot', []],
+    // Plan L55 C1b (contracts 0.268.0): a chat turn shows the desk the agent works on, live, and lets the person take it
+    // over. Actor asks Bot for a short-lived watch link to that desk (the private desk or its own desk-<name>, never the
+    // owner's screen), only for the person's own machine and only where they let their agent use it.
+    ['actor', 'bot.machine.watch_link', 'openvibe.bot', []],
     // Plan T17 (contracts 0.183.0): ask Actor from chat. Actor answers a person's "@actor …" in the room they asked in,
     // through Chat's service API (POST /internal/chat/messages), as "OpenVibe Actor".
     ['actor', 'chat.message.send', 'openvibe.chat', []],
