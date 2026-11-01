@@ -76,6 +76,17 @@ const runTokens = require('../server/identity/run-tokens');
         const codesGrants = await principals.grantsFor(db, 'codes', 'openvibe.ai');
         assert.deepStrictEqual(codesGrants.map((g) => g.capability).sort(), ['ai.credential.manage', 'ai.run.create']);
 
+        // ── The grants Actor holds for OpenVibe.AI (plan L55 C3) ──
+        // A person chooses the model their tasks run on, with their own key (sealed in AI) or OpenVibe's. Actor runs
+        // the call through AI's OpenAI-compatible endpoint (workflow ai.complete) and nothing else, and it never
+        // holds a key of its own: no consent grant, so it may not store a person's key in AI.
+        assert.ok(has('actor', 'ai.run.create', 'openvibe.ai'), 'Actor runs AI\'s OpenAI-compatible endpoint');
+        assert.ok(!has('actor', 'ai.credential.manage', 'openvibe.ai'), 'Actor never stores a person\'s key in AI');
+        const actorGrant = principals.DEFAULT_GRANTS.find((g) => g[0] === 'actor' && g[1] === 'ai.run.create' && g[2] === 'openvibe.ai');
+        assert.deepStrictEqual(actorGrant[3], ['ai.complete'], 'AI\'s OpenAI-compatible workflow only');
+        const actorGrants = await principals.grantsFor(db, 'actor', 'openvibe.ai');
+        assert.deepStrictEqual(actorGrants.map((g) => g.capability).sort(), ['ai.run.create']);
+
         // ── A run token: the person it acts for, and how long it lives ──
         let t = await runToken(OWNER);
         assert.strictEqual(t.status, 200, JSON.stringify(t.body));
