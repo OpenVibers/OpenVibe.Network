@@ -27,20 +27,20 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 .section-tabs::-webkit-scrollbar{height:0}
 .section-tabs button{
     flex-shrink:0;padding:8px 14px;border:none;border-radius:8px;font-size:11px;font-weight:600;
-    background:transparent;color:var(--text-muted);cursor:pointer;transition:all .15s;white-space:nowrap;
+    background:transparent;color:var(--text-muted);cursor:pointer;transition:all var(--ov-dur-2, .15s);white-space:nowrap;
 }
 .section-tabs button.active{background:var(--bg-card);color:var(--accent-light)}
 .section-tabs button:hover:not(.active){color:var(--text)}
 .tabs-scroll-btn{
     width:34px;height:34px;flex:0 0 34px;border:none;border-radius:10px;display:flex;align-items:center;justify-content:center;
-    background:var(--bg-secondary);color:var(--text-muted);cursor:pointer;transition:all .15s;opacity:0;pointer-events:none;
+    background:var(--bg-secondary);color:var(--text-muted);cursor:pointer;transition:all var(--ov-dur-2, .15s);opacity:0;pointer-events:none;
 }
 .tabs-scroll-btn.visible{opacity:1;pointer-events:auto}
 .tabs-scroll-btn:hover{color:var(--accent-light);background:var(--bg-card)}
 .tabs-scroll-btn:disabled{opacity:.3;pointer-events:none}
 
 /* Section */
-.section{display:none;animation:sec-in .2s ease}
+.section{display:none;animation:sec-in var(--ov-dur-2, .2s) var(--ov-ease-out, ease)}
 .section.active{display:block}
 @keyframes sec-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
@@ -64,7 +64,7 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 .admin-table tbody tr:hover{background:rgba(139,92,246,0.03)}
 
 /* Buttons */
-.btn{padding:8px 16px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn{padding:8px 16px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all var(--ov-dur-2, .15s);display:inline-flex;align-items:center;gap:6px}
 .btn-primary{background:var(--accent-strong, var(--accent, #3472d8));color:var(--on-accent-strong, var(--on-accent,#fff))}
 .btn-primary:hover{background:var(--accent-dark)}
 .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
@@ -82,7 +82,7 @@ a.btn{text-decoration:none}
 .form-field label{display:block;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
 .form-field input,.form-field select,.form-field textarea{
     width:100%;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border);
-    border-radius:8px;color:var(--text);font-size:13px;outline:none;transition:border-color .2s;
+    border-radius:8px;color:var(--text);font-size:13px;outline:none;transition:border-color var(--ov-dur-2, .2s);
 }
 .form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--accent)}
 .form-field input:disabled,.form-field select:disabled,.form-field textarea:disabled{opacity:.55;cursor:not-allowed}
@@ -112,7 +112,7 @@ a.btn{text-decoration:none}
 
 /* Toast */
 .toast-container{position:fixed;top:60px;right:16px;z-index:200000;display:flex;flex-direction:column;gap:8px}
-.toast{padding:12px 18px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;animation:toast-in .25s ease;box-shadow:var(--shadow)}
+.toast{padding:12px 18px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;animation:toast-in var(--ov-dur-2, .25s) var(--ov-ease-out, ease);box-shadow:var(--shadow)}
 .toast-success{background:#2ecc71}
 .toast-error{background:#e74c3c}
 .toast-info{background:#3498db}
@@ -132,7 +132,7 @@ a.btn{text-decoration:none}
 
 /* Storage bars */
 .storage-bar{background:var(--bg-tertiary);border-radius:4px;height:14px;overflow:hidden;position:relative}
-.storage-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+.storage-bar-fill{height:100%;border-radius:4px;transition:width var(--ov-dur-4, .5s)}
 
 /* Sensitive fields */
 .sensitive-field{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
