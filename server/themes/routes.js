@@ -178,7 +178,9 @@ router.get('/me/active', (req, res, next) => {
 // font: use the readable typeface across sites.
 // colors: choose colors designed to be safe for color blindness.
 // oled: use pure black backgrounds on OLED displays.
-const DISPLAY = { motion: ['auto', 'reduced'], text: ['100', '112', '125'], seasonal: ['on', 'off'], scheme: ['manual', 'auto'], contrast: ['normal', 'more'], font: ['default', 'readable'], colors: ['default', 'cb-safe'], oled: ['off', 'on'] };
+// icons: the person's icon style (openvibe-shared 4.71.0, plan L56): auto (line; solid when small or for the tab you are
+// on), line or solid, on every OpenVibe site.
+const DISPLAY = { motion: ['auto', 'reduced'], text: ['100', '112', '125'], seasonal: ['on', 'off'], scheme: ['manual', 'auto'], contrast: ['normal', 'more'], font: ['default', 'readable'], colors: ['default', 'cb-safe'], oled: ['off', 'on'], icons: ['auto', 'line', 'solid'] };
 function cleanDisplay(d) {
     if (!d || typeof d !== 'object') return null;
     const out = {};
