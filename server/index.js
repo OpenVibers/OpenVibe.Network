@@ -664,6 +664,10 @@ require('./developer/confirmations').start(db);
     // the Action Center's own, so a page view never fans out further than the aggregator's 10 s cache already does.
     const dock = require('./dock').createDock({ db, actions, notifications: notificationService });
     app.use('/api/v1/me/dock', require('./dock').router({ dock, requireAuth: requireDock('dock') }));
+    // The Dock's timer, for a first-party service and not for a person (plan L48 R2): Vibe starts the focus timer of
+    // the person it is talking with, and it counts down in the Dock's pill on every OpenVibe site. The service names
+    // the person and writes the timer and nothing else (network.dock.timer.write, granted to Chat alone).
+    app.use('/api/v1/people', require('./dock').serviceRouter({ dock }));
 }
 
 // The consent registry (L24, 2026-10-31; contracts 0.256.0): every use of a person's content or likeness for AI or
