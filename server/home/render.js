@@ -75,9 +75,23 @@ const INTENTS = [
     ['help', 'fa-life-ring', 'Get help', 'Every OpenVibe site\'s questions answered, and a person when they are not.', 'https://openvibe.help/', 'help support faq question questions ticket contact problem how'],
 ];
 
-function intents(catalog) {
+// The site whose visits rank an intent (the owner's plan L43: "the most popular things to do now, from the numbers").
+// One site counts once: Ask Vibe and Chat are both openvibe.chat, so Chat carries its number; pictures and files are
+// openvibe.video's products, so Video does. An intent with no site of its own keeps its place after the ranked ones.
+const INTENT_SITE = { vibe: null, paste: 'community', video: 'media-hub', pics: null, 'media-hub': null };
+const siteOfIntent = (id) => (Object.prototype.hasOwnProperty.call(INTENT_SITE, id) ? INTENT_SITE[id] : id);
+const fmtVisits = (n) => (n >= 10000 ? `${Math.round(n / 1000)}k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(n));
+/** The intents, most visited first this week; the first five say how many visits. Unknown numbers keep the order. */
+function rankedIntents(popularity) {
+    const visits = (id) => { const s = siteOfIntent(id); const n = s && popularity ? Number(popularity[s]) : NaN; return Number.isFinite(n) && n > 0 ? n : 0; };
+    if (!popularity) return INTENTS.map((it) => ({ it, n: 0 }));
+    return INTENTS.map((it, i) => ({ it, n: visits(it[0]), i })).sort((a, b) => (b.n - a.n) || (a.i - b.i));
+}
+
+function intents(catalog, popularity = null) {
     const toolsLine = catalog.tools.length ? `Convert, compress, look up or download: ${catalog.tools.length} tools that just open.` : 'Convert, compress, look up or download: free tools that just open.';
-    return `<ul class="intents" aria-label="What you can do here">${INTENTS.map(([id, fa, verb, line, href, k]) => `<li><a class="intent" href="${esc(href)}" data-id="${esc(id)}" data-k="${esc(k)}"><i class="fa-solid ${esc(fa)}" aria-hidden="true"></i><span><b>${esc(verb)}</b><small>${esc(line || toolsLine)}</small></span></a></li>`).join('')}</ul>`;
+    const ranked = rankedIntents(popularity);
+    return `<ul class="intents" aria-label="What you can do here${popularity ? ', most visited this week first' : ''}">${ranked.map(({ it: [id, fa, verb, line, href, k], n }, pos) => `<li><a class="intent" href="${esc(href)}" data-id="${esc(id)}" data-k="${esc(k)}"><i class="fa-solid ${esc(fa)}" aria-hidden="true"></i><span><b>${esc(verb)}</b><small>${esc(line || toolsLine)}</small>${pos < 5 && n >= 10 ? `<em class="intent-n">${esc(fmtVisits(n))} visits this week</em>` : ''}</span></a></li>`).join('')}</ul>`;
 }
 
 // The network as an orbit (the owner, 2026-10-28: the hero was "ugly af, boring… not easy to understand… nice animated
@@ -421,7 +435,7 @@ function render({ releaseId = '' } = {}) {
     })) + seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what })))) + seo.jsonLdTag(seo.jsonLd.faq(faqPairs()));
     const card = social.url('network', 'https://openvibe.network/shared') || 'https://openvibe.network/assets/logo-512.png';
     const summary = summaryOf(catalog);
-    const html = lookBoot.apply(fs.readFileSync(SHELL, 'utf8')).replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog)).replace('<!--OV:CONSTELLATION-->', () => orbit() + numbers(catalog, act)).replaceAll('__OV_CARD__', card).replace('<!--OV:SITES-->', String(OPEN.length + 1)).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
+    const html = lookBoot.apply(fs.readFileSync(SHELL, 'utf8')).replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog, act.popularity)).replace('<!--OV:CONSTELLATION-->', () => orbit() + numbers(catalog, act)).replaceAll('__OV_CARD__', card).replace('<!--OV:SITES-->', String(OPEN.length + 1)).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
     pageCache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
     return pageCache;
 }

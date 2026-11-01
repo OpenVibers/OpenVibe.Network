@@ -22,7 +22,7 @@ const SOURCES = {
 };
 const PUBLIC = { live: 'https://openvibe.live', video: 'https://openvibe.video', community: 'https://openvibe.community', blog: 'https://openvibe.blog', work: 'https://openvibe.work', coupons: 'https://openvibe.coupons' };
 
-const EMPTY = { live: [], liveCount: 0, recordings: [], pastes: [], posts: [], jobs: [], codes: [], counts: {} };
+const EMPTY = { live: [], liveCount: 0, recordings: [], pastes: [], posts: [], jobs: [], codes: [], counts: {}, popularity: null };
 let state = { at: 0, version: 0, ...EMPTY };
 let inflight = null;
 // Tests switch the reads off; the page then shows the "nothing live" state.
@@ -182,7 +182,7 @@ async function refresh({ fetch: fetchImpl = globalThis.fetch } = {}) {
     if (inflight) return inflight;
     inflight = (async () => {
         const q = (owner, type) => `${SOURCES.search}/api/v1/search?owner=${owner}&type=${type}&limit=12`;
-        const [live, vods, pastes, posts, work, codes, accounts, services] = await Promise.all([
+        const [live, vods, pastes, posts, work, codes, accounts, services, popularity] = await Promise.all([
             getJson(`${SOURCES.live}/api/streams`, fetchImpl),
             getJson(`${SOURCES.live}/api/vods?limit=40`, fetchImpl),
             getJson(`${SOURCES.community}/api/pastes?limit=12`, fetchImpl),
@@ -191,6 +191,7 @@ async function refresh({ fetch: fetchImpl = globalThis.fetch } = {}) {
             getJson(q('coupons', 'coupon'), fetchImpl),
             readCount(readers.accounts),
             readCount(readers.services),
+            readCount(readers.popularity),
         ]);
         const counts = { ...state.counts };
         if (Number.isFinite(Number(accounts)) && Number(accounts) > 0) counts.accounts = Number(accounts);
@@ -206,6 +207,8 @@ async function refresh({ fetch: fetchImpl = globalThis.fetch } = {}) {
             jobs: work ? jobs(work) : state.jobs,
             codes: codes ? coupons(codes) : state.codes,
             counts,
+            // Visits per site this week (Network's open stats): the front door's intents are ordered by them.
+            popularity: popularity && typeof popularity === 'object' ? popularity : state.popularity,
         };
         return state;
     })().finally(() => { inflight = null; });
@@ -220,7 +223,8 @@ function peek() {
 
 module.exports = {
     peek, refresh, liveStreams, recordings, publicPastes, blogPosts, jobs, coupons, runtime, ADULT, LOOKS,
-    /** server/index.js: Network's own numbers, read on each refresh ({ accounts: async () => n, services: () => ({ up, live }) }). */
+    /** server/index.js: Network's own numbers, read on each refresh ({ accounts: async () => n, services: () => ({ up, live }),
+     *  popularity: async () => ({ siteId: visits this week }) }). */
     configure(r) { readers = { ...readers, ...(r || {}) }; },
     /** Tests: switch the background reads on or off. */
     setEnabled(on) { enabled = Boolean(on); },

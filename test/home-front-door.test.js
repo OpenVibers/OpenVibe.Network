@@ -152,4 +152,22 @@ assert.ok(html.includes('href="https://openvibe.video/v/9"') && html.includes('<
     assert.ok(html.includes('.more [data-more-part]:target{display:block}'), 'a link to a section opens it');
 }
 assert.ok(/<b>1,234<\/b><span>accounts/.test(html) && /<b>37<\/b><span>services up <small>of 38 checked/.test(html) && /<b>1<\/b><span>stream live now/.test(html), 'the numbers read render');
+// The most visited things to do lead the intents, with this week's visits on the first five (plan L43). One site counts
+// once (Ask Vibe and Chat are both openvibe.chat: Chat carries the number), and no numbers keep the written order.
+{
+    activity._set({ live: [], pastes: [], posts: [], popularity: { live: 59680, 'media-hub': 1615, tools: 232, games: 151, community: 89, chat: 40, work: 3 } });
+    const page = home.render().html;
+    const order = [...page.matchAll(/<a class="intent" href="[^"]*" data-id="([a-z-]+)"/g)].map((m) => m[1]);
+    assert.deepStrictEqual(order.slice(0, 6), ['live', 'video', 'tools', 'games', 'paste', 'chat'], `most visited first: ${order.slice(0, 8).join(', ')}`);
+    assert.match(page, /data-id="live"[\s\S]*?<em class="intent-n">60k visits this week<\/em>/, 'the count says what it counts');
+    assert.match(page, /data-id="video"[\s\S]*?<em class="intent-n">1.6k visits this week<\/em>/);
+    assert.strictEqual([...page.matchAll(/class="intent-n"/g)].length, 5, 'only the first five say a number');
+    assert.ok(order.indexOf('vibe') > order.indexOf('chat'), 'Ask Vibe does not borrow Chat\'s number');
+    assert.match(page, /aria-label="What you can do here, most visited this week first"/);
+    activity._set({ live: [], pastes: [], posts: [] });
+    const plain = home.render().html;
+    const plainOrder = [...plain.matchAll(/<a class="intent" href="[^"]*" data-id="([a-z-]+)"/g)].map((m) => m[1]);
+    assert.deepStrictEqual(plainOrder.slice(0, 3), ['vibe', 'live', 'tools'], 'without numbers, the written order');
+    assert.ok(!plain.includes('class="intent-n"'), 'and no counts');
+}
 console.log('home front door: all checks passed');

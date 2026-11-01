@@ -818,6 +818,12 @@ app.get(['/login.html', '/admin.html'], (req, res) => {
 // accounts (people, not guests or banned ones) and how many public services answered their last health check (a
 // count is left out until at least half of them have been checked once).
 require('./home/activity').configure({
+    // Visits per site this week, from the open stats (page views the shared navbar counts): the front door's
+    // intents are ordered by them (plan L43).
+    popularity: async () => {
+        const d = await openStats.collect(7);
+        return d && Array.isArray(d.sites) ? Object.fromEntries(d.sites.map((s) => [s.id, Number(s.pageviews) || 0])) : null;
+    },
     accounts: async () => (await db.prepare('SELECT COUNT(*) AS cnt FROM users WHERE COALESCE(is_anon, 0) = 0 AND COALESCE(is_banned, 0) = 0').get()).cnt,
     services: () => {
         const live = require('./status/routes').rows(ecosystem).filter((r) => r.exposure && r.exposure.state === 'live');
