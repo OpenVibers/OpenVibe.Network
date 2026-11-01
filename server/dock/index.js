@@ -281,10 +281,11 @@ function router({ dock, requireAuth }) {
  * (svc:chat) may act for a person here, which is why the grant is given to Chat alone.
  *
  * The capability is checked against the contracts' registry (network.dock.timer.write, Contracts 0.272.0), so a
- * retired or unknown id is refused like everywhere else on the network.
+ * retired or unknown id is refused like everywhere else on the network. Every decision is counted in
+ * principal_usage, as it is for the other service routes.
  */
 function serviceGuard() {
-    return function dockServiceGuard(req, res, next) {
+    return async function dockServiceGuard(req, res, next) {
         const auth = String(req.headers.authorization || '');
         if (!auth.startsWith('Bearer ')) {
             return http.sendProblem(res, 401, 'token.required', { detail: 'a service token is needed here, not a person\'s', ctx: req.ov });
@@ -294,11 +295,17 @@ function serviceGuard() {
         const r = serviceAuth.verifyServiceToken(auth.slice(7).trim(), { publicKey, issuer, audience: SELF_AUDIENCE });
         if (!r.ok) return http.sendProblem(res, 401, r.code || 'token.invalid', { detail: r.reason, ctx: req.ov });
         const sub = String(r.claims.sub || '');
+        const record = require('../identity/principals').recordDecision(req.app.locals.db);
         if (r.claims.actor_type !== 'service' || !/^svc:[a-z0-9-]{1,39}$/.test(sub)) {
+            await record({ req, capability: SERVICE_CAPABILITY, principal: { sub }, allowed: false, code: 'capability.owner_denied' }).catch(() => {});
             return http.sendProblem(res, 403, 'capability.owner_denied', { detail: 'only a first-party service may set a person\'s Dock timer', ctx: req.ov });
         }
         const c = capabilities.check(r.claims, SERVICE_CAPABILITY);
-        if (!c.allowed) return http.sendProblem(res, 403, c.code || 'capability.denied', { detail: c.reason, ctx: req.ov });
+        if (!c.allowed) {
+            await record({ req, capability: SERVICE_CAPABILITY, principal: { sub }, allowed: false, code: c.code || 'capability.denied' }).catch(() => {});
+            return http.sendProblem(res, 403, c.code || 'capability.denied', { detail: c.reason, ctx: req.ov });
+        }
+        await record({ req, capability: SERVICE_CAPABILITY, principal: { sub }, allowed: true, code: null }).catch(() => {});
         req.principal = { sub, cap: r.claims.cap, jti: r.claims.jti };
         return next();
     };

@@ -183,6 +183,14 @@ try {
     const bobAgain = await fetch(`${base}/api/v1/me/dock`, { headers: { authorization: `Bearer ${tokenOf(bob)}` } }).then((x) => x.json());
     assert.strictEqual(bobAgain.state.timer, undefined, "bob's Dock still has no timer");
 
+    // Every decision is counted, like the other service routes: who called, and whether they were let in.
+    const usage = await db.prepare('SELECT principal, route, capability, auth, allowed FROM principal_usage WHERE capability = ?').all('network.dock.timer.write');
+    assert.ok(usage.length, 'the decisions are counted');
+    assert.ok(usage.some((u) => u.allowed === 1), 'an allowed call is counted');
+    assert.ok(usage.some((u) => u.allowed === 0), 'a refused call is counted');
+    assert.ok(usage.every((u) => u.route.includes('dock/timer')), `the route is named: ${usage.map((u) => u.route).join(', ')}`);
+    assert.ok(usage.every((u) => u.auth === 'service-token'), 'the caller was a service token');
+
     // The write limit is the person's own: 60 a minute, the person route and the service route together.
     const limiter = dockMod.createDock({ db, actions: null, notifications: null });
     const limitApp = express();
