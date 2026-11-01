@@ -115,7 +115,16 @@ const fmtCount = (n) => Number(n).toLocaleString('en-US');
 // A picture that fails to load (a stream's first thumbnail is written a few seconds after it goes live) falls back to
 // the avatar when there is one, else to an empty tile, never the browser's broken-image icon.
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
-const img = (src, fallback, w, h) => `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" width="${w}" height="${h}" data-fallback="${esc(fallback || BLANK)}" onerror="this.onerror=null;this.src=this.dataset.fallback">`;
+// A Media object is stored at full size: ask its resize ladder for the width drawn here (96 for the 36 px face, 640
+// for a 320 px card picture). Any other picture address — a Live thumbnail, an avatar from another host, one already
+// sized — is used unchanged. The full-size address stays in data-full: if Media cannot resize it, the picture retries
+// the original once before the existing fallback.
+const mediaW = (src, w) => (/^https:\/\/openvibe\.media\/o\/med_[0-9A-Za-z]+$/.test(String(src || '')) ? `${src}?w=${w >= 288 ? 640 : w >= 72 ? 160 : 96}` : src);
+const img = (src, fallback, w, h) => {
+    const sized = mediaW(src, w);
+    const full = sized === src ? '' : ` data-full="${esc(src)}"`;
+    return `<img src="${esc(sized)}" alt="" loading="lazy" decoding="async" width="${w}" height="${h}"${full} data-fallback="${esc(fallback || BLANK)}" onerror="if(this.dataset.full&&this.src!==this.dataset.full){this.src=this.dataset.full;return}this.src=this.dataset.fallback">`;
+};
 function rightNow(a) {
     // Rich cards (the owner, 2026-10-28: "more compact, bigger, like YouTube… a preview… view count… the uploader and
     // avatar… rich content"): a 16:9 picture with its length or LIVE badge, a play button and what happens in it on hover,
