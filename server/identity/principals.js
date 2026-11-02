@@ -653,6 +653,8 @@ const DEFAULT_GRANTS = [
     ['casino', 'events.subscription.manage', 'openvibe.events', []],
     // OpenVibe.Tours and OpenVibe.Shoes (contracts 0.265.0): their account-event subscriptions at boot.
     ['tours', 'events.subscription.manage', 'openvibe.events', []],
+    // Tours publishes its places, cities and walks to OpenVibe.Search as tours.index_document.* (contracts 0.274.0).
+    ['tours', 'events.event.publish', 'openvibe.events', []],
     ['shoes', 'events.subscription.manage', 'openvibe.events', []],
     // Shoes publishes its model pages to OpenVibe.Search as shoes.index_document.* (contracts 0.273.0, through its own
     // outbox and openvibe-publishing/search-feed).
