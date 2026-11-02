@@ -402,3 +402,18 @@ button.td-stat:hover span { color: var(--accent-light); }
     .consent-licence-field select { flex: 1; min-width: 0; }
 }
 
+
+/* What you see (L1): a row per label, its name and what it covers, and three equal choices. Phone first: the choices
+   under the words; wider, beside them. 44 px targets. */
+#label-prefs { display: grid; gap: 10px; margin-top: 10px; }
+.label-pref { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--border, rgba(255,255,255,.1)); border-radius: 12px; }
+.label-pref-text { display: grid; gap: 2px; min-width: 0; }
+.label-pref-text b { font-size: .95rem; }
+.label-pref-text span { font-size: .82rem; color: var(--text-muted, #8b93ad); }
+.label-pref-seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: 12px; background: color-mix(in srgb, var(--text-primary, #e6edf7) 5%, transparent); }
+.label-pref-seg button { all: unset; box-sizing: border-box; min-height: 44px; display: grid; place-items: center; border-radius: 9px; cursor: pointer; font-weight: 650; font-size: .88rem; color: var(--text-secondary, #a8b3c7); }
+.label-pref-seg button:hover { color: var(--text-primary, #e6edf7); }
+.label-pref-seg button:focus-visible { outline: 2px solid var(--accent, #60a5fa); outline-offset: 1px; }
+.label-pref-seg button.is-on { color: var(--text-primary, #e6edf7); background: var(--bg-secondary, #111a2c); box-shadow: 0 1px 3px rgba(0,0,0,.3), inset 0 0 0 1px color-mix(in srgb, var(--accent, #60a5fa) 55%, transparent); }
+.label-prefs-status.is-bad { color: var(--danger-text, #f87171); }
+@media (min-width: 640px) { .label-pref { grid-template-columns: minmax(0, 1fr) 260px; align-items: center; } }

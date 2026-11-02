@@ -315,6 +315,14 @@
             <div id="consent-choices"><div class="loading-spinner">Loading your choices…</div></div>
             <p class="muted consent-status" id="consent-status" role="status"></p>
         </div>
+        <!-- What you see (L1, 2026-11-02): one row per content label, three equal choices, saved at once. The web default
+             is Show for every label; the choice follows the account to every OpenVibe site (GET/PUT /api/v1/me/label-prefs). -->
+        <div class="card" id="labels-card">
+            <h3><span class="icon"><i class="fa-solid fa-eye"></i></span> What you see</h3>
+            <p>Creators label what they post. For each label, choose what you see on every OpenVibe site: show it, blur it until you tap, or hide it. What you post yourself always shows to you.</p>
+            <div id="label-prefs"><p class="muted">Loading your choices…</p></div>
+            <p class="muted label-prefs-status" id="label-prefs-status" role="status"></p>
+        </div>
         <div class="card">
             <h3><span class="icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span> AI preferences</h3>
             <p style="margin-bottom:12px">How OpenVibe AI writes for you when you ask it for something, such as a blog draft. Saved to your account and used on every OpenVibe site.</p>
@@ -454,6 +462,7 @@
 <script src="/js/my/themes.js" defer></script>
 <script src="/js/my/profile.js" defer></script>
 <script src="/js/my/consent.js" defer></script>
+<script src="/js/my/labels.js" defer></script>
 <script src="/js/my/security.js" defer></script>
 <script src="/js/my/approvals.js" defer></script>
 <script src="/js/my/boot.js" defer></script>
