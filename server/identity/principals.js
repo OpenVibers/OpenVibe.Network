@@ -784,6 +784,10 @@ const CHANGED_DEFAULT_NAMESPACES = [
     ['media-hub', 'ai.run.create', 'openvibe.ai', ['media.analyze'], ['media.analyze', 'pics.describe_image']],
     // Search's embedder runs AI workflow ai.embed (contracts 0.234.0; POST /api/v1/embed for hybrid ranking).
     ['search', 'ai.run.create', 'openvibe.ai', ['research.*'], ['research.*', 'ai.embed']],
+    // Design's frames with a preference run ai.chat (Design #57, 10-31). Network #533 added it to the default; the
+    // production row, seeded before, kept ['ai.generate'] (the seed never changes an existing row), so frames still
+    // failed until this moved it.
+    ['design', 'ai.run.create', 'openvibe.ai', ['ai.generate'], ['ai.generate', 'ai.chat']],
 ];
 
 async function ensureSchema(db) {
