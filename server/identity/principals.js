@@ -679,7 +679,10 @@ const DEFAULT_GRANTS = [
     ['design', 'vision.ui.check', 'openvibe.vision', []],
     // Design publishes its icon and theme pages to OpenVibe.Search as design.index_document.* (contracts 0.275.0).
     ['design', 'events.event.publish', 'openvibe.events', []],
-    ['design', 'ai.run.create', 'openvibe.ai', ['ai.generate']],
+    // ai.generate for a pinned frame; ai.chat for one with a preference (Design #57, 10-31, L37: the chat passthrough is
+    // what passes `prefer` to the router). Without ai.chat every unpinned frame was refused ("this token may not run
+    // ai.chat") from 10-31 to 11-02.
+    ['design', 'ai.run.create', 'openvibe.ai', ['ai.generate', 'ai.chat']],
     // OpenVibe.Bench (contracts 0.238.0): the shared benchmark engine calls AI's generate route (namespace ai.generate)
     // to run its pinned rounds, and subscribes to the account events at boot; its export/deletion pair is with the
     // other services' above. It publishes bench.* events and answers no other service today, so no Search grant.
