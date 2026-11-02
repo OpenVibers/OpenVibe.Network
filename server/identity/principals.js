@@ -669,6 +669,10 @@ const DEFAULT_GRANTS = [
     // other services' above. It publishes bench.* events and answers no other service today, so no Search grant.
     ['bench', 'ai.run.create', 'openvibe.ai', ['ai.generate']],
     ['bench', 'events.subscription.manage', 'openvibe.events', []],
+    // Bench's outbox publishes bench.round.finished, bench.judgement.recorded and bench.rating.changed (contracts
+    // events/payloads). The publish grant was missing, so every event failed at the token endpoint ("not granted:
+    // events.event.publish") and was retried for good: about 430 refused token requests an hour (found 2026-11-02).
+    ['bench', 'events.event.publish', 'openvibe.events', []],
     // Bench's model watch (Bench B10): when a followed score moves beyond its interval, or a model overtakes the one
     // someone follows, Bench pushes that person one notification through Network as app 'bench' (Bench's
     // server/watch/watch.js resolves the watch's user id, then pushes with openvibe-sdk/notifications). Its own name

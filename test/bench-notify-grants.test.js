@@ -22,4 +22,7 @@ for (const g of rows) {
     assert.ok(cap && cap.status === 'active', `${g[1]} is an active capability`);
 }
 
+// Bench's outbox publishes its bench.* events (2026-11-02): without this grant every event failed at the token endpoint
+// ("not granted: events.event.publish") and was retried for good.
+assert.ok(principals.DEFAULT_GRANTS.some((g) => g[0] === 'bench' && g[1] === 'events.event.publish' && g[2] === 'openvibe.events'), 'bench may publish its events');
 console.log(`bench notify grants: ${rows.length}`);
