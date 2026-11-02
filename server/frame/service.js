@@ -160,8 +160,9 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const open = orderedOpen(); const pool = linkPool();
         const ai = copy.sites[site.id];
         const discover = (ai ? ai.picks.map(id => pool.get(id)) : open.filter(s => s.id !== site.id).slice(0, 4).map(s => pool.get('site:' + s.id))).filter(Boolean).map(l => ({ name: l.name, url: l.url }));
-        // Legal documents live on the site's own apex, so each domain answers for itself.
-        const legalBase = `https://${site.host}`;
+        // Legal documents live on the site's own apex, so each domain answers for itself, once it serves them: a site
+        // whose /privacy does not answer gets the network-wide documents here instead of three links that 404.
+        const legalBase = legalOwn.get(site.host) === false ? 'https://openvibe.network' : `https://${site.host}`;
         return {
             updated: new Date(version).toISOString(), site: { id: site.id, name: site.name, host: site.host, status: site.status, state: site.state },
             // Every open site, most used first, each followed by the products it serves on their own domains (`of`).
@@ -300,6 +301,27 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         res.status(204).end();
     });
 
+    // ── Which sites serve their own legal documents ──────────────────────────────────────────────────────────────
+    // A site's footer links to its own /terms, /privacy and /dmca (openvibe-shared/legal, wording by its manifest's
+    // legalProfile). On 11-02 ten open sites did not serve them, so their footers' legal links answered 404. Every open
+    // site's /privacy is asked once a day (GET, no redirects, 5 s); a site that does not answer 200 gets openvibe.network's
+    // documents until it does. Before the first answer a site keeps its own links, as before.
+    const legalOwn = new Map();   // host → true (serves them) | false (does not)
+    async function probeLegal({ fetchImpl = fetch } = {}) {
+        let changed = false;
+        await Promise.all(orderedOpen().map(async (s) => {
+            let ok;
+            try {
+                const r = await fetchImpl(`https://${s.host}/privacy`, { redirect: 'manual', signal: AbortSignal.timeout(5000), headers: { 'user-agent': 'OpenVibe.Network frame (legal links)', accept: 'text/html' } });
+                ok = r.status === 200;
+                if (r.body && typeof r.body.cancel === 'function') r.body.cancel().catch(() => {});
+            } catch { return; }   // no answer: keep what was known
+            if (legalOwn.get(s.host) !== ok) { legalOwn.set(s.host, ok); changed = true; }
+        }));
+        if (changed) version = Date.now();
+        return Object.fromEntries(legalOwn);
+    }
+
     let timers = [];
     async function start() {
         const rankAge = Date.now() - ((await load('rank') || {}).at || 0), copyAge = Date.now() - ((await load('copy') || {}).at || 0);
@@ -307,7 +329,9 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const i1 = setInterval(() => refreshRank().catch(() => {}), RANK_MS); i1.unref();
         const t2 = setTimeout(() => refreshCopy().catch(() => {}), copyAge > COPY_MS ? 60_000 : COPY_MS - copyAge); t2.unref();
         const i2 = setInterval(() => refreshCopy().catch(() => {}), COPY_MS); i2.unref();
-        timers = [t1, i1, t2, i2];
+        const t3 = setTimeout(() => probeLegal().catch(() => {}), 45_000); t3.unref();
+        const i3 = setInterval(() => probeLegal().catch(() => {}), 24 * 3600 * 1000); i3.unref();
+        timers = [t1, i1, t2, i2, t3, i3];
     }
     /** Graceful stop: no further rank or copy refreshes. */
     function stop() { for (const t of timers) { clearTimeout(t); clearInterval(t); } timers = []; }
@@ -317,7 +341,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         return { at: rankedAt, order: orderedOpen().map(s => s.id), everyMs: RANK_MS };
     }
 
-    return { router, start, stop, refreshRank, refreshCopy, payloadFor, ranking, _state: () => ({ rank, copy }) };
+    return { router, start, stop, refreshRank, refreshCopy, probeLegal, payloadFor, ranking, _state: () => ({ rank, copy }) };
 }
 
 module.exports = { createFrameService, BANNED };
