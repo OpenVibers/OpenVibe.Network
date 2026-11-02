@@ -199,7 +199,7 @@ const server = http.createServer(app);
     t = await token({ client_id: 'bench', client_secret: 'bench-secret', audience: 'openvibe.network' });
     assert.deepStrictEqual(t.body.scope.split(' '), ['network.account.deletion.confirm', 'network.account.export.contribute', 'network.notifications.push'], 'Bench answers account export and deletion, and pushes its watch notices');
     t = await token({ client_id: 'bench', client_secret: 'bench-secret', audience: 'openvibe.events' });
-    assert.strictEqual(t.body.scope, 'events.subscription.manage', 'Bench subscribes to the account events at boot');
+    assert.deepStrictEqual(t.body.scope.split(' ').sort(), ['events.event.publish', 'events.subscription.manage'], 'Bench subscribes to the account events at boot, and publishes its own bench.* events (2026-11-02)');
     t = await token({ client_id: 'bench', client_secret: 'bench-secret', audience: 'openvibe.ai' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
     const benchAiClaims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.ai' });
