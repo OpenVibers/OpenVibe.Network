@@ -134,6 +134,11 @@ const DEFAULT_GRANTS = [
     // names them in X-OV-Subject, so the task is theirs (their allowance and list, Chat recorded as `via`), and reads the
     // task it started for its answer (a delegated caller sees only the tasks it started).
     ['chat', 'actor.task.create', 'openvibe.actor', []],
+    // Vibe's "remind me…" (plan L48): Chat sets a person's own reminder on Today, naming them with X-OV-Subject.
+    ['chat', 'today.reminder.write', 'openvibe.today', []],
+    // Vibe's "start a 25-minute focus timer" (plan L48 R2): Chat sets that person's Dock timer in the Network,
+    // naming them in the path, and writes the timer and nothing else (server/dock).
+    ['chat', 'network.dock.timer.write', SELF_AUDIENCE, []],
     ['chat', 'actor.task.read', 'openvibe.actor', []],
     // Vibe sets up recurring work for the person it is talking with, in their own chat and after they agreed (Chat's
     // set_up_agent and my_agents tools): one of their OpenVibe Agents, made and listed as them (X-OV-Subject).
@@ -169,7 +174,7 @@ const DEFAULT_GRANTS = [
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
     ...['live', 'chat', 'community', 'media', 'games', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'media-hub',
-        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host', 'domains', 'meme', 'vision', 'exchange', 'fun', 'cam', 'bench'].flatMap((svc) => [
+        'deals', 'trade', 'tips', 'vip', 'watch', 'services', 'wiki', 'blog', 'bot', 'inventory', 'codes', 'play', 'space', 'billing', 'reviews', 'host', 'domains', 'meme', 'vision', 'exchange', 'fun', 'cam', 'bench', 'casino', 'tours', 'shoes'].flatMap((svc) => [
         [svc, 'network.account.export.contribute', SELF_AUDIENCE, []],
         [svc, 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ]),
@@ -405,6 +410,10 @@ const DEFAULT_GRANTS = [
     // Bot, only as that machine's owner (X-OV-Subject) and only where the owner turned on "Let my agent use this
     // computer"; the level the owner set on the machine decides what may happen there.
     ['actor', 'bot.computer.control', 'openvibe.bot', []],
+    // Plan L55 C1b (contracts 0.268.0): a chat turn shows the desk the agent works on, live, and lets the person take it
+    // over. Actor asks Bot for a short-lived watch link to that desk (the private desk or its own desk-<name>, never the
+    // owner's screen), only for the person's own machine and only where they let their agent use it.
+    ['actor', 'bot.machine.watch_link', 'openvibe.bot', []],
     // Plan T17 (contracts 0.183.0): ask Actor from chat. Actor answers a person's "@actor …" in the room they asked in,
     // through Chat's service API (POST /internal/chat/messages), as "OpenVibe Actor".
     ['actor', 'chat.message.send', 'openvibe.chat', []],
@@ -465,6 +474,10 @@ const DEFAULT_GRANTS = [
     // OpenAI-compatible harnesses). Nothing else of AI's.
     ['codes', 'ai.credential.manage', 'openvibe.ai', []],
     ['codes', 'ai.run.create', 'openvibe.ai', ['ai.messages', 'ai.complete']],
+    // Actor (plan L55 C3): a person chooses the model their tasks run on, with their own provider key when they have
+    // one (the key lives in OpenVibe.AI, never in Actor). Actor runs the call through AI's OpenAI-compatible endpoint
+    // (workflow ai.complete), the same one Codes' harnesses use. Nothing else of AI's.
+    ['actor', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
     // A streamer's daily AI-viewer budget is an AI quota on their attribution (live:user:<id>), which Live sets.
     ['live', 'ai.quota.attribution.manage', 'openvibe.ai', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
@@ -606,8 +619,11 @@ const DEFAULT_GRANTS = [
     ['domains', 'events.subscription.manage', 'openvibe.events', []],
     // OpenVibe.Meme (contracts 0.234.0): its public entries in Search through the owner API (owner meme), and its
     // account-event subscriptions at boot; its export and deletion grants are with the other services' above.
+    // It also runs OpenVibe.AI's generate operation (the judge that scores a candidate from its own citations and
+    // writes the entry, and the writing pass for the encyclopedia), the same way Design and Bench do.
     ['meme', 'search.document.write', 'openvibe.search', []],
     ['meme', 'events.subscription.manage', 'openvibe.events', []],
+    ['meme', 'ai.run.create', 'openvibe.ai', ['ai.generate']],
     // OpenVibe.Vision (contracts 0.235.0): model calls through AI's OpenAI-compatible endpoint (workflow ai.complete),
     // its account-event subscriptions, and the export/deletion pair above. It has no public records, so no Search grant.
     ['vision', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
@@ -633,6 +649,11 @@ const DEFAULT_GRANTS = [
     ['cam', 'events.subscription.manage', 'openvibe.events', []],
     // F1: Cam pushes one notification per familiar-face event (name, unknown person, package, door).
     ['cam', 'network.notifications.push', SELF_AUDIENCE, ['cam']],
+    // OpenVibe.Casino (contracts 0.264.0): its account-event subscriptions at boot; export and deletion are above.
+    ['casino', 'events.subscription.manage', 'openvibe.events', []],
+    // OpenVibe.Tours and OpenVibe.Shoes (contracts 0.265.0): their account-event subscriptions at boot.
+    ['tours', 'events.subscription.manage', 'openvibe.events', []],
+    ['shoes', 'events.subscription.manage', 'openvibe.events', []],
     // OpenVibe.Report (contracts 0.237.0): it quotes Billing's read API and never computes money, so it holds the
     // stats read and the per-subject balance read; it subscribes to live.stream.ended and the frame beacon at boot.
     // It keeps nothing about people (no database and no account-data route), so it holds neither export nor deletion.

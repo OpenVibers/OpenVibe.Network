@@ -10,7 +10,9 @@ async function loadUser() {
     await _bootstrapFromCookie();
     const authToken = getAuthToken();
     const anonToken = getAnonToken();
-    if (!authToken && !anonToken) { window.location.href = '/login'; return; }
+    // A replace, not a new history entry: Back should not land on a page that bounces again, and a replace navigation
+    // skips the cross-document view transition the sign-in page cannot finish (openvibe-shared 4.88.1).
+    if (!authToken && !anonToken) { window.location.replace('/login'); return; }
     try {
         if (isAnonSession()) {
             const data = await anonFetch('/api/auth/anon/' + encodeURIComponent(anonToken));
@@ -74,7 +76,7 @@ async function loadUser() {
                     if (r.ok) { const d = await r.json(); if (d.token) { localStorage.setItem('ov_token', d.token); document.cookie = `ov_token=${d.token};path=/;max-age=${60*60*24*90};SameSite=Lax${location.protocol === 'https:' ? ';Secure' : ''}`; location.reload(); return; } }
                 } catch { /* fall through */ }
             }
-            window.location.href = '/login?return=' + encodeURIComponent(window.location.pathname);
+            window.location.replace('/login?return=' + encodeURIComponent(window.location.pathname));
             return;
         }
         showAccountLoadError(err);
@@ -109,11 +111,11 @@ function renderHeader(user) {
     document.getElementById('user-name').textContent = user.display_name || user.username;
     document.getElementById('user-subtitle').textContent = user.is_anon
         ? `Anonymous identity${user.anon_number ? ' · #' + user.anon_number : ''}`
-        : '@' + user.username + (user.email ? ' · ' + user.email : '');
+        : '@' + user.username;   // never the email: this page may be on a stream (it is in Profile below)
     const badges = document.getElementById('user-badges');
     badges.innerHTML = user.is_anon
         ? `<span class="badge badge-anon">anonymous</span>`
-        : `<span class="badge badge-${user.role}">${user.role}</span>`;
+        : (user.role && user.role !== 'user' ? `<span class="badge badge-${user.role}">${user.role.replace(/_/g, ' ')}</span>` : '');
     if (user.anon_number) badges.innerHTML += `<span class="badge badge-anon">Anon #${user.anon_number}</span>`;
 }
 

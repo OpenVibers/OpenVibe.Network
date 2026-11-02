@@ -9,8 +9,8 @@
 OpenVibeAccountSwitcher.init({ apiBase: API });
 const _signedIn = !!(getAuthToken() || getAnonToken());
 loadUser();
-buildDashboardShowcase();
 if (_signedIn) {
+    loadToday();
     openInitialSection();
     refreshApprovalsBadge();
 }

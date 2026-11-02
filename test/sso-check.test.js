@@ -30,7 +30,9 @@ for (const site of ['https://openvibe.video', 'https://openvibe.download', 'http
 assert.strictEqual(allowedOrigin('https://evil.openvibe.video'), null, 'a manifest host trusts no subdomain of it');
 assert.strictEqual(allowedOrigin('https://x.openvibe.host'), null, 'a Host tenant site is still not trusted');
 assert.strictEqual(allowedOrigin('https://openvibe.video:8443'), null, 'no ports');
-assert.strictEqual(allowedOrigin('https://openvibe.website'), null, 'a moved address is not a site');
+// openvibe.website is OpenVibe.Website's front door since 2026-10-31 (Space serves it); its tenants are not sites.
+assert.strictEqual(allowedOrigin('https://openvibe.website'), 'https://openvibe.website', 'the front door is a site');
+assert.strictEqual(allowedOrigin('https://x.openvibe.website'), null, 'a Space tenant site is not trusted');
 // The account chooser names the site being signed in to, not the OAuth client that serves several sites.
 const { siteNameForHost } = require('../server/auth/oauth-routes');
 assert.strictEqual(siteNameForHost('openvibe.video'), 'OpenVibe.Video', 'not "OpenVibe.Download" (the media-hub client)');

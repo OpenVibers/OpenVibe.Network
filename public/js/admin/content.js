@@ -183,7 +183,7 @@ function buildStreamerTierHtml(tierData) {
         + '<tr style="border-top:2px solid var(--border);font-weight:700"><td style="padding:8px 10px">Total</td><td style="padding:8px 10px;text-align:right">' + totalVods.toLocaleString() + '</td><td style="padding:8px 10px;text-align:right">' + fmtBytes(totalBytes) + '</td><td style="padding:8px 10px;text-align:right">100%</td><td style="padding:8px 10px;text-align:right">' + totalClips.toLocaleString() + '</td><td style="padding:8px 10px">' + (tierData.sweepRunning ? '<span style="color:#f59e0b"><i class="fa-solid fa-spinner fa-spin"></i> sweeping</span>' : '<span style="color:var(--text-muted)">idle</span>') + '</td></tr>'
         + '</tbody></table></div>'
         + '<div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--text-muted);margin-top:12px">'
-        + '<span><i class="fa-solid ' + (ts.enabled ? 'fa-toggle-on' : 'fa-toggle-off') + '" style="color:' + (ts.enabled ? '#22c55e' : '#ef4444') + '"></i> Auto-offload: ' + (ts.enabled ? 'ON' : 'OFF') + '</span>'
+        + '<span><i class="fa-solid ' + (ts.enabled ? 'fa-circle-check' : 'fa-circle-xmark') + '" style="color:' + (ts.enabled ? '#22c55e' : '#ef4444') + '"></i> Auto-offload: ' + (ts.enabled ? 'ON' : 'OFF') + '</span>'
         + '<span>| Age &ge; ' + (ts.minAgeDays != null ? ts.minAgeDays : '?') + 'd</span><span>| Views &le; ' + (ts.maxViewsForCold != null ? ts.maxViewsForCold : '?') + '</span><span>| Idle &ge; ' + (ts.minLastAccessDays != null ? ts.minLastAccessDays : '?') + 'd</span>'
         + '</div></div>';
 }
@@ -224,7 +224,7 @@ async function loadStreamerCloudStorage(force) {
         };
         el.innerHTML = header
             + '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">' + card('b2', 'Backblaze B2', '#e21e2b') + card('r2', 'Cloudflare R2', '#f6821f') + '</div>'
-            + '<div class="card" style="display:flex;align-items:center;justify-content:space-between"><span><i class="fa-solid fa-file-invoice-dollar" style="color:var(--accent)"></i> <strong>Estimated cloud storage cost</strong> <span style="color:var(--text-muted);font-size:12px">(list prices; excludes egress/operations)</span></span><span style="font-size:22px;font-weight:800;color:var(--accent)">' + money(costs.totalStorageMonthly) + '<span style="font-size:13px;font-weight:400;color:var(--text-muted)">/mo</span></span></div>';
+            + '<div class="card" style="display:flex;align-items:center;justify-content:space-between"><span><i class="fa-solid fa-money-bill" style="color:var(--accent)"></i> <strong>Estimated cloud storage cost</strong> <span style="color:var(--text-muted);font-size:12px">(list prices; excludes egress/operations)</span></span><span style="font-size:22px;font-weight:800;color:var(--accent)">' + money(costs.totalStorageMonthly) + '<span style="font-size:13px;font-weight:400;color:var(--text-muted)">/mo</span></span></div>';
     } catch (e) {
         el.innerHTML = header + '<div style="color:var(--danger-text, var(--danger,#ef4444))">Failed to scan buckets: ' + esc(e.message) + '</div>';
     }
@@ -318,7 +318,7 @@ async function loadEmail() {
                 <div class="stat-card"><div class="value">${Number(summary.sent_24h || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-clock"></i> Sent · 24h</div></div>
                 <div class="stat-card"><div class="value">${Number(summary.password_resets_24h || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-key"></i> Password Resets · 24h</div></div>
                 <div class="stat-card"><div class="value">${Number(summary.notifications_24h || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-bell"></i> Notification Emails · 24h</div></div>
-                <div class="stat-card"><div class="value">${Number(summary.tests_24h || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-vial"></i> Test Emails · 24h</div></div>
+                <div class="stat-card"><div class="value">${Number(summary.tests_24h || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-flask-vial"></i> Test Emails · 24h</div></div>
             </div>
 
             <div class="card" style="padding:16px;margin-bottom:16px">

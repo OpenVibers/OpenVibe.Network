@@ -349,7 +349,7 @@ async function loadApps() {
         for (const app of apps) {
             const row = document.createElement('div'); row.className = 'linked-item';
             const icon = document.createElement('span'); icon.className = 'svc-icon';
-            const i = document.createElement('i'); i.className = 'fa-solid fa-puzzle-piece'; icon.appendChild(i);
+            const i = document.createElement('i'); i.className = 'fa-solid fa-plug'; icon.appendChild(i);
             const main = document.createElement('div');
             const name = document.createElement('div'); name.className = 'svc-name'; name.textContent = app.name || app.client_id;
             const meta = document.createElement('div'); meta.className = 'svc-user';

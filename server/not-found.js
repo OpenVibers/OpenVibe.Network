@@ -12,7 +12,7 @@
 
 // The account hub (public/my.html) and its client-routed sections. my.html maps each path to a
 // section (pathSection in its script); a path it does not know is not a page.
-const ACCOUNT_HUB_PATHS = ['/my', '/my.html', '/themes', '/notifications', '/linked', '/security', '/profile', '/billing', '/preferences', '/history'];
+const ACCOUNT_HUB_PATHS = ['/my', '/my.html', '/themes', '/notifications', '/linked', '/security', '/machines', '/profile', '/billing', '/preferences', '/history'];
 
 const JSON_PREFIXES = ['/api/', '/internal/', '/oauth/'];
 

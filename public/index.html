@@ -27,15 +27,23 @@
 <meta property="og:site_name" content="OpenVibe">
 <link rel="canonical" href="https://openvibe.network/">
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://openvibe.network/#org","name":"OpenVibe","alternateName":["OpenVibe Network","OpenVibers"],"url":"https://openvibe.network/","logo":"https://openvibe.network/assets/logo-512.png","description":"OpenVibe is an open-source, community-run network of websites that share one free account: live streaming from the browser (OpenVibe.Live), more than 180 online tools (OpenVibe.Tools), chat and the Vibe assistant (OpenVibe.Chat), games, a wiki, news, reviews, deals and an open developer platform.","disambiguatingDescription":"The open-source network of websites at openvibe.network, made by OpenVibers; not the Openvibe mobile social-media aggregator app.","sameAs":["https://github.com/OpenVibers","https://discord.gg/M6MuRUaeJj","https://openvibe.live","https://openvibe.tools","https://openvibe.chat","https://openvibe.games","https://openvibe.media","https://openvibe.video","https://openvibe.community","https://openvibe.space","https://openvibe.wiki","https://openvibe.blog","https://openvibe.news","https://openvibe.services","https://openre.stream"]},{"@type":"WebSite","@id":"https://openvibe.network/#site","url":"https://openvibe.network/","name":"OpenVibe.Network","description":"One free account for every OpenVibe site: go live from your browser, online tools, chat, games, videos, jobs and an open platform to build on.","publisher":{"@id":"https://openvibe.network/#org"}}]}</script>
-<link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-<!-- Critical theme bootstrap (ov-theme-boot) — MUST stay inline and above the stylesheets.
-     Paints the cached theme synchronously so the default palette never flashes. Reads
-     localStorage only: no network, nothing to block on. theme-loader.js still runs after
-     and reconciles with the account. -->
+<!-- The look before first paint (ov-theme-boot): MUST stay ABOVE the stylesheets. server/look-boot.js puts
+     openvibe-shared's look-boot here: it paints the look this browser last painted here (ov_paint), or the one a
+     link from another OpenVibe page carried (?ov_look=), with the display settings (the season switch among them).
+     theme-loader.js loads with defer, so without it the default palette (or an old season) showed first. -->
+<!--ov:look-boot-->
 <script>
-(function(){try{var raw=localStorage.getItem('ov_theme');if(!raw)return;var t=JSON.parse(raw),v=t&&t.variables;if(!v)return;var el=document.documentElement;for(var k in v)if(k.charAt(0)==='-')el.style.setProperty(k,v[k]);if(t.id)el.setAttribute('data-theme',t.id);}catch(_){}})();
+// A browser from before look-boot has only its theme (ov_theme), not yet a painted look (ov_paint): paint that once.
+(function () {
+    try {
+        if (localStorage.getItem('ov_paint')) return;
+        var t = JSON.parse(localStorage.getItem('ov_theme') || 'null'), v = t && t.variables, el = document.documentElement;
+        if (!v) return;
+        for (var k in v) if (k.charAt(0) === '-' && /^[#0-9a-z(),.%\s-]{1,80}$/i.test(String(v[k])) && !/url|expression/i.test(String(v[k]))) el.style.setProperty(k, v[k]);
+        if (t.id && /^[a-z0-9-]{1,40}$/.test(t.id)) el.setAttribute('data-theme', t.id);
+    } catch (_) { /* nothing kept: theme-loader.js paints shortly */ }
+})();
 </script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="/shared/showcase.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -54,7 +62,7 @@ a{color:inherit}
 
 /* Ambient background */
 .bg-orbs{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
-.bg-orbs .orb{position:absolute;border-radius:50%;filter:blur(110px);opacity:.14;animation:orb-drift 24s ease-in-out infinite alternate}
+.bg-orbs .orb{position:absolute;border-radius:50%;filter:blur(110px);opacity:.14;animation:orb-drift 24s var(--ov-ease-in-out, ease-in-out) infinite alternate}
 .bg-orbs .orb:nth-child(1){width:440px;height:440px;background:var(--accent);top:-120px;left:-120px}
 .bg-orbs .orb:nth-child(2){width:380px;height:380px;background:var(--secondary);top:30%;right:-140px;animation-delay:-8s}
 .bg-orbs .orb:nth-child(3){width:320px;height:320px;background:var(--accent-dark);bottom:-100px;left:35%;animation-delay:-16s}
@@ -77,7 +85,7 @@ a{color:inherit}
 .btn{
     display:inline-flex;align-items:center;gap:9px;padding:13px 26px;border-radius:12px;
     font-size:15px;font-weight:700;text-decoration:none;border:1px solid transparent;
-    transition:transform .15s, box-shadow .15s, background .15s, border-color .15s;
+    transition:transform var(--ov-dur-2, .15s), box-shadow var(--ov-dur-2, .15s), background var(--ov-dur-2, .15s), border-color var(--ov-dur-2, .15s);
 }
 .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff}
 .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(139,92,246,.35)}
@@ -89,7 +97,7 @@ a{color:inherit}
 .hero-grid h1{font-size:clamp(34px,4.3vw,52px)}
 .hero-grid p.sub{margin:18px 0 0}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-.intent-bar{display:flex;align-items:center;gap:10px;margin-top:28px;padding:6px 6px 6px 16px;border-radius:14px;border:1px solid var(--border-light);background:var(--bg-secondary);box-shadow:0 10px 30px rgba(0,0,0,.25);transition:border-color .15s,box-shadow .15s}
+.intent-bar{display:flex;align-items:center;gap:10px;margin-top:28px;padding:6px 6px 6px 16px;border-radius:14px;border:1px solid var(--border-light);background:var(--bg-secondary);box-shadow:0 10px 30px rgba(0,0,0,.25);transition:border-color var(--ov-dur-2, .15s),box-shadow var(--ov-dur-2, .15s)}
 .intent-bar:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent),0 10px 30px rgba(0,0,0,.25)}
 .intent-bar>i{color:var(--text-muted)}
 .intent-bar input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text-primary);font:inherit;font-size:16px;padding:10px 0}
@@ -97,14 +105,14 @@ a{color:inherit}
 .intent-bar button{border:0;border-radius:10px;padding:11px 20px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;color:var(--on-accent,#fff);background:linear-gradient(135deg,var(--accent),var(--accent-dark))}
 .intent-bar button:hover{filter:brightness(1.08)}
 .intents{list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}
-.intent{display:flex;gap:12px;align-items:flex-start;padding:11px 12px;border-radius:12px;border:1px solid var(--border);background:color-mix(in srgb,var(--bg-secondary) 80%,transparent);text-decoration:none;color:inherit;transition:border-color .15s,background .15s,opacity .15s,transform .15s;height:100%}
+.intent{display:flex;gap:12px;align-items:flex-start;padding:11px 12px;border-radius:12px;border:1px solid var(--border);background:color-mix(in srgb,var(--bg-secondary) 80%,transparent);text-decoration:none;color:inherit;transition:border-color var(--ov-dur-2, .15s),background var(--ov-dur-2, .15s),opacity var(--ov-dur-2, .15s),transform var(--ov-dur-2, .15s);height:100%}
 .intent>i{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:10px;font-size:15px;color:var(--accent-light);background:color-mix(in srgb,var(--accent) 14%,transparent)}
-.intent b{display:block;font-size:14.5px;letter-spacing:-.1px}.intent small{display:block;color:var(--text-secondary);font-size:12.5px;line-height:1.4;margin-top:1px}
+.intent b{display:block;font-size:14.5px;letter-spacing:-.1px}.intent-n{display:inline-block;margin-top:5px;padding:1px 7px;border-radius:999px;font-style:normal;font-size:11px;font-weight:650;color:color-mix(in srgb,var(--accent) 60%,var(--text-primary));background:color-mix(in srgb,var(--accent) 14%,transparent)}.intent small{display:block;color:var(--text-secondary);font-size:12.5px;line-height:1.4;margin-top:1px}
 .intent:hover,.intent:focus-visible{border-color:var(--accent);background:var(--bg-hover);outline:0;transform:translateY(-1px)}
 .intent.match{border-color:var(--accent);background:var(--bg-hover)}
 .intent.dim{opacity:.38}
 .hero-account{margin-top:16px;font-size:13.5px;color:var(--text-secondary)}
-.hero-account a{color:var(--accent-light);font-weight:600;text-decoration:none}.hero-account a:hover{text-decoration:underline}
+.hero-account a{color:var(--accent-light);font-weight:600;text-decoration:none}html[data-theme-mode="light"] .hero-account a{color:color-mix(in srgb,var(--accent) 62%,var(--text-primary))}.hero-account a:hover{text-decoration:underline}
 .hero-sky{position:sticky;top:72px;padding-top:24px}
 .constellation{width:100%;height:auto;display:block;overflow:visible}
 .constellation .cs-orbit{fill:none;stroke:var(--border-light);stroke-dasharray:2 6;opacity:.7}.constellation .cs-far{opacity:.4}
@@ -115,7 +123,7 @@ a{color:inherit}
 .constellation text{fill:var(--text-secondary);font-size:12px;font-weight:600}
 .constellation .cs-node{cursor:pointer}
 .constellation .cs-star{fill:var(--accent-light)}
-.constellation .cs-halo{fill:var(--accent);opacity:.16;transform-box:fill-box;transform-origin:center;animation:cs-twinkle 4.2s ease-in-out infinite;animation-delay:var(--d,0s)}
+.constellation .cs-halo{fill:var(--accent);opacity:.16;transform-box:fill-box;transform-origin:center;animation:cs-twinkle 4.2s var(--ov-ease-in-out, ease-in-out) infinite;animation-delay:var(--d,0s)}
 .constellation .cs-node:hover .cs-halo,.constellation .cs-node:focus .cs-halo{opacity:.45}
 .constellation .cs-node:hover text,.constellation .cs-node:focus text{fill:var(--text-primary)}
 .constellation .cs-soon .cs-star{fill:var(--text-muted)}.constellation .cs-soon text{fill:var(--text-muted);font-size:10.5px;font-weight:500}
@@ -124,23 +132,22 @@ a{color:inherit}
 @media (max-width:900px){.hero-grid{grid-template-columns:minmax(0,1fr);text-align:center}.hero-grid p.sub{margin:14px auto 0}.hero-sky{position:static;padding-top:0}.intent{text-align:left}}
 /* The orbit (server/home/render.js orbit()): rings turning in opposite directions, every icon upright. */
 .orbit{position:relative;width:min(100%,460px);aspect-ratio:1;margin:0 auto;container-type:inline-size}
-.orb-glow{position:absolute;inset:22%;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 34%,transparent),transparent);filter:blur(6px);animation:orb-breathe 6s ease-in-out infinite}
-.orb-ring{position:absolute;inset:0;border-radius:50%;animation:orb-spin 90s linear infinite}
-.orb-ring::before{content:"";position:absolute;border-radius:50%;border:1px dashed color-mix(in srgb,var(--accent-light) 30%,transparent)}
+.orb-glow{position:absolute;inset:22%;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 34%,transparent),transparent);filter:blur(6px);animation:orb-breathe 6s var(--ov-ease-in-out, ease-in-out) infinite}
+.orb-ring{position:absolute;inset:0;border-radius:50%}
+.orb-ring::before{content:"";position:absolute;border-radius:50%;border:1px dashed color-mix(in srgb,var(--accent-light) 30%,transparent);animation:orb-dash 7s var(--ov-ease-in-out, ease-in-out) infinite alternate}
 .orb-ring.r1{--R:31cqw}.orb-ring.r1::before{inset:19%}
-.orb-ring.r2{--R:45cqw;animation-duration:140s;animation-direction:reverse}.orb-ring.r2::before{inset:5%;opacity:.55}
+.orb-ring.r2{--R:45cqw}.orb-ring.r2::before{inset:5%;opacity:.55;animation-delay:-3.5s}
 .orb-node{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;transform:rotate(calc(360deg / var(--n) * var(--i))) translateY(calc(-1 * var(--R))) rotate(calc(-360deg / var(--n) * var(--i)));text-decoration:none;color:var(--text-primary)}
 .orb-node.is-big{width:58px;height:58px;margin:-29px}
-.orb-face{display:flex;flex-direction:column;align-items:center;gap:5px;width:100%;height:100%;animation:orb-spin 90s linear infinite reverse}
-.r2 .orb-face{animation-duration:140s;animation-direction:normal}
-.orb-face .ov-icon{display:grid;place-items:center;width:100%;height:100%;flex:none;border-radius:50%;background:color-mix(in srgb,var(--bg-secondary) 88%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent-light) 30%,transparent),0 8px 22px rgba(0,0,0,.35);transition:transform .3s cubic-bezier(.2,1.4,.3,1),box-shadow .3s}
+.orb-face{display:flex;flex-direction:column;align-items:center;gap:5px;width:100%;height:100%}
+.orb-face .ov-icon{display:grid;place-items:center;width:100%;height:100%;flex:none;border-radius:50%;background:color-mix(in srgb,var(--bg-secondary) 88%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent-light) 30%,transparent),0 8px 22px rgba(0,0,0,.35);transition:transform var(--ov-dur-3, .3s) var(--ov-ease-spring, cubic-bezier(.2,1.4,.3,1)),box-shadow var(--ov-dur-3, .3s)}
 .orb-name{font-size:11.5px;font-weight:700;color:var(--text-secondary);white-space:nowrap;padding:1px 7px;border-radius:999px;background:color-mix(in srgb,var(--bg-primary) 78%,transparent);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .orb-ring.r1{z-index:2}.orb-core{z-index:3}
 .orb-node:hover .ov-icon,.orb-node:focus-visible .ov-icon{transform:scale(1.15);box-shadow:0 0 0 2px var(--accent-light),0 10px 28px rgba(0,0,0,.45)}
 .orb-node:hover .orb-name,.orb-node:focus-visible .orb-name{color:var(--text-primary)}
 .orb-core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:var(--text-primary);text-align:center}
 .orb-core b{font-size:15px;font-weight:800;margin-top:6px}.orb-core small{font-size:12px;color:var(--text-muted)}
-@keyframes orb-spin{to{transform:rotate(360deg)}}
+@keyframes orb-dash{to{opacity:.3}}
 @keyframes orb-breathe{0%,100%{opacity:.7;transform:scale(.95)}50%{opacity:1;transform:scale(1.05)}}
 @media (prefers-reduced-motion:reduce){.orb-ring,.orb-face,.orb-glow{animation:none}}
 html[data-ov-motion=reduced] .orb-ring,html[data-ov-motion=reduced] .orb-face,html[data-ov-motion=reduced] .orb-glow{animation:none}
@@ -163,12 +170,12 @@ html[data-ov-motion=reduced] .orb-ring,html[data-ov-motion=reduced] .orb-face,ht
 .svc-card{
     position:relative;display:flex;flex-direction:column;gap:12px;padding:26px;border-radius:16px;
     background:var(--bg-card);border:1px solid var(--border);text-decoration:none;
-    transition:transform .18s, border-color .18s, box-shadow .18s;overflow:hidden;
+    transition:transform var(--ov-dur-2, .18s), border-color var(--ov-dur-2, .18s), box-shadow var(--ov-dur-2, .18s);overflow:hidden;
 }
 .svc-card::before{
     content:'';position:absolute;top:0;left:0;right:0;height:3px;
     background:linear-gradient(90deg,transparent,var(--card-accent,var(--accent)),transparent);
-    opacity:0;transition:opacity .18s;
+    opacity:0;transition:opacity var(--ov-dur-2, .18s);
 }
 .svc-card:hover{transform:translateY(-4px);border-color:var(--card-accent,var(--accent));box-shadow:var(--shadow-lg)}
 .svc-card:hover::before{opacity:1}
@@ -192,7 +199,7 @@ html[data-ov-motion=reduced] .orb-ring,html[data-ov-motion=reduced] .orb-face,ht
 
 /* One account strip */
     .shipped-strip { max-width: 900px; margin: 0 auto 48px; padding: 0 16px; }
-    .shipped-inner { background: var(--bg-card, rgba(255,255,255,0.03)); border: 1px solid var(--border, rgba(255,255,255,0.08)); border-radius: 14px; padding: 18px 20px; }
+    .shipped-inner { background: var(--bg-card, color-mix(in srgb, var(--text-primary, #fff) 3%, transparent)); border: 1px solid var(--border, color-mix(in srgb, var(--text-primary, #fff) 8%, transparent)); border-radius: 14px; padding: 18px 20px; }
 .sso-strip{max-width:820px;margin:0 auto;padding:0 24px 80px;text-align:center}
 .sso-inner{
     border:1px solid var(--border);border-radius:18px;background:var(--bg-secondary);
@@ -208,7 +215,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 .foot-brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.3px}
 .foot-brand i{color:var(--accent)}
 .foot-links{display:flex;flex-wrap:wrap;gap:18px;font-size:13px}
-.foot-links a{color:var(--text-secondary);text-decoration:none;transition:color .15s}
+.foot-links a{color:var(--text-secondary);text-decoration:none;transition:color var(--ov-dur-2, .15s)}
 .foot-links a:hover{color:var(--accent-light)}
 .foot-note{width:100%;font-size:12px;color:var(--text-muted)}
 
@@ -223,7 +230,6 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 }
 </style>
 <script src="/shared/theme-loader.js"></script>
-<script src="/assets/ov-mark.js"></script>
 </head>
 <body>
 
