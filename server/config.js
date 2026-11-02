@@ -129,5 +129,10 @@ module.exports = {
         billing: {
             internalUrl: process.env.OV_BILLING_INTERNAL_URL || 'http://127.0.0.1:4600',
         },
+        // OpenVibe.Bot: the registry of the machines. The hub (server/registry/machines.js) calls it as the
+        // person, so Bot stays the authority on what a person may do with their own machines.
+        bot: {
+            internalUrl: process.env.OV_BOT_INTERNAL_URL || 'http://127.0.0.1:4630',
+        },
     },
 };

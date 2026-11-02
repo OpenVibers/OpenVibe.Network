@@ -43,10 +43,12 @@ const GROUPS = [
     { id: 'streams', name: 'Streams & places', sites: ['live', 'media-hub', 'stream', 'pics', 'download', 'cam', 'tours'] },
     { id: 'games', name: 'Games & laughs', sites: ['games', 'surf', 'fun', 'meme', 'casino', 'quest'] },
     { id: 'answers', name: 'News & answers', sites: ['today', 'report', 'news', 'search', 'wiki', 'blog', 'reviews', 'vision'] },
-    { id: 'make', name: 'Make & build', sites: ['website', 'design', 'domains', 'codes', 'space', 'tools', 'host', 'actor', 'bot'] },
+    { id: 'make', name: 'Make & build', sites: ['website', 'design', 'domains', 'codes', 'space', 'tools', 'host', 'bot'] },
     { id: 'shop', name: 'Shop & swap', sites: ['deals', 'coupons', 'shoes', 'exchange', 'rent', 'homes', 'work', 'food', 'trade'] },
     { id: 'people', name: 'People & you', sites: ['chat', 'community', 'tips', 'vip', 'help', 'network', 'inventory'] },
-    { id: 'build', name: 'For developers', sites: ['services', 'ai', 'bench', 'run', 'zone', 'events', 'media', 'watch', 'play'] },
+    // Actor is the engine behind every agent (Codes' Auto, Vibe, the Dock call it): a developer service, not a second
+    // place to chat with an agent (plan L39, 2026-10-31).
+    { id: 'build', name: 'For developers', sites: ['services', 'ai', 'actor', 'bench', 'run', 'zone', 'events', 'media', 'watch', 'play'] },
 ];
 // What each site is, in a few words, for the menus (the launcher's rows are two to a line on a phone: about 22
 // characters fit). The manifests' taglines stay the sites' own sentences everywhere else; a site missing here shows
@@ -55,13 +57,14 @@ const MENU_LINE = {
     live: 'Go live, watch streams', 'media-hub': 'Clips and past streams', stream: 'Stream everywhere', pics: 'Share pictures',
     download: 'Your files', tips: 'Support streamers', vip: 'Back your creators',
     chat: 'Chat with anyone', community: 'Posts and pastes', blog: 'Write long-form', news: 'Sourced, not spun', wiki: 'Facts with sources',
-    games: 'Play in your browser', quest: 'Earn badges',
-    codes: 'Build apps with AI', actor: 'Agents do it for you', space: 'Host a site or app', tools: 'Every online tool', bot: 'Drive a robot',
+    games: 'Play in your browser', quest: 'Earn badges', fun: 'Something to do',
+    codes: 'Code with any agent', actor: 'The agent engine', space: 'Host a site or app', tools: 'Every online tool', bot: 'Drive a robot',
     deals: 'Deals people share', coupons: 'Codes that work', reviews: 'Honest reviews', work: 'Find a job', rent: 'Places to rent',
     homes: 'Homes for sale', food: 'Food near you', help: 'Help nearby', trade: 'Watch the markets', watch: 'Know when it changes',
-    search: 'Search everything', host: 'Compare hosting',
+    search: 'Search everything', host: 'Compare hosting', report: 'Your numbers, honest', vision: 'Ask a picture',
+    exchange: 'Apps, skills, compute',
     network: 'Your account', inventory: 'Your items',
-    services: 'APIs and SDK', ai: 'AI models API', run: 'Run jobs anywhere', zone: 'S3 storage', events: 'Event streams', media: 'Media API', play: 'Game services',
+    services: 'APIs, SDK and keys', ai: 'AI router, your keys', bench: 'Which AI is best', run: 'Run jobs anywhere', zone: 'S3 storage', events: 'Event streams', media: 'Media API', play: 'Game services',
 };
 
 // A site's name in the menus, where the rows are short words (Pics, Download, VIP, Tips): the product keeps its full name

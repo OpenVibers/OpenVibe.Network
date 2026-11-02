@@ -128,6 +128,8 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'surf', name: 'OpenVibe.Surf', redirect_uris: ['https://openvibe.surf/auth/callback'] },
             // The Domains control panel (plan 2026-10-28 §5.1, DOM-2): a person's connections and proposals.
             { client_id: 'domains', name: 'OpenVibe.Domains', redirect_uris: ['https://openvibe.domains/auth/callback'] },
+            // Every number on OpenVibe, and your own (plan L41): the client exists as Report's principal (its Billing reads).
+            { client_id: 'report', name: 'OpenVibe.Report', redirect_uris: ['https://openvibe.report/auth/callback'] },
             // The open meme database: a signed-in front for votes, captions and reports.
             { client_id: 'meme', name: 'OpenVibe.Meme', redirect_uris: ['https://openvibe.meme/auth/callback'] },
             // Ask a picture, compare models and check a page's UI (plan 2026-10-28 §5.8); Design's Arena calls its UI check.
@@ -138,6 +140,12 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'fun', name: 'OpenVibe.Fun', redirect_uris: ['https://openvibe.fun/auth/callback'] },
             // The camera app, a private wall for cameras people own, and the still Live's cam button takes.
             { client_id: 'cam', name: 'OpenVibe.Cam', redirect_uris: ['https://openvibe.cam/auth/callback'] },
+            // Learn it, play it, never pay it (plan 5.14): sign-in only; no money and nothing personal is kept.
+            { client_id: 'casino', name: 'OpenVibe.Casino', redirect_uris: ['https://openvibe.casino/auth/callback'] },
+            // Go anywhere (plan 5.12): sign-in for trips a person plans and shares.
+            { client_id: 'tours', name: 'OpenVibe.Tours', redirect_uris: ['https://openvibe.tours/auth/callback'] },
+            // Every shoe, every market (plan 5.6), at open.shoes: sign-in for price watches and drop reminders.
+            { client_id: 'shoes', name: 'OpenVibe.Shoes', redirect_uris: ['https://open.shoes/auth/callback'] },
             // The shared AI benchmark and comparison engine; a developer service at bench.openvibe.services.
             { client_id: 'bench', name: 'OpenVibe.Bench', redirect_uris: ['https://bench.openvibe.services/auth/callback'] },
             // Sources' merchant opt-in pages sign a source owner in (scope profile, no site of their own).

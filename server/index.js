@@ -20,6 +20,9 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
 const config = require('./config');
+// The look before first paint (openvibe-shared look-boot, plan L42): the public pages carry a marker and this
+// puts openvibe-shared's script there, so a page paints the kept or carried look before its first frame.
+const lookBoot = require('./look-boot');
 const { initDb } = require('./db/database');
 const urlRegistry = require('./url-registry');
 const { BRAND } = require('openvibe-shared/brand');
@@ -81,11 +84,11 @@ function redirectWithoutHtml(req, res, targetPath) {
 }
 
 function sendMyAccountApp(res) {
-    return res.sendFile(path.join(__dirname, '..', 'public', 'my.html'));
+    return lookBoot.send(res, 'my.html');
 }
 
 function sendLandingPage(res) {
-    return res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+    return lookBoot.send(res, 'index.html');
 }
 
 // ── Security ─────────────────────────────────────────────────
@@ -97,9 +100,9 @@ app.use(helmet({
             defaultSrc: ["'self'"],
             // Cloudflare Web Analytics: Cloudflare injects its beacon at the edge and the privacy text says it may
             // measure performance; script-src loads the beacon, connect-src is where it reports.
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://openvibe.network", "https://openvibe.live", "cdnjs.cloudflare.com", "cdn.jsdelivr.net", "fonts.googleapis.com", "https://static.cloudflareinsights.com"],
-            styleSrc: ["'self'", "'unsafe-inline'", "cdnjs.cloudflare.com", "fonts.googleapis.com", "fonts.gstatic.com"],
-            fontSrc: ["'self'", "fonts.gstatic.com", "cdnjs.cloudflare.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://openvibe.network", "https://openvibe.live", "cdn.jsdelivr.net", "fonts.googleapis.com", "https://static.cloudflareinsights.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com", "fonts.gstatic.com"],
+            fontSrc: ["'self'", "fonts.gstatic.com"],
             imgSrc: ["'self'", "data:", "blob:", "https://openvibe.media", "https://openvibe.live"],   // avatars and media live on openvibe.media; live-stream thumbnails on the home page come from openvibe.live
             connectSrc: [
                 "'self'",
@@ -500,6 +503,17 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     // The machine itself (slice N4c): its own capabilities and credential, resolved from its node token alone.
     app.use('/api/v1/node/self', require('./identity/principals').guard('network.node.self.manage'), require('./registry/node-principals').selfRouter());
 }
+// The machines hub (plan L34, step M2): a person's machines on openvibe.network/machines. Bot stays the registry
+// underneath; Network fronts it and calls it as the person, so Bot checks the machine is that person's own.
+// The internal route is Bot's report of a machine's state (network.node.manage, the capability it already holds).
+{
+    const machines = require('./registry/machines');
+    const bot = machines.createBotClient({ baseUrl: config.services.bot.internalUrl, privateKey, issuer: config.jwt.issuer });
+    const machineRouters = machines.routers({ bot, requireAuth, publicKey, issuer: config.jwt.issuer });
+    app.use('/api/v1/machines', rateLimit({ windowMs: 60_000, max: 60 }), machineRouters.hub);
+    const machineInternal = machines.internalRouters({ guard: require('./identity/principals').guard('network.node.manage') });
+    app.use('/internal', machineInternal.internal);
+}
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read'), require('./identity/blocks').internalHandler(db));
 // The follow graph (WS-E task 4, ADR-030): public counts, a person's own follows, and who follows a target
 // (its owner, or network.follows.read, service token only). Every change is network.follow.* (server/identity/follows.js).
@@ -507,6 +521,8 @@ app.get('/internal/blocks', require('./identity/principals').guard('network.bloc
     const followRouters = require('./identity/follows').routers({ requireAuth, followsGuard: require('./identity/principals').guard('network.follows.read') });
     app.use('/api/v1/me/follows', rateLimit({ windowMs: 60_000, max: 120 }), followRouters.me);
     app.use('/api/v1/follows', rateLimit({ windowMs: 60_000, max: 300 }), followRouters.pub);
+    // Your account home's "Now" (L43): the people you follow who are live, from Live's public list (held 10 s).
+    app.use('/api/v1/me/live-follows', rateLimit({ windowMs: 60_000, max: 60 }), require('./today/live-follows').router({ requireAuth, liveUrl: config.services.live.internalUrl }));
     // ADR-030 step 4: products record follows on a person's behalf (network.follows.write, service token only).
     app.use('/internal/follows', require('./identity/principals').guard('network.follows.write'), followRouters.internal);
     // A follow that starts notifies the followed person (FOLLOW), in the follow's transaction.
@@ -648,6 +664,10 @@ require('./developer/confirmations').start(db);
     // the Action Center's own, so a page view never fans out further than the aggregator's 10 s cache already does.
     const dock = require('./dock').createDock({ db, actions, notifications: notificationService });
     app.use('/api/v1/me/dock', require('./dock').router({ dock, requireAuth: requireDock('dock') }));
+    // The Dock's timer, for a first-party service and not for a person (plan L48 R2): Vibe starts the focus timer of
+    // the person it is talking with, and it counts down in the Dock's pill on every OpenVibe site. The service names
+    // the person and writes the timer and nothing else (network.dock.timer.write, granted to Chat alone).
+    app.use('/api/v1/people', require('./dock').serviceRouter({ dock }));
 }
 
 // The consent registry (L24, 2026-10-31; contracts 0.256.0): every use of a person's content or likeness for AI or
@@ -807,6 +827,12 @@ app.get(['/login.html', '/admin.html'], (req, res) => {
 // accounts (people, not guests or banned ones) and how many public services answered their last health check (a
 // count is left out until at least half of them have been checked once).
 require('./home/activity').configure({
+    // Visits per site this week, from the open stats (page views the shared navbar counts): the front door's
+    // intents are ordered by them (plan L43).
+    popularity: async () => {
+        const d = await openStats.collect(7);
+        return d && Array.isArray(d.sites) ? Object.fromEntries(d.sites.map((s) => [s.id, Number(s.pageviews) || 0])) : null;
+    },
     accounts: async () => (await db.prepare('SELECT COUNT(*) AS cnt FROM users WHERE COALESCE(is_anon, 0) = 0 AND COALESCE(is_banned, 0) = 0').get()).cnt,
     services: () => {
         const live = require('./status/routes').rows(ecosystem).filter((r) => r.exposure && r.exposure.state === 'live');
@@ -847,7 +873,7 @@ app.get(require('./not-found').ACCOUNT_HUB_PATHS, (req, res) => {
 app.get('/verify-email', (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Robots-Tag', 'noindex');
-    res.sendFile(path.join(__dirname, '..', 'public', 'verify-email.html'));
+    lookBoot.send(res, 'verify-email.html');
 });
 
 // FedCM identity provider (browser-native sign-in for the other OpenVibe sites) — server/auth/fedcm.js
@@ -867,9 +893,12 @@ app.get('/sso/check', require('./auth/sso-check').createSsoCheckRoute(() => ({ d
 app.get(['/sso/fanout', '/sso/fanout.html'], (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Robots-Tag', 'noindex');
-    res.sendFile(path.join(__dirname, '..', 'public', 'sso-fanout.html'));
+    lookBoot.send(res, 'sso-fanout.html');
 });
 
+// The public pages carry the look before first paint; the ones the static file server would answer by their own
+// file name (public/*.html) get it here, ahead of express.static below (plan L42).
+app.use(lookBoot.middleware());
 app.use(express.static(path.join(__dirname, '..', 'public'), { setHeaders: require('./static-headers').publicStaticHeaders }));
 
 // openvibe-shared: the OpenVibe.Shared release package.json pins, from node_modules.
@@ -943,7 +972,7 @@ app.get(['/login', '/forgot-password', '/reset-password'], (req, res) => {
 // Admin panel — serve the SPA for /admin and any client-routed sub-path
 // (e.g. /admin/settings, /admin/analytics/overview). Auth is checked client-side.
 app.get(['/admin', '/admin/*'], (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'public', 'admin.html'));
+    lookBoot.send(res, 'admin.html');
 });
 
 // Anything no route above answered is a 404: JSON under /api, /internal and /oauth, otherwise a small

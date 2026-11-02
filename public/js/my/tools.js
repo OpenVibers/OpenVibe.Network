@@ -4,29 +4,6 @@
    my/core.js's helpers (apiFetch, getAuthToken, showSection, API) and on
    my/boot.js (loaded last), which starts the page. No ES modules.
    ═══════════════════════════════════════════════════════════════ */
-// Build dashboard showcase
-function buildDashboardShowcase() {
-    const grid = document.getElementById('my-showcase-grid');
-    const quickAccess = document.getElementById('my-quick-access');
-    if (!grid || !quickAccess) return;
-    const popular = [
-        { name: 'Live', icon: 'fa-tower-broadcast', url: 'https://openvibe.live' },
-        { name: 'Tools', icon: 'fa-screwdriver-wrench', url: 'https://openvibe.tools' },
-        { name: 'Games', icon: 'fa-gamepad', url: 'https://openvibe.games' },
-        { name: 'Media', icon: 'fa-photo-film', url: 'https://openvibe.media' },
-    ];
-    grid.innerHTML = popular.map(t => `<a href="${t.url}" class="showcase-card" title="${t.name}" target="_blank" rel="noopener"><i class="fa-solid ${t.icon} showcase-card-icon"></i><span class="showcase-card-label">${t.name}</span></a>`).join('');
-    const quickLinks = [
-        { label: 'Themes', icon: 'fa-palette', onclick: "showSection('themes')" },
-        { label: 'Profile', icon: 'fa-user', onclick: "showSection('profile')" },
-        { label: 'Accounts', icon: 'fa-arrows-rotate', onclick: "showSection('accounts')" },
-        { label: 'Linked', icon: 'fa-link', onclick: "showSection('linked')" },
-        { label: 'Security', icon: 'fa-lock', onclick: "showSection('security')" },
-        { label: 'Notifications', icon: 'fa-bell', onclick: "showSection('notifications')" },
-    ];
-    quickAccess.innerHTML = quickLinks.map(l => `<a class="quick-link" onclick="${l.onclick}"><i class="fa-solid ${l.icon}"></i>${l.label}</a>`).join('');
-}
-
 // Your tools: the tools.usage module (contracts 0.41.0, v2). OpenVibe.Tools keeps `recent`; `favorites`
 // is the person's own (starred here or in the Tools launcher). Names come from the public Tools
 // registry; a tool that is gone from it is skipped. Writes name the revision read (If-Match).

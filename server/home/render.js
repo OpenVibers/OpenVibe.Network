@@ -12,6 +12,9 @@ const showcase = require('openvibe-shared/showcase');
 const toolsCatalog = require('../domains/catalog');
 const activity = require('./activity');
 const boost = require('../boost');
+// The look before first paint (openvibe-shared look-boot, plan L42): the shell carries the marker and this
+// puts the script there, above the stylesheets, in the page the server renders.
+const lookBoot = require('../look-boot');
 
 const SHELL = path.join(__dirname, '..', '..', 'public', 'index.html');
 const esc = seo.esc;
@@ -56,10 +59,10 @@ const INTENTS = [
     ['services', 'fa-server', 'Build on OpenVibe', 'One console for projects, keys, grants and the API docs of every service.', 'https://openvibe.services/', 'build api sdk developer developers oauth webhook webhooks app integrate console platform'],
     ['codes', 'fa-code', 'Code with any agent', 'Claude Code, Codex, OpenCode or your own model on one task, with hand-offs.', 'https://openvibe.codes/', 'code coding agent agents ai claude codex opencode deepseek harness contribute'],
     ['actor', 'fa-user-astronaut', 'Give a task to an agent', 'Actor picks the best agent for it, works on a desk you can watch and take over, and shows the cost and why.', 'https://openvibe.actor/', 'agent agents ai assistant task tasks automate automation router openrouter delegate'],
-    ['bot', 'fa-computer', 'Put your computer to work', 'Desks for your agents, a spare laptop as a desk host, and the AI models you run (Ollama, LM Studio) for your own work.', 'https://openvibe.bot/machines', 'computer computers pc laptop desktop desk desks machine machines ollama lmstudio llama gpu homelab node'],
+    ['bot', 'fa-desktop', 'Put your computer to work', 'Desks for your agents, a spare laptop as a desk host, and the AI models you run (Ollama, LM Studio) for your own work.', 'https://openvibe.bot/machines', 'computer computers pc laptop desktop desk desks machine machines ollama lmstudio llama gpu homelab node'],
     ['work', 'fa-briefcase', 'Find work', 'Jobs from open boards in one search, each linked to where you apply.', 'https://openvibe.work/', 'job jobs work career hiring remote employment apply listings'],
     ['food', 'fa-utensils', 'Eat well for less', 'Food near you, meal plans and recipes for your budget, and delivery apps compared.', 'https://openvibe.food/', 'food eat meal meals grocery groceries recipe recipes foodbank pantry delivery doordash ubereats grubhub instacart hellofresh'],
-    ['quest', 'fa-medal', 'Earn badges', 'Quests across the network for the things you already do there.', 'https://openvibe.quest/', 'quest quests badge badges achievement achievements rewards opencoins earn'],
+    ['quest', 'fa-ranking-star', 'Earn badges', 'Quests across the network for the things you already do there.', 'https://openvibe.quest/', 'quest quests badge badges achievement achievements rewards opencoins earn'],
     ['rent', 'fa-house', 'Rent a place', 'Every rental site in one search, and one board for what you find there.', 'https://openvibe.rent/', 'rent rental rentals apartment apartments room house flat lease parking storage equipment craigslist zillow zumper'],
     ['homes', 'fa-house-chimney', 'Buy a home', 'Every for-sale site in one search, with county records and a mortgage calculator.', 'https://openvibe.homes/', 'home homes house houses sale realestate realtor redfin zillow mortgage property records land'],
     ['video', 'fa-film', 'Watch and upload videos', 'Upload or record a video and get AI captions, chapters and cuts, plus OpenVibe.Live\'s past streams.', 'https://openvibe.video/', 'video videos upload record vod vods recording recordings replay replays clip clips past stream streams highlights vlog captions'],
@@ -72,9 +75,23 @@ const INTENTS = [
     ['help', 'fa-life-ring', 'Get help', 'Every OpenVibe site\'s questions answered, and a person when they are not.', 'https://openvibe.help/', 'help support faq question questions ticket contact problem how'],
 ];
 
-function intents(catalog) {
+// The site whose visits rank an intent (the owner's plan L43: "the most popular things to do now, from the numbers").
+// One site counts once: Ask Vibe and Chat are both openvibe.chat, so Chat carries its number; pictures and files are
+// openvibe.video's products, so Video does. An intent with no site of its own keeps its place after the ranked ones.
+const INTENT_SITE = { vibe: null, paste: 'community', video: 'media-hub', pics: null, 'media-hub': null };
+const siteOfIntent = (id) => (Object.prototype.hasOwnProperty.call(INTENT_SITE, id) ? INTENT_SITE[id] : id);
+const fmtVisits = (n) => (n >= 10000 ? `${Math.round(n / 1000)}k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(n));
+/** The intents, most visited first this week; the first five say how many visits. Unknown numbers keep the order. */
+function rankedIntents(popularity) {
+    const visits = (id) => { const s = siteOfIntent(id); const n = s && popularity ? Number(popularity[s]) : NaN; return Number.isFinite(n) && n > 0 ? n : 0; };
+    if (!popularity) return INTENTS.map((it) => ({ it, n: 0 }));
+    return INTENTS.map((it, i) => ({ it, n: visits(it[0]), i })).sort((a, b) => (b.n - a.n) || (a.i - b.i));
+}
+
+function intents(catalog, popularity = null) {
     const toolsLine = catalog.tools.length ? `Convert, compress, look up or download: ${catalog.tools.length} tools that just open.` : 'Convert, compress, look up or download: free tools that just open.';
-    return `<ul class="intents" aria-label="What you can do here">${INTENTS.map(([id, fa, verb, line, href, k]) => `<li><a class="intent" href="${esc(href)}" data-id="${esc(id)}" data-k="${esc(k)}"><i class="fa-solid ${esc(fa)}" aria-hidden="true"></i><span><b>${esc(verb)}</b><small>${esc(line || toolsLine)}</small></span></a></li>`).join('')}</ul>`;
+    const ranked = rankedIntents(popularity);
+    return `<ul class="intents" aria-label="What you can do here${popularity ? ', most visited this week first' : ''}">${ranked.map(({ it: [id, fa, verb, line, href, k], n }, pos) => `<li><a class="intent" href="${esc(href)}" data-id="${esc(id)}" data-k="${esc(k)}"><i class="fa-solid ${esc(fa)}" aria-hidden="true"></i><span><b>${esc(verb)}</b><small>${esc(line || toolsLine)}</small>${pos < 5 && n >= 10 ? `<em class="intent-n">${esc(fmtVisits(n))} visits this week</em>` : ''}</span></a></li>`).join('')}</ul>`;
 }
 
 // The network as an orbit (the owner, 2026-10-28: the hero was "ugly af, boring… not easy to understand… nice animated
@@ -98,7 +115,16 @@ const fmtCount = (n) => Number(n).toLocaleString('en-US');
 // A picture that fails to load (a stream's first thumbnail is written a few seconds after it goes live) falls back to
 // the avatar when there is one, else to an empty tile, never the browser's broken-image icon.
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
-const img = (src, fallback, w, h) => `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" width="${w}" height="${h}" data-fallback="${esc(fallback || BLANK)}" onerror="this.onerror=null;this.src=this.dataset.fallback">`;
+// A Media object is stored at full size: ask its resize ladder for the width drawn here (96 for the 36 px face, 640
+// for a 320 px card picture). Any other picture address — a Live thumbnail, an avatar from another host, one already
+// sized — is used unchanged. The full-size address stays in data-full: if Media cannot resize it, the picture retries
+// the original once before the existing fallback.
+const mediaW = (src, w) => (/^https:\/\/openvibe\.media\/o\/med_[0-9A-Za-z]+$/.test(String(src || '')) ? `${src}?w=${w >= 288 ? 640 : w >= 72 ? 160 : 96}` : src);
+const img = (src, fallback, w, h) => {
+    const sized = mediaW(src, w);
+    const full = sized === src ? '' : ` data-full="${esc(src)}"`;
+    return `<img src="${esc(sized)}" alt="" loading="lazy" decoding="async" width="${w}" height="${h}"${full} data-fallback="${esc(fallback || BLANK)}" onerror="if(this.dataset.full&&this.src!==this.dataset.full){this.src=this.dataset.full;return}this.src=this.dataset.fallback">`;
+};
 function rightNow(a) {
     // Rich cards (the owner, 2026-10-28: "more compact, bigger, like YouTube… a preview… view count… the uploader and
     // avatar… rich content"): a 16:9 picture with its length or LIVE badge, a play button and what happens in it on hover,
@@ -143,26 +169,24 @@ ${nowParts([
     ])}</section>`;
 }
 
-// What is new, under what is live. On a phone (600 px and under) the rails and the columns each scroll sideways, and
-// stacked they were about a screen and a half; chips show one at a time (the owner's short-pages rule, 2026-10-30).
-// Radio inputs and :has(), no script, every part still in the page; a wider screen, or a browser without :has(), shows
-// them all and no chips. With one part there is nothing to pick.
+// What is new, under what is live: every part shown (the owner, 2026-10-31: never hide content to shorten); on a phone
+// (600 px and under) the rails and the columns each scroll sideways, and a row of chips jumps to a part. With one part
+// there are no chips.
 function nowParts(parts) {
     const shown = parts.filter(([, , html]) => html);
     if (shown.length < 2) return shown.map(([, , html]) => html).join('\n');
-    const chips = shown.map(([id, label], i) => `<input type="radio" name="now-pick" id="np-${id}" value="${id}"${i === 0 ? ' checked' : ''}><label for="np-${id}">${esc(label)}</label>`).join('');
-    return `<div class="now-pick" role="radiogroup" aria-label="New on OpenVibe">${chips}</div>\n${shown.map(([, , html]) => html.replace(/^<div class="(now-block|now-grid)"/, '<div class="$1" data-now-part')).join('\n')}`;
+    const chips = shown.map(([id, label]) => `<a href="#now-${id}">${esc(label)}</a>`).join('');
+    return `<nav class="now-pick" aria-label="New on OpenVibe">${chips}</nav>\n${shown.map(([, , html]) => html.replace(/^<div class="(now-block|now-grid)"/, '<div class="$1" data-now-part')).join('\n')}`;
 }
 
-// The lower half (tools, what an account adds, what opens next, the questions, the developers' links): on a phone each
-// one is a full section and together they were about 2,000 px. Chips show one at a time under "More about OpenVibe"
-// (the short-pages rule, 2026-10-30); a link to #faq or #account still opens its section (:target). Radio inputs and
-// :has(), no script; a wider screen, or a browser without :has(), shows every section as before.
+// The lower half (tools, what an account adds, what opens next, the questions, the developers' links): every section
+// shown with its own heading (the owner, 2026-10-31: never hide content to shorten); on a phone a row of chips under
+// "More about OpenVibe" jumps to one. A wider screen shows no chips.
 function moreParts(parts) {
     const shown = parts.filter(([, , html]) => html);
     if (shown.length < 2) return shown.map(([, , html]) => html).join('\n');
-    const chips = shown.map(([id, label], i) => `<input type="radio" name="more-pick" id="mp-${id}" value="${id}"${i === 0 ? ' checked' : ''}><label for="mp-${id}">${esc(label)}</label>`).join('');
-    return `<div class="more"><h2 class="more-pick-h">More about OpenVibe</h2><div class="more-pick" role="radiogroup" aria-label="More about OpenVibe">${chips}</div>\n${shown.map(([, , html]) => html.replace(/^<section class="([^"]*)" id="([^"]*)"/, '<section class="$1" id="$2" data-more-part')).join('\n')}</div>`;
+    const chips = shown.map(([id, label]) => `<a href="#${id}">${esc(label)}</a>`).join('');
+    return `<div class="more"><h2 class="more-pick-h">More about OpenVibe</h2><nav class="more-pick" aria-label="More about OpenVibe">${chips}</nav>\n${shown.map(([, , html]) => html.replace(/^<section class="([^"]*)" id="([^"]*)"/, '<section class="$1" id="$2" data-more-part')).join('\n')}</div>`;
 }
 
 // The hero's numbers: only what Network read itself within the last minute (server/home/activity.js); a number it
@@ -257,19 +281,15 @@ const CSS = `
 .vcard.now-empty .vc-thumb{border:1px dashed var(--border-light,#2c3d5c);background:transparent}.vcard.now-empty .now-noimg{display:grid;place-items:center;font-size:28px;color:var(--accent-light,#60a5fa);background:transparent}
 .now .now-grid{margin-top:26px}
 .now-pick,.more-pick,.more-pick-h{display:none}
-@supports selector(:has(*)){@media (max-width:600px){
+@media (max-width:600px){
 .now-pick,.more-pick{display:flex;gap:8px;overflow-x:auto;margin:22px -16px 0;padding:2px 16px 4px;scrollbar-width:none;overscroll-behavior-x:contain}.now-pick::-webkit-scrollbar,.more-pick::-webkit-scrollbar{display:none}
-.now-pick input,.more-pick input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
-.now-pick label,.more-pick label{display:inline-flex;align-items:center;flex:none;min-height:44px;padding:0 15px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));color:var(--text-secondary,#a8b3c4);font-size:13.5px;font-weight:650;white-space:nowrap;cursor:pointer}
-.now-pick input:checked+label,.more-pick input:checked+label{color:var(--text-primary,#e6edf7);border-color:var(--accent,#3b82f6);background:color-mix(in srgb,var(--accent,#3b82f6) 12%,transparent)}
-.now-pick input:focus-visible+label,.more-pick input:focus-visible+label{outline:2px solid var(--accent,#3b82f6);outline-offset:2px}
-.now [data-now-part]{display:none}.now .now-block[data-now-part],.now .now-grid[data-now-part]{margin-top:12px}
-.now:has(#np-recs:checked) #now-recs,.now:has(#np-shots:checked) #now-shots{display:block}.now:has(#np-posts:checked) #now-posts{display:flex}
-.now [data-now-part] .now-head{justify-content:flex-end}.now [data-now-part] .now-head h3{display:none}
+.now-pick a,.more-pick a{display:inline-flex;align-items:center;flex:none;min-height:44px;padding:0 15px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));color:var(--text-secondary,#a8b3c4);font-size:13.5px;font-weight:650;white-space:nowrap;text-decoration:none}
+.now-pick a:hover,.now-pick a:focus-visible,.more-pick a:hover,.more-pick a:focus-visible{color:var(--text-primary,#e6edf7);border-color:var(--accent,#3b82f6)}
+.now-pick a:focus-visible,.more-pick a:focus-visible{outline:2px solid var(--accent,#3b82f6);outline-offset:2px}
+.now .now-block[data-now-part],.now .now-grid[data-now-part]{margin-top:22px}
 .more-pick-h{display:block;margin:40px 0 0;padding:0 16px;font-size:clamp(1.25rem,5vw,1.5rem);font-weight:800;letter-spacing:-.02em}.more-pick{margin:10px 0 0;padding:2px 16px 4px}
-.more [data-more-part]{display:none;margin-top:0;padding-top:12px}.more [data-more-part]>h2{display:none}
-.more:has(#mp-tools:checked) #tools,.more:has(#mp-account:checked) #account,.more:has(#mp-soon:checked) #soon,.more:has(#mp-developers:checked) #developers,.more:has(#mp-faq:checked) #faq,.more [data-more-part]:target{display:block}
-}}
+[data-now-part],[data-more-part]{scroll-margin-top:72px}
+}
 @media (prefers-reduced-motion:reduce){.vc-thumb img,.vc-play,.vc-play i,.vc-about{transition:none}}
 .now-code{display:inline-block;margin:0 0 3px;padding:1px 7px;border-radius:6px;border:1px dashed var(--accent,#3b82f6);color:var(--accent-light,#60a5fa);font:700 12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px}
 .now-list b{overflow-wrap:anywhere}
@@ -418,7 +438,7 @@ function render({ releaseId = '' } = {}) {
     })) + seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what })))) + seo.jsonLdTag(seo.jsonLd.faq(faqPairs()));
     const card = social.url('network', 'https://openvibe.network/shared') || 'https://openvibe.network/assets/logo-512.png';
     const summary = summaryOf(catalog);
-    const html = fs.readFileSync(SHELL, 'utf8').replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog)).replace('<!--OV:CONSTELLATION-->', () => orbit() + numbers(catalog, act)).replaceAll('__OV_CARD__', card).replace('<!--OV:SITES-->', String(OPEN.length + 1)).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
+    const html = lookBoot.apply(fs.readFileSync(SHELL, 'utf8')).replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog, act.popularity)).replace('<!--OV:CONSTELLATION-->', () => orbit() + numbers(catalog, act)).replaceAll('__OV_CARD__', card).replace('<!--OV:SITES-->', String(OPEN.length + 1)).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
     pageCache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
     return pageCache;
 }

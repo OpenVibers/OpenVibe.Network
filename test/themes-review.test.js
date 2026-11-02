@@ -114,6 +114,11 @@ const token = async (id) => signToken(await db.prepare('SELECT * FROM users WHER
     r = await call('PUT', '/api/themes/me/display', { as: 2, body: { scheme: 'auto' } });
     assert.strictEqual(r.body.display.scheme, 'auto', 'Auto (light or dark by the device) follows the account');
     assert.strictEqual((await call('PUT', '/api/themes/me/display', { as: 2, body: { scheme: 'sepia' } })).body.display.scheme, undefined, 'only manual or auto');
+    // Icons (openvibe-shared 4.71.0, plan L56): auto, line or solid follows the account.
+    r = await call('PUT', '/api/themes/me/display', { as: 2, body: { icons: 'solid' } });
+    assert.strictEqual(r.body.display.icons, 'solid', 'a person who prefers solid icons keeps that on every site');
+    assert.strictEqual((await call('GET', '/api/themes/me/active', { as: 2 })).body.display.icons, 'solid');
+    assert.strictEqual((await call('PUT', '/api/themes/me/display', { as: 2, body: { icons: 'outline' } })).body.display.icons, undefined, 'only auto, line or solid');
 
     // ── The site switcher's pinned and recent sites follow the account (migration 0029) ──
     r = await call('GET', '/api/themes/me/sites', { as: 2 });

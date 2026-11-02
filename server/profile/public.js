@@ -20,6 +20,8 @@ const express = require('express');
 const seo = require('openvibe-shared/seo');
 const cache = require('openvibe-shared/cache-policy');
 const usernames = require('../identity/usernames');
+const glyphs = require('openvibe-shared/glyphs');
+const { siteForHost, fullName } = require('../frame/sites');
 
 const esc = seo.esc;
 const SITE = 'https://openvibe.network';
@@ -93,7 +95,13 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             const body = await r.json();
             const badges = (Array.isArray(body.badges) ? body.badges : [])
                 .filter((b) => b && typeof b.id === 'string' && typeof b.name === 'string')
-                .map((b) => ({ id: b.id.slice(0, 64), name: b.name.slice(0, 60), awarded_at: typeof b.awarded_at === 'string' ? b.awarded_at : null }))
+                .map((b) => ({
+                    id: b.id.slice(0, 64), name: b.name.slice(0, 60), awarded_at: typeof b.awarded_at === 'string' ? b.awarded_at : null,
+                    // The site whose quest awards it (Quest #173): the badge shows that site's icon.
+                    site: typeof b.site === 'string' && /^[a-z0-9][a-z0-9.-]{2,60}$/.test(b.site) ? b.site : null,
+                    // Its picture (Quest #174): a glyph for what it was earned for, drawn only if Shared knows the name.
+                    icon: typeof b.icon === 'string' && glyphs.NAMES.includes(b.icon) ? b.icon : null,
+                }))
                 .sort((a, b) => String(b.awarded_at || '').localeCompare(String(a.awarded_at || '')));
             value = { badges };
         } catch (err) {
@@ -273,7 +281,14 @@ function showcaseHtml(inv, name) {
 function badgesHtml(inv) {
     if (!inv.badges || !inv.badges.length) return '';
     return `<section class="pf-section" aria-labelledby="pf-badges"><h2 id="pf-badges">Badges <span class="pf-count">${inv.badges.length}</span></h2>
-<ul class="pf-badges">${inv.badges.map((b) => `<li><a class="pf-badge" href="${QUEST_SITE}/" title="${esc(b.awarded_at ? `Earned ${monthOf(b.awarded_at) || ''} on OpenVibe.Quest` : 'Earned on OpenVibe.Quest')}"><span class="pf-badge-ic" aria-hidden="true">🏅</span><span>${esc(b.name)}</span>${b.awarded_at && monthOf(b.awarded_at) ? `<small>${esc(monthOf(b.awarded_at))}</small>` : ''}</a></li>`).join('')}</ul></section>`;
+<ul class="pf-badges">${inv.badges.map((b) => {
+        // Each badge wears its own picture (what it was earned for); the medal only when it has none.
+        const site = b.site ? siteForHost(b.site) : null;
+        const when = b.awarded_at && monthOf(b.awarded_at) ? monthOf(b.awarded_at) : '';
+        const title = `${when ? `Earned ${when}` : 'Earned'} on OpenVibe.Quest${site ? `: an ${fullName(site)} quest` : ''}`;
+        const ic = b.icon ? `<span class="pf-badge-ic is-glyph" aria-hidden="true">${glyphs.svg(b.icon)}</span>` : '<span class="pf-badge-ic" aria-hidden="true">🏅</span>';
+        return `<li><a class="pf-badge" href="${QUEST_SITE}/" title="${esc(title)}">${ic}<span>${esc(b.name)}</span>${when ? `<small>${esc(when)}</small>` : ''}</a></li>`;
+    }).join('')}</ul></section>`;
 }
 
 /** Games: each game the person played with its achievements (newest first), Steam-style; links to the game on OpenVibe.Play. */
@@ -284,6 +299,9 @@ function gamesHtml(inv) {
 <ul class="pf-games">${a.games.map((g) => `<li class="pf-game"><a class="pf-game-head" href="${esc(g.url)}"><span class="pf-game-name">${esc(g.name)}</span><span class="pf-game-n">${esc(plural(g.count, 'achievement', 'achievements'))}</span></a>
 <ul class="pf-ach">${g.recent.map((x) => `<li title="${esc(x.description || x.name)}"><span aria-hidden="true">🏆</span> ${esc(x.name)}${x.unlocked_at && monthOf(x.unlocked_at) ? ` <small>${esc(monthOf(x.unlocked_at))}</small>` : ''}</li>`).join('')}</ul></li>`).join('')}</ul></section>`;
 }
+
+/** Break opportunities in a run-together name (CrackheadCarl → Crackhead<wbr>Carl): on escaped text, letters only. */
+const softBreaks = (escaped) => escaped.replace(/([a-z])([A-Z])/g, '$1<wbr>$2');
 
 function itemsHtml(inv, u) {
     const name = esc(u.display_name || u.username);
@@ -301,7 +319,7 @@ function itemsHtml(inv, u) {
 ${sorted.map((g) => {
         g.list.sort((a, b) => rarityRank(b.rarity) - rarityRank(a.rarity) || a.name.localeCompare(b.name));
         return `<h3 class="pf-kind-head">${esc(g.name)} <span class="pf-count">${g.list.length}</span></h3>
-<ul class="pf-grid">${g.list.map((i) => `<li class="pf-card r-${esc(i.rarity)}${worn.has(i.instance_id) ? ' is-worn' : ''}"><a href="${esc(i.url)}" title="${esc(`${i.name} · ${RARITY_LABEL[i.rarity]}`)}">${art(i)}<span class="pf-card-name">${esc(i.name)}</span>${rarityBadge(i.rarity)}${worn.has(i.instance_id) ? '<span class="pf-worn-tag">Worn</span>' : ''}</a></li>`).join('')}</ul>`;
+<ul class="pf-grid">${g.list.map((i) => `<li class="pf-card r-${esc(i.rarity)}${worn.has(i.instance_id) ? ' is-worn' : ''}"><a href="${esc(i.url)}" title="${esc(`${i.name} · ${RARITY_LABEL[i.rarity]}`)}">${art(i)}<span class="pf-card-name">${softBreaks(esc(i.name))}</span>${rarityBadge(i.rarity)}${worn.has(i.instance_id) ? '<span class="pf-worn-tag">Worn</span>' : ''}</a></li>`).join('')}</ul>`;
     }).join('\n')}
 <p class="pf-note"><a href="${esc(all)}">${inv.more ? 'Every item' : 'This inventory'} on OpenVibe.Inventory</a> · <a href="${INVENTORY_SITE}/items">Every item there is</a></p></section>`;
 }
@@ -404,7 +422,7 @@ a{color:var(--accent)}
 .pf-badge{display:inline-flex;align-items:center;gap:8px;padding:7px 14px 7px 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--r-legendary) 40%,var(--border));background:color-mix(in srgb,var(--r-legendary) 10%,var(--bg-secondary));color:var(--text-primary);text-decoration:none;font-weight:600;font-size:.88rem}
 .pf-badge:hover,.pf-badge:focus-visible{border-color:var(--r-legendary)}
 .pf-badge small{font-weight:500;color:var(--text-muted);font-size:.75rem}
-.pf-badge-ic{font-size:1.05rem}
+.pf-badge-ic{font-size:1.05rem}.pf-badge-ic.is-glyph{display:inline-grid;place-items:center;width:20px;height:20px;flex:none;color:color-mix(in srgb,var(--r-legendary) 72%,var(--text-primary))}.pf-badge-ic.is-glyph svg{width:17px;height:17px}
 .pf-games{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:12px}
 .pf-game{border:1px solid var(--border);border-radius:14px;background:var(--bg-secondary);padding:12px 14px;min-width:0}
 .pf-game-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;text-decoration:none;color:inherit;margin-bottom:8px}

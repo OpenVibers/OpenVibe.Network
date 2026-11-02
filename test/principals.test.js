@@ -30,7 +30,7 @@ await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, red
 // Events is created the same way (setup/service-principal.js); it is a usage producer with its own token.
 await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('events', 'events-secret', 'OpenVibe.Events', '[]', 1) ON CONFLICT DO NOTHING").run();
 // Report is a service principal too (it signs people in nowhere): its client comes from setup/service-principal.js.
-await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('report', 'report-secret', 'OpenVibe.Report', '[]', 1) ON CONFLICT DO NOTHING").run();
+await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('report', 'report-secret', 'OpenVibe.Report', '[]', 1) ON CONFLICT (client_id) DO UPDATE SET client_secret = excluded.client_secret").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'ai-secret' WHERE client_id = 'ai'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'bot-secret' WHERE client_id = 'bot'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'tips-secret' WHERE client_id = 'tips'").run();
@@ -103,6 +103,12 @@ const server = http.createServer(app);
     assert.strictEqual(t.body.scope, 'events.subscription.manage', 'Meme subscribes to the account events at boot');
     t = await token({ client_id: 'meme', client_secret: 'meme-secret', audience: 'openvibe.network' });
     assert.deepStrictEqual(t.body.scope.split(' '), ['network.account.deletion.confirm', 'network.account.export.contribute'], 'Meme answers account export and deletion, and holds no identity.subject.resolve');
+    // Meme's judge and the encyclopedia's writing pass run OpenVibe.AI's generate operation, like Design and Bench.
+    t = await token({ client_id: 'meme', client_secret: 'meme-secret', audience: 'openvibe.ai' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    const memeAiClaims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.ai' });
+    assert.ok(memeAiClaims.ok, memeAiClaims.reason);
+    assert.deepStrictEqual([memeAiClaims.claims.cap, memeAiClaims.claims.ns], [['ai.run.create'], ['ai.generate']], 'Meme runs AI workflow ai.generate for its judge');
 
     // OpenVibe.Vision and OpenVibe.Exchange (contracts 0.235.0): both answer account export and deletion and create
     // their two account-event subscriptions at boot; Vision runs AI workflow ai.complete, Exchange feeds Search.
@@ -142,6 +148,14 @@ const server = http.createServer(app);
     // OpenVibe.Cam (contracts 0.237.0): the export/deletion pair, identity.subject.resolve for a grant's @username,
     // and its account-event subscriptions. Media's frame, Live's stream read and Pics take the viewer's own token,
     // and Live calls Cam's POST /api/v1/stills with it, so Cam holds no such grant and registers no capability.
+    // OpenVibe.Casino (contracts 0.264.0): its Events subscriptions at boot and the account export/deletion pair; it
+    // resolves no subjects and writes nothing to Search.
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'casino-secret' WHERE client_id = 'casino'").run();
+    t = await token({ client_id: 'casino', client_secret: 'casino-secret', audience: 'openvibe.events' });
+    assert.strictEqual(t.body.scope, 'events.subscription.manage', 'Casino subscribes to the account events at boot');
+    t = await token({ client_id: 'casino', client_secret: 'casino-secret', audience: 'openvibe.network' });
+    assert.deepStrictEqual(t.body.scope.split(' '), ['network.account.deletion.confirm', 'network.account.export.contribute'], 'Casino answers account export and deletion, and holds no identity.subject.resolve');
+
     await db.prepare("UPDATE oauth_clients SET client_secret = 'cam-secret' WHERE client_id = 'cam'").run();
     t = await token({ client_id: 'cam', client_secret: 'cam-secret', audience: 'openvibe.network' });
     assert.deepStrictEqual(t.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.consent.read'], 'Cam answers account export and deletion, resolves a grant\'s @username, and asks the consent check before recognising a face (L24)');

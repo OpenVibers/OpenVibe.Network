@@ -9,14 +9,23 @@
 <meta name="color-scheme" content="dark light">
 <link rel="apple-touch-icon" href="/assets/logo-192.png">
 <link rel="manifest" href="/manifest.webmanifest">
-<!-- Critical theme bootstrap (ov-theme-boot) — MUST stay inline and above the stylesheets.
-     Paints the cached theme synchronously so the default palette never flashes. Reads
-     localStorage only: no network, nothing to block on. theme-loader.js still runs after
-     and reconciles with the account. -->
+<!-- The look before first paint (ov-theme-boot): MUST stay ABOVE the stylesheets. server/look-boot.js puts
+     openvibe-shared's look-boot here: it paints the look this browser last painted here (ov_paint), or the one a
+     link from another OpenVibe page carried (?ov_look=), with the display settings (the season switch among them).
+     theme-loader.js loads with defer, so without it the default palette (or an old season) showed first. -->
+<!--ov:look-boot-->
 <script>
-(function(){try{var raw=localStorage.getItem('ov_theme');if(!raw)return;var t=JSON.parse(raw),v=t&&t.variables;if(!v)return;var el=document.documentElement;for(var k in v)if(k.charAt(0)==='-')el.style.setProperty(k,v[k]);if(t.id)el.setAttribute('data-theme',t.id);}catch(_){}})();
+// A browser from before look-boot has only its theme (ov_theme), not yet a painted look (ov_paint): paint that once.
+(function () {
+    try {
+        if (localStorage.getItem('ov_paint')) return;
+        var t = JSON.parse(localStorage.getItem('ov_theme') || 'null'), v = t && t.variables, el = document.documentElement;
+        if (!v) return;
+        for (var k in v) if (k.charAt(0) === '-' && /^[#0-9a-z(),.%\s-]{1,80}$/i.test(String(v[k])) && !/url|expression/i.test(String(v[k]))) el.style.setProperty(k, v[k]);
+        if (t.id && /^[a-z0-9-]{1,40}$/.test(t.id)) el.setAttribute('data-theme', t.id);
+    } catch (_) { /* nothing kept: theme-loader.js paints shortly */ }
+})();
 </script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="/css/admin.css">
 </head>
 <body>
@@ -59,7 +68,7 @@
                 <button class="admin-tab-btn" onclick="showTab('themes',this)"><i class="fa-solid fa-palette"></i> Theme review</button>
                 <button class="admin-tab-btn" onclick="showTab('checklist',this)"><i class="fa-solid fa-list-check"></i> Operator checklist</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('eventsops',this)"><i class="fa-solid fa-route"></i> Event deliveries</button>
-                <button class="admin-tab-btn" onclick="showTab('analytics',this)"><i class="fa-solid fa-chart-pie"></i> Analytics</button>
+                <button class="admin-tab-btn" onclick="showTab('analytics',this)"><i class="fa-solid fa-chart-column"></i> Analytics</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('domains',this)"><i class="fa-solid fa-globe"></i> Domains</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('deploy',this)"><i class="fa-solid fa-server"></i> Deploy</button>
                 <button class="admin-tab-btn" onclick="showTab('ssh',this)"><i class="fa-solid fa-terminal"></i> SSH</button>
@@ -364,11 +373,11 @@
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-chart-pie"></i> Per-Service Traffic Share</h3>
+                    <h3><i class="fa-solid fa-chart-column"></i> Per-Service Traffic Share</h3>
                     <canvas id="chart-service-share" height="260"></canvas>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-chart-pie"></i> Per-Service Visitors</h3>
+                    <h3><i class="fa-solid fa-chart-column"></i> Per-Service Visitors</h3>
                     <canvas id="chart-service-visitors" height="260"></canvas>
                 </div>
             </div>
@@ -459,7 +468,7 @@
                     <div id="svc-top-referers"></div>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-snail"></i> Slowest Endpoints</h3>
+                    <h3><i class="fa-solid fa-gauge"></i> Slowest Endpoints</h3>
                     <div id="svc-slowest"></div>
                 </div>
             </div>
@@ -572,7 +581,7 @@
         <!-- Deploy: Config -->
         <div id="deploy-config-panel" style="display:none">
             <div class="card">
-                <h3><i class="fa-solid fa-cog"></i> Deploy Configuration</h3>
+                <h3><i class="fa-solid fa-gear"></i> Deploy Configuration</h3>
                 <div class="form-group" style="margin:12px 0">
                     <label>ACME / Let's Encrypt Email</label>
                     <input type="email" id="deploy-acme-email" placeholder="admin@example.com" style="width:350px">

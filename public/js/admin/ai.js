@@ -289,7 +289,7 @@ async function loadStreamerMediaTools() {
                     style="width:100%;background:var(--bg-input);color:var(--text);border:1px solid var(--border);padding:10px;border-radius:6px;font-family:monospace;font-size:12px;resize:vertical"></textarea>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
                     <button type="button" class="btn btn-primary" onclick="saveStreamerMediaCookies()"><i class="fa-solid fa-floppy-disk"></i> Save &amp; Test</button>
-                    <button type="button" class="btn" onclick="checkStreamerMediaCookies()" ${status.cookies_configured ? '' : 'disabled'}><i class="fa-solid fa-stethoscope"></i> Test Current Cookies</button>
+                    <button type="button" class="btn" onclick="checkStreamerMediaCookies()" ${status.cookies_configured ? '' : 'disabled'}><i class="fa-solid fa-kit-medical"></i> Test Current Cookies</button>
                     <button type="button" class="btn" onclick="deleteStreamerMediaCookies()" ${status.cookies_configured ? '' : 'disabled'}><i class="fa-solid fa-trash"></i> Remove Cookies</button>
                 </div>
                 <div id="streamer-media-cookie-verdict"></div>
@@ -485,7 +485,7 @@ async function loadTTS() {
                 </div>
 
                 <div class="card">
-                    <h3><i class="fa-brands fa-aws" aria-hidden="true"></i> Amazon Polly</h3>
+                    <h3><i class="fa-solid fa-cloud" aria-hidden="true"></i> Amazon Polly</h3>
                     ${ownerNote}
                     ${secret('tts-aws-key', 'AWS Access Key ID', s.awsAccessKeyId)}
                     ${secret('tts-aws-secret', 'AWS Secret Access Key', s.awsSecretAccessKey)}
