@@ -176,7 +176,8 @@ const server = http.createServer(app);
     t = await token({ client_id: 'report', client_secret: 'report-secret', audience: 'openvibe.billing' });
     assert.deepStrictEqual(t.body.scope.split(' '), ['billing.balance.read', 'billing.stats.read'], 'Report reads Billing\'s stats and per-subject balance');
     t = await token({ client_id: 'report', client_secret: 'report-secret', audience: 'openvibe.events' });
-    assert.strictEqual(t.body.scope, 'events.subscription.manage', 'Report subscribes to stream-ended and frame beacons');
+    // It also publishes its Rundown topic pages to Search as report.index_document.* (contracts 0.275.0).
+    assert.deepStrictEqual(t.body.scope.split(' ').sort(), ['events.event.publish', 'events.subscription.manage'], 'Report subscribes to stream-ended and frame beacons, and publishes its topic pages');
     t = await token({ client_id: 'report', client_secret: 'report-secret', audience: 'openvibe.network' });
     assert.strictEqual(t.status, 400, 'Report keeps nothing about people, so no account export or deletion grant');
     await db.prepare("UPDATE oauth_clients SET client_secret = 'design-secret' WHERE client_id = 'design'").run();
