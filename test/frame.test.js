@@ -13,6 +13,25 @@ const svc = await createFrameService(db, { services: {} }, null);
 assert.equal(siteForHost('yt.openvibe.tools').id, 'tools');
 assert.equal(siteForHost('evil.example'), null);
 assert.strictEqual(svc.ranking().at, null, 'cold start: no use counted yet (the registry\'s featured list says so)');
+
+// Legal links (11-02: ten open sites did not serve /privacy, so their footers' Terms, Privacy and DMCA answered 404):
+// a site whose /privacy does not answer 200 gets openvibe.network's documents until it does.
+{
+    assert.equal(svc.payloadFor('openvibe.events').footer.legal.privacy, 'https://openvibe.events/privacy', 'not asked yet: its own, as before');
+    const seen = await svc.probeLegal({ fetchImpl: async (url) => ({ status: /openvibe\.(events|report)\//.test(url) ? 404 : 200 }) });
+    assert.strictEqual(seen['openvibe.events'], false);
+    assert.strictEqual(seen['openvibe.live'], true);
+    assert.deepStrictEqual(svc.payloadFor('openvibe.events').footer.legal, { terms: 'https://openvibe.network/terms', privacy: 'https://openvibe.network/privacy', dmca: 'https://openvibe.network/dmca' });
+    assert.equal(svc.payloadFor('openvibe.live').footer.legal.privacy, 'https://openvibe.live/privacy', 'a site that serves them keeps its own');
+    // A site that gains its pages gets its own links back; a site that does not answer keeps what was known.
+    await svc.probeLegal({ fetchImpl: async (url) => { if (/openvibe\.report\//.test(url)) throw new Error('down'); return { status: 200 }; } });
+    assert.equal(svc.payloadFor('openvibe.events').footer.legal.privacy, 'https://openvibe.events/privacy');
+    assert.equal(svc.payloadFor('openvibe.report').footer.legal.privacy, 'https://openvibe.network/privacy', 'no answer: kept');
+    // A redirect is not the page.
+    await svc.probeLegal({ fetchImpl: async (url) => ({ status: /openvibe\.events\//.test(url) ? 302 : 200 }) });
+    assert.equal(svc.payloadFor('openvibe.events').footer.legal.privacy, 'https://openvibe.network/privacy');
+    await svc.probeLegal({ fetchImpl: async () => ({ status: 200 }) });
+}
 let p = svc.payloadFor('openvibe.media');
 assert.deepEqual(p.nav.filter(n => !n.of).map(n => n.id), ['live', 'tools', 'space', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'ai', 'search', 'run', 'play', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'bench', 'casino', 'tours', 'shoes', 'connect'], 'cold start follows the base order');
 // The launcher: every open site in one of the groups, and the products other services serve on their own domains
