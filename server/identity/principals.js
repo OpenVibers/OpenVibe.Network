@@ -665,6 +665,9 @@ const DEFAULT_GRANTS = [
     // OpenVibe Connect (contracts 0.279.0, Website Connect v0): its account-event subscriptions at boot. It publishes
     // nothing yet; export and deletion are above.
     ['connect', 'events.subscription.manage', 'openvibe.events', []],
+    // "Tell me when it's back" (CON-17, 11-02): one notification, as app connect, to a person who asked when a share's
+    // computer connects again. Nothing else of Network's notifications.
+    ['connect', 'network.notifications.push', SELF_AUDIENCE, ['connect']],
     // OpenVibe.Report (contracts 0.237.0): it quotes Billing's read API and never computes money, so it holds the
     // stats read and the per-subject balance read; it subscribes to live.stream.ended and the frame beacon at boot.
     // It keeps nothing about people (no database and no account-data route), so it holds neither export nor deletion.
