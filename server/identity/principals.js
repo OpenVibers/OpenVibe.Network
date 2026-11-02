@@ -665,9 +665,14 @@ const DEFAULT_GRANTS = [
     ['report', 'billing.stats.read', 'openvibe.billing', []],
     ['report', 'billing.balance.read', 'openvibe.billing', []],
     ['report', 'events.subscription.manage', 'openvibe.events', []],
+    // Report publishes its Rundown topic pages to OpenVibe.Search as report.index_document.* (contracts 0.275.0,
+    // through its own outbox and openvibe-publishing/search-feed).
+    ['report', 'events.event.publish', 'openvibe.events', []],
     // OpenVibe.Design's Arena runs Vision's UI check (contracts 0.235.0 vision.ui.check, first-party). Vision 0.1.0's
     // source still labels the route's guard vision.ui_check; its service must use the contract id before Arena calls it.
     ['design', 'vision.ui.check', 'openvibe.vision', []],
+    // Design publishes its icon and theme pages to OpenVibe.Search as design.index_document.* (contracts 0.275.0).
+    ['design', 'events.event.publish', 'openvibe.events', []],
     ['design', 'ai.run.create', 'openvibe.ai', ['ai.generate']],
     // OpenVibe.Bench (contracts 0.238.0): the shared benchmark engine calls AI's generate route (namespace ai.generate)
     // to run its pinned rounds, and subscribes to the account events at boot; its export/deletion pair is with the
