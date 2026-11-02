@@ -171,7 +171,9 @@ function createEcosystemRegistry({ issuer, internalOverrides = {}, fetchImpl = g
         // What runs is decided by Network's exposure overlay, not the manifest's maturity label.
         const exp = exposureOf(m.id);
         if (exp.state === 'placeholder' || (exp.state === 'unknown' && m.status === 'placeholder')) { health.set(m.id, { status: 'not-running', reason: 'placeholder', checked_at: at() }); return; }
-        if (exp.state === 'library') { health.set(m.id, { status: 'not-running', reason: `library, released ${exp.release}`, checked_at: at() }); return; }
+        // A library Network does not install itself (openvibe-publishing) has no version here: say what it is instead of
+        // "released undefined" (the status page, 2026-11-02).
+        if (exp.state === 'library') { health.set(m.id, { status: 'not-running', reason: exp.release ? `library, released ${exp.release}` : 'library, installed by the services that use it', checked_at: at() }); return; }
         if (exp.state === 'repository') { health.set(m.id, { status: 'not-running', reason: 'repository, nothing to run', checked_at: at() }); return; }
         const readyPath = m.ready || readyPaths[m.id] || null;
         const healthPath = m.health || healthPaths[m.id] || null;

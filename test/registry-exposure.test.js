@@ -100,6 +100,8 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     assert.strictEqual(by.ai.runtime.basis, 'ready');
     assert.strictEqual(by.sdk.runtime.status, 'not-running');
     assert.strictEqual(by.sdk.runtime.reason, `library, released v${require('openvibe-sdk/package.json').version}`);
+    // A library Network does not install (openvibe-publishing) says what it is, never "released undefined".
+    if (by.publishing) assert.strictEqual(by.publishing.runtime.reason, 'library, installed by the services that use it');
     assert.strictEqual(by.examples.runtime.reason, 'repository, nothing to run');
     // openvibe-contracts 0.78.0 removed the realtime manifest (ADR-005 closed OpenVibe.Realtime, never built)
     assert.ok(!('realtime' in by), 'realtime is gone from the exposure map, not a stale row');
