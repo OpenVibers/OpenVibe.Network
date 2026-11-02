@@ -64,7 +64,7 @@ const INSTANCES = [
         if (u.pathname === `/api/v1/people/${A}/equipped`) return json(200, { subject: A, slots: { 'live.hat:hat': { instance_id: INSTANCES[0].id, definition_id: INSTANCES[0].definition_id }, 'live.name_effect:name_effect': { instance_id: INSTANCES[1].id, definition_id: INSTANCES[1].definition_id, token: 'name-fx-rainbow' }, 'network.badge:badge': { instance_id: INSTANCES[3].id, definition_id: INSTANCES[3].definition_id, media_id: 'med_01JZ00000000000000000000B1' } } });
         if (u.pathname === `/api/v1/people/${A}/items`) return json(200, { subject: A, instances: INSTANCES, definitions: DEFS, next_cursor: null });
         if (u.pathname === `/api/v1/people/${A}/achievements`) return json(200, { subject: A, total: 3, titles: [{ title: 'salvage-rush', name: 'Salvage <Rush>', achievements: [{ id: 'big-haul', name: 'Big Haul', description: 'Bring back 50 parts', unlocked_at: '2026-10-20T10:00:00Z' }, { id: 'first-haul', name: 'First Haul', description: '', unlocked_at: '2026-10-19T10:00:00Z' }] }, { title: 'vibe-heroes', name: 'Vibe Heroes', achievements: [{ id: 'hello', name: 'Hello', unlocked_at: '2026-10-01T10:00:00Z' }] }] });
-        if (u.pathname === `/api/v1/profiles/${A}/badges`) return json(200, { subject: A, badges: [{ id: 'first-follow', name: 'First Follow', awarded_at: '2026-10-02T10:00:00Z' }, { id: 'thread-starter', name: 'Thread <Starter>', awarded_at: '2026-10-05T10:00:00Z' }] });
+        if (u.pathname === `/api/v1/profiles/${A}/badges`) return json(200, { subject: A, badges: [{ id: 'first-follow', name: 'First Follow', awarded_at: '2026-10-02T10:00:00Z', site: 'openvibe.live' }, { id: 'thread-starter', name: 'Thread <Starter>', awarded_at: '2026-10-05T10:00:00Z' }] });
         return json(404, { code: 'inventory.unknown_subject' });
     });
     await new Promise((r) => inv.listen(0, '127.0.0.1', r));
@@ -105,6 +105,11 @@ const INSTANCES = [
         assert.ok(/<span class="pf-stat-k">Achievements<\/span><span class="pf-stat-v">3<\/span>/.test(r.text));
         assert.strictEqual(calls.find((c) => c.path.endsWith('/badges')).auth, 'Bearer tok:openvibe.quest:quest.badge.read', 'and for Quest');
         assert.ok(r.text.includes('id="pf-badges"') && /Thread &lt;Starter&gt;[\s\S]*First Follow/.test(r.text), 'badges, newest first, escaped');
+        // A badge wears the icon of the site whose quest awards it (Quest #173); one with no site keeps the medal.
+        const follow = r.text.slice(r.text.lastIndexOf('<li>', r.text.indexOf('<span>First Follow</span>')), r.text.indexOf('<span>First Follow</span>'));
+        assert.ok(follow.includes('class="pf-badge-ic is-site"') && follow.includes('<svg') && follow.includes('an OpenVibe.Live quest'), 'First Follow shows Live\'s icon');
+        const thread = r.text.slice(r.text.lastIndexOf('<li>', r.text.indexOf('Thread &lt;Starter&gt;')), r.text.indexOf('Thread &lt;Starter&gt;'));
+        assert.ok(thread.includes('🏅') && !thread.includes('is-site'), 'a badge with no site keeps the medal');
         // The worn badge's image rule (.85em square) once shared the chips' class and squeezed every chip into it.
         const css = (sel) => (r.text.match(new RegExp(`\\n${sel.replace('.', '\\.')}\\{([^}]*)\\}`)) || [])[1] || '';
         assert.ok(/padding:7px 14px/.test(css('.pf-badge')) && !/width/.test(css('.pf-badge')), 'a badge chip sizes to its name');
