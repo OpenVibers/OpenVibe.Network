@@ -820,7 +820,7 @@ Reporting a vulnerability: [SECURITY.md](SECURITY.md). The rules the code keeps:
 MIT (`license` in [package.json](package.json)).
 
 <!-- versions:start -->
-- openvibe-contracts: v0.272.0
+- openvibe-contracts: v0.280.0
 - openvibe-sdk: v0.82.0
-- openvibe-shared: v4.105.0
+- openvibe-shared: v4.106.0
 <!-- versions:end -->
