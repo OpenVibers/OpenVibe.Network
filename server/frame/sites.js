@@ -43,7 +43,7 @@ const GROUPS = [
     { id: 'streams', name: 'Streams & places', sites: ['live', 'media-hub', 'stream', 'pics', 'download', 'cam', 'tours'] },
     { id: 'games', name: 'Games & laughs', sites: ['games', 'surf', 'fun', 'meme', 'casino', 'quest'] },
     { id: 'answers', name: 'News & answers', sites: ['today', 'report', 'news', 'search', 'wiki', 'blog', 'reviews', 'vision'] },
-    { id: 'make', name: 'Make & build', sites: ['website', 'design', 'domains', 'codes', 'space', 'tools', 'host', 'bot'] },
+    { id: 'make', name: 'Make & build', sites: ['website', 'connect', 'design', 'domains', 'codes', 'space', 'tools', 'host', 'bot'] },
     { id: 'shop', name: 'Shop & swap', sites: ['deals', 'coupons', 'shoes', 'exchange', 'rent', 'homes', 'work', 'food', 'trade'] },
     { id: 'people', name: 'People & you', sites: ['chat', 'community', 'tips', 'vip', 'help', 'network', 'inventory'] },
     // Actor is the engine behind every agent (Codes' Auto, Vibe, the Dock call it): a developer service, not a second
