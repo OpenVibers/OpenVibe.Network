@@ -134,5 +134,7 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
     await p.sandbox.loadMachines();
     assert.match(p.ids['mc-list'].textContent, /Sign in to see your machines/);
 
+    // The pairing panel stays closed until "Pair a machine" (its own display:grid outranked the hidden attribute).
+    assert.match(fs.readFileSync(path.join(__dirname, '..', 'public/css/my.css'), 'utf8'), /\.mc-pair\[hidden\] \{ display: none; \}/);
     console.log('my machines: state, running, roles as switches saved whole, rename, a second press to revoke, pairing that watches for the machine, empty and signed out');
 })().catch((e) => { console.error(e); process.exit(1); });

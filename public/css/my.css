@@ -329,6 +329,9 @@ button.td-stat:hover span { color: var(--accent-light); }
 .mc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; }
 .mc-top > div { flex: 1 1 320px; min-width: 0; }
 .mc-pair { margin: 16px 0 4px; padding: 16px; border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--accent) 50%, var(--border)); background: color-mix(in srgb, var(--accent) 6%, transparent); display: grid; gap: 10px; }
+/* Closed until "Pair a machine": its own display:grid outranked the hidden attribute, so an empty dashed box sat under
+   the button (design review, 2026-11-01). */
+.mc-pair[hidden] { display: none; }
 .mc-pair h4 { font-size: 15px; }
 .mc-code { font: 800 clamp(28px, 6vw, 40px)/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .14em; color: var(--text); }
 .mc-cmd { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); overflow-x: auto; font-size: 12.5px; }
