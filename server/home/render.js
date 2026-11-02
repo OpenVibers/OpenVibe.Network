@@ -169,26 +169,24 @@ ${nowParts([
     ])}</section>`;
 }
 
-// What is new, under what is live. On a phone (600 px and under) the rails and the columns each scroll sideways, and
-// stacked they were about a screen and a half; chips show one at a time (the owner's short-pages rule, 2026-10-30).
-// Radio inputs and :has(), no script, every part still in the page; a wider screen, or a browser without :has(), shows
-// them all and no chips. With one part there is nothing to pick.
+// What is new, under what is live: every part shown (the owner, 2026-10-31: never hide content to shorten); on a phone
+// (600 px and under) the rails and the columns each scroll sideways, and a row of chips jumps to a part. With one part
+// there are no chips.
 function nowParts(parts) {
     const shown = parts.filter(([, , html]) => html);
     if (shown.length < 2) return shown.map(([, , html]) => html).join('\n');
-    const chips = shown.map(([id, label], i) => `<input type="radio" name="now-pick" id="np-${id}" value="${id}"${i === 0 ? ' checked' : ''}><label for="np-${id}">${esc(label)}</label>`).join('');
-    return `<div class="now-pick" role="radiogroup" aria-label="New on OpenVibe">${chips}</div>\n${shown.map(([, , html]) => html.replace(/^<div class="(now-block|now-grid)"/, '<div class="$1" data-now-part')).join('\n')}`;
+    const chips = shown.map(([id, label]) => `<a href="#now-${id}">${esc(label)}</a>`).join('');
+    return `<nav class="now-pick" aria-label="New on OpenVibe">${chips}</nav>\n${shown.map(([, , html]) => html.replace(/^<div class="(now-block|now-grid)"/, '<div class="$1" data-now-part')).join('\n')}`;
 }
 
-// The lower half (tools, what an account adds, what opens next, the questions, the developers' links): on a phone each
-// one is a full section and together they were about 2,000 px. Chips show one at a time under "More about OpenVibe"
-// (the short-pages rule, 2026-10-30); a link to #faq or #account still opens its section (:target). Radio inputs and
-// :has(), no script; a wider screen, or a browser without :has(), shows every section as before.
+// The lower half (tools, what an account adds, what opens next, the questions, the developers' links): every section
+// shown with its own heading (the owner, 2026-10-31: never hide content to shorten); on a phone a row of chips under
+// "More about OpenVibe" jumps to one. A wider screen shows no chips.
 function moreParts(parts) {
     const shown = parts.filter(([, , html]) => html);
     if (shown.length < 2) return shown.map(([, , html]) => html).join('\n');
-    const chips = shown.map(([id, label], i) => `<input type="radio" name="more-pick" id="mp-${id}" value="${id}"${i === 0 ? ' checked' : ''}><label for="mp-${id}">${esc(label)}</label>`).join('');
-    return `<div class="more"><h2 class="more-pick-h">More about OpenVibe</h2><div class="more-pick" role="radiogroup" aria-label="More about OpenVibe">${chips}</div>\n${shown.map(([, , html]) => html.replace(/^<section class="([^"]*)" id="([^"]*)"/, '<section class="$1" id="$2" data-more-part')).join('\n')}</div>`;
+    const chips = shown.map(([id, label]) => `<a href="#${id}">${esc(label)}</a>`).join('');
+    return `<div class="more"><h2 class="more-pick-h">More about OpenVibe</h2><nav class="more-pick" aria-label="More about OpenVibe">${chips}</nav>\n${shown.map(([, , html]) => html.replace(/^<section class="([^"]*)" id="([^"]*)"/, '<section class="$1" id="$2" data-more-part')).join('\n')}</div>`;
 }
 
 // The hero's numbers: only what Network read itself within the last minute (server/home/activity.js); a number it
@@ -283,19 +281,15 @@ const CSS = `
 .vcard.now-empty .vc-thumb{border:1px dashed var(--border-light,#2c3d5c);background:transparent}.vcard.now-empty .now-noimg{display:grid;place-items:center;font-size:28px;color:var(--accent-light,#60a5fa);background:transparent}
 .now .now-grid{margin-top:26px}
 .now-pick,.more-pick,.more-pick-h{display:none}
-@supports selector(:has(*)){@media (max-width:600px){
+@media (max-width:600px){
 .now-pick,.more-pick{display:flex;gap:8px;overflow-x:auto;margin:22px -16px 0;padding:2px 16px 4px;scrollbar-width:none;overscroll-behavior-x:contain}.now-pick::-webkit-scrollbar,.more-pick::-webkit-scrollbar{display:none}
-.now-pick input,.more-pick input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
-.now-pick label,.more-pick label{display:inline-flex;align-items:center;flex:none;min-height:44px;padding:0 15px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));color:var(--text-secondary,#a8b3c4);font-size:13.5px;font-weight:650;white-space:nowrap;cursor:pointer}
-.now-pick input:checked+label,.more-pick input:checked+label{color:var(--text-primary,#e6edf7);border-color:var(--accent,#3b82f6);background:color-mix(in srgb,var(--accent,#3b82f6) 12%,transparent)}
-.now-pick input:focus-visible+label,.more-pick input:focus-visible+label{outline:2px solid var(--accent,#3b82f6);outline-offset:2px}
-.now [data-now-part]{display:none}.now .now-block[data-now-part],.now .now-grid[data-now-part]{margin-top:12px}
-.now:has(#np-recs:checked) #now-recs,.now:has(#np-shots:checked) #now-shots{display:block}.now:has(#np-posts:checked) #now-posts{display:flex}
-.now [data-now-part] .now-head{justify-content:flex-end}.now [data-now-part] .now-head h3{display:none}
+.now-pick a,.more-pick a{display:inline-flex;align-items:center;flex:none;min-height:44px;padding:0 15px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));color:var(--text-secondary,#a8b3c4);font-size:13.5px;font-weight:650;white-space:nowrap;text-decoration:none}
+.now-pick a:hover,.now-pick a:focus-visible,.more-pick a:hover,.more-pick a:focus-visible{color:var(--text-primary,#e6edf7);border-color:var(--accent,#3b82f6)}
+.now-pick a:focus-visible,.more-pick a:focus-visible{outline:2px solid var(--accent,#3b82f6);outline-offset:2px}
+.now .now-block[data-now-part],.now .now-grid[data-now-part]{margin-top:22px}
 .more-pick-h{display:block;margin:40px 0 0;padding:0 16px;font-size:clamp(1.25rem,5vw,1.5rem);font-weight:800;letter-spacing:-.02em}.more-pick{margin:10px 0 0;padding:2px 16px 4px}
-.more [data-more-part]{display:none;margin-top:0;padding-top:12px}.more [data-more-part]>h2{display:none}
-.more:has(#mp-tools:checked) #tools,.more:has(#mp-account:checked) #account,.more:has(#mp-soon:checked) #soon,.more:has(#mp-developers:checked) #developers,.more:has(#mp-faq:checked) #faq,.more [data-more-part]:target{display:block}
-}}
+[data-now-part],[data-more-part]{scroll-margin-top:72px}
+}
 @media (prefers-reduced-motion:reduce){.vc-thumb img,.vc-play,.vc-play i,.vc-about{transition:none}}
 .now-code{display:inline-block;margin:0 0 3px;padding:1px 7px;border-radius:6px;border:1px dashed var(--accent,#3b82f6);color:var(--accent-light,#60a5fa);font:700 12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px}
 .now-list b{overflow-wrap:anywhere}

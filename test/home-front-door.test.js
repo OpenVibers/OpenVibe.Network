@@ -145,23 +145,23 @@ assert.ok(html.includes('href="https://openvibe.video/v/9"') && html.includes('<
     assert.ok(page.includes('onerror="if(this.dataset.full&&this.src!==this.dataset.full){this.src=this.dataset.full;return}this.src=this.dataset.fallback"'), 'the original is retried once, then the fallback');
     assert.ok(page.includes('src="https://openvibe.live/t.jpg"') && !page.includes('https://openvibe.live/t.jpg?w='), 'a Live thumbnail is not a Media object and is used unchanged');
 }
-// A phone shows one of what is new at a time (the short-pages rule, 2026-10-30): radio chips and :has(), no script, every
-// part still in the page; the first part present is picked, and a wider screen or a browser without :has() shows them all.
+// What is new: every part shown (the owner, 2026-10-31: never hide content to shorten); on a phone a row of chips jumps
+// to one, and a wider screen shows no chips.
 {
-    const chips = [...html.matchAll(/<input type="radio" name="now-pick" id="np-([a-z]+)" value="\1"( checked)?><label for="np-\1">([^<]+)<\/label>/g)];
-    assert.ok(html.includes('<div class="now-pick" role="radiogroup" aria-label="New on OpenVibe">') && chips.length >= 2, 'the chips render when there is more than one part');
-    assert.deepStrictEqual(chips.filter((m) => m[2]).map((m) => m[1]), [chips[0][1]], 'the first part is picked');
-    for (const [, id] of chips) assert.match(html, new RegExp(`<div class="now-(block|grid)" data-now-part id="now-${id}"`), `${id} is marked as a part`);
-    assert.match(html, /\.now-pick,\.more-pick,\.more-pick-h\{display:none\}\n@supports selector\(:has\(\*\)\)\{@media \(max-width:600px\)\{/, 'chips only on a phone, and only with :has()');
+    const chips = [...html.matchAll(/<a href="#now-([a-z]+)">([^<]+)<\/a>/g)];
+    assert.ok(html.includes('<nav class="now-pick" aria-label="New on OpenVibe">') && chips.length >= 2, 'the chips render when there is more than one part');
+    for (const [, id] of chips) assert.match(html, new RegExp(`<div class="now-(block|grid)" data-now-part id="now-${id}"`), `${id} is a part in the page`);
+    assert.ok(!/name="now-pick"|name="more-pick"/.test(html), 'no chip is a radio: nothing is picked');
+    assert.match(html, /\.now-pick,\.more-pick,\.more-pick-h\{display:none\}\n@media \(max-width:600px\)\{/, 'chips only on a phone');
+    assert.ok(!html.includes('[data-now-part]{display:none}') && !html.includes('[data-more-part]{display:none'), 'no part is ever hidden');
 }
-// The lower half is one block on a phone: chips for tools, the account, the questions and the developers' links, the
-// first picked; every section stays in the page, and a link to #faq still opens it (:target).
+// The lower half: every section with its own heading; on a phone a row of chips under "More about OpenVibe" jumps to one.
 {
-    const more = [...html.matchAll(/<input type="radio" name="more-pick" id="mp-([a-z]+)" value="\1"( checked)?>/g)];
-    assert.ok(html.includes('<div class="more"><h2 class="more-pick-h">More about OpenVibe</h2>') && more.length >= 4, 'the More block and its chips');
-    assert.deepStrictEqual(more.filter((m) => m[2]).map((m) => m[1]), ['tools'], 'Tools is picked first');
-    for (const [, id] of more) assert.match(html, new RegExp(`<section class="sc-sec[^"]*" id="${id}" data-more-part`), `${id} is a part`);
-    assert.ok(html.includes('.more [data-more-part]:target{display:block}'), 'a link to a section opens it');
+    const more = [...html.matchAll(/<nav class="more-pick" aria-label="More about OpenVibe">([\s\S]*?)<\/nav>/g)];
+    assert.ok(html.includes('<div class="more"><h2 class="more-pick-h">More about OpenVibe</h2>') && more.length === 1, 'the More block and its chips');
+    const ids = [...more[0][1].matchAll(/<a href="#([a-z]+)">/g)].map((m) => m[1]);
+    assert.ok(ids.length >= 4 && ids[0] === 'tools', `a link per section, Tools first (${ids.join(',')})`);
+    for (const id of ids) assert.match(html, new RegExp(`<section class="sc-sec[^"]*" id="${id}" data-more-part`), `${id} is a section in the page`);
 }
 assert.ok(/<b>1,234<\/b><span>accounts/.test(html) && /<b>37<\/b><span>services up <small>of 38 checked/.test(html) && /<b>1<\/b><span>stream live now/.test(html), 'the numbers read render');
 // The most visited things to do lead the intents, with this week's visits on the first five (plan L43). One site counts
