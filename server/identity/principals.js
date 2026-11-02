@@ -631,6 +631,9 @@ const DEFAULT_GRANTS = [
     // its account-event subscriptions, and the export/deletion pair above. It has no public records, so no Search grant.
     ['vision', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
     ['vision', 'events.subscription.manage', 'openvibe.events', []],
+    // Vision publishes vision.result.ready and vision.alert (VIS-5, contracts manifests/services/vision.json): without this
+    // its outbox retried every event (found 11-02 with Events' sources check).
+    ['vision', 'events.event.publish', 'openvibe.events', []],
     // F1: Vision asks the consent check and sends a consent request to a named person who has an account.
     ['vision', 'network.notifications.push', SELF_AUDIENCE, ['vision']],
     // OpenVibe.Exchange (contracts 0.235.0): its public listings in Search through the owner API (owner exchange), and
