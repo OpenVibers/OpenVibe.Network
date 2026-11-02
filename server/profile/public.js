@@ -20,7 +20,7 @@ const express = require('express');
 const seo = require('openvibe-shared/seo');
 const cache = require('openvibe-shared/cache-policy');
 const usernames = require('../identity/usernames');
-const icons = require('openvibe-shared/icons');
+const glyphs = require('openvibe-shared/glyphs');
 const { siteForHost, fullName } = require('../frame/sites');
 
 const esc = seo.esc;
@@ -99,6 +99,8 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
                     id: b.id.slice(0, 64), name: b.name.slice(0, 60), awarded_at: typeof b.awarded_at === 'string' ? b.awarded_at : null,
                     // The site whose quest awards it (Quest #173): the badge shows that site's icon.
                     site: typeof b.site === 'string' && /^[a-z0-9][a-z0-9.-]{2,60}$/.test(b.site) ? b.site : null,
+                    // Its picture (Quest #174): a glyph for what it was earned for, drawn only if Shared knows the name.
+                    icon: typeof b.icon === 'string' && glyphs.NAMES.includes(b.icon) ? b.icon : null,
                 }))
                 .sort((a, b) => String(b.awarded_at || '').localeCompare(String(a.awarded_at || '')));
             value = { badges };
@@ -280,11 +282,11 @@ function badgesHtml(inv) {
     if (!inv.badges || !inv.badges.length) return '';
     return `<section class="pf-section" aria-labelledby="pf-badges"><h2 id="pf-badges">Badges <span class="pf-count">${inv.badges.length}</span></h2>
 <ul class="pf-badges">${inv.badges.map((b) => {
-        // Each badge wears the icon of the site whose quest awards it; the medal only when the site is not known.
+        // Each badge wears its own picture (what it was earned for); the medal only when it has none.
         const site = b.site ? siteForHost(b.site) : null;
         const when = b.awarded_at && monthOf(b.awarded_at) ? monthOf(b.awarded_at) : '';
         const title = `${when ? `Earned ${when}` : 'Earned'} on OpenVibe.Quest${site ? `: an ${fullName(site)} quest` : ''}`;
-        const ic = site && site.icon ? `<span class="pf-badge-ic is-site" aria-hidden="true">${icons.svg(site.icon)}</span>` : '<span class="pf-badge-ic" aria-hidden="true">🏅</span>';
+        const ic = b.icon ? `<span class="pf-badge-ic is-glyph" aria-hidden="true">${glyphs.svg(b.icon)}</span>` : '<span class="pf-badge-ic" aria-hidden="true">🏅</span>';
         return `<li><a class="pf-badge" href="${QUEST_SITE}/" title="${esc(title)}">${ic}<span>${esc(b.name)}</span>${when ? `<small>${esc(when)}</small>` : ''}</a></li>`;
     }).join('')}</ul></section>`;
 }
@@ -420,7 +422,7 @@ a{color:var(--accent)}
 .pf-badge{display:inline-flex;align-items:center;gap:8px;padding:7px 14px 7px 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--r-legendary) 40%,var(--border));background:color-mix(in srgb,var(--r-legendary) 10%,var(--bg-secondary));color:var(--text-primary);text-decoration:none;font-weight:600;font-size:.88rem}
 .pf-badge:hover,.pf-badge:focus-visible{border-color:var(--r-legendary)}
 .pf-badge small{font-weight:500;color:var(--text-muted);font-size:.75rem}
-.pf-badge-ic{font-size:1.05rem}.pf-badge-ic.is-site{display:inline-grid;place-items:center;width:20px;height:20px;color:var(--accent)}.pf-badge-ic.is-site svg{width:16px;height:16px}
+.pf-badge-ic{font-size:1.05rem}.pf-badge-ic.is-glyph{display:inline-grid;place-items:center;width:20px;height:20px;flex:none;color:color-mix(in srgb,var(--r-legendary) 72%,var(--text-primary))}.pf-badge-ic.is-glyph svg{width:17px;height:17px}
 .pf-games{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:12px}
 .pf-game{border:1px solid var(--border);border-radius:14px;background:var(--bg-secondary);padding:12px 14px;min-width:0}
 .pf-game-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;text-decoration:none;color:inherit;margin-bottom:8px}
