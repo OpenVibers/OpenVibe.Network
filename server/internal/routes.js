@@ -242,16 +242,24 @@ router.post('/coins/transfer', principals.guard('network.coins.transfer', { ownA
 
 // ── Push Single Notification ─────────────────────────────────
 // POST /internal/notifications/push
-// Body: { user_id, type, title, message, icon, sender_id, sender_name, sender_avatar, service, url, priority, category, rich_content, expires_at }
+// Body: { user_id | subject, type, title, message, icon, sender_id, sender_name, sender_avatar, service, url, priority, category, rich_content, expires_at }
+// A service that knows the person's canonical subject (usr_…) may name it instead of the numeric Network user id; the
+// notification still belongs to that account. F1's consent request and Cam's event alerts use this.
 router.post('/notifications/push', principals.guard('network.notifications.push', { ownApp: forService }), async (req, res) => {
     const notifService = req.app.locals.notificationService;
     if (!notifService) return res.status(503).json({ error: 'Notification service unavailable' });
 
-    const { user_id, ...data } = req.body;
-    if (!user_id) return res.status(400).json({ error: 'user_id required' });
+    const { user_id, subject, ...data } = req.body;
+    let recipient = user_id;
+    if (recipient == null && subject != null) {
+        const row = await getDb(req).prepare('SELECT id FROM users WHERE subject_id = ?').get(String(subject));
+        if (!row) return res.status(404).json({ error: 'no such person' });
+        recipient = row.id;
+    }
+    if (recipient == null) return res.status(400).json({ error: 'user_id or subject required' });
 
     try {
-        const notification = await notifService.create({ user_id, ...data });
+        const notification = await notifService.create({ user_id: recipient, ...data });
         if (!notification) return res.json({ ok: true, skipped: true, reason: 'User has category disabled' });
         res.json({ ok: true, notification });
     } catch (err) {
@@ -262,22 +270,31 @@ router.post('/notifications/push', principals.guard('network.notifications.push'
 
 // ── Push Bulk Notifications ──────────────────────────────────
 // POST /internal/notifications/push-bulk
-// Body: { user_ids: [], type, title, message, ... }
+// Body: { user_ids: [] | subjects: [], type, title, message, ... }
 router.post('/notifications/push-bulk', principals.guard('network.notifications.push', { ownApp: forService }), async (req, res) => {
     const notifService = req.app.locals.notificationService;
     if (!notifService) return res.status(503).json({ error: 'Notification service unavailable' });
 
-    const { user_ids, ...data } = req.body;
-    if (!Array.isArray(user_ids) || user_ids.length === 0) {
-        return res.status(400).json({ error: 'user_ids array required' });
+    const { user_ids, subjects, ...data } = req.body;
+    let recipients = user_ids;
+    if (!Array.isArray(recipients) && Array.isArray(subjects)) {
+        const lookup = getDb(req).prepare('SELECT id FROM users WHERE subject_id = ?');
+        recipients = [];
+        for (const subject of subjects.slice(0, 1000)) {
+            const row = await lookup.get(String(subject));
+            if (row) recipients.push(row.id);
+        }
     }
-    if (user_ids.length > 1000) {
+    if (!Array.isArray(recipients) || recipients.length === 0) {
+        return res.status(400).json({ error: 'user_ids or subjects array required' });
+    }
+    if (recipients.length > 1000) {
         return res.status(400).json({ error: 'Max 1000 user_ids per request' });
     }
 
     try {
-        const results = await notifService.createBulk(user_ids, data);
-        res.json({ ok: true, sent: results.length, total: user_ids.length });
+        const results = await notifService.createBulk(recipients, data);
+        res.json({ ok: true, sent: results.length, total: recipients.length });
     } catch (err) {
         console.error('[Internal] Bulk notification push error:', err);
         res.status(500).json({ error: err.message });
