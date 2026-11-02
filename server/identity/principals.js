@@ -702,6 +702,10 @@ const DEFAULT_GRANTS = [
     ['design', 'bench.judgement.cast', 'openvibe.bench', []],
     ['design', 'bench.board.read', 'openvibe.bench', []],
     ['design', 'bench.entry.create', 'openvibe.bench', []],
+    // Open item D8 (11-02): Design publishes a person's design as a static site on Space, acting for them
+    // (X-OV-Subject): the person's "Designs" project and its sites, and the deploy of the page.
+    ['design', 'space.site.manage', 'openvibe.space', []],
+    ['design', 'space.deploy.create', 'openvibe.space', []],
     // Games submits each AI duel as a Bench task, two priced seat entries, and one automatic outcome.
     ...['bench.task.create', 'bench.round.create', 'bench.entry.create', 'bench.judgement.cast']
         .map((cap) => ['games', cap, 'openvibe.bench', []]),

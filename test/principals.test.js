@@ -188,6 +188,10 @@ const server = http.createServer(app);
     t = await token({ client_id: 'design', client_secret: 'design-secret', audience: 'openvibe.bench' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
     assert.deepStrictEqual(t.body.scope.split(' '), ['bench.board.read', 'bench.entry.create', 'bench.judgement.cast', 'bench.round.create', 'bench.round.read', 'bench.task.create'], "Design creates and reads Bench tasks and rounds, reads boards and casts judgements");
+    // Open item D8: Design publishes a person's design on Space, acting for them.
+    t = await token({ client_id: 'design', client_secret: 'design-secret', audience: 'openvibe.space' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    assert.deepStrictEqual(t.body.scope.split(' ').sort(), ['space.deploy.create', 'space.site.manage'], 'Design makes the site and deploys the page, nothing else on Space');
     await db.prepare("UPDATE oauth_clients SET client_secret = 'games-secret' WHERE client_id = 'games'").run();
     t = await token({ client_id: 'games', client_secret: 'games-secret', audience: 'openvibe.bench' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
