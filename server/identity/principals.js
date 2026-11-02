@@ -136,6 +136,9 @@ const DEFAULT_GRANTS = [
     ['chat', 'actor.task.create', 'openvibe.actor', []],
     // Vibe's "remind me…" (plan L48): Chat sets a person's own reminder on Today, naming them with X-OV-Subject.
     ['chat', 'today.reminder.write', 'openvibe.today', []],
+    // Vibe's "plan my day" (plan L48 V3, contracts 0.280.0): it reads the person's agenda for them, read-only, and
+    // suggests; it sets nothing until they say yes.
+    ['chat', 'today.agenda.read', 'openvibe.today', []],
     // Vibe's "start a 25-minute focus timer" (plan L48 R2): Chat sets that person's Dock timer in the Network,
     // naming them in the path, and writes the timer and nothing else (server/dock).
     ['chat', 'network.dock.timer.write', SELF_AUDIENCE, []],
