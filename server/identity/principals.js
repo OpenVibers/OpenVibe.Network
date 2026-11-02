@@ -654,6 +654,9 @@ const DEFAULT_GRANTS = [
     // OpenVibe.Tours and OpenVibe.Shoes (contracts 0.265.0): their account-event subscriptions at boot.
     ['tours', 'events.subscription.manage', 'openvibe.events', []],
     ['shoes', 'events.subscription.manage', 'openvibe.events', []],
+    // Shoes publishes its model pages to OpenVibe.Search as shoes.index_document.* (contracts 0.273.0, through its own
+    // outbox and openvibe-publishing/search-feed).
+    ['shoes', 'events.event.publish', 'openvibe.events', []],
     // OpenVibe.Report (contracts 0.237.0): it quotes Billing's read API and never computes money, so it holds the
     // stats read and the per-subject balance read; it subscribes to live.stream.ended and the frame beacon at boot.
     // It keeps nothing about people (no database and no account-data route), so it holds neither export nor deletion.
