@@ -353,7 +353,8 @@ secrets set, tokens via `POST /oauth/token`), run with `node test/<file>.test.js
   node is absent from `GET /api/v1/nodes`; home cell from `region`, else `wnam-1`; Host's report naming a paired
   `node_id` is refused `409 registry.node_not_platform` (`cells.js:43`).
 - **N4c `test/node-tokens.test.js`:** credential → token whose claims validate as `identity.service-token-claims@1`
-  with `sub node:nod_…`; audience `openvibe.bot` OK, `openvibe.chat` 400; revoked / wrong secret 401 with one message;
+  with `sub node:nod_…`; audience `openvibe.bot` OK, `openvibe.website` OK for any person's machine (OpenVibe Connect,
+  CON-4, 2026-11-02; no capability), `openvibe.chat` 400; revoked / wrong secret 401 with one message;
   rotation: new works, old works < 60 s and fails after (clock injected), revoke kills both; capabilities PUT with
   another `node_id` 409; node A's valid token cannot change node B's capabilities or credential (B's rows unchanged);
   a revoked node's still-unexpired token on either self route 401 `registry.node_revoked`; a `svc:` token holding

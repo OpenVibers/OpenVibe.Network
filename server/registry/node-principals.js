@@ -367,6 +367,9 @@ function userRouter(requireAuth, now = () => Date.now()) {
     return router;
 }
 
+/** Audiences every person's machine may buy a token for, whichever service paired it (CON-4). */
+const NODE_WIDE_AUDIENCES = Object.freeze(['openvibe.website']);
+
 /** Every refusal of a node's credential, whatever the reason: one status, one body. */
 const INVALID_CLIENT = Object.freeze({ status: 401, body: Object.freeze({ error: 'invalid_client', error_description: 'Invalid client credentials' }) });
 
@@ -386,8 +389,12 @@ async function issueNodeToken(db, { clientId, clientSecret, audience, privateKey
     const prevLive = !!(p && p.prev_valid_until && Date.parse(p.prev_valid_until) > now);
     if (!p || p.status !== 'active' || !p.credential_hash || !(current || (previous && prevLive))) return INVALID_CLIENT;
     const aud = typeof audience === 'string' ? audience.trim() : '';
-    if (aud !== SELF_AUDIENCE && !(p.paired_by_service && aud === `openvibe.${p.paired_by_service}`)) {
-        return { status: 400, body: { error: 'invalid_scope', error_description: `a node token is for ${SELF_AUDIENCE}${p.paired_by_service ? ` or openvibe.${p.paired_by_service}` : ''}` } };
+    // A person's machine may also speak to the services any of their computers can use, whoever paired it: OpenVibe
+    // Connect (openvibe.website) binds a share to one machine and checks the node token at every tunnel hello (ADR-057
+    // decision 4, CON-4). The token carries no capability: Connect authorises the node by its own share binding.
+    const anyNode = p.owner_kind === 'user' && NODE_WIDE_AUDIENCES.includes(aud);
+    if (aud !== SELF_AUDIENCE && !anyNode && !(p.paired_by_service && aud === `openvibe.${p.paired_by_service}`)) {
+        return { status: 400, body: { error: 'invalid_scope', error_description: `a node token is for ${SELF_AUDIENCE}${p.paired_by_service ? ` or openvibe.${p.paired_by_service}` : ''}${p.owner_kind === 'user' ? `, or ${NODE_WIDE_AUDIENCES.join(', ')}` : ''}` } };
     }
     const iat = Math.floor(now / 1000);
     const claims = {
@@ -524,4 +531,4 @@ function routers({ guard, now = () => Date.now() }) {
     return { internal, pairing };
 }
 
-module.exports = { CODE_TTL_MS, MAX_TRIES, PREV_GRACE_MS, OPERATOR_STATUS, createPairing, redeem, revoke, revokeOwnedBy, principalView, principalFilter, listPrincipals, setPrincipalStatus, routers, userRouter, issueNodeToken, selfRouter };
+module.exports = { CODE_TTL_MS, MAX_TRIES, NODE_WIDE_AUDIENCES, PREV_GRACE_MS, OPERATOR_STATUS, createPairing, redeem, revoke, revokeOwnedBy, principalView, principalFilter, listPrincipals, setPrincipalStatus, routers, userRouter, issueNodeToken, selfRouter };
