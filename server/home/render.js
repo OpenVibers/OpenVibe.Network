@@ -469,13 +469,18 @@ const llmsSummary = () => `OpenVibe (openvibe.network, made by OpenVibers) is an
 function llmsTxt() {
     const { catalog } = toolsCatalog.peek();
     return seo.llmsTxt({ name: 'OpenVibe Network', summary: llmsSummary(), markdown: true, base: 'https://openvibe.network',
-        sections: [{ title: 'Sites', links: OPEN.map((site) => ({ title: siteName(site), url: `https://${site.host}/`, note: site.what })) }],
+        sections: [
+            { title: 'Sites', links: OPEN.map((site) => ({ title: siteName(site), url: `https://${site.host}/`, note: site.what })) },
+            // The JSON an agent came for is a main section, not something to skip (AGT-5 review).
+            { title: 'Machine-readable', links: [
+                { title: 'Open stats (JSON): every site\'s numbers', url: 'https://openvibe.network/api/v1/stats' },
+                { title: 'Tool catalog (JSON)', url: 'https://openvibe.tools/api/catalog.json' },
+                { title: 'Tool domains (JSON)', url: 'https://openvibe.network/api/domains' },
+            ] },
+        ],
         optional: [
             ...catalog.families.filter(f => f.url).map(f => ({ title: f.name, url: f.path ? 'https://openvibe.tools' + f.path : f.url, note: f.tagline })),
-            { title: 'Open stats (JSON): every site\'s numbers', url: 'https://openvibe.network/api/v1/stats' },
-            { title: 'Tool catalog (JSON)', url: 'https://openvibe.tools/api/catalog.json' },
             { title: 'Tools llms.txt', url: 'https://openvibe.tools/llms.txt' },
-            { title: 'Tool domains (JSON)', url: 'https://openvibe.network/api/domains' },
         ].filter((l) => l.url) });
 }
 
