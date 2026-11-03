@@ -40,7 +40,7 @@ const { createOpenStats, render } = require('../server/stats/open');
             const d = Number(u.searchParams.get('days'));
             return json({ ok: true, summary: { total_pageviews: d === 7 ? 500 : 800, total_unique_visitors: 120, total_unique_users: 30 } });
         }
-        if (u.pathname === '/api/home/hero') return json({ stats: { liveNow: 2, viewersNow: 9, streamers: 127, users: 437, chatMessages: 74680, vods: 829 } });
+        if (u.pathname === '/api/home/hero') return json({ stats: { liveNow: 2, viewersNow: 9, streamers: 127, users: 437, chatMessages: 74680, vods: 829, weeklyActive: null } });
         throw new Error('down');
     };
     const stats = createOpenStats({ db, selfToken: () => 'tok', statusRows: () => [{ exposure: { state: 'live' }, status: 'up' }, { exposure: { state: 'live' }, status: 'down' }],
@@ -59,6 +59,8 @@ const { createOpenStats, render } = require('../server/stats/open');
     assert.strictEqual(d.accounts.prev, 1);
     assert.deepStrictEqual(d.totals.services, { up: 1, checked: 2 });
     assert.strictEqual(d.live.live_now, 2);
+    assert.strictEqual(d.live.chatted_7d, null, 'a number Live does not know yet (null) stays unknown, never a zero');
+    assert.strictEqual(d.live.messages, 74680);
     assert.strictEqual(d.busiest_pages_24h, null, 'Prometheus down: no traffic part, never zeros');
     assert.strictEqual(site('tools').traffic_24h, null);
 
