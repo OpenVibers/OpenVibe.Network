@@ -34,7 +34,9 @@ const shareCard = require('openvibe-shared/social').url('network', 'https://open
 const PLUMBING = /^(\/metrics|\/api\/(ready|health)|static|\/release\.json|\/robots\.txt|\/favicon\.ico|\/internal\/|\/api\/frame\/hit|\/oauth\/token|\/\.well-known\/|\/api\/admin)/;
 
 const dayOf = (ms) => new Date(ms).toISOString().slice(0, 10);
-const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+// A number, or null when the source does not know it. Number(null) is 0: a source's null (Live's chat count while
+// Chat's numbers are not read yet) must stay unknown, not become a zero on the public page (11-03: "Messages 0").
+const num = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
 const fmt = (n) => {
     if (n == null || !Number.isFinite(Number(n))) return '—';
     const v = Number(n), a = Math.abs(v);
