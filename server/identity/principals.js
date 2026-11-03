@@ -721,6 +721,10 @@ const DEFAULT_GRANTS = [
     // Games submits each AI duel as a Bench task, two priced seat entries, and one automatic outcome.
     ...['bench.task.create', 'bench.round.create', 'bench.entry.create', 'bench.judgement.cast']
         .map((cap) => ['games', cap, 'openvibe.bench', []]),
+    // Live measures its AI clip picks blind (item 151, Bench #105, the private kind live.clip): one task per held-out
+    // stretch, a round per comparison, each policy's pick (or abstention) as an entry. It casts no judgements: people do.
+    ...['bench.task.create', 'bench.round.create', 'bench.entry.create']
+        .map((cap) => ['live', cap, 'openvibe.bench', []]),
     // The consent registry (L24, 2026-10-31; contracts 0.256.0): a service asks before it uses a person's content or
     // likeness for AI or data, through POST /internal/consent/check. These are the first-party services that use
     // content today; the answer is cached at most 60 s and dropped on network.consent.changed, and a service that
