@@ -723,8 +723,12 @@ const DEFAULT_GRANTS = [
         .map((cap) => ['games', cap, 'openvibe.bench', []]),
     // Live measures its AI clip picks blind (item 151, Bench #105, the private kind live.clip): one task per held-out
     // stretch, a round per comparison, each policy's pick (or abstention) as an entry. It casts no judgements: people do.
-    ...['bench.task.create', 'bench.round.create', 'bench.entry.create']
+    ...['bench.task.create', 'bench.round.create']
         .map((cap) => ['live', cap, 'openvibe.bench', []]),
+    // An entry names the recording its clip was cut from, and Bench refuses one for a recording the submitting token is
+    // not granted (item 151 C19, Bench #111: the token's ns, `rec:<recording_id>`, fails closed). Live submits its own
+    // VODs, `vod_<id>`. The seed fills the namespaces of the existing row, which was [] (fillNs below).
+    ['live', 'bench.entry.create', 'openvibe.bench', ['rec:vod_*']],
     // The consent registry (L24, 2026-10-31; contracts 0.256.0): a service asks before it uses a person's content or
     // likeness for AI or data, through POST /internal/consent/check. These are the first-party services that use
     // content today; the answer is cached at most 60 s and dropped on network.consent.changed, and a service that
