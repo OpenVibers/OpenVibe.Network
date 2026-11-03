@@ -422,6 +422,15 @@ function summaryOf(catalog) {
 
 let pageCache = { key: '', html: '', etag: '' };
 // releaseId: the served release (server/index.js release.release), the boost marker; it keys the cache so a deploy changes the ETag.
+/**
+ * The Organization's sameAs (SEO-27): its profiles, then every open site, so the entity search engines build for
+ * OpenVibe names all of them. The shell's static list named 15 of 55; this follows frame/sites as the home does.
+ */
+const SAME_AS = [...new Set(['https://github.com/OpenVibers', 'https://discord.gg/M6MuRUaeJj', ...OPEN.map((site) => `https://${site.host}`)])];
+function withSameAs(html) {
+    return html.replace(/("@id":"https:\/\/openvibe\.network\/#org"[^]*?"sameAs":)\[[^\]]*\]/, (_, head) => `${head}${JSON.stringify(SAME_AS)}`);
+}
+
 function render({ releaseId = '' } = {}) {
     const { catalog } = toolsCatalog.peek();
     const act = activity.peek();
@@ -438,7 +447,7 @@ function render({ releaseId = '' } = {}) {
     })) + seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what })))) + seo.jsonLdTag(seo.jsonLd.faq(faqPairs()));
     const card = social.url('network', 'https://openvibe.network/shared') || 'https://openvibe.network/assets/logo-512.png';
     const summary = summaryOf(catalog);
-    const html = lookBoot.apply(fs.readFileSync(SHELL, 'utf8')).replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog, act.popularity)).replace('<!--OV:CONSTELLATION-->', () => orbit() + numbers(catalog, act)).replaceAll('__OV_CARD__', card).replace('<!--OV:SITES-->', String(OPEN.length + 1)).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
+    const html = withSameAs(lookBoot.apply(fs.readFileSync(SHELL, 'utf8'))).replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog, act.popularity)).replace('<!--OV:CONSTELLATION-->', () => orbit() + numbers(catalog, act)).replaceAll('__OV_CARD__', card).replace('<!--OV:SITES-->', String(OPEN.length + 1)).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
     pageCache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
     return pageCache;
 }
@@ -485,4 +494,4 @@ function llmsFullTxt({ baseUrl = 'https://openvibe.network' } = {}) {
     return seo.llmsFull({ site: 'OpenVibe Network', summary: llmsSummary(), base: baseUrl, maxBytes: LLMS_FULL_MAX_BYTES, sections: [{ title: 'Pages', pages }] });
 }
 
-module.exports = { sendHome, render, llmsTxt, llmsFullTxt, LLMS_FULL_MAX_BYTES, INTENTS };
+module.exports = { SAME_AS, withSameAs, sendHome, render, llmsTxt, llmsFullTxt, LLMS_FULL_MAX_BYTES, INTENTS };
