@@ -668,6 +668,9 @@ const DEFAULT_GRANTS = [
     // OpenVibe Connect (contracts 0.279.0, Website Connect v0): its account-event subscriptions at boot. It publishes
     // nothing yet; export and deletion are above.
     ['connect', 'events.subscription.manage', 'openvibe.events', []],
+    // Hooks that wait for your computer (CON-15, contracts 0.282.0): Connect publishes connect.hook.received, a
+    // pointer to a webhook it keeps, and consumes it through its own subscription (retried up to seven days).
+    ['connect', 'events.event.publish', 'openvibe.events', []],
     // "Tell me when it's back" (CON-17, 11-02): one notification, as app connect, to a person who asked when a share's
     // computer connects again. Nothing else of Network's notifications.
     ['connect', 'network.notifications.push', SELF_AUDIENCE, ['connect']],
