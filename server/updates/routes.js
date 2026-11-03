@@ -1,4 +1,7 @@
 'use strict';
+
+// The network's share card (SEO-21): link previews of this page show it, as the home and legal pages do.
+const SHARE_CARD = require('openvibe-shared/social').url('network', 'https://openvibe.network/shared');
 const cache = require('openvibe-shared/cache-policy');
 /**
  * What shipped, network-wide (roadmap WS-A):
@@ -121,6 +124,7 @@ function renderPage({ site, filtered, body, releaseId = '' }) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)} · OpenVibe.Network</title>
 <meta name="description" content="Every change deployed to the OpenVibe network, newest first: each site's commits as they ship, and the Patch notes posts that gather them.">
+<meta property="og:title" content="${esc(title)} · OpenVibe.Network"><meta property="og:description" content="Every change deployed to the OpenVibe network, newest first."><meta property="og:url" content="https://openvibe.network/updates"><meta property="og:type" content="website"><meta property="og:site_name" content="OpenVibe.Network"><meta property="og:image" content="${SHARE_CARD}"><meta property="og:image:alt" content="OpenVibe.Network: one account for every OpenVibe site"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${SHARE_CARD}">
 <link rel="canonical" href="https://openvibe.network/updates${filtered && site ? `?site=${esc(site)}` : ''}">
 ${filtered ? '<meta name="robots" content="noindex, follow">' : ''}
 <link rel="alternate" type="application/json" href="/api/v1/changelog${site ? `?service=${esc(site)}` : ''}">

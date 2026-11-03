@@ -1,4 +1,7 @@
 'use strict';
+
+// The network's share card (SEO-21): a status link pasted in chat shows it.
+const SHARE_CARD = require('openvibe-shared/social').url('network', 'https://openvibe.network/shared');
 /**
  * Operator status (roadmap Track O): what each OpenVibe service is doing right now, stated as
  * observed rather than hoped.
@@ -189,6 +192,7 @@ function renderPage(list, slo, generatedAt, devPath = null, toolsJob = null, hea
 <title>Status · OpenVibe.Network</title>
 <meta name="description" content="Observed status of each OpenVibe service: readiness, release and when it was last checked.">
 <meta name="robots" content="noindex, nofollow">
+<meta property="og:title" content="Status · OpenVibe.Network"><meta property="og:description" content="Observed status of each OpenVibe service."><meta property="og:url" content="https://openvibe.network/status"><meta property="og:type" content="website"><meta property="og:site_name" content="OpenVibe.Network"><meta property="og:image" content="${SHARE_CARD}"><meta property="og:image:alt" content="OpenVibe.Network: one account for every OpenVibe site"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${SHARE_CARD}">
 ${boost.meta(releaseId)}
 ${require('openvibe-shared/app-icon').headTags({ site: 'network', iconBase: '/assets' })}
 <meta name="color-scheme" content="dark light">
