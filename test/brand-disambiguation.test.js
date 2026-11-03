@@ -22,4 +22,5 @@ const llms = require('../server/home/render').llmsTxt();
 assert.ok(/^# OpenVibe Network/m.test(llms));
 assert.ok(llms.includes('OpenVibe (openvibe.network, made by OpenVibers) is an open source, community-run network of websites'), 'llms.txt says what it is');
 assert.ok(llms.includes('It is not the Openvibe mobile social-media aggregator app, which is unrelated.'), 'and what it is not');
+assert.ok(llms.includes('\n## Optional\n'), 'llms.txt has an Optional section');
 console.log('brand disambiguation: Organization and llms.txt ok');

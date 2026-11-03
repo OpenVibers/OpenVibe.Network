@@ -17,5 +17,5 @@ assert.ok(/<section class="sc-sec" id="tools"[^>]*>[\s\S]*?href="https:\/\/openv
 assert.ok(!/<li>Online tools: /.test(html), 'the AI summary facts leave out a tool count it does not know');
 const txt = home.llmsTxt();
 assert.ok(!/Tool families/.test(txt), 'llms.txt leaves out the empty Tool families section');
-assert.ok(/Sites/.test(txt) && /Machine-readable/.test(txt));
+assert.ok(/Sites/.test(txt) && /\n## Optional\n/.test(txt), 'llms.txt keeps the Sites section and has an Optional section');
 console.log('home with an empty catalog: all checks passed');
