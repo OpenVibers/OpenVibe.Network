@@ -575,7 +575,7 @@ const PAI_ACCESS_LABEL = {
     RESTRICTED: 'Restricted', UNVERIFIED: 'Unverified',
 };
 const PAI = {
-    providers: [], services: [], namespaces: [], warnings: [], vault: {}, loading: false, addProviderError: null,
+    providers: [], services: [], namespaces: [], warnings: [], vault: {}, serviceState: {}, loading: false, addProviderError: null,
 };
 
 function paiLabel(service) {
@@ -667,15 +667,18 @@ async function loadPlatformAi() {
         PAI.namespaces = [];
         PAI.warnings = [];
         PAI.vault = {};
+        PAI.serviceState = {};
         for (const answer of answers) {
             if (answer.error) {
                 PAI.warnings.push({ service: answer.service, namespace: null, reason: 'unavailable', detail: paiFriendly(answer.service, answer.error) });
                 PAI.vault[answer.service] = { sealed: null, kek: null };
+                PAI.serviceState[answer.service] = { answered: false, sealed: null, kek: null };
                 continue;
             }
             PAI.namespaces.push(...(answer.namespaces || []));
             PAI.warnings.push(...(answer.warnings || []));
             PAI.vault[answer.service] = answer.vault || { sealed: null, kek: null };
+            PAI.serviceState[answer.service] = { answered: true, sealed: answer.vault ? answer.vault.sealed : null, kek: answer.vault ? answer.vault.kek : null };
         }
         paiRender(root);
     } catch (err) {
@@ -727,6 +730,12 @@ function paiRender(root) {
     }
     for (const box of document.querySelectorAll('#platform-ai [data-pai-cards]')) {
         box.addEventListener('click', paiCardClick);
+        box.addEventListener('change', (ev) => {
+            const input = ev.target.closest('input[data-pai-control][data-type="boolean"]');
+            if (!input) return;
+            const text = input.closest('.pai-switch') && input.closest('.pai-switch').querySelector('.pai-switch-text');
+            if (text) text.textContent = input.checked ? 'On' : 'Off';
+        });
     }
     if (window.OVForms && window.OVForms.enhance) window.OVForms.enhance(root);
 }
@@ -746,11 +755,12 @@ function paiKeyState(p) {
     const env = ref.startsWith('env:');
     const hint = p.key_hint || p.hint || p.secret_hint || '';
     const bound = p.bound_to || paiHost(p.base_url);
-    if (p.auth_mode === 'none') return { tone: 'muted', text: 'Not required' };
-    if (vault && p.credentials !== 'missing') return { tone: 'ok', text: 'Sealed' + (hint ? ' ••••' + esc(hint) : '') + ' · bound to ' + esc(paiHost(bound)) };
-    if (env) return { tone: 'muted', text: 'From env ' + esc(ref.slice(4)), env: ref.slice(4) };
-    if (p.credentials === 'missing' || !ref) return { tone: 'bad', text: 'No key' };
-    return { tone: 'ok', text: 'Sealed · bound to ' + esc(paiHost(bound)) };
+    const required = p.auth_mode !== 'none' && p.credentials !== 'not_required';
+    if (!required) return { tone: 'muted', text: 'Not required', required: false };
+    if (vault && p.credentials !== 'missing') return { tone: 'ok', text: 'Sealed' + (hint ? ' ••••' + esc(hint) : '') + ' · bound to ' + esc(paiHost(bound)), required: true };
+    if (env) return { tone: 'muted', text: 'From env ' + esc(ref.slice(4)), env: ref.slice(4), required: true };
+    if (p.credentials === 'missing' || !ref) return { tone: 'bad', text: 'No key', required: true };
+    return { tone: 'ok', text: 'Sealed · bound to ' + esc(paiHost(bound)), required: true };
 }
 
 function paiProviderRow(p) {
@@ -758,15 +768,15 @@ function paiProviderRow(p) {
     const billing = p.billing_profile === 'subscription' ? 'Subscription · ' + esc(p.pool_key || p.key) : esc(PAI_BILLING_LABEL[p.billing_profile] || PAI_BILLING_LABEL.metered);
     const key = paiKeyState(p);
     const sealed = String(p.secret_ref || '').startsWith('vault:') && p.credentials !== 'missing';
-    const actions = '<button type="button" class="btn btn-sm" data-act="edit">Edit</button> '
-        + (key.env ? '<button type="button" class="btn btn-sm" data-act="key">Move into the vault</button> ' : '')
-        + '<button type="button" class="btn btn-sm" data-act="key">' + (sealed ? 'Replace key' : 'Add key') + '</button> '
-        + (sealed ? '<button type="button" class="btn btn-sm btn-danger" data-act="remove-key">Remove key</button>' : '');
+    const actions = '<button type="button" class="btn btn-sm pai-quiet" data-act="edit">Edit</button> '
+        + (key.required && key.env ? '<button type="button" class="btn btn-sm pai-quiet" data-act="key">Move into the vault</button> ' : '')
+        + (key.required ? '<button type="button" class="btn btn-sm pai-quiet" data-act="key">' + (sealed ? 'Replace key' : 'Add key') + '</button> ' : '')
+        + (key.required && sealed ? '<button type="button" class="btn btn-sm pai-quiet pai-quiet-danger" data-act="remove-key">Remove key</button>' : '');
     return '<div class="pai-provider" data-pai-provider="' + esc(p.key) + '">'
         + '<div class="pai-provider-main"><div class="pai-provider-name">' + esc(p.display_name || p.key) + ' <span class="pai-kind">' + esc(p.kind || '—') + '</span></div>'
         + '<div class="pai-provider-meta"><code>' + esc(paiHost(p.base_url)) + '</code> <span class="pai-access is-' + access.toLowerCase() + '">' + esc(PAI_ACCESS_LABEL[access]) + '</span> <span class="pai-billing">' + billing + '</span></div>'
         + '<div class="pai-keystate is-' + key.tone + '">' + key.text + '</div></div>'
-        + '<div class="pai-provider-actions"><label class="pai-switch"><input type="checkbox" role="switch" data-pai-enabled ' + (p.status === 'active' ? 'checked' : '') + '> <span>' + (p.status === 'active' ? 'Enabled' : 'Disabled') + '</span></label>' + actions + '</div></div>';
+        + '<div class="pai-provider-actions"><label class="pai-switch"><input type="checkbox" role="switch" data-pai-enabled data-ov-native ' + (p.status === 'active' ? 'checked' : '') + '><span class="pai-track" aria-hidden="true"><span class="pai-knob"></span></span><span class="pai-switch-text">' + (p.status === 'active' ? 'Enabled' : 'Disabled') + '</span></label>' + actions + '</div></div>';
 }
 
 function paiRenderProviders() {
@@ -808,12 +818,12 @@ async function paiProviderSwitch(ev) {
     try {
         await paiApi('/providers/' + encodeURIComponent(provider.key), { method: 'PATCH', body: { status: input.checked ? 'active' : 'disabled' } });
         provider.status = input.checked ? 'active' : 'disabled';
-        const label = input.parentElement.querySelector('span');
+        const label = input.closest('.pai-switch').querySelector('.pai-switch-text');
         if (label) label.textContent = input.checked ? 'Enabled' : 'Disabled';
         toast(provider.display_name + (input.checked ? ' enabled' : ' disabled'), 'success');
     } catch (err) {
         input.checked = !input.checked;
-        const label = input.parentElement.querySelector('span');
+        const label = input.closest('.pai-switch').querySelector('.pai-switch-text');
         if (label) label.textContent = input.checked ? 'Enabled' : 'Disabled';
         if (!err.freshRequired) toast(paiFriendly('ai', err), 'error');
     } finally {
@@ -1011,12 +1021,12 @@ async function paiRemoveKey(provider) {
 }
 
 function paiRenderCards() {
-    paiFillCards('exchange', PAI.namespaces.filter((n) => n.service === 'ai' && !n.namespace.endsWith('.provider_keys')), 'OpenVibe.AI has not published the ai.exchange namespace yet.');
-    paiFillCards('money', PAI.namespaces.filter((n) => n.service === 'billing'), 'OpenVibe.Billing has not published a settings namespace yet.');
-    paiFillCards('services', PAI.namespaces.filter((n) => n.service !== 'ai' && n.service !== 'billing' && !n.namespace.endsWith('.provider_keys')), 'No other service has published settings yet.');
+    paiFillCards('exchange', PAI.namespaces.filter((n) => n.service === 'ai' && !n.namespace.endsWith('.provider_keys')), 'OpenVibe.AI has not published the ai.exchange namespace yet.', 'AI Exchange');
+    paiFillCards('money', PAI.namespaces.filter((n) => n.service === 'billing'), 'OpenVibe.Billing has not published a settings namespace yet.', 'Money');
+    paiFillCards('services', PAI.namespaces.filter((n) => n.service !== 'ai' && n.service !== 'billing' && !n.namespace.endsWith('.provider_keys')), 'No other service has published settings yet.', 'Services');
 }
 
-function paiFillCards(group, list, empty) {
+function paiFillCards(group, list, empty, sectionTitle) {
     const box = document.getElementById('pai-cards-' + group);
     if (!box) return;
     if (!list.length) { box.innerHTML = '<p class="muted">' + empty + '</p>'; return; }
@@ -1026,10 +1036,13 @@ function paiFillCards(group, list, empty) {
         if (!groups.has(name)) groups.set(name, []);
         groups.get(name).push(n);
     }
-    box.innerHTML = [...groups.entries()].map(([name, items]) => '<h4 class="pai-group">' + esc(name) + '</h4>' + items.map(paiCard).join('')).join('');
+    // One group (or no x-group) needs no heading: the section's own title already says it.
+    const showGroups = groups.size > 1;
+    const single = list.length === 1;
+    box.innerHTML = [...groups.entries()].map(([name, items]) => (showGroups ? '<h4 class="pai-group">' + esc(name) + '</h4>' : '') + items.map((n) => paiCard(n, { hideTitle: single && (n.schema && (n.schema.title || n.namespace)) === sectionTitle })).join('')).join('');
 }
 
-function paiCard(n) {
+function paiCard(n, opts = {}) {
     const schema = n.schema || {};
     const props = schema.properties || {};
     const pins = Array.isArray(n.pins) ? n.pins : (n.pins && typeof n.pins === 'object' ? Object.keys(n.pins) : []);
@@ -1039,11 +1052,14 @@ function paiCard(n) {
     const who = actor ? (currentUser && actor === currentUser.subject_id ? '@' + currentUser.username : actor) : '';
     const at = n.active && (n.active.activated_at || n.active.created_at);
     const revised = n.revision == null ? 'Not published' : 'Revision ' + esc(n.revision);
+    const title = opts.hideTitle ? '' : '<h5>' + esc(schema.title || n.namespace) + '</h5>';
+    const description = schema.description ? '<p class="muted">' + esc(schema.description) + '</p>' : '';
+    const head = title || description ? '<header class="pai-card-head">' + title + description + '</header>' : '';
     return '<article class="pai-card" data-pai-card data-service="' + esc(n.service) + '" data-namespace="' + esc(n.namespace) + '">'
-        + '<header class="pai-card-head"><h5>' + esc(schema.title || n.namespace) + '</h5>' + (schema.description ? '<p class="muted">' + esc(schema.description) + '</p>' : '') + '</header>'
+        + head
         + '<div class="pai-fields">' + fields + '</div>'
         + '<footer class="pai-card-foot"><span class="pai-revision">' + revised + (who ? ' · ' + esc(who) : '') + (at ? ' · ' + esc(paiWhen(at)) : '') + '</span>'
-        + '<span class="pai-card-actions"><button type="button" class="btn btn-sm" data-act="history">History</button><button type="button" class="btn btn-sm btn-primary" data-act="save">Save</button></span></footer>'
+        + '<span class="pai-card-actions"><button type="button" class="btn btn-sm pai-quiet" data-act="history">History</button><button type="button" class="btn btn-sm btn-primary" data-act="save">Save</button></span></footer>'
         + '</article>';
 }
 
@@ -1057,43 +1073,42 @@ function paiField(n, key, prop, pinned, pinName) {
     const type = types.find((t) => t !== 'null') || 'string';
     const nullable = types.includes('null');
     const chips = (pinned ? '<span class="pai-chip-lock">🔒 Pinned</span>' : '') + (danger ? '<span class="pai-chip-danger">' + esc(/money|credit|spend|pay|price|usd/i.test(title + ' ' + description + ' ' + key) ? 'Money' : 'Danger') + '</span>' : '') + (cls === 'secret' ? '<span class="pai-chip-secret">Secret</span>' : '');
+    const dis = pinned ? ' disabled' : '';
     let control;
-    if (pinned) {
-        const shown = typeof value === 'string' ? value : JSON.stringify(value);
-        control = '<div class="pai-pinned">' + esc(shown == null ? '—' : shown) + ' <small>Pinned by ' + esc(pinName || (prop['x-env'] || 'the environment')) + ' in the env file</small></div>';
-    } else if (cls === 'secret') {
+    if (cls === 'secret') {
         const marker = paiMarker(value);
-        control = '<div class="pai-secret"><span class="pai-marker">' + (marker ? 'Sealed ••••' + esc(marker.hint || '') : 'Not set') + '</span> '
-            + '<button type="button" class="btn btn-sm" data-act="secret" data-key="' + esc(key) + '">' + (marker ? 'Replace key' : 'Set key') + '</button>'
-            + (marker ? ' <button type="button" class="btn btn-sm btn-danger" data-act="secret-remove" data-key="' + esc(key) + '">Remove</button>' : '') + '</div>';
+        control = '<div class="pai-secret"><span class="pai-marker">' + (marker ? 'Sealed ••••' + esc(marker.hint || '') : 'Not set') + '</span>'
+            + (pinned ? '' : ' <button type="button" class="btn btn-sm pai-quiet" data-act="secret" data-key="' + esc(key) + '">' + (marker ? 'Replace key' : 'Set key') + '</button>')
+            + (!pinned && marker ? ' <button type="button" class="btn btn-sm pai-quiet pai-quiet-danger" data-act="secret-remove" data-key="' + esc(key) + '">Remove</button>' : '') + '</div>';
     } else if (prop.enum && Array.isArray(prop.enum)) {
-        control = '<select data-pai-control data-type="enum" data-key="' + esc(key) + '" aria-label="' + esc(title) + '">' + prop.enum.map((v) => '<option value="' + esc(v) + '"' + (String(value) === String(v) ? ' selected' : '') + '>' + esc(v) + '</option>').join('') + '</select>';
+        control = '<select data-pai-control data-type="enum" data-key="' + esc(key) + '" aria-label="' + esc(title) + '"' + (pinned ? ' data-ov-native' : '') + dis + '>' + prop.enum.map((v) => '<option value="' + esc(v) + '"' + (String(value) === String(v) ? ' selected' : '') + '>' + esc(v) + '</option>').join('') + '</select>';
     } else if (type === 'boolean') {
-        control = '<label class="pai-switch"><input type="checkbox" role="switch" data-pai-control data-type="boolean" data-key="' + esc(key) + '"' + (value ? ' checked' : '') + '> <span>' + (value ? 'On' : 'Off') + '</span></label>';
+        control = '<label class="pai-switch"><input type="checkbox" role="switch" data-ov-native data-pai-control data-type="boolean" data-key="' + esc(key) + '"' + (value ? ' checked' : '') + dis + '><span class="pai-track" aria-hidden="true"><span class="pai-knob"></span></span><span class="pai-switch-text">' + (value ? 'On' : 'Off') + '</span></label>';
     } else if (type === 'array') {
         const items = Array.isArray(value) ? value : [];
-        control = '<div class="pai-chips" data-pai-chips>' + items.map((it) => paiChip(it)).join('') + '</div>'
-            + '<span class="pai-list-add"><input data-pai-list-input placeholder="Add…" aria-label="Add to ' + esc(title) + '"><button type="button" class="btn btn-sm" data-act="list-add">Add</button></span>';
+        control = '<div class="pai-chips" data-pai-chips>' + items.map((it) => paiChip(it, !pinned)).join('') + '</div>'
+            + (pinned ? '' : '<span class="pai-list-add"><input data-pai-list-input placeholder="Add…" aria-label="Add to ' + esc(title) + '"><button type="button" class="btn btn-sm pai-quiet" data-act="list-add">Add</button></span>');
     } else if (type === 'object') {
-        control = '<textarea data-pai-control data-type="object" data-key="' + esc(key) + '" rows="3" spellcheck="false" aria-label="' + esc(title) + '">' + esc(JSON.stringify(value == null ? {} : value, null, 2)) + '</textarea>';
+        control = '<textarea data-pai-control data-type="object" data-key="' + esc(key) + '" rows="3" spellcheck="false" aria-label="' + esc(title) + '"' + dis + '>' + esc(JSON.stringify(value == null ? {} : value, null, 2)) + '</textarea>';
     } else if (prop['x-unit'] === 'nano_usd') {
-        control = '<span class="pai-money-input"><span class="pai-prefix">$</span><input data-pai-control data-type="nano_usd" data-key="' + esc(key) + '" inputmode="decimal" value="' + esc(paiUsd(value)) + '" aria-label="' + esc(title) + '"></span>';
+        control = '<span class="pai-money-input"><span class="pai-prefix">$</span><input data-pai-control data-type="nano_usd" data-key="' + esc(key) + '" inputmode="decimal" value="' + esc(paiUsd(value)) + '" aria-label="' + esc(title) + '"' + dis + '></span>';
     } else if (type === 'integer') {
-        control = '<span class="pai-unit-input"><input data-pai-control data-type="integer" data-key="' + esc(key) + '"' + (nullable ? ' data-nullable="1"' : '') + ' type="number" step="1" value="' + esc(value == null ? '' : value) + '" aria-label="' + esc(title) + '"><span class="pai-unit">' + esc(prop['x-unit'] || '') + '</span></span>';
+        control = '<span class="pai-unit-input"><input data-pai-control data-type="integer" data-key="' + esc(key) + '"' + (nullable ? ' data-nullable="1"' : '') + ' type="number" step="1" value="' + esc(value == null ? '' : value) + '" aria-label="' + esc(title) + '"' + dis + '><span class="pai-unit">' + esc(prop['x-unit'] || '') + '</span></span>';
     } else if (type === 'number') {
-        control = '<input data-pai-control data-type="number" data-key="' + esc(key) + '"' + (nullable ? ' data-nullable="1"' : '') + ' type="number" step="any" value="' + esc(value == null ? '' : value) + '" aria-label="' + esc(title) + '">';
+        control = '<input data-pai-control data-type="number" data-key="' + esc(key) + '"' + (nullable ? ' data-nullable="1"' : '') + ' type="number" step="any" value="' + esc(value == null ? '' : value) + '" aria-label="' + esc(title) + '"' + dis + '>';
     } else {
-        control = '<input data-pai-control data-type="string" data-key="' + esc(key) + '"' + (nullable ? ' data-nullable="1"' : '') + ' value="' + esc(value == null ? '' : value) + '" aria-label="' + esc(title) + '">';
+        control = '<input data-pai-control data-type="string" data-key="' + esc(key) + '"' + (nullable ? ' data-nullable="1"' : '') + ' value="' + esc(value == null ? '' : value) + '" aria-label="' + esc(title) + '"' + dis + '>';
     }
+    const pinLine = pinned ? '<p class="pai-pin-line">Pinned by ' + esc(pinName || (prop['x-env'] || 'the environment')) + ' in the env file</p>' : '';
     return '<div class="pai-field" data-pai-field data-key="' + esc(key) + '" data-secret="' + (cls === 'secret' ? '1' : '0') + '" data-pinned="' + (pinned ? '1' : '0') + '">'
         + '<div class="pai-field-label"><label>' + esc(title) + ' <code>' + esc(key) + '</code></label>' + chips + '</div>'
         + (description ? '<p class="pai-field-desc muted">' + esc(description) + '</p>' : '')
-        + '<div class="pai-control">' + control + '</div></div>';
+        + '<div class="pai-control">' + control + pinLine + '</div></div>';
 }
 
-function paiChip(value) {
+function paiChip(value, removable = true) {
     const label = typeof value === 'string' ? value : JSON.stringify(value);
-    return '<span class="pai-chip" data-value="' + esc(JSON.stringify(value)) + '"><span>' + esc(label) + '</span><button type="button" data-act="list-remove" aria-label="Remove ' + esc(label) + '">×</button></span>';
+    return '<span class="pai-chip" data-value="' + esc(JSON.stringify(value)) + '"><span>' + esc(label) + '</span>' + (removable ? '<button type="button" data-act="list-remove" aria-label="Remove ' + esc(label) + '">×</button>' : '') + '</span>';
 }
 
 async function paiCardClick(ev) {
@@ -1312,14 +1327,19 @@ function paiRenderVault() {
     const box = document.getElementById('pai-vault-list');
     if (!box) return;
     const rows = PAI.services.map((s) => {
-        const vault = PAI.vault[s.service] || { sealed: null, kek: null };
-        const state = vault.sealed === true
-            ? '<span class="pai-state is-ok">Sealed</span>' + (vault.kek ? ' · KEK <code>' + esc(vault.kek) + '</code>' : '')
-            : vault.sealed === false
-                ? '<span class="pai-state is-bad">Not sealed</span>'
-                : '<span class="pai-state is-muted">Unknown</span>';
-        const hint = vault.sealed === true ? '' : '<div class="pai-hint">the service needs openvibe-shared 4.110 or later and OV_CONFIG_KEKS</div>';
-        return '<div class="pai-vault-row"><span class="pai-vault-name">' + esc(s.name) + '</span>' + state + hint + '</div>';
+        const state = PAI.serviceState[s.service] || { answered: false, sealed: null, kek: null };
+        const name = esc(s.name || paiLabel(s.service));
+        let status;
+        let hint = '';
+        if (state.answered && state.sealed === true) {
+            status = '<span class="pai-state is-ok">Sealed' + (state.kek ? ' · ' + esc(state.kek) : '') + '</span>';
+        } else if (state.answered && state.sealed === false) {
+            status = '<span class="pai-state is-bad">Not sealed</span>';
+            hint = '<div class="pai-hint">the service needs openvibe-shared 4.110 or later and OV_CONFIG_KEKS</div>';
+        } else {
+            status = '<span class="pai-state is-muted">Did not answer</span>';
+        }
+        return '<div class="pai-vault-row"><span class="pai-vault-name">' + name + '</span>' + status + hint + '</div>';
     });
     box.innerHTML = paiFold(rows, (row) => row);
 }
