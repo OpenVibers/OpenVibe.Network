@@ -4,6 +4,10 @@
    my/core.js's helpers (apiFetch, getAuthToken, showSection, API) and on
    my/boot.js (loaded last), which starts the page. No ES modules.
    ═══════════════════════════════════════════════════════════════ */
+// The wallet (MONEY.md D12) in the account menu on Network's own pages: Shared's navbar needs the same item on every
+// site (the report says so); here Network can pass it in.
+const OV_WALLET_MENU = { before: [{ id: 'ov-wallet', label: 'Wallet', short: 'Wallet', icon: 'fa-wallet', href: 'https://openvibe.network/wallet' }] };
+
 // Load user data
 async function loadUser() {
     // Hydrate localStorage from the host-only cookie if needed (e.g. cookie set by the login page)
@@ -31,7 +35,7 @@ async function loadUser() {
             applyAnonModeUI(currentUser);
             loadAccounts();
             loadAnonInfo();
-            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: null, user: currentUser });
+            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: null, user: currentUser, menu: OV_WALLET_MENU });
         } else {
             const data = await apiFetch('/api/auth/me');
             currentUser = data.user;
@@ -54,7 +58,7 @@ async function loadUser() {
             loadRecentTools();
 
             // Init navbar
-            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: authToken, user: currentUser });
+            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: authToken, user: currentUser, menu: OV_WALLET_MENU });
             const bellMount = OpenVibeNavbar.getBellMount();
             if (bellMount && window.OpenVibeNotifications && authToken) {
                 OpenVibeNotifications.init({ token: authToken, apiBase: API, swPath: '/openvibe-sw.js' });

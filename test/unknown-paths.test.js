@@ -16,8 +16,10 @@ const { ACCOUNT_HUB_PATHS } = require('../server/not-found');
         const real = [
             '/', '/login', '/forgot-password', '/reset-password', '/admin', '/admin/settings', '/admin/analytics/overview',
             '/verify-email', '/status', '/sso/fanout', '/terms', '/privacy', '/dmca', '/llms.txt', '/sites',
+            '/wallet', '/pay/vch_01JAB2C3D4E5F6G7H8J9K0ABCD',
             '/robots.txt', '/sitemap.xml', '/manifest.webmanifest', '/assets/logo.svg', '/js/login.js', '/shared/navbar.js', '/shared/v1/navbar.js',
-            '/css/login.css', '/css/my.css', '/css/admin.css',
+            '/css/login.css', '/css/my.css', '/css/admin.css', '/css/wallet.css',
+            '/js/wallet/money.js', '/js/wallet/common.js', '/js/wallet/sheets.js', '/js/wallet/page.js', '/js/wallet/pay.js',
             '/openvibe-sw.js', '/release.json', '/.well-known/openvibe', '/.well-known/web-identity', '/api/health', '/api/brand',
             '/api/v1/registry/services', '/api/v1/registry/categories', '/api/v1/registry/featured', '/api/.well-known/jwks',
             ...ACCOUNT_HUB_PATHS.filter(p => p !== '/my.html'),

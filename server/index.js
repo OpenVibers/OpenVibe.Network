@@ -37,6 +37,7 @@ const { DiscordService } = require('./discord/discord-service');
 const createDiscordRoutes = require('./discord/routes');
 const createDeployRoutes = require('./deploy/routes');
 const createCoinsRoutes = require('./coins/routes');
+const createWalletRoutes = require('./wallet/routes');
 const { signToken } = require('./auth/routes');
 
 // The boot runs asynchronously: opening PostgreSQL (migrations, seeds) is async (plan T2, ADR-035).
@@ -650,6 +651,9 @@ app.use('/api/themes', require('./themes/routes'));
 
 // OpenCoins wallet API (user-facing, Bearer JWT)
 app.use('/api/coins', createCoinsRoutes(db, requireAuth));
+// The wallet's own API (MONEY.md D12): the person's Balance and Vibes through Billing, their activity, the projects
+// they administer, and the Vibes Pay charge the pay sheet shows. Bearer person tokens; see server/wallet/routes.js.
+app.use('/api/wallet', rateLimit({ windowMs: 60_000, max: 120 }), createWalletRoutes(db, requireAuth, { selfToken }));
 // Versioned user modules: portable per-person preferences and summaries (server/identity/modules.js).
 app.use('/api/modules', require('./identity/modules').userRouter(requireAuth));
 
@@ -878,6 +882,22 @@ app.use(require('./seo/routes').createSeoRoutes({ release }));
 // public page set is the fixed seo/routes PAGES list, so no hook pings; the client stays for one that will.
 const indexnow = require('openvibe-shared/indexnow').createIndexNow({ host: config.baseUrl, key: config.indexnow.key });
 if (indexnow.enabled) app.use(indexnow.keyFile);
+
+// The wallet (MONEY.md D12) and the Vibes Pay sheet: their own pages, in the account pages' style. A guest is sent
+// to sign in from the page, which then returns them to the same link.
+function sendWalletPage(res) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    return lookBoot.send(res, 'wallet.html');
+}
+function sendPayPage(res) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    return lookBoot.send(res, 'pay.html');
+}
+app.get('/wallet', (_req, res) => sendWalletPage(res));
+app.get('/wallet.html', (req, res) => redirectWithoutHtml(req, res, '/wallet'));
+app.get('/pay/:id', (_req, res) => sendPayPage(res));
 
 // Account hub (my.html) — the apex hosts the account hub under /my
 // plus its client-routed sections.
