@@ -56,7 +56,9 @@ const MAX_KEYS_PER_PROJECT = 50;
  */
 const SCOPES = Object.freeze({
     'ai.inference': Object.freeze({
-        capability: 'ai.app.run',   // the public capability apps already call AI with (ADR-014; AI Exchange D8')
+        // `grants`, not `capability:`: openvibe-contracts-check reads `capability: '<id>'` as a capability this service
+        // enforces, and this one is AI's (the exchanged token carries it to openvibe.ai).
+        grants: 'ai.app.run',   // the public capability apps already call AI with (ADR-014; AI Exchange D8')
         audience: 'openvibe.ai',
         description: 'Call OpenVibe.AI inference (POST /v1/chat/completions, POST /v1/messages, GET /v1/models)',
     }),
@@ -237,7 +239,7 @@ const audiencesOf = (scopes) => [...new Set(scopes.map(s => (SCOPES[s] || {}).au
 async function scopesForApp(db, appId, scopes) {
     const out = [];
     for (const scope of scopes) {
-        const capability = (SCOPES[scope] || {}).capability;
+        const capability = (SCOPES[scope] || {}).grants;
         if (!capability || !capabilities.get(capability)) continue;
         const grant = await db.prepare("SELECT status FROM dev_grants WHERE app_id = ? AND capability = ?").get(appId, capability);
         if (!grant || grant.status !== 'approved') continue;
@@ -275,7 +277,7 @@ async function exchange(db, presented, { audience, privateKey, issuer, ctx }) {
     const held = await scopesForApp(db, app.id, scopes);
     if (!held.length) fail(403, 'api_key.scope_denied', 'this key holds no scope the app may use');
     if (!audiencesOf(held).includes(aud)) fail(403, 'api_key.scope_denied', `this key may not be used at ${aud}`);
-    const cap = held.map(s => SCOPES[s].capability).filter(Boolean);
+    const cap = held.map(s => SCOPES[s].grants).filter(Boolean);
     const now = Math.floor(Date.now() / 1000);
     const claims = {
         iss: issuer, sub: `app:${app.id}`, actor_type: 'app', aud: [aud], cap,
