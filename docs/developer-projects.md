@@ -131,6 +131,10 @@ Production apps still need staff: the project's environment policy (`sandbox+pro
 
 This is ADR-014's acceptance rule: "a revoked credential fails everywhere within one token lifetime (5 minutes)". Receivers verify tokens offline, so Network cannot recall a token it has already issued.
 
+## Developer API keys and the monthly budget
+
+A developer API key (a project-bound bearer credential, shown once, stored hashed, scoped, rotatable and revocable) and the project's own monthly budget in nano-USD are described in [developer-api-keys.md](developer-api-keys.md). Both are behind `NETWORK_DEV_API_KEYS=1`.
+
 ## Quotas
 
 A quota says how much of one capability a project may use: for example, `media.object.upload` with limit 1073741824, window `total`, unit `bytes`. Network records quotas and shows them to members. **Network does not enforce them.** The service that owns the capability does (`enforced_by` in the response is that audience). An owning service reads a project's quotas through `GET /internal/projects/:project_id` ([Service-side project reads](#service-side-project-reads)). Until that service enforces what it reads, a quota is a recorded limit and not a guarantee. What a quota's current window has used is measured from the services' usage rollups ([Usage](#usage)).

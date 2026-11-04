@@ -15,6 +15,9 @@ const wallet = require('../coins/wallet');
 function getDb(req) { return req.app.locals.db; }
 function getConfig(req) { return req.app.locals.config; }
 
+// Set before a guard, so a refusal is not cached either.
+const noStore = (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); };
+
 // ── The gate ────────────────────────────────────────────────
 // Every route below checks the one capability it performs on a service token (principals.guard); nothing
 // else gets in.
@@ -437,6 +440,39 @@ router.get('/projects/:project_id', principals.guard('network.project.read'), as
     }
 });
 
+// ── A project's monthly budget (plan G-P3) ───────────────────
+// The project's own ceiling, in nano-USD (D1), read by the service that spends for it (OpenVibe.AI)
+// with its service token. network.project.read is first-party and never grantable to apps.
+router.get('/projects/:project_id/budget', noStore, principals.guard('network.project.read'), async (req, res) => {
+    try {
+        const out = await require('../developer/api-keys').internalBudget(getDb(req), req.params.project_id);
+        if (!out) return require('openvibe-contracts').http.sendProblem(res, 404, 'project.not_found', { detail: 'no such project' });
+        res.json(out);
+    } catch (err) {
+        console.error('[Internal] project budget read error:', err.message);
+        require('openvibe-contracts').http.sendProblem(res, 500, 'internal.error', { detail: 'project budget read failed' });
+    }
+});
+
+// ── Exchange a developer API key (plan G-P3) ─────────────────
+// A developer shows their key to a service (OpenVibe.AI); the service sends it here with its own
+// service token and Network, the identity authority, answers with the key's facts and a short-lived
+// scoped token. A revoked or unknown key is refused at once; the key itself is never logged.
+router.post('/api-keys/exchange', noStore, principals.guard('network.project.read'), express.json({ limit: '4kb' }), async (req, res) => {
+    const { http } = require('openvibe-contracts');
+    try {
+        const out = await require('../developer/api-keys').exchange(getDb(req), (req.body || {}).api_key, {
+            audience: (req.body || {}).audience, privateKey: req.app.locals.privateKey,
+            issuer: getConfig(req).jwt.issuer, ctx: req.ov,
+        });
+        res.json(out);
+    } catch (err) {
+        if (err && err.status && err.code) return http.sendProblem(res, err.status, err.code, { detail: err.detail, ctx: req.ov });
+        console.error('[Internal] api key exchange error:', err && err.message ? err.message.slice(0, 200) : err);
+        return http.sendProblem(res, 500, 'internal.error', { detail: 'api key exchange failed' });
+    }
+});
+
 // ── One person's membership of a project ─────────────────────
 // Project delegation (ADR-003 amendment 2026-10-12): before doing a project's work for a person a first-party service
 // names (X-OV-Subject + X-OV-Project), the receiver checks here that they are an admin or owner of the unarchived
@@ -453,8 +489,6 @@ router.get('/projects/:project_id/members/:subject', principals.guard('network.p
 });
 
 // ── Read an agent ────────────────────────────────────────────
-// Set before the guard so its refusals are not cached either.
-const noStore = (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); };
 // The owning service enforces an agent's delegated grants and budgets (plan T2 WS-Z2 slice 6,
 // docs/t2-projects-and-grants.md section 4): only the grants at the caller's own audience, never another's.
 router.get('/agents/:agent', noStore, principals.guard('network.project.read'), async (req, res) => {

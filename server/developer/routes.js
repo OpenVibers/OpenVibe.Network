@@ -75,6 +75,7 @@ const policy = require('./policy');
 const tokens = require('./tokens');
 const usage = require('./usage');
 const secrets = require('./secrets');
+const apiKeys = require('./api-keys');
 
 /**
  * The base of a user API: problems with request ids, JSON bodies, private no-store, and Bearer Network user tokens
@@ -105,7 +106,7 @@ function userApi() {
 
 /** handle(fn, status): fn(db, actor, req, { ctx, settings }) → JSON body, or 204 for undefined; errors as problems. */
 function handler() {
-    const ctxOf = (req) => ({ ctx: req.ov, settings: policy.settings(req.app.locals.config) });
+    const ctxOf = (req) => ({ ctx: req.ov, settings: policy.settings(req.app.locals.config), config: req.app.locals.config });
     return (fn, status = 200) => async (req, res) => {
         try {
             const out = await fn(req.app.locals.db, req.actor, req, ctxOf(req));
@@ -201,6 +202,17 @@ function router() {
         const { project } = await store.access(db, a, req.params.project, { need: 'admin', allowArchived: true });
         return await store.listAudit(db, project.id, { before: req.query.before, limit: req.query.limit });
     }));
+
+    // Developer API keys (plan G-P3): a project-bound credential, shown once, stored hashed. Off unless
+    // NETWORK_DEV_API_KEYS=1 (503 api_keys.disabled).
+    r.get('/:project/api-keys', handle(async (db, a, req, o) => ({ keys: await apiKeys.list(db, a, req.params.project, o) })));
+    r.post('/:project/api-keys', handle(async (db, a, req, o) => await apiKeys.create(db, a, req.params.project, req.body || {}, o), 201));
+    r.post('/:project/api-keys/:key/rotate', handle(async (db, a, req, o) => await apiKeys.rotate(db, a, req.params.project, req.params.key, o)));
+    r.post('/:project/api-keys/:key/revoke', handle(async (db, a, req, o) => await apiKeys.revoke(db, a, req.params.project, req.params.key, o)));
+
+    // The project's own monthly budget, in nano-USD (D1). Read and written by admin+ members and staff.
+    r.get('/:project/budget', handle(async (db, a, req, o) => await apiKeys.readBudget(db, a, req.params.project, o)));
+    r.put('/:project/budget', handle(async (db, a, req, o) => await apiKeys.writeBudget(db, a, req.params.project, req.body || {}, o)));
 
     // Project export (WS-N task 9): Codes asks with the person's token, once per audience and env.
     r.post('/:project/export-tokens', handle(async (db, a, req, o) => await tokens.mintExportToken(db, a, req.params.project, req.body || {}, {

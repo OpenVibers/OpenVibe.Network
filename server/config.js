@@ -51,6 +51,10 @@ module.exports = {
         // First-party services (OAuth client ids) that may host a project member's agents (comma list).
         // Unset = the code default (actor: server/developer/policy.js); set to an empty value = none.
         agentHostServices: process.env.AGENT_HOST_SERVICES,
+        // Developer API keys and per-project budgets (plan G-P3, server/developer/api-keys.js).
+        // Off unless NETWORK_DEV_API_KEYS=1: the key lifecycle, the key exchange and the budget routes
+        // answer 503 api_keys.disabled while it is off.
+        apiKeys: process.env.NETWORK_DEV_API_KEYS === '1',
     },
 
     // OpenVibe.Events base URL for Network's own events (developer projects). Unset = no relay:
