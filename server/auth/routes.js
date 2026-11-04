@@ -61,6 +61,9 @@ function signToken(user, privateKey, config, { renew = null } = {}) {
         try { audienceSet.add(new URL(url).hostname); } catch { /* ignore */ }
     }
     const audience = [...audienceSet];
+    // jti names the session and survives sliding renewals: a QR sign-in is approved only by the
+    // exact session that started it (req.tokenClaims.jti), never by another session of the person.
+    const jti = renew && renew.jti ? renew.jti : crypto.randomBytes(16).toString('hex');
 
     return jwt.sign(
         {
@@ -81,6 +84,7 @@ function signToken(user, privateKey, config, { renew = null } = {}) {
             issuer: config.jwt.issuer,
             audience,
             expiresIn: config.jwt.accessTokenExpiry,
+            jwtid: jti,
         }
     );
 }
@@ -390,6 +394,7 @@ router.get('/me', requireAuth, async (req, res) => {
     res.json({
         user: sanitizeUser(req.user),
         preferences: prefs || { theme_id: 'vibe' },
+        features: { qr_signin: require('./qr-signin').enabled(getConfig(req)) },
     });
 });
 

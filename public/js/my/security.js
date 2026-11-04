@@ -469,3 +469,267 @@ document.getElementById('password-form').addEventListener('submit', async (e) =>
         document.getElementById('password-form').reset();
     } catch (err) { alert('Error: ' + err.message); }
 });
+
+/* ── Sign in on your phone ────────────────────────────────────────────────────────────────
+   The desktop half of server/auth/qr-signin.js: start a transfer, show the QR for 120 s, poll every
+   2 s, then approve the two-digit number the phone shows. The phone opens /q; nothing here holds the
+   QR's secret after the start response. */
+let qrTransfer = null;
+let qrPollTimer = null;
+let qrTickTimer = null;
+let qrExpireTimer = null;
+
+function loadQrSignin(features) {
+    const card = document.getElementById('qr-signin-card');
+    if (card) card.hidden = !(features && features.qr_signin);
+}
+
+function qrPost(path, body) {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = getAuthToken();
+    if (token) headers.Authorization = 'Bearer ' + token;
+    return fetch(API + path, { method: 'POST', credentials: 'include', headers, body: JSON.stringify(body || {}) })
+        .then(async (res) => {
+            let data = {};
+            try { data = await res.json(); } catch { /* empty answer */ }
+            return { ok: res.ok, status: res.status, data };
+        });
+}
+
+function qrSetView(which) {
+    const scan = document.getElementById('qr-scan-view');
+    const confirm = document.getElementById('qr-confirm-view');
+    const done = document.getElementById('qr-done-view');
+    if (!scan || !confirm || !done) return;
+    scan.hidden = which !== 'scan';
+    confirm.hidden = which !== 'confirm';
+    done.hidden = which !== 'done';
+}
+
+function qrStopTimers() {
+    if (qrPollTimer) { clearTimeout(qrPollTimer); qrPollTimer = null; }
+    if (qrTickTimer) { clearInterval(qrTickTimer); qrTickTimer = null; }
+    if (qrExpireTimer) { clearTimeout(qrExpireTimer); qrExpireTimer = null; }
+}
+
+function qrReset() {
+    qrStopTimers();
+    qrTransfer = null;
+    const code = document.getElementById('qr-code');
+    if (code) code.replaceChildren();
+    const expired = document.getElementById('qr-expired');
+    if (expired) { expired.hidden = true; const p = expired.querySelector('p'); if (p) p.textContent = 'This code expired'; }
+    document.getElementById('qr-tile')?.classList.remove('is-expired');
+    const err = document.getElementById('qr-error');
+    if (err) { err.hidden = true; err.textContent = ''; }
+    for (const id of ['qr-digit-1', 'qr-digit-2']) { const el = document.getElementById(id); if (el) el.value = ''; }
+    const fill = document.getElementById('qr-bar-fill');
+    if (fill) { fill.style.transition = 'none'; fill.style.width = '100%'; }
+    const timer = document.getElementById('qr-timer');
+    if (timer) timer.textContent = 'Code expires in 2:00';
+    qrSetView('scan');
+}
+
+function qrSigninClose() {
+    const dialog = document.getElementById('qr-dialog');
+    qrStopTimers();
+    if (dialog && dialog.open) dialog.close();
+}
+
+function qrSigninOpen() {
+    if (window.matchMedia('(max-width: 599px)').matches) return;
+    const dialog = document.getElementById('qr-dialog');
+    if (!dialog) return;
+    qrReset();
+    if (!dialog.open) dialog.showModal();
+    qrSigninStart();
+}
+
+function qrSigninNewCode() { qrSigninStart(); }
+
+async function qrSigninStart() {
+    qrReset();
+    const timer = document.getElementById('qr-timer');
+    const started = await qrPost('/auth/qr/start', {});
+    if (!started.ok) {
+        if (started.status === 404) { // the flag is off after all: no entry point draws a code
+            qrSigninClose();
+            const card = document.getElementById('qr-signin-card');
+            if (card) card.hidden = true;
+            return;
+        }
+        if (timer) timer.textContent = started.status === 429
+            ? 'Finish or cancel the code you already have first.'
+            : 'Could not make a code. Try again.';
+        return;
+    }
+    qrTransfer = { id: started.data.id, expiresAt: Date.parse(started.data.expires_at), device: null };
+    document.getElementById('qr-code').innerHTML = started.data.qr_svg; // rendered by Network's qrcode, never a third party
+    qrDrain(started.data.expires_at);
+    qrPoll();
+}
+
+function qrDrain(expiresAt) {
+    const left = Math.max(0, Date.parse(expiresAt) - Date.now());
+    const fill = document.getElementById('qr-bar-fill');
+    if (fill) {
+        fill.style.transition = 'none';
+        fill.style.width = '100%';
+        void fill.offsetWidth; // start the drain from full
+        fill.style.transition = `width ${left}ms linear`;
+        fill.style.width = '0%';
+    }
+    const timer = document.getElementById('qr-timer');
+    const tick = () => {
+        if (!qrTransfer) return;
+        const ms = Math.max(0, qrTransfer.expiresAt - Date.now());
+        const total = Math.ceil(ms / 1000);
+        if (timer) timer.textContent = ms > 0 ? `Code expires in ${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}` : 'Code expired';
+    };
+    tick();
+    qrTickTimer = setInterval(tick, 1000);
+    qrExpireTimer = setTimeout(qrExpire, left);
+}
+
+function qrExpire() {
+    if (!qrTransfer) return;
+    qrStopTimers();
+    qrSetView('scan');
+    const expired = document.getElementById('qr-expired');
+    if (expired) { expired.hidden = false; const p = expired.querySelector('p'); if (p) p.textContent = 'This code expired'; }
+    document.getElementById('qr-tile')?.classList.add('is-expired');
+    const timer = document.getElementById('qr-timer');
+    if (timer) timer.textContent = 'Code expired';
+}
+
+function qrStopped(title) {
+    qrStopTimers();
+    qrSetView('scan');
+    const expired = document.getElementById('qr-expired');
+    if (expired) { expired.hidden = false; const p = expired.querySelector('p'); if (p) p.textContent = title; }
+    document.getElementById('qr-tile')?.classList.add('is-expired');
+    const timer = document.getElementById('qr-timer');
+    if (timer) timer.textContent = 'Code closed';
+}
+
+async function qrPoll() {
+    if (!qrTransfer) return;
+    const dialog = document.getElementById('qr-dialog');
+    if (!dialog || !dialog.open) return;
+    try {
+        const token = getAuthToken();
+        const res = await fetch(`${API}/auth/qr/${encodeURIComponent(qrTransfer.id)}`, {
+            credentials: 'include', cache: 'no-store', headers: token ? { Authorization: 'Bearer ' + token } : {},
+        });
+        if (res.status === 404) { qrExpire(); return; }
+        if (res.status === 403) { qrSigninClose(); return; }
+        if (!res.ok) throw new Error('poll');
+        const data = await res.json();
+        if (!qrTransfer) return;
+        if (data.state === 'scanned') {
+            qrTransfer.device = data.device || null;
+            qrShowConfirm();
+        } else if (data.state === 'approved') {
+            const timer = document.getElementById('qr-timer');
+            if (timer) timer.textContent = 'Approved — finishing on your phone…';
+        } else if (data.state === 'denied') {
+            qrStopped('This code was denied');
+            return;
+        } else if (data.state === 'used') {
+            qrDone(data.device || qrTransfer.device);
+            return;
+        }
+    } catch { /* one failed poll is fine; keep waiting */ }
+    qrPollTimer = setTimeout(qrPoll, 2000);
+}
+
+function qrShowConfirm() {
+    if (!qrTransfer) return;
+    const confirm = document.getElementById('qr-confirm-view');
+    if (!confirm.hidden) return;
+    qrSetView('confirm');
+    const name = document.getElementById('qr-device-name');
+    if (name) name.textContent = qrTransfer.device || 'Your phone';
+    const err = document.getElementById('qr-error');
+    if (err) { err.hidden = true; err.textContent = ''; }
+    setTimeout(() => document.getElementById('qr-digit-1')?.focus(), 30);
+}
+
+function qrWrongCode(left) {
+    const box = document.getElementById('qr-confirm-view');
+    if (box) {
+        box.classList.remove('qr-shake');
+        void box.offsetWidth;
+        box.classList.add('qr-shake');
+        setTimeout(() => box.classList.remove('qr-shake'), 420);
+    }
+    const err = document.getElementById('qr-error');
+    if (err) {
+        err.hidden = false;
+        err.textContent = left > 0
+            ? `That number doesn't match. ${left} ${left === 1 ? 'try' : 'tries'} left.`
+            : "That number doesn't match.";
+    }
+    const a = document.getElementById('qr-digit-1');
+    const b = document.getElementById('qr-digit-2');
+    if (a) a.value = '';
+    if (b) b.value = '';
+    if (a) a.focus();
+}
+
+async function qrSigninApprove() {
+    if (!qrTransfer) return;
+    const a = document.getElementById('qr-digit-1')?.value || '';
+    const b = document.getElementById('qr-digit-2')?.value || '';
+    if (!/^[0-9]$/.test(a) || !/^[0-9]$/.test(b)) { qrWrongCode(0); return; }
+    const btn = document.getElementById('qr-approve');
+    if (btn) btn.disabled = true;
+    try {
+        const res = await qrPost(`/auth/qr/${encodeURIComponent(qrTransfer.id)}/approve`, { code: a + b });
+        if (res.ok) {
+            const timer = document.getElementById('qr-timer');
+            if (timer) timer.textContent = 'Approved — finishing on your phone…';
+            return;
+        }
+        if (res.status === 400 && res.data.error === 'code_mismatch') { qrWrongCode(Number(res.data.attempts_left) || 0); return; }
+        if (res.status === 403) { qrStopped('This code was denied'); return; }
+        if (res.status === 404) { qrExpire(); return; }
+        qrWrongCode(0);
+    } catch {
+        const err = document.getElementById('qr-error');
+        if (err) { err.hidden = false; err.textContent = 'Could not check that number. Try again.'; }
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function qrSigninDeny() {
+    if (qrTransfer) await qrPost(`/auth/qr/${encodeURIComponent(qrTransfer.id)}/deny`, {}).catch(() => {});
+    qrSigninClose();
+}
+
+function qrDone(device) {
+    qrStopTimers();
+    const name = String(device || 'your phone').split(' · ')[0];
+    const text = document.getElementById('qr-done-text');
+    if (text) text.textContent = `Signed in on ${name}`;
+    qrSetView('done');
+}
+
+function qrDigit(input, nextId) {
+    const value = String(input.value || '').replace(/[^0-9]/g, '').slice(-1);
+    input.value = value;
+    if (value && nextId) document.getElementById(nextId)?.focus();
+}
+
+function qrDigitKey(event, input) {
+    if (event.key === 'Backspace' && !input.value) {
+        const previous = input.id === 'qr-digit-2' ? document.getElementById('qr-digit-1') : null;
+        if (previous) { previous.focus(); previous.value = ''; event.preventDefault(); }
+    }
+}
+
+loadQrSignin(null); // hidden until /api/auth/me says the feature is on (profile.js calls loadQrSignin)
+
+
+document.getElementById('qr-dialog')?.addEventListener('close', qrStopTimers);

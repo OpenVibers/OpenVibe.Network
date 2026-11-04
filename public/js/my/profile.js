@@ -35,6 +35,7 @@ async function loadUser() {
         } else {
             const data = await apiFetch('/api/auth/me');
             currentUser = data.user;
+            loadQrSignin(data.features);
             renderHeader(data.user);
             renderProfile(data.user);
             loadThemes(); loadThemeSubmissions();

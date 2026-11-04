@@ -418,6 +418,12 @@ const requireAuth = require('./auth/session').makeRequireAuth(authCtx, authRoute
 // The extension's private-issuer Dock token, accepted only on the mounts that name a scope. Every
 // other route keeps `requireAuth`, which refuses the different issuer.
 const requireDock = (scope) => require('./auth/session').makeRequireAuth(authCtx, authRoutes.signToken, { dockScope: scope });
+// Sign in on your phone (owner, 2026-11-04): off unless NETWORK_QR_SIGNIN says on. Mounted at
+// /auth/qr (not /api/auth) because the phone's httpOnly ov_qr cookie has path /auth/qr.
+const qrSignin = require('./auth/qr-signin').createQrSignin({
+    db, config, privateKey, signToken: authRoutes.signToken, requireAuth, notifications: notificationService,
+});
+app.locals.qrSignin = qrSignin;
 // The moderation audit log for staff (staff.moderation.logs): server/admin/moderation-audit.js.
 app.use('/api/v1/staff/moderation-audit', requireAuth, moderationAudit.router());
 // Staff capabilities and the staff list (WS-D task 4; services need network.staff.read).
@@ -632,6 +638,14 @@ app.get('/api/brand', (_req, res) => res.json(BRAND));
 
 // Auth routes (SSO provider)
 app.use('/api/auth', authRoutes);
+
+// Sign in on your phone (server/auth/qr-signin.js): mounted only when NETWORK_QR_SIGNIN is on. Its
+// per-address limit is the auth limiter's shape (30 failures / 15 min); successful polls do not spend it.
+if (qrSignin.enabled) {
+    app.use('/auth/qr/', rateLimit({ windowMs: 15 * 60_000, max: 30, skipSuccessfulRequests: true }));
+    app.use('/auth/qr', qrSignin.router);
+    app.get(['/q', '/q/'], qrSignin.page);
+}
 
 // Email verification (status / resend / consume)
 app.use('/api/auth', require('./auth/email-verify').routes(requireAuth));
@@ -1059,6 +1073,16 @@ const server = app.listen(...(socketActivated ? [{ fd: 3 }] : [config.port, conf
         try { const n = await consent.sweep(); if (n) console.log(`[Consent] expired ${n} choice(s)`); } catch (e) { console.warn('[Consent] expiry sweep failed:', e.message); }
     };
     timers.push(setTimeout(sweepConsent, 30 * 1000), setInterval(sweepConsent, 15 * 60 * 1000));
+
+    // Sign-in-on-your-phone transfers live 120 s. A sweep every minute deletes the expired rows
+    // (the audit_log keeps the outcome); checks also compare expires_at, so a late sweep never matters.
+    if (qrSignin.enabled) {
+        const sweepQr = async () => {
+            try { const n = await qrSignin.sweep(); if (n) console.log(`[QR sign-in] swept ${n} expired row(s)`); }
+            catch (e) { console.warn('[QR sign-in] sweep failed:', e.message); }
+        };
+        timers.push(setTimeout(sweepQr, 30 * 1000), setInterval(sweepQr, 60 * 1000));
+    }
 
     // Clean expired sessions daily
     timers.push(setInterval(async () => {
