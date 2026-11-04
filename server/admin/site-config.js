@@ -138,15 +138,15 @@ async function migrateLegacySecrets(db, out) {
     const rows = await db.prepare('SELECT key, value, type FROM site_settings').all();
     const candidates = rows.filter((r) => r.value != null && String(r.value) !== ''
         && (r.type === 'secret' || SECRET.test(r.key)) && !secrets.isSecret(r.key));
-    if (!candidates.length) return { checked: 0, blanked: 0, kept: 0, sealed: !!out.store.sealed };
+    if (!candidates.length) return { checked: 0, blanked: 0, differs: 0, kept: 0, sealed: !!out.store.sealed };
     if (!out.store.sealed) {
         console.log(`[Config] legacy site_settings: ${candidates.length} secret value(s) left (no KEK; the store is not sealed)`);
-        return { checked: candidates.length, blanked: 0, kept: candidates.length, sealed: false };
+        return { checked: candidates.length, blanked: 0, differs: 0, kept: candidates.length, sealed: false };
     }
     const summary = await out.store.summary();
     const snap = summary.active;
     const upd = db.prepare('UPDATE site_settings SET value = ? WHERE key = ?');
-    let blanked = 0, kept = 0;
+    let blanked = 0, differs = 0;
     for (const r of candidates) {
         const stored = out.store.get(r.key);
         const marker = summary.secrets[r.key] || (typeof out.store.secretMarker === 'function' ? await out.store.secretMarker(r.key) : null);
@@ -154,12 +154,13 @@ async function migrateLegacySecrets(db, out) {
         const proven = stored !== undefined && stored !== null && String(stored) !== ''
             && marker && sealedRow && sealedRow.redacted === true
             && marker.fingerprint && marker.fingerprint === sealedRow.fingerprint;
-        if (!proven) { kept++; continue; }
+        // Never drop a value the store does not hold: the sealed copy must be exactly this legacy value.
+        if (!proven || String(stored) !== String(r.value)) { differs++; continue; }
         await upd.run('', r.key);
         blanked++;
     }
-    console.log(`[Config] legacy site_settings: ${blanked} secret value(s) blanked after the sealed store held them; ${kept} left (no sealed copy)${out.store.kek ? `; KEK ${out.store.kek}` : ''}`);
-    return { checked: candidates.length, blanked, kept, sealed: true };
+    console.log(`[Config] legacy site_settings: ${blanked} secret value(s) blanked (the store holds the same value); ${differs} kept (value differs or no sealed copy)${out.store.kek ? `; KEK ${out.store.kek}` : ''}`);
+    return { checked: candidates.length, blanked, differs, kept: differs, sealed: true };
 }
 
 let boot = null;
