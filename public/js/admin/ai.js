@@ -1336,6 +1336,8 @@ function paiRenderVault() {
         } else if (state.answered && state.sealed === false) {
             status = '<span class="pai-state is-bad">Not sealed</span>';
             hint = '<div class="pai-hint">the service needs openvibe-shared 4.110 or later and OV_CONFIG_KEKS</div>';
+        } else if (state.answered) {
+            status = '<span class="pai-state is-muted">No settings yet</span>';
         } else {
             status = '<span class="pai-state is-muted">Did not answer</span>';
         }
