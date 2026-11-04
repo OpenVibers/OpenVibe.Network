@@ -134,5 +134,32 @@ module.exports = {
         bot: {
             internalUrl: process.env.OV_BOT_INTERNAL_URL || 'http://127.0.0.1:4630',
         },
+        // The owner's settings proxy (server/admin/ai-config-proxy.js, D11 S3): each service's /internal/config,
+        // reached with Network's own token for openvibe.<service> and the owner in X-OV-Subject. Four are already
+        // above (billing); these are the rest. The URLs are operator config: never a request value.
+        ai: {
+            internalUrl: process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700',
+        },
+        services: {
+            internalUrl: process.env.OV_SERVICES_INTERNAL_URL || 'http://127.0.0.1:4930',
+        },
+        watch: {
+            internalUrl: process.env.OV_WATCH_INTERNAL_URL || 'http://127.0.0.1:4730',
+        },
+        bench: {
+            internalUrl: process.env.OV_BENCH_INTERNAL_URL || 'http://127.0.0.1:5230',
+        },
+        report: {
+            internalUrl: process.env.OV_REPORT_INTERNAL_URL || 'http://127.0.0.1:5080',
+        },
+        host: {
+            internalUrl: process.env.OV_HOST_INTERNAL_URL || 'http://127.0.0.1:4910',
+        },
+        codes: {
+            internalUrl: process.env.OV_CODES_INTERNAL_URL || 'http://127.0.0.1:4900',
+        },
+        actor: {
+            internalUrl: process.env.OV_ACTOR_INTERNAL_URL || 'http://127.0.0.1:4950',
+        },
     },
 };

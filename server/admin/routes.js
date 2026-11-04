@@ -1023,6 +1023,12 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
         }
     });
 
+    // ── The owner's platform settings (AI Exchange D11 S3) ────────────────────────────────────────────────
+    // /api/admin/ai/config: every service's openvibe-shared/config namespaces and AI's provider registry, as the
+    // owner (server/admin/ai-config-proxy.js). Owner only on every route; the proxy re-checks, and a write carries the
+    // owner in X-OV-Subject, with a fresh sign-in for keys and x-danger money settings.
+    router.use('/ai/config', requireOwner, require('./ai-config-proxy').createAiConfigProxy({ db, notificationService }));
+
     return router;
 };
 

@@ -49,6 +49,7 @@ async function loadStaffRoom() {
 }
 
 async function loadAi() {
+    loadPlatformAi();
     loadStaffRoom();
     const c = document.getElementById('ai-content');
     c.innerHTML = '<div class="loading">Loading...</div>';
@@ -554,4 +555,771 @@ async function testTTSVoice() {
         src.start();
         toast(`Testing ${result.voiceName || voiceId}`, 'info');
     } catch (e) { toast(e.message || 'Could not play the test clip', 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Platform AI (AI Exchange D11 S3, owner only): every service's openvibe-shared/config namespaces and AI's provider
+// registry, in one long stacked page (no inner tabs, nothing display:none) with a sticky in-page index. The server
+// proxy is /api/admin/ai/config (server/admin/ai-config-proxy.js); it holds no value, and neither does this page:
+// a secret is only ever written, never rendered. Network's admin helpers (api, esc, toast, timeAgo) are above.
+// ═══════════════════════════════════════════════════════════════
+const PAI_NAMES = {
+    network: 'OpenVibe.Network', ai: 'OpenVibe.AI', billing: 'OpenVibe.Billing', services: 'OpenVibe.Services', watch: 'OpenVibe.Watch',
+    bench: 'OpenVibe.Bench', report: 'OpenVibe.Report', host: 'OpenVibe.Host', codes: 'OpenVibe.Codes',
+    actor: 'OpenVibe.Actor',
+};
+const PAI_ACCESS = ['OWN_DEPLOYMENT', 'AUTHORIZED_WHOLESALE', 'CUSTOMER_BYOK', 'RESTRICTED', 'UNVERIFIED'];
+const PAI_BILLING_LABEL = { metered: 'Metered', subscription: 'Subscription', payg: 'Pay as you go', free: 'Free', byok: 'Customer BYOK' };
+const PAI_ACCESS_LABEL = {
+    OWN_DEPLOYMENT: 'Own deployment', AUTHORIZED_WHOLESALE: 'Authorized wholesale', CUSTOMER_BYOK: 'Customer BYOK',
+    RESTRICTED: 'Restricted', UNVERIFIED: 'Unverified',
+};
+const PAI = {
+    providers: [], services: [], namespaces: [], warnings: [], vault: {}, loading: false, addProviderError: null,
+};
+
+function paiLabel(service) {
+    return PAI_NAMES[service] || ('OpenVibe.' + String(service || '').replace(/^./, (c) => c.toUpperCase()));
+}
+
+function paiApi(path, opts = {}) {
+    return api('/api/admin/ai/config' + path, opts).catch((err) => {
+        if (err && err.status === 403 && err.body && err.body.code === 'config.fresh_required') {
+            paiShowFresh(err.body.sign_in_url);
+            err.freshRequired = true;
+        }
+        throw err;
+    });
+}
+
+function paiShowFresh(url) {
+    const el = document.getElementById('pai-fresh');
+    if (!el) return;
+    const link = el.querySelector('a');
+    if (link && url) link.href = url;
+    el.hidden = false;
+}
+
+function paiFriendly(service, err) {
+    if (err && err.freshRequired) return "Confirm it's you to change keys and money settings.";
+    if (err && (err.status === 502 || err.status === 503 || /did not answer|not configured/i.test(err.message || ''))) {
+        return paiLabel(service) + ' did not answer.';
+    }
+    const message = String((err && err.message) || 'The request failed').split('\n')[0];
+    return message.length > 240 ? message.slice(0, 240) + '…' : message;
+}
+
+/** Dollar text ↔ nano-USD, exactly: BigInt integer maths, no float, at most 9 decimals. */
+function paiUsd(nano) {
+    let n;
+    try { n = BigInt(String(nano == null ? 0 : nano)); } catch { return '0'; }
+    const negative = n < 0n;
+    if (negative) n = -n;
+    const whole = n / 1000000000n;
+    const frac = (n % 1000000000n).toString().padStart(9, '0').replace(/0+$/, '');
+    return (negative ? '-' : '') + whole.toString() + (frac ? '.' + frac : '');
+}
+
+function paiParseUsd(text) {
+    const value = String(text == null ? '' : text).trim();
+    if (!/^(?:0|[1-9][0-9]{0,15})(?:\.[0-9]{0,9})?$/.test(value)) return { error: 'Enter dollars with at most 9 decimals, e.g. 12.50' };
+    const [whole, frac = ''] = value.split('.');
+    const nano = BigInt(whole) * 1000000000n + BigInt((frac + '000000000').slice(0, 9));
+    if (nano > BigInt(Number.MAX_SAFE_INTEGER)) return { error: 'That amount is too large' };
+    return { nano: Number(nano) };
+}
+
+function paiHost(url) {
+    try { return new URL(url).host; } catch { return String(url || '—'); }
+}
+
+function paiWhen(iso) {
+    if (!iso) return '';
+    try { return timeAgo(iso); } catch { return ''; }
+}
+
+function paiMarker(value) {
+    return value && typeof value === 'object' && value.redacted === true ? value : null;
+}
+
+function paiFold(items, render) {
+    const head = items.slice(0, 8).map(render).join('');
+    if (items.length <= 8) return '<div class="pai-rows">' + head + '</div>';
+    return '<div class="pai-rows">' + head + '</div><details class="pai-more"><summary>More (' + (items.length - 8) + ')</summary><div class="pai-rows">' + items.slice(8).map(render).join('') + '</div></details>';
+}
+
+async function loadPlatformAi() {
+    const root = document.getElementById('platform-ai');
+    if (!root) return;
+    if (!currentUser || !currentUser.is_owner) { root.hidden = true; return; }
+    root.hidden = false;
+    if (PAI.loading) return;
+    PAI.loading = true;
+    try {
+        const [servicesRes, providersRes] = await Promise.all([
+            paiApi('/services'),
+            paiApi('/providers').catch((err) => ({ error: err })),
+        ]);
+        PAI.services = servicesRes.services || [];
+        PAI.providers = (providersRes && providersRes.providers) || [];
+        PAI.addProviderError = providersRes && providersRes.error ? paiFriendly('ai', providersRes.error) : null;
+        const answers = await Promise.all(PAI.services.map((s) => paiApi('/service/' + encodeURIComponent(s.service)).then((r) => ({ service: s.service, ...r })).catch((err) => ({ service: s.service, error: err }))));
+        PAI.namespaces = [];
+        PAI.warnings = [];
+        PAI.vault = {};
+        for (const answer of answers) {
+            if (answer.error) {
+                PAI.warnings.push({ service: answer.service, namespace: null, reason: 'unavailable', detail: paiFriendly(answer.service, answer.error) });
+                PAI.vault[answer.service] = { sealed: null, kek: null };
+                continue;
+            }
+            PAI.namespaces.push(...(answer.namespaces || []));
+            PAI.warnings.push(...(answer.warnings || []));
+            PAI.vault[answer.service] = answer.vault || { sealed: null, kek: null };
+        }
+        paiRender(root);
+    } catch (err) {
+        root.innerHTML = paiShell('<p class="pai-error">' + esc(paiFriendly('network', err)) + '</p>');
+    } finally {
+        PAI.loading = false;
+    }
+}
+
+function paiShell(inner) {
+    return '<div class="pai-head"><h2><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Platform AI</h2>'
+        + '<p class="muted">Every service\'s AI settings in one place. Keys are sealed and write-only: once saved, nothing here can show one again. Money and key changes ask you to confirm it is you.</p></div>'
+        + '<div id="pai-fresh" class="pai-fresh" hidden><i class="fa-solid fa-lock" aria-hidden="true"></i> <span>Confirm it\'s you to change keys and money settings.</span> <a class="btn btn-primary" href="/login?return=%2Fadmin%23ai">Sign in again</a></div>'
+        + inner;
+}
+
+function paiRender(root) {
+    const exchange = PAI.namespaces.filter((n) => n.service === 'ai' && !n.namespace.endsWith('.provider_keys'));
+    const money = PAI.namespaces.filter((n) => n.service === 'billing');
+    const rest = PAI.namespaces.filter((n) => n.service !== 'ai' && n.service !== 'billing' && !n.namespace.endsWith('.provider_keys'));
+    const count = (n) => n ? ' <span class="pai-count">' + n + '</span>' : '';
+    root.innerHTML = paiShell(
+        '<nav class="pai-index" aria-label="Platform AI sections">'
+        + '<a href="#pai-providers">Providers and accounts' + count(PAI.providers.length) + '</a>'
+        + '<a href="#pai-exchange">AI Exchange' + count(exchange.length) + '</a>'
+        + '<a href="#pai-money">Money' + count(money.length) + '</a>'
+        + '<a href="#pai-services">Services' + count(rest.length) + '</a>'
+        + '<a href="#pai-vault">Vault' + count(PAI.services.length) + '</a>'
+        + '</nav>'
+        + '<div id="pai-warnings"></div>'
+        + '<section id="pai-providers" class="pai-section"><div class="pai-section-head"><h3>Providers and accounts</h3><p class="muted">The providers OpenVibe.AI may call, their billing profile and their key. A subscription account runs on a shared pool; a metered one spends Credits.</p></div>'
+        + '<div class="pai-toolbar"><button type="button" class="btn btn-primary" id="pai-add-provider"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add provider</button></div>'
+        + '<div id="pai-providers-list"></div></section>'
+        + '<section id="pai-exchange" class="pai-section"><h3>AI Exchange</h3><p class="muted">What OpenVibe.AI routes, which models it offers and what it may spend.</p><div id="pai-cards-exchange" data-pai-cards></div></section>'
+        + '<section id="pai-money" class="pai-section"><h3>Money</h3><p class="muted">Credits, top-ups and the sandbox. Every money switch says exactly what it turns on.</p><div id="pai-cards-money" data-pai-cards></div></section>'
+        + '<section id="pai-services" class="pai-section"><h3>Services</h3><p class="muted">The settings of every other service, drawn from each namespace\'s schema.</p><div id="pai-cards-services" data-pai-cards></div></section>'
+        + '<section id="pai-vault" class="pai-section"><h3>Vault</h3><p class="muted">Secrets are sealed with the service\'s own key-encryption key (KEK); without one the store keeps its pre-D11 plaintext behaviour and says so.</p><div id="pai-vault-list"></div></section>'
+    );
+    paiRenderWarnings();
+    paiRenderProviders();
+    paiRenderCards();
+    paiRenderVault();
+    const add = document.getElementById('pai-add-provider');
+    if (add) add.addEventListener('click', () => paiProviderDialog(null));
+    const list = document.getElementById('pai-providers-list');
+    if (list) {
+        list.addEventListener('click', paiProviderClick);
+        list.addEventListener('change', paiProviderSwitch);
+    }
+    for (const box of document.querySelectorAll('#platform-ai [data-pai-cards]')) {
+        box.addEventListener('click', paiCardClick);
+    }
+    if (window.OVForms && window.OVForms.enhance) window.OVForms.enhance(root);
+}
+
+function paiRenderWarnings() {
+    const box = document.getElementById('pai-warnings');
+    if (!box) return;
+    if (!PAI.warnings.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="pai-warning"><strong>Some answers were dropped.</strong> The service answered with something that is not a settings summary, so it is not shown.'
+        + PAI.warnings.map((w) => '<div class="pai-warning-row">' + esc(paiLabel(w.service)) + (w.namespace ? ' · <code>' + esc(w.namespace) + '</code>' : '') + ' — ' + esc(w.reason === 'invalid-summary' ? 'not a settings summary' : (w.reason || 'not available')) + '</div>').join('')
+        + '</div>';
+}
+
+function paiKeyState(p) {
+    const ref = String(p.secret_ref || '');
+    const vault = ref.startsWith('vault:');
+    const env = ref.startsWith('env:');
+    const hint = p.key_hint || p.hint || p.secret_hint || '';
+    const bound = p.bound_to || paiHost(p.base_url);
+    if (p.auth_mode === 'none') return { tone: 'muted', text: 'Not required' };
+    if (vault && p.credentials !== 'missing') return { tone: 'ok', text: 'Sealed' + (hint ? ' ••••' + esc(hint) : '') + ' · bound to ' + esc(paiHost(bound)) };
+    if (env) return { tone: 'muted', text: 'From env ' + esc(ref.slice(4)), env: ref.slice(4) };
+    if (p.credentials === 'missing' || !ref) return { tone: 'bad', text: 'No key' };
+    return { tone: 'ok', text: 'Sealed · bound to ' + esc(paiHost(bound)) };
+}
+
+function paiProviderRow(p) {
+    const access = PAI_ACCESS.includes(String(p.provider_access || '').toUpperCase()) ? String(p.provider_access).toUpperCase() : 'UNVERIFIED';
+    const billing = p.billing_profile === 'subscription' ? 'Subscription · ' + esc(p.pool_key || p.key) : esc(PAI_BILLING_LABEL[p.billing_profile] || PAI_BILLING_LABEL.metered);
+    const key = paiKeyState(p);
+    const sealed = String(p.secret_ref || '').startsWith('vault:') && p.credentials !== 'missing';
+    const actions = '<button type="button" class="btn btn-sm" data-act="edit">Edit</button> '
+        + (key.env ? '<button type="button" class="btn btn-sm" data-act="key">Move into the vault</button> ' : '')
+        + '<button type="button" class="btn btn-sm" data-act="key">' + (sealed ? 'Replace key' : 'Add key') + '</button> '
+        + (sealed ? '<button type="button" class="btn btn-sm btn-danger" data-act="remove-key">Remove key</button>' : '');
+    return '<div class="pai-provider" data-pai-provider="' + esc(p.key) + '">'
+        + '<div class="pai-provider-main"><div class="pai-provider-name">' + esc(p.display_name || p.key) + ' <span class="pai-kind">' + esc(p.kind || '—') + '</span></div>'
+        + '<div class="pai-provider-meta"><code>' + esc(paiHost(p.base_url)) + '</code> <span class="pai-access is-' + access.toLowerCase() + '">' + esc(PAI_ACCESS_LABEL[access]) + '</span> <span class="pai-billing">' + billing + '</span></div>'
+        + '<div class="pai-keystate is-' + key.tone + '">' + key.text + '</div></div>'
+        + '<div class="pai-provider-actions"><label class="pai-switch"><input type="checkbox" role="switch" data-pai-enabled ' + (p.status === 'active' ? 'checked' : '') + '> <span>' + (p.status === 'active' ? 'Enabled' : 'Disabled') + '</span></label>' + actions + '</div></div>';
+}
+
+function paiRenderProviders() {
+    const box = document.getElementById('pai-providers-list');
+    if (!box) return;
+    if (PAI.addProviderError) {
+        box.innerHTML = '<p class="pai-error">' + esc(PAI.addProviderError) + '</p>';
+        return;
+    }
+    if (!PAI.providers.length) {
+        box.innerHTML = '<p class="muted">No provider is configured yet. Add one to let OpenVibe.AI answer.</p>';
+        return;
+    }
+    const subscription = PAI.providers.filter((p) => p.billing_profile === 'subscription');
+    const other = PAI.providers.filter((p) => p.billing_profile !== 'subscription');
+    box.innerHTML = paiFold(other, paiProviderRow)
+        + (subscription.length ? '<h4 class="pai-subhead">Subscription accounts (Claude, Codex, …)</h4>' + paiFold(subscription, paiProviderRow) : '');
+}
+
+function paiProviderClick(ev) {
+    const button = ev.target.closest('button[data-act]');
+    if (!button) return;
+    const row = button.closest('[data-pai-provider]');
+    if (!row) return;
+    const provider = PAI.providers.find((p) => p.key === row.dataset.paiProvider);
+    if (!provider) return;
+    if (button.dataset.act === 'edit') paiProviderDialog(provider);
+    if (button.dataset.act === 'key') paiKeyDialog(provider);
+    if (button.dataset.act === 'remove-key') paiRemoveKey(provider);
+}
+
+async function paiProviderSwitch(ev) {
+    const input = ev.target.closest('input[data-pai-enabled]');
+    if (!input) return;
+    const row = input.closest('[data-pai-provider]');
+    const provider = PAI.providers.find((p) => p.key === row.dataset.paiProvider);
+    if (!provider) return;
+    input.disabled = true;
+    try {
+        await paiApi('/providers/' + encodeURIComponent(provider.key), { method: 'PATCH', body: { status: input.checked ? 'active' : 'disabled' } });
+        provider.status = input.checked ? 'active' : 'disabled';
+        const label = input.parentElement.querySelector('span');
+        if (label) label.textContent = input.checked ? 'Enabled' : 'Disabled';
+        toast(provider.display_name + (input.checked ? ' enabled' : ' disabled'), 'success');
+    } catch (err) {
+        input.checked = !input.checked;
+        const label = input.parentElement.querySelector('span');
+        if (label) label.textContent = input.checked ? 'Enabled' : 'Disabled';
+        if (!err.freshRequired) toast(paiFriendly('ai', err), 'error');
+    } finally {
+        input.disabled = false;
+    }
+}
+
+function paiProviderDialog(provider) {
+    const editing = !!provider;
+    const p = provider || { billing_profile: 'metered', kind: 'openai', priority: 100, provider_access: 'UNVERIFIED' };
+    const access = PAI_ACCESS.includes(String(p.provider_access || '').toUpperCase()) ? String(p.provider_access).toUpperCase() : 'UNVERIFIED';
+    const kind = p.kind || 'openai';
+    const billing = p.billing_profile || 'metered';
+    const dlg = document.createElement('dialog');
+    dlg.className = 'pai-dialog';
+    const options = (items, current) => items.map((item) => '<option value="' + esc(item.value) + '"' + (item.value === current ? ' selected' : '') + ' data-desc="' + esc(item.desc || '') + '" data-state="' + (item.state || 'off') + '">' + esc(item.label) + '</option>').join('');
+    const kindOptions = [
+        { value: 'openai', label: 'OpenAI-compatible', desc: 'Chat/completions with a bearer key', state: 'ok' },
+        { value: 'anthropic', label: 'Anthropic Messages', desc: 'Claude\'s own messages API', state: 'ok' },
+        { value: 'http', label: 'Plain HTTP seam', desc: 'A custom endpoint that speaks JSON', state: 'off' },
+        { value: 'stub', label: 'Deterministic stub', desc: 'Synthetic answers for tests', state: 'off' },
+        { value: 'whisper', label: 'whisper.cpp', desc: 'Local speech-to-text', state: 'off' },
+    ];
+    const billingOptions = [
+        { value: 'metered', label: 'Metered', desc: 'Every request spends Credits', state: 'ok' },
+        { value: 'subscription', label: 'Subscription', desc: 'Runs on a shared plan pool', state: 'ok' },
+        { value: 'payg', label: 'Pay as you go', desc: 'A prepaid provider balance', state: 'off' },
+        { value: 'free', label: 'Free', desc: 'No provider charge', state: 'off' },
+        { value: 'byok', label: 'Customer BYOK', desc: 'A customer\'s own key pays the provider', state: 'new' },
+    ];
+    dlg.innerHTML = '<form method="dialog" class="pai-form">'
+        + '<h3>' + (editing ? 'Edit provider' : 'Add provider') + '</h3>'
+        + '<div class="ov-field"><label for="pai-p-key">Key</label><input id="pai-p-key" name="key" required pattern="[a-z][a-z0-9_-]*([.][a-z0-9_-]+)*" ' + (editing ? 'readonly' : '') + ' value="' + esc(p.key || '') + '"><p class="ov-field-hint">Lowercase, dotted or dashed: deepseek, claude, codex. It cannot be renamed.</p></div>'
+        + '<div class="ov-field"><label for="pai-p-name">Display name</label><input id="pai-p-name" name="display_name" value="' + esc(p.display_name || '') + '"></div>'
+        + '<div class="ov-field"><label for="pai-p-kind">Kind</label><select id="pai-p-kind" name="kind">'
+        + options(kindOptions, kind)
+        + '</select></div>'
+        + '<div class="ov-field"><label for="pai-p-url">Base URL</label><input id="pai-p-url" name="base_url" type="url" placeholder="https://api.example.com" value="' + esc(p.base_url || '') + '"><p class="ov-field-hint">A sealed key is bound to this address: changing it means entering the key again.</p></div>'
+        + '<div class="ov-field"><label for="pai-p-access">Provider access</label><select id="pai-p-access" name="provider_access" data-ov-title="Provider access">'
+        + PAI_ACCESS.map((a) => '<option value="' + a + '"' + (a === access ? ' selected' : '') + ' data-badge="' + esc(PAI_ACCESS_LABEL[a]) + '" data-desc="' + esc(paiAccessDesc(a)) + '" data-state="' + (a === 'OWN_DEPLOYMENT' || a === 'AUTHORIZED_WHOLESALE' ? 'ok' : a === 'RESTRICTED' ? 'warn' : a === 'UNVERIFIED' ? 'off' : 'new') + '">' + esc(PAI_ACCESS_LABEL[a]) + '</option>').join('')
+        + '</select></div>'
+        + '<div class="pai-form-row"><div class="ov-field"><label for="pai-p-billing">Billing profile</label><select id="pai-p-billing" name="billing_profile">'
+        + options(billingOptions, billing)
+        + '</select></div><div class="ov-field"><label for="pai-p-pool">Pool</label><input id="pai-p-pool" name="pool_key" placeholder="claude-max" value="' + esc(p.pool_key || '') + '"><p class="ov-field-hint">Subscription pools only; a name, never a secret.</p></div></div>'
+        + '<div class="pai-form-row"><div class="ov-field"><label for="pai-p-priority">Priority</label><input id="pai-p-priority" name="priority" type="number" step="1" value="' + esc(p.priority == null ? 100 : p.priority) + '"></div>'
+        + '<div class="ov-field"><label for="pai-p-model">Default model</label><input id="pai-p-model" name="default_model" value="' + esc(p.default_model || '') + '"></div></div>'
+        + '<div id="pai-p-key-field"></div>'
+        + '<div class="pai-dialog-actions"><button type="button" class="btn" data-act="cancel">Cancel</button><button type="submit" class="btn btn-primary" data-act="save">' + (editing ? 'Save' : 'Add provider') + '</button></div>'
+        + '</form>';
+    // The key field is built as a DOM node and is never part of an innerHTML string.
+    const keyField = document.createElement('div');
+    keyField.className = 'ov-field';
+    const keyLabel = document.createElement('label');
+    keyLabel.htmlFor = 'pai-p-value';
+    keyLabel.textContent = editing ? 'Replace key (write-only)' : 'Key (write-only)';
+    const keyInput = document.createElement('input');
+    keyInput.id = 'pai-p-value';
+    keyInput.type = 'password';
+    keyInput.autocomplete = 'off';
+    keyInput.spellcheck = false;
+    keyInput.placeholder = editing ? 'Leave empty to keep the key' : 'Paste the provider key';
+    const keyHint = document.createElement('p');
+    keyHint.className = 'ov-field-hint';
+    keyHint.textContent = 'Sent once and sealed by OpenVibe.AI; it is never shown again.';
+    keyField.append(keyLabel, keyInput, keyHint);
+    dlg.querySelector('#pai-p-key-field').append(keyField);
+    document.body.appendChild(dlg);
+    dlg.addEventListener('click', (ev) => { if (ev.target.closest('[data-act="cancel"]')) { dlg.close(); dlg.remove(); } });
+    dlg.addEventListener('close', () => dlg.remove());
+    const form = dlg.querySelector('form');
+    form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const data = new FormData(form);
+        const body = {
+            key: String(data.get('key') || '').trim(),
+            display_name: String(data.get('display_name') || '').trim() || null,
+            kind: data.get('kind'),
+            base_url: String(data.get('base_url') || '').trim() || null,
+            auth_mode: data.get('kind') === 'anthropic' ? 'x-api-key' : (data.get('kind') === 'stub' || data.get('kind') === 'whisper' ? 'none' : 'bearer'),
+            billing_profile: data.get('billing_profile'),
+            pool_key: String(data.get('pool_key') || '').trim() || null,
+            priority: Number(data.get('priority') || 100),
+            default_model: String(data.get('default_model') || '').trim() || null,
+            metadata: { ...(p.metadata || {}), provider_access: data.get('provider_access') },
+        };
+        if (editing && p.base_url && body.base_url !== p.base_url && String(p.secret_ref || '').startsWith('vault:')) {
+            const ok = await paiConfirm('Change the base URL?', ['Its sealed key is bound to the old address and will stop working until you enter it again.']);
+            if (!ok) return;
+        }
+        const save = form.querySelector('[data-act="save"]');
+        save.disabled = true;
+        save.textContent = 'Saving…';
+        try {
+            let created;
+            if (editing) created = await paiApi('/providers/' + encodeURIComponent(p.key), { method: 'PATCH', body });
+            else created = await paiApi('/providers', { method: 'POST', body });
+            const key = body.key || p.key;
+            if (keyInput.value) {
+                await paiApi('/providers/' + encodeURIComponent(key) + '/key', { method: 'PUT', body: { value: keyInput.value, reason: editing ? 'Replaced from the admin panel' : 'Added from the admin panel' } });
+            }
+            keyInput.value = '';
+            dlg.close();
+            toast(editing ? 'Provider saved' : 'Provider added', 'success');
+            await loadPlatformAi();
+        } catch (err) {
+            if (!err.freshRequired) toast(paiFriendly('ai', err), 'error');
+            save.disabled = false;
+            save.textContent = editing ? 'Save' : 'Add provider';
+        } finally {
+            keyInput.value = '';
+        }
+    });
+    dlg.showModal();
+    if (window.OVForms && window.OVForms.enhance) window.OVForms.enhance(dlg);
+}
+
+function paiAccessDesc(access) {
+    return {
+        OWN_DEPLOYMENT: 'A model on OpenVibe\'s own machine: no provider terms limit it.',
+        AUTHORIZED_WHOLESALE: 'A wholesale agreement permits resale; check the agreement covers this model.',
+        CUSTOMER_BYOK: 'The customer\'s own key: they pay the provider and the terms are theirs.',
+        RESTRICTED: 'The provider\'s terms do not permit resale: do not sell this capacity.',
+        UNVERIFIED: 'Not reviewed yet: treat it as restricted until someone checks the terms.',
+    }[access] || '';
+}
+
+async function paiKeyDialog(provider) {
+    const dlg = document.createElement('dialog');
+    dlg.className = 'pai-dialog';
+    const state = paiKeyState(provider);
+    dlg.innerHTML = '<form method="dialog" class="pai-form"><h3>Key for ' + esc(provider.display_name || provider.key) + '</h3>'
+        + '<p class="muted">' + state.text + '</p>'
+        + '<div id="pai-key-field"></div>'
+        + '<div class="pai-dialog-actions"><button type="button" class="btn" data-act="cancel">Cancel</button><button type="submit" class="btn btn-primary" data-act="save">Save key</button></div></form>';
+    const field = document.createElement('div');
+    field.className = 'ov-field';
+    const label = document.createElement('label');
+    label.htmlFor = 'pai-key-value';
+    label.textContent = 'Provider key (write-only)';
+    const input = document.createElement('input');
+    input.id = 'pai-key-value';
+    input.type = 'password';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.required = true;
+    const hint = document.createElement('p');
+    hint.className = 'ov-field-hint';
+    hint.textContent = 'Sent once, sealed by OpenVibe.AI; the box is cleared and removed right after saving.';
+    field.append(label, input, hint);
+    dlg.querySelector('#pai-key-field').append(field);
+    document.body.appendChild(dlg);
+    dlg.addEventListener('click', (ev) => { if (ev.target.closest('[data-act="cancel"]')) { dlg.close(); dlg.remove(); } });
+    dlg.addEventListener('close', () => { input.value = ''; dlg.remove(); });
+    const form = dlg.querySelector('form');
+    let saving = false;
+    form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        if (saving) return;
+        saving = true;
+        const value = input.value;
+        const save = form.querySelector('[data-act="save"]');
+        save.disabled = true;
+        save.textContent = 'Saving…';
+        try {
+            await paiApi('/providers/' + encodeURIComponent(provider.key) + '/key', { method: 'PUT', body: { value, reason: 'Replaced from the admin panel' } });
+            toast('Key sealed', 'success');
+            dlg.close();
+            await loadPlatformAi();
+        } catch (err) {
+            if (!err.freshRequired) toast(paiFriendly('ai', err), 'error');
+            save.disabled = false;
+            save.textContent = 'Save key';
+        } finally {
+            // Clear and remove the input even when the request failed: a secret must not stay in the page.
+            input.value = '';
+            input.remove();
+            if (dlg.open) dlg.close();
+            saving = false;
+        }
+    });
+    dlg.showModal();
+    if (window.OVForms && window.OVForms.enhance) window.OVForms.enhance(dlg);
+}
+
+async function paiRemoveKey(provider) {
+    const ok = await paiConfirm('Remove the key?', [paiLabel('ai') + ' will stop calling ' + (provider.display_name || provider.key) + ' until a key is entered again.']);
+    if (!ok) return;
+    try {
+        await paiApi('/providers/' + encodeURIComponent(provider.key) + '/key', { method: 'DELETE', body: { reason: 'Removed from the admin panel' } });
+        toast('Key removed', 'success');
+        await loadPlatformAi();
+    } catch (err) {
+        if (!err.freshRequired) toast(paiFriendly('ai', err), 'error');
+    }
+}
+
+function paiRenderCards() {
+    paiFillCards('exchange', PAI.namespaces.filter((n) => n.service === 'ai' && !n.namespace.endsWith('.provider_keys')), 'OpenVibe.AI has not published the ai.exchange namespace yet.');
+    paiFillCards('money', PAI.namespaces.filter((n) => n.service === 'billing'), 'OpenVibe.Billing has not published a settings namespace yet.');
+    paiFillCards('services', PAI.namespaces.filter((n) => n.service !== 'ai' && n.service !== 'billing' && !n.namespace.endsWith('.provider_keys')), 'No other service has published settings yet.');
+}
+
+function paiFillCards(group, list, empty) {
+    const box = document.getElementById('pai-cards-' + group);
+    if (!box) return;
+    if (!list.length) { box.innerHTML = '<p class="muted">' + empty + '</p>'; return; }
+    const groups = new Map();
+    for (const n of list) {
+        const name = (n.schema && n.schema['x-group']) || 'General';
+        if (!groups.has(name)) groups.set(name, []);
+        groups.get(name).push(n);
+    }
+    box.innerHTML = [...groups.entries()].map(([name, items]) => '<h4 class="pai-group">' + esc(name) + '</h4>' + items.map(paiCard).join('')).join('');
+}
+
+function paiCard(n) {
+    const schema = n.schema || {};
+    const props = schema.properties || {};
+    const pins = Array.isArray(n.pins) ? n.pins : (n.pins && typeof n.pins === 'object' ? Object.keys(n.pins) : []);
+    const pinEnv = n.pin_env || {};
+    const fields = Object.entries(props).map(([key, prop]) => paiField(n, key, prop, pins.includes(key), pinEnv[key])).join('');
+    const actor = n.active && n.active.activated_by && n.active.activated_by.id ? n.active.activated_by.id : (n.active && n.active.created_by && n.active.created_by.id ? n.active.created_by.id : null);
+    const who = actor ? (currentUser && actor === currentUser.subject_id ? '@' + currentUser.username : actor) : '';
+    const at = n.active && (n.active.activated_at || n.active.created_at);
+    const revised = n.revision == null ? 'Not published' : 'Revision ' + esc(n.revision);
+    return '<article class="pai-card" data-pai-card data-service="' + esc(n.service) + '" data-namespace="' + esc(n.namespace) + '">'
+        + '<header class="pai-card-head"><h5>' + esc(schema.title || n.namespace) + '</h5>' + (schema.description ? '<p class="muted">' + esc(schema.description) + '</p>' : '') + '</header>'
+        + '<div class="pai-fields">' + fields + '</div>'
+        + '<footer class="pai-card-foot"><span class="pai-revision">' + revised + (who ? ' · ' + esc(who) : '') + (at ? ' · ' + esc(paiWhen(at)) : '') + '</span>'
+        + '<span class="pai-card-actions"><button type="button" class="btn btn-sm" data-act="history">History</button><button type="button" class="btn btn-sm btn-primary" data-act="save">Save</button></span></footer>'
+        + '</article>';
+}
+
+function paiField(n, key, prop, pinned, pinName) {
+    const value = n.values ? n.values[key] : undefined;
+    const cls = (n.classification && n.classification[key]) || 'internal';
+    const danger = !!prop['x-danger'];
+    const title = prop.title || key;
+    const description = prop.description || '';
+    const types = Array.isArray(prop.type) ? prop.type : [prop.type];
+    const type = types.find((t) => t !== 'null') || 'string';
+    const nullable = types.includes('null');
+    const chips = (pinned ? '<span class="pai-chip-lock">🔒 Pinned</span>' : '') + (danger ? '<span class="pai-chip-danger">' + esc(/money|credit|spend|pay|price|usd/i.test(title + ' ' + description + ' ' + key) ? 'Money' : 'Danger') + '</span>' : '') + (cls === 'secret' ? '<span class="pai-chip-secret">Secret</span>' : '');
+    let control;
+    if (pinned) {
+        const shown = typeof value === 'string' ? value : JSON.stringify(value);
+        control = '<div class="pai-pinned">' + esc(shown == null ? '—' : shown) + ' <small>Pinned by ' + esc(pinName || (prop['x-env'] || 'the environment')) + ' in the env file</small></div>';
+    } else if (cls === 'secret') {
+        const marker = paiMarker(value);
+        control = '<div class="pai-secret"><span class="pai-marker">' + (marker ? 'Sealed ••••' + esc(marker.hint || '') : 'Not set') + '</span> '
+            + '<button type="button" class="btn btn-sm" data-act="secret" data-key="' + esc(key) + '">' + (marker ? 'Replace key' : 'Set key') + '</button>'
+            + (marker ? ' <button type="button" class="btn btn-sm btn-danger" data-act="secret-remove" data-key="' + esc(key) + '">Remove</button>' : '') + '</div>';
+    } else if (prop.enum && Array.isArray(prop.enum)) {
+        control = '<select data-pai-control data-type="enum" data-key="' + esc(key) + '" aria-label="' + esc(title) + '">' + prop.enum.map((v) => '<option value="' + esc(v) + '"' + (String(value) === String(v) ? ' selected' : '') + '>' + esc(v) + '</option>').join('') + '</select>';
+    } else if (type === 'boolean') {
+        control = '<label class="pai-switch"><input type="checkbox" role="switch" data-pai-control data-type="boolean" data-key="' + esc(key) + '"' + (value ? ' checked' : '') + '> <span>' + (value ? 'On' : 'Off') + '</span></label>';
+    } else if (type === 'array') {
+        const items = Array.isArray(value) ? value : [];
+        control = '<div class="pai-chips" data-pai-chips>' + items.map((it) => paiChip(it)).join('') + '</div>'
+            + '<span class="pai-list-add"><input data-pai-list-input placeholder="Add…" aria-label="Add to ' + esc(title) + '"><button type="button" class="btn btn-sm" data-act="list-add">Add</button></span>';
+    } else if (type === 'object') {
+        control = '<textarea data-pai-control data-type="object" data-key="' + esc(key) + '" rows="3" spellcheck="false" aria-label="' + esc(title) + '">' + esc(JSON.stringify(value == null ? {} : value, null, 2)) + '</textarea>';
+    } else if (prop['x-unit'] === 'nano_usd') {
+        control = '<span class="pai-money-input"><span class="pai-prefix">$</span><input data-pai-control data-type="nano_usd" data-key="' + esc(key) + '" inputmode="decimal" value="' + esc(paiUsd(value)) + '" aria-label="' + esc(title) + '"></span>';
+    } else if (type === 'integer') {
+        control = '<span class="pai-unit-input"><input data-pai-control data-type="integer" data-key="' + esc(key) + '"' + (nullable ? ' data-nullable="1"' : '') + ' type="number" step="1" value="' + esc(value == null ? '' : value) + '" aria-label="' + esc(title) + '"><span class="pai-unit">' + esc(prop['x-unit'] || '') + '</span></span>';
+    } else if (type === 'number') {
+        control = '<input data-pai-control data-type="number" data-key="' + esc(key) + '"' + (nullable ? ' data-nullable="1"' : '') + ' type="number" step="any" value="' + esc(value == null ? '' : value) + '" aria-label="' + esc(title) + '">';
+    } else {
+        control = '<input data-pai-control data-type="string" data-key="' + esc(key) + '"' + (nullable ? ' data-nullable="1"' : '') + ' value="' + esc(value == null ? '' : value) + '" aria-label="' + esc(title) + '">';
+    }
+    return '<div class="pai-field" data-pai-field data-key="' + esc(key) + '" data-secret="' + (cls === 'secret' ? '1' : '0') + '" data-pinned="' + (pinned ? '1' : '0') + '">'
+        + '<div class="pai-field-label"><label>' + esc(title) + ' <code>' + esc(key) + '</code></label>' + chips + '</div>'
+        + (description ? '<p class="pai-field-desc muted">' + esc(description) + '</p>' : '')
+        + '<div class="pai-control">' + control + '</div></div>';
+}
+
+function paiChip(value) {
+    const label = typeof value === 'string' ? value : JSON.stringify(value);
+    return '<span class="pai-chip" data-value="' + esc(JSON.stringify(value)) + '"><span>' + esc(label) + '</span><button type="button" data-act="list-remove" aria-label="Remove ' + esc(label) + '">×</button></span>';
+}
+
+async function paiCardClick(ev) {
+    const button = ev.target.closest('button[data-act]');
+    if (!button) return;
+    const card = button.closest('[data-pai-card]');
+    if (!card) return;
+    const n = PAI.namespaces.find((x) => x.service === card.dataset.service && x.namespace === card.dataset.namespace);
+    if (!n) return;
+    const act = button.dataset.act;
+    if (act === 'save') return await paiSaveCard(card, n);
+    if (act === 'history') return await paiHistoryDialog(n);
+    if (act === 'secret') return paiSecretDialog(n, button.dataset.key);
+    if (act === 'secret-remove') return paiRemoveSecret(n, button.dataset.key);
+    if (act === 'list-add') {
+        const field = button.closest('[data-pai-field]');
+        const input = field.querySelector('[data-pai-list-input]');
+        const text = String(input.value || '').trim();
+        if (!text) return;
+        const chips = field.querySelector('[data-pai-chips]');
+        chips.insertAdjacentHTML('beforeend', paiChip(text));
+        input.value = '';
+        return;
+    }
+    if (act === 'list-remove') {
+        const chip = button.closest('.pai-chip');
+        if (chip) chip.remove();
+    }
+}
+
+function paiCollect(card) {
+    const values = {};
+    for (const field of card.querySelectorAll('[data-pai-field]')) {
+        if (field.dataset.pinned === '1' || field.dataset.secret === '1') continue;
+        const control = field.querySelector('[data-pai-control]');
+        if (!control) continue;
+        const key = field.dataset.key;
+        if (!key) continue;
+        if (control.dataset.type === 'boolean') values[key] = control.checked;
+        else if (control.dataset.nullable === '1' && control.value === '') values[key] = null;
+        else if (control.dataset.type === 'nano_usd') {
+            const parsed = paiParseUsd(control.value);
+            if (parsed.error) return { error: control.dataset.key + ': ' + parsed.error };
+            values[key] = parsed.nano;
+        } else if (control.dataset.type === 'integer') {
+            const number = Number(control.value);
+            if (!Number.isInteger(number)) return { error: key + ': enter a whole number' };
+            values[key] = number;
+        } else if (control.dataset.type === 'number') {
+            const number = Number(control.value);
+            if (!Number.isFinite(number)) return { error: key + ': enter a number' };
+            values[key] = number;
+        } else if (control.dataset.type === 'enum' || control.dataset.type === 'string') values[key] = control.value;
+        else if (control.dataset.type === 'object') {
+            try { values[key] = JSON.parse(control.value); } catch { return { error: key + ': the JSON is not valid' }; }
+        }
+    }
+    for (const field of card.querySelectorAll('[data-pai-field]')) {
+        if (field.querySelector('[data-pai-chips]')) {
+            values[field.dataset.key] = [...field.querySelectorAll('.pai-chip')].map((chip) => JSON.parse(chip.dataset.value));
+        }
+    }
+    return { values };
+}
+
+async function paiSaveCard(card, n) {
+    const collected = paiCollect(card);
+    if (collected.error) return toast(collected.error, 'error');
+    const changed = {};
+    for (const [key, value] of Object.entries(collected.values)) {
+        if (JSON.stringify(value) !== JSON.stringify(n.values ? n.values[key] : undefined)) changed[key] = value;
+    }
+    if (!Object.keys(changed).length) return toast('Nothing to save', 'info');
+    const props = (n.schema && n.schema.properties) || {};
+    const danger = Object.keys(changed).filter((key) => props[key] && props[key]['x-danger']);
+    if (danger.length) {
+        const lines = danger.map((key) => (props[key].title || key) + ': ' + (props[key].description || 'This change takes effect at once.') + ' Now: ' + (changed[key] ? 'on' : 'off') + '.');
+        const ok = await paiConfirm('Save this money setting?', lines);
+        if (!ok) return;
+    }
+    const save = card.querySelector('[data-act="save"]');
+    save.disabled = true;
+    save.textContent = 'Saving…';
+    try {
+        await paiApi('/' + encodeURIComponent(n.service) + '/' + encodeURIComponent(n.namespace), { method: 'POST', body: { values: changed, reason: 'Changed in the admin panel', merge: true } });
+        toast('Saved', 'success');
+        await loadPlatformAi();
+    } catch (err) {
+        if (!err.freshRequired) toast(paiFriendly(n.service, err), 'error');
+    } finally {
+        save.disabled = false;
+        save.textContent = 'Save';
+    }
+}
+
+function paiSecretDialog(n, key) {
+    const dlg = document.createElement('dialog');
+    dlg.className = 'pai-dialog';
+    dlg.innerHTML = '<form method="dialog" class="pai-form"><h3>' + esc(key) + '</h3><p class="muted">The value is written once, sealed by ' + esc(paiLabel(n.service)) + '; it is never shown again.</p>'
+        + '<div id="pai-secret-field"></div><div class="pai-dialog-actions"><button type="button" class="btn" data-act="cancel">Cancel</button><button type="submit" class="btn btn-primary" data-act="save">Save key</button></div></form>';
+    const field = document.createElement('div');
+    field.className = 'ov-field';
+    const label = document.createElement('label');
+    label.htmlFor = 'pai-secret-value';
+    label.textContent = 'New value (write-only)';
+    const input = document.createElement('input');
+    input.id = 'pai-secret-value';
+    input.type = 'password';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.required = true;
+    const hint = document.createElement('p');
+    hint.className = 'ov-field-hint';
+    hint.textContent = 'Cleared and removed from the page right after saving.';
+    field.append(label, input, hint);
+    dlg.querySelector('#pai-secret-field').append(field);
+    document.body.appendChild(dlg);
+    dlg.addEventListener('click', (ev) => { if (ev.target.closest('[data-act="cancel"]')) { dlg.close(); dlg.remove(); } });
+    dlg.addEventListener('close', () => { input.value = ''; dlg.remove(); });
+    const form = dlg.querySelector('form');
+    form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const save = form.querySelector('[data-act="save"]');
+        save.disabled = true;
+        save.textContent = 'Saving…';
+        try {
+            await paiApi('/' + encodeURIComponent(n.service) + '/' + encodeURIComponent(n.namespace) + '/secrets/' + encodeURIComponent(key), { method: 'PUT', body: { value: input.value, reason: 'Changed in the admin panel' } });
+            toast('Key saved', 'success');
+            dlg.close();
+            await loadPlatformAi();
+        } catch (err) {
+            if (!err.freshRequired) toast(paiFriendly(n.service, err), 'error');
+            save.disabled = false;
+            save.textContent = 'Save key';
+        } finally {
+            input.value = '';
+            input.remove();
+            if (dlg.open) dlg.close();
+        }
+    });
+    dlg.showModal();
+    if (window.OVForms && window.OVForms.enhance) window.OVForms.enhance(dlg);
+}
+
+async function paiRemoveSecret(n, key) {
+    const ok = await paiConfirm('Remove ' + key + '?', [paiLabel(n.service) + ' will not have this value until it is entered again.']);
+    if (!ok) return;
+    try {
+        await paiApi('/' + encodeURIComponent(n.service) + '/' + encodeURIComponent(n.namespace) + '/secrets/' + encodeURIComponent(key), { method: 'DELETE', body: { reason: 'Removed from the admin panel' } });
+        toast('Key removed', 'success');
+        await loadPlatformAi();
+    } catch (err) {
+        if (!err.freshRequired) toast(paiFriendly(n.service, err), 'error');
+    }
+}
+
+async function paiHistoryDialog(n) {
+    let data;
+    try {
+        data = await paiApi('/' + encodeURIComponent(n.service) + '/' + encodeURIComponent(n.namespace) + '/history?limit=50');
+    } catch (err) {
+        return toast(paiFriendly(n.service, err), 'error');
+    }
+    const snapshots = (data && data.snapshots) || [];
+    const dlg = document.createElement('dialog');
+    dlg.className = 'pai-dialog pai-dialog-wide';
+    const rows = snapshots.map((s) => {
+        const actor = s.activated_by && s.activated_by.id ? s.activated_by.id : (s.created_by && s.created_by.id ? s.created_by.id : '');
+        const current = s.state === 'active' || s.revision === n.revision;
+        return '<tr><td>' + esc(s.revision) + '</td><td>' + esc(paiWhen(s.activated_at || s.created_at)) + '</td><td>' + esc(actor || '—') + '</td><td>' + esc(s.reason || '—') + '</td><td>' + (current ? '<span class="muted">Current</span>' : '<button type="button" class="btn btn-sm" data-rollback="' + esc(s.revision) + '">Roll back</button>') + '</td></tr>';
+    }).join('');
+    dlg.innerHTML = '<div class="pai-form"><h3>History · ' + esc(n.namespace) + '</h3>'
+        + (snapshots.length ? '<div class="pai-table-wrap"><table class="pai-table"><thead><tr><th>Revision</th><th>When</th><th>By</th><th>Reason</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<p class="muted">No revisions yet.</p>')
+        + '<div class="pai-dialog-actions"><button type="button" class="btn" data-act="close">Close</button></div></div>';
+    document.body.appendChild(dlg);
+    dlg.addEventListener('click', async (ev) => {
+        if (ev.target.closest('[data-act="close"]')) { dlg.close(); return; }
+        const rollback = ev.target.closest('[data-rollback]');
+        if (!rollback) return;
+        const to = Number(rollback.dataset.rollback);
+        const ok = await paiConfirm('Roll back to revision ' + to + '?', ['The namespace returns to that revision. Nothing is deleted; the rollback is recorded as a new revision.']);
+        if (!ok) return;
+        rollback.disabled = true;
+        try {
+            await paiApi('/' + encodeURIComponent(n.service) + '/' + encodeURIComponent(n.namespace) + '/rollback', { method: 'POST', body: { to, reason: 'Rolled back from the admin panel' } });
+            dlg.close();
+            toast('Rolled back', 'success');
+            await loadPlatformAi();
+        } catch (err) {
+            rollback.disabled = false;
+            if (!err.freshRequired) toast(paiFriendly(n.service, err), 'error');
+        }
+    });
+    dlg.addEventListener('close', () => dlg.remove());
+    dlg.showModal();
+}
+
+function paiConfirm(title, lines) {
+    return new Promise((resolve) => {
+        const dlg = document.createElement('dialog');
+        dlg.className = 'pai-dialog';
+        dlg.innerHTML = '<div class="pai-form"><h3>' + esc(title) + '</h3>' + (lines || []).map((line) => '<p class="pai-confirm-line">' + esc(line) + '</p>').join('')
+            + '<div class="pai-dialog-actions"><button type="button" class="btn" data-act="cancel">Cancel</button><button type="button" class="btn btn-primary" data-act="confirm">Confirm</button></div></div>';
+        let answer = false;
+        document.body.appendChild(dlg);
+        dlg.addEventListener('click', (ev) => {
+            if (ev.target.closest('[data-act="cancel"]')) { answer = false; dlg.close(); }
+            if (ev.target.closest('[data-act="confirm"]')) { answer = true; dlg.close(); }
+        });
+        dlg.addEventListener('close', () => { dlg.remove(); resolve(answer); });
+        dlg.showModal();
+    });
+}
+
+function paiRenderVault() {
+    const box = document.getElementById('pai-vault-list');
+    if (!box) return;
+    const rows = PAI.services.map((s) => {
+        const vault = PAI.vault[s.service] || { sealed: null, kek: null };
+        const state = vault.sealed === true
+            ? '<span class="pai-state is-ok">Sealed</span>' + (vault.kek ? ' · KEK <code>' + esc(vault.kek) + '</code>' : '')
+            : vault.sealed === false
+                ? '<span class="pai-state is-bad">Not sealed</span>'
+                : '<span class="pai-state is-muted">Unknown</span>';
+        const hint = vault.sealed === true ? '' : '<div class="pai-hint">the service needs openvibe-shared 4.110 or later and OV_CONFIG_KEKS</div>';
+        return '<div class="pai-vault-row"><span class="pai-vault-name">' + esc(s.name) + '</span>' + state + hint + '</div>';
+    });
+    box.innerHTML = paiFold(rows, (row) => row);
 }

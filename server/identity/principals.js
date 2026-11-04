@@ -306,6 +306,18 @@ const DEFAULT_GRANTS = [
     // WS-X1: Host reports the platform's machines to the node registry (ovhost nodes report).
     ['host', 'network.node.report', SELF_AUDIENCE, []],
     ['host', 'network.resource.report', SELF_AUDIENCE, []],
+    // D11 S3 (OWNER-SETTINGS.md): Network's admin proxy reads and changes every service's configuration as the owner,
+    // on /internal/config. The nine internal <svc>.config.manage capabilities (Contracts 0.288.0) are held by Network
+    // alone; the owner travels in X-OV-Subject, never in a grant. These are new rows, so the boot seed's ON CONFLICT
+    // DO NOTHING inserts them; nothing was revoked and no namespaces moved, so no RESTORED_GRANTS or
+    // CHANGED_DEFAULT_NAMESPACES entry is needed. The deploy applies them from ensureSchema() at boot.
+    ...['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor']
+        .map((svc) => ['network', `${svc}.config.manage`, `openvibe.${svc}`, []]),
+    // The owner's AI tab lists and edits AI's provider registry through AI's own admin API (GET/POST/PATCH
+    // /api/v1/providers), as Network, naming the owner in X-OV-Subject.
+    ['network', 'ai.provider.manage', 'openvibe.ai', []],
+    // Host's demand planner reads AI's usage feed (Host #283): ai.usage.read on openvibe.ai.
+    ['host', 'ai.usage.read', 'openvibe.ai', []],
     // Plan T2 N4b: Bot pairs its users' machines with Network and reads or revokes only the principals it paired.
     ['bot', 'network.node.manage', SELF_AUDIENCE, []],
     // Plan T15: an owner adds an operator by @username on the robot's panel; Bot resolves it to the subject here.
