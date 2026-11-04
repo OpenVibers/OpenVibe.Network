@@ -25,6 +25,10 @@ answers `503 api_keys.disabled` and nothing is written.
 | Service-side project read | `server/internal/routes.js` (`GET /internal/projects/:project_id`), `server/developer/store.js` (`internalProjectView`) | `network.project.read` on a service token; the view carries the tenancy, the allowance, the quotas, the apps and their grants. |
 | How OpenVibe.AI authenticates app tokens today | `OpenVibe.AI/server/auth.js` (`verify`, `requireCap`, `appOrCap`) | An app token (`sub app:app_<ULID>`, `actor_type app`) is refused on every first-party route and judged only on `ai.app.run` on the routes that take one (`appOrCap`). The token is verified offline against Network's JWKS, so a Network-minted token needs no change on AI's side. |
 
+Network now pins `openvibe-contracts` **0.284.0** (it was 0.280.0), the release that registers the
+public capability `ai.inference.create` (plan D8) and the `billing.credit-*` schemas (D9). The pin is
+expand-only, so nothing existing changes.
+
 ### There is no `hbt_` system
 
 No `hbt_` prefix, no API-token table and no bearer-API-key route exist in this repository (the
@@ -65,7 +69,9 @@ ordinary app token with the project's tenancy. The secret is `ovk_` plus 32 rand
   sandbox token (`env: sandbox`); a `live` key belongs to a production app and exchanges for a
   production token (`env: production`). A key that does not match its app's environment is refused.
 - **Scopes:** Network's own vocabulary. `ai.inference` is the only scope today: it maps to the
-  capability `ai.inference.create` (plan D8, contracts 0.284.0) and to the audience `openvibe.ai`.
+  capability `ai.inference.create` (plan D8, contracts 0.284.0 — Network now pins that release) and
+  to the audience `openvibe.ai`. The scope is narrowed by the app: the app must hold the scope's
+  capability as an approved grant, so a key can never do more than the app it belongs to.
 - **Audit:** `api_key.created`, `api_key.rotated`, `api_key.revoked` and `api_key.exchanged` rows in
   `dev_audit`, with ids, scopes and the environment — never a secret.
 - **Cascades:** revoking the app revokes its keys with it (`server/developer/store.js`,
@@ -98,7 +104,8 @@ Authorization: Bearer <the service's token for openvibe.network>   (network.proj
   (`sub app:app_<ULID>`, `actor_type app`, `aud [openvibe.ai]`, `cap [ai.inference.create]`,
   `ns [project_id, app.<project_id>.*]`, `project_id`, `env`).
 - **The scope is enforced by Network.** A key may only be exchanged for an audience its scopes
-  cover: `403 api_key.scope_denied` otherwise. The key's scopes decide the `cap` claim.
+  cover: `403 api_key.scope_denied` otherwise. The key's scopes, narrowed by the app's approved
+  grants, decide the `cap` claim.
 - A revoked key, an unknown key and a malformed key are the same `401 api_key.invalid`: a guess
   learns nothing, and a revoked key stops working at once.
 - The key, its hash and the issued token never reach a log or an error message.
@@ -140,10 +147,6 @@ touches either side.
 - **The scope vocabulary is Network's own.** It is not the contracts capability catalog: the key
   holds `ai.inference`, and the exchange maps it to `ai.inference.create`. When the contracts
   catalog grows the scope list, the mapping moves into it.
-- **A key is not bounded by its app's grants.** The key's scopes decide what the exchanged token
-  may do. Intersecting them with the app's approved grants needs `ai.inference.create` in the
-  installed contracts catalog (Network pins 0.280.0 today), which lands with the next contracts
-  pin.
 - **OpenVibe.AI does not read `ovk_` keys yet.** It authenticates app tokens today
   (`OpenVibe.AI/server/auth.js`). The exchange is what lets AI accept a developer's key: AI calls
   `/internal/api-keys/exchange` and uses the token it gets back, unchanged.
@@ -160,7 +163,8 @@ touches either side.
 - the key is shown once and only `sha256(secret)` is stored (the secret is nowhere in the row);
 - a revoked key is refused at once, and rotating it invalidates the old secret at once;
 - the scope is enforced: an audience the key's scopes do not cover is `403 api_key.scope_denied`,
-  and the exchanged token carries `cap: ["ai.inference.create"]` (D8);
+  the exchanged token carries `cap: ["ai.inference.create"]` (D8), and revoking the app's grant
+  takes the scope with it;
 - the budget is read and written as a nano-USD string, a fraction is refused, and OpenVibe.AI reads
   it with its service token (`no-store`);
 - the key never reaches a log line, an audit row or an error message;
