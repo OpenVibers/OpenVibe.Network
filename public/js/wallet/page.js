@@ -92,8 +92,12 @@
             a.href = p.url;
             a.target = '_blank';
             a.rel = 'noopener';
-            a.append(W.el('b', null, p.name || 'Project'), W.el('span', 'w-project-id', p.id));
+            a.title = `${p.name || 'Project'} on openvibe.services`;
+            a.append(W.el('b', null, p.name || 'Project'), W.el('span', 'w-project-ext', '↗'));
             main.appendChild(a);
+            let held = 0n;
+            try { held = BigInt(String(p.held_nano_usd || '0')); } catch { held = 0n; }
+            if (held > 0n) main.appendChild(W.el('span', 'w-project-sub', `Available ${M.money(p.available_nano_usd)}`));
             const side = W.el('div', 'w-project-side');
             side.appendChild(W.el('span', 'w-project-bal', M.money(p.balance_nano_usd)));
             const add = W.el('button', 'ovk-btn ovk-btn--quiet ovk-btn--small', 'Add');
@@ -107,21 +111,35 @@
         }
     }
 
+    function activityParts(row) {
+        if (Array.isArray(row.parts) && row.parts.length) return row.parts;
+        return row.kind ? [{ kind: row.kind, amount: row.amount }] : [];
+    }
+
     function activityRow(row) {
         const li = W.el('li', 'w-act');
-        li.dataset.kind = row.kind;
+        const parts = activityParts(row);
+        const kinds = parts.map((p) => p.kind);
+        li.dataset.kinds = kinds.join(' ');
         const t = W.when(row.at);
         const date = W.el('time', 'w-act-date', t.date);
         date.dateTime = String(row.at || '');
         if (t.time) date.title = t.time;
         const main = W.el('div', 'w-act-main');
         main.appendChild(W.el('b', 'w-act-label', row.label || 'Activity'));
-        const kindName = row.kind === 'vibes' ? 'Vibes' : 'Balance';
+        const kindNames = [...new Set(kinds.map((k) => (k === 'vibes' ? 'Vibes' : 'Balance')))];
+        const kindName = kindNames.join(' · ');
         main.appendChild(W.el('span', 'w-act-detail', row.detail ? `${kindName} · ${row.detail}` : kindName));
-        const signed = row.kind === 'balance' ? M.signedMoney(row.amount) : { sign: Number(row.amount) < 0 ? '−' : '+', text: M.vibes(Math.abs(Number(row.amount))) };
-        const amt = W.el('span', `w-act-amt ${signed.sign === '+' ? 'is-pos' : 'is-neg'}`);
-        amt.append(document.createTextNode(`${signed.sign}${signed.text}`));
-        if (row.kind === 'vibes') amt.appendChild(W.el('small', null, 'Vibes'));
+        const amt = W.el('span', `w-act-amt${parts.length > 1 ? ' w-act-amt--stack' : ''}`);
+        for (const part of parts) {
+            const signed = part.kind === 'balance'
+                ? M.signedMoney(part.amount)
+                : { sign: Number(part.amount) < 0 ? '−' : '+', text: M.vibes(Math.abs(Number(part.amount))) };
+            const line = W.el('span', `w-act-part ${signed.sign === '+' ? 'is-pos' : 'is-neg'}`);
+            line.append(document.createTextNode(`${signed.sign}${signed.text}`));
+            if (part.kind === 'vibes') line.appendChild(W.el('small', null, 'Vibes'));
+            amt.appendChild(line);
+        }
         li.append(date, main, amt);
         return li;
     }
@@ -139,7 +157,7 @@
         const items = $('w-activity').children;
         let shown = 0;
         for (const li of items) {
-            const ok = filter === 'all' || li.dataset.kind === filter;
+            const ok = filter === 'all' || String(li.dataset.kinds || '').split(' ').includes(filter);
             li.hidden = !ok;
             if (ok) shown++;
         }

@@ -14,6 +14,7 @@ const path = require('path');
 const express = require('express');
 const { getDb } = require('../server/db/database');
 const createWalletRoutes = require('../server/wallet/routes');
+const principals = require('../server/identity/principals');
 const money = require('../public/js/wallet/money');
 
 const ROOT = path.join(__dirname, '..');
@@ -73,12 +74,19 @@ const KEY = (n) => `idem-${String(n).padStart(4, '0')}`;
             entries: [{ account: { kind: 'usd_credit_sandbox', owner: `user:${subject}`, currency: 'nano-usd' }, amount: '999' }],
         },
     ]);
-    assert.deepStrictEqual(activity.map((r) => [r.kind, r.amount, r.label]), [
-        ['balance', '-5000000000', 'Bought 500 Vibes'],
-        ['vibes', 500, 'Bought 500 Vibes'],
-        ['balance', '-123000000', 'AI usage'],
-    ], 'newest first; creator payable and sandbox are not the spendable wallet');
+    assert.deepStrictEqual(activity.map((r) => [r.kinds, r.parts, r.label]), [
+        [['balance', 'vibes'], [{ kind: 'balance', amount: '-5000000000' }, { kind: 'vibes', amount: 500 }], 'Got 500 Vibes with your Balance'],
+        [['balance'], [{ kind: 'balance', amount: '-123000000' }], 'AI usage'],
+    ], 'one row per transaction, both currencies together; creator payable and sandbox are not the spendable wallet');
     assert.strictEqual(createWalletRoutes.mapActivity(subject, null).length, 0);
+    assert.deepStrictEqual(createWalletRoutes.mapPersonActivity(subject, { activity: [
+        { id: 'txn_one', at: '2026-11-04T10:00:00.000Z', kind: 'vibes', label: 'Got 500 Vibes with your Balance', amount: 500 },
+        { id: 'txn_one', at: '2026-11-04T10:00:00.000Z', kind: 'balance', label: 'Got 500 Vibes with your Balance', amount: '-5000000000' },
+    ] }).map((r) => [r.kinds, r.parts]), [[['balance', 'vibes'], [{ kind: 'balance', amount: '-5000000000' }, { kind: 'vibes', amount: 500 }]]], 'the person-shaped route is grouped too');
+    assert.deepStrictEqual(createWalletRoutes.mapPersonActivity(subject, { activity: [
+        { id: 'txn_two', at: '2026-11-04T11:00:00.000Z', label: 'Got 10 Vibes with your Balance', amounts: { balance: '-100000000', vibes: 10 } },
+    ] }).map((r) => [r.kinds, r.parts]), [[['balance', 'vibes'], [{ kind: 'balance', amount: '-100000000' }, { kind: 'vibes', amount: 10 }]]], 'an { amounts } shape is read too');
+    assert.ok(!principals.DEFAULT_GRANTS.some(([client, cap]) => client === 'network' && cap === 'billing.balance.read'), 'Network does not seed a broad Billing read');
 
     // ── The proxies, against a stand-in Billing ─────────────
     const db = getDb();
@@ -95,6 +103,7 @@ const KEY = (n) => `idem-${String(n).padStart(4, '0')}`;
     let balanceMode = 'ok';
     let vibesMode = 'ok';
     let chargeMode = 'ok';
+    let activityMode = 'missing';
     const billing = http.createServer((req, res) => {
         const url = new URL(req.url, 'http://billing.test');
         const auth = req.headers.authorization || '';
@@ -104,12 +113,22 @@ const KEY = (n) => `idem-${String(n).padStart(4, '0')}`;
             asked.push({ url: url.pathname + url.search, auth, method: req.method, body });
             res.setHeader('content-type', 'application/json');
             if (url.pathname === '/api/v1/rates') return res.end(JSON.stringify({ bits_per_usd: 100, min_purchase_bits: 100, packages: [{ bits: 1000, price_cents: 1000 }], providers: { stripe: true, paypal: true } }));
-            if (url.pathname === '/api/v1/transactions') return res.end(JSON.stringify({ transactions: [{ id: 'txn_buy', type: 'purchase', created_at: '2026-11-04T10:00:00.000Z', metadata: { balance: 'vibes_from_balance', vibes: 500 }, entries: [{ account: { kind: 'user_credit', owner: subject, currency: 'vibes-bits' }, amount: 500 }] }], next_cursor: null }));
+            if (url.pathname === '/api/me/activity') {
+                if (activityMode === 'missing') { res.statusCode = 404; return res.end(JSON.stringify({ error: 'billing.not_found' })); }
+                return res.end(JSON.stringify({ activity: [
+                    { id: 'txn_buy', at: '2026-11-04T10:00:00.000Z', kind: 'vibes', label: 'Got 500 Vibes with your Balance', amount: 500 },
+                    { id: 'txn_buy', at: '2026-11-04T10:00:00.000Z', kind: 'balance', label: 'Got 500 Vibes with your Balance', amount: '-5000000000' },
+                ] }));
+            }
+            if (url.pathname === '/api/v1/transactions') return res.end(JSON.stringify({ transactions: [{ id: 'txn_buy', type: 'purchase', created_at: '2026-11-04T10:00:00.000Z', metadata: { balance: 'vibes_from_balance', vibes: 500 }, entries: [
+                { account: { kind: 'usd_credit', owner: `user:${subject}`, currency: 'nano-usd' }, amount: '-5000000000' },
+                { account: { kind: 'user_credit', owner: subject, currency: 'vibes-bits' }, amount: 500 },
+            ] }], next_cursor: null }));
             if (url.pathname === '/api/me/balance') {
                 if (balanceMode === 'closed') { res.statusCode = 404; return res.end(JSON.stringify({ error: 'billing.not_enabled' })); }
                 return res.end(JSON.stringify({
                     personal: { owner: { type: 'user', id: subject }, balance_nano_usd: '12400000000', held_nano_usd: '400000000', available_nano_usd: '12000000000' },
-                    projects: [{ owner: { type: 'project', id: PRJ }, balance_nano_usd: '5000000000', held_nano_usd: '0', available_nano_usd: '5000000000' }],
+                    projects: [{ owner: { type: 'project', id: PRJ }, balance_nano_usd: '5000000000', held_nano_usd: '100000000', available_nano_usd: '4900000000' }],
                 }));
             }
             if (url.pathname === '/api/me/vibes') {
@@ -153,17 +172,36 @@ const KEY = (n) => `idem-${String(n).padStart(4, '0')}`;
         assert.strictEqual(w.body.opencoins, 340, "Network's own OpenCoins");
         assert.strictEqual(w.body.balance.personal.balance_nano_usd, '12400000000');
         assert.strictEqual(w.body.vibes.credit, 1250);
-        assert.deepStrictEqual(w.body.projects.map((p) => [p.id, p.name, p.url]), [[PRJ, 'Wallet Project', `https://openvibe.services/projects/${PRJ}`]]);
+        assert.deepStrictEqual(w.body.projects.map((p) => [p.id, p.name, p.url, p.held_nano_usd, p.available_nano_usd]), [[PRJ, 'Wallet Project', `https://openvibe.services/projects/${PRJ}`, '100000000', '4900000000']]);
         assert.strictEqual(w.body.state.balance, 'open');
         assert.strictEqual(w.body.state.vibes, 'open');
         assert.strictEqual(w.body.rates.packages[0].bits, 1000);
         assert.strictEqual(w.body.activity.length, 1);
-        const personCalls = asked.filter((a) => a.url.startsWith('/api/me/'));
+        assert.deepStrictEqual(w.body.activity[0].kinds, ['balance', 'vibes']);
+        assert.deepStrictEqual(w.body.activity[0].parts, [{ kind: 'balance', amount: '-5000000000' }, { kind: 'vibes', amount: 500 }]);
+        assert.strictEqual(w.body.activity[0].label, 'Got 500 Vibes with your Balance');
+        assert.strictEqual(w.body.activity_source, 'journal', 'the marked fallback until Billing has /api/me/activity');
+        const personActivity = asked.filter((a) => a.url.startsWith('/api/me/activity'));
+        assert.strictEqual(personActivity.length, 1);
+        assert.strictEqual(personActivity[0].auth, 'Bearer person-token', 'activity is asked with the person\'s own token first');
+        const personCalls = asked.filter((a) => a.url.startsWith('/api/me/') && !a.url.startsWith('/api/me/activity'));
         assert.ok(personCalls.length >= 2 && personCalls.every((a) => a.auth === 'Bearer person-token'), "Billing's person reads carry the person's own token");
         const journal = asked.filter((a) => a.url.startsWith('/api/v1/transactions'));
         assert.strictEqual(journal.length, 1);
-        assert.strictEqual(journal[0].auth, 'Bearer network-service-token', 'the journal read is Network\'s own service token');
+        assert.strictEqual(journal[0].auth, 'Bearer network-service-token', 'the fallback journal read carries the service token');
         assert.match(journal[0].url, new RegExp(`subject=${encodeURIComponent(subject)}`));
+
+        // Billing ships /api/me/activity: the person's own token answers the rows; the journal is not read.
+        activityMode = 'person';
+        const beforePerson = asked.filter((a) => a.url.startsWith('/api/v1/transactions')).length;
+        const own = await call('GET', '/api/wallet');
+        assert.strictEqual(own.status, 200);
+        assert.strictEqual(own.body.activity_source, 'person');
+        assert.strictEqual(own.body.activity.length, 1);
+        assert.deepStrictEqual(own.body.activity[0].parts, [{ kind: 'balance', amount: '-5000000000' }, { kind: 'vibes', amount: 500 }]);
+        assert.strictEqual(asked.filter((a) => a.url.startsWith('/api/v1/transactions')).length, beforePerson, 'the journal fallback is not read when the person route answers');
+        assert.strictEqual(asked.filter((a) => a.url.startsWith('/api/me/activity')).pop().auth, 'Bearer person-token');
+        activityMode = 'missing';
 
         // A not-open Balance, a Vibes ledger Billing has not taken over yet: the page still draws.
         balanceMode = 'closed'; vibesMode = 'not_authoritative';
@@ -235,7 +273,9 @@ const KEY = (n) => `idem-${String(n).padStart(4, '0')}`;
         const payHtml = read('public', 'pay.html');
         const css = read('public', 'css', 'wallet.css');
         const payJs = read('public', 'js', 'wallet', 'pay.js');
+        const pageJs = read('public', 'js', 'wallet', 'page.js');
         const sheets = read('public', 'js', 'wallet', 'sheets.js');
+        const routesJs = read('server', 'wallet', 'routes.js');
         for (const page of [walletHtml, payHtml]) {
             assert.ok(page.includes('<!--ov:look-boot-->'), 'both pages paint the kept look before their stylesheet');
             assert.ok(page.includes('/shared/kit.css') && page.includes('/css/wallet.css'), 'the shared kit and the wallet styles');
@@ -260,6 +300,14 @@ const KEY = (n) => `idem-${String(n).padStart(4, '0')}`;
         assert.match(css, /\.w-cards \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, 'three cards in a row');
         assert.match(css, /@media \(max-width: 899px\) \{ \.w-cards \{ grid-template-columns: minmax\(0, 1fr\); \}/, 'they stack on a phone');
         assert.match(css, /min-height: 44px/, 'tap targets reach 44 px');
+        assert.ok(!/w-project-id/.test(pageJs), 'project rows do not print the raw project id');
+        assert.match(pageJs, /w-project-ext/, 'the project name links out with a small arrow');
+        assert.match(pageJs, /Available \$\{M\.money\(p\.available_nano_usd\)\}/, 'Available appears under the name only with held money');
+        assert.match(pageJs, /w-act-amt--stack/, 'one transaction with both currencies stacks its two amounts');
+        assert.match(pageJs, /li\.dataset\.kinds/, 'the filters read every currency on the row');
+        assert.match(css, /\.w-act-amt--stack/, 'the stacked amounts are laid out');
+        assert.match(routesJs, /\/api\/me\/activity/, 'Billing\'s person-token activity route is tried first');
+        assert.match(routesJs, /TEMPORARY FALLBACK/, 'the service-token journal read is marked as the fallback');
         assert.ok(!/spinner|@keyframes[^}]*rotate/i.test(css + walletHtml + payHtml + sheets + payJs), 'nothing spins');
         assert.ok(!/parseFloat\s*\(/.test(read('public', 'js', 'wallet', 'money.js') + read('server', 'wallet', 'routes.js')), 'money never becomes a float');
         assert.ok(!/\.credits|credits\./.test(read('server', 'wallet', 'routes.js')), 'the API speaks Balance');

@@ -29,10 +29,6 @@ const CHAT_NAMESPACES = ['chat.preferences', 'chat.tts_defaults', 'chat.dm_setti
 
 // Initial grants: what each service does against Network today.
 const DEFAULT_GRANTS = [
-    // The wallet (MONEY.md D12): Network reads a person's own Vibes and Balance activity from Billing's journal
-    // (GET /api/v1/transactions?subject=) with its service token, for the one activity list on /wallet. Read only:
-    // the person's own token still does every money write (server/wallet/routes.js).
-    ['network', 'billing.balance.read', 'openvibe.billing', []],
     ['live', 'network.coins.credit', SELF_AUDIENCE, ['live']],
     // OpenVibe.Quest pays a completed quest's OpenCoins (app_id quest, idempotency_key = the completion id), resolving
     // the person's subject to the wallet first, and subscribes to the events it counts (plan T19).

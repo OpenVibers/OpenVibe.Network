@@ -128,7 +128,8 @@ function describe(t) {
     if (t.type === 'credit' && m.credit === 'settle') return { label: 'AI usage', detail: m.model ? String(m.model) : 'Metered usage' };
     if (t.type === 'credit' && m.credit === 'topup') return { label: 'Added money', detail: 'Balance top-up' };
     if (t.type === 'purchase' && m.balance === 'vibes_from_balance') {
-        return { label: `Bought ${Number(m.vibes || 0).toLocaleString('en-US')} Vibes`, detail: 'With Balance' };
+        const got = Number(m.vibes || 0);
+        return { label: got ? `Got ${got.toLocaleString('en-US')} Vibes with your Balance` : 'Got Vibes with your Balance', detail: '' };
     }
     if (t.type === 'purchase') {
         const bought = Number(m.vibes || m.bits || m.amount_bits || 0);
@@ -143,42 +144,126 @@ function describe(t) {
     return { label: titleCase(t.type), detail: '' };
 }
 
+/** The person's two spendable parts of one journal transaction, in display order: Balance, then Vibes. */
+function partsOf(subject, t) {
+    const entries = t && Array.isArray(t.entries) ? t.entries : [];
+    let vibes = 0;
+    let nano = 0n;
+    let sawVibes = false;
+    let sawNano = false;
+    for (const e of entries) {
+        const a = e && e.account;
+        if (!a || !a.owner) continue;
+        if (a.currency === 'vibes-bits' && a.kind === 'user_credit' && String(a.owner) === subject) {
+            vibes += Number(e.amount) || 0;
+            sawVibes = true;
+        } else if (a.currency === 'nano-usd' && a.kind === 'usd_credit'
+            && (String(a.owner) === subject || String(a.owner) === `user:${subject}`)) {
+            nano += BigInt(String(e.amount == null ? 0 : e.amount));
+            sawNano = true;
+        }
+    }
+    const parts = [];
+    if (sawNano && nano !== 0n) parts.push({ kind: 'balance', amount: nano.toString() });
+    if (sawVibes && vibes !== 0) parts.push({ kind: 'vibes', amount: vibes });
+    return parts;
+}
+
 /**
- * The person's own rows from Billing's journal (billing.transaction@1): for each currency in which their account
- * moved, one activity row. Vibes count only the spendable user_credit, never creator payable; Balance counts only
- * usd_credit, never sandbox.
+ * One row per transaction: a purchase of Vibes with Balance moves both currencies at once, and the page shows it as a
+ * single "Got N Vibes with your Balance" row with both amounts, not as two movements. Vibes count only the spendable
+ * user_credit, never creator payable; Balance counts only usd_credit, never sandbox.
  */
 function mapActivity(subject, transactions) {
     if (!subject || !Array.isArray(transactions)) return [];
     const rows = [];
     for (const t of transactions) {
         if (!t || !t.id) continue;
-        const entries = Array.isArray(t.entries) ? t.entries : [];
-        let vibes = 0;
-        let nano = 0n;
-        let sawVibes = false;
-        let sawNano = false;
-        for (const e of entries) {
-            const a = e && e.account;
-            if (!a || !a.owner) continue;
-            if (a.currency === 'vibes-bits' && a.kind === 'user_credit' && String(a.owner) === subject) {
-                vibes += Number(e.amount) || 0;
-                sawVibes = true;
-            } else if (a.currency === 'nano-usd' && a.kind === 'usd_credit'
-                && (String(a.owner) === subject || String(a.owner) === `user:${subject}`)) {
-                nano += BigInt(String(e.amount == null ? 0 : e.amount));
-                sawNano = true;
-            }
-        }
+        const parts = partsOf(subject, t);
+        if (!parts.length) continue;
         const d = describe(t);
-        if (sawNano && nano !== 0n) {
-            rows.push({ id: `${t.id}:balance`, at: t.created_at, kind: 'balance', label: d.label, detail: d.detail, amount: nano.toString() });
-        }
-        if (sawVibes && vibes !== 0) {
-            rows.push({ id: `${t.id}:vibes`, at: t.created_at, kind: 'vibes', label: d.label, detail: d.detail, amount: vibes });
-        }
+        rows.push({
+            id: String(t.id), at: t.created_at, label: d.label, detail: d.detail,
+            kinds: parts.map((p) => p.kind), parts,
+        });
     }
     // Newest first; the same timestamp keeps journal order (Billing pages newest first already).
+    rows.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+    return rows.slice(0, 100);
+}
+
+/** A Billing /api/me/activity row, already in the person's shape, as this page's parts. */
+function personPart(kind, amount) {
+    const k = personKind(kind);
+    if (!k || amount == null) return null;
+    if (k === 'vibes' && Number.isSafeInteger(Number(amount)) && Number(amount) !== 0) return { kind: 'vibes', amount: Number(amount) };
+    if (k === 'balance' && /^-?[0-9]{1,19}$/.test(String(amount)) && BigInt(String(amount)) !== 0n) return { kind: 'balance', amount: String(amount) };
+    return null;
+}
+
+function partsOfPersonRow(row) {
+    if (!row || typeof row !== 'object') return null;
+    if (Array.isArray(row.parts)) {
+        const parts = row.parts.map((p) => personPart(p && (p.kind || p.currency), p && (p.amount_nano_usd != null ? p.amount_nano_usd : p.amount))).filter(Boolean);
+        return parts.length ? parts : null;
+    }
+    // A route may already answer one object of { balance, vibes } amounts.
+    const both = row.amounts && typeof row.amounts === 'object' ? row.amounts : (row.amount && typeof row.amount === 'object' ? row.amount : null);
+    if (both) {
+        const parts = [personPart('balance', both.balance != null ? both.balance : both.nano_usd), personPart('vibes', both.vibes != null ? both.vibes : both.bits)].filter(Boolean);
+        return parts.length ? parts : null;
+    }
+    // One row may carry its two amounts as named fields.
+    if (row.balance_nano_usd != null || row.nano_usd != null || row.vibes != null || row.amount_vibes != null) {
+        const parts = [
+            personPart('balance', row.balance_nano_usd != null ? row.balance_nano_usd : row.nano_usd),
+            personPart('vibes', row.vibes != null && typeof row.vibes !== 'object' ? row.vibes : row.amount_vibes),
+        ].filter(Boolean);
+        if (parts.length) return parts;
+    }
+    const kind = personKind(row.kind || row.currency);
+    const amount = row.amount_nano_usd != null ? row.amount_nano_usd
+        : row.nano_usd != null ? row.nano_usd
+            : row.amount_bits != null ? row.amount_bits
+                : row.amount;
+    const one = personPart(kind, amount);
+    return one ? [one] : null;
+}
+
+function personKind(v) {
+    const s = String(v || '').toLowerCase();
+    if (s === 'vibes' || s === 'vibes-bits' || s === 'user_credit') return 'vibes';
+    if (s === 'balance' || s === 'usd' || s === 'nano-usd' || s === 'usd-cents' || s === 'usd_credit') return 'balance';
+    return null;
+}
+
+/**
+ * Billing's GET /api/me/activity (the person's own token) in either plausible shape: the journal transactions it
+ * already has (entries per account), or one row per movement. Null means "not that shape" so the caller can use the
+ * marked fallback below. Grouping is by transaction id, so a from-Balance purchase stays one row.
+ */
+function mapPersonActivity(subject, body) {
+    const list = body && (body.activity || body.transactions || body.items || body.entries);
+    if (!Array.isArray(list)) return null;
+    if (list.length && list.every((t) => t && Array.isArray(t.entries))) return mapActivity(subject, list);
+    const grouped = new Map();
+    for (const item of list) {
+        if (!item || typeof item !== 'object') continue;
+        const parts = partsOfPersonRow(item);
+        if (!parts) continue;
+        const id = String(item.transaction_id || item.txn_id || item.id || `${item.at || item.created_at || ''}:${parts[0].kind}`);
+        const at = item.at || item.created_at || item.date || null;
+        const label = text(item.label || item.description || item.title || 'Activity', 120);
+        const detail = text(item.detail || item.subtitle || '', 120);
+        const row = grouped.get(id) || { id, at, label, detail, parts: [] };
+        for (const p of parts) if (!row.parts.some((x) => x.kind === p.kind)) row.parts.push(p);
+        grouped.set(id, row);
+    }
+    const rows = [...grouped.values()].filter((r) => r.parts.length);
+    for (const row of rows) {
+        row.parts.sort((a, b) => (a.kind === 'balance' ? -1 : 1));
+        row.kinds = row.parts.map((p) => p.kind);
+    }
     rows.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
     return rows.slice(0, 100);
 }
@@ -217,18 +302,37 @@ module.exports = function createWalletRoutes(db, requireAuth, opts = {}) {
         }
     }
 
-    /** Billing's journal for this person, with Network's own service token: the only read the person API lacks. */
+    /**
+     * The person's activity: Billing's GET /api/me/activity with their OWN token first (the same CORS as
+     * /api/me/balance). While that route is not in Billing yet (it lands in the d12-billing-balance PR), a clearly
+     * marked TEMPORARY FALLBACK reads the journal with Network's service token. The fallback is not seeded as a
+     * default grant: without an operator's explicit billing.balance.read grant it reads nothing.
+     */
     async function activityOf(req) {
         const subject = req.user && req.user.subject_id;
-        if (!subject || !selfToken) return [];
+        if (!subject) return { rows: [], source: 'none' };
+        const auth = personToken(req);
+        if (auth) {
+            try {
+                const out = await ask(`${billingUrl}/api/me/activity?limit=80`, { authorization: auth, timeoutMs: 2500 });
+                if (out.status === 200) {
+                    const rows = mapPersonActivity(subject, out.body);
+                    if (rows) return { rows, source: 'person' };
+                }
+            } catch { /* the fallback below covers a Network error */ }
+        }
+        // TEMPORARY FALLBACK — Billing has no person-token activity route yet. Remove it when /api/me/activity ships;
+        // it is a service read (billing.balance.read) scoped to this signed-in person's subject, and Network does not
+        // seed that capability by default.
+        if (!selfToken) return { rows: [], source: 'none' };
         const token = selfToken(SERVICE_AUDIENCE, BALANCE_READ);
-        if (!token) return [];
+        if (!token) return { rows: [], source: 'none' };
         try {
             const out = await ask(`${billingUrl}/api/v1/transactions?subject=${encodeURIComponent(subject)}&limit=80`, { authorization: `Bearer ${token}` });
-            if (out.status !== 200 || !out.body) return [];
-            return mapActivity(subject, out.body.transactions);
+            if (out.status !== 200 || !out.body) return { rows: [], source: 'none' };
+            return { rows: mapActivity(subject, out.body.transactions), source: 'journal' };
         } catch {
-            return [];
+            return { rows: [], source: 'none' };
         }
     }
 
@@ -240,7 +344,7 @@ module.exports = function createWalletRoutes(db, requireAuth, opts = {}) {
         if (!billingUrl) return problem(res, 503, 'billing.unavailable', 'Billing is not configured');
         cacheHeaders(res);
         const auth = personToken(req);
-        const [balance, vibes, activity, priceList] = await Promise.all([
+        const [balance, vibes, activityAnswer, priceList] = await Promise.all([
             auth ? ask(`${billingUrl}/api/me/balance`, { authorization: auth }).catch(() => null) : null,
             auth ? ask(`${billingUrl}/api/me/vibes`, { authorization: auth }).catch(() => null) : null,
             activityOf(req),
@@ -252,7 +356,8 @@ module.exports = function createWalletRoutes(db, requireAuth, opts = {}) {
             balance: null,
             vibes: null,
             projects: [],
-            activity,
+            activity: activityAnswer.rows,
+            activity_source: activityAnswer.source,
             rates: priceList,
             state: { balance: 'unavailable', vibes: 'unavailable' },
         };
@@ -277,6 +382,7 @@ module.exports = function createWalletRoutes(db, requireAuth, opts = {}) {
                         name: names.get(p.owner.id) || 'Project',
                         url: `https://openvibe.services/projects/${encodeURIComponent(p.owner.id)}`,
                         balance_nano_usd: String(p.balance_nano_usd || '0'),
+                        held_nano_usd: String(p.held_nano_usd || '0'),
                         available_nano_usd: String(p.available_nano_usd || '0'),
                     }));
             }
@@ -400,3 +506,4 @@ module.exports = function createWalletRoutes(db, requireAuth, opts = {}) {
 module.exports.mapActivity = mapActivity;
 module.exports.describe = describe;
 module.exports.enrichCharge = enrichCharge;
+module.exports.mapPersonActivity = mapPersonActivity;

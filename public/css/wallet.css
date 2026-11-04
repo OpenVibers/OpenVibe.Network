@@ -86,10 +86,11 @@ a { color: var(--accent, #3b82f6); }
 .w-project { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 11px 16px; }
 .w-project + .w-project { border-top: 1px solid var(--border, rgba(255, 255, 255, .12)); }
 .w-project-main { flex: 1 1 auto; min-width: 0; }
-.w-project-link { display: grid; gap: 1px; color: inherit; text-decoration: none; min-width: 0; }
+.w-project-link { display: flex; align-items: center; gap: 4px; color: inherit; text-decoration: none; min-width: 0; }
 .w-project-link:hover b { color: var(--accent-light, var(--accent, #60a5fa)); }
 .w-project-link b { font-size: .93rem; font-weight: 650; overflow-wrap: anywhere; }
-.w-project-id { font-size: .7rem; color: var(--text-muted, #7d8aa0); overflow-wrap: anywhere; }
+.w-project-ext { color: var(--text-muted, #7d8aa0); font-size: .74rem; line-height: 1; }
+.w-project-sub { margin-top: 2px; color: var(--text-muted, #7d8aa0); font-size: .74rem; font-variant-numeric: tabular-nums; }
 .w-project-side { flex: none; display: flex; align-items: center; gap: 10px; }
 .w-project-bal { font-variant-numeric: tabular-nums; font-weight: 750; font-size: .95rem; white-space: nowrap; }
 @media (max-width: 359px) {
@@ -125,13 +126,14 @@ a { color: var(--accent, #3b82f6); }
 .w-act-main { display: grid; gap: 1px; min-width: 0; }
 .w-act-label { font-size: .92rem; font-weight: 650; overflow-wrap: anywhere; }
 .w-act-detail { color: var(--text-muted, #7d8aa0); font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.w-act-amt { justify-self: end; color: var(--text-primary, #e8ecf3); font-size: .95rem; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.w-act-amt { display: flex; flex-direction: column; align-items: flex-end; justify-self: end; color: var(--text-primary, #e8ecf3); font-size: .95rem; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; line-height: 1.25; }
+.w-act-amt--stack { gap: 1px; }
 .w-act-amt small { margin-left: 2px; color: var(--text-muted, #7d8aa0); font-size: .7rem; font-weight: 600; }
-.w-act-amt.is-pos { color: var(--success-text, var(--success, #22c55e)); }
+.w-act-part.is-pos { color: var(--success-text, var(--success, #22c55e)); }
 @media (max-width: 600px) { .w-act-detail { white-space: normal; } }
 @media (max-width: 359px) {
     .w-act { grid-template-columns: 78px minmax(0, 1fr); row-gap: 3px; padding: 11px 13px; }
-    .w-act-amt { grid-column: 2; justify-self: start; text-align: left; font-size: .86rem; }
+    .w-act-amt { grid-column: 2; justify-self: start; align-items: flex-start; text-align: left; font-size: .86rem; }
 }
 
 /* Where each works: one quiet line of chips per currency */
