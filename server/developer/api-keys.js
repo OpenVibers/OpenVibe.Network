@@ -124,8 +124,8 @@ async function loadKey(db, projectId, keyId) {
 
 /** Members (viewer+) and staff: the project's keys, metadata only. */
 async function list(db, actor, projectId, { config } = {}) {
-    requireEnabled(config);
     const { project } = await store.access(db, actor, projectId, { allowArchived: true });
+    requireEnabled(config);   // after access: a stranger gets the project's 404, never a hint the feature exists
     const rows = await db.prepare('SELECT * FROM dev_api_keys WHERE project_id = ? ORDER BY id DESC').all(project.id);
     return rows.map(keyView);
 }
@@ -136,8 +136,8 @@ async function list(db, actor, projectId, { config } = {}) {
  * needs a developer+ member and a sandbox app.
  */
 async function create(db, actor, projectId, body, { ctx, config }) {
-    requireEnabled(config);
     const { project } = await store.access(db, actor, projectId, { allowArchived: true });
+    requireEnabled(config);   // after access: a stranger gets the project's 404, never a hint the feature exists
     const environment = cleanEnvironment(body.environment);
     const manage = environment === 'live' ? 'admin' : 'developer';
     await store.access(db, actor, projectId, { need: manage, staffOk: false, allowArchived: true });
@@ -168,8 +168,8 @@ async function create(db, actor, projectId, body, { ctx, config }) {
  * (a key is a bearer credential in a request header, where an overlap would only widen the window).
  */
 async function rotate(db, actor, projectId, keyId, { ctx, config }) {
-    requireEnabled(config);
     const { project } = await store.access(db, actor, projectId, { need: 'viewer', staffOk: false, allowArchived: true });
+    requireEnabled(config);   // after access: a stranger gets the project's 404, never a hint the feature exists
     const row = await loadKey(db, project.id, keyId);
     if (row.status !== 'active') fail(409, 'api_key.revoked', 'key is revoked');
     const app = await db.prepare('SELECT * FROM dev_apps WHERE id = ?').get(row.app_id);
@@ -185,8 +185,8 @@ async function rotate(db, actor, projectId, keyId, { ctx, config }) {
 
 /** Revoke: the key stops authenticating at once. */
 async function revoke(db, actor, projectId, keyId, { ctx, config }) {
-    requireEnabled(config);
     const { project } = await store.access(db, actor, projectId, { need: 'viewer', staffOk: true, allowArchived: true });
+    requireEnabled(config);   // after access: a stranger gets the project's 404, never a hint the feature exists
     const row = await loadKey(db, project.id, keyId);
     if (row.status !== 'revoked') {
         await db.tx(async () => {
@@ -317,15 +317,15 @@ function budgetView(project) {
 
 /** Members (admin+) and staff: the project's monthly budget. */
 async function readBudget(db, actor, projectId, { config } = {}) {
-    requireEnabled(config);
     const { project } = await store.access(db, actor, projectId, { need: 'admin', allowArchived: true });
+    requireEnabled(config);   // after access: a stranger gets the project's 404, never a hint the feature exists
     return budgetView(project);
 }
 
 /** Set or clear the project's monthly budget (admin+ members and staff). */
 async function writeBudget(db, actor, projectId, body, { ctx, config } = {}) {
-    requireEnabled(config);
     const { project } = await store.access(db, actor, projectId, { need: 'admin', allowArchived: true });
+    requireEnabled(config);   // after access: a stranger gets the project's 404, never a hint the feature exists
     const value = cleanBudget(body ? body.monthly_budget_nano_usd : null);
     await db.tx(async () => {
         await db.prepare('UPDATE dev_projects SET monthly_budget_nano_usd = ?, budget_updated_at = ?, budget_updated_by = ? WHERE id = ?')

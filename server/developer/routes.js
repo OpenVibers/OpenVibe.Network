@@ -204,7 +204,7 @@ function router() {
     }));
 
     // Developer API keys (plan G-P3): a project-bound credential, shown once, stored hashed. Off unless
-    // NETWORK_DEV_API_KEYS=1 (503 api_keys.disabled).
+    // NETWORK_DEV_API_KEYS=1: a member then gets 503 api_keys.disabled; anyone who cannot see the project gets its 404.
     r.get('/:project/api-keys', handle(async (db, a, req, o) => ({ keys: await apiKeys.list(db, a, req.params.project, o) })));
     r.post('/:project/api-keys', handle(async (db, a, req, o) => await apiKeys.create(db, a, req.params.project, req.body || {}, o), 201));
     r.post('/:project/api-keys/:key/rotate', handle(async (db, a, req, o) => await apiKeys.rotate(db, a, req.params.project, req.params.key, o)));
