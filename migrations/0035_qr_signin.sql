@@ -11,6 +11,7 @@ CREATE TABLE qr_signin_transfers (
     user_id bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     secret_hash text COLLATE "C" NOT NULL,
     creator_jti text COLLATE "C" NOT NULL,
+    source_auth_time integer,
     status text COLLATE "C" NOT NULL DEFAULT 'waiting'
         CHECK (status IN ('waiting', 'scanned', 'approved', 'denied', 'used')),
     code_hash text COLLATE "C",

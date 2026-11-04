@@ -44,6 +44,12 @@ class MergeError extends Error {
     constructor(status, code, detail) { super(detail); this.status = status; this.code = code; }
 }
 
+/** A real sign-in (auth_time within 10 minutes), never a renewal or a QR session carrying an old source time. */
+function isFreshSignIn(claims, now = Date.now()) {
+    const authTime = Number(claims && claims.auth_time);
+    return Number.isFinite(authTime) && now / 1000 - authTime <= FRESH_SIGN_IN_S;
+}
+
 async function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
 
 /** The survivor of a subject: itself, or what it was merged into (aliases are kept flat). */
@@ -238,8 +244,7 @@ async function createIntent(db, intoUser, { now = Date.now() } = {}) {
 /** The person's merge: the caller is the account being folded in (freshly signed in), the intent names the survivor. */
 async function mergeWithIntent(db, caller, claims, intentId, { now = Date.now() } = {}) {
     await ensureSchema(db);
-    const authTime = Number(claims && claims.auth_time);
-    if (!Number.isFinite(authTime) || now / 1000 - authTime > FRESH_SIGN_IN_S) {
+    if (!isFreshSignIn(claims, now)) {
         throw new MergeError(401, 'merge.sign_in_again', 'sign in to this account again (within the last 10 minutes) to merge it');
     }
     const intent = await db.prepare('SELECT * FROM account_merge_intents WHERE id = ?').get(String(intentId || ''));
@@ -301,4 +306,4 @@ function routers({ requireAuth, staffClaims }) {
     return { me, admin };
 }
 
-module.exports = { ensureSchema, survivorOf, effectiveUser, merge, mergeWithIntent, createIntent, reduceExpired, routers, MergeError, SPLIT_DAYS };
+module.exports = { ensureSchema, survivorOf, effectiveUser, merge, mergeWithIntent, createIntent, reduceExpired, routers, isFreshSignIn, MergeError, SPLIT_DAYS };

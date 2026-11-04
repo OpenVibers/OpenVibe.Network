@@ -155,6 +155,9 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
         const id = newUlid(now());
         const secret = crypto.randomBytes(16).toString('hex');
         const expiresAt = new Date(now() + TTL_MS).toISOString();
+        // The target session inherits this, never a new "now": scanning a code is not a re-authentication.
+        const sourceAuthTime = Number.isFinite(Number(req.tokenClaims && req.tokenClaims.auth_time))
+            ? Math.trunc(Number(req.tokenClaims.auth_time)) : null;
         const base = config.networkUrl || config.baseUrl || 'https://openvibe.network';
         const url = new URL('/q', base);
         url.hash = `${id}.${secret}`;
@@ -178,8 +181,8 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
             const live = (await t.prepare("SELECT COUNT(*) AS n FROM qr_signin_transfers WHERE user_id = ? AND status IN ('waiting','scanned','approved') AND expires_at > ?").get(req.user.id, liveSince())).n;
             if (Number(live) >= MAX_LIVE) return 'live';
             await t.prepare('INSERT INTO qr_signin_starts (user_id) VALUES (?)').run(req.user.id);
-            await t.prepare(`INSERT INTO qr_signin_transfers (id, user_id, secret_hash, creator_jti, expires_at)
-                VALUES (?, ?, ?, ?, ?)`).run(id, req.user.id, secretHash(secret), creatorOf(req), expiresAt);
+            await t.prepare(`INSERT INTO qr_signin_transfers (id, user_id, secret_hash, creator_jti, source_auth_time, expires_at)
+                VALUES (?, ?, ?, ?, ?, ?)`).run(id, req.user.id, secretHash(secret), creatorOf(req), sourceAuthTime, expiresAt);
             await t.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)')
                 .run(req.user.id, 'qr_signin_started', JSON.stringify({ transfer_id: id, device: null, outcome: 'waiting' }));
             return 'ok';
@@ -262,7 +265,10 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
                 WHERE id = ? AND status = 'approved' AND expires_at > ?`).run(new Date(now()).toISOString(), row.id, liveSince());
             if (!won.changes) return { lost: true };
 
-            const token = signToken(survivor, privateKey, config);
+            // A QR-created session is not a fresh sign-in: inherit the source session's auth_time (or none),
+            // so ADR-029's merge check and D11's key/money check still require a real re-authentication.
+            const authTime = row.source_auth_time == null ? null : Number(row.source_auth_time);
+            const token = signToken(survivor, privateKey, config, { authTime });
             // The device summary only: no raw User-Agent and no IP in the target's session row.
             await t.prepare(`INSERT INTO user_sessions (user_id, session_token, device_name, expires_at)
                 VALUES (?, ?, ?, ?)`).run(

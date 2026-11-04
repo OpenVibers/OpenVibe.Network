@@ -4,11 +4,13 @@
 // the ov_qr binding, the audit's contents, the new-sign-in notice, the rate limits and the flag-off 404.
 //   node test/qr-signin.test.js
 const assert = require('assert');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { bootServer } = require('./helpers/boot-server');
 const qr = require('../server/auth/qr-signin');
 const { signToken } = require('../server/auth/routes');
 const subjects = require('../server/identity/subjects');
+const accountMerge = require('../server/identity/account-merge');
 const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 
 // The same-origin rule the router applies to every POST (CORS's first-party list is wider than one origin).
@@ -61,6 +63,13 @@ function cookieOf(cookies, name) {
             .run(name, `${name}@example.com`, 'x', name, subjects.newUserSubjectId())).lastInsertRowid;
         const row = await db.prepare('SELECT * FROM users WHERE id = ?').get(id);
         return { user: row, token: signToken(row, privateKey, config) };
+    };
+    // A session that signed in an hour ago: the source for the auth_time inheritance and fresh-check tests.
+    const signSourceAt = (u, authTime) => {
+        const claims = { sub: u.id, id: u.id, subject_id: u.subject_id, username: u.username, display_name: u.display_name, role: u.role,
+            jti: `src_${crypto.randomBytes(8).toString('hex')}` };
+        if (authTime != null) claims.auth_time = authTime;
+        return jwt.sign(claims, privateKey, { algorithm: privateKey.includes('BEGIN') ? 'RS256' : 'HS256', issuer: config.jwt.issuer, expiresIn: '2h' });
     };
     const register = await mkUser(username);
     const user = register.user;
@@ -152,6 +161,38 @@ function cookieOf(cookies, name) {
     const phoneApprove = await api('POST', `/auth/qr/${phoneFrag[0]}/approve`, { token: phoneSource, body: { code: targetScan.json.code }, headers: { 'user-agent': IPHONE_UA, 'sec-ch-ua-mobile': '?1' } });
     assert.strictEqual(phoneApprove.status, 200, phoneApprove.text);
     assert.strictEqual((await status(targetCookie(targetScan))).json.signed_in, true, 'a phone-sized source creates its own session');
+
+    // ── Security: a QR session inherits the source's auth_time and is not a fresh sign-in ──
+    const authUser = await mkUser(`qg${suffix}`);
+    const mergeSurvivor = await mkUser(`qm${suffix}`);
+    const staleAuthTime = Math.floor(Date.now() / 1000) - 60 * 60;
+    const staleSource = signSourceAt(authUser.user, staleAuthTime);
+    const staleStart = await start(staleSource);
+    assert.strictEqual(staleStart.status, 201, staleStart.text);
+    const staleScanned = await scan(staleStart.id, staleStart.secret);
+    assert.strictEqual(staleScanned.status, 200, staleScanned.text);
+    assert.strictEqual((await api('POST', `/auth/qr/${staleStart.id}/approve`, { token: staleSource, body: { code: staleScanned.json.code } })).status, 200);
+    const staleTarget = await status(targetCookie(staleScanned));
+    assert.strictEqual(staleTarget.json.signed_in, true, staleTarget.text);
+    const staleToken = cookieOf(staleTarget.setCookies, 'ov_token');
+    const staleClaims = jwt.decode(staleToken);
+    assert.strictEqual(staleClaims.auth_time, staleAuthTime, 'the QR-created session inherits the source auth_time, not now');
+    assert.strictEqual(accountMerge.isFreshSignIn(staleClaims), false, 'the merge fresh check reports the QR session as stale');
+
+    const noAuthSource = signSourceAt(authUser.user, null);
+    const noAuthStart = await start(noAuthSource);
+    assert.strictEqual(noAuthStart.status, 201, noAuthStart.text);
+    const noAuthScanned = await scan(noAuthStart.id, noAuthStart.secret);
+    await api('POST', `/auth/qr/${noAuthStart.id}/approve`, { token: noAuthSource, body: { code: noAuthScanned.json.code } });
+    const noAuthTarget = await status(targetCookie(noAuthScanned));
+    assert.strictEqual(jwt.decode(cookieOf(noAuthTarget.setCookies, 'ov_token')).auth_time, undefined, 'a source with no auth_time gives a target with none');
+
+    const survivorToken = signToken(mergeSurvivor.user, privateKey, config);
+    const intent = await api('POST', '/api/v1/account/merge/intents', { token: survivorToken, body: {} });
+    assert.strictEqual(intent.status, 201, intent.text);
+    const refused = await api('POST', '/api/v1/account/merge', { token: staleToken, body: { intent: intent.json.intent } });
+    assert.strictEqual(refused.status, 401, refused.text);
+    assert.strictEqual(refused.json.error, 'merge.sign_in_again', 'a QR session with a stale source cannot merge accounts');
 
     // ── A second scan is refused with 409 ──
     let secondStart = await start();
