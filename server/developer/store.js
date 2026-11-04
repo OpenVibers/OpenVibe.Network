@@ -171,9 +171,9 @@ async function projectView(db, p, role, settings) {
  */
 async function internalProjectMemberships(db, subject) {
     if (!/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(String(subject))) return null;
-    const rows = await db.prepare(`SELECT m.project_id, m.role, m.added_at, p.archived_at FROM dev_project_members m
+    const rows = await db.prepare(`SELECT m.project_id, m.role, m.added_at, p.name, p.archived_at FROM dev_project_members m
         JOIN dev_projects p ON p.id = m.project_id WHERE m.subject_id = ? ORDER BY m.project_id`).all(String(subject));
-    return rows.map((r) => ({ project_id: r.project_id, role: r.role, archived: !!r.archived_at, added_at: r.added_at || null }));
+    return rows.map((r) => ({ project_id: r.project_id, name: r.name, role: r.role, archived: !!r.archived_at, added_at: r.added_at || null }));
 }
 
 /**

@@ -161,7 +161,7 @@ const U = { owner: userToken(10), dev: userToken(11), staff: userToken(14) };
         r = await memberList(owner, bill);
         assert.strictEqual(r.status, 200, r.text);
         assert.strictEqual(r.cache, 'no-store');
-        assert.deepStrictEqual(r.body.projects.map(p => [p.project_id, p.role, p.archived]), [[P, 'owner', false]]);
+        assert.deepStrictEqual(r.body.projects.map(p => [p.project_id, p.name, p.role, p.archived]), [[P, 'Tenancy', 'owner', false]]);
         assert.strictEqual((await memberList(owner)).status, 401, 'no token');
         assert.strictEqual((await memberList(owner, host)).status, 403, 'Host lacks network.project.member.read');
         assert.strictEqual((await memberList('nope', bill)).status, 422, 'a malformed subject is refused');
