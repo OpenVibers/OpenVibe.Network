@@ -21,6 +21,7 @@ console.log = log;
 await db.prepare("UPDATE oauth_clients SET client_secret = 'host-secret' WHERE client_id = 'host'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'watch-secret' WHERE client_id = 'watch'").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'billing-secret' WHERE client_id = 'billing'").run();
 await db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES
     (10, 'owner', 'x', 'user'), (11, 'dev', 'x', 'user'), (14, 'staff', 'x', 'admin')`).run();
 const sid = async (id) => await subjects.ensureUserSubject(db, await db.prepare('SELECT * FROM users WHERE id = ?').get(id));
@@ -147,10 +148,23 @@ const U = { owner: userToken(10), dev: userToken(11), staff: userToken(14) };
         //    its console and control; never grantable;
         //    members only, and a non-member reads exactly like an unknown project.
         assert.deepStrictEqual(principals.DEFAULT_GRANTS.filter(g => g[1] === 'network.project.member.read').map(g => [g[0], g[2]]).sort(),
-            [['actor', principals.SELF_AUDIENCE], ['media', principals.SELF_AUDIENCE], ['run', principals.SELF_AUDIENCE], ['watch', principals.SELF_AUDIENCE], ['zone', principals.SELF_AUDIENCE]],
-            'Run, Watch, Actor, Media and Zone hold network.project.member.read');
+            [['actor', principals.SELF_AUDIENCE], ['billing', principals.SELF_AUDIENCE], ['media', principals.SELF_AUDIENCE], ['run', principals.SELF_AUDIENCE], ['watch', principals.SELF_AUDIENCE], ['zone', principals.SELF_AUDIENCE]],
+            'Run, Watch, Actor, Media, Zone and Billing hold network.project.member.read');
         assert.strictEqual(policy.grantability('network.project.member.read').grantable, false, 'never grantable to apps');
         assert.ok(principals.DEFAULT_GRANTS.some(g => g[0] === 'watch' && g[1] === 'run.job.submit' && g[2] === 'openvibe.run'), 'Watch may submit Run jobs');
+        const memberList = async (subject, headers = {}) => {
+            const x = await fetch(`${base}/internal/projects?subject=${encodeURIComponent(subject)}`, { headers });
+            const text = await x.text();
+            return { status: x.status, cache: x.headers.get('cache-control'), text, body: text ? JSON.parse(text) : null };
+        };
+        const bill = { authorization: `Bearer ${await token('billing', 'billing-secret')}` };
+        r = await memberList(owner, bill);
+        assert.strictEqual(r.status, 200, r.text);
+        assert.strictEqual(r.cache, 'no-store');
+        assert.deepStrictEqual(r.body.projects.map(p => [p.project_id, p.role, p.archived]), [[P, 'owner', false]]);
+        assert.strictEqual((await memberList(owner)).status, 401, 'no token');
+        assert.strictEqual((await memberList(owner, host)).status, 403, 'Host lacks network.project.member.read');
+        assert.strictEqual((await memberList('nope', bill)).status, 422, 'a malformed subject is refused');
         const memberRead = async (project, subject, headers = {}) => {
             const x = await fetch(`${base}/internal/projects/${encodeURIComponent(project)}/members/${encodeURIComponent(subject)}`, { headers });
             const text = await x.text();

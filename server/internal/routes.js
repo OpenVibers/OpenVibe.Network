@@ -423,6 +423,21 @@ router.post('/resolve-anon', principals.guard('identity.subject.resolve'), async
     }
 });
 
+// ── The projects one person belongs to ───────────────────────
+// Owning services that act for a person (Billing's Balance) find the projects they administer here with their own
+// service token; the role is Network's, never the person token's claim. A malformed subject is refused before any read.
+router.get('/projects', principals.guard('network.project.member.read'), async (req, res) => {
+    const subject = String(req.query.subject || '');
+    try {
+        const projects = await require('../developer/store').internalProjectMemberships(getDb(req), subject);
+        if (!projects) return require('openvibe-contracts').http.sendProblem(res, 422, 'project.invalid_subject', { detail: 'subject is a person subject id' });
+        res.set('Cache-Control', 'no-store').json({ subject, projects });
+    } catch (err) {
+        console.error('[Internal] project memberships error:', err.message);
+        require('openvibe-contracts').http.sendProblem(res, 500, 'internal.error', { detail: 'project memberships failed' });
+    }
+});
+
 // ── Read a developer project ─────────────────────────────────
 // Owning services key tenancy by project_id and enforce the quotas Network records (docs/developer-projects.md, ADR-014).
 // The capability is first-party and never grantable to apps; the view carries no secrets and no members but the owner.
