@@ -26,8 +26,8 @@ module.exports = {
     },
 
 
-    // Sign in on your phone (owner, 2026-11-04; server/auth/qr-signin.js): a desktop QR, a phone scan and a
-    // two-digit match. Off unless NETWORK_QR_SIGNIN is explicitly on; off means the routes and /q are not mounted.
+    // Sign in on another device (owner, 2026-11-04; server/auth/qr-signin.js): a QR on the source device, a
+    // scan on the target and a two-digit match. Off unless NETWORK_QR_SIGNIN is explicitly on; off means the routes and /q are not mounted.
     qrSignin: {
         enabled: /^(1|true|on|yes)$/i.test(String(process.env.NETWORK_QR_SIGNIN || '')),
     },

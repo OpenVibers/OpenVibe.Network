@@ -1,5 +1,5 @@
 'use strict';
-// Sign in on your phone (owner, 2026-11-04; NETWORK_QR_SIGNIN): the full flow, the one-session rule under a
+// Sign in on another device (owner, 2026-11-04; NETWORK_QR_SIGNIN): the full flow, the one-session rule under a
 // race, every refusal (409 second scan, 404 unknown/expired/guessed, 403 another session, three wrong codes),
 // the ov_qr binding, the audit's contents, the new-sign-in notice, the rate limits and the flag-off 404.
 //   node test/qr-signin.test.js
@@ -64,16 +64,16 @@ function cookieOf(cookies, name) {
     };
     const register = await mkUser(username);
     const user = register.user;
-    const desktop = register.token;
+    const source = register.token;
     // Another session of the same person: a different jti, so it must not approve the first one's transfer.
     const secondSession = signToken(user, privateKey, config);
-    const refreshed = await api('POST', '/api/auth/refresh', { token: desktop, body: {} });
+    const refreshed = await api('POST', '/api/auth/refresh', { token: source, body: {} });
     assert.strictEqual(refreshed.status, 200, refreshed.text);
-    assert.strictEqual(jwt.decode(refreshed.json.token).jti, jwt.decode(desktop).jti, 'a sliding renewal keeps the session jti');
+    assert.strictEqual(jwt.decode(refreshed.json.token).jti, jwt.decode(source).jti, 'a sliding renewal keeps the session jti');
     const liveUser = await mkUser(`ql${suffix}`);
     const limitUser = await mkUser(`qh${suffix}`);
 
-    const start = async (token = desktop) => {
+    const start = async (token = source) => {
         const r = await api('POST', '/auth/qr/start', { token, body: {} });
         if (r.status !== 201) return r;
         const split = new URL(r.json.url).hash.slice(1).split('.');
@@ -84,11 +84,11 @@ function cookieOf(cookies, name) {
     const scan = async (id, secret) => api('POST', '/auth/qr/scan', {
         body: { id, secret }, headers: { 'user-agent': IPHONE_UA },
     });
-    const phoneCookie = (scanResponse) => cookieOf(scanResponse.setCookies, 'ov_qr');
+    const targetCookie = (scanResponse) => cookieOf(scanResponse.setCookies, 'ov_qr');
     const status = (cookie) => api('GET', '/auth/qr/status', { cookie: cookie ? `ov_qr=${cookie}` : undefined });
     const countSessions = async () => Number((await db.prepare('SELECT COUNT(*) AS n FROM user_sessions WHERE user_id = ?').get(user.id)).n);
 
-    // ── Happy path: scan, poll, approve, phone completes once ──
+    // ── Happy path: scan, poll, approve, target completes once ──
     let started = await start();
     assert.strictEqual(started.status, 201, started.text);
     assert.match(started.json.qr_svg, /^<svg\b/, 'Network renders the SVG itself');
@@ -100,7 +100,7 @@ function cookieOf(cookies, name) {
     assert.strictEqual(scanned.status, 200, scanned.text);
     assert.match(String(scanned.json.code), /^[1-9][0-9]$/, 'two digits, 10-99');
     assert.strictEqual(scanned.json.user_hint.display_name, user.display_name || user.username);
-    const ovQr = phoneCookie(scanned);
+    const ovQr = targetCookie(scanned);
     assert.ok(ovQr && /^[0-9a-f]{32}$/.test(ovQr), 'a 128-bit ov_qr nonce');
     const qrSet = scanned.setCookies.find((c) => c.startsWith('ov_qr='));
     assert.match(qrSet, /HttpOnly/i);
@@ -109,13 +109,13 @@ function cookieOf(cookies, name) {
     assert.match(qrSet, /Path=\/auth\/qr/i);
     assert.match(qrSet, /Max-Age=300/i);
 
-    let polled = await api('GET', `/auth/qr/${started.id}`, { token: desktop });
+    let polled = await api('GET', `/auth/qr/${started.id}`, { token: source });
     assert.strictEqual(polled.status, 200, polled.text);
     assert.strictEqual(polled.json.state, 'scanned');
     assert.strictEqual(polled.json.device, 'iPhone · Safari');
-    assert.ok(!('code' in polled.json), 'the desktop never receives the code');
+    assert.ok(!('code' in polled.json), 'the source device never receives the code');
 
-    let approved = await api('POST', `/auth/qr/${started.id}/approve`, { token: desktop, body: { code: scanned.json.code } });
+    let approved = await api('POST', `/auth/qr/${started.id}/approve`, { token: source, body: { code: scanned.json.code } });
     assert.strictEqual(approved.status, 200, approved.text);
     assert.strictEqual(approved.json.state, 'approved');
 
@@ -134,13 +134,24 @@ function cookieOf(cookies, name) {
     assert.strictEqual(me.json.user.id, user.id);
     const device = await db.prepare("SELECT device_name, ip FROM user_sessions WHERE user_id = ? ORDER BY id DESC LIMIT 1").get(user.id);
     assert.strictEqual(device.device_name, 'iPhone · Safari');
-    assert.strictEqual(device.ip, null, 'the phone session records no IP');
+    assert.strictEqual(device.ip, null, 'the target session records no IP');
 
     const again = await status(ovQr);
     assert.strictEqual(again.status, 200);
     assert.strictEqual(again.json.state, 'used');
     assert.strictEqual(again.json.signed_in, false);
     assert.strictEqual(await countSessions(), before + 1, 'still exactly one session');
+
+    // ── A phone-sized signed-in session can show the code and approve it ──
+    const phoneSource = signToken(user, privateKey, config);
+    const phoneStart = await api('POST', '/auth/qr/start', { token: phoneSource, body: {}, headers: { 'user-agent': IPHONE_UA, 'sec-ch-ua-mobile': '?1' } });
+    assert.strictEqual(phoneStart.status, 201, phoneStart.text);
+    const phoneFrag = new URL(phoneStart.json.url).hash.slice(1).split('.');
+    const targetScan = await scan(phoneFrag[0], phoneFrag[1]);
+    assert.strictEqual(targetScan.status, 200, targetScan.text);
+    const phoneApprove = await api('POST', `/auth/qr/${phoneFrag[0]}/approve`, { token: phoneSource, body: { code: targetScan.json.code }, headers: { 'user-agent': IPHONE_UA, 'sec-ch-ua-mobile': '?1' } });
+    assert.strictEqual(phoneApprove.status, 200, phoneApprove.text);
+    assert.strictEqual((await status(targetCookie(targetScan))).json.signed_in, true, 'a phone-sized source creates its own session');
 
     // ── A second scan is refused with 409 ──
     let secondStart = await start();
@@ -149,21 +160,21 @@ function cookieOf(cookies, name) {
     const againScan = await scan(secondStart.id, secondStart.secret);
     assert.strictEqual(againScan.status, 409);
     assert.strictEqual(againScan.json.error, 'already used on another device');
-    await api('POST', `/auth/qr/${secondStart.id}/deny`, { token: desktop, body: {} });
+    await api('POST', `/auth/qr/${secondStart.id}/deny`, { token: source, body: {} });
 
     // ── A wrong code three times denies the transfer ──
     let wrongStart = await start();
     let wrongScan = await scan(wrongStart.id, wrongStart.secret);
     const wrong = wrongScan.json.code === '99' ? '98' : '99';
     const tries = [];
-    for (let i = 0; i < 3; i++) tries.push(await api('POST', `/auth/qr/${wrongStart.id}/approve`, { token: desktop, body: { code: wrong } }));
+    for (let i = 0; i < 3; i++) tries.push(await api('POST', `/auth/qr/${wrongStart.id}/approve`, { token: source, body: { code: wrong } }));
     assert.deepStrictEqual(tries.map((r) => r.status), [400, 400, 403]);
     assert.strictEqual(tries[0].json.error, 'code_mismatch');
     assert.strictEqual(tries[0].json.attempts_left, 2);
     assert.strictEqual(tries[2].json.error, 'denied');
-    const deniedPoll = await api('GET', `/auth/qr/${wrongStart.id}`, { token: desktop });
+    const deniedPoll = await api('GET', `/auth/qr/${wrongStart.id}`, { token: source });
     assert.strictEqual(deniedPoll.json.state, 'denied');
-    assert.strictEqual((await status(phoneCookie(wrongScan))).json.state, 'denied');
+    assert.strictEqual((await status(targetCookie(wrongScan))).json.state, 'denied');
 
     // ── Guessed id or secret and an expired transfer are the same 404 ──
     const guessId = await api('POST', '/auth/qr/scan', { body: { id: '01J00000000000000000000000', secret: 'a'.repeat(32) } });
@@ -175,22 +186,22 @@ function cookieOf(cookies, name) {
     let expired = await start();
     await db.prepare('UPDATE qr_signin_transfers SET expires_at = ? WHERE id = ?').run(new Date(Date.now() - 1000).toISOString(), expired.id);
     assert.strictEqual((await scan(expired.id, expired.secret)).status, 404, 'an expired transfer is 404, like a guess');
-    assert.strictEqual((await api('GET', `/auth/qr/${expired.id}`, { token: desktop })).status, 404);
+    assert.strictEqual((await api('GET', `/auth/qr/${expired.id}`, { token: source })).status, 404);
     const expiryStart = await start();
     const expiryScanned = await scan(expiryStart.id, expiryStart.secret);
     assert.strictEqual(expiryScanned.status, 200);
     await db.prepare('UPDATE qr_signin_transfers SET expires_at = ? WHERE id = ?').run(new Date(Date.now() - 1000).toISOString(), expiryStart.id);
-    assert.strictEqual((await status(phoneCookie(expiryScanned))).status, 404, 'the phone learns an expired transfer as 404 too');
+    assert.strictEqual((await status(targetCookie(expiryScanned))).status, 404, 'the phone learns an expired transfer as 404 too');
     await qr.sweep(db, { now: Date.now() });
     assert.ok(!(await db.prepare('SELECT 1 AS ok FROM qr_signin_transfers WHERE id = ?').get(expired.id)), 'the jobs sweep deletes expired transfers');
 
     // ── The phone cannot finish without its ov_qr cookie ──
     let noCookieStart = await start();
     let noCookieScan = await scan(noCookieStart.id, noCookieStart.secret);
-    await api('POST', `/auth/qr/${noCookieStart.id}/approve`, { token: desktop, body: { code: noCookieScan.json.code } });
+    await api('POST', `/auth/qr/${noCookieStart.id}/approve`, { token: source, body: { code: noCookieScan.json.code } });
     assert.strictEqual((await status(null)).status, 404);
     assert.strictEqual((await status('c'.repeat(32))).status, 404);
-    await api('POST', `/auth/qr/${noCookieStart.id}/deny`, { token: desktop, body: {} });
+    await api('POST', `/auth/qr/${noCookieStart.id}/deny`, { token: source, body: {} });
 
     // ── Approval needs the creating session, not just the person ──
     let sessionStart = await start();
@@ -198,21 +209,21 @@ function cookieOf(cookies, name) {
     const other = await api('POST', `/auth/qr/${sessionStart.id}/approve`, { token: secondSession, body: { code: sessionScan.json.code } });
     assert.strictEqual(other.status, 403, 'another session of the same user cannot approve');
     assert.strictEqual((await api('GET', `/auth/qr/${sessionStart.id}`, { token: secondSession })).status, 403);
-    assert.strictEqual((await api('POST', `/auth/qr/${sessionStart.id}/approve`, { token: desktop, body: { code: sessionScan.json.code } })).status, 200);
-    assert.strictEqual((await status(phoneCookie(sessionScan))).json.signed_in, true);
+    assert.strictEqual((await api('POST', `/auth/qr/${sessionStart.id}/approve`, { token: source, body: { code: sessionScan.json.code } })).status, 200);
+    assert.strictEqual((await status(targetCookie(sessionScan))).json.signed_in, true);
 
-    // ── A renewed desktop token is still the creating session (jti survives renewal) ──
+    // ── A renewed source token is still the creating session (jti survives renewal) ──
     let renewStart = await start();
     let renewScan = await scan(renewStart.id, renewStart.secret);
     assert.strictEqual((await api('POST', `/auth/qr/${renewStart.id}/approve`, { token: refreshed.json.token, body: { code: renewScan.json.code } })).status, 200);
-    assert.strictEqual((await status(phoneCookie(renewScan))).json.signed_in, true);
+    assert.strictEqual((await status(targetCookie(renewScan))).json.signed_in, true);
 
     // ── Racing polls create exactly one session ──
     let raceStart = await start();
     let raceScan = await scan(raceStart.id, raceStart.secret);
-    await api('POST', `/auth/qr/${raceStart.id}/approve`, { token: desktop, body: { code: raceScan.json.code } });
+    await api('POST', `/auth/qr/${raceStart.id}/approve`, { token: source, body: { code: raceScan.json.code } });
     const raceBefore = await countSessions();
-    const raceCookie = phoneCookie(raceScan);
+    const raceCookie = targetCookie(raceScan);
     const raced = await Promise.all([status(raceCookie), status(raceCookie)]);
     assert.strictEqual(raced.filter((r) => r.json && r.json.signed_in === true).length, 1, 'one poll signs in');
     assert.strictEqual(raced.filter((r) => cookieOf(r.setCookies, 'ov_token')).length, 1, 'one response sets the session');
@@ -222,7 +233,7 @@ function cookieOf(cookies, name) {
     const notice = await db.prepare("SELECT title, message FROM notifications WHERE user_id = ? AND service = 'network' ORDER BY created_at DESC, id DESC LIMIT 5").all(user.id);
     const signInNotice = notice.find((n) => n.title === 'New sign-in');
     assert.ok(signInNotice, 'the person gets the new-sign-in notice');
-    assert.ok(signInNotice.message.includes('iPhone · Safari') && signInNotice.message.includes('by QR from your computer'));
+    assert.ok(signInNotice.message.includes('iPhone · Safari') && signInNotice.message.includes('by QR from your other device'));
 
     // ── The audit has the user, transfer and outcome; never the secret, code or IP ──
     const audits = await db.prepare("SELECT action, details, ip FROM audit_log WHERE user_id = ? AND action LIKE 'qr_signin%' ORDER BY id").all(user.id);
@@ -256,13 +267,13 @@ function cookieOf(cookies, name) {
     assert.strictEqual((await start(limitUser.token)).status, 429, 'the 11th start in an hour is refused');
 
     // ── A foreign Origin cannot start a transfer ──
-    const foreign = await api('POST', '/auth/qr/start', { token: desktop, body: {}, headers: { origin: 'https://phish.example' } });
+    const foreign = await api('POST', '/auth/qr/start', { token: source, body: {}, headers: { origin: 'https://phish.example' } });
     assert.strictEqual(foreign.status, 403);
 
     // ── The phone page is served only with the flag on ──
     const page = await api('GET', '/q');
     assert.strictEqual(page.status, 200);
-    assert.ok(page.text.includes('Type this number on your computer'));
+    assert.ok(page.text.includes('Type this number on the device showing the code'));
 
     // ── Repeated guesses spend the per-address auth limiter's budget and are refused ──
     const guesses = [];

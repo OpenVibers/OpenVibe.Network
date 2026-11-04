@@ -470,10 +470,10 @@ document.getElementById('password-form').addEventListener('submit', async (e) =>
     } catch (err) { alert('Error: ' + err.message); }
 });
 
-/* ── Sign in on your phone ────────────────────────────────────────────────────────────────
-   The desktop half of server/auth/qr-signin.js: start a transfer, show the QR for 120 s, poll every
-   2 s, then approve the two-digit number the phone shows. The phone opens /q; nothing here holds the
-   QR's secret after the start response. */
+/* ── Sign in on another device ──────────────────────────────────────────────────────────────
+   The source-device half of server/auth/qr-signin.js: start a transfer, show the QR for 120 s, poll
+   every 2 s, then approve the two-digit number the target device shows. The target opens /q; nothing
+   here holds the QR's secret after the start response. */
 let qrTransfer = null;
 let qrPollTimer = null;
 let qrTickTimer = null;
@@ -537,7 +537,6 @@ function qrSigninClose() {
 }
 
 function qrSigninOpen() {
-    if (window.matchMedia('(max-width: 599px)').matches) return;
     const dialog = document.getElementById('qr-dialog');
     if (!dialog) return;
     qrReset();
@@ -631,7 +630,7 @@ async function qrPoll() {
             qrShowConfirm();
         } else if (data.state === 'approved') {
             const timer = document.getElementById('qr-timer');
-            if (timer) timer.textContent = 'Approved — finishing on your phone…';
+            if (timer) timer.textContent = 'Approved — finishing on your other device…';
         } else if (data.state === 'denied') {
             qrStopped('This code was denied');
             return;
@@ -649,7 +648,7 @@ function qrShowConfirm() {
     if (!confirm.hidden) return;
     qrSetView('confirm');
     const name = document.getElementById('qr-device-name');
-    if (name) name.textContent = qrTransfer.device || 'Your phone';
+    if (name) name.textContent = qrTransfer.device || 'Your other device';
     const err = document.getElementById('qr-error');
     if (err) { err.hidden = true; err.textContent = ''; }
     setTimeout(() => document.getElementById('qr-digit-1')?.focus(), 30);
@@ -688,7 +687,7 @@ async function qrSigninApprove() {
         const res = await qrPost(`/auth/qr/${encodeURIComponent(qrTransfer.id)}/approve`, { code: a + b });
         if (res.ok) {
             const timer = document.getElementById('qr-timer');
-            if (timer) timer.textContent = 'Approved — finishing on your phone…';
+            if (timer) timer.textContent = 'Approved — finishing on your other device…';
             return;
         }
         if (res.status === 400 && res.data.error === 'code_mismatch') { qrWrongCode(Number(res.data.attempts_left) || 0); return; }
@@ -710,7 +709,7 @@ async function qrSigninDeny() {
 
 function qrDone(device) {
     qrStopTimers();
-    const name = String(device || 'your phone').split(' · ')[0];
+    const name = String(device || 'your other device').split(' · ')[0];
     const text = document.getElementById('qr-done-text');
     if (text) text.textContent = `Signed in on ${name}`;
     qrSetView('done');

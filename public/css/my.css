@@ -418,14 +418,9 @@ button.td-stat:hover span { color: var(--accent-light); }
 .label-prefs-status.is-bad { color: var(--danger-text, #f87171); }
 @media (min-width: 640px) { .label-pref { grid-template-columns: minmax(0, 1fr) 260px; align-items: center; } }
 
-/* Sign in on your phone (server/auth/qr-signin.js): a <dialog> with the QR on a white tile on the left and
-   the three steps on the right; below 600 px it stacks. The tile stays white in every theme: phones read it. */
-.qr-entry-desktop { min-height: 44px; margin-top: 12px; }
-.qr-phone-note { display: none; margin-top: 10px; font-size: 13px; line-height: 1.55; color: var(--text-secondary); }
-@media (max-width: 599px) {
-    .qr-entry-desktop { display: none; }
-    .qr-phone-note { display: block; }
-}
+/* Sign in on another device (server/auth/qr-signin.js): a <dialog> with the QR on a white tile on the left and
+   the three steps on the right; below 600 px it stacks, QR first. The tile stays white in every theme: cameras read it. */
+.qr-entry-button { min-height: 44px; margin-top: 12px; }
 .qr-entry[hidden], .qr-dialog [hidden] { display: none !important; }
 .qr-dialog {
     position: fixed;

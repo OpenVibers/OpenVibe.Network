@@ -1,8 +1,8 @@
 -- phase: expand
--- Sign in on your phone (owner, 2026-11-04): a desktop shows a QR code, a phone scans it, the desktop
--- confirms the two-digit code the phone shows, and the phone gets an ordinary Network session.
+-- Sign in on another device (owner, 2026-11-04): the source device shows a QR code, the target scans it, the source
+-- confirms the two-digit code the target shows, and the target gets an ordinary Network session.
 --
--- The secret is never stored, only its SHA-256; the match code and the phone's ov_qr nonce are hashed
+-- The secret is never stored, only its SHA-256; the match code and the target's ov_qr nonce are hashed
 -- the same way. expires_at is an ISO-8601 UTC string so comparisons stay lexical on PostgreSQL and
 -- PGlite. Rows are swept once expired (server/auth/qr-signin.js sweep, server/index.js timer); the
 -- audit_log rows remain.
@@ -15,7 +15,7 @@ CREATE TABLE qr_signin_transfers (
         CHECK (status IN ('waiting', 'scanned', 'approved', 'denied', 'used')),
     code_hash text COLLATE "C",
     attempts integer NOT NULL DEFAULT 0,
-    phone_nonce_hash text COLLATE "C" UNIQUE,
+    target_nonce_hash text COLLATE "C" UNIQUE,
     device_summary text COLLATE "C",
     scanned_at text COLLATE "C",
     approved_at text COLLATE "C",

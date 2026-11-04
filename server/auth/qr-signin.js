@@ -1,13 +1,13 @@
 'use strict';
 /**
- * Sign in on your phone (owner, 2026-11-04; NETWORK_QR_SIGNIN, off by default).
+ * Sign in on another device (owner, 2026-11-04; NETWORK_QR_SIGNIN, off by default).
  *
- * A signed-in desktop starts a transfer (POST /auth/qr/start). The QR carries
+ * A signed-in source device starts a transfer (POST /auth/qr/start). The QR carries
  * https://<network>/q#<id>.<secret>; the secret lives in the fragment, so no server log or
- * Referer ever sees it. The phone reads the fragment, posts it to /auth/qr/scan, and gets a
+ * Referer ever sees it. The target device reads the fragment, posts it to /auth/qr/scan, and gets a
  * two-digit match code plus an httpOnly ov_qr cookie (path /auth/qr) that binds the transfer to
- * that browser. The desktop approves the match code from the session that created the transfer;
- * the phone's next /auth/qr/status poll creates an ordinary Network session (the same signToken +
+ * that browser. The source device approves the match code from the session that created the transfer;
+ * the target's next /auth/qr/status poll creates an ordinary Network session (the same signToken +
  * setSessionCookies a password sign-in uses), exactly once.
  *
  * Security notes:
@@ -67,7 +67,7 @@ function sameHash(stored, presented) {
 /** "iPhone · Safari" from the User-Agent. Browser and OS only: never an IP, never the raw UA. */
 function deviceSummary(userAgent) {
     const ua = String(userAgent || '');
-    let device = 'Phone';
+    let device = 'Device';
     if (/iPhone/i.test(ua)) device = 'iPhone';
     else if (/iPad/i.test(ua)) device = 'iPad';
     else if (/Android/i.test(ua)) device = 'Android';
@@ -83,7 +83,7 @@ function deviceSummary(userAgent) {
     return `${device} · ${browser}`.slice(0, 80);
 }
 
-/** The desktop session that created a transfer: its jti, or a stable hash for a token minted before jti. */
+/** The source session that created a transfer: its jti, or a stable hash for a token minted before jti. */
 function creatorOf(req) {
     const jti = req.tokenClaims && req.tokenClaims.jti;
     return jti ? String(jti) : `tok:${sha256(req.token || '')}`;
@@ -150,7 +150,7 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
             FROM qr_signin_transfers t JOIN users u ON u.id = t.user_id WHERE t.id = ?`).get(String(id));
     }
 
-    // ── Start (desktop, signed in) ─────────────────────────────
+    // ── Start (source device, signed in) ───────────────────────
     router.post('/start', requireAuth, startLimit, async (req, res) => {
         const id = newUlid(now());
         const secret = crypto.randomBytes(16).toString('hex');
@@ -190,7 +190,7 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
         res.status(201).json({ id, expires_at: expiresAt, url: url.toString(), qr_svg: qrSvg });
     });
 
-    // ── Scan (phone, public but secret-gated) ──────────────────
+    // ── Scan (target device, public but secret-gated) ──────────
     router.post('/scan', async (req, res) => {
         const id = String((req.body && req.body.id) || '').trim();
         const secret = String((req.body && req.body.secret) || '').trim();
@@ -204,11 +204,11 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
 
         const code = String(crypto.randomInt(10, 100));
         const nonce = crypto.randomBytes(16).toString('hex');
-        const device = deviceSummary(req.headers['user-agent']);
+        const targetDevice = deviceSummary(req.headers['user-agent']);
         const scannedAt = new Date(now()).toISOString();
-        const won = await db.prepare(`UPDATE qr_signin_transfers SET status = 'scanned', code_hash = ?, phone_nonce_hash = ?,
+        const won = await db.prepare(`UPDATE qr_signin_transfers SET status = 'scanned', code_hash = ?, target_nonce_hash = ?,
             device_summary = ?, scanned_at = ? WHERE id = ? AND status = 'waiting' AND expires_at > ?`)
-            .run(codeHash(code), nonceHash(nonce), device, scannedAt, id, liveSince());
+            .run(codeHash(code), nonceHash(nonce), targetDevice, scannedAt, id, liveSince());
         if (!won.changes) {
             const after = await transferById(id);
             if (!after || after.expires_at <= liveSince()) return notFound(res);
@@ -218,17 +218,17 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
         res.cookie(COOKIE, nonce, {
             httpOnly: true, secure: true, sameSite: 'lax', path: COOKIE_PATH, maxAge: COOKIE_MAX_AGE_MS,
         });
-        await audit(db, row.user_id, 'qr_signin_scanned', { transfer_id: id, device, outcome: 'scanned' });
+        await audit(db, row.user_id, 'qr_signin_scanned', { transfer_id: id, device: targetDevice, outcome: 'scanned' });
         res.json({ code, user_hint: { display_name: row.display_name || row.username, avatar_url: row.avatar_url || null } });
     });
 
-    // ── Phone status (ov_qr cookie) ────────────────────────────
+    // ── Target status (ov_qr cookie) ───────────────────────────
     // Defined before /:id so "status" is not read as a transfer id.
     router.get('/status', async (req, res) => {
         const nonce = String((req.cookies && req.cookies[COOKIE]) || '');
         if (!/^[0-9a-f]{32}$/.test(nonce)) return notFound(res);
         const row = await db.prepare(`SELECT t.*, u.username, u.display_name, u.avatar_url, u.is_banned, u.deleted_at, u.merged_into
-            FROM qr_signin_transfers t JOIN users u ON u.id = t.user_id WHERE t.phone_nonce_hash = ?`).get(nonceHash(nonce));
+            FROM qr_signin_transfers t JOIN users u ON u.id = t.user_id WHERE t.target_nonce_hash = ?`).get(nonceHash(nonce));
         if (!row) return notFound(res);
         if (row.expires_at <= liveSince()) {
             res.clearCookie(COOKIE, { path: COOKIE_PATH, sameSite: 'lax', secure: true, httpOnly: true });
@@ -263,10 +263,10 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
             if (!won.changes) return { lost: true };
 
             const token = signToken(survivor, privateKey, config);
-            // The device summary only: no raw User-Agent and no IP in the phone's session row.
+            // The device summary only: no raw User-Agent and no IP in the target's session row.
             await t.prepare(`INSERT INTO user_sessions (user_id, session_token, device_name, expires_at)
                 VALUES (?, ?, ?, ?)`).run(
-                survivor.id, crypto.randomUUID(), row.device_summary || 'Phone',
+                survivor.id, crypto.randomUUID(), row.device_summary || 'Device',
                 new Date(now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             );
             return { token, user: survivor };
@@ -283,7 +283,7 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
 
         setSessionCookies(res, result.token);
         res.clearCookie(COOKIE, { path: COOKIE_PATH, sameSite: 'lax', secure: true, httpOnly: true });
-        await audit(db, result.user.id, 'qr_signin_used', { transfer_id: row.id, device: row.device_summary || 'Phone', outcome: 'used' });
+        await audit(db, result.user.id, 'qr_signin_used', { transfer_id: row.id, device: row.device_summary || 'Device', outcome: 'used' });
         if (notifications) {
             try {
                 await notifications.create({
@@ -292,7 +292,7 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
                     category: 'system',
                     priority: 'high',
                     title: 'New sign-in',
-                    message: `${row.device_summary || 'Phone'} signed in by QR from your computer. If this was not you, sign out everywhere and change your password.`,
+                    message: `${row.device_summary || 'Device'} signed in by QR from your other device. If this was not you, sign out everywhere and change your password.`,
                     service: 'network',
                     url: 'https://openvibe.network/my',
                 });
@@ -301,7 +301,7 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
         res.json({ state: 'used', signed_in: true, user: publicUser(result.user) });
     });
 
-    // ── Poll (desktop, creating session) ───────────────────────
+    // ── Poll (source device, creating session) ─────────────────
     router.get('/:id', requireAuth, async (req, res) => {
         const row = await transferById(req.params.id);
         if (!row || row.expires_at <= liveSince()) return notFound(res);
@@ -310,7 +310,7 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
         res.json({ id: row.id, state: row.status, device: row.device_summary || null, expires_at: row.expires_at });
     });
 
-    // ── Approve (desktop, creating session) ────────────────────
+    // ── Approve (source device, creating session) ──────────────
     router.post('/:id/approve', requireAuth, async (req, res) => {
         const row = await transferById(req.params.id);
         if (!row || row.expires_at <= liveSince()) return notFound(res);
@@ -354,7 +354,7 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
         res.status(400).json({ error: 'code_mismatch', attempts_left: Math.max(0, MAX_ATTEMPTS - result.attempts) });
     });
 
-    // ── Deny (desktop, creating session) ───────────────────────
+    // ── Deny (source device, creating session) ─────────────────
     router.post('/:id/deny', requireAuth, async (req, res) => {
         const row = await transferById(req.params.id);
         if (!row || row.expires_at <= liveSince()) return notFound(res);
@@ -379,18 +379,18 @@ async function sweep(db, { now = Date.now() } = {}) {
     return transfers + starts;
 }
 
-/** The public phone page (/q): static markup plus the shared look-boot script, never cached. */
-let phonePageHtml = null;
-function phonePage() {
-    if (!phonePageHtml) {
+/** The public /q page: static markup plus the shared look-boot script, never cached. */
+let targetPageHtml = null;
+function targetPage() {
+    if (!targetPageHtml) {
         const lookBoot = require('../look-boot');
-        phonePageHtml = lookBoot.apply(fs.readFileSync(path.join(__dirname, '..', 'qr-signin', 'q.html'), 'utf8'));
+        targetPageHtml = lookBoot.apply(fs.readFileSync(path.join(__dirname, '..', 'qr-signin', 'q.html'), 'utf8'));
     }
-    return phonePageHtml;
+    return targetPageHtml;
 }
 function pageHandler(_req, res) {
     res.set('Cache-Control', 'no-store');
-    res.type('html').send(phonePage());
+    res.type('html').send(targetPage());
 }
 
 module.exports = {
