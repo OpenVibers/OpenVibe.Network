@@ -166,13 +166,9 @@ body{
         $('who-name').textContent = (d.user_hint && d.user_hint.display_name) || 'you';
         $('code').textContent = String(d.code || '');
         var avatar = $('who-avatar');
-        if (d.user_hint && d.user_hint.avatar_url) {
-            avatar.src = d.user_hint.avatar_url;
-            avatar.alt = '';
-            avatar.style.display = '';
-        } else {
-            avatar.style.display = 'none';
-        }
+        avatar.src = (d.user_hint && d.user_hint.avatar_url) || '/assets/logo-192.png';
+        avatar.alt = '';
+        avatar.style.display = '';
         show('state-code');
         poll();
     }).catch(function () {
