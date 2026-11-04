@@ -292,6 +292,9 @@ app.use('/api/auth/', rateLimit({ windowMs: 15 * 60_000, max: 30, skipSuccessful
 
 // ── Database ─────────────────────────────────────────────────
 const db = await initDb();
+// D11: load the configuration journal, reseal old plaintext under the KEK, then blank the legacy secret
+// copies it holds (provider secrets stay environment-only). Without a KEK nothing is blanked.
+await require('./admin/site-config').init(db);
 await urlRegistry.initializeUrlRegistry(db);
 await urlRegistry.seedBootstrapRegistry(db, process.env, config.bootstrapProfile);
 await ensureAdminUser(db, config);

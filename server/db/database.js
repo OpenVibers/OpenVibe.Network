@@ -409,6 +409,11 @@ function attachHelpers(db) {
         const fromEnv = secrets.fromEnv(key);
         if (fromEnv !== null) return fromEnv;
         if (secrets.isSecret(key)) return null;
+        // A non-provider secret-class value lives in the configuration journal (D11), not the legacy row.
+        try {
+            const stored = require('../admin/site-config').readSecret(db, key);
+            if (stored !== undefined) return stored;
+        } catch { /* the journal is not loaded (a test before boot): fall through to the row */ }
         const row = await db.prepare('SELECT value, type FROM site_settings WHERE key = ?').get(key);
         if (!row) return null;
         if (row.type === 'boolean') return row.value === 'true';

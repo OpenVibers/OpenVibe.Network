@@ -313,6 +313,7 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                 'email_from_openvibelive', 'email_from_openvibegames', 'email_from_openvibenetwork',
             ]);
             const owner = isOwner(req.user);
+            const journal = (await siteConfig.forDb(db)).store;
             for (const r of rows) {
                 if (EMAIL_MANAGED_KEYS.has(r.key)) continue;
                 // Provider secrets are environment-only (server/secrets.js): a database row is never used or
@@ -328,11 +329,15 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
                     settings[r.key] = { value: r.value, type: r.type, source: src, env: secrets.envName(r.key), secret: secrets.isSecret(r.key) };
                     continue;
                 }
-                // Secrets (API keys / tokens / credentials) are owner-only — mask for admins.
+                // A non-provider secret-class value lives in the configuration journal (D11); the legacy row
+                // may be a blank slot after the boot migration. Secrets stay owner-only — mask for admins.
+                const stored = (r.type === 'secret' || isSensitiveSettingKey(r.key) || siteConfig.isSecret(r.key))
+                    ? journal.get(r.key) : undefined;
+                const value = stored !== undefined ? stored : r.value;
                 if (!owner && (r.type === 'secret' || isSensitiveSettingKey(r.key))) {
-                    settings[r.key] = { value: maskSecret(r.value), type: r.type, redacted: true };
+                    settings[r.key] = { value: maskSecret(value), type: r.type, redacted: true };
                 } else {
-                    settings[r.key] = { value: r.value, type: r.type };
+                    settings[r.key] = { value, type: r.type };
                 }
             }
             res.json({ ok: true, settings });
@@ -988,10 +993,11 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
 
     router.get('/net-config', requireOwner, async (req, res) => {
         try {
+            const journal = (await siteConfig.forDb(db)).store;
             const config = {};
             for (const key of NET_SETTING_KEYS) {
-                const row = await db.prepare('SELECT value FROM site_settings WHERE key = ?').get(key);
-                config[key] = row ? row.value : '';
+                const value = journal.get(key);
+                config[key] = value == null ? '' : String(value);
             }
             // Mask tokens for display
             for (const key of NET_SETTING_KEYS) {
@@ -1013,7 +1019,10 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             }
             // Skip if masked
             if (value?.startsWith('••••')) return res.json({ ok: true, skipped: true });
-            await db.prepare('INSERT INTO site_settings (key, value, type) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, type = excluded.type').run(key, String(value), 'secret');
+            // D11: the token is a secret-class value; it lives in the sealed configuration journal, never in
+            // site_settings. The legacy row stays a blank slot.
+            await (await siteConfig.forDb(db)).change({ set: { [key]: String(value) }, types: { [key]: 'secret' } },
+                { actor: siteConfig.actorOf(req.user), reason: String(req.body.reason || `net config ${key}`).slice(0, 300) });
             await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(
                 req.user.id, 'net_config_update', JSON.stringify({ key })
             );
