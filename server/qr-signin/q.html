@@ -8,15 +8,15 @@
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#0d0d14">
 <meta name="color-scheme" content="dark light">
-<link rel="icon" type="image/png" href="/assets/logo-192.png">
 <!--ov:look-boot-->
 <style>
+@font-face{font-family:'OV Brand';src:url('/shared/ov-brand.woff2') format('woff2');font-weight:700 900;font-style:normal;font-display:swap}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
     color-scheme:dark light;
     --bg:var(--bg-primary,#0d0d14);--card:var(--bg-card,#1a1a26);--line:var(--border,#2a2a3a);
     --text:var(--text-primary,#e8e6e3);--muted:var(--text-secondary,#a9b3c9);
-    --accent:var(--accent,#8b5cf6);--on-accent:var(--on-accent,#fff);
+    --accent:#8b5cf6;--on-accent:#fff;
 }
 @media (prefers-color-scheme:light){
     :root:not([data-theme]){--bg:#f5f6fa;--card:#fff;--line:#e3e5ec;--text:#181a22;--muted:#5c6170;--accent:#2563eb;--on-accent:#fff}
@@ -28,17 +28,18 @@ body{
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     padding:24px 16px;gap:18px;overflow-x:hidden;
 }
-.brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:16px;letter-spacing:-.2px}
-.brand img{width:30px;height:30px;display:block}
+.brand{display:flex;align-items:center;gap:8px}
+.brand-name{font-family:'OV Brand',Nunito,Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.2px;line-height:1}
 .card{width:100%;max-width:390px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px 22px;text-align:center}
-.eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.eyebrow{font-size:14px;font-weight:600;color:var(--muted);margin-bottom:14px}
 .muted{color:var(--muted);font-size:14px;line-height:1.55}
 .who{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:22px;font-size:15px;line-height:1.35;overflow-wrap:anywhere}
-.who img{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid var(--line);flex:none}
+.who-avatar{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;overflow:hidden;background:var(--accent);color:var(--on-accent);font-size:18px;font-weight:800}
+.who-avatar img{width:100%;height:100%;display:block;object-fit:cover;border-radius:50%}
 .who b{font-weight:700}
-.label{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
-.code{font-size:64px;line-height:1.05;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.06em;margin:2px 0 14px;color:var(--text)}
-.status{font-size:14px;color:var(--muted);line-height:1.5;min-height:21px}
+.label{margin:12px 0 0;font-size:16px;font-weight:500;line-height:1.45;color:var(--muted)}
+.code{font-size:64px;line-height:1.05;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.06em;margin:2px 0 0;color:var(--text)}
+.status{margin-top:14px;font-size:14px;color:var(--muted);line-height:1.5;min-height:21px}
 .big{font-size:22px;font-weight:800;letter-spacing:-.2px;margin:6px 0 8px;line-height:1.25}
 .check{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;margin:0 auto 14px;background:var(--accent);color:var(--on-accent);font-size:26px;font-weight:800}
 .foot{max-width:390px;text-align:center;font-size:12px;line-height:1.5;color:var(--muted);padding:0 8px}
@@ -49,9 +50,10 @@ body{
     .code{font-size:56px}
 }
 </style>
+<script src="/shared/ov-mark.js" defer></script>
 </head>
 <body>
-<header class="brand"><img src="/assets/logo-192.png" alt=""><span>OpenVibe</span></header>
+<header class="brand"><span class="ov-mark" data-size="32" data-wide aria-hidden="true"></span><span class="brand-name">OpenVibe</span></header>
 
 <main class="card">
     <section id="state-scan">
@@ -60,9 +62,9 @@ body{
     </section>
 
     <section id="state-code" hidden>
-        <div class="who"><img id="who-avatar" alt=""><span>Sign in to OpenVibe as <b id="who-name">you</b></span></div>
-        <p class="label">Type this number on the device showing the code</p>
+        <div class="who"><span class="who-avatar" id="who-avatar-box"><img id="who-avatar" alt=""><span id="who-initial" hidden>?</span></span><span>Sign in to OpenVibe as <b id="who-name">you</b></span></div>
         <div class="code" id="code" aria-live="polite">--</div>
+        <p class="label">Type this number on the device showing the code</p>
         <p class="status" id="wait-status" aria-live="polite">Waiting for your other device</p>
     </section>
 
@@ -163,12 +165,21 @@ body{
         return r.json();
     }).then(function (d) {
         if (!d) return;
-        $('who-name').textContent = (d.user_hint && d.user_hint.display_name) || 'you';
+        var hint = d.user_hint || {};
+        var displayName = hint.display_name || 'you';
+        $('who-name').textContent = displayName;
         $('code').textContent = String(d.code || '');
-        var avatar = $('who-avatar');
-        avatar.src = (d.user_hint && d.user_hint.avatar_url) || '/assets/logo-192.png';
-        avatar.alt = '';
-        avatar.style.display = '';
+        var avatar = $('who-avatar'), initial = $('who-initial');
+        if (hint.avatar_url) {
+            avatar.src = hint.avatar_url;
+            avatar.alt = '';
+            avatar.hidden = false;
+            initial.hidden = true;
+        } else {
+            avatar.hidden = true;
+            initial.hidden = false;
+            initial.textContent = String(displayName).trim().charAt(0).toUpperCase() || '?';
+        }
         show('state-code');
         poll();
     }).catch(function () {

@@ -474,6 +474,8 @@ document.getElementById('password-form').addEventListener('submit', async (e) =>
    The source-device half of server/auth/qr-signin.js: start a transfer, show the QR for 120 s, poll
    every 2 s, then approve the two-digit number the target device shows. The target opens /q; nothing
    here holds the QR's secret after the start response. */
+const QR_PHONE_ICON = '<svg viewBox="0 0 24 24" fill="none"><rect x="7" y="2.5" width="10" height="19" rx="2.6" stroke="currentColor" stroke-width="1.8"/><path d="M10.5 18.5h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const QR_LAPTOP_ICON = '<svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="11" rx="1.6" stroke="currentColor" stroke-width="1.8"/><path d="M2 18.5h20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
 let qrTransfer = null;
 let qrPollTimer = null;
 let qrTickTimer = null;
@@ -504,6 +506,29 @@ function qrSetView(which) {
     scan.hidden = which !== 'scan';
     confirm.hidden = which !== 'confirm';
     done.hidden = which !== 'done';
+    qrSetSteps(which);
+}
+
+function qrSetSteps(phase) {
+    document.querySelectorAll('#qr-steps li').forEach((li, index) => {
+        const n = index + 1;
+        const done = phase === 'done' || (phase === 'confirm' && n < 3);
+        const current = (phase === 'scan' && n === 1) || (phase === 'confirm' && n === 3);
+        li.classList.toggle('is-done', done);
+        li.classList.toggle('is-current', current);
+        const marker = li.querySelector('.qr-step-n');
+        if (marker) { marker.textContent = done ? '✓' : String(n); marker.setAttribute('aria-hidden', 'true'); }
+    });
+}
+
+function qrSetDevice(device) {
+    const label = device || 'Your other device';
+    const name = document.getElementById('qr-device-name');
+    if (name) name.textContent = label;
+    const target = String(label).split(' · ')[0];
+    const phone = /iPhone|Android|Phone/i.test(target) && !/iPad|Tablet/i.test(target);
+    const icon = document.getElementById('qr-device-icon');
+    if (icon) icon.innerHTML = phone ? QR_PHONE_ICON : QR_LAPTOP_ICON;
 }
 
 function qrStopTimers() {
@@ -541,6 +566,8 @@ function qrSigninOpen() {
     if (!dialog) return;
     qrReset();
     if (!dialog.open) dialog.showModal();
+    const title = document.getElementById('qr-title');
+    if (title) title.focus({ preventScroll: true });
     qrSigninStart();
 }
 
@@ -647,8 +674,7 @@ function qrShowConfirm() {
     const confirm = document.getElementById('qr-confirm-view');
     if (!confirm.hidden) return;
     qrSetView('confirm');
-    const name = document.getElementById('qr-device-name');
-    if (name) name.textContent = qrTransfer.device || 'Your other device';
+    qrSetDevice(qrTransfer.device);
     const err = document.getElementById('qr-error');
     if (err) { err.hidden = true; err.textContent = ''; }
     setTimeout(() => document.getElementById('qr-digit-1')?.focus(), 30);
