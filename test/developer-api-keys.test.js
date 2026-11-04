@@ -3,7 +3,7 @@
 //   - a key is shown once, and only sha256(secret) is stored;
 //   - a revoked key is refused at once (the exchange says so immediately);
 //   - the scope is enforced: a key may only be exchanged for an audience its scopes cover, and the
-//     token carries the capability of the scope (ai.inference -> ai.inference.create, D8);
+//     token carries the capability of the scope (ai.inference -> ai.app.run, D8);
 //   - the per-project monthly budget is an integer number of nano-USD (D1), read and written;
 //   - the key never reaches a log, an audit row or an error message (every log line is captured here);
 //   - everything is off unless NETWORK_DEV_API_KEYS=1.
@@ -102,14 +102,14 @@ const secretsSeen = [];
         r = await api('owner', 'POST', `/${P}/apps`, { name: 'Live app', environment: 'production', type: 'confidential' });
         assert.strictEqual(r.status, 201, r.text);
         const LIVE_APP = r.body.id;
-        // The apps hold the D8 capability (ai.inference.create, public and active in contracts 0.284.0):
+        // The apps hold the D8 capability (ai.app.run, public and active in contracts 0.284.0):
         // staff set the project's allowance, then the grant is requested and approved.
-        r = await api('staff', 'PUT', `/${P}/allowance`, { capabilities: ['ai.inference.create'] });
+        r = await api('staff', 'PUT', `/${P}/allowance`, { capabilities: ['ai.app.run'] });
         assert.strictEqual(r.status, 200, r.text);
         for (const appId of [TEST_APP, LIVE_APP]) {
-            r = await api('owner', 'POST', `/${P}/apps/${appId}/grants`, { capability: 'ai.inference.create' });
+            r = await api('owner', 'POST', `/${P}/apps/${appId}/grants`, { capability: 'ai.app.run' });
             assert.strictEqual(r.status, 201, r.text);
-            r = await api('owner', 'POST', `/${P}/apps/${appId}/grants/ai.inference.create/approve`);
+            r = await api('owner', 'POST', `/${P}/apps/${appId}/grants/ai.app.run/approve`);
             assert.strictEqual(r.status, 200, r.text);
         }
 
@@ -139,7 +139,7 @@ const secretsSeen = [];
         assert.strictEqual(r.body.keys[0].hint, KEY.hint);
         assert.strictEqual(r.body.keys[0].status, 'active');
 
-        // ── The scope is enforced and the token carries the capability (D8: ai.inference.create) ──
+        // ── The scope is enforced and the token carries the capability (D8: ai.app.run) ──
         const aiToken = await serviceToken('ai', 'ai-secret');
         assert.ok(aiToken, 'AI holds a service token for openvibe.network');
         let x = await exchange(KEY.api_key, 'openvibe.ai', aiToken);
@@ -150,12 +150,12 @@ const secretsSeen = [];
         assert.strictEqual(x.body.environment, 'test');
         assert.strictEqual(x.body.token_env, 'sandbox', 'a test key is a sandbox token');
         assert.deepStrictEqual(x.body.scopes, ['ai.inference']);
-        assert.deepStrictEqual(x.body.capability, ['ai.inference.create'], 'the scope maps to the D8 capability');
+        assert.deepStrictEqual(x.body.capability, ['ai.app.run'], 'the scope maps to the D8 capability');
         assert.strictEqual(x.body.expires_in, 300);
         const claims = serviceAuth.verifyServiceToken(x.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.ai', acceptSandbox: true });
         assert.ok(claims.ok, 'the exchanged token verifies like an app token');
         assert.strictEqual(claims.claims.sub, `app:${TEST_APP}`);
-        assert.deepStrictEqual(claims.claims.cap, ['ai.inference.create']);
+        assert.deepStrictEqual(claims.claims.cap, ['ai.app.run']);
         assert.strictEqual(claims.claims.project_id, P);
         assert.strictEqual(claims.claims.env, 'sandbox');
 
@@ -283,28 +283,28 @@ const secretsSeen = [];
         assert.strictEqual(x.status, 401, 'a revoked app takes its keys with it');
 
         // ── The scope is narrowed by the app's grants ──
-        // The installed release knows ai.inference.create, so the app must hold it as an approved grant.
+        // The installed release knows ai.app.run, so the app must hold it as an approved grant.
         r = await api('owner', 'POST', `/${P}/api-keys`, { name: 'Narrowed', app_id: LIVE_APP, scopes: ['ai.inference'], environment: 'live' });
         assert.strictEqual(r.status, 201, r.text);
         const NARROWED = r.body.api_key;
         secretsSeen.push(NARROWED);
         x = await exchange(NARROWED, 'openvibe.ai', aiToken);
         assert.strictEqual(x.status, 200, x.text);
-        assert.deepStrictEqual(x.body.capability, ['ai.inference.create']);
+        assert.deepStrictEqual(x.body.capability, ['ai.app.run']);
         // Revoking the grant takes the scope with it: the key may not be used any more.
-        r = await api('owner', 'DELETE', `/${P}/apps/${LIVE_APP}/grants/ai.inference.create`);
+        r = await api('owner', 'DELETE', `/${P}/apps/${LIVE_APP}/grants/ai.app.run`);
         assert.strictEqual(r.status, 200, r.text);
         x = await exchange(NARROWED, 'openvibe.ai', aiToken);
         assert.strictEqual(x.status, 403, 'a key whose app lost the grant may not be used');
         assert.strictEqual(x.body.code, 'api_key.scope_denied');
         // With the grant approved again, the same key works.
-        r = await api('owner', 'POST', `/${P}/apps/${LIVE_APP}/grants`, { capability: 'ai.inference.create' });
+        r = await api('owner', 'POST', `/${P}/apps/${LIVE_APP}/grants`, { capability: 'ai.app.run' });
         assert.strictEqual(r.status, 201, r.text);
-        r = await api('owner', 'POST', `/${P}/apps/${LIVE_APP}/grants/ai.inference.create/approve`);
+        r = await api('owner', 'POST', `/${P}/apps/${LIVE_APP}/grants/ai.app.run/approve`);
         assert.strictEqual(r.status, 200, r.text);
         x = await exchange(NARROWED, 'openvibe.ai', aiToken);
         assert.strictEqual(x.status, 200, x.text);
-        assert.deepStrictEqual(x.body.capability, ['ai.inference.create']);
+        assert.deepStrictEqual(x.body.capability, ['ai.app.run']);
 
         // ── The flag: off by default ──
         // A second app with the feature off answers 503 on every new route.

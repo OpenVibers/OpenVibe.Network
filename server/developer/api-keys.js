@@ -50,13 +50,13 @@ const MAX_KEYS_PER_PROJECT = 50;
  * token's cap claim and `audience` is the service that serves it.
  *
  * `ai.inference` is the OpenVibe.AI developer-inference scope (plan D8: the public capability
- * ai.inference.create, added to the contracts catalog in 0.284.0). The capability id is used even
+ * ai.app.run, the public capability developer apps already hold: ADR-014; D8'). The capability id is used even
  * when the installed contracts release is older and does not know it yet: the claim schema accepts
  * it, and the receiver that knows the capability is the one that acts on it.
  */
 const SCOPES = Object.freeze({
     'ai.inference': Object.freeze({
-        capability: 'ai.inference.create',
+        capability: 'ai.app.run',   // the public capability apps already call AI with (ADR-014; AI Exchange D8')
         audience: 'openvibe.ai',
         description: 'Call OpenVibe.AI inference (POST /v1/chat/completions, POST /v1/messages, GET /v1/models)',
     }),
