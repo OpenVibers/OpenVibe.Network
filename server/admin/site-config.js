@@ -136,7 +136,9 @@ function readSecret(db, key) {
  */
 async function migrateLegacySecrets(db, out) {
     const rows = await db.prepare('SELECT key, value, type FROM site_settings').all();
-    const candidates = rows.filter((r) => r.value != null && String(r.value) !== ''
+    // Only configuration rows: keys the journal never holds (NOT_CONFIG: the VAPID pair, migration markers) have no
+    // sealed copy to prove against, and are not counted.
+    const candidates = rows.filter((r) => r.value != null && String(r.value) !== '' && isConfigKey(r.key)
         && (r.type === 'secret' || SECRET.test(r.key)) && !secrets.isSecret(r.key));
     if (!candidates.length) return { checked: 0, blanked: 0, differs: 0, kept: 0, sealed: !!out.store.sealed };
     if (!out.store.sealed) {

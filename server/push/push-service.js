@@ -64,7 +64,7 @@ async function initVapid(db) {
         const keys = webpush.generateVAPIDKeys();
         publicKey = keys.publicKey;
         privateKey = keys.privateKey;
-        await upsert.run('vapid_public_key', publicKey, 'secret');
+        await upsert.run('vapid_public_key', publicKey, 'string');   // public: served to every browser
         await upsert.run('vapid_private_key', privateKey, 'secret');
         _publicKey = publicKey;
         console.log('[push] Generated new VAPID keypair');

@@ -26,6 +26,8 @@ console.error = (...a) => logs.push(a.map(String).join(' '));
     await set.run('net.ipinfo_token', SECRET, 'secret');
     await set.run('discord_bot_token', PROVIDER, 'secret');
     await set.run('platform_name', 'OpenVibe', 'string');
+    // The VAPID public key (served to browsers) has an old 'secret' row type: it is not configuration, not counted.
+    await set.run('vapid_public_key', 'sentinel-vapid-public', 'secret');
 
     const siteConfig = require('../server/admin/site-config');
     const report = await siteConfig.init(db);
@@ -33,12 +35,14 @@ console.error = (...a) => logs.push(a.map(String).join(' '));
     assert.strictEqual(journal.store.sealed, true);
     assert.strictEqual(report.blanked, 1, 'the non-provider secret row was blanked');
     assert.strictEqual(report.differs, 0, 'an equal value is not counted as differing');
+    assert.strictEqual(report.checked, 1, 'a non-configuration row (vapid_public_key) is not a candidate');
 
     const raw = async (k) => (await db.prepare('SELECT value, type FROM site_settings WHERE key = ?').get(k));
     assert.strictEqual((await raw('net.ipinfo_token')).value, '', 'no secret-class value remains in site_settings');
     assert.strictEqual((await raw('net.ipinfo_token')).type, 'secret', 'the typed slot stays for the settings page');
     assert.strictEqual((await raw('discord_bot_token')).value, PROVIDER, 'a provider secret is never moved or blanked');
     assert.strictEqual((await raw('platform_name')).value, 'OpenVibe', 'a non-secret row is untouched');
+    assert.strictEqual((await raw('vapid_public_key')).value, 'sentinel-vapid-public', 'the VAPID public key is untouched');
 
     assert.strictEqual(await db.getSetting('net.ipinfo_token'), SECRET, 'the reader gets the journal value');
     assert.strictEqual(await db.getSetting('discord_bot_token'), null, 'a provider secret is still environment-only');
