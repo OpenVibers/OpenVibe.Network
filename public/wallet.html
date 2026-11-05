@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Wallet - OpenVibe</title>
+<link rel="icon" type="image/svg+xml" data-ov-icon="network" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2216%22%20fill%3D%22%230d131d%22%2F%3E%3Cpath%20d%3D%22M18%2026h28M18%2032h28M18%2038h18%22%20stroke%3D%22%2360a5fa%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E">
+<meta name="theme-color" content="#0d131d">
+<meta name="color-scheme" content="dark light">
+<link rel="apple-touch-icon" href="/assets/logo-192.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="description" content="Your OpenVibe wallet: Balance, Vibes and OpenCoins in one place.">
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://openvibe.network/wallet">
+<meta property="og:title" content="Wallet - OpenVibe">
+<meta property="og:description" content="Balance, Vibes and OpenCoins in one place.">
+<meta property="og:site_name" content="OpenVibe">
+<meta property="og:image" content="https://openvibe.network/shared/social/network.jpg">
+<meta property="og:image:alt" content="OpenVibe.Network: one account for every OpenVibe site">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://openvibe.network/shared/social/network.jpg">
+<link rel="canonical" href="https://openvibe.network/wallet">
+<!--ov:look-boot-->
+<link rel="stylesheet" href="/shared/kit.css">
+<link rel="stylesheet" href="/css/wallet.css">
+</head>
+<body>
+<div id="navbar-mount"></div>
+
+<main class="ovk-page ovk-page--wide w-page" id="wallet-page">
+    <header class="w-head">
+        <h1>Wallet</h1>
+        <p>Everything you hold on OpenVibe, and where each one works.</p>
+    </header>
+
+    <p class="w-banner" id="w-banner" role="status" aria-live="polite" hidden></p>
+
+    <div class="w-cards" id="w-cards">
+        <section class="w-card w-card--balance" aria-labelledby="w-balance-h">
+            <div class="w-card-top">
+                <h2 id="w-balance-h">Balance</h2>
+                <span class="w-mark w-mark--balance" aria-hidden="true">$</span>
+            </div>
+            <p class="w-amount" id="w-balance-amount">—</p>
+            <p class="w-line">For AI, the API and pro tools</p>
+            <div class="w-actions">
+                <button type="button" class="ovk-btn ovk-btn--primary" id="w-add-money">Add money</button>
+                <button type="button" class="ovk-btn ovk-btn--quiet" id="w-move">Move to a project</button>
+            </div>
+            <p class="w-note" id="w-balance-note" hidden></p>
+        </section>
+
+        <section class="w-card w-card--vibes" aria-labelledby="w-vibes-h">
+            <div class="w-card-top">
+                <h2 id="w-vibes-h">Vibes</h2>
+                <span class="w-mark w-mark--vibes" data-glyph="vibes" aria-hidden="true"></span>
+            </div>
+            <p class="w-amount" id="w-vibes-amount">—</p>
+            <p class="w-line">For tips, cheers and fun stuff</p>
+            <div class="w-actions">
+                <button type="button" class="ovk-btn ovk-btn--primary" id="w-get-vibes">Get Vibes</button>
+            </div>
+            <p class="w-note" id="w-vibes-note" hidden></p>
+        </section>
+
+        <section class="w-card w-card--coins" aria-labelledby="w-coins-h">
+            <div class="w-card-top">
+                <h2 id="w-coins-h">OpenCoins</h2>
+                <span class="w-mark w-mark--coins" data-glyph="coins" aria-hidden="true"></span>
+            </div>
+            <p class="w-amount" id="w-coins-amount">—</p>
+            <p class="w-line">Earned by watching and chatting</p>
+            <div class="w-actions">
+                <a class="ovk-btn ovk-btn--quiet" href="https://inventory.openvibe.network/" target="_blank" rel="noopener">Spend your OpenCoins</a>
+            </div>
+        </section>
+    </div>
+
+    <section class="w-sec" aria-labelledby="w-projects-h">
+        <div class="w-sec-head">
+            <div>
+                <h2 id="w-projects-h">Your projects</h2>
+                <p class="w-sec-sub">Each project's own Balance, for its apps and API keys.</p>
+            </div>
+        </div>
+        <ul class="w-projects" id="w-projects"></ul>
+        <p class="w-empty" id="w-projects-empty" hidden>No projects yet. <a href="https://openvibe.services/" target="_blank" rel="noopener">Create one on OpenVibe.Services</a>.</p>
+    </section>
+
+    <section class="w-sec" aria-labelledby="w-activity-h">
+        <div class="w-sec-head w-sec-head--activity">
+            <div>
+                <h2 id="w-activity-h">Activity</h2>
+                <p class="w-sec-sub">Every movement in your Balance and Vibes.</p>
+            </div>
+            <div class="w-chips" role="group" aria-label="Filter activity">
+                <button type="button" class="w-chip" data-filter="all" aria-pressed="true">All</button>
+                <button type="button" class="w-chip" data-filter="balance" aria-pressed="false">Balance</button>
+                <button type="button" class="w-chip" data-filter="vibes" aria-pressed="false">Vibes</button>
+            </div>
+        </div>
+        <ul class="w-activity" id="w-activity" aria-live="polite"></ul>
+        <p class="w-empty" id="w-activity-empty" hidden>No activity yet. Add money or get Vibes and it will show here.</p>
+    </section>
+
+    <section class="w-sec w-where" aria-labelledby="w-where-h">
+        <h2 id="w-where-h">Where each works</h2>
+        <dl class="w-where-list">
+            <div class="w-where-row">
+                <dt>Balance</dt>
+                <dd><span class="w-tag">AI API</span><span class="w-tag">Exchange</span><span class="w-tag">Developer tools</span><span class="w-tag">Hosting</span><span class="w-tag">Enterprise plans</span></dd>
+            </div>
+            <div class="w-where-row">
+                <dt>Vibes</dt>
+                <dd><span class="w-tag">Tips</span><span class="w-tag">Cheers</span><span class="w-tag">Paid messages</span><span class="w-tag">Consumer AI</span><span class="w-tag">App items</span></dd>
+            </div>
+            <div class="w-where-row">
+                <dt>OpenCoins</dt>
+                <dd><span class="w-tag">Emotes</span><span class="w-tag">Themes</span><span class="w-tag">Cosmetics</span><span class="w-tag">Sounds</span></dd>
+            </div>
+        </dl>
+    </section>
+</main>
+
+<!-- Move money: from the Balance card (any project) or a project's Add (that project). -->
+<dialog class="ovk-sheet w-sheet" id="w-transfer-dialog" aria-labelledby="w-transfer-h">
+    <div class="ovk-sheet-head">
+        <h2 id="w-transfer-h">Move to a project</h2>
+        <button type="button" class="ovk-icon-btn" data-close aria-label="Close" title="Close">×</button>
+    </div>
+    <div class="ovk-sheet-body">
+        <p class="w-sheet-lede" id="w-transfer-lede">Move money from your Balance into a project's Balance.</p>
+        <label class="w-field" id="w-transfer-project-field" for="w-transfer-project"><span>Project</span>
+            <select id="w-transfer-project"></select>
+        </label>
+        <label class="w-field" for="w-transfer-amount"><span>Amount in dollars</span>
+            <input id="w-transfer-amount" type="text" inputmode="decimal" placeholder="5.00" autocomplete="off">
+        </label>
+        <p class="w-cost-line">Your Balance: <b id="w-transfer-have">—</b></p>
+        <button type="button" class="ovk-btn ovk-btn--primary w-sheet-go" id="w-transfer-go" disabled>Move money</button>
+        <p class="w-sheet-note" id="w-transfer-state" role="status" aria-live="polite"></p>
+        <button type="button" class="w-quiet w-sheet-cancel" data-close>Cancel</button>
+    </div>
+</dialog>
+
+<!-- Add money: a hosted checkout with a card or another provider. Never a card form here. -->
+<dialog class="ovk-sheet w-sheet" id="w-add-dialog" aria-labelledby="w-add-h">
+    <div class="ovk-sheet-head">
+        <h2 id="w-add-h">Add money</h2>
+        <button type="button" class="ovk-icon-btn" data-close aria-label="Close" title="Close">×</button>
+    </div>
+    <div class="ovk-sheet-body">
+        <p class="w-sheet-lede">You go to the provider's own secure checkout. Your Balance is credited when the payment confirms.</p>
+        <label class="w-field" for="w-add-amount"><span>Amount in dollars</span>
+            <input id="w-add-amount" type="text" inputmode="decimal" placeholder="20.00" autocomplete="off">
+        </label>
+        <label class="w-field" for="w-add-provider"><span>Pay with</span>
+            <select id="w-add-provider">
+                <option value="stripe">A card (Stripe)</option>
+                <option value="paypal">PayPal</option>
+                <option value="ccbill">CCBill</option>
+                <option value="nowpayments">Crypto (NOWPayments)</option>
+            </select>
+        </label>
+        <button type="button" class="ovk-btn ovk-btn--primary w-sheet-go" id="w-add-go">Continue to payment</button>
+        <p class="w-sheet-note" id="w-add-state" role="status" aria-live="polite"></p>
+        <button type="button" class="w-quiet w-sheet-cancel" data-close>Cancel</button>
+    </div>
+</dialog>
+
+<script src="/shared/theme-loader.js"></script>
+<script src="/shared/navbar.js"></script>
+<script src="/shared/kit-web.js" defer></script>
+<script src="/js/wallet/money.js" defer></script>
+<script src="/js/wallet/common.js" defer></script>
+<script src="/js/wallet/sheets.js" defer></script>
+<script src="/js/wallet/page.js" defer></script>
+</body>
+</html>

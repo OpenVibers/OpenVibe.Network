@@ -56,7 +56,7 @@ function privateValues(w, name) {
 
 function privateArea(path) {
     if (path.startsWith('/api/v1/projects')) return 'projects';
-    if (path.match(/^\/api\/(auth|notifications|history|modules|coins|push|v1\/me|v1\/follows|v1\/status)(\/|\?|$)/)) return 'personal';
+    if (path.match(/^\/api\/(auth|notifications|history|modules|coins|wallet|push|v1\/me|v1\/follows|v1\/status)(\/|\?|$)/)) return 'personal';
     return 'platform';
 }
 
