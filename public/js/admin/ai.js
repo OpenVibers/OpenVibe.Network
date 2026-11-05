@@ -574,9 +574,16 @@ const PAI_ACCESS_LABEL = {
     OWN_DEPLOYMENT: 'Own deployment', AUTHORIZED_WHOLESALE: 'Authorized wholesale', CUSTOMER_BYOK: 'Customer BYOK',
     RESTRICTED: 'Restricted', UNVERIFIED: 'Unverified',
 };
+// An integer's x-unit, as the owner form labels it. A unit this page does not know is left off so the
+// input is a plain number: the page then works with a newer openvibe-shared before its pin moves.
+const PAI_UNIT_LABEL = { ms: 'ms', seconds: 's', bps: 'bps' };
 const PAI = {
     providers: [], services: [], namespaces: [], warnings: [], vault: {}, serviceState: {}, loading: false, addProviderError: null,
 };
+
+function paiUnitLabel(unit) {
+    return Object.prototype.hasOwnProperty.call(PAI_UNIT_LABEL, unit) ? PAI_UNIT_LABEL[unit] : '';
+}
 
 function paiLabel(service) {
     return PAI_NAMES[service] || ('OpenVibe.' + String(service || '').replace(/^./, (c) => c.toUpperCase()));
@@ -1093,7 +1100,9 @@ function paiField(n, key, prop, pinned, pinName) {
     } else if (prop['x-unit'] === 'nano_usd') {
         control = '<span class="pai-money-input"><span class="pai-prefix">$</span><input data-pai-control data-type="nano_usd" data-key="' + esc(key) + '" inputmode="decimal" value="' + esc(paiUsd(value)) + '" aria-label="' + esc(title) + '"' + dis + '></span>';
     } else if (type === 'integer') {
-        control = '<span class="pai-unit-input"><input data-pai-control data-type="integer" data-key="' + esc(key) + '"' + (nullable ? ' data-nullable="1"' : '') + ' type="number" step="1" value="' + esc(value == null ? '' : value) + '" aria-label="' + esc(title) + '"' + dis + '><span class="pai-unit">' + esc(prop['x-unit'] || '') + '</span></span>';
+        const unit = paiUnitLabel(prop['x-unit']);
+        const input = '<input data-pai-control data-type="integer" data-key="' + esc(key) + '"' + (nullable ? ' data-nullable="1"' : '') + ' type="number" step="1" value="' + esc(value == null ? '' : value) + '" aria-label="' + esc(title) + '"' + dis + '>';
+        control = unit ? '<span class="pai-unit-input">' + input + '<span class="pai-unit">' + esc(unit) + '</span></span>' : input;
     } else if (type === 'number') {
         control = '<input data-pai-control data-type="number" data-key="' + esc(key) + '"' + (nullable ? ' data-nullable="1"' : '') + ' type="number" step="any" value="' + esc(value == null ? '' : value) + '" aria-label="' + esc(title) + '"' + dis + '>';
     } else {
