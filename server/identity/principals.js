@@ -441,6 +441,11 @@ const DEFAULT_GRANTS = [
     // Plan T2 lane B step 3: Host places and runs per project, so it reads a project's tenancy, placement and quotas.
     // Other services get this row only when they ship a caller of GET /internal/projects/:project_id.
     ['host', 'network.project.read', SELF_AUDIENCE, []],
+    // Plan G-P3: OpenVibe.AI is the service that spends for a developer project, so it reads the project's
+    // tenancy and its own monthly ceiling (GET /internal/projects/:project_id/budget) and exchanges the
+    // developer API keys a caller shows it (POST /internal/api-keys/exchange). Both are behind
+    // NETWORK_DEV_API_KEYS; the capability is first-party and never grantable to apps.
+    ['ai', 'network.project.read', SELF_AUDIENCE, []],
     // WS-N task 12: ovhost incident / maintenance post to the status page.
     ['host', 'network.status.incident', SELF_AUDIENCE, []],
     // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples

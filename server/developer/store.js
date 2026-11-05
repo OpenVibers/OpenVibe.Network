@@ -151,6 +151,8 @@ async function projectView(db, p, role, settings) {
         // Held by sandbox apps without a staff decision (DEV_SANDBOX_ALLOWANCE); production apps use `allowance` only.
         sandbox_allowance: (settings || policy.settings()).sandboxAllowance,
         created_at: p.created_at, archived_at: p.archived_at || null,
+        // The project's own monthly ceiling, in nano-USD (D1). Null = no budget set.
+        monthly_budget_nano_usd: p.monthly_budget_nano_usd || null,
         counts: {
             members: (await db.prepare('SELECT COUNT(*) AS n FROM dev_project_members WHERE project_id = ?').get(p.id)).n,
             apps: (await db.prepare('SELECT COUNT(*) AS n FROM dev_apps WHERE project_id = ? AND revoked_at IS NULL').get(p.id)).n,
@@ -503,6 +505,8 @@ async function revokeAppTx(db, actor, project, app, ctx, reason) {
     await db.prepare('UPDATE dev_apps SET revoked_at = ?, revoked_by = ? WHERE id = ?').run(t, actor.label, app.id);
     await db.prepare('UPDATE dev_credentials SET revoked_at = ?, revoked_by = ? WHERE app_id = ? AND revoked_at IS NULL').run(t, actor.label, app.id);
     await db.prepare('UPDATE dev_auth_codes SET used = 1 WHERE app_id = ?').run(app.id);
+    // The app's developer API keys go with it (plan G-P3): a key is the app's credential.
+    await require('./api-keys').revokeForApp(db, app.id, { actor: actor.label, reason: reason || 'app_revoked', ctx });
     await audit(db, { projectId: project.id, actor: actor.label, action: 'app.revoked', target: `app:${app.id}`, detail: { reason: reason || null }, ctx,
         event: { type: 'network.app.revoked', subject: { type: 'app', id: app.id }, payload: { project_id: project.id, environment: app.environment, reason: reason || null } } });
     // Its agents go with it (WS-Z2). Required here, not at the top: agents.js requires this module.
@@ -727,7 +731,7 @@ module.exports = {
     audit, listAudit, actorOf, access, memberRole, lockProject,
     createProject, listProjects, renameProject, archiveProject, setAllowance, setEnvironmentPolicy, setPlacement, projectView, internalProjectView, internalMemberView,
     listMembers, addMember, updateMember, removeMember,
-    listApps, getApp, createApp, updateApp, revokeApp,
+    listApps, getApp, createApp, updateApp, revokeApp, loadApp,
     listCredentials, rotateCredential, revokeCredential, matchSecret, hashSecret,
     listGrants, requestGrant, decideGrant,
     listQuotas, setQuota, deleteQuota,
