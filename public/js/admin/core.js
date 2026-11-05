@@ -155,6 +155,10 @@ function routeFromUrl() {
         let rest = location.pathname.replace(/^\/admin\/?/, '');
         let parts = rest.split('/').filter(Boolean);
         let search = location.search;
+        // A sign-in that returns to /admin#ai opens that tab (the Platform AI fresh-sign-in link), just as
+        // /admin/ai does; the hash wins over the remembered last-visited tab.
+        const hashTab = location.hash.replace(/^#\/?/, '').split(/[/?]/)[0];
+        if (hashTab && tabLoaders[hashTab]) parts = [hashTab];
         // Bare /admin → restore last-visited location (a real slug always wins).
         if (parts.length === 0) {
             const last = localStorage.getItem('openvibe_admin_last_path');
