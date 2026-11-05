@@ -61,11 +61,12 @@ const U = { owner: userToken(10), dev: userToken(11), staff: userToken(14) };
         return { status: r.status, type: r.headers.get('content-type') || '', cache: r.headers.get('cache-control'), text, body: text ? JSON.parse(text) : null };
     };
     try {
-        // 0. The grant: Host (tenancy) and AI (the service that spends for a project, plan G-P3) hold it by default,
+        // 0. The grant: Host (tenancy), AI (the service that spends for a project, plan G-P3) and Billing (the Vibes Pay
+        // sheet names the app's project, D12) hold it by default,
         // and it is never grantable to apps.
         assert.deepStrictEqual(principals.DEFAULT_GRANTS.filter(g => g[1] === 'network.project.read').map(g => [g[0], g[2]]).sort(),
-            [['ai', principals.SELF_AUDIENCE], ['host', principals.SELF_AUDIENCE]],
-            'Host and AI hold network.project.read by default');
+            [['ai', principals.SELF_AUDIENCE], ['billing', principals.SELF_AUDIENCE], ['host', principals.SELF_AUDIENCE]],
+            'Host, AI and Billing hold network.project.read by default');
         assert.strictEqual(policy.grantability('network.project.read').grantable, false, 'network.project.read is never grantable to apps');
 
         // A project made through the members' API: allowance, a quota, a second member, two apps with grants, one revoked.

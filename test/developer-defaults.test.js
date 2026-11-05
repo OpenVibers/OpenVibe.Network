@@ -67,7 +67,7 @@ async function withoutCatalog(hidden, fn) {
 (async () => {
     // ── Settings: defaults, env overrides, and the public-only rule ──
     let s = policy.settings({});
-    assert.deepStrictEqual([...s.sandboxAudiences].sort(), ['openvibe.ai', 'openvibe.events', 'openvibe.media', 'openvibe.play', 'openvibe.quest', 'openvibe.services', 'openvibe.tools']);
+    assert.deepStrictEqual([...s.sandboxAudiences].sort(), ['openvibe.ai', 'openvibe.billing', 'openvibe.events', 'openvibe.media', 'openvibe.play', 'openvibe.quest', 'openvibe.services', 'openvibe.tools']);
     assert.ok(!s.sandboxAudiences.has('openvibe.network'), 'Network itself never defaults to accepting sandbox tokens');
     assert.deepStrictEqual(s.sandboxAllowance, ['ai.app.run', 'events.app.publish', 'events.app.read', 'events.app.subscribe',
         'media.object.delete', 'media.object.list', 'media.object.read', 'media.object.upload', 'play.player.read', 'play.result.write', 'play.title.manage', 'quest.app_quest.manage', 'services.release.manage', 'tools.job.cancel', 'tools.job.create', 'tools.job.read', 'tools.tool.read', 'tools.tool.run'],
