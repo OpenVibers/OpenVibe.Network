@@ -389,6 +389,11 @@
     </div>
 
     <div class="section" id="sec-security">
+        <div class="card qr-entry" id="qr-signin-card" hidden>
+            <h3><span class="icon"><i class="fa-solid fa-mobile-screen-button"></i></span> Sign in on another device</h3>
+            <p>Show a code on this device, scan it with the device you want to sign in, then confirm the number it shows.</p>
+            <button class="btn btn-primary qr-entry-button" type="button" onclick="qrSigninOpen()"><i class="fa-solid fa-mobile-screen-button"></i> Sign in on another device</button>
+        </div>
         <div class="card">
             <h3><span class="icon"><i class="fa-solid fa-lock"></i></span> Change Password</h3>
             <form id="password-form">
@@ -452,6 +457,57 @@
     </div>
     </div>
 </div>
+
+<!-- Sign in on another device (server/auth/qr-signin.js; entry revealed only when /api/auth/me says the feature is on). -->
+<dialog class="qr-dialog" id="qr-dialog" aria-labelledby="qr-title">
+    <div class="qr-dialog-head">
+        <h2 id="qr-title" tabindex="-1">Sign in on another device</h2>
+        <button class="qr-close" type="button" aria-label="Close" onclick="qrSigninClose()">×</button>
+    </div>
+    <div class="qr-grid">
+        <div class="qr-left">
+            <div id="qr-scan-view">
+                <div class="qr-tile" id="qr-tile">
+                    <div class="qr-code" id="qr-code" aria-label="QR code for your other device"></div>
+                    <div class="qr-expired" id="qr-expired" hidden>
+                        <p>This code expired</p>
+                        <button class="btn btn-primary" type="button" onclick="qrSigninNewCode()">New code</button>
+                    </div>
+                </div>
+                <div class="qr-bar" aria-hidden="true"><span id="qr-bar-fill"></span></div>
+                <p class="qr-timer" id="qr-timer" aria-live="off">Code expires in 2:00</p>
+            </div>
+
+            <div id="qr-confirm-view" hidden>
+                <div class="qr-device" id="qr-device"><span class="qr-device-icon" id="qr-device-icon" aria-hidden="true"></span><span id="qr-device-name">Your other device</span></div>
+                <p class="qr-confirm-label">Type the number it shows</p>
+                <div class="qr-digits">
+                    <input class="qr-digit" id="qr-digit-1" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="First digit" oninput="qrDigit(this, 'qr-digit-2')" onkeydown="qrDigitKey(event, this)">
+                    <input class="qr-digit" id="qr-digit-2" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="Second digit" oninput="qrDigit(this, null)" onkeydown="qrDigitKey(event, this)">
+                </div>
+                <p class="qr-error" id="qr-error" role="alert" hidden></p>
+                <div class="qr-actions">
+                    <button class="btn btn-primary" id="qr-approve" type="button" onclick="qrSigninApprove()">Sign in</button>
+                    <button class="btn btn-quiet" id="qr-deny" type="button" onclick="qrSigninDeny()">That's not me</button>
+                </div>
+            </div>
+
+            <div id="qr-done-view" hidden>
+                <div class="qr-done-check" aria-hidden="true">✓</div>
+                <p class="qr-done-text" id="qr-done-text">Signed in on your other device</p>
+            </div>
+        </div>
+
+        <div class="qr-right">
+            <ol class="qr-steps" id="qr-steps">
+                <li><span class="qr-step-n" aria-hidden="true">1</span><span class="qr-step-text">Open the camera on the device you want to sign in</span></li>
+                <li><span class="qr-step-n" aria-hidden="true">2</span><span class="qr-step-text">Point it at this code</span></li>
+                <li><span class="qr-step-n" aria-hidden="true">3</span><span class="qr-step-text">Type the number it shows</span></li>
+            </ol>
+            <p class="qr-note">Only the device that scanned the code gets the sign-in, and only this device can approve it.</p>
+        </div>
+    </div>
+</dialog>
 
 <!-- Shared scripts -->
 <script src="/shared/theme-loader.js"></script>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in on another device — OpenVibe</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0d0d14">
+<meta name="color-scheme" content="dark light">
+<!--ov:look-boot-->
+<style>
+@font-face{font-family:'OV Brand';src:url('/shared/ov-brand.woff2') format('woff2');font-weight:700 900;font-style:normal;font-display:swap}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+    color-scheme:dark light;
+    --bg:var(--bg-primary,#0d0d14);--card:var(--bg-card,#1a1a26);--line:var(--border,#2a2a3a);
+    --text:var(--text-primary,#e8e6e3);--muted:var(--text-secondary,#a9b3c9);
+    --accent:#8b5cf6;--on-accent:#fff;
+}
+@media (prefers-color-scheme:light){
+    :root:not([data-theme]){--bg:#f5f6fa;--card:#fff;--line:#e3e5ec;--text:#181a22;--muted:#5c6170;--accent:#2563eb;--on-accent:#fff}
+}
+html,body{min-height:100%}
+body{
+    min-height:100vh;background:var(--bg);color:var(--text);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:24px 16px;gap:18px;overflow-x:hidden;
+}
+.brand{display:flex;align-items:center;gap:8px}
+.brand-name{font-family:'OV Brand',Nunito,Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.2px;line-height:1}
+.card{width:100%;max-width:390px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px 22px;text-align:center}
+.eyebrow{font-size:14px;font-weight:600;color:var(--muted);margin-bottom:14px}
+.muted{color:var(--muted);font-size:14px;line-height:1.55}
+.who{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:22px;font-size:15px;line-height:1.35;overflow-wrap:anywhere}
+.who-avatar{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;overflow:hidden;background:var(--accent);color:var(--on-accent);font-size:18px;font-weight:800}
+.who-avatar img{width:100%;height:100%;display:block;object-fit:cover;border-radius:50%}
+.who b{font-weight:700}
+.label{margin:12px 0 0;font-size:16px;font-weight:500;line-height:1.45;color:var(--muted)}
+.code{font-size:64px;line-height:1.05;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.06em;margin:2px 0 0;color:var(--text)}
+.status{margin-top:14px;font-size:14px;color:var(--muted);line-height:1.5;min-height:21px}
+.big{font-size:22px;font-weight:800;letter-spacing:-.2px;margin:6px 0 8px;line-height:1.25}
+.check{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;margin:0 auto 14px;background:var(--accent);color:var(--on-accent);font-size:26px;font-weight:800}
+.foot{max-width:390px;text-align:center;font-size:12px;line-height:1.5;color:var(--muted);padding:0 8px}
+[hidden]{display:none!important}
+@media (max-width:359px){
+    body{padding:18px 12px}
+    .card{padding:22px 16px;border-radius:16px}
+    .code{font-size:56px}
+}
+</style>
+<script src="/shared/ov-mark.js" defer></script>
+</head>
+<body>
+<header class="brand"><span class="ov-mark" data-size="32" data-wide aria-hidden="true"></span><span class="brand-name">OpenVibe</span></header>
+
+<main class="card">
+    <section id="state-scan">
+        <p class="eyebrow">Sign in on another device</p>
+        <p class="muted" id="scan-status" aria-live="polite">Reading the code…</p>
+    </section>
+
+    <section id="state-code" hidden>
+        <div class="who"><span class="who-avatar" id="who-avatar-box"><img id="who-avatar" alt=""><span id="who-initial" hidden>?</span></span><span>Sign in to OpenVibe as <b id="who-name">you</b></span></div>
+        <div class="code" id="code" aria-live="polite">--</div>
+        <p class="label">Type this number on the device showing the code</p>
+        <p class="status" id="wait-status" aria-live="polite">Waiting for your other device</p>
+    </section>
+
+    <section id="state-done" hidden>
+        <div class="check" aria-hidden="true">✓</div>
+        <p class="big">You're signed in</p>
+        <p class="muted">Taking you to OpenVibe…</p>
+    </section>
+
+    <section id="state-stopped" hidden>
+        <p class="big" id="stopped-title">This code expired</p>
+        <p class="muted" id="stopped-text">Ask your other device for a new code.</p>
+    </section>
+</main>
+
+<p class="foot">Only the device that scanned this code can finish this sign-in.</p>
+
+<script>
+(function () {
+    'use strict';
+    var $ = function (id) { return document.getElementById(id); };
+    var STATES = ['state-scan', 'state-code', 'state-done', 'state-stopped'];
+    function show(id) { STATES.forEach(function (s) { $(s).hidden = s !== id; }); }
+    function stop(title, text) { $('stopped-title').textContent = title; $('stopped-text').textContent = text; show('state-stopped'); }
+
+    // The secret is in the fragment: read it, then take it out of the address bar/history. It was never
+    // sent in a URL, so no server log or Referer has it.
+    var fragment = String(location.hash || '').replace(/^#/, '');
+    if (fragment) {
+        try { history.replaceState(null, '', '/q'); } catch (e) { /* keep going */ }
+    }
+    var dot = fragment.indexOf('.');
+    var id = dot > 0 ? fragment.slice(0, dot) : '';
+    var secret = dot > 0 ? fragment.slice(dot + 1) : '';
+    if (!id || !secret) {
+        stop('This link is missing its code.', 'Ask your other device for a new code.');
+        return;
+    }
+
+    var timer = null;
+    function remember(user) {
+        try {
+            var m = document.cookie.match(/(?:^|; )ov_token=([^;]*)/);
+            var token = m ? decodeURIComponent(m[1]) : null;
+            if (!token) return;
+            var accounts = [];
+            try { accounts = JSON.parse(localStorage.getItem('openvibe_accounts') || '[]'); } catch (e) { accounts = []; }
+            accounts = accounts.filter(function (a) { return a && !a.is_anon && String(a.id) !== String(user.id); });
+            accounts.push({
+                id: user.id, username: user.username,
+                display_name: user.display_name || user.username,
+                avatar_url: user.avatar_url || null, email: user.email || null,
+                token: token, is_anon: false,
+            });
+            localStorage.setItem('openvibe_accounts', JSON.stringify(accounts));
+            localStorage.setItem('openvibe_active_account', String(user.id));
+            localStorage.setItem('ov_token', token);
+        } catch (e) { /* the session cookie is the sign-in; the account list only makes switching easy */ }
+    }
+
+    function done(user) {
+        if (timer) { clearTimeout(timer); timer = null; }
+        if (user) remember(user);
+        show('state-done');
+        setTimeout(function () { location.href = 'https://openvibe.network/'; }, 900);
+    }
+
+    function poll() {
+        fetch('/auth/qr/status', { credentials: 'same-origin', cache: 'no-store' })
+            .then(function (r) {
+                if (r.status === 404) { stop('This code expired.', 'Ask your other device for a new code.'); return null; }
+                if (!r.ok) throw new Error('status ' + r.status);
+                return r.json();
+            })
+            .then(function (d) {
+                if (!d) return;
+                if (d.state === 'denied') { stop('This sign-in was denied.', 'Ask your other device for a new code.'); return; }
+                if (d.state === 'used') {
+                    if (d.signed_in) done(d.user);
+                    else stop('This code was already used.', 'Ask your other device for a new code.');
+                    return;
+                }
+                timer = setTimeout(poll, 2000);
+            })
+            .catch(function () { timer = setTimeout(poll, 3000); });
+    }
+
+    fetch('/auth/qr/scan', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id, secret: secret }),
+    }).then(function (r) {
+        if (r.status === 409) { stop('This code was already used on another device.', 'Ask your other device for a new code.'); return null; }
+        if (r.status === 404) { stop('This code expired.', 'Ask your other device for a new code.'); return null; }
+        if (r.status === 429) { stop('Too many tries.', 'Ask your other device for a new code.'); return null; }
+        if (!r.ok) throw new Error('scan ' + r.status);
+        return r.json();
+    }).then(function (d) {
+        if (!d) return;
+        var hint = d.user_hint || {};
+        var displayName = hint.display_name || 'you';
+        $('who-name').textContent = displayName;
+        $('code').textContent = String(d.code || '');
+        var avatar = $('who-avatar'), initial = $('who-initial');
+        if (hint.avatar_url) {
+            avatar.src = hint.avatar_url;
+            avatar.alt = '';
+            avatar.hidden = false;
+            initial.hidden = true;
+        } else {
+            avatar.hidden = true;
+            initial.hidden = false;
+            initial.textContent = String(displayName).trim().charAt(0).toUpperCase() || '?';
+        }
+        show('state-code');
+        poll();
+    }).catch(function () {
+        stop('This code could not be read.', 'Ask your other device for a new code.');
+    });
+})();
+</script>
+</body>
+</html>

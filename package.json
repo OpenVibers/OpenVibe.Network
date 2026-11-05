@@ -28,6 +28,7 @@
     "openvibe-sdk": "https://codeload.github.com/OpenVibers/OpenVibe.SDK/tar.gz/refs/tags/v0.82.0",
     "openvibe-shared": "https://codeload.github.com/OpenVibers/OpenVibe.Shared/tar.gz/refs/tags/v4.109.2",
     "pg": "^8.23.0",
+    "qrcode": "1.5.4",
     "uuid": "^11.1.0",
     "web-push": "^3.6.7"
   },
