@@ -151,6 +151,8 @@ async function projectView(db, p, role, settings) {
         // Held by sandbox apps without a staff decision (DEV_SANDBOX_ALLOWANCE); production apps use `allowance` only.
         sandbox_allowance: (settings || policy.settings()).sandboxAllowance,
         created_at: p.created_at, archived_at: p.archived_at || null,
+        // The project's own monthly ceiling, in nano-USD (D1). Null = no budget set.
+        monthly_budget_nano_usd: p.monthly_budget_nano_usd || null,
         counts: {
             members: (await db.prepare('SELECT COUNT(*) AS n FROM dev_project_members WHERE project_id = ?').get(p.id)).n,
             apps: (await db.prepare('SELECT COUNT(*) AS n FROM dev_apps WHERE project_id = ? AND revoked_at IS NULL').get(p.id)).n,
@@ -164,6 +166,18 @@ async function projectView(db, p, role, settings) {
  * through dev_apps). No secrets, no client ids, no members other than the owner, no actor labels. Archived projects
  * still return (archived_at set). -> null when the id is not a project.
  */
+/**
+ * The memberships of one person, as a receiving service sees them (network.project.member.read, GET
+ * /internal/projects?subject=usr_…). A service that acts for a person (Billing's Balance, D12) uses this to find
+ * the projects they administer without holding a person's token. -> null for a malformed subject.
+ */
+async function internalProjectMemberships(db, subject) {
+    if (!/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(String(subject))) return null;
+    const rows = await db.prepare(`SELECT m.project_id, m.role, m.added_at, p.name, p.archived_at FROM dev_project_members m
+        JOIN dev_projects p ON p.id = m.project_id WHERE m.subject_id = ? ORDER BY m.project_id`).all(String(subject));
+    return rows.map((r) => ({ project_id: r.project_id, name: r.name, role: r.role, archived: !!r.archived_at, added_at: r.added_at || null }));
+}
+
 /**
  * One person's membership of a project, as a receiving service sees it (network.project.member.read, GET
  * /internal/projects/:project_id/members/:subject): the role, when they were added, and whether the project is
@@ -503,6 +517,8 @@ async function revokeAppTx(db, actor, project, app, ctx, reason) {
     await db.prepare('UPDATE dev_apps SET revoked_at = ?, revoked_by = ? WHERE id = ?').run(t, actor.label, app.id);
     await db.prepare('UPDATE dev_credentials SET revoked_at = ?, revoked_by = ? WHERE app_id = ? AND revoked_at IS NULL').run(t, actor.label, app.id);
     await db.prepare('UPDATE dev_auth_codes SET used = 1 WHERE app_id = ?').run(app.id);
+    // The app's developer API keys go with it (plan G-P3): a key is the app's credential.
+    await require('./api-keys').revokeForApp(db, app.id, { actor: actor.label, reason: reason || 'app_revoked', ctx });
     await audit(db, { projectId: project.id, actor: actor.label, action: 'app.revoked', target: `app:${app.id}`, detail: { reason: reason || null }, ctx,
         event: { type: 'network.app.revoked', subject: { type: 'app', id: app.id }, payload: { project_id: project.id, environment: app.environment, reason: reason || null } } });
     // Its agents go with it (WS-Z2). Required here, not at the top: agents.js requires this module.
@@ -725,9 +741,10 @@ async function deleteQuota(db, actor, projectId, capability, { ctx }) {
 module.exports = {
     ensureSchema, DevError, ROLES, APP_ID_RE, PROJECT_ID_RE, SECRET_PREFIX,
     audit, listAudit, actorOf, access, memberRole, lockProject,
-    createProject, listProjects, renameProject, archiveProject, setAllowance, setEnvironmentPolicy, setPlacement, projectView, internalProjectView, internalMemberView,
+    createProject, listProjects, renameProject, archiveProject, setAllowance, setEnvironmentPolicy, setPlacement, projectView, internalProjectView,
+    internalProjectMemberships, internalMemberView,
     listMembers, addMember, updateMember, removeMember,
-    listApps, getApp, createApp, updateApp, revokeApp,
+    listApps, getApp, createApp, updateApp, revokeApp, loadApp,
     listCredentials, rotateCredential, revokeCredential, matchSecret, hashSecret,
     listGrants, requestGrant, decideGrant,
     listQuotas, setQuota, deleteQuota,

@@ -15,6 +15,8 @@ const { MARK } = require('../server/look-boot');
 const PAGES = [
     ['/', 'the home page'],
     ['/my', 'the account hub'],
+    ['/wallet', 'the wallet'],
+    ['/pay/vch_01JAB2C3D4E5F6G7H8J9K0ABCD', 'the Vibes Pay sheet'],
     ['/admin', 'the admin panel'],
     ['/verify-email', 'the email verification page'],
     ['/sso/fanout', 'the sign-out fanout'],
@@ -33,10 +35,11 @@ const PAGES = [
             // A linked sheet or an inline <style>: /verify-email has only its own (its one link was Font Awesome's, L54 K4).
             const firstSheet = html.search(/<link[^>]+rel="stylesheet"|<style\b/);
             assert.ok(at > 0 && firstSheet > 0 && at < firstSheet, `${path}: it paints before any stylesheet`);
-            // The one-time fallback for a browser from before look-boot: its theme only, colours only.
+            // The boot reads the painted look; openvibe-shared 4.109.2 dropped the old theme-only fallback (#552), so
+            // there is no ov_theme fallback left to check, only that no unsafe value is painted.
             const legacy = html.slice(at, firstSheet);
-            assert.match(legacy, /if \(localStorage\.getItem\('ov_paint'\)\) return;/, `${path}: the fallback waits for a painted look`);
-            assert.match(legacy, /!\/url\|expression\/i\.test/, `${path}: the fallback takes colours only`);
+            assert.match(legacy, /localStorage\.getItem\('ov_paint'\)/, `${path}: the boot reads the painted look`);
+            assert.match(legacy, /ok\.test\(v\)/, `${path}: the boot paints only checked values`);
         }
         // No public page keeps the old bootstrap (it painted the theme only, so the season stayed on until the loader ran).
         const pub = path.join(__dirname, '..', 'public');

@@ -1,6 +1,6 @@
 'use strict';
 // The service-facing project read (plan T2 lane B step 3, docs/developer-projects.md "Service-side project reads"):
-// GET /internal/projects/:project_id takes network.project.read on a service token (Host only by default), returns
+// GET /internal/projects/:project_id takes network.project.read on a service token (Host and AI by default), returns
 // the project's tenancy, placement, allowance, quotas, apps and their grants, and never a secret, a client id, an
 // actor label or a member other than the owner. Archived projects still read; a missing or malformed id is a 404.
 //   node test/internal-projects.test.js
@@ -21,6 +21,7 @@ console.log = log;
 await db.prepare("UPDATE oauth_clients SET client_secret = 'host-secret' WHERE client_id = 'host'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'watch-secret' WHERE client_id = 'watch'").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'billing-secret' WHERE client_id = 'billing'").run();
 await db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES
     (10, 'owner', 'x', 'user'), (11, 'dev', 'x', 'user'), (14, 'staff', 'x', 'admin')`).run();
 const sid = async (id) => await subjects.ensureUserSubject(db, await db.prepare('SELECT * FROM users WHERE id = ?').get(id));
@@ -60,9 +61,11 @@ const U = { owner: userToken(10), dev: userToken(11), staff: userToken(14) };
         return { status: r.status, type: r.headers.get('content-type') || '', cache: r.headers.get('cache-control'), text, body: text ? JSON.parse(text) : null };
     };
     try {
-        // 0. The grant: Host only by default, and never grantable to apps.
-        assert.deepStrictEqual(principals.DEFAULT_GRANTS.filter(g => g[1] === 'network.project.read').map(g => [g[0], g[2]]), [['host', principals.SELF_AUDIENCE]],
-            'only Host holds network.project.read by default');
+        // 0. The grant: Host (tenancy) and AI (the service that spends for a project, plan G-P3) hold it by default,
+        // and it is never grantable to apps.
+        assert.deepStrictEqual(principals.DEFAULT_GRANTS.filter(g => g[1] === 'network.project.read').map(g => [g[0], g[2]]).sort(),
+            [['ai', principals.SELF_AUDIENCE], ['host', principals.SELF_AUDIENCE]],
+            'Host and AI hold network.project.read by default');
         assert.strictEqual(policy.grantability('network.project.read').grantable, false, 'network.project.read is never grantable to apps');
 
         // A project made through the members' API: allowance, a quota, a second member, two apps with grants, one revoked.
@@ -147,10 +150,23 @@ const U = { owner: userToken(10), dev: userToken(11), staff: userToken(14) };
         //    its console and control; never grantable;
         //    members only, and a non-member reads exactly like an unknown project.
         assert.deepStrictEqual(principals.DEFAULT_GRANTS.filter(g => g[1] === 'network.project.member.read').map(g => [g[0], g[2]]).sort(),
-            [['actor', principals.SELF_AUDIENCE], ['media', principals.SELF_AUDIENCE], ['run', principals.SELF_AUDIENCE], ['watch', principals.SELF_AUDIENCE], ['zone', principals.SELF_AUDIENCE]],
-            'Run, Watch, Actor, Media and Zone hold network.project.member.read');
+            [['actor', principals.SELF_AUDIENCE], ['billing', principals.SELF_AUDIENCE], ['media', principals.SELF_AUDIENCE], ['run', principals.SELF_AUDIENCE], ['watch', principals.SELF_AUDIENCE], ['zone', principals.SELF_AUDIENCE]],
+            'Run, Watch, Actor, Media, Zone and Billing hold network.project.member.read');
         assert.strictEqual(policy.grantability('network.project.member.read').grantable, false, 'never grantable to apps');
         assert.ok(principals.DEFAULT_GRANTS.some(g => g[0] === 'watch' && g[1] === 'run.job.submit' && g[2] === 'openvibe.run'), 'Watch may submit Run jobs');
+        const memberList = async (subject, headers = {}) => {
+            const x = await fetch(`${base}/internal/projects?subject=${encodeURIComponent(subject)}`, { headers });
+            const text = await x.text();
+            return { status: x.status, cache: x.headers.get('cache-control'), text, body: text ? JSON.parse(text) : null };
+        };
+        const bill = { authorization: `Bearer ${await token('billing', 'billing-secret')}` };
+        r = await memberList(owner, bill);
+        assert.strictEqual(r.status, 200, r.text);
+        assert.strictEqual(r.cache, 'no-store');
+        assert.deepStrictEqual(r.body.projects.map(p => [p.project_id, p.name, p.role, p.archived]), [[P, 'Tenancy', 'owner', false]]);
+        assert.strictEqual((await memberList(owner)).status, 401, 'no token');
+        assert.strictEqual((await memberList(owner, host)).status, 403, 'Host lacks network.project.member.read');
+        assert.strictEqual((await memberList('nope', bill)).status, 422, 'a malformed subject is refused');
         const memberRead = async (project, subject, headers = {}) => {
             const x = await fetch(`${base}/internal/projects/${encodeURIComponent(project)}/members/${encodeURIComponent(subject)}`, { headers });
             const text = await x.text();

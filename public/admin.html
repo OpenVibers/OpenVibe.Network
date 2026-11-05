@@ -27,6 +27,8 @@
 })();
 </script>
 <link rel="stylesheet" href="/css/admin.css">
+<!-- OpenVibe's own form controls (4.109.0): every select in Platform AI is one, with data-badge/data-desc/data-state. -->
+<link rel="stylesheet" href="/shared/ov-forms.css">
 </head>
 <body>
 
@@ -178,6 +180,8 @@
 
     <!-- AI: configure the vision/text provider + usage cost breakdown -->
     <div class="section" id="sec-ai">
+        <!-- Platform AI (AI Exchange D11 S3, owner only): one long page, loaded by js/admin/ai.js. -->
+        <div id="platform-ai" class="platform-ai pai" hidden></div>
         <div id="ai-staff-room"></div>
         <div id="ai-content"><div class="loading">Loading...</div></div>
     </div>
@@ -633,6 +637,7 @@
 <script src="/shared/navbar.js"></script>
 <script src="/shared/notification-ui.js"></script>
 <script src="/shared/account-switcher.js"></script>
+<script src="/shared/ov-forms.js" defer></script>
 
 <script src="/js/admin/core.js" defer></script>
 <script src="/js/admin/dashboard.js" defer></script>

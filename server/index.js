@@ -37,6 +37,7 @@ const { DiscordService } = require('./discord/discord-service');
 const createDiscordRoutes = require('./discord/routes');
 const createDeployRoutes = require('./deploy/routes');
 const createCoinsRoutes = require('./coins/routes');
+const createWalletRoutes = require('./wallet/routes');
 const { signToken } = require('./auth/routes');
 
 // The boot runs asynchronously: opening PostgreSQL (migrations, seeds) is async (plan T2, ADR-035).
@@ -292,6 +293,9 @@ app.use('/api/auth/', rateLimit({ windowMs: 15 * 60_000, max: 30, skipSuccessful
 
 // ── Database ─────────────────────────────────────────────────
 const db = await initDb();
+// D11: load the configuration journal, reseal old plaintext under the KEK, then blank the legacy secret
+// copies it holds (provider secrets stay environment-only). Without a KEK nothing is blanked.
+await require('./admin/site-config').init(db);
 await urlRegistry.initializeUrlRegistry(db);
 await urlRegistry.seedBootstrapRegistry(db, process.env, config.bootstrapProfile);
 await ensureAdminUser(db, config);
@@ -418,6 +422,12 @@ const requireAuth = require('./auth/session').makeRequireAuth(authCtx, authRoute
 // The extension's private-issuer Dock token, accepted only on the mounts that name a scope. Every
 // other route keeps `requireAuth`, which refuses the different issuer.
 const requireDock = (scope) => require('./auth/session').makeRequireAuth(authCtx, authRoutes.signToken, { dockScope: scope });
+// Sign in on your phone (owner, 2026-11-04): off unless NETWORK_QR_SIGNIN says on. Mounted at
+// /auth/qr (not /api/auth) because the phone's httpOnly ov_qr cookie has path /auth/qr.
+const qrSignin = require('./auth/qr-signin').createQrSignin({
+    db, config, privateKey, signToken: authRoutes.signToken, requireAuth, notifications: notificationService,
+});
+app.locals.qrSignin = qrSignin;
 // The moderation audit log for staff (staff.moderation.logs): server/admin/moderation-audit.js.
 app.use('/api/v1/staff/moderation-audit', requireAuth, moderationAudit.router());
 // Staff capabilities and the staff list (WS-D task 4; services need network.staff.read).
@@ -633,6 +643,14 @@ app.get('/api/brand', (_req, res) => res.json(BRAND));
 // Auth routes (SSO provider)
 app.use('/api/auth', authRoutes);
 
+// Sign in on your phone (server/auth/qr-signin.js): mounted only when NETWORK_QR_SIGNIN is on. Its
+// per-address limit is the auth limiter's shape (30 failures / 15 min); successful polls do not spend it.
+if (qrSignin.enabled) {
+    app.use('/auth/qr/', rateLimit({ windowMs: 15 * 60_000, max: 30, skipSuccessfulRequests: true }));
+    app.use('/auth/qr', qrSignin.router);
+    app.get(['/q', '/q/'], qrSignin.page);
+}
+
 // Email verification (status / resend / consume)
 app.use('/api/auth', require('./auth/email-verify').routes(requireAuth));
 
@@ -650,6 +668,9 @@ app.use('/api/themes', require('./themes/routes'));
 
 // OpenCoins wallet API (user-facing, Bearer JWT)
 app.use('/api/coins', createCoinsRoutes(db, requireAuth));
+// The wallet's own API (MONEY.md D12): the person's Balance and Vibes through Billing, their activity, the projects
+// they administer, and the Vibes Pay charge the pay sheet shows. Bearer person tokens; see server/wallet/routes.js.
+app.use('/api/wallet', rateLimit({ windowMs: 60_000, max: 120 }), createWalletRoutes(db, requireAuth, { selfToken }));
 // Versioned user modules: portable per-person preferences and summaries (server/identity/modules.js).
 app.use('/api/modules', require('./identity/modules').userRouter(requireAuth));
 
@@ -879,6 +900,22 @@ app.use(require('./seo/routes').createSeoRoutes({ release }));
 const indexnow = require('openvibe-shared/indexnow').createIndexNow({ host: config.baseUrl, key: config.indexnow.key });
 if (indexnow.enabled) app.use(indexnow.keyFile);
 
+// The wallet (MONEY.md D12) and the Vibes Pay sheet: their own pages, in the account pages' style. A guest is sent
+// to sign in from the page, which then returns them to the same link.
+function sendWalletPage(res) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    return lookBoot.send(res, 'wallet.html');
+}
+function sendPayPage(res) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    return lookBoot.send(res, 'pay.html');
+}
+app.get('/wallet', (_req, res) => sendWalletPage(res));
+app.get('/wallet.html', (req, res) => redirectWithoutHtml(req, res, '/wallet'));
+app.get('/pay/:id', (_req, res) => sendPayPage(res));
+
 // Account hub (my.html) — the apex hosts the account hub under /my
 // plus its client-routed sections.
 app.get(require('./not-found').ACCOUNT_HUB_PATHS, (req, res) => {
@@ -1059,6 +1096,16 @@ const server = app.listen(...(socketActivated ? [{ fd: 3 }] : [config.port, conf
         try { const n = await consent.sweep(); if (n) console.log(`[Consent] expired ${n} choice(s)`); } catch (e) { console.warn('[Consent] expiry sweep failed:', e.message); }
     };
     timers.push(setTimeout(sweepConsent, 30 * 1000), setInterval(sweepConsent, 15 * 60 * 1000));
+
+    // Sign-in-on-your-phone transfers live 120 s. A sweep every minute deletes the expired rows
+    // (the audit_log keeps the outcome); checks also compare expires_at, so a late sweep never matters.
+    if (qrSignin.enabled) {
+        const sweepQr = async () => {
+            try { const n = await qrSignin.sweep(); if (n) console.log(`[QR sign-in] swept ${n} expired row(s)`); }
+            catch (e) { console.warn('[QR sign-in] sweep failed:', e.message); }
+        };
+        timers.push(setTimeout(sweepQr, 30 * 1000), setInterval(sweepQr, 60 * 1000));
+    }
 
     // Clean expired sessions daily
     timers.push(setInterval(async () => {

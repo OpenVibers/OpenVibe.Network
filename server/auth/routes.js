@@ -44,9 +44,11 @@ const DEFAULT_AUDIENCE = ['openvibe.live', 'openvibe.tools', 'openvibe.games', '
 /**
  * A person's session token. auth_time (OIDC) is when they actually signed in: now for a sign-in, register or
  * password change; a renewal passes `renew` (the claims of the token it replaces) and keeps that token's
- * auth_time, or none when it had none. An account merge needs a real sign-in within 10 minutes (ADR-029).
+ * auth_time, or none when it had none. A QR-created session passes `authTime` so it inherits the source's
+ * sign-in time (or null for none): it is not itself a fresh sign-in. An account merge and the owner's
+ * key/money checks need a real sign-in within 10 minutes (ADR-029, D11).
  */
-function signToken(user, privateKey, config, { renew = null } = {}) {
+function signToken(user, privateKey, config, { renew = null, authTime } = {}) {
     const algorithm = privateKey.includes('BEGIN') ? 'RS256' : 'HS256';
     // Audience always includes the contract service domains, plus the issuer
     // host and any registry-configured service hosts (white-label installs).
@@ -61,6 +63,14 @@ function signToken(user, privateKey, config, { renew = null } = {}) {
         try { audienceSet.add(new URL(url).hostname); } catch { /* ignore */ }
     }
     const audience = [...audienceSet];
+    // jti names the session and survives sliding renewals: a QR sign-in is approved only by the
+    // exact session that started it (req.tokenClaims.jti), never by another session of the person.
+    const jti = renew && renew.jti ? renew.jti : crypto.randomBytes(16).toString('hex');
+    // `authTime === null` is a deliberate "no auth_time" (a QR source that had none); otherwise an
+    // explicit value wins, and the old renewal/new-sign-in rules stand.
+    const signInTime = authTime === null
+        ? undefined
+        : (authTime !== undefined ? (Number.isFinite(Number(authTime)) ? Number(authTime) : undefined) : (renew ? (Number.isFinite(renew.auth_time) ? renew.auth_time : undefined) : Math.floor(Date.now() / 1000)));
 
     return jwt.sign(
         {
@@ -73,7 +83,7 @@ function signToken(user, privateKey, config, { renew = null } = {}) {
             avatar_url: user.avatar_url,
             profile_color: user.profile_color,
             ...staffClaims(user),
-            auth_time: renew ? (Number.isFinite(renew.auth_time) ? renew.auth_time : undefined) : Math.floor(Date.now() / 1000),
+            auth_time: signInTime,
         },
         privateKey,
         {
@@ -81,6 +91,7 @@ function signToken(user, privateKey, config, { renew = null } = {}) {
             issuer: config.jwt.issuer,
             audience,
             expiresIn: config.jwt.accessTokenExpiry,
+            jwtid: jti,
         }
     );
 }
@@ -390,6 +401,7 @@ router.get('/me', requireAuth, async (req, res) => {
     res.json({
         user: sanitizeUser(req.user),
         preferences: prefs || { theme_id: 'vibe' },
+        features: { qr_signin: require('./qr-signin').enabled(getConfig(req)) },
     });
 });
 

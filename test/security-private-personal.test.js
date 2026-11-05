@@ -14,6 +14,8 @@ withWorld('private-personal', async (w) => {
     await privateMine(w, 'alice', '/api/notifications', 'alice-private-notification');
     await privateMine(w, 'alice', '/api/auth/sessions', 'alice-laptop');
     await privateMine(w, 'alice', '/api/history', 'alice-private-history');
+    const wallet = await w.call(null, 'GET', '/api/wallet');
+    assert.strictEqual(wallet.status, 401, "the wallet API is the person's own, never a guest's");
     // The linked-account positive control was deleted with the retired internal key.
     const pub = await w.call(null, 'GET', '/api/v1/status/incidents');
     assert.strictEqual(pub.status, 200);

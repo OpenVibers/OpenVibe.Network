@@ -26,6 +26,12 @@ module.exports = {
     },
 
 
+    // Sign in on another device (owner, 2026-11-04; server/auth/qr-signin.js): a QR on the source device, a
+    // scan on the target and a two-digit match. Off unless NETWORK_QR_SIGNIN is explicitly on; off means the routes and /q are not mounted.
+    qrSignin: {
+        enabled: /^(1|true|on|yes)$/i.test(String(process.env.NETWORK_QR_SIGNIN || '')),
+    },
+
     // Project secrets (ADR-056, server/developer/secrets.js): 32 random bytes, base64 or hex. Unset = the feature is off
     // (503 secrets.unavailable); values are only ever stored encrypted under keys derived from it.
     secrets: {
@@ -51,6 +57,10 @@ module.exports = {
         // First-party services (OAuth client ids) that may host a project member's agents (comma list).
         // Unset = the code default (actor: server/developer/policy.js); set to an empty value = none.
         agentHostServices: process.env.AGENT_HOST_SERVICES,
+        // Developer API keys and per-project budgets (plan G-P3, server/developer/api-keys.js).
+        // Off unless NETWORK_DEV_API_KEYS=1: the key lifecycle, the key exchange and the budget routes
+        // answer 503 api_keys.disabled while it is off.
+        apiKeys: process.env.NETWORK_DEV_API_KEYS === '1',
     },
 
     // OpenVibe.Events base URL for Network's own events (developer projects). Unset = no relay:
@@ -133,6 +143,33 @@ module.exports = {
         // person, so Bot stays the authority on what a person may do with their own machines.
         bot: {
             internalUrl: process.env.OV_BOT_INTERNAL_URL || 'http://127.0.0.1:4630',
+        },
+        // The owner's settings proxy (server/admin/ai-config-proxy.js, D11 S3): each service's /internal/config,
+        // reached with Network's own token for openvibe.<service> and the owner in X-OV-Subject. Four are already
+        // above (billing); these are the rest. The URLs are operator config: never a request value.
+        ai: {
+            internalUrl: process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700',
+        },
+        services: {
+            internalUrl: process.env.OV_SERVICES_INTERNAL_URL || 'http://127.0.0.1:4930',
+        },
+        watch: {
+            internalUrl: process.env.OV_WATCH_INTERNAL_URL || 'http://127.0.0.1:4730',
+        },
+        bench: {
+            internalUrl: process.env.OV_BENCH_INTERNAL_URL || 'http://127.0.0.1:5230',
+        },
+        report: {
+            internalUrl: process.env.OV_REPORT_INTERNAL_URL || 'http://127.0.0.1:5080',
+        },
+        host: {
+            internalUrl: process.env.OV_HOST_INTERNAL_URL || 'http://127.0.0.1:4910',
+        },
+        codes: {
+            internalUrl: process.env.OV_CODES_INTERNAL_URL || 'http://127.0.0.1:4900',
+        },
+        actor: {
+            internalUrl: process.env.OV_ACTOR_INTERNAL_URL || 'http://127.0.0.1:4950',
         },
     },
 };

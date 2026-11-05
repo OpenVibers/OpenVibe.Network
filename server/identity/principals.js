@@ -306,6 +306,18 @@ const DEFAULT_GRANTS = [
     // WS-X1: Host reports the platform's machines to the node registry (ovhost nodes report).
     ['host', 'network.node.report', SELF_AUDIENCE, []],
     ['host', 'network.resource.report', SELF_AUDIENCE, []],
+    // D11 S3 (OWNER-SETTINGS.md): Network's admin proxy reads and changes every service's configuration as the owner,
+    // on /internal/config. The nine internal <svc>.config.manage capabilities (Contracts 0.288.0) are held by Network
+    // alone; the owner travels in X-OV-Subject, never in a grant. These are new rows, so the boot seed's ON CONFLICT
+    // DO NOTHING inserts them; nothing was revoked and no namespaces moved, so no RESTORED_GRANTS or
+    // CHANGED_DEFAULT_NAMESPACES entry is needed. The deploy applies them from ensureSchema() at boot.
+    ...['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor']
+        .map((svc) => ['network', `${svc}.config.manage`, `openvibe.${svc}`, []]),
+    // The owner's AI tab lists and edits AI's provider registry through AI's own admin API (GET/POST/PATCH
+    // /api/v1/providers), as Network, naming the owner in X-OV-Subject.
+    ['network', 'ai.provider.manage', 'openvibe.ai', []],
+    // Host's demand planner reads AI's usage feed (Host #283): ai.usage.read on openvibe.ai.
+    ['host', 'ai.usage.read', 'openvibe.ai', []],
     // Plan T2 N4b: Bot pairs its users' machines with Network and reads or revokes only the principals it paired.
     ['bot', 'network.node.manage', SELF_AUDIENCE, []],
     // Plan T15: an owner adds an operator by @username on the robot's panel; Bot resolves it to the subject here.
@@ -441,6 +453,11 @@ const DEFAULT_GRANTS = [
     // Plan T2 lane B step 3: Host places and runs per project, so it reads a project's tenancy, placement and quotas.
     // Other services get this row only when they ship a caller of GET /internal/projects/:project_id.
     ['host', 'network.project.read', SELF_AUDIENCE, []],
+    // Plan G-P3: OpenVibe.AI is the service that spends for a developer project, so it reads the project's
+    // tenancy and its own monthly ceiling (GET /internal/projects/:project_id/budget) and exchanges the
+    // developer API keys a caller shows it (POST /internal/api-keys/exchange). Both are behind
+    // NETWORK_DEV_API_KEYS; the capability is first-party and never grantable to apps.
+    ['ai', 'network.project.read', SELF_AUDIENCE, []],
     // WS-N task 12: ovhost incident / maintenance post to the status page.
     ['host', 'network.status.incident', SELF_AUDIENCE, []],
     // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples
@@ -528,6 +545,9 @@ const DEFAULT_GRANTS = [
     ['community', 'events.event.read', 'openvibe.events', []],
     ['community', 'events.event.publish', 'openvibe.events', []],   // community.* events (Community server/events.js, 2026-09-24)
     ['billing', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    // D12: a person's Balance lists the projects they administer and checks the role before a transfer. Billing acts
+    // for the signed-in person with its own service token, never with theirs.
+    ['billing', 'network.project.member.read', SELF_AUDIENCE, []],
     ['chat', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['live', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Live's avatar picker reports to Network, and Live reads the URL registry and
