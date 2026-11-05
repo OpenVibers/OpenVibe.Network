@@ -64,7 +64,8 @@ a { color: var(--accent, #3b82f6); }
 }
 .w-line { margin: 4px 0 0; color: var(--text-secondary, #a8b3c4); font-size: .88rem; line-height: 1.45; }
 .w-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 18px; }
-.w-actions .ovk-btn { flex: 1 1 140px; }
+/* A label never breaks inside its button: on a phone the second button takes its own row. */
+.w-actions .ovk-btn { flex: 1 1 140px; white-space: nowrap; }
 .w-note { margin: 10px 0 0; font-size: .78rem; line-height: 1.45; color: var(--text-muted, #7d8aa0); }
 .w-note.is-warn { color: var(--warning-text, var(--warning, #b45309)); }
 
@@ -89,8 +90,8 @@ a { color: var(--accent, #3b82f6); }
 .w-project-link { display: flex; align-items: center; gap: 4px; color: inherit; text-decoration: none; min-width: 0; }
 .w-project-link:hover b { color: var(--accent-light, var(--accent, #60a5fa)); }
 .w-project-link b { font-size: .93rem; font-weight: 650; overflow-wrap: anywhere; }
-.w-project-ext { color: var(--text-muted, #7d8aa0); font-size: .74rem; line-height: 1; }
-.w-project-sub { margin-top: 2px; color: var(--text-muted, #7d8aa0); font-size: .74rem; font-variant-numeric: tabular-nums; }
+.w-project-ext { color: var(--text-muted, #7d8aa0); font-size: .78rem; line-height: 1; }
+.w-project-sub { margin-top: 2px; color: var(--text-muted, #7d8aa0); font-size: .78rem; font-variant-numeric: tabular-nums; }
 .w-project-side { flex: none; display: flex; align-items: center; gap: 10px; }
 .w-project-bal { font-variant-numeric: tabular-nums; font-weight: 750; font-size: .95rem; white-space: nowrap; }
 @media (max-width: 359px) {
@@ -138,14 +139,14 @@ a { color: var(--accent, #3b82f6); }
 
 /* Where each works: one quiet line of chips per currency */
 .w-where { margin-top: 34px; padding-top: 20px; border-top: 1px solid var(--border, rgba(255, 255, 255, .12)); }
-.w-where h2 { margin: 0 0 12px; color: var(--text-muted, #7d8aa0); font-size: .74rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.w-where h2 { margin: 0 0 12px; color: var(--text-muted, #7d8aa0); font-size: .78rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
 .w-where-list { display: grid; gap: 9px; margin: 0; }
 .w-where-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .w-where-row dt { min-width: 76px; color: var(--text-secondary, #a8b3c4); font-size: .8rem; font-weight: 700; }
 .w-where-row dd { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 .w-tag {
     padding: 3px 10px; border: 1px solid var(--border, rgba(255, 255, 255, .12)); border-radius: 999px;
-    background: var(--bg-secondary, #101828); color: var(--text-secondary, #a8b3c4); font-size: .74rem; line-height: 1.5;
+    background: var(--bg-secondary, #101828); color: var(--text-secondary, #a8b3c4); font-size: .78rem; line-height: 1.5;
 }
 
 /* ── Sheets (Move to a project, Add money, Get Vibes) ── */
@@ -172,7 +173,7 @@ a { color: var(--accent, #3b82f6); }
 .w-tab[aria-selected="true"] { background: var(--bg-card, #121826); color: var(--text-primary, #e8ecf3); }
 
 .w-field { display: grid; gap: 5px; min-width: 0; }
-.w-field > span { color: var(--text-muted, #7d8aa0); font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.w-field > span { color: var(--text-muted, #7d8aa0); font-size: .75rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .w-field input, .w-field select {
     width: 100%; min-height: 46px; padding: 10px 12px; border-radius: 11px;
     border: 1px solid var(--border, rgba(255, 255, 255, .12)); background: var(--bg-input, #0f1522);

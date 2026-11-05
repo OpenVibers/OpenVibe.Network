@@ -75,9 +75,32 @@
 
         $('w-vibes-amount').textContent = DATA && DATA.state.vibes === 'open' ? M.vibes(vibesCount()) : (DATA && DATA.state.vibes === 'closed' ? M.vibes(0) : '—');
         note('w-vibes-note', DATA && DATA.state.vibes === 'not_authoritative' ? "Vibes aren't in this wallet until Billing takes them over." :
-            DATA && DATA.state.vibes === 'unavailable' ? "Your Vibes couldn't load." : '', 'quiet');
+            DATA && DATA.state.vibes === 'unavailable' ? "Your Vibes couldn't load." :
+                DATA && !vibesOpen() ? "Vibes aren't open yet. When they are, Get Vibes buys them, or moves dollars from your Balance." : '', 'quiet');
 
         $('w-coins-amount').textContent = DATA ? M.vibes(DATA.opencoins) : '—';
+    }
+
+    /** Vibes can be had when they are open (buy) or when Balance is (move dollars into Vibes). */
+    function vibesOpen() { return !!(DATA && DATA.state && (DATA.state.vibes === 'open' || balanceOpen())); }
+
+    // A primary button promises the action works. While a currency is not open, its button is a quiet "Opening soon"
+    // that cannot be pressed, and the card's note says why; once it opens, the button is the primary action again.
+    function setAction(id, open, label, closedTitle) {
+        const btn = $(id);
+        const closed = DATA && DATA.state && !open;
+        btn.disabled = !open;
+        btn.textContent = closed ? 'Opening soon' : label;
+        btn.classList.toggle('ovk-btn--primary', !closed);
+        btn.classList.toggle('ovk-btn--quiet', closed);
+        btn.title = closed ? closedTitle : '';
+    }
+    function renderActions() {
+        setAction('w-add-money', balanceOpen(), 'Add money', "Balance isn't open yet");
+        const move = $('w-move');
+        move.disabled = !balanceOpen();
+        move.title = balanceOpen() ? '' : "Balance isn't open yet";
+        setAction('w-get-vibes', vibesOpen(), 'Get Vibes', "Vibes aren't open yet");
     }
 
     function renderProjects() {
@@ -329,7 +352,7 @@
         try {
             DATA = await W.api('/api/wallet');
             render();
-            for (const id of ['w-add-money', 'w-move', 'w-get-vibes']) $(id).disabled = false;
+            renderActions();
         } catch (e) {
             banner("The wallet couldn't load right now.", true);
             $('w-balance-amount').textContent = '—';
