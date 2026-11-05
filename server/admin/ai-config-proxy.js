@@ -34,6 +34,7 @@ const rateLimit = require('express-rate-limit');
 const contracts = require('openvibe-contracts');
 const { requireOwner } = require('../auth/owner-guard');
 const alerts = require('../operator/alerts');
+const { isFreshSignIn } = require('../identity/account-merge');
 
 const SERVICES = ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor'];
 const LABELS = {
@@ -68,10 +69,11 @@ function signInUrl(config = {}) {
     return `${login}?return=${encodeURIComponent(`${base}/admin#ai`)}`;
 }
 
-/** The session's real sign-in time, the OIDC auth_time Network's signToken puts on every session token. */
+/** The session's real sign-in time, the OIDC auth_time Network's signToken puts on every session token. The rule is
+ * account-merge's isFreshSignIn (auth_time within ten minutes, never a renewal and never a QR session carrying an
+ * old source time), so the owner settings and the account merge cannot drift apart. */
 function isFresh(req, now = Date.now()) {
-    const authTime = Number(req.tokenClaims && req.tokenClaims.auth_time);
-    return Number.isFinite(authTime) && now / 1000 - authTime <= FRESH_S;
+    return isFreshSignIn(req.tokenClaims, now);
 }
 
 /** The x-danger annotation of a key, from the namespace schema. */
