@@ -545,6 +545,9 @@ const DEFAULT_GRANTS = [
     ['community', 'events.event.read', 'openvibe.events', []],
     ['community', 'events.event.publish', 'openvibe.events', []],   // community.* events (Community server/events.js, 2026-09-24)
     ['billing', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    // D12: a person's Balance lists the projects they administer and checks the role before a transfer. Billing acts
+    // for the signed-in person with its own service token, never with theirs.
+    ['billing', 'network.project.member.read', SELF_AUDIENCE, []],
     ['chat', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['live', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Live's avatar picker reports to Network, and Live reads the URL registry and

@@ -167,6 +167,18 @@ async function projectView(db, p, role, settings) {
  * still return (archived_at set). -> null when the id is not a project.
  */
 /**
+ * The memberships of one person, as a receiving service sees them (network.project.member.read, GET
+ * /internal/projects?subject=usr_…). A service that acts for a person (Billing's Balance, D12) uses this to find
+ * the projects they administer without holding a person's token. -> null for a malformed subject.
+ */
+async function internalProjectMemberships(db, subject) {
+    if (!/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(String(subject))) return null;
+    const rows = await db.prepare(`SELECT m.project_id, m.role, m.added_at, p.name, p.archived_at FROM dev_project_members m
+        JOIN dev_projects p ON p.id = m.project_id WHERE m.subject_id = ? ORDER BY m.project_id`).all(String(subject));
+    return rows.map((r) => ({ project_id: r.project_id, name: r.name, role: r.role, archived: !!r.archived_at, added_at: r.added_at || null }));
+}
+
+/**
  * One person's membership of a project, as a receiving service sees it (network.project.member.read, GET
  * /internal/projects/:project_id/members/:subject): the role, when they were added, and whether the project is
  * archived. Project delegation (ADR-003 amendment 2026-10-12) accepts only an admin or owner of an unarchived project;
@@ -729,7 +741,8 @@ async function deleteQuota(db, actor, projectId, capability, { ctx }) {
 module.exports = {
     ensureSchema, DevError, ROLES, APP_ID_RE, PROJECT_ID_RE, SECRET_PREFIX,
     audit, listAudit, actorOf, access, memberRole, lockProject,
-    createProject, listProjects, renameProject, archiveProject, setAllowance, setEnvironmentPolicy, setPlacement, projectView, internalProjectView, internalMemberView,
+    createProject, listProjects, renameProject, archiveProject, setAllowance, setEnvironmentPolicy, setPlacement, projectView, internalProjectView,
+    internalProjectMemberships, internalMemberView,
     listMembers, addMember, updateMember, removeMember,
     listApps, getApp, createApp, updateApp, revokeApp, loadApp,
     listCredentials, rotateCredential, revokeCredential, matchSecret, hashSecret,

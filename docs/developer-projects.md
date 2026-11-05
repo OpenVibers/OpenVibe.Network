@@ -259,6 +259,9 @@ A first-party service acting for a person (`X-OV-Subject`) may name one project 
 - **Route.** `GET /internal/projects/:project_id/members/:subject` with a service token holding
   `network.project.member.read` for `openvibe.network` (first-party, never granted to apps). Run and Watch hold it by
   default: Run checks before every delegated job, and Watch checks when a watch names a project.
+- **List route.** `GET /internal/projects?subject=usr_…` with the same capability returns
+  `{ subject, projects: [{ project_id, name, role, archived, added_at }] }`, so a service that acts for a person finds the
+  projects they administer without holding the person's token. Billing holds it for a person's Balance (D12).
 - **Result** (`Cache-Control: no-store`, `network.project-member-result@1`): `{ project_id, subject, role, archived,
   added_at }`. No other member, app or secret.
 - **The decision is the receiver's:** delegation accepts only an `admin` or `owner` of a project that is not archived,
