@@ -64,7 +64,8 @@ a { color: var(--accent, #3b82f6); }
 }
 .w-line { margin: 4px 0 0; color: var(--text-secondary, #a8b3c4); font-size: .88rem; line-height: 1.45; }
 .w-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 18px; }
-.w-actions .ovk-btn { flex: 1 1 140px; }
+/* A label never breaks inside its button: on a phone the second button takes its own row. */
+.w-actions .ovk-btn { flex: 1 1 140px; white-space: nowrap; }
 .w-note { margin: 10px 0 0; font-size: .78rem; line-height: 1.45; color: var(--text-muted, #7d8aa0); }
 .w-note.is-warn { color: var(--warning-text, var(--warning, #b45309)); }
 
