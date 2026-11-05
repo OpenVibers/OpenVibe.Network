@@ -50,9 +50,10 @@ function grantableCatalog() {
  * sandbox traffic apart from real data: Media in a sandbox tenant, Events with env-marked events,
  * Tools with sandbox jobs, Codes with sandbox releases (an app managing its own, WS-N task 5), AI with
  * sandbox runs on free and local capacity only (ai.app.run, plan T6), Play with sandbox- titles of guests only,
- * never listed or counted (OpenVibe.Play's store). openvibe.network is deliberately not one of them.
+ * never listed or counted (OpenVibe.Play's store), Billing with sandbox Vibes and sandbox Balance only (Vibes Pay
+ * test charges, D12; real Vibes are never touched). openvibe.network is deliberately not one of them.
  */
-const DEFAULT_SANDBOX_AUDIENCES = Object.freeze(['openvibe.media', 'openvibe.events', 'openvibe.tools', 'openvibe.services', 'openvibe.ai', 'openvibe.quest', 'openvibe.play']);
+const DEFAULT_SANDBOX_AUDIENCES = Object.freeze(['openvibe.media', 'openvibe.events', 'openvibe.tools', 'openvibe.services', 'openvibe.ai', 'openvibe.quest', 'openvibe.play', 'openvibe.billing']);
 
 /**
  * Capabilities every project's SANDBOX apps may hold without a staff decision when
