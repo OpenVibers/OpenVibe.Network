@@ -805,8 +805,20 @@ const DEFAULT_GRANTS = [
     // The Agent Streams plan (S1, Contracts 0.298.0): Codes and Actor start and steer the person's agent stream on
     // OpenVibe.Live (live.agent_stream.publish, the audience openvibe.live). They act for the person and for nobody
     // else, so the grant is unscoped and the audience is Live's alone.
+    // The Agent Streams plan (S1, Contracts 0.298.0): Codes and Actor start and steer the person's agent stream on
+    // OpenVibe.Live (live.agent_stream.publish, the audience openvibe.live). They act for the person and for nobody
+    // else, so the grant is unscoped and the audience is Live's alone.
     ['codes', 'live.agent_stream.publish', 'openvibe.live', []],
     ['actor', 'live.agent_stream.publish', 'openvibe.live', []],
+    // The Agent Streams plan (S3, Contracts 0.300.0): Codes, Actor and Live write the report of an agent session on
+    // OpenVibe.Report (report.session.write, the audience openvibe.report). They act for the person and for nobody
+    // else, so the grant is unscoped and the audience is Report's alone. A desk session on a person's own machine
+    // reports through Codes, which pairs the machine: no machine ever writes a report itself.
+    // The grant is new (it was never granted and never revoked before), so it needs no RESTORED_GRANTS entry, and it
+    // carries no namespaces, so it needs no CHANGED_DEFAULT_NAMESPACES entry either.
+    ['codes', 'report.session.write', 'openvibe.report', []],
+    ['actor', 'report.session.write', 'openvibe.report', []],
+    ['live', 'report.session.write', 'openvibe.report', []],
 ];
 
 // What a node principal (a person's own machine, paired with its credential) may do for its owner outside Network's
