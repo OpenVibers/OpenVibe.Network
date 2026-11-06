@@ -1025,6 +1025,10 @@ app.get(['/login', '/forgot-password', '/reset-password'], (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
 });
 
+// The publication reviewer queue: a server-rendered staff page (openvibe-shared/kit) before the
+// admin SPA's catch-all. It asks each publication's own review-queue endpoint with the person's token.
+app.use('/admin/review', require('./admin/review-queue').createReviewQueueRouter({ requireAuth, config, privateKey: app.locals.privateKey }));
+
 // Admin panel — serve the SPA for /admin and any client-routed sub-path
 // (e.g. /admin/settings, /admin/analytics/overview). Auth is checked client-side.
 app.get(['/admin', '/admin/*'], (req, res) => {
