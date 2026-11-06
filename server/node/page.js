@@ -60,7 +60,7 @@ function releaseBlock(release) {
         kit.row({ href: release.url || '#', title: 'The release on GitHub', sub: 'every asset, and the notes of that release' }),
     ];
     return `<section class="np-sec" aria-labelledby="h-release"><h2 id="h-release">The latest release</h2>
-<p class="np-fine">${version ? `Version <strong>${esc(version)}</strong>` : 'The latest version'}${date ? `, published ${esc(date)}` : ''}. The install command below always installs that release.</p>
+<p class="np-fine">${version ? `Version <strong>${esc(version)}</strong>` : 'The latest version'}${date ? `, published ${esc(date)}` : ''}. The install command above always installs that release.</p>
 ${kit.list(rows, { flush: true })}
 ${release.stale ? '<p class="np-fine np-warn">GitHub could not be reached just now, so this is the last release we read.</p>' : ''}
 </section>`;
