@@ -474,6 +474,15 @@ const DEFAULT_GRANTS = [
     // developer API keys a caller shows it (POST /internal/api-keys/exchange). Both are behind
     // NETWORK_DEV_API_KEYS; the capability is first-party and never grantable to apps.
     ['ai', 'network.project.read', SELF_AUDIENCE, []],
+    // Community AI offers (Node's "Offer to the network", plan E4): AI reads the full internal resource list, including
+    // each user-owned offer's owner, to place only opted-in requests on verified machines. Run and Bot hold the same read.
+    ['ai', 'network.registry.read', SELF_AUDIENCE, []],
+    // A community AI offer's "followers" audience: AI checks whether the requester follows the offer's owner (the
+    // owner's channel) before placing a run. Read-only, like Live's.
+    ['ai', 'network.follows.read', SELF_AUDIENCE, []],
+    // Self-dealing: a community run whose requester is the offer owner (or an account merged into it) earns nothing.
+    // AI resolves both subjects to the survivor before it records the seller's ledger.
+    ['ai', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // WS-N task 12: ovhost incident / maintenance post to the status page.
     ['host', 'network.status.incident', SELF_AUDIENCE, []],
     // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples

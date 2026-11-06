@@ -513,6 +513,16 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/api/v1/offers', offerRouters.pub);
     app.use('/internal/resources', offerRouters.internal);
 }
+// Community AI offers (the design's "Offer to the network"; plan E4): Bot reports each machine's models, hours,
+// concurrency, credit price and audience; AI reads them whole to place only opted-in requests after verification.
+// Private by construction: no public route, owner required, network.registry.read to read, network.resource.report to write.
+{
+    const { guard } = require('./identity/principals');
+    app.use('/internal/ai/offers', require('./registry/ai-offers').routers({
+        guard: guard('network.resource.report'),
+        readGuard: guard('network.registry.read'),
+    }).internal);
+}
 // Network's authority resource index (ADR-048 section 3, capability network.resource.read): common.resource-summary@1
 // pages of the resources Network owns (projects, apps, node principals) for OpenVibe.Services' fan-out.
 {
