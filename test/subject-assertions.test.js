@@ -99,6 +99,11 @@ try {
     assert.strictEqual(notService.status, 403);
     assert.strictEqual(notService.body.code, 'assertion.not_a_service');
 
+    // A token minted for another audience (a service talking to Billing) may not ask Network to sign.
+    const wrongAudience = await post({ user_token: personToken(), audience: 'openvibe.billing' }, { authorization: `Bearer ${serviceToken('tips', { aud: ['openvibe.billing'] })}` });
+    assert.strictEqual(wrongAudience.status, 401);
+    assert.strictEqual(wrongAudience.body.code, 'token.wrong_audience');
+
     // ── The person is the one the token names ──
     await db.prepare("INSERT INTO users (id, username, password_hash) VALUES (78, 'other', 'x') ON CONFLICT (id) DO NOTHING").run();
     const otherSubject = await require('../server/identity/subjects').ensureUserSubject(db, await db.prepare('SELECT id, subject_id FROM users WHERE id = 78').get());

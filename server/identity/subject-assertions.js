@@ -146,6 +146,9 @@ function subjectAssertionRouter({ log = console } = {}) {
         const r = serviceAuth.verifyServiceToken(auth.slice(7).trim(), {
             publicKey: req.app.locals.publicKey,
             issuer: (req.app.locals.config || {}).jwt && req.app.locals.config.jwt.issuer,
+            // The token must be one Network itself issued for its own API: a token minted for another
+            // audience (a service talking to Billing, say) may not ask Network to sign anything.
+            audience: 'openvibe.network',
         });
         if (!r.ok) return http.sendProblem(res, 401, r.code, { detail: r.reason, ctx: req.ov });
         // Only a first-party service may ask for an assertion. A developer app, a mod or an agent
