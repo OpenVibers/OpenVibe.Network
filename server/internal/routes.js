@@ -56,6 +56,15 @@ router.post('/identity/resolve-batch', principals.guard('identity.subject.resolv
 router.post('/identity/legacy-map', principals.guard('identity.subject.resolve'), ownSourceSystem);
 router.use('/identity', require('../identity/internal-routes'));
 
+// ── Subject assertions (ADR-003, the 2026-11-06 amendment; plan H1) ───────────────────
+// A first-party service hands over the person's own access token and gets back a 60-second
+// Network-signed assertion naming the person, the service it was minted for and the audience it is
+// for. Without the person's token nothing is signed: a service that knows a person's id cannot say
+// the person allowed anything (that is the H1 narrowing of "the service vouches for its person").
+router.post('/subject-assertions',
+    express.json({ limit: '16kb' }),
+    ...require('../identity/subject-assertions').subjectAssertionRouter());
+
 // ── Project secrets (ADR-056) ────────────────────────────────
 // A service the project granted a secret to signs with it (the value never leaves) or receives it for an origin the
 // grant lists. network.secret.use is the door; the secret's own grant decides, and anything refused is 404.

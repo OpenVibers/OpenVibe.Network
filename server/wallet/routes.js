@@ -54,10 +54,14 @@ async function readJson(r) {
 }
 
 /** One request to Billing. The person's own bearer token unless `token` says otherwise. */
-async function ask(url, { authorization, method = 'GET', body, timeoutMs = TIMEOUT_MS } = {}) {
+async function ask(url, { authorization, method = 'GET', body, timeoutMs = TIMEOUT_MS, assertion } = {}) {
     const headers = { accept: 'application/json' };
     if (authorization) headers.authorization = authorization;
     if (body !== undefined) headers['content-type'] = 'application/json';
+    // The person's own subject assertion (ADR-003, the 2026-11-06 amendment; plan H1): Billing checks it
+    // against the person the read is for. Only a service-token read needs it; the person's own token is
+    // the proof already.
+    if (assertion) headers['x-ov-subject-assertion'] = String(assertion);
     const r = await fetch(url, {
         method, headers,
         ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
@@ -308,6 +312,34 @@ module.exports = function createWalletRoutes(db, requireAuth, opts = {}) {
      * marked TEMPORARY FALLBACK reads the journal with Network's service token. The fallback is not seeded as a
      * default grant: without an operator's explicit billing.balance.read grant it reads nothing.
      */
+    /**
+     * The person's own subject assertion for a service-token read of their money (ADR-003, the 2026-11-06
+     * amendment; plan H1). Network asks its own mint route for it: the person's Network token is on the
+     * request, and without it nothing is signed (so a read for a person whose token is not here has no
+     * assertion and travels the old way).
+     */
+    async function mintAssertion(req, subject) {
+        if (!selfToken) return null;
+        const auth = personToken(req);
+        if (!auth) return null;
+        const token = selfToken('openvibe.network', ['identity.subject.resolve']);
+        if (!token) return null;
+        const net = String(opts.networkInternalUrl || config.internalUrl || `http://127.0.0.1:${config.port || 4000}`).replace(/\/+$/, '');
+        try {
+            const res = await fetch(`${net}/internal/subject-assertions`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+                body: JSON.stringify({ user_token: auth.replace(/^Bearer\s+/i, '').trim(), audience: 'openvibe.billing', subject }),
+                signal: AbortSignal.timeout(2500),
+            });
+            if (!res.ok) return null;
+            const out = await res.json().catch(() => null);
+            return (out && out.assertion) || null;
+        } catch {
+            return null;
+        }
+    }
+
     async function activityOf(req) {
         const subject = req.user && req.user.subject_id;
         if (!subject) return { rows: [], source: 'none' };
@@ -328,7 +360,10 @@ module.exports = function createWalletRoutes(db, requireAuth, opts = {}) {
         const token = selfToken(SERVICE_AUDIENCE, BALANCE_READ);
         if (!token) return { rows: [], source: 'none' };
         try {
-            const out = await ask(`${billingUrl}/api/v1/transactions?subject=${encodeURIComponent(subject)}&limit=80`, { authorization: `Bearer ${token}` });
+            // The person's own assertion: Network reads their journal with its service token, so it
+            // shows Billing the person's own answer instead of Network's word (ADR-003, plan H1).
+            const assertion = await mintAssertion(req, subject);
+            const out = await ask(`${billingUrl}/api/v1/transactions?subject=${encodeURIComponent(subject)}&limit=80`, { authorization: `Bearer ${token}`, assertion });
             if (out.status !== 200 || !out.body) return { rows: [], source: 'none' };
             return { rows: mapActivity(subject, out.body.transactions), source: 'journal' };
         } catch {
