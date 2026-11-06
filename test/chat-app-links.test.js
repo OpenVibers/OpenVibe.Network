@@ -27,6 +27,7 @@ const { store, pageRouter, userRouter } = require('../server/chat-apps/links');
         const row = await db.prepare('SELECT * FROM chat_app_pending_links WHERE app = ? AND external_id = ?').get(app, external);
         assert.equal(row.code_hash, crypto.createHash('sha256').update(`chat-app-code:${app}:${external}:${half.code}`).digest('hex'));
         assert.notEqual(row.code_hash, half.code, 'the code is kept only as a hash');
+        await assert.rejects(s.confirm(token, bob), /already confirmed/, 'another signed-in account cannot rotate it');
         assert.equal((await db.prepare("SELECT count(*) AS n FROM information_schema.columns WHERE table_name = 'chat_app_pending_links' AND column_name = 'code'").get()).n, 0, 'no plaintext code column');
         // A different chat account sending the same code finishes nothing.
         assert.deepEqual(await s.finish({ app, service_user_id: app === 'slack' ? 'T123:U999' : '999', code: half.code }), { ok: false, error: 'no_link' });

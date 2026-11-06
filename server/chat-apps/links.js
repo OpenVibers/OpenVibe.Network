@@ -47,6 +47,8 @@ function store(db, now = () => Date.now()) {
             return db.tx(async t => {
                 const p = await t.prepare('SELECT * FROM chat_app_pending_links WHERE token_hash = ? FOR UPDATE').get(hash(token));
                 if (!p || p.finished_at || p.cancelled_at || p.expires_at <= iso()) throw fail(410, 'This link expired or was already used');
+                // Once one signed-in person has confirmed, another account cannot rotate (or take) it.
+                if (p.confirmed_by && Number(p.confirmed_by) !== Number(userId)) throw fail(409, 'This link was already confirmed by another account');
                 const user = await t.prepare('SELECT id FROM users WHERE id = ? AND deleted_at IS NULL AND merged_into IS NULL AND is_banned = 0 FOR UPDATE').get(userId);
                 if (!user) throw fail(403, 'This account cannot be linked');
                 // Refuse before showing a code that could never be used: an identity is one person, and a
