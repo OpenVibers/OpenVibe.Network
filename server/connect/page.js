@@ -162,11 +162,36 @@ async function renderPage(ctx, user) {
     let body;
     let headHtml = '';
     if (!user) {
-        body = kit.empty({
-            title: 'Sign in to connect your apps',
-            text: 'Your agents work in your own apps with your own keys. Sign in to connect them.',
-            action: { href: '/login?next=%2Fapps', label: 'Sign in' },
-        });
+        // Signed out: what Connect is and which apps it reaches, so the page is worth landing on; connecting
+        // needs sign-in, so the cards carry no forms.
+        const apps = registry.all();
+        body = [
+            kit.head({ title: 'Apps', sub: 'Your agents, in your own apps' }),
+            `<p>Connect ${esc(['github', 'linear', 'notion', 'slack'].map((k) => (apps.find((d) => d.key === k) || {}).name).filter(Boolean).join(', '))} and more with your own keys. Your agents act in them only with what you grant, and a send, a delete or a payment asks you first.</p>`,
+            `<p>${kit.button({ href: '/login?next=%2Fapps', label: 'Sign in to connect your apps' })}</p>`,
+            kit.section({
+                title: 'The apps',
+                count: apps.length,
+                body: kit.list(apps.map((def) => kit.row({
+                    mark: kit.mark({ name: def.name, square: true, size: 36 }),
+                    title: def.name,
+                    sub: def.blurb,
+                    meta: def.auth.label,
+                }))),
+            }),
+            kit.section({
+                title: 'How it works',
+                body: `<ul>
+<li><b>Your keys, sealed.</b> A key is sealed to your account and only opened for the one call that uses it. It is never shown back.</li>
+<li><b>You grant each agent.</b> Codes, Actor or your own tools get no app, read, or read and write, app by app, and you can revoke any of them.</li>
+<li><b>Ask first.</b> Sending, deleting and paying wait for your yes, and every call is in your log.</li>
+</ul>`,
+            }),
+            kit.section({
+                title: 'For your own agents',
+                body: '<p>Point any MCP client (Claude Code, Codex, Cursor) at <code>https://connect.openvibe.network/mcp</code> with a key you make here, and it sees only the apps you granted it.</p>',
+            }),
+        ].join('\n');
     } else {
         const list = await vault.list(ctx.db, subject);
         const connected = new Set(list.map((c) => c.app));
