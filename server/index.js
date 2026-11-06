@@ -371,8 +371,17 @@ try {
     console.warn('[Auth] Using ephemeral HS256 key — DO NOT use in production');
 }
 
+// The EC key that signs the subject assertions (ADR-003, the 2026-11-06 amendment; plan H1). It is
+// published in the JWKS beside the RS256 key, so Billing and Tips verify an assertion offline.
+const assertionKeys = require('./identity/subject-assertions').loadAssertionKeys({
+    privateKeyPath: config.jwt.assertionPrivateKeyPath,
+    publicKeyPath: config.jwt.assertionPublicKeyPath,
+});
+console.log('[Auth] ES256 assertion keypair loaded (kid ' + assertionKeys.kid + ')');
+
 // Make keys available to route modules
 app.locals.db = db;
+app.locals.assertionKeys = assertionKeys;
 app.locals.privateKey = privateKey;
 // Network's own service tokens for its calls to Live, Media and Tools (identity/self-token.js).
 const selfToken = require('./identity/self-token').createSelfTokens({ privateKey, issuer: config.jwt.issuer });
@@ -625,12 +634,19 @@ app.get('/api/.well-known/jwks', (_req, res) => {
     // anyone sign sessions. Only a real public key is ever served.
     if (privateKey === publicKey || !String(publicKey).includes('BEGIN')) return res.json({ algorithm: 'HS256', keys: [] });
     const out = { public_key: publicKey, algorithm: 'RS256' };
+    const keys = [];
     if (publicKey.includes('BEGIN')) {
         try {
             const jwk = require('crypto').createPublicKey(publicKey).export({ format: 'jwk' });
-            out.keys = [{ ...jwk, use: 'sig', alg: 'RS256', kid: 'ov-network-1' }];
+            keys.push({ ...jwk, use: 'sig', alg: 'RS256', kid: 'ov-network-1' });
         } catch { /* legacy shape still served */ }
     }
+    // The subject-assertion key (ES256): Billing and Tips verify a subject assertion with it.
+    // It is a public key, like the RS256 one, and it never signs anything else.
+    try {
+        keys.push(require('./identity/subject-assertions').assertionJwk(app.locals.assertionKeys.publicKey));
+    } catch { /* the assertion key is not loaded */ }
+    if (keys.length) out.keys = keys;
     res.json(out);
 });
 
