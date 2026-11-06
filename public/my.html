@@ -113,6 +113,7 @@
         <button onclick="showSection('data',this)"><i class="fa-solid fa-database"></i> AI &amp; Data</button>
         <button onclick="showSection('content',this)"><i class="fa-solid fa-shield-halved"></i> Content</button>
         <button onclick="showSection('approvals',this)"><i class="fa-solid fa-user-check"></i> Approvals</button>
+        <button onclick="showSection('apps',this)"><i class="fa-solid fa-plug"></i> Apps</button>
         <button onclick="showSection('linked',this)"><i class="fa-solid fa-link"></i> Linked Services</button>
         <button onclick="showSection('machines',this)"><i class="fa-solid fa-laptop"></i> Machines</button>
         <button onclick="showSection('security',this)"><i class="fa-solid fa-lock"></i> Security</button>
@@ -384,6 +385,18 @@
         </div>
     </div>
 
+    <!-- Apps Section (Compute plan E7): the apps a person's agents act in, with their own keys. -->
+    <div class="section" id="sec-apps">
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-plug"></i></span> Apps</h3>
+            <p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">Your agents can work in your other apps with your own keys. The keys are sealed, never shown again, and every call is written down.</p>
+            <div id="apps-list" aria-live="polite">
+                <!-- Populated by JS (my/apps.js) -->
+            </div>
+            <p style="margin-top:12px"><a class="btn btn-primary" href="/apps"><i class="fa-solid fa-plug" aria-hidden="true"></i> Open the Apps page</a></p>
+        </div>
+    </div>
+
     <div class="section" id="sec-linked">
         <div class="card">
             <h3><span class="icon"><i class="fa-solid fa-link"></i></span> Linked Services</h3>
@@ -555,6 +568,7 @@
 <script src="/js/my/labels.js" defer></script>
 <script src="/js/my/security.js" defer></script>
 <script src="/js/my/approvals.js" defer></script>
+<script src="/js/my/apps.js" defer></script>
 <script src="/js/my/boot.js" defer></script>
   <script src="https://openvibe.live/live-notify.js" async></script>
 </body>

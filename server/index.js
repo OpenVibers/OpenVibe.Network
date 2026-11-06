@@ -453,6 +453,20 @@ app.use('/api/v1/staff/moderation-audit', requireAuth, moderationAudit.router())
 // Sharing (design 2026-11-06): what is shared with this person, the share picker's suggestions and
 // the @name check it uses (server/sharing/routes.js).
 app.use('/api/v1', require('./sharing/routes').createSharingApi({ ...sharing, requireAuth }));
+// OpenVibe Connect (Compute plan E7): the vault of a person's own app credentials, the catalogue and
+// the gateway that acts in their apps with them. The Apps page and the MCP server are Network's own;
+// the host connect.openvibe.network is the nginx vhost's business, not this file's.
+const connectLimiter = require('./connect/limits').createLimiter({
+    perMinute: Number(process.env.CONNECT_CALLS_PER_MINUTE) || undefined,
+    dailyCap: Number(process.env.CONNECT_DAILY_CAP) || undefined,
+});
+const connectGateway = require('./connect/gateway').createGateway({ db, config, limiter: connectLimiter });
+app.locals.connectGateway = connectGateway;
+app.use('/api/v1/connect', require('./connect/routes').createConnectRoutes({ db, config, requireAuth, gateway: connectGateway }));
+// The MCP server: https://connect.openvibe.network/mcp (streamable HTTP). One JSON-RPC call per request.
+app.post('/mcp', rateLimit({ windowMs: 60_000, max: 600 }), require('./connect/mcp').createMcpHandler({
+    db, config, gateway: connectGateway, publicKey, issuer: config.jwt.issuer,
+}));
 // Staff capabilities and the staff list (WS-D task 4; services need network.staff.read).
 app.use('/api/v1/staff', require('./admin/staff-api').createStaffApi({ db, requireAuth, guard: require('./identity/principals').guard }));
 // Username history (WS-B task 6): who holds a name now, so sites redirect /@old → /@new and pick up a
@@ -982,6 +996,16 @@ app.get('/wallet.html', (req, res) => redirectWithoutHtml(req, res, '/wallet'));
 // "Shared with me" (design 2026-11-06): everything other people have shared with this person, on
 // every site, in one list. Its own page, in the kit's components and with no styles of its own.
 app.get('/shared', require('./sharing/page').createSharedPage({ ...sharing, authCtx: authCtx() }));
+// The Apps page (Compute plan E7): the catalogue, the walkthrough, the connected list and the log.
+// connect.openvibe.network serves the same page at its root (the vhost is the nginx one; this is the
+// page behind it).
+const connectPage = require('./connect/page').createAppsPage({ db, config, gateway: connectGateway, authCtx: authCtx() });
+app.get('/apps', connectPage);
+app.get('/apps.html', (req, res) => redirectWithoutHtml(req, res, '/apps'));
+app.get('/', (req, res, next) => {
+    if (getRequestHost(req) === 'connect.openvibe.network') return connectPage(req, res);
+    return next();
+});
 app.get('/pay/:id', (_req, res) => sendPayPage(res));
 
 // Account hub (my.html) — the apex hosts the account hub under /my
