@@ -914,8 +914,46 @@ a backup (its size, its lock and its PBKDF2 count).
 
 **What Network cannot read:** a private key, in any form. The private keys are wrapped by a key from the
 person's locker passphrase (PBKDF2-SHA-256, 600 000 iterations or more) or by a passkey, and the wrapped
-bytes are opaque here. There is no reset: if the passphrase and the recovery kit are both lost, nobody can
-open that locker, including OpenVibe.
+bytes are opaque here. If the passphrase and the recovery kit are both lost, nobody can open the locked
+items, including OpenVibe — but the person can start again with a **reset** (see below).
+
+### The proof: a change needs the key the person has now
+
+A session cookie on its own must not be able to change a person's keys: a stolen session that swapped in
+somebody else's keys would read everything locked for that person from then on. So a person who **already
+has keys** proves they still hold them: the **current** signing key signs the change, and the signature
+comes as `previous_signature` (base64, ECDSA P-256 over SHA-256). Without it the write is refused with
+`403 locker.proof_required`.
+
+The bytes to sign are these, as UTF-8 (`server/locker/proof.js`, exported so the browser signs the same
+ones):
+
+```
+openvibe-locker key-change v1|<subject>|<new fingerprint>|<backups digest>
+openvibe-locker forget v1|<subject>
+```
+
+- `<subject>` is the person's own `usr_…` id.
+- `<new fingerprint>` is the eight words the **new** keys produce (`fingerprintOf`).
+- `<backups digest>` is the lower-case hex SHA-256 of the **canonical JSON** of the backups that are
+  written: the keys of every object sorted, no spaces, one backup per kind:
+
+  ```json
+  {"passphrase":{"envelope":"<base64>","format":"locker.envelope.v1"}}
+  ```
+
+The same proof covers a backups-only update (the fingerprint does not change).
+
+### A reset, and forgetting
+
+- **A reset** is for the person who lost both their passphrase and their recovery kit: `PUT /api/v1/me/keys`
+  with `{"reset": true}` and no proof, allowed only when the session's sign-in is recent — the session
+  token's `auth_time` within the last ten minutes (the OIDC claim Network's `signToken` puts on every
+  session; the same rule account-merge and the account deletion use). Without it the write is refused with
+  `403 locker.reauth_required`. A reset replaces the whole locker: new keys, and the backups that come with
+  them; the old backups wrapped keys that are gone. It is written down as `reset`.
+- **Forgetting** (`DELETE /api/v1/me/keys`, with `{"confirm": "forget my locker"}`) needs the same proof, over
+  `openvibe-locker forget v1|<subject>`, or a recent sign-in.
 
 ### The routes
 
@@ -960,6 +998,7 @@ as they came; it never opens one.
   "ecdh_public": { "kty": "EC", "crv": "P-256", "x": "…", "y": "…" },
   "signing_public": { "kty": "EC", "crv": "P-256", "x": "…", "y": "…" },
   "self_signature": "…",
+  "previous_signature": "…",
   "backups": {
     "passphrase": { "format": "locker.envelope.v1", "envelope": "…" }
   }
@@ -968,6 +1007,18 @@ as they came; it never opens one.
 
 Every key change is announced on OpenVibe.Events as `locker.keys.changed`, with ids and fingerprints
 only: no key, no signature, no blob ever leaves this service in an event, in a log line or in an answer.
+The event's reason says why it happened: `created`, `rotated` (new keys), `restored` (the same keys, new
+backups), `reset` or `forgotten`.
+
+Every change also sends the person a Network notification, so a swap nobody asked for is seen:
+
+| Change | What the person is told |
+|--------|------------------------|
+| `created` | "Your locker was set up: the things you lock are opened with these keys." |
+| `rotated` | "Your locker keys changed: things locked for your old keys cannot be opened with the new ones." |
+| `restored` | "Your locker backup was restored: the things you lock are opened with the same keys." |
+| `reset` | "Your locker was reset: things locked for your old keys cannot be opened" |
+| `forgotten` | "Your locker was forgotten: your keys and your backups are gone." |
 
 ## License
 

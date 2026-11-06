@@ -497,7 +497,7 @@ function llmsTxt() {
             // holds of a locker. The curl is here, so an agent can look a person's public key up.
             { title: 'Locker keys', links: [
                 { title: 'Locker keys: a person\'s public keys and fingerprint', url: 'https://github.com/OpenVibers/OpenVibe.Network/blob/main/README.md#locker-keys',
-                    note: 'Network holds the public keys, a self-signature and the wrapped private keys, and can never read a private key. Look one up with: curl -s -H "Authorization: Bearer $TOKEN" https://openvibe.network/api/v1/people/@maticus/keys' },
+                    note: 'Network holds the public keys, a self-signature and the wrapped private keys, and can never read a private key. Changing the keys needs a signature from the key the person has now. Look one up with: curl -s -H "Authorization: Bearer $TOKEN" https://openvibe.network/api/v1/people/@maticus/keys' },
                 { title: 'The Locker library and the envelope format (openvibe-sdk/locker)', url: 'https://github.com/OpenVibers/OpenVibe.SDK/blob/main/docs/locker.md',
                     note: 'how a locked item is sealed and opened, the three locks, and what a service may do with an envelope it cannot read' },
             ] },

@@ -21,6 +21,13 @@
  *     fingerprint than the keys produce is refused.
  *   - every backup must be a Locker envelope with a password lock, at most 16 KB, sealed with a PBKDF2 count
  *     between 600 000 and 10 000 000 (openvibe-sdk/locker/server inspectEnvelope). It is stored as it came.
+ *   - a person who ALREADY has keys proves they still hold them: the current signing key signs the change
+ *     (server/locker/proof.js), and without that signature nothing is changed (403 locker.proof_required).
+ *     A stolen session cookie alone cannot swap in somebody else's keys.
+ *   - a real reset (the passphrase and the recovery kit are both lost) is a `reset: true` with a sign-in from
+ *     the last ten minutes (the session's auth_time), and it is written down as a reset.
+ *   - every change (created, rotated, restored, reset, forgotten) sends the person a notification, so a swap
+ *     nobody asked for is seen.
  *
  * Nothing here is ever logged: a key, a signature or a blob never reaches a log line, an error message or a
  * response other than the one the person asked for. Every answer is private and never stored by a cache.
@@ -32,6 +39,10 @@ const { http, ids, validate } = require('openvibe-contracts');
 const { fingerprintOf, verifyPersonKeys } = require('openvibe-sdk/locker');
 const { inspectEnvelope } = require('openvibe-sdk/locker/server');
 const eventRelay = require('../developer/event-relay');
+const proof = require('./proof');
+// A real sign-in (the session's auth_time within ten minutes), the rule account-merge and the account deletion
+// already use: never a renewal, never a QR session carrying an old source time.
+const { isFreshSignIn } = require('../identity/account-merge');
 
 /** The event a key change announces (ids and fingerprints only; never a key, never a blob). */
 const EVENT_TYPE = 'locker.keys.changed';
@@ -57,6 +68,16 @@ const SIGNATURE_RE = /^[A-Za-z0-9+/]{86}==$/;
 /** How many lookups one caller may do a minute. */
 const LOOKUP_LIMIT = 60;
 const LOOKUP_WINDOW_MS = 60_000;
+/** The reasons a locker's history holds. */
+const REASONS = ['created', 'rotated', 'restored', 'reset', 'forgotten'];
+/** What each change tells the person. The reset's words are fixed: they say what is lost. */
+const NOTICES = {
+    created: 'Your locker was set up: the things you lock are opened with these keys.',
+    rotated: 'Your locker keys changed: things locked for your old keys cannot be opened with the new ones.',
+    restored: 'Your locker backup was restored: the things you lock are opened with the same keys.',
+    reset: 'Your locker was reset: things locked for your old keys cannot be opened',
+    forgotten: 'Your locker was forgotten: your keys and your backups are gone.',
+};
 
 class LockerError extends Error {
     constructor(status, code, detail) { super(detail); this.status = status; this.code = code; }
@@ -167,6 +188,27 @@ function buildEnvelope({ subject, fingerprint, previous, reason, at }) {
 }
 
 /**
+ * The notification a key change sends the person, so a swap nobody asked for is seen: the bell, the email and the
+ * push all carry the same words. Nothing about the keys themselves: the notice says that they changed, not what
+ * they are.
+ */
+async function notifyKeyChange(notifications, user, reason) {
+    if (!notifications || !user) return null;
+    const message = NOTICES[reason] || NOTICES.rotated;
+    try {
+        return await notifications.create({
+            user_id: user.id, type: 'GENERIC', category: 'system', priority: 'high', icon: '🔒',
+            title: 'Your locker changed', message, service: 'network',
+            url: 'https://openvibe.network/my',
+        });
+    } catch (err) {
+        // The change is already written; a notice that could not be sent must not undo it.
+        console.error('[Locker]', 'the notice could not be sent:', safeMessage(err));
+        return null;
+    }
+}
+
+/**
  * A write another site started (CSRF), judged from what the browser says: Sec-Fetch-Site other than same-origin
  * (or none: typed by the person), or an Origin on another host. A client that sends neither (an agent with a
  * bearer token) is not a browser and is let through.
@@ -220,7 +262,7 @@ function send(req, res, fn) {
 /**
  * The person's own locker: PUT /api/v1/me/keys, GET /api/v1/me/keys/backup, DELETE /api/v1/me/keys.
  */
-function meRouter(requireAuth) {
+function meRouter(requireAuth, { notifications = null } = {}) {
     const router = express.Router();
     router.use(http.middleware());
 
@@ -256,12 +298,37 @@ function meRouter(requireAuth) {
         const backups = {};
         for (const kind of kinds) backups[kind] = checkBackup(given[kind]);
 
+        const prev = await keyRow(db, me);
+        const reset = body.reset === true;
+        // The proof: the CURRENT signing key signs the change (server/locker/proof.js). Without it, a stolen
+        // session could swap in somebody else's keys and read everything locked for this person from then on.
+        let proved = false;
+        if (prev && typeof body.previous_signature === 'string' && body.previous_signature.length) {
+            const bytes = await proof.keyChangeProofBytes(me, fingerprint, backups);
+            proved = await proof.verifyProof(prev.signing_public, bytes, body.previous_signature);
+        }
+        if (prev && !proved) {
+            if (!reset) {
+                throw new LockerError(403, 'locker.proof_required', 'the change needs a signature from the key you have now');
+            }
+            // A real reset: the passphrase and the recovery kit are gone. A sign-in from the last ten minutes
+            // (the session's auth_time) is the only thing that can open this door.
+            if (!isFreshSignIn(req.tokenClaims)) {
+                throw new LockerError(403, 'locker.reauth_required', 'sign in again (within the last 10 minutes) to reset your locker');
+            }
+        }
+
         const now = new Date().toISOString();
         const out = await db.tx(async () => {
-            const prev = await keyRow(db, me);
-            const changed = !prev || prev.fingerprint !== fingerprint;
-            const reason = prev ? 'rotated' : 'created';
-            if (prev) {
+            const before = await keyRow(db, me);
+            const held = await db.prepare('SELECT kind, blob FROM locker_key_backups WHERE subject = ?').all(me);
+            const beforeBackups = {};
+            for (const row of held) beforeBackups[row.kind] = row.blob;
+            const backupsChanged = Object.keys(backups).some((kind) => JSON.stringify(beforeBackups[kind] || null) !== JSON.stringify(backups[kind]));
+            const changed = !before || before.fingerprint !== fingerprint || reset || backupsChanged;
+            // Why it changed: the first keys, a reset, new keys, or the same keys with new backups.
+            const reason = !before ? 'created' : (reset ? 'reset' : (before.fingerprint !== fingerprint ? 'rotated' : 'restored'));
+            if (before) {
                 await db.prepare(`UPDATE locker_keys SET ecdh_public = ?::jsonb, signing_public = ?::jsonb,
                     fingerprint = ?, self_signature = ?, updated_at = ? WHERE subject = ?`)
                     .run(JSON.stringify(ecdh), JSON.stringify(signing), fingerprint, signature, now, me);
@@ -270,10 +337,12 @@ function meRouter(requireAuth) {
                     VALUES (?, ?::jsonb, ?::jsonb, ?, ?, ?, ?)`)
                     .run(me, JSON.stringify(ecdh), JSON.stringify(signing), fingerprint, signature, now, now);
             }
+            // A reset replaces the whole locker: the old backups wrap keys that are gone.
+            if (reset) await db.prepare('DELETE FROM locker_key_backups WHERE subject = ?').run(me);
             for (const kind of Object.keys(backups)) {
                 const blob = JSON.stringify(backups[kind]);
-                const held = await db.prepare('SELECT created_at FROM locker_key_backups WHERE subject = ? AND kind = ?').get(me, kind);
-                if (held) {
+                const has = await db.prepare('SELECT created_at FROM locker_key_backups WHERE subject = ? AND kind = ?').get(me, kind);
+                if (has) {
                     await db.prepare('UPDATE locker_key_backups SET blob = ?::jsonb, updated_at = ? WHERE subject = ? AND kind = ?')
                         .run(blob, now, me, kind);
                 } else {
@@ -283,13 +352,14 @@ function meRouter(requireAuth) {
             }
             if (changed) {
                 await db.prepare(`INSERT INTO locker_key_history (subject, fingerprint, "from", "to", reason, changed_at)
-                    VALUES (?, ?, ?, ?, ?, ?)`).run(me, fingerprint, prev ? prev.fingerprint : null, fingerprint, reason, now);
+                    VALUES (?, ?, ?, ?, ?, ?)`).run(me, fingerprint, before ? before.fingerprint : null, fingerprint, reason, now);
                 await eventRelay.writerFor(db).enqueue(buildEnvelope({
-                    subject: me, fingerprint, previous: prev ? prev.fingerprint : null, reason, at: now,
+                    subject: me, fingerprint, previous: before ? before.fingerprint : null, reason, at: now,
                 }));
             }
             return { changed, reason };
         });
+        if (out.changed) await notifyKeyChange(notifications, req.user, out.reason);
         const row = await keyRow(db, me);
         const changedAt = await changedAtOf(db, me);
         privateAnswer(res);
@@ -306,7 +376,8 @@ function meRouter(requireAuth) {
         res.json({ subject: me, backups });
     }));
 
-    // Forget my locker: the keys and the backups go, the history stays.
+    // Forget my locker: the keys and the backups go, the history stays. The current signing key says so, or the
+    // person signed in again in the last ten minutes.
     router.delete('/', requireAuth, async (req, res) => await send(req, res, async (db) => {
         if (crossSite(req)) throw new LockerError(403, 'locker.cross_site', 'this write came from another site');
         const me = await meOf(db, req.user);
@@ -316,6 +387,13 @@ function meRouter(requireAuth) {
         }
         const prev = await keyRow(db, me);
         if (!prev) throw new LockerError(404, 'locker.no_keys', 'there are no keys to forget');
+        let proved = false;
+        if (typeof body.previous_signature === 'string' && body.previous_signature.length) {
+            proved = await proof.verifyProof(prev.signing_public, proof.forgetProofBytes(me), body.previous_signature);
+        }
+        if (!proved && !isFreshSignIn(req.tokenClaims)) {
+            throw new LockerError(403, 'locker.proof_required', 'the change needs a signature from the key you have now, or a sign-in from the last 10 minutes');
+        }
         const now = new Date().toISOString();
         await db.tx(async () => {
             await db.prepare('DELETE FROM locker_key_backups WHERE subject = ?').run(me);
@@ -326,6 +404,7 @@ function meRouter(requireAuth) {
                 subject: me, fingerprint: null, previous: prev.fingerprint, reason: 'forgotten', at: now,
             }));
         });
+        await notifyKeyChange(notifications, req.user, 'forgotten');
         privateAnswer(res);
         res.json({ subject: me, forgotten: true });
     }));
@@ -378,6 +457,16 @@ function peopleRouter(requireAuth) {
 }
 
 module.exports = {
-    EVENT_TYPE, BACKUP_FORMAT, BACKUP_KINDS, MAX_BACKUP_BYTES, CONFIRM_TEXT, LOOKUP_LIMIT,
-    LockerError, publicKeyOk, checkBackup, view, buildEnvelope, crossSite, safeMessage, meRouter, peopleRouter,
+    EVENT_TYPE, BACKUP_FORMAT, BACKUP_KINDS, MAX_BACKUP_BYTES, CONFIRM_TEXT, LOOKUP_LIMIT, REASONS, NOTICES,
+    LockerError, publicKeyOk, checkBackup, view, buildEnvelope, crossSite, safeMessage, notifyKeyChange,
+    meRouter, peopleRouter,
+    // The bytes a person signs, so the browser (openvibe-shared/ov-locker.js) signs the same ones.
+    canonicalJson: proof.canonicalJson,
+    canonicalBackups: proof.canonicalBackups,
+    backupsDigest: proof.backupsDigest,
+    keyChangeProofMessage: proof.keyChangeProofMessage,
+    keyChangeProofBytes: proof.keyChangeProofBytes,
+    forgetProofMessage: proof.forgetProofMessage,
+    forgetProofBytes: proof.forgetProofBytes,
+    verifyProof: proof.verifyProof,
 };

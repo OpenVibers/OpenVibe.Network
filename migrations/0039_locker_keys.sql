@@ -11,7 +11,9 @@
 --   locker_key_backups one row per person and kind (passphrase, recovery, passkey): the wrapped private keys,
 --                       stored exactly as the browser sealed them. Network checks the shape and never opens it.
 --   locker_key_history every key change, append-only: what the fingerprint was and what it became, so a share
---                       sheet can warn when a key changed since the people saw it.
+--                       sheet can warn when a key changed since the people saw it. The reason says why: the keys
+--                       were created, rotated (new keys), restored (the same keys, new backups), reset (the
+--                       passphrase and the recovery kit were both lost) or forgotten.
 --
 -- Expand only: an older release never reads these tables, and nothing here changes an existing one.
 CREATE TABLE IF NOT EXISTS locker_keys (
@@ -39,7 +41,7 @@ CREATE TABLE IF NOT EXISTS locker_key_history (
     fingerprint text COLLATE "C" NOT NULL,
     "from" text COLLATE "C",
     "to" text COLLATE "C",
-    reason text COLLATE "C" NOT NULL CHECK (reason IN ('created', 'rotated', 'forgotten')),
+    reason text COLLATE "C" NOT NULL CHECK (reason IN ('created', 'rotated', 'restored', 'reset', 'forgotten')),
     changed_at text COLLATE "C" NOT NULL DEFAULT ov_now_iso()
 );
 CREATE INDEX IF NOT EXISTS locker_key_history_subject ON locker_key_history (subject, id);
