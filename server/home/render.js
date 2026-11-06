@@ -487,6 +487,13 @@ function llmsTxt() {
             { title: 'Sites', links: OPEN.map((site) => ({ title: siteName(site), url: `https://${site.host}/`, note: site.what })) },
             // A person's account ID: the endpoint an agent needs when it works for someone.
             { title: 'Your account ID', links: [ACCOUNT_ID_LINK] },
+            // The Node, on its own subdomain: the piece the network is built around, with its own map.
+            { title: 'The Node', links: [
+                { title: 'OpenVibe Node: your computer on the network', url: 'https://node.openvibe.network/',
+                    note: 'one program on your computer, server, phone or robot: run your agents and code on it, offer your models or GPU to the network and earn credits, drive robots, and keep your memory read-only' },
+                { title: 'Install the Node', url: 'https://node.openvibe.network/install',
+                    note: 'the installer of the latest release, as a script to run: curl -fsSL https://node.openvibe.network/install | sh' },
+            ] },
             // The JSON an agent came for is a main section, not something to skip (AGT-5 review).
             { title: 'Machine-readable', links: [
                 { title: 'Open stats (JSON): every site\'s numbers', url: 'https://openvibe.network/api/v1/stats' },

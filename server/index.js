@@ -630,6 +630,9 @@ const openStats = require('./stats/open').createOpenStats({
     db, selfToken, release, statusRows: () => require('./status/routes').rows(ecosystem),
     prometheusUrl: config.prometheusUrl || process.env.PROMETHEUS_URL, liveUrl: process.env.OV_LIVE_INTERNAL_URL,
 });
+// The Node's own front door on its own subdomain (node.openvibe.network): the Host header decides. It mounts
+// before the agent layer, so the Node's page is not answered by Network's home renderer.
+app.use(require('./node/routes').createNodeRoutes({ release: release.release }));
 // The agent layer (openvibe-shared/agent-layer): /.well-known/agent.json, and the public pages as Markdown twins. It
 // answers their HTML as well, with the discovery tags in the head, so it mounts before the routes for those pages.
 require('openvibe-shared/agent-layer').mount(app, {
