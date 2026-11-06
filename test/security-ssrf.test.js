@@ -125,6 +125,7 @@ const REVIEWED = {
     'server/frame/service.js fetch': [3, 'Live and AI internal URLs from config (navbar ranking copy); https://<open site host>/privacy, hosts from the site registry only, no redirects, 5 s (legal links)'],
     'server/stats/open.js fetch': [1, 'open stats (/stats): fixed first-party loopback URLs only — Live (OV_LIVE_INTERNAL_URL, its public home numbers and service-token analytics totals) and Prometheus (PROMETHEUS_URL, loopback by default) with fixed queries; the request only picks 7, 30 or 90 days'],
     'server/admin/service-proxies.js fetch': [1, 'the admin panel proxies: Live\'s and Chat\'s internal URLs from config, fixed path prefixes, staff only'],
+    'server/admin/review-queue.js fetch': [2, 'the reviewer queue: Wiki/Blog/News/Trade internal URLs from operator config (loopback defaults), fixed /api/v1/review-queue and review paths, ids percent-encoded, the signed-in staff member\'s own token, staff only'],
     'server/admin/ai-config-proxy.js fetch': [1, 'the owner settings proxy: the nine services\' internal URLs from config.services (operator-set, loopback defaults), fixed /internal/config and AI /api/v1/providers paths, service, namespace and key checked against the known names, owner only'],
     'server/integrations/github.js fetch': [1, 'fixed host api.github.com (asserted below)'],
     'server/notifications/email-service.js http.request': [1, 'fixed host api.resend.com'],
