@@ -82,6 +82,10 @@ const DEFAULT_GRANTS = [
     ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty']],
     ['chat', 'network.modules.read', SELF_AUDIENCE, CHAT_NAMESPACES],
     ['chat', 'network.modules.write', SELF_AUDIENCE, CHAT_NAMESPACES],
+    // Chat's chat-app bots (plan A4) resolve a Telegram/Discord/Slack account to its linked OpenVibe
+    // subject, and register/confirm/unlink the one-time links. Only svc:chat may reach those routes;
+    // the grant is what its service token is minted with.
+    ['chat', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['ai', 'network.modules.read', SELF_AUDIENCE, ['ai.preferences', 'ai.usage_summary']],
     ['ai', 'network.modules.write', SELF_AUDIENCE, ['ai.usage_summary']],
     ['community', 'network.modules.read', SELF_AUDIENCE, ['community.profile']],
