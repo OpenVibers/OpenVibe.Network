@@ -33,6 +33,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const contracts = require('openvibe-contracts');
 const { requireOwner } = require('../auth/owner-guard');
+const { reauthUrl } = require('../auth/reauth');
 const alerts = require('../operator/alerts');
 const { isFreshSignIn } = require('../identity/account-merge');
 
@@ -65,8 +66,8 @@ const jsonType = (type) => /^application\/([a-z.+-]+\+)?json\b/i.test(String(typ
 
 function signInUrl(config = {}) {
     const base = String(config.baseUrl || config.loginUrl || 'https://openvibe.network').replace(/\/+$/, '');
-    const login = String(config.loginUrl || base).replace(/\/+$/, '') + '/login';
-    return `${login}?return=${encodeURIComponent(`${base}/admin#ai`)}`;
+    const login = String(config.loginUrl || base).replace(/\/+$/, '');
+    return reauthUrl(login, `${base}/admin#ai`);
 }
 
 /** The session's real sign-in time, the OIDC auth_time Network's signToken puts on every session token. The rule is

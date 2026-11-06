@@ -123,6 +123,7 @@ ${snippet('bp-c5', 'Keep a file out (HTTP header)', 'X-Robots-Tag: OpenVibeBot: 
 </main>
 ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact' })}
 <script src="/shared/navbar.js" defer></script>
+<script src="/js/account-safety.js" defer></script>
 ${require('../boost').SCRIPT}
 <script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin});}catch(e){}
 document.querySelectorAll('.bp-copy').forEach(function(b){b.addEventListener('click',function(){var el=document.getElementById(b.getAttribute('data-copy'));if(!el||!navigator.clipboard)return;navigator.clipboard.writeText(el.textContent).then(function(){b.textContent='Copied';b.classList.add('is-done');setTimeout(function(){b.textContent='Copy';b.classList.remove('is-done');},1600);},function(){});});});});</script>

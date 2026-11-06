@@ -451,6 +451,7 @@ ${isPublic ? showcaseHtml(inv, name) + badgesHtml(inv) + gamesHtml(inv) + itemsH
 </main>
 ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact' })}
 <script src="/shared/navbar.js" defer></script>
+<script src="/js/account-safety.js" defer></script>
 <script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin});}catch(e){}});</script>
 </body>
 </html>`;

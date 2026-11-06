@@ -698,7 +698,7 @@ async function loadPlatformAi() {
 function paiShell(inner) {
     return '<div class="pai-head"><h2><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Platform AI</h2>'
         + '<p class="muted">Every service\'s AI settings in one place. Keys are sealed and write-only: once saved, nothing here can show one again. Money and key changes ask you to confirm it is you.</p></div>'
-        + '<div id="pai-fresh" class="pai-fresh" hidden><i class="fa-solid fa-lock" aria-hidden="true"></i> <span>Confirm it\'s you to change keys and money settings.</span> <a class="btn btn-primary" href="/login?return=%2Fadmin%23ai">Sign in again</a></div>'
+        + '<div id="pai-fresh" class="pai-fresh" hidden><i class="fa-solid fa-lock" aria-hidden="true"></i> <span>Confirm it\'s you to change keys and money settings.</span> <a class="btn btn-primary" href="/login?reauth=1&return=%2Fadmin%23ai">Sign in again</a></div>'
         + inner;
 }
 
