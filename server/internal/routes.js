@@ -47,6 +47,7 @@ function ownSourceSystem(req, res, next) {
 }
 
 router.use(requireServiceToken);
+router.use('/chat-app-links', principals.guard('identity.subject.resolve'), require('../chat-apps/links').internalRouter());
 // Identity lookups accept a service token with identity.subject.resolve (or the key, as before).
 router.get('/identity/resolve', principals.guard('identity.subject.resolve'));
 router.post('/identity/resolve-batch', principals.guard('identity.subject.resolve'));

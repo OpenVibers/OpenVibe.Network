@@ -696,6 +696,9 @@ app.use('/api/auth', require('./auth/email-verify').routes(requireAuth));
 
 // Discord account linking (OAuth2 flow)
 app.use('/api/auth/discord', requireAuth, require('./auth/discord-link'));
+app.use('/chat-apps', require('./chat-apps/links').pageRouter(requireAuth));
+// The account page's chat-app list and removal (the person's own links; no token is returned).
+app.use('/api/v1/me/chat-apps', rateLimit({ windowMs: 60_000, max: 60 }), require('./chat-apps/links').userRouter(requireAuth));
 
 // OAuth2 authorization endpoints (token issuance counted by grant type: server/observability.js).
 // The app limit is per address AND client (server/auth/oauth-limit.js); nginx keeps its own per-address zone.
