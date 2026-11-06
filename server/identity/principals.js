@@ -750,6 +750,8 @@ const DEFAULT_GRANTS = [
     // (X-OV-Subject): the person's "Designs" project and its sites, and the deploy of the page.
     ['design', 'space.site.manage', 'openvibe.space', []],
     ['design', 'space.deploy.create', 'openvibe.space', []],
+    // Games plays the AI duel itself: two pinned local offers through ai.generate (plan §6).
+    ['games', 'ai.run.create', 'openvibe.ai', ['ai.generate']],
     // Games submits each AI duel as a Bench task, two priced seat entries, and one automatic outcome.
     ...['bench.task.create', 'bench.round.create', 'bench.entry.create', 'bench.judgement.cast']
         .map((cap) => ['games', cap, 'openvibe.bench', []]),
