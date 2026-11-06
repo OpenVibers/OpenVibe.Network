@@ -224,6 +224,9 @@ function buildAllowedOriginsSet() {
     // Hard-coded OpenVibe defaults as baseline (survive registry reset/failure)
     for (const o of [
         'https://openvibe.network',
+        // The Node's own front door (the owner, 2026-11-06): node.openvibe.network is served by Network, and its
+        // page asks the network's own API (the account's look, the navbar's frame, the shared font) from that origin.
+        'https://node.openvibe.network',
         'https://openvibe.live', 'https://www.openvibe.live',
         'https://openvibe.tools',
         'https://openvibe.games', 'https://www.openvibe.games', 'https://play.openvibe.games',

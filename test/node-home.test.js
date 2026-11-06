@@ -134,5 +134,10 @@ const FIXTURE = {
     assert.ok(/links: \[\{ label: 'Node', href: 'https:\/\/node\.openvibe\.network', icon: 'fa-house', featured: true \}/.test(index), 'the home page\u2019s navbar leads with the Node, as the accent');
     assert.ok(index.indexOf("label: 'Node'") < index.indexOf("label: 'My Account'"), 'and the Node comes first');
 
+    // The Node's own origin is allowed to ask the network's API (the account's look, the navbar's frame, the)
+    // shared font): without it, the Node\u2019s page loses its own chrome in the browser.
+    const serverSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'server', 'index.js'), 'utf8');
+    assert.ok(serverSrc.includes("'https://node.openvibe.network',"), 'the CORS allow-list knows the Node\u2019s own origin');
+
     console.log('node-home: the Node\u2019s page, its installer, its twin and the navbar item ok');
 })().catch((e) => { console.error(e); process.exit(1); });
