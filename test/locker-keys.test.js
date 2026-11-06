@@ -143,7 +143,7 @@ const notices = async () => (await db.prepare('SELECT message, category, service
         assert.strictEqual(r.body.code, 'locker.bad_signature');
 
         // ── A fingerprint that does not match the keys is refused ──
-        r = await call('PUT', '/api/v1/me/keys', { headers: await as(1), body: { ...ann.body, fingerprint: 'alpha bravo charlie delta-echo foxtrot golf hotel' } });
+        r = await call('PUT', '/api/v1/me/keys', { headers: await as(1), body: { ...ann.body, fingerprint: 'alpha bravo charlie delta · echo foxtrot golf hotel' } });
         assert.strictEqual(r.status, 400, 'a fingerprint that is not the one the keys produce is refused');
         assert.strictEqual(r.body.code, 'locker.fingerprint_mismatch');
 

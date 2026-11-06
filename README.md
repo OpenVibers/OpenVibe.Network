@@ -978,7 +978,7 @@ curl -s -H "Authorization: Bearer $TOKEN" https://openvibe.network/api/v1/people
   "subject": "usr_01JAB2C3D4E5F6G7H8J9K0MNPQ",
   "ecdh_public": { "kty": "EC", "crv": "P-256", "x": "…", "y": "…" },
   "signing_public": { "kty": "EC", "crv": "P-256", "x": "…", "y": "…" },
-  "fingerprint": "alpha bravo charlie delta-echo foxtrot golf hotel",
+  "fingerprint": "alpha bravo charlie delta · echo foxtrot golf hotel",
   "updated_at": "2026-11-06T09:12:00.000Z",
   "changed_at": "2026-11-06T09:12:00.000Z"
 }
