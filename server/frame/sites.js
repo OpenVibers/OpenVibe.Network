@@ -37,18 +37,18 @@ const fullName = (s) => (/^Open[A-Z]/.test(String(s && s.name)) ? s.name : `Open
 // each. A site missing here lands in the last group, so a new manifest is never left out of the menu.
 // The six neighbourhoods of the 2026-10-28 plan (§3.1): each label is two words, so it never collides with a site's own
 // name, and they follow what a person came to do. Rooms not open yet (Cam, Tours, Surf, Fun, Meme, Casino, Today, Report,
-// Vision, Website, Design, Domains, open.shoes, Exchange) are named here so they land in their neighbourhood the day
+// Vision, Website, Design, Domains, open.shoes) are named here so they land in their neighbourhood the day
 // their manifest opens. The building blocks stay last, "For developers" (the tail of Make & build).
 const GROUPS = [
     { id: 'streams', name: 'Streams & places', sites: ['live', 'media-hub', 'stream', 'pics', 'download', 'cam', 'tours'] },
     { id: 'games', name: 'Games & laughs', sites: ['games', 'surf', 'fun', 'meme', 'casino', 'quest'] },
     { id: 'answers', name: 'News & answers', sites: ['today', 'report', 'news', 'search', 'wiki', 'blog', 'reviews', 'vision'] },
     { id: 'make', name: 'Make & build', sites: ['website', 'connect', 'design', 'domains', 'codes', 'space', 'tools', 'host', 'bot'] },
-    { id: 'shop', name: 'Shop & swap', sites: ['deals', 'coupons', 'shoes', 'exchange', 'rent', 'homes', 'work', 'food', 'trade'] },
+    { id: 'shop', name: 'Shop & swap', sites: ['deals', 'coupons', 'shoes', 'rent', 'homes', 'work', 'food', 'trade'] },
     { id: 'people', name: 'People & you', sites: ['chat', 'community', 'tips', 'vip', 'help', 'network', 'inventory'] },
     // Actor is the engine behind every agent (Codes' Auto, Vibe, the Dock call it): a developer service, not a second
     // place to chat with an agent (plan L39, 2026-10-31).
-    { id: 'build', name: 'For developers', sites: ['services', 'ai', 'actor', 'bench', 'run', 'zone', 'events', 'media', 'watch', 'play'] },
+    { id: 'build', name: 'For developers', sites: ['services', 'ai', 'exchange', 'actor', 'bench', 'run', 'zone', 'events', 'media', 'watch', 'play'] },
 ];
 // What each site is, in a few words, for the menus (the launcher's rows are two to a line on a phone: about 22
 // characters fit). The manifests' taglines stay the sites' own sentences everywhere else; a site missing here shows
@@ -62,7 +62,7 @@ const MENU_LINE = {
     deals: 'Deals people share', coupons: 'Codes that work', reviews: 'Honest reviews', work: 'Find a job', rent: 'Places to rent',
     homes: 'Homes for sale', food: 'Food near you', help: 'Help nearby', trade: 'Watch the markets', watch: 'Know when it changes',
     search: 'Search everything', host: 'Compare hosting', report: 'Your numbers, honest', vision: 'Ask a picture',
-    exchange: 'Apps, skills, compute',
+    exchange: 'AI models, one account',
     network: 'Your account', inventory: 'Your items',
     services: 'APIs, SDK and keys', ai: 'AI router, your keys', bench: 'Which AI is best', run: 'Run jobs anywhere', zone: 'S3 storage', events: 'Event streams', media: 'Media API', play: 'Game services',
 };
