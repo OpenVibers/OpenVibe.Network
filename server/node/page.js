@@ -15,7 +15,7 @@ const DOES = [
     { icon: 'code', title: 'Run your agents and code on your machine', body: 'Codes starts a coding task from any browser and this machine runs it, as an unprivileged user in a sandbox.', href: 'https://openvibe.codes/run', cta: 'OpenVibe.Codes' },
     { icon: 'spark', title: 'Offer your models or your GPU and earn credits', body: 'Exchange lists what your machine serves; you choose the models, the hours, the price and who may use it.', href: 'https://openvibe.exchange/sell', cta: 'OpenVibe.Exchange' },
     { icon: 'game', title: 'Drive robots', body: 'Bot drives what you approve, at the level you set, with a kill switch on the machine and a deadline on every command.', href: 'https://openvibe.bot', cta: 'OpenVibe.Bot' },
-    { icon: 'live', title: 'Stream an agent\u2019s desk', body: 'Live carries the screen and the camera of your machine to a channel. Coming with S1.', href: 'https://openvibe.live', cta: 'OpenVibe.Live', soon: true },
+    { icon: 'live', title: 'Stream an agent\u2019s desk', body: 'Live carries your machine\u2019s screen to a channel, private until you choose: under a second behind, with a curtain that hides secret screens.', href: 'https://openvibe.live/docs/agent-streams', cta: 'Agent streams on OpenVibe.Live' },
     { icon: 'lock', title: 'Keep your memory, read-only', body: 'The collectors read what your coding tools remember: local, redacted, and never uploaded unless you say so.', href: `${DOCS}/memory.md`, cta: 'The memory docs' },
 ];
 
@@ -96,6 +96,7 @@ ${require('openvibe-shared/app-icon').headTags({ site: 'network', iconBase: '/as
 <script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>
 <link rel="stylesheet" href="/shared/kit.css">
 <style>
+html,body{background:var(--bg-primary);color:var(--text-primary);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0}
 ${CSS}
 </style>
 </head>
@@ -138,7 +139,7 @@ ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact'
 <script src="/shared/navbar.js" defer></script>
 ${require('../boost').SCRIPT}
 <script src="/shared/kit-web.js" defer></script>
-<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:'https://openvibe.network',links:[{label:'Node',href:'/',icon:'fa-house',featured:true,active:true},{label:'Network',href:'https://openvibe.network/'},{label:'My Account',href:'https://openvibe.network/my'}]});}catch(e){}});</script>
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:'https://openvibe.network',links:[{label:'Node',href:'/',icon:'fa-computer',featured:true,active:true},{label:'Network',href:'https://openvibe.network/'},{label:'My Account',href:'https://openvibe.network/my'}]});}catch(e){}});</script>
 </body>
 </html>`;
 }
@@ -168,7 +169,7 @@ const CSS = `
 .np-never li{position:relative;padding:11px 14px 11px 42px;border-radius:12px;background:var(--bg-card,#0f1729);border:1px solid var(--border,#1f2d47);color:var(--text-secondary,#96a7c2);font-size:.93rem;line-height:1.55}
 .np-never li::before{content:"";position:absolute;left:15px;top:16px;width:13px;height:13px;border-radius:50%;background:color-mix(in srgb,var(--accent,#3b82f6) 22%,transparent);box-shadow:inset 0 0 0 2px var(--accent,#3b82f6)}
 .np-docs li{padding:11px 14px;border-radius:12px;background:var(--bg-card,#0f1729);border:1px solid var(--border,#1f2d47);font-size:.93rem;line-height:1.55}
-.np a{color:var(--accent,#3b82f6)}
+.np a:not(.ovk-btn){color:var(--accent,#3b82f6)}
 @media (max-width:640px){.np{padding:22px 16px 52px}}
 `;
 

@@ -96,7 +96,7 @@
             root.OpenVibeNavbar.init({
                 service: 'network', notificationsRealtime: true, token: token(), user,
                 menu: WALLET_MENU,
-                links: [{ label: 'Node', href: 'https://node.openvibe.network', icon: 'fa-house', featured: true }, { label: 'Wallet', href: '/wallet' }, { label: 'My Account', href: '/my' }],
+                links: [{ label: 'Node', href: 'https://node.openvibe.network', icon: 'fa-computer', featured: true }, { label: 'Wallet', href: '/wallet' }, { label: 'My Account', href: '/my' }],
             });
         } catch { /* the page works without it */ }
     }

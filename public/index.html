@@ -293,7 +293,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 
     function initNavbar(user) {
         if (typeof OpenVibeNavbar !== 'undefined') {
-            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: token || null, user: user || null, menu: { before: [{ id: 'ov-wallet', label: 'Wallet', short: 'Wallet', icon: 'fa-wallet', href: 'https://openvibe.network/wallet' }] }, links: [{ label: 'Node', href: 'https://node.openvibe.network', icon: 'fa-house', featured: true }, { label: 'My Account', href: '/my' }, { label: 'Wallet', href: '/wallet' }, { label: 'Themes', href: '/themes' }], networkLinks: 5 });
+            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: token || null, user: user || null, menu: { before: [{ id: 'ov-wallet', label: 'Wallet', short: 'Wallet', icon: 'fa-wallet', href: 'https://openvibe.network/wallet' }] }, links: [{ label: 'Node', href: 'https://node.openvibe.network', icon: 'fa-computer', featured: true }, { label: 'My Account', href: '/my' }, { label: 'Wallet', href: '/wallet' }, { label: 'Themes', href: '/themes' }], networkLinks: 5 });
         }
         if (user) {
             document.getElementById('hero-guest-ctas').style.display = 'none';
