@@ -41,12 +41,20 @@ withWorld('secrets-reads', async (w) => {
 
     const jwks = await w.call(null, 'GET', '/api/.well-known/jwks');
     assert.strictEqual(jwks.status, 200);
-    assert.ok(jwks.body.public_key.includes('BEGIN PUBLIC KEY') && jwks.body.keys.length === 1);
+    // Two keys are published: the RS256 session key and the ES256 key the subject assertions are
+    // signed with (ADR-003, the 2026-11-06 amendment). Neither half of either private key is here.
+    assert.ok(jwks.body.public_key.includes('BEGIN PUBLIC KEY') && jwks.body.keys.length === 2);
     for (const f of ['d', 'p', 'q', 'dp', 'dq', 'qi']) assert.ok(!(f in jwks.body.keys[0]), `JWKS has no private member ${f}`);
     const jwk = jwks.body.keys[0];
     assert.strictEqual(jwk.kty, 'RSA');
     assert.strictEqual(jwk.kid, 'ov-network-1', 'the kid /api/.well-known/jwks publishes');
     assert.strictEqual(jwk.n, crypto.createPublicKey(w.keys.publicKey).export({ format: 'jwk' }).n, 'the modulus is the configured key\'s');
+    const assertionJwk = jwks.body.keys[1];
+    assert.strictEqual(assertionJwk.kty, 'EC', 'the assertion key is the EC one');
+    assert.strictEqual(assertionJwk.alg, 'ES256');
+    assert.strictEqual(assertionJwk.kid, 'ov-network-assertion-1');
+    assert.ok(assertionJwk.x && assertionJwk.y, 'the public halves are published');
+    assert.ok(!('d' in assertionJwk), 'the private half of the assertion key is not published');
     assert.ok(!/PRIVATE/.test(jwks.text));
     await checkSecretsStored(w, needlesFor);
 }).then(() => process.exit(0)).catch((err) => { console.error(err); process.exit(1); });

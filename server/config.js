@@ -19,12 +19,24 @@ module.exports = {
         //   openssl rsa -in data/keys/private.pem -pubout -out data/keys/public.pem
         privateKeyPath: process.env.JWT_PRIVATE_KEY || 'data/keys/private.pem',
         publicKeyPath:  process.env.JWT_PUBLIC_KEY  || 'data/keys/public.pem',
+        // The EC (P-256) key that signs the subject assertions (ADR-003, the 2026-11-06 amendment;
+        // plan H1). It is published in the JWKS next to the RS256 key, so Billing and Tips can verify
+        // an assertion offline. It is generated and kept on first boot when the files are not there.
+        assertionPrivateKeyPath: process.env.JWT_ASSERTION_PRIVATE_KEY || 'data/keys/assertion-private.pem',
+        assertionPublicKeyPath:  process.env.JWT_ASSERTION_PUBLIC_KEY  || 'data/keys/assertion-public.pem',
         accessTokenExpiry:  '7d',
         refreshTokenExpiry: '30d',
         // issuer is the canonical public network URL — updated at runtime from registry
         issuer: process.env.OV_NETWORK_URL || process.env.BASE_URL || 'https://openvibe.network',
     },
 
+
+    // Subject assertions (ADR-003, the 2026-11-06 amendment; plan H1): the audiences Network signs an
+    // assertion for. The money services by default; a deployment may narrow or widen the list.
+    subjectAssertions: {
+        audiences: String(process.env.NETWORK_SUBJECT_ASSERTION_AUDIENCES || 'openvibe.billing,openvibe.tips')
+            .split(',').map((s) => s.trim()).filter(Boolean),
+    },
 
     // Sign in on another device (owner, 2026-11-04; server/auth/qr-signin.js): a QR on the source device, a
     // scan on the target and a two-digit match. Off unless NETWORK_QR_SIGNIN is explicitly on; off means the routes and /q are not mounted.
