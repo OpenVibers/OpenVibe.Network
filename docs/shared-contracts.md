@@ -180,23 +180,32 @@ shows their navbar page-view count, labelled as such.
 Icon glyphs are optically centred from measured bounds: after adding or editing a glyph run
 `node scripts/measure-icons.js <cdp harness>` (in OpenVibe.Shared) to regenerate the offsets table.
 
-## 12. Avatar — one picture per account, always on openvibe.media
+## 12. Avatar — one picture per account, always the person's own object on openvibe.media
 
 Source of truth: `users.avatar_url` on the Network (`server/profile/avatar.js`). It is only ever an
-`https://openvibe.media/…` address. Clients never supply the stored address:
+`https://openvibe.media/o/med_…` address for a native **avatar object owned by that person**. Whatever is chosen is
+copied first, so a profile never points at another product's object (a Community screenshot cleanup or a deleted
+paste can no longer break someone's picture; incident 2026-11-06). Clients never supply the stored address:
 
 | input to `PUT /api/profile/avatar { source }` | what happens |
 |---|---|
-| a paste link or slug (community, live, media) | resolved to `https://openvibe.media/p/<slug>/screenshot`, checked to be an image |
-| an `https://openvibe.media/…` image | checked to be an image |
-| any other https picture link | **imported**: Media fetches it once (`POST /internal/avatar-ingest`: public addresses only, connection pinned to the checked address, ≤ 3 redirects, 8 MB, 10 s), re-encodes to a 512×512 WebP and stores it as an unlisted avatar paste (`app_id = 'network'`) |
+| a paste link or slug (community, live, media) | resolved to `https://openvibe.media/p/<slug>/screenshot` and copied into an avatar object |
+| an `https://openvibe.media/…` image | copied from Media's local storage (no self-fetch); an avatar already owned by the person is reused as it is |
+| any other https picture link | **imported**: Media fetches it once (`POST /internal/avatar-ingest`: public addresses only, connection pinned to the checked address, ≤ 3 redirects, 8 MB, 10 s), re-encodes to a 512×512 WebP and stores it as an unlisted avatar object (`app_id = 'live'`, `<root>.avatars`) owned by the person's subject |
 | anything else | refused |
 
+Every import also records the profile reference in Media (`media_avatar_refs`: product `network`, ref the Network
+user id), and Media refuses to delete an avatar a profile still points at (409 `media.object.avatar_in_use`).
+Replacing the picture releases the previous reference with the new one; `DELETE /api/profile/avatar` releases it
+(`POST /internal/avatar-release`). Live's own copies work the same way (`product live`), as does a channel banner.
+
 `DELETE /api/profile/avatar` clears it. `GET https://openvibe.network/avatar/<username>[?s=96]` is public and
-cacheable: 302 to the picture, or a generated initial; usable in any `<img>` on any site.
+cacheable: 302 to the picture, or a generated initial; usable in any `<img>` on any site. Only an openvibe.media
+address is ever redirected to (a legacy off-network row gets the initial).
 Sync: the Network pushes changes to Live (`POST /internal/user-avatar` on Live); Live reports its own avatar
-picker's changes to the Network (`POST /internal/user-avatar` on the Network, media addresses only). A change
-that came from a site is not echoed back to it.
+picker's changes to the Network (`POST /internal/user-avatar` on the Network, media addresses only). A change that
+came from a site is not echoed back to it — unless the address changed because it was copied into the person's
+avatar object, in which case the site is told the new address (otherwise it would keep showing the source).
 
 ## 13. Navbar for app-style sites (what Live uses)
 

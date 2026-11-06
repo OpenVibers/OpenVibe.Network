@@ -134,7 +134,8 @@ router.post('/user-avatar', principals.guard('network.avatar.write'), async (req
     const svc = req.app.locals.avatarService;
     if (!svc) return res.status(503).json({ error: 'avatar service unavailable' });
     const r = await svc.fromSite(req.body || {});
-    res.status(r.status).json(r.error ? { error: r.error } : { ok: true, changed: r.changed });
+    // avatar_url: the copied avatar object's address, so the site stores its own object rather than the source.
+    res.status(r.status).json(r.error ? { error: r.error } : { ok: true, changed: r.changed, avatar_url: r.avatar_url || null });
 });
 
 // Service URLs only (no secrets). Secret-typed entries (DEPLOY_CLOUDFLARE_TOKEN) are left out: they are the
