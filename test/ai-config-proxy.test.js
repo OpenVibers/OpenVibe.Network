@@ -149,7 +149,7 @@ function summary(service, namespace, extra = {}) {
         r = await call({ authorization: `Bearer ${stale}`, cookie: `ov_token=${stale}` }, 'PUT', '/api/admin/ai/config/ai/ai.exchange/secrets/provider_key', { value: SECRET, reason: 'test' });
         assert.strictEqual(r.status, 403, r.text);
         assert.strictEqual(r.body.code, 'config.fresh_required');
-        assert.match(r.body.sign_in_url, /\/login\?return=.*%2Fadmin%23ai/, 'the sign-in returns to /admin#ai');
+        assert.match(r.body.sign_in_url, /\/login\?reauth=1&return=.*%2Fadmin%23ai/, 'the sign-in asks for the password again and returns to /admin#ai');
         r = await call({ authorization: `Bearer ${stale}`, cookie: `ov_token=${stale}` }, 'POST', '/api/admin/ai/config/ai/ai.exchange', { values: { paid_requests: true }, reason: 'test' });
         assert.strictEqual(r.status, 403, r.text);
         assert.strictEqual(r.body.code, 'config.fresh_required');

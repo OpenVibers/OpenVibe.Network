@@ -165,7 +165,9 @@ function showSection(id, btn) {
 
 function openInitialSection() {
     const pathSection = { '/themes': 'themes', '/notifications': 'notifications', '/verify-email': 'notifications', '/linked': 'linked', '/security': 'security', '/machines': 'machines', '/profile': 'profile', '/history': 'history' }[window.location.pathname];
-    const routeSection = pathSection || window.location.hash.replace(/^#/, '') || 'profile';
+    // #delete is the re-authentication return target: the delete step lives in the accounts section.
+    const hash = window.location.hash.replace(/^#/, '');
+    const routeSection = pathSection || (hash === 'delete' ? 'accounts' : hash) || 'profile';
     if (window.location.pathname === '/verify-email') setTimeout(handleVerifyEmailToken, 50);
     if (isAnonSession() && ['notifications','linked','security','data','content','approvals','machines'].includes(routeSection)) {
         return showSection('anon');

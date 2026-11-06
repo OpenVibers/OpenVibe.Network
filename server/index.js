@@ -478,7 +478,9 @@ app.use('/api/v1/me/adult', rateLimit({ windowMs: 60_000, max: 20 }), require('.
     const accountMerge = require('./identity/account-merge');
     await accountMerge.ensureSchema(db);
     const mergeRouters = accountMerge.routers({ requireAuth, staffClaims: require('./auth/staff-claims').staffClaims });
-    app.use('/api/v1/account', rateLimit({ windowMs: 60_000, max: 20 }), mergeRouters.me);
+    // Only the merge calls spend this budget: the same mount also carries the export/deletion routes below their
+    // own limiter, and counting those twice was enough to lock a person out while the deletion banner read them.
+    app.use('/api/v1/account', rateLimit({ windowMs: 60_000, max: 20, skip: (req) => !String(req.path).startsWith('/merge') }), mergeRouters.me);
     app.use('/api/admin/account-merges', mergeRouters.admin);
 }
 // Mod principals (roadmap WS-M task 3, ADR-013): the runtime that installs a mod registers mod:<mod_id> and changes
@@ -504,7 +506,13 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
         requireAuth, staffClaims: require('./auth/staff-claims').staffClaims, dir: ACCOUNT_EXPORT_DIR, notify: notifyAccountData,
         contributeGuard: guard('network.account.export.contribute'), confirmGuard: guard('network.account.deletion.confirm'),
     });
-    app.use('/api/v1/account', rateLimit({ windowMs: 60_000, max: 20 }), dataRouters.me);
+    // The deletion banner on every Network page reads GET /deletion once per page; it is a read-only, signed-in
+    // question and must not use up the 20-a-minute budget that the export/deletion writes need (a person who
+    // navigates 20 pages would otherwise be unable to schedule or keep the account).
+    app.use('/api/v1/account', rateLimit({
+        windowMs: 60_000, max: 20,
+        skip: (req) => req.method === 'GET' && req.path === '/deletion',
+    }), dataRouters.me);
     app.use('/internal', dataRouters.internal);
     app.use('/api/admin/account-deletions', dataRouters.admin);
 }
