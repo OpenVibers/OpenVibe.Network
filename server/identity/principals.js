@@ -99,6 +99,8 @@ const DEFAULT_GRANTS = [
     // pastes into Community on behalf of its users and its AI jobs.
     ['community', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['community', 'media.object.upload', 'openvibe.media', ['community']],
+    // VIS-6: Community asks Vision to sort an image paste before it can be public.
+    ['community', 'vision.image.review', 'openvibe.vision', []],
     // The sharing pilot (2026-11-06, Community #261): a screenshot is a private Media object served only through
     // Community's checked proxy (read), the old unlisted copy is deleted after the move (delete), and share notices go
     // through Network's inbox (push). New defaults, never revoked: boot inserts them.
@@ -116,6 +118,8 @@ const DEFAULT_GRANTS = [
     // its objects under the live namespace (VOD/clip/thumbnail uploads, reads, lists, deletes); OpenRestream uploads the
     // recordings and thumbnails it produces there too.
     ...['media.object.read', 'media.object.list', 'media.object.upload', 'media.object.delete'].map(cap => ['live', cap, 'openvibe.media', ['live']]),
+    // VIS-6: Live's auto-clip text guard reports a category-3 AI text to Vision.
+    ['live', 'vision.image.review', 'openvibe.vision', []],
     // media-hub: a record-only stream records into OpenVibe.Video's tenant as its owner's private video (plan 2026-10-22 §3 D1).
     ['openre', 'media.object.upload', 'openvibe.media', ['live', 'media-hub']],
     // Compatibility register C-71: Inventory (Workshop badge images) and MediaHub (its library) reach Media with their
@@ -164,6 +168,8 @@ const DEFAULT_GRANTS = [
     ['games', 'events.subscription.manage', 'openvibe.events', []],
     // Media and Tools subscribe to network.user.token_valid_after too (their sign-in refuses older tokens).
     ['media', 'events.subscription.manage', 'openvibe.events', []],
+    // VIS-6: Media asks Vision to review a visible image object before serving it.
+    ['media', 'vision.image.review', 'openvibe.vision', []],
     ['tools', 'events.subscription.manage', 'openvibe.events', []],
     // Mod principals (ADR-013, WS-M task 3): Games registers its mod installs and changes their grants.
     ['games', 'mods.grant.manage', SELF_AUDIENCE, []],
@@ -554,6 +560,8 @@ const DEFAULT_GRANTS = [
     // WS-K task 8: Wiki's VIP spaces and pages (Wiki server/integrations/vip.js).
     ['wiki', 'vip.resource.policy.evaluate', 'openvibe.vip', []],
     ['live', 'vip.entitlement.check', 'openvibe.vip', []],
+    // Tips' members-only posts (Tips #194): the post text only for a member of the post's tier.
+    ['tips', 'vip.entitlement.check', 'openvibe.vip', []],
     ['community', 'events.subscription.manage', 'openvibe.events', []],
     ['community', 'events.event.read', 'openvibe.events', []],
     ['community', 'events.event.publish', 'openvibe.events', []],   // community.* events (Community server/events.js, 2026-09-24)
@@ -666,6 +674,12 @@ const DEFAULT_GRANTS = [
     // its account-event subscriptions, and the export/deletion pair above. It has no public records, so no Search grant.
     ['vision', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
     ['vision', 'events.subscription.manage', 'openvibe.events', []],
+    // VIS-6: the operator review, its evidence view and the decision that releases Media's evidence hold.
+    // The media namespaces are the first-party tenants whose objects can be reviewed.
+    ['vision', 'media.object.review.view', 'openvibe.media', ['live', 'community', 'media']],
+    ['vision', 'media.object.review.decide', 'openvibe.media', ['live', 'community', 'media']],
+    ['vision', 'vision.review.read', 'openvibe.vision', []],
+    ['vision', 'vision.review.decide', 'openvibe.vision', []],
     // Vision publishes vision.result.ready and vision.alert (VIS-5, contracts manifests/services/vision.json): without this
     // its outbox retried every event (found 11-02 with Events' sources check).
     ['vision', 'events.event.publish', 'openvibe.events', []],

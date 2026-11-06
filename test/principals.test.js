@@ -133,6 +133,20 @@ const server = http.createServer(app);
     assert.deepStrictEqual([visionAiClaims.claims.cap, visionAiClaims.claims.ns], [['ai.run.create'], ['ai.complete']], 'Vision runs AI workflow ai.complete through the OpenAI-compatible endpoint');
     t = await token({ client_id: 'vision', client_secret: 'vision-secret', audience: 'openvibe.search' });
     assert.strictEqual(t.status, 400, 'Vision has no public records, so no Search grant');
+    // VIS-6: the unsafe-image review. Media, Community and Live ask Vision; Vision alone can open Media's
+    // 60-second operator evidence view and apply the operator's overruling category.
+    for (const [client, secret] of [['media', 'media-secret'], ['community', 'community-secret'], ['live', 'live-secret']]) {
+        await db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(secret, client);
+        t = await token({ client_id: client, client_secret: secret, audience: 'openvibe.vision' });
+        assert.strictEqual(t.status, 200, `${client}: ${JSON.stringify(t.body)}`);
+        assert.strictEqual(t.body.scope, 'vision.image.review', `${client} sorts an image through Vision`);
+    }
+    t = await token({ client_id: 'vision', client_secret: 'vision-secret', audience: 'openvibe.media' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    assert.deepStrictEqual(t.body.scope.split(' ').sort(), ['media.object.review.decide', 'media.object.review.view'], 'Vision opens and decides Media evidence views');
+    t = await token({ client_id: 'vision', client_secret: 'vision-secret', audience: 'openvibe.vision' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    assert.deepStrictEqual(t.body.scope.split(' ').sort(), ['vision.review.decide', 'vision.review.read'], 'Vision staff tools read and decide reviews');
     t = await token({ client_id: 'exchange', client_secret: 'exchange-secret', audience: 'openvibe.search' });
     assert.strictEqual(t.body.scope, 'search.document.write', 'Exchange indexes its public listings in Search');
     t = await token({ client_id: 'exchange', client_secret: 'exchange-secret', audience: 'openvibe.ai' });
@@ -391,6 +405,12 @@ const server = http.createServer(app);
     // Plan T5 (Wave 9): Tips' chat adapter mints a token for 'chat.message.send chat.event.publish' on
     // openvibe.chat with its own service token (OpenVibe.Tips server/delivery/chat.js); without both rows
     // TIPS_CHAT_ADAPTER=chat can never deliver a paid effect.
+    {
+        // Tips' members-only posts ask VIP whether the reader is a member of the post's tier.
+        const tv = await token({ client_id: 'tips', client_secret: 'tips-secret', audience: 'openvibe.vip' });
+        assert.strictEqual(tv.status, 200, 'Tips can get a VIP token: ' + JSON.stringify(tv.body));
+        assert.ok(String(tv.body.scope || '').split(' ').includes('vip.entitlement.check'), 'and it carries vip.entitlement.check');
+    }
     const tc = await token({ client_id: 'tips', client_secret: 'tips-secret', audience: 'openvibe.chat' });
     assert.strictEqual(tc.status, 200, JSON.stringify(tc.body));
     assert.deepStrictEqual(tc.body.scope.split(' '), ['chat.event.publish', 'chat.message.send'], "Tips delivers paid chat effects through Chat's ingress");
