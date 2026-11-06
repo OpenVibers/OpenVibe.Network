@@ -54,6 +54,7 @@ function interpolatePath(template, input, names) {
         if (!names.includes(name)) return whole;
         const value = input[name];
         if (value === undefined || value === null || value === '') fail(422, 'connect.invalid_input', `${name} is missing`);
+        if (String(value) === '.' || String(value) === '..') fail(422, 'connect.invalid_input', `${name} may not be "." or ".."`);
         return encodeURIComponent(String(value));
     });
     if (/\{[a-zA-Z0-9_]+\}/.test(path)) {

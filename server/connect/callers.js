@@ -48,7 +48,9 @@ async function ensurePersonCaller(db, subject, name = 'You') {
 
 /** A service acting for the person: one row per service, made on first use. */
 async function ensureServiceCaller(db, subject, service, name) {
-    const id = `svc_${String(service || '').replace(/[^a-z0-9-]/gi, '').slice(0, 40).toLowerCase()}`;
+    // One row per service AND person: grants hang off the caller id, so a shared row would let one person's grant
+    // open another person's apps to the same service.
+    const id = `svc_${String(service || '').replace(/[^a-z0-9-]/gi, '').slice(0, 40).toLowerCase()}_${hash(subject).slice(0, 24)}`;
     const row = await db.prepare('SELECT * FROM connect_callers WHERE id = ?').get(id);
     if (row) return row;
     await db.prepare(`INSERT INTO connect_callers (id, subject, kind, name, created_at) VALUES (?, ?, 'service', ?, ?)
@@ -64,7 +66,7 @@ async function createKeyCaller(db, subject, name) {
     const label = String(name || '').trim();
     if (!label || label.length > 100) fail(422, 'connect.invalid_caller', 'the caller needs a name of 1-100 characters');
     const id = newId('cal');
-    const secret = crypto.randomBytes(24).toString('base64url');
+    const secret = crypto.randomBytes(24).toString('hex');   // hex: no "_" for findByKey to split on
     const key = `${KEY_PREFIX}${id}_${secret}`;
     await db.prepare(`INSERT INTO connect_callers (id, subject, kind, name, token_hash, token_prefix, created_at)
                       VALUES (?, ?, 'key', ?, ?, ?, ?)`)

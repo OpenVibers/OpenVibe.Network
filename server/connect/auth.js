@@ -38,6 +38,14 @@ async function resolveCaller(db, req, { config, publicKey, issuer } = {}) {
         if (v.ok && v.claims.on_behalf_of) {
             const person = String(v.claims.on_behalf_of);
             const service = String(v.claims.sub || '').replace(/^svc:/, '') || 'service';
+            // A valid service token is not enough: a person's app credentials are reachable only by the services
+            // Connect names (CONNECT_SERVICE_CALLERS, default codes and actor), and then only through the grants
+            // that person gave that service.
+            const allowed = String((config && config.connect && config.connect.serviceCallers) || process.env.CONNECT_SERVICE_CALLERS || 'codes,actor')
+                .split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+            if (!allowed.includes(service.toLowerCase())) {
+                return { ok: false, status: 403, code: 'connect.service_not_allowed', detail: 'this service may not act for people in Connect' };
+            }
             const row = await callers.ensureServiceCaller(db, person, service, service);
             return { ok: true, subject: person, caller: row, kind: 'service', service };
         }
