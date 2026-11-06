@@ -213,7 +213,11 @@ async function notifyKeyChange(notifications, user, reason) {
  * (or none: typed by the person), or an Origin on another host. A client that sends neither (an agent with a
  * bearer token) is not a browser and is let through.
  */
-function crossSite(req) {
+function crossSite(req, isFirstPartyOrigin = null) {
+    // An OpenVibe site (the exact first-party origins Network's CORS lists, never a wildcard such as *.openvibe.tools,
+    // where people host their own pages): ov-locker.js sets a locker up from the site the person is on.
+    const from = req.get('origin');
+    if (from && from !== 'null' && typeof isFirstPartyOrigin === 'function' && isFirstPartyOrigin(from)) return false;
     const site = req.get('sec-fetch-site');
     if (site && site !== 'same-origin' && site !== 'none') return true;
     const origin = req.get('origin');
@@ -262,13 +266,13 @@ function send(req, res, fn) {
 /**
  * The person's own locker: PUT /api/v1/me/keys, GET /api/v1/me/keys/backup, DELETE /api/v1/me/keys.
  */
-function meRouter(requireAuth, { notifications = null } = {}) {
+function meRouter(requireAuth, { notifications = null, isFirstPartyOrigin = null } = {}) {
     const router = express.Router();
     router.use(http.middleware());
 
     // Set or rotate my keys. The same keys again change nothing and announce nothing.
     router.put('/', requireAuth, async (req, res) => await send(req, res, async (db) => {
-        if (crossSite(req)) throw new LockerError(403, 'locker.cross_site', 'this write came from another site');
+        if (crossSite(req, isFirstPartyOrigin)) throw new LockerError(403, 'locker.cross_site', 'this write came from another site');
         const me = await meOf(db, req.user);
         const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
         const ecdh = body.ecdh_public;
@@ -321,6 +325,11 @@ function meRouter(requireAuth, { notifications = null } = {}) {
         const now = new Date().toISOString();
         const out = await db.tx(async () => {
             const before = await keyRow(db, me);
+            // The proof was checked against the keys read before this transaction. If another device changed them
+            // in between, that proof is about keys that are gone: refuse, and let the person reload.
+            if ((prev ? prev.fingerprint : null) !== (before ? before.fingerprint : null)) {
+                throw new LockerError(409, 'locker.conflict', 'your locker changed on another device: reload and try again');
+            }
             const held = await db.prepare('SELECT kind, blob FROM locker_key_backups WHERE subject = ?').all(me);
             const beforeBackups = {};
             for (const row of held) beforeBackups[row.kind] = row.blob;
@@ -379,7 +388,7 @@ function meRouter(requireAuth, { notifications = null } = {}) {
     // Forget my locker: the keys and the backups go, the history stays. The current signing key says so, or the
     // person signed in again in the last ten minutes.
     router.delete('/', requireAuth, async (req, res) => await send(req, res, async (db) => {
-        if (crossSite(req)) throw new LockerError(403, 'locker.cross_site', 'this write came from another site');
+        if (crossSite(req, isFirstPartyOrigin)) throw new LockerError(403, 'locker.cross_site', 'this write came from another site');
         const me = await meOf(db, req.user);
         const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
         if (body.confirm !== CONFIRM_TEXT) {

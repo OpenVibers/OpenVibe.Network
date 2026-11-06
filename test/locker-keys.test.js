@@ -45,7 +45,8 @@ app.use(require('cookie-parser')());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 Object.assign(app.locals, { db, config, privateKey: keys.privateKey, publicKey: keys.publicKey });
-app.use('/api/v1/me/keys', locker.meRouter(requireAuth, { notifications }));
+const FIRST_PARTY = new Set(['https://openvibe.community', 'https://openvibe.live']);
+app.use('/api/v1/me/keys', locker.meRouter(requireAuth, { notifications, isFirstPartyOrigin: (o) => FIRST_PARTY.has(o) }));
 app.use('/api/v1/people', locker.peopleRouter(requireAuth));
 const server = http.createServer(app);
 
@@ -354,6 +355,15 @@ const notices = async () => (await db.prepare('SELECT message, category, service
         assert.strictEqual(r.status, 403, 'a write another site started is refused');
         r = await call('PUT', '/api/v1/me/keys', { headers: { ...(await as(1)), origin: 'https://evil.example' }, body: again.body });
         assert.strictEqual(r.status, 403, 'and so is one with another origin');
+        r = await call('PUT', '/api/v1/me/keys', { headers: { ...(await as(1)), origin: 'https://someone.openvibe.tools', 'sec-fetch-site': 'same-site' }, body: again.body });
+        assert.strictEqual(r.status, 403, 'a page people host on a subdomain is not an OpenVibe site');
+        assert.strictEqual(r.body.code, 'locker.cross_site');
+        r = await call('PUT', '/api/v1/me/keys', { headers: { ...(await as(1)), origin: 'https://openvibe.community', 'sec-fetch-site': 'cross-site' }, body: again.body });
+        assert.notStrictEqual(r.body.code, 'locker.cross_site', 'an OpenVibe site (ov-locker.js on Community) may write; here only the proof is missing');
+        assert.strictEqual(r.body.code, 'locker.proof_required', 'the proof rule still applies to an OpenVibe site');
+        r = await call('DELETE', '/api/v1/me/keys', { headers: { ...(await as(1)), origin: 'https://evil.example' }, body: { confirm: 'forget my locker' } });
+        assert.strictEqual(r.status, 403, 'a forget from another site is refused');
+        assert.strictEqual(r.body.code, 'locker.cross_site');
 
         // ── The docs name it: the API docs and llms.txt ──
         const llms = require('../server/home/render').llmsTxt();

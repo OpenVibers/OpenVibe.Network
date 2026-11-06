@@ -723,7 +723,9 @@ require('./developer/confirmations').start(db);
     // wrapped private keys and anybody's public keys (server/locker/keys.js). Mounted after the Dock's
     // service route, which writes the timer of one person.
     const locker = require('./locker/keys');
-    app.use('/api/v1/me/keys', locker.meRouter(requireAuth, { notifications: notificationService }));
+    // Writes come from Network itself or from an OpenVibe site's exact origin (ov-locker.js), never from *.openvibe.tools.
+    const isFirstPartyOrigin = (o) => { const n = normalizeOriginForCors(o); return !!n && buildAllowedOriginsSet().has(n); };
+    app.use('/api/v1/me/keys', locker.meRouter(requireAuth, { notifications: notificationService, isFirstPartyOrigin }));
     app.use('/api/v1/people', locker.peopleRouter(requireAuth));
 }
 
