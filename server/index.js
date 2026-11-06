@@ -123,7 +123,9 @@ app.use(helmet({
             scriptSrc: ["'self'", "'unsafe-inline'", "https://openvibe.network", "https://openvibe.live", "cdn.jsdelivr.net", "fonts.googleapis.com", "https://static.cloudflareinsights.com"],
             styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com", "fonts.gstatic.com"],
             fontSrc: ["'self'", "fonts.gstatic.com"],
-            imgSrc: ["'self'", "data:", "blob:", "https://openvibe.media", "https://openvibe.live"],   // avatars and media live on openvibe.media; live-stream thumbnails on the home page come from openvibe.live
+            // Avatars and media live on openvibe.media; the home page's live-stream thumbnails come from openvibe.live and
+            // its "Right now" screenshot pastes from openvibe.community (blocked until 2026-11-06: the card showed nothing).
+            imgSrc: ["'self'", "data:", "blob:", "https://openvibe.media", "https://openvibe.live", "https://openvibe.community"],
             connectSrc: [
                 "'self'",
                 "https://openvibe.network",
