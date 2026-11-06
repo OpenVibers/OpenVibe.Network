@@ -75,7 +75,17 @@ const keys = crypto.generateKeyPairSync('rsa', {
     assert.ok(contracts.validate('identity.service-token-claims@1', v.claims).valid,
         'the claims fit identity.service-token-claims@1');
 
-    const other = await issue(principal, 'openvibe.chat');
+    // Agent Streams S4: the desk asks Chat for the sound of a line, in the owner's voice, and for nothing else there.
+    const chat = await issue(principal, 'openvibe.chat');
+    assert.strictEqual(chat.status, 200, JSON.stringify(chat.body));
+    const vc = contracts.serviceAuth.verifyServiceToken(chat.body.access_token, {
+        publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.chat',
+    });
+    assert.ok(vc.ok, vc.reason);
+    assert.deepStrictEqual(vc.claims.cap, ['chat.tts.speak'], 'Chat gets the voice capability and nothing else');
+    assert.strictEqual(vc.claims.on_behalf_of, OWNER, 'the voice is the owner\'s');
+
+    const other = await issue(principal, 'openvibe.media');
     assert.deepStrictEqual([other.status, other.body.error], [400, 'invalid_scope'], 'no other audience');
 
     const website = await issue(principal, 'openvibe.website');
