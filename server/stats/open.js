@@ -418,7 +418,7 @@ const CSS = `
 .os-site-own{font-size:.78rem;color:var(--text-muted);height:32px;display:flex;align-items:center}
 .os-site-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(58px,1fr));gap:8px;margin:0;padding-top:10px;border-top:1px solid var(--border)}
 .os-site-meta div{min-width:0}
-.os-site-meta dt{font-size:.7rem;color:var(--text-muted);white-space:nowrap}
+.os-site-meta dt{font-size:.75rem;color:var(--text-muted);white-space:normal}
 .os-site-meta dd{margin:2px 0 0;font-size:.88rem;font-weight:700;font-variant-numeric:tabular-nums}
 .os-minis{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:14px}
 .os-mini{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:14px;background:var(--bg-card);border:1px solid var(--border)}
@@ -441,7 +441,7 @@ const CSS = `
 .os-how{padding-top:6px;border-top:1px solid var(--border)}
 @media (max-width:600px){.os{padding:20px 16px 44px}.os-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.os-tile{min-height:104px;padding:14px 12px 12px}.os-tile-v{font-size:1.5rem}.os-tile .os-spark{position:static;width:100%;margin-top:4px}
 /* Phones: two sites to a row, each its views, change, line and two facts (37 full cards made a 10,000 px page). */
-.os-sites{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.os-pre{display:none}.os-site{padding:10px;gap:6px;border-radius:14px}.os-site-name small,.os-site-l{display:none}.os-site-name b{font-size:.86rem}.os-site-n{font-size:1.15rem}.os-site-meta{grid-template-columns:1fr 1fr;padding-top:6px}.os-site-meta div:nth-child(n+3){display:none}.os-site-meta dt{font-size:.64rem}.os-site-meta dd{font-size:.8rem}.os-site-own{height:26px;font-size:.7rem}.os-site .os-spark{height:26px}.os-axis span:nth-child(2){display:none}}
+.os-sites{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.os-pre{display:none}.os-site{padding:10px;gap:6px;border-radius:14px}.os-site-name small,.os-site-l{display:none}.os-site-name b{font-size:.86rem}.os-site-n{font-size:1.15rem}.os-site-meta{grid-template-columns:1fr 1fr;padding-top:6px}.os-site-meta div:nth-child(n+3){display:none}.os-site-meta dt{font-size:.75rem}.os-site-meta dd{font-size:.8rem}.os-site-own{height:26px;font-size:.7rem}.os-site .os-spark{height:26px}.os-axis span:nth-child(2){display:none}}
 `;
 
 module.exports = { createOpenStats, render, sparkline, bars, windowOf };
