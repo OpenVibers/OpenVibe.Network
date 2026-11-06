@@ -131,7 +131,7 @@ const FIXTURE = {
 
     // ── The navbar: the Node is the piece the Network is built around ──
     const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'index.html'), 'utf8');
-    assert.ok(/links: \[\{ label: 'Node', href: 'https:\/\/node\.openvibe\.network', icon: 'fa-computer', featured: true \}/.test(index), 'the home page\u2019s navbar leads with the Node, as the accent');
+    assert.ok(/links: \[\{ label: 'Node', href: 'https:\/\/node\.openvibe\.network', icon: 'fa-desktop', featured: true \}/.test(index), 'the home page\u2019s navbar leads with the Node, as the accent');
     assert.ok(index.indexOf("label: 'Node'") < index.indexOf("label: 'My Account'"), 'and the Node comes first');
 
     // The Node's own origin is allowed to ask the network's API (the account's look, the navbar's frame, the)

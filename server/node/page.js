@@ -139,7 +139,7 @@ ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact'
 <script src="/shared/navbar.js" defer></script>
 ${require('../boost').SCRIPT}
 <script src="/shared/kit-web.js" defer></script>
-<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:'https://openvibe.network',links:[{label:'Node',href:'/',icon:'fa-computer',featured:true,active:true},{label:'Network',href:'https://openvibe.network/'},{label:'My Account',href:'https://openvibe.network/my'}]});}catch(e){}});</script>
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:'https://openvibe.network',links:[{label:'Node',href:'/',icon:'fa-desktop',featured:true,active:true},{label:'Network',href:'https://openvibe.network/'},{label:'My Account',href:'https://openvibe.network/my'}]});}catch(e){}});</script>
 </body>
 </html>`;
 }
