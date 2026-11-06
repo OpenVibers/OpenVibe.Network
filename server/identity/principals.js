@@ -96,6 +96,12 @@ const DEFAULT_GRANTS = [
     // pastes into Community on behalf of its users and its AI jobs.
     ['community', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['community', 'media.object.upload', 'openvibe.media', ['community']],
+    // The sharing pilot (2026-11-06, Community #261): a screenshot is a private Media object served only through
+    // Community's checked proxy (read), the old unlisted copy is deleted after the move (delete), and share notices go
+    // through Network's inbox (push). New defaults, never revoked: boot inserts them.
+    ['community', 'media.object.read', 'openvibe.media', ['community']],
+    ['community', 'media.object.delete', 'openvibe.media', ['community']],
+    ['community', 'network.notifications.push', SELF_AUDIENCE, ['community']],
     // Wave 11: Tools job results as Media objects; Wave 12: Games map-editor assets.
     // tools.* : developer projects' results go to tools.app.<project_id>[.sandbox] (WS-L task 5).
     ['tools', 'media.object.upload', 'openvibe.media', ['tools', 'tools.*']],
