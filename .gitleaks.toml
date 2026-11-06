@@ -11,6 +11,12 @@ paths = ['''^test/security-ssrf\.test\.js$''']
 regexes = ['''^tBHItJI5svbpez7KI4CCXg$''']
 
 [[allowlists]]
+description = "Plan E7 test fixture: the TLS key of the stand-in app server the Connect tests call on loopback (test/helpers/connect-app.js); it protects nothing outside the test process"
+condition = "AND"
+paths = ['''^test/fixtures/connect-key\.pem$''']
+regexes = ['''(?s)^-----BEGIN PRIVATE KEY-----.*$''']
+
+[[allowlists]]
 description = "Plan E5 test fixture: a fake public subject id (usr_…), not a key; the generic-api-key rule matched a constant named USER_PASSKEY in an earlier commit of this branch"
 condition = "AND"
 paths = ['''^test/identity-trust\.test\.js$''']
