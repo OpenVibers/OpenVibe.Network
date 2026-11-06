@@ -8,26 +8,72 @@ const { store, pageRouter, userRouter } = require('../server/chat-apps/links');
     const db = getDb();
     const mk = async name => (await db.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id').get(name, `${name}@example.test`, 'fixture')).id;
     const alice = await mk('chat_alice'), bob = await mk('chat_bob');
+    const aliceSubject = (await db.prepare('SELECT subject_id FROM users WHERE id = ?').get(alice)).subject_id;
     let now = Date.now();
     const s = store(db, () => now);
-    const make = async (app, external) => {
+    const make = async (app, external, ttl = 60000) => {
         const token = crypto.randomBytes(32).toString('base64url');
-        await s.register({ token, app, service_user_id: external, service_username: '<script>', expires_at: new Date(now + 60000).toISOString() });
+        await s.register({ token, app, service_user_id: external, service_username: '<script>', bot_handle: 'openvibe_bot', expires_at: new Date(now + ttl).toISOString() });
         return token;
     };
+    const wrong = (code) => String((Number(code) + 1) % 1_000_000).padStart(6, '0');
+
+    // ── Two-way linking: confirming mints a code; only the same chat account can finish it ──
     for (const [app, external] of [['telegram', '123'], ['discord', '456'], ['slack', 'T123:U123']]) {
         const token = await make(app, external);
         assert.equal((await s.pending(token)).app, app);
-        const results = await Promise.allSettled([s.confirm(token, alice), s.confirm(token, bob)]);
-        assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
-        const owner = (await db.prepare('SELECT user_id FROM linked_accounts WHERE service = ? AND service_user_id = ?').get(app === 'slack' ? 'chat:slack:T123' : `chat:${app}`, external)).user_id;
-        const other = owner === alice ? bob : alice;
-        await assert.rejects(s.confirm(await make(app, external), other), /already linked/);
+        const half = await s.confirm(token, alice);
+        assert.match(half.code, /^[0-9]{6}$/, 'the page shows a 6-digit code');
+        const row = await db.prepare('SELECT * FROM chat_app_pending_links WHERE app = ? AND external_id = ?').get(app, external);
+        assert.equal(row.code_hash, crypto.createHash('sha256').update(`chat-app-code:${app}:${external}:${half.code}`).digest('hex'));
+        assert.notEqual(row.code_hash, half.code, 'the code is kept only as a hash');
+        assert.equal((await db.prepare("SELECT count(*) AS n FROM information_schema.columns WHERE table_name = 'chat_app_pending_links' AND column_name = 'code'").get()).n, 0, 'no plaintext code column');
+        // A different chat account sending the same code finishes nothing.
+        assert.deepEqual(await s.finish({ app, service_user_id: app === 'slack' ? 'T123:U999' : '999', code: half.code }), { ok: false, error: 'no_link' });
+        assert.equal(await s.resolve(app, external), undefined);
+        assert.equal((await s.pending(token)).finished_at, null, 'still unfinished');
+        // The chat account that started /link finishes it.
+        const done = await s.finish({ app, service_user_id: external, code: half.code });
+        assert.deepEqual(done, { ok: true, subject: aliceSubject, app });
+        assert.equal((await s.resolve(app, external)).subject_id, aliceSubject);
+        assert.ok((await s.pending(token)).finished_at, 'the pending link is finished');
+        // The same code twice finishes nothing more.
+        assert.deepEqual(await s.finish({ app, service_user_id: external, code: half.code }), { ok: false, error: 'no_link' });
         await s.unlink(app, external);
         assert.equal(await s.resolve(app, external), undefined);
     }
-    const expired = await make('telegram', '987'); now += 61000;
-    await assert.rejects(s.confirm(expired, alice), /expired/);
+
+    // Three wrong codes cancel the pending link; the right code after that does nothing.
+    {
+        const token = await make('telegram', '777');
+        const { code } = await s.confirm(token, alice);
+        assert.equal((await s.finish({ app: 'telegram', service_user_id: '777', code: wrong(code) })).attemptsLeft, 2);
+        assert.equal((await s.finish({ app: 'telegram', service_user_id: '777', code: wrong(code) })).attemptsLeft, 1);
+        assert.equal((await s.finish({ app: 'telegram', service_user_id: '777', code: wrong(code) })).attemptsLeft, 0);
+        assert.equal((await s.finish({ app: 'telegram', service_user_id: '777', code })).ok, false, 'the link was cancelled');
+        assert.equal(await s.resolve('telegram', '777'), undefined);
+    }
+
+    // The code (and the pending link) expire together; confirming after that is refused.
+    {
+        const token = await make('discord', '888', 60000);
+        const { code } = await s.confirm(token, alice);
+        now += 61000;
+        assert.equal((await s.finish({ app: 'discord', service_user_id: '888', code })).ok, false);
+        await assert.rejects(s.confirm(token, alice), /expired/);
+        const expired = await make('telegram', '987'); now += 61000;
+        await assert.rejects(s.confirm(expired, alice), /expired/);
+    }
+
+    // A different signed-in account cannot take an identity, even with a fresh link and its code.
+    {
+        const token = await make('telegram', '321');
+        const { code } = await s.confirm(token, alice);
+        await s.finish({ app: 'telegram', service_user_id: '321', code });
+        const second = await make('telegram', '321');
+        await assert.rejects(s.confirm(second, bob), /already linked/);
+        await s.unlink('telegram', '321');
+    }
 
     // The real internal gate: a signed service token with identity.subject.resolve, and only svc:chat.
     const ISSUER = 'https://openvibe.network';
@@ -54,14 +100,30 @@ const { store, pageRouter, userRouter } = require('../server/chat-apps/links');
         assert.equal((await call('/internal/chat-app-links', { method: 'POST', body: {} })).status, 401);
         assert.equal((await call('/internal/chat-app-links', { method: 'POST', bearer: token('svc:chat', ['actor.task.read']), body: {} })).status, 403);
         assert.equal((await call('/internal/chat-app-links', { method: 'POST', bearer: token('svc:watch', ['identity.subject.resolve']), body: {} })).status, 403);
-        // svc:chat registers a link, reads it pending, then the signed-in person confirms and Chat resolves it.
+        // svc:chat registers a link; the signed-in confirm page shows the code and the bot to send it to.
         const chat = token('svc:chat', ['identity.subject.resolve']);
         const tg = crypto.randomBytes(32).toString('base64url');
-        assert.equal((await call('/internal/chat-app-links', { method: 'POST', bearer: chat, body: { token: tg, app: 'telegram', service_user_id: '555', service_username: 'dana', expires_at: new Date(now + 300000).toISOString() } })).status, 200);
+        assert.equal((await call('/internal/chat-app-links', { method: 'POST', bearer: chat, body: { token: tg, app: 'telegram', service_user_id: '555', service_username: 'dana', bot_handle: 'openvibe_bot', expires_at: new Date(now + 300000).toISOString() } })).status, 200);
         assert.equal((await call(`/internal/chat-app-links?t=${tg}`, { bearer: chat })).body.state, 'pending');
-        await s.confirm(tg, alice);
+        const before = await fetch(base + `/chat-apps/link?t=${tg}`, { headers: { 'x-test-user': 'yes', authorization: 'Bearer test' } });
+        const beforeText = await before.text();
+        assert.equal(before.status, 200);
+        assert.match(beforeText, /will talk to your OpenVibe agent and approve its steps/, 'the page says in plain words what linking does');
+        assert.match(beforeText, /6-digit code/);
+        const confirmed = await fetch(base + '/chat-apps/link', { method: 'POST', headers: { 'x-test-user': 'yes', authorization: 'Bearer test', origin: ISSUER, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ t: tg }).toString() });
+        const page = await confirmed.text();
+        assert.equal(confirmed.status, 200);
+        const code = page.match(/<code>([0-9]{6})<\/code>/)[1];
+        assert.match(page, /@openvibe_bot/, 'the code page names the bot');
+        assert.match(page, /telegram @dana/, 'and the chat account to send it from');
         assert.equal((await call(`/internal/chat-app-links?t=${tg}`, { bearer: chat })).body.state, 'confirmed');
-        assert.equal((await call('/internal/chat-app-links/resolve?app=telegram&id=555', { bearer: chat })).body.subject_id, (await db.prepare('SELECT subject_id FROM users WHERE id = ?').get(alice)).subject_id);
+        // Another chat account sending the code finishes nothing; the same one does.
+        assert.equal((await call('/internal/chat-app-links/finish', { method: 'POST', bearer: chat, body: { app: 'telegram', service_user_id: '999', code } })).status, 404);
+        assert.equal((await call('/internal/chat-app-links/resolve?app=telegram&id=555', { bearer: chat })).body.subject_id, null);
+        const done = await call('/internal/chat-app-links/finish', { method: 'POST', bearer: chat, body: { app: 'telegram', service_user_id: '555', code } });
+        assert.deepEqual(done.body, { ok: true, subject: aliceSubject, app: 'telegram' });
+        assert.equal((await call(`/internal/chat-app-links?t=${tg}`, { bearer: chat })).body.state, 'finished');
+        assert.equal((await call('/internal/chat-app-links/resolve?app=telegram&id=555', { bearer: chat })).body.subject_id, aliceSubject);
         // The account page's own list and removal (signed in, their own rows only).
         const mine = async (method = 'GET', path = '/api/v1/me/chat-apps') => {
             const r = await fetch(base + path, { method, headers: { 'x-test-user': 'yes' } });
@@ -73,11 +135,9 @@ const { store, pageRouter, userRouter } = require('../server/chat-apps/links');
         assert.deepEqual(await mine('DELETE', '/api/v1/me/chat-apps/telegram'), { status: 200, body: { ok: true, removed: 1 } });
         assert.deepEqual((await mine()).body, { items: [] });
         assert.equal((await mine('DELETE', '/api/v1/me/chat-apps/telegram')).status, 404);
-        assert.equal((await call('/internal/chat-app-links/unlink', { method: 'POST', bearer: chat, body: { app: 'telegram', service_user_id: '555' } })).status, 200);
-        assert.deepEqual((await call('/internal/chat-app-links/resolve?app=telegram&id=555', { bearer: chat })).body, { subject_id: null });
         // The confirm page: signed out redirects, a cross-origin POST is refused.
         assert.equal((await fetch(base + '/chat-apps/link', { redirect: 'manual' })).status, 302);
         assert.equal((await fetch(base + '/chat-apps/link', { method: 'POST', headers: { 'x-test-user': 'yes', origin: 'https://evil.test', 'content-type': 'application/json' }, body: '{}' })).status, 403);
     } finally { await new Promise(r => server.close(r)); }
-    console.log('chat-app links: real service-token gate, races, identity ownership, expiry, revocation, authentication and CSRF passed');
+    console.log('chat-app links: two-way codes, the wrong chat account refused, expiry, three wrong codes, real service-token gate, CSRF passed');
 })().catch(e => { console.error(e); process.exitCode = 1; });
