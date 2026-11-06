@@ -832,6 +832,8 @@ const DEFAULT_GRANTS = [
 // its owner (on_behalf_of). The machine acts for its owner, never for the person directly and never for anyone else.
 const NODE_GRANTS = [
     ['openvibe.live', 'live.agent_stream.publish'],
+    // Agent Streams S4: a desk asks OpenVibe.Chat for the sound of a line, in the owner's own voice.
+    ['openvibe.chat', 'chat.tts.speak'],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
