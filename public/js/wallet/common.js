@@ -9,6 +9,25 @@
         before: [{ id: 'ov-wallet', label: 'Wallet', short: 'Wallet', icon: 'fa-wallet', href: 'https://openvibe.network/wallet' }],
     };
 
+    // A signed-out wallet replaces itself with /login, which does not load the kit and so does not opt in to
+    // cross-document view transitions; Chrome aborts the transition and leaves an uncaught InvalidStateError
+    // ("ViewTransition opt-in disabled"). Shared's account switcher handles the same 11-01 bug: a replace navigation
+    // is a redirect, not a page move, so skip its transition and keep all three transition promises handled.
+    function quietViewTransition(event) {
+        const transition = event && event.viewTransition;
+        if (!transition) return;
+        for (const promise of [transition.finished, transition.ready, transition.updateCallbackDone]) {
+            try { if (promise && typeof promise.catch === 'function') promise.catch(() => {}); } catch { /* not a promise */ }
+        }
+        const activation = event.activation;
+        if (!activation || activation.navigationType !== 'replace') return;
+        try { if (typeof transition.skipTransition === 'function') transition.skipTransition(); } catch { /* already gone */ }
+    }
+    if (typeof root.addEventListener === 'function') {
+        root.addEventListener('pageswap', quietViewTransition);
+        root.addEventListener('pagereveal', quietViewTransition);
+    }
+
     function cookieToken() {
         const m = String(document.cookie || '').match(/(?:^|; )ov_token=([^;]*)/);
         return m ? decodeURIComponent(m[1]) : null;
