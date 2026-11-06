@@ -6,6 +6,18 @@
 const API_BASE = window.location.origin;
 const params = new URLSearchParams(window.location.search);
 const isOAuth = params.has('client_id') && params.has('redirect_uri');
+// ?reauth=1 is the one real re-authentication path (deleting the account, merging, the owner's AI settings,
+// Locker reset/forget). It always shows the password form, even when this browser has a saved session:
+// add_account=1 reuses that session and leaves auth_time alone, which is what made "Sign in again" loop.
+const isReauth = params.get('reauth') === '1';
+/** The username the re-authentication form starts with: login_hint when given ('' means blank), else the active account. */
+function reauthUsername(accounts) {
+    if (params.has('login_hint')) return String(params.get('login_hint') || '').trim().replace(/^@/, '');
+    let activeId = null;
+    try { activeId = localStorage.getItem('openvibe_active_account'); } catch { /* private mode */ }
+    const account = accounts.find((a) => String(a.id) === String(activeId)) || accounts[0];
+    return account ? String(account.username || '') : '';
+}
 // The app's name comes from the Network (GET /oauth/client-info), never from this page's URL:
 // a crafted link could otherwise claim to be any app. Until it answers, show nothing.
 let clientName = '';
@@ -366,6 +378,62 @@ async function selectAccount(account) {
     localStorage.setItem('openvibe_active_account', account.id);
     setAuthCookie(validToken);
 
+    await guardScheduledDeletion(validToken, () => continueAsAccount(account, validToken));
+}
+
+// ── A scheduled deletion is offered before any sign-in continues ─────────────
+// Every sign-in path (a saved account, or the password form) asks the API whether a deletion is scheduled.
+// If it is, the person sees the same "Keep my account" choice as the banner before being sent on; the choice
+// cancels it through DELETE /api/v1/account/deletion and then continues the sign-in.
+let keepNext = null;
+function offerKeep(token, deletion, next) {
+    keepNext = next;
+    const note = document.getElementById('keep-note');
+    const when = window.OpenVibeDeletion ? window.OpenVibeDeletion.bannerText(deletion.delete_after) : `Your account will be deleted on ${new Date(deletion.delete_after).toLocaleString()}.`;
+    if (note) note.textContent = `${when} It stays usable until then.`;
+    const keep = document.getElementById('keep-account-btn');
+    const cont = document.getElementById('keep-continue');
+    if (keep) {
+        keep.disabled = false;
+        keep.textContent = 'Keep my account';
+        keep.onclick = async () => {
+            keep.disabled = true;
+            keep.textContent = 'Keeping…';
+            let result = { ok: false, body: {} };
+            try {
+                result = window.OpenVibeDeletion ? await window.OpenVibeDeletion.cancelDeletion(token) : result;
+            } catch { /* offline */ }
+            if (!result.ok && result.status !== 404) {
+                keep.disabled = false;
+                keep.textContent = 'Keep my account';
+                toast((result.body && result.body.detail) || 'Could not keep the account. Try again.', 'error');
+                return;
+            }
+            keep.textContent = 'Kept. Your account stays.';
+            const go = keepNext;
+            keepNext = null;
+            setTimeout(() => { if (go) go(); }, 650);
+        };
+    }
+    if (cont) cont.onclick = (e) => {
+        if (e) e.preventDefault();
+        const go = keepNext;
+        keepNext = null;
+        if (go) go();
+    };
+    setActivePanel('panel-keep', { showTabs: false, showExtras: false });
+}
+
+async function guardScheduledDeletion(token, next) {
+    if (!token || !window.OpenVibeDeletion || typeof window.OpenVibeDeletion.deletionStatus !== 'function') return next();
+    let deletion = null;
+    try { deletion = await window.OpenVibeDeletion.deletionStatus(token); } catch { /* offline: the sign-in still goes on */ }
+    if (!deletion) return next();
+    offerKeep(token, deletion, next);
+}
+
+/** The part of a saved-account sign-in that leaves this page (an OAuth app, or back to the site). */
+async function continueAsAccount(account, validToken) {
     if (isOAuth) {
         // Call /oauth/confirm to get the redirect URL
         try {
@@ -548,6 +616,20 @@ async function handleLogin(e) {
         setAuthCookie(data.token);
         saveAccount(data.user, data.token);
 
+        // If a deletion is scheduled, the same "Keep my account" choice comes before this sign-in continues.
+        await guardScheduledDeletion(data.token, () => finishSignIn(data));
+    } catch (err) {
+        showMsg('login-msg', err.message, 'error');
+        btn.textContent = isReauth ? 'Sign In Again →' : 'Sign In →';
+        btn.classList.remove('loading');
+    } finally {
+        oauthConfirmInFlight = false;
+    }
+}
+
+/** Leave the sign-in page for an OAuth app, or back where the person came from (after the password form). */
+async function finishSignIn(data) {
+    try {
         if (isOAuth) {
             oauthConfirmInFlight = true;
             // Confirm OAuth with the new token
@@ -585,8 +667,11 @@ async function handleLogin(e) {
         }
     } catch (err) {
         showMsg('login-msg', err.message, 'error');
-        btn.textContent = 'Sign In →';
-        btn.classList.remove('loading');
+        const btn = document.getElementById('login-submit');
+        if (btn) {
+            btn.textContent = isReauth ? 'Sign In Again →' : 'Sign In →';
+            btn.classList.remove('loading');
+        }
     } finally {
         oauthConfirmInFlight = false;
     }
@@ -803,6 +888,27 @@ async function continueAnonymous() {
     // Direct link to the create-account tab (e.g. landing page CTA)
     if (params.get('tab') === 'register') {
         showAuthForm('register');
+        return;
+    }
+
+    // A real re-authentication: the password form every time, even with saved accounts and even for an app's
+    // silent continue. add_account=1 would hand back the existing session with its old auth_time.
+    if (isReauth) {
+        showAuthForm('login');
+        const username = reauthUsername(accounts);
+        if (username) prefillUsername(username);
+        else {
+            const field = document.querySelector('#login-form input[name="username"]');
+            if (field) field.focus();
+        }
+        const tabs = document.getElementById('auth-tabs');
+        if (tabs) tabs.style.display = 'none';
+        const note = document.getElementById('reauth-note');
+        if (note) note.hidden = false;
+        const submit = document.getElementById('login-submit');
+        if (submit) submit.textContent = 'Sign In Again →';
+        const back = document.getElementById('login-back');
+        if (back) back.style.display = 'none';
         return;
     }
 

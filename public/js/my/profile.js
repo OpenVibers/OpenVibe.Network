@@ -8,6 +8,27 @@
 // site (the report says so); here Network can pass it in.
 const OV_WALLET_MENU = { before: [{ id: 'ov-wallet', label: 'Wallet', short: 'Wallet', icon: 'fa-wallet', href: 'https://openvibe.network/wallet' }] };
 
+// /my#delete is the return target of the re-authentication path (and a deep link): it opens the accounts
+// section and puts the cursor in the delete confirmation field. Read before core.js rewrites the hash.
+const OV_DELETE_DEEP_LINK = window.location.hash === '#delete';
+/** Seconds left in the 10-minute fresh sign-in window, from the token's auth_time (OIDC; readable, not secret). */
+function freshSignInLeft() {
+    const token = getAuthToken();
+    if (!token) return 0;
+    try {
+        const part = String(token.split('.')[1] || '').replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(atob(part + '='.repeat((4 - part.length % 4) % 4)));
+        const at = Number(payload && payload.auth_time);
+        return Number.isFinite(at) ? Math.max(0, Math.floor(at + 600 - Date.now() / 1000)) : 0;
+    } catch { return 0; }
+}
+function reauthForDeletion() {
+    if (window.OpenVibeReauth) window.OpenVibeReauth.go('/my#delete');
+    else window.location.href = '/login?reauth=1&return=' + encodeURIComponent('/my#delete');
+}
+// The banner's Keep my account has already cancelled it; refresh this page's card too.
+window.addEventListener('ov:deletion-cancelled', () => { if (document.getElementById('delete-body')) renderDeletion(); });
+
 // Load user data
 async function loadUser() {
     // Hydrate localStorage from the host-only cookie if needed (e.g. cookie set by the login page)
@@ -272,7 +293,10 @@ function renderMerge() {
             try {
                 const r = await apiFetch('/api/v1/account/merge/intents', { method: 'POST', body: '{}' });
                 localStorage.setItem(MERGE_KEY, JSON.stringify({ intent: r.intent, expires_at: r.expires_at, into_id: currentUser.id, into_username: currentUser.username }));
-                addAccount();
+                // A real re-authentication for the other account: add_account=1 would hand back an existing
+                // session with its old auth_time, which the merge's fresh check refuses.
+                if (window.OpenVibeReauth) window.OpenVibeReauth.go('/my#accounts', { account: '' });
+                else window.location.href = '/login?reauth=1&login_hint=&return=' + encodeURIComponent('/my#accounts');
             } catch (err) { toast('Could not start the merge: ' + err.message, 'error'); }
         };
         row.appendChild(b); body.appendChild(row); return;
@@ -282,9 +306,13 @@ function renderMerge() {
     cancel.type = 'button';
     cancel.onclick = () => { localStorage.removeItem(MERGE_KEY); renderMerge(); };
     if (String(currentUser.id) === String(pending.into_id)) {
-        body.appendChild(el('p', `Now sign in to the account you want to fold into @${pending.into_username} (within ${mins} min).`));
+        body.appendChild(el('p', `Now sign in to the account you want to fold into @${pending.into_username} (within ${mins} min). It asks for that account's password even if it is already signed in, because the merge needs a real sign-in from the last 10 minutes.`));
         const go = el('button', 'Sign in to the other account', 'btn btn-primary');
-        go.type = 'button'; go.onclick = addAccount;
+        go.type = 'button';
+        go.onclick = () => {
+            if (window.OpenVibeReauth) window.OpenVibeReauth.go('/my#accounts', { account: '' });
+            else window.location.href = '/login?reauth=1&login_hint=&return=' + encodeURIComponent('/my#accounts');
+        };
         row.append(go, cancel); body.appendChild(row); return;
     }
     body.appendChild(el('p', `Fold @${currentUser.username} into @${pending.into_username}? Everything above moves to @${pending.into_username}; @${currentUser.username} then signs in as @${pending.into_username}.`));
@@ -301,9 +329,23 @@ function renderMerge() {
             OpenVibeAccountSwitcher.switchTo(pending.into_id);
         } catch (err) {
             doIt.disabled = false;
-            if (err.status === 401) toast(`Sign in to @${currentUser.username} again (a fresh sign-in is needed), then merge.`, 'error');
-            else if (err.status === 410) { localStorage.removeItem(MERGE_KEY); toast('That merge request expired. Start again from the account you keep.', 'error'); renderMerge(); }
-            else toast('The merge did not happen: ' + err.message, 'error');
+            if (err.status === 401) {
+                toast(`Sign in to @${currentUser.username} again (a fresh sign-in is needed), then merge.`, 'error');
+                if (!row.querySelector('.ov-merge-reauth')) {
+                    const again = el('button', 'Sign in again', 'btn btn-outline ov-merge-reauth');
+                    again.type = 'button';
+                    again.onclick = () => {
+                        const back = '/my#accounts';
+                        if (window.OpenVibeReauth) window.OpenVibeReauth.go(back, { account: currentUser.username });
+                        else window.location.href = `/login?reauth=1&login_hint=${encodeURIComponent(currentUser.username)}&return=${encodeURIComponent(back)}`;
+                    };
+                    row.insertBefore(again, doIt);
+                }
+            } else if (err.status === 410) {
+                localStorage.removeItem(MERGE_KEY);
+                toast('That merge request expired. Start again from the account you keep.', 'error');
+                renderMerge();
+            } else toast('The merge did not happen: ' + err.message, 'error');
         }
     };
     row.append(doIt, cancel); body.appendChild(row);
@@ -392,18 +434,28 @@ async function renderDeletion() {
     const d = r.body && r.body.deletion;
     const row = ovEl('div', '', 'btn-row');
     if (d) {
-        body.appendChild(ovEl('p', `Your account will be deleted on ${whenText(d.delete_after)}. Download your data before then if you want a copy.`));
+        body.appendChild(ovEl('p', `Your account will be deleted on ${whenText(d.delete_after)}. Until then it stays fully usable, and you can keep it at any time before that date. Download your data before then if you want a copy.`));
         const keep = ovEl('button', 'Keep my account', 'btn btn-primary');
         keep.type = 'button';
         keep.onclick = async () => {
             keep.disabled = true;
             const c = await accountApi('/api/v1/account/deletion', { method: 'DELETE' });
-            if (c.ok) toast('Deletion cancelled. Your account stays.', 'success');
+            if (c.ok) {
+                if (window.OpenVibeDeletion) window.OpenVibeDeletion.removeBanner();
+                toast('Kept. Your account stays.', 'success');
+            }
             renderDeletion();
         };
         row.appendChild(keep); body.appendChild(row);
         return;
     }
+    body.appendChild(ovEl('p', 'Your account stays usable for 30 days after you ask, and you can keep it at any time before then. On the day, your account and what the OpenVibe services keep about you are erased; that cannot be undone.'));
+    const freshLeft = freshSignInLeft();
+    const freshLine = ovEl('p', freshLeft > 0
+        ? `You signed in again just now: you have about ${Math.max(1, Math.ceil(freshLeft / 60))} minute${Math.ceil(freshLeft / 60) === 1 ? '' : 's'} to confirm.`
+        : 'For your security, this asks you to sign in again first. A fresh sign-in gives you 10 minutes to confirm.');
+    freshLine.id = 'delete-fresh-line';
+    body.appendChild(freshLine);
     const field = ovEl('div', '', 'form-field');
     const label = ovEl('label', `Type your username, ${currentUser.username}, to confirm`);
     const input = ovEl('input');
@@ -412,23 +464,40 @@ async function renderDeletion() {
     field.append(label, input);
     const go = ovEl('button', 'Delete my account in 30 days', 'btn btn-danger');
     go.type = 'button';
+    const addReauth = () => {
+        if (row.querySelector('.ov-delete-reauth')) return;
+        const again = ovEl('button', 'Sign in again', 'btn btn-outline ov-delete-reauth');
+        again.type = 'button';
+        again.onclick = reauthForDeletion;
+        row.appendChild(again);
+    };
+    if (freshLeft <= 0) addReauth();
     go.onclick = async () => {
         go.disabled = true;
         const s = await accountApi('/api/v1/account/deletion', { method: 'POST', body: JSON.stringify({ confirm_username: input.value }) });
         go.disabled = false;
         if (s.status === 401 && s.body.error === 'deletion.sign_in_again') {
-            toast('To make sure it is you, sign in again, then come back here and confirm.', 'error');
-            const again = ovEl('button', 'Sign in again', 'btn btn-outline');
-            again.type = 'button'; again.onclick = addAccount;
-            if (!row.querySelector('.btn-outline')) row.appendChild(again);
+            toast('To make sure it is you, sign in again. You will then have 10 minutes to confirm, and come straight back here.', 'error');
+            addReauth();
             return;
         }
         if (!s.ok) { toast(s.body.detail || 'That did not work', 'error'); return; }
-        toast(`Scheduled: your account will be deleted on ${whenText(s.body.delete_after)}. You can cancel until then.`, 'success');
+        if (window.OpenVibeDeletion) window.OpenVibeDeletion.showBanner(s.body);
+        toast(`Scheduled: your account will be deleted on ${whenText(s.body.delete_after)}. It stays usable until then, and you can keep it at any time before that date.`, 'success');
         renderDeletion();
     };
     row.appendChild(go);
     body.append(field, row);
+    if (OV_DELETE_DEEP_LINK && !body.dataset.ovDeleteFocused) {
+        body.dataset.ovDeleteFocused = '1';
+        setTimeout(() => {
+            try {
+                const card = document.getElementById('delete-card');
+                if (card && card.scrollIntoView) card.scrollIntoView({ block: 'center' });
+                input.focus();
+            } catch { /* */ }
+        }, 60);
+    }
 }
 
 function switchAccount(id) { OpenVibeAccountSwitcher.switchTo(id); }

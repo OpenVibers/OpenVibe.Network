@@ -71,6 +71,7 @@
 
         <!-- Login Form -->
         <div class="form-panel" id="panel-login">
+            <p class="panel-note" id="reauth-note" hidden>For your security, sign in again with your password. You then have 10 minutes to finish.</p>
             <div class="message" id="login-msg"></div>
             <form id="login-form" onsubmit="handleLogin(event)">
                 <div class="field">
@@ -88,6 +89,13 @@
             </form>
             <a class="inline-link" onclick="showForgotForm()">Forgot your password?</a>
             <a class="back-link" id="login-back" onclick="showChooser()" style="display:none">← Back to saved accounts</a>
+        </div>
+
+        <!-- A scheduled deletion: the same choice as the banner, before this sign-in continues -->
+        <div class="form-panel" id="panel-keep">
+            <p class="panel-note" id="keep-note"></p>
+            <button type="button" class="submit-btn" id="keep-account-btn">Keep my account</button>
+            <a class="inline-link" id="keep-continue" href="#" onclick="return false">Continue signing in</a>
         </div>
 
         <!-- Register Form -->
@@ -182,6 +190,7 @@
 <div class="login-toast" id="toast"></div>
 
 <script src="/js/login.js" defer></script>
+  <script src="/js/account-safety.js" defer></script>
   <script src="/shared/ov-mark.js" async></script>
   <script src="https://openvibe.live/live-notify.js" async></script>
 </body>

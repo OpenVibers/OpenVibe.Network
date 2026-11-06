@@ -369,6 +369,7 @@ ${busy ? `<section class="os-sec" aria-labelledby="h-busy"><h2 id="h-busy">Busie
 </main>
 ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact' })}
 <script src="/shared/navbar.js" defer></script>
+<script src="/js/account-safety.js" defer></script>
 ${require('../boost').SCRIPT}
 <script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin});}catch(e){}});</script>
 </body>

@@ -69,11 +69,16 @@ assert.deepStrictEqual(run({ chosen: 7, query: 'client_id=a&redirect_uri=x&promp
 assert.deepStrictEqual(run({ accounts: [{ ...me, is_anon: true }], chosen: 7 }).picked, [], 'an anonymous account is never assumed');
 assert.deepStrictEqual(run({ chosen: 7, query: 'return=/my' }).picked, [], 'not an app sign-in');
 
-// Every way off this page to a site remembers the account, so that site's sign-in continues as it.
+// Every way off this page to a site remembers the account, so that site's sign-in continues as it. A scheduled
+// deletion is asked first (guardScheduledDeletion), so the continuation lives in its own function.
 const select = block('async function selectAccount(account)', 'selectAccount');
-assert.match(select, /\} else \{[\s\S]*rememberChoice\(account\.id\);[\s\S]*goBack\(/, 'switching (not an app) remembers the account and goes back');
+assert.match(select, /guardScheduledDeletion\(validToken, \(\) => continueAsAccount\(account, validToken\)\)/, 'a saved account checks for a scheduled deletion first');
+const cont = block('async function continueAsAccount(account, validToken)', 'continueAsAccount');
+assert.match(cont, /\} else \{[\s\S]*rememberChoice\(account\.id\);[\s\S]*goBack\(/, 'switching (not an app) remembers the account and goes back');
 const login = block('async function handleLogin(e)', 'handleLogin');
-assert.match(login, /rememberChoice\(data\.user\.id\);\s*\n[^\n]*\n\s*goBack\(800\);/, 'a new sign-in (add another account) too');
+assert.match(login, /guardScheduledDeletion\(data\.token, \(\) => finishSignIn\(data\)\)/, 'a password sign-in checks for a scheduled deletion first');
+const finish = block('async function finishSignIn(data)', 'finishSignIn');
+assert.match(finish, /rememberChoice\(data\.user\.id\);\s*\n[^\n]*\n\s*goBack\(800\);/, 'a new sign-in (add another account) too');
 
 // The page's init: switch_to switches (or asks for that account's password), add_account and prompt=login show the form.
 const init = js.slice(js.indexOf('(function init() {'));

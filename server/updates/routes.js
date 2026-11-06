@@ -165,6 +165,7 @@ ${dayHtml || '<p class="ov-shipped-empty">The update history could not be loaded
 </main>
 ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact', updates: '/updates' })}
 <script src="/shared/navbar.js" defer></script>
+<script src="/js/account-safety.js" defer></script>
 <script src="/shared/shipped.js" defer></script>
 ${boost.SCRIPT}
 <script>document.addEventListener('ov:boost:load',function(){if(window.OpenVibeShipped)OpenVibeShipped.scan(document.getElementById('main'));});</script>
