@@ -96,7 +96,7 @@ for (const id of ['network', 'tools', 'account', 'developers']) assert.ok(new Re
 assert.strictEqual(html.includes('<section class="sc-sec" id="soon"'), sites.some((s) => s.status === 'soon'), 'an "Opening next" section only while a site is still to open (none since Tips and VIP, contracts 0.200.0)');
 assert.ok(!/class="home-(sec|card|grid|fams|fam|dev)\b/.test(html), 'no hand-built section markup is left');
 assert.strictEqual((html.match(/<h1[\s>]/g) || []).length, 1, 'one h1: the hero');
-assert.match(html, /<meta name="ai-summary" content="One account for \d+ open sites \(live, /);
+assert.match(html, /<meta name="ai-summary" content="One account for \d+ open sites \(this front door, live, /);
 assert.ok(/"@type":"WebPage"/.test(html), 'the summary has its WebPage JSON-LD');
 // SEO-31: the network is one WebSite entity, and its sitelinks search is the network's own search service.
 const siteLd = JSON.parse(/<script type="application\/ld\+json">(\{"@context":"https:\/\/schema.org","@type":"WebSite"[\s\S]*?)<\/script>/.exec(html)[1]);

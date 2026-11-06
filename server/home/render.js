@@ -29,6 +29,11 @@ const social = require('openvibe-shared/social');
 // OpenRestream is its own name, never "OpenVibe.OpenRestream" (the owner, 2026-10-28).
 const siteName = (site) => (site.name.includes('.') ? site.name : fullName(site));
 const OPEN = frameSites.filter((site) => site.status === 'open' && site.id !== 'network');
+// How many sites there are: every open one, this front door included, the same count /sites shows (server/sites/page.js).
+// One number for the whole page: until 2026-11-06 the sites heading counted without the front door and the link under it
+// with it, so a phone showed "51 sites, one front door" above "All 52 sites" (the owner: "why isn't this count just
+// dynamic"). It always was computed; it now has one definition.
+const SITE_COUNT = frameSites.filter((site) => site.status === 'open').length;
 const SOON = frameSites.filter((site) => site.status !== 'open');
 const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen', 'Twenty'];
 const inWords = (n) => WORDS[n] || String(n);
@@ -102,11 +107,11 @@ const SHORT = (site) => site.name.replace(/^OpenVibe\./, '');
 function orbit() {
     const inner = OPEN.slice(0, 6), outer = OPEN.slice(6, 16);
     const node = (site, i, n, big) => `<a class="orb-node${big ? ' is-big' : ''}" href="https://${esc(site.host)}/" style="--i:${i};--n:${n}" title="${esc(siteName(site))}: ${esc(site.tagline || '')}" aria-label="${esc(siteName(site))}"><span class="orb-face">${icon(site.icon, big ? 26 : 20)}${big ? `<span class="orb-name">${esc(SHORT(site))}</span>` : ''}</span></a>`;
-    return `<div class="orbit" role="group" aria-label="The OpenVibe network: ${OPEN.length + 1} sites around one account">
+    return `<div class="orbit" role="group" aria-label="The OpenVibe network: ${SITE_COUNT} sites around one account">
 <div class="orb-glow" aria-hidden="true"></div>
 <div class="orb-ring r2">${outer.map((s, i) => node(s, i, outer.length, false)).join('')}</div>
 <div class="orb-ring r1">${inner.map((s, i) => node(s, i, inner.length, true)).join('')}</div>
-<a class="orb-core" href="#network"><span class="ov-mark" data-size="64" data-variant="network" style="width:64px;height:64px"></span><b>${OPEN.length + 1} sites</b><small>one account</small></a>
+<a class="orb-core" href="#network"><span class="ov-mark" data-size="64" data-variant="network" style="width:64px;height:64px"></span><b>${SITE_COUNT} sites</b><small>one account</small></a>
 </div>`;
 }
 
@@ -195,7 +200,7 @@ function numbers(catalog, a) {
     const c = a.counts || {};
     const items = [
         c.services ? [fmtCount(c.services.up), 'services up', `of ${c.services.live} checked`, '/status'] : null,
-        [String(OPEN.length + 1), 'sites, one account', '', '#network'],
+        [String(SITE_COUNT), 'sites, one account', '', '#network'],
         catalog.tools.length ? [fmtCount(catalog.tools.length), 'online tools', '', 'https://openvibe.tools/'] : null,
         c.accounts ? [fmtCount(c.accounts), 'accounts', '', '/login?tab=register'] : null,
         a.liveCount ? [fmtCount(a.liveCount), a.liveCount === 1 ? 'stream live now' : 'streams live now', '', 'https://openvibe.live/'] : null,
@@ -321,7 +326,7 @@ ${icons.CSS}
 
 // The sites section's heading; the JSON-LD ItemList of the same sites carries it as its name, so the
 // structured data names something a visitor can see (browser check, WS-Q task 3).
-const sitesHeading = () => `${inWords(OPEN.length)} sites, one front door`;
+const sitesHeading = () => `${inWords(SITE_COUNT)} sites, one front door`;
 /** A tagline as the start of a sentence: a period only when it does not already end one ("What should we eat?"). */
 const asSentence = (t) => (/[.!?…]$/.test(String(t).trim()) ? String(t).trim() : `${String(t).trim()}.`);
 
@@ -366,7 +371,7 @@ function body(catalog, act) {
     const sites = showcase.apps({
         id: 'network', title: sitesHeading(),
         lede: 'Stream, chat, build, share, play, write and store. Everything is open to visitors; signing in once carries your name, theme and notifications to all of it.',
-        groups, more: { href: '/sites', label: `All ${OPEN.length + 1} sites, grouped by what you came to do` },
+        groups, more: { href: '/sites', label: `All ${SITE_COUNT} sites, grouped by what you came to do` },
     });
     // The first two neighbourhoods show; the rest fold (a phone saw 48 tiles in eight groups, two screens of the front door).
     const foldSites = (html) => {
@@ -413,9 +418,9 @@ ${moreParts([['tools', 'Tools', tools], ['account', 'Your account', account], ['
 function summaryOf(catalog) {
     return seo.pageSummary({
         title: 'OpenVibe.Network',
-        summary: `One account for ${OPEN.length} open sites (${OPEN.map((site) => SHORT(site).toLowerCase()).join(', ')}), free, open source and community run.`,
+        summary: `One account for ${SITE_COUNT} open sites (this front door, ${OPEN.map((site) => SHORT(site).toLowerCase()).join(', ')}), free, open source and community run.`,
         url: 'https://openvibe.network/',
-        facts: [['Open sites', OPEN.length], ['Opening next', SOON.length], ...(catalog.tools.length ? [['Online tools', catalog.tools.length]] : [])],
+        facts: [['Open sites', SITE_COUNT], ['Opening next', SOON.length], ...(catalog.tools.length ? [['Online tools', catalog.tools.length]] : [])],
         updated: catalog.tools.length ? String(catalog.updated).slice(0, 10) : undefined,
     });
 }
@@ -442,12 +447,12 @@ function render({ releaseId = '' } = {}) {
     const ld = seo.jsonLdTag(seo.jsonLd.website({
         name: 'OpenVibe.Network',
         url: 'https://openvibe.network/',
-        description: `The front door to the OpenVibe network: one free account across ${OPEN.length} open sites — live streaming, tools, chat, games, a wiki, news, deals and an open developer platform.`,
+        description: `The front door to the OpenVibe network: one free account across ${SITE_COUNT} open sites — live streaming, tools, chat, games, a wiki, news, deals and an open developer platform.`,
         searchUrl: 'https://search.openvibe.network/?q={q}',
     })) + seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what })))) + seo.jsonLdTag(seo.jsonLd.faq(faqPairs()));
     const card = social.url('network', 'https://openvibe.network/shared') || 'https://openvibe.network/assets/logo-512.png';
     const summary = summaryOf(catalog);
-    const html = withSameAs(lookBoot.apply(fs.readFileSync(SHELL, 'utf8'))).replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog, act.popularity)).replace('<!--OV:CONSTELLATION-->', () => orbit() + numbers(catalog, act)).replaceAll('__OV_CARD__', card).replace('<!--OV:SITES-->', String(OPEN.length + 1)).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
+    const html = withSameAs(lookBoot.apply(fs.readFileSync(SHELL, 'utf8'))).replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog, act.popularity)).replace('<!--OV:CONSTELLATION-->', () => orbit() + numbers(catalog, act)).replaceAll('__OV_CARD__', card).replace('<!--OV:SITES-->', String(SITE_COUNT)).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
     pageCache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
     return pageCache;
 }
