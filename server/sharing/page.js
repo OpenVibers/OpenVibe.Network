@@ -6,14 +6,36 @@
  * item and its link, who shared it, when, and the role. The transfers that wait for an answer come
  * first, with Accept and Decline links to the item itself, where the share sheet asks.
  *
- * The page is built from the kit's own components (openvibe-shared/kit) and adds no styles of its
- * own. Signed out it says so and offers the sign-in; signed in it never shows anybody else's list.
+ * The page is built from the kit's own components (openvibe-shared/kit). The one rule of its own is for
+ * a phone, where the kit's row would cut the item's name and the words under it: the row wraps there
+ * (PAGE_CSS below). Signed out the page says so and offers the sign-in; signed in it never shows
+ * anybody else's list.
  */
 const kit = require('openvibe-shared/kit');
 const shell = require('openvibe-shared/shell');
 const store = require('./store');
 const { describeItems, itemView, transferView, MAX_DETAILS } = require('./routes');
 const { sessionToken, verifySession } = require('../auth/session');
+
+/**
+ * The page's own rules, and only for a phone.
+ *
+ * The kit's row is built for one line: the title and the words under it are cut with an ellipsis,
+ * and the trail (Accept and Decline) sits beside them. On a phone there is no room for that, so the
+ * row wraps: the title and the words take two lines each, and the two answers go on their own line
+ * under the words, where a thumb can reach them.
+ *
+ * Scoped to this page (.ovk-shared) and to 480 px, so a computer keeps the kit's own look.
+ */
+const PAGE_CSS = `<style>
+@media (max-width:480px){
+.ovk-shared .ovk-row--static{flex-wrap:wrap}
+.ovk-shared .ovk-row-trail{width:100%;box-sizing:border-box;padding-left:48px}
+.ovk-shared .ovk-row-top{align-items:flex-start}
+.ovk-shared .ovk-row-top strong{white-space:normal;overflow:visible;text-overflow:clip}
+.ovk-shared .ovk-row-sub>span:first-child{white-space:normal;overflow:visible}
+}
+</style>`;
 
 /** What the item is called when the owning service does not name it. */
 function fallbackName(item) {
@@ -131,8 +153,8 @@ async function renderPage(ctx, user) {
         description: 'Everything other people have shared with you on OpenVibe, in one place.',
         canonical: String(ctx.config.baseUrl || 'https://openvibe.network').replace(/\/+$/, '') + '/shared',
         robots: 'noindex, nofollow',
-        head: '<link rel="stylesheet" href="/shared/kit.css">\n<script src="/shared/kit-web.js" defer></script>',
-        body: '<main class="ovk-page">\n'
+        head: '<link rel="stylesheet" href="/shared/kit.css">\n<script src="/shared/kit-web.js" defer></script>\n' + PAGE_CSS,
+        body: '<main class="ovk-page ovk-shared">\n'
             + kit.head({ title: 'Shared with me', sub: 'What other people have shared with you.' })
             + (user ? stats : '')
             + body

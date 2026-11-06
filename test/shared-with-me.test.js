@@ -137,6 +137,11 @@ const inbox = async (userId) => await db.prepare('SELECT * FROM notifications WH
         assert.ok(html.includes('OpenVibe.Community'), 'the page names the site');
         assert.ok(html.includes('@bob'), 'the page names who shared it');
         assert.ok(html.includes('Can edit'), 'the page says the role');
+        // On a phone the kit's row would cut the item's name and the words under it: the page carries
+        // its own rule for that, scoped to itself.
+        assert.ok(html.includes('ovk-shared'), 'the page scopes its own phone rule');
+        assert.ok(html.includes('max-width:480px'), 'the phone rule is on the page');
+        assert.ok(html.includes('ovk-row-trail'), 'the phone rule moves the trail');
         const anon = await fetch(base + '/shared');
         assert.strictEqual(anon.status, 200);
         assert.ok((await anon.text()).includes('Sign in'), 'signed out, the page asks to sign in');
