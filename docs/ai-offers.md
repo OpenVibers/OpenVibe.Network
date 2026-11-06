@@ -6,7 +6,7 @@ machine's offer, Network validates and stores it, and OpenVibe.AI reads it to pl
 ## Why its own table
 
 `platform.resource-offer@1` closes `detail` for `kind: node` and `kind: provider`, and a community model offer needs a
-model list, hours, concurrency, a credit price and an audience. `platform_ai_offers` (migrations/0039) is that shape. It
+model list, hours, concurrency, a credit price and an audience. `platform_ai_offers` (migrations/0040) is that shape. It
 is still a user-owned offer: `owner_subject` is required, there is no public route, and only a service holding
 `network.registry.read` can read it whole.
 
