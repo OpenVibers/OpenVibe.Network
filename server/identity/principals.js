@@ -122,6 +122,10 @@ const DEFAULT_GRANTS = [
     // OpenVibe.Video's AI edit (MediaHub server/video/ai-edit.js): media.analyze on finished uploads, local and unpaid;
     // OpenVibe.Pics alt text (server/pics/describe.js): pics.describe_image on new pictures.
     ['media-hub', 'ai.run.create', 'openvibe.ai', ['media.analyze', 'pics.describe_image']],
+    // Plan L9 (2026-11-06): the screenshot pass. ovhost shots captures each public page at two viewports and
+    // stores the PNG in OpenVibe.Media, in Host's own tenant (the "host" namespace): Host uploads, lists and
+    // prunes its shots, and Blog reads them to put a before/after in the patch notes.
+    ...['media.object.upload', 'media.object.read', 'media.object.list', 'media.object.delete'].map(cap => ['host', cap, 'openvibe.media', ['host']]),
     // Plan T3: Chat owns the six chat tables. Emote images go to Media under the chat namespace, and
     // the chat-AI summaries run in Chat with its own token.
     ['chat', 'media.object.upload', 'openvibe.media', ['chat']],
@@ -221,7 +225,7 @@ const DEFAULT_GRANTS = [
     ['blog', 'events.event.publish', 'openvibe.events', []],
     ['blog', 'community.comment.write', 'openvibe.community', []],
     ['blog', 'community.comment.moderate', 'openvibe.community', []],
-    ['blog', 'media.object.read', 'openvibe.media', ['blog']],
+    ['blog', 'media.object.read', 'openvibe.media', ['blog', 'host']],
     // Wave 10: VIP sells plans through Billing and projects its entitlements from Billing events.
     ['vip', 'billing.intent.create', 'openvibe.billing', []],
     ['vip', 'billing.subscription.manage', 'openvibe.billing', []],
@@ -775,12 +779,8 @@ const REVOKED_GRANTS = [
     ['space', 'vip.resource.policy.evaluate', 'openvibe.vip'],
     ['space', 'events.event.read', 'openvibe.events'],
     ['space', 'network.blocks.read', SELF_AUDIENCE],
-    // The static hosting engine left Host (T20, Host#84, contracts 0.150.0): its Media objects and Services' fan-out to
-    // its resource index go. Space serves the engine.
-    ['host', 'media.object.upload', 'openvibe.media'],
-    ['host', 'media.object.read', 'openvibe.media'],
-    ['host', 'media.object.list', 'openvibe.media'],
-    ['host', 'media.object.delete', 'openvibe.media'],
+    // Plan L9 (2026-11-06): Host's Media grants come back for the screenshot pass (they went with the static
+    // hosting engine in T20). They are in RESTORED_GRANTS below, scoped to the "host" namespace.
     ['services', 'host.resource.read', 'openvibe.host'],
 ];
 
@@ -800,6 +800,12 @@ const RESTORED_GRANTS = [
     ['space', 'network.account.deletion.confirm', SELF_AUDIENCE],
     // Codes publishes codes.task.* (contracts 0.232.0); revoked when the developer portal left it (0.113.0).
     ['codes', 'events.event.publish', 'openvibe.events'],
+    // Plan L9 (2026-11-06): Host's Media grants are back (they went when the static hosting engine left Host in
+    // T20): ovhost shots stores the screenshots it captures in OpenVibe.Media, in Host's own tenant.
+    ['host', 'media.object.upload', 'openvibe.media'],
+    ['host', 'media.object.read', 'openvibe.media'],
+    ['host', 'media.object.list', 'openvibe.media'],
+    ['host', 'media.object.delete', 'openvibe.media'],
 ];
 
 const CHANGED_DEFAULT_NAMESPACES = [
@@ -823,6 +829,13 @@ const CHANGED_DEFAULT_NAMESPACES = [
     ['media-hub', 'ai.run.create', 'openvibe.ai', ['media.analyze'], ['media.analyze', 'pics.describe_image']],
     // Search's embedder runs AI workflow ai.embed (contracts 0.234.0; POST /api/v1/embed for hybrid ranking).
     ['search', 'ai.run.create', 'openvibe.ai', ['research.*'], ['research.*', 'ai.embed']],
+    // Plan L9 (2026-11-06): Host's Media rows move from the old host/host.* list to the host namespace alone, and
+    // Blog's Media read reaches Host's tenant too, so the patch notes can read the shots Host captured.
+    ['host', 'media.object.upload', 'openvibe.media', ['host', 'host.*'], ['host']],
+    ['host', 'media.object.read', 'openvibe.media', ['host', 'host.*'], ['host']],
+    ['host', 'media.object.list', 'openvibe.media', ['host', 'host.*'], ['host']],
+    ['host', 'media.object.delete', 'openvibe.media', ['host', 'host.*'], ['host']],
+    ['blog', 'media.object.read', 'openvibe.media', ['blog'], ['blog', 'host']],
     // Design's frames with a preference run ai.chat (Design #57, 10-31). Network #533 added it to the default; the
     // production row, seeded before, kept ['ai.generate'] (the seed never changes an existing row), so frames still
     // failed until this moved it.
