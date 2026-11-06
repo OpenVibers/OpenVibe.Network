@@ -215,6 +215,11 @@ const server = http.createServer(app);
     t = await token({ client_id: 'games', client_secret: 'games-secret', audience: 'openvibe.bench' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
     assert.deepStrictEqual(t.body.scope.split(' '), ['bench.entry.create', 'bench.judgement.cast', 'bench.round.create', 'bench.task.create'], 'Games submits priced matches and automatic outcomes');
+    t = await token({ client_id: 'games', client_secret: 'games-secret', audience: 'openvibe.ai' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    const gamesAiClaims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.ai' });
+    assert.ok(gamesAiClaims.ok, gamesAiClaims.reason);
+    assert.deepStrictEqual([gamesAiClaims.claims.cap, gamesAiClaims.claims.ns], [['ai.run.create'], ['ai.generate']], 'Games plays the duel through ai.generate');
 
     // OpenVibe.Bench (contracts 0.238.0): the account export/deletion pair, its account-event subscriptions,
     // ai.run.create (namespace ai.generate) to run its pinned rounds, and (B10) the model watch's one notification
