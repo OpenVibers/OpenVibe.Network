@@ -161,7 +161,7 @@ function showSection(id, btn) {
     if (id === 'content' && typeof loadAdultSection === 'function') loadAdultSection();
     if (id === 'approvals' && typeof loadApprovals === 'function') loadApprovals();
     if (id === 'machines' && typeof loadMachines === 'function') loadMachines();
-    if (id === 'apps' && typeof loadApps === 'function') loadApps();
+    if (id === 'apps' && typeof loadConnectApps === 'function') loadConnectApps();
 }
 
 function openInitialSection() {

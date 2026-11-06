@@ -21,8 +21,8 @@ function appsEl(tag, attrs, ...kids) {
     return n;
 }
 
-async function loadApps() {
-    const list = document.getElementById('apps-list');
+async function loadConnectApps() {
+    const list = document.getElementById('connect-apps-list');
     if (!list) return;
     if (typeof isAnonSession === 'function' && isAnonSession()) {
         list.replaceChildren(appsEl('p', { class: 'muted', style: 'font-size:13px', text: 'Apps are only available once you sign in with a full OpenVibe account.' }));
