@@ -474,6 +474,9 @@ const DEFAULT_GRANTS = [
     // A community AI offer's "followers" audience: AI checks whether the requester follows the offer's owner (the
     // owner's channel) before placing a run. Read-only, like Live's.
     ['ai', 'network.follows.read', SELF_AUDIENCE, []],
+    // Self-dealing: a community run whose requester is the offer owner (or an account merged into it) earns nothing.
+    // AI resolves both subjects to the survivor before it records the seller's ledger.
+    ['ai', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // WS-N task 12: ovhost incident / maintenance post to the status page.
     ['host', 'network.status.incident', SELF_AUDIENCE, []],
     // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples

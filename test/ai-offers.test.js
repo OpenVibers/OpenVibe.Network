@@ -96,6 +96,8 @@ const offer = () => ({
         assert.strictEqual(down.body.offers[0].ready, false);
         const has = (svc, cap) => principals.DEFAULT_GRANTS.some(([s, c, a]) => s === svc && c === cap && a === 'openvibe.network');
         assert.ok(has('ai', 'network.registry.read'), 'AI holds the internal read');
+        assert.ok(has('ai', 'network.follows.read'), 'AI can resolve the followers audience');
+        assert.ok(has('ai', 'identity.subject.resolve'), 'AI resolves merged subjects for self-dealing');
         assert.ok(has('bot', 'network.resource.report'), 'Bot reports');
         console.log('ai-offers: ok');
     } finally {

@@ -22,8 +22,9 @@ The offer: `offer_id` `ai:<device>`, `machine_id`, `owner`, `models`, `hours {st
 `health {status: up|degraded|down}`. `server/registry/ai-offers.js` validates every field before a write; one bad offer
 refuses the whole report, so Bot leaves an incomplete one out.
 
-Network grants AI `network.registry.read` (the offers) and `network.follows.read` (the `followers` audience). Nothing
-here moves money; the seller ledger is OpenVibe.AI's.
+Network grants AI `network.registry.read` (the offers), `network.follows.read` (the `followers` audience) and
+`identity.subject.resolve` (a requester merged into the owner is still the owner for self-dealing). Nothing here moves
+money; the seller ledger is OpenVibe.AI's.
 
 ## Test
 
