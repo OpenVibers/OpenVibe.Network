@@ -792,6 +792,19 @@ const DEFAULT_GRANTS = [
     // cannot ask treats every purpose as off. None of these rows was ever granted or revoked before, so none needs a
     // RESTORED_GRANTS entry (that list is only for a default that was once revoked).
     ...['live', 'vision', 'ai', 'media-hub', 'cam', 'chat', 'actor'].map((svc) => [svc, 'network.consent.read', SELF_AUDIENCE, []]),
+    // The Agent Streams plan (S1, Contracts 0.298.0): Codes and Actor start and steer the person's agent stream on
+    // OpenVibe.Live (live.agent_stream.publish, the audience openvibe.live). They act for the person and for nobody
+    // else, so the grant is unscoped and the audience is Live's alone.
+    ['codes', 'live.agent_stream.publish', 'openvibe.live', []],
+    ['actor', 'live.agent_stream.publish', 'openvibe.live', []],
+];
+
+// What a node principal (a person's own machine, paired with its credential) may do for its owner outside Network's
+// own audience. The Agent Streams plan (S1, contracts 0.298.0): the desk publishes the person's agent stream on
+// OpenVibe.Live, so the machine's token carries live.agent_stream.publish for the audience openvibe.live and names
+// its owner (on_behalf_of). The machine acts for its owner, never for the person directly and never for anyone else.
+const NODE_GRANTS = [
+    ['openvibe.live', 'live.agent_stream.publish'],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
@@ -1094,4 +1107,4 @@ function guardAny(caps, opts) {
     };
 }
 
-module.exports = { ensureSchema, issueToken, guard, guardAny, grantsFor, recordDecision, DEFAULT_GRANTS, REVOKED_GRANTS, RESTORED_GRANTS, TOKEN_TTL_S, SELF_AUDIENCE };
+module.exports = { ensureSchema, issueToken, guard, guardAny, grantsFor, recordDecision, DEFAULT_GRANTS, NODE_GRANTS, REVOKED_GRANTS, RESTORED_GRANTS, TOKEN_TTL_S, SELF_AUDIENCE };
