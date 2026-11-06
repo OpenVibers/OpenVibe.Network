@@ -132,7 +132,7 @@ const REVIEWED = {
     'server/notifications/email-service.js http.request': [1, 'fixed host api.resend.com'],
     'server/actions/index.js fetch': [4, 'The Action Center: OpenVibe.Actor, OpenVibe.Codes and OpenVibe.AI only (OV_ACTOR_INTERNAL_URL, OV_CODES_INTERNAL_URL, OV_AI_INTERNAL_URL, loopback); the paths are fixed (the decide route and the cancel route), the subject is the signed-in person\'s own usr_ id, and an item id must match [A-Za-z0-9_-]{1,80}'],
     'server/profile/public.js fetch': [4, 'OpenVibe.Inventory (OV_INVENTORY_INTERNAL_URL, loopback 5030), OpenVibe.Quest (OV_QUEST_INTERNAL_URL, loopback 4980) and OpenVibe.Play (OV_PLAY_INTERNAL_URL, loopback 5040) only; the paths are fixed, the subject is a checked usr_ id'],
-    'server/profile/avatar.js fetch': [3, 'Live and Media internal URLs from config; verifyImage only for https://openvibe.media/ addresses (normalizeAvatar, asserted below)'],
+    'server/profile/avatar.js fetch': [4, 'Live (push) and Media (ingest, release) internal URLs from config; a picture is never fetched here — Media\'s ingest fetches it (asserted below)'],
     'server/push/push-service.js web-push': [1, 'a person\'s push endpoint: endpointAllowed() at subscribe and send, connections through safeLookup (asserted below)'],
     'server/registry/deploy-drift.js fetch': [1, 'fixed host api.github.com'],
     'server/registry/ecosystem.js fetch': [2, 'service URLs from openvibe-contracts manifests and operator env overrides'],
@@ -238,10 +238,13 @@ function inventory(root) {
     assert.ok(!left.some((e) => /127\.0\.0\.1|\[::ffff|2130706433|localhost/.test(e)), 'rows with an internal address are dropped');
     await listener.close();
 
-    // ── 2. Avatars: Network itself fetches openvibe.media only ─────────
+    // ── 2. Avatars: Network itself never fetches a picture (Media's ingest does) ─────────
+    // An accepted source is handed to Media; what must not happen is a look-alike or internal address being
+    // rewritten onto our own media host, which Network used to fetch. (Part 3 proves no connection is made.)
+    const hostOf = (x) => { try { return new URL(x).hostname.toLowerCase(); } catch { return null; } };
     for (const u of [...internalUrls(8443, '/a.png'), 'https://openvibe.media@127.0.0.1/a.png', 'https://openvibe.media.evil.test/a.png', 'https://127.0.0.1/p/abc/screenshot', 'https://[::1]/p/abc']) {
         const n = normalizeAvatar(u);
-        assert.ok(!n.url || n.url.startsWith('https://openvibe.media/'), `${u}: Network fetches only openvibe.media (${JSON.stringify(n)})`);
+        assert.ok(!n.url || hostOf(u) === 'openvibe.media' || hostOf(n.url) !== 'openvibe.media', `${u}: not rewritten to openvibe.media (${JSON.stringify(n)})`);
     }
 
     // ── 3. The booted server ─────────────────────────────────────────

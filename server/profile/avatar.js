@@ -2,11 +2,14 @@
 // ═══════════════════════════════════════════════════════════════
 // The avatar — one picture per account, for every OpenVibe site.
 //
-// Source of truth: users.avatar_url on the Network. A picture is always a file on openvibe.media, usually
-// the screenshot of one of your pastes; nothing else is accepted, so an avatar can never be a tracking
-// pixel on someone else's server, a javascript: URL, or a file that disappears with a third party.
+// Source of truth: users.avatar_url on the Network. A picture is always the person's own avatar object on
+// openvibe.media: whatever is chosen (an upload, a paste screenshot, an openvibe.media address, a picture
+// elsewhere on the web) is copied into a native avatar object owned by them, and the source is left untouched.
+// A profile therefore never points at another product's object, so a Community cleanup or a deleted paste can
+// no longer break someone's picture (incident 2026-11-06). Media records the reference, and refuses to delete
+// an avatar that is still in use.
 //
-//   PUT    /api/profile/avatar   { source }   a paste link, a paste slug, or an https://openvibe.media/… image
+//   PUT    /api/profile/avatar   { source }   a paste link, a paste slug, or any https picture address
 //   DELETE /api/profile/avatar                back to the generated initial
 //   GET    /avatar/:username[?s=96]           public, cacheable: 302 to the picture, or an SVG initial.
 //                                             Works in any <img> on any site with no API call. With ?s, a media
@@ -21,20 +24,23 @@ const MEDIA_HOST = 'openvibe.media';
 const PASTE_HOSTS = new Set(['openvibe.community', 'openvibe.live', 'openvibe.media', 'pastes.openvibe.tools']);
 const SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{1,80}$/;
 
-/** '' → clear · a paste link or slug → its screenshot on openvibe.media · an openvibe.media https URL → itself · else null */
+/**
+ * '' → clear · a paste link or slug → its screenshot on openvibe.media · any https picture → itself.
+ * Every non-empty answer is a *source*: Media copies it into the person's own avatar object before it is stored
+ * (see media/ingest), so the address kept here is never the source's.
+ */
 function normalizeAvatar(input) {
     const raw = String(input == null ? '' : input).trim();
     if (!raw) return { url: null };
     if (raw.length > 500) return { error: 'That link is too long' };
     if (SLUG_RE.test(raw)) return { url: `https://${MEDIA_HOST}/p/${raw}/screenshot`, paste: raw };
-    let u; try { u = new URL(raw); } catch { return { error: 'Use a paste link or an openvibe.media image address' }; }
+    let u; try { u = new URL(raw); } catch { return { error: 'Use a paste link or an https picture address' }; }
     if (u.protocol !== 'https:' || u.username || u.password) return { error: 'Avatars must be https addresses' };
     const host = u.hostname.toLowerCase();
     const m = /^\/p\/([A-Za-z0-9][A-Za-z0-9_-]{1,80})(?:\/(?:screenshot|raw)?)?\/?$/.exec(u.pathname);
     if (m && PASTE_HOSTS.has(host)) return { url: `https://${MEDIA_HOST}/p/${m[1]}/screenshot`, paste: m[1] };
-    if (host === MEDIA_HOST) { u.hash = ''; return { url: u.toString() }; }
-    // Anywhere else on the web: never stored, never served. openvibe.media fetches it once and keeps its own copy.
-    return { ingest: u.toString() };
+    if (host === MEDIA_HOST) { u.hash = ''; }
+    return { url: u.toString() };
 }
 
 /**
@@ -64,6 +70,11 @@ async function verifyImage(url, fetchImpl = fetch) {
     } catch { return { ok: false, error: 'openvibe.media did not answer in time; try again' }; }
 }
 
+/** Only our own picture host is ever served, whatever an old row holds (a legacy off-network address is never redirected to). */
+function isMediaUrl(url) {
+    try { return new URL(String(url)).hostname.toLowerCase() === MEDIA_HOST; } catch { return false; }
+}
+
 const initialSvg = (name, size) => {
     const s = Math.max(16, Math.min(512, parseInt(size, 10) || 96));
     const ch = (String(name || '?').match(/[A-Za-z0-9]/) || ['?'])[0].toUpperCase();
@@ -90,30 +101,49 @@ function createAvatarService({ db, config, requireAuth, selfToken = () => null, 
             body: JSON.stringify({ openvibenetwork_id: userId, username, avatar_url: url }), signal: AbortSignal.timeout(5000) }).catch(() => {});
     }
 
-    /** A picture from elsewhere on the web: openvibe.media fetches it safely, re-encodes it and keeps the copy. */
+    const mediaUrl = () => ((config.services && config.services.media && config.services.media.internalUrl) || 'http://127.0.0.1:4100').replace(/\/$/, '');
+
+    /**
+     * Any picture becomes this person's own avatar object: Media reads an openvibe.media source from local storage
+     * (reusing the person's own avatar as it is) and fetches anything else safely, re-encoding it. `product`/`ref`
+     * record the profile reference, which is what stops a cleanup deleting the picture that is in use.
+     */
     async function ingest(url, user) {
-        const media = (config.services && config.services.media && config.services.media.internalUrl) || 'http://127.0.0.1:4100';
         const auth = authHeaders('openvibe.media', 'media.avatar.ingest');
         if (!Object.keys(auth).length) return { ok: false, status: 503, error: 'Picture import is not configured on this server' };
         try {
-            const r = await fetch(`${media.replace(/\/$/, '')}/internal/avatar-ingest`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth },
+            const r = await fetch(`${mediaUrl()}/internal/avatar-ingest`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth },
                 // subject: the picture's owner on Media's object, in the network-wide id space (user_id is Network's own).
-                body: JSON.stringify({ url, user_id: user.id, username: user.username, subject: user.subject_id || null }), signal: AbortSignal.timeout(20000) });
+                body: JSON.stringify({ url, user_id: user.id, username: user.username, subject: user.subject_id || null, product: 'network', ref: String(user.id) }), signal: AbortSignal.timeout(20000) });
             const j = await r.json().catch(() => ({}));
             if (!r.ok || !j.ok) return { ok: false, status: r.status === 404 ? 503 : 422, error: j.error || 'That picture could not be imported' };
             const back = normalizeAvatar(j.url);            // trust nothing: the answer must itself be an openvibe.media address
-            if (!back.url) return { ok: false, status: 502, error: 'Picture import returned an unexpected address' };
-            return { ok: true, url: back.url, slug: j.slug };
+            if (!back.url || !/^\/o\/med_/.test(new URL(back.url).pathname)) return { ok: false, status: 502, error: 'Picture import returned an unexpected address' };
+            return { ok: true, url: back.url, slug: j.slug, reused: !!j.reused };
         } catch { return { ok: false, status: 504, error: 'openvibe.media did not answer in time; try again' }; }
     }
 
-    /** The one place an avatar changes. `origin` names who asked ('network', 'live'), so we never echo a push back. */
-    async function apply(userId, username, url, origin) {
+    /** The profile no longer points at its picture: Media drops the reference so the object can be deleted normally. */
+    async function release(userId) {
+        const auth = authHeaders('openvibe.media', 'media.avatar.release');
+        if (!Object.keys(auth).length) return;
+        try {
+            await fetch(`${mediaUrl()}/internal/avatar-release`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth },
+                body: JSON.stringify({ product: 'network', ref: String(userId) }), signal: AbortSignal.timeout(5000) });
+        } catch { /* best effort: the object stays protected rather than lost */ }
+    }
+
+    /**
+     * The one place an avatar changes. `origin` names who asked ('network', 'live'), so we never echo a push back
+     * — unless the stored address changed (a site sent a paste screenshot that is now its own avatar object, and
+     * the site must learn the new address, or it would keep pointing at the source).
+     */
+    async function apply(userId, username, url, origin, { pushBack = false } = {}) {
         const before = (await getUrl.get(userId) || {}).avatar_url || null;
         if (before === url) return false;
         await setUrl.run(url, userId);
         try { await db.prepare('INSERT INTO audit_log (user_id, action, details, ip) VALUES (?, ?, ?, ?)').run(userId, 'avatar_change', JSON.stringify({ from: before, to: url, origin }), null); } catch { /* audit is best effort */ }
-        if (origin !== 'live') pushToSites(userId, username, url);
+        if (origin !== 'live' || pushBack) pushToSites(userId, username, url);
         return true;
     }
 
@@ -121,35 +151,50 @@ function createAvatarService({ db, config, requireAuth, selfToken = () => null, 
     api.put('/', requireAuth, async (req, res) => {
         const n = normalizeAvatar(req.body && (req.body.source ?? req.body.avatar_url ?? req.body.url));
         if (n.error) return res.status(400).json({ error: n.error });
-        if (n.ingest) {
-            const got = await ingest(n.ingest, req.user);
+        let url = n.url;
+        if (url) {
+            // Always a copy in the person's own avatar object, whatever the source (a paste screenshot, another
+            // product's object, a picture elsewhere). Media reuses the picture when it is already theirs.
+            const got = await ingest(url, req.user);
             if (!got.ok) return res.status(got.status || 422).json({ error: got.error });
-            n.url = got.url; n.paste = got.slug;
-        } else if (n.url) { const v = await verifyImage(n.url); if (!v.ok) return res.status(422).json({ error: v.error }); }
-        await apply(req.user.id, req.user.username, n.url, 'network');
-        res.json({ ok: true, avatar_url: n.url, paste: n.paste || null });
+            url = got.url; n.paste = got.slug || n.paste;
+        }
+        await apply(req.user.id, req.user.username, url, 'network');
+        res.json({ ok: true, avatar_url: url, paste: n.paste || null });
     });
-    api.delete('/', requireAuth, async (req, res) => { await apply(req.user.id, req.user.username, null, 'network'); res.json({ ok: true, avatar_url: null }); });
+    api.delete('/', requireAuth, async (req, res) => {
+        await apply(req.user.id, req.user.username, null, 'network');
+        await release(req.user.id);
+        res.json({ ok: true, avatar_url: null });
+    });
 
     const pub = express.Router();
     pub.get('/:username', async (req, res) => {
         const name = String(req.params.username || '').replace(/\.(png|jpg|svg)$/i, '').slice(0, 64);
         const row = await byName.get(name);
         res.set({ 'Cache-Control': 'public, max-age=300, stale-while-revalidate=86400', 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin' });
-        const ok = row && row.avatar_url && !!normalizeAvatar(row.avatar_url).url;
+        const ok = row && row.avatar_url && isMediaUrl(row.avatar_url) && !!normalizeAvatar(row.avatar_url).url;
         if (ok) return res.redirect(302, sizedAvatar(row.avatar_url, req.query.s));
         res.type('image/svg+xml').send(initialSvg(row ? row.username : name, req.query.s));
     });
 
-    /** Live changed someone's picture: adopt it (same rules, no verification round trip for our own media host). */
+    /** Live changed someone's picture: adopt it into an avatar object, and tell that site the new address if it changed. */
     async function fromSite(body) {
         const id = parseInt(body && body.user_id, 10); if (!id) return { status: 400, error: 'user_id required' };
-        const n = normalizeAvatar(body.avatar_url); if (n.error || n.ingest) return { status: 422, error: n.error || 'Sites report openvibe.media pictures only' };
-        const u = await db.prepare('SELECT username FROM users WHERE id = ?').get(id); if (!u) return { status: 404, error: 'user not found' };
-        return { status: 200, changed: await apply(id, u.username, n.url, String(body.origin || 'live')) };
+        const n = normalizeAvatar(body.avatar_url); if (n.error) return { status: 422, error: n.error };
+        if (n.url && new URL(n.url).hostname !== MEDIA_HOST) return { status: 422, error: 'Sites report openvibe.media pictures only' };
+        const u = await db.prepare('SELECT username, subject_id FROM users WHERE id = ?').get(id); if (!u) return { status: 404, error: 'user not found' };
+        let url = n.url; let pushBack = false;
+        if (url) {
+            const got = await ingest(url, { id, username: u.username, subject_id: u.subject_id });
+            if (!got.ok) return { status: got.status || 422, error: got.error };
+            pushBack = got.url !== n.url;
+            url = got.url;
+        }
+        return { status: 200, changed: await apply(id, u.username, url, String(body.origin || 'live'), { pushBack }), avatar_url: url };
     }
 
-    return { api, pub, fromSite, apply, log };
+    return { api, pub, fromSite, apply, ingest, release, log };
 }
 
 module.exports = { createAvatarService, normalizeAvatar, verifyImage, initialSvg };
