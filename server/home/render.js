@@ -471,11 +471,22 @@ function sendHome(req, res, { releaseId = '' } = {}) {
 // described an unrelated "Openvibe" mobile app): the network, what is on it, and what it is not.
 const llmsSummary = () => `OpenVibe (openvibe.network, made by OpenVibers) is an open source, community-run network of websites that share one free account: ${OPEN.map((site) => site.name.toLowerCase()).join(', ')}. It is not the Openvibe mobile social-media aggregator app, which is unrelated.`;
 
+// The person's own account ID (the canonical usr_… subject id): what apps and robots ask for.
+// GET /api/auth/me answers it for the signed-in person; a person reads it on their account page (/my).
+const ACCOUNT_ID_LINK = {
+    title: 'Your account ID: GET /api/auth/me → user.subject_id',
+    url: 'https://openvibe.network/api/auth/me',
+    note: 'the caller\'s own usr_… id: the account id apps and robots ask for. A person sees their own on their account page (openvibe.network/my); nobody else can read it',
+};
+const ACCOUNT_ID_TEXT = 'GET /api/auth/me with a person\'s token answers { user: { subject_id: "usr_…" } }. That usr_… value is the person\'s OpenVibe account ID: what apps and robots ask for when they ask for someone\'s OpenVibe account ID. A person sees their own on their account page (https://openvibe.network/my); nobody else can read it.';
+
 function llmsTxt() {
     const { catalog } = toolsCatalog.peek();
     return seo.llmsTxt({ name: 'OpenVibe Network', summary: llmsSummary(), markdown: true, base: 'https://openvibe.network',
         sections: [
             { title: 'Sites', links: OPEN.map((site) => ({ title: siteName(site), url: `https://${site.host}/`, note: site.what })) },
+            // A person's account ID: the endpoint an agent needs when it works for someone.
+            { title: 'Your account ID', links: [ACCOUNT_ID_LINK] },
             // The JSON an agent came for is a main section, not something to skip (AGT-5 review).
             { title: 'Machine-readable', links: [
                 { title: 'Open stats (JSON): every site\'s numbers', url: 'https://openvibe.network/api/v1/stats' },
@@ -506,7 +517,8 @@ const LLMS_FULL_MAX_BYTES = 512 * 1024;
 function llmsFullTxt({ baseUrl = 'https://openvibe.network' } = {}) {
     const pages = require('../seo/routes').PAGES.filter((page) => LLMS_PAGE_TEXT[page.path])
         .map((page) => ({ title: LLMS_PAGE_TITLE[page.path], url: page.path, text: LLMS_PAGE_TEXT[page.path]() }));
-    return seo.llmsFull({ site: 'OpenVibe Network', summary: llmsSummary(), base: baseUrl, maxBytes: LLMS_FULL_MAX_BYTES, sections: [{ title: 'Pages', pages }] });
+    return seo.llmsFull({ site: 'OpenVibe Network', summary: llmsSummary(), base: baseUrl, maxBytes: LLMS_FULL_MAX_BYTES,
+        sections: [{ title: 'Pages', pages }, { title: 'Your account ID', url: ACCOUNT_ID_LINK.url, body: ACCOUNT_ID_TEXT }] });
 }
 
 module.exports = { SAME_AS, withSameAs, sendHome, render, llmsTxt, llmsFullTxt, LLMS_FULL_MAX_BYTES, INTENTS };

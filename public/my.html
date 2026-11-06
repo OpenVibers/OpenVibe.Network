@@ -120,6 +120,16 @@
 
     <!-- Profile Section -->
     <div class="section active" id="sec-profile">
+        <!-- Account ID (the person's own usr_… subject id): what apps and robots ask for. Kit components only:
+             the kit's snippet (a monospace value) and the kit's copy button (data-ovk-copy, /shared/kit-web.js). -->
+        <div class="card" id="account-id-card">
+            <h3><span class="icon"><i class="fa-solid fa-id-card"></i></span> Account ID</h3>
+            <p>For apps and robots that ask for your OpenVibe account ID. It is yours alone: nobody else can read it.</p>
+            <div class="ovk-snip">
+                <button type="button" class="ovk-icon-btn" data-ovk-copy="#account-id-value" hidden aria-label="Copy your account ID" title="Copy your account ID"><svg class="ovk-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
+                <pre tabindex="0" id="account-id-value"><code>Loading…</code></pre>
+            </div>
+        </div>
         <div class="card" id="avatar-card">
             <h3><span class="icon"><i class="fa-solid fa-user-circle"></i></span> Avatar</h3>
             <p class="muted" style="margin-top:0">One picture for every OpenVibe site. It always lives on <b>openvibe.media</b>. Paste the link to one of your image pastes (from <a href="https://openvibe.community/my" target="_blank" rel="noopener">your pastes</a>), or any picture link: we fetch it once, clean it, and keep our own copy.</p>
@@ -514,6 +524,8 @@
 <script src="/shared/navbar.js"></script>
 <script src="/shared/notification-ui.js"></script>
 <script src="/shared/account-switcher.js"></script>
+<!-- The kit's behaviour in the page: the copy button on the Account ID (data-ovk-copy). -->
+<script src="/shared/kit-web.js" defer></script>
 
 <script src="/js/my/core.js" defer></script>
 <script src="/js/my/tools.js" defer></script>

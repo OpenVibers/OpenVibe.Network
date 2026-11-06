@@ -42,6 +42,7 @@ async function loadUser() {
             loadQrSignin(data.features);
             renderHeader(data.user);
             renderProfile(data.user);
+            renderAccountId(data.user);
             loadThemes(); loadThemeSubmissions();
             loadAccounts();
             renderMerge();
@@ -144,6 +145,16 @@ function renderProfile(user) {
         const saveButton = document.querySelector('#profile-form .btn-primary');
         if (saveButton) saveButton.textContent = 'Save Changes';
     }
+}
+
+// ── Account ID: the person's own subject id (usr_…) ─────────────────────────────
+// The id apps and robots ask for. It comes from GET /api/auth/me for the signed-in
+// person only, so the page shows nobody else's.
+function renderAccountId(user) {
+    const value = document.getElementById('account-id-value');
+    if (!value) return;
+    const id = String((user && user.subject_id) || '').trim();
+    value.textContent = id || 'Not available yet.';
 }
 
 // Profile form
