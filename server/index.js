@@ -457,6 +457,9 @@ app.get('/internal/integrations/github-token', require('./identity/principals').
 // Platform blocks (WS-E task 5): a person's own list, and who blocked whom for Chat and Community
 // (network.blocks.read, service token only). Every change is network.block.changed (server/identity/blocks.js).
 app.use('/api/v1/me/blocks', rateLimit({ windowMs: 60_000, max: 60 }), require('./identity/blocks').userRouter(requireAuth));
+// The Exchange remake's uncensored tier: the account's own 18+ confirmation (server/identity/adult.js). AI reads it
+// through /internal/identity/adult; this is the person's side, on the account hub (/my, Content).
+app.use('/api/v1/me/adult', rateLimit({ windowMs: 60_000, max: 20 }), require('./identity/adult').userRouter({ requireAuth }));
 // Account merge (roadmap WS-B task 5, ADR-029): the person folds a second account into this one; staff
 // (staff.identity.merge) for account recovery, with a reason.
 {
