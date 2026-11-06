@@ -219,6 +219,10 @@ function applyAnonModeUI(user) {
     }
     const currentName = document.getElementById('theme-current-name');
     if (currentName) currentName.textContent = 'Anon sessions do not sync themes';
+
+    // An anonymous session has no account to name: no Account ID card.
+    const idCard = document.getElementById('account-id-card');
+    if (idCard) idCard.hidden = true;
 }
 
 // Small helpers (my.html has no global toast/esc of its own).

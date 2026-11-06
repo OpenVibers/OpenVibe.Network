@@ -29,6 +29,43 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 - **User modules** — versioned per-person preferences and summaries in namespaces owned by services (openvibe-contracts `manifests/namespaces`); see [User modules](#user-modules).
 - **The Dock's state** — the little floating surface every OpenVibe site draws (your agent, your chats, your activity) follows the person across every domain, because `localStorage` is per site and the state lives here instead. `GET /api/v1/me/dock` and `PUT /api/v1/me/dock` (`network.dock-state@1`, `network.dock-result@1`, contracts 0.251.0; `server/dock/`). See [docs/dock.md](docs/dock.md).
 
+## Your account ID
+
+Every person on OpenVibe has one canonical id, `usr_…`: the **account ID**. It is what apps,
+robots and services ask for when they ask for "your OpenVibe account ID", and it is the id every
+OpenVibe service keys a person's data by.
+
+A person sees their own on their account page (`https://openvibe.network/my`, Profile → Account
+ID): the id in a chip with a Copy button. It is nobody else's — the API answers it for the
+signed-in person only.
+
+### API
+
+- `GET /api/auth/me` — the signed-in person's own account. `user.subject_id` is the account ID
+  (`usr_…`); an account that has none gets one minted on its first call.
+
+```bash
+curl -s https://openvibe.network/api/auth/me \
+  -H "Authorization: Bearer $OV_TOKEN" | jq -r '.user.subject_id'
+```
+
+`OV_TOKEN` is that person's own access token (the `ov_token` cookie, an OAuth access token, or an
+`Authorization: Bearer` header). The answer carries the caller's own id and nobody else's.
+
+### With openvibe-sdk
+
+The SDK has no client for `GET /api/auth/me`, so a service that already holds the person's token
+reads the id from the token's claims:
+
+```js
+const { verifyUserToken } = require('openvibe-sdk/auth');
+const claims = await verifyUserToken(token, { jwks: 'https://openvibe.network/api/.well-known/jwks' });
+claims.subject_id;   // 'usr_…' — the account ID
+```
+
+`openvibe-sdk/identity` goes the other way: `resolve({ subjectId })` turns an account ID into the
+person's username and picture (a service token, `identity.subject.resolve`).
+
 ---
 
 ## Owns
