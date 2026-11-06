@@ -9,8 +9,10 @@
 // ═══════════════════════════════════════════════════════════════
 
 const TABS = {
-    // What people said to you or about you.
-    mentions: { types: ['MENTION', 'CONTENT_REPLY', 'CONTENT_COMMENT', 'DIRECT_MESSAGE', 'WHISPER'] },
+    // What people said to you or about you, and what they shared with you (the share kinds,
+    // design 2026-11-06).
+    mentions: { types: ['MENTION', 'CONTENT_REPLY', 'CONTENT_COMMENT', 'DIRECT_MESSAGE', 'WHISPER',
+        'share.added', 'share.access_requested', 'share.transfer.requested', 'share.transfer.answered'] },
     live: { categories: ['stream'] },
     // Deal, coupon, trade and watch alerts: the service category.
     alerts: { categories: ['service'] },

@@ -853,6 +853,42 @@ Reporting a vulnerability: [SECURITY.md](SECURITY.md). The rules the code keeps:
   `ADMIN_PASSWORD`, `NETWORK_EVENTS_SECRET`, the webhook secrets and `GITHUB_TOKEN` live in
   `/etc/openvibe/network.env` (0600), by name only.
 
+## Sharing
+
+The sharing system (design 2026-11-06) lets a person share an item on one site with another person.
+The owning service stays the authority on access; Network keeps the index and the list.
+
+### The events
+
+Every share event arrives over OpenVibe.Events at `POST /internal/events` and is handled in
+`server/sharing/events.js`:
+
+| Event | What Network does |
+|-------|-------------------|
+| `share.granted` | the item joins that person's list, and they get the notification `share.added` |
+| `share.revoked` | the item leaves that person's list |
+| `share.transfer.requested` | the offer waits for the recipient, who gets `share.transfer.requested` |
+| `share.transfer.accepted` | the recipient owns it now; the old owner gets `share.transfer.answered` |
+| `share.transfer.declined` | nothing changed; the old owner gets `share.transfer.answered` |
+| `share.access.requested` | the owner gets `share.access_requested` |
+
+The payloads carry ids only (a `{ service, kind, id }` ref and a subject), never a title. The name of
+an item and its own link come from the owning service's share API, `GET /api/v1/<kind>/<id>/share`,
+asked on the person's behalf; when the service does not answer, the item is shown as its site and its
+kind instead.
+
+### The routes
+
+| Route | What it answers |
+|-------|-----------------|
+| `GET /shared` | the page: every item shared with the signed-in person, on every site |
+| `GET /api/v1/shared-with-me` | the same list as JSON, with the pending transfers and their Accept and Decline links |
+| `GET /api/v1/share/suggestions` | the people this person has shared with (the share picker's suggestions): from their own history only, at most 20 |
+| `GET /api/v1/share/name-check?name=` | one @name check for the share picker, thirty a minute for the person |
+
+The event names and the payload shapes are Contracts share.v1, which is still being written; this code
+waits for that release before it ships.
+
 ## License
 
 MIT (`license` in [package.json](package.json)).
