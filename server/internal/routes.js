@@ -53,6 +53,8 @@ router.post('/identity/resolve-batch', principals.guard('identity.subject.resolv
 // Writing the legacy map is part of identity resolution (ADR-001; identity.subject.resolve takes
 // identity.legacy-identity-map@1). TODO(contracts): a narrower identity.legacy_map.write capability.
 router.post('/identity/legacy-map', principals.guard('identity.subject.resolve'), ownSourceSystem);
+// The Exchange remake's uncensored tier: AI asks whether an account confirmed it is 18+ (server/identity/adult.js).
+router.get('/identity/adult', principals.guard('identity.subject.resolve'), require('../identity/adult').internalAdult);
 router.use('/identity', require('../identity/internal-routes'));
 
 // ── Subject assertions (ADR-003, the 2026-11-06 amendment; plan H1) ───────────────────

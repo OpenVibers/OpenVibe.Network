@@ -142,3 +142,45 @@ function exportModules() {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
+
+// The Exchange remake's uncensored tier: the account's own 18+ confirmation (server/identity/adult.js). The flag is
+// read from the account, never inferred; withdrawing it takes effect at once.
+let adultWired = false, adultState = null;
+function renderAdult(state) {
+    adultState = state || { adult: false, confirmed_at: null };
+    const status = document.getElementById('adult-status');
+    const box = document.getElementById('adult-confirm-box');
+    const yes = document.getElementById('adult-confirm');
+    const no = document.getElementById('adult-withdraw');
+    if (!status || !box || !yes || !no) return;
+    status.textContent = adultState.adult
+        ? 'Confirmed ' + (adultState.confirmed_at ? 'on ' + new Date(adultState.confirmed_at).toLocaleDateString() : '') + '. Uncensored models are available on Exchange.'
+        : 'Not confirmed. Uncensored models are off for this account.';
+    box.checked = Boolean(adultState.adult);
+    yes.disabled = Boolean(adultState.adult);
+    no.hidden = !adultState.adult;
+}
+async function loadAdultSection() {
+    const box = document.getElementById('adult-confirm-box');
+    if (!box) return;
+    const msg = document.getElementById('adult-msg');
+    try { renderAdult(await apiFetch('/api/v1/me/adult')); }
+    catch { renderAdult({ adult: false, confirmed_at: null }); if (msg) msg.textContent = 'Could not read your account. Try again later.'; }
+    if (adultWired) return;
+    adultWired = true;
+    document.getElementById('adult-confirm').addEventListener('click', async () => {
+        if (!box.checked) { msg.textContent = 'Tick the box first.'; return; }
+        if (!confirm('This records on your account that you are 18 or older. Uncensored AI is for adults only, and the hard floor still applies. Continue?')) return;
+        try {
+            renderAdult(await apiFetch('/api/v1/me/adult', { method: 'PUT', body: JSON.stringify({ confirm: true }) }));
+            msg.textContent = 'Confirmed.';
+        } catch (e) { msg.textContent = e.message || 'Could not confirm.'; }
+    });
+    document.getElementById('adult-withdraw').addEventListener('click', async () => {
+        if (!confirm('Withdraw your 18+ confirmation? Uncensored models stop answering for this account at once.')) return;
+        try {
+            renderAdult(await apiFetch('/api/v1/me/adult', { method: 'DELETE' }));
+            msg.textContent = 'Withdrawn.';
+        } catch (e) { msg.textContent = e.message || 'Could not withdraw.'; }
+    });
+}
