@@ -815,6 +815,15 @@ const DEFAULT_GRANTS = [
     // else, so the grant is unscoped and the audience is Live's alone.
     ['codes', 'live.agent_stream.publish', 'openvibe.live', []],
     ['actor', 'live.agent_stream.publish', 'openvibe.live', []],
+    // The Agent Streams plan (S5, Contracts 0.303.0): Codes and Actor read the digest of the owner's Co-pilot
+    // room on OpenVibe.Chat (chat.agent_digest.read) and run a poll in it (chat.agent_poll.write), the audience
+    // openvibe.chat. They act for the person and for nobody else, so the grant is unscoped and the audience is
+    // Chat's alone. A node token names its owner in on_behalf_of, so a digest is the owner's room and never
+    // another person's: the grant gives the task's service the way in, not the room.
+    ['codes', 'chat.agent_digest.read', 'openvibe.chat', []],
+    ['actor', 'chat.agent_digest.read', 'openvibe.chat', []],
+    ['codes', 'chat.agent_poll.write', 'openvibe.chat', []],
+    ['actor', 'chat.agent_poll.write', 'openvibe.chat', []],
     // The Agent Streams plan (S3, Contracts 0.300.0): Codes, Actor and Live write the report of an agent session on
     // OpenVibe.Report (report.session.write, the audience openvibe.report). They act for the person and for nobody
     // else, so the grant is unscoped and the audience is Report's alone. A desk session on a person's own machine
