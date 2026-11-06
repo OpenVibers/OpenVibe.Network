@@ -522,6 +522,16 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/api/v1/offers', offerRouters.pub);
     app.use('/internal/resources', offerRouters.internal);
 }
+// Community AI offers (the design's "Offer to the network"; plan E4): Bot reports each machine's models, hours,
+// concurrency, credit price and audience; AI reads them whole to place only opted-in requests after verification.
+// Private by construction: no public route, owner required, network.registry.read to read, network.resource.report to write.
+{
+    const { guard } = require('./identity/principals');
+    app.use('/internal/ai/offers', require('./registry/ai-offers').routers({
+        guard: guard('network.resource.report'),
+        readGuard: guard('network.registry.read'),
+    }).internal);
+}
 // Network's authority resource index (ADR-048 section 3, capability network.resource.read): common.resource-summary@1
 // pages of the resources Network owns (projects, apps, node principals) for OpenVibe.Services' fan-out.
 {
@@ -735,6 +745,14 @@ require('./developer/confirmations').start(db);
     // the person it is talking with, and it counts down in the Dock's pill on every OpenVibe site. The service names
     // the person and writes the timer and nothing else (network.dock.timer.write, granted to Chat alone).
     app.use('/api/v1/people', require('./dock').serviceRouter({ dock }));
+    // The Locker key directory (design 2026-11-06, LOCKER-DESIGN-2026-11-06.md §4): my public keys, my
+    // wrapped private keys and anybody's public keys (server/locker/keys.js). Mounted after the Dock's
+    // service route, which writes the timer of one person.
+    const locker = require('./locker/keys');
+    // Writes come from Network itself or from an OpenVibe site's exact origin (ov-locker.js), never from *.openvibe.tools.
+    const isFirstPartyOrigin = (o) => { const n = normalizeOriginForCors(o); return !!n && buildAllowedOriginsSet().has(n); };
+    app.use('/api/v1/me/keys', locker.meRouter(requireAuth, { notifications: notificationService, isFirstPartyOrigin }));
+    app.use('/api/v1/people', locker.peopleRouter(requireAuth));
 }
 
 // The consent registry (L24, 2026-10-31; contracts 0.256.0): every use of a person's content or likeness for AI or

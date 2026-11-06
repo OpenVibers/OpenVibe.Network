@@ -96,6 +96,8 @@ const DEFAULT_GRANTS = [
     // pastes into Community on behalf of its users and its AI jobs.
     ['community', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['community', 'media.object.upload', 'openvibe.media', ['community']],
+    // VIS-6: Community asks Vision to sort an image paste before it can be public.
+    ['community', 'vision.image.review', 'openvibe.vision', []],
     // The sharing pilot (2026-11-06, Community #261): a screenshot is a private Media object served only through
     // Community's checked proxy (read), the old unlisted copy is deleted after the move (delete), and share notices go
     // through Network's inbox (push). New defaults, never revoked: boot inserts them.
@@ -113,6 +115,8 @@ const DEFAULT_GRANTS = [
     // its objects under the live namespace (VOD/clip/thumbnail uploads, reads, lists, deletes); OpenRestream uploads the
     // recordings and thumbnails it produces there too.
     ...['media.object.read', 'media.object.list', 'media.object.upload', 'media.object.delete'].map(cap => ['live', cap, 'openvibe.media', ['live']]),
+    // VIS-6: Live's auto-clip text guard reports a category-3 AI text to Vision.
+    ['live', 'vision.image.review', 'openvibe.vision', []],
     // media-hub: a record-only stream records into OpenVibe.Video's tenant as its owner's private video (plan 2026-10-22 §3 D1).
     ['openre', 'media.object.upload', 'openvibe.media', ['live', 'media-hub']],
     // Compatibility register C-71: Inventory (Workshop badge images) and MediaHub (its library) reach Media with their
@@ -161,6 +165,8 @@ const DEFAULT_GRANTS = [
     ['games', 'events.subscription.manage', 'openvibe.events', []],
     // Media and Tools subscribe to network.user.token_valid_after too (their sign-in refuses older tokens).
     ['media', 'events.subscription.manage', 'openvibe.events', []],
+    // VIS-6: Media asks Vision to review a visible image object before serving it.
+    ['media', 'vision.image.review', 'openvibe.vision', []],
     ['tools', 'events.subscription.manage', 'openvibe.events', []],
     // Mod principals (ADR-013, WS-M task 3): Games registers its mod installs and changes their grants.
     ['games', 'mods.grant.manage', SELF_AUDIENCE, []],
@@ -468,6 +474,15 @@ const DEFAULT_GRANTS = [
     // developer API keys a caller shows it (POST /internal/api-keys/exchange). Both are behind
     // NETWORK_DEV_API_KEYS; the capability is first-party and never grantable to apps.
     ['ai', 'network.project.read', SELF_AUDIENCE, []],
+    // Community AI offers (Node's "Offer to the network", plan E4): AI reads the full internal resource list, including
+    // each user-owned offer's owner, to place only opted-in requests on verified machines. Run and Bot hold the same read.
+    ['ai', 'network.registry.read', SELF_AUDIENCE, []],
+    // A community AI offer's "followers" audience: AI checks whether the requester follows the offer's owner (the
+    // owner's channel) before placing a run. Read-only, like Live's.
+    ['ai', 'network.follows.read', SELF_AUDIENCE, []],
+    // Self-dealing: a community run whose requester is the offer owner (or an account merged into it) earns nothing.
+    // AI resolves both subjects to the survivor before it records the seller's ledger.
+    ['ai', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // WS-N task 12: ovhost incident / maintenance post to the status page.
     ['host', 'network.status.incident', SELF_AUDIENCE, []],
     // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples
@@ -551,6 +566,8 @@ const DEFAULT_GRANTS = [
     // WS-K task 8: Wiki's VIP spaces and pages (Wiki server/integrations/vip.js).
     ['wiki', 'vip.resource.policy.evaluate', 'openvibe.vip', []],
     ['live', 'vip.entitlement.check', 'openvibe.vip', []],
+    // Tips' members-only posts (Tips #194): the post text only for a member of the post's tier.
+    ['tips', 'vip.entitlement.check', 'openvibe.vip', []],
     ['community', 'events.subscription.manage', 'openvibe.events', []],
     ['community', 'events.event.read', 'openvibe.events', []],
     ['community', 'events.event.publish', 'openvibe.events', []],   // community.* events (Community server/events.js, 2026-09-24)
@@ -663,6 +680,12 @@ const DEFAULT_GRANTS = [
     // its account-event subscriptions, and the export/deletion pair above. It has no public records, so no Search grant.
     ['vision', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
     ['vision', 'events.subscription.manage', 'openvibe.events', []],
+    // VIS-6: the operator review, its evidence view and the decision that releases Media's evidence hold.
+    // The media namespaces are the first-party tenants whose objects can be reviewed.
+    ['vision', 'media.object.review.view', 'openvibe.media', ['live', 'community', 'media']],
+    ['vision', 'media.object.review.decide', 'openvibe.media', ['live', 'community', 'media']],
+    ['vision', 'vision.review.read', 'openvibe.vision', []],
+    ['vision', 'vision.review.decide', 'openvibe.vision', []],
     // Vision publishes vision.result.ready and vision.alert (VIS-5, contracts manifests/services/vision.json): without this
     // its outbox retried every event (found 11-02 with Events' sources check).
     ['vision', 'events.event.publish', 'openvibe.events', []],
@@ -670,8 +693,11 @@ const DEFAULT_GRANTS = [
     ['vision', 'network.notifications.push', SELF_AUDIENCE, ['vision']],
     // OpenVibe.Exchange (contracts 0.235.0): its public listings in Search through the owner API (owner exchange), and
     // its account-event subscriptions; its export/deletion pair is above. v1 writes no grant and runs no sandbox code.
+    // The 2026-11-06 remake makes Exchange the network's AI front: chat and Try it run ai.complete on a person's
+    // behalf (on_behalf_of), and the catalog/usage reads are public.
     ['exchange', 'search.document.write', 'openvibe.search', []],
     ['exchange', 'events.subscription.manage', 'openvibe.events', []],
+    ['exchange', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
     // OpenVibe.Fun (contracts 0.236.0): its public quests and plans in Search through the owner API (owner fun), and
     // its account-event subscriptions; its export/deletion pair is above. Live and Chat are public reads and Today
     // uses the viewer's own token, so it holds no Live, Chat or Today grant. The optional OpenCoin grants
@@ -750,6 +776,8 @@ const DEFAULT_GRANTS = [
     // (X-OV-Subject): the person's "Designs" project and its sites, and the deploy of the page.
     ['design', 'space.site.manage', 'openvibe.space', []],
     ['design', 'space.deploy.create', 'openvibe.space', []],
+    // Games plays the AI duel itself: two pinned local offers through ai.generate (plan §6).
+    ['games', 'ai.run.create', 'openvibe.ai', ['ai.generate']],
     // Games submits each AI duel as a Bench task, two priced seat entries, and one automatic outcome.
     ...['bench.task.create', 'bench.round.create', 'bench.entry.create', 'bench.judgement.cast']
         .map((cap) => ['games', cap, 'openvibe.bench', []]),
