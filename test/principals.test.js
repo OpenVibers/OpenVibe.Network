@@ -391,6 +391,12 @@ const server = http.createServer(app);
     // Plan T5 (Wave 9): Tips' chat adapter mints a token for 'chat.message.send chat.event.publish' on
     // openvibe.chat with its own service token (OpenVibe.Tips server/delivery/chat.js); without both rows
     // TIPS_CHAT_ADAPTER=chat can never deliver a paid effect.
+    {
+        // Tips' members-only posts ask VIP whether the reader is a member of the post's tier.
+        const tv = await token({ client_id: 'tips', client_secret: 'tips-secret', audience: 'openvibe.vip' });
+        assert.strictEqual(tv.status, 200, 'Tips can get a VIP token: ' + JSON.stringify(tv.body));
+        assert.ok(String(tv.body.scope || '').split(' ').includes('vip.entitlement.check'), 'and it carries vip.entitlement.check');
+    }
     const tc = await token({ client_id: 'tips', client_secret: 'tips-secret', audience: 'openvibe.chat' });
     assert.strictEqual(tc.status, 200, JSON.stringify(tc.body));
     assert.deepStrictEqual(tc.body.scope.split(' '), ['chat.event.publish', 'chat.message.send'], "Tips delivers paid chat effects through Chat's ingress");
