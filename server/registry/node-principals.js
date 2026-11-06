@@ -32,7 +32,7 @@ const crypto = require('crypto');
 const express = require('express');
 const { ids, http, serviceAuth, validate, assertValid } = require('openvibe-contracts');
 const { BOOTSTRAP_CELL, RegistryError } = require('./cells');
-const { TOKEN_TTL_S, SELF_AUDIENCE } = require('../identity/principals');
+const { TOKEN_TTL_S, SELF_AUDIENCE, NODE_GRANTS } = require('../identity/principals');
 const eventRelay = require('../developer/event-relay');
 
 const CODE_TTL_MS = 10 * 60 * 1000;
@@ -393,13 +393,22 @@ async function issueNodeToken(db, { clientId, clientSecret, audience, privateKey
     // Connect (openvibe.website) binds a share to one machine and checks the node token at every tunnel hello (ADR-057
     // decision 4, CON-4). The token carries no capability: Connect authorises the node by its own share binding.
     const anyNode = p.owner_kind === 'user' && NODE_WIDE_AUDIENCES.includes(aud);
-    if (aud !== SELF_AUDIENCE && !anyNode && !(p.paired_by_service && aud === `openvibe.${p.paired_by_service}`)) {
-        return { status: 400, body: { error: 'invalid_scope', error_description: `a node token is for ${SELF_AUDIENCE}${p.paired_by_service ? ` or openvibe.${p.paired_by_service}` : ''}${p.owner_kind === 'user' ? `, or ${NODE_WIDE_AUDIENCES.join(', ')}` : ''}` } };
+    // The Agent Streams plan (S1, Contracts 0.298.0): the desk publishes the person's agent stream on OpenVibe.Live, so
+    // a person's machine may ask for a token for openvibe.live that carries live.agent_stream.publish and names its
+    // owner (on_behalf_of). It is the owner's stream; a machine without an owner (a platform one) gets nothing.
+    const nodeCaps = p.owner_kind === 'user' && p.owner_subject ? NODE_GRANTS.filter(([a]) => a === aud).map(([, c]) => c) : [];
+    if (aud !== SELF_AUDIENCE && !anyNode && !nodeCaps.length && !(p.paired_by_service && aud === `openvibe.${p.paired_by_service}`)) {
+        const audiences = [SELF_AUDIENCE, ...(p.paired_by_service ? [`openvibe.${p.paired_by_service}`] : []),
+            ...(p.owner_kind === 'user' ? [...NODE_WIDE_AUDIENCES, ...NODE_GRANTS.map(([a]) => a)] : [])];
+        return { status: 400, body: { error: 'invalid_scope', error_description: `a node token is for ${audiences.join(', ')}` } };
     }
     const iat = Math.floor(now / 1000);
     const claims = {
         iss: issuer, sub: `node:${p.id}`, actor_type: 'node', aud: [aud],
-        cap: aud === SELF_AUDIENCE ? ['network.node.self.manage'] : [],
+        cap: aud === SELF_AUDIENCE ? ['network.node.self.manage'] : nodeCaps,
+        // The person the machine acts for, on the audiences where it acts for them (the Agent Streams plan's Live
+        // token): Live reads the owner of an agent stream from it. Other audiences name nobody.
+        ...(nodeCaps.length && p.owner_subject ? { on_behalf_of: p.owner_subject } : {}),
         ...(p.owner_kind === 'project' && p.project_id ? { project_id: p.project_id } : {}),
         iat, exp: iat + TOKEN_TTL_S, jti: `tok_${crypto.randomBytes(12).toString('hex')}`,
     };

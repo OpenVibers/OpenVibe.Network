@@ -477,6 +477,15 @@ const DEFAULT_GRANTS = [
     // developer API keys a caller shows it (POST /internal/api-keys/exchange). Both are behind
     // NETWORK_DEV_API_KEYS; the capability is first-party and never grantable to apps.
     ['ai', 'network.project.read', SELF_AUDIENCE, []],
+    // Community AI offers (Node's "Offer to the network", plan E4): AI reads the full internal resource list, including
+    // each user-owned offer's owner, to place only opted-in requests on verified machines. Run and Bot hold the same read.
+    ['ai', 'network.registry.read', SELF_AUDIENCE, []],
+    // A community AI offer's "followers" audience: AI checks whether the requester follows the offer's owner (the
+    // owner's channel) before placing a run. Read-only, like Live's.
+    ['ai', 'network.follows.read', SELF_AUDIENCE, []],
+    // Self-dealing: a community run whose requester is the offer owner (or an account merged into it) earns nothing.
+    // AI resolves both subjects to the survivor before it records the seller's ledger.
+    ['ai', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // WS-N task 12: ovhost incident / maintenance post to the status page.
     ['host', 'network.status.incident', SELF_AUDIENCE, []],
     // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples
@@ -687,8 +696,11 @@ const DEFAULT_GRANTS = [
     ['vision', 'network.notifications.push', SELF_AUDIENCE, ['vision']],
     // OpenVibe.Exchange (contracts 0.235.0): its public listings in Search through the owner API (owner exchange), and
     // its account-event subscriptions; its export/deletion pair is above. v1 writes no grant and runs no sandbox code.
+    // The 2026-11-06 remake makes Exchange the network's AI front: chat and Try it run ai.complete on a person's
+    // behalf (on_behalf_of), and the catalog/usage reads are public.
     ['exchange', 'search.document.write', 'openvibe.search', []],
     ['exchange', 'events.subscription.manage', 'openvibe.events', []],
+    ['exchange', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
     // OpenVibe.Fun (contracts 0.236.0): its public quests and plans in Search through the owner API (owner fun), and
     // its account-event subscriptions; its export/deletion pair is above. Live and Chat are public reads and Today
     // uses the viewer's own token, so it holds no Live, Chat or Today grant. The optional OpenCoin grants
@@ -767,6 +779,8 @@ const DEFAULT_GRANTS = [
     // (X-OV-Subject): the person's "Designs" project and its sites, and the deploy of the page.
     ['design', 'space.site.manage', 'openvibe.space', []],
     ['design', 'space.deploy.create', 'openvibe.space', []],
+    // Games plays the AI duel itself: two pinned local offers through ai.generate (plan §6).
+    ['games', 'ai.run.create', 'openvibe.ai', ['ai.generate']],
     // Games submits each AI duel as a Bench task, two priced seat entries, and one automatic outcome.
     ...['bench.task.create', 'bench.round.create', 'bench.entry.create', 'bench.judgement.cast']
         .map((cap) => ['games', cap, 'openvibe.bench', []]),
@@ -784,6 +798,19 @@ const DEFAULT_GRANTS = [
     // cannot ask treats every purpose as off. None of these rows was ever granted or revoked before, so none needs a
     // RESTORED_GRANTS entry (that list is only for a default that was once revoked).
     ...['live', 'vision', 'ai', 'media-hub', 'cam', 'chat', 'actor'].map((svc) => [svc, 'network.consent.read', SELF_AUDIENCE, []]),
+    // The Agent Streams plan (S1, Contracts 0.298.0): Codes and Actor start and steer the person's agent stream on
+    // OpenVibe.Live (live.agent_stream.publish, the audience openvibe.live). They act for the person and for nobody
+    // else, so the grant is unscoped and the audience is Live's alone.
+    ['codes', 'live.agent_stream.publish', 'openvibe.live', []],
+    ['actor', 'live.agent_stream.publish', 'openvibe.live', []],
+];
+
+// What a node principal (a person's own machine, paired with its credential) may do for its owner outside Network's
+// own audience. The Agent Streams plan (S1, contracts 0.298.0): the desk publishes the person's agent stream on
+// OpenVibe.Live, so the machine's token carries live.agent_stream.publish for the audience openvibe.live and names
+// its owner (on_behalf_of). The machine acts for its owner, never for the person directly and never for anyone else.
+const NODE_GRANTS = [
+    ['openvibe.live', 'live.agent_stream.publish'],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
@@ -1086,4 +1113,4 @@ function guardAny(caps, opts) {
     };
 }
 
-module.exports = { ensureSchema, issueToken, guard, guardAny, grantsFor, recordDecision, DEFAULT_GRANTS, REVOKED_GRANTS, RESTORED_GRANTS, TOKEN_TTL_S, SELF_AUDIENCE };
+module.exports = { ensureSchema, issueToken, guard, guardAny, grantsFor, recordDecision, DEFAULT_GRANTS, NODE_GRANTS, REVOKED_GRANTS, RESTORED_GRANTS, TOKEN_TTL_S, SELF_AUDIENCE };
