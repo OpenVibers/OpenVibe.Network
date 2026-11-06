@@ -133,6 +133,20 @@ const server = http.createServer(app);
     assert.deepStrictEqual([visionAiClaims.claims.cap, visionAiClaims.claims.ns], [['ai.run.create'], ['ai.complete']], 'Vision runs AI workflow ai.complete through the OpenAI-compatible endpoint');
     t = await token({ client_id: 'vision', client_secret: 'vision-secret', audience: 'openvibe.search' });
     assert.strictEqual(t.status, 400, 'Vision has no public records, so no Search grant');
+    // VIS-6: the unsafe-image review. Media, Community and Live ask Vision; Vision alone can open Media's
+    // 60-second operator evidence view and apply the operator's overruling category.
+    for (const [client, secret] of [['media', 'media-secret'], ['community', 'community-secret'], ['live', 'live-secret']]) {
+        await db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run(secret, client);
+        t = await token({ client_id: client, client_secret: secret, audience: 'openvibe.vision' });
+        assert.strictEqual(t.status, 200, `${client}: ${JSON.stringify(t.body)}`);
+        assert.strictEqual(t.body.scope, 'vision.image.review', `${client} sorts an image through Vision`);
+    }
+    t = await token({ client_id: 'vision', client_secret: 'vision-secret', audience: 'openvibe.media' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    assert.deepStrictEqual(t.body.scope.split(' ').sort(), ['media.object.review.decide', 'media.object.review.view'], 'Vision opens and decides Media evidence views');
+    t = await token({ client_id: 'vision', client_secret: 'vision-secret', audience: 'openvibe.vision' });
+    assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+    assert.deepStrictEqual(t.body.scope.split(' ').sort(), ['vision.review.decide', 'vision.review.read'], 'Vision staff tools read and decide reviews');
     t = await token({ client_id: 'exchange', client_secret: 'exchange-secret', audience: 'openvibe.search' });
     assert.strictEqual(t.body.scope, 'search.document.write', 'Exchange indexes its public listings in Search');
     t = await token({ client_id: 'exchange', client_secret: 'exchange-secret', audience: 'openvibe.ai' });
