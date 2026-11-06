@@ -819,6 +819,9 @@ Accessible to users with `role = 'admin'`. All endpoints under `/api/admin/`.
 | `user_modules`, `user_module_revisions`, `user_module_retirements` | User-module records, the last revision issued per (subject, namespace), retired namespace owners |
 | `network_event_outbox` | Network's events on their way to OpenVibe.Events (developer projects, user modules, blocks) |
 | `user_blocks` | Platform blocks by subject (blocker, blocked, active, per-pair revision) |
+| `locker_keys` | The Locker key directory: a person's public keys, their fingerprint and their self-signature |
+| `locker_key_backups` | The wrapped private keys, one row per person and kind (`passphrase`, `recovery`, `passkey`); opaque to Network |
+| `locker_key_history` | Every Locker key change, append-only: the fingerprint before and after |
 | `user_follows` | The follow graph by subject (follower, target type and id, active, notify flags, per-pair revision, source) |
 | `analytics_visitor_days`, `analytics_day_salts` | The current day's salted visitor hashes and salt, deleted after the day's final rollup |
 
@@ -888,6 +891,83 @@ kind instead.
 
 The event names and the payload shapes are Contracts share.v1, which is still being written; this code
 waits for that release before it ships.
+
+## Locker keys
+
+The Locker (design 2026-11-06, `LOCKER-DESIGN-2026-11-06.md`) is end-to-end encryption for anything on
+OpenVibe: a locked item is stored and served as ciphertext, and the keys never reach our servers. Network
+is the key directory — it holds a person's **public** keys, their self-signature and a copy of the
+**private** keys that the browser sealed, and it can never read a private key. The format and the library
+are `openvibe-sdk/locker` and `openvibe-sdk/locker/server`; the browser seals the private keys, Network
+only checks the shape of what it is given.
+
+### What Network stores
+
+| Table | What it holds |
+|-------|---------------|
+| `locker_keys` | the two P-256 public keys (the ECDH one receives content keys, the ECDSA one signs the fingerprint), the eight-word fingerprint and the self-signature |
+| `locker_key_backups` | the wrapped private keys, one row per kind (`passphrase`, `recovery`, `passkey`), stored exactly as the browser sealed them |
+| `locker_key_history` | every key change, append-only: the fingerprint before and the fingerprint after |
+
+**What Network can read:** the public keys, the fingerprint, when the keys last changed, and the shape of
+a backup (its size, its lock and its PBKDF2 count).
+
+**What Network cannot read:** a private key, in any form. The private keys are wrapped by a key from the
+person's locker passphrase (PBKDF2-SHA-256, 600 000 iterations or more) or by a passkey, and the wrapped
+bytes are opaque here. There is no reset: if the passphrase and the recovery kit are both lost, nobody can
+open that locker, including OpenVibe.
+
+### The routes
+
+| Route | What it answers |
+|-------|-----------------|
+| `PUT /api/v1/me/keys` | my public keys, my self-signature and my wrapped backups |
+| `GET /api/v1/me/keys/backup` | my own wrapped private keys, for a new device — never anybody else's |
+| `DELETE /api/v1/me/keys` | forget my locker: the keys and the backups go, the history stays |
+| `GET /api/v1/people/:subject/keys` | a person's public keys and fingerprint, by subject |
+| `GET /api/v1/people/@:username/keys` | the same, by exact name |
+
+The lookups need a signed-in person and are rate-limited to sixty a minute for each caller. Every answer
+is `private, no-store`, and `Vary: Authorization, Cookie`.
+
+```bash
+# the public keys and the fingerprint of @maticus
+curl -s -H "Authorization: Bearer $TOKEN" https://openvibe.network/api/v1/people/@maticus/keys
+```
+
+```json
+{
+  "subject": "usr_01JAB2C3D4E5F6G7H8J9K0MNPQ",
+  "ecdh_public": { "kty": "EC", "crv": "P-256", "x": "…", "y": "…" },
+  "signing_public": { "kty": "EC", "crv": "P-256", "x": "…", "y": "…" },
+  "fingerprint": "alpha bravo charlie delta-echo foxtrot golf hotel",
+  "updated_at": "2026-11-06T09:12:00.000Z",
+  "changed_at": "2026-11-06T09:12:00.000Z"
+}
+```
+
+`changed_at` is the last time the keys changed, so a share sheet can warn before it shares with a key the
+people have not seen before. The fingerprint is computed here, never taken from the caller: a caller that
+sends one that does not match its own keys is refused, and the self-signature must verify with the
+signing key.
+
+A backup is a Locker envelope with a password lock, base64, at most 16 KB, sealed with a PBKDF2 count
+between 600 000 and 10 000 000. Network checks that with `openvibe-sdk/locker/server` and stores the bytes
+as they came; it never opens one.
+
+```json
+{
+  "ecdh_public": { "kty": "EC", "crv": "P-256", "x": "…", "y": "…" },
+  "signing_public": { "kty": "EC", "crv": "P-256", "x": "…", "y": "…" },
+  "self_signature": "…",
+  "backups": {
+    "passphrase": { "format": "locker.envelope.v1", "envelope": "…" }
+  }
+}
+```
+
+Every key change is announced on OpenVibe.Events as `locker.keys.changed`, with ids and fingerprints
+only: no key, no signature, no blob ever leaves this service in an event, in a log line or in an answer.
 
 ## License
 

@@ -1,0 +1,299 @@
+'use strict';
+/**
+ * The Locker key directory (design 2026-11-06, LOCKER-DESIGN-2026-11-06.md §4): Network holds a person's public
+ * keys, their self-signature and their wrapped private keys, and never a private key in the clear.
+ *
+ *   node test/locker-keys.test.js
+ *
+ * What is checked here: a bad self-signature and a mismatched fingerprint are refused; an oversized blob and a
+ * blob with a low PBKDF2 count are refused; one person's backup is never readable by another; the public keys are
+ * found by subject and by exact name; a key change is written to the history and announced; the keys and the
+ * backups can be forgotten; the lookups are rate-limited per caller; and no key, signature or blob ever reaches
+ * a log line.
+ */
+const assert = require('assert');
+const crypto = require('crypto');
+const http = require('http');
+const express = require('express');
+const { ids } = require('openvibe-contracts');
+const { getDb } = require('../server/db/database');
+const { generatePersonKeys, exportPersonKeys, exportPrivateKeys, seal } = require('openvibe-sdk/locker');
+
+(async () => {
+const db = getDb();
+const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
+const config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpiry: '1h' } };
+const { signToken } = require('../server/auth/routes');
+const requireAuth = require('../server/auth/session').makeRequireAuth(() => ({ db, publicKey: keys.publicKey, config }), signToken);
+const locker = require('../server/locker/keys');
+
+const ANN = ids.newId('user');
+const BOB = ids.newId('user');
+const RATELIMIT = ids.newId('user');
+await db.prepare(`INSERT INTO users (id, username, display_name, password_hash, subject_id, role) VALUES
+    (1, 'ann', 'Ann', 'x', ?, 'user'), (2, 'bob', 'Bob', 'x', ?, 'user'), (3, 'ratelimit', 'Rate', 'x', ?, 'user')`)
+    .run(ANN, BOB, RATELIMIT);
+
+const app = express();
+app.use(require('cookie-parser')());
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true }));
+Object.assign(app.locals, { db, config, privateKey: keys.privateKey, publicKey: keys.publicKey });
+app.use('/api/v1/me/keys', locker.meRouter(requireAuth));
+app.use('/api/v1/people', locker.peopleRouter(requireAuth));
+const server = http.createServer(app);
+
+/** A person's keys, as the browser would send them: the public halves and the self-signature. */
+async function published() {
+    const person = await generatePersonKeys();
+    const pub = await exportPersonKeys(person);
+    const priv = await exportPrivateKeys(person);
+    return {
+        person, priv,
+        body: { ecdh_public: pub.ecdh, signing_public: pub.signing, self_signature: pub.fingerprint_signature },
+        fingerprint: pub.fingerprint,
+    };
+}
+
+/** A backup: the private keys sealed with a passphrase, as a Locker envelope in base64. */
+async function backupOf(priv, password = 'a good passphrase') {
+    const sealed = await seal(JSON.stringify(priv), { lock: 'password', password });
+    return { format: 'locker.envelope.v1', envelope: Buffer.from(sealed.bytes).toString('base64') };
+}
+
+/** The same envelope with its header changed: the bytes a hostile client would send. */
+function repatch(bytes, mutate) {
+    const headerLength = bytes.readUInt32BE(4);
+    const header = JSON.parse(bytes.subarray(8, 8 + headerLength).toString('utf8'));
+    mutate(header);
+    const headerBytes = Buffer.from(JSON.stringify(header), 'utf8');
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(headerBytes.length);
+    return Buffer.concat([bytes.subarray(0, 4), length, headerBytes, bytes.subarray(8 + headerLength)]);
+}
+
+const events = async () => (await db.prepare("SELECT envelope FROM network_event_outbox WHERE envelope::jsonb ->> 'event_type' = ? ORDER BY id").all(locker.EVENT_TYPE))
+    .map((r) => (typeof r.envelope === 'string' ? JSON.parse(r.envelope) : r.envelope));
+const history = async () => await db.prepare('SELECT subject, fingerprint, "from", "to", reason FROM locker_key_history ORDER BY id').all();
+const backups = async () => await db.prepare('SELECT subject, kind, blob FROM locker_key_backups ORDER BY kind').all();
+
+(async () => {
+    await new Promise((r) => server.listen(0, '127.0.0.1', r));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const tok = async (id) => signToken(await db.prepare('SELECT * FROM users WHERE id = ?').get(id), keys.privateKey, config);
+    const as = async (id) => ({ authorization: `Bearer ${await tok(id)}` });
+    const call = (method, p, { body, headers = {} } = {}) => fetch(base + p, {
+        method, headers: { 'content-type': 'application/json', ...headers },
+        body: body === undefined ? undefined : JSON.stringify(body),
+    }).then(async (r) => ({ status: r.status, cache: r.headers.get('cache-control'), vary: r.headers.get('vary'), body: await r.json().catch(() => null) }));
+
+    // Every log line the server writes while the calls below run.
+    const logs = [];
+    const realLog = console.log; const realError = console.error; const realWarn = console.warn;
+    const spy = (...args) => { logs.push(args.map((a) => (typeof a === 'string' ? a : String(a))).join(' ')); };
+    console.log = spy; console.error = spy; console.warn = spy;
+
+    try {
+        const ann = await published();
+        const bob = await published();
+
+        // ── The keys go in; the fingerprint is ours, not the caller's ──
+        assert.strictEqual((await call('PUT', '/api/v1/me/keys', { body: ann.body })).status, 401, 'signed in only');
+        let r = await call('PUT', '/api/v1/me/keys', { headers: await as(1), body: ann.body });
+        assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+        assert.strictEqual(r.body.fingerprint, ann.fingerprint, 'the fingerprint is computed here');
+        assert.strictEqual(r.body.subject, ANN);
+        assert.strictEqual(r.body.changed, true);
+        assert.match(r.cache, /private/); assert.match(r.cache, /no-store/);
+        assert.strictEqual(r.vary, 'Authorization, Cookie');
+        assert.ok(!('backups' in r.body), 'the answer never carries a backup');
+        assert.deepStrictEqual(Object.keys(r.body).sort(), ['changed', 'changed_at', 'ecdh_public', 'fingerprint', 'reason', 'signing_public', 'subject', 'updated_at']);
+
+        // ── A bad self-signature is refused ──
+        const badSignature = { ...ann.body, self_signature: Buffer.from(crypto.randomBytes(64)).toString('base64') };
+        r = await call('PUT', '/api/v1/me/keys', { headers: await as(1), body: badSignature });
+        assert.strictEqual(r.status, 400, 'a signature that does not verify is refused');
+        assert.strictEqual(r.body.code, 'locker.bad_signature');
+
+        // ── A fingerprint that does not match the keys is refused ──
+        r = await call('PUT', '/api/v1/me/keys', { headers: await as(1), body: { ...ann.body, fingerprint: 'alpha bravo charlie delta-echo foxtrot golf hotel' } });
+        assert.strictEqual(r.status, 400, 'a fingerprint that is not the one the keys produce is refused');
+        assert.strictEqual(r.body.code, 'locker.fingerprint_mismatch');
+
+        // ── A key that is not a P-256 key is refused ──
+        r = await call('PUT', '/api/v1/me/keys', { headers: await as(1), body: { ...ann.body, ecdh_public: { kty: 'EC', crv: 'P-384', x: 'x', y: 'y' } } });
+        assert.strictEqual(r.status, 400);
+        assert.strictEqual(r.body.code, 'locker.bad_keys');
+
+        // ── A backup: the wrapped private keys, sealed with a passphrase ──
+        const backup = await backupOf(ann.priv);
+        r = await call('PUT', '/api/v1/me/keys', { headers: await as(1), body: { ...ann.body, backups: { passphrase: backup } } });
+        assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+        assert.strictEqual(r.body.changed, false, 'the same keys change nothing');
+        let held = await backups();
+        assert.strictEqual(held.length, 1);
+        assert.strictEqual(held[0].kind, 'passphrase');
+        assert.strictEqual(held[0].blob.format, 'locker.envelope.v1');
+        assert.strictEqual(held[0].blob.envelope, backup.envelope, 'the blob is stored as it came');
+
+        // ── An oversized blob is refused ──
+        const huge = { format: 'locker.envelope.v1', envelope: Buffer.alloc(20 * 1024, 7).toString('base64') };
+        r = await call('PUT', '/api/v1/me/keys', { headers: await as(1), body: { ...ann.body, backups: { passphrase: huge } } });
+        assert.strictEqual(r.status, 413, 'a blob bigger than 16 KB is refused');
+        assert.strictEqual(r.body.code, 'locker.backup_too_large');
+
+        // ── A blob with a low PBKDF2 count is refused ──
+        const weak = repatch(Buffer.from(backup.envelope, 'base64'), (h) => { h.slots.password.iterations = 1000; });
+        r = await call('PUT', '/api/v1/me/keys', { headers: await as(1), body: { ...ann.body, backups: { passphrase: { format: 'locker.envelope.v1', envelope: weak.toString('base64') } } } });
+        assert.strictEqual(r.status, 400, 'a blob with too few iterations is refused');
+        assert.strictEqual(r.body.code, 'locker.bad_iterations');
+
+        // ── A blob that is not a Locker envelope is refused ──
+        r = await call('PUT', '/api/v1/me/keys', { headers: await as(1), body: { ...ann.body, backups: { passphrase: { format: 'locker.envelope.v1', envelope: Buffer.from('not an envelope at all').toString('base64') } } } });
+        assert.strictEqual(r.status, 400);
+        assert.strictEqual(r.body.code, 'locker.bad_backup');
+
+        // ── A backup of a kind we do not know is refused ──
+        r = await call('PUT', '/api/v1/me/keys', { headers: await as(1), body: { ...ann.body, backups: { carrier_pigeon: backup } } });
+        assert.strictEqual(r.status, 400);
+        assert.strictEqual(r.body.code, 'locker.unknown_backup');
+
+        // ── The public keys are found by subject and by exact name ──
+        r = await call('GET', `/api/v1/people/${ANN}/keys`, { headers: await as(2) });
+        assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+        assert.deepStrictEqual(Object.keys(r.body).sort(), ['changed_at', 'ecdh_public', 'fingerprint', 'signing_public', 'subject', 'updated_at']);
+        assert.strictEqual(r.body.fingerprint, ann.fingerprint);
+        assert.ok(r.body.changed_at, 'the last key change is there, so a sheet can warn');
+        assert.match(r.cache, /no-store/);
+
+        r = await call('GET', '/api/v1/people/@ann/keys', { headers: await as(2) });
+        assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+        assert.strictEqual(r.body.fingerprint, ann.fingerprint);
+
+        r = await call('GET', '/api/v1/people/@ANN/keys', { headers: await as(2) });
+        assert.strictEqual(r.status, 200, 'names are not case-sensitive, but they are exact');
+
+        assert.strictEqual((await call('GET', `/api/v1/people/${ANN}/keys`)).status, 401, 'signed in only');
+        assert.strictEqual((await call('GET', '/api/v1/people/@nobody/keys', { headers: await as(2) })).status, 404, 'no such person');
+        assert.strictEqual((await call('GET', '/api/v1/people/@ann/keys/extra', { headers: await as(2) })).status, 404, 'exact names only');
+
+        // ── One person's backup is never readable by another ──
+        r = await call('GET', '/api/v1/me/keys/backup', { headers: await as(1) });
+        assert.strictEqual(r.status, 200);
+        assert.strictEqual(r.body.subject, ANN);
+        assert.strictEqual(r.body.backups.passphrase.envelope, backup.envelope, 'my own backup comes back');
+        assert.match(r.cache, /no-store/);
+
+        r = await call('GET', '/api/v1/me/keys/backup', { headers: await as(2) });
+        assert.strictEqual(r.status, 200);
+        assert.deepStrictEqual(r.body.backups, {}, 'another person gets nothing of mine');
+        assert.ok(!JSON.stringify(r.body).includes(backup.envelope), 'not even a part of it');
+
+        r = await call('GET', `/api/v1/people/${ANN}/keys/backup`, { headers: await as(2) });
+        assert.strictEqual(r.status, 404, 'there is no route to another person\'s backup');
+        r = await call('GET', `/api/v1/people/${ANN}/keys`, { headers: await as(2) });
+        assert.ok(!JSON.stringify(r.body).includes(backup.envelope), 'the public keys carry no blob');
+
+        // ── A key change is written to the history and announced ──
+        assert.deepStrictEqual((await history()).map((h) => [h.subject, h.reason, h['from'], h['to']]), [[ANN, 'created', null, ann.fingerprint]]);
+        let ev = await events();
+        assert.strictEqual(ev.length, 1, 'one event for the first set of keys');
+        assert.strictEqual(ev[0].event_type, 'locker.keys.changed');
+        assert.deepStrictEqual(ev[0].payload, {
+            subject: { type: 'user', id: ANN }, fingerprint: ann.fingerprint, previous_fingerprint: null,
+            reason: 'created', changed_at: ev[0].payload.changed_at,
+        });
+        assert.ok(!JSON.stringify(ev[0]).includes(backup.envelope), 'the event carries no blob');
+
+        // The same keys again: nothing changes, nothing is announced.
+        await call('PUT', '/api/v1/me/keys', { headers: await as(1), body: ann.body });
+        assert.strictEqual((await history()).length, 1, 'the same keys are not a change');
+        assert.strictEqual((await events()).length, 1, 'and are not announced again');
+
+        // New keys: a rotation.
+        const rotated = await published();
+        r = await call('PUT', '/api/v1/me/keys', { headers: await as(1), body: rotated.body });
+        assert.strictEqual(r.status, 200);
+        assert.strictEqual(r.body.changed, true);
+        assert.strictEqual(r.body.reason, 'rotated');
+        assert.strictEqual(r.body.fingerprint, rotated.fingerprint);
+        const rows = await history();
+        assert.strictEqual(rows.length, 2);
+        assert.deepStrictEqual([rows[1].reason, rows[1]['from'], rows[1]['to']], ['rotated', ann.fingerprint, rotated.fingerprint]);
+        ev = await events();
+        assert.strictEqual(ev.length, 2);
+        assert.deepStrictEqual([ev[1].payload.reason, ev[1].payload.previous_fingerprint, ev[1].payload.fingerprint], ['rotated', ann.fingerprint, rotated.fingerprint]);
+
+        // The sheet sees the change: the fingerprint and the day it changed.
+        r = await call('GET', `/api/v1/people/${ANN}/keys`, { headers: await as(2) });
+        assert.strictEqual(r.body.fingerprint, rotated.fingerprint);
+        assert.strictEqual(typeof r.body.changed_at, 'string', 'the last change is there');
+
+        // ── The lookups are rate-limited per caller ──
+        let limited = null;
+        for (let i = 0; i < 62; i++) {
+            const rr = await call('GET', `/api/v1/people/${BOB}/keys`, { headers: await as(3) });
+            if (rr.status === 429) { limited = { i, body: rr.body }; break; }
+        }
+        assert.ok(limited, 'the rate limit answers');
+        assert.strictEqual(limited.i, 60, 'sixty a minute, then the limit');
+        // Another caller is not affected by the first one's budget.
+        assert.strictEqual((await call('GET', `/api/v1/people/${ANN}/keys`, { headers: await as(2) })).status, 200);
+
+        // ── Forgetting the locker ──
+        r = await call('DELETE', '/api/v1/me/keys', { headers: await as(1), body: { confirm: 'forget my locker' } });
+        assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+        assert.strictEqual(r.body.forgotten, true);
+        assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM locker_keys').get()).n, 0);
+        assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM locker_key_backups').get()).n, 0);
+        const forgotten = await history();
+        assert.strictEqual(forgotten.length, 3);
+        assert.deepStrictEqual([forgotten[2].reason, forgotten[2]['from'], forgotten[2]['to']], ['forgotten', rotated.fingerprint, null]);
+        assert.strictEqual((await events()).length, 3, 'the forgetting is announced too');
+        assert.strictEqual((await call('GET', `/api/v1/people/${ANN}/keys`, { headers: await as(2) })).status, 404, 'the keys are gone');
+        r = await call('GET', '/api/v1/me/keys/backup', { headers: await as(1) });
+        assert.deepStrictEqual(r.body.backups, {}, 'the backups are gone');
+
+        // The confirmation text is the way in.
+        await call('PUT', '/api/v1/me/keys', { headers: await as(1), body: rotated.body });
+        r = await call('DELETE', '/api/v1/me/keys', { headers: await as(1), body: { confirm: 'yes' } });
+        assert.strictEqual(r.status, 400, 'the confirmation text must match');
+        assert.strictEqual(r.body.code, 'locker.confirm_required');
+        assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM locker_keys WHERE subject = ?').get(ANN)).n, 1, 'and nothing was forgotten');
+
+        // ── A write from another site is refused ──
+        r = await call('PUT', '/api/v1/me/keys', { headers: { ...(await as(1)), 'sec-fetch-site': 'cross-site' }, body: rotated.body });
+        assert.strictEqual(r.status, 403, 'a write another site started is refused');
+        r = await call('PUT', '/api/v1/me/keys', { headers: { ...(await as(1)), origin: 'https://evil.example' }, body: rotated.body });
+        assert.strictEqual(r.status, 403, 'and so is one with another origin');
+
+        // ── The docs name it: the API docs and llms.txt ──
+        const llms = require('../server/home/render').llmsTxt();
+        assert.match(llms, /## Locker keys/, 'llms.txt has a Locker keys section');
+        assert.ok(llms.includes('/api/v1/people/@maticus/keys'), 'llms.txt has the curl for looking a public key up');
+        assert.ok(llms.includes('never read a private key'), 'llms.txt says what Network cannot read');
+        const readme = require('fs').readFileSync(require('path').join(__dirname, '..', 'README.md'), 'utf8');
+        assert.match(readme, /## Locker keys/, 'the API docs have a Locker keys section');
+        for (const route of ['PUT /api/v1/me/keys', 'GET /api/v1/me/keys/backup', 'DELETE /api/v1/me/keys',
+            'GET /api/v1/people/:subject/keys', 'GET /api/v1/people/@:username/keys']) {
+            assert.ok(readme.includes(route), `the API docs name ${route}`);
+        }
+
+        // ── Nothing that is a key, a signature or a blob reaches a log line ──
+        const written = logs.join('\n');
+        assert.ok(written.length >= 0);
+        for (const secret of [ann.body.self_signature, bob.body.self_signature, backup.envelope, ann.priv.ecdh.d, ann.priv.signing.d, rotated.body.self_signature]) {
+            assert.ok(!written.includes(secret), `a secret reached the log: ${String(secret).slice(0, 12)}…`);
+        }
+        // Even an unexpected error is redacted before it is written.
+        const noisy = locker.safeMessage({ message: `the row (${backup.envelope}) is not a row` });
+        assert.ok(!noisy.includes(backup.envelope), 'an error message cannot carry a blob');
+        assert.ok(noisy.includes('[redacted]'), 'but it still says something');
+    } finally {
+        console.log = realLog; console.error = realError; console.warn = realWarn;
+        server.close();
+    }
+    console.log('locker keys: ok');
+    process.exit(0);
+})().catch((err) => { console.error(err); process.exit(1); });
+})();
