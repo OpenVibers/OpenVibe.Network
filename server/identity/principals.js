@@ -705,6 +705,11 @@ const DEFAULT_GRANTS = [
     ['exchange', 'search.document.write', 'openvibe.search', []],
     ['exchange', 'events.subscription.manage', 'openvibe.events', []],
     ['exchange', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
+    // The Exchange's Arena (11-06): a blind pair is a Bench round Exchange creates, each person's vote is a judgement it
+    // casts for them (X-OV-Subject), and /rankings reads the chat.arena boards.
+    ['exchange', 'bench.round.create', 'openvibe.bench', []],
+    ['exchange', 'bench.judgement.cast', 'openvibe.bench', []],
+    ['exchange', 'bench.board.read', 'openvibe.bench', []],
     // OpenVibe.Fun (contracts 0.236.0): its public quests and plans in Search through the owner API (owner fun), and
     // its account-event subscriptions; its export/deletion pair is above. Live and Chat are public reads and Today
     // uses the viewer's own token, so it holds no Live, Chat or Today grant. The optional OpenCoin grants

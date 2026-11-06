@@ -161,6 +161,7 @@ function showSection(id, btn) {
     if (id === 'content' && typeof loadAdultSection === 'function') loadAdultSection();
     if (id === 'approvals' && typeof loadApprovals === 'function') loadApprovals();
     if (id === 'machines' && typeof loadMachines === 'function') loadMachines();
+    if (id === 'apps' && typeof loadConnectApps === 'function') loadConnectApps();
 }
 
 function openInitialSection() {
@@ -169,7 +170,7 @@ function openInitialSection() {
     const hash = window.location.hash.replace(/^#/, '');
     const routeSection = pathSection || (hash === 'delete' ? 'accounts' : hash) || 'profile';
     if (window.location.pathname === '/verify-email') setTimeout(handleVerifyEmailToken, 50);
-    if (isAnonSession() && ['notifications','linked','security','data','content','approvals','machines'].includes(routeSection)) {
+    if (isAnonSession() && ['notifications','linked','security','data','content','approvals','machines','apps'].includes(routeSection)) {
         return showSection('anon');
     }
     if (document.getElementById('sec-' + routeSection)) {

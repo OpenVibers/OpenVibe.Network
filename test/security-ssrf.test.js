@@ -110,6 +110,7 @@ const PATTERNS = {
 };
 // The reviewed list: where each goes, and why a stranger cannot choose it (or how it is guarded).
 const REVIEWED = {
+    'server/connect/egress.js http.request': [1, 'Connect gateway (E7): only the app definition\'s fixed API host, through openvibe-shared/egress (IP literals refused before the socket, public DNS answers only, redirects followed by hand with every hop re-checked); never a URL from the input (Opus review 11-06)'],
     'server/home/activity.js fetch': [1, 'front door activity: fixed first-party loopback URLs (OV_LIVE/COMMUNITY/BLOG_INTERNAL_URL, operator config) for public lists, never a request value'],
     'server/admin/analytics-routes.js fetch': [2, 'staff analytics: the services\' internal URLs from the registry (owner/admin set), and Insights\' Prometheus (PROMETHEUS_URL, loopback by default) with fixed queries; never a request value'],
     'server/admin/events-ops.js fetch': [1, 'OV_EVENTS_INTERNAL_URL (operator config) for staff DLQ views'],
