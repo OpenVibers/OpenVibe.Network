@@ -111,6 +111,7 @@
         <button onclick="showSection('notifications',this)"><i class="fa-solid fa-bell"></i> Notifications</button>
         <button onclick="showSection('history',this)"><i class="fa-solid fa-clock-rotate-left"></i> History</button>
         <button onclick="showSection('data',this)"><i class="fa-solid fa-database"></i> AI &amp; Data</button>
+        <button onclick="showSection('content',this)"><i class="fa-solid fa-shield-halved"></i> Content</button>
         <button onclick="showSection('approvals',this)"><i class="fa-solid fa-user-check"></i> Approvals</button>
         <button onclick="showSection('linked',this)"><i class="fa-solid fa-link"></i> Linked Services</button>
         <button onclick="showSection('machines',this)"><i class="fa-solid fa-laptop"></i> Machines</button>
@@ -353,6 +354,22 @@
             <p style="margin-bottom:12px">Settings and summaries OpenVibe sites keep with your account: your chat settings, favourite tools, streaming and community summaries and more. The sites themselves keep the full records. You can download all of this, or delete any of it. A site that writes a summary may write it again the next time you use that site.</p>
             <div id="modules-list"><div class="loading-spinner">Loading…</div></div>
             <div class="btn-row"><button class="btn" type="button" onclick="exportModules()"><i class="fa-solid fa-download"></i> Download as JSON</button></div>
+        </div>
+    </div>
+
+    <!-- Content Section: the 18+ confirmation for uncensored AI -->
+    <div class="section" id="sec-content">
+        <div class="card">
+            <h3><span class="icon"><i class="fa-solid fa-shield-halved"></i></span> Uncensored AI (18+)</h3>
+            <p style="margin-bottom:12px">OpenVibe Exchange can run abliterated models that refuse less. They are for adults only. Your confirmation is kept on your account; OpenVibe AI asks for it on every uncensored request and never guesses your age.</p>
+            <div id="adult-status" class="muted" role="status">Checking your account…</div>
+            <label class="data-check" style="margin-top:12px"><input type="checkbox" id="adult-confirm-box"> <span><b>I am 18 or older.</b> I understand uncensored answers are unfiltered, that the hard floor below still applies, and that breaking it ends the account.</span></label>
+            <div class="btn-row" style="margin-top:12px">
+                <button type="button" class="btn btn-primary" id="adult-confirm">Confirm I am 18+</button>
+                <button type="button" class="btn" id="adult-withdraw" hidden>Withdraw my confirmation</button>
+                <span class="data-status" id="adult-msg" role="status"></span>
+            </div>
+            <p class="muted" style="margin-top:14px;font-size:13px">The hard floor on every model, uncensored or not: no sexual content involving minors; no non-consensual sexual content of real people; no help with weapons of mass harm or attacks on others.</p>
         </div>
     </div>
 

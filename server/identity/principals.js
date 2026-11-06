@@ -88,6 +88,9 @@ const DEFAULT_GRANTS = [
     ['chat', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['ai', 'network.modules.read', SELF_AUDIENCE, ['ai.preferences', 'ai.usage_summary']],
     ['ai', 'network.modules.write', SELF_AUDIENCE, ['ai.usage_summary']],
+    // The Exchange remake's uncensored tier: AI reads the account's 18+ confirmation before serving an uncensored
+    // model (server/identity/adult.js, GET /internal/identity/adult).
+    ['ai', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['community', 'network.modules.read', SELF_AUDIENCE, ['community.profile']],
     ['community', 'network.modules.write', SELF_AUDIENCE, ['community.profile']],
     ['wiki', 'network.modules.read', SELF_AUDIENCE, ['wiki.projects']],
