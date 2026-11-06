@@ -3,7 +3,7 @@
  * The adult account flag (the Exchange remake, "Uncensored").
  *
  * OpenVibe.AI serves an uncensored model only to an account that confirmed, here, that it is 18 or older. The flag is
- * the account's own: `users.adult_confirmed_at` (migration 0040). Setting it is a deliberate act — the person ticks
+ * the account's own: `users.adult_confirmed_at` (migration 0041). Setting it is a deliberate act — the person ticks
  * the box on `/my` and confirms — and withdrawing it clears it at once. Network never infers an age.
  *
  *   GET    /api/v1/me/adult   (session)  → { adult, confirmed_at }
