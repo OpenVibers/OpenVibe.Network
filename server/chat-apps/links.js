@@ -73,6 +73,36 @@ function internalRouter() {
     }));
     return r;
 }
+/**
+ * The signed-in person's own chat-app accounts (the website's account page): what is linked, and
+ * the way to remove one without going back to the chat. No token or hash is ever returned.
+ */
+function userRouter(requireAuth) {
+    const r = express.Router();
+    r.use(requireAuth);
+    r.get('/', async (req, res) => {
+        try {
+            const rows = await req.app.locals.db.prepare(`SELECT service, service_user_id, service_username, linked_at FROM linked_accounts
+                WHERE user_id = ? AND service LIKE 'chat:%' ORDER BY linked_at DESC`).all(req.user.id);
+            res.set('Cache-Control', 'no-store').json({ items: rows.map((l) => {
+                const [, app, workspace] = l.service.split(':');
+                return { app, workspace: workspace || null, service_user_id: l.service_user_id, service_username: l.service_username || null, linked_at: l.linked_at };
+            }) });
+        } catch { res.status(503).json({ error: 'Link service unavailable' }); }
+    });
+    r.delete('/:app', async (req, res) => {
+        const app = String(req.params.app || '');
+        try {
+            const rows = await req.app.locals.db.prepare("DELETE FROM linked_accounts WHERE user_id = ? AND service LIKE ? RETURNING service, service_user_id")
+                .all(req.user.id, app === 'slack' ? 'chat:slack:%' : `chat:${app}`);
+            if (!rows.length) return res.status(404).json({ error: 'Not linked' });
+            for (const row of rows) await req.app.locals.db.prepare('DELETE FROM chat_app_pending_links WHERE app = ? AND external_id = ?').run(app, row.service_user_id);
+            res.set('Cache-Control', 'no-store').json({ ok: true, removed: rows.length });
+        } catch { res.status(503).json({ error: 'Link service unavailable' }); }
+    });
+    return r;
+}
+
 function pageRouter(requireAuth) {
     const r = express.Router();
     r.use((req, res, next) => { res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }); next(); });
@@ -95,4 +125,4 @@ function pageRouter(requireAuth) {
     });
     return r;
 }
-module.exports = { store, internalRouter, pageRouter, validIdentity };
+module.exports = { store, internalRouter, pageRouter, userRouter, validIdentity };
