@@ -24,7 +24,7 @@ const AUDIENCES = new Set(['everyone', 'followers', 'group']);
 const STATUSES = new Set(['up', 'degraded', 'down']);
 const isPrice = (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1000000;
 
-function ensureSchema(db) { /* the schema is migrations/0039_ai_offers.sql; nothing is created at runtime */ }
+function ensureSchema(db) { /* the schema is migrations/0040_ai_offers.sql; nothing is created at runtime */ }
 
 const KEYS = new Set(['offer_id', 'machine_id', 'owner', 'models', 'hours', 'concurrency', 'price', 'audience', 'group', 'ready', 'health']);
 const HEALTH_KEYS = new Set(['status', 'checked_at']);
