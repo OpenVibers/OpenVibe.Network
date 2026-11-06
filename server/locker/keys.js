@@ -62,7 +62,8 @@ const SUBJECT_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 /** A name (letters, digits, dot, dash, underscore): exact names only, never a pattern. */
 const NAME_RE = /^[A-Za-z0-9_.-]{1,40}$/;
 /** The eight words of a fingerprint, in two groups of four. */
-const FINGERPRINT_RE = /^[a-z]+ [a-z]+ [a-z]+ [a-z]+-[a-z]+ [a-z]+ [a-z]+ [a-z]+$/;
+// openvibe-sdk/locker's fingerprintOf: eight words in two groups of four, joined by " · " (SDK 0.86.0).
+const FINGERPRINT_RE = /^[a-z]+ [a-z]+ [a-z]+ [a-z]+ · [a-z]+ [a-z]+ [a-z]+ [a-z]+$/;
 /** A base64 ECDSA P-256 signature: 64 bytes, 86 characters and the padding. */
 const SIGNATURE_RE = /^[A-Za-z0-9+/]{86}==$/;
 /** How many lookups one caller may do a minute. */
