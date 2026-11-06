@@ -311,7 +311,7 @@ ${icons.CSS}
   .home-chips>li>a { min-height: 44px; }
   /* .orb-node is already position: absolute (the orbit places it); making it relative turns the link inline and
      each icon fills the orbit. */
-  .orb-node::after { content: ''; position: absolute; left: 0; right: 0; top: -2px; bottom: -2px; }
+  .orb-node::after { content: ''; position: absolute; left: -9px; right: -9px; top: -9px; bottom: -9px; }
   .now-more { position: relative; }
   .now-more::after { content: ''; position: absolute; left: 0; right: 0; top: -14px; bottom: -14px; }
   .home-more a:only-child { position: relative; display: inline-block; }

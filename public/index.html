@@ -133,11 +133,11 @@ a{color:inherit}
 /* The orbit (server/home/render.js orbit()): rings turning in opposite directions, every icon upright. */
 .orbit{position:relative;width:min(100%,460px);aspect-ratio:1;margin:0 auto;container-type:inline-size}
 .orb-glow{position:absolute;inset:22%;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 34%,transparent),transparent);filter:blur(6px);animation:orb-breathe 6s var(--ov-ease-in-out, ease-in-out) infinite}
-.orb-ring{position:absolute;inset:0;border-radius:50%}
+.orb-ring{position:absolute;inset:0;border-radius:50%;pointer-events:none}
 .orb-ring::before{content:"";position:absolute;border-radius:50%;border:1px dashed color-mix(in srgb,var(--accent-light) 30%,transparent);animation:orb-dash 7s var(--ov-ease-in-out, ease-in-out) infinite alternate}
 .orb-ring.r1{--R:31cqw}.orb-ring.r1::before{inset:19%}
 .orb-ring.r2{--R:45cqw}.orb-ring.r2::before{inset:5%;opacity:.55;animation-delay:-3.5s}
-.orb-node{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;transform:rotate(calc(360deg / var(--n) * var(--i))) translateY(calc(-1 * var(--R))) rotate(calc(-360deg / var(--n) * var(--i)));text-decoration:none;color:var(--text-primary)}
+.orb-node{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;transform:rotate(calc(360deg / var(--n) * var(--i))) translateY(calc(-1 * var(--R))) rotate(calc(-360deg / var(--n) * var(--i)));text-decoration:none;color:var(--text-primary);pointer-events:auto}
 .orb-node.is-big{width:58px;height:58px;margin:-29px}
 .orb-face{display:flex;flex-direction:column;align-items:center;gap:5px;width:100%;height:100%}
 .orb-face .ov-icon{display:grid;place-items:center;width:100%;height:100%;flex:none;border-radius:50%;background:color-mix(in srgb,var(--bg-secondary) 88%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent-light) 30%,transparent),0 8px 22px rgba(0,0,0,.35);transition:transform var(--ov-dur-3, .3s) var(--ov-ease-spring, cubic-bezier(.2,1.4,.3,1)),box-shadow var(--ov-dur-3, .3s)}
