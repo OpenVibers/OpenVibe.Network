@@ -402,9 +402,15 @@ app.locals.emailService = emailService;
 const moderationAudit = require('./admin/moderation-audit').createModerationAudit(db);
 // Developer projects' usage (WS-N task 4): the services' hourly rollups, per project and day.
 const projectUsage = require('./developer/usage').createProjectUsage(db);
+// Sharing (design 2026-11-06, SHARING-DESIGN-2026-11-06.md): Network's index of what is shared with
+// whom, built from the share events, and the notifications that go with them (server/sharing/).
+const sharing = {
+    db, notifications: notificationService, config, privateKey, issuer: config.jwt.issuer,
+};
 eventsConsumer = await require('./notifications/events-consumer').createEventsConsumer({
     db, notifications: notificationService, secrets: config.eventsWebhookSecrets,
     discord: () => app.locals.discordService || null, moderationAudit, projectUsage,
+    sharing: { apply: (event) => require('./sharing/events').applyShareEvent(sharing, event) },
 });
 console.log(`[Events consumer] ${eventsConsumer.enabled ? 'on' : 'off (NETWORK_EVENTS_SECRET unset)'}: POST /internal/events`);
 
@@ -430,6 +436,9 @@ const qrSignin = require('./auth/qr-signin').createQrSignin({
 app.locals.qrSignin = qrSignin;
 // The moderation audit log for staff (staff.moderation.logs): server/admin/moderation-audit.js.
 app.use('/api/v1/staff/moderation-audit', requireAuth, moderationAudit.router());
+// Sharing (design 2026-11-06): what is shared with this person, the share picker's suggestions and
+// the @name check it uses (server/sharing/routes.js).
+app.use('/api/v1', require('./sharing/routes').createSharingApi({ ...sharing, requireAuth }));
 // Staff capabilities and the staff list (WS-D task 4; services need network.staff.read).
 app.use('/api/v1/staff', require('./admin/staff-api').createStaffApi({ db, requireAuth, guard: require('./identity/principals').guard }));
 // Username history (WS-B task 6): who holds a name now, so sites redirect /@old → /@new and pick up a
@@ -914,6 +923,9 @@ function sendPayPage(res) {
 }
 app.get('/wallet', (_req, res) => sendWalletPage(res));
 app.get('/wallet.html', (req, res) => redirectWithoutHtml(req, res, '/wallet'));
+// "Shared with me" (design 2026-11-06): everything other people have shared with this person, on
+// every site, in one list. Its own page, in the kit's components and with no styles of its own.
+app.get('/shared', require('./sharing/page').createSharedPage({ ...sharing, authCtx: authCtx() }));
 app.get('/pay/:id', (_req, res) => sendPayPage(res));
 
 // Account hub (my.html) — the apex hosts the account hub under /my

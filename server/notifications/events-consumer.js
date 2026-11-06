@@ -29,6 +29,10 @@
  *                           per streamer in 24 hours.
  *   today.event.cancelled   the stream was cancelled: those notices are cleared (dismissed), so the bell never
  *                           points at a stream that is not happening.
+ *   share.granted, share.revoked, share.transfer.*  the sharing system (design 2026-11-06): an item
+ *                           was shared with a person, their access ended, or an ownership transfer was
+ *                           requested or answered. They build Network's "Shared with me" list and the
+ *                           share notifications (server/sharing/events.js); the payloads carry ids only.
  *   <service>.usage.recorded  a developer project's hourly usage rollup from Tools, Events or Media
  *                           (common.usage-recorded@1): kept per project and day for its dashboard
  *                           (server/developer/usage.js), never anyone's notification.
@@ -61,8 +65,11 @@ const streamLive = require('./stream-live');
 const CONSUMER = 'network-notifications';
 const INBOX_TABLE = 'network_event_inbox';
 const AUDIT_TOPICS = require('../admin/moderation-audit').TOPICS;
+// Sharing (design 2026-11-06): the share events build Network's "Shared with me" list and the
+// notifications that go with it (server/sharing/events.js).
+const SHARE_TOPICS = require('../sharing/events').TOPICS;
 const USAGE_TOPICS = require('../developer/usage').TOPICS;
-const TOPICS = Object.freeze(['deals.watch.matched', 'coupons.watch.matched', 'trade.alert.triggered', 'live.stream.started', 'live.stream.ended', 'today.event.scheduled', 'today.event.cancelled', ...AUDIT_TOPICS, ...USAGE_TOPICS]);
+const TOPICS = Object.freeze(['deals.watch.matched', 'coupons.watch.matched', 'trade.alert.triggered', 'live.stream.started', 'live.stream.ended', 'today.event.scheduled', 'today.event.cancelled', ...SHARE_TOPICS, ...AUDIT_TOPICS, ...USAGE_TOPICS]);
 const LIVE_STARTED_MAX_AGE_MS = 30 * 60 * 1000;
 const SCHEDULED_PER_DAY = 3;
 const SCHEDULE_AHEAD_MIN_MS = 15 * 60 * 1000;
@@ -216,8 +223,9 @@ function liveStarted(event, { now, maxAgeMs }) {
  * @param {string|string[]} o.secrets  NETWORK_EVENTS_SECRET (comma list) or an array
  * @param {() => ({ sendLiveAlert(streamer: object, stream: object): Promise<object> }|null)} [o.discord]
  * @param {{ record(event: object): string }} [o.projectUsage]  ../developer/usage.js createProjectUsage()
+ * @param {{ apply(event: object): Promise<{outcome: string, detail?: object}> }} [o.sharing]  ../sharing/events.js
  */
-async function createEventsConsumer({ db, notifications, secrets, discord = () => null, moderationAudit = null, projectUsage = null, liveStartedMaxAgeMs = LIVE_STARTED_MAX_AGE_MS, now = () => Date.now(), log = console }) {
+async function createEventsConsumer({ db, notifications, secrets, discord = () => null, moderationAudit = null, projectUsage = null, sharing = null, liveStartedMaxAgeMs = LIVE_STARTED_MAX_AGE_MS, now = () => Date.now(), log = console }) {
     const keys = Array.isArray(secrets) ? secrets.filter((s) => typeof s === 'string' && s.length >= 32) : secretsFrom(secrets);
     const inbox = createPgInbox(db, { table: INBOX_TABLE, now });
     const userBySubject = db.prepare('SELECT id FROM users WHERE subject_id = ?');
@@ -310,6 +318,12 @@ async function createEventsConsumer({ db, notifications, secrets, discord = () =
             if (event.event_type === 'live.stream.ended') return require('../analytics/creators').record(db, event);
             if (event.event_type === 'today.event.scheduled' || event.event_type === 'today.event.cancelled') {
                 const out = event.event_type === 'today.event.scheduled' ? await todayEventScheduled(event) : await todayEventCancelled(event);
+                return typeof out === 'string' ? out : { outcome: out.outcome, detail: out.detail };
+            }
+            // Sharing: the index of what is shared with whom, and the notifications about it.
+            if (SHARE_TOPICS.includes(event.event_type)) {
+                if (!sharing) return 'ignored:sharing_off';
+                const out = await sharing.apply(event);
                 return typeof out === 'string' ? out : { outcome: out.outcome, detail: out.detail };
             }
             if (event.event_type === 'live.stream.started') {
