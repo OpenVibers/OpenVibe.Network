@@ -670,8 +670,11 @@ const DEFAULT_GRANTS = [
     ['vision', 'network.notifications.push', SELF_AUDIENCE, ['vision']],
     // OpenVibe.Exchange (contracts 0.235.0): its public listings in Search through the owner API (owner exchange), and
     // its account-event subscriptions; its export/deletion pair is above. v1 writes no grant and runs no sandbox code.
+    // The 2026-11-06 remake makes Exchange the network's AI front: chat and Try it run ai.complete on a person's
+    // behalf (on_behalf_of), and the catalog/usage reads are public.
     ['exchange', 'search.document.write', 'openvibe.search', []],
     ['exchange', 'events.subscription.manage', 'openvibe.events', []],
+    ['exchange', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
     // OpenVibe.Fun (contracts 0.236.0): its public quests and plans in Search through the owner API (owner fun), and
     // its account-event subscriptions; its export/deletion pair is above. Live and Chat are public reads and Today
     // uses the viewer's own token, so it holds no Live, Chat or Today grant. The optional OpenCoin grants

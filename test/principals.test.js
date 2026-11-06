@@ -136,7 +136,10 @@ const server = http.createServer(app);
     t = await token({ client_id: 'exchange', client_secret: 'exchange-secret', audience: 'openvibe.search' });
     assert.strictEqual(t.body.scope, 'search.document.write', 'Exchange indexes its public listings in Search');
     t = await token({ client_id: 'exchange', client_secret: 'exchange-secret', audience: 'openvibe.ai' });
-    assert.strictEqual(t.status, 400, 'Exchange holds no AI capability in v1');
+    assert.strictEqual(t.status, 200, 'the remake runs AI chat and Try it on a person’s behalf');
+    const exchangeAiClaims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.ai' });
+    assert.ok(exchangeAiClaims.ok, exchangeAiClaims.reason);
+    assert.deepStrictEqual([exchangeAiClaims.claims.cap, exchangeAiClaims.claims.ns], [['ai.run.create'], ['ai.complete']], 'Exchange runs ai.complete for a person');
     // OpenVibe.Fun (contracts 0.236.0): its public quests and plans in Search, its account-event subscriptions and the
     // export/deletion pair. Live and Chat are public reads and Today uses the viewer's token, so it holds no such grant.
     await db.prepare("UPDATE oauth_clients SET client_secret = 'fun-secret' WHERE client_id = 'fun'").run();
