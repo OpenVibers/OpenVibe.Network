@@ -107,7 +107,7 @@ try {
         assert.strictEqual((await row(A.principal)).last_seen_at, seen, 'not rewritten within 60 s');
     });
 
-    await check('the audience is Network, the pairing service or Connect, nothing else', async () => {
+    await check('the audience is Network, the pairing service, Connect or a service the machine holds a grant for, nothing else', async () => {
         const r = await tokenCall(A.principal, A.credential, 'openvibe.bot');
         assert.strictEqual(r.status, 200, r.text);
         const v = serviceAuth.verifyServiceToken(r.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.bot' });
@@ -120,7 +120,7 @@ try {
         assert.ok(vw.ok, vw.reason);
         assert.deepStrictEqual([vw.claims.sub, vw.claims.aud, vw.claims.cap], [`node:${A.principal}`, ['openvibe.website'], []]);
         assert.strictEqual((await call('PUT', '/api/v1/node/self/capabilities', doc(A.node_id), bearer(w.body.access_token))).status, 401, 'no use on Network');
-        for (const aud of ['openvibe.chat', 'openvibe.network.evil', 'openvibe.websites', 'connect.openvibe.website', '', undefined]) {
+        for (const aud of ['openvibe.media', 'openvibe.network.evil', 'openvibe.websites', 'connect.openvibe.website', '', undefined]) {
             const bad = await tokenCall(A.principal, A.credential, aud);
             assert.deepStrictEqual([bad.status, bad.body.error], [400, 'invalid_scope'], String(aud));
         }
