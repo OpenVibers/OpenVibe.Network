@@ -224,6 +224,9 @@ function buildAllowedOriginsSet() {
     // Hard-coded OpenVibe defaults as baseline (survive registry reset/failure)
     for (const o of [
         'https://openvibe.network',
+        // The Node's own front door (the owner, 2026-11-06): node.openvibe.network is served by Network, and its
+        // page asks the network's own API (the account's look, the navbar's frame, the shared font) from that origin.
+        'https://node.openvibe.network',
         'https://openvibe.live', 'https://www.openvibe.live',
         'https://openvibe.tools',
         'https://openvibe.games', 'https://www.openvibe.games', 'https://play.openvibe.games',
@@ -638,6 +641,9 @@ const openStats = require('./stats/open').createOpenStats({
     db, selfToken, release, statusRows: () => require('./status/routes').rows(ecosystem),
     prometheusUrl: config.prometheusUrl || process.env.PROMETHEUS_URL, liveUrl: process.env.OV_LIVE_INTERNAL_URL,
 });
+// The Node's own front door on its own subdomain (node.openvibe.network): the Host header decides. It mounts
+// before the agent layer, so the Node's page is not answered by Network's home renderer.
+app.use(require('./node/routes').createNodeRoutes({ release: release.release }));
 // The agent layer (openvibe-shared/agent-layer): /.well-known/agent.json, and the public pages as Markdown twins. It
 // answers their HTML as well, with the discovery tags in the head, so it mounts before the routes for those pages.
 require('openvibe-shared/agent-layer').mount(app, {
