@@ -48,7 +48,7 @@ const GROUPS = [
     { id: 'people', name: 'People & you', sites: ['chat', 'community', 'tips', 'vip', 'help', 'network', 'inventory'] },
     // Actor is the engine behind every agent (Codes' Auto, Vibe, the Dock call it): a developer service, not a second
     // place to chat with an agent (plan L39, 2026-10-31).
-    { id: 'build', name: 'For developers', sites: ['services', 'ai', 'exchange', 'actor', 'bench', 'run', 'zone', 'events', 'media', 'watch', 'play'] },
+    { id: 'build', name: 'For developers', sites: ['services', 'exchange', 'actor', 'bench', 'run', 'zone', 'events', 'media', 'watch', 'play'] },
 ];
 // What each site is, in a few words, for the menus (the launcher's rows are two to a line on a phone: about 22
 // characters fit). The manifests' taglines stay the sites' own sentences everywhere else; a site missing here shows
@@ -64,7 +64,7 @@ const MENU_LINE = {
     search: 'Search everything', host: 'Compare hosting', report: 'Your numbers, honest', vision: 'Ask a picture',
     exchange: 'AI models, one account',
     network: 'Your account', inventory: 'Your items',
-    services: 'APIs, SDK and keys', ai: 'AI router, your keys', bench: 'Which AI is best', run: 'Run jobs anywhere', zone: 'S3 storage', events: 'Event streams', media: 'Media API', play: 'Game services',
+    services: 'APIs, SDK and keys', bench: 'Which AI is best', run: 'Run jobs anywhere', zone: 'S3 storage', events: 'Event streams', media: 'Media API', play: 'Game services',
 };
 
 // A site's name in the menus, where the rows are short words (Pics, Download, VIP, Tips): the product keeps its full name
