@@ -90,6 +90,9 @@ const server = http.createServer(app);
         await follows.setFollow(db, dana.subject_id, 'channel', x.subject_id, true, { emit: false });
         await follows.setFollow(db, x.subject_id, 'channel', dana.subject_id, true, { emit: false });
         await db.prepare("INSERT INTO user_preferences (user_id, language) VALUES (?, 'en')").run(dana.id);
+        // Presence (plan X9) is part of the person's export and is erased with the account.
+        await db.prepare(`INSERT INTO person_presence (subject_id, state, status_text, emoji, last_active_at, last_heartbeat_at, updated_at)
+            VALUES (?, 'dnd', 'Writing', '✍️', ov_now_iso(), ov_now_iso(), ov_now_iso())`).run(dana.subject_id);
 
         // ── Export ──
         const seeded = await accountData.expectedServices(db, 'network.account.export.contribute');
@@ -159,6 +162,8 @@ const server = http.createServer(app);
         for (const secret of ['password_hash', 'sess-secret-dana', 'rt-secret-dana', hash]) assert.ok(!all.includes(secret), `no ${secret} in the archive`);
         assert.strictEqual(JSON.parse(files['network/opencoins.json']).balance, 40);
         assert.deepStrictEqual(JSON.parse(files['network/follows.json']).followers_count, 1, 'followers as a count, never their names');
+        assert.deepStrictEqual(JSON.parse(files['network/presence.json'])[0].state, 'dnd', 'presence is in the export');
+        assert.strictEqual(JSON.parse(files['network/presence.json'])[0].status_text, 'Writing');
         assert.ok(!all.includes('eve@example.com'), "nobody else's data");
         r = await call('GET', `/api/v1/account/export/${exp}/download`, tok(eve));
         assert.strictEqual(r.status, 404, 'another person cannot download it');
@@ -244,6 +249,7 @@ const server = http.createServer(app);
             assert.strictEqual((await db.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE ${col} = ?`).get(dana.id)).n, 0, `${t} erased`);
         }
         assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM user_modules WHERE subject_id = ?').get(dana.subject_id)).n, 0);
+        assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM person_presence WHERE subject_id = ?').get(dana.subject_id)).n, 0, 'presence erased');
         assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM user_follows WHERE follower_subject = ? OR target_id = ?').get(dana.subject_id, dana.subject_id)).n, 0, 'follows both ways');
         assert.strictEqual(wallet.getBalance ? await wallet.getBalance(db, dana.id) : (await db.prepare('SELECT balance FROM wallets WHERE user_id = ?').get(dana.id)).balance, 0);
         assert.strictEqual((await db.prepare("SELECT COUNT(*) AS n FROM coin_transactions WHERE user_id = ? AND reason = 'account_deleted'").get(dana.id)).n, 1, 'one closing entry; the ledger stays');

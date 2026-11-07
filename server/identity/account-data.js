@@ -204,6 +204,9 @@ async function networkPart(db, userId) {
     const followers = await tableExists(db, 'user_follows') ? (await db.prepare("SELECT COUNT(*) AS n FROM user_follows WHERE target_id = ? AND active = 1").get(u.subject_id)).n : 0;
     add('follows.json', { following: follows.rows, followers_count: followers }, follows.truncated);
     add('blocks.json', (await rowsOf(db, 'user_blocks', 'blocker_subject = ?', [u.subject_id])).rows);
+    // Presence (plan X9): the chosen state, status line, emoji, switch and the heartbeat times. No last seen
+    // beyond the heartbeat the person's own tabs sent.
+    add('presence.json', (await rowsOf(db, 'person_presence', 'subject_id = ?', [u.subject_id])).rows);
     add('developer_projects.json', {
         owned: (await rowsOf(db, 'dev_projects', 'owner_subject = ?', [u.subject_id])).rows,
         memberships: (await rowsOf(db, 'dev_project_members', 'subject_id = ?', [u.subject_id], { omit: ['added_by'] })).rows,
@@ -351,6 +354,7 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         if (await tableExists(db, 'notifications')) await db.prepare(`UPDATE notifications SET sender_id = NULL, sender_name = 'Deleted account', sender_avatar = NULL WHERE sender_id IN ${inU}`).run(...userIds);
         if (await tableExists(db, 'analytics_events')) await db.prepare(`UPDATE analytics_events SET user_id = NULL WHERE user_id IN ${inU}`).run(...userIds);
         await del('user_modules', `subject_id IN ${inS}`, subjects, 'modules');
+        await del('person_presence', `subject_id IN ${inS}`, subjects, 'presence');
         // The consent registry (L24): the account's active choices are revoked (and its aliases' too), but the rows
         // stay as proof of what was allowed and when; they hold no content. The events go out after this commit.
         consentEvents = await require('../consent').revokeForDeletion(db, subjects, { at });
