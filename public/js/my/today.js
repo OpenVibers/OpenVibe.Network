@@ -128,10 +128,14 @@ function renderNet(frame) {
     wrap.replaceChildren(...cards.map((c) => {
         const site = TD_SITES[c.site] || [c.site || 'OpenVibe', 'fa-globe', null];
         const rows = c.items.filter((it) => tdSafeUrl(it.url)).slice(0, 5);
-        const list = tdEl('ol', 'td-net-list', rows.map((it, i) => tdEl('li', '', [tdEl('a', 'td-net-row', [
-            tdEl('span', 'td-net-i', [String(i + 1)]),
-            tdEl('span', 'td-net-t', [tdEl('b', '', [String(it.title || '')]), it.meta ? tdEl('small', '', [String(it.meta)]) : null]),
-        ], { href: tdSafeUrl(it.url) })])));
+        const list = tdEl('ol', 'td-net-list', rows.map((it, i) => {
+            const src = it.image && tdSafeUrl(it.image.src);
+            return tdEl('li', '', [tdEl('a', 'td-net-row', [
+                tdEl('span', 'td-net-i', [String(i + 1)]),
+                src ? tdEl('img', 'td-net-thumb', null, { src, alt: '', width: 64, height: 36, loading: 'lazy', decoding: 'async' }) : null,
+                tdEl('span', 'td-net-t', [tdEl('b', '', [String(it.title || '')]), it.meta ? tdEl('small', '', [String(it.meta)]) : null]),
+            ], { href: tdSafeUrl(it.url) })]);
+        }));
         const more = c.more && tdSafeUrl(c.more.url) ? tdEl('a', 'td-more', [String(c.more.label || 'More')], { href: tdSafeUrl(c.more.url) }) : null;
         return tdEl('section', 'td-box td-net-card', [
             tdEl('div', 'td-net-h', [tdEl('span', 'td-site-ic', [tdIcon(site[1])]), tdEl('span', 'td-net-ht', [tdEl('b', '', [String(c.title || site[0])]), tdEl('small', '', [site[0]])]), more]),
