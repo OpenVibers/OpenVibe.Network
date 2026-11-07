@@ -21,8 +21,10 @@ const AUDIENCE = 'openvibe.chat';
 (async () => {
     const principals = require('../server/identity/principals');
 
-    // The rows: Codes holds both, for Chat's audience alone, with no namespace of its own.
-    const rows = principals.PENDING_GRANTS.filter((g) => g[1] === READ || g[1] === WRITE);
+    // The rows: Codes holds both, for Chat's audience alone, with no namespace of its own. They are ordinary
+    // default grants: the contracts release that names the capability (v0.304.0) is out and this repository is
+    // pinned to it, so every default grant names a capability the pinned contracts know.
+    const rows = principals.DEFAULT_GRANTS.filter((g) => g[1] === READ || g[1] === WRITE);
     assert.strictEqual(rows.length, 2, 'the queue grants are the two rows of the plan');
     for (const cap of [READ, WRITE]) {
         const g = rows.find((r) => r[1] === cap);
@@ -30,11 +32,14 @@ const AUDIENCE = 'openvibe.chat';
         assert.strictEqual(g[0], 'codes', cap + ' is Codes\'s');
         assert.strictEqual(g[2], AUDIENCE, cap + ' is for Chat\'s audience');
         assert.deepStrictEqual(g[3], [], cap + ' is unscoped');
+        assert.ok(contracts.capabilities.get(cap), 'the pinned contracts know ' + cap);
     }
-    assert.ok(!principals.DEFAULT_GRANTS.some((g) => g[1] === READ || g[1] === WRITE),
-        'a capability the pinned contracts do not know is never a default grant');
-    assert.ok(!principals.PENDING_GRANTS.some((g) => g[0] !== 'codes'), 'no other service holds the queue');
-    assert.ok(!principals.PENDING_GRANTS.some((g) => g[2] !== AUDIENCE), 'the queue is Chat\'s and no other audience');
+    assert.ok(!principals.DEFAULT_GRANTS.some((g) => g[1] === READ || g[1] === WRITE) === false,
+        'the queue grants are default grants');
+    assert.ok(!principals.DEFAULT_GRANTS.some((g) => (g[1] === READ || g[1] === WRITE) && g[0] !== 'codes'),
+        'no other service holds the queue');
+    assert.ok(!principals.DEFAULT_GRANTS.some((g) => (g[1] === READ || g[1] === WRITE) && g[2] !== AUDIENCE),
+        'the queue is Chat\'s and no other audience');
     assert.ok(!principals.REVOKED_GRANTS.some((g) => g[1] === READ || g[1] === WRITE), 'the queue grants are not revoked');
 
     // The rows are seeded, so the token issuer hands them out.

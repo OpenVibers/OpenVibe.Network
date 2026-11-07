@@ -824,6 +824,13 @@ const DEFAULT_GRANTS = [
     ['actor', 'chat.agent_digest.read', 'openvibe.chat', []],
     ['codes', 'chat.agent_poll.write', 'openvibe.chat', []],
     ['actor', 'chat.agent_poll.write', 'openvibe.chat', []],
+    // The Agent Streams plan (S6, Contracts 0.304.0): Codes reads the chat plays queue of the owner's room on
+    // OpenVibe.Chat (chat.play_queue.read) and writes how each request ran (chat.play_queue.write), the audience
+    // openvibe.chat. They act for the person and for nobody else, so the grant is unscoped and the audience is
+    // Chat's alone. A token names its person, so the queue is the owner's room: the grant gives the task's
+    // service the way in, not the queue.
+    ['codes', 'chat.play_queue.read', 'openvibe.chat', []],
+    ['codes', 'chat.play_queue.write', 'openvibe.chat', []],
     // The Agent Streams plan (S3, Contracts 0.300.0): Codes, Actor and Live write the report of an agent session on
     // OpenVibe.Report (report.session.write, the audience openvibe.report). They act for the person and for nobody
     // else, so the grant is unscoped and the audience is Report's alone. A desk session on a person's own machine
@@ -843,17 +850,6 @@ const NODE_GRANTS = [
     ['openvibe.live', 'live.agent_stream.publish'],
     // Agent Streams S4: a desk asks OpenVibe.Chat for the sound of a line, in the owner's own voice.
     ['openvibe.chat', 'chat.tts.speak'],
-];
-
-// Grants that name a capability the pinned contracts do not know yet (the Agent Streams plan, S6:
-// chat.play_queue.read and chat.play_queue.write are named by Contracts v0.304.0, which is not released).
-// They are seeded all the same: a grant is a row, and the token issuer hands it out. The pin round, which
-// moves this repository to the contracts release that names the capability, is what makes the contract
-// check know it. They are kept out of DEFAULT_GRANTS so that rule still holds for the released ones:
-// every default grant names a capability the pinned contracts know and the audience its owner owns.
-const PENDING_GRANTS = [
-    ['codes', 'chat.play_queue.read', 'openvibe.chat', []],
-    ['codes', 'chat.play_queue.write', 'openvibe.chat', []],
 ];
 
 // Grants withdrawn by decision; applied at every boot so an old default can't come back.
@@ -951,7 +947,7 @@ async function ensureSchema(db) {
     // A default grant that later gained namespaces fills them in on a row still seeded without any
     // (INSERT OR IGNORE alone would leave it at []); a row someone edited is left alone.
     const fillNs = db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = ? AND capability = ? AND audience = ? AND granted_by = 'default' AND namespaces = '[]'");
-    for (const [client, cap, aud, ns] of [...DEFAULT_GRANTS, ...PENDING_GRANTS]) {
+    for (const [client, cap, aud, ns] of DEFAULT_GRANTS) {
         if (!await db.prepare('SELECT 1 FROM oauth_clients WHERE client_id = ?').get(client)) continue;
         await seed.run(client, cap, aud, JSON.stringify(ns));
         if (ns.length) await fillNs.run(JSON.stringify(ns), client, cap, aud);
@@ -1156,4 +1152,4 @@ function guardAny(caps, opts) {
     };
 }
 
-module.exports = { ensureSchema, issueToken, guard, guardAny, grantsFor, recordDecision, DEFAULT_GRANTS, PENDING_GRANTS, NODE_GRANTS, REVOKED_GRANTS, RESTORED_GRANTS, TOKEN_TTL_S, SELF_AUDIENCE };
+module.exports = { ensureSchema, issueToken, guard, guardAny, grantsFor, recordDecision, DEFAULT_GRANTS, NODE_GRANTS, REVOKED_GRANTS, RESTORED_GRANTS, TOKEN_TTL_S, SELF_AUDIENCE };
