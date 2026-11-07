@@ -20,7 +20,7 @@ const jwt = require('jsonwebtoken');
 
 const CLIENT_ID = 'companion';
 const CLIENT_NAME = 'OpenVibe extension';
-const SCOPES = Object.freeze(['dock', 'activity', 'chat.read']);
+const SCOPES = Object.freeze(['dock', 'activity', 'chat.read', 'agent.view']);
 const AUDIENCES = Object.freeze(['openvibe.network', 'openvibe.chat']);
 const FAMILY_RE = /^fam_[0-9a-f]{24}$/;
 const SCOPE_RE = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;

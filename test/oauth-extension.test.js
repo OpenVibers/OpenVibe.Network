@@ -100,11 +100,11 @@ const challenge = (v) => b64(crypto.createHash('sha256').update(v).digest());
         // Code -> token with no secret.
         const codeVerifier = verifier();
         const state = 'state_' + crypto.randomBytes(12).toString('hex');
-        const start = await authorize({ client_id: 'companion', redirect_uri: CHROME, response_type: 'code', scope: 'dock activity chat.read', state, code_challenge: challenge(codeVerifier), code_challenge_method: 'S256' });
+        const start = await authorize({ client_id: 'companion', redirect_uri: CHROME, response_type: 'code', scope: 'dock activity chat.read agent.view', state, code_challenge: challenge(codeVerifier), code_challenge_method: 'S256' });
         assert.strictEqual(start.status, 302);
         assert.match(start.location, /\/login\?/);
         assert.match(start.location, /client_name=OpenVibe\+extension/);
-        const cx = await confirm({ client_id: 'companion', redirect_uri: CHROME, response_type: 'code', scope: 'dock activity chat.read', state, code_challenge: challenge(codeVerifier), code_challenge_method: 'S256' });
+        const cx = await confirm({ client_id: 'companion', redirect_uri: CHROME, response_type: 'code', scope: 'dock activity chat.read agent.view', state, code_challenge: challenge(codeVerifier), code_challenge_method: 'S256' });
         assert.strictEqual(cx.status, 200, JSON.stringify(cx.body));
         const redirect = new URL(cx.body.redirect);
         assert.strictEqual(redirect.searchParams.get('state'), state);
@@ -113,20 +113,26 @@ const challenge = (v) => b64(crypto.createHash('sha256').update(v).digest());
         const noSecret = await token({ grant_type: 'authorization_code', client_id: 'companion', code, redirect_uri: CHROME, code_verifier: codeVerifier });
         assert.strictEqual(noSecret.status, 200, JSON.stringify(noSecret.body));
         assert.strictEqual(noSecret.body.expires_in, 3600);
-        assert.strictEqual(noSecret.body.scope, 'dock activity chat.read');
+        assert.strictEqual(noSecret.body.scope, 'dock activity chat.read agent.view');
         const claims = jwt.decode(noSecret.body.access_token);
         assert.strictEqual(claims.iss, `${ISSUER}/dock`);
         assert.deepStrictEqual(claims.aud, ['openvibe.network', 'openvibe.chat']);
-        assert.deepStrictEqual([claims.client_id, claims.scope, claims.role, claims.staff_caps], ['companion', 'dock activity chat.read', undefined, undefined]);
+        assert.deepStrictEqual([claims.client_id, claims.scope, claims.role, claims.staff_caps], ['companion', 'dock activity chat.read agent.view', undefined, undefined]);
         assert.match(claims.fam, /^fam_[0-9a-f]{24}$/);
         assert.ok(noSecret.body.refresh_token);
+
+        // The agent view's scope is Companion's alone: another public client may not ask for it.
+        await db.prepare('INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party, is_public, allowed_scopes, access_token_ttl_s) VALUES (?, NULL, ?, ?, 1, 1, ?, 3600)')
+            .run('companion-other', 'Other extension', JSON.stringify(['https://other.example/cb']), 'dock activity chat.read');
+        assert.strictEqual((await authorize({ client_id: 'companion-other', redirect_uri: 'https://other.example/cb', response_type: 'code', state: 'o', scope: 'dock', code_challenge: challenge(verifier()), code_challenge_method: 'S256' })).status, 302, 'its own ceiling still works');
+        assert.strictEqual((await authorize({ client_id: 'companion-other', redirect_uri: 'https://other.example/cb', response_type: 'code', state: 'o', scope: 'agent.view', code_challenge: challenge(verifier()), code_challenge_method: 'S256' })).status, 400, 'agent.view is not its scope');
 
         // The Dock accepts it; a normal account route refuses it. Activity reads are open, action
         // writes are not, and a token that only has `dock` is refused the activity route.
         assert.strictEqual((await api('GET', '/api/v1/me/dock', noSecret.body.access_token)).status, 200);
         assert.strictEqual((await api('GET', '/api/v1/me/private', noSecret.body.access_token)).status, 401, 'not a normal session');
         assert.strictEqual((await api('GET', '/api/v1/me/private', normal)).status, 200, 'a normal session still works');
-        assert.deepStrictEqual((await api('GET', '/api/v1/me/actions', noSecret.body.access_token)).body.scope, ['dock', 'activity', 'chat.read']);
+        assert.deepStrictEqual((await api('GET', '/api/v1/me/actions', noSecret.body.access_token)).body.scope, ['dock', 'activity', 'chat.read', 'agent.view']);
         assert.strictEqual((await api('POST', '/api/v1/me/actions', noSecret.body.access_token)).status, 401, 'approve/decline is not a Dock-token route');
         const dockOnly = jwt.sign({
             sub: 1, id: 1, username: 'dockana', client_id: 'companion', scope: 'dock', fam: claims.fam,
