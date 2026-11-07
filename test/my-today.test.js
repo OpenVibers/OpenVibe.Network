@@ -155,10 +155,21 @@ assert.match(CSS, /@media \(min-width:1000px\)\{[\s\S]*\.settings\{display:grid;
     assert.strictEqual(p.ids['needs-you-sub'].textContent, '2 things waiting');
     const rows = p.ids['needs-you-list'].children;
     assert.strictEqual(rows.length, 2);
-    assert.strictEqual(rows[0].all((c) => c.tagName === 'BUTTON')[0].textContent, 'Approve', 'an approval has its one button');
+    const review = rows[0].all((c) => c.tagName === 'A')[0];
+    assert.strictEqual(review.textContent, 'Review', 'an approval opens itself: never one tap from the hub');
+    assert.strictEqual(rows[0].all((c) => c.tagName === 'BUTTON').length, 0, 'no Approve button here');
     assert.strictEqual(rows[0].all((c) => c.tagName === 'H3')[0].textContent, 'Send one email to the venue');
     assert.strictEqual(rows[0].all((c) => c.tagName === 'P')[0].textContent, 'Trip planner asks to use mail.send');
     assert.strictEqual(rows[1].all((c) => c.tagName === 'A')[0].href, 'https://openvibe.actor/tasks/tsk_1', 'an open item links its page');
+    // An agent known only by its id is not shown by it; Try again stays one tap.
+    p.sandbox.renderNeedsYou({ buckets: { waiting: [
+        { service: 'actor', id: 'apr_1', kind: 'approval', title: 'Run a command', agent: 'agt01M6VEKFK36XWYB3CSY1RE60YN', href: 'https://openvibe.actor/me/approvals/apr_1', actions: ['approve', 'open'] },
+        { service: 'actor', id: 'tsk_2', kind: 'agent_task', title: 'Summarise the inbox', href: 'https://openvibe.actor/tasks/tsk_2', actions: ['retry', 'open'] },
+    ] } });
+    const two = p.ids['needs-you-list'].children;
+    assert.ok(!/agt01M6/.test(two[0].textContent), 'a raw agent id is left out');
+    assert.strictEqual(two[0].all((c) => c.tagName === 'A')[0].href, 'https://openvibe.actor/me/approvals/apr_1', 'Review opens the approval');
+    assert.strictEqual(two[1].all((c) => c.tagName === 'BUTTON')[0].textContent, 'Try again');
     p.sandbox.renderNeedsYou({ buckets: { waiting: [] } });
     assert.strictEqual(p.ids['needs-you'].hidden, true, 'an empty queue leaves the section out');
 

@@ -254,7 +254,8 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
 .ny-list { display: grid; gap: 8px; }
 .ny-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--bg-secondary); border: 1px solid var(--border); }
 .ny-ic { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--accent) 14%, var(--bg-input)); color: var(--accent-light); font-size: 14px; }
-.ny-body { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.ny-body { flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.ny-body > * { min-width: 0; }
 .ny-body h3 { font-size: 14px; font-weight: 750; overflow-wrap: anywhere; }
 .ny-body p { font-size: 12.5px; color: var(--text-secondary); line-height: 1.4; overflow-wrap: anywhere; }
 .ny-meta { font-size: 11.5px; color: var(--text-muted); }
@@ -262,7 +263,8 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
 .ny-btn:hover, .ny-btn:focus-visible { filter: brightness(1.08); outline: none; }
 .ny-btn:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
 .ny-btn[disabled] { opacity: .65; cursor: progress; }
-@media (max-width: 600px) { .ny { padding: 16px; } .ny-item { align-items: flex-start; flex-wrap: wrap; } .ny-btn { margin-left: 46px; } }
+/* A phone: the text takes the row and the button goes under it, lined up with the text (it covered the title). */
+@media (max-width: 600px) { .ny { padding: 16px; } .ny-item { align-items: flex-start; flex-wrap: wrap; } .ny-body { flex: 1 1 calc(100% - 46px); } .ny-btn { margin-left: 46px; min-height: 44px; } }
 
 .td { display: grid; gap: 22px; margin: -8px 0 36px; }
 .td-sec { display: grid; gap: 10px; min-width: 0; }

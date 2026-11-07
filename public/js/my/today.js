@@ -262,9 +262,11 @@ function nyHref(item) {
     return /^https:\/\//.test(href) ? href : '#approvals';
 }
 
+// An approval is never one tap from here: the hub shows a line, and a step may delete, spend or send. Review opens the
+// approval itself (what exactly runs, Approve or Decline). Try again stays one tap: it only repeats what already ran.
 function nyButton(item, action) {
-    const label = action === 'approve' ? 'Approve' : action === 'retry' ? 'Try again' : 'Open';
-    if (action !== 'approve' && action !== 'retry') {
+    const label = action === 'approve' ? 'Review' : action === 'retry' ? 'Try again' : 'Open';
+    if (action !== 'retry') {
         const href = nyHref(item);
         const a = document.createElement('a');
         a.className = 'ny-btn';
@@ -336,7 +338,8 @@ function renderNeedsYou(doc) {
             summary.textContent = item.summary;
             body.append(summary);
         }
-        if (item.agent) {
+        // The agent by its name; a raw id (agt_…, app_…) says nothing to a person, so it is left out.
+        if (item.agent && !/^(agt|app|svc|usr)[_0-9A-HJKMNP-TV-Z]{20,}$/i.test(String(item.agent))) {
             const meta = document.createElement('span');
             meta.className = 'ny-meta';
             meta.textContent = item.agent;
