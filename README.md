@@ -28,6 +28,7 @@ Identity and account service for the OpenVibe network. Manages user accounts, OA
 - **Public profiles** — `/@<username>`: one page per person with their picture, bio, when they joined, what they wear and the items they own in [OpenVibe.Inventory](https://inventory.openvibe.network) (plan T21). The same data is at `GET /api/v1/profiles/:username`, open to every origin. An old username answers 301 to the current one. A person can hide their profile from Edit Profile (`users.profile_public`); a hidden one shows only the name and picture and is not indexed. Items are read with the Network's own service token and kept 60 s per person (`server/profile/public.js`).
 - **OpenCoins Wallet** — Network-wide currency. User balance/history at `/api/coins/*`; atomic credit/debit/transfer for services at `/internal/coins/*` with idempotency-key dedupe.
 - **User modules** — versioned per-person preferences and summaries in namespaces owned by services (openvibe-contracts `manifests/namespaces`); see [User modules](#user-modules).
+- **Online status** — each person has a presence of online, away, do not disturb or invisible, with an optional status line and one emoji, carried across every site. `POST /api/v1/me/presence/heartbeat` keeps it fresh (the shared navbar sends it every 60 s while the page is visible), `PUT /api/v1/me/presence` sets the chosen state, and `GET /api/v1/presence?subjects=…` answers only for people the caller follows or has a DM with (and themselves), never for a stranger and never for an invisible person; last seen is never returned. `network.presence@1` and `network.presence.changed@1`, contracts 0.318.0, `server/presence/`. Chat reads it through `GET /internal/presence` (`network.presence.read`) and asks back for the DM half of the rule (`chat.dm.peers.read`). Live streaming makes `live: true`. Every row is in the person's export and erased with the account (ADR-033).
 - **The Dock's state** — the little floating surface every OpenVibe site draws (your agent, your chats, your activity) follows the person across every domain, because `localStorage` is per site and the state lives here instead. `GET /api/v1/me/dock` and `PUT /api/v1/me/dock` (`network.dock-state@1`, `network.dock-result@1`, contracts 0.251.0; `server/dock/`). See [docs/dock.md](docs/dock.md).
 
 ## Your account ID
@@ -107,7 +108,7 @@ person's username and picture (a service token, `identity.subject.resolve`).
 Implemented here (the service manifest's `capabilities`, audience `openvibe.network`):
 `identity.subject.resolve`, `mods.grant.manage`, `network.account.deletion.confirm`,
 `network.account.export.contribute`, `network.analytics.creator.read`, `network.blocks.read`,
-`network.coins.credit|debit|transfer`, `network.follows.read|write`, `network.integration.github.read`,
+`network.coins.credit|debit|transfer`, `network.follows.read|write`, `network.presence.read`, `network.integration.github.read`,
 `network.modules.read|write`, `network.notifications.push`, `network.operator.alert`,
 `network.project.manage|read`, `network.secret.use`, `network.staff.read` and `network.status.incident`. The grants other
 services hold are seeded in [server/identity/principals.js](server/identity/principals.js).

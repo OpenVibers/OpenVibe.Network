@@ -82,6 +82,9 @@ const DEFAULT_GRANTS = [
     ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty']],
     ['chat', 'network.modules.read', SELF_AUDIENCE, CHAT_NAMESPACES],
     ['chat', 'network.modules.write', SELF_AUDIENCE, CHAT_NAMESPACES],
+    // Presence (plan 2026-10-22 track X item 9): Chat draws the dot in its DMs and member lists. The API enforces
+    // the follows-or-DM rule for the person it is asked about; Chat never sees a stranger's row.
+    ['chat', 'network.presence.read', SELF_AUDIENCE, []],
     // Chat's chat-app bots (plan A4) resolve a Telegram/Discord/Slack account to its linked OpenVibe
     // subject, and register/confirm/unlink the one-time links. Only svc:chat may reach those routes;
     // the grant is what its service token is minted with.

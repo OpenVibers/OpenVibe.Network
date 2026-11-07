@@ -139,6 +139,7 @@ const REVIEWED = {
     'server/registry/library-tags.js fetch': [1, 'fixed host api.github.com'],
     'server/node/release.js fetch': [1, 'the Node\'s own release page: a fixed GitHub API path (https://api.github.com/repos/OpenVibers/OpenVibe.Node/releases/latest), 8 s timeout, held 10 minutes; no request value ever names a host and it only ever reads the public release list'],
     'server/registry/machines.js fetch': [1, 'the machines hub calls Bot: the internal URL from operator config (OV_BOT_INTERNAL_URL, loopback by default), the paths are fixed, the machine id is a checked dev_ id (percent-encoded) and the person is named in a header, never in the URL'],
+    'server/presence/index.js fetch': [2, "Live and Chat internal URLs from operator config (loopback defaults): Live's public /api/streams (fixed path, 2 s timeout, held 30 s) and Chat's POST /internal/chat/dm/peers (fixed path, 1.5 s, the subject list in the body); never a request value names a host"],
     'server/updates/routes.js fetch': [1, 'OV_BLOG_INTERNAL_URL (operator config)'],
 };
 

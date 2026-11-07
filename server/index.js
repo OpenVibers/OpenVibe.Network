@@ -620,6 +620,18 @@ app.get('/internal/blocks', require('./identity/principals').guard('network.bloc
     // A follow that starts notifies the followed person (FOLLOW), in the follow's transaction.
     require('./identity/follows').setNotifier(require('./notifications/follow-notify').followNotifier(notificationService));
 }
+// Presence (plan 2026-10-22 track X item 9; Contracts 0.318.0): the person's chosen online status, the
+// heartbeat from any open tab and the public view their followers and DM peers may read. Chat and the
+// navbar read /api/v1/presence; Chat may read /internal/presence with network.presence.read.
+{
+    const presence = require('./presence').createPresence({
+        db, requireAuth, guard: require('./identity/principals').guard, selfToken, config,
+    });
+    app.use('/api/v1/me/presence', rateLimit({ windowMs: 60_000, max: 240 }), requireAuth, presence.me);
+    app.use('/api/v1/presence', rateLimit({ windowMs: 60_000, max: 600 }), requireAuth, presence.pub);
+    app.use('/internal/presence', require('./identity/principals').guard('network.presence.read'), presence.internal);
+    presence.start();
+}
 // Realtime tickets (WS-E task 3, WS-F task 1; ADR-005 amendment 2): the notification badge on any site opens
 // OpenVibe.Events' /realtime/stream as the signed-in person with a two-minute, single-use ticket
 // (server/auth/realtime-ticket.js). REALTIME_TICKETS=off answers 503 and every badge stays on polling.
