@@ -232,7 +232,9 @@ async function visiblePresence(db, viewer, subjects, { nowMs = Date.now(), strea
     const rows = await db.prepare(`SELECT target_id FROM user_follows WHERE follower_subject = ? AND target_type = 'channel' AND active = 1 AND target_id = ANY(?)`)
         .all(viewer, others);
     for (const r of rows) followed.add(r.target_id);
-    const peers = dmPeers ? await dmPeers(viewer, others) : new Set();
+    // Only the people a follow does not already cover need Chat's DM answer.
+    const dmCandidates = others.filter((s) => !followed.has(s));
+    const peers = dmPeers && dmCandidates.length ? await dmPeers(viewer, dmCandidates) : new Set();
     const allowed = others.filter((s) => followed.has(s) || peers.has(s));
     const out = [];
     if (self) {
