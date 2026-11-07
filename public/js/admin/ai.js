@@ -748,7 +748,14 @@ function paiShell(inner) {
         + inner;
 }
 
-const paiAiNamespaces = () => PAI.namespaces.filter((n) => PAI_AI_SERVICES.includes(n.service) && !n.namespace.endsWith('.provider_keys'));
+// A namespace made only of owner inputs for something other than AI (publishing tokens, sign-in apps, data sources,
+// chat apps…) is the Setup tab's, not this one's: Codes' publishing tokens read as "AI settings" here (2026-11-07).
+const PAI_NOT_AI_GROUPS = new Set(['chat-apps', 'sign-in-apps', 'data-sources', 'design-publishing', 'domains', 'legal', 'voices']);
+function paiSetupOnly(n) {
+    const props = n && n.schema && n.schema.properties ? Object.values(n.schema.properties) : [];
+    return props.length > 0 && props.every((p) => p && p['x-owner-input'] && PAI_NOT_AI_GROUPS.has(p['x-owner-input'].group));
+}
+const paiAiNamespaces = () => PAI.namespaces.filter((n) => PAI_AI_SERVICES.includes(n.service) && !n.namespace.endsWith('.provider_keys') && !paiSetupOnly(n));
 
 function paiRender(root) {
     const all = paiAiNamespaces();
@@ -771,7 +778,7 @@ function paiRender(root) {
         + '<div id="pai-providers-list"></div></section>'
         + '<section id="pai-exchange" class="pai-section"><div class="pai-section-head"><h3>What the Exchange offers</h3><p class="muted">Which models people can pick on openvibe.exchange, the free tier, and the spending limits that protect your balance.</p></div><div id="pai-cards-exchange" data-pai-cards></div></section>'
         + '<section id="pai-money" class="pai-section"><div class="pai-section-head"><h3>Money</h3><p class="muted">Credits are what people spend on AI; these switches decide whether people can buy them, top up and pay sellers. Each switch says what it turns on before you change it. ' + paiWhat('credits') + '</p></div><div id="pai-cards-money" data-pai-cards></div></section>'
-        + '<section id="pai-services" class="pai-section"><div class="pai-section-head"><h3>Other services\' AI settings</h3><p class="muted">AI settings that live in other parts of OpenVibe (Codes, Actor, Bench…), one card per service.</p></div><div id="pai-cards-services" data-pai-cards></div></section>'
+        + '<section id="pai-services" class="pai-section"><div class="pai-section-head"><h3>Other services\' AI settings</h3><p class="muted">AI settings that live in other parts of OpenVibe (Codes, Actor, Bench…), one card per service. Their other keys (publishing, sign-in apps, data sources) are on the <a href="/admin/setup">Setup</a> tab.</p></div><div id="pai-cards-services" data-pai-cards></div></section>'
         + '<section id="pai-vault" class="pai-section"><div class="pai-section-head"><h3>Where keys are kept</h3><p class="muted">Every key you enter is locked with that service\'s own lock key and can never be read back, not even by you. A service without its lock key stores keys unlocked and says so here: fix that first. ' + paiWhat('lock-key') + '</p></div><div id="pai-vault-list"></div></section>'
     );
     paiRenderWarnings();

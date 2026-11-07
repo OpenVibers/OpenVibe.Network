@@ -330,6 +330,7 @@ a.btn{text-decoration:none}
 .setup-from{font-size:11px;color:var(--text-muted);margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .setup-from code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;color:var(--text-muted);background:var(--bg-tertiary);padding:1px 6px;border-radius:5px;overflow-wrap:anywhere}
 .setup-row-actions{display:grid;gap:8px;min-width:0}
+.setup-row-actions>.btn{justify-self:start}
 .setup-input{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:end;min-width:0}
 .setup-input-label{grid-column:1/-1;font-size:11.5px;font-weight:600;color:var(--text-secondary)}
 .setup-input input:not([type=checkbox]){width:100%;min-width:0;min-height:36px;padding:7px 9px;background:var(--bg-input);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px;font-family:inherit}

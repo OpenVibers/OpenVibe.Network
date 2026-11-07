@@ -16,10 +16,18 @@ const ctx = {
     timeAgo: () => '2h ago', currentUser: null, console,
 };
 vm.createContext(ctx);
-vm.runInContext(src + '\n;globalThis.__pai = { paiField, paiCard, paiKeyState, paiHealth, paiHumanize, PAI_BILLING_LABEL, PAI_ACCESS_LABEL, paiProviderRow };', ctx);
+vm.runInContext(src + '\n;globalThis.__pai = { paiSetupOnly, paiField, paiCard, paiKeyState, paiHealth, paiHumanize, PAI_BILLING_LABEL, PAI_ACCESS_LABEL, paiProviderRow };', ctx);
 const P = ctx.__pai;
 
 // ── The table's words, verbatim ──
+// A namespace made only of non-AI owner inputs (Codes' publishing tokens) is the Setup tab's, not "AI settings".
+{
+    const oi = (group) => ({ type: 'string', 'x-owner-input': { group, unlocks: 'x' } });
+    assert.strictEqual(P.paiSetupOnly({ schema: { properties: { npm_token: oi('design-publishing'), chrome: oi('design-publishing') } } }), true);
+    assert.strictEqual(P.paiSetupOnly({ schema: { properties: { key: oi('ai-providers'), npm_token: oi('design-publishing') } } }), false, 'one AI input keeps it on the AI tab');
+    assert.strictEqual(P.paiSetupOnly({ schema: { properties: { model: { type: 'string' } } } }), false, 'a plain AI setting stays');
+    assert.strictEqual(P.paiSetupOnly({ schema: { properties: {} } }), false);
+}
 assert.deepStrictEqual({ ...P.PAI_BILLING_LABEL }, {
     metered: 'Spends Credits per request', subscription: 'A plan with a monthly fee shared by everyone',
     payg: 'A prepaid balance at the provider', free: 'Free', byok: 'The person\'s own key pays',

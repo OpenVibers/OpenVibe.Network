@@ -118,7 +118,9 @@ function setupRender(root) {
 
 function setupRowHtml(row) {
     const st = SETUP_STATE[row.state] || SETUP_STATE.optional;
-    const stateLabel = row.kind === 'task' && row.state === 'connected' ? 'Done' : st.label;
+    // A task is Done; a key or account is Connected; a plain setting (a switch, a cap, an id) is only Set: a switch
+    // that is Off is not "connected" to anything.
+    const stateLabel = row.state !== 'connected' ? st.label : row.kind === 'task' ? 'Done' : row.secret ? st.label : 'Set';
     const where = row.get_it_at
         ? '<p class="setup-where"><a href="' + esc(row.get_it_at) + '" target="_blank" rel="noopener noreferrer">' + (row.kind === 'task' ? 'Where to do it' : 'Where to get it') + ' <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>' + (row.get_it_how ? ' <span>' + esc(row.get_it_how) + '</span>' : '') + '</p>'
         : (row.get_it_how ? '<p class="setup-where"><span>' + esc(row.get_it_how) + '</span></p>' : '');
