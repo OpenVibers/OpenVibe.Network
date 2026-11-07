@@ -13,7 +13,7 @@ async function loadStreams() {
     try {
         const data = await api('/api/admin/streamer/streams');
         const streams = data.streams || [];
-        if (!streams.length) { c.innerHTML = '<p class="muted">No active streams</p>'; return; }
+        if (!streams.length) { c.innerHTML = '<p class="muted">No streams are live. Return when someone starts broadcasting.</p>'; return; }
         c.innerHTML = `
             <table class="admin-table">
                 <thead><tr>
@@ -27,7 +27,7 @@ async function loadStreams() {
                         <td>${s.viewer_count || 0}</td>
                         <td>${s.started_at ? timeAgo(s.started_at) : '-'}</td>
                         <td>
-                            <button class="btn btn-sm btn-danger" onclick="endStream('${s.id}')"><i class="fa-solid fa-stop"></i> End</button>
+                            <button class="btn btn-sm btn-danger" onclick="endStream('${s.id}')"><i class="fa-solid fa-stop"></i> End broadcast</button><span class="admin-help">Disconnects viewers; the streamer must restart to resume.</span>
                         </td>
                     </tr>
                 `).join('')}</tbody>
@@ -46,14 +46,14 @@ async function loadLineage(reason = '') {
         tabs.innerHTML = [['', 'All']].concat(Object.keys(by).sort().map(r => [r, `${r.replace(/_/g, ' ')} (${by[r].refs})`]))
             .map(([r, label]) => `<button class="${r === reason ? 'active' : ''}" onclick="loadLineage('${esc(r)}')">${esc(label)}</button>`).join('');
         const rows = data.unresolved || [];
-        if (!rows.length) { c.innerHTML = '<p class="muted">Nothing unresolved in the last 30 days.</p>'; return; }
+        if (!rows.length) { c.innerHTML = '<p class="muted">No unmatched references in the last 30 days. Return here if a channel link stops resolving.</p>'; return; }
         c.innerHTML = `
             <div style="overflow-x:auto"><table class="admin-table">
                 <thead><tr><th>Reference</th><th>Reason</th><th>Detail</th><th>Last caller</th><th>Times</th><th>First seen</th><th>Last seen</th></tr></thead>
                 <tbody>${rows.map(u => `
                     <tr>
                         <td><code>${esc(u.ref)}</code></td>
-                        <td><span class="badge badge-warning">${esc(u.reason)}</span></td>
+                        <td><span class="badge badge-warning">${esc(adminWords(u.reason))}</span></td>
                         <td>${esc(u.detail || '')}</td>
                         <td>${esc(u.last_caller || '-')}</td>
                         <td>${Number(u.count) || 0}</td>
@@ -65,7 +65,7 @@ async function loadLineage(reason = '') {
 }
 
 async function endStream(id) {
-    if (!confirm('Force end this stream?')) return;
+    if (!confirm('End this broadcast now? Viewers will be disconnected. The streamer must start a new broadcast to resume.')) return;
     try {
         await api(`/api/admin/streamer/streams/${id}`, { method: 'DELETE' });
         toast('Stream ended', 'success');
@@ -82,7 +82,7 @@ async function loadBans() {
     try {
         const data = await api('/api/admin/streamer/bans');
         const bans = data.bans || [];
-        if (!bans.length) { c.innerHTML = '<p class="muted">No active bans</p>'; return; }
+        if (!bans.length) { c.innerHTML = '<p class="muted">No active bans. Review Users if an account needs a restriction.</p>'; return; }
         c.innerHTML = `
             <table class="admin-table">
                 <thead><tr>
@@ -96,7 +96,7 @@ async function loadBans() {
                         <td>${b.created_at ? timeAgo(b.created_at) : '-'}</td>
                         <td>${b.expires_at ? new Date(b.expires_at).toLocaleString() : 'Permanent'}</td>
                         <td>
-                            <button class="btn btn-sm btn-outline" onclick="unbanStreamer('${b.user_id}')"><i class="fa-solid fa-user-check"></i> Unban</button>
+                            <button class="btn btn-sm btn-outline" onclick="unbanStreamer('${b.user_id}')"><i class="fa-solid fa-user-check"></i> Allow access again</button>
                         </td>
                     </tr>
                 `).join('')}</tbody>
@@ -137,7 +137,7 @@ async function fetchChatLogs() {
         const msgs = data.messages || [];
         const total = data.total || 0;
 
-        if (!msgs.length) { c.innerHTML = '<p class="muted">No messages found</p>'; pager.innerHTML = ''; return; }
+        if (!msgs.length) { c.innerHTML = '<p class="muted">No messages match. Try different words or another person.</p>'; pager.innerHTML = ''; return; }
 
         c.innerHTML = `
             <table class="admin-table">
@@ -171,7 +171,7 @@ async function loadModerators() {
     try {
         const data = await api('/api/admin/streamer/moderators');
         const mods = data.moderators || [];
-        if (!mods.length) { c.innerHTML = '<p class="muted">No global moderators yet</p>'; return; }
+        if (!mods.length) { c.innerHTML = '<p class="muted">No global moderators yet. Enter a trusted username above to add one.</p>'; return; }
         c.innerHTML = `
             <table class="admin-table">
                 <thead><tr><th>Username</th><th>Display Name</th><th>Last Seen</th><th>Actions</th></tr></thead>
@@ -181,7 +181,7 @@ async function loadModerators() {
                         <td>${esc(m.display_name || m.username)}</td>
                         <td>${m.last_seen ? timeAgo(m.last_seen) : 'Never'}</td>
                         <td>
-                            <button class="btn btn-sm btn-danger" onclick="demoteMod('${m.id}','${esc(m.username)}')"><i class="fa-solid fa-user-minus"></i> Demote</button>
+                            <button class="btn btn-sm btn-danger" onclick="demoteMod('${m.id}','${esc(m.username)}')"><i class="fa-solid fa-user-minus"></i> Remove moderator access</button>
                         </td>
                     </tr>
                 `).join('')}</tbody>
@@ -201,7 +201,7 @@ async function promoteMod() {
 }
 
 async function demoteMod(id, username) {
-    if (!confirm(`Demote ${username} from global moderator?`)) return;
+    if (!confirm(`Remove global moderation access from ${username}? They will lose these permissions. Promote them again to restore access.`)) return;
     try {
         await api(`/api/admin/streamer/moderators/${id}`, { method: 'DELETE' });
         toast(`${username} demoted`, 'success');
@@ -248,21 +248,21 @@ async function loadDeliveries() {
         const d = await api(`/api/admin/events/deliveries?${q}`);
         _deliveries = d.deliveries || [];
         const counts = d.counts || {};
-        document.getElementById('dlq-counts').textContent = Object.entries(counts).map(([k, v]) => `${k}: ${v}`).join(' · ');
+        document.getElementById('dlq-counts').textContent = Object.entries(counts).map(([k, v]) => `${{dead:'Stopped retrying',failed:'Retrying after a failure',pending:'Waiting to be delivered',delivered:'Delivered successfully'}[k] || adminWords(k)}: ${v} deliveries`).join(' · ');
         const bySub = {};
         for (const x of _deliveries) (bySub[x.subscription_id] = bySub[x.subscription_id] || []).push(x.event_id);
-        const replayAll = Object.entries(bySub).map(([s, ids]) => `<button class="btn btn-sm" data-sub="${esc(s)}" onclick="replayDeliveries(this.dataset.sub, null)">Replay ${ids.length} for ${esc(s.slice(0, 14))}…</button>`).join(' ');
+        const replayAll = Object.entries(bySub).map(([s, ids]) => `<button class="btn btn-sm" data-sub="${esc(s)}" onclick="replayDeliveries(this.dataset.sub, null)">Replay ${ids.length} deliveries for ${esc(s.slice(0, 14))}…</button>`).join(' ');
         c.innerHTML = _deliveries.length ? `<div style="margin-bottom:8px">${replayAll}</div><table class="admin-table"><thead><tr><th>Event</th><th>Subscription</th><th>Seq</th><th>Attempts</th><th>Last answer</th><th></th></tr></thead><tbody>${_deliveries.map(x => `
             <tr><td style="font-size:11px"><code>${esc(x.event_id)}</code></td><td style="font-size:11px"><code>${esc(x.subscription_id)}</code></td><td>${esc(String(x.seq))}</td><td>${esc(String(x.attempt))}</td>
-            <td style="font-size:11px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(x.last_error || '')}">${esc(x.last_status ? String(x.last_status) : '-')} ${esc(x.last_error || '')}</td>
-            <td><button class="btn btn-sm" data-sub="${esc(x.subscription_id)}" data-evt="${esc(x.event_id)}" onclick="replayDeliveries(this.dataset.sub, [this.dataset.evt])">Replay</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted">Nothing here.</p>';
+            <td style="font-size:11px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(x.last_error || '')}">${x.last_status ? `The receiver answered HTTP ${esc(String(x.last_status))}.` : 'No response recorded.'} ${esc(x.last_error || '')}</td>
+            <td><button class="btn btn-sm" data-sub="${esc(x.subscription_id)}" data-evt="${esc(x.event_id)}" onclick="replayDeliveries(this.dataset.sub, [this.dataset.evt])">Replay delivery</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted">No deliveries match. Choose another delivery state or clear the subscription filter.</p>';
     } catch (err) {
         c.innerHTML = `<p class="muted">Deliveries could not be loaded: ${esc(err.message || 'error')}</p>`;
     }
 }
 async function replayDeliveries(sub, ids) {
     const eventIds = ids || _deliveries.filter(x => x.subscription_id === sub).map(x => x.event_id);
-    if (!eventIds.length || !confirm(`Replay ${eventIds.length} deliver${eventIds.length === 1 ? 'y' : 'ies'} to ${sub}?`)) return;
+    if (!eventIds.length || !confirm(`Replay ${eventIds.length} deliver${eventIds.length === 1 ? 'y' : 'ies'} to ${sub}? This sends the events again and cannot be recalled. Fix the destination before retrying.`)) return;
     try { const r = await api('/api/admin/events/replay', { method: 'POST', body: { subscription_id: sub, event_ids: eventIds } }); alert(`Queued ${r.queued}`); loadDeliveries(); }
     catch (err) { alert(err.message || 'Replay failed'); }
 }
@@ -279,7 +279,7 @@ async function loadOperatorChecklist() {
             row.style.cssText = 'display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border)';
             const dot = document.createElement('span'); dot.title = (it.service || '') + ': ' + it.status;
             dot.style.cssText = 'width:10px;height:10px;border-radius:50%;margin-top:6px;flex:none'; dot.style.background = colour[it.status] || 'var(--text-muted, #888)';
-            const name = document.createElement('strong'); name.textContent = it.item; name.style.minWidth = '260px';
+            const name = document.createElement('strong'); name.textContent = it.item + ': ' + ({ready:'Ready to use.',degraded:'Working with a problem; check the linked service.',down:'Unavailable; check the linked service.'}[it.status] || 'Status unavailable.'); name.style.minWidth = '260px';
             const places = document.createElement('div'); places.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
             for (const w of it.where) {
                 let el;
@@ -289,7 +289,7 @@ async function loadOperatorChecklist() {
                 places.appendChild(el);
                 if (w.note) { const n = document.createElement('span'); n.className = 'muted'; n.textContent = '(' + w.note + ')'; places.appendChild(n); }
             }
-            if (!it.console) { const gap = document.createElement('span'); gap.className = 'muted'; gap.textContent = 'no console yet'; gap.style.color = 'var(--warning, #f5a524)'; places.appendChild(gap); }
+            if (!it.console) { const gap = document.createElement('span'); gap.className = 'muted'; gap.textContent = 'No settings page yet; use the listed command or API.'; gap.style.color = 'var(--warning, #f5a524)'; places.appendChild(gap); }
             row.append(dot, name, places);
             c.appendChild(row);
         }
@@ -301,7 +301,7 @@ async function loadThemeReview() {
     let list = [];
     try { list = (await api('/api/admin/themes?status=pending')).themes || []; } catch (err) { c.textContent = 'Could not load: ' + err.message; return; }
     c.replaceChildren();
-    if (!list.length) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Nothing waiting for review.'; c.appendChild(p); return; }
+    if (!list.length) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'No themes are waiting for review. Return after a theme author submits one.'; c.appendChild(p); return; }
     for (const t of list) {
         const card = document.createElement('div');
         card.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:grid;gap:8px';
@@ -311,9 +311,9 @@ async function loadThemeReview() {
         head.append(n, meta);
         const swatches = document.createElement('div'); swatches.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap';
         for (const [k, v] of Object.entries(t.variables || {}).filter(([, v]) => /^#|^rgb|^hsl/i.test(v)).slice(0, 14)) {
-            const sw = document.createElement('span'); sw.title = `${k}: ${v}`; sw.style.cssText = 'width:22px;height:22px;border-radius:6px;border:1px solid var(--border)'; sw.style.background = v; swatches.appendChild(sw);
+            const sw = document.createElement('span'); sw.title = `${adminWords(k)}: ${v}`; sw.style.cssText = 'width:22px;height:22px;border-radius:6px;border:1px solid var(--border)'; sw.style.background = v; swatches.appendChild(sw);
         }
-        const note = document.createElement('input'); note.placeholder = 'Reason (needed to reject)'; note.maxLength = 300; note.style.minWidth = '240px';
+        const note = document.createElement('input'); note.placeholder = 'Reason (needed to reject)'; note.setAttribute('aria-label', 'Review reason; required for rejection, for example unreadable text'); note.maxLength = 300; note.style.minWidth = '240px';
         const act = (decision) => async () => {
             try { await api(`/api/admin/themes/${encodeURIComponent(t.id)}/review`, { method: 'POST', body: JSON.stringify({ decision, note: note.value }) }); loadThemeReview(); }
             catch (err) { alert(err.message); }
@@ -321,7 +321,7 @@ async function loadThemeReview() {
         const ok = document.createElement('button'); ok.className = 'btn'; ok.textContent = 'Approve'; ok.onclick = act('approve');
         const no = document.createElement('button'); no.className = 'btn'; no.textContent = 'Reject'; no.onclick = act('reject');
         const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center'; row.append(note, ok, no);
-        card.append(head, swatches, row);
+        const help = document.createElement('p'); help.className = 'admin-help'; help.textContent = 'Explain a rejection so the author can fix and resubmit the theme; for example, text is unreadable. Approval publishes the theme; there is no undo control in this queue.'; card.append(head, swatches, help, row);
         c.appendChild(card);
     }
 }
@@ -345,9 +345,9 @@ function renderGrants() {
     const badge = { active: 'badge-success', revoked: 'badge-danger', expired: 'badge-warning' };
     document.getElementById('grants-content').innerHTML = list.length ? `<table class="admin-table"><thead><tr><th>Service</th><th>Capability</th><th>Audience</th><th>Namespaces</th><th>State</th><th>Expires</th><th>By</th><th></th></tr></thead><tbody>${list.map(g => `
         <tr><td><code>${esc(g.client_id)}</code></td><td><code>${esc(g.capability)}</code></td><td style="font-size:11px">${esc(g.audience)}</td>
-        <td style="font-size:11px">${esc((g.namespaces || []).join(', ') || '-')}</td><td><span class="badge ${badge[g.state] || ''}">${esc(g.state)}</span></td>
+        <td style="font-size:11px">${esc((g.namespaces || []).join(', ') || '-')}</td><td><span class="badge ${badge[g.state] || ''}">${esc({active:'Access is allowed.',revoked:'Access was removed.',expired:'Access has expired.'}[g.state] || 'Access state is unknown.')}</span></td>
         <td style="font-size:11px">${g.expires_at ? esc(g.expires_at.slice(0, 10)) : '-'}</td><td style="font-size:11px">${esc(g.granted_by === 'default' ? 'default' : (g.granted_by || '-'))}</td>
-        <td>${g.state === 'active' ? `<button class="btn btn-sm" data-client="${esc(g.client_id)}" data-cap="${esc(g.capability)}" onclick="revokeGrant(this.dataset.client, this.dataset.cap)">Revoke</button>` : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">No grants match.</p>';
+        <td>${g.state === 'active' ? `<button class="btn btn-sm" data-client="${esc(g.client_id)}" data-cap="${esc(g.capability)}" title="Remove access; grant again to restore it" onclick="revokeGrant(this.dataset.client, this.dataset.cap)">Revoke access</button>` : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">No permissions match. Clear the service filter or add the required permission above.</p>';
 }
 async function submitGrant() {
     const v = (id) => document.getElementById(id).value.trim();
@@ -357,7 +357,7 @@ async function submitGrant() {
     catch (err) { alert(err.message || 'Grant failed'); }
 }
 async function revokeGrant(client, capability) {
-    const reason = prompt(`Revoke ${capability} from ${client}? Reason:`);
+    const reason = prompt(`Revoke ${capability} from ${client}? This stops that service from using the permission. Grant it again to restore access. Reason:`);
     if (!reason) return;
     try { await api('/api/admin/grants/revoke', { method: 'POST', body: { client_id: client, capability, reason } }); loadGrants(); }
     catch (err) { alert(err.message || 'Revoke failed'); }
@@ -382,7 +382,7 @@ async function loadModLog(reset) {
                 <td style="font-size:11px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.reason || '')}">${esc(e.reason || '-')}</td>
             </tr>`).join('');
         if (reset) {
-            c.innerHTML = items.length ? `<table class="admin-table"><thead><tr><th>When</th><th>Service</th><th>Action</th><th>By</th><th>Target</th><th>Reason</th></tr></thead><tbody id="modlog-rows">${rowsHtml}</tbody></table>` : '<p class="muted">No staff actions recorded yet.</p>';
+            c.innerHTML = items.length ? `<table class="admin-table"><thead><tr><th>When</th><th>Service</th><th>Action</th><th>By</th><th>Target</th><th>Reason</th></tr></thead><tbody id="modlog-rows">${rowsHtml}</tbody></table>` : '<p class="muted">No staff actions match these filters. Clear the filters or return after staff activity.</p>';
         } else {
             document.getElementById('modlog-rows')?.insertAdjacentHTML('beforeend', rowsHtml);
         }
@@ -400,7 +400,7 @@ async function loadAudit() {
     try {
         const data = await api(`/api/admin/audit?limit=50&offset=${auditOffset}`);
         const entries = data.entries || [];
-        if (!entries.length) { c.innerHTML = '<p class="muted">No audit entries</p>'; pager.innerHTML = ''; return; }
+        if (!entries.length) { c.innerHTML = '<p class="muted">No administrative changes recorded here. Return after a settings or account change.</p>'; pager.innerHTML = ''; return; }
         c.innerHTML = `
             <table class="admin-table">
                 <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
@@ -417,7 +417,7 @@ async function loadAudit() {
         const hasMore = entries.length >= 50;
         pager.innerHTML = `
             <button class="btn btn-sm btn-outline" ${auditOffset<=0?'disabled':''} onclick="auditOffset=Math.max(0,auditOffset-50);loadAudit()"><i class="fa-solid fa-chevron-left"></i></button>
-            <span class="muted">Offset ${auditOffset}</span>
+            <span class="muted">Showing records from ${auditOffset + 1}</span>
             <button class="btn btn-sm btn-outline" ${!hasMore?'disabled':''} onclick="auditOffset+=50;loadAudit()"><i class="fa-solid fa-chevron-right"></i></button>
         `;
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; pager.innerHTML = ''; }

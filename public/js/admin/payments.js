@@ -56,13 +56,13 @@ async function loadPayments() {
             const id = `pay-${s.key}`;
             if (s.type === 'boolean') return `
                 <div class="setting-row">
-                    <label for="${esc(id)}"><strong>${esc(s.key)}</strong><br><small>${esc(s.description||'')}</small></label>
+                    <label for="${esc(id)}">${adminSettingLabel(s.key, s)}</label>
                     <input type="checkbox" id="${esc(id)}" data-key="${esc(s.key)}" data-type="boolean" ${s.value==='true'?'checked':''} style="width:18px;height:18px;cursor:pointer">
                 </div>`;
             const type = s.type === 'number' ? 'number' : (sensitive ? 'password' : 'text');
             return `
                 <div class="setting-row" style="flex-direction:column;align-items:stretch">
-                    <label for="${esc(id)}"><strong>${esc(s.key)}</strong><br><small>${esc(s.description||'')}</small></label>
+                    <label for="${esc(id)}">${adminSettingLabel(s.key, s)}</label>
                     <input type="${type}" id="${esc(id)}" data-key="${esc(s.key)}" data-type="${esc(s.type||'string')}" value="${esc(s.value)}" ${sensitive ? 'autocomplete="off"' : ''}
                         style="margin-top:4px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">
                 </div>`;
@@ -70,13 +70,13 @@ async function loadPayments() {
         const groups = PAYMENT_GROUPS.map(g => `
             <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px">
                 <legend style="padding:0 8px;font-weight:700">${esc(g.title)}</legend>
-                ${g.keys.map(k => field(byKey[k])).join('')}
+                <p class="admin-intro">${g.title === 'General' ? 'These switches and prices control paid features on Live. Change them when adjusting what buyers pay or what creators receive; save previous values to restore future pricing.' : 'These switches choose which payment providers Live offers. Enable a provider after configuring it in Billing, or turn it off to remove that checkout option without refunding existing payments.'}</p>${g.keys.map(k => field(byKey[k])).join('')}
             </fieldset>`).join('');
         c.innerHTML = `
             <div style="max-width:860px">
-                <p class="muted" style="margin-bottom:12px">OpenVibe.Billing runs every checkout, subscription and cashout. These are the switches and prices OpenVibe.Live reads to decide which ways to pay it offers. A way to pay is offered when <strong>payments_enabled</strong> and its own switch are on and Billing has that provider's keys in its environment (below); with no keys there, the switch has no effect.</p>
+                <p class="muted" style="margin-bottom:12px">OpenVibe.Billing runs every checkout, subscription and cashout. These are the switches and prices OpenVibe.Live reads to decide which ways to pay it offers. A way to pay is offered when <strong>Allow purchases and subscriptions</strong> and its own switch are on and Billing has that provider's keys in its environment (below); with no keys there, the switch has no effect.</p>
                 <form id="payments-form">${groups}
-                    <button type="button" class="btn btn-primary" onclick="savePayments()"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save payment settings</button>
+                    <button type="button" class="btn btn-primary" onclick="savePayments()"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save prices and payment availability</button><p class="admin-help">Saving changes future payment offers. Restore the previous settings to undo; use Billing for refunds of completed purchases.</p>
                 </form>
                 <div style="margin-top:20px">${billingProvidersCard()}</div>
             </div>`;
@@ -109,7 +109,7 @@ async function loadVKeys() {
         const data = await api('/api/admin/verification-keys');
         const keys = data.keys || [];
         keys.forEach(k => { if (k.key) secretStore[`vk-${k.id}`] = k.key; });
-        if (!keys.length) { c.innerHTML = '<p class="muted">No verification keys generated yet</p>'; return; }
+        if (!keys.length) { c.innerHTML = '<p class="muted">No account reservation keys yet. Enter a username and choose Generate to reserve it.</p>'; return; }
         c.innerHTML = `
             <table class="admin-table">
                 <thead><tr><th>Key</th><th>Reserved Username</th><th>Status</th><th>Note</th><th>Created</th><th>Actions</th></tr></thead>
@@ -117,14 +117,14 @@ async function loadVKeys() {
                     <tr>
                         <td><code id="vk-${k.id}" style="font-size:12px;color:var(--text-muted)">••••••••</code></td>
                         <td><strong>${esc(k.target_username)}</strong></td>
-                        <td><span class="badge badge-${k.status==='active'?'success':k.status==='used'?'info':'danger'}">${esc(k.status)}</span></td>
+                        <td><span class="badge badge-${k.status==='active'?'success':k.status==='used'?'info':'danger'}">${esc({ active: 'Ready to claim.', used: 'Already claimed.', revoked: 'No longer usable.' }[k.status] || 'Status unavailable.')}</span></td>
                         <td style="font-size:12px">${esc(k.note || '-')}</td>
                         <td style="font-size:11px">${k.created_at ? new Date(k.created_at).toLocaleDateString() : '-'}</td>
                         <td style="display:flex;gap:4px">
                             ${k.status === 'active' ? `
-                                <button class="btn btn-sm btn-outline" onclick="revealVKey('vk-${k.id}')"><i class="fa-solid fa-eye"></i></button>
-                                <button class="btn btn-sm btn-outline" onclick="copyVKey('vk-${k.id}')"><i class="fa-solid fa-copy"></i></button>
-                                <button class="btn btn-sm btn-danger" onclick="revokeVKey('${k.id}')"><i class="fa-solid fa-trash"></i></button>
+                                <button class="btn btn-sm btn-outline" aria-label="Show or hide reservation key" onclick="revealVKey('vk-${k.id}')"><i class="fa-solid fa-eye"></i></button>
+                                <button class="btn btn-sm btn-outline" aria-label="Copy reservation key" onclick="copyVKey('vk-${k.id}')"><i class="fa-solid fa-copy"></i></button>
+                                <button class="btn btn-sm btn-danger" title="Revoke permanently; generate a new key to replace it" aria-label="Revoke reservation key" onclick="revokeVKey('${k.id}')"><i class="fa-solid fa-trash"></i></button>
                             ` : k.status === 'used' ? `<span class="muted">Used by ${esc(k.used_by_name || '?')}</span>` : '<span class="muted">Revoked</span>'}
                         </td>
                     </tr>
@@ -164,7 +164,7 @@ async function generateVKey() {
 }
 
 async function revokeVKey(id) {
-    if (!confirm('Revoke this verification key?')) return;
+    if (!confirm('Revoke this account reservation key? It will no longer work. This cannot be undone; generate a new key if access is needed again.')) return;
     try {
         await api(`/api/admin/verification-keys/${id}`, { method: 'DELETE' });
         toast('Key revoked', 'success');

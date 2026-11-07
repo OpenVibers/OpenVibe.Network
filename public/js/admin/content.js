@@ -36,14 +36,14 @@ async function loadPastesAdmin() {
             </div>
             <div class="card">
                 <h3><i class="fa-solid fa-sliders" aria-hidden="true"></i> Paste limits</h3>
-                <p class="muted" style="margin-bottom:8px">OpenVibe.Community owns pastes and sets these limits itself; they cannot be changed from here.</p>
+                <p class="muted" style="margin-bottom:8px">OpenVibe.Community sets these paste limits; this view is read-only. Change them in Community when adjusting capacity; higher limits allow more content and lower limits allow less.</p>
                 ${limit('Largest text paste', `${n(cfg.maxSizeKb)} KB`)}
                 ${limit('Largest image', `${n(cfg.screenshotMaxSizeMb)} MB`)}
                 ${limit('Wait between pastes', `${n(cfg.cooldownSeconds)} seconds`)}
                 ${limit('Pastes per person per day', Number(cfg.maxPerUserPerDay) === 0 ? 'No limit' : n(cfg.maxPerUserPerDay))}
             </div>
             <div class="card">
-                <h3><i class="fa-solid fa-code-fork" aria-hidden="true"></i> Forks</h3>
+                <h3><i class="fa-solid fa-code-fork" aria-hidden="true"></i> Forks</h3><p class="admin-intro">These are copies people made of existing pastes. Delete them only during deliberate cleanup; deleted copies cannot be recovered here.</p>
                 <p class="muted" style="margin-bottom:12px">Copies people made of other pastes. Deleting them cannot be undone.</p>
                 <button class="btn btn-danger" onclick="deleteAllPasteForks()"${Number(s.forks || 0) ? '' : ' disabled'}><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Delete all forks (${n(s.forks || 0)})</button>
             </div>`;
@@ -80,7 +80,7 @@ async function loadStorage() {
         c.innerHTML = `
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-hard-drive"></i> Disk Usage</h3>
+                    <h3><i class="fa-solid fa-hard-drive"></i> Disk Usage</h3><p class="admin-intro">This shows occupied and available disk space in bytes. Review it when the disk is filling up; a higher used percentage leaves less room for new files.</p>
                     <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px">
                         <span>${fmtBytes(d.used)} used of ${fmtBytes(d.total)}</span>
                         <span style="font-weight:700;color:${pctColor}">${usePct}%</span>
@@ -94,7 +94,7 @@ async function loadStorage() {
                     </div>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-database"></i> Data Summary</h3>
+                    <h3><i class="fa-solid fa-database"></i> Data Summary</h3><p class="admin-intro">This counts stored files and their combined size in bytes. Check it when comparing growth; higher totals mean more stored data.</p>
                     <div class="stats-grid" style="margin:0">
                         <div class="stat-card" style="padding:10px"><div class="value" style="font-size:18px">${fmtBytes(data.dataTotal?.bytes || 0)}</div><div class="label">Total Data</div></div>
                         <div class="stat-card" style="padding:10px"><div class="value" style="font-size:18px">${(data.dataTotal?.files || 0).toLocaleString()}</div><div class="label">Files</div></div>
@@ -104,7 +104,7 @@ async function loadStorage() {
                 </div>
             </div>
 
-            <h3 style="margin-bottom:12px"><i class="fa-solid fa-folder-tree"></i> Storage Breakdown</h3>
+            <h3 style="margin-bottom:12px"><i class="fa-solid fa-folder-tree"></i> Storage Breakdown</h3><p class="admin-intro">This groups storage use by file category. Review the largest categories before deciding what to archive or remove.</p>
             <div style="display:grid;gap:8px;margin-bottom:24px">
                 ${breakdown.map(b => `
                     <div style="display:grid;grid-template-columns:140px 1fr 100px 80px;align-items:center;gap:12px;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px">
@@ -117,14 +117,14 @@ async function loadStorage() {
             </div>
 
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                <h3><i class="fa-solid fa-video"></i> VOD Management</h3>
+                <h3><i class="fa-solid fa-video"></i> VOD Management</h3><p class="admin-intro">These are saved stream recordings, also called VODs. Select recordings only when you intend to permanently delete them; recovery requires a separate backup.</p>
                 <div style="display:flex;gap:8px">
-                    <select id="vod-sort" onchange="loadVodTable()" style="padding:6px 10px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
-                        <option value="size">Sort by Size</option>
-                        <option value="date">Sort by Date</option>
-                        <option value="duration">Sort by Duration</option>
+                    <label for="vod-sort">Recording order</label><span class="admin-help">Largest file first is the default. Choose newest or longest to find recordings by age or duration.</span><select id="vod-sort" onchange="loadVodTable()" style="padding:6px 10px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
+                        <option value="size">Largest file first</option>
+                        <option value="date">Newest recording first</option>
+                        <option value="duration">Longest recording first</option>
                     </select>
-                    <button class="btn btn-sm btn-danger" id="vod-bulk-btn" disabled onclick="bulkDeleteVods()"><i class="fa-solid fa-trash-can"></i> Delete Selected</button>
+                    <button class="btn btn-sm btn-danger" id="vod-bulk-btn" disabled onclick="bulkDeleteVods()"><i class="fa-solid fa-trash-can"></i> Permanently delete selected</button>
                 </div>
             </div>
             <div id="vod-table"><div class="loading">Loading VODs...</div></div>
@@ -174,7 +174,7 @@ function buildStreamerTierHtml(tierData) {
         + '<td style="padding:8px 10px;text-align:right">' + (r.clips || 0).toLocaleString() + '</td>'
         + '<td style="padding:8px 10px">' + r.status + '</td></tr>').join('');
     return '<div class="card" style="margin-bottom:24px">'
-        + '<h3 style="margin:0 0 6px"><i class="fa-solid fa-layer-group"></i> Storage Tiers <span style="color:var(--text-muted);font-size:13px;font-weight:400">— ' + offloadPct + '% of VOD data offloaded to cloud</span></h3>'
+        + '<h3 style="margin:0 0 6px"><i class="fa-solid fa-layer-group"></i> Storage Tiers <span style="color:var(--text-muted);font-size:13px;font-weight:400">— ' + offloadPct + '% of recordings stored in cloud</span></h3><p class="admin-intro">These tiers show where recordings are stored. Review them when local space is low; a higher cloud percentage means more recording data is stored away from this server.</p>'
         + bar
         + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
         + '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border)">'
@@ -200,8 +200,8 @@ async function loadStreamerCloudStorage(force) {
     const el = document.getElementById('streamer-cloud-storage');
     if (!el) return;
     const header = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
-        + '<h3 style="margin:0"><i class="fa-solid fa-cloud"></i> Cloud Storage — B2 &amp; R2 Usage &amp; Cost</h3>'
-        + '<button class="btn btn-sm btn-outline" onclick="loadStreamerCloudStorage(true)"><i class="fa-solid fa-rotate"></i> Rescan</button></div>';
+        + '<h3 style="margin:0"><i class="fa-solid fa-cloud"></i> Cloud storage usage and cost</h3>'
+        + '<p class="admin-intro">This estimates storage in Backblaze B2 and Cloudflare R2, in bytes and US dollars per month. Rescan when checking capacity; higher usage means more stored data and may increase charges.</p><button class="btn btn-sm btn-outline" onclick="loadStreamerCloudStorage(true)"><i class="fa-solid fa-rotate"></i> Rescan now</button></div>';
     el.innerHTML = header + '<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Scanning cloud buckets…</div>';
     try {
         const data = await api('/api/admin/streamer/storage/buckets' + (force ? '?force=1' : ''));
@@ -211,7 +211,7 @@ async function loadStreamerCloudStorage(force) {
         const card = (key, label, color) => {
             const u = usage[key];
             const cc = costs[key];
-            if (!u || u.configured === false) return '<div class="card" style="flex:1;min-width:260px"><strong style="color:' + color + '"><i class="fa-solid fa-cloud"></i> ' + label + '</strong><div style="color:var(--text-muted);margin-top:8px">Not configured</div></div>';
+            if (!u || u.configured === false) return '<div class="card" style="flex:1;min-width:260px"><strong style="color:' + color + '"><i class="fa-solid fa-cloud"></i> ' + label + '</strong><div style="color:var(--text-muted);margin-top:8px">Cloud storage is not connected. Configure this provider in Live, then rescan.</div></div>';
             if (u.error) return '<div class="card" style="flex:1;min-width:260px"><strong style="color:' + color + '"><i class="fa-solid fa-cloud"></i> ' + label + '</strong><div style="color:var(--danger-text, var(--danger,#ef4444));margin-top:8px">Scan error: ' + esc(u.error) + '</div></div>';
             const tops = Object.entries(u.prefixes || {}).sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 8);
             const prefixRows = tops.map(([p, v]) => '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);padding:2px 0"><span>' + esc(p) + '</span><span>' + fmtBytes(v.bytes) + ' · ' + v.objects.toLocaleString() + '</span></div>').join('');
@@ -238,17 +238,17 @@ async function loadVodTable() {
     try {
         const data = await api(`/api/admin/streamer/storage/vods?sort=${sort}&order=desc&limit=100`);
         const vods = data.vods || [];
-        if (!vods.length) { c.innerHTML = '<p class="muted">No VODs found</p>'; return; }
+        if (!vods.length) { c.innerHTML = '<p class="muted">No saved recordings. Return after a stream has been recorded.</p>'; return; }
 
         c.innerHTML = `
             <table class="admin-table">
                 <thead><tr>
-                    <th style="width:32px"><input type="checkbox" onchange="toggleAllVods(this.checked)" style="cursor:pointer"></th>
+                    <th style="width:32px"><input type="checkbox" aria-label="Select all recordings for permanent deletion" onchange="toggleAllVods(this.checked)" style="cursor:pointer"></th>
                     <th>Title</th><th>User</th><th style="text-align:right">Size</th><th style="text-align:right">Duration</th><th>Date</th>
                 </tr></thead>
                 <tbody>${vods.map(v => `
                     <tr>
-                        <td><input type="checkbox" class="vod-cb" value="${v.id}" onchange="updateVodSelection()" style="cursor:pointer"></td>
+                        <td><input type="checkbox" aria-label="Select this recording for permanent deletion" class="vod-cb" value="${v.id}" onchange="updateVodSelection()" style="cursor:pointer"></td>
                         <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(v.title||'')}">${esc(v.title || '(untitled)')}</td>
                         <td>${esc(v.username || '-')}</td>
                         <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${fmtBytes(v.diskSize || v.file_size || 0)}</td>
@@ -265,13 +265,13 @@ function toggleAllVods(checked) { document.querySelectorAll('.vod-cb').forEach(c
 function updateVodSelection() {
     const n = document.querySelectorAll('.vod-cb:checked').length;
     const btn = document.getElementById('vod-bulk-btn');
-    if (btn) { btn.disabled = n === 0; btn.innerHTML = `<i class="fa-solid fa-trash-can"></i> Delete Selected${n ? ` (${n})` : ''}`; }
+    if (btn) { btn.disabled = n === 0; btn.innerHTML = `<i class="fa-solid fa-trash-can"></i> Permanently delete selected${n ? ` (${n})` : ''}`; }
 }
 
 async function bulkDeleteVods() {
     const ids = [...document.querySelectorAll('.vod-cb:checked')].map(cb => parseInt(cb.value));
     if (!ids.length) return;
-    if (!confirm(`Permanently delete ${ids.length} VOD(s)?`)) return;
+    if (!confirm(`Permanently delete ${ids.length} saved recording(s)? Viewers will lose access. This cannot be undone here; recovery requires a separate backup.`)) return;
     try {
         const data = await api('/api/admin/streamer/storage/vods/bulk', { method: 'DELETE', body: { ids } });
         toast(`Deleted ${data.deleted || 0} VOD(s), freed ${fmtBytes(data.freed || 0)}`, 'success');
@@ -289,7 +289,7 @@ async function sendBroadcast() {
     const priority = document.getElementById('broadcast-priority')?.value || 'normal';
     const url = document.getElementById('broadcast-url')?.value.trim();
     if (!title) return toast('Title required', 'error');
-    if (!confirm(`Send broadcast "${title}" to all users?`)) return;
+    if (!confirm(`Send broadcast "${title}" to all users? It cannot be recalled here. If the announcement is wrong, send a correction.`)) return;
     try {
         const data = await api('/api/admin/broadcast', { method: 'POST', body: { title, message, icon, priority, url } });
         toast(`Broadcast sent to ${data.sent || 0} users`, 'success');
@@ -313,45 +313,45 @@ async function loadEmail() {
         const recent = Array.isArray(metrics.recent) ? metrics.recent : [];
         c.innerHTML = `
             <div class="stats-grid" style="margin-bottom:16px">
-                <div class="stat-card"><div class="value">${Number(summary.sent || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-paper-plane"></i> Emails Sent</div></div>
+                <div class="stat-card"><div class="value">${Number(summary.sent || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-paper-plane"></i> Emails sent</div></div>
                 <div class="stat-card"><div class="value">${Number(summary.failed || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-triangle-exclamation"></i> Failed</div></div>
-                <div class="stat-card"><div class="value">${Number(summary.sent_24h || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-clock"></i> Sent · 24h</div></div>
-                <div class="stat-card"><div class="value">${Number(summary.password_resets_24h || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-key"></i> Password Resets · 24h</div></div>
-                <div class="stat-card"><div class="value">${Number(summary.notifications_24h || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-bell"></i> Notification Emails · 24h</div></div>
-                <div class="stat-card"><div class="value">${Number(summary.tests_24h || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-flask-vial"></i> Test Emails · 24h</div></div>
+                <div class="stat-card"><div class="value">${Number(summary.sent_24h || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-clock"></i> Sent · last 24 hours</div></div>
+                <div class="stat-card"><div class="value">${Number(summary.password_resets_24h || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-key"></i> Password resets · last 24 hours</div></div>
+                <div class="stat-card"><div class="value">${Number(summary.notifications_24h || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-bell"></i> Notification emails · last 24 hours</div></div>
+                <div class="stat-card"><div class="value">${Number(summary.tests_24h || 0).toLocaleString()}</div><div class="label"><i class="fa-solid fa-flask-vial"></i> Test emails · last 24 hours</div></div>
             </div>
 
             <div class="card" style="padding:16px;margin-bottom:16px">
-                <h3 style="margin-bottom:10px"><i class="fa-solid fa-chart-line"></i> Email Delivery Metrics</h3>
+                <h3 style="margin-bottom:10px"><i class="fa-solid fa-chart-line"></i> Email Delivery Metrics</h3><p class="admin-intro">These are recorded delivery counts and recent failures. Check them after a test email or a reported delivery problem; more failed messages means more deliveries need investigation.</p>
                 <div class="muted" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
-                    <div><strong>Total Logged:</strong> ${Number(summary.total || 0).toLocaleString()}</div>
-                    <div><strong>Failed · 24h:</strong> ${Number(summary.failed_24h || 0).toLocaleString()}</div>
-                    <div><strong>Last Sent:</strong> ${summary.last_sent_at ? esc(timeAgo(summary.last_sent_at)) : 'Never'}</div>
-                    <div><strong>Last Failure:</strong> ${summary.last_failed_at ? esc(timeAgo(summary.last_failed_at)) : 'Never'}</div>
+                    <div><strong>Total recorded:</strong> ${Number(summary.total || 0).toLocaleString()}</div>
+                    <div><strong>Failed in the last 24 hours:</strong> ${Number(summary.failed_24h || 0).toLocaleString()}</div>
+                    <div><strong>Last email sent:</strong> ${summary.last_sent_at ? esc(timeAgo(summary.last_sent_at)) : 'Never'}</div>
+                    <div><strong>Last failure:</strong> ${summary.last_failed_at ? esc(timeAgo(summary.last_failed_at)) : 'Never'}</div>
                 </div>
             </div>
 
             <form id="email-form" style="max-width:600px;margin-bottom:16px">
                 <div class="setting-row">
-                    <label><strong>Email Enabled</strong></label>
-                    <input type="checkbox" id="email-enabled" ${email.enabled ? 'checked' : ''} style="width:18px;height:18px;cursor:pointer">
+                    <label for="email-enabled"><strong>Send email</strong></label>
+                    <input type="checkbox" id="email-enabled" aria-label="Send outgoing email" aria-describedby="help-email-enabled" ${email.enabled ? 'checked' : ''} style="width:18px;height:18px;cursor:pointer"><span class="admin-help" id="help-email-enabled">Off by default, so no email is sent. Turn it on after configuring Resend; turning it off stops delivery, and turning it on resumes it.</span>
                 </div>
                 ${email.issue ? `<div style="background:#e74c3c22;border:1px solid #e74c3c44;border-radius:8px;padding:10px 14px;margin:8px 0 12px;font-size:13px;color:#e74c3c"><i class="fa-solid fa-triangle-exclamation"></i> ${esc(email.issue)}</div>` : email.ready ? `<div style="background:#27ae6022;border:1px solid #27ae6044;border-radius:8px;padding:10px 14px;margin:8px 0 12px;font-size:13px;color:#27ae60"><i class="fa-solid fa-circle-check"></i> Resend is ready — emails will be delivered</div>` : ''}
 
-                <h4 style="margin:12px 0 10px;font-size:14px"><i class="fa-solid fa-key"></i> Resend API</h4>
-                <div class="form-field"><label>API Key</label><input type="password" id="email-api-key" value="" placeholder="${email.api_key_source === 'env' ? `Set in the environment (${esc(email.api_key_env || 'RESEND_API_KEY')})` : 'Not set'}" disabled autocomplete="off"></div>
+                <h4 style="margin:12px 0 10px;font-size:14px"><i class="fa-solid fa-key"></i> Resend email key</h4><p class="admin-intro">This is the key that lets Network send email through the Resend service. Set it in the server environment before turning email on; changing it here has no effect.</p>
+                <div class="form-field"><label for="email-api-key">Resend email key</label><input type="password" id="email-api-key" aria-label="Resend email key" aria-describedby="help-email-api-key" value="" placeholder="${email.api_key_source === 'env' ? `Set in the environment (${esc(email.api_key_env || 'RESEND_API_KEY')})` : 'Not set'}" disabled autocomplete="off"><span class="admin-help" id="help-email-api-key">No key is configured by default. This field is read-only; use the Resend API keys page below and set the key in the server environment.</span></div>
                 <p class="muted" style="margin:-4px 0 8px;font-size:11px">${email.api_key_source === 'env' ? `The key comes from <code>${esc(email.api_key_env || 'RESEND_API_KEY')}</code> in the server's environment file; change it there.` : `Provider secrets live in the server's environment only: get a key from <a href="https://resend.com/api-keys" target="_blank" rel="noopener" style="color:var(--accent)">resend.com/api-keys</a>, set <code>${esc(email.api_key_env || 'RESEND_API_KEY')}</code> in <code>/etc/openvibe/network.env</code>, and restart Network.`}</p>
 
-                <h4 style="margin:20px 0 10px;font-size:14px"><i class="fa-solid fa-envelope"></i> From Addresses</h4>
-                <div class="form-field"><label>Default From Email</label><input type="email" id="email-from-email" value="${esc(email.from_email || '')}" placeholder="noreply@openvibe.network"></div>
-                <div class="form-field"><label>Default From Name</label><input type="text" id="email-from-name" value="${esc(email.from_name || '')}" placeholder="OpenVibe"></div>
-                <div class="form-field"><label>OpenVibe.Live From <span class="muted">(optional override)</span></label><input type="email" id="email-from-openvibelive" value="${esc(email.from_email_openvibelive || '')}" placeholder="noreply@openvibe.live"></div>
-                <div class="form-field"><label>OpenVibe Quest From <span class="muted">(optional override)</span></label><input type="email" id="email-from-openvibegames" value="${esc(email.from_email_openvibegames || '')}" placeholder="noreply@openvibe.games"></div>
-                <div class="form-field"><label>OpenVibe Tools From <span class="muted">(optional override)</span></label><input type="email" id="email-from-openvibenetwork" value="${esc(email.from_email_openvibenetwork || '')}" placeholder="noreply@openvibe.network"></div>
+                <h4 style="margin:20px 0 10px;font-size:14px"><i class="fa-solid fa-envelope"></i> From addresses</h4><p class="admin-intro">These are the addresses recipients see when an email arrives. Change them when you want a different sender name or a per-service address; the overrides below only affect the service they name.</p>
+                <div class="form-field"><label for="email-from-email">Default sender address</label><input type="email" id="email-from-email" aria-label="Default sender address" aria-describedby="help-email-from-email" value="${esc(email.from_email || '')}" placeholder="noreply@openvibe.network"><span class="admin-help" id="help-email-from-email">Uses the saved sender address, normally noreply@openvibe.network. Enter an address on your verified domain, for example alerts@example.com.</span></div>
+                <div class="form-field"><label for="email-from-name">Sender name</label><input type="text" id="email-from-name" aria-label="Sender display name" aria-describedby="help-email-from-name" value="${esc(email.from_name || '')}" placeholder="OpenVibe"><span class="admin-help" id="help-email-from-name">The default is OpenVibe. Use a recognizable name, for example OpenVibe Support.</span></div>
+                <div class="form-field"><label for="email-from-openvibelive">Live sender address <span class="muted">(optional override)</span></label><input type="email" id="email-from-openvibelive" aria-label="Live sender address" aria-describedby="help-email-from-openvibelive" value="${esc(email.from_email_openvibelive || '')}" placeholder="noreply@openvibe.live"><span class="admin-help" id="help-email-from-openvibelive">Blank uses the default sender. Enter a verified address such as noreply@openvibe.live to override it for Live.</span></div>
+                <div class="form-field"><label for="email-from-openvibegames">Games sender address <span class="muted">(optional override)</span></label><input type="email" id="email-from-openvibegames" aria-label="Games sender address" aria-describedby="help-email-from-openvibegames" value="${esc(email.from_email_openvibegames || '')}" placeholder="noreply@openvibe.games"><span class="admin-help" id="help-email-from-openvibegames">Blank uses the default sender. Enter a verified address such as noreply@openvibe.games to override it for Games.</span></div>
+                <div class="form-field"><label for="email-from-openvibenetwork">Tools sender address <span class="muted">(optional override)</span></label><input type="email" id="email-from-openvibenetwork" aria-label="Tools sender address" aria-describedby="help-email-from-openvibenetwork" value="${esc(email.from_email_openvibenetwork || '')}" placeholder="noreply@openvibe.network"><span class="admin-help" id="help-email-from-openvibenetwork">Blank uses the default sender. Enter a verified address such as noreply@openvibe.network to override it for Tools.</span></div>
 
                 <div style="display:flex;gap:8px;margin-top:16px">
-                    <button type="button" class="btn btn-primary" onclick="saveEmail()"><i class="fa-solid fa-floppy-disk"></i> Save Email Config</button>
-                    <button type="button" class="btn btn-outline" onclick="testEmail()"><i class="fa-solid fa-paper-plane"></i> Send Test Email</button>
+                    <button type="button" class="btn btn-primary" onclick="saveEmail()"><i class="fa-solid fa-floppy-disk"></i> Save email settings</button>
+                    <button type="button" class="btn btn-outline" onclick="testEmail()"><i class="fa-solid fa-paper-plane"></i> Send a test email</button>
                 </div>
                 <div style="background:#2a2a3822;border:1px solid #333340;border-radius:8px;padding:12px 14px;margin-top:16px;font-size:12px;color:var(--text-muted)">
                     <strong style="color:var(--text)"><i class="fa-solid fa-globe"></i> DNS Setup</strong><br>
@@ -360,7 +360,7 @@ async function loadEmail() {
             </form>
 
             <div class="card" style="padding:16px;margin-bottom:16px">
-                <h3 style="margin-bottom:10px"><i class="fa-solid fa-layer-group"></i> Delivery Breakdown · 30 days</h3>
+                <h3 style="margin-bottom:10px"><i class="fa-solid fa-layer-group"></i> Delivery breakdown · last 30 days</h3><p class="admin-intro">This counts sent and failed messages by type over the last 30 days. Review it when one kind of email is failing more often than others.</p>
                 ${byType.length ? `
                     <table class="admin-table">
                         <thead><tr><th>Email Type</th><th>Status</th><th>Count</th></tr></thead>
@@ -368,17 +368,17 @@ async function loadEmail() {
                             ${byType.map(row => `
                                 <tr>
                                     <td>${esc(row.email_type)}</td>
-                                    <td>${row.status === 'sent' ? '<span class="badge badge-success">Sent</span>' : '<span class="badge badge-danger">Failed</span>'}</td>
+                                    <td>${row.status === 'sent' ? '<span class="badge badge-success">The provider accepted the email.</span>' : '<span class="badge badge-danger">The email could not be sent.</span>'}</td>
                                     <td>${Number(row.count || 0).toLocaleString()}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
                     </table>`
-                : '<p class="muted">No email activity logged yet.</p>'}
+                : '<p class="muted">No email deliveries recorded. Save the configuration and send a test email to check delivery.</p>'}
             </div>
 
             <div class="card" style="padding:16px">
-                <h3 style="margin-bottom:10px"><i class="fa-solid fa-clock-rotate-left"></i> Recent Email Activity</h3>
+                <h3 style="margin-bottom:10px"><i class="fa-solid fa-clock-rotate-left"></i> Recent Email Activity</h3><p class="admin-intro">These are the most recent email delivery attempts and provider errors. Check a failed row after a delivery report, then correct the configuration and send a new test.</p>
                 ${recent.length ? `
                     <table class="admin-table">
                         <thead><tr><th>When</th><th>Type</th><th>Recipient</th><th>Status</th><th>Subject</th><th>Error</th></tr></thead>
@@ -388,14 +388,14 @@ async function loadEmail() {
                                     <td style="white-space:nowrap">${esc(timeAgo(row.created_at))}</td>
                                     <td>${esc(row.email_type)}</td>
                                     <td>${esc(row.recipient)}</td>
-                                    <td>${row.status === 'sent' ? '<span class="badge badge-success">Sent</span>' : '<span class="badge badge-danger">Failed</span>'}</td>
+                                    <td>${row.status === 'sent' ? '<span class="badge badge-success">The provider accepted the email.</span>' : '<span class="badge badge-danger">The email could not be sent.</span>'}</td>
                                     <td>${esc(row.subject || '-')}</td>
                                     <td style="font-size:11px;color:var(--text-muted)">${esc(row.error_message || '-')}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
                     </table>`
-                : '<p class="muted">No email activity logged yet.</p>'}
+                : '<p class="muted">No email deliveries recorded. Save the configuration and send a test email to check delivery.</p>'}
             </div>`;
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
 }
