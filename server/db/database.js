@@ -235,6 +235,11 @@ async function seedDb(db, { log = console } = {}) {
                 log.log(`[DB] OAuth2 client ${c.client_id} renamed to ${c.name}`);
             }
         }
+        // Watch Together v1 (plan R1): Chat signs people in on openvibe.party too, with its own host-only session, so its
+        // client takes a second callback beside openvibe.chat's. Chat's principal is provisioned by hand
+        // (server/setup/service-principal.js create chat), so this adds the URI where the client exists rather than
+        // creating one.
+        await mergeRedirectUris(db, 'chat', ['https://openvibe.party/auth/callback'], { log });
         if (seededAny) console.log('[DB] New OAuth2 clients seeded; their secrets are in oauth_clients (they are never logged).');
     }
     mark('oauth clients');
