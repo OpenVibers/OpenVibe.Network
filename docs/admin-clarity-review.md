@@ -80,9 +80,9 @@ Results in `work/shots/admin-clarity`:
 
 | | before | after |
 |---|---|---|
-| Views captured | 84 | 84 |
+| Views captured | 92 | 92 |
 | 390 px views wider than the screen | 8 | 0 |
-| Controls under 44 px | 648 | 0 |
+| Controls under 44 px | 696 | 0 |
 | Page errors | 0 | 0 |
 
 The write contract check submits the same six requests with the same bodies before and after

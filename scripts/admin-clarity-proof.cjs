@@ -34,7 +34,7 @@ const fixtures={
 '/api/admin/events/deliveries':{deliveries:[],counts:{dead:0,failed:0,pending:0}},
 '/api/admin/url-registry':{entries:[{key:'OV_LIVE_URL',label:'Live public address',type:'string',value:'https://openvibe.live',source:'default'}]},
 };
-const panels=[['dashboard'],['users'],['streams'],['moderators'],['settings'],['settings','discord'],['settings','streamer'],['settings','urls'],['payments'],['pastes'],['storage'],['notifications'],['email'],['deploy'],['deploy','config'],['deploy','certs'],['deploy','domains'],['analytics'],['grants'],['eventsops'],['domains']];
+const panels=[['dashboard'],['users'],['streams'],['moderators'],['settings'],['settings','discord'],['settings','streamer'],['settings','urls'],['payments'],['pastes'],['storage'],['notifications'],['email'],['deploy'],['deploy','config'],['deploy','certs'],['deploy','domains'],['analytics'],['grants'],['eventsops'],['domains'],['tts'],['cashouts']];
 (async()=>{
  const b=await chromium.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});const results=[];
  for(const width of (onlyChecks ? [1280] : [390,1280]))for(const scheme of (onlyChecks ? ['dark'] : ['dark','light'])){
