@@ -145,6 +145,10 @@ function renderHeader(user) {
         ? `<span class="badge badge-anon">anonymous</span>`
         : (user.role && user.role !== 'user' ? `<span class="badge badge-${user.role}">${user.role.replace(/_/g, ' ')}</span>` : '');
     if (user.anon_number) badges.innerHTML += `<span class="badge badge-anon">Anon #${user.anon_number}</span>`;
+    // The hero wears your profile colour, and its actions know whether you stream (today.js may have drawn them first).
+    const hero = document.getElementById('page-header');
+    if (hero && /^#[0-9a-f]{6}$/i.test(String(user.profile_color || ''))) hero.style.setProperty('--me', user.profile_color);
+    if (typeof renderActions === 'function') renderActions(globalThis.__tdUnread || null);
 }
 
 function renderProfile(user) {

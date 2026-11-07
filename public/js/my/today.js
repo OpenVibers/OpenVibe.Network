@@ -18,6 +18,8 @@ const TD_SITES = {
     host: ['Host', 'fa-server', 'https://openvibe.host'], deals: ['Deals', 'fa-tags', 'https://openvibe.deals'],
     coupons: ['Coupons', 'fa-ticket', 'https://openvibe.coupons'], openre: ['Restream', 'fa-share-nodes', 'https://openre.stream'],
     design: ['Design', 'fa-palette', 'https://openvibe.design'], report: ['Report', 'fa-chart-column', 'https://openvibe.report'],
+    'media-hub': ['Video', 'fa-play', 'https://openvibe.video'], video: ['Video', 'fa-play', 'https://openvibe.video'],
+    download: ['Download', 'fa-folder', 'https://openvibe.download'], cam: ['Cam', 'fa-camera', 'https://openvibe.cam'],
 };
 // What to try next, most used across the network first, each with the reason it is worth a look.
 const TD_TRY = [
@@ -76,18 +78,67 @@ function renderNow(live, unread) {
     const sub = document.getElementById('td-now-sub');
     if (sub) sub.textContent = people.length ? `${people.length} of the ${tdNum(live.following)} you follow` : '';
 
+    // Notifications and Go live are the hero's actions (renderActions); this row says who else is live.
     const out = [];
-    const count = unread && Number(unread.count);
-    if (count > 0) {
-        const b = tdEl('button', 'td-chip td-chip-hot', [tdIcon('fa-bell'), ` ${tdNum(count)} new notification${count === 1 ? '' : 's'}`], { type: 'button' });
-        b.addEventListener('click', () => { const bell = document.querySelector('[data-ov-bell], .openvibe-navbar-bell, #openvibe-notif-btn'); if (bell) bell.click(); else showSection('notifications'); });
-        out.push(b);
-    }
-    const role = currentUser && currentUser.role;
-    if (role && role !== 'user') out.push(tdEl('a', 'td-chip', [tdIcon('fa-tower-broadcast'), ' Go live'], { href: 'https://openvibe.live/broadcast' }));
     if (!people.length && live && live.anyone_live > 0) out.push(tdEl('a', 'td-chip', [tdIcon('fa-circle-play'), ` ${tdNum(live.anyone_live)} live on OpenVibe now`], { href: 'https://openvibe.live/' }));
     chips.replaceChildren(...out);
     chips.hidden = out.length === 0;
+}
+
+/**
+ * The hero's actions (11-07): one tap to what you do most, from this page. Messages and Ask Vibe open in place, in the
+ * Dock (navbar.js), and are plain links where it is not there; a count shows on Notifications when you have some.
+ */
+function renderActions(unread) {
+    const nav = document.getElementById('me-acts');
+    if (!nav) return;
+    const hero = document.getElementById('page-header');
+    const color = currentUser && /^#[0-9a-f]{6}$/i.test(String(currentUser.profile_color || '')) ? currentUser.profile_color : null;
+    if (hero && color && hero.style && hero.style.setProperty) hero.style.setProperty('--me', color);
+    const streamer = !!(currentUser && currentUser.role && currentUser.role !== 'user');
+    const count = unread && Number(unread.count) > 0 ? Number(unread.count) : 0;
+    const dock = (tab) => () => { try { const nb = globalThis.OpenVibeNavbar; if (nb && nb.openDock) { nb.openDock(tab); return true; } } catch (e) { /* the link works */ } return false; };
+    const acts = [
+        streamer ? ['Go live', 'fa-tower-broadcast', 'https://openvibe.live/broadcast', 'live'] : ['Watch live', 'fa-circle-play', 'https://openvibe.live/', 'live'],
+        ['Messages', 'fa-comment-dots', 'https://openvibe.chat/messages', 'chat', dock('chats')],
+        ['Ask Vibe', 'fa-wand-magic-sparkles', 'https://openvibe.chat/', 'vibe', dock('vibe')],
+        ['Your files', 'fa-folder', 'https://openvibe.download/files', 'files'],
+        ['Codes', 'fa-code', 'https://openvibe.codes/', 'codes'],
+        ['Wallet', 'fa-wallet', '/wallet', 'wallet'],
+        ['Notifications', 'fa-bell', '#notifications', 'bell', () => { const bell = document.querySelector('[data-ov-bell], .openvibe-navbar-bell, #openvibe-notif-btn'); if (bell) { bell.click(); return true; } showSection('notifications'); return true; }, count],
+        ['Settings', 'fa-gear', '#settings', 'gear'],
+    ];
+    nav.replaceChildren(...acts.map(([label, icon, href, tone, open, n]) => {
+        const a = tdEl('a', 'me-act', [tdEl('span', 'me-act-ic', [tdIcon(icon)]), tdEl('span', 'me-act-t', [label])], { href, 'data-tone': tone });
+        if (n) { a.append(tdEl('b', 'me-act-n', [n > 99 ? '99+' : String(n)])); a.setAttribute('aria-label', `${label}, ${n} new`); }
+        if (open) a.addEventListener('click', (e) => { if (e && (e.metaKey || e.ctrlKey || e.shiftKey)) return; if (open() && e && e.preventDefault) e.preventDefault(); });
+        return a;
+    }));
+}
+
+/**
+ * On OpenVibe now: what the sites themselves put forward (the menu cards, frame.menu-card@1 from /api/frame) — the
+ * week's trending videos, new worlds, who is live. Real entries only; a card with no entries stays out.
+ */
+function renderNet(frame) {
+    const box = document.getElementById('td-net');
+    const wrap = document.getElementById('td-net-cards');
+    if (!box || !wrap) return;
+    const cards = ((frame && frame.cards) || []).filter((c) => c && Array.isArray(c.items) && c.items.some((it) => tdSafeUrl(it.url))).slice(0, 3);
+    wrap.replaceChildren(...cards.map((c) => {
+        const site = TD_SITES[c.site] || [c.site || 'OpenVibe', 'fa-globe', null];
+        const rows = c.items.filter((it) => tdSafeUrl(it.url)).slice(0, 5);
+        const list = tdEl('ol', 'td-net-list', rows.map((it, i) => tdEl('li', '', [tdEl('a', 'td-net-row', [
+            tdEl('span', 'td-net-i', [String(i + 1)]),
+            tdEl('span', 'td-net-t', [tdEl('b', '', [String(it.title || '')]), it.meta ? tdEl('small', '', [String(it.meta)]) : null]),
+        ], { href: tdSafeUrl(it.url) })])));
+        const more = c.more && tdSafeUrl(c.more.url) ? tdEl('a', 'td-more', [String(c.more.label || 'More')], { href: tdSafeUrl(c.more.url) }) : null;
+        return tdEl('section', 'td-box td-net-card', [
+            tdEl('div', 'td-net-h', [tdEl('span', 'td-site-ic', [tdIcon(site[1])]), tdEl('span', 'td-net-ht', [tdEl('b', '', [String(c.title || site[0])]), tdEl('small', '', [site[0]])]), more]),
+            list,
+        ], { 'data-site': String(c.site || '') });
+    }));
+    box.hidden = cards.length === 0;
 }
 
 /** Continue: the newest things you opened across the sites (Network history), one card per address. */
@@ -165,6 +216,8 @@ function renderStuff(live, hist, nodes) {
     add(nodes && nodes.nodes && nodes.nodes.filter((n) => !n.revoked_at).length, 'machines', () => { showSection('machines'); document.getElementById('settings').scrollIntoView({ behavior: 'smooth' }); });
     add(hist && hist.total, 'pages in your history', () => { showSection('history'); document.getElementById('settings').scrollIntoView({ behavior: 'smooth' }); });
     row.replaceChildren(...cells);
+    const box = document.getElementById('td-nums');
+    if (box) box.hidden = cells.length === 0;
 }
 
 async function loadToday() {
@@ -172,7 +225,8 @@ async function loadToday() {
     renderGreeting();
     if (typeof isAnonSession === 'function' && isAnonSession()) return;   // a guest identity keeps no history, follows or coins
     const quiet = (p) => p.catch(() => null);
-    const [live, hist, coins, last, unread, sites, nodes] = await Promise.all([
+    renderActions(null);
+    const [live, hist, coins, last, unread, sites, nodes, frame] = await Promise.all([
         quiet(apiFetch('/api/v1/me/live-follows')),
         quiet(apiFetch('/api/history?limit=30')),
         quiet(apiFetch('/api/coins/me?with=vibes')),
@@ -180,7 +234,11 @@ async function loadToday() {
         quiet(apiFetch('/api/notifications/unread-count')),
         quiet(apiFetch('/api/themes/me/sites')),
         quiet(apiFetch('/api/v1/me/nodes')),
+        quiet(apiFetch('/api/frame?host=openvibe.network')),
     ]);
+    globalThis.__tdUnread = unread;
+    renderActions(unread);
+    renderNet(frame);
     renderNow(live, unread);
     renderContinue(hist);
     renderMoney(coins, last);

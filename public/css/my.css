@@ -515,3 +515,91 @@ button.td-stat:hover span { color: var(--accent-light); }
     .qr-note { margin-top: 14px; }
     .qr-dialog { border-radius: 16px; }
 }
+
+/* ── You (11-07; the owner: "front-face the best stuff we have to offer … awesome design, desktop and mobile"). The hero
+   wears your profile colour (--me, set by today.js from your profile): your picture in a ring of it, your balances on
+   frosted glass, and seven one-tap actions. Then On OpenVibe now: what the sites themselves put forward. ── */
+.me { --me: var(--accent); position: relative; isolation: isolate; overflow: hidden; display: grid; gap: 22px; margin: 4px 0 30px; padding: 28px;
+  border-radius: 28px; border: 1px solid color-mix(in srgb, var(--me) 34%, var(--border));
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--me) 30%, transparent) 0%, transparent 55%),
+    radial-gradient(90% 120% at 100% 100%, color-mix(in srgb, var(--accent) 18%, transparent) 0%, transparent 60%),
+    var(--bg-card); }
+.me::after { content: ""; position: absolute; z-index: -1; right: -120px; top: -160px; width: 420px; height: 420px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--me) 38%, transparent), transparent); opacity: .7; }
+.me [hidden] { display: none !important; }
+.me-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 28px; }
+.me-who { display: flex; align-items: center; gap: 20px; min-width: 0; flex: 1 1 320px; }
+.me-face { flex: none; padding: 4px; border-radius: 50%; background: conic-gradient(from 210deg, var(--me), color-mix(in srgb, var(--me) 30%, var(--accent)), var(--me)); box-shadow: 0 10px 30px color-mix(in srgb, var(--me) 35%, transparent); }
+.me-face .avatar { display: block; width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 4px solid var(--bg-card); background: var(--bg-card); }
+.me .info { min-width: 0; }
+.me .greeting { font-size: 13px; font-weight: 700; letter-spacing: .04em; color: color-mix(in srgb, var(--me) 55%, var(--text-secondary)); margin-bottom: 2px; }
+.me .greeting:empty, .me .badges:empty { display: none; }
+.me h1 { margin: 0; font-size: clamp(28px, 4.2vw, 42px); line-height: 1.08; font-weight: 850; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.me .subtitle { margin-top: 4px; font-size: 14px; color: var(--text-secondary); }
+.me .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.me-money { display: grid; gap: 8px; padding: 14px 18px; border-radius: 20px; min-width: 250px; flex: 0 1 auto;
+  background: color-mix(in srgb, var(--bg-primary, #0b0f1a) 42%, transparent); border: 1px solid color-mix(in srgb, var(--text-primary, #fff) 10%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.me-bals { display: grid; gap: 6px; color: var(--text); text-decoration: none; }
+.me-bal { display: flex; align-items: baseline; gap: 8px; }
+.me-bal b { font-size: 26px; font-weight: 850; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.me-bal small { font-size: 13px; font-weight: 650; color: var(--text-secondary); }
+.me-bals:hover b { color: var(--accent-light); }
+.me-last { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+.me-tip { justify-self: start; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 650; color: var(--accent-light); text-decoration: none; }
+.me-tip:hover { text-decoration: underline; }
+.me-acts { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px; }
+.me-acts:empty { display: none; }
+.me-act { --a: var(--accent); position: relative; display: grid; justify-items: center; gap: 8px; padding: 14px 6px 12px; border-radius: 18px; min-width: 0;
+  background: color-mix(in srgb, var(--bg-primary, #0b0f1a) 38%, transparent); border: 1px solid color-mix(in srgb, var(--text-primary, #fff) 8%, transparent);
+  color: var(--text); text-decoration: none; transition: transform var(--ov-dur-2, .2s) var(--ov-ease-out, ease), border-color .2s, background .2s; }
+.me-act:hover, .me-act:focus-visible { transform: translateY(-2px); border-color: color-mix(in srgb, var(--a) 60%, transparent); background: color-mix(in srgb, var(--a) 12%, var(--bg-card)); }
+.me-act-ic { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; font-size: 18px; color: var(--a); background: color-mix(in srgb, var(--a) 16%, transparent); }
+.me-act-t { max-width: 100%; font-size: 13px; font-weight: 700; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me-act-n { position: absolute; top: 8px; right: calc(50% - 34px); min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--live-red, #ef4444); color: #fff; font-size: 11px; font-weight: 800; text-align: center; box-shadow: 0 0 0 3px var(--bg-card); }
+.me-act[data-tone="live"] { --a: #ef4444; } .me-act[data-tone="chat"] { --a: #22c55e; } .me-act[data-tone="vibe"] { --a: #a855f7; }
+.me-act[data-tone="files"] { --a: #3b82f6; } .me-act[data-tone="codes"] { --a: #f59e0b; } .me-act[data-tone="bell"] { --a: #06b6d4; }
+.me-act[data-tone="gear"] { --a: #94a3b8; } .me-act[data-tone="wallet"] { --a: #eab308; }
+.me .badges .badge { font-size: 11px; padding: 3px 10px; border-radius: 999px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.td-net { align-items: start; }
+
+.td-net { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.td-net-card { gap: 6px; padding: 14px 14px 10px; }
+.td-net-h { display: flex; align-items: center; gap: 10px; padding-bottom: 6px; }
+.td-net-ht { display: grid; flex: 1; min-width: 0; }
+.td-net-ht b { font-size: 15px; font-weight: 800; }
+.td-net-ht small { font-size: 12px; color: var(--text-muted); }
+.td-net-card[data-site="media-hub"] .td-site-ic { color: #f472b6; background: color-mix(in srgb, #ec4899 16%, transparent); }
+.td-net-card[data-site="games"] .td-site-ic { color: #4ade80; background: color-mix(in srgb, #22c55e 16%, transparent); }
+.td-net-card[data-site="live"] .td-site-ic { color: #f87171; background: color-mix(in srgb, #ef4444 16%, transparent); }
+.td-net-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.td-net-row { display: flex; align-items: center; gap: 12px; padding: 9px 6px; border-radius: 10px; color: var(--text); text-decoration: none; }
+.td-net-row:hover { background: color-mix(in srgb, var(--text-primary, #fff) 6%, transparent); }
+.td-net-list li + li .td-net-row { border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 0; }
+.td-net-list li + li .td-net-row:hover { border-radius: 10px; }
+.td-net-i { flex: none; width: 22px; font-size: 15px; font-weight: 850; color: var(--text-muted); text-align: center; font-variant-numeric: tabular-nums; }
+.td-net-list li:first-child .td-net-i { color: var(--accent-light); }
+.td-net-t { display: grid; min-width: 0; }
+.td-net-t b { font-size: 14px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-net-t small { font-size: 12px; color: var(--text-muted); }
+.td-nums .td-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+.td-nums .td-stat { display: grid; justify-items: start; gap: 2px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--text-primary, #fff) 4%, transparent); text-align: left; }
+.td-nums .td-stat b { font-size: 1.5rem; }
+@media (min-width: 760px) { .td-grid { grid-template-columns: 1.4fr 1fr; } }
+@media (max-width: 860px) { .me-acts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+  .me { padding: 20px 16px 16px; border-radius: 24px; gap: 18px; margin-bottom: 22px; }
+  .me-who { gap: 14px; flex-basis: 100%; }
+  .me-face .avatar { width: 72px; height: 72px; border-width: 3px; }
+  .me-money { flex: 1 1 100%; min-width: 0; grid-template-columns: 1fr auto; align-items: center; padding: 12px 14px; }
+  .me-bals { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-column: 1 / -1; }
+  .me-bal { flex-wrap: wrap; gap: 0 6px; }
+  .me-bal b { font-size: 21px; }
+  .me-bal small { flex-basis: 100%; margin-left: 22px; }
+  .me-acts { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .me-act { padding: 12px 2px 10px; border-radius: 16px; }
+  .me-act-ic { width: 40px; height: 40px; font-size: 16px; }
+  .me-act-t { font-size: 11.5px; }
+}
+@media (prefers-reduced-motion: reduce) { .me-act { transition: none; } .me-act:hover { transform: none; } }
