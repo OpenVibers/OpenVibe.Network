@@ -554,6 +554,11 @@ async function issueTokenPair(db, config, req, user, client, family = {}, scope 
     const privateKey = req.app.locals.privateKey;
     const algorithm = privateKey.includes('BEGIN') ? 'RS256' : 'HS256';
     const publicClient = dock.isPublicClient(client);
+    // A public first-party app that signs a person in for real (OpenVibe Link on the phone) gets the person's own
+    // session: the normal issuer and audiences, so every service that takes a user token takes it, and the person's
+    // role. Its proof is PKCE, since an APK cannot keep a client secret. Every other public client keeps the
+    // extension's read-only Dock token (private issuer, its own audiences, no role).
+    const sessionClient = publicClient && Number(client.session_token || 0) === 1;
     const ttl = publicClient ? Math.max(60, Math.min(86400, Number(client.access_token_ttl_s) || 3600)) : null;
     const familyId = family.familyId || refreshTokens.newFamily();
     const subjectId = await subjects.ensureUserSubject(db, user) || undefined;
@@ -576,14 +581,14 @@ async function issueTokenPair(db, config, req, user, client, family = {}, scope 
     };
     // A Dock token is a read credential: no role and no staff caps, and a private issuer so no other
     // service's normal user-token check accepts it. The family id lets Network end it on revoke.
-    const claims = publicClient
+    const claims = publicClient && !sessionClient
         ? { ...base, client_id: client.client_id, scope: String(scope || ''), fam: familyId, ...consentClaim }
-        : { ...base, role: user.role, ...staffClaims(user), ...consentClaim };
+        : { ...base, role: user.role, ...staffClaims(user), ...(sessionClient ? { client_id: client.client_id, scope: String(scope || ''), fam: familyId } : {}), ...consentClaim };
 
     const accessToken = jwt.sign(claims, privateKey, {
         algorithm,
-        issuer: publicClient ? dock.dockIssuer(config) : config.jwt.issuer,
-        audience: publicClient ? [...dock.AUDIENCES] : ['openvibe.live', 'openvibe.tools', 'openvibe.games', 'openvibe.media', 'openvibe.network'],
+        issuer: publicClient && !sessionClient ? dock.dockIssuer(config) : config.jwt.issuer,
+        audience: publicClient && !sessionClient ? [...dock.AUDIENCES] : ['openvibe.live', 'openvibe.tools', 'openvibe.games', 'openvibe.media', 'openvibe.network'],
         expiresIn: publicClient ? ttl : config.jwt.accessTokenExpiry,
     });
 
