@@ -12,6 +12,7 @@
  *   POST   /api/admin/ai/config/:service/:namespace/rollback     roll back to a revision
  *   PUT    /api/admin/ai/config/:service/:namespace/secrets/:key set a secret (common.config-secret-put@1)
  *   DELETE /api/admin/ai/config/:service/:namespace/secrets/:key remove a secret
+ *   POST   /api/admin/ai/config/:service/:namespace/test/:key    the service tries the stored value (Setup's Test)
  *   GET|POST /api/admin/ai/config/providers                      AI's provider registry (ai.provider.manage)
  *   PATCH  /api/admin/ai/config/providers/:key                   one provider
  *   PUT|DELETE /api/admin/ai/config/providers/:key/key           its write-only key (bound to the provider origin)
@@ -25,10 +26,14 @@
  *
  * Network keeps no value: the body is forwarded and dropped, never written to a table or a log, and the audit row
  * names only the service, namespace, key, action and revision. Every secret write and every danger change raises an
- * operator alert, again with names and never a value.
+ * operator alert, again with names and never a value. A test keeps its outcome as an ai_config_test audit row (the
+ * service's one-line answer, which openvibe-shared scrubs of every secret, and a one-way digest of what it tried),
+ * so the owner's Setup tab (server/admin/setup.js) can say "Not working" after a reload; the Audit tab redacts it
+ * for anyone but the owner, like every config row.
  *
  * test/ai-config-proxy.test.js
  */
+const crypto = require('crypto');
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const contracts = require('openvibe-contracts');
@@ -37,12 +42,20 @@ const { reauthUrl } = require('../auth/reauth');
 const alerts = require('../operator/alerts');
 const { isFreshSignIn } = require('../identity/account-merge');
 
-const SERVICES = ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor'];
+// The nine AI Exchange services (D11), then every other service that holds an owner input (the Setup tab,
+// 2026-11-07). A service that has not mounted openvibe-shared/config's routes yet answers 404 or does not answer;
+// the panel says it "has not published settings yet".
+const SERVICES = ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor',
+    'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media'];
 const LABELS = {
     ai: 'OpenVibe.AI', billing: 'OpenVibe.Billing', services: 'OpenVibe.Services', watch: 'OpenVibe.Watch',
     bench: 'OpenVibe.Bench', report: 'OpenVibe.Report', host: 'OpenVibe.Host', codes: 'OpenVibe.Codes',
-    actor: 'OpenVibe.Actor',
+    actor: 'OpenVibe.Actor', chat: 'OpenVibe.Chat', connect: 'OpenVibe Connect', deals: 'OpenVibe.Deals',
+    work: 'OpenVibe.Work', sources: 'OpenVibe.Sources', design: 'OpenVibe.Design', domains: 'OpenVibe.Domains',
+    media: 'OpenVibe.Media',
 };
+const TEST_TIMEOUT_MS = 20000;   // the service gives its tester 15 s; this leaves it time to answer
+const TEST_MESSAGE_MAX = 300;
 const FRESH_S = 10 * 60;
 const WRITES_PER_HOUR = 60;
 const KEY_RE = /^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$/;
@@ -110,6 +123,41 @@ function redact(value, secret) {
  * first 4.110 builds returned and normalised to the contract's array; `kek` and `secrets` are carried beside the
  * validated summary (the tab's vault row needs the KEK id) but are not part of it.
  */
+/** The four-character hint, the date and the fingerprint of each secret: what Setup shows ("••••a1b2 · set 3 Nov"). */
+function secretMarkers(secrets) {
+    if (!secrets || typeof secrets !== 'object' || Array.isArray(secrets)) return {};
+    const out = {};
+    for (const [key, m] of Object.entries(secrets)) {
+        if (!KEY_RE.test(key) || !m || typeof m !== 'object') continue;
+        out[key] = {
+            hint: typeof m.hint === 'string' && m.hint.length <= 4 ? m.hint : null,
+            set_at: typeof m.set_at === 'string' ? m.set_at.slice(0, 40) : null,
+            fingerprint: typeof m.fingerprint === 'string' && /^[0-9a-f]{64}$/.test(m.fingerprint) ? m.fingerprint : null,
+            bound_to: typeof m.bound_to === 'string' ? m.bound_to.slice(0, 200) : null,
+        };
+    }
+    return out;
+}
+
+/**
+ * A one-way digest of the value a test tried: of the secret's marker fingerprint, or of a plain value. A later change
+ * to that key gives another digest, so an old failure stops counting; the digest is neither the value nor its marker.
+ */
+function triedDigest(service, namespace, key, value, marker) {
+    const fp = (marker && marker.fingerprint) || (value && typeof value === 'object' && value.redacted === true ? value.fingerprint : null);
+    const what = fp ? `secret:${fp}` : `value:${JSON.stringify(value === undefined ? null : value)}`;
+    return crypto.createHash('sha256').update(`ov-setup-test|${service}|${namespace}|${key}|${what}`).digest('hex').slice(0, 32);
+}
+
+/** What a namespace answer carries beside the validated summary: env names of pins and the secrets' markers. */
+function extrasOf(extra) {
+    const out = {};
+    if (extra.pin_env) out.pin_env = extra.pin_env;
+    const markers = secretMarkers(extra.secrets);
+    if (Object.keys(markers).length) out.secret_markers = markers;
+    return out;
+}
+
 function normaliseSummary(raw) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { summary: raw, extra: {} };
     const summary = { ...raw };
@@ -125,27 +173,13 @@ function normaliseSummary(raw) {
     return { summary, extra };
 }
 
-function createAiConfigProxy(opts = {}) {
-    const r = express.Router();
+/**
+ * The one outbound call site of the owner settings (the proxy below and the Setup tab, server/admin/setup.js): a
+ * service internal URL from operator config, a fixed /internal or /api path, Network's own token for openvibe.<service>
+ * and the owner's usr_ id in X-OV-Subject.
+ */
+function createServiceCaller(opts = {}) {
     const log = opts.log || console;
-    const now = opts.now || (() => Date.now());
-    const writesPerHour = opts.writesPerHour || Number(process.env.AI_CONFIG_WRITES_PER_HOUR) || WRITES_PER_HOUR;
-
-    // Owner only on every route, even if a caller mounts this router without its own guard.
-    r.use(requireOwner);
-
-    // 60 writes an hour for the owner: a person cannot accidentally (or maliciously) rewrite the platform's settings
-    // faster than that. Reads are not limited; the response says how long to wait.
-    r.use(rateLimit({
-        windowMs: 60 * 60 * 1000,
-        limit: writesPerHour,
-        standardHeaders: true,
-        legacyHeaders: false,
-        skip: (req) => !['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method),
-        keyGenerator: (req) => `ai-config:${req.user && req.user.id != null ? req.user.id : req.ip}`,
-        handler: (_req, res) => send(res, 429, { ok: false, error: 'Too many settings changes this hour. Try again later.', code: 'config.rate_limited' }),
-    }));
-
     const state = (req) => ({
         db: opts.db || req.app.locals.db,
         services: opts.services || (req.app.locals.config && req.app.locals.config.services) || {},
@@ -154,7 +188,6 @@ function createAiConfigProxy(opts = {}) {
         config: opts.config || req.app.locals.config || {},
     });
 
-    /** The one outbound call site: a service internal URL from operator config, a fixed /internal or /api path. */
     async function callService(req, service, pathName, { method = 'GET', body = null, cap = `${service}.config.manage`, fresh = false, secret = null, timeout = 8000 } = {}) {
         const st = state(req);
         const entry = st.services && st.services[service];
@@ -192,6 +225,62 @@ function createAiConfigProxy(opts = {}) {
         return { status: upstream.status, answer: secret ? redact(answer, secret) : answer };
     }
 
+    /**
+     * Every namespace of one service, validated as common.config-namespace@1: { answered, namespaces, warnings, vault }.
+     * A service that is not reachable, or has no /internal/config yet, is { answered: false, status, detail }.
+     */
+    async function serviceNamespaces(req, service, { timeout = 8000 } = {}) {
+        let out;
+        try { out = await callService(req, service, '/internal/config', { timeout }); } catch (err) {
+            if (err instanceof ProxyError) return { answered: false, status: err.status, code: err.code, detail: err.message };
+            throw err;
+        }
+        if (out.status < 200 || out.status >= 300) {
+            const a = out.answer && typeof out.answer === 'object' ? out.answer : {};
+            return { answered: false, status: out.status, code: a.code || 'config.service_refused', detail: a.detail || a.error || `${label(service)} answered ${out.status}` };
+        }
+        const raw = out.answer && Array.isArray(out.answer.namespaces) ? out.answer.namespaces : [];
+        const namespaces = [];
+        const warnings = [];
+        let vault = null;
+        for (const item of raw) {
+            const { summary, extra } = normaliseSummary(item);
+            const checked = contracts.validate('common.config-namespace@1', summary);
+            if (!checked.valid || summary.service !== service) {
+                warnings.push({ service, namespace: summary && typeof summary.namespace === 'string' ? summary.namespace : null, reason: 'invalid-summary', detail: checked.valid ? `the summary is for ${summary.service}` : checked.errors.slice(0, 4).map((e) => `${e.path} ${e.message}`).join('; ') });
+                continue;
+            }
+            namespaces.push({ ...summary, ...extrasOf(extra) });
+            if (vault === null && typeof summary.sealed === 'boolean') vault = { sealed: summary.sealed, kek: extra.kek !== undefined ? extra.kek : null };
+        }
+        return { answered: true, namespaces, warnings, vault: vault || { sealed: null, kek: null } };
+    }
+
+    return { state, callService, serviceNamespaces };
+}
+
+function createAiConfigProxy(opts = {}) {
+    const r = express.Router();
+    const log = opts.log || console;
+    const now = opts.now || (() => Date.now());
+    const writesPerHour = opts.writesPerHour || Number(process.env.AI_CONFIG_WRITES_PER_HOUR) || WRITES_PER_HOUR;
+    const { state, callService, serviceNamespaces } = createServiceCaller(opts);
+
+    // Owner only on every route, even if a caller mounts this router without its own guard.
+    r.use(requireOwner);
+
+    // 60 writes an hour for the owner: a person cannot accidentally (or maliciously) rewrite the platform's settings
+    // faster than that. Reads are not limited; the response says how long to wait.
+    r.use(rateLimit({
+        windowMs: 60 * 60 * 1000,
+        limit: writesPerHour,
+        standardHeaders: true,
+        legacyHeaders: false,
+        skip: (req) => !['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method),
+        keyGenerator: (req) => `ai-config:${req.user && req.user.id != null ? req.user.id : req.ip}`,
+        handler: (_req, res) => send(res, 429, { ok: false, error: 'Too many settings changes this hour. Try again later.', code: 'config.rate_limited' }),
+    }));
+
     function send(res, status, body) {
         res.set('Cache-Control', 'no-store');
         return res.status(status).json(body);
@@ -222,6 +311,18 @@ function createAiConfigProxy(opts = {}) {
                 .run(req.user.id, 'ai_config_change', JSON.stringify(details));
         } catch (err) {
             log.warn(`[AiConfig] audit row failed: ${err.message}`);
+        }
+    }
+
+    /** A test's outcome, for the Setup tab: names, the one-line answer and what was tried; never a value. */
+    async function recordTest(req, details) {
+        const st = state(req);
+        if (!st.db || !req.user) return;
+        try {
+            await st.db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)')
+                .run(req.user.id, 'ai_config_test', JSON.stringify(details));
+        } catch (err) {
+            log.warn(`[AiConfig] test row failed: ${err.message}`);
         }
     }
 
@@ -354,23 +455,11 @@ function createAiConfigProxy(opts = {}) {
     async function listNamespaces(req, res) {
         try {
             const service = serviceOf(req);
-            const out = await callService(req, service, '/internal/config');
-            if (out.status < 200 || out.status >= 300) return upstreamFailed(res, service, out);
-            const raw = out.answer && Array.isArray(out.answer.namespaces) ? out.answer.namespaces : [];
-            const namespaces = [];
-            const warnings = [];
-            let vault = null;
-            for (const item of raw) {
-                const { summary, extra } = normaliseSummary(item);
-                const checked = contracts.validate('common.config-namespace@1', summary);
-                if (!checked.valid || summary.service !== service) {
-                    warnings.push({ service, namespace: summary && typeof summary.namespace === 'string' ? summary.namespace : null, reason: 'invalid-summary', detail: checked.valid ? `the summary is for ${summary.service}` : checked.errors.slice(0, 4).map((e) => `${e.path} ${e.message}`).join('; ') });
-                    continue;
-                }
-                namespaces.push({ ...summary, ...(extra.pin_env ? { pin_env: extra.pin_env } : {}) });
-                if (vault === null && typeof summary.sealed === 'boolean') vault = { sealed: summary.sealed, kek: extra.kek !== undefined ? extra.kek : null };
+            const got = await serviceNamespaces(req, service);
+            if (!got.answered) {
+                return send(res, got.status >= 400 ? got.status : 502, { ok: false, error: got.detail, code: got.code });
             }
-            send(res, 200, { ok: true, service, namespaces, warnings, vault: vault || { sealed: null, kek: null } });
+            send(res, 200, { ok: true, service, namespaces: got.namespaces, warnings: got.warnings, vault: got.vault });
         } catch (err) { fail(res, err); }
     }
     // The service called "services" would collide with GET /services (the list of services) if it were asked for as
@@ -393,7 +482,7 @@ function createAiConfigProxy(opts = {}) {
                     vault: { sealed: null, kek: null },
                 });
             }
-            send(res, 200, { ok: true, service, namespace: { ...summary, ...(extra.pin_env ? { pin_env: extra.pin_env } : {}) }, warnings: [], vault: { sealed: summary.sealed, kek: extra.kek !== undefined ? extra.kek : null } });
+            send(res, 200, { ok: true, service, namespace: { ...summary, ...extrasOf(extra) }, warnings: [], vault: { sealed: summary.sealed, kek: extra.kek !== undefined ? extra.kek : null } });
         } catch (err) { fail(res, err); }
     });
 
@@ -464,6 +553,38 @@ function createAiConfigProxy(opts = {}) {
         } catch (err) { fail(res, err); }
     });
 
+    /**
+     * Setup's Test: the service's tester tries the stored value with the provider (openvibe-shared 4.125.0's test hook)
+     * and answers { ok, message } in one line. The outcome is kept as an audit row with a digest of what was tried
+     * (triedDigest), so a later change to that key makes it stale. No fresh sign-in:
+     * a test changes nothing and shows nothing of the value. It counts against the hourly write allowance.
+     */
+    r.post('/:service/:namespace/test/:key', async (req, res) => {
+        try {
+            const service = serviceOf(req);
+            const namespace = namespaceOf(req, service);
+            const key = keyOf(req);
+            let tried = null;
+            const current = await callService(req, service, `/internal/config/${encodeURIComponent(namespace)}`);
+            if (current.status >= 200 && current.status < 300) {
+                const { summary, extra } = normaliseSummary(current.answer);
+                const value = summary && summary.values ? summary.values[key] : undefined;
+                tried = triedDigest(service, namespace, key, value, secretMarkers(extra.secrets)[key]);
+            }
+            const out = await callService(req, service, `/internal/config/${encodeURIComponent(namespace)}/test/${encodeURIComponent(key)}`, {
+                method: 'POST', body: {}, timeout: TEST_TIMEOUT_MS,
+            });
+            if (out.status < 200 || out.status >= 300) return upstreamFailed(res, service, out);
+            const answer = out.answer && typeof out.answer === 'object' ? out.answer : {};
+            const passed = answer.ok === true;
+            const message = String(answer.message == null ? '' : answer.message).replace(/\s+/g, ' ').trim().slice(0, TEST_MESSAGE_MAX)
+                || (passed ? 'It works.' : 'It did not work.');
+            const testedAt = new Date(now()).toISOString();
+            await recordTest(req, { service, namespace, key, passed, message, tried, tested_at: testedAt });
+            send(res, 200, { ok: true, passed, message, tested_at: testedAt });
+        } catch (err) { fail(res, err); }
+    });
+
     r.put('/:service/:namespace/secrets/:key', async (req, res) => {
         try {
             const service = serviceOf(req);
@@ -514,6 +635,6 @@ function createAiConfigProxy(opts = {}) {
 }
 
 module.exports = {
-    createAiConfigProxy, SERVICES, FRESH_S, WRITES_PER_HOUR, signInUrl, isFresh, dangerOf, normaliseSummary,
-    sanitizeProvider, redact,
+    createAiConfigProxy, createServiceCaller, SERVICES, LABELS, label, FRESH_S, WRITES_PER_HOUR, signInUrl, isFresh, dangerOf,
+    normaliseSummary, secretMarkers, triedDigest, sanitizeProvider, redact, ProxyError,
 };

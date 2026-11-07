@@ -183,5 +183,25 @@ module.exports = {
         actor: {
             internalUrl: process.env.OV_ACTOR_INTERNAL_URL || 'http://127.0.0.1:4950',
         },
+        // The owner's Setup tab (server/admin/setup.js) reaches every service that holds an owner input. Chat and
+        // Media are above; these are the rest.
+        connect: {
+            internalUrl: process.env.OV_CONNECT_INTERNAL_URL || 'http://127.0.0.1:5240',
+        },
+        deals: {
+            internalUrl: process.env.OV_DEALS_INTERNAL_URL || 'http://127.0.0.1:4840',
+        },
+        work: {
+            internalUrl: process.env.OV_WORK_INTERNAL_URL || 'http://127.0.0.1:4960',
+        },
+        sources: {
+            internalUrl: process.env.OV_SOURCES_INTERNAL_URL || 'http://127.0.0.1:4720',
+        },
+        design: {
+            internalUrl: process.env.OV_DESIGN_INTERNAL_URL || 'http://127.0.0.1:5090',
+        },
+        domains: {
+            internalUrl: process.env.OV_DOMAINS_INTERNAL_URL || 'http://127.0.0.1:5070',
+        },
     },
 };

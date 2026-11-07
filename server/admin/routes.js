@@ -1037,6 +1037,9 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // owner (server/admin/ai-config-proxy.js). Owner only on every route; the proxy re-checks, and a write carries the
     // owner in X-OV-Subject, with a fresh sign-in for keys and x-danger money settings.
     router.use('/ai/config', requireOwner, require('./ai-config-proxy').createAiConfigProxy({ db, notificationService }));
+    // The owner's Setup tab (server/admin/setup.js): every key and account only the owner can give, from every service's
+    // config namespaces, plus Network's own to-dos. Owner only; saving goes through the proxy above.
+    router.use('/setup', requireOwner, require('./setup').createSetupRoutes({ db }));
 
     return router;
 };
