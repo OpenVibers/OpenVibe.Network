@@ -20,5 +20,9 @@ assert.strictEqual(staff.can({ role: 'admin', ...staffClaims({ role: 'admin', us
 assert.strictEqual(staff.can({ role: 'admin', ...staffClaims({ role: 'admin', username: 'boss' }) }, 'staff.secrets.manage'), false);
 // Both user-token signers add them.
 const fs = require('fs');
-for (const f of ['server/auth/routes.js', 'server/auth/oauth-routes.js']) assert.ok(fs.readFileSync(require('path').join(__dirname, '..', f), 'utf8').includes('...staffClaims(user)'), f);
+for (const f of ['server/auth/routes.js', 'server/auth/oauth-routes.js']) assert.ok(fs.readFileSync(require('path').join(__dirname, '..', f), 'utf8').includes('staffClaims(user)'), f);
+// A phone's session token (OpenVibe Link) is not staff authority: oauth-routes leaves the claims out and caps the role.
+const oauth = fs.readFileSync(require('path').join(__dirname, '..', 'server/auth/oauth-routes.js'), 'utf8');
+assert.ok(oauth.includes('sessionClient ? {} : staffClaims(user)'), 'a session client gets no staff claims');
+assert.ok(oauth.includes('nonStaffRole(user.role)'), 'a session client keeps only a non-staff role');
 console.log('staff claims: all checks passed');
