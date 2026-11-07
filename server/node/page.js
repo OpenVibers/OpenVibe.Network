@@ -1,14 +1,18 @@
 'use strict';
-// node.openvibe.network: the Node's own front door. What the Node is (your computer on the network), what it does
-// today, how to install it on each OS, and what it never does. The chrome is Network's own; the page is the Node's.
+// openvibe.link: OpenVibe Link's own front door (the Node renamed). What Link is (your machines, connected), what it
+// does today, how to install it on each OS, and what it never does. The chrome is Network's own; the page is Link's.
 // The version, the release date and the checksums come from the Node's latest GitHub release (server/node/release.js).
+// node.openvibe.network is the old name: it 301s here (server/node/routes.js) except /install, which keeps serving.
 
 const kit = require('openvibe-shared/kit');
 
-const HOST = 'node.openvibe.network';
+const HOST = 'openvibe.link';
+const WWW_HOST = `www.${HOST}`;
+// The name the product had until 2026-11-07; its /install line is in people's notes and keeps working.
+const LEGACY_HOST = 'node.openvibe.network';
 const SITE = `https://${HOST}`;
 const DOCS = 'https://github.com/OpenVibers/OpenVibe.Node/blob/main/docs';
-const INSTALL_LINE = 'curl -fsSL https://node.openvibe.network/install | sh';
+const INSTALL_LINE = `curl -fsSL ${SITE}/install | sh`;
 
 // What the Node does today, each with where it happens. A page that promises tomorrow is a page that lies today.
 const DOES = [
@@ -46,7 +50,8 @@ ${kit.snippet({ code: INSTALL_LINE, id: 'np-install-sh', label: 'Copy the instal
 ${kit.snippet({ code: 'openvibe-node pair <CODE>', id: 'np-install-win', label: 'Copy the pair command' })}
 <p class="np-fine"><a href="${esc(exe)}">openvibe-node-windows-amd64.exe</a> from the ${version ? esc(version) : 'latest'} release.</p>
 </div>
-</div>`;
+</div>
+<p class="np-fine">The program is still called openvibe-node; it becomes openvibe-link in a coming release, and the old name keeps working for a year.</p>`;
 }
 
 /** The release facts: the version, when it came out, the checksums and the release page. */
@@ -68,9 +73,9 @@ ${release.stale ? '<p class="np-fine np-warn">GitHub could not be reached just n
 
 /** The page. `release` is what server/node/release.js answered. */
 function render({ release = {}, releaseId } = {}) {
-    const title = 'OpenVibe Node: your computer on the network';
-    const desc = 'OpenVibe Node runs on your computer, server, phone or robot: it runs your agents and code, offers your models or GPU to the network, drives robots, and keeps your memory read-only.';
-    const ld = { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'OpenVibe Node', applicationCategory: 'DeveloperApplication',
+    const title = 'OpenVibe Link: your machines, connected';
+    const desc = 'OpenVibe Link runs on your computer, server, phone or robot: it runs your agents and code, offers your models or GPU to the network, drives robots, and keeps your memory read-only.';
+    const ld = { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'OpenVibe Link', applicationCategory: 'DeveloperApplication',
         operatingSystem: 'Linux, macOS, Windows', description: desc, url: SITE,
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
         publisher: { '@type': 'Organization', '@id': 'https://openvibe.network/#org', name: 'OpenVibe' } };
@@ -89,6 +94,7 @@ ${kit.icon(d.icon)}
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${SITE}/">
+<meta property="og:url" content="${SITE}/">
 ${require('../boost').meta(releaseId)}
 ${require('openvibe-shared/app-icon').headTags({ site: 'network', iconBase: '/assets' })}
 <meta name="color-scheme" content="dark light">
@@ -104,10 +110,10 @@ ${CSS}
 <div id="navbar-mount"></div>
 <main class="np" id="main">
 <header class="np-head">
-<p class="np-kicker">OpenVibe Node</p>
-<h1>Your computer on the network</h1>
-<p class="np-lede">One program, <code>openvibe-node</code>, on your computer, your server, your phone or your robot. It connects out to OpenVibe, needs no open ports, and keeps a local kill switch. You decide what it may do; nothing runs that you did not turn on.</p>
-<p class="np-cta">${kit.button({ href: '/install', label: 'Install the Node', kind: 'primary' })} ${kit.button({ href: `${DOCS}/install.md`, label: 'The install guide', kind: 'quiet' })}</p>
+<p class="np-kicker">OpenVibe Link</p>
+<h1>Your machines, connected</h1>
+<p class="np-lede">Link runs on your computer, server or phone. Your agents use it only as far as you allow, and you choose what, if anything, it offers the network.</p>
+<p class="np-cta">${kit.button({ href: '/install', label: 'Install Link', kind: 'primary' })} ${kit.button({ href: `${DOCS}/install.md`, label: 'The install guide', kind: 'quiet' })}</p>
 </header>
 
 <section class="np-sec" aria-labelledby="h-does"><h2 id="h-does">What it does today</h2>
@@ -139,7 +145,7 @@ ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact'
 <script src="/shared/navbar.js" defer></script>
 ${require('../boost').SCRIPT}
 <script src="/shared/kit-web.js" defer></script>
-<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:'https://openvibe.network',links:[{label:'Node',href:'/',icon:'fa-desktop',featured:true,active:true},{label:'Network',href:'https://openvibe.network/'},{label:'My Account',href:'https://openvibe.network/my'}]});}catch(e){}});</script>
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:'https://openvibe.network',links:[{label:'Link',href:'/',icon:'fa-desktop',featured:true,active:true},{label:'Network',href:'https://openvibe.network/'},{label:'My Account',href:'https://openvibe.network/my'}]});}catch(e){}});</script>
 </body>
 </html>`;
 }
@@ -173,4 +179,4 @@ const CSS = `
 @media (max-width:640px){.np{padding:22px 16px 52px}}
 `;
 
-module.exports = { render, HOST, SITE, DOCS, INSTALL_LINE, DOES, NEVER };
+module.exports = { render, HOST, WWW_HOST, LEGACY_HOST, SITE, DOCS, INSTALL_LINE, DOES, NEVER };

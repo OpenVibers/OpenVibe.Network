@@ -140,6 +140,7 @@ app.use(helmet({
                 "https://cloudflareinsights.com", // Cloudflare Web Analytics reports here (see script-src)
                 // Release notifications: release-watch's EventSource on the Events realtime stream (openvibe-shared 1.17)
                 "https://openvibe.events",
+                "https://openvibe.link",   // Link's page on its own origin
             ],
             frameSrc: ["'none'"],
             scriptSrcAttr: ["'unsafe-inline'"],
@@ -224,8 +225,10 @@ function buildAllowedOriginsSet() {
     // Hard-coded OpenVibe defaults as baseline (survive registry reset/failure)
     for (const o of [
         'https://openvibe.network',
-        // The Node's own front door (the owner, 2026-11-06): node.openvibe.network is served by Network, and its
-        // page asks the network's own API (the account's look, the navbar's frame, the shared font) from that origin.
+        // Link's own front door (the owner, 2026-11-07): openvibe.link is served by Network, and its page asks the
+        // network's own API (the account's look, the navbar's frame, the shared font) from that origin. The old
+        // name node.openvibe.network stays here too: it 301s to openvibe.link, but a cached page may still ask.
+        'https://openvibe.link',
         'https://node.openvibe.network',
         'https://openvibe.live', 'https://www.openvibe.live',
         'https://openvibe.tools',
