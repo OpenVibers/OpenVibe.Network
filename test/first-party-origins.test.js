@@ -6,7 +6,7 @@ const assert = require('assert');
 const { manifestOrigins } = require('../server/first-party-origins');
 
 const o = manifestOrigins();
-for (const want of ['https://openvibe.blog', 'https://openvibe.wiki', 'https://openvibe.codes', 'https://search.openvibe.network', 'https://openvibe.live', 'https://my.openvibe.network']) {
+for (const want of ['https://openvibe.blog', 'https://openvibe.wiki', 'https://openvibe.codes', 'https://search.openvibe.network', 'https://openvibe.live', 'https://my.openvibe.network', 'https://openvibe.party']) {
     assert.ok(o.has(want), `${want} is a first-party origin`);
 }
 for (const origin of o) assert.ok(/^https:\/\/[a-z0-9.-]+$/.test(origin), `${origin} is an exact https origin`);
