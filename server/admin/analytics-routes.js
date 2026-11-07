@@ -119,6 +119,31 @@ module.exports = function createAnalyticsRoutes(analytics, requireAuth, config, 
     });
 
     // ═══════════════════════════════════════════════════════════
+    // The menu — the shared menu's anonymous clicks (menu_clicks), this week over last week
+    // ═══════════════════════════════════════════════════════════
+    // One small table section on the Analytics page: sends per section and per destination site, week over week.
+    // Days are UTC date strings written by POST /api/frame/menu-click; this week is the last seven days (today-6 … today)
+    // and last week is the seven before it (today-13 … today-7). No person, page or cookie is involved.
+    router.get('/menu', async (req, res) => {
+        const day = (n) => { const d = new Date(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - n)).toISOString().slice(0, 10); };
+        const current = day(6), previous = day(13);   // [previous, current) is last week
+        try {
+            const db = analytics.db;
+            const rows = async (column) => (await db.prepare(`SELECT ${column} AS name,
+                    COALESCE(SUM(CASE WHEN day >= ? THEN n ELSE 0 END), 0)::bigint AS this_week,
+                    COALESCE(SUM(CASE WHEN day >= ? AND day < ? THEN n ELSE 0 END), 0)::bigint AS last_week
+                FROM menu_clicks WHERE day >= ? GROUP BY ${column} ORDER BY this_week DESC, last_week DESC, ${column}`).all(current, previous, current, previous))
+                .map((r) => ({ name: String(r.name), this_week: Number(r.this_week) || 0, last_week: Number(r.last_week) || 0 }));
+            const [sections, sites] = await Promise.all([rows('section'), rows('to_site')]);
+            const total = (list) => ({ this_week: list.reduce((a, r) => a + r.this_week, 0), last_week: list.reduce((a, r) => a + r.last_week, 0) });
+            res.set('Cache-Control', 'private, no-store').json({ ok: true, menu: { week: { current, previous }, sections, sites: sites.slice(0, 40), totals: { sections: total(sections), sites: total(sites) } } });
+        } catch (err) {
+            console.error('[Analytics] Menu error:', err.message);
+            res.status(500).json({ ok: false, error: 'The menu counts could not be read' });
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════
     // Overview — Cross-Service Summary
     // ═══════════════════════════════════════════════════════════
 
