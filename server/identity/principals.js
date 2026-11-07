@@ -314,6 +314,14 @@ const DEFAULT_GRANTS = [
     // Account export and deletion again (Space#59): spaces hold personal data, so Space subscribes to the two account
     // events (its export part and deletion confirmation grants follow once its subscriptions answer).
     ['space', 'events.subscription.manage', 'openvibe.events', []],
+    // Plan 2026-10-22 section Z, stage Z1: Space's builder becomes a task of the person's one agent. Space asks
+    // OpenVibe.Actor for a task on the person's behalf (X-OV-Subject: the task is theirs, their allowance and their
+    // list, Space recorded as the service that started it) and reads that task back to follow it.
+    ['space', 'actor.task.create', 'openvibe.actor', []],
+    ['space', 'actor.task.read', 'openvibe.actor', []],
+    // The other way round: the agent works on the person's own spaces through Space's builder API (X-OV-Subject names
+    // the person; Space reads and writes only that person's spaces, and publishing waits for the person's answer).
+    ...['space.build.read', 'space.build.create', 'space.build.write', 'space.build.publish'].map((c) => ['actor', c, 'openvibe.space', []]),
     // The hosting catalog (plan T20 step 3) reads OpenVibe.Sources items in category hosting (Host#69).
     ['host', 'sources.item.read', 'openvibe.sources', []],
     // The Steam section of openvibe.games (the owner's valve.openvibe.games) reads OpenVibe.Sources items in category
