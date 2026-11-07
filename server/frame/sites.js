@@ -45,7 +45,7 @@ const GROUPS = [
     { id: 'answers', name: 'News & answers', sites: ['today', 'report', 'news', 'search', 'wiki', 'blog', 'reviews', 'vision'] },
     { id: 'make', name: 'Make & build', sites: ['website', 'connect', 'design', 'domains', 'codes', 'space', 'tools', 'host', 'bot'] },
     { id: 'shop', name: 'Shop & swap', sites: ['deals', 'coupons', 'shoes', 'rent', 'homes', 'work', 'food', 'trade'] },
-    { id: 'people', name: 'People & you', sites: ['chat', 'community', 'tips', 'vip', 'help', 'network', 'inventory'] },
+    { id: 'people', name: 'People & you', sites: ['chat', 'mail', 'community', 'tips', 'vip', 'help', 'network', 'inventory'] },
     // Actor is the engine behind every agent (Codes' Auto, Vibe, the Dock call it): a developer service, not a second
     // place to chat with an agent (plan L39, 2026-10-31).
     { id: 'build', name: 'For developers', sites: ['services', 'exchange', 'actor', 'bench', 'run', 'zone', 'events', 'media', 'watch', 'play'] },
@@ -56,7 +56,7 @@ const GROUPS = [
 const MENU_LINE = {
     live: 'Go live, watch streams', 'media-hub': 'Clips and past streams', stream: 'Stream everywhere', pics: 'Share pictures',
     download: 'Your files', tips: 'Support streamers', vip: 'Back your creators',
-    chat: 'Chat with anyone', community: 'Posts and pastes', blog: 'Write long-form', news: 'Sourced, not spun', wiki: 'Facts with sources',
+    chat: 'Chat with anyone', mail: 'Masks and inboxes', community: 'Posts and pastes', blog: 'Write long-form', news: 'Sourced, not spun', wiki: 'Facts with sources',
     games: 'Play in your browser', quest: 'Earn badges', fun: 'Something to do',
     codes: 'Code with any agent', actor: 'The agent engine', space: 'Host a site or app', tools: 'Every online tool', bot: 'Drive a robot',
     deals: 'Deals people share', coupons: 'Codes that work', reviews: 'Honest reviews', work: 'Find a job', rent: 'Places to rent',

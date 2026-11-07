@@ -2,9 +2,11 @@
 const assert = require('assert');
 const crypto = require('crypto');
 const http = require('http');
+const contracts = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 const { createFrameService, BANNED } = require('../server/frame/service');
-const { siteForHost } = require('../server/frame/sites');
+const { siteForHost, GROUPS } = require('../server/frame/sites');
+const HAS_MAIL = !!contracts.services.get('mail');
 
 (async () => {
 const db = getDb();
@@ -33,11 +35,16 @@ assert.strictEqual(svc.ranking().at, null, 'cold start: no use counted yet (the 
     await svc.probeLegal({ fetchImpl: async () => ({ status: 200 }) });
 }
 let p = svc.payloadFor('openvibe.media');
-assert.deepEqual(p.nav.filter(n => !n.of).map(n => n.id), ['live', 'tools', 'space', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'search', 'run', 'play', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'bench', 'casino', 'tours', 'shoes', 'connect'], 'cold start follows the base order');
+// Email (OpenVibe.Mail) joins the cold order after Chat once its manifest is in the pinned Contracts release; until then
+// the test still follows what the installed manifests say.
+const COLD_ORDER = ['live', 'tools', 'space', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'search', 'run', 'play', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'bench', 'casino', 'tours', 'shoes', 'connect'];
+if (HAS_MAIL) COLD_ORDER.splice(COLD_ORDER.indexOf('chat') + 1, 0, 'mail');
+assert.deepEqual(p.nav.filter(n => !n.of).map(n => n.id), COLD_ORDER, 'cold start follows the base order');
 // The launcher: every open site in one of the groups, and the products other services serve on their own domains
 // right after their site (Pics and Download after Video, Homes after Rent).
 assert.deepStrictEqual(p.groups.map(g => g.name), ['Streams & places', 'Games & laughs', 'News & answers', 'Make & build', 'Shop & swap', 'People & you', 'For developers'], 'the six neighbourhoods (plan 2026-10-28 §3.1), the building blocks last');
 assert.strictEqual(p.groups.find(g => g.id === 'build').name, 'For developers');
+assert.deepStrictEqual(GROUPS.find(g => g.id === 'people').sites.slice(0, 3), ['chat', 'mail', 'community'], 'Email sits with Chat in the talk group, before Community');
 assert.ok(p.nav.every(n => p.groups.some(g => g.id === n.group)), 'every entry has a group');
 assert.deepStrictEqual(p.nav.filter(n => n.of).map(n => [n.id, n.of, n.url]), [['pics', 'media-hub', 'https://openvibe.pics/'], ['download', 'media-hub', 'https://openvibe.download/'], ['homes', 'rent', 'https://openvibe.homes/']]);
 const at = (id) => p.nav.findIndex(n => n.id === id);
@@ -45,9 +52,9 @@ assert.ok(at('pics') === at('media-hub') + 1 && at('homes') === at('rent') + 1, 
 assert.deepStrictEqual([p.nav[at('media-hub')].icon, p.nav[at('media-hub')].group, p.nav[at('homes')].group, p.nav[at('tools')].group], ['video', 'streams', 'shop', 'make'], 'Video draws the video icon (there is no media-hub icon)');
 assert.deepStrictEqual(['actor', 'bot', 'run', 'zone', 'codes'].map((id) => p.nav[at(id)].group), ['build', 'make', 'build', 'build', 'make'], 'robots and coding agents for people; the agent engine, compute and storage for developers (plan L39: Actor is the engine Codes, Vibe and the Dock call)');
 // Games together, items with the account, Alerts with the building blocks, files beside Video (each when its site is open).
-[['games', 'games'], ['connect', 'make'], ['quest', 'games'], ['inventory', 'people'], ['watch', 'build'], ['download', 'streams'], ['search', 'answers'], ['chat', 'people'], ['domains', 'make'], ['report', 'answers'], ['design', 'make'], ['today', 'answers'], ['surf', 'games'], ['meme', 'games'], ['vision', 'answers'], ['exchange', 'build'], ['fun', 'games'], ['cam', 'streams'], ['bench', 'build'], ['casino', 'games'], ['tours', 'streams'], ['shoes', 'shop']]
+[['games', 'games'], ['connect', 'make'], ['quest', 'games'], ['inventory', 'people'], ['watch', 'build'], ['download', 'streams'], ['search', 'answers'], ['chat', 'people'], ['mail', 'people'], ['domains', 'make'], ['report', 'answers'], ['design', 'make'], ['today', 'answers'], ['surf', 'games'], ['meme', 'games'], ['vision', 'answers'], ['exchange', 'build'], ['fun', 'games'], ['cam', 'streams'], ['bench', 'build'], ['casino', 'games'], ['tours', 'streams'], ['shoes', 'shop']]
     .filter(([id]) => at(id) >= 0).forEach(([id, group]) => assert.strictEqual(p.nav[at(id)].group, group, `${id} is in ${group}`));
-assert.strictEqual(p.nav.length, 54);   // Connect since contracts 0.279.0, Tours and Shoes since contracts 0.265.0, Casino since contracts 0.264.0, Domains since contracts 0.226.0, Report since 0.227.0, Design since 0.228.0, Today since 0.230.0, Surf since 0.231.0, Meme since 0.234.0, Vision and Exchange since 0.235.0; AI is no longer a site of its own (its pages are Exchange now), Fun since 0.236.0, Cam since 0.237.0, Bench since 0.238.0
+assert.strictEqual(p.nav.length, 54 + (HAS_MAIL ? 1 : 0));   // Connect since contracts 0.279.0, Tours and Shoes since contracts 0.265.0, Casino since contracts 0.264.0, Domains since contracts 0.226.0, Report since 0.227.0, Design since 0.228.0, Today since 0.230.0, Surf since 0.231.0, Meme since 0.234.0, Vision and Exchange since 0.235.0; AI is no longer a site of its own (its pages are Exchange now), Fun since 0.236.0, Cam since 0.237.0, Bench since 0.238.0; Email joins after Chat with the Contracts release that adds its manifest
 assert.deepStrictEqual([p.nav[at('stream')].name, p.nav[at('pics')].name], ['Restream', 'Pics'], 'OpenRestream is "Restream" among the menu\'s short names (owner, 2026-10-28)');
 assert.strictEqual(p.nav.find(n => n.id === 'space').url, 'https://openvibe.space/', 'Space keeps its own home (the forum returned to Community, 0.118.0)');
 assert.strictEqual(p.nav.find(n => n.id === 'community').url, 'https://openvibe.community/', 'Community: the forum, pastes and Pulse');
