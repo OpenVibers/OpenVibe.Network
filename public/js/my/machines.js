@@ -141,7 +141,7 @@ async function mcPair() {
         copy.addEventListener('click', () => navigator.clipboard.writeText(String(p.installer || '')).then(() => mcSay('Copied. Run it on the machine.')));
         const until = p.expires_at ? mcEl('span', 'mc-until', [`The code works until ${new Date(p.expires_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`]) : null;
         const wait = mcEl('p', 'mc-wait', [mcEl('span', 'mc-wait-dot', [], { 'aria-hidden': 'true' }), 'Waiting for your machine…'], { role: 'status' });
-        box.replaceChildren(mcEl('h4', '', ['Run this on the machine']), mcEl('p', 'muted', ['It installs OpenVibe Node and pairs it with your account. Or type the code into Node yourself:']), code, cmd, mcEl('div', 'mc-pair-acts', [copy, until]), wait);
+        box.replaceChildren(mcEl('h4', '', ['Run this on the machine']), mcEl('p', 'muted', ['It installs OpenVibe Link and pairs it with your account. Or type the code into Link yourself:']), code, cmd, mcEl('div', 'mc-pair-acts', [copy, until]), wait);
         box.hidden = false;
         clearInterval(mcWatch);
         const t0 = Date.now();
