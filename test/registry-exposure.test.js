@@ -35,6 +35,10 @@ const PINNED = {
     sdk: 'library', shared: 'library', contracts: 'library', publishing: 'library',
     examples: 'repository',
 };
+// Email (OpenVibe.Mail) is live in the release that adds its manifest. Until Network pins that release the installed
+// Contracts has no `mail`, so the pinned map follows what is actually installed and gains it the day the pin moves.
+const HAS_MAIL = !!contracts.services.get('mail');
+if (HAS_MAIL) PINNED.mail = 'live';
 const PLACEHOLDER_DOMAINS = [];   // none left: tips and vip live since contracts 0.200.0; deals since 0.118.0; news, reviews, coupons, trade, openre since 0.125.0
 
 function fakeService(routes) {
@@ -123,7 +127,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     // v0.95.0 Services; Space and AI went live in v0.110.0; Food, Help and Work in v0.116.0; Quest, Rent and Watch in v0.117.0;
     // Inventory in v0.122.0; none is retired
     // News, Reviews, Coupons, Trade and OpenRestream in v0.125.0; Run in v0.141.0
-    assert.deepStrictEqual(st.exposure_summary, { live: 53, internal: 1, library: 4, repository: 1, placeholder: 0, retired: 1 });   // Sites retired (contracts 0.181.0); Tips and VIP live (0.200.0); Design live (0.228.0); Meme live (0.234.0); Vision and Exchange live (0.235.0); Fun live (0.236.0); Cam live (0.237.0); Bench live (0.238.0)
+    assert.deepStrictEqual(st.exposure_summary, { live: 53 + (HAS_MAIL ? 1 : 0), internal: 1, library: 4, repository: 1, placeholder: 0, retired: 1 });   // Sites retired (contracts 0.181.0); Tips and VIP live (0.200.0); Design live (0.228.0); Meme live (0.234.0); Vision and Exchange live (0.235.0); Fun live (0.236.0); Cam live (0.237.0); Bench live (0.238.0); Email live with the release that adds its manifest
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());
@@ -139,7 +143,9 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
 
     // 3. The Frame: the nav lists only sites whose domain serves the service; the rest are soon with a reason.
     const open = SITES.filter(s => s.status === 'open').map(s => s.id);
-    assert.deepStrictEqual(open, ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'space', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'search', 'run', 'play', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'bench', 'casino', 'tours', 'shoes', 'connect']);   // domains: open since 0.226.0, report since 0.227.0, design since 0.228.0 (the 2026-10-28 rooms), vision and exchange since 0.235.0, fun since 0.236.0, cam since 0.237.0, bench since 0.238.0; tips, vip: open since 0.200.0; zone: a site since 0.173.0; play: a site since 0.172.0; run: a site since 0.141.0; events and search: sites since 0.135.0; ai was a site until 2026-11-07, when its pages moved to Exchange; news, reviews, trade, coupons and stream (OpenRestream): open since 0.125.0;   // by site position; bot: a site since openvibe-contracts 0.106.0; host: live since 0.107.0; space: live since 0.110.0 (the forum, 2026-10-07)
+    const EXPECTED_OPEN = ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'space', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'search', 'run', 'play', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'bench', 'casino', 'tours', 'shoes', 'connect'];   // by site position; Email joins after Chat once its manifest is pinned
+    if (HAS_MAIL) EXPECTED_OPEN.splice(EXPECTED_OPEN.indexOf('chat') + 1, 0, 'mail');
+    assert.deepStrictEqual(open, EXPECTED_OPEN);
     for (const s of SITES) {
         assert.ok(s.service && PINNED[s.service], `${s.id} names its service`);
         assert.strictEqual(s.status === 'open', PINNED[s.service] === 'live', `${s.id} nav status follows exposure`);
