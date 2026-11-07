@@ -110,6 +110,11 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'coupons', name: 'OpenVibe.Coupons', redirect_uris: ['https://openvibe.coupons/auth/callback'] },
             { client_id: 'host', name: 'OpenVibe.Host', redirect_uris: ['https://openvibe.host/auth/callback'] },
             { client_id: 'codes', name: 'OpenVibe.Codes', redirect_uris: ['https://openvibe.codes/auth/callback'] },
+            // The chat plays sandbox worker (Agent Streams S6): a service principal of its own, so the worker that
+            // runs as its own user on Codes' host is not Codes' session and Live can tell them apart. It has no
+            // redirect URIs (client_credentials only); its grant is in server/identity/principals.js and its secret
+            // stays in oauth_clients, from where the owner's host install reads it (the PR says where).
+            { client_id: 'codes-sandbox', name: 'OpenVibe.Codes sandbox worker', redirect_uris: [] },
             // The developer console (moved from openvibe.codes on 2026-10-08); the client already exists as Services' principal.
             { client_id: 'services', name: 'OpenVibe.Services', redirect_uris: ['https://openvibe.services/auth/callback'] },
             { client_id: 'billing', name: 'OpenVibe.Billing', redirect_uris: ['https://billing.openvibe.network/auth/callback'] },
