@@ -44,6 +44,7 @@ function mcCard(m) {
     const meta = mcEl('p', 'mc-meta', [[MC_KIND[m.kind], m.os, m.node_version ? `Node ${m.node_version}` : ''].filter(Boolean).join(' · ')]);
     const head = mcEl('div', 'mc-head', [dot, mcEl('div', 'mc-title', [name, state]), meta]);
     card.append(head);
+    (m.pools || []).forEach((pool) => card.append(mcPoolBlock(pool)));
 
     if (Array.isArray(m.running) && m.running.length) {
         card.append(mcEl('ul', 'mc-running', m.running.slice(0, 6).map((r) => mcEl('li', '', [String((r && (r.title || r.kind || r.id)) || r)]))));
@@ -171,8 +172,83 @@ async function loadMachines() {
             list.replaceChildren(mcEl('div', 'mc-empty', [mcIcon('fa-laptop'), mcEl('p', '', [mcEl('b', '', ['No machines yet.']), ' Pair your computer and it can run your Codes jobs, host your desks and serve your own models, under your account.'])]));
             return;
         }
-        list.replaceChildren(...machines.map(mcCard));
+        // Pools are an extra: when they cannot be read, the machines still show.
+        const pools = (await apiFetch('/api/v1/machine-pools').catch(() => null)) || { pools: [], candidates: [] };
+        mcNames = new Map(machines.map((m) => [m.id, m.name || MC_KIND[m.kind] || 'A machine']));
+        for (const m of machines) m.pools = (pools.pools || []).filter((p) => p.machines.some((x) => x.id === m.id));
+        list.replaceChildren(...machines.map(mcCard), ...mcPoolPickers(pools.candidates || []));
     } catch (e) {
         list.replaceChildren(mcEl('p', 'muted', [e.status === 401 ? 'Sign in to see your machines.' : 'Your machines could not be read just now.']));
     }
+}
+
+/* ── Pooled machines (bot.machine-pool@1): several of your machines on one local network serving one model together.
+   The page proposes and stops a pool; each machine approves it on itself (in Node), never from here. ── */
+let mcNames = new Map();     // machine id → the name its card shows
+const mcName = (id) => mcNames.get(id) || 'A machine';
+const mcGB = (mb) => `${(Number(mb) / 1024).toFixed(mb >= 10240 ? 0 : 1)} GB`;
+
+/** A pool on a member's card: who is the head, who has approved on itself, each machine's share, and Stop pool. */
+function mcPoolBlock(pool) {
+    const ready = pool.machines.every((x) => x.approved && x.ready);
+    const waiting = pool.machines.filter((x) => !x.approved).length;
+    const block = mcEl('fieldset', 'mc-roles mc-pool', [mcEl('legend', '', [`Pool of ${pool.machines.length} machines`])]);
+    for (const x of pool.machines) {
+        const state = !x.approved ? 'Waiting for approval on that machine' : x.ready ? 'Approved · ready' : 'Approved · paused or offline';
+        block.append(mcEl('div', 'mc-role', [
+            mcEl('span', 'mc-role-ic', [mcIcon(x.id === pool.head ? 'fa-crown' : 'fa-microchip')]),
+            mcEl('span', 'mc-role-t', [mcEl('b', '', [mcName(x.id) + (x.id === pool.head ? ' (head)' : '')]),
+                mcEl('small', '', [`${state} · ${Math.round(x.vram_share * 100)}% of the pool's VRAM and credits`])]),
+        ]));
+    }
+    const note = waiting
+        ? `${waiting} machine${waiting === 1 ? '' : 's'} still to approve this pool on itself, in Node (pool ${pool.id}).`
+        : ready ? 'Serving as one offer. The head sees prompts; the others only receive tensors.' : 'Paused: a machine is in use, offline or outside its hours.';
+    const stop = mcEl('button', 'btn btn-outline btn-small', [mcIcon('fa-stop'), ' Stop pool'], { type: 'button' });
+    stop.addEventListener('click', async () => {
+        stop.disabled = true;
+        try {
+            await apiFetch(`/api/v1/machine-pools/${encodeURIComponent(pool.id)}/revoke`, { method: 'POST', body: '{}' });
+            mcSay('The pool is stopped. Each machine drops its private link and key at its next check.');
+            loadMachines();
+        } catch (e) { mcSay(e.message || 'The pool could not be stopped.', true); stop.disabled = false; }
+    });
+    block.append(mcEl('p', 'mc-confirm', [note]), mcEl('div', 'mc-acts', [stop]));
+    return block;
+}
+
+/** "Pool these machines": one picker per local network with two or more of your machines that checked in lately. */
+function mcPoolPickers(candidates) {
+    const groups = new Map();
+    for (const c of candidates) {
+        if (!c.network) continue;
+        if (!groups.has(c.network)) groups.set(c.network, []);
+        groups.get(c.network).push(c);
+    }
+    return [...groups.values()].filter((g) => g.length >= 2).map((group) => {
+        const panel = mcEl('fieldset', 'mc-roles mc-pool mc-card', [mcEl('legend', '', ['Pool these machines'])]);
+        const boxes = group.map((c) => {
+            const id = `mc-pool-${c.id}`;
+            const box = mcEl('input', '', [], { type: 'checkbox', id, value: c.id });
+            panel.append(mcEl('label', 'mc-role', [box, mcEl('span', 'mc-role-ic', [mcIcon('fa-microchip')]), mcEl('span', 'mc-role-t', [
+                mcEl('b', '', [mcName(c.id)]), mcEl('small', '', [`${mcGB(c.free_vram)} free VRAM · ${mcGB(c.free_ram)} free RAM · ${c.hardware}`])])], { for: id }));
+            return box;
+        });
+        const head = mcEl('select', 'mc-rename', [mcEl('option', '', ['Head: the most free VRAM'], { value: '' })], { 'aria-label': 'Which machine is the head' });
+        group.forEach((c) => head.append(mcEl('option', '', [`Head: ${mcName(c.id)}`], { value: c.id })));
+        const create = mcEl('button', 'btn btn-outline btn-small', [mcIcon('fa-layer-group'), ' Pool them'], { type: 'button' });
+        create.addEventListener('click', async () => {
+            const machines = boxes.filter((b) => b.checked).map((b) => b.value);
+            if (machines.length < 2) { mcSay('Choose at least two machines.', true); return; }
+            create.disabled = true;
+            try {
+                await apiFetch('/api/v1/machine-pools', { method: 'POST', body: JSON.stringify({ machines, ...(head.value ? { head: head.value } : {}) }) });
+                mcSay('Pool proposed. Approve it on each machine; Node measures the links before it serves.');
+                loadMachines();
+            } catch (e) { mcSay(e.message || 'The pool could not be made.', true); create.disabled = false; }
+        });
+        panel.append(mcEl('p', 'mc-confirm', ['These machines checked in from the same local network. The head runs the model and sees prompts; the others lend their memory and only receive tensors. One price for the pool, and credits split by the VRAM each machine serves.']),
+            mcEl('div', 'mc-acts', [head, create]));
+        return panel;
+    });
 }
