@@ -38,7 +38,11 @@ try {
         .replace(/^\s*ssl_certificate\s+[^;]+;/gm, `    ssl_certificate     ${cert};`)
         .replace(/^\s*ssl_certificate_key\s+[^;]+;/gm, `    ssl_certificate_key ${key};`)
         .replace(/^\s*access_log\s+\/var\/log\/[^;]+;/gm, '    access_log off;')
-        .replace(/^\s*error_log\s+\/var\/log\/[^;]+;/gm, '    error_log stderr;');
+        .replace(/^\s*error_log\s+\/var\/log\/[^;]+;/gm, '    error_log stderr;')
+        // nginx -t binds the listen sockets too: a runner is not root, so the scratch copy listens on high loopback ports.
+        .replace(/^\s*listen \[::\]:\d+[^;]*;\s*$/gm, '')
+        .replace(/^(\s*)listen 80;/gm, '$1listen 127.0.0.1:18080;')
+        .replace(/^(\s*)listen 443 ssl;/gm, '$1listen 127.0.0.1:18443 ssl;');
     const main = path.join(tmp, 'nginx.conf');
     // A server block with no access_log of its own inherits nginx's compiled-in /var/log/nginx/access.log, which a CI
     // runner cannot open: the scratch http block turns it off, and -e keeps the startup error log in the prefix too.
