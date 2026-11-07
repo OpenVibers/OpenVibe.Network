@@ -80,7 +80,8 @@ let currentTab = 'dashboard';
 // Tabs restricted to the network owner (API keys / money / infrastructure / core settings).
 // NOTE: 'ai' is NOT here — admins may use its analytics/explorer tools; only the
 // AI configuration form inside it is owner-gated (see loadAi).
-const OWNER_ONLY_TABS = new Set(['deploy', 'domains', 'payments', 'cashouts', 'storage', 'email', 'settings', 'grants', 'eventsops']);
+// 'setup' is the owner's checklist of keys and accounts (js/admin/setup.js); its API answers 403 to anyone else too.
+const OWNER_ONLY_TABS = new Set(['setup', 'deploy', 'domains', 'payments', 'cashouts', 'storage', 'email', 'settings', 'grants', 'eventsops']);
 
 function showTab(id, btn) {
     if (!tabLoaders[id]) id = 'dashboard';

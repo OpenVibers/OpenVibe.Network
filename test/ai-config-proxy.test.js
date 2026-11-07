@@ -4,6 +4,8 @@
 // and (when fresh) X-OV-Fresh; a secret write or an x-danger change needs a sign-in within 10 minutes; an invalid
 // summary is dropped with a warning; every secret and danger change is audited and raises an operator alert; and no
 // value ever reaches a Network table or log line.
+// The Setup tab (2026-11-07) adds: seventeen services, each secret's marker (hint and date) forwarded, and the test
+// route, whose outcome is kept as an ai_config_test audit row and never carries a value.
 //   node test/ai-config-proxy.test.js
 const assert = require('assert');
 const http = require('http');
@@ -81,7 +83,7 @@ function summary(service, namespace, extra = {}) {
         const ownerCall = (method, p, body) => call({ authorization: `Bearer ${fresh}`, cookie: `ov_token=${fresh}` }, method, p, body);
 
         // ── The answer the fakes give, per namespace ───────────────────
-        const exchange = summary('ai', 'ai.exchange', { kek: 'k1' });
+        const exchange = summary('ai', 'ai.exchange', { kek: 'k1', secrets: { provider_key: { redacted: true, fingerprint: FP, hint: 'a1b2', set_at: NOW, set_by: { type: 'user', id: 'usr_01JAB2C3D4E5F6G7H8J9K0MNPQ' }, bound_to: 'https://api.deepseek.com', value: SECRET } } });
         const broken = summary('ai', 'ai.broken', { values: { api_key: { redacted: true, fingerprint: FP, hint: 'a1b2', value: SECRET } } });
         const credits = summary('billing', 'billing.credits', { sealed: false });
         const creditsBroken = summary('billing', 'billing.broken', { values: { api_key: { redacted: true, fingerprint: FP, value: 'a-plain-value' } } });
@@ -93,6 +95,7 @@ function summary(service, namespace, extra = {}) {
             'POST /internal/config/ai.exchange/rollback': { service: 'ai', namespace: 'ai.exchange', revision: 9, state: 'active' },
             'PUT /internal/config/ai.exchange/secrets/provider_key': { redacted: true, fingerprint: FP, hint: 'a1b2', set_at: NOW, bound_to: 'https://api.deepseek.com' },
             'DELETE /internal/config/ai.exchange/secrets/provider_key': { redacted: true, fingerprint: FP, hint: 'a1b2', set_at: NOW, bound_to: null },
+            'POST /internal/config/ai.exchange/test/provider_key': { ok: false, message: '401 Unauthorized:\n the key was refused' },
             'PUT /internal/config/ai.provider_keys/secrets/deepseek': { redacted: true, fingerprint: FP, hint: 'a1b2', set_at: NOW, bound_to: 'https://api.deepseek.com' },
             'DELETE /internal/config/ai.provider_keys/secrets/deepseek': { redacted: true, fingerprint: FP, hint: 'a1b2', set_at: NOW, bound_to: null },
             'GET /api/v1/providers': { providers: [{ key: 'deepseek', display_name: 'DeepSeek', kind: 'openai', status: 'active', base_url: 'https://api.deepseek.com', secret_ref: 'vault:deepseek', billing_profile: 'metered', metadata: { provider_access: 'OWN_DEPLOYMENT' }, credentials: 'configured' }] },
@@ -111,10 +114,12 @@ function summary(service, namespace, extra = {}) {
         assert.strictEqual(r.status, 403, 'a plain admin never gets the owner settings');
         assert.strictEqual(configCalls().length, 0, 'a refused request never reaches a service');
 
-        // ── GET /services: the nine services and their operator-set internal URLs ──
+        // ── GET /services: the seventeen services and their operator-set internal URLs ──
         r = await ownerCall('GET', '/api/admin/ai/config/services');
         assert.strictEqual(r.status, 200, r.text);
-        assert.strictEqual(r.body.services.length, 9);
+        assert.deepStrictEqual(r.body.services.map((s) => s.service), ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor', 'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media']);
+        assert.strictEqual(r.body.services.find((s) => s.service === 'deals').name, 'OpenVibe.Deals');
+        assert.strictEqual(r.body.services.find((s) => s.service === 'deals').capability, 'deals.config.manage');
         assert.strictEqual(r.body.services.find((s) => s.service === 'ai').internal_url, ai.url);
         assert.strictEqual(r.body.services.find((s) => s.service === 'billing').internal_url, billing.url);
 
@@ -130,6 +135,8 @@ function summary(service, namespace, extra = {}) {
         assert.match(r.body.warnings[0].detail, /api_key|redacted|additional/i);
         assert.deepStrictEqual(r.body.vault, { sealed: true, kek: 'k1' });
         assert.ok(!r.text.includes(SECRET), 'the dropped summary never reaches the browser');
+        assert.deepStrictEqual(r.body.namespaces[0].secret_markers, { provider_key: { hint: 'a1b2', set_at: NOW, fingerprint: FP, bound_to: 'https://api.deepseek.com' } },
+            'a secret\'s hint and date reach the panel, and nothing else of its marker');
         const listCall = ai.seen.find((x) => x.method === 'GET' && x.url === '/internal/config');
         assert.match(listCall.headers.authorization, /^Bearer /, 'the service gets Network\'s own token');
         assert.strictEqual(listCall.headers['x-ov-subject'], owner.subject, 'the owner travels in X-OV-Subject');
@@ -185,6 +192,24 @@ function summary(service, namespace, extra = {}) {
         assert.deepStrictEqual({ service: secretAudit.service, namespace: secretAudit.namespace, key: secretAudit.key, action: secretAudit.action }, { service: 'ai', namespace: 'ai.exchange', key: 'provider_key', action: 'secret.put' });
         assert.ok(!JSON.stringify(secretAudit).includes(SECRET));
 
+        // ── Test: the service's one-line answer, kept as an audit row with the fingerprint it tried ──
+        r = await call('staff', 'POST', '/api/admin/ai/config/ai/ai.exchange/test/provider_key', {});
+        assert.strictEqual(r.status, 403, 'a plain admin cannot run a test');
+        r = await call({ authorization: `Bearer ${stale}`, cookie: `ov_token=${stale}` }, 'POST', '/api/admin/ai/config/ai/ai.exchange/test/provider_key', {});
+        assert.strictEqual(r.status, 200, 'a test needs no fresh sign-in: it changes nothing and shows nothing of the value');
+        assert.deepStrictEqual({ ok: r.body.ok, passed: r.body.passed, message: r.body.message }, { ok: true, passed: false, message: '401 Unauthorized: the key was refused' }, 'one line');
+        const testCall = ai.seen.filter((x) => x.method === 'POST' && x.url === '/internal/config/ai.exchange/test/provider_key').at(-1);
+        assert.strictEqual(testCall.headers['x-ov-subject'], owner.subject);
+        assert.match(testCall.headers.authorization, /^Bearer /);
+        const testRow = JSON.parse((await w.db.prepare("SELECT details FROM audit_log WHERE action = 'ai_config_test' ORDER BY id DESC LIMIT 1").get()).details);
+        assert.deepStrictEqual({ service: testRow.service, namespace: testRow.namespace, key: testRow.key, passed: testRow.passed, message: testRow.message },
+            { service: 'ai', namespace: 'ai.exchange', key: 'provider_key', passed: false, message: '401 Unauthorized: the key was refused' }, 'the test row names the key and keeps the answer');
+        const { triedDigest } = require('../server/admin/ai-config-proxy');
+        assert.strictEqual(testRow.tried, triedDigest('ai', 'ai.exchange', 'provider_key', undefined, { fingerprint: FP }), 'it keeps a digest of what it tried');
+        assert.ok(!JSON.stringify(testRow).includes(FP), 'never the marker\'s fingerprint itself');
+        r = await ownerCall('POST', '/api/admin/ai/config/ai/ai.exchange/test/nothing_here', {});
+        assert.strictEqual(r.status, 404, 'a key the service does not test relays the service\'s answer');
+
         // ── Secret delete, rollback, and the provider registry (GET/POST/PATCH and its write-only key) ──
         r = await ownerCall('DELETE', '/api/admin/ai/config/ai/ai.exchange/secrets/provider_key', { reason: 'gone' });
         assert.strictEqual(r.status, 200, r.text);
@@ -219,6 +244,17 @@ function summary(service, namespace, extra = {}) {
         for (const svc of ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor']) {
             assert.ok(has('network', `${svc}.config.manage`, `openvibe.${svc}`), `Network holds ${svc}.config.manage`);
         }
+        // The eight Setup services: Network holds each grant as soon as the pinned Contracts (0.308.0) knows it.
+        const { capabilities, version: contractsVersion } = require('openvibe-contracts');
+        const setupServices = ['chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media'];
+        for (const svc of setupServices) {
+            const known = !!capabilities.get(`${svc}.config.manage`);
+            assert.strictEqual(has('network', `${svc}.config.manage`, `openvibe.${svc}`), known, `Network holds ${svc}.config.manage exactly when Contracts knows it`);
+        }
+        const [maj, min] = String(contractsVersion || require('openvibe-contracts/package.json').version).split('.').map(Number);
+        if (maj > 0 || min >= 308) {
+            for (const svc of setupServices) assert.ok(has('network', `${svc}.config.manage`, `openvibe.${svc}`), `from Contracts 0.308.0 Network holds ${svc}.config.manage`);
+        }
         assert.ok(has('network', 'ai.provider.manage', 'openvibe.ai'), 'Network holds ai.provider.manage');
         assert.ok(has('host', 'ai.usage.read', 'openvibe.ai'), 'Host holds ai.usage.read');
         // The boot seed only inserts a grant when its client exists. In production the network principal does; here we
@@ -226,7 +262,9 @@ function summary(service, namespace, extra = {}) {
         await w.db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('network', 'x', 'OpenVibe.Network (service)', '[]', 1) ON CONFLICT DO NOTHING").run();
         await principals.ensureSchema(w.db);
         const seeded = (await w.db.prepare("SELECT capability, audience FROM principal_grants WHERE client_id = 'network' AND capability LIKE '%config.manage' AND revoked_at IS NULL ORDER BY capability").all()).map((x) => `${x.capability}|${x.audience}`).sort();
-        assert.deepStrictEqual(seeded, ['actor.config.manage|openvibe.actor', 'ai.config.manage|openvibe.ai', 'bench.config.manage|openvibe.bench', 'billing.config.manage|openvibe.billing', 'codes.config.manage|openvibe.codes', 'host.config.manage|openvibe.host', 'report.config.manage|openvibe.report', 'services.config.manage|openvibe.services', 'watch.config.manage|openvibe.watch']);
+        const expectSeeded = ['actor', 'ai', 'bench', 'billing', 'codes', 'host', 'report', 'services', 'watch', ...setupServices.filter((svc) => capabilities.get(`${svc}.config.manage`))]
+            .map((svc) => `${svc}.config.manage|openvibe.${svc}`).sort();
+        assert.deepStrictEqual(seeded, expectSeeded);
         assert.ok(await w.db.prepare("SELECT 1 FROM principal_grants WHERE client_id = 'network' AND capability = 'ai.provider.manage' AND audience = 'openvibe.ai' AND revoked_at IS NULL").get(), 'the provider grant is seeded');
         assert.ok(await w.db.prepare("SELECT 1 FROM principal_grants WHERE client_id = 'host' AND capability = 'ai.usage.read' AND audience = 'openvibe.ai' AND revoked_at IS NULL").get(), 'Host\'s usage grant is seeded');
 

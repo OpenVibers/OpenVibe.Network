@@ -5,6 +5,8 @@
    tabLoaders map in admin/boot.js (loaded last). No ES modules.
    ═══════════════════════════════════════════════════════════════ */
 const tabLoaders = {
+    setup: loadSetup,
+    glossary: loadGlossary,
     dashboard: loadDashboard,
     users: loadUsers,
     streams: loadStreams,
