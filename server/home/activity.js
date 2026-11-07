@@ -156,7 +156,10 @@ function jobs(body) {
             const f = d.facets || {};
             const where = clip(f.location || d.summary || '', 48);
             const board = d.provenance && d.provenance[0] && d.provenance[0].label ? clip(d.provenance[0].label, 30) : '';
-            return { title: clip(d.title, 90), url: onHost(d.canonical_url, 'openvibe.work'), where: f.remote ? (where ? `Remote · ${where}` : 'Remote') : where, board };
+            // A remote job whose location already says so ("remote", "Remote (US)") is not "Remote · remote" (11-07 text lint).
+            const saysRemote = /^\s*remote\b/i.test(where);
+            const place = f.remote ? (saysRemote ? where.replace(/^\s*remote/i, 'Remote') : where ? `Remote · ${where}` : 'Remote') : where;
+            return { title: clip(d.title, 90), url: onHost(d.canonical_url, 'openvibe.work'), where: place, board };
         })
         .slice(0, 4);
 }
