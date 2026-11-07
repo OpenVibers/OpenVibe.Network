@@ -532,10 +532,11 @@ button.td-stat:hover span { color: var(--accent-light); }
 .me-who { display: flex; align-items: center; gap: 20px; min-width: 0; flex: 1 1 320px; }
 .me-face { flex: none; padding: 4px; border-radius: 50%; background: conic-gradient(from 210deg, var(--me), color-mix(in srgb, var(--me) 30%, var(--accent)), var(--me)); box-shadow: 0 10px 30px color-mix(in srgb, var(--me) 35%, transparent); }
 .me-face .avatar { display: block; width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 4px solid var(--bg-card); background: var(--bg-card); }
-.me .info { min-width: 0; }
+.me .info { min-width: 0; flex: 1 1 auto; container-type: inline-size; }
 .me .greeting { font-size: 13px; font-weight: 700; letter-spacing: .04em; color: color-mix(in srgb, var(--me) 55%, var(--text-secondary)); margin-bottom: 2px; }
 .me .greeting:empty, .me .badges:empty { display: none; }
-.me h1 { margin: 0; font-size: clamp(28px, 4.2vw, 42px); line-height: 1.08; font-weight: 850; letter-spacing: -.025em; overflow-wrap: anywhere; }
+/* A long name shrinks to fit its line (down to 20 px) before it breaks mid-word; --me-len is its longest word (profile.js). */
+.me h1 { margin: 0; font-size: max(20px, min(clamp(28px, 4.2vw, 42px), calc(100cqi / (var(--me-len, 9) * .58)))); line-height: 1.08; font-weight: 850; letter-spacing: -.025em; overflow-wrap: anywhere; }
 .me .subtitle { margin-top: 4px; font-size: 14px; color: var(--text-secondary); }
 .me .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .me-money { display: grid; gap: 8px; padding: 14px 18px; border-radius: 20px; min-width: 250px; flex: 0 1 auto;

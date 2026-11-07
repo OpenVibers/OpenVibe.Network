@@ -136,7 +136,10 @@ function renderHeader(user) {
     const fallback = avatarPlaceholder(user, 96);
     avatar.src = avatarSrc(user, 96);
     avatar.onerror = () => { avatar.src = fallback; };
-    document.getElementById('user-name').textContent = user.display_name || user.username;
+    const nameEl = document.getElementById('user-name');
+    nameEl.textContent = user.display_name || user.username;
+    // The longest word, so a long name shrinks to fit its line instead of breaking mid-word (my.css).
+    nameEl.style.setProperty('--me-len', String(Math.max(1, ...String(nameEl.textContent).split(/\s+/).map((w) => w.length))));
     document.getElementById('user-subtitle').textContent = user.is_anon
         ? `Anonymous identity${user.anon_number ? ' · #' + user.anon_number : ''}`
         : '@' + user.username;   // never the email: this page may be on a stream (it is in Profile below)
