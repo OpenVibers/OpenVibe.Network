@@ -175,8 +175,9 @@ async function seedDb(db, { log = console } = {}) {
             // PKCE S256 required, the Chrome/Firefox extension redirect URIs exactly, and a read-only scope
             // ceiling. The Chrome id is fixed by browser/manifest.json's key; the Firefox hash is SHA-1 of
             // the add-on id (extension id -> getRedirectURL). Both are public values.
+            // `agent.view` (2026-11-07) is the panel's read of Codes' agent view; Codes accepts it, and only it.
             { client_id: 'companion', name: 'OpenVibe extension', public: true,
-                allowed_scopes: 'dock activity chat.read', access_token_ttl_s: 3600,
+                allowed_scopes: 'dock activity chat.read agent.view', access_token_ttl_s: 3600,
                 redirect_uris: [
                     'https://bjcjcfcecpkkmfndegkjekoipdmbgakd.chromiumapp.org/',
                     'https://bb6593a68b1dcfbb7acd9650f04a169f4c5b57a0.extensions.allizom.org/',
