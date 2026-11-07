@@ -125,7 +125,8 @@ app.use(helmet({
             fontSrc: ["'self'", "fonts.gstatic.com"],
             // Avatars and media live on openvibe.media; the home page's live-stream thumbnails come from openvibe.live and
             // its "Right now" screenshot pastes from openvibe.community (blocked until 2026-11-06: the card showed nothing).
-            imgSrc: ["'self'", "data:", "blob:", "https://openvibe.media", "https://openvibe.live", "https://openvibe.community"],
+            // openvibe.network itself too: the account hub on openvibe.my draws avatars from Network's /avatar (2026-11-07).
+            imgSrc: ["'self'", "data:", "blob:", "https://openvibe.network", "https://openvibe.media", "https://openvibe.live", "https://openvibe.community"],
             connectSrc: [
                 "'self'",
                 "https://openvibe.network",

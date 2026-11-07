@@ -16,9 +16,18 @@
     const REAUTH_WINDOW_S = 10 * 60;
     const BANNER_ID = 'ov-deletion-banner';
 
+    // The account hub on its own origin (openvibe.my, 2026-11-07) asks Network's API directly: a relative call there is
+    // redirected to openvibe.network, and a browser drops the Authorization header on a cross-origin redirect (401).
+    function onMyHost() {
+        const h = root && root.location && root.location.hostname;
+        return h === 'openvibe.my' || h === 'www.openvibe.my';
+    }
     function base() {
+        if (onMyHost()) return 'https://openvibe.network';
         return (root && root.location && root.location.origin) || '';
     }
+    // No cookie crosses to openvibe.network from openvibe.my: the Bearer token is the whole credential there.
+    function credentials() { return onMyHost() ? 'omit' : 'include'; }
 
     function cookieToken() {
         try {
@@ -70,7 +79,7 @@
         if (!t) return null;
         const res = await fetch(base() + '/api/v1/account/deletion', {
             headers: { Authorization: 'Bearer ' + t },
-            credentials: 'include',
+            credentials: credentials(),
         });
         if (!res.ok) return null;
         const body = await res.json().catch(() => ({}));
@@ -83,7 +92,7 @@
         const res = await fetch(base() + '/api/v1/account/deletion', {
             method: 'DELETE',
             headers: { Authorization: 'Bearer ' + t },
-            credentials: 'include',
+            credentials: credentials(),
         });
         let body = {};
         try { body = await res.json(); } catch { /* no body */ }
