@@ -149,8 +149,32 @@ async function askVibeToImprove() {
     } catch (e) { toast(e.message, 'error'); }
 }
 
+// ── The menu: the shared menu's anonymous clicks, per section and per destination site, this week over last week ──
+const MENU_SECTION_LABEL = { places: 'Your places', here: 'On this site', next: 'Next from here', discover: 'New to you', you: 'You', tools: 'Tools', recent: 'Recent searches', all: 'Every OpenVibe site', back: 'Jump back in', live: 'Live now' };
+async function loadMenu() {
+    const el = document.getElementById('analytics-menu'); if (!el) return;
+    el.innerHTML = '<div class="loading">Loading the menu…</div>';
+    let menu;
+    try { menu = (await api('/api/admin/analytics/menu')).menu; } catch (e) { el.innerHTML = `<p class="muted">The menu counts could not be loaded: ${esc(e.message)}</p>`; return; }
+    const change = (n) => n > 0 ? `+${fmtNum(n)}` : n < 0 ? `−${fmtNum(-n)}` : '0';
+    const table = (heading, rows, labelOf) => rows.length
+        ? `<table class="data-table" style="width:100%;font-size:13px"><tr><th style="text-align:left">${esc(heading)}</th><th style="text-align:right">Last 7 days</th><th style="text-align:right">Previous 7 days</th><th style="text-align:right">Change</th></tr>${rows.map((r) => `<tr><td>${esc(labelOf(r.name))}</td><td style="text-align:right">${fmtNum(r.this_week)}</td><td style="text-align:right">${fmtNum(r.last_week)}</td><td style="text-align:right">${change(r.this_week - r.last_week)}</td></tr>`).join('')}</table>`
+        : '<p class="muted">No clicks recorded in these two weeks.</p>';
+    const totals = menu.totals && menu.totals.sections ? menu.totals.sections : { this_week: 0, last_week: 0 };
+    el.innerHTML = `<div class="card" style="margin-bottom:16px">
+        <h3><i class="fa-solid fa-bars"></i> The menu <small class="muted">${esc(menu.week.current)} to today · previous seven days</small></h3>
+        <p class="admin-intro">These are the menu's anonymous clicks: which part of the menu people used and which site they chose. Counts only, never a person; week over week shows whether the menu is spreading traffic.</p>
+        <p class="muted" style="margin:4px 0 10px">This week: ${fmtNum(totals.this_week)} sends · previous week: ${fmtNum(totals.last_week)}.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:16px">
+            <div>${table('Section', menu.sections || [], (id) => MENU_SECTION_LABEL[id] || id)}</div>
+            <div>${table('Destination site', menu.sites || [], (id) => id)}</div>
+        </div>
+    </div>`;
+}
+
 async function loadAnalyticsOverview() {
     loadInsights();
+    loadMenu();
     const period = getAnalyticsPeriod();
     const statsEl = document.getElementById('analytics-stats');
     statsEl.innerHTML = '<div class="loading">Loading analytics...</div>';
