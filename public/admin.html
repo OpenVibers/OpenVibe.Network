@@ -47,6 +47,7 @@
         </button>
         <div class="section-tabs-wrap">
             <div class="section-tabs" id="main-tabs">
+                <button class="admin-tab-btn owner-only" onclick="showTab('setup',this)"><i class="fa-solid fa-list-check"></i> Setup</button>
                 <button class="admin-tab-btn active" onclick="showTab('dashboard',this)"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
                 <button class="admin-tab-btn" onclick="location.href='/admin/review'"><i class="fa-solid fa-list-check"></i> Review queue</button>
                 <button class="admin-tab-btn" onclick="showTab('users',this)"><i class="fa-solid fa-users"></i> Users</button>
@@ -75,11 +76,22 @@
                 <button class="admin-tab-btn owner-only" onclick="showTab('domains',this)"><i class="fa-solid fa-globe"></i> Domains</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('deploy',this)"><i class="fa-solid fa-server"></i> Deploy</button>
                 <button class="admin-tab-btn" onclick="showTab('ssh',this)"><i class="fa-solid fa-terminal"></i> SSH</button>
+                <button class="admin-tab-btn" onclick="showTab('glossary',this)"><i class="fa-solid fa-book"></i> Glossary</button>
             </div>
         </div>
         <button class="tabs-scroll-btn" id="main-tabs-right" onclick="scrollMainTabs(1)" title="Scroll right" aria-label="Scroll right">
             <i class="fa-solid fa-chevron-right"></i>
         </button>
+    </div>
+
+    <!-- Setup (owner only): everything only the owner can give the network, from every service (js/admin/setup.js) -->
+    <div class="section" id="sec-setup">
+        <div id="setup-content" class="setup"></div>
+    </div>
+
+    <!-- Glossary: the few words the panel cannot avoid, in plain words (js/admin/glossary.js) -->
+    <div class="section" id="sec-glossary">
+        <div id="glossary-content"></div>
     </div>
 
     <!-- Dashboard -->
@@ -671,7 +683,9 @@
 <script src="/js/admin/moderation.js" defer></script>
 <script src="/js/admin/settings.js" defer></script>
 <script src="/js/admin/payments.js" defer></script>
+<script src="/js/admin/glossary.js" defer></script>
 <script src="/js/admin/ai.js" defer></script>
+<script src="/js/admin/setup.js" defer></script>
 <script src="/js/admin/content.js" defer></script>
 <script src="/js/admin/analytics.js" defer></script>
 <script src="/js/admin/deploy.js" defer></script>

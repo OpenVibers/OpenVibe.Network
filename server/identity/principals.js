@@ -336,6 +336,14 @@ const DEFAULT_GRANTS = [
     // CHANGED_DEFAULT_NAMESPACES entry is needed. The deploy applies them from ensureSchema() at boot.
     ...['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor']
         .map((svc) => ['network', `${svc}.config.manage`, `openvibe.${svc}`, []]),
+    // The owner's Setup tab (OWNER-SETUP-AND-ADMIN-CLARITY-DESIGN, 2026-11-07): the same proxy reaches the eight more
+    // services that hold an owner input. Their <svc>.config.manage capabilities are Contracts 0.308.0 (planned until
+    // each service mounts /internal/config). A grant is seeded only once the pinned Contracts knows its capability, so
+    // this works on the pin before 0.308.0 and seeds all eight at the first boot after the pin moves. New rows, as for
+    // the nine: no RESTORED_GRANTS or CHANGED_DEFAULT_NAMESPACES entry.
+    ...['chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media']
+        .filter((svc) => capabilities.get(`${svc}.config.manage`))
+        .map((svc) => ['network', `${svc}.config.manage`, `openvibe.${svc}`, []]),
     // The owner's AI tab lists and edits AI's provider registry through AI's own admin API (GET/POST/PATCH
     // /api/v1/providers), as Network, naming the owner in X-OV-Subject.
     ['network', 'ai.provider.manage', 'openvibe.ai', []],

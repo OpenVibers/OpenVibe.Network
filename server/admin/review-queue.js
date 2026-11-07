@@ -75,12 +75,22 @@ function itemOf(raw, site, now) {
     const revision = raw.revision == null ? null : Number(raw.revision);
     if (revision != null && !Number.isInteger(revision)) return null;
     const reasons = Array.isArray(raw.reasons) ? raw.reasons.filter((r) => r && typeof r.text === 'string').slice(0, 6).map((r) => ({ code: String(r.code || ''), text: r.text.slice(0, 300) })) : [];
+    // Which kind of review an item already had (a service adds this): the AI editor's decision, or a
+    // person's. Anything else is ignored — an item is still shown, just without the fact.
+    const kind = raw.reviewed && typeof raw.reviewed === 'object' ? raw.reviewed.kind : null;
+    const decision = raw.reviewed && typeof raw.reviewed === 'object' ? raw.reviewed.decision : null;
+    const reviewed = (kind === 'ai_editor' || kind === 'person') && (decision === 'approved' || decision === 'rejected') ? {
+        kind, decision,
+        by: typeof raw.reviewed.by === 'string' ? raw.reviewed.by.slice(0, 120) : null,
+        label: typeof raw.reviewed.label === 'string' ? raw.reviewed.label.slice(0, 300) : null,
+    } : null;
     return {
         site: site.id, kind: raw.kind, id: raw.id, title: raw.title.slice(0, 300),
         revision, state: typeof raw.state === 'string' ? raw.state : null, ref: typeof raw.ref === 'string' ? raw.ref : null,
         url: safeUrl(raw.url), editUrl: raw.editUrl == null ? null : safeUrl(raw.editUrl),
         createdAt: createdAt.toISOString(), age: ageText(createdAt.toISOString(), now),
         reasons: reasons.length ? reasons : [{ code: 'noindex_requested', text: 'Waiting for a person\'s review.' }],
+        reviewed,
     };
 }
 
@@ -120,12 +130,21 @@ function itemRow(item, csrf) {
     const href = item.editUrl || item.url;
     const title = `<a href="${esc(safeUrl(href))}">${esc(item.title)}</a>`;
     const why = item.reasons.map((r) => r.text).join(' · ');
+    // Which kind of review the item already had: a person's, or the AI editor's (with its date).
+    const who = item.reviewed ? (item.reviewed.kind === 'ai_editor' ? 'the AI editor' : 'a person') : null;
+    const reviewedText = item.reviewed
+        ? (item.reviewed.label || `${item.reviewed.decision === 'approved' ? 'Checked' : 'Kept hidden'} by ${who}`)
+        : '';
+    const meta = [
+        item.age ? `${item.age} waiting` : '',
+        who ? `last review by ${who}` : '',
+    ].filter(Boolean).join(' · ');
     return kit.row({
         titleHtml: title,
         badge: kit.badge(kindOf(item.kind)),
-        meta: item.age ? `${item.age} waiting` : '',
+        meta,
         metaIso: item.createdAt,
-        sub: why,
+        sub: [why, reviewedText].filter(Boolean).join(' · '),
         trail: actionForms(item, csrf),
     });
 }
