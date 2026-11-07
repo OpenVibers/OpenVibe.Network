@@ -34,20 +34,20 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
 // ── The browser helpers: one re-authentication URL, and the banner ───────────
 const safety = read('public/js/account-safety.js');
-function safetyWindow() {
+function safetyWindow(location = { origin: 'https://openvibe.network', hostname: 'openvibe.network' }) {
     const { window: win } = parseHTML('<!doctype html><html><body></body></html>');
     const store = new Map();
     const calls = [];
     const root = {
         document: win.document,
-        location: { origin: 'https://openvibe.network' },
+        location,
         localStorage: {
             getItem: (k) => (store.has(k) ? store.get(k) : null),
             setItem: (k, v) => store.set(k, String(v)),
             removeItem: (k) => store.delete(k),
         },
         fetch: async (url, opts = {}) => {
-            calls.push({ url: String(url), method: opts.method || 'GET', headers: opts.headers || {} });
+            calls.push({ url: String(url), method: opts.method || 'GET', headers: opts.headers || {}, credentials: opts.credentials });
             if ((opts.method || 'GET') === 'DELETE') {
                 return { ok: true, status: 200, json: async () => ({ status: 'cancelled', deletion_id: 'del_x' }) };
             }
@@ -251,7 +251,22 @@ assert.strictEqual(reauthUrl('https://openvibe.network', '/my#delete'), 'https:/
 assert.strictEqual(signInUrl({ loginUrl: 'https://openvibe.network', baseUrl: 'https://openvibe.network' }),
     'https://openvibe.network/login?reauth=1&return=https%3A%2F%2Fopenvibe.network%2Fadmin%23ai');
 
-Promise.all([bannerTest, serverTest()]).then(() => console.log('account deletion reauth: all checks passed')).catch((err) => {
+// On openvibe.my (the account hub's own origin) the banner asks Network directly, with the Bearer and no cookie: a
+// relative call is redirected there and the browser drops the Authorization header on that redirect (a 401).
+const myHostTest = (async () => {
+    const { root, calls, api } = safetyWindow({ origin: 'https://openvibe.my', hostname: 'openvibe.my' });
+    root.localStorage.setItem('openvibe_accounts', JSON.stringify([{ id: 7, username: 'Me', token: 'tok-saved' }]));
+    root.localStorage.setItem('openvibe_active_account', '7');
+    calls.length = 0;
+    await api.deletionStatus();
+    const c = calls.find((x) => x.url.includes('/api/v1/account/deletion'));
+    assert.ok(c, 'the status was asked');
+    assert.strictEqual(c.url, 'https://openvibe.network/api/v1/account/deletion');
+    assert.strictEqual(c.credentials, 'omit', 'no cookie crosses from openvibe.my');
+    assert.strictEqual(c.headers.Authorization, 'Bearer tok-saved');
+})();
+
+Promise.all([bannerTest, myHostTest, serverTest()]).then(() => console.log('account deletion reauth: all checks passed')).catch((err) => {
     console.error(err);
     process.exitCode = 1;
 });
