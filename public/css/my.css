@@ -249,7 +249,7 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
 .ny[hidden] { display: none !important; }
 .ny-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .ny-h h2 { display: flex; align-items: center; gap: 9px; font-size: 1.05rem; font-weight: 850; letter-spacing: -.01em; }
-.ny-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent); animation: tdPulse 2s var(--ov-ease-out, ease-out) infinite; }
+.ny-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent); }
 .ny-sub { font-size: 12.5px; color: var(--text-muted); }
 .ny-list { display: grid; gap: 8px; }
 .ny-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--bg-secondary); border: 1px solid var(--border); }

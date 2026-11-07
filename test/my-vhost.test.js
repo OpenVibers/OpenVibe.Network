@@ -40,8 +40,10 @@ try {
         .replace(/^\s*access_log\s+\/var\/log\/[^;]+;/gm, '    access_log off;')
         .replace(/^\s*error_log\s+\/var\/log\/[^;]+;/gm, '    error_log stderr;');
     const main = path.join(tmp, 'nginx.conf');
-    fs.writeFileSync(main, `pid ${path.join(tmp, 'nginx.pid')};\nerror_log ${path.join(tmp, 'error.log')};\nevents {}\nhttp {\n${conf}\n}\n`);
-    const result = spawnSync('nginx', ['-t', '-p', tmp, '-c', main], { cwd: ROOT, encoding: 'utf8', timeout: 60000 });
+    // A server block with no access_log of its own inherits nginx's compiled-in /var/log/nginx/access.log, which a CI
+    // runner cannot open: the scratch http block turns it off, and -e keeps the startup error log in the prefix too.
+    fs.writeFileSync(main, `pid ${path.join(tmp, 'nginx.pid')};\nerror_log ${path.join(tmp, 'error.log')};\nevents {}\nhttp {\naccess_log off;\n${conf}\n}\n`);
+    const result = spawnSync('nginx', ['-t', '-p', tmp, '-e', path.join(tmp, 'error.log'), '-c', main], { cwd: ROOT, encoding: 'utf8', timeout: 60000 });
     const out = `${result.stdout || ''}${result.stderr || ''}`;
     if (result.status === 0 && /test is successful/.test(out)) {
         assert.ok(out.includes('syntax is ok'), 'nginx parses the vhost');

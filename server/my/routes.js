@@ -12,8 +12,10 @@
 // The Host header decides:
 //   openvibe.my          the account hub at /, and /<section> (the old /my/<section> paths)
 //   www.openvibe.my      301 to the apex
-//   openvibe.network/my  301 to https://openvibe.my/… (query kept); the account hub's other old paths
-//                        (/themes, /security, /machines, …) 301 there too
+//   openvibe.network/my  302 to https://openvibe.my/… (query kept); the account hub's other old paths
+//                        (/themes, /security, /machines, …) 302 there too. 302 while openvibe.my is new
+//                        (2026-11-07): a browser never caches it, so the hub can move back without a stuck hop.
+//                        Make it 301 once openvibe.my has run a few weeks.
 //   /my, /my.html, /my/* on openvibe.my are 301 to the canonical /<section>
 // ═══════════════════════════════════════════════════════════════
 
@@ -205,7 +207,7 @@ async function createMyRoutes({ db, config = require('../config'), sso, pagePath
         if (host === WWW_HOST) return res.redirect(301, `https://${MY_HOST}${req.originalUrl}`);
         if (NETWORK_HOSTS.has(host)) {
             if (!isHubPath(req.path) || !['GET', 'HEAD'].includes(req.method)) return next();
-            return res.redirect(301, `https://${MY_HOST}${pathFromNetwork(req.path)}${queryOf(req)}`);
+            return res.redirect(302, `https://${MY_HOST}${pathFromNetwork(req.path)}${queryOf(req)}`);
         }
         if (host === MY_HOST) req.ovMyHost = true;
         next();

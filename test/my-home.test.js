@@ -1,7 +1,7 @@
 'use strict';
 // openvibe.my: the account hub's own home (plan OpenVibe_Seven_Domains_Plan §4), served by Network. The Host
 // header decides: openvibe.my serves the hub at / and its sections at /<section>; openvibe.network/my and the
-// hub's old paths 301 there with the query; www.openvibe.my 301s to the apex. Sign-in is the SDK's first-party
+// hub's old paths 302 there with the query (301 once openvibe.my has settled); www.openvibe.my 301s to the apex. Sign-in is the SDK's first-party
 // OAuth client 'my' (PKCE S256, a host-only session on openvibe.my), with the silent path (prompt=none) and
 // sign-out; no token is ever in a URL.
 //   node test/my-home.test.js
@@ -89,12 +89,12 @@ const MY = 'openvibe.my';
     try {
         // ── Host routing ──
         let r = await get('/my?x=1', 'openvibe.network');
-        assert.strictEqual(r.status, 301);
+        assert.strictEqual(r.status, 302, '302 while openvibe.my is new: no browser caches the hop');
         assert.strictEqual(r.headers.location, 'https://openvibe.my/?x=1', 'the old /my keeps the query');
         locations.push(r.headers.location);
 
         r = await get('/my/security?from=notes', 'openvibe.network');
-        assert.strictEqual(r.status, 301);
+        assert.strictEqual(r.status, 302);
         assert.strictEqual(r.headers.location, 'https://openvibe.my/security?from=notes', '/my/* strips /my');
 
         r = await get('/my.html', 'openvibe.network');

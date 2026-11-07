@@ -27,7 +27,7 @@ const MY = 'https://openvibe.my';
         assert.strictEqual(Number(row.is_first_party), 1, 'a first-party client');
         assert.ok(row.client_secret && String(row.client_secret).length >= 16, 'it has a secret (never logged)');
 
-        // The real app mounted the host routing: openvibe.network/my 301s, openvibe.my serves the hub (and its
+        // The real app mounted the host routing: openvibe.network/my 302s, openvibe.my serves the hub (and its
         // static assets) itself, and a signed-out visit tries the silent sign-in first.
         const getHost = (p, host, cookies = []) => new Promise((resolve) => {
             const headers = { host };
@@ -46,7 +46,7 @@ const MY = 'https://openvibe.my';
             return null;
         };
         let r0 = await getHost('/my?x=1', 'openvibe.network');
-        assert.strictEqual(r0.status, 301);
+        assert.strictEqual(r0.status, 302, '302 while openvibe.my is new: no browser caches the hop');
         assert.strictEqual(r0.headers.location, 'https://openvibe.my/?x=1', 'the app, not only nginx, moves /my');
         r0 = await getHost('/?sso=none', 'openvibe.my');
         assert.strictEqual(r0.status, 200, 'openvibe.my serves the hub');

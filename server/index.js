@@ -966,7 +966,7 @@ app.use((req, res, next) => {
         const { pathFromNetwork, isHubPath } = require('./my/routes');
         const targetPath = isHubPath(req.path) ? pathFromNetwork(req.path) : '/';
         const query = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
-        return res.redirect(301, `https://openvibe.my${targetPath}${query}`);
+        return res.redirect(302, `https://openvibe.my${targetPath}${query}`);   // 302 while openvibe.my is new (my/routes.js)
     }
     next();
 });
