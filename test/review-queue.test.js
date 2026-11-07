@@ -36,8 +36,11 @@ const item = (id, kind, createdAt, extra = {}) => ({
 });
 
 (async () => {
-    const wiki = await upstream('wiki', [item('pg_a', 'wiki_page', '2026-10-01T00:00:00Z'), item('pg_b', 'wiki_page', '2026-10-03T00:00:00Z')]);
-    const blog = await upstream('blog', [item('pst_a', 'blog_draft', '2026-10-02T00:00:00Z'), item('pst_b', 'blog_draft', '2026-10-04T00:00:00Z'), item('pst_c', 'blog_draft', '2026-10-05T00:00:00Z'), item('pst_d', 'blog_draft', '2026-10-06T00:00:00Z'), item('pst_e', 'blog_draft', '2026-10-07T00:00:00Z'), item('pst_f', 'blog_draft', '2026-10-08T00:00:00Z'), item('pst_g', 'blog_draft', '2026-10-09T00:00:00Z')]);
+    const wiki = await upstream('wiki', [item('pg_a', 'wiki_page', '2026-10-01T00:00:00Z'), item('pg_b', 'wiki_page', '2026-10-03T00:00:00Z', {
+        // A page the AI editor kept hidden: the queue names which kind of review it had.
+        reviewed: { kind: 'ai_editor', decision: 'rejected', by: 'svc:orchestrator', at: '2026-10-02T00:00:00Z', label: "Kept hidden by OpenVibe's AI editor on 2026-10-02" },
+    })]);
+    const blog = await upstream('blog', [item('pst_a', 'blog_draft', '2026-10-02T00:00:00Z'), item('pst_b', 'blog_draft', '2026-10-04T00:00:00Z', { reviewed: { kind: 'robot', decision: 'approved', label: 'not a kind' } }), item('pst_c', 'blog_draft', '2026-10-05T00:00:00Z'), item('pst_d', 'blog_draft', '2026-10-06T00:00:00Z'), item('pst_e', 'blog_draft', '2026-10-07T00:00:00Z'), item('pst_f', 'blog_draft', '2026-10-08T00:00:00Z'), item('pst_g', 'blog_draft', '2026-10-09T00:00:00Z')]);
     const news = await upstream('news', [item('clu_a', 'ai_brief', '2026-09-30T00:00:00Z')]);
     const trade = await upstream('trade', [item('ins_a', 'company_page', '2026-09-29T00:00:00Z', { ref: 'ACME' })]);
     const env = { OV_WIKI_INTERNAL_URL: wiki.url, OV_BLOG_INTERNAL_URL: blog.url, OV_NEWS_INTERNAL_URL: news.url, OV_TRADE_INTERNAL_URL: trade.url };
@@ -73,6 +76,9 @@ const item = (id, kind, createdAt, extra = {}) => ({
         assert.strictEqual(r.status, 200, r.text.slice(0, 300));
         assert.ok(r.text.includes('OpenVibe.Wiki') && r.text.includes('OpenVibe.Blog') && r.text.includes('OpenVibe.News') && r.text.includes('OpenVibe.Trade'));
         assert.ok(r.text.includes('More (1)'), 'the 7th Blog row is folded behind More (1)');
+        assert.ok(r.text.includes('last review by the AI editor'), 'the queue shows which kind of review the item had');
+        assert.match(r.text, /Kept hidden by OpenVibe(?:&#39;|')s AI editor on 2026-10-02/, 'and what it said');
+        assert.ok(!r.text.includes('not a kind'), 'an unknown review kind is ignored, never rendered');
         assert.ok(r.text.includes('Title clu_a') && r.text.includes('AI brief'));
         assert.ok(r.text.indexOf('More (1)') < r.text.indexOf('Title pst_g'), 'the 7th row is inside the fold');
         assert.strictEqual(r.text.split('Title pst_g').length, 2, 'the folded row appears once');
