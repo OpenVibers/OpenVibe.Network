@@ -41,6 +41,10 @@ const svc = http.createServer((req, res) => {
         if (u.pathname === '/actor/api/v1/actions') return json(200, { items: [
             item(cancelled ? { state: 'cancelled', bucket: 'failed', actions: ['open'], updated_at: iso(1) } : {}),
             item({ id: 'apr_1', kind: 'approval', title: 'Spend $0.40 on a desk hour', bucket: 'waiting', state: 'pending', actions: ['approve', 'decline', 'open'], updated_at: iso(5), href: 'https://openvibe.actor/me/approvals' }),
+            // HO1: an approval of one of the new kinds, with the kind in plain words, the agent by its name and
+            // its own page.
+            item({ id: 'apr_publish', kind: 'approval', title: 'Publish your post on openvibe.blog', summary: 'publishing for others to see · Weekly digest', agent: 'Vibe', bucket: 'waiting', state: 'pending', actions: ['approve', 'decline', 'open'], updated_at: iso(2), href: 'https://openvibe.actor/me/approvals/apr_publish' }),
+            item({ id: 'apr_send', kind: 'approval', title: 'Send one email to the venue', summary: 'sending something to someone · Trip planner', agent: 'Trip planner', bucket: 'waiting', state: 'pending', actions: ['approve', 'decline', 'open'], updated_at: iso(3), href: 'https://openvibe.actor/me/approvals/apr_send' }),
             item({ id: 'tsk_bad', href: 'http://openvibe.actor/tasks/x' }),
             item({ id: 'tsk_spoof', service: 'codes' }),
             item({ id: 'agt_1', bucket: 'scheduled', state: 'scheduled', next_run_at: new Date(T0 + 3600000).toISOString(), actions: ['open'] }),
@@ -96,8 +100,16 @@ try {
     assert.ok(validate('network.me-actions-result@1', doc).valid, JSON.stringify(validate('network.me-actions-result@1', doc).errors));
     assert.deepStrictEqual(doc.sources, { network: 'ok', actor: 'ok', codes: 'not_connected', ai: 'timeout', domains: 'ok' });
     assert.strictEqual(doc.partial, true, 'a timeout makes the answer partial');
-    assert.deepStrictEqual(doc.counts, { running: 1, waiting: 3, scheduled: 1, done: 0, failed: 1 });
-    assert.deepStrictEqual(doc.buckets.waiting.map((x) => x.id), ['cnf_01JAB2C3D4E5F6G7H8J9K0MNPQ', 'apr_1', 'dpr_1'], 'newest first');
+    assert.deepStrictEqual(doc.counts, { running: 1, waiting: 5, scheduled: 1, done: 0, failed: 1 });
+    assert.deepStrictEqual(doc.buckets.waiting.map((x) => x.id), ['cnf_01JAB2C3D4E5F6G7H8J9K0MNPQ', 'apr_publish', 'apr_send', 'apr_1', 'dpr_1'], 'newest first');
+    // The new kinds reach the hub as they are (plan HO1): the kind in plain words, the agent by its name, and
+    // the approval's own page. The person reviews it there; the hub never approves with one tap.
+    const published = doc.buckets.waiting.find((x) => x.id === 'apr_publish');
+    assert.deepStrictEqual([published.kind, published.bucket, published.state, published.agent], ['approval', 'waiting', 'pending', 'Vibe']);
+    assert.match(published.summary, /publishing for others to see/, 'the kind in plain words');
+    assert.match(published.summary, /Weekly digest/, 'the thread it came from');
+    assert.strictEqual(published.href, 'https://openvibe.actor/me/approvals/apr_publish');
+    assert.deepStrictEqual(published.actions, ['approve', 'decline', 'open']);
     const cnf = doc.buckets.waiting[0];
     assert.deepStrictEqual([cnf.service, cnf.kind, cnf.title, cnf.summary, cnf.href, cnf.actions], ['network', 'approval', 'Send one email to the venue', 'Trip planner asks to use mail.send', 'https://openvibe.network/my#approvals', ['approve', 'decline', 'open']]);
     const all = Object.values(doc.buckets).flat().map((x) => x.id);

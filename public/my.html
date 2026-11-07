@@ -54,7 +54,10 @@
 <div class="page">
     <!-- Needs you (plan OpenVibe_Seven_Domains_Plan §4): the Action Center's waiting items, first on the screen.
          my/today.js fills it from GET /api/v1/me/actions; a waiting item has one button (Approve, Try again, or
-         Open), and an empty queue leaves the section out. The hero and the sections follow unchanged. -->
+         Open), and an empty queue leaves the section out. The hero and the sections follow unchanged.
+         An approval says what kind of act it is in plain words (plan HO1: publishing for others to see, sending
+         something to someone, spending your money), which agent asked and in which thread; the agent's name is
+         shown, never its id. Review opens the approval itself — the hub never approves with one tap. -->
     <section class="ny" id="needs-you" hidden aria-labelledby="needs-you-h">
         <div class="ny-h">
             <h2 id="needs-you-h"><span class="ny-dot" aria-hidden="true"></span>Needs you</h2>

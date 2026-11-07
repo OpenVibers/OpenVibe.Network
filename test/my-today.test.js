@@ -165,11 +165,19 @@ assert.match(CSS, /@media \(min-width:1000px\)\{[\s\S]*\.settings\{display:grid;
     p.sandbox.renderNeedsYou({ buckets: { waiting: [
         { service: 'actor', id: 'apr_1', kind: 'approval', title: 'Run a command', agent: 'agt01M6VEKFK36XWYB3CSY1RE60YN', href: 'https://openvibe.actor/me/approvals/apr_1', actions: ['approve', 'open'] },
         { service: 'actor', id: 'tsk_2', kind: 'agent_task', title: 'Summarise the inbox', href: 'https://openvibe.actor/tasks/tsk_2', actions: ['retry', 'open'] },
+        // An approval of one of the new kinds (plan HO1): the kind in plain words, the agent by its name, and
+        // the approval's own page. Review opens it; the hub never approves with one tap.
+        { service: 'actor', id: 'apr_publish', kind: 'approval', title: 'Publish your post on openvibe.blog', summary: 'publishing for others to see · Weekly digest', agent: 'Vibe', href: 'https://openvibe.actor/me/approvals/apr_publish', actions: ['approve', 'decline', 'open'] },
     ] } });
     const two = p.ids['needs-you-list'].children;
     assert.ok(!/agt01M6/.test(two[0].textContent), 'a raw agent id is left out');
     assert.strictEqual(two[0].all((c) => c.tagName === 'A')[0].href, 'https://openvibe.actor/me/approvals/apr_1', 'Review opens the approval');
     assert.strictEqual(two[1].all((c) => c.tagName === 'BUTTON')[0].textContent, 'Try again');
+    assert.match(two[2].textContent, /publishing for others to see/, 'the kind of the act is in plain words');
+    assert.match(two[2].textContent, /Weekly digest/, 'the thread it came from');
+    assert.match(two[2].textContent, /Vibe/, 'the agent by its name');
+    assert.strictEqual(two[2].all((c) => c.tagName === 'A')[0].href, 'https://openvibe.actor/me/approvals/apr_publish');
+    assert.strictEqual(two[2].all((c) => c.tagName === 'BUTTON').length, 0, 'no one-tap approve on an approval');
     p.sandbox.renderNeedsYou({ buckets: { waiting: [] } });
     assert.strictEqual(p.ids['needs-you'].hidden, true, 'an empty queue leaves the section out');
 
