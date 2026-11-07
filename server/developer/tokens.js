@@ -21,11 +21,15 @@
  * within their 5-minute lifetime.
  * With `agent=agt_…` (client_credentials only) the app asks for a token of an agent it hosts instead
  * (./agent-tokens.js, plan T2 WS-Z2 slice 8); without it, app tokens are unchanged.
+ * Consent per purpose (the consent plan's C4, Contracts 0.307.0): `consent:<purpose>` scopes ride on the code beside
+ * the capability ids, and the authorization-code token carries `consent`, the purposes the person granted this app
+ * that are active at mint (network.consent-claim@1). They are never capabilities and never widen `cap`.
  */
 const crypto = require('crypto');
 const { serviceAuth, assertValid } = require('openvibe-contracts');
 const policy = require('./policy');
 const store = require('./store');
+const consentApps = require('../consent/apps');
 
 const TOKEN_TTL_S = 300;
 const CODE_TTL_MS = 5 * 60 * 1000;
@@ -93,7 +97,7 @@ function consentView(scope) {
     return { capabilities, refused };
 }
 
-async function mint({ app, project, audience, scope, limit, onBehalfOf, privateKey, issuer, settings, db, allowEmpty }) {
+async function mint({ app, project, audience, scope, limit, onBehalfOf, privateKey, issuer, settings, db, allowEmpty, consent }) {
     const aud = String(audience || '').trim();
     if (!aud || !/^[a-z0-9.-]+$/.test(aud)) return oauthError(400, 'invalid_request', 'audience is required');
     if (app.environment === 'sandbox' && !settings.sandboxAudiences.has(aud)) {
@@ -113,10 +117,12 @@ async function mint({ app, project, audience, scope, limit, onBehalfOf, privateK
         iss: issuer, sub: `app:${app.id}`, actor_type: 'app', aud: [aud], cap, ns: projectNamespaces(project.id),
         project_id: project.id, env: app.environment,
         ...(onBehalfOf ? { on_behalf_of: onBehalfOf } : {}),
+        ...(consent ? { consent } : {}),
         iat: now, exp: now + TOKEN_TTL_S, jti: `tok_${crypto.randomBytes(12).toString('hex')}`,
     };
     assertValid('identity.service-token-claims@1', claims);
-    return { status: 200, body: { access_token: serviceAuth.signServiceToken(claims, privateKey), token_type: 'Bearer', expires_in: TOKEN_TTL_S, scope: cap.join(' ') } };
+    const scopeOut = consent ? consentApps.joinScope(cap.join(' '), consent) : cap.join(' ');
+    return { status: 200, body: { access_token: serviceAuth.signServiceToken(claims, privateKey), token_type: 'Bearer', expires_in: TOKEN_TTL_S, scope: scopeOut } };
 }
 
 // ── Export tokens (roadmap WS-N task 9) ─────────────────────────
@@ -228,10 +234,20 @@ async function handleTokenRequest(db, body, { privateKey, issuer, config, ctx })
         // The consent the code carries is explicit: `row.scope` is exactly the grantable ids the
         // authorize requested, and an empty set means the person consented to nothing. The exchange
         // may narrow it, never widen it, and a no-consent code still yields an identifying token.
-        const consented = String(row.scope || '').split(/\s+/).filter(Boolean);
-        const asked = body.scope ? String(body.scope).split(/\s+/).filter(Boolean) : null;
+        // The consent:<purpose> scopes beside them are the purposes the app asked the person for (C4).
+        const onCode = consentApps.parseScope(row.scope);
+        const consented = onCode.rest.split(/\s+/).filter(Boolean);
+        const wanted = body.scope ? consentApps.parseScope(body.scope) : null;
+        if (wanted && wanted.unknown.length) return oauthError(400, 'invalid_scope', 'unknown consent purpose');
+        const asked = wanted ? wanted.rest.split(/\s+/).filter(Boolean) : null;
         if (asked && asked.some(s => !consented.includes(s))) return oauthError(400, 'invalid_scope', 'scope exceeds what the user authorized');
-        return await mint({ app, project, audience: body.audience, scope: body.scope, limit: consented, allowEmpty: consented.length === 0, onBehalfOf: row.user_subject, privateKey, issuer, settings, db });
+        if (wanted && wanted.purposes.some(p => !onCode.purposes.includes(p))) return oauthError(400, 'invalid_scope', 'scope exceeds what the user authorized');
+        const purposes = wanted && wanted.purposes.length ? wanted.purposes : onCode.purposes;
+        const consent = purposes.length
+            ? await consentApps.grantedFor(db, { subject: row.user_subject, client: app.oauth_client_id, purposes })
+            : null;
+        return await mint({ app, project, audience: body.audience, scope: asked && asked.length ? asked.join(' ') : undefined, limit: consented,
+            allowEmpty: consented.length === 0, onBehalfOf: row.user_subject, privateKey, issuer, settings, db, consent });
     }
     return oauthError(400, 'unsupported_grant_type', 'apps use client_credentials or authorization_code');
 }
@@ -259,26 +275,39 @@ async function checkAuthorizeRequest(db, { client_id, redirect_uri, code_challen
 }
 
 /**
- * Issue an authorization code to an app for a signed-in user. A sandbox app may only be authorized
- * by members of its project. Returns { code } or { status, error }.
+ * May this signed-in user authorize this app? A sandbox app may only be authorized by members of
+ * its project. Returns { subject } or { status, error }.
  */
-async function issueCode(db, { app, project, user, redirectUri, scope, challenge }) {
+async function mayAuthorize(db, { app, project, user }) {
     const subjects = require('../identity/subjects');
     const subject = await subjects.ensureUserSubject(db, user);
     if (!subject) return { status: 403, error: 'account has no subject id' };
     if (app.environment === 'sandbox' && !await store.memberRole(db, project.id, subject)) {
         return { status: 403, error: 'sandbox apps can only be authorized by members of their project' };
     }
+    return { subject };
+}
+
+/**
+ * Issue an authorization code to an app for a signed-in user (see mayAuthorize). The code carries
+ * the consented capability ids and the consent:<purpose> scopes the app asked for (C4).
+ * Returns { code } or { status, error }.
+ */
+async function issueCode(db, { app, project, user, redirectUri, scope, challenge }) {
+    const may = await mayAuthorize(db, { app, project, user });
+    if (may.error) return may;
+    const { subject } = may;
     const code = crypto.randomBytes(32).toString('hex');
+    const onCode = consentApps.joinScope(consentedCapabilities(scope).join(' '), consentApps.parseScope(scope).purposes);
     await db.prepare(`INSERT INTO dev_auth_codes (code_hash, app_id, user_subject, redirect_uri, scope, code_challenge, expires_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)`).run(store.hashSecret(code), app.id, subject, redirectUri,
-        consentedCapabilities(scope).join(' '), challenge, new Date(Date.now() + CODE_TTL_MS).toISOString());
+        onCode, challenge, new Date(Date.now() + CODE_TTL_MS).toISOString());
     await db.prepare('DELETE FROM dev_auth_codes WHERE expires_at < ?').run(new Date(Date.now() - 3600 * 1000).toISOString());
     return { code };
 }
 
 module.exports = {
-    isAppClient, handleTokenRequest, checkAuthorizeRequest, issueCode, effectiveGrants, projectNamespaces, TOKEN_TTL_S,
+    isAppClient, handleTokenRequest, checkAuthorizeRequest, issueCode, mayAuthorize, effectiveGrants, projectNamespaces, TOKEN_TTL_S,
     consentedCapabilities, consentView,
     mintExportToken, exportSubject, EXPORT_CAPS, EXPORT_PURPOSE,
 };

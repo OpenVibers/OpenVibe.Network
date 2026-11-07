@@ -11,6 +11,9 @@
  *   revokeApp(actor, purpose, client)→ network.me-consent-result@1: one app's grant ends
  *   check({ purpose, kind, client, feature, subjects }) → network.consent-check-result@1
  *   sweep()                          marks expired rows and emits network.consent.changed
+ *   decideApp(actor, { client, asked, shown, allow, ... }) the person's answer on an app's sign-in screen (C4, ./apps.js)
+ *   appsOf(actor)                    → network.me-consent-apps-result@1: "Apps you allowed"
+ *   forgetRefusal(actor, purpose, client) ends a refusal's quiet days, so the app's next sign-in asks again
  *
  * The check is the only way a service decides. It is TRUE only for an active row that covers the purpose, the kind
  * (empty kinds cover every kind), the client and the feature. Active means revoked_at is null and expires_at has not
@@ -25,6 +28,7 @@
 const express = require('express');
 const { ids, validate, http } = require('openvibe-contracts');
 const eventRelay = require('../developer/event-relay');
+const apps = require('./apps');
 
 const TEXT_VERSION = '2026-10-31.1';
 const KINDS = ['streams', 'vods', 'clips', 'voice', 'chat', 'posts', 'pictures', 'code'];
@@ -204,6 +208,8 @@ async function revokeForSubject(t, subject, by, at) {
             .run(row.id, row.subject, row.purpose, row.client, 'revoked', by, row.text_version, at);
         payloads.push(eventPayload({ ...row, revoked_at: at }, false, at));
     }
+    // A refusal only keeps an app quiet; it is the account's, so it goes with the account.
+    await t.prepare('DELETE FROM consent_refusals WHERE subject = ?').run(subject);
     return payloads;
 }
 
@@ -225,7 +231,10 @@ async function exportOf(db, subject) {
         .map((r) => ({ ...consentOf(r, Date.now()), revoked_by: r.revoked_by }));
     const events = (await db.prepare(`SELECT ${EVENT_SELECT} FROM consent_events WHERE subject = ? ORDER BY id`).all(subject))
         .map((r) => ({ ...historyOf(r), id: Number(r.id), subject: r.subject }));
-    return { consents, events };
+    // The purposes the person refused an app at sign-in (C4), and when each quiet period ends.
+    const refusals = (await db.prepare('SELECT client, purpose, text_version, refused_at, quiet_until FROM consent_refusals WHERE subject = ? ORDER BY refused_at, client, purpose').all(subject))
+        .map((r) => ({ client: r.client, purpose: r.purpose, text_version: r.text_version, refused_at: iso(r.refused_at), quiet_until: iso(r.quiet_until) }));
+    return { consents, events, refusals };
 }
 
 /**
@@ -318,9 +327,11 @@ function createConsent({ db, emit, now = () => Date.now(), log = console } = {})
             });
             payloads.push(...fresh);
         } else {
-            // Off: every active row of this purpose goes (app.data can have one row per app; the page turns all off).
+            // Off: OpenVibe's own row goes. For app.data every app's row goes too (the page's row is where every app is
+            // turned off). An app's grant of another purpose (C4) is turned off under "Apps you allowed", one at a time.
             const revoked = await db.tx(async (t) => {
-                const active = await t.prepare('SELECT * FROM consents WHERE subject = ? AND purpose = ? AND revoked_at IS NULL FOR UPDATE')
+                const active = await t.prepare(`SELECT * FROM consents WHERE subject = ? AND purpose = ? AND revoked_at IS NULL
+                    ${purpose.id === 'app.data' ? '' : 'AND client IS NULL '}FOR UPDATE`)
                     .all(actor.subject, purpose.id);
                 const out = [];
                 for (const old of active) {
@@ -339,8 +350,12 @@ function createConsent({ db, emit, now = () => Date.now(), log = console } = {})
         return await mine(actor);
     }
 
-    /** One app's grant ends (the person revoking it, or an app revoking itself through its consent screen). */
-    async function revokeApp(actor, purposeId, client) {
+    /**
+     * One app's grant of one purpose ends: the person turning it off under "Apps you allowed" (by 'person'), or the app
+     * being revoked (by 'app_revoked').
+     */
+    async function revokeApp(actor, purposeId, client, { by = 'app_revoked' } = {}) {
+        if (!['person', 'app_revoked'].includes(by)) throw new TypeError('revokeApp: by is person or app_revoked');
         const purpose = purposeOf(purposeId);
         const name = String(client || '');
         if (!/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/.test(name)) fail(400, 'consent.invalid_client', 'that is not an app id');
@@ -352,9 +367,9 @@ function createConsent({ db, emit, now = () => Date.now(), log = console } = {})
                 .all(actor.subject, purpose.id, name);
             const out = [];
             for (const old of active) {
-                await t.prepare('UPDATE consents SET revoked_at = ?, revoked_by = ? WHERE id = ? AND revoked_at IS NULL').run(atText, 'app_revoked', old.id);
+                await t.prepare('UPDATE consents SET revoked_at = ?, revoked_by = ? WHERE id = ? AND revoked_at IS NULL').run(atText, by, old.id);
                 await t.prepare('INSERT INTO consent_events (consent_id, subject, purpose, client, action, "by", text_version, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-                    .run(old.id, old.subject, old.purpose, old.client, 'revoked', 'app_revoked', old.text_version, atText);
+                    .run(old.id, old.subject, old.purpose, old.client, 'revoked', by, old.text_version, atText);
                 out.push(eventPayload({ ...old, revoked_at: atText }, false, atText));
             }
             return out;
@@ -448,7 +463,82 @@ function createConsent({ db, emit, now = () => Date.now(), log = console } = {})
         return payloads.length;
     }
 
-    return { mine, choose, revokeApp, check, sweep, _writes: writes };
+    /**
+     * The person's answer on an app's sign-in screen (C4). `asked` are the purposes the app's scope asked for, `shown`
+     * the ones the screen listed, `allow` the ones the person ticked (nothing is ticked until they do). Each allowed
+     * purpose becomes an active row for (person, purpose, app) with source oauth, unless one is already active. Each
+     * shown purpose left unticked is a refusal: the app does not ask for it again for 30 days. A purpose the screen did
+     * not show is neither. Allowing none at all is a valid answer, and the sign-in goes on.
+     *   adult           the person ticked "I am 18 or older" on the screen
+     *   adultConfirmed  the account already confirmed it (users.adult_confirmed_at)
+     */
+    async function decideApp(actor, { client, asked = [], shown = [], allow = [], adult = false, adultConfirmed = false, textVersion } = {}) {
+        const name = String(client || '');
+        if (!apps.CLIENT_RE.test(name)) fail(400, 'consent.invalid_client', 'that is not an app id');
+        const list = (v) => (Array.isArray(v) ? [...new Set(v.map(String))] : []);
+        const askedIds = list(asked);
+        if (askedIds.some((id) => !apps.BY_ID.has(id))) fail(400, 'invalid_scope', 'the app asked for a purpose that does not exist');
+        const shownIds = list(shown);
+        const allowIds = list(allow);
+        if (shownIds.some((id) => !askedIds.includes(id))) fail(422, 'consent.not_asked', 'the app did not ask for that');
+        if (allowIds.some((id) => !shownIds.includes(id))) fail(422, 'consent.not_shown', 'only a purpose the screen showed can be allowed');
+        if (shownIds.length && textVersion !== apps.APP_TEXT_VERSION) {
+            fail(409, 'consent.stale_text', 'the wording changed; read the new words and choose again');
+        }
+        if (allowIds.some((id) => apps.BY_ID.get(id).adults_only) && adult !== true && !adultConfirmed) {
+            fail(422, 'consent.adult_required', 'tick "I am 18 or older" to allow that, or leave it unticked');
+        }
+        const at = now();
+        const atText = atIso(at);
+        const quietUntil = atIso(at + apps.QUIET_MS);
+        if (shownIds.length) mayWrite(actor.subject, at);
+
+        const payloads = await db.tx(async (t) => {
+            const out = [];
+            const activeRow = async (id) => await t.prepare('SELECT id FROM consents WHERE subject = ? AND purpose = ? AND client = ? AND revoked_at IS NULL FOR UPDATE')
+                .get(actor.subject, id, name);
+            for (const id of shownIds) {
+                if (await activeRow(id)) continue;   // already allowed: the screen changes nothing (turning off is on the account page)
+                if (allowIds.includes(id)) {
+                    const row = { id: `cns_${ids.ulid(at)}`, subject: actor.subject, purpose: id, kinds: [], client: name, options: {},
+                        text_version: apps.APP_TEXT_VERSION, source: 'oauth', granted_at: atText, revoked_at: null, expires_at: null };
+                    const added = await t.prepare(`INSERT INTO consents (id, subject, purpose, kinds, client, options, text_version, source, granted_at, revoked_at, revoked_by, expires_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL)
+                        ON CONFLICT (subject, purpose, COALESCE(client, '')) WHERE revoked_at IS NULL DO NOTHING`)
+                        .run(row.id, row.subject, row.purpose, row.kinds, name, JSON.stringify(row.options), row.text_version, row.source, atText);
+                    await t.prepare('DELETE FROM consent_refusals WHERE subject = ? AND client = ? AND purpose = ?').run(actor.subject, name, id);
+                    if (added.changes !== 1) continue;   // a second tab granted it a moment ago
+                    await t.prepare('INSERT INTO consent_events (consent_id, subject, purpose, client, action, "by", text_version, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+                        .run(row.id, row.subject, row.purpose, name, 'granted', 'person', row.text_version, atText);
+                    out.push(eventPayload(row, true, atText));
+                } else {
+                    await t.prepare(`INSERT INTO consent_refusals (subject, client, purpose, text_version, refused_at, quiet_until) VALUES (?, ?, ?, ?, ?, ?)
+                        ON CONFLICT (subject, client, purpose) DO UPDATE SET text_version = excluded.text_version, refused_at = excluded.refused_at, quiet_until = excluded.quiet_until`)
+                        .run(actor.subject, name, id, apps.APP_TEXT_VERSION, atText, quietUntil);
+                }
+            }
+            return out;
+        });
+        for (const payload of payloads) await send(payload);
+        return { granted: await apps.grantedFor(db, { subject: actor.subject, client: name, purposes: askedIds, at: now() }) };
+    }
+
+    /** "Apps you allowed" for the signed-in person → network.me-consent-apps-result@1. */
+    async function appsOf(actor) {
+        return await apps.appsOf(db, actor.subject, { at: now() });
+    }
+
+    /** The person asks for a refused purpose again: the quiet days end now, so the app's next sign-in asks. */
+    async function forgetRefusal(actor, purposeId, client) {
+        if (!apps.BY_ID.has(String(purposeId || ''))) fail(400, 'consent.unknown_purpose', `no app consent purpose '${String(purposeId || '').slice(0, 40)}'`);
+        const name = String(client || '');
+        if (!apps.CLIENT_RE.test(name)) fail(400, 'consent.invalid_client', 'that is not an app id');
+        mayWrite(actor.subject, now());
+        await db.prepare('DELETE FROM consent_refusals WHERE subject = ? AND client = ? AND purpose = ?').run(actor.subject, name, String(purposeId));
+        return await appsOf(actor);
+    }
+
+    return { mine, choose, revokeApp, check, sweep, decideApp, appsOf, forgetRefusal, _writes: writes };
 }
 
 /** The person's routes, behind Network's session check (like the Dock's), and never cached. */
@@ -482,10 +572,26 @@ function router({ consent, requireAuth }) {
         } catch (err) { problem(res, err, req, 'consent.error'); }
     });
 
+    // "Apps you allowed" (C4): what each app was granted or refused at sign-in. Before /:purpose so 'apps' is never a purpose.
+    r.get('/apps', requireAuth, async (req, res) => {
+        try {
+            res.json(await consent.appsOf(await actorOf(req)));
+        } catch (err) { problem(res, err, req, 'consent.error'); }
+    });
+
+    // The person turns one app's purpose off. The account page's answer is "Apps you allowed".
     r.delete('/:purpose/:client', requireAuth, async (req, res) => {
         try {
             const actor = await actorOf(req);
-            res.json(await consent.revokeApp(actor, req.params.purpose, req.params.client));
+            await consent.revokeApp(actor, req.params.purpose, req.params.client, { by: 'person' });
+            res.json(await consent.appsOf(actor));
+        } catch (err) { problem(res, err, req, 'consent.error'); }
+    });
+
+    // The person asks for a refused purpose again: that app's next sign-in asks.
+    r.delete('/:purpose/:client/refusal', requireAuth, async (req, res) => {
+        try {
+            res.json(await consent.forgetRefusal(await actorOf(req), req.params.purpose, req.params.client));
         } catch (err) { problem(res, err, req, 'consent.error'); }
     });
 
@@ -512,6 +618,7 @@ function internalRouter({ consent }) {
 }
 
 module.exports = {
+    apps,
     PURPOSES, PURPOSE_BY_ID, TEXT_VERSION, KINDS, WRITE_LIMIT, WRITE_WINDOW_MS, MAX_SUBJECTS,
     createConsent, router, internalRouter, eventEnvelope, publish, exportOf, revokeForMerge, revokeForDeletion,
     ConsentError, CHOICE_CONTRACT, REQUEST_CONTRACT, RESULT_CONTRACT, MINE_CONTRACT,
