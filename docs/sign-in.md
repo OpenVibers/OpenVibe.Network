@@ -41,6 +41,39 @@ or as an anonymous account.
 | `login_hint` | The account to continue as: a username (`@` optional) or an account id. Saved in this browser: continues as it. Not saved: the sign-in form with the username filled in. |
 | `nonce` | Echoed in the `id_token` (scope `openid`). |
 
+## Asking for consent per purpose (`consent:<purpose>`)
+
+Every AI or data use of a person is off until that person turns it on (the consent plan, L24). An app, an OpenVibe
+site or a developer's app alike, asks for a purpose in the same sign-in by adding one scope per purpose beside its
+own scopes, for example `scope=profile consent:ai.train consent:app.data` (Contracts 0.307.0,
+`network.consent-claim@1`).
+
+| Scope | What the screen asks |
+|---|---|
+| `consent:ai.train` | **Train AI on your content** (18+) |
+| `consent:data.public` | **Put your content in an open dataset** (18+) |
+| `consent:face.recognize` | **Recognise your face** (18+) |
+| `consent:app.data` | **Use your content** |
+
+- **Only those.** A purpose the Contracts consent family does not define (the retired `ai.looks` included) is refused:
+  `/oauth/authorize` sends the app back to its `redirect_uri` with `error=invalid_scope`, and `/oauth/client-info` and
+  `/oauth/confirm` answer 400 `invalid_scope`.
+- **The screen.** After the person picks an account, the sign-in page lists each purpose the app asked for that the
+  person has not answered yet, in plain words (`server/consent/apps.js`, wording version `2026-11-07.1`). Each one is
+  its own checkbox, none ticked, and **Continue** works with none ticked. The 18+ purposes ask for "I am 18 or older"
+  unless the account already confirmed it. `prompt=none` never shows the screen: it asks nothing.
+- **Granted.** A ticked purpose is a `consents` row: the person, the app's client id, the purpose, when, the wording
+  version and `source` `oauth`, with a `network.consent.changed` event. The person turns it off under **Apps you
+  allowed** on the account page (`DELETE /api/v1/me/consent/:purpose/:client`).
+- **Refused.** A purpose left unticked is kept in `consent_refusals`, and that app does not ask for it again for 30 days.
+  The person can end that early with **Ask me next time** (`DELETE /api/v1/me/consent/:purpose/:client/refusal`).
+- **The token.** Every token from that sign-in carries the claim `consent`: the purposes it asked for that the person
+  granted to that app and that are active when the token is issued, `[]` when none. The claim is absent when no consent
+  scope was asked. A refresh works it out again, so a purpose turned off is gone from the next token. The token
+  response's `scope` names `consent:<purpose>` only for granted ones. An app never learns more than "not granted",
+  and another app's grants never count: not on the screen, not in the claim, not in `POST /internal/consent/check`
+  (which answers an app's grant only when the check names that app as `client`).
+
 ## Switching and adding accounts from a site
 
 The shared navbar's account menu works this way on every site, whatever session the site keeps, and any site or app

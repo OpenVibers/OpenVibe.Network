@@ -17,6 +17,7 @@ const oidc = require('./oidc');
 const refreshTokens = require('./refresh-tokens');
 const dock = require('./dock-tokens');
 const { isExtensionOrigin } = require('./extension-origin');
+const consentApps = require('../consent/apps');
 const router = express.Router();
 
 function getDb(req) { return req.app.locals.db; }
@@ -79,7 +80,25 @@ function cleanLoginHint(raw) {
     return v && v.length <= 64 && /^@?[A-Za-z0-9_.-]+$/.test(v) ? v : '';
 }
 const withCode = (redirectUri, code, state) => `${redirectUri}${redirectUri.includes('?') ? '&' : '?'}code=${code}&state=${encodeURIComponent(state || '')}`;
+const withError = (redirectUri, error, description, state) => `${redirectUri}${redirectUri.includes('?') ? '&' : '?'}error=${error}`
+    + `&error_description=${encodeURIComponent(description)}&state=${encodeURIComponent(state || '')}`;
 function getConfig(req) { return req.app.locals.config; }
+
+/**
+ * Consent per purpose at sign-in (the consent plan's C4; server/consent/apps.js). An app asks with consent:<purpose>
+ * scopes beside its own; a purpose the Contracts consent family does not define is refused with invalid_scope.
+ */
+const unknownConsent = (asked) => `unknown consent purpose: ${asked.unknown.join(' ')}`;
+/** The scope a code carries: the client's own scope (the first-party default when it has none) and the purposes asked. */
+function scopeWithConsent(scope, purposes) {
+    return purposes.length ? consentApps.joinScope(scope || 'profile theme', purposes) : scope;
+}
+/** The consent registry: the server's own (server/index.js), or one for this database when the routes run alone. */
+function consentOf(req) {
+    const locals = req.app.locals;
+    if (!locals.consent) locals.consent = require('../consent').createConsent({ db: locals.db });
+    return locals.consent;
+}
 
 // ── GET /authorize ───────────────────────────────────────────
 // OAuth2 authorization endpoint. Always shows the account chooser
@@ -101,6 +120,8 @@ router.get('/authorize', async (req, res) => {
     if (devTokens.isAppClient(client_id)) {
         const found = await devTokens.checkAuthorizeRequest(db, req.query);
         if (found.error) return res.status(400).json({ error: found.pkce ? 'invalid_request' : found.error, error_description: found.error });
+        const askedConsent = consentApps.parseScope(scope);
+        if (askedConsent.unknown.length) return res.redirect(withError(redirect_uri, 'invalid_scope', unknownConsent(askedConsent), state));
         if (String(req.query.prompt || '') === 'none') {
             return res.redirect(`${redirect_uri}${redirect_uri.includes('?') ? '&' : '?'}error=interaction_required&state=${encodeURIComponent(state || '')}`);
         }
@@ -120,10 +141,13 @@ router.get('/authorize', async (req, res) => {
     if (!allowedUris.some(u => u.toLowerCase() === uriLower)) {
         return res.status(400).json({ error: 'Invalid redirect_uri' });
     }
-    const allowed = publicAuthorizeParams(client, req.query);
+    // The consent purposes are the person's to answer, never the client's allowed_scopes: split them off first.
+    const askedConsent = consentApps.parseScope(scope);
+    if (askedConsent.unknown.length) return res.redirect(withError(redirect_uri, 'invalid_scope', unknownConsent(askedConsent), state));
+    const allowed = publicAuthorizeParams(client, { ...req.query, scope: askedConsent.rest });
     if (allowed.error) return res.status(400).json({ error: 'invalid_request', error_description: allowed.error });
     const { pkce } = allowed;
-    const requestScope = allowed.scope;
+    const requestScope = scopeWithConsent(allowed.scope, askedConsent.purposes);
     const requestState = allowed.state;
     const nonce = oidc.cleanNonce(req.query.nonce);
     if (nonce === undefined) return res.status(400).json({ error: 'invalid_request', error_description: 'malformed nonce' });
@@ -193,19 +217,24 @@ router.get('/client-info', async (req, res) => {
     if (!client_id || !redirect_uri) return res.status(400).json({ error: 'client_id and redirect_uri are required' });
     let host = '';
     try { host = new URL(String(redirect_uri)).host; } catch { return res.status(400).json({ error: 'Invalid redirect_uri' }); }
+    // The purposes the app asks for, in the screen's words. Who the person is, and what they already answered, is
+    // /oauth/confirm's: this answer is the same for everyone.
+    const askedConsent = consentApps.parseScope(scope);
+    if (askedConsent.unknown.length) return res.status(400).json({ error: 'invalid_scope', error_description: unknownConsent(askedConsent) });
+    const purposes = consentApps.wordsFor(askedConsent.purposes);
     if (devTokens.isAppClient(client_id)) {
         const found = await devTokens.checkAuthorizeRequest(db, req.query);
         if (found.error && !found.pkce) return res.status(404).json({ error: found.error });
         const app = found.app || null;
         if (!app) return res.status(404).json({ error: 'Unknown client_id' });
-        const { capabilities, refused } = devTokens.consentView(scope);
-        return res.json({ name: app.name, third_party: true, redirect_host: host, capabilities, refused });
+        const { capabilities, refused } = devTokens.consentView(askedConsent.rest);
+        return res.json({ name: app.name, third_party: true, redirect_host: host, capabilities, refused, purposes });
     }
     const client = await db.prepare('SELECT name, redirect_uris FROM oauth_clients WHERE client_id = ?').get(String(client_id));
     if (!client) return res.status(404).json({ error: 'Unknown client_id' });
     const allowed = JSON.parse(client.redirect_uris || '[]').map(u => String(u).toLowerCase());
     if (!allowed.includes(String(redirect_uri).toLowerCase())) return res.status(404).json({ error: 'Invalid redirect_uri' });
-    res.json({ name: siteNameForHost(host) || client.name || String(client_id), third_party: false, redirect_host: host, capabilities: [], refused: [] });
+    res.json({ name: siteNameForHost(host) || client.name || String(client_id), third_party: false, redirect_host: host, capabilities: [], refused: [], purposes });
 });
 
 // ── POST /oauth/confirm ─────────────────────────────────────
@@ -220,6 +249,8 @@ router.post('/confirm', async (req, res) => {
     if (!token || !client_id || !redirect_uri) {
         return res.status(400).json({ error: 'token, client_id, and redirect_uri are required' });
     }
+    const askedConsent = consentApps.parseScope(scope);
+    if (askedConsent.unknown.length) return res.status(400).json({ error: 'invalid_scope', error_description: unknownConsent(askedConsent) });
 
     const devApp = devTokens.isAppClient(client_id) ? await devTokens.checkAuthorizeRequest(db, req.body) : null;
     if (devApp && devApp.error) return res.status(400).json({ error: devApp.pkce ? 'invalid_request' : devApp.error, error_description: devApp.error });
@@ -236,10 +267,10 @@ router.post('/confirm', async (req, res) => {
         if (!allowedUris.some(u => u.toLowerCase() === uriLower)) {
             return res.status(400).json({ error: 'Invalid redirect_uri' });
         }
-        const allowed = publicAuthorizeParams(client, req.body);
+        const allowed = publicAuthorizeParams(client, { ...req.body, scope: askedConsent.rest });
         if (allowed.error) return res.status(400).json({ error: 'invalid_request', error_description: allowed.error });
         pkce = allowed.pkce;
-        requestScope = allowed.scope;
+        requestScope = scopeWithConsent(allowed.scope, askedConsent.purposes);
         requestState = allowed.state;
     }
     const nonce = oidc.cleanNonce(req.body.nonce);
@@ -256,6 +287,42 @@ router.post('/confirm', async (req, res) => {
         return res.status(401).json({ error: 'Invalid or expired token' });
     }
     const user = out.user;
+
+    // Consent per purpose (C4): before any code, the purposes this app asks for that the person has not answered yet.
+    // Without `consent` in the body the answer is the screen to show ({ consent: … }, no redirect); with it, the person's
+    // choice is recorded and the sign-in goes on, whatever they chose. Granted ones and those refused in the last 30
+    // days are not asked again. The app only ever sees the claim on its token, which names granted purposes alone.
+    if (askedConsent.purposes.length) {
+        if (devApp) {
+            const may = await devTokens.mayAuthorize(db, { app: devApp.app, project: devApp.project, user });
+            if (may.error) return res.status(may.status).json({ error: may.error });
+        }
+        const subject = await subjects.ensureUserSubject(db, user);
+        if (!subject) return res.status(403).json({ error: 'account has no subject id' });
+        const choice = req.body.consent;
+        if (choice === undefined || choice === null) {
+            const step = await consentApps.stepFor(db, { subject, client: String(client_id), purposes: askedConsent.purposes });
+            if (step.ask.length) {
+                return res.json({ consent: {
+                    text_version: consentApps.APP_TEXT_VERSION,
+                    ask: consentApps.wordsFor(step.ask),
+                    granted: consentApps.wordsFor(step.granted),
+                    adult: Boolean(user.adult_confirmed_at),
+                } });
+            }
+        } else {
+            if (typeof choice !== 'object' || Array.isArray(choice)) return res.status(400).json({ error: 'invalid_request', error_description: 'consent must be an object' });
+            try {
+                await consentOf(req).decideApp({ subject }, {
+                    client: String(client_id), asked: askedConsent.purposes, shown: choice.shown, allow: choice.allow,
+                    adult: choice.adult === true, adultConfirmed: Boolean(user.adult_confirmed_at), textVersion: choice.text_version,
+                });
+            } catch (err) {
+                if (err && err.status) return res.status(err.status).json({ error: err.code, error_description: err.message });
+                throw err;
+            }
+        }
+    }
 
     if (devApp) {
         const out = await devTokens.issueCode(db, { app: devApp.app, project: devApp.project, user, redirectUri: redirect_uri, scope, challenge: String(req.body.code_challenge) });
@@ -415,7 +482,7 @@ async function handleAuthCodeGrant(db, config, req, res, client, code, redirectU
         refresh_token: refreshToken,
         token_type: 'Bearer',
         expires_in: issued.expiresIn,
-        scope: authCode.scope,
+        scope: issued.scope,
         ...(idToken ? { id_token: idToken } : {}),
         ...(publicClient
             ? { user: { id: user.id, username: user.username, display_name: user.display_name, avatar_url: user.avatar_url } }
@@ -479,7 +546,7 @@ async function handleRefreshGrant(db, config, req, res, client, refreshToken) {
         refresh_token: issued.refreshToken,
         token_type: 'Bearer',
         expires_in: issued.expiresIn,
-        scope: stored.scope,
+        scope: issued.scope,
     });
 }
 
@@ -490,6 +557,13 @@ async function issueTokenPair(db, config, req, user, client, family = {}, scope 
     const ttl = publicClient ? Math.max(60, Math.min(86400, Number(client.access_token_ttl_s) || 3600)) : null;
     const familyId = family.familyId || refreshTokens.newFamily();
     const subjectId = await subjects.ensureUserSubject(db, user) || undefined;
+    // The consent claim (network.consent-claim@1): of the purposes this sign-in asked for, the ones the person granted to
+    // THIS client and that are active now. Worked out for every token, so a refresh after a revoke leaves it out.
+    const askedConsent = consentApps.parseScope(scope);
+    const consent = askedConsent.purposes.length
+        ? await consentApps.grantedFor(db, { subject: subjectId, client: client.client_id, purposes: askedConsent.purposes })
+        : null;
+    const consentClaim = consent ? { consent } : {};
 
     const base = {
         sub: user.id,
@@ -503,8 +577,8 @@ async function issueTokenPair(db, config, req, user, client, family = {}, scope 
     // A Dock token is a read credential: no role and no staff caps, and a private issuer so no other
     // service's normal user-token check accepts it. The family id lets Network end it on revoke.
     const claims = publicClient
-        ? { ...base, client_id: client.client_id, scope: String(scope || ''), fam: familyId }
-        : { ...base, role: user.role, ...staffClaims(user) };
+        ? { ...base, client_id: client.client_id, scope: String(scope || ''), fam: familyId, ...consentClaim }
+        : { ...base, role: user.role, ...staffClaims(user), ...consentClaim };
 
     const accessToken = jwt.sign(claims, privateKey, {
         algorithm,
@@ -513,13 +587,17 @@ async function issueTokenPair(db, config, req, user, client, family = {}, scope 
         expiresIn: publicClient ? ttl : config.jwt.accessTokenExpiry,
     });
 
-    // 30 days; only its SHA-256 is stored. A sign-in starts a family; a refresh continues it.
+    // 30 days; only its SHA-256 is stored. A sign-in starts a family; a refresh continues it. The consent purposes asked
+    // for stay on it, so every refresh works the claim out again.
     const issued = await refreshTokens.issue(db, {
-        clientId: client.client_id, userId: user.id, scope: publicClient ? String(scope || '') : 'profile theme',
+        clientId: client.client_id, userId: user.id,
+        scope: publicClient ? String(scope || '') : scopeWithConsent('profile theme', askedConsent.purposes),
         familyId, generation: family.generation || 0,
     });
 
-    return { accessToken, refreshToken: issued.token, expiresIn: publicClient ? ttl : 86400, familyId: issued.familyId };
+    // The token response's scope names a consent purpose only when it was granted (the app learns "not granted", no more).
+    const grantedScope = consent ? consentApps.joinScope(askedConsent.rest, consent) : scope;
+    return { accessToken, refreshToken: issued.token, expiresIn: publicClient ? ttl : 86400, familyId: issued.familyId, consent, scope: grantedScope };
 }
 
 /**

@@ -2,7 +2,7 @@
 
 Several of one person's machines on the same local network can serve one model together through llama.cpp RPC:
 `rpc-server` on the members and `llama-server --rpc` on the head (the pooled machines design, 2026-11-06). Network
-holds the pool record (`bot.machine-pool@1`, `server/registry/machine-pools.js`, migration 0044); Node runs the
+holds the pool record (`bot.machine-pool@1`, `server/registry/machine-pools.js`, migration 0045); Node runs the
 engines and the private link; AI routes and verifies the pool's offer. Pools across the internet, pools of different
 owners and group pools are not enabled.
 
@@ -62,5 +62,5 @@ machine's share of the pool's free VRAM, which is how its credits are split (a c
 | `POST /api/v1/node/self/pools/:id/leave` | a member | → `{ revoked }` |
 
 The machine routes use the existing `network.node.self.manage` capability; each handler then checks the live node
-principal and its exact membership. Migration 0044 is expand-only. `test/machine-pools.test.js` runs on the test
+principal and its exact membership. Migration 0045 is expand-only. `test/machine-pools.test.js` runs on the test
 runner's isolated, migrated PGlite store.
