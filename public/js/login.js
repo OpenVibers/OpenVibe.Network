@@ -47,7 +47,7 @@ if (isOAuth) {
 function renderConsent(info) {
     const box = document.getElementById('oauth-consent');
     const purposes = info && Array.isArray(info.purposes) ? info.purposes : [];
-    if (!box || !info || (!info.third_party && !purposes.length)) return;
+    if (!box || !info || (!info.third_party && !info.act_as_you && !purposes.length)) return;
     const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
     box.replaceChildren();
     // An app's permission questions (consent:<purpose>): named here, asked one by one after the account is chosen.
@@ -58,6 +58,17 @@ function renderConsent(info) {
         p.append('. Each one stays off unless you tick it.');
         box.append(p);
     };
+    // An app that acts AS the person (OpenVibe Link on the phone) says so in the Network's own words, every time:
+    // it is never signed in silently and is never shown as a plain first-party site.
+    if (info.act_as_you) {
+        const head = el('p', 'consent-head');
+        head.append(el('b', null, info.name), ' ');
+        head.append(el('span', null, info.consent_text || 'will act as you.'));
+        box.append(head);
+        asks();
+        box.hidden = false;
+        return;
+    }
     if (!info.third_party) {
         const head = el('p', 'consent-head');
         head.append(el('b', null, info.name), ' asks for your permission after you choose an account.');
@@ -283,8 +294,9 @@ function takeChoice() {
 let autoContinued = false;
 function maybeContinue(info) {
     if (autoContinued || !isOAuth || !info) return;
+    // An app that acts as the person is chosen by the person, in this tab: its sentence is read before any code.
+    if (info.third_party || info.act_as_you) return;
     const chosen = takeChoice();
-    if (info.third_party) return;
     if (['select_account', 'login'].includes(params.get('prompt') || '')) return;
     const hint = String(params.get('login_hint') || '').trim().replace(/^@/, '').toLowerCase();
     const accounts = getSavedAccounts().filter(a => !a.is_anon);

@@ -192,12 +192,14 @@ async function seedDb(db, { log = console } = {}) {
                     'https://bb6593a68b1dcfbb7acd9650f04a169f4c5b57a0.extensions.allizom.org/',
                 ] },
             // Link on the phone (plan 2026-11-07 §13.2): a public first-party client with no secret — the Android app
-            // cannot keep one — PKCE S256 only, and its own scheme as the redirect. `session: true` gives it the
-            // person's own session token (normal issuer and audiences, so Actor and the drive accept it) rather than
-            // the extension's read-only Dock token; the scope ceiling is the profile and theme a sign-in asks for.
+            // cannot keep one — PKCE S256 only. Its redirect is the claimed https App Link (server/auth/app-links.js:
+            // only the app named in /.well-known/assetlinks.json for a published release certificate gets it); the
+            // custom scheme stays for debug builds. `session: true` gives it the person's own session token instead of
+            // the extension's read-only Dock token, but only when the authorization returned to the https link and a
+            // fingerprint is published. The scope ceiling is the profile and theme a sign-in asks for.
             { client_id: 'link', name: 'OpenVibe Link', public: true, session: true,
                 allowed_scopes: 'profile theme', access_token_ttl_s: 86400,
-                redirect_uris: ['openvibe-link://auth'] },
+                redirect_uris: ['https://openvibe.network/link/auth', 'openvibe-link://auth'] },
         ];
         let seededAny = false;
         for (const c of contractClients) {
