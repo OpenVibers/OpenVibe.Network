@@ -16,7 +16,7 @@ module.exports = {
     vendor: 'OpenVibe.AI',
     blurb: 'Provider keys live in OpenVibe.AI’s own-key page; Connect links there.',
     apiHost: null,
-    docsUrl: 'https://ai.openvibe.services/',
+    docsUrl: 'https://openvibe.exchange/api',
     byok: {
         service: 'ai',
         note: 'A provider key is stored by OpenVibe.AI, not by Connect. It is used by AI runs, not by Connect actions.',
@@ -33,7 +33,7 @@ module.exports = {
         scopes: [],
     },
     walkthrough: [
-        { title: 'Open OpenVibe.AI', text: 'AI is where your own provider keys live, and where they are used for the runs you start.', link: 'https://ai.openvibe.services/', linkLabel: 'Open OpenVibe.AI' },
+        { title: 'Open your AI keys', text: 'Your own provider keys live in OpenVibe.AI, with the sign-in of your account; the public pages are OpenVibe.Exchange now.', link: 'https://ai.openvibe.services/you', linkLabel: 'Open your AI keys' },
         { title: 'Add your key there', text: 'The key is sealed by AI, under your own account, and AI runs on it alone.', linkLabel: 'The next step' },
         { title: 'Come back here', text: 'Connect has nothing to keep for these two: no credential, no grant, no tool.', linkLabel: 'The next step' },
     ],
