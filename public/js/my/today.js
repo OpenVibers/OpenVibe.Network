@@ -117,6 +117,31 @@ function renderActions(unread) {
 }
 
 /**
+ * Your status beside your name (11-07): a mirror of the dot presence.js (openvibe-shared 4.131.0) draws on your picture
+ * in the bar, and one tap opens its picker. Hidden until presence.js has drawn the dot, so it never offers a picker that
+ * is not there.
+ */
+function renderStatus() {
+    const btn = document.getElementById('me-status');
+    if (!btn || btn.getAttribute('data-wired')) return;
+    btn.setAttribute('data-wired', '1');
+    const sync = () => {
+        const P = globalThis.OpenVibePresence;
+        const dot = document.querySelector('.ovp-wrap .ovp-dot');
+        const img = document.getElementById('openvibe-avatar-btn');
+        if (!P || !dot) { btn.hidden = true; return; }
+        btn.hidden = false;
+        btn.setAttribute('data-state', dot.getAttribute('data-state') || 'online');
+        const t = btn.querySelector('[data-me-status-t]');
+        if (t) t.textContent = (img && img.getAttribute('title')) || 'Online';
+    };
+    btn.addEventListener('click', () => { try { globalThis.OpenVibePresence.open(); } catch (e) { /* not loaded */ } });
+    const mount = document.getElementById('navbar-mount');
+    if (mount && typeof MutationObserver !== 'undefined') new MutationObserver(sync).observe(mount, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-state', 'title'] });
+    sync();
+}
+
+/**
  * On OpenVibe now: what the sites themselves put forward (the menu cards, frame.menu-card@1 from /api/frame) — the
  * week's trending videos, new worlds, who is live. Real entries only; a card with no entries stays out.
  */
@@ -230,6 +255,7 @@ async function loadToday() {
     if (typeof isAnonSession === 'function' && isAnonSession()) return;   // a guest identity keeps no history, follows or coins
     const quiet = (p) => p.catch(() => null);
     renderActions(null);
+    renderStatus();
     const [live, hist, coins, last, unread, sites, nodes, frame] = await Promise.all([
         quiet(apiFetch('/api/v1/me/live-follows')),
         quiet(apiFetch('/api/history?limit=30')),
