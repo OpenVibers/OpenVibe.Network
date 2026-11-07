@@ -56,7 +56,7 @@ ${nav}
 <p>There is no page at this address on openvibe.network. The link may be old or mistyped.</p>
 <ul>
 <li><a href="/">OpenVibe.Network home</a></li>
-<li><a href="/my">Your account</a></li>
+<li><a href="https://openvibe.my/">Your account</a></li>
 <li><a href="/login">Sign in</a></li>
 <li><a href="/status">Service status</a></li>
 </ul>

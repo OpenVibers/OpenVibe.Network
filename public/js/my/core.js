@@ -4,7 +4,12 @@
    my/core.js's helpers (apiFetch, getAuthToken, showSection, API) and on
    my/boot.js (loaded last), which starts the page. No ES modules.
    ═══════════════════════════════════════════════════════════════ */
-const API = window.location.origin;
+// The account hub has its own origin (openvibe.my) since 2026-11-07: its session is host-only there, while
+// every /my API call stays on Network and carries the person's Bearer token. Cookies are never sent to
+// openvibe.network, so credentials are omitted on the cross-origin calls (server/index.js CORS allows the origin).
+const MY_HOST = window.location.hostname === 'openvibe.my' || window.location.hostname === 'www.openvibe.my';
+const API = MY_HOST ? 'https://openvibe.network' : window.location.origin;
+const API_CREDENTIALS = MY_HOST ? 'omit' : 'include';
 let currentUser = null;
 let availableThemes = [];
 let activeThemeId = 'vibe';
@@ -72,7 +77,7 @@ async function _bootstrapFromCookie() {
     try {
         const res = await fetchWithTimeout(API + '/api/auth/me', {
             headers: { Authorization: 'Bearer ' + cookieToken, 'Content-Type': 'application/json' },
-            credentials: 'include',
+            credentials: API_CREDENTIALS,
         });
         if (res.ok) {
             const data = await res.json();
@@ -86,7 +91,7 @@ async function _bootstrapFromCookie() {
             const refreshRes = await fetchWithTimeout(API + '/api/auth/refresh', {
                 method: 'POST',
                 headers: { Authorization: 'Bearer ' + cookieToken, 'Content-Type': 'application/json' },
-                credentials: 'include',
+                credentials: API_CREDENTIALS,
             });
             if (refreshRes.ok) {
                 const refreshData = await refreshRes.json();
@@ -130,7 +135,7 @@ async function apiFetch(path, opts = {}) {
     const headers = { 'Content-Type':'application/json', ...opts.headers };
     const authToken = getAuthToken();
     if (authToken) headers.Authorization = 'Bearer ' + authToken;
-    const res = await fetchWithTimeout(API + path, { ...opts, headers, credentials: 'include' });
+    const res = await fetchWithTimeout(API + path, { ...opts, headers, credentials: API_CREDENTIALS });
     // Sliding sessions: the server hands back a renewed token when the old one is due.
     try { const fresh = res.headers.get('X-OV-Token'); if (fresh) { localStorage.setItem('ov_token', fresh); document.cookie = `ov_token=${fresh};path=/;max-age=${60*60*24*90};SameSite=Lax${location.protocol === 'https:' ? ';Secure' : ''}`; } } catch { /* */ }
     let data = {};
@@ -141,7 +146,7 @@ async function apiFetch(path, opts = {}) {
 
 async function anonFetch(path, opts = {}) {
     const headers = { 'Content-Type':'application/json', ...opts.headers };
-    const res = await fetchWithTimeout(API + path, { ...opts, headers, credentials: 'include' });
+    const res = await fetchWithTimeout(API + path, { ...opts, headers, credentials: API_CREDENTIALS });
     let data = {};
     try { data = await res.json(); } catch { /* non-JSON */ }
     if (!res.ok) { const err = new Error(data.error || res.statusText || 'Request failed'); err.status = res.status; throw err; }

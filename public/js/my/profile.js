@@ -7,6 +7,13 @@
 // The wallet (MONEY.md D12) in the account menu on Network's own pages: Shared's navbar needs the same item on every
 // site (the report says so); here Network can pass it in.
 const OV_WALLET_MENU = { before: [{ id: 'ov-wallet', label: 'Wallet', short: 'Wallet', icon: 'fa-wallet', href: 'https://openvibe.network/wallet' }] };
+// On openvibe.my the shared navbar's sign-in/out is the hub's own SDK session, not Network's cookie page.
+const OV_NAV_AUTH = MY_HOST ? {
+    silentLogin: '/auth/login?silent=1&next={url}',
+    sessionUrl: '/auth/me',
+    loginUrl: '/auth/login?next={path}',
+    logoutUrl: '/auth/logout?next={path}',
+} : {};
 
 // /my#delete is the return target of the re-authentication path (and a deep link): it opens the accounts
 // section and puts the cursor in the delete confirmation field. Read before core.js rewrites the hash.
@@ -29,6 +36,43 @@ function reauthForDeletion() {
 // The banner's Keep my account has already cancelled it; refresh this page's card too.
 window.addEventListener('ov:deletion-cancelled', () => { if (document.getElementById('delete-body')) renderDeletion(); });
 
+/**
+ * Signed out on openvibe.my: stay on the hub and offer the way in, plus "sign out everywhere" for the
+ * browser that still has a Network session (the SDK cleared only this origin). Never a bounce loop.
+ */
+function showSignedOutHub() {
+    const page = document.querySelector('.page');
+    if (!page) { window.location.replace('/login'); return; }
+    const here = new URL(window.location.href);
+    here.searchParams.delete('sso');
+    here.searchParams.delete('signed_out');
+    const next = `${here.pathname}${here.search}${here.hash}`;
+    const card = document.createElement('section');
+    card.className = 'card';
+    const heading = document.createElement('h2');
+    heading.textContent = 'Sign in to OpenVibe.My';
+    const text = document.createElement('p');
+    text.textContent = 'Your account hub lives on its own address. Sign in with OpenVibe; your account and its API stay on openvibe.network.';
+    const row = document.createElement('div');
+    row.className = 'btn-row';
+    const signIn = document.createElement('a');
+    signIn.className = 'btn btn-primary';
+    signIn.href = `/auth/login?next=${encodeURIComponent(next)}`;
+    signIn.setAttribute('href', signIn.href);
+    signIn.textContent = 'Sign in with OpenVibe';
+    const everywhere = document.createElement('a');
+    everywhere.className = 'btn';
+    everywhere.href = 'https://openvibe.network/sso/fanout?action=logout&next=' + encodeURIComponent('https://openvibe.my/?sso=none');
+    everywhere.setAttribute('href', everywhere.href);
+    everywhere.textContent = 'Sign out everywhere';
+    row.append(signIn, everywhere);
+    card.append(heading, text, row);
+    page.replaceChildren(card);
+    try {
+        if (window.OpenVibeNavbar) OpenVibeNavbar.init({ service: 'network', token: null, user: null, menu: OV_WALLET_MENU, ...OV_NAV_AUTH });
+    } catch { /* the page still offers the buttons */ }
+}
+
 // Load user data
 async function loadUser() {
     // Hydrate localStorage from the host-only cookie if needed (e.g. cookie set by the login page)
@@ -37,7 +81,11 @@ async function loadUser() {
     const anonToken = getAnonToken();
     // A replace, not a new history entry: Back should not land on a page that bounces again, and a replace navigation
     // skips the cross-document view transition the sign-in page cannot finish (openvibe-shared 4.88.1).
-    if (!authToken && !anonToken) { window.location.replace('/login'); return; }
+    if (!authToken && !anonToken) {
+        if (MY_HOST) { showSignedOutHub(); return; }
+        window.location.replace('/login');
+        return;
+    }
     try {
         if (isAnonSession()) {
             const data = await anonFetch('/api/auth/anon/' + encodeURIComponent(anonToken));
@@ -56,7 +104,7 @@ async function loadUser() {
             applyAnonModeUI(currentUser);
             loadAccounts();
             loadAnonInfo();
-            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: null, user: currentUser, menu: OV_WALLET_MENU });
+            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: null, user: currentUser, menu: OV_WALLET_MENU, ...OV_NAV_AUTH });
         } else {
             const data = await apiFetch('/api/auth/me');
             currentUser = data.user;
@@ -81,7 +129,7 @@ async function loadUser() {
             loadRecentTools();
 
             // Init navbar
-            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: authToken, user: currentUser, menu: OV_WALLET_MENU });
+            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: authToken, user: currentUser, menu: OV_WALLET_MENU, ...OV_NAV_AUTH });
             const bellMount = OpenVibeNavbar.getBellMount();
             if (bellMount && window.OpenVibeNotifications && authToken) {
                 OpenVibeNotifications.init({ token: authToken, apiBase: API, swPath: '/openvibe-sw.js' });
@@ -100,10 +148,11 @@ async function loadUser() {
             if (!window._ovRefreshTried) {
                 window._ovRefreshTried = true;
                 try {
-                    const r = await fetchWithTimeout(API + '/api/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(getAuthToken() ? { Authorization: 'Bearer ' + getAuthToken() } : {}) }, credentials: 'include' });
+                    const r = await fetchWithTimeout(API + '/api/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(getAuthToken() ? { Authorization: 'Bearer ' + getAuthToken() } : {}) }, credentials: API_CREDENTIALS });
                     if (r.ok) { const d = await r.json(); if (d.token) { localStorage.setItem('ov_token', d.token); document.cookie = `ov_token=${d.token};path=/;max-age=${60*60*24*90};SameSite=Lax${location.protocol === 'https:' ? ';Secure' : ''}`; location.reload(); return; } }
                 } catch { /* fall through */ }
             }
+            if (MY_HOST) { showSignedOutHub(); return; }
             window.location.replace('/login?return=' + encodeURIComponent(window.location.pathname));
             return;
         }
@@ -364,7 +413,7 @@ async function accountApi(path, opts = {}) {
     const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
     const t = getAuthToken();
     if (t) headers.Authorization = 'Bearer ' + t;
-    const res = await fetchWithTimeout(API + path, { ...opts, headers, credentials: 'include' });
+    const res = await fetchWithTimeout(API + path, { ...opts, headers, credentials: API_CREDENTIALS });
     let body = {};
     try { body = await res.json(); } catch { /* */ }
     return { status: res.status, ok: res.ok, body };
@@ -421,7 +470,7 @@ async function downloadExport(id, btn) {
         const headers = {};
         const t = getAuthToken();
         if (t) headers.Authorization = 'Bearer ' + t;
-        const res = await fetch(API + `/api/v1/account/export/${encodeURIComponent(id)}/download`, { headers, credentials: 'include' });
+        const res = await fetch(API + `/api/v1/account/export/${encodeURIComponent(id)}/download`, { headers, credentials: API_CREDENTIALS });
         if (!res.ok) { toast('That copy is no longer available.', 'error'); renderExport(); return; }
         const blob = await res.blob();
         const name = (/filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '') || [])[1] || 'openvibe-data.zip';

@@ -377,6 +377,11 @@ async function signOutEverywhere() {
     try { await apiFetch('/api/auth/sign-out-everywhere', { method: 'POST' }); }
     catch (err) { alert('Error: ' + err.message); return; }
     try { localStorage.removeItem('ov_token'); } catch { /* storage may be blocked */ }
+    if (MY_HOST) {
+        const fanout = 'https://openvibe.network/sso/fanout?action=logout&next=' + encodeURIComponent('https://openvibe.my/?sso=none');
+        location.href = '/auth/logout?next=' + encodeURIComponent(fanout);
+        return;
+    }
     location.href = '/sso/fanout?action=logout&next=%2Flogin';
 }
 
@@ -490,7 +495,7 @@ function qrPost(path, body) {
     const headers = { 'Content-Type': 'application/json' };
     const token = getAuthToken();
     if (token) headers.Authorization = 'Bearer ' + token;
-    return fetch(API + path, { method: 'POST', credentials: 'include', headers, body: JSON.stringify(body || {}) })
+    return fetch(API + path, { method: 'POST', credentials: API_CREDENTIALS, headers, body: JSON.stringify(body || {}) })
         .then(async (res) => {
             let data = {};
             try { data = await res.json(); } catch { /* empty answer */ }
@@ -645,7 +650,7 @@ async function qrPoll() {
     try {
         const token = getAuthToken();
         const res = await fetch(`${API}/auth/qr/${encodeURIComponent(qrTransfer.id)}`, {
-            credentials: 'include', cache: 'no-store', headers: token ? { Authorization: 'Bearer ' + token } : {},
+            credentials: API_CREDENTIALS, cache: 'no-store', headers: token ? { Authorization: 'Bearer ' + token } : {},
         });
         if (res.status === 404) { qrExpire(); return; }
         if (res.status === 403) { qrSigninClose(); return; }

@@ -14,7 +14,7 @@
 <meta name="keywords" content="account dashboard, openvibe network, user profile, settings">
 <meta name="robots" content="noindex, follow">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://openvibe.network/">
+<meta property="og:url" content="https://openvibe.my/">
 <meta property="og:title" content="My Account - OpenVibe">
 <meta property="og:description" content="Personal dashboard for managing your OpenVibe account and preferences.">
 <meta property="og:site_name" content="OpenVibe">
@@ -22,7 +22,7 @@
 <meta property="og:image:alt" content="OpenVibe.Network: one account for every OpenVibe site">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://openvibe.network/shared/social/network.jpg">
-<link rel="canonical" href="https://openvibe.network/my">
+<link rel="canonical" href="https://openvibe.my/">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <!-- The look before first paint (ov-theme-boot): MUST stay ABOVE the stylesheets. server/look-boot.js puts
@@ -52,6 +52,17 @@
 <div id="navbar-mount"></div>
 
 <div class="page">
+    <!-- Needs you (plan OpenVibe_Seven_Domains_Plan §4): the Action Center's waiting items, first on the screen.
+         my/today.js fills it from GET /api/v1/me/actions; a waiting item has one button (Approve, Try again, or
+         Open), and an empty queue leaves the section out. The hero and the sections follow unchanged. -->
+    <section class="ny" id="needs-you" hidden aria-labelledby="needs-you-h">
+        <div class="ny-h">
+            <h2 id="needs-you-h"><span class="ny-dot" aria-hidden="true"></span>Needs you</h2>
+            <span class="ny-sub" id="needs-you-sub"></span>
+        </div>
+        <div class="ny-list" id="needs-you-list"></div>
+    </section>
+
     <!-- You (11-07 redesign; the owner: "front-face the best stuff we have to offer … awesome design"): who you are in
          your own colour, your balances, and one tap to what you do most, on every site. -->
     <header class="me" id="page-header">
@@ -420,7 +431,7 @@
             <p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">Every OpenVibe site you have signed in to with this account. Sign in once here and the network signs you in everywhere; sign out everywhere with one click.</p>
             <div class="btn-row" style="margin-bottom:14px">
                 <a class="btn btn-primary" href="/sso/fanout?next=%2Flinked"><i class="fa-solid fa-wand-magic-sparkles"></i> Sign in everywhere</a>
-                <a class="btn" href="/sso/fanout?action=logout&next=%2Flogin"><i class="fa-solid fa-right-from-bracket"></i> Sign out everywhere</a>
+                <a class="btn" href="/sso/fanout?action=logout&next=%2F"><i class="fa-solid fa-right-from-bracket"></i> Sign out everywhere</a>
             </div>
             <div id="linked-list">
                 <!-- Populated by JS -->

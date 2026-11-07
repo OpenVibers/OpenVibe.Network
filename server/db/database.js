@@ -91,6 +91,9 @@ async function seedDb(db, { log = console } = {}) {
         const { v4: uuidv4 } = require('uuid');
         const contractClients = [
             { client_id: 'live', name: 'OpenVibe.Live', redirect_uris: ['https://openvibe.live/api/auth/callback'] },
+            // The account hub's own origin (plan OpenVibe_Seven_Domains_Plan §4): a first-party confidential client
+            // with PKCE, so openvibe.my has its own host-only session instead of reading a .openvibe.network cookie.
+            { client_id: 'my', name: 'OpenVibe.My', redirect_uris: ['https://openvibe.my/auth/callback'] },
             { client_id: 'tools', name: 'OpenVibe.Tools', redirect_uris: ['https://openvibe.tools/auth/callback'] },
             { client_id: 'games', name: 'OpenVibe.Games', redirect_uris: ['https://openvibe.games/auth/callback', 'https://play.openvibe.games/auth/callback'] },
             { client_id: 'media', name: 'OpenVibe.Media', redirect_uris: ['https://openvibe.media/auth/callback'] },

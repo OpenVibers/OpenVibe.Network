@@ -10,6 +10,16 @@ module.exports = {
     networkUrl: process.env.OV_NETWORK_URL || process.env.BASE_URL || 'https://openvibe.network',
     loginUrl: process.env.LOGIN_URL || process.env.OV_NETWORK_URL || process.env.BASE_URL || 'https://openvibe.network',
     internalUrl: process.env.INTERNAL_URL || process.env.OV_NETWORK_INTERNAL_URL || 'http://127.0.0.1:4000',
+    // The account hub's own home (plan OpenVibe_Seven_Domains_Plan §4): openvibe.my is Network's OAuth client 'my',
+    // with PKCE and a host-only session on that origin. The secret is the client's row in oauth_clients unless the
+    // host sets OV_MY_OAUTH_CLIENT_SECRET (or the generic OV_OAUTH_CLIENT_* pair from setup/service-principal.js).
+    my: {
+        clientId: process.env.OV_MY_OAUTH_CLIENT_ID || 'my',
+        clientSecret: process.env.OV_MY_OAUTH_CLIENT_SECRET
+            || (process.env.OV_OAUTH_CLIENT_ID === 'my' ? process.env.OV_OAUTH_CLIENT_SECRET : '')
+            || '',
+        baseUrl: process.env.OV_MY_URL || 'https://openvibe.my',
+    },
     setupToken: process.env.SETUP_TOKEN || '',
     bootstrapProfile: process.env.BOOTSTRAP_PROFILE || 'local-dev',
 

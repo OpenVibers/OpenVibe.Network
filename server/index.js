@@ -230,6 +230,9 @@ function buildAllowedOriginsSet() {
         // name node.openvibe.network stays here too: it 301s to openvibe.link, but a cached page may still ask.
         'https://openvibe.link',
         'https://node.openvibe.network',
+        // The account hub's own origin (openvibe.my) asks /api/v1/me/* with the person's Bearer token and no
+        // credentials: the session cookie is host-only on openvibe.my, never sent to openvibe.network.
+        'https://openvibe.my', 'https://www.openvibe.my',
         'https://openvibe.live', 'https://www.openvibe.live',
         'https://openvibe.tools',
         'https://openvibe.games', 'https://www.openvibe.games', 'https://play.openvibe.games',
@@ -330,6 +333,12 @@ if (resolvedRegistry.OV_MEDIA_INTERNAL_URL?.value) config.services.media.interna
 app.locals.urlRegistry = resolvedRegistry;
 // Make registry accessible to signToken via config._registry
 config._registry = resolvedRegistry;
+
+// openvibe.my: the account hub's own home (plan OpenVibe_Seven_Domains_Plan §4). The Host header decides:
+// openvibe.my serves the hub at / and its sections at /<section>; openvibe.network/my and the hub's old
+// paths 301 there; www.openvibe.my 301s to the apex. The route also mounts the hub's own OAuth client
+// (PKCE, host-only cookies) at /auth, before Network's sign-in pages, so /my never renders off-origin.
+app.use(await require('./my/routes').createMyRoutes({ db, config }));
 
 // ── Analytics Tracking (ADR-021) ──────────────────────────────
 // openvibe-shared/analytics on PostgreSQL (server/analytics/network.js; migrations/0002_analytics.sql).
@@ -951,12 +960,13 @@ app.use('/api/admin', require('./admin/service-proxies').createServiceProxies({ 
 app.use('/internal', require('./internal/routes'));
 
 // ── Host Canonicalization ────────────────────────────────────
-// my.openvibe.network is legacy — 301 to the apex (nginx will also do this).
+// my.openvibe.network is legacy — 301 to the account hub's own home, openvibe.my (nginx will also do this).
 app.use((req, res, next) => {
     if (getRequestHost(req) === 'my.openvibe.network') {
-        const targetPath = (req.path === '/' || req.path === '/my' || req.path === '/my.html') ? '/my' : req.path;
+        const { pathFromNetwork, isHubPath } = require('./my/routes');
+        const targetPath = isHubPath(req.path) ? pathFromNetwork(req.path) : '/';
         const query = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
-        return res.redirect(301, `https://openvibe.network${targetPath}${query}`);
+        return res.redirect(301, `https://openvibe.my${targetPath}${query}`);
     }
     next();
 });
