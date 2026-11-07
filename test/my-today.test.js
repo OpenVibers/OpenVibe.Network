@@ -39,7 +39,7 @@ class Node {
 
 function page() {
     const ids = {};
-    for (const [, id] of HTML.matchAll(/id="((?:td-|user-greeting|today|coins|settings)[a-z-]*)"/g)) ids[id] = new Node('div');
+    for (const [, id] of HTML.matchAll(/id="((?:td-|me-|page-header|user-greeting|today|coins|settings)[a-z-]*)"/g)) ids[id] = new Node('div');
     const shown = [];
     const sandbox = {
         document: { getElementById: (id) => ids[id] || null, createElement: (t) => new Node(t), querySelector: () => null },
@@ -79,9 +79,30 @@ assert.match(CSS, /@media \(min-width:1000px\)\{[\s\S]*\.settings\{display:grid;
     assert.strictEqual(p.ids['td-live'].all((c) => c.tagName === 'IMG').length, 1, 'only an https thumbnail is shown');
     assert.strictEqual(p.ids['td-now-sub'].textContent, '2 of the 14 you follow');
     const chips = p.ids['td-chips'];
-    assert.match(chips.textContent, /3 new notifications/);
-    assert.match(chips.textContent, /Go live/, 'a streamer can go live from here');
     assert.ok(!/live on OpenVibe now/.test(chips.textContent), 'not "who else is live" while people you follow are');
+
+    // The hero's actions (11-07): one tap to what you do most; Go live for a streamer, the count on Notifications.
+    p.sandbox.renderActions({ count: 3 });
+    const acts = p.ids['me-acts'];
+    assert.deepStrictEqual(acts.children.map((a) => a.children[1].textContent), ['Go live', 'Messages', 'Ask Vibe', 'Your files', 'Codes', 'Wallet', 'Notifications', 'Settings']);
+    assert.deepStrictEqual(links(acts).slice(0, 5), ['https://openvibe.live/broadcast', 'https://openvibe.chat/messages', 'https://openvibe.chat/', 'https://openvibe.download/files', 'https://openvibe.codes/'], 'every action is a real link first');
+    assert.match(acts.textContent, /Notifications3/, 'the unread count on Notifications');
+    p.sandbox.currentUser = { role: 'user' };
+    p.sandbox.renderActions({ count: 0 });
+    assert.strictEqual(acts.children[0].children[1].textContent, 'Watch live', 'a viewer watches');
+    assert.ok(!/Notifications\d/.test(acts.textContent), 'no zero count');
+    p.sandbox.currentUser = { role: 'streamer' };
+
+    // On OpenVibe now: the sites' own cards, https entries only, an empty card left out.
+    p.sandbox.renderNet({ cards: [
+        { id: 'trending', site: 'media-hub', title: 'Trending', items: [{ title: 'A walk', url: 'https://openvibe.video/v/1', meta: '9 views this week' }, { title: 'Bad', url: 'javascript:alert(1)' }], more: { label: 'Watch more', url: 'https://openvibe.video/' } },
+        { id: 'empty', site: 'games', title: 'Nothing', items: [] },
+    ] });
+    assert.strictEqual(p.ids['td-net'].hidden, false);
+    assert.deepStrictEqual(links(p.ids['td-net-cards']), ['https://openvibe.video/', 'https://openvibe.video/v/1']);
+    assert.match(p.ids['td-net-cards'].textContent, /TrendingVideo/);
+    p.sandbox.renderNet(null);
+    assert.strictEqual(p.ids['td-net'].hidden, true, 'no cards: the block stays out');
 
     p.sandbox.renderContinue({ items: [
         { title: 'Geese at dawn', url: 'https://openvibe.live/@goosely', service: 'live', service_label: 'Live', updated_at: ago(5) },
@@ -117,7 +138,7 @@ assert.match(CSS, /@media \(min-width:1000px\)\{[\s\S]*\.settings\{display:grid;
     p.sandbox.renderNow({ live: [], following: 0, anyone_live: 4 }, { count: 0 });
     assert.strictEqual(p.ids['td-now'].hidden, true, 'nobody you follow is live: no Live now row');
     assert.match(p.ids['td-chips'].textContent, /4 live on OpenVibe now/, 'but who else is, in one chip');
-    assert.ok(!/Go live|notification/.test(p.ids['td-chips'].textContent), 'no Go live for a viewer, no zero count');
+    assert.ok(!/Go live|notification/.test(p.ids['td-chips'].textContent), 'the chips only say who else is live');
     p.sandbox.renderContinue(null);
     assert.strictEqual(p.ids['td-continue'].hidden, true);
     p.sandbox.renderSites(null, null);
@@ -126,6 +147,7 @@ assert.match(CSS, /@media \(min-width:1000px\)\{[\s\S]*\.settings\{display:grid;
     assert.strictEqual(p.ids.coins.hidden, true, 'no coins answer: no money block');
     p.sandbox.renderStuff(null, null, null);
     assert.strictEqual(p.ids['td-stuff-row'].children.length, 0);
+    assert.strictEqual(p.ids['td-nums'].hidden, true, 'nothing to count: Your numbers stays out');
 
     // ── Every API down: the page still draws ──
     p = page();

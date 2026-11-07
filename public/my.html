@@ -52,16 +52,30 @@
 <div id="navbar-mount"></div>
 
 <div class="page">
-    <div class="page-header" id="page-header">
-        <img class="avatar" id="user-avatar" src="" alt="">
-        <div class="info">
-            <div class="greeting" id="user-greeting"></div>
-            <h1 id="user-name">Loading...</h1>
-            <div class="subtitle" id="user-subtitle"></div>
-            <div class="badges" id="user-badges"></div>
+    <!-- You (11-07 redesign; the owner: "front-face the best stuff we have to offer … awesome design"): who you are in
+         your own colour, your balances, and one tap to what you do most, on every site. -->
+    <header class="me" id="page-header">
+        <div class="me-top">
+            <div class="me-who">
+                <span class="me-face"><img class="avatar" id="user-avatar" src="" alt=""></span>
+                <div class="info">
+                    <div class="greeting" id="user-greeting"></div>
+                    <h1 id="user-name">Loading...</h1>
+                    <div class="subtitle" id="user-subtitle"></div>
+                    <div class="badges" id="user-badges"></div>
+                </div>
+            </div>
+            <div class="me-money" id="coins" hidden>
+                <a class="me-bals" href="/wallet" aria-label="Your balances: open the wallet">
+                    <span class="me-bal"><span class="td-coin" aria-hidden="true"></span><b id="td-coins">0</b><small>OpenCoins</small></span>
+                    <span class="me-bal" id="td-vibes-row" hidden><span class="td-coin td-coin-v" aria-hidden="true"></span><b id="td-vibes">0</b><small>Vibes</small></span>
+                </a>
+                <p class="me-last" id="td-money-last" hidden></p>
+                <a class="me-tip" href="https://openvibe.tips"><i class="fa-solid fa-hand-holding-heart" aria-hidden="true"></i> Tip a creator</a>
+            </div>
         </div>
-        <a class="btn btn-outline td-settings-btn" href="#settings"><i class="fa-solid fa-gear" aria-hidden="true"></i> Settings</a>
-    </div>
+        <nav class="me-acts" id="me-acts" aria-label="Quick actions"></nav>
+    </header>
 
     <!-- You, today (plan L43): what is happening for you now, what you were doing, your money, your sites and your
          numbers. my/today.js fills each block from its own API; a block with nothing in it stays out. -->
@@ -75,28 +89,25 @@
             <div class="td-h"><h2 id="td-continue-h">Pick up where you left off</h2><a class="td-more" href="#history" onclick="showSection('history');document.getElementById('settings').scrollIntoView({behavior:'smooth'});return false">History</a></div>
             <div class="td-rail" id="td-continue-list"></div>
         </section>
+        <section class="td-sec" id="td-net" hidden aria-labelledby="td-net-h">
+            <div class="td-h"><h2 id="td-net-h">On OpenVibe now</h2><a class="td-more" href="/sites">Every site</a></div>
+            <div class="td-net" id="td-net-cards"></div>
+        </section>
         <div class="td-grid">
             <section class="td-box" id="td-sites" hidden aria-labelledby="td-sites-h">
                 <div class="td-h"><h2 id="td-sites-h">Your sites</h2><a class="td-more" href="/sites">All sites</a></div>
                 <div class="td-sites" id="td-sites-grid"></div>
                 <div class="td-tries" id="td-try" hidden></div>
             </section>
-            <section class="td-box td-money" id="coins" hidden aria-labelledby="td-money-h">
-                <div class="td-h"><h2 id="td-money-h">Your money</h2><a class="td-more" href="/wallet">Wallet</a></div>
-                <div class="td-bal"><span class="td-coin" aria-hidden="true"></span><b id="td-coins">0</b><span>OpenCoins</span></div>
-                <div class="td-bal" id="td-vibes-row" hidden><span class="td-coin td-coin-v" aria-hidden="true"></span><b id="td-vibes">0</b><span>Vibes</span></div>
-                <p class="td-sub" id="td-money-last" hidden></p>
-                <div class="td-money-acts"><a class="td-chip" href="https://openvibe.tips"><i class="fa-solid fa-hand-holding-heart" aria-hidden="true"></i> Tip a creator</a></div>
+            <section class="td-box td-nums" id="td-nums" hidden aria-labelledby="td-nums-h">
+                <div class="td-h"><h2 id="td-nums-h">Your numbers</h2><a class="td-more" href="https://openvibe.report/you">On openvibe.report</a></div>
+                <div class="td-stats" id="td-stuff-row"></div>
             </section>
         </div>
         <div class="recent-tools" id="my-recent-tools" hidden>
             <h3><i class="fa-solid fa-screwdriver-wrench"></i> Your tools</h3>
             <div class="recent-tools-list" id="my-recent-tools-list"></div>
             <p class="recent-tools-status" id="my-recent-tools-status" role="status"></p>
-        </div>
-        <div class="td-stuff">
-            <div class="td-stats" id="td-stuff-row"></div>
-            <a class="td-more" href="https://openvibe.report/you">Your numbers on openvibe.report <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
         </div>
     </div>
 
