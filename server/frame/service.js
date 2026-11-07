@@ -10,6 +10,7 @@
 //       next: { [siteId]: [siteId, …] },                              up to 6 places people go next
 //       discover_ids: [siteId, …],                                    the open sites, ordered for discovery
 //       menu: { beacon },                                             where the shared menu sends its clicks
+//       cards: [frame.menu-card@1, …],                                each open site's cards, at most 4, Live first
 //       groups: [{ id, name }],                                       the launcher's sections, in order
 //       soon: [{ id, name, url, icon, state }],                       state: internal | placeholder
 //       footer: { blurb, discover: [{ name, url }], popular: [{ name, url }], legal: { terms, privacy, dmca } } }
@@ -25,6 +26,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName } = require('./sites');
+const { createMenuCards } = require('./menu-cards');
 const toolsCatalog = require('../domains/catalog');
 
 const RANK_MS = 30 * 60_000, COPY_MS = 24 * 60 * 60_000;
@@ -128,6 +130,17 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     let rankedAt = savedRank.value ? savedRank.at || null : null;
     let copy = (await load('copy') || {}).value || { sites: {} };
     let version = Date.now();
+    // The menu's network cards (frame.menu-cards@1): fetched from every open site every five minutes, kept in
+    // frame_cache across restarts. A failed site keeps its last good card for 30 minutes; GET /api/frame carries
+    // at most four, Live first while anyone is live, then the Frame's own ranking.
+    const menuCards = createMenuCards({
+        sites: () => SITES.filter((s) => s.status === 'open'),
+        rankOf: () => orderedOpen().map((s) => s.id),
+        load: () => load('menu-cards'),
+        save: (v) => save('menu-cards', v),
+        onChange: () => { version = Date.now(); },
+    });
+    await menuCards.init();
     const openIds = () => new Set(SITES.filter((s) => s.status === 'open').map((s) => s.id));
     /** Only open sites, never the site itself, at most six; drops duplicates and anything from an older seed. */
     function cleanNext(map) {
@@ -353,6 +366,9 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             // order, and the click beacon (Shared sends it only when this object is present).
             next, discover_ids: discoverIds,
             menu: { beacon: MENU_BEACON },
+            // The network's cards: each open site's published frame.menu-card@1, at most four, Live first while
+            // anyone is live, then the site's place in this Frame's ranking. Empty cards are not sent.
+            cards: menuCards.cards(),
             groups: GROUPS.map(g => ({ id: g.id, name: g.name })),
             // state: 'internal' (runs on loopback, the domain still shows a placeholder) or 'placeholder' (planned).
             soon: SITES.filter(s => s.status === 'soon').map(s => ({ id: s.id, name: s.name, url: `https://${s.host}/`, icon: s.icon, state: s.state })),
@@ -591,17 +607,18 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const i2 = setInterval(() => refreshCopy().catch(() => {}), COPY_MS); i2.unref();
         const t3 = setTimeout(() => probeLegal().catch(() => {}), 45_000); t3.unref();
         const i3 = setInterval(() => probeLegal().catch(() => {}), 24 * 3600 * 1000); i3.unref();
+        await menuCards.start();
         timers = [t1, i1, t2, i2, t3, i3];
     }
     /** Graceful stop: no further rank or copy refreshes. */
-    function stop() { for (const t of timers) { clearTimeout(t); clearInterval(t); } timers = []; }
+    function stop() { for (const t of timers) { clearTimeout(t); clearInterval(t); } timers = []; menuCards.stop(); }
 
     /** The open sites in navbar order (most used first), and when that use was last counted (ms, or null: cold start). */
     function ranking() {
         return { at: rankedAt, order: orderedOpen().map(s => s.id), everyMs: RANK_MS };
     }
 
-    return { router, start, stop, refreshRank, refreshCopy, probeLegal, payloadFor, ranking, _state: () => ({ rank, copy }) };
+    return { router, start, stop, refreshRank, refreshCopy, probeLegal, refreshCards: menuCards.refresh, cards: menuCards.cards, payloadFor, ranking, _state: () => ({ rank, copy, cards: menuCards._state() }) };
 }
 
 module.exports = { createFrameService, BANNED };
