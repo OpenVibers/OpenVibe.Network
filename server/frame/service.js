@@ -10,7 +10,7 @@
 //       next: { [siteId]: [siteId, …] },                              up to 6 places people go next
 //       discover_ids: [siteId, …],                                    the open sites, ordered for discovery
 //       menu: { beacon },                                             where the shared menu sends its clicks
-//       cards: [frame.menu-card@1, …],                                each open site's cards, at most 4, Live first
+//       cards: [frame.menu-card@1, …],                                each open site's cards, at most 12, Live first
 //       groups: [{ id, name }],                                       the launcher's sections, in order
 //       soon: [{ id, name, url, icon, state }],                       state: internal | placeholder
 //       footer: { blurb, discover: [{ name, url }], popular: [{ name, url }], legal: { terms, privacy, dmca } } }
@@ -132,7 +132,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     let version = Date.now();
     // The menu's network cards (frame.menu-cards@1): fetched from every open site every five minutes, kept in
     // frame_cache across restarts. A failed site keeps its last good card for 30 minutes; GET /api/frame carries
-    // at most four, Live first while anyone is live, then the Frame's own ranking.
+    // at most twelve, Live first while anyone is live, then the Frame's own ranking.
     const menuCards = createMenuCards({
         sites: () => SITES.filter((s) => s.status === 'open'),
         rankOf: () => orderedOpen().map((s) => s.id),
@@ -366,7 +366,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             // order, and the click beacon (Shared sends it only when this object is present).
             next, discover_ids: discoverIds,
             menu: { beacon: MENU_BEACON },
-            // The network's cards: each open site's published frame.menu-card@1, at most four, Live first while
+            // The network's cards: each open site's published frame.menu-card@1, at most twelve, Live first while
             // anyone is live, then the site's place in this Frame's ranking. Empty cards are not sent.
             cards: menuCards.cards(),
             groups: GROUPS.map(g => ({ id: g.id, name: g.name })),

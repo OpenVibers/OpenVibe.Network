@@ -1,7 +1,7 @@
 'use strict';
 /**
  * The menu's network cards: every open site publishes /.well-known/openvibe-menu.json (frame.menu-cards@1),
- * Network fetches them every five minutes and GET /api/frame carries the best cards as `cards` (at most four).
+ * Network fetches them every five minutes and GET /api/frame carries the best cards as `cards` (at most twelve).
  *
  * A card is frame.menu-card@1: a rail, rows or chips of up to six items. The fetch is small and strict —
  * a five-second timeout, 64 KB at most, no redirects, JSON only — and every card is checked against the contract
@@ -11,7 +11,7 @@
  * result is kept in frame_cache, so a restart starts from the last good set rather than an empty menu.
  *
  * Ranking: cards with items only; Live's card first while anyone is live, then the site's place in the Frame's
- * own ranking. At most four cards.
+ * own ranking. At most twelve cards.
  */
 const contracts = require('openvibe-contracts');
 
@@ -19,7 +19,7 @@ const REFRESH_MS = 5 * 60_000;
 const KEEP_MS = 30 * 60_000;
 const TIMEOUT_MS = 5_000;
 const MAX_BYTES = 64 * 1024;
-const MAX_CARDS = 4;
+const MAX_CARDS = 12;
 const PATH = '/.well-known/openvibe-menu.json';
 const KINDS = new Set(['rail', 'rows', 'chips']);
 const CARD_FIELDS = ['id', 'site', 'title', 'kind', 'items', 'more', 'updated_at', 'ttl_s'];

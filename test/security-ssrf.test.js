@@ -281,7 +281,9 @@ function inventory(root) {
         assert.strictEqual(target.count(), 0, 'nothing connected to the address a person named');
         assert.deepStrictEqual(made.filter((c) => c.endsWith(` ${T}`)), [], 'no connection to the chosen port at all');
         const hosts = new Set(made.map((c) => c.split(' ')[0]));
-        for (const h of hosts) assert.ok(['127.0.0.1', 'discord.com', 'gateway.discord.gg', 'api.github.com'].includes(h), `unexpected destination ${h}`);
+        // openvibe.* is the menu-cards fetcher: every open site's fixed https://<site host>/.well-known/openvibe-menu.json
+        // (server/frame/menu-cards.js, reviewed above). It reads first-party hosts only, never a value a person named.
+        for (const h of hosts) assert.ok(['127.0.0.1', 'discord.com', 'gateway.discord.gg', 'api.github.com'].includes(h) || h.startsWith('openvibe.'), `unexpected destination ${h}`);
         assert.match(gh.text, /no egress to api\.github\.com|could not be reached/, 'the GitHub integration test goes to api.github.com only (the egress guard refuses the socket; undici surfaces it as a fetch failure)');
         assert.ok(ingested.length >= 10 && ingested.every((x) => x.path === '/internal/avatar-ingest'), `avatar imports went to Media's ingest instead (${ingested.length})`);
         assert.ok(ingested.some((x) => x.url === `https://127.0.0.1:${T}/a.png`), 'Media was asked to import the URL; Network did not fetch it');
