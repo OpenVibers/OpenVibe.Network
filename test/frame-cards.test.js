@@ -1,7 +1,7 @@
 'use strict';
 // The menu's network cards (frame.menu-card@1): Network fetches every open site's /.well-known/openvibe-menu.json
 // every five minutes (5 s, 64 KB, no redirects), drops unknown fields and markup, validates against the contract,
-// keeps a failed site's last good cards for 30 minutes, sends at most four with Live first while anyone is live,
+// keeps a failed site's last good cards for 30 minutes, sends at most twelve with Live first while anyone is live,
 // then in Frame rank order, and carries them in GET /api/frame, images included. One migrated test database, stubbed fetches.
 //   node test/frame-cards.test.js
 const assert = require('assert');
@@ -109,6 +109,24 @@ function response(body, { status = 200, headers = {} } = {}) {
     await flaky.refresh();
     assert.ok(!flaky.cards().some((c) => c.site === 'live'), 'after 30 minutes without a good file the card is gone');
 
+    // At most twelve cards: thirteen open sites publishing one valid card each give the first twelve in rank order.
+    const manySites = Array.from({ length: 13 }, (_, i) => ({ id: `openvibe-site-${i}`, host: `openvibe.site${i}` }));
+    const manyCard = (site) => ({ id: 'the-card', site: site.id, title: 'The card', kind: 'rows', items: [{ title: 'One', url: `https://${site.host}/one` }], updated_at: '2026-11-07T08:00:00Z', ttl_s: 30 });
+    const twelve = createMenuCards({
+        sites: () => manySites,
+        rankOf: () => manySites.map((s) => s.id),
+        load: async () => null,
+        save: async () => {},
+        fetchImpl: async (url) => {
+            const site = manySites.find((s) => url.startsWith(`https://${s.host}/`));
+            return response(site ? [manyCard(site)] : 'nope', { status: site ? 200 : 503 });
+        },
+        now: () => now,
+    });
+    await twelve.refresh();
+    assert.strictEqual(twelve.cards().length, 12, 'at most twelve cards are sent');
+    assert.deepStrictEqual(twelve.cards().map((c) => c.site), manySites.slice(0, 12).map((s) => s.id), 'the first twelve in rank order');
+
     // A file over 64 KB is a failure, not a huge card.
     const big = createMenuCards({
         sites: () => [SITES[1]],
@@ -133,7 +151,7 @@ function response(body, { status = 200, headers = {} } = {}) {
     const payload = svc.payloadFor('openvibe.chat');
     assert.ok(Array.isArray(payload.cards), 'the Frame payload has cards');
     assert.deepStrictEqual(payload.cards.map((c) => c.site), ['live', 'games', 'media-hub'], 'Live first, then the rank');
-    assert.ok(payload.cards.length <= 4);
+    assert.ok(payload.cards.length <= 12);
 
     const app = express(); app.use('/api/frame', svc.router);
     const srv = await new Promise((resolve) => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });

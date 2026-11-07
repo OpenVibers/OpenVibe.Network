@@ -20,7 +20,9 @@ const USER_STALE = 'usr_01JAB2C3D4E5F6G7H8J9K0MNP5';
 (async () => {
     const db = getDb();
     const quiet = console.log; console.log = () => {};
-    const now = Date.UTC(2026, 10, 6, 12);
+    // A moving clock: the HTTP read below uses the real time, so a fixed date made the 24-hour
+    // assertion fail the day after the fixture was written.
+    const now = Date.now();
     const at = (ms) => new Date(ms).toISOString();
     await db.prepare("INSERT INTO users (id, username, password_hash, subject_id, created_at, last_seen, email_verified) VALUES (1, 'newbie', 'x', ?, ?, ?, 0)").run(USER_NEW, at(now), at(now));
     await db.prepare("INSERT INTO users (id, username, password_hash, subject_id, created_at, last_seen, email_verified) VALUES (2, 'old', 'x', ?, ?, ?, 0)").run(USER_OLD, at(now - 40 * DAY), at(now));
