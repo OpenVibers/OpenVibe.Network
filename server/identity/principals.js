@@ -344,6 +344,13 @@ const DEFAULT_GRANTS = [
     ...['chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media']
         .filter((svc) => capabilities.get(`${svc}.config.manage`))
         .map((svc) => ['network', `${svc}.config.manage`, `openvibe.${svc}`, []]),
+    // The editorial queue's AI editor (Contracts 0.315.0, 2026-11-07): the orchestrator's service principal records
+    // each service's decision on the AI-written text through that service's reviews route, as itself (a svc: principal,
+    // no X-OV-Subject). Exactly the three capabilities, each for its own service's audience: never a wildcard, never
+    // another service's. New rows, so no RESTORED_GRANTS or CHANGED_DEFAULT_NAMESPACES entry is needed.
+    ['orchestrator', 'blog.review.ai_editor', 'openvibe.blog', []],
+    ['orchestrator', 'news.review.ai_editor', 'openvibe.news', []],
+    ['orchestrator', 'wiki.review.ai_editor', 'openvibe.wiki', []],
     // The owner's AI tab lists and edits AI's provider registry through AI's own admin API (GET/POST/PATCH
     // /api/v1/providers), as Network, naming the owner in X-OV-Subject.
     ['network', 'ai.provider.manage', 'openvibe.ai', []],

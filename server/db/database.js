@@ -176,6 +176,10 @@ async function seedDb(db, { log = console } = {}) {
             // OpenVibe Git: Forgejo at openvibe.codes/git (OpenVibe.Codes deploy/forgejo, WS-X12), signing in through OpenID
             // Connect; its callback is Forgejo's /user/oauth2/<source name>/callback. git.openvibe.codes once that name exists.
             { client_id: 'forgejo', name: 'OpenVibe Git', redirect_uris: ['https://openvibe.codes/git/user/oauth2/OpenVibe/callback', 'https://git.openvibe.codes/user/oauth2/OpenVibe/callback'] },
+            // The orchestrator (2026-11-07): the agent runs coordinator records the editorial queue's AI editor decision
+            // on Blog, News and Wiki as itself, never for a person. It has no redirect URIs (client_credentials only);
+            // its three grants are in server/identity/principals.js, exactly one per service, never a wildcard.
+            { client_id: 'orchestrator', name: 'OpenVibe orchestrator', redirect_uris: [] },
             // The Dock in the browser extension (2026-10-30): a public first-party client with no secret,
             // PKCE S256 required, the Chrome/Firefox extension redirect URIs exactly, and a read-only scope
             // ceiling. The Chrome id is fixed by browser/manifest.json's key; the Firefox hash is SHA-1 of
