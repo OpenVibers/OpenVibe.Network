@@ -90,9 +90,6 @@ async function seedDb(db, { log = console } = {}) {
     {
         const { v4: uuidv4 } = require('uuid');
         const contractClients = [
-            // Chat signs people in on its own site and, since Watch Together v1 (plan R1), on openvibe.party: one client,
-            // two host-only sessions (each host keeps its own cookies, and each callback is on its own host).
-            { client_id: 'chat', name: 'OpenVibe.Chat', redirect_uris: ['https://openvibe.chat/auth/callback', 'https://openvibe.party/auth/callback'] },
             { client_id: 'live', name: 'OpenVibe.Live', redirect_uris: ['https://openvibe.live/api/auth/callback'] },
             // The account hub's own origin (plan OpenVibe_Seven_Domains_Plan §4): a first-party confidential client
             // with PKCE, so openvibe.my has its own host-only session instead of reading a .openvibe.network cookie.
@@ -238,6 +235,11 @@ async function seedDb(db, { log = console } = {}) {
                 log.log(`[DB] OAuth2 client ${c.client_id} renamed to ${c.name}`);
             }
         }
+        // Watch Together v1 (plan R1): Chat signs people in on openvibe.party too, with its own host-only session, so its
+        // client takes a second callback beside openvibe.chat's. Chat's principal is provisioned by hand
+        // (server/setup/service-principal.js create chat), so this adds the URI where the client exists rather than
+        // creating one.
+        await mergeRedirectUris(db, 'chat', ['https://openvibe.party/auth/callback'], { log });
         if (seededAny) console.log('[DB] New OAuth2 clients seeded; their secrets are in oauth_clients (they are never logged).');
     }
     mark('oauth clients');
