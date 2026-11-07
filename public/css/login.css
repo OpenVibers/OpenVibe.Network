@@ -176,6 +176,30 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
 .oauth-consent .consent-none,.oauth-consent .consent-refused{margin:0;color:var(--text-muted)}
 .oauth-consent .consent-refused{margin-top:10px;font-size:12px}
 .oauth-consent code{font-size:11.5px}
+.oauth-consent .consent-purposes{margin:10px 0 0;color:var(--text-muted)}
+.oauth-consent .consent-purposes b{color:var(--text);font-weight:600}
+
+/* The purposes step: an app asks for your permission, one purpose per row (consent:<purpose>). A whole row is one tap
+   target of at least 44 px, nothing is ticked until the person ticks it, and the page's own tokens colour it. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.purposes-head{font-size:14px;color:var(--text);line-height:1.5;margin-bottom:14px;outline:none}
+.purposes-head b{color:var(--accent);font-weight:700}
+.purposes-list{border:0;margin:0 0 12px;padding:0;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.purpose-item{display:flex;align-items:flex-start;gap:12px;min-height:44px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg-input);cursor:pointer;line-height:1.45;transition:border-color var(--ov-dur-2, .2s)}
+.purpose-item:hover{border-color:var(--accent-dark)}
+.purpose-item:has(.purpose-box:checked){border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}
+.purpose-item:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.purpose-box,.purpose-adult input{flex:none;width:22px;height:22px;margin:1px 0 0;accent-color:var(--accent);cursor:pointer}
+.purpose-text{display:grid;gap:3px;min-width:0;overflow-wrap:anywhere}
+.purpose-title{font-size:14px;font-weight:600;color:var(--text)}
+.purpose-text small{font-size:12.5px;color:var(--text-muted)}
+.purpose-badge{display:inline-block;margin-left:2px;padding:0 7px;border:1px solid var(--border);border-radius:999px;font-size:12px;font-weight:700;color:var(--text);vertical-align:1px}
+.purpose-adult{display:flex;align-items:center;gap:12px;min-height:44px;padding:10px 14px;margin-bottom:12px;border:1px dashed var(--border);border-radius:12px;font-size:13px;color:var(--text);cursor:pointer}
+.purpose-adult[hidden],.purposes-already[hidden]{display:none}
+.purposes-already b{color:var(--text);font-weight:600}
+#purposes-continue{min-height:48px}
+#purposes-continue:disabled{opacity:.7;cursor:progress}
+.purposes-foot{margin:14px 0 0}
 
 .account-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
 .account-item{

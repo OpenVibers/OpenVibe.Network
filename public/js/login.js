@@ -46,9 +46,27 @@ if (isOAuth) {
  */
 function renderConsent(info) {
     const box = document.getElementById('oauth-consent');
-    if (!box || !info || !info.third_party) return;
+    const purposes = info && Array.isArray(info.purposes) ? info.purposes : [];
+    if (!box || !info || (!info.third_party && !purposes.length)) return;
     const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
     box.replaceChildren();
+    // An app's permission questions (consent:<purpose>): named here, asked one by one after the account is chosen.
+    const asks = () => {
+        if (!purposes.length) return;
+        const p = el('p', 'consent-purposes', 'It will also ask your permission for: ');
+        purposes.forEach((x, i) => { if (i) p.append(', '); p.append(el('b', null, x.title || x.id)); });
+        p.append('. Each one stays off unless you tick it.');
+        box.append(p);
+    };
+    if (!info.third_party) {
+        const head = el('p', 'consent-head');
+        head.append(el('b', null, info.name), ' asks for your permission after you choose an account.');
+        box.append(head);
+        asks();
+        box.dataset.onlyPurposes = '1';
+        box.hidden = false;
+        return;
+    }
     const head = el('p', 'consent-head');
     head.append(el('b', null, info.name), ' ');
     if (info.redirect_host) head.append(el('span', 'consent-host', `(${info.redirect_host})`), ' ');
@@ -65,9 +83,10 @@ function renderConsent(info) {
             list.append(li);
         }
         box.append(list);
-    } else {
+    } else if (!purposes.length) {
         box.append(el('p', 'consent-none', 'It asks for nothing else: it will only learn which OpenVibe account you are.'));
     }
+    asks();
     const refused = Array.isArray(info.refused) ? info.refused : [];
     if (refused.length) {
         const p = el('p', 'consent-refused', 'It also asked for what it cannot be given, so it will not get: ');
@@ -340,6 +359,117 @@ function escapeHtml(str) {
     return d.innerHTML;
 }
 
+// ── /oauth/confirm, and the purposes step ───────────────────
+/** POST /oauth/confirm for this sign-in. `consent` is the person's answer on the purposes step, when there was one. */
+async function postConfirm(token, consent) {
+    const res = await fetch(API_BASE + '/oauth/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            token,
+            client_id: params.get('client_id'),
+            redirect_uri: params.get('redirect_uri'),
+            scope: params.get('scope') || 'profile theme',
+            state: params.get('state') || '',
+            code_challenge: params.get('code_challenge') || undefined,
+            code_challenge_method: params.get('code_challenge_method') || undefined,
+            nonce: params.get('nonce') || undefined,
+            ...(consent ? { consent } : {}),
+        }),
+    });
+    let data = {};
+    try { data = await res.json(); } catch { /* an empty answer is an error below */ }
+    return { res, data };
+}
+
+/** Confirm the sign-in; when the app asks for permission (consent:<purpose>), the person answers first. */
+async function confirmWithPurposes(token) {
+    let out = await postConfirm(token);
+    if (out.res.ok && out.data && out.data.consent) {
+        const before = (document.querySelector('.form-panel.active') || {}).id || 'panel-chooser';
+        oauthConfirmInFlight = false;
+        const answer = await askPurposes(out.data.consent);
+        oauthConfirmInFlight = true;
+        out = await postConfirm(token, answer);
+        // A refused answer goes back where the person was, so the caller's message shows there.
+        if (!out.res.ok) setActivePanel(before, { showTabs: before === 'panel-login' || before === 'panel-register', showExtras: true });
+    }
+    return out;
+}
+
+/**
+ * The purposes step (the consent plan's C4): the app asks for your permission, one purpose at a time, in the Network's
+ * own words. Every box starts unticked, and Continue works with none ticked: the app then learns only "not granted".
+ * A purpose marked 18+ asks for "I am 18 or older" unless the account already confirmed it. Built from DOM nodes.
+ * Resolves with the answer /oauth/confirm records: { shown, allow, adult, text_version }.
+ */
+function askPurposes(step) {
+    const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+    const ask = Array.isArray(step.ask) ? step.ask : [];
+    const granted = Array.isArray(step.granted) ? step.granted : [];
+    const head = document.getElementById('purposes-head');
+    head.replaceChildren(el('b', null, clientName || 'This app'), ' asks for your permission. Tick only what you want to allow.');
+    const list = document.getElementById('purposes-list');
+    list.replaceChildren(el('legend', 'sr-only', 'What this app may do'));
+    for (const p of ask) {
+        const item = el('label', 'purpose-item');
+        const box = el('input', 'purpose-box');
+        box.type = 'checkbox';
+        box.value = p.id;
+        box.checked = false;
+        const text = el('span', 'purpose-text');
+        const title = el('span', 'purpose-title', p.title || p.id);
+        if (p.adults_only) title.append(' ', el('span', 'purpose-badge', '18+'));
+        text.append(title, el('small', null, p.allows || ''));
+        if (p.cannot_undo) text.append(el('small', 'purpose-undo', `If you turn it off later: ${p.cannot_undo}`));
+        item.append(box, text);
+        list.append(item);
+    }
+    const needsAdult = !step.adult && ask.some((p) => p.adults_only);
+    const adultRow = document.getElementById('purposes-adult');
+    const adultBox = document.getElementById('purposes-adult-box');
+    adultBox.checked = false;
+    adultRow.hidden = !needsAdult;
+    const already = document.getElementById('purposes-already');
+    already.replaceChildren();
+    if (granted.length) {
+        already.append('You already allowed: ');
+        granted.forEach((g, i) => { if (i) already.append(', '); already.append(el('b', null, g.title || g.id)); });
+        already.append('.');
+    }
+    already.hidden = !granted.length;
+    const btn = document.getElementById('purposes-continue');
+    const label = () => {
+        const n = list.querySelectorAll('.purpose-box:checked').length;
+        btn.textContent = n ? `Allow ${n === 1 ? 'this' : `these ${n}`} and continue` : 'Continue without allowing any';
+    };
+    btn.disabled = false;
+    label();
+    list.onchange = label;
+    // The box above said "it will also ask"; now it is asking, so that line (or a site's whole box) steps aside.
+    const intro = document.getElementById('oauth-consent');
+    if (intro && intro.dataset && intro.dataset.onlyPurposes) intro.hidden = true;
+    else if (intro && intro.querySelector) { const line = intro.querySelector('.consent-purposes'); if (line) line.hidden = true; }
+    setActivePanel('panel-purposes', { showTabs: false, showExtras: false });
+    head.focus();
+    return new Promise((resolve) => {
+        document.getElementById('purposes-form').onsubmit = (e) => {
+            e.preventDefault();
+            const allow = [...list.querySelectorAll('.purpose-box:checked')].map((b) => b.value);
+            const adultOnly = allow.some((id) => (ask.find((p) => p.id === id) || {}).adults_only);
+            if (needsAdult && adultOnly && !adultBox.checked) {
+                showMsg('purposes-msg', 'Tick "I am 18 or older" to allow the ones marked 18+, or untick them.', 'error');
+                adultBox.focus();
+                return;
+            }
+            e.target.onsubmit = (ev) => ev.preventDefault();
+            btn.disabled = true;
+            btn.textContent = 'Continuing…';
+            resolve({ shown: ask.map((p) => p.id), allow, adult: adultBox.checked, text_version: step.text_version });
+        };
+    });
+}
+
 // ── Account Selection ───────────────────────────────────────
 async function selectAccount(account) {
     if (oauthConfirmInFlight) return;
@@ -435,24 +565,10 @@ async function guardScheduledDeletion(token, next) {
 /** The part of a saved-account sign-in that leaves this page (an OAuth app, or back to the site). */
 async function continueAsAccount(account, validToken) {
     if (isOAuth) {
-        // Call /oauth/confirm to get the redirect URL
+        // Call /oauth/confirm to get the redirect URL (after the purposes step, when the app asks for permission)
         try {
             oauthConfirmInFlight = true;
-            const res = await fetch(API_BASE + '/oauth/confirm', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    token: validToken,
-                    client_id: params.get('client_id'),
-                    redirect_uri: params.get('redirect_uri'),
-                    scope: params.get('scope') || 'profile theme',
-                    state: params.get('state') || '',
-                    code_challenge: params.get('code_challenge') || undefined,
-                    code_challenge_method: params.get('code_challenge_method') || undefined,
-                    nonce: params.get('nonce') || undefined,
-                }),
-            });
-            const data = await res.json();
+            const { res, data } = await confirmWithPurposes(validToken);
             if (!res.ok) {
                 if (res.status === 401) {
                     prefillAccount(account, 'Welcome back, ' + (account.display_name || account.username) + ' — enter your password to continue.');
@@ -464,7 +580,7 @@ async function continueAsAccount(account, validToken) {
                     removeAccount(account.id);
                     return;
                 }
-                throw new Error(data.error || 'Authorization failed');
+                throw new Error(data.error_description || data.error || 'Authorization failed');
             }
             if (!data.redirect || isLoginLikeRedirect(data.redirect)) {
                 throw new Error('Invalid redirect target returned by OAuth server');
@@ -632,28 +748,14 @@ async function finishSignIn(data) {
     try {
         if (isOAuth) {
             oauthConfirmInFlight = true;
-            // Confirm OAuth with the new token
-            const confirmRes = await fetch(API_BASE + '/oauth/confirm', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    token: data.token,
-                    client_id: params.get('client_id'),
-                    redirect_uri: params.get('redirect_uri'),
-                    scope: params.get('scope') || 'profile theme',
-                    state: params.get('state') || '',
-                    code_challenge: params.get('code_challenge') || undefined,
-                    code_challenge_method: params.get('code_challenge_method') || undefined,
-                    nonce: params.get('nonce') || undefined,
-                }),
-            });
-            const confirmData = await confirmRes.json();
+            // Confirm OAuth with the new token (after the purposes step, when the app asks for permission)
+            const { res: confirmRes, data: confirmData } = await confirmWithPurposes(data.token);
             if (!confirmRes.ok) {
                 if (confirmRes.status === 401 || confirmRes.status === 403) {
                     clearLocalAuthState();
                     throw new Error('Session invalid during redirect. Please sign in again.');
                 }
-                throw new Error(confirmData.error || 'Authorization failed');
+                throw new Error(confirmData.error_description || confirmData.error || 'Authorization failed');
             }
             if (!confirmData.redirect || isLoginLikeRedirect(confirmData.redirect)) {
                 throw new Error('Invalid redirect target returned by OAuth server');

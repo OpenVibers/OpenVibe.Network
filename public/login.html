@@ -98,6 +98,20 @@
             <a class="inline-link" id="keep-continue" href="#" onclick="return false">Continue signing in</a>
         </div>
 
+        <!-- An app asks for your permission per purpose (consent:<purpose>, js/login.js askPurposes): nothing is
+             ticked, and Continue works with nothing ticked. -->
+        <div class="form-panel" id="panel-purposes">
+            <p class="purposes-head" id="purposes-head" tabindex="-1"></p>
+            <div class="message" id="purposes-msg" role="alert"></div>
+            <form id="purposes-form" onsubmit="return false">
+                <fieldset class="purposes-list" id="purposes-list"></fieldset>
+                <label class="purpose-adult" id="purposes-adult" hidden><input type="checkbox" id="purposes-adult-box"> I am 18 or older</label>
+                <p class="panel-note purposes-already" id="purposes-already" hidden></p>
+                <button type="submit" class="submit-btn" id="purposes-continue">Continue without allowing any</button>
+            </form>
+            <p class="panel-note purposes-foot">Nothing is allowed unless you tick it. You can turn anything off later in Your data choices on your account page.</p>
+        </div>
+
         <!-- Register Form -->
         <div class="form-panel" id="panel-register">
             <div class="message" id="register-msg"></div>

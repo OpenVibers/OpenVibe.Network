@@ -75,6 +75,7 @@ Tokens are RS256 and last 5 minutes. They are signed with Network's key (JWKS at
 | `project_id` | `prj_<ULID>` (optional in the contract today; proposed as required for apps) |
 | `env` | `sandbox` or `production` (same) |
 | `on_behalf_of` | `usr_<ULID>` of the person who authorized the app (authorization code only) |
+| `consent` | the purposes the person granted the app when it asked with `consent:<purpose>` scopes, active at issue (`network.consent-claim@1`; authorization code only; `[]` when none, absent when none was asked). See [sign-in.md](sign-in.md#asking-for-consent-per-purpose-consentpurpose). |
 | `iat`, `exp`, `jti` | 300-second lifetime |
 
 No refresh tokens are issued to apps. A confidential app asks again with its secret, and a public app goes through authorization again.

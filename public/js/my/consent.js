@@ -5,6 +5,7 @@
    modal. Classic script, global scope: it uses my/core.js's apiFetch/API and my/boot.js starts the page.
    ═══════════════════════════════════════════════════════════════ */
 let consentDoc = null;
+let consentAppsDoc = null;
 
 const CONSENT_KIND_LABEL = {
     streams: 'Streams', vods: 'VODs', clips: 'Clips', voice: 'Voice', chat: 'Chat',
@@ -24,9 +25,13 @@ function consentWhen(at) {
     return Number.isNaN(d.getTime()) ? String(at) : d.toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-/** The active rows of one purpose, newest first. */
+/**
+ * The active rows of one purpose, newest first: OpenVibe's own choice. An app's grant of the purpose (C4) is under
+ * "Apps you allowed"; app.data is every app's row, since this row is where every app is turned off.
+ */
 function consentActive(purposeId) {
-    return (consentDoc && consentDoc.consents ? consentDoc.consents : []).filter((c) => c.purpose === purposeId && c.on);
+    return (consentDoc && consentDoc.consents ? consentDoc.consents : [])
+        .filter((c) => c.purpose === purposeId && c.on && (purposeId === 'app.data' || !c.client));
 }
 
 /** One line of history, never HTML from the server. */
@@ -129,6 +134,92 @@ async function saveConsent(btn, on) {
     }
 }
 
+// ── Apps you allowed (C4) ───────────────────────────────────
+// What each app asked for when you signed in to it (consent:<purpose>): the purposes it was given, each with its own
+// Turn off, and the ones you said no to in the last 30 days, which that app does not ask for again until then unless
+// you press "Ask me next time". Built from DOM nodes; the app's name comes from its developer.
+
+function consentNode(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== null && text !== undefined) n.textContent = text;
+    return n;
+}
+
+function consentDay(at) {
+    const d = new Date(at);
+    return Number.isNaN(d.getTime()) ? String(at) : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** One purpose line of one app: its title, what it means, and its one button. */
+function consentAppRow(app, purposeId, line, buttonText, onPress) {
+    const words = ((consentAppsDoc && consentAppsDoc.purposes) || []).find((p) => p.id === purposeId) || { title: purposeId, allows: '' };
+    const row = consentNode('li', 'consent-app-row');
+    const text = consentNode('div', 'consent-app-text');
+    text.append(consentNode('b', null, words.title), consentNode('span', 'ovk-muted', line));
+    const btn = consentNode('button', 'btn btn-outline consent-app-btn', buttonText);
+    btn.type = 'button';
+    btn.setAttribute('aria-label', `${buttonText}: ${words.title}, ${app.name}`);
+    btn.addEventListener('click', () => onPress(btn));
+    row.append(text, btn);
+    return row;
+}
+
+function renderConsentApps() {
+    const box = document.getElementById('consent-apps');
+    if (!box) return;
+    box.replaceChildren();
+    if (!consentAppsDoc) { box.append(consentNode('div', 'loading-spinner', 'Loading your apps…')); return; }
+    const apps = consentAppsDoc.apps || [];
+    if (!apps.length) {
+        box.append(consentNode('p', 'ovk-muted consent-empty', 'No app has asked you for anything yet. An app asks when you sign in to it, and what you allow shows here.'));
+        return;
+    }
+    for (const app of apps) {
+        const card = consentNode('div', 'consent-app');
+        const head = consentNode('p', 'consent-app-name');
+        head.append(consentNode('b', null, app.name));
+        if (app.third_party) head.append(consentNode('span', 'ovk-muted', ' · third-party app'));
+        const list = consentNode('ul', 'consent-app-list');
+        for (const g of app.granted || []) {
+            list.append(consentAppRow(app, g.purpose, `Allowed on ${consentDay(g.granted_at)}`, 'Turn off',
+                (btn) => saveConsentApp(btn, `/api/v1/me/consent/${encodeURIComponent(g.purpose)}/${encodeURIComponent(app.client)}`, `${app.name} can no longer do that.`)));
+        }
+        for (const q of app.quiet || []) {
+            list.append(consentAppRow(app, q.purpose, `You said no. It won't ask again until ${consentDay(q.quiet_until)}.`, 'Ask me next time',
+                (btn) => saveConsentApp(btn, `/api/v1/me/consent/${encodeURIComponent(q.purpose)}/${encodeURIComponent(app.client)}/refusal`, `${app.name} will ask the next time you sign in to it.`)));
+        }
+        card.append(head, list);
+        box.append(card);
+    }
+}
+
+/** Turn one app's purpose off, or end a refusal's quiet days. The answer is the new "Apps you allowed". */
+async function saveConsentApp(btn, path, done) {
+    btn.disabled = true;
+    consentStatus('Saving…', false);
+    try {
+        consentAppsDoc = await apiFetch(path, { method: 'DELETE' });
+        renderConsentApps();
+        consentStatus(done, false);
+        loadConsent();   // the history shows the change
+    } catch (err) {
+        btn.disabled = false;
+        consentStatus('Could not save that (' + (err && err.status ? 'HTTP ' + err.status : 'network error') + '). Nothing changed.', true);
+    }
+}
+
+async function loadConsentApps() {
+    try {
+        consentAppsDoc = await apiFetch('/api/v1/me/consent/apps');
+        renderConsentApps();
+    } catch (err) {
+        consentAppsDoc = null;
+        const box = document.getElementById('consent-apps');
+        if (box) box.replaceChildren(consentNode('p', 'muted', 'Your apps could not be loaded. Nothing an app asked for is on unless you allowed it.'));
+    }
+}
+
 async function loadConsent() {
     const box = document.getElementById('consent-choices');
     if (!box) return;
@@ -136,6 +227,7 @@ async function loadConsent() {
     try {
         consentDoc = await apiFetch('/api/v1/me/consent');
         renderConsent();
+        if (!consentAppsDoc) loadConsentApps();
     } catch (err) {
         consentDoc = null;
         box.innerHTML = '<p class="muted">Your data choices could not be loaded. Nothing here is on until it loads and you turn it on.</p>';

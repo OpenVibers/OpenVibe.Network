@@ -793,6 +793,7 @@ require('./developer/confirmations').start(db);
 // data is off until that person turns it on. The person's choices sit behind the session (like the Dock's) and are
 // never cached; services ask the check with a service token holding network.consent.read.
 const consent = require('./consent').createConsent({ db });
+app.locals.consent = consent;   // /oauth/confirm records an app's sign-in answer through it (C4)
 app.use('/api/v1/me/consent', require('./consent').router({ consent, requireAuth }));
 app.use('/internal/consent', require('./identity/principals').guard('network.consent.read'), require('./consent').internalRouter({ consent }));
 
