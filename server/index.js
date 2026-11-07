@@ -596,6 +596,11 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
 {
     const machines = require('./registry/machines');
     const bot = machines.createBotClient({ baseUrl: config.services.bot.internalUrl, privateKey, issuer: config.jwt.issuer });
+    // Same-owner machine pools (bot.machine-pool@1): the owner proposes and stops them; each machine announces, approves,
+    // renews and leaves with its own node token. /api/v1/node/self's guard above checks that token for the machine routes.
+    const poolRouters = require('./registry/machine-pools').routers({ bot, requireAuth });
+    app.use('/api/v1/machine-pools', rateLimit({ windowMs: 60_000, max: 60 }), poolRouters.user);
+    app.use('/api/v1/node/self/pools', poolRouters.self);
     const machineRouters = machines.routers({ bot, requireAuth, publicKey, issuer: config.jwt.issuer });
     app.use('/api/v1/machines', rateLimit({ windowMs: 60_000, max: 60 }), machineRouters.hub);
     const machineInternal = machines.internalRouters({ guard: require('./identity/principals').guard('network.node.manage') });

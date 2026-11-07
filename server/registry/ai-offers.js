@@ -105,7 +105,8 @@ async function list(db, { source = null, owner = null } = {}) {
     if (source) { where.push('source = ?'); args.push(source); }
     if (owner) { where.push('owner_subject = ?'); args.push(owner); }
     const rows = await db.prepare(`SELECT doc FROM platform_ai_offers ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY status = 'up' DESC, id`).all(...args);
-    return rows.map((r) => JSON.parse(r.doc));
+    const offers = await Promise.all(rows.map((r) => require('./machine-pools').offerPool(db, JSON.parse(r.doc))));
+    return offers.filter(Boolean);
 }
 
 function routers({ guard, readGuard = guard }) {
