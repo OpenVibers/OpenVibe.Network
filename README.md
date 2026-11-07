@@ -1025,7 +1025,7 @@ Every change also sends the person a Network notification, so a swap nobody aske
 MIT (`license` in [package.json](package.json)).
 
 <!-- versions:start -->
-- openvibe-contracts: v0.301.0
+- openvibe-contracts: v0.303.0
 - openvibe-sdk: v0.91.0
-- openvibe-shared: v4.122.0
+- openvibe-shared: v4.124.0
 <!-- versions:end -->
