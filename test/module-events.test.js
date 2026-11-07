@@ -99,7 +99,7 @@ const valid = (e) => { const v = contracts.validate('events.event-envelope@1', e
     assert.deepStrictEqual(ev[0].actor, { type: 'service', id: 'chat' });
     assert.strictEqual(ev[0].visibility, 'internal'); assert.strictEqual(ev[0].source, 'network');
     assert.deepStrictEqual(ev[0].subject, { type: 'user_module', id: `${ANN}:chat.preferences`, revision: 1 });
-    assert.deepStrictEqual(ev[0].payload, { owner: { type: 'user', id: ANN }, namespace: 'chat.preferences', namespace_owner: 'chat', schema_version: 1, revision: 1, change: 'created', reason: 'write', keys: ['compact', 'timestamps'] });
+    assert.deepStrictEqual(ev[0].payload, { owner: { type: 'user', id: ANN }, namespace: 'chat.preferences', namespace_owner: 'chat', schema_version: 2, revision: 1, change: 'created', reason: 'write', keys: ['compact', 'timestamps'] });
     mark = await lastId();
     r = await call('PUT', '/api/modules/chat.preferences', { headers: { ...await tokenOf(1), 'if-match': '1' }, body: { data: { timestamps: true, font_scale: 1.2 } } });
     assert.strictEqual(r.status, 200); assert.strictEqual(r.body.revision, 2);
