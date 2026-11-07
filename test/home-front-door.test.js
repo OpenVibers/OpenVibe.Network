@@ -49,6 +49,10 @@ assert.deepStrictEqual(recs.map((r) => r.url), ['https://openvibe.video/v/9', 'h
 assert.strictEqual(recs[0].length, '1h 6m');
 assert.strictEqual(recs[1].thumb, null, 'a thumbnail only from openvibe.media');
 assert.strictEqual(activity.runtime(1805), '30 min');
+// A remote job's place: "Remote · Berlin", but never "Remote · remote" (11-07).
+const remoteJob = (location, remote) => ({ visibility: 'public', title: 'Nurse', canonical_url: 'https://openvibe.work/jobs/1', facets: { location, remote } });
+assert.deepStrictEqual(activity.jobs({ results: [remoteJob('remote', true), remoteJob('Remote (US)', true), remoteJob('Berlin', true), remoteJob('Berlin', false), remoteJob('', true)] }).map((j) => j.where),
+    ['Remote', 'Remote (US)', 'Remote · Berlin', 'Berlin'], 'the place says remote once');
 
 // The front door features no adult items and repeats no AI words about a person's looks.
 const flagged = activity.publicPastes({ pastes: [
