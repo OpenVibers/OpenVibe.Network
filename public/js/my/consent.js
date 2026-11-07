@@ -46,11 +46,27 @@ function consentHistoryList(purposeId) {
     }).join('')}</ul>`;
 }
 
+/**
+ * The apps that still hold this purpose from a sign-in (C4). This row's Off is OpenVibe's own choice only, so the row
+ * must say when an app still has it: nobody should read "Off" and believe every app stopped.
+ */
+function consentAppHolders(purposeId) {
+    if (purposeId === 'app.data') return [];
+    const clients = [...new Set((consentDoc && consentDoc.consents ? consentDoc.consents : [])
+        .filter((c) => c.purpose === purposeId && c.on && c.client).map((c) => c.client))];
+    const named = (consentAppsDoc && consentAppsDoc.apps) || [];
+    return clients.map((client) => { const a = named.find((x) => x.client === client); return a ? a.name : client; });
+}
+
 /** One kit fold row for one purpose. */
 function consentRow(purpose) {
     const active = consentActive(purpose.id);
     const current = active[0] || null;
-    const state = active.length ? 'On' : 'Off by default';
+    const holders = consentAppHolders(purpose.id);
+    const appsLabel = holders.length ? ` · ${holders.length === 1 ? '1 app' : `${holders.length} apps`} allowed` : '';
+    const state = (active.length ? 'On for OpenVibe' : holders.length ? 'Off for OpenVibe' : 'Off by default') + appsLabel;
+    const holdersNote = holders.length ? `<p class="consent-note consent-holders"><b>Still allowed for ${consentEsc(holders.join(', '))}.</b>
+        These buttons are OpenVibe's own choice. Turn an app off under <a href="#consent-apps">Apps you allowed</a>.</p>` : '';
     const kinds = purpose.kinds.length ? `<div class="consent-kinds"><span class="consent-label">Which content</span>
         <div class="consent-kind-grid">${purpose.kinds.map((kind) => {
             const checked = current ? current.kinds.includes(kind) : false;
@@ -74,7 +90,7 @@ function consentRow(purpose) {
             <p>${consentEsc(purpose.allows)}</p>
             <p class="consent-off"><b>Off:</b> ${consentEsc(purpose.off)}</p>
             ${purpose.cannot_undo ? `<p class="ovk-muted"><b>What turning it off cannot undo:</b> ${consentEsc(purpose.cannot_undo)}</p>` : ''}
-            ${kinds}${licence}${vision}${appNote}${adult}
+            ${holdersNote}${kinds}${licence}${vision}${appNote}${adult}
             <div class="consent-actions">
                 <button type="button" class="btn consent-on" data-consent-on aria-pressed="${active.length ? 'true' : 'false'}"${onDisabled}>On</button>
                 <button type="button" class="btn consent-off-btn" data-consent-off aria-pressed="${active.length ? 'false' : 'true'}">Off</button>
@@ -88,7 +104,10 @@ function renderConsent() {
     const box = document.getElementById('consent-choices');
     if (!box) return;
     if (!consentDoc) { box.innerHTML = '<div class="loading-spinner">Loading your choices…</div>'; return; }
+    // A re-render (a save, or the apps arriving) keeps the folds the person had open.
+    const open = new Set([...box.querySelectorAll('details[open][data-consent-row]')].map((d) => d.getAttribute('data-consent-row')));
     box.innerHTML = (consentDoc.purposes || []).map(consentRow).join('');
+    open.forEach((id) => { const d = box.querySelector(`details[data-consent-row="${CSS.escape(id)}"]`); if (d) d.open = true; });
     box.querySelectorAll('[data-consent-on]').forEach((btn) => btn.addEventListener('click', () => saveConsent(btn, true)));
     box.querySelectorAll('[data-consent-off]').forEach((btn) => btn.addEventListener('click', () => saveConsent(btn, false)));
 }
@@ -213,6 +232,7 @@ async function loadConsentApps() {
     try {
         consentAppsDoc = await apiFetch('/api/v1/me/consent/apps');
         renderConsentApps();
+        if (consentDoc) renderConsent();   // the rows name the apps that still hold a purpose
     } catch (err) {
         consentAppsDoc = null;
         const box = document.getElementById('consent-apps');
