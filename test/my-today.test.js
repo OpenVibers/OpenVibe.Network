@@ -39,7 +39,7 @@ class Node {
 
 function page() {
     const ids = {};
-    for (const [, id] of HTML.matchAll(/id="((?:td-|me-|page-header|user-greeting|today|coins|settings)[a-z-]*)"/g)) ids[id] = new Node('div');
+    for (const [, id] of HTML.matchAll(/id="((?:td-|me-|page-header|user-greeting|needs-you|today|coins|settings)[a-z-]*)"/g)) ids[id] = new Node('div');
     const shown = [];
     const sandbox = {
         document: { getElementById: (id) => ids[id] || null, createElement: (t) => new Node(t), querySelector: () => null },
@@ -143,6 +143,24 @@ assert.match(CSS, /@media \(min-width:1000px\)\{[\s\S]*\.settings\{display:grid;
     assert.match(p.ids['td-stuff-row'].textContent, /1machines/, 'revoked machines do not count');
     p.ids['td-stuff-row'].children.find((c) => /history/.test(c.textContent)).click();
     assert.deepStrictEqual(p.shown, ['history'], 'your history opens below');
+
+    // ── Needs you (plan §4): the Action Center's waiting items, one button each, above the hero ──
+    p = page();
+    assert.ok(HTML.indexOf('id="needs-you"') < HTML.indexOf('id="page-header"'), 'Needs you is the first section');
+    p.sandbox.renderNeedsYou({ buckets: { waiting: [
+        { service: 'network', id: 'cnf_1', kind: 'approval', title: 'Send one email to the venue', summary: 'Trip planner asks to use mail.send', agent: 'Trip planner', href: 'https://openvibe.network/my#approvals', actions: ['approve', 'decline', 'open'] },
+        { service: 'actor', id: 'tsk_1', kind: 'agent_task', title: 'Find three cheap flights', summary: 'Read 4 pages', href: 'https://openvibe.actor/tasks/tsk_1', actions: ['open'] },
+    ] } });
+    assert.strictEqual(p.ids['needs-you'].hidden, false);
+    assert.strictEqual(p.ids['needs-you-sub'].textContent, '2 things waiting');
+    const rows = p.ids['needs-you-list'].children;
+    assert.strictEqual(rows.length, 2);
+    assert.strictEqual(rows[0].all((c) => c.tagName === 'BUTTON')[0].textContent, 'Approve', 'an approval has its one button');
+    assert.strictEqual(rows[0].all((c) => c.tagName === 'H3')[0].textContent, 'Send one email to the venue');
+    assert.strictEqual(rows[0].all((c) => c.tagName === 'P')[0].textContent, 'Trip planner asks to use mail.send');
+    assert.strictEqual(rows[1].all((c) => c.tagName === 'A')[0].href, 'https://openvibe.actor/tasks/tsk_1', 'an open item links its page');
+    p.sandbox.renderNeedsYou({ buckets: { waiting: [] } });
+    assert.strictEqual(p.ids['needs-you'].hidden, true, 'an empty queue leaves the section out');
 
     // ── Nothing to show: each block stays out; a new account gets "Start here" ──
     p = page();

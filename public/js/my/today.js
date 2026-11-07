@@ -249,6 +249,107 @@ function renderStuff(live, hist, nodes) {
     if (box) box.hidden = cells.length === 0;
 }
 
+
+/* ── Needs you (plan OpenVibe_Seven_Domains_Plan §4) ─────────────────────────────────────────────
+   The Action Center's waiting bucket, above the hero. One button per item, its primary action:
+   approve/retry go through POST /api/v1/me/actions/:service/:id/:action; open is the item's page.
+   A waiting row is plain text (title, summary) from the authority, so it is built with DOM nodes. */
+const NY_ICONS = { actor: 'fa-robot', codes: 'fa-code', ai: 'fa-wand-magic-sparkles', domains: 'fa-globe', network: 'fa-shield-halved', run: 'fa-terminal' };
+
+function nyHref(item) {
+    if (item && item.service === 'network') return '#approvals';
+    const href = String((item && item.href) || '');
+    return /^https:\/\//.test(href) ? href : '#approvals';
+}
+
+function nyButton(item, action) {
+    const label = action === 'approve' ? 'Approve' : action === 'retry' ? 'Try again' : 'Open';
+    if (action !== 'approve' && action !== 'retry') {
+        const href = nyHref(item);
+        const a = document.createElement('a');
+        a.className = 'ny-btn';
+        a.setAttribute('href', href);
+        a.href = href;
+        a.textContent = label;
+        if (a.getAttribute('href').startsWith('#')) {
+            a.addEventListener('click', (e) => { e.preventDefault(); showSection(a.getAttribute('href').slice(1)); });
+        } else {
+            a.target = '_blank';
+            a.rel = 'noopener';
+        }
+        return a;
+    }
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ny-btn';
+    b.textContent = label;
+    b.addEventListener('click', () => nyDo(item, action, b));
+    return b;
+}
+
+async function nyDo(item, action, button) {
+    if (!item || !item.service || !item.id) return;
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = action === 'retry' ? 'Trying…' : 'Approving…';
+    try {
+        await apiFetch(`/api/v1/me/actions/${encodeURIComponent(item.service)}/${encodeURIComponent(item.id)}/${action}`, { method: 'POST' });
+        const row = button.closest('.ny-item');
+        if (row) row.remove();
+        const left = document.querySelectorAll('#needs-you-list .ny-item').length;
+        const box = document.getElementById('needs-you');
+        const sub = document.getElementById('needs-you-sub');
+        if (sub) sub.textContent = left ? `${left} more waiting` : '';
+        if (!left && box) box.hidden = true;
+        if (typeof toast === 'function') toast(action === 'retry' ? 'Trying it again' : 'Approved', 'success');
+    } catch (err) {
+        button.disabled = false;
+        button.textContent = label;
+        if (typeof toast === 'function') toast(err && err.message ? err.message : 'That did not go through', 'error');
+    }
+}
+
+function renderNeedsYou(doc) {
+    const box = document.getElementById('needs-you');
+    const list = document.getElementById('needs-you-list');
+    if (!box || !list) return;
+    const items = doc && doc.buckets && Array.isArray(doc.buckets.waiting) ? doc.buckets.waiting : [];
+    if (!items.length) { box.hidden = true; list.replaceChildren(); return; }
+    const sub = document.getElementById('needs-you-sub');
+    if (sub) sub.textContent = `${items.length} thing${items.length === 1 ? '' : 's'} waiting`;
+    list.replaceChildren(...items.map((item) => {
+        const row = document.createElement('article');
+        row.className = 'ny-item';
+        const icon = document.createElement('span');
+        icon.className = 'ny-ic';
+        const i = document.createElement('i');
+        i.className = `fa-solid ${NY_ICONS[item.service] || 'fa-circle-exclamation'}`;
+        i.setAttribute('aria-hidden', 'true');
+        icon.append(i);
+        const body = document.createElement('div');
+        body.className = 'ny-body';
+        const title = document.createElement('h3');
+        title.textContent = item.title || 'Something needs you';
+        body.append(title);
+        if (item.summary) {
+            const summary = document.createElement('p');
+            summary.textContent = item.summary;
+            body.append(summary);
+        }
+        if (item.agent) {
+            const meta = document.createElement('span');
+            meta.className = 'ny-meta';
+            meta.textContent = item.agent;
+            body.append(meta);
+        }
+        const actions = Array.isArray(item.actions) ? item.actions : [];
+        const primary = actions.includes('approve') ? 'approve' : actions.includes('retry') ? 'retry' : 'open';
+        row.append(icon, body, nyButton(item, primary));
+        return row;
+    }));
+    box.hidden = false;
+}
+
 async function loadToday() {
     if (!document.getElementById('today')) return;
     renderGreeting();
@@ -256,7 +357,8 @@ async function loadToday() {
     const quiet = (p) => p.catch(() => null);
     renderActions(null);
     renderStatus();
-    const [live, hist, coins, last, unread, sites, nodes, frame] = await Promise.all([
+    const [acts, live, hist, coins, last, unread, sites, nodes, frame] = await Promise.all([
+        quiet(apiFetch('/api/v1/me/actions')),
         quiet(apiFetch('/api/v1/me/live-follows')),
         quiet(apiFetch('/api/history?limit=30')),
         quiet(apiFetch('/api/coins/me?with=vibes')),
@@ -267,6 +369,7 @@ async function loadToday() {
         quiet(apiFetch('/api/frame?host=openvibe.network')),
     ]);
     globalThis.__tdUnread = unread;
+    renderNeedsYou(acts);
     renderActions(unread);
     renderNet(frame);
     renderNow(live, unread);

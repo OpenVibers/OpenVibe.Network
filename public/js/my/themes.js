@@ -217,7 +217,7 @@ async function saveCustomColors(btn) {
 async function exportActiveTheme(btn) {
     if (btn) btn.disabled = true;
     try {
-        const res = await fetch('/api/themes/' + encodeURIComponent(activeThemeId) + '/export', { credentials: 'include' });
+        const res = await fetch(API + '/api/themes/' + encodeURIComponent(activeThemeId) + '/export', { credentials: API_CREDENTIALS });
         if (!res.ok) throw new Error('This theme cannot be exported');
         const file = await res.json();
         if (activeCustomVars && Object.keys(activeCustomVars).length) file.variables = Object.assign({}, file.variables, activeCustomVars);
