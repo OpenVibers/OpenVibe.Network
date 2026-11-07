@@ -93,14 +93,25 @@ assert.match(CSS, /@media \(min-width:1000px\)\{[\s\S]*\.settings\{display:grid;
     assert.ok(!/Notifications\d/.test(acts.textContent), 'no zero count');
     p.sandbox.currentUser = { role: 'streamer' };
 
-    // On OpenVibe now: the sites' own cards, https entries only, an empty card left out.
+    // On OpenVibe now: the sites' own cards, https entries and pictures only, an empty card left out.
     p.sandbox.renderNet({ cards: [
-        { id: 'trending', site: 'media-hub', title: 'Trending', items: [{ title: 'A walk', url: 'https://openvibe.video/v/1', meta: '9 views this week' }, { title: 'Bad', url: 'javascript:alert(1)' }], more: { label: 'Watch more', url: 'https://openvibe.video/' } },
+        { id: 'trending', site: 'media-hub', title: 'Trending', items: [
+            { title: 'A walk', url: 'https://openvibe.video/v/1', meta: '9 views this week', image: { src: 'https://openvibe.media/t/1.jpg?w=640', w: 640, h: 360 } },
+            { title: 'No picture', url: 'https://openvibe.video/v/2', image: { src: 'javascript:alert(1)' } },
+            { title: 'Bad', url: 'javascript:alert(1)', image: { src: 'https://openvibe.media/t/3.jpg' } },
+        ], more: { label: 'Watch more', url: 'https://openvibe.video/' } },
         { id: 'empty', site: 'games', title: 'Nothing', items: [] },
     ] });
     assert.strictEqual(p.ids['td-net'].hidden, false);
-    assert.deepStrictEqual(links(p.ids['td-net-cards']), ['https://openvibe.video/', 'https://openvibe.video/v/1']);
+    assert.deepStrictEqual(links(p.ids['td-net-cards']), ['https://openvibe.video/', 'https://openvibe.video/v/1', 'https://openvibe.video/v/2']);
     assert.match(p.ids['td-net-cards'].textContent, /TrendingVideo/);
+    const thumbs = p.ids['td-net-cards'].all((c) => c.tagName === 'IMG');
+    assert.strictEqual(thumbs.length, 1, 'only an https picture is drawn');
+    assert.deepStrictEqual(
+        ['src', 'alt', 'width', 'height', 'loading', 'decoding'].map((k) => thumbs[0].getAttribute(k)),
+        ['https://openvibe.media/t/1.jpg?w=640', '', '64', '36', 'lazy', 'async'],
+        'a 64x36 lazy thumbnail with empty alt');
+    assert.strictEqual(p.ids['td-net-cards'].all((c) => c.tagName === 'OL')[0].children[0].children[0].children.map((c) => c.className).join(','), 'td-net-i,td-net-thumb,td-net-t', 'number, picture, then the title');
     p.sandbox.renderNet(null);
     assert.strictEqual(p.ids['td-net'].hidden, true, 'no cards: the block stays out');
 

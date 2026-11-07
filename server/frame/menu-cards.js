@@ -6,8 +6,8 @@
  * A card is frame.menu-card@1: a rail, rows or chips of up to six items. The fetch is small and strict —
  * a five-second timeout, 64 KB at most, no redirects, JSON only — and every card is checked against the contract
  * after unknown fields are dropped and its text is stripped of markup and cut to the schema's limits. An item's
- * URL must be https on the publishing site's own host or an openvibe.* host, and the card's `site` must be the
- * site that served it. A site that fails keeps its last good cards for 30 minutes, then contributes none. The
+ * URL and its optional image `src` must be https on the publishing site's own host or an openvibe.* host (an image
+ * from anywhere else is dropped and the item stays), and the card's `site` must be the site that served it. A site that fails keeps its last good cards for 30 minutes, then contributes none. The
  * result is kept in frame_cache, so a restart starts from the last good set rather than an empty menu.
  *
  * Ranking: cards with items only; Live's card first while anyone is live, then the site's place in the Frame's
@@ -47,7 +47,25 @@ function cardUrl(value, site) {
     return raw;
 }
 
-/** One item ({ title, meta?, url }), or null. */
+/**
+ * One item image ({ src, w?, h?, alt? }), or null. A picture's src follows the item url's rule (https on the
+ * site's own host or an openvibe.* host); an image from anywhere else is dropped and the item stays. A width or
+ * height the schema would refuse is dropped on its own, and alt is plain text cut to its limit.
+ */
+function imageOf(raw, site) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const src = cardUrl(raw.src, site);
+    if (!src) return null;
+    const image = { src };
+    for (const k of ['w', 'h']) {
+        const n = Number(raw[k]);
+        if (raw[k] !== undefined && Number.isInteger(n) && n >= 16 && n <= 1920) image[k] = n;
+    }
+    if (raw.alt !== undefined) image.alt = text(raw.alt, 120);
+    return image;
+}
+
+/** One item ({ title, meta?, url, image? }), or null. */
 function itemOf(raw, site) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
     const title = text(raw.title, 80);
@@ -56,6 +74,8 @@ function itemOf(raw, site) {
     const item = { title, url };
     const meta = text(raw.meta, 120);
     if (raw.meta !== undefined) item.meta = meta;
+    const image = imageOf(raw.image, site);
+    if (image) item.image = image;
     return item;
 }
 
@@ -238,4 +258,4 @@ function createMenuCards({ sites, rankOf, load, save, onChange = () => {}, fetch
     return { init, refresh, cards, start, stop, _state: () => state };
 }
 
-module.exports = { createMenuCards, cardOf, cardsOf, text, cardUrl, MAX_CARDS, KEEP_MS, REFRESH_MS, PATH };
+module.exports = { createMenuCards, cardOf, cardsOf, text, cardUrl, imageOf, MAX_CARDS, KEEP_MS, REFRESH_MS, PATH };

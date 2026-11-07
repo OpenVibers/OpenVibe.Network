@@ -579,6 +579,7 @@ button.td-stat:hover span { color: var(--accent-light); }
 .td-net-list li + li .td-net-row { border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 0; }
 .td-net-list li + li .td-net-row:hover { border-radius: 10px; }
 .td-net-i { flex: none; width: 22px; font-size: 15px; font-weight: 850; color: var(--text-muted); text-align: center; font-variant-numeric: tabular-nums; }
+.td-net-thumb { flex: none; width: 64px; height: 36px; border-radius: 8px; object-fit: cover; background: color-mix(in srgb, var(--text-primary, #fff) 6%, transparent); }
 .td-net-list li:first-child .td-net-i { color: var(--accent-light); }
 .td-net-t { display: grid; min-width: 0; }
 .td-net-t b { font-size: 14px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
