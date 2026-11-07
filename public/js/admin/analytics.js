@@ -117,13 +117,13 @@ async function loadInsights() {
     el.innerHTML = `<div class="card" style="margin-bottom:16px">
         <h3 style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between"><span><i class="fa-solid fa-lightbulb"></i> Insights <small class="muted">last 24 hours · ${esc(new Date(ins.generated_at).toLocaleTimeString())}</small></span>
             <button class="btn btn-primary" id="insights-ask" type="button"><i class="fa-solid fa-wand-magic-sparkles"></i> Ask Vibe what to fix</button></h3>
-        <div class="stats-grid">${tile('New sign-ups today', fmtNum(u.new_1d))}${tile('New this week', fmtNum(u.new_7d), `${fmtNum(u.new_30d)} in 30 days · ${fmtNum(u.total)} accounts`)}${tile('Requests', fmtNum(tot.requests), `${(ins.services || []).length} services`)}${tile('Server errors', fmtNum(tot.server_errors), `${rate.toFixed(3)}% of requests`)}</div>
+        <p class="admin-intro">These counts summarize sign-ups and service health over the last 24 hours. Review rising errors or slow responses before asking Vibe to investigate; more errors mean more failed requests.</p><div class="stats-grid">${tile('New sign-ups today', fmtNum(u.new_1d))}${tile('New this week', fmtNum(u.new_7d), `${fmtNum(u.new_30d)} in 30 days · ${fmtNum(u.total)} accounts`)}${tile('Requests', fmtNum(tot.requests), `${(ins.services || []).length} services`)}${tile('Server errors', fmtNum(tot.server_errors), `${rate.toFixed(3)}% of requests`)}</div>
         ${(u.daily || []).length ? `<div style="margin:10px 0 4px" class="muted">Sign-ups per day (14 days)</div><div style="display:flex;align-items:flex-end;gap:4px;height:70px" role="img" aria-label="Sign-ups per day">${u.daily.map((d) => `<div title="${esc(d.day)}: ${d.n}" style="flex:1;background:var(--accent);opacity:.85;border-radius:3px 3px 0 0;height:${Math.max(4, Math.round(d.n / max * 100))}%"></div>`).join('')}</div>` : ''}
         ${ins.metrics_error ? `<p class="muted">${esc(ins.metrics_error)}</p>` : `
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;margin-top:12px">
-            <div><h4 style="margin:4px 0">Services</h4><table class="data-table" style="width:100%;font-size:13px"><tr><th style="text-align:left">Service</th><th style="text-align:right">Requests</th><th style="text-align:right">4xx</th><th style="text-align:right">5xx</th><th style="text-align:right">p95</th></tr>${svcRows}</table></div>
-            <div><h4 style="margin:4px 0">Most used</h4><table class="data-table" style="width:100%;font-size:13px"><tr><th style="text-align:left">Where</th><th style="text-align:right">Requests</th></tr>${(ins.top_routes || []).map((r) => `<tr><td><code>${esc(r.service)}</code> ${esc(r.route)}</td><td style="text-align:right">${fmtNum(r.requests)}</td></tr>`).join('')}</table>
-            <h4 style="margin:12px 0 4px">Where errors happen</h4>${(ins.error_routes || []).length ? `<table class="data-table" style="width:100%;font-size:13px"><tr><th style="text-align:left">Where</th><th style="text-align:right">5xx</th></tr>${ins.error_routes.map((r) => `<tr><td><code>${esc(r.service)}</code> ${esc(r.route)}</td><td style="text-align:right">${fmtNum(r.errors)}</td></tr>`).join('')}</table>` : '<p class="muted">No server errors in the last 24 hours.</p>'}</div>
+            <div><h4 style="margin:4px 0">Services</h4><p class="admin-intro">These are the requests each service handled in the last 24 hours. Review the services with the most failures first.</p><table class="data-table" style="width:100%;font-size:13px"><tr><th style="text-align:left">Service</th><th style="text-align:right">Requests</th><th style="text-align:right">Rejected requests (4xx)</th><th style="text-align:right">Server failures (5xx)</th><th style="text-align:right">95% finish within (ms)</th></tr>${svcRows}</table></div>
+            <div><h4 style="margin:4px 0">Most used</h4><p class="admin-intro">These are the pages and operations people used most often. Use them to see where people spend their time.</p><table class="data-table" style="width:100%;font-size:13px"><tr><th style="text-align:left">Where</th><th style="text-align:right">Requests</th></tr>${(ins.top_routes || []).map((r) => `<tr><td><code>${esc(r.service)}</code> ${esc(r.route)}</td><td style="text-align:right">${fmtNum(r.requests)}</td></tr>`).join('')}</table>
+            <h4 style="margin:12px 0 4px">Where errors happen</h4><p class="admin-intro">These are the operations that failed at the server. Fix the cause before the next period, and check whether the failures concentrate in one service.</p>${(ins.error_routes || []).length ? `<table class="data-table" style="width:100%;font-size:13px"><tr><th style="text-align:left">Where</th><th style="text-align:right">Server failures (5xx)</th></tr>${ins.error_routes.map((r) => `<tr><td><code>${esc(r.service)}</code> ${esc(r.route)}</td><td style="text-align:right">${fmtNum(r.errors)}</td></tr>`).join('')}</table>` : '<p class="muted">No server errors in the last 24 hours.</p>'}</div>
         </div>`}
     </div>`;
     const ask = document.getElementById('insights-ask');
@@ -341,7 +341,7 @@ async function loadAnalyticsOverview() {
                         <td>${s.avg_response_ms || 0}ms</td>
                     </tr>`;
                 }).join('')}</tbody>
-            </table>` : '<p class="muted">No data yet</p>';
+            </table>` : '<p class="muted">No traffic recorded for this period. Choose a longer time range or return after visits are recorded.</p>';
 
         // Bot ratio donut
         const totalHuman = (t.total_pageviews || 0) + (t.total_api_calls || 0);
@@ -468,7 +468,7 @@ async function loadServiceAnalytics(serviceName) {
             };
             rpEl.innerHTML = pctBar('Median (p50)', rp.p50, rp.max) + pctBar('p90', rp.p90, rp.max) + pctBar('p95', rp.p95, rp.max) + pctBar('p99', rp.p99, rp.max) + pctBar('Max', rp.max, rp.max);
         } else {
-            rpEl.innerHTML = '<p class="muted">No response time data</p>';
+            rpEl.innerHTML = '<p class="muted">No response times recorded. Choose a longer time range or check that the service is reporting requests.</p>';
         }
 
         // Peak hours chart
@@ -562,7 +562,7 @@ async function loadServiceAnalytics(serviceName) {
                 <tbody>${pages.slice(0, 15).map(p => `
                     <tr><td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.path)}">${esc(p.path)}</td><td>${fmtNum(p.hits)}</td><td>${fmtNum(p.visitors)}</td></tr>
                 `).join('')}</tbody>
-            </table>` : '<p class="muted">No data</p>';
+            </table>` : '<p class="muted">No requests recorded. Choose a longer time range or another service.</p>';
 
         // Top API endpoints
         const apiEndpoints = a.topApiEndpoints || [];
@@ -578,7 +578,7 @@ async function loadServiceAnalytics(serviceName) {
                         <td style="color:${e.errors > 0 ? 'var(--danger)' : 'inherit'}">${fmtNum(e.errors)}</td>
                     </tr>
                 `).join('')}</tbody>
-            </table>` : '<p class="muted">No API data</p>';
+            </table>` : '<p class="muted">No API requests recorded. Choose a longer time range or another service.</p>';
 
         // Referers
         const refs = a.topReferers || [];
@@ -588,7 +588,7 @@ async function loadServiceAnalytics(serviceName) {
                 <tbody>${refs.slice(0, 10).map(r => `
                     <tr><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.referer)}">${esc(r.referer)}</td><td>${fmtNum(r.hits)}</td></tr>
                 `).join('')}</tbody>
-            </table>` : '<p class="muted">No referers tracked</p>';
+            </table>` : '<p class="muted">No referring websites recorded. Try a longer range; direct visits may have no referring address.</p>';
 
         // Slowest endpoints
         const slow = a.slowestEndpoints || [];
@@ -604,7 +604,7 @@ async function loadServiceAnalytics(serviceName) {
                         <td>${fmtNum(e.hits)}</td>
                     </tr>
                 `).join('')}</tbody>
-            </table>` : '<p class="muted">No data</p>';
+            </table>` : '<p class="muted">No requests recorded. Choose a longer time range or another service.</p>';
 
         // Status codes
         const statuses = a.statusCodes || [];
@@ -628,7 +628,7 @@ async function loadServiceAnalytics(serviceName) {
                 <tbody>${countries.slice(0, 15).map(c => `
                     <tr><td>${esc(c.country || 'Unknown')}</td><td>${fmtNum(c.cnt)}</td></tr>
                 `).join('')}</tbody>
-            </table>` : '<p class="muted">No country data (requires Cloudflare CF-IPCountry header)</p>';
+            </table>` : '<p class="muted">No country information recorded. Check whether the edge service supplies country information, then return after new visits.</p>';
     } catch (e) {
         statsEl.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`;
     }
@@ -647,12 +647,12 @@ async function loadBotAnalysis() {
             if (!svcBots) continue;
             const label = svcName === 'live' ? 'OpenVibe.Live' : svcName === 'openvibe-network' ? 'OpenVibe.Network' : svcName === 'tools' ? 'OpenVibe.Tools' : svcName === 'games' ? 'OpenVibe.Games' : svcName === 'media' ? 'OpenVibe.Media' : svcName;
 
-            html += `<div class="card"><h3><i class="fa-solid fa-robot"></i> ${esc(label)}</h3>`;
+            html += `<div class="card"><h3><i class="fa-solid fa-robot"></i> ${esc(label)}</h3><p class="admin-intro">These requests were classified as automated traffic for this service. Review the categories when investigating unusual load; higher counts mean more automated requests.</p>`;
 
             // Bot types
             const types = svcBots.botTypes || [];
             if (types.length) {
-                html += `<h4 style="font-size:12px;color:var(--text-muted);margin:12px 0 8px">Bot Types</h4>
+                html += `<h4 style="font-size:12px;color:var(--text-muted);margin:12px 0 8px">Bot types</h4><p class="admin-intro">These categories group recorded automated requests. Review the largest categories first when checking a traffic spike.</p>
                     <table class="admin-table"><thead><tr><th>Type</th><th>Hits</th><th>Sessions</th></tr></thead>
                     <tbody>${types.map(t => `<tr><td><span class="badge badge-danger">${esc(t.bot_type || 'unknown')}</span></td><td>${fmtNum(t.hits)}</td><td>${t.unique_sessions != null ? fmtNum(t.unique_sessions) : '-'}</td></tr>`).join('')}</tbody></table>`;
             }
@@ -660,7 +660,7 @@ async function loadBotAnalysis() {
             // Top bots by user-agent class (ADR-021: analytics stores no IP addresses)
             const topBots = svcBots.topBotIPs || [];
             if (topBots.length) {
-                html += `<h4 style="font-size:12px;color:var(--text-muted);margin:12px 0 8px">Top Bots (user-agent class)</h4>
+                html += `<h4 style="font-size:12px;color:var(--text-muted);margin:12px 0 8px">Most active bots</h4><p class="admin-intro">These groups come from the identity a browser or bot reports. Use them to investigate heavy automated traffic; the reported identity can be inaccurate.</p>
                     <table class="admin-table"><thead><tr><th>User-agent class</th><th>Hits</th><th>Sessions</th><th>Type</th><th>First Seen</th><th>Last Seen</th></tr></thead>
                     <tbody>${topBots.slice(0, 15).map(b => `
                         <tr><td style="font-family:monospace;font-size:11px">${esc(b.ua_class || '-')}</td><td>${fmtNum(b.hits)}</td>
@@ -674,7 +674,7 @@ async function loadBotAnalysis() {
             // High-volume sessions classified as human (rotating session ids, never an IP or user id)
             const suspicious = svcBots.suspiciousIPs || [];
             if (suspicious.length) {
-                html += `<h4 style="font-size:12px;color:var(--text-muted);margin:12px 0 8px">Suspicious Sessions (high volume, classified as human)</h4>
+                html += `<h4 style="font-size:12px;color:var(--text-muted);margin:12px 0 8px">Unusually busy browsing sessions</h4><p class="admin-intro">These high-volume sessions were classified as human traffic. Investigate them before taking action; a busy session alone does not prove abuse.</p>
                     <table class="admin-table"><thead><tr><th>Session</th><th>Total Hits</th><th>Errors</th><th>Unique Paths</th><th>Period</th></tr></thead>
                     <tbody>${suspicious.map(s => `
                         <tr><td style="font-family:monospace;font-size:11px">${esc(s.session_id || '-')}</td><td>${fmtNum(s.total_hits)}</td>

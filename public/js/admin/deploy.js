@@ -13,30 +13,30 @@ async function loadDomains() {
         _domCatalog = cat;
         const byTool = {}; list.domains.forEach(d => { (byTool[d.tool_id] = byTool[d.tool_id] || []).push(d); });
         const opts = [...cat.families.map(f => ({ id: f.id, name: f.name + ' (family)' })), ...cat.tools.map(t => ({ id: t.id, name: t.name }))];
-        const roleBadge = r => `<span class="badge ${r === 'canonical' ? 'badge-success' : r === 'short' ? 'badge-info' : ''}">${esc(r)}</span>`;
+        const roleBadge = r => `<span class="badge ${r === 'canonical' ? 'badge-success' : r === 'short' ? 'badge-info' : ''}">${esc({canonical:"Main address for search engines",short:"Short public address",alias:"Redirect to the short address",mirror:"Additional address serving the tool"}[r] || adminWords(r))}</span>`;
         el.innerHTML = `
         <div class="card"><h3><i class="fa-solid fa-globe"></i> Tool domains</h3>
             <p class="muted">Every tool has a <b>canonical</b> host (used in links, sitemaps and canonical tags), a <b>short</b> host people type, any number of <b>aliases</b> that redirect to the short one, and <b>mirrors</b> that serve the tool on another address while pointing search engines at the canonical host. Custom domains work the same way: point DNS at the server, add the host here, then run <code>add-custom-domain.sh</code> on the host for nginx and TLS. Tools picks changes up within a minute.${cat.source !== 'live' ? ' <br><span class="badge badge-warning">Tools catalog unreachable: showing the built-in list</span>' : ''}</p>
             <div class="form-group" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end">
-                <div class="form-field"><label for="dom-tool">Tool</label><select id="dom-tool">${opts.map(o => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select></div>
-                <div class="form-field"><label for="dom-host">Host</label><input id="dom-host" placeholder="youtubedownloadonline.com" autocomplete="off" spellcheck="false"></div>
-                <div class="form-field"><label for="dom-role">Role</label><select id="dom-role"><option value="alias">alias (redirects to the short host)</option><option value="mirror">mirror (serves the tool, canonical tag points at the SEO host)</option><option value="short">short (what people type)</option><option value="canonical">canonical (SEO host)</option></select></div>
-                <div class="form-field"><label for="dom-note">Note</label><input id="dom-note" maxlength="500"></div>
+                <div class="form-field"><label for="dom-tool">Tool</label><select id="dom-tool" aria-label="Tool receiving this address" aria-describedby="help-dom-tool">${opts.map(o => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select><span class="admin-help" id="help-dom-tool">Choose the tool or family that should open at the domain. The first catalog item is selected initially; choose the intended tool before adding the host.</span></div>
+                <div class="form-field"><label for="dom-host">Host</label><input id="dom-host" aria-label="Website hostname" aria-describedby="help-dom-host" placeholder="youtubedownloadonline.com" autocomplete="off" spellcheck="false"><span class="admin-help" id="help-dom-host">No hostname is entered by default. Enter a hostname without https://, for example tools.example.com, after pointing its DNS at the server.</span></div>
+                <div class="form-field"><label for="dom-role">Role</label><select id="dom-role" aria-label="How this address works" aria-describedby="help-dom-role"><option value="alias">Redirect — sends visitors to the short address</option><option value="mirror">Mirror — serves the tool here, and points search engines at the main address</option><option value="short">Short — the address people type</option><option value="canonical">Main — the address search engines are pointed at</option></select><span class="admin-help" id="help-dom-role">Redirect is the default and sends visitors to the short address. Mirror serves the tool at this address, Short sets its public address, and Main sets its preferred search-engine address.</span></div>
+                <div class="form-field"><label for="dom-note">Note</label><input id="dom-note" aria-label="Staff note" aria-describedby="help-dom-note" maxlength="500"><span class="admin-help" id="help-dom-note">Optional note, blank by default. For example: campaign domain for November.</span></div>
                 <div><button class="btn btn-outline" onclick="checkDomainDns()">Check DNS</button> <button class="btn btn-primary" onclick="addDomain()">Add</button></div>
             </div>
             <div id="dom-check" class="muted" style="margin-top:8px"></div>
         </div>
-        <div class="card"><h3>Overrides</h3>
+        <div class="card"><h3>Overrides</h3><p class="admin-intro">These saved addresses replace or extend the built-in tool addresses. Change them when routing a custom domain; delete the override to return to built-in routing.</p>
             ${list.domains.length ? `<div style="overflow-x:auto"><table class="table" style="width:100%"><thead><tr><th>Tool</th><th>Host</th><th>Role</th><th>On</th><th>Note</th><th></th></tr></thead><tbody>
             ${list.domains.map(d => `<tr><td>${esc(d.tool_id)}${d.tool_known === false ? ' <span class="badge badge-warning">unknown tool</span>' : ''}</td>
                 <td><a href="https://${esc(d.host)}/" target="_blank" rel="noopener">${esc(d.host)}</a></td><td>${roleBadge(d.role)}</td>
                 <td><input type="checkbox" ${d.enabled ? 'checked' : ''} onchange="updateDomain(${d.id},{enabled:this.checked})" aria-label="Enabled"></td>
                 <td>${esc(d.note || '')}</td>
-                <td style="white-space:nowrap"><select onchange="updateDomain(${d.id},{role:this.value})" aria-label="Role">${['canonical','short','alias','mirror'].map(r => `<option ${r === d.role ? 'selected' : ''}>${r}</option>`).join('')}</select>
-                    <button class="btn btn-sm btn-danger" onclick="deleteDomain(${d.id},'${esc(d.host)}')">Remove</button></td></tr>`).join('')}
-            </tbody></table></div>` : '<p class="muted">No overrides yet. Every tool is using its built-in hosts.</p>'}
+                <td style="white-space:nowrap"><select onchange="updateDomain(${d.id},{role:this.value})" aria-label="Role">${['canonical','short','alias','mirror'].map(r => `<option value="${r}" ${r === d.role ? 'selected' : ''}>${{canonical:'Main address for search engines',short:'Short public address',alias:'Redirect to the short address',mirror:'Additional address serving the tool'}[r]}</option>`).join('')}</select>
+                    <button class="btn btn-sm btn-danger" onclick="deleteDomain(${d.id},'${esc(d.host)}')">Remove override</button></td></tr>`).join('')}
+            </tbody></table></div>` : '<p class="muted">No overrides yet; tools use their built-in addresses. Add a domain above when you need a custom address.</p>'}
         </div>
-        <div class="card"><h3>Built-in hosts</h3><div style="overflow-x:auto"><table class="table" style="width:100%"><thead><tr><th>Tool</th><th>Canonical</th><th>Short</th><th>Aliases</th></tr></thead><tbody>
+        <div class="card"><h3>Built-in hosts</h3><p class="admin-intro">These are the default addresses supplied by the tool catalog. Check them before adding an override so you know which address it replaces.</p><div style="overflow-x:auto"><table class="table" style="width:100%"><thead><tr><th>Tool</th><th>Canonical</th><th>Short</th><th>Aliases</th></tr></thead><tbody>
             ${cat.tools.map(t => `<tr><td>${esc(t.name)} <small class="muted">${esc(t.id)}</small></td><td>${esc(t.hosts?.canonical || '')}</td><td>${esc(t.hosts?.short || '')}</td><td>${esc((t.hosts?.aliases || []).join(', '))}</td></tr>`).join('')}
         </tbody></table></div></div>`;
     } catch (e) { el.innerHTML = `<div class="card"><p class="muted">Could not load domains: ${esc(e.message)}</p></div>`; }
@@ -46,7 +46,7 @@ async function addDomain() {
     try { const r = await api('/api/admin/domains', { method: 'POST', body }); toast('Domain added', 'success'); (r.warnings || []).forEach(w => toast(w, 'warning')); loadDomains(); } catch (e) { toast(e.message, 'error'); }
 }
 async function updateDomain(id, patch) { try { const r = await api('/api/admin/domains/' + id, { method: 'PUT', body: patch }); (r.warnings || []).forEach(w => toast(w, 'warning')); toast('Saved', 'success'); } catch (e) { toast(e.message, 'error'); } loadDomains(); }
-async function deleteDomain(id, host) { if (!confirm(`Remove ${host}?`)) return; try { await api('/api/admin/domains/' + id, { method: 'DELETE' }); toast('Removed', 'success'); } catch (e) { toast(e.message, 'error'); } loadDomains(); }
+async function deleteDomain(id, host) { if (!confirm(`Remove ${host} from the tool address overrides? This changes routing after refresh. Add the same host and role again to undo.`)) return; try { await api('/api/admin/domains/' + id, { method: 'DELETE' }); toast('Removed', 'success'); } catch (e) { toast(e.message, 'error'); } loadDomains(); }
 async function checkDomainDns() {
     const out = document.getElementById('dom-check'); out.textContent = 'Checking…';
     try { const r = await api('/api/admin/domains/check', { method: 'POST', body: { host: document.getElementById('dom-host').value } }); const c = r.check || {};
@@ -102,19 +102,19 @@ function renderSSHOwner(el) {
     <div class="card">
         <div class="form-group" style="margin-bottom:14px">
             <label>New Linux username</label>
-            <input type="text" id="ssh-o-user" placeholder="e.g. alex" oninput="sshOwnerUpdate()" style="max-width:280px">
+            <input type="text" id="ssh-o-user" aria-label="New server username" aria-describedby="help-ssh-o-user" placeholder="e.g. alex" oninput="sshOwnerUpdate()" style="max-width:280px"><span class="admin-help" id="help-ssh-o-user">No name is entered by default. Use a Linux username such as alex for the account you are provisioning.</span>
         </div>
         <div class="form-group" style="margin-bottom:14px">
             <label>Their SSH <b>public</b> key <span class="muted">— ask them to run the steps in their own SSH tab and paste their <code>.pub</code> here (recommended)</span></label>
-            <textarea id="ssh-o-pubkey" rows="3" placeholder="ssh-ed25519 AAAA... alex@openvibe" oninput="sshOwnerUpdate()" style="width:100%;font-family:ui-monospace,monospace;font-size:0.82rem"></textarea>
+            <textarea id="ssh-o-pubkey" aria-label="SSH public key" aria-describedby="ssh-public-help" rows="3" placeholder="ssh-ed25519 AAAA... alex@openvibe" oninput="sshOwnerUpdate()" style="width:100%;font-family:ui-monospace,monospace;font-size:0.82rem"></textarea><p class="admin-help" id="ssh-public-help">No key is entered by default. Paste the person’s public .pub key, for example an ssh-ed25519 public key; never enter their private key.</p>
         </div>
         <div class="form-group">
             <label>Access level</label>
-            <select id="ssh-o-access" onchange="sshOwnerUpdate()" style="max-width:440px">
+            <select id="ssh-o-access" aria-label="Server access level" aria-describedby="help-ssh-o-access" onchange="sshOwnerUpdate()" style="max-width:440px">
                 <option value="code">Project code only (safest)</option>
                 <option value="restart">Project code + restart app services</option>
                 <option value="web">Full web + nginx — build &amp; run their own sites (high trust)</option>
-            </select>
+            </select><span class="admin-help" id="help-ssh-o-access">Project code only is the default. Restart also allows service restarts, and Full web permits web server management; removing access requires the owner to update the server account.</span>
         </div>
         <div id="ssh-o-webwarn" style="display:none;margin-top:12px;padding:10px 12px;border:1px solid var(--warning);border-radius:8px;background:color-mix(in srgb,var(--warning) 10%,transparent);color:var(--warning-text, var(--warning));font-size:0.84rem;line-height:1.5">
             <i class="fa-solid fa-triangle-exclamation"></i> <b>High trust:</b> web + nginx access lets this admin edit any nginx site config and reload the web server — they can serve anything and a bad config can take <em>all</em> the sites down. It still stops short of root (no package installs or arbitrary sudo), but only grant it to admins you fully trust to run the web layer with you.
@@ -123,13 +123,14 @@ function renderSSHOwner(el) {
     <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
             <h3 style="margin:0"><i class="fa-solid fa-robot"></i> Agent prompt</h3>
-            <button class="btn btn-primary" onclick="sshCopy('ssh-o-prompt', this)"><i class="fa-solid fa-copy"></i> Copy Prompt</button>
+            <button class="btn btn-primary" onclick="sshCopy('ssh-o-prompt', this)"><i class="fa-solid fa-copy"></i> Copy the prompt</button>
         </div>
         <p class="muted" style="margin:8px 0">Paste into Claude Code running on the server with sudo (or locally with root SSH) to create and lock down the account.</p>
         <pre id="ssh-o-prompt" class="ssh-prompt"></pre>
     </div>
     <div class="card">
         <h3><i class="fa-solid fa-shield-halved"></i> How it's locked down</h3>
+        <p class="admin-intro">This lists the limits placed on a provisioned server account. Read it before you grant access, and after any change to the access level you chose above.</p>
         <ul class="muted" style="line-height:1.7;margin:0;padding-left:20px">
             <li>Key-only login — password auth is disabled for the account.</li>
             <li>Member of a shared <code>devs</code> group that owns the project dirs (<code>${esc(sshInfo.projectsRoot)}</code>) with setgid, so they can edit code and new files stay group-shared.</li>
@@ -209,16 +210,18 @@ function renderSSHUser(el) {
     el.innerHTML = `
     <div class="card">
         <h3><i class="fa-solid fa-terminal"></i> Connect to the dev server <span class="staff-pill user-pill">You</span></h3>
+        <p class="admin-intro">This page explains how to sign in to the development server. Use it when you need server access; your private key never leaves your machine.</p>
         <p class="muted">Generate your key, send the owner (<b>${esc(sshInfo.ownerUsername)}</b>) your <b>public</b> key to authorize, then SSH in and help build the sites with Claude. Your private key never leaves your machine.</p>
     </div>
     <div class="card">
         <div class="form-group">
             <label>Your SSH username <span class="muted">— confirm the exact name with the owner</span></label>
-            <input type="text" id="ssh-u-user" value="${esc(defUser)}" oninput="sshUserUpdate()" style="max-width:280px">
+            <input type="text" id="ssh-u-user" aria-label="Your server username" aria-describedby="help-ssh-u-user" value="${esc(defUser)}" oninput="sshUserUpdate()" style="max-width:280px"><span class="admin-help" id="help-ssh-u-user">Starts with your account username when available. Confirm the actual server login with the owner, for example alex.</span>
         </div>
     </div>
     <div class="card">
         <h3><i class="fa-solid fa-list-ol"></i> Steps</h3>
+        <p class="admin-intro">These are the commands that set up your key and the connection to the server. Run them once, then use the connection line to sign in.</p>
         <ol class="muted" style="line-height:1.9;padding-left:20px;margin:0">
             <li>Generate a key pair (skip if you already have one you want to use):<br><code id="ssh-u-keygen"></code></li>
             <li>Print your <b>public</b> key and send it to the owner to authorize:<br><code id="ssh-u-cat"></code></li>
@@ -229,7 +232,7 @@ function renderSSHUser(el) {
     <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
             <h3 style="margin:0"><i class="fa-solid fa-robot"></i> Agent prompt</h3>
-            <button class="btn btn-primary" onclick="sshCopy('ssh-u-prompt', this)"><i class="fa-solid fa-copy"></i> Copy Prompt</button>
+            <button class="btn btn-primary" onclick="sshCopy('ssh-u-prompt', this)"><i class="fa-solid fa-copy"></i> Copy the prompt</button>
         </div>
         <p class="muted" style="margin:8px 0">Paste into Claude Code on your own machine — it sets up the connection and gives it full context about the server so you can start vibe coding.</p>
         <pre id="ssh-u-prompt" class="ssh-prompt"></pre>
@@ -313,12 +316,12 @@ async function loadDeployOverview() {
         const c = d.config;
         document.getElementById('deploy-stats').innerHTML = `
             <div class="stat-card"><div class="value" style="color:${p.certbotInstalled ? 'var(--success)' : 'var(--danger)'}"><i class="fa-solid fa-${p.certbotInstalled ? 'check' : 'xmark'}"></i></div><div class="label">Certbot</div></div>
-            <div class="stat-card"><div class="value" style="color:${p.cloudflarePluginInstalled ? 'var(--success)' : 'var(--warning)'}"><i class="fa-solid fa-${p.cloudflarePluginInstalled ? 'check' : 'minus'}"></i></div><div class="label">CF Plugin</div></div>
+            <div class="stat-card"><div class="value" style="color:${p.cloudflarePluginInstalled ? 'var(--success)' : 'var(--warning)'}"><i class="fa-solid fa-${p.cloudflarePluginInstalled ? 'check' : 'minus'}"></i></div><div class="label">Cloudflare certificate plugin</div></div>
             <div class="stat-card"><div class="value" style="color:${p.nginxInstalled ? 'var(--success)' : 'var(--danger)'}"><i class="fa-solid fa-${p.nginxInstalled ? 'check' : 'xmark'}"></i></div><div class="label">Nginx</div></div>
-            <div class="stat-card"><div class="value" style="color:${c.hasCloudflareToken ? 'var(--success)' : 'var(--text-muted)'}"><i class="fa-solid fa-${c.hasCloudflareToken ? 'check' : 'minus'}"></i></div><div class="label">CF Token</div></div>
+            <div class="stat-card"><div class="value" style="color:${c.hasCloudflareToken ? 'var(--success)' : 'var(--text-muted)'}"><i class="fa-solid fa-${c.hasCloudflareToken ? 'check' : 'minus'}"></i></div><div class="label">Cloudflare access token</div></div>
             <div class="stat-card"><div class="value">${c.domainsConfigured}</div><div class="label">Domains</div></div>
-            <div class="stat-card"><div class="value" style="font-size:14px">${esc(c.certMode)}</div><div class="label">Cert Mode</div></div>
-            <div class="stat-card"><div class="value" style="font-size:14px">${esc(c.nginxMode)}</div><div class="label">Nginx Mode</div></div>
+            <div class="stat-card"><div class="value" style="font-size:14px">${esc({cloudflare:'Automatic DNS verification',manual:'Manual DNS verification',none:'Certificates managed elsewhere'}[c.certMode] || 'Certificate mode unavailable')}</div><div class="label">Certificate management</div></div>
+            <div class="stat-card"><div class="value" style="font-size:14px">${esc({preview:'Preview only; no files written',apply:'Writing and reloading allowed',disabled:'Web server management disabled'}[c.nginxMode] || 'Web server mode unavailable')}</div><div class="label">Web server management</div></div>
         `;
         const prereqsEl = document.getElementById('deploy-prereqs');
         const items = [];
@@ -361,7 +364,7 @@ async function loadDeployCerts() {
                         <div class="muted" style="font-size:11px;margin-top:2px">${(c.domains || []).map(d => esc(d)).join(', ')}</div>
                     </div>
                     <div style="text-align:right">
-                        <span style="color:${expColor};font-weight:600">${c.daysRemaining != null ? c.daysRemaining + ' days' : 'Unknown'}</span>
+                        <span style="color:${expColor};font-weight:600">${c.daysRemaining != null ? 'Expires in ' + c.daysRemaining + ' days.' : 'Expiry date is unknown.'}</span>
                         <div class="muted" style="font-size:11px">${c.expiry ? 'Expires ' + esc(c.expiry) : ''}</div>
                     </div>
                 </div>
@@ -409,7 +412,8 @@ async function showManualDnsInfo() {
         const d = await r.json();
         const instructions = (d.instructions || []).map(i => esc(i)).join('<br>');
         out.innerHTML = `<div class="card" style="padding:16px;margin-top:8px">
-            <h4 style="margin-bottom:8px"><i class="fa-solid fa-hand"></i> Manual DNS Challenge</h4>
+            <h4 style="margin-bottom:8px"><i class="fa-solid fa-hand"></i> Manual DNS challenge</h4>
+            <p class="admin-intro">These are the DNS records to add at your domain registrar so the certificate can be issued by hand. Add them exactly as written, then issue the certificate; the request fails until the records are visible.</p>
             <div style="font-size:13px;line-height:1.6">${instructions}</div>
             <div style="margin-top:16px">
                 <button class="btn btn-primary" onclick="issueManualCert('${esc(domain)}')">
@@ -505,7 +509,7 @@ async function validateNginx() {
 }
 
 async function applyNginxConfigs() {
-    if (!confirm('Apply generated Nginx configs? This will backup existing configs, write new ones, validate, and reload Nginx.')) return;
+    if (!confirm('Apply the generated web server configuration? This backs up the existing files, writes new ones, validates them, and reloads Nginx. Routing may change immediately. To undo, restore the backup on the server, validate it, and reload Nginx.')) return;
     const out = document.getElementById('nginx-preview-output');
     out.innerHTML = '<div class="loading">Applying Nginx configs...</div>';
     try {
@@ -571,7 +575,7 @@ async function addManagedDomain() {
 }
 
 async function removeManagedDomain(idx) {
-    if (!confirm('Remove domain ' + deployDomainsList[idx]?.domain + '?')) return;
+    if (!confirm('Remove domain ' + deployDomainsList[idx]?.domain + '? It will leave the managed domain list. Add it again to undo; existing certificates and web server files are managed separately.')) return;
     deployDomainsList.splice(idx, 1);
     await saveDomainsList();
 }

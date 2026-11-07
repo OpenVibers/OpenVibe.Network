@@ -279,3 +279,54 @@ a.btn{text-decoration:none}
 .pai-table td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:top;overflow-wrap:anywhere}
 @media(max-width:800px){.pai-provider{grid-template-columns:minmax(0,1fr)}.pai-provider-actions{justify-content:flex-start;max-width:none}.pai-fields{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:640px){.pai-form-row{grid-template-columns:minmax(0,1fr)}#platform-ai .btn,#platform-ai input,#platform-ai select,#platform-ai textarea,#platform-ai summary,#platform-ai .pai-index a,#platform-ai .pai-switch{min-height:44px}#platform-ai .pai-chip button{min-width:44px;min-height:44px}.pai-index{gap:2px;padding:5px}.pai-index a{padding:8px 9px;font-size:11.5px}.pai-section{scroll-margin-top:96px}.pai-dialog{width:calc(100vw - 16px)}.pai-form{padding:14px}.pai-card{padding:13px}}
+
+/* Owner clarity: scoped to the legacy admin sections; AI and Setup own their forms. */
+.admin-clarity { min-width:0; overflow-wrap:anywhere; }
+.admin-clarity .admin-intro { max-width:76ch; margin:0 0 18px; color:var(--text-secondary); font-size:14px; line-height:1.6; }
+.admin-clarity h3 + .admin-intro { margin-top:4px; }
+.admin-clarity .admin-help { display:block; color:var(--text-secondary); font-size:13px; font-weight:400; text-transform:none; letter-spacing:normal; line-height:1.55; margin:6px 0 10px; }
+.admin-clarity .admin-machine-key { display:inline-block; color:var(--text-muted); font-size:12px; font-weight:400; overflow-wrap:anywhere; }
+.admin-clarity .admin-field { display:flex; flex:1 1 220px; flex-direction:column; min-width:0; max-width:100%; }
+.admin-clarity :is(input,select,textarea) { max-width:100%; min-height:44px; font-size:14px; }
+.admin-clarity :is(button,.btn,summary) { min-height:44px; min-width:44px; white-space:normal; justify-content:center; }
+.admin-clarity input[type=checkbox] { width:44px!important; height:44px!important; flex:0 0 44px; accent-color:var(--accent); }
+.admin-clarity .setting-row { gap:12px; align-items:flex-start; }
+.admin-clarity .setting-row label { flex:1; min-width:0; }
+.admin-clarity :is(fieldset,.card,.form-group,.form-field) { min-width:0; }
+.admin-clarity .admin-advanced { width:100%; margin:8px 0; padding:8px 12px; border:1px solid var(--border); border-radius:8px; }
+.admin-clarity .admin-advanced summary { cursor:pointer; padding:10px 0; }
+.admin-clarity .admin-advanced textarea { width:100%; }
+.admin-clarity :is(code,pre) { overflow-wrap:anywhere; }
+.admin-clarity pre { max-width:100%; overflow:auto; }
+.admin-clarity .badge { text-transform:none; line-height:1.5; white-space:normal; }
+.admin-clarity a:not(.btn) { color:var(--accent-light); text-underline-offset:3px; }
+.section-tabs button { min-height:44px; font-size:12px; }
+.tabs-scroll-btn { width:44px; height:44px; flex-basis:44px; }
+@media(max-width:600px) {
+    .page { padding:16px; }
+    .admin-clarity .card { padding:16px; }
+    .admin-clarity :is(.muted,small,.badge,th,td,.label) { font-size:12px!important; }
+    .admin-clarity .setting-row { flex-wrap:wrap; }
+    .admin-clarity .setting-row:not(:has(input[type=checkbox])) { flex-direction:column!important; align-items:stretch!important; }
+    .admin-clarity .setting-row label { flex-basis:100%; }
+    .admin-clarity :is(input:not([type=checkbox]),textarea,select:not([aria-hidden=true])) { width:100%!important; min-width:0!important; }
+    .admin-clarity [style*="grid-template-columns"] { grid-template-columns:minmax(0,1fr)!important; }
+    .admin-clarity [style*="display:flex"] { flex-wrap:wrap; min-width:0; }
+    .admin-clarity :is(.admin-table,.data-table,.table) { display:block; max-width:100%; overflow-x:auto; }
+    .admin-clarity :is(.admin-table,.data-table,.table) :is(th,td) { min-width:100px; white-space:normal!important; }
+    .admin-clarity .stats-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .admin-clarity .input-row { align-items:flex-start; }
+    .admin-clarity .input-row > button { width:100%; }
+    .admin-clarity .sub-tabs { flex-wrap:wrap; }
+}
+@media(max-width:600px) {
+    #sec-users .admin-table thead { display:none; }
+    #sec-users .admin-table :is(tbody,tr,td) { display:block; min-width:0; width:100%; }
+    #sec-users .admin-table tr { padding:12px; margin:12px 0; border:1px solid var(--border); border-radius:10px; background:var(--bg-card); }
+    #sec-users .admin-table td { border:0; padding:6px 0; }
+    #sec-users .admin-table td::before { content:attr(data-label); display:block; color:var(--text-secondary); font-size:12px; font-weight:600; margin-bottom:4px; }
+    #sec-users .admin-table td:last-child { display:flex!important; gap:8px!important; }
+    #sec-users .admin-table td:last-child::before { flex-basis:100%; }
+}
+body:has(.admin-clarity.active) .ov-sel-search input { min-height:44px; }
+body:has(.admin-clarity.active) .ov-sel-opt { min-height:44px; }

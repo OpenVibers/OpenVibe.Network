@@ -27,8 +27,8 @@ async function loadDashboard() {
         { label: 'Total Streams', value: ss?.streams?.total || ss?.totalStreams || 0, icon: 'fa-video' },
         { label: 'Active Bans', value: ss?.users?.banned || ss?.activeBans || 0, icon: 'fa-ban' },
         { label: 'Notifications', value: th?.total_notifications || 0, icon: 'fa-bell' },
-        { label: 'Unread Notifs', value: th?.unread_notifications || 0, icon: 'fa-bell' },
-        { label: 'Anon Users', value: th?.anon_users || 0, icon: 'fa-ghost' },
+        { label: 'Unread notifications', value: th?.unread_notifications || 0, icon: 'fa-bell' },
+        { label: 'Anonymous accounts', value: th?.anon_users || 0, icon: 'fa-ghost' },
     ];
 
     statsEl.innerHTML = stats.map(s => `
@@ -45,14 +45,14 @@ async function loadDashboard() {
         const upM = Math.floor((th.uptime % 3600) / 60);
         healthEl.innerHTML = `
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;font-size:13px">
-                <div><strong>Uptime:</strong> ${upH}h ${upM}m</div>
-                <div><strong>Heap Used:</strong> ${fmtBytes(mem?.heapUsed)}</div>
-                <div><strong>Heap Total:</strong> ${fmtBytes(mem?.heapTotal)}</div>
-                <div><strong>RSS:</strong> ${fmtBytes(mem?.rss)}</div>
-                <div><strong>Email:</strong> ${th.ses_enabled ? '<span style="color:var(--success-text, var(--success))">Enabled</span>' : '<span style="color:var(--text-muted)">Disabled</span>'}</div>
+                <div><strong>Time since restart:</strong> ${upH}h ${upM}m</div>
+                <div><strong>Application memory in use:</strong> ${fmtBytes(mem?.heapUsed)}</div>
+                <div><strong>Application memory allocated:</strong> ${fmtBytes(mem?.heapTotal)}</div>
+                <div><strong>Total process memory:</strong> ${fmtBytes(mem?.rss)}</div>
+                <div><strong>Email:</strong> ${th.ses_enabled ? '<span style="color:var(--success-text, var(--success))">Email sending is enabled.</span>' : '<span style="color:var(--text-muted)">Email sending is turned off.</span>'}</div>
             </div>
         `;
     } else {
-        healthEl.innerHTML = '<p class="muted">Could not load health data</p>';
+        healthEl.innerHTML = '<p class="muted">Health data could not be loaded. Reload the tab; if it still fails, check the Network service.</p>';
     }
 }

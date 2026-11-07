@@ -83,18 +83,20 @@
     </div>
 
     <!-- Dashboard -->
-    <div class="section active" id="sec-dashboard">
+    <div class="section active admin-clarity" id="sec-dashboard">
+        <p class="admin-intro">This is a snapshot of accounts, streams, and Network health. Check it when reviewing activity or investigating a service problem; larger counts mean more activity, while memory and uptime describe this server.</p>
         <div class="stats-grid" id="dashboard-stats"><div class="loading">Loading stats...</div></div>
         <div class="card">
-            <h3><i class="fa-solid fa-server"></i> System Health</h3>
+            <h3><i class="fa-solid fa-server"></i> System Health</h3><p class="admin-intro">This describes the Network process running on this server. Check it when investigating downtime or high memory use; more memory means less room for other work.</p>
             <div id="health-info" class="muted">Loading...</div>
         </div>
     </div>
 
     <!-- Users -->
-    <div class="section" id="sec-users">
+    <div class="section admin-clarity" id="sec-users">
+        <p class="admin-intro">These are Network accounts and the access each person has. Use search to find someone, then change access or help recover their account; role changes apply immediately and can be reversed by selecting the previous role.</p>
         <div class="input-row">
-            <input type="text" id="user-search" placeholder="Search users by name or email..." onkeydown="if(event.key==='Enter')loadUsers()">
+            <span class="admin-field"><input type="text" id="user-search" aria-label="Find an account" aria-describedby="help-user-search" placeholder="Search users by name or email..." onkeydown="if(event.key==='Enter')loadUsers()"><span class="admin-help" id="help-user-search"><strong>Find an account.</strong> Search by name or email, for example alex. Blank shows all accounts; press Enter or Search to apply.</span></span>
             <button class="btn btn-primary" onclick="loadUsers()"><i class="fa-solid fa-search"></i> Search</button>
         </div>
         <div id="users-content"><div class="loading">Loading...</div></div>
@@ -102,27 +104,31 @@
     </div>
 
     <!-- Streams -->
-    <div class="section" id="sec-streams">
+    <div class="section admin-clarity" id="sec-streams">
+        <p class="admin-intro">These are streams currently live on OpenVibe.Live. Review them during moderation; ending a stream disconnects the broadcast, and the streamer must start again to resume.</p>
         <div id="streams-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Lineage: references the canonical resolver could not resolve (Live, roadmap D20) -->
-    <div class="section" id="sec-lineage">
-        <p class="muted">References Live's canonical channel/owner resolver answered <em>unresolved</em>, from other services and Live's own checks, counted by inputs and reason over the last 30 days. A display name never resolves anything.</p>
+    <div class="section admin-clarity" id="sec-lineage">
+        <p class="admin-intro">These are channel or owner references Live could not match during the last 30 days. Check them when a linked channel is missing, then correct the reference in the service shown as the last caller.</p>
+        <p class="muted">Use a channel link or stable account ID when correcting a reference. A display name alone cannot identify the channel.</p>
         <div class="sub-tabs" id="lineage-reasons"></div>
         <div id="lineage-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Bans -->
-    <div class="section" id="sec-bans">
+    <div class="section admin-clarity" id="sec-bans">
+        <p class="admin-intro">These people are currently banned on Live. Review the reason before restoring access; allowing access again removes the restriction, and a new ban can be applied from Users if needed.</p>
         <div id="bans-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Chat Logs -->
-    <div class="section" id="sec-chat-logs">
+    <div class="section admin-clarity" id="sec-chat-logs">
+        <p class="admin-intro">Search stored chat messages to investigate a report. Enter message text or a person below, then review the results before taking action.</p>
         <div class="input-row">
-            <input type="text" id="chat-search-q" placeholder="Search messages..." onkeydown="if(event.key==='Enter')searchChatLogs()">
-            <input type="text" id="chat-search-uid" placeholder="Username, user ID, or anon123" style="max-width:200px" onkeydown="if(event.key==='Enter')searchChatLogs()">
+            <span class="admin-field"><input type="text" id="chat-search-q" aria-label="Message text" aria-describedby="help-chat-search-q" placeholder="Search messages..." onkeydown="if(event.key==='Enter')searchChatLogs()"><span class="admin-help" id="help-chat-search-q"><strong>Message text.</strong> Search for words in a message, for example welcome. Blank leaves message text unrestricted when a person is supplied.</span></span>
+            <span class="admin-field"><input type="text" id="chat-search-uid" aria-label="Person in chat" aria-describedby="help-chat-search-uid" placeholder="Username, user ID, or anon123" style="max-width:200px" onkeydown="if(event.key==='Enter')searchChatLogs()"><span class="admin-help" id="help-chat-search-uid"><strong>Person in chat.</strong> Enter a username or account ID, for example alex or anon123. Blank searches any person when message text is supplied.</span></span>
             <button class="btn btn-primary" onclick="searchChatLogs()"><i class="fa-solid fa-search"></i> Search</button>
         </div>
         <div id="chat-logs-content"><p class="muted">Enter a search query or user ID</p></div>
@@ -130,16 +136,18 @@
     </div>
 
     <!-- Moderators -->
-    <div class="section" id="sec-moderators">
+    <div class="section admin-clarity" id="sec-moderators">
+        <p class="admin-intro">These people can moderate across Live channels. Add a trusted person when more coverage is needed; Remove moderator access reverses the promotion.</p>
         <div class="input-row">
-            <input type="text" id="mod-username" placeholder="Username to promote..." onkeydown="if(event.key==='Enter')promoteMod()">
-            <button class="btn btn-primary" onclick="promoteMod()"><i class="fa-solid fa-shield-halved"></i> Promote to Global Mod</button>
+            <span class="admin-field"><input type="text" id="mod-username" aria-label="Person to make a moderator" aria-describedby="help-mod-username" placeholder="Username to promote..." onkeydown="if(event.key==='Enter')promoteMod()"><span class="admin-help" id="help-mod-username"><strong>Person to make a moderator.</strong> Enter an existing username, for example alex; there is no default. Promotion grants moderation access across Live, and removing that access reverses it.</span></span>
+            <button class="btn btn-primary" onclick="promoteMod()"><i class="fa-solid fa-shield-halved"></i> Make a network moderator</button>
         </div>
         <div id="mods-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Settings -->
-    <div class="section" id="sec-settings">
+    <div class="section admin-clarity" id="sec-settings">
+        <p class="admin-intro">These settings control Network and its connected Live service. Choose a section before editing, and keep previous values so you can restore them after saving.</p>
         <div class="sub-tabs" id="settings-sub-tabs">
             <button class="active" onclick="showSettingsSub('tools',this)">OpenVibe.Tools</button>
             <button onclick="showSettingsSub('streamer',this)">OpenVibe.Live</button>
@@ -157,12 +165,13 @@
     </div>
 
     <!-- TTS -->
-    <div class="section" id="sec-tts">
+    <div class="section admin-clarity" id="sec-tts">
+        <p class="admin-intro">These are the services that read text aloud. Check this panel when reviewing available voices or diagnosing speech playback.</p>
         <div id="tts-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Cashouts: decided in OpenVibe.Billing's staff console (Billing is the only money ledger since 2026-10-17) -->
-    <div class="section" id="sec-cashouts">
+    <div class="section admin-clarity" id="sec-cashouts">
         <div class="card" style="max-width:760px">
             <h3><i class="fa-solid fa-money-bill-transfer" aria-hidden="true"></i> Cashouts are decided in OpenVibe.Billing</h3>
             <p class="muted" style="margin-bottom:8px">Billing holds every creator's balance. Its staff console lists cashouts still in escrow, ready to pay, paid and denied. Approving one records the payout reference; denying one puts the amount back in the creator's balance. The money freeze is there too.</p>
@@ -175,7 +184,8 @@
     </div>
 
     <!-- Payments: the switches and prices Live reads; provider webhooks and credentials are OpenVibe.Billing's -->
-    <div class="section" id="sec-payments">
+    <div class="section admin-clarity" id="sec-payments">
+        <p class="admin-intro">These settings control the payment choices and prices Live shows. Review them before offering paid features; Billing handles the payment itself and any refunds.</p>
         <div id="payments-content"><div class="loading">Loading...</div></div>
     </div>
 
@@ -188,53 +198,57 @@
     </div>
 
     <!-- Pastes -->
-    <div class="section" id="sec-pastes">
+    <div class="section admin-clarity" id="sec-pastes">
+        <p class="admin-intro">These are the limits and maintenance tools for shared text and image pastes. Check limits when reviewing capacity, and delete copies only when you intend permanent removal.</p>
         <div id="pastes-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Storage -->
-    <div class="section" id="sec-storage">
+    <div class="section admin-clarity" id="sec-storage">
+        <p class="admin-intro">This shows how much space recordings and other files use. Review it when storage runs low; deleting recordings is permanent and requires a separate backup to recover.</p>
         <div id="storage-content"><div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Analyzing storage...</div></div>
     </div>
 
     <!-- Notifications (Broadcast) -->
-    <div class="section" id="sec-notifications">
+    <div class="section admin-clarity" id="sec-notifications">
+        <p class="admin-intro">Broadcasts send a notification to every user. Use them for network-wide announcements; sending cannot be recalled here, so send a correction if needed.</p>
         <div class="card">
             <h3><i class="fa-solid fa-bullhorn"></i> Broadcast Notification</h3>
-            <p class="muted" style="margin-bottom:16px">Send a notification to all users across the OpenVibe.</p>
+            <p class="muted" style="margin-bottom:16px">This sends the title and message to every user across OpenVibe. Review the wording and destination before sending; there is no recall control here.</p>
             <div class="form-field">
                 <label>Title</label>
-                <input type="text" id="broadcast-title" placeholder="Notification title...">
+                <span class="admin-field"><input type="text" id="broadcast-title" aria-label="Notification title" aria-describedby="help-broadcast-title" placeholder="Notification title..."><span class="admin-help" id="help-broadcast-title"><strong>Notification title.</strong> The title everyone will see; required with no default. For example: Scheduled maintenance.</span></span>
             </div>
             <div class="form-field">
                 <label>Message</label>
-                <textarea id="broadcast-msg" rows="3" placeholder="Message body..." style="resize:vertical"></textarea>
+                <span class="admin-field"><textarea id="broadcast-msg" aria-label="Notification message" aria-describedby="help-broadcast-msg" rows="3" placeholder="Message body..." style="resize:vertical"></textarea><span class="admin-help" id="help-broadcast-msg"><strong>Notification message.</strong> The announcement body; required with no default. For example: We will be back at 18:00 UTC.</span></span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
                 <div class="form-field">
                     <label>Icon (emoji)</label>
-                    <input type="text" id="broadcast-icon" value="📢" style="text-align:center">
+                    <span class="admin-field"><input type="text" id="broadcast-icon" aria-label="Notification icon" aria-describedby="help-broadcast-icon" value="📢" style="text-align:center"><span class="admin-help" id="help-broadcast-icon"><strong>Notification icon.</strong> The default is the announcement emoji. Use one recognizable emoji, for example 📢.</span></span>
                 </div>
                 <div class="form-field">
                     <label>Priority</label>
-                    <select id="broadcast-priority">
-                        <option value="normal">Normal</option>
-                        <option value="high">High</option>
-                        <option value="critical">Critical</option>
-                    </select>
+                    <span class="admin-field"><select id="broadcast-priority" aria-label="How urgent is this?" aria-describedby="help-broadcast-priority">
+                        <option value="normal">Normal — routine announcement</option>
+                        <option value="high">High — needs attention</option>
+                        <option value="critical">Critical — urgent issue</option>
+                    </select><span class="admin-help" id="help-broadcast-priority"><strong>How urgent is this?</strong> Normal is the default for routine news; High calls for attention, and Critical marks an urgent issue. Choose Critical only when everyone needs to know promptly.</span></span>
                 </div>
                 <div class="form-field">
                     <label>URL (optional)</label>
-                    <input type="text" id="broadcast-url" placeholder="https://...">
+                    <span class="admin-field"><input type="text" id="broadcast-url" aria-label="Link to open" aria-describedby="help-broadcast-url" placeholder="https://..."><span class="admin-help" id="help-broadcast-url"><strong>Link to open.</strong> Optional destination when someone opens the notification; blank means no destination link. For example: https://openvibe.network.</span></span>
                 </div>
             </div>
-            <button class="btn btn-primary" onclick="sendBroadcast()"><i class="fa-solid fa-paper-plane"></i> Send Broadcast</button>
+            <button class="btn btn-primary" onclick="sendBroadcast()"><i class="fa-solid fa-paper-plane"></i> Send to everyone</button><p class="admin-help">This delivers the notification to all users. It cannot be recalled here; send a correction if needed.</p>
             <p class="muted" style="margin-top:10px;font-size:0.85rem"><i class="fa-solid fa-clock"></i> Admins can send one global notification every 6 hours. Owners are exempt.</p>
         </div>
     </div>
 
     <!-- Email -->
-    <div class="section" id="sec-email">
+    <div class="section admin-clarity" id="sec-email">
+        <p class="admin-intro">Network sends recovery and notification emails through Resend. Change the sender or delivery switch when configuring email, then send a test to check it.</p>
         <div class="card">
             <h3><i class="fa-solid fa-envelope"></i> Email Configuration</h3>
             <div id="email-content"><div class="loading">Loading...</div></div>
@@ -242,32 +256,35 @@
     </div>
 
     <!-- Verification Keys -->
-    <div class="section" id="sec-vkeys">
+    <div class="section admin-clarity" id="sec-vkeys">
+        <p class="admin-intro">Account reservation keys let a person claim a reserved username. Generate one when arranging a reservation; revoking it is permanent, so create a new key if the person still needs access.</p>
         <div class="input-row">
-            <input type="text" id="vkey-username" placeholder="Username to reserve..." onkeydown="if(event.key==='Enter')generateVKey()">
-            <input type="text" id="vkey-note" placeholder="Note (optional)">
-            <button class="btn btn-primary" onclick="generateVKey()"><i class="fa-solid fa-key"></i> Generate Key</button>
+            <span class="admin-field"><input type="text" id="vkey-username" aria-label="Username to reserve" aria-describedby="help-vkey-username" placeholder="Username to reserve..." onkeydown="if(event.key==='Enter')generateVKey()"><span class="admin-help" id="help-vkey-username"><strong>Username to reserve.</strong> Enter the username the recipient will claim, for example alex. No name is selected by default.</span></span>
+            <span class="admin-field"><input type="text" id="vkey-note" aria-label="Reservation note" aria-describedby="help-vkey-note" placeholder="Note (optional)"><span class="admin-help" id="help-vkey-note"><strong>Reservation note.</strong> Optional note for staff, for example reserved for the event host. Blank adds no note.</span></span>
+            <button class="btn btn-primary" onclick="generateVKey()"><i class="fa-solid fa-key"></i> Generate a reservation key</button>
         </div>
         <div id="vkeys-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Audit Log -->
-    <div class="section" id="sec-audit">
+    <div class="section admin-clarity" id="sec-audit">
+        <p class="admin-intro">This is the history of administrative changes. Review it after an unexpected change, then use the relevant settings page to correct it.</p>
         <div id="audit-content"><div class="loading">Loading...</div></div>
         <div id="audit-pager" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:12px"></div>
     </div>
 
     <!-- Moderation log (ADR-022): every staff action any service reports, from /api/v1/staff/moderation-audit -->
-    <div class="section" id="sec-modlog">
+    <div class="section admin-clarity" id="sec-modlog">
+        <p class="admin-intro">This records staff moderation actions across services. Filter it when investigating who acted and why; viewing or exporting the log changes no account permissions.</p>
         <p class="muted" style="margin:0 0 10px">Staff actions reported by Chat, Live, Community, Tips, Billing and the other services (Tools, Games, Wiki, Blog, News, Reviews, Deals, Coupons, Trade, Codes). Each service enforces its own moderation; this is the record.</p>
         <form id="modlog-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:10px" onsubmit="event.preventDefault(); loadModLog(true)">
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Service
-                <select id="modlog-service" onchange="loadModLog(true)"><option value="">All</option><option value="chat">Chat</option><option value="live">Live</option><option value="community">Community</option><option value="tips">Tips</option><option value="billing">Billing</option><option value="blog">Blog</option><option value="codes">Codes</option><option value="coupons">Coupons</option><option value="deals">Deals</option><option value="games">Games</option><option value="media">Media</option><option value="news">News</option><option value="reviews">Reviews</option><option value="tools">Tools</option><option value="trade">Trade</option><option value="wiki">Wiki</option></select></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Action<input id="modlog-action" placeholder="e.g. site_ban" maxlength="64" style="width:130px"></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">By (subject)<input id="modlog-actor" placeholder="usr_…" maxlength="64" style="width:150px"></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Target<input id="modlog-target" placeholder="subject or id" maxlength="200" style="width:150px"></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">From<input id="modlog-since" type="date"></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Until<input id="modlog-until" type="date"></label>
+                <span class="admin-field"><select id="modlog-service" aria-label="Service to review" aria-describedby="help-modlog-service" onchange="loadModLog(true)"><option value="">All</option><option value="chat">Chat</option><option value="live">Live</option><option value="community">Community</option><option value="tips">Tips</option><option value="billing">Billing</option><option value="blog">Blog</option><option value="codes">Codes</option><option value="coupons">Coupons</option><option value="deals">Deals</option><option value="games">Games</option><option value="media">Media</option><option value="news">News</option><option value="reviews">Reviews</option><option value="tools">Tools</option><option value="trade">Trade</option><option value="wiki">Wiki</option></select><span class="admin-help" id="help-modlog-service"><strong>Service to review.</strong> All services are shown by default. Select Live, for example, to review only actions from that service.</span></span></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Action<span class="admin-field"><input id="modlog-action" aria-label="Action to find" aria-describedby="help-modlog-action" placeholder="e.g. site_ban" maxlength="64" style="width:130px"><span class="admin-help" id="help-modlog-action"><strong>Action to find.</strong> Blank includes all actions. Enter an exact action name, for example site_ban for a site ban.</span></span></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">By (subject)<span class="admin-field"><input id="modlog-actor" aria-label="Staff account ID" aria-describedby="help-modlog-actor" placeholder="usr_…" maxlength="64" style="width:150px"><span class="admin-help" id="help-modlog-actor"><strong>Staff account ID.</strong> Blank includes all staff. Enter the stable account ID, for example a usr_ identifier from the record you are investigating.</span></span></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Target<span class="admin-field"><input id="modlog-target" aria-label="Affected account or item" aria-describedby="help-modlog-target" placeholder="subject or id" maxlength="200" style="width:150px"><span class="admin-help" id="help-modlog-target"><strong>Affected account or item.</strong> Blank includes all targets. Enter the account or item ID from the report.</span></span></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">From<span class="admin-field"><input id="modlog-since" aria-label="Start date" aria-describedby="help-modlog-since" type="date"><span class="admin-help" id="help-modlog-since"><strong>Start date.</strong> Blank sets no starting date. Choose an earlier date to include more history.</span></span></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Until<span class="admin-field"><input id="modlog-until" aria-label="End date" aria-describedby="help-modlog-until" type="date"><span class="admin-help" id="help-modlog-until"><strong>End date.</strong> Blank sets no ending date. Choose a later date to include more history.</span></span></label>
             <button class="btn" type="submit">Filter</button>
             <button class="btn" type="button" onclick="exportModLog()">Export CSV</button>
         </form>
@@ -276,31 +293,33 @@
     </div>
 
     <!-- Operator parity checklist (WS-D task 5): where each operator job is done, and what has no console yet -->
-    <div class="section" id="sec-checklist">
+    <div class="section admin-clarity" id="sec-checklist">
+        <p class="admin-intro">This checklist shows whether key operational areas are ready. Open the linked page when an item needs attention; a missing console means the listed command or API is the available route.</p>
         <p class="muted" style="margin:0 0 10px">Every operator job the old admin did, and where it is done now: a tab here, another service's console, the host CLI, or an API that has no console yet (shown, not hidden). The dot is that service's readiness as the status page last saw it.</p>
         <div id="checklist-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Community theme review (WS-E task 2): submissions stay private until approved here -->
-    <div class="section" id="sec-themes">
+    <div class="section admin-clarity" id="sec-themes"><p class="admin-intro">These themes are waiting for staff review. Approve a suitable theme to publish it, or reject it with a reason so its author can fix and resubmit it.</p>
         <p class="muted" style="margin:0 0 10px">Community themes waiting for review. Approving one puts it in the public catalog; rejecting needs a reason, which the author sees. Values are already limited to the shared colour tokens.</p>
         <div id="themes-review-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Service grants (WS-D task 3): what each service principal may do, owner-only and audited -->
-    <div class="section" id="sec-grants">
+    <div class="section admin-clarity" id="sec-grants">
+        <p class="admin-intro">These permissions let one OpenVibe service call another. Add one only for a required integration; revoke it to stop that access, or grant it again to restore access.</p>
         <p class="muted" style="margin:0 0 10px">What each service may ask other services for. Tokens carry a change within 5 minutes. Every change needs a reason, is audited below and is announced as <code>network.principal_grant.changed</code>. Defaults come from the code.</p>
         <form id="grant-form" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:12px" onsubmit="event.preventDefault(); submitGrant()">
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Service<input id="grant-client" placeholder="live" maxlength="64" style="width:110px" required></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Capability<input id="grant-cap" placeholder="network.staff.read" maxlength="120" style="width:210px" required></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Namespaces<input id="grant-ns" placeholder="comma separated (optional)" maxlength="400" style="width:180px"></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Expires<input id="grant-exp" type="date"></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Reason<input id="grant-reason" maxlength="500" style="width:220px" required></label>
-            <button class="btn" type="submit">Grant</button>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Service<span class="admin-field"><input id="grant-client" aria-label="Service receiving access" aria-describedby="help-grant-client" placeholder="live" maxlength="64" style="width:110px" required><span class="admin-help" id="help-grant-client"><strong>Service receiving access.</strong> Enter the service ID, for example live; required with no default. This is the service that will be allowed to call the API.</span></span></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Capability<span class="admin-field"><input id="grant-cap" aria-label="Permission to grant" aria-describedby="help-grant-cap" placeholder="network.staff.read" maxlength="120" style="width:210px" required><span class="admin-help" id="help-grant-cap"><strong>Permission to grant.</strong> Enter the exact permission name, for example network.staff.read; required with no default. Granting it enables that operation until expiry or revocation.</span></span></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Namespaces<span class="admin-field"><input id="grant-ns" aria-label="Allowed areas" aria-describedby="help-grant-ns" placeholder="comma separated (optional)" maxlength="400" style="width:180px"><span class="admin-help" id="help-grant-ns"><strong>Allowed areas.</strong> Optional comma-separated areas to restrict this permission, for example a namespace required by the integration. Blank adds no namespace restriction.</span></span></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Expires<span class="admin-field"><input id="grant-exp" aria-label="Access expiry date" aria-describedby="help-grant-exp" type="date"><span class="admin-help" id="help-grant-exp"><strong>Access expiry date.</strong> Blank means no expiry date. Access ends at midnight UTC on the selected date; an earlier date grants access for less time.</span></span></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Reason<span class="admin-field"><input id="grant-reason" aria-label="Why access is needed" aria-describedby="help-grant-reason" maxlength="500" style="width:220px" required><span class="admin-help" id="help-grant-reason"><strong>Why access is needed.</strong> Required explanation for the audit history, for example enable staff lookup for Live. No reason is filled in by default.</span></span></label>
+            <button class="btn" type="submit">Grant access</button>
         </form>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
             <label for="grant-filter" class="muted" style="font-size:12px">Show</label>
-            <input id="grant-filter" placeholder="service" maxlength="64" style="width:120px" oninput="renderGrants()">
+            <span class="admin-field"><input id="grant-filter" aria-label="Find a service" aria-describedby="help-grant-filter" placeholder="service" maxlength="64" style="width:120px" oninput="renderGrants()"><span class="admin-help" id="help-grant-filter"><strong>Find a service.</strong> Blank shows every service permission. Enter live, for example, to narrow the list.</span></span>
         </div>
         <div id="grants-content"><div class="loading">Loading...</div></div>
         <h3 style="margin:18px 0 8px;font-size:14px">Changes</h3>
@@ -308,20 +327,22 @@
     </div>
 
     <!-- Event deliveries (WS-F task 3): OpenVibe.Events' dead-letter queue and replays -->
-    <div class="section" id="sec-eventsops">
+    <div class="section admin-clarity" id="sec-eventsops">
+        <p class="admin-intro">These are event messages that have not reached a subscribed service. Fix the delivery problem before retrying; replay sends another delivery and cannot be recalled once sent.</p>
         <p class="muted" style="margin:0 0 10px">Deliveries OpenVibe.Events could not make. A dead delivery stopped retrying; replay it once its consumer is fixed. Replays are audited.</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:10px">
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Status
-                <select id="dlq-status" onchange="loadDeliveries()"><option value="dead">Dead</option><option value="failed">Failing (retrying)</option><option value="pending">Pending</option></select></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Subscription<input id="dlq-sub" placeholder="sub_…" maxlength="40" style="width:240px"></label>
-            <button class="btn" type="button" onclick="loadDeliveries()">Show</button>
+                <span class="admin-field"><select id="dlq-status" aria-label="Delivery state" aria-describedby="help-dlq-status" onchange="loadDeliveries()"><option value="dead">Stopped retrying — needs attention</option><option value="failed">Retrying — delivery keeps failing</option><option value="pending">Waiting — delivery is queued</option></select><span class="admin-help" id="help-dlq-status"><strong>Delivery state.</strong> The default shows deliveries that stopped retrying. Choose Retrying to investigate ongoing failures, or Waiting for messages still queued.</span></span></label>
+            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Subscription<span class="admin-field"><input id="dlq-sub" aria-label="Subscription ID" aria-describedby="help-dlq-sub" placeholder="sub_…" maxlength="40" style="width:240px"><span class="admin-help" id="help-dlq-sub"><strong>Subscription ID.</strong> Blank includes all subscriptions. Enter the sub_ identifier of a receiving service to narrow the list.</span></span></label>
+            <button class="btn" type="button" onclick="loadDeliveries()">Show deliveries</button>
         </div>
         <div id="dlq-counts" class="muted" style="font-size:12px;margin-bottom:8px"></div>
         <div id="dlq-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Analytics -->
-    <div class="section" id="sec-analytics">
+    <div class="section admin-clarity" id="sec-analytics">
+        <p class="admin-intro">These charts count visits, requests, errors, and response times. Choose a time range or service when investigating a trend; a longer range shows more history and a shorter range highlights recent changes.</p>
         <div class="sub-tabs" id="analytics-sub-tabs">
             <button class="active" onclick="showAnalyticsSubTab('overview',this)">Overview</button>
             <button onclick="showAnalyticsSubTab('live',this)">OpenVibe.Live</button>
@@ -332,7 +353,7 @@
             <button onclick="showAnalyticsSubTab('bots',this)">Bot Analysis</button>
         </div>
         <div class="input-row" style="margin-bottom:16px">
-            <select id="analytics-period" onchange="reloadAnalytics()" style="max-width:180px">
+            <span class="admin-field"><select id="analytics-period" aria-label="Time range" aria-describedby="help-analytics-period" onchange="reloadAnalytics()" style="max-width:180px">
                 <option value="1h">Last hour</option>
                 <option value="12h">Last 12 hours</option>
                 <option value="24h">Last 24 hours</option>
@@ -342,7 +363,7 @@
                 <option value="30" selected>Last 30 days</option>
                 <option value="90">Last 90 days</option>
                 <option value="365">Last year</option>
-            </select>
+            </select><span class="admin-help" id="help-analytics-period"><strong>Time range.</strong> The default is the last 30 days. Longer ranges show more history and shorter ranges highlight recent changes; for example choose Last hour for a current incident.</span></span>
             <button class="btn btn-outline" onclick="reloadAnalytics()"><i class="fa-solid fa-rotate"></i> Refresh</button>
         </div>
 
@@ -351,60 +372,60 @@
             <div id="analytics-insights"></div>
             <div class="stats-grid" id="analytics-stats"><div class="loading">Loading analytics...</div></div>
             <div class="card" id="analytics-realtime-card" style="display:none">
-                <h3><i class="fa-solid fa-signal" style="color:var(--success-text, var(--success))"></i> Real-time (last 5 min)</h3>
+                <h3><i class="fa-solid fa-signal" style="color:var(--success-text, var(--success))"></i> Real-time (last 5 min)</h3><p class="admin-intro">These counts cover requests in the last five minutes. Check them during an incident; higher request counts mean more activity and higher error counts mean more failures.</p>
                 <div id="analytics-realtime"></div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-chart-area"></i> Traffic Trend</h3>
+                    <h3><i class="fa-solid fa-chart-area"></i> Traffic Trend</h3><p class="admin-intro">This plots requests over the selected time range. Use a shorter range to inspect a spike or a longer range to compare activity across days.</p>
                     <canvas id="chart-traffic-trend" height="260"></canvas>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-ranking-star"></i> Service Comparison</h3>
+                    <h3><i class="fa-solid fa-ranking-star"></i> Service Comparison</h3><p class="admin-intro">This compares traffic across services. Review it when deciding which service needs more capacity or investigation.</p>
                     <canvas id="chart-service-compare" height="260"></canvas>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-users"></i> Unique Visitors Trend</h3>
+                    <h3><i class="fa-solid fa-users"></i> Unique Visitors Trend</h3><p class="admin-intro">This plots estimated distinct visitors over time. Compare periods to see audience changes; larger counts mean more visitors, not necessarily more registered accounts.</p>
                     <canvas id="chart-visitors-trend" height="240"></canvas>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-user-check"></i> Logged-in vs Anonymous</h3>
+                    <h3><i class="fa-solid fa-user-check"></i> Logged-in vs Anonymous</h3><p class="admin-intro">This compares visits with and without a signed-in account. Review it when checking how much activity comes from members versus visitors.</p>
                     <canvas id="chart-auth-trend" height="240"></canvas>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-chart-column"></i> Per-Service Traffic Share</h3>
+                    <h3><i class="fa-solid fa-chart-column"></i> Per-Service Traffic Share</h3><p class="admin-intro">This compares each service’s portion of recorded traffic. Use it to identify where most requests go before changing capacity.</p>
                     <canvas id="chart-service-share" height="260"></canvas>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-chart-column"></i> Per-Service Visitors</h3>
+                    <h3><i class="fa-solid fa-chart-column"></i> Per-Service Visitors</h3><p class="admin-intro">This compares estimated distinct visitors by service. Review it when checking audience size; a person visiting multiple services may be counted in each.</p>
                     <canvas id="chart-service-visitors" height="260"></canvas>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-layer-group"></i> Per-Service Traffic Over Time</h3>
+                    <h3><i class="fa-solid fa-layer-group"></i> Per-Service Traffic Over Time</h3><p class="admin-intro">This plots each service’s traffic across the selected range. Review it when a network-wide spike needs tracing to one service.</p>
                     <canvas id="chart-per-service-trend" height="280"></canvas>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-robot"></i> Bots vs Humans</h3>
+                    <h3><i class="fa-solid fa-robot"></i> Bots vs Humans</h3><p class="admin-intro">This separates requests classified as automated from those classified as human. Check it when traffic rises unexpectedly; the classification is an estimate.</p>
                     <canvas id="chart-bot-ratio" height="220"></canvas>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-network-wired"></i> Bandwidth &amp; Usage</h3>
+                    <h3><i class="fa-solid fa-network-wired"></i> Bandwidth &amp; Usage</h3><p class="admin-intro">This estimates data transferred and request volume. Check it when planning capacity; more bytes mean more network use, not a confirmed bill.</p>
                     <div id="analytics-bandwidth"></div>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-server"></i> Per-Service Traffic</h3>
+                    <h3><i class="fa-solid fa-server"></i> Per-Service Traffic</h3><p class="admin-intro">This lists request totals and errors for each service. Review services with more errors before changing their configuration.</p>
                     <div id="analytics-service-table"></div>
                 </div>
             </div>
@@ -415,75 +436,75 @@
             <div class="stats-grid" id="svc-analytics-stats"><div class="loading">Loading...</div></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-chart-line"></i> Daily Traffic</h3>
+                    <h3><i class="fa-solid fa-chart-line"></i> Daily Traffic</h3><p class="admin-intro">This groups recorded traffic by day. Use it to compare daily activity over the selected period.</p>
                     <canvas id="chart-svc-daily" height="260"></canvas>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-clock"></i> <span id="svc-hourly-title">Hourly (24h)</span></h3>
+                    <h3><i class="fa-solid fa-clock"></i> <span id="svc-hourly-title">Hourly (24h)</span></h3><p class="admin-intro">This groups the last day of traffic by hour. Review it when locating a recent spike; taller bars mean more recorded requests.</p>
                     <canvas id="chart-svc-hourly" height="260"></canvas>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-gauge-high"></i> Response Time Percentiles</h3>
+                    <h3><i class="fa-solid fa-gauge-high"></i> Response Time Percentiles</h3><p class="admin-intro">This shows response times in milliseconds, including the time within which 95 percent of requests finish (p95). Check it when a service feels slow; higher times mean longer waits.</p>
                     <div id="svc-response-percentiles"></div>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-clock-rotate-left"></i> Peak Hours</h3>
+                    <h3><i class="fa-solid fa-clock-rotate-left"></i> Peak Hours</h3><p class="admin-intro">This shows which hours receive the most traffic. Use it when choosing maintenance windows or planning capacity.</p>
                     <canvas id="chart-svc-peak-hours" height="200"></canvas>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-laptop"></i> Devices</h3>
+                    <h3><i class="fa-solid fa-laptop"></i> Devices</h3><p class="admin-intro">This groups traffic by device type. Review it when deciding which screen sizes need attention.</p>
                     <canvas id="chart-svc-devices" height="220"></canvas>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-globe"></i> Browsers</h3>
+                    <h3><i class="fa-solid fa-globe"></i> Browsers</h3><p class="admin-intro">This groups traffic by browser. Review it when investigating a browser-specific problem.</p>
                     <canvas id="chart-svc-browsers" height="220"></canvas>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-desktop"></i> OS</h3>
+                    <h3><i class="fa-solid fa-desktop"></i> OS</h3><p class="admin-intro">This groups traffic by operating system. Review it when investigating a platform-specific problem.</p>
                     <canvas id="chart-svc-os" height="220"></canvas>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-network-wired"></i> Bandwidth &amp; Sessions</h3>
+                    <h3><i class="fa-solid fa-network-wired"></i> Bandwidth &amp; Sessions</h3><p class="admin-intro">This shows estimated transferred data and browsing sessions. Review it when planning capacity; more bytes or sessions mean more use.</p>
                     <div id="svc-bandwidth-sessions"></div>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-user-check"></i> Auth vs Anonymous</h3>
+                    <h3><i class="fa-solid fa-user-check"></i> Auth vs Anonymous</h3><p class="admin-intro">This compares signed-in requests with requests from visitors without a session. Review it when investigating sign-in or audience patterns.</p>
                     <canvas id="chart-svc-auth" height="200"></canvas>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-link"></i> Top Pages</h3>
+                    <h3><i class="fa-solid fa-link"></i> Top Pages</h3><p class="admin-intro">These pages received the most visits during the selected period. Review them when prioritizing content or investigating unusual traffic.</p>
                     <div id="svc-top-pages"></div>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-bolt"></i> Top API Endpoints</h3>
+                    <h3><i class="fa-solid fa-bolt"></i> Top API Endpoints</h3><p class="admin-intro">These service operations received the most requests. Review them when investigating load; more requests mean more calls, not necessarily more people.</p>
                     <div id="svc-top-api"></div>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-arrow-up-right-from-square"></i> Top Referers</h3>
+                    <h3><i class="fa-solid fa-arrow-up-right-from-square"></i> Top Referers</h3><p class="admin-intro">These are the websites that referred visitors here. Review them when checking traffic sources; some browsers do not send a referring address.</p>
                     <div id="svc-top-referers"></div>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-gauge"></i> Slowest Endpoints</h3>
+                    <h3><i class="fa-solid fa-gauge"></i> Slowest Endpoints</h3><p class="admin-intro">These service operations had the longest response times in milliseconds. Review them during performance investigations; higher times mean slower responses.</p>
                     <div id="svc-slowest"></div>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
                 <div class="card">
-                    <h3><i class="fa-solid fa-circle-exclamation"></i> Status Codes</h3>
+                    <h3><i class="fa-solid fa-circle-exclamation"></i> Status Codes</h3><p class="admin-intro">These counts group server responses by HTTP result: 2xx succeeded, 3xx redirected, 4xx could not accept the request, and 5xx failed at the server. Review rising error counts when investigating reliability.</p>
                     <canvas id="chart-svc-status" height="200"></canvas>
                 </div>
                 <div class="card">
-                    <h3><i class="fa-solid fa-earth-americas"></i> Countries</h3>
+                    <h3><i class="fa-solid fa-earth-americas"></i> Countries</h3><p class="admin-intro">These estimates group visits by country supplied by the edge service. Review them when understanding reach; missing country information does not mean no traffic.</p>
                     <div id="svc-countries"></div>
                 </div>
             </div>
@@ -496,7 +517,8 @@
     </div>
 
     <!-- Deploy -->
-    <div class="section" id="sec-deploy">
+    <div class="section admin-clarity" id="sec-deploy">
+        <p class="admin-intro">These tools manage website addresses, HTTPS certificates, and the web server. Change them when bringing a domain online or fixing routing, and review previews before applying changes.</p>
         <div class="sub-tabs" id="deploy-sub-tabs">
             <button class="active" onclick="showDeploySubTab('overview',this)">Overview</button>
             <button onclick="showDeploySubTab('certs',this)">Certificates</button>
@@ -509,7 +531,7 @@
         <div id="deploy-overview">
             <div class="stats-grid" id="deploy-stats"><div class="loading">Loading deploy status...</div></div>
             <div class="card" style="margin-top:16px">
-                <h3><i class="fa-solid fa-circle-check"></i> Prerequisites</h3>
+                <h3><i class="fa-solid fa-circle-check"></i> Prerequisites</h3><p class="admin-intro">These checks show whether certificate and web server tools are installed and configured. Fix a missing prerequisite before issuing certificates or applying web routing.</p>
                 <div id="deploy-prereqs"><div class="muted">Checking...</div></div>
             </div>
         </div>
@@ -518,24 +540,24 @@
         <div id="deploy-certs-panel" style="display:none">
             <div class="card">
                 <h3><i class="fa-solid fa-lock"></i> SSL/TLS Certificates</h3>
-                <p class="muted" style="margin:8px 0 16px">Manage Let's Encrypt wildcard certificates for all domains.</p>
+                <p class="muted" style="margin:8px 0 16px">Certificates enable encrypted HTTPS connections for your domains. Check expiry dates when a certificate is near renewal or visitors see a security error; fewer remaining days means renewal is more urgent.</p>
                 <div id="deploy-certs-list"><div class="loading">Loading certificates...</div></div>
             </div>
             <div class="card" style="margin-top:16px">
-                <h3><i class="fa-solid fa-plus-circle"></i> Issue New Certificate</h3>
+                <h3><i class="fa-solid fa-plus-circle"></i> Issue New Certificate</h3><p class="admin-intro">This requests HTTPS certificates for a domain you control. Use it when adding a domain; renewal replaces expiring certificates, and issuance cannot be recalled from this page.</p>
                 <div class="form-group" style="margin:12px 0">
                     <label>Domain</label>
-                    <input type="text" id="cert-issue-domain" placeholder="example.com" style="width:300px">
+                    <span class="admin-field"><input type="text" id="cert-issue-domain" aria-label="Domain for the certificate" aria-describedby="help-cert-issue-domain" placeholder="example.com" style="width:300px"><span class="admin-help" id="help-cert-issue-domain"><strong>Domain for the certificate.</strong> No domain is selected by default. Enter a domain you control, for example example.com, after its DNS is ready.</span></span>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
                     <button class="btn btn-primary" onclick="issueCertCloudflare()">
                         <i class="fa-brands fa-cloudflare"></i> Issue via Cloudflare DNS
                     </button>
                     <button class="btn btn-secondary" onclick="showManualDnsInfo()">
-                        <i class="fa-solid fa-hand"></i> Manual DNS Mode
+                        <i class="fa-solid fa-hand"></i> Manual DNS
                     </button>
                     <button class="btn btn-secondary" onclick="renewAllCerts()">
-                        <i class="fa-solid fa-rotate"></i> Renew All
+                        <i class="fa-solid fa-rotate"></i> Renew all certificates
                     </button>
                 </div>
                 <div id="cert-issue-output" style="margin-top:12px"></div>
@@ -546,7 +568,7 @@
         <div id="deploy-nginx-panel" style="display:none">
             <div class="card">
                 <h3><i class="fa-solid fa-sitemap"></i> Nginx Configuration</h3>
-                <p class="muted" style="margin:8px 0 16px">Preview and apply generated Nginx configs derived from your domain and service settings.</p>
+                <p class="muted" style="margin:8px 0 16px">Nginx directs web requests to the right service. Preview when changing domains, then validate before applying; Apply writes configuration and reloads the web server, and undo requires restoring the backup on the server.</p>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
                     <button class="btn btn-primary" onclick="previewNginxConfigs()">
                         <i class="fa-solid fa-eye"></i> Preview All Configs
@@ -555,7 +577,7 @@
                         <i class="fa-solid fa-check-circle"></i> Validate Current Config
                     </button>
                     <button class="btn btn-warning" onclick="applyNginxConfigs()">
-                        <i class="fa-solid fa-upload"></i> Apply & Reload
+                        <i class="fa-solid fa-upload"></i> Apply configuration and reload
                     </button>
                 </div>
                 <div id="nginx-preview-output"></div>
@@ -566,18 +588,18 @@
         <div id="deploy-domains-panel" style="display:none">
             <div class="card">
                 <h3><i class="fa-solid fa-globe"></i> Managed Domains</h3>
-                <p class="muted" style="margin:8px 0 16px">Configure which domains this instance manages for TLS and reverse proxy.</p>
+                <p class="muted" style="margin:8px 0 16px">These domains are included in certificate and web routing configuration. Add a domain when bringing it online, or remove it to stop managing it here; add it again to undo.</p>
                 <div id="deploy-domains-list"><div class="loading">Loading...</div></div>
                 <div style="margin-top:16px;display:flex;gap:8px;align-items:end;flex-wrap:wrap">
                     <div class="form-group" style="margin:0">
                         <label>Add Domain</label>
-                        <input type="text" id="domain-add-input" placeholder="example.com" style="width:250px">
+                        <span class="admin-field"><input type="text" id="domain-add-input" aria-label="Domain to manage" aria-describedby="help-domain-add-input" placeholder="example.com" style="width:250px"><span class="admin-help" id="help-domain-add-input"><strong>Domain to manage.</strong> No domain is selected by default. Enter the base domain, for example example.com; removing it later reverses this list change.</span></span>
                     </div>
                     <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)">
-                        <input type="checkbox" id="domain-add-wildcard" checked> Wildcard (*.domain)
+                        <span class="admin-field"><input type="checkbox" id="domain-add-wildcard" aria-label="Include subdomains" aria-describedby="help-domain-add-wildcard" checked><span class="admin-help" id="help-domain-add-wildcard"><strong>Include subdomains.</strong> On by default, so the certificate also covers addresses such as app.example.com. Turn it off to request only the base domain.</span></span> Wildcard (*.domain)
                     </label>
                     <button class="btn btn-primary" onclick="addManagedDomain()">
-                        <i class="fa-solid fa-plus"></i> Add
+                        <i class="fa-solid fa-plus"></i> Add domain
                     </button>
                 </div>
             </div>
@@ -586,38 +608,38 @@
         <!-- Deploy: Config -->
         <div id="deploy-config-panel" style="display:none">
             <div class="card">
-                <h3><i class="fa-solid fa-gear"></i> Deploy Configuration</h3>
+                <h3><i class="fa-solid fa-gear"></i> Deploy Configuration</h3><p class="admin-intro">These settings choose how certificates and web routing are managed. Change them when setting up the server, using Preview only until the generated configuration has been checked.</p>
                 <div class="form-group" style="margin:12px 0">
-                    <label>ACME / Let's Encrypt Email</label>
-                    <input type="email" id="deploy-acme-email" placeholder="admin@example.com" style="width:350px">
+                    <label for="deploy-acme-email">Certificate contact email</label>
+                    <span class="admin-field"><input type="email" id="deploy-acme-email" aria-label="Certificate contact email" aria-describedby="help-deploy-acme-email" placeholder="admin@example.com" style="width:350px"><span class="admin-help" id="help-deploy-acme-email">No contact address is configured by default. Enter an address you monitor, for example admin@example.com, for certificate account notices.</span></span>
                 </div>
                 <div class="form-group" style="margin:12px 0">
-                    <label>Certificate Mode</label>
-                    <select id="deploy-cert-mode" style="width:250px">
-                        <option value="cloudflare">Cloudflare DNS (Automated)</option>
-                        <option value="manual">Manual DNS Challenge</option>
-                        <option value="none">None / External</option>
-                    </select>
+                    <label for="deploy-cert-mode">How certificates are obtained</label>
+                    <span class="admin-field"><select id="deploy-cert-mode" aria-label="How to obtain certificates" aria-describedby="help-deploy-cert-mode" style="width:250px">
+                        <option value="cloudflare">Automatic — a Cloudflare token does the DNS step</option>
+                        <option value="manual">Manual — you add the DNS record yourself</option>
+                        <option value="none">External — managed outside Network</option>
+                    </select><span class="admin-help" id="help-deploy-cert-mode">Manual DNS is the default and requires adding a verification record yourself. Cloudflare automates that step with a token; External means certificates are managed elsewhere.</span></span>
                 </div>
                 <div class="form-group" style="margin:12px 0" id="deploy-cf-token-group">
-                    <label>Cloudflare API Token <span class="muted">(Zone → DNS → Edit)</span></label>
-                    <input type="password" id="deploy-cf-token" placeholder="••••••••" style="width:400px">
+                    <label for="deploy-cf-token">Cloudflare DNS token <span class="muted">(needs Zone → DNS → Edit)</span></label>
+                    <span class="admin-field"><input type="password" id="deploy-cf-token" aria-label="Cloudflare DNS editing token" aria-describedby="help-deploy-cf-token" placeholder="••••••••" style="width:400px"><span class="admin-help" id="help-deploy-cf-token">No token is configured by default. Use a token with Zone → DNS → Edit for the managed domains; for example limit it to your website zone.</span></span>
                     <div class="muted" style="font-size:11px;margin-top:4px">Token with Zone:DNS:Edit permissions for all managed domains</div>
                 </div>
                 <div class="form-group" style="margin:12px 0">
-                    <label>Nginx Management Mode</label>
-                    <select id="deploy-nginx-mode" style="width:250px">
-                        <option value="preview">Preview Only</option>
-                        <option value="apply">Apply (Write + Validate + Reload)</option>
-                        <option value="disabled">Disabled</option>
-                    </select>
+                    <label for="deploy-nginx-mode">How the web server is managed</label>
+                    <span class="admin-field"><select id="deploy-nginx-mode" aria-label="How to manage the web server" aria-describedby="help-deploy-nginx-mode" style="width:250px">
+                        <option value="preview">Preview only — nothing is written</option>
+                        <option value="apply">Apply — write, check and reload the web server</option>
+                        <option value="disabled">Disabled — do not manage Nginx</option>
+                    </select><span class="admin-help" id="help-deploy-nginx-mode">Preview only is the default and writes nothing. Apply permits writing, checking, and reloading Nginx; Disabled turns management off, and restoring a backup on the server undoes applied changes.</span></span>
                 </div>
                 <div class="form-group" style="margin:12px 0">
-                    <label>Nginx sites-enabled Path</label>
-                    <input type="text" id="deploy-nginx-path" placeholder="/etc/nginx/sites-enabled" style="width:400px">
+                    <label for="deploy-nginx-path">Web server configuration folder</label>
+                    <span class="admin-field"><input type="text" id="deploy-nginx-path" aria-label="Web server configuration folder" aria-describedby="help-deploy-nginx-path" placeholder="/etc/nginx/sites-enabled" style="width:400px"><span class="admin-help" id="help-deploy-nginx-path">The default is /etc/nginx/sites-enabled. Change it only if this server stores enabled website configuration in another folder.</span></span>
                 </div>
                 <button class="btn btn-primary" onclick="saveDeployConfig()" style="margin-top:8px">
-                    <i class="fa-solid fa-save"></i> Save Deploy Config
+                    <i class="fa-solid fa-save"></i> Save deploy settings
                 </button>
                 <span id="deploy-config-status" style="margin-left:12px"></span>
             </div>
@@ -625,10 +647,12 @@
     </div>
 
     <!-- SSH access provisioning -->
-    <div class="section" id="sec-domains">
+    <div class="section admin-clarity" id="sec-domains">
+        <p class="admin-intro">These addresses route people to tools across OpenVibe. Add or change an address when introducing a domain; remove the saved override to return to the built-in routing.</p>
         <div id="domains-content"><div class="loading">Loading...</div></div>
     </div>
-    <div class="section" id="sec-ssh">
+    <div class="section admin-clarity" id="sec-ssh">
+        <p class="admin-intro">SSH gives staff command-line access to the development server. Use these instructions when setting up access, and choose only the permissions the person needs.</p>
         <div id="ssh-content"><div class="loading">Loading...</div></div>
     </div>
 </div>
