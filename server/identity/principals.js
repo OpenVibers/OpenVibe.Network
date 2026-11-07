@@ -839,6 +839,12 @@ const DEFAULT_GRANTS = [
     // service the way in, not the queue.
     ['codes', 'chat.play_queue.read', 'openvibe.chat', []],
     ['codes', 'chat.play_queue.write', 'openvibe.chat', []],
+    // The Agent Streams plan (S6, Contracts 0.314.0): the chat plays sandbox worker checks in with Live
+    // (live.agent_sandbox.register, the audience openvibe.live) for the person whose stream it works. It is its own
+    // service principal (`codes-sandbox`), never Codes: the worker runs as its own user with its own Network client,
+    // and Live must be able to tell it from a person's Codes session. It acts for the person named in X-OV-Subject,
+    // never for anyone else, so the grant is unscoped and the audience is Live's alone.
+    ['codes-sandbox', 'live.agent_sandbox.register', 'openvibe.live', []],
     // The Agent Streams plan (S3, Contracts 0.300.0): Codes, Actor and Live write the report of an agent session on
     // OpenVibe.Report (report.session.write, the audience openvibe.report). They act for the person and for nobody
     // else, so the grant is unscoped and the audience is Report's alone. A desk session on a person's own machine
