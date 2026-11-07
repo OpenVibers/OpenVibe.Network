@@ -204,7 +204,7 @@ function mcPoolBlock(pool) {
     const note = waiting
         ? `${waiting} machine${waiting === 1 ? '' : 's'} still to approve this pool on itself, in Node (pool ${pool.id}).`
         : ready ? 'Serving as one offer. The head sees prompts; the others only receive tensors.' : 'Paused: a machine is in use, offline or outside its hours.';
-    const stop = mcEl('button', 'btn btn-outline btn-small', [mcIcon('fa-circle-stop'), ' Stop pool'], { type: 'button' });
+    const stop = mcEl('button', 'btn btn-outline btn-small', [mcIcon('fa-stop'), ' Stop pool'], { type: 'button' });
     stop.addEventListener('click', async () => {
         stop.disabled = true;
         try {
