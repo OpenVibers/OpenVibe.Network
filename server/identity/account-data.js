@@ -177,8 +177,9 @@ async function networkPart(db, userId) {
     await byUser('sessions.json', 'user_sessions');
     await byUser('oauth_grants.json', 'oauth_tokens');
     await byUser('notifications.json', 'notifications');
+    const prefs = (await rowsOf(db, 'user_preferences', 'user_id = ?', [u.id])).rows[0] || null;
     add('preferences.json', {
-        display: (await rowsOf(db, 'user_preferences', 'user_id = ?', [u.id])).rows[0] || null,
+        display: prefs,
         notifications: (await rowsOf(db, 'notification_preferences', 'user_id = ?', [u.id])).rows,
         quiet_hours: (await rowsOf(db, 'notification_quiet_hours', 'user_id = ?', [u.id])).rows[0] || null,
         effects: (await rowsOf(db, 'user_effects', 'user_id = ?', [u.id])).rows,
@@ -186,6 +187,12 @@ async function networkPart(db, userId) {
         theme_history: (await rowsOf(db, 'user_theme_history', 'user_id = ?', [u.id])).rows,
         theme_site_overrides: (await rowsOf(db, 'user_theme_site_overrides', 'user_id = ?', [u.id])).rows,
     });
+    // The menu's "Choose your feeds" (2026-11-07): the choice sits in the preferences row above; its own file makes
+    // it readable without opening preferences.json. Never chosen reads as { on: null }, exactly as the route answers.
+    let feeds = prefs && prefs.menu_feeds;
+    if (typeof feeds === 'string') { try { feeds = JSON.parse(feeds); } catch { feeds = null; } }
+    add('menu-feeds.json', feeds && typeof feeds === 'object' && Array.isArray(feeds.on)
+        ? { on: feeds.on, updated_at: feeds.updated_at || null } : { on: null });
     await byUser('history.json', 'user_history');
     // The Dock's state (the Dock plan 2026-10-30, K-D1): the little floating surface every OpenVibe site draws.
     add('dock.json', await tableExists(db, 'dock_states')

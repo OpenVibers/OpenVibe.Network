@@ -792,6 +792,11 @@ require('./developer/confirmations').start(db);
     // the Action Center's own, so a page view never fans out further than the aggregator's 10 s cache already does.
     const dock = require('./dock').createDock({ db, actions, notifications: notificationService });
     app.use('/api/v1/me/dock', require('./dock').router({ dock, requireAuth: requireDock('dock') }));
+    // The menu's "Choose your feeds" (2026-11-07): the sites' menu cards a person chose, in their order, follow them
+    // across every site (localStorage is per site). Stored in their preferences row, one JSON value; 60 writes a
+    // minute per person, like the Dock's. GET answers { on: null } for a person who has never chosen.
+    const menuFeeds = require('./menu-feeds').createMenuFeeds({ db });
+    app.use('/api/v1/me/menu-feeds', require('./menu-feeds').router({ menuFeeds, requireAuth }));
     // The Dock's timer, for a first-party service and not for a person (plan L48 R2): Vibe starts the focus timer of
     // the person it is talking with, and it counts down in the Dock's pill on every OpenVibe site. The service names
     // the person and writes the timer and nothing else (network.dock.timer.write, granted to Chat alone).
