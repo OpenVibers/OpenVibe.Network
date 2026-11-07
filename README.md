@@ -97,8 +97,8 @@ person's username and picture (a service token, `identity.subject.resolve`).
 
 ## Depends on
 
-- `openvibe-contracts` v0.297.0 (registry manifests, capability checks), `openvibe-sdk` v0.94.0 (PostgreSQL
-  and Valkey adapters, events, per-actor limits, universal telemetry), `openvibe-shared` v4.30.0, pinned by release tarball
+- `openvibe-contracts` v0.317.0 (registry manifests, capability checks), `openvibe-sdk` v0.94.0 (PostgreSQL
+  and Valkey adapters, events, per-actor limits, universal telemetry), `openvibe-shared` v4.126.0, pinned by release tarball
 - OpenVibe.Events (Network's outbox relay; the events it consumes), OpenVibe.AI (the `network.site_copy`
   workflow), OpenVibe.Blog (the changelog feed it proxies)
 - email (Resend), Discord and GitHub when their secrets are set ([Provider secrets](#provider-secrets))
@@ -1027,7 +1027,7 @@ Every change also sends the person a Network notification, so a swap nobody aske
 MIT (`license` in [package.json](package.json)).
 
 <!-- versions:start -->
-- openvibe-contracts: v0.315.0
+- openvibe-contracts: v0.319.0
 - openvibe-sdk: v0.94.0
 - openvibe-shared: v4.126.0
 <!-- versions:end -->
