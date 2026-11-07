@@ -90,6 +90,9 @@ async function seedDb(db, { log = console } = {}) {
     {
         const { v4: uuidv4 } = require('uuid');
         const contractClients = [
+            // Chat signs people in on its own site and, since Watch Together v1 (plan R1), on openvibe.party: one client,
+            // two host-only sessions (each host keeps its own cookies, and each callback is on its own host).
+            { client_id: 'chat', name: 'OpenVibe.Chat', redirect_uris: ['https://openvibe.chat/auth/callback', 'https://openvibe.party/auth/callback'] },
             { client_id: 'live', name: 'OpenVibe.Live', redirect_uris: ['https://openvibe.live/api/auth/callback'] },
             // The account hub's own origin (plan OpenVibe_Seven_Domains_Plan §4): a first-party confidential client
             // with PKCE, so openvibe.my has its own host-only session instead of reading a .openvibe.network cookie.
