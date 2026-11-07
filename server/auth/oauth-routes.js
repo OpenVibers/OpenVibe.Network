@@ -18,6 +18,8 @@ const refreshTokens = require('./refresh-tokens');
 const dock = require('./dock-tokens');
 const { isExtensionOrigin } = require('./extension-origin');
 const consentApps = require('../consent/apps');
+const appLinks = require('./app-links');
+const { staff } = require('openvibe-contracts');
 const router = express.Router();
 
 function getDb(req) { return req.app.locals.db; }
@@ -152,6 +154,11 @@ router.get('/authorize', async (req, res) => {
     const nonce = oidc.cleanNonce(req.query.nonce);
     if (nonce === undefined) return res.status(400).json({ error: 'invalid_request', error_description: 'malformed nonce' });
 
+    // A session client is never signed in silently: prompt=none would return a code with no chooser and the sentence
+    // about acting as the person never said. RFC 6749 §3.1.2.6 answers interaction_required instead.
+    if (dock.isSessionClient(client) && String(req.query.prompt || '') === 'none') {
+        return res.redirect(withError(redirect_uri, 'interaction_required', 'consent is always shown for this app', requestState));
+    }
     // prompt=none (silent SSO from an app whose own session lapsed): if this browser still has a
     // live/renewable openvibe.network session, continue as that account with no chooser. With no
     // session, bounce straight back with error=login_required so the app can stay quiet. From an
@@ -230,11 +237,17 @@ router.get('/client-info', async (req, res) => {
         const { capabilities, refused } = devTokens.consentView(askedConsent.rest);
         return res.json({ name: app.name, third_party: true, redirect_host: host, capabilities, refused, purposes });
     }
-    const client = await db.prepare('SELECT name, redirect_uris FROM oauth_clients WHERE client_id = ?').get(String(client_id));
+    const client = await db.prepare('SELECT name, redirect_uris, is_public, session_token FROM oauth_clients WHERE client_id = ?').get(String(client_id));
     if (!client) return res.status(404).json({ error: 'Unknown client_id' });
     const allowed = JSON.parse(client.redirect_uris || '[]').map(u => String(u).toLowerCase());
     if (!allowed.includes(String(redirect_uri).toLowerCase())) return res.status(404).json({ error: 'Invalid redirect_uri' });
-    res.json({ name: siteNameForHost(host) || client.name || String(client_id), third_party: false, redirect_host: host, capabilities: [], refused: [], purposes });
+    // A session client acts as the person after they choose an account: the chooser says so, always, and never
+    // continues by itself (public/js/login.js). third_party stays false: it is ours, and it is not a developer app.
+    res.json({
+        name: siteNameForHost(host) || client.name || String(client_id), third_party: false, redirect_host: host,
+        capabilities: [], refused: [], purposes,
+        ...(dock.isSessionClient(client) ? { act_as_you: true, consent_text: appLinks.CONSENT_TEXT } : {}),
+    });
 });
 
 // ── POST /oauth/confirm ─────────────────────────────────────
@@ -464,8 +477,13 @@ async function handleAuthCodeGrant(db, config, req, res, client, code, redirectU
     const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(authCode.user_id);
     if (!user || user.is_banned) return res.status(400).json({ error: 'invalid_grant', error_description: 'User not found or banned' });
 
+    // A session token only through the claimed https App Link and only with a published release certificate: a custom
+    // scheme can be answered by any app, and no fingerprint means Android verified nothing. Everything else is the
+    // read-only Dock token, as for every other public client.
+    const session = dock.isSessionClient(client) && appLinks.isAppLink(authCode.redirect_uri) && appLinks.fingerprints().length > 0;
+
     // Issue tokens
-    const issued = await issueTokenPair(db, config, req, user, client, {}, authCode.scope);
+    const issued = await issueTokenPair(db, config, req, user, client, {}, authCode.scope, { session });
     const { accessToken, refreshToken } = issued;
     await recordLinkedService(db, user, client);
 
@@ -537,8 +555,11 @@ async function handleRefreshGrant(db, config, req, res, client, refreshToken) {
         }
     }
 
-    // Issue new token pair: the next generation of the same family
-    const issued = await issueTokenPair(db, config, req, user, client, { familyId: r.familyId, generation: r.generation }, stored.scope);
+    // Issue new token pair: the next generation of the same family, never a different kind. A session family stays a
+    // session family while a release certificate is published; withdrawing LINK_ANDROID_CERT_SHA256 stops sessions at
+    // the next refresh, and every rotation of a Dock family is still a Dock token.
+    const session = dock.isSessionClient(client) && Number(stored.session_family) === 1 && appLinks.fingerprints().length > 0;
+    const issued = await issueTokenPair(db, config, req, user, client, { familyId: r.familyId, generation: r.generation }, stored.scope, { session });
     await recordLinkedService(db, user, client);
 
     res.json({
@@ -550,10 +571,25 @@ async function handleRefreshGrant(db, config, req, res, client, refreshToken) {
     });
 }
 
-async function issueTokenPair(db, config, req, user, client, family = {}, scope = null) {
+/**
+ * The role a phone's token may carry: the person's own when it is not a staff role, and "user" when it is. A staff
+ * member's phone answers their own work; it is not a staff credential (openvibe-contracts' staff map says which roles
+ * carry capabilities).
+ */
+function nonStaffRole(role) {
+    const known = staff.map.roles.find((r) => r.id === role);
+    return !known || known.staff ? 'user' : known.id;
+}
+
+async function issueTokenPair(db, config, req, user, client, family = {}, scope = null, { session = false } = {}) {
     const privateKey = req.app.locals.privateKey;
     const algorithm = privateKey.includes('BEGIN') ? 'RS256' : 'HS256';
     const publicClient = dock.isPublicClient(client);
+    // A public first-party app that signs a person in for real (OpenVibe Link on the phone) gets the person's own
+    // session: the normal issuer and audiences, so every service that takes a user token takes it, and the person's
+    // role. Its proof is PKCE, since an APK cannot keep a client secret. Every other public client keeps the
+    // extension's read-only Dock token (private issuer, its own audiences, no role).
+    const sessionClient = dock.isSessionClient(client) && session === true;
     const ttl = publicClient ? Math.max(60, Math.min(86400, Number(client.access_token_ttl_s) || 3600)) : null;
     const familyId = family.familyId || refreshTokens.newFamily();
     const subjectId = await subjects.ensureUserSubject(db, user) || undefined;
@@ -576,14 +612,22 @@ async function issueTokenPair(db, config, req, user, client, family = {}, scope 
     };
     // A Dock token is a read credential: no role and no staff caps, and a private issuer so no other
     // service's normal user-token check accepts it. The family id lets Network end it on revoke.
-    const claims = publicClient
+    // A session token carries the person's non-staff role and NO staff claims: the phone acts as them, not as their
+    // office. client_id, scope and fam stay, so the account page can end the family and the app knows what it holds.
+    const claims = publicClient && !sessionClient
         ? { ...base, client_id: client.client_id, scope: String(scope || ''), fam: familyId, ...consentClaim }
-        : { ...base, role: user.role, ...staffClaims(user), ...consentClaim };
+        : {
+            ...base,
+            role: sessionClient ? nonStaffRole(user.role) : user.role,
+            ...(sessionClient ? {} : staffClaims(user)),
+            ...(sessionClient ? { client_id: client.client_id, scope: String(scope || ''), fam: familyId } : {}),
+            ...consentClaim,
+        };
 
     const accessToken = jwt.sign(claims, privateKey, {
         algorithm,
-        issuer: publicClient ? dock.dockIssuer(config) : config.jwt.issuer,
-        audience: publicClient ? [...dock.AUDIENCES] : ['openvibe.live', 'openvibe.tools', 'openvibe.games', 'openvibe.media', 'openvibe.network'],
+        issuer: publicClient && !sessionClient ? dock.dockIssuer(config) : config.jwt.issuer,
+        audience: publicClient && !sessionClient ? [...dock.AUDIENCES] : ['openvibe.live', 'openvibe.tools', 'openvibe.games', 'openvibe.media', 'openvibe.network'],
         expiresIn: publicClient ? ttl : config.jwt.accessTokenExpiry,
     });
 
@@ -592,7 +636,7 @@ async function issueTokenPair(db, config, req, user, client, family = {}, scope 
     const issued = await refreshTokens.issue(db, {
         clientId: client.client_id, userId: user.id,
         scope: publicClient ? String(scope || '') : scopeWithConsent('profile theme', askedConsent.purposes),
-        familyId, generation: family.generation || 0,
+        familyId, generation: family.generation || 0, session: sessionClient ? 1 : 0,
     });
 
     // The token response's scope names a consent purpose only when it was granted (the app learns "not granted", no more).

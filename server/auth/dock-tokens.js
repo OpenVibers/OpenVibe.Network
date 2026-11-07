@@ -33,6 +33,11 @@ function isDockClient(client) {
     return isPublicClient(client) && client.client_id === CLIENT_ID;
 }
 
+/** A public client that signs the person in for real (OpenVibe Link), when its authorization earns it (oauth-routes). */
+function isSessionClient(client) {
+    return isPublicClient(client) && Number(client.session_token) === 1;
+}
+
 function dockIssuer(config) {
     return `${String(config.jwt.issuer || '').replace(/\/+$/, '')}/dock`;
 }
@@ -116,6 +121,6 @@ async function verifyDockSession(token, { db, publicKey, config }) {
 
 module.exports = {
     CLIENT_ID, CLIENT_NAME, SCOPES, AUDIENCES, FAMILY_RE,
-    isPublicClient, isDockClient, dockIssuer, scopesOf, hasScope, allowedScopes,
+    isPublicClient, isDockClient, isSessionClient, dockIssuer, scopesOf, hasScope, allowedScopes,
     readScopeForClient, readState, verifyDockSession,
 };

@@ -1047,6 +1047,10 @@ app.get('/verify-email', (req, res) => {
     lookBoot.send(res, 'verify-email.html');
 });
 
+// Android App Links for OpenVibe Link (plan 2026-11-07 §13.2): /.well-known/assetlinks.json claims /link/auth for the
+// release certificate in LINK_ANDROID_CERT_SHA256, and /link/auth is the plain page a browser shows when no app did.
+require('./auth/app-links').mount(app);
+
 // FedCM identity provider (browser-native sign-in for the other OpenVibe sites) — server/auth/fedcm.js
 {
     const fedcm = require('./auth/fedcm');

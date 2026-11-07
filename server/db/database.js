@@ -191,14 +191,23 @@ async function seedDb(db, { log = console } = {}) {
                     'https://bjcjcfcecpkkmfndegkjekoipdmbgakd.chromiumapp.org/',
                     'https://bb6593a68b1dcfbb7acd9650f04a169f4c5b57a0.extensions.allizom.org/',
                 ] },
+            // Link on the phone (plan 2026-11-07 §13.2): a public first-party client with no secret — the Android app
+            // cannot keep one — PKCE S256 only. Its redirect is the claimed https App Link (server/auth/app-links.js:
+            // only the app named in /.well-known/assetlinks.json for a published release certificate gets it); the
+            // custom scheme stays for debug builds. `session: true` gives it the person's own session token instead of
+            // the extension's read-only Dock token, but only when the authorization returned to the https link and a
+            // fingerprint is published. The scope ceiling is the profile and theme a sign-in asks for.
+            { client_id: 'link', name: 'OpenVibe Link', public: true, session: true,
+                allowed_scopes: 'profile theme', access_token_ttl_s: 86400,
+                redirect_uris: ['https://openvibe.network/link/auth', 'openvibe-link://auth'] },
         ];
         let seededAny = false;
         for (const c of contractClients) {
             const existing = await db.prepare('SELECT client_id, name, redirect_uris FROM oauth_clients WHERE client_id = ?').get(c.client_id);
             if (!existing) {
                 if (c.public) {
-                    await db.prepare('INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party, is_public, allowed_scopes, access_token_ttl_s) VALUES (?, NULL, ?, ?, 1, 1, ?, ?)')
-                        .run(c.client_id, c.name, JSON.stringify(c.redirect_uris), c.allowed_scopes, c.access_token_ttl_s);
+                    await db.prepare('INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party, is_public, allowed_scopes, access_token_ttl_s, session_token) VALUES (?, NULL, ?, ?, 1, 1, ?, ?, ?)')
+                        .run(c.client_id, c.name, JSON.stringify(c.redirect_uris), c.allowed_scopes, c.access_token_ttl_s, c.session ? 1 : 0);
                     console.log(`[DB] Seeded public OAuth2 client: ${c.client_id} (no secret)`);
                 } else {
                     await db.prepare('INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES (?, ?, ?, ?, 1)')
@@ -210,8 +219,8 @@ async function seedDb(db, { log = console } = {}) {
             }
             await mergeRedirectUris(db, c.client_id, c.redirect_uris, { log });
             if (c.public) {
-                await db.prepare('UPDATE oauth_clients SET name = ?, is_public = 1, allowed_scopes = ?, access_token_ttl_s = ?, client_secret = NULL, redirect_uris = ? WHERE client_id = ?')
-                    .run(c.name, c.allowed_scopes, c.access_token_ttl_s, JSON.stringify(c.redirect_uris), c.client_id);
+                await db.prepare('UPDATE oauth_clients SET name = ?, is_public = 1, allowed_scopes = ?, access_token_ttl_s = ?, session_token = ?, client_secret = NULL, redirect_uris = ? WHERE client_id = ?')
+                    .run(c.name, c.allowed_scopes, c.access_token_ttl_s, c.session ? 1 : 0, JSON.stringify(c.redirect_uris), c.client_id);
             }
             // A client created first as a service principal carries the placeholder name "OpenVibe.<id> (service)",
             // which the sign-in page shows people ("Sign in to OpenVibe.food (service)"). Give it the site's name; a

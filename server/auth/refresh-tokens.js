@@ -38,11 +38,13 @@ async function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T
  * clear). The family id is also signed into a Dock access token, so the caller must know it before
  * the pair is minted.
  */
-async function issue(db, { clientId, userId, scope = 'profile theme', familyId = null, generation = 0, now = Date.now() }) {
+async function issue(db, { clientId, userId, scope = 'profile theme', familyId = null, generation = 0, session = 0, now = Date.now() }) {
     const token = crypto.randomBytes(48).toString('hex');
     const fam = familyId || newFamily();
-    await db.prepare(`INSERT INTO oauth_tokens (token, client_id, user_id, scope, expires_at, family_id, generation)
-        VALUES (?, ?, ?, ?, ?, ?, ?)`).run(hash(token), clientId, userId, scope, new Date(now + TTL_MS).toISOString(), fam, generation);
+    // The family's kind (session or Dock) is fixed when it starts; a rotation carries it, so a refresh can never
+    // promote a family that came in through a scheme any app can claim (migrations/0050).
+    await db.prepare(`INSERT INTO oauth_tokens (token, client_id, user_id, scope, expires_at, family_id, generation, session_family)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(hash(token), clientId, userId, scope, new Date(now + TTL_MS).toISOString(), fam, generation, session ? 1 : 0);
     return { token, familyId: fam };
 }
 
