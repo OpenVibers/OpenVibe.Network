@@ -20,6 +20,7 @@ function meRouter({ requireAuth }) {
         const client = req.tokenClaims?.client_id;
         const scopes = String(req.tokenClaims?.scope || '').split(/\s+/);
         if (client && client !== 'my' && !scopes.includes('identity.emails.read')) return res.status(403).json({ ok: false, error: 'This app has not been granted identity.emails.read.' });
+        req.sharedEmailRead = !!client && client !== 'my';
         next();
     };
     const list = async (db, userId) => {
@@ -36,7 +37,10 @@ function meRouter({ requireAuth }) {
         }));
     };
 
-    router.get('/', requireAuth, sharedRead, async (req, res) => res.json({ emails: await list(req.app.locals.db, req.user.id) }));
+    router.get('/', requireAuth, sharedRead, async (req, res) => {
+        const emails = await list(req.app.locals.db, req.user.id);
+        res.json({ emails: req.sharedEmailRead ? emails.filter((email) => email.primary && email.verified).slice(0, 1) : emails });
+    });
 
     router.post('/', requireAuth, ownerOnly, async (req, res) => {
         const db = req.app.locals.db;

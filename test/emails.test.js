@@ -17,11 +17,17 @@ const { getDb } = require('../server/db/database');
     app.use(express.json());
     app.locals.db = db;
     app.locals.emailService = { isEnabled: true, async sendVerificationEmail(message) { sent.push(message); return true; } };
-    app.use('/api/v1/me/emails', require('../server/identity/emails').meRouter({ requireAuth(req, res, next) { req.user = { id }; next(); } }));
+    app.use('/api/v1/me/emails', require('../server/identity/emails').meRouter({ requireAuth(req, res, next) {
+        req.user = { id };
+        req.tokenClaims = req.headers.authorization === 'Bearer email-reader' ? { client_id: 'sample-app', scope: 'identity.emails.read' }
+            : req.headers.authorization === 'Bearer ungranted-app' ? { client_id: 'sample-app', scope: 'profile' } : {};
+        next();
+    } }));
     const server = app.listen(0, '127.0.0.1');
     const port = server.address().port;
-    const request = (path = '', method = 'GET', body) => new Promise((resolve, reject) => {
-        const req = http.request({ hostname: '127.0.0.1', port, path: `/api/v1/me/emails${path}`, method, headers: body ? { 'content-type': 'application/json' } : {} }, (res) => {
+    const request = (path = '', method = 'GET', body, authorization = '') => new Promise((resolve, reject) => {
+        const headers = { ...(body ? { 'content-type': 'application/json' } : {}), ...(authorization ? { authorization } : {}) };
+        const req = http.request({ hostname: '127.0.0.1', port, path: `/api/v1/me/emails${path}`, method, headers }, (res) => {
             let text = '';
             res.setEncoding('utf8');
             res.on('data', (chunk) => { text += chunk; });
@@ -71,6 +77,10 @@ const { getDb } = require('../server/db/database');
         body = response.body;
         assert.equal(body.emails.find((row) => row.id === added2.id).primary, true);
         assert.equal((await db.prepare('SELECT email FROM users WHERE id = ?').get(id)).email, added2.email);
+        response = await request('', 'GET', undefined, 'Bearer email-reader');
+        assert.deepEqual(response.body.emails.map((row) => row.email), [added2.email], 'an app with the email-read scope receives only the chosen primary address');
+        response = await request('', 'GET', undefined, 'Bearer ungranted-app');
+        assert.equal(response.status, 403);
         response = await request(`/${added2.id}`, 'DELETE');
         assert.equal(response.status, 409, 'primary must be changed before removal');
     } finally {
