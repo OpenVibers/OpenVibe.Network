@@ -33,25 +33,81 @@ const NEVER = [
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-/** The install block per OS. The one-liner is for Linux and macOS; Windows gets the release asset and the pair step. */
-function installBlock(release) {
-    const version = esc(release.version || '');
-    const exe = `https://github.com/OpenVibers/OpenVibe.Node/releases/download/${release.version || 'latest'}/openvibe-link-windows-amd64.exe`;
-    return `<div class="np-installs">
-<div class="np-install">
-<h3>Linux and macOS</h3>
-<p class="np-fine">One command. It finds your system, downloads the release, checks it against SHA256SUMS, sets up the service and shows a code to approve.</p>
-${kit.snippet({ code: INSTALL_LINE, id: 'np-install-sh', label: 'Copy the install command' })}
-<p class="np-fine">On a Raspberry Pi or another robot, the same command finds the kit and its driver.</p>
+/** Which OS the visitor is on, for the install block's default panel. Server-side, so it is right before JS runs. */
+function detectOS(userAgent) {
+    const ua = String(userAgent || '');
+    if (/Android/i.test(ua)) return 'android';
+    if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+    if (/Windows/i.test(ua)) return 'windows';
+    if (/Macintosh|Mac OS X/i.test(ua)) return 'mac';
+    if (/Linux|X11/i.test(ua)) return 'linux';
+    return 'linux';
+}
+
+/**
+ * The install block per OS: the visitor's own OS opens first, every other way in stays one click away. Exact steps,
+ * the release's own assets, and nothing behind a script the page does not show.
+ */
+function installBlock(release, userAgent) {
+    const current = detectOS(userAgent);
+    const v = esc(release.version || '');
+    const pkg = String(release.version || '').replace(/^v/, '');
+    const latest = 'https://github.com/OpenVibers/OpenVibe.Node/releases/latest/download';
+    const releases = 'https://github.com/OpenVibers/OpenVibe.Node/releases';
+    const dl = (name) => `${latest}/${name}`;
+    const file = (name, label) => `<a href="${esc(dl(name))}">${esc(label || name)}</a>`;
+    const pkgFile = (name, label) => (pkg ? `<a href="${esc(dl(name))}">${esc(label || name)}</a>` : `<a href="${releases}">${esc(label || name)}</a>`);
+    const apk = release.version ? `${releases}/download/${encodeURIComponent(release.version)}/openvibe-link-${encodeURIComponent(release.version)}.apk` : releases;
+    const open = (os) => (current === os ? ' open' : '');
+    return `<div class="np-os-list">
+<details class="np-os" data-os="windows"${open('windows')}>
+<summary><span>Windows</span><small>x64 and ARM64</small></summary>
+<div class="np-os-body">
+<p>Download the program for this PC: ${file('openvibe-link-windows-amd64.exe', 'Windows x64 (.exe)')} or ${file('openvibe-link-windows-arm64.exe', 'Windows ARM64 (.exe)')}.</p>
+<p>Windows may show SmartScreen the first time: choose <strong>More info</strong>, then <strong>Run anyway</strong>. In an <strong>Administrator</strong> PowerShell, from the folder you saved it in:</p>
+${kit.snippet({ code: '.\\openvibe-link pair <CODE>\n.\\openvibe-link install', id: 'np-install-win', label: 'Copy the Windows steps' })}
+<p class="np-fine">The code comes from <a href="https://openvibe.bot/machines">openvibe.bot/machines</a> (<strong>Add a machine</strong>). <code>openvibe-node.exe</code> is the same program under its old name.</p>
 </div>
-<div class="np-install">
-<h3>Windows</h3>
-<p class="np-fine">Download the binary, then in an Administrator prompt:</p>
-${kit.snippet({ code: 'openvibe-link pair <CODE>', id: 'np-install-win', label: 'Copy the pair command' })}
-<p class="np-fine"><a href="${esc(exe)}">openvibe-link-windows-amd64.exe</a> from the ${version ? esc(version) : 'latest'} release; the old <code>openvibe-node</code> name is the same program.</p>
+</details>
+
+<details class="np-os" data-os="mac"${open('mac')}>
+<summary><span>macOS</span><small>Apple silicon and Intel</small></summary>
+<div class="np-os-body">
+<p>The one command installs the right build and the service, and asks for a pairing code:</p>
+${kit.snippet({ code: INSTALL_LINE, id: 'np-install-mac', label: 'Copy the macOS install command' })}
+<p>Or download the program: ${file('openvibe-link-darwin-arm64', 'Apple silicon')}, ${file('openvibe-link-darwin-amd64', 'Intel')}, or the ${pkgFile(`openvibe-link_${pkg}_darwin_arm64.tar.gz`, 'Apple silicon tarball')} and ${pkgFile(`openvibe-link_${pkg}_darwin_amd64.tar.gz`, 'Intel tarball')} with the installer and plugins beside it. Gatekeeper: right-click the file and choose <strong>Open</strong> the first time.</p>
+<p>Then in Terminal: <code>sudo ./openvibe-link pair &lt;CODE&gt;</code> and <code>sudo ./openvibe-link install</code>.</p>
 </div>
+</details>
+
+<details class="np-os" data-os="linux"${open('linux')}>
+<summary><span>Linux</span><small>x64 and ARM64 · .deb, .rpm, tarball, script</small></summary>
+<div class="np-os-body">
+<p>The one command, on any distribution, finds the CPU and installs the service:</p>
+${kit.snippet({ code: INSTALL_LINE, id: 'np-install-linux', label: 'Copy the Linux install command' })}
+<p>Or use your package manager: ${pkgFile(`openvibe-link_${pkg}_amd64.deb`, 'Debian/Ubuntu x64 .deb')}, ${pkgFile(`openvibe-link_${pkg}_arm64.deb`, 'Debian/Ubuntu ARM64 .deb')}, ${pkgFile(`openvibe-link-${pkg}-1.x86_64.rpm`, 'Fedora/RHEL x64 .rpm')} or ${pkgFile(`openvibe-link-${pkg}-1.aarch64.rpm`, 'Fedora/RHEL ARM64 .rpm')}.</p>
+${kit.snippet({ code: 'sudo apt install ./openvibe-link_<version>_amd64.deb\n# or: sudo dnf install ./openvibe-link-<version>-1.x86_64.rpm\nopenvibe-link pair <CODE>\nsudo openvibe-link install', id: 'np-install-pkg', label: 'Copy the package steps' })}
+<p>Or take the tarball: ${pkgFile(`openvibe-link_${pkg}_linux_amd64.tar.gz`, 'x64 .tar.gz')} or ${pkgFile(`openvibe-link_${pkg}_linux_arm64.tar.gz`, 'ARM64 .tar.gz')}; unpack it and run <code>sudo ./install.sh --local .</code>. On a Raspberry Pi or another robot, the one command also finds the kit and its driver.</p>
 </div>
-<p class="np-fine">The program is <code>openvibe-link</code>. <code>openvibe-node</code> is kept as an alias, so existing installs and scripts keep working.</p>`;
+</details>
+
+<details class="np-os" data-os="android"${open('android')}>
+<summary><span>Android</span><small>the existing APK, direct</small></summary>
+<div class="np-os-body">
+<p>Download <a href="${esc(apk)}">openvibe-link${v ? `-${v}` : ''}.apk</a> on the phone, allow installing from that source when Android asks, and open <strong>OpenVibe Link</strong>.</p>
+<p>Pair from the app with a code from <a href="https://openvibe.bot/link/phone">openvibe.bot/link/phone</a>. The APK carries approvals, Activity, pairing and <strong>Send to OpenVibe</strong>; it is the direct build, not Google Play, and has no phone automation.</p>
+</div>
+</details>
+
+<details class="np-os" data-os="ios"${open('ios')}>
+<summary><span>iPhone and iPad</span><small>what works today, without the App Store</small></summary>
+<div class="np-os-body">
+<p>There is no native iOS app yet. What works today is the home-screen web app: open <a href="https://openvibe.my/">openvibe.my</a> in Safari, sign in, then <strong>Share</strong> &rarr; <strong>Add to Home Screen</strong>. It gives you <strong>Approvals</strong>, <strong>Activity</strong>, your <strong>machines</strong> and pairing from the phone, and it looks like an app on the home screen.</p>
+<p class="np-fine">A native iOS app (and push notifications, a background connection, or using the phone as a Link camera or microphone) waits on an Apple Developer account and the App Store review that follows it. We will say when that starts; nothing here pretends it already works.</p>
+</div>
+</details>
+</div>
+<p class="np-fine">The program is <code>openvibe-link</code>. <code>openvibe-node</code> is kept as an alias, so existing installs and scripts keep working. Every download is checked against the release's <a href="${esc(dl('SHA256SUMS'))}">SHA256SUMS</a>.</p>`;
 }
 
 /** The release facts: the version, when it came out, the checksums and the release page. */
@@ -72,7 +128,7 @@ ${release.stale ? '<p class="np-fine np-warn">GitHub could not be reached just n
 }
 
 /** The page. `release` is what server/node/release.js answered. */
-function render({ release = {}, releaseId } = {}) {
+function render({ release = {}, releaseId, userAgent } = {}) {
     const title = 'OpenVibe Link: your machines, connected';
     const desc = 'OpenVibe Link runs on your computer, server, phone or robot: it runs your agents and code, offers your models or GPU to the network, drives robots, and keeps your memory read-only.';
     const ld = { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'OpenVibe Link', applicationCategory: 'DeveloperApplication',
@@ -113,15 +169,15 @@ ${CSS}
 <p class="np-kicker">OpenVibe Link</p>
 <h1>Your machines, connected</h1>
 <p class="np-lede">Link runs on your computer, server or phone. Your agents use it only as far as you allow, and you choose what, if anything, it offers the network.</p>
-<p class="np-cta">${kit.button({ href: '/install', label: 'Install Link', kind: 'primary' })} ${kit.button({ href: `${DOCS}/install.md`, label: 'The install guide', kind: 'quiet' })}</p>
+<p class="np-cta">${kit.button({ href: '#install', label: 'Install Link', kind: 'primary' })} ${kit.button({ href: `${DOCS}/install.md`, label: 'The install guide', kind: 'quiet' })}</p>
 </header>
 
 <section class="np-sec" aria-labelledby="h-does"><h2 id="h-does">What it does today</h2>
 <div class="np-grid">${does}</div>
 </section>
 
-<section class="np-sec" aria-labelledby="h-install"><h2 id="h-install">Install it</h2>
-${installBlock(release)}
+<section class="np-sec" id="install" aria-labelledby="h-install"><h2 id="h-install">Install it</h2>
+${installBlock(release, userAgent)}
 </section>
 
 ${releaseBlock(release)}
@@ -166,6 +222,16 @@ const CSS = `
 .np-does p{margin:0;color:var(--text-secondary,#96a7c2);font-size:.92rem;line-height:1.55}
 .np-soon{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:.68rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted,#7386a3);border:1px solid var(--border,#1f2d47);vertical-align:middle}
 .np-installs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.np-os-list{display:grid;gap:10px;max-width:860px}
+.np-os{border-radius:14px;background:var(--bg-card,#0f1729);border:1px solid var(--border,#1f2d47);overflow:hidden}
+.np-os[open]{border-color:var(--accent,#3b82f6)}
+.np-os summary{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 16px;cursor:pointer;list-style:none}
+.np-os summary::-webkit-details-marker{display:none}
+.np-os summary span{font-weight:800;font-size:1rem}
+.np-os summary small{color:var(--text-muted,#7386a3);font-size:.82rem;text-align:right}
+.np-os-body{padding:0 16px 16px;border-top:1px solid var(--border,#1f2d47)}
+.np-os-body p{color:var(--text-secondary,#96a7c2);font-size:.92rem;line-height:1.6}
+.np-os-body a{color:var(--accent,#3b82f6)}
 .np-install{padding:18px;border-radius:16px;background:var(--bg-card,#0f1729);border:1px solid var(--border,#1f2d47)}
 .np-install h3{margin:0 0 8px;font-size:1rem}
 .np-install .ovk-snip{margin:12px 0}

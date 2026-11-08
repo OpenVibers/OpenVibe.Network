@@ -72,6 +72,36 @@ const SHAPED = {
     assert.ok(html.includes('releases/tag/v9.9.9'), 'the release page is on the page');
     assert.ok(html.includes('openvibe-link-windows-amd64.exe'), 'Windows has its own way in');
     assert.ok(html.includes('openvibe.bot/install'), 'the installer also lives at openvibe.bot/install');
+    assert.ok(html.includes('id="install"'), 'the install section has an anchor the hero button uses');
+    assert.ok(html.includes('href="#install"'), 'the Install button goes to the OS install block');
+    for (const [what, needle] of [
+        ['Windows x64', 'openvibe-link-windows-amd64.exe'],
+        ['Windows ARM64', 'openvibe-link-windows-arm64.exe'],
+        ['macOS Apple silicon', 'openvibe-link_9.9.9_darwin_arm64.tar.gz'],
+        ['macOS Intel', 'openvibe-link_9.9.9_darwin_amd64.tar.gz'],
+        ['Linux x64 .deb', 'openvibe-link_9.9.9_amd64.deb'],
+        ['Linux ARM64 .deb', 'openvibe-link_9.9.9_arm64.deb'],
+        ['Linux x64 .rpm', 'openvibe-link-9.9.9-1.x86_64.rpm'],
+        ['Linux ARM64 .rpm', 'openvibe-link-9.9.9-1.aarch64.rpm'],
+        ['Linux x64 tarball', 'openvibe-link_9.9.9_linux_amd64.tar.gz'],
+        ['Linux ARM64 tarball', 'openvibe-link_9.9.9_linux_arm64.tar.gz'],
+        ['Android APK', 'openvibe-link-v9.9.9.apk'],
+        ['iOS home-screen web app', 'Add to Home Screen'],
+        ['what iOS waits on', 'Apple Developer account'],
+    ]) assert.ok(html.includes(needle), `the install block offers ${what}`);
+    for (const [ua, os] of [
+        ['Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'windows'],
+        ['Mozilla/5.0 (Macintosh; Intel Mac OS X 13_0)', 'mac'],
+        ['Mozilla/5.0 (X11; Linux x86_64)', 'linux'],
+        ['Mozilla/5.0 (Linux; Android 14; Pixel 8)', 'android'],
+        ['Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', 'ios'],
+    ]) {
+        const one = page.render({ release: first, releaseId: 'rel_test', userAgent: ua });
+        assert.ok(one.includes(`data-os="${os}" open`), `a ${os} visitor gets the ${os} steps first`);
+        for (const other of ['windows', 'mac', 'linux', 'android', 'ios'].filter((x) => x !== os)) {
+            assert.ok(!one.includes(`data-os="${other}" open`), `a ${os} visitor does not open ${other}`);
+        }
+    }
     assert.ok(html.includes('What it does today'), 'the honest heading stays');
     for (const [what, needle] of [
         ['run your agents and code', 'openvibe.codes/run'],
