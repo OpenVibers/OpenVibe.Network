@@ -121,11 +121,28 @@ const challenge = (v) => b64(crypto.createHash('sha256').update(v).digest());
         assert.match(claims.fam, /^fam_[0-9a-f]{24}$/);
         assert.ok(noSecret.body.refresh_token);
 
+        // The mask scope (2026-11-08): the Companion may manage the person's OpenVibe.Mail masks, and
+        // that scope is its own: another public client may not ask for it, and a scope above the
+        // ceiling is still refused.
+        assert.strictEqual((await authorize({ client_id: 'companion', redirect_uri: CHROME, response_type: 'code', state: 's', scope: 'dock chat.write mail.mask.manage', code_challenge: challenge(verifier()), code_challenge_method: 'S256' })).status, 400, 'scope ceiling');
+        const maskVerifier = verifier();
+        const maskState = 'state_' + crypto.randomBytes(12).toString('hex');
+        const maskStart = await authorize({ client_id: 'companion', redirect_uri: CHROME, response_type: 'code', scope: 'dock activity chat.read agent.view mail.mask.manage', state: maskState, code_challenge: challenge(maskVerifier), code_challenge_method: 'S256' });
+        assert.strictEqual(maskStart.status, 302, 'the mask scope is inside the ceiling');
+        const maskCx = await confirm({ client_id: 'companion', redirect_uri: CHROME, response_type: 'code', scope: 'dock activity chat.read agent.view mail.mask.manage', state: maskState, code_challenge: challenge(maskVerifier), code_challenge_method: 'S256' });
+        assert.strictEqual(maskCx.status, 200, JSON.stringify(maskCx.body));
+        const maskRedirect = new URL(maskCx.body.redirect);
+        const maskToken = await token({ grant_type: 'authorization_code', client_id: 'companion', code: maskRedirect.searchParams.get('code'), redirect_uri: CHROME, code_verifier: maskVerifier });
+        assert.strictEqual(maskToken.status, 200, JSON.stringify(maskToken.body));
+        assert.strictEqual(maskToken.body.scope, 'dock activity chat.read agent.view mail.mask.manage');
+        assert.strictEqual(jwt.decode(maskToken.body.access_token).scope, 'dock activity chat.read agent.view mail.mask.manage');
+
         // The agent view's scope is Companion's alone: another public client may not ask for it.
         await db.prepare('INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party, is_public, allowed_scopes, access_token_ttl_s) VALUES (?, NULL, ?, ?, 1, 1, ?, 3600)')
             .run('companion-other', 'Other extension', JSON.stringify(['https://other.example/cb']), 'dock activity chat.read');
         assert.strictEqual((await authorize({ client_id: 'companion-other', redirect_uri: 'https://other.example/cb', response_type: 'code', state: 'o', scope: 'dock', code_challenge: challenge(verifier()), code_challenge_method: 'S256' })).status, 302, 'its own ceiling still works');
         assert.strictEqual((await authorize({ client_id: 'companion-other', redirect_uri: 'https://other.example/cb', response_type: 'code', state: 'o', scope: 'agent.view', code_challenge: challenge(verifier()), code_challenge_method: 'S256' })).status, 400, 'agent.view is not its scope');
+        assert.strictEqual((await authorize({ client_id: 'companion-other', redirect_uri: 'https://other.example/cb', response_type: 'code', state: 'o', scope: 'mail.mask.manage', code_challenge: challenge(verifier()), code_challenge_method: 'S256' })).status, 400, 'mail.mask.manage is not its scope');
 
         // The Dock accepts it; a normal account route refuses it. Activity reads are open, action
         // writes are not, and a token that only has `dock` is refused the activity route.
