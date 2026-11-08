@@ -140,7 +140,7 @@ async function apiFetch(path, opts = {}) {
     try { const fresh = res.headers.get('X-OV-Token'); if (fresh) { localStorage.setItem('ov_token', fresh); document.cookie = `ov_token=${fresh};path=/;max-age=${60*60*24*90};SameSite=Lax${location.protocol === 'https:' ? ';Secure' : ''}`; } } catch { /* */ }
     let data = {};
     try { data = await res.json(); } catch { /* non-JSON (e.g. proxy error page) */ }
-    if (!res.ok) { const err = new Error(data.error || res.statusText || 'Request failed'); err.status = res.status; throw err; }
+    if (!res.ok) { const err = new Error(data.detail || data.error || res.statusText || 'Request failed'); err.status = res.status; err.code = data.code || data.error; err.reauth_url = data.reauth_url; throw err; }
     return data;
 }
 

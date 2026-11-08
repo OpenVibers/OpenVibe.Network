@@ -525,6 +525,8 @@ app.get('/internal/integrations/github-token', require('./identity/principals').
 // Platform blocks (WS-E task 5): a person's own list, and who blocked whom for Chat and Community
 // (network.blocks.read, service token only). Every change is network.block.changed (server/identity/blocks.js).
 app.use('/api/v1/me/blocks', rateLimit({ windowMs: 60_000, max: 60 }), require('./identity/blocks').userRouter(requireAuth));
+app.use('/api/v1/me/emails', rateLimit({ windowMs: 60_000, max: 30 }), require('./identity/emails').meRouter({ requireAuth }));
+app.use('/api/v1/identity/emails/verified-check', rateLimit({ windowMs: 60_000, max: 120 }), require('./identity/emails').verifiedCheckRouter(require('./identity/principals')));
 // Privacy-limited age and abuse signals: the /me route accepts its own account or guest token, while service reads need
 // identity.trust.read. Both responses are private and no-store.
 app.use('/api/v1/me/trust', rateLimit({ windowMs: 60_000, max: 30 }), require('./identity/trust-routes').meRouter());

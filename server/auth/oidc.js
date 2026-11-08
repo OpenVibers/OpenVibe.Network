@@ -72,21 +72,20 @@ function cleanNonce(v) {
 const NOREPLY_DOMAIN = 'noreply.openvibe.network';
 const noreplyEmail = (user) => `${user.subject_id || `u${user.id}`}@${NOREPLY_DOMAIN}`.toLowerCase();
 
-function profileClaims(user) {
+function profileClaims(user, email) {
     return {
         preferred_username: user.username,
         name: user.display_name || user.username,
         ...(user.avatar_url ? { picture: user.avatar_url } : {}),
         ...(user.subject_id ? { subject_id: user.subject_id } : {}),
-        email: noreplyEmail(user),
-        email_verified: true,
+        ...(email ? { email, email_verified: true } : { email: noreplyEmail(user), email_verified: true }),
     };
 }
 
 /** The id_token for a code whose scope includes openid. */
-function idToken({ user, clientId, nonce, privateKey, issuer }) {
+function idToken({ user, clientId, nonce, privateKey, issuer, email }) {
     const rs = String(privateKey).includes('BEGIN');
-    return jwt.sign({ sub: String(user.id), ...profileClaims(user), ...(nonce ? { nonce } : {}) }, privateKey, {
+    return jwt.sign({ sub: String(user.id), ...profileClaims(user, email), ...(nonce ? { nonce } : {}) }, privateKey, {
         algorithm: rs ? 'RS256' : 'HS256', issuer, audience: clientId, expiresIn: ID_TOKEN_TTL_S, ...(rs ? { keyid: KID } : {}),
     });
 }
@@ -105,7 +104,13 @@ async function userinfo(req, res) {
     const user = out.user;
     let subjectId = user.subject_id || null;
     try { subjectId = await require('../identity/subjects').ensureUserSubject(req.app.locals.db, user) || subjectId; } catch { /* the claim is optional */ }
-    res.json({ sub: String(user.id), ...profileClaims({ ...user, subject_id: subjectId }) });
+    const claims = profileClaims({ ...user, subject_id: subjectId });
+    if (String(out.decoded.scope || '').split(/\s+/).includes('email') && out.decoded.client_id) {
+        const grant = await require('../identity/emails').selectedForClient(req.app.locals.db, user.id, out.decoded.client_id);
+        if (grant) { claims.email = grant.email; claims.email_verified = true; }
+        else { delete claims.email; delete claims.email_verified; }
+    }
+    res.json({ sub: String(user.id), ...claims });
 }
 
 module.exports = { metadata, mount, sendMetadata, idToken, userinfo, wantsOpenid, cleanNonce, noreplyEmail, KID, ID_TOKEN_TTL_S };

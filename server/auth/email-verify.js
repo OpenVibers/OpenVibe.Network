@@ -57,6 +57,7 @@ async function consumeToken(db, raw) {
     if (new Date(String(row.expires_at).replace(' ', 'T') + 'Z').getTime() < Date.now()) return { ok: false, error: 'This verification link has expired — request a new one from your account page.' };
     const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id);
     if (!user) return { ok: false, error: 'Account not found.' };
+    if (row.account_email_id) return require('../identity/emails').consume(db, row);
     if (!user.email || user.email.toLowerCase() !== String(row.email).toLowerCase()) {
         return { ok: false, error: 'Your email address changed since this link was sent — request a new one.' };
     }
@@ -66,6 +67,7 @@ async function consumeToken(db, raw) {
         const n = (await t.prepare("UPDATE email_verification_tokens SET used_at = ov_now() WHERE token_hash = ? AND used_at IS NULL").run(row.token_hash)).changes;
         if (!n) return false;
         await t.prepare("UPDATE users SET email_verified = 1, email_verified_at = ov_now(), email_bounced_at = NULL, email_bounce_reason = NULL WHERE id = ?").run(user.id);
+        await t.prepare("UPDATE account_emails SET verified = 1, verified_at = ov_now() WHERE user_id = ? AND is_primary = 1 AND LOWER(email) = LOWER(?)").run(user.id, user.email);
         return true;
     });
     if (!claimed) return { ok: false, error: 'This verification link was already used.' };
@@ -77,6 +79,7 @@ async function onEmailChanged(req, userId) {
     const db = req.app.locals.db;
     await db.prepare('UPDATE users SET email_verified = 0, email_verified_at = NULL, email_bounced_at = NULL, email_bounce_reason = NULL WHERE id = ?').run(userId);
     const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    if (user?.email) await db.prepare('UPDATE account_emails SET email = ?, verified = 0, verified_at = NULL WHERE user_id = ? AND is_primary = 1').run(user.email, userId);
     if (user?.email) sendVerification(req, user).catch(() => {});
 }
 
@@ -128,9 +131,9 @@ function routes(requireAuth) {
         const r = await consumeToken(db, String(req.body?.token || ''));
         if (!r.ok) return res.status(400).json({ ok: false, error: r.error });
         try {
-            await req.app.locals.notificationService?.create({ user_id: r.user.id, type: 'EMAIL_VERIFIED', title: 'Email verified', message: `${r.user.email} is confirmed. Go-live alerts from streamers you follow will now reach your inbox.`, service: 'network', url: 'https://openvibe.network/notifications' });
+            await req.app.locals.notificationService?.create({ user_id: r.user.id, type: 'EMAIL_VERIFIED', title: 'Email verified', message: `${r.email || r.user.email} is confirmed.`, service: 'network', url: 'https://openvibe.my/' });
         } catch { /* */ }
-        res.json({ ok: true, email: r.user.email });
+        res.json({ ok: true, email: r.email || r.user.email });
     });
 
     return router;
