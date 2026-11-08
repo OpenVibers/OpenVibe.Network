@@ -97,6 +97,7 @@ async function seedDb(db, { log = console } = {}) {
             // OpenVibe.Computer: a signed-in facade over Run's computer sessions.
             { client_id: 'computer', name: 'OpenVibe.Computer', redirect_uris: ['https://openvibe.computer/auth/callback'] },
             { client_id: 'locker', name: 'OpenVibe.Locker', redirect_uris: ['https://openvibe.locker/auth/callback'] },
+            { client_id: 'studio', name: 'OpenVibe.Studio', redirect_uris: ['https://openvibe.studio/auth/callback'] },
             // Link's website is confidential; keep it separate from the public mobile `link` client.
             { client_id: 'link-web', name: 'OpenVibe Link website', redirect_uris: ['https://openvibe.link/auth/callback'] },
             { client_id: 'tools', name: 'OpenVibe.Tools', redirect_uris: ['https://openvibe.tools/auth/callback'] },
