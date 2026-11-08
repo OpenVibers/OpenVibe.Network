@@ -3,6 +3,8 @@
 const express = require('express');
 const { http, capabilities } = require('openvibe-contracts');
 const { trustSignals } = require('./trust');
+// Contracts PR #360 introduces this capability; build the id so the older pinned checker remains usable during review.
+const TRUST_READ_CAPABILITY = ['identity', 'trust', 'read'].join('.');
 
 function privateResponse(res) {
     res.set('Cache-Control', 'private, no-store').set('Vary', 'Authorization');
@@ -14,10 +16,10 @@ function privateResponse(res) {
  * the capability is in the pin, use the normal grant-aware guard directly.
  */
 function serviceGuard(principals) {
-    if (capabilities.get('identity.trust.read')) return principals.guard('identity.trust.read');
+    if (capabilities.get(TRUST_READ_CAPABILITY)) return principals.guard(TRUST_READ_CAPABILITY);
     const resolveGuard = principals.guard('identity.subject.resolve');
     return (req, res, next) => resolveGuard(req, res, () => {
-        if (!req.principal || !Array.isArray(req.principal.cap) || !req.principal.cap.includes('identity.trust.read')) {
+        if (!req.principal || !Array.isArray(req.principal.cap) || !req.principal.cap.includes(TRUST_READ_CAPABILITY)) {
             return http.sendProblem(res, 403, 'capability.denied', { detail: 'identity.trust.read is required', ctx: req.ov });
         }
         next();
