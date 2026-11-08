@@ -33,6 +33,7 @@ const CHAT_NAMESPACES = ['chat.preferences', 'chat.tts_defaults', 'chat.dm_setti
 const DEFAULT_GRANTS = [
     // Mail relay checks one address at a time before forwarding; older Contracts pins omit this new capability.
     ...(capabilities.get(EMAIL_READ_CAPABILITY) ? [['mail', EMAIL_READ_CAPABILITY, SELF_AUDIENCE, []]] : []),
+    ['mail', 'identity.trust.read', SELF_AUDIENCE, []],
     // Locker v1 stores private ciphertext in its own Media tenant. Network remains the key directory.
     ...['media.object.upload', 'media.object.read', 'media.object.delete'].map((cap) => ['locker', cap, 'openvibe.media', ['locker']]),
     ['locker', 'identity.subject.resolve', SELF_AUDIENCE, []],
