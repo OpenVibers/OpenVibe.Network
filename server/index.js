@@ -340,6 +340,7 @@ config._registry = resolvedRegistry;
 // paths 301 there; www.openvibe.my 301s to the apex. The route also mounts the hub's own OAuth client
 // (PKCE, host-only cookies) at /auth, before Network's sign-in pages, so /my never renders off-origin.
 app.use(await require('./my/routes').createMyRoutes({ db, config }));
+app.use(await require('./node/auth').createLinkAuthRoutes({ db, config }));
 
 // ── Analytics Tracking (ADR-021) ──────────────────────────────
 // openvibe-shared/analytics on PostgreSQL (server/analytics/network.js; migrations/0002_analytics.sql).
