@@ -39,6 +39,7 @@ const locker = require('openvibe-sdk/locker');
         const publicKey = recipient.publicKey.export({ format: 'jwk' });
         let res = await call('/key', 'target', 'PUT', { public_key: publicKey });
         assert.equal(res.status, 200, 'the target machine publishes its own receive key');
+        assert.equal((await res.json()).key_thumbprint, await locker.jwkThumbprint(publicKey), 'Network registers the SDK Locker thumbprint');
         res = await call('/targets', 'from');
         assert.equal(res.status, 200);
         assert.deepEqual((await res.json()).machines[0].public_key, { kty: 'EC', crv: 'P-256', x: publicKey.x, y: publicKey.y });
