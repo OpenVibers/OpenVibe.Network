@@ -62,7 +62,7 @@ const INSTANCES = [
         const json = (s, o) => { res.writeHead(s, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
         if (down) return json(503, { code: 'down' });
         if (u.pathname === '/api/streams/channel/Ana/live') return json(200, { channel: { username: 'Ana', display_name: 'Ana' }, streams: [{ id: 9 }] });
-        if (u.pathname === '/api/streams/channel/Ana') return json(200, { channel: { username: 'Ana', display_name: 'Ana' }, vods: [{ id: 'vod_public', title: 'First video', visibility: 'public' }, { id: 'vod_private', title: 'Private video', visibility: 'private' }] });
+        if (u.pathname === '/api/streams/channel/Ana') return json(200, { channel: { username: 'Ana', display_name: 'Ana' }, vods: [{ id: 'vod_public', watch_id: 'tdLVs5wad4A', title: 'First video', visibility: 'public' }, { id: 'vod_private', title: 'Private video', visibility: 'private' }] });
         if (u.pathname === '/api/pastes/by-user/Ana') return json(200, { pastes: [{ slug: 'first-paste', title: 'A public note', visibility: 'public' }, { slug: 'hidden-paste', title: 'Hidden note', visibility: 'unlisted' }] });
         if (u.pathname === '/spaces') {
             res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -161,6 +161,7 @@ const INSTANCES = [
         assert.strictEqual(JSON.parse(r.text).person.profile_url, 'https://openvibe.my/@Ana');
         assert.strictEqual(JSON.parse(r.text).person.places.live.is_live, true);
         assert.deepStrictEqual(JSON.parse(r.text).person.places.videos.map((v) => v.title), ['First video']);
+        assert.deepStrictEqual(JSON.parse(r.text).person.places.videos.map((v) => v.url), ['https://openvibe.video/watch?v=tdLVs5wad4A'], 'a video links to its watch page');
         assert.deepStrictEqual(JSON.parse(r.text).person.places.community.map((v) => v.title), ['A public note']);
         assert.deepStrictEqual(JSON.parse(r.text).person.places.spaces.map((v) => v.title), ['Ana Site']);
         const person = JSON.parse(r.text).person;
