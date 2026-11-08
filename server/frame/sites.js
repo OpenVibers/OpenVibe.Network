@@ -42,7 +42,9 @@ const ALL_SITES = RAW_SITES.map((s) => {
 // consent screen) keeps its own name, without the site being offered as a destination.
 const SITES = ALL_SITES.filter((s) => !HIDDEN_SITE.has(s.id));
 const byHost = new Map(ALL_SITES.map(s => [s.host, s]));
-byHost.set('connect.openvibe.link', ALL_SITES.find(s => s.service === 'connect'));
+// Connect lives on connect.openvibe.link (its manifest since Contracts 0.348.0); the old Website name still answers
+// (page loads 302 to Link), so both hosts name Connect.
+for (const h of ['connect.openvibe.link', 'connect.openvibe.website']) byHost.set(h, ALL_SITES.find(s => s.service === 'connect'));
 
 /** A site's full name: its own when it is a brand already (OpenRestream), otherwise OpenVibe.<name> (OpenVibe.Live).
  *  "OpenVibe.OpenRestream" read wrong on the home page's cards (the owner, 2026-10-28). */
@@ -58,7 +60,7 @@ const GROUPS = [
     { id: 'streams', name: 'Streams & places', sites: ['live', 'media-hub', 'stream', 'pics', 'download', 'cam', 'tours'] },
     { id: 'games', name: 'Games & laughs', sites: ['games', 'surf', 'fun', 'meme', 'casino', 'quest'] },
     { id: 'answers', name: 'News & answers', sites: ['today', 'report', 'bench', 'news', 'search', 'wiki', 'blog', 'reviews', 'vision'] },
-    { id: 'make', name: 'Make & build', sites: ['website', 'connect', 'design', 'domains', 'computer', 'codes', 'space', 'tools', 'host', 'bot'] },
+    { id: 'make', name: 'Make & build', sites: ['website', 'connect', 'design', 'image', 'domains', 'computer', 'codes', 'space', 'tools', 'host', 'bot'] },
     { id: 'shop', name: 'Shop & swap', sites: ['deals', 'coupons', 'shoes', 'rent', 'homes', 'work', 'food', 'trade'] },
     { id: 'people', name: 'People & you', sites: ['chat', 'mail', 'community', 'tips', 'vip', 'help', 'network', 'inventory'] },
     // Actor is the engine behind every agent (Codes' Auto, Vibe, the Dock call it): a developer service, not a second
@@ -70,7 +72,7 @@ const GROUPS = [
 // its tagline.
 const MENU_LINE = {
     live: 'Go live, watch streams', 'media-hub': 'Clips and past streams', stream: 'Stream everywhere', pics: 'Share pictures',
-    download: 'Your files', tips: 'Support streamers', vip: 'Back your creators', computer: 'Your computer, your way',
+    download: 'Your files', tips: 'Support streamers', vip: 'Back your creators', computer: 'Your computer, your way', image: 'Edit photos in your browser', lock: 'Files only you can open',
     chat: 'Chat with anyone', mail: 'Masks and inboxes', community: 'Posts and pastes', blog: 'Write long-form', news: 'Sourced, not spun', wiki: 'Facts with sources',
     games: 'Play in your browser', quest: 'Earn badges', fun: 'Something to do',
     codes: 'Code with any agent', actor: 'The agent engine', space: 'Host a site or app', tools: 'Every online tool', bot: 'Drive a robot',
