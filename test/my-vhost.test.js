@@ -26,6 +26,13 @@ assert.ok(nginx.includes('proxy_set_header Host $host;'), 'the Host header is th
 assert.ok(nginx.includes('location ~* ^/(metrics|internal)(/|$)'), 'metrics and internal stay closed');
 assert.ok(!nginx.includes('return 302 https://openvibe.network/my;'), 'the old parked redirect is gone');
 
+assert.ok(nginx.includes('location ^~ /inventory {'), 'Inventory has a dedicated prefix location');
+assert.ok(nginx.includes('proxy_pass http://127.0.0.1:5030;'), 'the prefix is preserved for Inventory');
+assert.ok(nginx.includes('^/inventory/(internal|metrics)(/|$)'), 'private Inventory endpoints stay closed');
+const inventory = require('../server/frame/sites').SITES.find((s) => s.id === 'inventory');
+assert.strictEqual(inventory.url, 'https://openvibe.my/inventory');
+assert.ok(fs.readFileSync(path.join(ROOT, 'public/my.html'), 'utf8').includes('href="/inventory"'));
+
 // ── It parses ──
 let tmp = null;
 try {

@@ -33,19 +33,19 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 
 /* Section tabs */
 .section-tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--bg-secondary);border-radius:10px;padding:4px;overflow-x:auto}
-.section-tabs button{
-    flex-shrink:0;padding:8px 16px;border:none;border-radius:8px;font-size:12px;font-weight:600;
+.section-tabs :is(button,a){
+    text-decoration:none;flex-shrink:0;padding:8px 16px;border:none;border-radius:8px;font-size:12px;font-weight:600;
     background:transparent;color:var(--text-muted);cursor:pointer;transition:all var(--ov-dur-2, .15s);white-space:nowrap;
 }
 .section-tabs button.active{background:var(--bg-card);color:var(--accent-light)}
-.section-tabs button:hover:not(.active){color:var(--text)}
+.section-tabs :is(button,a):hover:not(.active){color:var(--text)}
 /* On a computer the tabs stand as a sidebar beside the open section (L43): every setting in view, the page shorter. */
 @media (min-width:1000px){
     .page{max-width:1080px}
     .settings{display:grid;grid-template-columns:208px minmax(0,1fr);gap:28px;align-items:start}
     .settings .section-tabs{position:sticky;top:76px;flex-direction:column;gap:2px;margin:0;padding:6px;overflow:visible}
-    .settings .section-tabs button{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;font-size:13.5px;text-align:left}
-    .settings .section-tabs button i{width:16px;text-align:center;opacity:.85}
+    .settings .section-tabs :is(button,a){display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;font-size:13.5px;text-align:left}
+    .settings .section-tabs :is(button,a) i{width:16px;text-align:center;opacity:.85}
     .settings .section-tabs button.active{box-shadow:inset 3px 0 0 var(--accent)}
 }
 
