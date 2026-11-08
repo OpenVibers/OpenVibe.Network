@@ -18,6 +18,7 @@ const db = getDb();
 console.log = log;
 await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
 await db.prepare("INSERT INTO users (id, username, password_hash) VALUES (7, 'viewer', 'x')").run();
+await db.prepare("INSERT INTO account_emails (id, user_id, email, verified, verified_at, is_primary) VALUES ('oauth-email-primary', 7, 'viewer@example.test', 1, ov_now(), 1), ('oauth-email-extra', 7, 'extra@example.test', 1, ov_now(), 0)").run();
 
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
 const ISSUER = 'https://openvibe.network';
@@ -45,6 +46,21 @@ const userToken = jwt.sign({ sub: 7, id: 7, username: 'viewer' }, keys.privateKe
     const confirm = (extra = {}) => post('/oauth/confirm', { token: userToken, client_id: 'live', redirect_uri: REDIRECT, state: 'a b&c', ...extra });
     const codeOf = (redirect) => new URL(redirect).searchParams.get('code');
     const exchange = (code, extra = {}) => post('/oauth/token', { grant_type: 'authorization_code', client_id: 'live', client_secret: 'live-secret', code, redirect_uri: REDIRECT, ...extra });
+
+    // An app asking for email receives a choice screen, saves one address per grant, and exposes only that choice.
+    let emailChoice = await confirm({ scope: 'openid email profile' });
+    assert.deepStrictEqual(emailChoice.body.email_choice.addresses.map((a) => a.id), ['oauth-email-primary', 'oauth-email-extra']);
+    assert.equal(emailChoice.body.email_choice.selected_id, 'oauth-email-primary');
+    emailChoice = await confirm({ scope: 'openid email profile', email_address_id: 'oauth-email-extra' });
+    assert.ok(emailChoice.body.redirect);
+    const emailTokens = await exchange(codeOf(emailChoice.body.redirect));
+    assert.equal(emailTokens.status, 200, JSON.stringify(emailTokens.body));
+    assert.equal(jwt.decode(emailTokens.body.id_token).email, 'extra@example.test');
+    const emailInfo = await fetch(`${base}/oauth/userinfo`, { headers: { authorization: `Bearer ${emailTokens.body.access_token}` } }).then((r) => r.json());
+    assert.equal(emailInfo.email, 'extra@example.test');
+    assert.deepStrictEqual((await db.prepare('SELECT account_email_id FROM account_email_grants WHERE user_id = 7 AND client_id = ?').get('live')).account_email_id, 'oauth-email-extra');
+    emailChoice = await confirm({ scope: 'openid email profile' });
+    assert.equal(emailChoice.body.email_choice.selected_id, 'oauth-email-extra', 'the per-app selected address is preselected next time');
 
     // authorize forwards the challenge to the account chooser; plain and malformed challenges are refused
     let r = await fetch(`${base}/oauth/authorize?${new URLSearchParams({ client_id: 'live', redirect_uri: REDIRECT, response_type: 'code', state: 's', code_challenge: challenge, code_challenge_method: 'S256' })}`, { redirect: 'manual' });

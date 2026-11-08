@@ -21,7 +21,10 @@
             if (button.dataset.remove) await apiFetch(`/api/v1/me/emails/${encodeURIComponent(button.dataset.remove)}`, { method: 'DELETE' });
             message.textContent = 'Your request was received. Check your email for verification links.';
             await refresh();
-        } catch (error) { message.textContent = error.message || 'Could not update your email addresses.'; }
+        } catch (error) {
+            if (error.status === 401 && error.code === 'auth.sign_in_again' && window.OpenVibeReauth) return window.OpenVibeReauth.go('/my#emails');
+            message.textContent = error.message || 'Could not update your email addresses.';
+        }
     });
     form.addEventListener('submit', async (event) => {
         event.preventDefault();

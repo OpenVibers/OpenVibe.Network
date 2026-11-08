@@ -7,6 +7,18 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TTL_MINUTES = 60;
 const hash = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
 const clean = (email) => String(email || '').trim().toLowerCase();
+const { isFreshSignIn } = require('./account-merge');
+
+function needsFreshSignIn(req, res) {
+    if (isFreshSignIn(req.tokenClaims)) return false;
+    return res.status(401).json({ ok: false, error: 'auth.sign_in_again', detail: 'Sign in again within the last 10 minutes to change email addresses.', reauth_url: '/login?reauth=1&return=%2Fmy%23emails' });
+}
+
+async function selectedForClient(db, userId, clientId) {
+    return db.prepare(`SELECT ae.id, ae.email, ae.verified_at FROM account_email_grants g
+        JOIN account_emails ae ON ae.id = g.account_email_id AND ae.user_id = g.user_id
+        WHERE g.user_id = ? AND g.client_id = ? AND ae.verified = 1`).get(userId, clientId);
+}
 
 function meRouter({ requireAuth }) {
     const router = express.Router();
@@ -39,7 +51,11 @@ function meRouter({ requireAuth }) {
 
     router.get('/', requireAuth, sharedRead, async (req, res) => {
         const emails = await list(req.app.locals.db, req.user.id);
-        res.json({ emails: req.sharedEmailRead ? emails.filter((email) => email.primary && email.verified).slice(0, 1) : emails });
+        if (!req.sharedEmailRead) return res.json({ emails });
+        const grant = await req.app.locals.db.prepare(`SELECT ae.id, ae.email, ae.verified, ae.verified_at, ae.created_at, ae.is_primary
+            FROM account_email_grants g JOIN account_emails ae ON ae.id = g.account_email_id
+            WHERE g.user_id = ? AND g.client_id = ? AND ae.user_id = ? AND ae.verified = 1`).get(req.user.id, req.tokenClaims.client_id, req.user.id);
+        res.json({ emails: grant ? [{ id: grant.id, email: grant.email, verified: true, verified_at: grant.verified_at || null, primary: !!grant.is_primary, created_at: grant.created_at }] : [] });
     });
 
     router.post('/', requireAuth, ownerOnly, async (req, res) => {
@@ -79,6 +95,7 @@ function meRouter({ requireAuth }) {
     });
 
     router.delete('/:id', requireAuth, ownerOnly, async (req, res) => {
+        if (needsFreshSignIn(req, res)) return;
         const db = req.app.locals.db;
         const row = await db.prepare('SELECT * FROM account_emails WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
         if (!row) return res.status(404).json({ ok: false, error: 'Email address not found.' });
@@ -89,6 +106,7 @@ function meRouter({ requireAuth }) {
     });
 
     router.post('/:id/primary', requireAuth, ownerOnly, async (req, res) => {
+        if (needsFreshSignIn(req, res)) return;
         const db = req.app.locals.db;
         const next = await db.prepare('SELECT * FROM account_emails WHERE id = ? AND user_id = ? AND verified = 1').get(req.params.id, req.user.id);
         if (!next) return res.status(404).json({ ok: false, error: 'A verified email address was not found.' });
@@ -115,6 +133,24 @@ function meRouter({ requireAuth }) {
     return router;
 }
 
+/** A service with identity.emails.read can learn only whether one subject owns one verified address. */
+function verifiedCheckRouter(principals) {
+    const router = express.Router();
+    router.use(require('openvibe-contracts').http.middleware());
+    router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store').set('Vary', 'Authorization'); next(); });
+    router.post('/', principals.guard('identity.emails.read'), async (req, res) => {
+        const subject = String(req.body?.subject || '');
+        const email = clean(req.body?.email);
+        if (!/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(subject) || email.length > 254 || !EMAIL.test(email)) {
+            return res.status(200).json({ verified: false });
+        }
+        const user = await req.app.locals.db.prepare('SELECT id FROM users WHERE subject_id = ?').get(subject);
+        const verified = user ? await req.app.locals.db.prepare('SELECT 1 AS yes FROM account_emails WHERE user_id = ? AND verified = 1 AND LOWER(email) = LOWER(?)').get(user.id, email) : null;
+        res.json({ verified: !!verified });
+    });
+    return router;
+}
+
 async function issue(req, row) {
     const db = req.app.locals.db;
     const service = req.app.locals.emailService;
@@ -133,14 +169,30 @@ async function consume(db, row) {
     if (!row.account_email_id) return null;
     const address = await db.prepare('SELECT * FROM account_emails WHERE id = ? AND user_id = ? AND LOWER(email) = LOWER(?)').get(row.account_email_id, row.user_id, row.email);
     if (!address) return { ok: false, error: 'Your email address changed since this link was sent — request a new one.' };
-    const claimed = await db.tx(async (t) => {
-        const count = (await t.prepare('UPDATE email_verification_tokens SET used_at = ov_now() WHERE token_hash = ? AND used_at IS NULL').run(row.token_hash)).changes;
-        if (!count) return false;
-        await t.prepare('UPDATE account_emails SET verified = 1, verified_at = ov_now() WHERE id = ? AND user_id = ?').run(address.id, address.user_id);
-        if (address.is_primary) await t.prepare('UPDATE users SET email_verified = 1, email_verified_at = ov_now(), email_bounced_at = NULL, email_bounce_reason = NULL WHERE id = ?').run(address.user_id);
-        return true;
-    });
+    let claimed;
+    try {
+        claimed = await db.tx(async (t) => {
+            const count = (await t.prepare('UPDATE email_verification_tokens SET used_at = ov_now() WHERE token_hash = ? AND used_at IS NULL').run(row.token_hash)).changes;
+            if (!count) return false;
+            const claimedByOther = await t.prepare('SELECT id FROM account_emails WHERE LOWER(email) = LOWER(?) AND verified = 1 AND user_id <> ?').get(address.email, address.user_id);
+            if (claimedByOther) {
+                await t.prepare('DELETE FROM account_emails WHERE id = ? AND user_id = ? AND verified = 0').run(address.id, address.user_id);
+                return 'claimed';
+            }
+            await t.prepare('UPDATE account_emails SET verified = 1, verified_at = ov_now() WHERE id = ? AND user_id = ?').run(address.id, address.user_id);
+            if (address.is_primary) await t.prepare('UPDATE users SET email_verified = 1, email_verified_at = ov_now(), email_bounced_at = NULL, email_bounce_reason = NULL WHERE id = ?').run(address.user_id);
+            return true;
+        });
+    } catch (err) {
+        if (err.code !== '23505' || !String(err.constraint || err.message || '').includes('account_emails_verified_email_unique')) throw err;
+        await db.tx(async (t) => {
+            await t.prepare('UPDATE email_verification_tokens SET used_at = ov_now() WHERE token_hash = ? AND used_at IS NULL').run(row.token_hash);
+            await t.prepare('DELETE FROM account_emails WHERE id = ? AND user_id = ? AND verified = 0').run(address.id, address.user_id);
+        });
+        claimed = 'claimed';
+    }
+    if (claimed === 'claimed') return { ok: false, error: 'This address has already been verified for another account. Remove it from this account and use a different address.' };
     return claimed ? { ok: true, user: await db.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id), email: row.email } : { ok: false, error: 'This verification link was already used.' };
 }
 
-module.exports = { meRouter, consume };
+module.exports = { meRouter, verifiedCheckRouter, consume, selectedForClient };

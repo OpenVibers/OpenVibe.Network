@@ -29,6 +29,8 @@ const CHAT_NAMESPACES = ['chat.preferences', 'chat.tts_defaults', 'chat.dm_setti
 
 // Initial grants: what each service does against Network today.
 const DEFAULT_GRANTS = [
+    // Mail relay checks one address at a time before forwarding; the capability returns only a boolean.
+    ['mail', 'identity.emails.read', SELF_AUDIENCE, []],
     // Locker v1 stores private ciphertext in its own Media tenant. Network remains the key directory.
     ...['media.object.upload', 'media.object.read', 'media.object.delete'].map((cap) => ['locker', cap, 'openvibe.media', ['locker']]),
     ['locker', 'identity.subject.resolve', SELF_AUDIENCE, []],

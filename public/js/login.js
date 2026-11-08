@@ -373,7 +373,7 @@ function escapeHtml(str) {
 
 // ── /oauth/confirm, and the purposes step ───────────────────
 /** POST /oauth/confirm for this sign-in. `consent` is the person's answer on the purposes step, when there was one. */
-async function postConfirm(token, consent) {
+async function postConfirm(token, consent, emailAddressId) {
     const res = await fetch(API_BASE + '/oauth/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -387,6 +387,7 @@ async function postConfirm(token, consent) {
             code_challenge_method: params.get('code_challenge_method') || undefined,
             nonce: params.get('nonce') || undefined,
             ...(consent ? { consent } : {}),
+            ...(emailAddressId ? { email_address_id: emailAddressId } : {}),
         }),
     });
     let data = {};
@@ -396,17 +397,57 @@ async function postConfirm(token, consent) {
 
 /** Confirm the sign-in; when the app asks for permission (consent:<purpose>), the person answers first. */
 async function confirmWithPurposes(token) {
-    let out = await postConfirm(token);
-    if (out.res.ok && out.data && out.data.consent) {
-        const before = (document.querySelector('.form-panel.active') || {}).id || 'panel-chooser';
-        oauthConfirmInFlight = false;
-        const answer = await askPurposes(out.data.consent);
-        oauthConfirmInFlight = true;
-        out = await postConfirm(token, answer);
-        // A refused answer goes back where the person was, so the caller's message shows there.
-        if (!out.res.ok) setActivePanel(before, { showTabs: before === 'panel-login' || before === 'panel-register', showExtras: true });
+    let out, consent, emailAddressId;
+    const before = (document.querySelector('.form-panel.active') || {}).id || 'panel-chooser';
+    for (let step = 0; step < 3; step++) {
+        out = await postConfirm(token, consent, emailAddressId);
+        if (!out.res.ok || !out.data) break;
+        if (out.data.email_choice) {
+            oauthConfirmInFlight = false;
+            emailAddressId = await askEmailAddress(out.data.email_choice);
+            oauthConfirmInFlight = true;
+            if (!emailAddressId) return out;
+            continue;
+        }
+        if (out.data.consent) {
+            oauthConfirmInFlight = false;
+            consent = await askPurposes(out.data.consent);
+            oauthConfirmInFlight = true;
+            continue;
+        }
+        break;
     }
+    if (!out?.res.ok) setActivePanel(before, { showTabs: before === 'panel-login' || before === 'panel-register', showExtras: true });
     return out;
+}
+
+/** The app's email scope shares one verified address; primary starts selected and the list stays in this consent step. */
+function askEmailAddress(step) {
+    const make = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+    const head = document.getElementById('purposes-head');
+    head.replaceChildren(make('b', null, clientName || 'This app'), ' asks which one verified email address you want to share.');
+    const list = document.getElementById('purposes-list');
+    list.replaceChildren(make('legend', 'sr-only', 'Choose one email address'));
+    let selected = '';
+    (Array.isArray(step.addresses) ? step.addresses : []).forEach((address) => {
+        const row = make('label', 'purpose-item');
+        const radio = make('input', 'purpose-box'); radio.type = 'radio'; radio.name = 'email-address-choice'; radio.value = address.id;
+        radio.checked = address.id === step.selected_id || (!step.selected_id && !!address.primary); if (radio.checked) selected = address.id;
+        radio.addEventListener('change', () => { if (radio.checked) selected = radio.value; });
+        row.append(radio, make('span', 'purpose-text', `${address.email}${address.primary ? ' (primary)' : ''}`));
+        list.append(row);
+    });
+    document.getElementById('purposes-adult').hidden = true;
+    document.getElementById('purposes-already').hidden = true;
+    const btn = document.getElementById('purposes-continue');
+    btn.textContent = 'Share this address and continue'; btn.disabled = !selected;
+    list.onchange = () => { btn.disabled = !selected; };
+    const intro = document.getElementById('oauth-consent'); if (intro) intro.hidden = true;
+    setActivePanel('panel-purposes', { showTabs: false, showExtras: false });
+    head.focus();
+    return new Promise((resolve) => { document.getElementById('purposes-form').onsubmit = (event) => {
+        event.preventDefault(); if (!selected) return; event.target.onsubmit = (ev) => ev.preventDefault(); btn.disabled = true; resolve(selected);
+    }; });
 }
 
 /**

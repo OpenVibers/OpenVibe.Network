@@ -301,6 +301,28 @@ router.post('/confirm', async (req, res) => {
     }
     const user = out.user;
 
+    // Email is an explicit per-app share. A first grant asks the person to choose one verified address (primary is
+    // preselected); later sign-ins reuse that choice. No OAuth response or Network API exposes the address list.
+    const wantsEmail = String(askedConsent.rest || '').split(/\s+/).includes('email');
+    if (wantsEmail) {
+        let grant = await require('../identity/emails').selectedForClient(db, user.id, String(client_id));
+        if (req.body.email_address_id !== undefined) {
+            const picked = await db.prepare('SELECT id, email, verified_at FROM account_emails WHERE id = ? AND user_id = ? AND verified = 1').get(String(req.body.email_address_id), user.id);
+            if (!picked) return res.status(422).json({ error: 'email_choice_invalid', error_description: 'Choose one of your verified email addresses.' });
+            await db.prepare(`INSERT INTO account_email_grants (user_id, client_id, account_email_id, selected_at) VALUES (?, ?, ?, ov_now())
+                ON CONFLICT (user_id, client_id) DO UPDATE SET account_email_id = EXCLUDED.account_email_id, selected_at = EXCLUDED.selected_at`)
+                .run(user.id, String(client_id), picked.id);
+            grant = picked;
+        }
+        if (req.body.email_address_id === undefined) {
+            const options = await db.prepare('SELECT id, email, is_primary FROM account_emails WHERE user_id = ? AND verified = 1 ORDER BY is_primary DESC, created_at, id').all(user.id);
+            if (options.length) return res.json({ email_choice: {
+                addresses: options.map((x) => ({ id: x.id, email: x.email, primary: !!x.is_primary })),
+                selected_id: grant?.id || options.find((x) => x.is_primary)?.id || options[0].id,
+            } });
+        }
+    }
+
     // Consent per purpose (C4): before any code, the purposes this app asks for that the person has not answered yet.
     // Without `consent` in the body the answer is the screen to show ({ consent: … }, no redirect); with it, the person's
     // choice is recorded and the sign-in goes on, whatever they chose. Granted ones and those refused in the last 30
@@ -476,6 +498,8 @@ async function handleAuthCodeGrant(db, config, req, res, client, code, redirectU
     // Get user
     const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(authCode.user_id);
     if (!user || user.is_banned) return res.status(400).json({ error: 'invalid_grant', error_description: 'User not found or banned' });
+    const sharedEmail = String(authCode.scope || '').split(/\s+/).includes('email')
+        ? await require('../identity/emails').selectedForClient(db, user.id, client.client_id) : null;
 
     // A session token only through the claimed https App Link and only with a published release certificate: a custom
     // scheme can be answered by any app, and no fingerprint means Android verified nothing. Everything else is the
@@ -493,8 +517,12 @@ async function handleAuthCodeGrant(db, config, req, res, client, code, redirectU
     const { password_hash, token_valid_after, ...safeUser } = user;
     // OpenID Connect (server/auth/oidc.js): scope openid adds an id_token for this client.
     const idToken = oidc.wantsOpenid(authCode.scope)
-        ? oidc.idToken({ user: { ...user, subject_id: await subjects.ensureUserSubject(db, user) || user.subject_id }, clientId: client.client_id, nonce: authCode.nonce, privateKey: req.app.locals.privateKey, issuer: config.jwt.issuer })
+        ? oidc.idToken({ user: { ...user, subject_id: await subjects.ensureUserSubject(db, user) || user.subject_id }, clientId: client.client_id, nonce: authCode.nonce, privateKey: req.app.locals.privateKey, issuer: config.jwt.issuer, ...(String(authCode.scope || '').split(/\s+/).includes('email') ? { email: sharedEmail?.email } : {}) })
         : undefined;
+    if (String(authCode.scope || '').split(/\s+/).includes('email')) {
+        if (sharedEmail) { safeUser.email = sharedEmail.email; safeUser.email_verified = true; }
+        else { delete safeUser.email; delete safeUser.email_verified; }
+    } else { delete safeUser.email; delete safeUser.email_verified; }
     res.json({
         access_token: accessToken,
         refresh_token: refreshToken,
@@ -596,6 +624,9 @@ async function issueTokenPair(db, config, req, user, client, family = {}, scope 
     // The consent claim (network.consent-claim@1): of the purposes this sign-in asked for, the ones the person granted to
     // THIS client and that are active now. Worked out for every token, so a refresh after a revoke leaves it out.
     const askedConsent = consentApps.parseScope(scope);
+    const tokenScope = publicClient ? String(scope || '') : scopeWithConsent('profile theme', askedConsent.purposes);
+    const emailScope = String(scope || '').split(/\s+/).includes('email');
+    const effectiveScope = emailScope && !tokenScope.split(/\s+/).includes('email') ? `${tokenScope} email` : tokenScope;
     const consent = askedConsent.purposes.length
         ? await consentApps.grantedFor(db, { subject: subjectId, client: client.client_id, purposes: askedConsent.purposes })
         : null;
@@ -615,12 +646,13 @@ async function issueTokenPair(db, config, req, user, client, family = {}, scope 
     // A session token carries the person's non-staff role and NO staff claims: the phone acts as them, not as their
     // office. client_id, scope and fam stay, so the account page can end the family and the app knows what it holds.
     const claims = publicClient && !sessionClient
-        ? { ...base, client_id: client.client_id, scope: String(scope || ''), fam: familyId, ...consentClaim }
+        ? { ...base, client_id: client.client_id, scope: effectiveScope, fam: familyId, ...consentClaim }
         : {
             ...base,
             role: sessionClient ? nonStaffRole(user.role) : user.role,
             ...(sessionClient ? {} : staffClaims(user)),
-            ...(sessionClient ? { client_id: client.client_id, scope: String(scope || ''), fam: familyId } : {}),
+            client_id: client.client_id, scope: effectiveScope,
+            ...(sessionClient ? { fam: familyId } : {}),
             ...consentClaim,
         };
 
@@ -635,7 +667,7 @@ async function issueTokenPair(db, config, req, user, client, family = {}, scope 
     // for stay on it, so every refresh works the claim out again.
     const issued = await refreshTokens.issue(db, {
         clientId: client.client_id, userId: user.id,
-        scope: publicClient ? String(scope || '') : scopeWithConsent('profile theme', askedConsent.purposes),
+        scope: effectiveScope,
         familyId, generation: family.generation || 0, session: sessionClient ? 1 : 0,
     });
 
