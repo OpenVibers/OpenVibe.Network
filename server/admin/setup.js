@@ -65,7 +65,7 @@ const TASKS_SCHEMA = Object.freeze({
     properties: {
         provider_topup: task('Top up the prepaid AI balances',
             'Some AI providers run on a prepaid balance. When one runs out, OpenVibe pauses that provider and uses the next one. Mark it done after a top-up.',
-            { group: 'money', unlocks: 'Keeps the AI providers that run on a prepaid balance answering.', get_it_at: 'https://ai.openvibe.services/console', get_it_how: 'Open Providers in the AI console, see which balance is low, and top it up on that provider\'s own site.' }),
+            { group: 'money', unlocks: 'Keeps the AI providers that run on a prepaid balance answering.', get_it_at: 'https://openvibe.exchange/console/providers', get_it_how: 'Open Providers in the AI console, see which balance is low, and top it up on that provider\'s own site.' }),
         dnssec_records: task('Add the DNSSEC records at the registrar',
             'Signs OpenVibe\'s domains so nobody can answer for them with false addresses. Cloudflare makes one DS record per domain; it works once the registrar has it.',
             { group: 'domains', unlocks: 'Protects every OpenVibe domain from forged DNS answers.', get_it_at: 'https://developers.cloudflare.com/dns/dnssec/', get_it_how: 'Turn on DNSSEC for each domain in Cloudflare (DNS, then Settings), then copy its DS record to the registrar.' }),

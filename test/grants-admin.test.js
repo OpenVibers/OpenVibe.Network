@@ -39,6 +39,8 @@ for (const [client, cap, aud] of principals.DEFAULT_GRANTS) {
 assert.deepStrictEqual(principals.DEFAULT_GRANTS.filter(([, cap]) => cap === 'network.secret.use').map(([client, , aud]) => [client, aud]).sort(),
     [['actor', principals.SELF_AUDIENCE], ['ai', principals.SELF_AUDIENCE], ['domains', principals.SELF_AUDIENCE], ['watch', principals.SELF_AUDIENCE]], 'project secrets: Actor signs, Watch and AI (an app\'s own provider, AI#74) use them, Domains reveals a person\'s provider token');
 assert.ok(principals.DEFAULT_GRANTS.some(([client, cap, aud, scopes]) => client === 'trade' && cap === 'events.subscription.manage' && aud === 'openvibe.events' && Array.isArray(scopes) && !scopes.length), 'Trade holds events.subscription.manage on openvibe.events');
+assert.deepStrictEqual(principals.DEFAULT_GRANTS.filter(([client, cap, aud]) => client === 'exchange' && cap.startsWith('ai.') && aud === 'openvibe.ai').map(([, cap]) => cap).sort(),
+    ['ai.provider.manage', 'ai.run.create', 'ai.usage.read', 'ai.workflow.manage'], 'Exchange gets only the AI run capability and console admin capabilities');
 assert.strictEqual((await events()).length, 0, 'the seed is not announced');
 
 // Grant, update, revoke.
