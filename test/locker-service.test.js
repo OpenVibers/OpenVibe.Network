@@ -1,0 +1,27 @@
+'use strict';
+const assert = require('assert');
+const { generateKeyPairSync } = require('crypto');
+const { serviceAuth } = require('openvibe-contracts');
+const { getDb } = require('../server/db/database');
+const { issueToken, ensureSchema } = require('../server/identity/principals');
+(async () => {
+    const db = getDb();
+    const client = await db.prepare("SELECT client_id,redirect_uris,is_first_party FROM oauth_clients WHERE client_id='locker'").get();
+    assert.strictEqual(client.is_first_party, 1);
+    assert.deepStrictEqual(JSON.parse(client.redirect_uris), ['https://openvibe.locker/auth/callback']);
+    await db.prepare("UPDATE oauth_clients SET client_secret='locker-test-secret' WHERE client_id='locker'").run();
+    await ensureSchema(db);
+    const keys = generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
+    const token = (audience, scope) => issueToken(db, { clientId: 'locker', clientSecret: 'locker-test-secret', audience, scope, privateKey: keys.privateKey, issuer: 'https://openvibe.network' });
+    const media = await token('openvibe.media'); assert.strictEqual(media.status, 200);
+    const verified = serviceAuth.verifyServiceToken(media.body.access_token, { publicKey: keys.publicKey, issuer: 'https://openvibe.network', audience: 'openvibe.media' });
+    assert.strictEqual(verified.ok, true);
+    assert.deepStrictEqual(verified.claims.ns, ['locker']);
+    assert.deepStrictEqual(verified.claims.cap, ['media.object.delete', 'media.object.read', 'media.object.upload']);
+    const network = await token('openvibe.network'); assert.strictEqual(network.status, 200);
+    assert.deepStrictEqual(network.body.scope.split(' '), ['identity.subject.resolve', 'network.account.deletion.confirm', 'network.account.export.contribute', 'network.notifications.push']);
+    const events = await token('openvibe.events'); assert.strictEqual(events.status, 200);
+    assert.deepStrictEqual(events.body.scope.split(' '), ['events.event.publish', 'events.subscription.manage']);
+    assert.notStrictEqual((await token('openvibe.media', 'media.object.transform')).status, 200);
+    console.log('locker-service: callback, scoped Media token, identity/account and Events grants; no transforms');
+})().catch((e) => { console.error(e); process.exitCode = 1; });

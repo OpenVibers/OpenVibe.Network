@@ -40,7 +40,7 @@ assert.strictEqual(svc.ranking().at, null, 'cold start: no use counted yet (the 
 let p = svc.payloadFor('openvibe.media');
 // Email (OpenVibe.Mail) joins the cold order after Chat once its manifest is in the pinned Contracts release; until then
 // the test still follows what the installed manifests say.
-const COLD_ORDER = ['live', 'tools', 'space', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'search', 'run', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'casino', 'tours', 'shoes', 'connect'];
+const COLD_ORDER = ['live', 'tools', 'space', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'search', 'run', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'casino', 'tours', 'shoes', 'connect', 'computer', 'lock'];
 if (HAS_MAIL) COLD_ORDER.splice(COLD_ORDER.indexOf('chat') + 1, 0, 'mail');
 assert.deepEqual(p.nav.filter(n => !n.of).map(n => n.id), COLD_ORDER, 'cold start follows the base order');
 assert.ok(!p.nav.some(n => n.id === 'play'), 'Play is part of Games, not a menu entry of its own');
@@ -58,13 +58,13 @@ assert.deepStrictEqual(['actor', 'bot', 'run', 'zone', 'codes'].map((id) => p.na
 // Games together, items with the account, Alerts with the building blocks, files beside Video (each when its site is open).
 [['games', 'games'], ['connect', 'make'], ['quest', 'games'], ['inventory', 'people'], ['watch', 'build'], ['download', 'streams'], ['search', 'answers'], ['chat', 'people'], ['mail', 'people'], ['domains', 'make'], ['report', 'answers'], ['design', 'make'], ['today', 'answers'], ['surf', 'games'], ['meme', 'games'], ['vision', 'answers'], ['exchange', 'build'], ['fun', 'games'], ['cam', 'streams'], ['bench', 'answers'], ['casino', 'games'], ['tours', 'streams'], ['shoes', 'shop']]
     .filter(([id]) => at(id) >= 0).forEach(([id, group]) => assert.strictEqual(p.nav[at(id)].group, group, `${id} is in ${group}`));
-assert.strictEqual(p.nav.length, 53 + (HAS_MAIL ? 1 : 0));   // Planned Computer is in the soon list until launch.
+assert.strictEqual(p.nav.length, 55 + (HAS_MAIL ? 1 : 0));   // Computer and Locker are live sites since Contracts 0.347.0 (2026-11-08).
 assert.deepStrictEqual([p.nav[at('stream')].name, p.nav[at('pics')].name], ['Restream', 'Pics'], 'OpenRestream is "Restream" among the menu\'s short names (owner, 2026-10-28)');
 assert.strictEqual(p.nav.find(n => n.id === 'space').url, 'https://openvibe.space/', 'Space keeps its own home (the forum returned to Community, 0.118.0)');
 assert.strictEqual(p.nav.find(n => n.id === 'community').url, 'https://openvibe.community/', 'Community: the forum, pastes and Pulse');
 assert.equal(p.footer.legal.dmca, 'https://openvibe.media/dmca', 'legal links stay on the site\'s own domain');
 assert.ok(!p.footer.discover.some(l => l.url === 'https://openvibe.media/'), 'a site never recommends itself');
-assert.deepStrictEqual(p.soon.map(n => n.id || n), ['computer'], 'Computer is listed as coming soon until the reviewed host launch');
+assert.deepStrictEqual(p.soon.map(n => n.id || n), [], 'nothing is coming soon: Computer launched on 2026-11-08');
 
 // Real use reorders: community gets the history, so it rises above the cold-start order.
 // user_history's foreign key needs its users (PostgreSQL enforces the constraint SQLite only declared).

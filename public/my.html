@@ -66,6 +66,17 @@
         <div class="ny-list" id="needs-you-list"></div>
     </section>
 
+    <!-- Receipts (plan OpenVibe_Seven_Domains_Plan R2 item 13): the latest five receipt-category summaries Inbox AI
+         keeps on openvibe.email, each a link to its thread, with a counted fold for the rest and never a tab.
+         my/receipts.js fills it from GET /api/v1/me/receipts; with Inbox AI off (or no mailbox) the one quiet line
+         links to the switch, and no sample receipt is ever drawn. The card stays out until it has an answer. -->
+    <section class="rc" id="receipts" hidden aria-labelledby="receipts-h">
+        <div class="rc-h">
+            <h2 id="receipts-h"><span class="rc-ic" aria-hidden="true"><i class="fa-solid fa-file-lines"></i></span>Receipts</h2>
+        </div>
+        <div class="rc-body" id="receipts-body"></div>
+    </section>
+
     <!-- You (11-07 redesign; the owner: "front-face the best stuff we have to offer … awesome design"): who you are in
          your own colour, your balances, and one tap to what you do most, on every site. -->
     <header class="me" id="page-header">
@@ -202,7 +213,7 @@
         </div>
         <div class="card" id="public-page-card">
             <h3><span class="icon"><i class="fa-solid fa-address-card"></i></span> Your public page</h3>
-            <p class="muted">A link-in-bio page at <a id="public-page-url" href="https://openvibe.my/" target="_blank" rel="noopener">openvibe.my/@you</a>. Only information already public while signed out can appear here.</p>
+            <p class="muted">A link-in-bio page at <a id="public-page-url" href="https://openvibe.network/" target="_blank" rel="noopener">openvibe.network/@you</a>. Only information already public while signed out can appear here.</p>
             <label for="public-page-pronouns">Pronouns <small>(40 characters)</small></label><input id="public-page-pronouns" maxlength="40" autocomplete="off">
             <label for="public-page-bio">Bio <small>(280 characters)</small></label><textarea id="public-page-bio" maxlength="280" rows="3"></textarea>
             <label for="public-page-links">Links <small>(up to 8; one per line: label | https://…)</small></label><textarea id="public-page-links" rows="5" placeholder="My website | https://example.com"></textarea>
@@ -611,6 +622,7 @@
 <script src="/js/my/security.js" defer></script>
 <script src="/js/my/approvals.js" defer></script>
 <script src="/js/my/apps.js" defer></script>
+<script src="/js/my/receipts.js" defer></script>
 <script src="/js/my/boot.js" defer></script>
   <script src="https://openvibe.live/live-notify.js" async></script>
 </body>
