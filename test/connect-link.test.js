@@ -22,7 +22,7 @@ const { siteForHost, SITES } = require('../server/frame/sites');
         assert.equal(isTrustedHost(host), false, host); assert.equal(isTrustedOrigin(`https://${host}`), false, host);
         assert.equal(matches(`https://${host}`), false, host); assert.equal(siteForHost(host), null, host);
     }
-    assert.equal(SITES.find(s => s.service === 'connect').host, 'connect.openvibe.link');
+    assert.equal(SITES.find(s => s.service === 'connect').url, 'https://connect.openvibe.link/');
     assert.equal(isTrustedHost('openvibe.link'), true);
     console.log('Connect Link callbacks, credential preservation, frame destination and tenant isolation passed');
 })().catch(e => { console.error(e); process.exitCode = 1; });

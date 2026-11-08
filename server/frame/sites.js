@@ -31,16 +31,17 @@ function manifestHost(service) {
 const HIDDEN_SITE = new Set(['play']);
 const ALL_SITES = RAW_SITES.map((s) => {
     const e = exposureOf(s.service);
-    // Connect now lives beside Link; keep the old exact control host as an alias below.
-    const host = s.service === 'connect' ? 'connect.openvibe.link' : manifestHost(s.service) || s.host;
+    const host = manifestHost(s.service) || s.host;
     if (!host) throw new Error(`site ${s.id}: no host (its manifest has no publicOrigin and the entry names none)`);
-    return { ...s, host, ...(s.service === 'inventory' ? { url: 'https://openvibe.my/inventory' } : {}), status: e.state === 'live' && e.public_site === 'service' ? 'open' : 'soon', state: e.state };
+    return { ...s, host, ...(s.service === 'inventory' ? { url: 'https://openvibe.my/inventory' } : {}),
+        // The navigation moves first; the service/API manifest keeps its working Website origin during rollout.
+        ...(s.service === 'connect' ? { url: 'https://connect.openvibe.link/' } : {}), status: e.state === 'live' && e.public_site === 'service' ? 'open' : 'soon', state: e.state };
 });
 // The menu, footer, home and llms.txt list SITES; siteForHost still knows Play so a Play-host page (or a token
 // consent screen) keeps its own name, without the site being offered as a destination.
 const SITES = ALL_SITES.filter((s) => !HIDDEN_SITE.has(s.id));
 const byHost = new Map(ALL_SITES.map(s => [s.host, s]));
-byHost.set('connect.openvibe.website', ALL_SITES.find(s => s.service === 'connect'));
+byHost.set('connect.openvibe.link', ALL_SITES.find(s => s.service === 'connect'));
 
 /** A site's full name: its own when it is a brand already (OpenRestream), otherwise OpenVibe.<name> (OpenVibe.Live).
  *  "OpenVibe.OpenRestream" read wrong on the home page's cards (the owner, 2026-10-28). */

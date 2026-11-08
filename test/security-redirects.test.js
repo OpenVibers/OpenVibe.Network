@@ -28,6 +28,8 @@ const BAD = [
     'https://openvibe.lol/', 'https://login.openvibe.xyz/', 'http://openvibe.live/', 'https://user:pw@evil.example/',
     // *.openvibe.host are tenant sites (OpenVibe.Host Stage B): people's own content, not ours
     'https://evil.openvibe.host/', 'https://a.b.openvibe.host/x',
+    'https://portal--alex.openvibe.link/', 'https://nested.portal--alex.openvibe.link/',
+    'https://portal--alex.openvibe.website/', 'https://unknown.openvibe.link/',
 ];
 const GOOD = [
     ['/', '/'], ['/my#linked', '/my#linked'], ['/admin?tab=users', '/admin?tab=users'],
@@ -37,6 +39,9 @@ const GOOD = [
     ['https://openvibe.network/admin', 'https://openvibe.network/admin'],
     ['https://ingest.openre.stream/', 'https://ingest.openre.stream/'],
     ['https://openvibe.host/dashboard', 'https://openvibe.host/dashboard'],
+    ['https://openvibe.link/', 'https://openvibe.link/'],
+    ['https://connect.openvibe.link/', 'https://connect.openvibe.link/'],
+    ['https://connect.openvibe.website/', 'https://connect.openvibe.website/'],
 ];
 
 for (const [file, name] of [['js/login.js', 'safeReturnUrl'], ['sso-fanout.html', 'safeNext']]) {
