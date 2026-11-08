@@ -149,6 +149,10 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     if (HAS_MAIL) EXPECTED_OPEN.splice(EXPECTED_OPEN.indexOf('chat') + 1, 0, 'mail');
     assert.deepStrictEqual(open, EXPECTED_OPEN);
     for (const s of SITES) {
+        if (s.id === 'computer' && !contracts.services.get('computer')) {
+            assert.strictEqual(s.status, 'soon', 'Computer stays listed but not open until its service manifest is pinned');
+            continue;
+        }
         assert.ok(s.service && PINNED[s.service], `${s.id} names its service`);
         assert.strictEqual(s.status === 'open', PINNED[s.service] === 'live', `${s.id} nav status follows exposure`);
     }
