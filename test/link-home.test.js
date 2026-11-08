@@ -57,6 +57,10 @@ const SHAPED = {
     assert.strictEqual(broken.stale, true, 'and it is marked as the last one read');
     assert.ok(broken.installUrl.startsWith('https://github.com/OpenVibers/OpenVibe.Node/releases/download/'), 'the installer link still works');
 
+    // The vhost must send /machines and /pair to the app (which signposts them), not the catch-all to Network.
+    const vhost = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'nginx', 'parked-domains.conf'), 'utf8');
+    assert.ok(/location ~ \^\/\(\|install\|machines\|pair\|/.test(vhost), 'the vhost proxies /machines and /pair to the Link app');
+
     // ── The page: OpenVibe Link, and every fact the Node page had ──
     const html = page.render({ release: first, releaseId: 'rel_test' });
     assert.ok(html.includes('<title>OpenVibe Link: your machines, connected</title>'), 'the title is Link\'s');
