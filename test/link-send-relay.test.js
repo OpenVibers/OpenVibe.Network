@@ -24,9 +24,14 @@ const locker = require('openvibe-sdk/locker');
         const principal = tokens.get(req.headers.authorization);
         if (!principal) return res.status(401).end();
         req.principal = { sub: `node:${principal}` }; next();
-    }, requireAuth: (_req, _res, next) => next() });
+    }, requireAuth: (req, res, next) => {
+        if (req.headers.authorization !== 'alice-session') return res.status(401).end();
+        req.user = { id: 9311, subject_id: alice }; next();
+    } });
     const app = express(); app.use(express.json({ limit: '40mb' })); Object.assign(app.locals, { db });
     app.use('/send', send.self);
+    app.use('/me/send-keys', send.keys);
+    app.use('/me/send', send.web);
     const server = http.createServer(app);
     await new Promise((ok) => server.listen(0, '127.0.0.1', ok));
     const base = `http://127.0.0.1:${server.address().port}/send`;
@@ -59,7 +64,9 @@ const locker = require('openvibe-sdk/locker');
         assert.equal(res.status, 200);
         const inbox = await res.json();
         assert.equal(inbox.items.length, 1);
-        assert.equal(inbox.items[0].envelope, envelope, 'the relay preserves the opaque ciphertext');
+        assert.equal(inbox.items[0].envelope, undefined, 'the polled list carries no ciphertext');
+        assert.equal(inbox.items[0].bytes, Buffer.byteLength(envelope));
+        assert.equal(inbox.items[0].sender_node, from);
         res = await call(`/${created.id}/accept`, 'stranger', 'POST');
         assert.equal(res.status, 404, 'another machine cannot accept the recipient\'s item');
         res = await call(`/${created.id}/accept`, 'target', 'POST');
@@ -77,5 +84,23 @@ const locker = require('openvibe-sdk/locker');
         res = await call(`/${created.id}/complete`, 'target', 'POST');
         assert.equal(res.status, 204);
         assert.equal((await (await call('/inbox', 'target')).json()).items.length, 0);
+
+        // The browser sender: the signed-in person's own keyed machines only, at the paths the page calls.
+        const web = (path, method = 'GET', body, token = 'alice-session') => fetch(base.replace(/\/send$/, '') + path, {
+            method, headers: { authorization: token, ...(body ? { 'content-type': 'application/json' } : {}) },
+            ...(body ? { body: JSON.stringify(body) } : {}),
+        });
+        res = await web('/me/send-keys');
+        assert.equal(res.status, 200);
+        assert.ok((await res.json()).machines.some((m) => m.id === target && m.public_key), 'the keyed machine is listed');
+        res = await web('/me/send', 'POST', { target_node: target, envelope }, 'nobody');
+        assert.equal(res.status, 401, 'the web sender needs a signed-in person');
+        res = await web('/me/send', 'POST', { target_node: stranger, envelope });
+        assert.equal(res.status, 404, 'the web sender cannot address another owner\'s machine');
+        res = await web('/me/send', 'POST', { target_node: target, envelope });
+        assert.equal(res.status, 201, 'the page\'s POST /api/v1/me/nodes/send has a route');
+        const fromWeb = (await (await call('/inbox', 'target')).json()).items;
+        assert.equal(fromWeb.length, 1);
+        assert.equal(fromWeb[0].sender_name, 'openvibe.link');
     } finally { await new Promise((ok) => server.close(ok)); }
 })().catch((e) => { console.error(e); process.exitCode = 1; });

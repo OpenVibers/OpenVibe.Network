@@ -640,6 +640,7 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     });
     app.use('/api/v1/node/self/send', rateLimit({ windowMs: 60_000, max: 120 }), sendRelay.self);
     app.use('/api/v1/me/nodes/send-keys', rateLimit({ windowMs: 60_000, max: 60 }), sendRelay.keys);
+    app.use('/api/v1/me/nodes/send', rateLimit({ windowMs: 60_000, max: 30 }), sendRelay.web);
 }
 // The machines hub (plan L34, step M2): a person's machines on openvibe.network/machines. Bot stays the registry
 // underneath; Network fronts it and calls it as the person, so Bot checks the machine is that person's own.

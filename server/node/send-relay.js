@@ -51,9 +51,17 @@ function router({ nodeGuard, requireAuth, db }) {
         try {
             const db = req.app.locals.db;
             const target = await principal(db, req);
-            await db.prepare("DELETE FROM link_send_items WHERE expires_at <= now() OR state <> 'pending'").run();
-            const rows = await db.prepare("SELECT id, sender_node, envelope, created_at, expires_at FROM link_send_items WHERE target_node = ? AND state = 'pending' AND expires_at > now() ORDER BY created_at").all(target.id);
-            res.set('Cache-Control', 'no-store').json({ items: rows });
+            // The list is polled every few seconds while Link's window is open: names and sizes only. The ciphertext
+            // is fetched once, by accept, when the person chooses to receive it.
+            const rows = await db.prepare(`SELECT i.id, i.sender_node, s.name AS sender_name, octet_length(i.envelope) AS bytes,
+                    i.created_at, i.expires_at
+                FROM link_send_items i LEFT JOIN platform_node_principals s ON s.id = i.sender_node
+                WHERE i.target_node = ? AND i.state = 'pending' AND i.expires_at > now() ORDER BY i.created_at`).all(target.id);
+            res.set('Cache-Control', 'no-store').json({ items: rows.map((r) => ({
+                id: r.id, sender_node: r.sender_node || null,
+                sender_name: r.sender_node ? (r.sender_name || 'Link machine') : 'openvibe.link',
+                bytes: Number(r.bytes) || 0, created_at: r.created_at, expires_at: r.expires_at,
+            })) });
         } catch (e) { return sendError(res, e); }
     });
     self.get('/targets', async (req, res) => {
@@ -123,7 +131,10 @@ function router({ nodeGuard, requireAuth, db }) {
             })) });
         } catch (e) { return sendError(res, e); }
     });
-    keys.post('/send', express.json({ limit: MAX_ENVELOPE }), async (req, res) => {
+    // The browser sender on openvibe.link: POST /api/v1/me/nodes/send, as the signed-in person.
+    const web = express.Router();
+    web.use(http.middleware(), requireAuth);
+    web.post('/', express.json({ limit: MAX_ENVELOPE }), async (req, res) => {
         try {
             const db = req.app.locals.db;
             const owner = await ensureUserSubject(db, req.user);
@@ -148,7 +159,7 @@ function router({ nodeGuard, requireAuth, db }) {
     }, 15 * 60_000);
     cleanup.unref?.();
     if (db) cleanupExpired(db).catch((e) => console.error('[Link Send] relay expiry cleanup failed:', e.message));
-    return { self, keys };
+    return { self, keys, web };
 }
 
 async function assertQuota(db, owner, adding) {
