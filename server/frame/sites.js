@@ -13,7 +13,10 @@ const { exposureOf } = require('../registry/exposure');
 // Since openvibe-contracts 0.42.0 (WS-C task 1) the list is the manifests' `site` blocks, in `position` order:
 // name, icon, tagline, what, the legal profile, and a host only while the manifest has no publicOrigin. A
 // site's id is its icon name (live, tools, …, stream for OpenRestream).
-const RAW_SITES = contracts.services.manifests.filter((m) => m.site).sort((a, b) => (a.site.position ?? 999) - (b.site.position ?? 999)).map((m) => ({
+// OpenVibe.Bench moved into OpenVibe.Report's AI section (owner, 2026-11-08): its public pages are gone, so it is
+// not a site of its own in the Frame. The service and its API stay; the entry below lists its AI pages under Report.
+const HIDDEN_SITES = new Set(['bench']);
+const RAW_SITES = contracts.services.manifests.filter((m) => m.site && !HIDDEN_SITES.has(m.id)).sort((a, b) => (a.site.position ?? 999) - (b.site.position ?? 999)).map((m) => ({
     id: m.site.icon, name: m.site.name, icon: m.site.icon, service: m.id, profile: m.site.legalProfile, tagline: m.site.tagline, what: m.site.what,
     ...(m.site.host ? { host: m.site.host } : {}),
 }));
@@ -42,13 +45,13 @@ const fullName = (s) => (/^Open[A-Z]/.test(String(s && s.name)) ? s.name : `Open
 const GROUPS = [
     { id: 'streams', name: 'Streams & places', sites: ['live', 'media-hub', 'stream', 'pics', 'download', 'cam', 'tours'] },
     { id: 'games', name: 'Games & laughs', sites: ['games', 'surf', 'fun', 'meme', 'casino', 'quest'] },
-    { id: 'answers', name: 'News & answers', sites: ['today', 'report', 'news', 'search', 'wiki', 'blog', 'reviews', 'vision'] },
+    { id: 'answers', name: 'News & answers', sites: ['today', 'report', 'bench', 'news', 'search', 'wiki', 'blog', 'reviews', 'vision'] },
     { id: 'make', name: 'Make & build', sites: ['website', 'connect', 'design', 'domains', 'codes', 'space', 'tools', 'host', 'bot'] },
     { id: 'shop', name: 'Shop & swap', sites: ['deals', 'coupons', 'shoes', 'rent', 'homes', 'work', 'food', 'trade'] },
     { id: 'people', name: 'People & you', sites: ['chat', 'mail', 'community', 'tips', 'vip', 'help', 'network', 'inventory'] },
     // Actor is the engine behind every agent (Codes' Auto, Vibe, the Dock call it): a developer service, not a second
     // place to chat with an agent (plan L39, 2026-10-31).
-    { id: 'build', name: 'For developers', sites: ['services', 'exchange', 'actor', 'bench', 'run', 'zone', 'events', 'media', 'watch', 'play'] },
+    { id: 'build', name: 'For developers', sites: ['services', 'exchange', 'actor', 'run', 'zone', 'events', 'media', 'watch', 'play'] },
 ];
 // What each site is, in a few words, for the menus (the launcher's rows are two to a line on a phone: about 22
 // characters fit). The manifests' taglines stay the sites' own sentences everywhere else; a site missing here shows
@@ -70,7 +73,7 @@ const MENU_LINE = {
 // A site's name in the menus, where the rows are short words (Pics, Download, VIP, Tips): the product keeps its full name
 // everywhere else (its own site, page titles, sign-in). The owner, 2026-10-28: "label it simply Restream… it does look
 // a little weird" next to the others.
-const MENU_NAME = { stream: 'Restream' };
+const MENU_NAME = { stream: 'Restream', bench: 'AI' };
 
 const groupOf = (id) => (GROUPS.find(g => g.sites.includes(id)) || GROUPS[GROUPS.length - 1]).id;
 
@@ -80,7 +83,15 @@ const PRODUCTS = [
     { id: 'pics', name: 'Pics', host: 'openvibe.pics', icon: 'pics', of: 'media-hub', tagline: 'Share pictures, fast and open' },
     { id: 'download', name: 'Download', host: 'openvibe.download', icon: 'download', of: 'media-hub', tagline: 'Your files, shared on your terms' },
     { id: 'homes', name: 'Homes', host: 'openvibe.homes', icon: 'homes', of: 'rent', tagline: 'Every home-for-sale site, one search' },
-].filter((p) => { const s = SITES.find(x => x.id === p.of); const m = s && contracts.services.get(s.service); return m && (m.domains || []).includes(p.host); });
+    // The move (2026-11-08): Bench's public pages are Report's AI section. The product keeps the old host for
+    // redirects and links straight at the Report page; Report's manifest will name the host in the next Contracts
+    // release, so the explicit `listed` flag is the bridge until then.
+    { id: 'bench', name: 'AI', host: 'bench.openvibe.services', icon: 'bench', of: 'report', url: 'https://openvibe.report/ai', tagline: 'Which AI is best, and what it costs', listed: true },
+].filter((p) => {
+    if (p.listed) return true;
+    const s = SITES.find(x => x.id === p.of); const m = s && contracts.services.get(s.service);
+    return m && (m.domains || []).includes(p.host);
+});
 // Manifest icon names the shared icon set draws differently.
 const ICON_ALIAS = { 'media-hub': 'video' };
 
@@ -88,6 +99,10 @@ const ICON_ALIAS = { 'media-hub': 'video' };
 function siteForHost(hostname) {
     const h = String(hostname || '').toLowerCase().replace(/:\d+$/, '').replace(/^www\./, '');
     if (byHost.has(h)) return byHost.get(h);
+    // A product on its own domain belongs to the site that serves it (Bench's host is Report's AI section now).
+    // Before the subdomain pass, because services.openvibe.services would otherwise claim bench.openvibe.services.
+    const product = PRODUCTS.find((p) => p.host === h || h.endsWith('.' + p.host));
+    if (product) return SITES.find((s) => s.id === product.of) || null;
     for (const s of SITES) if (h.endsWith('.' + s.host)) return s;
     return null;
 }
