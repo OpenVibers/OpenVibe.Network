@@ -24,6 +24,12 @@ const PUBLIC_PERSON_TOOL = {
     inputSchema: { type: 'object', properties: { handle: { type: 'string', minLength: 3, maxLength: 24, pattern: '^[A-Za-z0-9_]+$' } }, required: ['handle'], additionalProperties: false },
     annotations: { title: 'Read a public person page', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
 };
+const MY_TRUST_TOOL = {
+    name: 'network.my_trust.read',
+    description: 'Read your own privacy-limited account or guest trust signals. Returns age bands, booleans and aggregate counts only; never an IP, email, last-seen timestamp or linked account identities.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    annotations: { title: 'Read my trust signals', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+};
 
 const PROTOCOL_VERSION = '2025-06-18';
 // The versions this server speaks. The client's own version is echoed when it is one of these, so a
@@ -62,7 +68,7 @@ function toTools(actions) {
 /**
  * The handler for POST /mcp. → (req, res)
  */
-function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null, requestOptions = {}, publicPage = null } = {}) {
+function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null, requestOptions = {}, publicPage = null, myTrust = null } = {}) {
     return async function mcpHandler(req, res) {
         if (req.method !== 'POST') {
             // The transport allows a server to refuse the server-to-client stream.
@@ -97,7 +103,7 @@ function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null
             if (method === 'ping') return ok(res, id, {});
             if (method === 'tools/list') {
                 const actions = await gateway.listActions({ subject: who.subject, callerId: who.caller.id });
-                return ok(res, id, { tools: [...toTools(actions), ...(publicPage ? [PUBLIC_PERSON_TOOL] : [])] });
+                return ok(res, id, { tools: [...toTools(actions), ...(publicPage ? [PUBLIC_PERSON_TOOL] : []), ...(myTrust ? [MY_TRUST_TOOL] : [])] });
             }
             if (method === 'tools/call') {
                 const name = String(params.name || '');
@@ -108,6 +114,11 @@ function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null
                         if (!/^[A-Za-z0-9_]{3,24}$/.test(handle)) throw Object.assign(new Error('Use a valid OpenVibe handle.'), { status: 400 });
                         const out = await publicPage(handle);
                         if (!out) throw Object.assign(new Error('No public page found for that handle.'), { status: 404 });
+                        const text = JSON.stringify(out, null, 2);
+                        return ok(res, id, { content: [{ type: 'text', text }], structuredContent: out });
+                    }
+                    if (name === MY_TRUST_TOOL.name && myTrust) {
+                        const out = await myTrust(who.subject);
                         const text = JSON.stringify(out, null, 2);
                         return ok(res, id, { content: [{ type: 'text', text }], structuredContent: out });
                     }
@@ -129,4 +140,4 @@ function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null
     };
 }
 
-module.exports = { createMcpHandler, toTools, PROTOCOL_VERSION, SUPPORTED_VERSIONS, SERVER_INFO, PUBLIC_PERSON_TOOL };
+module.exports = { createMcpHandler, toTools, PROTOCOL_VERSION, SUPPORTED_VERSIONS, SERVER_INFO, PUBLIC_PERSON_TOOL, MY_TRUST_TOOL };

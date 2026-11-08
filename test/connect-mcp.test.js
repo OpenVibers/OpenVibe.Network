@@ -47,7 +47,7 @@ const { startApp } = require('./helpers/connect-app');
     const gateway = createGateway({ db, config, defs: [def], defaultRequestOptions: app.options });
     const expressApp = express();
     expressApp.use(express.json({ limit: '256kb' }));
-    expressApp.post('/mcp', createMcpHandler({ db, config, gateway, publicPage: async (handle) => ({ username: handle, profile_url: `https://openvibe.my/@${handle}` }) }));
+    expressApp.post('/mcp', createMcpHandler({ db, config, gateway, publicPage: async (handle) => ({ username: handle, profile_url: `https://openvibe.my/@${handle}` }), myTrust: async () => ({ kind: 'guest', age_band: 'under_1d', age_hours: 2, age_days: 0, networks_seen: 1, guests_from_same_networks_24h: 2, converted: false }) }));
     const server = http.createServer(expressApp);
     await new Promise((r) => server.listen(0, '127.0.0.1', r));
     const url = `http://127.0.0.1:${server.address().port}/mcp`;
@@ -69,11 +69,11 @@ const { startApp } = require('./helpers/connect-app');
             try {
                 const listed = await client.listTools();
                 const tools = listed.tools || listed || [];
-                assert.deepStrictEqual(tools.map((tool) => tool.name), ['network.person_page.read'], 'the public read is available without an app grant');
+                assert.deepStrictEqual(tools.map((tool) => tool.name), ['network.person_page.read', 'network.my_trust.read'], 'the two privacy-limited reads are available without an app grant');
                 await callers.setGrant(db, made.caller.id, 'testapp', 'read', owner);
                 const after = await client.listTools();
                 const afterTools = after.tools || after || [];
-                assert.strictEqual(afterTools.length, 2);
+                assert.strictEqual(afterTools.length, 3);
                 const appTool = afterTools.find((tool) => tool.name === 'testapp.read');
                 assert.ok(appTool.inputSchema, 'the tool carries its schema');
                 assert.strictEqual(appTool.annotations.readOnlyHint, true);
@@ -86,6 +86,16 @@ const { startApp } = require('./helpers/connect-app');
                 const out = await client.callTool({ name: 'network.person_page.read', arguments: { handle: 'ana' } });
                 assert.ok(!out.isError);
                 assert.match(out.content[0].text, /openvibe\.my\/@ana/);
+            } finally { await client.close(); }
+        });
+
+        await check('the MCP trust tool returns only coarse signals and counts', async () => {
+            const client = await connect(key);
+            try {
+                const out = await client.callTool({ name: 'network.my_trust.read', arguments: {} });
+                assert.ok(!out.isError);
+                assert.match(out.content[0].text, /"kind": "guest"/);
+                assert.doesNotMatch(out.content[0].text, /192\.0\.2\.|email|last_seen/);
             } finally { await client.close(); }
         });
 
