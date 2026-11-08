@@ -32,7 +32,7 @@ function render({ releaseId = '', sites = SITES } = {}) {
     const headings = new Map(groups.map(({ group }) => [group.id, `h-${group.id}`]));
     // The group anchors are prefixed: a group id ("games") can be a site id too, and one page cannot hold both.
     const jump = `<nav class="sites-jump" aria-labelledby="h-jump"><h2 id="h-jump">The groups</h2><ol>${groups.map(({ group, sites: list }) => `<li><a href="#group-${esc(group.id)}">${esc(group.name)}<small>${list.length}</small></a></li>`).join('')}</ol></nav>`;
-    const body = groups.map(({ group, sites: list, also }) => `<section class="sc-sec" id="group-${esc(group.id)}" aria-labelledby="${esc(headings.get(group.id))}"><h2 id="${esc(headings.get(group.id))}">${esc(group.name)}</h2><div class="sc-grid">${list.map(card).join('')}</div>${also.length ? `<p class="sites-also">Also here: ${also.map((p) => `<a href="https://${esc(p.host)}/">${esc(p.host)}</a> (${esc(p.tagline.toLowerCase())})`).join(', ')}</p>` : ''}</section>`).join('\n');
+    const body = groups.map(({ group, sites: list, also }) => `<section class="sc-sec" id="group-${esc(group.id)}" aria-labelledby="${esc(headings.get(group.id))}"><h2 id="${esc(headings.get(group.id))}">${esc(group.name)}</h2><div class="sc-grid">${list.map(card).join('')}</div>${also.length ? `<p class="sites-also">Also here: ${also.map((p) => `<a href="${esc(p.url || `https://${p.host}/`)}">${esc(p.name || p.host)}</a> (${esc(p.tagline.toLowerCase())})`).join(', ')}</p>` : ''}</section>`).join('\n');
     const ld = {
         '@context': 'https://schema.org', '@type': 'CollectionPage',
         name: title, description: desc, url: 'https://openvibe.network/sites',

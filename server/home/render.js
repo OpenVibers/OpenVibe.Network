@@ -63,6 +63,7 @@ const INTENTS = [
     ['wiki', 'fa-book-open', 'Look it up', 'Wiki pages with sources and history.', 'https://openvibe.wiki/', 'wiki learn read knowledge research look'],
     ['services', 'fa-server', 'Build on OpenVibe', 'One console for projects, keys, grants and the API docs of every service.', 'https://openvibe.services/', 'build api sdk developer developers oauth webhook webhooks app integrate console platform'],
     ['codes', 'fa-code', 'Code with any agent', 'Claude Code, Codex, OpenCode or your own model on one task, with hand-offs.', 'https://openvibe.codes/', 'code coding agent agents ai claude codex opencode deepseek harness contribute'],
+    ['ai', 'fa-robot', 'Compare AI models', 'Which AI does each job best, what it costs and how fast it is: the Bench results, on Report.', 'https://openvibe.report/ai', 'ai artificial intelligence benchmark benchmarks bench leaderboard comparison llm gpt claude gemini which-ai best-ai'],
     ['actor', 'fa-user-astronaut', 'Give a task to an agent', 'Actor picks the best agent for it, works on a desk you can watch and take over, and shows the cost and why.', 'https://openvibe.actor/', 'agent agents ai assistant task tasks automate automation router openrouter delegate'],
     ['bot', 'fa-desktop', 'Put your computer to work', 'Desks for your agents, a spare laptop as a desk host, and the AI models you run (Ollama, LM Studio) for your own work.', 'https://openvibe.bot/machines', 'computer computers pc laptop desktop desk desks machine machines ollama lmstudio llama gpu homelab node'],
     ['work', 'fa-briefcase', 'Find work', 'Jobs from open boards in one search, each linked to where you apply.', 'https://openvibe.work/', 'job jobs work career hiring remote employment apply listings'],
@@ -365,7 +366,7 @@ function body(catalog, act) {
         name: g.name,
         items: [
             ...OPEN.filter((site) => groupOf(site.id) === g.id).map((site) => ({ icon: `ov:${site.icon}`, name: site.name, text: `${siteName(site)}: ${site.tagline || site.what}`, href: `https://${site.host}/` })),
-            ...PRODUCTS.filter((x) => groupOf(x.id) === g.id).map((x) => ({ icon: `ov:${x.icon}`, name: x.name, text: x.tagline, href: `https://${x.host}/` })),
+            ...PRODUCTS.filter((x) => groupOf(x.id) === g.id).map((x) => ({ icon: `ov:${x.icon}`, name: x.name, text: x.tagline, href: x.url || `https://${x.host}/` })),
         ],
     })).filter((g) => g.items.length);
     const sites = showcase.apps({
