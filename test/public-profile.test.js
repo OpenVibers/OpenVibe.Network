@@ -101,7 +101,7 @@ const INSTANCES = [
         assert.strictEqual(calls.find((c) => c.path.endsWith('/achievements')).auth, '', 'Play\'s read is public: no token');
         assert.ok(r.text.includes('id="pf-games"') && r.text.includes('Salvage &lt;Rush&gt;') && !r.text.includes('Salvage <Rush>'), 'games, escaped');
         assert.ok(/pf-game-n">2 achievements<[\s\S]*Big Haul[\s\S]*First Haul[\s\S]*Vibe Heroes[\s\S]*1 achievement</.test(r.text), 'each game with its achievements, newest first');
-        assert.ok(r.text.includes('href="https://play.openvibe.network/t/salvage-rush"'), 'a game links to its page on Play');
+        assert.ok(r.text.includes('href="https://openvibe.games/achievements#game-salvage-rush"'), 'a game links to its row on OpenVibe.Games');
         assert.ok(/<span class="pf-stat-k">Achievements<\/span><span class="pf-stat-v">3<\/span>/.test(r.text));
         assert.strictEqual(calls.find((c) => c.path.endsWith('/badges')).auth, 'Bearer tok:openvibe.quest:quest.badge.read', 'and for Quest');
         assert.ok(r.text.includes('id="pf-badges"') && /Thread &lt;Starter&gt;[\s\S]*First Follow/.test(r.text), 'badges, newest first, escaped');

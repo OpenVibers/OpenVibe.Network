@@ -31,6 +31,7 @@ const cases = [
     ['how do I go live?', 'https://openvibe.live/broadcast'],
     ['convert mp4 to mp3', 'tool search'],
     ['merge pdf', 'tool search'],
+    ['climb the leaderboards', 'https://openvibe.games/leaderboards'],
     ['find me a cheap apartment in austin', 'https://openvibe.rent/'],
     ['get help with my account', 'https://openvibe.help/'],
     ['what is the weather in paris?', vibe('what is the weather in paris?')],
