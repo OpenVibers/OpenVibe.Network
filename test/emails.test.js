@@ -29,7 +29,7 @@ const { getDb } = require('../server/db/database');
                     : { auth_time: Math.floor(Date.now() / 1000) };
         next();
     } }));
-    app.use('/api/v1/identity/emails/verified-check', require('../server/identity/emails').verifiedCheckRouter({ guard() { return (_req, _res, next) => next(); } }));
+    app.use('/api/v1/identity/emails/verified-check', require('../server/identity/emails').verifiedCheckRouter({ guard() { return (_req, _res, next) => next(); } }, { capabilityAvailable: true }));
     const server = app.listen(0, '127.0.0.1');
     await new Promise((resolve, reject) => { server.once('listening', resolve); server.once('error', reject); });
     const port = server.address().port;

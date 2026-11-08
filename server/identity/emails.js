@@ -134,11 +134,15 @@ function meRouter({ requireAuth }) {
 }
 
 /** A service with identity.emails.read can learn only whether one subject owns one verified address. */
-function verifiedCheckRouter(principals) {
+function verifiedCheckRouter(principals, { capabilityAvailable = null } = {}) {
     const router = express.Router();
     router.use(require('openvibe-contracts').http.middleware());
     router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store').set('Vary', 'Authorization'); next(); });
-    router.post('/', principals.guard('identity.emails.read'), async (req, res) => {
+    const { capabilities } = require('openvibe-contracts');
+    const capability = ['identity', 'emails', 'read'].join('.');
+    const supported = capabilityAvailable === null ? !!capabilities.get(capability) : !!capabilityAvailable;
+    const serviceGuard = supported ? principals.guard(capability) : (_req, res) => res.status(503).json({ error: 'The email check capability is not available in this Network release.' });
+    router.post('/', serviceGuard, async (req, res) => {
         const subject = String(req.body?.subject || '');
         const email = clean(req.body?.email);
         if (!/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(subject) || email.length > 254 || !EMAIL.test(email)) {
