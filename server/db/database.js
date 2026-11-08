@@ -96,9 +96,6 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'my', name: 'OpenVibe.My', redirect_uris: ['https://openvibe.my/auth/callback'] },
             // Link's website is confidential; keep it separate from the public mobile `link` client.
             { client_id: 'link-web', name: 'OpenVibe Link website', redirect_uris: ['https://openvibe.link/auth/callback'] },
-            { client_id: 'run', name: 'OpenVibe.Run', redirect_uris: ['https://openvibe.run/auth/callback'] },
-            { client_id: 'events', name: 'OpenVibe.Events', redirect_uris: ['https://openvibe.events/auth/callback'] },
-            { client_id: 'search', name: 'OpenVibe.Search', redirect_uris: ['https://search.openvibe.network/auth/callback'] },
             { client_id: 'tools', name: 'OpenVibe.Tools', redirect_uris: ['https://openvibe.tools/auth/callback'] },
             { client_id: 'games', name: 'OpenVibe.Games', redirect_uris: ['https://openvibe.games/auth/callback', 'https://play.openvibe.games/auth/callback'] },
             { client_id: 'media', name: 'OpenVibe.Media', redirect_uris: ['https://openvibe.media/auth/callback'] },
@@ -245,6 +242,11 @@ async function seedDb(db, { log = console } = {}) {
         // (server/setup/service-principal.js create chat), so this adds the URI where the client exists rather than
         // creating one.
         await mergeRedirectUris(db, 'chat', ['https://openvibe.party/auth/callback'], { log });
+        // These clients are provisioned as services. Add browser callbacks to existing rows without
+        // creating principals or changing the installer's secret/creation contract.
+        await mergeRedirectUris(db, 'run', ['https://openvibe.run/auth/callback'], { log });
+        await mergeRedirectUris(db, 'events', ['https://openvibe.events/auth/callback'], { log });
+        await mergeRedirectUris(db, 'search', ['https://search.openvibe.network/auth/callback'], { log });
         if (seededAny) console.log('[DB] New OAuth2 clients seeded; their secrets are in oauth_clients (they are never logged).');
     }
     mark('oauth clients');
