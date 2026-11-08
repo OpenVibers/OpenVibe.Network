@@ -164,7 +164,11 @@ let eventsConsumer = null;
 app.use('/internal/events', (req, res, next) => (eventsConsumer ? eventsConsumer.router(req, res, next) : res.status(503).json({ error: 'starting' })));
 // Export parts (ADR-033) carry up to 20 MB and are parsed by their own route.
 const jsonBody = express.json({ limit: '1mb' });
-app.use((req, res, next) => (req.method === 'POST' && /^\/internal\/account-exports\/[^/]+\/parts$/.test(req.path) ? next() : jsonBody(req, res, next)));
+const linkSendJson = express.json({ limit: '40mb' });
+app.use((req, res, next) => {
+    if (req.method === 'POST' && /^\/api\/v1\/(?:node\/self\/send|me\/nodes\/send)$/.test(req.path)) return linkSendJson(req, res, next);
+    return req.method === 'POST' && /^\/internal\/account-exports\/[^/]+\/parts$/.test(req.path) ? next() : jsonBody(req, res, next);
+});
 app.use(express.urlencoded({ extended: true }));
 
 // ── CORS ─────────────────────────────────────────────────────
@@ -631,6 +635,12 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/api/v1/me/nodes', rateLimit({ windowMs: 60_000, max: 60 }), require('./registry/node-principals').userRouter(requireAuth));
     // The machine itself (slice N4c): its own capabilities and credential, resolved from its node token alone.
     app.use('/api/v1/node/self', require('./identity/principals').guard('network.node.self.manage'), require('./registry/node-principals').selfRouter());
+    const sendRelay = require('./node/send-relay').router({
+        nodeGuard: require('./identity/principals').guard('network.node.self.manage'), requireAuth, db,
+    });
+    app.use('/api/v1/node/self/send', rateLimit({ windowMs: 60_000, max: 120 }), sendRelay.self);
+    app.use('/api/v1/me/nodes/send-keys', rateLimit({ windowMs: 60_000, max: 60 }), sendRelay.keys);
+    app.use('/api/v1/me/nodes/send', rateLimit({ windowMs: 60_000, max: 30 }), sendRelay.web);
 }
 // The machines hub (plan L34, step M2): a person's machines on openvibe.network/machines. Bot stays the registry
 // underneath; Network fronts it and calls it as the person, so Bot checks the machine is that person's own.
