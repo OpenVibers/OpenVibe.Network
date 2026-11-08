@@ -60,6 +60,9 @@ const SHAPED = {
     // The vhost must send /machines and /pair to the app (which signposts them), not the catch-all to Network.
     const vhost = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'nginx', 'parked-domains.conf'), 'utf8');
     assert.ok(/location ~ \^\/\(\|install\|machines\|pair\|/.test(vhost), 'the vhost proxies /machines and /pair to the Link app');
+    // …and /auth/* to Link's own sign-in (Network#664), or openvibe.link never signs anyone in (11-08 audit).
+    const linkBlock = vhost.slice(vhost.indexOf('    server_name openvibe.link;'));
+    assert.ok(/location \^~ \/auth\/ \{[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:4000;/.test(linkBlock.slice(0, linkBlock.indexOf('\n}\n'))), 'the openvibe.link vhost proxies /auth/ to Network');
 
     // ── The page: OpenVibe Link, and every fact the Node page had ──
     const html = page.render({ release: first, releaseId: 'rel_test' });
