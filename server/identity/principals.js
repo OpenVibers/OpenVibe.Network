@@ -872,6 +872,15 @@ const DEFAULT_GRANTS = [
     ['codes', 'report.session.write', 'openvibe.report', []],
     ['actor', 'report.session.write', 'openvibe.report', []],
     ['live', 'report.session.write', 'openvibe.report', []],
+    // HO6 (Contracts 0.342.0): an agent answers the mail sent to its own address. Actor's mail client
+    // (server/mail/client.js) reads one letter, sends the reply the person approved and reads or sets the per-agent
+    // answering switch, all on Mail's audience with the person in X-OV-Subject. Mail's internal routes
+    // (server/http/agent-mail.js) guard exactly these three capabilities and nothing wider, and Media's test keeps
+    // Actor out of its audience: this is the one service that answers mail for the person. The rows are new (never
+    // granted or revoked before) and carry no namespaces, so no RESTORED_GRANTS or CHANGED_DEFAULT_NAMESPACES entry.
+    ['actor', 'mail.agent.read', 'openvibe.mail', []],
+    ['actor', 'mail.agent.reply', 'openvibe.mail', []],
+    ['actor', 'mail.agent.answering', 'openvibe.mail', []],
 ];
 
 // What a node principal (a person's own machine, paired with its credential) may do for its owner outside Network's
