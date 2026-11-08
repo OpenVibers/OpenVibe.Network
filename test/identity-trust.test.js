@@ -105,6 +105,7 @@ const GUEST_OLD = 'gst_01JAB2C3D4E5F6G7H8J9K0MNP3';
     const api = (path, token) => fetch(`http://127.0.0.1:${server.address().port}${path}`, { headers: { authorization: `Bearer ${token}` } }).then(async (x) => ({ status: x.status, cache: x.headers.get('cache-control'), body: await x.json() }));
     h = await api(`/api/v1/trust/${GUEST_NEW}`, TOKEN);
     assert.strictEqual(h.status, 403, 'identity.subject.resolve alone cannot read trust signals');
+    assert.strictEqual(h.cache, 'private, no-store', 'denied service reads are no-store too');
     h = await api(`/api/v1/trust/${GUEST_NEW}`, TRUST_TOKEN);
     assert.strictEqual(h.status, 200);
     assert.strictEqual(h.cache, 'private, no-store');
