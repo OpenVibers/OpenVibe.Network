@@ -24,6 +24,7 @@ const { getDb } = require('../server/db/database');
         next();
     } }));
     const server = app.listen(0, '127.0.0.1');
+    await new Promise((resolve, reject) => { server.once('listening', resolve); server.once('error', reject); });
     const port = server.address().port;
     const request = (path = '', method = 'GET', body, authorization = '') => new Promise((resolve, reject) => {
         const headers = { ...(body ? { 'content-type': 'application/json' } : {}), ...(authorization ? { authorization } : {}) };
