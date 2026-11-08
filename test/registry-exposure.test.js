@@ -142,8 +142,10 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     assert.ok(/<tr id="svc-ai">[\s\S]*?>Up<\/span>/.test(html), 'AI serves its own public origin since contracts 0.110.0');
 
     // 3. The Frame: the nav lists only sites whose domain serves the service; the rest are soon with a reason.
+    // Play stays live in the exposure overlay (the API serves) but is part of Games now, so it is not a nav site.
+    assert.ok(!SITES.some(s => s.id === 'play'), 'Play is part of Games, not a menu entry');
     const open = SITES.filter(s => s.status === 'open').map(s => s.id);
-    const EXPECTED_OPEN = ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'space', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'search', 'run', 'play', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'casino', 'tours', 'shoes', 'connect'];   // by site position; Email joins after Chat once its manifest is pinned
+    const EXPECTED_OPEN = ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'space', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'search', 'run', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'casino', 'tours', 'shoes', 'connect'];   // by site position; Email joins after Chat once its manifest is pinned
     if (HAS_MAIL) EXPECTED_OPEN.splice(EXPECTED_OPEN.indexOf('chat') + 1, 0, 'mail');
     assert.deepStrictEqual(open, EXPECTED_OPEN);
     for (const s of SITES) {

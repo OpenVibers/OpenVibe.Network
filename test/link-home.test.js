@@ -22,6 +22,7 @@ const FIXTURE = {
     assets: [
         { name: 'install.sh', browser_download_url: 'https://github.com/OpenVibers/OpenVibe.Node/releases/download/v9.9.9/install.sh' },
         { name: 'SHA256SUMS', browser_download_url: 'https://github.com/OpenVibers/OpenVibe.Node/releases/download/v9.9.9/SHA256SUMS' },
+        { name: 'openvibe-link-v9.9.9.apk' },
     ],
 };
 const SHAPED = {
@@ -72,6 +73,44 @@ const SHAPED = {
     assert.ok(html.includes('releases/tag/v9.9.9'), 'the release page is on the page');
     assert.ok(html.includes('openvibe-link-windows-amd64.exe'), 'Windows has its own way in');
     assert.ok(html.includes('openvibe.bot/install'), 'the installer also lives at openvibe.bot/install');
+    assert.ok(html.includes('id="install"'), 'the install section has an anchor the hero button uses');
+    assert.ok(html.includes('href="#install"'), 'the Install button goes to the OS install block');
+    for (const [what, needle] of [
+        ['Windows x64', 'openvibe-link-windows-amd64.exe'],
+        ['Windows ARM64', 'openvibe-link-windows-arm64.exe'],
+        ['macOS Apple silicon', 'openvibe-link_9.9.9_darwin_arm64.tar.gz'],
+        ['macOS Intel', 'openvibe-link_9.9.9_darwin_amd64.tar.gz'],
+        ['Linux x64 .deb', 'openvibe-link_9.9.9_amd64.deb'],
+        ['Linux ARM64 .deb', 'openvibe-link_9.9.9_arm64.deb'],
+        ['Linux x64 .rpm', 'openvibe-link-9.9.9-1.x86_64.rpm'],
+        ['Linux ARM64 .rpm', 'openvibe-link-9.9.9-1.aarch64.rpm'],
+        ['Linux x64 tarball', 'openvibe-link_9.9.9_linux_amd64.tar.gz'],
+        ['Linux ARM64 tarball', 'openvibe-link_9.9.9_linux_arm64.tar.gz'],
+        ['Android APK', 'openvibe-link-v9.9.9.apk'],
+        ['iOS home-screen web app', 'Add to Home Screen'],
+        ['what iOS waits on', 'Apple Developer account'],
+    ]) assert.ok(html.includes(needle), `the install block offers ${what}`);
+    const debugOnly = page.render({ release: { ...first, assets: ['install.sh', 'openvibe-link-v9.9.9-debug.apk'] }, releaseId: 'rel_test' });
+    assert.ok(debugOnly.includes('openvibe-link-v9.9.9-debug.apk'), 'an unsigned release offers the debug APK');
+    assert.ok(debugOnly.includes('signed Android release waits'), 'and says why it is the debug build');
+    const noApk = page.render({ release: { ...first, assets: ['install.sh'] }, releaseId: 'rel_test' });
+    assert.ok(noApk.includes('releases/tag/v9.9.9'), 'a release without an APK sends the visitor to its page');
+    for (const [ua, os] of [
+        ['Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'windows'],
+        ['Mozilla/5.0 (Macintosh; Intel Mac OS X 13_0)', 'mac'],
+        ['Mozilla/5.0 (X11; Linux x86_64)', 'linux'],
+        ['Mozilla/5.0 (Linux; Android 14; Pixel 8)', 'android'],
+        ['Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', 'ios'],
+    ]) {
+        const one = page.render({ release: first, releaseId: 'rel_test', userAgent: ua });
+        assert.ok(one.includes(`data-os="${os}" open`), `a ${os} visitor gets the ${os} steps first`);
+        for (const other of ['windows', 'mac', 'linux', 'android', 'ios'].filter((x) => x !== os)) {
+            assert.ok(!one.includes(`data-os="${other}" open`), `a ${os} visitor does not open ${other}`);
+        }
+    }
+    assert.ok(html.includes('id="machines"'), 'the page has a Your machines section');
+    assert.ok(html.includes('Open your machines'), 'and links the signed-in machines hub');
+    assert.ok(html.includes('Pair a machine'), 'and the pairing entry point');
     assert.ok(html.includes('What it does today'), 'the honest heading stays');
     for (const [what, needle] of [
         ['run your agents and code', 'openvibe.codes/run'],
@@ -97,6 +136,7 @@ const SHAPED = {
     assert.ok(txt.includes('https://openvibe.link/'), 'and links the page');
     assert.ok(txt.includes('curl -fsSL https://openvibe.link/install | sh'), 'and the install command');
     assert.ok(txt.includes('docs/install.md'), 'and the docs');
+    assert.ok(txt.includes('https://openvibe.link/machines'), 'and the machines page');
 
     // ── The routes: the Host header decides ──
     const releaseApi = { latest: async () => SHAPED };
@@ -150,6 +190,16 @@ const SHAPED = {
         assert.strictEqual(linkInstall.status, nodeInstall.status, '/install is the same answer on both hosts');
         assert.strictEqual(linkInstall.headers.location, nodeInstall.headers.location, 'the same release\u2019s installer, byte for byte');
         assert.strictEqual(linkInstall.headers['cache-control'], nodeInstall.headers['cache-control'], 'and the same cache contract');
+
+        for (const p of ['/machines', '/pair']) {
+            const hub = await get(p, 'openvibe.link');
+            assert.strictEqual(hub.status, 302, `${p} sends a signed-out visitor to the machines hub`);
+            assert.strictEqual(hub.headers.location, 'https://openvibe.my/machines', `${p} lands where pairing and the machine list live`);
+            assert.strictEqual(hub.headers['cache-control'], 'no-store', `${p} is never cached`);
+            const oldHub = await get(p, 'node.openvibe.network');
+            assert.strictEqual(oldHub.status, 301, `the old host sends ${p} to Link`);
+            assert.strictEqual(oldHub.headers.location, `https://openvibe.link${p}`, `keeping ${p}`);
+        }
 
         const www = await get('/', 'www.openvibe.link');
         assert.strictEqual(www.status, 301, 'www 301s');
