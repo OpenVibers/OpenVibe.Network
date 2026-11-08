@@ -160,6 +160,11 @@ module.exports = {
         billing: {
             internalUrl: process.env.OV_BILLING_INTERNAL_URL || 'http://127.0.0.1:4600',
         },
+        // OpenVibe.Mail: the account home's Receipts card (server/today/receipts.js) reads the person's own receipt
+        // summaries with their token. Mail is the authority on the mailbox and the Inbox AI opt-in.
+        mail: {
+            internalUrl: process.env.OV_MAIL_INTERNAL_URL || 'http://127.0.0.1:5250',
+        },
         // OpenVibe.Bot: the registry of the machines. The hub (server/registry/machines.js) calls it as the
         // person, so Bot stays the authority on what a person may do with their own machines.
         bot: {

@@ -36,7 +36,7 @@ async function bootServer({ env = {}, child = false, timeoutMs = 60000 } = {}) {
         OV_NETWORK_INTERNAL_URL: `http://127.0.0.1:${port}`,
         OV_LIVE_INTERNAL_URL: 'http://127.0.0.1:9', OV_TOOLS_INTERNAL_URL: 'http://127.0.0.1:9',
         OV_GAMES_INTERNAL_URL: 'http://127.0.0.1:9', OV_MEDIA_INTERNAL_URL: 'http://127.0.0.1:9', OV_CHAT_INTERNAL_URL: 'http://127.0.0.1:9',
-        OV_AI_INTERNAL_URL: 'http://127.0.0.1:9',
+        OV_AI_INTERNAL_URL: 'http://127.0.0.1:9', OV_MAIL_INTERNAL_URL: 'http://127.0.0.1:9',
     };
 
     if (child) {

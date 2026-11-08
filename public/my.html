@@ -66,6 +66,17 @@
         <div class="ny-list" id="needs-you-list"></div>
     </section>
 
+    <!-- Receipts (plan OpenVibe_Seven_Domains_Plan R2 item 13): the latest five receipt-category summaries Inbox AI
+         keeps on openvibe.email, each a link to its thread, with a counted fold for the rest and never a tab.
+         my/receipts.js fills it from GET /api/v1/me/receipts; with Inbox AI off (or no mailbox) the one quiet line
+         links to the switch, and no sample receipt is ever drawn. The card stays out until it has an answer. -->
+    <section class="rc" id="receipts" hidden aria-labelledby="receipts-h">
+        <div class="rc-h">
+            <h2 id="receipts-h"><span class="rc-ic" aria-hidden="true"><i class="fa-solid fa-file-lines"></i></span>Receipts</h2>
+        </div>
+        <div class="rc-body" id="receipts-body"></div>
+    </section>
+
     <!-- You (11-07 redesign; the owner: "front-face the best stuff we have to offer … awesome design"): who you are in
          your own colour, your balances, and one tap to what you do most, on every site. -->
     <header class="me" id="page-header">
@@ -611,6 +622,7 @@
 <script src="/js/my/security.js" defer></script>
 <script src="/js/my/approvals.js" defer></script>
 <script src="/js/my/apps.js" defer></script>
+<script src="/js/my/receipts.js" defer></script>
 <script src="/js/my/boot.js" defer></script>
   <script src="https://openvibe.live/live-notify.js" async></script>
 </body>

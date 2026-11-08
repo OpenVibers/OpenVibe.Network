@@ -644,6 +644,9 @@ app.get('/internal/blocks', require('./identity/principals').guard('network.bloc
     app.use('/api/v1/follows', rateLimit({ windowMs: 60_000, max: 300 }), followRouters.pub);
     // Your account home's "Now" (L43): the people you follow who are live, from Live's public list (held 10 s).
     app.use('/api/v1/me/live-follows', rateLimit({ windowMs: 60_000, max: 60 }), require('./today/live-follows').router({ requireAuth, liveUrl: config.services.live.internalUrl }));
+    // Your account home's Receipts card (Seven Domains R2 item 13): Mail's receipt summaries, read with the person's
+    // own token. Mail is the authority on the mailbox and on the Inbox AI opt-in.
+    app.use('/api/v1/me/receipts', rateLimit({ windowMs: 60_000, max: 60 }), require('./today/receipts').router({ requireAuth, mailUrl: config.services.mail.internalUrl }));
     // ADR-030 step 4: products record follows on a person's behalf (network.follows.write, service token only).
     app.use('/internal/follows', require('./identity/principals').guard('network.follows.write'), followRouters.internal);
     // A follow that starts notifies the followed person (FOLLOW), in the follow's transaction.

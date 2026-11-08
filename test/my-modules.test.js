@@ -12,7 +12,7 @@ for (const [, body] of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) as
 
 const files = fs.readdirSync(path.join(pub, 'js', 'my')).filter((f) => f.endsWith('.js')).sort();
 // The module map, in load order (public/js/my/…).
-const modules = ['core.js', 'tools.js', 'today.js', 'machines.js', 'themes.js', 'profile.js', 'consent.js', 'labels.js', 'security.js', 'approvals.js', 'apps.js', 'boot.js'];
+const modules = ['core.js', 'tools.js', 'today.js', 'machines.js', 'themes.js', 'profile.js', 'consent.js', 'labels.js', 'security.js', 'approvals.js', 'apps.js', 'receipts.js', 'boot.js'];
 assert.deepStrictEqual(files, [...modules].sort(), 'each module file exists and there is no other');
 const tags = [...html.matchAll(/<script\b([^>]*)\bsrc="\/js\/my\/([^"]+)"([^>]*)><\/script>/g)];
 const loaded = tags.map((m) => m[2]);
@@ -41,7 +41,8 @@ for (const name of ['loadApprovals', 'decideApproval', 'refreshApprovalsBadge'])
 const bootSrc = fs.readFileSync(path.join(pub, 'js', 'my', 'boot.js'), 'utf8');
 assert.ok(bootSrc.includes('refreshApprovalsBadge()'), 'boot.js shows the waiting count on the tab');
 // Signed out (loadUser() redirects to /login), no section loads and no badge is asked for: each would answer 401.
-assert.match(bootSrc, /if \(_signedIn\) \{\s*loadToday\(\);\s*openInitialSection\(\);\s*refreshApprovalsBadge\(\);\s*\}/, 'signed out, boot.js asks no API (You, today included)');
+assert.match(bootSrc, /if \(_signedIn\) \{\s*loadToday\(\);\s*loadReceipts\(\);\s*openInitialSection\(\);\s*refreshApprovalsBadge\(\);\s*\}/, 'signed out, boot.js asks no API (You, today and Receipts included)');
+assert.strictEqual(owner.get('loadReceipts'), 'receipts.js', 'the Receipts card lives in receipts.js');
 // The host is a SubjectRef object: the row names its id, never "[object Object]"; an anonymous session calls no API.
 {
     const vm = require('vm');
