@@ -57,7 +57,18 @@ function installBlock(release, userAgent) {
     const dl = (name) => `${latest}/${name}`;
     const file = (name, label) => `<a href="${esc(dl(name))}">${esc(label || name)}</a>`;
     const pkgFile = (name, label) => (pkg ? `<a href="${esc(dl(name))}">${esc(label || name)}</a>` : `<a href="${releases}">${esc(label || name)}</a>`);
-    const apk = release.version ? `${releases}/download/${encodeURIComponent(release.version)}/openvibe-link-${encodeURIComponent(release.version)}.apk` : releases;
+    // The signed APK is attached when the repo has the release key; CI attaches a debug APK when it does not. Offer
+    // whichever the release actually carries, and the release page when neither is there yet.
+    const assets = Array.isArray(release.assets) ? release.assets : null;
+    const signedApk = release.version ? `openvibe-link-${release.version}.apk` : '';
+    const debugApk = release.version ? `openvibe-link-${release.version}-debug.apk` : '';
+    const apkName = !release.version ? '' : (!assets ? signedApk : (assets.includes(signedApk) ? signedApk : (assets.includes(debugApk) ? debugApk : '')));
+    const apk = release.version
+        ? (apkName ? `${releases}/download/${encodeURIComponent(release.version)}/${encodeURIComponent(apkName)}` : `${releases}/tag/${encodeURIComponent(release.version)}`)
+        : releases;
+    const apkNote = apkName && apkName === debugApk
+        ? ' This is the debug build: the signed Android release waits on the repository\'s release key.'
+        : '';
     const open = (os) => (current === os ? ' open' : '');
     return `<div class="np-os-list">
 <details class="np-os" data-os="windows"${open('windows')}>
@@ -66,7 +77,7 @@ function installBlock(release, userAgent) {
 <p>Download the program for this PC: ${file('openvibe-link-windows-amd64.exe', 'Windows x64 (.exe)')} or ${file('openvibe-link-windows-arm64.exe', 'Windows ARM64 (.exe)')}.</p>
 <p>Windows may show SmartScreen the first time: choose <strong>More info</strong>, then <strong>Run anyway</strong>. In an <strong>Administrator</strong> PowerShell, from the folder you saved it in:</p>
 ${kit.snippet({ code: '.\\openvibe-link pair <CODE>\n.\\openvibe-link install', id: 'np-install-win', label: 'Copy the Windows steps' })}
-<p class="np-fine">The code comes from <a href="https://openvibe.bot/machines">openvibe.bot/machines</a> (<strong>Add a machine</strong>). <code>openvibe-node.exe</code> is the same program under its old name.</p>
+<p class="np-fine">The code comes from <a href="/pair">openvibe.link/pair</a> (the signed-in machines hub, <strong>Pair a machine</strong>). <code>openvibe-node.exe</code> is the same program under its old name.</p>
 </div>
 </details>
 
@@ -94,8 +105,8 @@ ${kit.snippet({ code: 'sudo apt install ./openvibe-link_<version>_amd64.deb\n# o
 <details class="np-os" data-os="android"${open('android')}>
 <summary><span>Android</span><small>the existing APK, direct</small></summary>
 <div class="np-os-body">
-<p>Download <a href="${esc(apk)}">openvibe-link${v ? `-${v}` : ''}.apk</a> on the phone, allow installing from that source when Android asks, and open <strong>OpenVibe Link</strong>.</p>
-<p>Pair from the app with a code from <a href="https://openvibe.bot/link/phone">openvibe.bot/link/phone</a>. The APK carries approvals, Activity, pairing and <strong>Send to OpenVibe</strong>; it is the direct build, not Google Play, and has no phone automation.</p>
+<p>Download <a href="${esc(apk)}">${apkName ? esc(apkName) : 'the APK from the release page'}</a> on the phone, allow installing from that source when Android asks, and open <strong>OpenVibe Link</strong>.${apkNote}</p>
+<p>Pair from the app with a code from <a href="/pair">openvibe.link/pair</a> or <a href="https://openvibe.bot/link/phone">openvibe.bot/link/phone</a>. The APK carries approvals, Activity, pairing and <strong>Send to OpenVibe</strong>; it is the direct build, not Google Play, and has no phone automation.</p>
 </div>
 </details>
 
@@ -121,7 +132,7 @@ function releaseBlock(release) {
         kit.row({ href: release.url || '#', title: 'The release on GitHub', sub: 'every asset, and the notes of that release' }),
     ];
     return `<section class="np-sec" aria-labelledby="h-release"><h2 id="h-release">The latest release</h2>
-<p class="np-fine">${version ? `Version <strong>${esc(version)}</strong>` : 'The latest version'}${date ? `, published ${esc(date)}` : ''}. The install command above always installs that release.</p>
+<p class="np-fine">${version ? `Version <strong>${esc(version)}</strong>` : 'The download links always point at the latest release.'}${date ? `, published ${esc(date)}` : ''}. The install command above always installs that release.</p>
 ${kit.list(rows, { flush: true })}
 ${release.stale ? '<p class="np-fine np-warn">GitHub could not be reached just now, so this is the last release we read.</p>' : ''}
 </section>`;
@@ -177,7 +188,13 @@ ${CSS}
 </section>
 
 <section class="np-sec" id="install" aria-labelledby="h-install"><h2 id="h-install">Install it</h2>
+<p class="np-fine" style="margin:0 0 12px">Your system is open first; choose another to see its steps.</p>
 ${installBlock(release, userAgent)}
+</section>
+
+<section class="np-sec" id="machines" aria-labelledby="h-machines"><h2 id="h-machines">Your machines</h2>
+<p class="np-fine">Sign in to see every machine you paired: whether it is online, what it is allowed to do, and the one-time code to add another. The same page renames or revokes one, and the phone pairs there too.</p>
+<p class="np-cta" style="margin-top:12px">${kit.button({ href: 'https://openvibe.my/machines', label: 'Open your machines', kind: 'primary' })} ${kit.button({ href: '/pair', label: 'Pair a machine', kind: 'quiet' })}</p>
 </section>
 
 ${releaseBlock(release)}
@@ -201,7 +218,7 @@ ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact'
 <script src="/shared/navbar.js" defer></script>
 ${require('../boost').SCRIPT}
 <script src="/shared/kit-web.js" defer></script>
-<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:'https://openvibe.network',links:[{label:'Link',href:'/',icon:'fa-desktop',featured:true,active:true},{label:'Network',href:'https://openvibe.network/'},{label:'My Account',href:'https://openvibe.network/my'}]});}catch(e){}});</script>
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:'https://openvibe.network',links:[{label:'Link',href:'/',icon:'fa-desktop',featured:true,active:true},{label:'Machines',href:'/machines',icon:'fa-laptop'},{label:'Network',href:'https://openvibe.network/'},{label:'My Account',href:'https://openvibe.network/my'}]});}catch(e){}});</script>
 </body>
 </html>`;
 }
@@ -228,7 +245,9 @@ const CSS = `
 .np-os summary{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 16px;cursor:pointer;list-style:none}
 .np-os summary::-webkit-details-marker{display:none}
 .np-os summary span{font-weight:800;font-size:1rem}
-.np-os summary small{color:var(--text-muted,#7386a3);font-size:.82rem;text-align:right}
+.np-os summary small{color:var(--text-muted,#7386a3);font-size:.82rem;text-align:right;margin-left:auto}
+.np-os summary::after{content:'+';margin-left:12px;font-weight:800;color:var(--text-muted,#7386a3);font-size:1.05rem;line-height:1}
+.np-os[open] summary::after{content:'−'}
 .np-os-body{padding:0 16px 16px;border-top:1px solid var(--border,#1f2d47)}
 .np-os-body p{color:var(--text-secondary,#96a7c2);font-size:.92rem;line-height:1.6}
 .np-os-body a{color:var(--accent,#3b82f6)}
