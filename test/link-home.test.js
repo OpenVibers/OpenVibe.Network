@@ -61,13 +61,15 @@ const SHAPED = {
 
     // The vhost must send /machines and /pair to the app (which signposts them), not the catch-all to Network.
     const vhost = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'nginx', 'parked-domains.conf'), 'utf8');
-    assert.ok(/location ~ \^\/\(\|install\|machines\|pair\|/.test(vhost), 'the vhost proxies /machines and /pair to the Link app');
+    assert.ok(/location ~ \^\/\(\|install\|machines\|pair\|index\\\.md\|send\\\.js\|locker\\\.mjs\|api\/v1\/me\/nodes/.test(vhost), 'the vhost proxies Link Send assets and APIs to Network');
     // …and /auth/* to Link's own sign-in (Network#664), or openvibe.link never signs anyone in (11-08 audit).
     const linkBlock = vhost.slice(vhost.indexOf('    server_name openvibe.link;'));
     assert.ok(/location \^~ \/auth\/ \{[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:4000;/.test(linkBlock.slice(0, linkBlock.indexOf('\n}\n'))), 'the openvibe.link vhost proxies /auth/ to Network');
 
     // ── The page: OpenVibe Link, and every fact the Node page had ──
     const html = page.render({ release: first, releaseId: 'rel_test' });
+    assert.ok(html.includes('id="send"') && html.includes('Send to my machine'), 'the Link page has the send form');
+    assert.ok(html.includes('src="/send.js"'), 'the page loads its Locker sender');
     const oldCopy = page.render({ release: { ...first, stale: true, ageMs: 3 * release.DAY_MS }, releaseId: 'rel_test' });
     assert.ok(oldCopy.includes('from 3 days ago'), 'a stale copy older than a day says how old it is');
     const youngCopy = page.render({ release: { ...first, stale: true, ageMs: release.TTL_MS }, releaseId: 'rel_test' });
@@ -181,6 +183,12 @@ const SHAPED = {
         assert.ok(link.body.includes('<h1>Your machines, connected</h1>'), 'and Link\u2019s h1');
         assert.ok(!link.body.includes('network home'), 'and not Network\u2019s home');
         assert.ok(String(link.headers.link || '').includes('text/markdown'), 'the page offers its Markdown twin');
+        const sendScript = await get('/send.js', 'openvibe.link');
+        assert.strictEqual(sendScript.status, 200, 'Link Send script is served on the Link host');
+        assert.ok(sendScript.body.includes('locker.seal'), 'the page seals content before upload');
+        const locker = await get('/locker.mjs', 'openvibe.link');
+        assert.strictEqual(locker.status, 200, 'the SDK browser bundle is served for Link');
+        assert.strictEqual(locker.headers['access-control-allow-origin'], '*', 'the public SDK bundle can be imported by Link\'s loopback window');
 
         const twin = await get('/index.md', 'openvibe.link');
         assert.strictEqual(twin.status, 200);

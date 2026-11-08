@@ -10,6 +10,8 @@
 // The route is mounted before the agent layer, so Link's page is not answered by Network's home renderer.
 
 const { markdownTwin, linkHeaderTags } = require('openvibe-shared/agent-layer');
+const fs = require('node:fs');
+const pathLib = require('node:path');
 const page = require('./page');
 const release = require('./release');
 
@@ -108,6 +110,20 @@ function createNodeRoutes({ releaseId, releaseApi = release } = {}) {
             return res.type('application/xml').set('Cache-Control', 'public, max-age=3600').send(xml);
         }
 
+        if (path === '/locker.mjs' && (req.method === 'GET' || req.method === 'HEAD')) {
+            let source;
+            try { source = fs.readFileSync(pathResolveLocker(), 'utf8'); }
+            catch { return res.status(503).type('text/plain').send('Locker is not available right now.'); }
+            res.set({ 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=86400',
+                'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff' });
+            return res.end(req.method === 'HEAD' ? undefined : source);
+        }
+        if (path === '/send.js' && (req.method === 'GET' || req.method === 'HEAD')) {
+            const source = fs.readFileSync(pathLib.join(__dirname, 'send.js'), 'utf8');
+            res.set({ 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=600', 'X-Content-Type-Options': 'nosniff' });
+            return res.end(req.method === 'HEAD' ? undefined : source);
+        }
+
         if (path !== '/' && path !== '/index.md' && path !== '/index.html') return next();
 
         const isTwin = path === '/index.md' || url.searchParams.get('format') === 'markdown'
@@ -129,6 +145,10 @@ function createNodeRoutes({ releaseId, releaseApi = release } = {}) {
     });
 
     return router;
+}
+
+function pathResolveLocker() {
+    return pathLib.join(pathLib.dirname(require.resolve('openvibe-sdk')), 'browser', 'openvibe-sdk.mjs');
 }
 
 module.exports = { createNodeRoutes, llmsTxt, hostOf, HOST, WWW_HOST, LEGACY_HOST, SITE };
