@@ -266,6 +266,30 @@ a.linked-item:hover{background:var(--bg-hover,var(--bg-card));transform:translat
 /* A phone: the text takes the row and the button goes under it, lined up with the text (it covered the title). */
 @media (max-width: 600px) { .ny { padding: 16px; } .ny-item { align-items: flex-start; flex-wrap: wrap; } .ny-body { flex: 1 1 calc(100% - 46px); } .ny-btn { margin-left: 46px; min-height: 44px; } }
 
+/* Receipts (Seven Domains R2 item 13): the latest five under Needs you, each merchant, summary and date, with a
+   counted fold for the rest. Quiet by design: one card, no tabs, and with Inbox AI off one line links to the switch. */
+.rc { display: grid; gap: 8px; margin: 0 0 20px; padding: 16px 18px; min-width: 0; border-radius: 16px; background: var(--bg-card); border: 1px solid var(--border); }
+.rc[hidden] { display: none !important; }
+.rc-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rc-h h2 { display: flex; align-items: center; gap: 9px; font-size: 1.05rem; font-weight: 800; letter-spacing: -.01em; }
+.rc-ic { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-light); font-size: 13px; }
+.rc-body { display: grid; gap: 2px; min-width: 0; }
+.rc-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "mer date" "sum sum"; gap: 1px 14px; min-width: 0; padding: 10px 8px; border-radius: 10px; color: var(--text); text-decoration: none; }
+.rc-row + .rc-row { border-top: 1px solid var(--border); }
+.rc-row:hover, .rc-row:focus-visible { background: color-mix(in srgb, var(--text-primary, #fff) 5%, transparent); outline: none; }
+.rc-row:focus-visible { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
+.rc-mer { grid-area: mer; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 750; }
+.rc-sum { grid-area: sum; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--text-secondary); line-height: 1.4; }
+.rc-date { grid-area: date; white-space: nowrap; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.rc-rest { display: grid; gap: 2px; min-width: 0; }
+.rc-rest[hidden] { display: none !important; }
+.rc-more { justify-self: start; min-height: 40px; margin-top: 6px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.rc-more:hover, .rc-more:focus-visible { border-color: var(--accent); color: var(--accent-light); }
+.rc-quiet { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; color: var(--accent-light); text-decoration: none; }
+a.rc-quiet:hover, a.rc-quiet:focus-visible { text-decoration: underline; }
+p.rc-quiet { margin: 0; color: var(--text-muted); }
+@media (max-width: 600px) { .rc { padding: 14px; } .rc-more { min-height: 44px; } }
+
 .td { display: grid; gap: 22px; margin: -8px 0 36px; }
 .td-sec { display: grid; gap: 10px; min-width: 0; }
 /* A block with nothing in it stays out (11-07: the empty "Live now" heading showed, and read as if you were live). */

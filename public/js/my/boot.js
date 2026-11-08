@@ -17,6 +17,7 @@ const _signedIn = !!(getAuthToken() || getAnonToken());
 loadUser();
 if (_signedIn) {
     loadToday();
+    loadReceipts();
     openInitialSection();
     refreshApprovalsBadge();
 }
