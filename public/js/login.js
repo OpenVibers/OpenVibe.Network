@@ -662,7 +662,7 @@ function ripple(btn, e) {
 // Where a sign-in may send the browser: a path on this site, this origin, or https on a zone
 // OpenVibe owns (server/auth/sso-owned.js). Never javascript:/data:, never another host.
 const OV_OWNED_ZONES = ['openvibe.network', 'openvibe.live', 'openvibe.tools', 'openvibe.media', 'openvibe.games', 'openvibe.community', 'openvibe.space', 'openvibe.chat', 'openvibe.codes', 'openvibe.blog', 'openvibe.wiki', 'openvibe.news', 'openvibe.reviews', 'openvibe.tips', 'openvibe.vip', 'openvibe.trade', 'openvibe.host', 'openvibe.deals', 'openvibe.coupons', 'openre.stream', 'open.shoes', 'openvibe.today', 'openvibe.vision', 'openvibe.domains', 'openvibe.report', 'openvibe.meme', 'openvibe.casino', 'openvibe.surf', 'openvibe.fun', 'openvibe.tours', 'openvibe.exchange', 'openvibe.cam', 'openvibe.design', 'openvibe.computer', 'openvibe.email', 'openvibe.link', 'openvibe.locker', 'openvibe.my', 'openvibe.party', 'openvibe.studio'];
-const OV_USER_CONTENT_ZONES = ['openvibe.host']; // tenant sites: only the apex is ours
+const OV_USER_CONTENT_ZONES = ['openvibe.host', 'openvibe.link']; // tenant sites: only the apex is ours
 function safeReturnUrl(raw) {
     const s = String(raw == null ? '' : raw);
     if (!s || /[\\\u0000-\u001f\u007f]/.test(s)) return '/';
@@ -672,7 +672,7 @@ function safeReturnUrl(raw) {
         if (u.username || u.password) return '/';
         if (u.origin === window.location.origin) return u.toString();
         const h = u.hostname.toLowerCase();
-        if (u.protocol === 'https:' && OV_OWNED_ZONES.some(z => h === z || (h.endsWith('.' + z) && !OV_USER_CONTENT_ZONES.includes(z)))) return u.toString();
+        if (u.protocol === 'https:' && (['connect.openvibe.website', 'connect.openvibe.link'].includes(h) || OV_OWNED_ZONES.some(z => h === z || (h.endsWith('.' + z) && !OV_USER_CONTENT_ZONES.includes(z))))) return u.toString();
         const local = /^(localhost|127\.0\.0\.1)$/;
         if (u.protocol === 'http:' && local.test(h) && local.test(window.location.hostname)) return u.toString();
     } catch (e) { /* not a URL */ }

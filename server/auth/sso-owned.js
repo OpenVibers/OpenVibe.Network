@@ -13,7 +13,9 @@ const OWNED_ZONES = [
 // Zones whose subdomains are people's own content (OpenVibe.Host tenant sites, <site>.openvibe.host,
 // which run the tenant's JS): only the apex is OpenVibe's. Domain validation still refuses them as
 // tool hosts through OWNED_ZONES; trust checks go through isTrustedHost.
-const USER_CONTENT_ZONES = ['openvibe.host'];
+const USER_CONTENT_ZONES = ['openvibe.host', 'openvibe.link'];
+// Connect's control panel is trusted; share hosts run arbitrary local apps.
+const CONNECT_HOSTS = new Set(['connect.openvibe.website', 'connect.openvibe.link']);
 
 // Every exact host a service manifest lists (openvibe-contracts manifests' `domains`). The zones above were written by
 // hand and the sites added since were never on them (openvibe.video, .download, .pics, .quest, .food, .rent, .work,
@@ -29,7 +31,8 @@ const MANIFEST_HOSTS = (() => {
 /** Is `hostname` an OpenVibe site we trust across sites (an owned zone, minus tenant subdomains, or a manifest's host)? */
 function isTrustedHost(hostname) {
     const h = String(hostname || '').toLowerCase();
-    return MANIFEST_HOSTS.has(h) || OWNED_ZONES.some(z => h === z || (h.endsWith('.' + z) && !USER_CONTENT_ZONES.includes(z)));
+    if (/--[^.]+\.openvibe\.(?:link|website)$/.test(h)) return false;
+    return CONNECT_HOSTS.has(h) || MANIFEST_HOSTS.has(h) || OWNED_ZONES.some(z => h === z || (h.endsWith('.' + z) && !USER_CONTENT_ZONES.includes(z)));
 }
 
 /** A bare https origin (no port, no path) on a trusted host: a site that may use cross-site sign-in. */
