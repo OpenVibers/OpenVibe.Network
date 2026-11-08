@@ -132,7 +132,7 @@ const REVIEWED = {
     'server/integrations/github.js fetch': [1, 'fixed host api.github.com (asserted below)'],
     'server/notifications/email-service.js http.request': [1, 'fixed host api.resend.com'],
     'server/actions/index.js fetch': [4, 'The Action Center: OpenVibe.Actor, OpenVibe.Codes and OpenVibe.AI only (OV_ACTOR_INTERNAL_URL, OV_CODES_INTERNAL_URL, OV_AI_INTERNAL_URL, loopback); the paths are fixed (the decide route and the cancel route), the subject is the signed-in person\'s own usr_ id, and an item id must match [A-Za-z0-9_-]{1,80}'],
-    'server/profile/public.js fetch': [4, 'OpenVibe.Inventory (OV_INVENTORY_INTERNAL_URL, loopback 5030), OpenVibe.Quest (OV_QUEST_INTERNAL_URL, loopback 4980) and OpenVibe.Play (OV_PLAY_INTERNAL_URL, loopback 5040) only; the paths are fixed, the subject is a checked usr_ id'],
+    'server/profile/public.js fetch': [6, 'OpenVibe.Inventory, Quest and Play use operator-configured internal URLs and fixed paths with a checked usr_ id. Public place reads use only the configured Live, Community and Space service URLs, fixed public paths, encoded canonical usernames, 2 s timeouts and no user-supplied host or token; Space results are restricted to the exact owner and Published cards'],
     'server/profile/avatar.js fetch': [4, 'Live (push) and Media (ingest, release) internal URLs from config; a picture is never fetched here — Media\'s ingest fetches it (asserted below)'],
     'server/push/push-service.js web-push': [1, 'a person\'s push endpoint: endpointAllowed() at subscribe and send, connections through safeLookup (asserted below)'],
     'server/registry/deploy-drift.js fetch': [1, 'fixed host api.github.com'],
