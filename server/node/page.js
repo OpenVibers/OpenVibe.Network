@@ -66,7 +66,7 @@ function installBlock(release, userAgent) {
 <p>Download the program for this PC: ${file('openvibe-link-windows-amd64.exe', 'Windows x64 (.exe)')} or ${file('openvibe-link-windows-arm64.exe', 'Windows ARM64 (.exe)')}.</p>
 <p>Windows may show SmartScreen the first time: choose <strong>More info</strong>, then <strong>Run anyway</strong>. In an <strong>Administrator</strong> PowerShell, from the folder you saved it in:</p>
 ${kit.snippet({ code: '.\\openvibe-link pair <CODE>\n.\\openvibe-link install', id: 'np-install-win', label: 'Copy the Windows steps' })}
-<p class="np-fine">The code comes from <a href="https://openvibe.bot/machines">openvibe.bot/machines</a> (<strong>Add a machine</strong>). <code>openvibe-node.exe</code> is the same program under its old name.</p>
+<p class="np-fine">The code comes from <a href="/pair">openvibe.link/pair</a> (the signed-in machines hub, <strong>Pair a machine</strong>). <code>openvibe-node.exe</code> is the same program under its old name.</p>
 </div>
 </details>
 
@@ -95,7 +95,7 @@ ${kit.snippet({ code: 'sudo apt install ./openvibe-link_<version>_amd64.deb\n# o
 <summary><span>Android</span><small>the existing APK, direct</small></summary>
 <div class="np-os-body">
 <p>Download <a href="${esc(apk)}">openvibe-link${v ? `-${v}` : ''}.apk</a> on the phone, allow installing from that source when Android asks, and open <strong>OpenVibe Link</strong>.</p>
-<p>Pair from the app with a code from <a href="https://openvibe.bot/link/phone">openvibe.bot/link/phone</a>. The APK carries approvals, Activity, pairing and <strong>Send to OpenVibe</strong>; it is the direct build, not Google Play, and has no phone automation.</p>
+<p>Pair from the app with a code from <a href="/pair">openvibe.link/pair</a> or <a href="https://openvibe.bot/link/phone">openvibe.bot/link/phone</a>. The APK carries approvals, Activity, pairing and <strong>Send to OpenVibe</strong>; it is the direct build, not Google Play, and has no phone automation.</p>
 </div>
 </details>
 
@@ -180,6 +180,11 @@ ${CSS}
 ${installBlock(release, userAgent)}
 </section>
 
+<section class="np-sec" id="machines" aria-labelledby="h-machines"><h2 id="h-machines">Your machines</h2>
+<p class="np-fine">Sign in to see every machine you paired: whether it is online, what it is allowed to do, and the one-time code to add another. The same page renames or revokes one, and the phone pairs there too.</p>
+<p class="np-cta" style="margin-top:12px">${kit.button({ href: 'https://openvibe.my/machines', label: 'Open your machines', kind: 'primary' })} ${kit.button({ href: '/pair', label: 'Pair a machine', kind: 'quiet' })}</p>
+</section>
+
 ${releaseBlock(release)}
 
 <section class="np-sec" aria-labelledby="h-never"><h2 id="h-never">What it never does</h2>
@@ -201,7 +206,7 @@ ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact'
 <script src="/shared/navbar.js" defer></script>
 ${require('../boost').SCRIPT}
 <script src="/shared/kit-web.js" defer></script>
-<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:'https://openvibe.network',links:[{label:'Link',href:'/',icon:'fa-desktop',featured:true,active:true},{label:'Network',href:'https://openvibe.network/'},{label:'My Account',href:'https://openvibe.network/my'}]});}catch(e){}});</script>
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:'https://openvibe.network',links:[{label:'Link',href:'/',icon:'fa-desktop',featured:true,active:true},{label:'Machines',href:'/machines',icon:'fa-laptop'},{label:'Network',href:'https://openvibe.network/'},{label:'My Account',href:'https://openvibe.network/my'}]});}catch(e){}});</script>
 </body>
 </html>`;
 }

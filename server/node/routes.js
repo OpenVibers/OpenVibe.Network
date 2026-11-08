@@ -37,6 +37,7 @@ function llmsTxt() {
         '## Install',
         '',
         `- [Install Link](${SITE}/install): the latest release's installer, as a script to run`,
+        `- [Your machines](${SITE}/machines): the signed-in machines hub (pair, capabilities, online state), at openvibe.my/machines`,
         '',
         '```sh',
         page.INSTALL_LINE,
@@ -83,6 +84,13 @@ function createNodeRoutes({ releaseId, releaseApi = release } = {}) {
 
         // The old host is a signpost, not a second home: the same path on the new one.
         if (host === LEGACY_HOST) return res.redirect(301, `${SITE}${path}${url.search}`);
+
+        // Your machines and pairing are the signed-in account hub's own pages (openvibe.my/machines): it lists every
+        // paired machine, whether it is online, what it is allowed to do, and pairs a new one. Link links there rather
+        // than keeping a second copy of the session on this host (sign-in stays on Network; plan 2026-11-07 §5).
+        if (path === '/machines' || path === '/pair') {
+            return res.set('Cache-Control', 'no-store').redirect(302, 'https://openvibe.my/machines');
+        }
 
         if (path === '/llms.txt') {
             return res.type('text/plain').set('Cache-Control', 'public, max-age=3600').send(llmsTxt());
