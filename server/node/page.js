@@ -36,7 +36,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':
 /** The install block per OS. The one-liner is for Linux and macOS; Windows gets the release asset and the pair step. */
 function installBlock(release) {
     const version = esc(release.version || '');
-    const exe = `https://github.com/OpenVibers/OpenVibe.Node/releases/download/${release.version || 'latest'}/openvibe-node-windows-amd64.exe`;
+    const exe = `https://github.com/OpenVibers/OpenVibe.Node/releases/download/${release.version || 'latest'}/openvibe-link-windows-amd64.exe`;
     return `<div class="np-installs">
 <div class="np-install">
 <h3>Linux and macOS</h3>
@@ -47,11 +47,11 @@ ${kit.snippet({ code: INSTALL_LINE, id: 'np-install-sh', label: 'Copy the instal
 <div class="np-install">
 <h3>Windows</h3>
 <p class="np-fine">Download the binary, then in an Administrator prompt:</p>
-${kit.snippet({ code: 'openvibe-node pair <CODE>', id: 'np-install-win', label: 'Copy the pair command' })}
-<p class="np-fine"><a href="${esc(exe)}">openvibe-node-windows-amd64.exe</a> from the ${version ? esc(version) : 'latest'} release.</p>
+${kit.snippet({ code: 'openvibe-link pair <CODE>', id: 'np-install-win', label: 'Copy the pair command' })}
+<p class="np-fine"><a href="${esc(exe)}">openvibe-link-windows-amd64.exe</a> from the ${version ? esc(version) : 'latest'} release; the old <code>openvibe-node</code> name is the same program.</p>
 </div>
 </div>
-<p class="np-fine">The program is still called openvibe-node; it becomes openvibe-link in a coming release, and the old name keeps working for a year.</p>`;
+<p class="np-fine">The program is <code>openvibe-link</code>. <code>openvibe-node</code> is kept as an alias, so existing installs and scripts keep working.</p>`;
 }
 
 /** The release facts: the version, when it came out, the checksums and the release page. */
@@ -135,7 +135,7 @@ ${releaseBlock(release)}
 <li><a href="${DOCS}/install.md">Install</a> &mdash; every OS, every option, and what the installer does.</li>
 <li><a href="${DOCS}/computer.md">Your computer for your agents</a> &mdash; the computer plugin, its levels and the live screen.</li>
 <li><a href="${DOCS}/worker.md">A machine that runs your jobs</a> &mdash; the sandbox the job runner uses.</li>
-<li><a href="${DOCS}/protocol.md">The protocol</a> &mdash; the wire format between the Node and OpenVibe.Bot.</li>
+<li><a href="${DOCS}/protocol.md">The protocol</a> &mdash; the wire format between Link and OpenVibe.Bot.</li>
 <li><a href="${DOCS}/memory.md">Your memory</a> &mdash; what the collectors read and how it is uploaded.</li>
 </ul>
 <p class="np-fine">The source is on <a href="https://github.com/OpenVibers/OpenVibe.Node">GitHub</a>. The installer also lives at <a href="https://openvibe.bot/install">openvibe.bot/install</a>, which keeps working.</p>

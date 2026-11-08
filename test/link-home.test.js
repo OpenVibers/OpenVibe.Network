@@ -65,12 +65,12 @@ const SHAPED = {
     assert.ok(html.includes('>Install Link<'), 'the primary button installs Link');
     assert.ok(html.includes('>The install guide<'), 'and the guide keeps its name');
     assert.ok(html.includes('curl -fsSL https://openvibe.link/install | sh'), 'the one-line installer uses the new home');
-    assert.ok(html.includes('The program is still called openvibe-node; it becomes openvibe-link in a coming release, and the old name keeps working for a year.'), 'the rename is said plainly under the installer');
+    assert.ok(html.includes('The program is <code>openvibe-link</code>. <code>openvibe-node</code> is kept as an alias, so existing installs and scripts keep working.'), 'the rename and the alias are said plainly under the installer');
     assert.ok(html.includes('v9.9.9'), 'the version is on the page');
     assert.ok(html.includes('2026-11-06'), 'the release date is on the page');
     assert.ok(html.includes('releases/download/v9.9.9/SHA256SUMS'), 'the checksums are on the page');
     assert.ok(html.includes('releases/tag/v9.9.9'), 'the release page is on the page');
-    assert.ok(html.includes('openvibe-node-windows-amd64.exe'), 'Windows has its own way in');
+    assert.ok(html.includes('openvibe-link-windows-amd64.exe'), 'Windows has its own way in');
     assert.ok(html.includes('openvibe.bot/install'), 'the installer also lives at openvibe.bot/install');
     assert.ok(html.includes('What it does today'), 'the honest heading stays');
     for (const [what, needle] of [
