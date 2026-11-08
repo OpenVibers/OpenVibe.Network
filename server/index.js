@@ -63,6 +63,10 @@ app.get('/openapi.json', (_req, res) => {
     }
     res.set('Cache-Control', 'public, max-age=3600').set('Access-Control-Allow-Origin', '*').json({ ...doc, paths });
 });
+app.get('/docs/trust-signals', (_req, res) => {
+    res.type('text/markdown').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 }))
+        .send(fs.readFileSync(path.join(__dirname, '..', 'docs', 'trust-signals.md'), 'utf8'));
+});
 
 // What this server is running (ADR-016, registry.release-manifest@1); open tabs poll it through
 // /shared/release-watch.js and are prompted, or reloaded when safe, after a deploy.
@@ -495,6 +499,11 @@ app.post('/mcp', rateLimit({ windowMs: 60_000, max: 600 }), require('./connect/m
         if (found.moved) return { moved_to: found.moved };
         return await publicProfiles.pageOf(found.user);
     },
+    myTrust: async (subject) => {
+        const signals = await require('./identity/trust').trustSignals(db, String(subject || ''));
+        if (!signals) throw Object.assign(new Error('No trust signals are available for this account.'), { status: 404 });
+        return signals;
+    },
 }));
 // Staff capabilities and the staff list (WS-D task 4; services need network.staff.read).
 app.use('/api/v1/staff', require('./admin/staff-api').createStaffApi({ db, requireAuth, guard: require('./identity/principals').guard }));
@@ -512,6 +521,10 @@ app.get('/internal/integrations/github-token', require('./identity/principals').
 // Platform blocks (WS-E task 5): a person's own list, and who blocked whom for Chat and Community
 // (network.blocks.read, service token only). Every change is network.block.changed (server/identity/blocks.js).
 app.use('/api/v1/me/blocks', rateLimit({ windowMs: 60_000, max: 60 }), require('./identity/blocks').userRouter(requireAuth));
+// Privacy-limited age and abuse signals: the /me route accepts its own account or guest token, while service reads need
+// identity.trust.read. Both responses are private and no-store.
+app.use('/api/v1/me/trust', rateLimit({ windowMs: 60_000, max: 30 }), require('./identity/trust-routes').meRouter());
+app.use('/api/v1/trust', rateLimit({ windowMs: 60_000, max: 60 }), require('./identity/trust-routes').serviceRouter(require('./identity/principals')));
 // The Exchange remake's uncensored tier: the account's own 18+ confirmation (server/identity/adult.js). AI reads it
 // through /internal/identity/adult; this is the person's side, on the account hub (/my, Content).
 app.use('/api/v1/me/adult', rateLimit({ windowMs: 60_000, max: 20 }), require('./identity/adult').userRouter({ requireAuth }));

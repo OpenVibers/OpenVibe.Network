@@ -6,7 +6,7 @@
  *   GET  /internal/identity/resolve?subject_id=usr_...
  *   GET  /internal/identity/resolve?system=live&type=user&id=123
  *   GET  /internal/identity/resolve?username=alex      (a person's current name, any case: an owner adding @alex)
- *   …&trust=1                                          adds `trust` (plan E5: account age, passkey, links, activity)
+ *   …&trust=1                                          adds privacy-limited account or guest `trust` signals
  *   POST /internal/identity/legacy-map   { entries: [{ network_user_id | subject_id, source_system, source_type, source_id, verified? }] }
  */
 const express = require('express');
@@ -28,9 +28,10 @@ router.get('/resolve', async (req, res) => {
         ? await subjects.resolveUsername(db, String(q.username))
         : await subjects.resolve(db, { subject_id: q.subject_id, source_system: q.system, source_type: q.type || 'user', source_id: q.id });
     if (!out) return http.sendProblem(res, 404, 'identity.subject_not_found', { detail: 'no subject for that id', ctx: req.ov });
-    // Plan E5: the free allowance's trust facts, only when asked and only for a person. The default projection is
-    // unchanged, so every existing reader pays nothing for this.
-    if (String(q.trust || '') === '1' && out.subject && out.subject.type === 'user') out.trust = await trustSignals(db, out.subject.id);
+    // Plan E5: account and guest trust facts, only when asked. Existing projections stay unchanged by default.
+    if (String(q.trust || '') === '1' && out.subject && ['user', 'guest'].includes(out.subject.type)) {
+        out.trust = await trustSignals(db, out.subject.id);
+    }
     res.json(out);
 });
 

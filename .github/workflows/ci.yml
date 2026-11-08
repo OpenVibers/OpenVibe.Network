@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 jobs:
   # install, node --check, tests, contract and pin-drift checks: the shared test job (WS-Q task 1).
   test:
