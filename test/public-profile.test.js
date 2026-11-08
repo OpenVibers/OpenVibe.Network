@@ -95,7 +95,7 @@ const INSTANCES = [
         assert.ok(r.text.includes('<span class="pf-count">4</span>'), 'four items');
         assert.ok(r.text.includes('"@type":"ProfilePage"') && r.text.includes('<link rel="canonical" href="https://openvibe.network/@Ana">'));
         assert.ok(r.text.includes('--pf-color:#ff0066'));
-        assert.ok(r.text.includes('https://inventory.openvibe.network/items/itd_01JZ00000000000000000001R1'), 'items link to their Inventory page');
+        assert.ok(r.text.includes('https://openvibe.my/inventory/itd_01JZ00000000000000000001R1'), 'items link to their Inventory page');
         assert.ok(!/name="robots" content="noindex"/.test(r.text));
         assert.ok(calls.filter((c) => !c.path.includes('/badges') && !c.path.endsWith('/achievements')).every((c) => c.auth === 'Bearer tok:openvibe.inventory:inventory.item.read'), 'Network\'s own token for Inventory');
         assert.strictEqual(calls.find((c) => c.path.endsWith('/achievements')).auth, '', 'Play\'s read is public: no token');
@@ -129,7 +129,7 @@ const INSTANCES = [
         const p = JSON.parse(r.text).profile;
         assert.deepStrictEqual([p.username, p.private, p.color, p.member_since, p.items.count, p.showcase.map((s) => s.name)], ['Ana', false, '#ff0066', '2026-10-01', 4, ['Rainbow', 'Royal Crown', 'OG Viewer']]);
         assert.strictEqual(p.avatar_url, 'https://openvibe.network/avatar/Ana?s=160');
-        assert.strictEqual(p.inventory_url, `https://inventory.openvibe.network/u/${A}`);
+        assert.strictEqual(p.inventory_url, `https://openvibe.my/inventory/u/${A}`);
         assert.deepStrictEqual(p.items.by_kind.map((k) => k.kind).sort(), ['live.hat', 'live.name_effect', 'live.particle', 'network.badge']);
         assert.deepStrictEqual(p.badges.map((b) => b.id), ['thread-starter', 'first-follow']);
         assert.deepStrictEqual([p.achievements.total, p.achievements.games.map((g) => [g.title, g.count])], [3, [['salvage-rush', 2], ['vibe-heroes', 1]]], 'achievements in the JSON every site reads');

@@ -173,7 +173,7 @@ async function seedDb(db, { log = console } = {}) {
             // for uploads and albums (OpenVibe.Pics, 2026-10-15).
             { client_id: 'media-hub', name: 'OpenVibe.Download', redirect_uris: ['https://openvibe.download/auth/callback', 'https://openvibe.video/auth/callback', 'https://openvibe.pics/auth/callback'] },
             // The network-wide inventory (ADR-054, plan T21).
-            { client_id: 'inventory', name: 'OpenVibe.Inventory', redirect_uris: ['https://inventory.openvibe.network/auth/callback'] },
+            { client_id: 'inventory', name: 'OpenVibe.Inventory', redirect_uris: ['https://inventory.openvibe.network/auth/callback', 'https://openvibe.my/inventory/auth/callback'] },
             // Achievements and leaderboards for every game (Games ADR-0007 decision 10).
             { client_id: 'play', name: 'OpenVibe.Play', redirect_uris: ['https://play.openvibe.network/auth/callback'] },
             // Private S3-compatible storage zones (ADR-031 amendment; contracts 0.173.0).

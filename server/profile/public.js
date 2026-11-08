@@ -25,7 +25,7 @@ const { siteForHost, fullName } = require('../frame/sites');
 
 const esc = seo.esc;
 const SITE = 'https://openvibe.network';
-const INVENTORY_SITE = 'https://inventory.openvibe.network';
+const INVENTORY_SITE = 'https://openvibe.my/inventory';
 const QUEST_SITE = 'https://openvibe.quest';
 const GAMES_ACHIEVEMENTS = 'https://openvibe.games/achievements#game-';
 const RECENT_ACHIEVEMENTS = 6;   // per game on the page; the rest is on the game's row on OpenVibe.Games
@@ -43,7 +43,7 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 
 const profileUrl = (username) => `${SITE}/@${encodeURIComponent(username)}`;
 const avatarUrl = (username, size = 160) => `${SITE}/avatar/${encodeURIComponent(username)}?s=${size}`;
-const itemUrl = (definitionId) => `${INVENTORY_SITE}/items/${encodeURIComponent(definitionId)}`;
+const itemUrl = (definitionId) => `${INVENTORY_SITE}/${encodeURIComponent(definitionId)}`;
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const rarityRank = (r) => Math.max(0, RARITY.indexOf(r));
 

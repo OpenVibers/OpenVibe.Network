@@ -24,5 +24,14 @@ const { getDb, seedDb } = require('../server/db/database');
     const mail = await db.prepare('SELECT redirect_uris, is_first_party FROM oauth_clients WHERE client_id = ?').get('mail');
     assert.deepStrictEqual(JSON.parse(mail.redirect_uris), ['https://openvibe.email/auth/callback'], 'the only callback is openvibe.email');
     assert.strictEqual(mail.is_first_party, 1, 'the site client is first-party');
+    const uris = async () => JSON.parse((await db.prepare('SELECT redirect_uris FROM oauth_clients WHERE client_id = ?').get('inventory')).redirect_uris);
+    assert.ok((await uris()).includes('https://openvibe.my/inventory/auth/callback'));
+    await db.prepare('UPDATE oauth_clients SET redirect_uris = ? WHERE client_id = ?')
+        .run(JSON.stringify(['https://inventory.openvibe.network/auth/callback', 'https://inventory.openvibe.network/extra']), 'inventory');
+    console.log = () => {};
+    await seedDb(db, { log });
+    console.log = quiet;
+    assert.ok((await uris()).includes('https://openvibe.my/inventory/auth/callback'), 'existing clients gain the callback');
+    assert.ok((await uris()).includes('https://inventory.openvibe.network/extra'), 'custom callbacks survive');
     console.log('client-names: ok');
 })().catch((err) => { console.error(err); process.exit(1); });

@@ -33,7 +33,7 @@ const ALL_SITES = RAW_SITES.map((s) => {
     const e = exposureOf(s.service);
     const host = manifestHost(s.service) || s.host;
     if (!host) throw new Error(`site ${s.id}: no host (its manifest has no publicOrigin and the entry names none)`);
-    return { ...s, host, status: e.state === 'live' && e.public_site === 'service' ? 'open' : 'soon', state: e.state };
+    return { ...s, host, ...(s.service === 'inventory' ? { url: 'https://openvibe.my/inventory' } : {}), status: e.state === 'live' && e.public_site === 'service' ? 'open' : 'soon', state: e.state };
 });
 // The menu, footer, home and llms.txt list SITES; siteForHost still knows Play so a Play-host page (or a token
 // consent screen) keeps its own name, without the site being offered as a destination.

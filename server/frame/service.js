@@ -316,7 +316,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     function linkPool() {
         const { catalog } = toolsCatalog.peek();
         const pool = new Map();
-        for (const s of SITES.filter(x => x.status === 'open')) pool.set('site:' + s.id, { name: fullName(s), url: `https://${s.host}/`, about: s.tagline });
+        for (const s of SITES.filter(x => x.status === 'open')) pool.set('site:' + s.id, { name: fullName(s), url: s.url || `https://${s.host}/`, about: s.tagline });
         for (const f of catalog.families) if (f.path) pool.set('family:' + f.id, { name: f.name, url: 'https://openvibe.tools' + f.path, about: f.tagline });
         for (const t of catalog.tools) pool.set('tool:' + t.id, { name: t.name, url: t.url, about: t.tagline });
         return pool;
@@ -371,7 +371,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             cards: menuCards.cards(),
             groups: GROUPS.map(g => ({ id: g.id, name: g.name })),
             // state: 'internal' (runs on loopback, the domain still shows a placeholder) or 'placeholder' (planned).
-            soon: SITES.filter(s => s.status === 'soon').map(s => ({ id: s.id, name: s.name, url: `https://${s.host}/`, icon: s.icon, state: s.state })),
+            soon: SITES.filter(s => s.status === 'soon').map(s => ({ id: s.id, name: s.name, url: s.url || `https://${s.host}/`, icon: s.icon, state: s.state })),
             footer: { blurb: (ai && ai.blurb) || site.what, ai: !!ai, discover: footerDiscover, popular: popularTools(8), legal: { terms: legalBase + '/terms', privacy: legalBase + '/privacy', dmca: legalBase + '/dmca' } },
         };
     }
