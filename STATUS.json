@@ -6,7 +6,7 @@
   "runtime": "node 22, express, PostgreSQL 18 (openvibe-sdk/db, async) + Valkey 9",
   "port": 4000,
   "domain": "openvibe.network (with auth., api., admin., my. and themes.openvibe.network in its manifest)",
-  "contracts": "openvibe-contracts v0.330.0",
+  "contracts": "openvibe-contracts v0.338.0",
   "sdk": "openvibe-sdk v0.94.0",
   "shared": "openvibe-shared v4.142.0",
   "capabilities": [
@@ -54,5 +54,5 @@
     "Space's builder as a task of the person's one agent (plan 2026-10-22 §Z stage Z1): the grants that let Space start a task of the person's agent on OpenVibe.Actor and let that agent work on the person's own spaces through OpenVibe.Space's builder API",
     "the menu's feeds per person: GET and PUT /api/v1/me/menu-feeds (network.menu-feeds@1) keep the OpenVibe menu's Choose your feeds choice across every site"
   ],
-  "updated": "2026-11-07"
+  "updated": "2026-11-08"
 }
