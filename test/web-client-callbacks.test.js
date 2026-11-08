@@ -24,5 +24,8 @@ const { getDb, seedDb } = require('../server/db/database');
     assert.deepEqual(JSON.parse(web.redirect_uris), ['https://openvibe.link/auth/callback']);
     const mobile = await db.prepare("SELECT redirect_uris FROM oauth_clients WHERE client_id = 'link'").get();
     assert.ok(!JSON.parse(mobile.redirect_uris).includes('https://openvibe.link/auth/callback'), 'mobile client stays separate');
+    const computer = await db.prepare("SELECT redirect_uris FROM oauth_clients WHERE client_id = 'computer'").get();
+    assert.ok(computer, 'Computer has a first-party confidential OAuth client');
+    assert.deepEqual(JSON.parse(computer.redirect_uris), ['https://openvibe.computer/auth/callback']);
     console.log('web client callbacks: exact URIs, idempotence and credential preservation passed');
 })().catch(err => { console.error(err); process.exitCode = 1; });

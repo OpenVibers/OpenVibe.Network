@@ -6,6 +6,7 @@ const assert = require('assert');
 const { manifestOrigins } = require('../server/first-party-origins');
 
 const o = manifestOrigins();
+assert(o.has('https://openvibe.computer'), 'Computer is allowed for Network signed-in navbar calls before the Contracts pin lands');
 for (const want of ['https://openvibe.blog', 'https://openvibe.wiki', 'https://openvibe.codes', 'https://search.openvibe.network', 'https://openvibe.live', 'https://my.openvibe.network', 'https://openvibe.party']) {
     assert.ok(o.has(want), `${want} is a first-party origin`);
 }

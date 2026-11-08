@@ -22,6 +22,8 @@ function manifestOrigins() {
             if (HOST_RE.test(host)) out.add(`https://${host}`);
         }
     }
+    // Bootstrap Computer's exact origin until its service manifest is included in this service's Contracts pin.
+    out.add('https://openvibe.computer');
     cached = out;
     return out;
 }
