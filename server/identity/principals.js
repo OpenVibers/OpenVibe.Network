@@ -776,6 +776,10 @@ const DEFAULT_GRANTS = [
     ['tours', 'events.subscription.manage', 'openvibe.events', []],
     // Tours publishes its places, cities and walks to OpenVibe.Search as tours.index_document.* (contracts 0.274.0).
     ['tours', 'events.event.publish', 'openvibe.events', []],
+    // Tours copies licensed Commons/Openverse thumbnails into its own Media tenant (no hotlinking), and asks OpenVibe.AI
+    // for a cited place summary (Tours #106, 2026-11-08). New rows: no RESTORED_GRANTS or CHANGED_DEFAULT_NAMESPACES entry.
+    ['tours', 'media.object.upload', 'openvibe.media', ['tours']],
+    ...['ai.run.create', 'ai.run.read'].map((cap) => ['tours', cap, 'openvibe.ai', ['ai.summarize']]),
     ['shoes', 'events.subscription.manage', 'openvibe.events', []],
     // Shoes publishes its model pages to OpenVibe.Search as shoes.index_document.* (contracts 0.273.0, through its own
     // outbox and openvibe-publishing/search-feed).
