@@ -223,7 +223,7 @@ function renderProfile(user) {
         let places = {}; try { places = typeof user.public_page_places === 'string' ? JSON.parse(user.public_page_places) : (user.public_page_places || {}); } catch {}
         for (const key of ['live', 'media', 'space', 'community']) document.getElementById(`public-place-${key}`).checked = places[key] !== false;
         const pageUrl = document.getElementById('public-page-url');
-        if (user.username && !user.is_anon) { pageUrl.href = `https://openvibe.my/@${encodeURIComponent(user.username)}`; pageUrl.textContent = `openvibe.my/@${user.username}`; }
+        if (user.username && !user.is_anon) { pageUrl.href = `https://openvibe.network/@${encodeURIComponent(user.username)}`; pageUrl.textContent = `openvibe.network/@${user.username}`; }
         for (const id of ['public-page-pronouns', 'public-page-bio', 'public-page-links', 'public-place-live', 'public-place-media', 'public-place-space', 'public-place-community', 'public-page-preview-toggle', 'public-page-save']) document.getElementById(id).disabled = unavailable;
         if (unavailable) document.getElementById('public-page-msg').textContent = 'Sign in to edit your public page.';
     }

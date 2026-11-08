@@ -32,7 +32,7 @@ function sitemapXml({ release = null, profiles = [] } = {}) {
     const day = String(lastmod).slice(0, 10);
     return seo.sitemapXml([
         ...PAGES.map((page) => ({ loc: `${HOST}${page.path}`, lastmod: day, changefreq: page.changefreq, priority: page.priority })),
-        ...profiles.map((username) => ({ loc: `https://openvibe.my/@${encodeURIComponent(username)}`, lastmod: day, changefreq: 'weekly', priority: 0.5 })),
+        ...profiles.map((username) => ({ loc: `https://openvibe.network/@${encodeURIComponent(username)}`, lastmod: day, changefreq: 'weekly', priority: 0.5 })),
     ]);
 }
 
