@@ -198,6 +198,16 @@ ${installBlock(release, userAgent)}
 <p class="np-cta" style="margin-top:12px">${kit.button({ href: 'https://openvibe.my/machines', label: 'Open your machines', kind: 'primary' })} ${kit.button({ href: '/pair', label: 'Pair a machine', kind: 'quiet' })}</p>
 </section>
 
+<section class="np-sec" id="send" aria-labelledby="h-send"><h2 id="h-send">Send to my machine</h2>
+<p class="np-fine">Choose one of your paired machines and send a file or a short text note. Link encrypts it for that machine before it leaves this page; the relay only holds the encrypted envelope for up to 24 hours.</p>
+<form class="np-send" data-link-send>
+<label>Send to <select name="machine" required><option value="">Loading your machines…</option></select></label>
+<label>File <input name="file" type="file"></label>
+<label>Or a text note <textarea name="text" rows="3" maxlength="10000" placeholder="Write a short note"></textarea></label>
+<button type="submit">Encrypt and send</button><p role="status" aria-live="polite" data-send-status></p>
+</form>
+</section>
+
 ${releaseBlock(release)}
 
 <section class="np-sec" aria-labelledby="h-never"><h2 id="h-never">What it never does</h2>
@@ -219,6 +229,7 @@ ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact'
 <script src="/shared/navbar.js" defer></script>
 ${require('../boost').SCRIPT}
 <script src="/shared/kit-web.js" defer></script>
+<script type="module" src="/send.js"></script>
 <script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:'https://openvibe.network',sessionUrl:'/auth/me',loginUrl:'/auth/login?next={path}',logoutUrl:'/auth/logout?next={url}',silentLogin:'/auth/login?silent=1&next={url}',links:[{label:'Link',href:'/',icon:'fa-desktop',featured:true,active:true},{label:'Machines',href:'/machines',icon:'fa-laptop'},{label:'Network',href:'https://openvibe.network/'},{label:'My Account',href:'https://openvibe.network/my'}]});}catch(e){}});</script>
 </body>
 </html>`;
@@ -232,6 +243,11 @@ const CSS = `
 .np-lede code,.np code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em}
 .np-cta{display:flex;flex-wrap:wrap;gap:10px;margin:0}
 .np-sec{margin-top:44px}
+.np-send{display:grid;gap:12px;max-width:560px;padding:18px;border:1px solid var(--border,#1f2d47);border-radius:16px;background:var(--bg-card,#0f1729)}
+.np-send label{display:grid;gap:6px;font-size:.92rem;font-weight:650}
+.np-send input,.np-send select,.np-send textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border,#1f2d47);border-radius:9px;background:var(--bg-primary,#080d18);color:var(--text-primary,#eef2ff);font:inherit}
+.np-send button{justify-self:start;padding:10px 14px;border:0;border-radius:9px;background:var(--accent,#3b82f6);color:white;font:inherit;font-weight:700;cursor:pointer}
+.np-send [role=status]{margin:0;min-height:1.3em;color:var(--text-secondary,#96a7c2)}
 .np-sec h2{margin:0 0 14px;font-size:1.3rem;letter-spacing:-.01em}
 .np-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .np-does{padding:18px;border-radius:16px;background:var(--bg-card,#0f1729);border:1px solid var(--border,#1f2d47);display:flex;flex-direction:column;gap:6px}
