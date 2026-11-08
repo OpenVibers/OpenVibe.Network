@@ -24,13 +24,21 @@ function manifestHost(service) {
     const m = contracts.services.get(service);
     try { return m && m.publicOrigin ? new URL(m.publicOrigin).hostname : null; } catch { return null; }
 }
-const SITES = RAW_SITES.map((s) => {
+// Play is the game-services API behind OpenVibe.Games, not a destination of its own: its pages moved to
+// openvibe.games (achievements, leaderboards, developers) and the menu lists Games once. The service stays live and
+// exposed in the registry (so a game can still call it); the frame, footer, home, llms.txt and JSON-LD drop the entry.
+// The owner, 2026-11-08: "it should just be part of openvibe.games".
+const HIDDEN_SITE = new Set(['play']);
+const ALL_SITES = RAW_SITES.map((s) => {
     const e = exposureOf(s.service);
     const host = manifestHost(s.service) || s.host;
     if (!host) throw new Error(`site ${s.id}: no host (its manifest has no publicOrigin and the entry names none)`);
     return { ...s, host, status: e.state === 'live' && e.public_site === 'service' ? 'open' : 'soon', state: e.state };
 });
-const byHost = new Map(SITES.map(s => [s.host, s]));
+// The menu, footer, home and llms.txt list SITES; siteForHost still knows Play so a Play-host page (or a token
+// consent screen) keeps its own name, without the site being offered as a destination.
+const SITES = ALL_SITES.filter((s) => !HIDDEN_SITE.has(s.id));
+const byHost = new Map(ALL_SITES.map(s => [s.host, s]));
 
 /** A site's full name: its own when it is a brand already (OpenRestream), otherwise OpenVibe.<name> (OpenVibe.Live).
  *  "OpenVibe.OpenRestream" read wrong on the home page's cards (the owner, 2026-10-28). */
@@ -51,7 +59,7 @@ const GROUPS = [
     { id: 'people', name: 'People & you', sites: ['chat', 'mail', 'community', 'tips', 'vip', 'help', 'network', 'inventory'] },
     // Actor is the engine behind every agent (Codes' Auto, Vibe, the Dock call it): a developer service, not a second
     // place to chat with an agent (plan L39, 2026-10-31).
-    { id: 'build', name: 'For developers', sites: ['services', 'exchange', 'actor', 'run', 'zone', 'events', 'media', 'watch', 'play'] },
+    { id: 'build', name: 'For developers', sites: ['services', 'exchange', 'actor', 'run', 'zone', 'events', 'media', 'watch'] },
 ];
 // What each site is, in a few words, for the menus (the launcher's rows are two to a line on a phone: about 22
 // characters fit). The manifests' taglines stay the sites' own sentences everywhere else; a site missing here shows
@@ -67,7 +75,7 @@ const MENU_LINE = {
     search: 'Search everything', host: 'Compare hosting', report: 'Your numbers, honest', vision: 'Ask a picture',
     exchange: 'AI models, one account',
     network: 'Your account', inventory: 'Your items',
-    services: 'APIs, SDK and keys', bench: 'Which AI is best', run: 'Run jobs anywhere', zone: 'S3 storage', events: 'Event streams', media: 'Media API', play: 'Game services',
+    services: 'APIs, SDK and keys', bench: 'Which AI is best', run: 'Run jobs anywhere', zone: 'S3 storage', events: 'Event streams', media: 'Media API',
 };
 
 // A site's name in the menus, where the rows are short words (Pics, Download, VIP, Tips): the product keeps its full name

@@ -27,8 +27,8 @@ const esc = seo.esc;
 const SITE = 'https://openvibe.network';
 const INVENTORY_SITE = 'https://inventory.openvibe.network';
 const QUEST_SITE = 'https://openvibe.quest';
-const PLAY_SITE = 'https://play.openvibe.network';
-const RECENT_ACHIEVEMENTS = 6;   // per game on the page; the rest is on the game's page on OpenVibe.Play
+const GAMES_ACHIEVEMENTS = 'https://openvibe.games/achievements#game-';
+const RECENT_ACHIEVEMENTS = 6;   // per game on the page; the rest is on the game's row on OpenVibe.Games
 const AUDIENCE = 'openvibe.inventory';
 const ITEMS_TTL_MS = 60_000;
 const KINDS_TTL_MS = 10 * 60_000;
@@ -128,7 +128,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
                 const body = await r.json();
                 const games = (Array.isArray(body.titles) ? body.titles : []).filter((t) => t && typeof t.title === 'string' && Array.isArray(t.achievements)).map((t) => ({
                     title: t.title.slice(0, 64), name: String(t.name || t.title).slice(0, 80), count: t.achievements.length,
-                    url: `${PLAY_SITE}/t/${encodeURIComponent(t.title.slice(0, 64))}`,
+                    url: `${GAMES_ACHIEVEMENTS}${encodeURIComponent(t.title.slice(0, 64))}`,
                     recent: t.achievements.slice(0, RECENT_ACHIEVEMENTS).filter((a) => a && typeof a.name === 'string').map((a) => ({ name: a.name.slice(0, 80), description: String(a.description || '').slice(0, 200), unlocked_at: typeof a.unlocked_at === 'string' ? a.unlocked_at : null })),
                 }));
                 value = { total: games.reduce((n, g) => n + g.count, 0), games };
@@ -291,7 +291,7 @@ function badgesHtml(inv) {
     }).join('')}</ul></section>`;
 }
 
-/** Games: each game the person played with its achievements (newest first), Steam-style; links to the game on OpenVibe.Play. */
+/** Games: each game the person played with its achievements (newest first), Steam-style; links to the game's row on OpenVibe.Games. */
 function gamesHtml(inv) {
     const a = inv.achievements;
     if (!a || !a.games.length) return '';
