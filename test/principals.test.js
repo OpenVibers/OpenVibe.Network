@@ -126,6 +126,10 @@ const server = http.createServer(app);
         // Vision also publishes its own vision.result.ready and vision.alert (VIS-5; granted 11-02).
         assert.strictEqual(t.body.scope, client === 'vision' ? 'events.event.publish events.subscription.manage' : 'events.subscription.manage', `${client} subscribes to the account events at boot`);
     }
+
+    await db.prepare('UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?').run('mail-secret', 'mail');
+    t = await token({ client_id: 'mail', client_secret: 'mail-secret', audience: 'openvibe.ai' });
+    assert.deepStrictEqual(t.body.scope.split(' ').sort(), ['ai.run.create', 'ai.run.read']);
     t = await token({ client_id: 'vision', client_secret: 'vision-secret', audience: 'openvibe.ai' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
     const visionAiClaims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.ai' });

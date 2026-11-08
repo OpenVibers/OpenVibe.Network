@@ -712,6 +712,9 @@ const DEFAULT_GRANTS = [
     // OpenVibe.Vision (contracts 0.235.0): model calls through AI's OpenAI-compatible endpoint (workflow ai.complete),
     // its account-event subscriptions, and the export/deletion pair above. It has no public records, so no Search grant.
     ['vision', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
+    // Mail's opt-in Inbox AI runs only ai.complete through OpenVibe.AI, attributed to the mailbox owner.
+    ['mail', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
+    ['mail', 'ai.run.read', 'openvibe.ai', ['ai.complete']],
     ['vision', 'events.subscription.manage', 'openvibe.events', []],
     // VIS-6: the operator review, its evidence view and the decision that releases Media's evidence hold.
     // The media namespaces are the first-party tenants whose objects can be reviewed.
