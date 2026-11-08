@@ -16,10 +16,11 @@ const { exposureOf } = require('../registry/exposure');
 // OpenVibe.Bench moved into OpenVibe.Report's AI section (owner, 2026-11-08): its public pages are gone, so it is
 // not a site of its own in the Frame. The service and its API stay; the entry below lists its AI pages under Report.
 const HIDDEN_SITES = new Set(['bench']);
+const COMPUTER_FALLBACK = { id: 'computer', name: 'Computer', icon: 'computer', service: 'computer', profile: 'hosting', tagline: 'A computer for you, your AI, or both', what: 'Start and manage computer sessions over OpenVibe.Run, with your own Link machines and cloud computers in one place.', host: 'openvibe.computer' };
 const RAW_SITES = contracts.services.manifests.filter((m) => m.site && !HIDDEN_SITES.has(m.id)).sort((a, b) => (a.site.position ?? 999) - (b.site.position ?? 999)).map((m) => ({
     id: m.site.icon, name: m.site.name, icon: m.site.icon, service: m.id, profile: m.site.legalProfile, tagline: m.site.tagline, what: m.site.what,
     ...(m.site.host ? { host: m.site.host } : {}),
-}));
+})).concat(contracts.services.get('computer') ? [] : [COMPUTER_FALLBACK]);
 function manifestHost(service) {
     const m = contracts.services.get(service);
     try { return m && m.publicOrigin ? new URL(m.publicOrigin).hostname : null; } catch { return null; }
@@ -54,7 +55,7 @@ const GROUPS = [
     { id: 'streams', name: 'Streams & places', sites: ['live', 'media-hub', 'stream', 'pics', 'download', 'cam', 'tours'] },
     { id: 'games', name: 'Games & laughs', sites: ['games', 'surf', 'fun', 'meme', 'casino', 'quest'] },
     { id: 'answers', name: 'News & answers', sites: ['today', 'report', 'bench', 'news', 'search', 'wiki', 'blog', 'reviews', 'vision'] },
-    { id: 'make', name: 'Make & build', sites: ['website', 'connect', 'design', 'domains', 'codes', 'space', 'tools', 'host', 'bot'] },
+    { id: 'make', name: 'Make & build', sites: ['website', 'connect', 'design', 'domains', 'computer', 'codes', 'space', 'tools', 'host', 'bot'] },
     { id: 'shop', name: 'Shop & swap', sites: ['deals', 'coupons', 'shoes', 'rent', 'homes', 'work', 'food', 'trade'] },
     { id: 'people', name: 'People & you', sites: ['chat', 'mail', 'community', 'tips', 'vip', 'help', 'network', 'inventory'] },
     // Actor is the engine behind every agent (Codes' Auto, Vibe, the Dock call it): a developer service, not a second
@@ -66,7 +67,7 @@ const GROUPS = [
 // its tagline.
 const MENU_LINE = {
     live: 'Go live, watch streams', 'media-hub': 'Clips and past streams', stream: 'Stream everywhere', pics: 'Share pictures',
-    download: 'Your files', tips: 'Support streamers', vip: 'Back your creators',
+    download: 'Your files', tips: 'Support streamers', vip: 'Back your creators', computer: 'Your computer, your way',
     chat: 'Chat with anyone', mail: 'Masks and inboxes', community: 'Posts and pastes', blog: 'Write long-form', news: 'Sourced, not spun', wiki: 'Facts with sources',
     games: 'Play in your browser', quest: 'Earn badges', fun: 'Something to do',
     codes: 'Code with any agent', actor: 'The agent engine', space: 'Host a site or app', tools: 'Every online tool', bot: 'Drive a robot',

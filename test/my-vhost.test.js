@@ -25,6 +25,7 @@ assert.ok(nginx.includes('/etc/letsencrypt/live/openvibe.my/fullchain.pem'), 'th
 assert.ok(nginx.includes('proxy_set_header Host $host;'), 'the Host header is the hub\'s, so the app routes it');
 assert.ok(nginx.includes('location ~* ^/(metrics|internal)(/|$)'), 'metrics and internal stay closed');
 assert.ok(!nginx.includes('return 302 https://openvibe.network/my;'), 'the old parked redirect is gone');
+assert.ok(!/server_name openvibe\.computer/.test(nginx), 'Computer has its own reviewed vhost; the old Run redirect is removed from the parked reference');
 
 assert.ok(nginx.includes('location ^~ /inventory {'), 'Inventory has a dedicated prefix location');
 assert.ok(nginx.includes('proxy_pass http://127.0.0.1:5030;'), 'the prefix is preserved for Inventory');

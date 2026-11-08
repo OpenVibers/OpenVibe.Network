@@ -94,6 +94,8 @@ async function seedDb(db, { log = console } = {}) {
             // The account hub's own origin (plan OpenVibe_Seven_Domains_Plan §4): a first-party confidential client
             // with PKCE, so openvibe.my has its own host-only session instead of reading a .openvibe.network cookie.
             { client_id: 'my', name: 'OpenVibe.My', redirect_uris: ['https://openvibe.my/auth/callback'] },
+            // OpenVibe.Computer: a signed-in facade over Run's computer sessions.
+            { client_id: 'computer', name: 'OpenVibe.Computer', redirect_uris: ['https://openvibe.computer/auth/callback'] },
             // Link's website is confidential; keep it separate from the public mobile `link` client.
             { client_id: 'link-web', name: 'OpenVibe Link website', redirect_uris: ['https://openvibe.link/auth/callback'] },
             { client_id: 'tools', name: 'OpenVibe.Tools', redirect_uris: ['https://openvibe.tools/auth/callback'] },

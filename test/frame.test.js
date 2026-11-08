@@ -15,6 +15,8 @@ const svc = await createFrameService(db, { services: {} }, null);
 assert.equal(siteForHost('yt.openvibe.tools').id, 'tools');
 assert.equal(siteForHost('bench.openvibe.services').id, 'report', 'Bench\'s host belongs to Report now');
 assert.equal(siteForHost('evil.example'), null);
+assert.equal(siteForHost('openvibe.computer').id, 'computer', 'Computer is listed in the Network Frame while its Contracts manifest is pending');
+assert.equal(GROUPS.find((g) => g.sites.includes('computer')).id, 'make');
 assert.strictEqual(svc.ranking().at, null, 'cold start: no use counted yet (the registry\'s featured list says so)');
 
 // Legal links (11-02: ten open sites did not serve /privacy, so their footers' Terms, Privacy and DMCA answered 404):
@@ -56,13 +58,13 @@ assert.deepStrictEqual(['actor', 'bot', 'run', 'zone', 'codes'].map((id) => p.na
 // Games together, items with the account, Alerts with the building blocks, files beside Video (each when its site is open).
 [['games', 'games'], ['connect', 'make'], ['quest', 'games'], ['inventory', 'people'], ['watch', 'build'], ['download', 'streams'], ['search', 'answers'], ['chat', 'people'], ['mail', 'people'], ['domains', 'make'], ['report', 'answers'], ['design', 'make'], ['today', 'answers'], ['surf', 'games'], ['meme', 'games'], ['vision', 'answers'], ['exchange', 'build'], ['fun', 'games'], ['cam', 'streams'], ['bench', 'answers'], ['casino', 'games'], ['tours', 'streams'], ['shoes', 'shop']]
     .filter(([id]) => at(id) >= 0).forEach(([id, group]) => assert.strictEqual(p.nav[at(id)].group, group, `${id} is in ${group}`));
-assert.strictEqual(p.nav.length, 53 + (HAS_MAIL ? 1 : 0));   // Connect since contracts 0.279.0, Tours and Shoes since contracts 0.265.0, Casino since contracts 0.264.0, Domains since contracts 0.226.0, Report since 0.227.0, Design since 0.228.0, Today since 0.230.0, Surf since 0.231.0, Meme since 0.234.0, Vision and Exchange since 0.235.0; AI is no longer a site of its own (its pages are Exchange now), Fun since 0.236.0, Cam since 0.237.0, Bench since 0.238.0; Email joins after Chat with the Contracts release that adds its manifest
+assert.strictEqual(p.nav.length, 53 + (HAS_MAIL ? 1 : 0));   // Planned Computer is in the soon list until launch.
 assert.deepStrictEqual([p.nav[at('stream')].name, p.nav[at('pics')].name], ['Restream', 'Pics'], 'OpenRestream is "Restream" among the menu\'s short names (owner, 2026-10-28)');
 assert.strictEqual(p.nav.find(n => n.id === 'space').url, 'https://openvibe.space/', 'Space keeps its own home (the forum returned to Community, 0.118.0)');
 assert.strictEqual(p.nav.find(n => n.id === 'community').url, 'https://openvibe.community/', 'Community: the forum, pastes and Pulse');
 assert.equal(p.footer.legal.dmca, 'https://openvibe.media/dmca', 'legal links stay on the site\'s own domain');
 assert.ok(!p.footer.discover.some(l => l.url === 'https://openvibe.media/'), 'a site never recommends itself');
-assert.deepStrictEqual(p.soon.map(n => n.id || n), [], 'no planned site left: Tips and VIP opened 2026-10-17 (contracts 0.200.0; news, reviews, trade, coupons and stream 2026-10-09)');
+assert.deepStrictEqual(p.soon.map(n => n.id || n), ['computer'], 'Computer is listed as coming soon until the reviewed host launch');
 
 // Real use reorders: community gets the history, so it rises above the cold-start order.
 // user_history's foreign key needs its users (PostgreSQL enforces the constraint SQLite only declared).
