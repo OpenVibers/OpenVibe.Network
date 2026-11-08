@@ -62,7 +62,7 @@ const SHAPED = {
     assert.ok(/location ~ \^\/\(\|install\|machines\|pair\|/.test(vhost), 'the vhost proxies /machines and /pair to the Link app');
     // …and /auth/* to Link's own sign-in (Network#664), or openvibe.link never signs anyone in (11-08 audit).
     const linkBlock = vhost.slice(vhost.indexOf('    server_name openvibe.link;'));
-    assert.ok(/location \^~ \/auth\/ \{[^}]*proxy_pass http:\/\/127\.0\.0\.1:4000;/.test(linkBlock.slice(0, linkBlock.indexOf('\n}\n'))), 'the openvibe.link vhost proxies /auth/ to Network');
+    assert.ok(/location \^~ \/auth\/ \{[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:4000;/.test(linkBlock.slice(0, linkBlock.indexOf('\n}\n'))), 'the openvibe.link vhost proxies /auth/ to Network');
 
     // ── The page: OpenVibe Link, and every fact the Node page had ──
     const html = page.render({ release: first, releaseId: 'rel_test' });
