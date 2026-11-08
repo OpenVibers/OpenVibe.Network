@@ -898,6 +898,7 @@ app.locals.avatarService = avatarService;
 // server/public-cors.js), with the items from OpenVibe.Inventory (server/profile/public.js).
 const publicProfiles = require('./profile/public').createPublicProfiles({ db, selfToken, inventoryUrl: process.env.OV_INVENTORY_INTERNAL_URL || 'http://127.0.0.1:5030', questUrl: process.env.OV_QUEST_INTERNAL_URL || 'http://127.0.0.1:4980', playUrl: process.env.OV_PLAY_INTERNAL_URL || 'http://127.0.0.1:5040' });
 app.use('/api/v1/profiles', rateLimit({ windowMs: 60_000, max: 240 }), publicProfiles.api);
+app.get('/api/v1/people/@:handle/page', rateLimit({ windowMs: 60_000, max: 240 }), publicProfiles.pageApi);
 app.get('/@:username', rateLimit({ windowMs: 60_000, max: 120 }), publicProfiles.pageHandler);
 
 // The OpenVibe Frame: analytics-ranked navigation + footer copy for every site (server/frame).
@@ -1011,7 +1012,7 @@ app.get('/llms.txt', (_req, res) => res.type('text/plain').set('Cache-Control', 
 app.get('/llms-full.txt', (_req, res) => res.type('text/plain').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(require('./home/render').llmsFullTxt({ baseUrl: config.baseUrl })));
 // The crawl files the front door owes crawlers, built from openvibe-shared/seo (plan T11 lane D), ahead
 // of express.static below so they answer the generated copy rather than public/.
-app.use(require('./seo/routes').createSeoRoutes({ release }));
+app.use(require('./seo/routes').createSeoRoutes({ release, db }));
 // IndexNow key file (openvibe-shared/indexnow), from INDEXNOW_KEY; unset → off, nothing served. The
 // public page set is the fixed seo/routes PAGES list, so no hook pings; the client stays for one that will.
 const indexnow = require('openvibe-shared/indexnow').createIndexNow({ host: config.baseUrl, key: config.indexnow.key });

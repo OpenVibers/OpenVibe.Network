@@ -198,7 +198,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
         const rec = await usernames.lookup(db, name);
         if (!rec) return null;
         if (rec.renamed) return { moved: rec.current };
-        const u = await db.prepare(`SELECT id, username, display_name, bio, profile_color, created_at, subject_id, profile_public,
+        const u = await db.prepare(`SELECT id, username, display_name, bio, public_page_bio, public_page_links, public_page_places, profile_color, created_at, subject_id, profile_public,
             is_anon, merged_into, deleted_at FROM users WHERE id = ?`).get(rec.network_id);
         if (!u || Number(u.is_anon) || u.merged_into || u.deleted_at) return null;
         return { user: u };
@@ -237,10 +237,12 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             if (!found) return next();   // the shared 404 page
             if (found.moved) return res.redirect(301, `/@${encodeURIComponent(found.moved)}`);
             const u = found.user;
+            if (String(req.params.username) !== String(u.username)) return res.redirect(301, `/@${encodeURIComponent(u.username)}`);
             const inv = Number(u.profile_public) ? await wearsOf(u.subject_id) : null;
             res.set('Content-Type', 'text/html; charset=utf-8');
             res.set('Cache-Control', cache.htmlHeaders({ maxAge: 60 }));
-            res.send(renderPage(u, inv));
+            const origin = String(req.hostname || '').toLowerCase() === 'openvibe.my' ? 'https://openvibe.my' : SITE;
+            res.send(renderPage(u, inv, origin));
         } catch (err) { next(err); }
     }
 
@@ -255,7 +257,22 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
         } catch (err) { next(err); }
     });
 
-    return { pageHandler, api, find, profileOf, itemsOf, badgesOf, achievementsOf };
+    // Stable public-page JSON read. It intentionally contains only fields already visible while signed out.
+    const pageApi = async (req, res, next) => {
+        try {
+            const found = await find(req.params.handle);
+            res.set('Cache-Control', 'public, max-age=60');
+            if (!found) return res.status(404).json({ error: 'not_found' });
+            if (found.moved) return res.status(301).set('Location', `/api/v1/people/@${encodeURIComponent(found.moved)}/page`).json({ moved_to: found.moved });
+            const u = found.user;
+            let links = [], places = { live: true, media: true, space: true, community: true };
+            try { links = typeof u.public_page_links === 'string' ? JSON.parse(u.public_page_links) : (u.public_page_links || []); } catch {}
+            try { places = { ...places, ...(typeof u.public_page_places === 'string' ? JSON.parse(u.public_page_places) : (u.public_page_places || {})) }; } catch {}
+            res.json({ person: { username: u.username, display_name: u.display_name || u.username, avatar_url: avatarUrl(u.username), profile_url: `https://openvibe.my/@${encodeURIComponent(u.username)}`, bio: String(u.public_page_bio || '').slice(0, 280), links: Array.isArray(links) ? links.slice(0, 8) : [], places: { live: !!places.live, media: !!places.media, space: !!places.space, community: !!places.community } } });
+        } catch (err) { next(err); }
+    };
+
+    return { pageHandler, pageApi, api, find, profileOf, itemsOf, badgesOf, achievementsOf };
 }
 
 // ── The page ───────────────────────────────────────────────────
@@ -324,7 +341,8 @@ ${sorted.map((g) => {
 <p class="pf-note"><a href="${esc(all)}">${inv.more ? 'Every item' : 'This inventory'} on OpenVibe.Inventory</a> · <a href="${INVENTORY_SITE}/items">Every item there is</a></p></section>`;
 }
 
-function renderPage(u, inv) {
+function renderPage(u, inv, origin = SITE) {
+    const canonicalUrl = `${origin}/@${encodeURIComponent(u.username)}`;
     const name = u.display_name || u.username;
     const isPublic = !!inv;
     // What they wear shows on the profile itself: the name effect on their name (items.css), the hat on the picture.
@@ -338,7 +356,10 @@ function renderPage(u, inv) {
     const badgeId = badge && /^med_[0-9A-HJKMNP-TV-Z]{26}$/.test(String((badge.art || {}).media_id || '')) ? badge.art.media_id : null;
     const color = COLOR_RE.test(String(u.profile_color || '')) ? u.profile_color : '#3b82f6';
     const since = monthOf(u.created_at);
-    const bio = isPublic ? String(u.bio || '').trim().slice(0, 500) : '';
+    const bio = isPublic ? String(u.public_page_bio || u.bio || '').trim().slice(0, 280) : '';
+    let publicLinks = [];
+    try { publicLinks = typeof u.public_page_links === 'string' ? JSON.parse(u.public_page_links) : (u.public_page_links || []); } catch {}
+    const indexable = isPublic && (!!String(u.public_page_bio || '').trim() || (Array.isArray(publicLinks) && publicLinks.length > 0));
     const title = `${name} (@${u.username}) · OpenVibe`;
     const description = !isPublic
         ? `${name} on OpenVibe. This profile is private.`
@@ -351,9 +372,9 @@ function renderPage(u, inv) {
         inv.items.length ? `<li><span class="pf-stat-k">Rarest</span><span class="pf-stat-v">${esc(RARITY_LABEL[inv.items.reduce((best, i) => (rarityRank(i.rarity) > rarityRank(best) ? i.rarity : best), 'common')])}</span></li>` : '',
     ].join('') : '';
     const ld = isPublic ? seo.jsonLdTag({
-        '@context': 'https://schema.org', '@type': 'ProfilePage', url: profileUrl(u.username), name: title,
+        '@context': 'https://schema.org', '@type': 'ProfilePage', url: canonicalUrl, name: title,
         ...(String(u.created_at || '').length >= 10 ? { dateCreated: String(u.created_at).slice(0, 10) } : {}),
-        mainEntity: { '@type': 'Person', name, alternateName: `@${u.username}`, image: avatarUrl(u.username, 256), url: profileUrl(u.username), ...(bio ? { description: bio } : {}) },
+        mainEntity: { '@type': 'Person', name, alternateName: `@${u.username}`, image: avatarUrl(u.username, 256), url: canonicalUrl, ...(bio ? { description: bio } : {}) },
     }) : '';
     return `<!DOCTYPE html>
 <html lang="en">
@@ -362,12 +383,12 @@ function renderPage(u, inv) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
-<link rel="canonical" href="${esc(profileUrl(u.username))}">
-${isPublic ? '' : '<meta name="robots" content="noindex">'}
+<link rel="canonical" href="${esc(canonicalUrl)}">
+${indexable ? '' : '<meta name="robots" content="noindex">'}
 <meta property="og:type" content="profile">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
-<meta property="og:url" content="${esc(profileUrl(u.username))}">
+<meta property="og:url" content="${esc(canonicalUrl)}">
 <meta property="og:image" content="${esc(avatarUrl(u.username, 256))}">
 <meta property="profile:username" content="${esc(u.username)}">
 <link rel="alternate" type="application/json" href="/api/v1/profiles/${esc(encodeURIComponent(u.username))}">
@@ -445,6 +466,7 @@ ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links
 <div class="pf-who"><h1>${badgeId ? `<img class="pf-name-badge" src="https://openvibe.media/o/${badgeId}" alt="" title="${esc(badge.name)}" width="32" height="32">` : ''}${fxClass ? `<span class="ov-fx ${fxClass}" title="${esc(fx.name)}">${esc(name)}</span>` : esc(name)}</h1><p class="pf-handle">@${esc(u.username)}</p></div>
 </div>
 ${bio ? `<p class="pf-bio">${esc(bio)}</p>` : ''}
+${isPublic && Array.isArray(publicLinks) && publicLinks.length ? `<nav aria-label="${esc(name)}'s links"><ul class="pf-stats">${publicLinks.slice(0, 8).map((link) => { let href = ''; try { const parsed = new URL(link.url); if (parsed.protocol === 'https:' && !parsed.username && !parsed.password) href = parsed.href; } catch {} return href ? `<li><a rel="me noopener noreferrer" href="${esc(href)}">${esc(String(link.label || '').slice(0, 40))}</a></li>` : ''; }).join('')}</ul></nav>` : ''}
 ${isPublic ? `<ul class="pf-stats">${stats}</ul>` : '<p class="pf-private">This profile is private.</p>'}
 </section>
 ${isPublic ? showcaseHtml(inv, name) + badgesHtml(inv) + gamesHtml(inv) + itemsHtml(inv, u) : ''}

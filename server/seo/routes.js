@@ -27,21 +27,27 @@ function robotsTxt() {
     return seo.robotsTxt({ sitemaps: [`${HOST}/sitemap.xml`] }) + `# Agent manifest: ${HOST}/.well-known/agent.json\n`;
 }
 
-function sitemapXml({ release = null } = {}) {
+function sitemapXml({ release = null, profiles = [] } = {}) {
     const lastmod = release?.full()?.released_at || FALLBACK_LASTMOD;
     const day = String(lastmod).slice(0, 10);
-    return seo.sitemapXml(PAGES.map((page) => ({ loc: `${HOST}${page.path}`, lastmod: day, changefreq: page.changefreq, priority: page.priority })));
+    return seo.sitemapXml([
+        ...PAGES.map((page) => ({ loc: `${HOST}${page.path}`, lastmod: day, changefreq: page.changefreq, priority: page.priority })),
+        ...profiles.map((username) => ({ loc: `https://openvibe.my/@${encodeURIComponent(username)}`, lastmod: day, changefreq: 'weekly', priority: 0.5 })),
+    ]);
 }
 
-function createSeoRoutes({ release = null } = {}) {
+function createSeoRoutes({ release = null, db = null } = {}) {
     const r = express.Router();
     const robots = robotsTxt();
-    const sitemap = sitemapXml({ release });
     r.get('/robots.txt', (_req, res) => {
         res.set('Content-Type', 'text/plain; charset=utf-8').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(robots);
     });
-    r.get('/sitemap.xml', (_req, res) => {
-        res.set('Content-Type', 'application/xml; charset=utf-8').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(sitemap);
+    r.get('/sitemap.xml', async (_req, res, next) => {
+        try {
+            const profiles = db ? await db.prepare(`SELECT username FROM users WHERE COALESCE(is_banned, 0) = 0 AND COALESCE(is_anon, 0) = 0 AND merged_into IS NULL AND deleted_at IS NULL AND (COALESCE(public_page_bio, '') <> '' OR public_page_links <> '[]'::jsonb)`).all() : [];
+            const sitemap = sitemapXml({ release, profiles: profiles.map((row) => row.username) });
+            res.set('Content-Type', 'application/xml; charset=utf-8').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(sitemap);
+        } catch (err) { next(err); }
     });
     return r;
 }

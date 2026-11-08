@@ -49,6 +49,7 @@ const INSTANCES = [
         ('ghost', 'x', 'Ghost', '', NULL, '2026-09-01 10:00:00', NULL, 1, 1, NULL),
         ('gone', 'x', 'Gone', '', NULL, '2026-09-01 10:00:00', NULL, 1, 0, '2026-10-05 00:00:00')`).run();
     const ana = await db.prepare("SELECT id FROM users WHERE username = 'Ana'").get();
+    await db.prepare("UPDATE users SET public_page_bio = ?, public_page_links = ? WHERE id = ?").run('Hello there', JSON.stringify([{ label: 'My site', url: 'https://example.com/' }]), ana.id);
     await db.prepare("INSERT INTO username_history (user_id, old_username, new_username) VALUES (?, 'oldana', 'Ana')").run(ana.id);
     assert.strictEqual(Number((await db.prepare("SELECT profile_public FROM users WHERE username = 'Ana'").get()).profile_public), 1);
 
@@ -74,20 +75,22 @@ const INSTANCES = [
 
     const app = express();
     app.get('/@:username', profiles.pageHandler);
+    app.get('/api/v1/people/@:handle/page', profiles.pageApi);
     app.use('/api/v1/profiles', profiles.api);
     app.use((req, res) => res.status(404).send('not found'));
     const srv = await new Promise((r) => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
     const b = `http://127.0.0.1:${srv.address().port}`;
-    const get = async (p) => { const r = await fetch(b + p, { redirect: 'manual' }); return { status: r.status, headers: r.headers, text: await r.text() }; };
+    const get = async (p, headers = {}) => { const r = await fetch(b + p, { redirect: 'manual', headers }); return { status: r.status, headers: r.headers, text: await r.text() }; };
 
     try {
         // A public profile.
-        let r = await get('/@ana');
+        let r = await get('/@Ana');
         assert.strictEqual(r.status, 200);
         assert.ok(r.text.includes('<h1><img class="pf-name-badge" src="https://openvibe.media/o/med_01JZ00000000000000000000B1" alt="" title="OG Viewer" width="32" height="32"><span class="ov-fx name-fx-rainbow" title="Rainbow">Ana</span></h1>') && r.text.includes('@Ana'), 'her community badge, then her name in its effect');
         assert.ok(r.text.includes('<link rel="stylesheet" href="/shared/items.css">'), 'with the shared effects stylesheet');
         assert.ok(/<span class="pf-hat" title="Royal Crown" aria-hidden="true">👑<\/span>/.test(r.text), 'her hat sits on her picture');
-        assert.ok(!r.text.includes('<script>alert(1)</script>') && r.text.includes('I stream &lt;script&gt;alert(1)&lt;/script&gt; &amp; paint'), 'the bio is escaped');
+        assert.ok(!r.text.includes('<script>alert(1)</script>') && r.text.includes('Hello there'), 'the saved public-page bio is shown as text');
+        assert.ok(r.text.includes('href="https://example.com/"'), 'HTTPS public links render');
         assert.ok(r.text.includes('Sparkles &lt;b&gt;') && !r.text.includes('Sparkles <b>'), 'item names are escaped');
         assert.ok(r.text.includes('id="pf-wearing"') && /pf-worn r-legendary[\s\S]*Royal Crown/.test(r.text), 'the crown is in the showcase');
         assert.ok(r.text.includes('Member since') && r.text.includes('October 2026'));
@@ -97,6 +100,9 @@ const INSTANCES = [
         assert.ok(r.text.includes('--pf-color:#ff0066'));
         assert.ok(r.text.includes('https://openvibe.my/inventory/itd_01JZ00000000000000000001R1'), 'items link to their Inventory page');
         assert.ok(!/name="robots" content="noindex"/.test(r.text));
+        r = await get('/@ana');
+        assert.deepStrictEqual([r.status, r.headers.get('location')], [301, '/@Ana'], 'case variants redirect to the canonical handle');
+        r = await get('/@Ana');
         assert.ok(calls.filter((c) => !c.path.includes('/badges') && !c.path.endsWith('/achievements')).every((c) => c.auth === 'Bearer tok:openvibe.inventory:inventory.item.read'), 'Network\'s own token for Inventory');
         assert.strictEqual(calls.find((c) => c.path.endsWith('/achievements')).auth, '', 'Play\'s read is public: no token');
         assert.ok(r.text.includes('id="pf-games"') && r.text.includes('Salvage &lt;Rush&gt;') && !r.text.includes('Salvage <Rush>'), 'games, escaped');
@@ -133,6 +139,11 @@ const INSTANCES = [
         assert.deepStrictEqual(p.items.by_kind.map((k) => k.kind).sort(), ['live.hat', 'live.name_effect', 'live.particle', 'network.badge']);
         assert.deepStrictEqual(p.badges.map((b) => b.id), ['thread-starter', 'first-follow']);
         assert.deepStrictEqual([p.achievements.total, p.achievements.games.map((g) => [g.title, g.count])], [3, [['salvage-rush', 2], ['vibe-heroes', 1]]], 'achievements in the JSON every site reads');
+        r = await get('/api/v1/people/@Ana/page');
+        assert.strictEqual(r.status, 200);
+        assert.deepStrictEqual(JSON.parse(r.text).person.links, [{ label: 'My site', url: 'https://example.com/' }]);
+        assert.strictEqual(JSON.parse(r.text).person.bio, 'Hello there');
+        assert.strictEqual(JSON.parse(r.text).person.profile_url, 'https://openvibe.my/@Ana');
 
         // A hidden profile: name and picture, nothing else, not indexed.
         r = await get('/@hidden');
