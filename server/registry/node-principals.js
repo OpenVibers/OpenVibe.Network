@@ -368,7 +368,7 @@ function userRouter(requireAuth, now = () => Date.now()) {
 }
 
 /** Audiences every person's machine may buy a token for, whichever service paired it (CON-4). */
-const NODE_WIDE_AUDIENCES = Object.freeze(['openvibe.website']);
+const NODE_WIDE_AUDIENCES = Object.freeze(['openvibe.link', 'openvibe.website']);
 
 /** Every refusal of a node's credential, whatever the reason: one status, one body. */
 const INVALID_CLIENT = Object.freeze({ status: 401, body: Object.freeze({ error: 'invalid_client', error_description: 'Invalid client credentials' }) });

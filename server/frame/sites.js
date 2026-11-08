@@ -31,7 +31,8 @@ function manifestHost(service) {
 const HIDDEN_SITE = new Set(['play']);
 const ALL_SITES = RAW_SITES.map((s) => {
     const e = exposureOf(s.service);
-    const host = manifestHost(s.service) || s.host;
+    // Connect now lives beside Link; keep the old exact control host as an alias below.
+    const host = s.service === 'connect' ? 'connect.openvibe.link' : manifestHost(s.service) || s.host;
     if (!host) throw new Error(`site ${s.id}: no host (its manifest has no publicOrigin and the entry names none)`);
     return { ...s, host, ...(s.service === 'inventory' ? { url: 'https://openvibe.my/inventory' } : {}), status: e.state === 'live' && e.public_site === 'service' ? 'open' : 'soon', state: e.state };
 });
@@ -39,6 +40,7 @@ const ALL_SITES = RAW_SITES.map((s) => {
 // consent screen) keeps its own name, without the site being offered as a destination.
 const SITES = ALL_SITES.filter((s) => !HIDDEN_SITE.has(s.id));
 const byHost = new Map(ALL_SITES.map(s => [s.host, s]));
+byHost.set('connect.openvibe.website', ALL_SITES.find(s => s.service === 'connect'));
 
 /** A site's full name: its own when it is a brand already (OpenRestream), otherwise OpenVibe.<name> (OpenVibe.Live).
  *  "OpenVibe.OpenRestream" read wrong on the home page's cards (the owner, 2026-10-28). */
@@ -73,7 +75,7 @@ const MENU_LINE = {
     deals: 'Deals people share', coupons: 'Codes that work', reviews: 'Honest reviews', work: 'Find a job', rent: 'Places to rent',
     homes: 'Homes for sale', food: 'Food near you', help: 'Help nearby', trade: 'Watch the markets', watch: 'Know when it changes',
     search: 'Search everything', host: 'Compare hosting', report: 'Your numbers, honest', vision: 'Ask a picture',
-    exchange: 'AI models, one account',
+    exchange: 'AI models, one account', connect: 'Share a port with Link',
     network: 'Your account', inventory: 'Your items',
     services: 'APIs, SDK and keys', bench: 'Which AI is best', run: 'Run jobs anywhere', zone: 'S3 storage', events: 'Event streams', media: 'Media API',
 };
@@ -106,6 +108,8 @@ const ICON_ALIAS = { 'media-hub': 'video' };
 /** The site a hostname belongs to (subdomains included), or null. */
 function siteForHost(hostname) {
     const h = String(hostname || '').toLowerCase().replace(/:\d+$/, '').replace(/^www\./, '');
+    // User-run shares are never an OpenVibe frame destination.
+    if (/--[^.]+\.openvibe\.(?:link|website)$/.test(h)) return null;
     if (byHost.has(h)) return byHost.get(h);
     // A product on its own domain belongs to the site that serves it (Bench's host is Report's AI section now).
     // Before the subdomain pass, because services.openvibe.services would otherwise claim bench.openvibe.services.

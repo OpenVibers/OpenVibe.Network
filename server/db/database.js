@@ -160,7 +160,7 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'shoes', name: 'OpenVibe.Shoes', redirect_uris: ['https://open.shoes/auth/callback'] },
             // Your computer, on the web, privately (plan 5.9b, Website Connect v0): sign-in at connect.openvibe.website,
             // the gate in front of every <label>--<user>.openvibe.website share.
-            { client_id: 'connect', name: 'OpenVibe Connect', redirect_uris: ['https://connect.openvibe.website/auth/callback'] },
+            { client_id: 'connect', name: 'OpenVibe Connect', redirect_uris: ['https://connect.openvibe.website/auth/callback', 'https://connect.openvibe.link/auth/callback'] },
             // The shared AI benchmark and comparison engine; a developer service at bench.openvibe.services.
             { client_id: 'bench', name: 'OpenVibe.Bench', redirect_uris: ['https://bench.openvibe.services/auth/callback'] },
             // Sources' merchant opt-in pages sign a source owner in (scope profile, no site of their own).
