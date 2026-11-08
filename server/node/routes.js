@@ -106,7 +106,7 @@ function createNodeRoutes({ releaseId, releaseApi = release } = {}) {
             || (req.headers.accept && req.accepts(['html', 'text/markdown']) === 'text/markdown');
         let rel;
         try { rel = await releaseApi.latest(); } catch { rel = release.FALLBACK; }
-        const html = page.render({ release: rel, releaseId });
+        const html = page.render({ release: rel, releaseId, userAgent: req.headers && req.headers['user-agent'] });
         const canonical = `${SITE}/`;
         const links = linkHeaderTags(canonical, `${SITE}/llms.txt`);
         res.setHeader('Link', [res.getHeader('Link'), links.header].filter(Boolean).join(', '));
