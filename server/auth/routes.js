@@ -496,8 +496,7 @@ router.put('/profile', requireAuth, async (req, res) => {
         if (!Array.isArray(links)) links = [];
         const indexable = Number(user.profile_public) && (!!String(user.public_page_bio || '').trim() || links.length > 0);
         if (changed && indexable) {
-            const origin = String(getConfig(req).my?.baseUrl || 'https://openvibe.my').replace(/\/+$/, '');
-            req.app.locals.publicPageIndexNow?.pingSoon(`${origin}/@${encodeURIComponent(user.username)}`);
+            req.app.locals.publicPageIndexNow?.pingSoon(`https://openvibe.network/@${encodeURIComponent(user.username)}`);
         }
     }
     res.json({ user: sanitizeUser(user) });

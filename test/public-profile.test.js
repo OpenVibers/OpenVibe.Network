@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { getDb } = require('../server/db/database');
-const { createPublicProfiles, renderPersonPage, monthOf, PUBLIC_PLACE_TIMEOUT_MS, PUBLIC_PLACE_TTL_MS } = require('../server/profile/public');
+const { createPublicProfiles, monthOf, PUBLIC_PLACE_TIMEOUT_MS, PUBLIC_PLACE_TTL_MS } = require('../server/profile/public');
 const publicCors = require('../server/public-cors');
 
 const A = 'usr_01JZ0000000000000000000AAA';
@@ -106,7 +106,7 @@ const INSTANCES = [
         assert.ok(r.text.includes('Member since') && r.text.includes('October 2026'));
         assert.ok(/<span class="pf-stat-k">Rarest<\/span><span class="pf-stat-v">Legendary<\/span>/.test(r.text));
         assert.ok(r.text.includes('<span class="pf-count">4</span>'), 'four items');
-        assert.ok(r.text.includes('"@type":"ProfilePage"') && r.text.includes('<link rel="canonical" href="https://openvibe.network/@Ana">'));
+        assert.ok(r.text.includes('"@type":"ProfilePage"') && r.text.includes('<link rel="canonical" href="https://openvibe.network/@Ana">'), 'profiles live on openvibe.network');
         assert.ok(r.text.includes('--pf-color:#ff0066'));
         assert.ok(r.text.includes('https://openvibe.my/inventory/itd_01JZ00000000000000000001R1'), 'items link to their Inventory page');
         assert.ok(!/name="robots" content="noindex"/.test(r.text));
@@ -158,7 +158,7 @@ const INSTANCES = [
         assert.strictEqual(r.status, 200);
         assert.deepStrictEqual(JSON.parse(r.text).person.links, [{ label: 'My site', url: 'https://example.com/' }]);
         assert.strictEqual(JSON.parse(r.text).person.bio, 'Hello there');
-        assert.strictEqual(JSON.parse(r.text).person.profile_url, 'https://openvibe.my/@Ana');
+        assert.strictEqual(JSON.parse(r.text).person.profile_url, 'https://openvibe.network/@Ana');
         assert.strictEqual(JSON.parse(r.text).person.places.live.is_live, true);
         assert.deepStrictEqual(JSON.parse(r.text).person.places.videos.map((v) => v.title), ['First video']);
         assert.deepStrictEqual(JSON.parse(r.text).person.places.videos.map((v) => v.url), ['https://openvibe.video/watch?v=tdLVs5wad4A'], 'a video links to its watch page');
@@ -167,9 +167,14 @@ const INSTANCES = [
         const person = JSON.parse(r.text).person;
         r = await get('/api/v1/people/@ana/page');
         assert.deepStrictEqual([r.status, r.headers.get('location')], [301, '/api/v1/people/@Ana/page']);
-        const newPage = renderPersonPage({ username: 'Ana' }, person, 'https://openvibe.my');
-        assert.ok(newPage.includes('<link rel="canonical" href="https://openvibe.my/@Ana">') && newPage.includes('First video') && newPage.includes('My site'));
-        assert.ok(!newPage.includes('pf-grid') && !newPage.includes('inventory'), 'the new page shows public places without private account inventory');
+        // openvibe.my is the person's own hub; a profile address there moves to openvibe.network (the owner, 11-08).
+        // fetch cannot set Host, so this one request goes out raw.
+        const onMy = await new Promise((resolve, reject) => {
+            const u = new URL(b);
+            require('http').get({ host: u.hostname, port: u.port, path: '/@Ana', headers: { Host: 'openvibe.my' } }, (res) => { res.resume(); resolve({ status: res.statusCode, location: res.headers.location }); }).on('error', reject);
+        });
+        assert.deepStrictEqual([onMy.status, onMy.location], [301, 'https://openvibe.network/@Ana']);
+        assert.strictEqual(person.username, 'Ana');
 
         // A hidden profile: name and picture, nothing else, not indexed.
         r = await get('/@hidden');
