@@ -227,13 +227,17 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
                 // Video's watch page by its public id (Track U); /v/<number> 301s there for a recording without one yet.
                 title: String(v.title || v.name).slice(0, 100), url: /^[A-Za-z0-9_-]{11}$/.test(String(v.watch_id || ''))
                     ? `https://openvibe.video/watch?v=${v.watch_id}` : `https://openvibe.video/v/${encodeURIComponent(v.id || v.vod_id)}`,
+                // The date tells apart recordings that share a title ("JapaneseOldGuy's Stream" three times).
+                date: Number.isFinite(Date.parse(v.created_at)) ? new Date(v.created_at).toISOString().slice(0, 10) : null,
             })),
         };
     }
 
     async function communityPlaces(username) {
-        const body = await publicJson(`${communityBase}/api/pastes/by-user/${encodeURIComponent(username)}?limit=3`);
-        return (Array.isArray(body.pastes) ? body.pastes : []).filter((p) => p && p.visibility === 'public' && typeof p.slug === 'string' && /^[A-Za-z0-9_-]{1,120}$/.test(p.slug) && typeof p.title === 'string' && p.title).slice(0, 3).map((p) => ({
+        const body = await publicJson(`${communityBase}/api/pastes/by-user/${encodeURIComponent(username)}?limit=10`);
+        return (Array.isArray(body.pastes) ? body.pastes : []).filter((p) => p && p.visibility === 'public' && typeof p.slug === 'string' && /^[A-Za-z0-9_-]{1,120}$/.test(p.slug) && typeof p.title === 'string' && p.title
+            // A screenshot an avatar upload left behind keeps its default title: not something the person shared.
+            && !(p.type === 'screenshot' && p.title === 'Avatar upload')).slice(0, 3).map((p) => ({
             title: String(p.title).slice(0, 100), url: `${COMMUNITY_SITE}/p/${encodeURIComponent(p.slug)}`,
         }));
     }
@@ -375,10 +379,17 @@ function art(i, size = 'md') {
 }
 const rarityBadge = (r) => `<span class="pf-rarity r-${esc(r)}">${esc(RARITY_LABEL[r] || r)}</span>`;
 
+/** "Nov 7, 2026" from an ISO day, in the page's own words (no locale surprises on the server). */
+function monthDay(day) {
+    const [y, m, d] = String(day).split('-').map(Number);
+    const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return names[m - 1] ? `${names[m - 1]} ${d}, ${y}` : '';
+}
+
 function publicPlacesHtml(places) {
     const cards = [];
     if (places.live) cards.push(`<li><a href="${esc(places.live.url)}"><strong>${esc(places.live.title)}</strong>${places.live.is_live ? '<span class="pf-live">Live now</span>' : '<span>Live channel</span>'}</a></li>`);
-    for (const video of places.videos || []) cards.push(`<li><a href="${esc(video.url)}"><strong>${esc(video.title)}</strong><span>Video</span></a></li>`);
+    for (const video of places.videos || []) cards.push(`<li><a href="${esc(video.url)}"><strong>${esc(video.title)}</strong><span>Video${video.date ? ` · ${esc(monthDay(video.date))}` : ''}</span></a></li>`);
     for (const space of places.spaces || []) cards.push(`<li><a href="${esc(space.url)}"><strong>${esc(space.title)}</strong><span>Published site</span></a></li>`);
     for (const paste of places.community || []) cards.push(`<li><a href="${esc(paste.url)}"><strong>${esc(paste.title)}</strong><span>Community paste</span></a></li>`);
     if (!cards.length) return '';
