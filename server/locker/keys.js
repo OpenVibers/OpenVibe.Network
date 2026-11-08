@@ -267,9 +267,18 @@ function send(req, res, fn) {
 /**
  * The person's own locker: PUT /api/v1/me/keys, GET /api/v1/me/keys/backup, DELETE /api/v1/me/keys.
  */
-function meRouter(requireAuth, { notifications = null, isFirstPartyOrigin = null } = {}) {
+function meRouter(requireAuth, { notifications = null, isFirstPartyOrigin = null, requireCompanion = requireAuth } = {}) {
     const router = express.Router();
     router.use(http.middleware());
+
+    // Narrow capability for Companion: only this person's wrapped keys. No key writes or resets.
+    // Locker forwards the Bearer on every login request, so revocation is checked live by Network.
+    router.get('/companion', requireCompanion, async (req, res) => await send(req, res, async (db) => {
+        const me = await meOf(db, req.user);
+        const rows = await db.prepare('SELECT kind, blob FROM locker_key_backups WHERE subject = ? ORDER BY kind').all(me);
+        res.set('Cache-Control', 'private, no-store');
+        res.json({ subject: me, backups: Object.fromEntries(rows.map((row) => [row.kind, row.blob])) });
+    }));
 
     // Set or rotate my keys. The same keys again change nothing and announce nothing.
     router.put('/', requireAuth, async (req, res) => await send(req, res, async (db) => {

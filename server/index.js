@@ -864,7 +864,7 @@ require('./developer/confirmations').start(db);
     const locker = require('./locker/keys');
     // Writes come from Network itself or from an OpenVibe site's exact origin (ov-locker.js), never from *.openvibe.tools.
     const isFirstPartyOrigin = (o) => { const n = normalizeOriginForCors(o); return !!n && buildAllowedOriginsSet().has(n); };
-    app.use('/api/v1/me/keys', locker.meRouter(requireAuth, { notifications: notificationService, isFirstPartyOrigin }));
+    app.use('/api/v1/me/keys', locker.meRouter(requireAuth, { notifications: notificationService, isFirstPartyOrigin, requireCompanion: requireDock('locker.login.manage') }));
     app.use('/api/v1/people', locker.peopleRouter(requireAuth));
 }
 

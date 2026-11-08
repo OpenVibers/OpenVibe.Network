@@ -50,6 +50,7 @@ const challenge = (v) => b64(crypto.createHash('sha256').update(v).digest());
     Object.assign(app.locals, { db, config, privateKey: keys.privateKey, publicKey: keys.publicKey });
     app.use('/oauth', oauthRoutes);
     app.use('/api/v1/me/dock', dockMod.router({ dock, requireAuth: requireDock('dock') }));
+    app.use('/api/v1/me/keys', require('../server/locker/keys').meRouter(requireAuth, { requireCompanion: requireDock('locker.login.manage') }));
     app.get('/api/v1/me/private', requireAuth, (req, res) => res.json({ ok: true }));
     app.get('/api/v1/me/actions', requireDock('activity'), (req, res) => res.json({ ok: true, scope: req.dockScope }));
     app.post('/api/v1/me/actions', requireAuth, (req, res) => res.json({ ok: true }));
@@ -137,12 +138,30 @@ const challenge = (v) => b64(crypto.createHash('sha256').update(v).digest());
         assert.strictEqual(maskToken.body.scope, 'dock activity chat.read agent.view mail.mask.manage');
         assert.strictEqual(jwt.decode(maskToken.body.access_token).scope, 'dock activity chat.read agent.view mail.mask.manage');
 
+        const lockerVerifier = verifier();
+        const lockerCx = await confirm({ client_id: 'companion', redirect_uri: CHROME, response_type: 'code', scope: 'locker.login.manage', state: 'locker-test', code_challenge: challenge(lockerVerifier), code_challenge_method: 'S256' });
+        assert.strictEqual(lockerCx.status, 200);
+        const lockerToken = await token({ grant_type: 'authorization_code', client_id: 'companion', code: new URL(lockerCx.body.redirect).searchParams.get('code'), redirect_uri: CHROME, code_verifier: lockerVerifier });
+        assert.strictEqual(lockerToken.status, 200);
+        const lk = lockerToken.body.access_token;
+        assert.strictEqual((await api('GET', '/api/v1/me/keys/companion', maskToken.body.access_token)).status, 403);
+        const backup = await api('GET', '/api/v1/me/keys/companion', lk);
+        assert.strictEqual(backup.status, 200);
+        assert.strictEqual(backup.body.subject, (await db.prepare('SELECT subject_id FROM users WHERE id = 1').get()).subject_id);
+        assert.strictEqual((await api('PUT', '/api/v1/me/keys', lk)).status, 401);
+        assert.strictEqual((await api('DELETE', '/api/v1/me/keys', lk)).status, 401);
+        assert.strictEqual((await api('GET', '/api/v1/me/keys/backup', lk)).status, 401);
+        await fetch(`${base}/oauth/revoke`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: 'companion', token: lockerToken.body.refresh_token }) });
+        assert.strictEqual((await api('GET', '/api/v1/me/keys/companion', lk)).status, 401, 'revocation is immediate');
+
         // The agent view's scope is Companion's alone: another public client may not ask for it.
         await db.prepare('INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party, is_public, allowed_scopes, access_token_ttl_s) VALUES (?, NULL, ?, ?, 1, 1, ?, 3600)')
             .run('companion-other', 'Other extension', JSON.stringify(['https://other.example/cb']), 'dock activity chat.read');
         assert.strictEqual((await authorize({ client_id: 'companion-other', redirect_uri: 'https://other.example/cb', response_type: 'code', state: 'o', scope: 'dock', code_challenge: challenge(verifier()), code_challenge_method: 'S256' })).status, 302, 'its own ceiling still works');
         assert.strictEqual((await authorize({ client_id: 'companion-other', redirect_uri: 'https://other.example/cb', response_type: 'code', state: 'o', scope: 'agent.view', code_challenge: challenge(verifier()), code_challenge_method: 'S256' })).status, 400, 'agent.view is not its scope');
         assert.strictEqual((await authorize({ client_id: 'companion-other', redirect_uri: 'https://other.example/cb', response_type: 'code', state: 'o', scope: 'mail.mask.manage', code_challenge: challenge(verifier()), code_challenge_method: 'S256' })).status, 400, 'mail.mask.manage is not its scope');
+
+        assert.strictEqual((await authorize({ client_id: 'companion-other', redirect_uri: 'https://other.example/cb', response_type: 'code', state: 'o', scope: 'locker.login.manage', code_challenge: challenge(verifier()), code_challenge_method: 'S256' })).status, 400, 'Locker scope belongs to Companion');
 
         // The Dock accepts it; a normal account route refuses it. Activity reads are open, action
         // writes are not, and a token that only has `dock` is refused the activity route.
