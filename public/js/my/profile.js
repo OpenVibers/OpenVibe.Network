@@ -213,6 +213,20 @@ function renderProfile(user) {
     pub.disabled = !!user.is_anon;
     const link = document.getElementById('pf-public-link');
     if (user.username && !user.is_anon) { link.href = '/@' + encodeURIComponent(user.username); link.textContent = 'openvibe.network/@' + user.username; }
+    const pageBio = document.getElementById('public-page-bio');
+    if (pageBio) {
+        const unavailable = !!user.is_anon;
+        document.getElementById('public-page-pronouns').value = user.public_page_pronouns || '';
+        pageBio.value = user.public_page_bio || '';
+        let links = []; try { links = typeof user.public_page_links === 'string' ? JSON.parse(user.public_page_links) : (user.public_page_links || []); } catch {}
+        document.getElementById('public-page-links').value = (Array.isArray(links) ? links : []).map(x => `${x.label} | ${x.url}`).join('\n');
+        let places = {}; try { places = typeof user.public_page_places === 'string' ? JSON.parse(user.public_page_places) : (user.public_page_places || {}); } catch {}
+        for (const key of ['live', 'media', 'space', 'community']) document.getElementById(`public-place-${key}`).checked = places[key] !== false;
+        const pageUrl = document.getElementById('public-page-url');
+        if (user.username && !user.is_anon) { pageUrl.href = `https://openvibe.my/@${encodeURIComponent(user.username)}`; pageUrl.textContent = `openvibe.my/@${user.username}`; }
+        for (const id of ['public-page-pronouns', 'public-page-bio', 'public-page-links', 'public-place-live', 'public-place-media', 'public-place-space', 'public-place-community', 'public-page-preview-toggle', 'public-page-save']) document.getElementById(id).disabled = unavailable;
+        if (unavailable) document.getElementById('public-page-msg').textContent = 'Sign in to edit your public page.';
+    }
     if (!user.is_anon) {
         document.getElementById('pf-bio').disabled = false;
         document.getElementById('pf-email').disabled = false;
@@ -307,6 +321,34 @@ document.getElementById('profile-form').addEventListener('submit', async (e) => 
         alert('Profile updated!');
     } catch (err) { alert('Error: ' + err.message); }
 });
+
+// Public-page editor: browser preview uses text nodes, and the server repeats every validation.
+(() => {
+    const save = document.getElementById('public-page-save');
+    if (!save) return;
+    const preview = () => {
+        const box = document.getElementById('public-page-preview'); box.hidden = false;
+        box.replaceChildren();
+        const h = document.createElement('h4'); h.textContent = currentUser?.display_name || currentUser?.username || 'Your name'; box.append(h);
+        const pronouns = document.getElementById('public-page-pronouns').value;
+        if (pronouns) { const byline = document.createElement('p'); byline.textContent = pronouns; box.append(byline); }
+        const bio = document.createElement('p'); bio.textContent = document.getElementById('public-page-bio').value; box.append(bio);
+        for (const row of document.getElementById('public-page-links').value.split('\n').filter(Boolean)) { const a = document.createElement('p'); a.textContent = row; box.append(a); }
+    };
+    document.getElementById('public-page-preview-toggle').addEventListener('click', preview);
+    save.addEventListener('click', async () => {
+        const msg = document.getElementById('public-page-msg');
+        const links = document.getElementById('public-page-links').value.split('\n').map(x => x.trim()).filter(Boolean).map(line => { const i = line.indexOf('|'); return { label: i < 0 ? '' : line.slice(0, i).trim(), url: i < 0 ? '' : line.slice(i + 1).trim() }; });
+        if (links.length > 8) { msg.textContent = 'Add up to 8 links.'; return; }
+        const places = Object.fromEntries(['live', 'media', 'space', 'community'].map(key => [key, document.getElementById(`public-place-${key}`).checked]));
+        save.disabled = true; msg.textContent = 'Saving…';
+        try {
+            const data = await apiFetch('/api/auth/profile', { method: 'PUT', body: JSON.stringify({ public_page_bio: document.getElementById('public-page-bio').value, public_page_pronouns: document.getElementById('public-page-pronouns').value, public_page_links: links, public_page_places: places }) });
+            currentUser = data.user; msg.textContent = 'Your public page is saved.'; preview();
+        } catch (err) { msg.textContent = err.message || 'Could not save your public page.'; }
+        save.disabled = false;
+    });
+})();
 
 // Accounts
 function loadAccounts() {

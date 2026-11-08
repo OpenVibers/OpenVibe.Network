@@ -405,6 +405,15 @@ const selfToken = require('./identity/self-token').createSelfTokens({ privateKey
 app.locals.selfToken = selfToken;
 app.locals.publicKey = publicKey;
 app.locals.config = config;
+const publicProfiles = require('./profile/public').createPublicProfiles({
+    db, selfToken,
+    inventoryUrl: process.env.OV_INVENTORY_INTERNAL_URL || 'http://127.0.0.1:5030',
+    questUrl: process.env.OV_QUEST_INTERNAL_URL || 'http://127.0.0.1:4980',
+    playUrl: process.env.OV_PLAY_INTERNAL_URL || 'http://127.0.0.1:5040',
+    liveUrl: config.services.live.internalUrl,
+    communityUrl: process.env.OV_COMMUNITY_INTERNAL_URL || 'http://127.0.0.1:4200',
+    spaceUrl: process.env.OV_SPACE_INTERNAL_URL || 'http://127.0.0.1:4940',
+});
 
 // Shared counters on Valkey when VALKEY_URL is set (ADR-035, plan T2): every process and host counts one
 // actor together. Unset — or unreachable — the limits fall back to this process's own counters (never 500).
@@ -480,6 +489,12 @@ app.use('/api/v1/connect', require('./connect/routes').createConnectRoutes({ db,
 // The MCP server: https://connect.openvibe.network/mcp (streamable HTTP). One JSON-RPC call per request.
 app.post('/mcp', rateLimit({ windowMs: 60_000, max: 600 }), require('./connect/mcp').createMcpHandler({
     db, config, gateway: connectGateway, publicKey, issuer: config.jwt.issuer,
+    publicPage: async (handle) => {
+        const found = await publicProfiles.find(handle);
+        if (!found) return null;
+        if (found.moved) return { moved_to: found.moved };
+        return await publicProfiles.pageOf(found.user);
+    },
 }));
 // Staff capabilities and the staff list (WS-D task 4; services need network.staff.read).
 app.use('/api/v1/staff', require('./admin/staff-api').createStaffApi({ db, requireAuth, guard: require('./identity/principals').guard }));
@@ -896,8 +911,8 @@ app.use('/avatar', rateLimit({ windowMs: 60_000, max: 600 }), avatarService.pub)
 app.locals.avatarService = avatarService;
 // Public profiles (plan T21 step 3): openvibe.network/@<username> and GET /api/v1/profiles/:username (CORS-open,
 // server/public-cors.js), with the items from OpenVibe.Inventory (server/profile/public.js).
-const publicProfiles = require('./profile/public').createPublicProfiles({ db, selfToken, inventoryUrl: process.env.OV_INVENTORY_INTERNAL_URL || 'http://127.0.0.1:5030', questUrl: process.env.OV_QUEST_INTERNAL_URL || 'http://127.0.0.1:4980', playUrl: process.env.OV_PLAY_INTERNAL_URL || 'http://127.0.0.1:5040' });
 app.use('/api/v1/profiles', rateLimit({ windowMs: 60_000, max: 240 }), publicProfiles.api);
+app.get('/api/v1/people/@:handle/page', rateLimit({ windowMs: 60_000, max: 240 }), publicProfiles.pageApi);
 app.get('/@:username', rateLimit({ windowMs: 60_000, max: 120 }), publicProfiles.pageHandler);
 
 // The OpenVibe Frame: analytics-ranked navigation + footer copy for every site (server/frame).
@@ -1011,11 +1026,14 @@ app.get('/llms.txt', (_req, res) => res.type('text/plain').set('Cache-Control', 
 app.get('/llms-full.txt', (_req, res) => res.type('text/plain').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(require('./home/render').llmsFullTxt({ baseUrl: config.baseUrl })));
 // The crawl files the front door owes crawlers, built from openvibe-shared/seo (plan T11 lane D), ahead
 // of express.static below so they answer the generated copy rather than public/.
-app.use(require('./seo/routes').createSeoRoutes({ release }));
+app.use(require('./seo/routes').createSeoRoutes({ release, db }));
 // IndexNow key file (openvibe-shared/indexnow), from INDEXNOW_KEY; unset → off, nothing served. The
 // public page set is the fixed seo/routes PAGES list, so no hook pings; the client stays for one that will.
 const indexnow = require('openvibe-shared/indexnow').createIndexNow({ host: config.baseUrl, key: config.indexnow.key });
+const myIndexNow = require('openvibe-shared/indexnow').createIndexNow({ host: config.my.baseUrl, key: config.indexnow.key });
 if (indexnow.enabled) app.use(indexnow.keyFile);
+if (myIndexNow.enabled) app.use(myIndexNow.keyFile);
+app.locals.publicPageIndexNow = myIndexNow;
 
 // The wallet (MONEY.md D12) and the Vibes Pay sheet: their own pages, in the account pages' style. A guest is sent
 // to sign in from the page, which then returns them to the same link.

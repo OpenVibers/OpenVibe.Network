@@ -25,6 +25,9 @@ const { siteForHost, fullName } = require('../frame/sites');
 
 const esc = seo.esc;
 const SITE = 'https://openvibe.network';
+const MY_SITE = 'https://openvibe.my';
+const SPACE_SITE = 'https://openvibe.space';
+const COMMUNITY_SITE = 'https://openvibe.community';
 const INVENTORY_SITE = 'https://openvibe.my/inventory';
 const QUEST_SITE = 'https://openvibe.quest';
 const GAMES_ACHIEVEMENTS = 'https://openvibe.games/achievements#game-';
@@ -33,6 +36,8 @@ const AUDIENCE = 'openvibe.inventory';
 const ITEMS_TTL_MS = 60_000;
 const KINDS_TTL_MS = 10 * 60_000;
 const TIMEOUT_MS = 4000;
+const PUBLIC_PLACE_TIMEOUT_MS = 2000;
+const PUBLIC_PLACE_TTL_MS = 5 * 60_000;
 const MAX_ITEMS = 400;   // two pages of Inventory's 200; the rest is one link away on OpenVibe.Inventory
 const SUBJECT_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
@@ -53,11 +58,15 @@ function monthOf(ts) {
     return m && MONTHS[Number(m[2]) - 1] ? `${MONTHS[Number(m[2]) - 1]} ${m[1]}` : null;
 }
 
-function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http://127.0.0.1:5030', questUrl = 'http://127.0.0.1:4980', playUrl = 'http://127.0.0.1:5040', fetchImpl = (...a) => fetch(...a), now = () => Date.now(), log = console } = {}) {
+function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http://127.0.0.1:5030', questUrl = 'http://127.0.0.1:4980', playUrl = 'http://127.0.0.1:5040', liveUrl = 'http://127.0.0.1:3000', communityUrl = 'http://127.0.0.1:4200', spaceUrl = 'http://127.0.0.1:4940', fetchImpl = (...a) => fetch(...a), now = () => Date.now(), log = console } = {}) {
     const base = String(inventoryUrl).replace(/\/+$/, '');
     const itemsCache = new Map();   // subject → { at, value }
     const badgesCache = new Map();  // subject → { at, value }
     const achievementsCache = new Map();  // subject → { at, value }
+    const placesCache = new Map();         // username → { at, value }
+    const liveBase = String(liveUrl).replace(/\/+$/, '');
+    const communityBase = String(communityUrl).replace(/\/+$/, '');
+    const spaceBase = String(spaceUrl).replace(/\/+$/, '');
     let kindsHit = null;
     let lastWarn = '';
 
@@ -193,15 +202,97 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
         return value;
     }
 
+    async function publicJson(url) {
+        const r = await fetchImpl(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(PUBLIC_PLACE_TIMEOUT_MS) });
+        if (!r.ok) throw new Error(`answered ${r.status}`);
+        return await r.json();
+    }
+
+    function plainHtml(s) {
+        return String(s || '').replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+    }
+
+    async function livePlace(username) {
+        const pathName = encodeURIComponent(username);
+        const [state, channel] = await Promise.all([
+            publicJson(`${liveBase}/api/streams/channel/${pathName}/live`),
+            publicJson(`${liveBase}/api/streams/channel/${pathName}?vodLimit=3&vodOrderBy=newest&clipLimit=1`),
+        ]);
+        const ch = state.channel || channel.channel;
+        if (!ch || typeof ch.username !== 'string') return null;
+        const streams = Array.isArray(state.streams) ? state.streams : [];
+        return {
+            live: { title: ch.display_name || ch.username, username: ch.username, is_live: streams.length > 0, url: `https://openvibe.live/@${encodeURIComponent(ch.username)}` },
+            videos: (Array.isArray(channel.vods) ? channel.vods : []).filter((v) => v && v.visibility === 'public' && (v.id || v.vod_id) && (v.title || v.name)).slice(0, 3).map((v) => ({
+                // Video's watch page by its public id (Track U); /v/<number> 301s there for a recording without one yet.
+                title: String(v.title || v.name).slice(0, 100), url: /^[A-Za-z0-9_-]{11}$/.test(String(v.watch_id || ''))
+                    ? `https://openvibe.video/watch?v=${v.watch_id}` : `https://openvibe.video/v/${encodeURIComponent(v.id || v.vod_id)}`,
+            })),
+        };
+    }
+
+    async function communityPlaces(username) {
+        const body = await publicJson(`${communityBase}/api/pastes/by-user/${encodeURIComponent(username)}?limit=3`);
+        return (Array.isArray(body.pastes) ? body.pastes : []).filter((p) => p && p.visibility === 'public' && typeof p.slug === 'string' && /^[A-Za-z0-9_-]{1,120}$/.test(p.slug) && typeof p.title === 'string' && p.title).slice(0, 3).map((p) => ({
+            title: String(p.title).slice(0, 100), url: `${COMMUNITY_SITE}/p/${encodeURIComponent(p.slug)}`,
+        }));
+    }
+
+    async function spacePlaces(username) {
+        const url = `${spaceBase}/spaces?q=${encodeURIComponent(username)}`;
+        const r = await fetchImpl(url, { headers: { Accept: 'text/html' }, signal: AbortSignal.timeout(PUBLIC_PLACE_TIMEOUT_MS) });
+        if (!r.ok) throw new Error(`answered ${r.status}`);
+        const html = await r.text();
+        const out = [];
+        for (const [, card] of html.matchAll(/<article class="sp-card">([\s\S]*?)<\/article>/g)) {
+            const owner = /<footer><span>by @([^<]+)<\/span>/.exec(card);
+            if (!owner || owner[1].toLowerCase() !== username.toLowerCase()) continue;
+            const href = /<a class="sp-card-main" href="\/spaces\/([a-z0-9][a-z0-9_-]{0,79})">/.exec(card);
+            const badge = /<span class="sp-card-badge[^\"]*">([^<]+)<\/span>/.exec(card);
+            const title = /<h3>([\s\S]*?)<\/h3>/.exec(card);
+            if (!href || !title || !badge || plainHtml(badge[1]) !== 'Published') continue;
+            out.push({ title: plainHtml(title[1]).slice(0, 100), url: `${SPACE_SITE}/spaces/${encodeURIComponent(href[1])}` });
+        }
+        return out.slice(0, 8);
+    }
+
+    async function placesOf(username, choices = {}) {
+        const hit = placesCache.get(username);
+        let all = hit && now() - hit.at < PUBLIC_PLACE_TTL_MS ? hit.value : null;
+        if (!all) {
+            const [live, community, spaces] = await Promise.all([
+                livePlace(username).catch(() => null), communityPlaces(username).catch(() => []), spacePlaces(username).catch(() => []),
+            ]);
+            all = { live: live?.live || null, videos: live?.videos || [], spaces: spaces || [], community: community || [] };
+            placesCache.set(username, { at: now(), value: all });
+        }
+        const value = {
+            ...(choices.live === false ? {} : (all.live ? { live: all.live } : {})),
+            ...(choices.media === false ? {} : { videos: all.videos }),
+            spaces: choices.space === false ? [] : all.spaces,
+            community: choices.community === false ? [] : all.community,
+        };
+        if (placesCache.size > 2000) placesCache.delete(placesCache.keys().next().value);
+        return value;
+    }
+
     /** → { moved: current } | { user } | null */
     async function find(name) {
         const rec = await usernames.lookup(db, name);
         if (!rec) return null;
         if (rec.renamed) return { moved: rec.current };
-        const u = await db.prepare(`SELECT id, username, display_name, bio, profile_color, created_at, subject_id, profile_public,
+        const u = await db.prepare(`SELECT id, username, display_name, bio, public_page_bio, public_page_pronouns, public_page_links, public_page_places, profile_color, created_at, subject_id, profile_public,
             is_anon, merged_into, deleted_at FROM users WHERE id = ?`).get(rec.network_id);
         if (!u || Number(u.is_anon) || u.merged_into || u.deleted_at) return null;
         return { user: u };
+    }
+
+    async function pageOf(u) {
+        let links = [], choices = { live: true, media: true, space: true, community: true };
+        try { links = typeof u.public_page_links === 'string' ? JSON.parse(u.public_page_links) : (u.public_page_links || []); } catch {}
+        try { choices = { ...choices, ...(typeof u.public_page_places === 'string' ? JSON.parse(u.public_page_places) : (u.public_page_places || {})) }; } catch {}
+        const places = Number(u.profile_public) ? await placesOf(u.username, choices) : { spaces: [], community: [], videos: [] };
+        return { username: u.username, display_name: u.display_name || u.username, pronouns: Number(u.profile_public) ? String(u.public_page_pronouns || '').slice(0, 40) : '', avatar_url: avatarUrl(u.username), profile_url: `${MY_SITE}/@${encodeURIComponent(u.username)}`, bio: Number(u.profile_public) ? String(u.public_page_bio || '').slice(0, 280) : '', links: Number(u.profile_public) && Array.isArray(links) ? links.slice(0, 8) : [], places };
     }
 
     /** profile@1: what every site may show about a person. */
@@ -237,10 +328,12 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             if (!found) return next();   // the shared 404 page
             if (found.moved) return res.redirect(301, `/@${encodeURIComponent(found.moved)}`);
             const u = found.user;
-            const inv = Number(u.profile_public) ? await wearsOf(u.subject_id) : null;
+            if (String(req.params.username) !== String(u.username)) return res.redirect(301, `/@${encodeURIComponent(u.username)}`);
+            const [inv, page] = await Promise.all([Number(u.profile_public) ? wearsOf(u.subject_id) : null, pageOf(u)]);
             res.set('Content-Type', 'text/html; charset=utf-8');
             res.set('Cache-Control', cache.htmlHeaders({ maxAge: 60 }));
-            res.send(renderPage(u, inv));
+            const origin = String(req.hostname || '').toLowerCase() === 'openvibe.my' ? 'https://openvibe.my' : SITE;
+            res.send(origin === MY_SITE ? renderPersonPage(u, page, origin) : renderPage(u, inv, origin, page.places));
         } catch (err) { next(err); }
     }
 
@@ -255,7 +348,19 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
         } catch (err) { next(err); }
     });
 
-    return { pageHandler, api, find, profileOf, itemsOf, badgesOf, achievementsOf };
+    // Stable public-page JSON read. It intentionally contains only fields already visible while signed out.
+    const pageApi = async (req, res, next) => {
+        try {
+            const found = await find(req.params.handle);
+            res.set('Cache-Control', 'public, max-age=60');
+            if (!found) return res.status(404).json({ error: 'not_found' });
+            if (found.moved) return res.status(301).set('Location', `/api/v1/people/@${encodeURIComponent(found.moved)}/page`).json({ moved_to: found.moved });
+            if (req.params.handle !== found.user.username) return res.status(301).set('Location', `/api/v1/people/@${encodeURIComponent(found.user.username)}/page`).json({ moved_to: found.user.username });
+            res.json({ person: await pageOf(found.user) });
+        } catch (err) { next(err); }
+    };
+
+    return { pageHandler, pageApi, api, find, pageOf, profileOf, itemsOf, badgesOf, achievementsOf };
 }
 
 // ── The page ───────────────────────────────────────────────────
@@ -269,6 +374,16 @@ function art(i, size = 'md') {
     return `<span class="pf-art pf-art-${size} r-${i.rarity}" aria-hidden="true">${esc(String(a.emoji || '◆').slice(0, 8))}</span>`;
 }
 const rarityBadge = (r) => `<span class="pf-rarity r-${esc(r)}">${esc(RARITY_LABEL[r] || r)}</span>`;
+
+function publicPlacesHtml(places) {
+    const cards = [];
+    if (places.live) cards.push(`<li><a href="${esc(places.live.url)}"><strong>${esc(places.live.title)}</strong>${places.live.is_live ? '<span class="pf-live">Live now</span>' : '<span>Live channel</span>'}</a></li>`);
+    for (const video of places.videos || []) cards.push(`<li><a href="${esc(video.url)}"><strong>${esc(video.title)}</strong><span>Video</span></a></li>`);
+    for (const space of places.spaces || []) cards.push(`<li><a href="${esc(space.url)}"><strong>${esc(space.title)}</strong><span>Published site</span></a></li>`);
+    for (const paste of places.community || []) cards.push(`<li><a href="${esc(paste.url)}"><strong>${esc(paste.title)}</strong><span>Community paste</span></a></li>`);
+    if (!cards.length) return '';
+    return `<section class="pf-section" aria-labelledby="pf-places"><h2 id="pf-places">On OpenVibe</h2><ul class="pf-places">${cards.join('')}</ul></section>`;
+}
 
 function showcaseHtml(inv, name) {
     if (!inv.showcase.length) return '';
@@ -324,7 +439,33 @@ ${sorted.map((g) => {
 <p class="pf-note"><a href="${esc(all)}">${inv.more ? 'Every item' : 'This inventory'} on OpenVibe.Inventory</a> · <a href="${INVENTORY_SITE}/items">Every item there is</a></p></section>`;
 }
 
-function renderPage(u, inv) {
+function renderPersonPage(u, page, origin = MY_SITE) {
+    const name = page.display_name || page.username;
+    const url = `${origin}/@${encodeURIComponent(page.username)}`;
+    const indexable = !!(page.bio || page.links.length);
+    const ld = seo.jsonLdTag({
+        '@context': 'https://schema.org', '@type': 'ProfilePage', url, name: `${name} (@${page.username}) · OpenVibe`,
+        mainEntity: { '@type': 'Person', name, alternateName: `@${page.username}`, image: page.avatar_url, url, ...(page.bio ? { description: page.bio } : {}) },
+    });
+    const links = page.links.map((l) => {
+        try { const parsed = new URL(l.url); return parsed.protocol === 'https:' && !parsed.username && !parsed.password ? `<li><a href="${esc(parsed.href)}" rel="me noopener noreferrer">${esc(l.label)}</a></li>` : ''; } catch { return ''; }
+    }).join('');
+    const places = publicPlacesHtml(page.places);
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(name)} (@${esc(page.username)}) · OpenVibe</title><meta name="description" content="${esc(page.bio || `${name} on OpenVibe.`)}">
+<link rel="canonical" href="${esc(url)}">${indexable ? '' : '<meta name="robots" content="noindex">'}
+<meta property="og:type" content="profile"><meta property="og:title" content="${esc(`${name} (@${page.username})`)}"><meta property="og:url" content="${esc(url)}"><meta property="og:image" content="${esc(page.avatar_url)}"><meta property="profile:username" content="${esc(page.username)}">
+${ld}<style>
+:root{color-scheme:light dark}*{box-sizing:border-box}body{margin:0;background:var(--bg-primary,#f5f6fa);color:var(--text-primary,#171923);font:16px/1.55 system-ui,sans-serif}.person-page{width:min(100% - 32px,600px);margin:clamp(24px,7vw,80px) auto}.person-card{padding:clamp(22px,5vw,40px);border:1px solid var(--border,#d8dbe4);border-radius:24px;background:var(--bg-card,var(--bg-secondary,#fff));box-shadow:0 18px 54px #0002}.person-head{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}.person-avatar{width:104px;height:104px;border-radius:50%;object-fit:cover;background:var(--bg-secondary,#eee)}h1{font-size:clamp(1.7rem,5vw,2.5rem);line-height:1.1;margin:0;overflow-wrap:anywhere}.person-handle{margin:6px 0 0;color:var(--text-secondary,#5c6170)}.person-pronouns{display:inline-block;margin:8px 0 0;padding:2px 10px;border:1px solid var(--border,#d8dbe4);border-radius:999px;font-size:.85rem;color:var(--text-secondary,#5c6170)}.person-bio{margin:18px auto 0;max-width:46ch;text-align:center;white-space:pre-wrap;overflow-wrap:anywhere}.person-links{display:grid;gap:10px;list-style:none;margin:24px 0 0;padding:0}.person-links a{display:flex;min-height:52px;align-items:center;justify-content:center;padding:10px 18px;border:1px solid var(--border,#d8dbe4);border-radius:14px;background:var(--bg-secondary,#f6f7fa);color:inherit;font-weight:650;text-align:center;text-decoration:none;overflow-wrap:anywhere;transition:border-color .15s,transform .15s}.person-links a:hover{border-color:var(--accent,#6d5dfc)}.person-links a:active{transform:scale(.99)}.person-places{margin-top:30px}.person-places h2{margin:0 0 10px;font-size:.78rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary,#5c6170)}.pf-places{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));gap:12px;list-style:none;padding:0;margin:0}.pf-places li{min-width:0}.pf-places a{display:flex;flex-direction:column;justify-content:center;gap:5px;min-height:72px;padding:12px 16px;border:1px solid var(--border,#d8dbe4);border-radius:14px;background:var(--bg-secondary,#f6f7fa);color:inherit;text-decoration:none;overflow-wrap:anywhere}.pf-places a span{font-size:.82rem;color:var(--text-secondary,#5c6170)}.pf-places a .pf-live{display:inline-flex;align-items:center;gap:6px;color:var(--live-red,#e5484d);font-weight:700}.pf-live::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor}@media(max-width:520px){.person-avatar{width:88px;height:88px}}@media(prefers-color-scheme:dark){body{background:var(--bg-primary,#101218);color:var(--text-primary,#f5f6fa)}.person-card{border-color:var(--border,#30333d);background:var(--bg-card,var(--bg-secondary,#171a22))}.person-avatar{background:var(--bg-secondary,#222)}.person-handle,.person-pronouns,.pf-places a span{color:var(--text-secondary,#a8adba)}.person-links a,.pf-places a{border-color:var(--border,#30333d)}.person-links a,.pf-places a{background:var(--bg-secondary,#20232d)}}
+</style></head><body><div id="navbar-mount"></div><main class="person-page"><article class="person-card" itemscope itemtype="https://schema.org/Person">
+<div class="person-head"><img class="person-avatar" src="${esc(page.avatar_url)}" alt="" width="104" height="104" itemprop="image"><div><h1 itemprop="name">${esc(name)}</h1><p class="person-handle">@${esc(page.username)}</p>${page.pronouns ? `<p class="person-pronouns">${esc(page.pronouns)}</p>` : ''}</div></div>
+${page.bio ? `<p class="person-bio" itemprop="description">${esc(page.bio)}</p>` : ''}${links ? `<nav aria-label="${esc(name)}'s links"><ul class="person-links">${links}</ul></nav>` : ''}
+${places ? `<div class="person-places">${places}</div>` : ''}</article></main>${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact' })}
+<script src="/shared/navbar.js" defer></script><script src="/js/account-safety.js" defer></script><script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin});}catch(e){}});</script></body></html>`;
+}
+
+function renderPage(u, inv, origin = SITE, places = { spaces: [], community: [], videos: [] }) {
+    const canonicalUrl = `${origin}/@${encodeURIComponent(u.username)}`;
     const name = u.display_name || u.username;
     const isPublic = !!inv;
     // What they wear shows on the profile itself: the name effect on their name (items.css), the hat on the picture.
@@ -338,7 +479,10 @@ function renderPage(u, inv) {
     const badgeId = badge && /^med_[0-9A-HJKMNP-TV-Z]{26}$/.test(String((badge.art || {}).media_id || '')) ? badge.art.media_id : null;
     const color = COLOR_RE.test(String(u.profile_color || '')) ? u.profile_color : '#3b82f6';
     const since = monthOf(u.created_at);
-    const bio = isPublic ? String(u.bio || '').trim().slice(0, 500) : '';
+    const bio = isPublic ? String(u.public_page_bio || u.bio || '').trim().slice(0, 280) : '';
+    let publicLinks = [];
+    try { publicLinks = typeof u.public_page_links === 'string' ? JSON.parse(u.public_page_links) : (u.public_page_links || []); } catch {}
+    const indexable = isPublic && (!!String(u.public_page_bio || '').trim() || (Array.isArray(publicLinks) && publicLinks.length > 0));
     const title = `${name} (@${u.username}) · OpenVibe`;
     const description = !isPublic
         ? `${name} on OpenVibe. This profile is private.`
@@ -351,9 +495,9 @@ function renderPage(u, inv) {
         inv.items.length ? `<li><span class="pf-stat-k">Rarest</span><span class="pf-stat-v">${esc(RARITY_LABEL[inv.items.reduce((best, i) => (rarityRank(i.rarity) > rarityRank(best) ? i.rarity : best), 'common')])}</span></li>` : '',
     ].join('') : '';
     const ld = isPublic ? seo.jsonLdTag({
-        '@context': 'https://schema.org', '@type': 'ProfilePage', url: profileUrl(u.username), name: title,
+        '@context': 'https://schema.org', '@type': 'ProfilePage', url: canonicalUrl, name: title,
         ...(String(u.created_at || '').length >= 10 ? { dateCreated: String(u.created_at).slice(0, 10) } : {}),
-        mainEntity: { '@type': 'Person', name, alternateName: `@${u.username}`, image: avatarUrl(u.username, 256), url: profileUrl(u.username), ...(bio ? { description: bio } : {}) },
+        mainEntity: { '@type': 'Person', name, alternateName: `@${u.username}`, image: avatarUrl(u.username, 256), url: canonicalUrl, ...(bio ? { description: bio } : {}) },
     }) : '';
     return `<!DOCTYPE html>
 <html lang="en">
@@ -362,12 +506,12 @@ function renderPage(u, inv) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
-<link rel="canonical" href="${esc(profileUrl(u.username))}">
-${isPublic ? '' : '<meta name="robots" content="noindex">'}
+<link rel="canonical" href="${esc(canonicalUrl)}">
+${indexable ? '' : '<meta name="robots" content="noindex">'}
 <meta property="og:type" content="profile">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
-<meta property="og:url" content="${esc(profileUrl(u.username))}">
+<meta property="og:url" content="${esc(canonicalUrl)}">
 <meta property="og:image" content="${esc(avatarUrl(u.username, 256))}">
 <meta property="profile:username" content="${esc(u.username)}">
 <link rel="alternate" type="application/json" href="/api/v1/profiles/${esc(encodeURIComponent(u.username))}">
@@ -431,6 +575,8 @@ a{color:var(--accent)}
 .pf-ach li{overflow-wrap:anywhere}.pf-ach small{color:var(--text-muted);font-size:.75rem}
 .pf-empty{color:var(--text-secondary);padding:18px;border:1px dashed var(--border);border-radius:12px;margin:0}
 .pf-note{color:var(--text-secondary);font-size:.85rem;margin:12px 0 0}
+.pf-links{display:flex;flex-wrap:wrap;gap:10px;list-style:none;margin:12px 0;padding:0}.pf-links a{display:inline-flex;min-height:44px;align-items:center;padding:8px 14px;border:1px solid var(--border);border-radius:999px;color:var(--text-primary);text-decoration:none}
+.pf-places{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));gap:12px;list-style:none;padding:0;margin:0}.pf-places li{min-width:0}.pf-places a{display:flex;flex-direction:column;justify-content:center;gap:5px;min-height:72px;padding:12px 16px;border:1px solid var(--border);border-radius:14px;background:var(--bg-secondary);color:var(--text-primary);text-decoration:none;overflow-wrap:anywhere}.pf-places a span{font-size:.82rem;color:var(--text-secondary)}
 @media (max-width:560px){.pf-head{padding:0 16px 16px;gap:14px}.pf-avatar{width:92px;height:92px}.pf-hat{font-size:32px;top:-18px}.pf-who{padding-top:0;min-width:100%}.pf-bio,.pf-stats,.pf-private{padding-left:16px;padding-right:16px}.pf-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}.pf-badge small{display:none}.pf-badge{padding:6px 12px 6px 9px}}
 </style>
 </head>
@@ -445,8 +591,10 @@ ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links
 <div class="pf-who"><h1>${badgeId ? `<img class="pf-name-badge" src="https://openvibe.media/o/${badgeId}" alt="" title="${esc(badge.name)}" width="32" height="32">` : ''}${fxClass ? `<span class="ov-fx ${fxClass}" title="${esc(fx.name)}">${esc(name)}</span>` : esc(name)}</h1><p class="pf-handle">@${esc(u.username)}</p></div>
 </div>
 ${bio ? `<p class="pf-bio">${esc(bio)}</p>` : ''}
+${isPublic && Array.isArray(publicLinks) && publicLinks.length ? `<nav aria-label="${esc(name)}'s links"><ul class="pf-links">${publicLinks.slice(0, 8).map((link) => { let href = ''; try { const parsed = new URL(link.url); if (parsed.protocol === 'https:' && !parsed.username && !parsed.password) href = parsed.href; } catch {} return href ? `<li><a rel="me noopener noreferrer" href="${esc(href)}">${esc(String(link.label || '').slice(0, 40))}</a></li>` : ''; }).join('')}</ul></nav>` : ''}
 ${isPublic ? `<ul class="pf-stats">${stats}</ul>` : '<p class="pf-private">This profile is private.</p>'}
 </section>
+${isPublic ? publicPlacesHtml(places) : ''}
 ${isPublic ? showcaseHtml(inv, name) + badgesHtml(inv) + gamesHtml(inv) + itemsHtml(inv, u) : ''}
 </main>
 ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact' })}
@@ -457,4 +605,4 @@ ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact'
 </html>`;
 }
 
-module.exports = { createPublicProfiles, renderPage, monthOf, SUBJECT_RE };
+module.exports = { createPublicProfiles, renderPage, renderPersonPage, monthOf, SUBJECT_RE, PUBLIC_PLACE_TIMEOUT_MS, PUBLIC_PLACE_TTL_MS };
