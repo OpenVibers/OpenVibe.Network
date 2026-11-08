@@ -123,9 +123,10 @@ ${kit.snippet({ code: 'sudo apt install ./openvibe-link_<version>_amd64.deb\n# o
 
 /** The release facts: the version, when it came out, the checksums and the release page. */
 function releaseBlock(release) {
-    const { versionLabel, dateLabel } = require('./release');
+    const { versionLabel, dateLabel, ageDays } = require('./release');
     const version = versionLabel(release);
     const date = dateLabel(release);
+    const days = ageDays(release);
     const rows = [
         kit.row({ title: 'Latest version', sub: release.version || '', meta: date || '', metaIso: date || undefined }),
         kit.row({ href: release.checksumsUrl || '#', title: 'SHA256SUMS', sub: 'the checksums of every file in the release, to check the download against' }),
@@ -134,7 +135,7 @@ function releaseBlock(release) {
     return `<section class="np-sec" aria-labelledby="h-release"><h2 id="h-release">The latest release</h2>
 <p class="np-fine">${version ? `Version <strong>${esc(version)}</strong>` : 'The download links always point at the latest release.'}${date ? `, published ${esc(date)}` : ''}. The install command above always installs that release.</p>
 ${kit.list(rows, { flush: true })}
-${release.stale ? '<p class="np-fine np-warn">GitHub could not be reached just now, so this is the last release we read.</p>' : ''}
+${release.stale && days >= 1 ? `<p class="np-fine np-warn">GitHub could not be reached just now, so this is the last release we read, from ${days === 1 ? 'a day' : `${days} days`} ago.</p>` : ''}
 </section>`;
 }
 

@@ -39,23 +39,25 @@ const SHAPED = {
     const fetchImpl = async () => { calls += 1; return { ok: true, status: 200, json: async () => FIXTURE }; };
     let now = 1000;
     const clock = () => now;
-    const first = await release.latest({ fetchImpl, now: clock });
+    const first = await release.latest({ fetchImpl, now: clock, dataDir: null });
     assert.strictEqual(first.version, 'v9.9.9', 'the release is read from GitHub');
     assert.strictEqual(first.installUrl, 'https://github.com/OpenVibers/OpenVibe.Node/releases/download/v9.9.9/install.sh');
     assert.strictEqual(first.checksumsUrl, 'https://github.com/OpenVibers/OpenVibe.Node/releases/download/v9.9.9/SHA256SUMS');
-    const second = await release.latest({ fetchImpl, now: clock });
+    const second = await release.latest({ fetchImpl, now: clock, dataDir: null });
     assert.strictEqual(calls, 1, 'the second call is answered from the cache');
     assert.strictEqual(second.version, 'v9.9.9');
 
     now += release.TTL_MS + 1;
-    await release.latest({ fetchImpl, now: clock });
-    assert.strictEqual(calls, 2, 'after ten minutes GitHub is asked again');
+    await release.latest({ fetchImpl, now: clock, dataDir: null });
+    assert.strictEqual(calls, 2, 'after fifteen minutes GitHub is asked again in the background');
+    await release.whenIdle();
 
     now += release.TTL_MS + 1;
-    const broken = await release.latest({ fetchImpl: async () => { throw new Error('no GitHub'); }, now: clock });
+    const broken = await release.latest({ fetchImpl: async () => { throw new Error('no GitHub'); }, now: clock, dataDir: null });
     assert.ok(broken.version, 'a release is still named');
     assert.strictEqual(broken.stale, true, 'and it is marked as the last one read');
     assert.ok(broken.installUrl.startsWith('https://github.com/OpenVibers/OpenVibe.Node/releases/download/'), 'the installer link still works');
+    await release.whenIdle();
 
     // The vhost must send /machines and /pair to the app (which signposts them), not the catch-all to Network.
     const vhost = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'nginx', 'parked-domains.conf'), 'utf8');
@@ -66,6 +68,10 @@ const SHAPED = {
 
     // ── The page: OpenVibe Link, and every fact the Node page had ──
     const html = page.render({ release: first, releaseId: 'rel_test' });
+    const oldCopy = page.render({ release: { ...first, stale: true, ageMs: 3 * release.DAY_MS }, releaseId: 'rel_test' });
+    assert.ok(oldCopy.includes('from 3 days ago'), 'a stale copy older than a day says how old it is');
+    const youngCopy = page.render({ release: { ...first, stale: true, ageMs: release.TTL_MS }, releaseId: 'rel_test' });
+    assert.ok(!youngCopy.includes('could not be reached'), 'a stale copy younger than a day says nothing about the outage');
     assert.ok(html.includes('<title>OpenVibe Link: your machines, connected</title>'), 'the title is Link\'s');
     assert.ok(html.includes('<h1>Your machines, connected</h1>'), 'the h1 is Link\'s');
     assert.ok(html.includes('<p class="np-kicker">OpenVibe Link</p>'), 'the kicker names Link');
