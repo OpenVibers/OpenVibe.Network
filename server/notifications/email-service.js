@@ -266,6 +266,15 @@ class EmailService {
         return this._sendEmail({ to, subject: 'OpenVibe — confirm your email address', htmlBody, textBody, emailType: 'email_verification', metadata: { expiresMinutes } });
     }
 
+    /** Tell the former primary address that an account's recovery address changed. */
+    async sendAccountSecurityNotice({ to, username, message }) {
+        const safeName = this._escapeHtml(username || 'there');
+        const safeMessage = this._escapeHtml(message || 'Your primary email address changed.');
+        const textBody = `Hey ${username || 'there'},\n\n${message || 'Your primary email address changed.'}\n\nIf you did not make this change, secure your account at https://openvibe.my/security.`;
+        const htmlBody = `<!DOCTYPE html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a24;color:#e0e0e0;padding:24px"><main style="max-width:560px;margin:auto;padding:24px;background:#22222c;border:1px solid #333340;border-radius:12px"><h1 style="font-size:18px">Account email changed</h1><p>Hey ${safeName},</p><p>${safeMessage}</p><p>If you did not make this change, <a href="https://openvibe.my/security" style="color:#a78bfa">secure your account</a>.</p></main></body></html>`;
+        return this._sendEmail({ to, subject: 'OpenVibe — primary email changed', htmlBody, textBody, emailType: 'account_security' });
+    }
+
     async sendPasswordResetEmail({ to, username, resetUrl, expiresMinutes = 60 }) {
         const htmlBody = this._buildPasswordResetHtml({ username, resetUrl, expiresMinutes });
         const textBody = this._buildPasswordResetText({ username, resetUrl, expiresMinutes });

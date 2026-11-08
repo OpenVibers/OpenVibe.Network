@@ -1,0 +1,4 @@
+# OpenVibe.Network
+
+- Account email addresses: https://github.com/OpenVibers/OpenVibe.Network/blob/main/docs/account-emails.md
+  A person can manage up to eleven account addresses at openvibe.my. Addresses are private and must be verified before they can become primary. API: `/api/v1/me/emails` and its verify, primary, and delete routes.
