@@ -29,6 +29,14 @@ const CHAT_NAMESPACES = ['chat.preferences', 'chat.tts_defaults', 'chat.dm_setti
 
 // Initial grants: what each service does against Network today.
 const DEFAULT_GRANTS = [
+    // Locker v1 stores private ciphertext in its own Media tenant. Network remains the key directory.
+    ...['media.object.upload', 'media.object.read', 'media.object.delete'].map((cap) => ['locker', cap, 'openvibe.media', ['locker']]),
+    ['locker', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['locker', 'network.notifications.push', SELF_AUDIENCE, ['locker']],
+    ['locker', 'events.subscription.manage', 'openvibe.events', []],
+    ['locker', 'events.event.publish', 'openvibe.events', []],
+    ['locker', 'network.account.export.contribute', SELF_AUDIENCE, []],
+    ['locker', 'network.account.deletion.confirm', SELF_AUDIENCE, []],
     ['live', 'network.coins.credit', SELF_AUDIENCE, ['live']],
     // OpenVibe.Quest pays a completed quest's OpenCoins (app_id quest, idempotency_key = the completion id), resolving
     // the person's subject to the wallet first, and subscribes to the events it counts (plan T19).
