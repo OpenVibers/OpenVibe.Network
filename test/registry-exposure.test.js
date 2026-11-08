@@ -25,6 +25,7 @@ const PINNED = {
     bot: 'live', zone: 'live',
     actor: 'live',   // OpenVibe's own agent and the router for agent work at openvibe.actor since 2026-10-08 (contracts 0.115.0)
     computer: 'live', locker: 'live',   // launched 2026-11-08 (contracts 0.347.0)
+    studio: 'live',   // launched 2026-11-08 (contracts 0.348.0)
     food: 'live', help: 'live', work: 'live',   // services since contracts 0.116.0 (plan T19, 2026-10-08)
     quest: 'live', rent: 'live',   // services since contracts 0.117.0
     inventory: 'live',   // the network-wide inventory at inventory.openvibe.network since contracts 0.122.0 (ADR-054)
@@ -128,7 +129,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     // v0.95.0 Services; Space and AI went live in v0.110.0; Food, Help and Work in v0.116.0; Quest, Rent and Watch in v0.117.0;
     // Inventory in v0.122.0; none is retired
     // News, Reviews, Coupons, Trade and OpenRestream in v0.125.0; Run in v0.141.0
-    assert.deepStrictEqual(st.exposure_summary, { live: 55 + (HAS_MAIL ? 1 : 0), internal: 1, library: 4, repository: 1, placeholder: 0, retired: 1 });   // Sites retired (contracts 0.181.0); Tips and VIP live (0.200.0); Design live (0.228.0); Meme live (0.234.0); Vision and Exchange live (0.235.0); Fun live (0.236.0); Cam live (0.237.0); Bench live (0.238.0); Email live with the release that adds its manifest
+    assert.deepStrictEqual(st.exposure_summary, { live: 56 + (HAS_MAIL ? 1 : 0), internal: 1, library: 4, repository: 1, placeholder: 0, retired: 1 });   // Sites retired (contracts 0.181.0); Tips and VIP live (0.200.0); Design live (0.228.0); Meme live (0.234.0); Vision and Exchange live (0.235.0); Fun live (0.236.0); Cam live (0.237.0); Bench live (0.238.0); Email live with the release that adds its manifest
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());
@@ -146,7 +147,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     // Play stays live in the exposure overlay (the API serves) but is part of Games now, so it is not a nav site.
     assert.ok(!SITES.some(s => s.id === 'play'), 'Play is part of Games, not a menu entry');
     const open = SITES.filter(s => s.status === 'open').map(s => s.id);
-    const EXPECTED_OPEN = ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'space', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'search', 'run', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'casino', 'tours', 'shoes', 'connect', 'computer', 'lock'];   // by site position; Email joins after Chat once its manifest is pinned
+    const EXPECTED_OPEN = ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'space', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'search', 'run', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'casino', 'tours', 'shoes', 'connect', 'computer', 'lock', 'image'];   // by site position; Email joins after Chat once its manifest is pinned
     if (HAS_MAIL) EXPECTED_OPEN.splice(EXPECTED_OPEN.indexOf('chat') + 1, 0, 'mail');
     assert.deepStrictEqual(open, EXPECTED_OPEN);
     for (const s of SITES) {
