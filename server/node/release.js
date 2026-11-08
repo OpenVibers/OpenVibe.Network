@@ -32,6 +32,7 @@ function shape(json) {
     const sums = asset('SHA256SUMS');
     return {
         version: tag,
+        assets: assets.map((a) => String((a && a.name) || '')).filter(Boolean),
         publishedAt: String(json.published_at || ''),
         url: String(json.html_url || (tag ? `https://github.com/${REPO}/releases/tag/${tag}` : LATEST)),
         installUrl: String((install && install.browser_download_url) || (tag ? `https://github.com/${REPO}/releases/download/${tag}/install.sh` : FALLBACK.installUrl)),

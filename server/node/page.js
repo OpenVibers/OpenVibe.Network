@@ -57,7 +57,18 @@ function installBlock(release, userAgent) {
     const dl = (name) => `${latest}/${name}`;
     const file = (name, label) => `<a href="${esc(dl(name))}">${esc(label || name)}</a>`;
     const pkgFile = (name, label) => (pkg ? `<a href="${esc(dl(name))}">${esc(label || name)}</a>` : `<a href="${releases}">${esc(label || name)}</a>`);
-    const apk = release.version ? `${releases}/download/${encodeURIComponent(release.version)}/openvibe-link-${encodeURIComponent(release.version)}.apk` : releases;
+    // The signed APK is attached when the repo has the release key; CI attaches a debug APK when it does not. Offer
+    // whichever the release actually carries, and the release page when neither is there yet.
+    const assets = Array.isArray(release.assets) ? release.assets : null;
+    const signedApk = release.version ? `openvibe-link-${release.version}.apk` : '';
+    const debugApk = release.version ? `openvibe-link-${release.version}-debug.apk` : '';
+    const apkName = !release.version ? '' : (!assets ? signedApk : (assets.includes(signedApk) ? signedApk : (assets.includes(debugApk) ? debugApk : '')));
+    const apk = release.version
+        ? (apkName ? `${releases}/download/${encodeURIComponent(release.version)}/${encodeURIComponent(apkName)}` : `${releases}/tag/${encodeURIComponent(release.version)}`)
+        : releases;
+    const apkNote = apkName && apkName === debugApk
+        ? ' This is the debug build: the signed Android release waits on the repository\'s release key.'
+        : '';
     const open = (os) => (current === os ? ' open' : '');
     return `<div class="np-os-list">
 <details class="np-os" data-os="windows"${open('windows')}>
@@ -94,7 +105,7 @@ ${kit.snippet({ code: 'sudo apt install ./openvibe-link_<version>_amd64.deb\n# o
 <details class="np-os" data-os="android"${open('android')}>
 <summary><span>Android</span><small>the existing APK, direct</small></summary>
 <div class="np-os-body">
-<p>Download <a href="${esc(apk)}">openvibe-link${v ? `-${v}` : ''}.apk</a> on the phone, allow installing from that source when Android asks, and open <strong>OpenVibe Link</strong>.</p>
+<p>Download <a href="${esc(apk)}">${apkName ? esc(apkName) : 'the APK from the release page'}</a> on the phone, allow installing from that source when Android asks, and open <strong>OpenVibe Link</strong>.${apkNote}</p>
 <p>Pair from the app with a code from <a href="/pair">openvibe.link/pair</a> or <a href="https://openvibe.bot/link/phone">openvibe.bot/link/phone</a>. The APK carries approvals, Activity, pairing and <strong>Send to OpenVibe</strong>; it is the direct build, not Google Play, and has no phone automation.</p>
 </div>
 </details>

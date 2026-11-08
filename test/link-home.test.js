@@ -22,6 +22,7 @@ const FIXTURE = {
     assets: [
         { name: 'install.sh', browser_download_url: 'https://github.com/OpenVibers/OpenVibe.Node/releases/download/v9.9.9/install.sh' },
         { name: 'SHA256SUMS', browser_download_url: 'https://github.com/OpenVibers/OpenVibe.Node/releases/download/v9.9.9/SHA256SUMS' },
+        { name: 'openvibe-link-v9.9.9.apk' },
     ],
 };
 const SHAPED = {
@@ -89,6 +90,11 @@ const SHAPED = {
         ['iOS home-screen web app', 'Add to Home Screen'],
         ['what iOS waits on', 'Apple Developer account'],
     ]) assert.ok(html.includes(needle), `the install block offers ${what}`);
+    const debugOnly = page.render({ release: { ...first, assets: ['install.sh', 'openvibe-link-v9.9.9-debug.apk'] }, releaseId: 'rel_test' });
+    assert.ok(debugOnly.includes('openvibe-link-v9.9.9-debug.apk'), 'an unsigned release offers the debug APK');
+    assert.ok(debugOnly.includes('signed Android release waits'), 'and says why it is the debug build');
+    const noApk = page.render({ release: { ...first, assets: ['install.sh'] }, releaseId: 'rel_test' });
+    assert.ok(noApk.includes('releases/tag/v9.9.9'), 'a release without an APK sends the visitor to its page');
     for (const [ua, os] of [
         ['Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'windows'],
         ['Mozilla/5.0 (Macintosh; Intel Mac OS X 13_0)', 'mac'],
