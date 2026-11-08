@@ -498,6 +498,8 @@ function llmsTxt() {
             // The JSON an agent came for is a main section, not something to skip (AGT-5 review).
             { title: 'Machine-readable', links: [
                 { title: 'Open stats (JSON): every site\'s numbers', url: 'https://openvibe.network/api/v1/stats' },
+                { title: 'Public person page (JSON)', url: 'https://openvibe.network/api/v1/people/@handle/page', note: 'the signed-out profile at https://openvibe.my/@handle, including its public OpenVibe places' },
+                { title: 'OpenVibe Connect MCP', url: 'https://connect.openvibe.network/mcp', note: 'includes network.person_page.read for a public person page' },
                 { title: 'Tool catalog (JSON)', url: 'https://openvibe.tools/api/catalog.json' },
                 { title: 'Tool domains (JSON)', url: 'https://openvibe.network/api/domains' },
             ] },

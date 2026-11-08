@@ -47,7 +47,7 @@ const { startApp } = require('./helpers/connect-app');
     const gateway = createGateway({ db, config, defs: [def], defaultRequestOptions: app.options });
     const expressApp = express();
     expressApp.use(express.json({ limit: '256kb' }));
-    expressApp.post('/mcp', createMcpHandler({ db, config, gateway }));
+    expressApp.post('/mcp', createMcpHandler({ db, config, gateway, publicPage: async (handle) => ({ username: handle, profile_url: `https://openvibe.my/@${handle}` }) }));
     const server = http.createServer(expressApp);
     await new Promise((r) => server.listen(0, '127.0.0.1', r));
     const url = `http://127.0.0.1:${server.address().port}/mcp`;
@@ -69,14 +69,23 @@ const { startApp } = require('./helpers/connect-app');
             try {
                 const listed = await client.listTools();
                 const tools = listed.tools || listed || [];
-                assert.strictEqual(tools.length, 0, 'no grant yet, no tools');
+                assert.deepStrictEqual(tools.map((tool) => tool.name), ['network.person_page.read'], 'the public read is available without an app grant');
                 await callers.setGrant(db, made.caller.id, 'testapp', 'read', owner);
                 const after = await client.listTools();
                 const afterTools = after.tools || after || [];
-                assert.strictEqual(afterTools.length, 1);
-                assert.strictEqual(afterTools[0].name, 'testapp.read');
-                assert.ok(afterTools[0].inputSchema, 'the tool carries its schema');
-                assert.strictEqual(afterTools[0].annotations.readOnlyHint, true);
+                assert.strictEqual(afterTools.length, 2);
+                const appTool = afterTools.find((tool) => tool.name === 'testapp.read');
+                assert.ok(appTool.inputSchema, 'the tool carries its schema');
+                assert.strictEqual(appTool.annotations.readOnlyHint, true);
+            } finally { await client.close(); }
+        });
+
+        await check('the MCP public person-page tool returns only its public read', async () => {
+            const client = await connect(key);
+            try {
+                const out = await client.callTool({ name: 'network.person_page.read', arguments: { handle: 'ana' } });
+                assert.ok(!out.isError);
+                assert.match(out.content[0].text, /openvibe\.my\/@ana/);
             } finally { await client.close(); }
         });
 

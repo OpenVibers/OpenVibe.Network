@@ -44,7 +44,7 @@ function createSeoRoutes({ release = null, db = null } = {}) {
     });
     r.get('/sitemap.xml', async (_req, res, next) => {
         try {
-            const profiles = db ? await db.prepare(`SELECT username FROM users WHERE COALESCE(is_banned, 0) = 0 AND COALESCE(is_anon, 0) = 0 AND merged_into IS NULL AND deleted_at IS NULL AND (COALESCE(public_page_bio, '') <> '' OR public_page_links <> '[]'::jsonb)`).all() : [];
+            const profiles = db ? await db.prepare(`SELECT username FROM users WHERE COALESCE(is_banned, 0) = 0 AND COALESCE(is_anon, 0) = 0 AND COALESCE(profile_public, 1) = 1 AND merged_into IS NULL AND deleted_at IS NULL AND (COALESCE(public_page_bio, '') <> '' OR public_page_links <> '[]'::jsonb)`).all() : [];
             const sitemap = sitemapXml({ release, profiles: profiles.map((row) => row.username) });
             res.set('Content-Type', 'application/xml; charset=utf-8').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 })).send(sitemap);
         } catch (err) { next(err); }

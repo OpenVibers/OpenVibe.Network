@@ -18,6 +18,12 @@
  * isError and a short line; nothing secret is ever in the answer.
  */
 const { resolveCaller } = require('./auth');
+const PUBLIC_PERSON_TOOL = {
+    name: 'network.person_page.read',
+    description: 'Read a person’s public OpenVibe page by handle. Returns only fields and places visible while signed out.',
+    inputSchema: { type: 'object', properties: { handle: { type: 'string', minLength: 3, maxLength: 24, pattern: '^[A-Za-z0-9_]+$' } }, required: ['handle'], additionalProperties: false },
+    annotations: { title: 'Read a public person page', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+};
 
 const PROTOCOL_VERSION = '2025-06-18';
 // The versions this server speaks. The client's own version is echoed when it is one of these, so a
@@ -56,7 +62,7 @@ function toTools(actions) {
 /**
  * The handler for POST /mcp. → (req, res)
  */
-function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null, requestOptions = {} } = {}) {
+function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null, requestOptions = {}, publicPage = null } = {}) {
     return async function mcpHandler(req, res) {
         if (req.method !== 'POST') {
             // The transport allows a server to refuse the server-to-client stream.
@@ -91,12 +97,20 @@ function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null
             if (method === 'ping') return ok(res, id, {});
             if (method === 'tools/list') {
                 const actions = await gateway.listActions({ subject: who.subject, callerId: who.caller.id });
-                return ok(res, id, { tools: toTools(actions) });
+                return ok(res, id, { tools: [...toTools(actions), ...(publicPage ? [PUBLIC_PERSON_TOOL] : [])] });
             }
             if (method === 'tools/call') {
                 const name = String(params.name || '');
                 const args = params.arguments && typeof params.arguments === 'object' ? params.arguments : {};
                 try {
+                    if (name === PUBLIC_PERSON_TOOL.name && publicPage) {
+                        const handle = String(args.handle || '');
+                        if (!/^[A-Za-z0-9_]{3,24}$/.test(handle)) throw Object.assign(new Error('Use a valid OpenVibe handle.'), { status: 400 });
+                        const out = await publicPage(handle);
+                        if (!out) throw Object.assign(new Error('No public page found for that handle.'), { status: 404 });
+                        const text = JSON.stringify(out, null, 2);
+                        return ok(res, id, { content: [{ type: 'text', text }], structuredContent: out });
+                    }
                     const out = await gateway.call({
                         subject: who.subject, callerId: who.caller.id, callerName: who.caller.name,
                         actionName: name, input: args, requestOptions,
@@ -115,4 +129,4 @@ function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null
     };
 }
 
-module.exports = { createMcpHandler, toTools, PROTOCOL_VERSION, SUPPORTED_VERSIONS, SERVER_INFO };
+module.exports = { createMcpHandler, toTools, PROTOCOL_VERSION, SUPPORTED_VERSIONS, SERVER_INFO, PUBLIC_PERSON_TOOL };

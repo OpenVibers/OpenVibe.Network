@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { getDb } = require('../server/db/database');
-const { createPublicProfiles, monthOf } = require('../server/profile/public');
+const { createPublicProfiles, renderPersonPage, monthOf } = require('../server/profile/public');
 const publicCors = require('../server/public-cors');
 
 const A = 'usr_01JZ0000000000000000000AAA';
@@ -61,6 +61,13 @@ const INSTANCES = [
         calls.push({ path: u.pathname, auth: req.headers.authorization || '' });
         const json = (s, o) => { res.writeHead(s, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
         if (down) return json(503, { code: 'down' });
+        if (u.pathname === '/api/streams/channel/Ana/live') return json(200, { channel: { username: 'Ana', display_name: 'Ana' }, streams: [{ id: 9 }] });
+        if (u.pathname === '/api/streams/channel/Ana') return json(200, { channel: { username: 'Ana', display_name: 'Ana' }, vods: [{ id: 'vod_public', title: 'First video', visibility: 'public' }, { id: 'vod_private', title: 'Private video', visibility: 'private' }] });
+        if (u.pathname === '/api/pastes/by-user/Ana') return json(200, { pastes: [{ slug: 'first-paste', title: 'A public note', visibility: 'public' }, { slug: 'hidden-paste', title: 'Hidden note', visibility: 'unlisted' }] });
+        if (u.pathname === '/spaces') {
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            return res.end('<article class="sp-card"><a class="sp-card-main" href="/spaces/ana-site"><span class="sp-card-badge is-live">Published</span><h3>Ana Site</h3><p>Public site</p></a><footer><span>by @Ana</span></footer></article><article class="sp-card"><a class="sp-card-main" href="/spaces/hidden-site"><span class="sp-card-badge is-live">Unlisted</span><h3>Hidden Site</h3><p>Private site</p></a><footer><span>by @Ana</span></footer></article>');
+        }
         if (u.pathname === '/api/v1/kinds') return json(200, { kinds: KINDS });
         if (u.pathname === `/api/v1/people/${A}/equipped`) return json(200, { subject: A, slots: { 'live.hat:hat': { instance_id: INSTANCES[0].id, definition_id: INSTANCES[0].definition_id }, 'live.name_effect:name_effect': { instance_id: INSTANCES[1].id, definition_id: INSTANCES[1].definition_id, token: 'name-fx-rainbow' }, 'network.badge:badge': { instance_id: INSTANCES[3].id, definition_id: INSTANCES[3].definition_id, media_id: 'med_01JZ00000000000000000000B1' } } });
         if (u.pathname === `/api/v1/people/${A}/items`) return json(200, { subject: A, instances: INSTANCES, definitions: DEFS, next_cursor: null });
@@ -71,7 +78,8 @@ const INSTANCES = [
     await new Promise((r) => inv.listen(0, '127.0.0.1', r));
     let clock = Date.now();
     const selfToken = (aud, caps) => `tok:${aud}:${caps.join(',')}`;
-    const profiles = createPublicProfiles({ db, selfToken, inventoryUrl: `http://127.0.0.1:${inv.address().port}`, questUrl: `http://127.0.0.1:${inv.address().port}`, playUrl: `http://127.0.0.1:${inv.address().port}`, now: () => clock, log: { warn() {} } });
+    const fakeService = `http://127.0.0.1:${inv.address().port}`;
+    const profiles = createPublicProfiles({ db, selfToken, inventoryUrl: fakeService, questUrl: fakeService, playUrl: fakeService, liveUrl: fakeService, communityUrl: fakeService, spaceUrl: fakeService, now: () => clock, log: { warn() {} } });
 
     const app = express();
     app.get('/@:username', profiles.pageHandler);
@@ -91,6 +99,8 @@ const INSTANCES = [
         assert.ok(/<span class="pf-hat" title="Royal Crown" aria-hidden="true">👑<\/span>/.test(r.text), 'her hat sits on her picture');
         assert.ok(!r.text.includes('<script>alert(1)</script>') && r.text.includes('Hello there'), 'the saved public-page bio is shown as text');
         assert.ok(r.text.includes('href="https://example.com/"'), 'HTTPS public links render');
+        assert.ok(r.text.includes('aria-labelledby="pf-places"') && r.text.includes('Live now') && r.text.includes('First video') && r.text.includes('A public note') && r.text.includes('Ana Site'));
+        assert.ok(!r.text.includes('Private video') && !r.text.includes('Hidden note') && !r.text.includes('Hidden Site'), 'private or unlisted places are omitted');
         assert.ok(r.text.includes('Sparkles &lt;b&gt;') && !r.text.includes('Sparkles <b>'), 'item names are escaped');
         assert.ok(r.text.includes('id="pf-wearing"') && /pf-worn r-legendary[\s\S]*Royal Crown/.test(r.text), 'the crown is in the showcase');
         assert.ok(r.text.includes('Member since') && r.text.includes('October 2026'));
@@ -103,7 +113,7 @@ const INSTANCES = [
         r = await get('/@ana');
         assert.deepStrictEqual([r.status, r.headers.get('location')], [301, '/@Ana'], 'case variants redirect to the canonical handle');
         r = await get('/@Ana');
-        assert.ok(calls.filter((c) => !c.path.includes('/badges') && !c.path.endsWith('/achievements')).every((c) => c.auth === 'Bearer tok:openvibe.inventory:inventory.item.read'), 'Network\'s own token for Inventory');
+        assert.ok(calls.filter((c) => c.path === '/api/v1/kinds' || c.path === `/api/v1/people/${A}/equipped` || c.path === `/api/v1/people/${A}/items`).every((c) => c.auth === 'Bearer tok:openvibe.inventory:inventory.item.read'), 'Network\'s own token for Inventory');
         assert.strictEqual(calls.find((c) => c.path.endsWith('/achievements')).auth, '', 'Play\'s read is public: no token');
         assert.ok(r.text.includes('id="pf-games"') && r.text.includes('Salvage &lt;Rush&gt;') && !r.text.includes('Salvage <Rush>'), 'games, escaped');
         assert.ok(/pf-game-n">2 achievements<[\s\S]*Big Haul[\s\S]*First Haul[\s\S]*Vibe Heroes[\s\S]*1 achievement</.test(r.text), 'each game with its achievements, newest first');
@@ -144,6 +154,16 @@ const INSTANCES = [
         assert.deepStrictEqual(JSON.parse(r.text).person.links, [{ label: 'My site', url: 'https://example.com/' }]);
         assert.strictEqual(JSON.parse(r.text).person.bio, 'Hello there');
         assert.strictEqual(JSON.parse(r.text).person.profile_url, 'https://openvibe.my/@Ana');
+        assert.strictEqual(JSON.parse(r.text).person.places.live.is_live, true);
+        assert.deepStrictEqual(JSON.parse(r.text).person.places.videos.map((v) => v.title), ['First video']);
+        assert.deepStrictEqual(JSON.parse(r.text).person.places.community.map((v) => v.title), ['A public note']);
+        assert.deepStrictEqual(JSON.parse(r.text).person.places.spaces.map((v) => v.title), ['Ana Site']);
+        const person = JSON.parse(r.text).person;
+        r = await get('/api/v1/people/@ana/page');
+        assert.deepStrictEqual([r.status, r.headers.get('location')], [301, '/api/v1/people/@Ana/page']);
+        const newPage = renderPersonPage({ username: 'Ana' }, person, 'https://openvibe.my');
+        assert.ok(newPage.includes('<link rel="canonical" href="https://openvibe.my/@Ana">') && newPage.includes('First video') && newPage.includes('My site'));
+        assert.ok(!newPage.includes('pf-grid') && !newPage.includes('inventory'), 'the new page shows public places without private account inventory');
 
         // A hidden profile: name and picture, nothing else, not indexed.
         r = await get('/@hidden');
