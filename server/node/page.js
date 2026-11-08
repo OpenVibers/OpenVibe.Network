@@ -121,7 +121,7 @@ function releaseBlock(release) {
         kit.row({ href: release.url || '#', title: 'The release on GitHub', sub: 'every asset, and the notes of that release' }),
     ];
     return `<section class="np-sec" aria-labelledby="h-release"><h2 id="h-release">The latest release</h2>
-<p class="np-fine">${version ? `Version <strong>${esc(version)}</strong>` : 'The latest version'}${date ? `, published ${esc(date)}` : ''}. The install command above always installs that release.</p>
+<p class="np-fine">${version ? `Version <strong>${esc(version)}</strong>` : 'The download links always point at the latest release.'}${date ? `, published ${esc(date)}` : ''}. The install command above always installs that release.</p>
 ${kit.list(rows, { flush: true })}
 ${release.stale ? '<p class="np-fine np-warn">GitHub could not be reached just now, so this is the last release we read.</p>' : ''}
 </section>`;
@@ -177,6 +177,7 @@ ${CSS}
 </section>
 
 <section class="np-sec" id="install" aria-labelledby="h-install"><h2 id="h-install">Install it</h2>
+<p class="np-fine" style="margin:0 0 12px">Your system is open first; choose another to see its steps.</p>
 ${installBlock(release, userAgent)}
 </section>
 
@@ -233,7 +234,9 @@ const CSS = `
 .np-os summary{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 16px;cursor:pointer;list-style:none}
 .np-os summary::-webkit-details-marker{display:none}
 .np-os summary span{font-weight:800;font-size:1rem}
-.np-os summary small{color:var(--text-muted,#7386a3);font-size:.82rem;text-align:right}
+.np-os summary small{color:var(--text-muted,#7386a3);font-size:.82rem;text-align:right;margin-left:auto}
+.np-os summary::after{content:'+';margin-left:12px;font-weight:800;color:var(--text-muted,#7386a3);font-size:1.05rem;line-height:1}
+.np-os[open] summary::after{content:'−'}
 .np-os-body{padding:0 16px 16px;border-top:1px solid var(--border,#1f2d47)}
 .np-os-body p{color:var(--text-secondary,#96a7c2);font-size:.92rem;line-height:1.6}
 .np-os-body a{color:var(--accent,#3b82f6)}
