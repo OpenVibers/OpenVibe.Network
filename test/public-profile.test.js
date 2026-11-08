@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { getDb } = require('../server/db/database');
-const { createPublicProfiles, renderPersonPage, monthOf } = require('../server/profile/public');
+const { createPublicProfiles, renderPersonPage, monthOf, PUBLIC_PLACE_TIMEOUT_MS, PUBLIC_PLACE_TTL_MS } = require('../server/profile/public');
 const publicCors = require('../server/public-cors');
 
 const A = 'usr_01JZ0000000000000000000AAA';
@@ -134,7 +134,12 @@ const INSTANCES = [
         assert.ok(/@media \(max-width:560px\)\{[^\n]*\.pf-badge small\{display:none\}/.test(r.text), 'on phones a chip drops its month (still in its title), so two fit a row');
         assert.ok(/<span class="pf-stat-k">Badges<\/span><span class="pf-stat-v">2<\/span>/.test(r.text));
 
-        // Cached for a minute: a second view reads nothing.
+        // Place reads time out quickly and stay cached for five minutes across page and API reads.
+        assert.strictEqual(PUBLIC_PLACE_TIMEOUT_MS, 2000);
+        assert.strictEqual(PUBLIC_PLACE_TTL_MS, 300_000);
+        const placeCalls = calls.filter((c) => c.path.startsWith('/api/streams/channel/') || c.path === '/api/pastes/by-user/Ana' || c.path === '/spaces');
+        assert.deepStrictEqual(placeCalls.map((c) => c.path).sort(), ['/api/pastes/by-user/Ana', '/api/streams/channel/Ana', '/api/streams/channel/Ana/live', '/spaces'].sort());
+        // HTML may refresh after 60 seconds; place data stays cached.
         const n = calls.length;
         await get('/@Ana');
         assert.strictEqual(calls.length, n, 'a second view within 60 s is cache');
