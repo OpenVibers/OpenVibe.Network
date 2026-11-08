@@ -742,6 +742,10 @@ const DEFAULT_GRANTS = [
     ['exchange', 'search.document.write', 'openvibe.search', []],
     ['exchange', 'events.subscription.manage', 'openvibe.events', []],
     ['exchange', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
+    // OpenVibe.Exchange's owner-only /console calls AI's admin JSON API. Exchange checks the signed-in Network
+    // owner's role before every console route; the service token keeps only the read and operator-write caps needed
+    // by the console, scoped to its existing AI audience.
+    ...['ai.usage.read', 'ai.workflow.manage', 'ai.provider.manage'].map((cap) => ['exchange', cap, 'openvibe.ai', []]),
     // The Exchange's Arena (11-06): a blind pair is a Bench round Exchange creates, each person's vote is a judgement it
     // casts for them (X-OV-Subject), and /rankings reads the chat.arena boards.
     ['exchange', 'bench.round.create', 'openvibe.bench', []],

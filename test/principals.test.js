@@ -157,7 +157,7 @@ const server = http.createServer(app);
     assert.strictEqual(t.status, 200, 'the remake runs AI chat and Try it on a person’s behalf');
     const exchangeAiClaims = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.ai' });
     assert.ok(exchangeAiClaims.ok, exchangeAiClaims.reason);
-    assert.deepStrictEqual([exchangeAiClaims.claims.cap, exchangeAiClaims.claims.ns], [['ai.run.create'], ['ai.complete']], 'Exchange runs ai.complete for a person');
+    assert.deepStrictEqual([exchangeAiClaims.claims.cap, exchangeAiClaims.claims.ns], [['ai.provider.manage', 'ai.run.create', 'ai.usage.read', 'ai.workflow.manage'], ['ai.complete']], 'Exchange runs AI workflows and manages the operator console for a person');
     // OpenVibe.Fun (contracts 0.236.0): its public quests and plans in Search, its account-event subscriptions and the
     // export/deletion pair. Live and Chat are public reads and Today uses the viewer's token, so it holds no such grant.
     await db.prepare("UPDATE oauth_clients SET client_secret = 'fun-secret' WHERE client_id = 'fun'").run();

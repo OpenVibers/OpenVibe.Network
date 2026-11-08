@@ -1,7 +1,6 @@
 'use strict';
 /**
- * OpenAI and Anthropic (phase 1): the keys go to OpenVibe.AI's own-key (BYOK) page, and this entry is
- * the link to it.
+ * OpenAI and Anthropic (phase 1): keys go to OpenVibe.Exchange's "Your keys and accounts" page.
  *
  * These two are one catalogue entry, because they are one thing: a provider key that OpenVibe.AI
  * already holds the way it holds every person's own key, and runs with. Connect does not seal them and
@@ -14,7 +13,7 @@ module.exports = {
     key: 'ai',
     name: 'OpenAI & Anthropic',
     vendor: 'OpenVibe.AI',
-    blurb: 'Provider keys live in OpenVibe.AI’s own-key page; Connect links there.',
+    blurb: 'Provider keys live in OpenVibe.AI under your account; manage them on OpenVibe.Exchange.',
     apiHost: null,
     docsUrl: 'https://openvibe.exchange/api',
     byok: {
@@ -27,13 +26,13 @@ module.exports = {
     },
     auth: {
         kind: 'byok_link',
-        label: 'Your own key, in OpenVibe.AI',
+        label: 'Your own key, on OpenVibe.Exchange',
         hint: 'This key is never stored in Connect. OpenVibe.AI holds it, under your account.',
         fields: [],
         scopes: [],
     },
     walkthrough: [
-        { title: 'Open your AI keys', text: 'Your own provider keys live in OpenVibe.AI, with the sign-in of your account; the public pages are OpenVibe.Exchange now.', link: 'https://ai.openvibe.services/you', linkLabel: 'Open your AI keys' },
+        { title: 'Open your AI keys', text: 'Your provider keys and supported browser session cookies are managed on OpenVibe.Exchange.', link: 'https://openvibe.exchange/privacy/keys', linkLabel: 'Your keys and accounts' },
         { title: 'Add your key there', text: 'The key is sealed by AI, under your own account, and AI runs on it alone.', linkLabel: 'The next step' },
         { title: 'Come back here', text: 'Connect has nothing to keep for these two: no credential, no grant, no tool.', linkLabel: 'The next step' },
     ],
