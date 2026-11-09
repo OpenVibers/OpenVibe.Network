@@ -64,7 +64,7 @@ Every plan field and the one place it lives:
 | `resource.home_cell` | `platform_resource_offers.cell` | built |
 | `preferred_regions` | `dev_projects.preferred_regions` (`0015_project_regions.sql`, N3) | built |
 | `residency` | `platform_cells.residency`; a project's residency **is** its home cell's (no project column) | built |
-| `capacity` | per offer: `platform_resource_offers.doc.capacity` (built); per machine: `platform_node_capabilities.doc` (`platform.node-capabilities@1`, `0014_node_pairing.sql`, N4c) | built |
+| `capacity` | per offer: `platform_resource_offers.doc.capacity` (built); per machine: `platform_node_capabilities.doc` (`platform.link-capabilities@1`, `0014_node_pairing.sql`, N4c) | built |
 | `health` | platform machine: `platform_nodes.status`; paired machine: `platform_node_principals.last_seen_at` (`0014_node_pairing.sql`); instance: `state`; offer: `status`; cell: `status` | built |
 | `route_weight` | `platform_cells.route_weight`, `platform_service_instances.route_weight` | built; **never taken from a report** |
 | `draining` | `platform_cells.status`, `platform_node_principals.status`, instance `state`, offer `status` | built |
@@ -88,7 +88,7 @@ brief, §9.1:
 | Contract | Has | Closed at v0.85.0 |
 |---|---|---|
 | `platform.service-instance@1` (required `id service version cell node region endpoints state started_at`, `additionalProperties:false`) | the row's fields | optional `route_weight` (0–1000), so a read that carries the stored weight still validates |
-| `platform.node-capabilities@1` (required `node_id cpu arch memory_mb storage network regions tags costs`; `costs.per_hour_usd` required) | hardware, regions, costs | optional `capabilities[]` (the resource-offer pattern `^[a-z][a-z0-9-]*:[a-z0-9.-]+$`, e.g. `robot:drive`, `video:whip`) so Bot binds to presented capabilities; optional `agent_version`; optional `updated_at` |
+| `platform.link-capabilities@1` (required `node_id cpu arch memory_mb storage network regions tags costs`; `costs.per_hour_usd` required) | hardware, regions, costs | optional `capabilities[]` (the resource-offer pattern `^[a-z][a-z0-9-]*:[a-z0-9.-]+$`, e.g. `robot:drive`, `video:whip`) so Bot binds to presented capabilities; optional `agent_version`; optional `updated_at` |
 | `network.link@1` (required `id roles location health updated_at`, `additionalProperties:false`) | public platform machine | optional `cell` (Network fills it on read from the principal; a report carrying a different one is refused `409 registry.node_cell_mismatch`) |
 | `identity.service-token-claims@1` (`sub` pattern `svc:\|app:\|mod:`, `actor_type` `service\|app\|mod`, lines 24-33) | — | node actor: `sub` gains `link:lnk_<ULID>`, `actor_type` gains `node` (§4.3) |
 | `lib/ids.js` (`PREFIX` line 9, `SUBJECT_TYPES` line 13, `principalSub` lines 54-57) | — | `link: 'nod'`, `principalSub({type:'node'})` → `link:lnk_…` (not a SubjectRef type: a node never authors content) |
@@ -197,7 +197,7 @@ Deliberate decisions:
 - **`paired_by_service` + `pairing_ref` are not the robot binding.** They record which service asked for the pairing
   and its opaque reference (`rob_…`), so only that service can read or revoke the principal and Bot can find its binding
   on first connect. Robot ↔ device, profiles, operators, leases and safety stay in Bot's tables.
-- `platform_node_capabilities.doc` is the verbatim `platform.node-capabilities@1` the node presents (text, as every doc).
+- `platform_node_capabilities.doc` is the verbatim `platform.link-capabilities@1` the node presents (text, as every doc).
   The FK targets `node_id` (unique, `0008:30`).
 - Pairing codes live in Network, not Bot (plan: "Network owns … pairing credentials"); `pair_` is Bot's own id shape,
   kept so the two never need translating. The ids are Network-local (not SubjectRefs) and need no Contracts prefix.
@@ -258,7 +258,7 @@ load that `node_principals` row and require `status = 'active'` (else `401 regis
 outlive a revoke by ≤ 300 s); the row's `node_id` and `id` are the only ones the handler then writes. The node is never
 taken from the body or the path. Tested with a valid token for another node and a revoked node.
 
-- `PUT /api/v1/link/self/capabilities` — body `platform.node-capabilities@1`; its `node_id` must equal the resolved
+- `PUT /api/v1/link/self/capabilities` — body `platform.link-capabilities@1`; its `node_id` must equal the resolved
   row's `node_id` (`409 registry.node_mismatch`); upserts `platform_node_capabilities`. `regions` is what the machine can serve, never
   its home cell.
 - `POST /api/v1/link/self/credential` — rotation by the machine itself: new credential (once), the old one valid 60 s
@@ -274,7 +274,7 @@ without a `platform_nodes` row reports `health: 'up'` when `last_seen_at` is wit
 |---|---|---|
 | Network | the principal (`lnk_`), owner, trust, home cell, status; pairing codes; credential hashes; node tokens; presented capabilities | robots, profiles, operators, leases, safety, publish keys |
 | Bot | robot ↔ device binding (`devices.node_principal`), robots, profiles, operators, queue/leases, e-stop and limits, command audit, the WHIP publish key | any node credential (after B3), pairing codes (after B3) |
-| Link | its credential (file 0600), short-lived tokens, the publish key Bot gave it; presents `platform.node-capabilities@1`; enforces local safety (deadman, latch) | anything it did not present |
+| Link | its credential (file 0600), short-lived tokens, the publish key Bot gave it; presents `platform.link-capabilities@1`; enforces local safety (deadman, latch) | anything it did not present |
 
 ## 5. Capabilities — none invented
 
@@ -428,8 +428,8 @@ flips `BOT_PAIRING_AUTHORITY=network`.
    `<kind>-offer.v1.json`, and one for `node`/`provider` forbidding `detail`. Fixtures: one valid per kind, invalid
    `storage-without-detail.json`, `node-with-detail.json`.
 6. `contracts/platform/service-instance.v1.json`: optional `route_weight` (`integer`, 0–1000).
-   `contracts/platform/node-capabilities.v1.json`: optional `capabilities` (array of the resource-offer pattern),
-   `agent_version` (string ≤ 40), `updated_at` (date-time). `contracts/network/node.v1.json`: optional `cell`
+   `contracts/platform/link-capabilities.v1.json`: optional `capabilities` (array of the resource-offer pattern),
+   `agent_version` (string ≤ 40), `updated_at` (date-time). `contracts/network/link.v1.json`: optional `cell`
    (`^[a-z]{2,8}-[0-9]{1,3}$`, the `0008:16` rule).
 7. `npm test` (compat gate vs v0.84.0 must pass: nothing removed, nothing newly required), regenerate OpenAPI, tag.
 
@@ -509,7 +509,7 @@ on the v2 path; Bot's `device_id` and publish key come over HTTP instead (B1's `
 - **Rotate.** On Bot's `{"type":"rotate"}`, `POST <network>/api/v1/link/self/credential` and swap `node_credential`
   in the file atomically; the old one works 60 s.
 - **Capabilities.** After pairing and at each start, `PUT <network>/api/v1/link/self/capabilities` with
-  `platform.node-capabilities@1` built from the plugins' `describe` (audience `openvibe.network` token).
+  `platform.link-capabilities@1` built from the plugins' `describe` (audience `openvibe.network` token).
 - Without `--network` it pairs with Bot exactly as today. Tests: `credentials_test.go` round-trips v1 and v2 and
   refuses v2 without `principal`; `link_test.go` with the `botfixture_test.go` fake plus a stub Network: pair → bind →
   connect; restart with `device_id` empty re-binds; `reauth` sent before expiry; `401` from the token endpoint
