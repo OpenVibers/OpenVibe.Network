@@ -72,11 +72,11 @@ const assertLockstep = async () => {
         // 1. Auth matrix.
         const auth = { authorization: `Bearer ${await token('host', 'host-secret')}` };
         const resourceOnly = { authorization: `Bearer ${await token('host', 'host-secret', 'network.resource.report')}` };
-        const nodeOnly = { authorization: `Bearer ${await token('host', 'host-secret', 'network.node.report')}` };
+        const nodeOnly = { authorization: `Bearer ${await token('host', 'host-secret', 'network.link.report')}` };
         assert.strictEqual((await post({ source: 'oregon', offers: [] })).status, 403, 'nobody');
         assert.ok([401, 403].includes((await post({ source: 'oregon', offers: [] }, { 'x-internal-key': 'legacy-key' })).status), 'not the retired shared key');
         assert.strictEqual((await post({ source: 'oregon', offers: [] }, { authorization: `Bearer ${await token('live', 'live-secret')}` })).status, 403, 'Live lacks network.resource.report');
-        assert.strictEqual((await post({ source: 'oregon', offers: [] }, nodeOnly)).status, 403, 'network.node.report alone cannot report resources');
+        assert.strictEqual((await post({ source: 'oregon', offers: [] }, nodeOnly)).status, 403, 'network.link.report alone cannot report resources');
         assert.strictEqual((await post({ source: 'oregon', offers: [] }, resourceOnly)).status, 200, 'network.resource.report can report resources');
 
         // 2. Validation writes nothing: bad offers, a bad envelope, and a bad offer last in an otherwise good batch.

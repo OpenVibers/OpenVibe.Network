@@ -6,7 +6,7 @@
  *   GET /api/v1/resources/:ovrn                            → common.resource-summary@1
  *
  * It pages the resources OpenVibe.Network owns — its developer projects (prj_), their apps (app_) and
- * its node principals (nod_) — as common.resource-summary@1, the shape OpenVibe.Services fans out over
+ * its node principals (lnk_) — as common.resource-summary@1, the shape OpenVibe.Services fans out over
  * and merges (openvibe-sdk/resources' createResourceIndex). The T2 Fabric offer registry used to share
  * this path; the amended ADR-048 moves its public routes to /api/v1/offers (server/registry/offers.js).
  *
@@ -19,7 +19,7 @@
  * formatter, so it is present exactly when the resource is a nameable resource. Per ADR-048 section 3
  * a project is addressed by its bare prj_ id — it is never given a self-referential OVRN — and an app
  * is an actor, never a resource name (app_ is excluded from the OVRN id pattern). A project-owned node
- * principal is named ovrn:network:<prj_…>:node/nod_…; a platform- or user-owned one has no project
+ * principal is named ovrn:network:<prj_…>:node/lnk_…; a platform- or user-owned one has no project
  * segment and so no name. That is also what GET /api/v1/resources/:ovrn can read: only a resource
  * whose computed ovrn equals the one asked for answers.
  */
@@ -29,7 +29,7 @@ const contracts = require('openvibe-contracts');
 const SERVICE = 'network';
 const PROJECT_KIND = 'network.project';
 const APP_KIND = 'network.app';
-const NODE_KIND = 'network.node';
+const NODE_KIND = 'network.link';
 const KINDS = [PROJECT_KIND, APP_KIND, NODE_KIND];
 const PROJECT_ID_RE = /^prj_[0-9A-HJKMNP-TV-Z]{26}$/;
 const USER_SUBJECT_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;

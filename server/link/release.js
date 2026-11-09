@@ -1,5 +1,5 @@
 'use strict';
-// The Node's latest release, read from GitHub (OpenVibers/OpenVibe.Node). The page shows the version and the
+// The Node's latest release, read from GitHub (OpenVibers/OpenVibe.Link). The page shows the version and the
 // checksums; /install answers with the same release's installer.
 //
 // The answer is held for fifteen minutes in memory and on disk (under DATA_DIR), so a restart serves the last
@@ -14,7 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const REPO = 'OpenVibers/OpenVibe.Node';
+const REPO = 'OpenVibers/OpenVibe.Link';
 const API = `https://api.github.com/repos/${REPO}/releases/latest`;
 const TTL_MS = 15 * 60 * 1000; // fifteen minutes
 const TIMEOUT_MS = 8000;

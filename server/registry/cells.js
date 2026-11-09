@@ -2,9 +2,9 @@
 /**
  * Cells and node principals (plan T2 "cells now, hardware later", docs/t2-resource-registry.md section 9;
  * migrations/0008_cells_and_node_principals.sql). Network is the authority for where things run: regions, cells, the
- * node principal of every machine (nod_<ULID>: owner, trust class, home cell) and the service instances on them.
+ * node principal of every machine (lnk_<ULID>: owner, trust class, home cell) and the service instances on them.
  *
- * The node-principal boundary: a report never assigns identity. Host's node report (network.node.report) creates
+ * The node-principal boundary: a report never assigns identity. Host's node report (network.link.report) creates
  * platform-owned, first-party principals for machines it is the first to name, and is refused for a machine that a
  * project owns or that was revoked. A resource offer must name a known cell, and an offer for a registered node must
  * carry that node's home cell and trust class. Today there is one cell, wnam-1 (us-west), seeded by the migration.
@@ -13,7 +13,7 @@ const express = require('express');
 const { ids, http } = require('openvibe-contracts');
 
 const BOOTSTRAP_CELL = 'wnam-1';
-const NODE_ID = /^[a-z][a-z0-9-]{1,39}$/; // network.node@1's id, and the 0008 CHECK
+const NODE_ID = /^[a-z][a-z0-9-]{1,39}$/; // network.link@1's id, and the 0008 CHECK
 
 class RegistryError extends Error {
     constructor(status, code, detail) { super(detail); this.status = status; this.code = code; }
@@ -52,7 +52,7 @@ async function adoptPlatformNodes(db, nodes, by, now = new Date().toISOString())
     let added = 0;
     for (const n of nodes) {
         const cell = await cellForRegion(db, n.location && n.location.region);
-        added += (await insert.run(`nod_${ids.ulid(Date.parse(now) || Date.now())}`, n.id, cell, now, by, now)).changes || 0;
+        added += (await insert.run(`lnk_${ids.ulid(Date.parse(now) || Date.now())}`, n.id, cell, now, by, now)).changes || 0;
     }
     return added;
 }

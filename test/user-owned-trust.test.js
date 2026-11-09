@@ -12,7 +12,7 @@ const { createTestDb } = require('openvibe-sdk/testing');
 const { createDb } = require('openvibe-sdk/db');
 const offers = require('../server/registry/offers');
 const cells = require('../server/registry/cells');
-const nodePrincipals = require('../server/registry/node-principals');
+const nodePrincipals = require('../server/registry/link-principals');
 
 const MIGRATIONS = path.join(__dirname, '..', 'migrations');
 const quiet = { log() {}, warn() {}, error() {} };
@@ -43,7 +43,7 @@ const quiet = { log() {}, warn() {}, error() {} };
         await db.exec(fs.readFileSync(path.join(__dirname, 'fixtures', 'rehearsal', 'user-owned-trust.sql'), 'utf8')); // repeatable
         await offers.report(db, { source: 'host', offers: [offer('rh-user-2', { node_id: 'rh-user', trust: 'community' })] });
         assert.ok(!(await trustCheck('platform_resource_offers')).includes('user-owned') && !(await trustCheck('platform_node_principals')).includes('user-owned'));
-        await assert.rejects(principal({ id: `nod_${'C'.repeat(26)}`, node_id: 'early', owner_kind: 'user', owner_subject: usr, trust: 'user-owned', credential_hash: hash('c') }), 'refused before 0020');
+        await assert.rejects(principal({ id: `lnk_${'C'.repeat(26)}`, node_id: 'early', owner_kind: 'user', owner_subject: usr, trust: 'user-owned', credential_hash: hash('c') }), 'refused before 0020');
         const rows = async () => ({
             principals: await db.prepare('SELECT * FROM platform_node_principals ORDER BY id').all(),
             offers: await db.prepare('SELECT * FROM platform_resource_offers ORDER BY id').all(),
@@ -63,7 +63,7 @@ const quiet = { log() {}, warn() {}, error() {} };
         }
 
         // ── A person's own Node: a user-owned principal, listed with its trust class.
-        await principal({ id: `nod_${'D'.repeat(26)}`, node_id: 'my-node', owner_kind: 'user', owner_subject: usr, trust: 'user-owned', credential_hash: hash('d') });
+        await principal({ id: `lnk_${'D'.repeat(26)}`, node_id: 'my-node', owner_kind: 'user', owner_subject: usr, trust: 'user-owned', credential_hash: hash('d') });
         const mine = (await nodePrincipals.listPrincipals(db, { owner_kind: 'user' })).find((p) => p.node_id === 'my-node');
         assert.deepStrictEqual([mine.owner, mine.trust], [{ kind: 'user', subject: usr }, 'user-owned']);
 
@@ -78,9 +78,9 @@ const quiet = { log() {}, warn() {}, error() {} };
         assert.strictEqual((await cells.checkPlacement(db, [{ cell: 'wnam-1', node_id: 'rh-user', trust: 'user-owned' }])).code, 'registry.trust_mismatch');
 
         // ── Still refused: a project's machine as user-owned, a user's machine as partner, and any unknown class.
-        await assert.rejects(principal({ id: `nod_${'E'.repeat(26)}`, node_id: 'prj-node', owner_kind: 'project', project_id: prj, trust: 'user-owned', credential_hash: hash('e') }), 'a project machine is never user-owned');
-        await assert.rejects(principal({ id: `nod_${'F'.repeat(26)}`, node_id: 'usr-partner', owner_kind: 'user', owner_subject: usr, trust: 'partner', credential_hash: hash('f') }), 'a user machine is community or user-owned');
-        await assert.rejects(principal({ id: `nod_${'G'.repeat(26)}`, node_id: 'stranger', owner_kind: 'user', owner_subject: usr, trust: 'stranger', credential_hash: hash('9') }), 'an unknown class is refused by the principals table');
+        await assert.rejects(principal({ id: `lnk_${'E'.repeat(26)}`, node_id: 'prj-node', owner_kind: 'project', project_id: prj, trust: 'user-owned', credential_hash: hash('e') }), 'a project machine is never user-owned');
+        await assert.rejects(principal({ id: `lnk_${'F'.repeat(26)}`, node_id: 'usr-partner', owner_kind: 'user', owner_subject: usr, trust: 'partner', credential_hash: hash('f') }), 'a user machine is community or user-owned');
+        await assert.rejects(principal({ id: `lnk_${'G'.repeat(26)}`, node_id: 'stranger', owner_kind: 'user', owner_subject: usr, trust: 'stranger', credential_hash: hash('9') }), 'an unknown class is refused by the principals table');
         await assert.rejects(db.prepare(`INSERT INTO platform_resource_offers (id, source, kind, region, cell, trust, status, doc, reported_at)
             VALUES ('odd', 'test', 'node', 'us-west', 'wnam-1', 'stranger', 'up', '{}', '2026-10-04T00:00:00Z')`).run(), 'an unknown class is refused by the offers table');
         assert.ok(offers.check({ source: 'my-node', offers: [offer('my-node', { trust: 'stranger' })] }), 'and by the contract before anything is written');

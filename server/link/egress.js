@@ -9,7 +9,7 @@ const { ensureUserSubject } = require('../identity/subjects');
 const SUBJECT = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 const SESSION = /^ses_[0-9A-HJKMNP-TV-Z]{26}$/;
 const MACHINE = /^dev_[0-9A-HJKMNP-TV-Z]{26}$/;
-const NODE = /^nod_[0-9A-HJKMNP-TV-Z]{26}$/;
+const NODE = /^lnk_[0-9A-HJKMNP-TV-Z]{26}$/;
 const DESK = /^desk-[a-z0-9][a-z0-9-]{0,23}$/;
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const DEFAULT_BYTES = 20_000_000_000;
@@ -46,7 +46,7 @@ async function node(db, id) {
     return row;
 }
 async function ownNode(db, req) {
-    if (!String(req.principal?.sub).startsWith('node:')) throw fail(403, 'node_required');
+    if (!String(req.principal?.sub).startsWith('link:')) throw fail(403, 'node_required');
     return node(db, req.principal.sub.slice(5));
 }
 

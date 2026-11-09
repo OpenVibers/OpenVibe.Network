@@ -215,11 +215,11 @@ const server = http.createServer(app);
         // dana had folded an older account in (ADR-029): its subject goes with her.
         const old = await mk('dana_old');
         await accountMerge.merge(db, old, await db.prepare('SELECT * FROM users WHERE id = ?').get(dana.id), { initiatedBy: 'person' });
-        // Two paired machines, one per subject: an account deletion revokes both and announces each (network.node.revoked@1).
+        // Two paired machines, one per subject: an account deletion revokes both and announces each (network.link.revoked@1).
         const pairedNodes = [];
         for (const subjectId of [dana.subject_id, old.subject_id]) {
             const ulid = ids.ulid();
-            const principal = `nod_${ulid}`; const nodeId = `n-${ulid.toLowerCase()}`;
+            const principal = `lnk_${ulid}`; const nodeId = `n-${ulid.toLowerCase()}`;
             await db.prepare(`INSERT INTO platform_node_principals (id, node_id, home_cell, owner_kind, owner_subject, trust, status,
                 credential_hash, created_at, created_by, updated_at)
                 VALUES (?, ?, 'wnam-1', 'user', ?, 'community', 'active', ?, ov_now_iso(), 'test', ov_now_iso())`)
@@ -228,7 +228,7 @@ const server = http.createServer(app);
         }
         const oldToken = tok(dana);
         assert.strictEqual((await accountData.sweep(db, { dir: exportDir, now: due + 1000 })).deleted, 1);
-        const nodeEvents = await events('network.node.revoked');
+        const nodeEvents = await events('network.link.revoked');
         assert.strictEqual(nodeEvents.length, 2, 'each paired machine revoked exactly once');
         for (const [principal, nodeId, subjectId] of pairedNodes) {
             const p = await db.prepare('SELECT status, revoked_by FROM platform_node_principals WHERE id = ?').get(principal);
@@ -236,7 +236,7 @@ const server = http.createServer(app);
             const rev = nodeEvents.find((e) => e.subject.id === principal);
             assert.ok(rev, `an event for ${principal}`);
             assert.ok(validate('events.event-envelope@1', rev).valid, JSON.stringify(validate('events.event-envelope@1', rev).errors));
-            assert.ok(validate('network.node.revoked@1', rev.payload).valid, JSON.stringify(validate('network.node.revoked@1', rev.payload).errors));
+            assert.ok(validate('network.link.revoked@1', rev.payload).valid, JSON.stringify(validate('network.link.revoked@1', rev.payload).errors));
             assert.deepStrictEqual([rev.payload.node_id, rev.payload.principal_id, rev.payload.owner, rev.payload.reason, rev.actor],
                 [nodeId, principal, { kind: 'user', subject: subjectId }, 'account_deleted', { type: 'user', id: dana.subject_id }]);
             assert.ok(!/hash|credential|secret/i.test(JSON.stringify(rev.payload)), 'the payload carries no secret field');
@@ -265,7 +265,7 @@ const server = http.createServer(app);
         assert.deepStrictEqual([ev[0].payload.deletion_id, ev[0].payload.subject, ev[0].payload.aliases], [del, dana.subject_id, [old.subject_id]]);
         assert.ok((await events('network.user.token_valid_after')).some((e) => e.payload.reason === 'account_deleted'));
         assert.strictEqual((await accountData.sweep(db, { dir: exportDir, now: due + 5000 })).deleted, 0, 'once');
-        assert.strictEqual((await events('network.node.revoked')).length, 2, 'a second sweep emits nothing new');
+        assert.strictEqual((await events('network.link.revoked')).length, 2, 'a second sweep emits nothing new');
 
         // Services confirm; staff see what is outstanding.
         const confirm = { subject: dana.subject_id, completed_at: new Date().toISOString(), erased: { messages: 3 }, retained: { moderation_actions: 1 } };

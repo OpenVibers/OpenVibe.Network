@@ -1,5 +1,5 @@
 'use strict';
-// server/node/release.js: the Node's latest release held for fifteen minutes, in memory and on disk, refreshed in
+// server/link/release.js: the Node's latest release held for fifteen minutes, in memory and on disk, refreshed in
 // the background, kept when GitHub cannot be read, with GITHUB_TOKEN sent when the environment has one.
 //   node test/node-release-cache.test.js
 const assert = require('assert');
@@ -7,16 +7,16 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MODULE = require.resolve('../server/node/release');
+const MODULE = require.resolve('../server/link/release');
 const DAY = 24 * 60 * 60 * 1000;
 
 const FIXTURE = (tag) => ({
     tag_name: tag,
     published_at: '2026-11-06T12:00:00Z',
-    html_url: `https://github.com/OpenVibers/OpenVibe.Node/releases/tag/${tag}`,
+    html_url: `https://github.com/OpenVibers/OpenVibe.Link/releases/tag/${tag}`,
     assets: [
-        { name: 'install.sh', browser_download_url: `https://github.com/OpenVibers/OpenVibe.Node/releases/download/${tag}/install.sh` },
-        { name: 'SHA256SUMS', browser_download_url: `https://github.com/OpenVibers/OpenVibe.Node/releases/download/${tag}/SHA256SUMS` },
+        { name: 'install.sh', browser_download_url: `https://github.com/OpenVibers/OpenVibe.Link/releases/download/${tag}/install.sh` },
+        { name: 'SHA256SUMS', browser_download_url: `https://github.com/OpenVibers/OpenVibe.Link/releases/download/${tag}/SHA256SUMS` },
     ],
 });
 const ok = (tag, seen) => async (url, opts) => {

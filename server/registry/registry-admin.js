@@ -5,10 +5,10 @@
  * so no report carries them; a staff session sets them, next to /api/admin/deploy. No service capability is involved.
  * Nothing routes on a weight or on draining until a scheduler and a route consumer exist. Every change lands in
  * audit_log.
- *   GET /api/admin/registry/node-principals?cell=&owner_kind=&status=   → { node_principals: [...] }
+ *   GET /api/admin/registry/link-principals?cell=&owner_kind=&status=   → { node_principals: [...] }
  *   PUT /api/admin/registry/cells/:id             { route_weight?, status? } → the cell
  *   PUT /api/admin/registry/instances/:id         { route_weight?, state? }  → the instance
- *   PUT /api/admin/registry/node-principals/:id   { status }                 → the principal (active or draining)
+ *   PUT /api/admin/registry/link-principals/:id   { status }                 → the principal (active or draining)
  */
 const express = require('express');
 const { http } = require('openvibe-contracts');

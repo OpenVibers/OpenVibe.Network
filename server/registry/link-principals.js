@@ -1,32 +1,32 @@
 'use strict';
 /**
  * Pairing a person's machine (plan T2, docs/t2-cells-and-node-principal.md section 4.2, slice N4b;
- * migrations/0014_node_pairing.sql). A service holding network.node.manage (Bot) mints a one-time pairing code for one
- * of its users; the machine redeems it with no other credential and becomes a node principal (nod_<ULID>) owned by that
+ * migrations/0014_node_pairing.sql). A service holding network.link.manage (Bot) mints a one-time pairing code for one
+ * of its users; the machine redeems it with no other credential and becomes a node principal (lnk_<ULID>) owned by that
  * person, with a long-lived credential shown once. The service may then read and revoke only the principals it paired.
  *
  * Secrets: the code and the credential are shown once and stored only as their sha256; neither is ever logged nor
  * returned by a read. A paired principal is never a platform machine: no platform_nodes row is created, and Host's node
  * report naming its node_id is refused (cells.checkPlatformNodes, 409 registry.node_not_platform).
  *
- *   POST /internal/node-pairings                 network.node.manage   → 201 {pairing_id, code, expires_at}
- *   POST /api/v1/node-pairing                    none (the code)       → 201 {principal, node_id, home_cell, credential, …}
- *   GET  /internal/node-principals/:id           network.node.manage   → the principal, if the caller paired it
- *   POST /internal/node-principals/:id/revoke    network.node.manage   → the principal, revoked (idempotent)
+ *   POST /internal/link-pairings                 network.link.manage   → 201 {pairing_id, code, expires_at}
+ *   POST /api/v1/link-pairing                    none (the code)       → 201 {principal, node_id, home_cell, credential, …}
+ *   GET  /internal/link-principals/:id           network.link.manage   → the principal, if the caller paired it
+ *   POST /internal/link-principals/:id/revoke    network.link.manage   → the principal, revoked (idempotent)
  *   GET  /api/v1/me/nodes                        session               → the person's own machines, newest first
  *   POST /api/v1/me/nodes/:id/revoke             session               → their principal, revoked (idempotent)
  *
- * Every revoke — the service route, the owner's route, or an account deletion — writes network.node.revoked@1 into
+ * Every revoke — the service route, the owner's route, or an account deletion — writes network.link.revoked@1 into
  * the outbox in the same transaction (Contracts 0.98.0; docs/t2-cells-and-node-principal.md section 10): a service
  * holding the machine's session stops it at once, not at its next reauth (≤ 330 s). A second revoke emits nothing;
  * the payload carries the ids, the owner and the reason, never the credential or its hash.
  *
- * The paired machine itself (section 4.3, slice N4c): its credential buys a node token (sub node:nod_…) at
+ * The paired machine itself (section 4.3, slice N4c): its credential buys a node token (sub link:lnk_…) at
  * POST /oauth/token, and with it the machine manages only its own row. The routes resolve the node from the verified
  * token, never from the body or the path.
- *   POST /oauth/token  client_id=nod_…            the credential        → 200 node token (oauth-routes.js)
- *   PUT  /api/v1/node/self/capabilities          network.node.self.manage → 200 {node_id, reported_at}
- *   POST /api/v1/node/self/credential            network.node.self.manage → 200 {principal, node_id, credential, …}
+ *   POST /oauth/token  client_id=lnk_…            the credential        → 200 node token (oauth-routes.js)
+ *   PUT  /api/v1/link/self/capabilities          network.link.self.manage → 200 {node_id, reported_at}
+ *   POST /api/v1/link/self/credential            network.link.self.manage → 200 {principal, node_id, credential, …}
  */
 const crypto = require('crypto');
 const express = require('express');
@@ -41,7 +41,7 @@ const PREV_GRACE_MS = 60 * 1000;   // a rotated-out credential still works this 
 const SEEN_EVERY_MS = 60 * 1000;   // last_seen_at is written at most this often
 const SUBJECT = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 const PAIRING_ID = /^pair_[0-9A-HJKMNP-TV-Z]{26}$/;
-const PRINCIPAL_ID = /^nod_[0-9A-HJKMNP-TV-Z]{26}$/;
+const PRINCIPAL_ID = /^lnk_[0-9A-HJKMNP-TV-Z]{26}$/;
 const REGION = /^[a-z][a-z0-9-]{1,39}$/;
 const CONTROL = /[\u0000-\u001f\u007f]/;
 
@@ -162,7 +162,7 @@ async function redeem(db, body, now = Date.now()) {
         if (row.owner_kind !== 'user') return { error: [501, 'registry.not_yet', 'project-owned machines are not paired yet'] };
         await t.prepare('UPDATE platform_node_pairings SET used_at = ? WHERE id = ?').run(at, row.id);
         const ulid = ids.ulid(now);
-        const principalId = `nod_${ulid}`;
+        const principalId = `lnk_${ulid}`;
         const credential = crypto.randomBytes(32).toString('base64url');
         const homeCell = row.home_cell || await cellForRegion(t, b.region);
         // A paired machine is a principal only: no platform_nodes row, so it is never a platform machine.
@@ -194,13 +194,13 @@ async function byScope(db, id, scope) {
 /** A principal `service` paired, or null (another service's principal is indistinguishable from none). */
 const pairedBy = (db, id, service) => byScope(db, id, { where: 'paired_by_service = ?', params: [service] });
 
-/** The payload's `owner` (network.node.revoked@1's oneOf), from the principal row. */
+/** The payload's `owner` (network.link.revoked@1's oneOf), from the principal row. */
 const ownerOf = (p) => p.owner_kind === 'user' ? { kind: 'user', subject: p.owner_subject }
     : p.owner_kind === 'project' ? { kind: 'project', project_id: p.project_id }
     : { kind: 'platform' };
 
 /**
- * The network.node.revoked@1 envelope for a principal row just revoked (Contracts 0.98.0; docs/t2-cells-and-node-
+ * The network.link.revoked@1 envelope for a principal row just revoked (Contracts 0.98.0; docs/t2-cells-and-node-
  * principal.md section 10). Only the ids, who owns the machine, why and when: never the credential or its hash.
  * Validates payload and envelope (a bug if either is off, never user input).
  */
@@ -208,11 +208,11 @@ function revokedEnvelope(p, { actor, reason, at }) {
     const payload = { node_id: p.node_id, principal_id: p.id, owner: ownerOf(p), at };
     if (reason) payload.reason = reason;
     const env = {
-        event_id: ids.newId('event', Date.parse(at)), event_type: 'network.node.revoked', version: 1, source: 'network',
+        event_id: ids.newId('event', Date.parse(at)), event_type: 'network.link.revoked', version: 1, source: 'network',
         actor, timestamp: at, visibility: 'internal', subject: { type: 'node_principal', id: p.id }, payload,
     };
     const ev = validate('events.event-envelope@1', env);
-    const pv = validate('network.node.revoked@1', payload);
+    const pv = validate('network.link.revoked@1', payload);
     if (!ev.valid || !pv.valid) throw new Error(`node-principals: bad event ${JSON.stringify((ev.errors || []).concat(pv.errors || [])).slice(0, 300)}`);
     return env;
 }
@@ -243,7 +243,7 @@ function pairedEnvelope(p, { at }) {
 }
 
 /**
- * Revoke one active principal row and enqueue its network.node.revoked@1 on the ambient transaction, so the change
+ * Revoke one active principal row and enqueue its network.link.revoked@1 on the ambient transaction, so the change
  * and the event share it. → changes (0 or 1): a row already revoked changes nothing and emits nothing.
  */
 async function revokeRow(db, p, { revokedBy, actor, reason, at }) {
@@ -375,8 +375,8 @@ const NODE_WIDE_AUDIENCES = Object.freeze(['openvibe.link', 'openvibe.website'])
 const INVALID_CLIENT = Object.freeze({ status: 401, body: Object.freeze({ error: 'invalid_client', error_description: 'Invalid client credentials' }) });
 
 /**
- * grant_type=client_credentials for a node principal (client_id nod_…): its current credential, or the previous one
- * while prev_valid_until is in the future, buys a 300 s token for openvibe.network (network.node.self.manage) or for
+ * grant_type=client_credentials for a node principal (client_id lnk_…): its current credential, or the previous one
+ * while prev_valid_until is in the future, buys a 300 s token for openvibe.network (network.link.self.manage) or for
  * the service that paired it (no capability: that service authorises the node by its own binding). The secret is only
  * ever hashed and compared in constant time; it is never logged or returned. → { status, body } (OAuth shapes).
  */
@@ -405,8 +405,8 @@ async function issueNodeToken(db, { clientId, clientSecret, audience, privateKey
     }
     const iat = Math.floor(now / 1000);
     const claims = {
-        iss: issuer, sub: `node:${p.id}`, actor_type: 'node', aud: [aud],
-        cap: aud === SELF_AUDIENCE ? ['network.node.self.manage'] : nodeCaps,
+        iss: issuer, sub: `link:${p.id}`, actor_type: 'link', aud: [aud],
+        cap: aud === SELF_AUDIENCE ? ['network.link.self.manage'] : nodeCaps,
         // The person the machine acts for, on the audiences where it acts for them (the Agent Streams plan's Live
         // token): Live reads the owner of an agent stream from it. Other audiences name nobody.
         ...(nodeCaps.length && p.owner_subject ? { on_behalf_of: p.owner_subject } : {}),
@@ -421,7 +421,7 @@ async function issueNodeToken(db, { clientId, clientSecret, audience, privateKey
     return { status: 200, body: { access_token: access, token_type: 'Bearer', expires_in: TOKEN_TTL_S, scope: claims.cap.join(' ') } };
 }
 
-const NODE_SUB = /^node:(nod_[0-9A-HJKMNP-TV-Z]{26})$/;
+const NODE_SUB = /^link:(lnk_[0-9A-HJKMNP-TV-Z]{26})$/;
 
 /**
  * The node principal a verified token speaks for, live. A token of any other actor (svc:, app:) is 403
@@ -469,7 +469,7 @@ async function rotateCredential(db, id, now = Date.now()) {
     return { principal: row.id, node_id: row.node_id, credential, prev_valid_until: row.credential_hash ? until : null };
 }
 
-// Mounted at /api/v1/node/self behind principals.guard('network.node.self.manage') (server/index.js). The guard checks
+// Mounted at /api/v1/link/self behind principals.guard('network.link.self.manage') (server/index.js). The guard checks
 // the token's signature, audience and capability; ownership is selfOf's, before any write.
 function selfRouter(now = () => Date.now()) {
     const router = express.Router();
@@ -521,7 +521,7 @@ function routers({ guard, now = () => Date.now() }) {
         res.json(principalView(p));
     });
 
-    // Mounted at /api/v1/node-pairing behind its own rate limit (server/index.js).
+    // Mounted at /api/v1/link-pairing behind its own rate limit (server/index.js).
     const pairing = express.Router();
     pairing.post('/', express.json({ limit: '8kb' }), async (req, res) => {
         res.set('Cache-Control', 'no-store');

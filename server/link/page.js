@@ -1,20 +1,18 @@
 'use strict';
-// openvibe.link: OpenVibe Link's own front door (the Node renamed). What Link is (your machines, connected), what it
+// openvibe.link: OpenVibe Link's own front door (the machine agent). What Link is (your machines, connected), what it
 // does today, how to install it on each OS, and what it never does. The chrome is Network's own; the page is Link's.
-// The version, the release date and the checksums come from the Node's latest GitHub release (server/node/release.js).
-// node.openvibe.network is the old name: it 301s here (server/node/routes.js) except /install, which keeps serving.
+// The version, the release date and the checksums come from Link's latest GitHub release (server/link/release.js).
 
 const kit = require('openvibe-shared/kit');
 
 const HOST = 'openvibe.link';
 const WWW_HOST = `www.${HOST}`;
 // The name the product had until 2026-11-07; its /install line is in people's notes and keeps working.
-const LEGACY_HOST = 'node.openvibe.network';
 const SITE = `https://${HOST}`;
-const DOCS = 'https://github.com/OpenVibers/OpenVibe.Node/blob/main/docs';
+const DOCS = 'https://github.com/OpenVibers/OpenVibe.Link/blob/main/docs';
 const INSTALL_LINE = `curl -fsSL ${SITE}/install | sh`;
 
-// What the Node does today, each with where it happens. A page that promises tomorrow is a page that lies today.
+// What Link does today, each with where it happens. A page that promises tomorrow is a page that lies today.
 const DOES = [
     { icon: 'code', title: 'Run your agents and code on your machine', body: 'Codes starts a coding task from any browser and this machine runs it, as an unprivileged user in a sandbox.', href: 'https://openvibe.codes/run', cta: 'OpenVibe.Codes' },
     { icon: 'spark', title: 'Offer your models or your GPU and earn credits', body: 'Exchange lists what your machine serves; you choose the models, the hours, the price and who may use it.', href: 'https://openvibe.exchange/sell', cta: 'OpenVibe.Exchange' },
@@ -23,7 +21,7 @@ const DOES = [
     { icon: 'lock', title: 'Keep your memory, read-only', body: 'The collectors read what your coding tools remember: local, redacted, and never uploaded unless you say so.', href: `${DOCS}/memory.md`, cta: 'The memory docs' },
 ];
 
-// What the Node never does. The two sentences people ask for most.
+// What Link never does. The two sentences people ask for most.
 const NEVER = [
     'It cannot reach your computer without your pairing: nobody drives it, reads it or runs a command on it until you approved the machine.',
     'Nothing runs that you did not turn on: no task, no camera, no driver and no upload starts on its own.',
@@ -52,8 +50,8 @@ function installBlock(release, userAgent) {
     const current = detectOS(userAgent);
     const v = esc(release.version || '');
     const pkg = String(release.version || '').replace(/^v/, '');
-    const latest = 'https://github.com/OpenVibers/OpenVibe.Node/releases/latest/download';
-    const releases = 'https://github.com/OpenVibers/OpenVibe.Node/releases';
+    const latest = 'https://github.com/OpenVibers/OpenVibe.Link/releases/latest/download';
+    const releases = 'https://github.com/OpenVibers/OpenVibe.Link/releases';
     const dl = (name) => `${latest}/${name}`;
     const file = (name, label) => `<a href="${esc(dl(name))}">${esc(label || name)}</a>`;
     const pkgFile = (name, label) => (pkg ? `<a href="${esc(dl(name))}">${esc(label || name)}</a>` : `<a href="${releases}">${esc(label || name)}</a>`);
@@ -77,7 +75,7 @@ function installBlock(release, userAgent) {
 <p>Download the program for this PC: ${file('openvibe-link-windows-amd64.exe', 'Windows x64 (.exe)')} or ${file('openvibe-link-windows-arm64.exe', 'Windows ARM64 (.exe)')}.</p>
 <p>Windows may show SmartScreen the first time: choose <strong>More info</strong>, then <strong>Run anyway</strong>. In an <strong>Administrator</strong> PowerShell, from the folder you saved it in:</p>
 ${kit.snippet({ code: '.\\openvibe-link pair <CODE>\n.\\openvibe-link install', id: 'np-install-win', label: 'Copy the Windows steps' })}
-<p class="np-fine">The code comes from <a href="/pair">openvibe.link/pair</a> (the signed-in machines hub, <strong>Pair a machine</strong>). <code>openvibe-node.exe</code> is the same program under its old name.</p>
+<p class="np-fine">The code comes from <a href="/pair">openvibe.link/pair</a> (the signed-in machines hub, <strong>Pair a machine</strong>). </p>
 </div>
 </details>
 
@@ -118,7 +116,7 @@ ${kit.snippet({ code: 'sudo apt install ./openvibe-link_<version>_amd64.deb\n# o
 </div>
 </details>
 </div>
-<p class="np-fine">The program is <code>openvibe-link</code>. <code>openvibe-node</code> is kept as an alias, so existing installs and scripts keep working. Every download is checked against the release's <a href="${esc(dl('SHA256SUMS'))}">SHA256SUMS</a>.</p>`;
+<p class="np-fine">The program is <code>openvibe-link</code>. Every download is checked against the release's <a href="${esc(dl('SHA256SUMS'))}">SHA256SUMS</a>.</p>`;
 }
 
 /** The release facts: the version, when it came out, the checksums and the release page. */
@@ -139,7 +137,7 @@ ${release.stale && days >= 1 ? `<p class="np-fine np-warn">GitHub could not be r
 </section>`;
 }
 
-/** The page. `release` is what server/node/release.js answered. */
+/** The page. `release` is what server/link/release.js answered. */
 function render({ release = {}, releaseId, userAgent } = {}) {
     const title = 'OpenVibe Link: your machines, connected';
     const desc = 'OpenVibe Link runs on your computer, server, phone or robot: it runs your agents and code, offers your models or GPU to the network, drives robots, and keeps your memory read-only.';
@@ -195,7 +193,7 @@ ${installBlock(release, userAgent)}
 
 <section class="np-sec" id="machines" aria-labelledby="h-machines"><h2 id="h-machines">Your machines</h2>
 <p class="np-fine">Sign in to see every machine you paired: whether it is online, what it is allowed to do, and the one-time code to add another. The same page renames or revokes one, and the phone pairs there too.</p>
-<p class="np-cta" style="margin-top:12px">${kit.button({ href: 'https://openvibe.my/machines', label: 'Open your machines', kind: 'primary' })} ${kit.button({ href: '/pair', label: 'Pair a machine', kind: 'quiet' })}</p>
+<p class="np-cta" style="margin-top:12px">${kit.button({ href: '/machines', label: 'Open your machines', kind: 'primary' })} ${kit.button({ href: '/pair', label: 'Pair a machine', kind: 'quiet' })}</p>
 </section>
 
 <section class="np-sec" id="browsing"><h2>Your usual internet address</h2>
@@ -231,7 +229,7 @@ ${releaseBlock(release)}
 <li><a href="${DOCS}/protocol.md">The protocol</a> &mdash; the wire format between Link and OpenVibe.Bot.</li>
 <li><a href="${DOCS}/memory.md">Your memory</a> &mdash; what the collectors read and how it is uploaded.</li>
 </ul>
-<p class="np-fine">The source is on <a href="https://github.com/OpenVibers/OpenVibe.Node">GitHub</a>. The installer also lives at <a href="https://openvibe.bot/install">openvibe.bot/install</a>, which keeps working.</p>
+<p class="np-fine">The source is on <a href="https://github.com/OpenVibers/OpenVibe.Link">GitHub</a>. The installer also lives at <a href="https://openvibe.bot/install">openvibe.bot/install</a>, which keeps working.</p>
 </section>
 </main>
 ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact' })}
@@ -291,4 +289,4 @@ const CSS = `
 @media (max-width:640px){.np{padding:22px 16px 52px}}
 `;
 
-module.exports = { render, HOST, WWW_HOST, LEGACY_HOST, SITE, DOCS, INSTALL_LINE, DOES, NEVER };
+module.exports = { render, HOST, WWW_HOST, SITE, DOCS, INSTALL_LINE, DOES, NEVER };

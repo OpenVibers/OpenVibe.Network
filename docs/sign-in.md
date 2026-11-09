@@ -11,7 +11,7 @@ OAuth 2.0 / OpenID Connect provider:
 | User info | `https://openvibe.network/oauth/userinfo` |
 | Keys | `https://openvibe.network/api/.well-known/jwks` |
 
-A Node site gets the whole client (routes, PKCE, cookies, offline verification) from `openvibe-sdk/sso`. Third-party
+A Link site gets the whole client (routes, PKCE, cookies, offline verification) from `openvibe-sdk/sso`. Third-party
 apps register in the developer console ([developer-projects.md](developer-projects.md)).
 
 ## The account chooser

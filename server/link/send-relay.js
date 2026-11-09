@@ -16,7 +16,7 @@ const bad = (status, code, message) => Object.assign(new Error(message), { statu
 
 async function principal(db, req) {
     const sub = String(req.principal?.sub || '');
-    if (!sub.startsWith('node:')) throw bad(403, 'send.machine_required', 'only a paired machine can use this route');
+    if (!sub.startsWith('link:')) throw bad(403, 'send.machine_required', 'only a paired machine can use this route');
     const row = await db.prepare("SELECT id, owner_subject, owner_kind, status FROM platform_node_principals WHERE id = ?").get(sub.slice(5));
     if (!row || row.status !== 'active' || row.owner_kind !== 'user' || !row.owner_subject) {
         throw bad(401, 'send.machine_unavailable', 'this machine is no longer paired to an account');
@@ -84,7 +84,7 @@ function router({ nodeGuard, requireAuth, db }) {
             const sender = await principal(db, req);
             const targetId = String(req.body?.target_node || '');
             const envelope = req.body?.envelope;
-            if (!/^nod_[0-9A-HJKMNP-TV-Z]{26}$/.test(targetId)) throw bad(400, 'send.bad_target', 'choose one of your paired machines');
+            if (!/^lnk_[0-9A-HJKMNP-TV-Z]{26}$/.test(targetId)) throw bad(400, 'send.bad_target', 'choose one of your paired machines');
             if (typeof envelope !== 'string' || !envelope || Buffer.byteLength(envelope) > MAX_ENVELOPE || !/^[A-Za-z0-9+/]+={0,2}$/.test(envelope)) {
                 throw bad(400, 'send.bad_envelope', 'the encrypted file is missing or too large');
             }
@@ -140,7 +140,7 @@ function router({ nodeGuard, requireAuth, db }) {
             const owner = await ensureUserSubject(db, req.user);
             const targetId = String(req.body?.target_node || '');
             const envelope = req.body?.envelope;
-            if (!/^nod_[0-9A-HJKMNP-TV-Z]{26}$/.test(targetId)) throw bad(400, 'send.bad_target', 'choose one of your paired machines');
+            if (!/^lnk_[0-9A-HJKMNP-TV-Z]{26}$/.test(targetId)) throw bad(400, 'send.bad_target', 'choose one of your paired machines');
             if (typeof envelope !== 'string' || !envelope || Buffer.byteLength(envelope) > MAX_ENVELOPE || !/^[A-Za-z0-9+/]+={0,2}$/.test(envelope)) {
                 throw bad(400, 'send.bad_envelope', 'the encrypted file is missing or too large');
             }

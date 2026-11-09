@@ -1,6 +1,6 @@
 # Community AI offers in Network
 
-OpenVibe.Node's `ai` plugin can offer a person's local models to the network ("Offer to the network"). Bot reports each
+OpenVibe.Link's `ai` plugin can offer a person's local models to the network ("Offer to the network"). Bot reports each
 machine's offer, Network validates and stores it, and OpenVibe.AI reads it to place only opted-in requests.
 
 ## Why its own table

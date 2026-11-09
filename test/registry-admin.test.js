@@ -33,12 +33,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 Object.assign(app.locals, { db, config, privateKey: keys.privateKey, publicKey: keys.publicKey });
 app.use('/oauth', require('../server/auth/oauth-routes'));
-app.use('/internal/registry/instances', require('../server/registry/instances').routers({ guard: principals.guard('network.node.report') }).internal);
+app.use('/internal/registry/instances', require('../server/registry/instances').routers({ guard: principals.guard('network.link.report') }).internal);
 app.use('/api/v1/cells', require('../server/registry/cells').routers({ readGuard: principals.guard('network.registry.read') }).pub);
 app.use('/api/admin/registry', require('../server/registry/registry-admin').createRegistryAdmin(db, requireAuth, requireAdmin));
 const server = http.createServer(app);
 
-const nod = () => `nod_${ids.ulid()}`;
+const nod = () => `lnk_${ids.ulid()}`;
 const platformId = nod(); const pairedId = nod(); const revokedId = nod();
 await db.prepare(`INSERT INTO platform_node_principals (id, node_id, home_cell, owner_kind, owner_subject, trust, status, created_by, revoked_at, credential_hash) VALUES
     (?, 'ovh-1', 'wnam-1', 'platform', NULL, 'first-party', 'active', 'test', NULL, NULL),

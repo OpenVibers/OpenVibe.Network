@@ -22,11 +22,11 @@
  *   GET  /api/v1/machine-pools               session   → { pools, candidates }  (no address or public IP)
  *   POST /api/v1/machine-pools               session   { machines, head? } → 201 { pool }
  *   POST /api/v1/machine-pools/:id/revoke    session   → { revoked }
- *   POST /api/v1/node/self/pools/announce    node      { address, port, free_vram, free_ram, hardware } → { machine }
- *   GET  /api/v1/node/self/pools/:id         node      → { pool }   (bot.machine-pool@1)
- *   POST /api/v1/node/self/pools/:id/approve node      { certificate } → { pool }
- *   POST /api/v1/node/self/pools/:id/status  node      { ready } → { ok, pool }
- *   POST /api/v1/node/self/pools/:id/leave   node      → { revoked }
+ *   POST /api/v1/link/self/pools/announce    node      { address, port, free_vram, free_ram, hardware } → { machine }
+ *   GET  /api/v1/link/self/pools/:id         node      → { pool }   (bot.machine-pool@1)
+ *   POST /api/v1/link/self/pools/:id/approve node      { certificate } → { pool }
+ *   POST /api/v1/link/self/pools/:id/status  node      { ready } → { ok, pool }
+ *   POST /api/v1/link/self/pools/:id/leave   node      → { revoked }
  */
 const express = require('express');
 const crypto = require('node:crypto');
@@ -74,8 +74,8 @@ function certificate(value) {
 /** The calling machine's live node principal. A user, app or service token is refused: only a machine approves. */
 async function node(db, req) {
     const sub = String(req.principal?.sub || '');
-    if (!sub.startsWith('node:')) fail(403, 'only the machine itself may do this');
-    const p = await db.prepare('SELECT id, owner_subject, status, owner_kind FROM platform_node_principals WHERE id = ?').get(sub.slice('node:'.length));
+    if (!sub.startsWith('link:')) fail(403, 'only the machine itself may do this');
+    const p = await db.prepare('SELECT id, owner_subject, status, owner_kind FROM platform_node_principals WHERE id = ?').get(sub.slice('link:'.length));
     if (!p || p.status !== 'active' || p.owner_kind !== 'user') fail(401, 'machine is no longer paired to an owner');
     return p;
 }
@@ -201,8 +201,8 @@ function routers({ bot, requireAuth }) {
         res.status(201).json({ pool: { id: pool.id, head: pool.head, machines: pool.machines.map((m) => ({ id: m.id, approved: false, ready: false })) } });
     }));
     user.post('/:id/revoke', wrap(async (req, res, db) => { await revoke(db, req.params.id, await owner(db, req)); res.json({ revoked: true }); }));
-    // Mounted under /api/v1/node/self, whose guard (server/index.js) has already checked the node token and
-    // network.node.self.manage once; every handler then resolves the live node principal (node()), which refuses a
+    // Mounted under /api/v1/link/self, whose guard (server/index.js) has already checked the node token and
+    // network.link.self.manage once; every handler then resolves the live node principal (node()), which refuses a
     // request that reached it without one.
     self.use(express.json({ limit: '16kb' }));
     self.post('/announce', wrap(async (req, res, db) => {

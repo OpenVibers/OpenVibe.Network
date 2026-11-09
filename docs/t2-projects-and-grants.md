@@ -61,7 +61,7 @@ allowances changes.
 
 **Gaps — not in v0.85.0, so the slices that needed them were blocked at that tag (section 8):**
 
-1. `identity.service-token-claims@1`: `sub` allows only `svc:` / `app:` / `mod:` / `node:` and `actor_type` only
+1. `identity.service-token-claims@1`: `sub` allows only `svc:` / `app:` / `mod:` / `link:` and `actor_type` only
    `service | app | mod | node`. An agent token cannot validate. (v0.85.0 closed the same gap for the node actor of
    `docs/t2-resource-registry.md` §9.)
 2. No capability for a service to create or consume a confirmation (`network.*` at v0.85.0 has none; inventing one makes
