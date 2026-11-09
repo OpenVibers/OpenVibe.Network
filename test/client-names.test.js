@@ -28,7 +28,8 @@ const { getDb, seedDb } = require('../server/db/database');
     assert.strictEqual(git.name, 'OpenVibe Git', 'the new site signs people in with OpenVibe');
     assert.deepStrictEqual(JSON.parse(git.redirect_uris), ['https://git.openvibe.codes/auth/callback'], 'one callback on git.openvibe.codes');
     assert.strictEqual(git.is_first_party, 1);
-    assert.ok(await db.prepare('SELECT 1 AS one FROM oauth_clients WHERE client_id = ?').get('forgejo'), 'Forgejo\'s client stays until the cut-over');
+    const forgejo = await db.prepare('SELECT redirect_uris FROM oauth_clients WHERE client_id = ?').get('forgejo');
+    assert.ok(!forgejo || JSON.parse(forgejo.redirect_uris).length === 0, 'Forgejo\'s client is retired: it signs nobody in');
     const uris = async () => JSON.parse((await db.prepare('SELECT redirect_uris FROM oauth_clients WHERE client_id = ?').get('inventory')).redirect_uris);
     assert.ok((await uris()).includes('https://openvibe.my/inventory/auth/callback'));
     await db.prepare('UPDATE oauth_clients SET redirect_uris = ? WHERE client_id = ?')

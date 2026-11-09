@@ -184,10 +184,7 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'play', name: 'OpenVibe.Play', redirect_uris: ['https://play.openvibe.network/auth/callback'] },
             // Private S3-compatible storage zones (ADR-031 amendment; contracts 0.173.0).
             { client_id: 'zone', name: 'OpenVibe.Zone', redirect_uris: ['https://openvibe.zone/auth/callback'] },
-            // OpenVibe Git: Forgejo at openvibe.codes/git (OpenVibe.Codes deploy/forgejo, WS-X12), signing in through OpenID
-            // Connect; its callback is Forgejo's /user/oauth2/<source name>/callback. git.openvibe.codes once that name exists.
-            // Kept until the cut-over to OpenVibe.Git; Opus revokes it then.
-            { client_id: 'forgejo', name: 'OpenVibe Git', redirect_uris: ['https://openvibe.codes/git/user/oauth2/OpenVibe/callback', 'https://git.openvibe.codes/user/oauth2/OpenVibe/callback'] },
+            // Forgejo's client (`forgejo`) is retired: migration 0063 (OpenVibe.Git replaced Forgejo, 2026-11-09).
             // OpenVibe.Git: the site at git.openvibe.codes (OpenVibers/OpenVibe-Git) signs people in with OpenVibe itself
             // (openvibe-sdk/sso, the `git` client). Codes, Run and Link call its API with typed service tokens.
             { client_id: 'git', name: 'OpenVibe Git', redirect_uris: ['https://git.openvibe.codes/auth/callback'] },
