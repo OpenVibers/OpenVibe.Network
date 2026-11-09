@@ -465,7 +465,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     }
     const qCursor = (v) => (/^[A-Za-z0-9._~=-]{1,300}$/.test(String(v || '')) ? String(v) : '');
     const qLimit = (v, max) => String(Math.min(Math.max(parseInt(v, 10) || 20, 1), max));
-    router.options(['/feed', '/wall', '/status'], (req, res) => {
+    router.options(['/feed', '/wall', '/status', '/posts', '/attachments'], (req, res) => {
         res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Max-Age': '600' });
         res.status(204).end();
     });
@@ -488,6 +488,32 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // signed-in person's follows (following=1 only with their Bearer token: Community answers 401 without one).
     const qSite = (v) => (/^[a-z0-9][a-z0-9:-]{0,39}$/.test(String(v || '')) ? String(v) : '');
     const qWords = (v) => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+    // POST /api/frame/attachments and POST /api/frame/posts — the Feed's composer with pictures (the owner, 11-09: "you
+    // can make posts and put images"): a picture goes to Community's status space (multipart `file`, one image, at most
+    // 8 MB, Community stores it in Media as the person's), then the post names it with its alt text. Same rules as
+    // /status: only with the person's Bearer token, never a cookie; Community's answer and status passed back as they are.
+    const sendOn = async (req, res, path, body, contentType) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '';
+        if (!auth) return res.status(401).send('{"error":"sign in to post"}');
+        try {
+            const r = await fetch(new URL(path, svcUrl('community', 'http://127.0.0.1:4200')).href, {
+                method: 'POST', headers: { Authorization: auth, 'Content-Type': contentType, Accept: 'application/json' },
+                body, signal: AbortSignal.timeout(20000),
+            });
+            const text = await r.text();
+            return res.status(r.status).send(text.slice(0, 64 * 1024));
+        } catch { return res.status(502).send('{"error":"Community did not answer"}'); }
+    };
+    router.post('/attachments', express.raw({ type: (req) => /^multipart\/form-data; *boundary=/i.test(String(req.headers['content-type'] || '')), limit: '8500kb' }), (req, res) => {
+        if (!Buffer.isBuffer(req.body) || !req.body.length) {
+            res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' });
+            return res.status(400).json({ error: 'Send one picture as multipart form data (the field "file")' });
+        }
+        return sendOn(req, res, '/api/v1/spaces/status/attachments', req.body, String(req.get('content-type')));
+    });
+    router.post('/posts', express.json({ limit: '8kb' }), (req, res) => sendOn(req, res, '/api/v1/posts', JSON.stringify(req.body || {}), 'application/json'));
+
     router.get('/feed', (req, res) => relay(req, res, '/api/v1/feed', {
         kind: FEED_KINDS.includes(String(req.query.kind || '')) ? String(req.query.kind) : '',
         site: qSite(req.query.site), q: qWords(req.query.q),

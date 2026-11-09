@@ -17,6 +17,12 @@ const { createFrameService } = require('../server/frame/service');
         const u = new URL(req.url, 'http://x');
         if (u.pathname === '/api/v1/feed') return res.end(JSON.stringify({ items: [{ id: 'p:1', kind: u.searchParams.get('kind') || 'post', url: 'https://openvibe.community/p/1', title: 'A post' }], next_cursor: 'c2' }));
         if (u.pathname === '/api/v1/me/status' && req.method === 'POST') { let body = ''; req.on('data', (c) => { body += c; }); req.on('end', () => { asked.push({ url: req.url, auth: req.headers.authorization || '', body }); res.statusCode = req.headers.authorization ? 201 : 401; res.end(JSON.stringify({ ok: true })); }); return undefined; }
+        if ((u.pathname === '/api/v1/spaces/status/attachments' || u.pathname === '/api/v1/posts') && req.method === 'POST') {
+            const chunks = []; req.on('data', (c) => chunks.push(c));
+            req.on('end', () => { const body = Buffer.concat(chunks); asked.push({ url: req.url, auth: req.headers.authorization || '', cookie: req.headers.cookie || '', type: req.headers['content-type'] || '', size: body.length, text: body.toString('utf8').slice(0, 400) });
+                res.statusCode = 201; res.end(u.pathname === '/api/v1/posts' ? '{"id":7,"post_id":9}' : '{"attachment":{"media_id":"med_01ABCDEFGHJKMNPQRSTVWXYZ01"}}'); });
+            return;
+        }
         if (u.pathname === '/api/v1/pulse') return res.end(JSON.stringify({ items: [{ id: 1, title: 'ada went live' }], next_cursor: null, viewer: { can_post: !!req.headers.authorization } }));
         res.statusCode = 404; return res.end('{}');
     });
@@ -71,6 +77,21 @@ const { createFrameService } = require('../server/frame/service');
     const sent = asked.filter((x) => x.body)[0];
     assert.strictEqual(sent.auth, 'Bearer abcdefghijklmnop.qrstu');
     assert.deepStrictEqual(JSON.parse(sent.body), { text: 'hello' });
+    // The composer's pictures: one multipart picture to Community's status space, then the post that names it.
+    const form = new FormData(); form.append('file', new Blob([Buffer.from('\x89PNG fake')], { type: 'image/png' }), 'a.png');
+    const up = await fetch(`${base}/attachments`, { method: 'POST', headers: { Authorization: 'Bearer abcdefghijklmnop.qrstu', Cookie: 'ov_session=secret' }, body: form });
+    assert.strictEqual(up.status, 201, 'the picture is stored');
+    assert.strictEqual((await up.json()).attachment.media_id, 'med_01ABCDEFGHJKMNPQRSTVWXYZ01');
+    const upSent = asked.filter((x) => x.url === '/api/v1/spaces/status/attachments' && x.size != null).pop();
+    assert.ok(/^multipart\/form-data; *boundary=/i.test(upSent.type) && upSent.size > 0 && upSent.text.includes('PNG fake'), 'the picture goes on as it came: ' + JSON.stringify({ type: upSent.type, size: upSent.size, text: upSent.text.slice(0, 120) }));
+    assert.deepStrictEqual([upSent.auth, upSent.cookie], ['Bearer abcdefghijklmnop.qrstu', ''], 'the token goes along, the cookie never');
+    const posted = await fetch(`${base}/posts`, { method: 'POST', headers: { Authorization: 'Bearer abcdefghijklmnop.qrstu', 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'look', pictures: [{ media_id: 'med_01ABCDEFGHJKMNPQRSTVWXYZ01', alt: 'A cat' }] }) });
+    assert.strictEqual(posted.status, 201);
+    assert.deepStrictEqual(JSON.parse(asked.filter((x) => x.url === '/api/v1/posts' && x.text != null).pop().text), { text: 'look', pictures: [{ media_id: 'med_01ABCDEFGHJKMNPQRSTVWXYZ01', alt: 'A cat' }] });
+    assert.strictEqual((await fetch(`${base}/attachments`, { method: 'POST', body: form })).status, 401, 'no token, no picture');
+    assert.strictEqual((await fetch(`${base}/posts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 401, 'no token, no post');
+    assert.strictEqual((await fetch(`${base}/attachments`, { method: 'POST', headers: { Authorization: 'Bearer abcdefghijklmnop.qrstu', 'Content-Type': 'image/png' }, body: 'x' })).status, 400, 'only multipart');
+
     const anon = await fetch(`${base}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     assert.strictEqual(anon.status, 401, 'no token, no post');
 
