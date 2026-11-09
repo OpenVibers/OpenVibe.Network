@@ -31,7 +31,8 @@ const updates = fs.readFileSync(path.join(__dirname, '..', 'server', 'updates', 
 assert.match(updates, /\.up-sites a\[aria-current\]\{background:var\(--accent-strong,#1d4ed8\);border-color:var\(--accent-strong,#1d4ed8\);color:var\(--on-accent-strong,#fff\)\}/);
 
 const home = require('../server/home/render').render().html;
-const heading = home.match(/<section class="sc-sec[^"]*" id="network" aria-labelledby="([^"]+)"><h2 id="\1">([^<]*)<\/h2>/)[2];
+const sectionId = home.match(/<section class="sc-sec[^"]*" id="network" aria-labelledby="([^"]+)">/)[1];
+const heading = home.match(new RegExp(`<h2 id="${sectionId}">([\\s\\S]*?)</h2>`))[1].replace(/<[^>]*>/g, '').trim();
 assert.ok(home.includes(`"@type":"ItemList","name":${JSON.stringify(heading)}`), `the ItemList is named "${heading}"`);
 console.log('page checks: login, updates filter and home JSON-LD ok');
 process.exit(0);
