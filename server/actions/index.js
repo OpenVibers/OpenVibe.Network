@@ -36,6 +36,7 @@ const CANCEL = {
 };
 const RETRY = {
     actor: { cap: 'actor.task.create', path: (id) => '/api/v1/tasks/' + encodeURIComponent(id) + '/retry', name: 'OpenVibe.Actor' },
+    ai: { cap: 'ai.run.create', path: (id) => '/api/v1/runs/' + encodeURIComponent(id) + '/retry', name: 'OpenVibe.AI' },
 };
 const ACTIONS_TIMEOUT_MS = 2500;
 const CACHE_MS = 10_000;
