@@ -267,7 +267,7 @@ function send(req, res, fn) {
 /**
  * The person's own locker: PUT /api/v1/me/keys, GET /api/v1/me/keys/backup, DELETE /api/v1/me/keys.
  */
-function meRouter(requireAuth, { notifications = null, isFirstPartyOrigin = null, requireCompanion = requireAuth } = {}) {
+function meRouter(requireAuth, { notifications = null, isFirstPartyOrigin = null, requireCompanion = requireAuth, requireFill = requireCompanion } = {}) {
     const router = express.Router();
     router.use(http.middleware());
 
@@ -278,6 +278,19 @@ function meRouter(requireAuth, { notifications = null, isFirstPartyOrigin = null
         const rows = await db.prepare('SELECT kind, blob FROM locker_key_backups WHERE subject = ? ORDER BY kind').all(me);
         res.set('Cache-Control', 'private, no-store');
         res.json({ subject: me, backups: Object.fromEntries(rows.map((row) => [row.kind, row.blob])) });
+    }));
+
+    // Link Send public keys for Companion's blind-fill picker. Only the person's active machines and
+    // OpenVibe's own pool are eligible; project and community machine keys never leave Network.
+    router.get('/fill-targets', requireFill, async (req, res) => await send(req, res, async (db) => {
+        const me = await meOf(db, req.user);
+        const rows = await db.prepare(`SELECT n.id, n.name, n.trust, k.public_key, k.key_thumbprint
+            FROM platform_node_principals n JOIN link_send_keys k ON k.node_id = n.id
+            WHERE n.status = 'active' AND ((n.owner_kind = 'user' AND n.owner_subject = ? AND n.trust = 'user-owned')
+                OR (n.owner_kind = 'platform' AND n.trust = 'first-party'))
+            ORDER BY n.owner_kind, n.name, n.id`).all(me);
+        res.set('Cache-Control', 'private, no-store');
+        res.json({ machines: rows.map((r) => ({ id: r.id, name: r.name || 'OpenVibe machine', trust: r.trust, public_key: r.public_key, thumbprint: r.key_thumbprint })) });
     }));
 
     // Set or rotate my keys. The same keys again change nothing and announce nothing.

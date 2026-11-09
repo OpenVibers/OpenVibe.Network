@@ -50,7 +50,7 @@ const challenge = (v) => b64(crypto.createHash('sha256').update(v).digest());
     Object.assign(app.locals, { db, config, privateKey: keys.privateKey, publicKey: keys.publicKey });
     app.use('/oauth', oauthRoutes);
     app.use('/api/v1/me/dock', dockMod.router({ dock, requireAuth: requireDock('dock') }));
-    app.use('/api/v1/me/keys', require('../server/locker/keys').meRouter(requireAuth, { requireCompanion: requireDock('locker.login.manage') }));
+    app.use('/api/v1/me/keys', require('../server/locker/keys').meRouter(requireAuth, { requireCompanion: requireDock('locker.login.manage'), requireFill: requireDock('run.fill.approve') }));
     app.get('/api/v1/me/private', requireAuth, (req, res) => res.json({ ok: true }));
     app.get('/api/v1/me/actions', requireDock('activity'), (req, res) => res.json({ ok: true, scope: req.dockScope }));
     app.post('/api/v1/me/actions', requireAuth, (req, res) => res.json({ ok: true }));
@@ -144,6 +144,15 @@ const challenge = (v) => b64(crypto.createHash('sha256').update(v).digest());
         const lockerToken = await token({ grant_type: 'authorization_code', client_id: 'companion', code: new URL(lockerCx.body.redirect).searchParams.get('code'), redirect_uri: CHROME, code_verifier: lockerVerifier });
         assert.strictEqual(lockerToken.status, 200);
         const lk = lockerToken.body.access_token;
+        const fillVerifier = verifier();
+        const fillCx = await confirm({ client_id: 'companion', redirect_uri: CHROME, response_type: 'code', scope: 'run.fill.approve locker.login.manage', state: 'fill-test', code_challenge: challenge(fillVerifier), code_challenge_method: 'S256' });
+        assert.strictEqual(fillCx.status, 200);
+        const fillToken = await token({ grant_type: 'authorization_code', client_id: 'companion', code: new URL(fillCx.body.redirect).searchParams.get('code'), redirect_uri: CHROME, code_verifier: fillVerifier });
+        assert.strictEqual(fillToken.status, 200);
+        assert.strictEqual(fillToken.body.scope, 'run.fill.approve locker.login.manage');
+        const targets = await api('GET', '/api/v1/me/keys/fill-targets', fillToken.body.access_token);
+        assert.strictEqual(targets.status, 200);
+        assert.deepStrictEqual(targets.body.machines, []);
         assert.strictEqual((await api('GET', '/api/v1/me/keys/companion', maskToken.body.access_token)).status, 403);
         const backup = await api('GET', '/api/v1/me/keys/companion', lk);
         assert.strictEqual(backup.status, 200);
@@ -162,6 +171,7 @@ const challenge = (v) => b64(crypto.createHash('sha256').update(v).digest());
         assert.strictEqual((await authorize({ client_id: 'companion-other', redirect_uri: 'https://other.example/cb', response_type: 'code', state: 'o', scope: 'mail.mask.manage', code_challenge: challenge(verifier()), code_challenge_method: 'S256' })).status, 400, 'mail.mask.manage is not its scope');
 
         assert.strictEqual((await authorize({ client_id: 'companion-other', redirect_uri: 'https://other.example/cb', response_type: 'code', state: 'o', scope: 'locker.login.manage', code_challenge: challenge(verifier()), code_challenge_method: 'S256' })).status, 400, 'Locker scope belongs to Companion');
+        assert.strictEqual((await authorize({ client_id: 'companion-other', redirect_uri: 'https://other.example/cb', response_type: 'code', state: 'o', scope: 'run.fill.approve', code_challenge: challenge(verifier()), code_challenge_method: 'S256' })).status, 400, 'fill approval scope belongs to Companion');
 
         // The Dock accepts it; a normal account route refuses it. Activity reads are open, action
         // writes are not, and a token that only has `dock` is refused the activity route.
