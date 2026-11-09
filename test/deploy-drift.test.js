@@ -2,7 +2,8 @@
 // Production drift (WS-S task 7): the deployed commit against main through GitHub's compare API —
 // current, behind (how many commits and since the oldest undeployed one), diverged, unknown; a failed
 // lookup keeps the last answer; the gauge gives seconds behind (0 when current); services that stop
-// running are dropped; a non-commit release is skipped; an async token is awaited.
+// running are dropped; a non-commit release is skipped; an async token is awaited. Main's head is read first through
+// git's ls-refs (no REST quota): production on main's head, or nothing moved since the last answer, asks no compare.
 const assert = require('assert');
 const drift = require('../server/registry/deploy-drift');
 
@@ -24,7 +25,16 @@ const answers = {
 };
 let failing = false;
 const asked = [];
+const heads = {};   // repository -> main's head as git's ls-refs answers it (none: GitHub does not answer git)
+const lsRefs = [];
 const fetchImpl = async (url, opts) => {
+    if (url.startsWith('https://github.com/')) {
+        const repo = url.slice('https://github.com/'.length, -'.git/git-upload-pack'.length);
+        lsRefs.push({ repo, method: opts.method, body: opts.body, protocol: opts.headers['Git-Protocol'], auth: opts.headers.Authorization });
+        if (failing || !heads[repo]) return { ok: false, status: 404, text: async () => '' };
+        const line = `${heads[repo]} refs/heads/main\n`;
+        return { ok: true, status: 200, text: async () => `${(line.length + 4).toString(16).padStart(4, '0')}${line}0000` };
+    }
     const key = url.replace('https://api.github.com/repos/', '');
     asked.push({ key, auth: opts.headers.Authorization });
     if (failing) throw new Error('network down');
@@ -75,6 +85,34 @@ const fetchImpl = async (url, opts) => {
     assert.strictEqual(asked[0].auth, 'Bearer ghp_async');
     await drift.createDeployDrift({ services: () => running.slice(0, 1), fetchImpl, token: async () => null, now: () => NOW, log: null }).refresh();
     assert.strictEqual(asked[1].auth, undefined);
+    drift._reset();
+
+    // Main's head through ls-refs: no compare call when production runs it, or when nothing moved since the last answer.
+    asked.length = 0; lsRefs.length = 0;
+    const LIVE_HEAD = 'aaaaaaa1' + '0'.repeat(32);
+    const CHAT_HEAD = 'c3ffffffffff' + '1'.repeat(28);
+    Object.assign(heads, { 'OpenVibers/OpenVibe.Live': LIVE_HEAD, 'OpenVibers/OpenVibe.Chat': CHAT_HEAD });
+    const two = [running[0], running[1]];
+    const g2 = drift.createDeployDrift({ services: () => two, fetchImpl, token: async () => null, now: () => NOW, log: null });
+    await g2.refresh();
+    assert.deepStrictEqual(lsRefs.map((x) => [x.repo, x.method, x.protocol, x.auth]), [['OpenVibers/OpenVibe.Live', 'POST', 'version=2', undefined], ['OpenVibers/OpenVibe.Chat', 'POST', 'version=2', undefined]], 'git protocol v2, no token sent to it');
+    assert.strictEqual(lsRefs[0].body, '0014command=ls-refs\n0001001fref-prefix refs/heads/main\n0000', 'ls-refs for main only');
+    assert.deepStrictEqual(asked.map((x) => x.key), ['OpenVibers/OpenVibe.Chat/compare/bbbbbbb2...main'], 'production on main\'s head asks no compare');
+    assert.deepStrictEqual([drift.current('live').state, drift.current('live').main], ['current', LIVE_HEAD.slice(0, 12)]);
+    assert.deepStrictEqual([drift.current('chat').state, drift.current('chat').behind_by, drift.current('chat').main], ['behind', 3, CHAT_HEAD.slice(0, 12)]);
+    await g2.refresh();
+    assert.strictEqual(asked.length, 1, 'nothing moved: the last answer holds without a compare');
+    assert.strictEqual(drift.current('chat').since, '2026-09-25T10:00:00.000Z', 'and keeps its since');
+    heads['OpenVibers/OpenVibe.Chat'] = 'd'.repeat(40);
+    await g2.refresh();
+    assert.strictEqual(asked.length, 2, 'main moved: compare again');
+    failing = true; asked.length = 0;
+    await g2.refresh();
+    assert.strictEqual(drift.current('chat').stale, true, 'git and GitHub both down: the last answer, stale');
+    failing = false; asked.length = 0;
+    await g2.refresh();
+    assert.deepStrictEqual(asked.map((x) => x.key), ['OpenVibers/OpenVibe.Chat/compare/bbbbbbb2...main'], 'after a stale answer the compare runs again (Live is on main\'s head)');
+    assert.strictEqual(drift.current('chat').stale, undefined);
     drift._reset();
     // server/index.js feeds the checks from the registry's releases view.
     const eco = require('../server/registry/ecosystem').createEcosystemRegistry({ issuer: 'https://openvibe.network', fetchImpl: async () => { throw new Error('offline'); } });
