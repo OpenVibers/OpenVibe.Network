@@ -44,6 +44,8 @@ const PER_BUCKET = 50;
 const ID_RE = /^[A-Za-z0-9_-]{1,80}$/;
 
 const clip = (s, n) => { const t = String(s == null ? '' : s).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
+// The shared code map (Contracts' ai.run-error@1, manifests/ai-run-error-codes.v1.json) is the source of truth; this
+// copy is what Network answers with until the Contracts release that carries the manifest is pinned here.
 const ERROR_MAP = {
     'route.unavailable': ['No model could take this task.', 'Pick a model or add an AI key, then retry.', 'pick_model'],
     'provider.unavailable': ['The model provider is unavailable.', 'Retry when it is back.', 'retry'],
