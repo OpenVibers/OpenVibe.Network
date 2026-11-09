@@ -148,6 +148,10 @@ module.exports = {
         media: {
             internalUrl: process.env.OV_MEDIA_INTERNAL_URL || 'http://127.0.0.1:4100',
         },
+        // OpenVibe.Community: the menu's Feed and wall, asked through Network (server/frame/service.js /feed, /wall).
+        community: {
+            internalUrl: process.env.OV_COMMUNITY_INTERNAL_URL || 'http://127.0.0.1:4200',
+        },
         // OpenVibe.Chat: the admin panel's TTS settings (server/admin/service-proxies.js).
         chat: {
             internalUrl: process.env.OV_CHAT_INTERNAL_URL || 'http://127.0.0.1:4400',

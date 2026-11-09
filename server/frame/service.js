@@ -4,6 +4,7 @@
 //
 //   GET /api/frame?host=<hostname>     public, CORS *, max-age=600, ETag
 //   GET /api/frame/pulse               public, CORS *, max-age=30: { live_now, watching, sites, views_7d, live, updated }
+//   GET /api/frame/feed, /api/frame/wall  the menu's Feed and wall: Community's /api/v1/feed and /api/v1/pulse, relayed
 //   POST /api/frame/menu-click         public, CORS *, text/plain, max 512 bytes, 60/min per IP: one menu click counted
 //   → { updated, nav: [{ id, name, url, icon, tagline, group, of? }], open sites, most used first (of: a product
 //                                                                      on its own domain, served by that site)
@@ -433,6 +434,48 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         res.set({ 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin', 'Cache-Control': 'public, max-age=30, stale-while-revalidate=120', 'Content-Type': 'application/json; charset=utf-8' });
         res.send(JSON.stringify(pulse || { live_now: null, watching: null, sites: orderedOpen().length, views_7d: null, live: null, updated: null }));
     });
+
+    // GET /api/frame/feed?kind=&cursor=&limit= and GET /api/frame/wall?limit=&after=&for= — the menu's Feed and wall
+    // (openvibe-shared ov-home.js) on every site, asked through Network because every site's connect-src lets the navbar
+    // reach openvibe.network, and the sites' policies refused openvibe.community (11-09: the Feed fell back to its old
+    // sections everywhere but five sites). Community's /api/v1/feed and /api/v1/pulse answer; the person's Bearer token
+    // goes along when the menu sends one (a personal wall, the composer's can_post), never a cookie. Anonymous answers are
+    // kept 30 s per query; personal ones are not kept. Community not answering is an empty page, never an error.
+    const relayed = new Map();
+    const FEED_KINDS = ['live', 'stream', 'clip', 'video', 'pic', 'post', 'meme', 'game', 'update'];
+    async function relay(req, res, path, params) {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization', 'Vary': 'Authorization', 'Content-Type': 'application/json; charset=utf-8' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '';
+        const u = new URL(path, svcUrl('community', 'http://127.0.0.1:4200'));
+        Object.entries(params).forEach(([k, v]) => { if (v) u.searchParams.set(k, v); });
+        const key = `${path}?${u.searchParams}`;
+        if (!auth) {
+            const kept = relayed.get(key);
+            if (kept && Date.now() - kept.at < 30_000) { res.set('Cache-Control', 'public, max-age=30'); return res.send(kept.body); }
+        }
+        const d = await getJson(u.href, auth ? { Authorization: auth, Accept: 'application/json' } : { Accept: 'application/json' });
+        const body = JSON.stringify(d && Array.isArray(d.items) ? d : { items: [], next_cursor: null });
+        if (!auth && d) {
+            if (relayed.size >= 500) relayed.clear();
+            relayed.set(key, { at: Date.now(), body });
+        }
+        res.set('Cache-Control', auth ? 'private, no-store' : 'public, max-age=30');
+        return res.send(body);
+    }
+    const qCursor = (v) => (/^[A-Za-z0-9._~=-]{1,300}$/.test(String(v || '')) ? String(v) : '');
+    const qLimit = (v, max) => String(Math.min(Math.max(parseInt(v, 10) || 20, 1), max));
+    router.options(['/feed', '/wall'], (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization', 'Access-Control-Allow-Methods': 'GET', 'Access-Control-Max-Age': '600' });
+        res.status(204).end();
+    });
+    router.get('/feed', (req, res) => relay(req, res, '/api/v1/feed', {
+        kind: FEED_KINDS.includes(String(req.query.kind || '')) ? String(req.query.kind) : '',
+        cursor: qCursor(req.query.cursor), limit: qLimit(req.query.limit, 40),
+    }));
+    router.get('/wall', (req, res) => relay(req, res, '/api/v1/pulse', {
+        limit: qLimit(req.query.limit, 50), after: qCursor(req.query.after), cursor: qCursor(req.query.cursor),
+        for: req.query.for === 'me' ? 'me' : '', origin: ['user', 'ai', 'system', 'all'].includes(String(req.query.origin || '')) ? String(req.query.origin) : '',
+    }));
 
     // GET /api/frame/suggest?q=&owner=&limit= — the navbar's magnifier (openvibe-shared search.js): OpenVibe.Search's
     // suggestions, asked through Network because every site's connect-src already lets the navbar reach
