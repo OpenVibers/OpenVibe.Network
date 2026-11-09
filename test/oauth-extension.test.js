@@ -138,6 +138,13 @@ const challenge = (v) => b64(crypto.createHash('sha256').update(v).digest());
         assert.strictEqual(maskToken.body.scope, 'dock activity chat.read agent.view mail.mask.manage');
         assert.strictEqual(jwt.decode(maskToken.body.access_token).scope, 'dock activity chat.read agent.view mail.mask.manage');
 
+        const actorVerifier = verifier();
+        const actorCx = await confirm({ client_id: 'companion', redirect_uri: CHROME, response_type: 'code', scope: 'actor.me.read actor.me.write', state: 'actor-test', code_challenge: challenge(actorVerifier), code_challenge_method: 'S256' });
+        assert.strictEqual(actorCx.status, 200);
+        const actorToken = await token({ grant_type: 'authorization_code', client_id: 'companion', code: new URL(actorCx.body.redirect).searchParams.get('code'), redirect_uri: CHROME, code_verifier: actorVerifier });
+        assert.strictEqual(actorToken.status, 200);
+        assert.strictEqual(jwt.decode(actorToken.body.access_token).scope, 'actor.me.read actor.me.write');
+
         const lockerVerifier = verifier();
         const lockerCx = await confirm({ client_id: 'companion', redirect_uri: CHROME, response_type: 'code', scope: 'locker.login.manage', state: 'locker-test', code_challenge: challenge(lockerVerifier), code_challenge_method: 'S256' });
         assert.strictEqual(lockerCx.status, 200);

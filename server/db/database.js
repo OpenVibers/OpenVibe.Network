@@ -197,7 +197,7 @@ async function seedDb(db, { log = console } = {}) {
             // the add-on id (extension id -> getRedirectURL). Both are public values.
             // `agent.view` (2026-11-07) is the panel's read of Codes' agent view; Codes accepts it, and only it.
             { client_id: 'companion', name: 'OpenVibe extension', public: true,
-                allowed_scopes: 'dock activity chat.read agent.view mail.mask.manage locker.login.manage run.fill.approve', access_token_ttl_s: 3600,
+                allowed_scopes: 'dock activity chat.read agent.view mail.mask.manage locker.login.manage run.fill.approve actor.me.read actor.me.write', access_token_ttl_s: 3600,
                 redirect_uris: [
                     'https://bjcjcfcecpkkmfndegkjekoipdmbgakd.chromiumapp.org/',
                     'https://bb6593a68b1dcfbb7acd9650f04a169f4c5b57a0.extensions.allizom.org/',
