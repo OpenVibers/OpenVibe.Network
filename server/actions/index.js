@@ -212,7 +212,7 @@ function createActions({ db, selfToken = () => null, urls = {}, fetchImpl = (...
     /** A one-tap catalogue skill starts on Actor as this person; Network never executes the skill itself. */
     async function runSkill(actor, id, body) {
         if (!ID_RE.test(String(id))) throw Object.assign(new Error('no such skill'), { status: 404, code: 'actions.skill_not_found' });
-        const token = urls.actor ? selfToken('openvibe.actor', ['actor.task.create']) : null;
+        const token = urls.actor ? selfToken('openvibe.actor', ['actor.skill.run']) : null;
         if (!token) throw Object.assign(new Error('Actor is not connected'), { status: 503, code: 'actions.not_connected' });
         const res = await fetchImpl(`${String(urls.actor).replace(/\/+$/, '')}/api/v1/runs`, {
             method: 'POST', headers: { accept: 'application/json', 'content-type': 'application/json', authorization: `Bearer ${token}`, 'x-ov-subject': actor.subject },

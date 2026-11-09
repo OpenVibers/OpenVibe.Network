@@ -165,7 +165,7 @@ try {
     r = await call('POST', '/skills/skl_example/run', true, { input: {}, choice: { mode: 'balanced' } });
     assert.strictEqual(r.status, 201, JSON.stringify(r.body));
     const started = calls.find((c) => c.path === '/actor/api/v1/runs');
-    assert.deepStrictEqual([started.auth, started.subject.startsWith('usr_'), started.body.skill], ['Bearer tok:openvibe.actor:actor.task.create', true, 'skl_example']);
+    assert.deepStrictEqual([started.auth, started.subject.startsWith('usr_'), started.body.skill], ['Bearer tok:openvibe.actor:actor.skill.run', true, 'skl_example']);
     assert.strictEqual((await call('POST', '/actor/tsk_404/cancel')).status, 404, 'no such task');
     // Codes has no cancel route, and Codes is not connected for it either.
     assert.strictEqual((await call('POST', '/codes/tsk_1/approve')).body.code, 'actions.unsupported');
