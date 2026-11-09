@@ -34,6 +34,10 @@ const DECIDE = {
 const CANCEL = {
     actor: { cap: 'actor.task.create', path: (id) => '/api/v1/tasks/' + encodeURIComponent(id) + '/cancel', name: 'OpenVibe.Actor', what: 'task' },
 };
+const RETRY = {
+    actor: { cap: 'actor.task.create', path: (id) => '/api/v1/tasks/' + encodeURIComponent(id) + '/retry', name: 'OpenVibe.Actor' },
+    ai: { cap: 'ai.run.create', path: (id) => '/api/v1/runs/' + encodeURIComponent(id) + '/retry', name: 'OpenVibe.AI' },
+};
 const ACTIONS_TIMEOUT_MS = 2500;
 const CACHE_MS = 10_000;
 const CACHE_MAX = 500;
@@ -41,6 +45,28 @@ const PER_BUCKET = 50;
 const ID_RE = /^[A-Za-z0-9_-]{1,80}$/;
 
 const clip = (s, n) => { const t = String(s == null ? '' : s).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
+// The shared code map (Contracts' ai.run-error@1, manifests/ai-run-error-codes.v1.json) is the source of truth; this
+// copy is what Network answers with until the Contracts release that carries the manifest is pinned here.
+const ERROR_MAP = {
+    'route.unavailable': ['No model could take this task.', 'Pick a model or add an AI key, then retry.', 'pick_model'],
+    'provider.unavailable': ['The model provider is unavailable.', 'Retry when it is back.', 'retry'],
+    'provider.rate_limited': ['The model provider reached its limit.', 'Retry after the limit resets.', 'retry_later'],
+    'credentials.unavailable': ['Your AI key is unavailable.', 'Add or check your AI key.', 'add_key'],
+    'quota.refused': ['Your AI allowance is used up.', 'Pick another model or retry when it resets.', 'pick_model'],
+    'queue.full': ['AI is busy right now.', 'Retry in a moment.', 'retry_later'],
+    'run.interrupted': ['This run stopped during a service restart.', 'Retry the task.', 'retry'],
+    'task.failed': ['This task could not finish.', 'Open the task to review it, then retry.', 'open'],
+};
+function safeItem(it) {
+    const detail = String(it.error || it.summary || '');
+    const code = it.run_error && it.run_error.code || (detail.includes('no provider on this route') ? 'route.unavailable'
+        : detail.includes('AI is resting') ? 'provider.rate_limited' : it.service === 'actor' ? 'task.failed' : 'unknown');
+    const [words, next, action] = ERROR_MAP[code] || ['This run could not finish.', 'Open its details or retry.', 'open'];
+    const run_error = it.bucket === 'failed' ? { code, words, next, action } : null;
+    return { ...it, error: run_error ? words : it.error, summary: run_error ? words : it.summary, run_error,
+        skill: it.skill || null, subject: it.subject || null, model: it.model || null, maker: it.maker || null,
+        duration_ms: it.duration_ms == null ? null : it.duration_ms, step: it.step || null };
+}
 
 /** A pending Network confirmation as an Action Center item (waiting). */
 function confirmationItem(c, agent) {
@@ -98,11 +124,12 @@ function createActions({ db, selfToken = () => null, urls = {}, fetchImpl = (...
         ['network', ...REMOTE].forEach((svc, i) => {
             sources[svc] = results[i].status;
             for (const it of results[i].items) {
-                if (!validate('common.action-item@1', it).valid) {
+                const { run_error, skill, subject, model, maker, duration_ms, step, ...legacy } = it;
+                if (!validate('common.action-item@1', legacy).valid) {
                     if (warned++ < 20) log.warn(`[Actions] ${svc} answered an item that is not common.action-item@1; dropped`);
                     continue;
                 }
-                buckets[it.bucket].push(it);
+                buckets[it.bucket].push(safeItem(it));
             }
         });
         for (const b of BUCKETS) {
@@ -121,8 +148,9 @@ function createActions({ db, selfToken = () => null, urls = {}, fetchImpl = (...
     /** Approve, decline or cancel one item through its authority. → common.action-item@1 */
     async function act(actor, service, id, action, ctx) {
         if (!ID_RE.test(String(id))) throw Object.assign(new Error('no such item'), { status: 404, code: 'actions.not_found' });
-        if (action !== 'approve' && action !== 'decline' && action !== 'cancel') throw Object.assign(new Error('this item cannot do that here: open it instead'), { status: 422, code: 'actions.unsupported' });
+        if (action !== 'approve' && action !== 'decline' && action !== 'cancel' && action !== 'retry') throw Object.assign(new Error('this item cannot do that here: open it instead'), { status: 422, code: 'actions.unsupported' });
         if (action === 'cancel') return await cancel(actor, service, id, ctx);
+        if (action === 'retry') return await retry(actor, service, id);
         cache.delete(actor.subject);
         if (service === 'network') {
             const out = await confirmationsImpl.decide(db, actor, id, action === 'approve' ? 'approve' : 'deny', {}, { ctx });
@@ -169,7 +197,58 @@ function createActions({ db, selfToken = () => null, urls = {}, fetchImpl = (...
         };
     }
 
-    return { forPerson, act, _cache: cache };
+    async function retry(actor, service, id) {
+        const route = RETRY[service];
+        if (!route) throw Object.assign(new Error('this run cannot retry here'), { status: 422, code: 'actions.unsupported' });
+        const token = urls[service] ? selfToken('openvibe.' + service, [route.cap]) : null;
+        if (!token) throw Object.assign(new Error(route.name + ' is not connected'), { status: 503, code: 'actions.not_connected' });
+        const res = await fetchImpl(String(urls[service]).replace(/\/+$/, '') + route.path(id), {
+            method: 'POST', headers: { accept: 'application/json', 'content-type': 'application/json', authorization: 'Bearer ' + token, 'x-ov-subject': actor.subject },
+            body: '{}', signal: AbortSignal.timeout(timeoutMs * 4),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw Object.assign(new Error(body.detail || 'This run could not restart.'), { status: res.status, code: body.code || 'actions.retry_failed' });
+        cache.delete(actor.subject);
+        return body;
+    }
+
+    /**
+     * The skills the Dock offers in one tap ("Things agents can do for you"): Actor's public catalogue, read here because
+     * every site's connect-src reaches openvibe.network and refuses openvibe.actor. Only passed, active listings, only
+     * the fields the Dock draws; kept five minutes; Actor not answering is an empty list.
+     */
+    let skillsKept = null; let skillsAt = 0;
+    async function skillCatalogue() {
+        if (skillsKept && now() - skillsAt < 5 * 60_000) return skillsKept;
+        if (!urls.actor) return { listings: [] };
+        try {
+            const res = await fetchImpl(`${String(urls.actor).replace(/\/+$/, '')}/api/v1/skills`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(timeoutMs) });
+            const body = res.ok ? await res.json().catch(() => ({})) : {};
+            const listings = (Array.isArray(body.listings) ? body.listings : [])
+                .filter((x) => x && x.skill && ID_RE.test(String(x.id || '')) && x.scan && x.scan.state === 'passed' && x.curator && x.curator.state === 'active')
+                .slice(0, 12)
+                .map((x) => ({ id: String(x.id), skill: { name: String(x.skill.name || '').slice(0, 80), slug: String(x.skill.slug || '').slice(0, 80) }, scan: { state: 'passed' }, curator: { state: 'active' } }));
+            skillsKept = { listings }; skillsAt = now();
+        } catch { skillsKept = skillsKept || { listings: [] }; skillsAt = now(); }
+        return skillsKept;
+    }
+
+    /** A one-tap catalogue skill starts on Actor as this person; Network never executes the skill itself. */
+    async function runSkill(actor, id, body) {
+        if (!ID_RE.test(String(id))) throw Object.assign(new Error('no such skill'), { status: 404, code: 'actions.skill_not_found' });
+        const token = urls.actor ? selfToken('openvibe.actor', ['actor.skill.run']) : null;
+        if (!token) throw Object.assign(new Error('Actor is not connected'), { status: 503, code: 'actions.not_connected' });
+        const res = await fetchImpl(`${String(urls.actor).replace(/\/+$/, '')}/api/v1/runs`, {
+            method: 'POST', headers: { accept: 'application/json', 'content-type': 'application/json', authorization: `Bearer ${token}`, 'x-ov-subject': actor.subject },
+            body: JSON.stringify({ skill: id, input: body.input || {}, choice: body.choice || { mode: 'balanced' } }), signal: AbortSignal.timeout(timeoutMs * 4),
+        });
+        const result = await res.json().catch(() => ({}));
+        if (!res.ok) throw Object.assign(new Error(result.detail || 'This skill could not start.'), { status: res.status, code: result.code || 'actions.skill_failed' });
+        cache.delete(actor.subject);
+        return result;
+    }
+
+    return { forPerson, act, runSkill, skillCatalogue, _cache: cache };
 }
 
 /** The routes, behind Network's session check (cookie on openvibe.network, Bearer elsewhere), like the bell's. */
@@ -186,6 +265,14 @@ function router({ actions, requireAuth, requireDock = () => requireAuth }) {
             console.error('[Actions] list:', err);
             http.sendProblem(res, 500, 'actions.error', { detail: 'could not read your actions' });
         }
+    });
+    r.get('/skills', requireAuth, async (req, res) => { res.json(await actions.skillCatalogue()); });
+    r.post('/skills/:id/run', requireAuth, async (req, res) => {
+        try {
+            const actor = await store.actorOf(req.app.locals.db, req.user);
+            const result = await actions.runSkill(actor, req.params.id, req.body || {});
+            return res.status(201).json(result);
+        } catch (err) { return http.sendProblem(res, err.status || 502, err.code || 'actions.skill_failed', { detail: err.message }); }
     });
     r.post('/:service/:id/:action', requireAuth, async (req, res) => {
         try {
