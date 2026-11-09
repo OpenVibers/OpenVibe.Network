@@ -111,7 +111,7 @@ assert.strictEqual(siteLd.potentialAction['query-input'], 'required name=search_
 // A tagline that already ends a sentence ("What should we eat?") gets no second period; a family of one is "1 tool".
 assert.ok(!/[.?!]\. /.test(html.replace(/<[^>]+>/g, ' ')), 'no doubled sentence end after a site tagline');
 assert.ok(!/\b1 tools\b/.test(html), 'one tool is "1 tool"');
-assert.ok(/<h1>Go live, chat, play<br>/.test(html) && /Stream from a browser tab, no OBS\./.test(html), 'the hero still leads with going live from a browser');
+assert.ok(/<h1>Go live, chat, play and get things done\.<\/h1>/.test(html) && /Stream from a browser tab, no OBS\./.test(html), 'the hero still leads with going live from a browser');
 const launcher = (/<section class="sc-sec sc-apps-sec" id="network"[\s\S]*?<\/section>/.exec(html) || [''])[0];
 for (const s of open) assert.ok(launcher.includes(`<a href="https://${s.host}/">`), `the sites launcher links ${s.host}`);
 // One plain link to the hub of every site (SEO-9), in the sites section the home already has, with the real count.
@@ -154,15 +154,15 @@ assert.ok(html.includes('href="https://openvibe.video/v/9"') && html.includes('<
 // to one, and a wider screen shows no chips.
 {
     const chips = [...html.matchAll(/<a href="#now-([a-z]+)">([^<]+)<\/a>/g)];
-    assert.ok(html.includes('<nav class="now-pick" aria-label="New on OpenVibe">') && chips.length >= 2, 'the chips render when there is more than one part');
-    for (const [, id] of chips) assert.match(html, new RegExp(`<div class="now-(block|grid)" data-now-part id="now-${id}"`), `${id} is a part in the page`);
+    assert.ok(html.includes('<nav class="now-pick" data-ovk-scroll aria-label="New on OpenVibe">') && chips.length >= 2, 'the chips render when there is more than one part');
+    for (const [, id] of chips) assert.match(html, new RegExp(`<div class="now-(block|grid)" data-now-part[^>]* id="now-${id}"`), `${id} is a part in the page`);
     assert.ok(!/name="now-pick"|name="more-pick"/.test(html), 'no chip is a radio: nothing is picked');
     assert.match(html, /\.now-pick,\.more-pick,\.more-pick-h\{display:none\}\n@media \(max-width:600px\)\{/, 'chips only on a phone');
     assert.ok(!html.includes('[data-now-part]{display:none}') && !html.includes('[data-more-part]{display:none'), 'no part is ever hidden');
 }
 // The lower half: every section with its own heading; on a phone a row of chips under "More about OpenVibe" jumps to one.
 {
-    const more = [...html.matchAll(/<nav class="more-pick" aria-label="More about OpenVibe">([\s\S]*?)<\/nav>/g)];
+    const more = [...html.matchAll(/<nav class="more-pick" data-ovk-scroll aria-label="More about OpenVibe">([\s\S]*?)<\/nav>/g)];
     assert.ok(parseHTML(html).document.querySelector('.more > .more-pick-h')?.textContent === 'More about OpenVibe' && more.length === 1, 'the More block and its chips');
     const ids = [...more[0][1].matchAll(/<a href="#([a-z]+)">/g)].map((m) => m[1]);
     assert.ok(ids.length >= 4 && ids[0] === 'tools', `a link per section, Tools first (${ids.join(',')})`);

@@ -99,7 +99,7 @@ function rankedIntents(popularity) {
 function intents(catalog, popularity = null) {
     const toolsLine = catalog.tools.length ? `Convert, compress, look up or download: ${catalog.tools.length} tools that just open.` : 'Convert, compress, look up or download: free tools that just open.';
     const ranked = rankedIntents(popularity);
-    return `<ul class="intents" aria-label="What you can do here${popularity ? ', most visited this week first' : ''}">${ranked.map(({ it: [id, fa, verb, line, href, k], n }, pos) => `<li><a class="intent" href="${esc(href)}" data-id="${esc(id)}" data-k="${esc(k)}"><i class="fa-solid ${esc(fa)}" aria-hidden="true"></i><span><b>${esc(verb)}</b><small>${esc(line || toolsLine)}</small>${pos < 5 && n >= 10 ? `<em class="intent-n">${esc(fmtVisits(n))} visits this week</em>` : ''}</span></a></li>`).join('')}</ul>`;
+    return `<ul class="intents" data-ovk-scroll aria-label="What you can do here${popularity ? ', most visited this week first' : ''}">${ranked.map(({ it: [id, fa, verb, line, href, k], n }, pos) => `<li><a class="intent" href="${esc(href)}" data-id="${esc(id)}" data-k="${esc(k)}"><i class="fa-solid ${esc(fa)}" aria-hidden="true"></i><span><b>${esc(verb)}</b><small>${esc(line || toolsLine)}</small>${pos < 5 && n >= 10 ? `<em class="intent-n">${esc(fmtVisits(n))} visits this week</em>` : ''}</span></a></li>`).join('')}</ul>`;
 }
 
 // The network as an orbit (the owner, 2026-10-28: the hero was "ugly af, boring… not easy to understand… nice animated
@@ -149,7 +149,7 @@ function rightNow(a) {
     const card = ({ url, thumb, badge, len, about, avatar, title, who, line, cls = '' }) => `<li><a class="vcard${cls}" href="${esc(url)}">
 <span class="vc-thumb">${thumb ? img(thumb, avatar, 320, 180) : '<span class="now-noimg"></span>'}${badge || ''}${len ? `<span class="vc-len">${esc(len)}</span>` : ''}<span class="vc-play" aria-hidden="true"><i class="fa-solid fa-play"></i></span>${about ? `<span class="vc-about">${esc(about)}</span>` : ''}</span>
 <span class="vc-meta">${face(avatar)}<span class="vc-text"><b>${esc(title)}</b>${who ? `<small>${esc(who)}</small>` : ''}${line ? `<small>${esc(line)}</small>` : ''}</span></span></a></li>`;
-    const rail = (title, href, more, cards, id = '') => (cards.length ? `<div class="now-block"${id ? ` id="${id}"` : ''}><div class="now-head"><h3 class="ovk-titled">${sectionIcon('grid')}${title}</h3>${kit.button({ href, label: more, icon: 'forward', kind: 'quiet' })}</div><ul class="now-rail">${cards.join('')}</ul></div>` : '');
+    const rail = (title, href, more, cards, id = '') => (cards.length ? `<div class="now-block"${id ? ` id="${id}"` : ''}><div class="now-head"><h3 class="ovk-titled">${sectionIcon('grid')}${title}</h3>${kit.button({ href, label: more, icon: 'forward', kind: 'quiet' })}</div><ul class="now-rail" data-ovk-scroll>${cards.join('')}</ul></div>` : '');
 
     const live = a.live.map((s) => card({ url: s.url, thumb: s.thumb || s.avatar, badge: `<span class="now-badge"><i></i>LIVE${s.viewers ? ` · ${esc(fmtViewers(s.viewers))}` : ''}</span>`, avatar: s.avatar, title: s.title, who: s.name, line: s.category }));
     // Nobody live: one honest line and the way to start, not an empty 16:9 player (a phone saw a blank screen of it).
@@ -173,7 +173,7 @@ ${live.length ? rail('Live now', 'https://openvibe.live/', 'All channels on Open
 ${nowParts([
         ['recs', 'Recordings', rail('Latest recordings', 'https://openvibe.video/', 'Watch on OpenVibe.Video', recs, 'now-recs')],
         ['shots', 'Screenshots', rail('New screenshots', 'https://openvibe.community/', 'OpenVibe.Community', shots, 'now-shots')],
-        ['posts', 'Posts and jobs', cols.length ? `<div class="now-grid" id="now-posts">${cols.join('\n')}</div>` : ''],
+        ['posts', 'Posts and jobs', cols.length ? `<div class="now-grid" data-ovk-scroll id="now-posts">${cols.join('\n')}</div>` : ''],
     ])}</section>`;
 }
 
@@ -184,7 +184,7 @@ function nowParts(parts) {
     const shown = parts.filter(([, , html]) => html);
     if (shown.length < 2) return shown.map(([, , html]) => html).join('\n');
     const chips = shown.map(([id, label]) => `<a href="#now-${id}">${esc(label)}</a>`).join('');
-    return `<nav class="now-pick" aria-label="New on OpenVibe">${chips}</nav>\n${shown.map(([, , html]) => html.replace(/^<div class="(now-block|now-grid)"/, '<div class="$1" data-now-part')).join('\n')}`;
+    return `<nav class="now-pick" data-ovk-scroll aria-label="New on OpenVibe">${chips}</nav>\n${shown.map(([, , html]) => html.replace(/^<div class="(now-block|now-grid)"/, '<div class="$1" data-now-part')).join('\n')}`;
 }
 
 // The lower half (tools, what an account adds, what opens next, the questions, the developers' links): every section
@@ -194,7 +194,7 @@ function moreParts(parts) {
     const shown = parts.filter(([, , html]) => html);
     if (shown.length < 2) return shown.map(([, , html]) => html).join('\n');
     const chips = shown.map(([id, label]) => `<a href="#${id}">${esc(label)}</a>`).join('');
-    return `<div class="more"><h2 class="more-pick-h">${sectionIcon('grid')}More about OpenVibe</h2><nav class="more-pick" aria-label="More about OpenVibe">${chips}</nav>\n${shown.map(([, , html]) => html.replace(/^<section class="([^"]*)" id="([^"]*)"/, '<section class="$1" id="$2" data-more-part')).join('\n')}</div>`;
+    return `<div class="more"><h2 class="more-pick-h">${sectionIcon('grid')}More about OpenVibe</h2><nav class="more-pick" data-ovk-scroll aria-label="More about OpenVibe">${chips}</nav>\n${shown.map(([, , html]) => html.replace(/^<section class="([^"]*)" id="([^"]*)"/, '<section class="$1" id="$2" data-more-part')).join('\n')}</div>`;
 }
 
 // The hero's numbers: only what Network read itself within the last minute (server/home/activity.js); a number it
@@ -455,7 +455,7 @@ function render({ releaseId = '' } = {}) {
     })) + seo.jsonLdTag(seo.jsonLd.itemList(sitesHeading(), OPEN.map((site) => ({ name: siteName(site), url: `https://${site.host}/`, description: site.what })))) + seo.jsonLdTag(seo.jsonLd.faq(faqPairs()));
     const card = social.url('network', 'https://openvibe.network/shared') || 'https://openvibe.network/assets/logo-512.png';
     const summary = summaryOf(catalog);
-    const html = withSameAs(lookBoot.apply(fs.readFileSync(SHELL, 'utf8'))).replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog, act.popularity)).replace('<!--OV:CONSTELLATION-->', () => orbit() + numbers(catalog, act)).replaceAll('__OV_CARD__', card).replace('<!--OV:SITES-->', String(SITE_COUNT)).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n<link rel="stylesheet" href="${require('openvibe-shared/serve').url('kit.css')}">\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
+    const html = withSameAs(lookBoot.apply(fs.readFileSync(SHELL, 'utf8'))).replace('<div id="navbar-mount"></div>', '<div id="navbar-mount"></div>' + summary.body + require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }, { label: 'Themes', href: '/themes' }] })).replace('<h1>Go live, chat, play<br><span class="grad">and get things done.</span></h1>', () => kit.pageHead({ title: 'Go live, chat, play and get things done.', icon: 'home', lede: 'Your places, people and projects across OpenVibe.' })).replace('<!--OV:HOME-->', body(catalog, act)).replace('<!--OV:INTENTS-->', intents(catalog, act.popularity)).replace('<!--OV:CONSTELLATION-->', () => orbit() + numbers(catalog, act)).replaceAll('__OV_CARD__', card).replace('<!--OV:SITES-->', String(SITE_COUNT)).replace('<!--OV:COUNT-->', catalog.tools.length ? String(catalog.tools.length) : 'free').replace('<div id="ov-footer"></div>', require('openvibe-shared/footer').ssr({ service: 'network', variant: 'full' })).replace('</head>', () => `${ld}\n<link rel="stylesheet" href="${require('openvibe-shared/serve').url('kit.css')}"><script src="${require('openvibe-shared/serve').url('kit-web.js')}" defer></script>\n${summary.head}\n${boost.meta(releaseId)}\n</head>`);
     pageCache = { key, html, etag: '"' + crypto.createHash('sha1').update(html).digest('base64url').slice(0, 20) + '"' };
     return pageCache;
 }
