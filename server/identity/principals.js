@@ -163,8 +163,10 @@ const DEFAULT_GRANTS = [
     // the chat-AI summaries run in Chat with its own token.
     ['chat', 'media.object.upload', 'openvibe.media', ['chat']],
     ['chat', 'media.object.delete', 'openvibe.media', ['chat']],
-    ['chat', 'ai.run.create', 'openvibe.ai', ['chat.*']],
+    ['chat', 'ai.run.create', 'openvibe.ai', ['chat.*', 'ai.complete']],
     ['chat', 'ai.run.read', 'openvibe.ai', ['chat.*']],
+    // Activated when Contracts includes exchange.chat.export; only Chat imports a person's old chats.
+    ...(capabilities.get('exchange.chat.export') ? [['chat', 'exchange.chat.export', 'openvibe.exchange', []]] : []),
     // Chat's AI members linked to a Food household read its pantry and plan (food.household.read; Contracts 0.189.0).
     ['chat', 'food.household.read', 'openvibe.food', []],
     // Vibe on openvibe.chat (Chat#139) searches the open web through Actor for the person it is talking with: Chat
@@ -508,6 +510,14 @@ const DEFAULT_GRANTS = [
     ...['run.job.submit', 'run.job.read', 'run.job.stream', 'run.job.cancel'].map((c) => ['codes', c, 'openvibe.run', []]),
     // Plan 2026-10-28 §6: Codes announces its coding tasks' state changes (codes.task.*, contracts 0.232.0).
     ['codes', 'events.event.publish', 'openvibe.events', []],
+    // OpenVibe.Git (G1, 2026-11-09): Codes makes a repository for the person signed in, lists theirs and mints their
+    // clone token, acting as that person with X-OV-Subject. The capability names are OpenVibe.Git's own, for the
+    // openvibe.git audience only. They enter with the Contracts version that defines them (0.371.0): until the pin
+    // moves, the grants are absent rather than unknown to the catalog.
+    ...(capabilities.get('git.repo.read') && capabilities.get('git.repo.write') ? [
+        ['codes', 'git.repo.read', 'openvibe.git', []],
+        ['codes', 'git.repo.write', 'openvibe.git', []],
+    ] : []),
     // Plan T16/T17 (contracts 0.162.0): a person's OpenVibe.Actor agent routes coding work to OpenVibe.Codes, which runs
     // it on that person's own machine (X-OV-Subject); Codes shows Actor only the tasks Actor started for that person.
     ...['codes.task.start', 'codes.task.read', 'codes.task.cancel'].map((c) => ['actor', c, 'openvibe.codes', []]),
@@ -964,6 +974,7 @@ const RESTORED_GRANTS = [
 ];
 
 const CHANGED_DEFAULT_NAMESPACES = [
+    ['chat', 'ai.run.create', 'openvibe.ai', ['chat.*'], ['chat.*', 'ai.complete']],
     ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile'], ['chat.tts_defaults', 'live.profile']],
     ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.tts_defaults', 'live.profile'], ['live.profile', 'live.stats']],
     ['live', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile'], ['live.profile', 'live.stats']],

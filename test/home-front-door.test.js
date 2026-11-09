@@ -3,6 +3,7 @@
 // "Right now on OpenVibe" shows only public, safe-for-work items from each service's public API, with an honest empty
 // state. Rendered in-process; the activity reads are switched off and the snapshot is set directly.
 const assert = require('assert');
+const { parseHTML } = require('linkedom');
 const activity = require('../server/home/activity');
 const home = require('../server/home/render');
 const sites = require('../server/frame/sites').SITES;
@@ -84,7 +85,7 @@ for (const [id, , verb, , href] of home.INTENTS) {
     assert.ok(html.includes(`<b>${verb}</b>`), `intent ${id} says "${verb}"`);
 }
 assert.ok(/Go live<\/b><small>From a browser tab\. No OBS, no follower minimum\./.test(html), 'browser go-live stays the headline promise');
-assert.ok(/Nobody is live right now/.test(html) && /go live from your browser/.test(html), 'an honest empty state');
+assert.ok(/Nobody is live right now/.test(html) && /Go live from your browser/.test(html), 'an honest empty state');
 const open = sites.filter((s) => s.status === 'open' && s.id !== 'network');
 // The hero's orbit (2026-10-28): the most used sites around the mark, the count of every site in its middle.
 assert.ok(html.includes('<div class="orbit" role="group"'), 'the orbit is drawn');
@@ -110,7 +111,7 @@ assert.strictEqual(siteLd.potentialAction['query-input'], 'required name=search_
 // A tagline that already ends a sentence ("What should we eat?") gets no second period; a family of one is "1 tool".
 assert.ok(!/[.?!]\. /.test(html.replace(/<[^>]+>/g, ' ')), 'no doubled sentence end after a site tagline');
 assert.ok(!/\b1 tools\b/.test(html), 'one tool is "1 tool"');
-assert.ok(/<h1>Go live, chat, play<br>/.test(html) && /Stream from a browser tab, no OBS\./.test(html), 'the hero still leads with going live from a browser');
+assert.ok(/<h1>Go live, chat, play and get things done\.<\/h1>/.test(html) && /Stream from a browser tab, no OBS\./.test(html), 'the hero still leads with going live from a browser');
 const launcher = (/<section class="sc-sec sc-apps-sec" id="network"[\s\S]*?<\/section>/.exec(html) || [''])[0];
 for (const s of open) assert.ok(launcher.includes(`<a href="https://${s.host}/">`), `the sites launcher links ${s.host}`);
 // One plain link to the hub of every site (SEO-9), in the sites section the home already has, with the real count.
@@ -121,7 +122,7 @@ assert.strictEqual((html.match(/<section[\s>]/g) || []).length, (html.match(/<\/
 // The FAQ shown is the FAQPage JSON-LD, word for word, with the network's own questions from its Contracts site block.
 const faqLd = JSON.parse(/<script type="application\/ld\+json">(\{"@context":"https:\/\/schema.org","@type":"FAQPage"[\s\S]*?)<\/script>/.exec(html)[1]);
 assert.ok(faqLd.mainEntity.length >= 5, 'the FAQ has its questions');
-faqLd.mainEntity.forEach((q) => assert.ok(html.includes(`<h3>${q.name.replace(/'/g, '&#39;')}</h3>`), `the FAQ shows "${q.name}"`));
+faqLd.mainEntity.forEach((q) => assert.ok([...parseHTML(html).document.querySelectorAll('#faq h3')].some((el) => el.textContent === q.name), `the FAQ shows "${q.name}"`));
 assert.ok(faqLd.mainEntity.some((q) => /separate account/.test(q.name)), "Contracts' network FAQ is included");
 // The service map groups the sites the way the launcher does; numbers say only what was read.
 assert.ok(/<h3 class="sc-apps-group">Streams &amp; places<\/h3>/.test(html) && /<h3 class="sc-apps-group">For developers<\/h3>/.test(html) && /<h3 class="sc-apps-group">Make &amp; build<\/h3>/.test(html) && html.includes('<ul class="sc-apps">'), 'the sites are grouped, as a launcher');
@@ -153,16 +154,16 @@ assert.ok(html.includes('href="https://openvibe.video/v/9"') && html.includes('<
 // to one, and a wider screen shows no chips.
 {
     const chips = [...html.matchAll(/<a href="#now-([a-z]+)">([^<]+)<\/a>/g)];
-    assert.ok(html.includes('<nav class="now-pick" aria-label="New on OpenVibe">') && chips.length >= 2, 'the chips render when there is more than one part');
-    for (const [, id] of chips) assert.match(html, new RegExp(`<div class="now-(block|grid)" data-now-part id="now-${id}"`), `${id} is a part in the page`);
+    assert.ok(html.includes('<nav class="now-pick" data-ovk-scroll aria-label="New on OpenVibe">') && chips.length >= 2, 'the chips render when there is more than one part');
+    for (const [, id] of chips) assert.match(html, new RegExp(`<div class="now-(block|grid)" data-now-part[^>]* id="now-${id}"`), `${id} is a part in the page`);
     assert.ok(!/name="now-pick"|name="more-pick"/.test(html), 'no chip is a radio: nothing is picked');
     assert.match(html, /\.now-pick,\.more-pick,\.more-pick-h\{display:none\}\n@media \(max-width:600px\)\{/, 'chips only on a phone');
     assert.ok(!html.includes('[data-now-part]{display:none}') && !html.includes('[data-more-part]{display:none'), 'no part is ever hidden');
 }
 // The lower half: every section with its own heading; on a phone a row of chips under "More about OpenVibe" jumps to one.
 {
-    const more = [...html.matchAll(/<nav class="more-pick" aria-label="More about OpenVibe">([\s\S]*?)<\/nav>/g)];
-    assert.ok(html.includes('<div class="more"><h2 class="more-pick-h">More about OpenVibe</h2>') && more.length === 1, 'the More block and its chips');
+    const more = [...html.matchAll(/<nav class="more-pick" data-ovk-scroll aria-label="More about OpenVibe">([\s\S]*?)<\/nav>/g)];
+    assert.ok(parseHTML(html).document.querySelector('.more > .more-pick-h')?.textContent === 'More about OpenVibe' && more.length === 1, 'the More block and its chips');
     const ids = [...more[0][1].matchAll(/<a href="#([a-z]+)">/g)].map((m) => m[1]);
     assert.ok(ids.length >= 4 && ids[0] === 'tools', `a link per section, Tools first (${ids.join(',')})`);
     for (const id of ids) assert.match(html, new RegExp(`<section class="sc-sec[^"]*" id="${id}" data-more-part`), `${id} is a section in the page`);

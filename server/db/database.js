@@ -186,7 +186,11 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'zone', name: 'OpenVibe.Zone', redirect_uris: ['https://openvibe.zone/auth/callback'] },
             // OpenVibe Git: Forgejo at openvibe.codes/git (OpenVibe.Codes deploy/forgejo, WS-X12), signing in through OpenID
             // Connect; its callback is Forgejo's /user/oauth2/<source name>/callback. git.openvibe.codes once that name exists.
+            // Kept until the cut-over to OpenVibe.Git; Opus revokes it then.
             { client_id: 'forgejo', name: 'OpenVibe Git', redirect_uris: ['https://openvibe.codes/git/user/oauth2/OpenVibe/callback', 'https://git.openvibe.codes/user/oauth2/OpenVibe/callback'] },
+            // OpenVibe.Git: the site at git.openvibe.codes (OpenVibers/OpenVibe-Git) signs people in with OpenVibe itself
+            // (openvibe-sdk/sso, the `git` client). Codes, Run and Link call its API with typed service tokens.
+            { client_id: 'git', name: 'OpenVibe Git', redirect_uris: ['https://git.openvibe.codes/auth/callback'] },
             // The orchestrator (2026-11-07): the agent runs coordinator records the editorial queue's AI editor decision
             // on Blog, News and Wiki as itself, never for a person. It has no redirect URIs (client_credentials only);
             // its three grants are in server/identity/principals.js, exactly one per service, never a wildcard.

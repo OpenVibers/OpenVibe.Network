@@ -4,6 +4,8 @@
 //
 //   GET /api/frame?host=<hostname>     public, CORS *, max-age=600, ETag
 //   GET /api/frame/pulse               public, CORS *, max-age=30: { live_now, watching, sites, views_7d, live, updated }
+//   GET /api/frame/feed, /api/frame/wall  the menu's Feed and wall: Community's /api/v1/feed and /api/v1/pulse, relayed
+//   GET|POST|PUT /api/frame/wallet/…   the wallet sheet's fixed Billing/Inventory paths, relayed (bearer, or the ov_token cookie; no cache)
 //   POST /api/frame/menu-click         public, CORS *, text/plain, max 512 bytes, 60/min per IP: one menu click counted
 //   → { updated, nav: [{ id, name, url, icon, tagline, group, of? }], open sites, most used first (of: a product
 //                                                                      on its own domain, served by that site)
@@ -23,6 +25,7 @@
 // and screened. AI unreachable, failing or answering badly → the last good copy stays (kept in
 // frame_cache across restarts), or the hand-written copy when there has never been one.
 // ═══════════════════════════════════════════════════════════════
+const { isExtensionOrigin } = require('../auth/extension-origin');
 const express = require('express');
 const crypto = require('crypto');
 const { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName } = require('./sites');
@@ -433,6 +436,164 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         res.set({ 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin', 'Cache-Control': 'public, max-age=30, stale-while-revalidate=120', 'Content-Type': 'application/json; charset=utf-8' });
         res.send(JSON.stringify(pulse || { live_now: null, watching: null, sites: orderedOpen().length, views_7d: null, live: null, updated: null }));
     });
+
+    // GET /api/frame/feed?kind=&site=&q=&following=1&cursor=&limit= and GET /api/frame/wall?limit=&after=&for= — the menu's Feed and wall
+    // (openvibe-shared ov-home.js) on every site, asked through Network because every site's connect-src lets the navbar
+    // reach openvibe.network, and the sites' policies refused openvibe.community (11-09: the Feed fell back to its old
+    // sections everywhere but five sites). Community's /api/v1/feed and /api/v1/pulse answer; the person's Bearer token
+    // goes along when the menu sends one (a personal wall, the composer's can_post), never a cookie. Anonymous answers are
+    // kept 30 s per query; personal ones are not kept. Community not answering is an empty page, never an error.
+    const relayed = new Map();
+    // Community's feed kinds (server/pulse/feed.js KINDS; #310 added wiki, quest, chat, event and member).
+    const FEED_KINDS = ['live', 'stream', 'clip', 'video', 'pic', 'post', 'meme', 'game', 'update', 'wiki', 'quest', 'chat', 'event', 'member'];
+    async function relay(req, res, path, params) {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization', 'Vary': 'Authorization', 'Content-Type': 'application/json; charset=utf-8' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '';
+        const u = new URL(path, svcUrl('community', 'http://127.0.0.1:4200'));
+        Object.entries(params).forEach(([k, v]) => { if (v) u.searchParams.set(k, v); });
+        const key = `${path}?${u.searchParams}`;
+        if (!auth) {
+            const kept = relayed.get(key);
+            if (kept && Date.now() - kept.at < 30_000) { res.set('Cache-Control', 'public, max-age=30'); return res.send(kept.body); }
+        }
+        const d = await getJson(u.href, auth ? { Authorization: auth, Accept: 'application/json' } : { Accept: 'application/json' });
+        const body = JSON.stringify(d && Array.isArray(d.items) ? d : { items: [], next_cursor: null });
+        if (!auth && d) {
+            if (relayed.size >= 500) relayed.clear();
+            relayed.set(key, { at: Date.now(), body });
+        }
+        res.set('Cache-Control', auth ? 'private, no-store' : 'public, max-age=30');
+        return res.send(body);
+    }
+    const qCursor = (v) => (/^[A-Za-z0-9._~=-]{1,300}$/.test(String(v || '')) ? String(v) : '');
+    const qLimit = (v, max) => String(Math.min(Math.max(parseInt(v, 10) || 20, 1), max));
+    router.options(['/feed', '/wall', '/status', '/posts', '/attachments'], (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Max-Age': '600' });
+        res.status(204).end();
+    });
+    // POST /api/frame/status — the menu composer's post (Community's POST /api/v1/me/status), for the same reason: only
+    // with the person's Bearer token, a JSON body of at most 8 KB, Community's answer and status passed back as they are.
+    router.post('/status', express.json({ limit: '8kb' }), async (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '';
+        if (!auth) return res.status(401).send('{"error":"sign in to post"}');
+        try {
+            const r = await fetch(new URL('/api/v1/me/status', svcUrl('community', 'http://127.0.0.1:4200')).href, {
+                method: 'POST', headers: { Authorization: auth, 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify(req.body || {}), signal: AbortSignal.timeout(8000),
+            });
+            const text = await r.text();
+            return res.status(r.status).send(text.slice(0, 64 * 1024));
+        } catch { return res.status(502).send('{"error":"Community did not answer"}'); }
+    });
+    // The feed's filters pass through: a site (a service id), words (q, at most 80 characters, one line) and the
+    // signed-in person's follows (following=1 only with their Bearer token: Community answers 401 without one).
+    const qSite = (v) => (/^[a-z0-9][a-z0-9:-]{0,39}$/.test(String(v || '')) ? String(v) : '');
+    const qWords = (v) => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+    // POST /api/frame/attachments and POST /api/frame/posts — the Feed's composer with pictures (the owner, 11-09: "you
+    // can make posts and put images"): a picture goes to Community's status space (multipart `file`, one image, at most
+    // 8 MB, Community stores it in Media as the person's), then the post names it with its alt text. Same rules as
+    // /status: only with the person's Bearer token, never a cookie; Community's answer and status passed back as they are.
+    const sendOn = async (req, res, path, body, contentType) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '';
+        if (!auth) return res.status(401).send('{"error":"sign in to post"}');
+        try {
+            const r = await fetch(new URL(path, svcUrl('community', 'http://127.0.0.1:4200')).href, {
+                method: 'POST', headers: { Authorization: auth, 'Content-Type': contentType, Accept: 'application/json' },
+                body, signal: AbortSignal.timeout(20000),
+            });
+            const text = await r.text();
+            return res.status(r.status).send(text.slice(0, 64 * 1024));
+        } catch { return res.status(502).send('{"error":"Community did not answer"}'); }
+    };
+    router.post('/attachments', express.raw({ type: (req) => /^multipart\/form-data; *boundary=/i.test(String(req.headers['content-type'] || '')), limit: '8500kb' }), (req, res) => {
+        if (!Buffer.isBuffer(req.body) || !req.body.length) {
+            res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' });
+            return res.status(400).json({ error: 'Send one picture as multipart form data (the field "file")' });
+        }
+        return sendOn(req, res, '/api/v1/spaces/status/attachments', req.body, String(req.get('content-type')));
+    });
+    router.post('/posts', express.json({ limit: '8kb' }), (req, res) => sendOn(req, res, '/api/v1/posts', JSON.stringify(req.body || {}), 'application/json'));
+
+    router.get('/feed', (req, res) => relay(req, res, '/api/v1/feed', {
+        kind: FEED_KINDS.includes(String(req.query.kind || '')) ? String(req.query.kind) : '',
+        site: qSite(req.query.site), q: qWords(req.query.q),
+        following: /^(1|true)$/.test(String(req.query.following || '')) ? '1' : '',
+        cursor: qCursor(req.query.cursor), limit: qLimit(req.query.limit, 40),
+    }));
+    router.get('/wall', (req, res) => relay(req, res, '/api/v1/pulse', {
+        limit: qLimit(req.query.limit, 50), after: qCursor(req.query.after), cursor: qCursor(req.query.cursor),
+        for: req.query.for === 'me' ? 'me' : '', origin: ['user', 'ai', 'system', 'all'].includes(String(req.query.origin || '')) ? String(req.query.origin) : '',
+    }));
+
+    // ── The wallet sheet's money and items (openvibe-shared ov-wallet.js) ──────────────────────────────────────
+    // Every site's connect-src allows openvibe.network and refuses billing./inventory.openvibe.network, so the
+    // sheet asks these fixed paths here and nothing else. Only the person's Bearer token goes upstream, never a
+    // cookie; bodies are JSON of at most 8 KB; redirects are not followed; Billing's and Inventory's status and
+    // body come back as they are. Nothing personal is kept, and no query is forwarded except a page limit/cursor.
+    const walletAuth = (req) => (/^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '');
+    // A site that signs people in with its own cookie has no token to hand the navbar; its page asks with
+    // credentials: 'include' and the person's Network session cookie (ov_token) comes along. That token goes upstream
+    // as the Bearer (never the cookie itself), only from an origin the CORS allow-list already let through (or none:
+    // Network's own pages), never from an extension page, and a write needs an Origin: a cross-site form post carries
+    // a foreign one and the allow-list refuses it before this runs. The answer keeps the allow-list's echoed Origin with
+    // credentials (a '*' would make the browser drop it). Openvibe-shared 4.173's chips and sheet use it (2026-11-09:
+    // 4.170's chips sat at "…" on every such site).
+    const OV_TOKEN = /^[A-Za-z0-9._~+/=-]{10,4096}$/;
+    const cookieToken = (req) => {
+        const parsed = req.cookies && req.cookies.ov_token;
+        const raw = typeof parsed === 'string' ? parsed : ((String(req.get('cookie') || '').match(/(?:^|;\s*)ov_token=([^;]+)/) || [])[1] || '');
+        return OV_TOKEN.test(raw) ? raw : '';
+    };
+    function walletRelay(service, method, upstream) {
+        const upstreamPath = typeof upstream === 'function' ? upstream : () => upstream;
+        return async (req, res) => {
+            const bearer = walletAuth(req);
+            const origin = String(req.get('origin') || '');
+            const fromCookie = !bearer && cookieToken(req) && !isExtensionOrigin(origin) && (method === 'GET' || origin) ? `Bearer ${cookieToken(req)}` : '';
+            res.set({ 'Vary': 'Authorization, Origin, Cookie', 'Cache-Control': 'private, no-store', 'Content-Type': 'application/json; charset=utf-8' });
+            if (!fromCookie) res.set('Access-Control-Allow-Origin', '*');
+            const path = upstreamPath(req);
+            if (!path) return res.status(404).send('{"error":"not found"}');
+            const auth = bearer || fromCookie;
+            if (path.startsWith('/api/v1/me/') && !auth) return res.status(401).send('{"error":"sign in to open your wallet"}');
+            const u = new URL(path, svcUrl(service, service === 'billing' ? 'http://127.0.0.1:4600' : 'http://127.0.0.1:5030'));
+            if (method === 'GET') {
+                const limit = String(req.query.limit || '');
+                if (/^\d{1,3}$/.test(limit)) u.searchParams.set('limit', String(Math.min(Math.max(Number(limit), 1), 100)));
+                const cursor = String(req.query.cursor || '');
+                if (/^[A-Za-z0-9._~=-]{1,300}$/.test(cursor)) u.searchParams.set('cursor', cursor);
+            }
+            const headers = { Accept: 'application/json', ...(auth ? { Authorization: auth } : {}) };
+            const init = { method, headers, redirect: 'manual', signal: AbortSignal.timeout(8000) };
+            if (method !== 'GET') { headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(req.body || {}); }
+            try {
+                const r = await fetch(u.href, init);
+                const text = await r.text();
+                return res.status(r.status).send(text.slice(0, 64 * 1024));
+            } catch { return res.status(502).send('{"error":"The wallet service did not answer"}'); }
+        };
+    }
+    const walletJson = express.json({ limit: '8kb' });
+    const USR = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/, ITEM = /^itd_[0-9A-HJKMNP-TV-Z]{26}$/;
+    router.options('/wallet/*', (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, PUT', 'Access-Control-Max-Age': '600' });
+        res.status(204).end();
+    });
+    // Billing: the three balances and the sheet's two checkouts. All personal, all no-store.
+    router.get('/wallet/api/v1/me/wallet', walletRelay('billing', 'GET', '/api/v1/me/wallet'));
+    router.post('/wallet/api/v1/me/vibes/buy', walletJson, walletRelay('billing', 'POST', '/api/v1/me/vibes/buy'));
+    router.post('/wallet/api/v1/me/wallet/topups', walletJson, walletRelay('billing', 'POST', '/api/v1/me/wallet/topups'));
+    // Inventory: the store, the person's items, and the equipped slots (worn or not).
+    router.get('/wallet/api/v1/me/items', walletRelay('inventory', 'GET', '/api/v1/me/items'));
+    router.get('/wallet/api/v1/people/:id/equipped', walletRelay('inventory', 'GET',
+        (req) => (USR.test(String(req.params.id || '')) ? `/api/v1/people/${req.params.id}/equipped` : null)));
+    router.put('/wallet/api/v1/me/equipped', walletJson, walletRelay('inventory', 'PUT', '/api/v1/me/equipped'));
+    router.get('/wallet/api/v1/store', walletRelay('inventory', 'GET', '/api/v1/store'));
+    router.post('/wallet/api/v1/store/:id/buy', walletJson, walletRelay('inventory', 'POST',
+        (req) => (ITEM.test(String(req.params.id || '')) ? `/api/v1/store/${req.params.id}/buy` : null)));
+    router.get('/wallet/api/v1/kinds', walletRelay('inventory', 'GET', '/api/v1/kinds'));
 
     // GET /api/frame/suggest?q=&owner=&limit= — the navbar's magnifier (openvibe-shared search.js): OpenVibe.Search's
     // suggestions, asked through Network because every site's connect-src already lets the navbar reach
