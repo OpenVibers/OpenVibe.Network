@@ -1,6 +1,7 @@
 'use strict';
 // What shipped network-wide: /api/v1/changelog proxies OpenVibe.Blog's changelog (cached, stale on
-// failure, public CORS), and /updates server-renders the log before shipped.js takes over.
+// failure, public CORS) plus the newest devblog for the card's lead, and /updates server-renders the
+// log before shipped.js takes over.
 //   node test/updates.test.js
 const assert = require('assert');
 const http = require('http');
@@ -11,9 +12,16 @@ const publicCors = require('../server/public-cors');
 (async () => {
     let calls = [];
     let up = true;
+    let devblogsUp = true;
     let t = 1000;
     const feed = { entries: [{ service: 'wiki', sha: 'a'.repeat(40), short: 'aaaaaaa', subject: 'Fix <script>x</script> in pages', author: 'OpenVibers', deployed_at: '2026-09-24T07:00:00.000Z', url: 'https://github.com/OpenVibers/OpenVibe.Wiki/commit/aaa' }], next: null, posts: [{ title: 'Patch notes: x', url: 'https://openvibe.blog/@openvibe/x', published_at: '2026-09-24T06:00:00.000Z' }], latest_post: null };
-    const fetchImpl = async (url) => { calls.push(url); if (!up) throw new Error('down'); return { ok: true, json: async () => feed }; };
+    let devblogs = { total: 1, posts: [{ id: 'p1', title: 'What shipped on OpenVibe.Wiki', summary: 'A week of pages.', figure: { mediaId: 'm1', url: 'https://openvibe.media/o/m1' }, url: 'https://openvibe.blog/@openvibe/what-shipped-wiki', blog: 'openvibe', published_at: '2026-09-24T06:00:00.000Z' }] };
+    const fetchImpl = async (url) => {
+        calls.push(url);
+        if (!up) throw new Error('down');
+        if (url.includes('/api/v1/devblogs')) return devblogsUp ? { ok: true, json: async () => devblogs } : { ok: false, status: 404, json: async () => ({}) };
+        return { ok: true, json: async () => feed };
+    };
     const u = createUpdatesRoutes({ blogUrl: 'http://blog.test', fetchImpl, now: () => t, log: null });
     const app = express();
     app.use(u.router);
@@ -25,14 +33,36 @@ const publicCors = require('../server/public-cors');
     assert.strictEqual(r.status, 200);
     assert.strictEqual(r.headers.get('access-control-allow-origin'), '*');
     assert.strictEqual(calls[0], 'http://blog.test/api/v1/changelog?service=wiki&limit=100', 'limit clamped, a bad cursor dropped');
+    assert.strictEqual(calls[1], 'http://blog.test/api/v1/devblogs?service=wiki&limit=1', 'the lead is the newest devblog for the requested service');
+    let body = await r.json();
+    assert.deepStrictEqual(body.latest_devblog, {
+        title: 'What shipped on OpenVibe.Wiki', summary: 'A week of pages.',
+        figure: 'https://openvibe.media/o/m1', url: 'https://openvibe.blog/@openvibe/what-shipped-wiki', published_at: '2026-09-24T06:00:00.000Z',
+    }, 'the devblog as the card lead, its art as an https URL');
     await fetch(`${base}/api/v1/changelog?service=wiki&limit=500`);
-    assert.strictEqual(calls.length, 1, 'cached for 60 s');
+    assert.strictEqual(calls.length, 2, 'changelog and devblog cached for 60 s');
+    t += 61 * 1000;
+    devblogs = { total: 1, posts: [{ id: 'p2', title: 'T'.repeat(260), summary: 'S'.repeat(500), figure: 'http://insecure.test/a.png', url: 'https://openvibe.blog/@openvibe/second', published_at: '2026-09-25T06:00:00.000Z' }] };
+    body = await (await fetch(`${base}/api/v1/changelog?service=wiki`)).json();
+    assert.strictEqual(body.latest_devblog.figure, null, 'a non-https figure is dropped');
+    assert.strictEqual(body.latest_devblog.title.length, 200, 'the title is capped');
+    assert.strictEqual(body.latest_devblog.summary.length, 400, 'the summary is capped');
+    assert.strictEqual(body.latest_devblog.url, 'https://openvibe.blog/@openvibe/second');
+    body = await (await fetch(`${base}/api/v1/changelog`)).json();
+    assert.ok(calls.includes('http://blog.test/api/v1/devblogs?limit=1'), 'no service: the network-wide lead');
+    assert.strictEqual(body.latest_devblog.title.length, 200);
     t += 61 * 1000; up = false;
     r = await fetch(`${base}/api/v1/changelog?service=wiki&limit=500`);
     assert.strictEqual(r.status, 200, 'stale copy while Blog is down');
+    assert.strictEqual((await r.json()).latest_devblog, null, 'a devblog failure is null, never a stale card');
     r = await fetch(`${base}/api/v1/changelog?service=news`);
     assert.strictEqual(r.status, 502, 'nothing cached and Blog down: an honest error');
-    up = true;
+    up = true; devblogsUp = false; t += 61 * 1000;
+    r = await fetch(`${base}/api/v1/changelog?service=wiki`);
+    assert.strictEqual(r.status, 200, 'a Blog without the devblog endpoint still answers the changelog');
+    assert.strictEqual((await r.json()).latest_devblog, null, 'the field is null until the endpoint ships');
+    devblogsUp = true; t += 61 * 1000;
+    assert.strictEqual((await (await fetch(`${base}/api/v1/changelog?service=wiki`)).json()).latest_devblog.title, 'T'.repeat(200), 'the field returns when Blog does');
 
     const page = await (await fetch(`${base}/updates`)).text();
     assert.ok(page.includes('data-ov-shipped="log"') && page.includes('What shipped across OpenVibe'));
