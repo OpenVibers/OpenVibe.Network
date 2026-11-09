@@ -115,7 +115,7 @@ async function mint({ app, project, audience, scope, limit, onBehalfOf, privateK
     const now = Math.floor(Date.now() / 1000);
     const claims = {
         iss: issuer, sub: `app:${app.id}`, actor_type: 'app', aud: [aud], cap, ns: projectNamespaces(project.id),
-        project_id: project.id, env: app.environment,
+        project_id: project.id, env: app.environment, app_name: String(app.name || app.id).slice(0, 80),
         ...(onBehalfOf ? { on_behalf_of: onBehalfOf } : {}),
         ...(consent ? { consent } : {}),
         iat: now, exp: now + TOKEN_TTL_S, jti: `tok_${crypto.randomBytes(12).toString('hex')}`,

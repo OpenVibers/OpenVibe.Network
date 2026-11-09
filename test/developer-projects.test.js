@@ -176,6 +176,7 @@ const secretsSeen = [];
     assert.ok(v.ok, v.reason);
     assert.strictEqual(v.claims.sub, `app:${A}`);
     assert.strictEqual(v.claims.actor_type, 'app');
+    assert.strictEqual(v.claims.app_name, 'Uploader', 'app attribution comes from Network, not a caller-provided label');
     assert.deepStrictEqual(v.claims.cap, ['media.object.upload'], 'only the approved grant');
     assert.strictEqual(v.claims.project_id, P);
     assert.strictEqual(v.claims.env, 'sandbox');

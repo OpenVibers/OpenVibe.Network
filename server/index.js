@@ -300,7 +300,7 @@ function isAllowedOrigin(origin) {
 // Public discovery (/.well-known/openvibe, /api/v1/registry/*, /contracts/*.json) answers any
 // origin, preflight included; every other route keeps this allow-list (server/public-cors.js).
 const corsGuard = require('./public-cors').originGuard(isAllowedOrigin);
-app.use(require('./public-cors').gate(require('./public-cors').restrictedCors(corsGuard.origin)));
+app.use(require('./public-cors').gate(require('./public-cors').restrictedCors(corsGuard.origin), require('./public-cors').bearerCors(corsGuard.origin)));
 app.use(corsGuard.denied);
 
 // ── Rate Limiting ────────────────────────────────────────────
@@ -851,9 +851,11 @@ require('./developer/confirmations').start(db);
     app.use('/api/v1/me/dock', require('./dock').router({ dock, requireAuth: requireDock('dock') }));
     // The menu's "Choose your feeds" (2026-11-07): the sites' menu cards a person chose, in their order, follow them
     // across every site (localStorage is per site). Stored in their preferences row, one JSON value; 60 writes a
-    // minute per person, like the Dock's. GET answers { on: null } for a person who has never chosen.
+    // minute per person, like the Dock's. GET answers the v2 default-on shape for a person who never chose.
     const menuFeeds = require('./menu-feeds').createMenuFeeds({ db });
     app.use('/api/v1/me/menu-feeds', require('./menu-feeds').router({ menuFeeds, requireAuth }));
+    const homeScreen = require('./home-screen').createHomeScreen({ db });
+    app.use('/api/v1/me/home-screen', require('./home-screen').router({ homeScreen, requireAuth }));
     // The Dock's timer, for a first-party service and not for a person (plan L48 R2): Vibe starts the focus timer of
     // the person it is talking with, and it counts down in the Dock's pill on every OpenVibe site. The service names
     // the person and writes the timer and nothing else (network.dock.timer.write, granted to Chat alone).
@@ -946,6 +948,8 @@ app.get('/@:username', rateLimit({ windowMs: 60_000, max: 120 }), publicProfiles
 // The OpenVibe Frame: analytics-ranked navigation + footer copy for every site (server/frame).
 // /api/chrome is the old name, kept for copies of openvibe-shared older than 1.11.0.
 const frameService = await require('./frame/service').createFrameService(db, config, analytics, { privateKey, issuer: config.jwt.issuer, selfToken });
+app.use('/api/v1/frame/today', rateLimit({ windowMs: 60_000, max: 240 }),
+    require('./frame/today').createToday({ reportUrl: config.services.report.internalUrl }).router);
 const frameLimit = rateLimit({ windowMs: 60_000, max: 240 });
 app.use('/api/frame', frameLimit, frameService.router);
 app.use('/api/chrome', frameLimit, frameService.router);

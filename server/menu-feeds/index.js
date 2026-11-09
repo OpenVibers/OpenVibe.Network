@@ -4,11 +4,11 @@
  * order, so the menu shows the same feeds on every OpenVibe site. localStorage is per site, so the choice follows
  * the person here, in the Network.
  *
- *   GET /api/v1/me/menu-feeds   network.menu-feeds@1: the stored choice, or { on: null } when never set
- *   PUT /api/v1/me/menu-feeds   { on: ['<site>:<cardId>', …] }: replace the choice; answers the stored contract
+ *   GET /api/v1/me/menu-feeds   network.menu-feeds@2: { order, off, updated_at }
+ *   PUT /api/v1/me/menu-feeds   v2 { order, off } or legacy v1 { on }; answers v2
  *
  * The person comes from the token and nowhere else, so one person never reads or writes another's choice. The body
- * is checked against network.menu-feeds@1 (at most four `<site>:<cardId>` ids) before anything is stored, and a
+ * is checked against the matching contract before anything is stored, and a
  * body the contract refuses is a 400 with the field and the fault in `detail` — never a quietly changed choice.
  * A write is limited to 60 a minute per person, like the Dock's, so a runaway tab cannot fill the row.
  *
@@ -18,12 +18,13 @@
 const express = require('express');
 const { validate } = require('openvibe-contracts');
 
-const CONTRACT = 'network.menu-feeds@1';
+const CONTRACT = 'network.menu-feeds@2';
+const LEGACY = 'network.menu-feeds@1';
 const WRITE_LIMIT = 60;
 const WRITE_WINDOW_MS = 60_000;
 // The two fields a PUT body may carry. `updated_at` is the server's to set; a client that echoes it back is
 // accepted, but it never chooses the time.
-const BODY_FIELDS = new Set(['on', 'updated_at']);
+const BODY_FIELDS = new Set(['on', 'order', 'off', 'updated_at']);
 
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
@@ -31,7 +32,7 @@ const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
 function firstFault(errors) {
     const first = (errors || [])[0];
     if (!first) return 'not a menu-feeds choice';
-    const field = String(first.instancePath || '').replace(/^\//, '').replace(/\//g, '.');
+    const field = String(first.path || first.instancePath || '').replace(/^\//, '').replace(/\//g, '.');
     return field ? `${field}: ${first.message}` : String(first.message || 'not a menu-feeds choice');
 }
 
@@ -50,7 +51,7 @@ function createMenuFeeds({ db, now = () => Date.now(), writeLimit = WRITE_LIMIT,
     if (!db) throw new TypeError('createMenuFeeds: db is required');
     const writes = new Map();
 
-    /** The stored choice, exactly as the contract has it, or { on: null } when there is none. */
+    /** The stored v2 choice, or an empty default-on choice when there is none. */
     async function read(userId) {
         const row = await db.prepare('SELECT menu_feeds FROM user_preferences WHERE user_id = ?').get(userId);
         let value = row && row.menu_feeds;
@@ -59,11 +60,12 @@ function createMenuFeeds({ db, now = () => Date.now(), writeLimit = WRITE_LIMIT,
         }
         // A row written by an older release (or by hand) is shown only when the contract accepts it; anything else
         // reads as "never set" rather than as a choice the menu cannot draw.
+        if (isObject(value) && Array.isArray(value.on)) value = { order: value.on, off: [], updated_at: value.updated_at || null };
         if (!isObject(value) || checked(value)) {
             if (row && row.menu_feeds != null) log.warn(`[MenuFeeds] user ${userId} has a choice the contract refuses; showing none`);
-            return { on: null };
+            return { order: [], off: [], updated_at: null };
         }
-        return { on: value.on, updated_at: value.updated_at };
+        return { order: value.order, off: value.off, updated_at: value.updated_at };
     }
 
     /** 60 writes a minute, per person. */
@@ -76,7 +78,7 @@ function createMenuFeeds({ db, now = () => Date.now(), writeLimit = WRITE_LIMIT,
         return true;
     }
 
-    /** Replace the person's choice and store it. → network.menu-feeds@1 */
+    /** Replace the person's choice and store it. → network.menu-feeds@2 */
     async function write(userId, body, { ctx = null } = {}) {
         const at = now();
         if (!mayWrite(userId, at)) {
@@ -89,7 +91,15 @@ function createMenuFeeds({ db, now = () => Date.now(), writeLimit = WRITE_LIMIT,
         if (unknown) {
             throw Object.assign(new Error(`${unknown}: is not part of a menu-feeds choice`), { status: 400, code: 'menu-feeds.invalid' });
         }
-        const value = { on: body.on, updated_at: new Date(at).toISOString() };
+        const legacy = Object.hasOwn(body, 'on');
+        if (legacy && (Object.hasOwn(body, 'order') || Object.hasOwn(body, 'off'))) {
+            throw Object.assign(new Error('on cannot be combined with order or off'), { status: 400, code: 'menu-feeds.invalid' });
+        }
+        const value = legacy ? { order: body.on, off: [], updated_at: new Date(at).toISOString() }
+            : { order: body.order, off: body.off, updated_at: new Date(at).toISOString() };
+        if (legacy && !validate(LEGACY, { on: body.on, updated_at: value.updated_at }).valid) {
+            throw Object.assign(new Error('on: invalid v1 choice'), { status: 400, code: 'menu-feeds.invalid' });
+        }
         const errors = checked(value);
         if (errors) {
             throw Object.assign(new Error(firstFault(errors)), { status: 400, code: 'menu-feeds.invalid', errors });
@@ -103,7 +113,7 @@ function createMenuFeeds({ db, now = () => Date.now(), writeLimit = WRITE_LIMIT,
     return { read, write, _writes: writes };
 }
 
-/** The routes, behind Network's session check (the cookie on openvibe.network, a Bearer token elsewhere). */
+/** The routes, behind Network's user-session check. */
 function router({ menuFeeds, requireAuth }) {
     const r = express.Router();
     r.use(express.json({ limit: '2kb' }));

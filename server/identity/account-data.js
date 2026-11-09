@@ -191,8 +191,13 @@ async function networkPart(db, userId) {
     // it readable without opening preferences.json. Never chosen reads as { on: null }, exactly as the route answers.
     let feeds = prefs && prefs.menu_feeds;
     if (typeof feeds === 'string') { try { feeds = JSON.parse(feeds); } catch { feeds = null; } }
-    add('menu-feeds.json', feeds && typeof feeds === 'object' && Array.isArray(feeds.on)
-        ? { on: feeds.on, updated_at: feeds.updated_at || null } : { on: null });
+    add('menu-feeds.json', feeds && typeof feeds === 'object' && Array.isArray(feeds.order) && Array.isArray(feeds.off)
+        ? feeds : feeds && Array.isArray(feeds.on) ? { order: feeds.on, off: [], updated_at: feeds.updated_at || null }
+            : { order: [], off: [], updated_at: null });
+    let home = prefs && prefs.home_screen;
+    if (typeof home === 'string') { try { home = JSON.parse(home); } catch { home = null; } }
+    add('home-screen.json', home && typeof home === 'object' && Array.isArray(home.home) && Array.isArray(home.folders)
+        ? home : { home: [], folders: [], updated_at: null });
     await byUser('history.json', 'user_history');
     // The Dock's state (the Dock plan 2026-10-30, K-D1): the little floating surface every OpenVibe site draws.
     add('dock.json', await tableExists(db, 'dock_states')

@@ -4,7 +4,7 @@
 // every OpenVibe site because localStorage is per site.
 //
 // What this proves:
-//   - a person who never chose gets { on: null }; a PUT stores the choice and a GET reads it back, order included;
+//   - a person who never chose gets { order: [], off: [], updated_at: null }; a PUT stores the choice and a GET reads it back, order included;
 //   - the body is checked against the contract: five cards, a bad id, a missing on, a non-array, an unknown field
 //     and an over-long id are 400s with a clear detail, and nothing is stored;
 //   - a session is needed, and one person never reads or writes another's choice;
@@ -23,6 +23,7 @@ const { ids, validate } = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 const subjects = require('../server/identity/subjects');
 const menuFeedsMod = require('../server/menu-feeds');
+const homeScreenMod = require('../server/home-screen');
 const accountData = require('../server/identity/account-data');
 const publicCors = require('../server/public-cors');
 const authRoutes = require('../server/auth/routes');
@@ -50,12 +51,14 @@ Object.assign(app.locals, { db, config, privateKey: keys.privateKey, publicKey: 
 // The CORS the whole app runs behind (server/index.js): the first-party allow-list, and a foreign origin refused.
 const allowed = new Set(['https://openvibe.live', 'https://openvibe.network']);
 const corsGuard = publicCors.originGuard((origin) => allowed.has(origin), { log: { warn() {} } });
-app.use(publicCors.gate(publicCors.restrictedCors(corsGuard.origin)));
+app.use(publicCors.gate(publicCors.restrictedCors(corsGuard.origin), publicCors.bearerCors(corsGuard.origin)));
 app.use(corsGuard.denied);
 app.use('/api/v1/me/menu-feeds', menuFeedsMod.router({ menuFeeds, requireAuth }));
+app.use('/api/v1/me/home-screen', homeScreenMod.router({ homeScreen: homeScreenMod.createHomeScreen({ db }), requireAuth }));
 const server = http.createServer(app);
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const api = `http://127.0.0.1:${server.address().port}/api/v1/me/menu-feeds`;
+const homeApi = `http://127.0.0.1:${server.address().port}/api/v1/me/home-screen`;
 const call = (method, body, { as = ana, origin = null } = {}) => fetch(api, {
     method,
     headers: { authorization: `Bearer ${tokenOf(as)}`, ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...(origin ? { origin } : {}) },
@@ -63,10 +66,10 @@ const call = (method, body, { as = ana, origin = null } = {}) => fetch(api, {
 }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => ({})), headers: r.headers }));
 
 try {
-    // Never chosen: { on: null } and nothing else, private and not cached.
+    // Never chosen: { order: [], off: [], updated_at: null } and nothing else, private and not cached.
     let r = await call('GET');
     assert.strictEqual(r.status, 200, JSON.stringify(r.body));
-    assert.deepStrictEqual(r.body, { on: null }, 'never chosen reads as no choice');
+    assert.deepStrictEqual(r.body, { order: [], off: [], updated_at: null }, 'never chosen reads as no choice');
     assert.strictEqual(r.headers.get('cache-control'), 'private, no-store');
 
     // A choice is stored whole, order included, and the answer is the contract.
@@ -74,18 +77,24 @@ try {
     r = await call('PUT', { on: two });
     assert.strictEqual(r.status, 200, JSON.stringify(r.body));
     assert.ok(validate(menuFeedsMod.CONTRACT, r.body).valid, JSON.stringify(validate(menuFeedsMod.CONTRACT, r.body).errors));
-    assert.deepStrictEqual(r.body.on, two);
+    assert.deepStrictEqual(r.body.order, two);
+    assert.deepStrictEqual(r.body.off, [], 'a v1 on list becomes the start of the v2 order');
     assert.ok(r.body.updated_at, 'the answer carries when it changed');
     r = await call('GET');
-    assert.deepStrictEqual(r.body.on, two, 'the choice is stored');
+    assert.deepStrictEqual(r.body.order, two, 'the choice is stored');
 
     // Replacing and clearing: the order is the person's, and an empty array is a cleared choice.
     r = await call('PUT', { on: ['news:top', 'today:today'] });
-    assert.deepStrictEqual(r.body.on, ['news:top', 'today:today'], 'the new order is the stored one');
+    assert.deepStrictEqual(r.body.order, ['news:top', 'today:today'], 'the new order is the stored one');
     r = await call('PUT', { on: [] });
     assert.strictEqual(r.status, 200);
-    assert.deepStrictEqual(r.body.on, [], 'an empty array is a choice, not "never set"');
-    assert.deepStrictEqual((await call('GET')).body.on, [], 'and it reads back');
+    assert.deepStrictEqual(r.body.order, [], 'an empty array is a choice, not "never set"');
+    assert.deepStrictEqual((await call('GET')).body.order, [], 'and it reads back');
+    r = await call('PUT', { order: ['today:today', 'news:top'], off: ['news:top'] });
+    assert.strictEqual(r.status, 200);
+    assert.deepStrictEqual(r.body.off, ['news:top'], 'v2 can turn a card off without dropping its order');
+    r = await call('PUT', { order: [], off: [] });
+    assert.strictEqual(r.status, 200);
 
     // The contract refuses a body, with the field and the fault in detail; nothing is stored.
     const before = (await call('GET')).body;
@@ -109,11 +118,11 @@ try {
     assert.strictEqual((await fetch(api, { method: 'GET' })).status, 401, 'a session is needed');
     assert.strictEqual((await fetch(api, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: '{"on":[]}' })).status, 401, 'a session is needed to write');
     r = await call('GET', undefined, { as: bob });
-    assert.deepStrictEqual(r.body, { on: null }, "bob has not chosen");
+    assert.deepStrictEqual(r.body, { order: [], off: [], updated_at: null }, "bob has not chosen");
     r = await call('PUT', { on: ['live:live-now'] }, { as: bob });
     assert.strictEqual(r.status, 200);
-    assert.deepStrictEqual(r.body.on, ['live:live-now'], "bob's own choice");
-    assert.deepStrictEqual((await call('GET')).body.on, [], "bob's write left ana's choice alone");
+    assert.deepStrictEqual(r.body.order, ['live:live-now'], "bob's own choice");
+    assert.deepStrictEqual((await call('GET')).body.order, [], "bob's write left ana's choice alone");
 
     // CORS: https://openvibe.live may read, and its preflight is answered; another origin is refused, and its
     // write never runs the route.
@@ -128,7 +137,7 @@ try {
     assert.strictEqual((await cors.json()).code, 'cors.origin_denied');
     cors = await fetch(api, { method: 'PUT', headers: { origin: 'https://evil.example', authorization: `Bearer ${tokenOf(ana)}`, 'content-type': 'application/json' }, body: JSON.stringify({ on: ['news:top'] }) });
     assert.strictEqual(cors.status, 403, 'a cross-origin write never runs the route');
-    assert.deepStrictEqual((await call('GET')).body.on, [], 'the refused write changed nothing');
+    assert.deepStrictEqual((await call('GET')).body.order, [], 'the refused write changed nothing');
 
     // 60 writes a minute per person (a small window here so the test is quick).
     const limitedMod = menuFeedsMod.createMenuFeeds({ db, writeLimit: 2 });
@@ -146,14 +155,28 @@ try {
     assert.strictEqual((await over.json()).error, 'menu-feeds.rate_limited');
     limitServer.close();
 
+    // Home requires Bearer, validates against its contract and follows account export and erasure.
+    assert.strictEqual((await fetch(homeApi)).status, 401);
+    const homePreflight = await fetch(homeApi, { method: 'OPTIONS', headers: { origin: 'https://openvibe.live', 'access-control-request-method': 'PUT', 'access-control-request-headers': 'Authorization, Content-Type' } });
+    assert.strictEqual(homePreflight.status, 204);
+    assert.strictEqual(homePreflight.headers.get('access-control-allow-origin'), 'https://openvibe.live');
+    assert.strictEqual(homePreflight.headers.get('access-control-allow-credentials'), null, 'Bearer CORS does not grant cookies');
+    const layout = { home: ['live', 'folder:tools'], folders: [{ id: 'tools', name: 'Tools', apps: ['tools:qr'] }] };
+    const putHome = await fetch(homeApi, { method: 'PUT', headers: { authorization: `Bearer ${tokenOf(ana)}`, 'content-type': 'application/json' }, body: JSON.stringify(layout) });
+    assert.strictEqual(putHome.status, 200);
+    assert.ok(validate(homeScreenMod.CONTRACT, await putHome.json()).valid);
+    const badHome = await fetch(homeApi, { method: 'PUT', headers: { authorization: `Bearer ${tokenOf(ana)}`, 'content-type': 'application/json' }, body: JSON.stringify({ home: ['folder:missing'], folders: [] }) });
+    assert.strictEqual(badHome.status, 400);
+
     // The choice goes into the person's export, and it is erased with the person.
     const part = await accountData.networkPart(db, ana.id);
+    assert.deepStrictEqual(part.files.find((f) => f.name === 'home-screen.json').content.home, layout.home);
     const feedsFile = part.files.find((f) => f.name === 'menu-feeds.json');
     assert.ok(feedsFile, "ana's export carries her menu feeds");
     const storedFeeds = JSON.parse((await db.prepare('SELECT menu_feeds FROM user_preferences WHERE user_id = ?').get(ana.id)).menu_feeds);
     assert.deepStrictEqual(feedsFile.content, storedFeeds, 'the exported choice is the stored one');
     const bobPart = await accountData.networkPart(db, bob.id);
-    assert.deepStrictEqual(bobPart.files.find((f) => f.name === 'menu-feeds.json').content.on, ['today:today'], "bob's export carries only his own choice");
+    assert.deepStrictEqual(bobPart.files.find((f) => f.name === 'menu-feeds.json').content.order, ['today:today'], "bob's export carries only his own choice");
 
     const delId = `del_${ids.ulid()}`;
     await db.prepare(`INSERT INTO account_deletions (id, user_id, subject, status, requested_at, delete_after) VALUES (?, ?, ?, 'scheduled', ?, ?)`)

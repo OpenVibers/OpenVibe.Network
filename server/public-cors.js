@@ -29,6 +29,7 @@ function isPublicDiscoveryPath(p) {
     const path = String(p || '');
     if (path === '/.well-known/openvibe') return true;
     if (path === '/api/v1/changelog') return true;   // the network changelog every site's "shipped" widget reads
+    if (path === '/api/v1/frame/today' || path === '/api/v1/frame/today/') return true;
     if (/^\/api\/v1\/profiles\/[A-Za-z0-9_]{1,40}$/.test(path)) return true;   // public profiles, for every site
     if (/^\/api\/v1\/people\/@[A-Za-z0-9_]{1,40}\/page$/.test(path)) return true; // public person page JSON
     if (CONTRACT_RE.test(path)) return true;
@@ -72,10 +73,11 @@ function extensionCors(req, res, next) {
 }
 
 /** One CORS middleware for the app: extension origins get no grant, discovery is open, the rest restricted. */
-function gate(restricted) {
+function gate(restricted, bearer = restricted) {
     return function corsGate(req, res, next) {
         if (isExtensionOrigin(req.headers.origin)) return extensionCors(req, res, next);
         if (isPublicDiscoveryPath(req.path)) return publicCors(req, res, next);
+        if (req.path === '/api/v1/me/home-screen' || req.path === '/api/v1/me/home-screen/') return bearer(req, res, next);
         return restricted(req, res, next);
     };
 }
@@ -116,5 +118,8 @@ const RESTRICTED_MAX_AGE_S = 600;
 function restrictedCors(origin) {
     return require('cors')({ origin, credentials: true, maxAge: RESTRICTED_MAX_AGE_S });
 }
+function bearerCors(origin) {
+    return require('cors')({ origin, credentials: false, maxAge: RESTRICTED_MAX_AGE_S });
+}
 
-module.exports = { gate, publicCors, extensionCors, restrictedCors, isPublicDiscoveryPath, originGuard, ALLOW_HEADERS, EXPOSE_HEADERS, RESTRICTED_MAX_AGE_S };
+module.exports = { gate, publicCors, extensionCors, restrictedCors, bearerCors, isPublicDiscoveryPath, originGuard, ALLOW_HEADERS, EXPOSE_HEADERS, RESTRICTED_MAX_AGE_S };
