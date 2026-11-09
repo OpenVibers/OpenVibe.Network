@@ -38,6 +38,7 @@ const svc = http.createServer((req, res) => {
         const u = new URL(req.url, 'http://x');
         calls.push({ method: req.method, path: u.pathname, subject: u.searchParams.get('subject') || req.headers['x-ov-subject'] || null, auth: req.headers.authorization, body: body ? JSON.parse(body) : null });
         const json = (s, b) => { res.writeHead(s, { 'content-type': 'application/json' }); res.end(JSON.stringify(b)); };
+        if (u.pathname === '/actor/api/v1/runs' && req.method === 'POST') return json(201, { run: { id: 'tsk_new', skill: 'research-brief', subject: 'Research brief' } });
         if (u.pathname === '/actor/api/v1/actions') return json(200, { items: [
             item(cancelled ? { state: 'cancelled', bucket: 'failed', actions: ['open'], updated_at: iso(1) } : {}),
             item({ id: 'apr_1', kind: 'approval', title: 'Spend $0.40 on a desk hour', bucket: 'waiting', state: 'pending', actions: ['approve', 'decline', 'open'], updated_at: iso(5), href: 'https://openvibe.actor/me/approvals' }),
@@ -54,6 +55,7 @@ const svc = http.createServer((req, res) => {
         if (u.pathname === '/actor/api/v1/approvals/apr_1/decide') return json(200, item({ id: 'apr_1', kind: 'approval', bucket: 'done', state: 'approved', actions: ['open'] }));
         if (u.pathname === '/actor/api/v1/approvals/apr_404/decide') return json(404, { code: 'not_found' });
         if (u.pathname === '/actor/api/v1/tasks/tsk_1/cancel') { cancelled = true; return json(200, { id: 'tsk_1', state: 'cancelled' }); }
+        if (u.pathname === '/actor/api/v1/tasks/tsk_old/retry') return json(201, { run: { id: 'tsk_retry', state: 'queued' } });
         if (u.pathname === '/actor/api/v1/tasks/tsk_404/cancel') return json(404, { code: 'not_found' });
         if (u.pathname === '/domains/api/v1/actions') return json(200, { items: [item({ service: 'domains', id: 'dpr_1', kind: 'approval', title: 'Add a TXT record to example.com', bucket: 'waiting', state: 'pending', actions: ['approve', 'decline', 'open'], updated_at: iso(20), href: 'https://openvibe.domains/panel/p/dpr_1' })] });
         if (u.pathname === '/domains/api/v1/proposals/dpr_1/decide') return json(200, item({ service: 'domains', id: 'dpr_1', kind: 'approval', bucket: 'done', state: 'applied', actions: ['open'], href: 'https://openvibe.domains/panel/p/dpr_1' }));
@@ -88,7 +90,7 @@ app.use('/api/v1/me/actions', actionsMod.router({ actions, requireAuth }));
 const server = http.createServer(app);
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const api = `http://127.0.0.1:${server.address().port}/api/v1/me/actions`;
-const call = (method, path = '', auth = true) => fetch(api + path, { method, headers: auth ? { authorization: `Bearer ${token}` } : {} }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => ({})) }));
+const call = (method, path = '', auth = true, body = null) => fetch(api + path, { method, headers: { ...(auth ? { authorization: `Bearer ${token}` } : {}), ...(body ? { 'content-type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => ({})) }));
 
 try {
     assert.strictEqual((await call('GET', '', false)).status, 401, 'a session is needed');
@@ -97,7 +99,8 @@ try {
     let r = await call('GET');
     assert.strictEqual(r.status, 200);
     const doc = r.body;
-    assert.ok(validate('network.me-actions-result@1', doc).valid, JSON.stringify(validate('network.me-actions-result@1', doc).errors));
+    const legacyDoc = { ...doc, buckets: Object.fromEntries(Object.entries(doc.buckets).map(([name, items]) => [name, items.map(({ run_error, skill, subject, model, maker, duration_ms, step, ...legacy }) => legacy)])) };
+    assert.ok(validate('network.me-actions-result@1', legacyDoc).valid, JSON.stringify(validate('network.me-actions-result@1', legacyDoc).errors));
     assert.deepStrictEqual(doc.sources, { network: 'ok', actor: 'ok', codes: 'not_connected', ai: 'timeout', domains: 'ok' });
     assert.strictEqual(doc.partial, true, 'a timeout makes the answer partial');
     assert.deepStrictEqual(doc.counts, { running: 1, waiting: 5, scheduled: 1, done: 0, failed: 1 });
@@ -155,6 +158,14 @@ try {
     const dc = calls.find((c) => c.path === '/actor/api/v1/tasks/tsk_1/cancel');
     assert.deepStrictEqual([dc.method, dc.auth, dc.subject.startsWith('usr_')], ['POST', 'Bearer tok:openvibe.actor:actor.task.create', true]);
     assert.deepStrictEqual([r.body.item.state, r.body.item.bucket], ['cancelled', 'failed'], 'the item comes back as it is now');
+    r = await call('POST', '/actor/tsk_old/retry');
+    assert.strictEqual(r.body.item.run.id, 'tsk_retry');
+    const retried = calls.find((c) => c.path === '/actor/api/v1/tasks/tsk_old/retry');
+    assert.deepStrictEqual([retried.auth, retried.subject.startsWith('usr_')], ['Bearer tok:openvibe.actor:actor.task.create', true]);
+    r = await call('POST', '/skills/skl_example/run', true, { input: {}, choice: { mode: 'balanced' } });
+    assert.strictEqual(r.status, 201, JSON.stringify(r.body));
+    const started = calls.find((c) => c.path === '/actor/api/v1/runs');
+    assert.deepStrictEqual([started.auth, started.subject.startsWith('usr_'), started.body.skill], ['Bearer tok:openvibe.actor:actor.task.create', true, 'skl_example']);
     assert.strictEqual((await call('POST', '/actor/tsk_404/cancel')).status, 404, 'no such task');
     // Codes has no cancel route, and Codes is not connected for it either.
     assert.strictEqual((await call('POST', '/codes/tsk_1/approve')).body.code, 'actions.unsupported');
