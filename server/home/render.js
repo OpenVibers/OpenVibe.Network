@@ -13,6 +13,7 @@ const icons = require('openvibe-shared/icons');
 const showcase = require('openvibe-shared/showcase');
 const toolsCatalog = require('../domains/catalog');
 const activity = require('./activity');
+const homePopular = require('./popular');
 const boost = require('../boost');
 // The look before first paint (openvibe-shared look-boot, plan L42): the shell carries the marker and this
 // puts the script there, above the stylesheets, in the page the server renders.
@@ -67,7 +68,7 @@ const INTENTS = [
     ['codes', 'fa-code', 'Code with any agent', 'Claude Code, Codex, OpenCode or your own model on one task, with hand-offs.', 'https://openvibe.codes/', 'code coding agent agents ai claude codex opencode deepseek harness contribute'],
     ['ai', 'fa-robot', 'Compare AI models', 'Which AI does each job best, what it costs and how fast it is: the Bench results, on Report.', 'https://openvibe.report/ai', 'ai artificial intelligence benchmark benchmarks bench leaderboard comparison llm gpt claude gemini which-ai best-ai'],
     ['actor', 'fa-user-astronaut', 'Give a task to an agent', 'Actor picks the best agent for it, works on a desk you can watch and take over, and shows the cost and why.', 'https://openvibe.actor/', 'agent agents ai assistant task tasks automate automation router openrouter delegate'],
-    ['bot', 'fa-desktop', 'Put your computer to work', 'Desks for your agents, a spare laptop as a desk host, and the AI models you run (Ollama, LM Studio) for your own work.', 'https://openvibe.bot/machines', 'computer computers pc laptop desktop desk desks machine machines ollama lmstudio llama gpu homelab node'],
+    ['bot', 'fa-desktop', 'Put your computer to work', 'Desks for your agents, a spare laptop as a desk host, and the AI models you run (Ollama, LM Studio) for your own work.', 'https://openvibe.link/machines', 'computer computers pc laptop desktop desk desks machine machines ollama lmstudio llama gpu homelab node'],
     ['work', 'fa-briefcase', 'Find work', 'Jobs from open boards in one search, each linked to where you apply.', 'https://openvibe.work/', 'job jobs work career hiring remote employment apply listings'],
     ['food', 'fa-utensils', 'Eat well for less', 'Food near you, meal plans and recipes for your budget, and delivery apps compared.', 'https://openvibe.food/', 'food eat meal meals grocery groceries recipe recipes foodbank pantry delivery doordash ubereats grubhub instacart hellofresh'],
     ['quest', 'fa-ranking-star', 'Earn badges', 'Quests across the network for the things you already do there.', 'https://openvibe.quest/', 'quest quests badge badges achievement achievements rewards opencoins earn'],
@@ -195,6 +196,19 @@ function moreParts(parts) {
     if (shown.length < 2) return shown.map(([, , html]) => html).join('\n');
     const chips = shown.map(([id, label]) => `<a href="#${id}">${esc(label)}</a>`).join('');
     return `<div class="more"><h2 class="more-pick-h">${sectionIcon('grid')}More about OpenVibe</h2><nav class="more-pick" data-ovk-scroll aria-label="More about OpenVibe">${chips}</nav>\n${shown.map(([, , html]) => html.replace(/^<section class="([^"]*)" id="([^"]*)"/, '<section class="$1" id="$2" data-more-part')).join('\n')}</div>`;
+}
+
+// The five things people do now (plan L43): a plain list, no new styles. The order and the numbers are Report's;
+// when Report does not answer the fixed starter list is used and the section says so in data-source. Opus places and
+// styles the block; this only renders it.
+function popularNow() {
+    const p = homePopular.peek();
+    const items = Array.isArray(p.items) ? p.items.slice(0, 5) : [];
+    if (!items.length) return '';
+    const lede = p.source === 'report'
+        ? "Ranked from OpenVibe.Report's numbers: what people opened today and this week."
+        : 'A fixed starter list while OpenVibe.Report is away.';
+    return `<section class="sc-sec" id="popular" data-source="${esc(p.source)}" aria-labelledby="h-popular"><h2 id="h-popular" class="ovk-titled">${sectionIcon('grid')}Five things people do now</h2><p class="sc-lede">${esc(lede)}</p><ul class="now-list">${items.map((it) => `<li><a href="${esc(it.url)}"><b>${esc(it.name)}</b><small>${esc(it.reason)}</small></a></li>`).join('')}</ul></section>`;
 }
 
 // The hero's numbers: only what Network read itself within the last minute (server/home/activity.js); a number it
@@ -412,6 +426,7 @@ ${chips(SOON.map((site) => [`https://${site.host}/`, site.tagline, site.icon, si
 <div class="faq-grid">${faqPairs().map((p, i) => `<details class="faq-item"${i === 0 ? ' open' : ''}><summary><h3 class="ovk-titled">${sectionIcon('help')}${esc(p.q)}</h3></summary><p>${esc(p.a)}</p></details>`).join('')}</div><p class="home-more"><a href="https://openvibe.help/sites/openvibe.network">More answers about your account on OpenVibe.Help →</a></p></section>`;
     return `<style>${CSS}</style>
 ${rightNow(act)}
+${popularNow()}
 ${foldSites(sites)}
 ${moreParts([['tools', 'Tools', tools], ['account', 'Your account', account], ['soon', 'Opening next', soon], ['faq', 'Questions', faq], ['developers', 'Developers', dev]])}`;
 }
@@ -442,8 +457,9 @@ function withSameAs(html) {
 function render({ releaseId = '' } = {}) {
     const { catalog } = toolsCatalog.peek();
     const act = activity.peek();
+    const popular = homePopular.peek();
     const stat = fs.statSync(SHELL);
-    const key = `${stat.mtimeMs}:${catalog.updated}:${catalog.tools.length}:${act.version}:${releaseId}`;
+    const key = `${stat.mtimeMs}:${catalog.updated}:${catalog.tools.length}:${act.version}:${popular.source}:${popular.generated_at || ''}:${(popular.items || []).map((i) => i.id).join(',')}:${releaseId}`;
     if (pageCache.key === key) return pageCache;
     // The network as one entity (SEO-31): a WebSite whose sitelinks search is the network's own search service, so a
     // search box in a Google result searches OpenVibe rather than the wider web. The description is true of today.

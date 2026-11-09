@@ -3,8 +3,6 @@
 // decides: on openvibe.link '/' is Link's page, '/install' answers with the installer of the latest release, and
 // the page has its Markdown twin, its llms.txt and its crawl files, like Network's other pages.
 //
-// node.openvibe.network is the old name and answers 301 to the same path on openvibe.link — except /install, which
-// keeps serving the installer, because `curl -fsSL https://node.openvibe.network/install | sh` is in people's notes.
 // www.openvibe.link answers 301 to openvibe.link.
 //
 // The route is mounted before the agent layer, so Link's page is not answered by Network's home renderer.
@@ -17,7 +15,6 @@ const release = require('./release');
 
 const HOST = page.HOST;
 const WWW_HOST = page.WWW_HOST;
-const LEGACY_HOST = page.LEGACY_HOST;
 const SITE = page.SITE;
 
 /** The request's host, lowercased, without the port. */
@@ -30,7 +27,7 @@ function llmsTxt() {
     return [
         '# OpenVibe Link',
         '',
-        '> OpenVibe Link is one program (openvibe-link; openvibe-node is its alias) that runs on your computer, server, phone or robot. It connects out to OpenVibe, needs no open ports, keeps a local kill switch, and does nothing you did not turn on.',
+        '> OpenVibe Link is one program (openvibe-link) that runs on your computer, server, phone or robot. It connects out to OpenVibe, needs no open ports, keeps a local kill switch, and does nothing you did not turn on.',
         '',
         '## The page',
         '',
@@ -39,7 +36,7 @@ function llmsTxt() {
         '## Install',
         '',
         `- [Install Link](${SITE}/install): the latest release's installer, as a script to run`,
-        `- [Your machines](${SITE}/machines): the signed-in machines hub (pair, capabilities, online state), at openvibe.my/machines`,
+        `- [Your machines](${SITE}/machines): the signed-in Link machine hub (pair, capabilities, online state)`,
         '',
         '```sh',
         page.INSTALL_LINE,
@@ -50,9 +47,9 @@ function llmsTxt() {
         `- [Install](${page.DOCS}/install.md): every OS, every option, and what the installer does`,
         `- [Your computer for your agents](${page.DOCS}/computer.md): the computer plugin, its levels and the live screen`,
         `- [A machine that runs your jobs](${page.DOCS}/worker.md): the sandbox the job runner uses`,
-        `- [The protocol](${page.DOCS}/protocol.md): the wire format between the Node and OpenVibe.Bot`,
+        `- [The protocol](${page.DOCS}/protocol.md): the wire format between Link and OpenVibe.Bot`,
         `- [Your memory](${page.DOCS}/memory.md): what the collectors read and how it is uploaded`,
-        '- [The source on GitHub](https://github.com/OpenVibers/OpenVibe.Node)',
+        '- [The source on GitHub](https://github.com/OpenVibers/OpenVibe.Link)',
         '',
     ].join('\n');
 }
@@ -61,13 +58,13 @@ function llmsTxt() {
  * Link's routes. Returns null for a request that is not for this host, so the router can be mounted early
  * and every other host falls through to Network's own pages.
  */
-function createNodeRoutes({ releaseId, releaseApi = release } = {}) {
+function createLinkRoutes({ releaseId, releaseApi = release } = {}) {
     const router = require('express').Router();
     router.use(require('./egress').publicRouter());
 
     router.use(async (req, res, next) => {
         const host = hostOf(req);
-        if (host !== HOST && host !== WWW_HOST && host !== LEGACY_HOST) return next();
+        if (host !== HOST && host !== WWW_HOST) return next();
 
         const url = new URL(req.url, SITE);
         const path = url.pathname;
@@ -76,8 +73,7 @@ function createNodeRoutes({ releaseId, releaseApi = release } = {}) {
         if (host === WWW_HOST) return res.redirect(301, `${SITE}${path}${url.search}`);
 
         // The installer: the latest release's own asset, so `curl -fsSL https://openvibe.link/install | sh`
-        // (and the old node.openvibe.network line) installs that release. The same cached answer the page shows.
-        // It is answered before the legacy-host redirect: this is the one path the old name keeps serving itself.
+        // installs that release. The same cached answer the page shows.
         if (path === '/install') {
             let rel;
             try { rel = await releaseApi.latest(); } catch { rel = release.FALLBACK; }
@@ -85,14 +81,13 @@ function createNodeRoutes({ releaseId, releaseApi = release } = {}) {
             return res.set('Cache-Control', 'public, max-age=600').redirect(302, target);
         }
 
-        // The old host is a signpost, not a second home: the same path on the new one.
-        if (host === LEGACY_HOST) return res.redirect(301, `${SITE}${path}${url.search}`);
-
-        // Your machines and pairing are the signed-in account hub's own pages (openvibe.my/machines): it lists every
-        // paired machine, whether it is online, what it is allowed to do, and pairs a new one. Link links there rather
-        // than keeping a second machines UI here. Link's local OAuth session supplies its navbar identity.
-        if (path === '/machines' || path === '/pair') {
-            return res.set('Cache-Control', 'no-store').redirect(302, 'https://openvibe.my/machines');
+        // The machine hub lives on Link's own origin. It uses Network's same-origin
+        // session and machine API, and keeps the existing roles and pairing controls.
+        if (path === '/machines') {
+            return res.set('Cache-Control', 'no-store').sendFile(pathLib.join(__dirname, '..', '..', 'public', 'my.html'));
+        }
+        if (path === '/pair' || path === '/panel') {
+            return res.set('Cache-Control', 'no-store').redirect(302, `${SITE}/machines`);
         }
 
         if (path === '/llms.txt') {
@@ -119,8 +114,11 @@ function createNodeRoutes({ releaseId, releaseApi = release } = {}) {
                 'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff' });
             return res.end(req.method === 'HEAD' ? undefined : source);
         }
-        if (path === '/send.js' && (req.method === 'GET' || req.method === 'HEAD')) {
-            const source = fs.readFileSync(pathLib.join(__dirname, 'send.js'), 'utf8');
+        // The page's two scripts, from this folder: send.js and egress-settings.js. The second had no route, so
+        // openvibe.link/egress-settings.js fell through to the host's 301 onto openvibe.network, where it 404s and its
+        // same-origin resource policy blocks it (found 11-09): the egress form never got its script.
+        if ((path === '/send.js' || path === '/egress-settings.js') && (req.method === 'GET' || req.method === 'HEAD')) {
+            const source = fs.readFileSync(pathLib.join(__dirname, path.slice(1)), 'utf8');
             res.set({ 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=600', 'X-Content-Type-Options': 'nosniff' });
             return res.end(req.method === 'HEAD' ? undefined : source);
         }
@@ -152,4 +150,4 @@ function pathResolveLocker() {
     return pathLib.join(pathLib.dirname(require.resolve('openvibe-sdk')), 'browser', 'openvibe-sdk.mjs');
 }
 
-module.exports = { createNodeRoutes, llmsTxt, hostOf, HOST, WWW_HOST, LEGACY_HOST, SITE };
+module.exports = { createLinkRoutes, llmsTxt, hostOf, HOST, WWW_HOST, SITE };

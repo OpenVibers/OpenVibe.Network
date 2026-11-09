@@ -85,6 +85,9 @@ for (const [id, , verb, , href] of home.INTENTS) {
     assert.ok(html.includes(`<b>${verb}</b>`), `intent ${id} says "${verb}"`);
 }
 assert.ok(/Go live<\/b><small>From a browser tab\. No OBS, no follower minimum\./.test(html), 'browser go-live stays the headline promise');
+// The five most popular list (plan L43) is a plain list; with no Report wired in this process it says it is the floor.
+assert.ok(/<section class="sc-sec" id="popular" data-source="fallback"/.test(html), 'the signed-out popularity list is on the page and names its source');
+assert.ok(html.includes('Five things people do now') && /<ul class="now-list">/.test(html), 'the list is plain, with the existing classes');
 assert.ok(/Nobody is live right now/.test(html) && /Go live from your browser/.test(html), 'an honest empty state');
 const open = sites.filter((s) => s.status === 'open' && s.id !== 'network');
 // The hero's orbit (2026-10-28): the most used sites around the mark, the count of every site in its middle.

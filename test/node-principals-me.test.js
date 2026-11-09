@@ -12,7 +12,7 @@ const express = require('express');
 const { ids, validate } = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 const principals = require('../server/identity/principals');
-const nodePrincipals = require('../server/registry/node-principals');
+const nodePrincipals = require('../server/registry/link-principals');
 const { signToken } = require('../server/auth/routes');
 
 (async () => {
@@ -37,8 +37,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 Object.assign(app.locals, { db, config, privateKey: keys.privateKey, publicKey: keys.publicKey });
 app.use('/oauth', require('../server/auth/oauth-routes'));
-const pr = nodePrincipals.routers({ guard: principals.guard('network.node.manage'), now });
-app.use('/api/v1/node-pairing', pr.pairing);
+const pr = nodePrincipals.routers({ guard: principals.guard('network.link.manage'), now });
+app.use('/api/v1/link-pairing', pr.pairing);
 app.use('/internal', pr.internal);
 app.use('/api/v1/me/nodes', nodePrincipals.userRouter(requireAuth, now));
 const server = http.createServer(app);
@@ -57,24 +57,24 @@ const bearer = (t) => ({ authorization: `Bearer ${t}` });
 const serviceToken = async (id, secret) => (await (await fetch(`${base}/oauth/token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: secret, audience: 'openvibe.network' }) })).json()).access_token;
 const session = async (id) => bearer(signToken(await db.prepare('SELECT * FROM users WHERE id = ?').get(id), keys.privateKey, config));
 const revokedEvents = async () => (await db.prepare('SELECT envelope FROM network_event_outbox ORDER BY id').all()).map((r) => r.envelope)
-    .filter((e) => e.event_type === 'network.node.revoked');
+    .filter((e) => e.event_type === 'network.link.revoked');
 let passed = 0;
 const check = async (name, fn) => { await fn(); passed++; log(`  ok ${name}`); };
 const VIEW_KEYS = ['created_at', 'home_cell', 'last_seen_at', 'name', 'node_id', 'owner', 'paired_for', 'principal', 'revoked_at', 'status'];
 try {
     const bot = bearer(await serviceToken('bot', 'bot-secret'));
     const asAlex = await session(9201); const asBella = await session(9202); const asGuest = await session(9203);
-    const mint = (owner, ref) => call('POST', '/internal/node-pairings', { owner: { kind: 'user', subject: owner }, ref }, bot);
+    const mint = (owner, ref) => call('POST', '/internal/link-pairings', { owner: { kind: 'user', subject: owner }, ref }, bot);
     const pair = async (owner, name) => {
         const { body: pairing } = await mint(owner, `me-${ids.ulid()}`);
-        const r = await call('POST', '/api/v1/node-pairing', { pairing: pairing.pairing_id, code: pairing.code, name });
+        const r = await call('POST', '/api/v1/link-pairing', { pairing: pairing.pairing_id, code: pairing.code, name });
         assert.strictEqual(r.status, 201, r.text);
         return r.body;
     };
 
     await check('only a person\'s session is accepted; no token and a service token are 401', async () => {
         assert.strictEqual((await call('GET', '/api/v1/me/nodes')).status, 401);
-        assert.strictEqual((await call('POST', '/api/v1/me/nodes/nod_x/revoke')).status, 401);
+        assert.strictEqual((await call('POST', '/api/v1/me/nodes/lnk_x/revoke')).status, 401);
         assert.strictEqual((await call('GET', '/api/v1/me/nodes', null, bot)).status, 401, 'a service token is not a session');
         const guest = await call('GET', '/api/v1/me/nodes', null, asGuest);
         assert.deepStrictEqual([guest.status, guest.body.code], [403, 'registry.guest']);
@@ -97,7 +97,7 @@ try {
             const view = a.body.nodes[i];
             assert.deepStrictEqual(Object.keys(view).sort(), VIEW_KEYS);
             assert.deepStrictEqual([view.owner, view.status, view.name, view.paired_for], [{ kind: 'user', subject: alex }, 'active', paired === a2 ? 'Laptop' : 'Workstation', { service: 'bot', ref: (await db.prepare('SELECT pairing_ref FROM platform_node_principals WHERE id = ?').get(paired.principal)).pairing_ref }]);
-            const internal = await call('GET', `/internal/node-principals/${paired.principal}`, null, bot);
+            const internal = await call('GET', `/internal/link-principals/${paired.principal}`, null, bot);
             assert.deepStrictEqual(view, internal.body, 'the owner sees exactly the service view');
         }
         const b = await call('GET', '/api/v1/me/nodes', null, asBella);
@@ -110,7 +110,7 @@ try {
         assert.strictEqual(r.headers.get('cache-control'), 'private, no-store');
         const row = await db.prepare('SELECT status, revoked_at, revoked_by FROM platform_node_principals WHERE id = ?').get(b1.principal);
         assert.deepStrictEqual([row.status, row.revoked_at, row.revoked_by], ['active', null, null], 'Bella\'s machine is untouched');
-        assert.deepStrictEqual((await call('POST', `/api/v1/me/nodes/nod_${ids.ulid()}/revoke`, null, asAlex)).status, 404);
+        assert.deepStrictEqual((await call('POST', `/api/v1/me/nodes/lnk_${ids.ulid()}/revoke`, null, asAlex)).status, 404);
         assert.deepStrictEqual((await call('POST', '/api/v1/me/nodes/not-a-node/revoke', null, asAlex)).status, 404);
     });
 
@@ -129,7 +129,7 @@ try {
         assert.strictEqual(announced.length, 1, 'one event for one revoke');
         const e = announced[0];
         assert.ok(validate('events.event-envelope@1', e).valid, JSON.stringify(validate('events.event-envelope@1', e).errors));
-        assert.ok(validate('network.node.revoked@1', e.payload).valid, JSON.stringify(validate('network.node.revoked@1', e.payload).errors));
+        assert.ok(validate('network.link.revoked@1', e.payload).valid, JSON.stringify(validate('network.link.revoked@1', e.payload).errors));
         assert.deepStrictEqual([e.payload.node_id, e.payload.principal_id, e.payload.owner, e.payload.reason], [a1.node_id, a1.principal, { kind: 'user', subject: alex }, 'stolen laptop']);
         assert.deepStrictEqual([e.actor, e.visibility, e.source], [{ type: 'user', id: alex }, 'internal', 'network']);
         assert.ok(!/hash|credential|secret/i.test(JSON.stringify(e.payload)), 'the payload carries no secret field');

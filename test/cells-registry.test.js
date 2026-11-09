@@ -27,14 +27,14 @@ app.locals.config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpi
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 app.use('/oauth', require('../server/auth/oauth-routes'));
-app.use('/internal/nodes', require('../server/registry/nodes').routers({ guard: principals.guard('network.node.report') }).internal);
-app.use('/internal/resources', require('../server/registry/offers').routers({ guard: principals.guard('network.node.report') }).internal);
+app.use('/internal/links', require('../server/registry/nodes').routers({ guard: principals.guard('network.link.report') }).internal);
+app.use('/internal/resources', require('../server/registry/offers').routers({ guard: principals.guard('network.link.report') }).internal);
 const c = cells.routers({ readGuard: principals.guard('network.registry.read') });
 app.use('/api/v1/cells', c.pub);
 app.use('/internal/registry', c.internal);
 const server = http.createServer(app);
 
-const nod = () => `nod_${ids.ulid()}`;
+const nod = () => `lnk_${ids.ulid()}`;
 const project = `prj_${ids.ulid()}`;
 const principal = (nodeId) => db.prepare('SELECT * FROM platform_node_principals WHERE node_id = ?').get(nodeId);
 const insertPrincipal = (p) => db.prepare(`INSERT INTO platform_node_principals (id, node_id, home_cell, owner_kind, project_id, trust, status, created_by, revoked_at)
@@ -76,8 +76,8 @@ try {
         [{ node_id: 'p7', owner_kind: 'platform', trust: 'first-party', status: 'revoked' }, 'revoked needs revoked_at'],
         [{ node_id: 'p8', owner_kind: 'platform', trust: 'first-party', revoked_at: '2026-10-01T00:00:00Z' }, 'revoked_at needs revoked'],
         [{ node_id: 'p9', owner_kind: 'project', project_id: project, trust: 'trusted' }, 'trust is the trust-class enum'],
-        [{ id: `usr_${ids.ulid()}`, node_id: 'p10', owner_kind: 'platform', trust: 'first-party' }, 'a node principal id is nod_<ULID>, never another subject'],
-        [{ node_id: 'Bad_Node', owner_kind: 'platform', trust: 'first-party' }, 'node ids follow network.node@1'],
+        [{ id: `usr_${ids.ulid()}`, node_id: 'p10', owner_kind: 'platform', trust: 'first-party' }, 'a node principal id is lnk_<ULID>, never another subject'],
+        [{ node_id: 'Bad_Node', owner_kind: 'platform', trust: 'first-party' }, 'node ids follow network.link@1'],
     ];
     for (const [row, why] of refused) await assert.rejects(insertPrincipal(row), why);
     assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM platform_node_principals').get()).n, 0, 'nothing was written by a refused insert');
@@ -100,7 +100,7 @@ try {
     assert.deepStrictEqual((await globalThis.__ovNetworkMigrate({ dir: MIGRATIONS })).applied, []);
     await globalThis.__ovNetworkDdl(require('fs').readFileSync(require('path').join(MIGRATIONS, '0014_node_pairing.sql'), 'utf8'));
 
-    // ── A node principal is not a service principal: an oauth_clients secret under a nod_ id buys nothing. Every nod_
+    // ── A node principal is not a service principal: an oauth_clients secret under a lnk_ id buys nothing. Every lnk_
     // client goes to the node branch (slice N4c), which knows only node credentials: 401 invalid_client.
     const nodClient = nod();
     await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris) VALUES (?, 'node-secret', 'node', '[]')").run(nodClient);
@@ -110,17 +110,17 @@ try {
 
     // ── Host's node report: first-named machines become platform principals; a project's or a revoked machine refuses the report.
     const host = { authorization: `Bearer ${await token('host', 'host-secret')}` };
-    let x = await call('POST', '/internal/nodes/report', { source: 'primary', nodes: [node('ovh-1'), node('edge-1', 'eu-west')] }, host);
+    let x = await call('POST', '/internal/links/report', { source: 'primary', nodes: [node('ovh-1'), node('edge-1', 'eu-west')] }, host);
     assert.strictEqual(x.status, 200, JSON.stringify(x.body));
     const ovh = await principal('ovh-1');
-    assert.match(ovh.id, /^nod_[0-9A-HJKMNP-TV-Z]{26}$/);
+    assert.match(ovh.id, /^lnk_[0-9A-HJKMNP-TV-Z]{26}$/);
     assert.deepStrictEqual([ovh.owner_kind, ovh.project_id, ovh.trust, ovh.home_cell, ovh.status, ovh.created_by], ['platform', null, 'first-party', 'wnam-1', 'active', 'report:primary']);
     assert.strictEqual((await principal('edge-1')).home_cell, 'wnam-1', 'no active cell in eu-west yet: the bootstrap cell');
-    x = await call('POST', '/internal/nodes/report', { source: 'primary', nodes: [node('ovh-1'), node('edge-1', 'eu-west')] }, host);
+    x = await call('POST', '/internal/links/report', { source: 'primary', nodes: [node('ovh-1'), node('edge-1', 'eu-west')] }, host);
     assert.strictEqual(x.status, 200);
     assert.strictEqual((await principal('ovh-1')).id, ovh.id, 'a re-report keeps the principal');
     for (const [id, code] of [['pi-1', 'registry.node_not_platform'], ['old-1', 'registry.node_revoked']]) {
-        x = await call('POST', '/internal/nodes/report', { source: 'primary', nodes: [node('ovh-1'), node(id)] }, host);
+        x = await call('POST', '/internal/links/report', { source: 'primary', nodes: [node('ovh-1'), node(id)] }, host);
         assert.deepStrictEqual([x.status, x.body.code], [409, code], `${id}: ${JSON.stringify(x.body)}`);
     }
     assert.deepStrictEqual((await db.prepare("SELECT id, status FROM platform_nodes ORDER BY id").all()).map((r) => [r.id, r.status]), [['edge-1', 'up'], ['ovh-1', 'up']],
@@ -181,9 +181,9 @@ try {
     assert.strictEqual((await call('GET', '/internal/registry/cells/nope-1', null, live)).status, 404);
 
     // ── Every node principal for network.registry.read (T2 step 1), newest first, filtered by cell, owner and status.
-    assert.strictEqual((await call('GET', '/internal/registry/node-principals')).status, 403, 'nobody');
-    assert.strictEqual((await call('GET', '/internal/registry/node-principals', null, host)).status, 403, 'Host lacks network.registry.read');
-    x = await call('GET', '/internal/registry/node-principals', null, live);
+    assert.strictEqual((await call('GET', '/internal/registry/link-principals')).status, 403, 'nobody');
+    assert.strictEqual((await call('GET', '/internal/registry/link-principals', null, host)).status, 403, 'Host lacks network.registry.read');
+    x = await call('GET', '/internal/registry/link-principals', null, live);
     assert.strictEqual(x.status, 200, JSON.stringify(x.body));
     assert.strictEqual(x.headers.get('cache-control'), 'no-store');
     const stored = await db.prepare('SELECT id FROM platform_node_principals ORDER BY created_at DESC, id DESC').all();
@@ -193,7 +193,7 @@ try {
     assert.deepStrictEqual([byId['pi-1'].owner, byId['pi-1'].trust, byId['pi-1'].home_cell], [{ kind: 'project', project_id: project }, 'community', 'wnam-1']);
     assert.deepStrictEqual([byId['ovh-1'].owner, byId['ovh-1'].trust], [{ kind: 'platform' }, 'first-party']);
     assert.strictEqual(byId['pair-user'].owner.kind, 'user');
-    const nodesOf = async (q) => (await call('GET', `/internal/registry/node-principals${q}`, null, live)).body.node_principals.map((p) => p.node_id).sort();
+    const nodesOf = async (q) => (await call('GET', `/internal/registry/link-principals${q}`, null, live)).body.node_principals.map((p) => p.node_id).sort();
     assert.deepStrictEqual(await nodesOf('?cell=weu-1'), ['pair-cred-a', 'pair-platform', 'pair-user']);
     assert.deepStrictEqual(await nodesOf('?owner_kind=user'), ['pair-user']);
     assert.deepStrictEqual(await nodesOf('?status=revoked'), ['old-1']);

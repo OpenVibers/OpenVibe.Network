@@ -1,7 +1,7 @@
 'use strict';
-// openvibe.link: OpenVibe Link's front door (the Node renamed), served by Network. The Host header decides: on
+// openvibe.link: OpenVibe Link's front door (the machine agent), served by Network. The Host header decides: on
 // openvibe.link '/' is Link's page, '/install' answers with the installer of the latest release, and the page has
-// its Markdown twin, its llms.txt and its crawl files, like Network's other pages. node.openvibe.network is the
+// its Markdown twin, its llms.txt and its crawl files, like Network's other pages. openvibe.link is the
 // old name: it 301s to the same path on openvibe.link, except /install, which keeps serving.
 //   node test/link-home.test.js
 const assert = require('assert');
@@ -10,27 +10,27 @@ const http = require('http');
 const path = require('path');
 const express = require('express');
 
-const page = require('../server/node/page');
-const release = require('../server/node/release');
-const { createNodeRoutes, llmsTxt } = require('../server/node/routes');
+const page = require('../server/link/page');
+const release = require('../server/link/release');
+const { createLinkRoutes, llmsTxt } = require('../server/link/routes');
 
 // ── The release answer: cached for ten minutes, with a fallback when GitHub cannot be reached ──
 const FIXTURE = {
     tag_name: 'v9.9.9',
     published_at: '2026-11-06T12:00:00Z',
-    html_url: 'https://github.com/OpenVibers/OpenVibe.Node/releases/tag/v9.9.9',
+    html_url: 'https://github.com/OpenVibers/OpenVibe.Link/releases/tag/v9.9.9',
     assets: [
-        { name: 'install.sh', browser_download_url: 'https://github.com/OpenVibers/OpenVibe.Node/releases/download/v9.9.9/install.sh' },
-        { name: 'SHA256SUMS', browser_download_url: 'https://github.com/OpenVibers/OpenVibe.Node/releases/download/v9.9.9/SHA256SUMS' },
+        { name: 'install.sh', browser_download_url: 'https://github.com/OpenVibers/OpenVibe.Link/releases/download/v9.9.9/install.sh' },
+        { name: 'SHA256SUMS', browser_download_url: 'https://github.com/OpenVibers/OpenVibe.Link/releases/download/v9.9.9/SHA256SUMS' },
         { name: 'openvibe-link-v9.9.9.apk' },
     ],
 };
 const SHAPED = {
     version: 'v9.9.9',
     publishedAt: '2026-11-06T12:00:00Z',
-    url: 'https://github.com/OpenVibers/OpenVibe.Node/releases/tag/v9.9.9',
-    installUrl: 'https://github.com/OpenVibers/OpenVibe.Node/releases/download/v9.9.9/install.sh',
-    checksumsUrl: 'https://github.com/OpenVibers/OpenVibe.Node/releases/download/v9.9.9/SHA256SUMS',
+    url: 'https://github.com/OpenVibers/OpenVibe.Link/releases/tag/v9.9.9',
+    installUrl: 'https://github.com/OpenVibers/OpenVibe.Link/releases/download/v9.9.9/install.sh',
+    checksumsUrl: 'https://github.com/OpenVibers/OpenVibe.Link/releases/download/v9.9.9/SHA256SUMS',
 };
 
 (async () => {
@@ -41,8 +41,8 @@ const SHAPED = {
     const clock = () => now;
     const first = await release.latest({ fetchImpl, now: clock, dataDir: null });
     assert.strictEqual(first.version, 'v9.9.9', 'the release is read from GitHub');
-    assert.strictEqual(first.installUrl, 'https://github.com/OpenVibers/OpenVibe.Node/releases/download/v9.9.9/install.sh');
-    assert.strictEqual(first.checksumsUrl, 'https://github.com/OpenVibers/OpenVibe.Node/releases/download/v9.9.9/SHA256SUMS');
+    assert.strictEqual(first.installUrl, 'https://github.com/OpenVibers/OpenVibe.Link/releases/download/v9.9.9/install.sh');
+    assert.strictEqual(first.checksumsUrl, 'https://github.com/OpenVibers/OpenVibe.Link/releases/download/v9.9.9/SHA256SUMS');
     const second = await release.latest({ fetchImpl, now: clock, dataDir: null });
     assert.strictEqual(calls, 1, 'the second call is answered from the cache');
     assert.strictEqual(second.version, 'v9.9.9');
@@ -56,19 +56,19 @@ const SHAPED = {
     const broken = await release.latest({ fetchImpl: async () => { throw new Error('no GitHub'); }, now: clock, dataDir: null });
     assert.ok(broken.version, 'a release is still named');
     assert.strictEqual(broken.stale, true, 'and it is marked as the last one read');
-    assert.ok(broken.installUrl.startsWith('https://github.com/OpenVibers/OpenVibe.Node/releases/download/'), 'the installer link still works');
+    assert.ok(broken.installUrl.startsWith('https://github.com/OpenVibers/OpenVibe.Link/releases/download/'), 'the installer link still works');
     await release.whenIdle();
 
     // The vhost must send /machines and /pair to the app (which signposts them), not the catch-all to Network.
     const vhost = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'nginx', 'parked-domains.conf'), 'utf8');
-    assert.ok(/location ~ \^\/\(\|install\|machines\|pair\|index\\\.md\|send\\\.js\|locker\\\.mjs\|/.test(vhost), 'the vhost proxies Link Send assets to Network');
+    assert.ok(/location ~ \^\/\(\|install\|machines\|pair\|index\\\.md\|send\\\.js\|egress-settings\\\.js\|locker\\\.mjs\|/.test(vhost), 'the vhost passes the page\'s scripts (send.js, egress-settings.js) and the Locker bundle to Network');
     const sendApi = vhost.slice(vhost.indexOf('location ~ ^/api/v1/me/nodes/(send-keys|send)$ {'));
     assert.ok(sendApi.length < vhost.length && /client_max_body_size 40m;/.test(sendApi.slice(0, sendApi.indexOf('\n    }'))), 'the Link Send API has its own location with a body limit that fits a file');
     // …and /auth/* to Link's own sign-in (Network#664), or openvibe.link never signs anyone in (11-08 audit).
     const linkBlock = vhost.slice(vhost.indexOf('    server_name openvibe.link;'));
     assert.ok(/location \^~ \/auth\/ \{[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:4000;/.test(linkBlock.slice(0, linkBlock.indexOf('\n}\n'))), 'the openvibe.link vhost proxies /auth/ to Network');
 
-    // ── The page: OpenVibe Link, and every fact the Node page had ──
+    // ── The page: OpenVibe Link, and every fact the Link page had ──
     const html = page.render({ release: first, releaseId: 'rel_test' });
     assert.ok(html.includes('id="send"') && html.includes('Send to my machine'), 'the Link page has the send form');
     assert.ok(html.includes('src="/send.js"'), 'the page loads its Locker sender');
@@ -83,13 +83,13 @@ const SHAPED = {
     assert.ok(html.includes('>Install Link<'), 'the primary button installs Link');
     assert.ok(html.includes('>The install guide<'), 'and the guide keeps its name');
     assert.ok(html.includes('curl -fsSL https://openvibe.link/install | sh'), 'the one-line installer uses the new home');
-    assert.ok(html.includes('The program is <code>openvibe-link</code>. <code>openvibe-node</code> is kept as an alias, so existing installs and scripts keep working.'), 'the rename and the alias are said plainly under the installer');
+    assert.ok(html.includes('The program is <code>openvibe-link</code>.'), 'the installer names Link');
     assert.ok(html.includes('v9.9.9'), 'the version is on the page');
     assert.ok(html.includes('2026-11-06'), 'the release date is on the page');
     assert.ok(html.includes('releases/download/v9.9.9/SHA256SUMS'), 'the checksums are on the page');
     assert.ok(html.includes('releases/tag/v9.9.9'), 'the release page is on the page');
     assert.ok(html.includes('openvibe-link-windows-amd64.exe'), 'Windows has its own way in');
-    assert.ok(html.includes('openvibe.bot/install'), 'the installer also lives at openvibe.bot/install');
+    assert.ok(html.includes('openvibe.link/install'), 'the installer also lives at openvibe.link/install');
     assert.ok(html.includes('id="install"'), 'the install section has an anchor the hero button uses');
     assert.ok(html.includes('href="#install"'), 'the Install button goes to the OS install block');
     for (const [what, needle] of [
@@ -138,8 +138,8 @@ const SHAPED = {
     ]) assert.ok(html.includes(needle), `the page says it ${what}`);
     assert.ok(html.includes('without your pairing'), 'the page says Link needs your pairing');
     assert.ok(html.includes('Nothing runs that you did not turn on'), 'and that nothing runs on its own');
-    assert.ok(html.includes('docs/install.md'), 'the install guide still links the Node docs');
-    assert.ok(html.includes('github.com/OpenVibers/OpenVibe.Node'), 'the GitHub source keeps its URL');
+    assert.ok(html.includes('docs/install.md'), 'the install guide still links the Link docs');
+    assert.ok(html.includes('github.com/OpenVibers/OpenVibe.Link'), 'the GitHub source keeps its URL');
     assert.ok(html.includes('/shared/navbar.js'), 'the shared navbar is on the page');
     assert.ok(html.includes("label:'Link'"), 'the navbar calls it Link');
     assert.ok(html.includes('<link rel="canonical" href="https://openvibe.link/">'), 'the canonical is openvibe.link');
@@ -158,7 +158,7 @@ const SHAPED = {
     // ── The routes: the Host header decides ──
     const releaseApi = { latest: async () => SHAPED };
     const app = express();
-    app.use(createNodeRoutes({ releaseId: 'rel_test', releaseApi }));
+    app.use(createLinkRoutes({ releaseId: 'rel_test', releaseApi }));
     app.get('/', (_req, res) => res.type('html').send('<p>network home</p>'));
     app.get('/llms.txt', (_req, res) => res.type('text/plain').send('# OpenVibe Network'));
     app.get('/sitemap.xml', (_req, res) => res.type('application/xml').send('<urlset><url><loc>https://openvibe.network/</loc></url></urlset>'));
@@ -188,6 +188,11 @@ const SHAPED = {
         const sendScript = await get('/send.js', 'openvibe.link');
         assert.strictEqual(sendScript.status, 200, 'Link Send script is served on the Link host');
         assert.ok(sendScript.body.includes('locker.seal'), 'the page seals content before upload');
+        // Every script the page names is served on the Link host itself (egress-settings.js 301'd to Network and 404'd).
+        for (const src of [...html.matchAll(/<script[^>]+src="(\/[^"/][^"]*)"/g)].map((m) => m[1]).filter((s) => !s.startsWith('/shared/'))) {
+            const script = await get(src, 'openvibe.link');
+            assert.strictEqual(script.status, 200, `${src} is served on openvibe.link`);
+        }
         const locker = await get('/locker.mjs', 'openvibe.link');
         assert.strictEqual(locker.status, 200, 'the SDK browser bundle is served for Link');
         assert.strictEqual(locker.headers['access-control-allow-origin'], '*', 'the public SDK bundle can be imported by Link\'s loopback window');
@@ -198,30 +203,18 @@ const SHAPED = {
         assert.ok(twin.body.includes('# OpenVibe Link'), 'and it says what Link is');
         assert.ok(twin.body.includes('openvibe.link/install'), 'with the install command');
 
-        const nodeHome = await get('/', 'node.openvibe.network');
-        assert.strictEqual(nodeHome.status, 301, 'the old host 301s its front page');
-        assert.strictEqual(nodeHome.headers.location, 'https://openvibe.link/', 'to the same path on Link');
-
-        const nodePath = await get('/robots.txt?from=notes', 'node.openvibe.network');
-        assert.strictEqual(nodePath.status, 301, 'the old host 301s every other path');
-        assert.strictEqual(nodePath.headers.location, 'https://openvibe.link/robots.txt?from=notes', 'keeping the path and the query');
-
-        const nodeInstall = await get('/install', 'node.openvibe.network');
-        assert.strictEqual(nodeInstall.status, 302, 'the old host keeps serving /install');
-        assert.ok(String(nodeInstall.headers.location || '').endsWith('/install.sh'), 'with the release\u2019s own installer');
         const linkInstall = await get('/install', 'openvibe.link');
-        assert.strictEqual(linkInstall.status, nodeInstall.status, '/install is the same answer on both hosts');
-        assert.strictEqual(linkInstall.headers.location, nodeInstall.headers.location, 'the same release\u2019s installer, byte for byte');
-        assert.strictEqual(linkInstall.headers['cache-control'], nodeInstall.headers['cache-control'], 'and the same cache contract');
+        assert.strictEqual(linkInstall.status, 302);
+        assert.ok(String(linkInstall.headers.location || '').endsWith('/install.sh'));
 
-        for (const p of ['/machines', '/pair']) {
+        const machines = await get('/machines', 'openvibe.link');
+        assert.strictEqual(machines.status, 200, 'the Link host serves the machine hub');
+        assert.ok(machines.body.includes('sec-machines'), 'pairing and machine controls render on Link');
+        assert.strictEqual(machines.headers['cache-control'], 'no-store');
+        for (const p of ['/pair', '/panel']) {
             const hub = await get(p, 'openvibe.link');
-            assert.strictEqual(hub.status, 302, `${p} sends a signed-out visitor to the machines hub`);
-            assert.strictEqual(hub.headers.location, 'https://openvibe.my/machines', `${p} lands where pairing and the machine list live`);
-            assert.strictEqual(hub.headers['cache-control'], 'no-store', `${p} is never cached`);
-            const oldHub = await get(p, 'node.openvibe.network');
-            assert.strictEqual(oldHub.status, 301, `the old host sends ${p} to Link`);
-            assert.strictEqual(oldHub.headers.location, `https://openvibe.link${p}`, `keeping ${p}`);
+            assert.strictEqual(hub.status, 302, `${p} opens the Link machine hub`);
+            assert.strictEqual(hub.headers.location, 'https://openvibe.link/machines');
         }
 
         const www = await get('/', 'www.openvibe.link');
@@ -234,14 +227,10 @@ const SHAPED = {
         const llms = await get('/llms.txt', 'openvibe.link');
         assert.strictEqual(llms.status, 200);
         assert.ok(llms.body.startsWith('# OpenVibe Link'), 'Link\u2019s own llms.txt answers');
-        const nodeLlms = await get('/llms.txt', 'node.openvibe.network');
-        assert.strictEqual(nodeLlms.status, 301, 'the old host sends llms.txt to Link too');
-        assert.strictEqual(nodeLlms.headers.location, 'https://openvibe.link/llms.txt');
 
         const sitemap = await get('/sitemap.xml', 'openvibe.link');
         assert.strictEqual(sitemap.status, 200);
         assert.ok(sitemap.body.includes('<loc>https://openvibe.link/</loc>'), 'the sitemap lists openvibe.link');
-        assert.ok(!sitemap.body.includes('node.openvibe.network'), 'and not the old host');
         const robots = await get('/robots.txt', 'openvibe.link');
         assert.ok(robots.body.includes('Sitemap: https://openvibe.link/sitemap.xml'), 'robots.txt points at Link\u2019s sitemap');
 
@@ -270,7 +259,7 @@ const SHAPED = {
     // old node origin stays listed for a cached page that still calls from it.
     const serverSrc = fs.readFileSync(path.join(__dirname, '..', 'server', 'index.js'), 'utf8');
     assert.ok(serverSrc.includes("'https://openvibe.link',"), 'the CORS allow-list knows Link\u2019s own origin');
-    assert.ok(serverSrc.includes("'https://node.openvibe.network',"), 'and keeps the old Node origin');
+    assert.ok(serverSrc.includes("'https://openvibe.link',"), 'and keeps the Link origin');
 
     // ── nginx: openvibe.link is a proxy to Network, not a redirect to the old host ──
     const nginx = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'nginx', 'parked-domains.conf'), 'utf8');
@@ -279,7 +268,7 @@ const SHAPED = {
     assert.ok(/server_name www\.openvibe\.link;/.test(nginx), 'and separate block 301s www');
     assert.ok(/proxy_pass http:\/\/127\.0\.0\.1:4000;/.test(nginx), 'the page proxies to Network');
     assert.ok(nginx.includes('/etc/letsencrypt/live/openvibe.link/fullchain.pem'), 'the name\u2019s own certificate');
-    assert.ok(!nginx.includes('return 302 https://node.openvibe.network/;'), 'the old redirect is gone');
+    assert.ok(!nginx.includes('return 302 https://openvibe.link/;'), 'the old redirect is gone');
 
     console.log('link-home: Link\u2019s page, hosts, installer, twin, sitemap, navbar and nginx proxy ok');
 })().catch((e) => { console.error(e); process.exit(1); });

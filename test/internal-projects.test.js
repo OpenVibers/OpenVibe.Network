@@ -100,7 +100,7 @@ const U = { owner: userToken(10), dev: userToken(11), staff: userToken(14) };
         assert.strictEqual(r.status, 401); assert.strictEqual(r.body.code, 'token.missing', 'no token');
         assert.strictEqual((await read(P, { 'x-internal-key': 'legacy-key' })).status, 401, 'not the retired shared key');
         assert.strictEqual((await read(P, { authorization: `Bearer ${await token('live', 'live-secret')}` })).status, 403, 'Live lacks network.project.read');
-        assert.strictEqual((await read(P, { authorization: `Bearer ${await token('host', 'host-secret', 'network.node.report')}` })).status, 403, 'a Host token scoped to another capability');
+        assert.strictEqual((await read(P, { authorization: `Bearer ${await token('host', 'host-secret', 'network.link.report')}` })).status, 403, 'a Host token scoped to another capability');
         assert.ok([401, 403].includes((await read(P, { authorization: `Bearer ${U.owner}` })).status), 'a person\'s session never reads it, not even the owner\'s');
         const appToken = (await (await fetch(`${base}/oauth/token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'client_credentials', client_id: A, client_secret: secrets[0], audience: 'openvibe.network' }) })).json()).access_token;
         if (appToken) assert.ok([401, 403].includes((await read(P, { authorization: `Bearer ${appToken}` })).status), 'an app of the project cannot read it');

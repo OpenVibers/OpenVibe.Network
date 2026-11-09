@@ -5,16 +5,16 @@
  * so no report carries them; a staff session sets them, next to /api/admin/deploy. No service capability is involved.
  * Nothing routes on a weight or on draining until a scheduler and a route consumer exist. Every change lands in
  * audit_log.
- *   GET /api/admin/registry/node-principals?cell=&owner_kind=&status=   → { node_principals: [...] }
+ *   GET /api/admin/registry/link-principals?cell=&owner_kind=&status=   → { node_principals: [...] }
  *   PUT /api/admin/registry/cells/:id             { route_weight?, status? } → the cell
  *   PUT /api/admin/registry/instances/:id         { route_weight?, state? }  → the instance
- *   PUT /api/admin/registry/node-principals/:id   { status }                 → the principal (active or draining)
+ *   PUT /api/admin/registry/link-principals/:id   { status }                 → the principal (active or draining)
  */
 const express = require('express');
 const { http } = require('openvibe-contracts');
 const { RegistryError, setCell } = require('./cells');
 const { setInstance } = require('./instances');
-const { principalFilter, listPrincipals, setPrincipalStatus } = require('./node-principals');
+const { principalFilter, listPrincipals, setPrincipalStatus } = require('./link-principals');
 
 /** The body of a PUT: a JSON object with at least one of `allowed` and nothing else. Throws RegistryError. */
 function fields(body, allowed) {
@@ -46,7 +46,7 @@ function createRegistryAdmin(db, requireAuth, requireAdmin) {
         return out;
     });
 
-    router.get('/node-principals', send(async (req) => ({
+    router.get('/link-principals', send(async (req) => ({
         node_principals: await listPrincipals(db, principalFilter(req.query)), generated_at: new Date().toISOString(),
     })));
     router.put('/cells/:id', send((req) => {
@@ -57,7 +57,7 @@ function createRegistryAdmin(db, requireAuth, requireAdmin) {
         const body = fields(req.body, ['route_weight', 'state']);
         return write(req, 'registry_instance_update', () => setInstance(db, req.params.id, body));
     }));
-    router.put('/node-principals/:id', send((req) => {
+    router.put('/link-principals/:id', send((req) => {
         const { status } = fields(req.body, ['status']);
         return write(req, 'registry_node_principal_update', () => setPrincipalStatus(db, req.params.id, status));
     }));

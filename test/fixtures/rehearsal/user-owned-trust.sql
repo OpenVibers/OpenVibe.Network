@@ -4,9 +4,9 @@
 INSERT INTO dev_projects (id, owner_subject, name, created_at, created_by)
     VALUES ('prj_0000000000000000000000RH01', 'usr_0000000000000000000000RH01', 'Rehearsal lab', '2026-10-01T00:00:00Z', 'rehearsal') ON CONFLICT DO NOTHING;
 INSERT INTO platform_node_principals (id, node_id, home_cell, owner_kind, project_id, owner_subject, trust, created_by, credential_hash) VALUES
-    ('nod_0000000000000000000000RH01', 'rh-platform', 'wnam-1', 'platform', NULL, NULL, 'first-party', 'rehearsal', NULL),
-    ('nod_0000000000000000000000RH02', 'rh-project', 'wnam-1', 'project', 'prj_0000000000000000000000RH01', NULL, 'partner', 'rehearsal', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'),
-    ('nod_0000000000000000000000RH03', 'rh-user', 'wnam-1', 'user', NULL, 'usr_0000000000000000000000RH01', 'community', 'rehearsal', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc')
+    ('IDPREFIX_0000000000000000000000RH01', 'rh-platform', 'wnam-1', 'platform', NULL, NULL, 'first-party', 'rehearsal', NULL),
+    ('IDPREFIX_0000000000000000000000RH02', 'rh-project', 'wnam-1', 'project', 'prj_0000000000000000000000RH01', NULL, 'partner', 'rehearsal', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'),
+    ('IDPREFIX_0000000000000000000000RH03', 'rh-user', 'wnam-1', 'user', NULL, 'usr_0000000000000000000000RH01', 'community', 'rehearsal', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc')
     ON CONFLICT DO NOTHING;
 INSERT INTO platform_resource_offers (id, source, kind, region, cell, trust, status, price_usd, doc, reported_at) VALUES
     ('rh-platform', 'rehearsal', 'node', 'us-west', 'wnam-1', 'first-party', 'up', 0, '{"offer_id":"rh-platform"}', '2026-10-01T00:00:00Z'),

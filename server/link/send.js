@@ -6,6 +6,10 @@ if (form) {
     const status = form.querySelector('[data-send-status]');
     const say = (text) => { status.textContent = text; };
     const machines = async () => {
+        // Signed out, there is nothing to list: ask the session first instead of letting the keys read fail (a 401 in
+        // every signed-out visitor's console, 11-09 sweep).
+        const me = await fetch('/auth/me', { credentials: 'same-origin', cache: 'no-store' }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+        if (!me || !me.user) throw new Error('Sign in on openvibe.link to choose one of your machines.');
         const r = await fetch('/api/v1/me/nodes/send-keys', { credentials: 'same-origin', cache: 'no-store' });
         if (r.status === 401 || r.status === 403) throw new Error('Sign in on openvibe.link to choose one of your machines.');
         if (!r.ok) throw new Error('Your machines could not be loaded.');
@@ -48,7 +52,7 @@ if (form) {
             const target = (await listed.json()).machines.find((m) => m.id === machine && m.public_key);
             if (!target) throw new Error('That machine has no receive key yet. Open Link on it and try again.');
             const payload = await packageContent(file, text);
-            const sealed = await locker.seal(payload, { lock: 'people', keys: [{ subject: { type: 'node', id: target.id }, publicKey: target.public_key }] });
+            const sealed = await locker.seal(payload, { lock: 'people', keys: [{ subject: { type: 'link', id: target.id }, publicKey: target.public_key }] });
             say('Sending encrypted data…');
             const sent = await fetch('/api/v1/me/nodes/send', {
                 method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },

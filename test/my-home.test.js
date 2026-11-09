@@ -101,7 +101,7 @@ const MY = 'openvibe.my';
         assert.strictEqual(r.headers.location, 'https://openvibe.my/', 'my.html lands on the hub home');
 
         r = await get('/machines', 'openvibe.network');
-        assert.strictEqual(r.headers.location, 'https://openvibe.my/machines', 'every old account-hub path moves');
+        assert.strictEqual(r.headers.location, 'https://openvibe.link/machines', 'every old account-hub path moves');
 
         r = await get('/', 'openvibe.network');
         assert.strictEqual(r.status, 200);

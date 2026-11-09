@@ -1,5 +1,5 @@
 'use strict';
-// The Node's latest release, read from GitHub (OpenVibers/OpenVibe.Node). The page shows the version and the
+// The Node's latest release, read from GitHub (OpenVibers/OpenVibe.Link). The page shows the version and the
 // checksums; /install answers with the same release's installer.
 //
 // The answer is held for fifteen minutes in memory and on disk (under DATA_DIR), so a restart serves the last
@@ -8,20 +8,31 @@
 // is kept, and the page says how old it is only once it is more than a day old. A cold start without GitHub
 // falls back to the release links that always resolve (the "latest" ones).
 //
-// GitHub allows 60 unauthenticated calls an hour per IP. GITHUB_TOKEN, when set, raises that limit. The token
+// The refresh reads the newest tag first through git's own protocol (ls-refs, as `git ls-remote` asks it), which
+// is not GitHub's REST API and spends none of its rate limit. The REST releases/latest endpoint is read only when
+// that tag differs from the cached release's (or nothing was cached). When ls-refs cannot be read the REST call
+// runs every fifteen minutes as it always did.
+//
+// GitHub allows 60 unauthenticated REST calls an hour per IP. GITHUB_TOKEN, when set, raises that limit. The token
 // is read from the environment at request time and is never logged.
 
 const fs = require('fs');
 const path = require('path');
 
-const REPO = 'OpenVibers/OpenVibe.Node';
+const REPO = 'OpenVibers/OpenVibe.Link';
 const API = `https://api.github.com/repos/${REPO}/releases/latest`;
+const GIT_URL = `https://github.com/${REPO}.git/git-upload-pack`;
 const TTL_MS = 15 * 60 * 1000; // fifteen minutes
 const TIMEOUT_MS = 8000;
 const FAIL_COOLDOWN_MS = 60 * 1000; // a cold failure waits a minute before asking GitHub again
 const DAY_MS = 24 * 60 * 60 * 1000;
 const LATEST = `https://github.com/${REPO}/releases/latest`;
 const CACHE_FILE = 'node-release.json';
+// ls-refs for refs/tags/v in git's protocol v2: the command, a delimiter, the ref prefix and a flush. Each pkt-line
+// carries its own length in hex, four bytes included.
+const pktLine = (text) => (text.length + 4).toString(16).padStart(4, '0') + text;
+const LS_REFS_TAGS = pktLine('command=ls-refs\n') + '0001' + pktLine('ref-prefix refs/tags/v\n') + '0000';
+const TAG_REF_RE = /^v(\d+)\.(\d+)\.(\d+)$/;
 
 // What the page says when GitHub cannot be reached and nothing was cached: no version (the page says "the latest
 // release" instead of naming one that may be old), and the links that always resolve to the newest release.
@@ -93,6 +104,51 @@ function saveDisk(entry) {
     }
 }
 
+/** The newest release tag in an ls-refs answer, or '' when it names none. Peeled tag lines are ignored. */
+function newestTagFrom(text) {
+    const partsOf = (a, b) => {
+        for (let i = 0; i < 3; i += 1) if (a[i] !== b[i]) return a[i] - b[i];
+        return 0;
+    };
+    let best = '';
+    let bestParts = null;
+    let i = 0;
+    const body = String(text || '');
+    while (i + 4 <= body.length) {
+        const size = parseInt(body.slice(i, i + 4), 16);
+        if (!Number.isFinite(size) || size < 4 || i + size > body.length) break;
+        const line = body.slice(i + 4, i + size).trim();
+        i += size;
+        const space = line.indexOf(' ');
+        if (space < 0) continue;
+        const ref = line.slice(space + 1).split(' ')[0]; // attributes (peeled:…) follow the ref name
+        if (!ref.startsWith('refs/tags/v') || ref.endsWith('^{}')) continue;
+        const m = TAG_REF_RE.exec(ref.slice('refs/tags/'.length));
+        if (!m) continue;
+        const parts = [Number(m[1]), Number(m[2]), Number(m[3])];
+        if (!bestParts || partsOf(parts, bestParts) > 0) {
+            best = `v${m[1]}.${m[2]}.${m[3]}`;
+            bestParts = parts;
+        }
+    }
+    return best;
+}
+
+/** The newest release tag, through git's protocol v2 (no REST call). Rejects when GitHub did not answer with tags. */
+async function newestTag({ fetchImpl = globalThis.fetch } = {}) {
+    const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(TIMEOUT_MS) : undefined;
+    const res = await fetchImpl(GIT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-git-upload-pack-request', 'Git-Protocol': 'version=2', 'User-Agent': 'openvibe-network' },
+        body: LS_REFS_TAGS,
+        signal,
+    });
+    if (!res || !res.ok || typeof res.text !== 'function') throw new Error(`GitHub ls-refs answered ${res && res.status}`);
+    const tag = newestTagFrom(await res.text());
+    if (!tag) throw new Error('GitHub ls-refs answered without a release tag');
+    return tag;
+}
+
 /** Ask GitHub once and keep the answer. Resolves to the shaped release; rejects when GitHub could not be read. */
 async function fetchLatest({ fetchImpl = globalThis.fetch, now = Date.now } = {}) {
     const controller = typeof AbortController === 'function' ? new AbortController() : null;
@@ -120,10 +176,28 @@ async function fetchLatest({ fetchImpl = globalThis.fetch, now = Date.now } = {}
     }
 }
 
-/** The one background refresh that may be running. */
-function refresh(options) {
+/**
+ * The one background refresh that may be running. The tag comes first through git (no REST call); the REST API is
+ * read only when that tag is not the cached release's, or when git did not answer (the old behaviour).
+ */
+function refresh({ fetchImpl = globalThis.fetch, now = Date.now } = {}) {
     if (inflight) return inflight;
-    inflight = fetchLatest(options)
+    inflight = (async () => {
+        if (cached) {
+            try {
+                const tag = await newestTag({ fetchImpl });
+                if (tag === cached.data.version) {
+                    cached = { at: now(), data: cached.data };
+                    failedAt = 0;
+                    saveDisk(cached);
+                    return cached.data;
+                }
+            } catch {
+                // ls-refs did not answer: ask the REST API as before.
+            }
+        }
+        return fetchLatest({ fetchImpl, now });
+    })()
         .catch(() => null)
         .finally(() => { inflight = null; });
     return inflight;

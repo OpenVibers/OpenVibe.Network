@@ -1,9 +1,9 @@
 'use strict';
 /**
- * The node registry (ADR-034 section 12, roadmap WS-X1; Contracts 0.76.0 network.node@1): every machine of the
+ * The node registry (ADR-034 section 12, roadmap WS-X1; Contracts 0.76.0 network.link@1): every machine of the
  * platform with its roles, region-level location, beacon and health. Host reports the complete set its inventory
- * knows (POST /internal/nodes/report, network.node.report); a node absent from a later report of the same source is
- * marked down, never silently deleted. GET /api/v1/nodes is public and cacheable: products and openvibe-sdk/geo
+ * knows (POST /internal/links/report, network.link.report); a node absent from a later report of the same source is
+ * marked down, never silently deleted. GET /api/v1/links is public and cacheable: products and openvibe-sdk/geo
  * find "the nearest node with role R" from it. Nothing private is stored: the contract has no address field.
  */
 const express = require('express');
@@ -72,7 +72,7 @@ function routers({ guard, readGuard = null }) {
     // serves it; a report names another URL for nodes whose traffic does not come through here.
     pub.get('/:id/beacon', (req, res) => open(res, 0).status(204).end());
     const internal = express.Router();
-    // The same list for services holding network.registry.read (GET /internal/nodes), never cached.
+    // The same list for services holding network.registry.read (GET /internal/links), never cached.
     if (readGuard) internal.get('/', readGuard, async (req, res) => {
         const role = typeof req.query.role === 'string' ? req.query.role : null;
         const region = typeof req.query.region === 'string' ? req.query.region : null;
@@ -80,8 +80,8 @@ function routers({ guard, readGuard = null }) {
     });
     internal.post('/report', guard, express.json({ limit: '256kb' }), async (req, res) => {
         const { validate } = require('openvibe-contracts');
-        const v = validate('network.node-report-request@1', req.body);
-        if (!v.valid) return res.status(400).json({ error: 'The body does not match network.node-report-request@1', details: (v.errors || []).slice(0, 5) });
+        const v = validate('network.link-report-request@1', req.body);
+        if (!v.valid) return res.status(400).json({ error: 'The body does not match network.link-report-request@1', details: (v.errors || []).slice(0, 5) });
         let out;
         try { out = await report(req.app.locals.db, req.body); } catch (e) {
             if (e instanceof require('./cells').RegistryError) return require('openvibe-contracts').http.sendProblem(res, e.status, e.code, { detail: e.message });

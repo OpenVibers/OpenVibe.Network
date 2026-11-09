@@ -1,6 +1,6 @@
 'use strict';
 /**
- * The machines hub (plan L34, step M2): a person's machines on openvibe.network/machines.
+ * The machines hub (plan L34, step M2): a person's machines on openvibe.link/machines.
  *
  * Bot stays the registry of the machines. Network fronts it: every route here calls Bot's machines API as the
  * person (with a service token of Network's own, naming the person in X-OV-Subject), so Bot checks that the
@@ -13,7 +13,7 @@
  *   PATCH  /api/v1/machines/:id         network.machines.manage → { machine }                (a new name)
  *   PUT    /api/v1/machines/:id/roles   network.machines.manage → { machine }                (the whole set)
  *   POST   /api/v1/machines/:id/revoke  network.machines.manage → { machine }
- *   POST   /internal/machines/status    network.node.manage    → 202                        (Bot's report)
+ *   POST   /internal/machines/status    network.link.manage    → 202                        (Bot's report)
  *
  * Who may call: the person, with their own session; or an app holding the capability with the person's
  * consent — the token names the person in on_behalf_of, and the person's grant for the capability must still be
@@ -36,7 +36,7 @@ const BOT_CAP = 'bot.machine.manage';
 const SELF_AUDIENCE = 'openvibe.network';
 const SUBJECT = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 const MACHINE = /^dev_[0-9A-HJKMNP-TV-Z]{26}$/;
-const PRINCIPAL = /^nod_[0-9A-HJKMNP-TV-Z]{26}$/;
+const PRINCIPAL = /^lnk_[0-9A-HJKMNP-TV-Z]{26}$/;
 const KINDS = new Set(['onboard', 'bridge', 'server']);
 const TOKEN_TTL_S = 300;
 
@@ -49,7 +49,7 @@ const TOKEN_TTL_S = 300;
 const LOCAL_ROLES = [
     { id: 'codes.worker', name: 'Codes worker', installs: 'the Codes job runner (the coding agent and the job sandbox)', shows: 'Runs your coding jobs, such as a task you start on openvibe.codes.' },
     { id: 'desks.host', name: 'Desk host', installs: 'the desk sandbox (a private browser desk for every session)', shows: "Hosts desks for agents, yours and other people's." },
-    { id: 'ai.host', name: 'AI host', installs: "the local model server (Ollama, LM Studio) as OpenVibe Node's ai plugin", shows: 'Serves your own AI models, on your own machine.' },
+    { id: 'ai.host', name: 'AI host', installs: "the local model server (Ollama, LM Studio) as OpenVibe Link's ai plugin", shows: 'Serves your own AI models, on your own machine.' },
     { id: 'bot.robot', name: 'Robot', installs: 'the robot drivers the profile asks for', shows: 'Drives a robot, and takes its commands.' },
 ];
 
@@ -243,7 +243,9 @@ function hubGuard(capability, { db, publicKey, issuer, requireAuth }) {
  */
 function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.locals.db, now = () => Date.now() }) {
     const hub = express.Router();
+    const compute = express.Router();
     hub.use(http.middleware());
+    compute.use(http.middleware());
     const read = hubGuard(READ, { db, publicKey, issuer, requireAuth });
     const manage = hubGuard(MANAGE, { db, publicKey, issuer, requireAuth });
 
@@ -307,6 +309,47 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
         const out = await bot.list(subject);
         const machines = (out && Array.isArray(out.machines) ? out.machines : []).map(machineOf);
         res.json({ machines });
+    }));
+
+    // Link is the single place to discover where a job can run. The other sources are
+    // visible while their placement adapters are being connected, but cannot be picked.
+    const computeKinds = ['personal', 'cloud', 'exchange', 'community'];
+    const computeList = async (req) => {
+        const subject = await subjectOf(req);
+        const out = await bot.list(subject);
+        const machines = (out && Array.isArray(out.machines) ? out.machines : []).map(machineOf);
+        const candidates = machines.map((m) => {
+            const ready = m.online && m.roles.includes('codes.worker');
+            return { id: m.id, ...(m.principal_id ? { principal_id: m.principal_id } : {}), kind: 'personal', name: m.name || m.id,
+                status: ready ? 'ready' : 'unavailable', price: { amount_usd: 0, unit: 'hour' },
+                reason: ready ? null : m.online ? 'Turn on the Codes worker role in Link.' : 'This machine is offline.' };
+        });
+        const sources = [
+            { kind: 'personal', name: 'Your Link machines', status: candidates.some((c) => c.status === 'ready') ? 'ready' : 'unavailable', reason: candidates.length ? null : 'Pair a machine in Link.' },
+            { kind: 'cloud', name: 'OpenVibe cloud machines', status: 'coming_soon', reason: 'No cloud pool is accepting jobs yet.' },
+            { kind: 'exchange', name: 'Exchange GPU rentals', status: 'coming_soon', reason: 'A live GPU quote and spending ceiling are required before a rental can start.', price: null },
+            { kind: 'community', name: 'Community machines', status: 'coming_soon', reason: 'Shared machine permissions and placement are being connected.' },
+        ];
+        return { sources, candidates };
+    };
+    compute.get('/', read, async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const result = await computeList(req);
+        const kind = req.query.kind;
+        if (kind && !computeKinds.includes(kind)) return http.sendProblem(res, 400, 'link.compute_kind', { detail: 'Unknown compute source.' });
+        res.json(kind ? { sources: result.sources.filter((s) => s.kind === kind), candidates: result.candidates.filter((c) => c.kind === kind) } : result);
+    }));
+    compute.post('/pick', read, express.json({ limit: '8kb' }), async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const kind = String((req.body || {}).kind || 'personal');
+        const id = String((req.body || {}).id || '');
+        if (!computeKinds.includes(kind)) return http.sendProblem(res, 400, 'link.compute_kind', { detail: 'Unknown compute source.' });
+        if (kind !== 'personal') return http.sendProblem(res, 409, 'link.compute_unavailable', { detail: 'This source is not accepting jobs yet.' });
+        const { candidates } = await computeList(req);
+        const chosen = id ? candidates.find((c) => c.id === id) : candidates.find((c) => c.status === 'ready');
+        if (!chosen) return http.sendProblem(res, 404, 'link.compute_missing', { detail: 'No such machine of yours is available.' });
+        if (chosen.status !== 'ready') return http.sendProblem(res, 409, 'link.compute_unavailable', { detail: chosen.reason });
+        res.json({ choice: chosen });
     }));
 
     hub.get('/:id', read, async (req, res) => await send(res, async () => {
@@ -379,11 +422,11 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
         res.json({ machine });
     }));
 
-    return { hub };
+    return { hub, compute };
 }
 
 /**
- * Bot's report of a machine's state (POST /internal/machines/status, network.node.manage — the capability Bot
+ * Bot's report of a machine's state (POST /internal/machines/status, network.link.manage — the capability Bot
  * already holds for the pairing authority). Each change is published once as network.machine.online or
  * network.machine.offline; Bot reports a change, not a heartbeat, so the event says what changed.
  */

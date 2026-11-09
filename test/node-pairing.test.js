@@ -10,7 +10,7 @@ const express = require('express');
 const { ids, validate } = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 const principals = require('../server/identity/principals');
-const nodePrincipals = require('../server/registry/node-principals');
+const nodePrincipals = require('../server/registry/link-principals');
 
 (async () => {
 const log = console.log; console.log = () => {};
@@ -19,8 +19,8 @@ console.log = log;
 await db.prepare("UPDATE oauth_clients SET client_secret = 'bot-secret' WHERE client_id = 'bot'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'host-secret' WHERE client_id = 'host'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
-// A second service holding network.node.manage, to prove each service sees only what it paired.
-await db.prepare("INSERT INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES ('live', 'network.node.manage', 'openvibe.network', '[]', 'test') ON CONFLICT DO NOTHING").run();
+// A second service holding network.link.manage, to prove each service sees only what it paired.
+await db.prepare("INSERT INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES ('live', 'network.link.manage', 'openvibe.network', '[]', 'test') ON CONFLICT DO NOTHING").run();
 
 const subject = () => `usr_${ids.ulid()}`;
 const alex = subject(); const banned = subject(); const gone = subject();
@@ -39,11 +39,11 @@ app.locals.config = { jwt: { issuer: 'https://openvibe.network', accessTokenExpi
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 app.use('/oauth', require('../server/auth/oauth-routes'));
-const nodeRouters = require('../server/registry/nodes').routers({ guard: principals.guard('network.node.report') });
-app.use('/api/v1/nodes', nodeRouters.pub);
-app.use('/internal/nodes', nodeRouters.internal);
-const pr = nodePrincipals.routers({ guard: principals.guard('network.node.manage'), now: () => Date.now() + clock.offset });
-app.use('/api/v1/node-pairing', pr.pairing);
+const nodeRouters = require('../server/registry/nodes').routers({ guard: principals.guard('network.link.report') });
+app.use('/api/v1/links', nodeRouters.pub);
+app.use('/internal/links', nodeRouters.internal);
+const pr = nodePrincipals.routers({ guard: principals.guard('network.link.manage'), now: () => Date.now() + clock.offset });
+app.use('/api/v1/link-pairing', pr.pairing);
 app.use('/internal', pr.internal);
 const server = http.createServer(app);
 
@@ -61,29 +61,29 @@ const call = (method, p, body, headers = {}) => fetch(`${base}${p}`, { method, h
     .then(async (x) => { const text = await x.text(); let json = null; try { json = JSON.parse(text); } catch { /* not JSON */ } return { status: x.status, headers: x.headers, text, body: json }; });
 const bearer = (t) => ({ authorization: `Bearer ${t}` });
 const revokedEvents = async () => (await db.prepare('SELECT envelope FROM network_event_outbox ORDER BY id').all()).map((r) => r.envelope)
-    .filter((e) => e.event_type === 'network.node.revoked');
+    .filter((e) => e.event_type === 'network.link.revoked');
 let passed = 0;
 const check = async (name, fn) => { await fn(); passed++; log(`  ok ${name}`); };
 try {
     const bot = bearer(await token('bot', 'bot-secret'));
     const live = bearer(await token('live', 'live-secret'));
     const host = bearer(await token('host', 'host-secret'));
-    const mint = (ref = `robot-${ids.ulid()}`, extra = {}) => call('POST', '/internal/node-pairings', { owner: { kind: 'user', subject: alex }, ref, ...extra }, bot);
-    const redeem = (body) => call('POST', '/api/v1/node-pairing', body);
+    const mint = (ref = `robot-${ids.ulid()}`, extra = {}) => call('POST', '/internal/link-pairings', { owner: { kind: 'user', subject: alex }, ref, ...extra }, bot);
+    const redeem = (body) => call('POST', '/api/v1/link-pairing', body);
 
-    await check('minting a code needs network.node.manage and a live person', async () => {
-        assert.strictEqual((await call('POST', '/internal/node-pairings', { owner: { kind: 'user', subject: alex }, ref: 'r' })).status, 403, 'no token');
-        assert.strictEqual((await call('POST', '/internal/node-pairings', { owner: { kind: 'user', subject: alex }, ref: 'r' }, host)).status, 403, 'host lacks network.node.manage');
+    await check('minting a code needs network.link.manage and a live person', async () => {
+        assert.strictEqual((await call('POST', '/internal/link-pairings', { owner: { kind: 'user', subject: alex }, ref: 'r' })).status, 403, 'no token');
+        assert.strictEqual((await call('POST', '/internal/link-pairings', { owner: { kind: 'user', subject: alex }, ref: 'r' }, host)).status, 403, 'host lacks network.link.manage');
         for (const s of [subject(), banned, gone]) {
-            const r = await call('POST', '/internal/node-pairings', { owner: { kind: 'user', subject: s }, ref: 'r' }, bot);
+            const r = await call('POST', '/internal/link-pairings', { owner: { kind: 'user', subject: s }, ref: 'r' }, bot);
             assert.deepStrictEqual([r.status, r.body.code], [404, 'registry.unknown_owner']);
         }
-        const p = await call('POST', '/internal/node-pairings', { owner: { kind: 'project', project_id: 'prj_x' }, ref: 'r' }, bot);
+        const p = await call('POST', '/internal/link-pairings', { owner: { kind: 'project', project_id: 'prj_x' }, ref: 'r' }, bot);
         assert.deepStrictEqual([p.status, p.body.code], [501, 'registry.not_yet']);
         const planned = await mint(undefined, { home_cell: 'wnam-2' });
         assert.deepStrictEqual([planned.status, planned.body.code], [409, 'registry.cell_not_active']);
         assert.strictEqual((await mint(undefined, { home_cell: 'nope-9' })).status, 400);
-        assert.strictEqual((await call('POST', '/internal/node-pairings', { owner: { kind: 'user', subject: alex } }, bot)).status, 400, 'ref is required');
+        assert.strictEqual((await call('POST', '/internal/link-pairings', { owner: { kind: 'user', subject: alex } }, bot)).status, 400, 'ref is required');
     });
 
     await check('a code is shown once, stored only as its sha256, and replaces that ref\'s unused code', async () => {
@@ -108,7 +108,7 @@ try {
         const { body: pairing } = await mint();
         const first = await redeem({ pairing: pairing.pairing_id, code: pairing.code, name: 'Rover' });
         assert.strictEqual(first.status, 201, first.text);
-        assert.match(first.body.principal, /^nod_[0-9A-HJKMNP-TV-Z]{26}$/);
+        assert.match(first.body.principal, /^lnk_[0-9A-HJKMNP-TV-Z]{26}$/);
         assert.strictEqual(first.body.node_id, `n-${first.body.principal.slice(4).toLowerCase()}`);
         assert.strictEqual(first.body.node_id.length, 28);
         assert.ok(first.body.credential.length >= 40);
@@ -159,7 +159,7 @@ try {
         const { body: pairing } = await mint('robot-secret');
         const paired = await redeem({ pairing: pairing.pairing_id, code: pairing.code });
         const { credential, principal } = paired.body;
-        const reads = [await call('GET', `/internal/node-principals/${principal}`, null, bot), await call('GET', '/api/v1/nodes'), await call('GET', '/api/v1/nodes', null, bot)];
+        const reads = [await call('GET', `/internal/link-principals/${principal}`, null, bot), await call('GET', '/api/v1/links'), await call('GET', '/api/v1/links', null, bot)];
         for (const r of reads) {
             assert.ok(!r.text.includes(credential), 'a read leaked the credential');
             assert.ok(!r.text.includes(pairing.code.replace('-', '')) && !r.text.includes(pairing.code), 'a read leaked the code');
@@ -173,16 +173,16 @@ try {
     await check('a service reads and revokes only the principals it paired', async () => {
         const { body: pairing } = await mint('robot-scope');
         const { body: paired } = await redeem({ pairing: pairing.pairing_id, code: pairing.code, region: 'eu-west' });
-        const read = await call('GET', `/internal/node-principals/${paired.principal}`, null, bot);
+        const read = await call('GET', `/internal/link-principals/${paired.principal}`, null, bot);
         assert.strictEqual(read.status, 200, read.text);
         assert.deepStrictEqual(Object.keys(read.body).sort(), ['created_at', 'home_cell', 'last_seen_at', 'name', 'node_id', 'owner', 'paired_for', 'principal', 'revoked_at', 'status']);
         assert.deepStrictEqual([read.body.owner, read.body.paired_for, read.body.status], [{ kind: 'user', subject: alex }, { service: 'bot', ref: 'robot-scope' }, 'active']);
-        for (const [m, p] of [['GET', `/internal/node-principals/${paired.principal}`], ['POST', `/internal/node-principals/${paired.principal}/revoke`]]) {
+        for (const [m, p] of [['GET', `/internal/link-principals/${paired.principal}`], ['POST', `/internal/link-principals/${paired.principal}/revoke`]]) {
             const other = await call(m, p, null, live);
             assert.deepStrictEqual([other.status, other.body.code], [404, 'registry.unknown_node'], `${m} by another service`);
-            assert.strictEqual((await call(m, p, null, host)).status, 403, `${m} without network.node.manage`);
+            assert.strictEqual((await call(m, p, null, host)).status, 403, `${m} without network.link.manage`);
         }
-        assert.strictEqual((await call('GET', `/internal/node-principals/nod_${ids.ulid()}`, null, bot)).status, 404);
+        assert.strictEqual((await call('GET', `/internal/link-principals/lnk_${ids.ulid()}`, null, bot)).status, 404);
         assert.strictEqual((await db.prepare('SELECT status FROM platform_node_principals WHERE id = ?').get(paired.principal)).status, 'active', 'the other service changed nothing');
     });
 
@@ -190,52 +190,52 @@ try {
         const { body: pairing } = await mint('robot-revoke');
         const { body: paired } = await redeem({ pairing: pairing.pairing_id, code: pairing.code });
         await db.prepare("UPDATE platform_node_principals SET credential_prev_hash = ?, prev_valid_until = '2026-10-02T00:01:00Z' WHERE id = ?").run('b'.repeat(64), paired.principal);
-        const r = await call('POST', `/internal/node-principals/${paired.principal}/revoke`, null, bot);
+        const r = await call('POST', `/internal/link-principals/${paired.principal}/revoke`, null, bot);
         assert.strictEqual(r.status, 200, r.text);
         assert.strictEqual(r.body.status, 'revoked');
         assert.ok(r.body.revoked_at);
         const row = await db.prepare('SELECT * FROM platform_node_principals WHERE id = ?').get(paired.principal);
         assert.deepStrictEqual([row.status, row.revoked_by, row.credential_prev_hash, row.prev_valid_until], ['revoked', 'svc:bot', null, null]);
-        // The revoke is announced once (network.node.revoked@1), valid, owned by Alex, actor the service, no secret.
+        // The revoke is announced once (network.link.revoked@1), valid, owned by Alex, actor the service, no secret.
         const announced = (await revokedEvents()).filter((e) => e.subject.id === paired.principal);
         assert.strictEqual(announced.length, 1, 'one event for one revoke');
         const e = announced[0];
         assert.ok(validate('events.event-envelope@1', e).valid, JSON.stringify(validate('events.event-envelope@1', e).errors));
-        assert.ok(validate('network.node.revoked@1', e.payload).valid, JSON.stringify(validate('network.node.revoked@1', e.payload).errors));
+        assert.ok(validate('network.link.revoked@1', e.payload).valid, JSON.stringify(validate('network.link.revoked@1', e.payload).errors));
         assert.deepStrictEqual(Object.keys(e.payload).sort(), ['at', 'node_id', 'owner', 'principal_id'], 'no reason given, none carried');
         assert.deepStrictEqual([e.payload.node_id, e.payload.principal_id, e.payload.owner], [paired.node_id, paired.principal, { kind: 'user', subject: alex }]);
         assert.deepStrictEqual([e.actor, e.visibility, e.source, e.subject.type], [{ type: 'service', id: 'bot' }, 'internal', 'network', 'node_principal']);
         assert.ok(!/hash|credential|secret/i.test(JSON.stringify(e.payload)), 'the payload carries no secret field');
         clock.offset += 5000;
-        const again = await call('POST', `/internal/node-principals/${paired.principal}/revoke`, null, bot);
+        const again = await call('POST', `/internal/link-principals/${paired.principal}/revoke`, null, bot);
         clock.offset -= 5000;
         assert.deepStrictEqual([again.status, again.body.revoked_at], [200, r.body.revoked_at], 'a second revoke changes nothing');
         assert.strictEqual((await revokedEvents()).filter((x) => x.subject.id === paired.principal).length, 1, 'a second revoke emits nothing new');
-        assert.strictEqual((await call('GET', `/internal/node-principals/${paired.principal}`, null, bot)).body.status, 'revoked');
+        assert.strictEqual((await call('GET', `/internal/link-principals/${paired.principal}`, null, bot)).body.status, 'revoked');
     });
 
     await check('a revoke may carry the caller\'s reason; an invalid one is refused before anything changes', async () => {
         const { body: pairing } = await mint('robot-reason');
         const { body: paired } = await redeem({ pairing: pairing.pairing_id, code: pairing.code });
-        const bad = await call('POST', `/internal/node-principals/${paired.principal}/revoke`, { reason: '' }, bot);
+        const bad = await call('POST', `/internal/link-principals/${paired.principal}/revoke`, { reason: '' }, bot);
         assert.deepStrictEqual([bad.status, bad.body.code], [400, 'registry.invalid_reason']);
         assert.strictEqual((await db.prepare('SELECT status FROM platform_node_principals WHERE id = ?').get(paired.principal)).status, 'active', 'a refused reason revokes nothing');
         assert.strictEqual((await revokedEvents()).filter((x) => x.subject.id === paired.principal).length, 0, 'a refused revoke emits nothing');
-        const ok = await call('POST', `/internal/node-principals/${paired.principal}/revoke`, { reason: 'the machine was sold' }, bot);
+        const ok = await call('POST', `/internal/link-principals/${paired.principal}/revoke`, { reason: 'the machine was sold' }, bot);
         assert.strictEqual(ok.status, 200, ok.text);
         const e = (await revokedEvents()).find((x) => x.subject.id === paired.principal);
         assert.deepStrictEqual([e.payload.principal_id, e.payload.reason], [paired.principal, 'the machine was sold']);
-        assert.ok(validate('network.node.revoked@1', e.payload).valid);
+        assert.ok(validate('network.link.revoked@1', e.payload).valid);
     });
 
     await check('pairing creates no platform machine; Host cannot report a paired node', async () => {
         const { body: pairing } = await mint('robot-platform');
         const { body: paired } = await redeem({ pairing: pairing.pairing_id, code: pairing.code });
         assert.strictEqual(await db.prepare('SELECT 1 FROM platform_nodes WHERE id = ?').get(paired.node_id), undefined, 'no platform_nodes row');
-        const list = await call('GET', '/api/v1/nodes');
+        const list = await call('GET', '/api/v1/links');
         assert.strictEqual(list.status, 200);
         assert.ok(!list.text.includes(paired.node_id), 'the paired machine is absent from the public node list');
-        const report = await call('POST', '/internal/nodes/report', { source: 'primary', nodes: [{ id: paired.node_id, roles: ['app'], location: { region: 'us-west', country: 'US' }, health: { status: 'up', checked_at: '2026-10-01T12:00:00Z' }, updated_at: '2026-10-01T12:00:00Z' }] }, host);
+        const report = await call('POST', '/internal/links/report', { source: 'primary', nodes: [{ id: paired.node_id, roles: ['app'], location: { region: 'us-west', country: 'US' }, health: { status: 'up', checked_at: '2026-10-01T12:00:00Z' }, updated_at: '2026-10-01T12:00:00Z' }] }, host);
         assert.deepStrictEqual([report.status, report.body.code], [409, 'registry.node_not_platform']);
         assert.strictEqual(await db.prepare('SELECT 1 FROM platform_nodes WHERE id = ?').get(paired.node_id), undefined, 'the refused report wrote nothing');
     });

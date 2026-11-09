@@ -83,9 +83,9 @@ person's username and picture (a service token, `identity.subject.resolve`).
   developer projects, apps, credentials, grants and quotas (ADR-014), mod principals
 - notifications and email, themes and theme preferences, user modules, platform blocks, the follow
   graph (ADR-030), creator analytics (ADR-021), the OpenCoins wallet
-- node principals: a person's paired machine (`nod_…`) with a one-time pairing code, a scoped credential and a
+- node principals: a person's paired machine (`lnk_…`) with a one-time pairing code, a scoped credential and a
   token; a revoke — by the pairing service, its owner, or an account deletion — stops the machine and is announced
-  as `network.node.revoked@1`
+  as `network.link.revoked@1`
 - the machines hub (`/api/v1/machines`, plan L34): a person's machines, their roles and what they do right now.
   Bot stays the registry underneath — Network calls it as the person, so Bot checks the machine is that person's
   own — and Network publishes what changes (`network.machine.online`, `.offline`, `.paired`, `.roles_changed`,
@@ -103,8 +103,8 @@ person's username and picture (a service token, `identity.subject.resolve`).
 
 ## Depends on
 
-- `openvibe-contracts` v0.317.0 (registry manifests, capability checks), `openvibe-sdk` v0.123.0 (PostgreSQL
-  and Valkey adapters, events, per-actor limits, universal telemetry), `openvibe-shared` v4.172.0, pinned by release tarball
+- `openvibe-contracts` v0.317.0 (registry manifests, capability checks), `openvibe-sdk` v0.125.0 (PostgreSQL
+  and Valkey adapters, events, per-actor limits, universal telemetry), `openvibe-shared` v4.177.0, pinned by release tarball
 - OpenVibe.Events (Network's outbox relay; the events it consumes), OpenVibe.AI (the `network.site_copy`
   workflow), OpenVibe.Blog (the changelog feed it proxies)
 - email (Resend), Discord and GitHub when their secrets are set ([Provider secrets](#provider-secrets))
@@ -195,7 +195,7 @@ To rotate a service principal, load **Network's** environment before the script 
 sudo node --env-file=/etc/openvibe/network.env server/setup/service-principal.js rotate <id> --write-env /etc/openvibe/<id>.env
 ```
 
-The script requires the database named `ov_network` (or an explicit `--database-name <name>` override). Do not use `--env-file` after the script name: Node loads it as environment and can select the target service's database.
+The script requires the database named `ov_network` (or an explicit `--database-name <name>` override). Do not use `--env-file` after the script name: Link loads it as environment and can select the target service's database.
 
 ---
 
@@ -1033,7 +1033,7 @@ Every change also sends the person a Network notification, so a swap nobody aske
 MIT (`license` in [package.json](package.json)).
 
 <!-- versions:start -->
-- openvibe-contracts: v0.352.0
-- openvibe-sdk: v0.123.0
-- openvibe-shared: v4.172.0
+- openvibe-contracts: v0.373.0
+- openvibe-sdk: v0.125.0
+- openvibe-shared: v4.177.0
 <!-- versions:end -->
