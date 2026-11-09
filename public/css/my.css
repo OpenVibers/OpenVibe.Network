@@ -98,6 +98,7 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 
 .btn{
     padding:8px 20px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all var(--ov-dur-2, .15s);
+    text-decoration:none;   /* a link drawn as a button (the signed-out card's Sign in) is not underlined */
 }
 .btn-primary{background:var(--accent-strong, var(--accent, #3472d8));color:var(--on-accent-strong, var(--on-accent,#fff))}
 .btn-primary:hover{background:var(--accent-dark)}
