@@ -5,6 +5,7 @@
 //   GET /api/frame?host=<hostname>     public, CORS *, max-age=600, ETag
 //   GET /api/frame/pulse               public, CORS *, max-age=30: { live_now, watching, sites, views_7d, live, updated }
 //   GET /api/frame/feed, /api/frame/wall  the menu's Feed and wall: Community's /api/v1/feed and /api/v1/pulse, relayed
+//   GET|POST|PUT /api/frame/wallet/…   the wallet sheet's fixed Billing/Inventory paths, relayed (bearer only, no cache)
 //   POST /api/frame/menu-click         public, CORS *, text/plain, max 512 bytes, 60/min per IP: one menu click counted
 //   → { updated, nav: [{ id, name, url, icon, tagline, group, of? }], open sites, most used first (of: a product
 //                                                                      on its own domain, served by that site)
@@ -524,6 +525,57 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         limit: qLimit(req.query.limit, 50), after: qCursor(req.query.after), cursor: qCursor(req.query.cursor),
         for: req.query.for === 'me' ? 'me' : '', origin: ['user', 'ai', 'system', 'all'].includes(String(req.query.origin || '')) ? String(req.query.origin) : '',
     }));
+
+    // ── The wallet sheet's money and items (openvibe-shared ov-wallet.js) ──────────────────────────────────────
+    // Every site's connect-src allows openvibe.network and refuses billing./inventory.openvibe.network, so the
+    // sheet asks these fixed paths here and nothing else. Only the person's Bearer token goes upstream, never a
+    // cookie; bodies are JSON of at most 8 KB; redirects are not followed; Billing's and Inventory's status and
+    // body come back as they are. Nothing personal is kept, and no query is forwarded except a page limit/cursor.
+    const walletAuth = (req) => (/^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '');
+    function walletRelay(service, method, upstream) {
+        const upstreamPath = typeof upstream === 'function' ? upstream : () => upstream;
+        return async (req, res) => {
+            res.set({ 'Access-Control-Allow-Origin': '*', 'Vary': 'Authorization', 'Cache-Control': 'private, no-store', 'Content-Type': 'application/json; charset=utf-8' });
+            const path = upstreamPath(req);
+            if (!path) return res.status(404).send('{"error":"not found"}');
+            const auth = walletAuth(req);
+            if (path.startsWith('/api/v1/me/') && !auth) return res.status(401).send('{"error":"sign in to open your wallet"}');
+            const u = new URL(path, svcUrl(service, service === 'billing' ? 'http://127.0.0.1:4600' : 'http://127.0.0.1:5030'));
+            if (method === 'GET') {
+                const limit = String(req.query.limit || '');
+                if (/^\d{1,3}$/.test(limit)) u.searchParams.set('limit', String(Math.min(Math.max(Number(limit), 1), 100)));
+                const cursor = String(req.query.cursor || '');
+                if (/^[A-Za-z0-9._~=-]{1,300}$/.test(cursor)) u.searchParams.set('cursor', cursor);
+            }
+            const headers = { Accept: 'application/json', ...(auth ? { Authorization: auth } : {}) };
+            const init = { method, headers, redirect: 'manual', signal: AbortSignal.timeout(8000) };
+            if (method !== 'GET') { headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(req.body || {}); }
+            try {
+                const r = await fetch(u.href, init);
+                const text = await r.text();
+                return res.status(r.status).send(text.slice(0, 64 * 1024));
+            } catch { return res.status(502).send('{"error":"The wallet service did not answer"}'); }
+        };
+    }
+    const walletJson = express.json({ limit: '8kb' });
+    const USR = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/, ITEM = /^itd_[0-9A-HJKMNP-TV-Z]{26}$/;
+    router.options('/wallet/*', (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, PUT', 'Access-Control-Max-Age': '600' });
+        res.status(204).end();
+    });
+    // Billing: the three balances and the sheet's two checkouts. All personal, all no-store.
+    router.get('/wallet/api/v1/me/wallet', walletRelay('billing', 'GET', '/api/v1/me/wallet'));
+    router.post('/wallet/api/v1/me/vibes/buy', walletJson, walletRelay('billing', 'POST', '/api/v1/me/vibes/buy'));
+    router.post('/wallet/api/v1/me/wallet/topups', walletJson, walletRelay('billing', 'POST', '/api/v1/me/wallet/topups'));
+    // Inventory: the store, the person's items, and the equipped slots (worn or not).
+    router.get('/wallet/api/v1/me/items', walletRelay('inventory', 'GET', '/api/v1/me/items'));
+    router.get('/wallet/api/v1/people/:id/equipped', walletRelay('inventory', 'GET',
+        (req) => (USR.test(String(req.params.id || '')) ? `/api/v1/people/${req.params.id}/equipped` : null)));
+    router.put('/wallet/api/v1/me/equipped', walletJson, walletRelay('inventory', 'PUT', '/api/v1/me/equipped'));
+    router.get('/wallet/api/v1/store', walletRelay('inventory', 'GET', '/api/v1/store'));
+    router.post('/wallet/api/v1/store/:id/buy', walletJson, walletRelay('inventory', 'POST',
+        (req) => (ITEM.test(String(req.params.id || '')) ? `/api/v1/store/${req.params.id}/buy` : null)));
+    router.get('/wallet/api/v1/kinds', walletRelay('inventory', 'GET', '/api/v1/kinds'));
 
     // GET /api/frame/suggest?q=&owner=&limit= — the navbar's magnifier (openvibe-shared search.js): OpenVibe.Search's
     // suggestions, asked through Network because every site's connect-src already lets the navbar reach
