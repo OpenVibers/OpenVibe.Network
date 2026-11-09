@@ -1,4 +1,10 @@
+![OpenVibe.Network](https://openvibe.network/shared/social/network.jpg)
+
 # OpenVibe.Network
+
+**One account for every OpenVibe site** — [openvibe.network](https://openvibe.network). Sign-in, profiles, follows, OpenCoins and your machines.
+
+Part of the [OpenVibe network](https://openvibe.network); [help](https://openvibe.help), the [SDK](https://github.com/OpenVibers/OpenVibe.SDK) and the [developer API](https://openvibe.services).
 
 ## Purpose
 
