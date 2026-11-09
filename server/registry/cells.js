@@ -157,9 +157,9 @@ function routers({ readGuard }) {
         res.json({ ...t, generated_at: new Date().toISOString() });
     });
     // Every node principal (platform, project and person-owned), newest first; ?cell=&owner_kind=&status= narrow it.
-    internal.get('/node-principals', readGuard, async (req, res) => {
+    internal.get('/link-principals', readGuard, async (req, res) => {
         res.set('Cache-Control', 'no-store');
-        const nodePrincipals = await require('./node-principals').listPrincipals(req.app.locals.db, require('./node-principals').principalFilter(req.query));
+        const nodePrincipals = await require('./link-principals').listPrincipals(req.app.locals.db, require('./link-principals').principalFilter(req.query));
         res.json({ node_principals: nodePrincipals, generated_at: new Date().toISOString() });
     });
     return { pub, internal };

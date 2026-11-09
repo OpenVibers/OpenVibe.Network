@@ -66,7 +66,7 @@ try {
     const A = (method, p, body) => call(method, `/api/admin/registry${p}`, body, admin);
 
     await check('staff session only: no session 401, a person 403, a service token refused', async () => {
-        for (const [method, p, body] of [['GET', '/node-principals'], ['PUT', '/cells/wnam-1', { route_weight: 5 }], ['PUT', '/instances/media-1', { route_weight: 5 }], ['PUT', `/node-principals/${platformId}`, { status: 'draining' }]]) {
+        for (const [method, p, body] of [['GET', '/link-principals'], ['PUT', '/cells/wnam-1', { route_weight: 5 }], ['PUT', '/instances/media-1', { route_weight: 5 }], ['PUT', `/link-principals/${platformId}`, { status: 'draining' }]]) {
             assert.strictEqual((await call(method, `/api/admin/registry${p}`, body)).status, 401, `${method} ${p} with no session`);
             assert.strictEqual((await call(method, `/api/admin/registry${p}`, body, user)).status, 403, `${method} ${p} as a person`);
             assert.ok([401, 403].includes((await call(method, `/api/admin/registry${p}`, body, host)).status), `${method} ${p} with a service token`);
@@ -112,7 +112,7 @@ try {
             assert.deepStrictEqual([r.status, r.body.code], [422, 'registry.invalid_state'], `instance state ${s}`);
         }
         for (const s of ['revoked', 'retired']) {
-            const r = await A('PUT', `/node-principals/${platformId}`, { status: s });
+            const r = await A('PUT', `/link-principals/${platformId}`, { status: s });
             assert.deepStrictEqual([r.status, r.body.code], [422, 'registry.invalid_status'], `principal status ${s}`);
         }
         // A valid field next to an invalid one writes neither.
@@ -124,7 +124,7 @@ try {
         }
         r = await A('PUT', '/instances/media-1', { status: 'draining' });
         assert.deepStrictEqual([r.status, r.body.code], [400, 'registry.invalid_body'], 'an instance has a state, not a status');
-        r = await A('PUT', `/node-principals/${platformId}`, { route_weight: 5 });
+        r = await A('PUT', `/link-principals/${platformId}`, { route_weight: 5 });
         assert.deepStrictEqual([r.status, r.body.code], [400, 'registry.invalid_body'], 'a principal has no weight');
         assert.deepStrictEqual(await cellRow(), { status: 'active', route_weight: 1000 }, 'nothing written');
         assert.deepStrictEqual(await instanceRow(), { state: 'ready', route_weight: 100 });
@@ -138,7 +138,7 @@ try {
         r = await A('PUT', '/instances/nope-1', { route_weight: 5 });
         assert.deepStrictEqual([r.status, r.body.code], [404, 'registry.unknown_instance']);
         for (const id of [nod(), 'ovh-1', 'nope']) {
-            r = await A('PUT', `/node-principals/${id}`, { status: 'draining' });
+            r = await A('PUT', `/link-principals/${id}`, { status: 'draining' });
             assert.deepStrictEqual([r.status, r.body.code], [404, 'registry.unknown_node'], id);
         }
         assert.strictEqual((await db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action LIKE 'registry_%'").get()).n, before, 'no audit row for a refused write');
@@ -156,33 +156,33 @@ try {
     });
 
     await check('a node principal: draining and back to active; revoked stays revoked', async () => {
-        let r = await A('PUT', `/node-principals/${platformId}`, { status: 'draining' });
+        let r = await A('PUT', `/link-principals/${platformId}`, { status: 'draining' });
         assert.strictEqual(r.status, 200, r.text);
         assert.deepStrictEqual([r.body.principal, r.body.node_id, r.body.status, r.body.trust, r.body.owner], [platformId, 'ovh-1', 'draining', 'first-party', { kind: 'platform' }]);
         assert.strictEqual((await principalRow(platformId)).status, 'draining');
-        r = await A('PUT', `/node-principals/${pairedId}`, { status: 'draining' });
+        r = await A('PUT', `/link-principals/${pairedId}`, { status: 'draining' });
         assert.strictEqual(r.status, 200, r.text);
         assert.ok(!/hash|credential/.test(r.text), 'never a hash or a credential');
-        r = await A('PUT', `/node-principals/${platformId}`, { status: 'active' });
+        r = await A('PUT', `/link-principals/${platformId}`, { status: 'active' });
         assert.deepStrictEqual([r.status, r.body.status], [200, 'active']);
-        r = await A('PUT', `/node-principals/${revokedId}`, { status: 'active' });
+        r = await A('PUT', `/link-principals/${revokedId}`, { status: 'active' });
         assert.deepStrictEqual([r.status, r.body.code], [409, 'registry.node_revoked']);
         assert.deepStrictEqual(await principalRow(revokedId), { status: 'revoked', revoked_at: '2026-10-01T00:00:00Z' });
     });
 
     await check('the operator principal list: every owner, with trust, filtered', async () => {
-        let r = await A('GET', '/node-principals');
+        let r = await A('GET', '/link-principals');
         assert.strictEqual(r.status, 200, r.text);
         assert.strictEqual(r.headers.get('cache-control'), 'no-store');
         const byNode = Object.fromEntries(r.body.node_principals.map((p) => [p.node_id, p]));
         assert.deepStrictEqual(Object.keys(byNode).sort(), ['old-1', 'ovh-1', 'pi-1']);
         assert.deepStrictEqual([byNode['pi-1'].status, byNode['pi-1'].trust, byNode['pi-1'].owner.kind], ['draining', 'community', 'user']);
         assert.ok(!/hash|credential/.test(r.text));
-        r = await A('GET', '/node-principals?status=draining');
+        r = await A('GET', '/link-principals?status=draining');
         assert.deepStrictEqual(r.body.node_principals.map((p) => p.node_id), ['pi-1']);
-        r = await A('GET', '/node-principals?owner_kind=platform&cell=wnam-1');
+        r = await A('GET', '/link-principals?owner_kind=platform&cell=wnam-1');
         assert.deepStrictEqual(r.body.node_principals.map((p) => p.node_id).sort(), ['old-1', 'ovh-1']);
-        r = await A('GET', '/node-principals?cell=nope-1');
+        r = await A('GET', '/link-principals?cell=nope-1');
         assert.deepStrictEqual(r.body.node_principals, []);
     });
     log(`registry-admin: ${passed} checks passed`);

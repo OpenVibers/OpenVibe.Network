@@ -340,7 +340,7 @@ async function meOf(db, user) {
 // Mounted at /api/v1/me/nodes behind requireAuth (server/index.js): a person's own machines, and nothing else.
 function userRouter(requireAuth, now = () => Date.now()) {
     const router = express.Router();
-    require('../node/egress').mount({ user: router, requireAuth, now });
+    require('../link/egress').mount({ user: router, requireAuth, now });
     router.use(http.middleware());
     const send = async (res, fn) => {
         try { return await fn(); } catch (e) {
@@ -436,11 +436,11 @@ async function selfOf(db, req) {
 }
 
 /**
- * Store the capabilities the machine presents (platform.node-capabilities@1, verbatim). Its node_id must be the
+ * Store the capabilities the machine presents (platform.link-capabilities@1, verbatim). Its node_id must be the
  * machine's own. Throws RegistryError. → { node_id, reported_at }
  */
 async function putCapabilities(db, p, body, now = Date.now()) {
-    const v = validate('platform.node-capabilities@1', body);
+    const v = validate('platform.link-capabilities@1', body);
     if (!v.valid) throw new RegistryError(400, 'registry.invalid_capabilities', v.errors.map((e) => `${e.path} ${e.message}`).join('; ').slice(0, 500));
     if (body.node_id !== p.node_id) throw new RegistryError(409, 'registry.node_mismatch', `this token is node ${p.node_id}, not ${String(body.node_id).slice(0, 80)}`);
     const at = iso(now);
@@ -473,7 +473,7 @@ async function rotateCredential(db, id, now = Date.now()) {
 // the token's signature, audience and capability; ownership is selfOf's, before any write.
 function selfRouter(now = () => Date.now()) {
     const router = express.Router();
-    require('../node/egress').mount({ self: router, now });
+    require('../link/egress').mount({ self: router, now });
     router.use(http.middleware());
     const send = async (res, fn) => {
         res.set('Cache-Control', 'no-store');
@@ -497,7 +497,7 @@ function selfRouter(now = () => Date.now()) {
 function routers({ guard, now = () => Date.now() }) {
     const problem = (res, e) => http.sendProblem(res, e.status, e.code, { detail: e.message });
     const internal = express.Router();
-    internal.post('/node-pairings', guard, express.json({ limit: '8kb' }), async (req, res) => {
+    internal.post('/link-pairings', guard, express.json({ limit: '8kb' }), async (req, res) => {
         res.set('Cache-Control', 'no-store');
         try {
             res.status(201).json(await createPairing(req.app.locals.db, serviceOf(req), req.body || {}, now()));
@@ -506,13 +506,13 @@ function routers({ guard, now = () => Date.now() }) {
             throw e;
         }
     });
-    internal.get('/node-principals/:id', guard, async (req, res) => {
+    internal.get('/link-principals/:id', guard, async (req, res) => {
         res.set('Cache-Control', 'no-store');
         const p = await pairedBy(req.app.locals.db, req.params.id, serviceOf(req));
         if (!p) return http.sendProblem(res, 404, 'registry.unknown_node', { detail: `no node principal ${req.params.id}` });
         res.json(principalView(p));
     });
-    internal.post('/node-principals/:id/revoke', guard, async (req, res) => {
+    internal.post('/link-principals/:id/revoke', guard, async (req, res) => {
         res.set('Cache-Control', 'no-store');
         let reason;
         try { reason = reasonOf((req.body || {}).reason); } catch (e) { return problem(res, e); }
@@ -539,7 +539,7 @@ function routers({ guard, now = () => Date.now() }) {
             paired_for: { service: p.paired_by_service, ref: p.pairing_ref },
         });
     });
-    require('../node/egress').mount({ internal, pairing, now });
+    require('../link/egress').mount({ internal, pairing, now });
     return { internal, pairing };
 }
 

@@ -19,7 +19,7 @@
  * formatter, so it is present exactly when the resource is a nameable resource. Per ADR-048 section 3
  * a project is addressed by its bare prj_ id — it is never given a self-referential OVRN — and an app
  * is an actor, never a resource name (app_ is excluded from the OVRN id pattern). A project-owned node
- * principal is named ovrn:network:<prj_…>:node/lnk_…; a platform- or user-owned one has no project
+ * principal is named ovrn:network:<prj_…>:link/lnk_…; a platform- or user-owned one has no project
  * segment and so no name. That is also what GET /api/v1/resources/:ovrn can read: only a resource
  * whose computed ovrn equals the one asked for answers.
  */
@@ -176,7 +176,7 @@ function router({ guard }) {
         const db = req.app.locals.db;
         let summary = null;
         if (parsed && parsed.service === SERVICE) {
-            if (parsed.type === 'node') {
+            if (parsed.type === 'link') {
                 const row = await db.prepare('SELECT * FROM platform_node_principals WHERE id = ?').get(parsed.id);
                 if (row) summary = named(nodeSummary(row));
             } else if (parsed.type === 'app') {

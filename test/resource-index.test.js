@@ -53,7 +53,7 @@ const resourceIndex = require('../server/registry/resource-index');
     await insertNode.run(nodP, 'node-p', 'platform', null, null, 'Platform machine', 'first-party', null);
     await insertNode.run(nodU, 'node-u', 'user', null, usrA, "Person's machine", 'community', 'c'.repeat(64));
 
-    const ovrnOfNode = (project, node) => `ovrn:network:${project}:node/${node}`;
+    const ovrnOfNode = (project, node) => `ovrn:network:${project}:link/${node}`;
     const expected = [];
     expected.push({ id: prjA, kind: 'network.project' }, { id: prjB, kind: 'network.project' });
     expected.push({ id: appA, kind: 'network.app' }, { id: appA2, kind: 'network.app' }, { id: appB, kind: 'network.app' });

@@ -70,7 +70,7 @@ const keys = crypto.generateKeyPairSync('rsa', {
     });
     assert.ok(v.ok, v.reason);
     assert.deepStrictEqual([v.claims.sub, v.claims.actor_type, v.claims.aud, v.claims.cap],
-        [`link:${principal.id}`, 'node', ['openvibe.live'], [CAP]]);
+        [`link:${principal.id}`, 'link', ['openvibe.live'], [CAP]]);
     assert.strictEqual(v.claims.on_behalf_of, OWNER, 'the token names the owner it acts for');
     assert.ok(contracts.validate('identity.service-token-claims@1', v.claims).valid,
         'the claims fit identity.service-token-claims@1');

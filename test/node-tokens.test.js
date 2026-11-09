@@ -96,7 +96,7 @@ try {
         assert.ok(v.ok, v.reason);
         assert.ok(validate('identity.service-token-claims@1', v.claims).valid);
         const c = v.claims;
-        assert.deepStrictEqual([c.iss, c.sub, c.actor_type, c.aud, c.cap], [ISSUER, `link:${A.principal}`, 'node', ['openvibe.network'], ['network.link.self.manage']]);
+        assert.deepStrictEqual([c.iss, c.sub, c.actor_type, c.aud, c.cap], [ISSUER, `link:${A.principal}`, 'link', ['openvibe.network'], ['network.link.self.manage']]);
         assert.match(c.sub, /^link:lnk_[0-9A-HJKMNP-TV-Z]{26}$/);
         assert.strictEqual(c.exp - c.iat, principals.TOKEN_TTL_S);
         assert.match(c.jti, /^tok_[0-9a-f]{24}$/);
