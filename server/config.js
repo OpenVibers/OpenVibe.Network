@@ -160,9 +160,14 @@ module.exports = {
         search: {
             internalUrl: process.env.OV_SEARCH_INTERNAL_URL || 'http://127.0.0.1:4710',
         },
-        // OpenVibe.Billing: the person's Vibes beside their OpenCoins (GET /api/coins/me?with=vibes, server/coins/routes.js).
+        // OpenVibe.Billing: the person's Vibes beside their OpenCoins (GET /api/coins/me?with=vibes, server/coins/routes.js),
+        // and the wallet sheet's money reads, checkouts and top-ups (/api/frame/wallet/…, server/frame/service.js).
         billing: {
             internalUrl: process.env.OV_BILLING_INTERNAL_URL || 'http://127.0.0.1:4600',
+        },
+        // OpenVibe.Inventory: the wallet sheet's store, items and equipped slots (/api/frame/wallet/…).
+        inventory: {
+            internalUrl: process.env.OV_INVENTORY_INTERNAL_URL || 'http://127.0.0.1:5030',
         },
         // OpenVibe.Mail: the account home's Receipts card (server/today/receipts.js) reads the person's own receipt
         // summaries with their token. Mail is the authority on the mailbox and the Inbox AI opt-in.
