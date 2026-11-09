@@ -26,7 +26,7 @@
     },
     "sub": {
       "type": "string",
-      "pattern": "^(svc:[a-z][a-z0-9-]{1,39}|app:app_[0-9A-HJKMNP-TV-Z]{26}|mod:mod_[0-9A-HJKMNP-TV-Z]{26}|node:nod_[0-9A-HJKMNP-TV-Z]{26}|agent:agt_[0-9A-HJKMNP-TV-Z]{26})$"
+      "pattern": "^(svc:[a-z][a-z0-9-]{1,39}|app:app_[0-9A-HJKMNP-TV-Z]{26}|mod:mod_[0-9A-HJKMNP-TV-Z]{26}|link:lnk_[0-9A-HJKMNP-TV-Z]{26}|agent:agt_[0-9A-HJKMNP-TV-Z]{26})$"
     },
     "actor_type": {
       "enum": [

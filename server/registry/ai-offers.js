@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Community AI offers in OpenVibe.Network (the design's "Offer to the network"; plan E4). OpenVibe.Node's ai plugin
+ * Community AI offers in OpenVibe.Network (the design's "Offer to the network"; plan E4). OpenVibe.Link's ai plugin
  * advertises one machine's local models, hours, concurrency, credit price and audience; OpenVibe.Bot reports the
  * complete set for source `bot` (POST /internal/ai/offers/report, network.resource.report); a missing offer is marked
  * down, never deleted. OpenVibe.AI reads the live ones whole with network.registry.read (GET /internal/ai/offers) and

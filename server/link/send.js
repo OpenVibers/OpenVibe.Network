@@ -48,7 +48,7 @@ if (form) {
             const target = (await listed.json()).machines.find((m) => m.id === machine && m.public_key);
             if (!target) throw new Error('That machine has no receive key yet. Open Link on it and try again.');
             const payload = await packageContent(file, text);
-            const sealed = await locker.seal(payload, { lock: 'people', keys: [{ subject: { type: 'node', id: target.id }, publicKey: target.public_key }] });
+            const sealed = await locker.seal(payload, { lock: 'people', keys: [{ subject: { type: 'link', id: target.id }, publicKey: target.public_key }] });
             say('Sending encrypted data…');
             const sent = await fetch('/api/v1/me/nodes/send', {
                 method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },

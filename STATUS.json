@@ -44,7 +44,7 @@
     "themes and preferences, user modules, platform blocks, follow graph, creator analytics",
     "OpenCoins wallet",
     "service registry, public discovery and the status page with incidents",
-    "node principals: pairing a person's machine, scoped service and owner revoke, and network.node.revoked@1 for instant revocation",
+    "node principals: pairing a person's machine, scoped service and owner revoke, and network.link.revoked@1 for instant revocation",
     "operator alerts relay target and admin panel",
     "serves /shared/* from its pinned openvibe-shared",
     "per-actor limits (openvibe-sdk/limits)",

@@ -6,7 +6,7 @@ const http = require('node:http');
 const express = require('express');
 const { ids } = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
-const { router } = require('../server/node/send-relay');
+const { router } = require('../server/link/send-relay');
 const locker = require('openvibe-sdk/locker');
 
 (async () => {
@@ -17,13 +17,13 @@ const locker = require('openvibe-sdk/locker');
     const node = async (principal, owner, n) => db.prepare(`INSERT INTO platform_node_principals
         (id, node_id, home_cell, owner_kind, trust, owner_subject, credential_hash, created_by)
         VALUES (?, ?, 'wnam-1', 'user', 'community', ?, ?, ?)`).run(principal, `send-${n}`, owner, `${n}`.padStart(64, '0'), owner);
-    const [from, target, stranger] = [`nod_${ids.ulid()}`, `nod_${ids.ulid()}`, `nod_${ids.ulid()}`];
+    const [from, target, stranger] = [`lnk_${ids.ulid()}`, `lnk_${ids.ulid()}`, `lnk_${ids.ulid()}`];
     await node(from, alice, 1); await node(target, alice, 2); await node(stranger, bob, 3);
     const tokens = new Map([['from', from], ['target', target], ['stranger', stranger]]);
     const send = router({ nodeGuard: (req, res, next) => {
         const principal = tokens.get(req.headers.authorization);
         if (!principal) return res.status(401).end();
-        req.principal = { sub: `node:${principal}` }; next();
+        req.principal = { sub: `link:${principal}` }; next();
     }, requireAuth: (req, res, next) => {
         if (req.headers.authorization !== 'alice-session') return res.status(401).end();
         req.user = { id: 9311, subject_id: alice }; next();
@@ -48,7 +48,7 @@ const locker = require('openvibe-sdk/locker');
         res = await call('/targets', 'from');
         assert.equal(res.status, 200);
         assert.deepEqual((await res.json()).machines[0].public_key, { kty: 'EC', crv: 'P-256', x: publicKey.x, y: publicKey.y });
-        const subject = { type: 'node', id: target };
+        const subject = { type: 'link', id: target };
         const sealed = await locker.seal(new TextEncoder().encode('Locker round trip'), {
             lock: 'people', keys: [{ subject, publicKey }],
         });

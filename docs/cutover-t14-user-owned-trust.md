@@ -1,8 +1,8 @@
 # Cutover runbook: the user-owned trust class (migration 0020)
 
-This PR lets the resource registry hold the trust class `user-owned`, a person's own Node (ADR-046, the universal
+This PR lets the resource registry hold the trust class `user-owned`, a person's own Link (ADR-046, the universal
 adaptive fabric). The class has been in the `platform.resource-offer@1` enum since Contracts 0.87.0, and Network's pin
-has carried it since 0.90.0. Until now, though, PostgreSQL refused it, so a user's own Node could never be reported.
+has carried it since 0.90.0. Until now, though, PostgreSQL refused it, so a user's own Link could never be reported.
 The data change is `migrations/0020_user_owned_trust.sql`. It drops and re-adds three CHECK constraints, each one
 wider than before. No column is added, renamed or dropped, and no row is rewritten. The migration is `phase: expand`
 and every drop is `IF EXISTS`, so it is safe to run on a live production database and safe to run twice.
@@ -22,13 +22,13 @@ freeze window or snapshot import. The migration runs as part of the normal boot 
 
 Widening the owner rule is required too. Without it, a `user` principal could still be only `community`. An offer
 must carry its node's trust class (`server/registry/cells.js` `checkPlacement`, `registry.trust_mismatch`), so a
-user-owned offer from a person's own Node would still be refused. The only thing the owner rule newly refuses is a
+user-owned offer from a person's own Link would still be refused. The only thing the owner rule newly refuses is a
 `project` machine marked `user-owned`, and no such row can exist, because both trust CHECKs refused that value until
 now. Every row in production therefore passes all three new constraints. Each ADD validates the table, which takes
 milliseconds on a table this size.
 
 The code is unchanged apart from a comment in `server/registry/offers.js` `check()`. The contract already accepts
-the value, and `columns()` copies `trust` through as it is. Pairing (`server/registry/node-principals.js` `redeem`)
+the value, and `columns()` copies `trust` through as it is. Pairing (`server/registry/link-principals.js` `redeem`)
 still creates a paired user machine as `community`. Which machines become `user-owned`, and with what consent, are
 ADR-046's open questions for the owner. Until a principal holds the class, no `user-owned` offer reaches the table.
 
@@ -80,7 +80,7 @@ a transaction that it rolls back, and shows that a `stranger` class and a user-o
 seed: test/fixtures/rehearsal/user-owned-trust.sql
 migrations: migrations
 node -e 'const{Client}=require("pg");(async()=>{const c=new Client({connectionString:process.env.REHEARSAL_DATABASE_URL});await c.connect();const m=await c.query("SELECT id FROM ov_migrations WHERE id=$1",["0020"]);const k=await c.query("SELECT conname,pg_get_constraintdef(oid) AS d FROM pg_constraint WHERE conrelid IN (\x27platform_resource_offers\x27::regclass,\x27platform_node_principals\x27::regclass) AND conname=ANY($1) ORDER BY conname",[["platform_resource_offers_trust_check","platform_node_principals_trust_check","platform_node_principals_owner"]]);const p=await c.query("SELECT node_id||\x27=\x27||trust AS v FROM platform_node_principals WHERE node_id LIKE \x27rh-%\x27 ORDER BY node_id");const o=await c.query("SELECT id||\x27=\x27||trust AS v FROM platform_resource_offers WHERE id LIKE \x27rh-%\x27 ORDER BY id");await c.end();const rows=p.rows.map(r=>r.v).concat(o.rows.map(r=>r.v)).join(",");const want="rh-platform=first-party,rh-project=partner,rh-user=community,rh-platform=first-party,rh-project=partner,rh-provider=external,rh-user=community";if(m.rows.length!==1||k.rows.length!==3||!k.rows.every(r=>r.d.includes("user-owned"))||rows!==want){console.error("FAIL migration="+m.rows.length+" constraints="+JSON.stringify(k.rows)+" rows="+rows);process.exit(1);}console.log("rehearse: 0020 applied, "+k.rows.map(r=>r.conname).join(",")+" name user-owned, seed rows unchanged");})().catch(e=>{console.error("FAIL",e.code||e.message);process.exit(1)})'
-node -e 'const{Client}=require("pg");(async()=>{const c=new Client({connectionString:process.env.REHEARSAL_DATABASE_URL});await c.connect();const refused=async(sql,args)=>{await c.query("SAVEPOINT s");try{await c.query(sql,args);return false}catch(e){await c.query("ROLLBACK TO SAVEPOINT s");return e.code==="23514"}};const P="INSERT INTO platform_node_principals (id,node_id,home_cell,owner_kind,project_id,owner_subject,trust,created_by,credential_hash) VALUES ($1,$2,\x27wnam-1\x27,$3,$4,$5,$6,\x27rehearsal\x27,$7)";const usr="usr_0000000000000000000000RH01",prj="prj_0000000000000000000000RH01";await c.query("BEGIN");try{await c.query(P,["nod_0000000000000000000000RH04","rh-mine","user",null,usr,"user-owned","d".repeat(64)]);await c.query("INSERT INTO platform_resource_offers (id,source,kind,region,cell,trust,status,doc,reported_at) VALUES (\x27rh-mine\x27,\x27rh-mine\x27,\x27node\x27,\x27us-west\x27,\x27wnam-1\x27,\x27user-owned\x27,\x27up\x27,\x27{}\x27,\x272026-10-04T00:00:00Z\x27)");const a=await refused(P,["nod_0000000000000000000000RH05","rh-stranger","user",null,usr,"stranger","e".repeat(64)]);const b=await refused(P,["nod_0000000000000000000000RH06","rh-prj-mine","project",prj,null,"user-owned","f".repeat(64)]);const d=await refused("INSERT INTO platform_resource_offers (id,source,kind,region,cell,trust,status,doc,reported_at) VALUES (\x27rh-odd\x27,\x27rh\x27,\x27node\x27,\x27us-west\x27,\x27wnam-1\x27,\x27stranger\x27,\x27up\x27,\x27{}\x27,\x272026-10-04T00:00:00Z\x27)");if(!a||!b||!d){console.error("FAIL refused stranger-principal="+a+" project-user-owned="+b+" stranger-offer="+d);process.exitCode=1}else console.log("rehearse: user-owned principal and offer stored; stranger and a user-owned project machine refused (rolled back)")}finally{await c.query("ROLLBACK");await c.end()}})().catch(e=>{console.error("FAIL",e.code||e.message);process.exit(1)})'
+node -e 'const{Client}=require("pg");(async()=>{const c=new Client({connectionString:process.env.REHEARSAL_DATABASE_URL});await c.connect();const refused=async(sql,args)=>{await c.query("SAVEPOINT s");try{await c.query(sql,args);return false}catch(e){await c.query("ROLLBACK TO SAVEPOINT s");return e.code==="23514"}};const P="INSERT INTO platform_node_principals (id,node_id,home_cell,owner_kind,project_id,owner_subject,trust,created_by,credential_hash) VALUES ($1,$2,\x27wnam-1\x27,$3,$4,$5,$6,\x27rehearsal\x27,$7)";const usr="usr_0000000000000000000000RH01",prj="prj_0000000000000000000000RH01";await c.query("BEGIN");try{await c.query(P,["lnk_0000000000000000000000RH04","rh-mine","user",null,usr,"user-owned","d".repeat(64)]);await c.query("INSERT INTO platform_resource_offers (id,source,kind,region,cell,trust,status,doc,reported_at) VALUES (\x27rh-mine\x27,\x27rh-mine\x27,\x27node\x27,\x27us-west\x27,\x27wnam-1\x27,\x27user-owned\x27,\x27up\x27,\x27{}\x27,\x272026-10-04T00:00:00Z\x27)");const a=await refused(P,["lnk_0000000000000000000000RH05","rh-stranger","user",null,usr,"stranger","e".repeat(64)]);const b=await refused(P,["lnk_0000000000000000000000RH06","rh-prj-mine","project",prj,null,"user-owned","f".repeat(64)]);const d=await refused("INSERT INTO platform_resource_offers (id,source,kind,region,cell,trust,status,doc,reported_at) VALUES (\x27rh-odd\x27,\x27rh\x27,\x27node\x27,\x27us-west\x27,\x27wnam-1\x27,\x27stranger\x27,\x27up\x27,\x27{}\x27,\x272026-10-04T00:00:00Z\x27)");if(!a||!b||!d){console.error("FAIL refused stranger-principal="+a+" project-user-owned="+b+" stranger-offer="+d);process.exitCode=1}else console.log("rehearse: user-owned principal and offer stored; stranger and a user-owned project machine refused (rolled back)")}finally{await c.query("ROLLBACK");await c.end()}})().catch(e=>{console.error("FAIL",e.code||e.message);process.exit(1)})'
 ```
 
 **Go:** the rehearsal job ends with `rehearse: 0020 applied, platform_node_principals_owner,
@@ -155,7 +155,7 @@ sudo node --env-file=/etc/openvibe/network.env -e '
 ```
 
 Expected: three lines ending `names user-owned`, and `migration: 0020`. `GET https://openvibe.network/api/v1/offers`
-answers as before. It lists no `user-owned` offer until a Node holding that class reports one.
+answers as before. It lists no `user-owned` offer until a Link holding that class reports one.
 
 ---
 
@@ -183,7 +183,7 @@ answers as before. It lists no `user-owned` offer until a Node holding that clas
           AND owner_subject ~ '^usr_[0-9A-HJKMNP-TV-Z]{26}$' AND trust = 'community'));
   DELETE FROM ov_migrations WHERE id = '0020';
   ```
-  If any row holds `user-owned`, a person's Node is registered with that class, and narrowing the constraints would
+  If any row holds `user-owned`, a person's Link is registered with that class, and narrowing the constraints would
   fail. Revoke or reclassify those principals first; that is an owner decision.
 
 Restart the service after either rollback and confirm `health network` says `ready`.

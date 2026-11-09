@@ -10,7 +10,7 @@ const express = require('express');
 const { ids, validate, serviceAuth } = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 const principals = require('../server/identity/principals');
-const nodePrincipals = require('../server/registry/node-principals');
+const nodePrincipals = require('../server/registry/link-principals');
 
 (async () => {
 const log = console.log; console.log = () => {};
@@ -19,8 +19,8 @@ console.log = log;
 await db.prepare("UPDATE oauth_clients SET client_secret = 'bot-secret' WHERE client_id = 'bot'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'host-secret' WHERE client_id = 'host'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
-// A service that holds network.node.self.manage anyway: it still manages no machine (403 capability.owner_denied).
-await db.prepare("INSERT INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES ('host', 'network.node.self.manage', 'openvibe.network', '[]', 'test') ON CONFLICT DO NOTHING").run();
+// A service that holds network.link.self.manage anyway: it still manages no machine (403 capability.owner_denied).
+await db.prepare("INSERT INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES ('host', 'network.link.self.manage', 'openvibe.network', '[]', 'test') ON CONFLICT DO NOTHING").run();
 
 const alex = `usr_${ids.ulid()}`;
 await db.prepare("INSERT INTO users (id, username, display_name, password_hash, subject_id) VALUES (9201, 'tokalex', 'Alex', 'x', ?)").run(alex);
@@ -34,10 +34,10 @@ app.locals.config = { jwt: { issuer: ISSUER, accessTokenExpiry: '1h' } };
 app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 app.use('/oauth', require('../server/auth/oauth-routes'));
-const pr = nodePrincipals.routers({ guard: principals.guard('network.node.manage') });
-app.use('/api/v1/node-pairing', pr.pairing);
+const pr = nodePrincipals.routers({ guard: principals.guard('network.link.manage') });
+app.use('/api/v1/link-pairing', pr.pairing);
 app.use('/internal', pr.internal);
-app.use('/api/v1/node/self', principals.guard('network.node.self.manage'), nodePrincipals.selfRouter());
+app.use('/api/v1/link/self', principals.guard('network.link.self.manage'), nodePrincipals.selfRouter());
 const cellRouters = require('../server/registry/cells').routers({ readGuard: principals.guard('network.registry.read') });
 app.use('/internal/registry', cellRouters.internal);
 const server = http.createServer(app);
@@ -73,8 +73,8 @@ try {
     const live = bearer((await tokenCall('live', 'live-secret', 'openvibe.network')).body.access_token);
     const credentials = [];
     const pair = async (name) => {
-        const code = await call('POST', '/internal/node-pairings', { owner: { kind: 'user', subject: alex }, ref: `robot-${ids.ulid()}` }, bot);
-        const r = await call('POST', '/api/v1/node-pairing', { pairing: code.body.pairing_id, code: code.body.code, name }, {}, { secret: true });
+        const code = await call('POST', '/internal/link-pairings', { owner: { kind: 'user', subject: alex }, ref: `robot-${ids.ulid()}` }, bot);
+        const r = await call('POST', '/api/v1/link-pairing', { pairing: code.body.pairing_id, code: code.body.code, name }, {}, { secret: true });
         assert.strictEqual(r.status, 201, r.text);
         credentials.push(r.body.credential);
         return r.body;
@@ -91,13 +91,13 @@ try {
         assert.strictEqual((await row(A.principal)).last_seen_at, null);
         const r = await tokenCall(A.principal, A.credential, 'openvibe.network');
         assert.strictEqual(r.status, 200, r.text);
-        assert.deepStrictEqual([r.body.token_type, r.body.expires_in, r.body.scope], ['Bearer', 300, 'network.node.self.manage']);
+        assert.deepStrictEqual([r.body.token_type, r.body.expires_in, r.body.scope], ['Bearer', 300, 'network.link.self.manage']);
         const v = serviceAuth.verifyServiceToken(r.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.network' });
         assert.ok(v.ok, v.reason);
         assert.ok(validate('identity.service-token-claims@1', v.claims).valid);
         const c = v.claims;
-        assert.deepStrictEqual([c.iss, c.sub, c.actor_type, c.aud, c.cap], [ISSUER, `node:${A.principal}`, 'node', ['openvibe.network'], ['network.node.self.manage']]);
-        assert.match(c.sub, /^node:nod_[0-9A-HJKMNP-TV-Z]{26}$/);
+        assert.deepStrictEqual([c.iss, c.sub, c.actor_type, c.aud, c.cap], [ISSUER, `link:${A.principal}`, 'link', ['openvibe.network'], ['network.link.self.manage']]);
+        assert.match(c.sub, /^link:lnk_[0-9A-HJKMNP-TV-Z]{26}$/);
         assert.strictEqual(c.exp - c.iat, principals.TOKEN_TTL_S);
         assert.match(c.jti, /^tok_[0-9a-f]{24}$/);
         assert.ok(!('project_id' in c) && !('ns' in c) && !('env' in c), 'a person\'s machine carries no project');
@@ -119,26 +119,26 @@ try {
         assert.strictEqual(w.status, 200, w.text);
         const vw = serviceAuth.verifyServiceToken(w.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: aud });
         assert.ok(vw.ok, vw.reason);
-        assert.deepStrictEqual([vw.claims.sub, vw.claims.aud, vw.claims.cap], [`node:${A.principal}`, [aud], []]);
-        assert.strictEqual((await call('PUT', '/api/v1/node/self/capabilities', doc(A.node_id), bearer(w.body.access_token))).status, 401, 'no use on Network');
+        assert.deepStrictEqual([vw.claims.sub, vw.claims.aud, vw.claims.cap], [`link:${A.principal}`, [aud], []]);
+        assert.strictEqual((await call('PUT', '/api/v1/link/self/capabilities', doc(A.node_id), bearer(w.body.access_token))).status, 401, 'no use on Network');
         }
         for (const aud of ['openvibe.media', 'openvibe.network.evil', 'openvibe.websites', 'connect.openvibe.website', '', undefined]) {
             const bad = await tokenCall(A.principal, A.credential, aud);
             assert.deepStrictEqual([bad.status, bad.body.error], [400, 'invalid_scope'], String(aud));
         }
         // A token for Bot is no use on Network's self routes.
-        assert.strictEqual((await call('PUT', '/api/v1/node/self/capabilities', doc(A.node_id), bearer(r.body.access_token))).status, 401);
+        assert.strictEqual((await call('PUT', '/api/v1/link/self/capabilities', doc(A.node_id), bearer(r.body.access_token))).status, 401);
     });
 
     await check('unknown, revoked or wrong secret: 401 with one identical answer', async () => {
         const C = await pair('Revoked');
-        assert.strictEqual((await call('POST', `/internal/node-principals/${C.principal}/revoke`, null, bot)).status, 200);
+        assert.strictEqual((await call('POST', `/internal/link-principals/${C.principal}/revoke`, null, bot)).status, 200);
         const refusals = [
             await tokenCall(A.principal, 'not-the-credential', 'openvibe.network'),
             await tokenCall(A.principal, B.credential, 'openvibe.network'),
             await tokenCall(A.principal, '', 'openvibe.network'),
-            await tokenCall(`nod_${ids.ulid()}`, A.credential, 'openvibe.network'),
-            await tokenCall('nod_nope', A.credential, 'openvibe.network'),
+            await tokenCall(`lnk_${ids.ulid()}`, A.credential, 'openvibe.network'),
+            await tokenCall('lnk_nope', A.credential, 'openvibe.network'),
             await tokenCall(C.principal, C.credential, 'openvibe.network'),
             await tokenCall(C.principal, C.credential, 'openvibe.chat'),
         ];
@@ -149,7 +149,7 @@ try {
     await check('rotation: the new credential works, the old one 60 s more; revoke kills both', async () => {
         const R = await pair('Rotator');
         const before = await row(R.principal);
-        const rot = await call('POST', '/api/v1/node/self/credential', null, bearer(await nodeToken(R)), { secret: true });
+        const rot = await call('POST', '/api/v1/link/self/credential', null, bearer(await nodeToken(R)), { secret: true });
         assert.strictEqual(rot.status, 200, rot.text);
         assert.strictEqual(rot.headers.get('cache-control'), 'no-store');
         assert.deepStrictEqual([rot.body.principal, rot.body.node_id], [R.principal, R.node_id]);
@@ -170,10 +170,10 @@ try {
         assert.strictEqual((await issue(rot.body.credential, at + 61_000)).status, 200, 'the new one is unaffected');
         // Revoke within the grace window: neither secret works any more.
         const D = await pair('Rotate then revoke');
-        const rotD = await call('POST', '/api/v1/node/self/credential', null, bearer(await nodeToken(D)), { secret: true });
+        const rotD = await call('POST', '/api/v1/link/self/credential', null, bearer(await nodeToken(D)), { secret: true });
         credentials.push(rotD.body.credential);
         await nodeToken(D);
-        const me = await call('POST', `/internal/node-principals/${D.principal}/revoke`, null, bot);
+        const me = await call('POST', `/internal/link-principals/${D.principal}/revoke`, null, bot);
         assert.strictEqual(me.status, 200);
         const dead = await row(D.principal);
         assert.deepStrictEqual([dead.credential_prev_hash, dead.prev_valid_until], [null, null]);
@@ -185,26 +185,26 @@ try {
 
     await check('capabilities: the machine\'s own doc is stored; another node_id is 409; a bad doc 400', async () => {
         const a = bearer(await nodeToken(A));
-        const ok = await call('PUT', '/api/v1/node/self/capabilities', doc(A.node_id), a);
+        const ok = await call('PUT', '/api/v1/link/self/capabilities', doc(A.node_id), a);
         assert.strictEqual(ok.status, 200, ok.text);
         assert.strictEqual(ok.body.node_id, A.node_id);
         assert.deepStrictEqual(JSON.parse((await capsOf(A.node_id)).doc), doc(A.node_id));
-        const again = await call('PUT', '/api/v1/node/self/capabilities', doc(A.node_id, 8), a);
+        const again = await call('PUT', '/api/v1/link/self/capabilities', doc(A.node_id, 8), a);
         assert.strictEqual(again.status, 200, 'an upsert');
         assert.strictEqual(JSON.parse((await capsOf(A.node_id)).doc).cpu.cores, 8);
-        const bad = await call('PUT', '/api/v1/node/self/capabilities', { node_id: A.node_id }, a);
+        const bad = await call('PUT', '/api/v1/link/self/capabilities', { node_id: A.node_id }, a);
         assert.deepStrictEqual([bad.status, bad.body.code], [400, 'registry.invalid_capabilities']);
     });
 
     await check('node A\'s valid token cannot change node B\'s capabilities or credential', async () => {
         const b = bearer(await nodeToken(B));
-        assert.strictEqual((await call('PUT', '/api/v1/node/self/capabilities', doc(B.node_id), b)).status, 200);
+        assert.strictEqual((await call('PUT', '/api/v1/link/self/capabilities', doc(B.node_id), b)).status, 200);
         const bRow = await row(B.principal);
         const bCaps = await capsOf(B.node_id);
         const a = bearer(await nodeToken(A));
-        const mismatch = await call('PUT', '/api/v1/node/self/capabilities', doc(B.node_id, 64), a);
+        const mismatch = await call('PUT', '/api/v1/link/self/capabilities', doc(B.node_id, 64), a);
         assert.deepStrictEqual([mismatch.status, mismatch.body.code], [409, 'registry.node_mismatch']);
-        for (const p of [`/api/v1/node/self/credential?principal=${B.principal}`, `/api/v1/node/self/${B.principal}/credential`]) {
+        for (const p of [`/api/v1/link/self/credential?principal=${B.principal}`, `/api/v1/link/self/${B.principal}/credential`]) {
             const r = await call('POST', p, { principal: B.principal, node_id: B.node_id }, a, { secret: true });
             if (r.status === 200) {
                 assert.strictEqual(r.body.principal, A.principal, 'a rotation is always the caller\'s own');
@@ -220,11 +220,11 @@ try {
     await check('a revoked node\'s unexpired token is 401 registry.node_revoked on both self routes', async () => {
         const E = await pair('Revoked later');
         const e = bearer(await nodeToken(E));
-        assert.strictEqual((await call('PUT', '/api/v1/node/self/capabilities', doc(E.node_id), e)).status, 200);
+        assert.strictEqual((await call('PUT', '/api/v1/link/self/capabilities', doc(E.node_id), e)).status, 200);
         const before = await capsOf(E.node_id);
-        assert.strictEqual((await call('POST', `/internal/node-principals/${E.principal}/revoke`, null, bot)).status, 200);
+        assert.strictEqual((await call('POST', `/internal/link-principals/${E.principal}/revoke`, null, bot)).status, 200);
         const revokedRow = await row(E.principal);
-        for (const [m, p, body] of [['PUT', '/api/v1/node/self/capabilities', doc(E.node_id, 2)], ['POST', '/api/v1/node/self/credential', null]]) {
+        for (const [m, p, body] of [['PUT', '/api/v1/link/self/capabilities', doc(E.node_id, 2)], ['POST', '/api/v1/link/self/credential', null]]) {
             const r = await call(m, p, body, e);
             assert.deepStrictEqual([r.status, r.body.code], [401, 'registry.node_revoked'], `${m} ${p}`);
         }
@@ -232,15 +232,15 @@ try {
         assert.deepStrictEqual(await capsOf(E.node_id), before);
     });
 
-    await check('a svc: token holding network.node.self.manage is 403 capability.owner_denied', async () => {
+    await check('a svc: token holding network.link.self.manage is 403 capability.owner_denied', async () => {
         const host = await tokenCall('host', 'host-secret', 'openvibe.network');
-        assert.ok(host.body.scope.split(' ').includes('network.node.self.manage'), host.text);
-        for (const [m, p, body] of [['PUT', '/api/v1/node/self/capabilities', doc(A.node_id)], ['POST', '/api/v1/node/self/credential', null]]) {
+        assert.ok(host.body.scope.split(' ').includes('network.link.self.manage'), host.text);
+        for (const [m, p, body] of [['PUT', '/api/v1/link/self/capabilities', doc(A.node_id)], ['POST', '/api/v1/link/self/credential', null]]) {
             const r = await call(m, p, body, bearer(host.body.access_token));
             assert.deepStrictEqual([r.status, r.body.code], [403, 'capability.owner_denied'], `${m} ${p}`);
             assert.strictEqual((await call(m, p, body)).status, 403, `${m} ${p} without a token`);
         }
-        assert.strictEqual((await call('PUT', '/api/v1/node/self/capabilities', doc(A.node_id), live)).status, 403, 'without the capability');
+        assert.strictEqual((await call('PUT', '/api/v1/link/self/capabilities', doc(A.node_id), live)).status, 403, 'without the capability');
     });
 
     await check('topology shows last_seen_at, health up, the name, who paired it and its capabilities', async () => {

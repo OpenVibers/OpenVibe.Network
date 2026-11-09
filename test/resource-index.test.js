@@ -1,7 +1,7 @@
 'use strict';
 // Network's authority resource index (ADR-048 section 3; capability network.resource.read):
 // GET /api/v1/resources pages common.resource-summary@1 for the resources Network owns - its developer
-// projects (prj_), their apps (app_) and its node principals (nod_) - and GET /api/v1/resources/:ovrn
+// projects (prj_), their apps (app_) and its node principals (lnk_) - and GET /api/v1/resources/:ovrn
 // reads one by its computed ovrn. ?project=&owner=&kind=&cursor=&limit= are honoured; ?project= is the tenancy
 // boundary, so a resource of another project is never returned. An ovrn is present exactly when
 // openvibe-contracts' contracts.resources.nameOf composes one: never for a project (ADR-048: a project
@@ -39,7 +39,7 @@ const resourceIndex = require('../server/registry/resource-index');
     const prjA = ids.newId('project'); const prjB = ids.newId('project');
     const usrA = ids.newId('user'); const usrB = ids.newId('user');
     const appA = ids.newId('app'); const appA2 = ids.newId('app'); const appB = ids.newId('app');
-    const nodA = ids.newId('node'); const nodB = ids.newId('node'); const nodP = ids.newId('node'); const nodU = ids.newId('node');
+    const nodA = ids.newId('link'); const nodB = ids.newId('link'); const nodP = ids.newId('link'); const nodU = ids.newId('link');
     const at = '2026-10-01T00:00:00Z';
     await db.prepare("INSERT INTO dev_projects (id, owner_subject, name, environment_policy, allowance, created_at, created_by) VALUES (?, ?, 'Project A', 'sandbox', '[]', ?, 'test')").run(prjA, usrA, at);
     await db.prepare("INSERT INTO dev_projects (id, owner_subject, name, environment_policy, allowance, created_at, created_by, archived_at, archived_by) VALUES (?, ?, 'Project B', 'sandbox', '[]', ?, 'test', ?, 'test')").run(prjB, usrB, at, at);
@@ -53,11 +53,11 @@ const resourceIndex = require('../server/registry/resource-index');
     await insertNode.run(nodP, 'node-p', 'platform', null, null, 'Platform machine', 'first-party', null);
     await insertNode.run(nodU, 'node-u', 'user', null, usrA, "Person's machine", 'community', 'c'.repeat(64));
 
-    const ovrnOfNode = (project, node) => `ovrn:network:${project}:node/${node}`;
+    const ovrnOfNode = (project, node) => `ovrn:network:${project}:link/${node}`;
     const expected = [];
     expected.push({ id: prjA, kind: 'network.project' }, { id: prjB, kind: 'network.project' });
     expected.push({ id: appA, kind: 'network.app' }, { id: appA2, kind: 'network.app' }, { id: appB, kind: 'network.app' });
-    expected.push({ id: nodA, kind: 'network.node' }, { id: nodB, kind: 'network.node' }, { id: nodP, kind: 'network.node' }, { id: nodU, kind: 'network.node' });
+    expected.push({ id: nodA, kind: 'network.link' }, { id: nodB, kind: 'network.link' }, { id: nodP, kind: 'network.link' }, { id: nodU, kind: 'network.link' });
     expected.sort((x, y) => (x.kind < y.kind ? -1 : x.kind > y.kind ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
 
     (async () => {
@@ -99,14 +99,14 @@ const resourceIndex = require('../server/registry/resource-index');
             assert.deepStrictEqual((await aIds(`?project=${prjA}`)).sort(), [appA, appA2, nodA, prjA].sort(), 'project A: its apps and its machine, never platform/user nodes');
             assert.deepStrictEqual(await aIds(`?project=${prjB}`), [appB, nodB, prjB].sort(), 'project B is never mixed in');
             assert.deepStrictEqual(await aIds(`?project=${prjA}&kind=network.app`), [appA, appA2].sort(), 'kind narrows within the project');
-            assert.deepStrictEqual((await aIds('?kind=network.node')).sort(), [nodA, nodB, nodP, nodU].sort(), 'kind = node lists every node principal');
+            assert.deepStrictEqual((await aIds('?kind=network.link')).sort(), [nodA, nodB, nodP, nodU].sort(), 'kind = node lists every node principal');
             assert.deepStrictEqual(await aIds('?kind=network.project'), [prjA, prjB].sort(), 'kind = project lists the projects');
             assert.deepStrictEqual(await aIds('?kind=network.unknown'), [], 'an unknown kind is an empty page, not an error');
             assert.deepStrictEqual(await aIds(`?project=${ids.newId('project')}`), [], 'an unknown project has no resources');
             assert.deepStrictEqual(await aIds('?owner='), expected.map((r) => r.id), 'an empty owner leaves the index unfiltered');
             assert.deepStrictEqual(await aIds(`?owner=${usrA}`), [nodU, prjA], 'an owner sees only its project and user-owned node');
             assert.deepStrictEqual(await aIds(`?owner=${usrB}`), [prjB], 'another owner sees only its own rows');
-            assert.deepStrictEqual(await aIds(`?owner=${usrA}&kind=network.node`), [nodU], 'owner combines with kind');
+            assert.deepStrictEqual(await aIds(`?owner=${usrA}&kind=network.link`), [nodU], 'owner combines with kind');
             assert.deepStrictEqual(await aIds(`?owner=${usrA}&kind=network.app`), [], 'apps have no summary owner');
             assert.deepStrictEqual(await aIds(`?owner=${usrA}&project=${prjA}`), [prjA], 'owner combines with project');
             assert.deepStrictEqual(await aIds(`?owner=${usrA}&project=${prjB}`), [], 'another project is excluded');
@@ -156,7 +156,7 @@ const resourceIndex = require('../server/registry/resource-index');
                 ['a platform node', ovrnOfNode(prjA, nodP)],
                 ['a user-owned node', ovrnOfNode(prjA, nodU)],
                 ["another project's id", ovrnOfNode(prjB, nodA)],
-                ['an unknown node', ovrnOfNode(prjA, ids.newId('node'))],
+                ['an unknown node', ovrnOfNode(prjA, ids.newId('link'))],
                 ['a non-OVRN', 'nope'],
             ];
             for (const [why, name] of missing) {

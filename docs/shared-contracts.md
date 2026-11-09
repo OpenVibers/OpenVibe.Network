@@ -2,7 +2,7 @@
 
 *2026-09-18. The shared browser modules live in OpenVibe.Shared, consumed as a pinned release
 tarball, and are served from `https://openvibe.network/shared/<file>.js` (5-minute edge cache; a
-year for a `?v=` content-hash URL). Node helpers come from the same pinned release in each
+year for a `?v=` content-hash URL). Link helpers come from the same pinned release in each
 service's `node_modules`. This file is the contract; the modules are the implementation.*
 
 ## 1. Tool catalog and domains
@@ -105,7 +105,7 @@ Unknown names fall back to the OV mark. Reduced motion is honoured.
 notice for status, maintenance and similar; it always sits directly under the navbar. Themed, stacked, accessible (`role=status|alert`), one
 implementation for every site.
 
-## 6. SEO (`seo.js`, Node — `require('openvibe-shared/seo')`)
+## 6. SEO (`seo.js`, Link — `require('openvibe-shared/seo')`)
 
 ```js
 const seo = require('openvibe-shared/seo');

@@ -14,7 +14,7 @@ const assert = require('assert');
 const crypto = require('crypto');
 const contracts = require('openvibe-contracts');
 const principals = require('../server/identity/principals');
-const nodePrincipals = require('../server/registry/node-principals');
+const nodePrincipals = require('../server/registry/link-principals');
 
 const CAP = 'live.agent_stream.publish';
 const ISSUER = 'https://openvibe.network';
@@ -38,7 +38,7 @@ assert.ok(nodeGrant, "a person's machine may publish for its owner on Live");
 const OWNER = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPQ';
 const CREDENTIAL = 'node-credential-for-the-agent-stream-test';
 const principal = {
-    id: 'nod_01JAB2C3D4E5F6G7H8J9K0MNPQ',
+    id: 'lnk_01JAB2C3D4E5F6G7H8J9K0MNPQ',
     status: 'active',
     owner_kind: 'user',
     owner_subject: OWNER,
@@ -70,7 +70,7 @@ const keys = crypto.generateKeyPairSync('rsa', {
     });
     assert.ok(v.ok, v.reason);
     assert.deepStrictEqual([v.claims.sub, v.claims.actor_type, v.claims.aud, v.claims.cap],
-        [`node:${principal.id}`, 'node', ['openvibe.live'], [CAP]]);
+        [`link:${principal.id}`, 'link', ['openvibe.live'], [CAP]]);
     assert.strictEqual(v.claims.on_behalf_of, OWNER, 'the token names the owner it acts for');
     assert.ok(contracts.validate('identity.service-token-claims@1', v.claims).valid,
         'the claims fit identity.service-token-claims@1');

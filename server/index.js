@@ -236,9 +236,9 @@ function buildAllowedOriginsSet() {
         'https://openvibe.network',
         // Link's own front door (the owner, 2026-11-07): openvibe.link is served by Network, and its page asks the
         // network's own API (the account's look, the navbar's frame, the shared font) from that origin. The old
-        // name node.openvibe.network stays here too: it 301s to openvibe.link, but a cached page may still ask.
+        // name openvibe.link stays here too: it 301s to openvibe.link, but a cached page may still ask.
         'https://openvibe.link',
-        'https://node.openvibe.network',
+        'https://openvibe.link',
         // The account hub's own origin (openvibe.my) asks /api/v1/me/* with the person's Bearer token and no
         // credentials: the session cookie is host-only on openvibe.my, never sent to openvibe.network.
         'https://openvibe.my', 'https://www.openvibe.my',
@@ -348,7 +348,7 @@ config._registry = resolvedRegistry;
 // paths 301 there; www.openvibe.my 301s to the apex. The route also mounts the hub's own OAuth client
 // (PKCE, host-only cookies) at /auth, before Network's sign-in pages, so /my never renders off-origin.
 app.use(await require('./my/routes').createMyRoutes({ db, config }));
-app.use(await require('./node/auth').createLinkAuthRoutes({ db, config }));
+app.use(await require('./link/auth').createLinkAuthRoutes({ db, config }));
 
 // ── Analytics Tracking (ADR-021) ──────────────────────────────
 // openvibe-shared/analytics on PostgreSQL (server/analytics/network.js; migrations/0002_analytics.sql).
@@ -579,12 +579,12 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/api/admin/account-deletions', dataRouters.admin);
 }
 // The node registry (WS-X1, ADR-034 §12): public list for the geo API; Host reports its inventory's machines; services
-// holding network.registry.read read the same list uncached at GET /internal/nodes.
+// holding network.registry.read read the same list uncached at GET /internal/links.
 {
     const { guard } = require('./identity/principals');
-    const nodeRouters = require('./registry/nodes').routers({ guard: guard('network.node.report'), readGuard: guard('network.registry.read') });
-    app.use('/api/v1/nodes', nodeRouters.pub);
-    app.use('/internal/nodes', nodeRouters.internal);
+    const nodeRouters = require('./registry/nodes').routers({ guard: guard('network.link.report'), readGuard: guard('network.registry.read') });
+    app.use('/api/v1/links', nodeRouters.pub);
+    app.use('/internal/links', nodeRouters.internal);
 }
 // The resource registry (plan T2, docs/t2-resource-registry.md): node and provider offers. The public list leaves
 // capacity out; the report and the full internal read take network.resource.report. The amended ADR-048 moved the
@@ -614,9 +614,9 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/api/v1/resources', require('./registry/resource-index').router({ guard: require('./identity/principals').guard('network.resource.read') }));
 }
 // Service instances (plan T2, docs/t2-cells-and-node-principal.md section 4.1): Host reports what runs on its machines
-// with network.node.report. Mounted before /internal/registry so the cells read does not swallow the report path.
+// with network.link.report. Mounted before /internal/registry so the cells read does not swallow the report path.
 {
-    const instanceRouters = require('./registry/instances').routers({ guard: require('./identity/principals').guard('network.node.report') });
+    const instanceRouters = require('./registry/instances').routers({ guard: require('./identity/principals').guard('network.link.report') });
     app.use('/internal/registry/instances', instanceRouters.internal);
 }
 // Cells and node principals (plan T2, docs/t2-resource-registry.md section 9): the public cell list; a cell's nodes,
@@ -627,37 +627,38 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/internal/registry', cellRouters.internal);
 }
 // Pairing a person's machine (plan T2, docs/t2-cells-and-node-principal.md section 4.2): a service holding
-// network.node.manage mints one-time codes and reads or revokes the principals it paired; the machine redeems its code
+// network.link.manage mints one-time codes and reads or revokes the principals it paired; the machine redeems its code
 // with no other credential, so the redeem route has its own tight rate limit.
 {
-    const pairingRouters = require('./registry/node-principals').routers({ guard: require('./identity/principals').guard('network.node.manage') });
-    app.use('/api/v1/node-pairing', rateLimit({ windowMs: 60_000, max: 10 }), pairingRouters.pairing);
+    const pairingRouters = require('./registry/link-principals').routers({ guard: require('./identity/principals').guard('network.link.manage') });
+    app.use('/api/v1/link-pairing', rateLimit({ windowMs: 60_000, max: 10 }), pairingRouters.pairing);
     app.use('/internal', pairingRouters.internal);
     // The person's own machines (slice N5): list and revoke, session only, same limit as /api/v1/me/blocks.
-    app.use('/api/v1/me/nodes', rateLimit({ windowMs: 60_000, max: 60 }), require('./registry/node-principals').userRouter(requireAuth));
+    app.use('/api/v1/me/nodes', rateLimit({ windowMs: 60_000, max: 60 }), require('./registry/link-principals').userRouter(requireAuth));
     // The machine itself (slice N4c): its own capabilities and credential, resolved from its node token alone.
-    app.use('/api/v1/node/self', require('./identity/principals').guard('network.node.self.manage'), require('./registry/node-principals').selfRouter());
-    const sendRelay = require('./node/send-relay').router({
-        nodeGuard: require('./identity/principals').guard('network.node.self.manage'), requireAuth, db,
+    app.use('/api/v1/link/self', require('./identity/principals').guard('network.link.self.manage'), require('./registry/link-principals').selfRouter());
+    const sendRelay = require('./link/send-relay').router({
+        nodeGuard: require('./identity/principals').guard('network.link.self.manage'), requireAuth, db,
     });
-    app.use('/api/v1/node/self/send', rateLimit({ windowMs: 60_000, max: 120 }), sendRelay.self);
+    app.use('/api/v1/link/self/send', rateLimit({ windowMs: 60_000, max: 120 }), sendRelay.self);
     app.use('/api/v1/me/nodes/send-keys', rateLimit({ windowMs: 60_000, max: 60 }), sendRelay.keys);
     app.use('/api/v1/me/nodes/send', rateLimit({ windowMs: 60_000, max: 30 }), sendRelay.web);
 }
-// The machines hub (plan L34, step M2): a person's machines on openvibe.network/machines. Bot stays the registry
+// The machines hub (plan L34, step M2): a person's machines on openvibe.link/machines. Bot stays the registry
 // underneath; Network fronts it and calls it as the person, so Bot checks the machine is that person's own.
-// The internal route is Bot's report of a machine's state (network.node.manage, the capability it already holds).
+// The internal route is Bot's report of a machine's state (network.link.manage, the capability it already holds).
 {
     const machines = require('./registry/machines');
     const bot = machines.createBotClient({ baseUrl: config.services.bot.internalUrl, privateKey, issuer: config.jwt.issuer });
     // Same-owner machine pools (bot.machine-pool@1): the owner proposes and stops them; each machine announces, approves,
-    // renews and leaves with its own node token. /api/v1/node/self's guard above checks that token for the machine routes.
+    // renews and leaves with its own node token. /api/v1/link/self's guard above checks that token for the machine routes.
     const poolRouters = require('./registry/machine-pools').routers({ bot, requireAuth });
     app.use('/api/v1/machine-pools', rateLimit({ windowMs: 60_000, max: 60 }), poolRouters.user);
-    app.use('/api/v1/node/self/pools', poolRouters.self);
+    app.use('/api/v1/link/self/pools', poolRouters.self);
     const machineRouters = machines.routers({ bot, requireAuth, publicKey, issuer: config.jwt.issuer });
     app.use('/api/v1/machines', rateLimit({ windowMs: 60_000, max: 60 }), machineRouters.hub);
-    const machineInternal = machines.internalRouters({ guard: require('./identity/principals').guard('network.node.manage') });
+    app.use('/api/v1/link/compute', rateLimit({ windowMs: 60_000, max: 60 }), machineRouters.compute);
+    const machineInternal = machines.internalRouters({ guard: require('./identity/principals').guard('network.link.manage') });
     app.use('/internal', machineInternal.internal);
 }
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read'), require('./identity/blocks').internalHandler(db));
@@ -729,9 +730,9 @@ const openStats = require('./stats/open').createOpenStats({
     db, selfToken, release, statusRows: () => require('./status/routes').rows(ecosystem),
     prometheusUrl: config.prometheusUrl || process.env.PROMETHEUS_URL, liveUrl: process.env.OV_LIVE_INTERNAL_URL,
 });
-// The Node's own front door on its own subdomain (node.openvibe.network): the Host header decides. It mounts
+// The Node's own front door on its own subdomain (openvibe.link): the Host header decides. It mounts
 // before the agent layer, so the Node's page is not answered by Network's home renderer.
-app.use(require('./node/routes').createNodeRoutes({ release: release.release }));
+app.use(require('./link/routes').createLinkRoutes({ release: release.release }));
 // The agent layer (openvibe-shared/agent-layer): /.well-known/agent.json, and the public pages as Markdown twins. It
 // answers their HTML as well, with the discovery tags in the head, so it mounts before the routes for those pages.
 require('openvibe-shared/agent-layer').mount(app, {

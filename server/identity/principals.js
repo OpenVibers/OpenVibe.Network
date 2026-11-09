@@ -353,7 +353,7 @@ const DEFAULT_GRANTS = [
     // WS-H task 11: Host relays the alerts firing on the production host (ovhost alerts relay).
     ['host', 'network.operator.alert', SELF_AUDIENCE, []],
     // WS-X1: Host reports the platform's machines to the node registry (ovhost nodes report).
-    ['host', 'network.node.report', SELF_AUDIENCE, []],
+    ['host', 'network.link.report', SELF_AUDIENCE, []],
     ['host', 'network.resource.report', SELF_AUDIENCE, []],
     // D11 S3 (OWNER-SETTINGS.md): Network's admin proxy reads and changes every service's configuration as the owner,
     // on /internal/config. The nine internal <svc>.config.manage capabilities (Contracts 0.288.0) are held by Network
@@ -383,7 +383,7 @@ const DEFAULT_GRANTS = [
     // Host's demand planner reads AI's usage feed (Host #283): ai.usage.read on openvibe.ai.
     ['host', 'ai.usage.read', 'openvibe.ai', []],
     // Plan T2 N4b: Bot pairs its users' machines with Network and reads or revokes only the principals it paired.
-    ['bot', 'network.node.manage', SELF_AUDIENCE, []],
+    ['bot', 'network.link.manage', SELF_AUDIENCE, []],
     // Plan T15: an owner adds an operator by @username on the robot's panel; Bot resolves it to the subject here.
     ['bot', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Plan T15: Bot runs each robot's OpenRestream stream for its owner (find/create/archive, key rotation), plays the live
@@ -486,7 +486,7 @@ const DEFAULT_GRANTS = [
     // (robots.agent_control); its gate, limits and e-stop still judge every step.
     ['actor', 'bot.robot.read', 'openvibe.bot', []],
     ['actor', 'bot.robot.control', 'openvibe.bot', []],
-    // Plan T14/T17 (contracts 0.166.0): the agent uses a person's own computer (OpenVibe.Node's computer plugin) through
+    // Plan T14/T17 (contracts 0.166.0): the agent uses a person's own computer (OpenVibe.Link's computer plugin) through
     // Bot, only as that machine's owner (X-OV-Subject) and only where the owner turned on "Let my agent use this
     // computer"; the level the owner set on the machine decides what may happen there.
     ['actor', 'bot.computer.control', 'openvibe.bot', []],
@@ -553,7 +553,7 @@ const DEFAULT_GRANTS = [
     // Wave 20: the Codes portal relays its release events.
     ['services', 'events.event.publish', 'openvibe.events', []],
     ['ai', 'events.event.publish', 'openvibe.events', []],
-    // AI on your own machines (contracts 0.219.0): a person's own model, on their own machine through its OpenVibe Node,
+    // AI on your own machines (contracts 0.219.0): a person's own model, on their own machine through its OpenVibe Link,
     // for that person's runs only (Bot checks the owner and their switch, "Let my AI use this computer's models").
     ['ai', 'bot.machine.ai', 'openvibe.bot', []],          // ai.run.* (AI server/events.js, 2026-09-24)
     // Run sessions (contracts 0.223.0, the Desks plan's D6): Run leases one desk per session on OpenVibe.Bot, acting for

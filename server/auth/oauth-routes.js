@@ -403,9 +403,9 @@ router.post('/token', async (req, res) => {
     // short-lived, capability-scoped token. Checked before the user-grant path below.
     if (grant_type === 'client_credentials') {
         // A paired machine (node principal, docs/t2-cells-and-node-principal.md section 4.3): its own credential store.
-        if (/^nod_/.test(client_id)) {
+        if (/^lnk_/.test(client_id)) {
             if (req.body.agent !== undefined) return res.status(400).json({ error: 'invalid_grant', error_description: 'nodes host no agents' });
-            const out = await require('../registry/node-principals').issueNodeToken(db, {
+            const out = await require('../registry/link-principals').issueNodeToken(db, {
                 clientId: client_id, clientSecret: client_secret, audience: req.body.audience,
                 privateKey: req.app.locals.privateKey, issuer: config.jwt.issuer,
             });

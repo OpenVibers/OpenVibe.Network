@@ -3,7 +3,7 @@
  * Service instances (plan T2, docs/t2-cells-and-node-principal.md section 4.1; Contracts
  * platform.service-instance@1; migrations/0008_cells_and_node_principals.sql): what runs on the platform's machines —
  * one row per running instance with its cell, node, endpoints and state. Host reports the complete set its inventory
- * knows (POST /internal/registry/instances/report, network.node.report); an instance absent from a later report of the
+ * knows (POST /internal/registry/instances/report, network.link.report); an instance absent from a later report of the
  * same source is set to `stopped`, never deleted. Placement is checked against what Network holds before anything is
  * written: the cell must exist and not be retired, the node must be a live principal whose home cell is the instance's
  * cell, and the instance's region must be the cell's region. Endpoints are stored as JSON text; no public route
@@ -12,7 +12,7 @@
 const express = require('express');
 
 const CONTRACT = 'platform.service-instance@1';
-const SOURCE = /^[a-z][a-z0-9-]{1,39}$/; // the same rule as network.node-report-request@1's source
+const SOURCE = /^[a-z][a-z0-9-]{1,39}$/; // the same rule as network.link-report-request@1's source
 const MAX_INSTANCES = 500;
 
 function ensureSchema(db) { /* the schema is migrations/0008_cells_and_node_principals.sql; nothing is created at runtime */ }

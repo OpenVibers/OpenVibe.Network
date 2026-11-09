@@ -15,7 +15,7 @@ const { ids, serviceAuth } = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 const principals = require('../server/identity/principals');
 const machines = require('../server/registry/machines');
-const nodePrincipals = require('../server/registry/node-principals');
+const nodePrincipals = require('../server/registry/link-principals');
 
 (async () => {
 const db = getDb();
@@ -54,7 +54,7 @@ const botServer = http.createServer(async (req, res) => {
         return mine ? answer(200, { machine: machineOf(id) }) : answer(404, { code: 'bot.device_not_found' });
     }
     if (req.method === 'POST' && req.url === '/api/v1/machines/pairings') {
-        return answer(201, { pairing: { code: 'ABCD-EFGH', expires_at: new Date(Date.now() + 600000).toISOString(), pairing_id: `pair_${ids.ulid()}`, installer: 'curl -fsSL https://openvibe.bot/install | sh -s -- --pairing pair_1 --code ABCD-EFGH --worker' } });
+        return answer(201, { pairing: { code: 'ABCD-EFGH', expires_at: new Date(Date.now() + 600000).toISOString(), pairing_id: `pair_${ids.ulid()}`, installer: 'curl -fsSL https://openvibe.link/install | sh -s -- --pairing pair_1 --code ABCD-EFGH --worker' } });
     }
     if (req.method === 'PATCH' && req.url.startsWith('/api/v1/machines/')) {
         const id = decodeURIComponent(req.url.slice('/api/v1/machines/'.length));
@@ -87,9 +87,11 @@ const tokenOf = (u) => authRoutes.signToken(u, keys.privateKey, config);
 const app = express();
 app.use(express.json());
 Object.assign(app.locals, { db, config, privateKey: keys.privateKey, publicKey: keys.publicKey });
-app.use('/api/v1/machines', machines.routers({ bot, requireAuth, publicKey: keys.publicKey, issuer: config.jwt.issuer }).hub);
-// Bot's report of a machine's state (network.node.manage, the capability Bot already holds).
-app.use('/internal', machines.internalRouters({ guard: principals.guard('network.node.manage') }).internal);
+const machineRouters = machines.routers({ bot, requireAuth, publicKey: keys.publicKey, issuer: config.jwt.issuer });
+app.use('/api/v1/machines', machineRouters.hub);
+app.use('/api/v1/link/compute', machineRouters.compute);
+// Bot's report of a machine's state (network.link.manage, the capability Bot already holds).
+app.use('/internal', machines.internalRouters({ guard: principals.guard('network.link.manage') }).internal);
 const server = http.createServer(app);
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}`;
@@ -137,6 +139,15 @@ try {
     assert.ok(String(last.auth).startsWith('Bearer '), 'the hub carries a service token');
     const theirs = await call('GET', '/api/v1/machines', { user: bob });
     assert.deepStrictEqual(theirs.body.machines.map((m) => m.id), [bobMachine], 'nobody else\'s machine is in it');
+
+    const compute = await call('GET', '/api/v1/link/compute', { user: ana });
+    assert.strictEqual(compute.status, 200, JSON.stringify(compute.body));
+    assert.deepStrictEqual(compute.body.sources.map((s) => s.kind), ['personal', 'cloud', 'exchange', 'community']);
+    assert.deepStrictEqual(compute.body.candidates.map((c) => c.id), [anaMachine]);
+    assert.strictEqual(compute.body.candidates[0].status, 'unavailable', 'a machine without the worker role cannot be picked');
+    assert.strictEqual((await call('POST', '/api/v1/link/compute/pick', { user: ana, body: { kind: 'personal', id: anaMachine } })).status, 409);
+    assert.strictEqual((await call('POST', '/api/v1/link/compute/pick', { user: ana, body: { kind: 'exchange' } })).status, 409, 'a rental cannot start from a placeholder');
+    assert.strictEqual((await call('GET', '/api/v1/link/compute?kind=unknown', { user: ana })).status, 400);
 
     // ── An app without the capability, or without the consent, is refused. ──
     const noCap = await call('GET', '/api/v1/machines', { token: appToken('network.something.else') });

@@ -3,8 +3,8 @@ const assert = require('assert/strict');
 const crypto = require('crypto');
 const { ids } = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
-const principals = require('../server/registry/node-principals');
-const egress = require('../server/node/egress');
+const principals = require('../server/registry/link-principals');
+const egress = require('../server/link/egress');
 
 (async () => {
     const db = getDb();

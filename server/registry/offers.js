@@ -5,7 +5,7 @@
  * reports the complete set of its offers (POST /internal/resources/report, network.resource.report); an offer absent
  * from a later report of the same source is marked down, never
  * deleted. This module stores; it does not plan, price or settle. Reads (slice 2): GET /api/v1/offers is public and
- * cacheable but leaves each offer's capacity out (the contract is first-party: it carries the capacity network.node@1
+ * cacheable but leaves each offer's capacity out (the contract is first-party: it carries the capacity network.link@1
  * deliberately does not publish); GET /internal/resources, behind the report's guard, returns the docs whole.
  */
 const express = require('express');
@@ -14,7 +14,7 @@ const CONTRACT = 'platform.resource-offer@1';
 // Network's public projection of CONTRACT: capacity is absent, and harness detail.address is absent.
 // The latter is required by the internal contract, so public harness docs need their own validator.
 const PUBLIC_CONTRACT = 'platform.resource-offer-public@1';
-const SOURCE = /^[a-z][a-z0-9-]{1,39}$/; // the same rule as network.node-report-request@1's source
+const SOURCE = /^[a-z][a-z0-9-]{1,39}$/; // the same rule as network.link-report-request@1's source
 const MAX_OFFERS = 500;
 const DEFAULT_CELL = 'wnam-1';
 

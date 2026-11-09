@@ -102,14 +102,14 @@ same source's absent ids as `nodes.js`, with the six duplicated columns taken fr
 in §2. The response header is `X-Offers-Marked-Down`.
 
 **Guard** — `principals.guard('network.resource.report')` protects the report and full internal reads. Host receives
-that capability by default. A token holding only `network.node.report` cannot access these routes.
+that capability by default. A token holding only `network.link.report` cannot access these routes.
 
 **Validation — one pass over the whole batch, then one transaction for the writes.** The report has exactly two phases,
 in this order:
 
 1. **Validation pass, before any write.** Every offer in the array is validated, in order, with
    `validate('platform.resource-offer@1', offer)`. The envelope is Network-local (as `nodes.js:54-57` validates a whole
-   body against `network.node-report-request@1`) because no `platform.resource-offer-report@1` exists. On the first bad
+   body against `network.link-report-request@1`) because no `platform.resource-offer-report@1` exists. On the first bad
    offer the request ends there, with `400 {error: 'offer 3 does not match platform.resource-offer@1',
    details: (v.errors || []).slice(0, 5)}`. No transaction has been opened, so a bad offer anywhere in the batch —
    including the last of 500 — leaves the table byte-for-byte unchanged: no upsert, no mark-down, no partial batch.
@@ -122,7 +122,7 @@ in this order:
    whole body before its loop, because there is no per-node contract to check; here the per-item check moves into that
    same up-front pass.
 
-Body `express.json({limit: '256kb'})`; array capped at 500, matching `network.node-report-request.v1.json`'s
+Body `express.json({limit: '256kb'})`; array capped at 500, matching `network.link-report-request.v1.json`'s
 `maxItems`.
 
 **Routing** — mounted in `server/index.js` beside the node routers: `app.use('/internal/resources', internal)` and
@@ -177,7 +177,7 @@ code. The contract between the two is therefore exact:
   §2, so `?max_price_usd=` filters exactly the price the planner would marginalise. Network never recomputes a price;
   the SDK's `marginalCost` / `priceOf` do. `pricing.rate_card` points at a `platform.rate-card@1` id and is not
   dereferenced here.
-- `capabilities[]` items are `namespace:name` strings (`node:http`, `events:gateway`, `object:r2`, …) — the contract's
+- `capabilities[]` items are `namespace:name` strings (`link:http`, `events:gateway`, `object:r2`, …) — the contract's
   own pattern; they are stored, not interpreted.
 
 ### Worked example — `GET /api/v1/offers?kind=provider` → `plan()`
@@ -253,7 +253,7 @@ filter path — PGlite and a real PostgreSQL must agree on it — and `npm test`
 
 1. **Table + report (write path).** `migrations/0007_resource_registry.sql`, `server/registry/offers.js` (`ensureSchema`
    no-op + `report`), the `ensureSchema` call in `server/db/database.js`, `app.use('/internal/resources', internal)` in
-   `server/index.js`, `test/resource-registry.test.js` tests 1-4. The original guard reused `network.node.report`.
+   `server/index.js`, `test/resource-registry.test.js` tests 1-4. The original guard reused `network.link.report`.
 2. **Public read + filters.** `list()`, `get()`, `routers().pub` in `server/registry/offers.js`,
    `app.use('/api/v1/offers', pub)`, tests 5-7. Also the full internal read (`GET /internal/resources[/:id]`, the
    report's guard), because the public read leaves capacity out (§4).
@@ -269,7 +269,7 @@ filter path — PGlite and a real PostgreSQL must agree on it — and `npm test`
 ## 8. Separate concerns
 
 Route weight and service instances are outside `platform.resource-offer@1`; their contracts and registry paths are
-separate from resource offers. `network.node.report` remains the guard for node reports.
+separate from resource offers. `network.link.report` remains the guard for node reports.
 
 ## 9. Cells and node principals (lane B, first slice)
 
@@ -280,9 +280,9 @@ Plan T2: "cells now, hardware later" and "node identity is a Network principal",
 
 | Table | What it is | Constraints that carry the rule |
 |---|---|---|
-| `platform_regions` | `us-west`, … (`network.node@1`'s region pattern) + country | id pattern |
+| `platform_regions` | `us-west`, … (`network.link@1`'s region pattern) + country | id pattern |
 | `platform_cells` | `wnam-1`, … with region, residency, `status` (`planned\|active\|draining\|retired`), `route_weight` | region FK; the migration seeds `us-west` and `wnam-1` (`active`) |
-| `platform_node_principals` | one per machine: `nod_<ULID>`, `node_id` (unique), `home_cell`, owner, `trust`, `status` (`active\|draining\|revoked`) | `owner_kind = 'platform'` ⇔ no project and `first-party`; `owner_kind = 'project'` ⇔ a `dev_projects` row and never `first-party`; `revoked` ⇔ `revoked_at`; home cell FK |
+| `platform_node_principals` | one per machine: `lnk_<ULID>`, `node_id` (unique), `home_cell`, owner, `trust`, `status` (`active\|draining\|revoked`) | `owner_kind = 'platform'` ⇔ no project and `first-party`; `owner_kind = 'project'` ⇔ a `dev_projects` row and never `first-party`; `revoked` ⇔ `revoked_at`; home cell FK |
 | `platform_service_instances` | `platform.service-instance@1`'s columns (`state` is its enum) + `route_weight`, `source` | `(node_id, cell)` FK to the principal's `(node_id, home_cell)`: an instance runs on a registered node, in its home cell |
 | `dev_projects.home_cell` | `project.home_cell` | FK to cells; existing rows take `wnam-1` |
 | `platform_resource_offers.cell` | (0007) | FK to cells, `NOT VALID`: new writes are checked, rows written before 0008 are not |
@@ -292,7 +292,7 @@ Ownership reuses `dev_projects` (the project is the ownership boundary) and the 
 
 **The node-principal boundary.** A report never assigns identity, owner, trust class or home cell:
 
-- Host's node report (`POST /internal/nodes/report`, `network.node.report`) creates a platform-owned, first-party
+- Host's node report (`POST /internal/links/report`, `network.link.report`) creates a platform-owned, first-party
   principal for a machine it is the first to name, in the first active cell of the machine's region, else `wnam-1`.
   It is refused whole (`409 registry.node_not_platform` / `registry.node_revoked`, nothing written, nothing marked down)
   when it names a machine a project owns or one that was revoked.
@@ -302,7 +302,7 @@ Ownership reuses `dev_projects` (the project is the ownership boundary) and the 
   `409 registry.cell_retired`); an offer for a registered node must carry that node's home cell and trust class
   (`409 registry.node_cell_mismatch`, `registry.trust_mismatch`, `registry.node_revoked`). Checked before anything is
   written, like the contract validation.
-- A node principal holds no token yet: `identity.service-token-claims@1` has no node actor, and a `nod_` id is refused
+- A node principal holds no token yet: `identity.service-token-claims@1` has no node actor, and a `lnk_` id is refused
   as a client-credentials client (`unauthorized_client`).
 
 **Read API.** `GET /api/v1/cells` and `/api/v1/cells/:id` (public, `max-age=60`, `ACAO: *`; 404

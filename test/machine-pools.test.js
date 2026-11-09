@@ -16,7 +16,7 @@ const { getDb } = require('../server/db/database');
     const bot = { list: async (who) => ({ machines: who === owner ? own : who === stranger ? theirs : [] }) };
     const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'pool-cert-'));
     const machine = async (who, i, list, address = `192.168.1.${i + 2}/24`, publicIP = '203.0.113.1') => {
-        const principal = `nod_${ids.ulid()}`, id = `dev_${ids.ulid()}`;
+        const principal = `lnk_${ids.ulid()}`, id = `dev_${ids.ulid()}`;
         list.push({ id, node_id: principal });
         await db.prepare(`INSERT INTO platform_node_principals (id, node_id, home_cell, owner_kind, trust, owner_subject, credential_hash, created_by)
             VALUES (?, ?, 'wnam-1', 'user', 'community', ?, ?, ?)`).run(principal, `pool-node-${id.slice(-12).toLowerCase()}`, who, require('node:crypto').createHash('sha256').update(id).digest('hex'), who);
@@ -57,7 +57,7 @@ const { getDb } = require('../server/db/database');
             await assert.rejects(pools.node(db, { principal: { sub } }), /only the machine/, `${sub || 'no principal'} cannot act for a machine`);
         }
         await assert.rejects(pools.node(db, {}), /only the machine/, 'a request that skipped the node guard is refused');
-        await assert.rejects(pools.node(db, { principal: { sub: `node:nod_${ids.ulid()}` } }), /no longer paired/);
+        await assert.rejects(pools.node(db, { principal: { sub: `link:lnk_${ids.ulid()}` } }), /no longer paired/);
         await assert.rejects(pools.approve(db, pool.id, principals[2], certs[2], bot), /not a member/, 'a machine outside the pool cannot approve it');
         await assert.rejects(pools.approve(db, pool.id, strangers[0], certs[2], bot), /not found/, 'a stranger\'s machine cannot see the pool');
         await assert.rejects(pools.approve(db, pool.id, principals[0], privateKey, bot), /public pool certificate/, 'a private key is refused');

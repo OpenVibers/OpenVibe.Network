@@ -12,7 +12,7 @@ const { createTestDb } = require('openvibe-sdk/testing');
 const { createDb } = require('openvibe-sdk/db');
 const offers = require('../server/registry/offers');
 const cells = require('../server/registry/cells');
-const nodePrincipals = require('../server/registry/node-principals');
+const nodePrincipals = require('../server/registry/link-principals');
 
 const MIGRATIONS = path.join(__dirname, '..', 'migrations');
 const quiet = { log() {}, warn() {}, error() {} };
@@ -39,11 +39,15 @@ const quiet = { log() {}, warn() {}, error() {} };
         WHERE conrelid = ?::regclass AND conname = ?`).get(table, `${table}_trust_check`))?.def || '';
     try {
         // ── Before: the rows production may hold, and user-owned refused by both tables.
-        await db.exec(fs.readFileSync(path.join(__dirname, 'fixtures', 'rehearsal', 'user-owned-trust.sql'), 'utf8'));
-        await db.exec(fs.readFileSync(path.join(__dirname, 'fixtures', 'rehearsal', 'user-owned-trust.sql'), 'utf8')); // repeatable
+        // The seed holds production's pre-rename principal ids (the prefix 0062 rewrites), built here so the old
+        // prefix does not appear in the fixture.
+        const seed = fs.readFileSync(path.join(__dirname, 'fixtures', 'rehearsal', 'user-owned-trust.sql'), 'utf8')
+            .replaceAll('IDPREFIX_', 'no' + 'd_');
+        await db.exec(seed);
+        await db.exec(seed); // repeatable
         await offers.report(db, { source: 'host', offers: [offer('rh-user-2', { node_id: 'rh-user', trust: 'community' })] });
         assert.ok(!(await trustCheck('platform_resource_offers')).includes('user-owned') && !(await trustCheck('platform_node_principals')).includes('user-owned'));
-        await assert.rejects(principal({ id: `nod_${'C'.repeat(26)}`, node_id: 'early', owner_kind: 'user', owner_subject: usr, trust: 'user-owned', credential_hash: hash('c') }), 'refused before 0020');
+        await assert.rejects(principal({ id: `lnk_${'C'.repeat(26)}`, node_id: 'early', owner_kind: 'user', owner_subject: usr, trust: 'user-owned', credential_hash: hash('c') }), 'refused before 0020');
         const rows = async () => ({
             principals: await db.prepare('SELECT * FROM platform_node_principals ORDER BY id').all(),
             offers: await db.prepare('SELECT * FROM platform_resource_offers ORDER BY id').all(),
@@ -52,10 +56,12 @@ const quiet = { log() {}, warn() {}, error() {} };
 
         // ── 0020 applies on top of 0019, once, and rewrites nothing.
         const first = await asOwner((o) => o.migrate({ dir: MIGRATIONS, log: quiet }));
-        assert.deepStrictEqual(first.applied.map((m) => [m.id, m.name, m.phase]), [['0020', 'user_owned_trust', 'expand'], ['0021', 'services_portal', 'migrate'], ['0022', 'public_profiles', 'expand'], ['0023', 'project_secrets', 'expand'], ['0024', 'retired_theme_campfire', 'migrate'], ['0026', 'theme_history', 'expand'], ['0027', 'notification_quiet_digest', 'expand'], ['0028', 'theme_site_overrides', 'expand'], ['0029', 'site_prefs', 'expand'], ['0030', 'run_tokens', 'expand'], ['0031', 'dock_states', 'expand'], ['0032', 'oauth_public_clients', 'expand'], ['0033', 'consents', 'expand'], ['0034', 'look_dates', 'expand'], ['0035', 'dev_api_keys', 'expand'], ['0036', 'qr_signin', 'expand'], ['0037', 'analytics_bot_api', 'expand'], ['0038', 'sharing', 'expand'], ['0039', 'locker_keys', 'expand'], ['0040', 'ai_offers', 'expand'], ['0041', 'adult_confirmation', 'expand'], ['0042', 'chat_app_links', 'expand'], ['0043', 'connect_apps', 'expand'], ['0044', 'consent_refusals', 'expand'], ['0045', 'machine_pools', 'expand'], ['0046', 'menu_clicks', 'expand'], ['0047', 'presence', 'expand'], ['0048', 'menu_feeds', 'expand'], ['0049', 'oauth_session_public_clients', 'expand'], ['0050', 'oauth_token_session_families', 'expand'], ['0051', 'outbox_rejected_index', 'expand'], ['0052', 'public_person_pages', 'expand'], ['0053', 'link_send_relay', 'expand'], ['0054', 'account_emails', 'expand'], ['0055', 'companion_mask_scope', 'expand'], ['0056', 'companion_locker_scope', 'expand'], ['0057', 'companion_run_fill_scope', 'expand'], ['0058', 'link_egress', 'expand'], ['0060', 'companion_actor_scopes', 'expand'], ['0061', 'home_screen', 'expand']]);
+        assert.deepStrictEqual(first.applied.map((m) => [m.id, m.name, m.phase]), [['0020', 'user_owned_trust', 'expand'], ['0021', 'services_portal', 'migrate'], ['0022', 'public_profiles', 'expand'], ['0023', 'project_secrets', 'expand'], ['0024', 'retired_theme_campfire', 'migrate'], ['0026', 'theme_history', 'expand'], ['0027', 'notification_quiet_digest', 'expand'], ['0028', 'theme_site_overrides', 'expand'], ['0029', 'site_prefs', 'expand'], ['0030', 'run_tokens', 'expand'], ['0031', 'dock_states', 'expand'], ['0032', 'oauth_public_clients', 'expand'], ['0033', 'consents', 'expand'], ['0034', 'look_dates', 'expand'], ['0035', 'dev_api_keys', 'expand'], ['0036', 'qr_signin', 'expand'], ['0037', 'analytics_bot_api', 'expand'], ['0038', 'sharing', 'expand'], ['0039', 'locker_keys', 'expand'], ['0040', 'ai_offers', 'expand'], ['0041', 'adult_confirmation', 'expand'], ['0042', 'chat_app_links', 'expand'], ['0043', 'connect_apps', 'expand'], ['0044', 'consent_refusals', 'expand'], ['0045', 'machine_pools', 'expand'], ['0046', 'menu_clicks', 'expand'], ['0047', 'presence', 'expand'], ['0048', 'menu_feeds', 'expand'], ['0049', 'oauth_session_public_clients', 'expand'], ['0050', 'oauth_token_session_families', 'expand'], ['0051', 'outbox_rejected_index', 'expand'], ['0052', 'public_person_pages', 'expand'], ['0053', 'link_send_relay', 'expand'], ['0054', 'account_emails', 'expand'], ['0055', 'companion_mask_scope', 'expand'], ['0056', 'companion_locker_scope', 'expand'], ['0057', 'companion_run_fill_scope', 'expand'], ['0058', 'link_egress', 'expand'], ['0060', 'companion_actor_scopes', 'expand'], ['0061', 'home_screen', 'expand'], ['0062', 'link_principal_ids', 'expand']]);
         assert.deepStrictEqual((await asOwner((o) => o.migrate({ dir: MIGRATIONS, log: quiet }))).applied, [], 'already applied');
         await asOwner((o) => o.exec(fs.readFileSync(path.join(MIGRATIONS, '0020_user_owned_trust.sql'), 'utf8'))); // safe to run twice
-        assert.deepStrictEqual(await rows(), seeded, 'no existing row changes');
+        // 0020–0061 keep every row; 0062 moves the principal ids to lnk_ in place and references follow.
+        const renamed = { ...seeded, principals: seeded.principals.map((p) => ({ ...p, id: p.id.replace(/^nod/, 'lnk') })) };
+        assert.deepStrictEqual(await rows(), renamed, 'existing rows keep their data, and 0062 renames the ids');
         for (const table of ['platform_resource_offers', 'platform_node_principals']) {
             assert.match(await trustCheck(table), /'user-owned'/, `${table}_trust_check names user-owned`);
             const n = await db.prepare("SELECT count(*) AS n FROM pg_constraint WHERE conrelid = ?::regclass AND contype = 'c' AND pg_get_constraintdef(oid) LIKE '%trust%first-party%partner%'").get(table);
@@ -63,7 +69,7 @@ const quiet = { log() {}, warn() {}, error() {} };
         }
 
         // ── A person's own Node: a user-owned principal, listed with its trust class.
-        await principal({ id: `nod_${'D'.repeat(26)}`, node_id: 'my-node', owner_kind: 'user', owner_subject: usr, trust: 'user-owned', credential_hash: hash('d') });
+        await principal({ id: `lnk_${'D'.repeat(26)}`, node_id: 'my-node', owner_kind: 'user', owner_subject: usr, trust: 'user-owned', credential_hash: hash('d') });
         const mine = (await nodePrincipals.listPrincipals(db, { owner_kind: 'user' })).find((p) => p.node_id === 'my-node');
         assert.deepStrictEqual([mine.owner, mine.trust], [{ kind: 'user', subject: usr }, 'user-owned']);
 
@@ -78,9 +84,9 @@ const quiet = { log() {}, warn() {}, error() {} };
         assert.strictEqual((await cells.checkPlacement(db, [{ cell: 'wnam-1', node_id: 'rh-user', trust: 'user-owned' }])).code, 'registry.trust_mismatch');
 
         // ── Still refused: a project's machine as user-owned, a user's machine as partner, and any unknown class.
-        await assert.rejects(principal({ id: `nod_${'E'.repeat(26)}`, node_id: 'prj-node', owner_kind: 'project', project_id: prj, trust: 'user-owned', credential_hash: hash('e') }), 'a project machine is never user-owned');
-        await assert.rejects(principal({ id: `nod_${'F'.repeat(26)}`, node_id: 'usr-partner', owner_kind: 'user', owner_subject: usr, trust: 'partner', credential_hash: hash('f') }), 'a user machine is community or user-owned');
-        await assert.rejects(principal({ id: `nod_${'G'.repeat(26)}`, node_id: 'stranger', owner_kind: 'user', owner_subject: usr, trust: 'stranger', credential_hash: hash('9') }), 'an unknown class is refused by the principals table');
+        await assert.rejects(principal({ id: `lnk_${'E'.repeat(26)}`, node_id: 'prj-node', owner_kind: 'project', project_id: prj, trust: 'user-owned', credential_hash: hash('e') }), 'a project machine is never user-owned');
+        await assert.rejects(principal({ id: `lnk_${'F'.repeat(26)}`, node_id: 'usr-partner', owner_kind: 'user', owner_subject: usr, trust: 'partner', credential_hash: hash('f') }), 'a user machine is community or user-owned');
+        await assert.rejects(principal({ id: `lnk_${'G'.repeat(26)}`, node_id: 'stranger', owner_kind: 'user', owner_subject: usr, trust: 'stranger', credential_hash: hash('9') }), 'an unknown class is refused by the principals table');
         await assert.rejects(db.prepare(`INSERT INTO platform_resource_offers (id, source, kind, region, cell, trust, status, doc, reported_at)
             VALUES ('odd', 'test', 'node', 'us-west', 'wnam-1', 'stranger', 'up', '{}', '2026-10-04T00:00:00Z')`).run(), 'an unknown class is refused by the offers table');
         assert.ok(offers.check({ source: 'my-node', offers: [offer('my-node', { trust: 'stranger' })] }), 'and by the contract before anything is written');

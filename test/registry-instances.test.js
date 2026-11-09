@@ -1,6 +1,6 @@
 'use strict';
 // Service instances (plan T2, docs/t2-cells-and-node-principal.md section 4.1, slice N2; migration 0008): Host reports
-// what runs on its machines (POST /internal/registry/instances/report, network.node.report). The whole batch is
+// what runs on its machines (POST /internal/registry/instances/report, network.link.report). The whole batch is
 // validated against platform.service-instance@1 and placed against the cells and node principals Network holds
 // before anything is written; an instance absent from a later report of the same source is set to `stopped`, never
 // deleted. The topology read gains the instance's cell region.
@@ -31,12 +31,12 @@ app.locals.privateKey = keys.privateKey;
 app.locals.publicKey = keys.publicKey;
 app.use('/oauth', require('../server/auth/oauth-routes'));
 // The report route is mounted before /internal/registry, exactly as server/index.js mounts it.
-app.use('/internal/registry/instances', instances.routers({ guard: principals.guard('network.node.report') }).internal);
+app.use('/internal/registry/instances', instances.routers({ guard: principals.guard('network.link.report') }).internal);
 const c = cells.routers({ readGuard: principals.guard('network.registry.read') });
 app.use('/internal/registry', c.internal);
 const server = http.createServer(app);
 
-const nod = () => `nod_${ids.ulid()}`;
+const nod = () => `lnk_${ids.ulid()}`;
 const insertPrincipal = (p) => db.prepare(`INSERT INTO platform_node_principals (id, node_id, home_cell, owner_kind, project_id, trust, status, created_by, revoked_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, 'test', ?)`).run(p.id || nod(), p.node_id, p.home_cell || 'wnam-1', p.owner_kind || 'platform', p.project_id ?? null, p.trust || 'first-party', p.status || 'active', p.revoked_at ?? null);
 const inst = (id, extra = {}) => ({ id, service: 'media', version: '1.4.0', cell: 'wnam-1', node: 'ovh-1', region: 'us-west', endpoints: ['https://media.internal.example'], state: 'ready', started_at: '2026-10-01T00:00:00Z', ...extra });
@@ -58,10 +58,10 @@ try {
         .then(async (x) => ({ status: x.status, headers: x.headers, body: await x.json().catch(() => null) }));
     const report = (source, list, headers) => call('POST', '/internal/registry/instances/report', { source, instances: list }, headers);
 
-    // ── Auth: nobody, and a token without network.node.report, are refused.
+    // ── Auth: nobody, and a token without network.link.report, are refused.
     assert.strictEqual((await report('primary', [] )).status, 403, 'nobody');
     const live = { authorization: `Bearer ${await token('live', 'live-secret')}` };
-    assert.strictEqual((await report('primary', [], live)).status, 403, 'Live lacks network.node.report');
+    assert.strictEqual((await report('primary', [], live)).status, 403, 'Live lacks network.link.report');
     assert.strictEqual(await count(), 0, 'a refused request wrote nothing');
 
     // ── A bad instance anywhere in the batch fails the whole batch: nothing is written.
