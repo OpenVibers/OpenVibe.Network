@@ -312,4 +312,4 @@ registry), service instances and offers (capabilities, capacity). Project machin
 
 **Not in this slice.** A writer for service instances and for project-owned principals (pairing credentials) — both
 wait for the contracts pin bump to v0.84.0, which publishes `platform.service-instance@1` and
-`platform.node-capabilities@1`; the node actor in service-token claims; a second physical cell, WireGuard, geo routing.
+`platform.link-capabilities@1`; the node actor in service-token claims; a second physical cell, WireGuard, geo routing.
