@@ -44,6 +44,19 @@ const SUBJECT_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 const CORNERS = ['bottom-right', 'bottom-left', 'top-right', 'top-left'];
 
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+// Keep the new cross-site view fields usable while Network still runs the previous Contracts release. The base
+// contract checks every established field; these two fields have the same bounds as its additive schema update.
+function checkState(state) {
+    const { vibe, agent_filter, ...base } = state;
+    const check = validate(CONTRACT, base);
+    if (!check.valid) return check;
+    if (vibe !== undefined && vibe !== null && (!isObject(vibe) || Object.keys(vibe).some((k) => !['slug', 'at'].includes(k))
+        || !/^[A-Za-z0-9_-]{1,80}$/.test(String(vibe.slug || '')) || !Number.isFinite(Date.parse(vibe.at)) || typeof vibe.at !== 'string'))
+        return { valid: false, errors: [{ instancePath: '/vibe', message: 'must be a Vibe conversation and a date' }] };
+    if (agent_filter !== undefined && !['all', 'running', 'waiting', 'scheduled', 'done', 'failed'].includes(agent_filter))
+        return { valid: false, errors: [{ instancePath: '/agent_filter', message: 'must be an Agents filter' }] };
+    return check;
+}
 
 /** The default state, for a person who has never opened the Dock. */
 function defaultState(at) {
@@ -138,7 +151,7 @@ function createDock({ db, actions = null, notifications = null, now = () => Date
         if (typeof state === 'string') { try { state = JSON.parse(state); } catch { state = null; } }
         // A row written by an older release (or by hand) is still shown, but only if it is a state the contract
         // accepts: a broken row falls back to the default rather than breaking the page that reads it.
-        return state && validate(CONTRACT, state).valid ? state : defaultState(at);
+        return state && checkState(state).valid ? state : defaultState(at);
     }
 
     /** The counts the pill's status dot is drawn from. */
@@ -202,7 +215,7 @@ function createDock({ db, actions = null, notifications = null, now = () => Date
         }
         const current = await stateOf(actor, at);
         const merged = { ...mergeState(current, body), updated_at: new Date(at).toISOString() };
-        const check = validate(CONTRACT, merged);
+        const check = checkState(merged);
         if (!check.valid) {
             throw Object.assign(new Error('that is not a Dock state'), { status: 422, code: 'dock.invalid', errors: check.errors });
         }
@@ -227,7 +240,7 @@ function createDock({ db, actions = null, notifications = null, now = () => Date
         if (bad) throw Object.assign(new Error(bad.error), { status: 422, code: 'dock.invalid', errors: bad.errors });
         const current = await stateOf(actor, at);
         const merged = { ...current, timer: timerOf(body, at), updated_at: new Date(at).toISOString() };
-        const check = validate(CONTRACT, merged);
+        const check = checkState(merged);
         if (!check.valid) {
             throw Object.assign(new Error('that is not a Dock state'), { status: 422, code: 'dock.invalid', errors: check.errors });
         }

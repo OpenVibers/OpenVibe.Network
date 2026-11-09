@@ -133,6 +133,14 @@ try {
     assert.strictEqual(r.body.state.agent, null, 'null clears the agent');
     assert.strictEqual(r.body.state.chat, 'cnv_1', 'the chat was not in the body and stayed');
 
+    // The Vibe conversation and the Agents filter: the choice a person made follows them across sites.
+    r = await call('PUT', { vibe: { slug: 'v-abc', at: '2026-11-09T08:00:00.000Z' }, agent_filter: 'failed' });
+    assert.deepStrictEqual(r.body.state.vibe, { slug: 'v-abc', at: '2026-11-09T08:00:00.000Z' });
+    assert.strictEqual(r.body.state.agent_filter, 'failed');
+    r = await call('PUT', { vibe: null });
+    assert.strictEqual(r.body.state.vibe, null, 'null clears the conversation');
+    assert.strictEqual(r.body.state.agent_filter, 'failed', 'the filter was not in the body and stayed');
+
     // An invalid body is refused with the contract's problem shape.
     for (const [body, why] of [
         [{ tab: 'profile' }, 'an unknown tab'],
@@ -141,6 +149,9 @@ try {
         [{ theme: 'neon-tokyo' }, 'a key the contract does not know'],
         [{ place: { tablet: { corner: 'top-left' } } }, 'a device class the contract does not know'],
         [{ chat: '' }, 'an empty chat id'],
+        [{ vibe: { slug: 'not a slug', at: '2026-11-09T08:00:00.000Z' } }, 'a conversation slug with spaces'],
+        [{ vibe: { slug: 'v-abc', at: 'yesterday' } }, 'a conversation with no time'],
+        [{ agent_filter: 'everything' }, 'an Agents filter the Dock does not know'],
     ]) {
         const before = (await call('GET')).body.state;
         r = await call('PUT', body);
