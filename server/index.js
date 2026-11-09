@@ -730,6 +730,16 @@ const openStats = require('./stats/open').createOpenStats({
     db, selfToken, release, statusRows: () => require('./status/routes').rows(ecosystem),
     prometheusUrl: config.prometheusUrl || process.env.PROMETHEUS_URL, liveUrl: process.env.OV_LIVE_INTERNAL_URL,
 });
+// The front door's five things people do now (plan L43): Report's public popularity answer, held five minutes, and
+// the person's own "Try next" from Report's aggregate co-usage. The fixed starter list is the floor only when Report
+// does not answer, and every answer says which it is.
+const homePopularity = require('./home/popular').createHomePopularity({
+    reportUrl: process.env.OV_REPORT_INTERNAL_URL || (config.nodeEnv === 'test' ? '' : (config.services.report && config.services.report.internalUrl) || 'http://127.0.0.1:5080'),
+    limit: 5,
+});
+require('./home/popular').configure(homePopularity);
+homePopularity.refresh().catch(() => {});   // floating-ok: the first reader gets the floor, the next the numbers
+const tryNext = require('./home/try-next').createTryNext({ db, popularity: homePopularity });
 // The Node's own front door on its own subdomain (openvibe.link): the Host header decides. It mounts
 // before the agent layer, so the Node's page is not answered by Network's home renderer.
 app.use(require('./link/routes').createLinkRoutes({ release: release.release }));
@@ -740,6 +750,20 @@ require('openvibe-shared/agent-layer').mount(app, {
     render: require('./agent-pages').createAgentPages({ openStats, release }).renderPublicPage,
 });
 app.use(openStats.router);
+// The signed-out front door's list (public, aggregate, five-minute cache) and the signed-in person's own Try next
+// (private, no-store, computed from their own history plus Report's aggregate pairs). Neither names another person.
+app.get('/api/v1/home/popular', (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=300').set('Access-Control-Allow-Origin', '*').json(homePopularity.view());
+});
+app.get('/api/v1/me/try-next', rateLimit({ windowMs: 60_000, max: 60 }), requireAuth, async (req, res) => {
+    if (!req.user || req.user.is_anon) return res.status(403).json({ error: 'Sign in to get Try next' });
+    const limit = Math.min(10, Math.max(1, parseInt(req.query.limit, 10) || 3));
+    try {
+        res.set('Cache-Control', 'private, no-store').json(await tryNext.forPerson({ userId: req.user.id, limit }));
+    } catch (err) {
+        res.status(503).json({ error: 'Try next is unavailable right now' });
+    }
+});
 // OpenVibeBot (Sources' crawler, ADR 0007): the page its user agent links to, and the same facts as /bot.json.
 app.use(require('./bot/page').createBotPage({ release }));
 // What shipped network-wide: the changelog proxy every site's widget reads, and /updates.

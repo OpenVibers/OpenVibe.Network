@@ -203,8 +203,8 @@ function renderMoney(coins, last) {
     box.hidden = false;
 }
 
-/** Your sites: the ones you use most (history counts, then the switcher's pins and recents), and two to try. */
-function renderSites(hist, sites) {
+/** Your sites: the ones you use most (history counts, then the switcher's pins and recents), and what to try next. */
+function renderSites(hist, sites, tryNext) {
     const box = document.getElementById('td-sites');
     const grid = document.getElementById('td-sites-grid');
     const counts = new Map();
@@ -218,13 +218,26 @@ function renderSites(hist, sites) {
         return tdEl('a', 'td-site', [tdEl('span', 'td-site-ic', [tdIcon(icon)]), tdEl('span', '', [label])], { href: url });
     }));
     grid.hidden = mine.length === 0;
-    const tries = TD_TRY.filter(([id]) => !mine.includes(id) && !counts.has(id)).slice(0, 2);
+    // Try next from Report's similar-use answer (server/home/try-next.js): two sites the person does not already use,
+    // each with the reason it is there. A failed read keeps the old fixed list, and a true empty answer shows nothing.
+    const fromApi = tryNext && Array.isArray(tryNext.items) ? tryNext.items.filter((item) => item && tdSafeUrl(item.url) && !mine.includes(item.id) && !counts.has(item.id)).slice(0, 2) : [];
+    const tries = fromApi.length
+        ? fromApi.map((item) => ({ id: item.id, name: item.name, url: item.url, reason: item.reason }))
+        : TD_TRY.filter(([id]) => !mine.includes(id) && !counts.has(id)).slice(0, 2).map(([id, what, why]) => {
+            const [, , url] = TD_SITES[id];
+            return { id, name: what, url, reason: why };
+        });
     const tryBox = document.getElementById('td-try');
-    tryBox.replaceChildren(...tries.map(([id, what, why]) => {
-        const [, icon, url] = TD_SITES[id];
-        return tdEl('a', 'td-try', [tdEl('span', 'td-site-ic', [tdIcon(icon)]), tdEl('span', 'td-try-t', [tdEl('b', '', [what]), tdEl('small', '', [why])])], { href: url });
-    }));
-    tryBox.hidden = tries.length === 0;
+    const tryRows = tries.map((item) => {
+        const known = TD_SITES[item.id];
+        const icon = known ? known[1] : 'fa-globe';
+        const url = tdSafeUrl(item.url) || (known ? known[2] : null);
+        if (!url) return null;
+        const name = String(item.name || (known && known[0]) || item.id || '');
+        return tdEl('a', 'td-try', [tdEl('span', 'td-site-ic', [tdIcon(icon)]), tdEl('span', 'td-try-t', [tdEl('b', '', [name]), tdEl('small', '', [String(item.reason || '')])])], { href: url });
+    }).filter(Boolean);
+    tryBox.replaceChildren(...tryRows);
+    tryBox.hidden = tryRows.length === 0;
     document.getElementById('td-sites-h').textContent = mine.length ? 'Your sites' : 'Start here';
     box.hidden = mine.length === 0 && tries.length === 0;
 }
@@ -360,7 +373,7 @@ async function loadToday() {
     const quiet = (p) => p.catch(() => null);
     renderActions(null);
     renderStatus();
-    const [acts, live, hist, coins, last, unread, sites, nodes, frame] = await Promise.all([
+    const [acts, live, hist, coins, last, unread, sites, nodes, frame, tryNext] = await Promise.all([
         quiet(apiFetch('/api/v1/me/actions')),
         quiet(apiFetch('/api/v1/me/live-follows')),
         quiet(apiFetch('/api/history?limit=30')),
@@ -370,6 +383,7 @@ async function loadToday() {
         quiet(apiFetch('/api/themes/me/sites')),
         quiet(apiFetch('/api/v1/me/nodes')),
         quiet(apiFetch('/api/frame?host=openvibe.network')),
+        quiet(apiFetch('/api/v1/me/try-next?limit=3')),
     ]);
     globalThis.__tdUnread = unread;
     renderNeedsYou(acts);
@@ -378,7 +392,7 @@ async function loadToday() {
     renderNow(live, unread);
     renderContinue(hist);
     renderMoney(coins, last);
-    renderSites(hist, sites);
+    renderSites(hist, sites, tryNext);
     renderStuff(live, hist, nodes);
     document.getElementById('today').classList.add('td-ready');
 }
