@@ -23,6 +23,8 @@ const express = require('express');
 const seo = require('openvibe-shared/seo');
 const icons = require('openvibe-shared/ov-icons');
 const { SITES, siteForHost, ICON_ALIAS } = require('../frame/sites');
+// The Tools catalog gives a tool's own hosts, name and icon: a tool is a destination beside a site.
+const toolsCatalog = () => require('../domains/catalog').peek().catalog;
 
 const esc = seo.esc;
 const DAY = 86400000;
@@ -50,7 +52,7 @@ const exact = (n) => (n == null ? '—' : Math.round(Number(n)).toLocaleString('
 const change = (now, before) => (before > 0 && now != null ? Math.round(((now - before) / before) * 100) : null);
 function windowOf(q) { const d = parseInt(q, 10); return WINDOWS.includes(d) ? d : 30; }
 
-function createOpenStats({ db, selfToken = () => null, statusRows = () => [], prometheusUrl, liveUrl, release = null, fetchImpl = globalThis.fetch, now = () => Date.now() }) {
+function createOpenStats({ db, selfToken = () => null, statusRows = () => [], prometheusUrl, liveUrl, release = null, fetchImpl = globalThis.fetch, now = () => Date.now(), toolsOf = toolsCatalog }) {
     const prom = String(prometheusUrl || 'http://127.0.0.1:9090').replace(/\/+$/, '');
     const live = String(liveUrl || 'http://127.0.0.1:3000').replace(/\/+$/, '');
     const cache = new Map();   // days → { at, promise }
@@ -78,11 +80,39 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
             const site = siteForHost(r.host);
             if (!site) continue;
             let e = bySite.get(site.id);
-            if (!e) { e = { daily: new Map(), total: 0, prev: 0 }; bySite.set(site.id, e); }
+            if (!e) { e = { daily: new Map(), total: 0, prev: 0, prevDaily: new Map() }; bySite.set(site.id, e); }
             const n = Number(r.n) || 0;
-            if (window.has(r.day)) { e.total += n; e.daily.set(r.day, (e.daily.get(r.day) || 0) + n); } else e.prev += n;
+            if (window.has(r.day)) { e.total += n; e.daily.set(r.day, (e.daily.get(r.day) || 0) + n); }
+            else { e.prev += n; e.prevDaily.set(r.day, (e.prevDaily.get(r.day) || 0) + n); }
         }
         return bySite;
+    }
+
+    // ── Tool page views: the same anonymous beacon, kept by the tool's own host (yt.openvibe.tools, …) ──
+    async function toolPageviews() {
+        const since = dayOf(now() - 13 * DAY);
+        const rows = await all('SELECT day, host, SUM(hits)::bigint AS n FROM frame_hits WHERE day >= ? GROUP BY day, host', since);
+        if (!rows) return null;
+        const catalog = toolsOf() || { tools: [] };
+        const byHost = new Map();
+        for (const t of Array.isArray(catalog.tools) ? catalog.tools : []) {
+            const hosts = [t.hosts && t.hosts.canonical, t.hosts && t.hosts.short,
+                ...((t.hosts && t.hosts.aliases) || []), ...((t.hosts && t.hosts.mirrors) || [])];
+            for (const h of hosts) if (h) byHost.set(String(h).toLowerCase(), t);
+        }
+        const sevenFrom = dayOf(now() - 6 * DAY);
+        const prevFrom = dayOf(now() - 13 * DAY);
+        const byTool = new Map();
+        for (const r of rows) {
+            const tool = byHost.get(String(r.host).toLowerCase());
+            if (!tool) continue;
+            let e = byTool.get(tool.id);
+            if (!e) { e = { tool, daily: new Map(), prevDaily: new Map() }; byTool.set(tool.id, e); }
+            const n = Number(r.n) || 0;
+            if (r.day >= sevenFrom) e.daily.set(r.day, (e.daily.get(r.day) || 0) + n);
+            else if (r.day >= prevFrom) e.prevDaily.set(r.day, (e.prevDaily.get(r.day) || 0) + n);
+        }
+        return byTool;
     }
 
     // ── OpenVibe.Live counts its own page views (its own navbar and analytics): totals for the windows ──
@@ -117,6 +147,34 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
             daily,
         };
     }
+    // ── Distinct signed-in people: Network's cross-site history, counts only. Guests are never in it; a person
+    //    with history paused is not counted while paused. The same rows give a site's and a tool's "uses".
+    async function useCounts() {
+        const since = (d) => new Date(now() - d * DAY).toISOString().slice(0, 19).replace('T', ' ');
+        const [s24, s7, sPrev, t24, t7, tPrev] = await Promise.all([
+            all('SELECT service, COUNT(DISTINCT user_id) AS u FROM user_history WHERE service IS NOT NULL AND created_at >= ? GROUP BY service', since(1)),
+            all('SELECT service, COUNT(DISTINCT user_id) AS u FROM user_history WHERE service IS NOT NULL AND created_at >= ? GROUP BY service', since(7)),
+            all('SELECT service, COUNT(DISTINCT user_id) AS u FROM user_history WHERE service IS NOT NULL AND created_at >= ? AND created_at < ? GROUP BY service', since(14), since(7)),
+            all("SELECT sub, COUNT(DISTINCT user_id) AS u FROM user_history WHERE service = 'tools' AND sub IS NOT NULL AND created_at >= ? GROUP BY sub", since(1)),
+            all("SELECT sub, COUNT(DISTINCT user_id) AS u FROM user_history WHERE service = 'tools' AND sub IS NOT NULL AND created_at >= ? GROUP BY sub", since(7)),
+            all("SELECT sub, COUNT(DISTINCT user_id) AS u FROM user_history WHERE service = 'tools' AND sub IS NOT NULL AND created_at >= ? AND created_at < ? GROUP BY sub", since(14), since(7)),
+        ]);
+        const sites = new Map();
+        const tools = new Map();
+        const add = (map, key, field, rows) => {
+            for (const r of Array.isArray(rows) ? rows : []) {
+                const id = String(r[key] || '').toLowerCase();
+                if (!id) continue;
+                const e = map.get(id) || {};
+                e[field] = Math.max(0, Number(r.u) || 0);
+                map.set(id, e);
+            }
+        };
+        add(sites, 'service', 'u24', s24); add(sites, 'service', 'u7', s7); add(sites, 'service', 'uPrev', sPrev);
+        add(tools, 'sub', 'u24', t24); add(tools, 'sub', 'u7', t7); add(tools, 'sub', 'uPrev', tPrev);
+        return { sites, tools };
+    }
+
     async function coins(days) {
         const since = (d) => new Date(now() - d * DAY).toISOString().slice(0, 19).replace('T', ' ');
         const earned = await one('SELECT COALESCE(SUM(delta), 0) AS n FROM coin_transactions WHERE delta > 0');
@@ -174,7 +232,7 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
     }
 
     async function compute(days) {
-        const [pv, livePv, acc, coin, tr, liveN] = await Promise.all([pageviews(days), livePageviews(days), accounts(days), coins(days), traffic(), liveNumbers()]);
+        const [pv, livePv, acc, coin, tr, liveN, tpv, uses] = await Promise.all([pageviews(days), livePageviews(days), accounts(days), coins(days), traffic(), liveNumbers(), toolPageviews(), useCounts()]);
         let services = null;
         try {
             const rows = statusRows().filter((r) => r.exposure && r.exposure.state === 'live');
@@ -182,21 +240,70 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
             if (known.length) services = { up: known.filter((r) => r.status === 'up').length, checked: known.length };
         } catch { services = null; }
         const window = daysOf(days);
+        const today = dayOf(now());
+        const sevenFrom = dayOf(now() - 6 * DAY);
+        const prevFrom = dayOf(now() - 13 * DAY);
+        const prevSevenTo = dayOf(now() - 7 * DAY);
+        const sumDays = (map, from, to) => {
+            if (!map) return null;
+            let total = 0;
+            let seen = false;
+            for (const [day, n] of map) if (day >= from && day <= to) { total += n; seen = true; }
+            return seen ? total : null;
+        };
+        const useOfSite = (s) => (uses && uses.sites.get(s.service)) || (uses && uses.sites.get(s.id))
+            || (s.id === 'media-hub' && uses && uses.sites.get('video')) || (s.id === 'stream' && uses && uses.sites.get('openre')) || null;
         const sites = SITES.filter((s) => s.status === 'open').map((s) => {
             const e = pv && pv.get(s.id);
             const isLive = s.id === 'live';
             const total = isLive ? (livePv ? livePv.total : null) : (e ? e.total : (pv ? 0 : null));
             const prev = isLive ? (livePv ? livePv.prev : null) : (e ? e.prev : (pv ? 0 : null));
+            const opens24 = isLive ? null : (e ? (e.daily.get(today) || 0) : (pv ? 0 : null));
+            const opens7 = isLive ? (days === 7 && livePv ? livePv.total : null) : (e ? sumDays(e.daily, sevenFrom, today) : (pv ? 0 : null));
+            const opensPrev7 = isLive ? (days === 7 && livePv ? livePv.prev : null) : (e ? sumDays(e.prevDaily, prevFrom, prevSevenTo) : (pv ? 0 : null));
+            const use = useOfSite(s);
             const t = tr && tr.byJob.get(s.service);
             return {
                 id: s.id, name: `OpenVibe.${s.name}`, short: s.name, host: s.host, url: `https://${s.host}/`, tagline: s.tagline || '',
                 icon: ICON_ALIAS[s.icon] || s.icon,
                 pageviews: total, pageviews_prev: prev, change_pct: change(total, prev),
+                ...(opens24 != null ? { opens_24h: opens24 } : {}),
+                ...(opens7 != null ? { opens_7d: opens7 } : {}),
+                ...(opensPrev7 != null ? { opens_prev_7d: opensPrev7 } : {}),
+                ...(opens7 != null || opensPrev7 != null ? { growth_7d_pct: change(opens7, opensPrev7) } : {}),
+                ...(use ? { uses_24h: use.u24, uses_7d: use.u7, uses_prev_7d: use.uPrev } : {}),
                 daily: isLive ? null : window.map((d) => ({ day: d, n: e ? e.daily.get(d) || 0 : 0 })),
                 ...(isLive && livePv ? { unique_visitors: livePv.visitors, signed_in_people: livePv.people } : {}),
                 traffic_24h: t || null,
             };
         }).sort((a, b) => (b.pageviews || 0) - (a.pageviews || 0) || a.name.localeCompare(b.name));
+
+        // Tools, one per tool host, in the same shape as a site: opens today and over seven days, the seven before
+        // and the distinct signed-in people. A tool with no beacon row is left out, never shown with a zero.
+        const sevenDays = daysOf(7);
+        const catalog = toolsOf() || { tools: [] };
+        const subOf = (t) => {
+            const host = String((t.hosts && (t.hosts.canonical || t.hosts.short)) || '').split('.')[0].toLowerCase();
+            return host || String(t.id || '').toLowerCase();
+        };
+        const tools = [];
+        for (const [id, e] of tpv || new Map()) {
+            const t = e.tool;
+            const opens24 = e.daily.get(today) || 0;
+            const opens7 = sumDays(e.daily, sevenFrom, today);
+            const opensPrev7 = sumDays(e.prevDaily, prevFrom, prevSevenTo);
+            const use = (uses && uses.tools.get(id)) || (uses && uses.tools.get(subOf(t))) || null;
+            tools.push({
+                id: t.id, name: t.name || t.id, short: t.id, host: (t.hosts && t.hosts.canonical) || null,
+                url: t.url || (t.hosts && t.hosts.canonical ? `https://${t.hosts.canonical}/` : null),
+                icon: t.icon || t.id, tagline: t.tagline || '',
+                opens_24h: opens24, opens_7d: opens7, opens_prev_7d: opensPrev7,
+                change_pct: change(opens7, opensPrev7), growth_7d_pct: change(opens7, opensPrev7),
+                ...(use ? { uses_24h: use.u24, uses_7d: use.u7, uses_prev_7d: use.uPrev } : {}),
+                daily: sevenDays.map((d) => ({ day: d, n: e.daily.get(d) || 0 })),
+            });
+        }
+        tools.sort((a, b) => (b.opens_7d || 0) - (a.opens_7d || 0) || String(a.name).localeCompare(String(b.name)));
         // Network-wide page views per day: every navbar site's beacon (Live counts its own; its days are not split out).
         const daily = window.map((d) => ({ day: d, n: [...(pv ? pv.values() : [])].reduce((a, e) => a + (e.daily.get(d) || 0), 0) }));
         const pvTotal = sites.reduce((a, s) => a + (s.pageviews || 0), 0);
@@ -213,6 +320,7 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
             accounts: acc, coins: coin, live: liveN,
             busiest_pages_24h: tr ? tr.top : null,
             sites,
+            ...(tools.length ? { tools } : {}),
         };
     }
     /** The numbers for a window, held TTL_MS; one computation at a time. `refresh` (the boot warm-up, just before the
