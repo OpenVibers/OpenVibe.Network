@@ -480,10 +480,13 @@ const ACCOUNT_ID_LINK = {
     note: 'the caller\'s own usr_… id: the account id apps and robots ask for. A person sees their own on their account page (openvibe.network/my); nobody else can read it',
 };
 const ACCOUNT_ID_TEXT = 'GET /api/auth/me with a person\'s token answers { user: { subject_id: "usr_…" } }. That usr_… value is the person\'s OpenVibe account ID: what apps and robots ask for when they ask for someone\'s OpenVibe account ID. A person sees their own on their account page (https://openvibe.network/my); nobody else can read it.';
+// A path with a variable is a route to call, not a page to fetch: it is written as code in llms.txt, never as a
+// Markdown link, so an agent (or a checker doing a GET) does not ask for the literal @handle address.
+const API_ROUTE_TEXT = 'API routes with a variable in the path are code, not pages to fetch: `GET /api/v1/people/@handle/page` is the signed-out profile at https://openvibe.network/@handle, including its public OpenVibe places.';
 
 function llmsTxt() {
     const { catalog } = toolsCatalog.peek();
-    return seo.llmsTxt({ name: 'OpenVibe Network', summary: llmsSummary(), markdown: true, base: 'https://openvibe.network',
+    return seo.llmsTxt({ name: 'OpenVibe Network', summary: llmsSummary(), details: API_ROUTE_TEXT, markdown: true, base: 'https://openvibe.network',
         sections: [
             { title: 'Sites', links: OPEN.map((site) => ({ title: siteName(site), url: `https://${site.host}/`, note: site.what })) },
             // A person's account ID: the endpoint an agent needs when it works for someone.
@@ -498,7 +501,6 @@ function llmsTxt() {
             // The JSON an agent came for is a main section, not something to skip (AGT-5 review).
             { title: 'Machine-readable', links: [
                 { title: 'Open stats (JSON): every site\'s numbers', url: 'https://openvibe.network/api/v1/stats' },
-                { title: 'Public person page (JSON)', url: 'https://openvibe.network/api/v1/people/@handle/page', note: 'the signed-out profile at https://openvibe.network/@handle, including its public OpenVibe places' },
                 { title: 'Trust signals (developer docs)', url: 'https://openvibe.network/docs/trust-signals', note: 'privacy-limited account and guest trust signals, API examples and fields' },
                 { title: 'OpenVibe Connect MCP', url: 'https://connect.openvibe.network/mcp', note: 'includes network.person_page.read and network.my_trust.read' },
                 { title: 'Tool catalog (JSON)', url: 'https://openvibe.tools/api/catalog.json' },

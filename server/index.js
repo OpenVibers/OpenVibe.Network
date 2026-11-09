@@ -63,7 +63,7 @@ app.get('/openapi.json', (_req, res) => {
     }
     res.set('Cache-Control', 'public, max-age=3600').set('Access-Control-Allow-Origin', '*').json({ ...doc, paths });
 });
-app.get('/docs/trust-signals', (_req, res) => {
+app.get(['/docs/trust-signals', '/docs/trust-signals.md'], (_req, res) => {
     res.type('text/markdown').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 }))
         .send(fs.readFileSync(path.join(__dirname, '..', 'docs', 'trust-signals.md'), 'utf8'));
 });
