@@ -61,7 +61,7 @@ function showSignedOutHub() {
     signIn.setAttribute('href', signIn.href);
     signIn.textContent = 'Sign in with OpenVibe';
     const everywhere = document.createElement('a');
-    everywhere.className = 'btn';
+    everywhere.className = 'btn btn-outline';   // the second way, drawn as one (it read as a stray underlined link)
     everywhere.href = 'https://openvibe.network/sso/fanout?action=logout&next=' + encodeURIComponent('https://openvibe.my/?sso=none');
     everywhere.setAttribute('href', everywhere.href);
     everywhere.textContent = 'Sign out everywhere';
