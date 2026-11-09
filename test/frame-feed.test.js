@@ -16,6 +16,7 @@ const { createFrameService } = require('../server/frame/service');
         res.setHeader('content-type', 'application/json');
         const u = new URL(req.url, 'http://x');
         if (u.pathname === '/api/v1/feed') return res.end(JSON.stringify({ items: [{ id: 'p:1', kind: u.searchParams.get('kind') || 'post', url: 'https://openvibe.community/p/1', title: 'A post' }], next_cursor: 'c2' }));
+        if (u.pathname === '/api/v1/me/status' && req.method === 'POST') { let body = ''; req.on('data', (c) => { body += c; }); req.on('end', () => { asked.push({ url: req.url, auth: req.headers.authorization || '', body }); res.statusCode = req.headers.authorization ? 201 : 401; res.end(JSON.stringify({ ok: true })); }); return undefined; }
         if (u.pathname === '/api/v1/pulse') return res.end(JSON.stringify({ items: [{ id: 1, title: 'ada went live' }], next_cursor: null, viewer: { can_post: !!req.headers.authorization } }));
         res.statusCode = 404; return res.end('{}');
     });
@@ -54,6 +55,14 @@ const { createFrameService } = require('../server/frame/service');
     const pre = await fetch(`${base}/feed`, { method: 'OPTIONS', headers: { Origin: 'https://openvibe.video', 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'authorization' } });
     assert.strictEqual(pre.status, 204);
     assert.match(pre.headers.get('access-control-allow-headers') || '', /Authorization/i);
+
+    const post = await fetch(`${base}/status`, { method: 'POST', headers: { Authorization: 'Bearer abcdefghijklmnop.qrstu', 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'hello' }) });
+    assert.strictEqual(post.status, 201, "Community's answer comes back");
+    const sent = asked.filter((x) => x.body)[0];
+    assert.strictEqual(sent.auth, 'Bearer abcdefghijklmnop.qrstu');
+    assert.deepStrictEqual(JSON.parse(sent.body), { text: 'hello' });
+    const anon = await fetch(`${base}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    assert.strictEqual(anon.status, 401, 'no token, no post');
 
     down = true;
     ({ r, d } = await get('/feed?kind=meme'));
