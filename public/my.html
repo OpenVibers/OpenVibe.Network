@@ -224,10 +224,22 @@
         <div class="card" id="public-page-card">
             <h3><span class="icon"><i class="fa-solid fa-address-card"></i></span> Your public page</h3>
             <p class="muted">A link-in-bio page at <a id="public-page-url" href="https://openvibe.network/" target="_blank" rel="noopener">openvibe.network/@you</a>. Only information already public while signed out can appear here.</p>
-            <label for="public-page-pronouns">Pronouns <small>(40 characters)</small></label><input id="public-page-pronouns" maxlength="40" autocomplete="off">
-            <label for="public-page-bio">Bio <small>(280 characters)</small></label><textarea id="public-page-bio" maxlength="280" rows="3"></textarea>
-            <label for="public-page-links">Links <small>(up to 8; one per line: label | https://…)</small></label><textarea id="public-page-links" rows="5" placeholder="My website | https://example.com"></textarea>
-            <fieldset><legend>Places to show</legend><label><input type="checkbox" id="public-place-live" checked> Live</label> <label><input type="checkbox" id="public-place-media" checked> Videos</label> <label><input type="checkbox" id="public-place-space" checked> Sites</label> <label><input type="checkbox" id="public-place-community" checked> Community</label></fieldset>
+            <!-- The same fields as Edit Profile above (.form-field): they were bare labels and boxes in a line (11-09). -->
+            <div class="form-field">
+                <label for="public-page-pronouns">Pronouns</label><input id="public-page-pronouns" maxlength="40" autocomplete="off">
+                <div class="hint">Up to 40 characters.</div>
+            </div>
+            <div class="form-field">
+                <label for="public-page-bio">Bio</label><textarea id="public-page-bio" maxlength="280" rows="3"></textarea>
+                <div class="hint">Up to 280 characters.</div>
+            </div>
+            <div class="form-field">
+                <label for="public-page-links">Links</label><textarea id="public-page-links" rows="5" placeholder="My website | https://example.com"></textarea>
+                <div class="hint">Up to 8, one per line: a label, a bar, then the address.</div>
+            </div>
+            <fieldset class="form-field pp-places"><legend>Places to show</legend>
+                <div class="pp-places-row"><label class="data-check"><input type="checkbox" id="public-place-live" checked> <span>Live</span></label><label class="data-check"><input type="checkbox" id="public-place-media" checked> <span>Videos</span></label><label class="data-check"><input type="checkbox" id="public-place-space" checked> <span>Sites</span></label><label class="data-check"><input type="checkbox" id="public-place-community" checked> <span>Community</span></label></div>
+            </fieldset>
             <div class="btn-row"><button type="button" class="btn" id="public-page-preview-toggle">Preview</button><button type="button" class="btn btn-primary" id="public-page-save">Save public page</button></div>
             <div id="public-page-preview" hidden aria-live="polite"></div><div id="public-page-msg" role="status"></div>
         </div>
