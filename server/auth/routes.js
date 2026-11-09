@@ -408,7 +408,7 @@ router.get('/me', requireAuth, async (req, res) => {
 // ── Update Profile ───────────────────────────────────────────
 router.put('/profile', requireAuth, async (req, res) => {
     const db = await getDb(req);
-    const { display_name, bio, avatar_url, email, profile_color, profile_public, public_page_bio, public_page_pronouns, public_page_links, public_page_places } = req.body;
+    const { display_name, bio, avatar_url, email, profile_color, profile_public, public_page_bio, public_page_links, public_page_places } = req.body;
     const updates = [];
     const params = [];
 
@@ -444,11 +444,6 @@ router.put('/profile', requireAuth, async (req, res) => {
         if (text.length > 280) return res.status(400).json({ error: 'Your public page bio can be up to 280 characters' });
         updates.push('public_page_bio = ?'); params.push(text);
     }
-    if (public_page_pronouns !== undefined) {
-        const text = String(public_page_pronouns || '').trim();
-        if (text.length > 40) return res.status(400).json({ error: 'Pronouns can be up to 40 characters' });
-        updates.push('public_page_pronouns = ?'); params.push(text);
-    }
     if (public_page_links !== undefined) {
         if (!Array.isArray(public_page_links) || public_page_links.length > 8) return res.status(400).json({ error: 'Add up to 8 links' });
         const links = [];
@@ -470,8 +465,8 @@ router.put('/profile', requireAuth, async (req, res) => {
 
     if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
 
-    const publicPageTouched = public_page_bio !== undefined || public_page_pronouns !== undefined || public_page_links !== undefined || public_page_places !== undefined || profile_public !== undefined;
-    const beforePage = publicPageTouched ? await db.prepare('SELECT username, profile_public, public_page_bio, public_page_pronouns, public_page_links, public_page_places FROM users WHERE id = ?').get(req.user.id) : null;
+    const publicPageTouched = public_page_bio !== undefined || public_page_links !== undefined || public_page_places !== undefined || profile_public !== undefined;
+    const beforePage = publicPageTouched ? await db.prepare('SELECT username, profile_public, public_page_bio, public_page_links, public_page_places FROM users WHERE id = ?').get(req.user.id) : null;
 
     updates.push('updated_at = ov_now()');
     params.push(req.user.id);
@@ -488,7 +483,6 @@ router.put('/profile', requireAuth, async (req, res) => {
     if (beforePage && publicPageTouched) {
         const json = (value) => { try { return typeof value === 'string' ? JSON.parse(value) : value; } catch { return null; } };
         const changed = String(beforePage.public_page_bio || '') !== String(user.public_page_bio || '')
-            || String(beforePage.public_page_pronouns || '') !== String(user.public_page_pronouns || '')
             || JSON.stringify(json(beforePage.public_page_links) || []) !== JSON.stringify(json(user.public_page_links) || [])
             || JSON.stringify(json(beforePage.public_page_places) || {}) !== JSON.stringify(json(user.public_page_places) || {})
             || Number(beforePage.profile_public) !== Number(user.profile_public);
