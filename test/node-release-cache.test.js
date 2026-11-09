@@ -19,8 +19,13 @@ const FIXTURE = (tag) => ({
         { name: 'SHA256SUMS', browser_download_url: `https://github.com/OpenVibers/OpenVibe.Link/releases/download/${tag}/SHA256SUMS` },
     ],
 });
+const isGit = (url) => String(url).includes('.git/git-upload-pack');
+const pkt = (text) => (text.length + 4).toString(16).padStart(4, '0') + text;
+// An ls-refs answer: version line, a tag ref and its peeled copy (which must be ignored), then the flush.
+const LS = (tags) => pkt('version 2\n') + tags.map((tag) => pkt(`${'a'.repeat(40)} refs/tags/${tag}\n`) + pkt(`${'a'.repeat(40)} refs/tags/${tag}^{}\n`)).join('') + '0000';
 const ok = (tag, seen) => async (url, opts) => {
     if (seen) seen.push({ url, headers: (opts && opts.headers) || {} });
+    if (isGit(url)) return { ok: true, status: 200, text: async () => LS([tag]) };
     return { ok: true, status: 200, json: async () => FIXTURE(tag) };
 };
 const fresh = () => {
@@ -74,8 +79,8 @@ const fresh = () => {
         assert.strictEqual(stale.version, 'v1.2.3', 'the last good answer is still named');
         assert.strictEqual(stale.stale, true, 'and marked stale');
         assert.ok(stale.ageMs >= 15 * 60e3, 'its age comes with it');
-        assert.strictEqual(tries, 1, 'the refresh ran in the background');
         await restarted.whenIdle();
+        assert.strictEqual(tries, 2, 'the refresh ran in the background: ls-refs, then the REST fallback');
 
         const kept = await restarted.latest({
             fetchImpl: async () => { tries += 1; throw new Error('still down'); },
@@ -83,23 +88,81 @@ const fresh = () => {
             dataDir: dir,
         });
         assert.strictEqual(kept.version, 'v1.2.3', 'the failure did not lose the answer');
-        assert.strictEqual(tries, 1, 'and the cooldown kept the next visitor off GitHub');
+        assert.strictEqual(tries, 2, 'and the cooldown kept the next visitor off GitHub');
 
         // ── Refresh: once GitHub is back, the next request gets the new release from the cache ──
         now += 16 * 60e3;
-        let refreshed = 0;
+        let gitRefreshed = 0;
+        let restRefreshed = 0;
         const whileExpired = await restarted.latest({
-            fetchImpl: async (u, o) => { refreshed += 1; return ok('v2.0.0')(u, o); },
+            fetchImpl: async (u, o) => {
+                if (isGit(u)) { gitRefreshed += 1; return ok('v2.0.0')(u, o); }
+                restRefreshed += 1;
+                return ok('v2.0.0')(u, o);
+            },
             now: () => now,
             dataDir: dir,
         });
         assert.strictEqual(whileExpired.version, 'v1.2.3', 'the expired answer is served without waiting');
-        assert.strictEqual(refreshed, 1, 'and the refresh starts behind the request');
         await restarted.whenIdle();
-        const nowFresh = await restarted.latest({ fetchImpl: async () => { refreshed += 1; return ok('v0.0.0')(); }, now: () => now + 60e3, dataDir: dir });
+        assert.strictEqual(gitRefreshed, 1, 'and the refresh starts behind the request with ls-refs');
+        assert.strictEqual(restRefreshed, 1, 'which reads the REST release once because the tag is new');
+        const nowFresh = await restarted.latest({ fetchImpl: async () => { throw new Error('no call expected inside the hold'); }, now: () => now + 60e3, dataDir: dir });
         assert.strictEqual(nowFresh.version, 'v2.0.0', 'the refreshed answer is what the next visitor reads');
         assert.strictEqual(nowFresh.stale, false);
-        assert.strictEqual(refreshed, 1, 'without another call to GitHub');
+        assert.deepStrictEqual({ gitRefreshed, restRefreshed }, { gitRefreshed: 1, restRefreshed: 1 }, 'without another call to GitHub');
+
+        // ── The tag check: REST only when the release is new; ls-refs down means REST every hold as before ──
+        const tagDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-node-tags-'));
+        try {
+            const tagsModule = fresh();
+            let restCalls = 0;
+            let gitCalls = 0;
+            let tagsNow = ['v1.2.3', 'v1.2.2'];
+            let restTag = 'v1.2.3';
+            const fetchTags = async (url, opts) => {
+                if (isGit(url)) { gitCalls += 1; return { ok: true, status: 200, text: async () => LS(tagsNow) }; }
+                restCalls += 1;
+                return { ok: true, status: 200, json: async () => FIXTURE(restTag) };
+            };
+            const cold = await tagsModule.latest({ fetchImpl: fetchTags, now: () => now, dataDir: tagDir });
+            assert.strictEqual(cold.version, 'v1.2.3');
+            assert.deepStrictEqual({ gitCalls, restCalls }, { gitCalls: 0, restCalls: 1 }, 'nothing cached: REST, no tag check');
+
+            now += 16 * 60e3;
+            await tagsModule.latest({ fetchImpl: fetchTags, now: () => now, dataDir: tagDir });
+            await tagsModule.whenIdle();
+            const held = await tagsModule.latest({ fetchImpl: fetchTags, now: () => now + 60e3, dataDir: tagDir });
+            assert.strictEqual(held.version, 'v1.2.3');
+            assert.strictEqual(held.stale, false, 'the same tag refreshes the cached timestamp');
+            assert.deepStrictEqual({ gitCalls, restCalls }, { gitCalls: 1, restCalls: 1 }, 'same tag: one ls-refs, no REST');
+
+            now += 16 * 60e3;
+            await tagsModule.latest({ fetchImpl: fetchTags, now: () => now, dataDir: tagDir });
+            await tagsModule.whenIdle();
+            assert.deepStrictEqual({ gitCalls, restCalls }, { gitCalls: 2, restCalls: 1 }, 'same tag twice: still one REST call');
+
+            now += 16 * 60e3;
+            tagsNow = ['v10.0.0', 'v9.9.9', 'v1.2.3'];
+            restTag = 'v10.0.0';
+            await tagsModule.latest({ fetchImpl: fetchTags, now: () => now, dataDir: tagDir });
+            await tagsModule.whenIdle();
+            const bumped = await tagsModule.latest({ fetchImpl: fetchTags, now: () => now + 60e3, dataDir: tagDir });
+            assert.strictEqual(bumped.version, 'v10.0.0', 'the highest semver tag is the release');
+            assert.deepStrictEqual({ gitCalls, restCalls }, { gitCalls: 3, restCalls: 2 }, 'a new tag: one more REST call');
+
+            now += 16 * 60e3;
+            const downFetch = async (url, opts) => {
+                if (isGit(url)) { gitCalls += 1; throw new Error('git is down'); }
+                restCalls += 1;
+                return { ok: true, status: 200, json: async () => FIXTURE(restTag) };
+            };
+            await tagsModule.latest({ fetchImpl: downFetch, now: () => now, dataDir: tagDir });
+            await tagsModule.whenIdle();
+            assert.deepStrictEqual({ gitCalls, restCalls }, { gitCalls: 4, restCalls: 3 }, 'ls-refs down: one REST call, as before');
+        } finally {
+            fs.rmSync(tagDir, { recursive: true, force: true });
+        }
 
         // ── The token: GITHUB_TOKEN is sent when set, from the environment only ──
         const sent = [];
