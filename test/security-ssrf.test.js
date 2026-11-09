@@ -139,7 +139,7 @@ const REVIEWED = {
     'server/profile/public.js fetch': [6, 'OpenVibe.Inventory, Quest and Play use operator-configured internal URLs and fixed paths with a checked usr_ id. Public place reads use only the configured Live, Community and Space service URLs, fixed public paths, encoded canonical usernames, 2 s timeouts and no user-supplied host or token; Space results are restricted to the exact owner and Published cards'],
     'server/profile/avatar.js fetch': [4, 'Live (push) and Media (ingest, release) internal URLs from config; a picture is never fetched here — Media\'s ingest fetches it (asserted below)'],
     'server/push/push-service.js web-push': [1, 'a person\'s push endpoint: endpointAllowed() at subscribe and send, connections through safeLookup (asserted below)'],
-    'server/registry/deploy-drift.js fetch': [1, 'fixed host api.github.com'],
+    'server/registry/deploy-drift.js fetch': [2, 'fixed hosts: api.github.com (compare) and github.com (git ls-refs); the repository matches REPO_RE (OpenVibers/ only)'],
     'server/registry/ecosystem.js fetch': [2, 'service URLs from openvibe-contracts manifests and operator env overrides'],
     'server/registry/library-tags.js fetch': [1, 'fixed host api.github.com'],
     'server/link/release.js fetch': [1, 'the Node\'s own release page: a fixed GitHub API path (https://api.github.com/repos/OpenVibers/OpenVibe.Link/releases/latest), 8 s timeout, held 15 minutes in memory and on disk; no request value ever names a host and it only ever reads the public release list'],
