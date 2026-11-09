@@ -63,6 +63,7 @@ function llmsTxt() {
  */
 function createNodeRoutes({ releaseId, releaseApi = release } = {}) {
     const router = require('express').Router();
+    router.use(require('./egress').publicRouter());
 
     router.use(async (req, res, next) => {
         const host = hostOf(req);
