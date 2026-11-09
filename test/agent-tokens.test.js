@@ -110,7 +110,7 @@ const U = { owner: jwt.sign({ sub: 10, id: 10 }, keys.privateKey, { algorithm: '
         assert.ok(verified.ok, verified.reason);
         assert.strictEqual(jwt.decode(res.body.access_token, { complete: true }).header.alg, 'RS256');
         // The host's own app token is what it was: no agent claims.
-        assert.deepStrictEqual(Object.keys(ownApp).sort(), ['actor_type', 'aud', 'cap', 'env', 'exp', 'iat', 'iss', 'jti', 'ns', 'project_id', 'sub']);
+        assert.deepStrictEqual(Object.keys(ownApp).sort(), ['actor_type', 'app_name', 'aud', 'cap', 'env', 'exp', 'iat', 'iss', 'jti', 'ns', 'project_id', 'sub']);
         assert.deepStrictEqual([ownApp.sub, ownApp.actor_type, ownApp.cap, ownApp.ns], [`app:${PR}`, 'app', ['media.object.delete', 'media.object.read', 'media.object.upload'], [P, `app.${P}.*`]]);
         // A scope narrows; a confirm-mode capability alone gives cap [] and cap_confirm, never cap.
         assert.deepStrictEqual(await capsOf(PR, A, { scope: 'media.object.delete' }), [[], ['media.object.delete']]);
