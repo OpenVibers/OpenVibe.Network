@@ -41,6 +41,9 @@ const PINNED = {
 // Contracts has no `mail`, so the pinned map follows what is actually installed and gains it the day the pin moves.
 const HAS_MAIL = !!contracts.services.get('mail');
 if (HAS_MAIL) PINNED.mail = 'live';
+// Git (OpenVibe.Git) is live in the release that adds its manifest (contracts 0.373.0).
+const HAS_GIT = !!contracts.services.get('git');
+if (HAS_GIT) PINNED.git = 'live';
 const PLACEHOLDER_DOMAINS = [];   // none left: tips and vip live since contracts 0.200.0; deals since 0.118.0; news, reviews, coupons, trade, openre since 0.125.0
 
 function fakeService(routes) {
@@ -129,7 +132,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     // v0.95.0 Services; Space and AI went live in v0.110.0; Food, Help and Work in v0.116.0; Quest, Rent and Watch in v0.117.0;
     // Inventory in v0.122.0; none is retired
     // News, Reviews, Coupons, Trade and OpenRestream in v0.125.0; Run in v0.141.0
-    assert.deepStrictEqual(st.exposure_summary, { live: 56 + (HAS_MAIL ? 1 : 0), internal: 1, library: 4, repository: 1, placeholder: 0, retired: 1 });   // Sites retired (contracts 0.181.0); Tips and VIP live (0.200.0); Design live (0.228.0); Meme live (0.234.0); Vision and Exchange live (0.235.0); Fun live (0.236.0); Cam live (0.237.0); Bench live (0.238.0); Email live with the release that adds its manifest
+    assert.deepStrictEqual(st.exposure_summary, { live: 56 + (HAS_MAIL ? 1 : 0) + (HAS_GIT ? 1 : 0), internal: 1, library: 4, repository: 1, placeholder: 0, retired: 1 });   // Sites retired (contracts 0.181.0); Tips and VIP live (0.200.0); Design live (0.228.0); Meme live (0.234.0); Vision and Exchange live (0.235.0); Fun live (0.236.0); Cam live (0.237.0); Bench live (0.238.0); Email live with the release that adds its manifest; Git live (contracts 0.373.0)
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());
@@ -149,6 +152,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     const open = SITES.filter(s => s.status === 'open').map(s => s.id);
     const EXPECTED_OPEN = ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'space', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'search', 'run', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'casino', 'tours', 'shoes', 'connect', 'computer', 'lock', 'image'];   // by site position; Email joins after Chat once its manifest is pinned
     if (HAS_MAIL) EXPECTED_OPEN.splice(EXPECTED_OPEN.indexOf('chat') + 1, 0, 'mail');
+    if (HAS_GIT) EXPECTED_OPEN.splice(EXPECTED_OPEN.indexOf('events') + 1, 0, 'git');
     assert.deepStrictEqual(open, EXPECTED_OPEN);
     for (const s of SITES) {
         if (s.id === 'computer' && !contracts.services.get('computer')) {
