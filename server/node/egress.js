@@ -41,7 +41,7 @@ function validateSettings(body) {
 
 async function node(db, id) {
     if (!NODE.test(id || '')) throw fail(403, 'node_required');
-    const row = await db.prepare('SELECT id, owner_kind, owner_subject, status, name, pairing_ref FROM platform_node_principals WHERE id = ?').get(id);
+    const row = await db.prepare('SELECT id, owner_kind, owner_subject, status, name, pairing_ref, paired_by_service FROM platform_node_principals WHERE id = ?').get(id);
     if (!row || row.status !== 'active') throw fail(403, 'node_unavailable');
     return row;
 }
@@ -114,7 +114,7 @@ function mount({ user, self, internal, pairing, requireAuth, now = () => Date.no
         // A cloud Node can read only the decision for a desk assigned to its own Bot machine id.
         self.get('/egress/desks/:desk', wrap(async (req, res) => {
             const db = req.app.locals.db, n = await ownNode(db, req);
-            if (!DESK.test(req.params.desk)) throw fail(404, 'desk_unknown');
+            if (n.paired_by_service !== 'bot' || !MACHINE.test(n.pairing_ref || '') || !DESK.test(req.params.desk)) throw fail(404, 'desk_unknown');
             const row = await db.prepare('SELECT * FROM link_egress_sessions WHERE machine = ? AND desk = ? AND ended = false AND expires_at > ?')
                 .get(n.pairing_ref, req.params.desk, now());
             if (!row) throw fail(404, 'desk_unknown');
