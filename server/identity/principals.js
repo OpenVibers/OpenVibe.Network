@@ -420,6 +420,7 @@ const DEFAULT_GRANTS = [
     ['watch', 'run.job.submit', 'openvibe.run', []],
     ['watch', 'network.project.member.read', SELF_AUDIENCE, []],
     ['run', 'network.project.member.read', SELF_AUDIENCE, []],
+    ['run', 'network.notifications.push', SELF_AUDIENCE, []],
     // Actor and Media read a person's project role before a project admin's control request (contracts 0.169.0).
     ['actor', 'network.project.member.read', SELF_AUDIENCE, []],
     ['media', 'network.project.member.read', SELF_AUDIENCE, []],

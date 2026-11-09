@@ -284,7 +284,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
         const rec = await usernames.lookup(db, name);
         if (!rec) return null;
         if (rec.renamed) return { moved: rec.current };
-        const u = await db.prepare(`SELECT id, username, display_name, bio, public_page_bio, public_page_pronouns, public_page_links, public_page_places, profile_color, created_at, subject_id, profile_public,
+        const u = await db.prepare(`SELECT id, username, display_name, bio, public_page_bio, public_page_links, public_page_places, profile_color, created_at, subject_id, profile_public,
             is_anon, merged_into, deleted_at FROM users WHERE id = ?`).get(rec.network_id);
         if (!u || Number(u.is_anon) || u.merged_into || u.deleted_at) return null;
         return { user: u };
@@ -295,7 +295,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
         try { links = typeof u.public_page_links === 'string' ? JSON.parse(u.public_page_links) : (u.public_page_links || []); } catch {}
         try { choices = { ...choices, ...(typeof u.public_page_places === 'string' ? JSON.parse(u.public_page_places) : (u.public_page_places || {})) }; } catch {}
         const places = Number(u.profile_public) ? await placesOf(u.username, choices) : { spaces: [], community: [], videos: [] };
-        return { username: u.username, display_name: u.display_name || u.username, pronouns: Number(u.profile_public) ? String(u.public_page_pronouns || '').slice(0, 40) : '', avatar_url: avatarUrl(u.username), profile_url: `${SITE}/@${encodeURIComponent(u.username)}`, bio: Number(u.profile_public) ? String(u.public_page_bio || '').slice(0, 280) : '', links: Number(u.profile_public) && Array.isArray(links) ? links.slice(0, 8) : [], places };
+        return { username: u.username, display_name: u.display_name || u.username, avatar_url: avatarUrl(u.username), profile_url: `${SITE}/@${encodeURIComponent(u.username)}`, bio: Number(u.profile_public) ? String(u.public_page_bio || '').slice(0, 280) : '', links: Number(u.profile_public) && Array.isArray(links) ? links.slice(0, 8) : [], places };
     }
 
     /** profile@1: what every site may show about a person. */
@@ -340,7 +340,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             res.set('Cache-Control', cache.htmlHeaders({ maxAge: 60 }));
             // A person's public profile lives on openvibe.network (the owner, 11-08: "OpenVibe.My is for users' stuff,
             // the profiles should be on .Network"). openvibe.my is the person's own hub: /@name there moves here.
-            res.send(renderPage(u, inv, SITE, page.places, page.pronouns));
+            res.send(renderPage(u, inv, SITE, page.places));
         } catch (err) { next(err); }
     }
 
@@ -453,7 +453,7 @@ ${sorted.map((g) => {
 <p class="pf-note"><a href="${esc(all)}">${inv.more ? 'Every item' : 'This inventory'} on OpenVibe.Inventory</a> · <a href="${INVENTORY_SITE}/items">Every item there is</a></p></section>`;
 }
 
-function renderPage(u, inv, origin = SITE, places = { spaces: [], community: [], videos: [] }, pronouns = '') {
+function renderPage(u, inv, origin = SITE, places = { spaces: [], community: [], videos: [] }) {
     const canonicalUrl = `${origin}/@${encodeURIComponent(u.username)}`;
     const name = u.display_name || u.username;
     const isPublic = !!inv;
@@ -524,7 +524,7 @@ a{color:var(--accent)}
 .pf-who{flex:1;min-width:200px;padding-top:56px}
 .pf-who h1{margin:0;font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.15;overflow-wrap:anywhere}
 .pf-name-badge{width:.85em;height:.85em;margin-right:.25em;vertical-align:-.08em;border-radius:6px;object-fit:contain}
-.pf-handle{margin:.2em 0 0;color:var(--text-secondary)}.pf-pronouns{display:inline-block;margin-left:6px;padding:1px 9px;border:1px solid var(--border);border-radius:999px;font-size:.82em;vertical-align:1px}.pf-places a .pf-live{display:inline-flex;align-items:center;gap:6px;color:var(--live-red,#e5484d);font-weight:700}.pf-live::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor}
+.pf-handle{margin:.2em 0 0;color:var(--text-secondary)}.pf-places a .pf-live{display:inline-flex;align-items:center;gap:6px;color:var(--live-red,#e5484d);font-weight:700}.pf-live::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor}
 .pf-bio{margin:0;padding:0 24px 18px;color:var(--text-primary);line-height:1.6;white-space:pre-line;overflow-wrap:anywhere;max-width:72ch}
 .pf-stats{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0 24px 22px}
 .pf-stats li{display:flex;flex-direction:column;gap:2px;padding:8px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card);min-width:110px}
@@ -578,7 +578,7 @@ ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links
 <div class="pf-banner" aria-hidden="true"></div>
 <div class="pf-head">
 <div class="pf-pic"><img class="pf-avatar" src="${esc(avatarUrl(u.username))}" alt="" width="112" height="112">${hatGlyph ? `<span class="pf-hat" title="${esc(hat.name)}" aria-hidden="true">${esc(hatGlyph)}</span>` : ''}</div>
-<div class="pf-who"><h1>${badgeId ? `<img class="pf-name-badge" src="https://openvibe.media/o/${badgeId}" alt="" title="${esc(badge.name)}" width="32" height="32">` : ''}${fxClass ? `<span class="ov-fx ${fxClass}" title="${esc(fx.name)}">${esc(name)}</span>` : esc(name)}</h1><p class="pf-handle">@${esc(u.username)}${isPublic && pronouns ? ` <span class="pf-pronouns">${esc(pronouns)}</span>` : ''}</p></div>
+<div class="pf-who"><h1>${badgeId ? `<img class="pf-name-badge" src="https://openvibe.media/o/${badgeId}" alt="" title="${esc(badge.name)}" width="32" height="32">` : ''}${fxClass ? `<span class="ov-fx ${fxClass}" title="${esc(fx.name)}">${esc(name)}</span>` : esc(name)}</h1><p class="pf-handle">@${esc(u.username)}</p></div>
 </div>
 ${bio ? `<p class="pf-bio">${esc(bio)}</p>` : ''}
 ${isPublic && Array.isArray(publicLinks) && publicLinks.length ? `<nav aria-label="${esc(name)}'s links"><ul class="pf-links">${publicLinks.slice(0, 8).map((link) => { let href = ''; try { const parsed = new URL(link.url); if (parsed.protocol === 'https:' && !parsed.username && !parsed.password) href = parsed.href; } catch {} return href ? `<li><a rel="me noopener noreferrer" href="${esc(href)}">${esc(String(link.label || '').slice(0, 40))}</a></li>` : ''; }).join('')}</ul></nav>` : ''}
