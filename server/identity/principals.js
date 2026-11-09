@@ -163,8 +163,10 @@ const DEFAULT_GRANTS = [
     // the chat-AI summaries run in Chat with its own token.
     ['chat', 'media.object.upload', 'openvibe.media', ['chat']],
     ['chat', 'media.object.delete', 'openvibe.media', ['chat']],
-    ['chat', 'ai.run.create', 'openvibe.ai', ['chat.*']],
+    ['chat', 'ai.run.create', 'openvibe.ai', ['chat.*', 'ai.complete']],
     ['chat', 'ai.run.read', 'openvibe.ai', ['chat.*']],
+    // Activated when Contracts includes exchange.chat.export; only Chat imports a person's old chats.
+    ...(capabilities.get('exchange.chat.export') ? [['chat', 'exchange.chat.export', 'openvibe.exchange', []]] : []),
     // Chat's AI members linked to a Food household read its pantry and plan (food.household.read; Contracts 0.189.0).
     ['chat', 'food.household.read', 'openvibe.food', []],
     // Vibe on openvibe.chat (Chat#139) searches the open web through Actor for the person it is talking with: Chat
@@ -964,6 +966,7 @@ const RESTORED_GRANTS = [
 ];
 
 const CHANGED_DEFAULT_NAMESPACES = [
+    ['chat', 'ai.run.create', 'openvibe.ai', ['chat.*'], ['chat.*', 'ai.complete']],
     ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile'], ['chat.tts_defaults', 'live.profile']],
     ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.tts_defaults', 'live.profile'], ['live.profile', 'live.stats']],
     ['live', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile'], ['live.profile', 'live.stats']],
