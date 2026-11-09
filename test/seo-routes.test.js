@@ -72,6 +72,17 @@ const cache = require('openvibe-shared/cache-policy');
         assert.ok(Buffer.byteLength(fullBody) <= render.LLMS_FULL_MAX_BYTES, 'llms-full.txt stays within maxBytes');
         assert.strictEqual(render.LLMS_FULL_MAX_BYTES, 512 * 1024);
 
+        // ── the trust-signals twin, and the templated people route as code ──
+        const signals = await get('/docs/trust-signals.md');
+        assert.strictEqual(signals.status, 200, '/docs/trust-signals.md answers 200');
+        assert.match(signals.type, /^text\/markdown/, '/docs/trust-signals.md is Markdown');
+        assert.ok(signals.body.startsWith('# Trust signals'), 'the twin names the page heading');
+        const signalsPage = await get('/docs/trust-signals');
+        assert.strictEqual(signalsPage.status, 200, '/docs/trust-signals keeps answering');
+        assert.strictEqual(signalsPage.body, signals.body, 'the page and its .md twin are one document');
+        assert.ok(!llms.body.includes('](/api/v1/people/@handle/page)'), 'the templated people route is not a link');
+        assert.ok(llms.body.includes('`GET /api/v1/people/@handle/page`'), 'the templated people route is written as code');
+
         // ── the front door and /stats state they may be indexed (SEO-8) ──
         for (const p of ['/', '/stats']) {
             const page = await get(p);
