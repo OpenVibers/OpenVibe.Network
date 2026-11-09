@@ -50,6 +50,15 @@ async function ownNode(db, req) {
     return node(db, req.principal.sub.slice(5));
 }
 
+async function cloudMachine(bot, principal) {
+    if (principal.paired_by_service !== 'bot' || principal.owner_kind !== 'user') throw fail(403, 'node_required');
+    // Pairing refs identify a robot or worker group, not a dev_ machine. Bot owns this binding.
+    const machines = (await bot.list(principal.owner_subject)).machines || [];
+    const machine = machines.find(m => m.node_id === principal.id && MACHINE.test(m.id || ''));
+    if (!machine) throw fail(403, 'node_unavailable');
+    return machine.id;
+}
+
 async function selectRoute(db, owner, now = Date.now()) {
     const prefs = await settings(db, owner);
     const devices = await db.prepare(`SELECT n.id, n.name, d.relay_url, d.checked_at FROM platform_node_principals n
@@ -114,9 +123,12 @@ function mount({ user, self, internal, pairing, requireAuth, now = () => Date.no
         // A cloud Node can read only the decision for a desk assigned to its own Bot machine id.
         self.get('/egress/desks/:desk', wrap(async (req, res) => {
             const db = req.app.locals.db, n = await ownNode(db, req);
-            if (n.paired_by_service !== 'bot' || !MACHINE.test(n.pairing_ref || '') || !DESK.test(req.params.desk)) throw fail(404, 'desk_unknown');
+            if (!DESK.test(req.params.desk)) throw fail(404, 'desk_unknown');
+            const { config, privateKey } = req.app.locals;
+            const bot = require('../registry/machines').createBotClient({ baseUrl: config.services.bot.internalUrl, privateKey, issuer: config.jwt.issuer });
+            const machine = await cloudMachine(bot, n);
             const row = await db.prepare('SELECT * FROM link_egress_sessions WHERE machine = ? AND desk = ? AND ended = false AND expires_at > ?')
-                .get(n.pairing_ref, req.params.desk, now());
+                .get(machine, req.params.desk, now());
             if (!row) throw fail(404, 'desk_unknown');
             const route = await selectRoute(db, row.owner_subject, now());
             const credential = crypto.randomBytes(32).toString('base64url');
@@ -163,4 +175,4 @@ function publicRouter() {
     return r;
 }
 
-module.exports = { publicRouter, mount, settings, validateSettings, selectRoute, open, EXPLANATION, DEFAULT_BYTES };
+module.exports = { cloudMachine, publicRouter, mount, settings, validateSettings, selectRoute, open, EXPLANATION, DEFAULT_BYTES };
