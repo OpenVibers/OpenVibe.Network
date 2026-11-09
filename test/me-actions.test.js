@@ -31,6 +31,7 @@ await db.prepare("INSERT INTO users (id, username, email, password_hash, email_v
 const calls = [];
 let aiDelay = 0;
 let cancelled = false;
+let skillReads = 0;
 const svc = http.createServer((req, res) => {
     let body = '';
     req.on('data', (c) => { body += c; });
@@ -38,6 +39,11 @@ const svc = http.createServer((req, res) => {
         const u = new URL(req.url, 'http://x');
         calls.push({ method: req.method, path: u.pathname, subject: u.searchParams.get('subject') || req.headers['x-ov-subject'] || null, auth: req.headers.authorization, body: body ? JSON.parse(body) : null });
         const json = (s, b) => { res.writeHead(s, { 'content-type': 'application/json' }); res.end(JSON.stringify(b)); };
+        if (u.pathname === '/actor/api/v1/skills') { skillReads++; return json(200, { listings: [
+            { id: 'skl_ok', skill: { name: 'Research brief', slug: 'research-brief', instructions: 'secret prompt' }, scan: { state: 'passed' }, curator: { state: 'active' } },
+            { id: 'skl_flagged', skill: { name: 'Flagged', slug: 'flagged' }, scan: { state: 'failed' }, curator: { state: 'active' } },
+            { id: '../x', skill: { name: 'Odd id', slug: 'odd' }, scan: { state: 'passed' }, curator: { state: 'active' } },
+        ] }); }
         if (u.pathname === '/actor/api/v1/runs' && req.method === 'POST') return json(201, { run: { id: 'tsk_new', skill: 'research-brief', subject: 'Research brief' } });
         if (u.pathname === '/actor/api/v1/actions') return json(200, { items: [
             item(cancelled ? { state: 'cancelled', bucket: 'failed', actions: ['open'], updated_at: iso(1) } : {}),
@@ -166,6 +172,13 @@ try {
     assert.strictEqual(r.status, 201, JSON.stringify(r.body));
     const started = calls.find((c) => c.path === '/actor/api/v1/runs');
     assert.deepStrictEqual([started.auth, started.subject.startsWith('usr_'), started.body.skill], ['Bearer tok:openvibe.actor:actor.skill.run', true, 'skl_example']);
+    // The Dock's one-tap skills come through Network (every site's connect-src refuses openvibe.actor): passed, active,
+    // plain ids, the fields the Dock draws only (never a skill's instructions), kept five minutes.
+    r = await call('GET', '/skills');
+    assert.deepStrictEqual(r.body.listings.map((x) => x.id), ['skl_ok']);
+    assert.ok(!JSON.stringify(r.body).includes('secret prompt'), 'a skill\'s instructions never leave Actor here');
+    await call('GET', '/skills');
+    assert.strictEqual(skillReads, 1, 'the catalogue is kept');
     assert.strictEqual((await call('POST', '/actor/tsk_404/cancel')).status, 404, 'no such task');
     // Codes has no cancel route, and Codes is not connected for it either.
     assert.strictEqual((await call('POST', '/codes/tsk_1/approve')).body.code, 'actions.unsupported');

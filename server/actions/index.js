@@ -212,6 +212,27 @@ function createActions({ db, selfToken = () => null, urls = {}, fetchImpl = (...
         return body;
     }
 
+    /**
+     * The skills the Dock offers in one tap ("Things agents can do for you"): Actor's public catalogue, read here because
+     * every site's connect-src reaches openvibe.network and refuses openvibe.actor. Only passed, active listings, only
+     * the fields the Dock draws; kept five minutes; Actor not answering is an empty list.
+     */
+    let skillsKept = null; let skillsAt = 0;
+    async function skillCatalogue() {
+        if (skillsKept && now() - skillsAt < 5 * 60_000) return skillsKept;
+        if (!urls.actor) return { listings: [] };
+        try {
+            const res = await fetchImpl(`${String(urls.actor).replace(/\/+$/, '')}/api/v1/skills`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(timeoutMs) });
+            const body = res.ok ? await res.json().catch(() => ({})) : {};
+            const listings = (Array.isArray(body.listings) ? body.listings : [])
+                .filter((x) => x && x.skill && ID_RE.test(String(x.id || '')) && x.scan && x.scan.state === 'passed' && x.curator && x.curator.state === 'active')
+                .slice(0, 12)
+                .map((x) => ({ id: String(x.id), skill: { name: String(x.skill.name || '').slice(0, 80), slug: String(x.skill.slug || '').slice(0, 80) }, scan: { state: 'passed' }, curator: { state: 'active' } }));
+            skillsKept = { listings }; skillsAt = now();
+        } catch { skillsKept = skillsKept || { listings: [] }; skillsAt = now(); }
+        return skillsKept;
+    }
+
     /** A one-tap catalogue skill starts on Actor as this person; Network never executes the skill itself. */
     async function runSkill(actor, id, body) {
         if (!ID_RE.test(String(id))) throw Object.assign(new Error('no such skill'), { status: 404, code: 'actions.skill_not_found' });
@@ -227,7 +248,7 @@ function createActions({ db, selfToken = () => null, urls = {}, fetchImpl = (...
         return result;
     }
 
-    return { forPerson, act, runSkill, _cache: cache };
+    return { forPerson, act, runSkill, skillCatalogue, _cache: cache };
 }
 
 /** The routes, behind Network's session check (cookie on openvibe.network, Bearer elsewhere), like the bell's. */
@@ -245,6 +266,7 @@ function router({ actions, requireAuth, requireDock = () => requireAuth }) {
             http.sendProblem(res, 500, 'actions.error', { detail: 'could not read your actions' });
         }
     });
+    r.get('/skills', requireAuth, async (req, res) => { res.json(await actions.skillCatalogue()); });
     r.post('/skills/:id/run', requireAuth, async (req, res) => {
         try {
             const actor = await store.actorOf(req.app.locals.db, req.user);
