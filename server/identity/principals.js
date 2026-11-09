@@ -510,6 +510,11 @@ const DEFAULT_GRANTS = [
     ...['run.job.submit', 'run.job.read', 'run.job.stream', 'run.job.cancel'].map((c) => ['codes', c, 'openvibe.run', []]),
     // Plan 2026-10-28 §6: Codes announces its coding tasks' state changes (codes.task.*, contracts 0.232.0).
     ['codes', 'events.event.publish', 'openvibe.events', []],
+    // OpenVibe.Git (G1, 2026-11-09): Codes makes a repository for the person signed in, lists theirs and mints their
+    // clone token, acting as that person with X-OV-Subject. The capability names are the ones OpenVibe.Git verifies in
+    // its own tokens (git.read / git.write); the service holds them for the openvibe.git audience only.
+    ['codes', 'git.read', 'openvibe.git', []],
+    ['codes', 'git.write', 'openvibe.git', []],
     // Plan T16/T17 (contracts 0.162.0): a person's OpenVibe.Actor agent routes coding work to OpenVibe.Codes, which runs
     // it on that person's own machine (X-OV-Subject); Codes shows Actor only the tasks Actor started for that person.
     ...['codes.task.start', 'codes.task.read', 'codes.task.cancel'].map((c) => ['actor', c, 'openvibe.codes', []]),
