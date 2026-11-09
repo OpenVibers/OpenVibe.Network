@@ -435,14 +435,15 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         res.send(JSON.stringify(pulse || { live_now: null, watching: null, sites: orderedOpen().length, views_7d: null, live: null, updated: null }));
     });
 
-    // GET /api/frame/feed?kind=&cursor=&limit= and GET /api/frame/wall?limit=&after=&for= — the menu's Feed and wall
+    // GET /api/frame/feed?kind=&site=&q=&following=1&cursor=&limit= and GET /api/frame/wall?limit=&after=&for= — the menu's Feed and wall
     // (openvibe-shared ov-home.js) on every site, asked through Network because every site's connect-src lets the navbar
     // reach openvibe.network, and the sites' policies refused openvibe.community (11-09: the Feed fell back to its old
     // sections everywhere but five sites). Community's /api/v1/feed and /api/v1/pulse answer; the person's Bearer token
     // goes along when the menu sends one (a personal wall, the composer's can_post), never a cookie. Anonymous answers are
     // kept 30 s per query; personal ones are not kept. Community not answering is an empty page, never an error.
     const relayed = new Map();
-    const FEED_KINDS = ['live', 'stream', 'clip', 'video', 'pic', 'post', 'meme', 'game', 'update'];
+    // Community's feed kinds (server/pulse/feed.js KINDS; #310 added wiki, quest, chat, event and member).
+    const FEED_KINDS = ['live', 'stream', 'clip', 'video', 'pic', 'post', 'meme', 'game', 'update', 'wiki', 'quest', 'chat', 'event', 'member'];
     async function relay(req, res, path, params) {
         res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization', 'Vary': 'Authorization', 'Content-Type': 'application/json; charset=utf-8' });
         const auth = /^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '';
@@ -483,8 +484,14 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             return res.status(r.status).send(text.slice(0, 64 * 1024));
         } catch { return res.status(502).send('{"error":"Community did not answer"}'); }
     });
+    // The feed's filters pass through: a site (a service id), words (q, at most 80 characters, one line) and the
+    // signed-in person's follows (following=1 only with their Bearer token: Community answers 401 without one).
+    const qSite = (v) => (/^[a-z0-9][a-z0-9:-]{0,39}$/.test(String(v || '')) ? String(v) : '');
+    const qWords = (v) => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
     router.get('/feed', (req, res) => relay(req, res, '/api/v1/feed', {
         kind: FEED_KINDS.includes(String(req.query.kind || '')) ? String(req.query.kind) : '',
+        site: qSite(req.query.site), q: qWords(req.query.q),
+        following: /^(1|true)$/.test(String(req.query.following || '')) ? '1' : '',
         cursor: qCursor(req.query.cursor), limit: qLimit(req.query.limit, 40),
     }));
     router.get('/wall', (req, res) => relay(req, res, '/api/v1/pulse', {

@@ -52,6 +52,16 @@ const { createFrameService } = require('../server/frame/service');
     const odd = new URL(asked[asked.length - 1].url, 'http://x');
     assert.ok(!odd.searchParams.has('kind') && !odd.searchParams.has('cursor') && odd.searchParams.get('limit') === '40', 'an odd kind and cursor are dropped and the limit capped');
 
+    // The new kinds and the filters reach Community; odd values do not.
+    ({ d } = await get('/feed?kind=quest&site=wiki&q=%20head%0Aslider%20&following=1', { Authorization: 'Bearer abcdefghijklmnop.qrstu' }));
+    const f = new URL(asked[asked.length - 1].url, 'http://x');
+    assert.deepStrictEqual([f.searchParams.get('kind'), f.searchParams.get('site'), f.searchParams.get('q'), f.searchParams.get('following')], ['quest', 'wiki', 'head slider', '1'], 'kind, site, words and following pass');
+    assert.strictEqual(asked[asked.length - 1].auth, 'Bearer abcdefghijklmnop.qrstu', 'following goes with the person');
+    for (const k of ['wiki', 'chat', 'event', 'member']) { ({ d } = await get(`/feed?kind=${k}`)); assert.strictEqual(new URL(asked[asked.length - 1].url, 'http://x').searchParams.get('kind'), k, `${k} passes`); }
+    ({ d } = await get('/feed?site=../x&q=' + 'a'.repeat(200) + '&following=yes'));
+    const g = new URL(asked[asked.length - 1].url, 'http://x');
+    assert.ok(!g.searchParams.has('site') && g.searchParams.get('q').length === 80 && !g.searchParams.has('following'), 'an odd site and following are dropped, words capped at 80');
+
     const pre = await fetch(`${base}/feed`, { method: 'OPTIONS', headers: { Origin: 'https://openvibe.video', 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'authorization' } });
     assert.strictEqual(pre.status, 204);
     assert.match(pre.headers.get('access-control-allow-headers') || '', /Authorization/i);
