@@ -75,6 +75,24 @@ const ITD = 'itd_01JZ00000000000000000000B1';
     assert.strictEqual(r.status, 401, 'no token, no wallet');
     assert.strictEqual(asked.filter((x) => x.url.startsWith('/api/v1/me/wallet')).length, 1, 'and nothing is asked upstream');
 
+    // A site with its own cookie session has no token for the navbar: the person's Network cookie (ov_token) is the
+    // token, sent upstream as the Bearer and never as a cookie; the answer keeps the allow-list's echoed Origin.
+    const session = 'abcdefghijklmnop.cookie';
+    ({ r, d } = await get('/wallet/api/v1/me/wallet', { Cookie: `ov_sso=x; ov_token=${session}`, Origin: 'https://openvibe.events' }));
+    assert.strictEqual(r.status, 200);
+    const viaCookie = asked.filter((x) => x.url.startsWith('/api/v1/me/wallet')).at(-1);
+    assert.strictEqual(viaCookie.auth, `Bearer ${session}`, "the person's session token goes along as the Bearer");
+    assert.strictEqual(viaCookie.cookie, '', 'the cookie itself never does');
+    assert.notStrictEqual(r.headers.get('access-control-allow-origin'), '*', "a credentialed answer is never '*'");
+    const askedBefore = asked.length;
+    ({ r } = await send('/wallet/api/v1/me/vibes/buy', 'POST', { pack: 'vibes_500' }, { Authorization: '', Cookie: `ov_token=${session}` }));
+    assert.strictEqual(r.status, 401, 'a write by cookie needs an Origin');
+    ({ r } = await get('/wallet/api/v1/me/wallet', { Cookie: `ov_token=${session}`, Origin: 'chrome-extension://abcdefghijklmnopabcdefghijklmnop' }));
+    assert.strictEqual(r.status, 401, 'never from an extension page');
+    ({ r } = await get('/wallet/api/v1/me/wallet', { Cookie: 'ov_token=short' }));
+    assert.strictEqual(r.status, 401, 'a malformed cookie is no token');
+    assert.strictEqual(asked.length, askedBefore, 'none of these asked upstream');
+
     // A page limit and cursor pass; every other query is dropped.
     ({ r } = await get('/wallet/api/v1/me/items?limit=500&cursor=c1&subject=usr_other', { Authorization: token }));
     assert.strictEqual(r.status, 200);

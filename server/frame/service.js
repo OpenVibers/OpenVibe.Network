@@ -5,7 +5,7 @@
 //   GET /api/frame?host=<hostname>     public, CORS *, max-age=600, ETag
 //   GET /api/frame/pulse               public, CORS *, max-age=30: { live_now, watching, sites, views_7d, live, updated }
 //   GET /api/frame/feed, /api/frame/wall  the menu's Feed and wall: Community's /api/v1/feed and /api/v1/pulse, relayed
-//   GET|POST|PUT /api/frame/wallet/…   the wallet sheet's fixed Billing/Inventory paths, relayed (bearer only, no cache)
+//   GET|POST|PUT /api/frame/wallet/…   the wallet sheet's fixed Billing/Inventory paths, relayed (bearer, or the ov_token cookie; no cache)
 //   POST /api/frame/menu-click         public, CORS *, text/plain, max 512 bytes, 60/min per IP: one menu click counted
 //   → { updated, nav: [{ id, name, url, icon, tagline, group, of? }], open sites, most used first (of: a product
 //                                                                      on its own domain, served by that site)
@@ -25,6 +25,7 @@
 // and screened. AI unreachable, failing or answering badly → the last good copy stays (kept in
 // frame_cache across restarts), or the hand-written copy when there has never been one.
 // ═══════════════════════════════════════════════════════════════
+const { isExtensionOrigin } = require('../auth/extension-origin');
 const express = require('express');
 const crypto = require('crypto');
 const { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName } = require('./sites');
@@ -532,13 +533,30 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // cookie; bodies are JSON of at most 8 KB; redirects are not followed; Billing's and Inventory's status and
     // body come back as they are. Nothing personal is kept, and no query is forwarded except a page limit/cursor.
     const walletAuth = (req) => (/^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '');
+    // A site that signs people in with its own cookie has no token to hand the navbar; its page asks with
+    // credentials: 'include' and the person's Network session cookie (ov_token) comes along. That token goes upstream
+    // as the Bearer (never the cookie itself), only from an origin the CORS allow-list already let through (or none:
+    // Network's own pages), never from an extension page, and a write needs an Origin: a cross-site form post carries
+    // a foreign one and the allow-list refuses it before this runs. The answer keeps the allow-list's echoed Origin with
+    // credentials (a '*' would make the browser drop it). Openvibe-shared 4.173's chips and sheet use it (2026-11-09:
+    // 4.170's chips sat at "…" on every such site).
+    const OV_TOKEN = /^[A-Za-z0-9._~+/=-]{10,4096}$/;
+    const cookieToken = (req) => {
+        const parsed = req.cookies && req.cookies.ov_token;
+        const raw = typeof parsed === 'string' ? parsed : ((String(req.get('cookie') || '').match(/(?:^|;\s*)ov_token=([^;]+)/) || [])[1] || '');
+        return OV_TOKEN.test(raw) ? raw : '';
+    };
     function walletRelay(service, method, upstream) {
         const upstreamPath = typeof upstream === 'function' ? upstream : () => upstream;
         return async (req, res) => {
-            res.set({ 'Access-Control-Allow-Origin': '*', 'Vary': 'Authorization', 'Cache-Control': 'private, no-store', 'Content-Type': 'application/json; charset=utf-8' });
+            const bearer = walletAuth(req);
+            const origin = String(req.get('origin') || '');
+            const fromCookie = !bearer && cookieToken(req) && !isExtensionOrigin(origin) && (method === 'GET' || origin) ? `Bearer ${cookieToken(req)}` : '';
+            res.set({ 'Vary': 'Authorization, Origin, Cookie', 'Cache-Control': 'private, no-store', 'Content-Type': 'application/json; charset=utf-8' });
+            if (!fromCookie) res.set('Access-Control-Allow-Origin', '*');
             const path = upstreamPath(req);
             if (!path) return res.status(404).send('{"error":"not found"}');
-            const auth = walletAuth(req);
+            const auth = bearer || fromCookie;
             if (path.startsWith('/api/v1/me/') && !auth) return res.status(401).send('{"error":"sign in to open your wallet"}');
             const u = new URL(path, svcUrl(service, service === 'billing' ? 'http://127.0.0.1:4600' : 'http://127.0.0.1:5030'));
             if (method === 'GET') {
