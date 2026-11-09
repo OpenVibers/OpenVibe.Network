@@ -114,8 +114,11 @@ function createLinkRoutes({ releaseId, releaseApi = release } = {}) {
                 'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff' });
             return res.end(req.method === 'HEAD' ? undefined : source);
         }
-        if (path === '/send.js' && (req.method === 'GET' || req.method === 'HEAD')) {
-            const source = fs.readFileSync(pathLib.join(__dirname, 'send.js'), 'utf8');
+        // The page's two scripts, from this folder: send.js and egress-settings.js. The second had no route, so
+        // openvibe.link/egress-settings.js fell through to the host's 301 onto openvibe.network, where it 404s and its
+        // same-origin resource policy blocks it (found 11-09): the egress form never got its script.
+        if ((path === '/send.js' || path === '/egress-settings.js') && (req.method === 'GET' || req.method === 'HEAD')) {
+            const source = fs.readFileSync(pathLib.join(__dirname, path.slice(1)), 'utf8');
             res.set({ 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=600', 'X-Content-Type-Options': 'nosniff' });
             return res.end(req.method === 'HEAD' ? undefined : source);
         }

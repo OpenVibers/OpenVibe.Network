@@ -188,6 +188,11 @@ const SHAPED = {
         const sendScript = await get('/send.js', 'openvibe.link');
         assert.strictEqual(sendScript.status, 200, 'Link Send script is served on the Link host');
         assert.ok(sendScript.body.includes('locker.seal'), 'the page seals content before upload');
+        // Every script the page names is served on the Link host itself (egress-settings.js 301'd to Network and 404'd).
+        for (const src of [...html.matchAll(/<script[^>]+src="(\/[^"/][^"]*)"/g)].map((m) => m[1]).filter((s) => !s.startsWith('/shared/'))) {
+            const script = await get(src, 'openvibe.link');
+            assert.strictEqual(script.status, 200, `${src} is served on openvibe.link`);
+        }
         const locker = await get('/locker.mjs', 'openvibe.link');
         assert.strictEqual(locker.status, 200, 'the SDK browser bundle is served for Link');
         assert.strictEqual(locker.headers['access-control-allow-origin'], '*', 'the public SDK bundle can be imported by Link\'s loopback window');
