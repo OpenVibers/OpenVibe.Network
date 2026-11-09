@@ -9,6 +9,9 @@ const cache = require('openvibe-shared/cache-policy');
  *   GET /api/v1/changelog?service=&limit=&before=   cached proxy of OpenVibe.Blog's network changelog
  *       (its public /api/v1/changelog), so every OpenVibe site's shared "shipped" widget reads it from
  *       openvibe.network, which each site's CSP already allows. CORS *, 60 s cache, stale on failure.
+ *       It also carries latest_devblog: the newest devblog for the requested service (network-wide
+ *       without one) as the "What's new" card's lead — null when Blog cannot answer, never failing the
+ *       changelog itself.
  *   GET /updates[?site=<id|host>]                  the whole network's update log: server-rendered
  *       first page (useful without JavaScript), then openvibe-shared/shipped.js's log view (days,
  *       "Load more", a filter per site, the Patch notes posts).
@@ -22,43 +25,87 @@ const MAX_KEYS = 300;
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const SERVICE_RE = /^[a-z][a-z0-9-]{1,39}$/;
 const CURSOR_RE = /^[A-Za-z0-9_-]{1,120}$/;
+const text = (v, max) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null);
+const https = (v) => (typeof v === 'string' && /^https:\/\//.test(v) ? v : null);
+
+/** Blog's devblog item → the "What's new" card's lead: text capped, only https URLs. Blog sends the figure as
+ *  its art ({ mediaId, url }), or already as a URL. */
+function devblogLead(post) {
+    if (!post || typeof post !== 'object') return null;
+    const figure = post.figure && typeof post.figure === 'object' ? post.figure.url : post.figure;
+    return {
+        title: text(post.title, 200),
+        summary: text(post.summary, 400),
+        figure: https(figure),
+        url: https(post.url),
+        published_at: typeof post.published_at === 'string' && post.published_at ? post.published_at : null,
+    };
+}
 
 function createUpdatesRoutes({ blogUrl = 'http://127.0.0.1:4810', release = null, fetchImpl = globalThis.fetch, now = () => Date.now(), log = console } = {}) {
     const base = String(blogUrl).replace(/\/+$/, '');
     const feedCache = new Map();   // key -> { at, body }
 
+    function serviceOf(q) {
+        return q && q.service && SERVICE_RE.test(String(q.service)) ? String(q.service) : null;
+    }
+
     function queryOf(q) {
         const out = new URLSearchParams();
-        if (q.service && SERVICE_RE.test(String(q.service))) out.set('service', String(q.service));
+        const service = serviceOf(q);
+        if (service) out.set('service', service);
         const n = parseInt(q.limit, 10);
         out.set('limit', String(Number.isFinite(n) ? Math.min(Math.max(n, 1), 100) : 20));
         if (q.before && CURSOR_RE.test(String(q.before))) out.set('before', String(q.before));
         return out.toString();
     }
 
-    /** The feed for a normalised query string: fresh from cache, else Blog, else stale, else null. */
-    async function feed(qs) {
-        const hit = feedCache.get(qs);
+    /**
+     * One Blog call, cached for TTL_MS like the changelog. A failure never rejects: the changelog falls back
+     * to its stale copy (its widget keeps the list), while the devblog lead is null — a card, not the log, so
+     * sites never show a stale "What's new".
+     */
+    async function readBlog(key, path, { label, staleOnFailure }) {
+        const hit = feedCache.get(key);
         if (hit && now() - hit.at < TTL_MS) return hit.body;
         try {
-            const res = await fetchImpl(`${base}/api/v1/changelog?${qs}`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
+            const res = await fetchImpl(`${base}${path}`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
             if (!res.ok) throw new Error(`blog answered ${res.status}`);
             const body = await res.json();
             if (feedCache.size >= MAX_KEYS) feedCache.delete(feedCache.keys().next().value);
-            feedCache.set(qs, { at: now(), body });
+            feedCache.set(key, { at: now(), body });
             return body;
         } catch (err) {
-            if (log && log.warn) log.warn(`[updates] changelog unavailable: ${err.message}`);
-            return hit ? hit.body : null;
+            if (log && log.warn) log.warn(`[updates] ${label} unavailable: ${err.message}`);
+            return staleOnFailure && hit ? hit.body : null;
+        }
+    }
+
+    /** The feed for a normalised query string: fresh from cache, else Blog, else stale, else null. */
+    function feed(qs) {
+        return readBlog(qs, `/api/v1/changelog?${qs}`, { label: 'changelog', staleOnFailure: true });
+    }
+
+    /** The newest published devblog for a service (network-wide without one): null when Blog cannot answer. */
+    async function latestDevblog(service) {
+        try {
+            const q = new URLSearchParams();
+            if (service) q.set('service', service);
+            q.set('limit', '1');
+            const body = await readBlog(`devblogs:${service || ''}`, `/api/v1/devblogs?${q}`, { label: 'devblog list', staleOnFailure: false });
+            return devblogLead(body && Array.isArray(body.posts) ? body.posts[0] : null);
+        } catch (err) {
+            if (log && log.warn) log.warn(`[updates] devblog list unavailable: ${err.message}`);
+            return null;
         }
     }
 
     const r = express.Router();
     r.get('/api/v1/changelog', async (req, res) => {
         res.set('Access-Control-Allow-Origin', '*');
-        const body = await feed(queryOf(req.query));
+        const [body, latest] = await Promise.all([feed(queryOf(req.query)), latestDevblog(serviceOf(req.query))]);
         if (!body) return res.status(502).set('Cache-Control', 'no-store').json({ error: 'changelog_unavailable', detail: 'The network changelog could not be read just now.' });
-        res.set('Cache-Control', 'public, max-age=60').json(body);
+        res.set('Cache-Control', 'public, max-age=60').json({ ...body, latest_devblog: latest });
     });
     r.options('/api/v1/changelog', (_req, res) => res.set('Access-Control-Allow-Origin', '*').set('Access-Control-Allow-Methods', 'GET').set('Access-Control-Max-Age', '86400').status(204).end());
 
