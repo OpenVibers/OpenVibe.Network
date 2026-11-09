@@ -198,6 +198,15 @@ ${installBlock(release, userAgent)}
 <p class="np-cta" style="margin-top:12px">${kit.button({ href: 'https://openvibe.my/machines', label: 'Open your machines', kind: 'primary' })} ${kit.button({ href: '/pair', label: 'Pair a machine', kind: 'quiet' })}</p>
 </section>
 
+<section class="np-sec" id="browsing"><h2>Your usual internet address</h2>
+<p>Your Actor's browsing on OpenVibe computers goes out through this computer's internet, so sites see your usual address.</p>
+<form class="np-send" data-egress-settings>
+<label><span><input type="checkbox" name="enabled" checked> Use my computer's internet</span></label>
+<label>When my computer is offline<select name="offline"><option value="openvibe">Use OpenVibe's address</option><option value="wait">Wait for my computer</option></select></label>
+<label>Monthly limit (GB)<input type="number" name="cap" min="0" max="10000" value="20" step="1"></label>
+<label>Sites that should use OpenVibe's address<textarea name="sites" placeholder="example.com, another.example"></textarea></label>
+<button type="submit">Save browsing settings</button><p role="status" data-egress-status></p>
+</form></section>
 <section class="np-sec" id="send" aria-labelledby="h-send"><h2 id="h-send">Send to my machine</h2>
 <p class="np-fine">Choose one of your paired machines and send a file or a short text note. Link encrypts it for that machine before it leaves this page; the relay only holds the encrypted envelope for up to 24 hours.</p>
 <form class="np-send" data-link-send>
@@ -230,6 +239,7 @@ ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact'
 ${require('../boost').SCRIPT}
 <script src="/shared/kit-web.js" defer></script>
 <script type="module" src="/send.js"></script>
+<script src="/egress-settings.js" defer></script>
 <script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:'https://openvibe.network',sessionUrl:'/auth/me',loginUrl:'/auth/login?next={path}',logoutUrl:'/auth/logout?next={url}',silentLogin:'/auth/login?silent=1&next={url}',links:[{label:'Link',href:'/',icon:'fa-desktop',featured:true,active:true},{label:'Machines',href:'/machines',icon:'fa-laptop'},{label:'Network',href:'https://openvibe.network/'},{label:'My Account',href:'https://openvibe.network/my'}]});}catch(e){}});</script>
 </body>
 </html>`;

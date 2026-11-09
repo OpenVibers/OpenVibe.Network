@@ -340,6 +340,7 @@ async function meOf(db, user) {
 // Mounted at /api/v1/me/nodes behind requireAuth (server/index.js): a person's own machines, and nothing else.
 function userRouter(requireAuth, now = () => Date.now()) {
     const router = express.Router();
+    require('../node/egress').mount({ user: router, requireAuth, now });
     router.use(http.middleware());
     const send = async (res, fn) => {
         try { return await fn(); } catch (e) {
@@ -472,6 +473,7 @@ async function rotateCredential(db, id, now = Date.now()) {
 // the token's signature, audience and capability; ownership is selfOf's, before any write.
 function selfRouter(now = () => Date.now()) {
     const router = express.Router();
+    require('../node/egress').mount({ self: router, now });
     router.use(http.middleware());
     const send = async (res, fn) => {
         res.set('Cache-Control', 'no-store');
@@ -537,6 +539,7 @@ function routers({ guard, now = () => Date.now() }) {
             paired_for: { service: p.paired_by_service, ref: p.pairing_ref },
         });
     });
+    require('../node/egress').mount({ internal, pairing, now });
     return { internal, pairing };
 }
 
