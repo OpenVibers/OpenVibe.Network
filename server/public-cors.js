@@ -29,6 +29,7 @@ function isPublicDiscoveryPath(p) {
     const path = String(p || '');
     if (path === '/.well-known/openvibe') return true;
     if (/^\/api\/v1\/levels\/(?:batch|board|people\/[A-Za-z0-9_]{1,40})$/.test(path)) return true;
+    if (/^\/api\/v1\/people\/[A-Za-z0-9_]{3,24}\/card$/.test(path)) return true;
     if (path === '/api/v1/changelog') return true;   // the network changelog every site's "shipped" widget reads
     if (path === '/api/v1/frame/today' || path === '/api/v1/frame/today/') return true;
     if (/^\/api\/v1\/profiles\/[A-Za-z0-9_]{1,40}$/.test(path)) return true;   // public profiles, for every site

@@ -165,7 +165,7 @@ async function networkPart(db, userId) {
     const truncated = [];
     const add = (name, content, cut) => { files.push({ name, content }); if (cut) truncated.push(name); };
     const keep = ['id', 'username', 'email', 'display_name', 'avatar_url', 'bio', 'role', 'profile_color', 'created_at', 'updated_at', 'last_seen',
-        'email_verified', 'email_verified_at', 'name_effect', 'particle_effect', 'history_paused', 'history_agents_allowed', 'history_keep_private', 'history_keep_mature', 'subject_id'];
+        'email_verified', 'email_verified_at', 'name_effect', 'particle_effect', 'history_paused', 'history_agents_allowed', 'history_keep_private', 'history_keep_mature', 'card_visibility', 'subject_id'];
     const account = {};
     for (const k of keep) if (k in u) account[k] = u[k];
     add('account.json', account);
@@ -413,7 +413,7 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         for (const id of userIds) {
             const u = await db.prepare('SELECT subject_id FROM users WHERE id = ?').get(id);
             const name = `deleted-${String(u.subject_id || id).slice(-12).toLowerCase()}`;
-            const set = { username: name, email: null, password_hash: '!deleted', display_name: null, avatar_url: null, bio: '', profile_color: null, ban_reason: null,
+            const set = { username: name, email: null, password_hash: '!deleted', display_name: null, avatar_url: null, bio: '', card_visibility: '{}', profile_color: null, ban_reason: null,
                 name_effect: null, particle_effect: null, email_verified: 0, email_verified_at: null, email_bounced_at: null, email_bounce_reason: null, deleted_at: at };
             const keys = Object.keys(set).filter((k) => cols.includes(k));
             await db.prepare(`UPDATE users SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).run(...keys.map((k) => set[k]), id);
