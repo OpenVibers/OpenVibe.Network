@@ -42,12 +42,23 @@ const locker = require('openvibe-sdk/locker');
     try {
         const recipient = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
         const publicKey = recipient.publicKey.export({ format: 'jwk' });
-        let res = await call('/key', 'target', 'PUT', { public_key: publicKey });
+        let res = await call('/key', 'target', 'PUT', { public_key: publicKey, lan: ['http://192.168.1.20:4123'] });
         assert.equal(res.status, 200, 'the target machine publishes its own receive key');
-        assert.equal((await res.json()).key_thumbprint, await locker.jwkThumbprint(publicKey), 'Network registers the SDK Locker thumbprint');
+        const keyBody = await res.json();
+        assert.equal(keyBody.key_thumbprint, await locker.jwkThumbprint(publicKey), 'Network registers the SDK Locker thumbprint');
+        assert.deepEqual(keyBody.lan, ['http://192.168.1.20:4123'], 'Link publishes its own local endpoint for a same-network transfer');
+        res = await call('/lan-key', 'from');
+        assert.equal(res.status, 200);
+        const ownerLanKey = (await res.json()).key;
+        res = await call('/lan-key', 'target');
+        assert.equal((await res.json()).key, ownerLanKey, 'the owner\'s own machines share the LAN sender secret');
+        res = await call('/lan-key', 'stranger');
+        assert.notEqual((await res.json()).key, ownerLanKey, 'another owner has a different LAN sender secret');
         res = await call('/targets', 'from');
         assert.equal(res.status, 200);
-        assert.deepEqual((await res.json()).machines[0].public_key, { kty: 'EC', crv: 'P-256', x: publicKey.x, y: publicKey.y });
+        const listedTarget = (await res.json()).machines[0];
+        assert.deepEqual(listedTarget.public_key, { kty: 'EC', crv: 'P-256', x: publicKey.x, y: publicKey.y });
+        assert.deepEqual(listedTarget.lan, ['http://192.168.1.20:4123'], 'the target\'s local endpoint is offered to its owner\'s other machine');
         const subject = { type: 'link', id: target };
         const sealed = await locker.seal(new TextEncoder().encode('Locker round trip'), {
             lock: 'people', keys: [{ subject, publicKey }],
@@ -85,6 +96,51 @@ const locker = require('openvibe-sdk/locker');
         assert.equal(res.status, 204);
         assert.equal((await (await call('/inbox', 'target')).json()).items.length, 0);
 
+        // A transfer uploaded in parts resumes after a dropped connection: the relay says which part it has, the
+        // sender continues there, and finishing produces exactly one item.
+        const half = Math.floor(envelope.length / 3);
+        res = await call('/upload', 'stranger', 'POST', { target_node: target, bytes: Buffer.byteLength(envelope) });
+        assert.equal(res.status, 404, 'another owner cannot start an upload to this machine');
+        res = await call('/upload', 'from', 'POST', { target_node: target, bytes: Buffer.byteLength(envelope) });
+        assert.equal(res.status, 201, 'a machine starts a resumable upload');
+        const upload = await res.json();
+        assert.equal(upload.seq, 0);
+        res = await call(`/upload/${upload.id}/0`, 'from', 'PUT', { chunk: envelope.slice(0, half) });
+        assert.equal(res.status, 200);
+        assert.equal((await res.json()).seq, 1);
+        res = await call(`/upload/${upload.id}/0`, 'from', 'PUT', { chunk: envelope.slice(0, half) });
+        assert.equal(res.status, 200, 'a repeated part is acknowledged, not stored twice');
+        // The connection drops here. The sender asks the relay, not its own memory, where to continue.
+        res = await call(`/upload/${upload.id}`, 'from');
+        assert.equal(res.status, 200);
+        const resumed = await res.json();
+        assert.equal(resumed.seq, 1, 'the relay reports the part it already holds');
+        assert.ok(resumed.received > 0);
+        res = await call(`/upload/${upload.id}/1`, 'from', 'PUT', { chunk: envelope.slice(half) });
+        assert.equal(res.status, 200);
+        res = await call(`/upload/${upload.id}/finish`, 'from', 'POST', {});
+        assert.equal(res.status, 201, 'a resumed upload finishes');
+        const resumedItem = await res.json();
+        res = await call(`/upload/${upload.id}/finish`, 'from', 'POST', {});
+        assert.equal(res.status, 201, 'finishing again returns the same item, not a second one');
+        assert.equal((await res.json()).id, resumedItem.id);
+        assert.equal((await (await call(`/upload/${upload.id}`, 'from')).json()).item_id, resumedItem.id);
+        let mine = (await (await call(`/${resumedItem.id}/accept`, 'target', 'POST')).json()).envelope;
+        assert.equal(mine, envelope, 'the parts add up to the exact ciphertext');
+        assert.equal((await call(`/${resumedItem.id}/complete`, 'target', 'POST')).status, 204);
+        res = await call('/outbox', 'from');
+        assert.equal(res.status, 200);
+        const sentByMachine = (await res.json()).items.find((i) => i.id === resumedItem.id);
+        assert.equal(sentByMachine.state, 'saved', 'the sender sees that the receiving machine saved the item');
+        assert.ok(sentByMachine.target_name, 'the outbox names the receiving machine');
+        res = await call('/upload', 'from', 'POST', { target_node: target, bytes: 4 });
+        assert.equal(res.status, 201);
+        const refused = await res.json();
+        res = await call(`/upload/${refused.id}/0`, 'from', 'PUT', { chunk: 'AAAA' });
+        assert.equal(res.status, 200);
+        res = await call(`/upload/${refused.id}/0`, 'from', 'PUT', { chunk: 'BBBB' });
+        assert.equal(res.status, 409, 'a part cannot be replaced with different bytes');
+
         // The browser sender: the signed-in person's own keyed machines only, at the paths the page calls.
         const web = (path, method = 'GET', body, token = 'alice-session') => fetch(base.replace(/\/send$/, '') + path, {
             method, headers: { authorization: token, ...(body ? { 'content-type': 'application/json' } : {}) },
@@ -99,8 +155,23 @@ const locker = require('openvibe-sdk/locker');
         assert.equal(res.status, 404, 'the web sender cannot address another owner\'s machine');
         res = await web('/me/send', 'POST', { target_node: target, envelope });
         assert.equal(res.status, 201, 'the page\'s POST /api/v1/me/nodes/send has a route');
+        const webItem = await res.json();
         const fromWeb = (await (await call('/inbox', 'target')).json()).items;
         assert.equal(fromWeb.length, 1);
         assert.equal(fromWeb[0].sender_name, 'openvibe.link');
+        // The page's delivery list is its own outbox: waiting, then accepted, then saved.
+        res = await web('/me/send');
+        assert.equal(res.status, 200);
+        let pageItem = (await res.json()).items.find((i) => i.id === webItem.id);
+        assert.equal(pageItem.state, 'pending', 'the page sees the item waiting');
+        assert.ok(pageItem.target_name, 'the page names the receiving machine');
+        assert.equal((await call(`/${webItem.id}/accept`, 'target', 'POST')).status, 200);
+        res = await web('/me/send');
+        pageItem = (await res.json()).items.find((i) => i.id === webItem.id);
+        assert.equal(pageItem.state, 'accepted', 'the page sees the machine accepted it');
+        assert.equal((await call(`/${webItem.id}/complete`, 'target', 'POST')).status, 204);
+        res = await web('/me/send');
+        pageItem = (await res.json()).items.find((i) => i.id === webItem.id);
+        assert.equal(pageItem.state, 'saved', 'the page sees it was saved');
     } finally { await new Promise((ok) => server.close(ok)); }
 })().catch((e) => { console.error(e); process.exitCode = 1; });

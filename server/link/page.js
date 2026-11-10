@@ -25,7 +25,7 @@ const DOES = [
 const NEVER = [
     'It cannot reach your computer without your pairing: nobody drives it, reads it or runs a command on it until you approved the machine.',
     'Nothing runs that you did not turn on: no task, no camera, no driver and no upload starts on its own.',
-    'It opens no port: it connects out, so it works behind any home router.',
+    'It opens no port to the internet: it connects out, so it works behind any home router. On your own network it takes a transfer from your other machines only after they prove they are yours.',
     'It keeps a local kill switch: one command stops everything it drives, and it stays stopped.',
 ];
 
@@ -211,8 +211,13 @@ ${installBlock(release, userAgent)}
 <label>Send to <select name="machine" required><option value="">Loading your machines…</option></select></label>
 <label>File <input name="file" type="file"></label>
 <label>Or a text note <textarea name="text" rows="3" maxlength="10000" placeholder="Write a short note"></textarea></label>
-<button type="submit">Encrypt and send</button><p role="status" aria-live="polite" data-send-status></p>
+<button type="submit">Encrypt and send</button>
+<progress max="100" value="0" data-send-progress hidden></progress>
+<p role="status" aria-live="polite" data-send-status></p>
 </form>
+<h3>Sent from this page</h3>
+<p class="np-fine">Only what this page sent: whether the machine accepted it, declined it, or saved it. Nothing here can be read by OpenVibe.</p>
+<ul data-send-delivery aria-live="polite"></ul>
 </section>
 
 ${releaseBlock(release)}
