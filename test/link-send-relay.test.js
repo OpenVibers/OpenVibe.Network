@@ -173,5 +173,17 @@ const locker = require('openvibe-sdk/locker');
         res = await web('/me/send');
         pageItem = (await res.json()).items.find((i) => i.id === webItem.id);
         assert.equal(pageItem.state, 'saved', 'the page sees it was saved');
+        // The page's own resumable upload: the signed-in person's session, no node token.
+        res = await web('/me/send/upload', 'POST', { target_node: target, bytes: Buffer.byteLength(envelope) });
+        assert.equal(res.status, 201, 'the page can start a resumable upload');
+        const pageUpload = await res.json();
+        res = await web(`/me/send/upload/${pageUpload.id}/0`, 'PUT', { chunk: envelope });
+        assert.equal(res.status, 200);
+        res = await web(`/me/send/upload/${pageUpload.id}/finish`, 'POST', {});
+        assert.equal(res.status, 201, 'the page can finish a resumable upload');
+        res = await call('/inbox', 'target');
+        const pageInbox = (await res.json()).items;
+        assert.equal(pageInbox.length, 1, 'the page\'s upload reached the machine');
+        await call(`/${pageInbox[0].id}/complete`, 'target', 'POST');
     } finally { await new Promise((ok) => server.close(ok)); }
 })().catch((e) => { console.error(e); process.exitCode = 1; });
