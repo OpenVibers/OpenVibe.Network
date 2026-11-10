@@ -684,3 +684,14 @@ html[data-ov-motion=off] .me-act:hover{transform: none}
 .my-out-still{margin:18px 0 0;color:var(--text-muted,#7386a3);font-size:.88rem}
 .my-out-all{color:var(--text-secondary,#96a7c2)}
 @media (max-width:520px){.my-out-go{display:flex;width:100%}}
+
+/* Email addresses (11-10, the owner: "customize all the inputs and buttons… that aren't styled"): each address with what
+   it is beside it and its actions under it, and the form to add one, in the kit's own controls. */
+.my-email { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.my-email-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.my-email-top strong { overflow-wrap: anywhere; }
+.my-email-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.my-email-add { margin-top: 16px; }
+.my-email-row { display: flex; gap: 8px; align-items: stretch; }
+.my-email-row input { flex: 1; min-width: 0; }
+#account-emails-message:empty { display: none; }

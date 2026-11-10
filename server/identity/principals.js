@@ -252,8 +252,8 @@ const DEFAULT_GRANTS = [
     ['wiki', 'media.object.read', 'openvibe.media', ['wiki']],
     // "Vibe a wiki" (OpenVibe.Wiki server/wiki/vibe.js): research and writing through OpenVibe.AI, and the pictures a
     // generated page uses, stored in Media for the person who asked.
-    ['wiki', 'ai.run.create', 'openvibe.ai', ['wiki.*', 'research.*']],
-    ['wiki', 'ai.run.read', 'openvibe.ai', ['wiki.*', 'research.*']],
+    ['wiki', 'ai.run.create', 'openvibe.ai', ['wiki.*', 'research.*', 'image.picture']],
+    ['wiki', 'ai.run.read', 'openvibe.ai', ['wiki.*', 'research.*', 'image.picture']],
     ['wiki', 'media.object.upload', 'openvibe.media', ['wiki']],
     // Wave 16: Blog (same shape as Wiki; it may hide the thread of a post that stopped being public).
     ['blog', 'identity.subject.resolve', SELF_AUDIENCE, []],
@@ -288,8 +288,8 @@ const DEFAULT_GRANTS = [
     ['news', 'ai.run.create', 'openvibe.ai', ['news.*']],
     ['news', 'ai.run.read', 'openvibe.ai', ['news.*']],
     // Blog's "Draft with AI" (blog.draft_post; Blog server/domain/ai-drafts.js, 2026-09-24).
-    ['blog', 'ai.run.create', 'openvibe.ai', ['blog.*']],
-    ['blog', 'ai.run.read', 'openvibe.ai', ['blog.*']],
+    ['blog', 'ai.run.create', 'openvibe.ai', ['blog.*', 'image.picture']],
+    ['blog', 'ai.run.read', 'openvibe.ai', ['blog.*', 'image.picture']],
     // Blog's AI desks (server/desks.js): digests written from the items Sources has fetched.
     ['blog', 'sources.item.read', 'openvibe.sources', []],
     // Wave 19: Trade (informational) reads Sources filings and publishes events.
@@ -605,6 +605,10 @@ const DEFAULT_GRANTS = [
     ['ai', 'events.subscription.manage', 'openvibe.events', []],
     ['chat', 'search.query.delegate', 'openvibe.search', []],
     ['ai', 'search.fabric.query', 'openvibe.search', []],
+    // AI's shared image task (image.picture, rich-content plan §4/§5) stores a found or made picture in the
+    // calling product's Media tenant (blog, wiki) or AI's own, for the person the run acts for (X-OV-Subject).
+    ['ai', 'media.object.upload', 'openvibe.media', ['ai', 'blog', 'wiki']],
+    ['ai', 'media.object.read', 'openvibe.media', ['ai', 'blog', 'wiki']],
     // OpenVibe.Today (plan 2026-10-28 §5.3): today.event.* from its outbox, reminders as notifications to the person
     // who set them (resolved from their usr_ subject), and its live.stream.* and account subscriptions.
     ['today', 'events.event.publish', 'openvibe.events', []],

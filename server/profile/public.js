@@ -391,7 +391,7 @@ function monthDay(day) {
 
 function publicPlacesHtml(places) {
     const cards = [];
-    if (places.live) cards.push(`<li><a href="${esc(places.live.url)}"><strong>${esc(places.live.title)}</strong>${places.live.is_live ? '<span class="pf-live">Live now</span>' : '<span>Live channel</span>'}</a></li>`);
+    if (places.live) cards.push(`<li><a href="${esc(places.live.url)}"><strong>@${esc(places.live.username || places.live.title)}</strong>${places.live.is_live ? '<span class="pf-live">Live now</span>' : '<span>Live channel</span>'}</a></li>`);
     for (const video of places.videos || []) cards.push(`<li><a href="${esc(video.url)}"><strong>${esc(video.title)}</strong><span>Video${video.date ? ` · ${esc(monthDay(video.date))}` : ''}</span></a></li>`);
     for (const space of places.spaces || []) cards.push(`<li><a href="${esc(space.url)}"><strong>${esc(space.title)}</strong><span>Published site</span></a></li>`);
     for (const paste of places.community || []) cards.push(`<li><a href="${esc(paste.url)}"><strong>${esc(paste.title)}</strong><span>Community paste</span></a></li>`);
