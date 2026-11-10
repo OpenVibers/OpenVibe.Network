@@ -12,7 +12,10 @@ const express = require('express');
 
 const page = require('../server/link/page');
 const release = require('../server/link/release');
-const { createLinkRoutes, llmsTxt } = require('../server/link/routes');
+const { createLinkRoutes, llmsTxt, safeReturnTo } = require('../server/link/routes');
+assert.equal(safeReturnTo('https://evil.example/path'), null, 'return address rejects unknown sites');
+assert.equal(safeReturnTo('javascript:alert(1)'), null, 'return address rejects non-https URLs');
+assert.ok(safeReturnTo('https://openvibe.codes/run'), 'return address accepts an exact manifest site');
 
 // ── The release answer: cached for ten minutes, with a fallback when GitHub cannot be reached ──
 const FIXTURE = {

@@ -127,11 +127,15 @@ const runToken = (capability, person = ana.subject_id) => serviceAuth.signServic
 }, keys.privateKey);
 
 try {
+    const signedOut = await call('GET', '/api/v1/machines');
+    assert.strictEqual(signedOut.status, 401, "the cross-site read requires the person's Network token");
     // ── A person sees their own machines, and the hub calls Bot as them. ──
     const mine = await call('GET', '/api/v1/machines', { user: ana });
     assert.strictEqual(mine.status, 200, JSON.stringify(mine.body));
     assert.deepStrictEqual(mine.body.machines.map((m) => m.id), [anaMachine]);
     assert.strictEqual(mine.body.machines[0].kind, 'onboard');
+    assert.strictEqual(mine.body.machines[0].system, 'onboard');
+    assert.deepStrictEqual(mine.body.machines[0].can_run, []);
     assert.deepStrictEqual(mine.body.machines[0].roles, []);
     assert.deepStrictEqual(mine.body.machines[0].running, []);
     const last = calls[calls.length - 1];

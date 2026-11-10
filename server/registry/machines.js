@@ -96,6 +96,10 @@ function machineOf(m) {
     };
     if (typeof m.name === 'string' && m.name) out.name = m.name;
     if (typeof m.os === 'string' && m.os) out.os = m.os;
+    // The cross-site picker needs only a displayable system label and the abilities
+    // already granted to this machine; never expose node credentials or relay data.
+    out.system = out.os || out.kind;
+    out.can_run = out.roles.map((role) => ({ 'codes.worker': 'worker', 'desks.host': 'browser', 'ai.host': 'models', 'bot.robot': 'robot' }[role] || role));
     if (typeof m.last_seen_at === 'string' && m.last_seen_at) out.last_seen_at = m.last_seen_at;
     if (typeof m.node_version === 'string' && m.node_version) out.node_version = m.node_version;
     if (typeof m.node_id === 'string' && PRINCIPAL.test(m.node_id)) out.principal_id = m.node_id;
