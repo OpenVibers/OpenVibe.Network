@@ -85,7 +85,13 @@ async function consume(db, f, code, now, enrollment = false) {
         await db.prepare('UPDATE user_mfa SET last_step = ? WHERE user_id = ?').run(step, f.user_id);
         ok = true;
     } else if (!enrollment && /^[A-F0-9]{20}$/.test(code)) {
-        ok = (await db.prepare('UPDATE mfa_recovery_codes SET used_at = ? WHERE user_id = ? AND code_hash = ? AND used_at IS NULL').run(now, f.user_id, hash(code))).changes === 1;
+        const candidates = await db.prepare('SELECT code_hash FROM mfa_recovery_codes WHERE user_id = ? AND used_at IS NULL').all(f.user_id);
+        for (const candidate of candidates) {
+            if (await bcrypt.compare(code, candidate.code_hash)) {
+                ok = (await db.prepare('UPDATE mfa_recovery_codes SET used_at = ? WHERE user_id = ? AND code_hash = ? AND used_at IS NULL').run(now, f.user_id, candidate.code_hash)).changes === 1;
+                break;
+            }
+        }
     }
     const failures = ok ? 0 : (Number(f.locked_until) > 0 ? 1 : f.failures + 1);
     await db.prepare('UPDATE user_mfa SET failures = ?, locked_until = ? WHERE user_id = ?').run(failures, failures >= 5 ? now + 5 * MINUTE : 0, f.user_id);
@@ -159,7 +165,7 @@ function router({ requireAuth, signToken, sanitizeUser }) {
             if (!f || f.secret_ciphertext || !await consume(db, f, cleanCode(req.body.code), Date.now(), true)) return null;
             const codes = Array.from({ length: 10 }, () => crypto.randomBytes(10).toString('hex').toUpperCase());
             await db.prepare('DELETE FROM mfa_recovery_codes WHERE user_id = ?').run(req.user.id);
-            for (const code of codes) await db.prepare('INSERT INTO mfa_recovery_codes (user_id, code_hash) VALUES (?, ?)').run(req.user.id, hash(code));
+            for (const code of codes) await db.prepare('INSERT INTO mfa_recovery_codes (user_id, code_hash) VALUES (?, ?)').run(req.user.id, await bcrypt.hash(code, 10));
             await db.prepare('UPDATE user_mfa SET secret_ciphertext = pending_secret_ciphertext, pending_secret_ciphertext = NULL, pending_until = 0, enabled_at = ? WHERE user_id = ?').run(Date.now(), req.user.id);
             return codes;
         });
