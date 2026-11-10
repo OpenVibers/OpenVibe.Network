@@ -226,7 +226,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
   .home-chips>li>a { min-height: 44px; }
 }
 </style>
-<script src="/shared/theme-loader.js"></script>
+<script src="/shared/theme-loader.js" defer></script>
 </head>
 <body>
 
@@ -272,9 +272,9 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
 <!-- Footer (shared across the network) -->
 <div id="ov-footer"></div>
 
-<script src="/shared/navbar.js"></script>
+<script src="/shared/navbar.js" defer></script>
 <script src="/js/account-safety.js" defer></script>
-<script src="/shared/footer.js"></script>
+<script src="/shared/footer.js" defer></script>
 <script src="/shared/shipped.js" defer></script>
 <script src="/shared/boost.js" data-main="#main" defer></script>
 <script>(function () { function shipped() { if (window.OpenVibeShipped && document.getElementById('ov-shipped')) OpenVibeShipped.mount('#ov-shipped', { limit: 8, title: 'Recently shipped across OpenVibe', more: '/updates' }); } document.addEventListener('DOMContentLoaded', shipped); document.addEventListener('ov:boost:load', shipped); })();</script>
