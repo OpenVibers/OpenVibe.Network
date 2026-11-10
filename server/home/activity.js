@@ -57,7 +57,7 @@ function liveRows(body) {
 function liveStreams(body) {
     return liveRows(body)
         .map((s) => ({
-            name: clip(s.display_name || s.username, 40),
+            name: '@' + clip(s.username, 39),
             title: clip(s.ai_title || s.title || `${s.username} is live`, 90),
             url: `${PUBLIC.live}/@${encodeURIComponent(s.username)}`,
             thumb: abs(PUBLIC.live, s.thumbnail_url),
