@@ -42,7 +42,7 @@ function page({ answers }) {
     let timers = [];
     const sandbox = {
         document: { getElementById: (id) => ids[id] || null, createElement: (t) => new Node(t), querySelectorAll: (sel) => (sel === '[data-machine]' ? ids['mc-list'].all((n) => n.getAttribute('data-machine')) : []) },
-        console, Date, Number, String, Set, Math, JSON, Promise,
+        console, Date, Number, String, Set, Math, JSON, Promise, URLSearchParams, location: { search: '' },
         navigator: { clipboard: { writeText: async () => {} } },
         setInterval: (fn) => { timers.push(fn); return timers.length; }, clearInterval: () => { timers = []; },
         apiFetch: async (p, o = {}) => { calls.push([o.method || 'GET', p, o.body ? JSON.parse(o.body) : null]); const a = answers(o.method || 'GET', p, o.body ? JSON.parse(o.body) : null); if (a instanceof Error) throw a; return a; },

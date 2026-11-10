@@ -151,6 +151,14 @@ async function mcPair() {
             const fresh = ((list && list.machines) || []).find((m) => !before.has(m.id));
             if (!fresh) return;
             clearInterval(mcWatch);
+            const returnTo = new URLSearchParams(location.search).get('return_to');
+            if (returnTo) {
+                const done = new URL('https://openvibe.link/add-computer/complete');
+                done.searchParams.set('return_to', returnTo);
+                done.searchParams.set('machine', fresh.id);
+                location.assign(done.toString());
+                return;
+            }
             box.hidden = true;
             mcSay(`${fresh.name || 'Your machine'} is paired. Choose what it does for you below.`);
             loadMachines();

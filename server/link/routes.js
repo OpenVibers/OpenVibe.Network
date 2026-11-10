@@ -22,6 +22,18 @@ function hostOf(req) {
     return String((req.headers && req.headers.host) || '').split(':')[0].toLowerCase();
 }
 
+// Return destinations are exact HTTPS origins from service manifests. Reject credentials,
+// protocol-relative URLs, localhost and arbitrary hosts before redirecting.
+function safeReturnTo(value) {
+    if (!value || String(value).length > 2048) return null;
+    try {
+        const url = new URL(String(value));
+        if (url.protocol !== 'https:' || url.username || url.password) return null;
+        if (!require('../first-party-origins').manifestOrigins().has(url.origin)) return null;
+        return url.toString();
+    } catch { return null; }
+}
+
 /** Link's llms.txt: what the page is, how to install it, and where the docs are. */
 function llmsTxt() {
     return [
@@ -79,6 +91,20 @@ function createLinkRoutes({ releaseId, releaseApi = release } = {}) {
             try { rel = await releaseApi.latest(); } catch { rel = release.FALLBACK; }
             const target = rel && rel.installUrl ? rel.installUrl : release.FALLBACK.installUrl;
             return res.set('Cache-Control', 'public, max-age=600').redirect(302, target);
+        }
+
+        if (path === '/add-computer') {
+            const returnTo = safeReturnTo(url.searchParams.get('return_to'));
+            if (!returnTo) return res.status(400).type('text/plain').send('Choose a return address on an OpenVibe site.');
+            return res.set('Cache-Control', 'no-store').redirect(302, `${SITE}/machines?return_to=${encodeURIComponent(returnTo)}`);
+        }
+        if (path === '/add-computer/complete') {
+            const returnTo = safeReturnTo(url.searchParams.get('return_to'));
+            const id = url.searchParams.get('machine') || '';
+            if (!returnTo || !/^dev_[0-9A-HJKMNP-TV-Z]{26}$/.test(id)) return res.status(400).type('text/plain').send('That computer could not be selected.');
+            const target = new URL(returnTo);
+            target.searchParams.set('machine', id);
+            return res.set('Cache-Control', 'no-store').redirect(303, target.toString());
         }
 
         // The machine hub lives on Link's own origin. It uses Network's same-origin
@@ -155,4 +181,4 @@ function pathResolveLocker() {
     return pathLib.join(pathLib.dirname(require.resolve('openvibe-sdk')), 'browser', 'openvibe-sdk.mjs');
 }
 
-module.exports = { createLinkRoutes, llmsTxt, hostOf, HOST, WWW_HOST, SITE };
+module.exports = { createLinkRoutes, llmsTxt, hostOf, safeReturnTo, HOST, WWW_HOST, SITE };
