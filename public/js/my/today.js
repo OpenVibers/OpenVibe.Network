@@ -167,29 +167,38 @@ function renderNet(frame) {
     }).sort((a, b) => b.rank - a.rank).slice(0, 3);
     wrap.replaceChildren(...cards.map((c) => {
         const site = TD_SITES[c.site] || [c.site || 'OpenVibe', 'fa-globe', null];
+        // One row per thing: the same title by the same person folds into one, whatever address each copy has (a
+        // channel's streams each have their own page: "iZoR_One's Stream" four times was one channel, 2026-11-10).
         const grouped = new Map();
         for (const row of c.rows.sort((a, b) => (a.ageMs ?? Infinity) - (b.ageMs ?? Infinity))) {
-            const key = `${row.title}\u0000${row.person || row.author || row.url}`;
+            const key = `${String(row.title || '').trim().toLowerCase()}\u0000${row.person || row.author || ''}`;
             const old = grouped.get(key);
             if (old) old.count++;
             else grouped.set(key, { ...row, count: 1 });
         }
         const stale = c.newest !== Infinity && c.newest > 7 * 86400000;
         const visibleRows = [...grouped.values()].slice(0, stale ? 2 : 5);
+        // A ranked card (no row has an age: "most watched this week") says its window once, in its head, not on every row.
+        const ranked = c.newest === Infinity;
+        const streams = /^(live|media-hub|video)$/.test(String(c.site || ''));
         const list = tdEl('ol', 'td-net-list', visibleRows.map((it, i) => {
             const src = it.image && tdSafeUrl(it.image.src);
-            const when = it.ageMs == null ? (c.window || 'most watched this week') : String(it.meta || '').match(/\d+\s*(?:m|min|h|d|w)\s*ago/i)?.[0] || 'recently';
-            const detail = [it.count > 1 ? `${it.count} streams this week` : '', when].filter(Boolean).join(' · ');
+            const when = ranked ? '' : String(it.meta || '').match(/\d+\s*(?:m|min|h|d|w)\s*ago/i)?.[0] || 'recently';
+            const times = it.count > 1 ? (streams ? `${it.count} streams this week` : `${it.count} times`) : '';
+            const detail = [times, when].filter(Boolean).join(' · ');
             return tdEl('li', '', [tdEl('a', 'td-net-row', [
                 tdEl('span', 'td-net-i', [String(i + 1)]),
                 src ? tdEl('img', 'td-net-thumb', null, { src, alt: '', width: 64, height: 36, loading: 'lazy', decoding: 'async' }) : null,
-                tdEl('span', 'td-net-t', [tdEl('b', '', [String(it.title || '')]), tdEl('small', '', [detail])]),
+                tdEl('span', 'td-net-t', [tdEl('b', '', [String(it.title || '')]), detail ? tdEl('small', '', [detail]) : null]),
             ], { href: tdSafeUrl(it.url) })]);
         }));
         const more = c.more && tdSafeUrl(c.more.url) ? tdEl('a', 'td-more', [String(c.more.label || 'More')], { href: tdSafeUrl(c.more.url) }) : null;
         return tdEl('section', 'td-box td-net-card', [
-            tdEl('div', 'td-net-h', [tdEl('span', 'td-site-ic', [tdIcon(site[1])]), tdEl('span', 'td-net-ht', [tdEl('b', '', [String(c.title || site[0])]), tdEl('small', '', [site[0]])]), more]),
-            stale ? tdEl('small', '', [`quiet for ${Math.floor(c.newest / 86400000)} days`]) : null,
+            // The head's second line: the site, then the ranking window, or for a card nothing new reached in a week how long
+            // it has been quiet (muted: it explains why the card is short; it is not news).
+            tdEl('div', 'td-net-h', [tdEl('span', 'td-site-ic', [tdIcon(site[1])]), tdEl('span', 'td-net-ht', [tdEl('b', '', [String(c.title || site[0])]),
+                tdEl('small', '', [site[0], ranked ? tdEl('span', 'td-net-when', [` · ${c.window || 'most watched this week'}`]) : null,
+                    stale ? tdEl('span', 'td-net-quiet', [` · quiet for ${Math.floor(c.newest / 86400000)} days`]) : null])]), more]),
             list,
         ], { 'data-site': String(c.site || '') });
     }));
