@@ -1112,6 +1112,7 @@ async function continueAnonymous() {
 
 // Pending sign-in lives only in the server's short-lived HttpOnly cookie.
 function showMfaChallenge() {
+    networkPasskeys.library().then(lib => lib.WebAuthnAbortService.cancelCeremony()).catch(() => {});
     const previous = document.getElementById('mfa-login');
     if (previous) previous.remove();
     const form = document.createElement('form');
@@ -1136,4 +1137,27 @@ function showMfaChallenge() {
         } catch (err) { form.querySelector('[role="status"]').textContent = err.message; }
         finally { button.disabled = false; }
     });
+}
+
+// Native conditional UI and the explicit button complete the existing SSO continuation.
+async function signInWithPasskey(conditional = false) {
+    const call = async (path, body) => {
+        const res = await fetch(API_BASE + '/api/auth/passkeys/' + path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Passkey sign-in failed');
+        return data;
+    };
+    try {
+        const data = await networkPasskeys.authenticate(call, 'login', conditional);
+        localStorage.setItem('ov_token', data.token); setAuthCookie(data.token); saveAccount(data.user, data.token);
+        await guardScheduledDeletion(data.token, () => finishSignIn(data));
+    } catch (err) {
+        if (!conditional) document.getElementById('login-msg').textContent = err.message;
+    }
+}
+if (window.PublicKeyCredential) {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'ovk-btn ovk-btn--quiet'; button.textContent = 'Sign in with a passkey';
+    button.onclick = () => signInWithPasskey();
+    document.getElementById('login-form').after(button);
+    PublicKeyCredential.isConditionalMediationAvailable?.().then(available => { if (available) signInWithPasskey(true); }).catch(() => {});
 }

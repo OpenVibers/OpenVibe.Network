@@ -1172,6 +1172,7 @@ app.get(['/sso/fanout', '/sso/fanout.html'], (req, res) => {
 // The public pages carry the look before first paint; the ones the static file server would answer by their own
 // file name (public/*.html) get it here, ahead of express.static below (plan L42).
 app.use(lookBoot.middleware());
+app.use('/vendor/passkeys', express.static(path.join(path.dirname(require.resolve('@simplewebauthn/browser')), '../esm')));
 app.use(express.static(path.join(__dirname, '..', 'public'), { setHeaders: require('./static-headers').publicStaticHeaders }));
 
 // openvibe-shared: the OpenVibe.Shared release package.json pins, from node_modules.

@@ -109,6 +109,7 @@ const { makeRequireAuth, GRACE_MS: SESSION_GRACE_MS } = require('./session');
 // Sliding session guard: expired-but-renewable tokens are accepted and renewed (cookie + X-OV-Token).
 const requireAuth = makeRequireAuth(async (req) => ({ db: await getDb(req), publicKey: req.app.locals.publicKey, config: getConfig(req) }), signToken);
 
+router.use('/passkeys', require('./passkeys').router({ requireAuth, signToken, sanitizeUser }));
 router.use('/mfa', require('./mfa').router({ requireAuth, signToken, sanitizeUser }));
 
 // ── Register ─────────────────────────────────────────────────

@@ -139,6 +139,7 @@ async function loadUser() {
             loadLinked();
             loadSessions();
             loadMfaSettings();
+            loadPasskeySettings();
             loadApps();
             loadBlocks();
             loadAnonInfo();
