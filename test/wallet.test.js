@@ -75,16 +75,16 @@ const KEY = (n) => `idem-${String(n).padStart(4, '0')}`;
         },
     ]);
     assert.deepStrictEqual(activity.map((r) => [r.kinds, r.parts, r.label]), [
-        [['balance', 'vibes'], [{ kind: 'balance', amount: '-5000000000' }, { kind: 'vibes', amount: 500 }], 'Got 500 Vibes with your Balance'],
-        [['balance'], [{ kind: 'balance', amount: '-123000000' }], 'AI usage'],
+        [['balance', 'vibes'], [{ kind: 'balance', amount: '-5000000000' }, { kind: 'vibes', amount: 500 }], 'for buying Vibes with your Balance'],
+        [['balance'], [{ kind: 'balance', amount: '-123000000' }], 'for AI usage'],
     ], 'one row per transaction, both currencies together; creator payable and sandbox are not the spendable wallet');
     assert.strictEqual(createWalletRoutes.mapActivity(subject, null).length, 0);
     assert.deepStrictEqual(createWalletRoutes.mapPersonActivity(subject, { activity: [
-        { id: 'txn_one', at: '2026-11-04T10:00:00.000Z', kind: 'vibes', label: 'Got 500 Vibes with your Balance', amount: 500 },
-        { id: 'txn_one', at: '2026-11-04T10:00:00.000Z', kind: 'balance', label: 'Got 500 Vibes with your Balance', amount: '-5000000000' },
+        { id: 'txn_one', at: '2026-11-04T10:00:00.000Z', kind: 'vibes', label: 'for buying Vibes with your Balance', amount: 500 },
+        { id: 'txn_one', at: '2026-11-04T10:00:00.000Z', kind: 'balance', label: 'for buying Vibes with your Balance', amount: '-5000000000' },
     ] }).map((r) => [r.kinds, r.parts]), [[['balance', 'vibes'], [{ kind: 'balance', amount: '-5000000000' }, { kind: 'vibes', amount: 500 }]]], 'the person-shaped route is grouped too');
     assert.deepStrictEqual(createWalletRoutes.mapPersonActivity(subject, { activity: [
-        { id: 'txn_two', at: '2026-11-04T11:00:00.000Z', label: 'Got 10 Vibes with your Balance', amounts: { balance: '-100000000', vibes: 10 } },
+        { id: 'txn_two', at: '2026-11-04T11:00:00.000Z', label: 'for buying Vibes with your Balance', amounts: { balance: '-100000000', vibes: 10 } },
     ] }).map((r) => [r.kinds, r.parts]), [[['balance', 'vibes'], [{ kind: 'balance', amount: '-100000000' }, { kind: 'vibes', amount: 10 }]]], 'an { amounts } shape is read too');
     assert.ok(!principals.DEFAULT_GRANTS.some(([client, cap]) => client === 'network' && cap === 'billing.balance.read'), 'Network does not seed a broad Billing read');
 
@@ -116,8 +116,8 @@ const KEY = (n) => `idem-${String(n).padStart(4, '0')}`;
             if (url.pathname === '/api/me/activity') {
                 if (activityMode === 'missing') { res.statusCode = 404; return res.end(JSON.stringify({ error: 'billing.not_found' })); }
                 return res.end(JSON.stringify({ activity: [
-                    { id: 'txn_buy', at: '2026-11-04T10:00:00.000Z', kind: 'vibes', label: 'Got 500 Vibes with your Balance', amount: 500 },
-                    { id: 'txn_buy', at: '2026-11-04T10:00:00.000Z', kind: 'balance', label: 'Got 500 Vibes with your Balance', amount: '-5000000000' },
+                    { id: 'txn_buy', at: '2026-11-04T10:00:00.000Z', kind: 'vibes', label: 'for buying Vibes with your Balance', amount: 500 },
+                    { id: 'txn_buy', at: '2026-11-04T10:00:00.000Z', kind: 'balance', label: 'for buying Vibes with your Balance', amount: '-5000000000' },
                 ] }));
             }
             if (url.pathname === '/api/v1/transactions') return res.end(JSON.stringify({ transactions: [{ id: 'txn_buy', type: 'purchase', created_at: '2026-11-04T10:00:00.000Z', metadata: { balance: 'vibes_from_balance', vibes: 500 }, entries: [
@@ -179,7 +179,7 @@ const KEY = (n) => `idem-${String(n).padStart(4, '0')}`;
         assert.strictEqual(w.body.activity.length, 1);
         assert.deepStrictEqual(w.body.activity[0].kinds, ['balance', 'vibes']);
         assert.deepStrictEqual(w.body.activity[0].parts, [{ kind: 'balance', amount: '-5000000000' }, { kind: 'vibes', amount: 500 }]);
-        assert.strictEqual(w.body.activity[0].label, 'Got 500 Vibes with your Balance');
+        assert.strictEqual(w.body.activity[0].label, 'for buying Vibes with your Balance');
         assert.strictEqual(w.body.activity_source, 'journal', 'the marked fallback until Billing has /api/me/activity');
         const personActivity = asked.filter((a) => a.url.startsWith('/api/me/activity'));
         assert.strictEqual(personActivity.length, 1);

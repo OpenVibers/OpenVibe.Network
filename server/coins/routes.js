@@ -9,6 +9,7 @@
 
 const express = require('express');
 const wallet = require('./wallet');
+const money = require('../money/reasons');
 const config = require('../config');
 
 const VIBES_TIMEOUT_MS = 2000;
@@ -41,7 +42,9 @@ module.exports = function createCoinsRoutes(db, requireAuth, opts = {}) {
     });
 
     // ── GET /api/coins/me/history?limit=50&offset=0 ──────────
-    // → { transactions: [{ id, app_id, delta, reason, created_at }] }
+    // → { transactions: [{ id, app_id, delta, reason, reason_text, reason_subject, reason_site, created_at }] }
+    // `reason` stays for support; no page prints it. `reason_text` is the phrase without the amount
+    // ("for the quest Publish a video"), `reason_subject` is { name, url } for the thing it was for.
     router.get('/me/history', requireAuth, async (req, res) => {
         const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
         const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
@@ -52,7 +55,13 @@ module.exports = function createCoinsRoutes(db, requireAuth, opts = {}) {
             ORDER BY id DESC
             LIMIT ? OFFSET ?
         `).all(req.user.id, limit, offset);
-        res.json({ transactions });
+        const quests = transactions.some((t) => /^quest:/.test(String(t.reason || ''))) ? await money.questNames() : new Map();
+        res.json({
+            transactions: transactions.map((t) => {
+                const d = money.describe(t.reason, { site: t.app_id || 'network', resolve: { quest: (id) => quests.get(id) } });
+                return { ...t, reason_text: d.text, reason_subject: d.subject, reason_site: d.site };
+            }),
+        });
     });
 
     return router;

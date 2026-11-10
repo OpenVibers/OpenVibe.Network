@@ -33,6 +33,7 @@ class Node {
     get textContent() { return this._text + this.children.map((c) => c.textContent).join(''); }
     set textContent(v) { this._text = String(v); this.children = []; }
     get href() { return this.attrs.href; }
+    set href(v) { this.attrs.href = String(v); }
     get classList() { const n = this; return { add: (c) => { n.className += ` ${c}`; } }; }
     all(pred, out = []) { for (const c of this.children) { if (pred(c)) out.push(c); c.all(pred, out); } return out; }
 }
@@ -42,7 +43,7 @@ function page() {
     for (const [, id] of HTML.matchAll(/id="((?:td-|me-|page-header|user-greeting|needs-you|today|coins|settings)[a-z-]*)"/g)) ids[id] = new Node('div');
     const shown = [];
     const sandbox = {
-        document: { getElementById: (id) => ids[id] || null, createElement: (t) => new Node(t), querySelector: () => null },
+        document: { getElementById: (id) => ids[id] || null, createElement: (t) => new Node(t), createTextNode: (t) => Object.assign(new Node('#text'), { _text: String(t) }), querySelector: () => null },
         console, Date, Number, String, Map, Set, Math, JSON, Promise,
         currentUser: { role: 'user' },
         showSection: (id) => shown.push(id),
@@ -134,9 +135,14 @@ assert.match(CSS, /@media \(min-width:1000px\)\{[\s\S]*\.settings\{display:grid;
     assert.ok(!tries.some((u) => /live|tools|games|design/.test(u)), 'none you already use');
     assert.strictEqual(p.ids['td-sites-h'].textContent, 'Your sites');
 
-    p.sandbox.renderMoney({ balance: 1240, vibes: 30 }, { transactions: [{ delta: 20, reason: 'watch_time', created_at: ago(90) }] });
+    p.sandbox.renderMoney({ balance: 1240, vibes: 30 }, { transactions: [{ delta: 20, reason: 'quest:go-live', reason_text: 'for the quest Go live',
+        reason_subject: { name: 'Go live', url: 'https://openvibe.quest/quests/go-live' }, created_at: ago(90) }] });
     assert.deepStrictEqual([p.ids.coins.hidden, p.ids['td-coins'].textContent, p.ids['td-vibes'].textContent, p.ids['td-vibes-row'].hidden], [false, (1240).toLocaleString(), '30', false]);
-    assert.match(p.ids['td-money-last'].textContent, /^\+20 for watch time · 1 h ago$/);
+    assert.match(p.ids['td-money-last'].textContent, /^\+20 for the quest Go live · 1 h ago$/);
+    assert.strictEqual(p.ids['td-money-last'].all((c) => c.tagName === 'A')[0].href, 'https://openvibe.quest/quests/go-live', 'the reason links to the quest');
+    p.sandbox.renderMoney({ balance: 1240 }, { transactions: [{ delta: 5, reason: 'nobody:declared-this', reason_site: 'OpenVibe.Fun', created_at: ago(90) }] });
+    assert.match(p.ids['td-money-last'].textContent, /^\+5 for something on OpenVibe.Fun · 1 h ago$/);
+    assert.doesNotMatch(p.ids['td-money-last'].textContent, /nobody|declared-this/);
 
     p.sandbox.renderStuff({ following: 14 }, { total: 230 }, { nodes: [{ id: 1 }, { id: 2, revoked_at: 'x' }] });
     assert.match(p.ids['td-stuff-row'].textContent, /14following/);
