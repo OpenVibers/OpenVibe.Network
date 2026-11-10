@@ -1017,6 +1017,8 @@ app.use('/api/admin/grants', requireAuth, require('./identity/grants-admin').rou
 app.use('/api/admin/themes', requireAuth, requireAdmin, require('./themes/routes').reviewRouter());
 // Operator parity checklist (WS-D task 5): where each operator job is done now, with each service's readiness.
 app.use('/api/admin/operator-checklist', requireAuth, requireAdmin, require('./admin/operator-checklist').router({ statusRows: () => require('./status/routes').rows(ecosystem) }));
+// The account merge endpoint is gone. Hide its former staff path before the broad admin guard so callers get 404.
+app.use('/api/admin/account-merges', (_req, res) => res.status(404).json({ error: 'Not found' }));
 app.use('/api/admin', createAdminRoutes(db, notificationService, emailService, requireAuth));
 
 // Analytics admin API
