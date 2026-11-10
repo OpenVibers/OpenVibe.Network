@@ -6,7 +6,7 @@ const assert = require('assert');
 const { parseHTML } = require('linkedom');
 const activity = require('../server/home/activity');
 const home = require('../server/home/render');
-const sites = require('../server/frame/sites').SITES;
+const sites = require('../server/frame/sites').LISTED;
 
 activity.setEnabled(false);
 
@@ -128,7 +128,7 @@ assert.ok(faqLd.mainEntity.length >= 5, 'the FAQ has its questions');
 faqLd.mainEntity.forEach((q) => assert.ok([...parseHTML(html).document.querySelectorAll('#faq h3')].some((el) => el.textContent === q.name), `the FAQ shows "${q.name}"`));
 assert.ok(faqLd.mainEntity.some((q) => /separate account/.test(q.name)), "Contracts' network FAQ is included");
 // The service map groups the sites the way the launcher does; numbers say only what was read.
-assert.ok(/<h3 class="sc-apps-group">Streams &amp; places<\/h3>/.test(html) && /<h3 class="sc-apps-group">For developers<\/h3>/.test(html) && /<h3 class="sc-apps-group">Make &amp; build<\/h3>/.test(html) && html.includes('<ul class="sc-apps">'), 'the sites are grouped, as a launcher');
+assert.ok(/<h3 class="sc-apps-group">Watch &amp; stream<\/h3>/.test(html) && /<h3 class="sc-apps-group">For developers<\/h3>/.test(html) && /<h3 class="sc-apps-group">Make with AI<\/h3>/.test(html) && html.includes('<ul class="sc-apps">'), 'the sites are grouped, as a launcher');
 assert.ok(/<section class="net-num"/.test(html) && /sites, one account/.test(html), 'the numbers panel renders');
 assert.ok(!/services up/.test(html) && !/accounts<\/span>/.test(html), 'numbers nobody read are left out');
 assert.ok(!/Latest recordings|New jobs|Fresh coupon codes/.test(html), 'an empty column is left out');
