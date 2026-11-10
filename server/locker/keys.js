@@ -40,9 +40,9 @@ const { fingerprintOf, verifyPersonKeys } = require('openvibe-sdk/locker');
 const { inspectEnvelope } = require('openvibe-sdk/locker/server');
 const eventRelay = require('../developer/event-relay');
 const proof = require('./proof');
-// A real sign-in (the session's auth_time within ten minutes), the rule account-merge and the account deletion
+// A real sign-in (the session's auth_time within ten minutes), the rule account deletion
 // already use: never a renewal, never a QR session carrying an old source time.
-const { isFreshSignIn } = require('../identity/account-merge');
+const { isFreshSignIn } = require('../identity/reauth');
 
 /** The event a key change announces (ids and fingerprints only; never a key, never a blob). */
 const EVENT_TYPE = 'locker.keys.changed';

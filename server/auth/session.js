@@ -41,8 +41,7 @@ async function verifySession(token, { db, publicKey, config }) {
     const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.sub || decoded.id);
     if (!user) return { error: 'User not found', status: 401 };
     if (user.is_banned) return { error: 'Account banned', status: 403, ban_reason: user.ban_reason };
-    // An account merged into another (ADR-029) has no tokens of its own any more; signing in lands on the survivor.
-    if (user.merged_into) return { error: 'Account merged', status: 401, merged: true };
+    if (user.merged_into) return { error: 'Invalid session', status: 401 };
     // A deleted account (ADR-033) is a tombstone: none of its tokens is accepted.
     if (user.deleted_at) return { error: 'Account deleted', status: 401, deleted: true };
     if (user.token_valid_after) {
@@ -121,7 +120,7 @@ function makeRequireAuth(getCtx, signToken, { dockScope = null } = {}) {
         if (out.error) return res.status(out.status).json(out.status === 403 ? { error: out.error, ban_reason: out.ban_reason } : { error: out.error });
         req.user = out.user;
         req.token = token;
-        req.tokenClaims = out.decoded;   // auth_time: account merge needs a recent real sign-in
+        req.tokenClaims = out.decoded;   // auth_time: sensitive account settings need a recent real sign-in
         req.dockScope = dock ? (out.scopes || []) : null;
         if (out.renew && !dock && typeof signToken === 'function') {
             try {

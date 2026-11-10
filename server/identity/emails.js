@@ -7,7 +7,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TTL_MINUTES = 60;
 const hash = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
 const clean = (email) => String(email || '').trim().toLowerCase();
-const { isFreshSignIn } = require('./account-merge');
+const { isFreshSignIn } = require('./reauth');
 
 function needsFreshSignIn(req, res) {
     if (isFreshSignIn(req.tokenClaims)) return false;

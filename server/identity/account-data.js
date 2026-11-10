@@ -81,7 +81,6 @@ function kick(db) { try { const live = eventRelay.outboxFor(db); if (live) live.
 
 function assertPerson(user) {
     if (!user || user.is_anon) throw new AccountDataError(400, 'account.guest', 'a guest account has nothing to export or delete');
-    if (user.merged_into) throw new AccountDataError(409, 'account.merged', 'this account was merged into another');
     if (user.deleted_at) throw new AccountDataError(410, 'account.deleted', 'this account was deleted');
     if (!ids.isSubjectId('user', user.subject_id)) throw new AccountDataError(400, 'account.no_subject', 'this account has no subject');
 }
@@ -169,8 +168,6 @@ async function networkPart(db, userId) {
         'email_verified', 'email_verified_at', 'name_effect', 'particle_effect', 'history_paused', 'history_agents_allowed', 'history_keep_private', 'history_keep_mature', 'subject_id'];
     const account = {};
     for (const k of keep) if (k in u) account[k] = u[k];
-    account.merged_in = await tableExists(db, 'subject_aliases')
-        ? await db.prepare('SELECT alias_id AS subject, merged_at FROM subject_aliases WHERE subject_id = ? ORDER BY merged_at').all(u.subject_id) : [];
     add('account.json', account);
     const byUser = async (name, table, opts) => { const r = await rowsOf(db, table, 'user_id = ?', [u.id], opts); add(name, r.rows, r.truncated); };
     await byUser('sign_in_providers.json', 'linked_accounts');
@@ -230,8 +227,6 @@ async function networkPart(db, userId) {
         // The agents that act for this person (WS-Z2); who revoked one may be someone else, so revoked_by stays out.
         agents: (await rowsOf(db, 'dev_agents', 'owner_subject = ?', [u.subject_id], { omit: ['revoked_by'] })).rows,
     });
-    add('account_merges.json', await tableExists(db, 'account_merges')
-        ? await db.prepare('SELECT id, from_subject, into_subject, initiated_by, reason, moved, merged_at FROM account_merges WHERE into_user_id = ? ORDER BY merged_at').all(u.id) : []);
     add('moderation.json', (await rowsOf(db, 'moderation_audit', 'target_subject = ?', [u.subject_id], { omit: ['actor_subject'] })).rows);
     return { files, truncated };
 }
@@ -355,8 +350,7 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         if (!user) throw new Error(`account-data: no user ${deletion.user_id}`);
         const subject = user.subject_id;
         const folded = await db.prepare('SELECT id, subject_id FROM users WHERE merged_into = ?').all(user.id);
-        const aliases = await tableExists(db, 'subject_aliases') ? (await db.prepare('SELECT alias_id FROM subject_aliases WHERE subject_id = ?').all(subject)).map((r) => r.alias_id) : [];
-        const subjects = [...new Set([subject, ...aliases, ...folded.map((f) => f.subject_id).filter(Boolean)])];
+        const subjects = [...new Set([subject, ...folded.map((f) => f.subject_id).filter(Boolean)])];
         const userIds = [user.id, ...folded.map((f) => f.id)];
         const inU = `(${userIds.map(() => '?').join(',')})`;
         const inS = `(${subjects.map(() => '?').join(',')})`;
@@ -368,7 +362,6 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         await del('experience_events', `user_id IN ${inU}`, userIds);
         await del('person_levels', `user_id IN ${inU}`, userIds);
         await del('chat_app_pending_links', `confirmed_by IN ${inU}`, userIds);
-        if (await tableExists(db, 'account_merge_intents')) await del('account_merge_intents', `into_user_id IN ${inU}`, userIds);
         // Notifications this person sent others stay, without their name or picture.
         if (await tableExists(db, 'notifications')) await db.prepare(`UPDATE notifications SET sender_id = NULL, sender_name = 'Deleted account', sender_avatar = NULL WHERE sender_id IN ${inU}`).run(...userIds);
         if (await tableExists(db, 'analytics_events')) await db.prepare(`UPDATE analytics_events SET user_id = NULL WHERE user_id IN ${inU}`).run(...userIds);
@@ -407,7 +400,6 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         // network.link.revoked@1 in this same transaction, so a service holding a machine's session stops it at once.
         const nodePrincipals = require('../registry/link-principals');
         count('nodes_revoked', await nodePrincipals.revokeOwnedBy(db, subjects, { actor: { type: 'user', id: subject }, now }));
-        if (await tableExists(db, 'account_merges')) await db.prepare(`UPDATE account_merges SET pre_state = NULL, reduced_at = COALESCE(reduced_at, ?) WHERE into_user_id IN ${inU} OR from_user_id IN ${inU}`).run(at, ...userIds, ...userIds);
         // OpenCoins: loyalty (ADR-012). The balance closes with one ledger entry; the ledger stays.
         for (const id of userIds) {
             const bal = (await db.prepare('SELECT balance FROM wallets WHERE user_id = ?').get(id) || { balance: 0 }).balance;

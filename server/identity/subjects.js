@@ -119,11 +119,8 @@ async function resolve(db, { subject_id, source_system, source_type, source_id }
             sid = row && row.subject_id;
         }
     }
-    // A subject merged into another (ADR-029) resolves to the survivor, saying where it came from.
-    const survivor = sid ? await require('./account-merge').survivorOf(db, sid) : sid;
-    const p = survivor ? await projection(db, survivor) : null;
+    const p = sid ? await projection(db, sid) : null;
     if (!p) return null;
-    if (survivor !== sid) p.merged_from = sid;
     p.legacy_ids = await db.prepare('SELECT source_system, source_type, source_id FROM identity_legacy_map WHERE subject_id = ? ORDER BY source_system, source_type')
         .all(p.subject.id);
     return p;
@@ -136,9 +133,8 @@ async function resolve(db, { subject_id, source_system, source_type, source_id }
 async function resolveUsername(db, name) {
     const n = String(name || '').trim().replace(/^@/, '');
     if (!/^[A-Za-z0-9_.-]{1,40}$/.test(n)) return null;
-    const u = await db.prepare('SELECT id, subject_id, created_at FROM users WHERE LOWER(username) = LOWER(?) AND COALESCE(is_banned, 0) = 0 AND deleted_at IS NULL').get(n);
+    const u = await db.prepare('SELECT id, subject_id, created_at FROM users WHERE LOWER(username) = LOWER(?) AND COALESCE(is_banned, 0) = 0 AND deleted_at IS NULL AND merged_into IS NULL').get(n);
     if (!u) return null;
-    // A name folded into another account (ADR-029) resolves to the survivor: judge the survivor, not the alias row.
     const p = await resolve(db, { subject_id: u.subject_id || await ensureUserSubject(db, u) });
     return p && !p.banned && !p.deleted ? p : null;
 }

@@ -40,7 +40,7 @@ const contracts = require('openvibe-contracts');
 const { requireOwner } = require('../auth/owner-guard');
 const { reauthUrl } = require('../auth/reauth');
 const alerts = require('../operator/alerts');
-const { isFreshSignIn } = require('../identity/account-merge');
+const { isFreshSignIn } = require('../identity/reauth');
 
 // The nine AI Exchange services (D11), then every other service that holds an owner input (the Setup tab,
 // 2026-11-07). A service that has not mounted openvibe-shared/config's routes yet answers 404 or does not answer;
@@ -84,8 +84,8 @@ function signInUrl(config = {}) {
 }
 
 /** The session's real sign-in time, the OIDC auth_time Network's signToken puts on every session token. The rule is
- * account-merge's isFreshSignIn (auth_time within ten minutes, never a renewal and never a QR session carrying an
- * old source time), so the owner settings and the account merge cannot drift apart. */
+ * reauth's isFreshSignIn (auth_time within ten minutes, never a renewal and never a QR session carrying an
+ * old source time), so the owner settings and the email and Locker checks use the same policy. */
 function isFresh(req, now = Date.now()) {
     return isFreshSignIn(req.tokenClaims, now);
 }

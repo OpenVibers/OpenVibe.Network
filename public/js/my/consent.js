@@ -12,7 +12,7 @@ const CONSENT_KIND_LABEL = {
     posts: 'Posts', pictures: 'Pictures', code: 'Code',
 };
 const CONSENT_BY_LABEL = {
-    person: 'you', app_revoked: 'the app revoked', merge: 'an account merge', deletion: 'account deletion', import: 'an import',
+    person: 'you', app_revoked: 'the app revoked', merge: 'an earlier account action', deletion: 'account deletion', import: 'an import',
 };
 
 function consentEsc(value) {

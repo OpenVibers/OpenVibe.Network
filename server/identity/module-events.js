@@ -20,8 +20,8 @@
  *   keys            top-level fields that were added, changed or removed (names only, sorted)
  *   public          only for fields the namespace declares public and that changed: their new value
  *                   (null = removed). Absent for private namespaces: a value never leaves otherwise.
- *   merged_into / merged_from  subject refs, on the two sides of an account merge
  *
+ * merged_from / merged_into are used only when a guest identity is linked to a registered account.
  * Nothing here reads or writes user_modules; the caller passes before/after.
  */
 const { ids, modules, validate } = require('openvibe-contracts');

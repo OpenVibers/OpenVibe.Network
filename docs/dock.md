@@ -90,5 +90,5 @@ Every object refuses extra keys, so a page cannot smuggle a field into the state
 ## Account data
 
 The row is the person's own, so it goes into their account export (`network/dock.json` in Network's part of the
-zip) and is erased with them (ADR-033). A merge (ADR-029) leaves it with the surviving account: the survivor's row
+zip) and is erased with the account (ADR-033). The row remains with its owner
 wins, and a folded-in row moves over only when the survivor has none.
