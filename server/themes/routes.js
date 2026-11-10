@@ -180,7 +180,9 @@ router.get('/me/active', (req, res, next) => {
 // oled: use pure black backgrounds on OLED displays.
 // icons: the person's icon style (openvibe-shared 4.71.0, plan L56): auto (line; solid when small or for the tab you are
 // on), line or solid, on every OpenVibe site.
-const DISPLAY = { motion: ['auto', 'reduced'], text: ['100', '112', '125'], seasonal: ['on', 'off'], scheme: ['manual', 'auto'], contrast: ['normal', 'more'], font: ['default', 'readable'], colors: ['default', 'cb-safe'], oled: ['off', 'on'], icons: ['auto', 'line', 'solid'] };
+// motion: auto, full, reduced or off (openvibe-shared 4.183.0): full plays everything even when the device asks for
+// less, reduced is calm, and only off stops motion. The account keeps the choice; the shared theme loader applies it.
+const DISPLAY = { motion: ['auto', 'full', 'reduced', 'off'], text: ['100', '112', '125'], seasonal: ['on', 'off'], scheme: ['manual', 'auto'], contrast: ['normal', 'more'], font: ['default', 'readable'], colors: ['default', 'cb-safe'], oled: ['off', 'on'], icons: ['auto', 'line', 'solid'] };
 function cleanDisplay(d) {
     if (!d || typeof d !== 'object') return null;
     const out = {};

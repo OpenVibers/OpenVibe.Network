@@ -161,7 +161,8 @@ One mark for every site, tinted per site (`SITES`): `svg({ site, maskable })`, `
 
 ## 10. Display preferences (in `theme-loader.js`)
 
-`OpenVibeThemeLoader.display.get()` / `.set({ motion: 'auto'|'reduced', text: '100'|'112'|'125' })`.
+`OpenVibeThemeLoader.display.get()` / `.set({ motion: 'auto'|'full'|'reduced'|'off', text: '100'|'112'|'125' })`
+(motion's four choices, openvibe-shared 4.183.0).
 Applied before first paint as `<html data-ov-motion>` and `--ov-text-scale` / `data-ov-text`; stored
 in `localStorage.ov_display`, synced across tabs, saved to the account through
 `PUT /api/themes/me/display` and returned by `GET /api/themes/me/active` (`display`). Emits
