@@ -28,12 +28,15 @@
 const { isExtensionOrigin } = require('../auth/extension-origin');
 const express = require('express');
 const crypto = require('crypto');
-const { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName } = require('./sites');
+const { SITES, LISTED, LISTED_SITES, siteForHost, GROUPS, groupOf, PRODUCTS, MERGED_PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName } = require('./sites');
 const { createMenuCards } = require('./menu-cards');
 const seen = require('./seen');
 const toolsCatalog = require('../domains/catalog');
 
 const RANK_MS = 30 * 60_000, COPY_MS = 24 * 60 * 60_000;
+// One number for "how many places the network lists": the menu, its tile count, pulse.sites and online.sites.
+// 53 open sites (Network the front door included) plus Pics and Download, the two domains Video serves as entries.
+const LISTED_TOTAL = LISTED.filter((s) => s.status === 'open').length;
 const BANNED = /\b(free|\$0|no ads|ad[- ]free|no cost|gratis)\b|https?:|www\.|[<>{}]/i;
 const BASE_WEIGHT = { live: 7, tools: 6, space: 5, community: 4, games: 3, media: 2, network: 1 };   // cold-start order only
 const MENU_BEACON = 'https://openvibe.network/api/frame/menu-click';
@@ -75,7 +78,7 @@ function siteForDestination(hostname) {
     if (!h) return null;
     const site = siteForHost(h);
     if (site) return site;
-    const product = PRODUCTS.find((p) => h === p.host || h.endsWith('.' + p.host));
+    const product = PRODUCTS.concat(MERGED_PRODUCTS).find((p) => h === p.host || h.endsWith('.' + p.host));
     return product ? SITES.find((s) => s.id === product.of) || null : null;
 }
 /** A user_history row's Frame site id: service alias first, the site id itself, then the row's URL host. */
@@ -177,14 +180,14 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // frame_cache across restarts. A failed site keeps its last good card for 30 minutes; GET /api/frame carries
     // at most twelve, Live first while anyone is live, then the Frame's own ranking.
     const menuCards = createMenuCards({
-        sites: () => SITES.filter((s) => s.status === 'open'),
+        sites: () => LISTED_SITES.filter((s) => s.status === 'open'),
         rankOf: () => orderedOpen().map((s) => s.id),
         load: () => load('menu-cards'),
         save: (v) => save('menu-cards', v),
         onChange: () => { version = Date.now(); },
     });
     await menuCards.init();
-    const openIds = () => new Set(SITES.filter((s) => s.status === 'open').map((s) => s.id));
+    const openIds = () => new Set(LISTED_SITES.filter((s) => s.status === 'open').map((s) => s.id));
     /** Only open sites, never the site itself, at most six; drops duplicates and anything from an older seed. */
     function cleanNext(map) {
         const ids = openIds(); const out = {};
@@ -203,7 +206,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
      *  the first move is counted, so the menu's "Next from here" is never empty on a cold network. */
     function seedNext() {
         const ids = openIds(); const map = {};
-        for (const site of SITES.filter((s) => s.status === 'open')) {
+        for (const site of LISTED_SITES.filter((s) => s.status === 'open')) {
             const out = []; const seen = new Set([site.id]);
             const add = (id) => { if (out.length < 6 && ids.has(id) && !seen.has(id)) { seen.add(id); out.push(id); } };
             for (const id of NEXT_SEED[site.id] || []) add(id);
@@ -292,7 +295,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             byFrom.get(pair.from).push(pair);
         }
         const seed = seedNext(); const map = {};
-        for (const site of SITES.filter((s) => s.status === 'open')) {
+        for (const site of LISTED_SITES.filter((s) => s.status === 'open')) {
             const out = []; const seen = new Set([site.id]);
             const add = (id) => { if (out.length < 6 && ids.has(id) && !seen.has(id)) { seen.add(id); out.push(id); } };
             const moved = (byFrom.get(site.id) || []).sort((a, b) => b.people.size - a.people.size || b.moves - a.moves || a.to.localeCompare(b.to));
@@ -347,7 +350,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
 
     const scoreOf = (id) => (rank.scores[id] || 0) + 3 * (rank.scores[id + ':history'] || 0);
     function orderedOpen() {
-        const open = SITES.filter(s => s.status === 'open');
+        const open = LISTED_SITES.filter(s => s.status === 'open');
         // Real use decides, compared raw: normalising by one service's own analytics scale made Live's tens of
         // thousands of page views flatten every other site to nearly zero, so the cold-start BASE_WEIGHT decided the
         // order and Video (openvibe.video) sat under Tools, Community and Space despite 2,687 hits in 7 days (11-07).
@@ -359,7 +362,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     function linkPool() {
         const { catalog } = toolsCatalog.peek();
         const pool = new Map();
-        for (const s of SITES.filter(x => x.status === 'open')) pool.set('site:' + s.id, { name: fullName(s), url: s.url || `https://${s.host}/`, about: s.tagline });
+        for (const s of LISTED_SITES.filter(x => x.status === 'open')) pool.set('site:' + s.id, { name: fullName(s), url: s.url || `https://${s.host}/`, about: s.tagline });
         for (const f of catalog.families) if (f.path) pool.set('family:' + f.id, { name: f.name, url: 'https://openvibe.tools' + f.path, about: f.tagline });
         for (const t of catalog.tools) pool.set('tool:' + t.id, { name: t.name, url: t.url, about: t.tagline });
         return pool;
@@ -376,7 +379,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const pool = linkPool();
         const popular = new Set(popularTools(12).map(t => t.url));
         const links = [...pool.entries()].filter(([id, l]) => !id.startsWith('tool:') || popular.has(l.url)).map(([id, l]) => ({ id, name: l.name, about: l.about }));
-        const body = { sites: SITES.filter(s => s.status === 'open').map(s => ({ id: s.id, name: fullName(s), what: s.what, popular: s.id === 'tools' ? popularTools(6).map(t => t.name) : [] })), links };
+        const body = { sites: LISTED_SITES.filter(s => s.status === 'open').map(s => ({ id: s.id, name: fullName(s), what: s.what, popular: s.id === 'tools' ? popularTools(6).map(t => t.name) : [] })), links };
         let j = null;
         try { j = await fromAi(body); } catch { j = null; }
         if (!j || !Array.isArray(j.sites)) return;   // keep the last good copy
@@ -403,7 +406,8 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const discoverIds = discover && Array.isArray(discover.ids) && discover.ids.length ? discover.ids.filter(id => open.some(s => s.id === id)) : open.map(s => s.id);
         return {
             updated: new Date(version).toISOString(), site: { id: site.id, name: site.name, host: site.host, status: site.status, state: site.state },
-            // Every open site, most used first, each followed by the products it serves on their own domains (`of`).
+            // Every listed place, most used first, each followed by the products it serves on their own domains (`of`).
+            // Media, Homes and Bench are merged sections, not entries; Pics and Download are entries after Video.
             nav: open.flatMap(s => [s, ...PRODUCTS.filter(p => p.of === s.id)]).map(s => ({ id: s.id, name: MENU_NAME[s.id] || s.name, url: s.url || `https://${s.host}/`, icon: ICON_ALIAS[s.icon] || s.icon, tagline: MENU_LINE[s.id] || s.tagline, group: groupOf(s.id), ...(s.of ? { of: s.of } : {}) })),
             // The menu's data: where people go next from each open site (totals only, no person), the fair discovery
             // order, and the click beacon (Shared sends it only when this object is present).
@@ -414,7 +418,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             cards: menuCards.cards(),
             groups: GROUPS.map(g => ({ id: g.id, name: g.name })),
             // state: 'internal' (runs on loopback, the domain still shows a placeholder) or 'placeholder' (planned).
-            soon: SITES.filter(s => s.status === 'soon').map(s => ({ id: s.id, name: s.name, url: s.url || `https://${s.host}/`, icon: s.icon, state: s.state })),
+            soon: LISTED.filter(s => s.status === 'soon').map(s => ({ id: s.id, name: s.name, url: s.url || `https://${s.host}/`, icon: s.icon, state: s.state })),
             footer: { blurb: (ai && ai.blurb) || site.what, ai: !!ai, discover: footerDiscover, popular: popularTools(8), legal: { terms: legalBase + '/terms', privacy: legalBase + '/privacy', dmca: legalBase + '/dmca' } },
         };
     }
@@ -475,7 +479,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         return {
             live_now: live ? live.channels : null,
             watching: live ? live.watching : null,
-            sites: orderedOpen().length,
+            sites: LISTED_TOTAL,
             views_7d: views > 0 ? Math.round(views) : null,
             live: live ? live.list : null,
             updated: new Date().toISOString(),
@@ -487,7 +491,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             await pulseInflight;
         }
         res.set({ 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin', 'Cache-Control': 'public, max-age=30, stale-while-revalidate=120', 'Content-Type': 'application/json; charset=utf-8' });
-        res.send(JSON.stringify(pulse || { live_now: null, watching: null, sites: orderedOpen().length, views_7d: null, live: null, updated: null }));
+        res.send(JSON.stringify(pulse || { live_now: null, watching: null, sites: LISTED_TOTAL, views_7d: null, live: null, updated: null }));
     });
 
     // ── GET /api/frame/online — who is on the network, and a few counts (owner, 2026-11-10) ────────────────────────
@@ -555,7 +559,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
                 visible,
                 counts: await countsOf(nowMs),
                 live: live ? { channels: live.channels, watching: live.watching, first: live.list.slice(0, 3).map((s) => ({ name: s.name, url: s.url })) } : { channels: 0, watching: 0, first: [] },
-                sites: orderedOpen().length,
+                sites: LISTED_TOTAL,
                 views_7d: views > 0 ? Math.round(views) : null,
                 updated: new Date(nowMs).toISOString(),
             };
@@ -604,7 +608,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             }
         }
         res.set({ 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin', 'Cache-Control': 'public, max-age=30, stale-while-revalidate=120', 'Content-Type': 'application/json; charset=utf-8' });
-        res.send(e ? e.body : JSON.stringify({ updated: null, members: null, guests: null, total: null, people: [], more: 0, live: null, counts: [], items: [], sites: orderedOpen().length, views_7d: null }));
+        res.send(e ? e.body : JSON.stringify({ updated: null, members: null, guests: null, total: null, people: [], more: 0, live: null, counts: [], items: [], sites: LISTED_TOTAL, views_7d: null }));
     });
 
     // GET /api/frame/feed?kind=&site=&q=&following=1&cursor=&limit= and GET /api/frame/wall?limit=&after=&for= — the menu's Feed and wall

@@ -6,10 +6,10 @@ const assert = require('assert');
 const activity = require('../server/home/activity');
 const home = require('../server/home/render');
 const sitesPage = require('../server/sites/page');
-const { SITES } = require('../server/frame/sites');
+const { LISTED } = require('../server/frame/sites');
 
 activity.setEnabled(false);
-const expected = SITES.filter((s) => s.status === 'open').length;
+const expected = LISTED.filter((s) => s.status === 'open').length;
 const { html } = home.render();
 const text = html.replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];

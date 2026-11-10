@@ -10,10 +10,10 @@
  * sites, still excluding what the person uses; when Report does not answer at all, it is the fixed starter list.
  * The answer says which it is: { source, basis, generated_at, items: [...] }.
  */
-const { SITES, fullName } = require('../frame/sites');
+const { LISTED_SITES, fullName } = require('../frame/sites');
 
 const DAY = 86_400_000;
-const OPEN = SITES.filter((site) => site.status === 'open' && site.id !== 'network');
+const OPEN = LISTED_SITES.filter((site) => site.status === 'open' && site.id !== 'network');
 const BY_SERVICE = new Map();
 for (const site of OPEN) { BY_SERVICE.set(site.service, site); BY_SERVICE.set(site.id, site); }
 // History's host-derived service name for a product whose site has another id.

@@ -26,18 +26,20 @@ const icon = (name, size) => `<span class="ov-icon" data-icon="${esc(name)}" dat
 // The sites come from the frame's list (server/frame/sites.js): a site is open only when its service's
 // public domain serves the service itself (Network's exposure overlay), so the home page, the navbar and
 // "Opening next" always agree with what is actually running.
-const { SITES: frameSites, GROUPS, groupOf, PRODUCTS, fullName } = require('../frame/sites');
+const { LISTED, GROUPS, groupOf, fullName } = require('../frame/sites');
 const contracts = require('openvibe-contracts');
 const social = require('openvibe-shared/social');
 // OpenRestream is its own name, never "OpenVibe.OpenRestream" (the owner, 2026-10-28).
 const siteName = (site) => (site.name.includes('.') ? site.name : fullName(site));
-const OPEN = frameSites.filter((site) => site.status === 'open' && site.id !== 'network');
-// How many sites there are: every open one, this front door included, the same count /sites shows (server/sites/page.js).
+const OPEN = LISTED.filter((site) => site.status === 'open' && site.id !== 'network');
+// How many places the network lists: every open entry, this front door included, the same count the menu, /sites and
+// the Frame's pulse/online answer (server/sites/page.js updates with it). Pics and Download count; Media, Homes and
+// Bench are merged sections, not entries.
 // One number for the whole page: until 2026-11-06 the sites heading counted without the front door and the link under it
 // with it, so a phone showed "51 sites, one front door" above "All 52 sites" (the owner: "why isn't this count just
 // dynamic"). It always was computed; it now has one definition.
-const SITE_COUNT = frameSites.filter((site) => site.status === 'open').length;
-const SOON = frameSites.filter((site) => site.status !== 'open');
+const SITE_COUNT = LISTED.filter((site) => site.status === 'open').length;
+const SOON = LISTED.filter((site) => site.status !== 'open');
 const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen', 'Twenty'];
 const inWords = (n) => WORDS[n] || String(n);
 const ACCOUNT = [
@@ -370,18 +372,12 @@ function body(catalog, act) {
     const popular = POPULAR.map((id) => byId.get(id)).filter(Boolean);
     const fams = catalog.families.filter((f) => f.url);
     const count = (f) => f.count || catalog.tools.filter((t) => t.family === f.id).length;
-    // The service map: every open site under the launcher's groups (server/frame/sites.js GROUPS), so the 36 cards read
-    // as six neighbourhoods, each with the products that live on another site's domain (openvibe.pics, …) beside it.
-    // Every open site in its neighbourhood (server/frame/sites.js GROUPS), as a launcher under its short name (the domain
-    // word: "Live", "Reviews"; the full name leads its one line): a phone shows the icons three or
-    // four to a row, the way its home screen does; wider screens add each site's one line. The products that live on
-    // another site's domain (openvibe.pics, …) are tiles of their neighbourhood too. /sites has the long descriptions.
+    // The service map: every open place under the launcher's groups (server/frame/sites.js GROUPS), so the cards read
+    // as the same eight groups, in the same order, as the menu. Pics and Download are list entries beside Video;
+    // Media, Homes and Bench are merged sections and have no tile. /sites has the long descriptions.
     const groups = GROUPS.map((g) => ({
         name: g.name,
-        items: [
-            ...OPEN.filter((site) => groupOf(site.id) === g.id).map((site) => ({ icon: `ov:${site.icon}`, name: site.name, text: `${siteName(site)}: ${site.tagline || site.what}`, href: `https://${site.host}/` })),
-            ...PRODUCTS.filter((x) => groupOf(x.id) === g.id).map((x) => ({ icon: `ov:${x.icon}`, name: x.name, text: x.tagline, href: x.url || `https://${x.host}/` })),
-        ],
+        items: OPEN.filter((site) => groupOf(site.id) === g.id).map((site) => ({ icon: `ov:${site.icon}`, name: site.name, text: `${siteName(site)}: ${site.tagline || site.what}`, href: `https://${site.host}/` })),
     })).filter((g) => g.items.length);
     const sites = showcase.apps({
         id: 'network', title: sitesHeading(),
