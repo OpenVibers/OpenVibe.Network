@@ -30,6 +30,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName } = require('./sites');
 const { createMenuCards } = require('./menu-cards');
+const seen = require('./seen');
 const toolsCatalog = require('../domains/catalog');
 
 const RANK_MS = 30 * 60_000, COPY_MS = 24 * 60 * 60_000;
@@ -86,6 +87,45 @@ function historySiteId(service, url) {
     return site ? site.id : null;
 }
 
+const ONLINE_TTL_MS = 30_000;
+const SITE_TEXT = (v, max) => String(v == null ? '' : v)
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
+/** An https link on an OpenVibe domain (apex or any subdomain), or null. */
+const openvibeLink = (v) => {
+    const raw = String(v == null ? '' : v).trim();
+    if (!raw || raw.length > 400) return null;
+    let u;
+    try { u = new URL(raw); } catch { return null; }
+    if (u.protocol !== 'https:' || u.username || u.password) return null;
+    const host = u.hostname.toLowerCase();
+    // The host must be one the manifests own (each site's domain, from the same list the Frame serves), or a
+    // page on openvibe.network. A lookalike (openvibe.live.example.com) is not an OpenVibe domain.
+    return siteForHost(host) || host === 'openvibe.network' || host.endsWith('.openvibe.network') ? raw : null;
+};
+const STRIP_ICON = /^[a-z0-9][a-z0-9-]{0,39}$/;
+/** A site's declared strip items: at most three, text only, an https link on an OpenVibe domain, a number or a line. */
+function stripOf(list) {
+    const out = [];
+    for (const raw of Array.isArray(list) ? list.slice(0, 3) : []) {
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue;
+        const label = SITE_TEXT(raw.label, 24);
+        const link = openvibeLink(raw.link);
+        if (!label || !link || !STRIP_ICON.test(String(raw.icon || ''))) continue;
+        const item = { label, icon: String(raw.icon), link };
+        const n = Number(raw.count);
+        const line = SITE_TEXT(raw.line, 40);
+        if (raw.count !== undefined && Number.isInteger(n) && n >= 0) item.value = n;
+        else if (line) item.line = line;
+        else continue;   // neither a number nor a line: not a strip item
+        out.push(item);
+    }
+    return out;
+}
+
 /**
  * Footer copy comes from OpenVibe.AI's network.site_copy workflow (roadmap Wave 13, ADR-015), called with a
  * self-signed Network service token (sub svc:network, aud openvibe.ai, cap ai.run.create, ns network.*).
@@ -120,7 +160,7 @@ function aiSiteCopy({ privateKey, issuer, aiUrl }) {
     };
 }
 
-async function createFrameService(db, config, analytics, { privateKey = null, issuer = null, selfToken = () => null, aiUrl = process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700' } = {}) {
+async function createFrameService(db, config, analytics, { privateKey = null, issuer = null, selfToken = () => null, aiUrl = process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700', today = null, now = Date.now } = {}) {
     const fromAi = privateKey && issuer ? aiSiteCopy({ privateKey, issuer, aiUrl: String(aiUrl).replace(/\/+$/, '') }) : null;
     // frame_cache and frame_hits are migrations/NNNN_*.sql (plan T2). The old chrome_cache/chrome_hits
     // rename was a SQLite-only step and is not repeated here.
@@ -406,25 +446,38 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         return true;
     };
     const viewersOf = (st) => Math.max(0, Number(st.total_viewer_count != null ? st.total_viewer_count : st.viewer_count) || 0);
-    async function readPulse() {
+    // Live's public list, held 30 s and shared by /pulse and /online. Null when Live does not answer.
+    let liveAt = 0;
+    let liveValue = null;
+    async function readLive(nowMs = now()) {
+        if (liveAt && nowMs - liveAt < 30_000) return liveValue;
         const d = await getJson(`${svcUrl('live', 'http://127.0.0.1:3000')}/api/streams`);
         const streams = d && Array.isArray(d.streams) ? d.streams.filter(publicLive) : null;
-        const live = streams ? streams.filter((st) => /^[A-Za-z0-9_-]{1,40}$/.test(String(st.username || ''))).slice(0, 8).map((st) => {
-            const avatar = /^https:\/\//i.test(String(st.avatar_url || '')) ? String(st.avatar_url).slice(0, 500) : null;
-            return {
-                name: String(st.display_name || st.username || st.title || '').replace(/\s+/g, ' ').trim().slice(0, 100) || st.username,
-                url: `https://openvibe.live/@${encodeURIComponent(st.username)}`,
-                viewers: viewersOf(st),
-                ...(avatar ? { avatar } : {}),
-            };
-        }) : null;
+        liveValue = streams ? {
+            channels: streams.length,
+            watching: streams.reduce((a, st) => a + viewersOf(st), 0),
+            list: streams.filter((st) => /^[A-Za-z0-9_-]{1,40}$/.test(String(st.username || ''))).slice(0, 8).map((st) => {
+                const avatar = /^https:\/\//i.test(String(st.avatar_url || '')) ? String(st.avatar_url).slice(0, 500) : null;
+                return {
+                    name: String(st.display_name || st.username || st.title || '').replace(/\s+/g, ' ').trim().slice(0, 100) || st.username,
+                    url: `https://openvibe.live/@${encodeURIComponent(st.username)}`,
+                    viewers: viewersOf(st),
+                    ...(avatar ? { avatar } : {}),
+                };
+            }),
+        } : null;
+        liveAt = nowMs;
+        return liveValue;
+    }
+    async function readPulse() {
+        const live = await readLive();
         const views = Object.entries(rank.scores || {}).filter(([k]) => !k.includes(':')).reduce((a, [, n]) => a + (Number(n) || 0), 0);
         return {
-            live_now: streams ? streams.length : null,
-            watching: streams ? streams.reduce((a, st) => a + viewersOf(st), 0) : null,
+            live_now: live ? live.channels : null,
+            watching: live ? live.watching : null,
             sites: orderedOpen().length,
             views_7d: views > 0 ? Math.round(views) : null,
-            live,
+            live: live ? live.list : null,
             updated: new Date().toISOString(),
         };
     }
@@ -435,6 +488,123 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         }
         res.set({ 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin', 'Cache-Control': 'public, max-age=30, stale-while-revalidate=120', 'Content-Type': 'application/json; charset=utf-8' });
         res.send(JSON.stringify(pulse || { live_now: null, watching: null, sites: orderedOpen().length, views_7d: null, live: null, updated: null }));
+    });
+
+    // ── GET /api/frame/online — who is on the network, and a few counts (owner, 2026-11-10) ────────────────────────
+    // The footer strip on every site mounts from this one read. Members are signed-in people whose presence
+    // heartbeat arrived on any site in the last thirty minutes; one who hides their status is counted but never
+    // named. Guests are distinct anonymous visitors, counted from the page-view beacon as a keyed hash of the
+    // address and the browser's user agent — held in memory for thirty minutes, never written anywhere, and only
+    // ever returned as a number (server/frame/seen.js). Live is the first three public channels, empty when none.
+    // Counts open the thing they count; a service that does not publish a count contributes no item. A site's own
+    // strip items come from its manifest entry and are returned only for that site (?site=), validated hard.
+    // Public, CORS *, cached 30 s here and at the edge. Nothing personal: a named person carries their name,
+    // their @username, their picture and the site's name, and a guest carries nothing.
+    /** The joiners count and whatever a service already publishes for today; an item with no source is left out. */
+    async function countsOf(nowMs) {
+        const out = [];
+        try {
+            const since = new Date(nowMs - 7 * 86_400_000).toISOString().slice(0, 19).replace('T', ' ');
+            const r = await db.prepare("SELECT COUNT(*) AS n FROM users WHERE COALESCE(is_anon, 0) = 0 AND COALESCE(is_banned, 0) = 0 AND COALESCE(deleted_at, '') = '' AND created_at >= ?").get(since);
+            const n = r ? Number(r.n) : NaN;
+            if (Number.isFinite(n) && n >= 0) out.push({ id: 'joined', label: 'Joined this week', value: n, icon: 'members', url: 'https://openvibe.network/stats' });
+        } catch { /* the count is optional */ }
+        // Report's daily activity (the same read /api/v1/frame/today makes): today's videos and posts, when it has them.
+        const t = today ? await Promise.resolve().then(() => today()).catch(() => null) : null;
+        if (t && Number.isSafeInteger(t.new_videos_today) && t.new_videos_today >= 0) out.push({ id: 'videos', label: 'Videos today', value: t.new_videos_today, icon: 'video', url: 'https://openvibe.video/' });
+        if (t && Number.isSafeInteger(t.posts_today) && t.posts_today >= 0) out.push({ id: 'posts', label: 'Threads and pastes today', value: t.posts_today, icon: 'clipboard', url: 'https://openvibe.community/' });
+        return out;
+    }
+    let onlineBase = null;
+    let onlineBaseAt = 0;
+    let onlineInflight = null;
+    async function readOnlineBase(nowMs) {
+        if (onlineBase && nowMs - onlineBaseAt < ONLINE_TTL_MS) return onlineBase;
+        onlineInflight = onlineInflight || (async () => {
+            const snap = seen.snapshot(nowMs);
+            const subjects = [...snap.members.keys()];
+            let rows = [];
+            if (subjects.length) {
+                try {
+                    rows = await db.prepare(`SELECT u.username, u.display_name, u.subject_id, p.show_status, p.state
+                        FROM person_presence p JOIN users u ON u.subject_id = p.subject_id
+                        WHERE p.subject_id = ANY(?) AND COALESCE(u.is_banned, 0) = 0 AND COALESCE(u.deleted_at, '') = ''`).all(subjects);
+                } catch { rows = []; }
+            }
+            const bySubject = new Map(rows.map((r) => [r.subject_id, r]));
+            const visible = [];
+            for (const [subject, entry] of snap.members) {
+                const r = bySubject.get(subject);
+                if (!r) continue;
+                // The person's own presence choice decides whether they may be named: the "Show my status"
+                // switch off, or Invisible, means counted among members and never in the list.
+                if (!Number(r.show_status) || r.state === 'invisible') continue;
+                const username = String(r.username || '').slice(0, 40);
+                if (!username) continue;
+                const name = SITE_TEXT(r.display_name || username, 60) || username;
+                const at = entry.site ? SITES.find((s) => s.id === entry.site) : null;
+                visible.push({ name, username, avatar: `https://openvibe.network/avatar/${encodeURIComponent(username)}?s=64`, site: at ? at.name : null, at: entry.at });
+            }
+            visible.sort((a, b) => b.at - a.at);
+            const live = await readLive(nowMs);
+            const views = Object.entries(rank.scores || {}).filter(([k]) => !k.includes(':')).reduce((a, [, n]) => a + (Number(n) || 0), 0);
+            onlineBase = {
+                members: snap.members.size,
+                guests: snap.guests,
+                total: snap.members.size + snap.guests,
+                visible,
+                counts: await countsOf(nowMs),
+                live: live ? { channels: live.channels, watching: live.watching, first: live.list.slice(0, 3).map((s) => ({ name: s.name, url: s.url })) } : { channels: 0, watching: 0, first: [] },
+                sites: orderedOpen().length,
+                views_7d: views > 0 ? Math.round(views) : null,
+                updated: new Date(nowMs).toISOString(),
+            };
+            onlineBaseAt = nowMs;
+            return onlineBase;
+        })().finally(() => { onlineInflight = null; });
+        return await onlineInflight;
+    }
+    /** The site an asking footer means: its site id (the icon name) or its service id (openre is the site `stream`). */
+    const siteAsked = (asked) => {
+        const id = /^[a-z0-9][a-z0-9-]{0,39}$/.test(String(asked || '').toLowerCase()) ? String(asked).toLowerCase() : '';
+        return id ? SITES.find((s) => s.id === id || s.service === id) || null : null;
+    };
+    async function onlineFor(asked, nowMs = now()) {
+        const base = await readOnlineBase(nowMs);
+        const site = siteAsked(asked);
+        return {
+            updated: base.updated,
+            members: base.members,
+            guests: base.guests,
+            total: base.total,
+            people: base.visible.slice(0, 60).map(({ name, username, avatar, site: at }) => ({ name, username, avatar, site: at })),
+            more: Math.max(0, base.visible.length - 60),
+            live: base.live,
+            counts: base.counts,
+            items: site ? stripOf(site.strip) : [],
+            sites: base.sites,
+            views_7d: base.views_7d,
+        };
+    }
+    const onlineCache = new Map();   // site id ('' for none) → { at, body }
+    router.get('/online', async (req, res) => {
+        // One answer per site, held 30 s: the key is the site's own id, so ?site=openre and ?site=stream share one.
+        const site = (siteAsked(req.query.site) || {}).id || '';
+        const nowMs = now();
+        let e = onlineCache.get(site);
+        if (!e || nowMs - e.at >= ONLINE_TTL_MS) {
+            try {
+                e = { at: nowMs, body: JSON.stringify(await onlineFor(site, nowMs)) };
+            } catch {
+                e = null;
+            }
+            if (e) {
+                if (onlineCache.size >= 200) onlineCache.clear();
+                onlineCache.set(site, e);
+            }
+        }
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin', 'Cache-Control': 'public, max-age=30, stale-while-revalidate=120', 'Content-Type': 'application/json; charset=utf-8' });
+        res.send(e ? e.body : JSON.stringify({ updated: null, members: null, guests: null, total: null, people: [], more: 0, live: null, counts: [], items: [], sites: orderedOpen().length, views_7d: null }));
     });
 
     // GET /api/frame/feed?kind=&site=&q=&following=1&cursor=&limit= and GET /api/frame/wall?limit=&after=&for= — the menu's Feed and wall
@@ -739,11 +909,19 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         try {
             const ua = String(req.headers['user-agent'] || '');
             let host = ''; try { host = new URL(String(req.headers.origin || '')).hostname.toLowerCase(); } catch { /* */ }
-            const now = Date.now(); const k = req.ip || ''; const w = recent.get(k);
-            if (!w || now - w[1] > 60_000) recent.set(k, [1, now]); else w[0]++;
+            const at = now(); const k = req.ip || ''; const w = recent.get(k);
+            if (!w || at - w[1] > 60_000) recent.set(k, [1, at]); else w[0]++;
             if (recent.size > 5000) recent.clear();
             const known = host && (siteForHost(host) || toolsCatalog.peek().catalog.tools.some(t => t.hosts && (t.hosts.canonical === host || t.hosts.short === host)));
-            if (known && (recent.get(k) || [0])[0] <= 40 && !/bot|crawl|spider|slurp|headless|preview|monitor|curl|wget|python|node|go-http/i.test(ua)) await bump.run(host);
+            if (known && (recent.get(k) || [0])[0] <= 40 && !seen.isBot(ua)) {
+                // The strip's guest count comes from this same beacon, never from a new call: a distinct address +
+                // user agent in the last thirty minutes is one guest (in memory only). `?in=1` marks a signed-in
+                // browser, which is counted as a member by its heartbeat instead, and it forgets any guest entry it
+                // left earlier in the window.
+                if (/^(1|true)$/.test(String(req.query.in || ''))) seen.forgetGuest(req.ip, ua, now());
+                else seen.seenGuest(req.ip, ua, now());
+                await bump.run(host);
+            }
         } catch { /* counting must never fail a page */ }
         res.status(204).end();
     });
@@ -845,7 +1023,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         return { at: rankedAt, order: orderedOpen().map(s => s.id), everyMs: RANK_MS };
     }
 
-    return { router, start, stop, refreshRank, refreshCopy, probeLegal, refreshCards: menuCards.refresh, cards: menuCards.cards, payloadFor, ranking, _state: () => ({ rank, copy, cards: menuCards._state() }) };
+    return { router, start, stop, refreshRank, refreshCopy, probeLegal, refreshCards: menuCards.refresh, cards: menuCards.cards, payloadFor, ranking, online: onlineFor, _state: () => ({ rank, copy, cards: menuCards._state() }) };
 }
 
-module.exports = { createFrameService, BANNED };
+module.exports = { createFrameService, BANNED, stripOf, openvibeLink };

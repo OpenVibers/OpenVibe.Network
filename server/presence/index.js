@@ -34,6 +34,7 @@
  */
 const { ids, validate } = require('openvibe-contracts');
 const eventRelay = require('../developer/event-relay');
+const seen = require('../frame/seen');
 
 const SUBJECT_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
 const HEARTBEAT_ONLINE_MS = 2 * 60 * 1000;
@@ -355,6 +356,10 @@ function createPresence({ db, requireAuth, guard, selfToken, config = {}, fetchI
         try {
             res.set('Cache-Control', 'no-store');
             const streaming = (await streamingSubjects()).has(req.user.subject_id);
+            // The network's "who is online" strip sees the same heartbeat: the person and the site their tab runs on
+            // (the request's Origin). This record lives in memory for thirty minutes; nothing about it is stored.
+            // Bots and monitors are left out by the page-view rule.
+            if (!seen.isBot(req.headers['user-agent'])) seen.seenMember(req.user.subject_id, seen.siteOfOrigin(req.headers.origin), now());
             return res.json(await heartbeat(db, req.user.subject_id, { idle, nowMs: now(), streaming }));
         } catch (err) {
             if (err instanceof PresenceError) return res.status(err.status).json({ error: err.code, detail: err.detail });

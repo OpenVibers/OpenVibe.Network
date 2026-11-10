@@ -972,9 +972,10 @@ app.get('/@:username', rateLimit({ windowMs: 60_000, max: 120 }), publicProfiles
 
 // The OpenVibe Frame: analytics-ranked navigation + footer copy for every site (server/frame).
 // /api/chrome is the old name, kept for copies of openvibe-shared older than 1.11.0.
-const frameService = await require('./frame/service').createFrameService(db, config, analytics, { privateKey, issuer: config.jwt.issuer, selfToken });
-app.use('/api/v1/frame/today', rateLimit({ windowMs: 60_000, max: 240 }),
-    require('./frame/today').createToday({ reportUrl: config.services.report.internalUrl }).router);
+// The menu's day counts (Report's daily activity): the strip's "today" counts reuse the same cached read.
+const frameToday = require('./frame/today').createToday({ reportUrl: config.services.report.internalUrl });
+const frameService = await require('./frame/service').createFrameService(db, config, analytics, { privateKey, issuer: config.jwt.issuer, selfToken, today: () => frameToday.get() });
+app.use('/api/v1/frame/today', rateLimit({ windowMs: 60_000, max: 240 }), frameToday.router);
 const frameLimit = rateLimit({ windowMs: 60_000, max: 240 });
 app.use('/api/frame', frameLimit, frameService.router);
 app.use('/api/chrome', frameLimit, frameService.router);

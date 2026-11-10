@@ -106,6 +106,25 @@ const serviceToken = (cap = 'network.presence.read') => {
         return true;
     };
 
+    // ── The network's "who is online" strip is filled from this same heartbeat ──
+    // The person and the site their tab runs on (the request's Origin); a bot is left out. Kept in memory only.
+    {
+        const seenStore = require('../server/frame/seen');
+        seenStore.reset();
+        const beatWith = (headers) => call('POST', '/api/v1/me/presence/heartbeat', { body: {}, headers });
+        const UA = 'Mozilla/5.0 (X11; Linux x86_64) Chrome/130';
+        const beatAnn = await beatWith({ ...(await as(1)), origin: 'https://openvibe.live', 'user-agent': UA });
+        assert.strictEqual(beatAnn.status, 200);
+        const first = seenStore.snapshot(NOW);
+        assert.strictEqual(first.members.get(ANN).site, 'live', 'the site comes from the Origin');
+        await beatWith({ ...(await as(2)), origin: 'https://openvibe.games', 'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' });
+        assert.ok(!seenStore.snapshot(NOW).members.has(BOB), 'a bot heartbeat is not a person online');
+        const noOrigin = await beatWith({ ...(await as(3)), 'user-agent': UA });
+        assert.strictEqual(noOrigin.status, 200);
+        assert.strictEqual(seenStore.snapshot(NOW).members.get(CAT).site, null, 'no Origin: counted, with no site named');
+        seenStore.reset();
+    }
+
     // ── The people who may see: self, a follow, a DM peer; a stranger never ──
     for (const id of [1, 2, 3, 4]) { const hb = await heartbeat(id); assert.strictEqual(hb.status, 200, `heartbeat ${id}: ${JSON.stringify(hb.body)}`); }
     let r = await get(1, [ANN, BOB, CAT, DAN]);
