@@ -74,12 +74,13 @@ async function createHistoryRoutes(db, requireAuth) {
         if (req.query.site || req.query.service) { where.push('service = ?'); params.push(String(req.query.site || req.query.service).slice(0, 32)); }
         if (req.query.day) { where.push(`updated_at >= ? AND updated_at < ?`); const d = String(req.query.day).slice(0, 10); params.push(`${d} 00:00:00`, `${d} 23:59:59`); }
         if (req.query.q) { where.push(`to_tsvector('simple', title) @@ plainto_tsquery('simple', ?)`); params.push(String(req.query.q).slice(0, 120)); }
+        const countWhere = where.join(' AND '), countParams = params.slice();
         if (cursor) { try { const c = JSON.parse(Buffer.from(cursor, 'base64url').toString()); where.push('(updated_at, id) < (?, ?)'); params.push(c.t, c.i); } catch { return res.status(400).json({ error: 'Invalid cursor' }); } }
         const rows = await db.prepare(`SELECT * FROM user_history WHERE ${where.join(' AND ')} ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?`).all(...params, limit + 1, cursor ? 0 : offset);
         const hasMore = rows.length > limit; if (hasMore) rows.pop();
         const last = rows[rows.length - 1];
         const next_cursor = hasMore && last ? Buffer.from(JSON.stringify({ t: last.updated_at, i: last.id })).toString('base64url') : null;
-        const total = (await db.prepare(`SELECT COUNT(*) AS c FROM user_history WHERE ${where.join(' AND ')}`).get(...params))?.c || 0;
+        const total = (await db.prepare(`SELECT COUNT(*) AS c FROM user_history WHERE ${countWhere}`).get(...countParams))?.c || 0;
         const paused = !!(await db.prepare('SELECT history_paused FROM users WHERE id = ?').get(req.user.id))?.history_paused;
         res.set('Cache-Control', 'no-store');
         const prefs = await db.prepare('SELECT history_agents_allowed, history_keep_private, history_keep_mature FROM users WHERE id = ?').get(req.user.id);
