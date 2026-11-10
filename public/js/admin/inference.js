@@ -27,13 +27,14 @@ const OIN_STRATEGIES = [
     ['fastest', 'Fastest', 'The quickest answer, at any price under the ceiling'],
     ['fixed', 'My order', 'Your list, top first; the next one when it fails'],
 ];
-// The ways of paying less. `acts`: whether the switch changes calls today (OpenVibe.AI #445: the output limit and the
-// small model first do; the other three are recorded and their savings measured, but do not yet rewire the calls).
+// The ways of paying less. `acts`: whether the switch changes calls today. All five act now: the
+// output limit and the small model first since #445, and the three economy switches since this release
+// (OpenVibe.AI: the batch path, the cache-control markers and warm bias, and the private answer cache).
 const OIN_ECONOMY = [
     ['small_first', 'Try a small model first', 'A large one answers only when the small one cannot.', true],
-    ['batches', 'Send it to a batch when it can wait', 'About half price; the answer comes within a day.', false],
-    ['prompt_cache', 'Keep repeated prompts cached', 'The same opening is paid once, then at a fraction.', false],
-    ['answer_cache', 'Reuse an identical answer', 'Only for the same person asking the same thing.', false],
+    ['batches', 'Send it to a batch when it can wait', 'About half price; the answer comes within a day.', true],
+    ['prompt_cache', 'Keep repeated prompts cached', 'The same opening is paid once, then at a fraction.', true],
+    ['answer_cache', 'Reuse an identical answer', 'Only for the same person asking the same thing.', true],
 ];
 const OIN = { data: null, window: '24h', busy: false, drafts: {} };
 
