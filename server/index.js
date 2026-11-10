@@ -919,6 +919,7 @@ app.use('/api/push', requireAuth, require('./push/routes'));
 
 // Cross-site history (what the account touched anywhere on the network)
 app.use('/api/history', rateLimit({ windowMs: 60_000, max: 60 }), await require('./history/routes').createHistoryRoutes(db, requireAuth));
+app.use('/api/v1/history', rateLimit({ windowMs: 60_000, max: 60 }), await require('./history/routes').createHistoryRoutes(db, requireAuth));
 
 // "Sign in everywhere" chain targets (public: the fanout page reads them before hopping)
 app.get('/api/sso/targets', (req, res) => {

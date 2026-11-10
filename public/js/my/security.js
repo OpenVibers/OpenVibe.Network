@@ -190,7 +190,8 @@ async function loadHistory(more) {
         if (_histService) q.set('service', _histService);
         const term = document.getElementById('hist-q').value.trim(); if (term) q.set('q', term);
         const data = await apiFetch('/api/history?' + q);
-        document.getElementById('hist-pause').checked = !!data.paused;
+        document.getElementById('hist-pause').checked = !data.paused;
+        document.getElementById('hist-agents').checked = !!data.agents_allowed;
         if (!_histLoaded || !more) {
             const chips = document.getElementById('hist-chips');
             chips.innerHTML = `<button class="${_histService ? '' : 'active'}" onclick="histFilter('', this)">All</button>` + (data.services || []).map(s => `<button class="${_histService === s.service ? 'active' : ''}" onclick="histFilter('${esc(s.service)}', this)">${esc(s.label || s.service)} <span style="opacity:.6">${s.count}</span></button>`).join('');
@@ -214,7 +215,11 @@ async function loadHistory(more) {
     } catch (err) { listEl.innerHTML = `<div class="hist-empty">Could not load history: ${esc(err.message)}</div>`; }
 }
 async function toggleHistoryPause(cb) {
-    try { await apiFetch('/api/history/settings', { method: 'PUT', body: JSON.stringify({ paused: cb.checked }) }); toast(cb.checked ? 'History paused — nothing new is recorded.' : 'History recording resumed.'); }
+    try { await apiFetch('/api/history/settings', { method: 'PUT', body: JSON.stringify({ keep_history: cb.checked }) }); toast(cb.checked ? 'History recording resumed.' : 'History paused — nothing new is recorded.'); }
+    catch (e) { cb.checked = !cb.checked; toast(e.message, 'error'); }
+}
+async function toggleHistoryAgents(cb) {
+    try { await apiFetch('/api/history/settings', { method: 'PUT', body: JSON.stringify({ agents_allowed: cb.checked }) }); }
     catch (e) { cb.checked = !cb.checked; toast(e.message, 'error'); }
 }
 async function clearHistory() {
