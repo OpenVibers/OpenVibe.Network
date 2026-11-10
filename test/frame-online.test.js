@@ -134,6 +134,9 @@ o = await svc.online('live');
 assert.deepStrictEqual(o.live, { channels: 0, watching: 0, first: [] }, 'empty when nobody is live');
 
 // Site items: declared on a site's manifest entry, returned only for that site, and validated hard.
+// The released Contracts manifest carries Live's own item first.
+const shipped = await svc.online('live');
+assert.deepStrictEqual(shipped.items, [{ label: 'The Rundown', icon: 'news', link: 'https://openvibe.live/rundown', line: 'What streamers talked about' }], 'the released manifest declares it');
 const live = SITES.find((s) => s.id === 'live');
 live.strip = [
     { label: 'The Rundown', icon: 'news', link: 'https://openvibe.live/rundown', line: 'Today\'s topics' },
@@ -151,7 +154,7 @@ assert.deepStrictEqual(o.items.map((i) => i.label), ['The Rundown', 'Clips', 'Ne
 assert.deepStrictEqual(o.items[0], { label: 'The Rundown', icon: 'news', link: 'https://openvibe.live/rundown', line: 'Today\'s topics' });
 assert.deepStrictEqual(o.items[1], { label: 'Clips', icon: 'clapper', link: 'https://openvibe.live/clips?sort=new', value: 1284 });
 assert.deepStrictEqual(o.items[2], { label: 'Network page', icon: 'chart', link: 'https://openvibe.network/stats', value: 9 }, 'openvibe.network itself is an OpenVibe domain');
-assert.deepStrictEqual((await svc.online('games')).items, [], 'another site never sees these items');
+assert.deepStrictEqual((await svc.online('games')).items.map((i) => i.label), ['Play now'], 'another site gets its own items, never these');
 assert.deepStrictEqual(stripOf([{ label: 'a', icon: 'news', link: 'https://openvibe.live.evil.example/x', count: 1 }]), [], 'a lookalike host is not an OpenVibe domain');
 assert.deepStrictEqual((await svc.online('')).items, [], 'no site asked, no items');
 const stream = SITES.find((s) => s.id === 'stream');
