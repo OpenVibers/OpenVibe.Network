@@ -383,7 +383,7 @@
                 <button class="btn btn-small btn-danger" onclick="clearHistory()" title="Delete the whole timeline"><i class="fa-solid fa-trash"></i> Clear</button>
             </div>
             <p id="hist-summary" role="status" hidden></p>
-            <div id="hist-list"><div class="loading-spinner">Loading history…</div></div>
+            <div id="hist-list"><div class="loading-spinner"><span class="ov-mark" data-state="busy" data-size="32" aria-hidden="true"></span></div></div>
             <div class="btn-row" id="hist-more-row" style="display:none;margin-top:10px"><button class="btn" onclick="loadHistory(true)">Load more</button></div>
         </div>
     </div>
@@ -396,12 +396,12 @@
         <div class="card" id="consent-card">
             <h3><span class="icon"><i class="fa-solid fa-circle-check"></i></span> Your data choices</h3>
             <p>AI training, the open dataset, face recognition and apps that use your content are <b>off until you turn them on</b>. Each choice is yours, and you can turn it off again at any time. Nothing here is on by default. We never sell your data.</p>
-            <div id="consent-choices"><div class="loading-spinner">Loading your choices…</div></div>
+            <div id="consent-choices"><div class="loading-spinner"><span class="ov-mark" data-state="busy" data-size="32" aria-hidden="true"></span></div></div>
             <!-- Apps you allowed (C4, 2026-11-07): what each app asked for when you signed in to it (consent:<purpose>)
                  and was given, one Turn off per purpose, and what you said no to in the last 30 days
                  (GET /api/v1/me/consent/apps). -->
             <h4 class="consent-apps-title">Apps you allowed</h4>
-            <div id="consent-apps"><div class="loading-spinner">Loading your apps…</div></div>
+            <div id="consent-apps"><div class="loading-spinner"><span class="ov-mark" data-state="busy" data-size="32" aria-hidden="true"></span></div></div>
             <p class="muted consent-status" id="consent-status" role="status"></p>
         </div>
         <!-- What you see (L1, 2026-11-02): one row per content label, three equal choices, saved at once. The web default
@@ -426,7 +426,7 @@
         <div class="card">
             <h3><span class="icon"><i class="fa-solid fa-database"></i></span> Your data on OpenVibe</h3>
             <p style="margin-bottom:12px">Settings and summaries OpenVibe sites keep with your account: your chat settings, favourite tools, streaming and community summaries and more. The sites themselves keep the full records. You can download all of this, or delete any of it. A site that writes a summary may write it again the next time you use that site.</p>
-            <div id="modules-list"><div class="loading-spinner">Loading…</div></div>
+            <div id="modules-list"><div class="loading-spinner"><span class="ov-mark" data-state="busy" data-size="32" aria-hidden="true"></span></div></div>
             <div class="btn-row"><button class="btn" type="button" onclick="exportModules()"><i class="fa-solid fa-download"></i> Download as JSON</button></div>
         </div>
     </div>
@@ -531,7 +531,7 @@
         </div>
         <div class="card">
             <h3><span class="icon"><i class="fa-solid fa-mobile-screen"></i></span> Active Sessions</h3>
-            <div id="sessions-list"><div class="loading-spinner">Loading sessions...</div></div>
+            <div id="sessions-list"><div class="loading-spinner"><span class="ov-mark" data-state="busy" data-size="32" aria-hidden="true"></span></div></div>
             <p style="margin-top:12px;color:var(--text-secondary);font-size:13px">Lost a phone or used a shared computer? Signing out ends every sign-in on every OpenVibe site at once, and open chats and games disconnect.</p>
             <div class="btn-row" style="margin-top:10px">
                 <button class="btn btn-danger" onclick="revokeAllSessions()"><i class="fa-solid fa-mobile-screen-button"></i> Sign out other devices</button>
@@ -541,7 +541,7 @@
         <div class="card">
             <h3><span class="icon"><i class="fa-solid fa-plug"></i></span> Signed-in apps</h3>
             <p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">Extensions and apps that hold their own sign-in. Revoking one ends its refresh token; the next request asks you to sign in again.</p>
-            <div id="apps-list"><div class="loading-spinner">Loading apps...</div></div>
+            <div id="apps-list"><div class="loading-spinner"><span class="ov-mark" data-state="busy" data-size="32" aria-hidden="true"></span></div></div>
         </div>
         <div class="card" id="blocks-card">
             <h3><span class="icon"><i class="fa-solid fa-user-slash"></i></span> Blocked people</h3>
@@ -550,7 +550,7 @@
                 <div class="form-field"><label for="block-username">Block someone</label><input id="block-username" name="username" maxlength="64" autocomplete="off" placeholder="username"></div>
                 <div class="btn-row"><button class="btn btn-danger" type="submit">Block</button></div>
             </form>
-            <div id="blocks-list"><div class="loading-spinner">Loading…</div></div>
+            <div id="blocks-list"><div class="loading-spinner"><span class="ov-mark" data-state="busy" data-size="32" aria-hidden="true"></span></div></div>
             <p class="data-status" id="blocks-status" role="status"></p>
         </div>
     </div>
@@ -626,6 +626,7 @@
 
 <!-- Shared scripts -->
 <script src="/shared/theme-loader.js" defer></script>
+<script src="/shared/ov-mark.js" defer></script>
 <script src="/shared/navbar.js" defer></script>
 <script src="/js/account-safety.js" defer></script>
 <script src="/shared/notification-ui.js" defer></script>

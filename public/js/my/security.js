@@ -26,7 +26,7 @@ async function loadEmailStatus() {
     } catch (e) { card.style.display = 'none'; }
 }
 async function resendVerification(btn) {
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending…'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> Sending…'; }
     try { const r = await apiFetch('/api/auth/email/send-verification', { method: 'POST' }); toast(r.message || 'Sent', 'success'); }
     catch (e) { toast(e.message, 'error'); }
     loadEmailStatus();
@@ -184,7 +184,7 @@ async function loadHistory(more) {
     if (isAnonSession()) { document.getElementById('hist-list').innerHTML = '<div class="hist-empty">History is only kept for signed-in accounts.</div>'; return; }
     if (!more) _histOffset = 0;
     const listEl = document.getElementById('hist-list');
-    if (!more) listEl.innerHTML = '<div class="loading-spinner">Loading history…</div>';
+    if (!more) listEl.innerHTML = '<div class="loading-spinner"><span class="ov-mark" data-state="busy" data-size="32" aria-hidden="true"></span></div>';
     try {
         const q = new URLSearchParams({ limit: '40', offset: String(_histOffset) });
         if (_histService) q.set('service', _histService);

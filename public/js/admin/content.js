@@ -64,7 +64,7 @@ async function deleteAllPasteForks() {
 // ═══════════════════════════════════════════════════════════════
 async function loadStorage() {
     const c = document.getElementById('storage-content');
-    c.innerHTML = '<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Analyzing storage...</div>';
+    c.innerHTML = '<div class="loading"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> Analyzing storage...</div>';
     try {
         const [data, tierData] = await Promise.all([
             api('/api/admin/streamer/storage'),
@@ -180,7 +180,7 @@ function buildStreamerTierHtml(tierData) {
         + '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border)">'
         + '<th style="padding:6px 10px">Tier</th><th style="padding:6px 10px;text-align:right">VODs</th><th style="padding:6px 10px;text-align:right">VOD Size</th><th style="padding:6px 10px;text-align:right">Share</th><th style="padding:6px 10px;text-align:right">Clips</th><th style="padding:6px 10px">Provider</th></tr></thead>'
         + '<tbody>' + rowHtml
-        + '<tr style="border-top:2px solid var(--border);font-weight:700"><td style="padding:8px 10px">Total</td><td style="padding:8px 10px;text-align:right">' + totalVods.toLocaleString() + '</td><td style="padding:8px 10px;text-align:right">' + fmtBytes(totalBytes) + '</td><td style="padding:8px 10px;text-align:right">100%</td><td style="padding:8px 10px;text-align:right">' + totalClips.toLocaleString() + '</td><td style="padding:8px 10px">' + (tierData.sweepRunning ? '<span style="color:#f59e0b"><i class="fa-solid fa-spinner fa-spin"></i> sweeping</span>' : '<span style="color:var(--text-muted)">idle</span>') + '</td></tr>'
+        + '<tr style="border-top:2px solid var(--border);font-weight:700"><td style="padding:8px 10px">Total</td><td style="padding:8px 10px;text-align:right">' + totalVods.toLocaleString() + '</td><td style="padding:8px 10px;text-align:right">' + fmtBytes(totalBytes) + '</td><td style="padding:8px 10px;text-align:right">100%</td><td style="padding:8px 10px;text-align:right">' + totalClips.toLocaleString() + '</td><td style="padding:8px 10px">' + (tierData.sweepRunning ? '<span style="color:#f59e0b"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> sweeping</span>' : '<span style="color:var(--text-muted)">idle</span>') + '</td></tr>'
         + '</tbody></table></div>'
         + '<div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--text-muted);margin-top:12px">'
         + '<span><i class="fa-solid ' + (ts.enabled ? 'fa-circle-check' : 'fa-circle-xmark') + '" style="color:' + (ts.enabled ? '#22c55e' : '#ef4444') + '"></i> Auto-offload: ' + (ts.enabled ? 'ON' : 'OFF') + '</span>'
@@ -202,7 +202,7 @@ async function loadStreamerCloudStorage(force) {
     const header = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
         + '<h3 style="margin:0"><i class="fa-solid fa-cloud"></i> Cloud storage usage and cost</h3>'
         + '<p class="admin-intro">This estimates storage in Backblaze B2 and Cloudflare R2, in bytes and US dollars per month. Rescan when checking capacity; higher usage means more stored data and may increase charges.</p><button class="btn btn-sm btn-outline" onclick="loadStreamerCloudStorage(true)"><i class="fa-solid fa-rotate"></i> Rescan now</button></div>';
-    el.innerHTML = header + '<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Scanning cloud buckets…</div>';
+    el.innerHTML = header + '<div class="loading"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> Scanning cloud buckets…</div>';
     try {
         const data = await api('/api/admin/streamer/storage/buckets' + (force ? '?force=1' : ''));
         const usage = data.usage || {};
