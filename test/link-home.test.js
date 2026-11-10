@@ -66,7 +66,7 @@ const SHAPED = {
     const vhost = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'nginx', 'parked-domains.conf'), 'utf8');
     assert.ok(/location ~ \^\/\(\|install\|add-computer\(\/complete\)\?\|machines(?:\(\/\.\*\)\?)?\|pair\|index\\\.md\|send\\\.js\|egress-settings\\\.js\|locker\\\.mjs\|/.test(vhost), 'the vhost passes the add flow, page scripts, machine hub and its old sub-paths, and Locker bundle to Network');
     assert.ok(vhost.includes('add-computer(/complete)?'), 'the add-computer return flow reaches Link before the openvibe.network catch-all');
-    const sendApi = vhost.slice(vhost.indexOf('location ~ ^/api/v1/me/nodes/(send-keys|send)$ {'));
+    const sendApi = vhost.slice(vhost.indexOf('location ~ ^/api/v1/me/nodes/(send-keys|send)(/.*)?$ {'));
     assert.ok(sendApi.length < vhost.length && /client_max_body_size 40m;/.test(sendApi.slice(0, sendApi.indexOf('\n    }'))), 'the Link Send API has its own location with a body limit that fits a file');
     // …the machine hub's own API (the machines list, the owner's controls, the live screen, pools), which the page
     // asks for on this host: without it those calls left for openvibe.network's catch-all and the hub showed nothing.
@@ -81,6 +81,7 @@ const SHAPED = {
     const html = page.render({ release: first, releaseId: 'rel_test' });
     assert.ok(html.includes('id="send"') && html.includes('Send to my machine'), 'the Link page has the send form');
     assert.ok(html.includes('src="/send.js"'), 'the page loads its Locker sender');
+    assert.ok(html.includes('data-send-progress') && html.includes('data-send-delivery'), 'the page shows upload progress and delivery');
     const oldCopy = page.render({ release: { ...first, stale: true, ageMs: 3 * release.DAY_MS }, releaseId: 'rel_test' });
     assert.ok(oldCopy.includes('from 3 days ago'), 'a stale copy older than a day says how old it is');
     const youngCopy = page.render({ release: { ...first, stale: true, ageMs: release.TTL_MS }, releaseId: 'rel_test' });
@@ -197,6 +198,8 @@ const SHAPED = {
         const sendScript = await get('/send.js', 'openvibe.link');
         assert.strictEqual(sendScript.status, 200, 'Link Send script is served on the Link host');
         assert.ok(sendScript.body.includes('locker.seal'), 'the page seals content before upload');
+        assert.ok(sendScript.body.includes('/api/v1/me/nodes/send/upload'), 'the page uploads in resumable parts');
+        assert.ok(sendScript.body.includes("fetch('/api/v1/me/nodes/send'"), 'the page reads delivery from its outbox');
         // Every script the page names is served on the Link host itself (egress-settings.js 301'd to Network and 404'd).
         for (const src of [...html.matchAll(/<script[^>]+src="(\/[^"/][^"]*)"/g)].map((m) => m[1]).filter((s) => !s.startsWith('/shared/'))) {
             const script = await get(src, 'openvibe.link');
