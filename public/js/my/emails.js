@@ -9,7 +9,12 @@
         try {
             const data = await apiFetch('/api/v1/me/emails');
             const rows = data.emails || [];
-            list.innerHTML = rows.length ? rows.map((e) => `<article style="padding:12px 0;border-bottom:1px solid var(--border,#ddd)"><strong>${esc(e.email)}</strong> · ${e.verified ? 'Verified' : 'Not verified'}${e.primary ? ' · Primary' : ''}<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${e.verified ? '' : `<button type="button" data-verify="${esc(e.id)}">Send verification link</button>`}${e.primary || !e.verified ? '' : `<button type="button" data-primary="${esc(e.id)}">Make primary</button>`}${e.primary ? '' : `<button type="button" data-remove="${esc(e.id)}">Remove</button>`}</div></article>`).join('') : 'No email addresses are attached to this account yet.';
+            // Each address says what it is beside it (the kit's badges) and carries its own actions (the kit's buttons).
+            const btn = (kind, attr, id, label) => `<button type="button" class="ovk-btn ovk-btn--small ovk-btn--${kind}" ${attr}="${esc(id)}">${label}</button>`;
+            list.innerHTML = rows.length ? rows.map((e) => {
+                const acts = (e.verified ? '' : btn('primary', 'data-verify', e.id, 'Send verification link')) + (e.primary || !e.verified ? '' : btn('quiet', 'data-primary', e.id, 'Make primary')) + (e.primary ? '' : btn('quiet', 'data-remove', e.id, 'Remove'));
+                return `<article class="my-email"><div class="my-email-top"><strong>${esc(e.email)}</strong><span class="ovk-badge ${e.verified ? 'ovk-badge--ok' : 'ovk-badge--warn'}">${e.verified ? 'Verified' : 'Not verified'}</span>${e.primary ? '<span class="ovk-badge ovk-badge--accent">Primary</span>' : ''}</div>${acts ? `<div class="my-email-acts">${acts}</div>` : ''}</article>`;
+            }).join('') : 'No email addresses are attached to this account yet.';
         } catch { list.textContent = 'Could not load your email addresses.'; }
     }
     list.addEventListener('click', async (event) => {
