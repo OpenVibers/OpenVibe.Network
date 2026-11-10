@@ -76,13 +76,13 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 .form-field{margin-bottom:14px}
 .form-field label{display:block;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
 /* Every text field on the page follows the active theme: its input colour, a hover tint and an accent focus ring. */
-:where(input:not([type]),input[type=text],input[type=url],input[type=email],input[type=search],input[type=password],input[type=number],select,textarea){
+:where(input:not([type]),input[type=text],input[type=url],input[type=email],input[type=search],input[type=password],input[type=number],input[type=color],select,textarea){
     padding:10px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;
     color:var(--text);font:inherit;font-size:13px;outline:none;min-height:40px;
     transition:border-color var(--ov-dur-2, .18s) var(--ov-ease-out, ease),box-shadow var(--ov-dur-2, .18s) var(--ov-ease-out, ease),background-color var(--ov-dur-2, .18s) var(--ov-ease-out, ease);
 }
-:where(input:not([type]),input[type=text],input[type=url],input[type=email],input[type=search],input[type=password],input[type=number],select,textarea):hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--border))}
-:where(input:not([type]),input[type=text],input[type=url],input[type=email],input[type=search],input[type=password],input[type=number],select,textarea):focus{
+:where(input:not([type]),input[type=text],input[type=url],input[type=email],input[type=search],input[type=password],input[type=number],input[type=color],select,textarea):hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--border))}
+:where(input:not([type]),input[type=text],input[type=url],input[type=email],input[type=search],input[type=password],input[type=number],input[type=color],select,textarea):focus{
     border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 24%,transparent);
     background:color-mix(in srgb,var(--accent) 5%,var(--bg-input));
 }
@@ -96,8 +96,11 @@ body{min-height:100%;color:var(--text);font-family:'Inter',-apple-system,BlinkMa
 .theme-submit .btn{margin-top:21px;min-height:40px}
 @media (max-width:640px){.theme-submit{grid-template-columns:1fr}.theme-submit .btn{margin-top:0}}
 
+/* The plain .btn is the page's own button class, but it set no fill: the two .btn buttons on the profile section
+   (Remove, Preview) and the ones in the other sections were the browser's grey. The theme's field colour is the quiet fill. */
 .btn{
     padding:8px 20px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all var(--ov-dur-2, .15s);
+    background:var(--bg-input);color:var(--text);
     text-decoration:none;   /* a link drawn as a button (the signed-out card's Sign in) is not underlined */
 }
 .btn-primary{background:var(--accent-strong, var(--accent, #3472d8));color:var(--on-accent-strong, var(--on-accent,#fff))}
