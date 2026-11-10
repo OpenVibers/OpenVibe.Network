@@ -46,9 +46,9 @@ function createUserCards({ db, profiles, selfToken = () => null, questUrl = 'htt
         const hasSubject = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(user.subject_id || '');
         if (visible.level) tasks.push(levels.total(db, user.id).then(value => { out.level = value.level; }));
         if (visible.followers && hasSubject) tasks.push(follows.count(db, 'user', user.subject_id).then(value => { out.followers = Number(value); }));
-        if (visible.badges_count && hasSubject) tasks.push(profiles.badgesOf(user.subject_id).then(value => {
-            if (!value.unavailable) out.badges_count = value.badges.length;
-        }));
+        if (visible.badges_count && hasSubject) tasks.push(json(questUrl, `/api/v1/profiles/${encodeURIComponent(user.subject_id)}/badges`, selfToken('openvibe.quest', ['quest.badge.read'])).then(value => {
+            if (Array.isArray(value.badges)) out.badges_count = value.badges.length;
+        }).catch(() => {}));
         if (visible.streak && hasSubject) tasks.push(json(questUrl, `/api/v1/profiles/${encodeURIComponent(user.subject_id)}/streak`, selfToken('openvibe.quest', ['quest.badge.read'])).then(value => {
             if (Number.isSafeInteger(value.streak) && value.streak >= 0) out.streak = value.streak;
         }).catch(() => {}));
@@ -76,7 +76,7 @@ function createUserCards({ db, profiles, selfToken = () => null, questUrl = 'htt
         // Recheck privacy and account eligibility on every read, including cache hits. A privacy change
         // changes the key immediately; an in-flight old build cannot overwrite the new policy's value.
         const rules = await policy(user);
-        const key = JSON.stringify([user.id, user.username, user.display_name, rules]);
+        const key = JSON.stringify([user.id, user.subject_id, user.username, user.display_name, rules]);
         const hit = cache.get(key);
         if (hit && now() - hit.at < TTL_MS) return hit.value;
         if (pending.has(key)) return pending.get(key);
