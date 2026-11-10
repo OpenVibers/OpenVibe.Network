@@ -228,6 +228,9 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
                     ? `https://openvibe.video/watch?v=${v.watch_id}` : `https://openvibe.video/v/${encodeURIComponent(v.id || v.vod_id)}`,
                 // The date tells apart recordings that share a title ("JapaneseOldGuy's Stream" three times).
                 date: Number.isFinite(Date.parse(v.created_at)) ? new Date(v.created_at).toISOString().slice(0, 10) : null,
+                // Its picture (the network's own media host only) and its length, so a card shows the video, not its name alone.
+                thumb: /^https:\/\/openvibe\.media\/[^\s"'<>]+$/.test(String(v.thumbnail_url || '')) ? String(v.thumbnail_url) : null,
+                seconds: Number.isFinite(Number(v.duration_seconds)) && Number(v.duration_seconds) > 0 ? Math.round(Number(v.duration_seconds)) : null,
             })),
         };
     }
@@ -238,6 +241,8 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             // A screenshot an avatar upload left behind keeps its default title: not something the person shared.
             && !(p.type === 'screenshot' && p.title === 'Avatar upload')).slice(0, 3).map((p) => ({
             title: String(p.title).slice(0, 100), url: `${COMMUNITY_SITE}/p/${encodeURIComponent(p.slug)}`,
+            // What it is, in a word: a picture, or the language it is written in.
+            kind: p.type === 'screenshot' || p.language === 'image' ? 'Picture' : (typeof p.language === 'string' && /^[A-Za-z0-9+#. -]{1,24}$/.test(p.language) && p.language !== 'text' ? p.language : 'Paste'),
         }));
     }
 
@@ -389,12 +394,29 @@ function monthDay(day) {
     return names[m - 1] ? `${names[m - 1]} ${d}, ${y}` : '';
 }
 
+// The mark of each kind of place (24 px line icons, the stroke in the text's colour).
+const PLACE_ICON = {
+    live: '<path d="M12 12v.01M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7M5.6 18.4a9 9 0 0 1 0-12.8M18.4 5.6a9 9 0 0 1 0 12.8"/>',
+    video: '<rect x="3" y="5.5" width="13" height="13" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3"/>',
+    site: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 2.6 14.6 0 17M12 3.5c-2.6 2.4-2.6 14.6 0 17"/>',
+    paste: '<path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/>',
+    picture: '<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M5 17l4.5-4.5 3 3 2.5-2.5L20 17"/>',
+};
+const placeIcon = (kind) => `<span class="pf-place-i pf-place-i--${kind}" aria-hidden="true"><svg viewBox="0 0 24 24">${PLACE_ICON[kind]}</svg></span>`;
+const clock = (sec) => (sec >= 3600 ? `${Math.floor(sec / 3600)}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}` : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`);
+/** One place as a card: what it is (its picture, or the mark of its kind), its name, and a line that says the kind. */
+const placeCard = ({ url, media, title, line, cls = '' }) => `<li class="pf-place${cls ? ` ${cls}` : ''}"><a href="${esc(url)}">${media}<span class="pf-place-t"><strong>${title}</strong><span>${line}</span></span></a></li>`;
+
 function publicPlacesHtml(places) {
     const cards = [];
-    if (places.live) cards.push(`<li><a href="${esc(places.live.url)}"><strong>@${esc(places.live.username || places.live.title)}</strong>${places.live.is_live ? '<span class="pf-live">Live now</span>' : '<span>Live channel</span>'}</a></li>`);
-    for (const video of places.videos || []) cards.push(`<li><a href="${esc(video.url)}"><strong>${esc(video.title)}</strong><span>Video${video.date ? ` · ${esc(monthDay(video.date))}` : ''}</span></a></li>`);
-    for (const space of places.spaces || []) cards.push(`<li><a href="${esc(space.url)}"><strong>${esc(space.title)}</strong><span>Published site</span></a></li>`);
-    for (const paste of places.community || []) cards.push(`<li><a href="${esc(paste.url)}"><strong>${esc(paste.title)}</strong><span>Community paste</span></a></li>`);
+    if (places.live) cards.push(placeCard({ url: places.live.url, media: placeIcon('live'), cls: places.live.is_live ? 'is-live' : '',
+        title: `@${esc(places.live.username || places.live.title)}`, line: places.live.is_live ? '<span class="pf-live">Live now</span>' : 'Live channel' }));
+    for (const video of places.videos || []) cards.push(placeCard({ url: video.url, cls: 'pf-place--video',
+        media: video.thumb ? `<span class="pf-place-pic"><img src="${esc(video.thumb)}?w=320&amp;fmt=webp" alt="" loading="lazy" decoding="async" width="96" height="54">${video.seconds ? `<b>${esc(clock(video.seconds))}</b>` : ''}</span>` : placeIcon('video'),
+        title: esc(video.title), line: `Video${video.date ? ` · ${esc(monthDay(video.date))}` : ''}${!video.thumb && video.seconds ? ` · ${esc(clock(video.seconds))}` : ''}` }));
+    for (const space of places.spaces || []) cards.push(placeCard({ url: space.url, media: placeIcon('site'), title: esc(space.title), line: 'Published site' }));
+    for (const paste of places.community || []) cards.push(placeCard({ url: paste.url, media: placeIcon(paste.kind === 'Picture' ? 'picture' : 'paste'), title: esc(paste.title),
+        line: paste.kind && paste.kind !== 'Paste' ? `${esc(paste.kind)} · Community paste` : 'Community paste' }));
     if (!cards.length) return '';
     return `<section class="pf-section" aria-labelledby="pf-places"><h2 id="pf-places">On OpenVibe</h2><ul class="pf-places">${cards.join('')}</ul></section>`;
 }
@@ -566,7 +588,7 @@ a{color:var(--accent)}
 .pf-note{color:var(--text-secondary);font-size:.85rem;margin:12px 0 0}
 .pf-links{display:flex;flex-wrap:wrap;gap:10px;list-style:none;margin:0 0 18px;padding:0 24px}.pf-links a{display:inline-flex;min-height:44px;align-items:center;padding:8px 14px;border:1px solid var(--border);border-radius:999px;color:var(--text-primary);text-decoration:none}
 @media(max-width:600px){.pf-links{display:grid;padding:0 24px}.pf-links a{justify-content:center;min-height:50px;border-radius:14px;font-weight:650}}
-.pf-places{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));gap:12px;list-style:none;padding:0;margin:0}.pf-places li{min-width:0}.pf-places a{display:flex;flex-direction:column;justify-content:center;gap:5px;min-height:72px;padding:12px 16px;border:1px solid var(--border);border-radius:14px;background:var(--bg-secondary);color:var(--text-primary);text-decoration:none;overflow-wrap:anywhere}.pf-places a span{font-size:.82rem;color:var(--text-secondary)}
+.pf-places{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));gap:12px;list-style:none;padding:0;margin:0}.pf-places li{min-width:0}.pf-places a{display:flex;align-items:center;gap:12px;min-height:72px;padding:10px 14px 10px 10px;transition:border-color .15s ease,transform .15s ease;border:1px solid var(--border);border-radius:14px;background:var(--bg-secondary);color:var(--text-primary);text-decoration:none;overflow-wrap:anywhere}.pf-places a:hover{border-color:color-mix(in srgb,var(--accent,#3b82f6) 55%,var(--border))}.pf-places a:active{transform:scale(.99)}.pf-place-t{display:grid;gap:3px;min-width:0}.pf-place-t strong{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.pf-place-t>span{font-size:.82rem;color:var(--text-secondary)}.pf-place-i{display:grid;place-items:center;flex:none;width:52px;height:52px;border-radius:14px;background:color-mix(in srgb,var(--accent,#3b82f6) 13%,transparent);color:var(--accent-text,var(--accent,#3b82f6))}.pf-place-i svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.pf-place-i--live{background:color-mix(in srgb,var(--live-red,#e5484d) 14%,transparent);color:var(--live-red,#e5484d)}.pf-place.is-live a{border-color:color-mix(in srgb,var(--live-red,#e5484d) 55%,var(--border))}.pf-place-i--site{background:color-mix(in srgb,var(--success,#34d399) 13%,transparent);color:var(--success-text,var(--success,#34d399))}.pf-place-i--paste,.pf-place-i--picture{background:color-mix(in srgb,#a78bfa 15%,transparent);color:#a78bfa}.pf-place-pic{position:relative;flex:none;width:96px;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:var(--bg-primary)}.pf-place-pic img{display:block;width:100%;height:100%;object-fit:cover}.pf-place-pic b{position:absolute;right:4px;bottom:4px;padding:1px 5px;border-radius:6px;background:rgba(0,0,0,.72);color:#fff;font-size:.68rem;font-weight:700;font-variant-numeric:tabular-nums}
 @media (max-width:560px){.pf-head{padding:0 16px 16px;gap:14px}.pf-avatar{width:92px;height:92px}.pf-hat{font-size:32px;top:-18px}.pf-who{padding-top:0;min-width:100%}.pf-bio,.pf-stats,.pf-private{padding-left:16px;padding-right:16px}.pf-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}.pf-badge small{display:none}.pf-badge{padding:6px 12px 6px 9px}}
 </style>
 </head>

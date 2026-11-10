@@ -100,7 +100,8 @@ const INSTANCES = [
         assert.ok(!r.text.includes('<script>alert(1)</script>') && r.text.includes('Hello there'), 'the saved public-page bio is shown as text');
         assert.ok(r.text.includes('href="https://example.com/"'), 'HTTPS public links render');
         assert.ok(r.text.includes('aria-labelledby="pf-places"') && r.text.includes('Live now') && r.text.includes('First video') && r.text.includes('Video · Nov 7, 2026') && r.text.includes('A public note') && r.text.includes('Ana Site'));
-        assert.ok(/<a href="https:\/\/openvibe\.live\/@Ana"><strong>@Ana<\/strong>/.test(r.text), 'her Live channel is named by its @handle, as its address is');
+        assert.ok(/<a href="https:\/\/openvibe\.live\/@Ana"><span class="pf-place-i pf-place-i--live"[^>]*>[\s\S]*?<strong>@Ana<\/strong>/.test(r.text), 'her Live channel is named by its @handle, as its address is, with the mark of what it is');
+        assert.ok(/class="pf-place pf-place--video"/.test(r.text) && /<span class="pf-place-i pf-place-i--site"/.test(r.text) && /Community paste/.test(r.text), 'each card says what kind of thing it is');
         assert.ok(!r.text.includes('Private video') && !r.text.includes('Hidden note') && !r.text.includes('Hidden Site'), 'private or unlisted places are omitted');
         assert.ok(r.text.includes('Sparkles &lt;b&gt;') && !r.text.includes('Sparkles <b>'), 'item names are escaped');
         assert.ok(r.text.includes('id="pf-wearing"') && /pf-worn r-legendary[\s\S]*Royal Crown/.test(r.text), 'the crown is in the showcase');
