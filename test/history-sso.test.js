@@ -37,6 +37,7 @@ const requireAuth = (req, res, next) => { const u = users[req.headers['x-user']]
 const app = express();
 app.use(express.json());
 app.use('/api/history', await createHistoryRoutes(db, requireAuth));
+app.use('/api/v1/history', await createHistoryRoutes(db, requireAuth));
 const server = http.createServer(app);
 
 (async () => {
@@ -54,6 +55,8 @@ const server = http.createServer(app);
     assert.strictEqual(r.status, 400, 'off-network URL rejected');
     r = await call('POST', '/api/history', 'anon', { type: 'page', title: 'x', url: 'https://openvibe.live/' });
     assert.strictEqual(r.status, 403, 'anonymous sessions keep no history');
+    r = await call('POST', '/api/v1/history', 'a', { type: 'video', title: 'private title', url: 'https://openvibe.media/v/private', private: true });
+    assert.strictEqual(r.body.skipped, 'private_or_mature', 'private pages never enter history');
     r = await call('POST', '/api/history', null, { type: 'page', title: 'x', url: 'https://openvibe.live/' });
     assert.strictEqual(r.status, 401);
 
@@ -70,6 +73,27 @@ const server = http.createServer(app);
     assert.strictEqual(r.body.items.length, 1);
     r = await call('GET', '/api/history', 'b');
     assert.strictEqual(r.body.total, 0, 'other accounts see nothing');
+    r = await call('GET', '/api/v1/history/agents/recent', 'a');
+    assert.strictEqual(r.status, 403, 'agents are denied until the person opts in');
+    r = await call('PUT', '/api/v1/history/settings', 'a', { agents_allowed: true });
+    assert.strictEqual(r.body.agents_allowed, true);
+    assert.strictEqual(r.body.keep_history, true, 'changing agent access leaves personal history on');
+    r = await call('GET', '/api/v1/history/agents/recent', 'a');
+    assert.strictEqual(r.body.items.length, 2, 'the opt-in agent read returns only the owner history');
+    r = await call('GET', '/api/v1/history?q=formatter', 'a');
+    assert.strictEqual(r.body.items.length, 1, 'search matches titles');
+    assert.ok(r.body.next_cursor === null || typeof r.body.next_cursor === 'string');
+    r = await call('GET', '/api/v1/history?limit=1', 'a');
+    assert.ok(r.body.next_cursor, 'a full page supplies a cursor');
+    const firstId = r.body.items[0].id;
+    r = await call('GET', `/api/v1/history?limit=1&cursor=${encodeURIComponent(r.body.next_cursor)}`, 'a');
+    assert.notStrictEqual(r.body.items[0].id, firstId, 'cursor continues the newest-first timeline');
+    assert.strictEqual(r.body.total, 2, 'the total is independent of the cursor position');
+    r = await call('GET', '/api/v1/history/summary?period=week', 'a');
+    assert.strictEqual(r.body.period, 'week');
+    assert.ok(r.body.text.includes('goosely live') && !r.body.text.includes('openvibe.live'), 'summary uses titles and kinds, never page addresses');
+    r = await call('GET', '/api/v1/history', null);
+    assert.strictEqual(r.status, 401, 'signed-out reads are unauthorized');
 
     // pause → nothing recorded
     r = await call('PUT', '/api/history/settings', 'a', { paused: true });
@@ -77,12 +101,14 @@ const server = http.createServer(app);
     r = await call('POST', '/api/history', 'a', { type: 'page', title: 'paused', url: 'https://openvibe.games/' });
     assert.strictEqual(r.body.paused, true);
     r = await call('GET', '/api/history', 'a'); assert.strictEqual(r.body.total, 2); assert.strictEqual(r.body.paused, true);
+    const id = r.body.items[0].id;
+    r = await call('GET', '/api/v1/history/agents/recent', 'b'); assert.strictEqual(r.status, 403, 'a different person without opt-in receives no rows');
     await call('PUT', '/api/history/settings', 'a', { paused: false });
 
     // delete one / all, ownership enforced
-    const id = r.body.items[0].id;
     r = await call('DELETE', `/api/history/${id}`, 'b'); assert.strictEqual(r.status, 404, 'cannot delete another account\'s entry');
     r = await call('DELETE', `/api/history/${id}`, 'a'); assert.strictEqual(r.status, 200);
+    r = await call('GET', '/api/v1/history?q=goosely', 'a'); assert.strictEqual(r.body.items.length, 0, 'a deleted row is gone from search');
     r = await call('DELETE', '/api/history', 'a'); assert.strictEqual(r.body.deleted, 1);
     r = await call('GET', '/api/history', 'a'); assert.strictEqual(r.body.total, 0);
 

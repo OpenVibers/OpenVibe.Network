@@ -19,6 +19,9 @@ const HIDDEN_SITES = new Set(['bench']);
 const COMPUTER_FALLBACK = { id: 'computer', name: 'Computer', icon: 'computer', service: 'computer', profile: 'hosting', tagline: 'A computer for you, your AI, or both', what: 'Start and manage computer sessions over OpenVibe.Run, with your own Link machines and cloud computers in one place.', host: 'openvibe.computer' };
 const RAW_SITES = contracts.services.manifests.filter((m) => m.site && !HIDDEN_SITES.has(m.id)).sort((a, b) => (a.site.position ?? 999) - (b.site.position ?? 999)).map((m) => ({
     id: m.site.icon, name: m.site.name, icon: m.site.icon, service: m.id, profile: m.site.legalProfile, tagline: m.site.tagline, what: m.site.what,
+    // A site's own footer-strip items (label, icon, link, and a number or a line), at most three. They are
+    // validated again at the read (server/frame/service.js stripOf): text only, an https link on an OpenVibe domain.
+    ...(Array.isArray(m.site.strip) ? { strip: m.site.strip } : {}),
     ...(m.site.host ? { host: m.site.host } : {}),
 })).concat(contracts.services.get('computer') ? [] : [COMPUTER_FALLBACK]);
 function manifestHost(service) {

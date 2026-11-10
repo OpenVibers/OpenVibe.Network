@@ -44,7 +44,7 @@ helpers.
 | **Footer** | `footer.js` — network column, legal, socials, signed-in row, `full`/`compact` | `OpenVibeFooter.init({ service, variant, links })`. |
 | **Theme** | `theme-loader.js` + `builtin-themes.js` + `theme-sync.js` (generated loader map, derived tokens `--on-accent`, `--accent-rgb`, `--accent-glow`) | Load the loader first in `<head>`; style with the tokens. The user's theme follows them to every room. |
 | **Brand mark** | `ov-mark.js` — one animated mark, `data-variant` per room (live pulses red, tools spins, games bounces, community counter-orbits…) | `<span class="ov-mark" data-variant="chat">` |
-| **History** | `history.js` + `/api/history` (record, list, search, pause, delete) | `history: { type, title }` on `init`, or `OpenVibeHistory.record()`. Shows in the navbar and on `/my#history`. |
+| **History** | `history.js` + `/api/history` (record, list, search, pause, delete) | `history: { type, title }` on `init`, or `OpenVibeHistory.record()`. Full private timeline and controls: `/api/v1/history`; one year, 20,000 rows per account; title search uses PostgreSQL full text. |
 | **Linked services** | recorded by the Network on every OAuth exchange (`linked_accounts.last_used_at`) | Free: any room that signs people in appears on `/my#linked`. |
 | **Notifications** | `notification-ui.js`, web push via `openvibe-sw.js` | Bell in the navbar; server-to-server `/internal/notify`. |
 | **Tooltips, user cards, account switcher** | `tooltip.js`, `user-card.js`, `account-switcher.js` | markup-driven / `init()`. |

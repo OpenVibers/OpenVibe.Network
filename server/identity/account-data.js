@@ -166,7 +166,7 @@ async function networkPart(db, userId) {
     const truncated = [];
     const add = (name, content, cut) => { files.push({ name, content }); if (cut) truncated.push(name); };
     const keep = ['id', 'username', 'email', 'display_name', 'avatar_url', 'bio', 'role', 'profile_color', 'created_at', 'updated_at', 'last_seen',
-        'email_verified', 'email_verified_at', 'name_effect', 'particle_effect', 'history_paused', 'subject_id'];
+        'email_verified', 'email_verified_at', 'name_effect', 'particle_effect', 'history_paused', 'history_agents_allowed', 'history_keep_private', 'history_keep_mature', 'subject_id'];
     const account = {};
     for (const k of keep) if (k in u) account[k] = u[k];
     account.merged_in = await tableExists(db, 'subject_aliases')
