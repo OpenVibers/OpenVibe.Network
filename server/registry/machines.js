@@ -13,12 +13,22 @@
  *   PATCH  /api/v1/machines/:id         network.machines.manage → { machine }                (a new name)
  *   PUT    /api/v1/machines/:id/roles   network.machines.manage → { machine }                (the whole set)
  *   POST   /api/v1/machines/:id/revoke  network.machines.manage → { machine }
+ *   POST   /api/v1/machines/:id/agent-computer, /watch-probe   → { machine }   (the owner's own session)
+ *   POST   /api/v1/machines/:id/screen  network.machines.manage → 201 { machine_id, … } (the live screen)
+ *   GET    /api/v1/machines/:id/screen  network.machines.read   → { live, signaling_url, … }
+ *   DELETE /api/v1/machines/:id/screen  network.machines.manage → { stopped }
+ *   POST   /api/v1/machines/:id/screen/input                    → { done }      (mouse and keyboard)
+ *   GET    /api/v1/machines/:id/desks   network.machines.read   → { desks, max_desks }
+ *   POST   /api/v1/machines/:id/desks/:desk/stop, /live         → { stopped } / 201 the screen
+ *   GET    /api/v1/machines/:id/shares  network.machines.read   → { shares }     (screen links)
+ *   DELETE /api/v1/machines/:id/shares/:share                   → { revoked }
  *   POST   /internal/machines/status    network.link.manage    → 202                        (Bot's report)
  *
  * Who may call: the person, with their own session; or an app holding the capability with the person's
  * consent — the token names the person in on_behalf_of, and the person's grant for the capability must still be
  * approved. A machine that is not that person's is not there at all (404, never 403), so nobody can probe whose
- * machine an id is.
+ * machine an id is. The owner's switches, the live screen and its links, and the desks are their own session only:
+ * no app or run token turns on what an agent may do with the computer, opens its screen or hands out its desks.
  *
  * The events (through OpenVibe.Events, server/developer/event-relay.js): network.machine.online and
  * .offline (Bot's report of a machine's state, once per change), .paired (the machine redeemed its code),
@@ -103,6 +113,32 @@ function machineOf(m) {
     if (typeof m.last_seen_at === 'string' && m.last_seen_at) out.last_seen_at = m.last_seen_at;
     if (typeof m.node_version === 'string' && m.node_version) out.node_version = m.node_version;
     if (typeof m.node_id === 'string' && PRINCIPAL.test(m.node_id)) out.principal_id = m.node_id;
+    // The owner's controls (the Link hub's machine card): each switch the machine itself reported, plus what its
+    // computer plugin offers. The values are Bot's, never an assumption: a machine that has not said is off. Only
+    // the shape is narrowed here (no file roots, tools or paths), as with the rest of the hub's view.
+    const computer = m.computer && typeof m.computer === 'object' ? m.computer : null;
+    out.controls = {
+        agent_computer: m.agent_computer === true,
+        watch_probe: m.watch_probe === true,
+        computer: !!computer,
+        ...(computer ? {
+            level: typeof computer.level === 'string' ? computer.level : null,
+            probe: !!(computer.probe && typeof computer.probe === 'object'),
+            screen: {
+                available: !!(computer.screen && computer.screen.stream === true),
+                live: computer.screen_stream === 'live',
+            },
+            desk: computer.desk && typeof computer.desk === 'object' ? {
+                available: true,
+                screen: computer.desk.screen === true,
+                named: computer.desk.named === true,
+                sandboxed: computer.desk.isolation === 'sandbox',
+                running: Number.isInteger(computer.desks_running) ? computer.desks_running : null,
+                ...(Number.isInteger(computer.desk.max_desks) ? { max: computer.desk.max_desks } : {}),
+                ...(Array.isArray(computer.desk.kinds) ? { kinds: computer.desk.kinds.filter((k) => typeof k === 'string').slice(0, 5) } : {}),
+            } : { available: false },
+        } : {}),
+    };
     return out;
 }
 
@@ -157,6 +193,19 @@ function createBotClient({ baseUrl, privateKey, issuer, fetchImpl = globalThis.f
         roles: (subject, id, roles) => call('PUT', `/api/v1/machines/${encodeURIComponent(id)}/roles`, { roles }, subject),
         revoke: (subject, id) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/revoke`, {}, subject),
         pairing: (subject) => call('POST', '/api/v1/machines/pairings', {}, subject),
+        // The owner's switches and the live screen (the Link hub's machine card). Bot still owns every check:
+        // a machine that is not the person's is 404 before any of these do anything.
+        agentComputer: (subject, id, on) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/agent-computer`, { on: !!on }, subject),
+        watchProbe: (subject, id, on) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/watch-probe`, { on: !!on }, subject),
+        screenStart: (subject, id, body) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/screen`, body || {}, subject),
+        screenState: (subject, id) => call('GET', `/api/v1/machines/${encodeURIComponent(id)}/screen`, null, subject),
+        screenStop: (subject, id) => call('DELETE', `/api/v1/machines/${encodeURIComponent(id)}/screen`, null, subject),
+        screenInput: (subject, id, value) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/screen/input`, value || {}, subject),
+        desks: (subject, id) => call('GET', `/api/v1/machines/${encodeURIComponent(id)}/desks`, null, subject),
+        deskStop: (subject, id, desk) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/desks/${encodeURIComponent(desk)}/stop`, {}, subject),
+        deskLive: (subject, id, desk) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/desks/${encodeURIComponent(desk)}/live`, {}, subject),
+        shares: (subject, id) => call('GET', `/api/v1/machines/${encodeURIComponent(id)}/shares`, null, subject),
+        revokeShare: (subject, id, share) => call('DELETE', `/api/v1/machines/${encodeURIComponent(id)}/shares/${encodeURIComponent(share)}`, null, subject),
     };
 }
 
@@ -285,7 +334,7 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
     const ownSession = (req, res, next) => {
         if (req.hub) {
             return http.sendProblem(res, 403, 'capability.owner_denied', {
-                detail: 'pair a machine and choose its roles from your own session on openvibe.network',
+                detail: 'only your own session on openvibe.network changes what a machine does',
             });
         }
         return next();
@@ -424,6 +473,158 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
             at,
         });
         res.json({ machine });
+    }));
+
+    // ── The owner's own controls (the Link hub's machine card) ─────────────────────────────────────
+    // Bot owns every check (the machine is the person's own, 404 otherwise; a switch is the owner's). The hub
+    // answers only from the person's own session: an app or a run acting for them may read and rename and revoke,
+    // but it may not turn on what an agent may do with the computer, show its screen, or hand its desks out.
+    const booleanOn = (req) => {
+        const on = (req.body || {}).on;
+        if (typeof on !== 'boolean') throw new MachineError(422, 'registry.invalid_switch', 'on is true or false');
+        return on;
+    };
+    hub.post('/:id/agent-computer', manage, ownSession, express.json({ limit: '8kb' }), async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const on = booleanOn(req);
+        const out = await bot.agentComputer(subject, machineId(req), on);
+        res.json({ machine: machineOf(out && out.machine) });
+    }));
+    hub.post('/:id/watch-probe', manage, ownSession, express.json({ limit: '8kb' }), async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const on = booleanOn(req);
+        const out = await bot.watchProbe(subject, machineId(req), on);
+        res.json({ machine: machineOf(out && out.machine) });
+    }));
+
+    // The live screen, to the owner only: Start (10 minutes by Bot's default), the state the page polls, Stop, and
+    // the owner's own mouse and keyboard while it is shown. `signaling_url` is a viewer credential, so it never
+    // leaves the person's own session.
+    const DESK = /^(main|private|desk-[a-z0-9][a-z0-9-]{0,23})$/;
+    const screenOf = (id, out) => {
+        const desk = DESK.test(String((out && out.desk) || '')) ? String(out.desk) : 'main';
+        const channel = out && out.live && typeof out.live.channel_url === 'string' && /^https:\/\/openvibe\.live\/@[A-Za-z0-9_.-]{1,40}$/.test(out.live.channel_url)
+            ? out.live.channel_url : null;
+        return {
+            machine_id: id,
+            streaming: !!(out && out.streaming === true),
+            seconds: Number.isInteger(out && out.seconds) ? out.seconds : null,
+            until: typeof (out && out.until) === 'string' ? out.until : null,
+            desk,
+            ...(channel ? { channel_url: channel } : {}),
+        };
+    };
+    hub.post('/:id/screen', manage, ownSession, express.json({ limit: '8kb' }), async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const id = machineId(req);
+        const body = req.body || {};
+        const desk = body.desk == null || body.desk === '' ? 'main' : String(body.desk);
+        if (!DESK.test(desk)) throw new MachineError(422, 'registry.invalid_desk', 'desk is main, private or desk-<name>');
+        const out = await bot.screenStart(subject, id, { desk });
+        res.status(201).json(screenOf(id, out));
+    }));
+    hub.get('/:id/screen', read, ownSession, async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const id = machineId(req);
+        const out = (await bot.screenState(subject, id)) || {};
+        const url = typeof out.signaling_url === 'string' && /^wss?:\/\//.test(out.signaling_url) ? out.signaling_url : null;
+        res.json({
+            machine_id: id, live: !!url, signaling_url: url,
+            state: out.state === 'live' ? 'live' : 'off', online: out.online === true,
+            desk: DESK.test(String(out.desk || '')) ? out.desk : 'main',
+        });
+    }));
+    hub.delete('/:id/screen', manage, ownSession, async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const id = machineId(req);
+        const out = await bot.screenStop(subject, id);
+        res.json({ machine_id: id, stopped: !!(out && out.stopped === true) });
+    }));
+    hub.post('/:id/screen/input', manage, ownSession, express.json({ limit: '4kb' }), async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const id = machineId(req);
+        const out = await bot.screenInput(subject, id, req.body && typeof req.body === 'object' ? req.body : {});
+        res.json({ machine_id: id, done: !!(out && out.done === true), desk: DESK.test(String((out && out.desk) || '')) ? out.desk : 'main' });
+    }));
+
+    // The desks running on the machine: read on demand (never polled), then stopped or put on the owner's Live
+    // channel. Watching one is the screen route with its name.
+    const deskOf = (req) => {
+        const desk = String((req.params && req.params.desk) || '');
+        if (!DESK.test(desk) || desk === 'main') throw new MachineError(422, 'registry.invalid_desk', 'desk is private or desk-<name>');
+        return desk;
+    };
+    hub.get('/:id/desks', read, ownSession, async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const id = machineId(req);
+        const out = (await bot.desks(subject, id)) || {};
+        const desks = (Array.isArray(out.desks) ? out.desks : []).flatMap((d) => {
+            const desk = d && DESK.test(String(d.desk || '')) && d.desk !== 'main' ? String(d.desk) : null;
+            if (!desk) return [];
+            return [{
+                desk,
+                ...(typeof d.kind === 'string' ? { kind: d.kind.slice(0, 20) } : {}),
+                ...(Number.isInteger(d.since) ? { since: d.since } : {}),
+                ...(Number.isInteger(d.width) ? { width: d.width } : {}),
+                ...(Number.isInteger(d.height) ? { height: d.height } : {}),
+            }];
+        }).slice(0, 50);
+        res.json({ machine_id: id, desks, max_desks: Number.isInteger(out.max_desks) ? out.max_desks : null });
+    }));
+    hub.post('/:id/desks/:desk/stop', manage, ownSession, async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const id = machineId(req);
+        const desk = deskOf(req);
+        await bot.deskStop(subject, id, desk);
+        res.json({ machine_id: id, stopped: desk });
+    }));
+    hub.post('/:id/desks/:desk/live', manage, ownSession, async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const id = machineId(req);
+        const desk = deskOf(req);
+        const out = await bot.deskLive(subject, id, desk);
+        res.status(201).json(screenOf(id, { ...(out || {}), desk }));
+    }));
+
+    // The screen links the owner made (their agent makes them through Bot's watch-links route): listed and revoked,
+    // never shown again. Only the person in their own session sees the list.
+    hub.get('/:id/shares', read, ownSession, async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const id = machineId(req);
+        const out = (await bot.shares(subject, id)) || {};
+        const shares = (Array.isArray(out.shares) ? out.shares : []).flatMap((s) => {
+            const share = s && typeof s.id === 'string' && /^shr_[0-9A-Za-z]{1,64}$/.test(s.id) ? s.id : null;
+            if (!share) return [];
+            return [{
+                id: share,
+                ...(typeof s.label === 'string' && s.label ? { label: s.label.slice(0, 80) } : {}),
+                control: s.control === true,
+                desk: DESK.test(String(s.desk || '')) ? s.desk : 'main',
+                ...(typeof s.created_at === 'string' ? { created_at: s.created_at } : {}),
+                ...(typeof s.expires_at === 'string' ? { expires_at: s.expires_at } : {}),
+                ...(typeof s.last_used_at === 'string' ? { last_used_at: s.last_used_at } : {}),
+            }];
+        });
+        res.json({ machine_id: id, shares });
+    }));
+    hub.delete('/:id/shares/:share', manage, ownSession, async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const id = machineId(req);
+        const share = String((req.params && req.params.share) || '');
+        if (!/^shr_[0-9A-Za-z]{1,64}$/.test(share)) throw new MachineError(404, 'registry.share_not_found', 'there is no such screen link');
+        const out = await bot.revokeShare(subject, id, share);
+        res.json({ machine_id: id, revoked: !!(out && out.revoked === true) });
     }));
 
     return { hub, compute };

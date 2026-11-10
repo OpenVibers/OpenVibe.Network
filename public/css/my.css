@@ -698,3 +698,18 @@ html[data-ov-motion=off] .me-act:hover{transform: none}
 .my-email-row { display: flex; gap: 8px; align-items: stretch; }
 .my-email-row input { flex: 1; min-width: 0; }
 #account-emails-message:empty { display: none; }
+
+/* The machine card's owner controls (my/machines.js, the Link hub): the two switches share .mc-role, the live
+   screen, its links and the machine's desks. Plain: the picture fills the card, a row wraps on a phone. */
+.mc-screen-block, .mc-shares, .mc-desks { display: grid; gap: 8px; min-width: 0; }
+.mc-screen { margin: 0; display: grid; gap: 8px; min-width: 0; border-radius: 10px; }
+.mc-screen:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mc-screen video { width: 100%; max-height: 70vh; border-radius: 10px; background: #000; object-fit: contain; }
+.mc-screen video[hidden] { display: none; }
+.mc-shares-list, .mc-desks-list { display: grid; gap: 6px; }
+.mc-share-row, .mc-desk-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-card); }
+.mc-share-row small, .mc-desk-row small { display: block; color: var(--text-muted); font-size: 12px; overflow-wrap: anywhere; }
+.mc-desk-live { flex-basis: 100%; }
+.mc-desk-live summary { display: inline-block; cursor: pointer; }
+.mc-desk-live[open] { display: grid; gap: 8px; }
+.mc-takeover { margin-top: 4px; }

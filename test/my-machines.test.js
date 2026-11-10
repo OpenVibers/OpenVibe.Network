@@ -21,15 +21,17 @@ class Node {
     append(...kids) { for (const k of kids) { const n = typeof k === 'string' ? Object.assign(new Node('#text'), { _text: k }) : k; n.parent = this; this.children.push(n); } }
     replaceChildren(...kids) { this.children = []; this.append(...kids); }
     replaceWith(n) { const p = this.parent; if (!p) return; const i = p.children.indexOf(this); p.children[i] = n; n.parent = p; }
+    remove() { const p = this.parent; if (!p) return; const i = p.children.indexOf(this); if (i >= 0) p.children.splice(i, 1); }
     get childNodes() { return this.children.slice(); }
     addEventListener(t, fn) { (this.listeners[t] = this.listeners[t] || []).push(fn); }
     fire(t, ev = {}) { (this.listeners[t] || []).forEach((fn) => fn(ev)); }
-    focus() {} select() {}
+    focus() {} select() {} play() { return Promise.resolve(); }
     get classList() { const n = this; return { toggle: (c, on) => { n.className = on ? `${n.className} ${c}` : n.className.replace(c, ''); }, contains: (c) => n.className.split(' ').includes(c) }; }
     get textContent() { return this._text + this.children.map((c) => c.textContent).join(''); }
     set textContent(v) { this._text = String(v); this.children = []; }
     all(pred, out = []) { for (const c of this.children) { if (pred(c)) out.push(c); c.all(pred, out); } return out; }
     querySelectorAll(sel) {
+        if (sel === '.mc-role-set input') return this.all((n) => n.tagName === 'INPUT' && n.parent && n.parent.className === 'mc-role' && n.parent.parent && n.parent.parent.className.split(' ').includes('mc-role-set'));
         if (sel === '.mc-role input') return this.all((n) => n.tagName === 'INPUT' && n.parent && n.parent.className === 'mc-role');
         return [];
     }
@@ -45,6 +47,7 @@ function page({ answers }) {
         console, Date, Number, String, Set, Math, JSON, Promise, URLSearchParams, location: { search: '' },
         navigator: { clipboard: { writeText: async () => {} } },
         setInterval: (fn) => { timers.push(fn); return timers.length; }, clearInterval: () => { timers = []; },
+        setTimeout: (fn) => { timers.push(fn); return timers.length; }, clearTimeout: () => {},
         apiFetch: async (p, o = {}) => { calls.push([o.method || 'GET', p, o.body ? JSON.parse(o.body) : null]); const a = answers(o.method || 'GET', p, o.body ? JSON.parse(o.body) : null); if (a instanceof Error) throw a; return a; },
     };
     vm.runInNewContext(SRC, sandbox);
@@ -108,6 +111,71 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
     acts.children.find((n) => /for good/.test(n.textContent)).fire('click');
     await flush();
     assert.ok(p.calls.some((c) => c[0] === 'POST' && c[1] === '/api/v1/machines/dev_A/revoke'), 'revoked on the second');
+
+    // ── The owner's controls (the removed page's): two switches that read Bot's state, the live screen, its
+    // links, and the machine's desks. Each is a call to Network's hub route, which calls Bot as the person. ──
+    const switchMachine = {
+        id: 'dev_C', kind: 'onboard', online: true, name: 'Desk PC', roles: [], running: [],
+        controls: {
+            computer: true, agent_computer: true, watch_probe: false, level: 'ask', probe: true,
+            screen: { available: true, live: false },
+            desk: { available: true, screen: true, named: true, running: 1, max: 2, kinds: ['browser'] },
+        },
+    };
+    p = page({ answers: (m, url, body) => {
+        if (url === '/api/v1/machines/roles') return { roles: ROLES };
+        if (m === 'GET' && url === '/api/v1/machines') return { machines: [switchMachine] };
+        if (m === 'POST' && /\/agent-computer$/.test(url)) { switchMachine.controls.agent_computer = body.on; return { machine: switchMachine }; }
+        if (m === 'POST' && /\/watch-probe$/.test(url)) { switchMachine.controls.watch_probe = body.on; return { machine: switchMachine }; }
+        if (m === 'POST' && /\/screen$/.test(url)) return { machine_id: 'dev_C', streaming: true, seconds: 600, desk: body.desk };
+        if (m === 'GET' && /\/screen$/.test(url)) return { machine_id: 'dev_C', live: false, state: 'off', online: true };
+        if (m === 'DELETE' && /\/screen$/.test(url)) return { stopped: true };
+        if (m === 'GET' && /\/shares$/.test(url)) return { machine_id: 'dev_C', shares: [{ id: 'shr_abc', label: 'Staff room', control: false, desk: 'main' }] };
+        if (m === 'DELETE' && /\/shares\/shr_abc$/.test(url)) return { revoked: true };
+        if (m === 'GET' && /\/desks$/.test(url)) return { machine_id: 'dev_C', desks: [{ desk: 'desk-a', kind: 'browser', width: 1280, height: 720 }], max_desks: 2 };
+        if (m === 'POST' && /\/desks\/desk-a\/stop$/.test(url)) return { stopped: 'desk-a' };
+        if (m === 'POST' && /\/desks\/desk-a\/live$/.test(url)) return { machine_id: 'dev_C', desk: 'desk-a', seconds: 1800, channel_url: 'https://openvibe.live/@ana' };
+        return {};
+    } });
+    await p.sandbox.loadMachines();
+    const card = p.ids['mc-list'].children[0];
+    assert.match(card.textContent, /Let my agent use this computer/);
+    assert.match(card.textContent, /Let my watches check things from this computer/);
+    const switches = card.all((n) => n.tagName === 'INPUT' && /-(agent|watch)$/.test(n.getAttribute('id') || ''));
+    assert.deepStrictEqual(switches.map((b) => b.checked), [true, false], 'the switches start from Bot\'s own state');
+    switches[0].checked = false; switches[0].fire('change');
+    await flush();
+    assert.deepStrictEqual(p.calls.find((c) => /\/agent-computer$/.test(c[1])), ['POST', '/api/v1/machines/dev_C/agent-computer', { on: false }], 'the agent switch saves on the person\'s click');
+
+    const button = (text) => card.all((n) => n.tagName === 'BUTTON' && new RegExp(text).test(n.textContent))[0];
+    button('Show my screen').fire('click');
+    await flush();
+    assert.deepStrictEqual(p.calls.find((c) => c[0] === 'POST' && /\/screen$/.test(c[1])), ['POST', '/api/v1/machines/dev_C/screen', { desk: 'main' }], 'ten minutes by the server\'s default');
+    assert.ok(p.calls.some((c) => c[0] === 'GET' && /\/screen$/.test(c[1])), 'the picture waits for the machine to publish');
+    button('Stop showing my screen').fire('click');
+    await flush();
+    assert.ok(p.calls.some((c) => c[0] === 'DELETE' && /\/screen$/.test(c[1])), 'Stop reaches the machine');
+
+    button('Screen links').fire('click');
+    await flush();
+    assert.ok(p.calls.some((c) => c[0] === 'GET' && /\/shares$/.test(c[1])));
+    assert.match(card.textContent, /Staff room/);
+    const shareRevoke = card.all((n) => n.tagName === 'BUTTON' && n.parent && n.parent.className === 'mc-share-row')[0];
+    shareRevoke.fire('click');
+    await flush();
+    assert.ok(p.calls.some((c) => c[0] === 'DELETE' && c[1] === '/api/v1/machines/dev_C/shares/shr_abc'), 'revoking one link');
+
+    button('See its desks').fire('click');
+    await flush();
+    assert.ok(p.calls.some((c) => c[0] === 'GET' && /\/desks$/.test(c[1])));
+    assert.match(card.textContent, /desk-a.*browser.*1280×720/);
+    card.all((n) => n.tagName === 'BUTTON' && n.textContent === 'Stop')[0].fire('click');
+    await flush();
+    assert.ok(p.calls.some((c) => c[0] === 'POST' && c[1] === '/api/v1/machines/dev_C/desks/desk-a/stop'), 'a desk stops from here');
+    button('Go live with this desk').fire('click');
+    await flush();
+    assert.ok(p.calls.some((c) => c[0] === 'POST' && c[1] === '/api/v1/machines/dev_C/desks/desk-a/live'), 'the Live channel takes the desk with its warning first');
+    assert.match(card.textContent, /openvibe\.live\/@ana/);
 
     // ── Pairing: the code and the command, then the machine arriving ──
     machines = [];
