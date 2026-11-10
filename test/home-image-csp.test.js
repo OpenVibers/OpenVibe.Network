@@ -17,6 +17,7 @@ const { bootServer } = require('./helpers/boot-server');
         // The machine hub's live screen (/machines) imports mediasoup-client's pinned ESM build and opens
         // OpenRestream's viewer signaling socket: exactly those two, in the two directives that gate them.
         const directive = (name) => csp.split(';').map((d) => d.trim()).find((d) => d.startsWith(name)) || '';
+        assert.strictEqual(directive('frame-src'), 'frame-src https://openvibe.network', 'the shared Link/My shell permits only Network session frames');
         assert.ok(directive('script-src').includes('https://esm.sh'), 'script-src lets the mediasoup client through');
         assert.ok(directive('connect-src').includes('wss://ingest.openre.stream'), 'connect-src lets the screen signaling through');
         console.log('CSP: home images, and the machine hub\'s live screen sources');
