@@ -36,7 +36,7 @@ function router({ requireAuth }) {
             await db.prepare(`INSERT INTO user_preferences (user_id, feed_seen_at, updated_at) VALUES (?, ?, ov_now())
                 ON CONFLICT (user_id) DO UPDATE SET feed_seen_at = EXCLUDED.feed_seen_at, updated_at = ov_now()`)
                 .run(req.user.id, at);
-            await eventRelay.writerFor(db).enqueue(envelope(subject, at), { traceparent: req.headers.traceparent || null });
+            await eventRelay.writerFor(db).enqueue(envelope(subject, at), { traceparent: req.ov && req.ov.traceparent || null });
         });
         const live = eventRelay.outboxFor(db); if (live) live.kick();
         res.json({ seen_at: at });
