@@ -119,6 +119,13 @@ const token = async (id) => signToken(await db.prepare('SELECT * FROM users WHER
     assert.strictEqual(r.body.display.icons, 'solid', 'a person who prefers solid icons keeps that on every site');
     assert.strictEqual((await call('GET', '/api/themes/me/active', { as: 2 })).body.display.icons, 'solid');
     assert.strictEqual((await call('PUT', '/api/themes/me/display', { as: 2, body: { icons: 'outline' } })).body.display.icons, undefined, 'only auto, line or solid');
+    // Motion (openvibe-shared 4.183.0): auto, full, reduced or off follows the account, and each one reads back.
+    for (const motion of ['auto', 'full', 'reduced', 'off']) {
+        r = await call('PUT', '/api/themes/me/display', { as: 2, body: { motion } });
+        assert.strictEqual(r.body.display.motion, motion, `motion ${motion} is kept`);
+        assert.strictEqual((await call('GET', '/api/themes/me/active', { as: 2 })).body.display.motion, motion, `motion ${motion} reads back`);
+    }
+    assert.strictEqual((await call('PUT', '/api/themes/me/display', { as: 2, body: { motion: 'calm' } })).body.display.motion, undefined, 'only auto, full, reduced or off');
 
     // ── The site switcher's pinned and recent sites follow the account (migration 0029) ──
     r = await call('GET', '/api/themes/me/sites', { as: 2 });
