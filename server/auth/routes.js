@@ -235,7 +235,7 @@ router.post('/login', async (req, res) => {
     await db.prepare('UPDATE users SET last_seen = ov_now() WHERE id = ?').run(signedIn.id);
     const token = signToken(signedIn, req.app.locals.privateKey, config);
 
-    console.log(`[Auth] Login: ${user.username}${signedIn.id !== user.id ? `` : ''}`);
+    console.log(`[Auth] Login: ${user.username}`);
     require('./session').setSessionCookies(res, token);
     res.json({ token, user: sanitizeUser(signedIn) });
 });
