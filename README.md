@@ -4,6 +4,9 @@
 
 **One account for every OpenVibe site** — [openvibe.network](https://openvibe.network). Sign-in, profiles, follows, OpenCoins and your machines.
 
+**Live site:** https://openvibe.network · **API docs:** https://openvibe.services · **For AI:** https://openvibe.network/llms.txt
+**Run it:** `npm ci && npm run dev` · **Tests:** `npm test`
+
 Part of the [OpenVibe network](https://openvibe.network); [help](https://openvibe.help), the [SDK](https://github.com/OpenVibers/OpenVibe.SDK) and the [developer API](https://openvibe.services).
 
 ## Purpose

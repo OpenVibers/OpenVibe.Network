@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use OpenVibe.Network in research or a product, cite it as below."
+title: openvibe-network
+type: software
+authors:
+  - name: OpenVibe
+    alias: OpenVibers
+    website: https://openvibe.network
+repository-code: https://github.com/OpenVibers/OpenVibe.Network
+url: https://openvibe.network
+license: MIT
+abstract: "One OpenVibe account for every site: sign-in, profiles, follows, OpenCoins and your machines, at openvibe.network."
+keywords:
+  - openvibe
+  - authentication
+  - identity
+  - nodejs
+  - oauth2
