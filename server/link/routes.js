@@ -86,6 +86,11 @@ function createLinkRoutes({ releaseId, releaseApi = release } = {}) {
         if (path === '/machines') {
             return res.set('Cache-Control', 'no-store').sendFile(pathLib.join(__dirname, '..', '..', 'public', 'my.html'));
         }
+        // Older links name a machine's screen, desks or pairing below /machines (Actor's Watch links, Bot's old
+        // pages). The hub is the one page this host has, so they land on it instead of the catch-all's Network 404.
+        if (path.startsWith('/machines/')) {
+            return res.set('Cache-Control', 'no-store').redirect(301, `${SITE}/machines`);
+        }
         if (path === '/pair' || path === '/panel') {
             return res.set('Cache-Control', 'no-store').redirect(302, `${SITE}/machines`);
         }
