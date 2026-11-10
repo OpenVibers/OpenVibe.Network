@@ -64,7 +64,8 @@ const SHAPED = {
 
     // The vhost must send /machines and /pair to the app (which signposts them), not the catch-all to Network.
     const vhost = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'nginx', 'parked-domains.conf'), 'utf8');
-    assert.ok(/location ~ \^\/\(\|install\|machines(?:\(\/\.\*\)\?)?\|pair\|index\\\.md\|send\\\.js\|egress-settings\\\.js\|locker\\\.mjs\|/.test(vhost), 'the vhost passes the page\'s scripts (send.js, egress-settings.js), the machine hub and its old sub-paths, and the Locker bundle to Network');
+    assert.ok(/location ~ \^\/\(\|install\|add-computer\(\/complete\)\?\|machines(?:\(\/\.\*\)\?)?\|pair\|index\\\.md\|send\\\.js\|egress-settings\\\.js\|locker\\\.mjs\|/.test(vhost), 'the vhost passes the add flow, page scripts, machine hub and its old sub-paths, and Locker bundle to Network');
+    assert.ok(vhost.includes('add-computer(/complete)?'), 'the add-computer return flow reaches Link before the openvibe.network catch-all');
     const sendApi = vhost.slice(vhost.indexOf('location ~ ^/api/v1/me/nodes/(send-keys|send)$ {'));
     assert.ok(sendApi.length < vhost.length && /client_max_body_size 40m;/.test(sendApi.slice(0, sendApi.indexOf('\n    }'))), 'the Link Send API has its own location with a body limit that fits a file');
     // …and /auth/* to Link's own sign-in (Network#664), or openvibe.link never signs anyone in (11-08 audit).
