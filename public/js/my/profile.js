@@ -138,6 +138,7 @@ async function loadUser() {
             loadNotifPrefs(); loadQuietHours();
             loadLinked();
             loadSessions();
+            loadMfaSettings();
             loadApps();
             loadBlocks();
             loadAnonInfo();

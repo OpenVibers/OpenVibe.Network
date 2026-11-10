@@ -229,6 +229,10 @@ const server = http.createServer(app);
         await require('../server/levels/store').award(db, 'quest', { subject: dana.subject_id, reason: 'quest.completed', amount: 25, idempotency_key: 'deletion-level' });
         const experiencePart = (await accountData.networkPart(db, dana.id)).files.find(f => f.name === 'experience.json');
         assert.equal(experiencePart.content.events.length, 1, 'experience exported');
+        await db.prepare('INSERT INTO user_mfa (user_id, secret_ciphertext, generation) VALUES (?, ?, ?)').run(dana.id, 'encrypted-test-fixture', 'test-generation');
+        await db.prepare('INSERT INTO mfa_recovery_codes (user_id, code_hash) VALUES (?, ?)').run(dana.id, 'fixture-hash');
+        await db.prepare('INSERT INTO mfa_challenges (user_id, token_hash, credential_hash, generation, expires_at) VALUES (?, ?, ?, ?, ?)').run(dana.id, 'fixture-token-hash', 'fixture-password-hash', 'test-generation', due + 100000);
+        await db.prepare('INSERT INTO mfa_devices (id, user_id, token_hash, generation, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)').run('fixture-device', dana.id, 'fixture-device-hash', 'test-generation', due, due + 100000);
         const oldToken = tok(dana);
         assert.strictEqual((await accountData.sweep(db, { dir: exportDir, now: due + 1000 })).deleted, 1);
         const nodeEvents = await events('network.link.revoked');
@@ -248,7 +252,7 @@ const server = http.createServer(app);
         assert.match(gone.username, /^deleted-/);
         assert.deepStrictEqual([gone.email, gone.display_name, gone.password_hash, !!gone.deleted_at], [null, null, '!deleted', true]);
         assert.match((await db.prepare('SELECT username FROM users WHERE id = ?').get(old.id)).username, /^deleted-/, 'the merged-in account too');
-        for (const [t, col] of [['linked_accounts', 'user_id'], ['user_sessions', 'user_id'], ['oauth_tokens', 'user_id'], ['user_preferences', 'user_id'], ['experience_events', 'user_id'], ['person_levels', 'user_id']]) {
+        for (const [t, col] of [['user_mfa', 'user_id'], ['mfa_recovery_codes', 'user_id'], ['mfa_challenges', 'user_id'], ['mfa_devices', 'user_id'], ['linked_accounts', 'user_id'], ['user_sessions', 'user_id'], ['oauth_tokens', 'user_id'], ['user_preferences', 'user_id'], ['experience_events', 'user_id'], ['person_levels', 'user_id']]) {
             assert.strictEqual((await db.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE ${col} = ?`).get(dana.id)).n, 0, `${t} erased`);
         }
         assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM user_modules WHERE subject_id = ?').get(dana.subject_id)).n, 0);

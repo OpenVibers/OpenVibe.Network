@@ -109,6 +109,8 @@ const { makeRequireAuth, GRACE_MS: SESSION_GRACE_MS } = require('./session');
 // Sliding session guard: expired-but-renewable tokens are accepted and renewed (cookie + X-OV-Token).
 const requireAuth = makeRequireAuth(async (req) => ({ db: await getDb(req), publicKey: req.app.locals.publicKey, config: getConfig(req) }), signToken);
 
+router.use('/mfa', require('./mfa').router({ requireAuth, signToken, sanitizeUser }));
+
 // ── Register ─────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
     const db = await getDb(req);
@@ -223,6 +225,10 @@ router.post('/login', async (req, res) => {
     // An account merged into another (ADR-029) signs in to the survivor.
     const signedIn = await require('../identity/account-merge').effectiveUser(db, user);
     if (signedIn.is_banned) return res.status(403).json({ error: 'Account banned', ban_reason: signedIn.ban_reason });
+
+    try {
+        if (await require('./mfa').challengeLogin(db, req, res, signedIn)) return;
+    } catch { return res.status(503).json({ error: 'Authenticator service unavailable' }); }
 
     await db.prepare('UPDATE users SET last_seen = ov_now() WHERE id = ?').run(signedIn.id);
     const token = signToken(signedIn, req.app.locals.privateKey, config);

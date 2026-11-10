@@ -780,6 +780,12 @@ async function handleLogin(e) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Login failed');
 
+        if (data.mfa_required) {
+            e.target.reset();
+            showMfaChallenge();
+            return;
+        }
+
         // Store token & save account
         localStorage.setItem('ov_token', data.token);
         setAuthCookie(data.token);
@@ -1103,3 +1109,31 @@ async function continueAnonymous() {
         prefillUsername(params.get('login_hint'));
     }
 })();
+
+// Pending sign-in lives only in the server's short-lived HttpOnly cookie.
+function showMfaChallenge() {
+    const previous = document.getElementById('mfa-login');
+    if (previous) previous.remove();
+    const form = document.createElement('form');
+    form.id = 'mfa-login';
+    form.innerHTML = '<label>Authenticator or recovery code <input name="code" autocomplete="one-time-code" required maxlength="30"></label><label><input name="remember" type="checkbox"> Remember this browser for 30 days</label><button class="ovk-btn ovk-btn--primary" type="submit">Continue</button><p role="status"></p>';
+    document.getElementById('login-form').hidden = true;
+    document.getElementById('login-form').after(form);
+    form.elements.code.focus();
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const button = form.querySelector('button');
+        button.disabled = true;
+        try {
+            const res = await fetch(API_BASE + '/api/auth/mfa/verify', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: form.elements.code.value, remember: form.elements.remember.checked }) });
+            const data = await res.json();
+            form.elements.code.value = '';
+            if (!res.ok) throw new Error(data.error || 'Sign-in failed');
+            localStorage.setItem('ov_token', data.token);
+            setAuthCookie(data.token);
+            saveAccount(data.user, data.token);
+            await guardScheduledDeletion(data.token, () => finishSignIn(data));
+        } catch (err) { form.querySelector('[role="status"]').textContent = err.message; }
+        finally { button.disabled = false; }
+    });
+}
