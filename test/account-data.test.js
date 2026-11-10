@@ -226,6 +226,9 @@ const server = http.createServer(app);
                 .run(principal, nodeId, subjectId, crypto.randomBytes(32).toString('hex'));
             pairedNodes.push([principal, nodeId, subjectId]);
         }
+        await require('../server/levels/store').award(db, 'quest', { subject: dana.subject_id, reason: 'quest.completed', amount: 25, idempotency_key: 'deletion-level' });
+        const experiencePart = (await accountData.networkPart(db, dana.id)).files.find(f => f.name === 'experience.json');
+        assert.equal(experiencePart.content.events.length, 1, 'experience exported');
         const oldToken = tok(dana);
         assert.strictEqual((await accountData.sweep(db, { dir: exportDir, now: due + 1000 })).deleted, 1);
         const nodeEvents = await events('network.link.revoked');
@@ -245,7 +248,7 @@ const server = http.createServer(app);
         assert.match(gone.username, /^deleted-/);
         assert.deepStrictEqual([gone.email, gone.display_name, gone.password_hash, !!gone.deleted_at], [null, null, '!deleted', true]);
         assert.match((await db.prepare('SELECT username FROM users WHERE id = ?').get(old.id)).username, /^deleted-/, 'the merged-in account too');
-        for (const [t, col] of [['linked_accounts', 'user_id'], ['user_sessions', 'user_id'], ['oauth_tokens', 'user_id'], ['user_preferences', 'user_id']]) {
+        for (const [t, col] of [['linked_accounts', 'user_id'], ['user_sessions', 'user_id'], ['oauth_tokens', 'user_id'], ['user_preferences', 'user_id'], ['experience_events', 'user_id'], ['person_levels', 'user_id']]) {
             assert.strictEqual((await db.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE ${col} = ?`).get(dana.id)).n, 0, `${t} erased`);
         }
         assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM user_modules WHERE subject_id = ?').get(dana.subject_id)).n, 0);

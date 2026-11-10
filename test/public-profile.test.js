@@ -185,7 +185,7 @@ const INSTANCES = [
         assert.ok(!r.text.includes('secret bio') && !r.text.includes('Member since') && !r.text.includes('class="pf-grid"'));
         assert.ok(r.text.includes('<h1>Hidden</h1>') && !r.text.includes('class="pf-hat"') && !r.text.includes('/shared/items.css'), 'a hidden profile wears nothing');
         r = await get('/api/v1/profiles/hidden');
-        assert.deepStrictEqual(JSON.parse(r.text).profile, { username: 'hidden', display_name: 'Hidden', avatar_url: 'https://openvibe.network/avatar/hidden?s=160', profile_url: 'https://openvibe.network/@hidden', private: true });
+        assert.deepStrictEqual(JSON.parse(r.text).profile, { username: 'hidden', display_name: 'Hidden', avatar_url: 'https://openvibe.network/avatar/hidden?s=160', profile_url: 'https://openvibe.network/@hidden', private: true, level: { xp: 0, level: 1, into: 0, span: 100, next_at: 100 } });
 
         // No profile: anonymous, deleted, unknown.
         for (const name of ['ghost', 'gone', 'nobody', 'x']) {

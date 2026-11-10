@@ -102,6 +102,7 @@ async function creditOrDebit(db, sign, { user_id, app_id, amount, reason, ref, i
             ref,
             idempotency_key,
         });
+        if (sign > 0) await require('../levels/coins').onCredit(db, { user_id: uid, app_id, delta: amount, reason, idempotency_key });
         return { balance, deduped: false };
     });
     return run();

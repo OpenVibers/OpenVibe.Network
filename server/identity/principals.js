@@ -46,6 +46,7 @@ const DEFAULT_GRANTS = [
     // OpenVibe.Quest pays a completed quest's OpenCoins (app_id quest, idempotency_key = the completion id), resolving
     // the person's subject to the wallet first, and subscribes to the events it counts (plan T19).
     ['quest', 'network.coins.credit', SELF_AUDIENCE, ['quest']],
+    ['quest', 'network.levels.award', SELF_AUDIENCE, []],
     ['quest', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['quest', 'events.subscription.manage', 'openvibe.events', []],
     // They subscribe to network.account.export_requested and network.account.deleted at boot (ADR-033).

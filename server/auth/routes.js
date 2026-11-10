@@ -399,7 +399,7 @@ router.get('/me', requireAuth, async (req, res) => {
     const prefs = await db.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(req.user.id);
     await subjects.ensureUserSubject(db, req.user);
     res.json({
-        user: sanitizeUser(req.user),
+        user: { ...sanitizeUser(req.user), level: await require('../levels/store').total(db, req.user.id) },
         preferences: prefs || { theme_id: 'vibe' },
         features: { qr_signin: require('./qr-signin').enabled(getConfig(req)) },
     });

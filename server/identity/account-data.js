@@ -208,6 +208,8 @@ async function networkPart(db, userId) {
     await byUser('profile_changes.json', 'user_profile_changes');
     await byUser('sign_in_log.json', 'ip_log');
     await byUser('emails_sent.json', 'email_delivery_log');
+    const experience = await rowsOf(db, 'experience_events', 'user_id = ?', [u.id]);
+    add('experience.json', { totals: await rowsOf(db, 'person_levels', 'user_id = ?', [u.id]), events: experience.rows }, experience.truncated);
     const coins = await rowsOf(db, 'coin_transactions', 'user_id = ?', [u.id]);
     add('opencoins.json', { balance: (await db.prepare('SELECT balance FROM wallets WHERE user_id = ?').get(u.id) || { balance: 0 }).balance, ledger: coins.rows }, coins.truncated);
     add('modules.json', await tableExists(db, 'user_modules') ? (await db.prepare('SELECT namespace, version, revision, data, updated_at FROM user_modules WHERE subject_id = ? ORDER BY namespace').all(u.subject_id))
@@ -360,6 +362,8 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         for (const t of ['linked_accounts', 'user_sessions', 'oauth_tokens', 'oauth_codes', 'email_verification_tokens', 'password_reset_tokens', 'notifications',
             'notification_preferences', 'notification_quiet_hours', 'notification_digest_runs', 'user_preferences', 'user_effects', 'push_subscriptions', 'user_history', 'username_history', 'user_profile_changes',
             'ip_log', 'email_delivery_log', 'user_theme_history', 'user_theme_site_overrides']) await del(t, `user_id IN ${inU}`, userIds);
+        await del('experience_events', `user_id IN ${inU}`, userIds);
+        await del('person_levels', `user_id IN ${inU}`, userIds);
         await del('chat_app_pending_links', `confirmed_by IN ${inU}`, userIds);
         if (await tableExists(db, 'account_merge_intents')) await del('account_merge_intents', `into_user_id IN ${inU}`, userIds);
         // Notifications this person sent others stay, without their name or picture.
