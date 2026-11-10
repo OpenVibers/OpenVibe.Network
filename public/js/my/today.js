@@ -198,7 +198,19 @@ function renderMoney(coins, last) {
     if (coins.vibes != null) document.getElementById('td-vibes').textContent = tdNum(typeof coins.vibes === 'object' ? coins.vibes.balance : coins.vibes);
     const t = last && last.transactions && last.transactions[0];
     const line = document.getElementById('td-money-last');
-    line.textContent = t ? `${t.delta > 0 ? '+' : ''}${tdNum(t.delta)} ${t.reason ? `for ${String(t.reason).replace(/_/g, ' ')}` : ''} · ${tdAgo(t.created_at)}` : '';
+    line.replaceChildren();
+    if (t) {
+        // The server makes the words (billing.money-reason@1). The raw key never reaches this line:
+        // an undeclared reason already reads "for something on <site>".
+        const phrase = t.reason_text || `for something on ${t.reason_site || 'OpenVibe'}`;
+        line.append(document.createTextNode(`${t.delta > 0 ? '+' : ''}${tdNum(t.delta)} `));
+        if (t.reason_subject && t.reason_subject.url) {
+            const a = document.createElement('a');
+            a.href = t.reason_subject.url; a.textContent = phrase; a.target = '_blank'; a.rel = 'noopener';
+            line.append(a);
+        } else line.append(document.createTextNode(phrase));
+        line.append(document.createTextNode(` · ${tdAgo(t.created_at)}`));
+    }
     line.hidden = !t;
     box.hidden = false;
 }

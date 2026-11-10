@@ -24,6 +24,7 @@
 
 const express = require('express');
 const wallet = require('../coins/wallet');
+const money = require('../money/reasons');
 const config = require('../config');
 
 const TIMEOUT_MS = 3500;
@@ -126,26 +127,33 @@ function titleCase(s) {
     return String(s || 'Activity').replace(/[_-]+/g, ' ').replace(/\b[a-z]/g, (c) => c.toUpperCase());
 }
 
-/** The label and the second line of what a journal transaction was, from its type and metadata. */
+/** The reason key a journal row means: Billing's type, refined by the metadata that separates its shapes. */
+function keyOf(t, m) {
+    if (t.type === 'credit' && m.credit === 'settle') return 'credit:settle';
+    if (t.type === 'credit' && m.credit === 'topup') return 'credit:topup';
+    if (t.type === 'purchase' && m.balance === 'vibes_from_balance') return 'purchase:vibes_from_balance';
+    if (t.type === 'purchase' && m.store_purchase) return 'purchase:store';
+    if (t.type === 'purchase' && (m.vibes_charge || m.vibes_charge_id || m.charge === 'vibes_pay' || m.app_name)) return 'purchase:app';
+    if (t.type === 'purchase') return 'purchase:vibes';
+    return String(t.type || '');
+}
+
+/** The label and the second line of what a journal transaction was, from its type and metadata.
+ *  The words come from billing.money-reason@1, so this fallback reads like Billing's own activity. */
 function describe(t) {
     const m = (t && t.metadata) || {};
-    if (t.type === 'credit' && m.credit === 'settle') return { label: 'AI usage', detail: m.model ? String(m.model) : 'Metered usage' };
-    if (t.type === 'credit' && m.credit === 'topup') return { label: 'Added money', detail: 'Balance top-up' };
-    if (t.type === 'purchase' && m.balance === 'vibes_from_balance') {
-        const got = Number(m.vibes || 0);
-        return { label: got ? `Got ${got.toLocaleString('en-US')} Vibes with your Balance` : 'Got Vibes with your Balance', detail: '' };
-    }
-    if (t.type === 'purchase') {
-        const bought = Number(m.vibes || m.bits || m.amount_bits || 0);
-        return { label: bought ? `Bought ${bought.toLocaleString('en-US')} Vibes` : 'Bought Vibes', detail: 'With a card' };
-    }
-    if (t.type === 'balance_transfer') return { label: 'Moved to a project', detail: m.to_project_id ? String(m.to_project_id) : 'Project Balance' };
-    if (t.type === 'donation') return { label: 'Tip', detail: m.message ? text(m.message, 80) : 'Live tip' };
-    if (t.type === 'subscription' || t.type === 'subscription_share') return { label: 'Subscription', detail: 'Recurring' };
-    if (t.type === 'refund') return { label: 'Refund', detail: 'Returned' };
-    if (t.type === 'vibes_charge' || m.vibes_charge) return { label: m.description ? text(m.description, 80) : 'App payment', detail: 'Vibes Pay' };
-    if (t.type === 'cashout_paid' || t.type === 'cashout_request') return { label: 'Cash out', detail: 'Payable' };
-    return { label: titleCase(t.type), detail: '' };
+    const key = keyOf(t, m);
+    let detail = '';
+    if (key === 'credit:settle') detail = m.model ? String(m.model) : 'Metered usage';
+    else if (key === 'credit:topup') detail = 'Balance top-up';
+    else if (key === 'balance_transfer') detail = m.to_project_id ? String(m.to_project_id) : 'Project Balance';
+    else if (key === 'donation') detail = m.message ? text(m.message, 80) : 'Live tip';
+    else if (key === 'subscription' || key === 'subscription_share') detail = 'Recurring';
+    else if (key === 'refund' || key === 'vibes_refund') detail = 'Returned';
+    else if (key === 'vibes_charge') detail = 'Vibes Pay';
+    else if (key === 'cashout_paid' || key === 'cashout_request') detail = 'Payable';
+    const d = money.describe(key, { site: 'billing' });
+    return { label: d.text, detail, subject: d.subject, reason_key: d.key };
 }
 
 /** The person's two spendable parts of one journal transaction, in display order: Balance, then Vibes. */
@@ -188,6 +196,7 @@ function mapActivity(subject, transactions) {
         const d = describe(t);
         rows.push({
             id: String(t.id), at: t.created_at, label: d.label, detail: d.detail,
+            subject: d.subject || null, reason_key: d.reason_key || null,
             kinds: parts.map((p) => p.kind), parts,
         });
     }
@@ -259,7 +268,10 @@ function mapPersonActivity(subject, body) {
         const at = item.at || item.created_at || item.date || null;
         const label = text(item.label || item.description || item.title || 'Activity', 120);
         const detail = text(item.detail || item.subtitle || '', 120);
-        const row = grouped.get(id) || { id, at, label, detail, parts: [] };
+        const anchors = item.subject && typeof item.subject === 'object' && item.subject.name
+            ? { name: text(item.subject.name, 160), url: item.subject.url ? text(item.subject.url, 500) : null } : null;
+        const row = grouped.get(id) || { id, at, label, detail, parts: [], subject: anchors, reason_key: item.reason_key || null };
+        if (anchors) row.subject = anchors;
         for (const p of parts) if (!row.parts.some((x) => x.kind === p.kind)) row.parts.push(p);
         grouped.set(id, row);
     }

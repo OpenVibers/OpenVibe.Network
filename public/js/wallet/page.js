@@ -149,7 +149,15 @@
         date.dateTime = String(row.at || '');
         if (t.time) date.title = t.time;
         const main = W.el('div', 'w-act-main');
-        main.appendChild(W.el('b', 'w-act-label', row.label || 'Activity'));
+        // The reason is a sentence from billing.money-reason@1; when it names a thing with a page, the
+        // sentence is the link to it. The raw ledger key is never drawn.
+        const label = String(row.label || 'Activity');
+        const url = row.subject && row.subject.url;
+        if (url && /^https:\/\//.test(url)) {
+            const a = W.el('a', 'w-act-label', label);
+            a.href = url; a.target = '_blank'; a.rel = 'noopener';
+            main.appendChild(a);
+        } else main.appendChild(W.el('b', 'w-act-label', label));
         const kindNames = [...new Set(kinds.map((k) => (k === 'vibes' ? 'Vibes' : 'Balance')))];
         const kindName = kindNames.join(' · ');
         main.appendChild(W.el('span', 'w-act-detail', row.detail ? `${kindName} · ${row.detail}` : kindName));
