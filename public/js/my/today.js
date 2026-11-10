@@ -149,21 +149,47 @@ function renderNet(frame) {
     const box = document.getElementById('td-net');
     const wrap = document.getElementById('td-net-cards');
     if (!box || !wrap) return;
-    const cards = ((frame && frame.cards) || []).filter((c) => c && Array.isArray(c.items) && c.items.some((it) => tdSafeUrl(it.url))).slice(0, 3);
+    const now = Date.now();
+    // Card order: live first; otherwise age score (newer is higher) plus engagement score
+    // (views + replies + viewers, capped at 100). Rows with no relative age retain a declared window.
+    const cards = ((frame && frame.cards) || []).filter((c) => c && Array.isArray(c.items) && c.items.some((it) => tdSafeUrl(it.url))).map((c) => {
+        const live = c.site === 'live' && /live/i.test(c.title || '');
+        const rows = c.items.filter((it) => tdSafeUrl(it.url)).map((it) => {
+            const age = String(it.meta || '').match(/(\d+)\s*(m|min|h|d|w)\s*ago/i);
+            const ageMs = age ? Number(age[1]) * ({ m: 60000, min: 60000, h: 3600000, d: 86400000, w: 604800000 }[age[2].toLowerCase()]) : null;
+            const engagement = [...String(it.meta || '').matchAll(/(\d+)\s*(?:views?|replies|viewers?)/gi)].reduce((n, m) => n + Number(m[1]), 0);
+            return { ...it, ageMs, engagement };
+        });
+        const newest = rows.reduce((min, it) => it.ageMs != null ? Math.min(min, it.ageMs) : min, Infinity);
+        const score = rows.reduce((n, it) => n + Math.min(100, it.engagement), 0);
+        const rank = live ? Infinity : (newest === Infinity ? 0 : 100 - Math.min(100, newest / 3600000)) + score;
+        return { ...c, live, rows, newest, rank };
+    }).sort((a, b) => b.rank - a.rank).slice(0, 3);
     wrap.replaceChildren(...cards.map((c) => {
         const site = TD_SITES[c.site] || [c.site || 'OpenVibe', 'fa-globe', null];
-        const rows = c.items.filter((it) => tdSafeUrl(it.url)).slice(0, 5);
-        const list = tdEl('ol', 'td-net-list', rows.map((it, i) => {
+        const grouped = new Map();
+        for (const row of c.rows.sort((a, b) => (a.ageMs ?? Infinity) - (b.ageMs ?? Infinity))) {
+            const key = `${row.title}\u0000${row.person || row.author || row.url}`;
+            const old = grouped.get(key);
+            if (old) old.count++;
+            else grouped.set(key, { ...row, count: 1 });
+        }
+        const stale = c.newest !== Infinity && c.newest > 7 * 86400000;
+        const visibleRows = [...grouped.values()].slice(0, stale ? 2 : 5);
+        const list = tdEl('ol', 'td-net-list', visibleRows.map((it, i) => {
             const src = it.image && tdSafeUrl(it.image.src);
+            const when = it.ageMs == null ? (c.window || 'most watched this week') : String(it.meta || '').match(/\d+\s*(?:m|min|h|d|w)\s*ago/i)?.[0] || 'recently';
+            const detail = [it.count > 1 ? `${it.count} streams this week` : '', when].filter(Boolean).join(' · ');
             return tdEl('li', '', [tdEl('a', 'td-net-row', [
                 tdEl('span', 'td-net-i', [String(i + 1)]),
                 src ? tdEl('img', 'td-net-thumb', null, { src, alt: '', width: 64, height: 36, loading: 'lazy', decoding: 'async' }) : null,
-                tdEl('span', 'td-net-t', [tdEl('b', '', [String(it.title || '')]), it.meta ? tdEl('small', '', [String(it.meta)]) : null]),
+                tdEl('span', 'td-net-t', [tdEl('b', '', [String(it.title || '')]), tdEl('small', '', [detail])]),
             ], { href: tdSafeUrl(it.url) })]);
         }));
         const more = c.more && tdSafeUrl(c.more.url) ? tdEl('a', 'td-more', [String(c.more.label || 'More')], { href: tdSafeUrl(c.more.url) }) : null;
         return tdEl('section', 'td-box td-net-card', [
             tdEl('div', 'td-net-h', [tdEl('span', 'td-site-ic', [tdIcon(site[1])]), tdEl('span', 'td-net-ht', [tdEl('b', '', [String(c.title || site[0])]), tdEl('small', '', [site[0]])]), more]),
+            stale ? tdEl('small', '', [`quiet for ${Math.floor(c.newest / 86400000)} days`]) : null,
             list,
         ], { 'data-site': String(c.site || '') });
     }));
