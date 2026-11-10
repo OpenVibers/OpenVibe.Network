@@ -114,7 +114,7 @@ assert.match(read('public/js/my/core.js'), /hash === 'delete' \? 'accounts' : ha
 // The banner reads GET /deletion on every page; that read must not spend the 20-a-minute write budget.
 const index = read('server/index.js');
 assert.match(index, /skip: \(req\) => req\.method === 'GET' && req\.path === '\/deletion'/, 'GET /deletion is not rate-limited with the writes it feeds');
-assert.doesNotMatch(index, /account-merges|account-merge/, 'account merge routes and their limiter are removed');
+assert.doesNotMatch(index, /mergeRouters|startsWith\('\/merge'\)/, 'account merge routers and their limiter are removed');
 
 // ── /login?reauth=1 always asks for the password ────────────────────────────
 const login = read('public/js/login.js');

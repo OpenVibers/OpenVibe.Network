@@ -62,6 +62,8 @@ const { ACCOUNT_HUB_PATHS } = require('../server/not-found');
         assert.strictEqual(r.status, 404, 'HEAD of an unknown path: 404');
         r = await get('/api/nope', { method: 'DELETE' });
         assert.strictEqual(r.status, 404, 'DELETE /api/nope: 404');
+        r = await get('/api/admin/account-merges', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+        assert.strictEqual(r.status, 404, 'removed account merge admin route: 404 before the admin guard');
 
         console.log('unknown paths: all checks passed');
     } catch (err) {
