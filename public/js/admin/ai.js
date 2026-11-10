@@ -402,7 +402,7 @@ function renderCookieVerdict(data) {
 
 async function checkStreamerMediaCookies() {
     const el = document.getElementById('streamer-media-cookie-verdict');
-    if (el) el.innerHTML = '<div class="muted" style="margin-top:10px"><i class="fa-solid fa-spinner fa-spin"></i> Validating and running a live extraction…</div>';
+    if (el) el.innerHTML = '<div class="muted" style="margin-top:10px"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> Validating and running a live extraction…</div>';
     try {
         const data = await api('/api/admin/streamer/media-tools/cookies/check', { method: 'POST', body: {} });
         renderCookieVerdict(data);
@@ -416,7 +416,7 @@ async function saveStreamerMediaCookies() {
     const cookies = ta?.value?.trim() || '';
     if (!cookies) return toast('Paste cookies.txt content first', 'error');
     const el = document.getElementById('streamer-media-cookie-verdict');
-    if (el) el.innerHTML = '<div class="muted" style="margin-top:10px"><i class="fa-solid fa-spinner fa-spin"></i> Validating and running a live extraction…</div>';
+    if (el) el.innerHTML = '<div class="muted" style="margin-top:10px"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> Validating and running a live extraction…</div>';
     try {
         const data = await api('/api/admin/streamer/media-tools/cookies', { method: 'PUT', body: { cookies } });
         toast(data?.test?.ok ? 'Cookies saved — live extraction passed' : 'Cookies saved', 'success');
@@ -442,7 +442,7 @@ async function testStreamerMediaExtraction() {
     const url = document.getElementById('streamer-media-test-url')?.value?.trim() || '';
     const results = document.getElementById('streamer-media-test-results');
     if (!url) return toast('Enter a URL to test', 'error');
-    results.innerHTML = '<p class="muted"><i class="fa-solid fa-spinner fa-spin"></i> Testing live OpenVibe.Live extraction…</p>';
+    results.innerHTML = '<p class="muted"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> Testing live OpenVibe.Live extraction…</p>';
     try {
         const data = await api('/api/admin/streamer/media-tools/test', { method: 'POST', body: { url } });
         results.innerHTML = `<div style="display:grid;gap:8px;font-size:0.9rem">${(data.steps || []).map(step => {
