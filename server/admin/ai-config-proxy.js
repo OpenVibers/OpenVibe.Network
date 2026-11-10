@@ -402,12 +402,19 @@ function createAiConfigProxy(opts = {}) {
         } catch (err) { fail(res, err); }
     });
 
-    for (const [path, action] of [['/owner-inference/spend-caps', 'provider.spend_cap'], ['/owner-inference/routing', 'owner_routing.update'], ['/owner-inference/economy', 'owner_economy.update']]) {
+    for (const [path, aiPath, action] of [
+        ['/owner-inference/spend-caps', '/spend-caps', 'provider.spend_cap'],
+        ['/owner-inference/routing', '/routing', 'owner_routing.update'],
+        ['/owner-inference/economy', '/economy', 'owner_economy.update'],
+        ['/owner-inference/providers', '/providers', 'provider.control'],
+        ['/owner-inference/rules', '/rules', 'owner_inference.rules'],
+        ['/owner-inference/endpoint', '/endpoint', 'provider.endpoint'],
+    ]) {
         r.post(path, async (req, res) => {
             try {
                 const body = req.body && typeof req.body === 'object' ? req.body : {};
                 if (body.api_key !== undefined || body.secret !== undefined) throw new ProxyError(422, 'config.secret_write_only', 'send the key to its own write-only route, never here');
-                const out = await ownerInfCall(req, 'POST', ownerInfPath(path === '/owner-inference/spend-caps' ? '/spend-caps' : path === '/owner-inference/routing' ? '/routing' : '/economy'), body);
+                const out = await ownerInfCall(req, 'POST', ownerInfPath(aiPath), body);
                 if (out.status < 200 || out.status >= 300) return upstreamFailed(res, 'ai', out);
                 const key = String(body.provider_key || body.capability || 'owner-inference');
                 await audit(req, { service: 'ai', namespace: 'ai.owner-inference', keys: [key], action, revision: null });
@@ -415,6 +422,20 @@ function createAiConfigProxy(opts = {}) {
             } catch (err) { fail(res, err); }
         });
     }
+
+    // The confirmed readings bundled with the AI release enter the price book as pending changes; the owner
+    // accepts each one in the price book, never here.
+    r.post('/owner-inference/pricebook/propose', async (req, res) => {
+        try {
+            const body = req.body && typeof req.body === 'object' ? req.body : {};
+            const proposals = Array.isArray(body.proposals) ? body.proposals : [];
+            if (!proposals.length) throw new ProxyError(422, 'config.invalid', 'no confirmed readings to propose');
+            const out = await callService(req, 'ai', '/api/v1/admin/console/pricebook/proposals', { method: 'POST', body: { proposals }, cap: 'ai.provider.manage' });
+            if (out.status < 200 || out.status >= 300) return upstreamFailed(res, 'ai', out);
+            await audit(req, { service: 'ai', namespace: 'ai.pricebook', keys: ['proposals'], action: 'price_changes.proposed', revision: null });
+            send(res, 200, { ok: true, result: out.answer });
+        } catch (err) { fail(res, err); }
+    });
 
     r.get('/providers', async (req, res, next) => {
         try {
