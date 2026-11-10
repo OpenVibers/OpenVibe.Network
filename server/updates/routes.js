@@ -54,6 +54,7 @@ function createUpdatesRoutes({ blogUrl = 'http://127.0.0.1:4810', release = null
         const out = new URLSearchParams();
         const service = serviceOf(q);
         if (service) out.set('service', service);
+        if (['new', 'better', 'fixed'].includes(String(q.kind || ''))) out.set('kind', String(q.kind));
         const n = parseInt(q.limit, 10);
         out.set('limit', String(Number.isFinite(n) ? Math.min(Math.max(n, 1), 100) : 20));
         if (q.before && CURSOR_RE.test(String(q.before))) out.set('before', String(q.before));
@@ -149,7 +150,7 @@ function renderPage({ site, filtered, body, releaseId = '' }) {
     }
     // One commit; the OpenVibers account every commit shares is not named on each row.
     const hhmm = (e) => String(e.deployed_at || '').slice(11, 16);
-    const row = (e, showSite) => `<div class="ov-shipped-entry">${/^https:\/\//.test(e.url || '') ? `<a class="ov-shipped-hash" href="${esc(e.url)}" rel="noopener">${esc(e.short || String(e.sha || '').slice(0, 7))}</a>` : ''}${showSite ? `<span class="ov-shipped-site">${esc(nameOf(e.service))}</span>` : ''}<span class="ov-shipped-text">${esc(e.subject)}</span><span class="ov-shipped-meta">${esc(e.author && e.author !== 'OpenVibers' ? `${e.author} · ` : '')}${esc(hhmm(e))} UTC</span></div>`;
+    const row = (e, showSite) => { const repo = String(e.repo || '').split('/').pop(); const sha = String(e.sha || ''); const commit = repo && /^[A-Za-z0-9_.-]+$/.test(repo) && /^[0-9a-f]{7,40}$/i.test(sha) ? `https://git.openvibe.codes/OpenVibers/${repo}/commit/${sha}` : e.url; return `<div class="ov-shipped-entry">${/^https:\/\//.test(commit || '') ? `<a class="ov-shipped-hash" href="${esc(commit)}" rel="noopener">${esc(e.short || sha.slice(0, 7))}</a>` : ''}${showSite ? `<span class="ov-shipped-site">${esc(nameOf(e.service))}</span>` : ''}<span class="ov-shipped-text">${esc(e.subject)}</span><span class="ov-shipped-meta">${esc(e.author && e.author !== 'OpenVibers' ? `${e.author} · ` : '')}${esc(hhmm(e))} UTC</span></div>`; };
     // The same change on many sites is one row (a pin round was thirty identical lines), grouped exactly as
     // openvibe-shared/shipped.js groups the page once its script runs.
     const groupHtml = (g) => {
@@ -203,7 +204,7 @@ a{color:var(--accent)}
 ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Updates', href: '/updates' }, { label: 'Status', href: '/status' }] })}
 <main class="up" id="main">
 <h1>${esc(title)}</h1>
-<p class="lede">Every change deployed to OpenVibe, newest first. Each line is a commit from the OpenVibers repositories, linked to the change itself. When enough have gathered, or a large feature lands, they are written up as <a href="https://openvibe.blog/@openvibe">Patch notes on openvibe.blog</a>. JSON: <a href="/api/v1/changelog"><code>/api/v1/changelog</code></a>.</p>
+<p class="lede">Every change deployed to OpenVibe, newest first. Each line is a commit from the <a href="https://git.openvibe.codes/OpenVibers">OpenVibers repositories</a>, linked to the change itself. When enough have gathered, or a large feature lands, they are written up as <a href="https://openvibe.blog/@openvibe">Patch notes on openvibe.blog</a>. JSON: <a href="/api/v1/changelog"><code>/api/v1/changelog</code></a>.</p>
 <div data-ov-shipped="log" data-service="${esc(site || '')}" data-limit="50">
 ${chips}
 ${postsHtml}
