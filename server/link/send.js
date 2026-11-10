@@ -114,7 +114,11 @@ if (form) {
                 } catch { seq = Math.max(0, seq - 1); }
             }
         }
-        let done = await finishUpload(upload.id);
+        let done = null;
+        try { done = await finishUpload(upload.id); } catch {
+            // The relay may have made the item and lost the answer. Its status says whether it did.
+            try { const answer = await uploadStatus(upload.id); if (answer.item_id) done = { id: answer.item_id }; } catch { /* retry below */ }
+        }
         for (let i = 0; i < 3 && !done?.id; i++) done = await finishUpload(upload.id).catch(() => null);
         if (!done?.id) throw new Error('Your machine could not confirm the item. The relay kept the encrypted parts for an hour.');
         drawProgress(bytes, bytes);
