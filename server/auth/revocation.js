@@ -52,6 +52,7 @@ async function revokeTokens(db, userId, { reason, actor, ctx, strict = false } =
         if (!user) throw new Error(`revocation: no user ${userId}`);
         await db.prepare(strict ? "UPDATE users SET token_valid_after = datetime(ov_now(), '+1 second') WHERE id = ?" : 'UPDATE users SET token_valid_after = ov_now() WHERE id = ?').run(user.id);
         await db.prepare('UPDATE user_sessions SET is_active = 0 WHERE user_id = ?').run(user.id);
+        await db.prepare('DELETE FROM passkey_challenges WHERE user_id = ?').run(user.id);
         await db.prepare('DELETE FROM mfa_devices WHERE user_id = ?').run(user.id);
         await db.prepare('DELETE FROM mfa_challenges WHERE user_id = ?').run(user.id);
         const validAfter = iso((await db.prepare('SELECT token_valid_after AS t FROM users WHERE id = ?').get(user.id)).t);

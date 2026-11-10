@@ -57,7 +57,7 @@ async function remembered(db, req, user, f, now) {
 // Returns true only when the password route must stop before issuing any session.
 async function challengeLogin(db, req, res, user) {
     const f = await factor(db, user.id);
-    if (!f?.secret_ciphertext) return false;
+    if (!f || (!f.secret_ciphertext && !(await require('./passkeys').list(db, user.id)).length)) return false;
     keys(); // Fail closed even when enrollment is disabled or encryption configuration is missing.
     const now = Date.now();
     if (await remembered(db, req, user, f, now)) return false;
@@ -78,9 +78,9 @@ async function challengeLogin(db, req, res, user) {
 async function consume(db, f, code, now, enrollment = false) {
     if (Number(f.locked_until) > now) return false;
     const ciphertext = enrollment ? f.pending_secret_ciphertext : f.secret_ciphertext;
-    if (!ciphertext || (enrollment && Number(f.pending_until) <= now)) return false;
+    if (enrollment && (!ciphertext || Number(f.pending_until) <= now)) return false;
     let ok = false;
-    const step = validStep(open(ciphertext, f.user_id), code, now);
+    const step = ciphertext ? validStep(open(ciphertext, f.user_id), code, now) : null;
     if (step !== null && step > Number(f.last_step)) {
         await db.prepare('UPDATE user_mfa SET last_step = ? WHERE user_id = ?').run(step, f.user_id);
         ok = true;
@@ -117,9 +117,10 @@ function router({ requireAuth, signToken, sanitizeUser }) {
         const user = await db.tx(async () => {
             const c = await db.prepare('SELECT * FROM mfa_challenges WHERE token_hash = ?').get(hash(pending));
             if (!c || Number(c.expires_at) <= now) return null;
+            await db.prepare('SELECT id FROM users WHERE id = ? FOR UPDATE').get(c.user_id);
             const f = await factor(db, c.user_id, true);
             const u = await db.prepare('SELECT * FROM users WHERE id = ?').get(c.user_id);
-            if (!f?.secret_ciphertext || f.generation !== c.generation || !u || u.is_banned || u.deleted_at || u.merged_into || hash(u.password_hash) !== c.credential_hash) return null;
+            if (!f || (!f.secret_ciphertext && !(await require('./passkeys').list(db, c.user_id)).length) || f.generation !== c.generation || !u || u.is_banned || u.deleted_at || u.merged_into || hash(u.password_hash) !== c.credential_hash) return null;
             if (!await db.prepare('SELECT token_hash FROM mfa_challenges WHERE token_hash = ?').get(hash(pending))) return null;
             if (!await consume(db, f, cleanCode(req.body.code), now)) return null;
             await db.prepare('DELETE FROM mfa_challenges WHERE token_hash = ?').run(hash(pending));
@@ -149,6 +150,8 @@ function router({ requireAuth, signToken, sanitizeUser }) {
         if (typeof req.body.password !== 'string' || !bcrypt.compareSync(req.body.password, req.user.password_hash)) return res.status(401).json({ error: 'Current password required' });
         const secret = new OTPAuth.Secret({ size: 20 }).base32;
         const result = await db.tx(async () => {
+            req.user = await db.prepare('SELECT * FROM users WHERE id = ? FOR UPDATE').get(req.user.id);
+            if ((await require('./passkeys').list(db, req.user.id)).length && !await require('./passkeys').authorize(db, req)) return false;
             await db.prepare('INSERT INTO user_mfa (user_id, generation) VALUES (?, ?) ON CONFLICT (user_id) DO NOTHING').run(req.user.id, random());
             const f = await factor(db, req.user.id, true);
             if (f.secret_ciphertext || Number(f.locked_until) > Date.now()) return false;
@@ -161,12 +164,14 @@ function router({ requireAuth, signToken, sanitizeUser }) {
     r.post('/confirm', route(async (req, res, db) => {
         if (!await allowed(db, req.user)) return res.status(404).json({ error: 'Not available' });
         const codes = await db.tx(async () => {
+            await db.prepare('SELECT id FROM users WHERE id = ? FOR UPDATE').get(req.user.id);
             const f = await factor(db, req.user.id, true);
             if (!f || f.secret_ciphertext || !await consume(db, f, cleanCode(req.body.code), Date.now(), true)) return null;
             const codes = Array.from({ length: 10 }, () => crypto.randomBytes(10).toString('hex').toUpperCase());
             await db.prepare('DELETE FROM mfa_recovery_codes WHERE user_id = ?').run(req.user.id);
             for (const code of codes) await db.prepare('INSERT INTO mfa_recovery_codes (user_id, code_hash) VALUES (?, ?)').run(req.user.id, await bcrypt.hash(code, 10));
             await db.prepare('UPDATE user_mfa SET secret_ciphertext = pending_secret_ciphertext, pending_secret_ciphertext = NULL, pending_until = 0, enabled_at = ? WHERE user_id = ?').run(Date.now(), req.user.id);
+            for (const table of ['passkey_challenges', 'mfa_challenges', 'mfa_devices']) await db.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(req.user.id);
             return codes;
         });
         if (!codes) return res.status(401).json({ error: 'Code or enrollment invalid' });
@@ -174,9 +179,15 @@ function router({ requireAuth, signToken, sanitizeUser }) {
     }));
     r.post('/disable', route(async (req, res, db) => {
         const ok = await db.tx(async () => {
+            await db.prepare('SELECT id FROM users WHERE id = ? FOR UPDATE').get(req.user.id);
             const f = await factor(db, req.user.id, true);
             if (!f || !await consume(db, f, cleanCode(req.body.code), Date.now())) return false;
-            for (const table of ['mfa_recovery_codes', 'mfa_challenges', 'mfa_devices', 'user_mfa']) await db.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(req.user.id);
+            if ((await require('./passkeys').list(db, req.user.id)).length) {
+                await db.prepare('UPDATE user_mfa SET secret_ciphertext = NULL, pending_secret_ciphertext = NULL, generation = ? WHERE user_id = ?').run(random(), req.user.id);
+                for (const table of ['mfa_challenges', 'mfa_devices', 'passkey_challenges']) await db.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(req.user.id);
+            } else {
+                for (const table of ['mfa_recovery_codes', 'mfa_challenges', 'mfa_devices', 'user_mfa']) await db.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(req.user.id);
+            }
             return true;
         });
         res.status(ok ? 200 : 401).json(ok ? { ok: true } : { error: 'Code invalid' });
@@ -188,4 +199,4 @@ function router({ requireAuth, signToken, sanitizeUser }) {
     }));
     return r;
 }
-module.exports = { router, challengeLogin, validStep, totp, hash };
+module.exports = { router, challengeLogin, validStep, totp, hash, allowed, factor, consume, cleanCode };

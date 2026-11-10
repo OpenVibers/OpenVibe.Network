@@ -175,8 +175,8 @@ async function networkPart(db, userId) {
     const byUser = async (name, table, opts) => { const r = await rowsOf(db, table, 'user_id = ?', [u.id], opts); add(name, r.rows, r.truncated); };
     await byUser('sign_in_providers.json', 'linked_accounts');
     await byUser('sessions.json', 'user_sessions');
-    for (const table of ['user_mfa', 'mfa_recovery_codes', 'mfa_challenges', 'mfa_devices']) {
-        await byUser(`${table}.json`, table, { omit: ['generation'] });
+    for (const table of ['user_mfa', 'mfa_recovery_codes', 'mfa_challenges', 'mfa_devices', 'user_passkeys', 'passkey_challenges']) {
+        await byUser(`${table}.json`, table, { omit: ['generation', 'challenge', 'binding', 'public_key', 'passkey_handle'] });
     }
     await byUser('oauth_grants.json', 'oauth_tokens');
     await byUser('notifications.json', 'notifications');
@@ -362,7 +362,7 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         const inS = `(${subjects.map(() => '?').join(',')})`;
         const del = async (table, where, params, key = table) => { if (await tableExists(db, table)) count(key, (await db.prepare(`DELETE FROM ${table} WHERE ${where}`).run(...params)).changes); };
 
-        for (const t of ['mfa_recovery_codes', 'mfa_challenges', 'mfa_devices', 'user_mfa', 'linked_accounts', 'user_sessions', 'oauth_tokens', 'oauth_codes', 'email_verification_tokens', 'password_reset_tokens', 'notifications',
+        for (const t of ['user_passkeys', 'passkey_challenges', 'mfa_recovery_codes', 'mfa_challenges', 'mfa_devices', 'user_mfa', 'linked_accounts', 'user_sessions', 'oauth_tokens', 'oauth_codes', 'email_verification_tokens', 'password_reset_tokens', 'notifications',
             'notification_preferences', 'notification_quiet_hours', 'notification_digest_runs', 'user_preferences', 'user_effects', 'push_subscriptions', 'user_history', 'username_history', 'user_profile_changes',
             'ip_log', 'email_delivery_log', 'user_theme_history', 'user_theme_site_overrides']) await del(t, `user_id IN ${inU}`, userIds);
         await del('experience_events', `user_id IN ${inU}`, userIds);

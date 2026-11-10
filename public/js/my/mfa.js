@@ -27,8 +27,8 @@ async function loadMfaSettings() {
                 await loadMfaSettings();
             });
         } else {
-            form('<label>Current password <input name="password" type="password" autocomplete="current-password" required></label>', async data => {
-                const setup = await call('enroll', { password: data.get('password') });
+            form('<label>Current password <input name="password" type="password" autocomplete="current-password" required></label><label>Recovery code (if you already have a passkey) <input name="code" autocomplete="one-time-code"></label>', async data => {
+                const setup = await call('enroll', { password: data.get('password'), code: data.get('code') });
                 form('<p>Scan this QR in your authenticator, or enter the key.</p><img alt="Authenticator setup QR"><p><code></code></p><label>Authenticator code <input name="code" inputmode="numeric" autocomplete="one-time-code" required></label>', async data => {
                     const result = await call('confirm', { code: data.get('code') });
                     controls.textContent = '';

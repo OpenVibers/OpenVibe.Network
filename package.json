@@ -13,6 +13,8 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@simplewebauthn/browser": "13.2.2",
+    "@simplewebauthn/server": "14.1.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

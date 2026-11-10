@@ -76,7 +76,7 @@
             <form id="login-form" onsubmit="handleLogin(event)">
                 <div class="field">
                     <label>Username</label>
-                    <input type="text" name="username" placeholder="Your username" required autocomplete="username" autofocus>
+                    <input type="text" name="username" placeholder="Your username" required autocomplete="username webauthn" autofocus>
                 </div>
                 <div class="field">
                     <label>Password</label>
@@ -203,6 +203,7 @@
 
 <div class="login-toast" id="toast"></div>
 
+<script src="/js/passkeys.js" defer></script>
 <script src="/js/login.js" defer></script>
   <script src="/js/account-safety.js" defer></script>
   <script src="/shared/ov-mark.js" async></script>
