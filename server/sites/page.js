@@ -72,7 +72,6 @@ ${CSS}
 ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Open stats', href: '/stats' }, { label: 'OpenVibeBot', href: '/bot' }] })}
 <main class="sites" id="main">
 <header class="sites-head">
-<p class="sc-eyebrow">The OpenVibe network</p>
 <h1>${esc(title)}</h1>
 <p class="sc-hero-lede">${esc(intro)}</p>
 ${jump}

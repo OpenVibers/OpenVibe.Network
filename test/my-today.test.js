@@ -113,6 +113,31 @@ assert.match(CSS, /@media \(min-width:1000px\)\{[\s\S]*\.settings\{display:grid;
         ['https://openvibe.media/t/1.jpg?w=640', '', '64', '36', 'lazy', 'async'],
         'a 64x36 lazy thumbnail with empty alt');
     assert.strictEqual(p.ids['td-net-cards'].all((c) => c.tagName === 'OL')[0].children[0].children[0].children.map((c) => c.className).join(','), 'td-net-i,td-net-thumb,td-net-t', 'number, picture, then the title');
+    p.sandbox.renderNet({ cards: [
+        { id: 'forum', site: 'community', title: 'New in the forum', items: [{ title: 'Old thread', url: 'https://openvibe.community/t/1', meta: '18d ago' }] },
+        { id: 'video', site: 'media-hub', title: 'Trending · Video', items: [{ title: 'Fresh clip', url: 'https://openvibe.video/v/1', meta: '1d ago · 12 views' }] },
+        { id: 'live', site: 'live', title: 'Live now', items: [{ title: 'On air', url: 'https://openvibe.live/@a', meta: '1 viewers' }] },
+    ] });
+    const ordered = p.ids['td-net-cards'].children;
+    assert.deepStrictEqual(ordered.map((c) => c.attrs['data-site']), ['live', 'media-hub', 'community'], 'live leads, then fresh video, then stale forum');
+    assert.match(ordered[1].textContent, /1d ago/, 'a row states its age');
+    assert.match(ordered[2].textContent, /quiet for 18 days/, 'stale cards say why they are quiet, in the head');
+    assert.strictEqual(ordered[2].all((c) => c.className === 'td-net-quiet').length, 1, 'muted, beside the site');
+    assert.strictEqual(ordered[2].all((c) => c.tagName === 'LI').length, 1, 'stale card keeps its newest row');
+    p.sandbox.renderNet({ cards: [{ id: 'streams', site: 'live', title: 'Most watched', items: [
+        { title: 'Same stream', url: 'https://openvibe.live/@a', meta: '1d ago' },
+        { title: 'Same stream', url: 'https://openvibe.live/@a', meta: '2d ago' },
+    ] }] });
+    assert.match(p.ids['td-net-cards'].textContent, /2 streams this week/, 'same title and person fold into one row');
+    // A ranked card (no ages): each copy of a stream has its own address and still folds; the window is said once, in the head.
+    p.sandbox.renderNet({ cards: [{ id: 'trend', site: 'media-hub', title: 'Trending', window: 'most watched this week', items: [
+        { title: "iZoR_One's Stream", url: 'https://openvibe.video/v/1' }, { title: "iZoR_One's Stream", url: 'https://openvibe.video/v/2' },
+        { title: 'LOTFX Live Trading', url: 'https://openvibe.video/v/3' }, { title: "iZoR_One's Stream", url: 'https://openvibe.video/v/4' },
+    ] }] });
+    const trend = p.ids['td-net-cards'].children[0];
+    assert.strictEqual(trend.all((c) => c.tagName === 'LI').length, 2, 'four rows of two things: two rows');
+    assert.strictEqual((trend.textContent.match(/most watched this week/g) || []).length, 1, 'the window once, in the head');
+    assert.match(trend.textContent, /3 streams this week/, 'the folded row says how many');
     p.sandbox.renderNet(null);
     assert.strictEqual(p.ids['td-net'].hidden, true, 'no cards: the block stays out');
 

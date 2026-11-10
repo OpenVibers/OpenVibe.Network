@@ -766,6 +766,7 @@ function paiRender(root) {
     root.innerHTML = paiShell(
         '<nav class="pai-index" aria-label="Platform AI sections">'
         + '<a href="#pai-providers">AI providers' + count(PAI.providers.length) + '</a>'
+        + '<a href="#pai-inference">Who answers, and what it costs</a>'
         + '<a href="#pai-exchange">What the Exchange offers' + count(exchange.length) + '</a>'
         + '<a href="#pai-money">Money' + count(money.length) + '</a>'
         + '<a href="#pai-services">Other services\' AI settings' + count(rest.length) + '</a>'
@@ -776,6 +777,7 @@ function paiRender(root) {
         + '<p class="pai-words muted">Words used here: ' + [paiWhat('resale', 'reselling'), paiWhat('byok', 'the person\'s own key'), paiWhat('health', 'paused'), paiWhat('credits', 'Credits')].filter(Boolean).join(' · ') + '</p></div>'
         + '<div class="pai-toolbar"><button type="button" class="btn btn-primary" id="pai-add-provider"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add provider</button></div>'
         + '<div id="pai-providers-list"></div></section>'
+        + '<section id="pai-inference" class="pai-section"><div class="pai-section-head"><h3>Who answers, and what it costs</h3><p class="muted">For each kind of work: which provider answers first, the most it may cost, the providers never to use and the ways of paying less; then a spending limit for each provider and what it all cost. Changes apply to the next call.</p></div><div id="oin-body"><p class="muted">Loading…</p></div></section>'
         + '<section id="pai-exchange" class="pai-section"><div class="pai-section-head"><h3>What the Exchange offers</h3><p class="muted">Which models people can pick on openvibe.exchange, the free tier, and the spending limits that protect your balance.</p></div><div id="pai-cards-exchange" data-pai-cards></div></section>'
         + '<section id="pai-money" class="pai-section"><div class="pai-section-head"><h3>Money</h3><p class="muted">Credits are what people spend on AI; these switches decide whether people can buy them, top up and pay sellers. Each switch says what it turns on before you change it. ' + paiWhat('credits') + '</p></div><div id="pai-cards-money" data-pai-cards></div></section>'
         + '<section id="pai-services" class="pai-section"><div class="pai-section-head"><h3>Other services\' AI settings</h3><p class="muted">AI settings that live in other parts of OpenVibe (Codes, Actor, Bench…), one card per service. Their other keys (publishing, sign-in apps, data sources) are on the <a href="/admin/setup">Setup</a> tab.</p></div><div id="pai-cards-services" data-pai-cards></div></section>'
@@ -785,6 +787,7 @@ function paiRender(root) {
     paiRenderProviders();
     paiRenderCards();
     paiRenderVault();
+    if (typeof oinLoad === 'function') oinLoad();
     const add = document.getElementById('pai-add-provider');
     if (add) add.addEventListener('click', () => paiProviderDialog(null));
     const list = document.getElementById('pai-providers-list');
