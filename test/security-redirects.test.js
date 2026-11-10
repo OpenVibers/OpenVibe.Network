@@ -74,4 +74,15 @@ for (const check of [allowedOrigin, rpOrigin]) {
     assert.strictEqual(check('https://evilopenvibe.live', { NODE_ENV: 'production' }), null);
 }
 
+// A parked name sends its visitors only to a name that is ours (2026-11-10: openvibe.compare was parked onto
+// openvibe.ai, which belongs to someone else, for an hour).
+{
+    const conf = require('fs').readFileSync(require('path').join(__dirname, '..', 'deploy', 'nginx', 'parked-domains.conf'), 'utf8');
+    const targets = [...conf.matchAll(/^\s*return\s+30[1278]\s+(\S+?);/gm)].map((m) => m[1]);
+    assert.ok(targets.length >= 4, 'the parked file names its targets');
+    const ours = (host) => OWNED_ZONES.some((z) => host === z || host.endsWith('.' + z));
+    const foreign = targets.filter((t) => { const m = /^https:\/\/([a-z0-9.-]+|\$host|\$server_name)(?=[/$:]|$)/.exec(t); return !m || (!m[1].startsWith('$') && !ours(m[1])); });
+    assert.deepStrictEqual([...new Set(foreign)], [], 'every parked name redirects to an owned zone');
+}
+
 console.log('post-sign-in redirects and owned-zone trust: all checks passed');
