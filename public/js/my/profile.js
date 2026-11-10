@@ -47,26 +47,42 @@ function showSignedOutHub() {
     here.searchParams.delete('sso');
     here.searchParams.delete('signed_out');
     const next = `${here.pathname}${here.search}${here.hash}`;
-    const card = document.createElement('section');
-    card.className = 'card';
-    const heading = document.createElement('h2');
-    heading.textContent = 'Sign in to OpenVibe.My';
-    const text = document.createElement('p');
-    text.textContent = 'Your account hub lives on its own address. Sign in with OpenVibe; your account and its API stay on openvibe.network.';
-    const row = document.createElement('div');
-    row.className = 'btn-row';
-    const signIn = document.createElement('a');
-    signIn.className = 'btn btn-primary';
+    // What the page is and what is inside it, then one way in. It was a small card on an empty screen that named an
+    // "account hub" and offered "Sign out everywhere" to someone who is signed out; that link is still here for the
+    // browser that kept a Network session, as a quiet line under the list.
+    const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text) n.textContent = text; return n; };
+    const card = el('section', 'my-out');
+    const heading = el('h1', 'my-out-h', 'Everything that is yours on OpenVibe');
+    const text = el('p', 'my-out-lede', 'Your profile, your look, your sites and your numbers, in one place. Sign in to see yours.');
+    const signIn = el('a', 'btn btn-primary my-out-go', 'Sign in');
     signIn.href = `/auth/login?next=${encodeURIComponent(next)}`;
     signIn.setAttribute('href', signIn.href);
-    signIn.textContent = 'Sign in with OpenVibe';
-    const everywhere = document.createElement('a');
-    everywhere.className = 'btn btn-outline';   // the second way, drawn as one (it read as a stray underlined link)
+    const list = el('ul', 'my-out-list');
+    list.setAttribute('aria-label', 'What is here when you sign in');
+    [
+        ['fa-clock-rotate-left', 'Pick up where you left off', 'The pages and sites you used last.'],
+        ['fa-table-cells', 'Your sites', 'Every OpenVibe site you use, and what is new on each.'],
+        ['fa-chart-simple', 'Your numbers', 'What you made, watched and earned, counted.'],
+        ['fa-gear', 'Settings', 'Your profile, your look, your sign-ins, your privacy and your data.'],
+        ['fa-mobile-screen', 'Sign in on another device', 'A code to scan: no password to type on a phone or a TV.'],
+    ].forEach(([icon, title, says]) => {
+        const li = el('li');
+        // The tile is a wrapper: the glyph kit draws an svg as big as its <i>, so the <i> stays icon-sized.
+        const tile = el('span', 'my-out-ic');
+        const i = el('i', `fa-solid ${icon}`);
+        i.setAttribute('aria-hidden', 'true');
+        tile.append(i);
+        const words = el('span', 'my-out-t');
+        words.append(el('b', '', title), el('small', '', says));
+        li.append(tile, words);
+        list.append(li);
+    });
+    const everywhere = el('a', 'my-out-all', 'Sign out everywhere');
     everywhere.href = 'https://openvibe.network/sso/fanout?action=logout&next=' + encodeURIComponent('https://openvibe.my/?sso=none');
     everywhere.setAttribute('href', everywhere.href);
-    everywhere.textContent = 'Sign out everywhere';
-    row.append(signIn, everywhere);
-    card.append(heading, text, row);
+    const still = el('p', 'my-out-still', 'Still signed in on another OpenVibe site? ');
+    still.append(everywhere);
+    card.append(heading, text, signIn, list, still);
     page.replaceChildren(card);
     try {
         if (window.OpenVibeNavbar) OpenVibeNavbar.init({ service: 'network', token: null, user: null, menu: OV_WALLET_MENU, ...OV_NAV_AUTH });

@@ -674,3 +674,19 @@ button.td-stat:hover span { color: var(--accent-light); }
 .pp-places-row .data-check{align-items:center}
 .pp-places-row .data-check input{margin-top:0}
 #public-page-card > p.muted{margin-bottom:16px}
+
+/* Signed out on openvibe.my (public/js/my/profile.js showSignedOutHub): what the page is, one way in, what is inside. */
+.my-out{max-width:560px;margin:clamp(12px,4vw,40px) auto 0;padding:0 4px}
+.my-out-h{margin:0 0 8px;font-size:clamp(1.6rem,5.4vw,2.3rem);line-height:1.12;letter-spacing:-.02em}
+.my-out-lede{margin:0 0 18px;color:var(--text-secondary,#96a7c2);font-size:1.02rem;line-height:1.5}
+.my-out-go{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 28px;font-size:1rem;font-weight:700}
+.my-out-list{list-style:none;margin:22px 0 0;padding:0;display:grid;gap:8px}
+.my-out-list li{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border,#1f2d47);border-radius:14px;background:var(--bg-card,#131c2e)}
+.my-out-ic{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;color:var(--accent-light,#60a5fa);background:color-mix(in srgb,var(--accent,#3b82f6) 14%,transparent)}
+.my-out-ic i{display:block;width:20px;height:20px;font-size:20px;line-height:1}
+.my-out-t{display:grid;gap:1px;min-width:0}
+.my-out-list b{font-weight:650}
+.my-out-list small{color:var(--text-muted,#7386a3);font-size:.86rem;line-height:1.4}
+.my-out-still{margin:18px 0 0;color:var(--text-muted,#7386a3);font-size:.88rem}
+.my-out-all{color:var(--text-secondary,#96a7c2)}
+@media (max-width:520px){.my-out-go{display:flex;width:100%}}
