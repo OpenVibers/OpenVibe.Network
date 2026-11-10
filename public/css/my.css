@@ -616,7 +616,8 @@ button.td-stat:hover span { color: var(--accent-light); }
 .td-net-h { display: flex; align-items: center; gap: 10px; padding-bottom: 6px; }
 .td-net-ht { display: grid; flex: 1; min-width: 0; }
 .td-net-ht b { font-size: 15px; font-weight: 800; }
-.td-net-ht small { font-size: 12px; color: var(--text-muted); }
+.td-net-ht small { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-net-quiet { opacity: .75; font-style: italic; }
 .td-net-card[data-site="media-hub"] .td-site-ic { color: #f472b6; background: color-mix(in srgb, #ec4899 16%, transparent); }
 .td-net-card[data-site="games"] .td-site-ic { color: #4ade80; background: color-mix(in srgb, #22c55e 16%, transparent); }
 .td-net-card[data-site="live"] .td-site-ic { color: #f87171; background: color-mix(in srgb, #ef4444 16%, transparent); }
