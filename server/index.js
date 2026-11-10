@@ -963,6 +963,9 @@ app.use('/avatar', rateLimit({ windowMs: 60_000, max: 600 }), avatarService.pub)
 app.locals.avatarService = avatarService;
 // Public profiles (plan T21 step 3): openvibe.network/@<username> and GET /api/v1/profiles/:username (CORS-open,
 // server/public-cors.js), with the items from OpenVibe.Inventory (server/profile/public.js).
+const userCards = require('./profile/card').createUserCards({ db, profiles: publicProfiles, selfToken, questUrl: process.env.OV_QUEST_INTERNAL_URL || 'http://127.0.0.1:4980', liveUrl: config.services.live.internalUrl });
+app.get('/api/v1/people/:username/card', rateLimit({ windowMs: 60_000, max: 240 }), userCards.api);
+app.use('/api/v1/me/card-visibility', rateLimit({ windowMs: 60_000, max: 60 }), userCards.settings(requireAuth));
 app.use('/api/v1/profiles', rateLimit({ windowMs: 60_000, max: 240 }), publicProfiles.api);
 app.get('/api/v1/people/@:handle/page', rateLimit({ windowMs: 60_000, max: 240 }), publicProfiles.pageApi);
 app.get('/@:username', rateLimit({ windowMs: 60_000, max: 120 }), publicProfiles.pageHandler);
