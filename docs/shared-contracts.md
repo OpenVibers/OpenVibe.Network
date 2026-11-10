@@ -61,7 +61,7 @@ The gateway forwards to satellites with `X-OV-Tool`, `X-OV-Host-Role`, `X-OV-Can
 - Brand = hostname, three linked segments: **sub** → this tool's home (`/`), **OpenVibe** →
   `https://openvibe.network/`, **TLD** → the site's apex (`https://openvibe.tools/`). So from
   `yt.openvibe.tools` one click on "Tools" is the tools index.
-- `launcher` (default on): the grid button next to the brand opens the network launcher — every
+- `launcher` (default on): the menu button at the top of the page opens the OpenVibe menu — every
   site plus the tool families, fed by the catalog, keyboard navigable, cached in sessionStorage.
 - `notifications` (default on): when signed in the navbar loads `notification-ui.js` itself and
   mounts the bell — pages no longer wire it.
