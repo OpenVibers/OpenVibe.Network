@@ -14,7 +14,12 @@ const { bootServer } = require('./helpers/boot-server');
         for (const origin of ['https://openvibe.media', 'https://openvibe.live', 'https://openvibe.community']) {
             assert.ok(img.includes(origin), `img-src lets ${origin} through: ${img.join(' ')}`);
         }
-        console.log('home image CSP: media, live and community pictures allowed');
+        // The machine hub's live screen (/machines) imports mediasoup-client's pinned ESM build and opens
+        // OpenRestream's viewer signaling socket: exactly those two, in the two directives that gate them.
+        const directive = (name) => csp.split(';').map((d) => d.trim()).find((d) => d.startsWith(name)) || '';
+        assert.ok(directive('script-src').includes('https://esm.sh'), 'script-src lets the mediasoup client through');
+        assert.ok(directive('connect-src').includes('wss://ingest.openre.stream'), 'connect-src lets the screen signaling through');
+        console.log('CSP: home images, and the machine hub\'s live screen sources');
         await srv.stop();
         process.exit(0);
     } finally {

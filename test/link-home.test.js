@@ -68,6 +68,9 @@ const SHAPED = {
     assert.ok(vhost.includes('add-computer(/complete)?'), 'the add-computer return flow reaches Link before the openvibe.network catch-all');
     const sendApi = vhost.slice(vhost.indexOf('location ~ ^/api/v1/me/nodes/(send-keys|send)$ {'));
     assert.ok(sendApi.length < vhost.length && /client_max_body_size 40m;/.test(sendApi.slice(0, sendApi.indexOf('\n    }'))), 'the Link Send API has its own location with a body limit that fits a file');
+    // …the machine hub's own API (the machines list, the owner's controls, the live screen, pools), which the page
+    // asks for on this host: without it those calls left for openvibe.network's catch-all and the hub showed nothing.
+    assert.ok(/location ~ \^\/api\/v1\/\(machines\|machine-pools\)\(\/\|\$\) \{[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:4000;/.test(vhost), 'the machine hub API is proxied on openvibe.link');
     // …and /auth/* to Link's own sign-in (Network#664), or openvibe.link never signs anyone in (11-08 audit).
     const linkBlock = vhost.slice(vhost.indexOf('    server_name openvibe.link;'));
     assert.ok(/location \^~ \/auth\/ \{[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:4000;/.test(linkBlock.slice(0, linkBlock.indexOf('\n}\n'))), 'the openvibe.link vhost proxies /auth/ to Network');

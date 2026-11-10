@@ -124,7 +124,9 @@ app.use(helmet({
             defaultSrc: ["'self'"],
             // Cloudflare Web Analytics: Cloudflare injects its beacon at the edge and the privacy text says it may
             // measure performance; script-src loads the beacon, connect-src is where it reports.
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://openvibe.network", "https://openvibe.live", "cdn.jsdelivr.net", "fonts.googleapis.com", "https://static.cloudflareinsights.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://openvibe.network", "https://openvibe.live", "cdn.jsdelivr.net", "fonts.googleapis.com", "https://static.cloudflareinsights.com",
+                // The Link hub's live screen (/machines): mediasoup-client's pinned ESM build, the same one the Bot page loads.
+                "https://esm.sh"],
             styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com", "fonts.gstatic.com"],
             fontSrc: ["'self'", "fonts.gstatic.com"],
             // Avatars and media live on openvibe.media; the home page's live-stream thumbnails come from openvibe.live and
@@ -146,6 +148,8 @@ app.use(helmet({
                 // Release notifications: release-watch's EventSource on the Events realtime stream (openvibe-shared 1.17)
                 "https://openvibe.events",
                 "https://openvibe.link",   // Link's page on its own origin
+                // The machine's live screen on the Link hub: OpenRestream's viewer signaling socket.
+                "wss://ingest.openre.stream",
             ],
             frameSrc: ["'none'"],
             scriptSrcAttr: ["'unsafe-inline'"],
