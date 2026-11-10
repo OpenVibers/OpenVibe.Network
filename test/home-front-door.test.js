@@ -17,7 +17,7 @@ const live = activity.liveStreams({ streams: [
     { is_live: 0, username: 'offline', title: 'ended' },
     { is_live: 1, is_nsfw: 0, username: 'bob', title: 'Big stream', thumbnail_url: 'javascript:alert(1)', total_viewer_count: 1200 },
 ] });
-assert.deepStrictEqual(live.map((s) => s.name), ['bob', 'Alice'], 'live and SFW only, most watched first');
+assert.deepStrictEqual(live.map((s) => s.name), ['@bob', '@alice'], 'live and SFW only, most watched first, named by @handle');
 assert.strictEqual(live[1].thumb, 'https://openvibe.live/api/thumbnails/a.jpg', 'a relative thumbnail becomes the public https URL');
 assert.strictEqual(live[0].thumb, null, 'a non-https thumbnail is dropped');
 assert.strictEqual(live[1].url, 'https://openvibe.live/@alice');
