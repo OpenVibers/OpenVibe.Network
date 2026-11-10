@@ -385,6 +385,36 @@ function createAiConfigProxy(opts = {}) {
     async function providerCall(req, method, pathName, body = null, { fresh = false, secret = null } = {}) {
         return await callService(req, 'ai', pathName, { method, body, cap: 'ai.provider.manage', fresh, secret });
     }
+    // ── The owner's inference configuration (AI's console read models, owner only here) ──
+    // Reads ride on ai.usage.read at AI (the same gate the console section uses); writes ride on
+    // ai.provider.manage. Nothing here carries a key: AI stores keys itself (vault) and answers
+    // with key presence and hints only; the proxy strips any secret-looking field it sees.
+    const ownerInfPath = (suffix = '') => `/api/v1/admin/console/owner-inference${suffix}`;
+    async function ownerInfCall(req, method, pathName, body = null, { cap = 'ai.provider.manage' } = {}) {
+        return await callService(req, 'ai', pathName, { method, body, cap });
+    }
+
+    r.get('/owner-inference', async (req, res) => {
+        try {
+            const out = await ownerInfCall(req, 'GET', ownerInfPath(), null, { cap: 'ai.usage.read' });
+            if (out.status < 200 || out.status >= 300) return upstreamFailed(res, 'ai', out);
+            send(res, 200, { ok: true, config: out.answer });
+        } catch (err) { fail(res, err); }
+    });
+
+    for (const [path, action] of [['/owner-inference/spend-caps', 'provider.spend_cap'], ['/owner-inference/routing', 'owner_routing.update'], ['/owner-inference/economy', 'owner_economy.update']]) {
+        r.post(path, async (req, res) => {
+            try {
+                const body = req.body && typeof req.body === 'object' ? req.body : {};
+                if (body.api_key !== undefined || body.secret !== undefined) throw new ProxyError(422, 'config.secret_write_only', 'send the key to its own write-only route, never here');
+                const out = await ownerInfCall(req, 'POST', ownerInfPath(path === '/owner-inference/spend-caps' ? '/spend-caps' : path === '/owner-inference/routing' ? '/routing' : '/economy'), body);
+                if (out.status < 200 || out.status >= 300) return upstreamFailed(res, 'ai', out);
+                const key = String(body.provider_key || body.capability || 'owner-inference');
+                await audit(req, { service: 'ai', namespace: 'ai.owner-inference', keys: [key], action, revision: null });
+                send(res, 200, { ok: true, config: out.answer });
+            } catch (err) { fail(res, err); }
+        });
+    }
 
     r.get('/providers', async (req, res, next) => {
         try {
