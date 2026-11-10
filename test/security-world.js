@@ -175,7 +175,7 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
     const sess = once('session creation', await call('alice', 'POST', '/api/auth/sessions', { device_name: 'alice-laptop' }));
     if (sess.body && sess.body.session_token) secrets['alice session token'] = sess.body.session_token;
     await call({ authorization: `Bearer ${gamesToken}` }, 'POST', '/internal/link-account', { user_id: users.alice.id, service: 'games', service_user_id: 'alice-games-771' });
-    await call('alice', 'POST', '/api/history', { service: 'live', url: 'https://openvibe.live/@alice-private-history', title: 'alice-private-history' });
+    await call('alice', 'POST', '/api/history', { service: 'live', type: 'stream', url: 'https://openvibe.live/@alice-private-history', title: 'alice-private-history' });
     const pushSub = { endpoint: 'https://push.services.mozilla.com/wpush/v2/alice-endpoint-capability-0001', keys: { p256dh: vapid.publicKey, auth: 'alice-push-auth-secret' } };
     await call('alice', 'POST', '/api/push/subscribe', { subscription: pushSub });
     secrets['alice push endpoint'] = pushSub.endpoint;

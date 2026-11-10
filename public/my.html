@@ -374,13 +374,19 @@
     <div class="section" id="sec-history">
         <div class="card">
             <h3><span class="icon"><i class="fa-solid fa-clock-rotate-left"></i></span> History across OpenVibe</h3>
-            <p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">Everything this account opened on any OpenVibe site — tools, streams, pastes, games — in one timeline. Only you can see it; pause or clear it any time.</p>
+            <p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">One year of the things you visit across OpenVibe, up to 20,000 rows. Only you can see it; pause or clear it any time.</p>
             <div class="hist-toolbar">
                 <div class="hist-chips" id="hist-chips"></div>
                 <input type="search" id="hist-q" class="hist-search" placeholder="Search history…" oninput="histDebounce()">
-                <label class="hist-pause" title="While paused nothing new is recorded"><input type="checkbox" id="hist-pause" onchange="toggleHistoryPause(this)"> Pause</label>
+                <label for="hist-summary-period">What was I doing?</label><select id="hist-summary-period"><option value="day">Last day</option><option value="week">Last week</option></select>
+                <button class="btn btn-small" onclick="historySummary()">Summarize</button>
+                <label class="hist-pause"><input type="checkbox" id="hist-pause" onchange="toggleHistoryPause(this)"> Keep my history</label>
+                <label class="hist-pause"><input type="checkbox" id="hist-agents" onchange="toggleHistoryAgents(this)"> My agents may read my history</label>
+                <label class="hist-pause"><input type="checkbox" id="hist-private" onchange="toggleHistoryPrivacy(this, 'keep_private')"> Keep private pages</label>
+                <label class="hist-pause"><input type="checkbox" id="hist-mature" onchange="toggleHistoryPrivacy(this, 'keep_mature')"> Keep mature pages</label>
                 <button class="btn btn-small btn-danger" onclick="clearHistory()" title="Delete the whole timeline"><i class="fa-solid fa-trash"></i> Clear</button>
             </div>
+            <p id="hist-summary" role="status" hidden></p>
             <div id="hist-list"><div class="loading-spinner">Loading history…</div></div>
             <div class="btn-row" id="hist-more-row" style="display:none;margin-top:10px"><button class="btn" onclick="loadHistory(true)">Load more</button></div>
         </div>
