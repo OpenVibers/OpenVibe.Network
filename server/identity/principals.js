@@ -1010,6 +1010,12 @@ const CHANGED_DEFAULT_NAMESPACES = [
     // production row, seeded before, kept ['ai.generate'] (the seed never changes an existing row), so frames still
     // failed until this moved it.
     ['design', 'ai.run.create', 'openvibe.ai', ['ai.generate'], ['ai.generate', 'ai.chat']],
+    // The shared image task (rich-content §4/§5, Network #751): the production Blog/Wiki rows were seeded before
+    // image.picture joined their list, so the seed keeps the old namespaces. Move them once, explicitly.
+    ['wiki', 'ai.run.create', 'openvibe.ai', ['wiki.*', 'research.*'], ['wiki.*', 'research.*', 'image.picture']],
+    ['wiki', 'ai.run.read', 'openvibe.ai', ['wiki.*', 'research.*'], ['wiki.*', 'research.*', 'image.picture']],
+    ['blog', 'ai.run.create', 'openvibe.ai', ['blog.*'], ['blog.*', 'image.picture']],
+    ['blog', 'ai.run.read', 'openvibe.ai', ['blog.*'], ['blog.*', 'image.picture']],
 ];
 
 async function ensureSchema(db) {
