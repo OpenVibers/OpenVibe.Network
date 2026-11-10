@@ -196,7 +196,7 @@ async function publish(db, payloads = []) {
 const EVENT_SELECT = `id, consent_id, subject, purpose, client, action, "by", text_version, at`;
 
 /**
- * Revoke every active choice of one subject, inside the caller's transaction (account merge or deletion). The rows
+ * Revoke every active choice of one subject, inside the caller's transaction (account deletion). The rows
  * are kept; the returned payloads must be published by the caller after its transaction commits.
  */
 async function revokeForSubject(t, subject, by, at) {
@@ -211,11 +211,6 @@ async function revokeForSubject(t, subject, by, at) {
     // A refusal only keeps an app quiet; it is the account's, so it goes with the account.
     await t.prepare('DELETE FROM consent_refusals WHERE subject = ?').run(subject);
     return payloads;
-}
-
-/** Account merge: the account folded away never carries its choices over. Inside the merge's transaction. */
-async function revokeForMerge(t, from, { at }) {
-    return await revokeForSubject(t, from, 'merge', at);
 }
 
 /** Account deletion: revoke every active choice of the account and its aliases. Inside the deletion's transaction. */
@@ -620,6 +615,6 @@ function internalRouter({ consent }) {
 module.exports = {
     apps,
     PURPOSES, PURPOSE_BY_ID, TEXT_VERSION, KINDS, WRITE_LIMIT, WRITE_WINDOW_MS, MAX_SUBJECTS,
-    createConsent, router, internalRouter, eventEnvelope, publish, exportOf, revokeForMerge, revokeForDeletion,
+    createConsent, router, internalRouter, eventEnvelope, publish, exportOf, revokeForDeletion,
     ConsentError, CHOICE_CONTRACT, REQUEST_CONTRACT, RESULT_CONTRACT, MINE_CONTRACT,
 };

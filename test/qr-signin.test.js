@@ -10,7 +10,7 @@ const { bootServer } = require('./helpers/boot-server');
 const qr = require('../server/auth/qr-signin');
 const { signToken } = require('../server/auth/routes');
 const subjects = require('../server/identity/subjects');
-const accountMerge = require('../server/identity/account-merge');
+const reauth = require('../server/identity/reauth');
 const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 
 // The same-origin rule the router applies to every POST (CORS's first-party list is wider than one origin).
@@ -164,7 +164,6 @@ function cookieOf(cookies, name) {
 
     // ── Security: a QR session inherits the source's auth_time and is not a fresh sign-in ──
     const authUser = await mkUser(`qg${suffix}`);
-    const mergeSurvivor = await mkUser(`qm${suffix}`);
     const staleAuthTime = Math.floor(Date.now() / 1000) - 60 * 60;
     const staleSource = signSourceAt(authUser.user, staleAuthTime);
     const staleStart = await start(staleSource);
@@ -177,7 +176,7 @@ function cookieOf(cookies, name) {
     const staleToken = cookieOf(staleTarget.setCookies, 'ov_token');
     const staleClaims = jwt.decode(staleToken);
     assert.strictEqual(staleClaims.auth_time, staleAuthTime, 'the QR-created session inherits the source auth_time, not now');
-    assert.strictEqual(accountMerge.isFreshSignIn(staleClaims), false, 'the merge fresh check reports the QR session as stale');
+    assert.strictEqual(reauth.isFreshSignIn(staleClaims), false, 'fresh-sign-in check reports the QR session as stale');
 
     const noAuthSource = signSourceAt(authUser.user, null);
     const noAuthStart = await start(noAuthSource);
@@ -186,13 +185,6 @@ function cookieOf(cookies, name) {
     await api('POST', `/auth/qr/${noAuthStart.id}/approve`, { token: noAuthSource, body: { code: noAuthScanned.json.code } });
     const noAuthTarget = await status(targetCookie(noAuthScanned));
     assert.strictEqual(jwt.decode(cookieOf(noAuthTarget.setCookies, 'ov_token')).auth_time, undefined, 'a source with no auth_time gives a target with none');
-
-    const survivorToken = signToken(mergeSurvivor.user, privateKey, config);
-    const intent = await api('POST', '/api/v1/account/merge/intents', { token: survivorToken, body: {} });
-    assert.strictEqual(intent.status, 201, intent.text);
-    const refused = await api('POST', '/api/v1/account/merge', { token: staleToken, body: { intent: intent.json.intent } });
-    assert.strictEqual(refused.status, 401, refused.text);
-    assert.strictEqual(refused.json.error, 'merge.sign_in_again', 'a QR session with a stale source cannot merge accounts');
 
     // ── A second scan is refused with 409 ──
     let secondStart = await start();

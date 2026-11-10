@@ -25,7 +25,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const QRCode = require('qrcode');
 const { setSessionCookies } = require('./session');
-const accountMerge = require('../identity/account-merge');
+const accountAliases = require('../identity/account-aliases');
 
 const COOKIE = 'ov_qr';
 const COOKIE_PATH = '/auth/qr';
@@ -256,7 +256,7 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
                 await t.prepare("UPDATE qr_signin_transfers SET status = 'denied' WHERE id = ? AND status = 'approved'").run(row.id);
                 return { denied: true };
             }
-            const survivor = await accountMerge.effectiveUser(t, user);
+            const survivor = await accountAliases.effectiveUser(t, user);
             if (!survivor || survivor.is_banned || survivor.deleted_at) {
                 await t.prepare("UPDATE qr_signin_transfers SET status = 'denied' WHERE id = ? AND status = 'approved'").run(row.id);
                 return { denied: true };
@@ -266,7 +266,7 @@ function createQrSignin({ db, config, privateKey, signToken, requireAuth, notifi
             if (!won.changes) return { lost: true };
 
             // A QR-created session is not a fresh sign-in: inherit the source session's auth_time (or none),
-            // so ADR-029's merge check and D11's key/money check still require a real re-authentication.
+            // so the owner's key/money check still require a real re-authentication.
             const authTime = row.source_auth_time == null ? null : Number(row.source_auth_time);
             const token = signToken(survivor, privateKey, config, { authTime });
             // The device summary only: no raw User-Agent and no IP in the target's session row.

@@ -15,8 +15,6 @@ assert.deepStrictEqual(owner.staff_caps, staff.capabilitiesOf('owner'));
 assert.deepStrictEqual(staffClaims({ role: 'user', username: 'theowner' }), {}, 'the owner name without the admin role is nobody');
 // Services read the issued claims exactly as the map answers.
 assert.strictEqual(staff.can(owner, 'staff.secrets.manage'), true);
-assert.strictEqual(staff.can(owner, 'staff.identity.merge'), true, 'account-recovery merges: the owner (map 1.2.0, ADR-029)');
-assert.strictEqual(staff.can({ role: 'admin', ...staffClaims({ role: 'admin', username: 'boss' }) }, 'staff.identity.merge'), false);
 assert.strictEqual(staff.can({ role: 'admin', ...staffClaims({ role: 'admin', username: 'boss' }) }, 'staff.secrets.manage'), false);
 // Both user-token signers add them.
 const fs = require('fs');

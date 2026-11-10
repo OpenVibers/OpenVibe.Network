@@ -538,17 +538,6 @@ app.use('/api/v1/trust', rateLimit({ windowMs: 60_000, max: 60 }), require('./id
 // The Exchange remake's uncensored tier: the account's own 18+ confirmation (server/identity/adult.js). AI reads it
 // through /internal/identity/adult; this is the person's side, on the account hub (/my, Content).
 app.use('/api/v1/me/adult', rateLimit({ windowMs: 60_000, max: 20 }), require('./identity/adult').userRouter({ requireAuth }));
-// Account merge (roadmap WS-B task 5, ADR-029): the person folds a second account into this one; staff
-// (staff.identity.merge) for account recovery, with a reason.
-{
-    const accountMerge = require('./identity/account-merge');
-    await accountMerge.ensureSchema(db);
-    const mergeRouters = accountMerge.routers({ requireAuth, staffClaims: require('./auth/staff-claims').staffClaims });
-    // Only the merge calls spend this budget: the same mount also carries the export/deletion routes below their
-    // own limiter, and counting those twice was enough to lock a person out while the deletion banner read them.
-    app.use('/api/v1/account', rateLimit({ windowMs: 60_000, max: 20, skip: (req) => !String(req.path).startsWith('/merge') }), mergeRouters.me);
-    app.use('/api/admin/account-merges', mergeRouters.admin);
-}
 // Mod principals (roadmap WS-M task 3, ADR-013): the runtime that installs a mod registers mod:<mod_id> and changes
 // its grants (mods.grant.manage, service token only); staff (staff.games.manage) from /api/admin/mods.
 {
@@ -1301,9 +1290,6 @@ const server = app.listen(...(socketActivated ? [{ fd: 3 }] : [config.port, conf
         } catch (e) { console.warn('[Modules] retired-owner sweep:', e.message); }
     };
     timers.push(setTimeout(sweepModules, 5 * 60 * 1000), setInterval(sweepModules, 24 * 60 * 60 * 1000));
-    // Account merges older than 30 days keep only the alias facts (ADR-029).
-    const reduceMerges = async () => { try { const n = await require('./identity/account-merge').reduceExpired(db); if (n) console.log(`[AccountMerge] reduced ${n} merge record(s) past 30 days`); } catch (e) { console.warn('[AccountMerge] reduce failed:', e.message); } };
-    timers.push(setTimeout(reduceMerges, 6 * 60 * 1000), setInterval(reduceMerges, 24 * 60 * 60 * 1000));
     // Exports past their deadline are built, archives past 7 days deleted, deletions past their 30-day grace carried out (ADR-033).
     const sweepAccountData = async () => {
         try {

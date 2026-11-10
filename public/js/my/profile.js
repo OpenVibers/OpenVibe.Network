@@ -130,11 +130,9 @@ async function loadUser() {
             renderAccountId(data.user);
             loadThemes(); loadThemeSubmissions();
             loadAccounts();
-            renderMerge();
             renderExport(); renderDeletion();
             loadConsent();
             loadLabelPrefs();
-            if (pendingMerge() && String(pendingMerge().into_id) !== String(currentUser.id)) showSection('accounts');
             loadNotifPrefs(); loadQuietHours();
             loadLinked();
             loadSessions();
@@ -383,85 +381,6 @@ function loadAccounts() {
             </div>
         </div>
     `).join('');
-}
-
-// ── Account merge (ADR-029): 1) the account you keep opens a 10-minute request, 2) you sign in to the other
-// account ("Add another account"), 3) it confirms and folds itself in. Both sign-ins within 10 minutes.
-const MERGE_KEY = 'ov_merge_intent';
-function pendingMerge() {
-    try { const m = JSON.parse(localStorage.getItem(MERGE_KEY) || 'null'); return m && Date.parse(m.expires_at) > Date.now() ? m : null; } catch { return null; }
-}
-function renderMerge() {
-    const body = document.getElementById('merge-body');
-    if (!body || !currentUser) return;
-    body.textContent = '';
-    const el = (tag, text, cls) => { const n = document.createElement(tag); if (text) n.textContent = text; if (cls) n.className = cls; return n; };
-    const row = el('div', '', 'btn-row');
-    const pending = pendingMerge();
-    if (currentUser.is_anon) { body.appendChild(el('p', 'Guests convert by signing up; merging is for two accounts.')); return; }
-    if (!pending) {
-        const b = el('button', `Keep @${currentUser.username} and merge another account into it`, 'btn btn-primary');
-        b.type = 'button';
-        b.onclick = async () => {
-            try {
-                const r = await apiFetch('/api/v1/account/merge/intents', { method: 'POST', body: '{}' });
-                localStorage.setItem(MERGE_KEY, JSON.stringify({ intent: r.intent, expires_at: r.expires_at, into_id: currentUser.id, into_username: currentUser.username }));
-                // A real re-authentication for the other account: add_account=1 would hand back an existing
-                // session with its old auth_time, which the merge's fresh check refuses.
-                if (window.OpenVibeReauth) window.OpenVibeReauth.go('/my#accounts', { account: '' });
-                else window.location.href = '/login?reauth=1&login_hint=&return=' + encodeURIComponent('/my#accounts');
-            } catch (err) { toast('Could not start the merge: ' + err.message, 'error'); }
-        };
-        row.appendChild(b); body.appendChild(row); return;
-    }
-    const mins = Math.max(1, Math.round((Date.parse(pending.expires_at) - Date.now()) / 60000));
-    const cancel = el('button', 'Cancel', 'btn btn-outline');
-    cancel.type = 'button';
-    cancel.onclick = () => { localStorage.removeItem(MERGE_KEY); renderMerge(); };
-    if (String(currentUser.id) === String(pending.into_id)) {
-        body.appendChild(el('p', `Now sign in to the account you want to fold into @${pending.into_username} (within ${mins} min). It asks for that account's password even if it is already signed in, because the merge needs a real sign-in from the last 10 minutes.`));
-        const go = el('button', 'Sign in to the other account', 'btn btn-primary');
-        go.type = 'button';
-        go.onclick = () => {
-            if (window.OpenVibeReauth) window.OpenVibeReauth.go('/my#accounts', { account: '' });
-            else window.location.href = '/login?reauth=1&login_hint=&return=' + encodeURIComponent('/my#accounts');
-        };
-        row.append(go, cancel); body.appendChild(row); return;
-    }
-    body.appendChild(el('p', `Fold @${currentUser.username} into @${pending.into_username}? Everything above moves to @${pending.into_username}; @${currentUser.username} then signs in as @${pending.into_username}.`));
-    const doIt = el('button', `Merge @${currentUser.username} into @${pending.into_username}`, 'btn btn-danger');
-    doIt.type = 'button';
-    doIt.onclick = async () => {
-        doIt.disabled = true;
-        try {
-            const r = await apiFetch('/api/v1/account/merge', { method: 'POST', body: JSON.stringify({ intent: pending.intent }) });
-            localStorage.removeItem(MERGE_KEY);
-            toast(`Merged: @${currentUser.username} is now part of @${pending.into_username} (${r.moved.coins} OpenCoins moved).`, 'success');
-            const folded = currentUser.id;
-            try { OpenVibeAccountSwitcher.removeAccount(folded); } catch { /* */ }
-            OpenVibeAccountSwitcher.switchTo(pending.into_id);
-        } catch (err) {
-            doIt.disabled = false;
-            if (err.status === 401) {
-                toast(`Sign in to @${currentUser.username} again (a fresh sign-in is needed), then merge.`, 'error');
-                if (!row.querySelector('.ov-merge-reauth')) {
-                    const again = el('button', 'Sign in again', 'btn btn-outline ov-merge-reauth');
-                    again.type = 'button';
-                    again.onclick = () => {
-                        const back = '/my#accounts';
-                        if (window.OpenVibeReauth) window.OpenVibeReauth.go(back, { account: currentUser.username });
-                        else window.location.href = `/login?reauth=1&login_hint=${encodeURIComponent(currentUser.username)}&return=${encodeURIComponent(back)}`;
-                    };
-                    row.insertBefore(again, doIt);
-                }
-            } else if (err.status === 410) {
-                localStorage.removeItem(MERGE_KEY);
-                toast('That merge request expired. Start again from the account you keep.', 'error');
-                renderMerge();
-            } else toast('The merge did not happen: ' + err.message, 'error');
-        }
-    };
-    row.append(doIt, cancel); body.appendChild(row);
 }
 
 // ── Your data (ADR-033): the export job (each service adds its part; ready within 30 minutes, kept 7 days) and

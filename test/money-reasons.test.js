@@ -17,7 +17,6 @@ const ok = (cond, msg) => { assert.ok(cond, msg); n++; };
 
     const unknown = money.describe('nobody:declared-this', { site: 'fun' });
     ok(!unknown.known && unknown.text === 'for something on OpenVibe.Fun', 'an undeclared key never shows itself');
-    ok(money.describe('account_merge').text === 'for merging your accounts', 'a reason with no page has its own words');
 
     const names = await money.questNames(async (url) => {
         assert.match(url, /\/api\/v1\/quests$/);

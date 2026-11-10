@@ -38,7 +38,7 @@
   "deployment": "Public at https://openvibe.network: deployed with `sudo ovhost deploy network --install-units` (deploy/scripts/deploy.sh is the wrapper), /opt/openvibe.network, unit openvibe-network on 127.0.0.1:4000, env /etc/openvibe/network.env.",
   "features": [
     "SSO identity provider: OAuth2 code flow with PKCE, OIDC, FedCM, rotating refresh tokens",
-    "canonical subjects, anonymous users, multi-account switching, account merge, export and deletion",
+    "canonical subjects, anonymous users, multi-account switching, export and deletion",
     "service principals and grants; developer projects, apps, credentials, grants, quotas and usage",
     "notifications (realtime through Events), email and web push",
     "themes and preferences, user modules, platform blocks, follow graph, creator analytics",

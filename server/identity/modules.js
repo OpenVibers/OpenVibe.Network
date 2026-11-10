@@ -22,8 +22,7 @@ const cache = require('openvibe-shared/cache-policy');
  * a record deleted and written again continues from there and a delete has a revision of its own.
  *
  * Lifecycle:
- *   - accounts: onSubjectRemoved() deletes a subject's records, onSubjectMerged() re-keys them into the
- *     surviving subject; both emit events. Triggers refuse deleting a users/anon_users row, or changing
+ *   - accounts: onSubjectRemoved() deletes a subject's records and emits events. Triggers refuse deleting a users/anon_users row, or changing
  *     its subject_id, while module rows remain, so an account deletion or merge cannot skip them.
  *   - owning service retired (namespace onOwnerRemoved, contract modules.namespace@1): when the owner's
  *     service manifest says `retired`, the namespace is read-only (retain-readonly), and with
@@ -199,17 +198,18 @@ async function onSubjectRemoved(db, subjectId, { ctx } = {}) {
     return n;
 }
 
+
 /**
- * Two accounts become one (`from` folds into `into`, which survives; ADR-029). Each record of `from` moves to
+ * A guest identity is linked to its registered account. Each record of `from` moves to
  * `into` when `into` has none in that namespace (created there, reason subject_merged, merged_from);
  * when `into` has one, the survivor's record is kept and gains only the top-level fields it lacks from `from`'s
- * (updated, reason subject_merged, merged_from; its own values always win). Every record of `from` ends deleted
+ * (updated, reason subject_merged, merged_from; its own values always win). The guest identity record ends deleted
  * (reason subject_merged, merged_into). Moved and filled records say updated_by svc:network.
  * Call inside the merge's transaction, before `from`'s row goes. Returns { moved, filled, dropped }.
  */
-async function onSubjectMerged(db, { from, into, ctx } = {}) {
-    if (!SUBJECT_RE.test(String(from || '')) || !SUBJECT_RE.test(String(into || ''))) throw new TypeError('onSubjectMerged: from and into must be usr_/gst_ subject ids');
-    if (from === into) throw new TypeError('onSubjectMerged: from and into are the same subject');
+async function onGuestLinked(db, { from, into, ctx } = {}) {
+    if (!SUBJECT_RE.test(String(from || '')) || !SUBJECT_RE.test(String(into || ''))) throw new TypeError('onGuestLinked: from and into must be usr_/gst_ subject ids');
+    if (from === into) throw new TypeError('onGuestLinked: from and into are the same subject');
     const system = { type: 'system', id: 'network' };
     const out = await db.tx(async () => {
         const res = { moved: 0, filled: 0, dropped: 0 };
@@ -377,8 +377,9 @@ function serviceRoutes(router, principals) {
     });
 }
 
+
 module.exports = {
     OWNER_HANDOFFS, ownerOf, canWrite, ownerRetired,
-    ensureSchema, read, write, remove, onSubjectRemoved, onSubjectMerged, sweepRetired,
+    ensureSchema, read, write, remove, onSubjectRemoved, onGuestLinked, sweepRetired,
     userRouter, serviceRoutes,
 };

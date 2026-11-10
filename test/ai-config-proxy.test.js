@@ -78,7 +78,7 @@ function summary(service, namespace, extra = {}) {
         const configWrites = () => configCalls().filter((x) => !['GET', 'HEAD'].includes(x.method));
         const fresh = jwt.sign({ sub: owner.id, id: owner.id, username: owner.username, subject_id: owner.subject, role: owner.role, auth_time: Math.floor(Date.now() / 1000) },
             w.keys.privateKey, { algorithm: 'RS256', issuer: w.issuer, expiresIn: '1h' });
-        const stale = w.users.owner.token;   // no auth_time: the account-merge tests' shape
+        const stale = w.users.owner.token;   // no auth_time: an old session shape
         const call = (who, method, p, body) => w.call(who, method, p, body);
         const ownerCall = (method, p, body) => call({ authorization: `Bearer ${fresh}`, cookie: `ov_token=${fresh}` }, method, p, body);
 

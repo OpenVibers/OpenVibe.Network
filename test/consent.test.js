@@ -7,7 +7,7 @@
 //   - 501 subjects are refused, and the service route needs a token with network.consent.read;
 //   - a check's active rows come from one query;
 //   - the change event is emitted after the commit, and the outbox carries the contract's fields only;
-//   - export keeps every row and every event; deletion revokes and keeps; merge revokes and never carries over;
+//   - export keeps every row and every event; deletion revokes and keeps; deletion revokes every active choice;
 //   - the account page's "Your data choices" has kit fold rows and nothing pre-ticked.
 //   node --import ./test/helpers/pg-preload.mjs test/consent.test.js
 const assert = require('assert');
@@ -22,7 +22,6 @@ const subjects = require('../server/identity/subjects');
 const principals = require('../server/identity/principals');
 const consentMod = require('../server/consent');
 const accountData = require('../server/identity/account-data');
-const accountMerge = require('../server/identity/account-merge');
 
 (async () => {
 const db = getDb();
@@ -244,22 +243,6 @@ const outbox = async (subjectId) => (await db.prepare('SELECT envelope FROM netw
         assert.ok(file.content.consents.every((x) => x.subject === ana.subject_id), "only ana's rows");
         const bobPart = await accountData.networkPart(db, bob.id);
         assert.ok(bobPart.files.find((f) => f.name === 'consents.json').content.consents.every((x) => x.subject === bob.subject_id), "only bob's");
-
-        // ── Merge: the folded-in account's choices are revoked, never carried over. ──
-        const survivor = await mk('conskeep');
-        const folded = await mk('consfold');
-        await consent.choose({ subject: survivor.subject_id }, 'ai.train', { on: true, text_version: current, adult: true, kinds: ['streams'] });
-        await consent.choose({ subject: folded.subject_id }, 'ai.train', { on: true, text_version: current, adult: true, kinds: ['vods'] });
-        await accountMerge.merge(db, folded, survivor, { initiatedBy: 'person' });
-        const foldedActive = await db.prepare('SELECT COUNT(*) AS n FROM consents WHERE subject = ? AND revoked_at IS NULL').get(folded.subject_id);
-        assert.strictEqual(foldedActive.n, 0, "the folded-in account's choice is revoked");
-        const foldedRow = await db.prepare('SELECT revoked_by FROM consents WHERE subject = ?').get(folded.subject_id);
-        assert.strictEqual(foldedRow.revoked_by, 'merge');
-        const survivorActive = await db.prepare('SELECT kinds FROM consents WHERE subject = ? AND revoked_at IS NULL').get(survivor.subject_id);
-        assert.deepStrictEqual(survivorActive.kinds, ['streams'], 'the survivor keeps its own');
-        const mergeEvent = await db.prepare("SELECT action, \"by\" FROM consent_events WHERE subject = ? AND \"by\" = 'merge'").get(folded.subject_id);
-        assert.ok(mergeEvent, 'the merge event is recorded');
-        assert.ok((await outbox(folded.subject_id)).some((e) => e.payload.on === false), 'the merge change is emitted');
 
         // ── Deletion: revoke every active row, keep them. ──
         const gone = await mk('consgone');
