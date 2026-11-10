@@ -370,7 +370,7 @@ function mcMountPlayer(card, block, m, desk, takeOver) {
     video.hidden = true;
     const status = mcEl('p', 'mc-confirm', ['Waiting for the machine…'], { role: 'status' });
     const use = mcEl('input', '', [], { type: 'checkbox', id: `mc-${m.id}-${desk.replace(/\W/g, '-')}-use` });
-    const useRow = mcEl('label', 'mc-role mc-takeover', [use, mcEl('span', 'mc-role-ic', [mcIcon('fa-computer-mouse')]),
+    const useRow = mcEl('label', 'mc-role mc-takeover', [use, mcEl('span', 'mc-role-ic', [mcIcon('fa-keyboard')]),
         mcEl('span', 'mc-role-t', [mcEl('b', '', ['Use the mouse and keyboard']), mcEl('small', '', [desk === 'main' ? 'Clicks and keys on the picture go to the computer.' : 'While you use it, the agent waits on this desk.'])])], { for: use.getAttribute('id') });
     const stop = mcEl('button', 'btn btn-outline btn-small', ['Stop showing it'], { type: 'button' });
     let player = null, timer = null, stopped = false;
