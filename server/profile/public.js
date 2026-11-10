@@ -311,6 +311,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             avatar_url: avatarUrl(u.username),
             profile_url: profileUrl(u.username),
             private: !Number(u.profile_public),
+            level: await require('../levels/store').total(db, u.id),
         };
         if (out.private) return out;
         const inv = await wearsOf(u.subject_id);
@@ -345,7 +346,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             res.set('Cache-Control', cache.htmlHeaders({ maxAge: 60 }));
             // A person's public profile lives on openvibe.network (the owner, 11-08: "OpenVibe.My is for users' stuff,
             // the profiles should be on .Network"). openvibe.my is the person's own hub: /@name there moves here.
-            res.send(renderPage(u, inv, SITE, page.places));
+            res.send(renderPage(u, inv, SITE, page.places, await require('../levels/store').total(db, u.id)));
         } catch (err) { next(err); }
     }
 
@@ -475,7 +476,7 @@ ${sorted.map((g) => {
 <p class="pf-note"><a href="${esc(all)}">${inv.more ? 'Every item' : 'This inventory'} on OpenVibe.Inventory</a> · <a href="${INVENTORY_SITE}/items">Every item there is</a></p></section>`;
 }
 
-function renderPage(u, inv, origin = SITE, places = { spaces: [], community: [], videos: [] }) {
+function renderPage(u, inv, origin = SITE, places = { spaces: [], community: [], videos: [] }, level = null) {
     const canonicalUrl = `${origin}/@${encodeURIComponent(u.username)}`;
     const name = u.display_name || u.username;
     const isPublic = !!inv;
@@ -600,7 +601,7 @@ ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links
 <div class="pf-banner" aria-hidden="true"></div>
 <div class="pf-head">
 <div class="pf-pic"><img class="pf-avatar" src="${esc(avatarUrl(u.username))}" alt="" width="112" height="112">${hatGlyph ? `<span class="pf-hat" title="${esc(hat.name)}" aria-hidden="true">${esc(hatGlyph)}</span>` : ''}</div>
-<div class="pf-who"><h1>${badgeId ? `<img class="pf-name-badge" src="https://openvibe.media/o/${badgeId}" alt="" title="${esc(badge.name)}" width="32" height="32">` : ''}${fxClass ? `<span class="ov-fx ${fxClass}" title="${esc(fx.name)}">${esc(name)}</span>` : esc(name)}</h1><p class="pf-handle">@${esc(u.username)}</p></div>
+<div class="pf-who">${level ? `<p><a href="https://openvibe.quest/levels">Level ${level.level}</a> · ${level.xp} experience <progress aria-label="Experience to next level" value="${level.into}" max="${level.span}"></progress></p>` : ''}<h1>${badgeId ? `<img class="pf-name-badge" src="https://openvibe.media/o/${badgeId}" alt="" title="${esc(badge.name)}" width="32" height="32">` : ''}${fxClass ? `<span class="ov-fx ${fxClass}" title="${esc(fx.name)}">${esc(name)}</span>` : esc(name)}</h1><p class="pf-handle">@${esc(u.username)}</p></div>
 </div>
 ${bio ? `<p class="pf-bio">${esc(bio)}</p>` : ''}
 ${isPublic && Array.isArray(publicLinks) && publicLinks.length ? `<nav aria-label="${esc(name)}'s links"><ul class="pf-links">${publicLinks.slice(0, 8).map((link) => { let href = ''; try { const parsed = new URL(link.url); if (parsed.protocol === 'https:' && !parsed.username && !parsed.password) href = parsed.href; } catch {} return href ? `<li><a rel="me noopener noreferrer" href="${esc(href)}">${esc(String(link.label || '').slice(0, 40))}</a></li>` : ''; }).join('')}</ul></nav>` : ''}

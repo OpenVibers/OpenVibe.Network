@@ -167,6 +167,7 @@ async function merge(db, fromUser, intoUser, { initiatedBy = 'person', actorSubj
             await wallet.credit(db, { user_id: intoUser.id, app_id: 'network', amount: pre.balance, reason: 'account_merge', ref: mergeId, idempotency_key: `merge:${mergeId}:in` });
             moved.coins = pre.balance;
         }
+        await require('../levels/store').merge(db, fromUser.id, intoUser.id);
         const mods = await modules.onSubjectMerged(db, { from, into });
         moved.modules = mods.moved + (mods.filled || 0);
         // Consent is the person's own and is never assumed: the folded-in account's active choices are revoked

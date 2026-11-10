@@ -615,3 +615,18 @@ function switchAccount(id) { OpenVibeAccountSwitcher.switchTo(id); }
 function removeAccount(id) { OpenVibeAccountSwitcher.removeAccount(id); loadAccounts(); }
 function addAccount() { window.location.href = '/login?add_account=1&return=' + encodeURIComponent(window.location.pathname); }
 function signOutAll() { OpenVibeAccountSwitcher.logoutAll(); }
+
+// Network owns this choice; leaving the board does not hide the profile's level.
+(() => {
+    const input = document.getElementById('levels-board');
+    if (!input) return;
+    input.disabled = true;
+    apiFetch('/api/v1/me/levels').then(data => { input.checked = data.leaderboard; input.disabled = false; }).catch(() => {});
+    input.addEventListener('change', async () => {
+        input.disabled = true;
+        try { await apiFetch('/api/v1/me/levels', { method: 'PUT', body: JSON.stringify({ leaderboard: input.checked }) });
+            document.getElementById('levels-setting-status').textContent = 'Saved';
+        } catch { input.checked = !input.checked; document.getElementById('levels-setting-status').textContent = 'Could not save. Try again.'; }
+        finally { input.disabled = false; }
+    });
+})();
