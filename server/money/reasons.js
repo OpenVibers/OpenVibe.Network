@@ -6,9 +6,8 @@
  * re-exports them when the installed package has them and otherwise answers from the same list
  * copied at 0.392.0. A page writes the amount before `text` and links it to `subject.url`.
  */
-let canonical = null;
-try { canonical = require('openvibe-contracts').moneyReasons || null; } catch { /* an older contract package: the copy below answers */ }
-const reasons = canonical || require('./reasons-list');
+// The list is openvibe-contracts/lib/money-reasons.js; copied at 0.392.0 until Network's pin carries the module.
+const reasons = require('./reasons-list');
 
 const QUEST_TTL_MS = 10 * 60_000;
 let questCache = { at: 0, names: new Map() };
