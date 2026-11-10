@@ -166,6 +166,10 @@ const DEFAULT_GRANTS = [
     ['chat', 'media.object.delete', 'openvibe.media', ['chat']],
     ['chat', 'ai.run.create', 'openvibe.ai', ['chat.*', 'ai.complete']],
     ['chat', 'ai.run.read', 'openvibe.ai', ['chat.*']],
+    // Chat's room insight summarises only the messages of people who allowed AI use of them (plan L24,
+    // purpose ai.train on kind chat): the job asks /internal/consent/check for the authors of its window.
+    // Fail-closed: no answer leaves everyone out, as the consent contract says.
+    ['chat', 'network.consent.read', SELF_AUDIENCE, []],
     // Activated when Contracts includes exchange.chat.export; only Chat imports a person's old chats.
     ...(capabilities.get('exchange.chat.export') ? [['chat', 'exchange.chat.export', 'openvibe.exchange', []]] : []),
     // Chat's AI members linked to a Food household read its pantry and plan (food.household.read; Contracts 0.189.0).
