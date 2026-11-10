@@ -12,7 +12,7 @@ for (const [, body] of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) as
 
 const files = fs.readdirSync(path.join(pub, 'js', 'admin')).filter((f) => f.endsWith('.js')).sort();
 // The module map, in load order (public/js/admin/…).
-const modules = ['core.js', 'dashboard.js', 'users.js', 'moderation.js', 'settings.js', 'payments.js', 'glossary.js', 'ai.js', 'setup.js', 'content.js', 'analytics.js', 'deploy.js', 'boot.js'];
+const modules = ['core.js', 'dashboard.js', 'users.js', 'moderation.js', 'settings.js', 'payments.js', 'glossary.js', 'ai.js', 'inference.js', 'setup.js', 'content.js', 'analytics.js', 'deploy.js', 'boot.js'];
 assert.deepStrictEqual(files, [...modules].sort(), 'each module file exists and there is no other');
 const tags = [...html.matchAll(/<script\b([^>]*)\bsrc="\/js\/admin\/([^"]+)"([^>]*)><\/script>/g)];
 const loaded = tags.map((m) => m[2]);

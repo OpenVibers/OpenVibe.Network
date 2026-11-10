@@ -15,7 +15,7 @@
    ═══════════════════════════════════════════════════════════════ */
 const OIN_KINDS = [
     { id: 'chat', name: 'Chat and agents', icon: 'fa-comments', what: 'Vibe, Actor, Codes and every conversation on the sites.' },
-    { id: 'uncensored', name: 'Uncensored (adults only)', icon: 'fa-lock-open', what: 'The 18+ tier: abliterated and uncensored models.' },
+    { id: 'uncensored', name: 'Uncensored (adults only)', icon: 'fa-user-lock', what: 'The 18+ tier: abliterated and uncensored models.' },
     { id: 'embed', name: 'Search and memory', icon: 'fa-magnifying-glass', what: 'Embeddings: what search, memory and recommendations read.' },
     { id: 'image', name: 'Pictures', icon: 'fa-image', what: 'Generated pictures, thumbnails and goal art.' },
     { id: 'transcribe', name: 'Speech to text', icon: 'fa-microphone-lines', what: 'Transcripts of streams, recordings and voice messages.' },
