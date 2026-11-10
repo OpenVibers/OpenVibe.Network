@@ -151,7 +151,8 @@ app.use(helmet({
                 // The machine's live screen on the Link hub: OpenRestream's viewer signaling socket.
                 "wss://ingest.openre.stream",
             ],
-            frameSrc: ["'none'"],
+            // Link and My share this app on separate origins; their navbar checks Network's session.
+            frameSrc: ["https://openvibe.network"],
             scriptSrcAttr: ["'unsafe-inline'"],
         },
     },
