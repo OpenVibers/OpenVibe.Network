@@ -88,6 +88,9 @@ const server = http.createServer(app);
     const firstId = r.body.items[0].id;
     r = await call('GET', `/api/v1/history?limit=1&cursor=${encodeURIComponent(r.body.next_cursor)}`, 'a');
     assert.notStrictEqual(r.body.items[0].id, firstId, 'cursor continues the newest-first timeline');
+    r = await call('GET', '/api/v1/history/summary?period=week', 'a');
+    assert.strictEqual(r.body.period, 'week');
+    assert.ok(r.body.text.includes('goosely live') && !r.body.text.includes('openvibe.live'), 'summary uses titles and kinds, never page addresses');
     r = await call('GET', '/api/v1/history', null);
     assert.strictEqual(r.status, 401, 'signed-out reads are unauthorized');
 

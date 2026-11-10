@@ -378,10 +378,15 @@
             <div class="hist-toolbar">
                 <div class="hist-chips" id="hist-chips"></div>
                 <input type="search" id="hist-q" class="hist-search" placeholder="Search history…" oninput="histDebounce()">
+                <label for="hist-summary-period">What was I doing?</label><select id="hist-summary-period"><option value="day">Last day</option><option value="week">Last week</option></select>
+                <button class="btn btn-small" onclick="historySummary()">Summarize</button>
                 <label class="hist-pause"><input type="checkbox" id="hist-pause" onchange="toggleHistoryPause(this)"> Keep my history</label>
                 <label class="hist-pause"><input type="checkbox" id="hist-agents" onchange="toggleHistoryAgents(this)"> My agents may read my history</label>
+                <label class="hist-pause"><input type="checkbox" id="hist-private" onchange="toggleHistoryPrivacy(this, 'keep_private')"> Keep private pages</label>
+                <label class="hist-pause"><input type="checkbox" id="hist-mature" onchange="toggleHistoryPrivacy(this, 'keep_mature')"> Keep mature pages</label>
                 <button class="btn btn-small btn-danger" onclick="clearHistory()" title="Delete the whole timeline"><i class="fa-solid fa-trash"></i> Clear</button>
             </div>
+            <p id="hist-summary" role="status" hidden></p>
             <div id="hist-list"><div class="loading-spinner">Loading history…</div></div>
             <div class="btn-row" id="hist-more-row" style="display:none;margin-top:10px"><button class="btn" onclick="loadHistory(true)">Load more</button></div>
         </div>

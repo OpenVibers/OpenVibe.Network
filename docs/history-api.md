@@ -13,7 +13,7 @@ and private/mature flags. It never sends page contents.
 | `DELETE /api/v1/history/day/:day` | Remove one UTC day. |
 | `DELETE /api/v1/history/site/:site` | Remove one site's rows. |
 | `DELETE /api/v1/history` | Clear your rows. |
-| `PUT /api/v1/history/settings` | Set `{ keep_history, agents_allowed }`; keeping history is on by default, agent access is off. |
+| `PUT /api/v1/history/settings` | Set `{ keep_history, agents_allowed, keep_private, keep_mature }`; personal history is on by default, other choices are off. |
 | `GET /api/v1/history/find?q=...` | Find rows by natural language terms using title full text. |
 | `GET /api/v1/history/summary?period=day\|week` | A title-and-kind-only recent activity paragraph; no model call or page content. |
 | `GET /api/v1/history/agents/recent` | Recent rows for the person's agent; returns `403 not_allowed` until the person opts in. |

@@ -82,22 +82,24 @@ async function createHistoryRoutes(db, requireAuth) {
         const total = (await db.prepare(`SELECT COUNT(*) AS c FROM user_history WHERE ${where.join(' AND ')}`).get(...params))?.c || 0;
         const paused = !!(await db.prepare('SELECT history_paused FROM users WHERE id = ?').get(req.user.id))?.history_paused;
         res.set('Cache-Control', 'no-store');
-        const prefs = await db.prepare('SELECT history_agents_allowed FROM users WHERE id = ?').get(req.user.id);
+        const prefs = await db.prepare('SELECT history_agents_allowed, history_keep_private, history_keep_mature FROM users WHERE id = ?').get(req.user.id);
         const services = (await db.prepare('SELECT service, COUNT(*) AS c FROM user_history WHERE user_id = ? GROUP BY service ORDER BY c DESC').all(req.user.id))
             .map(r => ({ service: r.service, label: SERVICE_LABELS[r.service] || r.service, count: r.c }));
-        res.json({ items: rows.map(rowOut), total, paused, keep_history: !paused, agents_allowed: !!prefs?.history_agents_allowed, next_cursor, services });
+        res.json({ items: rows.map(rowOut), total, paused, keep_history: !paused, agents_allowed: !!prefs?.history_agents_allowed, keep_private: !!prefs?.history_keep_private, keep_mature: !!prefs?.history_keep_mature, next_cursor, services });
     });
 
     router.post('/', async (req, res) => {
         const u = await db.prepare('SELECT history_paused FROM users WHERE id = ?').get(req.user.id);
         if (u?.history_paused) return res.json({ ok: true, paused: true });
-        if (req.body?.private || req.body?.mature) return res.json({ ok: true, skipped: 'private_or_mature' });
-        await db.prepare("DELETE FROM user_history WHERE user_id = ? AND updated_at < (now() - interval '1 year')::text").run(req.user.id);
         const url = allowedUrl(req.body?.url);
         if (!url) return res.status(400).json({ error: 'A URL on the OpenVibe network is required' });
         const type = TYPES.has(String(req.body?.type)) ? String(req.body.type) : 'page';
+        if (type === 'page') return res.json({ ok: true, skipped: 'not_a_thing' });
+        const privacy = await db.prepare('SELECT history_keep_private, history_keep_mature FROM users WHERE id = ?').get(req.user.id);
+        if ((req.body?.private && !privacy?.history_keep_private) || (req.body?.mature && !privacy?.history_keep_mature)) return res.json({ ok: true, skipped: 'private_or_mature' });
+        await db.prepare("DELETE FROM user_history WHERE user_id = ? AND updated_at < (now() - interval '1 year')::text").run(req.user.id);
         const title = String(req.body?.title || '').trim().slice(0, 200) || url;
-        const TYPE_ICONS = { tool: 'fa-screwdriver-wrench', stream: 'fa-tower-broadcast', vod: 'fa-clapperboard', clip: 'fa-scissors', paste: 'fa-paste', game: 'fa-gamepad', page: 'fa-file-lines', post: 'fa-comments', account: 'fa-user', theme: 'fa-palette', download: 'fa-download', chat: 'fa-comment' };
+        const TYPE_ICONS = { tool: 'fa-screwdriver-wrench', stream: 'fa-tower-broadcast', vod: 'fa-clapperboard', video: 'fa-clapperboard', clip: 'fa-scissors', paste: 'fa-paste', game: 'fa-gamepad', page: 'fa-file-lines', document: 'fa-file-lines', thread: 'fa-comments', post: 'fa-comments', account: 'fa-user', theme: 'fa-palette', download: 'fa-download', chat: 'fa-comment', conversation: 'fa-comment' };
         const icon = /^fa-[a-z0-9-]{1,40}$/.test(String(req.body?.icon || '')) ? String(req.body.icon) : (TYPE_ICONS[type] || null);
         const imageUrl = allowedUrl(req.body?.image_url || req.body?.picture) || null;
         const inf = serviceFromUrl(url);
@@ -123,9 +125,11 @@ async function createHistoryRoutes(db, requireAuth) {
     router.put('/settings', async (req, res) => {
         const paused = req.body?.keep_history === undefined && req.body?.paused === undefined ? null : (req.body?.keep_history === false || req.body?.paused ? 1 : 0);
         const agents = req.body?.agents_allowed === undefined ? null : (req.body.agents_allowed ? 1 : 0);
-        await db.prepare('UPDATE users SET history_paused = COALESCE(?, history_paused), history_agents_allowed = COALESCE(?, history_agents_allowed) WHERE id = ?').run(paused, agents, req.user.id);
-        const settings = await db.prepare('SELECT history_paused, history_agents_allowed FROM users WHERE id = ?').get(req.user.id);
-        res.json({ ok: true, paused: !!settings?.history_paused, keep_history: !settings?.history_paused, agents_allowed: !!settings?.history_agents_allowed });
+        const keepPrivate = req.body?.keep_private === undefined ? null : (req.body.keep_private ? 1 : 0);
+        const keepMature = req.body?.keep_mature === undefined ? null : (req.body.keep_mature ? 1 : 0);
+        await db.prepare('UPDATE users SET history_paused = COALESCE(?, history_paused), history_agents_allowed = COALESCE(?, history_agents_allowed), history_keep_private = COALESCE(?, history_keep_private), history_keep_mature = COALESCE(?, history_keep_mature) WHERE id = ?').run(paused, agents, keepPrivate, keepMature, req.user.id);
+        const settings = await db.prepare('SELECT history_paused, history_agents_allowed, history_keep_private, history_keep_mature FROM users WHERE id = ?').get(req.user.id);
+        res.json({ ok: true, paused: !!settings?.history_paused, keep_history: !settings?.history_paused, agents_allowed: !!settings?.history_agents_allowed, keep_private: !!settings?.history_keep_private, keep_mature: !!settings?.history_keep_mature });
     });
 
     router.delete('/', async (req, res) => {
@@ -159,7 +163,9 @@ async function createHistoryRoutes(db, requireAuth) {
     router.get('/summary', async (req, res) => {
         const days = req.query.period === 'week' ? 7 : 1;
         const rows = await db.prepare(`SELECT type, title FROM user_history WHERE user_id = ? AND updated_at >= (now() - (? * interval '1 day'))::text ORDER BY updated_at DESC LIMIT 50`).all(req.user.id, days);
-        res.set('Cache-Control', 'no-store').json({ period: days === 7 ? 'week' : 'day', items: rows.map(r => ({ kind: r.type, title: r.title })), text: rows.length ? rows.map(r => `${r.type}: ${r.title}`).join('; ') : 'No recent history.' });
+        const moments = rows.slice(0, 8).map(r => `${r.type} “${r.title}”`);
+        const text = moments.length ? `Over the last ${days === 7 ? 'week' : 'day'}, you visited ${moments.join('; ')}.` : 'No recent history.';
+        res.set('Cache-Control', 'no-store').json({ period: days === 7 ? 'week' : 'day', items: rows.map(r => ({ kind: r.type, title: r.title })), text });
     });
 
     router.delete('/:id', async (req, res) => {
