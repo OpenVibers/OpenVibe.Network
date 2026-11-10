@@ -141,9 +141,9 @@
         <h2><span class="icon"><i class="fa-solid fa-envelope"></i></span> Email addresses</h2>
         <p>Keep several verified addresses on your account. Only you can see this list.</p>
         <div id="account-emails-list" aria-live="polite" role="status">Loading your email addresses…</div>
-        <form id="account-email-add" style="margin-top:16px">
+        <form id="account-email-add" class="ovk-form my-email-add">
             <label for="account-email-new">Add an email address</label>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><input id="account-email-new" type="email" autocomplete="email" maxlength="254" required><button type="submit">Add address</button></div>
+            <div class="my-email-row"><input id="account-email-new" type="email" autocomplete="email" inputmode="email" maxlength="254" placeholder="you@example.com" required><button type="submit" class="ovk-btn ovk-btn--primary">Add address</button></div>
         </form>
         <p id="account-emails-message" role="status" aria-live="polite"></p>
     </div>
