@@ -159,7 +159,6 @@ a.btn{text-decoration:none}
 #sec-ssh .staff-pill{font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;border-radius:999px;vertical-align:middle;margin-left:8px;color:var(--warning-text, var(--warning,#f0b74a));background:color-mix(in srgb,var(--warning,#f0b74a) 18%,transparent);border:1px solid color-mix(in srgb,var(--warning,#f0b74a) 40%,transparent)}
 #sec-ssh .staff-pill.user-pill{color:var(--accent,#6ea8ff);background:color-mix(in srgb,var(--accent,#6ea8ff) 18%,transparent);border-color:color-mix(in srgb,var(--accent,#6ea8ff) 40%,transparent)}
 
-@media (prefers-reduced-motion: reduce) { .section, .toast { animation: none; } }
 
 /* ── Platform AI (AI Exchange D11 S3, owner only): one long page, sticky index, no inner tabs ───────────────────── */
 .platform-ai{max-width:1100px;min-width:0;overflow-wrap:anywhere}

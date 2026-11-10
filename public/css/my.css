@@ -360,10 +360,6 @@ button.td-stat:hover span { color: var(--accent-light); }
     .td-settings-btn { padding: 8px 10px; font-size: 0; gap: 0; }
     .td-settings-btn i { font-size: 16px; }
 }
-@media (prefers-reduced-motion: reduce) {
-    .td-pulse { animation: none; }
-    .td-thumb img { transition: none; }
-}
 .recent-tools { margin-top: 14px; }
 .recent-tools h3 { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin: 0 0 8px; display: flex; gap: 6px; align-items: center; }
 .recent-tools-list { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -423,7 +419,6 @@ button.td-stat:hover span { color: var(--accent-light); }
 .mc-pool > div.mc-role { grid-template-columns: auto minmax(0, 1fr); cursor: default; }
 .mc-empty { display: flex; gap: 14px; align-items: center; padding: 18px; border-radius: 14px; border: 1px dashed var(--border); color: var(--text-secondary); }
 .mc-empty > i { font-size: 26px; color: var(--accent-light); }
-@media (prefers-reduced-motion: reduce) { .mc-wait-dot { animation: none; } }
 
 /* Your data choices (L24): kit fold rows, one per purpose. Phone first: one column of equal-weight buttons, never
    sideways. The kit's own /shared/kit.css draws the fold; these rules only lay out the choice inside it. */
@@ -551,7 +546,6 @@ button.td-stat:hover span { color: var(--accent-light); }
     80% { transform: translateX(5px); }
 }
 .qr-shake { animation: qr-shake .36s ease-in-out 1; }
-@media (prefers-reduced-motion: reduce) { .qr-shake { animation: none; } }
 @media (max-width: 419px) {
     .qr-actions { grid-template-columns: minmax(0, 1fr); }
     .qr-actions .btn { width: 100%; }
@@ -653,7 +647,7 @@ button.td-stat:hover span { color: var(--accent-light); }
   .me-act-ic { width: 40px; height: 40px; font-size: 16px; }
   .me-act-t { font-size: 11.5px; }
 }
-@media (prefers-reduced-motion: reduce) { .me-act { transition: none; } .me-act:hover { transform: none; } }
+html[data-ov-motion=off] .me-act:hover{transform: none}
 
 /* Your status beside your name: the same dot as the bar's, one tap to change it. */
 .me-status { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; margin-top: 10px; padding: 0 12px 0 10px; border-radius: 999px; cursor: pointer;

@@ -243,7 +243,5 @@ a { color: var(--accent, #3b82f6); }
     .w-pay-page { padding-left: 12px; padding-right: 12px; }
 }
 
-/* Reduced motion: nothing here moves, and a person who asks for calm gets no transitions either. */
-@media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
-}
+/* Motion off: the page does not glide. Calm keeps it. */
+html[data-ov-motion=off] *,html[data-ov-motion=off] *::before,html[data-ov-motion=off] *::after{scroll-behavior: auto !important}

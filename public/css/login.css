@@ -261,4 +261,3 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
     .tab-bar button{font-size:12px;padding:8px 6px}
 }
 
-@media (prefers-reduced-motion: reduce) { .bg-canvas .orb, .particles .p, .grid-overlay, .login-card, .login-card::before, .form-panel, .submit-btn .ripple, .message { animation: none; } }

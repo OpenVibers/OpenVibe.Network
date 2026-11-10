@@ -128,7 +128,6 @@ a{color:inherit}
 .constellation .cs-node:hover text,.constellation .cs-node:focus text{fill:var(--text-primary)}
 .constellation .cs-soon .cs-star{fill:var(--text-muted)}.constellation .cs-soon text{fill:var(--text-muted);font-size:10.5px;font-weight:500}
 @keyframes cs-twinkle{0%,100%{transform:scale(1);opacity:.16}50%{transform:scale(1.35);opacity:.3}}
-@media (prefers-reduced-motion:reduce){.constellation .cs-halo{animation:none}.intent{transition:none}}
 @media (max-width:900px){.hero-grid{grid-template-columns:minmax(0,1fr);text-align:center}.hero-grid p.sub{margin:14px auto 0}.hero-sky{position:static;padding-top:0}.intent{text-align:left}}
 /* The orbit (server/home/render.js orbit()): rings turning in opposite directions, every icon upright. */
 .orbit{position:relative;width:min(100%,460px);aspect-ratio:1;margin:0 auto;container-type:inline-size}
@@ -149,8 +148,6 @@ a{color:inherit}
 .orb-core b{font-size:15px;font-weight:800;margin-top:6px}.orb-core small{font-size:12px;color:var(--text-muted)}
 @keyframes orb-dash{to{opacity:.3}}
 @keyframes orb-breathe{0%,100%{opacity:.7;transform:scale(.95)}50%{opacity:1;transform:scale(1.05)}}
-@media (prefers-reduced-motion:reduce){.orb-ring,.orb-face,.orb-glow{animation:none}}
-html[data-ov-motion=reduced] .orb-ring,html[data-ov-motion=reduced] .orb-face,html[data-ov-motion=reduced] .orb-glow{animation:none}
 /* Phones: the rings far enough apart that a label under an inner site never crosses the core or an outer site at any
    turn (inner reach R1 + 42 px < R2 - 13 px; top label above the core's 45 px half height). The turning ring boxes reach past the screen's
    edge at their corners, so the hero clips sideways overflow (nothing visible is there). */
