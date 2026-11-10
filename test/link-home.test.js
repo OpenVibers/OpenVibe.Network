@@ -61,7 +61,7 @@ const SHAPED = {
 
     // The vhost must send /machines and /pair to the app (which signposts them), not the catch-all to Network.
     const vhost = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'nginx', 'parked-domains.conf'), 'utf8');
-    assert.ok(/location ~ \^\/\(\|install\|machines\|pair\|index\\\.md\|send\\\.js\|egress-settings\\\.js\|locker\\\.mjs\|/.test(vhost), 'the vhost passes the page\'s scripts (send.js, egress-settings.js) and the Locker bundle to Network');
+    assert.ok(/location ~ \^\/\(\|install\|machines(?:\(\/\.\*\)\?)?\|pair\|index\\\.md\|send\\\.js\|egress-settings\\\.js\|locker\\\.mjs\|/.test(vhost), 'the vhost passes the page\'s scripts (send.js, egress-settings.js), the machine hub and its old sub-paths, and the Locker bundle to Network');
     const sendApi = vhost.slice(vhost.indexOf('location ~ ^/api/v1/me/nodes/(send-keys|send)$ {'));
     assert.ok(sendApi.length < vhost.length && /client_max_body_size 40m;/.test(sendApi.slice(0, sendApi.indexOf('\n    }'))), 'the Link Send API has its own location with a body limit that fits a file');
     // …and /auth/* to Link's own sign-in (Network#664), or openvibe.link never signs anyone in (11-08 audit).
@@ -215,6 +215,12 @@ const SHAPED = {
             const hub = await get(p, 'openvibe.link');
             assert.strictEqual(hub.status, 302, `${p} opens the Link machine hub`);
             assert.strictEqual(hub.headers.location, 'https://openvibe.link/machines');
+        }
+        // Bot's old sub-paths (and Actor's Watch links) land on the hub rather than the catch-all's Network 404.
+        for (const p of ['/machines/dev_01ABC/screen?desk=desk-task-a', '/machines/dev_01ABC/desks']) {
+            const sub = await get(p, 'openvibe.link');
+            assert.strictEqual(sub.status, 301, `${p} goes to the hub`);
+            assert.strictEqual(sub.headers.location, 'https://openvibe.link/machines');
         }
 
         const www = await get('/', 'www.openvibe.link');
