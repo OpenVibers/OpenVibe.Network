@@ -237,6 +237,12 @@ const MY = 'openvibe.my';
         const profile = fs.readFileSync(path.join(ROOT, 'public', 'js', 'my', 'profile.js'), 'utf8');
         assert.ok(profile.includes("sessionUrl: '/auth/me'") && profile.includes("logoutUrl: '/auth/logout?next={path}'"), 'the shared navbar uses the hub\'s session');
         assert.ok(profile.includes('function showSignedOutHub') && profile.includes("'Sign out everywhere'"), 'a signed-out hub stays put and offers everywhere');
+        // Signed out, the page says what it is and what is inside, with one way in (it was a small card on an empty
+        // screen that offered "Sign out everywhere" as a second button to someone who is signed out).
+        assert.ok(profile.includes("'Everything that is yours on OpenVibe'") && profile.includes("el('a', 'btn btn-primary my-out-go', 'Sign in')"), 'what it is, and one button');
+        ['Pick up where you left off', 'Your sites', 'Your numbers', 'Settings', 'Sign in on another device'].forEach((name) => assert.ok(profile.includes(`'${name}'`), `the signed-out page lists ${name}`));
+        assert.ok(profile.includes("el('a', 'my-out-all', 'Sign out everywhere')"), 'signing out everywhere is a quiet line, not a second button');
+        assert.ok(fs.readFileSync(path.join(ROOT, 'public', 'css', 'my.css'), 'utf8').includes('.my-out-list li{'), 'and it is styled');
         const security = fs.readFileSync(path.join(ROOT, 'public', 'js', 'my', 'security.js'), 'utf8');
         assert.ok(security.includes("'https://openvibe.network/sso/fanout?action=logout&next='"), 'signing out everywhere still offers Network\'s fanout');
     } finally {
