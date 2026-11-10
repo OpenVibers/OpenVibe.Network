@@ -257,7 +257,10 @@ const rows = async (userId) => await db.prepare('SELECT * FROM notifications WHE
         assert.strictEqual(channelUrl('@carol'), 'https://openvibe.live/@carol');
         assert.strictEqual(canonicalChannelUrl('https://openvibe.live/@carol', 'carol'), 'https://openvibe.live/@carol', 'a channel link is kept');
         assert.strictEqual(canonicalChannelUrl('https://openvibe.live/carol/', 'carol'), 'https://openvibe.live/@carol');
-        assert.strictEqual(canonicalChannelUrl('https://openvibe.live/vod/5', 'carol'), 'https://openvibe.live/vod/5', 'other Live pages are kept');
+        assert.strictEqual(canonicalChannelUrl('https://openvibe.live/@carol#about', 'carol'), 'https://openvibe.live/@carol', 'a section is not part of a channel link');
+        assert.strictEqual(canonicalChannelUrl('https://openvibe.live/@carol?section=videos', 'carol'), 'https://openvibe.live/@carol', 'a section query is not either');
+        assert.strictEqual(canonicalChannelUrl('https://openvibe.live/carol/#clips', 'carol'), 'https://openvibe.live/@carol', 'nor on the old channel shape');
+        assert.strictEqual(canonicalChannelUrl('https://openvibe.live/vod/5#t=10', 'carol'), 'https://openvibe.live/vod/5#t=10', 'other Live pages keep their own address');
         assert.strictEqual(canonicalChannelUrl(null, 'carol'), 'https://openvibe.live/@carol', 'no link: the channel page');
     }
     assert.strictEqual(n1.sender_id, 20, 'sender is the streamer\'s Network account (dedupe key)');

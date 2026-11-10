@@ -15,9 +15,20 @@ function channelUrl(username) {
     return `${LIVE_ORIGIN}/@${encodeURIComponent(String(username || '').replace(/^@+/, ''))}`;
 }
 function canonicalChannelUrl(url, username) {
-    const m = /^https:\/\/openvibe\.live\/([A-Za-z0-9_]{3,24})\/?$/.exec(String(url || ''));
-    if (m) return channelUrl(m[1]);
-    return url || channelUrl(username);
+    const raw = String(url || '').trim();
+    if (!raw) return channelUrl(username);
+    // A section (or a query naming one) is not part of a channel: /@name#about, /@name?section=videos and the old
+    // /name#about all hand over /@name, so a go-live notice never lands on About (ask 285). Other Live pages keep
+    // their own address, including any fragment that means something there.
+    try {
+        const u = new URL(raw);
+        if (u.origin === LIVE_ORIGIN) {
+            const m = /^\/(?:@)?([A-Za-z0-9_]{3,24})\/?$/.exec(u.pathname);
+            if (m) return channelUrl(m[1]);
+        }
+    } catch { /* not an absolute URL: the old-style check below */ }
+    const m = /^https:\/\/openvibe\.live\/([A-Za-z0-9_]{3,24})\/?$/.exec(raw);
+    return m ? channelUrl(m[1]) : raw;
 }
 
 /** One fan-out per streamer per `stream_live_cooldown_min` (60) and at most `stream_live_daily_cap` (8) per 24h. */
