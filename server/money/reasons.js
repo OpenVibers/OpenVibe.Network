@@ -4,7 +4,7 @@
  * The plain words for an OpenCoins ledger row (`coin_transactions.reason`). The list and the
  * formatter live in openvibe-contracts (`billing.money-reason@1`, `lib/money-reasons.js`); Network
  * re-exports them when the installed package has them and otherwise answers from the same list
- * copied at 0.390.0. A page writes the amount before `text` and links it to `subject.url`.
+ * copied at 0.392.0. A page writes the amount before `text` and links it to `subject.url`.
  */
 let canonical = null;
 try { canonical = require('openvibe-contracts').moneyReasons || null; } catch { /* an older contract package: the copy below answers */ }
