@@ -595,6 +595,72 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         (req) => (ITEM.test(String(req.params.id || '')) ? `/api/v1/store/${req.params.id}/buy` : null)));
     router.get('/wallet/api/v1/kinds', walletRelay('inventory', 'GET', '/api/v1/kinds'));
 
+    // ── The Dock's Agents tab (openvibe-shared dock-agent.js, dock-timeline.js and dock-actor.js) ───────────────
+    // The Dock runs on every OpenVibe site, and every site's connect-src allows openvibe.network and refuses
+    // openvibe.codes and openvibe.actor (2026-11-09: 49 sites logged 1-4 refusals at 1280). These fixed paths are
+    // the Dock's three reads and its controls: the person's Bearer token goes upstream and never a cookie, the
+    // bodies are JSON of at most 8 KB, redirects are not followed, and Codes' and Actor's status and answer come
+    // back as they are. Nothing is kept: every answer is the person's own.
+    const dockAuth = (req) => (/^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '');
+    const DOCK_ID = /^[A-Za-z0-9._~:-]{1,160}$/;
+    const dockId = (v) => (DOCK_ID.test(String(v || '')) ? String(v) : '');
+    function dockRelay(service, method, upstream, { image = false } = {}) {
+        const upstreamPath = typeof upstream === 'function' ? upstream : () => upstream;
+        const fallback = service === 'codes' ? 'http://127.0.0.1:4900' : 'http://127.0.0.1:4950';
+        return async (req, res) => {
+            res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'private, no-store' });
+            const auth = dockAuth(req);
+            if (!auth) return res.status(401).json({ error: 'sign in to use the Dock' });
+            const path = upstreamPath(req);
+            if (!path) return res.status(404).json({ error: 'not found' });
+            const headers = { Accept: image ? 'image/jpeg, image/webp' : 'application/json', Authorization: auth };
+            const init = { method, headers, redirect: 'manual', signal: AbortSignal.timeout(15000) };
+            if (method !== 'GET') { headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(req.body || {}); }
+            try {
+                const r = await fetch(new URL(path, svcUrl(service, fallback)).href, init);
+                if (image) {
+                    const bytes = Buffer.from(await r.arrayBuffer());
+                    res.set('Content-Type', String(r.headers.get('content-type') || 'application/octet-stream').slice(0, 80));
+                    return res.status(r.status).send(bytes);
+                }
+                const text = await r.text();
+                res.set('Content-Type', 'application/json; charset=utf-8');
+                return res.status(r.status).send(text.slice(0, 64 * 1024));
+            } catch { return res.status(502).json({ error: 'The Dock service did not answer' }); }
+        };
+    }
+    const dockJson = express.json({ limit: '8kb' });
+    router.options(['/agent-view', '/agent-view/*', '/agent/*', '/tasks/*', '/actor', '/actor/*'], (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Max-Age': '600' });
+        res.status(204).end();
+    });
+    // OpenVibe.Codes: the person's agent stream, its last still, and the four controls.
+    router.get('/agent-view', dockRelay('codes', 'GET', '/api/v1/me/agent-view'));
+    router.get('/agent-view/frame', dockRelay('codes', 'GET', '/api/v1/me/agent-view/frame', { image: true }));
+    for (const what of ['pause', 'curtain', 'mute', 'end']) router.post(`/agent-view/${what}`, dockJson, dockRelay('codes', 'POST', `/api/v1/me/agent-view/${what}`));
+    // OpenVibe.Actor: the one timeline behind the Dock, the approvals answered in the mode that owns them, the
+    // kill switch, and the task hand-off the timeline's Take over / Give it back buttons use.
+    router.get('/agent/timeline', dockRelay('actor', 'GET', (req) => {
+        const q = new URLSearchParams();
+        const mode = String(req.query.mode || '');
+        if (/^[a-z]{1,20}$/.test(mode)) q.set('mode', mode);
+        if (/^(1|true)$/.test(String(req.query.needs_you || ''))) q.set('needs_you', '1');
+        const cursor = String(req.query.cursor || '');
+        if (/^[A-Za-z0-9._~=-]{1,300}$/.test(cursor)) q.set('cursor', cursor);
+        if (String(req.query.scope || '') === 'shared') q.set('scope', 'shared');
+        return '/api/v1/agent/timeline' + (q.toString() ? '?' + q.toString() : '');
+    }));
+    router.post('/agent/approvals/:product/:id/decide', dockJson, dockRelay('actor', 'POST', (req) => {
+        const product = String(req.params.product || ''), id = dockId(req.params.id);
+        return /^[a-z][a-z0-9_-]{0,39}$/.test(product) && id ? `/api/v1/agent/approvals/${encodeURIComponent(product)}/${encodeURIComponent(id)}/decide` : null;
+    }));
+    router.post('/agent/kill-switch', dockJson, dockRelay('actor', 'POST', '/api/v1/agent/kill-switch'));
+    for (const what of ['takeover', 'giveback']) router.post(`/tasks/:id/${what}`, dockJson, dockRelay('actor', 'POST', (req) => (dockId(req.params.id) ? `/api/v1/tasks/${encodeURIComponent(req.params.id)}/${what}` : null)));
+    // OpenVibe.Actor's block at the top of the tab: your Actor, its first ask, and one line to tell it something.
+    router.get('/actor', dockRelay('actor', 'GET', '/api/v1/me/actor'));
+    for (const what of ['pause', 'resume', 'tell']) router.post(`/actor/${what}`, dockJson, dockRelay('actor', 'POST', `/api/v1/me/actor/${what}`));
+    for (const what of ['answer', 'decline']) router.post(`/actor/asks/:id/${what}`, dockJson, dockRelay('actor', 'POST', (req) => (dockId(req.params.id) ? `/api/v1/me/actor/asks/${encodeURIComponent(req.params.id)}/${what}` : null)));
+
     // GET /api/frame/suggest?q=&owner=&limit= — the navbar's magnifier (openvibe-shared search.js): OpenVibe.Search's
     // suggestions, asked through Network because every site's connect-src already lets the navbar reach
     // openvibe.network, and 33 of them refused search.openvibe.network (2026-10-28). Anonymous, as the browser's own call
