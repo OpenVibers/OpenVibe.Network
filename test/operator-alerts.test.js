@@ -13,6 +13,7 @@ const express = require('express');
 const { validate } = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 const alerts = require('../server/operator/alerts');
+const { EmailService } = require('../server/notifications/email-service');
 
 (async () => {
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-opalerts-'));
@@ -42,6 +43,18 @@ app.use('/internal', require('../server/internal/routes'));
 const server = http.createServer(app);
 
 const alert = (name, extra = {}) => ({ fingerprint: crypto.createHash('sha256').update(name).digest('hex').slice(0, 16), name, severity: 'critical', summary: `${name} summary`, started_at: '2026-09-26T05:00:00Z', ...extra });
+const browserAlert = {
+    fingerprint: 'f'.repeat(16), name: 'OpenVibeBrowserCheckFailed', severity: 'critical',
+    summary: 'domains: the browser check of release 74bdff4 failed (1 failing check(s)); run: sudo ovhost browser-watch --sites domains --force',
+    description: 'The automatic check of openvibe.domains found a problem after release 74bdff4.',
+    service: 'domains', started_at: '2026-11-10T09:12:30Z', failing_since: '2026-11-10T09:12:30Z',
+    release: '74bdff4c0a1e9d2b7f3c5a8e6b4d2f1a0c9e8d7b',
+    release_url: 'https://git.openvibe.codes/OpenVibers/OpenVibe.Domains/commit/74bdff4c0a1e9d2b7f3c5a8e6b4d2f1a0c9e8d7b',
+    checked_at: '2026-11-10T09:12:00Z',
+    details: [{ route: '/', check: 'axe', rule: 'summary-name', impact: 'serious', targets: ['#dev-fold', '#faq-fold'],
+        help: 'Ensures the summary element has a non-empty accessible name',
+        help_url: 'https://dequeuniversity.com/rules/axe/4.13/summary-name', page_url: 'https://openvibe.domains/' }],
+};
 
 (async () => {
     await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -71,6 +84,9 @@ const alert = (name, extra = {}) => ({ fingerprint: crypto.createHash('sha256').
         assert.strictEqual(r.status, 400);
         r = await post({ source: 'grafana', alerts: [] }, auth);
         assert.strictEqual(r.status, 400);
+        assert.ok(validate('network.operator-alerts-request@1', { source: 'prometheus', alerts: [browserAlert] }).valid, 'the browser-check details are part of the contract now');
+        assert.ok(!validate('network.operator-alerts-request@1', { source: 'prometheus', alerts: [{ ...browserAlert, details: [{ route: '/' }] }] }).valid, 'a detail must say which check it is');
+        assert.ok(!validate('network.operator-alerts-request@1', { source: 'prometheus', alerts: [{ ...browserAlert, details: [{ check: 'axe', page_url: 'not a url' }] }] }).valid, 'a link is a URI');
 
         // Opens: both operators (owner by OWNER_USERNAME, case-insensitive; the extra username) are paged.
         r = await post({ source: 'prometheus', alerts: [alert('OpenVibeBackupMissed', { service: 'host', description: 'No successful backup in 26 hours.' }), alert('OpenVibeBrowserCheckFailed', { severity: 'warning' })] }, auth);
@@ -155,6 +171,66 @@ const alert = (name, extra = {}) => ({ fingerprint: crypto.createHash('sha256').
         process.env.OWNER_USERNAME = 'ghost'; process.env.OPERATOR_ALERT_USERNAMES = '';
         r = await post({ source: 'prometheus', alerts: [alert('Lonely')] }, auth);
         assert.deepStrictEqual([r.status, r.body.opened, r.body.notified], [200, 1, 0]);
+
+        // ── A browser-check alert says it in words (network.operator-alerts-request@1 details) ─────────
+        process.env.OWNER_USERNAME = 'Boss'; process.env.OPERATOR_ALERT_USERNAMES = '';
+        const bc = alerts.browserCheck(browserAlert);
+        assert.strictEqual(bc.title, 'openvibe.domains: 1 problem found by the browser check');
+        assert.strictEqual(bc.message, 'After release 74bdff4, the automatic check of openvibe.domains found a problem on the page /. Two fold headings have no name a screen reader can say (#dev-fold, #faq-fold).');
+        assert.deepStrictEqual(bc.facts.map((f) => f.label), ['Site', 'Page', 'What', 'Where', 'Release', 'Checked', 'Failing since']);
+        assert.deepStrictEqual(bc.facts.find((f) => f.label === 'Page'), { label: 'Page', value: '/', href: 'https://openvibe.domains/' });
+        assert.deepStrictEqual(bc.facts.find((f) => f.label === 'Release'), { label: 'Release', value: '74bdff4', href: browserAlert.release_url });
+        assert.deepStrictEqual(bc.actions.map((a) => a.label), ['Open the page', 'See the release', 'What this rule means']);
+        assert.match(bc.next, /runs again after every release and once a day.*closes itself when the check passes/);
+
+        // The notification itself carries the words and the stored facts/actions/next.
+        sent.length = 0;
+        out = await alerts.receive(db, { source: 'prometheus', alerts: [browserAlert] }, { notify: (u, n) => { sent.push({ user_id: u, ...n }); return { id: 'browser-1' }; } });
+        assert.deepStrictEqual([out.opened, out.notified], [1, 1]);
+        assert.strictEqual(sent[0].title, bc.title);
+        assert.strictEqual(sent[0].message, bc.message);
+        assert.deepStrictEqual(sent[0].rich_content.facts, bc.facts);
+        assert.deepStrictEqual(sent[0].rich_content.actions, bc.actions);
+        assert.strictEqual(sent[0].rich_content.next, bc.next);
+
+        // A reminder says "Still failing" in front, and keeps the details.
+        sent.length = 0;
+        out = await alerts.receive(db, { source: 'prometheus', alerts: [browserAlert] }, { notify: (u, n) => { sent.push(n); return { id: 'browser-2' }; }, now: Date.now() + alerts.REMIND_MS + 1000 });
+        assert.strictEqual(out.reminded, 1);
+        assert.strictEqual(sent[0].title, 'Still failing: openvibe.domains: 1 problem found by the browser check');
+
+        // An unknown axe rule falls back to its id and axe's help text.
+        const unknown = alerts.browserCheck({ ...browserAlert, details: [{ route: '/x', check: 'axe', rule: 'mystery-rule', help: 'Makes sure the widget has a name', targets: ['#widget'], page_url: 'https://openvibe.domains/x' }] });
+        assert.match(unknown.message, /The page breaks the accessibility rule mystery-rule \(Makes sure the widget has a name\) \(#widget\)\./);
+        const consoleError = alerts.browserCheck({ ...browserAlert, details: [{ route: '/', check: 'errors', message: 'WebSocket closed', width: 390, page_url: 'https://openvibe.domains/' }, { route: '/', check: 'overflow', width: 390, offenders: ['.wide'], page_url: 'https://openvibe.domains/' }] });
+        assert.match(consoleError.message, /found 2 problems on the page \/.*console error: WebSocket closed.*At 390 px, the page scrolls sideways \(\.wide\)/);
+
+        // Links that are not https or not on an allowed host are dropped; text is kept as text.
+        const unsafe = alerts.browserCheck({ ...browserAlert,
+            release_url: 'http://github.com/OpenVibers/OpenVibe.Domains/commit/74bdff4',
+            details: [{ route: '/', check: 'axe', rule: 'summary-name', targets: ['<img onerror=alert(1)>'], help: 'x', help_url: 'javascript:alert(1)', page_url: 'https://evil.example/' }] });
+        assert.deepStrictEqual(unsafe.actions, [], 'no http, javascript: or off-network link becomes an action');
+        assert.strictEqual(unsafe.facts.find((f) => f.label === 'Page').href, undefined);
+        assert.strictEqual(unsafe.facts.find((f) => f.label === 'Site').value, 'domains', 'an off-network page does not rename the site');
+        assert.ok(unsafe.message.includes('<img onerror=alert(1)>'), 'the target stays text (the UI escapes it)');
+
+        // A plain Prometheus alert with no details still reads as before.
+        sent.length = 0;
+        out = await alerts.receive(db, { source: 'prometheus', alerts: [{ fingerprint: '0'.repeat(16), name: 'OpenVibeDiskFull', severity: 'warning', summary: 'The host disk is 95% full', description: 'over 90% for an hour', service: 'host', started_at: '2026-11-10T09:00:00Z' }] }, { notify: (u, n) => { sent.push(n); return { id: 'plain-1' }; } });
+        assert.deepStrictEqual([out.opened, out.notified], [1, 1]);
+        assert.strictEqual(sent[0].title, 'Disk full');
+        assert.strictEqual(sent[0].message, 'host · The host disk is 95% full · over 90% for an hour');
+        assert.strictEqual(sent[0].rich_content.facts, undefined);
+        assert.strictEqual(sent[0].rich_content.actions, undefined);
+        assert.strictEqual(sent[0].rich_content.next, undefined);
+
+        // The email's plain-text part shows the facts, the actions' links and the next step.
+        const text = EmailService.prototype._buildEmailText({ username: 'Ada', notification: { title: bc.title, message: bc.message, rich_content: bc } });
+        assert.match(text, /Site: openvibe\.domains/);
+        assert.match(text, /Open the page: https:\/\/openvibe\.domains\//);
+        assert.match(text, /See the release: https:\/\/git\.openvibe\.codes\//);
+        assert.match(text, /What this rule means: https:\/\/dequeuniversity\.com\//);
+        assert.match(text, /The browser check runs again after every release/);
     } finally {
         server.close();
         fs.rmSync(dir, { recursive: true, force: true });

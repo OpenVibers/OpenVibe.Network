@@ -9,6 +9,14 @@
 
 const https = require('https');
 
+/** A notification's structured data, whether the queue handed it JSON or an object. */
+function richOf(notification) {
+    const rc = notification && notification.rich_content;
+    if (!rc) return {};
+    if (typeof rc === 'object') return rc;
+    try { return JSON.parse(rc) || {}; } catch { return {}; }
+}
+
 /**
  * Send an email via the Resend REST API.
  * @param {string} apiKey - Resend API key (re_xxxx)
@@ -343,6 +351,9 @@ class EmailService {
     // ─── Email Templates ───────────────────────────────────────
 
     _buildEmailHtml({ username, notification }) {
+        // The facts, actions and next steps are passed through for the notification template; it renders them
+        // (and escapes every string) rather than this mailer reading the host's words into its own markup.
+        notification.rich_content = richOf(notification);
         const priorityColor = { low: '#888', normal: '#8b5cf6', high: '#f39c12', critical: '#e74c3c' };
         const color = priorityColor[notification.priority] || '#8b5cf6';
 
@@ -387,6 +398,9 @@ ${notification.url ? `<a class="cta" href="${this._escapeHtml(notification.url)}
     }
 
     _buildEmailText({ username, notification }) {
+        const rich = richOf(notification);
+        const facts = Array.isArray(rich.facts) ? rich.facts.filter((f) => f && f.label && f.value) : [];
+        const actions = Array.isArray(rich.actions) ? rich.actions.filter((a) => a && a.label && a.href) : [];
         return [
             `Hey ${username || 'there'},`,
             '',
@@ -394,6 +408,9 @@ ${notification.url ? `<a class="cta" href="${this._escapeHtml(notification.url)}
             '',
             `${notification.icon || '🔔'} ${notification.title}`,
             notification.message || '',
+            ...(facts.length ? ['', ...facts.map((f) => `${f.label}: ${f.value}${f.href ? ` (${f.href})` : ''}`)] : []),
+            ...(actions.length ? ['', ...actions.map((a) => `${a.label}: ${a.href}`)] : []),
+            ...(rich.next ? ['', String(rich.next)] : []),
             '',
             notification.url ? `View details: ${notification.url}` : '',
             '',
