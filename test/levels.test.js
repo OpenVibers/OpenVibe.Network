@@ -36,6 +36,14 @@ const { backfill } = require('../scripts/backfill-levels');
     const dry = await backfill(db); assert.equal(dry.awarded, 0); assert.equal(dry.existing, 1);
     const applied = await backfill(db, { apply: true }); assert.equal(applied.awarded, 0);
     await db.prepare('UPDATE users SET is_banned = 0 WHERE id = ?').run(other.id);
+    // A test account is left out of the public leaderboard, but its own signed-in board still shows it.
+    const probeSubject = ids.newId('user');
+    const probe = await db.prepare("INSERT INTO users(username, password_hash, subject_id, is_test) VALUES ('ovprobe_levels', 'unused', ?, 1) RETURNING id").get(probeSubject);
+    await levels.award(db, 'quest', { subject: probeSubject, reason: 'quest.completed', amount: 500, idempotency_key: 'probe-hi' });
+    const publicBoard = await levels.board(db, null);
+    assert.ok(!publicBoard.all_time.top.some((r) => r.subject === probeSubject), 'the public board leaves a test account out');
+    const ownBoard = await levels.board(db, probe.id);
+    assert.ok(ownBoard.all_time.me && ownBoard.all_time.me.subject === probeSubject, 'its own signed-in board still shows it');
     console.log('levels: duplicate refused; earned coins once; refunds/transfers excluded; privacy, caps and dry-run passed');
     process.exit(0);
 })().catch(e => { console.error(e); process.exit(1); });

@@ -509,7 +509,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const out = [];
         try {
             const since = new Date(nowMs - 7 * 86_400_000).toISOString().slice(0, 19).replace('T', ' ');
-            const r = await db.prepare("SELECT COUNT(*) AS n FROM users WHERE COALESCE(is_anon, 0) = 0 AND COALESCE(is_banned, 0) = 0 AND COALESCE(deleted_at, '') = '' AND created_at >= ?").get(since);
+            const r = await db.prepare("SELECT COUNT(*) AS n FROM users WHERE COALESCE(is_anon, 0) = 0 AND COALESCE(is_banned, 0) = 0 AND COALESCE(deleted_at, '') = '' AND COALESCE(is_test, 0) = 0 AND created_at >= ?").get(since);
             const n = r ? Number(r.n) : NaN;
             if (Number.isFinite(n) && n >= 0) out.push({ id: 'joined', label: 'Joined this week', value: n, icon: 'members', url: 'https://openvibe.network/stats' });
         } catch { /* the count is optional */ }
@@ -530,16 +530,18 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             let rows = [];
             if (subjects.length) {
                 try {
-                    rows = await db.prepare(`SELECT u.username, u.display_name, u.subject_id, p.show_status, p.state
+                    rows = await db.prepare(`SELECT u.username, u.display_name, u.subject_id, u.is_test, p.show_status, p.state
                         FROM person_presence p JOIN users u ON u.subject_id = p.subject_id
                         WHERE p.subject_id = ANY(?) AND COALESCE(u.is_banned, 0) = 0 AND COALESCE(u.deleted_at, '') = ''`).all(subjects);
                 } catch { rows = []; }
             }
             const bySubject = new Map(rows.map((r) => [r.subject_id, r]));
+            const testSeen = rows.filter((r) => Number(r.is_test)).length;
             const visible = [];
             for (const [subject, entry] of snap.members) {
                 const r = bySubject.get(subject);
-                if (!r) continue;
+                // A test account (the probes) is never a public member: it is counted out, not just unnamed.
+                if (!r || Number(r.is_test)) continue;
                 // The person's own presence choice decides whether they may be named: the "Show my status"
                 // switch off, or Invisible, means counted among members and never in the list.
                 if (!Number(r.show_status) || r.state === 'invisible') continue;
@@ -552,10 +554,11 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             visible.sort((a, b) => b.at - a.at);
             const live = await readLive(nowMs);
             const views = Object.entries(rank.scores || {}).filter(([k]) => !k.includes(':')).reduce((a, [, n]) => a + (Number(n) || 0), 0);
+            const members = Math.max(0, snap.members.size - testSeen);
             onlineBase = {
-                members: snap.members.size,
+                members,
                 guests: snap.guests,
-                total: snap.members.size + snap.guests,
+                total: members + snap.guests,
                 visible,
                 counts: await countsOf(nowMs),
                 live: live ? { channels: live.channels, watching: live.watching, first: live.list.slice(0, 3).map((s) => ({ name: s.name, url: s.url })) } : { channels: 0, watching: 0, first: [] },
