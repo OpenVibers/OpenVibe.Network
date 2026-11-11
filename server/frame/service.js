@@ -738,13 +738,22 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             const path = upstreamPath(req);
             if (!path) return res.status(404).send('{"error":"not found"}');
             const auth = bearer || fromCookie;
-            if (path.startsWith('/api/v1/me/') && !auth) return res.status(401).send('{"error":"sign in to open your wallet"}');
-            const u = new URL(path, svcUrl(service, service === 'billing' ? 'http://127.0.0.1:4600' : 'http://127.0.0.1:5030'));
+            if ((path.startsWith('/api/v1/me/') || path.startsWith('/api/wallet/changes')) && !auth) return res.status(401).send('{"error":"sign in to open your wallet"}');
+            const fallback = service === 'billing' ? 'http://127.0.0.1:4600' : service === 'network' ? config.internalUrl || 'http://127.0.0.1:4000' : 'http://127.0.0.1:5030';
+            const u = new URL(path, svcUrl(service, fallback));
             if (method === 'GET') {
                 const limit = String(req.query.limit || '');
                 if (/^\d{1,3}$/.test(limit)) u.searchParams.set('limit', String(Math.min(Math.max(Number(limit), 1), 100)));
-                const cursor = String(req.query.cursor || '');
-                if (/^[A-Za-z0-9._~=-]{1,300}$/.test(cursor)) u.searchParams.set('cursor', cursor);
+                if (path === '/api/wallet/changes') {
+                    const patterns = { since_vibes: /^txn_[0-9A-HJKMNP-TV-Z]{26}$/, since_opencoins: /^[1-9]\d{0,15}$/, streamer: /^[1-9]\d{0,15}$/, since_channel_points: /^[1-9]\d{0,15}$/ };
+                    for (const [name, pattern] of Object.entries(patterns)) {
+                        const value = String(req.query[name] || '');
+                        if (pattern.test(value)) u.searchParams.set(name, value);
+                    }
+                } else {
+                    const cursor = String(req.query.cursor || '');
+                    if (/^[A-Za-z0-9._~=-]{1,300}$/.test(cursor)) u.searchParams.set('cursor', cursor);
+                }
             }
             const headers = { Accept: 'application/json', ...(auth ? { Authorization: auth } : {}) };
             const init = { method, headers, redirect: 'manual', signal: AbortSignal.timeout(8000) };
@@ -764,6 +773,9 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     });
     // Billing: the three balances and the sheet's two checkouts. All personal, all no-store.
     router.get('/wallet/api/v1/me/wallet', walletRelay('billing', 'GET', '/api/v1/me/wallet'));
+    // Ask 273: every site reads and marks the same per-currency change window through Network.
+    router.get('/wallet/changes', walletRelay('network', 'GET', '/api/wallet/changes'));
+    router.put('/wallet/changes/read', walletJson, walletRelay('network', 'PUT', '/api/wallet/changes/read'));
     router.post('/wallet/api/v1/me/vibes/buy', walletJson, walletRelay('billing', 'POST', '/api/v1/me/vibes/buy'));
     router.post('/wallet/api/v1/me/wallet/topups', walletJson, walletRelay('billing', 'POST', '/api/v1/me/wallet/topups'));
     // Inventory: the store, the person's items, and the equipped slots (worn or not).
