@@ -22,6 +22,7 @@
 const path = require('path');
 const express = require('express');
 const { createSsoClient, COOKIES } = require('openvibe-sdk/sso');
+const { issueTicketForUser } = require('../auth/handoff');
 
 const MY_HOST = 'openvibe.my';
 const WWW_HOST = 'www.openvibe.my';
@@ -172,6 +173,26 @@ async function createMyRoutes({ db, config = require('../config'), sso, pagePath
     const auth = client.router(express);
     const page = path.resolve(pagePath);
 
+    /**
+     * openvibe.my/machines (and the old Network paths) 302 to the Link hub. When the browser carries
+     * this host's session, mint a one-time handoff ticket for link-web so openvibe.link signs them in
+     * with no round trip; without a session the plain hop lands on the hub's silent sign-in instead.
+     */
+    async function machinesRedirect(req, res, host) {
+        const plain = `https://openvibe.link/machines${queryOf(req)}`;
+        try {
+            const token = readCookie(req, COOKIES.access);
+            const claims = token ? await client.verify(token).catch(() => null) : null;
+            if (!claims || !Number.isInteger(claims.id) || claims.is_anon) return res.redirect(302, plain);
+            const { ticket } = await issueTicketForUser(db, {
+                userId: claims.id, clientId: 'link-web', redirectUri: 'https://openvibe.link/auth/callback', source: host,
+            });
+            return res.redirect(302, `${plain}${plain.includes('?') ? '&' : '?'}ov_handoff=${encodeURIComponent(ticket)}`);
+        } catch {
+            return res.redirect(302, plain);
+        }
+    }
+
     function serveApp(req, res) {
         const quiet = String(req.query.sso || '') === 'none' || readCookie(req, COOKIES.hint) === 'guest';
         if (!readCookie(req, COOKIES.access) && !quiet && ['GET', 'HEAD'].includes(req.method) && !BOT_RE.test(String(req.headers['user-agent'] || ''))) {
@@ -205,9 +226,10 @@ async function createMyRoutes({ db, config = require('../config'), sso, pagePath
     router.use((req, res, next) => {
         const host = hostOf(req);
         if (host === WWW_HOST) return res.redirect(301, `https://${MY_HOST}${req.originalUrl}`);
-        // The machines hub moved to the Link product: /machines goes there from both the apex and the hub.
+        // The machines hub moved to the Link product: /machines goes there from both the apex and the hub,
+        // carrying a handoff ticket when the browser is signed in here.
         if (req.path === '/machines' && ['GET', 'HEAD'].includes(req.method) && (host === MY_HOST || NETWORK_HOSTS.has(host))) {
-            return res.redirect(302, `https://openvibe.link/machines${queryOf(req)}`);
+            return machinesRedirect(req, res, host).catch(() => res.redirect(302, `https://openvibe.link/machines${queryOf(req)}`));
         }
         if (NETWORK_HOSTS.has(host)) {
             if (!isHubPath(req.path) || !['GET', 'HEAD'].includes(req.method)) return next();
