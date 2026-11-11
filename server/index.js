@@ -486,6 +486,9 @@ const qrSignin = require('./auth/qr-signin').createQrSignin({
 app.locals.qrSignin = qrSignin;
 // The moderation audit log for staff (staff.moderation.logs): server/admin/moderation-audit.js.
 app.use('/api/v1/staff/moderation-audit', requireAuth, moderationAudit.router());
+// The shared composer (composer.prefs@1, composer.mention@1): a person's settings on every site, revision-checked,
+// and the @ menu (people they follow first, then public people; OpenVibe Git repositories; first-party sites).
+app.use('/api/v1', rateLimit({ windowMs: 60_000, max: 240 }), require('./composer/routes').createRouter({ db, requireAuth, selfToken, config }));
 // Sharing (design 2026-11-06): what is shared with this person, the share picker's suggestions and
 // the @name check it uses (server/sharing/routes.js).
 app.use('/api/v1', require('./sharing/routes').createSharingApi({ ...sharing, requireAuth }));
