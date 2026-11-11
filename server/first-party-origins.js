@@ -24,6 +24,8 @@ function manifestOrigins() {
     }
     // Bootstrap Computer's exact origin until its service manifest is included in this service's Contracts pin.
     out.add('https://openvibe.computer');
+    // Compare launches before its separately held Contracts release. Keep this exact origin.
+    out.add('https://openvibe.compare');
     cached = out;
     return out;
 }
