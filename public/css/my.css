@@ -714,3 +714,35 @@ html[data-ov-motion=off] .me-act:hover{transform: none}
 .mc-desk-live summary { display: inline-block; cursor: pointer; }
 .mc-desk-live[open] { display: grid; gap: 8px; }
 .mc-takeover { margin-top: 4px; }
+
+/* Account home organization and pairing visibility. */
+@media (max-width:700px) { body { padding-bottom:112px; } }
+@media (min-width:760px) { .td-grid { grid-template-columns:minmax(0,1fr); } }
+.td-machines { display:grid; gap:10px; min-width:0; }
+.td-machines p { color:var(--text-secondary); font-size:13px; }
+.td-machines .ovk-btn { justify-self:start; min-height:44px; }
+.setup-fold { margin:0 0 18px; padding:12px 16px; border:1px solid var(--border); border-radius:14px; background:var(--bg-secondary); }
+.setup-fold[hidden] { display:none !important; }
+.setup-fold summary { min-height:28px; font-weight:700; cursor:pointer; }
+.setup-items { display:grid; gap:4px; padding-top:6px; }
+.ny-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.ny-details { flex:1 1 100%; font-size:12px; color:var(--text-muted); }
+.ny-details summary { width:max-content; min-height:36px; cursor:pointer; }
+.ny-details p { margin:2px 0 8px; }
+.ny-command { display:block; width:fit-content; max-width:100%; overflow-wrap:anywhere; padding:7px 10px; border-radius:8px; background:var(--bg-secondary); color:var(--text); font-size:12px; }
+.ny-btn.is-quiet { background:transparent; color:var(--text-secondary); border:1px solid var(--border); }
+.mc-steps { margin:0; padding-left:22px; display:grid; gap:5px; }
+.mc-pair-code-row { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.mc-pair-code-row .mc-code { margin:0; }
+.mc-qr { width:176px; height:176px; border-radius:10px; background:#fff; }
+body.my-needs-visible #ovdk-pill { display:none !important; }
+.mc-action-menu { margin-top: 12px; }
+.mc-action-menu summary { display:inline-flex; align-items:center; min-height:40px; padding:0 13px; border:1px solid var(--border); border-radius:10px; cursor:pointer; font-size:13px; font-weight:700; }
+.mc-action-menu .mc-acts { margin-top:8px; }
+.mc-role-chips { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+.mc-role-chip { display:inline-flex; align-items:center; min-height:28px; padding:2px 10px; border:1px solid var(--border); border-radius:999px; background:var(--bg-secondary); color:var(--text-secondary); font-size:11px; font-weight:650; }
+.mc-role-chip.is-empty { opacity:.7; }
+.me-acts { margin-bottom: 20px; }
+.mc-count { margin:0 0 8px; color:var(--text-muted); font-size:12px; }
+#sec-machines { scroll-margin-top: 90px; }
+body.my-machines-open { padding-bottom: max(112px, calc(100vh - 90px)); }

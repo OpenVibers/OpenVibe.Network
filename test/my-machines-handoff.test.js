@@ -1,6 +1,6 @@
 'use strict';
-// The hub's old paths here mint a one-time handoff ticket for link-web when the browser is signed in here,
-// so openvibe.link signs them in with no round trip. Signed out, the plain hop lands on silent sign-in.
+// Network's apex sends signed-in /machines visitors to Link with a handoff ticket. openvibe.my keeps its
+// signed-in Machines section and silently signs in visitors who arrive there without a session.
 //   ov test test/my-machines-handoff.test.js   (or: node test/my-machines-handoff.test.js)
 const assert = require('assert');
 const http = require('http');
@@ -31,23 +31,21 @@ const server = http.createServer(app);
         req.on('error', reject);
     });
 
-    // Signed in here: the hop carries a ticket minted for link-web.
+    // The account hub's own /machines route stays here and serves its Machines section.
     let r = await get('/machines', 'ov_token=good-token');
-    assert.strictEqual(r.status, 302, 'signed in 302s to the hub');
-    const to = new URL(r.headers.location);
-    assert.strictEqual(to.origin + to.pathname, 'https://openvibe.link/machines');
-    assert.ok(/^ovh_[A-Za-z0-9_-]{20,200}$/.test(to.searchParams.get('ov_handoff')), 'a ticket rides along');
+    assert.strictEqual(r.status, 200, 'signed in /machines stays on the account hub');
+    assert.ok(r.body.includes('id="sec-machines"'));
 
-    // Signed out (or a bad cookie): the plain hop, which lands on the hub's silent sign-in.
+    // Signed out: openvibe.my starts its silent sign-in with /machines as the return path.
     r = await get('/machines');
     assert.strictEqual(r.status, 302);
-    assert.strictEqual(r.headers.location, 'https://openvibe.link/machines', 'no ticket when signed out');
+    assert.strictEqual(r.headers.location, '/auth/login?silent=1&next=%2Fmachines');
     r = await get('/machines', 'ov_token=nope');
-    assert.strictEqual(r.headers.location, 'https://openvibe.link/machines', 'no ticket on a bad session');
+    assert.strictEqual(r.status, 200, 'an existing session cookie reaches the account hub');
 
-    // The old Network path mints the same way.
+    // Network apex arrivals still get Link's signed-in handoff.
     r = await get('/machines', 'ov_token=good-token', 'openvibe.network');
-    assert.ok(new URL(r.headers.location).searchParams.get('ov_handoff'), 'apex arrivals mint too');
+    assert.ok(new URL(r.headers.location).searchParams.get('ov_handoff'));
 
     console.log('my-machines-handoff.test.js: all assertions passed');
     server.close();
