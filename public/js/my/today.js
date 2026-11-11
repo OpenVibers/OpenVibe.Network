@@ -265,7 +265,7 @@ function renderNet(frame) {
             // The quiet line is muted: it explains why the card is short; it is not news.
             tdEl('div', 'td-net-h', [tdEl('span', 'td-site-ic', [tdIcon(site[1])]), tdEl('span', 'td-net-ht', [tdEl('b', '', [String(c.title || site[0])]),
                 tdEl('small', '', [site[0], meaning ? tdEl('span', 'td-net-when', [` · ${meaning}`]) : null,
-                    c.stale ? tdEl('span', 'td-net-quiet', [` · quiet for ${Math.floor(c.newest / 86400000)} days`]) : null])]), more]),
+                    c.stale ? tdEl('span', 'td-net-quiet', [`quiet for ${Math.floor(c.newest / 86400000)} days`]) : null])]), more]),
             list,
         ], { 'data-site': String(c.site || '') });
     }));
