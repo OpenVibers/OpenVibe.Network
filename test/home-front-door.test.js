@@ -79,6 +79,12 @@ assert.deepStrictEqual(code, [{ code: 'FALL10', title: '10% off a watch', url: '
 // The page with nothing live: the empty state invites a browser go-live.
 activity._set({ live: [], pastes: [], posts: [] });
 let { html } = home.render();
+// The first HTML carries the site's navigation for a crawler; the browser navbar replaces it on boot.
+const serverNav = /<div id="navbar-mount"><nav class="openvibe-navbar"[^>]*data-ov-server-nav="true"[\s\S]*?<\/nav><\/div>/.exec(html);
+assert.ok(serverNav, 'the first HTML has the server navigation');
+for (const [label, href] of [['My Account', '/my'], ['Wallet', '/wallet'], ['Themes', '/themes']]) {
+    assert.ok(serverNav[0].includes(`href="${href}"`) && serverNav[0].includes(`>${label}</a>`), `the server nav links ${label}`);
+}
 assert.ok(/<form class="intent-bar" action="https:\/\/openvibe.tools\/search" method="get"/.test(html), 'the search works without JavaScript (a tool search)');
 for (const [id, , verb, , href] of home.INTENTS) {
     assert.ok(html.includes(`href="${href}" data-id="${id}"`), `intent ${id} links to ${href}`);

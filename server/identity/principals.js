@@ -92,8 +92,8 @@ const DEFAULT_GRANTS = [
     // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
     // The chat.* namespaces are Chat's (chat.preferences since the Wave 6 cutover, chat.tts_defaults since
     // contracts 0.41.0). A service reading another's namespace sees only the fields `readers` lists for it.
-    ['live', 'network.modules.read', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty']],
-    ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty']],
+    ['live', 'network.modules.read', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty', 'live.layout']],
+    ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty', 'live.layout']],
     ['chat', 'network.modules.read', SELF_AUDIENCE, CHAT_NAMESPACES],
     ['chat', 'network.modules.write', SELF_AUDIENCE, CHAT_NAMESPACES],
     // Presence (plan 2026-10-22 track X item 9): Chat draws the dot in its DMs and member lists. The API enforces
@@ -190,6 +190,9 @@ const DEFAULT_GRANTS = [
     // Vibe sets up recurring work for the person it is talking with, in their own chat and after they agreed (Chat's
     // set_up_agent and my_agents tools): one of their OpenVibe Agents, made and listed as them (X-OV-Subject).
     ['chat', 'actor.agent.manage', 'openvibe.actor', []],
+    // A server manager may attach one of their own Actor agents to a Chat channel. Chat runs that agent for its
+    // owner when a channel member mentions it; Actor keeps the owner's allowance, approvals and daily run cap.
+    ['chat', 'actor.agent.run', 'openvibe.actor', []],
     ['games', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Games subscribes to network.user.token_valid_after (sign-out everywhere closes game sessions).
     ['games', 'events.subscription.manage', 'openvibe.events', []],
@@ -990,6 +993,9 @@ const CHANGED_DEFAULT_NAMESPACES = [
     // contracts 0.56.0: live.loyalty (WS-K task 9).
     ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats'], ['live.profile', 'live.stats', 'live.loyalty']],
     ['live', 'network.modules.read', SELF_AUDIENCE, ['live.profile', 'live.stats'], ['live.profile', 'live.stats', 'live.loyalty']],
+    // contracts 0.406.0: live.layout, the signed-in person's picture-in-picture places (Live's /api/me/layout).
+    ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty'], ['live.profile', 'live.stats', 'live.loyalty', 'live.layout']],
+    ['live', 'network.modules.read', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty'], ['live.profile', 'live.stats', 'live.loyalty', 'live.layout']],
     ['chat', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences'], CHAT_NAMESPACES],
     ['chat', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences'], CHAT_NAMESPACES],
     // Tools' job results under each developer project's child namespace (WS-L task 5, Media namespaces WS-G task 2).
