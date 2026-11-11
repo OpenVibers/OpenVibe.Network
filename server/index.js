@@ -690,6 +690,12 @@ app.get('/internal/blocks', require('./identity/principals').guard('network.bloc
 app.use('/api/v1/realtime', rateLimit({ windowMs: 60_000, max: 60 }), require('./auth/realtime-ticket').router({
     db, requireAuth: requireDock('activity'), privateKey, issuer: config.jwt.issuer, streamUrl: process.env.OV_EVENTS_PUBLIC_URL,
 }));
+// One-time cross-site sign-in handoff tickets (server/auth/handoff.js): a source site mints a
+// 60 s ticket for one destination client, the destination redeems it for an authorization code.
+// Plain user sessions only (never a dock-scoped grant): a ticket signs a browser in.
+app.use('/api/v1/handoff', rateLimit({ windowMs: 60_000, max: 60 }), require('./auth/handoff').router({
+    db, requireAuth,
+}));
 
 // ── Routes ───────────────────────────────────────────────────
 // Public key endpoint (services fetch this to verify JWTs).
