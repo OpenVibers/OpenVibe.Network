@@ -111,6 +111,7 @@ const PATTERNS = {
 // The reviewed list: where each goes, and why a stranger cannot choose it (or how it is guarded).
 const REVIEWED = {
     'server/admin/tools-workers.js fetch': [1, 'Owner-only fixed Tools admin paths at the operator-configured internal URL; no caller URL; redirects refused.'],
+    'server/coins/channel-points.js fetch': [1, 'Live internal URL from operator config, fixed /internal/channel-points/changes path, user id in the encoded query, no caller-selected host, 2.5 s timeout'],
     'server/link/egress-settings.js fetch': [2, 'browser-only GET and PUT to the fixed same-origin /api/v1/me/nodes/egress settings route; no caller-chosen host or URL'],
     'server/connect/egress.js http.request': [1, 'Connect gateway (E7): only the app definition\'s fixed API host, through openvibe-shared/egress (IP literals refused before the socket, public DNS answers only, redirects followed by hand with every hop re-checked); never a URL from the input (Opus review 11-06)'],
     'server/home/activity.js fetch': [1, 'front door activity: fixed first-party loopback URLs (OV_LIVE/COMMUNITY/BLOG_INTERNAL_URL, operator config) for public lists, never a request value'],
