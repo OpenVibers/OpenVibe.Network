@@ -152,7 +152,12 @@ function rightNow(a) {
     const card = ({ url, thumb, badge, len, about, avatar, title, who, line, cls = '' }) => `<li><a class="vcard${cls}" href="${esc(url)}">
 <span class="vc-thumb">${thumb ? img(thumb, avatar, 320, 180) : '<span class="now-noimg"></span>'}${badge || ''}${len ? `<span class="vc-len">${esc(len)}</span>` : ''}<span class="vc-play" aria-hidden="true"><i class="fa-solid fa-play"></i></span>${about ? `<span class="vc-about">${esc(about)}</span>` : ''}</span>
 <span class="vc-meta">${face(avatar)}<span class="vc-text"><b>${esc(title)}</b>${who ? `<small>${esc(who)}</small>` : ''}${line ? `<small>${esc(line)}</small>` : ''}</span></span></a></li>`;
-    const rail = (title, href, more, cards, id = '') => (cards.length ? `<div class="now-block"${id ? ` id="${id}"` : ''}><div class="now-head"><h3 class="ovk-titled">${sectionIcon('grid')}${title}</h3>${kit.button({ href, label: more, icon: 'forward', kind: 'quiet' })}</div><ul class="now-rail" data-ovk-scroll>${cards.join('')}</ul></div>` : '');
+    // A block's head (ask 364, 2026-11-11: the owner's "overhaul … more organized"): its name in sentence case with
+    // its own mark and how many, and one short link to the rest (its full name in the title) that never wraps.
+    const head = (title, n, href, more, short, mark) => `<div class="now-head"><h3 class="now-h">${mark}<span>${title}</span>${n ? `<em class="now-n">${n}</em>` : ''}</h3>`
+        + `<a class="now-more" href="${esc(href)}" title="${esc(more)}" aria-label="${esc(more)}">${esc(short)}<i class="fa-solid fa-chevron-right" aria-hidden="true"></i></a></div>`;
+    const MARK = { live: '<span class="now-h-live" aria-hidden="true"></span>', recs: '<i class="fa-solid fa-film now-h-ic" aria-hidden="true"></i>', shots: '<i class="fa-solid fa-image now-h-ic" aria-hidden="true"></i>' };
+    const rail = (title, href, more, cards, id = '', short = 'All', mark = MARK.recs) => (cards.length ? `<div class="now-block${cards.length === 1 ? ' is-one' : ''}"${id ? ` id="${id}"` : ''}>${head(title, cards.length, href, more, short, mark)}<ul class="now-rail" data-ovk-scroll>${cards.join('')}</ul></div>` : '');
 
     const live = a.live.map((s) => card({ url: s.url, thumb: s.thumb || s.avatar, badge: `<span class="now-badge"><i></i>LIVE${s.viewers ? ` · ${esc(fmtViewers(s.viewers))}` : ''}</span>`, avatar: s.avatar, title: s.title, who: s.name, line: s.category }));
     // Nobody live: one honest line and the way to start, not an empty 16:9 player (a phone saw a blank screen of it).
@@ -170,12 +175,12 @@ function rightNow(a) {
         col(a.jobs || [], 'New jobs', (j) => `<li><a href="${esc(j.url)}"><b>${esc(j.title)}</b><small>${[j.where, j.board ? `via ${j.board}` : ''].filter(Boolean).map(esc).join(' · ')}</small></a></li>`, 'https://openvibe.work/', 'Every job on OpenVibe.Work'),
         col(a.codes || [], 'Fresh coupon codes', (c) => `<li><a href="${esc(c.url)}">${c.code ? `<code class="now-code">${esc(c.code)}</code>` : ''}<b>${esc(c.title)}</b></a></li>`, 'https://openvibe.coupons/', 'OpenVibe.Coupons'),
     ].filter(Boolean);
-    return `<section class="sc-sec now" aria-labelledby="h-now"><h2 id="h-now" class="ovk-titled">${sectionIcon('members')}<span class="now-dot" aria-hidden="true"></span>Right now on OpenVibe</h2>
-<p class="sc-lede">What people are streaming, sharing and posting across the network, read from each site within the last minute.</p>
-${live.length ? rail('Live now', 'https://openvibe.live/', 'All channels on OpenVibe.Live', live) : quiet}
+    return `<section class="sc-sec now" aria-labelledby="h-now"><h2 id="h-now" class="now-title"><span class="now-dot" aria-hidden="true"></span>Right now on OpenVibe</h2>
+<p class="sc-lede now-lede">Live streams, new recordings and posts from across OpenVibe, updated every minute.</p>
+${live.length ? rail('Live now', 'https://openvibe.live/', 'All channels on OpenVibe.Live', live, 'now-live', 'All channels', MARK.live) : quiet}
 ${nowParts([
-        ['recs', 'Recordings', rail('Latest recordings', 'https://openvibe.video/', 'Watch on OpenVibe.Video', recs, 'now-recs')],
-        ['shots', 'Screenshots', rail('New screenshots', 'https://openvibe.community/', 'OpenVibe.Community', shots, 'now-shots')],
+        ['recs', 'Recordings', rail('Latest recordings', 'https://openvibe.video/', 'Watch on OpenVibe.Video', recs, 'now-recs', 'OpenVibe.Video', MARK.recs)],
+        ['shots', 'Screenshots', rail('New screenshots', 'https://openvibe.community/', 'OpenVibe.Community', shots, 'now-shots', 'Community', MARK.shots)],
         ['posts', 'Posts and jobs', cols.length ? `<div class="now-grid" data-ovk-scroll id="now-posts">${cols.join('\n')}</div>` : ''],
     ])}</section>`;
 }
@@ -186,8 +191,11 @@ ${nowParts([
 function nowParts(parts) {
     const shown = parts.filter(([, , html]) => html);
     if (shown.length < 2) return shown.map(([, , html]) => html).join('\n');
-    const chips = shown.map(([id, label]) => `<a href="#now-${id}">${esc(label)}</a>`).join('');
-    return `<nav class="now-pick" data-ovk-scroll aria-label="New on OpenVibe">${chips}</nav>\n${shown.map(([, , html]) => html.replace(/^<div class="(now-block|now-grid)"/, '<div class="$1" data-now-part')).join('\n')}`;
+    // A phone (600 px and under) shows one part at a time (ask 364/367, 2026-11-11: "self-contained tabs, so the page
+    // isn't so freaking huge"): the radios carry the choice, so it works before and without any script.
+    const radios = shown.map(([id], i) => `<input type="radio" class="now-tab-r" name="now-part" id="now-tab-${id}" value="${id}"${i === 0 ? ' checked' : ''}>`).join('');
+    const tabs = shown.map(([id, label]) => `<label for="now-tab-${id}">${esc(label)}</label>`).join('');
+    return `${radios}<div class="now-tabs" role="presentation">${tabs}</div>\n${shown.map(([id, , html]) => html.replace(/^<div class="(now-block|now-grid)"/, `<div class="$1" data-now-part="${id}"`)).join('\n')}`;
 }
 
 // The lower half (tools, what an account adds, what opens next, the questions, the developers' links): every section
@@ -304,6 +312,29 @@ const CSS = `
 .vcard .now-badge{z-index:1}
 .vcard.now-empty .vc-thumb{border:1px dashed var(--border-light,#2c3d5c);background:transparent}.vcard.now-empty .now-noimg{display:grid;place-items:center;font-size:28px;color:var(--accent-light,#60a5fa);background:transparent}
 .now .now-grid{margin-top:26px}
+/* Right now, v2 (ask 364): a title with the live dot, one line under it, each block's head says what it is, how many,
+   and a short way to the rest; one live stream fills the row; on a phone the parts are tabs. */
+.now-title{display:flex;align-items:center;gap:10px}
+.now-lede{margin-top:4px}
+.now-head{align-items:center;margin-bottom:10px}
+.now-h{display:flex;align-items:center;gap:8px;min-width:0;margin:0;font-size:16px;font-weight:800;letter-spacing:-.01em;text-transform:none;color:var(--text-primary,#e6edf7)}
+.now-h-live{width:9px;height:9px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 4px rgba(239,68,68,.18);flex:none}
+.now-h-ic{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;font-size:12px;color:var(--accent-light,#60a5fa);background:color-mix(in srgb,var(--accent,#3b82f6) 14%,transparent);flex:none}
+.now-n{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:999px;font:700 11.5px/1 Inter,system-ui,sans-serif;font-style:normal;color:var(--text-muted,#7d8aa0);background:color-mix(in srgb,var(--text-primary,#fff) 7%,transparent)}
+.now-head .now-more{display:inline-flex;align-items:center;gap:6px;flex:none;min-height:36px;padding:0 4px 0 10px;border-radius:10px;white-space:nowrap;font-size:13px;font-weight:650;color:var(--accent-light,#60a5fa);text-decoration:none}
+.now-head .now-more:hover,.now-head .now-more:focus-visible{background:color-mix(in srgb,var(--accent,#3b82f6) 12%,transparent)}
+.now-head .now-more i{font-size:11px;transition:transform .2s}
+.now-head .now-more:hover i{transform:translateX(2px)}
+.now-tab-r,.now-tabs{display:none}
+@media (max-width:600px){
+.now-block.is-one .now-rail>li{flex:0 0 100%}
+.now-tabs{display:flex;gap:4px;margin:22px 0 0;padding:4px;border-radius:14px;background:color-mix(in srgb,var(--text-primary,#fff) 5%,transparent);overflow-x:auto;scrollbar-width:none}.now-tabs::-webkit-scrollbar{display:none}
+.now-tabs label{flex:1 0 auto;display:grid;place-items:center;min-height:40px;padding:0 14px;border-radius:10px;font-size:13.5px;font-weight:700;color:var(--text-secondary,#a8b3c4);white-space:nowrap;cursor:pointer;transition:background .2s,color .2s}
+.now:has(#now-tab-recs:checked) .now-tabs label[for="now-tab-recs"],.now:has(#now-tab-shots:checked) .now-tabs label[for="now-tab-shots"],.now:has(#now-tab-posts:checked) .now-tabs label[for="now-tab-posts"]{background:var(--bg-card,#16213a);color:var(--text-primary,#e6edf7);box-shadow:0 1px 0 rgba(255,255,255,.05),0 2px 8px rgba(0,0,0,.3)}
+.now-tab-r:focus-visible+.now-tabs{outline:2px solid var(--accent,#3b82f6);outline-offset:2px}
+.now:has(#now-tab-recs:checked) [data-now-part]:not([data-now-part="recs"]),.now:has(#now-tab-shots:checked) [data-now-part]:not([data-now-part="shots"]),.now:has(#now-tab-posts:checked) [data-now-part]:not([data-now-part="posts"]){display:none}
+.now .now-block[data-now-part],.now .now-grid[data-now-part]{margin-top:14px}
+}
 .now-pick,.more-pick,.more-pick-h{display:none}
 @media (max-width:600px){
 .now-pick,.more-pick{display:flex;gap:8px;overflow-x:auto;margin:22px -16px 0;padding:2px 16px 4px;scrollbar-width:none;overscroll-behavior-x:contain}.now-pick::-webkit-scrollbar,.more-pick::-webkit-scrollbar{display:none}
