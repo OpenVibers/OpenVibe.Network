@@ -150,13 +150,13 @@ function rightNow(a) {
     const views = (n) => (n ? `${fmtViewers(n)} view${n === 1 ? '' : 's'}` : '');
     const face = (src) => (src ? img(src, null, 36, 36) : '<span class="vc-noface"></span>');
     const card = ({ url, thumb, badge, len, about, avatar, title, who, line, cls = '' }) => `<li><a class="vcard${cls}" href="${esc(url)}">
-<span class="vc-thumb">${thumb ? img(thumb, avatar, 320, 180) : '<span class="now-noimg"></span>'}${badge || ''}${len ? `<span class="vc-len">${esc(len)}</span>` : ''}<span class="vc-play" aria-hidden="true"><i class="fa-solid fa-play"></i></span>${about ? `<span class="vc-about">${esc(about)}</span>` : ''}</span>
+<span class="vc-thumb">${thumb ? img(thumb, avatar, 320, 180) : '<span class="now-noimg"></span>'}${badge || ''}${len ? `<span class="vc-len">${esc(len)}</span>` : ''}<span class="vc-play" aria-hidden="true"><i>${PLAY}</i></span>${about ? `<span class="vc-about">${esc(about)}</span>` : ''}</span>
 <span class="vc-meta">${face(avatar)}<span class="vc-text"><b>${esc(title)}</b>${who ? `<small>${esc(who)}</small>` : ''}${line ? `<small>${esc(line)}</small>` : ''}</span></span></a></li>`;
     // A block's head (ask 364, 2026-11-11: the owner's "overhaul … more organized"): its name in sentence case with
     // its own mark and how many, and one short link to the rest (its full name in the title) that never wraps.
     const head = (title, n, href, more, short, mark) => `<div class="now-head"><h3 class="now-h">${mark}<span>${title}</span>${n ? `<em class="now-n">${n}</em>` : ''}</h3>`
-        + `<a class="now-more" href="${esc(href)}" title="${esc(more)}" aria-label="${esc(more)}">${esc(short)}<i class="fa-solid fa-chevron-right" aria-hidden="true"></i></a></div>`;
-    const MARK = { live: '<span class="now-h-live" aria-hidden="true"></span>', recs: '<i class="fa-solid fa-film now-h-ic" aria-hidden="true"></i>', shots: '<i class="fa-solid fa-image now-h-ic" aria-hidden="true"></i>' };
+        + `<a class="now-more" href="${esc(href)}" title="${esc(more)}" aria-label="${esc(more)}">${esc(short)}<i>${CHEVRON}</i></a></div>`;
+    const MARK = { live: '<span class="now-h-live" aria-hidden="true"></span>', recs: `<span class="now-h-ic">${icon('video', 16)}</span>`, shots: `<span class="now-h-ic">${icon('image', 16)}</span>` };
     const rail = (title, href, more, cards, id = '', short = 'All', mark = MARK.recs) => (cards.length ? `<div class="now-block${cards.length === 1 ? ' is-one' : ''}"${id ? ` id="${id}"` : ''}>${head(title, cards.length, href, more, short, mark)}<ul class="now-rail" data-ovk-scroll>${cards.join('')}</ul></div>` : '');
 
     const live = a.live.map((s) => card({ url: s.url, thumb: s.thumb || s.avatar, badge: `<span class="now-badge"><i></i>LIVE${s.viewers ? ` · ${esc(fmtViewers(s.viewers))}` : ''}</span>`, avatar: s.avatar, title: s.title, who: s.name, line: s.category }));
@@ -209,21 +209,20 @@ function moreParts(parts) {
 }
 
 // The five things people do now (plan L43; designed by Opus 2026-11-11): a ranked list, each row its place, the site's
-// mark, the reason Report gives and the number behind it (growth when it is rising, else the week's opens; a number
+// own mark, the reason Report gives and the number behind it (growth when it is rising, else the week's opens; a number
 // Report did not send is left out). The order and the numbers are Report's; when Report does not answer the fixed
 // starter list is used and the section says so in data-source. A phone reads it as rows, a computer as five cards.
-const POP_ICON = { 'media-hub': 'fa-play', video: 'fa-play', tours: 'fa-route', community: 'fa-users', news: 'fa-newspaper',
-    design: 'fa-palette', report: 'fa-chart-column', network: 'fa-circle-nodes', music: 'fa-music', trade: 'fa-chart-line',
-    coupons: 'fa-ticket', deals: 'fa-tags', download: 'fa-folder', cam: 'fa-camera', openre: 'fa-share-nodes', host: 'fa-server',
-    reviews: 'fa-star', media: 'fa-photo-film', exchange: 'fa-arrow-right-arrow-left', compare: 'fa-scale-balanced' };
-const popIcon = (it) => POP_ICON[it.id] || POP_ICON[it.icon] || (INTENTS.find((x) => x[0] === it.id || x[0] === it.icon) || [])[1] || 'fa-circle-nodes';
+// This page draws no icon font: the marks are the shared icons' inline SVG (icon() above), and the rising arrow is drawn here.
+const PLAY = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
+const CHEVRON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
+const TREND_UP = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>';
 /** The number behind a row: "+44%" or "35×" this week when it is rising, else the week's opens; '' when Report sent none. */
 function popFigure(it) {
     const g = Number(it.growth_7d_pct);
     if (/rising/i.test(it.reason) && Number.isFinite(g) && g > 0) {
         const big = g >= 200 && Number(it.opens_prev_7d) > 0;
         const v = big ? `${Math.round(Number(it.opens_7d) / Number(it.opens_prev_7d))}×` : `+${g}%`;
-        return `<span class="pop-n is-up" title="${esc(big ? `${v} last week's opens` : `${v} on last week`)}"><i class="fa-solid fa-arrow-trend-up" aria-hidden="true"></i>${esc(v)}</span>`;
+        return `<span class="pop-n is-up" title="${esc(big ? `${v} last week's opens` : `${v} on last week`)}">${TREND_UP}${esc(v)}</span>`;
     }
     const n = Number(it.opens_7d);
     return Number.isFinite(n) && n > 0 ? `<span class="pop-n" title="${esc(`${n.toLocaleString('en-US')} opens this week`)}">${esc(fmtVisits(n))}<small>this week</small></span>` : '';
@@ -236,7 +235,7 @@ function popularNow() {
         ? "Ranked from OpenVibe.Report's numbers: what people opened today and this week."
         : 'A fixed starter list while OpenVibe.Report is away.';
     const row = (it, i) => `<li><a class="pop-row" href="${esc(it.url)}"><span class="pop-rank" aria-hidden="true">${i + 1}</span>`
-        + `<span class="pop-ic" aria-hidden="true"><i class="fa-solid ${esc(popIcon(it))}"></i></span>`
+        + `<span class="pop-ic" aria-hidden="true">${icon(it.icon || it.id, 20)}</span>`
         + `<span class="pop-t"><b>${esc(it.name)}</b><small>${esc(it.reason)}</small></span>${popFigure(it)}</a></li>`;
     return `<section class="sc-sec pop" id="popular" data-source="${esc(p.source)}" aria-labelledby="h-popular"><h2 id="h-popular" class="ovk-titled">${sectionIcon('grid')}Five things people do now</h2><p class="sc-lede">${esc(lede)}</p><ol class="pop-list">${items.map(row).join('')}</ol></section>`;
 }
