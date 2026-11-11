@@ -17,7 +17,7 @@ const { SITES } = require('../server/frame/sites');
 const PINNED = {
     network: 'live', live: 'live', tools: 'live', media: 'live', games: 'live', community: 'live', connect: 'live', events: 'live',
     billing: 'live', codes: 'live', blog: 'live', wiki: 'live', sites: 'retired',   // Sites retired 2026-10-14 (contracts 0.181.0)
-    news: 'live', reviews: 'live', deals: 'live', coupons: 'live', trade: 'live', host: 'live', domains: 'live', report: 'live', design: 'live', today: 'live', surf: 'live', meme: 'live', vision: 'live', compare: 'live', exchange: 'live', fun: 'live', cam: 'live', bench: 'live', casino: 'live', tours: 'live', shoes: 'live',   // News, Reviews, Coupons, Trade live since contracts 0.125.0; Domains since 0.226.0, Report 0.227.0, Design 0.228.0, Meme since 0.234.0, Vision and Exchange since 0.235.0, Fun since 0.236.0, Cam since 0.237.0, Bench since 0.238.0, Casino since 0.264.0
+    news: 'live', reviews: 'live', deals: 'live', coupons: 'live', trade: 'live', host: 'live', domains: 'live', report: 'live', design: 'live', today: 'live', surf: 'live', meme: 'live', vision: 'live', exchange: 'live', fun: 'live', cam: 'live', bench: 'live', casino: 'live', tours: 'live', shoes: 'live',   // News, Reviews, Coupons, Trade live since contracts 0.125.0; Domains since 0.226.0, Report 0.227.0, Design 0.228.0, Meme since 0.234.0, Vision and Exchange since 0.235.0, Fun since 0.236.0, Cam since 0.237.0, Bench since 0.238.0, Casino since 0.264.0
     tips: 'live', vip: 'live', openre: 'live', search: 'live', sources: 'internal', chat: 'live', 'media-hub': 'live', space: 'live',   // a home and redirects since the forum returned to Community (contracts 0.118.0)
     // tips, vip: their own sites at openvibe.tips and openvibe.vip since contracts 0.200.0 (2026-10-17)
     ai: 'live',   // the public API at ai.openvibe.services since 2026-10-07; its human pages moved to Exchange 2026-11-07
@@ -26,6 +26,7 @@ const PINNED = {
     actor: 'live',   // OpenVibe's own agent and the router for agent work at openvibe.actor since 2026-10-08 (contracts 0.115.0)
     computer: 'live', locker: 'live',   // launched 2026-11-08 (contracts 0.347.0)
     directory: 'live',   // OpenVibe.Directory catalogued as a live service (contracts 0.406.0, #445)
+    compare: 'live',     // OpenVibe.Compare catalogued in contracts 0.409.0 (its manifest is alpha, its domain answers the service)
     studio: 'live',   // launched 2026-11-08 (contracts 0.348.0)
     food: 'live', help: 'live', work: 'live',   // services since contracts 0.116.0 (plan T19, 2026-10-08)
     quest: 'live', rent: 'live',   // services since contracts 0.117.0
@@ -133,7 +134,7 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     // v0.95.0 Services; Space and AI went live in v0.110.0; Food, Help and Work in v0.116.0; Quest, Rent and Watch in v0.117.0;
     // Inventory in v0.122.0; none is retired
     // News, Reviews, Coupons, Trade and OpenRestream in v0.125.0; Run in v0.141.0
-    assert.deepStrictEqual(st.exposure_summary, { live: 58 + (HAS_MAIL ? 1 : 0) + (HAS_GIT ? 1 : 0), internal: 1, library: 4, repository: 1, placeholder: 0, retired: 1 });   // Sites retired (contracts 0.181.0); Tips and VIP live (0.200.0); Design live (0.228.0); Meme live (0.234.0); Vision and Exchange live (0.235.0); Fun live (0.236.0); Cam live (0.237.0); Bench live (0.238.0); Email live with the release that adds its manifest; Git live (contracts 0.373.0); Directory live (contracts 0.406.0, #445); Compare live (contracts 0.408.0)
+    assert.deepStrictEqual(st.exposure_summary, { live: 58 + (HAS_MAIL ? 1 : 0) + (HAS_GIT ? 1 : 0), internal: 1, library: 4, repository: 1, placeholder: 0, retired: 1 });   // Sites retired (contracts 0.181.0); Tips and VIP live (0.200.0); Design live (0.228.0); Meme live (0.234.0); Vision and Exchange live (0.235.0); Fun live (0.236.0); Cam live (0.237.0); Bench live (0.238.0); Email live with the release that adds its manifest; Git live (contracts 0.373.0); Directory live (contracts 0.406.0, #445); Compare live (contracts 0.409.0)
 
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());

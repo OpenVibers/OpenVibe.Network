@@ -95,7 +95,7 @@ const clearOutbox = async () => { await db.prepare("DELETE FROM network_event_ou
 
 try {
     // The migration is expand-only: an older release never reads the table.
-    assert.match(fs.readFileSync(path.join(__dirname, '..', 'migrations', '0078_ui_layouts.sql'), 'utf8'), /^-- phase: expand$/m);
+    assert.match(fs.readFileSync(path.join(__dirname, '..', 'migrations', '0079_ui_layouts.sql'), 'utf8'), /^-- phase: expand$/m);
     // No arrangement yet: 404 with a code the editor understands, never a made-up default.
     let r = await call('GET', active);
     assert.strictEqual(r.status, 404);

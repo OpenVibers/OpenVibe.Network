@@ -56,8 +56,7 @@ const fullName = (s) => (/^Open[A-Z]/.test(String(s && s.name)) ? s.name : `Open
 // The launcher (openvibe-shared navbar) lists every open site under one of these groups, most used first within
 // each. A site missing here lands in the last group, so a new manifest is never left out of the menu.
 // The owner's regrouping (2026-11-10, plan ask 274): eight groups named for what a person came to do, in the order
-// the menu, its folders, the footer and the home pages show them. Seven tiles a group, but Compare (Contracts 0.408.0)
-// joined Read & ask as its eighth on 2026-11-11 while the owner's next regrouping decides; Video's two domains
+// the menu, its folders, the footer and the home pages show them. Seven tiles a group at most; Video's two domains
 // (Pics, Download) are list entries of their own, while Media, Homes and Bench are sections of Video, Rent and
 // Report and keep their domains without a tile. Contracts' `site.neighbourhood` repeats these ids for every site.
 const GROUPS = [
@@ -80,7 +79,7 @@ const MENU_LINE = {
     download: 'Your files', cam: 'Your camera, in private', tours: 'Cities, routes, stays',
     community: 'Posts and pastes', chat: 'Chat with anyone', tips: 'Support streamers', vip: 'Back your creators', mail: 'Masks and inboxes', help: 'Help nearby', network: 'Your account',
     games: 'Play in your browser', quest: 'Earn badges', surf: 'Surf maps and the web', fun: 'Something to do', meme: 'Memes with receipts', casino: 'Odds shown, chips free', inventory: 'Your items',
-    news: 'Sourced, not spun', today: 'Your schedule', report: 'Your numbers, honest', search: 'Search everything', wiki: 'Facts with sources', blog: 'Write long-form', vision: 'Ask a picture', compare: 'Weigh your options',
+    news: 'Sourced, not spun', today: 'Your schedule', report: 'Your numbers, honest', search: 'Search everything', wiki: 'Facts with sources', blog: 'Write long-form', vision: 'Ask a picture', compare: 'Compare anything',
     deals: 'Deals people share', coupons: 'Codes that work', shoes: 'Every shoe, every price', reviews: 'Honest reviews', trade: 'Watch the markets', rent: 'Places to rent', work: 'Find a job',
     tools: 'Every online tool', design: 'Try themes live', domains: 'Names and prices', host: 'Compare hosting', image: 'Edit photos in your browser', lock: 'Files only you can open', food: 'Food near you',
     space: 'Host a site or app', codes: 'Code with any agent', bot: 'Drive a robot', actor: 'The agent engine', computer: 'Your computer, your way', connect: 'Share a port with Link', directory: 'Listings with sources',

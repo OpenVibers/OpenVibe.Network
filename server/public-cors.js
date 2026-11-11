@@ -28,6 +28,7 @@ const CONTRACT_RE = /^\/contracts\/[a-z0-9-]+(?:\/[a-z0-9-]+)?\/[a-z0-9_.-]+\.v\
 function isPublicDiscoveryPath(p) {
     const path = String(p || '');
     if (path === '/.well-known/openvibe') return true;
+    if (path === '/.well-known/webauthn') return true;   // the browser's Related Origin Requests check
     if (/^\/api\/v1\/levels\/(?:batch|board|people\/[A-Za-z0-9_]{1,40})$/.test(path)) return true;
     if (/^\/api\/v1\/people\/[A-Za-z0-9_]{3,24}\/card$/.test(path)) return true;
     if (path === '/api/v1/changelog') return true;   // the network changelog every site's "shipped" widget reads

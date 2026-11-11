@@ -417,6 +417,14 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         // network.link.revoked@1 in this same transaction, so a service holding a machine's session stops it at once.
         const nodePrincipals = require('../registry/link-principals');
         count('nodes_revoked', await nodePrincipals.revokeOwnedBy(db, subjects, { actor: { type: 'user', id: subject }, now }));
+        // An agent thread can contain another person's message too. Remove the shared thread and its open tasks
+        // when either participant deletes their account; no agent or machine can continue it afterwards.
+        for (const sid of subjects) {
+            await db.prepare('DELETE FROM agent_tasks WHERE thread_id IN (SELECT id FROM agent_threads WHERE from_owner = ? OR to_owner = ?)').run(sid, sid);
+            await db.prepare('DELETE FROM agent_threads WHERE from_owner = ? OR to_owner = ?').run(sid, sid);
+            count('agents_deleted', (await db.prepare('DELETE FROM agent_directory WHERE owner_subject = ?').run(sid)).changes);
+            await db.prepare('DELETE FROM link_access_audit WHERE from_owner = ? OR to_owner = ?').run(sid, sid);
+        }
         // OpenCoins: loyalty (ADR-012). The balance closes with one ledger entry; the ledger stays.
         for (const id of userIds) {
             const bal = (await db.prepare('SELECT balance FROM wallets WHERE user_id = ?').get(id) || { balance: 0 }).balance;

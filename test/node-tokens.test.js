@@ -91,12 +91,12 @@ try {
         assert.strictEqual((await row(A.principal)).last_seen_at, null);
         const r = await tokenCall(A.principal, A.credential, 'openvibe.network');
         assert.strictEqual(r.status, 200, r.text);
-        assert.deepStrictEqual([r.body.token_type, r.body.expires_in, r.body.scope], ['Bearer', 300, 'network.link.self.manage']);
+        assert.deepStrictEqual([r.body.token_type, r.body.expires_in, r.body.scope], ['Bearer', 300, 'network.link.self.manage network.link.access.request network.agents.register']);
         const v = serviceAuth.verifyServiceToken(r.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.network' });
         assert.ok(v.ok, v.reason);
         assert.ok(validate('identity.service-token-claims@1', v.claims).valid);
         const c = v.claims;
-        assert.deepStrictEqual([c.iss, c.sub, c.actor_type, c.aud, c.cap], [ISSUER, `link:${A.principal}`, 'link', ['openvibe.network'], ['network.link.self.manage']]);
+        assert.deepStrictEqual([c.iss, c.sub, c.actor_type, c.aud, c.cap], [ISSUER, `link:${A.principal}`, 'link', ['openvibe.network'], ['network.link.self.manage', 'network.link.access.request', 'network.agents.register']]);
         assert.match(c.sub, /^link:lnk_[0-9A-HJKMNP-TV-Z]{26}$/);
         assert.strictEqual(c.exp - c.iat, principals.TOKEN_TTL_S);
         assert.match(c.jti, /^tok_[0-9a-f]{24}$/);

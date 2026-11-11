@@ -641,6 +641,20 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/api/v1/link/self/send', rateLimit({ windowMs: 60_000, max: 300 }), sendRelay.self);
     app.use('/api/v1/me/nodes/send-keys', rateLimit({ windowMs: 60_000, max: 60 }), sendRelay.keys);
     app.use('/api/v1/me/nodes/send', rateLimit({ windowMs: 60_000, max: 300 }), sendRelay.web);
+    const access = require('./link/access').routers({ requireAuth,
+        nodeGuard: require('./identity/principals').guard('network.link.access.request'),
+        relayGuard: require('./identity/principals').guard('network.agents.relay') });
+    app.use('/api/v1/link/self', rateLimit({ windowMs: 60_000, max: 60 }), access.self);
+    app.use('/api/v1/me/nodes', rateLimit({ windowMs: 60_000, max: 60 }), access.user);
+    app.use('/internal/link-access', access.internal);
+    const agents = require('./link/agents').routers({ requireAuth,
+        registerGuard: require('./identity/principals').guardAny(['network.agents.register', 'network.link.self.manage']),
+        resultGuard: require('./identity/principals').guardAny(['network.agents.relay', 'network.agents.register']),
+        bot: require('./registry/machines').createBotClient({ baseUrl: config.services.bot.internalUrl, privateKey, issuer: config.jwt.issuer }),
+        config, privateKey, issuer: config.jwt.issuer });
+    app.use('/api/v1/agents', rateLimit({ windowMs: 60_000, max: 600 }), agents.results);
+    app.use('/api/v1/agents', rateLimit({ windowMs: 60_000, max: 600 }), agents.relay);
+    app.use('/api/v1/me', rateLimit({ windowMs: 60_000, max: 120 }), agents.me);
 }
 // The machines hub (plan L34, step M2): a person's machines on openvibe.link/machines. Bot stays the registry
 // underneath; Network fronts it and calls it as the person, so Bot checks the machine is that person's own.
@@ -899,6 +913,7 @@ require('./developer/confirmations').start(db);
     // minute per person, like the Dock's. GET answers the v2 default-on shape for a person who never chose.
     const menuFeeds = require('./menu-feeds').createMenuFeeds({ db });
     app.use('/api/v1/me/menu-feeds', require('./menu-feeds').router({ menuFeeds, requireAuth }));
+    app.use('/api/v1/me/feed-seen', require('./feed-seen').router({ requireAuth }));
     const homeScreen = require('./home-screen').createHomeScreen({ db });
     app.use('/api/v1/me/home-screen', require('./home-screen').router({ homeScreen, requireAuth }));
     // People's own controls (design 2026-11-11, piece 4): the active arrangement per surface and device,
@@ -1198,6 +1213,12 @@ require('./auth/app-links').mount(app);
     const fedcm = require('./auth/fedcm');
     const ctx = () => ({ db, publicKey, privateKey, config });
     app.get('/.well-known/web-identity', fedcm.wellKnown(ctx));
+    // WebAuthn Related Origin Requests: the exact product origins allowed to use Network's passkeys.
+    app.get('/.well-known/webauthn', (_req, res) => {
+        res.set('Content-Type', 'application/json; charset=utf-8');
+        res.set('Cache-Control', 'public, max-age=300');
+        res.send(JSON.stringify({ origins: require('./webauthn-origins').origins() }));
+    });
     // OpenID Connect discovery at the issuer's root (and RFC 8414's name for it): server/auth/oidc.js
     require('./auth/oidc').mount(app);
     app.use('/fedcm', fedcm.createFedcmRoutes(ctx));

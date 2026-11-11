@@ -251,6 +251,7 @@ async function revokeRow(db, p, { revokedBy, actor, reason, at }) {
         prev_valid_until = NULL, updated_at = ? WHERE id = ? AND status <> 'revoked'`).run(at, revokedBy, at, p.id)).changes;
     if (!changed) return 0;
     await eventRelay.writerFor(db).enqueue(db, revokedEnvelope(p, { actor, reason, at }));
+    await require('../link/access').revokeForPrincipal(db, p.id, p.owner_subject, Date.parse(at));
     return 1;
 }
 
@@ -406,7 +407,7 @@ async function issueNodeToken(db, { clientId, clientSecret, audience, privateKey
     const iat = Math.floor(now / 1000);
     const claims = {
         iss: issuer, sub: `link:${p.id}`, actor_type: 'link', aud: [aud],
-        cap: aud === SELF_AUDIENCE ? ['network.link.self.manage'] : nodeCaps,
+        cap: aud === SELF_AUDIENCE ? ['network.link.self.manage', 'network.link.access.request', 'network.agents.register'] : nodeCaps,
         // The person the machine acts for, on the audiences where it acts for them (the Agent Streams plan's Live
         // token): Live reads the owner of an agent stream from it. Other audiences name nobody.
         ...(nodeCaps.length && p.owner_subject ? { on_behalf_of: p.owner_subject } : {}),
