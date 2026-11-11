@@ -1156,6 +1156,9 @@ app.get('/apps', connectPage);
 app.get('/apps.html', (req, res) => redirectWithoutHtml(req, res, '/apps'));
 app.get('/', (req, res, next) => {
     if (getRequestHost(req) === 'connect.openvibe.network') return connectPage(req, res);
+    // The Node host has no browser session of its own. Send its front door to the
+    // signed-in Machines hub instead of serving the Network home under another origin.
+    if (getRequestHost(req) === 'node.openvibe.network') return res.redirect(302, 'https://openvibe.link/machines');
     return next();
 });
 app.get('/pay/:id', (_req, res) => sendPayPage(res));
