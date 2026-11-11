@@ -668,6 +668,10 @@ const DEFAULT_GRANTS = [
     // hides a thread when it takes the entity down.
     ['live', 'community.comment.write', 'openvibe.community', []],
     ['live', 'community.comment.moderate', 'openvibe.community', []],
+    // Video uploads belong to MediaHub; it checks item visibility and owner rights before handing
+    // the Community thread to a viewer or moderating a comment on that item.
+    ['media-hub', 'community.comment.write', 'openvibe.community', []],
+    ['media-hub', 'community.comment.moderate', 'openvibe.community', []],
     ['live', 'community.pulse.write', 'openvibe.community', []],
     // Wave 6: OpenVibe.Chat reads Live's chat context and asks Live for effects; Live bridges its remaining
     // chat writers to Chat and reads presence. (The read mirror back to Live was retired 2026-10-05: see REVOKED_GRANTS.)

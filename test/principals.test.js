@@ -25,6 +25,7 @@ assert.ok(JSON.parse(spaceClient.redirect_uris).includes('http://localhost:4940/
 
 await db.prepare("UPDATE oauth_clients SET client_secret = 'live-secret' WHERE client_id = 'live'").run();
 await db.prepare("UPDATE oauth_clients SET client_secret = 'media-secret' WHERE client_id = 'media'").run();
+await db.prepare("UPDATE oauth_clients SET client_secret = 'media-hub-test-secret' WHERE client_id = 'media-hub'").run();
 // The `search` client is created with server/setup/service-principal.js, not seeded with the signed-in products.
 await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('search', 'search-secret', 'OpenVibe.Search', '[]', 1) ON CONFLICT DO NOTHING").run();
 // Events is created the same way (setup/service-principal.js); it is a usage producer with its own token.
@@ -382,6 +383,8 @@ const server = http.createServer(app);
     assert.strictEqual(spaceEvents.body.scope, 'events.event.publish events.subscription.manage', 'Space publishes its hosting events and subscribes to the account events (spaces hold personal data), nothing more');
     const cm = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.community' });
     assert.deepStrictEqual(cm.body.scope.split(' '), ['community.comment.moderate', 'community.comment.write', 'community.paste.create', 'community.paste.moderate', 'community.paste.write', 'community.pulse.write']);
+    const videoComments = await token({ client_id: 'media-hub', client_secret: 'media-hub-test-secret', audience: 'openvibe.community' });
+    assert.deepStrictEqual(videoComments.body.scope.split(' '), ['community.comment.moderate', 'community.comment.write']);
     const tl = await token({ client_id: 'live', client_secret: 'live-secret', audience: 'openvibe.tools' });
     assert.deepStrictEqual(tl.body.scope.split(' '), ['tools.job.read', 'tools.tool.run'], 'Live runs Tools on the service tier, never probes');
     await db.prepare("UPDATE oauth_clients SET client_secret = 'tools-secret' WHERE client_id = 'tools'").run();
