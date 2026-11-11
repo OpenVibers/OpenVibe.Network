@@ -92,8 +92,10 @@ for (const [id, , verb, , href] of home.INTENTS) {
 }
 assert.ok(/Go live<\/b><small>From a browser tab\. No OBS, no follower minimum\./.test(html), 'browser go-live stays the headline promise');
 // The five most popular list (plan L43) is a plain list; with no Report wired in this process it says it is the floor.
-assert.ok(/<section class="sc-sec" id="popular" data-source="fallback"/.test(html), 'the signed-out popularity list is on the page and names its source');
-assert.ok(html.includes('Five things people do now') && /<ul class="now-list">/.test(html), 'the list is plain, with the existing classes');
+assert.ok(/<section class="sc-sec pop" id="popular" data-source="fallback"/.test(html), 'the signed-out popularity list is on the page and names its source');
+assert.ok(html.includes('Five things people do now') && /<ol class="pop-list">/.test(html), 'the five are a ranked list');
+assert.ok(/<a class="pop-row" href="https:\/\/openvibe\.live\/"><span class="pop-rank" aria-hidden="true">1<\/span><span class="pop-ic" aria-hidden="true"><i class="fa-solid fa-tower-broadcast"><\/i><\/span>/.test(html), 'each row: its place, the site\'s mark');
+assert.ok(!/class="pop-n/.test(html.slice(html.indexOf('id="popular"'), html.indexOf('</ol>', html.indexOf('id="popular"')))), 'the fallback list has no numbers, so it shows none');
 assert.ok(/Nobody is live right now/.test(html) && /Go live from your browser/.test(html), 'an honest empty state');
 const open = sites.filter((s) => s.status === 'open' && s.id !== 'network');
 // The hero's orbit (2026-10-28): the most used sites around the mark, the count of every site in its middle.

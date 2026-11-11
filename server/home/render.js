@@ -208,9 +208,26 @@ function moreParts(parts) {
     return `<div class="more"><h2 class="more-pick-h">${sectionIcon('grid')}More about OpenVibe</h2><nav class="more-pick" data-ovk-scroll aria-label="More about OpenVibe">${chips}</nav>\n${shown.map(([, , html]) => html.replace(/^<section class="([^"]*)" id="([^"]*)"/, '<section class="$1" id="$2" data-more-part')).join('\n')}</div>`;
 }
 
-// The five things people do now (plan L43): a plain list, no new styles. The order and the numbers are Report's;
-// when Report does not answer the fixed starter list is used and the section says so in data-source. Opus places and
-// styles the block; this only renders it.
+// The five things people do now (plan L43; designed by Opus 2026-11-11): a ranked list, each row its place, the site's
+// mark, the reason Report gives and the number behind it (growth when it is rising, else the week's opens; a number
+// Report did not send is left out). The order and the numbers are Report's; when Report does not answer the fixed
+// starter list is used and the section says so in data-source. A phone reads it as rows, a computer as five cards.
+const POP_ICON = { 'media-hub': 'fa-play', video: 'fa-play', tours: 'fa-route', community: 'fa-users', news: 'fa-newspaper',
+    design: 'fa-palette', report: 'fa-chart-column', network: 'fa-circle-nodes', music: 'fa-music', trade: 'fa-chart-line',
+    coupons: 'fa-ticket', deals: 'fa-tags', download: 'fa-folder', cam: 'fa-camera', openre: 'fa-share-nodes', host: 'fa-server',
+    reviews: 'fa-star', media: 'fa-photo-film', exchange: 'fa-arrow-right-arrow-left', compare: 'fa-scale-balanced' };
+const popIcon = (it) => POP_ICON[it.id] || POP_ICON[it.icon] || (INTENTS.find((x) => x[0] === it.id || x[0] === it.icon) || [])[1] || 'fa-circle-nodes';
+/** The number behind a row: "+44%" or "35×" this week when it is rising, else the week's opens; '' when Report sent none. */
+function popFigure(it) {
+    const g = Number(it.growth_7d_pct);
+    if (/rising/i.test(it.reason) && Number.isFinite(g) && g > 0) {
+        const big = g >= 200 && Number(it.opens_prev_7d) > 0;
+        const v = big ? `${Math.round(Number(it.opens_7d) / Number(it.opens_prev_7d))}×` : `+${g}%`;
+        return `<span class="pop-n is-up" title="${esc(big ? `${v} last week's opens` : `${v} on last week`)}"><i class="fa-solid fa-arrow-trend-up" aria-hidden="true"></i>${esc(v)}</span>`;
+    }
+    const n = Number(it.opens_7d);
+    return Number.isFinite(n) && n > 0 ? `<span class="pop-n" title="${esc(`${n.toLocaleString('en-US')} opens this week`)}">${esc(fmtVisits(n))}<small>this week</small></span>` : '';
+}
 function popularNow() {
     const p = homePopular.peek();
     const items = Array.isArray(p.items) ? p.items.slice(0, 5) : [];
@@ -218,7 +235,10 @@ function popularNow() {
     const lede = p.source === 'report'
         ? "Ranked from OpenVibe.Report's numbers: what people opened today and this week."
         : 'A fixed starter list while OpenVibe.Report is away.';
-    return `<section class="sc-sec" id="popular" data-source="${esc(p.source)}" aria-labelledby="h-popular"><h2 id="h-popular" class="ovk-titled">${sectionIcon('grid')}Five things people do now</h2><p class="sc-lede">${esc(lede)}</p><ul class="now-list">${items.map((it) => `<li><a href="${esc(it.url)}"><b>${esc(it.name)}</b><small>${esc(it.reason)}</small></a></li>`).join('')}</ul></section>`;
+    const row = (it, i) => `<li><a class="pop-row" href="${esc(it.url)}"><span class="pop-rank" aria-hidden="true">${i + 1}</span>`
+        + `<span class="pop-ic" aria-hidden="true"><i class="fa-solid ${esc(popIcon(it))}"></i></span>`
+        + `<span class="pop-t"><b>${esc(it.name)}</b><small>${esc(it.reason)}</small></span>${popFigure(it)}</a></li>`;
+    return `<section class="sc-sec pop" id="popular" data-source="${esc(p.source)}" aria-labelledby="h-popular"><h2 id="h-popular" class="ovk-titled">${sectionIcon('grid')}Five things people do now</h2><p class="sc-lede">${esc(lede)}</p><ol class="pop-list">${items.map(row).join('')}</ol></section>`;
 }
 
 // The hero's numbers: only what Network read itself within the last minute (server/home/activity.js); a number it
@@ -347,6 +367,31 @@ const CSS = `
 }
 .now-code{display:inline-block;margin:0 0 3px;padding:1px 7px;border-radius:6px;border:1px dashed var(--accent,#3b82f6);color:var(--accent-light,#60a5fa);font:700 12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px}
 .now-list b{overflow-wrap:anywhere}
+.pop-list{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px;counter-reset:none}
+.pop-row{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:12px;min-height:60px;padding:10px 14px 10px 10px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.08));background:color-mix(in srgb,var(--bg-secondary,#101828) 80%,transparent);color:inherit;text-decoration:none;transition:border-color .15s ease,transform .15s ease}
+.pop-row:hover,.pop-row:focus-visible{border-color:var(--accent,#3b82f6)}
+.pop-row:focus-visible{outline:2px solid var(--accent,#3b82f6);outline-offset:2px}
+.pop-rank{display:grid;place-items:center;width:24px;font-size:13px;font-weight:800;color:var(--text-muted,#7d8aa0);font-variant-numeric:tabular-nums}
+.pop-list li:first-child .pop-rank{color:var(--accent-light,#60a5fa)}
+.pop-ic{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:color-mix(in srgb,var(--accent,#3b82f6) 14%,transparent);color:var(--accent-light,#60a5fa);font-size:16px}
+.pop-t{display:grid;gap:2px;min-width:0}
+.pop-t b{font-size:14.5px;line-height:1.3;overflow-wrap:anywhere}
+.pop-t small{font-size:12.5px;line-height:1.35;color:var(--text-secondary,#a8b3c4)}
+.pop-n{display:grid;justify-items:end;gap:0;font-size:14px;font-weight:750;font-variant-numeric:tabular-nums;color:var(--text-primary,#e6edf7);white-space:nowrap}
+.pop-n small{font-size:11px;font-weight:500;color:var(--text-muted,#7d8aa0)}
+.pop-n.is-up{display:inline-flex;align-items:center;gap:5px;color:var(--success,#22c55e)}
+.pop-n.is-up i{font-size:12px}
+@media (min-width:861px){
+.pop-list{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.pop-row{grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto 1fr;align-items:start;gap:10px 10px;min-height:0;height:100%;padding:14px;position:relative}
+.pop-row:hover{transform:translateY(-2px)}
+.pop-rank{position:absolute;top:12px;right:12px;width:auto}
+.pop-ic{grid-column:1;grid-row:1}
+.pop-t{grid-column:1/-1;grid-row:2}
+.pop-n{grid-column:1/-1;grid-row:3;justify-items:start;align-self:end}
+.pop-n.is-up{justify-content:flex-start}
+}
+@media (prefers-reduced-motion:reduce){.pop-row{transition:none}.pop-row:hover{transform:none}}
 .net-num{margin-top:18px;padding:16px 18px;border-radius:16px;border:1px solid var(--border,rgba(255,255,255,.08));background:color-mix(in srgb,var(--bg-secondary,#101828) 85%,transparent)}
 .net-num h2{font-size:12px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--text-muted,#7d8aa0);margin:0 0 10px}
 .net-num ul{list-style:none;margin:0;padding:0;display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr))}
