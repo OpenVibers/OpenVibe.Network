@@ -283,10 +283,32 @@ function routers({ requireAuth, nodeGuard, relayGuard }) {
         const rows = await db.prepare('SELECT * FROM link_access_requests WHERE from_principal = ? OR to_principal = ? ORDER BY asked_at DESC LIMIT 100').all(p.id, p.id);
         res.json({ requests: rows.map(requestView) });
     }));
+    // A machine answers only the requests addressed to it (a Link holds a node token, not a user session), while the
+    // same decision from any signed-in surface settles it once.
+    self.post('/access-requests/:id/answer', express.json({ limit: '8kb' }), wrap(async (req, res, db) => {
+        const p = await selfNode(db, req);
+        const row = await db.prepare('SELECT to_principal FROM link_access_requests WHERE id = ?').get(req.params.id);
+        if (!row || row.to_principal !== p.id) fail(404, 'link_access.request_not_found', 'no such request for this machine');
+        const out = await answer(db, req.params.id, p.owner_subject, req.body);
+        res.status(out.expired ? 410 : 200).json(out);
+    }));
     self.get('/access-grants', wrap(async (req, res, db) => {
         const p = await selfNode(db, req);
         const rows = await db.prepare('SELECT * FROM link_access_grants WHERE from_principal = ? OR to_principal = ? ORDER BY created_at DESC LIMIT 100').all(p.id, p.id);
         res.json({ grants: rows.map(grantView) });
+    }));
+    // Either machine in a grant may end it, from its own node token; the owner routes do the same by person.
+    self.post('/access-grants/:id/revoke', wrap(async (req, res, db) => {
+        const p = await selfNode(db, req);
+        const row = await db.prepare('SELECT from_principal, to_principal FROM link_access_grants WHERE id = ?').get(req.params.id);
+        if (!row || (row.from_principal !== p.id && row.to_principal !== p.id)) fail(404, 'link_access.grant_not_found', 'no such grant for this machine');
+        res.json({ grant: await revoke(db, req.params.id, p.owner_subject) });
+    }));
+    // The person's agent directory, seen from the paired machine: the entries a local CLI may message.
+    self.get('/agents', wrap(async (req, res, db) => {
+        const p = await selfNode(db, req);
+        const rows = await db.prepare('SELECT * FROM agent_directory WHERE owner_subject = ? ORDER BY updated_at DESC, id LIMIT 200').all(p.owner_subject);
+        res.json({ agents: rows.map(require('./agents').directoryView) });
     }));
     self.post('/access-grants/:id/token', wrap(async (req, res, db) => res.json(await grantToken(db, req.params.id,
         await selfNode(db, req), req.app.locals.privateKey, req.app.locals.config.jwt.issuer))));
