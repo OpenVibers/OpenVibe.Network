@@ -8,14 +8,14 @@ const express = require('express');
 const http = require('http');
 const { getDb } = require('../server/db/database');
 const { createFrameService } = require('../server/frame/service');
-const { SITES, siteForHost } = require('../server/frame/sites');
+const { LISTED_SITES, siteForHost } = require('../server/frame/sites');
 
 const listen = (app) => new Promise((resolve) => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
 const url = (srv, path) => `http://127.0.0.1:${srv.address().port}${path}`;
 
 (async () => {
     const db = getDb();
-    const openIds = SITES.filter((s) => s.status === 'open').map((s) => s.id);
+    const openIds = LISTED_SITES.filter((s) => s.status === 'open').map((s) => s.id);
     for (let i = 1; i <= 5; i++) await db.prepare('INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)').run(i, `menu${i}`, 'x');
     const ins = db.prepare("INSERT INTO user_history (user_id, service, type, title, url) VALUES (?, ?, 'page', 't', ?)");
     const insOld = db.prepare("INSERT INTO user_history (user_id, service, type, title, url, created_at) VALUES (?, ?, 'page', 't', ?, datetime('now', '-31 days'))");

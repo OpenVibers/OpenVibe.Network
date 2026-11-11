@@ -93,8 +93,8 @@ const cache = require('openvibe-shared/cache-policy');
 
         // ── /sites: the hub of the whole network (SEO-9) ──
         const sitesPage = require('../server/sites/page');
-        const { SITES } = require('../server/frame/sites');
-        const openSites = SITES.filter((site) => site.status === 'open');
+        const { LISTED } = require('../server/frame/sites');
+        const openSites = LISTED.filter((site) => site.status === 'open');
         const hub = await get('/sites');
         assert.strictEqual(hub.status, 200, '/sites answers 200 (it was a 404 before SEO-9)');
         assert.ok(hub.type.startsWith('text/html'), '/sites is HTML');
@@ -130,7 +130,7 @@ const cache = require('openvibe-shared/cache-policy');
         assert.deepStrictEqual(pageIds.filter((id, i) => pageIds.indexOf(id) !== i), [], 'no id repeats on the page');
         // Only `open`: an entry that is not open never reaches the page or its ItemList.
         const one = openSites[0];
-        const closed = sitesPage.render({ sites: SITES.map((site) => (site.id === one.id ? { ...site, status: 'soon' } : site)) });
+        const closed = sitesPage.render({ sites: LISTED.map((site) => (site.id === one.id ? { ...site, status: 'soon' } : site)) });
         assert.ok(!closed.includes(`id="${one.id}"`), 'a site that is not open is not anchored on the page');
         assert.strictEqual(JSON.parse(closed.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]).mainEntity.numberOfItems, openSites.length - 1, 'and not in the ItemList');
         // Findable: the sitemap lists it, and llms-full.txt carries its list.

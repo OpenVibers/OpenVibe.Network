@@ -372,6 +372,7 @@ async function loadToolsSettings() {
                 <div style="margin-top:16px"><button type="button" class="btn btn-primary" onclick="saveToolsSettings()"><i class="fa-solid fa-floppy-disk"></i> Save Network settings</button></div>
             </form>`;
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
+    finally { if (currentUser && currentUser.is_owner) await loadToolsWorkers(); }
 }
 
 let _toolsSettingsOriginal = {};

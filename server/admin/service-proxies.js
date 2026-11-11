@@ -66,6 +66,7 @@ function createServiceProxies({ requireAuth, signToken, services }) {
     const live = () => services.live.internalUrl;
     const chat = () => services.chat.internalUrl;
 
+    r.use('/tools-workers', require('./tools-workers').createToolsWorkers({ requireAuth, signToken, services }));
     r.use('/streamer', requireAuth, admin, to(live, '/api/admin', 'OpenVibe.Live', 'Streamer proxy error'));
     r.use('/streamer-mod', requireAuth, staff, to(live, '/api/mod', 'OpenVibe.Live', 'Mod proxy error'));
     r.use('/streamer-tts', requireAuth, admin, to(chat, '/api/tts', 'OpenVibe.Chat', 'TTS proxy error'));

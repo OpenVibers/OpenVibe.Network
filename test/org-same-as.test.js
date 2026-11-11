@@ -5,9 +5,9 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { SAME_AS, withSameAs } = require('../server/home/render');
-const { SITES } = require('../server/frame/sites');
+const { LISTED } = require('../server/frame/sites');
 
-const open = SITES.filter((s) => s.status === 'open' && s.id !== 'network');
+const open = LISTED.filter((s) => s.status === 'open' && s.id !== 'network');
 assert.strictEqual(SAME_AS.length, open.length + 2, 'GitHub, Discord and every open site');
 assert.ok(SAME_AS.includes('https://github.com/OpenVibers'));
 const missing = open.filter((s) => !SAME_AS.includes(`https://${s.host}`)).map((s) => s.host);

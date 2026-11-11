@@ -110,6 +110,7 @@ const PATTERNS = {
 };
 // The reviewed list: where each goes, and why a stranger cannot choose it (or how it is guarded).
 const REVIEWED = {
+    'server/admin/tools-workers.js fetch': [1, 'Owner-only fixed Tools admin paths at the operator-configured internal URL; no caller URL; redirects refused.'],
     'server/link/egress-settings.js fetch': [2, 'browser-only GET and PUT to the fixed same-origin /api/v1/me/nodes/egress settings route; no caller-chosen host or URL'],
     'server/connect/egress.js http.request': [1, 'Connect gateway (E7): only the app definition\'s fixed API host, through openvibe-shared/egress (IP literals refused before the socket, public DNS answers only, redirects followed by hand with every hop re-checked); never a URL from the input (Opus review 11-06)'],
     'server/home/activity.js fetch': [1, 'front door activity: fixed first-party loopback URLs (OV_LIVE/COMMUNITY/BLOG_INTERNAL_URL, operator config) for public lists, never a request value'],
@@ -138,6 +139,7 @@ const REVIEWED = {
     'server/link/send.js fetch': [8, 'browser-only Link Send requests to fixed same-origin routes (the session read, machine keys, the resumable transfer parts and the delivery list); page input supplies file bytes, never a URL or destination host'],
     'server/notifications/email-service.js http.request': [1, 'fixed host api.resend.com'],
     'server/actions/index.js fetch': [7, 'The Action Center: OpenVibe.Actor, OpenVibe.Codes and OpenVibe.AI only (OV_ACTOR_INTERNAL_URL, OV_CODES_INTERNAL_URL, OV_AI_INTERNAL_URL, loopback); the paths are fixed (the decide route, the cancel route, the retry route of Actor or AI, Actor\'s public GET /api/v1/skills catalogue, and Actor\'s POST /api/v1/runs for a catalogue skill whose id must match the skill id pattern), the subject is the signed-in person\'s own usr_ id, and an item id must match [A-Za-z0-9_-]{1,80}'],
+    'server/profile/card.js fetch': [2, 'Operator-configured Quest and Live bases only, fixed paths with encoded canonical identities, no redirects, two second timeout'],
     'server/profile/public.js fetch': [6, 'OpenVibe.Inventory, Quest and Play use operator-configured internal URLs and fixed paths with a checked usr_ id. Public place reads use only the configured Live, Community and Space service URLs, fixed public paths, encoded canonical usernames, 2 s timeouts and no user-supplied host or token; Space results are restricted to the exact owner and Published cards'],
     'server/profile/avatar.js fetch': [4, 'Live (push) and Media (ingest, release) internal URLs from config; a picture is never fetched here — Media\'s ingest fetches it (asserted below)'],
     'server/push/push-service.js web-push': [1, 'a person\'s push endpoint: endpointAllowed() at subscribe and send, connections through safeLookup (asserted below)'],

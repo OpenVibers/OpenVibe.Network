@@ -55,60 +55,74 @@ const fullName = (s) => (/^Open[A-Z]/.test(String(s && s.name)) ? s.name : `Open
 
 // The launcher (openvibe-shared navbar) lists every open site under one of these groups, most used first within
 // each. A site missing here lands in the last group, so a new manifest is never left out of the menu.
-// The six neighbourhoods of the 2026-10-28 plan (§3.1): each label is two words, so it never collides with a site's own
-// name, and they follow what a person came to do. Rooms not open yet (Cam, Tours, Surf, Fun, Meme, Casino, Today, Report,
-// Vision, Website, Design, Domains, open.shoes) are named here so they land in their neighbourhood the day
-// their manifest opens. The building blocks stay last, "For developers" (the tail of Make & build).
+// The owner's regrouping (2026-11-10, plan ask 274): eight groups named for what a person came to do, in the order
+// the menu, its folders, the footer and the home pages show them. Seven tiles a group at most; Video's two domains
+// (Pics, Download) are list entries of their own, while Media, Homes and Bench are sections of Video, Rent and
+// Report and keep their domains without a tile. Contracts' `site.neighbourhood` repeats these ids for every site.
 const GROUPS = [
-    { id: 'streams', name: 'Streams & places', sites: ['live', 'media-hub', 'stream', 'pics', 'download', 'cam', 'tours'] },
-    { id: 'games', name: 'Games & laughs', sites: ['games', 'surf', 'fun', 'meme', 'casino', 'quest'] },
-    { id: 'answers', name: 'News & answers', sites: ['today', 'report', 'bench', 'news', 'search', 'wiki', 'blog', 'reviews', 'vision'] },
-    { id: 'make', name: 'Make & build', sites: ['website', 'connect', 'design', 'image', 'domains', 'computer', 'codes', 'space', 'tools', 'host', 'bot'] },
-    { id: 'shop', name: 'Shop & swap', sites: ['deals', 'coupons', 'shoes', 'rent', 'homes', 'work', 'food', 'trade'] },
-    { id: 'people', name: 'People & you', sites: ['chat', 'mail', 'community', 'tips', 'vip', 'help', 'network', 'inventory'] },
+    { id: 'watch', name: 'Watch & stream', sites: ['live', 'media-hub', 'pics', 'download', 'stream', 'cam', 'tours'] },
+    { id: 'talk', name: 'Talk & belong', sites: ['community', 'chat', 'tips', 'vip', 'mail', 'help', 'network'] },
+    { id: 'play', name: 'Play', sites: ['games', 'quest', 'surf', 'fun', 'meme', 'casino', 'inventory'] },
+    { id: 'read', name: 'Read & ask', sites: ['news', 'today', 'report', 'search', 'wiki', 'blog', 'vision'] },
+    { id: 'shop', name: 'Shop & money', sites: ['deals', 'coupons', 'shoes', 'reviews', 'trade', 'rent', 'work'] },
+    { id: 'tools', name: 'Free tools', sites: ['tools', 'design', 'domains', 'host', 'image', 'lock', 'food'] },
     // Actor is the engine behind every agent (Codes' Auto, Vibe, the Dock call it): a developer service, not a second
-    // place to chat with an agent (plan L39, 2026-10-31).
-    { id: 'build', name: 'For developers', sites: ['services', 'exchange', 'actor', 'run', 'zone', 'events', 'media', 'watch'] },
+    // place to chat with an agent (plan L39, 2026-10-31). It makes things with AI, beside the places that do.
+    { id: 'make', name: 'Make with AI', sites: ['space', 'codes', 'bot', 'actor', 'computer', 'connect'] },
+    { id: 'build', name: 'For developers', sites: ['services', 'exchange', 'run', 'zone', 'events', 'watch', 'git'] },
 ];
 // What each site is, in a few words, for the menus (the launcher's rows are two to a line on a phone: about 22
 // characters fit). The manifests' taglines stay the sites' own sentences everywhere else; a site missing here shows
 // its tagline.
 const MENU_LINE = {
     live: 'Go live, watch streams', 'media-hub': 'Clips and past streams', stream: 'Stream everywhere', pics: 'Share pictures',
-    download: 'Your files', tips: 'Support streamers', vip: 'Back your creators', computer: 'Your computer, your way', image: 'Edit photos in your browser', lock: 'Files only you can open',
-    chat: 'Chat with anyone', mail: 'Masks and inboxes', community: 'Posts and pastes', blog: 'Write long-form', news: 'Sourced, not spun', wiki: 'Facts with sources',
-    games: 'Play in your browser', quest: 'Earn badges', fun: 'Something to do',
-    codes: 'Code with any agent', actor: 'The agent engine', space: 'Host a site or app', tools: 'Every online tool', bot: 'Drive a robot',
-    deals: 'Deals people share', coupons: 'Codes that work', reviews: 'Honest reviews', work: 'Find a job', rent: 'Places to rent',
-    homes: 'Homes for sale', food: 'Food near you', help: 'Help nearby', trade: 'Watch the markets', watch: 'Know when it changes',
-    search: 'Search everything', host: 'Compare hosting', report: 'Your numbers, honest', vision: 'Ask a picture',
-    exchange: 'AI models, one account', connect: 'Share a port with Link',
-    network: 'Your account', inventory: 'Your items',
-    services: 'APIs, SDK and keys', bench: 'Which AI is best', run: 'Run jobs anywhere', zone: 'S3 storage', events: 'Event streams', media: 'Media API',
+    download: 'Your files', cam: 'Your camera, in private', tours: 'Cities, routes, stays',
+    community: 'Posts and pastes', chat: 'Chat with anyone', tips: 'Support streamers', vip: 'Back your creators', mail: 'Masks and inboxes', help: 'Help nearby', network: 'Your account',
+    games: 'Play in your browser', quest: 'Earn badges', surf: 'Surf maps and the web', fun: 'Something to do', meme: 'Memes with receipts', casino: 'Odds shown, chips free', inventory: 'Your items',
+    news: 'Sourced, not spun', today: 'Your schedule', report: 'Your numbers, honest', search: 'Search everything', wiki: 'Facts with sources', blog: 'Write long-form', vision: 'Ask a picture',
+    deals: 'Deals people share', coupons: 'Codes that work', shoes: 'Every shoe, every price', reviews: 'Honest reviews', trade: 'Watch the markets', rent: 'Places to rent', work: 'Find a job',
+    tools: 'Every online tool', design: 'Try themes live', domains: 'Names and prices', host: 'Compare hosting', image: 'Edit photos in your browser', lock: 'Files only you can open', food: 'Food near you',
+    space: 'Host a site or app', codes: 'Code with any agent', bot: 'Drive a robot', actor: 'The agent engine', computer: 'Your computer, your way', connect: 'Share a port with Link',
+    services: 'APIs, SDK and keys', exchange: 'AI models, one account', run: 'Run jobs anywhere', zone: 'S3 storage', events: 'Event streams', watch: 'Know when it changes', git: 'Host and browse code',
 };
 
 // A site's name in the menus, where the rows are short words (Pics, Download, VIP, Tips): the product keeps its full name
 // everywhere else (its own site, page titles, sign-in). The owner, 2026-10-28: "label it simply Restream… it does look
 // a little weird" next to the others.
-const MENU_NAME = { stream: 'Restream', bench: 'AI' };
+const MENU_NAME = { stream: 'Restream' };
 
 const groupOf = (id) => (GROUPS.find(g => g.sites.includes(id)) || GROUPS[GROUPS.length - 1]).id;
 
+// Sites whose own domain keeps answering but that are a section of another site: in the menu, the footer, the home
+// pages and /sites they are not a tile of their own (owner, 2026-11-10). siteForHost still knows them.
+//   media → Video (openvibe.media stays the API and the embed host)
+const MERGED_SITES = new Map([['media', 'media-hub']]);
+
 // Products with a domain of their own that another service serves (its manifest lists the domain): in the menu
-// while that service's site is open, right after it. They are not sites of their own (no ranking, no legal profile).
+// while that service's site is open, right after it. They are not sites of their own (no ranking, no legal profile),
+// but they are list entries: Pics and Download are what Video's drive shows on their own domains (owner, 2026-11-10).
 const PRODUCTS = [
     { id: 'pics', name: 'Pics', host: 'openvibe.pics', icon: 'pics', of: 'media-hub', tagline: 'Share pictures, fast and open' },
     { id: 'download', name: 'Download', host: 'openvibe.download', icon: 'download', of: 'media-hub', tagline: 'Your files, shared on your terms' },
-    { id: 'homes', name: 'Homes', host: 'openvibe.homes', icon: 'homes', of: 'rent', tagline: 'Every home-for-sale site, one search' },
-    // The move (2026-11-08): Bench's public pages are Report's AI section. The product keeps the old host for
-    // redirects and links straight at the Report page; Report's manifest will name the host in the next Contracts
-    // release, so the explicit `listed` flag is the bridge until then.
-    { id: 'bench', name: 'AI', host: 'bench.openvibe.services', icon: 'bench', of: 'report', url: 'https://openvibe.report/ai', tagline: 'Which AI is best, and what it costs', listed: true },
 ].filter((p) => {
-    if (p.listed) return true;
     const s = SITES.find(x => x.id === p.of); const m = s && contracts.services.get(s.service);
     return m && (m.domains || []).includes(p.host);
 });
+// Domains of a merged section (no tile): Homes is Rent's for-sale search, Bench is Report's AI section (its host
+// already redirects). They stay in the host map so a page or a sign-in return keeps naming its own place.
+const MERGED_PRODUCTS = [
+    { id: 'homes', name: 'Homes', host: 'openvibe.homes', icon: 'homes', of: 'rent' },
+    { id: 'bench', name: 'AI', host: 'bench.openvibe.services', icon: 'bench', of: 'report' },
+];
+
+// The list the menu, the footer, the home pages and /sites show: every site except a merged section, plus the
+// products above with a domain of their own (Pics, Download). Open sites in this list today: 55.
+const LISTED_SITES = SITES.filter((s) => !MERGED_SITES.has(s.id));
+const listed = (p) => {
+    const owner = SITES.find((s) => s.id === p.of);
+    return { ...p, service: p.of, what: p.tagline, status: owner ? owner.status : 'soon', state: owner ? owner.state : 'placeholder' };
+};
+const LISTED = LISTED_SITES.concat(PRODUCTS.map(listed));
 // Manifest icon names the shared icon set draws differently.
 const ICON_ALIAS = { 'media-hub': 'video' };
 
@@ -120,10 +134,10 @@ function siteForHost(hostname) {
     if (byHost.has(h)) return byHost.get(h);
     // A product on its own domain belongs to the site that serves it (Bench's host is Report's AI section now).
     // Before the subdomain pass, because services.openvibe.services would otherwise claim bench.openvibe.services.
-    const product = PRODUCTS.find((p) => p.host === h || h.endsWith('.' + p.host));
+    const product = PRODUCTS.concat(MERGED_PRODUCTS).find((p) => p.host === h || h.endsWith('.' + p.host));
     if (product) return SITES.find((s) => s.id === product.of) || null;
     for (const s of SITES) if (h.endsWith('.' + s.host)) return s;
     return null;
 }
 
-module.exports = { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName };
+module.exports = { SITES, LISTED_SITES, LISTED, siteForHost, GROUPS, groupOf, PRODUCTS, MERGED_SITES, MERGED_PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName };

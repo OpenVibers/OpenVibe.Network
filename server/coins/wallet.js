@@ -13,12 +13,39 @@
 // id <= N — which is how replays reconstruct the original result.
 // ═══════════════════════════════════════════════════════════════
 
+const { ids, validate } = require('openvibe-contracts');
+const eventRelay = require('../developer/event-relay');
+
 class WalletError extends Error {
     constructor(status, body) {
         super(body.error || 'wallet_error');
         this.status = status;
         this.body = body;
     }
+}
+
+/**
+ * Ask 273: one subject-visible network.balance.changed per person whose OpenCoins moved, enqueued
+ * in the same transaction as the movement (relayed by server/developer/event-relay.js, at least
+ * once), so an open page updates without a reload. Guests and accounts without a usr_ subject get
+ * no event — Events could not address them. The payload is what the bar needs, never what it
+ * shows: delta, balance, and the ledger's own reason.
+ */
+async function announceBalanceChange(db, { user_id, delta, balance, reason, app_id, ref }) {
+    const u = await db.prepare('SELECT subject_id FROM users WHERE id = ?').get(user_id);
+    const subjectId = u && u.subject_id;
+    if (typeof subjectId !== 'string' || !/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(subjectId)) return null;
+    const ms = Date.now();
+    const env = {
+        event_id: ids.newId('event', ms), event_type: 'network.balance.changed', version: 1, source: 'network',
+        actor: { type: 'service', id: 'network' }, timestamp: new Date(ms).toISOString(),
+        visibility: 'subject', subject: { type: 'user', id: subjectId },
+        payload: { currency: 'opencoins', delta, balance, reason: reason || null, app_id: app_id || null, ref: ref || null },
+    };
+    const v = validate('events.event-envelope@1', env);
+    if (!v.valid) throw new Error(`coins: bad balance.changed envelope: ${v.errors.map((e) => `${e.path} ${e.message}`).join('; ')}`);
+    await eventRelay.writerFor(db).enqueue(env);
+    return env;
 }
 
 function isPositiveInt(value) {
@@ -103,6 +130,7 @@ async function creditOrDebit(db, sign, { user_id, app_id, amount, reason, ref, i
             idempotency_key,
         });
         if (sign > 0) await require('../levels/coins').onCredit(db, { user_id: uid, app_id, delta: amount, reason, idempotency_key });
+        await announceBalanceChange(db, { user_id: uid, delta: sign * amount, balance, reason, app_id, ref });
         return { balance, deduped: false };
     });
     return run();
@@ -152,6 +180,8 @@ async function transfer(db, { from_user_id, to_user_id, app_id, amount, reason, 
         const to_balance = await applyDelta(db, {
             user_id: toId, app_id, delta: amount, reason, ref, idempotency_key: inKey,
         });
+        await announceBalanceChange(db, { user_id: fromId, delta: -amount, balance: from_balance, reason, app_id, ref });
+        await announceBalanceChange(db, { user_id: toId, delta: amount, balance: to_balance, reason, app_id, ref });
         return { from_balance, to_balance, deduped: false };
     });
     return run();

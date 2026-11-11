@@ -1,28 +1,28 @@
 'use strict';
-// /sites: the front door to the whole network, for people and for crawlers (SEO-9). Every open site is listed under
-// the same six neighbourhoods the home page uses (server/frame/sites.js GROUPS), with the site's own tagline, and
+// /sites: the front door to the whole network, for people and for crawlers (SEO-9). Every open entry is listed under
+// the same eight groups the home page and the menu use (server/frame/sites.js GROUPS), with its own tagline, and
 // each site is anchored at its registry id (/sites#live) so it can be linked directly. One source: the registry the
 // home reads, so the hub cannot disagree with the home, and a site that is not open is never listed.
 const seo = require('openvibe-shared/seo');
 const icons = require('openvibe-shared/ov-icons');
-const { SITES, GROUPS, groupOf, PRODUCTS, fullName } = require('../frame/sites');
+const { LISTED, GROUPS, groupOf, fullName } = require('../frame/sites');
 
 const esc = seo.esc;
 const siteName = (site) => (site.name.includes('.') ? site.name : fullName(site));
 // The one-line purpose, in the home's own words: the tagline it renders on every card (the llms.txt and ItemList
 // descriptions use `what`, the longer text).
 const siteLine = (site) => site.tagline || site.what;
-const openSites = (list = SITES) => list.filter((site) => site.status === 'open');
+const openSites = (list = LISTED) => list.filter((site) => site.status === 'open');
 // The home counts the front door itself in "N sites, one account"; the hub lists it too (it is an open site, with the
 // account and themes behind every other one).
-const groupsOf = (sites) => GROUPS.map((group) => ({ group, sites: sites.filter((site) => groupOf(site.id) === group.id), also: PRODUCTS.filter((p) => groupOf(p.id) === group.id) })).filter((x) => x.sites.length);
+const groupsOf = (sites) => GROUPS.map((group) => ({ group, sites: sites.filter((site) => groupOf(site.id) === group.id) })).filter((x) => x.sites.length);
 
 // The network's own share card, the same one the home pages carry (an indexable page without og:image is the one
 // thing the SEO audit still finds on this page).
 const shareCard = require('openvibe-shared/social').url('network', 'https://openvibe.network/shared') || 'https://openvibe.network/assets/logo-512.png';
 const card = (site) => `<a class="sc-card" id="${esc(site.id)}" href="https://${esc(site.host)}/"><span class="sc-ic sc-ic-ov"><span class="ov-icon sc-ovi" data-icon="${esc(site.icon)}" style="--ovi-size:40px" aria-hidden="true">${icons.svg(site.icon)}</span></span><span><b>${esc(siteName(site))}</b><small>${esc(siteLine(site))}</small></span></a>`;
 
-function render({ releaseId = '', sites = SITES } = {}) {
+function render({ releaseId = '', sites = LISTED } = {}) {
     const open = openSites(sites);
     const groups = groupsOf(open);
     const count = open.length;
@@ -30,9 +30,9 @@ function render({ releaseId = '', sites = SITES } = {}) {
     const desc = `Every open OpenVibe site in one place, grouped by what people come to do, each with a link to its own home. One free account signs you in on all of them.`;
     const intro = 'Every open OpenVibe site, grouped by what people come to do; signing in once carries your name, theme and notifications to all of them.';
     const headings = new Map(groups.map(({ group }) => [group.id, `h-${group.id}`]));
-    // The group anchors are prefixed: a group id ("games") can be a site id too, and one page cannot hold both.
+    // The group anchors are prefixed: a group id can match a site id ("tools"), and one page cannot hold both.
     const jump = `<nav class="sites-jump" aria-labelledby="h-jump"><h2 id="h-jump">The groups</h2><ol>${groups.map(({ group, sites: list }) => `<li><a href="#group-${esc(group.id)}">${esc(group.name)}<small>${list.length}</small></a></li>`).join('')}</ol></nav>`;
-    const body = groups.map(({ group, sites: list, also }) => `<section class="sc-sec" id="group-${esc(group.id)}" aria-labelledby="${esc(headings.get(group.id))}"><h2 id="${esc(headings.get(group.id))}">${esc(group.name)}</h2><div class="sc-grid">${list.map(card).join('')}</div>${also.length ? `<p class="sites-also">Also here: ${also.map((p) => `<a href="${esc(p.url || `https://${p.host}/`)}">${esc(p.name || p.host)}</a> (${esc(p.tagline.toLowerCase())})`).join(', ')}</p>` : ''}</section>`).join('\n');
+    const body = groups.map(({ group, sites: list }) => `<section class="sc-sec" id="group-${esc(group.id)}" aria-labelledby="${esc(headings.get(group.id))}"><h2 id="${esc(headings.get(group.id))}">${esc(group.name)}</h2><div class="sc-grid">${list.map(card).join('')}</div></section>`).join('\n');
     const ld = {
         '@context': 'https://schema.org', '@type': 'CollectionPage',
         name: title, description: desc, url: 'https://openvibe.network/sites',
@@ -108,9 +108,6 @@ const CSS = `
 .sites-jump small{color:var(--text-muted);font-weight:700;font-size:12px;font-variant-numeric:tabular-nums}
 .sites .sc-sec:first-of-type{margin-top:40px}
 .sc-card[id]{scroll-margin-top:84px}
-.sites-also{margin:12px 0 0;font-size:13.5px;color:var(--text-secondary)}
-.sites-also a{color:var(--accent-light);font-weight:600;text-decoration:none}
-.sites-also a:hover{text-decoration:underline}
 `;
 
 module.exports = { render, llmsText, siteLine, openSites, CSS };
