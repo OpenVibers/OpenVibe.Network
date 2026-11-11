@@ -191,7 +191,9 @@ function openInitialSection() {
     }
     if (document.getElementById('sec-' + routeSection)) {
         showSection(routeSection);
-        if (routeSection === 'machines') document.getElementById('sec-machines')?.scrollIntoView?.({ block: 'start' });
+        // On openvibe.network the section sits below the account home, so the page scrolls to it; openvibe.link's hub
+        // (body.link-hub) is the section alone and stays at the top.
+        if (routeSection === 'machines' && !document.body?.classList?.contains('link-hub')) document.getElementById('sec-machines')?.scrollIntoView?.({ block: 'start' });
         if (routeSection === 'machines' && hash === 'pair') setTimeout(() => mcPair(), 0);
     }
 }

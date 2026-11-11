@@ -27,6 +27,22 @@ const HUB_PATH = '/machines';
 const HUB_PAGE = pathLib.join(__dirname, '..', '..', 'public', 'my.html');
 const BOT_RE = /bot|crawl|spider|slurp|headless/i;
 
+// The hub is the account page reduced to its Machines section: the body is marked link-hub (my.css hides the account
+// home, the email card and the settings tabs), the page is titled for Link, and the section's heading is the page's
+// one h1. Read once per file change; a heading the page no longer has is left alone rather than guessed at.
+let hubCache = { mtimeMs: -1, html: '' };
+function hubHtml() {
+    const { mtimeMs } = fs.statSync(HUB_PAGE);
+    if (hubCache.mtimeMs === mtimeMs) return hubCache.html;
+    const html = fs.readFileSync(HUB_PAGE, 'utf8')
+        .replace('<body>', () => '<body class="link-hub">')
+        .replace(/<title>[^<]*<\/title>/, () => '<title>Your machines - OpenVibe Link</title>')
+        .replace('<h1 id="user-name">Loading...</h1>', () => '<p class="me-name" id="user-name">Loading...</p>')
+        .replace(/<h3>(<span class="icon"><i class="fa-solid fa-laptop"><\/i><\/span> Your machines)<\/h3>/, (m, inner) => `<h1 class="mc-title">${inner}</h1>`);
+    hubCache = { mtimeMs, html };
+    return html;
+}
+
 /** The request's host, lowercased, without the port. */
 function hostOf(req) {
     return String((req.headers && req.headers.host) || '').split(':')[0].toLowerCase();
@@ -144,7 +160,7 @@ function createLinkRoutes({ releaseId, releaseApi = release, db = null, config =
         // Signed in, a crawler, or back from a silent sign-in that found nobody: the hub itself.
         if (sessionUser || BOT_RE.test(userAgent) || params.get('sso') === 'none') {
             noStore();
-            return res.sendFile(HUB_PAGE);
+            return res.type('html').send(hubHtml());
         }
         // Nobody home: the silent sign-in (prompt=none) signs a Network-signed-in person in with no click;
         // the login page only shows when they are truly signed out. Pair intent survives in ?pair=1.

@@ -592,7 +592,7 @@ async function loadMachines() {
         machines.sort((a, b) => (b.online === true) - (a.online === true));
         if (count) count.textContent = `${machines.length} paired · ${machines.filter((m) => m.online).length} online now`;
         if (!machines.length) {
-            list.replaceChildren(mcEl('div', 'mc-empty', [mcIcon('fa-laptop'), mcEl('p', '', [mcEl('b', '', ['No machines yet.']), ' Pair your computer and it can run your Codes jobs, host your desks and serve your own models, under your account.'])]));
+            list.replaceChildren(mcEl('div', 'mc-empty', [mcIcon('fa-laptop'), mcEl('p', '', [mcEl('b', '', ['No machines yet.']), ' Pair a computer: you get one command to run on it, and it shows up here.'])]));
             return;
         }
         // Pools are an extra: when they cannot be read, the machines still show.
