@@ -128,13 +128,18 @@ const MY = 'openvibe.my';
         assert.strictEqual(r.status, 200, 'a Network guest gets the page quietly, with sso=none');
         assert.ok(r.body.includes('id="needs-you"'), 'the hub leads with Needs you');
         assert.ok(r.body.includes('id="needs-you-list"'), 'and has its list');
-        assert.ok(r.body.indexOf('id="needs-you"') < r.body.indexOf('id="page-header"'), 'Needs you is above the hero');
+        assert.ok(r.body.indexOf('id="page-header"') < r.body.indexOf('id="needs-you"'), 'the person comes first');
+        assert.ok(r.body.indexOf('id="needs-you"') < r.body.indexOf('id="me-acts"'), 'actions follow Needs you');
         assert.ok(r.body.includes('id="page-header"') && r.body.includes('class="section-tabs"'), 'the hero and sections stay');
         assert.ok(r.body.includes('<link rel="canonical" href="https://openvibe.my/">'), 'the canonical is openvibe.my');
         assert.strictEqual(r.headers['cache-control'], 'no-store', 'the hub is not cached');
 
         r = await get('/', MY, ['ov_token=already']);
         assert.strictEqual(r.status, 200, 'a session skips the silent redirect');
+
+        r = await get('/machines', MY, ['ov_token=already']);
+        assert.strictEqual(r.status, 200, 'signed-in /machines stays in the hub');
+        assert.ok(r.body.includes('id="sec-machines"'), 'serves Machines');
 
         // ── The sign-in: PKCE S256, state and verifier in host-only cookies ──
         r = await get('/auth/login?next=%2Fsecurity', MY);

@@ -218,6 +218,11 @@ async function networkPart(db, userId) {
     const followers = await tableExists(db, 'user_follows') ? (await db.prepare("SELECT COUNT(*) AS n FROM user_follows WHERE target_id = ? AND active = 1").get(u.subject_id)).n : 0;
     add('follows.json', { following: follows.rows, followers_count: followers }, follows.truncated);
     add('blocks.json', (await rowsOf(db, 'user_blocks', 'blocker_subject = ?', [u.subject_id])).rows);
+    // Ask 287: who they muted and friended, and the reports they filed. These are the person's own
+    // rows; a report about them names them as the target, so it is not their export.
+    add('mutes.json', (await rowsOf(db, 'user_mutes', 'muter_subject = ?', [u.subject_id])).rows);
+    add('friends.json', (await rowsOf(db, 'user_friends', 'user_subject = ?', [u.subject_id])).rows);
+    add('reports.json', (await rowsOf(db, 'user_reports', 'reporter_subject = ?', [u.subject_id])).rows);
     // Presence (plan X9): the chosen state, status line, emoji, switch and the heartbeat times. No last seen
     // beyond the heartbeat the person's own tabs sent.
     add('presence.json', (await rowsOf(db, 'person_presence', 'subject_id = ?', [u.subject_id])).rows);
@@ -374,6 +379,9 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         await del('dock_states', `subject IN ${inS}`, subjects, 'dock_states');
         await del('user_follows', `follower_subject IN ${inS} OR target_id IN ${inS}`, [...subjects, ...subjects], 'follows');
         await del('user_blocks', `blocker_subject IN ${inS} OR blocked_subject IN ${inS}`, [...subjects, ...subjects], 'blocks');
+        await del('user_mutes', `muter_subject IN ${inS} OR muted_subject IN ${inS}`, [...subjects, ...subjects], 'mutes');
+        await del('user_friends', `user_subject IN ${inS} OR friend_subject IN ${inS}`, [...subjects, ...subjects], 'friends');
+        await del('user_reports', `reporter_subject IN ${inS} OR target_subject IN ${inS}`, [...subjects, ...subjects], 'reports');
         // The person's agents first (WS-Z2), then the agents of the projects archived below.
         // Their projects' locks first, as agent creation takes them (developer/store.lockProject): no agent of theirs is created after this.
         if (await tableExists(db, 'dev_projects')) {

@@ -2,6 +2,7 @@
 const express = require('express');
 const levels = require('../levels/store');
 const follows = require('../identity/follows');
+const { staff } = require('openvibe-contracts');
 const { SITES } = require('../frame/sites');
 const TTL_MS = 30_000;
 const MAX_CACHE = 2000;
@@ -9,7 +10,7 @@ const FIELDS = ['display_name', 'avatar_url', 'live', 'level', 'streak', 'badges
 const defaults = () => Object.fromEntries(FIELDS.map(k => [k, k !== 'active_sites']));
 const object = value => { try { return typeof value === 'string' ? JSON.parse(value) : (value || {}); } catch { return {}; } };
 
-function createUserCards({ db, profiles, selfToken = () => null, questUrl = 'http://127.0.0.1:4980', liveUrl = 'http://127.0.0.1:3000', fetchImpl = (...args) => fetch(...args), now = Date.now }) {
+function createUserCards({ db, profiles, selfToken = () => null, questUrl = 'http://127.0.0.1:4980', liveUrl = 'http://127.0.0.1:3000', fetchImpl = (...args) => fetch(...args), now = Date.now, identify = null }) {
     const cache = new Map();
     const pending = new Map();
     async function enabled() {
@@ -88,6 +89,61 @@ function createUserCards({ db, profiles, selfToken = () => null, questUrl = 'htt
         pending.set(key, task);
         return task;
     }
+    // What the viewer can do with the person on the card (ask 287). Action descriptors are
+    // plain data Shared renders: { id, label, href } opens somewhere, { id, label, method, path,
+    // state } calls a Network route with the viewer's token (a report also carries its body).
+    // Computed per request with the viewer's token — never cached, never stored. Without a
+    // viewer (or for the viewer's own card) the card keeps only Profile/Channel.
+    const staffCan = (viewer, capability) => !!(viewer && viewer.staff && staff.can(viewer.staff, capability));
+    async function actionsFor(viewer, target, card, username) {
+        const acts = [{ id: 'profile', label: 'Profile', href: card.profile_url }];
+        if (card.channel_url) acts.push({ id: 'channel', label: 'Channel', href: card.channel_url });
+        if (!viewer || !target || viewer.subject === target.subject_id) return acts;
+        const blocks = require('../identity/blocks');
+        const reports = require('../identity/user-reports');
+        const [iBlocked, blockedMe] = await Promise.all([
+            blocks.isBlocked(db, viewer.subject, target.subject_id),
+            blocks.isBlocked(db, target.subject_id, viewer.subject),
+        ]);
+        const report = { id: 'report', label: 'Report', method: 'POST', path: '/api/v1/me/reports', body: { target: username, reason: 'other', detail: '' }, state: { reported: await reports.hasOpen(db, viewer.subject, target.subject_id).catch(() => false) } };
+        if (blockedMe && !iBlocked) return [...acts,
+            { id: 'block', label: 'Block', method: 'PUT', path: `/api/v1/me/blocks/${encodeURIComponent(username)}`, state: { blocked: false } },
+            report];
+        if (iBlocked) return [...acts,
+            { id: 'unblock', label: 'Unblock', method: 'DELETE', path: `/api/v1/me/blocks/${encodeURIComponent(username)}`, state: { blocked: true } },
+            report];
+        const follows = require('../identity/follows');
+        const mutes = require('../identity/mutes');
+        const friends = require('../identity/friends');
+        const [following, muted, friendship] = await Promise.all([
+            follows.status(db, 'channel', target.subject_id, viewer.subject).then((s) => !!s.following).catch(() => false),
+            mutes.isMuted(db, viewer.subject, target.subject_id).catch(() => false),
+            friends.stateOf(db, viewer.subject, target.subject_id).catch(() => 'none'),
+        ]);
+        const out = [...acts,
+            { id: 'message', label: 'Message', href: 'https://openvibe.chat/messages' },
+            following
+                ? { id: 'unfollow', label: 'Unfollow', method: 'DELETE', path: `/api/v1/me/follows/channel/${encodeURIComponent(username)}`, state: { following: true } }
+                : { id: 'follow', label: 'Follow', method: 'PUT', path: `/api/v1/me/follows/channel/${encodeURIComponent(username)}`, state: { following: false } },
+        ];
+        if (friendship === 'friends') out.push({ id: 'unfriend', label: 'Unfriend', method: 'DELETE', path: `/api/v1/me/friends/${encodeURIComponent(username)}`, state: { friendship } });
+        else if (friendship === 'pending') out.push({ id: 'cancel-request', label: 'Requested', method: 'DELETE', path: `/api/v1/me/friends/${encodeURIComponent(username)}`, state: { friendship } });
+        else out.push({ id: 'add-friend', label: friendship === 'requested' ? 'Accept' : 'Add friend', method: 'PUT', path: `/api/v1/me/friends/${encodeURIComponent(username)}`, state: { friendship } });
+        out.push({ id: 'tip', label: 'Tip', href: `https://openvibe.tips/${encodeURIComponent(username)}` });
+        if (card.live && card.live.now === true && card.live.url) out.push({ id: 'watch', label: 'Watch together', href: card.live.url });
+        out.push(muted
+            ? { id: 'unmute', label: 'Unmute', method: 'DELETE', path: `/api/v1/me/mutes/${encodeURIComponent(username)}`, state: { muted: true } }
+            : { id: 'mute', label: 'Mute', method: 'PUT', path: `/api/v1/me/mutes/${encodeURIComponent(username)}`, state: { muted: false } });
+        out.push({ id: 'block', label: 'Block', method: 'PUT', path: `/api/v1/me/blocks/${encodeURIComponent(username)}`, state: { blocked: false } });
+        out.push(report);
+        // Staff tools by capability (the role map lives in Contracts' staff-roles, not in this
+        // read): moderators with the moderation log can jump to the queue that names this person.
+        if (staffCan(viewer, 'staff.moderation.logs')) {
+            out.push({ id: 'staff-review', label: 'Review queue', href: 'https://openvibe.network/admin/review' });
+            out.push({ id: 'staff-reports', label: 'User reports', href: `https://openvibe.network/api/v1/staff/user-reports?target=${encodeURIComponent(target.subject_id)}&status=open` });
+        }
+        return out;
+    }
     const handle = fn => async (req, res, next) => { try { await fn(req, res); } catch (e) { next(e); } };
     const api = handle(async (req, res) => {
         res.set('Cache-Control', 'no-store'); // Never let a browser/CDN outlive a privacy change.
@@ -95,7 +151,15 @@ function createUserCards({ db, profiles, selfToken = () => null, questUrl = 'htt
         const value = await read(req.params.username);
         if (!value) return res.status(404).json({ error: 'user_card.not_found' });
         if (value.moved) return res.redirect(307, `/api/v1/people/${encodeURIComponent(value.moved)}/card`);
-        return res.json(value);
+        let viewer = null, target = null;
+        if (typeof identify === 'function') {
+            viewer = await identify(req).catch(() => null);
+            if (viewer && viewer.subject) {
+                const found = await profiles.find(req.params.username).catch(() => null);
+                target = found && !found.moved ? found.user : null;
+            }
+        }
+        return res.json({ ...value, actions: await actionsFor(viewer, target, value, req.params.username) });
     });
     function settings(requireAuth) {
         const router = express.Router();

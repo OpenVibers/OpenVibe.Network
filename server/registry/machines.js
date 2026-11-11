@@ -35,6 +35,7 @@
  * .roles_changed and .revoked (the person's own changes).
  */
 const express = require('express');
+const QRCode = require('qrcode');
 const crypto = require('crypto');
 const { capabilities, http, ids, serviceAuth, validate } = require('openvibe-contracts');
 const eventRelay = require('../developer/event-relay');
@@ -421,6 +422,7 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
         const p = (out && out.pairing) || {};
         res.status(201).json({ pairing: {
             code: String(p.code || ''), expires_at: p.expires_at, installer: String(p.installer || ''),
+            qr_data: await QRCode.toDataURL(String(p.code || ''), { width: 220, margin: 1 }),
             ...(p.pairing_id ? { pairing_id: p.pairing_id } : {}),
         } });
     }));
