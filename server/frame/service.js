@@ -808,7 +808,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     }
     const dockJson = express.json({ limit: '8kb' });
     router.options(['/agent-view', '/agent-view/*', '/agent/*', '/agents/*', '/codes-agents/*', '/tasks/*', '/actor', '/actor/*', '/codes-tasks', '/codes-tasks/*', '/codes-runs/*', '/agent-runs/*'], (req, res) => {
-        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE', 'Access-Control-Max-Age': '600' });
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, Last-Event-ID', 'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE', 'Access-Control-Max-Age': '600' });
         res.status(204).end();
     });
     // OpenVibe.Codes: the person's agent stream, its last still, and the four controls.

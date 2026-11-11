@@ -124,6 +124,9 @@ const TASK = 'tsk_01J8Z3Q4R5S6T7V8W9X0Y1Z2A3';
         // Preflights end here.
         const pre = await fetch(`${base}/codes-tasks`, { method: 'OPTIONS' });
         assert.strictEqual(pre.status, 204);
+        const streamPre = await fetch(`${base}/codes-runs/${TASK}/events`, { method: 'OPTIONS', headers: { Origin: 'https://openvibe.chat', 'Access-Control-Request-Headers': 'authorization,last-event-id' } });
+        assert.strictEqual(streamPre.status, 204);
+        assert.match(streamPre.headers.get('access-control-allow-headers'), /Last-Event-ID/);
 
         // Codes down: a 502 that says so.
         down = true;
