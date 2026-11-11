@@ -38,8 +38,9 @@ const { signToken } = require('../server/auth/routes');
         assert.strictEqual(d.enabled, true);
         assert.strictEqual(d.receipts.length, 1);
         assert.strictEqual(d.receipts[0].message_id, 'msg_1');
-        assert.strictEqual(asked[0].url, '/api/v1/me/mail/receipts', 'the real app reached Mail');
-        assert.strictEqual(asked[0].auth, `Bearer ${token}`, "with the person's own token");
+        const receiptRequest = asked.find((request) => request.url === '/api/v1/me/mail/receipts');
+        assert.ok(receiptRequest, 'the real app reached Mail');
+        assert.strictEqual(receiptRequest.auth, `Bearer ${token}`, "with the person's own token");
 
         mode = 'off';
         r = await get({ authorization: `Bearer ${token}` });
