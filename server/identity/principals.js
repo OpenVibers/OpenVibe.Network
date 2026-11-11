@@ -31,6 +31,12 @@ const CHAT_NAMESPACES = ['chat.preferences', 'chat.tts_defaults', 'chat.dm_setti
 
 // Initial grants: what each service does against Network today.
 const DEFAULT_GRANTS = [
+    // Agents register only their own person's records; Bot reports machine task answers and grant use.
+    ['actor', 'network.agents.register', SELF_AUDIENCE, []],
+    ['codes', 'network.agents.register', SELF_AUDIENCE, []],
+    ['bot', 'network.agents.relay', SELF_AUDIENCE, []],
+    ['network', 'bot.machine.relay', 'openvibe.bot', []],
+    ['network', 'actor.a2a.task', 'openvibe.actor', []],
     // Mail relay checks one address at a time before forwarding; older Contracts pins omit this new capability.
     ...(capabilities.get(EMAIL_READ_CAPABILITY) ? [['mail', EMAIL_READ_CAPABILITY, SELF_AUDIENCE, []]] : []),
     ['mail', 'identity.trust.read', SELF_AUDIENCE, []],
