@@ -114,7 +114,8 @@ async function createTask(db, identity, targetId, body, now = Date.now()) {
     if (!to) fail(404, 'agents.not_found', 'no such receiving agent');
     const fromId = String(body?.from || '');
     const from = AGENT.test(fromId) ? await db.prepare('SELECT * FROM agent_directory WHERE id = ?').get(fromId) : null;
-    if (!from || (identity.type === 'node' ? from.machine_id !== identity.id : from.service !== identity.id)) {
+    if (!from || (identity.type === 'node' ? from.machine_id !== identity.id : from.service !== identity.id)
+        || (identity.type === 'service' && from.owner_subject !== identity.owner)) {
         fail(403, 'agents.sender_denied', 'this caller does not own the sending agent');
     }
     if (from.id === to.id) fail(422, 'agents.self', 'choose another agent');

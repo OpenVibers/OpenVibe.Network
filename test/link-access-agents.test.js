@@ -98,6 +98,9 @@ const { DEFAULT_GRANTS } = require('../server/identity/principals');
     await assert.rejects(agents.register(db, { type: 'node', id: a.id, owner }, { kind: 'actor', name: 'Forged' }), (e) => e.code === 'agents.kind_denied');
     const message = { role: 'user', parts: [{ type: 'text', text: 'hello' }] };
     await assert.rejects(agents.createTask(db, { type: 'node', id: a.id }, to.id, { from: from.id, message }), (e) => e.code === 'agents.others_off');
+    // A service token acting for one person may not send from another person's agent of the same service.
+    await assert.rejects(agents.createTask(db, { type: 'service', id: 'actor', owner }, actorAgent.id,
+        { from: actorAgent.id, message }), (e) => e.code === 'agents.sender_denied');
     await db.prepare('UPDATE agent_directory SET allow_others = 1 WHERE id = ?').run(to.id);
     await assert.rejects(agents.createTask(db, { type: 'node', id: a.id }, to.id, { from: from.id, message }), (e) => e.code === 'agents.grant_required');
     // A fresh grant is required even though the prior grant's signed token has not expired.
