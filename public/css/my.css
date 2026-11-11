@@ -332,12 +332,15 @@ p.rc-quiet { margin: 0; color: var(--text-muted); }
 .td-box { display: grid; align-content: start; gap: 12px; padding: 16px; min-width: 0; }
 .td-sites { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .td-site { display: grid; justify-items: center; gap: 6px; padding: 10px 4px; border-radius: 12px; border: 1px solid transparent; color: var(--text); text-decoration: none; font-size: 12px; font-weight: 650; min-width: 0; }
-.td-site span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-site span:last-child { max-width: 100%; overflow-wrap: anywhere; text-align: center; line-height: 1.25; }
 .td-site .td-site-ic { width: 40px; height: 40px; border-radius: 12px; font-size: 16px; }
 .td-tries { display: grid; gap: 8px; }
 .td-tries::before { content: "Try next"; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
-.td-try { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; border: 1px solid var(--border); color: var(--text); text-decoration: none; }
-.td-try-t { display: grid; gap: 1px; min-width: 0; }
+.td-try { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 14px 8px 8px; border-radius: 12px; border: 1px solid var(--border); background: color-mix(in srgb, var(--accent) 4%, transparent); color: var(--text); text-decoration: none; }
+/* Try next (Opus, 2026-11-11): a row you can tell is a door, the chevron at its end. */
+.td-try::after { content: ""; flex: none; width: 7px; height: 7px; margin-left: auto; border-top: 2px solid var(--text-muted); border-right: 2px solid var(--text-muted); transform: rotate(45deg); }
+.td-try:hover::after { border-color: var(--accent); }
+.td-try-t { display: grid; gap: 1px; min-width: 0; flex: 1; }
 .td-try-t b { font-size: 13.5px; }
 .td-try-t small { font-size: 12px; color: var(--text-muted); }
 .td-bal { display: flex; align-items: baseline; gap: 8px; }
