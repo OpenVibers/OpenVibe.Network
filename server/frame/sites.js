@@ -68,7 +68,7 @@ const GROUPS = [
     { id: 'tools', name: 'Free tools', sites: ['tools', 'design', 'domains', 'host', 'image', 'lock', 'food'] },
     // Actor is the engine behind every agent (Codes' Auto, Vibe, the Dock call it): a developer service, not a second
     // place to chat with an agent (plan L39, 2026-10-31). It makes things with AI, beside the places that do.
-    { id: 'make', name: 'Make with AI', sites: ['space', 'codes', 'bot', 'actor', 'computer', 'connect'] },
+    { id: 'make', name: 'Make with AI', sites: ['space', 'codes', 'bot', 'actor', 'computer', 'connect', 'directory'] },
     { id: 'build', name: 'For developers', sites: ['services', 'exchange', 'run', 'zone', 'events', 'watch', 'git'] },
 ];
 // What each site is, in a few words, for the menus (the launcher's rows are two to a line on a phone: about 22
@@ -82,7 +82,7 @@ const MENU_LINE = {
     news: 'Sourced, not spun', today: 'Your schedule', report: 'Your numbers, honest', search: 'Search everything', wiki: 'Facts with sources', blog: 'Write long-form', vision: 'Ask a picture',
     deals: 'Deals people share', coupons: 'Codes that work', shoes: 'Every shoe, every price', reviews: 'Honest reviews', trade: 'Watch the markets', rent: 'Places to rent', work: 'Find a job',
     tools: 'Every online tool', design: 'Try themes live', domains: 'Names and prices', host: 'Compare hosting', image: 'Edit photos in your browser', lock: 'Files only you can open', food: 'Food near you',
-    space: 'Host a site or app', codes: 'Code with any agent', bot: 'Drive a robot', actor: 'The agent engine', computer: 'Your computer, your way', connect: 'Share a port with Link',
+    space: 'Host a site or app', codes: 'Code with any agent', bot: 'Drive a robot', actor: 'The agent engine', computer: 'Your computer, your way', connect: 'Share a port with Link', directory: 'Listings with sources',
     services: 'APIs, SDK and keys', exchange: 'AI models, one account', run: 'Run jobs anywhere', zone: 'S3 storage', events: 'Event streams', watch: 'Know when it changes', git: 'Host and browse code',
 };
 

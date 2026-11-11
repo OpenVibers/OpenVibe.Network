@@ -16,8 +16,8 @@ assert.deepStrictEqual(GROUPS.map((g) => g.id), ['watch', 'talk', 'play', 'read'
 // At most seven tiles a group, and every listed place in exactly one group.
 for (const g of GROUPS) assert.ok(g.sites.length <= 7, `${g.name}: ${g.sites.length} tiles`);
 for (const s of LISTED) assert.strictEqual(GROUPS.filter((g) => g.sites.includes(s.id)).length, 1, `${s.id}: exactly one group`);
-assert.deepStrictEqual(GROUPS.map((g) => g.sites.length), [7, 7, 7, 7, 7, 7, 6, 7]);
-assert.strictEqual(LISTED.filter((s) => s.status === 'open').length, 55, 'the one number: 53 open sites plus Pics and Download');
+assert.deepStrictEqual(GROUPS.map((g) => g.sites.length), [7, 7, 7, 7, 7, 7, 7, 7]);
+assert.strictEqual(LISTED.filter((s) => s.status === 'open').length, 55 + Number(Boolean(contracts.services.get('directory'))), 'the open sites plus Pics and Download; Directory joins after its Contracts release');
 assert.deepStrictEqual(PRODUCTS.map((p) => LISTED.find((s) => s.id === p.id).status), ['open', 'open'], 'Pics and Download are open entries');
 
 // Every manifest site is in one group, or is one of the named merges: Media into Video, Bench into Report,
