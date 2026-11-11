@@ -24,6 +24,8 @@ await db.prepare(`INSERT INTO users (id, username, password_hash, role) VALUES
     (10, 'owner', 'x', 'user'), (11, 'dev', 'x', 'user'), (12, 'viewer', 'x', 'user'), (13, 'stranger', 'x', 'user'), (14, 'staff', 'x', 'admin'), (15, 'admin', 'x', 'user')`).run();
 // The seed creates Actor's client (server/db/database.js); this file sets the fields it relies on.
 await db.prepare("INSERT INTO oauth_clients (client_id, client_secret, name, redirect_uris, is_first_party) VALUES ('actor', 'x', 'OpenVibe.Actor', '[]', 1) ON CONFLICT (client_id) DO UPDATE SET client_secret = EXCLUDED.client_secret, name = EXCLUDED.name, redirect_uris = EXCLUDED.redirect_uris, is_first_party = EXCLUDED.is_first_party").run();
+// Exercise a service host without a Media grant; the default Actor grant is checked in media-private-grants.test.js.
+await db.prepare("DELETE FROM principal_grants WHERE client_id = 'actor' AND audience = 'openvibe.media'").run();
 const S = {};
 for (const [id, name] of PEOPLE) S[name] = await subjects.ensureUserSubject(db, await db.prepare('SELECT * FROM users WHERE id = ?').get(id));
 
@@ -121,7 +123,7 @@ for (const [id, name] of PEOPLE) T[name] = jwt.sign({ sub: id, id }, keys.privat
         const chat = ok(await put('dev', svcBot, 'chat.message.send', { mode: 'confirm' }));
         assert.deepStrictEqual([chat.audience, chat.effective_mode, chat.within_host], ['openvibe.chat', 'confirm', true]);
         refused(await put('dev', svcBot, 'chat.moderation.read'), 403, 'grant.beyond_host'); // internal, though Actor holds it
-        refused(await put('dev', svcBot, 'media.object.read'), 403, 'grant.beyond_host'); // Actor does not hold it
+        refused(await put('dev', svcBot, 'media.object.read'), 403, 'grant.beyond_host'); // This service host has no Media grant
 
         // ── Read: members and staff ──
         assert.deepStrictEqual(ok(await api('viewer', 'GET', `/${P}/agents/${ownBot}/grants`)).grants.map((g) => g.capability), ['media.object.delete', 'media.object.upload']);
