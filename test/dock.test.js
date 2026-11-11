@@ -12,7 +12,7 @@
 //   - one person never reads or writes another's state: the subject comes from the token and nowhere else;
 //   - CORS: an OpenVibe site may ask, another origin is refused (and a cross-origin write never runs the route);
 //   - 60 writes a minute per person;
-//   - the row goes into the person's export and is erased with them, and a merge leaves it with the survivor;
+//   - the row goes into the person's export and is erased with them, and it is erased with the person;
 //   - the migration is expand-only.
 //   node --import ./test/helpers/pg-preload.mjs test/dock.test.js
 const assert = require('assert');
@@ -27,7 +27,6 @@ const { getDb } = require('../server/db/database');
 const subjects = require('../server/identity/subjects');
 const dockMod = require('../server/dock');
 const accountData = require('../server/identity/account-data');
-const accountMerge = require('../server/identity/account-merge');
 const publicCors = require('../server/public-cors');
 const authRoutes = require('../server/auth/routes');
 
@@ -235,12 +234,6 @@ try {
     assert.strictEqual(asJson(exported[0].state).tab, 'chats', 'the exported state is the one ana stored');
     const bobPart = await accountData.networkPart(db, bob.id);
     assert.deepStrictEqual(bobPart.files.find((f) => f.name === 'dock.json').content.map((x) => x.subject), [bob.subject_id], "bob's export carries only his own row");
-
-    // The merge (ADR-029) leaves the Dock with the surviving account.
-    const survivor = await db.prepare('SELECT * FROM users WHERE id = ?').get(ana.id);
-    await accountMerge.merge(db, bob, survivor, { initiatedBy: 'person' });
-    assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM dock_states WHERE subject = ?').get(bob.subject_id)).n, 0, "the folded-in account's row is gone");
-    assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM dock_states WHERE subject = ?').get(ana.subject_id)).n, 1, "the survivor keeps the row");
 
     // And the row is erased with the person.
     const delId = `del_${ids.ulid()}`;

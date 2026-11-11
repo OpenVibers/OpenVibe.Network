@@ -9,6 +9,7 @@
 
 const express = require('express');
 const wallet = require('./wallet');
+const coinChanges = require('./changes');
 const money = require('../money/reasons');
 const config = require('../config');
 
@@ -39,6 +40,34 @@ module.exports = function createCoinsRoutes(db, requireAuth, opts = {}) {
         if (req.query.with !== 'vibes') return res.json({ balance });
         res.set('Cache-Control', 'private, no-store');
         res.json({ balance, vibes: await vibesOf(req) });
+    });
+
+    // ── GET /api/coins/me/changes?currency=opencoins&since=<id>&limit=100 ──
+    // Ask 273: what changed in the person's OpenCoins since they last looked — the bar's gain or
+    // loss with its reason: moves oldest first with delta, part (earned/spent/received/sent) and
+    // plain-words reason; parts and net over the whole window; cursor/next_since for paging. An
+    // omitted since falls back to the person's stored read state. Their token, their rows only:
+    // there is no user parameter, so another person's balance is unreachable.
+    router.get('/me/changes', requireAuth, async (req, res) => {
+        try {
+            res.set('Cache-Control', 'private, no-store');
+            res.json(await coinChanges.changes(db, req.user.id, {
+                currency: req.query.currency || 'opencoins', since: req.query.since, limit: req.query.limit,
+            }));
+        } catch (e) {
+            res.status(e.status || 500).json({ error: e.code || 'coins.unavailable', message: e.message });
+        }
+    });
+
+    // ── PUT /api/coins/me/read { currency, cursor } ──
+    // Store "I looked" (monotonic: looking backwards is refused).
+    router.put('/me/read', requireAuth, express.json({ limit: '16kb' }), async (req, res) => {
+        try {
+            res.set('Cache-Control', 'private, no-store');
+            res.json(await coinChanges.markRead(db, req.user.id, { currency: (req.body || {}).currency || 'opencoins', cursor: (req.body || {}).cursor }));
+        } catch (e) {
+            res.status(e.status || 500).json({ error: e.code || 'coins.unavailable', message: e.message });
+        }
     });
 
     // ── GET /api/coins/me/history?limit=50&offset=0 ──────────

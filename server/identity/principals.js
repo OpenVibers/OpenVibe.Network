@@ -92,8 +92,8 @@ const DEFAULT_GRANTS = [
     // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
     // The chat.* namespaces are Chat's (chat.preferences since the Wave 6 cutover, chat.tts_defaults since
     // contracts 0.41.0). A service reading another's namespace sees only the fields `readers` lists for it.
-    ['live', 'network.modules.read', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty']],
-    ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty']],
+    ['live', 'network.modules.read', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty', 'live.layout']],
+    ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty', 'live.layout']],
     ['chat', 'network.modules.read', SELF_AUDIENCE, CHAT_NAMESPACES],
     ['chat', 'network.modules.write', SELF_AUDIENCE, CHAT_NAMESPACES],
     // Presence (plan 2026-10-22 track X item 9): Chat draws the dot in its DMs and member lists. The API enforces
@@ -146,11 +146,11 @@ const DEFAULT_GRANTS = [
     // Compatibility register C-71: Inventory (Workshop badge images) and MediaHub (its library) reach Media with their
     // own tokens on their own tenants, not with app keys. Upload also covers the delete of an object.
     ['inventory', 'media.object.upload', 'openvibe.media', ['inventory']],
-    // Codes (C8 proof screenshots, the rich embeds of a task) keeps a person's pictures in Media as private objects on
-    // its own tenant, reached with its own token (10-30). A grant on a host's own tenant never reaches the agents it
-    // hosts: an agent's token names only its project's namespaces (agent-tokens.test.js), so it gets no `actor`.
-    // Actor holds no Media grant for now all the same: its artifacts are in its own database, owner-only (Actor V2-4).
+    // Codes keeps a person's task pictures in Media. Actor's sandbox skills keep scanned code resources there.
+    // Each service reaches only its own tenant with its own token. A grant on Actor's tenant never reaches the agents
+    // it hosts: an agent's token names only its project's namespaces (agent-tokens.test.js), so it gets no `actor`.
     ...['media.object.upload', 'media.object.read'].map((cap) => ['codes', cap, 'openvibe.media', ['codes']]),
+    ...['media.object.upload', 'media.object.read'].map((cap) => ['actor', cap, 'openvibe.media', ['actor']]),
     ['media-hub', 'media.object.upload', 'openvibe.media', ['media-hub']],
     ['media-hub', 'media.object.read', 'openvibe.media', ['media-hub']],
     // OpenVibe.Video's AI edit (MediaHub server/video/ai-edit.js): media.analyze on finished uploads, local and unpaid;
@@ -190,6 +190,9 @@ const DEFAULT_GRANTS = [
     // Vibe sets up recurring work for the person it is talking with, in their own chat and after they agreed (Chat's
     // set_up_agent and my_agents tools): one of their OpenVibe Agents, made and listed as them (X-OV-Subject).
     ['chat', 'actor.agent.manage', 'openvibe.actor', []],
+    // A server manager may attach one of their own Actor agents to a Chat channel. Chat runs that agent for its
+    // owner when a channel member mentions it; Actor keeps the owner's allowance, approvals and daily run cap.
+    ['chat', 'actor.agent.run', 'openvibe.actor', []],
     ['games', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Games subscribes to network.user.token_valid_after (sign-out everywhere closes game sessions).
     ['games', 'events.subscription.manage', 'openvibe.events', []],
@@ -372,7 +375,7 @@ const DEFAULT_GRANTS = [
     // each service mounts /internal/config). A grant is seeded only once the pinned Contracts knows its capability, so
     // this works on the pin before 0.308.0 and seeds all eight at the first boot after the pin moves. New rows, as for
     // the nine: no RESTORED_GRANTS or CHANGED_DEFAULT_NAMESPACES entry.
-    ...['chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media']
+    ...['chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run']
         .filter((svc) => capabilities.get(`${svc}.config.manage`))
         .map((svc) => ['network', `${svc}.config.manage`, `openvibe.${svc}`, []]),
     // The editorial queue's AI editor (Contracts 0.315.0, 2026-11-07): the orchestrator's service principal records
@@ -542,7 +545,7 @@ const DEFAULT_GRANTS = [
     // A community AI offer's "followers" audience: AI checks whether the requester follows the offer's owner (the
     // owner's channel) before placing a run. Read-only, like Live's.
     ['ai', 'network.follows.read', SELF_AUDIENCE, []],
-    // Self-dealing: a community run whose requester is the offer owner (or an account merged into it) earns nothing.
+    // Self-dealing: a community run whose requester is the offer owner  earns nothing.
     // AI resolves both subjects to the survivor before it records the seller's ledger.
     ['ai', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // WS-N task 12: ovhost incident / maintenance post to the status page.
@@ -665,6 +668,10 @@ const DEFAULT_GRANTS = [
     // hides a thread when it takes the entity down.
     ['live', 'community.comment.write', 'openvibe.community', []],
     ['live', 'community.comment.moderate', 'openvibe.community', []],
+    // Video uploads belong to MediaHub; it checks item visibility and owner rights before handing
+    // the Community thread to a viewer or moderating a comment on that item.
+    ['media-hub', 'community.comment.write', 'openvibe.community', []],
+    ['media-hub', 'community.comment.moderate', 'openvibe.community', []],
     ['live', 'community.pulse.write', 'openvibe.community', []],
     // Wave 6: OpenVibe.Chat reads Live's chat context and asks Live for effects; Live bridges its remaining
     // chat writers to Chat and reads presence. (The read mirror back to Live was retired 2026-10-05: see REVOKED_GRANTS.)
@@ -832,6 +839,11 @@ const DEFAULT_GRANTS = [
     // what passes `prefer` to the router). Without ai.chat every unpinned frame was refused ("this token may not run
     // ai.chat") from 10-31 to 11-02.
     ['design', 'ai.run.create', 'openvibe.ai', ['ai.generate', 'ai.chat']],
+    // The Exchange platform API's icon reference search (contracts 0.407.0, exchange.search.icons): Design asks
+    // OpenVibe.AI for the references beside a glyph draft with its own service token, so no Exchange key is needed,
+    // and reaches only POST /v1/search/icons. This grant was never granted or revoked before, so it needs no
+    // RESTORED_GRANTS entry; the seed inserts it at boot.
+    ['design', 'exchange.search.icons', 'openvibe.ai', []],
     // OpenVibe.Bench (contracts 0.238.0): the shared benchmark engine calls AI's generate route (namespace ai.generate)
     // to run its pinned rounds, and subscribes to the account events at boot; its export/deletion pair is with the
     // other services' above. It publishes bench.* events and answers no other service today, so no Search grant.
@@ -990,6 +1002,9 @@ const CHANGED_DEFAULT_NAMESPACES = [
     // contracts 0.56.0: live.loyalty (WS-K task 9).
     ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats'], ['live.profile', 'live.stats', 'live.loyalty']],
     ['live', 'network.modules.read', SELF_AUDIENCE, ['live.profile', 'live.stats'], ['live.profile', 'live.stats', 'live.loyalty']],
+    // contracts 0.406.0: live.layout, the signed-in person's picture-in-picture places (Live's /api/me/layout).
+    ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty'], ['live.profile', 'live.stats', 'live.loyalty', 'live.layout']],
+    ['live', 'network.modules.read', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty'], ['live.profile', 'live.stats', 'live.loyalty', 'live.layout']],
     ['chat', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences'], CHAT_NAMESPACES],
     ['chat', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences'], CHAT_NAMESPACES],
     // Tools' job results under each developer project's child namespace (WS-L task 5, Media namespaces WS-G task 2).

@@ -14,6 +14,15 @@ const { ids, validate } = require('openvibe-contracts');
 
 const SELF = 'network';
 
+/**
+ * The probe tooling signs its accounts up through the ordinary /api/auth/register form with this prefix. A name
+ * starting with it is a test account forever: `is_test` is what every public surface filters on, so the prefix is
+ * the one way a new probe account can be created already marked (server/auth/routes.js). Ordinary people never see
+ * or claim these names on a public list.
+ */
+const TEST_USERNAME_PREFIX = 'ovprobe_';
+const isTestUsername = (username) => String(username || '').toLowerCase().startsWith(TEST_USERNAME_PREFIX);
+
 /** SQLite ov_now() ('YYYY-MM-DD HH:MM:SS', UTC) -> ms, so backfilled ULIDs sort by account age. */
 function createdMs(value) {
     const t = value ? Date.parse(String(value).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(value) ? '' : 'Z')) : NaN;
@@ -93,9 +102,9 @@ async function projection(db, subjectId) {
         const u = await db.prepare('SELECT * FROM users WHERE subject_id = ?').get(subjectId);
         if (!u) return null;
         // A deleted account (ADR-033) resolves as a tombstone, so services show "Deleted account" and keep nothing.
-        if (u.deleted_at) return { subject: { type: 'user', id: u.subject_id }, network_user_id: u.id, username: u.username, display_name: 'Deleted account', avatar_url: null, banned: false, deleted: true };
+        if (u.deleted_at) return { subject: { type: 'user', id: u.subject_id }, network_user_id: u.id, username: u.username, display_name: 'Deleted account', avatar_url: null, banned: false, is_test: Boolean(u.is_test), deleted: true };
         return { subject: { type: 'user', id: u.subject_id }, network_user_id: u.id, username: u.username,
-            display_name: u.display_name || u.username, avatar_url: u.avatar_url || null, banned: Boolean(u.is_banned) };
+            display_name: u.display_name || u.username, avatar_url: u.avatar_url || null, banned: Boolean(u.is_banned), is_test: Boolean(u.is_test) };
     }
     if (subjectId.startsWith('gst_')) {
         const g = await db.prepare('SELECT id, subject_id, anon_number, display_name FROM anon_users WHERE subject_id = ?').get(subjectId);
@@ -104,6 +113,16 @@ async function projection(db, subjectId) {
             display_name: g.display_name || `anon${g.anon_number}`, avatar_url: null, banned: false };
     }
     return null;
+}
+
+/** Every test account's projection, for the services that must leave them out of public surfaces. */
+async function testProjections(db) {
+    const rows = await db.prepare('SELECT * FROM users WHERE COALESCE(is_test, 0) = 1 ORDER BY id').all();
+    return rows.map((u) => ({
+        subject: { type: 'user', id: u.subject_id }, network_user_id: u.id, username: u.username,
+        display_name: u.display_name || u.username, avatar_url: u.avatar_url || null,
+        banned: Boolean(u.is_banned), is_test: true,
+    })).filter((p) => p.subject.id);
 }
 
 /** Resolve by subject id or by (system, type, id). Returns the projection plus the matching legacy ids. */
@@ -119,11 +138,8 @@ async function resolve(db, { subject_id, source_system, source_type, source_id }
             sid = row && row.subject_id;
         }
     }
-    // A subject merged into another (ADR-029) resolves to the survivor, saying where it came from.
-    const survivor = sid ? await require('./account-merge').survivorOf(db, sid) : sid;
-    const p = survivor ? await projection(db, survivor) : null;
+    const p = sid ? await projection(db, sid) : null;
     if (!p) return null;
-    if (survivor !== sid) p.merged_from = sid;
     p.legacy_ids = await db.prepare('SELECT source_system, source_type, source_id FROM identity_legacy_map WHERE subject_id = ? ORDER BY source_system, source_type')
         .all(p.subject.id);
     return p;
@@ -136,9 +152,8 @@ async function resolve(db, { subject_id, source_system, source_type, source_id }
 async function resolveUsername(db, name) {
     const n = String(name || '').trim().replace(/^@/, '');
     if (!/^[A-Za-z0-9_.-]{1,40}$/.test(n)) return null;
-    const u = await db.prepare('SELECT id, subject_id, created_at FROM users WHERE LOWER(username) = LOWER(?) AND COALESCE(is_banned, 0) = 0 AND deleted_at IS NULL').get(n);
+    const u = await db.prepare('SELECT id, subject_id, created_at FROM users WHERE LOWER(username) = LOWER(?) AND COALESCE(is_banned, 0) = 0 AND deleted_at IS NULL AND merged_into IS NULL').get(n);
     if (!u) return null;
-    // A name folded into another account (ADR-029) resolves to the survivor: judge the survivor, not the alias row.
     const p = await resolve(db, { subject_id: u.subject_id || await ensureUserSubject(db, u) });
     return p && !p.banned && !p.deleted ? p : null;
 }
@@ -181,4 +196,4 @@ async function upsertLegacy(db, entries) {
     return out;
 }
 
-module.exports = { ensureSchema, backfill, seedLegacyMap, ensureUserSubject, newUserSubjectId, newGuestSubjectId, projection, resolve, upsertLegacy, createdMs, resolveUsername };
+module.exports = { ensureSchema, backfill, seedLegacyMap, ensureUserSubject, newUserSubjectId, newGuestSubjectId, projection, testProjections, resolve, upsertLegacy, createdMs, resolveUsername, TEST_USERNAME_PREFIX, isTestUsername };

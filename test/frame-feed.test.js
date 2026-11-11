@@ -16,6 +16,8 @@ const { createFrameService } = require('../server/frame/service');
         res.setHeader('content-type', 'application/json');
         const u = new URL(req.url, 'http://x');
         if (u.pathname === '/api/v1/feed') return res.end(JSON.stringify({ items: [{ id: 'p:1', kind: u.searchParams.get('kind') || 'post', url: 'https://openvibe.community/p/1', title: 'A post' }], next_cursor: 'c2' }));
+        if (u.pathname === '/api/v1/feed/search') return res.end(JSON.stringify({ items: [{ id: 'p:2', title: u.searchParams.get('q') }], next_cursor: null }));
+        if (u.pathname === '/api/v1/feed/examples') return res.end(JSON.stringify({ examples: [{ text: 'New photos', reason: 'kind' }] }));
         if (u.pathname === '/api/v1/me/status' && req.method === 'POST') { let body = ''; req.on('data', (c) => { body += c; }); req.on('end', () => { asked.push({ url: req.url, auth: req.headers.authorization || '', body }); res.statusCode = req.headers.authorization ? 201 : 401; res.end(JSON.stringify({ ok: true })); }); return undefined; }
         if ((u.pathname === '/api/v1/spaces/status/attachments' || u.pathname === '/api/v1/posts') && req.method === 'POST') {
             const chunks = []; req.on('data', (c) => chunks.push(c));
@@ -42,9 +44,17 @@ const { createFrameService } = require('../server/frame/service');
     assert.strictEqual(d.next_cursor, 'c2');
     const first = new URL(asked[0].url, 'http://x');
     assert.deepStrictEqual([first.pathname, first.searchParams.get('kind'), first.searchParams.get('limit'), first.searchParams.get('cursor')], ['/api/v1/feed', 'clip', '12', 'c1']);
+    ({ r, d } = await get('/feed/search?q=New%20photos'));
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(d.items[0].title, 'New photos');
+    assert.strictEqual(new URL(asked[asked.length - 1].url, 'http://x').pathname, '/api/v1/feed/search');
+    ({ r, d } = await get('/feed/examples'));
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(d.examples[0].text, 'New photos');
 
+    const afterSearch = asked.length;
     ({ d } = await get('/feed?kind=clip&limit=12&cursor=c1'));
-    assert.strictEqual(asked.length, 1, 'the same anonymous page within 30 s is answered from memory');
+    assert.strictEqual(asked.length, afterSearch, 'the same anonymous page within 30 s is answered from memory');
 
     ({ r, d } = await get('/wall?limit=20&for=me', { Authorization: 'Bearer abcdefghijklmnop.qrstu', Cookie: 'ov_session=secret' }));
     const wall = asked[asked.length - 1];

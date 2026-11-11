@@ -21,7 +21,6 @@ const bcrypt = require('bcryptjs');
 const { parseHTML } = require('linkedom');
 const { getDb } = require('../server/db/database');
 const subjects = require('../server/identity/subjects');
-const accountMerge = require('../server/identity/account-merge');
 const accountData = require('../server/identity/account-data');
 const authRoutes = require('../server/auth/routes');
 const { makeRequireAuth } = require('../server/auth/session');
@@ -67,7 +66,7 @@ function safetyWindow(location = { origin: 'https://openvibe.network', hostname:
 const bannerTest = (async () => {
     const { root, calls, api, reauth } = safetyWindow();
     assert.strictEqual(reauth.url('/my#delete'), '/login?reauth=1&return=%2Fmy%23delete', 'the deletion return target');
-    assert.strictEqual(reauth.url('/my#accounts', { account: '' }), '/login?reauth=1&login_hint=&return=%2Fmy%23accounts', 'merge leaves the username blank');
+    assert.strictEqual(reauth.url('/my#accounts', { account: '' }), '/login?reauth=1&login_hint=&return=%2Fmy%23accounts', 'blank account hint remains blank');
     assert.strictEqual(reauth.url('/admin#ai', { account: 'goosely' }), '/login?reauth=1&login_hint=goosely&return=%2Fadmin%23ai');
     assert.match(api.bannerText('2030-01-02T03:04:00.000Z'), /^Your account will be deleted on .+\.$/);
     assert.strictEqual(api.sessionToken(), null, 'signed out: no banner');
@@ -115,7 +114,7 @@ assert.match(read('public/js/my/core.js'), /hash === 'delete' \? 'accounts' : ha
 // The banner reads GET /deletion on every page; that read must not spend the 20-a-minute write budget.
 const index = read('server/index.js');
 assert.match(index, /skip: \(req\) => req\.method === 'GET' && req\.path === '\/deletion'/, 'GET /deletion is not rate-limited with the writes it feeds');
-assert.match(index, /skip: \(req\) => !String\(req\.path\)\.startsWith\('\/merge'\)/, 'the merge limiter does not count the account data routes');
+assert.doesNotMatch(index, /mergeRouters|startsWith\('\/merge'\)/, 'account merge routers and their limiter are removed');
 
 // ── /login?reauth=1 always asks for the password ────────────────────────────
 const login = read('public/js/login.js');
@@ -170,7 +169,6 @@ assert.match(read('public/my.html'), /stays usable for 30 days/);
 const serverTest = async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-delete-reauth-'));
     const db = getDb();
-    await accountMerge.ensureSchema(db);
     await accountData.ensureSchema(db);
 
     const ISSUER = 'https://openvibe.network';

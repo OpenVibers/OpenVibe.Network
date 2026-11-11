@@ -61,6 +61,8 @@ const ago = (m) => new Date(Date.now() - m * 60000).toISOString();
 assert.ok(HTML.includes('id="sec-machines"') && HTML.includes("showSection('machines',this)"), 'a Machines section and tab');
 assert.ok(HTML.indexOf('<script src="/js/my/machines.js" defer>') > 0, 'its script');
 assert.match(CORE, /'\/machines': 'machines'/, 'the /machines address opens it');
+assert.match(CORE, /hash === 'pair' \? 'machines'/, '#pair opens Machines');
+assert.match(CORE, /if \(routeSection === 'machines' && hash === 'pair'\) setTimeout\(\(\) => mcPair\(\), 0\)/, '#pair starts pairing');
 assert.match(CORE, /if \(id === 'machines' && typeof loadMachines === 'function'\) loadMachines\(\);/, 'it loads when opened');
 assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the account hub, not a 404');
 
@@ -68,7 +70,7 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
     // ── Two machines: the online one first, its roles as switches ──
     let machines = [
         { id: 'dev_A', kind: 'onboard', online: false, name: 'Old laptop', os: 'Linux', last_seen_at: ago(120), roles: [], running: [] },
-        { id: 'dev_B', kind: 'onboard', online: true, name: 'Studio PC', os: 'Windows 11', node_version: '0.31.0', roles: ['codes.worker'], running: [{ title: 'Fix the WHIP reconnect' }] },
+        { id: 'dev_B', kind: 'onboard', online: true, name: 'Studio PC', os: 'Windows 11', node_version: '0.31.0', roles: ['codes.worker'], running: [{ title: 'Fix the WHIP reconnect' }], fleet: [{ agent: 'muse', installed: true, signed_in: true }], fleet_at: new Date().toISOString() },
     ];
     let p = page({ answers: (m, url, body) => {
         if (url === '/api/v1/machines/roles') return { roles: ROLES };
@@ -83,6 +85,11 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
     assert.deepStrictEqual(cards.map((c) => c.getAttribute('data-machine')), ['dev_B', 'dev_A'], 'online first');
     assert.match(cards[0].textContent, /Studio PC.*Online.*Windows 11 · Node 0\.31\.0/);
     assert.match(cards[0].textContent, /Fix the WHIP reconnect/, 'what it runs');
+    assert.match(cards[0].textContent, /Muse CodeReady.*muse login.*--plan-logins.*install.ps1/, 'ready and Windows setup on its card');
+    assert.match(p.sandbox.mcMuseStatus({ online: true, fleet: [{ agent: 'muse', installed: true, signed_in: false }] }).textContent, /Muse CodeSign in/);
+    assert.match(p.sandbox.mcMuseStatus({ online: true, fleet: [{ agent: 'muse', installed: false, signed_in: false }] }).textContent, /Muse CodeNot installed/);
+    assert.match(p.sandbox.mcMuseStatus({ online: true }).textContent, /Muse CodeStatus unavailable/);
+    assert.match(p.sandbox.mcMuseStatus({ online: true, fleet: [{ agent: 'muse', installed: true, signed_in: true }], fleet_at: ago(10) }).textContent, /Muse CodeStatus unavailable/, 'old readings are not current readiness');
     assert.match(cards[1].textContent, /Offline · seen 2 h ago/);
     const boxes = cards[0].querySelectorAll('.mc-role input');
     assert.deepStrictEqual(boxes.map((b) => [b.value, b.checked]), [['codes.worker', true], ['desks.host', false], ['ai.host', false]], 'a switch per role, the machine\'s own on');

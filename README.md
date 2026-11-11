@@ -81,7 +81,7 @@ person's username and picture (a service token, `identity.subject.resolve`).
 
 ## Owns
 
-- accounts, sessions, anonymous identities, canonical subjects (`usr_…`, `gst_…`) and account merges
+- accounts, sessions, anonymous identities, canonical subjects (`usr_…`, `gst_…`)
 - OAuth2/OIDC (the network's token issuer and its signing key), service principals and their grants,
   developer projects, apps, credentials, grants and quotas (ADR-014), mod principals
 - notifications and email, themes and theme preferences, user modules, platform blocks, the follow
@@ -106,8 +106,8 @@ person's username and picture (a service token, `identity.subject.resolve`).
 
 ## Depends on
 
-- `openvibe-contracts` v0.317.0 (registry manifests, capability checks), `openvibe-sdk` v0.125.0 (PostgreSQL
-  and Valkey adapters, events, per-actor limits, universal telemetry), `openvibe-shared` v4.199.0, pinned by release tarball
+- `openvibe-contracts` v0.317.0 (registry manifests, capability checks), `openvibe-sdk` v0.150.0 (PostgreSQL
+  and Valkey adapters, events, per-actor limits, universal telemetry), `openvibe-shared` v4.211.0, pinned by release tarball
 - OpenVibe.Events (Network's outbox relay; the events it consumes), OpenVibe.AI (the `network.site_copy`
   workflow), OpenVibe.Blog (the changelog feed it proxies)
 - email (Resend), Discord and GitHub when their secrets are set ([Provider secrets](#provider-secrets))
@@ -471,7 +471,7 @@ the Network (`server/dock/`, migration `0031_dock_states.sql`, contracts 0.251.0
   with the CORS allow-list and the CSRF rules the other `/api/v1/me/*` routes use.
 - A write is limited to 60 a minute per person (`429 dock.rate_limited` past that); the page debounces anyway.
 - The row is the person's own: it goes into their account export and is erased with them (ADR-033), and a merge
-  (ADR-029) leaves it with the surviving account.
+  with the surviving account.
 
 The full reference is [docs/dock.md](docs/dock.md).
 
@@ -573,7 +573,7 @@ Namespaces, schemas, writers, public fields and quotas come from openvibe-contra
   when `OV_EVENTS_INTERNAL_URL` is set; rows wait there otherwise). The payload names the owner subject,
   namespace, schema version, revision, change, reason and the changed keys; values only for fields the
   namespace declares public. Revisions only grow for a (person, namespace), deletes included.
-- Accounts: `onSubjectRemoved` / `onSubjectMerged` delete or re-key a subject's records with events; triggers
+- Accounts: `onSubjectRemoved` deletes a subject's records with events; guest links move portable preferences to a registered account; triggers
   refuse deleting a `users`/`anon_users` row, or changing its `subject_id`, while records remain.
 - Owning service retired (its manifest `status: retired`): the namespace turns read-only;
   `delete-after-retention` namespaces are emptied `retentionDays` after Network first saw it (daily sweep).
@@ -842,7 +842,7 @@ Accessible to users with `role = 'admin'`. All endpoints under `/api/admin/`.
 
 `npm test` runs the 74 test files listed in `package.json` (temp databases, no network). They
 cover OAuth with PKCE, OIDC discovery, refresh-token rotation and reuse, SSO and FedCM, subjects,
-principals and grants, account merge, export and deletion, developer projects, export tokens and usage,
+principals and grants, export and deletion, developer projects, export tokens and usage,
 user modules, blocks, follows and their authority switch, analytics privacy, the registry and its
 exposure, notifications and events, status and incidents, operator alerts, per-actor limits, and the
 security suites (`security-session`, `security-redirects`, `security-secrets`, `security-private`,
@@ -960,7 +960,7 @@ The same proof covers a backups-only update (the fingerprint does not change).
 - **A reset** is for the person who lost both their passphrase and their recovery kit: `PUT /api/v1/me/keys`
   with `{"reset": true}` and no proof, allowed only when the session's sign-in is recent — the session
   token's `auth_time` within the last ten minutes (the OIDC claim Network's `signToken` puts on every
-  session; the same rule account-merge and the account deletion use). Without it the write is refused with
+  session; the same rule the account deletion uses). Without it the write is refused with
   `403 locker.reauth_required`. A reset replaces the whole locker: new keys, and the backups that come with
   them; the old backups wrapped keys that are gone. It is written down as `reset`.
 - **Forgetting** (`DELETE /api/v1/me/keys`, with `{"confirm": "forget my locker"}`) needs the same proof, over
@@ -1036,7 +1036,7 @@ Every change also sends the person a Network notification, so a swap nobody aske
 MIT (`license` in [package.json](package.json)).
 
 <!-- versions:start -->
-- openvibe-contracts: v0.391.0
-- openvibe-sdk: v0.125.0
-- openvibe-shared: v4.199.0
+- openvibe-contracts: v0.407.0
+- openvibe-sdk: v0.150.0
+- openvibe-shared: v4.211.0
 <!-- versions:end -->

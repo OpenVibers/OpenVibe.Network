@@ -12,7 +12,7 @@ const CONSENT_KIND_LABEL = {
     posts: 'Posts', pictures: 'Pictures', code: 'Code',
 };
 const CONSENT_BY_LABEL = {
-    person: 'you', app_revoked: 'the app revoked', merge: 'an account merge', deletion: 'account deletion', import: 'an import',
+    person: 'you', app_revoked: 'the app revoked', merge: 'an earlier account action', deletion: 'account deletion', import: 'an import',
 };
 
 function consentEsc(value) {
@@ -103,7 +103,7 @@ function consentRow(purpose) {
 function renderConsent() {
     const box = document.getElementById('consent-choices');
     if (!box) return;
-    if (!consentDoc) { box.innerHTML = '<div class="loading-spinner">Loading your choices…</div>'; return; }
+    if (!consentDoc) { box.innerHTML = '<div class="loading-spinner"><span class="ov-mark" data-state="busy" data-size="32" aria-hidden="true"></span></div>'; return; }
     // A re-render (a save, or the apps arriving) keeps the folds the person had open.
     const open = new Set([...box.querySelectorAll('details[open][data-consent-row]')].map((d) => d.getAttribute('data-consent-row')));
     box.innerHTML = (consentDoc.purposes || []).map(consentRow).join('');
@@ -188,7 +188,7 @@ function renderConsentApps() {
     const box = document.getElementById('consent-apps');
     if (!box) return;
     box.replaceChildren();
-    if (!consentAppsDoc) { box.append(consentNode('div', 'loading-spinner', 'Loading your apps…')); return; }
+    if (!consentAppsDoc) { const wait = consentNode('div', 'loading-spinner', null); wait.innerHTML = '<span class="ov-mark" data-state="busy" data-size="32" aria-hidden="true"></span>'; box.append(wait); return; }
     const apps = consentAppsDoc.apps || [];
     if (!apps.length) {
         box.append(consentNode('p', 'ovk-muted consent-empty', 'No app has asked you for anything yet. An app asks when you sign in to it, and what you allow shows here.'));

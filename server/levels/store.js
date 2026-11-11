@@ -72,7 +72,8 @@ async function board(db, userId) {
             FROM users u LEFT JOIN person_levels l ON l.user_id = u.id
             ${weekly ? "LEFT JOIN (SELECT user_id, SUM(amount) AS xp FROM experience_events WHERE earned_at >= date_trunc('week', CURRENT_TIMESTAMP AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' GROUP BY user_id) w ON w.user_id = u.id" : ''}
             WHERE ${ACTIVE} AND u.subject_id IS NOT NULL AND COALESCE(l.leaderboard, true)
-        ) SELECT * FROM ranked WHERE rank <= 50 OR ABS(rank - (SELECT rank FROM ranked WHERE id = ?)) <= 5 ORDER BY rank`).all(userId || 0);
+              AND (COALESCE(u.is_test, 0) = 0 OR u.id = ?)
+        ) SELECT * FROM ranked WHERE rank <= 50 OR ABS(rank - (SELECT rank FROM ranked WHERE id = ?)) <= 5 ORDER BY rank`).all(userId || 0, userId || 0);
         const me = rows.find(r => Number(r.id) === Number(userId));
         const clean = r => ({ subject: r.subject, username: r.username, level: Number(r.level), xp: Number(r.xp), rank: Number(r.rank) });
         return { top: rows.filter(r => Number(r.rank) <= 50).map(clean), me: me ? clean(me) : null, around: me ? rows.filter(r => Math.abs(Number(r.rank) - Number(me.rank)) <= 5).map(clean) : [] };
@@ -80,15 +81,3 @@ async function board(db, userId) {
     return { all_time: await period(false), week: await period(true) };
 }
 module.exports = { total, append, award, person, byUsername, batch, board, ACTIVE, PERSON_DAILY, SERVICE_DAILY };
-
-/** Existing account merge transaction: preserve earned history and the survivor's visibility choice. */
-async function merge(db, fromId, intoId) {
-    await db.prepare('INSERT INTO person_levels(user_id) VALUES (?), (?) ON CONFLICT DO NOTHING').run(fromId, intoId);
-    const rows = await db.prepare('SELECT user_id, xp FROM person_levels WHERE user_id IN (?, ?) ORDER BY user_id FOR UPDATE').all(fromId, intoId);
-    const xp = rows.reduce((sum, row) => sum + Number(row.xp), 0);
-    if (xp > 1000000000000) fail(409, 'levels.total_limit');
-    await db.prepare('UPDATE experience_events SET user_id = ? WHERE user_id = ?').run(intoId, fromId);
-    await db.prepare('UPDATE person_levels SET xp = ?, level = ? WHERE user_id = ?').run(xp, levelOf(xp).level, intoId);
-    await db.prepare('DELETE FROM person_levels WHERE user_id = ?').run(fromId);
-}
-module.exports.merge = merge;

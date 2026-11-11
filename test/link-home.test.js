@@ -88,7 +88,7 @@ const SHAPED = {
     assert.ok(!youngCopy.includes('could not be reached'), 'a stale copy younger than a day says nothing about the outage');
     assert.ok(html.includes('<title>OpenVibe Link: your machines, connected</title>'), 'the title is Link\'s');
     assert.ok(html.includes('<h1>Your machines, connected</h1>'), 'the h1 is Link\'s');
-    assert.ok(html.includes('<p class="np-kicker">OpenVibe Link</p>'), 'the kicker names Link');
+    assert.ok(html.includes('<header class="np-head">\n<h1>Your machines, connected</h1>'), 'the hero starts with its title');
     assert.ok(html.includes('Link runs on your computer, server or phone. Your agents use it only as far as you allow, and you choose what, if anything, it offers the network.'), 'the lead is the brief\'s, word for word');
     assert.ok(html.includes('>Install Link<'), 'the primary button installs Link');
     assert.ok(html.includes('>The install guide<'), 'and the guide keeps its name');
@@ -217,15 +217,26 @@ const SHAPED = {
 
         const linkInstall = await get('/install', 'openvibe.link');
         assert.strictEqual(linkInstall.status, 302);
-        assert.ok(String(linkInstall.headers.location || '').endsWith('/install.sh'));
+        assert.strictEqual(linkInstall.headers.location, SHAPED.installUrl);
+        releaseApi.latest = async () => ({ ...SHAPED, stale: true });
+        const staleInstall = await get('/install', 'openvibe.link');
+        assert.strictEqual(staleInstall.headers.location, release.FALLBACK.installUrl,
+            'a stale cache sends the installer to GitHub\'s latest published asset');
+        releaseApi.latest = async () => SHAPED;
 
         const machines = await get('/machines', 'openvibe.link');
-        assert.strictEqual(machines.status, 200, 'the Link host serves the machine hub');
-        assert.ok(machines.body.includes('sec-machines'), 'pairing and machine controls render on Link');
+        assert.strictEqual(machines.status, 302, 'a signed-out arrival starts the silent sign-in, not the hub');
+        assert.strictEqual(machines.headers.location, '/auth/login?silent=1&next=%2Fmachines');
         assert.strictEqual(machines.headers['cache-control'], 'no-store');
-        for (const p of ['/pair', '/panel']) {
-            const hub = await get(p, 'openvibe.link');
-            assert.strictEqual(hub.status, 302, `${p} opens the Link machine hub`);
+        const guest = await get('/machines?sso=none', 'openvibe.link');
+        assert.strictEqual(guest.status, 200, 'back from a silent sign-in that found nobody, the hub itself');
+        assert.ok(guest.body.includes('sec-machines'), 'pairing and machine controls render on Link');
+        const pair = await get('/pair', 'openvibe.link');
+        assert.strictEqual(pair.status, 302, '/pair opens the hub with the pairing intent');
+        assert.strictEqual(pair.headers.location, 'https://openvibe.link/machines?pair=1');
+        {
+            const hub = await get('/panel', 'openvibe.link');
+            assert.strictEqual(hub.status, 302, '/panel opens the Link machine hub');
             assert.strictEqual(hub.headers.location, 'https://openvibe.link/machines');
         }
         // Bot's old sub-paths (and Actor's Watch links) land on the hub rather than the catch-all's Network 404.

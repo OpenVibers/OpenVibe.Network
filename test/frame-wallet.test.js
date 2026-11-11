@@ -43,10 +43,16 @@ const ITD = 'itd_01JZ00000000000000000000B1';
         if (u.pathname === '/api/v1/kinds') return res.end(JSON.stringify({ kinds: [{ id: 'live.hat', slots: ['hat'] }] }));
         res.statusCode = 404; return res.end('{"error":"no route"}');
     });
-    await Promise.all([billing, inventory].map((s) => new Promise((r) => s.listen(0, '127.0.0.1', r))));
+    const network = stub('network', (req, res, u, body) => {
+        if (u.pathname === '/api/wallet/changes' && req.method === 'GET') return res.end(JSON.stringify({ opencoins: { net: 5, cursor: 42, moves: [{ id: 42, delta: 5, label: 'For a quest' }] }, vibes: null, channel_points: null }));
+        if (u.pathname === '/api/wallet/changes/read' && req.method === 'PUT') return res.end(JSON.stringify({ currency: JSON.parse(body).currency, read_cursor: JSON.parse(body).cursor }));
+        res.statusCode = 404; return res.end('{"error":"no route"}');
+    });
+    await Promise.all([billing, inventory, network].map((s) => new Promise((r) => s.listen(0, '127.0.0.1', r))));
     const svc = await createFrameService(getDb(), { services: {
         billing: { internalUrl: `http://127.0.0.1:${billing.address().port}` },
         inventory: { internalUrl: `http://127.0.0.1:${inventory.address().port}` },
+        network: { internalUrl: `http://127.0.0.1:${network.address().port}` },
     } }, null);
     const app = express();
     app.set('trust proxy', 'loopback');
@@ -92,6 +98,30 @@ const ITD = 'itd_01JZ00000000000000000000B1';
     ({ r } = await get('/wallet/api/v1/me/wallet', { Cookie: 'ov_token=short' }));
     assert.strictEqual(r.status, 401, 'a malformed cookie is no token');
     assert.strictEqual(asked.length, askedBefore, 'none of these asked upstream');
+
+    // Change reads keep their three cursor types and streamer, while unrelated input never reaches Network.
+    const vibesCursor = 'txn_01JZ00000000000000000000A1';
+    ({ r, d } = await get(`/wallet/changes?since_vibes=${vibesCursor}&since_opencoins=41&streamer=7&since_channel_points=9&limit=10&subject=usr_other`, { Authorization: token }));
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(d.opencoins.net, 5);
+    const changes = asked.at(-1), query = new URL(changes.url, 'http://x').searchParams;
+    assert.strictEqual(changes.svc, 'network');
+    assert.strictEqual(changes.auth, token);
+    assert.strictEqual(changes.cookie, '');
+    assert.deepStrictEqual([...query.keys()].sort(), ['limit', 'since_channel_points', 'since_opencoins', 'since_vibes', 'streamer']);
+    assert.strictEqual(query.get('since_vibes'), vibesCursor);
+    assert.strictEqual(r.headers.get('cache-control'), 'private, no-store');
+    ({ r } = await get('/wallet/changes'));
+    assert.strictEqual(r.status, 401);
+    ({ r } = await send('/wallet/changes/read', 'PUT', { currency: 'opencoins', cursor: 42 }));
+    assert.strictEqual(r.status, 200);
+    assert.deepStrictEqual(JSON.parse(asked.at(-1).body), { currency: 'opencoins', cursor: 42 });
+    ({ r } = await send('/wallet/changes/read', 'PUT', { currency: 'vibes', cursor: vibesCursor }, { Authorization: '', Cookie: `ov_token=${session}`, Origin: 'https://openvibe.events' }));
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(asked.at(-1).auth, `Bearer ${session}`);
+    assert.notStrictEqual(r.headers.get('access-control-allow-origin'), '*');
+    ({ r } = await send('/wallet/changes/read', 'PUT', { currency: 'vibes', cursor: vibesCursor }, { Authorization: '', Cookie: `ov_token=${session}` }));
+    assert.strictEqual(r.status, 401, 'a cookie write without Origin is refused');
 
     // A page limit and cursor pass; every other query is dropped.
     ({ r } = await get('/wallet/api/v1/me/items?limit=500&cursor=c1&subject=usr_other', { Authorization: token }));
@@ -151,7 +181,7 @@ const ITD = 'itd_01JZ00000000000000000000B1';
     assert.strictEqual(r.status, 502, 'a service that does not answer is a failure, never an empty wallet');
     assert.match(d.error, /did not answer/);
 
-    server.close(); inventory.close();
+    server.close(); inventory.close(); network.close();
     console.log('frame wallet: fixed paths, bearer only, no cache, 8 KB bodies, statuses back, bad ids and foreign paths refused');
     process.exit(0);
 })().catch((e) => { console.error(e); process.exit(1); });

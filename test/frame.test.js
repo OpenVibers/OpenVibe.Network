@@ -5,9 +5,7 @@ const http = require('http');
 const contracts = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 const { createFrameService, BANNED } = require('../server/frame/service');
-const { siteForHost, GROUPS } = require('../server/frame/sites');
-const HAS_MAIL = !!contracts.services.get('mail');
-const HAS_GIT = !!contracts.services.get('git');
+const { siteForHost, GROUPS, LISTED } = require('../server/frame/sites');
 
 (async () => {
 const db = getDb();
@@ -17,6 +15,7 @@ assert.equal(siteForHost('yt.openvibe.tools').id, 'tools');
 assert.equal(siteForHost('bench.openvibe.services').id, 'report', 'Bench\'s host belongs to Report now');
 assert.equal(siteForHost('evil.example'), null);
 assert.equal(siteForHost('openvibe.computer').id, 'computer', 'Computer is listed in the Network Frame while its Contracts manifest is pending');
+assert.equal(siteForHost('openvibe.directory').id, 'directory', 'the released Directory manifest belongs to the live site');
 assert.equal(GROUPS.find((g) => g.sites.includes('computer')).id, 'make');
 assert.strictEqual(svc.ranking().at, null, 'cold start: no use counted yet (the registry\'s featured list says so)');
 
@@ -41,26 +40,25 @@ assert.strictEqual(svc.ranking().at, null, 'cold start: no use counted yet (the 
 let p = svc.payloadFor('openvibe.media');
 // Email (OpenVibe.Mail) joins the cold order after Chat once its manifest is in the pinned Contracts release; until then
 // the test still follows what the installed manifests say.
-const COLD_ORDER = ['live', 'tools', 'space', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'search', 'run', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'casino', 'tours', 'shoes', 'connect', 'computer', 'lock', 'image'];
-if (HAS_MAIL) COLD_ORDER.splice(COLD_ORDER.indexOf('chat') + 1, 0, 'mail');
-if (HAS_GIT) COLD_ORDER.splice(COLD_ORDER.indexOf('events') + 1, 0, 'git');
+const COLD_ORDER = ['live', 'tools', 'space', 'community', 'games', 'network', 'chat', 'mail', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'git', 'search', 'run', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'casino', 'tours', 'shoes', 'connect', 'computer', 'lock', 'image', 'directory'];
 assert.deepEqual(p.nav.filter(n => !n.of).map(n => n.id), COLD_ORDER, 'cold start follows the base order');
 assert.ok(!p.nav.some(n => n.id === 'play'), 'Play is part of Games, not a menu entry of its own');
-// The launcher: every open site in one of the groups, and the products other services serve on their own domains
-// right after their site (Pics and Download after Video, Homes after Rent).
-assert.deepStrictEqual(p.groups.map(g => g.name), ['Streams & places', 'Games & laughs', 'News & answers', 'Make & build', 'Shop & swap', 'People & you', 'For developers'], 'the six neighbourhoods (plan 2026-10-28 §3.1), the building blocks last');
-assert.strictEqual(p.groups.find(g => g.id === 'build').name, 'For developers');
-assert.deepStrictEqual(GROUPS.find(g => g.id === 'people').sites.slice(0, 3), ['chat', 'mail', 'community'], 'Email sits with Chat in the talk group, before Community');
+assert.ok(!p.nav.some(n => ['media', 'homes', 'bench', 'website'].includes(n.id)), 'merged sections and the domain-only Website are not tiles');
+// The launcher: every open place in one of the eight groups (owner, 2026-11-10), and the products other services
+// serve on their own domains right after their site (Pics and Download after Video; Homes and Bench are sections).
+assert.deepStrictEqual(p.groups.map(g => g.name), ['Watch & stream', 'Talk & belong', 'Play', 'Read & ask', 'Shop & money', 'Free tools', 'Make with AI', 'For developers'], 'the eight groups in the owner\'s order');
+assert.deepStrictEqual(p.groups.map(g => g.id), ['watch', 'talk', 'play', 'read', 'shop', 'tools', 'make', 'build']);
+assert.deepStrictEqual(GROUPS.find(g => g.id === 'talk').sites, ['community', 'chat', 'tips', 'vip', 'mail', 'help', 'network'], 'Email sits with Chat in the talk group');
 assert.ok(p.nav.every(n => p.groups.some(g => g.id === n.group)), 'every entry has a group');
-assert.deepStrictEqual(p.nav.filter(n => n.of).map(n => [n.id, n.of, n.url]), [['pics', 'media-hub', 'https://openvibe.pics/'], ['download', 'media-hub', 'https://openvibe.download/'], ['homes', 'rent', 'https://openvibe.homes/'], ['bench', 'report', 'https://openvibe.report/ai']]);
+assert.deepStrictEqual(p.nav.filter(n => n.of).map(n => [n.id, n.of, n.url]), [['pics', 'media-hub', 'https://openvibe.pics/'], ['download', 'media-hub', 'https://openvibe.download/']]);
 const at = (id) => p.nav.findIndex(n => n.id === id);
-assert.ok(at('pics') === at('media-hub') + 1 && at('homes') === at('rent') + 1 && at('bench') === at('report') + 1, 'a product follows its site');
-assert.deepStrictEqual([p.nav[at('media-hub')].icon, p.nav[at('media-hub')].group, p.nav[at('homes')].group, p.nav[at('tools')].group], ['video', 'streams', 'shop', 'make'], 'Video draws the video icon (there is no media-hub icon)');
-assert.deepStrictEqual(['actor', 'bot', 'run', 'zone', 'codes'].map((id) => p.nav[at(id)].group), ['build', 'make', 'build', 'build', 'make'], 'robots and coding agents for people; the agent engine, compute and storage for developers (plan L39: Actor is the engine Codes, Vibe and the Dock call)');
-// Games together, items with the account, Alerts with the building blocks, files beside Video (each when its site is open).
-[['games', 'games'], ['connect', 'make'], ['image', 'make'], ['quest', 'games'], ['inventory', 'people'], ['watch', 'build'], ['download', 'streams'], ['search', 'answers'], ['chat', 'people'], ['mail', 'people'], ['domains', 'make'], ['report', 'answers'], ['design', 'make'], ['today', 'answers'], ['surf', 'games'], ['meme', 'games'], ['vision', 'answers'], ['exchange', 'build'], ['fun', 'games'], ['cam', 'streams'], ['bench', 'answers'], ['casino', 'games'], ['tours', 'streams'], ['shoes', 'shop']]
+assert.ok(at('pics') === at('media-hub') + 1 && at('download') === at('media-hub') + 2, 'Pics and Download follow their site');
+assert.deepStrictEqual([p.nav[at('media-hub')].icon, p.nav[at('media-hub')].group, p.nav[at('tools')].group], ['video', 'watch', 'tools'], 'Video draws the video icon (there is no media-hub icon)');
+assert.deepStrictEqual(['actor', 'bot', 'run', 'zone', 'codes'].map((id) => p.nav[at(id)].group), ['make', 'make', 'build', 'build', 'make'], 'robots and coding agents make with AI; compute and storage are for developers');
+// Every tile is in exactly one group, each group has at most seven tiles, and the merged sections still answer.
+[['games', 'play'], ['connect', 'make'], ['image', 'tools'], ['quest', 'play'], ['inventory', 'play'], ['watch', 'build'], ['download', 'watch'], ['search', 'read'], ['chat', 'talk'], ['mail', 'talk'], ['domains', 'tools'], ['report', 'read'], ['design', 'tools'], ['today', 'read'], ['surf', 'play'], ['meme', 'play'], ['vision', 'read'], ['exchange', 'build'], ['fun', 'play'], ['cam', 'watch'], ['casino', 'play'], ['tours', 'watch'], ['shoes', 'shop']]
     .filter(([id]) => at(id) >= 0).forEach(([id, group]) => assert.strictEqual(p.nav[at(id)].group, group, `${id} is in ${group}`));
-assert.strictEqual(p.nav.length, 56 + (HAS_MAIL ? 1 : 0) + (HAS_GIT ? 1 : 0));   // Computer and Locker since Contracts 0.347.0, Studio since 0.348.0 (2026-11-08).
+assert.strictEqual(p.nav.length, 56, '54 open sites plus Pics and Download');
 assert.deepStrictEqual([p.nav[at('stream')].name, p.nav[at('pics')].name], ['Restream', 'Pics'], 'OpenRestream is "Restream" among the menu\'s short names (owner, 2026-10-28)');
 assert.strictEqual(p.nav.find(n => n.id === 'space').url, 'https://openvibe.space/', 'Space keeps its own home (the forum returned to Community, 0.118.0)');
 assert.strictEqual(p.nav.find(n => n.id === 'community').url, 'https://openvibe.community/', 'Community: the forum, pastes and Pulse');
@@ -157,7 +155,7 @@ for (let i = 0; i < 6; i++) await ins.run(1, 'tools', 'dns');
         assert.equal(r.headers.get('access-control-allow-origin'), '*');
         assert.match(r.headers.get('cache-control'), /max-age=30/);
         const j = await r.json();
-        assert.deepStrictEqual([j.live_now, j.watching, j.sites], [2, 7, pulseSvc.ranking().order.length]);
+        assert.deepStrictEqual([j.live_now, j.watching, j.sites], [2, 7, LISTED.filter((s) => s.status === 'open').length], 'the one open-place count (sites plus Pics and Download)');
         assert.ok(j.views_7d > 0 && j.updated, 'last week\'s views from the ranking');
         liveList.close();
         const down = await (await fetch(`http://127.0.0.1:${srv.address().port}/api/frame/pulse`)).json();

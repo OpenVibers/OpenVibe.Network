@@ -5,7 +5,7 @@
 //     cannot download it, one a day, and it expires after 7 days;
 //   - deletion: refused without a fresh sign-in or the typed username, cancellable, nothing before the date;
 //   - at the date Network's rows are erased, the username is released, the subject resolves as deleted, old tokens
-//     are refused, and network.account.deleted (with the merged-in aliases) is queued once;
+//     are refused, and network.account.deleted (with legacy sign-in aliases) is queued once;
 //   - services confirm with counts; staff (staff.users.manage) see what is outstanding and cancel with a reason.
 //   node test/account-data.test.js
 const assert = require('assert');
@@ -22,7 +22,6 @@ const { ids, validate, serviceAuth } = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 const subjects = require('../server/identity/subjects');
 const wallet = require('../server/coins/wallet');
-const accountMerge = require('../server/identity/account-merge');
 const accountData = require('../server/identity/account-data');
 const zip = require('../server/utils/zip');
 
@@ -37,7 +36,6 @@ for (const c of ['live', 'chat', 'community', 'space', 'media', 'games', 'tools'
 const principals = require('../server/identity/principals');
 await principals.ensureSchema(db);
 require('../server/identity/follows').ensureSchema(db);
-await accountMerge.ensureSchema(db);
 await accountData.ensureSchema(db);
 const ISSUER = 'https://openvibe.network';
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs1', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
@@ -209,15 +207,15 @@ const server = http.createServer(app);
         r = await call('POST', '/api/v1/account/deletion', tok(dana), { confirm_username: 'dana' });
         const del = r.body.deletion_id;
         const due = Date.parse(r.body.delete_after);
+        const old = await mk('dana_old');
+        await db.prepare('UPDATE users SET merged_into = ? WHERE id = ?').run(dana.id, old.id);
+        assert.strictEqual((await require('../server/identity/account-aliases').effectiveUser(db, await db.prepare('SELECT * FROM users WHERE id = ?').get(old.id))).id, dana.id, 'legacy alias sign-in resolves to the surviving account');
         assert.strictEqual((await accountData.sweep(db, { dir: exportDir, now: due - 60000 })).deleted, 0, 'nothing before the date');
         assert.strictEqual((await db.prepare('SELECT username FROM users WHERE id = ?').get(dana.id)).username, 'dana');
 
-        // dana had folded an older account in (ADR-029): its subject goes with her.
-        const old = await mk('dana_old');
-        await accountMerge.merge(db, old, await db.prepare('SELECT * FROM users WHERE id = ?').get(dana.id), { initiatedBy: 'person' });
         // Two paired machines, one per subject: an account deletion revokes both and announces each (network.link.revoked@1).
         const pairedNodes = [];
-        for (const subjectId of [dana.subject_id, old.subject_id]) {
+        for (const subjectId of [dana.subject_id]) {
             const ulid = ids.ulid();
             const principal = `lnk_${ulid}`; const nodeId = `n-${ulid.toLowerCase()}`;
             await db.prepare(`INSERT INTO platform_node_principals (id, node_id, home_cell, owner_kind, owner_subject, trust, status,
@@ -236,7 +234,7 @@ const server = http.createServer(app);
         const oldToken = tok(dana);
         assert.strictEqual((await accountData.sweep(db, { dir: exportDir, now: due + 1000 })).deleted, 1);
         const nodeEvents = await events('network.link.revoked');
-        assert.strictEqual(nodeEvents.length, 2, 'each paired machine revoked exactly once');
+        assert.strictEqual(nodeEvents.length, 1, 'the paired machine is revoked exactly once');
         for (const [principal, nodeId, subjectId] of pairedNodes) {
             const p = await db.prepare('SELECT status, revoked_by FROM platform_node_principals WHERE id = ?').get(principal);
             assert.deepStrictEqual([p.status, p.revoked_by], ['revoked', 'account_deleted']);
@@ -251,7 +249,7 @@ const server = http.createServer(app);
         const gone = await db.prepare('SELECT * FROM users WHERE id = ?').get(dana.id);
         assert.match(gone.username, /^deleted-/);
         assert.deepStrictEqual([gone.email, gone.display_name, gone.password_hash, !!gone.deleted_at], [null, null, '!deleted', true]);
-        assert.match((await db.prepare('SELECT username FROM users WHERE id = ?').get(old.id)).username, /^deleted-/, 'the merged-in account too');
+        assert.match((await db.prepare('SELECT username FROM users WHERE id = ?').get(old.id)).username, /^deleted-/, 'the legacy alias too');
         for (const [t, col] of [['user_mfa', 'user_id'], ['mfa_recovery_codes', 'user_id'], ['mfa_challenges', 'user_id'], ['mfa_devices', 'user_id'], ['linked_accounts', 'user_id'], ['user_sessions', 'user_id'], ['oauth_tokens', 'user_id'], ['user_preferences', 'user_id'], ['experience_events', 'user_id'], ['person_levels', 'user_id']]) {
             assert.strictEqual((await db.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE ${col} = ?`).get(dana.id)).n, 0, `${t} erased`);
         }
@@ -263,7 +261,7 @@ const server = http.createServer(app);
         assert.ok(await mk('dana'), 'the username is released');
         const p = await subjects.resolve(db, { subject_id: dana.subject_id });
         assert.deepStrictEqual([p.deleted, p.display_name], [true, 'Deleted account']);
-        assert.strictEqual((await subjects.resolve(db, { subject_id: old.subject_id })).deleted, true, 'the alias resolves as deleted too');
+        assert.strictEqual((await subjects.resolve(db, { subject_id: old.subject_id })).deleted, true, 'the alias is a tombstone after its survivor is deleted');
         r = await call('GET', '/api/v1/account/deletion', oldToken);
         assert.strictEqual(r.status, 401, 'old tokens are refused');
         const ev = await events('network.account.deleted');
@@ -272,7 +270,7 @@ const server = http.createServer(app);
         assert.deepStrictEqual([ev[0].payload.deletion_id, ev[0].payload.subject, ev[0].payload.aliases], [del, dana.subject_id, [old.subject_id]]);
         assert.ok((await events('network.user.token_valid_after')).some((e) => e.payload.reason === 'account_deleted'));
         assert.strictEqual((await accountData.sweep(db, { dir: exportDir, now: due + 5000 })).deleted, 0, 'once');
-        assert.strictEqual((await events('network.link.revoked')).length, 2, 'a second sweep emits nothing new');
+        assert.strictEqual((await events('network.link.revoked')).length, 1, 'a second sweep emits nothing new');
 
         // Services confirm; staff see what is outstanding.
         const confirm = { subject: dana.subject_id, completed_at: new Date().toISOString(), erased: { messages: 3 }, retained: { moderation_actions: 1 } };

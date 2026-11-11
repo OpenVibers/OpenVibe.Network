@@ -151,13 +151,15 @@ app.use(helmet({
                 // The machine's live screen on the Link hub: OpenRestream's viewer signaling socket.
                 "wss://ingest.openre.stream",
             ],
-            frameSrc: ["'none'"],
+            // Link and My share this app on separate origins; their navbar checks Network's session.
+            frameSrc: ["https://openvibe.network"],
             scriptSrcAttr: ["'unsafe-inline'"],
         },
     },
     crossOriginEmbedderPolicy: false,
 }));
 app.use(cookieParser());
+app.use('/frame/live', require('./frame/live-player').router);
 // Provider webhooks (Resend bounces/complaints) — mounted BEFORE the JSON body parser so
 // the route sees the raw bytes it must verify the Svix signature over.
 app.use('/api/webhooks', require('./notifications/resend-webhook')());
@@ -485,6 +487,9 @@ const qrSignin = require('./auth/qr-signin').createQrSignin({
 app.locals.qrSignin = qrSignin;
 // The moderation audit log for staff (staff.moderation.logs): server/admin/moderation-audit.js.
 app.use('/api/v1/staff/moderation-audit', requireAuth, moderationAudit.router());
+// The shared composer (composer.prefs@1, composer.mention@1): a person's settings on every site, revision-checked,
+// and the @ menu (people they follow first, then public people; OpenVibe Git repositories; first-party sites).
+app.use('/api/v1', rateLimit({ windowMs: 60_000, max: 240 }), require('./composer/routes').createRouter({ db, requireAuth, selfToken, config }));
 // Sharing (design 2026-11-06): what is shared with this person, the share picker's suggestions and
 // the @name check it uses (server/sharing/routes.js).
 app.use('/api/v1', require('./sharing/routes').createSharingApi({ ...sharing, requireAuth }));
@@ -538,17 +543,6 @@ app.use('/api/v1/trust', rateLimit({ windowMs: 60_000, max: 60 }), require('./id
 // The Exchange remake's uncensored tier: the account's own 18+ confirmation (server/identity/adult.js). AI reads it
 // through /internal/identity/adult; this is the person's side, on the account hub (/my, Content).
 app.use('/api/v1/me/adult', rateLimit({ windowMs: 60_000, max: 20 }), require('./identity/adult').userRouter({ requireAuth }));
-// Account merge (roadmap WS-B task 5, ADR-029): the person folds a second account into this one; staff
-// (staff.identity.merge) for account recovery, with a reason.
-{
-    const accountMerge = require('./identity/account-merge');
-    await accountMerge.ensureSchema(db);
-    const mergeRouters = accountMerge.routers({ requireAuth, staffClaims: require('./auth/staff-claims').staffClaims });
-    // Only the merge calls spend this budget: the same mount also carries the export/deletion routes below their
-    // own limiter, and counting those twice was enough to lock a person out while the deletion banner read them.
-    app.use('/api/v1/account', rateLimit({ windowMs: 60_000, max: 20, skip: (req) => !String(req.path).startsWith('/merge') }), mergeRouters.me);
-    app.use('/api/admin/account-merges', mergeRouters.admin);
-}
 // Mod principals (roadmap WS-M task 3, ADR-013): the runtime that installs a mod registers mod:<mod_id> and changes
 // its grants (mods.grant.manage, service token only); staff (staff.games.manage) from /api/admin/mods.
 {
@@ -666,6 +660,15 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/internal', machineInternal.internal);
 }
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read'), require('./identity/blocks').internalHandler(db));
+// Platform mutes and friendships (ask 287): a person's own lists and the changes the card's
+// actions make. Services read them through the internal routes once Contracts names their
+// capabilities; until then the person's own routes are the complete surface.
+app.use('/api/v1/me/mutes', rateLimit({ windowMs: 60_000, max: 60 }), require('./identity/mutes').userRouter(requireAuth));
+app.use('/api/v1/me/friends', rateLimit({ windowMs: 60_000, max: 60 }), require('./identity/friends').userRouter(requireAuth));
+// User reports (ask 287): a signed-in person files about another person; staff holding
+// staff.moderation.logs read the queue. The capability check lives in the staff router.
+app.use('/api/v1/me/reports', rateLimit({ windowMs: 60_000, max: 30 }), require('./identity/user-reports').userRouter(requireAuth));
+app.use('/api/v1/staff/user-reports', rateLimit({ windowMs: 60_000, max: 60 }), requireAuth, require('./identity/user-reports').staffRouter());
 // The follow graph (WS-E task 4, ADR-030): public counts, a person's own follows, and who follows a target
 // (its owner, or network.follows.read, service token only). Every change is network.follow.* (server/identity/follows.js).
 {
@@ -699,6 +702,12 @@ app.get('/internal/blocks', require('./identity/principals').guard('network.bloc
 // (server/auth/realtime-ticket.js). REALTIME_TICKETS=off answers 503 and every badge stays on polling.
 app.use('/api/v1/realtime', rateLimit({ windowMs: 60_000, max: 60 }), require('./auth/realtime-ticket').router({
     db, requireAuth: requireDock('activity'), privateKey, issuer: config.jwt.issuer, streamUrl: process.env.OV_EVENTS_PUBLIC_URL,
+}));
+// One-time cross-site sign-in handoff tickets (server/auth/handoff.js): a source site mints a
+// 60 s ticket for one destination client, the destination redeems it for an authorization code.
+// Plain user sessions only (never a dock-scoped grant): a ticket signs a browser in.
+app.use('/api/v1/handoff', rateLimit({ windowMs: 60_000, max: 60 }), require('./auth/handoff').router({
+    db, requireAuth,
 }));
 
 // ── Routes ───────────────────────────────────────────────────
@@ -746,7 +755,12 @@ homePopularity.refresh().catch(() => {});   // floating-ok: the first reader get
 const tryNext = require('./home/try-next').createTryNext({ db, popularity: homePopularity });
 // The Node's own front door on its own subdomain (openvibe.link): the Host header decides. It mounts
 // before the agent layer, so the Node's page is not answered by Network's home renderer.
-app.use(require('./link/routes').createLinkRoutes({ release: release.release }));
+app.use(require('./link/routes').createLinkRoutes({ release: release.release, db, config, publicKey }));
+// The retired Node host must leave before the agent layer answers '/' with Network's public home.
+app.get('/', (req, res, next) => {
+    if (getRequestHost(req) === 'node.openvibe.network') return res.redirect(302, 'https://openvibe.link/machines');
+    return next();
+});
 // The agent layer (openvibe-shared/agent-layer): /.well-known/agent.json, and the public pages as Markdown twins. It
 // answers their HTML as well, with the discovery tags in the head, so it mounts before the routes for those pages.
 require('openvibe-shared/agent-layer').mount(app, {
@@ -974,6 +988,26 @@ app.use('/avatar', rateLimit({ windowMs: 60_000, max: 600 }), avatarService.pub)
 app.locals.avatarService = avatarService;
 // Public profiles (plan T21 step 3): openvibe.network/@<username> and GET /api/v1/profiles/:username (CORS-open,
 // server/public-cors.js), with the items from OpenVibe.Inventory (server/profile/public.js).
+const userCards = require('./profile/card').createUserCards({ db, profiles: publicProfiles, selfToken, questUrl: process.env.OV_QUEST_INTERNAL_URL || 'http://127.0.0.1:4980', liveUrl: config.services.live.internalUrl, identify: identifyCardViewer });
+function identifyCardViewer(req) {
+    // Optional viewer identity for the card's actions: a missing, expired or revoked token
+    // reads as anonymous (Profile/Channel only), never a 401. No renewal here — a plain read
+    // must not rotate the session's cookies.
+    const { sessionToken, verifySession } = require('./auth/session');
+    const token = sessionToken(req);
+    if (!token) return Promise.resolve(null);
+    return verifySession(token, authCtx()).then(async (out) => {
+        if (out.error || !out.user || out.user.is_anon) return null;
+        const subject = await require('./identity/subjects').ensureUserSubject(db, out.user).catch(() => null);
+        if (!subject) return null;
+        // The card's staff tools follow the same capability map every service uses (ADR-022),
+        // so a role change reaches the card without a second list of who counts as staff.
+        const claims = require('./auth/staff-claims').staffClaims(out.user);
+        return { id: out.user.id, subject, username: out.user.username, role: out.user.role, staff: claims };
+    });
+}
+app.get('/api/v1/people/:username/card', rateLimit({ windowMs: 60_000, max: 240 }), userCards.api);
+app.use('/api/v1/me/card-visibility', rateLimit({ windowMs: 60_000, max: 60 }), userCards.settings(requireAuth));
 app.use('/api/v1/profiles', rateLimit({ windowMs: 60_000, max: 240 }), publicProfiles.api);
 app.get('/api/v1/people/@:handle/page', rateLimit({ windowMs: 60_000, max: 240 }), publicProfiles.pageApi);
 app.get('/@:username', rateLimit({ windowMs: 60_000, max: 120 }), publicProfiles.pageHandler);
@@ -1029,6 +1063,8 @@ app.use('/api/admin/grants', requireAuth, require('./identity/grants-admin').rou
 app.use('/api/admin/themes', requireAuth, requireAdmin, require('./themes/routes').reviewRouter());
 // Operator parity checklist (WS-D task 5): where each operator job is done now, with each service's readiness.
 app.use('/api/admin/operator-checklist', requireAuth, requireAdmin, require('./admin/operator-checklist').router({ statusRows: () => require('./status/routes').rows(ecosystem) }));
+// The account merge endpoint is gone. Hide its former staff path before the broad admin guard so callers get 404.
+app.use('/api/admin/account-merges', (_req, res) => res.status(404).json({ error: 'Not found' }));
 app.use('/api/admin', createAdminRoutes(db, notificationService, emailService, requireAuth));
 
 // Analytics admin API
@@ -1071,7 +1107,7 @@ require('./home/activity').configure({
         const d = await openStats.collect(7);
         return d && Array.isArray(d.sites) ? Object.fromEntries(d.sites.map((s) => [s.id, Number(s.pageviews) || 0])) : null;
     },
-    accounts: async () => (await db.prepare('SELECT COUNT(*) AS cnt FROM users WHERE COALESCE(is_anon, 0) = 0 AND COALESCE(is_banned, 0) = 0').get()).cnt,
+    accounts: async () => (await db.prepare('SELECT COUNT(*) AS cnt FROM users WHERE COALESCE(is_anon, 0) = 0 AND COALESCE(is_banned, 0) = 0 AND COALESCE(is_test, 0) = 0').get()).cnt,
     services: () => {
         const live = require('./status/routes').rows(ecosystem).filter((r) => r.exposure && r.exposure.state === 'live');
         const known = live.filter((r) => r.status !== 'unknown');
@@ -1155,6 +1191,12 @@ require('./auth/app-links').mount(app);
     const fedcm = require('./auth/fedcm');
     const ctx = () => ({ db, publicKey, privateKey, config });
     app.get('/.well-known/web-identity', fedcm.wellKnown(ctx));
+    // WebAuthn Related Origin Requests: the exact product origins allowed to use Network's passkeys.
+    app.get('/.well-known/webauthn', (_req, res) => {
+        res.set('Content-Type', 'application/json; charset=utf-8');
+        res.set('Cache-Control', 'public, max-age=300');
+        res.send(JSON.stringify({ origins: require('./webauthn-origins').origins() }));
+    });
     // OpenID Connect discovery at the issuer's root (and RFC 8414's name for it): server/auth/oidc.js
     require('./auth/oidc').mount(app);
     app.use('/fedcm', fedcm.createFedcmRoutes(ctx));
@@ -1302,9 +1344,6 @@ const server = app.listen(...(socketActivated ? [{ fd: 3 }] : [config.port, conf
         } catch (e) { console.warn('[Modules] retired-owner sweep:', e.message); }
     };
     timers.push(setTimeout(sweepModules, 5 * 60 * 1000), setInterval(sweepModules, 24 * 60 * 60 * 1000));
-    // Account merges older than 30 days keep only the alias facts (ADR-029).
-    const reduceMerges = async () => { try { const n = await require('./identity/account-merge').reduceExpired(db); if (n) console.log(`[AccountMerge] reduced ${n} merge record(s) past 30 days`); } catch (e) { console.warn('[AccountMerge] reduce failed:', e.message); } };
-    timers.push(setTimeout(reduceMerges, 6 * 60 * 1000), setInterval(reduceMerges, 24 * 60 * 60 * 1000));
     // Exports past their deadline are built, archives past 7 days deleted, deletions past their 30-day grace carried out (ADR-033).
     const sweepAccountData = async () => {
         try {

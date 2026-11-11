@@ -218,7 +218,7 @@
     <!-- Storage -->
     <div class="section admin-clarity" id="sec-storage">
         <p class="admin-intro">This shows how much space recordings and other files use. Review it when storage runs low; deleting recordings is permanent and requires a separate backup to recover.</p>
-        <div id="storage-content"><div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Analyzing storage...</div></div>
+        <div id="storage-content"><div class="loading"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> Analyzing storage...</div></div>
     </div>
 
     <!-- Notifications (Broadcast) -->
@@ -672,6 +672,7 @@
 
 <!-- Shared scripts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="/shared/ov-mark.js" defer></script>
 <script src="/shared/navbar.js" defer></script>
 <script src="/js/account-safety.js" defer></script>
 <script src="/shared/notification-ui.js" defer></script>
@@ -683,6 +684,7 @@
 <script src="/js/admin/users.js" defer></script>
 <script src="/js/admin/moderation.js" defer></script>
 <script src="/js/admin/settings.js" defer></script>
+<script src="/js/admin/tools-workers.js" defer></script>
 <script src="/js/admin/payments.js" defer></script>
 <script src="/js/admin/glossary.js" defer></script>
 <script src="/js/admin/ai.js" defer></script>

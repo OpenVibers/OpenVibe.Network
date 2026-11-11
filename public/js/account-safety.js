@@ -51,7 +51,7 @@
         } catch { return null; }
     }
 
-    /** The one re-authentication URL. `account` prefills the username; pass '' to leave it blank (merge). */
+    /** The one re-authentication URL. `account` prefills the username; pass '' to leave it blank. */
     function reauthUrl(returnTo, options) {
         const params = new URLSearchParams();
         params.set('reauth', '1');

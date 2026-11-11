@@ -332,12 +332,15 @@ p.rc-quiet { margin: 0; color: var(--text-muted); }
 .td-box { display: grid; align-content: start; gap: 12px; padding: 16px; min-width: 0; }
 .td-sites { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .td-site { display: grid; justify-items: center; gap: 6px; padding: 10px 4px; border-radius: 12px; border: 1px solid transparent; color: var(--text); text-decoration: none; font-size: 12px; font-weight: 650; min-width: 0; }
-.td-site span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-site span:last-child { max-width: 100%; overflow-wrap: anywhere; text-align: center; line-height: 1.25; }
 .td-site .td-site-ic { width: 40px; height: 40px; border-radius: 12px; font-size: 16px; }
 .td-tries { display: grid; gap: 8px; }
 .td-tries::before { content: "Try next"; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
-.td-try { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; border: 1px solid var(--border); color: var(--text); text-decoration: none; }
-.td-try-t { display: grid; gap: 1px; min-width: 0; }
+.td-try { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 14px 8px 8px; border-radius: 12px; border: 1px solid var(--border); background: color-mix(in srgb, var(--accent) 4%, transparent); color: var(--text); text-decoration: none; }
+/* Try next (Opus, 2026-11-11): a row you can tell is a door, the chevron at its end. */
+.td-try::after { content: ""; flex: none; width: 7px; height: 7px; margin-left: auto; border-top: 2px solid var(--text-muted); border-right: 2px solid var(--text-muted); transform: rotate(45deg); }
+.td-try:hover::after { border-color: var(--accent); }
+.td-try-t { display: grid; gap: 1px; min-width: 0; flex: 1; }
 .td-try-t b { font-size: 13.5px; }
 .td-try-t small { font-size: 12px; color: var(--text-muted); }
 .td-bal { display: flex; align-items: baseline; gap: 8px; }
@@ -616,8 +619,10 @@ button.td-stat:hover span { color: var(--accent-light); }
 .td-net-h { display: flex; align-items: center; gap: 10px; padding-bottom: 6px; }
 .td-net-ht { display: grid; flex: 1; min-width: 0; }
 .td-net-ht b { font-size: 15px; font-weight: 800; }
-.td-net-ht small { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.td-net-quiet { opacity: .75; font-style: italic; }
+.td-net-ht small { font-size: 12px; color: var(--text-muted); overflow-wrap: anywhere; }
+/* A quiet site says so as a small muted chip, not in italics (Opus, 2026-11-11). */
+.td-net-quiet { display: inline-flex; align-items: center; gap: 5px; margin-left: 6px; padding: 0 8px; vertical-align: 1px; border-radius: 999px; font-style: normal; font-size: 11.5px; color: var(--text-muted); background: color-mix(in srgb, var(--text-primary, #fff) 6%, transparent); }
+.td-net-quiet::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .6; }
 .td-net-card[data-site="media-hub"] .td-site-ic { color: #f472b6; background: color-mix(in srgb, #ec4899 16%, transparent); }
 .td-net-card[data-site="games"] .td-site-ic { color: #4ade80; background: color-mix(in srgb, #22c55e 16%, transparent); }
 .td-net-card[data-site="live"] .td-site-ic { color: #f87171; background: color-mix(in srgb, #ef4444 16%, transparent); }
@@ -630,7 +635,8 @@ button.td-stat:hover span { color: var(--accent-light); }
 .td-net-thumb { flex: none; width: 64px; height: 36px; border-radius: 8px; object-fit: cover; background: color-mix(in srgb, var(--text-primary, #fff) 6%, transparent); }
 .td-net-list li:first-child .td-net-i { color: var(--accent-light); }
 .td-net-t { display: grid; min-width: 0; }
-.td-net-t b { font-size: 14px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Titles take two lines before they are cut (rule names-are-never-cut). */
+.td-net-t b { font-size: 14px; font-weight: 650; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .td-net-t small { font-size: 12px; color: var(--text-muted); }
 .td-nums .td-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
 .td-nums .td-stat { display: grid; justify-items: start; gap: 2px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--text-primary, #fff) 4%, transparent); text-align: left; }
@@ -714,3 +720,47 @@ html[data-ov-motion=off] .me-act:hover{transform: none}
 .mc-desk-live summary { display: inline-block; cursor: pointer; }
 .mc-desk-live[open] { display: grid; gap: 8px; }
 .mc-takeover { margin-top: 4px; }
+
+/* Account home organization and pairing visibility. */
+@media (max-width:700px) { body { padding-bottom:112px; } }
+@media (min-width:760px) { .td-grid { grid-template-columns:minmax(0,1fr); } }
+.td-machines { display:grid; gap:10px; min-width:0; }
+.td-machines p { color:var(--text-secondary); font-size:13px; }
+.td-machines .ovk-btn { justify-self:start; min-height:44px; }
+.setup-fold { margin:0 0 18px; padding:12px 16px; border:1px solid var(--border); border-radius:14px; background:var(--bg-secondary); }
+.setup-fold[hidden] { display:none !important; }
+.setup-fold summary { min-height:28px; font-weight:700; cursor:pointer; }
+.setup-items { display:grid; gap:4px; padding-top:6px; }
+.ny-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.ny-details { flex:1 1 100%; font-size:12px; color:var(--text-muted); }
+.ny-details summary { width:max-content; min-height:36px; cursor:pointer; }
+.ny-details p { margin:2px 0 8px; }
+.ny-command { display:block; width:fit-content; max-width:100%; overflow-wrap:anywhere; padding:7px 10px; border-radius:8px; background:var(--bg-secondary); color:var(--text); font-size:12px; }
+.ny-btn.is-quiet { background:transparent; color:var(--text-secondary); border:1px solid var(--border); }
+.mc-steps { margin:0; padding-left:22px; display:grid; gap:5px; }
+.mc-pair-code-row { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.mc-pair-code-row .mc-code { margin:0; }
+.mc-qr { width:176px; height:176px; border-radius:10px; background:#fff; }
+body.my-needs-visible #ovdk-pill { display:none !important; }
+.mc-action-menu { margin-top: 12px; }
+.mc-action-menu summary { display:inline-flex; align-items:center; min-height:40px; padding:0 13px; border:1px solid var(--border); border-radius:10px; cursor:pointer; font-size:13px; font-weight:700; }
+.mc-action-menu .mc-acts { margin-top:8px; }
+.mc-role-chips { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+.mc-role-chip { display:inline-flex; align-items:center; min-height:28px; padding:2px 10px; border:1px solid var(--border); border-radius:999px; background:var(--bg-secondary); color:var(--text-secondary); font-size:11px; font-weight:650; }
+.mc-role-chip.is-empty { opacity:.7; }
+.me-acts { margin-bottom: 20px; }
+.mc-count { margin:0 0 8px; color:var(--text-muted); font-size:12px; }
+#sec-machines { scroll-margin-top: 90px; }
+body.my-machines-open { padding-bottom: max(112px, calc(100vh - 90px)); }
+
+/* openvibe.link/machines: server/link/routes.js serves this page with body.link-hub, and it is the Machines hub alone.
+   The account home, the email card and the settings tabs stay on openvibe.network/my; nothing scrolls, and the
+   section's heading is the page's h1. An anonymous session still sees its own notice in place of the machines. */
+.link-hub :is(#page-header, #needs-you, #receipts, #me-acts, #today, #setup-fold, #account-emails-card, #settings, .section-tabs) { display: none !important; }
+.link-hub .settings { display: block; }
+.link-hub .settings > .section:not(#sec-machines, #sec-anon.active) { display: none; }
+.link-hub #sec-machines { display: block; }
+.link-hub .settings:has(#sec-anon.active) #sec-machines { display: none; }
+body.link-hub.my-machines-open { padding-bottom: 0; }
+.link-hub .mc-title { margin: 0 0 6px; font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2rem); line-height: 1.15; }
+.mc-empty > i { flex: none; }

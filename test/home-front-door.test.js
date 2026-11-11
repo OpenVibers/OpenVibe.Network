@@ -6,7 +6,7 @@ const assert = require('assert');
 const { parseHTML } = require('linkedom');
 const activity = require('../server/home/activity');
 const home = require('../server/home/render');
-const sites = require('../server/frame/sites').SITES;
+const sites = require('../server/frame/sites').LISTED;
 
 activity.setEnabled(false);
 
@@ -79,6 +79,12 @@ assert.deepStrictEqual(code, [{ code: 'FALL10', title: '10% off a watch', url: '
 // The page with nothing live: the empty state invites a browser go-live.
 activity._set({ live: [], pastes: [], posts: [] });
 let { html } = home.render();
+// The first HTML carries the site's navigation for a crawler; the browser navbar replaces it on boot.
+const serverNav = /<div id="navbar-mount"><nav class="openvibe-navbar"[^>]*data-ov-server-nav="true"[\s\S]*?<\/nav><\/div>/.exec(html);
+assert.ok(serverNav, 'the first HTML has the server navigation');
+for (const [label, href] of [['My Account', '/my'], ['Wallet', '/wallet'], ['Themes', '/themes']]) {
+    assert.ok(serverNav[0].includes(`href="${href}"`) && serverNav[0].includes(`>${label}</a>`), `the server nav links ${label}`);
+}
 assert.ok(/<form class="intent-bar" action="https:\/\/openvibe.tools\/search" method="get"/.test(html), 'the search works without JavaScript (a tool search)');
 for (const [id, , verb, , href] of home.INTENTS) {
     assert.ok(html.includes(`href="${href}" data-id="${id}"`), `intent ${id} links to ${href}`);
@@ -86,8 +92,10 @@ for (const [id, , verb, , href] of home.INTENTS) {
 }
 assert.ok(/Go live<\/b><small>From a browser tab\. No OBS, no follower minimum\./.test(html), 'browser go-live stays the headline promise');
 // The five most popular list (plan L43) is a plain list; with no Report wired in this process it says it is the floor.
-assert.ok(/<section class="sc-sec" id="popular" data-source="fallback"/.test(html), 'the signed-out popularity list is on the page and names its source');
-assert.ok(html.includes('Five things people do now') && /<ul class="now-list">/.test(html), 'the list is plain, with the existing classes');
+assert.ok(/<section class="sc-sec pop" id="popular" data-source="fallback"/.test(html), 'the signed-out popularity list is on the page and names its source');
+assert.ok(html.includes('Five things people do now') && /<ol class="pop-list">/.test(html), 'the five are a ranked list');
+assert.ok(/<a class="pop-row" href="https:\/\/openvibe\.live\/"><span class="pop-rank" aria-hidden="true">1<\/span><span class="pop-ic" aria-hidden="true"><span class="ov-icon" data-icon="live"/.test(html), 'each row: its place, the site\'s own mark (inline SVG: this page has no icon font)');
+assert.ok(!/class="pop-n/.test(html.slice(html.indexOf('id="popular"'), html.indexOf('</ol>', html.indexOf('id="popular"')))), 'the fallback list has no numbers, so it shows none');
 assert.ok(/Nobody is live right now/.test(html) && /Go live from your browser/.test(html), 'an honest empty state');
 const open = sites.filter((s) => s.status === 'open' && s.id !== 'network');
 // The hero's orbit (2026-10-28): the most used sites around the mark, the count of every site in its middle.
@@ -128,7 +136,7 @@ assert.ok(faqLd.mainEntity.length >= 5, 'the FAQ has its questions');
 faqLd.mainEntity.forEach((q) => assert.ok([...parseHTML(html).document.querySelectorAll('#faq h3')].some((el) => el.textContent === q.name), `the FAQ shows "${q.name}"`));
 assert.ok(faqLd.mainEntity.some((q) => /separate account/.test(q.name)), "Contracts' network FAQ is included");
 // The service map groups the sites the way the launcher does; numbers say only what was read.
-assert.ok(/<h3 class="sc-apps-group">Streams &amp; places<\/h3>/.test(html) && /<h3 class="sc-apps-group">For developers<\/h3>/.test(html) && /<h3 class="sc-apps-group">Make &amp; build<\/h3>/.test(html) && html.includes('<ul class="sc-apps">'), 'the sites are grouped, as a launcher');
+assert.ok(/<h3 class="sc-apps-group">Watch &amp; stream<\/h3>/.test(html) && /<h3 class="sc-apps-group">For developers<\/h3>/.test(html) && /<h3 class="sc-apps-group">Make with AI<\/h3>/.test(html) && html.includes('<ul class="sc-apps">'), 'the sites are grouped, as a launcher');
 assert.ok(/<section class="net-num"/.test(html) && /sites, one account/.test(html), 'the numbers panel renders');
 assert.ok(!/services up/.test(html) && !/accounts<\/span>/.test(html), 'numbers nobody read are left out');
 assert.ok(!/Latest recordings|New jobs|Fresh coupon codes/.test(html), 'an empty column is left out');
@@ -153,15 +161,19 @@ assert.ok(html.includes('href="https://openvibe.video/v/9"') && html.includes('<
     assert.ok(page.includes('onerror="if(this.dataset.full&&this.src!==this.dataset.full){this.src=this.dataset.full;return}this.src=this.dataset.fallback"'), 'the original is retried once, then the fallback');
     assert.ok(page.includes('src="https://openvibe.live/t.jpg"') && !page.includes('https://openvibe.live/t.jpg?w='), 'a Live thumbnail is not a Media object and is used unchanged');
 }
-// What is new: every part shown (the owner, 2026-10-31: never hide content to shorten); on a phone a row of chips jumps
-// to one, and a wider screen shows no chips.
+// What is new: every part is in the page's HTML (crawlers, wider screens); a phone shows one at a time, as tabs, with no
+// script (ask 364/367, 2026-11-11, the owner: "self-contained tabs, so the page isn't so freaking huge").
 {
-    const chips = [...html.matchAll(/<a href="#now-([a-z]+)">([^<]+)<\/a>/g)];
-    assert.ok(html.includes('<nav class="now-pick" data-ovk-scroll aria-label="New on OpenVibe">') && chips.length >= 2, 'the chips render when there is more than one part');
-    for (const [, id] of chips) assert.match(html, new RegExp(`<div class="now-(block|grid)" data-now-part[^>]* id="now-${id}"`), `${id} is a part in the page`);
-    assert.ok(!/name="now-pick"|name="more-pick"/.test(html), 'no chip is a radio: nothing is picked');
-    assert.match(html, /\.now-pick,\.more-pick,\.more-pick-h\{display:none\}\n@media \(max-width:600px\)\{/, 'chips only on a phone');
-    assert.ok(!html.includes('[data-now-part]{display:none}') && !html.includes('[data-more-part]{display:none'), 'no part is ever hidden');
+    const radios = [...html.matchAll(/<input type="radio" class="now-tab-r" name="now-part" id="now-tab-([a-z]+)" value="\1"( checked)?>/g)];
+    assert.ok(radios.length >= 2, 'a tab a part when there is more than one part');
+    assert.strictEqual(radios.filter((r) => r[2]).length, 1, 'one part is chosen to start with');
+    for (const [, id] of radios) {
+        assert.match(html, new RegExp(`<label for="now-tab-${id}">[^<]+</label>`), `${id} has its tab`);
+        assert.match(html, new RegExp(`<div class="now-(block|grid)[^"]*" data-now-part="${id}"[^>]* id="now-${id}"`), `${id} is a part in the page`);
+    }
+    assert.match(html, /\.now-tab-r,\.now-tabs\{display:none\}\n@media \(max-width:600px\)\{/, 'tabs only on a phone');
+    assert.ok(html.includes('.now:has(#now-tab-recs:checked) [data-now-part]:not([data-now-part="recs"])'), 'a phone folds the parts not chosen');
+    assert.ok(!html.includes('[data-more-part]{display:none'), 'the lower half keeps every section');
 }
 // The lower half: every section with its own heading; on a phone a row of chips under "More about OpenVibe" jumps to one.
 {

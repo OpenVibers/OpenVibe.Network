@@ -28,12 +28,15 @@
 const { isExtensionOrigin } = require('../auth/extension-origin');
 const express = require('express');
 const crypto = require('crypto');
-const { SITES, siteForHost, GROUPS, groupOf, PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName } = require('./sites');
+const { SITES, LISTED, LISTED_SITES, siteForHost, GROUPS, groupOf, PRODUCTS, MERGED_PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName } = require('./sites');
 const { createMenuCards } = require('./menu-cards');
 const seen = require('./seen');
 const toolsCatalog = require('../domains/catalog');
 
 const RANK_MS = 30 * 60_000, COPY_MS = 24 * 60 * 60_000;
+// One number for "how many places the network lists": the menu, its tile count, pulse.sites and online.sites.
+// 53 open sites (Network the front door included) plus Pics and Download, the two domains Video serves as entries.
+const LISTED_TOTAL = LISTED.filter((s) => s.status === 'open').length;
 const BANNED = /\b(free|\$0|no ads|ad[- ]free|no cost|gratis)\b|https?:|www\.|[<>{}]/i;
 const BASE_WEIGHT = { live: 7, tools: 6, space: 5, community: 4, games: 3, media: 2, network: 1 };   // cold-start order only
 const MENU_BEACON = 'https://openvibe.network/api/frame/menu-click';
@@ -75,7 +78,7 @@ function siteForDestination(hostname) {
     if (!h) return null;
     const site = siteForHost(h);
     if (site) return site;
-    const product = PRODUCTS.find((p) => h === p.host || h.endsWith('.' + p.host));
+    const product = PRODUCTS.concat(MERGED_PRODUCTS).find((p) => h === p.host || h.endsWith('.' + p.host));
     return product ? SITES.find((s) => s.id === product.of) || null : null;
 }
 /** A user_history row's Frame site id: service alias first, the site id itself, then the row's URL host. */
@@ -177,14 +180,14 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // frame_cache across restarts. A failed site keeps its last good card for 30 minutes; GET /api/frame carries
     // at most twelve, Live first while anyone is live, then the Frame's own ranking.
     const menuCards = createMenuCards({
-        sites: () => SITES.filter((s) => s.status === 'open'),
+        sites: () => LISTED_SITES.filter((s) => s.status === 'open'),
         rankOf: () => orderedOpen().map((s) => s.id),
         load: () => load('menu-cards'),
         save: (v) => save('menu-cards', v),
         onChange: () => { version = Date.now(); },
     });
     await menuCards.init();
-    const openIds = () => new Set(SITES.filter((s) => s.status === 'open').map((s) => s.id));
+    const openIds = () => new Set(LISTED_SITES.filter((s) => s.status === 'open').map((s) => s.id));
     /** Only open sites, never the site itself, at most six; drops duplicates and anything from an older seed. */
     function cleanNext(map) {
         const ids = openIds(); const out = {};
@@ -203,7 +206,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
      *  the first move is counted, so the menu's "Next from here" is never empty on a cold network. */
     function seedNext() {
         const ids = openIds(); const map = {};
-        for (const site of SITES.filter((s) => s.status === 'open')) {
+        for (const site of LISTED_SITES.filter((s) => s.status === 'open')) {
             const out = []; const seen = new Set([site.id]);
             const add = (id) => { if (out.length < 6 && ids.has(id) && !seen.has(id)) { seen.add(id); out.push(id); } };
             for (const id of NEXT_SEED[site.id] || []) add(id);
@@ -292,7 +295,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             byFrom.get(pair.from).push(pair);
         }
         const seed = seedNext(); const map = {};
-        for (const site of SITES.filter((s) => s.status === 'open')) {
+        for (const site of LISTED_SITES.filter((s) => s.status === 'open')) {
             const out = []; const seen = new Set([site.id]);
             const add = (id) => { if (out.length < 6 && ids.has(id) && !seen.has(id)) { seen.add(id); out.push(id); } };
             const moved = (byFrom.get(site.id) || []).sort((a, b) => b.people.size - a.people.size || b.moves - a.moves || a.to.localeCompare(b.to));
@@ -347,7 +350,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
 
     const scoreOf = (id) => (rank.scores[id] || 0) + 3 * (rank.scores[id + ':history'] || 0);
     function orderedOpen() {
-        const open = SITES.filter(s => s.status === 'open');
+        const open = LISTED_SITES.filter(s => s.status === 'open');
         // Real use decides, compared raw: normalising by one service's own analytics scale made Live's tens of
         // thousands of page views flatten every other site to nearly zero, so the cold-start BASE_WEIGHT decided the
         // order and Video (openvibe.video) sat under Tools, Community and Space despite 2,687 hits in 7 days (11-07).
@@ -359,7 +362,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     function linkPool() {
         const { catalog } = toolsCatalog.peek();
         const pool = new Map();
-        for (const s of SITES.filter(x => x.status === 'open')) pool.set('site:' + s.id, { name: fullName(s), url: s.url || `https://${s.host}/`, about: s.tagline });
+        for (const s of LISTED_SITES.filter(x => x.status === 'open')) pool.set('site:' + s.id, { name: fullName(s), url: s.url || `https://${s.host}/`, about: s.tagline });
         for (const f of catalog.families) if (f.path) pool.set('family:' + f.id, { name: f.name, url: 'https://openvibe.tools' + f.path, about: f.tagline });
         for (const t of catalog.tools) pool.set('tool:' + t.id, { name: t.name, url: t.url, about: t.tagline });
         return pool;
@@ -376,7 +379,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const pool = linkPool();
         const popular = new Set(popularTools(12).map(t => t.url));
         const links = [...pool.entries()].filter(([id, l]) => !id.startsWith('tool:') || popular.has(l.url)).map(([id, l]) => ({ id, name: l.name, about: l.about }));
-        const body = { sites: SITES.filter(s => s.status === 'open').map(s => ({ id: s.id, name: fullName(s), what: s.what, popular: s.id === 'tools' ? popularTools(6).map(t => t.name) : [] })), links };
+        const body = { sites: LISTED_SITES.filter(s => s.status === 'open').map(s => ({ id: s.id, name: fullName(s), what: s.what, popular: s.id === 'tools' ? popularTools(6).map(t => t.name) : [] })), links };
         let j = null;
         try { j = await fromAi(body); } catch { j = null; }
         if (!j || !Array.isArray(j.sites)) return;   // keep the last good copy
@@ -403,7 +406,8 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const discoverIds = discover && Array.isArray(discover.ids) && discover.ids.length ? discover.ids.filter(id => open.some(s => s.id === id)) : open.map(s => s.id);
         return {
             updated: new Date(version).toISOString(), site: { id: site.id, name: site.name, host: site.host, status: site.status, state: site.state },
-            // Every open site, most used first, each followed by the products it serves on their own domains (`of`).
+            // Every listed place, most used first, each followed by the products it serves on their own domains (`of`).
+            // Media, Homes and Bench are merged sections, not entries; Pics and Download are entries after Video.
             nav: open.flatMap(s => [s, ...PRODUCTS.filter(p => p.of === s.id)]).map(s => ({ id: s.id, name: MENU_NAME[s.id] || s.name, url: s.url || `https://${s.host}/`, icon: ICON_ALIAS[s.icon] || s.icon, tagline: MENU_LINE[s.id] || s.tagline, group: groupOf(s.id), ...(s.of ? { of: s.of } : {}) })),
             // The menu's data: where people go next from each open site (totals only, no person), the fair discovery
             // order, and the click beacon (Shared sends it only when this object is present).
@@ -414,7 +418,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             cards: menuCards.cards(),
             groups: GROUPS.map(g => ({ id: g.id, name: g.name })),
             // state: 'internal' (runs on loopback, the domain still shows a placeholder) or 'placeholder' (planned).
-            soon: SITES.filter(s => s.status === 'soon').map(s => ({ id: s.id, name: s.name, url: s.url || `https://${s.host}/`, icon: s.icon, state: s.state })),
+            soon: LISTED.filter(s => s.status === 'soon').map(s => ({ id: s.id, name: s.name, url: s.url || `https://${s.host}/`, icon: s.icon, state: s.state })),
             footer: { blurb: (ai && ai.blurb) || site.what, ai: !!ai, discover: footerDiscover, popular: popularTools(8), legal: { terms: legalBase + '/terms', privacy: legalBase + '/privacy', dmca: legalBase + '/dmca' } },
         };
     }
@@ -475,7 +479,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         return {
             live_now: live ? live.channels : null,
             watching: live ? live.watching : null,
-            sites: orderedOpen().length,
+            sites: LISTED_TOTAL,
             views_7d: views > 0 ? Math.round(views) : null,
             live: live ? live.list : null,
             updated: new Date().toISOString(),
@@ -487,7 +491,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             await pulseInflight;
         }
         res.set({ 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin', 'Cache-Control': 'public, max-age=30, stale-while-revalidate=120', 'Content-Type': 'application/json; charset=utf-8' });
-        res.send(JSON.stringify(pulse || { live_now: null, watching: null, sites: orderedOpen().length, views_7d: null, live: null, updated: null }));
+        res.send(JSON.stringify(pulse || { live_now: null, watching: null, sites: LISTED_TOTAL, views_7d: null, live: null, updated: null }));
     });
 
     // ── GET /api/frame/online — who is on the network, and a few counts (owner, 2026-11-10) ────────────────────────
@@ -505,7 +509,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const out = [];
         try {
             const since = new Date(nowMs - 7 * 86_400_000).toISOString().slice(0, 19).replace('T', ' ');
-            const r = await db.prepare("SELECT COUNT(*) AS n FROM users WHERE COALESCE(is_anon, 0) = 0 AND COALESCE(is_banned, 0) = 0 AND COALESCE(deleted_at, '') = '' AND created_at >= ?").get(since);
+            const r = await db.prepare("SELECT COUNT(*) AS n FROM users WHERE COALESCE(is_anon, 0) = 0 AND COALESCE(is_banned, 0) = 0 AND COALESCE(deleted_at, '') = '' AND COALESCE(is_test, 0) = 0 AND created_at >= ?").get(since);
             const n = r ? Number(r.n) : NaN;
             if (Number.isFinite(n) && n >= 0) out.push({ id: 'joined', label: 'Joined this week', value: n, icon: 'members', url: 'https://openvibe.network/stats' });
         } catch { /* the count is optional */ }
@@ -526,16 +530,18 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             let rows = [];
             if (subjects.length) {
                 try {
-                    rows = await db.prepare(`SELECT u.username, u.display_name, u.subject_id, p.show_status, p.state
+                    rows = await db.prepare(`SELECT u.username, u.display_name, u.subject_id, u.is_test, p.show_status, p.state
                         FROM person_presence p JOIN users u ON u.subject_id = p.subject_id
                         WHERE p.subject_id = ANY(?) AND COALESCE(u.is_banned, 0) = 0 AND COALESCE(u.deleted_at, '') = ''`).all(subjects);
                 } catch { rows = []; }
             }
             const bySubject = new Map(rows.map((r) => [r.subject_id, r]));
+            const testSeen = rows.filter((r) => Number(r.is_test)).length;
             const visible = [];
             for (const [subject, entry] of snap.members) {
                 const r = bySubject.get(subject);
-                if (!r) continue;
+                // A test account (the probes) is never a public member: it is counted out, not just unnamed.
+                if (!r || Number(r.is_test)) continue;
                 // The person's own presence choice decides whether they may be named: the "Show my status"
                 // switch off, or Invisible, means counted among members and never in the list.
                 if (!Number(r.show_status) || r.state === 'invisible') continue;
@@ -548,14 +554,15 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             visible.sort((a, b) => b.at - a.at);
             const live = await readLive(nowMs);
             const views = Object.entries(rank.scores || {}).filter(([k]) => !k.includes(':')).reduce((a, [, n]) => a + (Number(n) || 0), 0);
+            const members = Math.max(0, snap.members.size - testSeen);
             onlineBase = {
-                members: snap.members.size,
+                members,
                 guests: snap.guests,
-                total: snap.members.size + snap.guests,
+                total: members + snap.guests,
                 visible,
                 counts: await countsOf(nowMs),
                 live: live ? { channels: live.channels, watching: live.watching, first: live.list.slice(0, 3).map((s) => ({ name: s.name, url: s.url })) } : { channels: 0, watching: 0, first: [] },
-                sites: orderedOpen().length,
+                sites: LISTED_TOTAL,
                 views_7d: views > 0 ? Math.round(views) : null,
                 updated: new Date(nowMs).toISOString(),
             };
@@ -604,7 +611,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             }
         }
         res.set({ 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin', 'Cache-Control': 'public, max-age=30, stale-while-revalidate=120', 'Content-Type': 'application/json; charset=utf-8' });
-        res.send(e ? e.body : JSON.stringify({ updated: null, members: null, guests: null, total: null, people: [], more: 0, live: null, counts: [], items: [], sites: orderedOpen().length, views_7d: null }));
+        res.send(e ? e.body : JSON.stringify({ updated: null, members: null, guests: null, total: null, people: [], more: 0, live: null, counts: [], items: [], sites: LISTED_TOTAL, views_7d: null }));
     });
 
     // GET /api/frame/feed?kind=&site=&q=&following=1&cursor=&limit= and GET /api/frame/wall?limit=&after=&for= — the menu's Feed and wall
@@ -627,7 +634,10 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             if (kept && Date.now() - kept.at < 30_000) { res.set('Cache-Control', 'public, max-age=30'); return res.send(kept.body); }
         }
         const d = await getJson(u.href, auth ? { Authorization: auth, Accept: 'application/json' } : { Accept: 'application/json' });
-        const body = JSON.stringify(d && Array.isArray(d.items) ? d : { items: [], next_cursor: null });
+        if (path === '/api/v1/feed/search' && (!d || !Array.isArray(d.items))) return res.status(503).send('{"error":"feed search unavailable"}');
+        const body = JSON.stringify(path === '/api/v1/feed/examples'
+            ? (d && Array.isArray(d.examples) ? d : { examples: [] })
+            : (d && Array.isArray(d.items) ? d : { items: [], next_cursor: null }));
         if (!auth && d) {
             if (relayed.size >= 500) relayed.clear();
             relayed.set(key, { at: Date.now(), body });
@@ -637,7 +647,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     }
     const qCursor = (v) => (/^[A-Za-z0-9._~=-]{1,300}$/.test(String(v || '')) ? String(v) : '');
     const qLimit = (v, max) => String(Math.min(Math.max(parseInt(v, 10) || 20, 1), max));
-    router.options(['/feed', '/wall', '/status', '/posts', '/attachments'], (req, res) => {
+    router.options(['/feed', '/feed/search', '/feed/examples', '/wall', '/status', '/posts', '/attachments'], (req, res) => {
         res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Max-Age': '600' });
         res.status(204).end();
     });
@@ -692,6 +702,10 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         following: /^(1|true)$/.test(String(req.query.following || '')) ? '1' : '',
         cursor: qCursor(req.query.cursor), limit: qLimit(req.query.limit, 40),
     }));
+    router.get('/feed/search', (req, res) => relay(req, res, '/api/v1/feed/search', {
+        q: qWords(req.query.q),
+    }));
+    router.get('/feed/examples', (req, res) => relay(req, res, '/api/v1/feed/examples', {}));
     router.get('/wall', (req, res) => relay(req, res, '/api/v1/pulse', {
         limit: qLimit(req.query.limit, 50), after: qCursor(req.query.after), cursor: qCursor(req.query.cursor),
         for: req.query.for === 'me' ? 'me' : '', origin: ['user', 'ai', 'system', 'all'].includes(String(req.query.origin || '')) ? String(req.query.origin) : '',
@@ -727,13 +741,22 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             const path = upstreamPath(req);
             if (!path) return res.status(404).send('{"error":"not found"}');
             const auth = bearer || fromCookie;
-            if (path.startsWith('/api/v1/me/') && !auth) return res.status(401).send('{"error":"sign in to open your wallet"}');
-            const u = new URL(path, svcUrl(service, service === 'billing' ? 'http://127.0.0.1:4600' : 'http://127.0.0.1:5030'));
+            if ((path.startsWith('/api/v1/me/') || path.startsWith('/api/wallet/changes')) && !auth) return res.status(401).send('{"error":"sign in to open your wallet"}');
+            const fallback = service === 'billing' ? 'http://127.0.0.1:4600' : service === 'network' ? config.internalUrl || 'http://127.0.0.1:4000' : 'http://127.0.0.1:5030';
+            const u = new URL(path, svcUrl(service, fallback));
             if (method === 'GET') {
                 const limit = String(req.query.limit || '');
                 if (/^\d{1,3}$/.test(limit)) u.searchParams.set('limit', String(Math.min(Math.max(Number(limit), 1), 100)));
-                const cursor = String(req.query.cursor || '');
-                if (/^[A-Za-z0-9._~=-]{1,300}$/.test(cursor)) u.searchParams.set('cursor', cursor);
+                if (path === '/api/wallet/changes') {
+                    const patterns = { since_vibes: /^txn_[0-9A-HJKMNP-TV-Z]{26}$/, since_opencoins: /^[1-9]\d{0,15}$/, streamer: /^[1-9]\d{0,15}$/, since_channel_points: /^[1-9]\d{0,15}$/ };
+                    for (const [name, pattern] of Object.entries(patterns)) {
+                        const value = String(req.query[name] || '');
+                        if (pattern.test(value)) u.searchParams.set(name, value);
+                    }
+                } else {
+                    const cursor = String(req.query.cursor || '');
+                    if (/^[A-Za-z0-9._~=-]{1,300}$/.test(cursor)) u.searchParams.set('cursor', cursor);
+                }
             }
             const headers = { Accept: 'application/json', ...(auth ? { Authorization: auth } : {}) };
             const init = { method, headers, redirect: 'manual', signal: AbortSignal.timeout(8000) };
@@ -753,6 +776,9 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     });
     // Billing: the three balances and the sheet's two checkouts. All personal, all no-store.
     router.get('/wallet/api/v1/me/wallet', walletRelay('billing', 'GET', '/api/v1/me/wallet'));
+    // Ask 273: every site reads and marks the same per-currency change window through Network.
+    router.get('/wallet/changes', walletRelay('network', 'GET', '/api/wallet/changes'));
+    router.put('/wallet/changes/read', walletJson, walletRelay('network', 'PUT', '/api/wallet/changes/read'));
     router.post('/wallet/api/v1/me/vibes/buy', walletJson, walletRelay('billing', 'POST', '/api/v1/me/vibes/buy'));
     router.post('/wallet/api/v1/me/wallet/topups', walletJson, walletRelay('billing', 'POST', '/api/v1/me/wallet/topups'));
     // Inventory: the store, the person's items, and the equipped slots (worn or not).
@@ -768,13 +794,15 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // ── The Dock's Agents tab (openvibe-shared dock-agent.js, dock-timeline.js and dock-actor.js) ───────────────
     // The Dock runs on every OpenVibe site, and every site's connect-src allows openvibe.network and refuses
     // openvibe.codes and openvibe.actor (2026-11-09: 49 sites logged 1-4 refusals at 1280). These fixed paths are
-    // the Dock's three reads and its controls: the person's Bearer token goes upstream and never a cookie, the
+    // the Dock's reads and its controls: the person's Bearer token goes upstream and never a cookie, the
     // bodies are JSON of at most 8 KB, redirects are not followed, and Codes' and Actor's status and answer come
     // back as they are. Nothing is kept: every answer is the person's own.
+    // The Dock's Code tab (the Vibe place's Code part) reads and writes the person's coding tasks the same way:
+    // /codes-tasks (list, start) and /codes-tasks/:id/stop, straight through to Codes' person tasks API.
     const dockAuth = (req) => (/^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '');
     const DOCK_ID = /^[A-Za-z0-9._~:-]{1,160}$/;
     const dockId = (v) => (DOCK_ID.test(String(v || '')) ? String(v) : '');
-    function dockRelay(service, method, upstream, { image = false } = {}) {
+    function dockRelay(service, method, upstream, { image = false, maxBytes = 64 * 1024 } = {}) {
         const upstreamPath = typeof upstream === 'function' ? upstream : () => upstream;
         const fallback = service === 'codes' ? 'http://127.0.0.1:4900' : 'http://127.0.0.1:4950';
         return async (req, res) => {
@@ -795,13 +823,14 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
                 }
                 const text = await r.text();
                 res.set('Content-Type', 'application/json; charset=utf-8');
-                return res.status(r.status).send(text.slice(0, 64 * 1024));
+                if (Buffer.byteLength(text) > maxBytes) return res.status(502).json({ error: 'The Dock service answer was too large' });
+                return res.status(r.status).send(text);
             } catch { return res.status(502).json({ error: 'The Dock service did not answer' }); }
         };
     }
     const dockJson = express.json({ limit: '8kb' });
-    router.options(['/agent-view', '/agent-view/*', '/agent/*', '/tasks/*', '/actor', '/actor/*'], (req, res) => {
-        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Max-Age': '600' });
+    router.options(['/agent-view', '/agent-view/*', '/agent/*', '/agents/*', '/codes-agents/*', '/tasks/*', '/actor', '/actor/*', '/codes-tasks', '/codes-tasks/*', '/codes-runs/*', '/agent-runs/*'], (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, Last-Event-ID', 'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE', 'Access-Control-Max-Age': '600' });
         res.status(204).end();
     });
     // OpenVibe.Codes: the person's agent stream, its last still, and the four controls.
@@ -830,6 +859,69 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     router.get('/actor', dockRelay('actor', 'GET', '/api/v1/me/actor'));
     for (const what of ['pause', 'resume', 'tell']) router.post(`/actor/${what}`, dockJson, dockRelay('actor', 'POST', `/api/v1/me/actor/${what}`));
     for (const what of ['answer', 'decline']) router.post(`/actor/asks/:id/${what}`, dockJson, dockRelay('actor', 'POST', (req) => (dockId(req.params.id) ? `/api/v1/me/actor/asks/${encodeURIComponent(req.params.id)}/${what}` : null)));
+    // One owner's agent sheet on any site. Actor checks ownership and capabilities; the relay accepts only its
+    // fixed ID shapes and passes the person's Bearer upstream. The larger answer includes up to 100 work records.
+    const AGENT_ID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
+    const MEMORY_ID = /^mem_[0-9A-HJKMNP-TV-Z]{26}$/;
+    const agentPath = (req, tail = '') => AGENT_ID.test(String(req.params.id || '')) ? `/api/v1/me/agents/${req.params.id}${tail}` : null;
+    router.get('/agents/:id/sheet', dockRelay('actor', 'GET', (req) => {
+        const path = agentPath(req);
+        return path ? `${path}?view=sheet` : null;
+    }, { maxBytes: 512 * 1024 }));
+    router.get('/codes-agents/:id/sheet', dockRelay('codes', 'GET', (req) =>
+        /^[a-z][a-z0-9-]{0,63}$/.test(String(req.params.id || '')) ? `/api/v1/me/agents/${req.params.id}/sheet` : null,
+    { maxBytes: 512 * 1024 }));
+    router.patch('/agents/:id', dockJson, dockRelay('actor', 'PATCH', (req) => agentPath(req)));
+    router.post('/agents/:id/memory', dockJson, dockRelay('actor', 'POST', (req) => agentPath(req, '/memory')));
+    router.patch('/agents/:id/memory/:mem', dockJson, dockRelay('actor', 'PATCH', (req) => MEMORY_ID.test(String(req.params.mem || '')) ? agentPath(req, `/memory/${req.params.mem}`) : null));
+    router.delete('/agents/:id/memory/:mem', dockRelay('actor', 'DELETE', (req) => MEMORY_ID.test(String(req.params.mem || '')) ? agentPath(req, `/memory/${req.params.mem}`) : null));
+    // OpenVibe.Codes' person tasks API (the Dock's Code tab): the latest tasks running first, one start, one stop.
+    // ?limit= is the list's cap (the Dock asks with 8); the stop's id is a tsk_ id, anything else is not a task.
+    const TASK_ID = /^tsk_[0-9A-HJKMNP-TV-Z]{26}$/;
+    router.get('/codes-tasks', dockRelay('codes', 'GET', (req) => {
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 50);
+        return `/api/v1/me/tasks?limit=${limit}`;
+    }));
+    router.post('/codes-tasks', dockJson, dockRelay('codes', 'POST', '/api/v1/tasks'));
+    router.post('/codes-tasks/:id/stop', dockJson, dockRelay('codes', 'POST', (req) => (TASK_ID.test(String(req.params.id || '')) ? `/api/v1/tasks/${req.params.id}/stop` : null)));
+    // A task card follows its AG-UI run through Network. Codes authorizes the bearer on both reads; the
+    // stream forwards only SSE and its id so a reconnect can resume at the last event.
+    const RUN_ID = /^tsk_[0-9A-HJKMNP-TV-Z]{26}(?:~[1-9][0-9]*)?$/;
+    router.get('/codes-runs/:id', dockRelay('codes', 'GET', (req) => RUN_ID.test(String(req.params.id || ''))
+        ? `/api/v1/runs/${encodeURIComponent(req.params.id)}` : null, { maxBytes: 512 * 1024 }));
+    router.get('/agent-runs/actor/:id', dockRelay('actor', 'GET', (req) => RUN_ID.test(String(req.params.id || ''))
+        ? `/api/v1/runs/${encodeURIComponent(req.params.id)}` : null, { maxBytes: 512 * 1024 }));
+    const runEvents = (service) => async (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'private, no-store', 'Vary': 'Authorization' });
+        const auth = dockAuth(req);
+        const id = String(req.params.id || '');
+        if (!auth) return res.status(401).json({ error: 'sign in to follow the run' });
+        if (!RUN_ID.test(id)) return res.status(404).json({ error: 'not found' });
+        const last = String(req.get('last-event-id') || '0');
+        if (!/^\d{1,16}$/.test(last)) return res.status(400).json({ error: 'invalid event id' });
+        const abort = new AbortController();
+        res.on('close', () => abort.abort());
+        try {
+            const upstream = await fetch(new URL(`/api/v1/runs/${encodeURIComponent(id)}/events`, svcUrl(service, service === 'codes' ? 'http://127.0.0.1:4900' : 'http://127.0.0.1:4950')).href, {
+                headers: { Authorization: auth, Accept: 'text/event-stream', 'Last-Event-ID': last }, redirect: 'manual', signal: abort.signal
+            });
+            if (!upstream.ok || !String(upstream.headers.get('content-type') || '').startsWith('text/event-stream')) {
+                return res.status(upstream.status).json({ error: 'run stream unavailable' });
+            }
+            res.status(200).set({ 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
+            res.flushHeaders();
+            for await (const chunk of upstream.body) {
+                if (abort.signal.aborted) break;
+                if (!res.write(chunk)) await new Promise((resolve) => {
+                    const done = () => { res.off('drain', done); res.off('close', done); resolve(); };
+                    res.once('drain', done); res.once('close', done);
+                });
+            }
+            res.end();
+        } catch { if (!res.headersSent) res.status(502).json({ error: 'run stream unavailable' }); else res.end(); }
+    };
+    router.get('/codes-runs/:id/events', runEvents('codes'));
+    router.get('/agent-runs/actor/:id/events', runEvents('actor'));
 
     // GET /api/frame/suggest?q=&owner=&limit= — the navbar's magnifier (openvibe-shared search.js): OpenVibe.Search's
     // suggestions, asked through Network because every site's connect-src already lets the navbar reach

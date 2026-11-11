@@ -10,7 +10,7 @@ const { createFrameService } = require('../server/frame/service');
 (async () => {
     const db = getDb();
     const svc = await createFrameService(db, { services: {} }, null, { selfToken: () => 'test-token' });
-    assert.deepStrictEqual(svc.ranking().order.slice(0, 7), ['live', 'tools', 'space', 'community', 'games', 'media', 'network'], 'cold start: the hand-set base order');
+    assert.deepStrictEqual(svc.ranking().order.slice(0, 6), ['live', 'tools', 'space', 'community', 'games', 'network'], 'cold start: the hand-set base order (Media is Video\'s section, not a tile)');
 
     for (let i = 1; i <= 4; i++) await db.prepare('INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)').run(i, `rank${i}`, 'x');
     const day = "substring(ov_now(), 1, 10)";

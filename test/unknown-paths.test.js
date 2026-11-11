@@ -4,6 +4,7 @@
 // its 200 and that anything else is a 404: a small noindex page, or JSON under /api, /internal, /oauth.
 //   node test/unknown-paths.test.js
 const assert = require('assert');
+const http = require('node:http');
 const { bootServer } = require('./helpers/boot-server');
 const { ACCOUNT_HUB_PATHS } = require('../server/not-found');
 
@@ -28,6 +29,16 @@ const { ACCOUNT_HUB_PATHS } = require('../server/not-found');
             const r = await get(p);
             assert.strictEqual(r.status, 200, `${p} is a real page: 200 (got ${r.status})`);
         }
+        const nodeHost = ['node', 'openvibe', 'network'].join('.');
+        const nodeArrival = await new Promise((resolve, reject) => {
+            const req = http.get(srv.base + '/', { headers: { Host: nodeHost } }, res => {
+                res.resume();
+                res.on('end', () => resolve({ status: res.statusCode, location: res.headers.location }));
+            });
+            req.on('error', reject);
+        });
+        assert.strictEqual(nodeArrival.status, 302, 'the retired Node host leaves before the agent layer renders Network home');
+        assert.strictEqual(nodeArrival.location, 'https://openvibe.link/machines');
         assert.strictEqual((await get('/sso/check')).status, 400, '/sso/check is a route (400 without its parameters), not a 404');
         // The crawl files are generated routes (server/seo/routes.js), not the static files in public/.
         const robots = await get('/robots.txt');
@@ -62,6 +73,8 @@ const { ACCOUNT_HUB_PATHS } = require('../server/not-found');
         assert.strictEqual(r.status, 404, 'HEAD of an unknown path: 404');
         r = await get('/api/nope', { method: 'DELETE' });
         assert.strictEqual(r.status, 404, 'DELETE /api/nope: 404');
+        r = await get('/api/admin/account-merges', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+        assert.strictEqual(r.status, 404, 'removed account merge admin route: 404 before the admin guard');
 
         console.log('unknown paths: all checks passed');
     } catch (err) {

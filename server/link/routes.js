@@ -12,10 +12,36 @@ const fs = require('node:fs');
 const pathLib = require('node:path');
 const page = require('./page');
 const release = require('./release');
+const { verifySession } = require('../auth/session');
+const { consumeTicket } = require('../auth/handoff');
+const { issueTokenPair, recordLinkedService } = require('../auth/oauth-routes');
 
 const HOST = page.HOST;
 const WWW_HOST = page.WWW_HOST;
 const SITE = page.SITE;
+
+// The hub's sign-in: the link-web OAuth client, and the callback the tickets are bound to.
+const LINK_CLIENT_ID = 'link-web';
+const LINK_CALLBACK = `${SITE}/auth/callback`;
+const HUB_PATH = '/machines';
+const HUB_PAGE = pathLib.join(__dirname, '..', '..', 'public', 'my.html');
+const BOT_RE = /bot|crawl|spider|slurp|headless/i;
+
+// The hub is the account page reduced to its Machines section: the body is marked link-hub (my.css hides the account
+// home, the email card and the settings tabs), the page is titled for Link, and the section's heading is the page's
+// one h1. Read once per file change; a heading the page no longer has is left alone rather than guessed at.
+let hubCache = { mtimeMs: -1, html: '' };
+function hubHtml() {
+    const { mtimeMs } = fs.statSync(HUB_PAGE);
+    if (hubCache.mtimeMs === mtimeMs) return hubCache.html;
+    const html = fs.readFileSync(HUB_PAGE, 'utf8')
+        .replace('<body>', () => '<body class="link-hub">')
+        .replace(/<title>[^<]*<\/title>/, () => '<title>Your machines - OpenVibe Link</title>')
+        .replace('<h1 id="user-name">Loading...</h1>', () => '<p class="me-name" id="user-name">Loading...</p>')
+        .replace(/<h3>(<span class="icon"><i class="fa-solid fa-laptop"><\/i><\/span> Your machines)<\/h3>/, (m, inner) => `<h1 class="mc-title">${inner}</h1>`);
+    hubCache = { mtimeMs, html };
+    return html;
+}
 
 /** The request's host, lowercased, without the port. */
 function hostOf(req) {
@@ -66,11 +92,84 @@ function llmsTxt() {
     ].join('\n');
 }
 
+/** This request's cookies as an object (no cookie-parser needed). */
+function readCookies(req) {
+    const out = {};
+    for (const part of String((req.headers && req.headers.cookie) || '').split(';')) {
+        const i = part.indexOf('=');
+        if (i <= 0) continue;
+        const k = part.slice(0, i).trim();
+        if (!(k in out)) { try { out[k] = decodeURIComponent(part.slice(i + 1).trim()); } catch { out[k] = part.slice(i + 1).trim(); } }
+    }
+    return out;
+}
+
+/** The hub page's session cookies, matching the SDK sign-in on /auth (link/auth.js). */
+function setLinkSession(res, accessToken, refreshToken, secure) {
+    res.cookie('ov_token', accessToken, { sameSite: 'lax', secure, httpOnly: false, path: '/', maxAge: 24 * 3600e3 });
+    if (refreshToken) res.cookie('ov_refresh', refreshToken, { sameSite: 'lax', secure, httpOnly: true, path: '/auth', maxAge: 30 * 24 * 3600e3 });
+    res.cookie('ov_sso_hint', 'account', { sameSite: 'lax', secure, httpOnly: false, path: '/', maxAge: 365 * 24 * 3600e3 });
+}
+
 /**
  * Link's routes. Returns null for a request that is not for this host, so the router can be mounted early
- * and every other host falls through to Network's own pages.
+ * and every other host falls through to Network's own pages. With db, config and publicKey the machines hub
+ * signs arrivals in (a handoff ticket, then the silent login); without them it serves the page as before.
  */
-function createLinkRoutes({ releaseId, releaseApi = release } = {}) {
+function createLinkRoutes({ releaseId, releaseApi = release, db = null, config = null, publicKey = null, log = console } = {}) {
+    /** A live link-web session for this request, or null. Never throws. */
+    async function linkSession(req) {
+        try {
+            if (!db || !config || !publicKey) return null;
+            const cookies = readCookies(req);
+            const token = (req.headers && req.headers.authorization || '').startsWith('Bearer ')
+                ? String(req.headers.authorization).slice(7).trim() : cookies.ov_token;
+            if (!token) return null;
+            const out = await verifySession(token, { db, publicKey, config });
+            return out && !out.error ? out.user : null;
+        } catch { return null; }
+    }
+
+    /** The machines hub arrival: ticket → session, session → hub, nobody → silent sign-in. */
+    async function machinesHub(req, res) {
+        const noStore = () => res.set('Cache-Control', 'no-store');
+        const canSign = !!(db && config && publicKey);
+        const userAgent = String((req.headers && req.headers['user-agent']) || '');
+        let params;
+        try { params = new URL(req.url, SITE).searchParams; } catch { params = new URLSearchParams(); }
+        const ticket = params.get('ov_handoff');
+        const cookies = readCookies(req);
+        const sessionUser = canSign && ['GET', 'HEAD'].includes(req.method) ? await linkSession(req) : null;
+        // A ticket from another OpenVibe site (openvibe.my mints one on its way here): redeem it for this
+        // host's session and scrub it from the address bar. Never for a browser that already has a session
+        // here (no silent account switch), and never for a browser this host signed out (the guest hint).
+        if (ticket && /^ovh_[A-Za-z0-9_-]{20,200}$/.test(ticket) && !sessionUser && cookies.ov_sso_hint !== 'guest'
+            && canSign && ['GET', 'HEAD'].includes(req.method)) {
+            try {
+                const { user, scope } = await consumeTicket(db, { ticket, clientId: LINK_CLIENT_ID, redirectUri: LINK_CALLBACK });
+                const client = await db.prepare('SELECT * FROM oauth_clients WHERE client_id = ?').get(LINK_CLIENT_ID);
+                if (!client) throw new Error('the link-web OAuth client is not registered');
+                const pair = await issueTokenPair(db, config, req, user, client, {}, scope);
+                await recordLinkedService(db, user, client);
+                setLinkSession(res, pair.accessToken, pair.refreshToken, config.nodeEnv === 'production');
+                params.delete('ov_handoff');
+                const clean = `${HUB_PATH}${params.toString() ? `?${params.toString()}` : ''}`;
+                return res.redirect(302, clean);
+            } catch (err) { (log.warn || log.log || (() => {}))(`[link] handoff arrival failed: ${err && err.message ? err.message : err}`); }
+        }
+        // Signed in, a crawler, or back from a silent sign-in that found nobody: the hub itself.
+        if (sessionUser || BOT_RE.test(userAgent) || params.get('sso') === 'none') {
+            noStore();
+            return res.type('html').send(hubHtml());
+        }
+        // Nobody home: the silent sign-in (prompt=none) signs a Network-signed-in person in with no click;
+        // the login page only shows when they are truly signed out. Pair intent survives in ?pair=1.
+        params.delete('ov_handoff');
+        const next = `${HUB_PATH}${params.toString() ? `?${params.toString()}` : ''}`;
+        noStore();
+        return res.redirect(302, `/auth/login?silent=1&next=${encodeURIComponent(next)}`);
+    }
+
     const router = require('express').Router();
     router.use(require('./egress').publicRouter());
 
@@ -84,12 +183,12 @@ function createLinkRoutes({ releaseId, releaseApi = release } = {}) {
         // www is not a second name for Link: every path lands on the apex, and nginx does the same before us.
         if (host === WWW_HOST) return res.redirect(301, `${SITE}${path}${url.search}`);
 
-        // The installer: the latest release's own asset, so `curl -fsSL https://openvibe.link/install | sh`
-        // installs that release. The same cached answer the page shows.
+        // The installer: a stale cached release must never pin an older version while GitHub's metadata
+        // API is rate limited. GitHub's latest/download redirect resolves to the newest published asset.
         if (path === '/install') {
             let rel;
             try { rel = await releaseApi.latest(); } catch { rel = release.FALLBACK; }
-            const target = rel && rel.installUrl ? rel.installUrl : release.FALLBACK.installUrl;
+            const target = rel && !rel.stale && rel.installUrl ? rel.installUrl : release.FALLBACK.installUrl;
             return res.set('Cache-Control', 'public, max-age=600').redirect(302, target);
         }
 
@@ -109,15 +208,22 @@ function createLinkRoutes({ releaseId, releaseApi = release } = {}) {
 
         // The machine hub lives on Link's own origin. It uses Network's same-origin
         // session and machine API, and keeps the existing roles and pairing controls.
+        // Arrival signs in first: a handoff ticket, then the silent login; the login
+        // page only shows when the person is truly signed out.
         if (path === '/machines') {
-            return res.set('Cache-Control', 'no-store').sendFile(pathLib.join(__dirname, '..', '..', 'public', 'my.html'));
+            return machinesHub(req, res).catch(next);
         }
         // Older links name a machine's screen, desks or pairing below /machines (Actor's Watch links, Bot's old
         // pages). The hub is the one page this host has, so they land on it instead of the catch-all's Network 404.
         if (path.startsWith('/machines/')) {
             return res.set('Cache-Control', 'no-store').redirect(301, `${SITE}/machines`);
         }
-        if (path === '/pair' || path === '/panel') {
+        // Pairing starts on the hub: /pair lands there with the intent in ?pair=1 (a query survives the
+        // sign-in round trip; #pair works too once the page loads). /panel is the old name for the hub.
+        if (path === '/pair') {
+            return res.set('Cache-Control', 'no-store').redirect(302, `${SITE}/machines?pair=1`);
+        }
+        if (path === '/panel') {
             return res.set('Cache-Control', 'no-store').redirect(302, `${SITE}/machines`);
         }
 

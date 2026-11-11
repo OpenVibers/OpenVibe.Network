@@ -187,7 +187,7 @@ const U = { owner: jwt.sign({ sub: 10, id: 10 }, keys.privateKey, { algorithm: '
 
         // ── Service host: ns bounded by the host's own principal_grants rows ──
         SECRETS.actor = 'actor-secret';
-        const grantActor = (cap, ns) => db.prepare("INSERT INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES ('actor', ?, 'openvibe.media', ?, 'test')").run(cap, JSON.stringify(ns));
+        const grantActor = (cap, ns) => db.prepare("INSERT INTO principal_grants (client_id, capability, audience, namespaces, granted_by) VALUES ('actor', ?, 'openvibe.media', ?, 'test') ON CONFLICT (client_id, capability, audience) DO UPDATE SET namespaces = EXCLUDED.namespaces").run(cap, JSON.stringify(ns));
         await grantActor('media.object.read', [P]);
         await grantActor('media.object.delete', ['app.*']);
         const S = ok(await api('owner', 'POST', `/${P}/agents`, { name: 'Actor agent', host: { type: 'service', id: 'actor' } }), 201).id;

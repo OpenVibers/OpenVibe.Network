@@ -3,7 +3,7 @@
 //   - every change emits network.module.updated in the same transaction (network_event_outbox), with the
 //     owner, namespace, changed keys and revision, never a private value; revisions survive deletes
 //   - chat.preferences is owned by Chat (the contracts' owner since 0.32.0); Live's old write grant narrows
-//   - owner-service DELETE; account removal and merge (onSubjectRemoved/onSubjectMerged) with events, and
+//   - owner-service DELETE; account removal and guest linking with events, and
 //     triggers that refuse deleting or re-keying an account while module rows remain; guest -> account link
 //   - onOwnerRemoved: a retired owner makes its namespace read-only; delete-after-retention sweeps
 //   - the relay publishes rows written while it was off
@@ -73,8 +73,8 @@ const valid = (e) => { const v = contracts.validate('events.event-envelope@1', e
     const grant = async (c, cap) => JSON.parse((await db.prepare('SELECT namespaces FROM principal_grants WHERE client_id = ? AND capability = ?').get(c, cap)).namespaces);
     assert.deepStrictEqual(await grant('chat', 'network.modules.read'), CHAT_NS);
     assert.deepStrictEqual(await grant('chat', 'network.modules.write'), CHAT_NS);
-    assert.deepStrictEqual(await grant('live', 'network.modules.write'), ['live.profile', 'live.stats', 'live.loyalty'], 'the old defaults move to the new one at boot');
-    assert.deepStrictEqual(await grant('live', 'network.modules.read'), ['live.profile', 'live.stats', 'live.loyalty']);
+    assert.deepStrictEqual(await grant('live', 'network.modules.write'), ['live.profile', 'live.stats', 'live.loyalty', 'live.layout'], 'the old defaults move to the new one at boot');
+    assert.deepStrictEqual(await grant('live', 'network.modules.read'), ['live.profile', 'live.stats', 'live.loyalty', 'live.layout']);
     // Chat manages its own Events subscriptions (live.release.deployed, network.module.updated).
     const chatEvents = await fetch(`${base}/oauth/token`, { method: 'POST', body: new URLSearchParams({ grant_type: 'client_credentials', client_id: 'chat', client_secret: 'chat-secret', audience: 'openvibe.events', scope: 'events.subscription.manage' }) }).then(r => r.json());
     assert.strictEqual(chatEvents.scope, 'events.subscription.manage', JSON.stringify(chatEvents));
@@ -154,7 +154,6 @@ const valid = (e) => { const v = contracts.validate('events.event-envelope@1', e
     await modulesLib.write(db, BOB, 'chat.preferences', { timestamps: true }, { writer: { type: 'service', id: 'chat' } });
     await modulesLib.write(db, BOB, 'live.profile', { followers: 3 }, { writer: { type: 'service', id: 'live' } });
     await assert.rejects(async () => await db.prepare('DELETE FROM users WHERE id = 2').run(), /onSubjectRemoved/, 'an account with modules cannot just be deleted');
-    await assert.rejects(async () => await db.prepare("UPDATE users SET subject_id = 'usr_01JAB2C3D4E5F6G7H8J9K0ZZZZ' WHERE id = 2").run(), /onSubjectMerged/);
     mark = await lastId();
     await db.tx(async () => {
         assert.strictEqual(await modulesLib.onSubjectRemoved(db, BOB), 2);
@@ -168,34 +167,15 @@ const valid = (e) => { const v = contracts.validate('events.event-envelope@1', e
     assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM user_module_revisions WHERE subject_id = ?').get(BOB)).n, 0);
     await assert.rejects(async () => await modulesLib.onSubjectRemoved(db, 2), /subject id/);
 
-    // ── Merge: CAT folds into ANN. Moved where ANN had none, dropped where ANN has one ──
-    await modulesLib.write(db, CAT, 'chat.preferences', { hide_emotes: true }, { writer: { type: 'service', id: 'chat' } });
-    await modulesLib.write(db, CAT, 'live.profile', { followers: 9 }, { writer: { type: 'service', id: 'live' } });
-    mark = await lastId();
-    const merged = await modulesLib.onSubjectMerged(db, { from: CAT, into: ANN });
-    assert.deepStrictEqual(merged, { moved: 1, filled: 0, dropped: 1 }, 'ANN already has followers: nothing to fill (ADR-029 fills only missing fields; test/account-merge.test.js)');
-    const annPrefs = await modulesLib.read(db, ANN, 'chat.preferences');
-    assert.deepStrictEqual(annPrefs.data, { hide_emotes: true });
-    assert.strictEqual(annPrefs.revision, 6, 'continues from ANN\'s own history');
-    assert.strictEqual(annPrefs.updated_by, 'svc:network');
-    assert.strictEqual((await modulesLib.read(db, ANN, 'live.profile')).data.followers, 43, 'the survivor\'s record wins');
-    ev = await events(mark);
-    assert.deepStrictEqual(ev.map(e => [e.payload.owner.id, e.payload.namespace, e.payload.change, (e.payload.merged_into || e.payload.merged_from || {}).id]), [
-        [ANN, 'chat.preferences', 'created', CAT], [CAT, 'chat.preferences', 'deleted', ANN], [CAT, 'live.profile', 'deleted', ANN],
-    ]);
-    ev.forEach(valid);
-    assert.ok(!('public' in ev[2].payload), 'a delete carries no values');
-    await db.prepare('DELETE FROM users WHERE id = 3').run();   // nothing left: the trigger lets it go
-    await assert.rejects(async () => await modulesLib.onSubjectMerged(db, { from: ANN, into: ANN }), /same subject/);
-
     // ── Guest -> account: POST /api/auth/anon/:token/link moves the guest's modules ──
+    await modulesLib.write(db, ANN, 'chat.preferences', { hide_emotes: true }, { writer: { type: 'service', id: 'chat' } });
     await modulesLib.write(db, GUEST, 'chat.preferences', { compact: true }, { writer: { type: 'service', id: 'chat' } });
     await modulesLib.write(db, GUEST, 'chat.tts_defaults', { volume: 15 }, { writer: { type: 'user' }, expectedRevision: 0 });
     await assert.rejects(async () => await db.prepare('DELETE FROM anon_users WHERE id = 50').run(), /onSubjectRemoved/);
     r = await call('POST', '/api/auth/anon/anon-token-7/link', { headers: await tokenOf(1) });
     assert.strictEqual(r.status, 200, JSON.stringify(r.body));
     assert.deepStrictEqual((await modulesLib.read(db, ANN, 'chat.tts_defaults')).data, { volume: 15 }, 'moved');
-    assert.deepStrictEqual((await modulesLib.read(db, ANN, 'chat.preferences')).data, { hide_emotes: true, compact: true }, 'the account kept its own values and gained only the field it lacked (ADR-029)');
+    assert.deepStrictEqual((await modulesLib.read(db, ANN, 'chat.preferences')).data, { hide_emotes: true, compact: true }, 'the registered account kept its own values and gained only the guest fields it lacked');
     assert.strictEqual((await db.prepare('SELECT COUNT(*) AS n FROM user_modules WHERE subject_id = ?').get(GUEST)).n, 0);
 
     // ── onOwnerRemoved: a retired owner freezes its namespaces; delete-after-retention sweeps ──

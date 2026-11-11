@@ -37,7 +37,7 @@ or as an anonymous account.
 | `prompt=none` | No page: a code for the account this browser is signed in to, or `error=login_required`. Sites use it to sign people in quietly when they open a site. Refused for third-party apps (`interaction_required`). |
 | `prompt=select_account` | The chooser, even when `login_hint` names a saved account. |
 | `prompt=login` | The sign-in form ("use another account"). |
-| `reauth=1` | A real re-authentication: the password form every time, even when this browser is already signed in, with `login_hint` prefilled and `return` as the way back. The new session's `auth_time` is now, so it satisfies the 10-minute fresh check (account deletion, merge, the owner's AI settings, Locker reset/forget). Use this rather than `add_account=1` for those. |
+| `reauth=1` | A real re-authentication: the password form every time, even when this browser is already signed in, with `login_hint` prefilled and `return` as the way back. The new session's `auth_time` is now, so it satisfies the 10-minute fresh check (account deletion, the owner's AI settings, Locker reset/forget). Use this rather than `add_account=1` for those. |
 | `login_hint` | The account to continue as: a username (`@` optional) or an account id. Saved in this browser: continues as it. Not saved: the sign-in form with the username filled in. |
 | `nonce` | Echoed in the `id_token` (scope `openid`). |
 

@@ -35,12 +35,14 @@ const publicCors = require('../server/public-cors');
     assert.strictEqual(calls[0], 'http://blog.test/api/v1/changelog?service=wiki&limit=100', 'limit clamped, a bad cursor dropped');
     assert.strictEqual(calls[1], 'http://blog.test/api/v1/devblogs?service=wiki&limit=1', 'the lead is the newest devblog for the requested service');
     let body = await r.json();
+    await fetch(`${base}/api/v1/changelog?service=wiki&kind=new&limit=5&before=abc123`);
+    assert.strictEqual(calls[2], 'http://blog.test/api/v1/changelog?service=wiki&kind=new&limit=5&before=abc123', 'kind and cursor pass through to Blog');
     assert.deepStrictEqual(body.latest_devblog, {
         title: 'What shipped on OpenVibe.Wiki', summary: 'A week of pages.',
         figure: 'https://openvibe.media/o/m1', url: 'https://openvibe.blog/@openvibe/what-shipped-wiki', published_at: '2026-09-24T06:00:00.000Z',
     }, 'the devblog as the card lead, its art as an https URL');
     await fetch(`${base}/api/v1/changelog?service=wiki&limit=500`);
-    assert.strictEqual(calls.length, 2, 'changelog and devblog cached for 60 s');
+    assert.strictEqual(calls.length, 3, 'all, New, and devblog requests are cached for 60 s');
     t += 61 * 1000;
     devblogs = { total: 1, posts: [{ id: 'p2', title: 'T'.repeat(260), summary: 'S'.repeat(500), figure: 'http://insecure.test/a.png', url: 'https://openvibe.blog/@openvibe/second', published_at: '2026-09-25T06:00:00.000Z' }] };
     body = await (await fetch(`${base}/api/v1/changelog?service=wiki`)).json();

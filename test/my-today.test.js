@@ -120,10 +120,49 @@ assert.match(CSS, /@media \(min-width:1000px\)\{[\s\S]*\.settings\{display:grid;
     ] });
     const ordered = p.ids['td-net-cards'].children;
     assert.deepStrictEqual(ordered.map((c) => c.attrs['data-site']), ['live', 'media-hub', 'community'], 'live leads, then fresh video, then stale forum');
-    assert.match(ordered[1].textContent, /1d ago/, 'a row states its age');
+    assert.match(ordered[1].textContent, /1\s*d ago/, 'a row states its age');
     assert.match(ordered[2].textContent, /quiet for 18 days/, 'stale cards say why they are quiet, in the head');
     assert.strictEqual(ordered[2].all((c) => c.className === 'td-net-quiet').length, 1, 'muted, beside the site');
     assert.strictEqual(ordered[2].all((c) => c.tagName === 'LI').length, 1, 'stale card keeps its newest row');
+    // The owner's complaint (11-10): the forum was 18 days old and sat on top of newer, watched things. The order is
+    // earned: live first, views/replies/viewers count twice a card's freshness, and a stale card is last whatever it has.
+    const production = { cards: [
+        { id: 'hot-threads', site: 'community', title: 'New in the forum', items: [{ title: 'Old thread', url: 'https://openvibe.community/t/1', meta: 'OpenVibe · 18d ago' }] },
+        { id: 'trending', site: 'media-hub', title: 'Trending', items: [
+            { title: 'A walk', url: 'https://openvibe.video/v/1', meta: '45 views this week' },
+            { title: 'A walk', url: 'https://openvibe.video/v/2', meta: '43 views this week' },
+        ] },
+        { id: 'briefs', site: 'news', title: 'Latest AI briefs', items: [{ title: 'Today in briefs', url: 'https://openvibe.news/s/1', meta: 'AI brief · 4 reports · 1h ago' }] },
+        { id: 'new-worlds', site: 'games', title: 'New worlds', items: [{ title: 'The Workshop', url: 'https://openvibe.games/worlds/w1', meta: 'by goosely · 2d ago' }] },
+        { id: 'wiki', site: 'wiki', title: 'New on the wiki', items: [{ title: 'OpenVibe.Bot', url: 'https://openvibe.wiki/p/1', meta: 'OpenVibe · 1d ago' }] },
+        { id: 'today', site: 'today', title: 'Tomorrow', items: [{ title: 'Canterbury Anniversary Day', url: 'https://openvibe.today/e/1', meta: 'Fri 13 Nov · Holiday' }] },
+        { id: 'live', site: 'live', title: 'Live now', items: [{ title: 'Maticus', url: 'https://openvibe.live/@maticus', meta: '2 watching' }] },
+    ] };
+    const earned = p.sandbox.tdNowCards(production);
+    assert.deepStrictEqual(earned.map((c) => c.site), ['live', 'media-hub', 'news', 'wiki', 'games', 'today', 'community'], 'live, then watched and new; the 18-day forum is last');
+    assert.strictEqual(earned.find((c) => c.site === 'media-hub').ranked, true, 'a views-only card is a ranking');
+    assert.strictEqual(earned.find((c) => c.site === 'community').stale, true, '18 days is quiet');
+    assert.strictEqual(earned.find((c) => c.site === 'today').stale, false, 'a dated schedule is not stale');
+    p.sandbox.renderNet(production);
+    const top = p.ids['td-net-cards'].children;
+    assert.deepStrictEqual(top.map((c) => c.attrs['data-site']), ['live', 'media-hub', 'news'], 'the page shows the three best-earned cards');
+    assert.match(top[0].textContent, /Live now · 2 watching/, 'a live row says it is live now');
+    assert.match(top[1].textContent, /most watched this week/, 'a ranking says its window');
+    assert.match(top[2].textContent, /1 h ago/, 'a dated row says when');
+    // A source that can give its own time does: worlds carry "by X · 2d ago"; Today's rows carry their own day.
+    p.sandbox.renderNet({ cards: [{ id: 'new-worlds', site: 'games', title: 'New worlds', items: [{ title: 'The Workshop', url: 'https://openvibe.games/worlds/w1', meta: 'by goosely · 2d ago' }] }] });
+    assert.match(p.ids['td-net-cards'].textContent, /by goosely · 2 d ago/, 'a world says when it was published');
+    p.sandbox.renderNet({ cards: [{ id: 'today', site: 'today', title: 'Tomorrow', items: [{ title: 'Canterbury Anniversary Day', url: 'https://openvibe.today/e/1', meta: 'Fri 13 Nov · Holiday' }] }] });
+    assert.match(p.ids['td-net-cards'].textContent, /Fri 13 Nov · Holiday/, 'an event says its own day');
+    assert.match(p.ids['td-net-cards'].textContent, /soonest first/, 'and the card says what its order means');
+    assert.doesNotMatch(p.ids['td-net-cards'].textContent, /most watched/, 'a schedule is not called a ranking');
+    // Even many replies do not lift a card whose newest row is older than seven days above a fresh one.
+    p.sandbox.renderNet({ cards: [
+        { id: 'hot', site: 'community', title: 'New in the forum', items: [{ title: 'Old', url: 'https://openvibe.community/t/1', meta: '500 replies · 9d ago' }] },
+        { id: 'fresh', site: 'news', title: 'Latest', items: [{ title: 'New', url: 'https://openvibe.news/s/1', meta: '1h ago' }] },
+    ] });
+    assert.deepStrictEqual(p.ids['td-net-cards'].children.map((c) => c.attrs['data-site']), ['news', 'community'], 'fresh first, stale last');
+
     p.sandbox.renderNet({ cards: [{ id: 'streams', site: 'live', title: 'Most watched', items: [
         { title: 'Same stream', url: 'https://openvibe.live/@a', meta: '1d ago' },
         { title: 'Same stream', url: 'https://openvibe.live/@a', meta: '2d ago' },
@@ -175,22 +214,27 @@ assert.match(CSS, /@media \(min-width:1000px\)\{[\s\S]*\.settings\{display:grid;
     p.ids['td-stuff-row'].children.find((c) => /history/.test(c.textContent)).click();
     assert.deepStrictEqual(p.shown, ['history'], 'your history opens below');
 
+    p.sandbox.renderMachineSummary({ machines: [{ name: 'Studio PC', online: true }, { name: 'Laptop', online: false }, { id: 'revoked', revoked_at: 'x', online: true }] });
+    assert.strictEqual(p.ids['td-machines-count'].textContent, '2 paired');
+    assert.strictEqual(p.ids['td-machines-state'].textContent, '1 online now · Studio PC');
+
     // ── Needs you (plan §4): the Action Center's waiting items, one button each, above the hero ──
     p = page();
-    assert.ok(HTML.indexOf('id="needs-you"') < HTML.indexOf('id="page-header"'), 'Needs you is the first section');
+    assert.ok(HTML.indexOf('id="page-header"') < HTML.indexOf('id="needs-you"'), 'the person is first');
+    assert.ok(HTML.indexOf('id="needs-you"') < HTML.indexOf('id="me-acts"'), 'actions follow Needs you');
     p.sandbox.renderNeedsYou({ buckets: { waiting: [
-        { service: 'network', id: 'cnf_1', kind: 'approval', title: 'Send one email to the venue', summary: 'Trip planner asks to use mail.send', agent: 'Trip planner', href: 'https://openvibe.network/my#approvals', actions: ['approve', 'decline', 'open'] },
+        { service: 'network', id: 'cnf_1', kind: 'approval', title: 'Run a command', summary: 'Trip planner asks to run a command', agent: 'Trip planner', href: 'https://openvibe.network/my#approvals', actions: ['approve', 'decline', 'open'] },
         { service: 'actor', id: 'tsk_1', kind: 'agent_task', title: 'Find three cheap flights', summary: 'Read 4 pages', href: 'https://openvibe.actor/tasks/tsk_1', actions: ['open'] },
-    ] } });
+    ] } }, { confirmations: [{ id: 'cnf_1', capability: 'computer.command', details: { command: 'rm -rf /tmp/actor-gate-proof', reason: 'Clean up a test file', arguments: { raw: true } }, resources: [{ type: 'machine', name: 'devprobe' }] }] });
     assert.strictEqual(p.ids['needs-you'].hidden, false);
     assert.strictEqual(p.ids['needs-you-sub'].textContent, '2 things waiting');
     const rows = p.ids['needs-you-list'].children;
     assert.strictEqual(rows.length, 2);
-    const review = rows[0].all((c) => c.tagName === 'A')[0];
-    assert.strictEqual(review.textContent, 'Review', 'an approval opens itself: never one tap from the hub');
-    assert.strictEqual(rows[0].all((c) => c.tagName === 'BUTTON').length, 0, 'no Approve button here');
-    assert.strictEqual(rows[0].all((c) => c.tagName === 'H3')[0].textContent, 'Send one email to the venue');
-    assert.strictEqual(rows[0].all((c) => c.tagName === 'P')[0].textContent, 'Trip planner asks to use mail.send');
+    assert.strictEqual(rows[0].all((c) => c.tagName === 'BUTTON').length, 2, 'inline approve and decline');
+    assert.strictEqual(rows[0].all((c) => c.tagName === 'H3')[0].textContent, 'Run a command on devprobe');
+    assert.match(rows[0].textContent, /rm -rf \/tmp\/actor-gate-proof/);
+    assert.doesNotMatch(rows[0].textContent, /"arguments"|\[object Object\]/, 'structured arguments stay hidden');
+    assert.match(rows[0].textContent, /Details/);
     assert.strictEqual(rows[1].all((c) => c.tagName === 'A')[0].href, 'https://openvibe.actor/tasks/tsk_1', 'an open item links its page');
     // An agent known only by its id is not shown by it; Try again stays one tap.
     p.sandbox.renderNeedsYou({ buckets: { waiting: [

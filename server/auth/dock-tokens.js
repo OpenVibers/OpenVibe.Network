@@ -100,7 +100,7 @@ async function verifyDockSession(token, { db, publicKey, config }) {
     const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.sub || decoded.id);
     if (!user) return { error: 'User not found', status: 401 };
     if (user.is_banned) return { error: 'Account banned', status: 403, ban_reason: user.ban_reason };
-    if (user.merged_into) return { error: 'Account merged', status: 401, merged: true };
+    if (user.merged_into) return { error: 'Invalid session', status: 401 };
     if (user.deleted_at) return { error: 'Account deleted', status: 401, deleted: true };
     if (user.token_valid_after) {
         const validAfter = new Date(String(user.token_valid_after).replace(' ', 'T') + (/[zZ]$/.test(String(user.token_valid_after)) ? '' : 'Z')).getTime();

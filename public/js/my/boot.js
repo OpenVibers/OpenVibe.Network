@@ -14,6 +14,11 @@ OpenVibeAccountSwitcher.init({ apiBase: API, onSwitch: (account) => {
     window.location.reload();
 } });
 const _signedIn = !!(getAuthToken() || getAnonToken());
+const needsYouSection = document.getElementById('needs-you');
+if (needsYouSection && 'IntersectionObserver' in window) {
+    new IntersectionObserver((entries) => document.body.classList.toggle('my-needs-visible', !!entries[0]?.isIntersecting))
+        .observe(needsYouSection);
+}
 loadUser();
 if (_signedIn) {
     loadToday();

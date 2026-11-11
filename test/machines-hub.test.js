@@ -17,6 +17,12 @@ const principals = require('../server/identity/principals');
 const machines = require('../server/registry/machines');
 const nodePrincipals = require('../server/registry/link-principals');
 
+assert.deepStrictEqual(machines.machineOf({ id: 'dev_test', fleet: [
+    { agent: 'muse', installed: true, signed_in: true, windows: [{ name: 'plan', used: 2, limit: 10 }], access_token: 'never-forward' },
+], fleet_at: '2026-11-11T04:00:00Z' }).fleet, [
+    { agent: 'muse', installed: true, signed_in: true },
+], 'the owner gets Muse readiness, without usage or credentials');
+
 (async () => {
 const db = getDb();
 await principals.ensureSchema(db);

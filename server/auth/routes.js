@@ -45,8 +45,8 @@ const DEFAULT_AUDIENCE = ['openvibe.live', 'openvibe.tools', 'openvibe.games', '
  * A person's session token. auth_time (OIDC) is when they actually signed in: now for a sign-in, register or
  * password change; a renewal passes `renew` (the claims of the token it replaces) and keeps that token's
  * auth_time, or none when it had none. A QR-created session passes `authTime` so it inherits the source's
- * sign-in time (or null for none): it is not itself a fresh sign-in. An account merge and the owner's
- * key/money checks need a real sign-in within 10 minutes (ADR-029, D11).
+ * sign-in time (or null for none): it is not itself a fresh sign-in. The owner's
+ * key/money checks need a real sign-in within 10 minutes (D11).
  */
 function signToken(user, privateKey, config, { renew = null, authTime } = {}) {
     const algorithm = privateKey.includes('BEGIN') ? 'RS256' : 'HS256';
@@ -171,9 +171,9 @@ router.post('/register', async (req, res) => {
 
     const passwordHash = bcrypt.hashSync(password, 10);
     const result = await db.prepare(`
-        INSERT INTO users (username, email, password_hash, display_name, profile_color, subject_id)
-        VALUES (?, ?, ?, ?, '#8b5cf6', ?) RETURNING id
-    `).run(username, email || null, passwordHash, username, subjects.newUserSubjectId());
+        INSERT INTO users (username, email, password_hash, display_name, profile_color, subject_id, is_test)
+        VALUES (?, ?, ?, ?, '#8b5cf6', ?, ?) RETURNING id
+    `).run(username, email || null, passwordHash, username, subjects.newUserSubjectId(), subjects.isTestUsername(username) ? 1 : 0);
 
     // Create default preferences
     await db.prepare('INSERT INTO user_preferences (user_id) VALUES (?) ON CONFLICT DO NOTHING').run(result.lastInsertRowid);
@@ -223,9 +223,10 @@ router.post('/login', async (req, res) => {
     if (!bcrypt.compareSync(password, user.password_hash)) {
         return res.status(401).json({ error: 'Invalid username or password' });
     }
-    // An account merged into another (ADR-029) signs in to the survivor.
-    const signedIn = await require('../identity/account-merge').effectiveUser(db, user);
+    // Existing merged aliases authenticate as their surviving account.
+    const signedIn = await require('../identity/account-aliases').effectiveUser(db, user);
     if (signedIn.is_banned) return res.status(403).json({ error: 'Account banned', ban_reason: signedIn.ban_reason });
+    if (signedIn.deleted_at) return res.status(401).json({ error: 'Account deleted' });
 
     try {
         if (await require('./mfa').challengeLogin(db, req, res, signedIn)) return;
@@ -234,9 +235,9 @@ router.post('/login', async (req, res) => {
     await db.prepare('UPDATE users SET last_seen = ov_now() WHERE id = ?').run(signedIn.id);
     const token = signToken(signedIn, req.app.locals.privateKey, config);
 
-    console.log(`[Auth] Login: ${user.username}${signedIn.id !== user.id ? ` (merged into ${signedIn.username})` : ''}`);
+    console.log(`[Auth] Login: ${user.username}`);
     require('./session').setSessionCookies(res, token);
-    res.json({ token, user: sanitizeUser(signedIn), ...(signedIn.id !== user.id ? { merged_into: signedIn.username } : {}) });
+    res.json({ token, user: sanitizeUser(signedIn) });
 });
 
 // ── Forgot Password ─────────────────────────────────────────
@@ -729,8 +730,8 @@ router.post('/anon/:token/link', requireAuth, async (req, res) => {
         await db.prepare('UPDATE users SET anon_number = ? WHERE id = ? AND anon_number IS NULL')
             .run(anon.anon_number, req.user.id);
         // The guest's user modules (portable preferences) move to the account; where the account already
-        // has a record in a namespace, the account's is kept (server/identity/modules.js onSubjectMerged).
-        if (anon.subject_id && userSubject) await require('../identity/modules').onSubjectMerged(db, { from: anon.subject_id, into: userSubject });
+        // has a record in a namespace, the account's is kept (server/identity/modules.js onGuestLinked).
+        if (anon.subject_id && userSubject) await require('../identity/modules').onGuestLinked(db, { from: anon.subject_id, into: userSubject });
     });
 
     console.log(`[Auth] Linked anon #${anon.anon_number} → user ${req.user.username}`);

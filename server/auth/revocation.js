@@ -17,7 +17,7 @@ const { ids, validate } = require('openvibe-contracts');
 const eventRelay = require('../developer/event-relay');
 
 const EVENT_TYPE = 'network.user.token_valid_after';
-const REASONS = ['password_changed', 'password_reset', 'signed_out_everywhere', 'banned', 'account_deleted', 'staff_revoked', 'account_merged'];
+const REASONS = ['password_changed', 'password_reset', 'signed_out_everywhere', 'banned', 'account_deleted', 'staff_revoked'];
 
 const iso = (v) => new Date(String(v) + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(v)) ? '' : 'Z')).toISOString();
 
@@ -43,8 +43,8 @@ function buildEnvelope({ subjectId, validAfter, reason, actor, ctx }) {
  * @param {{ reason: string, actor?: object, ctx?: object }} opts  actor defaults to the person themself
  * @returns {{ validAfter: string, event: object|null }}  event is null for an account with no subject
  */
-// strict: the cutoff is one second ahead, so a token minted in this same second is refused too (an account merge:
-// the folded-in account's fresh sign-in token must not outlive the merge).
+// strict: the cutoff is one second ahead, so a token minted in this same second is refused too (a token cutoff:
+// a newly minted token must not outlive the cutoff).
 async function revokeTokens(db, userId, { reason, actor, ctx, strict = false } = {}) {
     if (!REASONS.includes(reason)) throw new Error(`revocation: unknown reason ${reason}`);
     return await db.tx(async () => {

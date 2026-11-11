@@ -40,19 +40,19 @@ const contracts = require('openvibe-contracts');
 const { requireOwner } = require('../auth/owner-guard');
 const { reauthUrl } = require('../auth/reauth');
 const alerts = require('../operator/alerts');
-const { isFreshSignIn } = require('../identity/account-merge');
+const { isFreshSignIn } = require('../identity/reauth');
 
 // The nine AI Exchange services (D11), then every other service that holds an owner input (the Setup tab,
 // 2026-11-07). A service that has not mounted openvibe-shared/config's routes yet answers 404 or does not answer;
 // the panel says it "has not published settings yet".
 const SERVICES = ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor',
-    'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media'];
+    'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run'];
 const LABELS = {
     ai: 'OpenVibe.AI', billing: 'OpenVibe.Billing', services: 'OpenVibe.Services', watch: 'OpenVibe.Watch',
     bench: 'OpenVibe.Bench', report: 'OpenVibe.Report', host: 'OpenVibe.Host', codes: 'OpenVibe.Codes',
     actor: 'OpenVibe.Actor', chat: 'OpenVibe.Chat', connect: 'OpenVibe Connect', deals: 'OpenVibe.Deals',
     work: 'OpenVibe.Work', sources: 'OpenVibe.Sources', design: 'OpenVibe.Design', domains: 'OpenVibe.Domains',
-    media: 'OpenVibe.Media',
+    media: 'OpenVibe.Media', run: 'OpenVibe.Run',
 };
 const TEST_TIMEOUT_MS = 20000;   // the service gives its tester 15 s; this leaves it time to answer
 const TEST_MESSAGE_MAX = 300;
@@ -84,8 +84,8 @@ function signInUrl(config = {}) {
 }
 
 /** The session's real sign-in time, the OIDC auth_time Network's signToken puts on every session token. The rule is
- * account-merge's isFreshSignIn (auth_time within ten minutes, never a renewal and never a QR session carrying an
- * old source time), so the owner settings and the account merge cannot drift apart. */
+ * reauth's isFreshSignIn (auth_time within ten minutes, never a renewal and never a QR session carrying an
+ * old source time), so the owner settings and the email and Locker checks use the same policy. */
 function isFresh(req, now = Date.now()) {
     return isFreshSignIn(req.tokenClaims, now);
 }
@@ -380,6 +380,14 @@ function createAiConfigProxy(opts = {}) {
         send(res, 200, { ok: true, services: out });
     });
 
+    r.get('/compute/status', async (req, res) => {
+        try {
+            const out = await callService(req, 'run', '/internal/config/compute-status');
+            if (out.status < 200 || out.status >= 300) return upstreamFailed(res, 'run', out);
+            send(res, 200, { ok: true, compute: out.answer });
+        } catch (err) { fail(res, err); }
+    });
+
     // ── AI's provider registry (its own admin API, ai.provider.manage) ──
     const providerPath = (suffix = '') => `/api/v1/providers${suffix}`;
     async function providerCall(req, method, pathName, body = null, { fresh = false, secret = null } = {}) {
@@ -402,12 +410,19 @@ function createAiConfigProxy(opts = {}) {
         } catch (err) { fail(res, err); }
     });
 
-    for (const [path, action] of [['/owner-inference/spend-caps', 'provider.spend_cap'], ['/owner-inference/routing', 'owner_routing.update'], ['/owner-inference/economy', 'owner_economy.update']]) {
+    for (const [path, aiPath, action] of [
+        ['/owner-inference/spend-caps', '/spend-caps', 'provider.spend_cap'],
+        ['/owner-inference/routing', '/routing', 'owner_routing.update'],
+        ['/owner-inference/economy', '/economy', 'owner_economy.update'],
+        ['/owner-inference/providers', '/providers', 'provider.control'],
+        ['/owner-inference/rules', '/rules', 'owner_inference.rules'],
+        ['/owner-inference/endpoint', '/endpoint', 'provider.endpoint'],
+    ]) {
         r.post(path, async (req, res) => {
             try {
                 const body = req.body && typeof req.body === 'object' ? req.body : {};
                 if (body.api_key !== undefined || body.secret !== undefined) throw new ProxyError(422, 'config.secret_write_only', 'send the key to its own write-only route, never here');
-                const out = await ownerInfCall(req, 'POST', ownerInfPath(path === '/owner-inference/spend-caps' ? '/spend-caps' : path === '/owner-inference/routing' ? '/routing' : '/economy'), body);
+                const out = await ownerInfCall(req, 'POST', ownerInfPath(aiPath), body);
                 if (out.status < 200 || out.status >= 300) return upstreamFailed(res, 'ai', out);
                 const key = String(body.provider_key || body.capability || 'owner-inference');
                 await audit(req, { service: 'ai', namespace: 'ai.owner-inference', keys: [key], action, revision: null });
@@ -415,6 +430,20 @@ function createAiConfigProxy(opts = {}) {
             } catch (err) { fail(res, err); }
         });
     }
+
+    // The confirmed readings bundled with the AI release enter the price book as pending changes; the owner
+    // accepts each one in the price book, never here.
+    r.post('/owner-inference/pricebook/propose', async (req, res) => {
+        try {
+            const body = req.body && typeof req.body === 'object' ? req.body : {};
+            const proposals = Array.isArray(body.proposals) ? body.proposals : [];
+            if (!proposals.length) throw new ProxyError(422, 'config.invalid', 'no confirmed readings to propose');
+            const out = await callService(req, 'ai', '/api/v1/admin/console/pricebook/proposals', { method: 'POST', body: { proposals }, cap: 'ai.provider.manage' });
+            if (out.status < 200 || out.status >= 300) return upstreamFailed(res, 'ai', out);
+            await audit(req, { service: 'ai', namespace: 'ai.pricebook', keys: ['proposals'], action: 'price_changes.proposed', revision: null });
+            send(res, 200, { ok: true, result: out.answer });
+        } catch (err) { fail(res, err); }
+    });
 
     r.get('/providers', async (req, res, next) => {
         try {

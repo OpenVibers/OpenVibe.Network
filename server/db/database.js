@@ -150,6 +150,7 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'vision', name: 'OpenVibe.Vision', redirect_uris: ['https://openvibe.vision/auth/callback'] },
             // Free and swap listings with a permission passport, a sandbox and one-tap revoke (the Exchange room).
             { client_id: 'exchange', name: 'OpenVibe.Exchange', redirect_uris: ['https://openvibe.exchange/auth/callback'] },
+            { client_id: 'directory', name: 'OpenVibe.Directory', redirect_uris: ['https://openvibe.directory/auth/callback'] },
             // IRL quest boards on a public Live channel, a local guide and group plans (the Fun room).
             { client_id: 'fun', name: 'OpenVibe.Fun', redirect_uris: ['https://openvibe.fun/auth/callback'] },
             // The camera app, a private wall for cameras people own, and the still Live's cam button takes.

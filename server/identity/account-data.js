@@ -81,7 +81,6 @@ function kick(db) { try { const live = eventRelay.outboxFor(db); if (live) live.
 
 function assertPerson(user) {
     if (!user || user.is_anon) throw new AccountDataError(400, 'account.guest', 'a guest account has nothing to export or delete');
-    if (user.merged_into) throw new AccountDataError(409, 'account.merged', 'this account was merged into another');
     if (user.deleted_at) throw new AccountDataError(410, 'account.deleted', 'this account was deleted');
     if (!ids.isSubjectId('user', user.subject_id)) throw new AccountDataError(400, 'account.no_subject', 'this account has no subject');
 }
@@ -166,11 +165,9 @@ async function networkPart(db, userId) {
     const truncated = [];
     const add = (name, content, cut) => { files.push({ name, content }); if (cut) truncated.push(name); };
     const keep = ['id', 'username', 'email', 'display_name', 'avatar_url', 'bio', 'role', 'profile_color', 'created_at', 'updated_at', 'last_seen',
-        'email_verified', 'email_verified_at', 'name_effect', 'particle_effect', 'history_paused', 'history_agents_allowed', 'history_keep_private', 'history_keep_mature', 'subject_id'];
+        'email_verified', 'email_verified_at', 'name_effect', 'particle_effect', 'history_paused', 'history_agents_allowed', 'history_keep_private', 'history_keep_mature', 'card_visibility', 'subject_id'];
     const account = {};
     for (const k of keep) if (k in u) account[k] = u[k];
-    account.merged_in = await tableExists(db, 'subject_aliases')
-        ? await db.prepare('SELECT alias_id AS subject, merged_at FROM subject_aliases WHERE subject_id = ? ORDER BY merged_at').all(u.subject_id) : [];
     add('account.json', account);
     const byUser = async (name, table, opts) => { const r = await rowsOf(db, table, 'user_id = ?', [u.id], opts); add(name, r.rows, r.truncated); };
     await byUser('sign_in_providers.json', 'linked_accounts');
@@ -221,6 +218,11 @@ async function networkPart(db, userId) {
     const followers = await tableExists(db, 'user_follows') ? (await db.prepare("SELECT COUNT(*) AS n FROM user_follows WHERE target_id = ? AND active = 1").get(u.subject_id)).n : 0;
     add('follows.json', { following: follows.rows, followers_count: followers }, follows.truncated);
     add('blocks.json', (await rowsOf(db, 'user_blocks', 'blocker_subject = ?', [u.subject_id])).rows);
+    // Ask 287: who they muted and friended, and the reports they filed. These are the person's own
+    // rows; a report about them names them as the target, so it is not their export.
+    add('mutes.json', (await rowsOf(db, 'user_mutes', 'muter_subject = ?', [u.subject_id])).rows);
+    add('friends.json', (await rowsOf(db, 'user_friends', 'user_subject = ?', [u.subject_id])).rows);
+    add('reports.json', (await rowsOf(db, 'user_reports', 'reporter_subject = ?', [u.subject_id])).rows);
     // Presence (plan X9): the chosen state, status line, emoji, switch and the heartbeat times. No last seen
     // beyond the heartbeat the person's own tabs sent.
     add('presence.json', (await rowsOf(db, 'person_presence', 'subject_id = ?', [u.subject_id])).rows);
@@ -230,8 +232,6 @@ async function networkPart(db, userId) {
         // The agents that act for this person (WS-Z2); who revoked one may be someone else, so revoked_by stays out.
         agents: (await rowsOf(db, 'dev_agents', 'owner_subject = ?', [u.subject_id], { omit: ['revoked_by'] })).rows,
     });
-    add('account_merges.json', await tableExists(db, 'account_merges')
-        ? await db.prepare('SELECT id, from_subject, into_subject, initiated_by, reason, moved, merged_at FROM account_merges WHERE into_user_id = ? ORDER BY merged_at').all(u.id) : []);
     add('moderation.json', (await rowsOf(db, 'moderation_audit', 'target_subject = ?', [u.subject_id], { omit: ['actor_subject'] })).rows);
     return { files, truncated };
 }
@@ -355,8 +355,7 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         if (!user) throw new Error(`account-data: no user ${deletion.user_id}`);
         const subject = user.subject_id;
         const folded = await db.prepare('SELECT id, subject_id FROM users WHERE merged_into = ?').all(user.id);
-        const aliases = await tableExists(db, 'subject_aliases') ? (await db.prepare('SELECT alias_id FROM subject_aliases WHERE subject_id = ?').all(subject)).map((r) => r.alias_id) : [];
-        const subjects = [...new Set([subject, ...aliases, ...folded.map((f) => f.subject_id).filter(Boolean)])];
+        const subjects = [...new Set([subject, ...folded.map((f) => f.subject_id).filter(Boolean)])];
         const userIds = [user.id, ...folded.map((f) => f.id)];
         const inU = `(${userIds.map(() => '?').join(',')})`;
         const inS = `(${subjects.map(() => '?').join(',')})`;
@@ -368,7 +367,6 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         await del('experience_events', `user_id IN ${inU}`, userIds);
         await del('person_levels', `user_id IN ${inU}`, userIds);
         await del('chat_app_pending_links', `confirmed_by IN ${inU}`, userIds);
-        if (await tableExists(db, 'account_merge_intents')) await del('account_merge_intents', `into_user_id IN ${inU}`, userIds);
         // Notifications this person sent others stay, without their name or picture.
         if (await tableExists(db, 'notifications')) await db.prepare(`UPDATE notifications SET sender_id = NULL, sender_name = 'Deleted account', sender_avatar = NULL WHERE sender_id IN ${inU}`).run(...userIds);
         if (await tableExists(db, 'analytics_events')) await db.prepare(`UPDATE analytics_events SET user_id = NULL WHERE user_id IN ${inU}`).run(...userIds);
@@ -381,6 +379,9 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         await del('dock_states', `subject IN ${inS}`, subjects, 'dock_states');
         await del('user_follows', `follower_subject IN ${inS} OR target_id IN ${inS}`, [...subjects, ...subjects], 'follows');
         await del('user_blocks', `blocker_subject IN ${inS} OR blocked_subject IN ${inS}`, [...subjects, ...subjects], 'blocks');
+        await del('user_mutes', `muter_subject IN ${inS} OR muted_subject IN ${inS}`, [...subjects, ...subjects], 'mutes');
+        await del('user_friends', `user_subject IN ${inS} OR friend_subject IN ${inS}`, [...subjects, ...subjects], 'friends');
+        await del('user_reports', `reporter_subject IN ${inS} OR target_subject IN ${inS}`, [...subjects, ...subjects], 'reports');
         // The person's agents first (WS-Z2), then the agents of the projects archived below.
         // Their projects' locks first, as agent creation takes them (developer/store.lockProject): no agent of theirs is created after this.
         if (await tableExists(db, 'dev_projects')) {
@@ -407,7 +408,6 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         // network.link.revoked@1 in this same transaction, so a service holding a machine's session stops it at once.
         const nodePrincipals = require('../registry/link-principals');
         count('nodes_revoked', await nodePrincipals.revokeOwnedBy(db, subjects, { actor: { type: 'user', id: subject }, now }));
-        if (await tableExists(db, 'account_merges')) await db.prepare(`UPDATE account_merges SET pre_state = NULL, reduced_at = COALESCE(reduced_at, ?) WHERE into_user_id IN ${inU} OR from_user_id IN ${inU}`).run(at, ...userIds, ...userIds);
         // OpenCoins: loyalty (ADR-012). The balance closes with one ledger entry; the ledger stays.
         for (const id of userIds) {
             const bal = (await db.prepare('SELECT balance FROM wallets WHERE user_id = ?').get(id) || { balance: 0 }).balance;
@@ -416,12 +416,15 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
                 count('opencoins_closed', bal);
             }
         }
+        // Ask 273: the "since I last looked" cursors are ephemeral UI state: gone with the account.
+        await del('coin_balance_reads', `user_id IN ${inU}`, userIds, 'coin_balance_reads');
+        await del('channel_points_reads', `user_id IN ${inU}`, userIds, 'channel_points_reads');
         // The tombstones: the username is released, the rest cleared; the subject stays (never reused).
         const cols = await columnsOf(db, 'users');
         for (const id of userIds) {
             const u = await db.prepare('SELECT subject_id FROM users WHERE id = ?').get(id);
             const name = `deleted-${String(u.subject_id || id).slice(-12).toLowerCase()}`;
-            const set = { username: name, email: null, password_hash: '!deleted', display_name: null, avatar_url: null, bio: '', profile_color: null, ban_reason: null,
+            const set = { username: name, email: null, password_hash: '!deleted', display_name: null, avatar_url: null, bio: '', card_visibility: '{}', profile_color: null, ban_reason: null,
                 name_effect: null, particle_effect: null, email_verified: 0, email_verified_at: null, email_bounced_at: null, email_bounce_reason: null, deleted_at: at };
             const keys = Object.keys(set).filter((k) => cols.includes(k));
             await db.prepare(`UPDATE users SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).run(...keys.map((k) => set[k]), id);

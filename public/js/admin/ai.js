@@ -402,7 +402,7 @@ function renderCookieVerdict(data) {
 
 async function checkStreamerMediaCookies() {
     const el = document.getElementById('streamer-media-cookie-verdict');
-    if (el) el.innerHTML = '<div class="muted" style="margin-top:10px"><i class="fa-solid fa-spinner fa-spin"></i> Validating and running a live extraction…</div>';
+    if (el) el.innerHTML = '<div class="muted" style="margin-top:10px"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> Validating and running a live extraction…</div>';
     try {
         const data = await api('/api/admin/streamer/media-tools/cookies/check', { method: 'POST', body: {} });
         renderCookieVerdict(data);
@@ -416,7 +416,7 @@ async function saveStreamerMediaCookies() {
     const cookies = ta?.value?.trim() || '';
     if (!cookies) return toast('Paste cookies.txt content first', 'error');
     const el = document.getElementById('streamer-media-cookie-verdict');
-    if (el) el.innerHTML = '<div class="muted" style="margin-top:10px"><i class="fa-solid fa-spinner fa-spin"></i> Validating and running a live extraction…</div>';
+    if (el) el.innerHTML = '<div class="muted" style="margin-top:10px"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> Validating and running a live extraction…</div>';
     try {
         const data = await api('/api/admin/streamer/media-tools/cookies', { method: 'PUT', body: { cookies } });
         toast(data?.test?.ok ? 'Cookies saved — live extraction passed' : 'Cookies saved', 'success');
@@ -442,7 +442,7 @@ async function testStreamerMediaExtraction() {
     const url = document.getElementById('streamer-media-test-url')?.value?.trim() || '';
     const results = document.getElementById('streamer-media-test-results');
     if (!url) return toast('Enter a URL to test', 'error');
-    results.innerHTML = '<p class="muted"><i class="fa-solid fa-spinner fa-spin"></i> Testing live OpenVibe.Live extraction…</p>';
+    results.innerHTML = '<p class="muted"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> Testing live OpenVibe.Live extraction…</p>';
     try {
         const data = await api('/api/admin/streamer/media-tools/test', { method: 'POST', body: { url } });
         results.innerHTML = `<div style="display:grid;gap:8px;font-size:0.9rem">${(data.steps || []).map(step => {
@@ -587,11 +587,11 @@ const PAI_NAMES = {
     network: 'OpenVibe.Network', ai: 'OpenVibe.AI', billing: 'OpenVibe.Billing', services: 'OpenVibe.Services', watch: 'OpenVibe.Watch',
     bench: 'OpenVibe.Bench', report: 'OpenVibe.Report', host: 'OpenVibe.Host', codes: 'OpenVibe.Codes',
     actor: 'OpenVibe.Actor', chat: 'OpenVibe.Chat', connect: 'OpenVibe Connect', deals: 'OpenVibe.Deals', work: 'OpenVibe.Work',
-    sources: 'OpenVibe.Sources', design: 'OpenVibe.Design', domains: 'OpenVibe.Domains', media: 'OpenVibe.Media',
+    sources: 'OpenVibe.Sources', design: 'OpenVibe.Design', domains: 'OpenVibe.Domains', media: 'OpenVibe.Media', run: 'OpenVibe.Run',
 };
 // The services whose settings are AI settings: their cards are on this tab. Every other service's owner inputs are
 // on the Setup tab; the "Where keys are kept" list covers them all.
-const PAI_AI_SERVICES = ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor'];
+const PAI_AI_SERVICES = ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor', 'run'];
 const PAI_ACCESS = ['OWN_DEPLOYMENT', 'AUTHORIZED_WHOLESALE', 'CUSTOMER_BYOK', 'RESTRICTED', 'UNVERIFIED'];
 const PAI_BILLING_LABEL = {
     metered: 'Spends Credits per request', subscription: 'A plan with a monthly fee shared by everyone',
@@ -780,6 +780,7 @@ function paiRender(root) {
         + '<section id="pai-inference" class="pai-section"><div class="pai-section-head"><h3>Who answers, and what it costs</h3><p class="muted">For each kind of work: which provider answers first, the most it may cost, the providers never to use and the ways of paying less; then a spending limit for each provider and what it all cost. Changes apply to the next call.</p></div><div id="oin-body"><p class="muted">Loading…</p></div></section>'
         + '<section id="pai-exchange" class="pai-section"><div class="pai-section-head"><h3>What the Exchange offers</h3><p class="muted">Which models people can pick on openvibe.exchange, the free tier, and the spending limits that protect your balance.</p></div><div id="pai-cards-exchange" data-pai-cards></div></section>'
         + '<section id="pai-money" class="pai-section"><div class="pai-section-head"><h3>Money</h3><p class="muted">Credits are what people spend on AI; these switches decide whether people can buy them, top up and pay sellers. Each switch says what it turns on before you change it. ' + paiWhat('credits') + '</p></div><div id="pai-cards-money" data-pai-cards></div></section>'
+        + '<section><h3>Worker compute budgets</h3><p><a href="https://openvibe.exchange/compute">Compute prices on Exchange</a></p><div id="pai-compute-status">Loading…</div></section>'
         + '<section id="pai-services" class="pai-section"><div class="pai-section-head"><h3>Other services\' AI settings</h3><p class="muted">AI settings that live in other parts of OpenVibe (Codes, Actor, Bench…), one card per service. Their other keys (publishing, sign-in apps, data sources) are on the <a href="/admin/setup">Setup</a> tab.</p></div><div id="pai-cards-services" data-pai-cards></div></section>'
         + '<section id="pai-vault" class="pai-section"><div class="pai-section-head"><h3>Where keys are kept</h3><p class="muted">Every key you enter is locked with that service\'s own lock key and can never be read back, not even by you. A service without its lock key stores keys unlocked and says so here: fix that first. ' + paiWhat('lock-key') + '</p></div><div id="pai-vault-list"></div></section>'
     );
@@ -787,6 +788,7 @@ function paiRender(root) {
     paiRenderProviders();
     paiRenderCards();
     paiRenderVault();
+    paiLoadCompute();
     if (typeof oinLoad === 'function') oinLoad();
     const add = document.getElementById('pai-add-provider');
     if (add) add.addEventListener('click', () => paiProviderDialog(null));
@@ -805,6 +807,19 @@ function paiRender(root) {
         });
     }
     if (window.OVForms && window.OVForms.enhance) window.OVForms.enhance(root);
+}
+
+async function paiLoadCompute() {
+    const el = document.getElementById('pai-compute-status');
+    if (!el) return;
+    try {
+        const { compute } = await paiApi('/compute/status');
+        el.innerHTML = '<p>' + (compute.enabled ? 'Reconciler enabled' : 'Reconciler disabled') +
+            (compute.dry_run ? ' · Dry run' : ' · Live') + '</p><ul>' + (compute.budgets || []).map(b =>
+            '<li' + (b.near_cap ? ' role="alert"' : '') + '>' + esc(b.provider) + ': ' +
+            esc((Number(b.committed_micros) / 1e6).toFixed(4)) + ' of ' + esc(b.cap) + ' ' + esc(b.currency) +
+            ' committed' + (b.near_cap ? ' — at least 80% of the monthly cap' : '') + '</li>').join('') + '</ul>';
+    } catch { el.textContent = 'Compute budgets are unavailable.'; }
 }
 
 function paiRenderWarnings() {

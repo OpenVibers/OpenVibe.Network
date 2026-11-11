@@ -41,9 +41,14 @@ function mcCard(m) {
     const dot = mcEl('span', `mc-dot ${m.online ? 'is-on' : ''}`, [], { 'aria-hidden': 'true' });
     const name = mcEl('h4', 'mc-name', [m.name || MC_KIND[m.kind] || 'A machine']);
     const state = mcEl('span', 'mc-state', [m.online ? 'Online' : (m.last_seen_at ? `Offline · seen ${mcAgo(m.last_seen_at)}` : 'Offline')]);
-    const meta = mcEl('p', 'mc-meta', [[MC_KIND[m.kind], m.os, m.node_version ? `Node ${m.node_version}` : ''].filter(Boolean).join(' · ')]);
+    const os = String(m.os || '').toLowerCase();
+    const osIcon = os.includes('mac') || os.includes('darwin') ? 'fa-apple' : os.includes('linux') ? 'fa-linux' : 'fa-laptop';
+    const meta = mcEl('p', 'mc-meta', [mcIcon(osIcon), ' ', [MC_KIND[m.kind], m.os, m.node_version ? `Node ${m.node_version}` : ''].filter(Boolean).join(' · ')]);
     const head = mcEl('div', 'mc-head', [dot, mcEl('div', 'mc-title', [name, state]), meta]);
     card.append(head);
+    const roleChips = (m.roles || []).map((id) => (mcRoles || []).find((r) => r.id === id)).filter(Boolean);
+    card.append(mcEl('div', 'mc-role-chips', roleChips.length ? roleChips.map((r) => mcEl('span', 'mc-role-chip', [r.name])) : [mcEl('span', 'mc-role-chip is-empty', ['No roles assigned'])]));
+    card.append(mcMuseStatus(m));
     (m.pools || []).forEach((pool) => card.append(mcPoolBlock(pool)));
 
     if (Array.isArray(m.running) && m.running.length) {
@@ -76,8 +81,29 @@ function mcCard(m) {
     const revoke = mcEl('button', 'btn btn-small mc-revoke', [mcIcon('fa-link-slash'), ' Revoke'], { type: 'button' });
     revoke.addEventListener('click', () => mcConfirmRevoke(acts, m));
     acts.append(rename, revoke);
-    card.append(acts);
+    const menu = mcEl('details', 'mc-action-menu');
+    menu.append(mcEl('summary', '', ['Actions']));
+    menu.append(acts);
+    card.append(menu);
     return card;
+}
+
+/** Muse runs on this machine under its owner's own sign-in; the last Link reading is only a status. */
+function mcMuseStatus(m) {
+    const muse = Array.isArray(m.fleet) ? m.fleet.find((a) => a.agent === 'muse') : null;
+    const fleetAge = m.fleet_at ? Date.now() - Date.parse(m.fleet_at) : NaN;
+    const stale = m.fleet_at && (!Number.isFinite(fleetAge) || fleetAge > 5 * 60000);
+    const state = !m.online ? 'Offline' : !muse || stale ? 'Status unavailable' : !muse.installed ? 'Not installed' : !muse.signed_in ? 'Sign in' : 'Ready';
+    const row = mcEl('div', 'mc-role', [
+        mcEl('span', 'mc-role-ic', [mcIcon('fa-code')]),
+        mcEl('span', 'mc-role-t', [mcEl('b', '', ['Muse Code']), mcEl('small', '', [state])]),
+    ]);
+    const setup = mcEl('details', '', [mcEl('summary', '', ['Set up Muse Code'])]);
+    setup.append(mcEl('p', '', ['Install Muse Code on this machine, run ', mcEl('code', '', ['muse login']), ', then run the Link installer again with ', mcEl('code', '', ['--plan-logins']), '. Jobs use your own Muse sign-in.']));
+    const windows = /windows/i.test(String(m.os || ''));
+    setup.append(mcEl('pre', '', [mcEl('code', '', [windows ? 'irm https://dev.meta.ai/install.ps1 | iex' : 'curl -fsSL https://dev.meta.ai/install.sh | sh'])]));
+    setup.append(mcEl('p', '', [mcEl('a', '', ['Worker setup'], { href: 'https://github.com/OpenVibers/OpenVibe.Link/blob/main/docs/worker.md' })]));
+    return mcEl('div', 'mc-roles', [row, setup]);
 }
 
 /* ── The owner's switches, the live screen, its links, and the machine's desks ───────────────────────────────
@@ -516,12 +542,19 @@ async function mcPair() {
         const out = await apiFetch('/api/v1/machines/pairings', { method: 'POST', body: '{}' });
         const p = (out && out.pairing) || {};
         const code = mcEl('p', 'mc-code', [String(p.code || '')]);
+        code.setAttribute('aria-label', 'Pairing code');
+        const copyCode = mcEl('button', 'btn btn-outline btn-small', [mcIcon('fa-copy'), ' Copy code'], { type: 'button' });
+        copyCode.addEventListener('click', () => navigator.clipboard.writeText(String(p.code || '')).then(() => mcSay('Code copied.')));
+        const qr = p.qr_data ? mcEl('img', 'mc-qr', [], { src: p.qr_data, alt: 'Scan this QR code to read the pairing code' }) : null;
         const cmd = mcEl('pre', 'mc-cmd', [mcEl('code', '', [String(p.installer || '')])]);
         const copy = mcEl('button', 'btn btn-outline btn-small', [mcIcon('fa-copy'), ' Copy the command'], { type: 'button' });
         copy.addEventListener('click', () => navigator.clipboard.writeText(String(p.installer || '')).then(() => mcSay('Copied. Run it on the machine.')));
         const until = p.expires_at ? mcEl('span', 'mc-until', [`The code works until ${new Date(p.expires_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`]) : null;
         const wait = mcEl('p', 'mc-wait', [mcEl('span', 'mc-wait-dot', [], { 'aria-hidden': 'true' }), 'Waiting for your machine…'], { role: 'status' });
-        box.replaceChildren(mcEl('h4', '', ['Run this on the machine']), mcEl('p', 'muted', ['It installs OpenVibe Link and pairs it with your account. Or type the code into Link yourself:']), code, cmd, mcEl('div', 'mc-pair-acts', [copy, until]), wait);
+        const pairContent = [mcEl('h4', '', ['Pair your computer']), mcEl('ol', 'mc-steps', [mcEl('li', '', ['Open OpenVibe Link on the computer.']), mcEl('li', '', ['Enter this code or scan the QR code.']), mcEl('li', '', ['Give it a name when it connects.'])]), mcEl('div', 'mc-pair-code-row', [code, copyCode])];
+        if (qr) pairContent.push(qr);
+        pairContent.push(mcEl('p', 'muted', ['Or install Link with this command:']), cmd, mcEl('div', 'mc-pair-acts', [copy, until]), wait);
+        box.replaceChildren(...pairContent);
         box.hidden = false;
         clearInterval(mcWatch);
         const t0 = Date.now();
@@ -551,13 +584,15 @@ async function mcPair() {
 async function loadMachines() {
     const list = document.getElementById('mc-list');
     if (!list) return;
+    const count = document.getElementById('mc-count');
     try {
         if (!mcRoles) mcRoles = ((await apiFetch('/api/v1/machines/roles').catch(() => null)) || {}).roles || [];
         const out = await apiFetch('/api/v1/machines');
         const machines = (out && out.machines) || [];
         machines.sort((a, b) => (b.online === true) - (a.online === true));
+        if (count) count.textContent = `${machines.length} paired · ${machines.filter((m) => m.online).length} online now`;
         if (!machines.length) {
-            list.replaceChildren(mcEl('div', 'mc-empty', [mcIcon('fa-laptop'), mcEl('p', '', [mcEl('b', '', ['No machines yet.']), ' Pair your computer and it can run your Codes jobs, host your desks and serve your own models, under your account.'])]));
+            list.replaceChildren(mcEl('div', 'mc-empty', [mcIcon('fa-laptop'), mcEl('p', '', [mcEl('b', '', ['No machines yet.']), ' Pair a computer: you get one command to run on it, and it shows up here.'])]));
             return;
         }
         // Pools are an extra: when they cannot be read, the machines still show.
@@ -566,6 +601,7 @@ async function loadMachines() {
         for (const m of machines) m.pools = (pools.pools || []).filter((p) => p.machines.some((x) => x.id === m.id));
         list.replaceChildren(...machines.map(mcCard), ...mcPoolPickers(pools.candidates || []));
     } catch (e) {
+        if (count) count.textContent = '';
         list.replaceChildren(mcEl('p', 'muted', [e.status === 401 ? 'Sign in to see your machines.' : 'Your machines could not be read just now.']));
     }
 }
