@@ -66,12 +66,18 @@ async function file(db, reporter, targetSubject, reason, detail) {
     if (!SUBJECT_RE.test(String(reporter)) || !SUBJECT_RE.test(String(targetSubject))) throw new ReportError(400, 'user_reports.bad_subject', 'reports are between usr_ subjects');
     if (reporter === targetSubject) throw new ReportError(400, 'user_reports.self', 'you cannot report yourself');
     return await db.tx(async () => {
-        const open = await db.prepare(`SELECT * FROM user_reports WHERE reporter_subject = ? AND target_subject = ? AND status = 'open'
+        const open = () => db.prepare(`SELECT * FROM user_reports WHERE reporter_subject = ? AND target_subject = ? AND status = 'open'
             ORDER BY id DESC LIMIT 1`).get(reporter, targetSubject);
-        if (open) return { report: view(open), created: false };
+        const found = await open();
+        if (found) return { report: view(found), created: false };
+        // The partial unique index turns a concurrent double filing into one row: the loser reads
+        // the winner's report back instead of creating a duplicate.
         const row = await db.prepare(`INSERT INTO user_reports (reporter_subject, target_subject, reason, detail)
-            VALUES (?, ?, ?, ?) RETURNING *`).get(reporter, targetSubject, reason, detail);
-        return { report: view(row), created: true };
+            VALUES (?, ?, ?, ?) ON CONFLICT (reporter_subject, target_subject) WHERE status = 'open' DO NOTHING RETURNING *`)
+            .get(reporter, targetSubject, reason, detail);
+        if (row) return { report: view(row), created: true };
+        const raced = await open();
+        return { report: view(raced), created: false };
     });
 }
 

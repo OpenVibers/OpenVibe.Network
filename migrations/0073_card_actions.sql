@@ -40,3 +40,5 @@ CREATE TABLE IF NOT EXISTS user_reports (
 );
 CREATE INDEX IF NOT EXISTS idx_user_reports_target ON user_reports(target_subject, status);
 CREATE INDEX IF NOT EXISTS idx_user_reports_reporter ON user_reports(reporter_subject, target_subject);
+-- One open report per pair: filing again while it is open returns the open one, never a duplicate.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_reports_open ON user_reports(reporter_subject, target_subject) WHERE status = 'open';
