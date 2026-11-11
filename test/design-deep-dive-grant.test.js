@@ -5,6 +5,8 @@
  */
 'use strict';
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const principals = require('../server/identity/principals');
 
 const AUDIENCE = 'openvibe.ai';
@@ -13,9 +15,7 @@ assert.ok(grant, 'Design holds ai.run.create on openvibe.ai');
 assert.ok(grant[3].includes('ai.generate'), 'its frames still run ai.generate');
 assert.ok(grant[3].includes('ai.chat'), 'a frame with a preference still runs ai.chat');
 assert.ok(grant[3].includes('design.deep_dive'), 'Research first can start a deep dive');
-const changed = principals.CHANGED_DEFAULT_NAMESPACES.find(([client, cap, aud, was, now]) =>
-    client === 'design' && cap === 'ai.run.create' && aud === AUDIENCE &&
-    was.includes('ai.generate') && was.includes('ai.chat') && !was.includes('design.deep_dive') &&
-    now.includes('design.deep_dive'));
-assert.ok(changed, 'a production row seeded at ai.generate/ai.chat is moved to name the deep dive');
+// The list itself is deliberately not exported (session-report-grants.test.js checks that). Read the entry.
+const source = fs.readFileSync(path.join(__dirname, '..', 'server', 'identity', 'principals.js'), 'utf8');
+assert.match(source, /\['design', 'ai\.run\.create', 'openvibe\.ai', \['ai\.generate', 'ai\.chat'\], \['ai\.generate', 'ai\.chat', 'design\.deep_dive'\]\]/, 'a production row seeded at ai.generate/ai.chat is moved to name the deep dive');
 console.log('design deep dive grant: ok');

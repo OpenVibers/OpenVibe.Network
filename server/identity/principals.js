@@ -1263,4 +1263,4 @@ function guardAny(caps, opts) {
     };
 }
 
-module.exports = { ensureSchema, issueToken, guard, guardAny, grantsFor, recordDecision, DEFAULT_GRANTS, CHANGED_DEFAULT_NAMESPACES, NODE_GRANTS, REVOKED_GRANTS, RESTORED_GRANTS, TOKEN_TTL_S, SELF_AUDIENCE };
+module.exports = { ensureSchema, issueToken, guard, guardAny, grantsFor, recordDecision, DEFAULT_GRANTS, NODE_GRANTS, REVOKED_GRANTS, RESTORED_GRANTS, TOKEN_TTL_S, SELF_AUDIENCE };
