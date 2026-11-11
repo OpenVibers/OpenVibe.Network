@@ -641,6 +641,20 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/api/v1/link/self/send', rateLimit({ windowMs: 60_000, max: 300 }), sendRelay.self);
     app.use('/api/v1/me/nodes/send-keys', rateLimit({ windowMs: 60_000, max: 60 }), sendRelay.keys);
     app.use('/api/v1/me/nodes/send', rateLimit({ windowMs: 60_000, max: 300 }), sendRelay.web);
+    const access = require('./link/access').routers({ requireAuth,
+        nodeGuard: require('./identity/principals').guard('network.link.access.request'),
+        relayGuard: require('./identity/principals').guard('network.agents.relay') });
+    app.use('/api/v1/link/self', rateLimit({ windowMs: 60_000, max: 60 }), access.self);
+    app.use('/api/v1/me/nodes', rateLimit({ windowMs: 60_000, max: 60 }), access.user);
+    app.use('/internal/link-access', access.internal);
+    const agents = require('./link/agents').routers({ requireAuth,
+        registerGuard: require('./identity/principals').guardAny(['network.agents.register', 'network.link.self.manage']),
+        resultGuard: require('./identity/principals').guardAny(['network.agents.relay', 'network.agents.register']),
+        bot: require('./registry/machines').createBotClient({ baseUrl: config.services.bot.internalUrl, privateKey, issuer: config.jwt.issuer }),
+        config, privateKey, issuer: config.jwt.issuer });
+    app.use('/api/v1/agents', rateLimit({ windowMs: 60_000, max: 600 }), agents.results);
+    app.use('/api/v1/agents', rateLimit({ windowMs: 60_000, max: 600 }), agents.relay);
+    app.use('/api/v1/me', rateLimit({ windowMs: 60_000, max: 120 }), agents.me);
 }
 // The machines hub (plan L34, step M2): a person's machines on openvibe.link/machines. Bot stays the registry
 // underneath; Network fronts it and calls it as the person, so Bot checks the machine is that person's own.
