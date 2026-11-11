@@ -206,6 +206,9 @@ module.exports = {
         codes: {
             internalUrl: process.env.OV_CODES_INTERNAL_URL || 'http://127.0.0.1:4900',
         },
+        run: {
+            internalUrl: process.env.OV_RUN_INTERNAL_URL || 'http://127.0.0.1:4920',
+        },
         actor: {
             internalUrl: process.env.OV_ACTOR_INTERNAL_URL || 'http://127.0.0.1:4950',
         },

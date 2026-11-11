@@ -66,11 +66,12 @@ function summary(service, namespace, extra = {}) {
     const OWNER = 'rootowner';
     const ai = await fake('ai');
     const billing = await fake('billing');
+    const run = await fake('run');
     let w = null;
     try {
         w = await buildWorld({
             label: 'ai-config',
-            env: { OV_AI_INTERNAL_URL: ai.url, OV_BILLING_INTERNAL_URL: billing.url, AI_CONFIG_WRITES_PER_HOUR: '60' },
+            env: { OV_AI_INTERNAL_URL: ai.url, OV_BILLING_INTERNAL_URL: billing.url, OV_RUN_INTERNAL_URL: run.url, AI_CONFIG_WRITES_PER_HOUR: '60' },
         });
         const owner = w.users.owner;
         ai.seen.length = 0; billing.seen.length = 0;
@@ -107,6 +108,13 @@ function summary(service, namespace, extra = {}) {
             'GET /internal/config/billing.credits': credits,
         });
 
+        run.routes['GET /internal/config/compute-status'] = {enabled:false,dry_run:true,budgets:[{provider:'daytona',near_cap:true,cap:'10',committed_micros:'8000000',currency:'USD'}]};
+        assert.strictEqual((await call('staff','GET','/api/admin/ai/config/compute/status')).status,403);
+        const compute = await ownerCall('GET','/api/admin/ai/config/compute/status');
+        assert.strictEqual(compute.status,200);
+        assert.strictEqual(compute.body.compute.budgets[0].near_cap,true);
+        assert.ok(run.seen[0].headers['x-ov-subject']);
+
         // ── Only the owner: a user and a plain admin are refused, and nothing reaches a service ──
         let r = await call('alice', 'GET', '/api/admin/ai/config/services');
         assert.strictEqual(r.status, 403, 'a user never gets the owner settings');
@@ -117,7 +125,7 @@ function summary(service, namespace, extra = {}) {
         // ── GET /services: the seventeen services and their operator-set internal URLs ──
         r = await ownerCall('GET', '/api/admin/ai/config/services');
         assert.strictEqual(r.status, 200, r.text);
-        assert.deepStrictEqual(r.body.services.map((s) => s.service), ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor', 'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media']);
+        assert.deepStrictEqual(r.body.services.map((s) => s.service), ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor', 'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run']);
         assert.strictEqual(r.body.services.find((s) => s.service === 'deals').name, 'OpenVibe.Deals');
         assert.strictEqual(r.body.services.find((s) => s.service === 'deals').capability, 'deals.config.manage');
         assert.strictEqual(r.body.services.find((s) => s.service === 'ai').internal_url, ai.url);
@@ -246,7 +254,7 @@ function summary(service, namespace, extra = {}) {
         }
         // The eight Setup services: Network holds each grant as soon as the pinned Contracts (0.308.0) knows it.
         const { capabilities, version: contractsVersion } = require('openvibe-contracts');
-        const setupServices = ['chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media'];
+        const setupServices = ['chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run'];
         for (const svc of setupServices) {
             const known = !!capabilities.get(`${svc}.config.manage`);
             assert.strictEqual(has('network', `${svc}.config.manage`, `openvibe.${svc}`), known, `Network holds ${svc}.config.manage exactly when Contracts knows it`);
@@ -285,5 +293,6 @@ function summary(service, namespace, extra = {}) {
         if (w) await w.stop();
         await new Promise((r) => ai.srv.close(r));
         await new Promise((r) => billing.srv.close(r));
+        await new Promise((r) => run.srv.close(r));
     }
 })().then(() => process.exit(0)).catch((err) => { console.error(err); process.exit(1); });
