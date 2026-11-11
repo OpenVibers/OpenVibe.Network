@@ -896,10 +896,18 @@ require('./developer/confirmations').start(db);
     app.use('/api/v1/me/menu-feeds', require('./menu-feeds').router({ menuFeeds, requireAuth }));
     const homeScreen = require('./home-screen').createHomeScreen({ db });
     app.use('/api/v1/me/home-screen', require('./home-screen').router({ homeScreen, requireAuth }));
+    // People's own controls (design 2026-11-11, piece 4): the active arrangement per surface and device,
+    // saved layouts, share links, the gallery and the ui.layout.suggest call. Every write is validated
+    // through openvibe-sdk/ui-layout; each change queues network.layout.changed in the same transaction.
+    const layouts = require('./layouts').createLayouts({ db, selfToken, aiUrl: process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700' });
+    app.use('/api/v1/me/layouts', require('./layouts').router({ layouts, requireAuth }));
+    app.use('/api/v1/layouts', require('./layouts').publicRouter({ layouts, requireAuth }));
     // The Dock's timer, for a first-party service and not for a person (plan L48 R2): Vibe starts the focus timer of
     // the person it is talking with, and it counts down in the Dock's pill on every OpenVibe site. The service names
     // the person and writes the timer and nothing else (network.dock.timer.write, granted to Chat alone).
     app.use('/api/v1/people', require('./dock').serviceRouter({ dock }));
+    // A product reads the active layout one person made for its own surface (network.layout.read).
+    app.use('/api/v1/people', require('./layouts').serviceRouter({ layouts }));
     // The Locker key directory (design 2026-11-06, LOCKER-DESIGN-2026-11-06.md §4): my public keys, my
     // wrapped private keys and anybody's public keys (server/locker/keys.js). Mounted after the Dock's
     // service route, which writes the timer of one person.
