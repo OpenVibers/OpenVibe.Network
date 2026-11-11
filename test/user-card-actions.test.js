@@ -107,6 +107,13 @@ const cors = require('../server/public-cors');
         assert.strictEqual(selfReport.status, 400, 'self reports are refused');
         // A staff viewer sees the queue; a plain viewer is refused.
         assert.strictEqual((await fetch(`${base}/api/v1/staff/user-reports`)).status, 403, 'non-staff cannot read the queue');
+        asVic.role = 'global_mod';
+        const queue = await fetch(`${base}/api/v1/staff/user-reports?status=open&target=${TED}`);
+        assert.strictEqual(queue.status, 200, 'a moderator reads the queue');
+        const queueBody = await queue.json();
+        assert.ok(queueBody.reports.some((r) => r.target === TED), 'the queue carries the open report');
+        assert.strictEqual((await fetch(`${base}/api/v1/staff/user-reports?status=bogus`)).status, 400, 'a bad status is refused');
+        asVic.role = 'user';
         // Blocked pair: only Unblock + Report.
         await setBlock(db, VIC, TED, true);
         tedCard = await card('TedAct');
