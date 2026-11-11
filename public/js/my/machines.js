@@ -42,7 +42,7 @@ function mcCard(m) {
     const name = mcEl('h4', 'mc-name', [m.name || MC_KIND[m.kind] || 'A machine']);
     const state = mcEl('span', 'mc-state', [m.online ? 'Online' : (m.last_seen_at ? `Offline · seen ${mcAgo(m.last_seen_at)}` : 'Offline')]);
     const os = String(m.os || '').toLowerCase();
-    const osIcon = os.includes('windows') ? 'fa-windows' : os.includes('mac') || os.includes('darwin') ? 'fa-apple' : os.includes('linux') ? 'fa-linux' : 'fa-computer';
+    const osIcon = os.includes('mac') || os.includes('darwin') ? 'fa-apple' : os.includes('linux') ? 'fa-linux' : 'fa-laptop';
     const meta = mcEl('p', 'mc-meta', [mcIcon(osIcon), ' ', [MC_KIND[m.kind], m.os, m.node_version ? `Node ${m.node_version}` : ''].filter(Boolean).join(' · ')]);
     const head = mcEl('div', 'mc-head', [dot, mcEl('div', 'mc-title', [name, state]), meta]);
     card.append(head);
