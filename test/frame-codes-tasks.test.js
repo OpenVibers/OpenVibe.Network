@@ -19,7 +19,7 @@ const TASK = 'tsk_01J8Z3Q4R5S6T7V8W9X0Y1Z2A3';
         req.on('data', (c) => chunks.push(c));
         req.on('end', () => {
             const u = new URL(req.url, 'http://x');
-            asked.push({ method: req.method, url: req.url, auth: req.headers.authorization || '', cookie: req.headers.cookie || '', body: Buffer.concat(chunks).toString('utf8') });
+            asked.push({ method: req.method, url: req.url, auth: req.headers.authorization || '', cookie: req.headers.cookie || '', last: req.headers['last-event-id'] || '', body: Buffer.concat(chunks).toString('utf8') });
             if (down) { req.socket.destroy(); return; }
             const json = (status, obj) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
             if (u.pathname === '/api/v1/me/tasks' && req.method === 'GET') {
@@ -31,6 +31,11 @@ const TASK = 'tsk_01J8Z3Q4R5S6T7V8W9X0Y1Z2A3';
                 return json(201, { id: TASK, url: `https://openvibe.codes/tasks/${TASK}` });
             }
             if (u.pathname === `/api/v1/tasks/${TASK}/stop` && req.method === 'POST') return json(200, { ok: true });
+            if (u.pathname === `/api/v1/runs/${TASK}` && req.method === 'GET') return json(200, { id: TASK, title: 'A task', plan: [] });
+            if (u.pathname === `/api/v1/runs/${TASK}/events` && req.method === 'GET') {
+                res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+                return res.end('id: 3\nevent: STEP_STARTED\ndata: {"type":"STEP_STARTED","stepName":"Read files"}\n\n');
+            }
             res.writeHead(404, { 'Content-Type': 'application/json' });
             return res.end('{"error":"no route"}');
         });
@@ -94,6 +99,22 @@ const TASK = 'tsk_01J8Z3Q4R5S6T7V8W9X0Y1Z2A3';
         ({ r } = await send('/codes-tasks/nope/stop', {}));
         assert.strictEqual(r.status, 404);
         assert.strictEqual(asked.length, n, 'a bad id never goes upstream');
+
+        // The card's snapshot and resumable AG-UI stream carry the same owner token.
+        ({ r, d } = await get(`/codes-runs/${TASK}`, { Authorization: TOKEN }));
+        assert.strictEqual(r.status, 200);
+        assert.strictEqual(d.title, 'A task');
+        const events = await fetch(`${base}/codes-runs/${TASK}/events`, { headers: { Authorization: TOKEN, 'Last-Event-ID': '2' } });
+        assert.strictEqual(events.status, 200);
+        assert.match(await events.text(), /id: 3\nevent: STEP_STARTED/);
+        hit = asked.find((x) => x.url === `/api/v1/runs/${TASK}/events`);
+        assert.strictEqual(hit.auth, TOKEN);
+        assert.strictEqual(hit.last, '2');
+        assert.strictEqual(hit.cookie, '');
+        ({ r } = await get('/codes-runs/nope', { Authorization: TOKEN }));
+        assert.strictEqual(r.status, 404);
+        ({ r } = await get(`/codes-runs/${TASK}`));
+        assert.strictEqual(r.status, 401);
 
         // Preflights end here.
         const pre = await fetch(`${base}/codes-tasks`, { method: 'OPTIONS' });
