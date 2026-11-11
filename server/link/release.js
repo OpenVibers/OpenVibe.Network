@@ -149,6 +149,34 @@ async function newestTag({ fetchImpl = globalThis.fetch } = {}) {
     return tag;
 }
 
+/** The newest *published* release, through GitHub's public redirect when its REST API is rate limited. */
+async function publishedTag({ fetchImpl = globalThis.fetch } = {}) {
+    const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(TIMEOUT_MS) : undefined;
+    const res = await fetchImpl(LATEST, {
+        method: 'HEAD', redirect: 'manual', headers: { 'User-Agent': 'openvibe-network' }, signal,
+    });
+    if (!res || res.status !== 302 || !res.headers || typeof res.headers.get !== 'function') {
+        throw new Error('GitHub latest release did not redirect');
+    }
+    const target = new URL(res.headers.get('location'));
+    const prefix = `/${REPO}/releases/tag/`;
+    const tag = target.pathname.startsWith(prefix) ? target.pathname.slice(prefix.length) : '';
+    if (target.origin !== 'https://github.com' || !TAG_REF_RE.test(tag)) {
+        throw new Error('GitHub latest release did not name a version');
+    }
+    return tag;
+}
+
+/** Release links that can be formed without the rate-limited asset metadata. */
+function partialRelease(tag) {
+    const base = `https://github.com/${REPO}/releases`;
+    return {
+        version: tag, assets: [], publishedAt: '', url: `${base}/tag/${tag}`,
+        installUrl: `${base}/download/${tag}/install.sh`,
+        checksumsUrl: `${base}/download/${tag}/SHA256SUMS`, partial: true,
+    };
+}
+
 /** Ask GitHub once and keep the answer. Resolves to the shaped release; rejects when GitHub could not be read. */
 async function fetchLatest({ fetchImpl = globalThis.fetch, now = Date.now } = {}) {
     const controller = typeof AbortController === 'function' ? new AbortController() : null;
@@ -186,7 +214,7 @@ function refresh({ fetchImpl = globalThis.fetch, now = Date.now } = {}) {
         if (cached) {
             try {
                 const tag = await newestTag({ fetchImpl });
-                if (tag === cached.data.version) {
+                if (tag === cached.data.version && !cached.data.partial) {
                     cached = { at: now(), data: cached.data };
                     failedAt = 0;
                     saveDisk(cached);
@@ -196,7 +224,25 @@ function refresh({ fetchImpl = globalThis.fetch, now = Date.now } = {}) {
                 // ls-refs did not answer: ask the REST API as before.
             }
         }
-        return fetchLatest({ fetchImpl, now });
+        try {
+            return await fetchLatest({ fetchImpl, now });
+        } catch {
+            // The host may exhaust GitHub's unauthenticated REST limit. Its public latest-release redirect
+            // still identifies a published release, so the page and installer can advance without guessing
+            // from a tag that might not have any release assets yet.
+            try {
+                const tag = await publishedTag({ fetchImpl });
+                if (tag !== cached.data.version || cached.data.partial) {
+                    cached = { at: now(), data: partialRelease(tag) };
+                    failedAt = 0;
+                    saveDisk(cached);
+                    return cached.data;
+                }
+            } catch {
+                // Keep the last good answer when GitHub's public redirect is unreachable too.
+            }
+            return null;
+        }
     })()
         .catch(() => null)
         .finally(() => { inflight = null; });

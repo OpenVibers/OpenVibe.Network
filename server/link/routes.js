@@ -167,12 +167,12 @@ function createLinkRoutes({ releaseId, releaseApi = release, db = null, config =
         // www is not a second name for Link: every path lands on the apex, and nginx does the same before us.
         if (host === WWW_HOST) return res.redirect(301, `${SITE}${path}${url.search}`);
 
-        // The installer: the latest release's own asset, so `curl -fsSL https://openvibe.link/install | sh`
-        // installs that release. The same cached answer the page shows.
+        // The installer: a stale cached release must never pin an older version while GitHub's metadata
+        // API is rate limited. GitHub's latest/download redirect resolves to the newest published asset.
         if (path === '/install') {
             let rel;
             try { rel = await releaseApi.latest(); } catch { rel = release.FALLBACK; }
-            const target = rel && rel.installUrl ? rel.installUrl : release.FALLBACK.installUrl;
+            const target = rel && !rel.stale && rel.installUrl ? rel.installUrl : release.FALLBACK.installUrl;
             return res.set('Cache-Control', 'public, max-age=600').redirect(302, target);
         }
 
