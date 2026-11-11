@@ -913,6 +913,7 @@ require('./developer/confirmations').start(db);
     // minute per person, like the Dock's. GET answers the v2 default-on shape for a person who never chose.
     const menuFeeds = require('./menu-feeds').createMenuFeeds({ db });
     app.use('/api/v1/me/menu-feeds', require('./menu-feeds').router({ menuFeeds, requireAuth }));
+    app.use('/api/v1/me/feed-seen', require('./feed-seen').router({ requireAuth }));
     const homeScreen = require('./home-screen').createHomeScreen({ db });
     app.use('/api/v1/me/home-screen', require('./home-screen').router({ homeScreen, requireAuth }));
     // The Dock's timer, for a first-party service and not for a person (plan L48 R2): Vibe starts the focus timer of
