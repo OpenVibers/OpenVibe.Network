@@ -61,6 +61,8 @@ const ago = (m) => new Date(Date.now() - m * 60000).toISOString();
 assert.ok(HTML.includes('id="sec-machines"') && HTML.includes("showSection('machines',this)"), 'a Machines section and tab');
 assert.ok(HTML.indexOf('<script src="/js/my/machines.js" defer>') > 0, 'its script');
 assert.match(CORE, /'\/machines': 'machines'/, 'the /machines address opens it');
+assert.match(CORE, /hash === 'pair' \? 'machines'/, '#pair opens Machines');
+assert.match(CORE, /if \(routeSection === 'machines' && hash === 'pair'\) setTimeout\(\(\) => mcPair\(\), 0\)/, '#pair starts pairing');
 assert.match(CORE, /if \(id === 'machines' && typeof loadMachines === 'function'\) loadMachines\(\);/, 'it loads when opened');
 assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the account hub, not a 404');
 

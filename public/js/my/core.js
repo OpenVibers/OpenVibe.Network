@@ -173,13 +173,15 @@ function openInitialSection() {
     const pathSection = { '/themes': 'themes', '/notifications': 'notifications', '/verify-email': 'notifications', '/linked': 'linked', '/security': 'security', '/machines': 'machines', '/profile': 'profile', '/history': 'history' }[window.location.pathname];
     // #delete is the re-authentication return target: the delete step lives in the accounts section.
     const hash = window.location.hash.replace(/^#/, '');
-    const routeSection = pathSection || (hash === 'delete' ? 'accounts' : hash) || 'profile';
+    const routeSection = pathSection || (hash === 'delete' ? 'accounts' : hash === 'pair' ? 'machines' : hash) || 'profile';
     if (window.location.pathname === '/verify-email') setTimeout(handleVerifyEmailToken, 50);
     if (isAnonSession() && ['notifications','linked','security','data','content','approvals','machines','apps'].includes(routeSection)) {
         return showSection('anon');
     }
     if (document.getElementById('sec-' + routeSection)) {
         showSection(routeSection);
+        if (routeSection === 'machines') document.getElementById('sec-machines')?.scrollIntoView({ block: 'start' });
+        if (routeSection === 'machines' && hash === 'pair') setTimeout(() => mcPair(), 0);
     }
 }
 

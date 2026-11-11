@@ -205,8 +205,9 @@ async function createMyRoutes({ db, config = require('../config'), sso, pagePath
     router.use((req, res, next) => {
         const host = hostOf(req);
         if (host === WWW_HOST) return res.redirect(301, `https://${MY_HOST}${req.originalUrl}`);
-        // The machines hub moved to the Link product: /machines goes there from both the apex and the hub.
+        // The signed-in account hub owns its Machines section. Keep the Link route available to Link visitors.
         if (req.path === '/machines' && ['GET', 'HEAD'].includes(req.method) && (host === MY_HOST || NETWORK_HOSTS.has(host))) {
+            if (host === MY_HOST) { req.ovMyHost = true; return next(); }
             return res.redirect(302, `https://openvibe.link/machines${queryOf(req)}`);
         }
         if (NETWORK_HOSTS.has(host)) {
