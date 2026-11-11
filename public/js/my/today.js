@@ -141,51 +141,119 @@ function renderStatus() {
     sync();
 }
 
+// ── On OpenVibe now: the card order (owner, 2026-11-10) ──────────────────────────────────────────────────────────
+// A card is as new as its newest row and as interesting as the views, replies and viewers on its rows this week.
+// The numbers, named: freshness is 100 for a row from this hour and falls by 100/168 an hour to 0 at seven days;
+// interest is the counts the sites already print, added up and capped at 100 for a card; being looked at counts
+// twice as much as being new (×2). A live card is first whatever its numbers; a card whose newest row is older
+// than seven days goes last and says how long it has been quiet.
+const TD_FRESH_MAX = 100;
+const TD_FRESH_HOURS = 168;
+const TD_INTEREST_MAX = 100;
+const TD_INTEREST_WEIGHT = 2;
+const TD_STALE_MS = 7 * 86400000;
+const TD_AGE_UNITS = { m: 60000, min: 60000, h: 3600000, d: 86400000, w: 604800000 };
+// Cards whose own read prints a ranking and no row time. A card may also send `window`; the words are its own.
+const TD_RANKED_IDS = new Set(['trending', 'most-watched', 'popular', 'top']);
+// What a card's order means when its rows truly carry no time from their source (the source's read has none).
+const TD_ORDER_MEANING = {
+    'new-worlds': 'newest published first',
+    trending: 'most watched this week',
+    today: 'soonest first',
+    'hot-threads': 'newest first',
+};
+
+/** A row's own age, and its line with the time said the page's way; detail is the source's line when it has no age. */
+function tdRowTime(meta) {
+    const text = String(meta == null ? '' : meta);
+    const m = /(\d+)\s*(m|min|h|d|w)\s*ago/i.exec(text);
+    if (!m) return { ageMs: null, detail: text };
+    const ageMs = Number(m[1]) * TD_AGE_UNITS[m[2].toLowerCase()];
+    const label = tdAgo(new Date(Date.now() - ageMs).toISOString());
+    const parts = text.split(' · ');
+    const at = parts.findIndex((p) => /^\d+\s*(m|min|h|d|w)\s*ago$/i.test(p.trim()));
+    if (at >= 0) parts[at] = label;
+    else return { ageMs, detail: text.replace(m[0], label) };
+    return { ageMs, detail: parts.join(' · ') };
+}
+
+/** The counts a site already prints (views, replies, viewers, watching) on one row. */
+function tdRowCount(meta) {
+    let n = 0;
+    for (const m of String(meta == null ? '' : meta).matchAll(/([\d,]+)\s*(?:views?|replies|viewers?|watching)/gi)) n += Number(m[1].replace(/,/g, '')) || 0;
+    return n;
+}
+
+/** The person a row is by: its own field, else "by X" in its meta; '' when the source says no one. */
+function tdRowPerson(row) {
+    if (row.person || row.author) return String(row.person || row.author);
+    const m = /(?:^| · )by ([^·]+?)(?: ·|$)/i.exec(String(row.meta || ''));
+    return m ? m[1].trim() : '';
+}
+
+/**
+ * The cards in the order they have earned, with each row's age and count read from what the site printed. Rows
+ * are newest first; a ranked card keeps its own order. Every card with entries is kept here; the page shows three.
+ */
+function tdNowCards(frame) {
+    return ((frame && frame.cards) || []).filter((c) => c && Array.isArray(c.items) && c.items.some((it) => tdSafeUrl(it.url))).map((c) => {
+        const live = c.site === 'live' && /live/i.test(c.title || '');
+        const rows = c.items.filter((it) => tdSafeUrl(it.url)).map((it) => {
+            const time = tdRowTime(it.meta);
+            return { ...it, ageMs: time.ageMs, detail: time.detail, engagement: tdRowCount(it.meta) };
+        });
+        const newest = rows.reduce((min, it) => it.ageMs != null ? Math.min(min, it.ageMs) : min, Infinity);
+        const interest = Math.min(TD_INTEREST_MAX, rows.reduce((n, it) => n + it.engagement, 0));
+        // A ranking has counts but no row time ("45 views this week"), or says its window itself.
+        const ranked = !live && (Boolean(c.window) || (newest === Infinity && (interest > 0 || TD_RANKED_IDS.has(String(c.id || '')))));
+        const stale = newest !== Infinity && newest > TD_STALE_MS;
+        const fresh = newest === Infinity ? 0 : Math.max(0, TD_FRESH_MAX - (newest / 3600000) * (TD_FRESH_MAX / TD_FRESH_HOURS));
+        const rank = live ? Infinity : stale ? -1 : fresh + TD_INTEREST_WEIGHT * interest;
+        return { ...c, live, rows, newest, interest, ranked, stale, rank };
+    }).sort((a, b) => {
+        if (a.live !== b.live) return a.live ? -1 : 1;
+        if (a.stale !== b.stale) return a.stale ? 1 : -1;
+        if (a.rank !== b.rank) return b.rank - a.rank;
+        return (a.newest === Infinity ? Number.MAX_SAFE_INTEGER : a.newest) - (b.newest === Infinity ? Number.MAX_SAFE_INTEGER : b.newest);
+    });
+}
+
 /**
  * On OpenVibe now: what the sites themselves put forward (the menu cards, frame.menu-card@1 from /api/frame) — the
- * week's trending videos, new worlds, who is live. Real entries only; a card with no entries stays out.
+ * week's trending videos, new worlds, who is live. Real entries only; a card with no entries stays out. The three
+ * best-earned cards are drawn; a stale card is last and short (its two newest rows and its link).
  */
 function renderNet(frame) {
     const box = document.getElementById('td-net');
     const wrap = document.getElementById('td-net-cards');
     if (!box || !wrap) return;
-    const now = Date.now();
-    // Card order: live first; otherwise age score (newer is higher) plus engagement score
-    // (views + replies + viewers, capped at 100). Rows with no relative age retain a declared window.
-    const cards = ((frame && frame.cards) || []).filter((c) => c && Array.isArray(c.items) && c.items.some((it) => tdSafeUrl(it.url))).map((c) => {
-        const live = c.site === 'live' && /live/i.test(c.title || '');
-        const rows = c.items.filter((it) => tdSafeUrl(it.url)).map((it) => {
-            const age = String(it.meta || '').match(/(\d+)\s*(m|min|h|d|w)\s*ago/i);
-            const ageMs = age ? Number(age[1]) * ({ m: 60000, min: 60000, h: 3600000, d: 86400000, w: 604800000 }[age[2].toLowerCase()]) : null;
-            const engagement = [...String(it.meta || '').matchAll(/(\d+)\s*(?:views?|replies|viewers?)/gi)].reduce((n, m) => n + Number(m[1]), 0);
-            return { ...it, ageMs, engagement };
-        });
-        const newest = rows.reduce((min, it) => it.ageMs != null ? Math.min(min, it.ageMs) : min, Infinity);
-        const score = rows.reduce((n, it) => n + Math.min(100, it.engagement), 0);
-        const rank = live ? Infinity : (newest === Infinity ? 0 : 100 - Math.min(100, newest / 3600000)) + score;
-        return { ...c, live, rows, newest, rank };
-    }).sort((a, b) => b.rank - a.rank).slice(0, 3);
+    const cards = tdNowCards(frame).slice(0, 3);
     wrap.replaceChildren(...cards.map((c) => {
         const site = TD_SITES[c.site] || [c.site || 'OpenVibe', 'fa-globe', null];
         // One row per thing: the same title by the same person folds into one, whatever address each copy has (a
         // channel's streams each have their own page: "iZoR_One's Stream" four times was one channel, 2026-11-10).
         const grouped = new Map();
-        for (const row of c.rows.sort((a, b) => (a.ageMs ?? Infinity) - (b.ageMs ?? Infinity))) {
-            const key = `${String(row.title || '').trim().toLowerCase()}\u0000${row.person || row.author || ''}`;
+        for (const row of [...c.rows].sort((a, b) => (a.ageMs ?? Infinity) - (b.ageMs ?? Infinity))) {
+            const key = `${String(row.title || '').trim().toLowerCase()}\u0000${tdRowPerson(row)}`;
             const old = grouped.get(key);
             if (old) old.count++;
             else grouped.set(key, { ...row, count: 1 });
         }
-        const stale = c.newest !== Infinity && c.newest > 7 * 86400000;
-        const visibleRows = [...grouped.values()].slice(0, stale ? 2 : 5);
-        // A ranked card (no row has an age: "most watched this week") says its window once, in its head, not on every row.
-        const ranked = c.newest === Infinity;
+        const visibleRows = [...grouped.values()].slice(0, c.stale ? 2 : 5);
+        // The head's second line: the site, then what the card's order means when its rows carry no age (a ranking's
+        // window, or the order the source sends), or for a card nothing new reached in a week how long it has been quiet.
+        const meaning = c.ranked ? (c.window || 'most watched this week') : (c.newest === Infinity ? (TD_ORDER_MEANING[c.id] || "the site's own order") : null);
         const streams = /^(live|media-hub|video)$/.test(String(c.site || ''));
         const list = tdEl('ol', 'td-net-list', visibleRows.map((it, i) => {
             const src = it.image && tdSafeUrl(it.image.src);
-            const when = ranked ? '' : String(it.meta || '').match(/\d+\s*(?:m|min|h|d|w)\s*ago/i)?.[0] || 'recently';
-            const times = it.count > 1 ? (streams ? `${it.count} streams this week` : `${it.count} times`) : '';
-            const detail = [times, when].filter(Boolean).join(' · ');
+            const times = it.count > 1 ? (c.live ? `${it.count} streams live` : streams ? `${it.count} streams this week` : `${it.count} times`) : '';
+            // Every row says when: its own age, "Live now" for a live row, or the source's own date ("Tomorrow · Holiday").
+            // A ranking's rows say the count and the head says the window once.
+            const detail = c.live
+                ? ['Live now', times || it.detail].filter(Boolean).join(' · ')
+                : c.ranked
+                    ? times || String(it.detail || '').replace(/\s*this week\s*/i, ' ').trim()
+                    : [times, it.detail].filter(Boolean).join(' · ');
             return tdEl('li', '', [tdEl('a', 'td-net-row', [
                 tdEl('span', 'td-net-i', [String(i + 1)]),
                 src ? tdEl('img', 'td-net-thumb', null, { src, alt: '', width: 64, height: 36, loading: 'lazy', decoding: 'async' }) : null,
@@ -194,11 +262,10 @@ function renderNet(frame) {
         }));
         const more = c.more && tdSafeUrl(c.more.url) ? tdEl('a', 'td-more', [String(c.more.label || 'More')], { href: tdSafeUrl(c.more.url) }) : null;
         return tdEl('section', 'td-box td-net-card', [
-            // The head's second line: the site, then the ranking window, or for a card nothing new reached in a week how long
-            // it has been quiet (muted: it explains why the card is short; it is not news).
+            // The quiet line is muted: it explains why the card is short; it is not news.
             tdEl('div', 'td-net-h', [tdEl('span', 'td-site-ic', [tdIcon(site[1])]), tdEl('span', 'td-net-ht', [tdEl('b', '', [String(c.title || site[0])]),
-                tdEl('small', '', [site[0], ranked ? tdEl('span', 'td-net-when', [` · ${c.window || 'most watched this week'}`]) : null,
-                    stale ? tdEl('span', 'td-net-quiet', [` · quiet for ${Math.floor(c.newest / 86400000)} days`]) : null])]), more]),
+                tdEl('small', '', [site[0], meaning ? tdEl('span', 'td-net-when', [` · ${meaning}`]) : null,
+                    c.stale ? tdEl('span', 'td-net-quiet', [` · quiet for ${Math.floor(c.newest / 86400000)} days`]) : null])]), more]),
             list,
         ], { 'data-site': String(c.site || '') });
     }));
