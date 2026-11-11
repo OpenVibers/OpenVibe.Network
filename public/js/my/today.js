@@ -487,4 +487,9 @@ async function loadToday() {
     renderStuff(live, hist, nodes);
     renderMachineSummary(machineList);
     document.getElementById('today').classList.add('td-ready');
+    const machineSection = document.getElementById('sec-machines');
+    if (machineSection && machineSection.classList.contains('active') && typeof location !== 'undefined' && typeof window !== 'undefined' && location.hash === '#machines') {
+        const y = machineSection.getBoundingClientRect().top + window.scrollY - 90;
+        window.scrollTo(0, Math.max(0, y));
+    }
 }

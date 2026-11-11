@@ -155,6 +155,7 @@ async function anonFetch(path, opts = {}) {
 
 // Section switching
 function showSection(id, btn) {
+    document.body.classList.toggle('my-machines-open', id === 'machines');
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.section-tabs button').forEach(b => b.classList.remove('active'));
     document.getElementById('sec-' + id).classList.add('active');

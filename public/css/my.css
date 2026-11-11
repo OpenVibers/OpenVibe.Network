@@ -744,3 +744,5 @@ body.my-needs-visible #ovdk-pill { display:none !important; }
 .mc-role-chip.is-empty { opacity:.7; }
 .me-acts { margin-bottom: 20px; }
 .mc-count { margin:0 0 8px; color:var(--text-muted); font-size:12px; }
+#sec-machines { scroll-margin-top: 90px; }
+body.my-machines-open { padding-bottom: max(112px, calc(100vh - 90px)); }
