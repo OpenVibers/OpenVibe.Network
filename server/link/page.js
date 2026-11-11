@@ -176,7 +176,6 @@ ${CSS}
 <div id="navbar-mount"></div>
 <main class="np" id="main">
 <header class="np-head">
-<p class="np-kicker">OpenVibe Link</p>
 <h1>Your machines, connected</h1>
 <p class="np-lede">Link runs on your computer, server or phone. Your agents use it only as far as you allow, and you choose what, if anything, it offers the network.</p>
 <p class="np-cta">${kit.button({ href: '#install', label: 'Install Link', kind: 'primary' })} ${kit.button({ href: `${DOCS}/install.md`, label: 'The install guide', kind: 'quiet' })}</p>
@@ -250,7 +249,6 @@ ${require('../boost').SCRIPT}
 
 const CSS = `
 .np{max-width:1000px;margin:0 auto;padding:32px 20px 72px}
-.np-kicker{margin:0 0 6px;font-size:.78rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent,#3b82f6)}
 .np h1{margin:0 0 12px;font-size:clamp(1.7rem,5vw,2.6rem);letter-spacing:-.02em;line-height:1.12}
 .np-lede{margin:0 0 18px;max-width:760px;color:var(--text-secondary,#96a7c2);line-height:1.65;font-size:1.03rem}
 .np-lede code,.np code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em}
