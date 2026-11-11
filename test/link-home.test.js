@@ -217,7 +217,12 @@ const SHAPED = {
 
         const linkInstall = await get('/install', 'openvibe.link');
         assert.strictEqual(linkInstall.status, 302);
-        assert.ok(String(linkInstall.headers.location || '').endsWith('/install.sh'));
+        assert.strictEqual(linkInstall.headers.location, SHAPED.installUrl);
+        releaseApi.latest = async () => ({ ...SHAPED, stale: true });
+        const staleInstall = await get('/install', 'openvibe.link');
+        assert.strictEqual(staleInstall.headers.location, release.FALLBACK.installUrl,
+            'a stale cache sends the installer to GitHub\'s latest published asset');
+        releaseApi.latest = async () => SHAPED;
 
         const machines = await get('/machines', 'openvibe.link');
         assert.strictEqual(machines.status, 302, 'a signed-out arrival starts the silent sign-in, not the hub');

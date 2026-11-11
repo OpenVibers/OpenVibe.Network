@@ -80,7 +80,7 @@ const fresh = () => {
         assert.strictEqual(stale.stale, true, 'and marked stale');
         assert.ok(stale.ageMs >= 15 * 60e3, 'its age comes with it');
         await restarted.whenIdle();
-        assert.strictEqual(tries, 2, 'the refresh ran in the background: ls-refs, then the REST fallback');
+        assert.strictEqual(tries, 3, 'the refresh tried ls-refs, REST, then the public release redirect');
 
         const kept = await restarted.latest({
             fetchImpl: async () => { tries += 1; throw new Error('still down'); },
@@ -88,7 +88,7 @@ const fresh = () => {
             dataDir: dir,
         });
         assert.strictEqual(kept.version, 'v1.2.3', 'the failure did not lose the answer');
-        assert.strictEqual(tries, 2, 'and the cooldown kept the next visitor off GitHub');
+        assert.strictEqual(tries, 3, 'and the cooldown kept the next visitor off GitHub');
 
         // ── Refresh: once GitHub is back, the next request gets the new release from the cache ──
         now += 16 * 60e3;
@@ -162,6 +162,43 @@ const fresh = () => {
             assert.deepStrictEqual({ gitCalls, restCalls }, { gitCalls: 4, restCalls: 3 }, 'ls-refs down: one REST call, as before');
         } finally {
             fs.rmSync(tagDir, { recursive: true, force: true });
+        }
+
+        // A host can exhaust the REST rate limit while GitHub's public release redirect still works.
+        // The published release advances the page; a later REST success fills in its asset metadata.
+        const limitedDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-node-limited-'));
+        try {
+            const limited = fresh();
+            await limited.latest({ fetchImpl: ok('v0.54.0'), now: () => now, dataDir: limitedDir });
+            now += 16 * 60e3;
+            let restCalls = 0;
+            const limitedFetch = async (url) => {
+                if (isGit(url)) return { ok: true, status: 200, text: async () => LS(['v0.56.0']) };
+                if (url === limited.LATEST) return {
+                    status: 302,
+                    headers: { get: () => 'https://github.com/OpenVibers/OpenVibe.Link/releases/tag/v0.56.0' },
+                };
+                restCalls += 1;
+                return { ok: false, status: 403 };
+            };
+            const expired = await limited.latest({ fetchImpl: limitedFetch, now: () => now, dataDir: limitedDir });
+            assert.strictEqual(expired.version, 'v0.54.0', 'the first expired request is answered immediately');
+            await limited.whenIdle();
+            const advanced = await limited.latest({ fetchImpl: limitedFetch, now: () => now + 1000, dataDir: limitedDir });
+            assert.strictEqual(restCalls, 1, 'the rate-limited API was tried once');
+            assert.strictEqual(advanced.version, 'v0.56.0', 'the public redirect names the published release');
+            assert.strictEqual(advanced.partial, true, 'asset metadata is marked incomplete');
+            assert.deepStrictEqual(advanced.assets, []);
+            assert.strictEqual(advanced.installUrl, 'https://github.com/OpenVibers/OpenVibe.Link/releases/download/v0.56.0/install.sh');
+
+            now += 16 * 60e3;
+            await limited.latest({ fetchImpl: ok('v0.56.0'), now: () => now, dataDir: limitedDir });
+            await limited.whenIdle();
+            const complete = await limited.latest({ fetchImpl: ok('v0.56.0'), now: () => now + 1000, dataDir: limitedDir });
+            assert.ok(!complete.partial, 'a REST success replaces the incomplete answer');
+            assert.ok(complete.assets.includes('install.sh'), 'and restores the asset list');
+        } finally {
+            fs.rmSync(limitedDir, { recursive: true, force: true });
         }
 
         // ── The token: GITHUB_TOKEN is sent when set, from the environment only ──
