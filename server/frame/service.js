@@ -780,7 +780,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     const dockAuth = (req) => (/^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '');
     const DOCK_ID = /^[A-Za-z0-9._~:-]{1,160}$/;
     const dockId = (v) => (DOCK_ID.test(String(v || '')) ? String(v) : '');
-    function dockRelay(service, method, upstream, { image = false } = {}) {
+    function dockRelay(service, method, upstream, { image = false, maxBytes = 64 * 1024 } = {}) {
         const upstreamPath = typeof upstream === 'function' ? upstream : () => upstream;
         const fallback = service === 'codes' ? 'http://127.0.0.1:4900' : 'http://127.0.0.1:4950';
         return async (req, res) => {
@@ -801,13 +801,14 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
                 }
                 const text = await r.text();
                 res.set('Content-Type', 'application/json; charset=utf-8');
-                return res.status(r.status).send(text.slice(0, 64 * 1024));
+                if (Buffer.byteLength(text) > maxBytes) return res.status(502).json({ error: 'The Dock service answer was too large' });
+                return res.status(r.status).send(text);
             } catch { return res.status(502).json({ error: 'The Dock service did not answer' }); }
         };
     }
     const dockJson = express.json({ limit: '8kb' });
-    router.options(['/agent-view', '/agent-view/*', '/agent/*', '/tasks/*', '/actor', '/actor/*', '/codes-tasks', '/codes-tasks/*'], (req, res) => {
-        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Max-Age': '600' });
+    router.options(['/agent-view', '/agent-view/*', '/agent/*', '/agents/*', '/tasks/*', '/actor', '/actor/*', '/codes-tasks', '/codes-tasks/*'], (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE', 'Access-Control-Max-Age': '600' });
         res.status(204).end();
     });
     // OpenVibe.Codes: the person's agent stream, its last still, and the four controls.
@@ -836,6 +837,19 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     router.get('/actor', dockRelay('actor', 'GET', '/api/v1/me/actor'));
     for (const what of ['pause', 'resume', 'tell']) router.post(`/actor/${what}`, dockJson, dockRelay('actor', 'POST', `/api/v1/me/actor/${what}`));
     for (const what of ['answer', 'decline']) router.post(`/actor/asks/:id/${what}`, dockJson, dockRelay('actor', 'POST', (req) => (dockId(req.params.id) ? `/api/v1/me/actor/asks/${encodeURIComponent(req.params.id)}/${what}` : null)));
+    // One owner's agent sheet on any site. Actor checks ownership and capabilities; the relay accepts only its
+    // fixed ID shapes and passes the person's Bearer upstream. The larger answer includes up to 100 work records.
+    const AGENT_ID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
+    const MEMORY_ID = /^mem_[0-9A-HJKMNP-TV-Z]{26}$/;
+    const agentPath = (req, tail = '') => AGENT_ID.test(String(req.params.id || '')) ? `/api/v1/me/agents/${req.params.id}${tail}` : null;
+    router.get('/agents/:id/sheet', dockRelay('actor', 'GET', (req) => {
+        const path = agentPath(req);
+        return path ? `${path}?view=sheet` : null;
+    }, { maxBytes: 512 * 1024 }));
+    router.patch('/agents/:id', dockJson, dockRelay('actor', 'PATCH', (req) => agentPath(req)));
+    router.post('/agents/:id/memory', dockJson, dockRelay('actor', 'POST', (req) => agentPath(req, '/memory')));
+    router.patch('/agents/:id/memory/:mem', dockJson, dockRelay('actor', 'PATCH', (req) => MEMORY_ID.test(String(req.params.mem || '')) ? agentPath(req, `/memory/${req.params.mem}`) : null));
+    router.delete('/agents/:id/memory/:mem', dockRelay('actor', 'DELETE', (req) => MEMORY_ID.test(String(req.params.mem || '')) ? agentPath(req, `/memory/${req.params.mem}`) : null));
     // OpenVibe.Codes' person tasks API (the Dock's Code tab): the latest tasks running first, one start, one stop.
     // ?limit= is the list's cap (the Dock asks with 8); the stop's id is a tsk_ id, anything else is not a task.
     const TASK_ID = /^tsk_[0-9A-HJKMNP-TV-Z]{26}$/;

@@ -11,6 +11,8 @@ const { getDb } = require('../server/db/database');
 const { createFrameService } = require('../server/frame/service');
 
 const TOKEN = 'Bearer abcdefghijklmnop.qrstu';
+const AGENT_ID = 'agt_00000000000000000000000000';
+const MEMORY_ID = 'mem_00000000000000000000000000';
 // A one-pixel JPEG: the still the Dock shows when nothing is live.
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0xff, 0xd9]);
 
@@ -22,7 +24,8 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 
             const chunks = [];
             req.on('data', (c) => chunks.push(c));
             req.on('end', () => {
-                asked.push({ svc: name, method: req.method, url: req.url, auth: req.headers.authorization || '', cookie: req.headers.cookie || '', body: Buffer.concat(chunks).toString('utf8') });
+                req.body = Buffer.concat(chunks).toString('utf8');
+                asked.push({ svc: name, method: req.method, url: req.url, auth: req.headers.authorization || '', cookie: req.headers.cookie || '', body: req.body });
                 if (down) { res.statusCode = 503; return res.end('{"error":"down"}'); }
                 return handler(req, res, new URL(req.url, 'http://x'));
             });
@@ -47,6 +50,10 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 
     });
     const actor = stub('actor', (req, res, u) => {
         res.setHeader('content-type', 'application/json');
+        if (u.pathname === `/api/v1/me/agents/${AGENT_ID}` && u.searchParams.get('view') === 'sheet') return res.end(JSON.stringify({ agent: { id: AGENT_ID, name: 'Helper' }, work: [], asks_empty: 'Requests to approve or decline will appear here.' }));
+        if (u.pathname === `/api/v1/me/agents/${AGENT_ID}` && req.method === 'PATCH') return res.end(JSON.stringify({ status: JSON.parse(req.body || '{}').status }));
+        if (u.pathname === `/api/v1/me/agents/${AGENT_ID}/memory` && req.method === 'POST') { res.statusCode = 201; return res.end(JSON.stringify({ text: JSON.parse(req.body || '{}').text })); }
+        if (u.pathname === `/api/v1/me/agents/${AGENT_ID}/memory/${MEMORY_ID}` && (req.method === 'PATCH' || req.method === 'DELETE')) { res.statusCode = req.method === 'DELETE' ? 204 : 200; return res.end(req.method === 'DELETE' ? '' : JSON.stringify({ text: JSON.parse(req.body || '{}').text })); }
         if (u.pathname === '/api/v1/agent/timeline' && req.method === 'GET') return res.end(JSON.stringify({ now: null, needs_you: [], entries: [], counts: { mode: u.searchParams.get('mode') } }));
         if (/^\/api\/v1\/agent\/approvals\/[a-z]+\/[A-Za-z0-9._~-]+\/decide$/.test(u.pathname) && req.method === 'POST') { res.statusCode = 201; return res.end(JSON.stringify({ product: 'actor', state: 'approved' })); }
         if (u.pathname === '/api/v1/agent/kill-switch' && req.method === 'POST') return res.end(JSON.stringify({ ok: true }));
@@ -153,6 +160,30 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 
         assert.strictEqual(r.status, 200);
         assert.ok(asked.some((x) => x.url === `/api/v1/me/actor/asks/ask_1/${what}` && x.method === 'POST'));
     }
+
+    // The sheet and its owner edits use fixed paths, pass only the Bearer, and reject malformed IDs locally.
+    ({ r, d } = await get(`/agents/${AGENT_ID}/sheet`, { Authorization: TOKEN, Cookie: 'ov_token=secret' }));
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(d.agent.name, 'Helper');
+    hit = asked.at(-1);
+    assert.strictEqual(hit.url, `/api/v1/me/agents/${AGENT_ID}?view=sheet`);
+    assert.strictEqual(hit.auth, TOKEN);
+    assert.strictEqual(hit.cookie, '');
+    const sheetCalls = asked.length;
+    ({ r } = await get(`/agents/${AGENT_ID}/sheet`));
+    assert.strictEqual(r.status, 401);
+    ({ r } = await get('/agents/bad/sheet', { Authorization: TOKEN }));
+    assert.strictEqual(r.status, 404);
+    assert.strictEqual(asked.length, sheetCalls);
+    const patch = await fetch(`${base}/agents/${AGENT_ID}`, { method: 'PATCH', headers: { Authorization: TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paused' }) });
+    assert.strictEqual((await patch.json()).status, 'paused');
+    ({ r, d } = await send(`/agents/${AGENT_ID}/memory`, { text: 'Keep this fact' }));
+    assert.strictEqual(r.status, 201);
+    assert.strictEqual(d.text, 'Keep this fact');
+    const editMemory = await fetch(`${base}/agents/${AGENT_ID}/memory/${MEMORY_ID}`, { method: 'PATCH', headers: { Authorization: TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'Revised fact' }) });
+    assert.strictEqual((await editMemory.json()).text, 'Revised fact');
+    const removeMemory = await fetch(`${base}/agents/${AGENT_ID}/memory/${MEMORY_ID}`, { method: 'DELETE', headers: { Authorization: TOKEN } });
+    assert.strictEqual(removeMemory.status, 204);
 
     // A preflight is answered for every path; an upstream status passes back, and a service that is not there is
     // a 502, never a hang.
