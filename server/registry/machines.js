@@ -114,6 +114,12 @@ function machineOf(m) {
     if (typeof m.last_seen_at === 'string' && m.last_seen_at) out.last_seen_at = m.last_seen_at;
     if (typeof m.node_version === 'string' && m.node_version) out.node_version = m.node_version;
     if (typeof m.node_id === 'string' && PRINCIPAL.test(m.node_id)) out.principal_id = m.node_id;
+    // Bot has already bounded this Link heartbeat. Keep only the readiness facts the
+    // owner's machine card needs; never pass a login, key, or account through.
+    if (Array.isArray(m.fleet)) out.fleet = m.fleet.slice(0, 16).filter((a) => a && /^[a-z0-9-]{1,40}$/.test(a.agent)).map((a) => ({
+        agent: a.agent, installed: a.installed === true, signed_in: a.signed_in === true,
+    }));
+    if (typeof m.fleet_at === 'string' && m.fleet_at) out.fleet_at = m.fleet_at;
     // The owner's controls (the Link hub's machine card): each switch the machine itself reported, plus what its
     // computer plugin offers. The values are Bot's, never an assumption: a machine that has not said is off. Only
     // the shape is narrowed here (no file roots, tools or paths), as with the rest of the hub's view.
