@@ -807,7 +807,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         };
     }
     const dockJson = express.json({ limit: '8kb' });
-    router.options(['/agent-view', '/agent-view/*', '/agent/*', '/agents/*', '/codes-agents/*', '/tasks/*', '/actor', '/actor/*', '/codes-tasks', '/codes-tasks/*', '/codes-runs/*'], (req, res) => {
+    router.options(['/agent-view', '/agent-view/*', '/agent/*', '/agents/*', '/codes-agents/*', '/tasks/*', '/actor', '/actor/*', '/codes-tasks', '/codes-tasks/*', '/codes-runs/*', '/agent-runs/*'], (req, res) => {
         res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE', 'Access-Control-Max-Age': '600' });
         res.status(204).end();
     });
@@ -867,7 +867,9 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     const RUN_ID = /^tsk_[0-9A-HJKMNP-TV-Z]{26}(?:~[1-9][0-9]*)?$/;
     router.get('/codes-runs/:id', dockRelay('codes', 'GET', (req) => RUN_ID.test(String(req.params.id || ''))
         ? `/api/v1/runs/${encodeURIComponent(req.params.id)}` : null, { maxBytes: 512 * 1024 }));
-    router.get('/codes-runs/:id/events', async (req, res) => {
+    router.get('/agent-runs/actor/:id', dockRelay('actor', 'GET', (req) => RUN_ID.test(String(req.params.id || ''))
+        ? `/api/v1/runs/${encodeURIComponent(req.params.id)}` : null, { maxBytes: 512 * 1024 }));
+    const runEvents = (service) => async (req, res) => {
         res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'private, no-store', 'Vary': 'Authorization' });
         const auth = dockAuth(req);
         const id = String(req.params.id || '');
@@ -878,7 +880,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const abort = new AbortController();
         res.on('close', () => abort.abort());
         try {
-            const upstream = await fetch(new URL(`/api/v1/runs/${encodeURIComponent(id)}/events`, svcUrl('codes', 'http://127.0.0.1:4900')).href, {
+            const upstream = await fetch(new URL(`/api/v1/runs/${encodeURIComponent(id)}/events`, svcUrl(service, service === 'codes' ? 'http://127.0.0.1:4900' : 'http://127.0.0.1:4950')).href, {
                 headers: { Authorization: auth, Accept: 'text/event-stream', 'Last-Event-ID': last }, redirect: 'manual', signal: abort.signal
             });
             if (!upstream.ok || !String(upstream.headers.get('content-type') || '').startsWith('text/event-stream')) {
@@ -895,7 +897,9 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             }
             res.end();
         } catch { if (!res.headersSent) res.status(502).json({ error: 'run stream unavailable' }); else res.end(); }
-    });
+    };
+    router.get('/codes-runs/:id/events', runEvents('codes'));
+    router.get('/agent-runs/actor/:id/events', runEvents('actor'));
 
     // GET /api/frame/suggest?q=&owner=&limit= — the navbar's magnifier (openvibe-shared search.js): OpenVibe.Search's
     // suggestions, asked through Network because every site's connect-src already lets the navbar reach

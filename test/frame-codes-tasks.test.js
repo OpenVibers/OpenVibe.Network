@@ -41,7 +41,7 @@ const TASK = 'tsk_01J8Z3Q4R5S6T7V8W9X0Y1Z2A3';
         });
     });
     await new Promise((r) => codes.listen(0, '127.0.0.1', r));
-    const svc = await createFrameService(getDb(), { services: { codes: { internalUrl: `http://127.0.0.1:${codes.address().port}` } } }, null);
+    const svc = await createFrameService(getDb(), { services: { codes: { internalUrl: `http://127.0.0.1:${codes.address().port}` }, actor: { internalUrl: `http://127.0.0.1:${codes.address().port}` } } }, null);
     const app = express();
     app.set('trust proxy', 'loopback');
     app.use('/api/frame', svc.router);
@@ -115,6 +115,11 @@ const TASK = 'tsk_01J8Z3Q4R5S6T7V8W9X0Y1Z2A3';
         assert.strictEqual(r.status, 404);
         ({ r } = await get(`/codes-runs/${TASK}`));
         assert.strictEqual(r.status, 401);
+        ({ r, d } = await get(`/agent-runs/actor/${TASK}`, { Authorization: TOKEN }));
+        assert.strictEqual(r.status, 200);
+        assert.strictEqual(d.id, TASK);
+        const actorEvents = await fetch(`${base}/agent-runs/actor/${TASK}/events`, { headers: { Authorization: TOKEN } });
+        assert.match(await actorEvents.text(), /STEP_STARTED/);
 
         // Preflights end here.
         const pre = await fetch(`${base}/codes-tasks`, { method: 'OPTIONS' });
