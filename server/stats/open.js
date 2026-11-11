@@ -134,7 +134,7 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
 
     // ── Accounts and OpenCoins: Network's own tables ──
     async function accounts(days) {
-        const real = 'COALESCE(is_anon, 0) = 0 AND COALESCE(is_banned, 0) = 0';
+        const real = 'COALESCE(is_anon, 0) = 0 AND COALESCE(is_banned, 0) = 0 AND COALESCE(is_test, 0) = 0';
         const since = (d) => new Date(now() - d * DAY).toISOString().slice(0, 19).replace('T', ' ');
         const total = await one(`SELECT COUNT(*) AS n FROM users WHERE ${real}`);
         if (total == null) return null;

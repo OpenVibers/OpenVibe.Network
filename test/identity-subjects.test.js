@@ -55,6 +55,15 @@ assert.strictEqual((await subjects.resolve(db, { subject_id: guest.subject_id })
 assert.strictEqual((await subjects.resolve(db, { source_system: 'live', source_id: '321' })).subject.id, beth.subject_id, 'seeded from a reported Live link');
 assert.strictEqual((await db.prepare("SELECT COUNT(*) n FROM identity_legacy_map WHERE source_system = 'tools'").get()).n, 0, "OAuth 'network:<id>' links say nothing about site ids");
 assert.strictEqual(await subjects.resolve(db, { source_system: 'live', source_id: '999' }), null);
+assert.strictEqual((await subjects.resolve(db, { source_system: 'network', source_type: 'user', source_id: 1 })).is_test, false, 'a person is not a test account');
+
+// Test accounts: the flag is in every projection, and the internal list names only the test accounts.
+await db.prepare("INSERT INTO users (id, username, password_hash, is_test) VALUES (4, 'ovprobe_merge_keep', 'x', 1)").run();
+const probeProjection = await subjects.resolve(db, { source_system: 'network', source_type: 'user', source_id: 4 });
+assert.strictEqual(probeProjection.is_test, true, 'the projection says the account is a test one');
+assert.deepStrictEqual((await subjects.testProjections(db)).map((p) => p.username), ['ovprobe_merge_keep']);
+assert.ok(subjects.isTestUsername('ovprobe_call') && subjects.isTestUsername('OVPROBE_new'), 'the probe sign-up prefix marks a new account');
+assert.ok(!subjects.isTestUsername('alex') && !subjects.isTestUsername('probe_alex'), 'an ordinary name is not a test account');
 
 // A row inserted by a path that forgot subject_id is fixed lazily.
 await db.prepare("INSERT INTO users (id, username, password_hash) VALUES (3, 'cat', 'x')").run();
@@ -132,6 +141,11 @@ const { signToken } = require('../server/auth/routes');
     assert.strictEqual((await subjects.resolve(db, { source_system: 'live', source_id: '555' })).network_user_id, 3, '/internal/link-account also writes the legacy map');
     h = await call('/legacy-map', { method: 'POST', body: JSON.stringify({ entries: [] }) });
     assert.strictEqual(h.status, 400);
+    h = await call('/test-subjects');
+    assert.strictEqual(h.status, 200);
+    assert.deepStrictEqual(h.body.subjects.map((p) => [p.username, p.is_test]), [['ovprobe_merge_keep', true]]);
+    h = await fetch(base + '/test-subjects').then(async x => ({ status: x.status, body: await x.json() }));
+    assert.strictEqual(h.status, 401, 'the test-account list is internal');
     h = await fetch(base + '/resolve?system=live&id=77').then(x => ({ status: x.status, code: x.headers.get('content-type') }));
     assert.strictEqual(h.status, 401, 'no service token, no identity data');
     h = await fetch(base + '/resolve?system=live&id=77', { headers: { 'x-internal-key': 'k-test' } }).then(async x => ({ status: x.status, body: await x.json() }));

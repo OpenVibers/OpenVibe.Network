@@ -20,6 +20,7 @@ const ANN = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPA';
 const BOB = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPB';
 const CAT = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPC';
 const DAN = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPD';
+const PROBE = 'usr_01JAB2C3D4E5F6G7H8J9K0MNPE';
 const MIN = 60_000;
 
 (async () => {
@@ -31,13 +32,16 @@ const ago = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
 let NOW = Date.parse('2026-11-10T10:00:00Z');
 await db.prepare(`INSERT INTO users (id, username, display_name, password_hash, subject_id, role, created_at) VALUES
     (1, 'ann', 'Ann', 'x', ?, 'user', ?), (2, 'bob', 'Bob', 'x', ?, 'streamer', ?),
-    (3, 'cat', 'Cat', 'x', ?, 'user', ?), (4, 'dan', 'Dan', 'x', ?, 'user', ?)`)
-    .run(ANN, ago(NOW - 2 * 86_400_000), BOB, ago(NOW - 3 * 86_400_000), CAT, ago(NOW - 4 * 86_400_000), DAN, ago(NOW - 40 * 86_400_000));
+    (3, 'cat', 'Cat', 'x', ?, 'user', ?), (4, 'dan', 'Dan', 'x', ?, 'user', ?),
+    (5, 'ovprobe_frame', 'Probe', 'x', ?, 'user', ?)`)
+    .run(ANN, ago(NOW - 2 * 86_400_000), BOB, ago(NOW - 3 * 86_400_000), CAT, ago(NOW - 4 * 86_400_000), DAN, ago(NOW - 40 * 86_400_000), PROBE, ago(NOW - 86_400_000));
+await db.prepare('UPDATE users SET is_test = 1 WHERE id = 5').run();
 // Ann shows her status; Bob turned it off; Cat is invisible. Dan has never beaten (no presence row).
 const ins = db.prepare(`INSERT INTO person_presence (subject_id, state, show_status, last_active_at, last_heartbeat_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`);
 await ins.run(ANN, 'auto', 1, ago(NOW), ago(NOW), ago(NOW));
 await ins.run(BOB, 'auto', 0, ago(NOW), ago(NOW), ago(NOW));
 await ins.run(CAT, 'invisible', 1, ago(NOW), ago(NOW), ago(NOW));
+await ins.run(PROBE, 'auto', 1, ago(NOW), ago(NOW), ago(NOW));
 
 // A Live edge whose list the test controls; Live is the only service /online reads over the network.
 let liveRows = [{ username: 'eve', display_name: 'Eve', is_live: 1, total_viewer_count: 7 },
@@ -79,11 +83,13 @@ seen.seenMember(ANN, 'live', NOW - MIN);
 seen.seenMember(BOB, 'games', NOW - 2 * MIN);
 seen.seenMember(CAT, 'live', NOW - 3 * MIN);
 seen.seenMember(DAN, 'community', NOW - 4 * MIN);   // seen, but no presence row: counted, not named
+seen.seenMember(PROBE, 'live', NOW);                 // a test account: counted out and never named
 
 let o = await svc.online('live');
-assert.strictEqual(o.members, 4, 'four signed-in people were seen, including the two who hide');
+assert.strictEqual(o.members, 4, 'four signed-in people were seen, including the two who hide; the test account is not one of them');
 assert.strictEqual(o.guests, 0);
-assert.deepStrictEqual(o.people.map((p) => p.username), ['ann'], 'only Ann may be named');
+assert.deepStrictEqual(o.people.map((p) => p.username), ['ann'], 'only Ann may be named; a test account never is');
+assert.ok(!JSON.stringify(o).includes('ovprobe_frame'), 'the test account is nowhere in the public read');
 assert.deepStrictEqual(o.people[0], { name: 'Ann', username: 'ann', avatar: 'https://openvibe.network/avatar/ann?s=64', site: 'Live' });
 assert.ok(!JSON.stringify(o).includes('bob') && !JSON.stringify(o).includes('cat'), 'a hidden member is never named');
 assert.strictEqual(o.more, 0);

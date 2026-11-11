@@ -52,6 +52,7 @@ router.use('/chat-app-links', principals.guard('identity.subject.resolve'), requ
 // Identity lookups accept a service token with identity.subject.resolve (or the key, as before).
 router.get('/identity/resolve', principals.guard('identity.subject.resolve'));
 router.post('/identity/resolve-batch', principals.guard('identity.subject.resolve'));
+router.get('/identity/test-subjects', principals.guard('identity.subject.resolve'));
 // Writing the legacy map is part of identity resolution (ADR-001; identity.subject.resolve takes
 // identity.legacy-identity-map@1). TODO(contracts): a narrower identity.legacy_map.write capability.
 router.post('/identity/legacy-map', principals.guard('identity.subject.resolve'), ownSourceSystem);

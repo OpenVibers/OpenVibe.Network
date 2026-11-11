@@ -28,6 +28,8 @@ const { createOpenStats, render } = require('../server/stats/open');
     await user.run(9003, 'osc', 'x', at(9), 0, 0);
     await user.run(9004, 'osguest', 'x', at(1), 1, 0);
     await user.run(9005, 'osbanned', 'x', at(1), 0, 1);
+    await user.run(9006, 'ovprobe_os', 'x', at(1), 0, 0);
+    await db.prepare('UPDATE users SET is_test = 1 WHERE id = 9006').run();
 
     // Live's analytics and home numbers; Prometheus down.
     const asked = [];
@@ -55,7 +57,9 @@ const { createOpenStats, render } = require('../server/stats/open');
     assert.ok(!d.sites.some((s) => s.host === 'evil.example'), 'only OpenVibe sites');
     assert.strictEqual(d.sites[0].id, 'live', 'most visited first');
     assert.strictEqual(d.totals.pageviews, d.sites.reduce((a, s) => a + (s.pageviews || 0), 0));
-    assert.strictEqual(d.accounts.new, 2, 'two new accounts this week (no guests, no banned)');
+    assert.strictEqual(d.accounts.new, 2, 'two new accounts this week (no guests, no banned, no test accounts)');
+    assert.strictEqual(d.accounts.total, 3, 'a test account is not in the public account count');
+    assert.strictEqual(d.accounts.daily.reduce((a, p) => a + p.n, 0), 2, 'the daily series leaves test accounts out too');
     assert.strictEqual(d.accounts.prev, 1);
     assert.deepStrictEqual(d.totals.services, { up: 1, checked: 2 });
     assert.strictEqual(d.live.live_now, 2);
