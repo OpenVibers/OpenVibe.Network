@@ -113,7 +113,8 @@ function summary(service, namespace, extra = {}) {
         const compute = await ownerCall('GET','/api/admin/ai/config/compute/status');
         assert.strictEqual(compute.status,200);
         assert.strictEqual(compute.body.compute.budgets[0].near_cap,true);
-        assert.ok(run.seen[0].headers['x-ov-subject']);
+        const computeRequest = run.seen.find((request) => request.url === '/internal/config/compute-status');
+        assert.ok(computeRequest && computeRequest.headers['x-ov-subject']);
 
         // ── Only the owner: a user and a plain admin are refused, and nothing reaches a service ──
         let r = await call('alice', 'GET', '/api/admin/ai/config/services');
