@@ -713,3 +713,6 @@ router.post('/userinfo', oidc.userinfo);
 module.exports = router;
 module.exports.cleanLoginHint = cleanLoginHint;
 module.exports.siteNameForHost = siteNameForHost;
+// Same-service arrivals (openvibe.link's hub) sign their session through these instead of the HTTP grant.
+module.exports.issueTokenPair = issueTokenPair;
+module.exports.recordLinkedService = recordLinkedService;

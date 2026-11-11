@@ -178,6 +178,16 @@ function openInitialSection() {
     if (isAnonSession() && ['notifications','linked','security','data','content','approvals','machines','apps'].includes(routeSection)) {
         return showSection('anon');
     }
+    // Pairing intent: openvibe.link/machines#pair (and /pair, which lands on ?pair=1 so the intent survives
+    // a sign-in round trip). An account session opens Machines and starts pairing at once; anywhere else the
+    // hash or query is just ignored.
+    let pairWanted = hash === 'pair';
+    try { pairWanted = pairWanted || new URLSearchParams(window.location.search).get('pair') === '1'; } catch { /* keep the hash answer */ }
+    if (pairWanted && !isAnonSession() && document.getElementById('sec-machines')) {
+        showSection('machines');
+        if (typeof mcPair === 'function') mcPair();
+        return;
+    }
     if (document.getElementById('sec-' + routeSection)) {
         showSection(routeSection);
     }

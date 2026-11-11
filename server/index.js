@@ -486,6 +486,9 @@ const qrSignin = require('./auth/qr-signin').createQrSignin({
 app.locals.qrSignin = qrSignin;
 // The moderation audit log for staff (staff.moderation.logs): server/admin/moderation-audit.js.
 app.use('/api/v1/staff/moderation-audit', requireAuth, moderationAudit.router());
+// The shared composer (composer.prefs@1, composer.mention@1): a person's settings on every site, revision-checked,
+// and the @ menu (people they follow first, then public people; OpenVibe Git repositories; first-party sites).
+app.use('/api/v1', rateLimit({ windowMs: 60_000, max: 240 }), require('./composer/routes').createRouter({ db, requireAuth, selfToken, config }));
 // Sharing (design 2026-11-06): what is shared with this person, the share picker's suggestions and
 // the @name check it uses (server/sharing/routes.js).
 app.use('/api/v1', require('./sharing/routes').createSharingApi({ ...sharing, requireAuth }));
@@ -690,6 +693,12 @@ app.get('/internal/blocks', require('./identity/principals').guard('network.bloc
 app.use('/api/v1/realtime', rateLimit({ windowMs: 60_000, max: 60 }), require('./auth/realtime-ticket').router({
     db, requireAuth: requireDock('activity'), privateKey, issuer: config.jwt.issuer, streamUrl: process.env.OV_EVENTS_PUBLIC_URL,
 }));
+// One-time cross-site sign-in handoff tickets (server/auth/handoff.js): a source site mints a
+// 60 s ticket for one destination client, the destination redeems it for an authorization code.
+// Plain user sessions only (never a dock-scoped grant): a ticket signs a browser in.
+app.use('/api/v1/handoff', rateLimit({ windowMs: 60_000, max: 60 }), require('./auth/handoff').router({
+    db, requireAuth,
+}));
 
 // ── Routes ───────────────────────────────────────────────────
 // Public key endpoint (services fetch this to verify JWTs).
@@ -736,7 +745,7 @@ homePopularity.refresh().catch(() => {});   // floating-ok: the first reader get
 const tryNext = require('./home/try-next').createTryNext({ db, popularity: homePopularity });
 // The Node's own front door on its own subdomain (openvibe.link): the Host header decides. It mounts
 // before the agent layer, so the Node's page is not answered by Network's home renderer.
-app.use(require('./link/routes').createLinkRoutes({ release: release.release }));
+app.use(require('./link/routes').createLinkRoutes({ release: release.release, db, config, publicKey }));
 // The agent layer (openvibe-shared/agent-layer): /.well-known/agent.json, and the public pages as Markdown twins. It
 // answers their HTML as well, with the discovery tags in the head, so it mounts before the routes for those pages.
 require('openvibe-shared/agent-layer').mount(app, {

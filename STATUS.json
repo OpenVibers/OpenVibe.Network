@@ -7,8 +7,8 @@
   "port": 4000,
   "domain": "openvibe.network (with auth., api., admin., my. and themes.openvibe.network in its manifest)",
   "contracts": "openvibe-contracts v0.400.0",
-  "sdk": "openvibe-sdk v0.146.0",
-  "shared": "openvibe-shared v4.200.0",
+  "sdk": "openvibe-sdk v0.147.0",
+  "shared": "openvibe-shared v4.201.0",
   "capabilities": [
     "identity.subject.resolve",
     "mods.grant.manage",
@@ -56,5 +56,5 @@
     "AI listed under Report",
     "Bench host redirects to Report AI"
   ],
-  "updated": "2026-11-10"
+  "updated": "2026-11-11"
 }
