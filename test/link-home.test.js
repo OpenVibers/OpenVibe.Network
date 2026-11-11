@@ -88,7 +88,7 @@ const SHAPED = {
     assert.ok(!youngCopy.includes('could not be reached'), 'a stale copy younger than a day says nothing about the outage');
     assert.ok(html.includes('<title>OpenVibe Link: your machines, connected</title>'), 'the title is Link\'s');
     assert.ok(html.includes('<h1>Your machines, connected</h1>'), 'the h1 is Link\'s');
-    assert.ok(html.includes('<p class="np-kicker">OpenVibe Link</p>'), 'the kicker names Link');
+    assert.ok(html.includes('<header class="np-head">\n<h1>Your machines, connected</h1>'), 'the hero starts with its title');
     assert.ok(html.includes('Link runs on your computer, server or phone. Your agents use it only as far as you allow, and you choose what, if anything, it offers the network.'), 'the lead is the brief\'s, word for word');
     assert.ok(html.includes('>Install Link<'), 'the primary button installs Link');
     assert.ok(html.includes('>The install guide<'), 'and the guide keeps its name');
