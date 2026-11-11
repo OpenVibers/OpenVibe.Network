@@ -15,6 +15,7 @@ assert.equal(siteForHost('yt.openvibe.tools').id, 'tools');
 assert.equal(siteForHost('bench.openvibe.services').id, 'report', 'Bench\'s host belongs to Report now');
 assert.equal(siteForHost('evil.example'), null);
 assert.equal(siteForHost('openvibe.computer').id, 'computer', 'Computer is listed in the Network Frame while its Contracts manifest is pending');
+assert.equal(siteForHost('openvibe.directory').id, 'directory', 'the released Directory manifest belongs to the live site');
 assert.equal(GROUPS.find((g) => g.sites.includes('computer')).id, 'make');
 assert.strictEqual(svc.ranking().at, null, 'cold start: no use counted yet (the registry\'s featured list says so)');
 
