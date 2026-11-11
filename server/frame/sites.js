@@ -80,7 +80,7 @@ const MENU_LINE = {
     download: 'Your files', cam: 'Your camera, in private', tours: 'Cities, routes, stays',
     community: 'Posts and pastes', chat: 'Chat with anyone', tips: 'Support streamers', vip: 'Back your creators', mail: 'Masks and inboxes', help: 'Help nearby', network: 'Your account',
     games: 'Play in your browser', quest: 'Earn badges', surf: 'Surf maps and the web', fun: 'Something to do', meme: 'Memes with receipts', casino: 'Odds shown, chips free', inventory: 'Your items',
-    news: 'Sourced, not spun', today: 'Your schedule', report: 'Your numbers, honest', search: 'Search everything', wiki: 'Facts with sources', blog: 'Write long-form', vision: 'Ask a picture',
+    news: 'Sourced, not spun', today: 'Your schedule', report: 'Your numbers, honest', search: 'Search everything', wiki: 'Facts with sources', blog: 'Write long-form', vision: 'Ask a picture', compare: 'Weigh your options',
     deals: 'Deals people share', coupons: 'Codes that work', shoes: 'Every shoe, every price', reviews: 'Honest reviews', trade: 'Watch the markets', rent: 'Places to rent', work: 'Find a job',
     tools: 'Every online tool', design: 'Try themes live', domains: 'Names and prices', host: 'Compare hosting', image: 'Edit photos in your browser', lock: 'Files only you can open', food: 'Food near you',
     space: 'Host a site or app', codes: 'Code with any agent', bot: 'Drive a robot', actor: 'The agent engine', computer: 'Your computer, your way', connect: 'Share a port with Link', directory: 'Listings with sources',

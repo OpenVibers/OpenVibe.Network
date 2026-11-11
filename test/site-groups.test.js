@@ -1,5 +1,6 @@
 'use strict';
-// The owner's one site list (2026-11-10, plan ask 274): eight groups, in this order, at most seven tiles each,
+// The owner's one site list (2026-11-10, plan ask 274): eight groups, in this order, at most seven tiles each
+// (Compare is Read & ask's eighth after Contracts 0.408.0; the owner's next regrouping decides),
 // every site in exactly one of them (or a named merge with a domain that keeps answering). The same list feeds the
 // menu, its You-tab folders, the footer's Network column and the home pages' "More on OpenVibe".
 const assert = require('assert');
@@ -16,8 +17,8 @@ assert.deepStrictEqual(GROUPS.map((g) => g.id), ['watch', 'talk', 'play', 'read'
 // At most seven tiles a group, and every listed place in exactly one group.
 for (const g of GROUPS) assert.ok(g.sites.length <= 8, `${g.name}: ${g.sites.length} tiles`);
 for (const s of LISTED) assert.strictEqual(GROUPS.filter((g) => g.sites.includes(s.id)).length, 1, `${s.id}: exactly one group`);
-assert.deepStrictEqual(GROUPS.map((g) => g.sites.length), [7, 7, 7, 7, 8, 7, 7, 7], 'Compare (Contracts 0.408.0) is Read & ask\'s eighth until the owner regroups');
-assert.strictEqual(LISTED.filter((s) => s.status === 'open').length, 55 + Number(Boolean(contracts.services.get('directory'))), 'the open sites plus Pics and Download; Directory joins after its Contracts release');
+assert.deepStrictEqual(GROUPS.map((g) => g.sites.length), [7, 7, 7, 8, 7, 7, 7, 7], 'Compare (Contracts 0.408.0) is Read & ask\'s eighth until the owner regroups');
+assert.strictEqual(LISTED.filter((s) => s.status === 'open').length, 56 + Number(Boolean(contracts.services.get('directory'))), 'the open sites plus Pics and Download; Compare and Directory join after their Contracts releases');
 assert.deepStrictEqual(PRODUCTS.map((p) => LISTED.find((s) => s.id === p.id).status), ['open', 'open'], 'Pics and Download are open entries');
 
 // Every manifest site is in one group, or is one of the named merges: Media into Video, Bench into Report,
@@ -47,4 +48,4 @@ assert.strictEqual(siteForHost('bench.openvibe.services').id, 'report', 'Bench b
 assert.strictEqual(siteForHost('openvibe.media').id, 'media', 'Media still answers; it is Video\'s API, not a tile');
 assert.ok(SITES.some((s) => s.id === 'media'), 'Media stays a known host');
 
-console.log(`site groups: ${LISTED.filter((s) => s.status === 'open').length} open places in ${GROUPS.length} groups, at most seven a group, every manifest site placed`);
+console.log(`site groups: ${LISTED.filter((s) => s.status === 'open').length} open places in ${GROUPS.length} groups, at most eight (Read & ask), every manifest site placed`);
