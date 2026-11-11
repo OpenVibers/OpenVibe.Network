@@ -3,7 +3,8 @@ const express = require('express');
 const { SITES, PRODUCTS } = require('./sites');
 
 const allowedHosts = new Set([...SITES, ...PRODUCTS].map((site) => site.host));
-allowedHosts.add('openvibe.link');
+for (const host of ['openvibe.link', 'openvibe.my', 'openvibe.mail', 'openvibe.search',
+    'openvibe.shoes', 'openvibe.connect', 'openvibe.party', 'openvibe.inventory']) allowedHosts.add(host);
 const router = express.Router();
 
 function parentOrigin(value) {

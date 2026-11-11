@@ -7,6 +7,7 @@ const { router, parentOrigin } = require('../server/frame/live-player');
 
 assert.equal(parentOrigin('https://openvibe.video'), 'https://openvibe.video');
 assert.equal(parentOrigin('https://openvibe.link'), 'https://openvibe.link');
+assert.equal(parentOrigin('https://openvibe.my'), 'https://openvibe.my');
 assert.equal(parentOrigin('https://evil.example'), null);
 assert.equal(parentOrigin('http://openvibe.video'), null);
 assert.equal(parentOrigin('https://openvibe.video/path'), null);
