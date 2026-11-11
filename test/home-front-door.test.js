@@ -153,15 +153,19 @@ assert.ok(html.includes('href="https://openvibe.video/v/9"') && html.includes('<
     assert.ok(page.includes('onerror="if(this.dataset.full&&this.src!==this.dataset.full){this.src=this.dataset.full;return}this.src=this.dataset.fallback"'), 'the original is retried once, then the fallback');
     assert.ok(page.includes('src="https://openvibe.live/t.jpg"') && !page.includes('https://openvibe.live/t.jpg?w='), 'a Live thumbnail is not a Media object and is used unchanged');
 }
-// What is new: every part shown (the owner, 2026-10-31: never hide content to shorten); on a phone a row of chips jumps
-// to one, and a wider screen shows no chips.
+// What is new: every part is in the page's HTML (crawlers, wider screens); a phone shows one at a time, as tabs, with no
+// script (ask 364/367, 2026-11-11, the owner: "self-contained tabs, so the page isn't so freaking huge").
 {
-    const chips = [...html.matchAll(/<a href="#now-([a-z]+)">([^<]+)<\/a>/g)];
-    assert.ok(html.includes('<nav class="now-pick" data-ovk-scroll aria-label="New on OpenVibe">') && chips.length >= 2, 'the chips render when there is more than one part');
-    for (const [, id] of chips) assert.match(html, new RegExp(`<div class="now-(block|grid)" data-now-part[^>]* id="now-${id}"`), `${id} is a part in the page`);
-    assert.ok(!/name="now-pick"|name="more-pick"/.test(html), 'no chip is a radio: nothing is picked');
-    assert.match(html, /\.now-pick,\.more-pick,\.more-pick-h\{display:none\}\n@media \(max-width:600px\)\{/, 'chips only on a phone');
-    assert.ok(!html.includes('[data-now-part]{display:none}') && !html.includes('[data-more-part]{display:none'), 'no part is ever hidden');
+    const radios = [...html.matchAll(/<input type="radio" class="now-tab-r" name="now-part" id="now-tab-([a-z]+)" value="\1"( checked)?>/g)];
+    assert.ok(radios.length >= 2, 'a tab a part when there is more than one part');
+    assert.strictEqual(radios.filter((r) => r[2]).length, 1, 'one part is chosen to start with');
+    for (const [, id] of radios) {
+        assert.match(html, new RegExp(`<label for="now-tab-${id}">[^<]+</label>`), `${id} has its tab`);
+        assert.match(html, new RegExp(`<div class="now-(block|grid)[^"]*" data-now-part="${id}"[^>]* id="now-${id}"`), `${id} is a part in the page`);
+    }
+    assert.match(html, /\.now-tab-r,\.now-tabs\{display:none\}\n@media \(max-width:600px\)\{/, 'tabs only on a phone');
+    assert.ok(html.includes('.now:has(#now-tab-recs:checked) [data-now-part]:not([data-now-part="recs"])'), 'a phone folds the parts not chosen');
+    assert.ok(!html.includes('[data-more-part]{display:none'), 'the lower half keeps every section');
 }
 // The lower half: every section with its own heading; on a phone a row of chips under "More about OpenVibe" jumps to one.
 {
