@@ -48,6 +48,7 @@ function mcCard(m) {
     card.append(head);
     const roleChips = (m.roles || []).map((id) => (mcRoles || []).find((r) => r.id === id)).filter(Boolean);
     card.append(mcEl('div', 'mc-role-chips', roleChips.length ? roleChips.map((r) => mcEl('span', 'mc-role-chip', [r.name])) : [mcEl('span', 'mc-role-chip is-empty', ['No roles assigned'])]));
+    card.append(mcMuseStatus(m));
     (m.pools || []).forEach((pool) => card.append(mcPoolBlock(pool)));
 
     if (Array.isArray(m.running) && m.running.length) {
@@ -85,6 +86,24 @@ function mcCard(m) {
     menu.append(acts);
     card.append(menu);
     return card;
+}
+
+/** Muse runs on this machine under its owner's own sign-in; the last Link reading is only a status. */
+function mcMuseStatus(m) {
+    const muse = Array.isArray(m.fleet) ? m.fleet.find((a) => a.agent === 'muse') : null;
+    const fleetAge = m.fleet_at ? Date.now() - Date.parse(m.fleet_at) : NaN;
+    const stale = m.fleet_at && (!Number.isFinite(fleetAge) || fleetAge > 5 * 60000);
+    const state = !m.online ? 'Offline' : !muse || stale ? 'Status unavailable' : !muse.installed ? 'Not installed' : !muse.signed_in ? 'Sign in' : 'Ready';
+    const row = mcEl('div', 'mc-role', [
+        mcEl('span', 'mc-role-ic', [mcIcon('fa-code')]),
+        mcEl('span', 'mc-role-t', [mcEl('b', '', ['Muse Code']), mcEl('small', '', [state])]),
+    ]);
+    const setup = mcEl('details', '', [mcEl('summary', '', ['Set up Muse Code'])]);
+    setup.append(mcEl('p', '', ['Install Muse Code on this machine, run ', mcEl('code', '', ['muse login']), ', then run the Link installer again with ', mcEl('code', '', ['--plan-logins']), '. Jobs use your own Muse sign-in.']));
+    const windows = /windows/i.test(String(m.os || ''));
+    setup.append(mcEl('pre', '', [mcEl('code', '', [windows ? 'irm https://dev.meta.ai/install.ps1 | iex' : 'curl -fsSL https://dev.meta.ai/install.sh | sh'])]));
+    setup.append(mcEl('p', '', [mcEl('a', '', ['Worker setup'], { href: 'https://github.com/OpenVibers/OpenVibe.Link/blob/main/docs/worker.md' })]));
+    return mcEl('div', 'mc-roles', [row, setup]);
 }
 
 /* ── The owner's switches, the live screen, its links, and the machine's desks ───────────────────────────────
