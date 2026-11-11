@@ -159,6 +159,7 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false,
 }));
 app.use(cookieParser());
+app.use('/frame/live', require('./frame/live-player').router);
 // Provider webhooks (Resend bounces/complaints) — mounted BEFORE the JSON body parser so
 // the route sees the raw bytes it must verify the Svix signature over.
 app.use('/api/webhooks', require('./notifications/resend-webhook')());
