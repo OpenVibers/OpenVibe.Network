@@ -67,16 +67,13 @@ function renderReceipts(doc) {
     const rows = (doc && Array.isArray(doc.receipts) ? doc.receipts : []).map(rcRow).filter(Boolean);
     body.replaceChildren();
     if (!enabled) {
-        box.hidden = true;
-        const fold = document.getElementById('setup-fold');
-        if (fold) { fold.hidden = false; fold.querySelector('summary').textContent = 'Set up more (1)'; fold.querySelector('.setup-items').replaceChildren(rcEl('a', 'rc-quiet', ['Set up receipts with Inbox AI'], { href: RC_SETTING })); }
+        body.append(rcEl('a', 'rc-quiet', ['Turn on Inbox AI on openvibe.email to see receipts here'], { href: RC_SETTING }));
+        box.hidden = false;
         return;
     }
-    const fold = document.getElementById('setup-fold');
-    if (fold) fold.hidden = true;
     if (!rows.length) {
         body.append(rcEl('p', 'rc-quiet', ['No receipts yet.']));
-        box.hidden = true;
+        box.hidden = false;
         return;
     }
     body.append(...rows.slice(0, RC_SHOWN));

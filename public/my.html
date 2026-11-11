@@ -88,6 +88,19 @@
         </div>
         <div class="ny-list" id="needs-you-list"></div>
     </section>
+
+    <!-- Receipts (plan OpenVibe_Seven_Domains_Plan R2 item 13), right under Needs you: the latest five
+         receipt-category summaries Inbox AI keeps on openvibe.email, each linking to its thread, with a counted
+         fold for the rest and never a tab. my/receipts.js fills it from GET /api/v1/me/receipts; with Inbox AI off
+         (or no mailbox) the one quiet line links to the switch, and no sample receipt is ever drawn. The card
+         stays out until it has an answer. -->
+    <section class="rc" id="receipts" hidden aria-labelledby="receipts-h">
+        <div class="rc-h">
+            <h2 id="receipts-h"><span class="rc-ic" aria-hidden="true"><i class="fa-solid fa-file-lines"></i></span>Receipts</h2>
+        </div>
+        <div class="rc-body" id="receipts-body"></div>
+    </section>
+
     <nav class="me-acts" id="me-acts" aria-label="Quick actions"></nav>
 
     <!-- You, today (plan L43): what is happening for you now, what you were doing, your money, your sites and your
@@ -131,13 +144,6 @@
     </div>
 
     <details id="setup-fold" class="setup-fold" hidden><summary>Set up more (0)</summary><div class="setup-items"></div></details>
-
-    <section class="rc" id="receipts" hidden aria-labelledby="receipts-h">
-        <div class="rc-h">
-            <h2 id="receipts-h"><span class="rc-ic" aria-hidden="true"><i class="fa-solid fa-file-lines"></i></span>Receipts</h2>
-        </div>
-        <div class="rc-body" id="receipts-body"></div>
-    </section>
 
     <div class="card" id="account-emails-card">
         <h2><span class="icon"><i class="fa-solid fa-envelope"></i></span> Email addresses</h2>
