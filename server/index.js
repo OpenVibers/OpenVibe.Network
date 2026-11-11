@@ -754,7 +754,7 @@ homePopularity.refresh().catch(() => {});   // floating-ok: the first reader get
 const tryNext = require('./home/try-next').createTryNext({ db, popularity: homePopularity });
 // The Node's own front door on its own subdomain (openvibe.link): the Host header decides. It mounts
 // before the agent layer, so the Node's page is not answered by Network's home renderer.
-app.use(require('./link/routes').createLinkRoutes({ release: release.release }));
+app.use(require('./link/routes').createLinkRoutes({ release: release.release, db, config, publicKey }));
 // The agent layer (openvibe-shared/agent-layer): /.well-known/agent.json, and the public pages as Markdown twins. It
 // answers their HTML as well, with the discovery tags in the head, so it mounts before the routes for those pages.
 require('openvibe-shared/agent-layer').mount(app, {

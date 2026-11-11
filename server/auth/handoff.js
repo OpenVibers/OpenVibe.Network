@@ -85,6 +85,61 @@ function registeredRedirect(allowedUris, redirectUri) {
     return Array.isArray(allowedUris) && allowedUris.some(u => String(u).toLowerCase() === want);
 }
 
+/**
+ * Mint a ticket for one destination, storing only its hash. Throws { status, code, error } when the
+ * destination client is unknown or the redirect URI is not registered for it. Same-service arrivals
+ * (openvibe.link's hub) mint through this instead of the HTTP route below.
+ */
+async function issueTicketForUser(database, { userId, clientId, redirectUri, scope = 'profile theme', source = null }) {
+    if (!Number.isInteger(userId)) throw { status: 401, code: 'handoff.no_user', error: 'Sign in required' };
+    if (!clientId || !redirectUri) throw { status: 400, code: 'invalid_request', error: 'client_id and redirect_uri are required' };
+    const client = await database.prepare('SELECT client_id, redirect_uris FROM oauth_clients WHERE client_id = ?').get(String(clientId));
+    if (!client) throw { status: 400, code: 'invalid_request', error: 'Unknown destination client' };
+    if (!registeredRedirect(JSON.parse(client.redirect_uris || '[]'), String(redirectUri))) {
+        throw { status: 400, code: 'invalid_request', error: 'Unregistered redirect_uri' };
+    }
+    const { ticket, ticketHash, issuedAt, expiresAt } = mintTicket({ userId });
+    // Expired tickets never redeem; sweep them where a fresh one is minted so the table stays small.
+    try { await database.prepare('DELETE FROM handoff_tickets WHERE expires_at < ?').run(new Date(Date.now() - 3600e3).toISOString()); } catch { /* sweep is best-effort */ }
+    await database.prepare(`INSERT INTO handoff_tickets (ticket_hash, user_id, client_id, redirect_uri, scope, source, issued_at, expires_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(ticketHash, userId, String(clientId), String(redirectUri), String(scope).slice(0, 200), source ? String(source).slice(0, 200) : null, issuedAt, expiresAt);
+    return { ticket, expiresAt, expiresIn: TTL_S, clientId: String(clientId) };
+}
+
+/**
+ * Consume a ticket for one destination, atomically single-use. → { user, scope }. Throws
+ * { status, code, error } for an unknown, used, expired, mismatched or revoked ticket, or when the
+ * account is banned, merged, deleted, or its tokens were revoked after issuance. Same-service
+ * arrivals use this and then sign their own session; cross-service arrivals go through /redeem.
+ */
+async function consumeTicket(database, { ticket, clientId, redirectUri }) {
+    const fail = (status, code, error) => { throw { status, code, error }; };
+    const presented = String(ticket || '');
+    if (!presented.startsWith(TICKET_PREFIX) || presented.length > 200) fail(400, 'invalid_grant', 'Unknown or used handoff ticket');
+    const row = await database.prepare('SELECT * FROM handoff_tickets WHERE ticket_hash = ?').get(hashTicket(presented));
+    if (!row || row.used) fail(400, 'invalid_grant', 'Unknown or used handoff ticket');
+    if (row.client_id !== String(clientId)) fail(400, 'invalid_grant', 'Ticket is for another client');
+    if (String(row.redirect_uri).toLowerCase() !== String(redirectUri).toLowerCase()) fail(400, 'invalid_grant', 'Redirect URI mismatch');
+    if (Date.now() > parseTime(row.expires_at)) {
+        await database.prepare('UPDATE handoff_tickets SET used = 1 WHERE ticket_hash = ?').run(row.ticket_hash);
+        fail(400, 'invalid_grant', 'Handoff ticket expired');
+    }
+    const user = await database.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id);
+    if (!user || user.is_banned || user.merged_into || user.deleted_at) {
+        await database.prepare('UPDATE handoff_tickets SET used = 1 WHERE ticket_hash = ?').run(row.ticket_hash);
+        fail(400, 'invalid_grant', 'Account is no longer valid');
+    }
+    // A password change or sign-out-everywhere after issuance revokes outstanding tickets.
+    if (user.token_valid_after && parseTime(row.issued_at) < parseTime(user.token_valid_after)) {
+        await database.prepare('UPDATE handoff_tickets SET used = 1 WHERE ticket_hash = ?').run(row.ticket_hash);
+        fail(400, 'invalid_grant', 'Handoff ticket revoked');
+    }
+    // Atomic single-use: two concurrent redeems cannot both succeed.
+    const consumed = await database.prepare('UPDATE handoff_tickets SET used = 1 WHERE ticket_hash = ? AND used = 0').run(row.ticket_hash);
+    if (consumed.changes !== 1) fail(400, 'invalid_grant', 'Unknown or used handoff ticket');
+    return { user, scope: row.scope };
+}
+
 /** The redeem router. `requireAuth` is the session guard (user Bearer token or first-party cookie). */
 function router({ db, requireAuth }) {
     const r = express.Router();
@@ -97,21 +152,13 @@ function router({ db, requireAuth }) {
             const database = await getDb();
             const user = req.user;
             if (!user || user.is_anon) return res.status(403).json({ code: 'handoff.guest', error: 'sign in with an account to mint a handoff ticket' });
-            const clientId = String(req.body?.client_id || '');
-            const redirectUri = String(req.body?.redirect_uri || '');
-            const scope = String(req.body?.scope || 'profile theme').slice(0, 200);
-            const source = String(req.body?.source || '').slice(0, 200) || null;
-            if (!clientId || !redirectUri) return res.status(400).json({ error: 'client_id and redirect_uri are required' });
-            const client = await database.prepare('SELECT client_id, redirect_uris FROM oauth_clients WHERE client_id = ?').get(clientId);
-            if (!client) return res.status(400).json({ error: 'invalid_request', error_description: 'Unknown destination client' });
-            if (!registeredRedirect(JSON.parse(client.redirect_uris || '[]'), redirectUri)) {
-                return res.status(400).json({ error: 'invalid_request', error_description: 'Unregistered redirect_uri' });
-            }
-            const { ticket, ticketHash, issuedAt, expiresAt } = mintTicket({ userId: user.id });
-            await database.prepare(`INSERT INTO handoff_tickets (ticket_hash, user_id, client_id, redirect_uri, scope, source, issued_at, expires_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(ticketHash, user.id, clientId, redirectUri, scope, source, issuedAt, expiresAt);
-            res.json({ ticket, expires_at: expiresAt, expires_in: TTL_S, client_id: clientId });
+            const { ticket, expiresAt, expiresIn, clientId } = await issueTicketForUser(database, {
+                userId: user.id, clientId: String(req.body?.client_id || ''), redirectUri: String(req.body?.redirect_uri || ''),
+                scope: req.body?.scope, source: req.body?.source,
+            });
+            res.json({ ticket, expires_at: expiresAt, expires_in: expiresIn, client_id: clientId });
         } catch (err) {
+            if (err && err.status) return res.status(err.status).json({ code: err.code, error: err.error });
             res.status(500).json({ error: 'handoff issue failed' });
         }
     });
@@ -129,36 +176,11 @@ function router({ db, requireAuth }) {
             if (!client || !sameSecret(client.client_secret, clientSecret)) {
                 return res.status(401).json({ error: 'invalid_client', error_description: 'Invalid client credentials' });
             }
-            const presented = String(ticket || '');
-            if (!presented.startsWith(TICKET_PREFIX) || presented.length > 200) {
-                return res.status(400).json({ error: 'invalid_grant', error_description: 'Unknown or used handoff ticket' });
-            }
-            const row = await database.prepare('SELECT * FROM handoff_tickets WHERE ticket_hash = ?').get(hashTicket(presented));
-            if (!row || row.used) return res.status(400).json({ error: 'invalid_grant', error_description: 'Unknown or used handoff ticket' });
-            if (row.client_id !== String(clientId)) return res.status(400).json({ error: 'invalid_grant', error_description: 'Ticket is for another client' });
-            if (String(row.redirect_uri).toLowerCase() !== String(redirectUri).toLowerCase()) {
-                return res.status(400).json({ error: 'invalid_grant', error_description: 'Redirect URI mismatch' });
-            }
-            if (Date.now() > parseTime(row.expires_at)) {
-                await database.prepare('UPDATE handoff_tickets SET used = 1 WHERE ticket_hash = ?').run(row.ticket_hash);
-                return res.status(400).json({ error: 'invalid_grant', error_description: 'Handoff ticket expired' });
-            }
-            const user = await database.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id);
-            if (!user || user.is_banned || user.merged_into || user.deleted_at) {
-                await database.prepare('UPDATE handoff_tickets SET used = 1 WHERE ticket_hash = ?').run(row.ticket_hash);
-                return res.status(400).json({ error: 'invalid_grant', error_description: 'Account is no longer valid' });
-            }
-            // A password change or sign-out-everywhere after issuance revokes outstanding tickets.
-            if (user.token_valid_after && parseTime(row.issued_at) < parseTime(user.token_valid_after)) {
-                await database.prepare('UPDATE handoff_tickets SET used = 1 WHERE ticket_hash = ?').run(row.ticket_hash);
-                return res.status(400).json({ error: 'invalid_grant', error_description: 'Handoff ticket revoked' });
-            }
-            // Atomic single-use: two concurrent redeems cannot both succeed.
-            const consumed = await database.prepare('UPDATE handoff_tickets SET used = 1 WHERE ticket_hash = ? AND used = 0').run(row.ticket_hash);
-            if (consumed.changes !== 1) return res.status(400).json({ error: 'invalid_grant', error_description: 'Unknown or used handoff ticket' });
-            const { code } = await issueHandoffCode(database, { clientId: client.client_id, userId: user.id, redirectUri: String(redirectUri), scope: row.scope });
+            const { user, scope } = await consumeTicket(database, { ticket, clientId, redirectUri });
+            const { code } = await issueHandoffCode(database, { clientId: client.client_id, userId: user.id, redirectUri: String(redirectUri), scope });
             res.json({ code, expires_in: CODE_TTL_S });
         } catch (err) {
+            if (err && err.status) return res.status(err.status).json({ error: err.code || 'invalid_grant', error_description: err.error });
             res.status(500).json({ error: 'handoff redeem failed' });
         }
     });
@@ -166,4 +188,4 @@ function router({ db, requireAuth }) {
     return r;
 }
 
-module.exports = { router, mintTicket, issueHandoffCode, hashTicket, TTL_S, CODE_TTL_S, TICKET_PREFIX };
+module.exports = { router, mintTicket, issueTicketForUser, consumeTicket, issueHandoffCode, hashTicket, TTL_S, CODE_TTL_S, TICKET_PREFIX };

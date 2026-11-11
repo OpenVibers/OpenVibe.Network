@@ -1019,6 +1019,17 @@ async function continueAnonymous() {
     hasAccounts = accounts.length > 0;
     const resetToken = params.get('token');
 
+    // A return into a page that only makes sense signed in (the machines hub): anonymous mode would
+    // only land on a sign-in wall, so Continue Anonymously — and the divider above it — stays hidden.
+    if (isSignedInOnlyReturn(params.get('return'))) {
+        const anon = document.getElementById('anon-btn');
+        if (anon) {
+            anon.style.display = 'none';
+            const prev = anon.previousElementSibling;
+            if (prev && prev.classList && prev.classList.contains('divider')) prev.style.display = 'none';
+        }
+    }
+
     if (window.location.pathname === '/forgot-password') {
         showForgotForm();
         return;
@@ -1156,8 +1167,20 @@ async function signInWithPasskey(conditional = false) {
     }
 }
 if (window.PublicKeyCredential) {
-    const button = document.createElement('button'); button.type = 'button'; button.className = 'ovk-btn ovk-btn--quiet'; button.textContent = 'Sign in with a passkey';
+    const button = document.createElement('button'); button.type = 'button'; button.id = 'passkey-btn'; button.className = 'anon-btn'; button.textContent = 'Sign in with a passkey';
     button.onclick = () => signInWithPasskey();
     document.getElementById('login-form').after(button);
     PublicKeyCredential.isConditionalMediationAvailable?.().then(available => { if (available) signInWithPasskey(true); }).catch(() => {});
+}
+
+// Pages that only make sense signed in (the machines hub): Continue Anonymously would only land on a
+// sign-in wall, so the button (and its divider) stays hidden when the return targets one of them.
+function isSignedInOnlyReturn(raw) {
+    const s = String(raw || '');
+    if (!s) return false;
+    if (s.startsWith('/') && !s.startsWith('//')) return /^\/machines(\/|\?|#|$)/.test(s);
+    try {
+        const u = new URL(s);
+        return u.protocol === 'https:' && u.hostname.toLowerCase() === 'openvibe.link' && /^\/machines(\/|$)/.test(u.pathname);
+    } catch { return false; }
 }
