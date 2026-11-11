@@ -190,6 +190,9 @@ const DEFAULT_GRANTS = [
     // Vibe sets up recurring work for the person it is talking with, in their own chat and after they agreed (Chat's
     // set_up_agent and my_agents tools): one of their OpenVibe Agents, made and listed as them (X-OV-Subject).
     ['chat', 'actor.agent.manage', 'openvibe.actor', []],
+    // A server manager may attach one of their own Actor agents to a Chat channel. Chat runs that agent for its
+    // owner when a channel member mentions it; Actor keeps the owner's allowance, approvals and daily run cap.
+    ['chat', 'actor.agent.run', 'openvibe.actor', []],
     ['games', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Games subscribes to network.user.token_valid_after (sign-out everywhere closes game sessions).
     ['games', 'events.subscription.manage', 'openvibe.events', []],
