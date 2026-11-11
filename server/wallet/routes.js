@@ -25,6 +25,7 @@
 const express = require('express');
 const wallet = require('../coins/wallet');
 const coinChanges = require('../coins/changes');
+const channelPoints = require('../coins/channel-points');
 const money = require('../money/reasons');
 const config = require('../config');
 
@@ -450,14 +451,20 @@ module.exports = function createWalletRoutes(db, requireAuth, opts = {}) {
 
     // ── GET /api/wallet/changes ──────────────────────────────
     // Ask 273: one call for what changed in the person's balances since they last looked, per
-    // currency: Vibes from Billing (the person's own token, forwarded) and OpenCoins from
-    // Network's own ledger. A currency that is down or not open yet nulls its part and says so;
-    // the rest still draws. Channel points ride the same shape once Live's read lands.
+    // currency: Vibes from Billing (the person's own token, forwarded), OpenCoins from Network's
+    // own ledger, and one channel's points from Live (the bar names the channel with ?streamer=).
+    // A currency that is down or not open yet nulls its part and says so; the rest still draws.
+    function liveOf() {
+        const url = String(opts.liveUrl || (config.services && config.services.live && config.services.live.internalUrl) || '').replace(/\/+$/, '');
+        if (!url) return null;
+        const token = typeof selfToken === 'function' ? selfToken('openvibe.live', ['live.channel_points.read']) : null;
+        return { url, token };
+    }
     r.get('/changes', requireAuth, async (req, res) => {
         cacheHeaders(res);
         const auth = personToken(req);
         const limit = req.query.limit;
-        const [vibes, opencoins] = await Promise.all([
+        const [vibes, opencoins, points] = await Promise.all([
             (async () => {
                 if (!auth || !billingUrl) return { part: null, state: 'unavailable' };
                 try {
@@ -474,8 +481,26 @@ module.exports = function createWalletRoutes(db, requireAuth, opts = {}) {
                     return { part: await coinChanges.changes(db, req.user.id, { currency: 'opencoins', since: req.query.since_opencoins, limit }), state: 'open' };
                 } catch (e) { return { part: null, state: 'unavailable', error: e.code || 'coins.unavailable' }; }
             })(),
+            (async () => {
+                if (req.query.streamer == null || req.query.streamer === '') return { part: null, state: 'needs_streamer' };
+                try {
+                    return {
+                        part: await channelPoints.changes(db, {
+                            live: liveOf(), userId: req.user.id, subject: req.user.subject_id, streamerId: req.query.streamer,
+                            since: req.query.since_channel_points, limit,
+                        }),
+                        state: 'open',
+                    };
+                } catch (e) {
+                    if (e && e.code === 'channel_points.unlinked') return { part: null, state: 'unlinked' };
+                    return { part: null, state: 'unavailable', error: (e && e.code) || 'channel_points.unavailable' };
+                }
+            })(),
         ]);
-        return res.json({ vibes: vibes.part, opencoins: opencoins.part, state: { vibes: vibes.state, opencoins: opencoins.state } });
+        return res.json({
+            vibes: vibes.part, opencoins: opencoins.part, channel_points: points.part,
+            state: { vibes: vibes.state, opencoins: opencoins.state, channel_points: points.state },
+        });
     });
 
     // ── PUT /api/wallet/changes/read { currency, cursor } ────
@@ -494,7 +519,14 @@ module.exports = function createWalletRoutes(db, requireAuth, opts = {}) {
                 return problem(res, 502, 'billing.unavailable', 'the read state is unavailable');
             } catch { return problem(res, 502, 'billing.unavailable', 'the read state is unavailable'); }
         }
-        if (currency !== 'opencoins') return problem(res, 422, 'wallet.invalid_currency', 'currency is vibes or opencoins');
+        if (currency === 'channel-points') {
+            try {
+                return res.json(await channelPoints.markRead(db, req.user.id, b.streamer, cursor));
+            } catch (e) {
+                return problem(res, e.status || 500, e.code || 'channel_points.unavailable', e.message);
+            }
+        }
+        if (currency !== 'opencoins') return problem(res, 422, 'wallet.invalid_currency', 'currency is vibes, opencoins or channel-points');
         try {
             return res.json(await coinChanges.markRead(db, req.user.id, { currency, cursor }));
         } catch (e) {
