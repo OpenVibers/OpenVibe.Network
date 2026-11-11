@@ -58,6 +58,11 @@ const tokenFor = (id, name) => jwt.sign({ sub: id, id, username: name }, keys.pr
     r = await get(`/machines?ov_handoff=${encodeURIComponent(spare)}`, `ov_token=${session}`);
     assert.strictEqual(r.status, 200, 'a session serves the hub');
     assert.ok(r.body.includes('sec-machines'), 'the hub page');
+    // The hub is the Machines section alone: marked for my.css, titled for Link, with one h1 (the section's).
+    assert.ok(r.body.includes('<body class="link-hub">'), 'the body is marked link-hub');
+    assert.ok(r.body.includes('<title>Your machines - OpenVibe Link</title>'), 'titled for Link');
+    assert.strictEqual((r.body.match(/<h1[\s>]/g) || []).length, 1, 'one h1');
+    assert.ok(/<h1 class="mc-title">[^]*?Your machines<\/h1>/.test(r.body), 'and it is the machines heading');
     const spareRow = await db.prepare('SELECT used FROM handoff_tickets WHERE ticket_hash = ?').get(hashTicket(spare));
     assert.strictEqual(spareRow.used, 0, 'no silent account switch: the ticket stays unused');
 

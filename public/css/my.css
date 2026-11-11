@@ -752,3 +752,15 @@ body.my-needs-visible #ovdk-pill { display:none !important; }
 .mc-count { margin:0 0 8px; color:var(--text-muted); font-size:12px; }
 #sec-machines { scroll-margin-top: 90px; }
 body.my-machines-open { padding-bottom: max(112px, calc(100vh - 90px)); }
+
+/* openvibe.link/machines: server/link/routes.js serves this page with body.link-hub, and it is the Machines hub alone.
+   The account home, the email card and the settings tabs stay on openvibe.network/my; nothing scrolls, and the
+   section's heading is the page's h1. An anonymous session still sees its own notice in place of the machines. */
+.link-hub :is(#page-header, #needs-you, #receipts, #me-acts, #today, #setup-fold, #account-emails-card, #settings, .section-tabs) { display: none !important; }
+.link-hub .settings { display: block; }
+.link-hub .settings > .section:not(#sec-machines, #sec-anon.active) { display: none; }
+.link-hub #sec-machines { display: block; }
+.link-hub .settings:has(#sec-anon.active) #sec-machines { display: none; }
+body.link-hub.my-machines-open { padding-bottom: 0; }
+.link-hub .mc-title { margin: 0 0 6px; font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2rem); line-height: 1.15; }
+.mc-empty > i { flex: none; }
