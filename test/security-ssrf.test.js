@@ -115,6 +115,7 @@ const REVIEWED = {
     'server/connect/egress.js http.request': [1, 'Connect gateway (E7): only the app definition\'s fixed API host, through openvibe-shared/egress (IP literals refused before the socket, public DNS answers only, redirects followed by hand with every hop re-checked); never a URL from the input (Opus review 11-06)'],
     'server/home/activity.js fetch': [1, 'front door activity: fixed first-party loopback URLs (OV_LIVE/COMMUNITY/BLOG_INTERNAL_URL, operator config) for public lists, never a request value'],
     'server/home/popular.js fetch': [2, 'Report public popularity and co-usage: the operator-configured first-party Report URL (OV_REPORT_INTERNAL_URL), a fixed loopback origin, never a request value'],
+    'server/composer/routes.js fetch': [2, 'mention search: the operator-configured OpenVibe.Git internal URL (config.services.git) with a fixed /api/v1/repos path and the query percent-encoded; no caller-chosen host, 2.5 s timeout, and no token or body is sent with it'],
     'server/frame/today.js fetch': [1, 'Report internal URL from operator config, fixed /api/v1/stats?days=30 path, five-second timeout; no request-selected URL'],
     'server/admin/analytics-routes.js fetch': [2, 'staff analytics: the services\' internal URLs from the registry (owner/admin set), and Insights\' Prometheus (PROMETHEUS_URL, loopback by default) with fixed queries; never a request value'],
     'server/admin/events-ops.js fetch': [1, 'OV_EVENTS_INTERNAL_URL (operator config) for staff DLQ views'],
