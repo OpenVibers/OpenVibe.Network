@@ -36,7 +36,8 @@ async function authorize(db, req) {
 }
 function router({ requireAuth, signToken, sanitizeUser }) {
     const r = express.Router();
-    r.use(rateLimit({ windowMs: 60000, max: 30, standardHeaders: true, legacyHeaders: false }));
+    // The server-to-server related routes have their own per-client limit (one address for every product).
+    r.use(rateLimit({ windowMs: 60000, max: 30, standardHeaders: true, legacyHeaders: false, skip: req => String(req.path).startsWith('/related/') }));
     r.use((req, res, next) => {
         res.set('Cache-Control', 'no-store');
         if (req.method !== 'GET' && !req.is('application/json')) return res.status(415).json({ error: 'JSON required' });
@@ -103,6 +104,9 @@ function router({ requireAuth, signToken, sanitizeUser }) {
         res.json({ token, user: sanitizeUser(result.user) });
     }
     r.post('/login/options', route((req, res, db) => options(req, res, db, 'login')));
+    // Cross-site passkeys (Related Origin Requests): a product's server, authenticated as its OAuth
+    // client, gets and verifies one ceremony. Mounted before requireAuth: the client is the caller.
+    r.use('/related', require('./passkeys-related').router());
     r.post('/login/verify', route((req, res, db) => verify(req, res, db, 'login')));
     r.use(requireAuth);
     r.get('/', route(async (req, res, db) => res.json({ available: await mfa.allowed(db, req.user), keys: (await list(db, req.user.id)).map(({ id, name, created_at, last_used_at, device_type, backed_up }) => ({ id, name, created_at, last_used_at, device_type, backed_up })) })));
@@ -177,4 +181,4 @@ async function invalidate(db, userId) {
     await db.prepare('UPDATE user_mfa SET generation = ?, pending_secret_ciphertext = NULL, pending_until = 0 WHERE user_id = ?').run(random(), userId);
     for (const t of ['passkey_challenges', 'mfa_challenges', 'mfa_devices']) await db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(userId);
 }
-module.exports = { router, list, authorize };
+module.exports = { router, list, authorize, save, take, hash };

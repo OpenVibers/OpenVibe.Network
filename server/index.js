@@ -1190,6 +1190,12 @@ require('./auth/app-links').mount(app);
     const fedcm = require('./auth/fedcm');
     const ctx = () => ({ db, publicKey, privateKey, config });
     app.get('/.well-known/web-identity', fedcm.wellKnown(ctx));
+    // WebAuthn Related Origin Requests: the exact product origins allowed to use Network's passkeys.
+    app.get('/.well-known/webauthn', (_req, res) => {
+        res.set('Content-Type', 'application/json; charset=utf-8');
+        res.set('Cache-Control', 'public, max-age=300');
+        res.send(JSON.stringify({ origins: require('./webauthn-origins').origins() }));
+    });
     // OpenID Connect discovery at the issuer's root (and RFC 8414's name for it): server/auth/oidc.js
     require('./auth/oidc').mount(app);
     app.use('/fedcm', fedcm.createFedcmRoutes(ctx));
