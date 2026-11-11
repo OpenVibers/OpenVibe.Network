@@ -756,6 +756,11 @@ const tryNext = require('./home/try-next').createTryNext({ db, popularity: homeP
 // The Node's own front door on its own subdomain (openvibe.link): the Host header decides. It mounts
 // before the agent layer, so the Node's page is not answered by Network's home renderer.
 app.use(require('./link/routes').createLinkRoutes({ release: release.release, db, config, publicKey }));
+// The retired Node host must leave before the agent layer answers '/' with Network's public home.
+app.get('/', (req, res, next) => {
+    if (getRequestHost(req) === 'node.openvibe.network') return res.redirect(302, 'https://openvibe.link/machines');
+    return next();
+});
 // The agent layer (openvibe-shared/agent-layer): /.well-known/agent.json, and the public pages as Markdown twins. It
 // answers their HTML as well, with the discovery tags in the head, so it mounts before the routes for those pages.
 require('openvibe-shared/agent-layer').mount(app, {
@@ -1164,9 +1169,6 @@ app.get('/apps', connectPage);
 app.get('/apps.html', (req, res) => redirectWithoutHtml(req, res, '/apps'));
 app.get('/', (req, res, next) => {
     if (getRequestHost(req) === 'connect.openvibe.network') return connectPage(req, res);
-    // The Node host has no browser session of its own. Send its front door to the
-    // signed-in Machines hub instead of serving the Network home under another origin.
-    if (getRequestHost(req) === 'node.openvibe.network') return res.redirect(302, 'https://openvibe.link/machines');
     return next();
 });
 app.get('/pay/:id', (_req, res) => sendPayPage(res));
