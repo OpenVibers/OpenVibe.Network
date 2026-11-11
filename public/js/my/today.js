@@ -325,7 +325,11 @@ function nyHref(item) {
 // An approval is never one tap from here: the hub shows a line, and a step may delete, spend or send. Review opens the
 // approval itself (what exactly runs, Approve or Decline). Try again stays one tap: it only repeats what already ran.
 function nyButton(item, action) {
-    const label = action === 'approve' ? 'Review' : action === 'retry' ? 'Try again' : 'Open';
+    const label = action === 'approve' ? (item.kind === 'approval' ? 'Approve' : 'Review') : action === 'decline' ? 'Decline' : action === 'retry' ? 'Try again' : 'Open';
+    if (item.kind === 'approval' && item.service === 'network' && ['approve', 'decline'].includes(action)) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = `ny-btn${action === 'decline' ? ' is-quiet' : ''}`; b.textContent = label;
+        b.addEventListener('click', () => nyDo(item, action, b)); return b;
+    }
     if (action !== 'retry') {
         const href = nyHref(item);
         const a = document.createElement('a');
@@ -353,7 +357,7 @@ async function nyDo(item, action, button) {
     if (!item || !item.service || !item.id) return;
     const label = button.textContent;
     button.disabled = true;
-    button.textContent = action === 'retry' ? 'Trying…' : 'Approving…';
+    button.textContent = action === 'retry' ? 'Trying…' : action === 'decline' ? 'Declining…' : 'Approving…';
     try {
         await apiFetch(`/api/v1/me/actions/${encodeURIComponent(item.service)}/${encodeURIComponent(item.id)}/${action}`, { method: 'POST' });
         const row = button.closest('.ny-item');
@@ -363,7 +367,7 @@ async function nyDo(item, action, button) {
         const sub = document.getElementById('needs-you-sub');
         if (sub) sub.textContent = left ? `${left} more waiting` : '';
         if (!left && box) box.hidden = true;
-        if (typeof toast === 'function') toast(action === 'retry' ? 'Trying it again' : 'Approved', 'success');
+        if (typeof toast === 'function') toast(action === 'retry' ? 'Trying it again' : action === 'decline' ? 'Declined' : 'Approved', 'success');
     } catch (err) {
         button.disabled = false;
         button.textContent = label;
@@ -371,15 +375,18 @@ async function nyDo(item, action, button) {
     }
 }
 
-function renderNeedsYou(doc) {
+function renderNeedsYou(doc, confirmationDoc) {
     const box = document.getElementById('needs-you');
     const list = document.getElementById('needs-you-list');
     if (!box || !list) return;
     const items = doc && doc.buckets && Array.isArray(doc.buckets.waiting) ? doc.buckets.waiting : [];
+    const confirmations = new Map(((confirmationDoc && confirmationDoc.confirmations) || []).map((c) => [c.id, c]));
     if (!items.length) { box.hidden = true; list.replaceChildren(); return; }
     const sub = document.getElementById('needs-you-sub');
     if (sub) sub.textContent = `${items.length} thing${items.length === 1 ? '' : 's'} waiting`;
-    list.replaceChildren(...items.map((item) => {
+    list.replaceChildren(...items.map((source) => {
+        const confirmation = source.service === 'network' ? confirmations.get(source.id) : null;
+        const item = confirmation ? { ...source, details: confirmation.details, resources: confirmation.resources, capability: confirmation.capability } : source;
         const row = document.createElement('article');
         row.className = 'ny-item';
         const icon = document.createElement('span');
@@ -391,9 +398,17 @@ function renderNeedsYou(doc) {
         const body = document.createElement('div');
         body.className = 'ny-body';
         const title = document.createElement('h3');
-        title.textContent = item.title || 'Something needs you';
+        const isApproval = item.kind === 'approval' && item.service === 'network';
+        const details = item.details && typeof item.details === 'object' ? item.details : {};
+        const host = details.machine_name || details.machine || details.target || item.resources?.find((r) => r && typeof r === 'object' && /machine|computer|host/i.test(String(r.type || '')) && r.name);
+        const hostName = typeof host === 'string' ? host : host && (host.name || host.hostname);
+        const commandText = typeof details.command === 'string' ? details.command.slice(0, 500) : '';
+        const commandRequest = Boolean(commandText || details.action === 'command');
+        title.textContent = isApproval ? `${commandRequest ? 'Run a command' : 'Approve a request'}${hostName ? ` on ${hostName}` : ''}` : (item.title || 'Something needs you');
         body.append(title);
-        if (item.summary) {
+        if (isApproval && commandText) body.append(Object.assign(document.createElement('code'), { className: 'ny-command', textContent: commandText }));
+        if (isApproval && typeof details.reason === 'string') { const why = document.createElement('p'); why.className = 'ny-meta'; why.textContent = details.reason.slice(0, 300); body.append(why); }
+        if (!isApproval && item.summary) {
             const summary = document.createElement('p');
             summary.textContent = item.summary;
             body.append(summary);
@@ -407,9 +422,36 @@ function renderNeedsYou(doc) {
         }
         const actions = Array.isArray(item.actions) ? item.actions : [];
         const primary = actions.includes('approve') ? 'approve' : actions.includes('retry') ? 'retry' : 'open';
-        row.append(icon, body, nyButton(item, primary));
+        const actionsWrap = document.createElement('div'); actionsWrap.className = 'ny-actions';
+        if (isApproval) {
+            const detailsToggle = document.createElement('details'); detailsToggle.className = 'ny-details';
+            const summary = document.createElement('summary'); summary.textContent = 'Details'; detailsToggle.append(summary);
+            const agentName = item.agent && !/^(agt|app|svc|usr)[_0-9A-HJKMNP-TV-Z]{20,}$/i.test(String(item.agent)) ? item.agent : '';
+            const words = [agentName ? `Asked by ${agentName}` : '', item.summary || ''].filter(Boolean).join(' · ');
+            if (words) { const p = document.createElement('p'); p.textContent = words; detailsToggle.append(p); }
+            actionsWrap.append(detailsToggle, nyButton(item, 'approve'), nyButton(item, 'decline'));
+        } else actionsWrap.append(nyButton(item, primary));
+        row.append(icon, body, actionsWrap);
         return row;
     }));
+    box.hidden = false;
+}
+
+function openMachines(pair) {
+    showSection('machines');
+    document.getElementById('sec-machines')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (pair) mcPair();
+}
+
+function renderMachineSummary(doc) {
+    const box = document.getElementById('td-machines-summary');
+    const state = document.getElementById('td-machines-state');
+    const count = document.getElementById('td-machines-count');
+    if (!box || !state) return;
+    const machines = (doc && Array.isArray(doc.machines) ? doc.machines : []).filter((m) => !m.revoked_at);
+    const online = machines.filter((m) => m.online === true).length;
+    count.textContent = `${machines.length} paired`;
+    state.textContent = machines.length ? `${online} online now${online ? ` · ${machines.filter((m) => m.online).map((m) => m.name).filter(Boolean).slice(0, 3).join(', ')}` : ''}` : 'Pair a computer to run your work on OpenVibe.';
     box.hidden = false;
 }
 
@@ -420,7 +462,7 @@ async function loadToday() {
     const quiet = (p) => p.catch(() => null);
     renderActions(null);
     renderStatus();
-    const [acts, live, hist, coins, last, unread, sites, nodes, frame, tryNext] = await Promise.all([
+    const [acts, live, hist, coins, last, unread, sites, nodes, frame, tryNext, confirmationsDoc, machineList] = await Promise.all([
         quiet(apiFetch('/api/v1/me/actions')),
         quiet(apiFetch('/api/v1/me/live-follows')),
         quiet(apiFetch('/api/history?limit=30')),
@@ -431,9 +473,11 @@ async function loadToday() {
         quiet(apiFetch('/api/v1/me/nodes')),
         quiet(apiFetch('/api/frame?host=openvibe.network')),
         quiet(apiFetch('/api/v1/me/try-next?limit=3')),
+        quiet(apiFetch('/api/v1/confirmations?state=pending&limit=100')),
+        quiet(apiFetch('/api/v1/machines')),
     ]);
     globalThis.__tdUnread = unread;
-    renderNeedsYou(acts);
+    renderNeedsYou(acts, confirmationsDoc);
     renderActions(unread);
     renderNet(frame);
     renderNow(live, unread);
@@ -441,5 +485,11 @@ async function loadToday() {
     renderMoney(coins, last);
     renderSites(hist, sites, tryNext);
     renderStuff(live, hist, nodes);
+    renderMachineSummary(machineList);
     document.getElementById('today').classList.add('td-ready');
+    const machineSection = document.getElementById('sec-machines');
+    if (machineSection && machineSection.classList.contains('active') && typeof location !== 'undefined' && typeof window !== 'undefined' && location.hash === '#machines') {
+        const y = machineSection.getBoundingClientRect().top + window.scrollY - 90;
+        window.scrollTo(0, Math.max(0, y));
+    }
 }

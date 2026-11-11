@@ -175,22 +175,27 @@ assert.match(CSS, /@media \(min-width:1000px\)\{[\s\S]*\.settings\{display:grid;
     p.ids['td-stuff-row'].children.find((c) => /history/.test(c.textContent)).click();
     assert.deepStrictEqual(p.shown, ['history'], 'your history opens below');
 
+    p.sandbox.renderMachineSummary({ machines: [{ name: 'Studio PC', online: true }, { name: 'Laptop', online: false }, { id: 'revoked', revoked_at: 'x', online: true }] });
+    assert.strictEqual(p.ids['td-machines-count'].textContent, '2 paired');
+    assert.strictEqual(p.ids['td-machines-state'].textContent, '1 online now · Studio PC');
+
     // ── Needs you (plan §4): the Action Center's waiting items, one button each, above the hero ──
     p = page();
-    assert.ok(HTML.indexOf('id="needs-you"') < HTML.indexOf('id="page-header"'), 'Needs you is the first section');
+    assert.ok(HTML.indexOf('id="page-header"') < HTML.indexOf('id="needs-you"'), 'the person is first');
+    assert.ok(HTML.indexOf('id="needs-you"') < HTML.indexOf('id="me-acts"'), 'actions follow Needs you');
     p.sandbox.renderNeedsYou({ buckets: { waiting: [
-        { service: 'network', id: 'cnf_1', kind: 'approval', title: 'Send one email to the venue', summary: 'Trip planner asks to use mail.send', agent: 'Trip planner', href: 'https://openvibe.network/my#approvals', actions: ['approve', 'decline', 'open'] },
+        { service: 'network', id: 'cnf_1', kind: 'approval', title: 'Run a command', summary: 'Trip planner asks to run a command', agent: 'Trip planner', href: 'https://openvibe.network/my#approvals', actions: ['approve', 'decline', 'open'] },
         { service: 'actor', id: 'tsk_1', kind: 'agent_task', title: 'Find three cheap flights', summary: 'Read 4 pages', href: 'https://openvibe.actor/tasks/tsk_1', actions: ['open'] },
-    ] } });
+    ] } }, { confirmations: [{ id: 'cnf_1', capability: 'computer.command', details: { command: 'rm -rf /tmp/actor-gate-proof', reason: 'Clean up a test file', arguments: { raw: true } }, resources: [{ type: 'machine', name: 'devprobe' }] }] });
     assert.strictEqual(p.ids['needs-you'].hidden, false);
     assert.strictEqual(p.ids['needs-you-sub'].textContent, '2 things waiting');
     const rows = p.ids['needs-you-list'].children;
     assert.strictEqual(rows.length, 2);
-    const review = rows[0].all((c) => c.tagName === 'A')[0];
-    assert.strictEqual(review.textContent, 'Review', 'an approval opens itself: never one tap from the hub');
-    assert.strictEqual(rows[0].all((c) => c.tagName === 'BUTTON').length, 0, 'no Approve button here');
-    assert.strictEqual(rows[0].all((c) => c.tagName === 'H3')[0].textContent, 'Send one email to the venue');
-    assert.strictEqual(rows[0].all((c) => c.tagName === 'P')[0].textContent, 'Trip planner asks to use mail.send');
+    assert.strictEqual(rows[0].all((c) => c.tagName === 'BUTTON').length, 2, 'inline approve and decline');
+    assert.strictEqual(rows[0].all((c) => c.tagName === 'H3')[0].textContent, 'Run a command on devprobe');
+    assert.match(rows[0].textContent, /rm -rf \/tmp\/actor-gate-proof/);
+    assert.doesNotMatch(rows[0].textContent, /"arguments"|\[object Object\]/, 'structured arguments stay hidden');
+    assert.match(rows[0].textContent, /Details/);
     assert.strictEqual(rows[1].all((c) => c.tagName === 'A')[0].href, 'https://openvibe.actor/tasks/tsk_1', 'an open item links its page');
     // An agent known only by its id is not shown by it; Try again stays one tap.
     p.sandbox.renderNeedsYou({ buckets: { waiting: [
