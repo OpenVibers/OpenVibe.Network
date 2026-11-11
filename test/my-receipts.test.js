@@ -15,13 +15,13 @@ const HTML = fs.readFileSync(path.join(__dirname, '..', 'public', 'my.html'), 'u
 const JS = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'my', 'receipts.js'), 'utf8');
 const CSS = fs.readFileSync(path.join(__dirname, '..', 'public', 'css', 'my.css'), 'utf8');
 
-// ── The page: the person leads, then Needs you, actions, history, sites, machines, numbers and receipts ──
+// ── The page: the person leads, then Needs you and its Receipts card, then actions, history, sites, machines, numbers ──
 assert.ok(HTML.indexOf('id="page-header"') < HTML.indexOf('id="needs-you"'));
-assert.ok(HTML.indexOf('id="needs-you"') < HTML.indexOf('id="me-acts"'));
+assert.ok(HTML.indexOf('id="needs-you"') < HTML.indexOf('id="receipts"'), 'the Receipts card sits under Needs you');
+assert.ok(HTML.indexOf('id="receipts"') < HTML.indexOf('id="me-acts"'), 'before the quick actions');
 assert.ok(HTML.indexOf('id="td-continue"') < HTML.indexOf('id="td-sites"'));
 assert.ok(HTML.indexOf('id="td-sites"') < HTML.indexOf('id="td-machines-summary"'));
 assert.ok(HTML.indexOf('id="td-machines-summary"') < HTML.indexOf('id="td-nums"'));
-assert.ok(HTML.indexOf('id="td-nums"') < HTML.indexOf('id="receipts"'));
 assert.match(HTML, /<section class="rc" id="receipts" hidden/);
 assert.match(HTML, /<script src="\/js\/my\/receipts\.js" defer><\/script>/, 'the card has its own script');
 assert.match(CSS, /\.rc-row \{/, 'the rows have a style');
@@ -63,14 +63,15 @@ const receipt = (i) => ({
 });
 
 (async () => {
-    // ── Inbox AI off: one counted setup fold, no empty Receipts card, and no sample receipt ──
+    // ── Inbox AI off: the card shows one quiet line, links the switch, and draws no sample receipt ──
     let p = page();
     p.sandbox.renderReceipts({ enabled: false, receipts: [] });
-    assert.strictEqual(p.ids.receipts.hidden, true, 'no empty Receipts card');
-    assert.strictEqual(p.ids['setup-fold'].hidden, false);
-    assert.strictEqual(p.ids['setup-fold'].summary.textContent, 'Set up more (1)');
-    assert.strictEqual(p.ids['setup-fold'].items.children[0].textContent, 'Set up receipts with Inbox AI');
-    assert.strictEqual(p.ids['setup-fold'].items.children[0].getAttribute('href'), 'https://openvibe.email/inbox#inbox-ai');
+    assert.strictEqual(p.ids.receipts.hidden, false, 'the card stays under Needs you');
+    assert.strictEqual(p.ids['receipts-body'].children.length, 1, 'one quiet line');
+    assert.strictEqual(p.ids['receipts-body'].children[0].textContent, 'Turn on Inbox AI on openvibe.email to see receipts here');
+    assert.strictEqual(p.ids['receipts-body'].children[0].getAttribute('href'), 'https://openvibe.email/inbox#inbox-ai');
+    assert.strictEqual(p.ids['receipts-body'].all((c) => c.className === 'rc-row').length, 0, 'no sample receipt');
+    assert.strictEqual(p.ids['setup-fold'].hidden, true, 'the setup fold is not hijacked');
 
     // ── On with receipts: the latest five, then a counted fold for the rest, each a thread on openvibe.email ──
     p = page();
@@ -104,10 +105,12 @@ const receipt = (i) => ({
     p.sandbox.renderReceipts({ enabled: true, receipts: [{ ...receipt(0), message_id: null, thread_id: 'thr_ok' }] });
     assert.strictEqual(p.ids['receipts-body'].all((c) => c.tagName === 'A')[0].href, 'https://openvibe.email/inbox/thr_ok');
 
-    // ── On with nothing triaged yet: neither receipts nor setup nudge is shown ──
+    // ── On with nothing triaged yet: the card says so, quietly, and still no sample receipt ──
     p = page();
     p.sandbox.renderReceipts({ enabled: true, receipts: [] });
-    assert.strictEqual(p.ids.receipts.hidden, true);
+    assert.strictEqual(p.ids.receipts.hidden, false);
+    assert.strictEqual(p.ids['receipts-body'].textContent, 'No receipts yet.');
+    assert.strictEqual(p.ids['receipts-body'].all((c) => c.className === 'rc-row').length, 0);
     assert.strictEqual(p.ids['setup-fold'].hidden, true);
 
     // ── The route: Mail is asked with the person's own token; off hides rows, on passes them, down stays out ──
