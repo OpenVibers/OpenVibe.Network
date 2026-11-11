@@ -24,6 +24,7 @@
 
 const express = require('express');
 const wallet = require('../coins/wallet');
+const coinChanges = require('../coins/changes');
 const money = require('../money/reasons');
 const config = require('../config');
 
@@ -445,6 +446,60 @@ module.exports = function createWalletRoutes(db, requireAuth, opts = {}) {
         }
 
         return res.json(out);
+    });
+
+    // ── GET /api/wallet/changes ──────────────────────────────
+    // Ask 273: one call for what changed in the person's balances since they last looked, per
+    // currency: Vibes from Billing (the person's own token, forwarded) and OpenCoins from
+    // Network's own ledger. A currency that is down or not open yet nulls its part and says so;
+    // the rest still draws. Channel points ride the same shape once Live's read lands.
+    r.get('/changes', requireAuth, async (req, res) => {
+        cacheHeaders(res);
+        const auth = personToken(req);
+        const limit = req.query.limit;
+        const [vibes, opencoins] = await Promise.all([
+            (async () => {
+                if (!auth || !billingUrl) return { part: null, state: 'unavailable' };
+                try {
+                    const qs = new URLSearchParams({ currency: 'vibes', ...(limit != null ? { limit: String(limit) } : {}),
+                        ...(req.query.since_vibes != null && req.query.since_vibes !== '' ? { since: String(req.query.since_vibes) } : {}) });
+                    const out = await ask(`${billingUrl}/api/me/balances/changes?${qs}`, { authorization: auth });
+                    if (out.status === 200 && out.body) return { part: out.body, state: 'open' };
+                    if (out.status === 409) return { part: null, state: 'not_authoritative' };
+                    return { part: null, state: 'unavailable' };
+                } catch { return { part: null, state: 'unavailable' }; }
+            })(),
+            (async () => {
+                try {
+                    return { part: await coinChanges.changes(db, req.user.id, { currency: 'opencoins', since: req.query.since_opencoins, limit }), state: 'open' };
+                } catch (e) { return { part: null, state: 'unavailable', error: e.code || 'coins.unavailable' }; }
+            })(),
+        ]);
+        return res.json({ vibes: vibes.part, opencoins: opencoins.part, state: { vibes: vibes.state, opencoins: opencoins.state } });
+    });
+
+    // ── PUT /api/wallet/changes/read { currency, cursor } ────
+    // "I looked", per currency: vibes is stored by Billing (the person's token, forwarded),
+    // opencoins here. A write needs the page's bearer token, like every money write.
+    r.put('/changes/read', requireAuth, bearerOnly, json, async (req, res) => {
+        cacheHeaders(res);
+        const b = req.body || {};
+        const currency = String(b.currency || 'opencoins');
+        const cursor = b.cursor;
+        if (currency === 'vibes') {
+            if (!billingUrl) return problem(res, 502, 'billing.unavailable', 'Billing is not configured');
+            try {
+                const out = await ask(`${billingUrl}/api/me/balances/read`, { authorization: personToken(req), method: 'PUT', body: { currency, cursor } });
+                if (out && out.body && typeof out.body === 'object') return res.status(out.status).json(out.body);
+                return problem(res, 502, 'billing.unavailable', 'the read state is unavailable');
+            } catch { return problem(res, 502, 'billing.unavailable', 'the read state is unavailable'); }
+        }
+        if (currency !== 'opencoins') return problem(res, 422, 'wallet.invalid_currency', 'currency is vibes or opencoins');
+        try {
+            return res.json(await coinChanges.markRead(db, req.user.id, { currency, cursor }));
+        } catch (e) {
+            return problem(res, e.status || 500, e.code || 'coins.unavailable', e.message);
+        }
     });
 
     // ── GET /api/wallet/rates ────────────────────────────────
