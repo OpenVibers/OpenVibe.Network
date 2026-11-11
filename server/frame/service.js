@@ -631,7 +631,10 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             if (kept && Date.now() - kept.at < 30_000) { res.set('Cache-Control', 'public, max-age=30'); return res.send(kept.body); }
         }
         const d = await getJson(u.href, auth ? { Authorization: auth, Accept: 'application/json' } : { Accept: 'application/json' });
-        const body = JSON.stringify(d && Array.isArray(d.items) ? d : { items: [], next_cursor: null });
+        if (path === '/api/v1/feed/search' && (!d || !Array.isArray(d.items))) return res.status(503).send('{"error":"feed search unavailable"}');
+        const body = JSON.stringify(path === '/api/v1/feed/examples'
+            ? (d && Array.isArray(d.examples) ? d : { examples: [] })
+            : (d && Array.isArray(d.items) ? d : { items: [], next_cursor: null }));
         if (!auth && d) {
             if (relayed.size >= 500) relayed.clear();
             relayed.set(key, { at: Date.now(), body });
@@ -641,7 +644,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     }
     const qCursor = (v) => (/^[A-Za-z0-9._~=-]{1,300}$/.test(String(v || '')) ? String(v) : '');
     const qLimit = (v, max) => String(Math.min(Math.max(parseInt(v, 10) || 20, 1), max));
-    router.options(['/feed', '/wall', '/status', '/posts', '/attachments'], (req, res) => {
+    router.options(['/feed', '/feed/search', '/feed/examples', '/wall', '/status', '/posts', '/attachments'], (req, res) => {
         res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Max-Age': '600' });
         res.status(204).end();
     });
@@ -696,6 +699,10 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         following: /^(1|true)$/.test(String(req.query.following || '')) ? '1' : '',
         cursor: qCursor(req.query.cursor), limit: qLimit(req.query.limit, 40),
     }));
+    router.get('/feed/search', (req, res) => relay(req, res, '/api/v1/feed/search', {
+        q: qWords(req.query.q),
+    }));
+    router.get('/feed/examples', (req, res) => relay(req, res, '/api/v1/feed/examples', {}));
     router.get('/wall', (req, res) => relay(req, res, '/api/v1/pulse', {
         limit: qLimit(req.query.limit, 50), after: qCursor(req.query.after), cursor: qCursor(req.query.cursor),
         for: req.query.for === 'me' ? 'me' : '', origin: ['user', 'ai', 'system', 'all'].includes(String(req.query.origin || '')) ? String(req.query.origin) : '',
