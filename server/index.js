@@ -1100,7 +1100,7 @@ require('./home/activity').configure({
         const d = await openStats.collect(7);
         return d && Array.isArray(d.sites) ? Object.fromEntries(d.sites.map((s) => [s.id, Number(s.pageviews) || 0])) : null;
     },
-    accounts: async () => (await db.prepare('SELECT COUNT(*) AS cnt FROM users WHERE COALESCE(is_anon, 0) = 0 AND COALESCE(is_banned, 0) = 0').get()).cnt,
+    accounts: async () => (await db.prepare('SELECT COUNT(*) AS cnt FROM users WHERE COALESCE(is_anon, 0) = 0 AND COALESCE(is_banned, 0) = 0 AND COALESCE(is_test, 0) = 0').get()).cnt,
     services: () => {
         const live = require('./status/routes').rows(ecosystem).filter((r) => r.exposure && r.exposure.state === 'live');
         const known = live.filter((r) => r.status !== 'unknown');

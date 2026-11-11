@@ -41,6 +41,16 @@ router.get('/resolve', async (req, res) => {
  *   -> { results: { <subject_id | id>: projection | null } }
  * Used by services that show authors (Community pastes) and by importers mapping legacy ids.
  */
+/**
+ * GET /internal/identity/test-subjects
+ *   -> { subjects: [identity.subject-projection@1] }
+ * The probe and test accounts (users.is_test), so a service can leave them out of a public member list, feed or
+ * leaderboard without asking about everyone. Small by design; services cache it and refresh on a timer.
+ */
+router.get('/test-subjects', async (req, res) => {
+    res.json({ subjects: await subjects.testProjections(req.app.locals.db) });
+});
+
 router.post('/resolve-batch', express.json({ limit: '256kb' }), async (req, res) => {
     const db = req.app.locals.db;
     const b = req.body || {};

@@ -171,9 +171,9 @@ router.post('/register', async (req, res) => {
 
     const passwordHash = bcrypt.hashSync(password, 10);
     const result = await db.prepare(`
-        INSERT INTO users (username, email, password_hash, display_name, profile_color, subject_id)
-        VALUES (?, ?, ?, ?, '#8b5cf6', ?) RETURNING id
-    `).run(username, email || null, passwordHash, username, subjects.newUserSubjectId());
+        INSERT INTO users (username, email, password_hash, display_name, profile_color, subject_id, is_test)
+        VALUES (?, ?, ?, ?, '#8b5cf6', ?, ?) RETURNING id
+    `).run(username, email || null, passwordHash, username, subjects.newUserSubjectId(), subjects.isTestUsername(username) ? 1 : 0);
 
     // Create default preferences
     await db.prepare('INSERT INTO user_preferences (user_id) VALUES (?) ON CONFLICT DO NOTHING').run(result.lastInsertRowid);

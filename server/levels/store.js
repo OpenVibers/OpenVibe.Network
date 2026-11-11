@@ -72,7 +72,8 @@ async function board(db, userId) {
             FROM users u LEFT JOIN person_levels l ON l.user_id = u.id
             ${weekly ? "LEFT JOIN (SELECT user_id, SUM(amount) AS xp FROM experience_events WHERE earned_at >= date_trunc('week', CURRENT_TIMESTAMP AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' GROUP BY user_id) w ON w.user_id = u.id" : ''}
             WHERE ${ACTIVE} AND u.subject_id IS NOT NULL AND COALESCE(l.leaderboard, true)
-        ) SELECT * FROM ranked WHERE rank <= 50 OR ABS(rank - (SELECT rank FROM ranked WHERE id = ?)) <= 5 ORDER BY rank`).all(userId || 0);
+              AND (COALESCE(u.is_test, 0) = 0 OR u.id = ?)
+        ) SELECT * FROM ranked WHERE rank <= 50 OR ABS(rank - (SELECT rank FROM ranked WHERE id = ?)) <= 5 ORDER BY rank`).all(userId || 0, userId || 0);
         const me = rows.find(r => Number(r.id) === Number(userId));
         const clean = r => ({ subject: r.subject, username: r.username, level: Number(r.level), xp: Number(r.xp), rank: Number(r.rank) });
         return { top: rows.filter(r => Number(r.rank) <= 50).map(clean), me: me ? clean(me) : null, around: me ? rows.filter(r => Math.abs(Number(r.rank) - Number(me.rank)) <= 5).map(clean) : [] };
