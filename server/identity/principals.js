@@ -839,6 +839,11 @@ const DEFAULT_GRANTS = [
     // what passes `prefer` to the router). Without ai.chat every unpinned frame was refused ("this token may not run
     // ai.chat") from 10-31 to 11-02.
     ['design', 'ai.run.create', 'openvibe.ai', ['ai.generate', 'ai.chat']],
+    // The Exchange platform API's icon reference search (contracts 0.407.0, exchange.search.icons): Design asks
+    // OpenVibe.AI for the references beside a glyph draft with its own service token, so no Exchange key is needed,
+    // and reaches only POST /v1/search/icons. This grant was never granted or revoked before, so it needs no
+    // RESTORED_GRANTS entry; the seed inserts it at boot.
+    ['design', 'exchange.search.icons', 'openvibe.ai', []],
     // OpenVibe.Bench (contracts 0.238.0): the shared benchmark engine calls AI's generate route (namespace ai.generate)
     // to run its pinned rounds, and subscribes to the account events at boot; its export/deletion pair is with the
     // other services' above. It publishes bench.* events and answers no other service today, so no Search grant.
