@@ -416,8 +416,9 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
                 count('opencoins_closed', bal);
             }
         }
-        // Ask 273: the "since I last looked" cursor is ephemeral UI state: gone with the account.
+        // Ask 273: the "since I last looked" cursors are ephemeral UI state: gone with the account.
         await del('coin_balance_reads', `user_id IN ${inU}`, userIds, 'coin_balance_reads');
+        await del('channel_points_reads', `user_id IN ${inU}`, userIds, 'channel_points_reads');
         // The tombstones: the username is released, the rest cleared; the subject stays (never reused).
         const cols = await columnsOf(db, 'users');
         for (const id of userIds) {
