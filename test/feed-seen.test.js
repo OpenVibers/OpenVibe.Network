@@ -36,7 +36,7 @@ const relay = require('../server/developer/event-relay');
         assert.equal(events.length, 1); assert.equal(events[0].event_type, 'network.feed.seen');
         assert.deepEqual(events[0].subject, { type: 'user', id: ana.subject_id });
         assert.equal(events[0].visibility, 'subject'); assert.equal(events[0].payload.seen_at, put.body.seen_at);
-        const migration = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'migrations/0069_feed_seen.sql'), 'utf8');
+        const migration = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'migrations/0079_feed_seen.sql'), 'utf8');
         assert.match(migration, /^-- phase: expand$/m);
     } finally { relay.writerFor = writerFor; server.close(); }
     console.log('feed-seen: ok'); process.exit(0);
