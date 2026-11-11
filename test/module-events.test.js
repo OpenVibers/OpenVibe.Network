@@ -73,8 +73,8 @@ const valid = (e) => { const v = contracts.validate('events.event-envelope@1', e
     const grant = async (c, cap) => JSON.parse((await db.prepare('SELECT namespaces FROM principal_grants WHERE client_id = ? AND capability = ?').get(c, cap)).namespaces);
     assert.deepStrictEqual(await grant('chat', 'network.modules.read'), CHAT_NS);
     assert.deepStrictEqual(await grant('chat', 'network.modules.write'), CHAT_NS);
-    assert.deepStrictEqual(await grant('live', 'network.modules.write'), ['live.profile', 'live.stats', 'live.loyalty'], 'the old defaults move to the new one at boot');
-    assert.deepStrictEqual(await grant('live', 'network.modules.read'), ['live.profile', 'live.stats', 'live.loyalty']);
+    assert.deepStrictEqual(await grant('live', 'network.modules.write'), ['live.profile', 'live.stats', 'live.loyalty', 'live.layout'], 'the old defaults move to the new one at boot');
+    assert.deepStrictEqual(await grant('live', 'network.modules.read'), ['live.profile', 'live.stats', 'live.loyalty', 'live.layout']);
     // Chat manages its own Events subscriptions (live.release.deployed, network.module.updated).
     const chatEvents = await fetch(`${base}/oauth/token`, { method: 'POST', body: new URLSearchParams({ grant_type: 'client_credentials', client_id: 'chat', client_secret: 'chat-secret', audience: 'openvibe.events', scope: 'events.subscription.manage' }) }).then(r => r.json());
     assert.strictEqual(chatEvents.scope, 'events.subscription.manage', JSON.stringify(chatEvents));
