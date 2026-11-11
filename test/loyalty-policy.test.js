@@ -31,7 +31,7 @@ assert.strictEqual(await grant('network.coins.transfer'), undefined, 'the transf
 assert.ok(principals.REVOKED_GRANTS.some(([c, cap]) => c === 'live' && cap === 'network.coins.transfer'));
 assert.ok(!principals.DEFAULT_GRANTS.some(([, cap]) => cap === 'network.coins.transfer'), 'no default hands out the transfer grant');
 for (const cap of ['network.modules.read', 'network.modules.write']) {
-    assert.deepStrictEqual((await grant(cap)).namespaces, ['live.profile', 'live.stats', 'live.loyalty'], `${cap} gained live.loyalty`);
+    assert.deepStrictEqual((await grant(cap)).namespaces, ['live.profile', 'live.stats', 'live.loyalty', 'live.layout'], `${cap} gained live.loyalty`);
 }
 
 // live.loyalty is private: nothing of it appears in a public view.

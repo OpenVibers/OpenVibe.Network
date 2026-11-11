@@ -92,8 +92,8 @@ const DEFAULT_GRANTS = [
     // User modules: each service reads and writes the namespaces it owns (openvibe-contracts manifests/namespaces).
     // The chat.* namespaces are Chat's (chat.preferences since the Wave 6 cutover, chat.tts_defaults since
     // contracts 0.41.0). A service reading another's namespace sees only the fields `readers` lists for it.
-    ['live', 'network.modules.read', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty']],
-    ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty']],
+    ['live', 'network.modules.read', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty', 'live.layout']],
+    ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty', 'live.layout']],
     ['chat', 'network.modules.read', SELF_AUDIENCE, CHAT_NAMESPACES],
     ['chat', 'network.modules.write', SELF_AUDIENCE, CHAT_NAMESPACES],
     // Presence (plan 2026-10-22 track X item 9): Chat draws the dot in its DMs and member lists. The API enforces
@@ -990,6 +990,9 @@ const CHANGED_DEFAULT_NAMESPACES = [
     // contracts 0.56.0: live.loyalty (WS-K task 9).
     ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats'], ['live.profile', 'live.stats', 'live.loyalty']],
     ['live', 'network.modules.read', SELF_AUDIENCE, ['live.profile', 'live.stats'], ['live.profile', 'live.stats', 'live.loyalty']],
+    // contracts 0.406.0: live.layout, the signed-in person's picture-in-picture places (Live's /api/me/layout).
+    ['live', 'network.modules.write', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty'], ['live.profile', 'live.stats', 'live.loyalty', 'live.layout']],
+    ['live', 'network.modules.read', SELF_AUDIENCE, ['live.profile', 'live.stats', 'live.loyalty'], ['live.profile', 'live.stats', 'live.loyalty', 'live.layout']],
     ['chat', 'network.modules.read', SELF_AUDIENCE, ['chat.preferences'], CHAT_NAMESPACES],
     ['chat', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences'], CHAT_NAMESPACES],
     // Tools' job results under each developer project's child namespace (WS-L task 5, Media namespaces WS-G task 2).
