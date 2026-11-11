@@ -807,7 +807,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         };
     }
     const dockJson = express.json({ limit: '8kb' });
-    router.options(['/agent-view', '/agent-view/*', '/agent/*', '/agents/*', '/tasks/*', '/actor', '/actor/*', '/codes-tasks', '/codes-tasks/*'], (req, res) => {
+    router.options(['/agent-view', '/agent-view/*', '/agent/*', '/agents/*', '/codes-agents/*', '/tasks/*', '/actor', '/actor/*', '/codes-tasks', '/codes-tasks/*'], (req, res) => {
         res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE', 'Access-Control-Max-Age': '600' });
         res.status(204).end();
     });
@@ -846,6 +846,9 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const path = agentPath(req);
         return path ? `${path}?view=sheet` : null;
     }, { maxBytes: 512 * 1024 }));
+    router.get('/codes-agents/:id/sheet', dockRelay('codes', 'GET', (req) =>
+        /^[a-z][a-z0-9-]{0,63}$/.test(String(req.params.id || '')) ? `/api/v1/me/agents/${req.params.id}/sheet` : null,
+    { maxBytes: 512 * 1024 }));
     router.patch('/agents/:id', dockJson, dockRelay('actor', 'PATCH', (req) => agentPath(req)));
     router.post('/agents/:id/memory', dockJson, dockRelay('actor', 'POST', (req) => agentPath(req, '/memory')));
     router.patch('/agents/:id/memory/:mem', dockJson, dockRelay('actor', 'PATCH', (req) => MEMORY_ID.test(String(req.params.mem || '')) ? agentPath(req, `/memory/${req.params.mem}`) : null));

@@ -33,6 +33,10 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 
         return server;
     };
     const codes = stub('codes', (req, res, u) => {
+        if (u.pathname === '/api/v1/me/agents/codex/sheet' && req.method === 'GET') {
+            res.setHeader('content-type', 'application/json');
+            return res.end(JSON.stringify({ agent: { id: 'codex', name: 'Codex' }, work: [] }));
+        }
         if (u.pathname === '/api/v1/me/agent-view' && req.method === 'GET') {
             res.setHeader('content-type', 'application/json');
             return res.end(JSON.stringify({ agent: { id: 'ags_1', state: 'live', title: 'Ship it' } }));
@@ -175,6 +179,10 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 
     ({ r } = await get('/agents/bad/sheet', { Authorization: TOKEN }));
     assert.strictEqual(r.status, 404);
     assert.strictEqual(asked.length, sheetCalls);
+    ({ r, d } = await get('/codes-agents/codex/sheet', { Authorization: TOKEN }));
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(d.agent.id, 'codex');
+    assert.strictEqual(asked.at(-1).url, '/api/v1/me/agents/codex/sheet');
     const patch = await fetch(`${base}/agents/${AGENT_ID}`, { method: 'PATCH', headers: { Authorization: TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paused' }) });
     assert.strictEqual((await patch.json()).status, 'paused');
     ({ r, d } = await send(`/agents/${AGENT_ID}/memory`, { text: 'Keep this fact' }));
