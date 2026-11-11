@@ -659,6 +659,15 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/internal', machineInternal.internal);
 }
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read'), require('./identity/blocks').internalHandler(db));
+// Platform mutes and friendships (ask 287): a person's own lists and the changes the card's
+// actions make. Services read them through the internal routes once Contracts names their
+// capabilities; until then the person's own routes are the complete surface.
+app.use('/api/v1/me/mutes', rateLimit({ windowMs: 60_000, max: 60 }), require('./identity/mutes').userRouter(requireAuth));
+app.use('/api/v1/me/friends', rateLimit({ windowMs: 60_000, max: 60 }), require('./identity/friends').userRouter(requireAuth));
+// User reports (ask 287): a signed-in person files about another person; staff holding
+// staff.moderation.logs read the queue. The capability check lives in the staff router.
+app.use('/api/v1/me/reports', rateLimit({ windowMs: 60_000, max: 30 }), require('./identity/user-reports').userRouter(requireAuth));
+app.use('/api/v1/staff/user-reports', rateLimit({ windowMs: 60_000, max: 60 }), requireAuth, require('./identity/user-reports').staffRouter());
 // The follow graph (WS-E task 4, ADR-030): public counts, a person's own follows, and who follows a target
 // (its owner, or network.follows.read, service token only). Every change is network.follow.* (server/identity/follows.js).
 {
@@ -972,7 +981,24 @@ app.use('/avatar', rateLimit({ windowMs: 60_000, max: 600 }), avatarService.pub)
 app.locals.avatarService = avatarService;
 // Public profiles (plan T21 step 3): openvibe.network/@<username> and GET /api/v1/profiles/:username (CORS-open,
 // server/public-cors.js), with the items from OpenVibe.Inventory (server/profile/public.js).
-const userCards = require('./profile/card').createUserCards({ db, profiles: publicProfiles, selfToken, questUrl: process.env.OV_QUEST_INTERNAL_URL || 'http://127.0.0.1:4980', liveUrl: config.services.live.internalUrl });
+const userCards = require('./profile/card').createUserCards({ db, profiles: publicProfiles, selfToken, questUrl: process.env.OV_QUEST_INTERNAL_URL || 'http://127.0.0.1:4980', liveUrl: config.services.live.internalUrl, identify: identifyCardViewer });
+function identifyCardViewer(req) {
+    // Optional viewer identity for the card's actions: a missing, expired or revoked token
+    // reads as anonymous (Profile/Channel only), never a 401. No renewal here — a plain read
+    // must not rotate the session's cookies.
+    const { sessionToken, verifySession } = require('./auth/session');
+    const token = sessionToken(req);
+    if (!token) return Promise.resolve(null);
+    return verifySession(token, authCtx()).then(async (out) => {
+        if (out.error || !out.user || out.user.is_anon) return null;
+        const subject = await require('./identity/subjects').ensureUserSubject(db, out.user).catch(() => null);
+        if (!subject) return null;
+        // The card's staff tools follow the same capability map every service uses (ADR-022),
+        // so a role change reaches the card without a second list of who counts as staff.
+        const claims = require('./auth/staff-claims').staffClaims(out.user);
+        return { id: out.user.id, subject, username: out.user.username, role: out.user.role, staff: claims };
+    });
+}
 app.get('/api/v1/people/:username/card', rateLimit({ windowMs: 60_000, max: 240 }), userCards.api);
 app.use('/api/v1/me/card-visibility', rateLimit({ windowMs: 60_000, max: 60 }), userCards.settings(requireAuth));
 app.use('/api/v1/profiles', rateLimit({ windowMs: 60_000, max: 240 }), publicProfiles.api);
