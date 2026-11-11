@@ -56,14 +56,15 @@ const fullName = (s) => (/^Open[A-Z]/.test(String(s && s.name)) ? s.name : `Open
 // The launcher (openvibe-shared navbar) lists every open site under one of these groups, most used first within
 // each. A site missing here lands in the last group, so a new manifest is never left out of the menu.
 // The owner's regrouping (2026-11-10, plan ask 274): eight groups named for what a person came to do, in the order
-// the menu, its folders, the footer and the home pages show them. Seven tiles a group at most; Video's two domains
+// the menu, its folders, the footer and the home pages show them. Seven tiles a group, but Compare (Contracts 0.408.0)
+// joined Read & ask as its eighth on 2026-11-11 while the owner's next regrouping decides; Video's two domains
 // (Pics, Download) are list entries of their own, while Media, Homes and Bench are sections of Video, Rent and
 // Report and keep their domains without a tile. Contracts' `site.neighbourhood` repeats these ids for every site.
 const GROUPS = [
     { id: 'watch', name: 'Watch & stream', sites: ['live', 'media-hub', 'pics', 'download', 'stream', 'cam', 'tours'] },
     { id: 'talk', name: 'Talk & belong', sites: ['community', 'chat', 'tips', 'vip', 'mail', 'help', 'network'] },
     { id: 'play', name: 'Play', sites: ['games', 'quest', 'surf', 'fun', 'meme', 'casino', 'inventory'] },
-    { id: 'read', name: 'Read & ask', sites: ['news', 'today', 'report', 'search', 'wiki', 'blog', 'vision'] },
+    { id: 'read', name: 'Read & ask', sites: ['news', 'today', 'report', 'search', 'wiki', 'blog', 'vision', 'compare'] },
     { id: 'shop', name: 'Shop & money', sites: ['deals', 'coupons', 'shoes', 'reviews', 'trade', 'rent', 'work'] },
     { id: 'tools', name: 'Free tools', sites: ['tools', 'design', 'domains', 'host', 'image', 'lock', 'food'] },
     // Actor is the engine behind every agent (Codes' Auto, Vibe, the Dock call it): a developer service, not a second
