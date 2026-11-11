@@ -1,5 +1,5 @@
 'use strict';
-// openvibe.my/machines mints a one-time handoff ticket for link-web when the browser is signed in here,
+// The hub's old paths here mint a one-time handoff ticket for link-web when the browser is signed in here,
 // so openvibe.link signs them in with no round trip. Signed out, the plain hop lands on silent sign-in.
 //   ov test test/my-machines-handoff.test.js   (or: node test/my-machines-handoff.test.js)
 const assert = require('assert');

@@ -174,7 +174,7 @@ async function createMyRoutes({ db, config = require('../config'), sso, pagePath
     const page = path.resolve(pagePath);
 
     /**
-     * openvibe.my/machines (and the old Network paths) 302 to the Link hub. When the browser carries
+     * The hub's old paths here and on the apex 302 to the Link hub. When the browser carries
      * this host's session, mint a one-time handoff ticket for link-web so openvibe.link signs them in
      * with no round trip; without a session the plain hop lands on the hub's silent sign-in instead.
      */
