@@ -772,9 +772,11 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // ── The Dock's Agents tab (openvibe-shared dock-agent.js, dock-timeline.js and dock-actor.js) ───────────────
     // The Dock runs on every OpenVibe site, and every site's connect-src allows openvibe.network and refuses
     // openvibe.codes and openvibe.actor (2026-11-09: 49 sites logged 1-4 refusals at 1280). These fixed paths are
-    // the Dock's three reads and its controls: the person's Bearer token goes upstream and never a cookie, the
+    // the Dock's reads and its controls: the person's Bearer token goes upstream and never a cookie, the
     // bodies are JSON of at most 8 KB, redirects are not followed, and Codes' and Actor's status and answer come
     // back as they are. Nothing is kept: every answer is the person's own.
+    // The Dock's Code tab (the Vibe place's Code part) reads and writes the person's coding tasks the same way:
+    // /codes-tasks (list, start) and /codes-tasks/:id/stop, straight through to Codes' person tasks API.
     const dockAuth = (req) => (/^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '');
     const DOCK_ID = /^[A-Za-z0-9._~:-]{1,160}$/;
     const dockId = (v) => (DOCK_ID.test(String(v || '')) ? String(v) : '');
@@ -804,7 +806,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         };
     }
     const dockJson = express.json({ limit: '8kb' });
-    router.options(['/agent-view', '/agent-view/*', '/agent/*', '/tasks/*', '/actor', '/actor/*'], (req, res) => {
+    router.options(['/agent-view', '/agent-view/*', '/agent/*', '/tasks/*', '/actor', '/actor/*', '/codes-tasks', '/codes-tasks/*'], (req, res) => {
         res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Max-Age': '600' });
         res.status(204).end();
     });
@@ -834,6 +836,15 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     router.get('/actor', dockRelay('actor', 'GET', '/api/v1/me/actor'));
     for (const what of ['pause', 'resume', 'tell']) router.post(`/actor/${what}`, dockJson, dockRelay('actor', 'POST', `/api/v1/me/actor/${what}`));
     for (const what of ['answer', 'decline']) router.post(`/actor/asks/:id/${what}`, dockJson, dockRelay('actor', 'POST', (req) => (dockId(req.params.id) ? `/api/v1/me/actor/asks/${encodeURIComponent(req.params.id)}/${what}` : null)));
+    // OpenVibe.Codes' person tasks API (the Dock's Code tab): the latest tasks running first, one start, one stop.
+    // ?limit= is the list's cap (the Dock asks with 8); the stop's id is a tsk_ id, anything else is not a task.
+    const TASK_ID = /^tsk_[0-9A-HJKMNP-TV-Z]{26}$/;
+    router.get('/codes-tasks', dockRelay('codes', 'GET', (req) => {
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 50);
+        return `/api/v1/me/tasks?limit=${limit}`;
+    }));
+    router.post('/codes-tasks', dockJson, dockRelay('codes', 'POST', '/api/v1/tasks'));
+    router.post('/codes-tasks/:id/stop', dockJson, dockRelay('codes', 'POST', (req) => (TASK_ID.test(String(req.params.id || '')) ? `/api/v1/tasks/${req.params.id}/stop` : null)));
 
     // GET /api/frame/suggest?q=&owner=&limit= — the navbar's magnifier (openvibe-shared search.js): OpenVibe.Search's
     // suggestions, asked through Network because every site's connect-src already lets the navbar reach
