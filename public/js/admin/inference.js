@@ -75,6 +75,8 @@ function oinRender() {
         + '<h4 class="pai-subhead">Each kind of work</h4><div class="oin-kinds">' + OIN_KINDS.map(oinKindCard).join('') + '</div>'
         + '<h4 class="pai-subhead" id="oin-limits">Spending limits</h4><p class="muted oin-lead">The most each provider may cost in a day and in a month. Past a limit it is skipped until the day or the month turns, and the next one in line answers. Turn providers on and add their keys in AI providers above.</p>'
         + oinLimits()
+        + '<h4 class="pai-subhead" id="oin-providers">Providers, their tiers and their rules</h4>' + oinProviderCards() + oinRules()
+        + '<h4 class="pai-subhead" id="oin-compute">Rented capacity</h4>' + oinCompute() + oinPricebook()
         + '<h4 class="pai-subhead">What it cost</h4>' + oinCosts();
     if (!box.dataset.wired) {
         box.dataset.wired = '1';
@@ -230,6 +232,84 @@ function oinCosts() {
     return seg + '<div class="oin-costs">' + rows.map(row).join('') + '</div>';
 }
 
+
+// ── The provider wave: each provider, its tiers and its traits ───────────────────────────────────────────────────
+/** One trait as words: the classes, the cap, the allowance, the payment. */
+function oinTraitLine(p) {
+    const t = p.traits || {};
+    const bits = [];
+    if (Array.isArray(t.latency_classes) && t.latency_classes.length) bits.push('answers ' + t.latency_classes.join(', '));
+    if (t.concurrency) bits.push(t.concurrency + ' at a time');
+    if (t.payment) bits.push(t.payment === 'none' ? 'free, no card' : t.payment);
+    if (p.allowance) {
+        const end = p.allowance.ends_at ? ' · ends ' + String(p.allowance.ends_at).slice(0, 10) : '';
+        bits.push(oinCount(p.allowance.left) + ' free tokens left of ' + oinCount(p.allowance.tokens) + end);
+    }
+    return bits.join(' · ');
+}
+function oinProviderCards() {
+    const rows = (OIN.data.controls || []).slice().sort((a, b) => String(a.display_name || a.key).localeCompare(String(b.display_name || b.key)));
+    if (!rows.length) return '<p class="muted oin-note">No provider states a trait yet.</p>';
+    const row = (p) => {
+        const t = p.traits || {}, dp = p.data_policy || {};
+        const source = t.source ? '<a href="' + esc(t.source) + '" target="_blank" rel="noopener noreferrer">' + esc(t.source.replace(/^https:\/\//, '')) + '</a> · read ' + esc(t.checked || '') : '<span class="oin-bad">no source</span>';
+        const facts = 'training: ' + (dp.trains === true ? '<span class="oin-bad">yes</span>' : dp.trains === false ? 'no' : '<span class="oin-bad">not stated</span>')
+            + ' · retention: ' + (dp.retention || '<span class="oin-bad">not stated</span>')
+            + (dp.retention_note ? ' <span class="muted">(' + esc(dp.retention_note) + ')</span>' : '');
+        return '<div class="oin-limit" data-oin-provider="' + esc(p.key) + '">'
+            + '<div class="oin-limit-name"><b>' + esc(p.display_name || p.key) + '</b><span class="muted">' + esc(p.key) + (p.enabled ? ' · on' : ' · off') + (t.payment ? ' · ' + esc(t.payment) : '') + '</span></div>'
+            + '<div class="oin-limit-use"><span class="oin-label">Traits</span><span>' + esc(oinTraitLine(p)) + '</span></div>'
+            + '<div class="oin-limit-use"><span class="oin-label">Data</span><span>' + facts + '</span></div>'
+            + '<div class="oin-limit-use"><span class="oin-label">Source</span><span>' + source + '</span></div>'
+            + '<div class="oin-limit-set">'
+            + '<label class="oin-way"><span class="pai-switch"><input type="checkbox" role="switch" data-oin-provider-on data-ov-native' + (p.enabled ? ' checked' : '') + '><span class="pai-track" aria-hidden="true"><span class="pai-knob"></span></span></span><span class="oin-way-text"><b>On</b><span class="muted">Off until the owner turns it on.</span></span></label>'
+            + '<label><span class="oin-label">Tier</span><select data-oin-provider-tier><option value=""' + (!p.tier ? ' selected' : '') + '>Provider default</option><option value="standard"' + (p.tier === 'standard' ? ' selected' : '') + '>Standard</option><option value="flex"' + (p.tier === 'flex' ? ' selected' : '') + '>Flex</option></select></label>'
+            + '<button type="button" class="btn btn-sm pai-quiet" data-oin-act="save-provider">Save</button></div>'
+            + '</div>';
+    };
+    return '<div class="oin-limits">' + rows.map(row).join('') + '</div>';
+}
+/** The four routing rules, each at its safe value until the owner changes it. */
+function oinRules() {
+    const r = OIN.data.rules || {};
+    const sw = (key, label, desc, off) => '<label class="oin-way"><span class="pai-switch"><input type="checkbox" role="switch" data-oin-rule="' + key + '" data-ov-native' + (r[key] ? ' checked' : '') + '><span class="pai-track" aria-hidden="true"><span class="pai-knob"></span></span></span>'
+        + '<span class="oin-way-text"><b>' + label + '</b><span class="muted">' + desc + '</span></span></label>';
+    return '<details class="oin-ways" open><summary>Routing rules (safe by default)</summary><div class="oin-ways-list">'
+        + sw('private_training', 'A provider that trains on or retains prompts may answer private data', 'Off: private data never reaches a provider that keeps or trains on it.', true)
+        + sw('flex_interactive', 'A Flex tier may answer in front of a person', 'Off: Flex is for background and batch work only.', true)
+        + sw('latency_limited_interactive', 'A background-only provider may answer interactively', 'Off: a provider that states background or batch only never answers an interactive request.', true)
+        + sw('free_allowance_first', 'Spend a free allowance before paid capacity', 'On: eligible work uses the free tokens first.', false)
+        + '</div><footer class="oin-kind-foot"><span></span><button type="button" class="btn btn-sm btn-primary" data-oin-act="save-rules">Save rules</button></footer></details>';
+}
+/** The rented GPU hours, and the owner's own OpenAI-compatible endpoint. */
+function oinCompute() {
+    const c = OIN.data.compute || {};
+    const cards = (c.providers || []).map((p) => {
+        const pods = (p.pods || []).map((g) => '<tr><td>' + esc(g.gpu) + '</td><td>' + oinMoney(g.hourly_usd) + (g.spot_usd != null ? ' <span class="muted">· spot ' + oinMoney(g.spot_usd) + '</span>' : '') + '</td></tr>').join('');
+        const credits = p.credits ? (p.credits.starter_usd ? 'Up to ' + oinMoney(p.credits.starter_usd) + ' in startup credits (' + esc(p.credits.starter_eligibility || '') + '); the owner applies.' : esc(p.credits.match || '')) : '';
+        return '<details class="oin-cost"><summary><span class="oin-cost-name">' + esc(p.display_name) + '</span><span class="oin-cost-n"><b>' + (p.pods && p.pods[0] ? oinMoney(p.pods[0].hourly_usd) + '/hr' : '') + '</b></span></summary>'
+            + '<table class="pai-table oin-models"><thead><tr><th>GPU</th><th>An hour</th></tr></thead><tbody>' + pods + '</tbody></table>'
+            + (p.storage ? '<p class="muted oin-note">Storage ' + oinMoney(p.storage.container_usd_per_gb_month) + '/GB a month (container), ' + oinMoney(p.storage.network_volume_usd_per_gb_month) + '/GB a month (network volume).</p>' : '')
+            + (credits ? '<p class="muted oin-note">' + credits + '</p>' : '')
+            + '<p class="muted oin-note">' + esc(p.billing || '') + ' · read ' + esc(p.checked || '') + ' · <a href="' + esc(p.source) + '" target="_blank" rel="noopener noreferrer">the listing</a></p></details>';
+    }).join('');
+    const e = c.endpoint || {};
+    const form = '<div class="oin-row"><span class="oin-label">My vLLM endpoint</span>'
+        + '<label><span class="oin-label">URL</span><input type="url" data-oin-endpoint="base_url" value="' + esc(e.base_url || '') + '" placeholder="https://…/v1"></label>'
+        + '<label><span class="oin-label">Model</span><input type="text" data-oin-endpoint="model_key" value="' + esc(e.model_key || '') + '" placeholder="the model id it serves"></label>'
+        + '<label><span class="oin-label">An hour</span><span class="pai-prefix">$</span><input type="number" min="0.01" step="0.01" data-oin-endpoint="hourly_usd" value="' + esc(e.hourly_usd == null ? '' : e.hourly_usd) + '"></label>'
+        + '<label><span class="oin-label">Tokens an hour</span><input type="number" min="1" step="1" data-oin-endpoint="throughput_tokens_per_hour" value="' + esc(e.throughput_tokens_per_hour == null ? '' : e.throughput_tokens_per_hour) + '"></label>'
+        + '<button type="button" class="btn btn-sm pai-quiet" data-oin-act="save-endpoint">Save endpoint</button>'
+        + (e.usd_per_mtok != null ? '<p class="muted oin-note">' + oinMoney(e.usd_per_mtok) + ' per million tokens at that throughput. The key goes in the provider key slot.</p>' : '') + '</div>';
+    return (cards ? '<div class="oin-costs">' + cards + '</div>' : '') + form;
+}
+/** The confirmed readings bundled with the release: the owner proposes them, then accepts them in the price book. */
+function oinPricebook() {
+    const list = (OIN.data.pricebook && OIN.data.pricebook.confirmed) || [];
+    return '<div class="oin-row"><span class="oin-label">Confirmed prices</span><p class="muted oin-note">' + list.length + ' readings from the providers\' own pages wait to enter the price book as pending changes. Nothing is applied until you accept each one in the price book.</p>'
+        + '<button type="button" class="btn btn-sm pai-quiet" data-oin-act="propose-prices"' + (list.length ? '' : ' disabled') + '>Propose ' + list.length + ' price' + (list.length === 1 ? '' : 's') + '</button></div>';
+}
+
 // ── Changes ──────────────────────────────────────────────────────────────────────────────────────────────────────
 function oinRepaint(kind) {
     const old = document.querySelector('#oin-body .oin-kind[data-kind="' + kind + '"]');
@@ -276,6 +356,10 @@ async function oinClick(ev) {
     if (!btn || btn.disabled) return;
     const act = btn.dataset.oinAct;
     if (act === 'cap') return oinSaveCap(btn.closest('.oin-limit'), btn);
+    if (act === 'save-provider') return oinSaveProvider(btn.closest('[data-oin-provider]'), btn);
+    if (act === 'save-rules') return oinSaveRules(btn);
+    if (act === 'save-endpoint') return oinSaveEndpoint(btn);
+    if (act === 'propose-prices') return oinProposePrices(btn);
     const card = btn.closest('.oin-kind');
     if (!card) return;
     const kind = card.dataset.kind, d = oinDraft(kind), i = Number(btn.dataset.i);
@@ -308,6 +392,52 @@ async function oinSaveKind(kind, btn) {
         btn.disabled = false;
         toast(paiFriendly('ai', err), 'error');
     }
+}
+async function oinSaveProvider(row, btn) {
+    if (!row) return;
+    const key = row.dataset.oinProvider;
+    const enabled = row.querySelector('[data-oin-provider-on]').checked;
+    const tier = row.querySelector('[data-oin-provider-tier]').value || null;
+    btn.disabled = true;
+    try {
+        await paiApi('/owner-inference/providers', { method: 'POST', body: { provider_key: key, enabled, tier } });
+        toast(oinProviderName(key) + ': saved', 'success');
+        await oinLoad();
+    } catch (err) { btn.disabled = false; toast(paiFriendly('ai', err), 'error'); }
+}
+async function oinSaveRules(btn) {
+    const body = {};
+    for (const el of document.querySelectorAll('[data-oin-rule]')) body[el.dataset.oinRule] = el.checked;
+    if (btn) btn.disabled = true;
+    try {
+        await paiApi('/owner-inference/rules', { method: 'POST', body });
+        toast('Routing rules saved', 'success');
+        await oinLoad();
+    } catch (err) { if (btn) btn.disabled = false; toast(paiFriendly('ai', err), 'error'); }
+}
+async function oinSaveEndpoint(btn) {
+    const body = {};
+    for (const el of document.querySelectorAll('[data-oin-endpoint]')) body[el.dataset.oinEndpoint] = el.value.trim();
+    const hourly = oinNumber(body.hourly_usd, { integer: false });
+    const throughput = oinNumber(body.throughput_tokens_per_hour, { integer: true });
+    if (!body.base_url || !body.model_key) return toast('The endpoint needs its URL and the model it serves.', 'error');
+    if (hourly.error || throughput.error) return toast('The endpoint price needs an hour and a whole number of tokens an hour.', 'error');
+    if (btn) btn.disabled = true;
+    try {
+        await paiApi('/owner-inference/endpoint', { method: 'POST', body: { base_url: body.base_url, model_key: body.model_key, hourly_usd: hourly.value, throughput_tokens_per_hour: throughput.value } });
+        toast('Endpoint saved; it is priced per million tokens from that hour.', 'success');
+        await oinLoad();
+    } catch (err) { if (btn) btn.disabled = false; toast(paiFriendly('ai', err), 'error'); }
+}
+async function oinProposePrices(btn) {
+    const list = (OIN.data.pricebook && OIN.data.pricebook.confirmed) || [];
+    if (!list.length) return;
+    if (btn) btn.disabled = true;
+    try {
+        await paiApi('/owner-inference/pricebook/propose', { method: 'POST', body: { proposals: list } });
+        toast(list.length + ' confirmed prices are pending in the price book.', 'success');
+        if (btn) btn.disabled = false;
+    } catch (err) { if (btn) btn.disabled = false; toast(paiFriendly('ai', err), 'error'); }
 }
 async function oinSaveCap(row, btn) {
     if (!row) return;
