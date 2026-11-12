@@ -14,6 +14,7 @@ const { createFrameService } = require('../server/frame/service');
         asked.push({ url: req.url, auth: req.headers.authorization || '', xff: req.headers['x-forwarded-for'] });
         if (down) { res.statusCode = 503; return res.end('{}'); }
         res.setHeader('content-type', 'application/json');
+        if (req.url.startsWith('/api/v1/query/providers')) return res.end(JSON.stringify({ providers: [{ provider: 'deepseek', scopes: ['web'], available: true }] }));
         res.end(JSON.stringify({ results: [{ scope: 'network', kind: 'document', title: 'surf_utopia', url: 'https://openvibe.live/clips/1' }], groups: { network: 1 }, answer: null, citations: [], route: { explain: [], cost_usd: 0 }, next_cursor: null }));
     });
     await new Promise((r) => search.listen(0, '127.0.0.1', r));
@@ -59,6 +60,19 @@ const { createFrameService } = require('../server/frame/service');
     ({ r, d } = await get('?q=down'));
     assert.strictEqual(r.status, 200);
     assert.deepStrictEqual([d.results, d.next_cursor], [[], null], 'Search not answering is an empty answer');
+
+    // The Sources popover's own read: Search's web ladder offers, same CORS and caching.
+    down = false;
+    let prov = await fetch(`${base.replace('/query', '/query/providers')}`).then((x) => x.json());
+    assert.deepStrictEqual(prov.providers.map((p) => p.provider), ['deepseek']);
+    const providersHit = asked[asked.length - 1];
+    assert.strictEqual(new URL(providersHit.url, 'http://x').pathname, '/api/v1/query/providers');
+    assert.strictEqual(providersHit.auth, '', 'anonymous providers');
+    await fetch(`${base.replace('/query', '/query/providers')}`);
+    assert.strictEqual(asked.filter((x) => x.url.startsWith('/api/v1/query/providers')).length, 1, 'the anonymous offers are kept 60 s');
+    const provAuth = await fetch(`${base.replace('/query', '/query/providers')}`, { headers: { Authorization: token } });
+    assert.strictEqual(provAuth.headers.get('cache-control'), 'private, no-store');
+    assert.strictEqual(asked[asked.length - 1].auth, token, "the person's token goes along");
 
     server.close(); search.close();
     console.log('frame query: the fabric through Network, as the person or kept 60 s ok');
