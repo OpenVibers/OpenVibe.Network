@@ -16,7 +16,7 @@ const MA_SCOPE = {
     send: ['fa-paper-plane', 'Send you files'],
     screen: ['fa-display', 'Watch the screen'],
     desk: ['fa-window-maximize', 'Use a desk'],
-    computer: ['fa-computer-mouse', 'Control the computer'],
+    computer: ['fa-keyboard', 'Control the computer'],
     worker: ['fa-microchip', 'Run jobs on it'],
 };
 const MA_TIMES = [[600, '10 minutes'], [3600, '1 hour'], [4 * 3600, '4 hours'], [86400, '1 day'], [7 * 86400, '1 week'], [30 * 86400, '30 days']];
