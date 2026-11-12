@@ -764,3 +764,54 @@ body.my-machines-open { padding-bottom: max(112px, calc(100vh - 90px)); }
 body.link-hub.my-machines-open { padding-bottom: 0; }
 .link-hub .mc-title { margin: 0 0 6px; font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2rem); line-height: 1.15; }
 .mc-empty > i { flex: none; }
+
+/* Access between machines and your agents (my/access.js), under the machine cards on openvibe.link/machines. A request
+   asked of you is a card with what is asked, in words with an icon each, and the answer under it; the rest are rows. */
+.ma-box { display: grid; gap: 12px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); min-width: 0; }
+.ma-box[hidden] { display: none; }
+.ma-h { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1.05rem; }
+.ma-note { margin: 0; font-size: 13px; line-height: 1.5; }
+.ma-sec { display: grid; gap: 8px; }
+.ma-sec h4, .ma-sub { margin: 4px 0 0; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.ma-ask { display: grid; gap: 8px; padding: 14px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 7%, var(--bg-secondary)); }
+.ma-ask-title { margin: 0; font-size: 15px; line-height: 1.4; }
+.ma-ask-when { margin: 0; font-size: 13px; color: var(--text-muted); }
+.ma-scopes { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; }
+.ma-scopes li { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: var(--bg-card); border: 1px solid var(--border); font-size: 13px; font-weight: 600; }
+.ma-scopes i { color: var(--accent-light); }
+.ma-reason { margin: 0; padding: 6px 12px; border-left: 3px solid var(--border); color: var(--text-secondary); font-size: 13px; font-style: italic; }
+.ma-ask-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.ma-ask-acts .btn { min-height: 44px; min-width: 112px; justify-content: center; }
+.ma-less summary { min-height: 44px; display: inline-flex; align-items: center; cursor: pointer; color: var(--text-secondary); font-size: 13px; }
+.ma-less-body { display: grid; gap: 6px; padding: 8px 0 2px; }
+.ma-less-scope, .ma-less-time { display: flex; align-items: center; gap: 8px; min-height: 40px; font-size: 14px; }
+.ma-less-time select { min-height: 40px; }
+.ma-less-body .btn { justify-self: start; min-height: 44px; }
+.ma-say:empty { display: none; }
+.ma-say { margin: 0; font-size: 13px; color: var(--danger-text, #ef4444); }
+.ma-grants, .ma-list, .ma-agents, .ma-threads { list-style: none; display: grid; gap: 8px; margin: 0; padding: 0; }
+.ma-grant { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-secondary); }
+.ma-grant > i { color: var(--success); }
+.ma-grant-t b, .ma-agent-t b { display: block; font-size: 14px; overflow-wrap: anywhere; }
+.ma-grant-t small, .ma-agent-t small { display: block; color: var(--text-muted); font-size: 12.5px; }
+.ma-grant .btn { min-height: 40px; }
+.ma-list li { font-size: 13px; color: var(--text-secondary); line-height: 1.45; }
+.ma-fold summary { min-height: 40px; display: flex; align-items: center; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.ma-fold .ma-list { padding: 4px 0 6px; }
+.ma-empty code { font-size: 12px; }
+.ma-agent { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-secondary); }
+.ma-agent-sw { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+.ma-thread { display: grid; gap: 8px; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-secondary); }
+.ma-thread-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; margin: 0; font-size: 14px; }
+.ma-state { margin-left: auto; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.ma-state.is-open { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+.ma-state.is-closed { color: var(--text-muted); background: var(--bg-card); }
+.ma-tasks { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 13px; }
+.ma-task-msg { display: block; overflow-wrap: anywhere; }
+.ma-tasks small { color: var(--text-muted); overflow-wrap: anywhere; }
+.ma-tasks li.is-failed small { color: var(--danger-text, #ef4444); }
+.ma-thread .btn { justify-self: start; min-height: 40px; }
+@media (max-width: 560px) {
+    .ma-grant, .ma-agent { grid-template-columns: auto minmax(0, 1fr); }
+    .ma-grant .btn, .ma-agent-sw { grid-column: 2; justify-self: start; }
+}

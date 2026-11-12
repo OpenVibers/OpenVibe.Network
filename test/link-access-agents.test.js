@@ -167,5 +167,29 @@ const { DEFAULT_GRANTS } = require('../server/identity/principals');
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(`tsk_${crypto.randomBytes(16).toString('hex')}`, created.task.thread, from.id, to.id, owner, JSON.stringify(message), minute, minute);
     await assert.rejects(agents.createTask(db, { type: 'node', id: a.id }, to.id, { from: from.id, message }), (e) => e.code === 'agents.rate_limit');
     await access.revoke(db, replacement.grant.id, other);
+
+    // The owner's page names both sides (server/link/names.js): machines, people and agents, and which side the
+    // viewer is on, never a bare lnk_/usr_/agt_ id.
+    const names = require('../server/link/names');
+    await db.prepare('UPDATE platform_node_principals SET name = ? WHERE id = ?').run('Alex laptop', a.id);
+    await db.prepare('UPDATE platform_node_principals SET name = ? WHERE id = ?').run('Sam desktop', b.id);
+    await db.prepare('UPDATE platform_node_principals SET name = ? WHERE id = ?').run('Alex desktop', c.id);
+    const rows = (await db.prepare('SELECT * FROM link_access_requests WHERE from_owner = ? OR to_owner = ? ORDER BY asked_at').all(owner, owner)).map(access.requestView);
+    const asSam = await names.nameAccessRows(db, rows.filter((r) => r.to_owner === other), other);
+    assert.equal(asSam[0].side, 'in', 'a request to Sam is "in" for Sam');
+    assert.equal(asSam[0].from_machine.name, 'Alex laptop');
+    assert.equal(asSam[0].to_machine.name, 'Sam desktop');
+    assert.equal(asSam[0].from_person.username, 'alex');
+    const asAlex = await names.nameAccessRows(db, rows, owner);
+    assert.equal(asAlex.find((r) => r.to_principal === b.id).side, 'out', 'the same request is "out" for Alex');
+    assert.equal(asAlex.find((r) => r.to_principal === c.id).side, 'own', 'between Alex\'s own machines');
+    const [thread] = await names.nameThreads(db, [{ id: 'thr_x', from: from.id, to: to.id, tasks: [] }], owner);
+    assert.equal(thread.from_agent.name, 'Codex');
+    assert.equal(thread.from_agent.mine, true);
+    assert.equal(thread.to_agent.mine, false);
+    assert.equal(thread.to_agent.person.username, 'sam');
+    assert.equal(thread.to_agent.machine.name, 'Sam desktop');
+    const [mineAgent] = await names.nameAgents(db, [agents.directoryView(await db.prepare('SELECT * FROM agent_directory WHERE id = ?').get(from.id))]);
+    assert.equal(mineAgent.machine.name, 'Alex laptop');
     console.log('link access and agents: ownership, follow gate, defaults, narrowing, time, limits, token, revocation and relay refusals passed');
 })().catch((err) => { console.error(err); process.exitCode = 1; });

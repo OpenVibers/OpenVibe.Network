@@ -8,6 +8,7 @@ const express = require('express');
 const { ids, http, validate } = require('openvibe-contracts');
 const { ensureUserSubject } = require('../identity/subjects');
 const eventRelay = require('../developer/event-relay');
+const names = require('./names');
 
 const SCOPES = new Set(['agent', 'send', 'screen', 'desk', 'computer', 'worker']);
 const PRINCIPAL = /^lnk_[0-9A-HJKMNP-TV-Z]{26}$/;
@@ -324,7 +325,8 @@ function routers({ requireAuth, nodeGuard, relayGuard }) {
         const who = await owner(db, req);
         await expirePending(db);
         const rows = await db.prepare('SELECT * FROM link_access_requests WHERE from_owner = ? OR to_owner = ? ORDER BY asked_at DESC LIMIT 100').all(who, who);
-        res.json({ requests: rows.map(requestView) });
+        // The owner's page names each side (openvibe.link/machines: "Jo's laptop asks for access to your desktop").
+        res.json({ requests: await names.nameAccessRows(db, rows.map(requestView), who) });
     }));
     user.post('/access-requests', express.json({ limit: '8kb' }), wrap(async (req, res, db) => {
         const who = await owner(db, req), from = await machine(db, req.body?.from_principal);
@@ -338,13 +340,16 @@ function routers({ requireAuth, nodeGuard, relayGuard }) {
     user.get('/access-grants', wrap(async (req, res, db) => {
         const who = await owner(db, req);
         const rows = await db.prepare('SELECT * FROM link_access_grants WHERE from_owner = ? OR to_owner = ? ORDER BY created_at DESC LIMIT 100').all(who, who);
-        res.json({ grants: rows.map(grantView) });
+        res.json({ grants: await names.nameAccessRows(db, rows.map(grantView), who) });
     }));
     user.post('/access-grants/:id/revoke', wrap(async (req, res, db) => res.json({ grant: await revoke(db, req.params.id, await owner(db, req)) })));
     user.get('/access-audit', wrap(async (req, res, db) => {
         const who = await owner(db, req);
-        const rows = await db.prepare('SELECT id, grant_id, from_owner, to_owner, scope, action, at FROM link_access_audit WHERE from_owner = ? OR to_owner = ? ORDER BY at DESC LIMIT 200').all(who, who);
-        res.json({ audit: rows });
+        // Each use names the two machines of its grant, so the page can say "Jo's laptop sent a file to your desktop".
+        const rows = await db.prepare(`SELECT a.id, a.grant_id, a.from_owner, a.to_owner, a.scope, a.action, a.at, g.from_principal, g.to_principal
+            FROM link_access_audit a JOIN link_access_grants g ON g.id = a.grant_id
+            WHERE a.from_owner = ? OR a.to_owner = ? ORDER BY a.at DESC LIMIT 200`).all(who, who);
+        res.json({ audit: await names.nameAccessRows(db, rows, who) });
     }));
     user.get('/:id/access-settings', wrap(async (req, res, db) => {
         const who = await owner(db, req), p = await machine(db, req.params.id);
