@@ -68,6 +68,9 @@ function mcCard(m) {
 
     const own = mcOwnerSwitches(m);
     if (own) card.append(own);
+    // Who else may ask this machine for access, and its agents (my/access.js).
+    const access = typeof mcAccessSwitches === 'function' ? mcAccessSwitches(m) : null;
+    if (access) card.append(access);
     const screen = mcScreenBlock(card, m);
     if (screen) card.append(screen);
     const links = mcSharesBlock(m);
@@ -600,6 +603,7 @@ async function loadMachines() {
         mcNames = new Map(machines.map((m) => [m.id, m.name || MC_KIND[m.kind] || 'A machine']));
         for (const m of machines) m.pools = (pools.pools || []).filter((p) => p.machines.some((x) => x.id === m.id));
         list.replaceChildren(...machines.map(mcCard), ...mcPoolPickers(pools.candidates || []));
+        if (typeof loadMachineAccess === 'function') loadMachineAccess().catch(() => {});
     } catch (e) {
         if (count) count.textContent = '';
         list.replaceChildren(mcEl('p', 'muted', [e.status === 401 ? 'Sign in to see your machines.' : 'Your machines could not be read just now.']));

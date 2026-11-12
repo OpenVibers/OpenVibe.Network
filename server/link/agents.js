@@ -310,7 +310,7 @@ function routers({ requireAuth, registerGuard, resultGuard, bot, config, private
     me.get('/agents', wrap(async (req, res, db) => {
         const who = await ensureUserSubject(db, req.user);
         const rows = await db.prepare('SELECT * FROM agent_directory WHERE owner_subject = ? ORDER BY updated_at DESC, id LIMIT 200').all(who);
-        res.json({ agents: rows.map(directoryView) });
+        res.json({ agents: await names.nameAgents(db, rows.map(directoryView)) });
     }));
     me.put('/agents/:id/allow-others', express.json({ limit: '2kb' }), wrap(async (req, res, db) => {
         if (typeof req.body?.allow_others !== 'boolean') fail(422, 'agents.allow_others', 'allow_others must be boolean');
@@ -324,11 +324,13 @@ function routers({ requireAuth, registerGuard, resultGuard, bot, config, private
         const who = await ensureUserSubject(db, req.user);
         await expireThreads(db);
         const threads = await db.prepare('SELECT * FROM agent_threads WHERE from_owner = ? OR to_owner = ? ORDER BY created_at DESC LIMIT 100').all(who, who);
-        res.json({ threads: await Promise.all(threads.map(async (thread) => ({
+        const out = await Promise.all(threads.map(async (thread) => ({
             id: thread.id, from: thread.from_agent, to: thread.to_agent, created_at: thread.created_at,
             closes_at: thread.closes_at, stopped_at: thread.stopped_at || null,
             tasks: (await db.prepare('SELECT * FROM agent_tasks WHERE thread_id = ? ORDER BY created_at LIMIT 100').all(thread.id)).map(taskView),
-        }))) });
+        })));
+        // Each side by name, machine and person, for the owner's Agents section on openvibe.link/machines.
+        res.json({ threads: await names.nameThreads(db, out, who) });
     }));
     me.post('/agent-threads/:id/stop', wrap(async (req, res, db) =>
         res.json({ thread: await stopThread(db, req.params.id, await ensureUserSubject(db, req.user)) })));
