@@ -78,7 +78,7 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
             const persona = c.persona && typeof c.persona === 'object' ? c.persona : null;
             const at = iso(c.last_message_at || c.updated_at || c.created_at) || new Date(now()).toISOString();
             const run = {
-                id: String(c.slug), ref: `chat:${c.slug}`, kind: 'chat', title: clip((persona && persona.name) || c.name || 'Vibe', 200) || 'Vibe',
+                id: String(c.slug), ref: `chat:${c.slug}`, kind: 'chat', title: clip(c.name || (persona && persona.name) || 'Vibe', 200) || 'Vibe',   // the chat's own name: Chat sets it to the persona's unless the person renamed it
                 owner, agent: { id: 'vibe', name: clip((persona && persona.name) || 'Vibe', 160) || 'Vibe', product: 'chat', harness: 'openvibe' },
                 status: 'waiting', waiting: { for: 'message' },
                 url: httpsUrl(c.url) || `https://openvibe.chat/vibe/${encodeURIComponent(c.slug)}`,

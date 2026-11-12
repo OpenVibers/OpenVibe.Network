@@ -26,7 +26,7 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
     const chat = await listen(async (req, res) => {
         seen.push({ svc: 'chat', method: req.method, url: req.url, auth: req.headers.authorization });
         const u = new URL(req.url, 'http://x');
-        if (u.pathname === '/api/vibe/conversations') return sendJson(res, 200, { conversations: [{ slug: 'c_keys', name: 'Keyboard Scout', last_line: 'Three picks under $90.', last_message_at: '2026-11-12 10:00:20', site: 'https://openvibe.deals', persona: { name: 'Keyboard Scout', glyph: 'search', hue: 212 } }], count: 1 });
+        if (u.pathname === '/api/vibe/conversations') return sendJson(res, 200, { conversations: [{ slug: 'c_keys', name: 'My keyboard hunt', last_line: 'Three picks under $90.', last_message_at: '2026-11-12 10:00:20', site: 'https://openvibe.deals', persona: { name: 'Keyboard Scout', glyph: 'search', hue: 212 } }], count: 1 });
         if (u.pathname === '/api/vibe/chat') {
             if (u.searchParams.get('slug') !== 'c_keys') return sendJson(res, 200, { chat: null, messages: [] });
             const after = Number(u.searchParams.get('after')) || 0;
@@ -94,6 +94,7 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         assert.strictEqual(vibeRun.status, 'waiting');
         assert.deepStrictEqual(vibeRun.waiting, { for: 'message' }, 'a conversation is a run waiting for a message');
         assert.deepStrictEqual(vibeRun.agent, { id: 'vibe', name: 'Keyboard Scout', product: 'chat', harness: 'openvibe', glyph: 'search', hue: 212 }, 'the persona is the agent\'s face');
+        assert.strictEqual(vibeRun.title, 'My keyboard hunt', 'the chat\'s own name is its title (a person\'s rename stays theirs); the persona names the agent');
         assert.strictEqual(vibeRun.updated_at, '2026-11-12T10:00:20.000Z', 'a time without a zone is UTC');
         assert.deepStrictEqual(vibeRun.context, { site: 'openvibe.deals' });
         assert.deepStrictEqual(vibeRun.owner, { type: 'user', id: 'usr_01K9R2V6M8Q4T0B7C3D5E9F2GH' });
