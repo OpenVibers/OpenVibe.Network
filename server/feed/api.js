@@ -85,6 +85,18 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         });
         const actors = await actorsFor(db, read.rows);
         let cards = read.rows.map((r) => cardOf(r, actors.get(r.actor_subject) || null));
+        // The one view store (Media): counts.views and counts.engaged for every card, batched, and only here —
+        // a Media outage leaves the source's own counts. The source's like/comment counts are kept. The feed.item@1
+        // schema has no ref field, so the ref is built beside the cards, never added to one.
+        try {
+            const held = cards.map((card, i) => ({
+                counts: card.counts,
+                ref: { service: read.rows[i].source_service, kind: read.rows[i].source_type, id: String(read.rows[i].source_id),
+                    ...(read.rows[i].actor_subject ? { creator: String(read.rows[i].actor_subject) } : {}) },
+            }));
+            await require('../views/counts').attachCounts(held);
+            held.forEach((h, i) => { cards[i].counts = h.counts; });
+        } catch { /* a card without a count */ }
         if (q) cards = cards.filter((c) => searchMatches(c, q));
         cards = foldCards(cards, now());
         cards = rankCards(cards, { followed: new Set(followed), affinity, now: now() });

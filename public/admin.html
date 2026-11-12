@@ -27,6 +27,7 @@
 })();
 </script>
 <link rel="stylesheet" href="/css/admin.css">
+<link rel="stylesheet" href="/css/ai-setup.css">
 <!-- OpenVibe's own form controls (4.109.0): every select in Platform AI is one, with data-badge/data-desc/data-state. -->
 <link rel="stylesheet" href="/shared/ov-forms.css">
 </head>
@@ -203,10 +204,28 @@
 
     <!-- AI: configure the vision/text provider + usage cost breakdown -->
     <div class="section" id="sec-ai">
+        <!-- The guided setup's first card: every task kind's key, route and spend on one page. -->
+        <div id="ai-setup-card"></div>
         <!-- Platform AI (AI Exchange D11 S3, owner only): one long page, loaded by js/admin/ai.js. -->
         <div id="platform-ai" class="platform-ai pai" hidden></div>
         <div id="ai-staff-room"></div>
         <div id="ai-content"><div class="loading">Loading...</div></div>
+    </div>
+
+    <!-- Set up AI: the owner's guided setup (/admin/ai/setup), loaded by js/admin/ai-setup.js. -->
+    <div class="section" id="sec-ai-setup">
+        <div class="setup-head">
+            <div class="setup-head-text">
+                <a class="setup-back" href="/admin/ai"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> AI</a>
+                <h2>Set up AI</h2>
+                <p class="muted">Every AI job the network does, one step at a time. Add a key, run a tiny real request, and the route is ready. Keys are sealed in OpenVibe.AI and never shown again.</p>
+            </div>
+            <div class="setup-progress" id="setup-progress" aria-live="polite"><span class="muted">Loading…</span></div>
+        </div>
+        <div class="setup-layout">
+            <nav class="setup-steps" id="setup-steps" aria-label="Setup steps"></nav>
+            <div class="setup-main" id="setup-main"><div class="loading">Loading…</div></div>
+        </div>
     </div>
 
     <!-- Pastes -->
@@ -688,6 +707,7 @@
 <script src="/js/admin/payments.js" defer></script>
 <script src="/js/admin/glossary.js" defer></script>
 <script src="/js/admin/ai.js" defer></script>
+<script src="/js/admin/ai-setup.js" defer></script>
 <script src="/js/admin/inference.js" defer></script>
 <script src="/js/admin/setup.js" defer></script>
 <script src="/js/admin/content.js" defer></script>

@@ -161,12 +161,15 @@ router.get('/me/active', (req, res, next) => {
     try { const d = await db.prepare('SELECT display_prefs FROM user_preferences WHERE user_id = ?').get(userId); display = cleanDisplay(d && d.display_prefs ? JSON.parse(d.display_prefs) : null); } catch { /* column arrives with the migration */ }
     const { display_at, theme_at } = await lookDates(db, userId);
     const dated = { ...(display_at ? { display_at } : {}) };
-    if (override) return res.json({ theme_id: override.theme_id, custom_variables: varsOf(override.custom_variables), display, ...dated, override: true, service });
-    if (!prefs) return res.json({ theme_id: 'vibe', custom_variables: null, override: false });
+    // The shared menu also reads its Feed preview choice from here (server/preferences/feed-previews.js).
+    const feed_previews = await require('../preferences/feed-previews').read(db, userId);
+    const menu = { feed_previews };
+    if (override) return res.json({ theme_id: override.theme_id, custom_variables: varsOf(override.custom_variables), display, ...dated, ...menu, override: true, service });
+    if (!prefs) return res.json({ theme_id: 'vibe', custom_variables: null, override: false, ...menu });
 
     let custom = null;
     try { custom = prefs.custom_theme_variables ? JSON.parse(prefs.custom_theme_variables) : null; } catch {}
-    res.json({ theme_id: prefs.theme_id, custom_variables: custom, display, ...dated, ...(theme_at ? { theme_at } : {}), override: false });
+    res.json({ theme_id: prefs.theme_id, custom_variables: custom, display, ...dated, ...(theme_at ? { theme_at } : {}), ...menu, override: false });
 });
 
 // ── Display preferences — follow the account to every site ──

@@ -406,11 +406,26 @@ router.get('/me', requireAuth, async (req, res) => {
     const db = await getDb(req);
     const prefs = await db.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(req.user.id);
     await subjects.ensureUserSubject(db, req.user);
+    // The shared menu reads feed_previews here: on | wifi | off, default on (server/preferences/feed-previews.js).
+    const feedPreviews = await require('../preferences/feed-previews').read(db, req.user.id);
     res.json({
         user: { ...sanitizeUser(req.user), level: await require('../levels/store').total(db, req.user.id) },
-        preferences: prefs || { theme_id: 'vibe' },
+        preferences: { ...(prefs || { theme_id: 'vibe' }), feed_previews: feedPreviews },
         features: { qr_signin: require('./qr-signin').enabled(getConfig(req)) },
     });
+});
+
+// ── Set the account-level Feed preview choice ────────────────
+// PUT /api/auth/me/preferences { feed_previews: 'on' | 'wifi' | 'off' } — what the shared menu reads from GET /me.
+// The value travels with the account (site_prefs), never in a cookie, and an old tab's unknown value is refused.
+router.put('/me/preferences', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const value = req.body && req.body.feed_previews;
+    if (!require('../preferences/feed-previews').VALUES.includes(String(value))) {
+        return res.status(400).json({ error: 'feed_previews must be on, wifi or off', code: 'preferences.feed_previews' });
+    }
+    const stored = await require('../preferences/feed-previews').write(db, req.user.sub || req.user.id, value);
+    res.set('Cache-Control', 'private, no-store').json({ ok: true, feed_previews: stored });
 });
 
 // ── Update Profile ───────────────────────────────────────────

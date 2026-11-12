@@ -65,7 +65,40 @@ async function loadStaffRoom() {
     staffRoomTimer = setTimeout(() => { if (document.getElementById('sec-ai') && document.getElementById('sec-ai').classList.contains('active') && !document.hidden) loadStaffRoom(); }, 15000);
 }
 
+// ── The guided setup's first card on /admin#ai ──
+// One page for every key, route, test and cap: /admin/ai/setup (js/admin/ai-setup.js).
+async function loadAiSetupCard() {
+    const el = document.getElementById('ai-setup-card');
+    if (!el) return;
+    if (!currentUser || !currentUser.is_owner) { el.innerHTML = ''; return; }
+    try {
+        const s = await api('/api/admin/ai/setup');
+        const ready = (s.summary && s.summary.ready) || 0;
+        const total = (s.summary && s.summary.total) || 0;
+        const pending = (s.steps || []).filter((x) => !x.ready);
+        const next = pending[0] || null;
+        el.innerHTML = `<div class="card setup-cta">
+            <div class="setup-cta-head">
+                <div class="setup-cta-icon"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></div>
+                <div><h3>Set up AI</h3>
+                    <p class="muted">Add a key for each job the network does — chat, pictures, speech, search — and test it with one real request. Everything routes through OpenVibe Exchange; no other service keeps a provider key.</p></div>
+                <div class="setup-cta-count"><strong>${ready} of ${total}</strong><span>ready</span></div>
+            </div>
+            <div class="setup-cta-foot">
+                <span class="muted">${next ? 'Next: ' + esc(next.name) : (total && ready === total ? 'Every job has a key. Review the defaults and caps.' : 'The setup could not be read.')}</span>
+                <a class="btn btn-primary" href="/admin/ai/setup">${total && ready === total ? 'Review setup' : 'Continue setup'} <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+            </div>
+        </div>`;
+    } catch (err) {
+        el.innerHTML = `<div class="card setup-cta"><div class="setup-cta-head"><div class="setup-cta-icon"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></div>
+            <div><h3>Set up AI</h3><p class="muted">Every AI job on one page: add a key, test it, choose the default model and set a cap.</p></div></div>
+            <div class="setup-cta-foot"><span class="muted">The setup page could not be read: ${esc(err.message || 'OpenVibe.AI did not answer')}</span>
+            <a class="btn btn-primary" href="/admin/ai/setup">Open setup <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div></div>`;
+    }
+}
+
 async function loadAi() {
+    loadAiSetupCard();
     loadPlatformAi();
     loadStaffRoom();
     const c = document.getElementById('ai-content');

@@ -81,7 +81,7 @@ let currentTab = 'dashboard';
 // NOTE: 'ai' is NOT here — admins may use its analytics/explorer tools; only the
 // AI configuration form inside it is owner-gated (see loadAi).
 // 'setup' is the owner's checklist of keys and accounts (js/admin/setup.js); its API answers 403 to anyone else too.
-const OWNER_ONLY_TABS = new Set(['setup', 'deploy', 'domains', 'payments', 'cashouts', 'storage', 'email', 'settings', 'grants', 'eventsops']);
+const OWNER_ONLY_TABS = new Set(['setup', 'ai-setup', 'deploy', 'domains', 'payments', 'cashouts', 'storage', 'email', 'settings', 'grants', 'eventsops']);
 
 function showTab(id, btn) {
     if (!tabLoaders[id]) id = 'dashboard';
@@ -134,6 +134,7 @@ function urlParamToPeriod(p) {
 }
 
 function _adminPath() {
+    if (currentTab === 'ai-setup') return '/admin/ai/setup';
     if (currentTab === 'analytics') return '/admin/analytics/' + (analyticsCurrentSubTab || 'overview');
     if (currentTab === 'deploy') return '/admin/deploy/' + (deployCurrentSubTab || 'overview');
     if (currentTab && currentTab !== 'dashboard') return '/admin/' + currentTab;
@@ -172,6 +173,8 @@ function routeFromUrl() {
         }
         let tab = parts[0];
         const sub = parts[1] || null;
+        // /admin/ai/setup is its own page, not the AI tab: the guided setup walks one job at a time.
+        if (tab === 'ai' && sub === 'setup') tab = 'ai-setup';
         if (!tab || !tabLoaders[tab]) tab = 'dashboard';
         const per = urlParamToPeriod(new URLSearchParams(search).get('last'));
         if (tab === 'analytics' && per) {

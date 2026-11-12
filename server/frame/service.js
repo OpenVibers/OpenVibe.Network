@@ -34,6 +34,7 @@ const { SITES, LISTED, LISTED_SITES, siteForHost, GROUPS, groupOf, PRODUCTS, MER
 const { createMenuCards } = require('./menu-cards');
 const { createFrameChoices } = require('./choices');
 const { createFrameAsk } = require('./ask');
+const { createFrameCodeSearch } = require('./code-search');
 const { read: readCommands } = require('./commands');
 const { createFrameMentions } = require('./mentions');
 const { createFrameRuns } = require('./runs');
@@ -178,6 +179,8 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         exchangeUrl: (services.exchange && services.exchange.internalUrl) || 'http://127.0.0.1:5150',
         reportUrl: (services.report && services.report.internalUrl) || 'http://127.0.0.1:5080',
     });
+    // The composer's GitHub tool (Shared 4.225.0): Exchange's public code search, through the Frame.
+    const codeSearch = createFrameCodeSearch({ exchangeUrl: (services.exchange && services.exchange.internalUrl) || 'http://127.0.0.1:5150', now });
     const ask = createFrameAsk({
         aiUrl, now, requireAuth, sheet: choices,
         searchUrl: (services.search && services.search.internalUrl) || 'http://127.0.0.1:4710',
@@ -520,6 +523,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             updated: new Date().toISOString(),
         };
     }
+    router.get('/code/search', (req, res) => codeSearch.handle(req, res));
     router.get('/pulse', async (req, res) => {
         if (!pulse || Date.now() - pulseAt > 30_000) {
             pulseInflight = pulseInflight || readPulse().then((p) => { pulse = p; pulseAt = Date.now(); }).catch(() => {}).finally(() => { pulseInflight = null; });
@@ -671,9 +675,18 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         }
         const d = await getJson(u.href, auth ? { Authorization: auth, Accept: 'application/json' } : { Accept: 'application/json' });
         if (path === '/api/v1/feed/search' && (!d || !Array.isArray(d.items))) return res.status(503).send('{"error":"feed search unavailable"}');
+        // A Feed item that names its source ({ source: {service,type,id} } or a ref) gets the one view store's
+        // counts.views/counts.engaged from Media (server/views/counts.js); a card with no source, or a Media
+        // outage, keeps the counts it had. Batched, and the edge cache below keeps the result.
+        let items = d && Array.isArray(d.items) ? d.items : [];
+        if (path === '/api/v1/feed' && items.length) {
+            try { items = await require('../views/counts').attachCounts(items); } catch { /* a card without a count */ }
+        }
         const body = JSON.stringify(path === '/api/v1/feed/examples'
             ? (d && Array.isArray(d.examples) ? d : { examples: [] })
-            : (d && Array.isArray(d.items) ? d : { items: [], next_cursor: null }));
+            : path === '/api/v1/feed'
+                ? (d ? { ...d, items } : { items: [], next_cursor: null })
+                : (d && Array.isArray(d.items) ? d : { items: [], next_cursor: null }));
         if (!auth && d) {
             if (relayed.size >= 500) relayed.clear();
             relayed.set(key, { at: Date.now(), body });

@@ -106,8 +106,8 @@ person's username and picture (a service token, `identity.subject.resolve`).
 
 ## Depends on
 
-- `openvibe-contracts` v0.317.0 (registry manifests, capability checks), `openvibe-sdk` v0.150.0 (PostgreSQL
-  and Valkey adapters, events, per-actor limits, universal telemetry), `openvibe-shared` v4.223.0, pinned by release tarball
+- `openvibe-contracts` v0.317.0 (registry manifests, capability checks), `openvibe-sdk` v0.158.0 (PostgreSQL
+  and Valkey adapters, events, per-actor limits, universal telemetry), `openvibe-shared` v4.223.1, pinned by release tarball
 - OpenVibe.Events (Network's outbox relay; the events it consumes), OpenVibe.AI (the `network.site_copy`
   workflow), OpenVibe.Blog (the changelog feed it proxies)
 - email (Resend), Discord and GitHub when their secrets are set ([Provider secrets](#provider-secrets))
@@ -1038,5 +1038,5 @@ MIT (`license` in [package.json](package.json)).
 <!-- versions:start -->
 - openvibe-contracts: v0.416.0
 - openvibe-sdk: v0.160.0
-- openvibe-shared: v4.223.0
+- openvibe-shared: v4.223.1
 <!-- versions:end -->

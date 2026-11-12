@@ -21,6 +21,7 @@ const tabLoaders = {
     cashouts: () => {}, // a pointer to OpenVibe.Billing's console
     payments: loadPayments,
     ai: loadAi,
+    'ai-setup': loadAiSetup,
     pastes: loadPastesAdmin,
     storage: loadStorage,
     notifications: () => {},
