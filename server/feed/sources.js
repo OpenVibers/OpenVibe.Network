@@ -563,7 +563,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         if (peak && Number(peak.peak) > 0) {
             const when = new Date(peak.peak_at).toISOString().slice(11, 16);
             const r = await upsert({ source_service: 'report', source_type: 'peak', source_id: `peak:${day}`, kind: 'report',
-                title: `Peak today: ${Number(peak.peak).toLocaleString('en-US')} people online at ${when} UTC`,
+                title: `Peak today: ${Number(peak.peak).toLocaleString('en-US')} ${Number(peak.peak) === 1 ? 'person' : 'people'} online at ${when} UTC`,
                 text: 'The most people on OpenVibe at once today', url: `${urls.report}/network`, site: 'report', site_name: 'Report',
                 actor_subject: null, origin: 'system', label: 'System', counts: { people: Number(peak.peak) },
                 occurred_at: new Date(at).toISOString(), touch: true });

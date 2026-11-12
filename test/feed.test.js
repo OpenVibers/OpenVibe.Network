@@ -34,6 +34,10 @@ const envelope = (type, payload, over = {}) => ({
     assert.strictEqual(kindOf('mediahub.video.published', { video_id: 'v1', title: 'A video', canonical_url: 'https://openvibe.video/watch?v=v1' }), 'video');
     assert.strictEqual(kindOf('mediahub.picture.uploaded', { picture_id: 'p1', url: 'https://openvibe.media/p/1', thumb: 'https://openvibe.media/t/1.jpg' }), 'pic');
     assert.strictEqual(kindOf('games.world.published', { world_id: 'w1', title: 'A world', url: 'https://openvibe.games/w/1' }), 'game');
+    {
+        const g = eventToItems(envelope('network.module.updated', { namespace: 'games.progress.summary', change: 'updated', owner: { type: 'user', id: A }, public: { level: 15 } }, { source: 'network' }));
+        assert.deepStrictEqual([g.items[0].kind, g.items[0].source_id, g.items[0].title], ['game', `${A}:15`, 'Reached level 15 in an OpenVibe game']);
+    }
     assert.strictEqual(kindOf('blog.post.published', { post_id: 'b1', url: 'https://openvibe.blog/p/1', blog: { handle: 'openvibe' } }), 'update');
     assert.strictEqual(kindOf('wiki.page.published', { page_id: 'w1', url: 'https://openvibe.wiki/space/page', title: 'A page' }), 'wiki');
     assert.strictEqual(kindOf('news.story.published', { story_id: 's1', url: 'https://openvibe.news/s/1', topic: 'feeds' }), 'news');
