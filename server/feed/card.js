@@ -92,6 +92,9 @@ function cardOf(row, actor = null) {
     };
     if (row.starts_at) card.starts_at = new Date(row.starts_at).toISOString();
     if (row.label) card.label = row.label;
+    // The menu labels AI output and system/aggregate rows; keep the old Pulse's promise that AI is never a person.
+    if (!card.label && row.origin === 'ai') card.label = 'AI';
+    else if (!card.label && row.origin === 'system' && !card.actor) card.label = 'System';
     if (row.visibility === 'followers') card.visibility = 'followers';
     if (card.kind === 'live' || card.kind === 'stream') {
         card.live_now = row.kind === 'live' && row.live_now === true;
@@ -111,6 +114,8 @@ function cardOf(row, actor = null) {
 
 const BURST_MS = 15 * 60_000;
 const BURST_WORD = { pic: ['photo', 'photos'], clip: ['clip', 'clips'], video: ['video', 'videos'], game: ['achievement', 'achievements'], quest: ['quest', 'quests'], avatar: ['picture change', 'picture changes'], banner: ['banner change', 'banner changes'], paste: ['paste', 'pastes'], space: ['space', 'spaces'] };
+// A poll can deliver forty of the same kind at once with no person behind them (deals, news): one card.
+const BULK_WORD = { deal: ['deal', 'deals'], news: ['story', 'stories'], event: ['event', 'events'] };
 
 function titleKey(card) {
     return String(card.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -137,7 +142,11 @@ function foldCards(cards, now = Date.now()) {
         const prior = BURST_WORD[card.kind] && who && Number.isFinite(at) && groups.find((g) => g.subject != null
             && g.subject === who && g.site === card.site && g.card.kind === card.kind && Math.abs(g.at - at) <= BURST_MS);
         if (prior) { prior.cards.push(card); continue; }
-        groups.push({ subject: who, at, site: card.site, card, cards: [card] });
+        // No person behind a run (a Deals poll, a News import): the same kind and site in the window is one card.
+        const bulk = !who && BULK_WORD[card.kind] && Number.isFinite(at) && groups.find((g) => g.bulk
+            && g.card.kind === card.kind && g.site === card.site && Math.abs(g.at - at) <= BURST_MS);
+        if (bulk) { bulk.cards.push(card); continue; }
+        groups.push({ subject: who, at, site: card.site, card, cards: [card], bulk: !who && BULK_WORD[card.kind] ? true : undefined });
     }
     return groups.map((g) => {
         if (g.workHour !== undefined) {
@@ -155,6 +164,15 @@ function foldCards(cards, now = Date.now()) {
             };
         }
         if (g.cards.length < 2) return g.card;
+        if (BULK_WORD[g.card.kind]) {
+            const [one, many] = BULK_WORD[g.card.kind];
+            return {
+                ...g.card,
+                title: `${g.cards.length} new ${g.cards.length === 1 ? one : many}`,
+                group: { count: g.cards.length, items: g.cards.slice(0, 20).map((c) => ({ id: c.id, url: c.url, title: c.title, media: c.media })) },
+                counts: { ...g.card.counts, people: g.cards.length },
+            };
+        }
         const [one, many] = BURST_WORD[g.card.kind];
         const name = (g.card.actor && g.card.actor.name) || 'Someone';
         return {

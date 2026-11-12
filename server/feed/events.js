@@ -110,6 +110,16 @@ function eventToItems(event) {
         return { items: [item({ service: 'games', type: 'world', id: idOf(event, p, 'world_id'), kind: 'game',
             title: clean(p.title, 160) || 'A new world', text: p.description, url, media: mediaOf(p) })], remove: [] };
     }
+    if (type === 'network.module.updated') {
+        // The game-progress module (games.progress.summary): a public level becomes one game card per level.
+        const ns = clean(p.namespace, 60);
+        const level = Number(p.public && p.public.level);
+        const who = userOf(p.owner) || subject;
+        if (ns !== 'games.progress.summary' || !Number.isSafeInteger(level) || level < 1 || level > 100000 || !who) return { items: [], remove: [] };
+        const game = clean(p.public && (p.public.title || p.public.game), 80) || 'an OpenVibe game';
+        return { items: [item({ service: 'games', type: 'level', id: `${who}:${level}`, kind: 'game',
+            title: `Reached level ${level} in ${game}`, url: 'https://openvibe.games/', at })], remove: [] };
+    }
     if (type === 'games.skill.leveled') {
         const url = https(p.url) || 'https://openvibe.games/';
         const level = Number(p.level);
