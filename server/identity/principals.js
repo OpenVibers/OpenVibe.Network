@@ -785,6 +785,9 @@ const DEFAULT_GRANTS = [
     // behalf (on_behalf_of), and the catalog/usage reads are public.
     ['exchange', 'search.document.write', 'openvibe.search', []],
     ['exchange', 'events.subscription.manage', 'openvibe.events', []],
+    // Exchange's /code page and its public code API read the GitHub repositories OpenVibe.Sources keeps
+    // (Sources 2026-11-12, the `github` source in category code).
+    ['exchange', 'sources.item.read', 'openvibe.sources', []],
     ['exchange', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
     // OpenVibe.Exchange's owner-only /console calls AI's admin JSON API. Exchange checks the signed-in Network
     // owner's role before every console route; the service token keeps only the read and operator-write caps needed

@@ -97,7 +97,8 @@ function renderActions(unread) {
     if (hero && color && hero.style && hero.style.setProperty) hero.style.setProperty('--me', color);
     const streamer = !!(currentUser && currentUser.role && currentUser.role !== 'user');
     const count = unread && Number(unread.count) > 0 ? Number(unread.count) : 0;
-    const dock = (tab) => () => { try { const nb = globalThis.OpenVibeNavbar; if (nb && nb.openDock) { nb.openDock(tab); return true; } } catch (e) { /* the link works */ } return false; };
+    // The menu at a place (openvibe-shared 4.223.0 OpenVibeNavbar.openMenu); before it, the Dock's opener; else the link.
+    const dock = (tab) => () => { try { const nb = globalThis.OpenVibeNavbar; if (nb && nb.openMenu) { nb.openMenu(tab); return true; } if (nb && nb.openDock) { nb.openDock(tab); return true; } } catch (e) { /* the link works */ } return false; };
     const acts = [
         streamer ? ['Go live', 'fa-tower-broadcast', 'https://openvibe.live/broadcast', 'live'] : ['Watch live', 'fa-circle-play', 'https://openvibe.live/', 'live'],
         ['Messages', 'fa-comment-dots', 'https://openvibe.chat/messages', 'chat', dock('chats')],
@@ -105,7 +106,7 @@ function renderActions(unread) {
         ['Your files', 'fa-folder', 'https://openvibe.download/files', 'files'],
         ['Codes', 'fa-code', 'https://openvibe.codes/', 'codes'],
         ['Wallet', 'fa-wallet', '/wallet', 'wallet'],
-        ['Notifications', 'fa-bell', '#notifications', 'bell', () => { const bell = document.querySelector('[data-ov-bell], .openvibe-navbar-bell, #openvibe-notif-btn'); if (bell) { bell.click(); return true; } showSection('notifications'); return true; }, count],
+        ['Notifications', 'fa-bell', '#notifications', 'bell', () => { try { const nb = globalThis.OpenVibeNavbar; if (nb && nb.openMenu) { nb.openMenu('notifications'); return true; } } catch (e) { /* the section below */ } showSection('notifications'); document.getElementById('sec-notifications')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }); return true; }, count],
         ['Settings', 'fa-gear', '#settings', 'gear'],
     ];
     nav.replaceChildren(...acts.map(([label, icon, href, tone, open, n]) => {
