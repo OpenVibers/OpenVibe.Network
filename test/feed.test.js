@@ -34,6 +34,10 @@ const envelope = (type, payload, over = {}) => ({
     assert.strictEqual(kindOf('mediahub.video.published', { video_id: 'v1', title: 'A video', canonical_url: 'https://openvibe.video/watch?v=v1' }), 'video');
     assert.strictEqual(kindOf('mediahub.picture.uploaded', { picture_id: 'p1', url: 'https://openvibe.media/p/1', thumb: 'https://openvibe.media/t/1.jpg' }), 'pic');
     assert.strictEqual(kindOf('games.world.published', { world_id: 'w1', title: 'A world', url: 'https://openvibe.games/w/1' }), 'game');
+    {
+        const g = eventToItems(envelope('network.module.updated', { namespace: 'games.progress.summary', change: 'updated', owner: { type: 'user', id: A }, public: { level: 15 } }, { source: 'network' }));
+        assert.deepStrictEqual([g.items[0].kind, g.items[0].source_id, g.items[0].title], ['game', `${A}:15`, 'Reached level 15 in an OpenVibe game']);
+    }
     assert.strictEqual(kindOf('blog.post.published', { post_id: 'b1', url: 'https://openvibe.blog/p/1', blog: { handle: 'openvibe' } }), 'update');
     assert.strictEqual(kindOf('wiki.page.published', { page_id: 'w1', url: 'https://openvibe.wiki/space/page', title: 'A page' }), 'wiki');
     assert.strictEqual(kindOf('news.story.published', { story_id: 's1', url: 'https://openvibe.news/s/1', topic: 'feeds' }), 'news');
@@ -55,6 +59,10 @@ const envelope = (type, payload, over = {}) => ({
     assert.strictEqual(jobs.length, 1);
     assert.strictEqual(jobs[0].title, '3 new jobs this hour');
     assert.strictEqual(jobs[0].group.count, 3);
+    const deals = foldCards([1, 2, 3].map((n) => cardOf({ source_service: 'deals', source_type: 'offer', source_id: `d${n}`, kind: 'deal', title: `Deal ${n}`, url: 'https://openvibe.deals/d/x', site: 'deals', site_name: 'Deals', counts: {}, occurred_at: '2026-11-12T09:00:00.000Z' })));
+    assert.strictEqual(deals.length, 1, 'a poll of deals is one card');
+    assert.strictEqual(deals[0].title, '3 new deals');
+    assert.strictEqual(deals[0].group.count, 3);
 
     // ── ranking: live, followed, fresh, then older than a week ─
     const live = cardOf({ source_service: 'live', source_type: 'stream', source_id: 'l', kind: 'live', title: 'Live', url: 'https://openvibe.live/@alex', site: 'live', site_name: 'Live', actor_subject: B, live_now: true, occurred_at: iso(now - 86400000) });
