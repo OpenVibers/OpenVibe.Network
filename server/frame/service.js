@@ -36,6 +36,7 @@ const { createFrameChoices } = require('./choices');
 const { createFrameAsk } = require('./ask');
 const { read: readCommands } = require('./commands');
 const { createFrameMentions } = require('./mentions');
+const { createFrameRuns } = require('./runs');
 const seen = require('./seen');
 const toolsCatalog = require('../domains/catalog');
 
@@ -957,6 +958,12 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     };
     router.get('/codes-runs/:id/events', runEvents('codes'));
     router.get('/agent-runs/actor/:id/events', runEvents('actor'));
+
+    // Frame Runs (agent-engine.md §3): every run on OpenVibe (Vibe's chats, Codes' tasks, Actor's tasks) in one shape
+    // under one address, /api/frame/runs/<product>:<id>. The product-specific relays above stay until the menu has
+    // moved to these routes, then go in one cut.
+    const frameRuns = createFrameRuns({ svcUrl, personOf, now });
+    router.use('/runs', frameRuns.router);
 
     // GET /api/frame/suggest?q=&owner=&limit= — the navbar's magnifier (openvibe-shared search.js): OpenVibe.Search's
     // suggestions, asked through Network because every site's connect-src already lets the navbar reach
