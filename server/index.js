@@ -985,12 +985,17 @@ function requireAdmin(req, res, next) {
 // is added to the head here, and the small Twitter card they declare becomes the large one that image needs.
 {
     const legal = require('openvibe-shared/legal');
+    const pageLinks = require('./frame/page-links');
     const card = require('openvibe-shared/social').url('network', 'https://openvibe.network/shared');
     const tags = `<meta property="og:image" content="${card}"><meta property="og:image:alt" content="OpenVibe.Network: one account for every OpenVibe site"><meta name="twitter:image" content="${card}">`;
+    // Shared's legal template draws the navbar without links, so its fallback (Home, My Account, Themes) was the
+    // Network list on /terms, /privacy and /dmca. Add this host's own list to the init call (Shared stays untouched).
+    const navLinks = JSON.stringify(pageLinks.NETWORK);
     app.get(legal.PATHS, (req, res, next) => {
         const send = res.send.bind(res);
         res.send = (body) => send(String(body)
             .replace('<meta name="twitter:card" content="summary">', '<meta name="twitter:card" content="summary_large_image">')
+            .replace('try{OpenVibeNavbar.init({service:', `try{OpenVibeNavbar.init({links:${navLinks},service:`)
             .replace('</head>', `${tags}</head>`));
         next();
     }, legal.handler({ id: 'network', service: 'network', host: 'openvibe.network', name: 'OpenVibe.Network', profile: 'account' }));

@@ -1,4 +1,5 @@
 'use strict';
+const pageLinks = require('../frame/page-links');
 
 // The network's share card (SEO-21): link previews of this page show it, as the home and legal pages do.
 const SHARE_CARD = require('openvibe-shared/social').url('network', 'https://openvibe.network/shared');
@@ -217,7 +218,7 @@ ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact'
 <script src="/shared/shipped.js" defer></script>
 ${boost.SCRIPT}
 <script>document.addEventListener('ov:boost:load',function(){if(window.OpenVibeShipped)OpenVibeShipped.scan(document.getElementById('main'));});</script>
-<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin});}catch(e){}});</script>
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin,links:${JSON.stringify(pageLinks.NETWORK)}});}catch(e){}});</script>
 </body>
 </html>`;
 }

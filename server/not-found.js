@@ -1,4 +1,5 @@
 'use strict';
+const pageLinks = require('./frame/page-links');
 // ═══════════════════════════════════════════════════════════════
 // Unknown paths answer 404 (roadmap §2.5 crawlability, D44).
 //
@@ -16,16 +17,17 @@ const ACCOUNT_HUB_PATHS = ['/my', '/my.html', '/themes', '/notifications', '/lin
 
 const JSON_PREFIXES = ['/api/', '/internal/', '/oauth/'];
 
-let cached = null;
-function page() {
-    if (cached) return cached;
+const cached = new Map();
+function page(host = 'openvibe.network') {
+    const key = pageLinks.hostOf({ hostname: host });
+    if (cached.has(key)) return cached.get(key);
     let footer = '';
     let icons = '';
     let nav = '';
     try { footer = require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact' }); } catch { /* optional */ }
     try { icons = require('openvibe-shared/app-icon').headTags({ site: 'network', iconBase: '/assets' }); } catch { /* optional */ }
     try { nav = require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Sign in', href: '/login' }] }); } catch { /* optional */ }
-    cached = `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -64,10 +66,11 @@ ${nav}
 ${footer}
 <script src="/shared/navbar.js" defer></script>
 <script src="/js/account-safety.js" defer></script>
-<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin});}catch(e){}});</script>
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin,links:${JSON.stringify(pageLinks.forHost(key))}});}catch(e){}});</script>
 </body>
 </html>`;
-    return cached;
+    cached.set(key, html);
+    return html;
 }
 
 /** Last handler of the app: every method, every path nothing else answered. */
@@ -76,7 +79,7 @@ function notFound(req, res) {
     res.set('Cache-Control', 'no-cache');
     if (JSON_PREFIXES.some(p => req.path.startsWith(p))) return res.json({ error: 'Not found' });
     res.set('X-Robots-Tag', 'noindex');
-    return res.type('html').send(page());
+    return res.type('html').send(page(pageLinks.hostOf(req)));
 }
 
 module.exports = { notFound, page, ACCOUNT_HUB_PATHS };

@@ -1,4 +1,5 @@
 'use strict';
+const pageLinks = require('../frame/page-links');
 
 // The network's share card (SEO-21): a status link pasted in chat shows it.
 const SHARE_CARD = require('openvibe-shared/social').url('network', 'https://openvibe.network/shared');
@@ -240,7 +241,7 @@ ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact'
 <script src="/shared/navbar.js" defer></script>
 <script src="/js/account-safety.js" defer></script>
 ${boost.SCRIPT}
-<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin});}catch(e){}});</script>
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin,links:${JSON.stringify(pageLinks.NETWORK)}});}catch(e){}});</script>
 </body>
 </html>`;
 }

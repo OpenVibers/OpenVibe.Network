@@ -1,4 +1,5 @@
 'use strict';
+const pageLinks = require('../frame/page-links');
 // ═══════════════════════════════════════════════════════════════
 // Public profiles (plan T21 step 3): one page per person on the Network, and the same data as JSON for every site.
 //
@@ -613,7 +614,7 @@ ${isPublic ? showcaseHtml(inv, name) + badgesHtml(inv) + gamesHtml(inv) + itemsH
 ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact' })}
 <script src="/shared/navbar.js" defer></script>
 <script src="/js/account-safety.js" defer></script>
-<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin});}catch(e){}});</script>
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin,links:${JSON.stringify(pageLinks.NETWORK)}});}catch(e){}});</script>
 </body>
 </html>`;
 }

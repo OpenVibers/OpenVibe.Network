@@ -151,7 +151,7 @@ const SHAPED = {
     assert.ok(html.includes('docs/install.md'), 'the install guide still links the Link docs');
     assert.ok(html.includes('github.com/OpenVibers/OpenVibe.Link'), 'the GitHub source keeps its URL');
     assert.ok(html.includes('/shared/navbar.js'), 'the shared navbar is on the page');
-    assert.ok(html.includes("label:'Link'"), 'the navbar calls it Link');
+    assert.ok(html.includes('"label":"Link"'), 'the navbar calls it Link');
     assert.ok(html.includes('<link rel="canonical" href="https://openvibe.link/">'), 'the canonical is openvibe.link');
     assert.ok(html.includes('<meta property="og:url" content="https://openvibe.link/">'), 'og:url is openvibe.link');
     assert.ok(html.includes('"name":"OpenVibe Link"'), 'the JSON-LD names OpenVibe Link');
@@ -276,10 +276,10 @@ const SHAPED = {
 
     // ── The navbar and the home card point at the new name ──
     const index = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-    assert.ok(index.includes("label: 'Link', href: 'https://openvibe.link', icon: 'fa-desktop', featured: true"), 'the home page\u2019s navbar leads with Link');
-    assert.ok(index.indexOf("label: 'Link'") < index.indexOf("label: 'My Account'"), 'and Link comes first');
+    assert.ok(index.includes('"label":"Link","href":"https://openvibe.link/"'), 'the home page\u2019s navbar names Link');
+    assert.ok(index.indexOf('"label":"Link"') < index.indexOf('"label":"My Account"'), 'and Link comes before My Account');
     const wallet = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'wallet', 'common.js'), 'utf8');
-    assert.ok(wallet.includes("label: 'Link', href: 'https://openvibe.link'"), 'the wallet pages\u2019 navbar does too');
+    assert.ok(wallet.includes('"label":"Link","href":"https://openvibe.link/"'), 'the wallet pages\u2019 navbar does too');
     const home = fs.readFileSync(path.join(__dirname, '..', 'server', 'home', 'render.js'), 'utf8');
     assert.ok(home.includes("'OpenVibe Link: your machines, connected', url: 'https://openvibe.link/'"), 'Network\u2019s home card names Link and links it');
     assert.ok(home.includes("'Install Link', url: 'https://openvibe.link/install'"), 'and its install card does too');

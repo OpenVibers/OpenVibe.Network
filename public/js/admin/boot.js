@@ -4,6 +4,8 @@
    admin/core.js's helpers (api, esc, toast, API, token) and on the
    tabLoaders map in admin/boot.js (loaded last). No ES modules.
    ═══════════════════════════════════════════════════════════════ */
+// Network's own page list: the shared navbar's fallback (Home, My Account, Themes) is not this host's list.
+const OV_PAGE_LINKS = [{"label":"Network","href":"/"},{"label":"Link","href":"https://openvibe.link/","icon":"fa-desktop","featured":true},{"label":"My Account","href":"https://openvibe.my/"},{"label":"Wallet","href":"/wallet"},{"label":"Themes","href":"/themes"}];
 const tabLoaders = {
     setup: loadSetup,
     glossary: loadGlossary,
@@ -72,7 +74,7 @@ async function _bootAdmin() {
     }
     // Init navbar
     if (window.OpenVibeNavbar) {
-        OpenVibeNavbar.init({ service: 'network', token, user: currentUser });
+        OpenVibeNavbar.init({ service: 'network', token, user: currentUser, links: OV_PAGE_LINKS });
         const bellMount = OpenVibeNavbar.getBellMount();
         if (bellMount && window.OpenVibeNotifications) {
             OpenVibeNotifications.init({ mountEl: bellMount, apiBase: API, token });
