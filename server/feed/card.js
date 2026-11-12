@@ -92,6 +92,9 @@ function cardOf(row, actor = null) {
     };
     if (row.starts_at) card.starts_at = new Date(row.starts_at).toISOString();
     if (row.label) card.label = row.label;
+    // The menu labels AI output and system/aggregate rows; keep the old Pulse's promise that AI is never a person.
+    if (!card.label && row.origin === 'ai') card.label = 'AI';
+    else if (!card.label && row.origin === 'system' && !card.actor) card.label = 'System';
     if (row.visibility === 'followers') card.visibility = 'followers';
     if (card.kind === 'live' || card.kind === 'stream') {
         card.live_now = row.kind === 'live' && row.live_now === true;
