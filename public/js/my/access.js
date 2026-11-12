@@ -245,15 +245,17 @@ async function loadMachineAgents() {
     box.hidden = false;
 }
 
-/** The three access switches on a paired machine's card, read when the card is drawn. */
-function mcAccessSwitches(m) {
+/** The access switches on a paired machine's card, read when the card is drawn: the rows about you ('you') or about
+ *  other people ('others'), in plain words (2026-11-12). */
+function mcAccessSwitches(m, side) {
     if (!m.principal_id) return null;
-    const field = mcEl('fieldset', 'mc-roles mc-switches ma-switches', [mcEl('legend', '', ['Other machines and agents'])]);
-    const rows = [
-        ['others_may_ask', 'Others may ask for access', 'People you follow can ask this machine for access; you answer each time. Off: nobody else can ask.', 'fa-user-group'],
-        ['auto_agent_send', 'My machines need no answer', 'Your own machines may talk to its agents and send it files without asking you first.', 'fa-laptop'],
-        ['agents_talk', 'Its agents may talk to other agents', 'Agents here may send tasks to your other agents, and to others where they are allowed.', 'fa-robot'],
+    const field = mcEl('div', 'ma-switches');
+    const all = [
+        ['auto_agent_send', 'My other computers may use it without asking', 'Your own computers may send it files and tasks without waiting for your yes.', 'fa-laptop', 'you'],
+        ['agents_talk', 'Its agents may work with other agents', 'Agents here may hand tasks to your other agents, and to other people\u2019s agents where those people allow it.', 'fa-robot', 'you'],
+        ['others_may_ask', 'Let people ask to use it', 'People you follow may ask to use this computer. You say yes or no each time; off, nobody can ask.', 'fa-user-group', 'others'],
     ];
+    const rows = all.filter((r) => !side || r[4] === side);
     const boxes = {};
     for (const [key, label, note, icon] of rows) {
         const id = `mc-${m.id}-${key}`;

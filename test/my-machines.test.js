@@ -33,6 +33,7 @@ class Node {
     querySelectorAll(sel) {
         if (sel === '.mc-role-set input') return this.all((n) => n.tagName === 'INPUT' && n.parent && n.parent.className === 'mc-role' && n.parent.parent && n.parent.parent.className.split(' ').includes('mc-role-set'));
         if (sel === '.mc-role input') return this.all((n) => n.tagName === 'INPUT' && n.parent && n.parent.className === 'mc-role');
+        if (sel === '.mc-role-input') return this.all((n) => n.tagName === 'INPUT' && String(n.className || '').split(' ').includes('mc-role-input'));
         return [];
     }
 }
@@ -92,18 +93,29 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
     const noCard = { querySelector: () => null };
     assert.match(p.sandbox.mcAgentsBlock(noCard, { online: true, roles: ['codes.worker'], fleet: [{ agent: 'muse', installed: true, signed_in: false }] }).textContent, /Muse Code[^]*?Sign in/);
     assert.match(p.sandbox.mcAgentsBlock(noCard, { online: true, roles: ['codes.worker'], fleet: [{ agent: 'muse', installed: false, signed_in: false }] }).textContent, /Muse Code[^]*?Not installed/);
-    assert.match(p.sandbox.mcAgentsBlock(noCard, { online: true, roles: [] }).textContent, /Turn on Codes worker/, 'a machine that is not a Codes worker offers to become one');
-    assert.match(p.sandbox.mcAgentsBlock(noCard, { online: true, roles: ['codes.worker'] }).textContent, /has not reported its agents yet/);
+    assert.match(p.sandbox.mcAgentsBlock(noCard, { online: true, roles: [] }).textContent, /Run my coding tasks here/, 'a computer that does not run coding tasks offers to');
+    assert.match(p.sandbox.mcAgentsBlock(noCard, { online: true, roles: ['codes.worker'] }).textContent, /has not listed its coding apps yet/);
     assert.match(p.sandbox.mcAgentsBlock(noCard, { online: true, roles: ['codes.worker'], fleet: [{ agent: 'muse', installed: true, signed_in: true }], fleet_at: ago(30) }).textContent, /Last reported 30 min ago/, 'an old reading says how old it is');
     assert.match(cards[1].textContent, /Offline · seen 2 h ago/);
-    const boxes = cards[0].querySelectorAll('.mc-role input');
-    assert.deepStrictEqual(boxes.map((b) => [b.value, b.checked]), [['codes.worker', true], ['desks.host', false], ['ai.host', false]], 'a switch per role, the machine\'s own on');
+    // 2026-11-12: the card in plain words, what it does for you apart from what it does for other people.
+    assert.match(cards[0].textContent, /For you.*For others/, 'two separate tabs');
+    assert.match(cards[0].textContent, /Run my coding tasks.*Give my agents a browser here.*Use the AI models on this computer/);
+    assert.ok(!/Desk host|Codes worker|AI host/.test(cards[0].textContent), 'no catalogue jargon on the card');
+    const boxes = cards[0].querySelectorAll('.mc-role-input');
+    assert.deepStrictEqual(boxes.map((b) => [b.value, b.checked]), [['codes.worker', true], ['desks.host', false]], 'a switch per role, the machine\'s own on');
 
-    // A switch saves the whole set.
-    boxes[2].checked = true; boxes[2].fire('change');
+    // A role switch saves the whole set.
+    boxes[1].checked = true; boxes[1].fire('change');
     await flush();
-    assert.deepStrictEqual(p.calls.find((c) => c[0] === 'PUT'), ['PUT', '/api/v1/machines/dev_B/roles', { roles: ['codes.worker', 'ai.host'] }]);
-    assert.match(p.ids['mc-status'].textContent, /picks this up at its next check-in/);
+    assert.deepStrictEqual(p.calls.find((c) => c[0] === 'PUT'), ['PUT', '/api/v1/machines/dev_B/roles', { roles: ['codes.worker', 'desks.host'] }]);
+    assert.match(p.ids['mc-status'].textContent, /picks this up within a minute/);
+    // "Use the AI models on this computer" is the role and the owner's yes, saved together.
+    const ai = cards[0].all((n) => n.tagName === 'INPUT' && /-ai$/.test(n.getAttribute('id') || ''))[0];
+    ai.checked = true; ai.fire('change');
+    await flush(); await flush();
+    const puts = p.calls.filter((c) => c[0] === 'PUT');
+    assert.ok(puts[puts.length - 1][2].roles.includes('ai.host'), 'the role');
+    assert.deepStrictEqual(p.calls.find((c) => /\/ai-models$/.test(c[1])), ['POST', '/api/v1/machines/dev_B/ai-models', { on: true }], 'and the owner\'s yes');
 
     // Rename on Enter.
     const rename = cards[0].all((n) => n.tagName === 'BUTTON' && /Rename/.test(n.textContent))[0];
@@ -151,8 +163,12 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
     } });
     await p.sandbox.loadMachines();
     const card = p.ids['mc-list'].children[0];
-    assert.match(card.textContent, /Let my agent use this computer/);
-    assert.match(card.textContent, /Let my watches check things from this computer/);
+    assert.match(card.textContent, /Let my agents use this computer/);
+    assert.match(card.textContent, /Let my watches check things from here/);
+    // For other people: lending browsers needs a locked box for each; this computer has none, so it cannot.
+    const lend = card.all((n) => n.tagName === 'INPUT' && /-lend$/.test(n.getAttribute('id') || ''))[0];
+    assert.ok(lend && lend.disabled === true, 'no sandbox, no lending');
+    assert.match(card.textContent, /cannot lend them.*--desk-host --shared/);
     const switches = card.all((n) => n.tagName === 'INPUT' && /-(agent|watch)$/.test(n.getAttribute('id') || ''));
     assert.deepStrictEqual(switches.map((b) => b.checked), [true, false], 'the switches start from Bot\'s own state');
     switches[0].checked = false; switches[0].fire('change');
@@ -188,6 +204,27 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
     await flush();
     assert.ok(p.calls.some((c) => c[0] === 'POST' && c[1] === '/api/v1/machines/dev_C/desks/desk-a/live'), 'the Live channel takes the desk with its warning first');
     assert.match(card.textContent, /openvibe\.live\/@ana/);
+
+    // ── For other people: a shared desk host lends its browsers on the owner's click ──
+    const lender = { id: 'dev_D', kind: 'server', online: true, name: 'ov-node-01', roles: ['desks.host'], running: [],
+        controls: { computer: true, agent_computer: false, watch_probe: false, shared_desks: false, ai_models: false, level: 'trusted', probe: false,
+            screen: { available: false, live: false }, desk: { available: true, sandboxed: true, max: 7 }, ai: { available: true, models: 2, offered: true } } };
+    p = page({ answers: (m, url, body) => {
+        if (url === '/api/v1/machines/roles') return { roles: ROLES };
+        if (m === 'GET' && url === '/api/v1/machines') return { machines: [lender] };
+        if (m === 'POST' && /\/shared-desks$/.test(url)) { lender.controls.shared_desks = body.on; return { machine: lender }; }
+        return {};
+    } });
+    await p.sandbox.loadMachines();
+    const lcard = p.ids['mc-list'].children[0];
+    assert.match(lcard.textContent, /Lend browsers to other people\u2019s agents.*Up to 7 browsers at once/);
+    assert.match(lcard.textContent, /Its AI models answer other people too/);
+    const lendBox = lcard.all((n) => n.tagName === 'INPUT' && /-lend$/.test(n.getAttribute('id') || ''))[0];
+    assert.ok(lendBox.disabled !== true, 'a sandboxed computer may lend');
+    lendBox.checked = true; lendBox.fire('change');
+    await flush();
+    assert.deepStrictEqual(p.calls.find((c) => /\/shared-desks$/.test(c[1])), ['POST', '/api/v1/machines/dev_D/shared-desks', { on: true }]);
+    assert.match(p.ids['mc-status'].textContent, /lends browsers to other people\u2019s agents/);
 
     // ── Pairing: the code and the command, then the machine arriving ──
     machines = [];

@@ -27,6 +27,9 @@ function mcAgo(at) {
 }
 const MC_KIND = { onboard: 'This computer', bridge: 'A bridge', server: 'A server' };
 const MC_ROLE_ICON = { 'codes.worker': 'fa-code', 'desks.host': 'fa-display', 'ai.host': 'fa-microchip', 'bot.robot': 'fa-robot' };
+/* The words a person reads (2026-11-12, the owner: "easy to understand for layman's"). The catalogue's names (Codes
+   worker, Desk host, AI host) stay the API's; the card says what each does, for whom. */
+const MC_SHORT = { 'codes.worker': 'Runs my coding tasks', 'desks.host': 'Browsers for my agents', 'ai.host': 'My AI models', 'bot.robot': 'My robot' };
 
 function mcSay(text, bad) {
     const s = document.getElementById('mc-status');
@@ -46,32 +49,23 @@ function mcCard(m) {
     const meta = mcEl('p', 'mc-meta', [mcIcon(osIcon), ' ', [MC_KIND[m.kind], m.os, m.node_version ? `Node ${m.node_version}` : ''].filter(Boolean).join(' · ')]);
     const head = mcEl('div', 'mc-head', [dot, mcEl('div', 'mc-title', [name, state]), meta]);
     card.append(head);
-    const roleChips = (m.roles || []).map((id) => (mcRoles || []).find((r) => r.id === id)).filter(Boolean);
-    card.append(mcEl('div', 'mc-role-chips', roleChips.length ? roleChips.map((r) => mcEl('span', 'mc-role-chip', [r.name])) : [mcEl('span', 'mc-role-chip is-empty', ['Nothing turned on yet'])]));
+    const on = mcOnNow(m);
+    card.append(mcEl('div', 'mc-role-chips', on.length ? on.map((t) => mcEl('span', 'mc-role-chip', [t])) : [mcEl('span', 'mc-role-chip is-empty', ['Nothing turned on yet'])]));
     if (Array.isArray(m.running) && m.running.length) {
         card.append(mcEl('ul', 'mc-running', m.running.slice(0, 6).map((r) => mcEl('li', '', [String((r && (r.title || r.kind || r.id)) || r)]))));
     }
 
-    // The roles: a switch each; a change saves the whole set at once.
-    const roles = mcEl('fieldset', 'mc-roles mc-role-set', [mcEl('legend', '', ['What it does for you'])]);
-    (mcRoles || []).forEach((role) => {
-        const id = `mc-${m.id}-${role.id.replace(/\W/g, '-')}`;
-        const box = mcEl('input', '', [], { type: 'checkbox', role: 'switch', id, value: role.id });
-        box.checked = (m.roles || []).includes(role.id);
-        box.addEventListener('change', () => mcSaveRoles(card, m));
-        roles.append(mcEl('label', 'mc-role', [box, mcEl('span', 'mc-role-ic', [mcIcon(MC_ROLE_ICON[role.id] || 'fa-gear')]), mcEl('span', 'mc-role-t', [mcEl('b', '', [role.name]), mcEl('small', '', [role.shows || ''])])], { for: id }));
-    });
-    const own = mcOwnerSwitches(m);
-    // Who else may ask this machine for access, and its agents (my/access.js).
-    const access = typeof mcAccessSwitches === 'function' ? mcAccessSwitches(m) : null;
+    // What it does for you, and, kept apart, what it does for other people (2026-11-12).
+    const forYou = mcForYou(card, m);
+    const forOthers = mcForOthers(m);
     const screen = mcScreenBlock(card, m);
     const links = mcSharesBlock(m);
     const desks = mcDesksBlock(card, m);
     const ready = (Array.isArray(m.fleet) ? m.fleet : []).filter((a) => a && a.installed && a.signed_in).length;
     card.append(mcTabs(m.id, [
-        ['agents', 'Agents', [mcAgentsBlock(card, m), ...(m.pools || []).map((pool) => mcPoolBlock(pool))], ready],
-        ['roles', 'Roles', [roles], (m.roles || []).length],
-        ['access', 'Access', [own, access]],
+        ['you', 'For you', [forYou], mcCountYou(m)],
+        ['others', 'For others', [forOthers], mcCountOthers(m)],
+        ['agents', 'Coding apps', [mcAgentsBlock(card, m), ...(m.pools || []).map((pool) => mcPoolBlock(pool))], ready],
         ['screen', 'Screen', [screen, links, desks]],
     ].filter(([, , blocks]) => blocks.some(Boolean))));
 
@@ -112,12 +106,12 @@ function mcAgentsBlock(card, m) {
     const fresh = fleet.length && Number.isFinite(age) && age <= 10 * 60000;
     let lede;
     if (!m.online) lede = 'Offline: what it has is shown as last reported.';
-    else if (!worker) lede = 'Turn on Codes worker and this machine runs your coding jobs with the agents it has, and says which ones here.';
-    else if (!fleet.length) lede = 'Codes worker is on. This machine has not reported its agents yet: they show a minute after the Link connects.';
+    else if (!worker) lede = 'Turn on \u201cRun my coding tasks\u201d and this computer runs your coding tasks with the coding apps it has, and lists them here.';
+    else if (!fleet.length) lede = 'Coding tasks are on. This computer has not listed its coding apps yet: they show a minute after it connects.';
     else lede = fresh ? `Reported ${mcAgo(m.fleet_at)}.` : `Last reported ${mcAgo(m.fleet_at)}.`;
     const head = mcEl('div', 'mc-agents-head', [mcEl('p', 'mc-agents-lede', [lede])]);
     if (!worker) {
-        const on = mcEl('button', 'btn btn-primary btn-small', [mcIcon('fa-power-off'), ' Turn on Codes worker'], { type: 'button' });
+        const on = mcEl('button', 'btn btn-primary btn-small', [mcIcon('fa-power-off'), ' Run my coding tasks here'], { type: 'button' });
         on.addEventListener('click', () => {
             const box = card.querySelector('input[value="codes.worker"]');
             if (box && !box.checked) { box.checked = true; box.dispatchEvent(new Event('change', { bubbles: true })); }
@@ -202,28 +196,118 @@ function mcTabs(machineId, panes) {
    it), so nothing turns on what an agent may do by itself. */
 
 /** A labelled switch row: a checkbox, an icon, a bold label and the sentence that says what it allows. */
-function mcSwitchRow(id, label, note, checked, onChange) {
-    const box = mcEl('input', '', [], { type: 'checkbox', role: 'switch', id });
+
+/** What is turned on, in a few words each, for the card's head. */
+function mcOnNow(m) {
+    const c = m.controls || {};
+    const out = (m.roles || []).filter((id) => id !== 'ai.host' || c.ai_models).map((id) => MC_SHORT[id]).filter(Boolean);
+    if (c.agent_computer) out.push('My agents may use it');
+    if (c.shared_desks) out.push('Lends browsers to others');
+    if (c.computer && c.ai && c.ai.offered) out.push('Shares its AI models');
+    return out;
+}
+const mcCountYou = (m) => (m.roles || []).length + ((m.controls || {}).agent_computer ? 1 : 0) + ((m.controls || {}).watch_probe ? 1 : 0);
+const mcCountOthers = (m) => ((m.controls || {}).shared_desks ? 1 : 0) + (((m.controls || {}).ai || {}).offered ? 1 : 0);
+
+/** One switch row: a switch, its mark, what it does in a few words, and one plain sentence. */
+function mcRow(id, icon, label, note, checked, onChange, opts) {
+    const o = opts || {};
+    const box = mcEl('input', o.roleId ? 'mc-role-input' : '', [], { type: 'checkbox', role: 'switch', id, ...(o.roleId ? { value: o.roleId } : {}) });
     box.checked = checked === true;
+    if (o.disabled) box.disabled = true;
     box.addEventListener('change', () => onChange(box));
-    return mcEl('label', 'mc-role', [box, mcEl('span', 'mc-role-ic', [mcIcon(id.endsWith('-agent') ? 'fa-robot' : 'fa-tower-broadcast')]),
-        mcEl('span', 'mc-role-t', [mcEl('b', '', [label]), mcEl('small', '', [note])])], { for: id });
+    const text = [mcEl('b', '', [label]), mcEl('small', '', [note])];
+    if (o.hint) text.push(mcEl('small', 'mc-hint', [o.hint]));
+    return mcEl('label', `mc-role${o.disabled ? ' is-off' : ''}`, [box, mcEl('span', 'mc-role-ic', [mcIcon(icon)]), mcEl('span', 'mc-role-t', text)], { for: id });
 }
 
-/** The two switches the removed page had for the person's agent and watches, off unless Bot says they are on. */
-function mcOwnerSwitches(m) {
-    const c = m.controls || null;
-    if (!c || !c.computer) return null;
-    const field = mcEl('fieldset', 'mc-roles mc-switches', [mcEl('legend', '', ['For your agent and your watches'])]);
-    field.append(mcSwitchRow(`mc-${m.id}-agent`, 'Let my agent use this computer',
-        'Your OpenVibe.Actor agent may use its terminal, files and screen as you, at the level set on the computer. Off until you turn it on.',
-        c.agent_computer, (box) => mcSaveSwitch(m, box, 'agent-computer', `Saved. ${m.name || 'The machine'} ${box.checked ? 'may be used by your agent.' : 'is off limits to your agent now.'}`)));
-    if (c.probe) {
-        field.append(mcSwitchRow(`mc-${m.id}-watch`, 'Let my watches check things from this computer',
-            'OpenVibe.Watch may probe your own network from here for your watches: one GET or one TCP connection, to private addresses only.',
-            c.watch_probe, (box) => mcSaveSwitch(m, box, 'watch-probe', `Saved. Your watches ${box.checked ? 'may check from this computer.' : 'no longer check from here.'}`)));
+/** For you: what this computer does for you and your own agents. */
+function mcForYou(card, m) {
+    const c = m.controls || {};
+    const has = (id) => (m.roles || []).includes(id);
+    const known = (id) => !mcRoles || !mcRoles.length || mcRoles.some((r) => r.id === id);
+    const field = mcEl('fieldset', 'mc-roles mc-role-set', [mcEl('legend', '', ['For you and your agents'])]);
+    field.append(mcEl('p', 'mc-lede', ['Only you, and agents you run, use what you turn on here.']));
+    const name = m.name || 'This computer';
+    if (known('codes.worker')) {
+        field.append(mcRow(`mc-${m.id}-codes`, 'fa-code', 'Run my coding tasks',
+            'Coding tasks you start on openvibe.codes run on this computer, with the coding apps it has (see Coding apps).',
+            has('codes.worker'), () => mcSaveRoles(card, m), { roleId: 'codes.worker' }));
     }
+    if (known('desks.host')) {
+        const desk = c.desk || {};
+        field.append(mcRow(`mc-${m.id}-desks`, 'fa-display', 'Give my agents a browser here',
+            'Your agents get their own private browser on this computer, to look things up and fill in websites for you. Watch them on the Screen tab.',
+            has('desks.host'), () => mcSaveRoles(card, m),
+            { roleId: 'desks.host', hint: c.computer && desk.available === false ? 'This computer was set up without browsers for agents. Set it up again with: openvibe-link install --desk-host' : (desk.max ? `Up to ${desk.max} at once.` : '') }));
+    }
+    if (c.computer) {
+        field.append(mcRow(`mc-${m.id}-agent`, 'fa-robot', 'Let my agents use this computer',
+            `Your agents may open files and look at the screen here, as far as this computer allows${c.level ? ` (it is set to “${c.level}”)` : ''}.`,
+            c.agent_computer, (box) => mcSaveSwitch(m, box, 'agent-computer', `Saved. ${box.checked ? `Your agents may use ${name}.` : `Your agents may no longer use ${name}.`}`)));
+    }
+    if (known('ai.host')) {
+        const ai = c.ai || {};
+        const aiOn = has('ai.host') && c.ai_models === true;
+        field.append(mcRow(`mc-${m.id}-ai`, 'fa-microchip', 'Use the AI models on this computer',
+            'OpenVibe AI may answer you with the models installed here: free, and your words stay on your own computer.',
+            aiOn, (box) => mcSaveAi(card, m, box),
+            { hint: ai.available ? (ai.models ? `${ai.models} model${ai.models === 1 ? '' : 's'} installed.` : 'No models installed yet: add one with Ollama or LM Studio.') : (c.computer ? 'No model app found here. Install Ollama or LM Studio, then set it up again with: openvibe-link install --ai' : '') }));
+    }
+    if (c.computer && c.probe) {
+        field.append(mcRow(`mc-${m.id}-watch`, 'fa-tower-broadcast', 'Let my watches check things from here',
+            'Your watches on openvibe.watch can check websites and devices that only this computer’s network can reach.',
+            c.watch_probe, (box) => mcSaveSwitch(m, box, 'watch-probe', `Saved. Your watches ${box.checked ? 'may check from here.' : 'no longer check from here.'}`)));
+    }
+    if (known('bot.robot') && (has('bot.robot') || m.kind === 'onboard')) {
+        field.append(mcRow(`mc-${m.id}-robot`, 'fa-robot', 'Drive my robot from here',
+            'A robot is plugged into this computer, and OpenVibe passes it your commands.',
+            has('bot.robot'), () => mcSaveRoles(card, m), { roleId: 'bot.robot' }));
+    }
+    // My own machines and agents (my/access.js): the rows about you.
+    if (typeof mcAccessSwitches === 'function') field.append(...[mcAccessSwitches(m, 'you')].filter(Boolean));
     return field;
+}
+
+/** For other people: what this computer lends to people other than you. Off unless turned on. */
+function mcForOthers(m) {
+    const c = m.controls || {};
+    const field = mcEl('fieldset', 'mc-roles mc-switches mc-others', [mcEl('legend', '', ['For other people'])]);
+    field.append(mcEl('p', 'mc-lede', ['Everything here is off until you turn it on. Other people never see your files, your screen or your programs.']));
+    if (c.computer) {
+        const desk = c.desk || {};
+        const can = desk.available === true && desk.sandboxed === true;
+        field.append(mcRow(`mc-${m.id}-lend`, 'fa-people-arrows', 'Lend browsers to other people’s agents',
+            'Agents that other people run may borrow a browser here, each one locked in its own box that reaches only the public internet.',
+            c.shared_desks, (box) => mcSaveSwitch(m, box, 'shared-desks', `Saved. ${m.name || 'This computer'} ${box.checked ? 'lends browsers to other people’s agents.' : 'no longer lends browsers.'}`),
+            { disabled: !can && !c.shared_desks, hint: can ? (desk.max ? `Up to ${desk.max} browsers at once, yours and theirs together.` : '') : 'This computer keeps no locked box for each browser, so it cannot lend them. Set it up again with: openvibe-link install --desk-host --shared' }));
+        const ai = c.ai || {};
+        if (ai.available) {
+            field.append(mcEl('p', `mc-status-line${ai.offered ? ' is-on' : ''}`, [mcIcon(ai.offered ? 'fa-circle-check' : 'fa-circle'), ' ',
+                ai.offered ? 'Its AI models answer other people too (set on the computer itself; each answer is marked Community).' : 'Its AI models answer only you. Offering them to others is set on the computer itself.']));
+        }
+    }
+    if (typeof mcAccessSwitches === 'function') field.append(...[mcAccessSwitches(m, 'others')].filter(Boolean));
+    return field;
+}
+
+/** "Use the AI models on this computer" is two settings that only work together: the role, and the owner's yes. */
+async function mcSaveAi(card, m, box) {
+    const want = box.checked;
+    box.disabled = true;
+    try {
+        const roles = new Set(m.roles || []);
+        if (want) roles.add('ai.host'); else roles.delete('ai.host');
+        const ids = [...roles];
+        const r = await apiFetch(`/api/v1/machines/${encodeURIComponent(m.id)}/roles`, { method: 'PUT', body: JSON.stringify({ roles: ids }) });
+        m.roles = (r && r.machine && r.machine.roles) || ids;
+        const out = await apiFetch(`/api/v1/machines/${encodeURIComponent(m.id)}/ai-models`, { method: 'POST', body: JSON.stringify({ on: want }) });
+        if (out && out.machine && out.machine.controls) m.controls = out.machine.controls;
+        mcSay(want ? `Saved. OpenVibe AI may use the models on ${m.name || 'this computer'}.` : `Saved. OpenVibe AI no longer uses the models on ${m.name || 'this computer'}.`);
+    } catch (e) {
+        box.checked = !want;
+        mcSay(e.message || 'That could not be saved.', true);
+    } finally { box.disabled = false; }
 }
 
 async function mcSaveSwitch(m, box, route, done) {
@@ -568,17 +652,18 @@ function mcAttachTakeOver(figure, video, m, use) {
 
 
 async function mcSaveRoles(card, m) {
-    const roles = [...card.querySelectorAll('.mc-role-set input')].filter((b) => b.checked).map((b) => b.value);
-    card.querySelectorAll('.mc-role-set input').forEach((b) => { b.disabled = true; });
+    const keep = (m.roles || []).filter((id) => id === 'ai.host');   // the AI row saves its own role (mcSaveAi)
+    const roles = [...new Set([...keep, ...[...card.querySelectorAll('.mc-role-input')].filter((b) => b.checked).map((b) => b.value)])];
+    card.querySelectorAll('.mc-role-input').forEach((b) => { b.disabled = true; });
     try {
         const out = await apiFetch(`/api/v1/machines/${encodeURIComponent(m.id)}/roles`, { method: 'PUT', body: JSON.stringify({ roles }) });
         m.roles = (out && out.machine && out.machine.roles) || roles;
-        mcSay(`Saved. ${m.name || 'The machine'} picks this up at its next check-in.`);
+        mcSay(`Saved. ${m.name || 'The computer'} picks this up within a minute.`);
     } catch (e) {
-        mcSay(e.message || 'The roles could not be saved.', true);
-        card.querySelectorAll('.mc-role-set input').forEach((b) => { b.checked = (m.roles || []).includes(b.value); });
+        mcSay(e.message || 'That could not be saved.', true);
+        card.querySelectorAll('.mc-role-input').forEach((b) => { b.checked = (m.roles || []).includes(b.value); });
     } finally {
-        card.querySelectorAll('.mc-role-set input').forEach((b) => { b.disabled = false; });
+        card.querySelectorAll('.mc-role-input').forEach((b) => { b.disabled = false; });
     }
 }
 

@@ -50,7 +50,7 @@ const machineOf = (id) => {
     const s = stateOf(id);
     return {
         id, name: 'garage-pi', kind: 'onboard', online: true, roles: [], running: [], node_id: null,
-        agent_computer: s.agent_computer === true, watch_probe: s.watch_probe === true,
+        agent_computer: s.agent_computer === true, watch_probe: s.watch_probe === true, ai_models: s.ai_models === true, shared_desks: s.shared_desks === true,
         computer: {
             level: 'ask', terminal: { level: 'ask' }, files: { level: 'ask' }, screen: { level: 'ask', stream: true },
             probe: { level: 'observe' }, desk: { level: 'ask', max_desks: 2, kinds: ['browser'], isolation: 'sandbox', screen: true, named: true },
@@ -74,9 +74,9 @@ const botServer = http.createServer(async (req, res) => {
     }
     // The owner's own controls (the card): each as Bot checks it, the machine's own or 404.
     let m;
-    if (req.method === 'POST' && (m = /^\/api\/v1\/machines\/([^/]+)\/(agent-computer|watch-probe)$/.exec(req.url))) {
+    if (req.method === 'POST' && (m = /^\/api\/v1\/machines\/([^/]+)\/(agent-computer|watch-probe|ai-models|shared-desks)$/.exec(req.url))) {
         if (!mineOf(decodeURIComponent(m[1]))) return answer(404, { code: 'bot.device_not_found' });
-        const key = m[2] === 'agent-computer' ? 'agent_computer' : 'watch_probe';
+        const key = { 'agent-computer': 'agent_computer', 'watch-probe': 'watch_probe', 'ai-models': 'ai_models', 'shared-desks': 'shared_desks' }[m[2]];
         if (typeof body.on !== 'boolean') return answer(422, { code: 'bot.invalid_input' });
         return answer(200, { machine: setFlag(decodeURIComponent(m[1]), key, body.on) });
     }
@@ -269,6 +269,14 @@ try {
     assert.strictEqual(watchOn.body.machine.controls.watch_probe, true);
     sent = calls.at(-1);
     assert.deepStrictEqual([sent.method, sent.url, sent.subject, sent.body], ['POST', `/api/v1/machines/${anaMachine}/watch-probe`, ana.subject_id, { on: true }]);
+    // 2026-11-12: the card's two new switches, the models and lending browsers to other people's agents.
+    for (const [route, key] of [['ai-models', 'ai_models'], ['shared-desks', 'shared_desks']]) {
+        const r = await call('POST', `/api/v1/machines/${anaMachine}/${route}`, { user: ana, body: { on: true } });
+        assert.strictEqual(r.status, 200, `${route}: ${JSON.stringify(r.body)}`);
+        assert.strictEqual(r.body.machine.controls[key], true, route);
+        sent = calls.at(-1);
+        assert.deepStrictEqual([sent.method, sent.url, sent.subject, sent.body], ['POST', `/api/v1/machines/${anaMachine}/${route}`, ana.subject_id, { on: true }], route);
+    }
     // A body that is not true/false never reaches Bot.
     const beforeBadSwitch = calls.length;
     const badSwitch = await call('POST', `/api/v1/machines/${anaMachine}/agent-computer`, { user: ana, body: { on: 'yes' } });

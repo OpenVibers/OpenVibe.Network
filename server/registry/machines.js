@@ -13,7 +13,7 @@
  *   PATCH  /api/v1/machines/:id         network.machines.manage → { machine }                (a new name)
  *   PUT    /api/v1/machines/:id/roles   network.machines.manage → { machine }                (the whole set)
  *   POST   /api/v1/machines/:id/revoke  network.machines.manage → { machine }
- *   POST   /api/v1/machines/:id/agent-computer, /watch-probe   → { machine }   (the owner's own session)
+ *   POST   /api/v1/machines/:id/agent-computer, /watch-probe, /ai-models, /shared-desks → { machine } (own session)
  *   POST   /api/v1/machines/:id/screen  network.machines.manage → 201 { machine_id, … } (the live screen)
  *   GET    /api/v1/machines/:id/screen  network.machines.read   → { live, signaling_url, … }
  *   DELETE /api/v1/machines/:id/screen  network.machines.manage → { stopped }
@@ -127,6 +127,9 @@ function machineOf(m) {
     out.controls = {
         agent_computer: m.agent_computer === true,
         watch_probe: m.watch_probe === true,
+        // 2026-11-12: the owner's AI may use the models here; the desks are lent to other people's agents.
+        ai_models: m.ai_models === true,
+        shared_desks: m.shared_desks === true,
         computer: !!computer,
         ...(computer ? {
             level: typeof computer.level === 'string' ? computer.level : null,
@@ -143,6 +146,12 @@ function machineOf(m) {
                 running: Number.isInteger(computer.desks_running) ? computer.desks_running : null,
                 ...(Number.isInteger(computer.desk.max_desks) ? { max: computer.desk.max_desks } : {}),
                 ...(Array.isArray(computer.desk.kinds) ? { kinds: computer.desk.kinds.filter((k) => typeof k === 'string').slice(0, 5) } : {}),
+            } : { available: false },
+            // The models the machine serves (its ai plugin): how many, and whether it offers them to everyone.
+            ai: computer.ai && typeof computer.ai === 'object' ? {
+                available: true,
+                models: Array.isArray(computer.ai.models) ? computer.ai.models.length : 0,
+                offered: !!(computer.ai.offer && typeof computer.ai.offer === 'object' && computer.ai.offer.enabled === true),
             } : { available: false },
         } : {}),
     };
@@ -204,6 +213,8 @@ function createBotClient({ baseUrl, privateKey, issuer, fetchImpl = globalThis.f
         // a machine that is not the person's is 404 before any of these do anything.
         agentComputer: (subject, id, on) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/agent-computer`, { on: !!on }, subject),
         watchProbe: (subject, id, on) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/watch-probe`, { on: !!on }, subject),
+        aiModels: (subject, id, on) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/ai-models`, { on: !!on }, subject),
+        sharedDesks: (subject, id, on) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/shared-desks`, { on: !!on }, subject),
         screenStart: (subject, id, body) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/screen`, body || {}, subject),
         screenState: (subject, id) => call('GET', `/api/v1/machines/${encodeURIComponent(id)}/screen`, null, subject),
         screenStop: (subject, id) => call('DELETE', `/api/v1/machines/${encodeURIComponent(id)}/screen`, null, subject),
@@ -382,7 +393,7 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
             const ready = m.online && m.roles.includes('codes.worker');
             return { id: m.id, ...(m.principal_id ? { principal_id: m.principal_id } : {}), kind: 'personal', name: m.name || m.id,
                 status: ready ? 'ready' : 'unavailable', price: { amount_usd: 0, unit: 'hour' },
-                reason: ready ? null : m.online ? 'Turn on the Codes worker role in Link.' : 'This machine is offline.' };
+                reason: ready ? null : m.online ? 'Turn on \u201cRun my coding tasks\u201d for this computer on openvibe.link/machines.' : 'This computer is offline.' };
         });
         const sources = [
             { kind: 'personal', name: 'Your Link machines', status: candidates.some((c) => c.status === 'ready') ? 'ready' : 'unavailable', reason: candidates.length ? null : 'Pair a machine in Link.' },
@@ -504,6 +515,22 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
         const subject = await subjectOf(req);
         const on = booleanOn(req);
         const out = await bot.watchProbe(subject, machineId(req), on);
+        res.json({ machine: machineOf(out && out.machine) });
+    }));
+    // 2026-11-12: "Use the AI models on this computer" and "Lend browsers to other people's agents". Bot refuses to lend
+    // the desks of a computer that does not keep each one in a sandbox of its own (409 bot.desks_not_sandboxed).
+    hub.post('/:id/ai-models', manage, ownSession, express.json({ limit: '8kb' }), async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const on = booleanOn(req);
+        const out = await bot.aiModels(subject, machineId(req), on);
+        res.json({ machine: machineOf(out && out.machine) });
+    }));
+    hub.post('/:id/shared-desks', manage, ownSession, express.json({ limit: '8kb' }), async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const on = booleanOn(req);
+        const out = await bot.sharedDesks(subject, machineId(req), on);
         res.json({ machine: machineOf(out && out.machine) });
     }));
 
