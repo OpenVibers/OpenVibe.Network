@@ -6,11 +6,20 @@
    Classic script, global scope: it relies on admin/core.js's api(), esc() and toast().
    ═══════════════════════════════════════════════════════════════ */
 let aiSetupState = null;
-let aiSetupStep = 'chat';
+let aiSetupStep = 'start';
 let aiSetupChoice = {};      // step id -> { provider, model }
 let aiSetupBusy = false;
 
 const AI_SETUP_DEFAULT = 'defaults';
+// 2026-11-12 (the owner: "finish the guided easy step by step setup for owners"): the setup opens on a Start page (what
+// it does, what is free, the credits you already get, one tap for the recommended set) and ends on a Finish page (what
+// is ready, what is left, a test of every ready job).
+const AI_SETUP_START = 'start';
+const AI_SETUP_DONE = 'done';
+const AI_SETUP_LINKS = {
+    altare: 'https://altare.gg/console', gemini: 'https://aistudio.google.com/api-keys', machines: 'https://openvibe.link/machines',
+    openaiCredits: 'https://developers.openai.com/api/docs/guides/chatgpt-api-credits', credits: 'https://openvibe.exchange/console/providers',
+};
 const AI_SETUP_STATE_WORD = { ready: 'Ready', not_set: 'Not set', failing: 'Failing' };
 const AI_SETUP_STATE_CLASS = { ready: 'ok', not_set: 'todo', failing: 'bad' };
 
@@ -52,7 +61,7 @@ async function loadAiSetup(force) {
     try {
         aiSetupState = await api('/api/admin/ai/setup');
         if (!aiSetupState || !Array.isArray(aiSetupState.steps)) throw new Error('OpenVibe.AI did not answer with the setup');
-        if (!aiSetupState.steps.some((s) => s.id === aiSetupStep) && aiSetupStep !== AI_SETUP_DEFAULT) aiSetupStep = 'chat';
+        if (!aiSetupState.steps.some((s) => s.id === aiSetupStep) && ![AI_SETUP_DEFAULT, AI_SETUP_START, AI_SETUP_DONE].includes(aiSetupStep)) aiSetupStep = AI_SETUP_START;
         renderAiSetup();
     } catch (err) {
         main.innerHTML = `<div class="setup-error"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
@@ -66,12 +75,18 @@ function renderAiSetup() {
     renderAiSetupStepper();
     renderAiSetupProgress();
     if (aiSetupStep === AI_SETUP_DEFAULT) renderAiSetupDefaults();
+    else if (aiSetupStep === AI_SETUP_START) renderAiSetupStart();
+    else if (aiSetupStep === AI_SETUP_DONE) renderAiSetupDone();
     else renderAiSetupStep();
 }
 
 function renderAiSetupStepper() {
     const nav = document.getElementById('setup-steps');
     if (!nav) return;
+    const start = `<button class="setup-step defaults ${aiSetupStep === AI_SETUP_START ? 'active' : ''}" onclick="selectAiSetupStep('${AI_SETUP_START}')" aria-current="${aiSetupStep === AI_SETUP_START ? 'step' : 'false'}">
+        <span class="setup-step-dot" aria-hidden="true"><i class="fa-solid fa-flag"></i></span>
+        <span class="setup-step-text"><span class="setup-step-name">Start</span><span class="setup-step-state">Free and granted first</span></span>
+    </button>`;
     const rows = aiSetupState.steps.map((s, i) => {
         const active = aiSetupStep === s.id;
         const state = s.ready ? 'ready' : s.state;
@@ -84,7 +99,12 @@ function renderAiSetupStepper() {
         <span class="setup-step-dot" aria-hidden="true"><i class="fa-solid fa-sliders"></i></span>
         <span class="setup-step-text"><span class="setup-step-name">Defaults</span><span class="setup-step-state">Models, spend and caps</span></span>
     </button>`);
-    nav.innerHTML = rows.join('');
+    const done = aiSetupState.summary.ready === aiSetupState.summary.total;
+    rows.push(`<button class="setup-step ${done ? 'ready' : 'todo'} ${aiSetupStep === AI_SETUP_DONE ? 'active' : ''}" onclick="selectAiSetupStep('${AI_SETUP_DONE}')" aria-current="${aiSetupStep === AI_SETUP_DONE ? 'step' : 'false'}">
+        <span class="setup-step-dot" aria-hidden="true"><i class="fa-solid ${done ? 'fa-check' : 'fa-flag-checkered'}"></i></span>
+        <span class="setup-step-text"><span class="setup-step-name">Finish</span><span class="setup-step-state">${done ? 'Everything is set' : 'What is left'}</span></span>
+    </button>`);
+    nav.innerHTML = start + rows.join('');
 }
 
 function renderAiSetupProgress() {
@@ -111,7 +131,7 @@ function nextAiSetupNotReady() {
     const from = ids.indexOf(aiSetupStep);
     const order = from >= 0 ? [...ids.slice(from + 1), ...ids.slice(0, from + 1)] : ids;
     const next = order.find((id) => { const s = aiSetupStepById(id); return s && !s.ready; });
-    selectAiSetupStep(next || AI_SETUP_DEFAULT);
+    selectAiSetupStep(next || (aiSetupStep === AI_SETUP_DEFAULT ? AI_SETUP_DONE : AI_SETUP_DEFAULT));
 }
 
 function skipAiSetupStep() {
@@ -310,6 +330,105 @@ async function runAiSetupTest(stepId) {
     } finally {
         aiSetupBusy = false;
         document.querySelectorAll('#sec-ai-setup button').forEach((b) => { b.disabled = false; });
+    }
+}
+
+/** Start: what the setup does, what costs nothing, the credits you already get, and one tap for the recommended set. */
+function renderAiSetupStart() {
+    const main = document.getElementById('setup-main');
+    if (!main || !aiSetupState) return;
+    const first = (aiSetupState.steps.find((s) => !s.ready) || aiSetupState.steps[0] || { id: 'chat', name: 'Chat and writing' });
+    const total = aiSetupState.summary.total;
+    main.innerHTML = `
+        <article class="setup-card" aria-labelledby="setup-start-title">
+            <header class="setup-card-head">
+                <div><p class="setup-kicker">Start</p><h2 id="setup-start-title">Set up OpenVibe's AI</h2>
+                <p class="muted">${total} jobs, one at a time. Each one asks for a key, recommends a model with its price and runs one tiny test. Free and already-paid options come first.</p></div>
+            </header>
+            <section class="setup-start-grid">
+                <div class="setup-start-card">
+                    <h3><i class="fa-solid fa-gift" aria-hidden="true"></i> Start with what's free</h3>
+                    <ul class="setup-start-list">
+                        <li><strong>Altare Inference</strong>: free until December 1, then $100 of usage a month on its free plan. 60 requests a minute, 30 for its flagship models. <a href="${AI_SETUP_LINKS.altare}" target="_blank" rel="noopener">Get a key</a></li>
+                        <li><strong>Gemini API free tier</strong>: Decisions (routing and checks) and pictures. The free tier may use what it reads to improve Google's products, so send public data only. <a href="${AI_SETUP_LINKS.gemini}" target="_blank" rel="noopener">Get a key</a></li>
+                        <li><strong>Your own computer</strong>: a model on a machine you paired answers your own work, at no cost. <a href="${AI_SETUP_LINKS.machines}" target="_blank" rel="noopener">Your machines</a></li>
+                    </ul>
+                </div>
+                <div class="setup-start-card">
+                    <h3><i class="fa-solid fa-ticket" aria-hidden="true"></i> Credits you already pay for</h3>
+                    <ul class="setup-start-list">
+                        <li><strong>ChatGPT Pro</strong> includes $100, $200 or $500 of OpenAI API credit a month. Check ChatGPT → Settings → Billing → API credits. The plan must be at least seven days old, and the same email must own it and the API organization. <a href="${AI_SETUP_LINKS.openaiCredits}" target="_blank" rel="noopener">How it works</a></li>
+                        <li><strong>An Anthropic allowance</strong> or any plan with monthly API credit works the same way.</li>
+                        <li>Record each as <strong>Monthly credits</strong> on <a href="${AI_SETUP_LINKS.credits}" target="_blank" rel="noopener">Exchange → Console → Providers</a>. OpenVibe then spends them first, and nothing carries over at the end of a cycle.</li>
+                    </ul>
+                </div>
+                <div class="setup-start-card">
+                    <h3><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> One tap</h3>
+                    <p class="muted">Fills every job with its recommended model. You still paste each provider's key once, in its step.</p>
+                    <button class="btn btn-outline btn-sm" onclick="applyAiSetupRecommended()">Use the recommended set</button>
+                </div>
+            </section>
+            <footer class="setup-card-foot">
+                <button class="btn btn-primary" onclick="selectAiSetupStep('${esc(first.id)}')">Start with ${esc(first.name)} <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+            </footer>
+        </article>`;
+}
+
+/** Finish: what is ready, what is left with a way to it, and one test of every ready job. */
+function renderAiSetupDone() {
+    const main = document.getElementById('setup-main');
+    if (!main || !aiSetupState) return;
+    const steps = aiSetupState.steps;
+    const ready = steps.filter((s) => s.ready);
+    const left = steps.filter((s) => !s.ready);
+    const row = (s) => `<li class="setup-done-row ${s.ready ? 'ok' : 'todo'}" data-step="${esc(s.id)}">
+        <span class="setup-step-dot" aria-hidden="true">${s.ready ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-minus"></i>'}</span>
+        <span class="setup-done-name"><strong>${esc(s.name)}</strong><span class="muted">${s.ready ? esc((aiSetupSelected(s) || {}).label || 'Ready') : esc(s.what || '')}</span></span>
+        <span class="setup-done-out" id="setup-done-${esc(s.id)}"></span>
+        ${s.ready ? '' : `<button class="btn btn-outline btn-sm" onclick="selectAiSetupStep('${esc(s.id)}')">Set it</button>`}
+    </li>`;
+    main.innerHTML = `
+        <article class="setup-card" aria-labelledby="setup-done-title">
+            <header class="setup-card-head">
+                <div><p class="setup-kicker">Finish</p><h2 id="setup-done-title">${left.length ? `${ready.length} of ${steps.length} ready` : 'Everything is set'}</h2>
+                <p class="muted">${left.length ? `${left.length} ${left.length === 1 ? 'job is' : 'jobs are'} left. What depends on ${left.length === 1 ? 'it' : 'them'} waits until ${left.length === 1 ? 'it is' : 'they are'} set.` : 'Every job has a model that answered its test. Caps and models are on Defaults.'}</p></div>
+            </header>
+            <ul class="setup-done-list">${[...left, ...ready].map(row).join('')}</ul>
+            <footer class="setup-card-foot">
+                ${ready.length ? `<button class="btn btn-primary" id="setup-test-all" onclick="testAllAiSetup()">Test every ready job</button>` : ''}
+                <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')">Defaults and caps</button>
+                <a class="btn btn-outline" href="${AI_SETUP_LINKS.credits}" target="_blank" rel="noopener">Monthly credits</a>
+            </footer>
+        </article>`;
+}
+
+/** One tiny test per ready job, one after another, each answer beside its row. */
+async function testAllAiSetup() {
+    if (aiSetupBusy || !aiSetupState) return;
+    aiSetupBusy = true;
+    const btn = document.getElementById('setup-test-all');
+    if (btn) btn.disabled = true;
+    let passed = 0, failed = 0;
+    try {
+        for (const step of aiSetupState.steps.filter((s) => s.ready)) {
+            const out = document.getElementById(`setup-done-${step.id}`);
+            if (out) out.textContent = 'Testing…';
+            const selected = aiSetupSelected(step);
+            try {
+                const body = { provider: selected.provider };
+                if (step.route) body.model = selected.model;
+                const r = await api(`/api/admin/ai/setup/test/${encodeURIComponent(step.id)}`, { method: 'POST', body });
+                passed++;
+                if (out) { out.textContent = `Answered${r.latency_ms ? ` in ${Math.round(r.latency_ms)} ms` : ''}`; out.className = 'setup-done-out ok'; }
+            } catch (err) {
+                failed++;
+                if (out) { out.textContent = err.message || 'Failed'; out.className = 'setup-done-out bad'; }
+            }
+        }
+        toast(failed ? `${passed} answered, ${failed} failed` : `All ${passed} ready jobs answered`, failed ? 'warning' : undefined);
+    } finally {
+        aiSetupBusy = false;
+        if (btn) btn.disabled = false;
     }
 }
 
