@@ -28,6 +28,7 @@
 </script>
 <link rel="stylesheet" href="/css/admin.css">
 <link rel="stylesheet" href="/css/ai-setup.css">
+<link rel="stylesheet" href="/css/guide.css">
 <!-- OpenVibe's own form controls (4.109.0): every select in Platform AI is one, with data-badge/data-desc/data-state. -->
 <link rel="stylesheet" href="/shared/ov-forms.css">
 </head>
@@ -48,6 +49,7 @@
         </button>
         <div class="section-tabs-wrap">
             <div class="section-tabs" id="main-tabs">
+                <button class="admin-tab-btn owner-only" onclick="showTab('guide',this)"><i class="fa-solid fa-route"></i> Guided setup</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('setup',this)"><i class="fa-solid fa-list-check"></i> Setup</button>
                 <button class="admin-tab-btn active" onclick="showTab('dashboard',this)"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
                 <button class="admin-tab-btn" onclick="location.href='/admin/review'"><i class="fa-solid fa-list-check"></i> Review queue</button>
@@ -86,7 +88,13 @@
     </div>
 
     <!-- Setup (owner only): everything only the owner can give the network, from every service (js/admin/setup.js) -->
+    <!-- The guided setup (/admin/guide): everything, one step at a time, with the setting we recommend (js/admin/guide.js). -->
+    <div class="section" id="sec-guide">
+        <div id="guide-content" class="guide"></div>
+    </div>
+
     <div class="section" id="sec-setup">
+        <div class="setup-guide-cta"><p><b>New here, or not sure what is left?</b> The guided setup walks through everything, one step at a time, with the setting we recommend.</p><a class="btn btn-primary" href="/admin/guide">Start the guided setup</a></div>
         <div id="setup-content" class="setup"></div>
     </div>
 
@@ -708,6 +716,8 @@
 <script src="/js/admin/glossary.js" defer></script>
 <script src="/js/admin/ai.js" defer></script>
 <script src="/js/admin/ai-setup.js" defer></script>
+<script src="/js/admin/guide-rules.js" defer></script>
+<script src="/js/admin/guide.js" defer></script>
 <script src="/js/admin/inference.js" defer></script>
 <script src="/js/admin/setup.js" defer></script>
 <script src="/js/admin/content.js" defer></script>

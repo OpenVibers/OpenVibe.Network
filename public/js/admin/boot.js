@@ -22,6 +22,7 @@ const tabLoaders = {
     payments: loadPayments,
     ai: loadAi,
     'ai-setup': loadAiSetup,
+    guide: loadGuide,
     pastes: loadPastesAdmin,
     storage: loadStorage,
     notifications: () => {},
