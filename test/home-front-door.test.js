@@ -175,13 +175,17 @@ assert.ok(html.includes('href="https://openvibe.video/v/9"') && html.includes('<
     assert.ok(html.includes('.now:has(#now-tab-recs:checked) [data-now-part]:not([data-now-part="recs"])'), 'a phone folds the parts not chosen');
     assert.ok(!html.includes('[data-more-part]{display:none'), 'the lower half keeps every section');
 }
-// The lower half: every section with its own heading; on a phone a row of chips under "More about OpenVibe" jumps to one.
+// The lower half: every section with its own heading; on a phone one at a time as tabs under "More about OpenVibe"
+// (showcase.parts, 11-12), every part still in the HTML.
 {
-    const more = [...html.matchAll(/<nav class="more-pick" data-ovk-scroll aria-label="More about OpenVibe">([\s\S]*?)<\/nav>/g)];
-    assert.ok(parseHTML(html).document.querySelector('.more > .more-pick-h')?.textContent === 'More about OpenVibe' && more.length === 1, 'the More block and its chips');
-    const ids = [...more[0][1].matchAll(/<a href="#([a-z]+)">/g)].map((m) => m[1]);
-    assert.ok(ids.length >= 4 && ids[0] === 'tools', `a link per section, Tools first (${ids.join(',')})`);
-    for (const id of ids) assert.match(html, new RegExp(`<section class="sc-sec[^"]*" id="${id}" data-more-part`), `${id} is a section in the page`);
+    const doc = parseHTML(html).document;
+    assert.ok(doc.querySelector('.more > .more-pick-h')?.textContent === 'More about OpenVibe', 'the More block');
+    const parts = doc.querySelector('.more > .ov-parts.ov-parts--front');
+    assert.ok(parts, 'its parts are tabs on a phone (a front page: 600 px and under)');
+    const ids = [...parts.querySelectorAll(':scope > .ov-parts-bar > label')].map((l) => l.getAttribute('for').replace('ovp-more-', ''));
+    assert.ok(ids.length >= 4 && ids[0] === 'tools', `a tab per section, Tools first (${ids.join(',')})`);
+    for (const id of ids) assert.match(html, new RegExp(`<section class="ov-part" data-part="${id}"><section class="sc-sec[^"]*" id="${id}" data-more-part`), `${id} is a section in the page`);
+    assert.ok(!html.includes('<nav class="more-pick"'), 'no jump chips beside the tabs');
 }
 assert.ok(/<b>1,234<\/b><span>accounts/.test(html) && /<b>37<\/b><span>services up <small>of 38 checked/.test(html) && /<b>1<\/b><span>stream live now/.test(html), 'the numbers read render');
 // The most visited things to do lead the intents, with this week's visits on the first five (plan L43). One site counts
