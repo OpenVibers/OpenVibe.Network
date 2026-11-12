@@ -171,4 +171,31 @@ async function listItems(db, { kind = '', site = '', q = '', followed = [], foll
     return { rows, hasMore };
 }
 
-module.exports = { upsertItem, upsertLiveItem, removeItem, removeMissing, followedSubjects, affinityServices, listItems, iso, ms };
+/** How many public rows a burst holds: one site's rows of one kind with no person, in one UTC hour ('2026-11-12T17'). */
+async function countBulk(db, { kind, site, hour }) {
+    if (!/^\d{4}-\d\d-\d\dT\d\d$/.test(String(hour || ''))) return 0;
+    const from = new Date(`${hour}:00:00.000Z`).toISOString();
+    const to = new Date(Date.parse(from) + 3600_000).toISOString();
+    const row = await db.prepare(`SELECT COUNT(*) AS n FROM feed_items WHERE kind = ? AND site = ? AND actor_subject IS NULL
+        AND visibility = 'public' AND occurred_at >= ? AND occurred_at < ?`).get(kind, site, from, to);
+    return Number(row && row.n) || 0;
+}
+
+/**
+ * Where the burst a page ended in begins, when the rest of it is only that burst: the oldest row of one site's run of
+ * one kind with no person in the same UTC hour, older than `before`, with no other public row between them. Null when
+ * something else sits in that span (a person's post is never skipped).
+ */
+async function burstStart(db, { kind, site, before }) {
+    const at = String(before && before[0] || '');
+    const hour = new Date(at).toISOString().slice(0, 13);
+    const from = new Date(`${hour}:00:00.000Z`).toISOString();
+    const first = await db.prepare(`SELECT MIN(occurred_at) AS at FROM feed_items WHERE kind = ? AND site = ? AND actor_subject IS NULL
+        AND visibility = 'public' AND occurred_at >= ? AND occurred_at < ?`).get(kind, site, from, at);
+    if (!first || !first.at) return null;
+    const other = await db.prepare(`SELECT 1 FROM feed_items WHERE visibility = 'public' AND occurred_at >= ? AND occurred_at < ?
+        AND NOT (kind = ? AND site = ? AND actor_subject IS NULL) LIMIT 1`).get(first.at, at, kind, site);
+    return other ? null : iso(first.at);
+}
+
+module.exports = { upsertItem, upsertLiveItem, removeItem, removeMissing, followedSubjects, affinityServices, listItems, countBulk, burstStart, iso, ms };
