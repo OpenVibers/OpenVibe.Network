@@ -1,4 +1,5 @@
 'use strict';
+const pageLinks = require('../frame/page-links');
 // /sites: the front door to the whole network, for people and for crawlers (SEO-9). Every open entry is listed under
 // the same eight groups the home page and the menu use (server/frame/sites.js GROUPS), with its own tagline, and
 // each site is anchored at its registry id (/sites#live) so it can be linked directly. One source: the registry the
@@ -82,7 +83,7 @@ ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact'
 <script src="/shared/navbar.js" defer></script>
 <script src="/js/account-safety.js" defer></script>
 ${require('../boost').SCRIPT}
-<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin});}catch(e){}});</script>
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin,links:${JSON.stringify(pageLinks.NETWORK)}});}catch(e){}});</script>
 </body>
 </html>`;
 }

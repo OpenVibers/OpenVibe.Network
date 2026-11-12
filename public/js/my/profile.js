@@ -15,6 +15,15 @@ const OV_NAV_AUTH = MY_HOST ? {
     logoutUrl: '/auth/logout?next={path}',
 } : {};
 
+// The page list this host's shared navbar shows. openvibe.my's own sections, openvibe.link's machines hub (this file
+// also renders /machines there), and Network's own pages everywhere else. Never the shared fallback: that is
+// Home, My Account, Themes on every host (the owner, 2026-11-12).
+const OV_PAGE_LINKS = MY_HOST
+    ? [{"label":"My Account","href":"/"},{"label":"Profile","href":"/profile"},{"label":"Themes","href":"/themes"},{"label":"Security","href":"/security"}]
+    : location.hostname.replace(/^www\./, '') === 'openvibe.link'
+        ? [{"label":"Link","href":"/","icon":"fa-desktop","featured":true},{"label":"Machines","href":"/machines","icon":"fa-laptop"},{"label":"Network","href":"https://openvibe.network/"},{"label":"My Account","href":"https://openvibe.my/"}]
+        : [{"label":"Network","href":"/"},{"label":"Link","href":"https://openvibe.link/","icon":"fa-desktop","featured":true},{"label":"My Account","href":"https://openvibe.my/"},{"label":"Wallet","href":"/wallet"},{"label":"Themes","href":"/themes"}];
+
 // /my#delete is the return target of the re-authentication path (and a deep link): it opens the accounts
 // section and puts the cursor in the delete confirmation field. Read before core.js rewrites the hash.
 const OV_DELETE_DEEP_LINK = window.location.hash === '#delete';
@@ -85,7 +94,7 @@ function showSignedOutHub() {
     card.append(heading, text, signIn, list, still);
     page.replaceChildren(card);
     try {
-        if (window.OpenVibeNavbar) OpenVibeNavbar.init({ service: 'network', token: null, user: null, menu: OV_WALLET_MENU, ...OV_NAV_AUTH });
+        if (window.OpenVibeNavbar) OpenVibeNavbar.init({ service: 'network', token: null, user: null, menu: OV_WALLET_MENU, links: OV_PAGE_LINKS, ...OV_NAV_AUTH });
     } catch { /* the page still offers the buttons */ }
 }
 
@@ -120,7 +129,7 @@ async function loadUser() {
             applyAnonModeUI(currentUser);
             loadAccounts();
             loadAnonInfo();
-            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: null, user: currentUser, menu: OV_WALLET_MENU, ...OV_NAV_AUTH });
+            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: null, user: currentUser, menu: OV_WALLET_MENU, links: OV_PAGE_LINKS, ...OV_NAV_AUTH });
         } else {
             const data = await apiFetch('/api/auth/me');
             currentUser = data.user;
@@ -145,7 +154,7 @@ async function loadUser() {
             loadRecentTools();
 
             // Init navbar
-            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: authToken, user: currentUser, menu: OV_WALLET_MENU, ...OV_NAV_AUTH });
+            OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: authToken, user: currentUser, menu: OV_WALLET_MENU, links: OV_PAGE_LINKS, ...OV_NAV_AUTH });
             const bellMount = OpenVibeNavbar.getBellMount();
             if (bellMount && window.OpenVibeNotifications && authToken) {
                 OpenVibeNotifications.init({ token: authToken, apiBase: API, swPath: '/openvibe-sw.js' });

@@ -1,4 +1,5 @@
 'use strict';
+const pageLinks = require('../frame/page-links');
 // OpenVibeBot (ADR 0007 in OpenVibe.Sources): the page its user agent links to — what it is, what it reads, what it obeys,
 // and how a site blocks, slows or opts in. /bot.json says the same for machines. Static: no database, no outbound calls.
 
@@ -125,7 +126,7 @@ ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact'
 <script src="/shared/navbar.js" defer></script>
 <script src="/js/account-safety.js" defer></script>
 ${require('../boost').SCRIPT}
-<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin});}catch(e){}
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin,links:${JSON.stringify(pageLinks.NETWORK)}});}catch(e){}
 document.querySelectorAll('.bp-copy').forEach(function(b){b.addEventListener('click',function(){var el=document.getElementById(b.getAttribute('data-copy'));if(!el||!navigator.clipboard)return;navigator.clipboard.writeText(el.textContent).then(function(){b.textContent='Copied';b.classList.add('is-done');setTimeout(function(){b.textContent='Copy';b.classList.remove('is-done');},1600);},function(){});});});});</script>
 </body>
 </html>`;

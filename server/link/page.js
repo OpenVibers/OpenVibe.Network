@@ -1,4 +1,5 @@
 'use strict';
+const pageLinks = require('../frame/page-links');
 // openvibe.link: OpenVibe Link's own front door (the machine agent). What Link is (your machines, connected), what it
 // does today, how to install it on each OS, and what it never does. The chrome is Network's own; the page is Link's.
 // The version, the release date and the checksums come from Link's latest GitHub release (server/link/release.js).
@@ -242,7 +243,7 @@ ${require('../boost').SCRIPT}
 <script src="/shared/kit-web.js" defer></script>
 <script type="module" src="/send.js"></script>
 <script src="/egress-settings.js" defer></script>
-<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:'https://openvibe.network',sessionUrl:'/auth/me',loginUrl:'/auth/login?next={path}',logoutUrl:'/auth/logout?next={url}',silentLogin:'/auth/login?silent=1&next={url}',links:[{label:'Link',href:'/',icon:'fa-desktop',featured:true,active:true},{label:'Machines',href:'/machines',icon:'fa-laptop'},{label:'Network',href:'https://openvibe.network/'},{label:'My Account',href:'https://openvibe.network/my'}]});}catch(e){}});</script>
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:'https://openvibe.network',sessionUrl:'/auth/me',loginUrl:'/auth/login?next={path}',logoutUrl:'/auth/logout?next={url}',silentLogin:'/auth/login?silent=1&next={url}',links:${JSON.stringify(pageLinks.LINK)}});}catch(e){}});</script>
 </body>
 </html>`;
 }

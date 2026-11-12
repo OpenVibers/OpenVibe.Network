@@ -1,4 +1,5 @@
 'use strict';
+const pageLinks = require('../frame/page-links');
 /**
  * Open stats (owner, 2026-10-27: "on the network site, we should publish the stats for all of the different platforms
  * and publish all the full analytics … make it all public for everyone to see"): every OpenVibe site's numbers on one
@@ -479,7 +480,7 @@ ${require('openvibe-shared/footer').ssr({ service: 'network', variant: 'compact'
 <script src="/shared/navbar.js" defer></script>
 <script src="/js/account-safety.js" defer></script>
 ${require('../boost').SCRIPT}
-<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin});}catch(e){}});</script>
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.OpenVibeNavbar)OpenVibeNavbar.init({service:'network',apiBase:location.origin,links:${JSON.stringify(pageLinks.NETWORK)}});}catch(e){}});</script>
 </body>
 </html>`;
 }
