@@ -16,7 +16,7 @@
  */
 const express = require('express');
 const store = require('./store');
-const { cardOf, foldCards, rankCards, searchMatches, searchExamples, wallItem } = require('./card');
+const { cardOf, foldCards, rankCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD } = require('./card');
 const { createFeedSources } = require('./sources');
 const { createEventsPull } = require('./events');
 const session = require('../auth/session');
@@ -99,10 +99,42 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         } catch { /* a card without a count */ }
         if (q) cards = cards.filter((c) => searchMatches(c, q));
         cards = foldCards(cards, now());
+        // A burst's card counts the whole hour, not just the rows this page read (11-12: three "112 new deals").
+        for (const card of cards.filter((c) => c.bulk)) {
+            const b = card.bulk;
+            delete card.bulk;
+            let n = card.group ? card.group.count : 1;
+            try { n = Math.max(n, await store.countBulk(db, b)); } catch { /* the page's own count */ }
+            if (n < 2) continue;
+            if (!card.group) card.group = { count: n, items: [{ id: card.id, url: card.url, title: card.title, media: card.media }] };
+            card.id = bulkId(b.kind, b.site, b.hour);
+            card.title = `${n.toLocaleString('en-US')} new ${b.many}`;
+            card.group.count = n;
+            card.counts = { ...card.counts, people: n };
+        }
         cards = rankCards(cards, { followed: new Set(followed), affinity, now: now() });
         const items = cards.slice(0, want);
-        const last = read.rows[read.rows.length - 1];
-        const next = read.hasMore && last ? encodeCursor([last.occurred_at, last.id]) : null;
+        // The next page starts at the newest row whose card this page did not show (it used to start after every row
+        // read, so the cards past the first `want` were never seen); a row of a shown burst or group counts as shown.
+        const shown = new Set();
+        for (const c of items) { shown.add(c.id); for (const it of (c.group && c.group.items) || []) shown.add(it.id); }
+        const rowShown = (r) => {
+            const hour = r.occurred_at ? new Date(r.occurred_at).toISOString().slice(0, 13) : '';
+            return shown.has(`f:${r.source_service}:${r.source_type}:${r.source_id}`)
+                || (!r.actor_subject && BULK_WORD[r.kind] && shown.has(bulkId(r.kind, r.site, hour)))
+                || (r.kind === 'work' && shown.has(`g:work:${hour}`));
+        };
+        const firstOut = read.rows.findIndex((r) => !rowShown(r));
+        const edge = firstOut > 0 ? read.rows[firstOut - 1] : read.rows[read.rows.length - 1];
+        let next = (firstOut > 0 || read.hasMore) && edge ? encodeCursor([edge.occurred_at, edge.id]) : null;
+        // A page that ends inside a burst (a Deals poll) moves past the rest of it when nothing else happened in that
+        // span, so the next page does not open with the same card again.
+        if (next && edge && !edge.actor_subject && BULK_WORD[edge.kind]) {
+            try {
+                const start = await store.burstStart(db, { kind: edge.kind, site: edge.site, before: [edge.occurred_at, edge.id] });
+                if (start) next = encodeCursor([start, 0]);
+            } catch { /* the plain cursor */ }
+        }
         if (wall) return { items: items.map(wallItem), next_cursor: next };
         return { items, next_cursor: next };
     }
@@ -134,7 +166,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             const followed = viewer && viewer.subject ? await store.followedSubjects(db, viewer.subject) : [];
             const read = await store.listItems(db, { q, followed, viewerSubject: viewer && viewer.subject, limit: 400, since: new Date(now() - 365 * 86400000).toISOString() });
             const actors = await actorsFor(db, read.rows);
-            const cards = foldCards(read.rows.map((r) => cardOf(r, actors.get(r.actor_subject) || null)).filter((c) => searchMatches(c, q)), now());
+            const cards = foldCards(read.rows.map((r) => cardOf(r, actors.get(r.actor_subject) || null)).filter((c) => searchMatches(c, q)), now()).map(({ bulk, ...c }) => c);
             res.json({ items: rankCards(cards, { followed: new Set(followed), now: now() }).slice(0, want), next_cursor: null });
         } catch (err) { next(err); }
     };

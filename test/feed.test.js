@@ -63,6 +63,23 @@ const envelope = (type, payload, over = {}) => ({
     assert.strictEqual(deals.length, 1, 'a poll of deals is one card');
     assert.strictEqual(deals[0].title, '3 new deals');
     assert.strictEqual(deals[0].group.count, 3);
+    assert.match(deals[0].id, /^g:deal:deals:\d{4}-\d\d-\d\dT\d\d$/, 'a burst has one id per site and hour, the same on every page (11-12: three "112 new deals")');
+    assert.strictEqual(deals[0].label, undefined, 'named by its site, never "System"');
+
+    // ── Markdown and relative addresses (11-12: the menu printed "[title](/p/x) ![title](/p/x/screenshot)") ──
+    const shared = cardOf({ source_service: 'community', source_type: 'thread', source_id: '95', kind: 'post', title: '1000012166',
+        text: '[1000012166](/p/lone-path-83) ![1000012166](/p/lone-path-83/screenshot)', url: '/forum/status/x', site: 'community', counts: {}, occurred_at: '2026-11-12T16:00:00Z', origin: 'user' });
+    assert.strictEqual(shared.text, '', 'a body that only repeats the title is dropped');
+    assert.strictEqual(shared.media.thumb, 'https://openvibe.community/p/lone-path-83/screenshot?w=640', 'its picture, on Community, the small copy');
+    assert.strictEqual(shared.url, 'https://openvibe.community/forum/status/x', 'a relative address is on its own site');
+    const words = cardOf({ source_service: 'community', source_type: 'thread', source_id: '93', kind: 'post', title: 'UR',
+        text: '[UR](https://openvibe.video/c/46) ![UR](https://openvibe.media/t/clip-46.jpg) Shared by **Maticus**', url: 'https://openvibe.community/t/93', site: 'community', counts: {}, occurred_at: '2026-11-12T16:00:00Z' });
+    assert.strictEqual(words.text, 'UR Shared by Maticus', 'links keep their words, pictures and marks go');
+    assert.strictEqual(words.media.thumb, 'https://openvibe.media/t/clip-46.jpg');
+    const paste = cardOf({ source_service: 'community', source_type: 'paste', source_id: 'lone-path-83', kind: 'pic', title: 'A read', text: '# Current read',
+        picture_url: 'https://openvibe.media/o/med_01M78B3X3FSAA9V8DRERBV4DTT', url: 'https://openvibe.community/p/lone-path-83', site: 'community', counts: {}, occurred_at: '2026-11-12T16:00:00Z' });
+    assert.strictEqual(paste.media.thumb, 'https://openvibe.community/p/lone-path-83/screenshot?w=640', 'a paste\'s picture comes from Community (Media keeps it private), never a 404');
+    assert.strictEqual(paste.text, 'Current read', 'a heading mark goes');
 
     // ── ranking: live, followed, fresh, then older than a week ─
     const live = cardOf({ source_service: 'live', source_type: 'stream', source_id: 'l', kind: 'live', title: 'Live', url: 'https://openvibe.live/@alex', site: 'live', site_name: 'Live', actor_subject: B, live_now: true, occurred_at: iso(now - 86400000) });
@@ -107,6 +124,23 @@ const envelope = (type, payload, over = {}) => ({
     assert.strictEqual(r.status, 401, 'Following needs a session');
     ({ d } = await get('/api/v1/feed/search?q=public'));
     assert.strictEqual(d.items[0].title, 'Public post');
+    // A Deals poll (11-12: the menu showed "112 new deals" three times, one per page): the burst is one card counted
+    // whole, and the next page goes past it to the burst before.
+    {
+        const mid = new Date(Date.now() - 2 * 86400000); mid.setUTCMinutes(30, 0, 0);
+        for (let i = 0; i < 30; i++) {
+            await store.upsertItem(db, { source_service: 'deals', source_type: 'offer', source_id: `burst${i}`, kind: 'deal', title: `Deal ${i}`, text: '', url: 'https://openvibe.deals/d/x', site: 'deals', site_name: 'Deals', counts: {}, occurred_at: new Date(mid.getTime() - i * 1000).toISOString(), origin: 'system' });
+        }
+        await store.upsertItem(db, { source_service: 'deals', source_type: 'offer', source_id: 'older', kind: 'deal', title: 'Older deal', text: '', url: 'https://openvibe.deals/d/y', site: 'deals', site_name: 'Deals', counts: {}, occurred_at: new Date(mid.getTime() - 3 * 3600000).toISOString(), origin: 'system' });
+        const p1 = await get('/api/v1/feed?site=deals&limit=1');
+        assert.strictEqual(p1.d.items.length, 1);
+        assert.strictEqual(p1.d.items[0].title, '30 new deals', 'the whole burst, counted once');
+        assert.strictEqual(p1.d.items[0].label, undefined, 'named by its site, not "System"');
+        assert.ok(p1.d.next_cursor, 'more after it');
+        const p2 = await get(`/api/v1/feed?site=deals&limit=1&cursor=${encodeURIComponent(p1.d.next_cursor)}`);
+        assert.ok(p2.d.items.length >= 1 && p2.d.items[0].id !== p1.d.items[0].id, 'the next page is not the same burst again');
+        assert.strictEqual(p2.d.items[0].title, 'Older deal', 'the deal before it, its own title (one deal is not "1 new deal")');
+    }
     server.close();
     console.log('feed: mappings, grouping, privacy, ranking and the menu/feed ids pass');
 })().catch((err) => { console.error(err); process.exit(1); });

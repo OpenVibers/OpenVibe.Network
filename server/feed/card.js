@@ -22,6 +22,26 @@ const https = (u) => {
     try { const x = new URL(String(u)); return x.protocol === 'https:' ? x.href : (x.protocol === 'http:' ? x.href : null); } catch { return null; }
 };
 
+/** The site a row comes from, as an origin: a relative address in its text or picture is on that site, not on the
+ *  page that shows the card (the menu on openvibe.link showed Community's "/p/x" as a broken link and picture). */
+const ORIGINS = { community: 'https://openvibe.community', 'media-hub': 'https://openvibe.video', rundown: 'https://openvibe.live', stream: 'https://openvibe.live' };
+const originOf = (site) => ORIGINS[site] || (/^[a-z][a-z0-9-]{0,30}$/.test(String(site || '')) ? `https://openvibe.${site}` : null);
+const absolute = (u, site) => {
+    const s = String(u || '').trim();
+    if (!s) return null;
+    try { const x = new URL(s, originOf(site) || undefined); return x.protocol === 'https:' || x.protocol === 'http:' ? x.href : null; } catch { return null; }
+};
+const MD_IMAGE = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+const MD_LINK = /\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+/** Markdown a source left in a card's text, as plain words, and the first picture it named (11-12: the menu printed it). */
+function plainText(text, site) {
+    const raw = String(text == null ? '' : text);
+    let image = null;
+    const noImages = raw.replace(MD_IMAGE, (m, alt, src) => { if (!image) image = absolute(src, site); return ' '; });
+    const words = noImages.replace(MD_LINK, '$1').replace(/(^|\n)[ \t]*(?:#{1,6}|>)[ \t]*/g, '$1').replace(/\*{1,3}|`+|~~/g, '');
+    return { text: words, image };
+}
+
 /** What a source row is, as a feed kind. An unknown type is a post, never dropped silently. */
 function kindOf(service, type, row = {}) {
     const s = String(service || '');
@@ -79,7 +99,7 @@ function cardOf(row, actor = null) {
         kind: row.kind,
         url: https(row.url) || String(row.url || ''),
         title: clean(row.title, 300),
-        text: clean(row.text, 280),
+        text: '',
         at: row.occurred_at ? new Date(row.occurred_at).toISOString() : null,
         site: String(row.site || row.source_service || ''),
         site_name: String(row.site_name || SITE_NAMES[row.site] || SITE_NAMES[row.source_service] || row.site || ''),
@@ -90,11 +110,24 @@ function cardOf(row, actor = null) {
             : null,
         counts: safe,
     };
+    // The words as words: Markdown out, relative addresses on the source's own site, and no text that only repeats
+    // the title (a shared post's body is "[its title](its link)"). A shared post's picture becomes the card's picture.
+    const plain = plainText(row.text, card.site);
+    card.text = clean(plain.text, 280);
+    if (card.text && card.text.toLowerCase() === card.title.toLowerCase()) card.text = '';
+    if (!/^https?:/.test(card.url) && card.url) card.url = absolute(card.url, card.site) || card.url;
+    if (!card.media && plain.image) card.media = { thumb: plain.image, ratio: Number.isFinite(ratio) && ratio > 0 ? ratio : 16 / 9 };
+    // A Community paste's picture is served by Community (Media keeps it private to the paste): the small copy, never
+    // Media's original address, which answers 404 to everyone else (the menu's broken picture, 11-12).
+    if (row.source_service === 'community' && row.source_type === 'paste' && card.media && /^https:\/\/openvibe\.media\/o\//.test(card.media.thumb)) {
+        card.media.thumb = `https://openvibe.community/p/${encodeURIComponent(String(row.source_id))}/screenshot?w=640`;
+    }
+    if (card.media && card.media.thumb && /^https:\/\/openvibe\.community\/p\/[^/]+\/screenshot$/.test(card.media.thumb)) card.media.thumb += '?w=640';
     if (row.starts_at) card.starts_at = new Date(row.starts_at).toISOString();
     if (row.label) card.label = row.label;
     // The menu labels AI output and system/aggregate rows; keep the old Pulse's promise that AI is never a person.
     if (!card.label && row.origin === 'ai') card.label = 'AI';
-    else if (!card.label && row.origin === 'system' && !card.actor) card.label = 'System';
+    else if (!card.label && row.origin === 'system' && !card.actor && !card.site_name) card.label = 'System';
     if (row.visibility === 'followers') card.visibility = 'followers';
     if (card.kind === 'live' || card.kind === 'stream') {
         card.live_now = row.kind === 'live' && row.live_now === true;
@@ -116,6 +149,9 @@ const BURST_MS = 15 * 60_000;
 const BURST_WORD = { pic: ['photo', 'photos'], clip: ['clip', 'clips'], video: ['video', 'videos'], game: ['achievement', 'achievements'], quest: ['quest', 'quests'], avatar: ['picture change', 'picture changes'], banner: ['banner change', 'banner changes'], paste: ['paste', 'pastes'], space: ['space', 'spaces'] };
 // A poll can deliver forty of the same kind at once with no person behind them (deals, news): one card.
 const BULK_WORD = { deal: ['deal', 'deals'], news: ['story', 'stories'], event: ['event', 'events'] };
+
+/** The id of one site's run of one bulk kind in one UTC hour ('2026-11-12T17'): the same on every page that reads it. */
+const bulkId = (kind, site, hour) => `g:${kind}:${site}:${hour}`;
 
 function titleKey(card) {
     return String(card.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -142,11 +178,11 @@ function foldCards(cards, now = Date.now()) {
         const prior = BURST_WORD[card.kind] && who && Number.isFinite(at) && groups.find((g) => g.subject != null
             && g.subject === who && g.site === card.site && g.card.kind === card.kind && Math.abs(g.at - at) <= BURST_MS);
         if (prior) { prior.cards.push(card); continue; }
-        // No person behind a run (a Deals poll, a News import): the same kind and site in the window is one card.
-        const bulk = !who && BULK_WORD[card.kind] && Number.isFinite(at) && groups.find((g) => g.bulk
-            && g.card.kind === card.kind && g.site === card.site && Math.abs(g.at - at) <= BURST_MS);
+        // No person behind a run (a Deals poll, a News import): the same kind and site in the same hour is one card.
+        const hour = String(card.at || '').slice(0, 13);
+        const bulk = !who && BULK_WORD[card.kind] && hour && groups.find((g) => g.bulk && g.card.kind === card.kind && g.site === card.site && g.hour === hour);
         if (bulk) { bulk.cards.push(card); continue; }
-        groups.push({ subject: who, at, site: card.site, card, cards: [card], bulk: !who && BULK_WORD[card.kind] ? true : undefined });
+        groups.push({ subject: who, at, site: card.site, card, cards: [card], bulk: !who && BULK_WORD[card.kind] ? true : undefined, hour });
     }
     return groups.map((g) => {
         if (g.workHour !== undefined) {
@@ -163,16 +199,21 @@ function foldCards(cards, now = Date.now()) {
                 site_name: sites.size === 1 ? [...sites][0] : g.card.site_name,
             };
         }
-        if (g.cards.length < 2) return g.card;
-        if (BULK_WORD[g.card.kind]) {
+        if (g.bulk) {
+            // One row stays itself (its own title) unless the API finds more of its hour; a run is one card per hour.
             const [one, many] = BULK_WORD[g.card.kind];
+            const bulk = { kind: g.card.kind, site: g.site, hour: g.hour, one, many };
+            if (g.cards.length < 2) return { ...g.card, bulk };
             return {
                 ...g.card,
-                title: `${g.cards.length} new ${g.cards.length === 1 ? one : many}`,
+                id: bulkId(g.card.kind, g.site, g.hour),
+                bulk,
+                title: `${g.cards.length} new ${many}`,
                 group: { count: g.cards.length, items: g.cards.slice(0, 20).map((c) => ({ id: c.id, url: c.url, title: c.title, media: c.media })) },
                 counts: { ...g.card.counts, people: g.cards.length },
             };
         }
+        if (g.cards.length < 2) return g.card;
         const [one, many] = BURST_WORD[g.card.kind];
         const name = (g.card.actor && g.card.actor.name) || 'Someone';
         return {
@@ -272,4 +313,4 @@ function wallItem(card) {
     };
 }
 
-module.exports = { SITE_NAMES, kindOf, cardOf, foldCards, compareRankedCards, rankCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };
+module.exports = { bulkId, BULK_WORD, SITE_NAMES, kindOf, cardOf, foldCards, compareRankedCards, rankCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };
