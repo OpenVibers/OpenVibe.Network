@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 const pub = path.join(__dirname, '..', 'public');
-for (const [page, sheets] of [['admin.html', ['admin.css', 'ai-setup.css']], ['my.html', ['my.css']], ['login.html', ['login.css']]]) {
+for (const [page, sheets] of [['admin.html', ['admin.css', 'ai-setup.css', 'guide.css']], ['my.html', ['my.css']], ['login.html', ['login.css']]]) {
     const html = fs.readFileSync(path.join(pub, page), 'utf8');
     const links = [...html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="\/css\/([^"]+)"/g)].map((m) => m[1]);
     assert.deepStrictEqual(links, sheets, `${page} links ${sheets.map((s) => '/css/' + s).join(', ')} exactly once`);

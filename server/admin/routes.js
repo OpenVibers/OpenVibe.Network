@@ -1040,6 +1040,8 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // The guided AI setup page (/admin/ai/setup): every task kind's key, route, test and monthly cap, through
     // OpenVibe.AI's own setup API. Owner only; Network keeps no key and the request body is dropped here.
     router.use('/ai/setup', requireOwner, require('./ai-setup').createAiSetup());
+    // The guided setup's progress (server/admin/guide.js): the steps the owner skipped or saw.
+    router.use('/guide', requireOwner, express.json({ limit: '16kb' }), require('./guide').createGuideRoutes());
     // The owner's Setup tab (server/admin/setup.js): every key and account only the owner can give, from every service's
     // config namespaces, plus Network's own to-dos. Owner only; saving goes through the proxy above.
     router.use('/setup', requireOwner, require('./setup').createSetupRoutes({ db }));
