@@ -30,6 +30,8 @@ const express = require('express');
 const crypto = require('crypto');
 const { SITES, LISTED, LISTED_SITES, siteForHost, GROUPS, groupOf, PRODUCTS, MERGED_PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName } = require('./sites');
 const { createMenuCards } = require('./menu-cards');
+const { createFrameChoices } = require('./choices');
+const { createFrameAsk } = require('./ask');
 const seen = require('./seen');
 const toolsCatalog = require('../domains/catalog');
 
@@ -163,7 +165,18 @@ function aiSiteCopy({ privateKey, issuer, aiUrl }) {
     };
 }
 
-async function createFrameService(db, config, analytics, { privateKey = null, issuer = null, selfToken = () => null, aiUrl = process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700', today = null, now = Date.now } = {}) {
+async function createFrameService(db, config, analytics, { privateKey = null, issuer = null, selfToken = () => null, aiUrl = null, requireAuth = null, today = null, now = Date.now } = {}) {
+    const services = (config && config.services) || {};
+    aiUrl = aiUrl || (services.ai && services.ai.internalUrl) || process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700';
+    const choices = createFrameChoices({
+        aiUrl, now,
+        exchangeUrl: (services.exchange && services.exchange.internalUrl) || 'http://127.0.0.1:5150',
+        reportUrl: (services.report && services.report.internalUrl) || 'http://127.0.0.1:5080',
+    });
+    const ask = createFrameAsk({
+        aiUrl, now, requireAuth, sheet: choices,
+        searchUrl: (services.search && services.search.internalUrl) || 'http://127.0.0.1:4710',
+    });
     const fromAi = privateKey && issuer ? aiSiteCopy({ privateKey, issuer, aiUrl: String(aiUrl).replace(/\/+$/, '') }) : null;
     // frame_cache and frame_hits are migrations/NNNN_*.sql (plan T2). The old chrome_cache/chrome_hits
     // rename was a SQLite-only step and is not repeated here.
@@ -991,6 +1004,25 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         res.send(body);
     });
 
+    // GET /api/frame/choices?task=chat|agent|code|image|research — the composer's Model sheet (composer-post-ask-do.md,
+    // R1): AI's choices for the person (their token forwarded; signed out, the OpenVibe group only), every OpenVibe row
+    // enriched from Exchange's directory with its maker, price per million in and out, speed, rating and page.
+    // Same CORS and caching as /query: the person's token means a fresh private answer; signed out it is kept 60 s.
+    router.get('/choices', async (req, res) => {
+        res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin' });
+        const task = String(req.query.task || 'chat').toLowerCase().slice(0, 20);
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
+        const got = await choices.get(task, { token: auth.slice(7), signedIn: Boolean(auth) });
+        if (got.error) { res.set('Cache-Control', 'no-store'); return res.status(400).json({ error: got.detail, code: 'frame.task_invalid' }); }
+        res.set('Cache-Control', got.cache ? 'public, max-age=60' : 'private, no-store');
+        res.send(JSON.stringify(got.body));
+    });
+
+    // POST /api/frame/ask — one question, answered on the chosen model with the Search Fabric's results for the
+    // chosen scopes, streamed on Network's runs. Signed in only; the person's own token pays. The run's events are at
+    // /api/v1/runs/:id/events (mounted in server/index.js), replayable from Last-Event-ID.
+    router.post('/ask', ...ask.ask);
+
     // POST /api/frame/hit — one anonymous count for the calling page's host. The host comes from the
     // browser-set Origin header (never the body) and must be one of ours or a registered tool domain.
     const recent = new Map();   // ip → [count, windowStart]: 40/min is plenty for a person, useless for stuffing
@@ -1108,14 +1140,14 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         timers = [t1, i1, t2, i2, t3, i3];
     }
     /** Graceful stop: no further rank or copy refreshes. */
-    function stop() { for (const t of timers) { clearTimeout(t); clearInterval(t); } timers = []; menuCards.stop(); }
+    function stop() { for (const t of timers) { clearTimeout(t); clearInterval(t); } timers = []; menuCards.stop(); try { ask._close(); } catch { /* already closed */ } }
 
     /** The open sites in navbar order (most used first), and when that use was last counted (ms, or null: cold start). */
     function ranking() {
         return { at: rankedAt, order: orderedOpen().map(s => s.id), everyMs: RANK_MS };
     }
 
-    return { router, start, stop, refreshRank, refreshCopy, probeLegal, refreshCards: menuCards.refresh, cards: menuCards.cards, payloadFor, ranking, online: onlineFor, _state: () => ({ rank, copy, cards: menuCards._state() }) };
+    return { router, runsRouter: ask.router, start, stop, refreshRank, refreshCopy, probeLegal, refreshCards: menuCards.refresh, cards: menuCards.cards, payloadFor, ranking, online: onlineFor, _state: () => ({ rank, copy, cards: menuCards._state() }) };
 }
 
 module.exports = { createFrameService, BANNED, stripOf, openvibeLink };

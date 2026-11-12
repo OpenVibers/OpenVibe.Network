@@ -63,6 +63,8 @@ app.get('/openapi.json', (_req, res) => {
     }
     res.set('Cache-Control', 'public, max-age=3600').set('Access-Control-Allow-Origin', '*').json({ ...doc, paths });
 });
+app.get(['/docs/frame', '/docs/frame.md'], (_req, res) => res.type('text/markdown').set('Cache-Control', 'public, max-age=300')
+    .send(fs.readFileSync(path.join(__dirname, '..', 'docs', 'frame.md'), 'utf8')));
 app.get(['/docs/trust-signals', '/docs/trust-signals.md'], (_req, res) => {
     res.type('text/markdown').set('Cache-Control', cache.htmlHeaders({ maxAge: 3600 }))
         .send(fs.readFileSync(path.join(__dirname, '..', 'docs', 'trust-signals.md'), 'utf8'));
@@ -1038,11 +1040,13 @@ app.get('/@:username', rateLimit({ windowMs: 60_000, max: 120 }), publicProfiles
 // /api/chrome is the old name, kept for copies of openvibe-shared older than 1.11.0.
 // The menu's day counts (Report's daily activity): the strip's "today" counts reuse the same cached read.
 const frameToday = require('./frame/today').createToday({ reportUrl: config.services.report.internalUrl });
-const frameService = await require('./frame/service').createFrameService(db, config, analytics, { privateKey, issuer: config.jwt.issuer, selfToken, today: () => frameToday.get() });
+const frameService = await require('./frame/service').createFrameService(db, config, analytics, { privateKey, issuer: config.jwt.issuer, selfToken, requireAuth, today: () => frameToday.get() });
 app.use('/api/v1/frame/today', rateLimit({ windowMs: 60_000, max: 240 }), frameToday.router);
 const frameLimit = rateLimit({ windowMs: 60_000, max: 240 });
 app.use('/api/frame', frameLimit, frameService.router);
 app.use('/api/chrome', frameLimit, frameService.router);
+// The composer's Ask runs: the answer streams here (AG-UI events), resumable from Last-Event-ID. A person's own run.
+app.use('/api/v1/runs', rateLimit({ windowMs: 60_000, max: 240 }), frameService.runsRouter);
 frameService.start();
 // /api/v1/registry/featured follows the navigation's usage ranking.
 ecosystem.setRanking(() => frameService.ranking());

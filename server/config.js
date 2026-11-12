@@ -200,6 +200,10 @@ module.exports = {
         report: {
             internalUrl: process.env.OV_REPORT_INTERNAL_URL || 'http://127.0.0.1:5080',
         },
+        // OpenVibe.Exchange: the composer's model sheet reads /api/v1/models for makers, prices and pages.
+        exchange: {
+            internalUrl: process.env.OV_EXCHANGE_INTERNAL_URL || 'http://127.0.0.1:5150',
+        },
         host: {
             internalUrl: process.env.OV_HOST_INTERNAL_URL || 'http://127.0.0.1:4910',
         },
