@@ -95,8 +95,8 @@ function mcCard(m) {
    so and offers to turn it on; then each agent reads Ready, Sign in or Not installed, with its limit windows. */
 const MC_AGENTS = [
     ['claude-code', 'Claude Code', 'fa-terminal'], ['codex', 'Codex', 'fa-code'], ['opencode', 'OpenCode', 'fa-code-branch'],
-    ['command-code', 'Command Code', 'fa-keyboard'], ['minimax-code', 'MiniMax Code', 'fa-wand-magic-sparkles'], ['muse', 'Muse Code', 'fa-feather'],
-    ['deepseek', 'DeepSeek', 'fa-water'], ['aider', 'Aider', 'fa-user-gear'],
+    ['command-code', 'Command Code', 'fa-keyboard'], ['minimax-code', 'MiniMax Code', 'fa-wand-magic-sparkles'], ['muse', 'Muse Code', 'fa-pen'],
+    ['deepseek', 'DeepSeek', 'fa-water'], ['aider', 'Aider', 'fa-gear'],
 ];
 const MC_CODES = 'https://openvibe.codes';
 function mcWindowText(w) {
