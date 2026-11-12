@@ -850,7 +850,8 @@ const DEFAULT_GRANTS = [
     // ai.generate for a pinned frame; ai.chat for one with a preference (Design #57, 10-31, L37: the chat passthrough is
     // what passes `prefer` to the router). Without ai.chat every unpinned frame was refused ("this token may not run
     // ai.chat") from 10-31 to 11-02.
-    ['design', 'ai.run.create', 'openvibe.ai', ['ai.generate', 'ai.chat']],
+    // Design's /create starts a deep dive on the person's behalf (workflow design.deep_dive), beside its frames.
+    ['design', 'ai.run.create', 'openvibe.ai', ['ai.generate', 'ai.chat', 'design.deep_dive']],
     // The Exchange platform API's icon reference search (contracts 0.407.0, exchange.search.icons): Design asks
     // OpenVibe.AI for the references beside a glyph draft with its own service token, so no Exchange key is needed,
     // and reaches only POST /v1/search/icons. This grant was never granted or revoked before, so it needs no
@@ -1042,6 +1043,9 @@ const CHANGED_DEFAULT_NAMESPACES = [
     // production row, seeded before, kept ['ai.generate'] (the seed never changes an existing row), so frames still
     // failed until this moved it.
     ['design', 'ai.run.create', 'openvibe.ai', ['ai.generate'], ['ai.generate', 'ai.chat']],
+    // Design's /create starts a deep dive on the person's behalf (workflow design.deep_dive). The row above moved
+    // production to ai.chat; this moves the same row to name the dive's workflow too.
+    ['design', 'ai.run.create', 'openvibe.ai', ['ai.generate', 'ai.chat'], ['ai.generate', 'ai.chat', 'design.deep_dive']],
     // The shared image task (rich-content §4/§5, Network #751): the production Blog/Wiki rows were seeded before
     // image.picture joined their list, so the seed keeps the old namespaces. Move them once, explicitly.
     ['wiki', 'ai.run.create', 'openvibe.ai', ['wiki.*', 'research.*'], ['wiki.*', 'research.*', 'image.picture']],

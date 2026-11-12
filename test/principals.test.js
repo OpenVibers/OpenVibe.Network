@@ -214,7 +214,7 @@ const server = http.createServer(app);
     // Design's frames: ai.generate when pinned, ai.chat with a preference (11-02: without ai.chat every unpinned frame failed).
     t = await token({ client_id: 'design', client_secret: 'design-secret', audience: 'openvibe.ai' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));
-    assert.deepStrictEqual([...JSON.parse(Buffer.from(t.body.access_token.split('.')[1], 'base64url').toString()).ns].sort(), ['ai.chat', 'ai.generate'], 'pinned frames run ai.generate, preferred ones ai.chat');
+    assert.deepStrictEqual([...JSON.parse(Buffer.from(t.body.access_token.split('.')[1], 'base64url').toString()).ns].sort(), ['ai.chat', 'ai.generate', 'design.deep_dive'], 'pinned frames run ai.generate, preferred ones ai.chat, Research first starts design.deep_dive');
     // Open item D8: Design publishes a person's design on Space, acting for them.
     t = await token({ client_id: 'design', client_secret: 'design-secret', audience: 'openvibe.space' });
     assert.strictEqual(t.status, 200, JSON.stringify(t.body));

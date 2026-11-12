@@ -14,12 +14,12 @@ const principals = require('../server/identity/principals');
     const db = getDb();
     await principals.ensureSchema(db);
     const row = async () => JSON.parse((await db.prepare("SELECT namespaces FROM principal_grants WHERE client_id = 'design' AND capability = 'ai.run.create' AND audience = 'openvibe.ai'").get()).namespaces);
-    assert.deepStrictEqual((await row()).sort(), ['ai.chat', 'ai.generate'], 'a fresh database gets both');
+    assert.deepStrictEqual((await row()).sort(), ['ai.chat', 'ai.generate', 'design.deep_dive'], 'a fresh database gets the frames and the deep dive');
 
     // Production's row, as the old default seeded it.
     await db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = 'design' AND capability = 'ai.run.create' AND audience = 'openvibe.ai'").run(JSON.stringify(['ai.generate']));
     await principals.ensureSchema(db);
-    assert.deepStrictEqual(await row(), ['ai.generate', 'ai.chat'], 'the old default row is moved at boot');
+    assert.deepStrictEqual(await row(), ['ai.generate', 'ai.chat', 'design.deep_dive'], 'the old default row is moved at boot, through both moves');
 
     // A row edited by hand stays as it was.
     await db.prepare("UPDATE principal_grants SET namespaces = ? WHERE client_id = 'design' AND capability = 'ai.run.create' AND audience = 'openvibe.ai'").run(JSON.stringify(['ai.generate', 'custom.x']));
