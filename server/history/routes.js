@@ -44,13 +44,17 @@ function serviceFromUrl(url) {
     } catch { return { service: null, sub: null }; }
 }
 
+// Times leave with their zone (the column holds UTC as "YYYY-MM-DD HH:MM:SS", which a browser reads as its local time:
+// west of UTC every visit looked hours ahead and said "just now", 2026-11-12).
+const isoUtc = (t) => (typeof t === 'string' && /^\d{4}-\d\d-\d\d[ T]\d\d:\d\d(:\d\d(\.\d+)?)?$/.test(t) ? `${t.replace(' ', 'T')}Z` : t);
+
 function rowOut(r) {
     let meta = null;
     try { meta = r.meta ? JSON.parse(r.meta) : null; } catch { meta = null; }
     return {
         id: r.id, type: r.type, title: r.title, url: r.url, icon: r.icon, image_url: r.image_url || null, service: r.service, sub: r.sub,
         service_label: r.sub ? `${r.sub}.${SERVICE_LABELS[r.service] || r.service || ''}` : (SERVICE_LABELS[r.service] || r.service || null),
-        meta, hits: r.hits, created_at: r.created_at, updated_at: r.updated_at,
+        meta, hits: r.hits, created_at: isoUtc(r.created_at), updated_at: isoUtc(r.updated_at),
     };
 }
 

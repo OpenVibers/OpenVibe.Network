@@ -170,6 +170,16 @@ function showSection(id, btn) {
     if (id === 'apps' && typeof loadConnectApps === 'function') loadConnectApps();
 }
 
+// A later #section (a link on this page, the menu's links) opens that section and scrolls to it.
+if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('hashchange', () => {
+        const id = window.location.hash.replace(/^#/, '');
+        if (!id || !document.getElementById('sec-' + id)) return;
+        showSection(id);
+        document.getElementById('sec-' + id)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    });
+}
+
 function openInitialSection() {
     const pathSection = { '/themes': 'themes', '/notifications': 'notifications', '/verify-email': 'notifications', '/linked': 'linked', '/security': 'security', '/machines': 'machines', '/profile': 'profile', '/history': 'history' }[window.location.pathname];
     // #delete is the re-authentication return target: the delete step lives in the accounts section.
@@ -193,7 +203,9 @@ function openInitialSection() {
         showSection(routeSection);
         // On openvibe.network the section sits below the account home, so the page scrolls to it; openvibe.link's hub
         // (body.link-hub) is the section alone and stays at the top.
-        if (routeSection === 'machines' && !document.body?.classList?.contains('link-hub')) document.getElementById('sec-machines')?.scrollIntoView?.({ block: 'start' });
+        // A section named in the address (openvibe.my/history, /my#history, the menu's Full history) is where the reader
+        // lands: it sits below the account home, so the page scrolls to it (it opened the section and stayed at the top).
+        if (routeSection !== 'profile' && !document.body?.classList?.contains('link-hub')) document.getElementById('sec-' + routeSection)?.scrollIntoView?.({ block: 'start' });
         if (routeSection === 'machines' && hash === 'pair') setTimeout(() => mcPair(), 0);
     }
 }

@@ -73,7 +73,7 @@ const { createFrameService } = require('../server/frame/service');
     const f = new URL(asked[asked.length - 1].url, 'http://x');
     assert.deepStrictEqual([f.searchParams.get('kind'), f.searchParams.get('site'), f.searchParams.get('q'), f.searchParams.get('following')], ['quest', 'wiki', 'head slider', '1'], 'kind, site, words and following pass');
     assert.strictEqual(asked[asked.length - 1].auth, 'Bearer abcdefghijklmnop.qrstu', 'following goes with the person');
-    for (const k of ['wiki', 'chat', 'event', 'member']) { ({ d } = await get(`/feed?kind=${k}`)); assert.strictEqual(new URL(asked[asked.length - 1].url, 'http://x').searchParams.get('kind'), k, `${k} passes`); }
+    for (const k of ['wiki', 'chat', 'event', 'member', 'rundown']) { ({ d } = await get(`/feed?kind=${k}`)); assert.strictEqual(new URL(asked[asked.length - 1].url, 'http://x').searchParams.get('kind'), k, `${k} passes`); }
     ({ d } = await get('/feed?site=../x&q=' + 'a'.repeat(200) + '&following=yes'));
     const g = new URL(asked[asked.length - 1].url, 'http://x');
     assert.ok(!g.searchParams.has('site') && g.searchParams.get('q').length === 80 && !g.searchParams.has('following'), 'an odd site and following are dropped, words capped at 80');

@@ -655,8 +655,9 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // goes along when the menu sends one (a personal wall, the composer's can_post), never a cookie. Anonymous answers are
     // kept 30 s per query; personal ones are not kept. Community not answering is an empty page, never an error.
     const relayed = new Map();
-    // Community's feed kinds (server/pulse/feed.js KINDS; #310 added wiki, quest, chat, event and member).
-    const FEED_KINDS = ['live', 'stream', 'clip', 'video', 'pic', 'post', 'meme', 'game', 'update', 'wiki', 'quest', 'chat', 'event', 'member'];
+    // Community's feed kinds (server/pulse/feed.js KINDS; #310 added wiki, quest, chat, event and member; a Rundown
+    // episode is its own kind so the menu can draw it apart from a stream or a recording).
+    const FEED_KINDS = ['live', 'stream', 'clip', 'video', 'pic', 'post', 'meme', 'game', 'update', 'wiki', 'quest', 'chat', 'event', 'member', 'rundown'];
     async function relay(req, res, path, params) {
         res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization', 'Vary': 'Authorization', 'Content-Type': 'application/json; charset=utf-8' });
         const auth = /^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '';
