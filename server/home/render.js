@@ -199,14 +199,15 @@ function nowParts(parts) {
     return `${radios}<div class="now-tabs" role="presentation">${tabs}</div>\n${shown.map(([id, , html]) => html.replace(/^<div class="(now-block|now-grid)"/, `<div class="$1" data-now-part="${id}"`)).join('\n')}`;
 }
 
-// The lower half (tools, what an account adds, what opens next, the questions, the developers' links): every section
-// shown with its own heading (the owner, 2026-10-31: never hide content to shorten); on a phone a row of chips under
-// "More about OpenVibe" jumps to one. A wider screen shows no chips.
+// The lower half (tools, what an account adds, what opens next, the questions, the developers' links): a phone shows
+// one part at a time as tabs under "More about OpenVibe" (showcase.parts, the same tabs as every page: the owner,
+// 2026-11-11, "self-contained tabs, so the page isn't so freaking huge … at least on mobile"); every section stays in
+// the HTML with its own heading, and a wider screen stacks them as before.
 function moreParts(parts) {
     const shown = parts.filter(([, , html]) => html);
     if (shown.length < 2) return shown.map(([, , html]) => html).join('\n');
-    const chips = shown.map(([id, label]) => `<a href="#${id}">${esc(label)}</a>`).join('');
-    return `<div class="more"><h2 class="more-pick-h">${sectionIcon('grid')}More about OpenVibe</h2><nav class="more-pick" data-ovk-scroll aria-label="More about OpenVibe">${chips}</nav>\n${shown.map(([, , html]) => html.replace(/^<section class="([^"]*)" id="([^"]*)"/, '<section class="$1" id="$2" data-more-part')).join('\n')}</div>`;
+    const items = shown.map(([id, label, html]) => ({ id, label, html: html.replace(/^<section class="([^"]*)" id="([^"]*)"/, '<section class="$1" id="$2" data-more-part') }));
+    return `<div class="more"><h2 class="more-pick-h">${sectionIcon('grid')}More about OpenVibe</h2>\n${showcase.parts({ name: 'more', front: true, label: 'More about OpenVibe', items })}</div>`;
 }
 
 // The five things people do now (plan L43; designed by Opus 2026-11-11): a ranked list, each row its place, the site's
