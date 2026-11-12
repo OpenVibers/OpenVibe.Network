@@ -289,6 +289,9 @@ footer{border-top:1px solid var(--border);background:var(--bg-secondary)}
     const token = localStorage.getItem('ov_token') || getCookie('ov_token');
 
     function initNavbar(user) {
+        // navbar.js is deferred: it runs after the page is parsed. A signed-out visit called this at once, before it had
+        // run, and the bar stayed the plain server row (2026-11-12). Until it is there, wait for the parse to finish.
+        if (typeof OpenVibeNavbar === 'undefined' && document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', function () { initNavbar(user); }, { once: true }); return; }
         if (typeof OpenVibeNavbar !== 'undefined') {
             OpenVibeNavbar.init({ service: 'network', notificationsRealtime: true, token: token || null, user: user || null, menu: { before: [{ id: 'ov-wallet', label: 'Wallet', short: 'Wallet', icon: 'fa-wallet', href: 'https://openvibe.network/wallet' }] }, links: [{"label":"Network","href":"/"},{"label":"Link","href":"https://openvibe.link/","icon":"fa-desktop","featured":true},{"label":"My Account","href":"https://openvibe.my/"},{"label":"Wallet","href":"/wallet"},{"label":"Themes","href":"/themes"}], networkLinks: 5 });
         }

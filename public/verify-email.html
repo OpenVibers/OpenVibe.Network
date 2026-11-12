@@ -96,7 +96,9 @@ p{color:var(--text-secondary);font-size:14px;line-height:1.6}
 <script src="/js/account-safety.js" defer></script>
 <script>
 (function () {
-  if (window.OpenVibeNavbar) { try { OpenVibeNavbar.init({ service: 'network', apiBase: location.origin, links: [{"label":"Network","href":"/"},{"label":"Link","href":"https://openvibe.link/","icon":"fa-desktop","featured":true},{"label":"My Account","href":"https://openvibe.my/"},{"label":"Wallet","href":"/wallet"},{"label":"Themes","href":"/themes"}] }); } catch (e) { /* */ } }
+  // navbar.js is deferred: set the bar up once the page is parsed (it was called before navbar.js ran, 2026-11-12).
+  const setUpBar = () => { if (window.OpenVibeNavbar) { try { OpenVibeNavbar.init({ service: 'network', apiBase: location.origin, links: [{"label":"Network","href":"/"},{"label":"Link","href":"https://openvibe.link/","icon":"fa-desktop","featured":true},{"label":"My Account","href":"https://openvibe.my/"},{"label":"Wallet","href":"/wallet"},{"label":"Themes","href":"/themes"}] }); } catch (e) { /* */ } } };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setUpBar, { once: true }); else setUpBar();
   const card = document.getElementById('card'), ring = document.getElementById('ring'), ico = document.getElementById('ico');
   const title = document.getElementById('title'), msg = document.getElementById('msg'), actions = document.getElementById('actions'), hint = document.getElementById('hint');
   const burst = document.getElementById('burst');
