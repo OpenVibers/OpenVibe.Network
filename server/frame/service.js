@@ -34,6 +34,7 @@ const { SITES, LISTED, LISTED_SITES, siteForHost, GROUPS, groupOf, PRODUCTS, MER
 const { createMenuCards } = require('./menu-cards');
 const { createFrameChoices } = require('./choices');
 const { createFrameAsk } = require('./ask');
+const { createFrameCodeSearch } = require('./code-search');
 const { read: readCommands } = require('./commands');
 const { createFrameMentions } = require('./mentions');
 const { createFrameRuns } = require('./runs');
@@ -178,6 +179,8 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         exchangeUrl: (services.exchange && services.exchange.internalUrl) || 'http://127.0.0.1:5150',
         reportUrl: (services.report && services.report.internalUrl) || 'http://127.0.0.1:5080',
     });
+    // The composer's GitHub tool (Shared 4.225.0): Exchange's public code search, through the Frame.
+    const codeSearch = createFrameCodeSearch({ exchangeUrl: (services.exchange && services.exchange.internalUrl) || 'http://127.0.0.1:5150', now });
     const ask = createFrameAsk({
         aiUrl, now, requireAuth, sheet: choices,
         searchUrl: (services.search && services.search.internalUrl) || 'http://127.0.0.1:4710',
@@ -520,6 +523,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             updated: new Date().toISOString(),
         };
     }
+    router.get('/code/search', (req, res) => codeSearch.handle(req, res));
     router.get('/pulse', async (req, res) => {
         if (!pulse || Date.now() - pulseAt > 30_000) {
             pulseInflight = pulseInflight || readPulse().then((p) => { pulse = p; pulseAt = Date.now(); }).catch(() => {}).finally(() => { pulseInflight = null; });
