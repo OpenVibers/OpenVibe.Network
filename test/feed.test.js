@@ -141,6 +141,26 @@ const envelope = (type, payload, over = {}) => ({
         assert.ok(p2.d.items.length >= 1 && p2.d.items[0].id !== p1.d.items[0].id, 'the next page is not the same burst again');
         assert.strictEqual(p2.d.items[0].title, 'Older deal', 'the deal before it, its own title (one deal is not "1 new deal")');
     }
+    // A burst bigger than a page, with a person's post in the middle of it (production, 11-12: "358 new deals" on every
+    // page): the burst is one card across all pages, and the post is still met.
+    {
+        const hourAt = new Date(Date.now() - 4 * 86400000); hourAt.setUTCMinutes(59, 0, 0);
+        for (let i = 0; i < 150; i++) {
+            await store.upsertItem(db, { source_service: 'deals', source_type: 'offer', source_id: `big${i}`, kind: 'deal', title: `Big ${i}`, text: '', url: 'https://openvibe.deals/d/z', site: 'deals', site_name: 'Deals', counts: {}, occurred_at: new Date(hourAt.getTime() - i * 20000).toISOString(), origin: 'system' });
+        }
+        await store.upsertItem(db, { source_service: 'community', source_type: 'thread', source_id: 'mid', kind: 'post', title: 'In the middle', text: 'hello', url: 'https://openvibe.community/forum/status/mid', site: 'community', site_name: 'Community', actor_subject: A, counts: {}, occurred_at: new Date(hourAt.getTime() - 75 * 20000 - 5000).toISOString() });
+        const seen = [];
+        let cursor = '';
+        for (let page = 0; page < 8; page++) {
+            const r = await get(`/api/v1/feed?site=&limit=2${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+            seen.push(...r.d.items.map((x) => x.id));
+            if (!r.d.next_cursor) break;
+            cursor = r.d.next_cursor;
+        }
+        const burst = `g:deal:deals:${hourAt.toISOString().slice(0, 13)}`;
+        assert.strictEqual(seen.filter((id) => id === burst).length, 1, `the burst is one card across the pages (${seen.join(', ')})`);
+        assert.ok(seen.includes('f:community:thread:mid'), 'the post in the middle of the burst is still met');
+    }
     server.close();
     console.log('feed: mappings, grouping, privacy, ranking and the menu/feed ids pass');
 })().catch((err) => { console.error(err); process.exit(1); });
