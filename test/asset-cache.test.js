@@ -1,7 +1,7 @@
 'use strict';
 // The cache policy comes from openvibe-shared/cache-policy (plan T11 lane D): the /shared/<file> assets are
 // content-addressed with ?v=<sha256 of the file>, so that exact version is immutable for a year while a
-// wrong-but-hex ?v= or none at all gets five minutes plus a day of stale-while-revalidate (server/index.js,
+// wrong-but-hex ?v= or none at all gets five minutes plus five minutes of stale-while-revalidate (server/index.js,
 // serveShared). /robots.txt, /sitemap.xml and /llms.txt are documents and take the HTML policy.
 //   node test/asset-cache.test.js
 const assert = require('assert');
@@ -29,7 +29,7 @@ const { bootServer } = require('./helpers/boot-server');
         for (const qs of ['?v=deadbeefdeadbeef', '']) {
             const r = await get(`/shared/${file}${qs}`);
             assert.strictEqual(r.status, 200, `/shared/navbar.js${qs} is 200`);
-            assert.strictEqual(r.cache, 'public, max-age=300, stale-while-revalidate=86400');
+            assert.strictEqual(r.cache, 'public, max-age=300, stale-while-revalidate=300');
             assert.strictEqual(r.cache, cache.assetHeaders(file, { hashed: false }));
         }
 
