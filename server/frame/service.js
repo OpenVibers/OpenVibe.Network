@@ -679,7 +679,9 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         }
         const body = JSON.stringify(path === '/api/v1/feed/examples'
             ? (d && Array.isArray(d.examples) ? d : { examples: [] })
-            : { items, next_cursor: d && d.next_cursor != null ? d.next_cursor : null });
+            : path === '/api/v1/feed'
+                ? (d ? { ...d, items } : { items: [], next_cursor: null })
+                : (d && Array.isArray(d.items) ? d : { items: [], next_cursor: null }));
         if (!auth && d) {
             if (relayed.size >= 500) relayed.clear();
             relayed.set(key, { at: Date.now(), body });
