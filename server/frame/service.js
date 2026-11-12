@@ -4,6 +4,8 @@
 //
 //   GET /api/frame?host=<hostname>     public, CORS *, max-age=600, ETag
 //   GET /api/frame/pulse               public, CORS *, max-age=30: { live_now, watching, sites, views_7d, live, updated }
+//   GET /api/frame/commands?site=&q=   the composer's / menu: site commands, network defaults, a person's own
+//   GET /api/frame/mentions?q=&site=   the composer's @ menu: public people, the person's agents, places (max 8)
 //   GET /api/frame/feed, /api/frame/wall  the menu's Feed and wall: Community's /api/v1/feed and /api/v1/pulse, relayed
 //   GET|POST|PUT /api/frame/wallet/…   the wallet sheet's fixed Billing/Inventory paths, relayed (bearer, or the ov_token cookie; no cache)
 //   POST /api/frame/menu-click         public, CORS *, text/plain, max 512 bytes, 60/min per IP: one menu click counted
@@ -32,6 +34,8 @@ const { SITES, LISTED, LISTED_SITES, siteForHost, GROUPS, groupOf, PRODUCTS, MER
 const { createMenuCards } = require('./menu-cards');
 const { createFrameChoices } = require('./choices');
 const { createFrameAsk } = require('./ask');
+const { read: readCommands } = require('./commands');
+const { createFrameMentions } = require('./mentions');
 const seen = require('./seen');
 const toolsCatalog = require('../domains/catalog');
 
@@ -165,7 +169,7 @@ function aiSiteCopy({ privateKey, issuer, aiUrl }) {
     };
 }
 
-async function createFrameService(db, config, analytics, { privateKey = null, issuer = null, selfToken = () => null, aiUrl = null, requireAuth = null, today = null, now = Date.now } = {}) {
+async function createFrameService(db, config, analytics, { privateKey = null, issuer = null, selfToken = () => null, aiUrl = null, requireAuth = null, person = null, today = null, now = Date.now, sites = SITES, places = LISTED, mentionLimit = 120 } = {}) {
     const services = (config && config.services) || {};
     aiUrl = aiUrl || (services.ai && services.ai.internalUrl) || process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700';
     const choices = createFrameChoices({
@@ -238,6 +242,23 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     async function getJson(url, headers, timeoutMs = 6000) {
         try { const r = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) }); return r.ok ? await r.json() : null; } catch { return null; }
     }
+
+    // The composer's Reach (composer-post-ask-do.md, R3): the site's slash commands and the @ menu. Both
+    // read a person's session when one is sent (Bearer or the Network cookie) and answer as a signed-out
+    // visitor otherwise; neither keeps a person's own answer.
+    const sessionAuth = require('../auth/session');
+    async function defaultPerson(req) {
+        const token = sessionAuth.sessionToken(req);
+        if (!token) return null;
+        const publicKey = req.app && req.app.locals && req.app.locals.publicKey;
+        if (!publicKey || !config || !config.jwt || !config.jwt.issuer) return null;
+        try { const out = await sessionAuth.verifySession(token, { db, publicKey, config }); return out && !out.error ? out.user : null; } catch { return null; }
+    }
+    const personOf = typeof person === 'function' ? person : defaultPerson;
+    const mentions = createFrameMentions({
+        db, sites: places, siteForHost, fullName, now, perMinute: mentionLimit,
+        liveUrl: svcUrl('live', 'http://127.0.0.1:3000'),
+    });
 
     async function refreshRank() {
         const scores = Object.assign({}, rank.scores);
@@ -1015,6 +1036,52 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const got = await choices.get(task, { token: auth.slice(7), signedIn: Boolean(auth) });
         if (got.error) { res.set('Cache-Control', 'no-store'); return res.status(400).json({ error: got.detail, code: 'frame.task_invalid' }); }
         res.set('Cache-Control', got.cache ? 'public, max-age=60' : 'private, no-store');
+        res.send(JSON.stringify(got.body));
+    });
+
+    // GET /api/frame/commands?site=<host>&q= — the composer's slash commands (composer-post-ask-do.md, R3):
+    // every site's /ask, /do, /remind and /timer, the site's own from its manifest, and a signed-in person's
+    // saved snippets. Site commands come first, a name appears once, and q filters by name or hint.
+    // Signed out the answer is public and held 60 s; signed in it is the person's own and never kept.
+    const commandHeld = new Map();
+    router.get('/commands', async (req, res) => {
+        res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin' });
+        const site = String(req.query.site || '').slice(0, 255);
+        const q = String(req.query.q || '').slice(0, 50);
+        const user = await personOf(req).catch(() => null);
+        let prefs = null;
+        if (user && user.id != null) {
+            try { const row = await db.prepare('SELECT composer_prefs FROM user_preferences WHERE user_id = ?').get(user.id); prefs = row ? row.composer_prefs : null; } catch { prefs = null; }
+        }
+        if (user) {
+            res.set('Cache-Control', 'private, no-store');
+        } else {
+            const key = `${site.toLowerCase()}|${q.toLowerCase()}`;
+            const kept = commandHeld.get(key);
+            res.set('Cache-Control', 'public, max-age=60');
+            if (kept && now() - kept.at < 60_000) return res.send(kept.body);
+            const body = JSON.stringify(readCommands({ site, q, prefs: null, sites, siteForHost }));
+            if (commandHeld.size >= 500) commandHeld.clear();
+            commandHeld.set(key, { at: now(), body });
+            return res.send(body);
+        }
+        res.send(JSON.stringify(readCommands({ site, q, signedIn: true, prefs, sites, siteForHost })));
+    });
+
+    // GET /api/frame/mentions?q=&site= — the composer's @ menu (composer-post-ask-do.md, R3): public people
+    // first, then the person's own agents from the agent directory, then OpenVibe's places (open sites and
+    // Live's public channels). At most eight; signed out it is public people only. Rate-limited per actor in
+    // memory (a signed-in subject, or a hash of the address), never an email or a private account field.
+    router.get('/mentions', async (req, res) => {
+        res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin' });
+        const user = await personOf(req).catch(() => null);
+        const allowed = mentions.allow(mentions.actorKey(req, user));
+        if (!allowed.ok) {
+            res.set({ 'Cache-Control': 'private, no-store', 'Retry-After': String(allowed.retryAfter) });
+            return res.status(429).json({ error: 'Too many mention searches: try again in a minute', code: 'frame.mentions_rate_limited' });
+        }
+        const got = await mentions.get({ q: String(req.query.q || '').slice(0, 50), site: String(req.query.site || '').slice(0, 255), user });
+        res.set('Cache-Control', user ? 'private, no-store' : 'public, max-age=60');
         res.send(JSON.stringify(got.body));
     });
 

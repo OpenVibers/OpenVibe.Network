@@ -570,7 +570,7 @@ const ACCOUNT_ID_LINK = {
 const ACCOUNT_ID_TEXT = 'GET /api/auth/me with a person\'s token answers { user: { subject_id: "usr_…" } }. That usr_… value is the person\'s OpenVibe account ID: what apps and robots ask for when they ask for someone\'s OpenVibe account ID. A person sees their own on their account page (https://openvibe.network/my); nobody else can read it.';
 // A path with a variable is a route to call, not a page to fetch: it is written as code in llms.txt, never as a
 // Markdown link, so an agent (or a checker doing a GET) does not ask for the literal @handle address.
-const API_ROUTE_TEXT = 'API routes with a variable in the path are code, not pages to fetch: `GET /api/v1/people/@handle/page` is the signed-out profile at https://openvibe.network/@handle, including its public OpenVibe places. The composer\'s model sheet is `GET /api/frame/choices?task=chat|agent|code|image|research`; a question is `POST /api/frame/ask`, and its AG-UI answer streams at `GET /api/v1/runs/<id>/events` (Last-Event-ID resumes).';
+const API_ROUTE_TEXT = 'API routes with a variable in the path are code, not pages to fetch: `GET /api/v1/people/@handle/page` is the signed-out profile at https://openvibe.network/@handle, including its public OpenVibe places. The composer\'s model sheet is `GET /api/frame/choices?task=chat|agent|code|image|research`; a question is `POST /api/frame/ask`, and its AG-UI answer streams at `GET /api/v1/runs/<id>/events` (Last-Event-ID resumes). The composer\'s `/` menu is `GET /api/frame/commands?site=<host>&q=` (the site\'s own, the network\'s /ask, /do, /remind and /timer, and a signed-in person\'s saved commands) and its `@` menu is `GET /api/frame/mentions?q=&site=` (public people first, then the person\'s agents and OpenVibe places, at most eight).';
 
 function llmsTxt() {
     const { catalog } = toolsCatalog.peek();
@@ -590,7 +590,7 @@ function llmsTxt() {
             { title: 'Machine-readable', links: [
                 { title: 'Open stats (JSON): every site\'s numbers', url: 'https://openvibe.network/api/v1/stats' },
                 { title: 'Trust signals (developer docs)', url: 'https://openvibe.network/docs/trust-signals', note: 'privacy-limited account and guest trust signals, API examples and fields' },
-                { title: 'The composer\'s Frame (developer docs)', url: 'https://openvibe.network/docs/frame', note: 'GET /api/frame/choices for the model sheet (Exchange prices, speed and pages) and POST /api/frame/ask for an answer with citations streamed as AG-UI on GET /api/v1/runs/:id/events' },
+                { title: 'The composer\'s Frame (developer docs)', url: 'https://openvibe.network/docs/frame', note: 'GET /api/frame/choices for the model sheet (Exchange prices, speed and pages), POST /api/frame/ask for an answer with citations streamed as AG-UI on GET /api/v1/runs/:id/events, GET /api/frame/commands for the / menu and GET /api/frame/mentions for the @ menu' },
                 { title: 'OpenVibe Connect MCP', url: 'https://connect.openvibe.network/mcp', note: 'includes network.person_page.read and network.my_trust.read' },
                 { title: 'Tool catalog (JSON)', url: 'https://openvibe.tools/api/catalog.json' },
                 { title: 'Tool domains (JSON)', url: 'https://openvibe.network/api/domains' },
