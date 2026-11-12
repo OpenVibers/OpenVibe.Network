@@ -44,6 +44,8 @@ const { signToken } = require('./auth/routes');
 const ready = (async () => {
 
 const app = express();
+// Times leave with their zone (openvibe.design rule 148): the SQLite-era text columns are UTC.
+app.use(require('./iso-times').isoJsonTimes);
 // GET /openapi.json (SEO-3): this service's public API as OpenAPI 3.1, generated from the contracts
 // (openvibe-contracts); the operations they mark internal-only are left out.
 app.get('/openapi.json', (_req, res) => {
@@ -897,6 +899,7 @@ require('./developer/confirmations').setNotifier(notificationService);
 require('./developer/confirmations').start(db);
 // The Action Center (plan 2026-10-28 §3.10, server/actions): the person's agent work from Actor, Codes and AI and their
 // pending confirmations, in five buckets, for the ✦ beside the bell on every site.
+let feedApi = null;
 {
     const actions = require('./actions').createActions({ db, selfToken, urls: {
         actor: process.env.OV_ACTOR_INTERNAL_URL || 'http://127.0.0.1:4950',
@@ -916,6 +919,14 @@ require('./developer/confirmations').start(db);
     const menuFeeds = require('./menu-feeds').createMenuFeeds({ db });
     app.use('/api/v1/me/menu-feeds', require('./menu-feeds').router({ menuFeeds, requireAuth }));
     app.use('/api/v1/me/feed-seen', require('./feed-seen').router({ requireAuth }));
+    // One feed for all of OpenVibe (feed.item@1): Network reads Events and the sites' public APIs into
+    // feed_items, and serves the menu's /api/frame/feed and Community's /api/v1/feed from the same rows.
+    feedApi = require('./feed/api').createFeedApi({
+        db, config, privateKey, issuer: config.jwt.issuer, publicKey, presence: require('./frame/seen'), log: console,
+    });
+    app.locals.feedApi = feedApi;
+    app.use('/api/v1/feed', feedApi.router);
+    feedApi.start();
     const homeScreen = require('./home-screen').createHomeScreen({ db });
     app.use('/api/v1/me/home-screen', require('./home-screen').router({ homeScreen, requireAuth }));
     // People's own controls (design 2026-11-11, piece 4): the active arrangement per surface and device,
@@ -1045,7 +1056,7 @@ app.get('/@:username', rateLimit({ windowMs: 60_000, max: 120 }), publicProfiles
 // /api/chrome is the old name, kept for copies of openvibe-shared older than 1.11.0.
 // The menu's day counts (Report's daily activity): the strip's "today" counts reuse the same cached read.
 const frameToday = require('./frame/today').createToday({ reportUrl: config.services.report.internalUrl });
-const frameService = await require('./frame/service').createFrameService(db, config, analytics, { privateKey, issuer: config.jwt.issuer, selfToken, requireAuth, today: () => frameToday.get() });
+const frameService = await require('./frame/service').createFrameService(db, config, analytics, { privateKey, issuer: config.jwt.issuer, selfToken, requireAuth, today: () => frameToday.get(), feed: feedApi });
 app.use('/api/v1/frame/today', rateLimit({ windowMs: 60_000, max: 240 }), frameToday.router);
 const frameLimit = rateLimit({ windowMs: 60_000, max: 240 });
 app.use('/api/frame', frameLimit, frameService.router);

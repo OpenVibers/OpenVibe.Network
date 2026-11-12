@@ -84,6 +84,26 @@ module.exports = {
         apiKeys: process.env.NETWORK_DEV_API_KEYS === '1',
     },
 
+    // One feed for all of OpenVibe (server/feed/): the public APIs the collectors read when a source has
+    // no Events topic of its own. Every URL is operator config, never a request value; the env name lets
+    // production point a collector at the service's loopback port without a release.
+    feed: {
+        communityUrl: process.env.OV_COMMUNITY_URL || '',
+        todayUrl: process.env.OV_TODAY_URL || 'https://openvibe.today',
+        questUrl: process.env.OV_QUEST_URL || 'https://openvibe.quest',
+        playUrl: process.env.OV_PLAY_URL || 'https://openvibe.games',
+        memeUrl: process.env.OV_MEME_URL || 'https://openvibe.meme',
+        picsUrl: process.env.OV_PICS_URL || 'https://openvibe.pics',
+        liveUrl: process.env.OV_LIVE_URL || '',
+        spaceUrl: process.env.OV_SPACE_URL || 'https://openvibe.space',
+        workUrl: process.env.OV_WORK_URL || 'https://openvibe.work',
+        dealsUrl: process.env.OV_DEALS_URL || 'https://openvibe.deals',
+        newsUrl: process.env.OV_NEWS_URL || 'https://openvibe.news',
+        blogUrl: process.env.OV_BLOG_URL || 'https://openvibe.blog',
+        wikiUrl: process.env.OV_WIKI_URL || 'https://openvibe.wiki',
+        reportUrl: process.env.OV_REPORT_URL || 'https://openvibe.report',
+    },
+
     // OpenVibe.Events base URL for Network's own events (developer projects). Unset = no relay:
     // events stay in dev_audit and are backfilled when it is set. Production: http://127.0.0.1:4300
     eventsInternalUrl: process.env.OV_EVENTS_INTERNAL_URL || '',
