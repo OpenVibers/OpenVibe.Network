@@ -1023,6 +1023,29 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // /api/v1/runs/:id/events (mounted in server/index.js), replayable from Last-Event-ID.
     router.post('/ask', ...ask.ask);
 
+    // GET /api/frame/query/providers — the Sources popover's web ladder: Search's offers (provider, scopes, price,
+    // availability, today's use), asked through Network for the same connect-src reason as /query. Same CORS and
+    // caching: a person's token goes along and nothing is kept; signed out the offers are kept 60 s.
+    const providerOffers = new Map();
+    router.get('/query/providers', async (req, res) => {
+        res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
+        const u = new URL('/api/v1/query/providers', svcUrl('search', 'http://127.0.0.1:4710'));
+        const headers = { ...(req.ip ? { 'X-Forwarded-For': req.ip } : {}), ...(auth ? { Authorization: auth } : {}) };
+        if (auth) {
+            res.set('Cache-Control', 'private, no-store');
+            const d = await getJson(u.href, headers, 10000);
+            return res.send(JSON.stringify(d || { providers: [] }));
+        }
+        res.set('Cache-Control', 'public, max-age=60');
+        const kept = providerOffers.get('offers');
+        if (kept && Date.now() - kept.at < 60_000) return res.send(kept.body);
+        const d = await getJson(u.href, headers, 10000);
+        const body = JSON.stringify(d || { providers: [] });
+        providerOffers.set('offers', { at: Date.now(), body });
+        res.send(body);
+    });
+
     // POST /api/frame/hit — one anonymous count for the calling page's host. The host comes from the
     // browser-set Origin header (never the body) and must be one of ours or a registered tool domain.
     const recent = new Map();   // ip → [count, windowStart]: 40/min is plenty for a person, useless for stuffing
