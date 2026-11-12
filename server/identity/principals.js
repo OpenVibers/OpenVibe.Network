@@ -159,6 +159,9 @@ const DEFAULT_GRANTS = [
     ...['media.object.upload', 'media.object.read'].map((cap) => ['actor', cap, 'openvibe.media', ['actor']]),
     ['media-hub', 'media.object.upload', 'openvibe.media', ['media-hub']],
     ['media-hub', 'media.object.read', 'openvibe.media', ['media-hub']],
+    // Media's rotation detector (pictures, 2026-11-11): it asks OpenVibe.AI's `pics.orientation` workflow about a
+    // 256 px copy of a picture whose EXIF did not settle the orientation (server/images/ai-orientation.js).
+    ['media', 'ai.run.create', 'openvibe.ai', ['pics.orientation']],
     // OpenVibe.Video's AI edit (MediaHub server/video/ai-edit.js): media.analyze on finished uploads, local and unpaid;
     // OpenVibe.Pics alt text (server/pics/describe.js): pics.describe_image on new pictures.
     ['media-hub', 'ai.run.create', 'openvibe.ai', ['media.analyze', 'pics.describe_image']],
