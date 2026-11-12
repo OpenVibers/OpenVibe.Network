@@ -122,6 +122,8 @@ const REVIEWED = {
     'server/frame/ask.js fetch': [2, 'the composer\'s Ask: Search (OV_SEARCH_INTERNAL_URL) fixed /api/v1/query path with checked scopes and the person\'s Bearer, and AI (OV_AI_INTERNAL_URL) fixed /api/v1/runs?stream=1 path with the person\'s Bearer; both operator-configured internal URLs, no request value names a host, redirects refused, 30-150 s timeouts'],
     'server/admin/analytics-routes.js fetch': [2, 'staff analytics: the services\' internal URLs from the registry (owner/admin set), and Insights\' Prometheus (PROMETHEUS_URL, loopback by default) with fixed queries; never a request value'],
     'server/admin/events-ops.js fetch': [1, 'OV_EVENTS_INTERNAL_URL (operator config) for staff DLQ views'],
+    'server/feed/events.js fetch': [1, 'OpenVibe.Events at OV_EVENTS_INTERNAL_URL (operator config), the fixed /api/v1/events pull path with an opaque cursor and the service token; no request value names a host'],
+    'server/feed/sources.js fetch': [3, 'the public APIs and feeds of OpenVibe.Community, Today, Quest, Play, Meme, Pics, Live, Space, Work, Deals, News, Blog and Wiki at operator-configured bases (OV_*_URL; Community and Live default to their loopback internal URL), fixed paths with encoded, validated ids; never a request value'],
     'server/admin/routes.js fetch': [1, 'registry refresh: POSTs to the service refresh targets resolved from the registry (admin-set service URLs, staff only)'],
     'server/auth/discord-link.js fetch': [2, 'fixed Discord API host (discord.com/api)'],
     'server/developer/event-relay.js sdk client': [4, 'OV_EVENTS_INTERNAL_URL (operator config)'],
