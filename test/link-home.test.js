@@ -8,6 +8,8 @@ const assert = require('assert');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
+// The openvibe.link block's page and file allow-list (the one location with the empty page path).
+function linkPagesRegexLine(vhost) { return vhost.split('\n').find((l) => l.startsWith('    location ~ ^/(|install|')) || ''; }
 const express = require('express');
 
 const page = require('../server/link/page');
@@ -66,6 +68,8 @@ const SHAPED = {
     const vhost = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'nginx', 'parked-domains.conf'), 'utf8');
     assert.ok(/location ~ \^\/\(\|install\|add-computer\(\/complete\)\?\|machines(?:\(\/\.\*\)\?)?\|pair\|index\\\.md\|send\\\.js\|egress-settings\\\.js\|locker\\\.mjs\|/.test(vhost), 'the vhost passes the add flow, page scripts, machine hub and its old sub-paths, and Locker bundle to Network');
     assert.ok(vhost.includes('add-computer(/complete)?'), 'the add-computer return flow reaches Link before the openvibe.network catch-all');
+    // …and release.json, or the page's release watch hits a cross-site redirect and an open tab never updates (11-12).
+    assert.ok(/\|release\\\.json\|/.test(linkPagesRegexLine(vhost)), 'openvibe.link answers its own release.json');
     const sendApi = vhost.slice(vhost.indexOf('location ~ ^/api/v1/me/nodes/(send-keys|send)(/.*)?$ {'));
     assert.ok(sendApi.length < vhost.length && /client_max_body_size 40m;/.test(sendApi.slice(0, sendApi.indexOf('\n    }'))), 'the Link Send API has its own location with a body limit that fits a file');
     // …the machine hub's own API (the machines list, the owner's controls, the live screen, pools), which the page
