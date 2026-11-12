@@ -22,6 +22,9 @@ const RAW_SITES = contracts.services.manifests.filter((m) => m.site && !HIDDEN_S
     // A site's own footer-strip items (label, icon, link, and a number or a line), at most three. They are
     // validated again at the read (server/frame/service.js stripOf): text only, an https link on an OpenVibe domain.
     ...(Array.isArray(m.site.strip) ? { strip: m.site.strip } : {}),
+    // The site's own composer commands (composer-post-ask-do.md, R3), validated again at the read
+    // (server/frame/commands.js siteRows): a slash word, a one-line hint and what a pick inserts.
+    ...(Array.isArray(m.site.commands) ? { commands: m.site.commands } : {}),
     ...(m.site.host ? { host: m.site.host } : {}),
 })).concat(contracts.services.get('computer') ? [] : [COMPUTER_FALLBACK]);
 function manifestHost(service) {

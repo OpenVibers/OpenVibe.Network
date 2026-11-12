@@ -1,8 +1,8 @@
-# The composer's Frame: models and answers
+# The composer's Frame: models, answers, commands and mentions
 
 Every OpenVibe site's composer reaches models, search and the person's own work through OpenVibe.Network's Frame. A
-site never holds another site's keys: it sends the person's own Network token, and Network forwards it. Both routes
-below answer `Access-Control-Allow-Origin` only for OpenVibe's own origins, like `/api/frame/query`.
+site never holds another site's keys: it sends the person's own Network token, and Network forwards it. Every route
+below answers `Access-Control-Allow-Origin` only for OpenVibe's own origins, like `/api/frame/query`.
 
 ## `GET /api/frame/choices?task=chat|agent|code|image|research`
 
@@ -77,3 +77,54 @@ Events are AG-UI: `RUN_STARTED`, `STEP_STARTED`/`STEP_FINISHED` (`Search`, `Read
 and `RUN_FINISHED` with the same answer and citations. A failure is `RUN_ERROR` with `{ code, message }`. The run is
 kept in memory for five minutes after it ends, so a reconnect can resume; `GET /api/v1/runs/:id` is its snapshot.
 Asks are rate-limited per person (12 a minute).
+
+## `GET /api/frame/commands?site=<host>&q=`
+
+The `/` menu. Every site offers the network's four commands, a site adds its own from its Frame manifest
+(`site.commands`), and a signed-in person's saved composer snippets come last as theirs. The site's own come first,
+because they are the ones that fit the box; a name appears once, so a site may replace a network command with its own.
+`q` filters by the command's name (prefix) or its hint. Each row is `{ name, hint, insert, kind, needs_sign_in }`;
+`name` is the word after the slash, `insert` is what a pick puts in the box, `kind` is `network`, `site` or `mine`,
+and `needs_sign_in` says the command acts for a person (the composer may offer it and then sign in).
+
+```json
+{
+  "site": { "id": "live", "name": "Live", "host": "openvibe.live" },
+  "commands": [
+    { "name": "clip", "hint": "Make a clip of the stream", "insert": "/clip ", "kind": "site", "needs_sign_in": true },
+    { "name": "ask", "hint": "Ask Vibe: an answer with its sources", "insert": "/ask ", "kind": "network", "needs_sign_in": true },
+    { "name": "do", "hint": "Hand it to your agent: Actor plans and runs it", "insert": "/do ", "kind": "network", "needs_sign_in": true },
+    { "name": "remind", "hint": "Have Today remind you", "insert": "/remind ", "kind": "network", "needs_sign_in": true },
+    { "name": "timer", "hint": "Start a focus timer in the Dock", "insert": "/timer ", "kind": "network", "needs_sign_in": true },
+    { "name": "sig", "hint": "Signature", "insert": "— Sam", "kind": "mine", "needs_sign_in": false }
+  ]
+}
+```
+
+`site` may be a hostname, a URL or a site id (`live`); an unknown site answers `site: null` with the network four. A
+signed-out answer is `Cache-Control: public, max-age=60` and held a minute; a signed-in one (the snippets need the
+person) is `private, no-store` and asked fresh.
+
+## `GET /api/frame/mentions?q=&site=`
+
+The `@` menu: public people, the person's own agents from Network's agent directory, and OpenVibe places (open sites
+and Live's public channels). At most eight rows, people first, then the person's agents, then places. Signed out it is
+public people only. A person row carries the canonical subject id, the public handle, the display name and, only when
+the picture is on OpenVibe.Media, the avatar; never an email, a numeric account id, a role or any other account field.
+`site` is the host the box is on: that site is not suggested back to itself.
+
+```json
+{
+  "mentions": [
+    { "kind": "person", "id": "usr_…", "label": "Ana Followed", "handle": "ana",
+      "avatar": "https://openvibe.media/p/ana/screenshot", "url": "https://openvibe.network/@ana" },
+    { "kind": "agent", "id": "agt_…", "label": "Actor", "sub": "actor · online" },
+    { "kind": "site", "id": "live", "label": "Live", "handle": "live", "url": "https://openvibe.live/" },
+    { "kind": "channel", "id": "streamer", "label": "Streamer One", "handle": "streamer", "url": "https://openvibe.live/@streamer" }
+  ]
+}
+```
+
+A person's answer is `private, no-store`; a signed-out one is `public, max-age=60` and held a minute. The read is
+rate-limited per actor in memory (120 a minute; a signed-in subject, or a hash of the address when signed out) and
+answers `429` with `Retry-After` and `code: "frame.mentions_rate_limited"` past it.
