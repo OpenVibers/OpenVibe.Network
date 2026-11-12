@@ -146,11 +146,13 @@ function render({ release = {}, releaseId, userAgent } = {}) {
         operatingSystem: 'Linux, macOS, Windows', description: desc, url: SITE,
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
         publisher: { '@type': 'Organization', '@id': 'https://openvibe.network/#org', name: 'OpenVibe' } };
+    // 2026-11-12 (the owner: "more user-friendly and elegant … perfect the layout"): the mark in a tile beside the title,
+    // the words beside it, and the way on as a quiet arrow link (openvibe.design: section marks in tiles, no browser links).
     const does = DOES.map((d) => `<article class="np-does">
-${kit.icon(d.icon)}
+<span class="np-does-ic">${kit.icon(d.icon)}</span>
 <h3>${esc(d.title)}${d.soon ? ' <span class="np-soon">coming with S1</span>' : ''}</h3>
 <p>${esc(d.body)}</p>
-<p class="np-fine"><a href="${esc(d.href)}">${esc(d.cta)}</a></p>
+<p class="np-does-go"><a href="${esc(d.href)}">${esc(d.cta)}<span aria-hidden="true"> →</span></a></p>
 </article>`).join('');
 
     return `<!DOCTYPE html>
@@ -262,10 +264,15 @@ const CSS = `
 .np-send [role=status]{margin:0;min-height:1.3em;color:var(--text-secondary,#96a7c2)}
 .np-sec h2{margin:0 0 14px;font-size:1.3rem;letter-spacing:-.01em}
 .np-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
-.np-does{padding:18px;border-radius:16px;background:var(--bg-card,#0f1729);border:1px solid var(--border,#1f2d47);display:flex;flex-direction:column;gap:6px}
-.np-does svg{width:22px;height:22px;color:var(--accent,#3b82f6)}
-.np-does h3{margin:2px 0 0;font-size:1rem;line-height:1.35}
+.np-does{padding:16px;border-radius:16px;background:var(--bg-card,#0f1729);border:1px solid var(--border,#1f2d47);display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:14px;row-gap:4px;align-content:start}
+.np-does>*{grid-column:2}
+.np-does-ic{grid-column:1!important;grid-row:1/span 3;display:grid;place-items:center;width:42px;height:42px;border-radius:12px;color:var(--accent-light,var(--accent,#60a5fa));background:color-mix(in srgb,var(--accent,#3b82f6) 14%,transparent)}
+.np-does-ic svg{width:21px;height:21px}
+.np-does h3{margin:1px 0 0;font-size:1rem;line-height:1.35}
 .np-does p{margin:0;color:var(--text-secondary,#96a7c2);font-size:.92rem;line-height:1.55}
+.np-does-go{margin-top:6px!important}
+.np-does-go a{display:inline-flex;align-items:center;min-height:36px;color:var(--accent-light,var(--accent,#60a5fa));font-weight:650;text-decoration:none}
+.np-does-go a:hover{text-decoration:underline;text-underline-offset:3px}
 .np-soon{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:.68rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted,#7386a3);border:1px solid var(--border,#1f2d47);vertical-align:middle}
 .np-installs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
 .np-os-list{display:grid;gap:10px;max-width:860px}
