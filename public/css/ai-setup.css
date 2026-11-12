@@ -143,3 +143,22 @@
     .setup-cta-head{flex-wrap:wrap}
     .setup-cta-count{margin-left:0;text-align:left}
 }
+
+/* Start and Finish (2026-11-12): the setup's two ends. */
+.setup-kicker { margin: 0 0 4px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-light, var(--accent)); }
+.setup-start-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; margin: 14px 0; }
+.setup-start-card { display: grid; align-content: start; gap: 8px; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-secondary); }
+.setup-start-card h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.setup-start-card h3 i { color: var(--accent-light, var(--accent)); }
+.setup-start-list { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 13.5px; line-height: 1.45; }
+.setup-start-list a { white-space: nowrap; }
+.setup-done-list { list-style: none; margin: 14px 0; padding: 0; display: grid; gap: 8px; }
+.setup-done-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-secondary); }
+.setup-done-row.ok { border-color: color-mix(in srgb, var(--success, #22c55e) 40%, var(--border)); }
+.setup-done-name { display: grid; gap: 2px; min-width: 0; }
+.setup-done-name .muted { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.setup-done-out { font-size: 12.5px; color: var(--text-muted); }
+.setup-done-out.ok { color: var(--success-text, var(--success, #16a34a)); }
+.setup-done-out.bad { color: var(--danger-text, var(--danger, #dc2626)); }
+.setup-card-foot { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 560px) { .setup-done-row { grid-template-columns: auto minmax(0, 1fr); } .setup-done-out, .setup-done-row .btn { grid-column: 2; justify-self: start; } }
