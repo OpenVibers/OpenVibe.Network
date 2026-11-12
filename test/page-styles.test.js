@@ -7,13 +7,15 @@ const fs = require('fs');
 const path = require('path');
 
 const pub = path.join(__dirname, '..', 'public');
-for (const [page, css] of [['admin.html', 'admin.css'], ['my.html', 'my.css'], ['login.html', 'login.css']]) {
+for (const [page, sheets] of [['admin.html', ['admin.css', 'ai-setup.css']], ['my.html', ['my.css']], ['login.html', ['login.css']]]) {
     const html = fs.readFileSync(path.join(pub, page), 'utf8');
     const links = [...html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="\/css\/([^"]+)"/g)].map((m) => m[1]);
-    assert.deepStrictEqual(links, [css], `${page} links /css/${css} exactly once`);
+    assert.deepStrictEqual(links, sheets, `${page} links ${sheets.map((s) => '/css/' + s).join(', ')} exactly once`);
     assert.ok(!/<style\b/.test(html), `${page} keeps no inline <style> block`);
-    const body = fs.readFileSync(path.join(pub, 'css', css), 'utf8');
-    assert.ok(body.length > 1000, `public/css/${css} carries the page styles`);
+    for (const css of sheets) {
+        const body = fs.readFileSync(path.join(pub, 'css', css), 'utf8');
+        assert.ok(body.length > 1000, `public/css/${css} carries the page styles`);
+    }
 }
 for (const page of ['admin.html', 'my.html']) {
     const html = fs.readFileSync(path.join(pub, page), 'utf8');
