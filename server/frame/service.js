@@ -34,6 +34,7 @@ const { SITES, LISTED, LISTED_SITES, siteForHost, GROUPS, groupOf, PRODUCTS, MER
 const { createMenuCards } = require('./menu-cards');
 const { createFrameChoices } = require('./choices');
 const { createFrameAsk } = require('./ask');
+const { createFrameCaption } = require('./caption');
 const { createFrameCodeSearch } = require('./code-search');
 const { read: readCommands } = require('./commands');
 const { createFrameMentions } = require('./mentions');
@@ -181,6 +182,8 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     });
     // The composer's GitHub tool (Shared 4.225.0): Exchange's public code search, through the Frame.
     const codeSearch = createFrameCodeSearch({ exchangeUrl: (services.exchange && services.exchange.internalUrl) || 'http://127.0.0.1:5150', now });
+    // A picture's caption and alt text in any composer (11-12): AI's pics.describe_image, as the person.
+    const caption = createFrameCaption({ aiUrl, now, requireAuth });
     const ask = createFrameAsk({
         aiUrl, now, requireAuth, sheet: choices,
         searchUrl: (services.search && services.search.internalUrl) || 'http://127.0.0.1:4710',
@@ -1113,6 +1116,10 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // chosen scopes, streamed on Network's runs. Signed in only; the person's own token pays. The run's events are at
     // /api/v1/runs/:id/events (mounted in server/index.js), replayable from Last-Event-ID.
     router.post('/ask', ...ask.ask);
+
+    // POST /api/frame/caption — alt text, a caption and tags for one picture (AI's pics.describe_image), signed in only
+    // and on the person's own allowance; the composer's "Caption it" and a post's missing alt text ask here (11-12).
+    router.post('/caption', ...caption.caption);
 
     // GET /api/frame/query/providers — the Sources popover's web ladder: Search's offers (provider, scopes, price,
     // availability, today's use), asked through Network for the same connect-src reason as /query. Same CORS and
