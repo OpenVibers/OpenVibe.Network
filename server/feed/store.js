@@ -139,9 +139,16 @@ async function affinityServices(db, userId) {
  *   opts.since                          only this recent (the collectors read the last 7 days)
  * → { rows, hasMore }
  */
-async function listItems(db, { kind = '', site = '', q = '', followed = [], following = false, before = null, viewerSubject = null, limit = 40, since = null } = {}) {
+async function listItems(db, { kind = '', site = '', q = '', followed = [], following = false, before = null, viewerSubject = null, limit = 40, since = null, skipBursts = [] } = {}) {
     const where = [];
     const args = [];
+    // A burst an earlier page showed as one card (its kind, site and UTC hour, no person): its rows are not read again.
+    for (const b of (skipBursts || []).slice(0, 8)) {
+        const from = new Date(`${b.hour}:00:00.000Z`);
+        if (Number.isNaN(from.getTime())) continue;
+        where.push('NOT (i.kind = ? AND i.site = ? AND i.actor_subject IS NULL AND i.occurred_at >= ? AND i.occurred_at < ?)');
+        args.push(b.kind, b.site, from.toISOString(), new Date(from.getTime() + 3600_000).toISOString());
+    }
     if (kind) { where.push('i.kind = ?'); args.push(kind); }
     if (site) { where.push('i.site = ?'); args.push(site); }
     if (q) { where.push('(i.title ILIKE ? OR i.text ILIKE ?)'); args.push(`%${q}%`, `%${q}%`); }

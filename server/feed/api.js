@@ -24,14 +24,20 @@ const session = require('../auth/session');
 const clean = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
 const KINDS = ['post', 'pic', 'clip', 'video', 'live', 'stream', 'rundown', 'quest', 'member', 'chat', 'event', 'wiki', 'update', 'work', 'deal', 'news', 'report', 'poll', 'game', 'meme', 'paste', 'episode', 'space', 'avatar', 'banner', 'follow', 'site'];
 const SITE_RE = /^[a-z0-9][a-z0-9:-]{0,39}$/;
-const encodeCursor = ([at, id]) => Buffer.from(JSON.stringify([new Date(at).toISOString(), Number(id)])).toString('base64url');
+// A cursor is [occurred_at, id] and, from 11-12, the bursts the pages before already showed ("deal|deals|2026-11-12T18"):
+// the next page leaves their rows out, so a Deals poll is one card however many pages it spans.
+const BURST_KEY = /^(deal|news|event)\|[a-z][a-z0-9-]{0,30}\|\d{4}-\d\d-\d\dT\d\d$/;
+const encodeCursor = ([at, id], done = []) => Buffer.from(JSON.stringify([new Date(at).toISOString(), Number(id), ...(done.length ? [done.slice(0, 8)] : [])])).toString('base64url');
 const decodeCursor = (v) => {
-    if (!v || typeof v !== 'string' || v.length > 400) return null;
+    if (!v || typeof v !== 'string' || v.length > 1200) return null;
     try {
-        const [at, id] = JSON.parse(Buffer.from(v, 'base64url').toString('utf8'));
-        return typeof at === 'string' && Number.isSafeInteger(id) && id > 0 ? [at, id] : null;
+        const [at, id, done] = JSON.parse(Buffer.from(v, 'base64url').toString('utf8'));
+        if (typeof at !== 'string' || !Number.isSafeInteger(id) || id <= 0) return null;
+        const kept = Array.isArray(done) ? done.filter((k) => typeof k === 'string' && BURST_KEY.test(k)).slice(0, 8) : [];
+        return Object.assign([at, id], { done: kept });
     } catch { return null; }
 };
+const burstsOf = (keys) => keys.map((k) => { const [kind, site, hour] = k.split('|'); return { kind, site, hour }; });
 const problem = (res, status, code, detail) => res.status(status).json({ type: `https://openvibe.network/problems/${code}`, title: status === 401 ? 'Unauthorized' : 'Bad request', status, code, detail });
 
 /** The person asking, when they carry a live session (Bearer or page cookie); never a service token. */
@@ -80,7 +86,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         const before = decodeCursor(String(req.query.cursor || ''));
 
         const read = await store.listItems(db, {
-            kind, site, q, followed, following, before, viewerSubject: viewer && viewer.subject,
+            kind, site, q, followed, following, before, viewerSubject: viewer && viewer.subject, skipBursts: before ? burstsOf(before.done || []) : [],
             limit: Math.min(400, want * 6 + 40), since: new Date(now() - 60 * 86400000).toISOString(),
         });
         const actors = await actorsFor(db, read.rows);
@@ -126,15 +132,13 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         };
         const firstOut = read.rows.findIndex((r) => !rowShown(r));
         const edge = firstOut > 0 ? read.rows[firstOut - 1] : read.rows[read.rows.length - 1];
-        let next = (firstOut > 0 || read.hasMore) && edge ? encodeCursor([edge.occurred_at, edge.id]) : null;
-        // A page that ends inside a burst (a Deals poll) moves past the rest of it when nothing else happened in that
-        // span, so the next page does not open with the same card again.
-        if (next && edge && !edge.actor_subject && BULK_WORD[edge.kind]) {
-            try {
-                const start = await store.burstStart(db, { kind: edge.kind, site: edge.site, before: [edge.occurred_at, edge.id] });
-                if (start) next = encodeCursor([start, 0]);
-            } catch { /* the plain cursor */ }
-        }
+        // The bursts shown so far ride in the cursor while the next page can still meet their rows (an hour that has not
+        // ended before the cursor's time).
+        const edgeAt = edge ? new Date(edge.occurred_at).toISOString() : '';
+        const done = [...new Set([...(before ? before.done || [] : []),
+            ...items.filter((c) => /^g:(deal|news|event):/.test(c.id)).map((c) => c.id.slice(2).replace(/:/, '|').replace(/:(?=\d{4}-)/, '|'))])]
+            .filter((k) => BURST_KEY.test(k) && `${k.split('|')[2]}:00:00.000Z` < edgeAt).slice(-8);
+        const next = (firstOut > 0 || read.hasMore) && edge ? encodeCursor([edge.occurred_at, edge.id], done) : null;
         if (wall) return { items: items.map(wallItem), next_cursor: next };
         return { items, next_cursor: next };
     }
