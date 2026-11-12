@@ -421,6 +421,15 @@ button.td-stat:hover span { color: var(--accent-light); }
 .mc-role-t { display: grid; gap: 1px; min-width: 0; }
 .mc-role-t b { font-size: 13.5px; }
 .mc-role-t small { font-size: 12px; color: var(--text-muted); line-height: 1.35; }
+/* 2026-11-12: the card in plain words. A line under each group says whom it is for; a hint under a row says what it
+   needs or how many; a row that cannot be turned on here is dimmed; a status line says what is set on the computer. */
+.mc-roles > .mc-lede { grid-column: 1 / -1; margin: 0 0 2px; font-size: 13px; color: var(--text-secondary); }
+.mc-role-t .mc-hint { color: var(--text-secondary); }
+.mc-role.is-off { opacity: .62; cursor: default; }
+.mc-status-line { grid-column: 1 / -1; margin: 0; display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--text-muted); }
+.mc-status-line.is-on { color: var(--text-secondary); }
+.mc-status-line.is-on > i { color: var(--success, #22c55e); }
+.mc-roles > .ma-switches { display: contents; }
 .mc-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .mc-revoke { background: transparent; border: 1px solid color-mix(in srgb, #ef4444 45%, var(--border)); color: var(--danger-text, #ef4444); }
 .mc-revoke.is-sure { background: #ef4444; color: #fff; border-color: #ef4444; }
