@@ -257,7 +257,7 @@ function mcAccessSwitches(m) {
     const boxes = {};
     for (const [key, label, note, icon] of rows) {
         const id = `mc-${m.id}-${key}`;
-        const box = mcEl('input', '', [], { type: 'checkbox', id, disabled: '' });
+        const box = mcEl('input', '', [], { type: 'checkbox', role: 'switch', id, disabled: '' });
         boxes[key] = box;
         box.addEventListener('change', async () => {
             box.disabled = true;
@@ -272,6 +272,6 @@ function mcAccessSwitches(m) {
     apiFetch(`/api/v1/me/nodes/${encodeURIComponent(m.principal_id)}/access-settings`).then((out) => {
         const s = (out && out.settings) || {};
         for (const [key, box] of Object.entries(boxes)) { box.checked = s[key] === true; box.disabled = false; }
-    }).catch(() => { field.append(mcEl('p', 'muted', ['These switches could not be read just now.'])); });
+    }).catch((e) => { field.append(mcEl('p', 'muted', [e && e.status === 401 ? 'Sign in again to change these switches.' : 'These switches could not be read just now.'])); });
     return field;
 }

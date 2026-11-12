@@ -412,7 +412,11 @@ button.td-stat:hover span { color: var(--accent-light); }
 .mc-roles legend { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
 .mc-role { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 10px; align-items: center; min-height: 52px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-card); cursor: pointer; }
 .mc-role:has(input:checked) { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); background: color-mix(in srgb, var(--accent) 8%, var(--bg-card)); }
-.mc-role input { width: 18px; height: 18px; accent-color: var(--accent); }
+.mc-role input:not([role="switch"]) { width: 18px; height: 18px; accent-color: var(--accent); }
+.mc-role { grid-template-columns: auto minmax(0, 1fr) auto; }
+.mc-role > input { grid-column: 3; grid-row: 1; justify-self: end; }
+.mc-role > .mc-role-ic { grid-column: 1; grid-row: 1; }
+.mc-role > .mc-role-t { grid-column: 2; grid-row: 1; }
 .mc-role-ic { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-light); }
 .mc-role-t { display: grid; gap: 1px; min-width: 0; }
 .mc-role-t b { font-size: 13.5px; }
@@ -815,3 +819,42 @@ body.link-hub.my-machines-open { padding-bottom: 0; }
     .ma-grant, .ma-agent { grid-template-columns: auto minmax(0, 1fr); }
     .ma-grant .btn, .ma-agent-sw { grid-column: 2; justify-self: start; }
 }
+
+/* The machine card, 11-12 (the owner: "improve the layout even further"): its head carries Actions; its places are tabs. */
+.mc-head { grid-template-columns: auto minmax(0, 1fr) auto; }
+.mc-head .mc-meta { grid-column: 2; }
+.mc-head .mc-action-menu { grid-column: 3; grid-row: 1 / span 2; align-self: start; position: relative; margin: 0; }
+.mc-action-menu summary { list-style: none; justify-content: center; width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 12px; }
+.mc-action-menu summary::-webkit-details-marker { display: none; }
+.mc-action-menu[open] summary { background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
+.mc-head .mc-action-menu .mc-acts { position: absolute; right: 0; top: 46px; z-index: 5; flex-direction: column; align-items: stretch; min-width: 180px; padding: 8px;
+  border: 1px solid var(--border); border-radius: 14px; background: var(--bg-card, var(--bg-secondary)); box-shadow: 0 16px 40px rgba(0, 0, 0, .35); animation: mc-pop .18s cubic-bezier(.2, 1.2, .3, 1) both; }
+.mc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@keyframes mc-pop { from { opacity: 0; transform: translateY(-4px) scale(.97); } }
+.mc-tabs { display: grid; gap: 12px; min-width: 0; }
+.mc-tabbar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 4px; margin: 0 -4px; border-radius: 14px; background: color-mix(in srgb, var(--text-primary) 4%, transparent); }
+.mc-tabbar::-webkit-scrollbar { display: none; }
+.mc-tab { flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--text-muted); font: inherit; font-size: 13.5px; font-weight: 650; cursor: pointer; transition: background-color .18s ease, color .18s ease, box-shadow .18s ease; }
+.mc-tab:hover { color: var(--text-primary); }
+.mc-tab[aria-selected="true"] { color: var(--text-primary); background: var(--bg-card, var(--bg-secondary)); box-shadow: 0 1px 0 color-mix(in srgb, var(--text-primary) 8%, transparent), 0 4px 14px rgba(0, 0, 0, .22); }
+.mc-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.mc-tab-n { min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; display: inline-grid; place-items: center; font-size: 11.5px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-light, var(--accent)); }
+.mc-pane { display: grid; gap: 12px; min-width: 0; animation: mc-fade .2s ease both; }
+.mc-pane[hidden] { display: none; }
+@keyframes mc-fade { from { opacity: 0; transform: translateY(3px); } }
+.mc-agents { display: grid; gap: 10px; }
+.mc-agents-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.mc-agents-lede { margin: 0; flex: 1 1 220px; font-size: 13px; color: var(--text-muted); }
+.mc-agent-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 8px; }
+.mc-agent { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 52px; padding: 8px 12px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--bg-card, transparent); }
+.mc-agent.is-ok { border-color: color-mix(in srgb, var(--success, #22c55e) 45%, var(--border)); }
+.mc-agent.is-off .mc-role-ic { opacity: .55; }
+.mc-agent-state { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; color: var(--text-muted); background: color-mix(in srgb, var(--text-primary) 7%, transparent); }
+.mc-agent-state.is-ok { color: var(--success-text, var(--success, #16a34a)); background: color-mix(in srgb, var(--success, #22c55e) 15%, transparent); }
+.mc-agent-state.is-warn { color: var(--warning-text, var(--warning, #b45309)); background: color-mix(in srgb, var(--warning, #f59e0b) 16%, transparent); }
+.mc-acts .btn { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; text-decoration: none; }
+@media (max-width: 520px) { .mc-tabbar { gap: 2px; } .mc-tab { flex: 1 0 auto; padding: 0 8px; font-size: 13px; gap: 5px; } .mc-acts { display: grid; grid-template-columns: 1fr; } .mc-acts .btn { justify-content: center; } }
+html[data-ov-motion=off] .mc-pane, html[data-ov-motion=off] .mc-head .mc-action-menu .mc-acts { animation: none; }
