@@ -70,6 +70,7 @@ async function loadStaffRoom() {
 async function loadAiSetupCard() {
     const el = document.getElementById('ai-setup-card');
     if (!el) return;
+    if (!currentUser || !currentUser.is_owner) { el.innerHTML = ''; return; }
     try {
         const s = await api('/api/admin/ai/setup');
         const ready = (s.summary && s.summary.ready) || 0;
