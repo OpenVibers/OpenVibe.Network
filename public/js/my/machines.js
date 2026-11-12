@@ -47,10 +47,7 @@ function mcCard(m) {
     const head = mcEl('div', 'mc-head', [dot, mcEl('div', 'mc-title', [name, state]), meta]);
     card.append(head);
     const roleChips = (m.roles || []).map((id) => (mcRoles || []).find((r) => r.id === id)).filter(Boolean);
-    card.append(mcEl('div', 'mc-role-chips', roleChips.length ? roleChips.map((r) => mcEl('span', 'mc-role-chip', [r.name])) : [mcEl('span', 'mc-role-chip is-empty', ['No roles assigned'])]));
-    card.append(mcMuseStatus(m));
-    (m.pools || []).forEach((pool) => card.append(mcPoolBlock(pool)));
-
+    card.append(mcEl('div', 'mc-role-chips', roleChips.length ? roleChips.map((r) => mcEl('span', 'mc-role-chip', [r.name])) : [mcEl('span', 'mc-role-chip is-empty', ['Nothing turned on yet'])]));
     if (Array.isArray(m.running) && m.running.length) {
         card.append(mcEl('ul', 'mc-running', m.running.slice(0, 6).map((r) => mcEl('li', '', [String((r && (r.title || r.kind || r.id)) || r)]))));
     }
@@ -59,24 +56,24 @@ function mcCard(m) {
     const roles = mcEl('fieldset', 'mc-roles mc-role-set', [mcEl('legend', '', ['What it does for you'])]);
     (mcRoles || []).forEach((role) => {
         const id = `mc-${m.id}-${role.id.replace(/\W/g, '-')}`;
-        const box = mcEl('input', '', [], { type: 'checkbox', id, value: role.id });
+        const box = mcEl('input', '', [], { type: 'checkbox', role: 'switch', id, value: role.id });
         box.checked = (m.roles || []).includes(role.id);
         box.addEventListener('change', () => mcSaveRoles(card, m));
         roles.append(mcEl('label', 'mc-role', [box, mcEl('span', 'mc-role-ic', [mcIcon(MC_ROLE_ICON[role.id] || 'fa-gear')]), mcEl('span', 'mc-role-t', [mcEl('b', '', [role.name]), mcEl('small', '', [role.shows || ''])])], { for: id }));
     });
-    card.append(roles);
-
     const own = mcOwnerSwitches(m);
-    if (own) card.append(own);
     // Who else may ask this machine for access, and its agents (my/access.js).
     const access = typeof mcAccessSwitches === 'function' ? mcAccessSwitches(m) : null;
-    if (access) card.append(access);
     const screen = mcScreenBlock(card, m);
-    if (screen) card.append(screen);
     const links = mcSharesBlock(m);
-    if (links) card.append(links);
     const desks = mcDesksBlock(card, m);
-    if (desks) card.append(desks);
+    const ready = (Array.isArray(m.fleet) ? m.fleet : []).filter((a) => a && a.installed && a.signed_in).length;
+    card.append(mcTabs(m.id, [
+        ['agents', 'Agents', [mcAgentsBlock(card, m), ...(m.pools || []).map((pool) => mcPoolBlock(pool))], ready],
+        ['roles', 'Roles', [roles], (m.roles || []).length],
+        ['access', 'Access', [own, access]],
+        ['screen', 'Screen', [screen, links, desks]],
+    ].filter(([, , blocks]) => blocks.some(Boolean))));
 
     const acts = mcEl('div', 'mc-acts');
     const rename = mcEl('button', 'btn btn-outline btn-small', [mcIcon('fa-pen'), ' Rename'], { type: 'button' });
@@ -84,29 +81,119 @@ function mcCard(m) {
     const revoke = mcEl('button', 'btn btn-small mc-revoke', [mcIcon('fa-link-slash'), ' Revoke'], { type: 'button' });
     revoke.addEventListener('click', () => mcConfirmRevoke(acts, m));
     acts.append(rename, revoke);
+    // Rename and Revoke live in the card's head, behind one quiet button (they used to trail the whole card).
     const menu = mcEl('details', 'mc-action-menu');
-    menu.append(mcEl('summary', '', ['Actions']));
+    menu.append(mcEl('summary', '', [mcIcon('fa-ellipsis'), mcEl('span', 'mc-sr', ['Actions for this machine'])], { 'aria-label': 'Actions for this machine', title: 'Rename or revoke' }));
     menu.append(acts);
-    card.append(menu);
+    head.append(menu);
     return card;
 }
 
-/** Muse runs on this machine under its owner's own sign-in; the last Link reading is only a status. */
-function mcMuseStatus(m) {
-    const muse = Array.isArray(m.fleet) ? m.fleet.find((a) => a.agent === 'muse') : null;
-    const fleetAge = m.fleet_at ? Date.now() - Date.parse(m.fleet_at) : NaN;
-    const stale = m.fleet_at && (!Number.isFinite(fleetAge) || fleetAge > 5 * 60000);
-    const state = !m.online ? 'Offline' : !muse || stale ? 'Status unavailable' : !muse.installed ? 'Not installed' : !muse.signed_in ? 'Sign in' : 'Ready';
-    const row = mcEl('div', 'mc-role', [
-        mcEl('span', 'mc-role-ic', [mcIcon('fa-code')]),
-        mcEl('span', 'mc-role-t', [mcEl('b', '', ['Muse Code']), mcEl('small', '', [state])]),
-    ]);
-    const setup = mcEl('details', '', [mcEl('summary', '', ['Set up Muse Code'])]);
-    setup.append(mcEl('p', '', ['Install Muse Code on this machine, run ', mcEl('code', '', ['muse login']), ', then run the Link installer again with ', mcEl('code', '', ['--plan-logins']), '. Jobs use your own Muse sign-in.']));
+/* ── Coding agents (11-12, the owner: "why are all coding agents not available and interconnected with openvibe.link
+   and openvibe.codes"): every agent OpenVibe.Codes can run, with what this machine says about each. Link reports them
+   only from a Codes worker (its fleet probe asks the Codes runner for its logins), so a machine without the role says
+   so and offers to turn it on; then each agent reads Ready, Sign in or Not installed, with its limit windows. */
+const MC_AGENTS = [
+    ['claude-code', 'Claude Code', 'fa-terminal'], ['codex', 'Codex', 'fa-code'], ['opencode', 'OpenCode', 'fa-code-branch'],
+    ['command-code', 'Command Code', 'fa-keyboard'], ['minimax-code', 'MiniMax Code', 'fa-wand-magic-sparkles'], ['muse', 'Muse Code', 'fa-feather'],
+    ['deepseek', 'DeepSeek', 'fa-water'], ['aider', 'Aider', 'fa-user-gear'],
+];
+const MC_CODES = 'https://openvibe.codes';
+function mcWindowText(w) {
+    const used = Number(w && w.used), limit = Number(w && w.limit);
+    const pct = Number.isFinite(used) && Number.isFinite(limit) && limit > 0 ? `${Math.round((used / limit) * 100)}%` : Number.isFinite(used) ? `${Math.round(used)}%` : '';
+    return [w && w.name, pct].filter(Boolean).join(' ');
+}
+function mcAgentsBlock(card, m) {
+    const block = mcEl('div', 'mc-agents');
+    const worker = (m.roles || []).includes('codes.worker');
+    const fleet = Array.isArray(m.fleet) ? m.fleet : [];
+    const age = m.fleet_at ? Date.now() - Date.parse(m.fleet_at) : NaN;
+    const fresh = fleet.length && Number.isFinite(age) && age <= 10 * 60000;
+    let lede;
+    if (!m.online) lede = 'Offline: what it has is shown as last reported.';
+    else if (!worker) lede = 'Turn on Codes worker and this machine runs your coding jobs with the agents it has, and says which ones here.';
+    else if (!fleet.length) lede = 'Codes worker is on. This machine has not reported its agents yet: they show a minute after the Link connects.';
+    else lede = fresh ? `Reported ${mcAgo(m.fleet_at)}.` : `Last reported ${mcAgo(m.fleet_at)}.`;
+    const head = mcEl('div', 'mc-agents-head', [mcEl('p', 'mc-agents-lede', [lede])]);
+    if (!worker) {
+        const on = mcEl('button', 'btn btn-primary btn-small', [mcIcon('fa-power-off'), ' Turn on Codes worker'], { type: 'button' });
+        on.addEventListener('click', () => {
+            const box = card.querySelector('input[value="codes.worker"]');
+            if (box && !box.checked) { box.checked = true; box.dispatchEvent(new Event('change', { bubbles: true })); }
+        });
+        head.append(on);
+    }
+    block.append(head);
+    const list = mcEl('ul', 'mc-agent-list', [], { role: 'list' });
+    for (const [id, label, icon] of MC_AGENTS) {
+        const a = fleet.find((x) => x && x.agent === id) || null;
+        const state = !a ? (fleet.length ? 'Not found' : 'Unknown') : !a.installed ? 'Not installed' : !a.signed_in ? 'Sign in' : 'Ready';
+        const tone = state === 'Ready' ? 'is-ok' : state === 'Sign in' ? 'is-warn' : 'is-off';
+        const windows = a && Array.isArray(a.windows) ? a.windows.slice(0, 3).map(mcWindowText).filter(Boolean).join(' · ') : '';
+        const li = mcEl('li', `mc-agent ${tone}`, [
+            mcEl('span', 'mc-role-ic', [mcIcon(icon)]),
+            mcEl('span', 'mc-role-t', [mcEl('b', '', [label]), mcEl('small', '', [windows || (state === 'Sign in' ? 'Installed: sign in on this machine to use it.' : state === 'Ready' ? 'Signed in on this machine.' : state === 'Not installed' ? 'Not on this machine yet.' : '')])]),
+            mcEl('span', `mc-agent-state ${tone}`, [state]),
+        ]);
+        list.append(li);
+    }
+    block.append(list);
+    // How an agent gets here: installed and signed in on the machine itself, then the Link told to use your own plans.
     const windows = /windows/i.test(String(m.os || ''));
+    const setup = mcEl('details', 'mc-agent-setup', [mcEl('summary', '', ['Set up an agent on this machine'])]);
+    setup.append(mcEl('p', '', ['Install the agent on this machine and sign in to it there (Muse Code: ', mcEl('code', '', ['muse login']), '), then run the Link installer again with ', mcEl('code', '', ['--plan-logins']), '. Jobs use your own sign-in, never a key of ours.']));
+    setup.append(mcEl('p', '', ['Muse Code on this machine:']));
     setup.append(mcEl('pre', '', [mcEl('code', '', [windows ? 'irm https://dev.meta.ai/install.ps1 | iex' : 'curl -fsSL https://dev.meta.ai/install.sh | sh'])]));
-    setup.append(mcEl('p', '', [mcEl('a', '', ['Worker setup'], { href: 'https://github.com/OpenVibers/OpenVibe.Link/blob/main/docs/worker.md' })]));
-    return mcEl('div', 'mc-roles', [row, setup]);
+    block.append(setup);
+    block.append(mcEl('div', 'mc-acts', [
+        mcEl('a', 'btn btn-primary btn-small', [mcIcon('fa-play'), ' Start a task here'], { href: `${MC_CODES}/conductor?machine=${encodeURIComponent(m.id)}` }),
+        mcEl('a', 'btn btn-outline btn-small', [mcIcon('fa-sliders'), ' Set up agents on Codes'], { href: `${MC_CODES}/setup` }),
+        mcEl('a', 'btn btn-outline btn-small', [mcIcon('fa-book'), ' Worker setup'], { href: 'https://github.com/OpenVibers/OpenVibe.Link/blob/main/docs/worker.md' }),
+    ]));
+    return block;
+}
+
+/* ── Tabs inside a card (11-12, the owner: "improve the layout even further"): one place at a time instead of every
+   block in one long column. The choice is kept per machine for the visit; arrows move between tabs. */
+function mcTabs(machineId, panes) {
+    const wrap = mcEl('div', 'mc-tabs');
+    const bar = mcEl('div', 'mc-tabbar', [], { role: 'tablist', 'aria-label': 'This machine' });
+    const key = `mc-tab:${machineId}`;
+    let want = '';
+    try { want = sessionStorage.getItem(key) || ''; } catch { want = ''; }
+    if (!panes.some(([id]) => id === want)) want = panes[0][0];
+    const buttons = [];
+    const bodies = [];
+    panes.forEach(([id, label, blocks, count]) => {
+        const tabId = `mc-${machineId}-tab-${id}`, paneId = `mc-${machineId}-pane-${id}`;
+        const b = mcEl('button', 'mc-tab', [label, count ? mcEl('span', 'mc-tab-n', [String(count)]) : null], { type: 'button', role: 'tab', id: tabId, 'aria-controls': paneId });
+        const pane = mcEl('div', 'mc-pane', blocks.filter(Boolean), { role: 'tabpanel', id: paneId, 'aria-labelledby': tabId });
+        buttons.push(b); bodies.push(pane);
+        bar.append(b);
+    });
+    const show = (id, focus) => {
+        panes.forEach(([pid], i) => {
+            const on = pid === id;
+            buttons[i].setAttribute('aria-selected', on ? 'true' : 'false');
+            buttons[i].tabIndex = on ? 0 : -1;
+            bodies[i].hidden = !on;
+            if (on && focus) buttons[i].focus();
+        });
+        try { sessionStorage.setItem(key, id); } catch { /* private mode */ }
+    };
+    buttons.forEach((b, i) => {
+        b.addEventListener('click', () => show(panes[i][0], false));
+        b.addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            e.preventDefault();
+            const n = (i + (e.key === 'ArrowRight' ? 1 : panes.length - 1)) % panes.length;
+            show(panes[n][0], true);
+        });
+    });
+    wrap.append(bar, ...bodies);
+    show(want, false);
+    return wrap;
 }
 
 /* ── The owner's switches, the live screen, its links, and the machine's desks ───────────────────────────────
@@ -116,7 +203,7 @@ function mcMuseStatus(m) {
 
 /** A labelled switch row: a checkbox, an icon, a bold label and the sentence that says what it allows. */
 function mcSwitchRow(id, label, note, checked, onChange) {
-    const box = mcEl('input', '', [], { type: 'checkbox', id });
+    const box = mcEl('input', '', [], { type: 'checkbox', role: 'switch', id });
     box.checked = checked === true;
     box.addEventListener('change', () => onChange(box));
     return mcEl('label', 'mc-role', [box, mcEl('span', 'mc-role-ic', [mcIcon(id.endsWith('-agent') ? 'fa-robot' : 'fa-tower-broadcast')]),

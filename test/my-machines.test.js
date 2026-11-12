@@ -85,11 +85,16 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
     assert.deepStrictEqual(cards.map((c) => c.getAttribute('data-machine')), ['dev_B', 'dev_A'], 'online first');
     assert.match(cards[0].textContent, /Studio PC.*Online.*Windows 11 · Node 0\.31\.0/);
     assert.match(cards[0].textContent, /Fix the WHIP reconnect/, 'what it runs');
-    assert.match(cards[0].textContent, /Muse CodeReady.*muse login.*--plan-logins.*install.ps1/, 'ready and Windows setup on its card');
-    assert.match(p.sandbox.mcMuseStatus({ online: true, fleet: [{ agent: 'muse', installed: true, signed_in: false }] }).textContent, /Muse CodeSign in/);
-    assert.match(p.sandbox.mcMuseStatus({ online: true, fleet: [{ agent: 'muse', installed: false, signed_in: false }] }).textContent, /Muse CodeNot installed/);
-    assert.match(p.sandbox.mcMuseStatus({ online: true }).textContent, /Muse CodeStatus unavailable/);
-    assert.match(p.sandbox.mcMuseStatus({ online: true, fleet: [{ agent: 'muse', installed: true, signed_in: true }], fleet_at: ago(10) }).textContent, /Muse CodeStatus unavailable/, 'old readings are not current readiness');
+    // 11-12: every coding agent Codes runs, with the machine's own report of each; Muse's setup stays on the card.
+    assert.match(cards[0].textContent, /Muse CodeSigned in on this machine\.Ready.*muse login.*--plan-logins.*install.ps1/, 'ready and Windows setup on its card');
+    assert.match(cards[0].textContent, /Claude Code.*Codex.*OpenCode.*Command Code.*MiniMax Code.*Muse Code.*DeepSeek.*Aider/, 'every agent Codes runs');
+    assert.match(cards[0].textContent, /Start a task here.*Set up agents on Codes/, 'the way to openvibe.codes');
+    const noCard = { querySelector: () => null };
+    assert.match(p.sandbox.mcAgentsBlock(noCard, { online: true, roles: ['codes.worker'], fleet: [{ agent: 'muse', installed: true, signed_in: false }] }).textContent, /Muse Code[^]*?Sign in/);
+    assert.match(p.sandbox.mcAgentsBlock(noCard, { online: true, roles: ['codes.worker'], fleet: [{ agent: 'muse', installed: false, signed_in: false }] }).textContent, /Muse Code[^]*?Not installed/);
+    assert.match(p.sandbox.mcAgentsBlock(noCard, { online: true, roles: [] }).textContent, /Turn on Codes worker/, 'a machine that is not a Codes worker offers to become one');
+    assert.match(p.sandbox.mcAgentsBlock(noCard, { online: true, roles: ['codes.worker'] }).textContent, /has not reported its agents yet/);
+    assert.match(p.sandbox.mcAgentsBlock(noCard, { online: true, roles: ['codes.worker'], fleet: [{ agent: 'muse', installed: true, signed_in: true }], fleet_at: ago(30) }).textContent, /Last reported 30 min ago/, 'an old reading says how old it is');
     assert.match(cards[1].textContent, /Offline · seen 2 h ago/);
     const boxes = cards[0].querySelectorAll('.mc-role input');
     assert.deepStrictEqual(boxes.map((b) => [b.value, b.checked]), [['codes.worker', true], ['desks.host', false], ['ai.host', false]], 'a switch per role, the machine\'s own on');
