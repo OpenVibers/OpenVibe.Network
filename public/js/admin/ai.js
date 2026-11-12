@@ -144,6 +144,10 @@ async function loadAi() {
                     <div id="ai-explorer-detail" style="margin-top:12px"></div>
                 </fieldset>
                 ${currentUser.is_owner ? `
+                <fieldset id="rundown-pictures-admin" style="border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px">
+                    <legend style="padding:0 8px;font-weight:700">The Rundown's episode pictures</legend>
+                    <div id="rundown-pictures-body"><span class="muted">Loading…</span></div>
+                </fieldset>
                 <form id="ai-form">
                     <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px">
                         <legend style="padding:0 8px;font-weight:700">Configuration</legend>
@@ -157,7 +161,66 @@ async function loadAi() {
                 </fieldset>`}
             </div>`;
         loadAiViewersFleet();
+        loadRundownPictures();
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
+}
+
+// ── The Rundown's episode pictures (Live, owner only) ─────────
+// One AI illustration per episode, from the episode's own words; the stream thumbnail is the fallback. The settings,
+// the month's spend and "Remake" are Live's /api/admin/rundown, reached through the admin proxy.
+async function loadRundownPictures() {
+    const el = document.getElementById('rundown-pictures-body'); if (!el) return;
+    if (!currentUser || !currentUser.is_owner) { el.innerHTML = '<p class="muted" style="margin:0"><i class="fa-solid fa-lock"></i> Owner only: these settings decide where the picture money goes.</p>'; return; }
+    try {
+        const d = await api('/api/admin/streamer/rundown');
+        const s = d.settings || {}, money = (n) => '$' + (Number(n || 0)).toFixed(2);
+        const cap = s.monthly_cap_usd == null ? 'no cap' : money(s.monthly_cap_usd);
+        const spend = d.spend || {};
+        const badge = { done: 'Made', pending: 'Queued', working: 'Making', refused: 'Refused', failed: 'Failed' };
+        const rows = (d.pictures || []).slice(0, 12).map((p) => `<tr>
+            <td style="padding:4px 6px">${p.image ? `<img src="${esc(p.image)}" alt="" loading="lazy" style="width:64px;height:34px;object-fit:cover;border-radius:4px">` : '<span class="muted">—</span>'}</td>
+            <td style="padding:4px 6px">${esc(p.title || ('stream ' + p.stream_id))}<br><small class="muted">${esc(p.username ? '@' + p.username : '')} · ${esc(p.model || '')} ${p.size ? '· ' + esc(p.size) : ''}</small></td>
+            <td style="padding:4px 6px;white-space:nowrap">${esc(badge[p.status] || p.status)}${p.cost_usd ? `<br><small class="muted">${money(p.cost_usd)}</small>` : ''}</td>
+            <td style="padding:4px 6px;max-width:280px"><small class="muted">${esc(p.error || '')}</small></td>
+            <td style="padding:4px 6px;white-space:nowrap"><button type="button" class="btn btn-sm" onclick="remakeRundownPicture(${Number(p.stream_id)})">Remake</button></td>
+        </tr>`).join('');
+        el.innerHTML = `
+            <p class="muted" style="margin:0 0 10px">Every Rundown episode gets one editorial illustration made from its title, topics, takes and recap, stored in Media at 1200×630. Explicit words (sex acts, or anything involving a minor) are refused before a prompt leaves Live; the stream thumbnail stays the fallback. This month: <b>${money(spend.usd || 0)}</b> of ${esc(cap)} · ${Number(spend.pictures || 0)} picture${Number(spend.pictures || 0) === 1 ? '' : 's'} · ${Number((d.counts || {}).pending || 0)} queued, ${Number((d.counts || {}).refused || 0)} refused.</p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:10px">
+                <label class="muted" style="font-size:12px"><input id="rp-enabled" type="checkbox" ${s.enabled ? 'checked' : ''} style="width:16px;height:16px;vertical-align:-3px"> On</label>
+                <label class="muted" style="font-size:12px">Model<br><input id="rp-model" value="${esc(s.model || '')}" spellcheck="false" style="width:100%;padding:6px 8px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text)"></label>
+                <label class="muted" style="font-size:12px">Size<br><input id="rp-size" value="${esc(s.size || '')}" spellcheck="false" style="width:100%;padding:6px 8px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text)"></label>
+                <label class="muted" style="font-size:12px">Monthly cap (USD)<br><input id="rp-cap" type="number" min="0" max="1000" step="0.01" value="${s.monthly_cap_usd == null ? '' : esc(s.monthly_cap_usd)}" style="width:100%;padding:6px 8px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text)"></label>
+                <label class="muted" style="font-size:12px;grid-column:1/-1">Style line<br><input id="rp-style" value="${esc(s.style || '')}" style="width:100%;padding:6px 8px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text)"></label>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="saveRundownPictures()"><i class="fa-solid fa-floppy-disk"></i> Save picture settings</button>
+            ${rows ? `<table style="width:100%;font-size:13px;border-collapse:collapse;margin-top:12px"><thead><tr><th style="text-align:left">Picture</th><th style="text-align:left">Episode</th><th style="text-align:left">State</th><th style="text-align:left">Why</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="muted" style="margin:10px 0 0">No episode pictures yet.</p>'}`;
+    } catch (e) {
+        el.innerHTML = `<p class="muted" style="margin:0">${e && e.status === 403 ? 'Owner only.' : 'Live did not answer: ' + esc(e.message)}</p>`;
+    }
+}
+
+async function saveRundownPictures() {
+    const settings = {
+        enabled: document.getElementById('rp-enabled').checked,
+        model: document.getElementById('rp-model').value.trim(),
+        size: document.getElementById('rp-size').value.trim(),
+        style: document.getElementById('rp-style').value.trim(),
+        monthly_cap_usd: document.getElementById('rp-cap').value === '' ? null : Number(document.getElementById('rp-cap').value),
+    };
+    try {
+        const d = await api('/api/admin/streamer/rundown/settings', { method: 'PUT', body: { settings } });
+        toast(`Picture settings saved (${Number((d && d.pictures || []).length)} recent)`, 'success');
+        loadRundownPictures();
+    } catch (e) { toast(e.message, 'error'); }
+}
+
+async function remakeRundownPicture(streamId) {
+    try {
+        const d = await api('/api/admin/streamer/rundown/episodes/' + Number(streamId) + '/remake', { method: 'POST', body: {} });
+        toast(d.message || 'Picture queued', 'success');
+        loadRundownPictures();
+    } catch (e) { toast(e.message, 'error'); }
 }
 
 async function loadAiViewersFleet() {
