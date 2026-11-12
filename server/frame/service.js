@@ -169,7 +169,7 @@ function aiSiteCopy({ privateKey, issuer, aiUrl }) {
     };
 }
 
-async function createFrameService(db, config, analytics, { privateKey = null, issuer = null, selfToken = () => null, aiUrl = null, requireAuth = null, person = null, today = null, now = Date.now, sites = SITES, places = LISTED, mentionLimit = 120 } = {}) {
+async function createFrameService(db, config, analytics, { privateKey = null, issuer = null, selfToken = () => null, aiUrl = null, requireAuth = null, person = null, today = null, now = Date.now, sites = SITES, places = LISTED, mentionLimit = 120, feed = null } = {}) {
     const services = (config && config.services) || {};
     aiUrl = aiUrl || (services.ai && services.ai.internalUrl) || process.env.OV_AI_INTERNAL_URL || 'http://127.0.0.1:4700';
     const choices = createFrameChoices({
@@ -730,20 +730,23 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     });
     router.post('/posts', express.json({ limit: '8kb' }), (req, res) => sendOn(req, res, '/api/v1/posts', JSON.stringify(req.body || {}), 'application/json'));
 
-    router.get('/feed', (req, res) => relay(req, res, '/api/v1/feed', {
+    // The feed is Network's own (server/feed/api.js, feed.item@1) since 11-12: the same handler Community's
+    // /api/v1/feed proxies, so the menu and Pulse return the same ids. The old relay stays only for a
+    // Frame built without it (a unit test), never in the server.
+    router.get('/feed', (req, res, next) => (feed ? feed.handleFeed(req, res, next) : relay(req, res, '/api/v1/feed', {
         kind: FEED_KINDS.includes(String(req.query.kind || '')) ? String(req.query.kind) : '',
         site: qSite(req.query.site), q: qWords(req.query.q),
         following: /^(1|true)$/.test(String(req.query.following || '')) ? '1' : '',
         cursor: qCursor(req.query.cursor), limit: qLimit(req.query.limit, 40),
-    }));
-    router.get('/feed/search', (req, res) => relay(req, res, '/api/v1/feed/search', {
+    })));
+    router.get('/feed/search', (req, res, next) => (feed ? feed.handleSearch(req, res, next) : relay(req, res, '/api/v1/feed/search', {
         q: qWords(req.query.q),
-    }));
-    router.get('/feed/examples', (req, res) => relay(req, res, '/api/v1/feed/examples', {}));
-    router.get('/wall', (req, res) => relay(req, res, '/api/v1/pulse', {
+    })));
+    router.get('/feed/examples', (req, res, next) => (feed ? feed.handleExamples(req, res, next) : relay(req, res, '/api/v1/feed/examples', {})));
+    router.get('/wall', (req, res, next) => (feed ? feed.handleWall(req, res, next) : relay(req, res, '/api/v1/pulse', {
         limit: qLimit(req.query.limit, 50), after: qCursor(req.query.after), cursor: qCursor(req.query.cursor),
         for: req.query.for === 'me' ? 'me' : '', origin: ['user', 'ai', 'system', 'all'].includes(String(req.query.origin || '')) ? String(req.query.origin) : '',
-    }));
+    })));
 
     // ── The wallet sheet's money and items (openvibe-shared ov-wallet.js) ──────────────────────────────────────
     // Every site's connect-src allows openvibe.network and refuses billing./inventory.openvibe.network, so the
