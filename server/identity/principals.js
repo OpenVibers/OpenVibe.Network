@@ -394,6 +394,9 @@ const DEFAULT_GRANTS = [
     // The owner's AI tab lists and edits AI's provider registry through AI's own admin API (GET/POST/PATCH
     // /api/v1/providers), as Network, naming the owner in X-OV-Subject.
     ['network', 'ai.provider.manage', 'openvibe.ai', []],
+    // People's own controls (2026-11-11): Network calls OpenVibe.AI's ui.layout.suggest for the signed-in
+    // person, naming them in X-OV-Subject, so the run counts against that person's own AI limits.
+    ['network', 'ai.layout.suggest', 'openvibe.ai', []],
     // Host's demand planner reads AI's usage feed (Host #283): ai.usage.read on openvibe.ai.
     ['host', 'ai.usage.read', 'openvibe.ai', []],
     // Plan T2 N4b: Bot pairs its users' machines with Network and reads or revokes only the principals it paired.

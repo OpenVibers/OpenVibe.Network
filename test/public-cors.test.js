@@ -11,12 +11,14 @@ const { createEcosystemRegistry } = require('../server/registry/ecosystem');
 (async () => {
     // Path decision
     for (const p of ['/.well-known/openvibe', '/api/v1/registry', '/api/v1/registry/', '/api/v1/registry/services', '/api/v1/registry/services/network', '/api/v1/people/@Ana/page',
-        '/api/v1/registry/domains/openvibe.community', '/api/v1/registry/capabilities/media.object.upload', '/contracts/identity/subject-ref.v1.json', '/contracts/events/payloads/deals.watch.matched.v1.json']) {
+        '/api/v1/registry/domains/openvibe.community', '/api/v1/registry/capabilities/media.object.upload', '/contracts/identity/subject-ref.v1.json', '/contracts/events/payloads/deals.watch.matched.v1.json',
+        '/api/v1/layouts/gallery', '/api/v1/layouts/gallery/', '/api/v1/layouts/shared/abcdefghijklmnopqrstuvwx']) {
         assert.ok(publicCors.isPublicDiscoveryPath(p), `${p} is public`);
     }
     for (const p of ['/api/v1/registryx', '/api/v1/registry-admin', '/api/v1/registry/../projects', '/api/v1/registry/%2e%2e/projects', '/api/v1/registry/a%2Fb',
         '/api/v1/registry//services', '/contracts/../x', '/contracts/foo', '/contracts/identity/subject-ref.json', '/contracts/identity/subject-ref.v1.json/x',
-        '/.well-known/openvibe/x', '/.well-known/openid-configuration', '/api/.well-known/jwks', '/api/auth/login', '/api/v1/projects', '/oauth/token', '/']) {
+        '/.well-known/openvibe/x', '/.well-known/openid-configuration', '/api/.well-known/jwks', '/api/auth/login', '/api/v1/projects', '/oauth/token', '/',
+        '/api/v1/layouts/gallery/secret', '/api/v1/layouts/galleryx', '/api/v1/layouts/shared/short', '/api/v1/layouts/shared/' + 'a'.repeat(65), '/api/v1/me/layouts']) {
         assert.ok(!publicCors.isPublicDiscoveryPath(p), `${p} is not public`);
     }
 

@@ -198,6 +198,13 @@ async function networkPart(db, userId) {
     if (typeof home === 'string') { try { home = JSON.parse(home); } catch { home = null; } }
     add('home-screen.json', home && typeof home === 'object' && Array.isArray(home.home) && Array.isArray(home.folders)
         ? home : { home: [], folders: [], updated_at: null });
+    // People's own controls (2026-11-11): every layout they made, the active one included, with the
+    // catalog fields the store keeps. A share token is exported as the token: it is the person's own link.
+    add('layouts.json', await tableExists(db, 'ui_layouts')
+        ? (await db.prepare(`SELECT id, surface, surface_version, device, name, doc, active, sharing, share_token, published_at, revision, created_at, updated_at
+                             FROM ui_layouts WHERE subject_id = ? ORDER BY created_at`).all(u.subject_id)).map((r) => ({
+            ...r, doc: typeof r.doc === 'string' ? (() => { try { return JSON.parse(r.doc); } catch { return r.doc; } })() : r.doc, active: !!r.active,
+        })) : []);
     await byUser('history.json', 'user_history');
     // The Dock's state (the Dock plan 2026-10-30, K-D1): the little floating surface every OpenVibe site draws.
     add('dock.json', await tableExists(db, 'dock_states')
@@ -377,6 +384,8 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         consentEvents = await require('../consent').revokeForDeletion(db, subjects, { at });
         // The Dock's state (the Dock plan 2026-10-30, K-D1): the person's own row, gone with them.
         await del('dock_states', `subject IN ${inS}`, subjects, 'dock_states');
+        // People's own controls (2026-11-11): the layouts they made, and their share links, go with them.
+        await del('ui_layouts', `subject_id IN ${inS}`, subjects, 'ui_layouts');
         await del('user_follows', `follower_subject IN ${inS} OR target_id IN ${inS}`, [...subjects, ...subjects], 'follows');
         await del('user_blocks', `blocker_subject IN ${inS} OR blocked_subject IN ${inS}`, [...subjects, ...subjects], 'blocks');
         await del('user_mutes', `muter_subject IN ${inS} OR muted_subject IN ${inS}`, [...subjects, ...subjects], 'mutes');

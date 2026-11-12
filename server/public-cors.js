@@ -32,6 +32,10 @@ function isPublicDiscoveryPath(p) {
     if (/^\/api\/v1\/levels\/(?:batch|board|people\/[A-Za-z0-9_]{1,40})$/.test(path)) return true;
     if (/^\/api\/v1\/people\/[A-Za-z0-9_]{3,24}\/card$/.test(path)) return true;
     if (path === '/api/v1/changelog') return true;   // the network changelog every site's "shipped" widget reads
+    // People's own controls (2026-11-11): the gallery and a shared layout are read-only and carry no
+    // account data, so any site may draw them without a token.
+    if (path === '/api/v1/layouts/gallery' || path === '/api/v1/layouts/gallery/') return true;
+    if (/^\/api\/v1\/layouts\/shared\/[A-Za-z0-9_-]{24,64}$/.test(path)) return true;
     if (path === '/api/v1/frame/today' || path === '/api/v1/frame/today/') return true;
     if (/^\/api\/v1\/profiles\/[A-Za-z0-9_]{1,40}$/.test(path)) return true;   // public profiles, for every site
     if (/^\/api\/v1\/people\/@[A-Za-z0-9_]{1,40}\/page$/.test(path)) return true; // public person page JSON
