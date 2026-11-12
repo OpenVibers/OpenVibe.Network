@@ -56,6 +56,8 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         work: String(feed.workUrl || 'https://openvibe.work').replace(/\/+$/, ''),
         deals: String(feed.dealsUrl || 'https://openvibe.deals').replace(/\/+$/, ''),
         news: String(feed.newsUrl || 'https://openvibe.news').replace(/\/+$/, ''),
+        blog: String(feed.blogUrl || 'https://openvibe.blog').replace(/\/+$/, ''),
+        wiki: String(feed.wikiUrl || 'https://openvibe.wiki').replace(/\/+$/, ''),
         report: String(feed.reportUrl || 'https://openvibe.report').replace(/\/+$/, ''),
     };
     let timer = null;
@@ -65,6 +67,11 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         const res = await fetchImpl(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(timeoutMs) });
         if (!res.ok) throw new Error(`${url} answered ${res.status}`);
         return await res.json();
+    }
+    async function getText(url, { timeoutMs = 10000 } = {}) {
+        const res = await fetchImpl(url, { headers: { accept: 'application/rss+xml, application/xml, text/xml' }, signal: AbortSignal.timeout(timeoutMs) });
+        if (!res.ok) throw new Error(`${url} answered ${res.status}`);
+        return await res.text();
     }
 
     /** A Live channel's person: the one Network account with that username, cached. */
@@ -485,6 +492,53 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         return created;
     }
 
+    // ── Blog ──────────────────────────────────────────────────
+    /** The blog's public RSS: its written posts, decoded to plain text. */
+    async function blogPosts() {
+        const xml = await getText(`${urls.blog}/feed.xml`);
+        const decode = (s) => String(s == null ? '' : s).replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+            .replace(/<[^>]*>/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, '&')
+            .replace(/\s+/g, ' ').trim();
+        const blocks = String(xml).split(/<item[\s>]/i).slice(1);
+        let created = 0;
+        for (const raw of blocks) {
+            const body = raw.split(/<\/item>/i)[0];
+            const title = decode((/<title>([\s\S]*?)<\/title>/i.exec(body) || [])[1]);
+            const link = decode((/<link>([\s\S]*?)<\/link>/i.exec(body) || [])[1]);
+            const date = Date.parse(decode((/<pubDate>([\s\S]*?)<\/pubDate>/i.exec(body) || [])[1]));
+            const desc = decode((/<description>([\s\S]*?)<\/description>/i.exec(body) || [])[1]);
+            const url = https(link);
+            if (!title || !url) continue;
+            const r = await upsert({ source_service: 'blog', source_type: 'post', source_id: url, kind: 'update',
+                title: clean(title, 300), text: clean(desc, 280), url, site: 'blog', site_name: 'Blog',
+                actor_subject: null, origin: 'system', label: 'System',
+                occurred_at: Number.isFinite(date) ? new Date(date).toISOString() : new Date(now()).toISOString() });
+            if (r.created) created++;
+        }
+        return created;
+    }
+
+    // ── Wiki ──────────────────────────────────────────────────
+    /** Wiki's public search for a common word, filtered to pages published in the last 30 days. */
+    async function wikiPages() {
+        const out = await getJson(`${urls.wiki}/api/v1/search?q=the&limit=50`);
+        let created = 0;
+        const since = now() - 30 * DAY;
+        for (const p of (Array.isArray(out.results) ? out.results : [])) {
+            if (!p || p.state !== 'published' || p.visibility !== 'public' || p.noindex) continue;
+            const at = sqlFrom(p.revision_published_at || p.published_at || p.updated_at);
+            if (!at || Date.parse(at) < since) continue;
+            const url = https(p.url);
+            const title = clean(p.title, 300);
+            if (!url || !title) continue;
+            const r = await upsert({ source_service: 'wiki', source_type: 'page', source_id: clean(p.id, 100), kind: 'wiki',
+                title, text: '', url, site: 'wiki', site_name: 'Wiki', actor_subject: null, origin: 'system', label: 'System',
+                occurred_at: at, touch: true });
+            if (r.created) created++;
+        }
+        return created;
+    }
+
     // ── Report: the online peak and this window's numbers ─────
     async function samplePeak() {
         if (!presence || typeof presence.snapshot !== 'function') return 0;
@@ -545,6 +599,8 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         { name: 'work-jobs', every: 10 * MINUTE, run: workJobs },
         { name: 'deal-offers', every: 10 * MINUTE, run: dealOffers },
         { name: 'news-stories', every: 10 * MINUTE, run: newsStories },
+        { name: 'blog-posts', every: 10 * MINUTE, run: blogPosts },
+        { name: 'wiki-pages', every: 10 * MINUTE, run: wikiPages },
         { name: 'online-peak', every: 2 * MINUTE, run: samplePeak },
         { name: 'report-card', every: 30 * MINUTE, run: reportCard },
     ];
@@ -598,7 +654,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         return { sources: SOURCES.map((s) => s.name), runs: await db.prepare('SELECT * FROM feed_source_runs ORDER BY name').all() };
     }
 
-    return { runOnce, start, stop, status, SOURCES: SOURCES.map((s) => s.name), communityActivity, todayEvents, networkMembers, questBadges, playAchievements, memeEntries, publicPictures, rundownEpisodes, publicContent, watchedTogether, publicSpaces, workJobs, dealOffers, newsStories, samplePeak, reportCard };
+    return { runOnce, start, stop, status, SOURCES: SOURCES.map((s) => s.name), communityActivity, todayEvents, networkMembers, questBadges, playAchievements, memeEntries, publicPictures, rundownEpisodes, publicContent, watchedTogether, publicSpaces, workJobs, dealOffers, newsStories, blogPosts, wikiPages, samplePeak, reportCard };
 }
 
 module.exports = { createFeedSources };

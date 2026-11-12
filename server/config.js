@@ -99,6 +99,8 @@ module.exports = {
         workUrl: process.env.OV_WORK_URL || 'https://openvibe.work',
         dealsUrl: process.env.OV_DEALS_URL || 'https://openvibe.deals',
         newsUrl: process.env.OV_NEWS_URL || 'https://openvibe.news',
+        blogUrl: process.env.OV_BLOG_URL || 'https://openvibe.blog',
+        wikiUrl: process.env.OV_WIKI_URL || 'https://openvibe.wiki',
         reportUrl: process.env.OV_REPORT_URL || 'https://openvibe.report',
     },
 

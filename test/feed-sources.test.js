@@ -12,7 +12,8 @@ function fakeFetch(routes) {
     return async (url) => {
         const u = String(url);
         for (const [needle, body] of Object.entries(routes)) {
-            if (u.includes(needle)) return { ok: true, status: 200, async json() { return typeof body === 'function' ? body(u) : body; } };
+            if (u.includes(needle)) return { ok: true, status: 200, async json() { return typeof body === 'function' ? body(u) : body; },
+                async text() { return typeof body === 'function' ? body(u) : (typeof body === 'string' ? body : JSON.stringify(body)); } };
         }
         return { ok: false, status: 404, async json() { return {}; } };
     };
@@ -28,7 +29,7 @@ function fakeFetch(routes) {
             communityUrl: 'https://community.test', todayUrl: 'https://today.test', questUrl: 'https://quest.test',
             playUrl: 'https://play.test', memeUrl: 'https://meme.test', picsUrl: 'https://pics.test', liveUrl: 'https://live.test',
             spaceUrl: 'https://space.test', workUrl: 'https://work.test', dealsUrl: 'https://deals.test',
-            newsUrl: 'https://news.test', reportUrl: 'https://report.test',
+            newsUrl: 'https://news.test', reportUrl: 'https://report.test', blogUrl: 'https://blog.test', wikiUrl: 'https://wiki.test',
         } },
         fetchImpl: fakeFetch(routes), presence,
     });
@@ -106,6 +107,16 @@ function fakeFetch(routes) {
     src = make({ '/api/v1/stories': { stories: [{ id: 'sty_1', title: 'A story', summary: 'Sourced', url: 'https://openvibe.news/s/1', status: 'published', published_at: new Date(NOW).toISOString() }] } });
     assert.strictEqual(await src.newsStories(), 1);
     assert.strictEqual((await rows()).find((r) => r.kind === 'news').source_service, 'news');
+
+    // Blog RSS and recent Wiki pages: the sources that only have a public feed/search.
+    src = make({ '/feed.xml': `<rss><channel><item><title>A blog post</title><link>https://openvibe.blog/p/a</link>`
+        + `<pubDate>Wed, 12 Nov 2026 08:00:00 GMT</pubDate><description>What changed this week.</description></item></channel></rss>` });
+    assert.strictEqual(await src.blogPosts(), 1);
+    assert.strictEqual((await rows()).find((r) => r.kind === 'update').source_service, 'blog');
+    src = make({ '/api/v1/search': { results: [{ id: 'pg_01M6SV8E153FM2T70WAF14TB4W', state: 'published', visibility: 'public', title: 'A wiki page',
+        url: 'https://openvibe.wiki/w/openvibe/feed', revision_published_at: new Date(NOW - 3600000).toISOString() }] } });
+    assert.strictEqual(await src.wikiPages(), 1);
+    assert.strictEqual((await rows()).find((r) => r.kind === 'wiki').source_service, 'wiki');
 
     // Report: the online peak from presence, then the day's report card with its trend.
     src = make({ '/api/v1/stats': { totals: { pageviews: 363633, change_pct: 44, sites_open: 56, accounts: 506 } } },
