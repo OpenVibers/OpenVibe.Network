@@ -402,6 +402,10 @@ const DEFAULT_GRANTS = [
     ['network', 'ai.layout.suggest', 'openvibe.ai', []],
     // Host's demand planner reads AI's usage feed (Host #283): ai.usage.read on openvibe.ai.
     ['host', 'ai.usage.read', 'openvibe.ai', []],
+    // Every AI call measured (ai-metrics.md, contracts 0.421.0): a product reports the model calls it made without
+    // OpenVibe.AI (Actor's own provider calls, a person's local model through Bot, a Codes harness turn, Chat) to AI's
+    // POST /api/v1/usage/calls, and AI prices and publishes each as ai.call.recorded@1.
+    ...['actor', 'bot', 'codes', 'chat'].map((svc) => [svc, 'ai.usage.report', 'openvibe.ai', []]),
     // Plan T2 N4b: Bot pairs its users' machines with Network and reads or revokes only the principals it paired.
     ['bot', 'network.link.manage', SELF_AUDIENCE, []],
     // Plan T15: an owner adds an operator by @username on the robot's panel; Bot resolves it to the subject here.
