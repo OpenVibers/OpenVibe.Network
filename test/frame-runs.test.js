@@ -48,7 +48,12 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
             { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GJ', title: 'Old task', status: 'done', mode: 'repo', repo: 'me/site', started_at: '2026-11-01T09:00:00Z', updated_at: '2026-11-01T09:30:00Z', steps: 1, url: 'https://openvibe.codes/tasks/tsk_01K9R2V6M8Q4T0B7C3D5E9F2GJ', preview_url: 'https://preview.openvibe.codes/x', pr_url: null },
         ] });
         if (u.pathname === '/api/v1/runs/tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH') return sendJson(res, 200, { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH', product: 'codes', title: 'A goal bar for my sub goal', status: 'needs_you', plan: [], steps: [{ title: 'Read the overlay code', kind: 'tool', status: 'done' }, { title: 'Write the bar', status: 'running' }], sources: [], result: null, started_at: '2026-11-12T09:00:00Z', ended_at: null, cost_usd: 0.42 });
-        if (u.pathname === '/api/v1/tasks' && req.method === 'POST') { const b = await readBody(req); seen.at(-1).body = b; return sendJson(res, 201, { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH' }); }
+        if (u.pathname === '/api/v1/tasks' && req.method === 'POST') {
+            const b = await readBody(req); seen.at(-1).body = b;
+            // Codes' make mode: one of the person's repositories named in the words starts a task; anything else is new.
+            if (b && b.mode === 'make') return /my-site/.test(String(b.text)) ? sendJson(res, 201, { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH', url: 'https://openvibe.codes/tasks/x' }) : sendJson(res, 200, { id: null, url: 'https://openvibe.space/build' });
+            return sendJson(res, 201, { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH' });
+        }
         if (/\/api\/v1\/tasks\/tsk_[0-9A-Z]+\/stop$/.test(u.pathname)) return sendJson(res, 200, { ok: true });
         return sendJson(res, 404, { error: 'not found' });
     });
@@ -59,6 +64,7 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         const run = { id: 'tsk_ACTOR1', owner: { type: 'user', id: 'usr_1' }, agent: { id: 'agt_1', name: 'Juniper', product: 'actor' }, status: 'running', created_at: '2026-11-12T08:00:00Z', updated_at: '2026-11-12T10:05:00Z' };
         if (u.pathname === '/api/v1/runs' && req.method === 'GET') return sendJson(res, 200, { runs: [run], next: null });
         if (u.pathname === '/api/v1/runs/tsk_ACTOR1') return sendJson(res, 200, run);
+        if (u.pathname === '/api/v1/runs' && req.method === 'POST') { const b = await readBody(req); seen.at(-1).body = b; return sendJson(res, 201, { ...run, id: 'tsk_MACHINE1', kind: b.kind || 'task', status: 'planning' }); }
         if (u.pathname === '/api/v1/runs/tsk_ACTOR1/approvals/apr_1') { const b = await readBody(req); return sendJson(res, 200, { run_id: 'tsk_ACTOR1', step_seq: 3, what: 'post', options: [{ id: 'approve', label: 'Approve' }], answer: b.answer }); }
         return sendJson(res, 404, { error: 'not found' });
     });
@@ -151,6 +157,23 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         const started = seen.filter((x) => x.svc === 'codes' && x.method === 'POST' && x.url === '/api/v1/tasks').at(-1);
         assert.deepStrictEqual(started.body, { repo: 'me/site', ref: null, prompt: 'Fix the login redirect' });
         assert.strictEqual(started.idem, 'k-123', 'the idempotency key goes to the product');
+
+        // One agent (11-13): words with no kind are placed by what they ask for.
+        const place = async (text) => { const x = await go('/', { method: 'POST', body: { text } }); return [x.r.status, x.r.headers.get('x-ov-placed'), x.d.kind || 'chat', x.d.ref]; };
+        let p = await place('Fix the login on my-site');
+        assert.deepStrictEqual(p.slice(0, 3), [201, 'codes', 'code'], 'a change to a repository of yours goes to Codes');
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1).body, { mode: 'make', text: 'Fix the login on my-site' }, 'in its make mode, with the words');
+        p = await place('Build a landing page for my bakery');
+        assert.deepStrictEqual(p.slice(0, 2), [201, 'vibe'], 'something new Codes has no repository for is a conversation with Vibe');
+        p = await place('Open my email on my computer and file the receipts');
+        assert.deepStrictEqual(p.slice(0, 3), [201, 'machine', 'machine'], 'work on your own computer is a machine run');
+        assert.strictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body.kind, 'machine');
+        p = await place('Remind me to fix the login tomorrow at 9');
+        assert.deepStrictEqual(p.slice(0, 2), [201, 'vibe'], 'a reminder is Vibe\'s, whatever it is about');
+        p = await place('How do I fix my login page?');
+        assert.deepStrictEqual(p.slice(0, 2), [201, 'vibe'], 'a question is Vibe\'s');
+        p = await place('test');
+        assert.deepStrictEqual(p.slice(0, 2), [201, 'vibe'], 'a word on its own starts a conversation');
 
         // Say, stop, approvals.
         ({ r, d } = await go('/chat:c_keys/messages', { method: 'POST', body: { text: 'Under $70?' } }));

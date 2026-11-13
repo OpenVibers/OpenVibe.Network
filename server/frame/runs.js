@@ -19,6 +19,8 @@
  *   chat   OpenVibe.Chat's Vibe conversations (kind chat; a conversation is a run waiting for a message);
  *   codes  OpenVibe.Codes' tasks (kind code);
  *   actor  OpenVibe.Actor's tasks, already served as agents.run@1 (kind task).
+ * Words with no kind and no target are the person's agent's to place (one agent, 2026-11-13; placeFor below): coding
+ * work goes to Codes' make mode, work on the person's own computer to Actor as a machine run, the rest to Vibe.
  * The person's own bearer goes upstream unchanged; every product checks it. A product that does not answer within its
  * deadline is left out of a list and named in `partial`; it never blocks the others.
  */
@@ -238,6 +240,35 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         if (body.kind && ['task', 'goal', 'machine'].includes(body.kind)) return actor;
         return chat;
     };
+    /**
+     * Words with no kind (2026-11-13, the owner: "your actor is just your agent … it can orchestrate to openvibe.codes,
+     * or timer, task, desktop, browser"): where they go, read from the words. A question, a timer, a reminder or a
+     * schedule is Vibe's (it has those tools); "on my computer" or "in my browser" is a machine run on Actor; a change
+     * to make in code (a doing word and a thing code is made of) is Codes' make mode, which finds the repository in the
+     * words or among the person's own. Anything else, and anything Codes cannot place, is a conversation with Vibe.
+     */
+    const ASKS = /^\s*(how|what|why|who|where|when|which|can|could|should|would|is|are|do|does|did|will)\b|\?\s*$/i;
+    const VIBE_TOOLS = /\b(remind(er)?s?|timer|alarm|pomodoro|every (day|morning|evening|night|week|hour|\d+\s*(minutes?|hours?|days?))|daily|weekly|tomorrow at)\b/i;
+    const MACHINE = /\b(on|in|with|using|from)\s+my\s+(computer|pc|laptop|desktop|mac|browser|machine|screen)\b/i;
+    const CODE_DO = /\b(fix|build|make|change|add|update|refactor|implement|rename|remove|edit|create|code|ship|deploy)\b/i;
+    const CODE_THING = /\b(repo|repository|github|pull request|pr|bug|login|sign[- ]?in|navbar|page|site|website|web ?app|app|component|function|endpoint|api|css|html|script|tests?|overlay|widget|button|feature|landing|form|bot|extension|plugin|goal bar|layout|header|footer)\b/i;
+    function placeFor(body) {
+        if (body.kind || body.target) return 'given';
+        const t = String(body.text || '');
+        if (ASKS.test(t) || VIBE_TOOLS.test(t)) return 'vibe';
+        if (MACHINE.test(t)) return 'machine';
+        if (CODE_DO.test(t) && CODE_THING.test(t)) return 'code';
+        return 'vibe';
+    }
+    /** Codes' make mode with the person's words: a run when it starts a task, null when the words are something new. */
+    async function codesMake(auth, owner, text, idempotencyKey) {
+        let out;
+        try { out = await call('codes', '/api/v1/tasks', { auth, method: 'POST', body: { mode: 'make', text }, idempotencyKey }); }
+        catch (err) { if (err && (err.status === 422 || err.status === 404)) return null; throw err; }
+        const id = out && (out.id || (out.task && out.task.id));
+        if (!id) return null;   // something new: Vibe talks it through (Codes would hand it to OpenVibe AI's builder)
+        return codes.get(auth, owner, id).catch(() => ({ id, ref: `codes:${id}`, kind: 'code', title: clip(text, 200), owner, agent: { id: 'codes', name: 'Codes', product: 'codes', glyph: 'code' }, status: 'planning', created_at: new Date(now()).toISOString(), updated_at: new Date(now()).toISOString() }));
+    }
 
     const router = express.Router();
     const json = express.json({ limit: '64kb' });
@@ -291,8 +322,12 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         if (!text) throw fail(422, 'runs.start_needs_words', 'Say what the run is for ({ text })');
         const key = String(req.get('idempotency-key') || '');
         const idempotencyKey = /^[A-Za-z0-9._~-]{1,200}$/.test(key) ? key : (key ? null : crypto.randomUUID());
-        const a = starterFor(b);
-        const run = await a.start(auth, owner, { ...b, text }, { idempotencyKey });
+        const place = placeFor({ ...b, text });
+        let run = null;
+        if (place === 'code') run = await codesMake(auth, owner, text, idempotencyKey);
+        if (!run && place === 'machine') run = await actor.start(auth, owner, { ...b, text, kind: 'machine' }, { idempotencyKey });
+        if (!run) run = await starterFor(b).start(auth, owner, { ...b, text }, { idempotencyKey });
+        res.set('X-OV-Placed', place === 'given' ? 'asked' : run.kind === 'code' ? 'codes' : run.kind === 'machine' ? 'machine' : 'vibe');
         res.status(201).json(run);
     }));
 
