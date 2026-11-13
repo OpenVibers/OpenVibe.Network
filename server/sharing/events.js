@@ -225,7 +225,7 @@ async function transferAnswered(ctx, event, ref, payload, now, accepted) {
         message: (sender, item) => accepted
             ? sender + ' accepted ' + item + '. It is theirs now.'
             : sender + ' declined ' + item + '. Nothing changed.',
-        icon: '↩️',
+        icon: '💬',
         ref,
     });
 }

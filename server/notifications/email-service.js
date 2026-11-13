@@ -8,6 +8,8 @@
 // ═══════════════════════════════════════════════════════════════
 
 const https = require('https');
+const glyphs = require('openvibe-shared/glyphs');
+const arrowRight = glyphs.svg('arrow-right', { size: 16 });
 
 /** A notification's structured data, whether the queue handed it JSON or an object. */
 function richOf(notification) {
@@ -266,7 +268,7 @@ class EmailService {
 <div style="padding:24px;color:#b0b0b8;font-size:14px;line-height:1.6">
 <div style="color:#e0e0e0;font-weight:600;margin-bottom:12px">Hey ${u},</div>
 <p>Confirm this address to receive OpenVibe email alerts — like when a streamer you follow goes live.</p>
-<a href="${url}" style="display:inline-block;background:#8b5cf6;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;margin:16px 0">Verify email →</a>
+<a href="${url}" style="display:inline-block;background:#8b5cf6;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;margin:16px 0">Verify email ${arrowRight}</a>
 <p style="color:#707080;font-size:12px">This link expires in ${expiresMinutes} minutes. If you didn't add this address to an OpenVibe account, ignore this email — nothing will be sent to you again.</p>
 <p style="color:#707080;font-size:12px;word-break:break-all">${url}</p>
 </div><div style="padding:16px 24px;text-align:center;color:#505060;font-size:11px;border-top:1px solid #333340"><a href="https://openvibe.network" style="color:#8b5cf6;text-decoration:none">openvibe.network</a></div></div></div></body></html>`;
@@ -388,7 +390,7 @@ body { margin: 0; padding: 0; background: #1a1a24; font-family: -apple-system, B
 ${notification.message ? `<div class="message">${this._escapeHtml(notification.message)}</div>` : ''}
 <div class="meta">${notification.service ? `From ${this._escapeHtml(notification.service)} · ` : ''}${notification.priority?.toUpperCase()} priority</div>
 </div>
-${notification.url ? `<a class="cta" href="${this._escapeHtml(notification.url)}">View Details →</a>` : ''}
+${notification.url ? `<a class="cta" href="${this._escapeHtml(notification.url)}">View Details ${arrowRight}</a>` : ''}
 </div>
 <div class="footer">
 <p>You're receiving this because it's a critical notification.</p>
@@ -470,7 +472,7 @@ body { margin: 0; padding: 0; background: #1a1a24; font-family: -apple-system, B
 <strong style="color:#e0e0e0">This link expires in ${expiresMinutes} minutes.</strong>
 <div class="muted" style="margin-top:8px">If you did not request this, you can safely ignore this email.</div>
 </div>
-<a class="cta" href="${resetUrl}">Reset Password →</a>
+<a class="cta" href="${resetUrl}">Reset Password ${arrowRight}</a>
 <p class="muted">If the button does not work, paste this URL into your browser:</p>
 <p class="muted" style="word-break:break-all">${resetUrl}</p>
 </div>

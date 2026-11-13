@@ -1,5 +1,7 @@
 'use strict';
 const kit = require('openvibe-shared/kit');
+const glyphs = require('openvibe-shared/glyphs');
+const arrowRight = glyphs.svg('arrow-right', { size: 16 });
 const sectionIcon = (name) => kit.icon(name, { cls: 'ovk-heading-icon' });
 const cache = require('openvibe-shared/cache-policy');
 // The openvibe.network home page: the static shell (public/index.html) with the network and the
@@ -253,7 +255,7 @@ function numbers(catalog, a) {
         c.accounts ? [fmtCount(c.accounts), 'accounts', '', '/login?tab=register'] : null,
         a.liveCount ? [fmtCount(a.liveCount), a.liveCount === 1 ? 'stream live now' : 'streams live now', '', 'https://openvibe.live/'] : null,
     ].filter(Boolean);
-    return `<section class="net-num" aria-labelledby="h-num"><h2 id="h-num" class="ovk-titled">${sectionIcon('grid')}OpenVibe in numbers</h2><ul>${items.map(([n, label, note, href]) => `<li><a href="${esc(href)}"><b>${esc(n)}</b><span>${esc(label)}${note ? ` <small>${esc(note)}</small>` : ''}</span></a></li>`).join('')}</ul><p class="net-num-more"><a href="/stats">Every site's numbers, open to everyone →</a></p></section>`;
+    return `<section class="net-num" aria-labelledby="h-num"><h2 id="h-num" class="ovk-titled">${sectionIcon('grid')}OpenVibe in numbers</h2><ul>${items.map(([n, label, note, href]) => `<li><a href="${esc(href)}"><b>${esc(n)}</b><span>${esc(label)}${note ? ` <small>${esc(note)}</small>` : ''}</span></a></li>`).join('')}</ul><p class="net-num-more"><a href="/stats">Every site's numbers, open to everyone ${arrowRight}</a></p></section>`;
 }
 
 // The kit (openvibe-shared/showcase, /shared/showcase.css) owns the sections, cards and icon styles; this is only what
@@ -475,7 +477,7 @@ function body(catalog, act) {
             : [{ icon: 'ov:tools', title: 'OpenVibe.Tools', text: 'Converters, downloaders, PDF and image tools, developer utilities and network diagnostics.', href: 'https://openvibe.tools/' }],
     }), '');
     const tools = `<section class="sc-sec" id="tools" aria-labelledby="h-tools"><h2 id="h-tools" class="ovk-titled">${sectionIcon('grid')}${esc(catalog.tools.length ? `${catalog.tools.length} tools that just open` : 'Tools that just open')}</h2><p class="sc-lede">No installs and no sign-up wall. Every tool has its own short address, so yt.openvibe.tools or dns.openvibe.tools takes you straight there.</p>${chips(popular.map((t) => [t.url, t.tagline || '', t.icon, t.name]))}
-${fams.length ? `<details class="home-fold"><summary>Every kind of tool<span>${esc(fams.length)} families</span></summary>${families.replace(/<h2[^>]*>[\s\S]*?<\/h2>/, '').replace(/<p class="sc-lede">[\s\S]*?<\/p>/, '')}</details>` : ''}<p class="home-more"><a href="https://openvibe.tools/">Browse every tool at openvibe.tools →</a> · <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> · <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a></p></section>`;
+${fams.length ? `<details class="home-fold"><summary>Every kind of tool<span>${esc(fams.length)} families</span></summary>${families.replace(/<h2[^>]*>[\s\S]*?<\/h2>/, '').replace(/<p class="sc-lede">[\s\S]*?<\/p>/, '')}</details>` : ''}<p class="home-more"><a href="https://openvibe.tools/">Browse every tool at openvibe.tools ${arrowRight}</a> · <a href="https://yt.openvibe.tools/">yt.openvibe.tools</a> · <a href="https://dns.openvibe.tools/">dns.openvibe.tools</a></p></section>`;
     // What signing in adds: one list, a line each (cards made it two screens on a phone).
     const account = `<section class="sc-sec" id="account" aria-labelledby="h-account"><h2 id="h-account" class="ovk-titled">${sectionIcon('members')}What signing in adds</h2><p class="sc-lede">You can use almost everything as a guest. An account is for the things that need to remember you, and it works on every OpenVibe site the moment you arrive.</p>
 <ul class="home-rows">${ACCOUNT.map(([ic, title, text, href]) => `<li><a href="${esc(href)}">${icon(`ov:${ic}`, 22)}<span><b>${esc(title)}</b><small>${esc(text)}</small></span></a></li>`).join('')}</ul></section>`;
@@ -494,7 +496,7 @@ ${chips(SOON.map((site) => [`https://${site.host}/`, site.tagline, site.icon, si
     }), '<p class="home-more">Machine-readable: <a href="/llms.txt">/llms.txt</a> · <a href="/llms-full.txt">/llms-full.txt</a> · <a href="https://openvibe.tools/llms.txt">openvibe.tools/llms.txt</a></p>');
     const dev = `<section class="sc-sec home-dev" id="developers" aria-label="For developers"><details class="home-fold"><summary>For developers and crawlers<span>API, SDK, llms.txt, source</span></summary>${devCards.replace(/^<section[^>]*>/, '<div>').replace(/<\/section>$/, '</div>')}</details></section>`;
     const faq = `<section class="sc-sec" id="faq" aria-labelledby="h-faq"><h2 id="h-faq" class="ovk-titled">${sectionIcon('help')}Questions people ask</h2><p class="sc-lede">The short answers. Every OpenVibe site has its own page of answers on OpenVibe.Help.</p>
-<div class="faq-grid">${faqPairs().map((p, i) => `<details class="faq-item"${i === 0 ? ' open' : ''}><summary><h3 class="ovk-titled">${sectionIcon('help')}${esc(p.q)}</h3></summary><p>${esc(p.a)}</p></details>`).join('')}</div><p class="home-more"><a href="https://openvibe.help/sites/openvibe.network">More answers about your account on OpenVibe.Help →</a></p></section>`;
+<div class="faq-grid">${faqPairs().map((p, i) => `<details class="faq-item"${i === 0 ? ' open' : ''}><summary><h3 class="ovk-titled">${sectionIcon('help')}${esc(p.q)}</h3></summary><p>${esc(p.a)}</p></details>`).join('')}</div><p class="home-more"><a href="https://openvibe.help/sites/openvibe.network">More answers about your account on OpenVibe.Help ${arrowRight}</a></p></section>`;
     return `<style>${CSS}</style>
 ${rightNow(act)}
 ${popularNow()}
@@ -564,7 +566,7 @@ const llmsSummary = () => `OpenVibe (openvibe.network, made by OpenVibers) is an
 // The person's own account ID (the canonical usr_… subject id): what apps and robots ask for.
 // GET /api/auth/me answers it for the signed-in person; a person reads it on their account page (/my).
 const ACCOUNT_ID_LINK = {
-    title: 'Your account ID: GET /api/auth/me → user.subject_id',
+    title: 'Your account ID: GET /api/auth/me returns user.subject_id',
     url: 'https://openvibe.network/api/auth/me',
     note: 'the caller\'s own usr_… id: the account id apps and robots ask for. A person sees their own on their account page (openvibe.network/my); nobody else can read it',
 };

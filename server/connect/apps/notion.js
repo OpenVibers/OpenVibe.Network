@@ -24,10 +24,10 @@ module.exports = {
         scopes: ['The pages and databases the integration was invited to'],
     },
     walkthrough: [
-        { title: 'Open the Notion integrations page', text: 'In the Notion app: Settings → Connections.', link: 'https://www.notion.so/my-integrations', linkLabel: 'Open Notion integrations' },
+        { title: 'Open the Notion integrations page', text: 'In the Notion app: Settings, then Connections.', link: 'https://www.notion.so/my-integrations', linkLabel: 'Open Notion integrations' },
         { title: 'Create an internal integration', text: 'Name it "OpenVibe Connect" and pick the workspace.', linkLabel: 'The next step' },
         { title: 'Copy the secret', text: 'Notion shows the internal integration secret once, as "ntn_…" or "secret_…".', linkLabel: 'The next step' },
-        { title: 'Share the pages with it', text: 'Open a page, then "…" → Connections, and add your integration. It sees only what you share with it.', linkLabel: 'The next step' },
+        { title: 'Share the pages with it', text: 'Open a page, then "…", then Connections, and add your integration. It sees only what you share with it.', linkLabel: 'The next step' },
         { title: 'Paste the secret below', text: 'Connect seals it and never shows it again.', linkLabel: 'The next step' },
     ],
     test: { method: 'GET', path: '/v1/users/me', summary: 'checks that the token works and says whose it is' },

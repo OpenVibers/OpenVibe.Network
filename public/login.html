@@ -84,11 +84,11 @@
                     <button type="button" class="toggle-password" onclick="togglePw(this)" aria-label="Show password"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
                 </div>
                 <button type="submit" class="submit-btn" id="login-submit">
-                    Sign In →
+                    Sign In <i data-ov-icon="arrow-right" aria-hidden="true"></i>
                 </button>
             </form>
             <a class="inline-link" onclick="showForgotForm()">Forgot your password?</a>
-            <a class="back-link" id="login-back" onclick="showChooser()" style="display:none">← Back to saved accounts</a>
+            <a class="back-link" id="login-back" onclick="showChooser()" style="display:none"><i data-ov-icon="arrow-left" aria-hidden="true"></i> Back to saved accounts</a>
         </div>
 
         <!-- A scheduled deletion: the same choice as the banner, before this sign-in continues -->
@@ -138,7 +138,7 @@
                     Create Account <span class="ov-mark" data-size="16" data-static="1"></span>
                 </button>
             </form>
-            <a class="back-link" id="register-back" onclick="showChooser()" style="display:none">← Back to saved accounts</a>
+            <a class="back-link" id="register-back" onclick="showChooser()" style="display:none"><i data-ov-icon="arrow-left" aria-hidden="true"></i> Back to saved accounts</a>
         </div>
 
         <!-- Forgot Password Form -->
@@ -154,7 +154,7 @@
                     Send Reset Link <i class="fa-solid fa-envelope"></i>
                 </button>
             </form>
-            <a class="back-link" id="forgot-back" onclick="returnFromRecovery()">← Back</a>
+            <a class="back-link" id="forgot-back" onclick="returnFromRecovery()"><i data-ov-icon="arrow-left" aria-hidden="true"></i> Back</a>
         </div>
 
         <!-- Reset Password Form -->
@@ -176,7 +176,7 @@
                     Reset Password <i class="fa-solid fa-lock"></i>
                 </button>
             </form>
-            <a class="back-link" id="reset-back" onclick="showAuthForm('login')">← Back to sign in</a>
+            <a class="back-link" id="reset-back" onclick="showAuthForm('login')"><i data-ov-icon="arrow-left" aria-hidden="true"></i> Back to sign in</a>
         </div>
 
         <div class="divider"><span>or</span></div>

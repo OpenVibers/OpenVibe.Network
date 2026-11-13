@@ -24,7 +24,7 @@ module.exports = {
     },
     walkthrough: [
         { title: 'Open Google Cloud console', text: 'Sign in with the Google account whose project you want to use.', link: 'https://console.cloud.google.com/apis/credentials', linkLabel: 'Open the credentials page' },
-        { title: 'Create an API key', text: 'Credentials → Create credentials → API key.', linkLabel: 'The next step' },
+        { title: 'Create an API key', text: 'Credentials, then Create credentials, then API key.', linkLabel: 'The next step' },
         { title: 'Restrict the key', text: 'Under API restrictions, allow only the Cloud Translation API. An unrestricted key is a key anyone can spend.', linkLabel: 'The next step' },
         { title: 'Paste the key below', text: 'Connect seals it and never shows it again.', linkLabel: 'The next step' },
     ],

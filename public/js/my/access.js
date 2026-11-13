@@ -106,7 +106,7 @@ function maAskCard(r) {
 function maGrantRow(g) {
     const row = mcEl('li', 'ma-grant');
     const text = mcEl('div', 'ma-grant-t', [
-        mcEl('b', '', [`${maCap(maMachine(g, 'from'))} → ${maMachine(g, 'to')}`]),
+        mcEl('b', '', [`${maCap(maMachine(g, 'from'))} to ${maMachine(g, 'to')}`]),
         mcEl('small', '', [`${maScopeWords(g.scopes)} · ${maLeft(g.expires_at)}`]),
     ]);
     const back = mcEl('button', 'btn btn-outline btn-small', [mcIcon('fa-hand'), ' Take back'], { type: 'button' });
@@ -164,7 +164,7 @@ async function loadMachineAccess() {
     if (ended.length) {
         const old = mcEl('details', 'ma-fold');
         old.append(mcEl('summary', '', [`Ended (${ended.length})`]),
-            mcEl('ul', 'ma-list', ended.map((x) => mcEl('li', '', [maCap(maMachine(x, 'from')), ` → ${maMachine(x, 'to')} · ${maScopeWords(x.scopes)} · `,
+            mcEl('ul', 'ma-list', ended.map((x) => mcEl('li', '', [maCap(maMachine(x, 'from')), ` to ${maMachine(x, 'to')} · ${maScopeWords(x.scopes)} · `,
                 x.status === 'denied' ? 'denied' : x.status === 'expired' ? 'no answer in time' : x.revoked_at ? 'taken back' : 'time ran out']))));
         parts.push(old);
     }
@@ -223,10 +223,10 @@ async function loadMachineAgents() {
         parts.push(mcEl('h4', 'ma-sub', ['Conversations between agents']));
         parts.push(mcEl('ul', 'ma-threads', threads.slice(0, 20).map((t) => {
             const state = MA_THREAD_STATE(t);
-            const head = mcEl('p', 'ma-thread-h', [mcEl('b', '', [maAgentLabel(t.from_agent)]), ' ↔ ', mcEl('b', '', [maAgentLabel(t.to_agent)]), mcEl('span', `ma-state is-${state === 'Open' ? 'open' : 'closed'}`, [state])]);
+            const head = mcEl('p', 'ma-thread-h', [mcEl('b', '', [maAgentLabel(t.from_agent)]), ' and ', mcEl('b', '', [maAgentLabel(t.to_agent)]), mcEl('span', `ma-state is-${state === 'Open' ? 'open' : 'closed'}`, [state])]);
             const tasks = mcEl('ol', 'ma-tasks', (t.tasks || []).slice(-6).map((k) => mcEl('li', `is-${k.status}`, [
                 mcEl('span', 'ma-task-msg', [maTaskText(k.message) || 'A task']),
-                mcEl('small', '', [k.status === 'completed' && maTaskText(k.result) ? `→ ${maTaskText(k.result)}` : k.status]),
+                mcEl('small', '', [k.status === 'completed' && maTaskText(k.result) ? `result: ${maTaskText(k.result)}` : k.status]),
             ])));
             const li = mcEl('li', 'ma-thread', [head, tasks]);
             if (state === 'Open') {

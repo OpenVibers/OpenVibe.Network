@@ -23,7 +23,7 @@ module.exports = {
         scopes: ['Public Steam data'],
     },
     walkthrough: [
-        { title: 'Open your Steam account page', text: 'Sign in to Steam, then My Account → Web API.', link: 'https://steamcommunity.com/dev/apikey', linkLabel: 'Open the Steam Web API page' },
+        { title: 'Open your Steam account page', text: 'Sign in to Steam, then My Account, then Web API.', link: 'https://steamcommunity.com/dev/apikey', linkLabel: 'Open the Steam Web API page' },
         { title: 'Register the key', text: 'Steam shows the key right away, as 32 hexadecimal characters.', linkLabel: 'The next step' },
         { title: 'Paste the key below', text: 'Connect seals it and never shows it again.', linkLabel: 'The next step' },
     ],

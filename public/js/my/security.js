@@ -17,7 +17,7 @@ async function loadEmailStatus() {
         } else if (st.bounced) {
             body.innerHTML = `<p><span style="color:var(--danger-text, var(--danger,#ef4444))"><i class="fa-solid fa-triangle-exclamation"></i> Mail to <strong>${esc(st.email)}</strong> is bouncing</span>${st.bounce_reason ? ` (${esc(st.bounce_reason)})` : ''}. Emails are paused until you update the address in <a href="#" onclick="showSection('profile');return false">Profile</a> and confirm it.</p>`;
         } else if (st.verified) {
-            body.innerHTML = `<p><span style="color:var(--success-text, var(--success,#22c55e))"><i class="fa-solid fa-circle-check"></i> <strong>${esc(st.email)}</strong> is verified.</span> You'll get an email when a streamer you follow goes live (turn this off under Streams → Email below).</p>`;
+            body.innerHTML = `<p><span style="color:var(--success-text, var(--success,#22c55e))"><i class="fa-solid fa-circle-check"></i> <strong>${esc(st.email)}</strong> is verified.</span> You'll get an email when a streamer you follow goes live (turn this off under Streams, then Email below).</p>`;
         } else {
             body.innerHTML = `<p><i class="fa-solid fa-envelope"></i> <strong>${esc(st.email)}</strong> isn't confirmed yet — go-live and other opt-in emails stay off until it is.</p>
                 <button class="btn btn-primary" id="notif-verify-btn" onclick="resendVerification(this)" ${st.can_resend && st.email_enabled ? '' : 'disabled'}><i class="fa-solid fa-paper-plane"></i> ${st.email_enabled ? 'Send verification email' : 'Email delivery not configured'}</button>
