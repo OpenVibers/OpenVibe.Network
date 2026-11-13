@@ -826,6 +826,35 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     }
     const walletJson = express.json({ limit: '8kb' });
     const USR = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/, ITEM = /^itd_[0-9A-HJKMNP-TV-Z]{26}$/;
+    // What people wear, for Shared's OV.names on every site (§Z.3 fix, 11-13): Inventory's public equipped read and its
+    // item definitions, relayed here because every site's CSP already allows openvibe.network and almost none allows
+    // inventory.openvibe.network (4.244.0's names drew CSP refusals on 34 sites). Public data: no credentials, CORS open,
+    // a short shared cache per exact request.
+    const itemsCache = new Map();
+    async function itemsRelay(res, path, ttl) {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${ttl}` });
+        const hit = itemsCache.get(path);
+        if (hit && hit.until > Date.now()) return res.status(200).send(hit.text);
+        try {
+            const r = await fetch(new URL(path, svcUrl('inventory', 'http://127.0.0.1:5030')).href, { headers: { Accept: 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(6000) });
+            const text = (await r.text()).slice(0, 256 * 1024);
+            if (!r.ok) return res.status(r.status >= 500 ? 502 : r.status).set('Cache-Control', 'no-store').send(text);
+            itemsCache.set(path, { until: Date.now() + ttl * 1000, text });
+            if (itemsCache.size > 2000) itemsCache.delete(itemsCache.keys().next().value);
+            return res.status(200).send(text);
+        } catch { return res.status(502).set('Cache-Control', 'no-store').send('{"error":"The inventory did not answer"}'); }
+    }
+    router.get('/items/equipped', (req, res) => {
+        const subjects = [...new Set(String(req.query.subjects || '').split(',').map((x) => x.trim()).filter((x) => USR.test(x)))].sort().slice(0, 100);
+        if (!subjects.length) return res.status(400).set('Access-Control-Allow-Origin', '*').json({ error: 'subjects: 1 to 100 usr_ ids, comma-separated' });
+        return itemsRelay(res, `/api/v1/equipped?subjects=${subjects.join(',')}`, 30);
+    });
+    router.get('/items/definitions', (req, res) => {
+        const issuer = String(req.query.issuer || 'service:live');
+        if (!/^service:[a-z0-9-]{1,40}$/.test(issuer)) return res.status(400).set('Access-Control-Allow-Origin', '*').json({ error: 'issuer: service:<name>' });
+        const limit = Math.min(Math.max(Number.parseInt(String(req.query.limit || '500'), 10) || 500, 1), 500);
+        return itemsRelay(res, `/api/v1/definitions?issuer=${encodeURIComponent(issuer)}&limit=${limit}`, 300);
+    });
     router.options('/wallet/*', (req, res) => {
         res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, PUT', 'Access-Control-Max-Age': '600' });
         res.status(204).end();
