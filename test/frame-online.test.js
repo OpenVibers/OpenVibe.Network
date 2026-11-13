@@ -90,7 +90,7 @@ assert.strictEqual(o.members, 4, 'four signed-in people were seen, including the
 assert.strictEqual(o.guests, 0);
 assert.deepStrictEqual(o.people.map((p) => p.username), ['ann'], 'only Ann may be named; a test account never is');
 assert.ok(!JSON.stringify(o).includes('ovprobe_frame'), 'the test account is nowhere in the public read');
-assert.deepStrictEqual(o.people[0], { name: 'Ann', username: 'ann', avatar: 'https://openvibe.network/avatar/ann?s=64', site: 'Live' });
+assert.deepStrictEqual(o.people[0], { name: 'Ann', username: 'ann', subject: ANN, avatar: 'https://openvibe.network/avatar/ann?s=64', site: 'Live' });
 assert.ok(!JSON.stringify(o).includes('bob') && !JSON.stringify(o).includes('cat'), 'a hidden member is never named');
 assert.strictEqual(o.more, 0);
 assert.deepStrictEqual(o.live, { channels: 3, watching: 22, first: [{ name: 'Eve', url: 'https://openvibe.live/@eve' }, { name: 'Fay', url: 'https://openvibe.live/@fay' }, { name: 'Hal', url: 'https://openvibe.live/@hal' }] },

@@ -45,6 +45,9 @@ function createUserCards({ db, profiles, selfToken = () => null, questUrl = 'htt
         if (visible.avatar_url) out.avatar_url = `https://openvibe.network/avatar/${encodeURIComponent(user.username)}?s=160`;
         const tasks = [];
         const hasSubject = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(user.subject_id || '');
+        // §Z.3 (11-13): the subject, so the card's name wears its effect, hat and badge (Shared OV.names). A private
+        // profile's card stays the bare minimum, as profile@1 does.
+        if (hasSubject && Number(user.profile_public)) out.subject = user.subject_id;
         if (visible.level) tasks.push(levels.total(db, user.id).then(value => { out.level = value.level; }));
         if (visible.followers && hasSubject) tasks.push(follows.count(db, 'user', user.subject_id).then(value => { out.followers = Number(value); }));
         if (visible.badges_count && hasSubject) tasks.push(json(questUrl, `/api/v1/profiles/${encodeURIComponent(user.subject_id)}/badges`, selfToken('openvibe.quest', ['quest.badge.read'])).then(value => {

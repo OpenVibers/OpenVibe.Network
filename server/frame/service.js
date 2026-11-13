@@ -591,7 +591,8 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
                 if (!username) continue;
                 const name = SITE_TEXT(r.display_name || username, 60) || username;
                 const at = entry.site ? SITES.find((s) => s.id === entry.site) : null;
-                visible.push({ name, username, avatar: `https://openvibe.network/avatar/${encodeURIComponent(username)}?s=64`, site: at ? at.name : null, at: entry.at });
+                // §Z.3 (11-13): the subject, so the name wears its effect (only people who chose to be named are here).
+                visible.push({ name, username, subject: /^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(String(subject || '')) ? subject : null, avatar: `https://openvibe.network/avatar/${encodeURIComponent(username)}?s=64`, site: at ? at.name : null, at: entry.at });
             }
             visible.sort((a, b) => b.at - a.at);
             const live = await readLive(nowMs);
@@ -626,7 +627,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             members: base.members,
             guests: base.guests,
             total: base.total,
-            people: base.visible.slice(0, 60).map(({ name, username, avatar, site: at }) => ({ name, username, avatar, site: at })),
+            people: base.visible.slice(0, 60).map(({ name, username, subject, avatar, site: at }) => ({ name, username, ...(subject ? { subject } : {}), avatar, site: at })),
             more: Math.max(0, base.visible.length - 60),
             live: base.live,
             counts: base.counts,

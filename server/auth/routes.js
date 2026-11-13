@@ -889,7 +889,7 @@ router.get('/users/:id/card', async (req, res) => {
 
     const user = await db.prepare(`
         SELECT id, username, display_name, avatar_url, bio, role, profile_color,
-               name_effect, particle_effect, is_anon, anon_number, created_at
+               name_effect, particle_effect, is_anon, anon_number, created_at, subject_id
         FROM users WHERE id = ?
     `).get(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });

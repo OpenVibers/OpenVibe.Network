@@ -39,7 +39,7 @@ const cors = require('../server/public-cors');
         assert.strictEqual(responses[0].headers.get('cache-control'), 'no-store');
         assert.strictEqual(responses[0].headers.get('access-control-allow-origin'), '*');
         assert.ok(cors.isPublicDiscoveryPath('/api/v1/people/CardTest/card'));
-        assert.deepStrictEqual(card, { username: 'CardTest', display_name: 'Card Test', profile_url: 'https://openvibe.network/@CardTest', avatar_url: 'https://openvibe.network/avatar/CardTest?s=160', level: 1, followers: 0, badges_count: 1, streak: 3, channel_url: 'https://openvibe.live/@CardTest', live: { now: true, site: 'live', url: 'https://openvibe.live/@CardTest' }, actions: [{ id: 'profile', label: 'Profile', href: 'https://openvibe.network/@CardTest' }, { id: 'channel', label: 'Channel', href: 'https://openvibe.live/@CardTest' }] });
+        assert.deepStrictEqual(card, { username: 'CardTest', subject, display_name: 'Card Test', profile_url: 'https://openvibe.network/@CardTest', avatar_url: 'https://openvibe.network/avatar/CardTest?s=160', level: 1, followers: 0, badges_count: 1, streak: 3, channel_url: 'https://openvibe.live/@CardTest', live: { now: true, site: 'live', url: 'https://openvibe.live/@CardTest' }, actions: [{ id: 'profile', label: 'Profile', href: 'https://openvibe.network/@CardTest' }, { id: 'channel', label: 'Channel', href: 'https://openvibe.live/@CardTest' }] });
         assert.strictEqual(calls, 3, 'concurrent reads coalesce');
         await get(); assert.strictEqual(calls, 3, 'warm read reuses aggregate');
         clock += TTL_MS + 1; await get(); assert.strictEqual(calls, 6, 'expires after 30 seconds');

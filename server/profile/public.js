@@ -325,6 +325,8 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             showcase: inv.showcase.map((i) => ({ slot: i.slot, kind: i.kind, kind_name: i.kind_name, definition_id: i.definition_id, name: i.name, rarity: i.rarity, art: i.art, url: i.url })),
             items: { count: inv.total, more: inv.more, by_kind: [...counts.values()], unavailable: !!inv.unavailable },
             inventory_url: SUBJECT_RE.test(String(u.subject_id || '')) ? `${INVENTORY_SITE}/u/${u.subject_id}` : null,
+            // §Z.3 (11-13): a public profile's subject (its inventory_url already carries it), so the name wears its effect.
+            subject: SUBJECT_RE.test(String(u.subject_id || '')) ? u.subject_id : null,
             badges: inv.badges,
             ...(inv.badgesUnavailable ? { badges_unavailable: true } : {}),
             achievements: { total: inv.achievements.total, games: inv.achievements.games, ...(inv.achievements.unavailable ? { unavailable: true } : {}) },
