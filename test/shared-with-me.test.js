@@ -156,7 +156,7 @@ const inbox = async (userId) => await db.prepare('SELECT * FROM notifications WH
         assert.strictEqual(r.body.items.length, 0, 'the revoked item is gone');
 
         // ── a transfer: pending, then answered ──
-        const transfer = { transfer_id: 'sht_1', resource: { service: 'community', kind: 'paste', id: 'pst_2' }, from: BOB, to: ALICE, keep_access: false, requested_at: '2026-11-06T10:00:00.000Z', expires_at: '2026-11-13T10:00:00.000Z' };
+        const transfer = { transfer_id: 'sht_1', resource: { service: 'community', kind: 'paste', id: 'pst_2' }, from: BOB, to: ALICE, keep_access: false, requested_at: '2026-11-06T10:00:00.000Z', expires_at: new Date(Date.now() + 7 * 864e5).toISOString() }; // a week from the run, never a fixed date: it expired on 2026-11-13
         r = await post(shareEvent('share.transfer.requested', transfer));
         assert.strictEqual(r.body.outcome, 'notified');
         mine = await inbox(7);
