@@ -840,7 +840,8 @@ Accessible to users with `role = 'admin'`. All endpoints under `/api/admin/`.
 
 ## Acceptance
 
-`npm test` runs the 74 test files listed in `package.json` (temp databases, no network). They
+`npm test` runs every test file in `test/` — `test/run.js` picks up each `*.test.js`, 297 files today
+(temp databases, no network). They
 cover OAuth with PKCE, OIDC discovery, refresh-token rotation and reuse, SSO and FedCM, subjects,
 principals and grants, export and deletion, developer projects, export tokens and usage,
 user modules, blocks, follows and their authority switch, analytics privacy, the registry and its

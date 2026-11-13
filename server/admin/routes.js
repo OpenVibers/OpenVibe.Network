@@ -607,13 +607,13 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
             let users;
             if (search) {
                 users = await db.prepare(`
-                    SELECT id, username, display_name, email, role, is_banned, created_at, last_seen
+                    SELECT id, username, display_name, email, role, is_banned, is_test, created_at, last_seen
                     FROM users WHERE username ILIKE ? OR display_name ILIKE ? OR email ILIKE ?
                     ORDER BY created_at DESC LIMIT ? OFFSET ?
                 `).all(`%${search}%`, `%${search}%`, `%${search}%`, limit, offset);
             } else {
                 users = await db.prepare(`
-                    SELECT id, username, display_name, email, role, is_banned, created_at, last_seen
+                    SELECT id, username, display_name, email, role, is_banned, is_test, created_at, last_seen
                     FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?
                 `).all(limit, offset);
             }
