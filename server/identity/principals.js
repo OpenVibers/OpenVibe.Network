@@ -802,6 +802,9 @@ const DEFAULT_GRANTS = [
     ['exchange', 'bench.round.create', 'openvibe.bench', []],
     ['exchange', 'bench.judgement.cast', 'openvibe.bench', []],
     ['exchange', 'bench.board.read', 'openvibe.bench', []],
+    // The evaluation loop (compare-arena-ecosystem.md, Contracts 0.422.0): Codes records its races (tests, then the merge)
+    // and Run records the Arena's race plays as bench.match@1 at Bench's POST /api/v1/matches.
+    ...['codes', 'run'].map((svc) => [svc, 'bench.judgement.cast', 'openvibe.bench', []]),
     // OpenVibe.Fun (contracts 0.236.0): its public quests and plans in Search through the owner API (owner fun), and
     // its account-event subscriptions; its export/deletion pair is above. Live and Chat are public reads and Today
     // uses the viewer's own token, so it holds no Live, Chat or Today grant. The optional OpenCoin grants
