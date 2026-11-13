@@ -251,6 +251,19 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
     await p.sandbox.loadMachines();
     assert.match(p.ids['mc-list'].textContent, /Sign in to see your machines/);
 
+    // §Y.1 A3 (11-13): a machine's system shows its maker's mark. Apple, Linux, Windows and Android are brand glyphs
+    // (fa-brands): written as fa-solid they resolved to nothing and the cards showed a blank.
+    {
+        const { sandbox } = page({ answers: {} });
+        const cls = (os) => sandbox.mcOsIcon(os).className;
+        assert.strictEqual(cls('macOS 15.2'), 'fa-brands fa-apple');
+        assert.strictEqual(cls('darwin'), 'fa-brands fa-apple', 'darwin is a Mac');
+        assert.strictEqual(cls('Ubuntu 24.04 (linux)'), 'fa-brands fa-linux');
+        assert.strictEqual(cls('Windows 11'), 'fa-solid fa-laptop', 'Windows has no mark on purpose: a laptop');
+        assert.strictEqual(cls('Android 16'), 'fa-brands fa-android');
+        assert.strictEqual(cls(''), 'fa-solid fa-laptop', 'an unknown system is a laptop');
+        assert.ok(!/fa-solid fa-(apple|linux|windows|android)/.test(SRC), 'no brand mark is ever written as fa-solid');
+    }
     // The pairing panel stays closed until "Pair a machine" (its own display:grid outranked the hidden attribute).
     assert.match(fs.readFileSync(path.join(__dirname, '..', 'public/css/my.css'), 'utf8'), /\.mc-pair\[hidden\] \{ display: none; \}/);
     console.log('my machines: state, running, roles as switches saved whole, rename, a second press to revoke, pairing that watches for the machine, empty and signed out');
