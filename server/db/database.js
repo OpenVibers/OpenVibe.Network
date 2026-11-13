@@ -146,6 +146,8 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'report', name: 'OpenVibe.Report', redirect_uris: ['https://openvibe.report/auth/callback'] },
             // The open meme database: a signed-in front for votes, captions and reports.
             { client_id: 'meme', name: 'OpenVibe.Meme', redirect_uris: ['https://openvibe.meme/auth/callback'] },
+            // Compare signs people in (plan 16a, 11-13): votes, "for your task" and the Arena move to openvibe.compare.
+            { client_id: 'compare', name: 'OpenVibe.Compare', redirect_uris: ['https://openvibe.compare/auth/callback'] },
             // Ask a picture, compare models and check a page's UI (plan 2026-10-28 §5.8); Design's Arena calls its UI check.
             { client_id: 'vision', name: 'OpenVibe.Vision', redirect_uris: ['https://openvibe.vision/auth/callback'] },
             // Free and swap listings with a permission passport, a sandbox and one-tap revoke (the Exchange room).
