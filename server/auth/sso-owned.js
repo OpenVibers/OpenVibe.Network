@@ -11,6 +11,8 @@ const OWNED_ZONES = [
     'openvibe.computer', 'openvibe.email', 'openvibe.link', 'openvibe.locker', 'openvibe.my', 'openvibe.party', 'openvibe.studio',
     // 2026-11-10: the two bought that day (parked in deploy/nginx/parked-domains.conf until their products serve them).
     'openvibe.compare', 'openvibe.directory',
+    // 2026-11-13: the three bought that day (parked in deploy/nginx/parked-domains.conf until their products serve them).
+    'openvibe.markets', 'openvibe.expert', 'openvibe.finance',
 ];
 // Zones whose subdomains are people's own content (OpenVibe.Host tenant sites, <site>.openvibe.host,
 // which run the tenant's JS): only the apex is OpenVibe's. Domain validation still refuses them as
