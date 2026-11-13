@@ -8,7 +8,6 @@
 const OV_PAGE_LINKS = [{"label":"Network","href":"/"},{"label":"Link","href":"https://openvibe.link/","icon":"fa-desktop","featured":true},{"label":"My Account","href":"https://openvibe.my/"},{"label":"Wallet","href":"/wallet"},{"label":"Themes","href":"/themes"}];
 const tabLoaders = {
     setup: loadSetup,
-    glossary: loadGlossary,
     dashboard: loadDashboard,
     users: loadUsers,
     streams: loadStreams,
@@ -27,7 +26,6 @@ const tabLoaders = {
     storage: loadStorage,
     notifications: () => {},
     email: loadEmail,
-    vkeys: loadVKeys,
     audit: loadAudit,
     modlog: () => loadModLog(true),
     grants: () => loadGrants(),
@@ -35,9 +33,7 @@ const tabLoaders = {
     checklist: () => loadOperatorChecklist(),
     eventsops: () => loadDeliveries(),
     analytics: loadAnalytics,
-    deploy: loadDeployOverview,
     domains: loadDomains,
-    ssh: loadSSH,
 };
 
 // ═══════════════════════════════════════════════════════════════

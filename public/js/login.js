@@ -868,16 +868,9 @@ async function handleRegister(e) {
                 username: form.get('username'),
                 email: form.get('email') || undefined,
                 password: form.get('password'),
-                verification_key: form.get('verification_key') || undefined,
             }),
         });
         const data = await res.json();
-        // A reserved name: show the claim-code field only now (most people never need it).
-        if (!res.ok && data.reserved) {
-            const claim = document.getElementById('claim-field');
-            if (claim) { claim.hidden = false; document.getElementById('claim-code').focus(); }
-            throw new Error('This username is reserved. Enter its claim code, or choose another name.');
-        }
         if (!res.ok) throw new Error(data.error || 'Registration failed');
 
         localStorage.setItem('ov_token', data.token);

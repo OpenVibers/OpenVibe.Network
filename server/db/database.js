@@ -463,37 +463,6 @@ function attachHelpers(db) {
         return row.value;
     };
 
-    db.createVerificationKey = async function ({ key, target_username, note, created_by }) {
-        return await db.prepare('INSERT INTO verification_keys (key, target_username, note, created_by) VALUES (?, ?, ?, ?)')
-            .run(key, target_username, note || '', created_by);
-    };
-    db.getVerificationKeyByKey = async function (key) {
-        return await db.prepare('SELECT * FROM verification_keys WHERE key = ?').get(key);
-    };
-    db.getVerificationKeyByUsername = async function (username) {
-        return await db.prepare("SELECT * FROM verification_keys WHERE lower(target_username) = lower(?) AND status = 'active'").get(username);
-    };
-    db.getAllVerificationKeys = async function () {
-        return await db.prepare(`
-            SELECT vk.*, u1.username as created_by_name, u2.username as used_by_name
-            FROM verification_keys vk
-            LEFT JOIN users u1 ON vk.created_by = u1.id
-            LEFT JOIN users u2 ON vk.used_by = u2.id
-            ORDER BY vk.created_at DESC
-        `).all();
-    };
-    db.redeemVerificationKey = async function (key, userId) {
-        return await db.prepare("UPDATE verification_keys SET status = 'used', used_by = ?, used_at = ov_now() WHERE key = ? AND status = 'active'")
-            .run(userId, key);
-    };
-    db.revokeVerificationKey = async function (id) {
-        return await db.prepare("UPDATE verification_keys SET status = 'revoked' WHERE id = ? AND status = 'active'").run(id);
-    };
-    db.isUsernameReserved = async function (username) {
-        const vk = await db.prepare("SELECT id FROM verification_keys WHERE lower(target_username) = lower(?) AND status = 'active'").get(username);
-        return !!vk;
-    };
-
     Object.defineProperty(db, '_ovHelpers', { value: true, enumerable: false });
     return db;
 }

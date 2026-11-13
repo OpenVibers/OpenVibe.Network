@@ -28,7 +28,7 @@ function glossaryEntry(id) {
 /** The small "What does this mean?" link next to a word. Opens the line in place; a new tab opens the full list. */
 function glossaryLink(id, label) {
     if (!glossaryEntry(id)) return '';
-    return '<a class="ov-what" href="/admin#glossary/' + esc(id) + '" data-glossary="' + esc(id) + '">' + esc(label || 'What does this mean?') + '</a>';
+    return '<a class="ov-what" href="#" role="button" data-glossary="' + esc(id) + '">' + esc(label || 'What does this mean?') + '</a>';
 }
 
 function glossaryPopup(id, anchor) {
@@ -45,17 +45,12 @@ function glossaryPopup(id, anchor) {
     p.textContent = entry.text;
     const actions = document.createElement('div');
     actions.className = 'pai-dialog-actions';
-    const all = document.createElement('a');
-    all.className = 'btn btn-outline';
-    all.href = '/admin#glossary/' + entry.id;
-    all.textContent = 'Every word explained';
-    all.addEventListener('click', (ev) => { ev.preventDefault(); dlg.close(); openGlossary(entry.id); });
     const close = document.createElement('button');
     close.type = 'button';
     close.className = 'btn btn-primary';
     close.textContent = 'Close';
     close.addEventListener('click', () => dlg.close());
-    actions.append(all, close);
+    actions.append(close);
     form.append(h, p, actions);
     dlg.append(form);
     document.body.appendChild(dlg);
@@ -64,20 +59,6 @@ function glossaryPopup(id, anchor) {
 }
 
 /** Scroll the list to one word and mark it for a moment (the list must already be drawn). */
-function scrollGlossary(id) {
-    if (!id) return;
-    setTimeout(() => {
-        const el = document.getElementById('glossary-' + id);
-        if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('is-target'); setTimeout(() => el.classList.remove('is-target'), 1600); }
-    }, 60);
-}
-
-/** Open the Glossary tab (which draws the list) at one word. */
-function openGlossary(id) {
-    if (typeof showTab === 'function') showTab('glossary');
-    scrollGlossary(id);
-}
-
 // One listener for every "What does this mean?" link on the page, wherever it was drawn.
 document.addEventListener('click', (ev) => {
     const link = ev.target.closest && ev.target.closest('a[data-glossary]');
@@ -85,15 +66,3 @@ document.addEventListener('click', (ev) => {
     ev.preventDefault();
     glossaryPopup(link.dataset.glossary, link);
 });
-
-function loadGlossary() {
-    const box = document.getElementById('glossary-content');
-    if (!box) return;
-    box.innerHTML = '<div class="glossary">'
-        + '<h2>What the words mean</h2>'
-        + '<p class="muted glossary-intro">The few words the admin panel cannot avoid, in plain words. A "What does this mean?" link next to a word opens its line from here.</p>'
-        + '<dl class="glossary-list">' + GLOSSARY.map((g) => '<div class="glossary-item" id="glossary-' + esc(g.id) + '"><dt>' + esc(g.word) + '</dt><dd>' + esc(g.text) + '</dd></div>').join('') + '</dl></div>';
-    // /admin#glossary/<word> opens the tab at that word (the tab itself was opened by the URL routing).
-    const target = (location.hash.match(/^#glossary\/([a-z-]+)/) || [])[1];
-    if (target) scrollGlossary(target);
-}

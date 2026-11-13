@@ -68,7 +68,6 @@
                 <button class="admin-tab-btn owner-only" onclick="showTab('storage',this)"><i class="fa-solid fa-hard-drive"></i> Storage</button>
                 <button class="admin-tab-btn" onclick="showTab('notifications',this)"><i class="fa-solid fa-bell"></i> Notifications</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('email',this)"><i class="fa-solid fa-envelope"></i> Email</button>
-                <button class="admin-tab-btn" onclick="showTab('vkeys',this)"><i class="fa-solid fa-key"></i> Keys</button>
                 <button class="admin-tab-btn" onclick="showTab('audit',this)"><i class="fa-solid fa-clipboard-list"></i> Audit</button>
                 <button class="admin-tab-btn" onclick="showTab('modlog',this)"><i class="fa-solid fa-gavel"></i> Moderation log</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('grants',this)"><i class="fa-solid fa-key"></i> Service grants</button>
@@ -77,9 +76,6 @@
                 <button class="admin-tab-btn owner-only" onclick="showTab('eventsops',this)"><i class="fa-solid fa-route"></i> Event deliveries</button>
                 <button class="admin-tab-btn" onclick="showTab('analytics',this)"><i class="fa-solid fa-chart-column"></i> Analytics</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('domains',this)"><i class="fa-solid fa-globe"></i> Domains</button>
-                <button class="admin-tab-btn owner-only" onclick="showTab('deploy',this)"><i class="fa-solid fa-server"></i> Deploy</button>
-                <button class="admin-tab-btn" onclick="showTab('ssh',this)"><i class="fa-solid fa-terminal"></i> SSH</button>
-                <button class="admin-tab-btn" onclick="showTab('glossary',this)"><i class="fa-solid fa-book"></i> Glossary</button>
             </div>
         </div>
         <button class="tabs-scroll-btn" id="main-tabs-right" onclick="scrollMainTabs(1)" title="Scroll right" aria-label="Scroll right">
@@ -98,10 +94,6 @@
         <div id="setup-content" class="setup"></div>
     </div>
 
-    <!-- Glossary: the few words the panel cannot avoid, in plain words (js/admin/glossary.js) -->
-    <div class="section" id="sec-glossary">
-        <div id="glossary-content"></div>
-    </div>
 
     <!-- Dashboard -->
     <div class="section active admin-clarity" id="sec-dashboard">
@@ -292,17 +284,6 @@
             <h3><i class="fa-solid fa-envelope"></i> Email Configuration</h3>
             <div id="email-content"><div class="loading">Loading...</div></div>
         </div>
-    </div>
-
-    <!-- Verification Keys -->
-    <div class="section admin-clarity" id="sec-vkeys">
-        <p class="admin-intro">Account reservation keys let a person claim a reserved username. Generate one when arranging a reservation; revoking it is permanent, so create a new key if the person still needs access.</p>
-        <div class="input-row">
-            <span class="admin-field"><input type="text" id="vkey-username" aria-label="Username to reserve" aria-describedby="help-vkey-username" placeholder="Username to reserve..." onkeydown="if(event.key==='Enter')generateVKey()"><span class="admin-help" id="help-vkey-username"><strong>Username to reserve.</strong> Enter the username the recipient will claim, for example alex. No name is selected by default.</span></span>
-            <span class="admin-field"><input type="text" id="vkey-note" aria-label="Reservation note" aria-describedby="help-vkey-note" placeholder="Note (optional)"><span class="admin-help" id="help-vkey-note"><strong>Reservation note.</strong> Optional note for staff, for example reserved for the event host. Blank adds no note.</span></span>
-            <button class="btn btn-primary" onclick="generateVKey()"><i class="fa-solid fa-key"></i> Generate a reservation key</button>
-        </div>
-        <div id="vkeys-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Audit Log -->
@@ -556,144 +537,9 @@
         </div>
     </div>
 
-    <!-- Deploy -->
-    <div class="section admin-clarity" id="sec-deploy">
-        <p class="admin-intro">These tools manage website addresses, HTTPS certificates, and the web server. Change them when bringing a domain online or fixing routing, and review previews before applying changes.</p>
-        <div class="sub-tabs" id="deploy-sub-tabs">
-            <button class="active" onclick="showDeploySubTab('overview',this)">Overview</button>
-            <button onclick="showDeploySubTab('certs',this)">Certificates</button>
-            <button onclick="showDeploySubTab('nginx',this)">Nginx</button>
-            <button onclick="showDeploySubTab('domains',this)">Domains</button>
-            <button onclick="showDeploySubTab('config',this)">Config</button>
-        </div>
-
-        <!-- Deploy: Overview -->
-        <div id="deploy-overview">
-            <div class="stats-grid" id="deploy-stats"><div class="loading">Loading deploy status...</div></div>
-            <div class="card" style="margin-top:16px">
-                <h3><i class="fa-solid fa-circle-check"></i> Prerequisites</h3><p class="admin-intro">These checks show whether certificate and web server tools are installed and configured. Fix a missing prerequisite before issuing certificates or applying web routing.</p>
-                <div id="deploy-prereqs"><div class="muted">Checking...</div></div>
-            </div>
-        </div>
-
-        <!-- Deploy: Certificates -->
-        <div id="deploy-certs-panel" style="display:none">
-            <div class="card">
-                <h3><i class="fa-solid fa-lock"></i> SSL/TLS Certificates</h3>
-                <p class="muted" style="margin:8px 0 16px">Certificates enable encrypted HTTPS connections for your domains. Check expiry dates when a certificate is near renewal or visitors see a security error; fewer remaining days means renewal is more urgent.</p>
-                <div id="deploy-certs-list"><div class="loading">Loading certificates...</div></div>
-            </div>
-            <div class="card" style="margin-top:16px">
-                <h3><i class="fa-solid fa-plus-circle"></i> Issue New Certificate</h3><p class="admin-intro">This requests HTTPS certificates for a domain you control. Use it when adding a domain; renewal replaces expiring certificates, and issuance cannot be recalled from this page.</p>
-                <div class="form-group" style="margin:12px 0">
-                    <label>Domain</label>
-                    <span class="admin-field"><input type="text" id="cert-issue-domain" aria-label="Domain for the certificate" aria-describedby="help-cert-issue-domain" placeholder="example.com" style="width:300px"><span class="admin-help" id="help-cert-issue-domain"><strong>Domain for the certificate.</strong> No domain is selected by default. Enter a domain you control, for example example.com, after its DNS is ready.</span></span>
-                </div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap">
-                    <button class="btn btn-primary" onclick="issueCertCloudflare()">
-                        <i class="fa-brands fa-cloudflare"></i> Issue via Cloudflare DNS
-                    </button>
-                    <button class="btn btn-secondary" onclick="showManualDnsInfo()">
-                        <i class="fa-solid fa-hand"></i> Manual DNS
-                    </button>
-                    <button class="btn btn-secondary" onclick="renewAllCerts()">
-                        <i class="fa-solid fa-rotate"></i> Renew all certificates
-                    </button>
-                </div>
-                <div id="cert-issue-output" style="margin-top:12px"></div>
-            </div>
-        </div>
-
-        <!-- Deploy: Nginx -->
-        <div id="deploy-nginx-panel" style="display:none">
-            <div class="card">
-                <h3><i class="fa-solid fa-sitemap"></i> Nginx Configuration</h3>
-                <p class="muted" style="margin:8px 0 16px">Nginx directs web requests to the right service. Preview when changing domains, then validate before applying; Apply writes configuration and reloads the web server, and undo requires restoring the backup on the server.</p>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-                    <button class="btn btn-primary" onclick="previewNginxConfigs()">
-                        <i class="fa-solid fa-eye"></i> Preview All Configs
-                    </button>
-                    <button class="btn btn-secondary" onclick="validateNginx()">
-                        <i class="fa-solid fa-check-circle"></i> Validate Current Config
-                    </button>
-                    <button class="btn btn-warning" onclick="applyNginxConfigs()">
-                        <i class="fa-solid fa-upload"></i> Apply configuration and reload
-                    </button>
-                </div>
-                <div id="nginx-preview-output"></div>
-            </div>
-        </div>
-
-        <!-- Deploy: Domains -->
-        <div id="deploy-domains-panel" style="display:none">
-            <div class="card">
-                <h3><i class="fa-solid fa-globe"></i> Managed Domains</h3>
-                <p class="muted" style="margin:8px 0 16px">These domains are included in certificate and web routing configuration. Add a domain when bringing it online, or remove it to stop managing it here; add it again to undo.</p>
-                <div id="deploy-domains-list"><div class="loading">Loading...</div></div>
-                <div style="margin-top:16px;display:flex;gap:8px;align-items:end;flex-wrap:wrap">
-                    <div class="form-group" style="margin:0">
-                        <label>Add Domain</label>
-                        <span class="admin-field"><input type="text" id="domain-add-input" aria-label="Domain to manage" aria-describedby="help-domain-add-input" placeholder="example.com" style="width:250px"><span class="admin-help" id="help-domain-add-input"><strong>Domain to manage.</strong> No domain is selected by default. Enter the base domain, for example example.com; removing it later reverses this list change.</span></span>
-                    </div>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)">
-                        <span class="admin-field"><input type="checkbox" id="domain-add-wildcard" aria-label="Include subdomains" aria-describedby="help-domain-add-wildcard" checked><span class="admin-help" id="help-domain-add-wildcard"><strong>Include subdomains.</strong> On by default, so the certificate also covers addresses such as app.example.com. Turn it off to request only the base domain.</span></span> Wildcard (*.domain)
-                    </label>
-                    <button class="btn btn-primary" onclick="addManagedDomain()">
-                        <i class="fa-solid fa-plus"></i> Add domain
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Deploy: Config -->
-        <div id="deploy-config-panel" style="display:none">
-            <div class="card">
-                <h3><i class="fa-solid fa-gear"></i> Deploy Configuration</h3><p class="admin-intro">These settings choose how certificates and web routing are managed. Change them when setting up the server, using Preview only until the generated configuration has been checked.</p>
-                <div class="form-group" style="margin:12px 0">
-                    <label for="deploy-acme-email">Certificate contact email</label>
-                    <span class="admin-field"><input type="email" id="deploy-acme-email" aria-label="Certificate contact email" aria-describedby="help-deploy-acme-email" placeholder="admin@example.com" style="width:350px"><span class="admin-help" id="help-deploy-acme-email">No contact address is configured by default. Enter an address you monitor, for example admin@example.com, for certificate account notices.</span></span>
-                </div>
-                <div class="form-group" style="margin:12px 0">
-                    <label for="deploy-cert-mode">How certificates are obtained</label>
-                    <span class="admin-field"><select id="deploy-cert-mode" aria-label="How to obtain certificates" aria-describedby="help-deploy-cert-mode" style="width:250px">
-                        <option value="cloudflare">Automatic — a Cloudflare token does the DNS step</option>
-                        <option value="manual">Manual — you add the DNS record yourself</option>
-                        <option value="none">External — managed outside Network</option>
-                    </select><span class="admin-help" id="help-deploy-cert-mode">Manual DNS is the default and requires adding a verification record yourself. Cloudflare automates that step with a token; External means certificates are managed elsewhere.</span></span>
-                </div>
-                <div class="form-group" style="margin:12px 0" id="deploy-cf-token-group">
-                    <label for="deploy-cf-token">Cloudflare DNS token <span class="muted">(needs Zone → DNS → Edit)</span></label>
-                    <span class="admin-field"><input type="password" id="deploy-cf-token" aria-label="Cloudflare DNS editing token" aria-describedby="help-deploy-cf-token" placeholder="••••••••" style="width:400px"><span class="admin-help" id="help-deploy-cf-token">No token is configured by default. Use a token with Zone → DNS → Edit for the managed domains; for example limit it to your website zone.</span></span>
-                    <div class="muted" style="font-size:11px;margin-top:4px">Token with Zone:DNS:Edit permissions for all managed domains</div>
-                </div>
-                <div class="form-group" style="margin:12px 0">
-                    <label for="deploy-nginx-mode">How the web server is managed</label>
-                    <span class="admin-field"><select id="deploy-nginx-mode" aria-label="How to manage the web server" aria-describedby="help-deploy-nginx-mode" style="width:250px">
-                        <option value="preview">Preview only — nothing is written</option>
-                        <option value="apply">Apply — write, check and reload the web server</option>
-                        <option value="disabled">Disabled — do not manage Nginx</option>
-                    </select><span class="admin-help" id="help-deploy-nginx-mode">Preview only is the default and writes nothing. Apply permits writing, checking, and reloading Nginx; Disabled turns management off, and restoring a backup on the server undoes applied changes.</span></span>
-                </div>
-                <div class="form-group" style="margin:12px 0">
-                    <label for="deploy-nginx-path">Web server configuration folder</label>
-                    <span class="admin-field"><input type="text" id="deploy-nginx-path" aria-label="Web server configuration folder" aria-describedby="help-deploy-nginx-path" placeholder="/etc/nginx/sites-enabled" style="width:400px"><span class="admin-help" id="help-deploy-nginx-path">The default is /etc/nginx/sites-enabled. Change it only if this server stores enabled website configuration in another folder.</span></span>
-                </div>
-                <button class="btn btn-primary" onclick="saveDeployConfig()" style="margin-top:8px">
-                    <i class="fa-solid fa-save"></i> Save deploy settings
-                </button>
-                <span id="deploy-config-status" style="margin-left:12px"></span>
-            </div>
-        </div>
-    </div>
-
-    <!-- SSH access provisioning -->
     <div class="section admin-clarity" id="sec-domains">
         <p class="admin-intro">These addresses route people to tools across OpenVibe. Add or change an address when introducing a domain; remove the saved override to return to the built-in routing.</p>
         <div id="domains-content"><div class="loading">Loading...</div></div>
-    </div>
-    <div class="section admin-clarity" id="sec-ssh">
-        <p class="admin-intro">SSH gives staff command-line access to the development server. Use these instructions when setting up access, and choose only the permissions the person needs.</p>
-        <div id="ssh-content"><div class="loading">Loading...</div></div>
     </div>
 </div>
 
@@ -722,7 +568,6 @@
 <script src="/js/admin/setup.js" defer></script>
 <script src="/js/admin/content.js" defer></script>
 <script src="/js/admin/analytics.js" defer></script>
-<script src="/js/admin/deploy.js" defer></script>
 <script src="/js/admin/boot.js" defer></script>
   <script src="https://openvibe.live/live-notify.js" async></script>
 </body>

@@ -35,7 +35,6 @@ const createSetupRoutes = require('./setup/routes');
 const networkAnalytics = require('./analytics/network'); // ADR-021: no IP/user id, route templates, 30-day raw retention
 const { DiscordService } = require('./discord/discord-service');
 const createDiscordRoutes = require('./discord/routes');
-const createDeployRoutes = require('./deploy/routes');
 const createCoinsRoutes = require('./coins/routes');
 const createWalletRoutes = require('./wallet/routes');
 const { signToken } = require('./auth/routes');
@@ -1073,25 +1072,8 @@ app.use('/api/domains', rateLimit({ windowMs: 60_000, max: 120 }), toolDomains.p
 app.use('/api/admin/domains', toolDomains.adminRouter);
 app.use('/api/admin/discord', createDiscordRoutes(db, discordService, requireAuth, requireAdmin));
 
-// Deploy (TLS / Nginx / Infrastructure) admin API
-app.use('/api/admin/deploy', createDeployRoutes(db, requireAuth));
 // Registry operators (plan T2): cell and instance route weights, draining, node principal status; staff session only.
 app.use('/api/admin/registry', require('./registry/registry-admin').createRegistryAdmin(db, requireAuth, requireAdmin));
-
-// SSH access provisioning info — powers the admin "SSH" tab.
-// Returns non-secret connection context (host, project roots, services). The
-// actual host lives in env (SSH_SERVER_HOST) so no infra detail is committed.
-app.get('/api/admin/ssh-info', requireAuth, requireAdmin, (req, res) => {
-    const OWNER = (process.env.OWNER_USERNAME || 'goosely').toLowerCase();
-    res.json({
-        ok: true,
-        host: process.env.SSH_SERVER_HOST || '',
-        ownerUsername: OWNER,
-        projectsRoot: process.env.SSH_PROJECTS_ROOT || '/opt/openvibe.network /opt/openvibe.live',
-        services: ['openvibe-network', 'openvibe-live'],
-        is_owner: !!(req.user.username && req.user.username.toLowerCase() === OWNER),
-    });
-});
 
 // Setup API for first-run bootstrapping and status checks
 app.use('/api/setup', createSetupRoutes(db, config));

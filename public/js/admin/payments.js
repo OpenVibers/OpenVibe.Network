@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   OpenVibe.Network — admin panel (/admin): payment settings, the Billing pointer and verification keys.
+   OpenVibe.Network — admin panel (/admin): payment settings and the Billing pointer.
    Split out of admin.html. Classic scripts, global scope: they rely on
    admin/core.js's helpers (api, esc, toast, API, token) and on the
    tabLoaders map in admin/boot.js (loaded last). No ES modules.
@@ -97,77 +97,3 @@ async function savePayments() {
 
 // Cashouts: the tab is a pointer to OpenVibe.Billing's console (admin.html #sec-cashouts); Live's old cashout queue
 // (/api/funds) answers 409 since the Billing cutover.
-
-// ═══════════════════════════════════════════════════════════════
-// Verification Keys
-// ═══════════════════════════════════════════════════════════════
-const secretStore = {};
-async function loadVKeys() {
-    const c = document.getElementById('vkeys-content');
-    c.innerHTML = '<div class="loading">Loading...</div>';
-    try {
-        const data = await api('/api/admin/verification-keys');
-        const keys = data.keys || [];
-        keys.forEach(k => { if (k.key) secretStore[`vk-${k.id}`] = k.key; });
-        if (!keys.length) { c.innerHTML = '<p class="muted">No account reservation keys yet. Enter a username and choose Generate to reserve it.</p>'; return; }
-        c.innerHTML = `
-            <table class="admin-table">
-                <thead><tr><th>Key</th><th>Reserved Username</th><th>Status</th><th>Note</th><th>Created</th><th>Actions</th></tr></thead>
-                <tbody>${keys.map(k => `
-                    <tr>
-                        <td><code id="vk-${k.id}" style="font-size:12px;color:var(--text-muted)">••••••••</code></td>
-                        <td><strong>${esc(k.target_username)}</strong></td>
-                        <td><span class="badge badge-${k.status==='active'?'success':k.status==='used'?'info':'danger'}">${esc({ active: 'Ready to claim.', used: 'Already claimed.', revoked: 'No longer usable.' }[k.status] || 'Status unavailable.')}</span></td>
-                        <td style="font-size:12px">${esc(k.note || '-')}</td>
-                        <td style="font-size:11px">${k.created_at ? new Date(k.created_at).toLocaleDateString() : '-'}</td>
-                        <td style="display:flex;gap:4px">
-                            ${k.status === 'active' ? `
-                                <button class="btn btn-sm btn-outline" aria-label="Show or hide reservation key" onclick="revealVKey('vk-${k.id}')"><i class="fa-solid fa-eye"></i></button>
-                                <button class="btn btn-sm btn-outline" aria-label="Copy reservation key" onclick="copyVKey('vk-${k.id}')"><i class="fa-solid fa-copy"></i></button>
-                                <button class="btn btn-sm btn-danger" title="Revoke permanently; generate a new key to replace it" aria-label="Revoke reservation key" onclick="revokeVKey('${k.id}')"><i class="fa-solid fa-trash"></i></button>
-                            ` : k.status === 'used' ? `<span class="muted">Used by ${esc(k.used_by_name || '?')}</span>` : '<span class="muted">Revoked</span>'}
-                        </td>
-                    </tr>
-                `).join('')}</tbody>
-            </table>`;
-    } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
-}
-
-function revealVKey(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const revealed = el.dataset.revealed === 'true';
-    el.textContent = revealed ? '••••••••' : (secretStore[id] || '••••••••');
-    el.dataset.revealed = revealed ? 'false' : 'true';
-    el.style.color = revealed ? 'var(--text-muted)' : 'var(--accent-light)';
-}
-
-function copyVKey(id) {
-    const val = secretStore[id];
-    if (!val) return toast('No key to copy', 'error');
-    navigator.clipboard.writeText(val).then(() => toast('Key copied', 'success')).catch(() => toast('Copy failed', 'error'));
-}
-
-async function generateVKey() {
-    const username = document.getElementById('vkey-username')?.value.trim();
-    const note = document.getElementById('vkey-note')?.value.trim();
-    if (!username) return toast('Enter a username', 'error');
-    try {
-        const data = await api('/api/admin/verification-keys', { method: 'POST', body: { target_username: username, note } });
-        const key = data.key;
-        if (key?.id && key?.key) secretStore[`vk-${key.id}`] = key.key;
-        toast('Verification key generated', 'success');
-        document.getElementById('vkey-username').value = '';
-        document.getElementById('vkey-note').value = '';
-        loadVKeys();
-    } catch (e) { toast(e.message, 'error'); }
-}
-
-async function revokeVKey(id) {
-    if (!confirm('Revoke this account reservation key? It will no longer work. This cannot be undone; generate a new key if access is needed again.')) return;
-    try {
-        await api(`/api/admin/verification-keys/${id}`, { method: 'DELETE' });
-        toast('Key revoked', 'success');
-        loadVKeys();
-    } catch (e) { toast(e.message, 'error'); }
-}

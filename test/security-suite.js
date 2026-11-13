@@ -152,7 +152,6 @@ function secretsNeedlesFor(w, people) {
     return (who) => {
         const n = { ...w.secrets };
         for (const [other, h] of Object.entries(people)) if (other !== who && tokenOf(h)) n[`${other}'s bearer token`] = tokenOf(h);
-        if (who !== 'admin' && who !== 'owner') n['verification key'] = w.verificationKey;
         return n;
     };
 }
@@ -163,15 +162,14 @@ function secretsPaths(w) {
         '/data/avatars/%2e%2e/network.db', '/shared/..%2f..%2fpackage.json', '/node_modules/.package-lock.json', '/api/.well-known/jwks',
         '/.well-known/openid-configuration', '/oauth/.well-known/openid-configuration', '/api/ready', '/metrics', '/release.json', '/status',
         '/api/v1/status', '/api/admin/secrets', '/api/admin/settings', '/api/admin/config', '/api/admin/url-registry', '/api/admin/email',
-        '/api/admin/discord/', '/api/admin/integrations/github/', '/api/admin/deploy/config', '/internal/url-registry/resolved',
+        '/api/admin/discord/', '/api/admin/integrations/github/', '/internal/url-registry/resolved',
         '/internal/integrations/github-token', '/api/setup/status', '/oauth/authorize?client_id=live&redirect_uri=https%3A%2F%2Fevil.test%2F&response_type=code',
         '/oauth/client-info?client_id=live', `/oauth/client-info?client_id=${w.dev.PA.app}`, '/api/auth/anon-identities', '/sso/check', '/fedcm/accounts'];
     return crawler.pathsFor(w.routes, (name) => secretsValues(w, name), { method: 'get', query: 'limit=5&all=1&debug=1&include=secret', extra });
 }
 
 async function checkSecretsStored(w, needlesFor) {
-    const all = { ...needlesFor('nobody'), 'verification key': w.verificationKey };
-    delete all['verification key'];   // stored in its own table by design; only its readers are checked above
+    const all = { ...needlesFor('nobody') };
     const logHits = crawler.leaks({ text: w.srv.logs(), headers: {} }, all).map((l) => l.label);
     assert.deepStrictEqual(logHits, [], 'nothing secret was logged');
     const tables = (await w.db.prepare("SELECT table_name AS name FROM information_schema.tables WHERE table_schema = current_schema() AND (table_name LIKE '%outbox%' OR table_name LIKE '%audit%' OR table_name LIKE '%log%' OR table_name LIKE '%usage%' OR table_name LIKE '%changes%' OR table_name LIKE '%alerts%' OR table_name LIKE '%revisions%' OR table_name = 'notifications')").all()).map((r) => r.name);
