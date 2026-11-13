@@ -912,6 +912,9 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     for (const what of ['takeover', 'giveback']) router.post(`/tasks/:id/${what}`, dockJson, dockRelay('actor', 'POST', (req) => (dockId(req.params.id) ? `/api/v1/tasks/${encodeURIComponent(req.params.id)}/${what}` : null)));
     // OpenVibe.Actor's block at the top of the tab: your Actor, its first ask, and one line to tell it something.
     router.get('/actor', dockRelay('actor', 'GET', '/api/v1/me/actor'));
+    // 2026-11-13: your agents' faces for the menu's stack behind your picture (Actor #475: face, state, step, asks),
+    // through the Frame because every site's connect-src allows openvibe.network and refuses openvibe.actor.
+    router.get('/actor/faces', dockRelay('actor', 'GET', '/api/v1/me/agents/faces'));
     for (const what of ['pause', 'resume', 'tell']) router.post(`/actor/${what}`, dockJson, dockRelay('actor', 'POST', `/api/v1/me/actor/${what}`));
     for (const what of ['answer', 'decline']) router.post(`/actor/asks/:id/${what}`, dockJson, dockRelay('actor', 'POST', (req) => (dockId(req.params.id) ? `/api/v1/me/actor/asks/${encodeURIComponent(req.params.id)}/${what}` : null)));
     // One owner's agent sheet on any site. Actor checks ownership and capabilities; the relay accepts only its
