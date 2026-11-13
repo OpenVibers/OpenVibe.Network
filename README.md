@@ -54,6 +54,9 @@ signed-in person only.
 
 - `GET /api/auth/me` — the signed-in person's own account. `user.subject_id` is the account ID
   (`usr_…`); an account that has none gets one minted on its first call.
+- `GET /api/v1/viewer` — who is looking, for apps and mods: `{ viewer: { signedIn, rank, staff, owner, id, username } }`,
+  rank being guest, member, streamer, mod or admin. No token is a guest (200); a bad token is a 401. It is the model
+  the shared navbar gives a page as `OV.viewer()` (which adds the visit and the device).
 
 ```bash
 curl -s https://openvibe.network/api/auth/me \

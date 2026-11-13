@@ -973,7 +973,31 @@ router.delete('/users/:id/follow', requireAuth, async (req, res) => {
     res.json({ ok: true });
 });
 
+// ── Who is looking (plan §Z.2) ────────────────────────────────
+// GET /api/v1/viewer (and /api/auth/viewer): the shape the shared navbar's OV.viewer() gives a page, for apps and
+// mods: { signedIn, rank: guest|member|streamer|mod|admin, staff, owner, id (the usr_ subject), username }. A request
+// with no session token is a guest (200, never 401); one with a token goes through the normal guard, so a bad token is
+// a 401 the caller can act on. The visit and the device are the page's own and are not here.
+const VIEWER_RANKS = { user: 'member', streamer: 'streamer', global_mod: 'mod', admin: 'admin' };
+function viewerOf(user) {
+    if (!user) return { signedIn: false, rank: 'guest', staff: false, owner: false, id: null, username: null };
+    const safe = sanitizeUser(user);
+    const rank = VIEWER_RANKS[safe.role] || 'member';
+    const owner = !!safe.is_owner;
+    return { signedIn: true, rank, staff: owner || rank === 'mod' || rank === 'admin', owner, id: safe.subject_id || null, username: safe.username || null };
+}
+function viewerHandler(req, res, next) {
+    res.set('Cache-Control', 'private, no-store');
+    res.vary('Authorization');
+    res.vary('Cookie');
+    if (!require('./session').sessionToken(req)) return res.json({ viewer: viewerOf(null) });
+    return requireAuth(req, res, () => res.json({ viewer: viewerOf(req.user) }));
+}
+router.get('/viewer', viewerHandler);
+
 module.exports = router;
+module.exports.viewerHandler = viewerHandler;
+module.exports.viewerOf = viewerOf;
 // Exported so the admin proxy can re-mint a fresh upstream token that reflects
 // the user's CURRENT role (client tokens can be stale after a role change).
 module.exports.signToken = signToken;

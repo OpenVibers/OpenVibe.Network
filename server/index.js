@@ -844,6 +844,8 @@ app.get('/api/brand', (_req, res) => res.json(BRAND));
 
 // Auth routes (SSO provider)
 app.use('/api/auth', authRoutes);
+// Plan §Z.2: who is looking, for apps (the same model as the shared navbar's OV.viewer()).
+app.get('/api/v1/viewer', rateLimit({ windowMs: 60_000, max: 240 }), authRoutes.viewerHandler);
 
 // Sign in on your phone (server/auth/qr-signin.js): mounted only when NETWORK_QR_SIGNIN is on. Its
 // per-address limit is the auth limiter's shape (30 failures / 15 min); successful polls do not spend it.
