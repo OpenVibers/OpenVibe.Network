@@ -46,7 +46,7 @@ for (const id of ['credits', 'byok', 'resale', 'cache', 'quota', 'workflow']) as
 // A machine word may appear only quoted, as the name the owner will meet elsewhere ("KEK" in the env file).
 for (const g of S.GLOSSARY) assert.ok(g.word && g.text.length >= 60 && !/\b(KEK|circuit|stub|Mtok)\b/.test(g.text.replace(/"[^"]*"/g, '')), `${g.id} is explained in plain words`);
 assert.strictEqual(new Set(ids).size, ids.length, 'each word once');
-assert.strictEqual(S.glossaryLink('credits'), '<a class="ov-what" href="/admin#glossary/credits" data-glossary="credits">What does this mean?</a>');
+assert.strictEqual(S.glossaryLink('credits'), '<a class="ov-what" href="#" role="button" data-glossary="credits">What does this mean?</a>');
 assert.strictEqual(S.glossaryLink('nope'), '', 'no link for a word the glossary does not have');
 
 // ── Setup is an owner-only tab (public/js/admin/core.js) ──

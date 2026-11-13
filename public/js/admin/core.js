@@ -84,7 +84,7 @@ async function api(path, opts = {}) {
     return data;
 }
 
-// Auth headers for raw fetch() calls (SSH tab, Deploy tab, etc.).
+// Auth headers for raw fetch() calls.
 function authHeaders() {
     const h = {};
     if (token) h.Authorization = 'Bearer ' + token;
@@ -99,7 +99,7 @@ let currentTab = 'dashboard';
 // 'setup' is the owner's checklist of keys and accounts (js/admin/setup.js); its API answers 403 to anyone else too.
 // The owner's alone (2026-11-13: Notifications too, "we don't want admins to be able to do this"). Email is open to
 // admins as a read-only view of its delivery numbers; its settings and changes are the owner's (server/admin/routes.js).
-const OWNER_ONLY_TABS = new Set(['guide', 'setup', 'ai-setup', 'deploy', 'domains', 'payments', 'cashouts', 'storage', 'notifications', 'settings', 'grants', 'eventsops']);
+const OWNER_ONLY_TABS = new Set(['guide', 'setup', 'ai-setup', 'domains', 'payments', 'cashouts', 'storage', 'notifications', 'settings', 'grants', 'eventsops']);
 
 function showTab(id, btn) {
     if (!tabLoaders[id]) id = 'dashboard';
@@ -121,7 +121,6 @@ function showTab(id, btn) {
    /admin/<tab>[/<subtab>][?last=30d]  e.g. /admin/settings,
    /admin/analytics/openvibelive?last=12h. On load a slug wins; otherwise the
    last-visited location is restored from localStorage. */
-let deployCurrentSubTab = 'overview';
 let _applyingRoute = false;
 
 function _tabButton(id) {
@@ -154,7 +153,6 @@ function urlParamToPeriod(p) {
 function _adminPath() {
     if (currentTab === 'ai-setup') return '/admin/ai/setup';
     if (currentTab === 'analytics') return '/admin/analytics/' + (analyticsCurrentSubTab || 'overview');
-    if (currentTab === 'deploy') return '/admin/deploy/' + (deployCurrentSubTab || 'overview');
     if (currentTab && currentTab !== 'dashboard') return '/admin/' + currentTab;
     return '/admin';
 }
@@ -199,9 +197,8 @@ function routeFromUrl() {
             const sel = document.getElementById('analytics-period'); if (sel) sel.value = per;
         }
         showTab(tab, _tabButton(tab));
-        // Use the effective tab (showTab may bounce a non-owner off /admin/deploy).
+        // Use the effective tab (showTab may bounce a non-owner off an owner's tab).
         if (currentTab === 'analytics' && sub) showAnalyticsSubTab(sub, _subBtn('analytics-sub-tabs', sub));
-        else if (currentTab === 'deploy' && sub) showDeploySubTab(sub, _subBtn('deploy-sub-tabs', sub));
     } finally {
         _applyingRoute = false;
         _syncAdminUrl(true); // normalize (e.g. /admin/analytics -> /admin/analytics/overview)

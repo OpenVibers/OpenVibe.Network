@@ -137,7 +137,7 @@ const marker = (v) => ({ redacted: true, fingerprint: fp(v) });
         const firstTab = html.slice(html.indexOf('id="main-tabs"')).match(/<button[^>]*>/)[0];
         assert.match(firstTab, /showTab\('setup',this\)/, 'Setup is the first tab');
         assert.match(firstTab, /owner-only/, 'the Setup button is hidden from anyone but the owner');
-        assert.ok(html.includes('id="sec-setup"') && html.includes('id="sec-glossary"'));
+        assert.ok(html.includes('id="sec-setup"') && !html.includes('id="sec-glossary"'));
         const core = fs.readFileSync(path.join(ROOT, 'public', 'js', 'admin', 'core.js'), 'utf8');
         assert.match(core.match(/const OWNER_ONLY_TABS = new Set\(\[[^\]]*\]\)/)[0], /'setup'/, 'a non-owner who opens /admin#setup is sent to the dashboard');
 

@@ -10,7 +10,7 @@
  *            secrets overlap) and bob's PB (app AB); an export token minted for PA
  *   per-person data: alice's modules, blocks, follows, notifications, sessions, linked account,
  *            history, push subscription, refresh token (OAuth code flow); an anonymous identity;
- *            provider-secret copies in site_settings; a verification key; a closed old incident
+ *            provider-secret copies in site_settings; a closed old incident
  * `secrets` collects every secret value with a label, for the suites to look for in responses.
  * Not a test itself (no .test.js).
  */
@@ -199,8 +199,6 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
         await db.prepare("INSERT INTO site_settings (key, value, type) VALUES (?, ?, 'secret') ON CONFLICT (key) DO UPDATE SET value = excluded.value, type = excluded.type").run(k, v);
         secrets[`db setting ${k}`] = v;
     }
-    const vk = `VK-${crypto.randomBytes(8).toString('hex')}`;
-    await db.prepare('INSERT INTO verification_keys (key, target_username, created_by) VALUES (?, ?, ?)').run(vk, 'carol', rows.staff.id);
     // A per-user password hash is never shown to anyone.
     for (const u of ['alice', 'bob', 'staff']) { await db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(`$2a$10$${u}${crypto.randomBytes(20).toString('hex')}`, users[u].id); secrets[`${u} password hash`] = (await db.prepare('SELECT password_hash FROM users WHERE id = ?').get(users[u].id)).password_hash; }
 
@@ -214,7 +212,7 @@ async function buildWorld({ label = 'sec', env: extraEnv = {} } = {}) {
     };
     return {
         dir: srv.dir, srv, db, keys, vapid, issuer: ISSUER, routes, sentinels, secrets, users, dev, callers, clientSecrets,
-        liveToken, appToken, anonToken, verificationKey: vk, pushSub, shownOnce, call, serviceToken, sign, S,
+        liveToken, appToken, anonToken, pushSub, shownOnce, call, serviceToken, sign, S,
         // Every TCP connection the server made so far, as 'host port' lines (the preload logs them).
         connects: () => { try { return fs.readFileSync(dump.OV_CONNECT_LOG, 'utf8').split('\n').filter(Boolean); } catch { return []; } },
         stop: async () => { await srv.stop(); try { fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(srv.dir, { recursive: true, force: true }); } catch { /* */ } },

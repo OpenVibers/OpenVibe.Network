@@ -155,9 +155,6 @@ a.btn{text-decoration:none}
     .tabs-scroll-btn{width:30px;height:30px;flex-basis:30px;border-radius:8px}
 }
 .ssh-prompt{background:var(--bg-elev,#111);border:1px solid var(--border,#2a2a2a);border-radius:8px;padding:14px;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.8rem;line-height:1.55;color:var(--text,#ddd);max-height:520px;overflow:auto;margin:0}
-#sec-ssh code,#sec-payments code,#sec-cashouts code{background:var(--bg-elev,#111);border:1px solid var(--border,#2a2a2a);border-radius:5px;padding:2px 7px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.8rem;display:inline-block;margin-top:3px;word-break:break-all}
-#sec-ssh .staff-pill{font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;border-radius:999px;vertical-align:middle;margin-left:8px;color:var(--warning-text, var(--warning,#f0b74a));background:color-mix(in srgb,var(--warning,#f0b74a) 18%,transparent);border:1px solid color-mix(in srgb,var(--warning,#f0b74a) 40%,transparent)}
-#sec-ssh .staff-pill.user-pill{color:var(--accent,#6ea8ff);background:color-mix(in srgb,var(--accent,#6ea8ff) 18%,transparent);border-color:color-mix(in srgb,var(--accent,#6ea8ff) 40%,transparent)}
 
 
 /* ── Platform AI (AI Exchange D11 S3, owner only): one long page, sticky index, no inner tabs ───────────────────── */
@@ -398,22 +395,12 @@ body:has(.admin-clarity.active) .ov-sel-opt { min-height:44px; }
 .setup-foot a{color:var(--accent-light)}
 .setup-services ul{margin:6px 0 0 18px;font-size:12.5px;line-height:1.7;color:var(--text-secondary)}
 
-/* ── Glossary (/admin#glossary) ── */
-.glossary{max-width:820px}
-.glossary h2{font-size:20px;font-weight:800;margin-bottom:6px}
-.glossary-intro{font-size:13px;line-height:1.55;margin-bottom:14px}
-.glossary-list{display:grid;gap:8px}
-.glossary-item{padding:12px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;scroll-margin-top:80px;transition:border-color .3s}
-.glossary-item.is-target{border-color:var(--accent)}
-.glossary-item dt{font-size:14px;font-weight:700;margin-bottom:3px}
-.glossary-item dd{font-size:13px;line-height:1.55;color:var(--text-secondary)}
-
 @media(max-width:800px){.setup-row{grid-template-columns:minmax(0,1fr)}}
 /* Phones: every control at least 44 px, nothing wider than the screen. */
 @media(max-width:640px){
     .section-tabs button,.tabs-scroll-btn{min-height:44px}
     .tabs-scroll-btn{width:44px;flex-basis:44px}
-    #sec-setup .btn,#sec-setup input:not([type=checkbox]),#sec-setup summary,#sec-glossary .btn,.ov-what-dialog .btn,#platform-ai .pai-advanced>summary,
+    #sec-setup .btn,#sec-setup input:not([type=checkbox]),#sec-setup summary,.ov-what-dialog .btn,#platform-ai .pai-advanced>summary,
     #sec-ai .btn,#sec-ai input:not([type=checkbox]),#sec-ai select,#sec-ai textarea,#sec-ai summary,#sec-ai .ov-sel{min-height:44px}
     #sec-setup input[type=checkbox]{width:44px;height:44px}
     .ov-what,.setup-foot a{display:inline-flex;align-items:center;min-height:44px}

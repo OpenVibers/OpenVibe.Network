@@ -124,7 +124,6 @@ router.post('/register', async (req, res) => {
     const username = String(req.body.username || '').trim();
     const password = String(req.body.password || '');
     const email = req.body.email ? String(req.body.email).trim() : undefined;
-    const verification_key = req.body.verification_key ? String(req.body.verification_key).trim() : undefined;
 
     if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
     if (username.length < 3 || username.length > 24) {
@@ -146,24 +145,6 @@ router.post('/register', async (req, res) => {
     // A name someone was renamed away from stays theirs for a while (links, mentions, reputation).
     if (await require('../identity/usernames').isReserved(db, username)) return res.status(409).json({ error: 'Username already taken' });
 
-    // Check if username is reserved (has an active verification key)
-    const reserved = await db.isUsernameReserved(username);
-    if (reserved) {
-        if (!verification_key) {
-            return res.status(403).json({
-                error: 'This username is reserved. A verification key is required to claim it.',
-                reserved: true,
-            });
-        }
-        const vk = await db.getVerificationKeyByKey(verification_key);
-        if (!vk || vk.status !== 'active') {
-            return res.status(403).json({ error: 'Invalid or expired verification key' });
-        }
-        if (vk.target_username.toLowerCase() !== username.toLowerCase()) {
-            return res.status(403).json({ error: 'This verification key is for a different username' });
-        }
-    }
-
     if (email) {
         const emailExists = await db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').get(email);
         if (emailExists) return res.status(409).json({ error: 'Email already in use' });
@@ -178,15 +159,10 @@ router.post('/register', async (req, res) => {
     // Create default preferences
     await db.prepare('INSERT INTO user_preferences (user_id) VALUES (?) ON CONFLICT DO NOTHING').run(result.lastInsertRowid);
 
-    // Redeem verification key if used
-    if (verification_key && reserved) {
-        await db.redeemVerificationKey(verification_key, result.lastInsertRowid);
-    }
-
     const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
     const token = signToken(user, req.app.locals.privateKey, config);
 
-    console.log(`[Auth] New user registered: ${username} (id: ${user.id})${reserved ? ' [verification key redeemed]' : ''}`);
+    console.log(`[Auth] New user registered: ${username} (id: ${user.id})`);
 
     // Confirm the address before it can receive opt-in mail (best-effort, rate-limited).
     if (user.email) { try { require('./email-verify').sendVerification(req, user).catch(() => {}); } catch { /* */ } }

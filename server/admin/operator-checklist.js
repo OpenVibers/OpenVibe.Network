@@ -50,7 +50,7 @@ const AREAS = [
     { area: 'Releases and readiness', items: [
         { item: 'Migration and readiness', where: [{ kind: 'url', url: 'https://openvibe.network/status' }, { kind: 'cli', cli: 'ovhost status, ovhost validate <service>' }], service: 'host' },
         { item: 'Compatibility status (contracts, pins, the register)', where: [{ kind: 'url', url: 'https://openvibe.services/docs' }, { kind: 'cli', cli: 'ovhost validate <service> (contracts range)' }], service: 'codes' },
-        { item: 'Deploys', where: [{ kind: 'tab', tab: 'deploy' }, { kind: 'cli', cli: 'ovhost deploy <service>' }], service: 'host' },
+        { item: 'Deploys', where: [{ kind: 'cli', cli: 'ovhost deploy <service>' }], service: 'host' },
         { item: 'Domains and certificates', where: [{ kind: 'tab', tab: 'domains' }, { kind: 'cli', cli: 'ovhost certs' }], service: 'host' },
     ] },
 ];
