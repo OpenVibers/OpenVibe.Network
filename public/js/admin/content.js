@@ -331,7 +331,7 @@ async function loadEmail() {
                 </div>
             </div>
 
-            <form id="email-form" style="max-width:600px;margin-bottom:16px">
+            ${data.can_edit === false ? '<p class="muted email-view-only"><i class="fa-solid fa-lock"></i> Only the owner changes how email is sent. You see the delivery numbers.</p>' : `<form id="email-form" style="max-width:600px;margin-bottom:16px">
                 <div class="setting-row">
                     <label for="email-enabled"><strong>Send email</strong></label>
                     <input type="checkbox" id="email-enabled" aria-label="Send outgoing email" aria-describedby="help-email-enabled" ${email.enabled ? 'checked' : ''} style="width:18px;height:18px;cursor:pointer"><span class="admin-help" id="help-email-enabled">Off by default, so no email is sent. Turn it on after configuring Resend; turning it off stops delivery, and turning it on resumes it.</span>
@@ -355,9 +355,9 @@ async function loadEmail() {
                 </div>
                 <div style="background:#2a2a3822;border:1px solid #333340;border-radius:8px;padding:12px 14px;margin-top:16px;font-size:12px;color:var(--text-muted)">
                     <strong style="color:var(--text)"><i class="fa-solid fa-globe"></i> DNS Setup</strong><br>
-                    Add your domain at <a href="https://resend.com/domains" target="_blank" style="color:var(--accent)">resend.com/domains</a> and add the SPF (TXT + MX) and DKIM records to your DNS provider. Once verified, emails will be sent from your domain.
+                    Add your domain at <a href="https://resend.com/domains" target="_blank" rel="noopener" style="color:var(--accent)">resend.com/domains</a> and add the SPF (TXT + MX) and DKIM records to your DNS provider. Once verified, emails will be sent from your domain.
                 </div>
-            </form>
+            </form>`}
 
             <div class="card" style="padding:16px;margin-bottom:16px">
                 <h3 style="margin-bottom:10px"><i class="fa-solid fa-layer-group"></i> Delivery breakdown · last 30 days</h3><p class="admin-intro">This counts sent and failed messages by type over the last 30 days. Review it when one kind of email is failing more often than others.</p>
@@ -377,7 +377,7 @@ async function loadEmail() {
                 : '<p class="muted">No email deliveries recorded. Save the configuration and send a test email to check delivery.</p>'}
             </div>
 
-            <div class="card" style="padding:16px">
+            ${data.can_edit === false ? '' : `<div class="card" style="padding:16px">
                 <h3 style="margin-bottom:10px"><i class="fa-solid fa-clock-rotate-left"></i> Recent Email Activity</h3><p class="admin-intro">These are the most recent email delivery attempts and provider errors. Check a failed row after a delivery report, then correct the configuration and send a new test.</p>
                 ${recent.length ? `
                     <table class="admin-table">
@@ -396,7 +396,7 @@ async function loadEmail() {
                         </tbody>
                     </table>`
                 : '<p class="muted">No email deliveries recorded. Save the configuration and send a test email to check delivery.</p>'}
-            </div>`;
+            </div>`}`;
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
 }
 

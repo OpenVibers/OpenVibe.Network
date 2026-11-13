@@ -18,4 +18,11 @@ assert.ok(/function adminSwitches\(\)/.test(core) && /c\.setAttribute\('role', '
 const css = read('public/css/admin.css');
 assert.ok(css.includes('.admin-clarity :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { max-width:100%; min-height:44px;'), 'the field height is for fields only');
 assert.ok(css.includes('.admin-clarity input[type=checkbox], .admin-clarity input[type=radio], #platform-ai input[type=checkbox] { min-height:0; }'), 'and never for a switch');
+// Email: every admin sees the delivery numbers; the settings, the recent messages (addresses) and changes are the owner's.
+const routes = read('server/admin/routes.js');
+assert.ok(/router\.get\('\/email', async \(req, res\) => \{[\s\S]{0,300}if \(!isOwner\(req\.user\)\) \{[\s\S]{0,300}can_edit: false/.test(routes), 'an admin reads the numbers only');
+assert.ok(/router\.put\('\/email', requireOwner/.test(routes) && /router\.post\('\/broadcast', requireOwner/.test(routes), 'changing email and broadcasting are the owner\'s');
+const content = read('public/js/admin/content.js');
+assert.ok(/data\.can_edit === false \? '<p class="muted email-view-only">/.test(content), 'the page says it is read-only');
+assert.ok(/OWNER_ONLY_TABS = new Set\(\[[^\]]*'notifications'/.test(core) && !/OWNER_ONLY_TABS = new Set\(\[[^\]]*'email'/.test(core), 'Notifications is the owner\'s tab; Email is open to read');
 console.log('admin-bans-switches: bans as cards with who and why, unban for the owner only, every on/off a switch');

@@ -97,7 +97,9 @@ let currentTab = 'dashboard';
 // NOTE: 'ai' is NOT here — admins may use its analytics/explorer tools; only the
 // AI configuration form inside it is owner-gated (see loadAi).
 // 'setup' is the owner's checklist of keys and accounts (js/admin/setup.js); its API answers 403 to anyone else too.
-const OWNER_ONLY_TABS = new Set(['guide', 'setup', 'ai-setup', 'deploy', 'domains', 'payments', 'cashouts', 'storage', 'email', 'settings', 'grants', 'eventsops']);
+// The owner's alone (2026-11-13: Notifications too, "we don't want admins to be able to do this"). Email is open to
+// admins as a read-only view of its delivery numbers; its settings and changes are the owner's (server/admin/routes.js).
+const OWNER_ONLY_TABS = new Set(['guide', 'setup', 'ai-setup', 'deploy', 'domains', 'payments', 'cashouts', 'storage', 'notifications', 'settings', 'grants', 'eventsops']);
 
 function showTab(id, btn) {
     if (!tabLoaders[id]) id = 'dashboard';
