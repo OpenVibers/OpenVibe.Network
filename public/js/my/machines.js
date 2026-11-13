@@ -17,8 +17,8 @@ function mcEl(tag, cls, kids, attrs) {
 }
 const mcIcon = (name) => mcEl('i', `fa-solid ${name}`, [], { 'aria-hidden': 'true' });
 // A machine's system as its maker's mark (§Y.1 A3, 11-13: the cards showed blank icons). Apple, Linux, Windows and Android
-// are brand glyphs, so they need fa-brands: as fa-solid they resolve to nothing. Shared draws no Windows mark yet, so
-// Windows, like anything else, is a laptop until it does.
+// are brand glyphs, so they need fa-brands: as fa-solid they resolve to nothing. Windows has no mark on purpose (Microsoft
+// asked that its marks not be redistributed; Shared's brands.js leaves them out), so it is a laptop, like anything else.
 function mcOsIcon(os) {
     const o = String(os || '').toLowerCase();
     const brand = /mac|darwin|ios/.test(o) ? 'fa-apple' : /android/.test(o) ? 'fa-android' : /linux|ubuntu|debian|fedora|arch/.test(o) ? 'fa-linux' : null;

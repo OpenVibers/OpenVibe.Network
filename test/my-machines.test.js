@@ -259,7 +259,7 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
         assert.strictEqual(cls('macOS 15.2'), 'fa-brands fa-apple');
         assert.strictEqual(cls('darwin'), 'fa-brands fa-apple', 'darwin is a Mac');
         assert.strictEqual(cls('Ubuntu 24.04 (linux)'), 'fa-brands fa-linux');
-        assert.strictEqual(cls('Windows 11'), 'fa-solid fa-laptop', 'no Windows mark is drawn yet: a laptop');
+        assert.strictEqual(cls('Windows 11'), 'fa-solid fa-laptop', 'Windows has no mark on purpose: a laptop');
         assert.strictEqual(cls('Android 16'), 'fa-brands fa-android');
         assert.strictEqual(cls(''), 'fa-solid fa-laptop', 'an unknown system is a laptop');
         assert.ok(!/fa-solid fa-(apple|linux|windows|android)/.test(SRC), 'no brand mark is ever written as fa-solid');
