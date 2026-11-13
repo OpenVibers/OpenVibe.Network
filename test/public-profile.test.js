@@ -153,6 +153,7 @@ const INSTANCES = [
         assert.deepStrictEqual([p.username, p.private, p.color, p.member_since, p.items.count, p.showcase.map((s) => s.name)], ['Ana', false, '#ff0066', '2026-10-01', 4, ['Rainbow', 'Royal Crown', 'OG Viewer']]);
         assert.strictEqual(p.avatar_url, 'https://openvibe.network/avatar/Ana?s=160');
         assert.strictEqual(p.inventory_url, `https://openvibe.my/inventory/u/${A}`);
+        assert.strictEqual(p.subject, A, 'a public profile names its subject, so the name wears its effect (§Z.3)');
         assert.deepStrictEqual(p.items.by_kind.map((k) => k.kind).sort(), ['live.hat', 'live.name_effect', 'live.particle', 'network.badge']);
         assert.deepStrictEqual(p.badges.map((b) => b.id), ['thread-starter', 'first-follow']);
         assert.deepStrictEqual([p.achievements.total, p.achievements.games.map((g) => [g.title, g.count])], [3, [['salvage-rush', 2], ['vibe-heroes', 1]]], 'achievements in the JSON every site reads');
