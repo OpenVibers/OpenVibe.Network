@@ -16,7 +16,7 @@
  * account's item (users.is_test), whatever the source said.
  */
 const LIVE_WINDOW_MS = 6 * 60 * 60 * 1000;
-const COLUMNS = 'id, source_service, source_type, source_id, kind, title, text, url, site, site_name, actor_subject, actor_name, origin, visibility, picture_url, preview_url, media_ratio, media_length, counts, live_now, label, starts_at, occurred_at, trend';
+const COLUMNS = 'id, source_service, source_type, source_id, kind, title, text, url, site, site_name, actor_subject, actor_name, origin, visibility, picture_url, preview_url, media_ratio, media_length, counts, live_now, label, starts_at, occurred_at, trend, price_amount, price_currency, was_price, store_name';
 
 const iso = (v) => {
     if (v == null || v === '') return null;
@@ -24,6 +24,11 @@ const iso = (v) => {
     return Number.isFinite(t) ? new Date(t).toISOString() : null;
 };
 const ms = (v) => { const t = Date.parse(String(v == null ? '' : v)); return Number.isFinite(t) ? t : NaN; };
+/** The price of an offer, as the feed states it: a number and an ISO code, or nothing. */
+const priceAmount = (v) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : null);
+const priceCurrency = (v) => (/^[A-Za-z]{3}$/.test(String(v || '')) ? String(v).toUpperCase() : null);
+const wasPrice = (v) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : null);
+
 const countsJson = (v) => {
     if (!v || typeof v !== 'object') return '{}';
     const out = {};
@@ -50,20 +55,27 @@ async function upsertItem(db, it) {
             Number.isFinite(Number(it.media_ratio)) && Number(it.media_ratio) > 0 ? Number(it.media_ratio) : null,
             Number.isFinite(Number(it.media_length)) && Number(it.media_length) >= 0 ? Math.round(Number(it.media_length)) : null,
             countsJson(it.counts), it.live_now === true, it.trend && typeof it.trend === 'object' ? JSON.stringify(it.trend) : null, it.label || null, iso(it.starts_at), at,
+            // What a deal costs (feed.item@1 1.1.0): the price now, the price before, and the shop.
+            // A fact the source stops stating is kept, never erased by a later read.
+            priceAmount(it.price_amount), priceCurrency(it.price_currency), wasPrice(it.was_price),
+            it.store_name ? String(it.store_name).slice(0, 60) : null,
         ];
         if (had) {
             const moving = it.touch === true;
             await db.prepare(`UPDATE feed_items SET kind = ?, title = ?, text = ?, url = ?, site = ?, site_name = ?,
                     actor_subject = COALESCE(actor_subject, ?), actor_name = COALESCE(actor_name, ?), origin = ?, visibility = ?,
                     picture_url = ?, preview_url = ?, media_ratio = ?, media_length = ?, counts = ?, live_now = ?, trend = ?, label = ?, starts_at = ?,
+                    price_amount = COALESCE(?, price_amount), price_currency = COALESCE(?, price_currency),
+                    was_price = COALESCE(?, was_price), store_name = COALESCE(?, store_name),
                     occurred_at = CASE WHEN ? THEN ? ELSE occurred_at END, updated_at = now()
                 WHERE source_service = ? AND source_type = ? AND source_id = ?`)
-                .run(...values.slice(0, 19), moving ? true : false, at, ...key);
+                .run(...values.slice(0, 19), ...values.slice(20), moving ? true : false, at, ...key);
             return { item: await find.get(...key), created: false };
         }
         await db.prepare(`INSERT INTO feed_items (source_service, source_type, source_id, kind, title, text, url, site, site_name,
-                actor_subject, actor_name, origin, visibility, picture_url, preview_url, media_ratio, media_length, counts, live_now, trend, label, starts_at, occurred_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+                actor_subject, actor_name, origin, visibility, picture_url, preview_url, media_ratio, media_length, counts, live_now, trend, label, starts_at, occurred_at,
+                price_amount, price_currency, was_price, store_name)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
             .run(...key, ...values);
         return { item: await find.get(...key), created: true };
     });

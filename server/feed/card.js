@@ -84,7 +84,34 @@ function kindOf(service, type, row = {}) {
     return 'post';
 }
 
-/** One row as a card. `actor` is the resolved person { name, avatar } when the row names one. */
+/** What a card knows about a deal, kept beside the card and never in it: feed.item@1 has no price of its
+ *  own, so the price belongs to the group item that lists the deal (group.items[].price / was / store). */
+const DEAL_FACTS = new WeakMap();
+
+/** The price of an offer, as the group item states it: both halves, or nothing. */
+function dealFacts(row) {
+    const amount = Number(row.price_amount);
+    const currency = String(row.price_currency || '').trim().toUpperCase();
+    const price = Number.isFinite(amount) && amount >= 0 && /^[A-Z]{3}$/.test(currency) ? { amount, currency } : null;
+    const was = Number(row.was_price);
+    const store = clean(row.store_name, 60) || null;
+    if (!price && !Number.isFinite(was) && !store) return null;
+    return { price, was: Number.isFinite(was) && was >= 0 ? was : null, store };
+}
+
+/** One group item: what the card says, plus what the offer costs when the source stated it. */
+function groupItem(card) {
+    const item = { id: card.id, url: card.url, title: card.title, media: card.media };
+    const facts = DEAL_FACTS.get(card);
+    if (facts) {
+        if (facts.price) item.price = facts.price;
+        if (facts.was != null) item.was = facts.was;
+        if (facts.store) item.store = facts.store;
+    }
+    return item;
+}
+
+/** One row as a card. `actor` is the resolved person { name, avatar, handle, level, fx } when the row names one. */
 function cardOf(row, actor = null) {
     const counts = row.counts && typeof row.counts === 'object' ? row.counts : {};
     const safe = {};
@@ -94,6 +121,24 @@ function cardOf(row, actor = null) {
     }
     const ratio = Number(row.media_ratio);
     const length = Number(row.media_length);
+    // Who did it (feed.item@1 1.1.0): the person the row names, with their username, their level
+    // (null when they hide it from the leaderboard) and the name effect they wear. A row that names
+    // only a person the feed does not know keeps that name alone.
+    const handle = actor && /^[A-Za-z0-9_.-]{1,40}$/.test(String(actor.handle || '')) ? String(actor.handle) : null;
+    const rawLevel = actor ? Number(actor.level) : NaN;
+    // A person who hides their level sends null; a level outside the contract's range is left out.
+    const level = !actor ? undefined
+        : (actor.level === null ? null : (Number.isSafeInteger(rawLevel) && rawLevel >= 1 && rawLevel <= 1000 ? rawLevel : undefined));
+    const fx = actor && /^name-fx-[a-z]{2,24}$/.test(String(actor.fx || '')) ? String(actor.fx) : null;
+    const actorCard = actor
+        ? {
+            name: clean(actor.name, 80) || null,
+            avatar: https(actor.avatar),
+            ...(handle ? { handle } : {}),
+            ...(level !== undefined ? { level } : {}),
+            ...(fx ? { fx } : {}),
+        }
+        : (row.actor_name ? { name: clean(row.actor_name, 80) || null, avatar: null } : null);
     const card = {
         id: `f:${row.source_service}:${row.source_type}:${row.source_id}`,
         kind: row.kind,
@@ -103,7 +148,7 @@ function cardOf(row, actor = null) {
         at: row.occurred_at ? new Date(row.occurred_at).toISOString() : null,
         site: String(row.site || row.source_service || ''),
         site_name: String(row.site_name || SITE_NAMES[row.site] || SITE_NAMES[row.source_service] || row.site || ''),
-        actor: actor ? { name: clean(actor.name, 80) || null, avatar: https(actor.avatar) } : (row.actor_name ? { name: clean(row.actor_name, 80) || null, avatar: null } : null),
+        actor: actorCard,
         subject: row.actor_subject || null,
         media: row.picture_url && https(row.picture_url)
             ? { thumb: https(row.picture_url), ...(row.preview_url && https(row.preview_url) ? { preview: https(row.preview_url) } : {}), ratio: Number.isFinite(ratio) && ratio > 0 ? ratio : 16 / 9, ...(Number.isFinite(length) && length > 0 ? { length } : {}) }
@@ -142,6 +187,9 @@ function cardOf(row, actor = null) {
             if (Number.isSafeInteger(Number(row.trend.previous)) && Number(row.trend.previous) >= 0) card.trend.previous = Number(row.trend.previous);
         }
     }
+    // What the offer costs, kept beside the card: the price belongs to the group item that lists it.
+    const facts = dealFacts(row);
+    if (facts) DEAL_FACTS.set(card, facts);
     return card;
 }
 
@@ -193,7 +241,7 @@ function foldCards(cards, now = Date.now()) {
                 id: `g:work:${g.workHour}`,
                 title: `${g.cards.length} new jobs this hour`,
                 text: clean(g.cards.map((c) => c.title).slice(0, 3).join(' · '), 280),
-                group: { count: g.cards.length, items: g.cards.slice(0, 20).map((c) => ({ id: c.id, url: c.url, title: c.title, media: c.media })) },
+                group: { count: g.cards.length, items: g.cards.slice(0, 20).map(groupItem) },
                 counts: { ...g.card.counts, people: g.cards.length },
                 site: g.card.site,
                 site_name: sites.size === 1 ? [...sites][0] : g.card.site_name,
@@ -209,7 +257,7 @@ function foldCards(cards, now = Date.now()) {
                 id: bulkId(g.card.kind, g.site, g.hour),
                 bulk,
                 title: `${g.cards.length} new ${many}`,
-                group: { count: g.cards.length, items: g.cards.slice(0, 20).map((c) => ({ id: c.id, url: c.url, title: c.title, media: c.media })) },
+                group: { count: g.cards.length, items: g.cards.slice(0, 20).map(groupItem) },
                 counts: { ...g.card.counts, people: g.cards.length },
             };
         }
@@ -220,7 +268,7 @@ function foldCards(cards, now = Date.now()) {
             ...g.card,
             title: `${name} added ${g.cards.length} ${many}`,
             text: '',
-            group: { count: g.cards.length, items: g.cards.slice(0, 20).map((c) => ({ id: c.id, url: c.url, title: c.title, media: c.media })) },
+            group: { count: g.cards.length, items: g.cards.slice(0, 20).map(groupItem) },
             counts: { ...g.card.counts, people: g.cards.length },
             ...(one ? {} : {}),
         };
