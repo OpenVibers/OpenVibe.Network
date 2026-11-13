@@ -126,7 +126,8 @@ assert.ok(/<h1>Go live, chat, play and get things done\.<\/h1>/.test(html) && /S
 const launcher = (/<section class="sc-sec sc-apps-sec" id="network"[\s\S]*?<\/section>/.exec(html) || [''])[0];
 for (const s of open) assert.ok(launcher.includes(`<a href="https://${s.host}/">`), `the sites launcher links ${s.host}`);
 // One plain link to the hub of every site (SEO-9), in the sites section the home already has, with the real count.
-assert.ok(html.includes(`<p class="sc-apps-more"><a href="/sites">All ${open.length + 1} sites, grouped by what you came to do →</a></p>`), 'the home links /sites with the real count');
+// openvibe-shared 4.241.0 draws the arrow (Design rule 169: no text arrows), so the label ends in its glyph.
+assert.ok(html.includes(`<p class="sc-apps-more"><a href="/sites">All ${open.length + 1} sites, grouped by what you came to do <span class="sc-go" aria-hidden="true"><svg`), 'the home links /sites with the real count');
 for (const href of ['https://openvibe.tools/api/catalog.json', '/llms.txt', 'https://openvibe.tools/llms.txt', 'https://github.com/OpenVibers', 'https://openvibe.codes/', 'https://yt.openvibe.tools/', 'https://dns.openvibe.tools/']) assert.ok(html.includes(`href="${href}"`), `the page still links ${href}`);
 assert.strictEqual((html.match(/<section[\s>]/g) || []).length, (html.match(/<\/section>/g) || []).length, 'every section is closed once');
 
