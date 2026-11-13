@@ -67,7 +67,12 @@ function createServiceProxies({ requireAuth, signToken, services }) {
     const chat = () => services.chat.internalUrl;
 
     r.use('/tools-workers', require('./tools-workers').createToolsWorkers({ requireAuth, signToken, services }));
-    r.use('/streamer', requireAuth, admin, to(live, '/api/admin', 'OpenVibe.Live', 'Streamer proxy error'));
+    // Lifting a site-wide ban is the owner's alone (the owner, 2026-11-13: "admins can't unban … only owner rank, but they
+    // can view"); Live checks it too, so this answers first and plainly.
+    const { isOwner } = require('../auth/owner-guard');
+    const ownerUnban = (req, res, next) => (req.method === 'DELETE' && /^\/(?:users\/[^/]+\/ban|ban\/[^/]+)\/?$/.test(req.path) && !isOwner(req.user)
+        ? res.status(403).json({ error: 'Only the owner can lift a site-wide ban', code: 'owner_only' }) : next());
+    r.use('/streamer', requireAuth, admin, ownerUnban, to(live, '/api/admin', 'OpenVibe.Live', 'Streamer proxy error'));
     r.use('/streamer-mod', requireAuth, staff, to(live, '/api/mod', 'OpenVibe.Live', 'Mod proxy error'));
     r.use('/streamer-tts', requireAuth, admin, to(chat, '/api/tts', 'OpenVibe.Chat', 'TTS proxy error'));
     r.use('/streamer-pastes', requireAuth, admin, to(live, '/api/pastes', 'OpenVibe.Live', 'Pastes proxy error'));

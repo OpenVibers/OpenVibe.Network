@@ -17,6 +17,22 @@ let currentUser = null;
 // short inside value="..." — which is how JSON settings got rendered as '{' and saved back as '{'.
 function esc(s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
+/**
+ * Every on/off in the panel is the network's switch (openvibe-shared ov-forms: a checkbox with role="switch"; 2026-11-13,
+ * the owner: "these checkboxes … use openvibe.design"). A checkbox in a table picks rows, so it stays a checkbox;
+ * data-ov-native keeps the browser's own.
+ */
+(function adminSwitches() {
+    if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return;
+    const one = (c) => { if (c.type === 'checkbox' && !c.hasAttribute('role') && !c.closest('table, [data-ov-native]')) c.setAttribute('role', 'switch'); };
+    const mark = (root) => { if (root.matches && root.matches('input[type="checkbox"]')) one(root); if (root.querySelectorAll) root.querySelectorAll('input[type="checkbox"]').forEach(one); };
+    const start = () => {
+        mark(document);
+        new MutationObserver((list) => { for (const m of list) for (const n of m.addedNodes) if (n.nodeType === 1) mark(n); }).observe(document.body, { childList: true, subtree: true });
+    };
+    if (document.body) start(); else document.addEventListener('DOMContentLoaded', start, { once: true });
+})();
+
 function timeAgo(dateStr) {
     const d = new Date(dateStr);
     const s = Math.floor((Date.now() - d.getTime()) / 1000);

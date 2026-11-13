@@ -277,7 +277,7 @@ a.btn{text-decoration:none}
 .pai-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
 .pai-table td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:top;overflow-wrap:anywhere}
 @media(max-width:800px){.pai-provider{grid-template-columns:minmax(0,1fr)}.pai-provider-actions{justify-content:flex-start;max-width:none}.pai-fields{grid-template-columns:minmax(0,1fr)}}
-@media(max-width:640px){.pai-form-row{grid-template-columns:minmax(0,1fr)}#platform-ai .btn,#platform-ai input,#platform-ai select,#platform-ai textarea,#platform-ai summary,#platform-ai .pai-index a,#platform-ai .pai-switch{min-height:44px}#platform-ai .pai-chip button{min-width:44px;min-height:44px}.pai-index{gap:2px;padding:5px}.pai-index a{padding:8px 9px;font-size:11.5px}.pai-section{scroll-margin-top:96px}.pai-dialog{width:calc(100vw - 16px)}.pai-form{padding:14px}.pai-card{padding:13px}}
+@media(max-width:640px){.pai-form-row{grid-template-columns:minmax(0,1fr)}#platform-ai .btn,#platform-ai input:not([type=checkbox]):not([type=radio]),#platform-ai select,#platform-ai textarea,#platform-ai summary,#platform-ai .pai-index a,#platform-ai .pai-switch{min-height:44px}#platform-ai .pai-chip button{min-width:44px;min-height:44px}.pai-index{gap:2px;padding:5px}.pai-index a{padding:8px 9px;font-size:11.5px}.pai-section{scroll-margin-top:96px}.pai-dialog{width:calc(100vw - 16px)}.pai-form{padding:14px}.pai-card{padding:13px}}
 
 /* Owner clarity: scoped to the legacy admin sections; AI and Setup own their forms. */
 .admin-clarity { min-width:0; overflow-wrap:anywhere; }
@@ -286,7 +286,7 @@ a.btn{text-decoration:none}
 .admin-clarity .admin-help { display:block; color:var(--text-secondary); font-size:13px; font-weight:400; text-transform:none; letter-spacing:normal; line-height:1.55; margin:6px 0 10px; }
 .admin-clarity .admin-machine-key { display:inline-block; color:var(--text-muted); font-size:12px; font-weight:400; overflow-wrap:anywhere; }
 .admin-clarity .admin-field { display:flex; flex:1 1 220px; flex-direction:column; min-width:0; max-width:100%; }
-.admin-clarity :is(input,select,textarea) { max-width:100%; min-height:44px; font-size:14px; }
+.admin-clarity :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { max-width:100%; min-height:44px; font-size:14px; }
 .admin-clarity :is(button,.btn,summary) { min-height:44px; min-width:44px; white-space:normal; justify-content:center; }
 .admin-clarity input[type=checkbox] { width:44px!important; height:44px!important; flex:0 0 44px; accent-color:var(--accent); }
 .admin-clarity .setting-row { gap:12px; align-items:flex-start; }
@@ -549,3 +549,23 @@ body:has(.admin-clarity.active) .ov-sel-opt { min-height:44px; }
     .oin-kind-body{padding:0 12px 12px}
     #platform-ai .oin-way{min-height:44px}
 }
+
+/* Bans as cards (2026-11-13): who, why, by whom and when, how long; lifting a ban is the owner's. */
+.ban-count{margin:0 0 10px}
+.ban-list{list-style:none;margin:0;padding:0;display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))}
+.ban-card{display:grid;gap:8px;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--bg-card,var(--bg-secondary))}
+.ban-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.ban-who{font-weight:800;font-size:15px;color:var(--text-primary);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ban-who:hover{text-decoration:underline}
+.ban-len{flex:none;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--text-primary) 8%,transparent);color:var(--text-secondary)}
+.ban-len.is-perm{background:color-mix(in srgb,var(--danger,#ef4444) 16%,transparent);color:var(--danger,#f87171)}
+.ban-reason{margin:0;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+.ban-meta{font-size:12.5px}
+.ban-meta .ban-who{font-size:12.5px;font-weight:700}
+.ban-act{display:flex;justify-content:flex-end}
+.ban-owner{font-size:12.5px}
+
+/* Every on/off in the panel is the network's switch (2026-11-13, the owner: "the whole entire admin panel needs to use
+   openvibe.design, especially for like these checkboxes"): core.js marks a lone checkbox role="switch" and ov-forms draws
+   it; nothing here may stretch it to a field's height. */
+.admin-clarity input[type=checkbox], .admin-clarity input[type=radio], #platform-ai input[type=checkbox] { min-height:0; }

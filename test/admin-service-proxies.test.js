@@ -63,6 +63,23 @@ function upstream(name) {
     const reset = () => { live.seen.length = 0; chat.seen.length = 0; };
 
     try {
+        // ── Lifting a site-wide ban is the owner's (2026-11-13) ──────────
+        {
+            const ownerUser = { id: 9, role: 'admin', username: process.env.OWNER_USERNAME || 'goosely' };
+            const adminNamed = { id: 1, role: 'admin', username: 'someadmin' };
+            reset();
+            let u = await call(adminNamed, 'DELETE', '/api/admin/streamer/users/5/ban');
+            assert.deepStrictEqual([u.status, u.json && u.json.code], [403, 'owner_only'], 'an admin may not lift a site-wide ban');
+            u = await call(adminNamed, 'DELETE', '/api/admin/streamer/ban/77');
+            assert.strictEqual(u.status, 403, 'nor by its ban id');
+            assert.strictEqual(live.seen.length, 0, 'Live never hears it');
+            u = await call(adminNamed, 'GET', '/api/admin/streamer/bans');
+            assert.strictEqual(u.status, 200, 'an admin still sees the list');
+            u = await call(ownerUser, 'DELETE', '/api/admin/streamer/users/5/ban');
+            assert.strictEqual(u.status, 200, 'the owner may');
+            assert.strictEqual(live.seen.at(-1).url, '/api/admin/users/5/ban');
+            reset();
+        }
         // ── TTS → Chat ───────────────────────────────────────────────
         let r = await call(admin, 'GET', '/api/admin/streamer-tts/admin/settings');
         assert.strictEqual(r.status, 200);
