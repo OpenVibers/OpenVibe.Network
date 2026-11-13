@@ -5,6 +5,8 @@ const pageLinks = require('../frame/page-links');
 // The version, the release date and the checksums come from Link's latest GitHub release (server/link/release.js).
 
 const kit = require('openvibe-shared/kit');
+const glyphs = require('openvibe-shared/glyphs');
+const arrowRight = glyphs.svg('arrow-right', { size: 16 });
 
 const HOST = 'openvibe.link';
 const WWW_HOST = `www.${HOST}`;
@@ -152,7 +154,7 @@ function render({ release = {}, releaseId, userAgent } = {}) {
 <span class="np-does-ic">${kit.icon(d.icon)}</span>
 <h3>${esc(d.title)}${d.soon ? ' <span class="np-soon">coming with S1</span>' : ''}</h3>
 <p>${esc(d.body)}</p>
-<p class="np-does-go"><a href="${esc(d.href)}">${esc(d.cta)}<span aria-hidden="true"> →</span></a></p>
+<p class="np-does-go"><a href="${esc(d.href)}">${esc(d.cta)} ${arrowRight}</a></p>
 </article>`).join('');
 
     return `<!DOCTYPE html>

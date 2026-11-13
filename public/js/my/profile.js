@@ -330,7 +330,7 @@ document.getElementById('profile-form').addEventListener('submit', async (e) => 
         // Display name may only re-case the username, not rename it.
         const _dn = (document.getElementById('pf-display-name').value || '').trim();
         if (currentUser?.username && _dn.toLowerCase() !== String(currentUser.username).toLowerCase()) {
-            alert('Your display name can only change the capitalization of your username (e.g. "' + currentUser.username + '" → "' + currentUser.username.charAt(0).toUpperCase() + currentUser.username.slice(1) + '").');
+            alert('Your display name can only change the capitalization of your username (e.g. "' + currentUser.username + '" to "' + currentUser.username.charAt(0).toUpperCase() + currentUser.username.slice(1) + '").');
             return;
         }
         const data = await apiFetch('/api/auth/profile', { method: 'PUT', body: JSON.stringify({

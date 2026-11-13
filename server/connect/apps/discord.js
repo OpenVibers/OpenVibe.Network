@@ -22,10 +22,10 @@ module.exports = {
         scopes: ['Read messages in the channels the bot can see', 'Send messages', 'Manage its own messages'],
     },
     walkthrough: [
-        { title: 'Open the Discord developer portal', text: 'Sign in to Discord, then the Developer Portal → My Applications.', link: 'https://discord.com/developers/applications', linkLabel: 'Open the developer portal' },
+        { title: 'Open the Discord developer portal', text: 'Sign in to Discord, then the Developer Portal, then My Applications.', link: 'https://discord.com/developers/applications', linkLabel: 'Open the developer portal' },
         { title: 'Create a new application', text: 'Give it a name and a bot. The bot is a separate user in your server.', linkLabel: 'The next step' },
-        { title: 'Copy the bot token', text: 'Bot → Token → Reset/Copy. It is shown once.', linkLabel: 'The next step' },
-        { title: 'Invite the bot to your server', text: 'OAuth2 → URL Generator: bot scope, and the permissions it needs (View Channels, Read Message History, Send Messages, Manage Messages).', linkLabel: 'The next step' },
+        { title: 'Copy the bot token', text: 'Bot, then Token, then Reset/Copy. It is shown once.', linkLabel: 'The next step' },
+        { title: 'Invite the bot to your server', text: 'OAuth2, then URL Generator: bot scope, and the permissions it needs (View Channels, Read Message History, Send Messages, Manage Messages).', linkLabel: 'The next step' },
         { title: 'Paste the token below', text: 'Connect seals it and never shows it again.', linkLabel: 'The next step' },
     ],
     test: { method: 'GET', path: '/api/v10/users/@me', summary: 'checks that the token works and which bot it is' },

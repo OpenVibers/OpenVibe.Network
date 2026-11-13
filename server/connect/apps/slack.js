@@ -24,7 +24,7 @@ module.exports = {
     },
     walkthrough: [
         { title: 'Create a Slack app', text: 'Sign in to Slack and create an app from scratch, under your own workspace.', link: 'https://api.slack.com/apps', linkLabel: 'Open the Slack apps page' },
-        { title: 'Give it the bot scopes', text: 'OAuth & Permissions → Scopes → Bot Token Scopes: channels:read, groups:read, channels:history, chat:write.', linkLabel: 'The next step' },
+        { title: 'Give it the bot scopes', text: 'OAuth & Permissions, then Scopes, then Bot Token Scopes: channels:read, groups:read, channels:history, chat:write.', linkLabel: 'The next step' },
         { title: 'Install it in your workspace', text: 'The bot posts as your app, never as you.', linkLabel: 'The next step' },
         { title: 'Copy the bot token', text: 'It starts with xoxb-. Paste it below — Connect seals it and never shows it again.', linkLabel: 'The next step' },
     ],

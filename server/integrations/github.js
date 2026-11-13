@@ -64,7 +64,7 @@ function internalHandler(db) {
     return async (req, res) => {
         const t = await tokenOf(db);
         res.set('Cache-Control', 'no-store');
-        if (!t) return res.status(404).json({ error: 'not_configured', detail: 'No GitHub token is set (admin → Settings → GitHub, or GITHUB_TOKEN)' });
+        if (!t) return res.status(404).json({ error: 'not_configured', detail: 'No GitHub token is set (admin, then Settings, then GitHub, or GITHUB_TOKEN)' });
         res.json({ token: t, source: await secrets.source(db, KEY) });
     };
 }

@@ -357,9 +357,9 @@ function renderAiSetupStart() {
                 <div class="setup-start-card">
                     <h3><i class="fa-solid fa-ticket" aria-hidden="true"></i> Credits you already pay for</h3>
                     <ul class="setup-start-list">
-                        <li><strong>ChatGPT Pro</strong> includes $100, $200 or $500 of OpenAI API credit a month. Check ChatGPT → Settings → Billing → API credits. The plan must be at least seven days old, and the same email must own it and the API organization. <a href="${AI_SETUP_LINKS.openaiCredits}" target="_blank" rel="noopener">How it works</a></li>
+                        <li><strong>ChatGPT Pro</strong> includes $100, $200 or $500 of OpenAI API credit a month. Check ChatGPT, then Settings, then Billing, then API credits. The plan must be at least seven days old, and the same email must own it and the API organization. <a href="${AI_SETUP_LINKS.openaiCredits}" target="_blank" rel="noopener">How it works</a></li>
                         <li><strong>An Anthropic allowance</strong> or any plan with monthly API credit works the same way.</li>
-                        <li>Record each as <strong>Monthly credits</strong> on <a href="${AI_SETUP_LINKS.credits}" target="_blank" rel="noopener">Exchange → Console → Providers</a>. OpenVibe then spends them first, and nothing carries over at the end of a cycle.</li>
+                        <li>Record each as <strong>Monthly credits</strong> on <a href="${AI_SETUP_LINKS.credits}" target="_blank" rel="noopener">Exchange, then Console, then Providers</a>. OpenVibe then spends them first, and nothing carries over at the end of a cycle.</li>
                     </ul>
                 </div>
                 <div class="setup-start-card">

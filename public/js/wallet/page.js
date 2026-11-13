@@ -116,7 +116,7 @@
             a.target = '_blank';
             a.rel = 'noopener';
             a.title = `${p.name || 'Project'} on openvibe.services`;
-            a.append(W.el('b', null, p.name || 'Project'), W.el('span', 'w-project-ext', '↗'));
+            a.append(W.el('b', null, p.name || 'Project'), Object.assign(W.el('span', 'w-project-ext'), { innerHTML: '<i data-ov-icon="open" aria-hidden="true"></i>' }));
             main.appendChild(a);
             let held = 0n;
             try { held = BigInt(String(p.held_nano_usd || '0')); } catch { held = 0n; }

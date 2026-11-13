@@ -725,7 +725,7 @@ router.post('/anon/:token/link', requireAuth, async (req, res) => {
         if (anon.subject_id && userSubject) await require('../identity/modules').onGuestLinked(db, { from: anon.subject_id, into: userSubject });
     });
 
-    console.log(`[Auth] Linked anon #${anon.anon_number} → user ${req.user.username}`);
+    console.log(`[Auth] Linked anon #${anon.anon_number} to user ${req.user.username}`);
     res.json({ ok: true, anon_number: anon.anon_number });
 });
 

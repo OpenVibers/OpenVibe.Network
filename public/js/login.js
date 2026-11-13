@@ -10,6 +10,9 @@ const isOAuth = params.has('client_id') && params.has('redirect_uri');
 // Locker reset/forget). It always shows the password form, even when this browser has a saved session:
 // add_account=1 reuses that session and leaves auth_time alone, which is what made "Sign in again" loop.
 const isReauth = params.get('reauth') === '1';
+/** The design glyphs, drawn by /shared/ov-glyphs.js: an arrow is decoration, never the label. */
+const ARROW_RIGHT = '<i data-ov-icon="arrow-right" aria-hidden="true"></i>';
+const backLink = (label) => `<i data-ov-icon="arrow-left" aria-hidden="true"></i> ${label}`;
 /** The username the re-authentication form starts with: login_hint when given ('' means blank), else the active account. */
 function reauthUsername(accounts) {
     if (params.has('login_hint')) return String(params.get('login_hint') || '').trim().replace(/^@/, '');
@@ -257,7 +260,7 @@ function switchTab(tab, evt) {
 
 function showForgotForm() {
     const forgotBack = document.getElementById('forgot-back');
-    forgotBack.textContent = hasAccounts ? '← Back to saved accounts' : '← Back to sign in';
+    forgotBack.innerHTML = backLink(hasAccounts ? 'Back to saved accounts' : 'Back to sign in');
     setActivePanel('panel-forgot', { showTabs: false, showExtras: false });
 }
 
@@ -355,7 +358,7 @@ function renderChooser() {
                 <div class="name">${escapeHtml(account.display_name || account.username)}</div>
                 <div class="detail">${escapeHtml(account.username)}${account.email ? ' · ' + escapeHtml(account.email) : ''}</div>
             </div>
-            <span class="arrow">→</span>
+            <span class="arrow" aria-hidden="true"><i data-ov-icon="arrow-right"></i></span>
             <button class="remove-btn" title="Remove this saved account" onclick="event.stopPropagation(); removeAccount(${account.id})"><i class="fa-solid fa-xmark"></i></button>
         `;
         const img = item.querySelector('.avatar img');
@@ -795,7 +798,7 @@ async function handleLogin(e) {
         await guardScheduledDeletion(data.token, () => finishSignIn(data));
     } catch (err) {
         showMsg('login-msg', err.message, 'error');
-        btn.textContent = isReauth ? 'Sign In Again →' : 'Sign In →';
+        btn.innerHTML = (isReauth ? 'Sign In Again' : 'Sign In') + ' ' + ARROW_RIGHT;
         btn.classList.remove('loading');
     } finally {
         oauthConfirmInFlight = false;
@@ -830,7 +833,7 @@ async function finishSignIn(data) {
         showMsg('login-msg', err.message, 'error');
         const btn = document.getElementById('login-submit');
         if (btn) {
-            btn.textContent = isReauth ? 'Sign In Again →' : 'Sign In →';
+            btn.innerHTML = (isReauth ? 'Sign In Again' : 'Sign In') + ' ' + ARROW_RIGHT;
             btn.classList.remove('loading');
         }
     } finally {
@@ -1071,7 +1074,7 @@ async function continueAnonymous() {
         const note = document.getElementById('reauth-note');
         if (note) note.hidden = false;
         const submit = document.getElementById('login-submit');
-        if (submit) submit.textContent = 'Sign In Again →';
+        if (submit) submit.innerHTML = 'Sign In Again ' + ARROW_RIGHT;
         const back = document.getElementById('login-back');
         if (back) back.style.display = 'none';
         return;

@@ -22,7 +22,7 @@ module.exports = {
         scopes: ['Your Todoist account, as you'],
     },
     walkthrough: [
-        { title: 'Open Todoist settings', text: 'Sign in to Todoist, then Settings → Integrations.', link: 'https://app.todoist.com/app/settings/integrations', linkLabel: 'Open Todoist settings' },
+        { title: 'Open Todoist settings', text: 'Sign in to Todoist, then Settings, then Integrations.', link: 'https://app.todoist.com/app/settings/integrations', linkLabel: 'Open Todoist settings' },
         { title: 'Copy the API token', text: 'The "API token" line holds 40 hexadecimal characters.', linkLabel: 'The next step' },
         { title: 'Paste the token below', text: 'Connect seals it and never shows it again.', linkLabel: 'The next step' },
     ],
