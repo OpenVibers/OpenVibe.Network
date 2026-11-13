@@ -290,7 +290,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
         const rec = await usernames.lookup(db, name);
         if (!rec) return null;
         if (rec.renamed) return { moved: rec.current };
-        const u = await db.prepare(`SELECT id, username, display_name, bio, public_page_bio, public_page_links, public_page_places, profile_color, created_at, subject_id, profile_public,
+        const u = await db.prepare(`SELECT id, username, display_name, bio, public_page_bio, public_page_links, public_page_places, profile_color, created_at, subject_id, profile_public, is_test,
             is_anon, merged_into, deleted_at FROM users WHERE id = ?`).get(rec.network_id);
         if (!u || Number(u.is_anon) || u.merged_into || u.deleted_at) return null;
         return { user: u };
@@ -480,6 +480,9 @@ ${sorted.map((g) => {
 function renderPage(u, inv, origin = SITE, places = { spaces: [], community: [], videos: [] }, level = null) {
     const canonicalUrl = `${origin}/@${encodeURIComponent(u.username)}`;
     const name = u.display_name || u.username;
+    // A test account is marked wherever the person's own page is shown: it never reaches a public list or feed, so
+    // the badge is the only honest way to say "this is a probe, not a member".
+    const isTest = !!Number(u.is_test);
     const isPublic = !!inv;
     // What they wear shows on the profile itself: the name effect on their name (items.css), the hat on the picture.
     const worn = (kind) => (isPublic ? inv.showcase.find((i) => i.kind === kind) : null);
@@ -548,7 +551,8 @@ a{color:var(--accent)}
 .pf-who{flex:1;min-width:200px;padding-top:56px}
 .pf-who h1{margin:0;font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.15;overflow-wrap:anywhere}
 .pf-name-badge{width:.85em;height:.85em;margin-right:.25em;vertical-align:-.08em;border-radius:6px;object-fit:contain}
-.pf-handle{margin:.2em 0 0;color:var(--text-secondary)}.pf-places a .pf-live{display:inline-flex;align-items:center;gap:6px;color:var(--live-red,#e5484d);font-weight:700}.pf-live::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor}
+.pf-handle{margin:.2em 0 0;color:var(--text-secondary)}
+.pf-test-tag{display:inline-block;margin-left:.5em;padding:.15em .5em;border-radius:999px;font-size:.7rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:rgba(139,92,246,.15);color:#a78bfa}.pf-places a .pf-live{display:inline-flex;align-items:center;gap:6px;color:var(--live-red,#e5484d);font-weight:700}.pf-live::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor}
 .pf-bio{margin:0;padding:0 24px 18px;color:var(--text-primary);line-height:1.6;white-space:pre-line;overflow-wrap:anywhere;max-width:72ch}
 .pf-stats{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0 24px 22px}
 .pf-stats li{display:flex;flex-direction:column;gap:2px;padding:8px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card);min-width:110px}
@@ -602,7 +606,7 @@ ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links
 <div class="pf-banner" aria-hidden="true"></div>
 <div class="pf-head">
 <div class="pf-pic"><img class="pf-avatar" src="${esc(avatarUrl(u.username))}" alt="" width="112" height="112">${hatGlyph ? `<span class="pf-hat" title="${esc(hat.name)}" aria-hidden="true">${esc(hatGlyph)}</span>` : ''}</div>
-<div class="pf-who">${level ? `<p><a href="https://openvibe.quest/levels">Level ${level.level}</a> · ${level.xp} experience <progress aria-label="Experience to next level" value="${level.into}" max="${level.span}"></progress></p>` : ''}<h1>${badgeId ? `<img class="pf-name-badge" src="https://openvibe.media/o/${badgeId}" alt="" title="${esc(badge.name)}" width="32" height="32">` : ''}${fxClass ? `<span class="ov-fx ${fxClass}" title="${esc(fx.name)}">${esc(name)}</span>` : esc(name)}</h1><p class="pf-handle">@${esc(u.username)}</p></div>
+<div class="pf-who">${level ? `<p><a href="https://openvibe.quest/levels">Level ${level.level}</a> · ${level.xp} experience <progress aria-label="Experience to next level" value="${level.into}" max="${level.span}"></progress></p>` : ''}<h1>${badgeId ? `<img class="pf-name-badge" src="https://openvibe.media/o/${badgeId}" alt="" title="${esc(badge.name)}" width="32" height="32">` : ''}${fxClass ? `<span class="ov-fx ${fxClass}" title="${esc(fx.name)}">${esc(name)}</span>` : esc(name)}</h1><p class="pf-handle">@${esc(u.username)}${isTest ? '<span class="pf-test-tag" title="A test account: it is hidden from public lists and never reaches a public feed">Test account</span>' : ''}</p></div>
 </div>
 ${bio ? `<p class="pf-bio">${esc(bio)}</p>` : ''}
 ${isPublic && Array.isArray(publicLinks) && publicLinks.length ? `<nav aria-label="${esc(name)}'s links"><ul class="pf-links">${publicLinks.slice(0, 8).map((link) => { let href = ''; try { const parsed = new URL(link.url); if (parsed.protocol === 'https:' && !parsed.username && !parsed.password) href = parsed.href; } catch {} return href ? `<li><a rel="me noopener noreferrer" href="${esc(href)}">${esc(String(link.label || '').slice(0, 40))}</a></li>` : ''; }).join('')}</ul></nav>` : ''}

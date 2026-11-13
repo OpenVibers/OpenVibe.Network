@@ -105,6 +105,7 @@ a.btn{text-decoration:none}
 .badge-global_mod{background:rgba(155,89,182,0.15);color:#9b59b6}
 .badge-streamer{background:rgba(155,89,182,0.15);color:#9b59b6}
 .badge-user{background:rgba(52,152,219,0.15);color:#3498db}
+.badge-test{background:rgba(139,92,246,0.15);color:#a78bfa;margin-left:4px}
 
 /* Loading */
 .muted{color:var(--text-muted);font-size:13px}

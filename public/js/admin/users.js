@@ -33,7 +33,7 @@ async function loadUsers() {
                         <td data-label="Username"><strong>${esc(u.username)}</strong></td>
                         <td data-label="Display name">${esc(u.display_name || '-')}</td>
                         <td data-label="Email" style="font-size:11px">${esc(u.email || '-')}</td>
-                        <td data-label="Access role"><span class="badge badge-${u.role}">${esc({user:'Member access',streamer:'Streamer access',global_mod:'Network moderator access',admin:'Administrator access'}[u.role] || adminWords(u.role))}</span></td>
+                        <td data-label="Access role"><span class="badge badge-${u.role}">${esc({user:'Member access',streamer:'Streamer access',global_mod:'Network moderator access',admin:'Administrator access'}[u.role] || adminWords(u.role))}</span>${u.is_test ? '<span class="badge badge-test" title="A test account: it is hidden from public lists and never reaches a public feed">Test account</span>' : ''}</td>
                         <td data-label="Created" style="font-size:11px">${u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
                         <td data-label="Last seen" style="font-size:11px">${u.last_seen ? timeAgo(u.last_seen) : 'Never'}</td>
                         <td data-label="Account actions" style="display:flex;gap:4px;align-items:center">
