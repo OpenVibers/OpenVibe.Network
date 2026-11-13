@@ -63,6 +63,7 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 
         if (u.pathname === '/api/v1/agent/kill-switch' && req.method === 'POST') return res.end(JSON.stringify({ ok: true }));
         if (/^\/api\/v1\/tasks\/[A-Za-z0-9._~-]+\/(takeover|giveback)$/.test(u.pathname) && req.method === 'POST') return res.end(JSON.stringify({ ok: true }));
         if (u.pathname === '/api/v1/me/actor' && req.method === 'GET') return res.end(JSON.stringify({ id: 'act_1', name: 'My Actor', status: 'resting', asks: [] }));
+        if (u.pathname === '/api/v1/me/agents/faces' && req.method === 'GET') return res.end(JSON.stringify({ agents: [{ id: 'agt_1', name: 'Juniper', avatar_url: null, hue: 258, glyph: 'spark', state: 'working', step: 'Read the job posts', asks: 0 }] }));
         if (/^\/api\/v1\/me\/actor\/(pause|resume|tell)$/.test(u.pathname) && req.method === 'POST') return res.end(JSON.stringify({ ok: true }));
         if (/^\/api\/v1\/me\/actor\/asks\/[A-Za-z0-9._~-]+\/(answer|decline)$/.test(u.pathname) && req.method === 'POST') return res.end(JSON.stringify({ ok: true }));
         res.statusCode = 404;
@@ -155,6 +156,10 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 
     ({ r, d } = await get('/actor', { Authorization: TOKEN }));
     assert.strictEqual(r.status, 200);
     assert.strictEqual(d.name, 'My Actor');
+    // Your agents' faces for the menu's stack.
+    ({ r, d } = await get('/actor/faces', { Authorization: TOKEN }));
+    assert.strictEqual(r.status, 200);
+    assert.deepStrictEqual(d.agents.map((a) => [a.name, a.state]), [['Juniper', 'working']]);
     for (const what of ['pause', 'resume', 'tell']) {
         ({ r } = await send(`/actor/${what}`, { text: 'hello' }));
         assert.strictEqual(r.status, 200);
