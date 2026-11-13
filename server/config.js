@@ -102,6 +102,9 @@ module.exports = {
         blogUrl: process.env.OV_BLOG_URL || 'https://openvibe.blog',
         wikiUrl: process.env.OV_WIKI_URL || 'https://openvibe.wiki',
         reportUrl: process.env.OV_REPORT_URL || 'https://openvibe.report',
+        // OpenVibe.Inventory: the public equipped sets the feed reads for the name effect a person
+        // wears (feed.item@1 actor.fx). Unset = no effect on the cards; the feed never waits on it.
+        inventoryUrl: process.env.OV_INVENTORY_URL || 'https://inventory.openvibe.network',
     },
 
     // OpenVibe.Events base URL for Network's own events (developer projects). Unset = no relay:

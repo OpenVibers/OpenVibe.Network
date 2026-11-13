@@ -126,6 +126,7 @@ const REVIEWED = {
     'server/admin/analytics-routes.js fetch': [2, 'staff analytics: the services\' internal URLs from the registry (owner/admin set), and Insights\' Prometheus (PROMETHEUS_URL, loopback by default) with fixed queries; never a request value'],
     'server/admin/events-ops.js fetch': [1, 'OV_EVENTS_INTERNAL_URL (operator config) for staff DLQ views'],
     'server/feed/events.js fetch': [1, 'OpenVibe.Events at OV_EVENTS_INTERNAL_URL (operator config), the fixed /api/v1/events pull path with an opaque cursor and the service token; no request value names a host'],
+    'server/feed/effects.js fetch': [1, 'the name effect a person wears: OpenVibe.Inventory at the operator-configured public base (OV_INVENTORY_URL, default https://inventory.openvibe.network), the fixed /api/v1/equipped path with up to 100 subjects percent-encoded, no credentials, 1.5 s timeout; no request value names a host'],
     'server/feed/sources.js fetch': [3, 'the public APIs and feeds of OpenVibe.Community, Today, Quest, Play, Meme, Pics, Live, Space, Work, Deals, News, Blog and Wiki at operator-configured bases (OV_*_URL; Community and Live default to their loopback internal URL), fixed paths with encoded, validated ids; never a request value'],
     'server/admin/routes.js fetch': [1, 'registry refresh: POSTs to the service refresh targets resolved from the registry (admin-set service URLs, staff only)'],
     'server/auth/discord-link.js fetch': [2, 'fixed Discord API host (discord.com/api)'],

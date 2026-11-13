@@ -18,6 +18,7 @@ const express = require('express');
 const store = require('./store');
 const { cardOf, oneCardPerThing, foldCards, rankCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD } = require('./card');
 const { createFeedSources } = require('./sources');
+const { createEffects } = require('./effects');
 const { createEventsPull } = require('./events');
 const session = require('../auth/session');
 
@@ -51,16 +52,34 @@ async function viewerOf(req, { db, publicKey, config }) {
     } catch { return null; }
 }
 
+/**
+ * The people the rows name, in one query: their name, their picture, their username (handle) and their
+ * level (feed.item@1 1.1.0). The level is the one the leaderboard shows — person_levels.level, one for
+ * a person who has no row yet — and null for a person who hides it from the leaderboard (the same rule
+ * server/profile/card.js follows).
+ */
 async function actorsFor(db, rows) {
     const subjects = [...new Set(rows.map((r) => r.actor_subject).filter((s) => /^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(String(s || ''))))];
     if (!subjects.length) return new Map();
-    const users = await db.prepare(`SELECT subject_id, display_name, username, avatar_url FROM users WHERE subject_id IN (${subjects.map(() => '?').join(', ')})`).all(...subjects);
-    return new Map(users.map((u) => [u.subject_id, { name: u.display_name || u.username, avatar: u.avatar_url || null }]));
+    const users = await db.prepare(`SELECT u.subject_id, u.display_name, u.username, u.avatar_url,
+            COALESCE(l.level, 1) AS level, l.leaderboard
+        FROM users u LEFT JOIN person_levels l ON l.user_id = u.id
+        WHERE u.subject_id IN (${subjects.map(() => '?').join(', ')})`).all(...subjects);
+    return new Map(users.map((u) => [u.subject_id, {
+        name: u.display_name || u.username,
+        avatar: u.avatar_url || null,
+        handle: String(u.username || '').match(/^[A-Za-z0-9_.-]{1,40}$/) ? String(u.username) : null,
+        // A person who hides their level from the leaderboard sends null; the level is never guessed.
+        level: u.leaderboard === false ? null : Math.min(1000, Math.max(1, Number(u.level) || 1)),
+    }]));
 }
 
 function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publicKey = '', fetchImpl = globalThis.fetch, now = () => Date.now(), log = console, presence = null, startCollectors = true } = {}) {
     const sources = createFeedSources({ db, config, fetchImpl, now, log, presence });
     const events = createEventsPull({ db, eventsUrl: config.eventsInternalUrl, privateKey, issuer, fetchImpl, log, now });
+    // The name effect a person wears (actor.fx): asked of OpenVibe.Inventory by the feed's own server,
+    // so no site needs Inventory in its connect-src. Inventory down leaves the cards without one.
+    const effects = createEffects({ baseUrl: (config.feed && config.feed.inventoryUrl) || '', fetchImpl, now });
     let started = false;
 
     const headers = (req, res) => {
@@ -90,6 +109,12 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             limit: Math.min(400, want * 6 + 40), since: new Date(now() - 60 * 86400000).toISOString(),
         });
         const actors = await actorsFor(db, read.rows);
+        // The name effect each of them wears: one Inventory read for the page, kept a minute.
+        const tokens = await effects.effects([...actors.keys()]);
+        for (const [subject, actor] of actors) {
+            const token = tokens.get(subject);
+            if (token) actor.fx = token;
+        }
         let cards = read.rows.map((r) => cardOf(r, actors.get(r.actor_subject) || null));
         // The one view store (Media): counts.views and counts.engaged for every card, batched, and only here —
         // a Media outage leaves the source's own counts. The source's like/comment counts are kept. The feed.item@1

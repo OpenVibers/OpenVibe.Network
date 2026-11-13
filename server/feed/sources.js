@@ -455,6 +455,25 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         return created;
     }
 
+    /** What an offer costs, as the source's own feed export states it: the price now, the price it
+     *  was, the shop that sells it and its picture (feed.item@1 1.1.0: group.items[].price / was / store,
+     *  and the card's own picture). A half-stated price is no price at all. */
+    function dealFacts(o) {
+        const feed = (o && o.feed) || {};
+        const price = (feed.price && typeof feed.price === 'object') ? feed.price : {};
+        const amount = Number(price.amount);
+        const currency = String(price.currency || '').trim().toUpperCase();
+        const stated = Number.isFinite(amount) && amount >= 0 && /^[A-Z]{3}$/.test(currency);
+        const was = Number(feed.was);
+        return {
+            price_amount: stated ? amount : null,
+            price_currency: stated ? currency : null,
+            was_price: Number.isFinite(was) && was >= 0 ? was : null,
+            store_name: clean(feed.store, 60) || null,
+            picture_url: https(feed.media && feed.media.thumb),
+        };
+    }
+
     // ── Deals ─────────────────────────────────────────────────
     async function dealOffers() {
         const out = await getJson(`${urls.deals}/api/v1/offers?limit=40&sort=new`);
@@ -465,9 +484,11 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             const title = clean(o.title, 180);
             if (!url || !title) continue;
             const votes = Number(o.votes);
+            const facts = dealFacts(o);
             const r = await upsert({ source_service: 'deals', source_type: 'offer', source_id: clean(o.id, 100), kind: 'deal',
                 title, text: clean(o.ai_summary || o.description, 280), url, site: 'deals', site_name: 'Deals',
                 actor_subject: null, origin: 'system', label: 'System', media_ratio: null,
+                ...facts,
                 counts: Number.isSafeInteger(votes) && votes > 0 ? { likes: votes } : {},
                 occurred_at: sqlFrom(o.created_at) || new Date(now()).toISOString() });
             if (r.created) created++;
