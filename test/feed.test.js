@@ -7,7 +7,7 @@ const contracts = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 const store = require('../server/feed/store');
 const { eventToItems } = require('../server/feed/events');
-const { cardOf, foldCards, rankCards, searchMatches } = require('../server/feed/card');
+const { cardOf, oneCardPerThing, foldCards, rankCards, searchMatches } = require('../server/feed/card');
 const { createFeedApi } = require('../server/feed/api');
 const { createFrameService } = require('../server/frame/service');
 
@@ -65,6 +65,22 @@ const envelope = (type, payload, over = {}) => ({
     assert.strictEqual(deals[0].group.count, 3);
     assert.match(deals[0].id, /^g:deal:deals:\d{4}-\d\d-\d\dT\d\d$/, 'a burst has one id per site and hour, the same on every page (11-12: three "112 new deals")');
     assert.strictEqual(deals[0].label, undefined, 'named by its site, never "System"');
+
+    // ── one card per thing (11-13: a picture showed twice, once as itself and once as its Community thread) ──
+    {
+        const thumb = 'https://openvibe.community/p/lone-path-83/screenshot?w=640';
+        const pic = { id: 'f:community:paste:lone-path-83', kind: 'pic', site: 'community', url: 'https://openvibe.community/p/lone-path-83', title: 'Current read', actor: null, subject: null, media: { thumb, ratio: 1.7 }, counts: { comments: 0 } };
+        const thread = { id: 'f:community:thread:95', kind: 'post', site: 'community', url: 'https://openvibe.community/forum/pastes/item-55847', title: '1000012166', actor: { name: 'moosely', avatar: null }, subject: 'usr_01KKCXTAF00CY25BW615CSPHME', media: { thumb: 'https://openvibe.community/p/lone-path-83/screenshot?w=320' }, counts: { comments: 2 } };
+        const reply = { id: 'f:community:post:165', kind: 'post', site: 'community', url: 'https://openvibe.community/forum/pastes/item-55847#post-165', title: 'Re: 1000012166', actor: { name: 'moosely', avatar: null }, media: null, counts: {} };
+        const other = { id: 'f:community:thread:99', kind: 'post', site: 'community', url: 'https://openvibe.community/forum/general/item-9', title: 'A question', actor: { name: 'Ana', avatar: null }, media: null, counts: {} };
+        const out = oneCardPerThing([thread, reply, pic, other]);
+        assert.deepStrictEqual(out.map((c) => c.id), ['f:community:paste:lone-path-83', 'f:community:thread:99'], 'the thing once; its thread and the reply in it fold in; another thread stays');
+        assert.strictEqual(out[0].actor.name, 'moosely', 'the thread names who posted the picture');
+        assert.strictEqual(out[0].subject, 'usr_01KKCXTAF00CY25BW615CSPHME');
+        assert.strictEqual(out[0].counts.comments, 2, 'its comments are counted on the thing');
+        const alone = oneCardPerThing([thread]);
+        assert.deepStrictEqual(alone.map((c) => c.id), ['f:community:thread:95'], 'a thread whose thing is not in the page stays');
+    }
 
     // ── Markdown and relative addresses (11-12: the menu printed "[title](/p/x) ![title](/p/x/screenshot)") ──
     const shared = cardOf({ source_service: 'community', source_type: 'thread', source_id: '95', kind: 'post', title: '1000012166',

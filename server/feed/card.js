@@ -275,6 +275,43 @@ function foldCards(cards, now = Date.now()) {
     });
 }
 
+/**
+ * One card per thing (2026-11-13, the owner: "Why is it duplicating stuff … I should just show the post that she made,
+ * not like duplicate on community"). Community opens a discussion thread for each paste, clip and video it lists, and
+ * that thread (and its replies) reached the feed beside the thing itself, with the same picture. A card whose picture
+ * another card shows is folded into the thing: the thing keeps its place, takes the thread's comment count, and takes
+ * its author when the thing had nobody (pictures arrive without one). A reply whose thread was folded goes too.
+ */
+const pictureKey = (card) => {
+    const t = card && card.media && card.media.thumb;
+    if (!t) return null;
+    try { const u = new URL(t); return `${u.host}${u.pathname}`.replace(/\/screenshot$/, ''); } catch { return null; }
+};
+const isDiscussion = (card) => card && card.site === 'community' && /^f:community:(thread|post):/.test(String(card.id || ''));
+const threadOf = (url) => String(url || '').split('#')[0];
+function oneCardPerThing(cards) {
+    const byPicture = new Map();
+    for (const c of cards) { const k = pictureKey(c); if (k && !isDiscussion(c) && !byPicture.has(k)) byPicture.set(k, c); }
+    const folded = new Set();
+    const out = [];
+    for (const c of cards) {
+        const k = pictureKey(c);
+        const thing = k && isDiscussion(c) ? byPicture.get(k) : null;
+        if (thing) {
+            const counts = { ...(thing.counts || {}) };
+            const theirs = Number(c.counts && c.counts.comments) || 0;
+            if (theirs > (Number(counts.comments) || 0)) counts.comments = theirs;
+            thing.counts = counts;
+            if (!thing.actor && c.actor) { thing.actor = c.actor; if (!thing.subject && c.subject) thing.subject = c.subject; }
+            folded.add(threadOf(c.url));
+            continue;
+        }
+        out.push(c);
+    }
+    // A reply in a folded thread is part of that thing's comments, not a card of its own.
+    return out.filter((c) => !(isDiscussion(c) && /^f:community:post:/.test(String(c.id || '')) && folded.has(threadOf(c.url))));
+}
+
 const DAY_MS = 24 * 60 * 60_000;
 const engagement = (card) => {
     const c = card.counts || {};
@@ -361,4 +398,4 @@ function wallItem(card) {
     };
 }
 
-module.exports = { bulkId, BULK_WORD, SITE_NAMES, kindOf, cardOf, foldCards, compareRankedCards, rankCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };
+module.exports = { bulkId, BULK_WORD, SITE_NAMES, kindOf, cardOf, oneCardPerThing, foldCards, compareRankedCards, rankCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };

@@ -16,7 +16,7 @@
  */
 const express = require('express');
 const store = require('./store');
-const { cardOf, foldCards, rankCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD } = require('./card');
+const { cardOf, oneCardPerThing, foldCards, rankCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD } = require('./card');
 const { createFeedSources } = require('./sources');
 const { createEffects } = require('./effects');
 const { createEventsPull } = require('./events');
@@ -129,7 +129,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             held.forEach((h, i) => { cards[i].counts = h.counts; });
         } catch { /* a card without a count */ }
         if (q) cards = cards.filter((c) => searchMatches(c, q));
-        cards = foldCards(cards, now());
+        cards = foldCards(oneCardPerThing(cards), now());
         // A burst's card counts the whole hour, not just the rows this page read (11-12: three "112 new deals").
         for (const card of cards.filter((c) => c.bulk)) {
             const b = card.bulk;
@@ -195,7 +195,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             const followed = viewer && viewer.subject ? await store.followedSubjects(db, viewer.subject) : [];
             const read = await store.listItems(db, { q, followed, viewerSubject: viewer && viewer.subject, limit: 400, since: new Date(now() - 365 * 86400000).toISOString() });
             const actors = await actorsFor(db, read.rows);
-            const cards = foldCards(read.rows.map((r) => cardOf(r, actors.get(r.actor_subject) || null)).filter((c) => searchMatches(c, q)), now()).map(({ bulk, ...c }) => c);
+            const cards = foldCards(oneCardPerThing(read.rows.map((r) => cardOf(r, actors.get(r.actor_subject) || null))).filter((c) => searchMatches(c, q)), now()).map(({ bulk, ...c }) => c);
             res.json({ items: rankCards(cards, { followed: new Set(followed), now: now() }).slice(0, want), next_cursor: null });
         } catch (err) { next(err); }
     };
