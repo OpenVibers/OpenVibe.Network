@@ -12,7 +12,7 @@ for (const [, body] of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) as
 
 const files = fs.readdirSync(path.join(pub, 'js', 'admin')).filter((f) => f.endsWith('.js')).sort();
 // The module map, in load order (public/js/admin/…).
-const modules = ['core.js', 'dashboard.js', 'users.js', 'moderation.js', 'settings.js', 'tools-workers.js', 'payments.js', 'glossary.js', 'ai.js', 'ai-setup.js', 'guide-rules.js', 'guide.js', 'inference.js', 'setup.js', 'content.js', 'analytics.js', 'boot.js'];
+const modules = ['core.js', 'dashboard.js', 'users.js', 'moderation.js', 'settings.js', 'tools-workers.js', 'payments.js', 'glossary.js', 'ai.js', 'ai-setup.js', 'guide-rules.js', 'guide.js', 'inference.js', 'setup.js', 'content.js', 'analytics.js', 'domains.js', 'boot.js'];
 assert.deepStrictEqual(files, [...modules].sort(), 'each module file exists and there is no other');
 const tags = [...html.matchAll(/<script\b([^>]*)\bsrc="\/js\/admin\/([^"]+)"([^>]*)><\/script>/g)];
 const loaded = tags.map((m) => m[2]);
@@ -34,5 +34,12 @@ for (const name of ['esc', 'toast', 'api', 'fmtBytes', 'showTab', 'routeFromUrl'
 // tabLoaders names every loader, so it is evaluated after all of them; init() starts the panel last.
 assert.ok(src['boot.js'].includes('const tabLoaders = {'), 'tabLoaders lives in boot.js');
 assert.match(src['boot.js'], /\ninit\(\);\s*$/, 'boot.js ends by calling init()');
+// Every loader tabLoaders names is declared in a module (11-13: #904 deleted deploy.js while boot.js still named
+// loadDomains, so the panel threw before its first tab loaded and stayed at "Loading stats...").
+const table = /const tabLoaders = \{([\s\S]*?)\n\};/.exec(src['boot.js'])[1];
+const named = [...table.matchAll(/:\s*([A-Za-z_$][\w$]*)\s*,/g), ...table.matchAll(/=>\s*([A-Za-z_$][\w$]*)\(/g)].map((m) => m[1]);
+assert.ok(named.length > 10, 'tabLoaders is read');
+const missing = named.filter((n) => !owner.has(n));
+assert.deepStrictEqual(missing, [], 'every loader tabLoaders names is declared in an admin module');
 
 console.log('admin-modules: all checks passed');
