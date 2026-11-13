@@ -45,7 +45,7 @@ assert.match(els['setup-steps'].innerHTML, /Start[\s\S]*Chat and writing[\s\S]*D
 S.selectAiSetupStep('done');
 const done = els['setup-main'].innerHTML;
 assert.match(done, /1 of 2 ready/);
-assert.match(done, /onclick="selectAiSetupStep\('decide'\)">Set it/, 'what is left has a way to it');
+assert.match(done, /onclick="selectAiSetupStep\('decide'\)">(<i[^>]*><\/i> )?Set it/, 'what is left has a way to it');
 assert.match(done, /Test every ready job/);
 assert.ok(done.indexOf('Decisions') < done.indexOf('Chat and writing'), 'what is left comes first');
 

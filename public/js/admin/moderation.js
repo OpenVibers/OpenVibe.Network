@@ -252,11 +252,11 @@ async function loadDeliveries() {
         document.getElementById('dlq-counts').textContent = Object.entries(counts).map(([k, v]) => `${{dead:'Stopped retrying',failed:'Retrying after a failure',pending:'Waiting to be delivered',delivered:'Delivered successfully'}[k] || adminWords(k)}: ${v} deliveries`).join(' · ');
         const bySub = {};
         for (const x of _deliveries) (bySub[x.subscription_id] = bySub[x.subscription_id] || []).push(x.event_id);
-        const replayAll = Object.entries(bySub).map(([s, ids]) => `<button class="btn btn-sm" data-sub="${esc(s)}" onclick="replayDeliveries(this.dataset.sub, null)">Replay ${ids.length} deliveries for ${esc(s.slice(0, 14))}…</button>`).join(' ');
+        const replayAll = Object.entries(bySub).map(([s, ids]) => `<button class="btn btn-sm" data-sub="${esc(s)}" onclick="replayDeliveries(this.dataset.sub, null)"><i class="fa-solid fa-rotate-right"></i> Replay ${ids.length} deliveries for ${esc(s.slice(0, 14))}…</button>`).join(' ');
         c.innerHTML = _deliveries.length ? `<div style="margin-bottom:8px">${replayAll}</div><table class="admin-table"><thead><tr><th>Event</th><th>Subscription</th><th>Seq</th><th>Attempts</th><th>Last answer</th><th></th></tr></thead><tbody>${_deliveries.map(x => `
             <tr><td style="font-size:11px"><code>${esc(x.event_id)}</code></td><td style="font-size:11px"><code>${esc(x.subscription_id)}</code></td><td>${esc(String(x.seq))}</td><td>${esc(String(x.attempt))}</td>
             <td style="font-size:11px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(x.last_error || '')}">${x.last_status ? `The receiver answered HTTP ${esc(String(x.last_status))}.` : 'No response recorded.'} ${esc(x.last_error || '')}</td>
-            <td><button class="btn btn-sm" data-sub="${esc(x.subscription_id)}" data-evt="${esc(x.event_id)}" onclick="replayDeliveries(this.dataset.sub, [this.dataset.evt])">Replay delivery</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted">No deliveries match. Choose another delivery state or clear the subscription filter.</p>';
+            <td><button class="btn btn-sm" data-sub="${esc(x.subscription_id)}" data-evt="${esc(x.event_id)}" onclick="replayDeliveries(this.dataset.sub, [this.dataset.evt])"><i class="fa-solid fa-rotate-right"></i> Replay delivery</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted">No deliveries match. Choose another delivery state or clear the subscription filter.</p>';
     } catch (err) {
         c.innerHTML = `<p class="muted">Deliveries could not be loaded: ${esc(err.message || 'error')}</p>`;
     }
@@ -284,7 +284,7 @@ async function loadOperatorChecklist() {
             const places = document.createElement('div'); places.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
             for (const w of it.where) {
                 let el;
-                if (w.kind === 'tab') { el = document.createElement('button'); el.type = 'button'; el.className = 'btn'; el.textContent = 'Open ' + w.tab; el.onclick = () => showTab(w.tab, null); }
+                if (w.kind === 'tab') { el = document.createElement('button'); el.type = 'button'; el.className = 'btn'; el.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square"></i> Open ' + esc(w.tab); el.onclick = () => showTab(w.tab, null); }
                 else if (w.kind === 'url') { el = document.createElement('a'); el.href = w.url; el.target = '_blank'; el.rel = 'noopener'; el.textContent = w.url.replace(/^https:\/\//, ''); }
                 else { el = document.createElement('code'); el.textContent = (w.kind === 'cli' ? '$ ' : 'API ') + (w.cli || w.api); }
                 places.appendChild(el);
@@ -319,8 +319,8 @@ async function loadThemeReview() {
             try { await api(`/api/admin/themes/${encodeURIComponent(t.id)}/review`, { method: 'POST', body: JSON.stringify({ decision, note: note.value }) }); loadThemeReview(); }
             catch (err) { alert(err.message); }
         };
-        const ok = document.createElement('button'); ok.className = 'btn'; ok.textContent = 'Approve'; ok.onclick = act('approve');
-        const no = document.createElement('button'); no.className = 'btn'; no.textContent = 'Reject'; no.onclick = act('reject');
+        const ok = document.createElement('button'); ok.className = 'btn'; ok.innerHTML = '<i class="fa-solid fa-check"></i> Approve'; ok.onclick = act('approve');
+        const no = document.createElement('button'); no.className = 'btn'; no.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Reject'; no.onclick = act('reject');
         const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center'; row.append(note, ok, no);
         const help = document.createElement('p'); help.className = 'admin-help'; help.textContent = 'Explain a rejection so the author can fix and resubmit the theme; for example, text is unreadable. Approval publishes the theme; there is no undo control in this queue.'; card.append(head, swatches, help, row);
         c.appendChild(card);
@@ -348,7 +348,7 @@ function renderGrants() {
         <tr><td><code>${esc(g.client_id)}</code></td><td><code>${esc(g.capability)}</code></td><td style="font-size:11px">${esc(g.audience)}</td>
         <td style="font-size:11px">${esc((g.namespaces || []).join(', ') || '-')}</td><td><span class="badge ${badge[g.state] || ''}">${esc({active:'Access is allowed.',revoked:'Access was removed.',expired:'Access has expired.'}[g.state] || 'Access state is unknown.')}</span></td>
         <td style="font-size:11px">${g.expires_at ? esc(g.expires_at.slice(0, 10)) : '-'}</td><td style="font-size:11px">${esc(g.granted_by === 'default' ? 'default' : (g.granted_by || '-'))}</td>
-        <td>${g.state === 'active' ? `<button class="btn btn-sm" data-client="${esc(g.client_id)}" data-cap="${esc(g.capability)}" title="Remove access; grant again to restore it" onclick="revokeGrant(this.dataset.client, this.dataset.cap)">Revoke access</button>` : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">No permissions match. Clear the service filter or add the required permission above.</p>';
+        <td>${g.state === 'active' ? `<button class="btn btn-sm" data-client="${esc(g.client_id)}" data-cap="${esc(g.capability)}" title="Remove access; grant again to restore it" onclick="revokeGrant(this.dataset.client, this.dataset.cap)"><i class="fa-solid fa-trash"></i> Revoke access</button>` : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">No permissions match. Clear the service filter or add the required permission above.</p>';
 }
 async function submitGrant() {
     const v = (id) => document.getElementById(id).value.trim();

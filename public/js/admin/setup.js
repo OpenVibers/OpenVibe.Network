@@ -148,12 +148,16 @@ function setupRowOf(el) {
     return { li, row };
 }
 
+/** The icon each action wears (plan §Z.1.4: every action in the admin panel wears one). */
+const SETUP_BUTTON_ICONS = { 'Mark done': 'fa-check', 'Mark not done': 'fa-rotate', 'Test': 'fa-flask', 'Save': 'fa-floppy-disk', 'Remove': 'fa-trash' };
+
 function setupButton(text, act, cls) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'btn ' + (cls || 'pai-quiet');
     b.dataset.act = act;
-    b.textContent = text;
+    const icon = SETUP_BUTTON_ICONS[text];
+    b.innerHTML = (icon ? '<i class="fa-solid ' + icon + '"></i> ' : '') + text;
     return b;
 }
 

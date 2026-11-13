@@ -48,7 +48,7 @@ function glossaryPopup(id, anchor) {
     const close = document.createElement('button');
     close.type = 'button';
     close.className = 'btn btn-primary';
-    close.textContent = 'Close';
+    close.innerHTML = '<i class="fa-solid fa-xmark"></i> Close';
     close.addEventListener('click', () => dlg.close());
     actions.append(close);
     form.append(h, p, actions);
