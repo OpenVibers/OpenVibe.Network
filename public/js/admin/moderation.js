@@ -14,24 +14,23 @@ async function loadStreams() {
         const data = await api('/api/admin/streamer/streams');
         const streams = data.streams || [];
         if (!streams.length) { c.innerHTML = '<p class="muted">No streams are live. Return when someone starts broadcasting.</p>'; return; }
-        c.innerHTML = `
-            <table class="admin-table">
-                <thead><tr>
-                    <th>Title</th><th>Streamer</th><th>Protocol</th><th>Viewers</th><th>Started</th><th>Actions</th>
-                </tr></thead>
-                <tbody>${streams.map(s => `
-                    <tr>
-                        <td>${esc(s.title || 'Untitled')}</td>
-                        <td><strong>${esc(s.username || '-')}</strong></td>
-                        <td><span class="badge badge-info">${esc(s.protocol)}</span></td>
-                        <td>${s.viewer_count || 0}</td>
-                        <td>${s.started_at ? timeAgo(s.started_at) : '-'}</td>
-                        <td>
-                            <button class="btn btn-sm btn-danger" onclick="endStream('${s.id}')"><i class="fa-solid fa-stop"></i> End broadcast</button><span class="admin-help">Disconnects viewers; the streamer must restart to resume.</span>
-                        </td>
-                    </tr>
-                `).join('')}</tbody>
-            </table>`;
+        // Each ban is a card (the owner, 11-13: on a phone the table scrolled who and why out of sight): who, as a name
+        // that opens their card; the reason; who banned them and when; how long; and, for the owner, lifting it.
+        const when = (t) => (t ? `${timeAgo(t)}` : '');
+        const nameTag = (u, id) => u
+            ? `<a class="ban-who" href="https://openvibe.network/@${encodeURIComponent(u)}" data-ov-user="${esc(u)}">@${esc(u)}</a>`
+            : `<span class="ban-who muted">user ${esc(String(id))}</span>`;
+        c.innerHTML = `<p class="muted ban-count">${bans.length === 1 ? '1 person is' : `${bans.length} people are`} banned across the site.</p>
+            <ul class="ban-list">${bans.map((b) => `
+                <li class="ban-card">
+                    <div class="ban-top">${nameTag(b.username, b.user_id)}<span class="ban-len ${b.expires_at ? '' : 'is-perm'}">${b.expires_at ? `until ${esc(new Date(b.expires_at).toLocaleDateString())}` : 'Permanent'}</span></div>
+                    <p class="ban-reason">${b.reason ? esc(b.reason) : '<span class="muted">No reason was written.</span>'}</p>
+                    <div class="ban-meta muted">Banned ${b.banned_by_username ? `by ${nameTag(b.banned_by_username)}` : ''} ${esc(when(b.created_at))}</div>
+                    <div class="ban-act">${owner
+                        ? `<button class="btn btn-sm btn-outline" onclick="unbanStreamer('${esc(String(b.user_id))}')"><i class="fa-solid fa-user-check"></i> Allow access again</button>`
+                        : '<span class="muted ban-owner" title="Only the owner can lift a site-wide ban">Only the owner can lift it</span>'}</div>
+                </li>`).join('')}</ul>`;
+        if (window.OVUser && typeof window.OVUser.bind === 'function') { try { window.OVUser.bind(c); } catch (e) { /* the card is optional */ } }
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
 }
 
@@ -82,6 +81,8 @@ async function loadBans() {
     try {
         const data = await api('/api/admin/streamer/bans');
         const bans = data.bans || [];
+        // Only the owner lifts a site-wide ban (2026-11-13); admins see the list, who and why.
+        const owner = !!(typeof currentUser !== 'undefined' && currentUser && currentUser.is_owner);
         if (!bans.length) { c.innerHTML = '<p class="muted">No active bans. Review Users if an account needs a restriction.</p>'; return; }
         c.innerHTML = `
             <table class="admin-table">
@@ -95,9 +96,9 @@ async function loadBans() {
                         <td>${esc(b.banned_by_username || '-')}</td>
                         <td>${b.created_at ? timeAgo(b.created_at) : '-'}</td>
                         <td>${b.expires_at ? new Date(b.expires_at).toLocaleString() : 'Permanent'}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline" onclick="unbanStreamer('${b.user_id}')"><i class="fa-solid fa-user-check"></i> Allow access again</button>
-                        </td>
+                        <td>${owner
+                            ? `<button class="btn btn-sm btn-outline" onclick="unbanStreamer('${esc(String(b.user_id))}')"><i class="fa-solid fa-user-check"></i> Allow access again</button>`
+                            : '<span class="muted" title="Only the owner can lift a site-wide ban">Owner only</span>'}</td>
                     </tr>
                 `).join('')}</tbody>
             </table>`;

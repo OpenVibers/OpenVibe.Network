@@ -228,11 +228,18 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // Email Configuration (Resend)
     // ═══════════════════════════════════════════════════════
 
-    // GET /api/admin/email — get current email config (owner-only: exposes key metadata)
-    router.get('/email', requireOwner, async (req, res) => {
+    // GET /api/admin/email — the delivery numbers for every admin; the configuration (key metadata), the recent messages
+    // (they carry addresses) and the right to change anything are the owner's (2026-11-13, the owner: "admin should only
+    // be able to view the basic stats on this page, no editing, while owner can edit").
+    router.get('/email', async (req, res) => {
         try {
+            const metrics = await getEmailMetrics();
+            if (!isOwner(req.user)) {
+                const status = await emailService.getStatus();
+                return res.json({ ok: true, can_edit: false, email: { enabled: !!(status && status.enabled) }, metrics: { summary: metrics.summary || {}, by_type: metrics.by_type || [] } });
+            }
             const status = await emailService.getStatus();
-            res.json({ ok: true, email: status, metrics: await getEmailMetrics() });
+            res.json({ ok: true, can_edit: true, email: status, metrics });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
         }
@@ -805,7 +812,8 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     // Broadcast Notifications
     // ═══════════════════════════════════════════════════════
 
-    router.post('/broadcast', async (req, res) => {
+    // A message to every person on the network is the owner's to send (2026-11-13).
+    router.post('/broadcast', requireOwner, async (req, res) => {
         try {
             const { title, message, icon, url, priority, category } = req.body;
             if (!title) return res.status(400).json({ ok: false, error: 'Title required' });
