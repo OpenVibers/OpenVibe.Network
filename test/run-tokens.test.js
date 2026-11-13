@@ -74,7 +74,7 @@ const runTokens = require('../server/identity/run-tokens');
         assert.ok(has('codes', 'ai.credential.manage', 'openvibe.ai'), 'Codes holds the consent grant for AI');
         assert.ok(has('codes', 'ai.run.create', 'openvibe.ai'), 'Codes runs AI workflows for its harnesses');
         const codesGrants = await principals.grantsFor(db, 'codes', 'openvibe.ai');
-        assert.deepStrictEqual(codesGrants.map((g) => g.capability).sort(), ['ai.credential.manage', 'ai.run.create']);
+        assert.deepStrictEqual(codesGrants.map((g) => g.capability).sort(), ['ai.credential.manage', 'ai.run.create', 'ai.usage.report'], 'and it reports its harness turns to AI\'s meter');
 
         // ── The grants Actor holds for OpenVibe.AI (plan L55 C3) ──
         // A person chooses the model their tasks run on, with their own key (sealed in AI) or OpenVibe's. Actor runs
@@ -85,7 +85,7 @@ const runTokens = require('../server/identity/run-tokens');
         const actorGrant = principals.DEFAULT_GRANTS.find((g) => g[0] === 'actor' && g[1] === 'ai.run.create' && g[2] === 'openvibe.ai');
         assert.deepStrictEqual(actorGrant[3], ['ai.complete'], 'AI\'s OpenAI-compatible workflow only');
         const actorGrants = await principals.grantsFor(db, 'actor', 'openvibe.ai');
-        assert.deepStrictEqual(actorGrants.map((g) => g.capability).sort(), ['ai.run.create']);
+        assert.deepStrictEqual(actorGrants.map((g) => g.capability).sort(), ['ai.run.create', 'ai.usage.report'], 'and it reports its own provider calls to AI\'s meter');
 
         // ── A run token: the person it acts for, and how long it lives ──
         let t = await runToken(OWNER);
