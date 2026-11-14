@@ -185,11 +185,15 @@ router.get('/me/active', (req, res, next) => {
 // on), line or solid, on every OpenVibe site.
 // motion: auto, full, reduced or off (openvibe-shared 4.183.0): full plays everything even when the device asks for
 // less, reduced is calm, and only off stops motion. The account keeps the choice; the shared theme loader applies it.
-const DISPLAY = { motion: ['auto', 'full', 'reduced', 'off'], text: ['100', '112', '125'], seasonal: ['on', 'off'], scheme: ['manual', 'auto'], contrast: ['normal', 'more'], font: ['default', 'readable'], colors: ['default', 'cb-safe'], oled: ['off', 'on'], icons: ['auto', 'line', 'solid'] };
+const DISPLAY = { motion: ['auto', 'full', 'reduced', 'off'], text: ['100', '112', '125'], seasonal: ['on', 'off'], scheme: ['manual', 'auto'], contrast: ['normal', 'more'], font: ['default', 'readable'], colors: ['default', 'cb-safe'], oled: ['off', 'on'], icons: ['auto', 'line', 'solid'], window: ['glass', 'solid', 'outline'], clock: ['auto', '12', '24'], tz: ['auto'] };
+// window (openvibe-shared 4.202.0) was kept only in the browser until now. clock and tz (4.248.0; the owner, 11-14: "show
+// the time based on the users computer by default or configurable setting if logged in and changed"): tz is 'auto' (the
+// device's zone) or an IANA zone this server's Intl knows.
+const zoneOk = (z) => { const s = String(z || ''); if (s.length > 40 || !/^[A-Za-z][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+){0,2}$/.test(s)) return false; try { new Intl.DateTimeFormat('en-US', { timeZone: s }); return true; } catch { return false; } };
 function cleanDisplay(d) {
     if (!d || typeof d !== 'object') return null;
     const out = {};
-    for (const k of Object.keys(DISPLAY)) if (DISPLAY[k].includes(String(d[k]))) out[k] = String(d[k]);
+    for (const k of Object.keys(DISPLAY)) if (DISPLAY[k].includes(String(d[k])) || (k === 'tz' && zoneOk(d[k]))) out[k] = String(d[k]);
     return Object.keys(out).length ? out : null;
 }
 router.put('/me/display', requireAuth, async (req, res) => {

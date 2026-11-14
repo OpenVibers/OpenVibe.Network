@@ -55,6 +55,12 @@ const { getDb } = require('../server/db/database');
     assert.ok(!r.body.stale && r.body.display_at >= now, 'undated: now');
     r = await call('PUT', '/api/themes/me/display', { seasonal: 'on', at: 'soon' });
     assert.ok(!r.body.stale && r.body.display_at >= now, 'nonsense dates count as now');
+    // The reader's time (11-14): the clock and a zone the account keeps (and Windows, browser-only until now); a zone
+    // nobody knows is dropped.
+    r = await call('PUT', '/api/themes/me/display', { seasonal: 'off', clock: '24', tz: 'Europe/Berlin', window: 'solid' });
+    assert.deepStrictEqual([r.body.display.clock, r.body.display.tz, r.body.display.window], ['24', 'Europe/Berlin', 'solid']);
+    r = await call('PUT', '/api/themes/me/display', { seasonal: 'off', tz: 'Mars/Olympus_Mons' });
+    assert.strictEqual(r.body.display.tz, undefined, 'an unknown zone is not kept');
     r = await call('PUT', '/api/themes/me/display', { seasonal: 'off', at: now + 86400000 * 365 });
     assert.ok(r.body.display_at <= Date.now() + 60000, 'a date from a wrong clock cannot lock the account for a year');
 
