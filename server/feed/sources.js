@@ -611,6 +611,30 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
                 .run(JSON.stringify({ at: new Date(peak.peak_at).toISOString(), facts }), key);
             if (r.created) created++;
         }
+        // Where people are right now (11-14, the owner: "show which sites people are on with this breakdown … across
+        // sites"): the online count, and up to six sites with how many are on each (signed-in people and guests, counts
+        // only), one card that keeps its place through the day.
+        if (presence && typeof presence.snapshot === 'function') {
+            const snap = presence.snapshot(at);
+            const by = new Map();
+            for (const e of snap.members.values()) { const k = e && e.site ? String(e.site) : ''; by.set(k, (by.get(k) || 0) + 1); }
+            for (const [k, n] of (snap.guestSites || new Map())) by.set(k || '', (by.get(k || '') || 0) + n);
+            const online = snap.members.size + snap.guests;
+            const SITES = require('../frame/sites').SITES;
+            const named = [...by.entries()].filter(([k]) => k).map(([k, n]) => [k === 'tools' ? 'Tools' : ((SITES.find((x) => x.id === k) || {}).name || ''), n]).filter(([name]) => name)
+                .sort((x, y) => y[1] - x[1]).slice(0, 6);
+            if (online > 0 && named.length) {
+                const key = `where:${day}`;
+                const r = await upsert({ source_service: 'report', source_type: 'where', source_id: key, kind: 'report',
+                    title: `Right now: ${online.toLocaleString('en-US')} ${online === 1 ? 'person' : 'people'} on ${by.size > 1 ? `${[...by.keys()].filter(Boolean).length} sites` : 'OpenVibe'}`,
+                    text: 'Where people are on OpenVibe right now', url: `${urls.report}/network`, site: 'report', site_name: 'Report',
+                    actor_subject: null, origin: 'system', label: 'System', counts: { people: online },
+                    occurred_at: new Date(at).toISOString(), touch: true });
+                await db.prepare("UPDATE feed_items SET stat = ? WHERE source_service = 'report' AND source_type = 'where' AND source_id = ?")
+                    .run(JSON.stringify({ at: new Date(at).toISOString(), facts: named.map(([name, n]) => ({ label: `on ${name}`, n })) }), key);
+                if (r.created) created++;
+            }
+        }
         const totals = stats && stats.totals;
         if (totals && Number.isSafeInteger(Number(totals.pageviews))) {
             const pct = Number(totals.change_pct);
