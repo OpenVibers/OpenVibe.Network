@@ -62,7 +62,7 @@ assert.deepStrictEqual(['actor', 'bot', 'run', 'zone', 'codes'].map((id) => p.na
 // Every tile is in exactly one group, each group has at most seven tiles, and the merged sections still answer.
 [['games', 'play'], ['connect', 'make'], ['image', 'tools'], ['quest', 'play'], ['inventory', 'play'], ['watch', 'build'], ['download', 'watch'], ['search', 'read'], ['chat', 'talk'], ['mail', 'talk'], ['domains', 'tools'], ['report', 'read'], ['design', 'tools'], ['today', 'read'], ['surf', 'play'], ['meme', 'play'], ['vision', 'read'], ['exchange', 'build'], ['fun', 'play'], ['cam', 'watch'], ['casino', 'play'], ['tours', 'watch'], ['shoes', 'shop']]
     .filter(([id]) => at(id) >= 0).forEach(([id, group]) => assert.strictEqual(p.nav[at(id)].group, group, `${id} is in ${group}`));
-assert.strictEqual(p.nav.length, 57, '55 open sites plus Pics and Download; Compare joins with Contracts 0.409.0');
+assert.strictEqual(p.nav.length, 57 + p.nav.filter((n) => n.id === 'link').length, '55 open sites plus Pics and Download (and Link, Network\'s, 11-14); Compare joins with Contracts 0.409.0');
 assert.deepStrictEqual([p.nav[at('stream')].name, p.nav[at('pics')].name], ['Restream', 'Pics'], 'OpenRestream is "Restream" among the menu\'s short names (owner, 2026-10-28)');
 assert.strictEqual(p.nav.find(n => n.id === 'space').url, 'https://openvibe.space/', 'Space keeps its own home (the forum returned to Community, 0.118.0)');
 assert.strictEqual(p.nav.find(n => n.id === 'community').url, 'https://openvibe.community/', 'Community: the forum, pastes and Pulse');
