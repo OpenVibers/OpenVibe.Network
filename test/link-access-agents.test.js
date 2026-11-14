@@ -38,6 +38,16 @@ const { DEFAULT_GRANTS } = require('../server/identity/principals');
     await assert.rejects(access.ask(db, a, body), (e) => e.code === 'link_access.others_off');
     await access.putSettings(db, b.id, other, { others_may_ask: true });
     await assert.rejects(access.ask(db, a, body), (e) => e.code === 'link_access.not_followed');
+    // Anyone may ask (11-14): the follow is no longer needed; off again, it is.
+    assert.deepEqual(await access.putSettings(db, b.id, other, { anyone_may_ask: true }), { others_may_ask: true, anyone_may_ask: true, auto_agent_send: false, agents_talk: false });
+    const anyone = await access.ask(db, a, { ...body, reason: 'anyone may ask' });
+    assert.equal(anyone.status, 'pending', 'a stranger asks a machine open to everyone');
+    await access.answer(db, anyone.id, other, { approve: false });
+    await assert.rejects(access.ask(db, a, body), (e) => e.code === 'link_access.refused_cooldown', 'a refusal still starts the day-long wait');
+    await db.prepare('DELETE FROM link_access_requests WHERE id = ?').run(anyone.id);
+    await access.putSettings(db, b.id, other, { anyone_may_ask: false });
+    await assert.rejects(access.ask(db, a, body), (e) => e.code === 'link_access.not_followed', 'off again, only people the owner follows');
+    await assert.rejects(access.putSettings(db, b.id, other, { anyone_may_ask: 'yes' }), (e) => e.code === 'link_access.invalid_settings');
     await db.prepare("INSERT INTO user_follows (follower_subject, target_type, target_id, active, revision) VALUES (?, 'channel', ?, 1, 1)").run(other, owner);
     const request = await access.ask(db, a, body);
     assert.equal(request.status, 'pending');
