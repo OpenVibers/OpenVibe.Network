@@ -48,7 +48,7 @@ const AGENT_PROVIDERS = ['openai', 'anthropic', 'deepseek', 'openrouter', 'groq'
 
 function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = console, actorUrl = '', actorPublicUrl = 'https://openvibe.actor', fetchImpl = globalThis.fetch } = {}) {
     /**
-     * Start the owner's agent on the grant (Actor's POST /api/v1/setup/tasks, with the owner's own Bearer): the grant id
+     * Start the owner's agent on the grant (Actor's POST /api/v1/tasks with { setup }, with the owner's own Bearer): the grant id
      * goes from here to Actor and nowhere else, so the browser never holds it. A start that fails revokes the grant.
      */
     async function startAgent(req, id, grant) {
@@ -56,10 +56,10 @@ function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = c
         if (!/^Bearer\s+\S+/.test(auth) || !actorUrl) throw new GrantError(409, 'setup_grant.agent_unavailable', 'Your agent could not start here: sign in again, or paste the key yourself');
         let res;
         try {
-            res = await fetchImpl(`${actorUrl.replace(/\/+$/, '')}/api/v1/setup/tasks`, {
+            res = await fetchImpl(`${actorUrl.replace(/\/+$/, '')}/api/v1/tasks`, {
                 method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15_000),
                 headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: auth },
-                body: JSON.stringify({ grant: id, keys: grant.keys, provider: grant.provider, label: grant.label || grant.provider, get_it_at: grant.get_it_at }),
+                body: JSON.stringify({ setup: { grant: id, keys: grant.keys, provider: grant.provider, label: grant.label || grant.provider, get_it_at: grant.get_it_at } }),
             });
         } catch { res = null; }
         const out = res ? await res.json().catch(() => null) : null;

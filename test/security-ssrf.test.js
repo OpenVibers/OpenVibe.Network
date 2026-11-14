@@ -110,7 +110,7 @@ const PATTERNS = {
 };
 // The reviewed list: where each goes, and why a stranger cannot choose it (or how it is guarded).
 const REVIEWED = {
-    'server/admin/setup-grants.js fetch': [1, 'Let my agent do it (plan AB.44): Actor\'s operator-configured internal URL (config.services.actor.internalUrl), the fixed /api/v1/setup/tasks path, the owner\'s own Bearer, redirects refused, a 15 s timeout; never a request-chosen host (11-14)'],
+    'server/admin/setup-grants.js fetch': [1, 'Let my agent do it (plan AB.44): Actor\'s operator-configured internal URL (config.services.actor.internalUrl), the fixed /api/v1/tasks path (a setup task), the owner\'s own Bearer, redirects refused, a 15 s timeout; never a request-chosen host (11-14)'],
     'server/admin/storage.js fetch': [1, 'the owner\'s cloud scan: Media\'s internal URL from config, a fixed path, Network\'s service token with the owner as X-OV-Subject, redirects refused (11-14)'],
     'server/feed/views-beacon.js fetch': [1, 'the feed\'s view beacon: Media\'s internal URL from config, the fixed /api/v1/views path, card refs parsed by a strict pattern, redirects refused (11-14)'],
     'server/admin/tools-workers.js fetch': [1, 'Owner-only fixed Tools admin paths at the operator-configured internal URL; no caller URL; redirects refused.'],

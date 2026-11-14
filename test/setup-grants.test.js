@@ -93,14 +93,14 @@ const { createSetupGrants, TTL_MS, hashOf } = require('../server/admin/setup-gra
             assert.strictEqual(st.status, 201, JSON.stringify(st.body));
             assert.deepStrictEqual(st.body.grant.task, { id: 'tsk_01JABCDEFGHJKMNPQRSTVWXYZ0', url: 'https://openvibe.actor/chat/tsk_01JABCDEFGHJKMNPQRSTVWXYZ0' }, 'the agent\'s task');
             assert.ok(!('id' in st.body.grant) && !JSON.stringify(st.body).includes('sgr_'), 'the browser never holds the grant id');
-            const sent = JSON.parse(toActor[0].init.body);
-            assert.ok(/^sgr_/.test(sent.grant) && toActor[0].url === 'http://actor.test/api/v1/setup/tasks' && toActor[0].init.headers.Authorization === 'Bearer owner-token', 'Actor gets the id, with the owner\'s Bearer');
+            const sent = JSON.parse(toActor[0].init.body).setup;
+            assert.ok(/^sgr_/.test(sent.grant) && toActor[0].url === 'http://actor.test/api/v1/tasks' && toActor[0].init.headers.Authorization === 'Bearer owner-token', 'Actor gets the id, with the owner\'s Bearer');
             assert.strictEqual((await start({ ...row, provider: 'mistral' })).status, 422, 'a provider Actor cannot read');
             assert.strictEqual((await start(row, null)).status, 409, 'no Bearer: no agent');
             actorUp = false;
             st = await start(row);
             assert.strictEqual(st.status, 502, 'Actor down');
-            const last = JSON.parse(toActor[toActor.length - 1].init.body).grant;
+            const last = JSON.parse(toActor[toActor.length - 1].init.body).setup.grant;
             assert.ok((await db.prepare('SELECT revoked_at FROM setup_grants WHERE id_hash = ?').get(hashOf(last))).revoked_at, 'a failed start revokes its grant');
         } finally { s2.close(); }
 
