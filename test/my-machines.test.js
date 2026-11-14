@@ -219,6 +219,14 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
     assert.ok(p.calls.some((c) => c[0] === 'POST' && c[1] === '/api/v1/machines/dev_C/desks/desk-a/live'), 'the Live channel takes the desk with its warning first');
     assert.match(card.textContent, /openvibe\.live\/@ana/);
 
+    // ── What it is (Link v0.66): one line under the name, and the free disk when it runs low ──
+    {
+        const spec = { id: 'dev_S', kind: 'server', online: true, name: 'tower', roles: [], running: [], specs_words: 'Intel Core i7-7700 · 8 threads · 16 GB · Ubuntu 26.04', specs: { disk_free_gb: 9.5 } };
+        const sp = page({ answers: (m, url) => (url === '/api/v1/machines/roles' ? { roles: ROLES } : m === 'GET' && url === '/api/v1/machines' ? { machines: [spec] } : {}) });
+        await sp.sandbox.loadMachines();
+        assert.match(sp.ids['mc-list'].children[0].textContent, /Intel Core i7-7700 · 8 threads · 16 GB · Ubuntu 26\.04 · 9\.5 GB free/);
+    }
+
     // ── For other people: a shared desk host lends its browsers on the owner's click ──
     const lender = { id: 'dev_D', kind: 'server', online: true, name: 'ov-node-01', roles: ['desks.host'], running: [],
         controls: { computer: true, agent_computer: false, watch_probe: false, shared_desks: false, ai_models: false, level: 'trusted', probe: false,

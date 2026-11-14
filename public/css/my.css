@@ -379,6 +379,7 @@ button.td-stat:hover span { color: var(--accent-light); }
 .recent-tool-star:hover, .recent-tool-star:focus-visible { color: var(--accent-light); }
 
 /* Machines (plan L34, my/machines.js): pair one, then each machine with its state, what it runs and its roles. */
+.mc-specs{grid-column:1/-1;margin:2px 0 0;font-size:.82rem;color:var(--text-muted);overflow-wrap:anywhere}
 .mc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; }
 .mc-top > div { flex: 1 1 320px; min-width: 0; }
 .mc-pair { margin: 16px 0 4px; padding: 16px; border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--accent) 50%, var(--border)); background: color-mix(in srgb, var(--accent) 6%, transparent); display: grid; gap: 10px; }

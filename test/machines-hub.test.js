@@ -51,6 +51,8 @@ const machineOf = (id) => {
     return {
         id, name: 'garage-pi', kind: 'onboard', online: true, roles: [], running: [], node_id: null,
         agent_computer: s.agent_computer === true, watch_probe: s.watch_probe === true, ai_models: s.ai_models === true, shared_desks: s.shared_desks === true,
+        specs_words: 'Intel Core i7-7700 · 8 threads · 16 GB · Ubuntu 26.04',
+        specs: { memory_mb: 15932, cpu: { threads: 8, model: 'i7' }, gpus: [{ model: 'FirePro W4100', vram_mb: 2048, serial: 'x' }], disk_free_gb: 12.5, virtualization: { kvm: true }, secret: 'no' },
         shared_desktops: s.shared_desktops === true, shared_jobs: s.shared_jobs === true, worker: { classes: ['code', 'Bad Class'], serve_others: true, egress: 'public', secret: 'x' },
         computer: {
             level: 'ask', terminal: { level: 'ask' }, files: { level: 'ask' }, screen: { level: 'ask', stream: true },
@@ -282,6 +284,12 @@ try {
     {
         const r = await call('POST', `/api/v1/machines/${anaMachine}/shared-jobs`, { user: ana, body: { on: true } });
         assert.deepStrictEqual(r.body.machine.controls.worker, { classes: ['code'], serve_others: true }, 'only the classes and the yes, nothing else of the worker');
+    }
+    {
+        // What the machine is (Link v0.66): one line, and only the facts a picker weighs.
+        const listed = (await call('GET', '/api/v1/machines', { user: ana })).body.machines.find((x) => x.id === anaMachine);
+        assert.strictEqual(listed.specs_words, 'Intel Core i7-7700 · 8 threads · 16 GB · Ubuntu 26.04');
+        assert.deepStrictEqual(listed.specs, { memory_mb: 15932, threads: 8, gpu: 'FirePro W4100', gpu_vram_mb: 2048, disk_free_gb: 12.5, vm: 'kvm' });
     }
     // A body that is not true/false never reaches Bot.
     const beforeBadSwitch = calls.length;

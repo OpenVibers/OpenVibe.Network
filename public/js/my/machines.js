@@ -55,6 +55,11 @@ function mcCard(m) {
     const os = String(m.os || '').toLowerCase();
     const meta = mcEl('p', 'mc-meta', [mcOsIcon(os), ' ', [MC_KIND[m.kind], m.os, m.node_version ? `Node ${m.node_version}` : ''].filter(Boolean).join(' · ')]);
     const head = mcEl('div', 'mc-head', [dot, mcEl('div', 'mc-title', [name, state]), meta]);
+    // What it is (Link v0.66): CPU, threads, memory, GPU and OS in one line, and the free disk when it runs low.
+    if (m.specs_words) {
+        const low = m.specs && Number.isFinite(m.specs.disk_free_gb) && m.specs.disk_free_gb < 20 ? ` · ${m.specs.disk_free_gb} GB free` : '';
+        head.append(mcEl('p', 'mc-specs', [mcIcon('fa-microchip'), ' ', m.specs_words + low]));
+    }
     card.append(head);
     const on = mcOnNow(m);
     card.append(mcEl('div', 'mc-role-chips', on.length ? on.map((t) => mcEl('span', 'mc-role-chip', [t])) : [mcEl('span', 'mc-role-chip is-empty', ['Nothing turned on yet'])]));
