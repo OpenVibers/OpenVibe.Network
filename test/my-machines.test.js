@@ -240,6 +240,42 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
     assert.deepStrictEqual(p.calls.find((c) => /\/shared-desks$/.test(c[1])), ['POST', '/api/v1/machines/dev_D/shared-desks', { on: true }]);
     assert.match(p.ids['mc-status'].textContent, /lends browsers to other people\u2019s agents/);
 
+    // ── For other people (2026-11-14): whole desktops and other people's coding tasks and agents, each only where the
+    // machine can keep that work in a locked box; elsewhere the switch is off and says how to set the machine up ──
+    const giver = { id: 'dev_G', kind: 'server', online: true, name: 'ov-node-01', roles: ['codes.worker', 'desks.host'], running: [],
+        controls: { computer: true, shared_desks: true, shared_desktops: false, shared_jobs: false, level: 'trusted', probe: false,
+            screen: { available: false, live: false }, desk: { available: true, sandboxed: true, max: 7, kinds: ['browser', 'desktop'] },
+            ai: { available: false }, worker: { classes: ['code'], serve_others: true } } };
+    const plainWorker = { id: 'dev_W', kind: 'server', online: true, name: 'tower', roles: ['codes.worker'], running: [],
+        controls: { computer: true, shared_desks: false, level: 'trusted', screen: { available: false }, desk: { available: true, sandboxed: true, max: 2, kinds: ['browser'] },
+            ai: { available: false }, worker: { classes: ['code'], serve_others: false } } };
+    p = page({ answers: (m, url, body) => {
+        if (url === '/api/v1/machines/roles') return { roles: ROLES };
+        if (m === 'GET' && url === '/api/v1/machines') return { machines: [giver, plainWorker] };
+        if (m === 'POST' && /\/dev_G\/shared-desktops$/.test(url)) { giver.controls.shared_desktops = body.on; return { machine: giver }; }
+        if (m === 'POST' && /\/dev_G\/shared-jobs$/.test(url)) { giver.controls.shared_jobs = body.on; return { machine: giver }; }
+        return {};
+    } });
+    await p.sandbox.loadMachines();
+    const [gcard, wcard] = p.ids['mc-list'].children;
+    const box = (card, suffix) => card.all((n) => n.tagName === 'INPUT' && new RegExp(`-${suffix}$`).test(n.getAttribute('id') || ''))[0];
+    assert.match(gcard.textContent, /Lend desktops to other people\u2019s agents.*A desktop counts as a whole desk: up to 7 at once/);
+    assert.match(gcard.textContent, /Run other people\u2019s coding tasks and agents.*never get your sign-ins or your keys/);
+    const flip = async (suffix, route, said) => {
+        const b = box(gcard, suffix);
+        assert.ok(b && b.disabled !== true, `${suffix}: a machine that can, may`);
+        b.checked = true; b.fire('change');
+        await flush();
+        assert.deepStrictEqual(p.calls.find((c) => c[1].endsWith(`/${route}`)), ['POST', `/api/v1/machines/dev_G/${route}`, { on: true }]);
+        assert.match(p.ids['mc-status'].textContent, said);
+    };
+    await flip('lend-desktops', 'shared-desktops', /lends desktops to other people\u2019s agents/);
+    await flip('jobs', 'shared-jobs', /runs other people\u2019s coding tasks and agents/);
+    assert.strictEqual(box(wcard, 'lend-desktops').disabled, true, 'a host that lends no desktops cannot');
+    assert.match(wcard.textContent, /openvibe-link install --desk-host --shared --desktops/);
+    assert.strictEqual(box(wcard, 'jobs').disabled, true, 'a worker that serves only its owner cannot');
+    assert.match(wcard.textContent, /openvibe-link install --worker --serve-others/);
+
     // ── Pairing: the code and the command, then the machine arriving ──
     machines = [];
     p = page({ answers: (m, url) => {
