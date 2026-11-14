@@ -80,6 +80,40 @@ async function loadSetup() {
     }
 }
 
+/**
+ * What is left on each AI provider account (plan §AB.21: "the gift credits on all the providers need to be detectable"),
+ * read live by OpenVibe.AI with your keys: a line under the head, "DeepSeek $12.50 (gift $10.00) · OpenRouter $12.75 ·
+ * Moonshot (Kimi): no key yet". Read once a page; nothing is shown when AI does not answer.
+ */
+async function setupBalances(root) {
+    let box = root.querySelector('#setup-balances');
+    if (!box) {
+        box = document.createElement('p');
+        box.id = 'setup-balances'; box.className = 'setup-balances muted';
+        const head = root.querySelector('.setup-head');
+        if (!head) return;
+        head.appendChild(box);
+    }
+    try {
+        if (!SETUP.balances) SETUP.balances = await api('/api/admin/ai/config/balances');
+    } catch { box.remove(); return; }
+    const rows = (SETUP.balances && SETUP.balances.providers) || [];
+    if (!rows.length) { box.remove(); return; }
+    const money = (n, cur) => { try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD' }).format(n); } catch { return '$' + Number(n).toFixed(2); } };
+    box.textContent = '';
+    const lead = document.createElement('strong'); lead.textContent = 'Left on your accounts: '; box.appendChild(lead);
+    rows.forEach((r, i) => {
+        if (i) box.appendChild(document.createTextNode(' · '));
+        const s = document.createElement('span');
+        s.className = 'setup-bal is-' + (r.state === 'read' ? (r.balance != null && r.balance < 1 ? 'low' : 'ok') : 'none');
+        s.textContent = r.state === 'read' && r.balance != null
+            ? r.name + ' ' + money(r.balance, r.currency) + (r.gift ? ' (gift ' + money(r.gift, r.currency) + ')' : '')
+            : r.name + ': ' + String(r.note || 'not read').replace(/^./, (c) => c.toLowerCase());
+        if (r.note && r.state === 'read') s.title = r.note;
+        box.appendChild(s);
+    });
+}
+
 function setupHead(summary) {
     return '<header class="setup-head">'
         + '<h2><i class="fa-solid fa-list-check" aria-hidden="true"></i> Setup</h2>'
@@ -114,6 +148,7 @@ function setupRender(root) {
         + empty + reach
         + '<p class="setup-foot muted">Network\'s own email and Discord keys are on the <a href="/admin/settings">Settings</a> tab; the AI providers\' keys are also on the <a href="/admin/ai">AI</a> tab.</p>';
     for (const li of root.querySelectorAll('[data-setup-row]')) setupAttachControls(li);
+    setupBalances(root);
     root.onclick = setupClick;
     if (window.OVForms && window.OVForms.enhance) window.OVForms.enhance(root);
 }
