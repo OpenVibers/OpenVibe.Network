@@ -28,6 +28,7 @@ const store = require('./store');
 
 const MINUTE = 60_000;
 const PICTURE_PAGES = 40;   // 1,000 offers a run at most (Deals answers 25 to a page)
+const PICTURE_READS = 100;  // and up to 100 offers read one by one a run, four at a time
 const DAY = 24 * 60 * MINUTE;
 const QUEST_RECENT_MS = 14 * DAY;
 const QUEST_CHECK_MS = 24 * 60 * MINUTE;
@@ -509,6 +510,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
      * most PICTURE_PAGES pages; the next starts where it stopped, and starts over when nothing is left to fill.
      */
     let picturePage = 2;
+    const pictureAsked = new Map();   // offer id → when its own read was asked (kept six hours)
     async function dealPictures() {
         const since = new Date(now() - 7 * DAY).toISOString();
         const missing = await db.prepare(`SELECT count(*) AS n FROM feed_items WHERE source_service = 'deals' AND source_type = 'offer'
@@ -529,6 +531,27 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             const oldest = offers.length ? Date.parse(String(offers[offers.length - 1].created_at || '')) : NaN;
             if (!offers.length || (Number.isFinite(oldest) && oldest < Date.parse(since))) { picturePage = 2; break; }
             picturePage++;
+        }
+        // Deals' list leaves out a picture its offer read has (11-14: 7,252 of a week's deals still had none), so the
+        // newest rows still without one are asked one by one, a few at a time; an offer asked lately is not asked again.
+        const stale = now() - 6 * 60 * MINUTE;
+        for (const [k, t] of pictureAsked) if (t < stale) pictureAsked.delete(k);
+        const rows = await db.prepare(`SELECT source_id FROM feed_items WHERE source_service = 'deals' AND source_type = 'offer'
+            AND picture_url IS NULL AND occurred_at >= ? ORDER BY occurred_at DESC LIMIT ?`).all(since, PICTURE_READS * 3);
+        const ask = rows.map((r) => String(r.source_id)).filter((id) => /^dof_[0-9A-HJKMNP-TV-Z]{26}$/.test(id) && !pictureAsked.has(id)).slice(0, PICTURE_READS);
+        for (let i = 0; i < ask.length; i += 4) {
+            await Promise.all(ask.slice(i, i + 4).map(async (id) => {
+                pictureAsked.set(id, now());
+                try {
+                    const one = await getJson(`${urls.deals}/api/v1/offers/${encodeURIComponent(id)}`, { timeoutMs: 8000 });
+                    const o = (one && one.offer) || one;
+                    const pic = https(o && o.feed && o.feed.media && o.feed.media.thumb);
+                    if (!pic) return;
+                    const r = await db.prepare(`UPDATE feed_items SET picture_url = ?, updated_at = now() WHERE source_service = 'deals'
+                        AND source_type = 'offer' AND source_id = ? AND picture_url IS NULL`).run(pic, id);
+                    filled += Number(r.changes || 0);
+                } catch { /* asked again in six hours */ }
+            }));
         }
         return filled;
     }
