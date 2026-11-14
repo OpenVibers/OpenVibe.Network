@@ -504,6 +504,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             list: streams.filter((st) => /^[A-Za-z0-9_-]{1,40}$/.test(String(st.username || ''))).slice(0, 8).map((st) => {
                 const avatar = /^https:\/\//i.test(String(st.avatar_url || '')) ? String(st.avatar_url).slice(0, 500) : null;
                 return {
+                    username: String(st.username),
                     name: String(st.display_name || st.username || st.title || '').replace(/\s+/g, ' ').trim().slice(0, 100) || st.username,
                     url: `https://openvibe.live/@${encodeURIComponent(st.username)}`,
                     viewers: viewersOf(st),
@@ -547,6 +548,11 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // Public, CORS *, cached 30 s here and at the edge. Nothing personal: a named person carries their name,
     // their @username, their picture and the site's name, and a guest carries nothing.
     /** The joiners count and whatever a service already publishes for today; an item with no source is left out. */
+    /** What people mostly do on a site, said beside its guest count (the footer's split; words, never tracking). */
+    const GUEST_DOING = { live: 'watching streams', video: 'watching videos', community: 'reading the forum', chat: 'chatting', pics: 'looking at pictures',
+        games: 'playing games', fun: 'playing', download: 'downloading', design: 'trying looks', codes: 'coding', news: 'reading the news', deals: 'browsing deals',
+        wiki: 'reading the wiki', blog: 'reading the blog', space: 'visiting spaces', quest: 'doing quests', network: 'on their account', report: 'reading stats',
+        exchange: 'comparing AI', compare: 'comparing AI', work: 'looking for work', tools: 'using tools', bot: 'driving robots', stream: 'restreaming', my: 'on their page' };
     async function countsOf(nowMs) {
         const out = [];
         try {
@@ -594,13 +600,28 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
                 // §Z.3 (11-13): the subject, so the name wears its effect (only people who chose to be named are here).
                 visible.push({ name, username, subject: /^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(String(subject || '')) ? subject : null, avatar: `https://openvibe.network/avatar/${encodeURIComponent(username)}?s=64`, site: at ? at.name : null, at: entry.at });
             }
-            visible.sort((a, b) => b.at - a.at);
             const live = await readLive(nowMs);
+            // Someone who is live now says so (11-14, the owner: "detect if … a user's live and make them red"), and goes first.
+            const liveBy = new Map(((live && live.list) || []).map((c) => [String(c.username || '').toLowerCase(), c]));
+            for (const p of visible) { const c = liveBy.get(p.username.toLowerCase()); if (c) { p.live = true; p.live_url = c.url; p.viewers = c.viewers; } }
+            visible.sort((a, b) => (b.live ? 1 : 0) - (a.live ? 1 : 0) || b.at - a.at);
+            // Where the guests are (11-14: "see the split of where the guests are … which sites they're on and what they're
+            // up to"): counts per site, the most first, with what people do there; the rest as one "elsewhere".
+            const guestSites = [];
+            let elsewhere = 0;
+            for (const [id, n] of [...(snap.guestSites || new Map()).entries()].sort((a, b) => b[1] - a[1])) {
+                const site = id && id !== 'tools' ? SITES.find((x) => x.id === id) : null;
+                if (id === 'tools') { guestSites.push({ id: 'tools', name: 'Tools', icon: 'tools', n, doing: GUEST_DOING.tools, url: 'https://openvibe.tools/' }); continue; }
+                if (!site || guestSites.length >= 8) { elsewhere += n; continue; }
+                guestSites.push({ id: site.id, name: site.name, icon: site.icon || site.id, n, doing: GUEST_DOING[site.id] || "looking around", url: site.host ? `https://${site.host}/` : null });
+            }
+            if (elsewhere > 0) guestSites.push({ id: 'other', name: 'Elsewhere', icon: 'ov', n: elsewhere, doing: 'looking around', url: null });
             const views = Object.entries(rank.scores || {}).filter(([k]) => !k.includes(':')).reduce((a, [, n]) => a + (Number(n) || 0), 0);
             const members = Math.max(0, snap.members.size - testSeen);
             onlineBase = {
                 members,
                 guests: snap.guests,
+                guest_sites: guestSites,
                 total: members + snap.guests,
                 visible,
                 counts: await countsOf(nowMs),
@@ -627,7 +648,9 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             members: base.members,
             guests: base.guests,
             total: base.total,
-            people: base.visible.slice(0, 60).map(({ name, username, subject, avatar, site: at }) => ({ name, username, ...(subject ? { subject } : {}), avatar, site: at })),
+            people: base.visible.slice(0, 60).map(({ name, username, subject, avatar, site: at, live, live_url: liveUrl, viewers }) => ({ name, username, ...(subject ? { subject } : {}), avatar, site: at,
+                ...(live ? { live: true, live_url: liveUrl, ...(Number.isSafeInteger(viewers) ? { viewers } : {}) } : {}) })),
+            guest_sites: base.guest_sites || [],
             more: Math.max(0, base.visible.length - 60),
             live: base.live,
             counts: base.counts,
@@ -1197,7 +1220,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
                 // browser, which is counted as a member by its heartbeat instead, and it forgets any guest entry it
                 // left earlier in the window.
                 if (/^(1|true)$/.test(String(req.query.in || ''))) seen.forgetGuest(req.ip, ua, now());
-                else seen.seenGuest(req.ip, ua, now());
+                else seen.seenGuest(req.ip, ua, now(), (siteForHost(host) || {}).id || (known ? 'tools' : null));
                 await bump.run(host);
             }
         } catch { /* counting must never fail a page */ }
