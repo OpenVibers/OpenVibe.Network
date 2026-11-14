@@ -7,6 +7,7 @@
  *   GET /api/v1/feed/search?q=&cursor=&limit=
  *   GET /api/v1/feed/examples
  *   GET /api/v1/feed/wall?limit=&cursor=          the menu's older wall, the same rows and ids
+ *   GET /api/v1/feed/sites                        each site's live line ("79 new today", "3 live now"), kept 5 minutes
  *
  * Signed out returns public items only; signed in reads the person's follows (Following) and ranks
  * For you by follows, what they open (Network's cross-site history) and freshness. A private or
@@ -16,7 +17,7 @@
  */
 const express = require('express');
 const store = require('./store');
-const { cardOf, oneCardPerThing, foldCards, rankCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD } = require('./card');
+const { cardOf, oneCardPerThing, foldCards, rankCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD, RUN_PAGE } = require('./card');
 const { createPictures } = require('./pictures');
 const { createFeedSources } = require('./sources');
 const { createEffects } = require('./effects');
@@ -143,6 +144,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             if (!card.group) card.group = { count: n, items: [{ id: card.id, url: card.url, title: card.title, media: card.media }] };
             // A run of deals shows each one's picture in its rows; one product's picture over "321 new deals" says nothing.
             card.media = null;
+            if (RUN_PAGE[b.site]) card.url = RUN_PAGE[b.site];   // the site's list of new ones (plan §AB.46)
             card.id = bulkId(b.kind, b.site, b.hour);
             card.title = `${n.toLocaleString('en-US')} new ${b.many}`;
             card.group.count = n;
@@ -190,6 +192,48 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             res.json({ examples: searchExamples(read.rows.map((r) => cardOf(r, actors.get(r.actor_subject) || null))) });
         } catch (err) { next(err); }
     };
+    /**
+     * Each site's live line for the card heads (plan §AB.46; the owner, 11-14: "needs more metrics"): what is new there
+     * in the last day, or who is live now, counted from this feed's own public rows (no request to any site), and the
+     * site's page to open. Kept five minutes; anyone may read it (counts only, never who).
+     */
+    const SITE_LINES = [
+        // [site, source_service, source_type, noun (one, many), page]
+        ['deals', 'deals', 'offer', ['new deal', 'new deals'], 'https://openvibe.deals/new'],
+        ['work', 'work', 'job', ['new job', 'new jobs'], 'https://openvibe.work/jobs'],
+        ['news', 'news', null, ['story', 'stories'], 'https://openvibe.news/'],
+        ['pics', 'pics', null, ['new photo', 'new photos'], 'https://openvibe.pics/'],
+        ['meme', 'meme', null, ['new meme', 'new memes'], 'https://openvibe.meme/'],
+        ['community', 'community', null, ['new post', 'new posts'], 'https://openvibe.community/pulse'],
+        ['wiki', 'wiki', null, ['page changed', 'pages changed'], 'https://openvibe.wiki/recent'],
+        ['blog', 'blog', null, ['new post', 'new posts'], 'https://openvibe.blog/'],
+    ];
+    let sitesKept = null;
+    async function siteLines() {
+        if (sitesKept && now() - sitesKept.at < 5 * 60000) return sitesKept.data;
+        const since = new Date(now() - 86400000).toISOString();
+        const rows = await db.prepare(`SELECT source_service, source_type, count(*) AS n FROM feed_items
+            WHERE visibility = 'public' AND occurred_at >= ? GROUP BY source_service, source_type`).all(since);
+        const count = (service, type) => rows.filter((r) => r.source_service === service && (!type || r.source_type === type)).reduce((a, r) => a + Number(r.n || 0), 0);
+        const sites = {};
+        const on = await db.prepare("SELECT count(*) AS n FROM feed_items WHERE source_service = 'live' AND source_type = 'stream' AND live_now = true AND visibility = 'public'").get();
+        const live = Number(on && on.n) || 0;
+        const recordings = count('live', 'recording');
+        if (live > 0) sites.live = { line: `${live.toLocaleString('en-US')} live now`, url: 'https://openvibe.live/' };
+        else if (recordings > 0) sites.live = { line: `${recordings.toLocaleString('en-US')} ${recordings === 1 ? 'recording' : 'recordings'} today`, url: 'https://openvibe.video/' };
+        for (const [site, service, type, [one, many], url] of SITE_LINES) {
+            const n = count(service, type);
+            if (n > 0) sites[site] = { line: `${n.toLocaleString('en-US')} ${n === 1 ? one : many} today`, url };
+        }
+        sitesKept = { at: now(), data: sites };
+        return sites;
+    }
+    const handleSites = async (req, res, next) => {
+        try {
+            const sites = await siteLines();
+            res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' }).json({ sites });
+        } catch (err) { next(err); }
+    };
     const handleSearch = async (req, res, next) => {
         try {
             headers(req, res);
@@ -208,6 +252,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
     router.get('/', handleFeed);
     router.get('/wall', handleWall);
     router.get('/examples', handleExamples);
+    router.get('/sites', handleSites);
     router.get('/search', handleSearch);
     router.get('/picture', (req, res, next) => pictures.handle(req, res).catch(next));
     // 11-14: the cards a person saw, as views in Media's one store (feed/views-beacon.js); a beacon, so text/plain is read too.
@@ -225,7 +270,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
     }
     function stop() { sources.stop(); events.stop(); }
 
-    return { router, page, handleFeed, handleWall, handleSearch, handleExamples, start, stop, sources, events, viewerOf, pictures };
+    return { router, page, handleFeed, handleWall, handleSearch, handleExamples, handleSites, start, stop, sources, events, viewerOf, pictures };
 }
 
 module.exports = { createFeedApi, viewerOf, actorsFor, encodeCursor, decodeCursor, KINDS };
