@@ -70,7 +70,7 @@ async function take({ db, state }) {
 }
 
 /** The cookie to set at the start of a flow, and to clear at its end. */
-function setCookie(res, state) { res.cookie(COOKIE, state, COOKIE_OPTS); }
+function setCookie(res, state, { crossSitePost = false } = {}) { res.cookie(COOKIE, state, crossSitePost ? { ...COOKIE_OPTS, sameSite: 'none' } : COOKIE_OPTS); }
 function clearCookie(res) { res.clearCookie(COOKIE, { httpOnly: true, secure: true, sameSite: 'lax', path: '/' }); }
 
 /** Whether a callback's state is the one this browser started (constant time; a missing cookie is a refusal). */

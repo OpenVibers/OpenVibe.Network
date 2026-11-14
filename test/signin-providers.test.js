@@ -530,6 +530,24 @@ function jar() {
         r = await get('/api/auth/connect');
         assert.ok(JSON.parse(r.text).providers.some((p) => p.id === 'discord'));
 
+        // Review 11-14: Apple answers with a cross-site POST, which a SameSite=Lax cookie never rides on; its state cookie is
+        // SameSite=None (Secure, HttpOnly, host-only), every other provider's stays Lax.
+        const rawStart = async (path) => { const res = await fetch(base + path, { redirect: 'manual' }); return String(res.headers.get('set-cookie') || ''); };
+        const googleCookie = await rawStart('/api/auth/connect/google?return=%2Fmy');
+        assert.match(googleCookie, /__Host-ov_signin=[^;]+;.*SameSite=Lax/i, 'Google: Lax');
+        const appleRes = await fetch(base + '/api/auth/connect/apple?return=%2Fmy', { redirect: 'manual' });
+        if (appleRes.status === 302 && /appleid\.apple\.com/.test(String(appleRes.headers.get('location') || ''))) {
+            const appleCookie = String(appleRes.headers.get('set-cookie') || '');
+            assert.match(appleCookie, /SameSite=None/i, 'Apple: None, or its form_post callback never carries the cookie');
+            assert.match(appleCookie, /Secure/i); assert.match(appleCookie, /HttpOnly/i);
+        }
+        // And a way back is never another site: "/\\evil.com" is "//evil.com" to a browser.
+        const { safeReturn } = require('../server/auth/providers/routes');
+        assert.strictEqual(safeReturn('/\\evil.com'), '/my');
+        assert.strictEqual(safeReturn('//evil.com'), '/my');
+        assert.strictEqual(safeReturn('/ok\tthere'), '/my');
+        assert.strictEqual(safeReturn('/my/settings?tab=1'), '/my/settings?tab=1');
+
         console.log = quiet;
         console.log('sign-in providers: all checks passed');
     } finally {

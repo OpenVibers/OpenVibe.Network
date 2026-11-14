@@ -165,7 +165,7 @@ async function link(db, userId, providerId, identity) {
 function safeReturn(value) {
     const s = String(value || '');
     if (!s || s.length > 300) return '/my';
-    if (s.startsWith('/') && !s.startsWith('//') && !/[\r\n]/.test(s)) return s;
+    if (s.startsWith('/') && !/^\/[\/\\]/.test(s) && !/[\\\u0000-\u001f\u007f]/.test(s)) return s;
     try {
         const u = new URL(s);
         if (u.protocol === 'https:' && !u.username && !u.password && require('../../first-party-origins').manifestOrigins().has(u.origin)) return u.toString();
@@ -259,7 +259,8 @@ function createRouter({ requireAuth, signToken, config = {}, fetch: fetchImpl = 
             await db.prepare('UPDATE signin_states SET verifier = ?, nonce = ? WHERE state_hash = ?')
                 .run(built.verifier ? seal.seal(built.verifier) : null, built.nonce ? seal.seal(built.nonce) : null, stateStore.hash(state));
         }
-        stateStore.setCookie(res, state);
+        // Apple answers with a cross-site POST (form_post), which a SameSite=Lax cookie never rides on.
+        stateStore.setCookie(res, state, { crossSitePost: p.kind === 'apple' });
         await audit(db, 'signin_started', { userId: mode === 'link' ? req.user.id : null, provider: providerId, outcome: mode });
         return res.redirect(302, built.redirect);
     }
