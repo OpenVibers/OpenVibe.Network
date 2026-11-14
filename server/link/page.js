@@ -133,7 +133,7 @@ function releaseBlock(release) {
         kit.row({ href: release.checksumsUrl || '#', title: 'SHA256SUMS', sub: 'the checksums of every file in the release, to check the download against' }),
         kit.row({ href: release.url || '#', title: 'The release on GitHub', sub: 'every asset, and the notes of that release' }),
     ];
-    return `<section class="np-sec" aria-labelledby="h-release"><h2 id="h-release">The latest release</h2>
+    return `<section class="np-sec np-release" aria-labelledby="h-release"><h2 id="h-release">The latest release</h2>
 <p class="np-fine">${version ? `Version <strong>${esc(version)}</strong>` : 'The download links always point at the latest release.'}${date ? `, published ${esc(date)}` : ''}. The install command above always installs that release.</p>
 ${kit.list(rows, { flush: true })}
 ${release.stale && days >= 1 ? `<p class="np-fine np-warn">GitHub could not be reached just now, so this is the last release we read, from ${days === 1 ? 'a day' : `${days} days`} ago.</p>` : ''}
@@ -195,48 +195,59 @@ ${CSS}
 ${installBlock(release, userAgent)}
 </section>
 
-<section class="np-sec" id="machines" aria-labelledby="h-machines"><h2 id="h-machines">Your machines</h2>
-<p class="np-fine">Sign in to see every machine you paired: whether it is online, what it is allowed to do, and the one-time code to add another. The same page renames or revokes one, and the phone pairs there too.</p>
-<p class="np-cta" style="margin-top:12px">${kit.button({ href: '/machines', label: 'Open your machines', kind: 'primary' })} ${kit.button({ href: '/pair', label: 'Pair a machine', kind: 'quiet' })}</p>
-</section>
-
-<section class="np-sec" id="browsing"><h2>Your usual internet address</h2>
-<p>Your Actor's browsing on OpenVibe computers goes out through this computer's internet, so sites see your usual address.</p>
+<!-- 2026-11-14 (the owner: "this page layout sucks … use OpenVibe.design … responsive … better use of space … icons"):
+     what you do with Link is one grid of cards, each headed by its mark (your machines, your internet address, sending to
+     a machine); the promises and the docs are compact icon tiles; the release is one card. -->
+<section class="np-sec" aria-labelledby="h-yours"><h2 id="h-yours">Your Link</h2>
+<div class="np-panels">
+<article class="np-card" id="machines" aria-labelledby="h-machines">
+<header class="np-card-h"><span class="np-ic">${glyphs.svg('computer', { size: 20 })}</span><h3 id="h-machines">Your machines</h3><p>Every computer, server and phone you paired: online or not, what each may do.</p></header>
+<p class="np-fine">Rename or revoke one there; the one-time code to add another and the phone's pairing are there too.</p>
+<p class="np-cta">${kit.button({ href: '/machines', label: 'Open your machines', kind: 'primary' })} ${kit.button({ href: '/pair', label: 'Pair a machine', kind: 'quiet' })}</p>
+</article>
+<article class="np-card" id="browsing" aria-labelledby="h-browsing">
+<header class="np-card-h"><span class="np-ic">${glyphs.svg('globe', { size: 20 })}</span><h3 id="h-browsing">Your usual internet address</h3><p>When your agents browse on an OpenVibe computer, sites can see your home internet instead of a data centre's: fewer "are you a robot?" checks, your country's pages. It needs this computer on, with Link running.</p></header>
 <form class="np-send" data-egress-settings>
-<label><span><input type="checkbox" name="enabled" checked> Use my computer's internet</span></label>
+<label class="np-switch"><input type="checkbox" role="switch" name="enabled" checked><span><b>Use my computer's internet</b><small>Off: your agents always use OpenVibe's address.</small></span></label>
+<div class="np-pair">
 <label>When my computer is offline<select name="offline"><option value="openvibe">Use OpenVibe's address</option><option value="wait">Wait for my computer</option></select></label>
-<label>Monthly limit (GB)<input type="number" name="cap" min="0" max="10000" value="20" step="1"></label>
-<label>Sites that should use OpenVibe's address<textarea name="sites" placeholder="example.com, another.example"></textarea></label>
+<label>Monthly limit (GB)<input type="number" name="cap" min="0" max="10000" value="20" step="1" inputmode="numeric"></label>
+</div>
+<label>Sites that should use OpenVibe's address<textarea name="sites" rows="2" placeholder="example.com, another.example"></textarea><small>Comma-separated: your bank or work sites, for example. Past the monthly limit, browsing uses OpenVibe's address until the month ends.</small></label>
 <button type="submit">Save browsing settings</button><p role="status" data-egress-status></p>
-</form></section>
-<section class="np-sec" id="send" aria-labelledby="h-send"><h2 id="h-send">Send to my machine</h2>
-<p class="np-fine">Choose one of your paired machines and send a file or a short text note. Link encrypts it for that machine before it leaves this page; the relay only holds the encrypted envelope for up to 24 hours.</p>
+</form>
+</article>
+<article class="np-card" id="send" aria-labelledby="h-send">
+<header class="np-card-h"><span class="np-ic">${glyphs.svg('send', { size: 20 })}</span><h3 id="h-send">Send to my machine</h3><p>A file or a short note to one of your machines, encrypted on this page before it leaves; the relay holds only the sealed envelope, at most 24 hours.</p></header>
 <form class="np-send" data-link-send>
 <label>Send to <select name="machine" required><option value="">Loading your machines…</option></select></label>
-<label>File <input name="file" type="file"></label>
-<label>Or a text note <textarea name="text" rows="3" maxlength="10000" placeholder="Write a short note"></textarea></label>
+<label class="np-file">File <input name="file" type="file"></label>
+<label>Or a text note <textarea name="text" rows="2" maxlength="10000" placeholder="Write a short note"></textarea></label>
 <button type="submit">Encrypt and send</button>
 <progress max="100" value="0" data-send-progress hidden></progress>
 <p role="status" aria-live="polite" data-send-status></p>
 </form>
-<h3>Sent from this page</h3>
+<details class="np-sent"><summary>Sent from this page</summary>
 <p class="np-fine">Only what this page sent: whether the machine accepted it, declined it, or saved it. Nothing here can be read by OpenVibe.</p>
 <ul data-send-delivery aria-live="polite"></ul>
+</details>
+</article>
+</div>
 </section>
 
 ${releaseBlock(release)}
 
 <section class="np-sec" aria-labelledby="h-never"><h2 id="h-never">What it never does</h2>
-<ul class="np-never">${NEVER.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>
+<ul class="np-never">${NEVER.map((n, k) => `<li><span class="np-ic np-ic--sm">${glyphs.svg(['link', 'stop', 'shield', 'x-circle'][k] || 'shield', { size: 18 })}</span><span>${esc(n)}</span></li>`).join('')}</ul>
 </section>
 
 <section class="np-sec" aria-labelledby="h-docs"><h2 id="h-docs">The docs</h2>
 <ul class="np-docs">
-<li><a href="${DOCS}/install.md">Install</a> &mdash; every OS, every option, and what the installer does.</li>
-<li><a href="${DOCS}/computer.md">Your computer for your agents</a> &mdash; the computer plugin, its levels and the live screen.</li>
-<li><a href="${DOCS}/worker.md">A machine that runs your jobs</a> &mdash; the sandbox the job runner uses.</li>
-<li><a href="${DOCS}/protocol.md">The protocol</a> &mdash; the wire format between Link and OpenVibe.Bot.</li>
-<li><a href="${DOCS}/memory.md">Your memory</a> &mdash; what the collectors read and how it is uploaded.</li>
+${[['download', 'install', 'Install', 'Every OS, every option, and what the installer does.'],
+    ['computer', 'computer', 'Your computer for your agents', 'The computer plugin, its levels and the live screen.'],
+    ['box', 'worker', 'A machine that runs your jobs', 'The sandbox the job runner uses.'],
+    ['link', 'protocol', 'The protocol', 'The wire format between Link and OpenVibe.Bot.'],
+    ['book', 'memory', 'Your memory', 'What the collectors read and how it is uploaded.']].map(([ic, doc, t, d]) => `<li><a href="${DOCS}/${doc}.md"><span class="np-ic np-ic--sm">${glyphs.svg(ic, { size: 18 })}</span><span><b>${esc(t)}</b><small>${esc(d)}</small></span></a></li>`).join('\n')}
 </ul>
 <p class="np-fine">The source is on <a href="https://github.com/OpenVibers/OpenVibe.Link">GitHub</a>. The installer also lives at <a href="https://openvibe.bot/install">openvibe.bot/install</a>, which keeps working.</p>
 </section>
@@ -261,8 +272,13 @@ const CSS = `
 .np-sec{margin-top:44px}
 .np-send{display:grid;gap:12px;max-width:560px;padding:18px;border:1px solid var(--border,#1f2d47);border-radius:16px;background:var(--bg-card,#0f1729)}
 .np-send label{display:grid;gap:6px;font-size:.92rem;font-weight:650}
-.np-send input,.np-send select,.np-send textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border,#1f2d47);border-radius:9px;background:var(--bg-primary,#080d18);color:var(--text-primary,#eef2ff);font:inherit}
-.np-send button{justify-self:start;padding:10px 14px;border:0;border-radius:9px;background:var(--accent,#3b82f6);color:white;font:inherit;font-weight:700;cursor:pointer}
+.np-send input:not([type=checkbox]):not([type=radio]),.np-send select,.np-send textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border,#1f2d47);border-radius:9px;background:var(--bg-primary,#080d18);color:var(--text-primary,#eef2ff);font:inherit}
+.np-send>button[type=submit]{justify-self:start;min-height:44px;padding:10px 14px;border:0;border-radius:9px;background:var(--accent,#3b82f6);color:white;font:inherit;font-weight:700;cursor:pointer}
+.np-send label small{font-weight:400;font-size:.82rem;line-height:1.45;color:var(--text-secondary,#96a7c2)}
+/* A switch and its words on one row (11-14: the switch had stretched into a long empty pill over its label). */
+.np-send .np-switch{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer}
+.np-send .np-switch>span{display:grid;gap:2px}
+@media (max-width:560px){.np-send{padding:14px;border-radius:14px}}
 .np-send [role=status]{margin:0;min-height:1.3em;color:var(--text-secondary,#96a7c2)}
 .np-sec h2{margin:0 0 14px;font-size:1.3rem;letter-spacing:-.01em}
 .np-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
@@ -294,10 +310,32 @@ const CSS = `
 .np-install .ovk-snip{margin:12px 0}
 .np-fine{margin:10px 0 0;font-size:.88rem;color:var(--text-muted,#7386a3);line-height:1.55}
 .np-warn{color:#f0b429}
-.np-never,.np-docs{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-width:820px}
-.np-never li{position:relative;padding:11px 14px 11px 42px;border-radius:12px;background:var(--bg-card,#0f1729);border:1px solid var(--border,#1f2d47);color:var(--text-secondary,#96a7c2);font-size:.93rem;line-height:1.55}
-.np-never li::before{content:"";position:absolute;left:15px;top:16px;width:13px;height:13px;border-radius:50%;background:color-mix(in srgb,var(--accent,#3b82f6) 22%,transparent);box-shadow:inset 0 0 0 2px var(--accent,#3b82f6)}
-.np-docs li{padding:11px 14px;border-radius:12px;background:var(--bg-card,#0f1729);border:1px solid var(--border,#1f2d47);font-size:.93rem;line-height:1.55}
+.np-panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:14px;align-items:start}
+.np-card{display:grid;gap:12px;padding:16px;border-radius:var(--ov-radius-2,16px);background:var(--bg-card,#0f1729);border:1px solid var(--border,#1f2d47);min-width:0}
+.np-card-h{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;align-items:center}
+.np-card-h h3{margin:0;font-size:1.02rem}
+.np-card-h p{grid-column:1/-1;margin:0;color:var(--text-secondary,#96a7c2);font-size:.9rem;line-height:1.55}
+@media (min-width:760px){.np-panels{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:'m b' 's b'}#machines{grid-area:m}#browsing{grid-area:b}#send{grid-area:s}}
+.np-card .np-fine{margin:0}
+.np-ic{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;color:var(--accent-light,var(--accent,#60a5fa));background:color-mix(in srgb,var(--accent,#3b82f6) 13%,transparent)}
+.np-ic svg{width:20px;height:20px}
+.np-ic--sm{width:32px;height:32px;border-radius:10px}
+.np-ic--sm svg{width:17px;height:17px}
+.np-card .np-send{max-width:none;padding:0;border:0;background:none;gap:10px}
+.np-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:10px}
+.np-file input[type=file]{padding:6px}
+.np-file input[type=file]::file-selector-button{margin-right:10px;padding:8px 12px;border:1px solid var(--border,#1f2d47);border-radius:8px;background:var(--bg-secondary,#16223a);color:var(--text-primary,#eef2ff);font:inherit;font-weight:650;cursor:pointer}
+.np-sent{border-top:1px solid var(--border,#1f2d47);padding-top:8px}
+.np-sent>summary{min-height:40px;display:flex;align-items:center;cursor:pointer;font-weight:650;color:var(--text-secondary,#96a7c2)}
+.np-sent ul{margin:6px 0 0;padding-left:18px;color:var(--text-secondary,#96a7c2);font-size:.9rem}
+.np-release .ovk-list{border-radius:var(--ov-radius-2,16px)}
+.np-never,.np-docs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:10px}
+.np-never li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;padding:12px 14px;border-radius:14px;background:var(--bg-card,#0f1729);border:1px solid var(--border,#1f2d47);color:var(--text-secondary,#96a7c2);font-size:.9rem;line-height:1.55}
+.np-docs a{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;min-height:56px;padding:10px 14px;border-radius:14px;background:var(--bg-card,#0f1729);border:1px solid var(--border,#1f2d47);color:inherit!important;text-decoration:none;transition:border-color .15s ease,transform .15s ease}
+.np-docs a:hover,.np-docs a:focus-visible{border-color:color-mix(in srgb,var(--accent,#3b82f6) 55%,var(--border,#1f2d47))}
+.np-docs a span:last-child{display:grid;gap:2px}
+.np-docs b{color:var(--text-primary,#eef2ff);font-size:.95rem}
+.np-docs small{color:var(--text-secondary,#96a7c2);font-size:.84rem;line-height:1.45}
 .np a:not(.ovk-btn){color:var(--accent,#3b82f6)}
 @media (max-width:640px){.np{padding:22px 16px 52px}}
 `;
