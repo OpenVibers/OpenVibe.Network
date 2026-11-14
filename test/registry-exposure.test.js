@@ -10,7 +10,7 @@ const contracts = require('openvibe-contracts');
 const exposure = require('../server/registry/exposure');
 const { createEcosystemRegistry } = require('../server/registry/ecosystem');
 const { createStatusRoutes } = require('../server/status/routes');
-const { SITES } = require('../server/frame/sites');
+const { SITES, DOORS } = require('../server/frame/sites');
 
 // Observed 2026-09-23 with curl against every public domain. Change a row only after the domain
 // stops answering "this page is a placeholder" (or a library ships a new release).
@@ -155,10 +155,20 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     const EXPECTED_OPEN = ['live', 'tools', 'community', 'games', 'media', 'network', 'chat', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'space', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'search', 'run', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'casino', 'tours', 'shoes', 'connect', 'computer', 'lock', 'image', 'compare', 'directory'];   // by site position; Email joins after Chat once its manifest is pinned; Directory (contracts 0.406.0) is last
     if (HAS_MAIL) EXPECTED_OPEN.splice(EXPECTED_OPEN.indexOf('chat') + 1, 0, 'mail');
     if (HAS_GIT) EXPECTED_OPEN.splice(EXPECTED_OPEN.indexOf('events') + 1, 0, 'git');
+    // The three doors of 2026-11-13 (openvibe.expert, openvibe.markets, openvibe.finance): their own services come
+    // later, their domains answer with a 302 to the service that holds their content today, so they are open.
+    EXPECTED_OPEN.push('expert', 'markets', 'finance');
     assert.deepStrictEqual(open, EXPECTED_OPEN);
     for (const s of SITES) {
         if (s.id === 'computer' && !contracts.services.get('computer')) {
             assert.strictEqual(s.status, 'soon', 'Computer stays listed but not open until its service manifest is pinned');
+            continue;
+        }
+        if (DOORS.some(d => d.id === s.id)) {
+            assert.strictEqual(s.status, 'open', `${s.id} is a door: its domain answers, so it is open`);
+            assert.strictEqual(s.state, 'live', `${s.id} is a door: its domain answers, so it is live`);
+            assert.strictEqual(s.host, `openvibe.${s.id}`, `${s.id} names its own domain`);
+            assert.ok(!PINNED[s.service], `${s.id} has no service of its own yet: no exposure row`);
             continue;
         }
         assert.ok(s.service && PINNED[s.service], `${s.id} names its service`);

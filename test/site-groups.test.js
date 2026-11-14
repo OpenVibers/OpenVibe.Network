@@ -1,7 +1,8 @@
 'use strict';
-// The owner's one site list (2026-11-10, plan ask 274): eight groups, in this order, at most eight tiles each (Read has eight since Compare joined in Contracts 0.409.0),
-// every site in exactly one of them (or a named merge with a domain that keeps answering). The same list feeds the
-// menu, its You-tab folders, the footer's Network column and the home pages' "More on OpenVibe".
+// The owner's one site list (2026-11-10, plan ask 274): eight groups, in this order, at most nine tiles each (Read has
+// eight since Compare joined in Contracts 0.409.0; Shop & money has nine and Make with AI eight since the three doors
+// of 2026-11-13 joined them), every site in exactly one of them (or a named merge with a domain that keeps answering).
+// The same list feeds the menu, its You-tab folders, the footer's Network column and the home pages' "More on OpenVibe".
 const assert = require('assert');
 const contracts = require('openvibe-contracts');
 const {
@@ -13,11 +14,11 @@ const LABELS = ['Watch & stream', 'Talk & belong', 'Play', 'Read & ask', 'Shop &
 assert.deepStrictEqual(GROUPS.map((g) => g.name), LABELS, 'the eight labels, in the order the menu, footer and homes show');
 assert.deepStrictEqual(GROUPS.map((g) => g.id), ['watch', 'talk', 'play', 'read', 'shop', 'tools', 'make', 'build'], 'the ids Contracts `site.neighbourhood` and Shared folders use');
 
-// At most seven tiles a group, and every listed place in exactly one group.
-for (const g of GROUPS) assert.ok(g.sites.length <= 8, `${g.name}: ${g.sites.length} tiles`);
+// At most nine tiles a group, and every listed place in exactly one group.
+for (const g of GROUPS) assert.ok(g.sites.length <= 9, `${g.name}: ${g.sites.length} tiles`);
 for (const s of LISTED) assert.strictEqual(GROUPS.filter((g) => g.sites.includes(s.id)).length, 1, `${s.id}: exactly one group`);
-assert.deepStrictEqual(GROUPS.map((g) => g.sites.length), [7, 7, 7, 8, 7, 7, 7, 7]); // Compare joins Read with Contracts 0.409.0
-assert.strictEqual(LISTED.filter((s) => s.status === 'open').length, 56 + Number(Boolean(contracts.services.get('directory'))), 'the open sites plus Pics and Download; Compare and Directory join after their Contracts releases');
+assert.deepStrictEqual(GROUPS.map((g) => g.sites.length), [7, 7, 7, 8, 9, 7, 8, 7]); // Compare joins Read (0.409.0); the three doors of 2026-11-13 join Shop & money and Make with AI
+assert.strictEqual(LISTED.filter((s) => s.status === 'open').length, 59 + Number(Boolean(contracts.services.get('directory'))), 'the open sites plus Pics and Download; Compare and Directory join after their Contracts releases; the three doors of 2026-11-13 are open');
 assert.deepStrictEqual(PRODUCTS.map((p) => LISTED.find((s) => s.id === p.id).status), ['open', 'open'], 'Pics and Download are open entries');
 
 // Every manifest site is in one group, or is one of the named merges: Media into Video, Bench into Report,
@@ -47,4 +48,4 @@ assert.strictEqual(siteForHost('bench.openvibe.services').id, 'report', 'Bench b
 assert.strictEqual(siteForHost('openvibe.media').id, 'media', 'Media still answers; it is Video\'s API, not a tile');
 assert.ok(SITES.some((s) => s.id === 'media'), 'Media stays a known host');
 
-console.log(`site groups: ${LISTED.filter((s) => s.status === 'open').length} open places in ${GROUPS.length} groups, at most eight a group, every manifest site placed`);
+console.log(`site groups: ${LISTED.filter((s) => s.status === 'open').length} open places in ${GROUPS.length} groups, at most nine a group, every manifest site placed`);

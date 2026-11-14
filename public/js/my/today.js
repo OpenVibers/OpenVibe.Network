@@ -20,6 +20,9 @@ const TD_SITES = {
     design: ['Design', 'fa-palette', 'https://openvibe.design'], report: ['Report', 'fa-chart-column', 'https://openvibe.report'],
     'media-hub': ['Video', 'fa-play', 'https://openvibe.video'], video: ['Video', 'fa-play', 'https://openvibe.video'],
     download: ['Download', 'fa-folder', 'https://openvibe.download'], cam: ['Cam', 'fa-camera', 'https://openvibe.cam'],
+    // The three doors of 2026-11-13: their own services come later, their domains are the network's own.
+    expert: ['Expert', 'fa-user-secret', 'https://openvibe.expert'], markets: ['Markets', 'fa-tags', 'https://openvibe.markets'],
+    finance: ['Finance', 'fa-wallet', 'https://openvibe.finance'],
 };
 // What to try next, most used across the network first, each with the reason it is worth a look.
 const TD_TRY = [
