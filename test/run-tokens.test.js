@@ -83,7 +83,8 @@ const runTokens = require('../server/identity/run-tokens');
         assert.ok(has('actor', 'ai.run.create', 'openvibe.ai'), 'Actor runs AI\'s OpenAI-compatible endpoint');
         assert.ok(!has('actor', 'ai.credential.manage', 'openvibe.ai'), 'Actor never stores a person\'s key in AI');
         const actorGrant = principals.DEFAULT_GRANTS.find((g) => g[0] === 'actor' && g[1] === 'ai.run.create' && g[2] === 'openvibe.ai');
-        assert.deepStrictEqual(actorGrant[3], ['ai.complete'], 'AI\'s OpenAI-compatible workflow only');
+        // 11-13 (plan §Z.9): and video.analyze, an agent's video_analyze tool.
+        assert.deepStrictEqual(actorGrant[3], ['ai.complete', 'video.analyze'], 'AI\'s OpenAI-compatible workflow and video.analyze only');
         const actorGrants = await principals.grantsFor(db, 'actor', 'openvibe.ai');
         assert.deepStrictEqual(actorGrants.map((g) => g.capability).sort(), ['ai.run.create', 'ai.usage.report'], 'and it reports its own provider calls to AI\'s meter');
 
