@@ -10,11 +10,11 @@
 <meta name="color-scheme" content="dark light">
 <link rel="apple-touch-icon" href="/assets/logo-192.png">
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="description" content="Sign in to OpenVibe — one account across OpenVibe.Live, OpenVibe.Tools, OpenVibe.Games, and OpenVibe.Media.">
+<meta name="description" content="Sign in to OpenVibe with Google, Discord, Twitch, GitHub, Microsoft, Apple, Kick, X, Roblox, Facebook or Steam — one account across OpenVibe.Live, OpenVibe.Tools, OpenVibe.Games and OpenVibe.Media.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://openvibe.network/login">
 <meta property="og:title" content="Sign in to OpenVibe">
-<meta property="og:description" content="Sign in to OpenVibe — one account across OpenVibe.Live, OpenVibe.Tools, OpenVibe.Games, and OpenVibe.Media.">
+<meta property="og:description" content="Sign in to OpenVibe with Google, Discord, Twitch, GitHub, Microsoft, Apple, Kick, X, Roblox, Facebook or Steam — one account across every OpenVibe site.">
 <meta property="og:site_name" content="OpenVibe.Network">
 <meta property="og:image" content="https://openvibe.network/shared/social/network.jpg">
 <meta property="og:image:alt" content="OpenVibe.Network: one account for every OpenVibe site">
@@ -50,6 +50,10 @@
             <button class="active" onclick="switchTab('login')">Sign In</button>
             <button onclick="switchTab('register')">Create Account</button>
         </div>
+
+        <!-- Provider buttons, rendered on the server so the page stays indexable (server/auth/providers/page.js).
+             Each is a plain link to /api/auth/connect/<id>; login.js adds the app's query or the return path. -->
+        <!--OV:SIGNIN-PROVIDERS-->
 
         <!-- Account Chooser (shown when saved accounts exist) -->
         <div class="form-panel" id="panel-chooser">

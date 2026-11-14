@@ -143,6 +143,91 @@ async function togglePref(btn) {
     } catch (err) { btn.classList.toggle('on'); btn.classList.toggle('off'); }
 }
 
+// ── Ways to sign in: the provider apps (plan §AB.20) ──
+// GET /api/auth/connect lists the provider apps this Network offers; /:id/status says whether this account has one
+// linked and whether it may be removed (can_unlink is false for the last way in). Link starts the provider's own
+// page; unlink is one DELETE. The server decides both.
+const SIGNIN_ICONS = {
+    google: { brand: 'google' }, discord: { brand: 'discord' }, twitch: { brand: 'twitch' }, github: { brand: 'github' },
+    apple: { brand: 'apple' }, steam: { brand: 'steam' }, kick: { brand: 'kick' }, x: { brand: 'x' },
+    facebook: { brand: 'facebook' }, microsoft: { icon: 'window' }, roblox: { icon: 'gamepad' },
+};
+function signInGlyph(id) {
+    const g = SIGNIN_ICONS[id] || { icon: 'globe' };
+    return g.brand ? `<i data-ov-brand="${g.brand}" aria-hidden="true"></i>` : `<i data-ov-icon="${g.icon}" aria-hidden="true"></i>`;
+}
+async function loadSignInMethods() {
+    const el = document.getElementById('sign-in-methods');
+    if (!el || isAnonSession()) return;
+    try {
+        const [listed, statuses] = await Promise.all([
+            apiFetch('/api/auth/connect'),
+            apiFetch('/api/auth/connect/apps/status').catch(() => ({ apps: {} })),
+        ]);
+        const providers = listed.providers || [];
+        const apps = statuses.apps || {};
+        if (!providers.length) {
+            el.innerHTML = '<p class="muted" style="font-size:13px">No sign-in apps are set up on this network yet. Your password and passkeys still work.</p>';
+            return;
+        }
+        const rows = providers.map((p) => {
+            const st = apps[p.id] || {};
+            const name = esc(p.name);
+            if (!st.linked) {
+                return `<div class="linked-item signin-method" data-provider="${esc(p.id)}">
+                    <span class="svc-icon">${signInGlyph(p.id)}</span>
+                    <div><div class="svc-name">${name}</div><div class="svc-user">not linked</div></div>
+                    <button class="btn" type="button" onclick="linkSignInApp('${esc(p.id)}')">Link ${name}</button></div>`;
+            }
+            const who = st.linked.service_username ? '@' + esc(st.linked.service_username) : 'linked';
+            const remove = st.can_unlink
+                ? `<button class="btn" type="button" onclick="unlinkSignInApp('${esc(p.id)}')">Remove</button>`
+                : '<span class="svc-status" title="Set a password or link another app first">Your only way in</span>';
+            return `<div class="linked-item signin-method" data-provider="${esc(p.id)}">
+                <span class="svc-icon">${signInGlyph(p.id)}</span>
+                <div><div class="svc-name">${name}</div><div class="svc-user">${who}</div></div>
+                ${remove}</div>`;
+        }).join('');
+        el.innerHTML = rows;
+    } catch (err) {
+        el.innerHTML = '<p class="muted" style="font-size:13px">Your sign-in apps could not be read just now. Reload the page to try again.</p>';
+    }
+}
+function linkSignInApp(id) {
+    // A full navigation, not a fetch: the provider's own page has to be shown, and it comes back to /my.
+    window.location.href = API + '/api/auth/connect/' + encodeURIComponent(id) + '?mode=link';
+}
+async function unlinkSignInApp(id) {
+    if (!confirm('Remove this way of signing in? You can add it again any time.')) return;
+    try {
+        const out = await apiFetch('/api/auth/connect/' + encodeURIComponent(id) + '/link', { method: 'DELETE' });
+        toast(out.unlinked ? 'Removed.' : 'That was not linked.', 'success');
+    } catch (err) {
+        toast(err.status === 409 ? err.message : (err.message || 'Could not remove it.'), 'error');
+    }
+    loadSignInMethods();
+}
+// The result of a link started from this page (?linked=<id>&result=…), once.
+(function reportSignInLink() {
+    const q = new URLSearchParams(window.location.search);
+    const linked = q.get('linked');
+    if (!linked) return;
+    const result = q.get('result');
+    const messages = {
+        success: 'Linked. You can sign in with it from now on.',
+        already_yours: 'That app is already linked to your account.',
+        already_linked_other: 'That app account signs in to a different OpenVibe account. Sign in to that one to use it.',
+        provider_access_denied: 'You cancelled on the provider’s page, so nothing was linked.',
+        state_expired: 'That link took too long (more than ten minutes) or was already used. Try again.',
+        state_mismatch: 'That link was not the one this browser started. Try again.',
+    };
+    const text = messages[result] || 'The link did not finish. Try again.';
+    setTimeout(() => toast(text, result === 'success' || result === 'already_yours' ? 'success' : 'error'), 400);
+    q.delete('linked'); q.delete('result');
+    const rest = q.toString();
+    history.replaceState(null, '', window.location.pathname + (rest ? '?' + rest : '') + window.location.hash);
+})();
+
 // Linked services
 async function loadLinked() {
     if (isAnonSession()) return;

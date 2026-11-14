@@ -379,6 +379,9 @@ const DEFAULT_GRANTS = [
     // CHANGED_DEFAULT_NAMESPACES entry is needed. The deploy applies them from ensureSchema() at boot.
     ...['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor']
         .map((svc) => ['network', `${svc}.config.manage`, `openvibe.${svc}`, []]),
+    // Network's own sign-in settings (network.signin, plan §AB.20) are answered in process: Contracts deliberately has
+    // no network.config.manage (openvibe-contracts/test/run.js), and the proxy's callService dispatches `network`
+    // locally. Nothing to seed.
     // The owner's Setup tab (OWNER-SETUP-AND-ADMIN-CLARITY-DESIGN, 2026-11-07): the same proxy reaches the eight more
     // services that hold an owner input. Their <svc>.config.manage capabilities are Contracts 0.308.0 (planned until
     // each service mounts /internal/config). A grant is seeded only once the pinned Contracts knows its capability, so
