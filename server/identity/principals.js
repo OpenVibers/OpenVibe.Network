@@ -384,7 +384,7 @@ const DEFAULT_GRANTS = [
     // each service mounts /internal/config). A grant is seeded only once the pinned Contracts knows its capability, so
     // this works on the pin before 0.308.0 and seeds all eight at the first boot after the pin moves. New rows, as for
     // the nine: no RESTORED_GRANTS or CHANGED_DEFAULT_NAMESPACES entry.
-    ...['chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run']
+    ...['chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run', 'mail']
         .filter((svc) => capabilities.get(`${svc}.config.manage`))
         .map((svc) => ['network', `${svc}.config.manage`, `openvibe.${svc}`, []]),
     // The editorial queue's AI editor (Contracts 0.315.0, 2026-11-07): the orchestrator's service principal records

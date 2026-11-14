@@ -36,7 +36,7 @@ const STATE_RANK = Object.fromEntries(STATES.map((s, i) => [s, i]));
 const GROUPS = config.OWNER_INPUT_GROUPS || Object.freeze({
     money: 'Money', 'ai-providers': 'AI providers', gpus: 'GPUs', voices: 'Voices', 'chat-apps': 'Chat apps',
     'sign-in-apps': 'Sign-in apps', 'data-sources': 'Data sources', 'design-publishing': 'Design and publishing',
-    domains: 'Domains', legal: 'Legal and registrations',
+    domains: 'Domains', email: 'Email', legal: 'Legal and registrations',
 });
 const GROUP_IDS = Object.keys(GROUPS);
 const KEY_RE = /^[a-z][a-z0-9_]{0,63}$/;

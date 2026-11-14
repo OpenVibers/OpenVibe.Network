@@ -46,13 +46,13 @@ const { isFreshSignIn } = require('../identity/reauth');
 // 2026-11-07). A service that has not mounted openvibe-shared/config's routes yet answers 404 or does not answer;
 // the panel says it "has not published settings yet".
 const SERVICES = ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor',
-    'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run'];
+    'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run', 'mail'];
 const LABELS = {
     ai: 'OpenVibe.AI', billing: 'OpenVibe.Billing', services: 'OpenVibe.Services', watch: 'OpenVibe.Watch',
     bench: 'OpenVibe.Bench', report: 'OpenVibe.Report', host: 'OpenVibe.Host', codes: 'OpenVibe.Codes',
     actor: 'OpenVibe.Actor', chat: 'OpenVibe.Chat', connect: 'OpenVibe Connect', deals: 'OpenVibe.Deals',
     work: 'OpenVibe.Work', sources: 'OpenVibe.Sources', design: 'OpenVibe.Design', domains: 'OpenVibe.Domains',
-    media: 'OpenVibe.Media', run: 'OpenVibe.Run',
+    media: 'OpenVibe.Media', run: 'OpenVibe.Run', mail: 'OpenVibe.Mail',
 };
 const TEST_TIMEOUT_MS = 20000;   // the service gives its tester 15 s; this leaves it time to answer
 const TEST_MESSAGE_MAX = 300;
