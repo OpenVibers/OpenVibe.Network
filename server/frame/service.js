@@ -523,7 +523,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             watching: live ? live.watching : null,
             sites: LISTED_TOTAL,
             views_7d: views > 0 ? Math.round(views) : null,
-            live: live ? live.list : null,
+            live: live ? live.list.map(({ username, ...c }) => c) : null,   // the username is for matching people, not the pulse
             updated: new Date().toISOString(),
         };
     }
