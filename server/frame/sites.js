@@ -96,12 +96,12 @@ const GROUPS = [
     { id: 'read', name: 'Read & ask', sites: ['news', 'today', 'report', 'search', 'wiki', 'blog', 'vision', 'compare'] },
     // Shop & money carries the two doors of 2026-11-13 beside Deals and Trade: Markets (find and compare anything)
     // and Finance (a person's own money). They were seven tiles a group at most; the doors make this one nine.
-    { id: 'shop', name: 'Shop & money', sites: ['deals', 'coupons', 'shoes', 'reviews', 'trade', 'rent', 'work', 'markets', 'finance'] },
+    { id: 'shop', name: 'Shop & money', sites: ['deals', 'coupons', 'shoes', 'reviews', 'trade', 'markets', 'finance', 'rent', 'work'] },
     { id: 'tools', name: 'Free tools', sites: ['tools', 'design', 'domains', 'host', 'image', 'lock', 'food'] },
     // Actor is the engine behind every agent (Codes' Auto, Vibe, the Dock call it): a developer service, not a second
     // place to chat with an agent (plan L39, 2026-10-31). It makes things with AI, beside the places that do.
     // Expert (the door of 2026-11-13) sits with Actor and Codes: the place where the agents you make are made.
-    { id: 'make', name: 'Make with AI', sites: ['space', 'codes', 'bot', 'actor', 'computer', 'connect', 'directory', 'expert'] },
+    { id: 'make', name: 'Make with AI', sites: ['space', 'codes', 'bot', 'actor', 'expert', 'computer', 'connect', 'directory'] },
     { id: 'build', name: 'For developers', sites: ['services', 'exchange', 'run', 'zone', 'events', 'watch', 'git'] },
 ];
 // What each site is, in a few words, for the menus (the launcher's rows are two to a line on a phone: about 22
