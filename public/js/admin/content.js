@@ -200,7 +200,7 @@ function buildStreamerTierHtml(tierData, vodData) {
         + '<span><i class="fa-solid ' + (ts.enabled ? 'fa-circle-check' : 'fa-circle-xmark') + '" style="color:' + (ts.enabled ? '#22c55e' : '#ef4444') + '"></i> Auto-offload: ' + (ts.enabled ? 'ON' : 'OFF') + '</span>'
         + '<span>| Age &ge; ' + (ts.minAgeDays != null ? ts.minAgeDays : '?') + 'd</span><span>| Views &le; ' + (ts.maxViewsForCold != null ? ts.maxViewsForCold : '?') + '</span><span>| Idle &ge; ' + (ts.minLastAccessDays != null ? ts.minLastAccessDays : '?') + 'd</span>'
         + '</div>'
-        + (tierData ? '' : '<p class="admin-note" style="margin-top:12px">These numbers are counted from the ' + vods.length + ' largest recordings listed below. OpenVibe.Media keeps its own tier totals, so the full counts are not readable from here.</p>')
+        + (tierData ? '' : '<p class="admin-note" style="margin-top:12px">These numbers are counted from the ' + vods.length + ' recordings the tab can read' + (vods.length ? ' (the largest ones)' : '') + '. OpenVibe.Media keeps its own tier totals, so the full counts are not readable from here.</p>')
         + '</div>';
 }
 
