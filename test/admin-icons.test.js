@@ -23,14 +23,14 @@ const TABLE = new Set([
 // The names each page already wore before the plan (the tabs' own glyphs and the panel's older icons). A name
 // that is neither in the table nor here is a typo, so the check below fails on it.
 const PREEXISTING = {
-    'admin.html': ['arrow-left', 'arrow-up-right-from-square', 'ban', 'bell', 'bolt', 'broadcast-tower', 'bullhorn',
+    'admin.html': ['inbox', 'clipboard-check', 'compass', 'arrow-left', 'arrow-up-right-from-square', 'ban', 'bell', 'bolt', 'broadcast-tower', 'bullhorn',
         'chart-area', 'chart-column', 'chart-line', 'chevron-left', 'chevron-right', 'circle-exclamation',
         'clipboard-list', 'clock', 'clock-rotate-left', 'credit-card', 'desktop', 'diagram-project',
         'earth-americas', 'envelope', 'gauge', 'gauge-high', 'gavel', 'gear', 'globe', 'hard-drive', 'key', 'laptop',
         'layer-group', 'link', 'list-check', 'message', 'money-bill-transfer', 'network-wired', 'palette',
         'paper-plane', 'paste', 'ranking-star', 'robot', 'rotate', 'route', 'search', 'server', 'shield-halved',
         'signal', 'snowflake', 'user-check', 'users', 'volume-high'],
-    'ai.js': ['arrow-right', 'check-circle', 'circle-check', 'circle-question', 'circle-xmark', 'cloud', 'cookie',
+    'ai.js': ['google', 'arrow-right', 'check-circle', 'circle-check', 'circle-question', 'circle-xmark', 'cloud', 'cookie',
         'cookie-bite', 'flask-vial', 'floppy-disk', 'heart-pulse', 'kit-medical', 'lock', 'magnifying-glass',
         'people-group', 'play', 'plus', 'sliders', 'trash', 'triangle-exclamation', 'volume-high',
         'wand-magic-sparkles', 'wrench', 'xmark-circle'],
@@ -55,7 +55,7 @@ const PREEXISTING = {
         'magnifying-glass', 'microphone-lines', 'user-lock', 'xmark'],
     'moderation.js': ['chevron-left', 'chevron-right', 'user-check', 'user-minus'],
     'payments.js': ['arrow-up-right-from-square', 'floppy-disk', 'link'],
-    'settings.js': ['arrows-rotate', 'bell', 'broadcast-tower', 'comments', 'credit-card', 'ellipsis', 'floppy-disk',
+    'settings.js': ['discord', 'github', 'arrows-rotate', 'bell', 'broadcast-tower', 'comments', 'credit-card', 'ellipsis', 'floppy-disk',
         'photo-film', 'plug', 'robot', 'rotate', 'rotate-left', 'save', 'sliders', 'volume-high'],
     'setup.js': ['arrow-up-right-from-square', 'list-check', 'lock'],
     'tools-workers.js': [],
