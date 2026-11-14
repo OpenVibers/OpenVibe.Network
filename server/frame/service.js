@@ -780,6 +780,66 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     });
     router.post('/posts', express.json({ limit: '8kb' }), (req, res) => sendOn(req, res, '/api/v1/posts', JSON.stringify(req.body || {}), 'application/json'));
 
+    // ── Comments in the menu (plan §AA.21; the owner: "it shouldn't bring you to a new page … seamless, like Facebook or
+    // Twitter … but you can also go to the actual forum post … replies"). Every site's connect-src reaches openvibe.network,
+    // not openvibe.community, so the feed's comment sheet goes through here to Community's /api/v1/comments with the
+    // person's own Bearer (reads also signed out). Ids are checked before they reach a path; Community keeps its rules.
+    //   POST /api/frame/comments/resolve                { ref: { service, type, id } } → the thread (get-or-create)
+    //   GET  /api/frame/comments/threads/:id            ?after=&sort=&limit=&parent= → the thread and a page of comments
+    //   POST /api/frame/comments/threads/:id/comments   { message, parent_id? } → the comment (signed in)
+    //   POST /api/frame/comments/:commentId/votes       { value: 1|-1|0 } (signed in)
+    const THREAD_ID = /^cth_[A-Za-z0-9_-]{22}$/;
+    const COMMENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
+    const REF_PART = /^[a-z][a-z0-9-]{0,39}$/;
+    const commentsCall = async (req, res, method, path, body, { needAuth = false } = {}) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '';
+        if (needAuth && !auth) return res.status(401).send('{"error":"Sign in to reply","code":"comments.sign_in"}');
+        try {
+            const r = await fetch(new URL(path, svcUrl('community', 'http://127.0.0.1:4200')).href, {
+                method, redirect: 'error', signal: AbortSignal.timeout(15000),
+                headers: { Accept: 'application/json', ...(auth ? { Authorization: auth } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+                body: body === undefined ? undefined : JSON.stringify(body),
+            });
+            const text = await r.text();
+            return res.status(r.status).send(text.slice(0, 256 * 1024));
+        } catch { return res.status(502).send('{"error":"Community did not answer","code":"comments.unavailable"}'); }
+    };
+    router.options(['/comments/resolve', '/comments/threads/:id', '/comments/threads/:id/comments', '/comments/:commentId/votes'], (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Max-Age': '600' });
+        res.status(204).end();
+    });
+    router.post('/comments/resolve', express.json({ limit: '4kb' }), (req, res) => {
+        const ref = req.body && req.body.ref;
+        const id = ref && String(ref.id || '');
+        if (!ref || !REF_PART.test(String(ref.service || '')) || !REF_PART.test(String(ref.type || '')) || !/^[A-Za-z0-9._:~-]{1,160}$/.test(id)) {
+            res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' });
+            return res.status(400).json({ error: 'ref must be { service, type, id }', code: 'comments.ref_invalid' });
+        }
+        return commentsCall(req, res, 'POST', '/api/v1/comments/threads/resolve', { ref: { service: String(ref.service), type: String(ref.type), id } });
+    });
+    router.get('/comments/threads/:id', (req, res) => {
+        if (!THREAD_ID.test(req.params.id)) { res.set({ 'Access-Control-Allow-Origin': '*' }); return res.status(404).json({ error: 'No such thread', code: 'comments.not_found' }); }
+        const q = new URLSearchParams();
+        if (req.query.after && /^[A-Za-z0-9._~=-]{1,300}$/.test(String(req.query.after))) q.set('after', String(req.query.after));
+        if (['old', 'new', 'top'].includes(String(req.query.sort || ''))) q.set('sort', String(req.query.sort));
+        if (req.query.limit) q.set('limit', qLimit(req.query.limit, 50));
+        if (req.query.parent && COMMENT_ID.test(String(req.query.parent))) q.set('parent', String(req.query.parent));
+        return commentsCall(req, res, 'GET', `/api/v1/comments/threads/${req.params.id}${q.toString() ? `?${q}` : ''}`);
+    });
+    router.post('/comments/threads/:id/comments', express.json({ limit: '24kb' }), (req, res) => {
+        if (!THREAD_ID.test(req.params.id)) { res.set({ 'Access-Control-Allow-Origin': '*' }); return res.status(404).json({ error: 'No such thread', code: 'comments.not_found' }); }
+        const b = req.body && typeof req.body === 'object' ? req.body : {};
+        const out = { message: String(b.message || '').slice(0, 10000) };
+        if (b.parent_id != null && COMMENT_ID.test(String(b.parent_id))) out.parent_id = b.parent_id;
+        return commentsCall(req, res, 'POST', `/api/v1/comments/threads/${req.params.id}/comments`, out, { needAuth: true });
+    });
+    router.post('/comments/:commentId/votes', express.json({ limit: '1kb' }), (req, res) => {
+        if (!COMMENT_ID.test(req.params.commentId)) { res.set({ 'Access-Control-Allow-Origin': '*' }); return res.status(404).json({ error: 'No such comment', code: 'comments.not_found' }); }
+        const value = [1, -1, 0].includes(Number(req.body && req.body.value)) ? Number(req.body.value) : 0;
+        return commentsCall(req, res, 'POST', `/api/v1/comments/${req.params.commentId}/votes`, { value }, { needAuth: true });
+    });
+
     // The feed is Network's own (server/feed/api.js, feed.item@1) since 11-12: the same handler Community's
     // /api/v1/feed proxies, so the menu and Pulse return the same ids. The old relay stays only for a
     // Frame built without it (a unit test), never in the server.
