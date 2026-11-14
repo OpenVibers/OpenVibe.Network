@@ -100,12 +100,21 @@ function fakeFetch(routes) {
     const pages = { 2: [1, 2, 3].map((i) => offer(i, true, NOW - i * 60e3)), 3: [4, 5].map((i) => offer(i, true, NOW - i * 60e3)).concat([offer(6, false, NOW - 6 * 60e3)]),
         4: [offer(90, true, NOW - 9 * 86400e3)] };
     const asked = [];
-    src = make({ '/api/v1/offers': (u) => { const p = Number(new URL(u).searchParams.get('page') || 1); asked.push(p); return { offers: pages[p] || [] }; } });
-    assert.strictEqual(await src.dealPictures(), 5, 'five offers get their picture');
+    const detail = [];
+    // Deals' own read of an offer has a picture its list left out (offer 6), and none for nobody.
+    src = make({ '/api/v1/offers': (u) => {
+        const path = new URL(u).pathname;
+        const one = /\/api\/v1\/offers\/(dof_\w+)$/.exec(path);
+        if (one) { detail.push(one[1]); return { offer: one[1].endsWith('0006') ? offer(6, true, NOW - 6 * 60e3) : offer(99, false, NOW) }; }
+        const p = Number(new URL(u).searchParams.get('page') || 1); asked.push(p); return { offers: pages[p] || [] };
+    } });
+    assert.strictEqual(await src.dealPictures(), 6, 'five from the pages, one from its own read');
     assert.deepStrictEqual(asked, [2, 3, 4], 'it walks the pages past the first and stops past the week');
+    assert.deepStrictEqual(detail, [`dof_${'6'.padStart(26, '0')}`], 'then reads the one still without a picture');
     const deals = (await rows()).filter((r) => r.source_service === 'deals');
     assert.strictEqual(deals.find((r) => r.source_id.endsWith('0001')).picture_url, 'https://m.media-amazon.com/images/I/1.jpg');
-    assert.strictEqual(deals.find((r) => r.source_id.endsWith('0006')).picture_url, null, 'an offer Deals has no picture for keeps none');
+    assert.strictEqual(deals.find((r) => r.source_id.endsWith('0006')).picture_url, 'https://m.media-amazon.com/images/I/6.jpg', 'its own read had it');
+    detail.length = 0;
     assert.ok(src.SOURCES.includes('deal-pictures'), 'it runs on its own schedule');
     // Nothing left to fill: no page is read.
     await db.prepare("UPDATE feed_items SET picture_url = 'https://m.media-amazon.com/images/I/6.jpg' WHERE source_service = 'deals' AND picture_url IS NULL").run();
