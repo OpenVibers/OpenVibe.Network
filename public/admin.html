@@ -106,12 +106,13 @@
     </div>
 
     <!-- Users -->
-    <div class="section admin-clarity" id="sec-users">
+    <div class="section admin-clarity admin-cards" id="sec-users">
         <p class="admin-intro">These are Network accounts and the access each person has. Use search to find someone, then change access or help recover their account; role changes apply immediately and can be reversed by selecting the previous role.</p>
-        <div class="input-row">
-            <span class="admin-field"><input type="text" id="user-search" aria-label="Find an account" aria-describedby="help-user-search" placeholder="Search users by name or email..." onkeydown="if(event.key==='Enter')loadUsers()"><span class="admin-help" id="help-user-search"><strong>Find an account.</strong> Search by name or email, for example alex. Blank shows all accounts; press Enter or Search to apply.</span></span>
-            <button class="btn btn-primary" onclick="loadUsers()"><i class="fa-solid fa-search"></i> Search</button>
+        <div class="admin-filter-bar">
+            <label class="admin-filter"><span class="admin-filter-label">Find an account</span><input type="text" id="user-search" aria-label="Find an account" aria-describedby="help-user-search" placeholder="Name or email" onkeydown="if(event.key==='Enter')loadUsers()"></label>
+            <div class="admin-filter-actions"><button class="btn btn-primary" onclick="loadUsers()"><i class="fa-solid fa-search"></i> Search</button></div>
         </div>
+        <p class="admin-filter-hint" id="help-user-search">Search by name or email, for example alex. Blank shows every account; press Enter or Search to apply.</p>
         <div id="users-content"><div class="loading">Loading...</div></div>
         <div id="users-pager" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:12px"></div>
     </div>
@@ -131,7 +132,7 @@
     </div>
 
     <!-- Bans -->
-    <div class="section admin-clarity" id="sec-bans">
+    <div class="section admin-clarity admin-cards" id="sec-bans">
         <p class="admin-intro">These people are currently banned on Live. Review the reason before restoring access; allowing access again removes the restriction, and a new ban can be applied from Users if needed.</p>
         <div id="bans-content"><div class="loading">Loading...</div></div>
     </div>
@@ -139,11 +140,12 @@
     <!-- Chat Logs -->
     <div class="section admin-clarity" id="sec-chat-logs">
         <p class="admin-intro">Search stored chat messages to investigate a report. Enter message text or a person below, then review the results before taking action.</p>
-        <div class="input-row">
-            <span class="admin-field"><input type="text" id="chat-search-q" aria-label="Message text" aria-describedby="help-chat-search-q" placeholder="Search messages..." onkeydown="if(event.key==='Enter')searchChatLogs()"><span class="admin-help" id="help-chat-search-q"><strong>Message text.</strong> Search for words in a message, for example welcome. Blank leaves message text unrestricted when a person is supplied.</span></span>
-            <span class="admin-field"><input type="text" id="chat-search-uid" aria-label="Person in chat" aria-describedby="help-chat-search-uid" placeholder="Username, user ID, or anon123" style="max-width:200px" onkeydown="if(event.key==='Enter')searchChatLogs()"><span class="admin-help" id="help-chat-search-uid"><strong>Person in chat.</strong> Enter a username or account ID, for example alex or anon123. Blank searches any person when message text is supplied.</span></span>
-            <button class="btn btn-primary" onclick="searchChatLogs()"><i class="fa-solid fa-search"></i> Search</button>
+        <div class="admin-filter-bar">
+            <label class="admin-filter"><span class="admin-filter-label">Message text</span><input type="text" id="chat-search-q" aria-label="Message text" aria-describedby="help-chat-search" placeholder="Search messages" onkeydown="if(event.key==='Enter')searchChatLogs()"></label>
+            <label class="admin-filter"><span class="admin-filter-label">Person in chat</span><input type="text" id="chat-search-uid" aria-label="Person in chat" aria-describedby="help-chat-search" placeholder="Username, user ID, or anon123" onkeydown="if(event.key==='Enter')searchChatLogs()"></label>
+            <div class="admin-filter-actions"><button class="btn btn-primary" onclick="searchChatLogs()"><i class="fa-solid fa-search"></i> Search</button></div>
         </div>
+        <p class="admin-filter-hint" id="help-chat-search">Search for words in a message, for example welcome, and for the person it came from (a username, an account ID or an anon id). One of the two is enough.</p>
         <div id="chat-logs-content"><p class="muted">Enter a search query or user ID</p></div>
         <div id="chat-logs-pager" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:12px"></div>
     </div>
@@ -151,10 +153,11 @@
     <!-- Moderators -->
     <div class="section admin-clarity" id="sec-moderators">
         <p class="admin-intro">These people can moderate across Live channels. Add a trusted person when more coverage is needed; Remove moderator access reverses the promotion.</p>
-        <div class="input-row">
-            <span class="admin-field"><input type="text" id="mod-username" aria-label="Person to make a moderator" aria-describedby="help-mod-username" placeholder="Username to promote..." onkeydown="if(event.key==='Enter')promoteMod()"><span class="admin-help" id="help-mod-username"><strong>Person to make a moderator.</strong> Enter an existing username, for example alex; there is no default. Promotion grants moderation access across Live, and removing that access reverses it.</span></span>
-            <button class="btn btn-primary" onclick="promoteMod()"><i class="fa-solid fa-shield-halved"></i> Make a network moderator</button>
+        <div class="admin-filter-bar">
+            <label class="admin-filter"><span class="admin-filter-label">Person to make a moderator</span><input type="text" id="mod-username" aria-label="Person to make a moderator" aria-describedby="help-mod-username" placeholder="Username" onkeydown="if(event.key==='Enter')promoteMod()"></label>
+            <div class="admin-filter-actions"><button class="btn btn-primary" onclick="promoteMod()"><i class="fa-solid fa-shield-halved"></i> Make a network moderator</button></div>
         </div>
+        <p class="admin-filter-hint" id="help-mod-username">Enter an existing username, for example alex. Promotion grants moderation across Live; removing that access reverses it.</p>
         <div id="mods-content"><div class="loading">Loading...</div></div>
     </div>
 
@@ -235,7 +238,7 @@
     </div>
 
     <!-- Storage -->
-    <div class="section admin-clarity" id="sec-storage">
+    <div class="section admin-clarity admin-cards" id="sec-storage">
         <p class="admin-intro">This shows how much space recordings and other files use. Review it when storage runs low; deleting recordings is permanent and requires a separate backup to recover.</p>
         <div id="storage-content"><div class="loading"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> Analyzing storage...</div></div>
     </div>
@@ -278,7 +281,7 @@
     </div>
 
     <!-- Email -->
-    <div class="section admin-clarity" id="sec-email">
+    <div class="section admin-clarity admin-cards" id="sec-email">
         <p class="admin-intro">Network sends recovery and notification emails through Resend. Change the sender or delivery switch when configuring email, then send a test to check it.</p>
         <div class="card">
             <h3><i class="fa-solid fa-envelope"></i> Email Configuration</h3>
@@ -287,27 +290,35 @@
     </div>
 
     <!-- Audit Log -->
-    <div class="section admin-clarity" id="sec-audit">
+    <div class="section admin-clarity admin-cards" id="sec-audit">
         <p class="admin-intro">This is the history of administrative changes. Review it after an unexpected change, then use the relevant settings page to correct it.</p>
         <div id="audit-content"><div class="loading">Loading...</div></div>
         <div id="audit-pager" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:12px"></div>
     </div>
 
     <!-- Moderation log (ADR-022): every staff action any service reports, from /api/v1/staff/moderation-audit -->
-    <div class="section admin-clarity" id="sec-modlog">
+    <div class="section admin-clarity admin-cards" id="sec-modlog">
         <p class="admin-intro">This records staff moderation actions across services. Filter it when investigating who acted and why; viewing or exporting the log changes no account permissions.</p>
         <p class="muted" style="margin:0 0 10px">Staff actions reported by Chat, Live, Community, Tips, Billing and the other services (Tools, Games, Wiki, Blog, News, Reviews, Deals, Coupons, Trade, Codes). Each service enforces its own moderation; this is the record.</p>
-        <form id="modlog-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:10px" onsubmit="event.preventDefault(); loadModLog(true)">
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Service
-                <span class="admin-field"><select id="modlog-service" aria-label="Service to review" aria-describedby="help-modlog-service" onchange="loadModLog(true)"><option value="">All</option><option value="chat">Chat</option><option value="live">Live</option><option value="community">Community</option><option value="tips">Tips</option><option value="billing">Billing</option><option value="blog">Blog</option><option value="codes">Codes</option><option value="coupons">Coupons</option><option value="deals">Deals</option><option value="games">Games</option><option value="media">Media</option><option value="news">News</option><option value="reviews">Reviews</option><option value="tools">Tools</option><option value="trade">Trade</option><option value="wiki">Wiki</option></select><span class="admin-help" id="help-modlog-service"><strong>Service to review.</strong> All services are shown by default. Select Live, for example, to review only actions from that service.</span></span></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Action<span class="admin-field"><input id="modlog-action" aria-label="Action to find" aria-describedby="help-modlog-action" placeholder="e.g. site_ban" maxlength="64" style="width:130px"><span class="admin-help" id="help-modlog-action"><strong>Action to find.</strong> Blank includes all actions. Enter an exact action name, for example site_ban for a site ban.</span></span></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">By (subject)<span class="admin-field"><input id="modlog-actor" aria-label="Staff account ID" aria-describedby="help-modlog-actor" placeholder="usr_…" maxlength="64" style="width:150px"><span class="admin-help" id="help-modlog-actor"><strong>Staff account ID.</strong> Blank includes all staff. Enter the stable account ID, for example a usr_ identifier from the record you are investigating.</span></span></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Target<span class="admin-field"><input id="modlog-target" aria-label="Affected account or item" aria-describedby="help-modlog-target" placeholder="subject or id" maxlength="200" style="width:150px"><span class="admin-help" id="help-modlog-target"><strong>Affected account or item.</strong> Blank includes all targets. Enter the account or item ID from the report.</span></span></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">From<span class="admin-field"><input id="modlog-since" aria-label="Start date" aria-describedby="help-modlog-since" type="date"><span class="admin-help" id="help-modlog-since"><strong>Start date.</strong> Blank sets no starting date. Choose an earlier date to include more history.</span></span></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Until<span class="admin-field"><input id="modlog-until" aria-label="End date" aria-describedby="help-modlog-until" type="date"><span class="admin-help" id="help-modlog-until"><strong>End date.</strong> Blank sets no ending date. Choose a later date to include more history.</span></span></label>
-            <button class="btn" type="submit">Filter</button>
-            <button class="btn" type="button" onclick="exportModLog()">Export CSV</button>
+        <form id="modlog-filters" class="admin-filter-bar" onsubmit="event.preventDefault(); loadModLog(true)">
+            <label class="admin-filter"><span class="admin-filter-label">Service</span>
+                <select id="modlog-service" aria-label="Service to review" aria-describedby="help-modlog-filters" onchange="loadModLog(true)"><option value="">All</option><option value="chat">Chat</option><option value="live">Live</option><option value="community">Community</option><option value="tips">Tips</option><option value="billing">Billing</option><option value="blog">Blog</option><option value="codes">Codes</option><option value="coupons">Coupons</option><option value="deals">Deals</option><option value="games">Games</option><option value="media">Media</option><option value="news">News</option><option value="reviews">Reviews</option><option value="tools">Tools</option><option value="trade">Trade</option><option value="wiki">Wiki</option></select></label>
+            <label class="admin-filter"><span class="admin-filter-label">Action</span>
+                <input id="modlog-action" aria-label="Action to find" aria-describedby="help-modlog-filters" placeholder="e.g. site_ban" maxlength="64"></label>
+            <label class="admin-filter"><span class="admin-filter-label">By</span>
+                <input id="modlog-actor" aria-label="Staff account ID" aria-describedby="help-modlog-filters" placeholder="usr_&#8230;" maxlength="64"></label>
+            <label class="admin-filter"><span class="admin-filter-label">Target</span>
+                <input id="modlog-target" aria-label="Affected account or item" aria-describedby="help-modlog-filters" placeholder="subject or id" maxlength="200"></label>
+            <label class="admin-filter"><span class="admin-filter-label">From</span>
+                <input id="modlog-since" aria-label="Start date" aria-describedby="help-modlog-filters" type="date"></label>
+            <label class="admin-filter"><span class="admin-filter-label">Until</span>
+                <input id="modlog-until" aria-label="End date" aria-describedby="help-modlog-filters" type="date"></label>
+            <div class="admin-filter-actions">
+                <button class="btn btn-primary" type="submit"><i class="fa-solid fa-filter"></i> Filter</button>
+                <button class="btn btn-outline" type="button" onclick="exportModLog()">Export CSV</button>
+            </div>
         </form>
+        <p class="admin-filter-hint" id="help-modlog-filters">Blank filters include everything. <b>Service</b> narrows the log to one service, <b>Action</b> takes an exact action name (for example <code>site_ban</code>), <b>By</b> takes the staff account ID (<code>usr_&#8230;</code>), <b>Target</b> the account or item the action affected, and the two dates a window.</p>
         <div id="modlog-content"><div class="loading">Loading...</div></div>
         <div style="display:flex;justify-content:center;margin-top:12px"><button id="modlog-more" class="btn" hidden onclick="loadModLog(false)">Load more</button></div>
     </div>
@@ -337,10 +348,10 @@
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Reason<span class="admin-field"><input id="grant-reason" aria-label="Why access is needed" aria-describedby="help-grant-reason" maxlength="500" style="width:220px" required><span class="admin-help" id="help-grant-reason"><strong>Why access is needed.</strong> Required explanation for the audit history, for example enable staff lookup for Live. No reason is filled in by default.</span></span></label>
             <button class="btn" type="submit">Grant access</button>
         </form>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-            <label for="grant-filter" class="muted" style="font-size:12px">Show</label>
-            <span class="admin-field"><input id="grant-filter" aria-label="Find a service" aria-describedby="help-grant-filter" placeholder="service" maxlength="64" style="width:120px" oninput="renderGrants()"><span class="admin-help" id="help-grant-filter"><strong>Find a service.</strong> Blank shows every service permission. Enter live, for example, to narrow the list.</span></span>
+        <div class="admin-filter-bar">
+            <label class="admin-filter"><span class="admin-filter-label">Find a service</span><input id="grant-filter" aria-label="Find a service" aria-describedby="help-grant-filter" placeholder="service" maxlength="64" oninput="renderGrants()"></label>
         </div>
+        <p class="admin-filter-hint" id="help-grant-filter">Blank shows every service permission. Enter live, for example, to narrow the list to one service.</p>
         <div id="grants-content"><div class="loading">Loading...</div></div>
         <h3 style="margin:18px 0 8px;font-size:14px">Changes</h3>
         <div id="grant-changes"></div>
@@ -350,12 +361,12 @@
     <div class="section admin-clarity" id="sec-eventsops">
         <p class="admin-intro">These are event messages that have not reached a subscribed service. Fix the delivery problem before retrying; replay sends another delivery and cannot be recalled once sent.</p>
         <p class="muted" style="margin:0 0 10px">Deliveries OpenVibe.Events could not make. A dead delivery stopped retrying; replay it once its consumer is fixed. Replays are audited.</p>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:10px">
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Status
-                <span class="admin-field"><select id="dlq-status" aria-label="Delivery state" aria-describedby="help-dlq-status" onchange="loadDeliveries()"><option value="dead">Stopped retrying — needs attention</option><option value="failed">Retrying — delivery keeps failing</option><option value="pending">Waiting — delivery is queued</option></select><span class="admin-help" id="help-dlq-status"><strong>Delivery state.</strong> The default shows deliveries that stopped retrying. Choose Retrying to investigate ongoing failures, or Waiting for messages still queued.</span></span></label>
-            <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Subscription<span class="admin-field"><input id="dlq-sub" aria-label="Subscription ID" aria-describedby="help-dlq-sub" placeholder="sub_…" maxlength="40" style="width:240px"><span class="admin-help" id="help-dlq-sub"><strong>Subscription ID.</strong> Blank includes all subscriptions. Enter the sub_ identifier of a receiving service to narrow the list.</span></span></label>
-            <button class="btn" type="button" onclick="loadDeliveries()">Show deliveries</button>
+        <div class="admin-filter-bar">
+            <label class="admin-filter"><span class="admin-filter-label">Delivery state</span><select id="dlq-status" aria-label="Delivery state" aria-describedby="help-dlq" onchange="loadDeliveries()"><option value="dead">Stopped retrying — needs attention</option><option value="failed">Retrying — delivery keeps failing</option><option value="pending">Waiting — delivery is queued</option></select></label>
+            <label class="admin-filter"><span class="admin-filter-label">Subscription</span><input id="dlq-sub" aria-label="Subscription ID" aria-describedby="help-dlq" placeholder="sub_…" maxlength="40"></label>
+            <div class="admin-filter-actions"><button class="btn" type="button" onclick="loadDeliveries()">Show deliveries</button></div>
         </div>
+        <p class="admin-filter-hint" id="help-dlq">The default shows deliveries that stopped retrying. Choose Retrying for ongoing failures, Waiting for queued messages, and enter a sub_ identifier to narrow the list to one receiving service.</p>
         <div id="dlq-counts" class="muted" style="font-size:12px;margin-bottom:8px"></div>
         <div id="dlq-content"><div class="loading">Loading...</div></div>
     </div>

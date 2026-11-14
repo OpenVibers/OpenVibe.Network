@@ -110,6 +110,7 @@ const PATTERNS = {
 };
 // The reviewed list: where each goes, and why a stranger cannot choose it (or how it is guarded).
 const REVIEWED = {
+    'server/admin/storage.js fetch': [1, 'the owner\'s cloud scan: Media\'s internal URL from config, a fixed path, Network\'s service token with the owner as X-OV-Subject, redirects refused (11-14)'],
     'server/admin/tools-workers.js fetch': [1, 'Owner-only fixed Tools admin paths at the operator-configured internal URL; no caller URL; redirects refused.'],
     'server/coins/channel-points.js fetch': [1, 'Live internal URL from operator config, fixed /internal/channel-points/changes path, user id in the encoded query, no caller-selected host, 2.5 s timeout'],
     'server/link/egress-settings.js fetch': [2, 'browser-only GET and PUT to the fixed same-origin /api/v1/me/nodes/egress settings route; no caller-chosen host or URL'],

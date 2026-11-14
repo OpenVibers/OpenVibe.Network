@@ -66,9 +66,10 @@ async function loadStorage() {
     const c = document.getElementById('storage-content');
     c.innerHTML = '<div class="loading"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> Analyzing storage...</div>';
     try {
-        const [data, tierData] = await Promise.all([
+        const [data, tierData, vodData] = await Promise.all([
             api('/api/admin/streamer/storage'),
             api('/api/admin/streamer/storage/tiers').catch(() => null),
+            api('/api/admin/streamer/storage/vods?sort=size&order=desc&limit=100').catch(() => null),
         ]);
         const d = data.disk || {};
         const usePct = d.total ? ((d.used / d.total) * 100).toFixed(1) : 0;
@@ -117,9 +118,9 @@ async function loadStorage() {
             </div>
 
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                <h3><i class="fa-solid fa-video"></i> VOD Management</h3><p class="admin-intro">These are saved stream recordings, also called VODs. Select recordings only when you intend to permanently delete them; recovery requires a separate backup.</p>
-                <div style="display:flex;gap:8px">
-                    <label for="vod-sort">Recording order</label><span class="admin-help">Largest file first is the default. Choose newest or longest to find recordings by age or duration.</span><select id="vod-sort" onchange="loadVodTable()" style="padding:6px 10px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
+                <h3 style="margin:0"><i class="fa-solid fa-video"></i> VOD Management</h3>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <label for="vod-sort">Recording order</label><select id="vod-sort" aria-label="Recording order" aria-describedby="help-vod-sort" onchange="loadVodTable()" style="padding:6px 10px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
                         <option value="size">Largest file first</option>
                         <option value="date">Newest recording first</option>
                         <option value="duration">Longest recording first</option>
@@ -127,20 +128,33 @@ async function loadStorage() {
                     <button class="btn btn-sm btn-danger" id="vod-bulk-btn" disabled onclick="bulkDeleteVods()"><i class="fa-solid fa-trash-can"></i> Permanently delete selected</button>
                 </div>
             </div>
+            <p class="admin-intro" style="margin:0 0 4px">These are saved stream recordings, also called VODs. Select recordings only when you intend to permanently delete them; recovery requires a separate backup.</p>
+            <p class="admin-filter-hint" id="help-vod-sort" style="margin:0 0 12px">Largest file first is the default; choose newest or longest to find recordings by age or duration.</p>
             <div id="vod-table"><div class="loading">Loading VODs...</div></div>
         `;
-        loadVodTable();
-        loadStreamerStorageExtras(tierData);
+        loadVodTable(vodData);
+        loadStreamerStorageExtras(tierData, vodData);
+        adminTableCards(c);   // the tier table is a card table too
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
 }
 
 // ── Streamer storage tiers (Local/B2/R2) + cloud usage/cost (openvibe.network admin) ──
-function buildStreamerTierHtml(tierData) {
-    if (!tierData) return '';
-    const t = tierData.tiers || {};
-    const ct = tierData.clipTiers || {};
-    const prov = tierData.providers || {};
-    const ts = tierData.settings || {};
+function buildStreamerTierHtml(tierData, vodData) {
+    // OpenVibe.Media's tier totals are behind its app-key console, so the tab counts the recordings it can read
+    // instead of showing nothing (2026-11-14). The note under the table says which numbers these are.
+    const vods = (vodData && vodData.vods) || [];
+    const derived = vods.length ? vods.reduce((acc, v) => {
+        const p = (v.storage_provider && v.storage_provider !== 'local') ? v.storage_provider : 'local';
+        const row = acc[p] || (acc[p] = { count: 0, bytes: 0 });
+        row.count++;
+        row.bytes += Number(v.diskSize || v.file_size || 0);
+        return acc;
+    }, {}) : null;
+    if (!tierData && !derived) return '';
+    const t = (tierData && tierData.tiers) || derived || {};
+    const ct = (tierData && tierData.clipTiers) || {};
+    const prov = (tierData && tierData.providers) || {};
+    const ts = (tierData && tierData.settings) || {};
     const L = t.local || { count: 0, bytes: 0 };
     const B = t.b2 || { count: 0, bytes: 0 };
     const R = t.r2 || { count: 0, bytes: 0 };
@@ -176,35 +190,46 @@ function buildStreamerTierHtml(tierData) {
     return '<div class="card" style="margin-bottom:24px">'
         + '<h3 style="margin:0 0 6px"><i class="fa-solid fa-layer-group"></i> Storage Tiers <span style="color:var(--text-muted);font-size:13px;font-weight:400">— ' + offloadPct + '% of recordings stored in cloud</span></h3><p class="admin-intro">These tiers show where recordings are stored. Review them when local space is low; a higher cloud percentage means more recording data is stored away from this server.</p>'
         + bar
-        + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+        + '<div style="overflow-x:auto"><table class="admin-table" style="font-size:13px">'
         + '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border)">'
         + '<th style="padding:6px 10px">Tier</th><th style="padding:6px 10px;text-align:right">VODs</th><th style="padding:6px 10px;text-align:right">VOD Size</th><th style="padding:6px 10px;text-align:right">Share</th><th style="padding:6px 10px;text-align:right">Clips</th><th style="padding:6px 10px">Provider</th></tr></thead>'
         + '<tbody>' + rowHtml
-        + '<tr style="border-top:2px solid var(--border);font-weight:700"><td style="padding:8px 10px">Total</td><td style="padding:8px 10px;text-align:right">' + totalVods.toLocaleString() + '</td><td style="padding:8px 10px;text-align:right">' + fmtBytes(totalBytes) + '</td><td style="padding:8px 10px;text-align:right">100%</td><td style="padding:8px 10px;text-align:right">' + totalClips.toLocaleString() + '</td><td style="padding:8px 10px">' + (tierData.sweepRunning ? '<span style="color:#f59e0b"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> sweeping</span>' : '<span style="color:var(--text-muted)">idle</span>') + '</td></tr>'
+        + '<tr style="border-top:2px solid var(--border);font-weight:700"><td style="padding:8px 10px">Total</td><td style="padding:8px 10px;text-align:right">' + totalVods.toLocaleString() + '</td><td style="padding:8px 10px;text-align:right">' + fmtBytes(totalBytes) + '</td><td style="padding:8px 10px;text-align:right">100%</td><td style="padding:8px 10px;text-align:right">' + totalClips.toLocaleString() + '</td><td style="padding:8px 10px">' + ((tierData && tierData.sweepRunning) ? '<span style="color:#f59e0b"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> sweeping</span>' : '<span style="color:var(--text-muted)">idle</span>') + '</td></tr>'
         + '</tbody></table></div>'
         + '<div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--text-muted);margin-top:12px">'
         + '<span><i class="fa-solid ' + (ts.enabled ? 'fa-circle-check' : 'fa-circle-xmark') + '" style="color:' + (ts.enabled ? '#22c55e' : '#ef4444') + '"></i> Auto-offload: ' + (ts.enabled ? 'ON' : 'OFF') + '</span>'
         + '<span>| Age &ge; ' + (ts.minAgeDays != null ? ts.minAgeDays : '?') + 'd</span><span>| Views &le; ' + (ts.maxViewsForCold != null ? ts.maxViewsForCold : '?') + '</span><span>| Idle &ge; ' + (ts.minLastAccessDays != null ? ts.minLastAccessDays : '?') + 'd</span>'
-        + '</div></div>';
+        + '</div>'
+        + (tierData ? '' : '<p class="admin-note" style="margin-top:12px">These numbers are counted from the ' + vods.length + ' recordings the tab can read' + (vods.length ? ' (the largest ones)' : '') + '. OpenVibe.Media keeps its own tier totals, so the full counts are not readable from here.</p>')
+        + '</div>';
 }
 
-function loadStreamerStorageExtras(tierData) {
+function loadStreamerStorageExtras(tierData, vodData) {
     const c = document.getElementById('storage-content');
     if (!c) return;
     c.insertAdjacentHTML('afterbegin', '<div id="streamer-cloud-storage" style="margin-bottom:24px"></div>');
-    c.insertAdjacentHTML('afterbegin', buildStreamerTierHtml(tierData));
+    c.insertAdjacentHTML('afterbegin', buildStreamerTierHtml(tierData, vodData));
     loadStreamerCloudStorage();
 }
 
 async function loadStreamerCloudStorage(force) {
     const el = document.getElementById('streamer-cloud-storage');
     if (!el) return;
-    const header = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+    const header = '<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">'
         + '<h3 style="margin:0"><i class="fa-solid fa-cloud"></i> Cloud storage usage and cost</h3>'
-        + '<p class="admin-intro">This estimates storage in Backblaze B2 and Cloudflare R2, in bytes and US dollars per month. Rescan when checking capacity; higher usage means more stored data and may increase charges.</p><button class="btn btn-sm btn-outline" onclick="loadStreamerCloudStorage(true)"><i class="fa-solid fa-rotate"></i> Rescan now</button></div>';
+        + '<button class="btn btn-sm btn-outline" onclick="loadStreamerCloudStorage(true)"><i class="fa-solid fa-rotate"></i> Rescan now</button></div>'
+        + '<p class="admin-intro" style="margin:0 0 12px">This estimates storage in Backblaze B2 and Cloudflare R2, in bytes and US dollars per month. Rescan when checking capacity; higher usage means more stored data and may increase charges.</p>';
     el.innerHTML = header + '<div class="loading"><span class="ov-mark" data-state="busy" data-size="16" data-tone="ink" aria-hidden="true"></span> Scanning cloud buckets…</div>';
     try {
-        const data = await api('/api/admin/streamer/storage/buckets' + (force ? '?force=1' : ''));
+        // Network asks OpenVibe.Media for the scan itself (server/admin/storage.js), the way the owner settings
+        // proxy asks a service: Network's own service token and the owner's usr_ in X-OV-Subject. When Media does
+        // not answer, the route says why in words — the old line leaked "service tokens are not accepted on this
+        // route" straight from Media (2026-11-14, the owner's phone).
+        const data = await api('/api/admin/storage/cloud' + (force ? '?force=1' : ''));
+        if (!data.ok) {
+            el.innerHTML = header + `<div class="admin-note">${esc(data.detail || 'The cloud scan did not run.')}</div>`;
+            return;
+        }
         const usage = data.usage || {};
         const costs = data.costs || {};
         const money = (n) => '$' + (Number(n) || 0).toFixed(2);
@@ -226,17 +251,34 @@ async function loadStreamerCloudStorage(force) {
             + '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">' + card('b2', 'Backblaze B2', '#e21e2b') + card('r2', 'Cloudflare R2', '#f6821f') + '</div>'
             + '<div class="card" style="display:flex;align-items:center;justify-content:space-between"><span><i class="fa-solid fa-money-bill" style="color:var(--accent)"></i> <strong>Estimated cloud storage cost</strong> <span style="color:var(--text-muted);font-size:12px">(list prices; excludes egress/operations)</span></span><span style="font-size:22px;font-weight:800;color:var(--accent)">' + money(costs.totalStorageMonthly) + '<span style="font-size:13px;font-weight:400;color:var(--text-muted)">/mo</span></span></div>';
     } catch (e) {
-        el.innerHTML = header + '<div style="color:var(--danger-text, var(--danger,#ef4444))">Failed to scan buckets: ' + esc(e.message) + '</div>';
+        el.innerHTML = header + '<div class="admin-note is-bad">The cloud scan could not run: ' + esc(e.message || 'error') + '. The disk numbers above are current; the cloud usage is on the provider billing page.</div>';
     }
 }
 
-async function loadVodTable() {
+// The name behind a recording's owner id (2026-11-14): the column showed "-" because Media's recording row
+// carries the owner's id, not a name. Live's own user list knows the name behind that id.
+let _liveUserNames = null;
+async function liveUserNames() {
+    if (_liveUserNames) return _liveUserNames;
+    const map = new Map();
+    try {
+        const data = await api('/api/admin/streamer/users?limit=200');
+        for (const u of (data.users || [])) map.set(String(u.id), u.username || u.display_name || String(u.id));
+    } catch { /* the id is shown instead when the names cannot be read */ }
+    _liveUserNames = map;
+    return map;
+}
+
+async function loadVodTable(preset) {
     const c = document.getElementById('vod-table');
     if (!c) return;
     const sort = document.getElementById('vod-sort')?.value || 'size';
     c.innerHTML = '<div class="loading">Loading...</div>';
     try {
-        const data = await api(`/api/admin/streamer/storage/vods?sort=${sort}&order=desc&limit=100`);
+        const [data, names] = await Promise.all([
+            preset ? Promise.resolve(preset) : api(`/api/admin/streamer/storage/vods?sort=${sort}&order=desc&limit=100`),
+            liveUserNames(),
+        ]);
         const vods = data.vods || [];
         if (!vods.length) { c.innerHTML = '<p class="muted">No saved recordings. Return after a stream has been recorded.</p>'; return; }
 
@@ -249,8 +291,8 @@ async function loadVodTable() {
                 <tbody>${vods.map(v => `
                     <tr>
                         <td><input type="checkbox" aria-label="Select this recording for permanent deletion" class="vod-cb" value="${v.id}" onchange="updateVodSelection()" style="cursor:pointer"></td>
-                        <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(v.title||'')}">${esc(v.title || '(untitled)')}</td>
-                        <td>${esc(v.username || '-')}</td>
+                        <td class="vod-title" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(v.title||'')}">${esc(v.title || '(untitled)')}</td>
+                        <td>${esc(v.username || names.get(String(v.user_id)) || (v.user_id ? 'User #' + v.user_id : 'Unknown'))}</td>
                         <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${fmtBytes(v.diskSize || v.file_size || 0)}</td>
                         <td style="text-align:right;color:var(--text-secondary)">${fmtDuration(v.duration_seconds)}</td>
                         <td>${v.created_at ? timeAgo(v.created_at) : '-'}</td>
@@ -258,6 +300,7 @@ async function loadVodTable() {
                 `).join('')}</tbody>
             </table>
             ${data.total > 100 ? `<p class="muted" style="margin-top:8px;font-size:11px">Showing top 100 of ${data.total.toLocaleString()} VODs</p>` : ''}`;
+        adminTableCards(c);
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
 }
 
@@ -301,6 +344,54 @@ async function sendBroadcast() {
 // ═══════════════════════════════════════════════════════════════
 // Email Configuration
 // ═══════════════════════════════════════════════════════════════
+
+/**
+ * The email kinds in words (2026-11-14, the owner's phone). The tab used to print the raw ids
+ * (notification:OPERATOR_ALERT, email_verification, password_reset), which no one could read on a phone.
+ * The ids stay in the database; only the panel speaks plainly.
+ */
+const EMAIL_KIND_WORDS = {
+    email_verification: 'Email check',
+    password_reset: 'Password reset',
+    password_changed: 'Password changed',
+    account_security: 'Account security',
+    notification_digest: 'Notification digest',
+    test: 'Test email',
+};
+
+/** Words from a machine word: OPERATOR_ALERT -> Operator alert. */
+function adminHumanWords(text) {
+    const t = String(text || '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
+}
+
+/** The kind of an email, in words: "Operator alert", "Notification: Operator alert", "Password reset". */
+function emailKindWords(type) {
+    const raw = String(type || '').trim();
+    if (!raw) return 'Unknown kind';
+    if (EMAIL_KIND_WORDS[raw]) return EMAIL_KIND_WORDS[raw];
+    if (raw.startsWith('notification:')) return 'Notification: ' + adminHumanWords(raw.slice('notification:'.length));
+    if (raw.startsWith('notification_digest:')) return 'Notification digest: ' + adminHumanWords(raw.split(':').slice(1).join(':'));
+    if (raw.startsWith('webhook:')) return 'Provider report: ' + adminHumanWords(raw.slice('webhook:'.length).replace(/^email\./, ''));
+    return adminHumanWords(raw);
+}
+
+/** The delivery state as a short chip; the long sentence is the tooltip (2026-11-14). */
+const EMAIL_STATUS_CHIPS = {
+    sent: { word: 'Sent', tone: 'ok', long: 'The provider accepted the email.' },
+    delivered: { word: 'Delivered', tone: 'ok', long: 'The provider delivered the email to the mailbox.' },
+    bounced: { word: 'Bounced', tone: 'bad', long: 'The mailbox rejected the email; the address may be wrong or full.' },
+    complained: { word: 'Rejected', tone: 'bad', long: 'The recipient marked the email as spam; further mail is suppressed.' },
+    failed: { word: 'Failed', tone: 'bad', long: 'The email could not be sent.' },
+    queued: { word: 'Queued', tone: 'muted', long: 'The email is waiting to be sent.' },
+    pending: { word: 'Queued', tone: 'muted', long: 'The email is waiting to be sent.' },
+};
+
+function emailStatusChip(status) {
+    const key = String(status || '').toLowerCase();
+    const s = EMAIL_STATUS_CHIPS[key] || { word: adminHumanWords(status) || 'Unknown', tone: 'muted', long: 'The provider reported: ' + (status || 'nothing') };
+    return `<span class="admin-chip is-${s.tone}" title="${esc(s.long)}">${esc(s.word)}</span>`;
+}
 async function loadEmail() {
     const c = document.getElementById('email-content');
     c.innerHTML = '<div class="loading">Loading...</div>';
@@ -363,12 +454,12 @@ async function loadEmail() {
                 <h3 style="margin-bottom:10px"><i class="fa-solid fa-layer-group"></i> Delivery breakdown · last 30 days</h3><p class="admin-intro">This counts sent and failed messages by type over the last 30 days. Review it when one kind of email is failing more often than others.</p>
                 ${byType.length ? `
                     <table class="admin-table">
-                        <thead><tr><th>Email Type</th><th>Status</th><th>Count</th></tr></thead>
+                        <thead><tr><th>Kind of email</th><th>Status</th><th>Count</th></tr></thead>
                         <tbody>
                             ${byType.map(row => `
                                 <tr>
-                                    <td>${esc(row.email_type)}</td>
-                                    <td>${row.status === 'sent' ? '<span class="badge badge-success">The provider accepted the email.</span>' : '<span class="badge badge-danger">The email could not be sent.</span>'}</td>
+                                    <td>${esc(emailKindWords(row.email_type))}</td>
+                                    <td>${emailStatusChip(row.status)}</td>
                                     <td>${Number(row.count || 0).toLocaleString()}</td>
                                 </tr>
                             `).join('')}
@@ -380,15 +471,15 @@ async function loadEmail() {
             ${data.can_edit === false ? '' : `<div class="card" style="padding:16px">
                 <h3 style="margin-bottom:10px"><i class="fa-solid fa-clock-rotate-left"></i> Recent Email Activity</h3><p class="admin-intro">These are the most recent email delivery attempts and provider errors. Check a failed row after a delivery report, then correct the configuration and send a new test.</p>
                 ${recent.length ? `
-                    <table class="admin-table">
-                        <thead><tr><th>When</th><th>Type</th><th>Recipient</th><th>Status</th><th>Subject</th><th>Error</th></tr></thead>
+                    <table class="admin-table" data-title-col="1">
+                        <thead><tr><th>When</th><th>Kind of email</th><th>Recipient</th><th>Status</th><th>Subject</th><th>Error</th></tr></thead>
                         <tbody>
                             ${recent.map(row => `
                                 <tr>
                                     <td style="white-space:nowrap">${esc(timeAgo(row.created_at))}</td>
-                                    <td>${esc(row.email_type)}</td>
+                                    <td>${esc(emailKindWords(row.email_type))}</td>
                                     <td>${esc(row.recipient)}</td>
-                                    <td>${row.status === 'sent' ? '<span class="badge badge-success">The provider accepted the email.</span>' : '<span class="badge badge-danger">The email could not be sent.</span>'}</td>
+                                    <td>${emailStatusChip(row.status)}</td>
                                     <td>${esc(row.subject || '-')}</td>
                                     <td style="font-size:11px;color:var(--text-muted)">${esc(row.error_message || '-')}</td>
                                 </tr>
@@ -397,6 +488,7 @@ async function loadEmail() {
                     </table>`
                 : '<p class="muted">No email deliveries recorded. Save the configuration and send a test email to check delivery.</p>'}
             </div>`}`;
+        adminTableCards(c);
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
 }
 

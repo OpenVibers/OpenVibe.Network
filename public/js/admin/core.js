@@ -91,6 +91,44 @@ function authHeaders() {
     return h;
 }
 
+/**
+ * Every admin table becomes a card on a phone (2026-11-14, the owner: "better design on mobile"): one card per
+ * row, the main column as the card's title, the rest as "label: value" lines, and a row's checkbox as a small box
+ * at the card's top-right. This helper only marks the cells — the shared pattern in css/admin.css (.admin-cards)
+ * draws them — so every table in the panel reads the same way.
+ *
+ *   adminTableCards(el)   after a table is written into the page
+ *
+ * The label comes from the table's own header row, so a table that renames a column renames its card too.
+ */
+function adminTableCards(root) {
+    const scope = root && root.querySelectorAll ? root : document;
+    const tables = [];
+    if (scope.matches && scope.matches('table.admin-table')) tables.push(scope);
+    scope.querySelectorAll('table.admin-table').forEach((t) => tables.push(t));
+    // A tbody given on its own (the moderation log appends rows to one): its own table.
+    const owner = scope.closest ? scope.closest('table.admin-table') : null;
+    if (owner && !tables.includes(owner)) tables.push(owner);
+    tables.forEach((table) => {
+        const heads = [...table.querySelectorAll('thead th')].map((th) => (th.textContent || '').trim());
+        // The main column is the card's title: the first column, or the one the table names (data-title-col).
+        const titleCol = table.dataset.titleCol != null && table.dataset.titleCol !== '' ? Number(table.dataset.titleCol) : null;
+        table.querySelectorAll('tbody tr').forEach((tr) => {
+            const cells = [...tr.children].filter((c) => c.tagName === 'TD');
+            let titled = false;
+            cells.forEach((td, i) => {
+                if (!td.dataset.label && heads[i]) td.dataset.label = heads[i];
+                const box = td.querySelector('input[type=checkbox]');
+                // A cell that holds nothing but a checkbox is the row's picker: the card puts it at its top-right.
+                if (box && !td.querySelector(':scope > :not(input[type=checkbox])')) { td.classList.add('admin-cell-check'); return; }
+                const isTitle = titleCol != null && !Number.isNaN(titleCol) ? i === titleCol : !titled;
+                if (isTitle) { td.classList.add('admin-cell-title'); titled = true; return; }
+                if (td.querySelector('button,select,a')) td.classList.add('admin-cell-actions');
+            });
+        });
+    });
+}
+
 // ── Tab switching ────────────────────────────────────────────
 let currentTab = 'dashboard';
 // Tabs restricted to the network owner (API keys / money / infrastructure / core settings).
