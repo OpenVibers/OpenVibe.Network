@@ -701,6 +701,11 @@ const DEFAULT_GRANTS = [
     // both also follow network.block.changed through their own Events subscriptions.
     ['chat', 'network.blocks.read', SELF_AUDIENCE, []],
     ['community', 'network.blocks.read', SELF_AUDIENCE, []],
+    // Friends across every site (plan §AB.51, Contracts 0.431.0): Chat reads a person's mutual friends from
+    // Network's GET /internal/friends (network.friends.read) to offer them in its contacts and to start a DM.
+    // The row is new (never granted and never revoked before), so it needs no RESTORED_GRANTS entry, and it
+    // carries no namespaces, so no CHANGED_DEFAULT_NAMESPACES entry either.
+    ['chat', 'network.friends.read', SELF_AUDIENCE, []],
     ['live', 'chat.live_bridge.write', 'openvibe.chat', []],
     ['live', 'chat.presence.read', 'openvibe.chat', []],
     // Plan T3: Live reads a channel's moderation settings, its moderators and emote count from Chat.
