@@ -51,6 +51,7 @@ const machineOf = (id) => {
     return {
         id, name: 'garage-pi', kind: 'onboard', online: true, roles: [], running: [], node_id: null,
         agent_computer: s.agent_computer === true, watch_probe: s.watch_probe === true, ai_models: s.ai_models === true, shared_desks: s.shared_desks === true,
+        shared_desktops: s.shared_desktops === true, shared_jobs: s.shared_jobs === true, worker: { classes: ['code', 'Bad Class'], serve_others: true, egress: 'public', secret: 'x' },
         computer: {
             level: 'ask', terminal: { level: 'ask' }, files: { level: 'ask' }, screen: { level: 'ask', stream: true },
             probe: { level: 'observe' }, desk: { level: 'ask', max_desks: 2, kinds: ['browser'], isolation: 'sandbox', screen: true, named: true },
@@ -74,9 +75,9 @@ const botServer = http.createServer(async (req, res) => {
     }
     // The owner's own controls (the card): each as Bot checks it, the machine's own or 404.
     let m;
-    if (req.method === 'POST' && (m = /^\/api\/v1\/machines\/([^/]+)\/(agent-computer|watch-probe|ai-models|shared-desks)$/.exec(req.url))) {
+    if (req.method === 'POST' && (m = /^\/api\/v1\/machines\/([^/]+)\/(agent-computer|watch-probe|ai-models|shared-desks|shared-desktops|shared-jobs)$/.exec(req.url))) {
         if (!mineOf(decodeURIComponent(m[1]))) return answer(404, { code: 'bot.device_not_found' });
-        const key = { 'agent-computer': 'agent_computer', 'watch-probe': 'watch_probe', 'ai-models': 'ai_models', 'shared-desks': 'shared_desks' }[m[2]];
+        const key = { 'agent-computer': 'agent_computer', 'watch-probe': 'watch_probe', 'ai-models': 'ai_models', 'shared-desks': 'shared_desks', 'shared-desktops': 'shared_desktops', 'shared-jobs': 'shared_jobs' }[m[2]];
         if (typeof body.on !== 'boolean') return answer(422, { code: 'bot.invalid_input' });
         return answer(200, { machine: setFlag(decodeURIComponent(m[1]), key, body.on) });
     }
@@ -270,12 +271,17 @@ try {
     sent = calls.at(-1);
     assert.deepStrictEqual([sent.method, sent.url, sent.subject, sent.body], ['POST', `/api/v1/machines/${anaMachine}/watch-probe`, ana.subject_id, { on: true }]);
     // 2026-11-12: the card's two new switches, the models and lending browsers to other people's agents.
-    for (const [route, key] of [['ai-models', 'ai_models'], ['shared-desks', 'shared_desks']]) {
+    // 2026-11-14: whole desktops and other people's jobs too; the worker's facts arrive narrowed.
+    for (const [route, key] of [['ai-models', 'ai_models'], ['shared-desks', 'shared_desks'], ['shared-desktops', 'shared_desktops'], ['shared-jobs', 'shared_jobs']]) {
         const r = await call('POST', `/api/v1/machines/${anaMachine}/${route}`, { user: ana, body: { on: true } });
         assert.strictEqual(r.status, 200, `${route}: ${JSON.stringify(r.body)}`);
         assert.strictEqual(r.body.machine.controls[key], true, route);
         sent = calls.at(-1);
         assert.deepStrictEqual([sent.method, sent.url, sent.subject, sent.body], ['POST', `/api/v1/machines/${anaMachine}/${route}`, ana.subject_id, { on: true }], route);
+    }
+    {
+        const r = await call('POST', `/api/v1/machines/${anaMachine}/shared-jobs`, { user: ana, body: { on: true } });
+        assert.deepStrictEqual(r.body.machine.controls.worker, { classes: ['code'], serve_others: true }, 'only the classes and the yes, nothing else of the worker');
     }
     // A body that is not true/false never reaches Bot.
     const beforeBadSwitch = calls.length;
