@@ -12,6 +12,8 @@ const express = require('express');
 const { createFrameRuns } = require('../server/frame/runs');
 
 const TOKEN = 'Bearer tok_person_1234567890';
+// A Media object id for the file stub (built from parts: secret scanners read a literal next to `key` as a key).
+const MED = ['med', '01ARZ3NDEKTSV4RRFFQ69G5FAV'].join('_');
 const listen = (handler) => new Promise((resolve) => { const s = http.createServer(handler); s.listen(0, '127.0.0.1', () => resolve(s)); });
 const readBody = (req) => new Promise((resolve) => { let b = ''; req.on('data', (c) => { b += c; }); req.on('end', () => resolve(b ? JSON.parse(b) : null)); });
 const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(body)); };
@@ -23,6 +25,7 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         { id: 102, from: 'vibe', text: 'Three picks under $90.', at: '2026-11-12 10:00:20', results: [{ kind: 'timer', label: '10 min' }] },
     ];
     let actorDown = false;
+    const uploaded = [], asked = [];
     const chat = await listen(async (req, res) => {
         seen.push({ svc: 'chat', method: req.method, url: req.url, auth: req.headers.authorization });
         const u = new URL(req.url, 'http://x');
@@ -32,8 +35,14 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
             const after = Number(u.searchParams.get('after')) || 0;
             return sendJson(res, 200, { chat: { slug: 'c_keys', name: 'Keyboard Scout', url: 'https://openvibe.chat/vibe/c_keys' }, messages: messages.filter((m) => m.id > after) });
         }
+        if (u.pathname === '/api/chat/vibe/files' && req.method === 'POST') {
+            const chunks = []; for await (const c of req) chunks.push(c);
+            uploaded.push({ bytes: Buffer.concat(chunks).length, type: req.headers['content-type'], name: req.headers['x-filename'] });
+            return sendJson(res, 201, { file: { id: MED, name: decodeURIComponent(req.headers['x-filename'] || 'file'), media_type: req.headers['content-type'], size: 4, storage: { provider: 'media', key: MED }, read: { method: 'not_readable' }, role: 'input' } });
+        }
         if (u.pathname === '/api/vibe/ask' && req.method === 'POST') {
             const b = await readBody(req);
+            asked.push(b);
             const m = { id: 103 + (b.fresh ? 100 : 0), from: 'you', text: b.message, at: '2026-11-12 10:01:00' };
             if (!b.fresh) messages.push(m);
             return sendJson(res, 200, { chat: { slug: b.fresh ? 'c_new' : b.slug, name: 'Vibe', url: `https://openvibe.chat/vibe/${b.fresh ? 'c_new' : b.slug}` }, message: m });
@@ -202,6 +211,23 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         assert.match(text, /id: 103\nevent: step\n/, 'the message said above arrives as a step');
         assert.ok(!/id: 10[12]\n/.test(text), 'nothing at or before Last-Event-ID is sent again');
         assert.match(text, /event: run\n/, 'and the run\'s new snapshot follows');
+
+        // Files (4.250.0, the messenger): an upload goes to Chat as the person and comes back an ai.file@1 reference;
+        // a message and a new conversation carry it on; anything that is not a Media object is left out.
+        let fr = await fetch(`${base}/files`, { method: 'POST', headers: { Authorization: TOKEN, 'Content-Type': 'image/png', 'X-Filename': encodeURIComponent('cat.png') }, body: Buffer.from([0x89, 0x50, 0x4e, 0x47]) });
+        assert.strictEqual(fr.status, 201);
+        const file = (await fr.json()).file;
+        assert.strictEqual(file.id, MED);
+        assert.deepStrictEqual([uploaded[0].type, uploaded[0].name, uploaded[0].bytes], ['image/png', 'cat.png', 4], 'the bytes, type and name reach Chat');
+        fr = await fetch(`${base}/files`, { method: 'POST', headers: { 'Content-Type': 'image/png' }, body: Buffer.from('x') });
+        assert.strictEqual(fr.status, 401, 'an upload needs the person');
+        assert.match((await fetch(`${base}/files`, { method: 'OPTIONS' })).headers.get('access-control-allow-headers'), /X-Filename/, 'a browser may name the file');
+        ({ r } = await go('/chat:c_keys/messages', { method: 'POST', body: { text: 'What is this?', attachments: [file, { id: 'nope' }] } }));
+        assert.strictEqual(r.status, 201);
+        assert.deepStrictEqual(asked.at(-1).files.map((f) => f.id), [file.id], 'a message carries its Media files, nothing else');
+        ({ r } = await go('/', { method: 'POST', body: { text: '', attachments: [file], kind: 'chat' } }));
+        assert.strictEqual(r.status, 201, 'a file alone starts a conversation');
+        assert.strictEqual(asked.at(-1).files[0].id, file.id);
 
         console.log('frame-runs: one list across Chat, Codes and Actor (needs you first, partial named), a chat as a run waiting for a message, start by kind or target, say, stop, approvals, and a stream for a product without one');
     } finally {

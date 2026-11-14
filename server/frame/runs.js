@@ -8,6 +8,9 @@
  *
  *   GET  /api/frame/runs?kind=&status=&q=&limit=      every product's runs, newest first → { runs, next, partial }
  *   POST /api/frame/runs                             start (agents.run-start@1; Idempotency-Key)  → 201 the run
+ *   POST /api/frame/runs/files                       a file for the next message (the body is the file, its name in
+ *                                                    X-Filename; at most 10 MB) → 201 { file }: an ai.file@1 reference,
+ *                                                    stored in Media as the person through Chat, for `attachments`
  *   GET  /api/frame/runs/:ref                        one run
  *   GET  /api/frame/runs/:ref/steps?after=&limit=    its thread → { steps, next }
  *   GET  /api/frame/runs/:ref/events                 its stream (agents.event@1 as server-sent events)
@@ -28,6 +31,12 @@ const crypto = require('crypto');
 const express = require('express');
 
 const REF = /^([a-z][a-z0-9-]{0,30}):([A-Za-z0-9._~-]{1,160})$/;
+const MEDIA_ID = /^med_[0-9A-HJKMNP-TV-Z]{26}$/;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+/** The ai.file@1 references a message carries (Media objects only, at most 10); anything else is left out. */
+function aiFiles(list) {
+    return (Array.isArray(list) ? list : []).filter((f) => f && typeof f === 'object' && MEDIA_ID.test(String(f.id || ''))).slice(0, 10);
+}
 const BEARER = /^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/;
 const LIST_DEADLINE_MS = 4000;
 const CALL_TIMEOUT_MS = 15000;
@@ -120,12 +129,14 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
             return { steps, next: null };
         },
         async start(auth, owner, body) {
-            const out = await call('chat', '/api/vibe/ask', { auth, method: 'POST', body: { message: body.text, fresh: true } });
+            const files = aiFiles(body.attachments);
+            const out = await call('chat', '/api/vibe/ask', { auth, method: 'POST', body: { message: body.text, fresh: true, ...(files.length ? { files } : {}) } });
             if (!out || !out.chat) throw fail(502, 'runs.chat_no_chat', 'Chat did not start a conversation');
             return chat.toRun({ ...out.chat, last_message_at: out.message && out.message.at }, owner, out.message ? { from: 'you', text: out.message.text || body.text, at: out.message.at } : null);
         },
         async say(auth, owner, id, msg) {
-            const out = await call('chat', '/api/vibe/ask', { auth, method: 'POST', body: { message: msg.text, slug: id } });
+            const files = aiFiles(msg.attachments);
+            const out = await call('chat', '/api/vibe/ask', { auth, method: 'POST', body: { message: msg.text, slug: id, ...(files.length ? { files } : {}) } });
             const m = out && out.message;
             if (!m) throw fail(502, 'runs.chat_no_message', 'Chat did not keep the message');
             return chat.toStep({ id: m.id, from: 'you', text: m.text || msg.text, at: m.at }, id);
@@ -273,7 +284,7 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
     const router = express.Router();
     const json = express.json({ limit: '64kb' });
     router.use((req, res, next) => {
-        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, Last-Event-ID, Idempotency-Key', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Max-Age': '600', 'Cache-Control': 'private, no-store', Vary: 'Authorization' });
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, Last-Event-ID, Idempotency-Key, X-Filename', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Max-Age': '600', 'Cache-Control': 'private, no-store', Vary: 'Authorization' });
         if (req.method === 'OPTIONS') return res.status(204).end();
         next();
     });
@@ -319,7 +330,7 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         const { auth, owner } = await who(req);
         const b = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
         const text = clip(b.text, 16000);
-        if (!text) throw fail(422, 'runs.start_needs_words', 'Say what the run is for ({ text })');
+        if (!text && !aiFiles(b.attachments).length) throw fail(422, 'runs.start_needs_words', 'Say what the run is for ({ text })');
         const key = String(req.get('idempotency-key') || '');
         const idempotencyKey = /^[A-Za-z0-9._~-]{1,200}$/.test(key) ? key : (key ? null : crypto.randomUUID());
         const place = placeFor({ ...b, text });
@@ -329,6 +340,24 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         if (!run) run = await starterFor(b).start(auth, owner, { ...b, text }, { idempotencyKey });
         res.set('X-OV-Placed', place === 'given' ? 'asked' : run.kind === 'code' ? 'codes' : run.kind === 'machine' ? 'machine' : 'vibe');
         res.status(201).json(run);
+    }));
+
+    router.post('/files', (req, res, next) => express.raw({ type: () => true, limit: MAX_FILE_BYTES + 1 })(req, res, (err) => {
+        if (err && err.type === 'entity.too.large') return res.status(413).json({ error: 'A file can be up to 10 MB', code: 'runs.file_too_large' });
+        return next(err);
+    }), handle(async (req, res) => {
+        const { auth } = await who(req);
+        if (!Buffer.isBuffer(req.body) || !req.body.length) throw fail(422, 'runs.file_empty', 'Choose a file first');
+        const type = String(req.get('content-type') || 'application/octet-stream').split(';')[0].trim().slice(0, 255) || 'application/octet-stream';
+        const name = String(req.get('x-filename') || 'file').slice(0, 600);
+        let r;
+        try {
+            r = await fetchImpl(new URL('/api/chat/vibe/files', base.chat).href, { method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(60_000),
+                headers: { Accept: 'application/json', Authorization: auth, 'Content-Type': type, 'X-Filename': name }, body: req.body });
+        } catch { throw fail(502, 'runs.product_unavailable', 'chat did not answer'); }
+        const out = await r.json().catch(() => null);
+        if (!r.ok || !out || !out.file || !MEDIA_ID.test(String(out.file.id || ''))) throw fail(r.ok ? 502 : r.status, (out && out.code) || 'runs.file_failed', (out && out.error) || 'That file did not upload');
+        res.status(201).json({ file: out.file });
     }));
 
     router.get('/:ref', handle(async (req, res) => {
