@@ -305,11 +305,11 @@
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Target<span class="admin-field"><input id="modlog-target" aria-label="Affected account or item" aria-describedby="help-modlog-target" placeholder="subject or id" maxlength="200" style="width:150px"><span class="admin-help" id="help-modlog-target"><strong>Affected account or item.</strong> Blank includes all targets. Enter the account or item ID from the report.</span></span></label>
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">From<span class="admin-field"><input id="modlog-since" aria-label="Start date" aria-describedby="help-modlog-since" type="date"><span class="admin-help" id="help-modlog-since"><strong>Start date.</strong> Blank sets no starting date. Choose an earlier date to include more history.</span></span></label>
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Until<span class="admin-field"><input id="modlog-until" aria-label="End date" aria-describedby="help-modlog-until" type="date"><span class="admin-help" id="help-modlog-until"><strong>End date.</strong> Blank sets no ending date. Choose a later date to include more history.</span></span></label>
-            <button class="btn" type="submit">Filter</button>
-            <button class="btn" type="button" onclick="exportModLog()">Export CSV</button>
+            <button class="btn" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Filter</button>
+            <button class="btn" type="button" onclick="exportModLog()"><i class="fa-solid fa-download"></i> Export CSV</button>
         </form>
         <div id="modlog-content"><div class="loading">Loading...</div></div>
-        <div style="display:flex;justify-content:center;margin-top:12px"><button id="modlog-more" class="btn" hidden onclick="loadModLog(false)">Load more</button></div>
+        <div style="display:flex;justify-content:center;margin-top:12px"><button id="modlog-more" class="btn" hidden onclick="loadModLog(false)"><i class="fa-solid fa-ellipsis"></i> Load more</button></div>
     </div>
 
     <!-- Operator parity checklist (WS-D task 5): where each operator job is done, and what has no console yet -->
@@ -335,7 +335,7 @@
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Namespaces<span class="admin-field"><input id="grant-ns" aria-label="Allowed areas" aria-describedby="help-grant-ns" placeholder="comma separated (optional)" maxlength="400" style="width:180px"><span class="admin-help" id="help-grant-ns"><strong>Allowed areas.</strong> Optional comma-separated areas to restrict this permission, for example a namespace required by the integration. Blank adds no namespace restriction.</span></span></label>
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Expires<span class="admin-field"><input id="grant-exp" aria-label="Access expiry date" aria-describedby="help-grant-exp" type="date"><span class="admin-help" id="help-grant-exp"><strong>Access expiry date.</strong> Blank means no expiry date. Access ends at midnight UTC on the selected date; an earlier date grants access for less time.</span></span></label>
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Reason<span class="admin-field"><input id="grant-reason" aria-label="Why access is needed" aria-describedby="help-grant-reason" maxlength="500" style="width:220px" required><span class="admin-help" id="help-grant-reason"><strong>Why access is needed.</strong> Required explanation for the audit history, for example enable staff lookup for Live. No reason is filled in by default.</span></span></label>
-            <button class="btn" type="submit">Grant access</button>
+            <button class="btn" type="submit"><i class="fa-solid fa-key"></i> Grant access</button>
         </form>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
             <label for="grant-filter" class="muted" style="font-size:12px">Show</label>
@@ -354,7 +354,7 @@
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Status
                 <span class="admin-field"><select id="dlq-status" aria-label="Delivery state" aria-describedby="help-dlq-status" onchange="loadDeliveries()"><option value="dead">Stopped retrying — needs attention</option><option value="failed">Retrying — delivery keeps failing</option><option value="pending">Waiting — delivery is queued</option></select><span class="admin-help" id="help-dlq-status"><strong>Delivery state.</strong> The default shows deliveries that stopped retrying. Choose Retrying to investigate ongoing failures, or Waiting for messages still queued.</span></span></label>
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Subscription<span class="admin-field"><input id="dlq-sub" aria-label="Subscription ID" aria-describedby="help-dlq-sub" placeholder="sub_…" maxlength="40" style="width:240px"><span class="admin-help" id="help-dlq-sub"><strong>Subscription ID.</strong> Blank includes all subscriptions. Enter the sub_ identifier of a receiving service to narrow the list.</span></span></label>
-            <button class="btn" type="button" onclick="loadDeliveries()">Show deliveries</button>
+            <button class="btn" type="button" onclick="loadDeliveries()"><i class="fa-solid fa-eye"></i> Show deliveries</button>
         </div>
         <div id="dlq-counts" class="muted" style="font-size:12px;margin-bottom:8px"></div>
         <div id="dlq-content"><div class="loading">Loading...</div></div>

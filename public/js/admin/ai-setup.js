@@ -66,7 +66,7 @@ async function loadAiSetup(force) {
     } catch (err) {
         main.innerHTML = `<div class="setup-error"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
             <div><strong>The setup could not be read.</strong><p class="muted">${esc(err.message || 'OpenVibe.AI did not answer')}</p>
-            <button class="btn btn-outline btn-sm" onclick="loadAiSetup(true)">Try again</button></div></div>`;
+            <button class="btn btn-outline btn-sm" onclick="loadAiSetup(true)"><i class="fa-solid fa-rotate-right"></i> Try again</button></div></div>`;
     }
 }
 
@@ -210,7 +210,7 @@ function renderAiSetupStep() {
                             <div class="setup-other-price">${esc(aiSetupShortPrice(o.price))}</div></div>
                         <div class="setup-other-actions">
                             ${o.key_page && o.key_page.url ? `<a class="btn btn-outline btn-sm" href="${esc(o.key_page.url)}" target="_blank" rel="noopener noreferrer">Get a key</a>` : ''}
-                            <button class="btn btn-outline btn-sm" onclick="aiSetupChoose('${esc(step.id)}','${esc(o.provider)}','${esc(o.model)}')">Choose</button>
+                            <button class="btn btn-outline btn-sm" onclick="aiSetupChoose('${esc(step.id)}','${esc(o.provider)}','${esc(o.model)}')"><i class="fa-solid fa-check"></i> Choose</button>
                         </div>
                     </div>`).join('')}
                 </div>
@@ -245,9 +245,9 @@ function renderAiSetupStep() {
             </section>
 
             <footer class="setup-card-foot">
-                <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')">Defaults</button>
+                <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')"><i class="fa-solid fa-sliders"></i> Defaults</button>
                 <div class="setup-foot-next">
-                    <button class="btn btn-outline" onclick="skipAiSetupStep()">Skip</button>
+                    <button class="btn btn-outline" onclick="skipAiSetupStep()"><i class="fa-solid fa-forward"></i> Skip</button>
                     <button class="btn btn-primary" onclick="nextAiSetupNotReady()">Next <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
                 </div>
             </footer>
@@ -365,7 +365,7 @@ function renderAiSetupStart() {
                 <div class="setup-start-card">
                     <h3><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> One tap</h3>
                     <p class="muted">Fills every job with its recommended model. You still paste each provider's key once, in its step.</p>
-                    <button class="btn btn-outline btn-sm" onclick="applyAiSetupRecommended()">Use the recommended set</button>
+                    <button class="btn btn-outline btn-sm" onclick="applyAiSetupRecommended()"><i class="fa-solid fa-wand-magic-sparkles"></i> Use the recommended set</button>
                 </div>
             </section>
             <footer class="setup-card-foot">
@@ -385,7 +385,7 @@ function renderAiSetupDone() {
         <span class="setup-step-dot" aria-hidden="true">${s.ready ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-minus"></i>'}</span>
         <span class="setup-done-name"><strong>${esc(s.name)}</strong><span class="muted">${s.ready ? esc((aiSetupSelected(s) || {}).label || 'Ready') : esc(s.what || '')}</span></span>
         <span class="setup-done-out" id="setup-done-${esc(s.id)}"></span>
-        ${s.ready ? '' : `<button class="btn btn-outline btn-sm" onclick="selectAiSetupStep('${esc(s.id)}')">Set it</button>`}
+        ${s.ready ? '' : `<button class="btn btn-outline btn-sm" onclick="selectAiSetupStep('${esc(s.id)}')"><i class="fa-solid fa-check"></i> Set it</button>`}
     </li>`;
     main.innerHTML = `
         <article class="setup-card" aria-labelledby="setup-done-title">
@@ -395,8 +395,8 @@ function renderAiSetupDone() {
             </header>
             <ul class="setup-done-list">${[...left, ...ready].map(row).join('')}</ul>
             <footer class="setup-card-foot">
-                ${ready.length ? `<button class="btn btn-primary" id="setup-test-all" onclick="testAllAiSetup()">Test every ready job</button>` : ''}
-                <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')">Defaults and caps</button>
+                ${ready.length ? `<button class="btn btn-primary" id="setup-test-all" onclick="testAllAiSetup()"><i class="fa-solid fa-flask"></i> Test every ready job</button>` : ''}
+                <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')"><i class="fa-solid fa-sliders"></i> Defaults and caps</button>
                 <a class="btn btn-outline" href="${AI_SETUP_LINKS.credits}" target="_blank" rel="noopener">Monthly credits</a>
             </footer>
         </article>`;

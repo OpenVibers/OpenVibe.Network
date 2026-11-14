@@ -184,8 +184,8 @@ function oinKindCard(k) {
         + '<div><span class="oin-label">Never use</span>' + deny + '</div></div>'
         + '<details class="oin-ways"' + (OIN_ECONOMY.some(([key]) => st[key]) || st.output_limit !== '' ? ' open' : '') + '><summary>Ways of paying less</summary><div class="oin-ways-list">' + economy + '</div></details>'
         + '<footer class="oin-kind-foot"><span class="oin-dirty-note" aria-live="polite">' + (dirty ? 'Not saved yet' : '') + '</span>'
-        + '<button type="button" class="btn btn-sm pai-quiet" data-oin-act="reset"' + (dirty ? '' : ' hidden') + '>Undo</button>'
-        + '<button type="button" class="btn btn-sm btn-primary" data-oin-act="save"' + (dirty ? '' : ' disabled') + '>Save</button></footer>'
+        + '<button type="button" class="btn btn-sm pai-quiet" data-oin-act="reset"' + (dirty ? '' : ' hidden') + '><i class="fa-solid fa-rotate"></i> Undo</button>'
+        + '<button type="button" class="btn btn-sm btn-primary" data-oin-act="save"' + (dirty ? '' : ' disabled') + '><i class="fa-solid fa-floppy-disk"></i> Save</button></footer>'
         + '</div></details>';
 }
 
@@ -203,7 +203,7 @@ function oinLimitRow(p) {
         + '<div class="oin-limit-use"><span class="oin-label">This month</span><span>' + used(spend.spent_month, cap.monthly_usd) + '</span>' + meter(spend.spent_month, cap.monthly_usd) + '</div>'
         + '<div class="oin-limit-set"><label><span class="oin-label">A day</span><span class="pai-prefix">$</span><input type="number" min="0" step="1" inputmode="decimal" data-oin-cap="daily_usd" value="' + esc(cap.daily_usd == null ? '' : cap.daily_usd) + '" placeholder="None"></label>'
         + '<label><span class="oin-label">A month</span><span class="pai-prefix">$</span><input type="number" min="0" step="1" inputmode="decimal" data-oin-cap="monthly_usd" value="' + esc(cap.monthly_usd == null ? '' : cap.monthly_usd) + '" placeholder="None"></label>'
-        + '<button type="button" class="btn btn-sm pai-quiet" data-oin-act="cap">Save</button></div>'
+        + '<button type="button" class="btn btn-sm pai-quiet" data-oin-act="cap"><i class="fa-solid fa-floppy-disk"></i> Save</button></div>'
         + '</div>';
 }
 function oinLimits() {
@@ -264,7 +264,7 @@ function oinProviderCards() {
             + '<div class="oin-limit-set">'
             + '<label class="oin-way"><span class="pai-switch"><input type="checkbox" role="switch" data-oin-provider-on data-ov-native' + (p.enabled ? ' checked' : '') + '><span class="pai-track" aria-hidden="true"><span class="pai-knob"></span></span></span><span class="oin-way-text"><b>On</b><span class="muted">Off until the owner turns it on.</span></span></label>'
             + '<label><span class="oin-label">Tier</span><select data-oin-provider-tier><option value=""' + (!p.tier ? ' selected' : '') + '>Provider default</option><option value="standard"' + (p.tier === 'standard' ? ' selected' : '') + '>Standard</option><option value="flex"' + (p.tier === 'flex' ? ' selected' : '') + '>Flex</option></select></label>'
-            + '<button type="button" class="btn btn-sm pai-quiet" data-oin-act="save-provider">Save</button></div>'
+            + '<button type="button" class="btn btn-sm pai-quiet" data-oin-act="save-provider"><i class="fa-solid fa-floppy-disk"></i> Save</button></div>'
             + '</div>';
     };
     return '<div class="oin-limits">' + rows.map(row).join('') + '</div>';
@@ -279,7 +279,7 @@ function oinRules() {
         + sw('flex_interactive', 'A Flex tier may answer in front of a person', 'Off: Flex is for background and batch work only.', true)
         + sw('latency_limited_interactive', 'A background-only provider may answer interactively', 'Off: a provider that states background or batch only never answers an interactive request.', true)
         + sw('free_allowance_first', 'Spend a free allowance before paid capacity', 'On: eligible work uses the free tokens first.', false)
-        + '</div><footer class="oin-kind-foot"><span></span><button type="button" class="btn btn-sm btn-primary" data-oin-act="save-rules">Save rules</button></footer></details>';
+        + '</div><footer class="oin-kind-foot"><span></span><button type="button" class="btn btn-sm btn-primary" data-oin-act="save-rules"><i class="fa-solid fa-floppy-disk"></i> Save rules</button></footer></details>';
 }
 /** The rented GPU hours, and the owner's own OpenAI-compatible endpoint. */
 function oinCompute() {
@@ -299,7 +299,7 @@ function oinCompute() {
         + '<label><span class="oin-label">Model</span><input type="text" data-oin-endpoint="model_key" value="' + esc(e.model_key || '') + '" placeholder="the model id it serves"></label>'
         + '<label><span class="oin-label">An hour</span><span class="pai-prefix">$</span><input type="number" min="0.01" step="0.01" data-oin-endpoint="hourly_usd" value="' + esc(e.hourly_usd == null ? '' : e.hourly_usd) + '"></label>'
         + '<label><span class="oin-label">Tokens an hour</span><input type="number" min="1" step="1" data-oin-endpoint="throughput_tokens_per_hour" value="' + esc(e.throughput_tokens_per_hour == null ? '' : e.throughput_tokens_per_hour) + '"></label>'
-        + '<button type="button" class="btn btn-sm pai-quiet" data-oin-act="save-endpoint">Save endpoint</button>'
+        + '<button type="button" class="btn btn-sm pai-quiet" data-oin-act="save-endpoint"><i class="fa-solid fa-floppy-disk"></i> Save endpoint</button>'
         + (e.usd_per_mtok != null ? '<p class="muted oin-note">' + oinMoney(e.usd_per_mtok) + ' per million tokens at that throughput. The key goes in the provider key slot.</p>' : '') + '</div>';
     return (cards ? '<div class="oin-costs">' + cards + '</div>' : '') + form;
 }
@@ -307,7 +307,7 @@ function oinCompute() {
 function oinPricebook() {
     const list = (OIN.data.pricebook && OIN.data.pricebook.confirmed) || [];
     return '<div class="oin-row"><span class="oin-label">Confirmed prices</span><p class="muted oin-note">' + list.length + ' readings from the providers\' own pages wait to enter the price book as pending changes. Nothing is applied until you accept each one in the price book.</p>'
-        + '<button type="button" class="btn btn-sm pai-quiet" data-oin-act="propose-prices"' + (list.length ? '' : ' disabled') + '>Propose ' + list.length + ' price' + (list.length === 1 ? '' : 's') + '</button></div>';
+        + '<button type="button" class="btn btn-sm pai-quiet" data-oin-act="propose-prices"' + (list.length ? '' : ' disabled') + '><i class="fa-solid fa-wand-magic-sparkles"></i> Propose ' + list.length + ' price' + (list.length === 1 ? '' : 's') + '</button></div>';
 }
 
 // ── Changes ──────────────────────────────────────────────────────────────────────────────────────────────────────

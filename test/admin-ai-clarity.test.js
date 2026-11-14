@@ -73,7 +73,7 @@ assert.match(form, /data-pai-object/, 'an object whose properties are described 
 assert.ok(!/<textarea/.test(form), 'not raw JSON');
 const secret = P.paiField(n, 'provider_key', n.schema.properties.provider_key, false, null);
 assert.match(secret, /Not set/);
-assert.match(secret, /data-act="secret"[^>]*>Enter it</, 'an unset key goes to the write-only route, not a plain field');
+assert.match(secret, /data-act="secret"[^>]*>(<i[^>]*><\/i> )?Enter it</, 'an unset key goes to the write-only route, not a plain field');
 const card = P.paiCard(n);
 assert.match(card, /<h5>What the Exchange offers <code class="pai-mkey">ai\.exchange<\/code><\/h5>/, 'the card title, with the namespace small after it');
 assert.match(card, /<summary>Advanced settings \(2\)<\/summary>/, 'x-advanced and raw JSON fold under a counted Advanced settings');
