@@ -193,11 +193,13 @@ const INSTANCES = [
             assert.strictEqual((await get(`/@${name}`)).status, 404, `/@${name}`);
             assert.strictEqual((await get(`/api/v1/profiles/${name}`)).status, 404, `api ${name}`);
         }
-        // An old name: 301 to the current one.
+        // An old name moves to the current one (11-14, the cached-301 audit): the old name can be someone else's later,
+        // so a browser keeps the page's 301 an hour at most, and the API answers 307 with no-store, never a 301.
         r = await get('/@oldana');
-        assert.deepStrictEqual([r.status, r.headers.get('location')], [301, '/@Ana']);
+        assert.deepStrictEqual([r.status, r.headers.get('location'), r.headers.get('cache-control')], [301, '/@Ana', 'public, max-age=3600']);
         r = await get('/api/v1/profiles/oldana');
-        assert.deepStrictEqual([r.status, r.headers.get('location')], [301, '/api/v1/profiles/Ana']);
+        assert.deepStrictEqual([r.status, r.headers.get('location'), r.headers.get('cache-control')], [307, '/api/v1/profiles/Ana', 'no-store']);
+        assert.strictEqual(JSON.parse(r.text).moved_to, 'Ana');
 
         // Inventory down (and the cache expired): the profile still answers.
         down = true;

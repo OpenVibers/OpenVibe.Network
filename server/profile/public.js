@@ -341,7 +341,9 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             }
             const found = await find(req.params.username);
             if (!found) return next();   // the shared 404 page
-            if (found.moved) return res.redirect(301, `/@${encodeURIComponent(found.moved)}`);
+            // A browser keeps a 301 for good unless told otherwise, and a renamed person's old name can be taken by
+            // someone else later: the move is cached an hour at most (11-14, the cached-301 audit).
+            if (found.moved) return res.set('Cache-Control', 'public, max-age=3600').redirect(301, `/@${encodeURIComponent(found.moved)}`);
             const u = found.user;
             if (String(req.params.username) !== String(u.username)) return res.redirect(301, `/@${encodeURIComponent(u.username)}`);
             const [inv, page] = await Promise.all([Number(u.profile_public) ? wearsOf(u.subject_id) : null, pageOf(u)]);
@@ -359,7 +361,8 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             const found = await find(req.params.username);
             res.set('Cache-Control', 'public, max-age=60');
             if (!found) return res.status(404).json({ error: 'not_found' });
-            if (found.moved) return res.status(301).set('Location', `/api/v1/profiles/${encodeURIComponent(found.moved)}`).json({ moved_to: found.moved });
+            // An API answer is never cached as a permanent move (11-14): 307, no-store.
+            if (found.moved) return res.status(307).set('Cache-Control', 'no-store').set('Location', `/api/v1/profiles/${encodeURIComponent(found.moved)}`).json({ moved_to: found.moved });
             res.json({ profile: await profileOf(found.user) });
         } catch (err) { next(err); }
     });
@@ -370,7 +373,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
             const found = await find(req.params.handle);
             res.set('Cache-Control', 'public, max-age=60');
             if (!found) return res.status(404).json({ error: 'not_found' });
-            if (found.moved) return res.status(301).set('Location', `/api/v1/people/@${encodeURIComponent(found.moved)}/page`).json({ moved_to: found.moved });
+            if (found.moved) return res.status(307).set('Cache-Control', 'no-store').set('Location', `/api/v1/people/@${encodeURIComponent(found.moved)}/page`).json({ moved_to: found.moved });
             if (req.params.handle !== found.user.username) return res.status(301).set('Location', `/api/v1/people/@${encodeURIComponent(found.user.username)}/page`).json({ moved_to: found.user.username });
             res.json({ person: await pageOf(found.user) });
         } catch (err) { next(err); }
