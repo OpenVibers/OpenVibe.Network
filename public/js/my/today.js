@@ -281,7 +281,8 @@ function renderContinue(hist) {
     const box = document.getElementById('td-continue');
     const list = document.getElementById('td-continue-list');
     const seen = new Set();
-    const items = ((hist && hist.items) || []).filter((it) => { const u = tdSafeUrl(it.url); if (!u || seen.has(u)) return false; seen.add(u); return true; }).slice(0, 10);
+    // A search is not a place to continue (plan §AB.34: searches are kept for the menu's "Recent searches").
+    const items = ((hist && hist.items) || []).filter((it) => { const u = tdSafeUrl(it.url); if (!u || it.type === 'search' || seen.has(u)) return false; seen.add(u); return true; }).slice(0, 10);
     list.replaceChildren(...items.map((it) => {
         const site = TD_SITES[it.service] || [it.service_label || 'OpenVibe', 'fa-globe'];
         const icon = /^fa-[a-z0-9-]+$/.test(String(it.icon || '')) ? it.icon : site[1];
