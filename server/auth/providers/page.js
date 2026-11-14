@@ -39,16 +39,29 @@ function glyph(p, config) {
     return `<i data-ov-icon="${esc(name)}" aria-hidden="true"></i>`;
 }
 
+/**
+ * One provider's button. With one provider it says the whole thing ("Sign in with Steam"); with two or more they sit
+ * two to a row under the sentence that already says "Sign in to OpenVibe with …", so each shows its name alone and
+ * keeps the full words for screen readers.
+ */
+function button(p, count, href) {
+    const label = count > 1 ? `<span>${esc(p.name)}</span>` : `<span>Sign in with ${esc(p.name)}</span>`;
+    const aria = count > 1 ? ` aria-label="Sign in with ${esc(p.name)}"` : '';
+    return `<a class="provider-btn" href="${esc(href)}" data-provider="${esc(p.id)}" rel="nofollow"${aria}>${glyph(p, p)}${label}</a>`;
+}
+
+/** The section's inside: the sentence, the buttons, the note and the "or" before the username form. */
+function inner(providers, hrefFor = (p) => `/api/auth/connect/${encodeURIComponent(p.id)}`) {
+    const names = providers.map((p) => p.name);
+    return `<h2 class="providers-head" id="providers-head">Sign in to OpenVibe with ${esc(listNames(names))}</h2>`
+        + `<div class="provider-list">${providers.map((p) => button(p, providers.length, hrefFor(p))).join('')}</div>`
+        + `<p class="providers-note">A first sign-in makes a new OpenVibe account; a provider already linked signs you straight in.</p>`
+        + `<div class="divider providers-or"><span>or use a username</span></div>`;
+}
+
 function section(providers) {
     if (!providers.length) return '';
-    const names = providers.map((p) => p.name);
-    const links = providers.map((p) => `<a class="provider-btn" href="/api/auth/connect/${encodeURIComponent(p.id)}" data-provider="${esc(p.id)}" rel="nofollow">`
-        + `${glyph(p, p)}<span>Sign in with ${esc(p.name)}</span></a>`).join('');
-    return `<section class="providers" id="signin-providers" aria-labelledby="providers-head">`
-        + `<h2 class="providers-head" id="providers-head">Sign in to OpenVibe with ${esc(listNames(names))}</h2>`
-        + `<div class="provider-list">${links}</div>`
-        + `<p class="providers-note">A first sign-in makes a new OpenVibe account; a provider already linked signs you straight in.</p>`
-        + `</section>`;
+    return `<section class="providers" id="signin-providers" aria-labelledby="providers-head">${inner(providers)}</section>`;
 }
 
 /** Replace the head's description and the card's provider marker; leave everything else exactly as the file wrote it. */
@@ -79,4 +92,4 @@ async function signInPage({ db, baseUrl, file = LOGIN, providers: wanted = true 
     return { html: render(source(file), providers), providers };
 }
 
-module.exports = { signInPage, render, section, listNames, MARK };
+module.exports = { signInPage, render, section, inner, button, listNames, MARK };

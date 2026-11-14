@@ -62,13 +62,13 @@
             <div class="divider"><span>or</span></div>
             <div class="chooser-actions">
                 <button class="action-btn" onclick="showAuthForm('login')">
-                    <i class="fa-solid fa-key"></i> Use another account
+                    <i data-ov-icon="key" aria-hidden="true"></i> Use another account
                 </button>
                 <button class="action-btn" onclick="showAuthForm('register')">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> Create a new account
+                    <i data-ov-icon="wand" aria-hidden="true"></i> Create a new account
                 </button>
                 <button class="action-btn" onclick="showForgotForm()">
-                    <i class="fa-solid fa-unlock"></i> Forgot password
+                    <i data-ov-icon="lock" aria-hidden="true"></i> Forgot password
                 </button>
             </div>
         </div>
@@ -85,7 +85,7 @@
                 <div class="field">
                     <label>Password</label>
                     <input type="password" name="password" placeholder="Your password" required autocomplete="current-password">
-                    <button type="button" class="toggle-password" onclick="togglePw(this)" aria-label="Show password"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
+                    <button type="button" class="toggle-password" onclick="togglePw(this)" aria-label="Show password"><i data-ov-icon="eye" aria-hidden="true"></i></button>
                 </div>
                 <button type="submit" class="submit-btn" id="login-submit">
                     Sign In <i data-ov-icon="arrow-right" aria-hidden="true"></i>
@@ -132,7 +132,7 @@
                 <div class="field">
                     <label>Password</label>
                     <input type="password" name="password" placeholder="Min 6 characters" required minlength="6" autocomplete="new-password">
-                    <button type="button" class="toggle-password" onclick="togglePw(this)" aria-label="Show password"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
+                    <button type="button" class="toggle-password" onclick="togglePw(this)" aria-label="Show password"><i data-ov-icon="eye" aria-hidden="true"></i></button>
                 </div>
                 <div class="field">
                     <label>Confirm Password</label>
@@ -155,7 +155,7 @@
                     <input type="email" name="email" placeholder="you@email.com" required autocomplete="email">
                 </div>
                 <button type="submit" class="submit-btn" id="forgot-submit">
-                    Send Reset Link <i class="fa-solid fa-envelope"></i>
+                    Send Reset Link <i data-ov-icon="mail" aria-hidden="true"></i>
                 </button>
             </form>
             <a class="back-link" id="forgot-back" onclick="returnFromRecovery()"><i data-ov-icon="arrow-left" aria-hidden="true"></i> Back</a>
@@ -170,14 +170,14 @@
                 <div class="field">
                     <label>New Password</label>
                     <input type="password" name="new_password" placeholder="Min 6 characters" required minlength="6" autocomplete="new-password">
-                    <button type="button" class="toggle-password" onclick="togglePw(this)" aria-label="Show password"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
+                    <button type="button" class="toggle-password" onclick="togglePw(this)" aria-label="Show password"><i data-ov-icon="eye" aria-hidden="true"></i></button>
                 </div>
                 <div class="field">
                     <label>Confirm New Password</label>
                     <input type="password" name="confirm_password" placeholder="Repeat password" required autocomplete="new-password">
                 </div>
                 <button type="submit" class="submit-btn" id="reset-submit">
-                    Reset Password <i class="fa-solid fa-lock"></i>
+                    Reset Password <i data-ov-icon="lock" aria-hidden="true"></i>
                 </button>
             </form>
             <a class="back-link" id="reset-back" onclick="showAuthForm('login')"><i data-ov-icon="arrow-left" aria-hidden="true"></i> Back to sign in</a>
@@ -185,16 +185,16 @@
 
         <div class="divider"><span>or</span></div>
         <button class="anon-btn" id="anon-btn" onclick="continueAnonymous()">
-            <i class="fa-solid fa-user-secret"></i> Continue Anonymously
+            <i data-ov-icon="user" aria-hidden="true"></i> Continue as a guest
         </button>
 
         <div class="services">
-            <p>Works across the entire network</p>
+            <p>One account for every OpenVibe site</p>
             <div class="icons">
-                <span title="OpenVibe.Live"><i class="fa-solid fa-tower-broadcast"></i></span>
-                <span title="OpenVibe.Tools"><i class="fa-solid fa-screwdriver-wrench"></i></span>
-                <span title="OpenVibe.Games"><i class="fa-solid fa-gamepad"></i></span>
-                <span title="OpenVibe.Media"><i class="fa-solid fa-photo-film"></i></span>
+                <span title="OpenVibe.Live"><i data-ov-icon="live" aria-hidden="true"></i><span class="sr-only">OpenVibe.Live</span></span>
+                <span title="OpenVibe.Tools"><i data-ov-icon="wrench" aria-hidden="true"></i><span class="sr-only">OpenVibe.Tools</span></span>
+                <span title="OpenVibe.Games"><i data-ov-icon="game" aria-hidden="true"></i><span class="sr-only">OpenVibe.Games</span></span>
+                <span title="OpenVibe.Media"><i data-ov-icon="film" aria-hidden="true"></i><span class="sr-only">OpenVibe.Media</span></span>
             </div>
         </div>
     </div>

@@ -235,7 +235,7 @@ const PROVIDERS = [
         authMethod: 'client_secret_post',
         emailVerifiedFrom: 'profile_claim',
         fields: ['client_id', 'client_secret'],
-        icon: { brand: null, icon: 'gamepad' },   // no Simple Icons mark; the gamepad glyph stands in
+        icon: { brand: null, icon: 'game' },      // no Simple Icons mark; the game glyph stands in
         map: (p) => ({
             provider_user_id: String(p.sub),
             username: p.preferred_username || p.nickname || null,
