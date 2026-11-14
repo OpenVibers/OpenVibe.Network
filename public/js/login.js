@@ -223,7 +223,8 @@ let hasAccounts = false;
 function setPrimaryExtrasVisible(visible) {
     const display = visible ? '' : 'none';
     document.querySelectorAll('.login-card > .divider').forEach(d => d.style.display = display);
-    const anonBtn = document.querySelector('.anon-btn');
+    // By id: the passkey button wears .anon-btn too and comes first, so a class lookup hid it instead.
+    const anonBtn = document.getElementById('anon-btn');
     if (anonBtn) anonBtn.style.display = display;
 }
 
@@ -233,6 +234,10 @@ function setActivePanel(panelId, { showTabs = true, activeTab = null, showExtras
     document.getElementById('auth-tabs').style.display = showTabs ? '' : 'none';
     document.getElementById(panelId).classList.add('active');
     setPrimaryExtrasVisible(showExtras);
+    // The provider buttons belong to signing in and making an account, not to a reset, an app's permissions or the
+    // saved-accounts chooser (which has its own "Use another account").
+    const providers = document.getElementById('signin-providers');
+    if (providers) providers.hidden = !(panelId === 'panel-login' || panelId === 'panel-register');
     if (activeTab) {
         const buttons = document.querySelectorAll('.tab-bar button');
         const idx = activeTab === 'register' ? 1 : 0;
@@ -359,7 +364,7 @@ function renderChooser() {
                 <div class="detail">${escapeHtml(account.username)}${account.email ? ' · ' + escapeHtml(account.email) : ''}</div>
             </div>
             <span class="arrow" aria-hidden="true"><i data-ov-icon="arrow-right"></i></span>
-            <button class="remove-btn" title="Remove this saved account" onclick="event.stopPropagation(); removeAccount(${account.id})"><i class="fa-solid fa-xmark"></i></button>
+            <button class="remove-btn" title="Remove this saved account" onclick="event.stopPropagation(); removeAccount(${account.id})"><i data-ov-icon="close" aria-hidden="true"></i></button>
         `;
         const img = item.querySelector('.avatar img');
         if (img) img.addEventListener('error', () => { img.parentElement.innerHTML = `<span class="avatar-initial">${initial}</span>`; }, { once: true });
@@ -661,7 +666,7 @@ async function continueAsAccount(account, validToken) {
 function togglePw(btn) {
     const input = btn.previousElementSibling;
     input.type = input.type === 'password' ? 'text' : 'password';
-    btn.innerHTML = input.type === 'password' ? '<i class="fa-solid fa-eye" aria-hidden="true"></i>' : '<i class="fa-solid fa-eye-slash" aria-hidden="true"></i>';
+    btn.innerHTML = input.type === 'password' ? '<i data-ov-icon="eye" aria-hidden="true"></i>' : '<i data-ov-icon="eye-off" aria-hidden="true"></i>';
     btn.setAttribute('aria-label', input.type === 'password' ? 'Show password' : 'Hide password');
 }
 
@@ -943,7 +948,7 @@ async function handleForgotPassword(e) {
     } catch (err) {
         showMsg('forgot-msg', err.message, 'error');
     } finally {
-        btn.innerHTML = 'Send Reset Link <i class="fa-solid fa-envelope"></i>';
+        btn.innerHTML = 'Send Reset Link <i data-ov-icon="mail" aria-hidden="true"></i>';
         btn.classList.remove('loading');
     }
 }
@@ -987,7 +992,7 @@ async function handleResetPassword(e) {
     } catch (err) {
         showMsg('reset-msg', err.message, 'error');
     } finally {
-        btn.innerHTML = 'Reset Password <i class="fa-solid fa-lock"></i>';
+        btn.innerHTML = 'Reset Password <i data-ov-icon="lock" aria-hidden="true"></i>';
         btn.classList.remove('loading');
     }
 }
@@ -1017,7 +1022,7 @@ let signInProviders = null;
 const PROVIDER_GLYPH = {
     google: { brand: 'google' }, discord: { brand: 'discord' }, twitch: { brand: 'twitch' }, github: { brand: 'github' },
     apple: { brand: 'apple' }, steam: { brand: 'steam' }, kick: { brand: 'kick' }, x: { brand: 'x' },
-    facebook: { brand: 'facebook' }, microsoft: { icon: 'window' }, roblox: { icon: 'gamepad' },
+    facebook: { brand: 'facebook' }, microsoft: { icon: 'window' }, roblox: { icon: 'game' },
 };
 function providerGlyph(id) {
     const g = PROVIDER_GLYPH[id] || { icon: 'globe' };
@@ -1040,9 +1045,14 @@ function renderProviderButtons(list) {
     const names = list.map(p => p.name);
     const sentence = names.length === 1 ? names[0] : names.length === 2 ? `${names[0]} and ${names[1]}`
         : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+    // The same markup as the server's (server/auth/providers/page.js): one provider says "Sign in with Steam"; two
+    // or more sit two to a row and show their names, the full words kept for screen readers.
+    const many = list.length > 1;
+    const button = (p) => `<a class="provider-btn" href="${escapeHtml(providerStartUrl(p.id))}" data-provider="${escapeHtml(p.id)}" rel="nofollow"${many ? ` aria-label="Sign in with ${escapeHtml(p.name)}"` : ''}>${providerGlyph(p.id)}<span>${many ? '' : 'Sign in with '}${escapeHtml(p.name)}</span></a>`;
     el.innerHTML = `<h2 class="providers-head" id="providers-head">Sign in to OpenVibe with ${escapeHtml(sentence)}</h2>
-        <div class="provider-list">${list.map(p => `<a class="provider-btn" href="${escapeHtml(providerStartUrl(p.id))}" data-provider="${escapeHtml(p.id)}" rel="nofollow">${providerGlyph(p.id)}<span>Sign in with ${escapeHtml(p.name)}</span></a>`).join('')}</div>
-        <p class="providers-note">A first sign-in makes a new OpenVibe account; a provider already linked signs you straight in.</p>`;
+        <div class="provider-list">${list.map(button).join('')}</div>
+        <p class="providers-note">A first sign-in makes a new OpenVibe account; a provider already linked signs you straight in.</p>
+        <div class="divider providers-or"><span>or use a username</span></div>`;
 }
 const PROVIDER_ERRORS = {
     state_mismatch: 'That sign-in link was not the one this browser started. Please try again.',
@@ -1092,7 +1102,7 @@ function loadSignInProviders() {
     const resetToken = params.get('token');
 
     // A return into a page that only makes sense signed in (the machines hub): anonymous mode would
-    // only land on a sign-in wall, so Continue Anonymously — and the divider above it — stays hidden.
+    // only land on a sign-in wall, so Continue as a guest — and the divider above it — stays hidden.
     if (isSignedInOnlyReturn(params.get('return'))) {
         const anon = document.getElementById('anon-btn');
         if (anon) {
@@ -1274,7 +1284,7 @@ if (window.PublicKeyCredential) {
     PublicKeyCredential.isConditionalMediationAvailable?.().then(available => { if (available) signInWithPasskey(true); }).catch(() => {});
 }
 
-// Pages that only make sense signed in (the machines hub): Continue Anonymously would only land on a
+// Pages that only make sense signed in (the machines hub): Continue as a guest would only land on a
 // sign-in wall, so the button (and its divider) stays hidden when the return targets one of them.
 function isSignedInOnlyReturn(raw) {
     const s = String(raw || '');
