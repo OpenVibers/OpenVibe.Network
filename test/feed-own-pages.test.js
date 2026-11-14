@@ -13,6 +13,8 @@ const assert = require('assert');
 const { getDb } = require('../server/db/database');
 const { createFeedSources } = require('../server/feed/sources');
 const { foldCards, RUN_PAGE } = require('../server/feed/card');
+const { createFeedApi } = require('../server/feed/api');
+const express = require('express');
 
 const NOW = Date.parse('2026-11-14T15:00:00.000Z');
 const KNOWN = {
@@ -20,9 +22,11 @@ const KNOWN = {
     'openvibe.today': [/^\/$/, /^\/e\/[A-Za-z0-9_%-]{1,120}$/],
     'openvibe.deals': [/^\/new$/, /^\/d\/[a-z0-9-]{1,160}$/],
     'openvibe.news': [/^\/$/],
-    'openvibe.live': [/^\/@[A-Za-z0-9_.%-]{1,80}$/, /^\/rundown\/e\/\d{1,12}$/, /^\/api\/thumbnails\/[A-Za-z0-9._-]{1,120}$/],
+    'openvibe.live': [/^\/$/, /^\/@[A-Za-z0-9_.%-]{1,80}$/, /^\/rundown\/e\/\d{1,12}$/, /^\/api\/thumbnails\/[A-Za-z0-9._-]{1,120}$/],
     'openvibe.report': [/^\/$/, /^\/stats$/],
     'openvibe.network': [/^\/stats$/],
+    'openvibe.video': [/^\/$/], 'openvibe.pics': [/^\/$/], 'openvibe.meme': [/^\/$/], 'openvibe.blog': [/^\/$/],
+    'openvibe.community': [/^\/pulse$/], 'openvibe.wiki': [/^\/recent$/],
 };
 function known(url, why) {
     const u = new URL(url);
@@ -123,6 +127,25 @@ function fakeFetch(routes) {
         'the deals with a picture come first, the rest in their order');
     for (const page of Object.values(RUN_PAGE)) known(page, 'a run\'s page');
     for (const r of await rows()) if (/^https:\/\/openvibe\.(work|today|live)\//.test(r.url)) known(r.url, `${r.source_service}/${r.source_type}`);
+
+    // ── Each site's live line (GET /api/v1/feed/sites): counted from the feed's own public rows, kept five minutes ──
+    const feed = createFeedApi({ db, config: {}, publicKey: '', startCollectors: false, now: () => NOW });
+    const app = express(); app.use('/api/v1/feed', feed.router);
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise((ok) => server.once('listening', ok));
+    try {
+        const r = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/feed/sites`);
+        assert.strictEqual(r.headers.get('access-control-allow-origin'), '*', 'anyone may read it');
+        const { sites } = await r.json();
+        assert.deepStrictEqual(sites.live, { line: '1 live now', url: 'https://openvibe.live/' }, 'who is live now');
+        assert.deepStrictEqual(sites.deals, { line: '6 new deals today', url: 'https://openvibe.deals/new' }, 'what is new on Deals, and its page');
+        assert.deepStrictEqual(sites.work, { line: '1 new job today', url: 'https://openvibe.work/jobs' }, 'one is one');
+        assert.ok(!sites.news, 'a site with nothing new says nothing');
+        for (const x of Object.values(sites)) known(x.url, 'a site line\'s page');
+        // Every page a line may name is a known page (the sites with nothing new today included).
+        for (const page of ['https://openvibe.live/', 'https://openvibe.video/', 'https://openvibe.deals/new', 'https://openvibe.work/jobs', 'https://openvibe.news/', 'https://openvibe.pics/',
+            'https://openvibe.meme/', 'https://openvibe.community/pulse', 'https://openvibe.wiki/recent', 'https://openvibe.blog/']) known(page, 'a site line\'s page');
+    } finally { server.close(); }
 
     console.log('feed own pages: jobs and events on their own pages, live pictures, deal pictures filled, runs open their lists, every built link is a known page');
 })().catch((err) => { console.error(err); process.exit(1); });
