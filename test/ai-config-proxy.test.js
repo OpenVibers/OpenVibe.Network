@@ -126,7 +126,7 @@ function summary(service, namespace, extra = {}) {
         // ── GET /services: the seventeen services and their operator-set internal URLs ──
         r = await ownerCall('GET', '/api/admin/ai/config/services');
         assert.strictEqual(r.status, 200, r.text);
-        assert.deepStrictEqual(r.body.services.map((s) => s.service), ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor', 'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run']);
+        assert.deepStrictEqual(r.body.services.map((s) => s.service), ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor', 'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run', 'mail']);
         assert.strictEqual(r.body.services.find((s) => s.service === 'deals').name, 'OpenVibe.Deals');
         assert.strictEqual(r.body.services.find((s) => s.service === 'deals').capability, 'deals.config.manage');
         assert.strictEqual(r.body.services.find((s) => s.service === 'ai').internal_url, ai.url);
@@ -256,6 +256,7 @@ function summary(service, namespace, extra = {}) {
         // The eight Setup services: Network holds each grant as soon as the pinned Contracts (0.308.0) knows it.
         const { capabilities, version: contractsVersion } = require('openvibe-contracts');
         const setupServices = ['chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run'];
+        // OpenVibe.Mail holds its owner settings too (the email group): the same proxy reaches it.
         for (const svc of setupServices) {
             const known = !!capabilities.get(`${svc}.config.manage`);
             assert.strictEqual(has('network', `${svc}.config.manage`, `openvibe.${svc}`), known, `Network holds ${svc}.config.manage exactly when Contracts knows it`);
