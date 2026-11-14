@@ -50,7 +50,11 @@ assert.deepStrictEqual(p.groups.map(g => g.name), ['Watch & stream', 'Talk & bel
 assert.deepStrictEqual(p.groups.map(g => g.id), ['watch', 'talk', 'play', 'read', 'shop', 'tools', 'make', 'build']);
 assert.deepStrictEqual(GROUPS.find(g => g.id === 'talk').sites, ['community', 'chat', 'tips', 'vip', 'mail', 'help', 'network'], 'Email sits with Chat in the talk group');
 assert.ok(p.nav.every(n => p.groups.some(g => g.id === n.group)), 'every entry has a group');
-assert.deepStrictEqual(p.nav.filter(n => n.of).map(n => [n.id, n.of, n.url]), [['pics', 'media-hub', 'https://openvibe.pics/'], ['download', 'media-hub', 'https://openvibe.download/']]);
+assert.deepStrictEqual(p.nav.filter(n => n.of === 'media-hub').map(n => [n.id, n.of, n.url]), [['pics', 'media-hub', 'https://openvibe.pics/'], ['download', 'media-hub', 'https://openvibe.download/']]);
+assert.ok(p.nav.filter(n => n.of === 'network').every((n) => n.id === 'link' && n.url === 'https://openvibe.link/'), 'Network\'s one product is Link');
+// Link is Network's product (11-14): listed for every other site's menu, and openvibe.link belongs to Network.
+assert.ok(LISTED.some((x) => x.id === 'link' && x.of === 'network' && x.status === 'open'));
+assert.equal(siteForHost('openvibe.link').id, 'network');
 const at = (id) => p.nav.findIndex(n => n.id === id);
 assert.ok(at('pics') === at('media-hub') + 1 && at('download') === at('media-hub') + 2, 'Pics and Download follow their site');
 assert.deepStrictEqual([p.nav[at('media-hub')].icon, p.nav[at('media-hub')].group, p.nav[at('tools')].group], ['video', 'watch', 'tools'], 'Video draws the video icon (there is no media-hub icon)');
@@ -61,7 +65,7 @@ assert.deepStrictEqual(['expert', 'markets', 'finance'].map((id) => p.nav[at(id)
 // Every tile is in exactly one group, each group has at most nine tiles, and the merged sections still answer.
 [['games', 'play'], ['connect', 'make'], ['image', 'tools'], ['quest', 'play'], ['inventory', 'play'], ['watch', 'build'], ['download', 'watch'], ['search', 'read'], ['chat', 'talk'], ['mail', 'talk'], ['domains', 'tools'], ['report', 'read'], ['design', 'tools'], ['today', 'read'], ['surf', 'play'], ['meme', 'play'], ['vision', 'read'], ['exchange', 'build'], ['fun', 'play'], ['cam', 'watch'], ['casino', 'play'], ['tours', 'watch'], ['shoes', 'shop']]
     .filter(([id]) => at(id) >= 0).forEach(([id, group]) => assert.strictEqual(p.nav[at(id)].group, group, `${id} is in ${group}`));
-assert.strictEqual(p.nav.length, 60, '58 open sites plus Pics and Download; the three doors of 2026-11-13 joined them');
+assert.strictEqual(p.nav.length, 60 + p.nav.filter((n) => n.id === 'link').length, '58 open sites plus Pics and Download (and Link, Network\'s, 11-14); the three doors of 2026-11-13 joined them');
 assert.deepStrictEqual([p.nav[at('stream')].name, p.nav[at('pics')].name], ['Restream', 'Pics'], 'OpenRestream is "Restream" among the menu\'s short names (owner, 2026-10-28)');
 assert.strictEqual(p.nav.find(n => n.id === 'space').url, 'https://openvibe.space/', 'Space keeps its own home (the forum returned to Community, 0.118.0)');
 assert.strictEqual(p.nav.find(n => n.id === 'community').url, 'https://openvibe.community/', 'Community: the forum, pastes and Pulse');

@@ -100,8 +100,10 @@ const GROUPS = [
     { id: 'tools', name: 'Free tools', sites: ['tools', 'design', 'domains', 'host', 'image', 'lock', 'food'] },
     // Actor is the engine behind every agent (Codes' Auto, Vibe, the Dock call it): a developer service, not a second
     // place to chat with an agent (plan L39, 2026-10-31). It makes things with AI, beside the places that do.
-    // Expert (the door of 2026-11-13) sits with Actor and Codes: the place where the agents you make are made.
-    { id: 'make', name: 'Make with AI', sites: ['space', 'codes', 'bot', 'actor', 'expert', 'computer', 'connect', 'directory'] },
+    // Expert (the door of 2026-11-13) sits with Actor and Codes: the place where the agents you make are made. Link
+    // (openvibe.link, Network's product: your machines) beside Computer and Connect (11-14, the owner: it was missing from
+    // the menu, "make sure all domains are added").
+    { id: 'make', name: 'Make with AI', sites: ['space', 'codes', 'bot', 'actor', 'expert', 'computer', 'link', 'connect', 'directory'] },
     { id: 'build', name: 'For developers', sites: ['services', 'exchange', 'run', 'zone', 'events', 'watch', 'git'] },
 ];
 // What each site is, in a few words, for the menus (the launcher's rows are two to a line on a phone: about 22
@@ -116,7 +118,7 @@ const MENU_LINE = {
     deals: 'Deals people share', coupons: 'Codes that work', shoes: 'Every shoe, every price', reviews: 'Honest reviews', trade: 'Watch the markets', rent: 'Places to rent', work: 'Find a job',
     markets: 'Every market in one search', finance: 'Your money in one place', expert: 'Agents you make, with a soul',
     tools: 'Every online tool', design: 'Try themes live', domains: 'Names and prices', host: 'Compare hosting', image: 'Edit photos in your browser', lock: 'Files only you can open', food: 'Food near you',
-    space: 'Host a site or app', codes: 'Code with any agent', bot: 'Drive a robot', actor: 'The agent engine', computer: 'Your computer, your way', connect: 'Share a port with Link', directory: 'Listings with sources',
+    space: 'Host a site or app', codes: 'Code with any agent', bot: 'Drive a robot', actor: 'The agent engine', computer: 'Your computer, your way', link: 'Your machines, connected', connect: 'Share a port with Link', directory: 'Listings with sources',
     services: 'APIs, SDK and keys', exchange: 'AI models, one account', run: 'Run jobs anywhere', zone: 'S3 storage', events: 'Event streams', watch: 'Know when it changes', git: 'Host and browse code',
 };
 
@@ -138,6 +140,7 @@ const MERGED_SITES = new Map([['media', 'media-hub']]);
 const PRODUCTS = [
     { id: 'pics', name: 'Pics', host: 'openvibe.pics', icon: 'pics', of: 'media-hub', tagline: 'Share pictures, fast and open' },
     { id: 'download', name: 'Download', host: 'openvibe.download', icon: 'download', of: 'media-hub', tagline: 'Your files, shared on your terms' },
+    { id: 'link', name: 'Link', host: 'openvibe.link', icon: 'link', of: 'network', tagline: 'Your machines, connected' },
 ].filter((p) => {
     const s = SITES.find(x => x.id === p.of); const m = s && contracts.services.get(s.service);
     return m && (m.domains || []).includes(p.host);

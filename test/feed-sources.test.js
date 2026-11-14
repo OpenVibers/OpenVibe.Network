@@ -119,13 +119,28 @@ function fakeFetch(routes) {
     assert.strictEqual((await rows()).find((r) => r.kind === 'wiki').source_service, 'wiki');
 
     // Report: the online peak from presence, then the day's report card with its trend.
-    src = make({ '/api/v1/stats': { totals: { pageviews: 363633, change_pct: 44, sites_open: 56, accounts: 506 } } },
-        { snapshot: () => ({ members: new Map([[A, { at: NOW, site: 'live' }]]), guests: 3 }) });
+    const DAY = new Date(NOW).toISOString().slice(0, 10);
+    src = make({ '/api/v1/stats': { totals: { pageviews: 363633, change_pct: 44, sites_open: 56, accounts: 506 }, pageviews_daily: [{ day: DAY, n: 2031 }], accounts: { daily: [{ day: DAY, n: 9 }] }, live: { live_now: 2 } } },
+        { snapshot: () => ({ members: new Map([[A, { at: NOW, site: 'live' }]]), guests: 3 }), today: () => ({ day: DAY, members: 40, guests: 1200 }) });
     assert.strictEqual(await src.samplePeak(), 1);
     assert.ok(await src.reportCard() >= 1);
     const report = (await rows()).find((r) => r.kind === 'report');
     assert.match(report.title, /people online|page views/);
     assert.ok(report.trend || report.counts.people >= 1);
+    // The peak says no time in its words (each reader's clock does, from stat.at) and carries today's numbers (11-14).
+    const peakRow = (await rows()).find((r) => r.source_type === 'peak');
+    assert.strictEqual(peakRow.title, 'Peak today: 4 people online at once');
+    assert.doesNotMatch(peakRow.title, /UTC/);
+    const stat = typeof peakRow.stat === 'string' ? JSON.parse(peakRow.stat) : peakRow.stat;
+    assert.ok(Number.isFinite(Date.parse(stat.at)), 'the moment, for the reader\'s clock');
+    assert.deepStrictEqual(stat.facts, [{ label: 'people today', n: 1240 }, { label: 'signed in today', n: 40 }, { label: 'page views today', n: 2031 }, { label: 'new accounts today', n: 9 }, { label: 'live now', n: 2 }]);
+    const peakCard = require('../server/feed/card').cardOf(peakRow);
+    // Where people are now (11-14): the online count and the sites they are on.
+    const whereRow = (await rows()).find((r) => r.source_type === 'where');
+    assert.ok(whereRow && /^Right now: \d+ (people|person) on /.test(whereRow.title), 'the where card');
+    const whereStat = typeof whereRow.stat === 'string' ? JSON.parse(whereRow.stat) : whereRow.stat;
+    assert.deepStrictEqual(whereStat.facts[0], { label: 'on Live', n: 1 }, 'a site and how many are on it');
+    assert.deepStrictEqual(peakCard.stat.facts[0], { label: 'people today', n: 1240 });
 
     console.log('feed sources: community, today, quest, play, meme, pics, live, rundown, watch, space, work, deals, news and report map to feed.item@1');
 })().catch((err) => { console.error(err); process.exit(1); });

@@ -16,7 +16,7 @@
  * account's item (users.is_test), whatever the source said.
  */
 const LIVE_WINDOW_MS = 6 * 60 * 60 * 1000;
-const COLUMNS = 'id, source_service, source_type, source_id, kind, title, text, url, site, site_name, actor_subject, actor_name, origin, visibility, picture_url, preview_url, media_ratio, media_length, counts, live_now, label, starts_at, occurred_at, trend, price_amount, price_currency, was_price, store_name';
+const COLUMNS = 'id, source_service, source_type, source_id, kind, title, text, url, site, site_name, actor_subject, actor_name, origin, visibility, picture_url, preview_url, media_ratio, media_length, counts, live_now, label, starts_at, occurred_at, trend, price_amount, price_currency, was_price, store_name, stat';
 
 const iso = (v) => {
     if (v == null || v === '') return null;

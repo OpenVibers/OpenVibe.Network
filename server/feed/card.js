@@ -187,6 +187,17 @@ function cardOf(row, actor = null) {
             if (Number.isSafeInteger(Number(row.trend.previous)) && Number(row.trend.previous) >= 0) card.trend.previous = Number(row.trend.previous);
         }
     }
+    // A report's moment and its side numbers (feed.item@1 1.2.0 `stat`): the reader's own clock says the time.
+    if (card.kind === 'report' && row.stat && typeof row.stat === 'object') {
+        const stat = {};
+        const at = Date.parse(String(row.stat.at || ''));
+        if (Number.isFinite(at)) stat.at = new Date(at).toISOString();
+        const facts = (Array.isArray(row.stat.facts) ? row.stat.facts : [])
+            .filter((x) => x && Number.isSafeInteger(Number(x.n)) && Number(x.n) >= 0 && clean(x.label, 40))
+            .slice(0, 6).map((x) => ({ label: clean(x.label, 40), n: Number(x.n) }));
+        if (facts.length) stat.facts = facts;
+        if (Object.keys(stat).length) card.stat = stat;
+    }
     // What the offer costs, kept beside the card: the price belongs to the group item that lists it.
     const facts = dealFacts(row);
     if (facts) DEAL_FACTS.set(card, facts);
@@ -197,6 +208,13 @@ const BURST_MS = 15 * 60_000;
 const BURST_WORD = { pic: ['photo', 'photos'], clip: ['clip', 'clips'], video: ['video', 'videos'], game: ['achievement', 'achievements'], quest: ['quest', 'quests'], avatar: ['picture change', 'picture changes'], banner: ['banner change', 'banner changes'], paste: ['paste', 'pastes'], space: ['space', 'spaces'] };
 // A poll can deliver forty of the same kind at once with no person behind them (deals, news): one card.
 const BULK_WORD = { deal: ['deal', 'deals'], news: ['story', 'stories'], event: ['event', 'events'] };
+// What a person did, said the way the single card says it (2026-11-14, the owner: "'added' instead of like completed
+// … is weird" under "krissy_sweet added 2 quests" / "finished a quest").
+const BURST_SAY = {
+    pic: (n) => `posted ${n} photos`, clip: (n) => `made ${n} clips`, video: (n) => `posted ${n} videos`,
+    game: (n) => `earned ${n} achievements`, quest: (n) => `finished ${n} quests`, paste: (n) => `posted ${n} pastes`,
+    space: (n) => `made ${n} spaces`, avatar: (n) => `changed their picture ${n} times`, banner: (n) => `changed their banner ${n} times`,
+};
 
 /** The id of one site's run of one bulk kind in one UTC hour ('2026-11-12T17'): the same on every page that reads it. */
 const bulkId = (kind, site, hour) => `g:${kind}:${site}:${hour}`;
@@ -257,6 +275,7 @@ function foldCards(cards, now = Date.now()) {
                 id: bulkId(g.card.kind, g.site, g.hour),
                 bulk,
                 title: `${g.cards.length} new ${many}`,
+                media: null,   // each row shows its own picture
                 group: { count: g.cards.length, items: g.cards.slice(0, 20).map(groupItem) },
                 counts: { ...g.card.counts, people: g.cards.length },
             };
@@ -266,7 +285,7 @@ function foldCards(cards, now = Date.now()) {
         const name = (g.card.actor && g.card.actor.name) || 'Someone';
         return {
             ...g.card,
-            title: `${name} added ${g.cards.length} ${many}`,
+            title: `${name} ${BURST_SAY[g.card.kind] ? BURST_SAY[g.card.kind](g.cards.length) : `added ${g.cards.length} ${many}`}`,
             text: '',
             group: { count: g.cards.length, items: g.cards.slice(0, 20).map(groupItem) },
             counts: { ...g.card.counts, people: g.cards.length },

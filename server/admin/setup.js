@@ -160,8 +160,12 @@ function keyRow(service, ns, key, prop, tests) {
     if (test && set && test.tried && test.tried !== triedDigest(service, ns.namespace, key, value, marker)) test = null;
     if (!set) test = null;
     const requiredFor = text(prop['x-required-for'], 200) || null;
+    // A switch with a default is On or Off already: it never "needs" the owner (Chat's channel switches default to On and
+    // were listed as waiting, 11-14).
+    const byDefault = !set && type === 'boolean' && typeof prop.default === 'boolean';
     let state;
-    if (!set) state = requiredFor ? 'needed' : 'optional';
+    if (byDefault) state = 'connected';
+    else if (!set) state = requiredFor ? 'needed' : 'optional';
     else if (test && !test.passed) state = 'not_working';
     else state = 'connected';
     return {
@@ -172,9 +176,25 @@ function keyRow(service, ns, key, prop, tests) {
         example: secret ? null : (['string', 'number', 'boolean'].includes(typeof prop['x-example']) ? prop['x-example'] : null),
         danger: prop['x-danger'] === true, pinned, pin_env: pinEnv,
         set, hint: marker && marker.hint ? marker.hint : null, set_at: day(marker && marker.set_at),
-        value: !secret && set && ['string', 'number', 'boolean'].includes(typeof value) ? value : null,
+        value: byDefault ? prop.default : !secret && set && ['string', 'number', 'boolean'].includes(typeof value) ? value : null,
+        by_default: byDefault,
         state, last_test: test ? { passed: test.passed, message: test.message, at: test.at } : null,
     };
+}
+
+/**
+ * Why a service's settings could not be read, in words an owner can act on (11-14, the owner: "what do you mean
+ * connect? This doesn't explain").
+ */
+function whyDown(a) {
+    const name = label(a.service);
+    const status = Number(a.status) || 0;
+    if (status === 401) return `${name} did not accept Network's sign-in for it (401). Its token audience or signing key differs from what Network sends; it needs a fix on the server, not a key from you.`;
+    if (status === 403) return `${name} answered, but Network's token lacks the right to manage its settings (403, ${a.code || 'capability denied'}).`;
+    if (status === 404) return `${name} is running but has no owner settings yet (404): there is nothing to set up there.`;
+    if (status === 503 && a.code === 'config.service_unavailable') return `Network has no address for ${name}.`;
+    if (status === 502) return `${name} is not running or did not answer in time.`;
+    return `${name} answered ${status || 'nothing'}${a.detail ? `: ${String(a.detail).slice(0, 160)}` : ''}.`;
 }
 
 /** One of Network's own to-dos. */
@@ -254,6 +274,7 @@ function createSetupRoutes(opts = {}) {
                 }
                 reach.push({
                     service: a.service, name: label(a.service), answered: !!a.answered,
+                    ...(a.answered ? {} : { status: Number(a.status) || null, code: a.code || null, why: whyDown(a) }),
                     namespaces: a.answered ? a.namespaces.length : 0, rows: count,
                     // In plain words, as the AI tab says it: a service that has no settings to show yet.
                     note: !a.answered || !a.namespaces.length ? `${label(a.service)} has not published settings yet.` : (count ? null : `${label(a.service)} asks nothing of you yet.`),
