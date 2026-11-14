@@ -27,6 +27,7 @@
 const store = require('./store');
 
 const MINUTE = 60_000;
+const PICTURE_PAGES = 40;   // 1,000 offers a run at most (Deals answers 25 to a page)
 const DAY = 24 * 60 * MINUTE;
 const QUEST_RECENT_MS = 14 * DAY;
 const QUEST_CHECK_MS = 24 * 60 * MINUTE;
@@ -60,6 +61,9 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         wiki: String(feed.wikiUrl || 'https://openvibe.wiki').replace(/\/+$/, ''),
         report: String(feed.reportUrl || 'https://openvibe.report').replace(/\/+$/, ''),
     };
+    // The links the feed builds itself go to each site's own public page (the owner, 11-14: "doesn't even bring you to
+    // the right page"): a fetch base that is not https (an internal address) never becomes a link.
+    const pub = (k, dflt) => (/^https:\/\//.test(urls[k]) ? urls[k] : dflt);
     let timer = null;
     let running = null;
 
@@ -129,7 +133,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             const whenLabel = `Starts ${new Date(starts).toISOString().replace('T', ' ').slice(0, 16)} UTC`;
             const r = await upsert({
                 source_service: 'today', source_type: 'event', source_id: e.id, kind: 'event',
-                title: `Coming up: ${clean(e.title, 140)}`, url: https(e.url) || `${urls.today}/e/${encodeURIComponent(e.id)}`,
+                title: `Coming up: ${clean(e.title, 140)}`, url: `${pub('today', 'https://openvibe.today')}/e/${encodeURIComponent(e.id)}`,
                 site: 'today', site_name: 'Today', actor_subject: owner, origin: owner ? 'user' : 'system',
                 text: [whenLabel, clean(e.description, 220)].filter(Boolean).join(' · '), starts_at: e.starts_at,
                 occurred_at: sqlFrom(e.created_at) || new Date(at).toISOString(),
@@ -302,7 +306,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
                 const prior = await db.prepare("SELECT actor_subject FROM feed_items WHERE source_service = 'live' AND source_type = 'stream' AND source_id = ?").get(id);
                 const who = (prior && prior.actor_subject) || await personOf(s.user && s.user.username);
                 const r = await upsert({ source_service: 'live', source_type: 'episode', source_id: id, kind: 'rundown',
-                    title: `Rundown: ${title}`, url: `${urls.live}/rundown/e/${id}`, site: 'live', site_name: 'Live',
+                    title: `Rundown: ${title}`, url: `${pub('live', 'https://openvibe.live')}/rundown/e/${id}`, site: 'live', site_name: 'Live',
                     actor_subject: who, origin: who ? 'user' : 'system', label: who ? null : 'System',
                     occurred_at: sqlFrom(s.episode.aired_at || s.started_at) || new Date(now()).toISOString(),
                     text: clean(s.episode.logline, 280), picture_url: https(s.thumbnail_url) });
@@ -332,11 +336,13 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             const name = clean(s.display_name || channel, 80);
             const who = await personOf(channel);
             const r = await store.upsertLiveItem(db, { source_service: 'live', source_type: 'stream', source_id: String(id), kind: 'live',
-                title: `${name} went live: ${clean(s.title, 160) || 'a stream'}`, url: `${urls.live}/@${encodeURIComponent(channel)}`,
+                title: `${name} went live: ${clean(s.title, 160) || 'a stream'}`, url: `${pub('live', 'https://openvibe.live')}/@${encodeURIComponent(channel)}`,
                 site: 'live', site_name: 'Live', actor_name: name, actor_subject: who, origin: 'user',
                 occurred_at: started, live_now: true });
             if (r.created) created++;
-            await db.prepare("UPDATE feed_items SET live_now = true, updated_at = now() WHERE source_service = 'live' AND source_type = 'stream' AND source_id = ?").run(String(r.item.source_id));
+            const shot = typeof s.thumbnail_url === 'string' && /^\/api\/thumbnails\/[A-Za-z0-9._-]{1,120}$/.test(s.thumbnail_url)
+                ? `${pub('live', 'https://openvibe.live')}${s.thumbnail_url}` : https(s.thumbnail_url);
+            await db.prepare("UPDATE feed_items SET live_now = true, picture_url = COALESCE(?, picture_url), updated_at = now() WHERE source_service = 'live' AND source_type = 'stream' AND source_id = ?").run(shot || null, String(r.item.source_id));
         }
         // Anything no longer on Live's list is a past broadcast, not "live now".
         const onAirRows = await db.prepare("SELECT source_id FROM feed_items WHERE source_service = 'live' AND source_type = 'stream' AND live_now = true").all();
@@ -364,7 +370,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
                 if (type === 'recording' && channel) {
                     const candidates = await db.prepare(`SELECT actor_subject, source_id FROM feed_items WHERE source_service = 'live' AND source_type = 'stream'
                         AND lower(url) = lower(?) AND occurred_at BETWEEN ? AND ? ORDER BY occurred_at DESC LIMIT 20`)
-                        .all(`${urls.live}/@${encodeURIComponent(channel)}`, new Date(Date.parse(at) - 60 * MINUTE).toISOString(), new Date(Date.parse(at) + 60 * MINUTE).toISOString());
+                        .all(`${pub('live', 'https://openvibe.live')}/@${encodeURIComponent(channel)}`, new Date(Date.parse(at) - 60 * MINUTE).toISOString(), new Date(Date.parse(at) + 60 * MINUTE).toISOString());
                     prior = candidates.find((row) => !liveIds.has(String(row.source_id))) || null;
                 }
                 const r = await upsert({ source_service: 'live', source_type: type, source_id: id, kind: type === 'recording' ? 'video' : 'clip',
@@ -447,7 +453,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             if (!/^job_[A-Za-z0-9]{8,80}$/.test(id) || !url || !title) continue;
             const where = [clean(j.company, 80), clean(j.location, 60), j.remote ? 'Remote' : ''].filter(Boolean).join(' · ');
             const r = await upsert({ source_service: 'work', source_type: 'job', source_id: id, kind: 'work',
-                title, text: clean([where, clean(j.excerpt, 200)].filter(Boolean).join(' — '), 280), url,
+                title, text: clean([where, clean(j.excerpt, 200)].filter(Boolean).join(' — '), 280), url: `${pub('work', 'https://openvibe.work')}/jobs/${encodeURIComponent(id)}`,
                 site: 'work', site_name: 'Work', actor_subject: null, origin: 'system', label: 'Work',
                 occurred_at: sqlFrom(j.first_seen_at || j.posted_at) || new Date(now()).toISOString() });
             if (r.created) created++;
@@ -494,6 +500,37 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             if (r.created) created++;
         }
         return created;
+    }
+
+    /**
+     * The pictures of offers this feed read before Deals stated them (plan §AB.43: 8,010 deals of the last week had none).
+     * Deals lists its offers 25 to a page, newest first; each run reads up to PICTURE_PAGES pages past the first (the
+     * poll above reads that one) and sets a picture where the row has none, until it passes the week. One run reads at
+     * most PICTURE_PAGES pages; the next starts where it stopped, and starts over when nothing is left to fill.
+     */
+    let picturePage = 2;
+    async function dealPictures() {
+        const since = new Date(now() - 7 * DAY).toISOString();
+        const missing = await db.prepare(`SELECT count(*) AS n FROM feed_items WHERE source_service = 'deals' AND source_type = 'offer'
+            AND picture_url IS NULL AND occurred_at >= ?`).get(since);
+        if (!missing || !Number(missing.n)) { picturePage = 2; return 0; }
+        let filled = 0;
+        for (let i = 0; i < PICTURE_PAGES; i++) {
+            const out = await getJson(`${urls.deals}/api/v1/offers?sort=new&page=${picturePage}`);
+            const offers = Array.isArray(out.offers) ? out.offers : [];
+            for (const o of offers) {
+                const id = clean(o && o.id, 100);
+                const pic = https(o && o.feed && o.feed.media && o.feed.media.thumb);
+                if (!id || !pic) continue;
+                const r = await db.prepare(`UPDATE feed_items SET picture_url = ?, updated_at = now() WHERE source_service = 'deals'
+                    AND source_type = 'offer' AND source_id = ? AND picture_url IS NULL`).run(pic, id);
+                filled += Number(r.changes || 0);
+            }
+            const oldest = offers.length ? Date.parse(String(offers[offers.length - 1].created_at || '')) : NaN;
+            if (!offers.length || (Number.isFinite(oldest) && oldest < Date.parse(since))) { picturePage = 2; break; }
+            picturePage++;
+        }
+        return filled;
     }
 
     // ── News ──────────────────────────────────────────────────
@@ -686,6 +723,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         { name: 'public-spaces', every: 10 * MINUTE, run: publicSpaces },
         { name: 'work-jobs', every: 10 * MINUTE, run: workJobs },
         { name: 'deal-offers', every: 10 * MINUTE, run: dealOffers },
+        { name: 'deal-pictures', every: 5 * MINUTE, run: dealPictures },
         { name: 'news-stories', every: 10 * MINUTE, run: newsStories },
         { name: 'blog-posts', every: 10 * MINUTE, run: blogPosts },
         { name: 'wiki-pages', every: 10 * MINUTE, run: wikiPages },
@@ -742,7 +780,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         return { sources: SOURCES.map((s) => s.name), runs: await db.prepare('SELECT * FROM feed_source_runs ORDER BY name').all() };
     }
 
-    return { runOnce, start, stop, status, SOURCES: SOURCES.map((s) => s.name), communityActivity, todayEvents, networkMembers, questBadges, playAchievements, memeEntries, publicPictures, rundownEpisodes, publicContent, watchedTogether, publicSpaces, workJobs, dealOffers, newsStories, blogPosts, wikiPages, samplePeak, reportCard };
+    return { runOnce, start, stop, status, SOURCES: SOURCES.map((s) => s.name), communityActivity, todayEvents, networkMembers, questBadges, playAchievements, memeEntries, publicPictures, rundownEpisodes, publicContent, watchedTogether, publicSpaces, workJobs, dealOffers, dealPictures, newsStories, blogPosts, wikiPages, samplePeak, reportCard };
 }
 
 module.exports = { createFeedSources };

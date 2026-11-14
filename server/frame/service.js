@@ -731,7 +731,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     }
     const qCursor = (v) => (/^[A-Za-z0-9._~=-]{1,300}$/.test(String(v || '')) ? String(v) : '');
     const qLimit = (v, max) => String(Math.min(Math.max(parseInt(v, 10) || 20, 1), max));
-    router.options(['/feed', '/feed/search', '/feed/examples', '/wall', '/status', '/posts', '/attachments'], (req, res) => {
+    router.options(['/feed', '/feed/search', '/feed/examples', '/feed/sites', '/wall', '/status', '/posts', '/attachments'], (req, res) => {
         res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Max-Age': '600' });
         res.status(204).end();
     });
@@ -853,6 +853,8 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         q: qWords(req.query.q),
     })));
     router.get('/feed/examples', (req, res, next) => (feed ? feed.handleExamples(req, res, next) : relay(req, res, '/api/v1/feed/examples', {})));
+    // Each site's live line for the card heads (plan §AB.46), from the same feed.
+    router.get('/feed/sites', (req, res, next) => (feed && feed.handleSites ? feed.handleSites(req, res, next) : res.json({ sites: {} })));
     router.get('/wall', (req, res, next) => (feed ? feed.handleWall(req, res, next) : relay(req, res, '/api/v1/pulse', {
         limit: qLimit(req.query.limit, 50), after: qCursor(req.query.after), cursor: qCursor(req.query.cursor),
         for: req.query.for === 'me' ? 'me' : '', origin: ['user', 'ai', 'system', 'all'].includes(String(req.query.origin || '')) ? String(req.query.origin) : '',
