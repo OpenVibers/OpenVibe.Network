@@ -618,10 +618,17 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             if (elsewhere > 0) guestSites.push({ id: 'other', name: 'Elsewhere', icon: 'ov', n: elsewhere, doing: 'looking around', url: null });
             const views = Object.entries(rank.scores || {}).filter(([k]) => !k.includes(':')).reduce((a, [, n]) => a + (Number(n) || 0), 0);
             const members = Math.max(0, snap.members.size - testSeen);
+            // Today so far (the feed's peak and the day's distinct people, migration 0082): the footer's "today" line.
+            let todayLine = null;
+            try {
+                const row = await db.prepare('SELECT peak, peak_at, members_day, guests_day FROM feed_peaks WHERE day = ?').get(new Date(nowMs).toISOString().slice(0, 10));
+                if (row && Number(row.peak) > 0) todayLine = { peak: Number(row.peak), peak_at: new Date(row.peak_at).toISOString(), people: Number(row.members_day || 0) + Number(row.guests_day || 0), signed_in: Number(row.members_day || 0) };
+            } catch { todayLine = null; }
             onlineBase = {
                 members,
                 guests: snap.guests,
                 guest_sites: guestSites,
+                today: todayLine,
                 total: members + snap.guests,
                 visible,
                 counts: await countsOf(nowMs),
@@ -651,6 +658,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             people: base.visible.slice(0, 60).map(({ name, username, subject, avatar, site: at, live, live_url: liveUrl, viewers }) => ({ name, username, ...(subject ? { subject } : {}), avatar, site: at,
                 ...(live ? { live: true, live_url: liveUrl, ...(Number.isSafeInteger(viewers) ? { viewers } : {}) } : {}) })),
             guest_sites: base.guest_sites || [],
+            today: base.today || null,
             more: Math.max(0, base.visible.length - 60),
             live: base.live,
             counts: base.counts,

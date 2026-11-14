@@ -113,7 +113,7 @@ assert.strictEqual(o.guests, 2, 'two distinct visitors; the bot and the monitor 
 assert.strictEqual(o.total, 6, 'members plus guests');
 assert.ok(!JSON.stringify(o).includes('203.0.113') && !JSON.stringify(o).includes('Chrome') && !/"(ip|hash|guest_id|address)"/.test(JSON.stringify(o)),
     'no address, no hash and no field that could identify a guest');
-assert.deepStrictEqual(Object.keys(o).sort(), ['counts', 'guest_sites', 'guests', 'items', 'live', 'members', 'more', 'people', 'sites', 'total', 'updated', 'views_7d'], 'the read\'s whole shape');
+assert.deepStrictEqual(Object.keys(o).sort(), ['counts', 'guest_sites', 'guests', 'items', 'live', 'members', 'more', 'people', 'sites', 'today', 'total', 'updated', 'views_7d'], 'the read\'s whole shape');
 // Where the guests are (11-14): a count per site with what people do there, never anything about a guest.
 assert.deepStrictEqual(o.guest_sites, [{ id: 'live', name: 'Live', icon: 'live', n: 2, doing: 'watching streams', url: 'https://openvibe.live/' }]);
 assert.deepStrictEqual(o.people[0], { name: 'Ann', username: 'ann', subject: ANN, avatar: 'https://openvibe.network/avatar/ann?s=64', site: 'Live', live: true, live_url: 'https://openvibe.live/@ann', viewers: 5 }, 'live now, with her channel');
