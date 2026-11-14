@@ -208,6 +208,10 @@ const BURST_MS = 15 * 60_000;
 const BURST_WORD = { pic: ['photo', 'photos'], clip: ['clip', 'clips'], video: ['video', 'videos'], game: ['achievement', 'achievements'], quest: ['quest', 'quests'], avatar: ['picture change', 'picture changes'], banner: ['banner change', 'banner changes'], paste: ['paste', 'pastes'], space: ['space', 'spaces'] };
 // A poll can deliver forty of the same kind at once with no person behind them (deals, news): one card.
 const BULK_WORD = { deal: ['deal', 'deals'], news: ['story', 'stories'], event: ['event', 'events'] };
+// Where a run of new things opens (plan §AB.46): the site's own list of them, not the first item's page.
+const RUN_PAGE = { deals: 'https://openvibe.deals/new', news: 'https://openvibe.news/', today: 'https://openvibe.today/', work: 'https://openvibe.work/jobs' };
+// A run of deals shows its first rows: the ones with a picture go first (plan §AB.43), the rest keep their order.
+const withPicturesFirst = (cards) => [...cards.filter((c) => c.media && c.media.thumb), ...cards.filter((c) => !(c.media && c.media.thumb))];
 // What a person did, said the way the single card says it (2026-11-14, the owner: "'added' instead of like completed
 // … is weird" under "krissy_sweet added 2 quests" / "finished a quest").
 const BURST_SAY = {
@@ -257,6 +261,7 @@ function foldCards(cards, now = Date.now()) {
             return {
                 ...g.card,
                 id: `g:work:${g.workHour}`,
+                url: RUN_PAGE.work,
                 title: `${g.cards.length} new jobs this hour`,
                 text: clean(g.cards.map((c) => c.title).slice(0, 3).join(' · '), 280),
                 group: { count: g.cards.length, items: g.cards.slice(0, 20).map(groupItem) },
@@ -274,9 +279,10 @@ function foldCards(cards, now = Date.now()) {
                 ...g.card,
                 id: bulkId(g.card.kind, g.site, g.hour),
                 bulk,
+                ...(RUN_PAGE[g.site] ? { url: RUN_PAGE[g.site] } : {}),
                 title: `${g.cards.length} new ${many}`,
                 media: null,   // each row shows its own picture
-                group: { count: g.cards.length, items: g.cards.slice(0, 20).map(groupItem) },
+                group: { count: g.cards.length, items: (g.card.kind === 'deal' ? withPicturesFirst(g.cards) : g.cards).slice(0, 20).map(groupItem) },
                 counts: { ...g.card.counts, people: g.cards.length },
             };
         }
@@ -417,4 +423,4 @@ function wallItem(card) {
     };
 }
 
-module.exports = { bulkId, BULK_WORD, SITE_NAMES, kindOf, cardOf, oneCardPerThing, foldCards, compareRankedCards, rankCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };
+module.exports = { bulkId, BULK_WORD, RUN_PAGE, SITE_NAMES, kindOf, cardOf, oneCardPerThing, foldCards, compareRankedCards, rankCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };

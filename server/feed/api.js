@@ -16,7 +16,7 @@
  */
 const express = require('express');
 const store = require('./store');
-const { cardOf, oneCardPerThing, foldCards, rankCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD } = require('./card');
+const { cardOf, oneCardPerThing, foldCards, rankCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD, RUN_PAGE } = require('./card');
 const { createPictures } = require('./pictures');
 const { createFeedSources } = require('./sources');
 const { createEffects } = require('./effects');
@@ -143,6 +143,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             if (!card.group) card.group = { count: n, items: [{ id: card.id, url: card.url, title: card.title, media: card.media }] };
             // A run of deals shows each one's picture in its rows; one product's picture over "321 new deals" says nothing.
             card.media = null;
+            if (RUN_PAGE[b.site]) card.url = RUN_PAGE[b.site];   // the site's list of new ones (plan §AB.46)
             card.id = bulkId(b.kind, b.site, b.hour);
             card.title = `${n.toLocaleString('en-US')} new ${b.many}`;
             card.group.count = n;
