@@ -76,6 +76,34 @@ const { createSetupGrants, TTL_MS, hashOf } = require('../server/admin/setup-gra
         assert.strictEqual((await call('POST', `/internal/setup/grants/${gone.id}/save`, { values: { 'groq.api_key': VALUE } })).status, 410, 'a revoked grant');
         assert.strictEqual((await call('POST', '/internal/setup/grants/sgr_nope/save', { values: { a: 'b' } })).status, 404, 'a made-up id');
 
+        // "Let my agent do it": the grant starts Actor's task here, with the owner's Bearer; the answer carries the task,
+        // never the grant id; a start that fails revokes the grant; a provider Actor cannot read is refused.
+        const toActor = [];
+        let actorUp = true;
+        const startApp = express();
+        const starting = createSetupGrants({ db, proxy, isFresh: () => true, now: () => clock, log, actorUrl: 'http://actor.test',
+            fetchImpl: async (url, init) => { toActor.push({ url, init }); return actorUp ? new Response(JSON.stringify({ id: 'tsk_01JABCDEFGHJKMNPQRSTVWXYZ0' }), { status: 201 }) : new Response(JSON.stringify({ detail: 'no' }), { status: 503 }); } });
+        startApp.use('/g', (req, res, next) => { req.user = { id: owner.id, subject_id: subject }; next(); }, starting.ownerRouter());
+        const s2 = await new Promise((ok) => { const x = startApp.listen(0, '127.0.0.1', () => ok(x)); });
+        const b2 = `http://127.0.0.1:${s2.address().port}`;
+        const start = async (body, auth = 'Bearer owner-token') => { const x = await fetch(b2 + '/g', { method: 'POST', headers: { 'content-type': 'application/json', ...(auth ? { authorization: auth } : {}) }, body: JSON.stringify(body) }); return { status: x.status, body: await x.json() }; };
+        try {
+            const row = { service: 'ai', namespace: 'ai.providers', keys: ['deepseek.api_key'], provider: 'deepseek', get_it_at: 'https://platform.deepseek.com/api_keys', start: true };
+            let st = await start(row);
+            assert.strictEqual(st.status, 201, JSON.stringify(st.body));
+            assert.deepStrictEqual(st.body.grant.task, { id: 'tsk_01JABCDEFGHJKMNPQRSTVWXYZ0', url: 'https://openvibe.actor/chat/tsk_01JABCDEFGHJKMNPQRSTVWXYZ0' }, 'the agent\'s task');
+            assert.ok(!('id' in st.body.grant) && !JSON.stringify(st.body).includes('sgr_'), 'the browser never holds the grant id');
+            const sent = JSON.parse(toActor[0].init.body);
+            assert.ok(/^sgr_/.test(sent.grant) && toActor[0].url === 'http://actor.test/api/v1/setup/tasks' && toActor[0].init.headers.Authorization === 'Bearer owner-token', 'Actor gets the id, with the owner\'s Bearer');
+            assert.strictEqual((await start({ ...row, provider: 'mistral' })).status, 422, 'a provider Actor cannot read');
+            assert.strictEqual((await start(row, null)).status, 409, 'no Bearer: no agent');
+            actorUp = false;
+            st = await start(row);
+            assert.strictEqual(st.status, 502, 'Actor down');
+            const last = JSON.parse(toActor[toActor.length - 1].init.body).grant;
+            assert.ok((await db.prepare('SELECT revoked_at FROM setup_grants WHERE id_hash = ?').get(hashOf(last))).revoked_at, 'a failed start revokes its grant');
+        } finally { s2.close(); }
+
         assert.ok(!logs.some((m) => m.includes(VALUE)), 'a value is never logged');
         assert.ok(!JSON.stringify(await db.prepare('SELECT * FROM setup_grants').all()).includes(VALUE), 'nor stored here');
         console.log('setup grants: fresh-made, one row, Actor only, once, expiring, revocable, values never back');

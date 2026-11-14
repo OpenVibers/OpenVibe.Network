@@ -267,7 +267,77 @@ function setupAttachControls(li) {
     more.className = 'setup-more-actions';
     if (row.testable && row.set) more.append(setupButton('Test', 'test'));
     if (row.set) more.append(setupButton('Remove', 'remove', 'pai-quiet pai-quiet-danger'));
+    // Plan §AB.44: your own agent opens the provider's page on a desk, hands it to you to sign in, makes the key and
+    // saves it here (a one-time grant for this row; the key never reaches the agent's words).
+    if (setupAgentProvider(row)) more.append(setupButton('Let my agent do it', 'agent'));
     if (more.childNodes.length) box.append(more);
+}
+
+// The providers whose new keys OpenVibe.Actor can read from their page (Network server/admin/setup-grants.js).
+const SETUP_AGENT_PROVIDERS = ['openai', 'anthropic', 'deepseek', 'openrouter', 'groq', 'gemini', 'kimi', 'xai', 'fireworks', 'resend', 'stripe'];
+const SETUP_AGENT_ALIASES = { moonshot: 'kimi', 'google ai': 'gemini', claude: 'anthropic', grok: 'xai' };
+/** The provider a key row is for, when the agent can make its key; else null. */
+function setupAgentProvider(row) {
+    if (!row || !row.secret || !row.get_it_at || row.pinned || row.kind === 'task') return null;
+    const hay = (String(row.key || '') + ' ' + String(row.namespace || '') + ' ' + String(row.title || '')).toLowerCase();
+    for (const p of SETUP_AGENT_PROVIDERS) if (hay.includes(p)) return p;
+    for (const [a, p] of Object.entries(SETUP_AGENT_ALIASES)) if (hay.includes(a)) return p;
+    return null;
+}
+
+async function setupAgent(li, row, button) {
+    button.disabled = true;
+    try {
+        const out = await api('/api/admin/setup/grants', { method: 'POST', body: {
+            service: row.service, namespace: row.namespace, keys: [row.key], provider: setupAgentProvider(row), label: row.title, get_it_at: row.get_it_at, start: true,
+        } });
+        setupAgentNotice(li, row, out.grant);
+    } catch (err) {
+        button.disabled = false;
+        if (setupFresh(err)) return;
+        setupShowResult(li, (err && err.message) || 'Your agent could not start. Paste the key yourself.', 'bad');
+    }
+}
+
+/** The row while the agent works: what it does, where to watch it, Stop; it turns Connected when the key is saved. */
+function setupAgentNotice(li, row, grant) {
+    const box = li.querySelector('[data-setup-actions]');
+    if (!box || !grant) return;
+    const note = document.createElement('div');
+    note.className = 'setup-agent';
+    note.setAttribute('role', 'status');
+    const text = document.createElement('p');
+    text.textContent = 'Your agent is making the key. When the page asks you to sign in or confirm, it hands you its screen: take it, then give it back.';
+    const watch = document.createElement('a');
+    watch.className = 'btn btn-primary btn-sm';
+    watch.href = grant.task && grant.task.url ? grant.task.url : '#';
+    watch.target = '_blank'; watch.rel = 'noopener';
+    watch.textContent = 'Watch it work';
+    const stop = document.createElement('button');
+    stop.type = 'button'; stop.className = 'btn btn-secondary btn-sm';
+    stop.textContent = 'Stop';
+    let timer = 0;
+    const until = Date.now() + 30 * 60 * 1000;
+    const end = (words, tone) => { clearInterval(timer); note.remove(); setupShowResult(li, words, tone); };
+    stop.addEventListener('click', async () => {
+        stop.disabled = true;
+        try { await api('/api/admin/setup/grants/' + encodeURIComponent(grant.ref), { method: 'DELETE' }); } catch { /* spent or gone already */ }
+        end('Stopped: your agent can no longer save this key.', 'muted');
+    });
+    const actions = document.createElement('p');
+    actions.className = 'setup-agent-actions';
+    actions.append(watch, stop);
+    note.append(text, actions);
+    box.prepend(note);
+    // Saved when the row says so (the agent's save is the owner's own, through the same path).
+    timer = setInterval(async () => {
+        if (!li.isConnected || Date.now() > until) { clearInterval(timer); return; }
+        try {
+            const data = await api('/api/admin/setup');
+            const now = (data.rows || []).find((r) => r.id === row.id);
+            if (now && now.set && now.state === 'connected') { SETUP.data = data; end('Saved by your agent.', 'ok'); setupRender(document.getElementById('setup-content')); }
+        } catch { /* try again */ }
+    }, 10000);
 }
 
 function setupFresh(err) {
@@ -348,6 +418,7 @@ async function setupClick(ev) {
     if (act === 'test') return setupTest(li, row, button);
     if (act === 'remove') return setupRemove(li, row, button);
     if (act === 'done' || act === 'undo') return setupTask(li, row, button, act === 'done');
+    if (act === 'agent') return setupAgent(li, row, button);
 }
 
 async function setupTest(li, row, button) {

@@ -177,6 +177,7 @@ function setupGrantsOf(db, notificationService) {
         const proxyMod = require('./ai-config-proxy');
         setupGrants = require('./setup-grants').createSetupGrants({
             db, proxy: proxyMod.createAiConfigProxy({ db, notificationService }), isFresh: proxyMod.isFresh,
+            actorUrl: (() => { try { const c = require('../config'); return (c.services && c.services.actor && c.services.actor.internalUrl) || ''; } catch { return ''; } })(),
         });
     }
     return setupGrants;

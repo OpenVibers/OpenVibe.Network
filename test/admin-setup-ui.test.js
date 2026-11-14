@@ -18,7 +18,7 @@ const ctx = {
 vm.createContext(ctx);
 // glossary.js, ai.js (paiUsd) and setup.js in their load order, as admin.html loads them.
 vm.runInContext(read('glossary.js') + '\n' + read('ai.js') + '\n' + read('setup.js')
-    + '\n;globalThis.__s = { setupSummary, setupStateLine, setupFor, glossaryLink, GLOSSARY };', ctx);
+    + '\n;globalThis.__s = { setupSummary, setupStateLine, setupFor, glossaryLink, GLOSSARY, setupAgentProvider };', ctx);
 const S = ctx.__s;
 
 // ── The counted summary, in the design's words ──
@@ -57,4 +57,12 @@ assert.ok(!/OWNER_ONLY_TABS = new Set\(\[[^\]]*'glossary'/.test(core), 'the glos
 const setup = read('setup.js');
 assert.ok(!/<input[^>]*type="password"/.test(setup), 'no password input in an HTML string');
 assert.match(setup, /if \(isSecret\) input\.value = '';/, 'the key is cleared whatever happened');
+// "Let my agent do it" (plan §AB.44) only on a key row of a provider the agent can make a key for, with its page.
+const keyRow = { secret: true, get_it_at: 'https://platform.deepseek.com/api_keys', key: 'deepseek_api_key', namespace: 'ai.keys', title: 'DeepSeek key' };
+assert.strictEqual(S.setupAgentProvider(keyRow), 'deepseek');
+assert.strictEqual(S.setupAgentProvider({ ...keyRow, key: 'moonshot_key', title: 'Moonshot key' }), 'kimi', 'by another name');
+assert.strictEqual(S.setupAgentProvider({ ...keyRow, secret: false }), null, 'not a key');
+assert.strictEqual(S.setupAgentProvider({ ...keyRow, get_it_at: '' }), null, 'no page to make it on');
+assert.strictEqual(S.setupAgentProvider({ ...keyRow, key: 'cloudflare_token', title: 'Cloudflare token' }), null, 'a provider the agent cannot read');
+assert.match(setup, /setupButton\('Let my agent do it', 'agent'\)/);
 console.log('admin-setup-ui: the summary, the states, the glossary and the owner-only tab read as designed');

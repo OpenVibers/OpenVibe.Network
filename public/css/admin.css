@@ -381,6 +381,8 @@ body:has(.admin-clarity.active) .ov-sel-opt { min-height:44px; }
 .setup .btn.pai-quiet.pai-quiet-danger{color:var(--danger-text,var(--danger));border-color:color-mix(in srgb,var(--danger) 45%,var(--border))}
 .setup-pinned{font-size:12px}
 .setup-result{grid-column:1/-1;font-size:12.5px;line-height:1.5;padding:8px 10px;border-radius:8px;background:var(--bg-secondary);border:1px solid var(--border)}
+.setup-agent{grid-column:1/-1;display:grid;gap:6px;padding:10px 12px;border-radius:10px;border:1px solid var(--accent,#5b8cff);background:color-mix(in srgb,var(--accent,#5b8cff) 8%,transparent);font-size:13px}
+.setup-agent p{margin:0}.setup-agent-actions{display:flex;gap:8px;flex-wrap:wrap}
 .setup-result[hidden]{display:none}
 .setup-result.is-ok{color:var(--success-text,var(--success))}
 .setup-result.is-bad{color:var(--danger-text,var(--danger))}

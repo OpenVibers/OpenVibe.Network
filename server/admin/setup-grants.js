@@ -43,7 +43,33 @@ class GrantError extends Error {
  * the grant's owner (server/admin/ai-config-proxy.js). isFresh(req): the owner's fresh sign-in (the same rule saving a
  * key by hand has).
  */
-function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = console } = {}) {
+// The providers whose new keys OpenVibe.Actor can read from their page (Actor's server/setup/grants.js KEY_SHAPES).
+const AGENT_PROVIDERS = ['openai', 'anthropic', 'deepseek', 'openrouter', 'groq', 'gemini', 'kimi', 'xai', 'fireworks', 'resend', 'stripe'];
+
+function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = console, actorUrl = '', actorPublicUrl = 'https://openvibe.actor', fetchImpl = globalThis.fetch } = {}) {
+    /**
+     * Start the owner's agent on the grant (Actor's POST /api/v1/setup/tasks, with the owner's own Bearer): the grant id
+     * goes from here to Actor and nowhere else, so the browser never holds it. A start that fails revokes the grant.
+     */
+    async function startAgent(req, id, grant) {
+        const auth = String(req.headers && req.headers.authorization || '');
+        if (!/^Bearer\s+\S+/.test(auth) || !actorUrl) throw new GrantError(409, 'setup_grant.agent_unavailable', 'Your agent could not start here: sign in again, or paste the key yourself');
+        let res;
+        try {
+            res = await fetchImpl(`${actorUrl.replace(/\/+$/, '')}/api/v1/setup/tasks`, {
+                method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15_000),
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: auth },
+                body: JSON.stringify({ grant: id, keys: grant.keys, provider: grant.provider, label: grant.label || grant.provider, get_it_at: grant.get_it_at }),
+            });
+        } catch { res = null; }
+        const out = res ? await res.json().catch(() => null) : null;
+        if (!res || !res.ok || !out || !out.id) {
+            await db.prepare('UPDATE setup_grants SET revoked_at = ? WHERE id_hash = ? AND used_at IS NULL').run(iso(now()), hashOf(id));
+            throw new GrantError(502, 'setup_grant.agent_failed', (out && (out.detail || out.title)) ? String(out.detail || out.title).slice(0, 200) : 'Your agent did not start');
+        }
+        return { id: String(out.id), url: `${actorPublicUrl.replace(/\/+$/, '')}/chat/${encodeURIComponent(String(out.id))}` };
+    }
+
     async function create(req, body) {
         if (!isFresh(req, now())) throw new GrantError(403, 'config.fresh_required', "Confirm it's you to let your agent save a key");
         const b = body && typeof body === 'object' ? body : {};
@@ -61,7 +87,19 @@ function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = c
         const getItAt = typeof b.get_it_at === 'string' && /^https:\/\/[^\s]{1,500}$/.test(b.get_it_at) ? b.get_it_at : null;
         await db.prepare(`INSERT INTO setup_grants (id_hash, owner_user_id, owner_subject, service, namespace, keys, provider, get_it_at, created_at, expires_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(hash, req.user.id, subject, service, namespace, JSON.stringify(keys), provider, getItAt, iso(at), iso(at + TTL_MS));
-        return { id, ref: hash.slice(0, 12), service, namespace, keys, provider, get_it_at: getItAt, expires_at: iso(at + TTL_MS) };
+        const made = { id, ref: hash.slice(0, 12), service, namespace, keys, provider, get_it_at: getItAt, expires_at: iso(at + TTL_MS) };
+        // "Let my agent do it": the agent starts here, and the answer carries its task, never the grant id.
+        if (b.start === true) {
+            const p = String(provider || '').toLowerCase();
+            if (!AGENT_PROVIDERS.includes(p) || !getItAt) {
+                await db.prepare('UPDATE setup_grants SET revoked_at = ? WHERE id_hash = ?').run(iso(now()), hash);
+                throw new GrantError(422, 'setup_grant.agent_cannot', 'Your agent cannot read this provider\'s keys from its page yet: paste it yourself');
+            }
+            const task = await startAgent(req, id, { keys, provider: p, label: typeof b.label === 'string' ? b.label.slice(0, 60) : p, get_it_at: getItAt });
+            const { id: _hidden, ...rest } = made;
+            return { ...rest, task };
+        }
+        return made;
     }
 
     async function list(req) {
@@ -137,4 +175,4 @@ function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = c
     return { create, list, revoke, save, ownerRouter, internalHandler, TTL_MS };
 }
 
-module.exports = { createSetupGrants, GrantError, TTL_MS, hashOf };
+module.exports = { createSetupGrants, GrantError, TTL_MS, hashOf, AGENT_PROVIDERS };
